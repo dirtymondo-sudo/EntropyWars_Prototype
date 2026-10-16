@@ -984,3 +984,10 @@ the free ground query, so a deck over walked ground was never a battle square an
   the ground under stays clear. Arenas with decks now: CERN 24, Giza 15, Downtown 13, Antarctica 11, Mars 10, Haunted 3.
 - Test-harness note: the Target Camera reframes on hover, so a probe must re-project and hover again until the tile stops
   moving before it clicks (else it lands a row off).
+- Follow-up (same day, PR after #230): NARROW decks (a footbridge under two cells wide, a diagonal plank) seldom cover a
+  cell's samples, so `deckAt` falls back to the cell its axis runs through (judged at the axis point nearest the centre).
+  Rails are now judged by CROSSING: a side is railed when the step out through it (deck point → a quarter cell past the edge)
+  crosses the bridge's rail line along the span (never out of its ends) or a hung railing piece; a side onto a neighbour on the
+  same deck level is never railed (a diagonal bridge runs on). Rooms with bridges whose fights now have decks: 40 of 41 (the
+  odd one, The Derelict's deck, is a 0.3 m plate — one floor). Arena 12 × 12 cuts: only CERN, Giza, Downtown, Antarctica,
+  Mars and Haunted contain a bridge; the other 17 arenas' bridges lie outside their cut.

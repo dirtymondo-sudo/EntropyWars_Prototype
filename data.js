@@ -54282,33 +54282,36 @@ function hqFieldTerrainInfo(roomId) {
     /* the cell's sides a railed bridge's rail runs along (its posts stand within half a cell of that edge, parallel to it): the
        battle board walls those edges with a hidden low rail (hqFieldStampDecks), so a body never steps through the drawn rail */
     const railWalls = (info.walls || []).filter(w => w && w.railing && typeof w.base === 'number' && (w.h || 0) < 1.6);
-    const railSides = (b, cx, cz) => {
+    const railSides = (b, cx, cz, px, pz) => {
+        if (px == null) { px = cx; pz = cz; }
         const segs = railWalls.filter(w => Math.abs(w.base - b.y) < 0.4);   // the railings standing on this deck
         let s = '';
         [['N', 0, -1], ['S', 0, 1], ['W', -1, 0], ['E', 1, 0]].forEach(([k, dx, dz]) => {
             const ex = cx + dx * C / 2, ez = cz + dz * C / 2;
             let near = false;
             if (b.rails && !b.plain && !b.hide) {
+                /* the bridge's own rail: stepping out through this side (a point a quarter cell past the edge) crosses the rail line
+                   along the span — never out of its ends, where it meets the land */
+                const ox = ex + dx * C / 4, oz = ez + dz * C / 4;
                 if (b.arc) {
-                    const A = b.arc, L = _hqTArc(A, ex, ez);
-                    const q = (A.a0 + L.da) * Math.PI / 180;   // the rail's tangent (cos q, sin q) must run along the edge
-                    if ((L.span >= 359.99 || L.da <= L.span) && Math.abs(dx ? Math.sin(q) : Math.cos(q)) >= 0.6) {
-                        const rr = b.rails === true ? [A.r0 + 0.12, A.r1 - 0.12] : b.rails === 'inner' ? [A.r0 + 0.12] : b.rails === 'outer' ? [A.r1 - 0.12] : [];
-                        near = rr.some(r => Math.abs(L.r - r) < C / 2);
-                    }
+                    const A = b.arc, L = _hqTArc(A, ox, oz);
+                    if (L.span >= 359.99 || L.da <= L.span) near = ((b.rails === true || b.rails === 'inner') && L.r < A.r0 + 0.12) || ((b.rails === true || b.rails === 'outer') && L.r > A.r1 - 0.12);
                 } else {
-                    const L = _hqTRamp(ex, ez, b);
-                    if (L.t >= -0.05 && L.t <= 1.05 && Math.abs(dx ? L.uz : L.ux) >= 0.6) near = Math.abs(Math.abs(L.v) - (b.w / 2 - 0.1)) < C / 2;
+                    const L = _hqTRamp(ox, oz, b);
+                    near = L.t >= 0 && L.t <= 1 && Math.abs(L.v) > b.w / 2 - 0.1;
                 }
             }
-            /* a railing hung on the deck's lip (a catwalk's glass, a gallery's balustrade): a piece running along the edge within half a
-               cell of its midpoint — the gaps between pieces (a stair's mouth) stay open */
-            if (!near) near = segs.some(w => {
-                const sx = w.x1 - w.x0, sz = w.z1 - w.z0, L2 = sx * sx + sz * sz; if (L2 < 1e-6) return false;
-                if (Math.abs(dx ? sz : sx) / Math.sqrt(L2) < 0.6) return false;
-                const t = Math.max(0, Math.min(1, ((ex - w.x0) * sx + (ez - w.z0) * sz) / L2));
-                return Math.hypot(w.x0 + sx * t - ex, w.z0 + sz * t - ez) < C / 2;
-            });
+            /* a railing hung on the deck's lip (a catwalk's glass, a gallery's balustrade): a piece the step out through this side
+               crosses (from the deck point to a quarter cell past the edge) — the gaps between pieces (a stair's mouth) stay open */
+            if (!near) {
+                const ox = ex + dx * C / 4, oz = ez + dz * C / 4;
+                const side = (ax, az, bx, bz, qx, qz) => (bx - ax) * (qz - az) - (bz - az) * (qx - ax);
+                near = segs.some(w => {
+                    const d1 = side(w.x0, w.z0, w.x1, w.z1, px, pz), d2 = side(w.x0, w.z0, w.x1, w.z1, ox, oz);
+                    const d3 = side(px, pz, ox, oz, w.x0, w.z0), d4 = side(px, pz, ox, oz, w.x1, w.z1);
+                    return d1 * d2 < 0 && d3 * d4 <= 0;
+                });
+            }
             if (near) s += k;
         });
         return s;
@@ -54322,6 +54325,23 @@ function hqFieldTerrainInfo(roomId) {
             let n = 0;
             for (let sj = 0; sj < sub; sj++) for (let si = 0; si < sub; si++) if (onB(cx + ((si + 0.5) / sub - 0.5) * C, cz + ((sj + 0.5) / sub - 0.5) * C)) n++;
             if (n >= cover) return { top: b.y, layer: b.layer, rails: railSides(b, cx, cz) };
+        }
+        /* a NARROW deck (a footbridge under two cells wide, a diagonal plank) seldom covers a cell's samples: the cell its axis
+           runs through takes it, judged at the axis point nearest the cell's centre */
+        for (const b of hqTerrainBridgesAt(info, cx, cz, C / 2).filter(b => groundY == null || b.y - groundY >= GT.tierMin).sort((a, b) => a.y - b.y)) {
+            let ax = null, az = null;
+            if (b.arc) {
+                const A = b.arc, L = _hqTArc(A, cx, cz), rm = (A.r0 + A.r1) / 2;
+                if (L.r < 0.05 || Math.abs(L.r - rm) > C / 2 || (L.span < 359.99 && L.da > L.span)) continue;
+                ax = (A.x || 0) + (cx - (A.x || 0)) * rm / L.r; az = (A.z || 0) + (cz - (A.z || 0)) * rm / L.r;
+            } else {
+                const L = _hqTRamp(cx, cz, b);
+                if (L.t < 0 || L.t > 1 || Math.abs(L.v) > C / 2) continue;
+                ax = cx + L.v * L.uz; az = cz - L.v * L.ux;
+            }
+            if (treeAt(ax, az)) continue;
+            const y = hqTerrainFeet(info, ax, az, b.y);
+            if (y != null && Math.abs(y - b.y) < 0.05) return { top: b.y, layer: b.layer, rails: railSides(b, cx, cz, ax, az) };
         }
         return null;
     };
@@ -54748,7 +54768,11 @@ function hqFieldStampDecks(M, cells, B) {
         const rails = two ? c.deck.rails : (c.span ? c.rails : '');
         if (!rails) continue;
         const lv = B + (two ? c.deck.tile : (c.tile | 0));
+        /* the deck's own floor level on a neighbour (a diagonal bridge runs on through a cell's side: no rail across it) */
+        const deckLv = (n) => !n ? null : (n.deck && n.deck.tile > (n.tile | 0) + 1) ? B + n.deck.tile : n.span ? B + (n.tile | 0) : null;
         for (const k of rails) {
+            const nx = x + (k === 'E' ? 1 : k === 'W' ? -1 : 0), ny = y + (k === 'S' ? 1 : k === 'N' ? -1 : 0);
+            if (deckLv(cells[ny] && cells[ny][nx]) === lv) continue;
             const key = M.wallKey(x, y, k); if (M.walls[key]) continue;
             M.wall(x, y, k, { z0: lv + 1, h: 1, low: true, tex: 'metal' });
             M.walls[key].hide = true;
