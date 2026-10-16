@@ -51793,13 +51793,13 @@ function hqMarkerLaunch(roomId, cfg, opts) {
     };
 }
 /* the arena a crystal fights on: the site's own arena (its `<site>_delta` that hqArenaRegisterAll made the arena, or a kept
-   board, HQ_ARENA_RULES.keep); a site with no arena (no 12×12 window fits its rooms) borrows HQ_ARENA_RULES.standIn's. null = none */
+   board, HQ_ARENA_RULES.keep). null = the site has no arena (Hell, Bermuda, the Flying Dutchman: no 12×12 window fits their
+   rooms) — the caller falls to the site's own Δ, their MOVING boards (mondo 2026-10-16: "flying dutchman has the pvp map where
+   its moving on the water, why would you replace it"), never another site's arena */
 function hqMarkerArenaId(site) {
     if (!site || typeof PREBUILT_MAPS === 'undefined' || !PREBUILT_MAPS) return null;
-    const isArena = (s) => { const e = PREBUILT_MAPS[s + '_delta']; return !!(e && (e.arena || (HQ_ARENA_RULES.keep || []).includes(s))); };
-    if (isArena(site)) return site + '_delta';
-    const sub = (HQ_ARENA_RULES.standIn || {})[site];
-    return (sub && isArena(sub)) ? sub + '_delta' : null;
+    const e = PREBUILT_MAPS[site + '_delta'];
+    return (e && (e.arena || (HQ_ARENA_RULES.keep || []).includes(site))) ? site + '_delta' : null;
 }
 /* D2 · THE NATIVE'S IDENTITY (PHASE9_QUALITY_PLAN §6, 2026-09-16): the character you
    hit IS the enemy's lead — state.js optimizeRandomizeParty pins P2's seat 1 to this
@@ -54927,9 +54927,6 @@ const HQ_ARENA_RULES = {
     /* the sites that keep their Δ board whatever fits (mondo 2026-09-30: "keep the looking glass delta map, for that one there needs
        to be a chessboard in the looking glass explorable area" — the garden's own chessboard, THE BOARD below) */
     keep: ['prebuilt_lookingglass', 'prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines
-    /* the crystal's board on a site with no arena of its own (mondo 2026-10-16, "replace them with the arena maps for now": no 12×12
-       window fits Hell, the Bermuda sea or the Dutchman's decks — bake-arenas.js) — hqMarkerArenaId */
-    standIn: { prebuilt_hell: 'prebuilt_mars', prebuilt_bermuda: 'prebuilt_atlantis', prebuilt_revenge: 'prebuilt_haunted' },
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
