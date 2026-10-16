@@ -1035,6 +1035,37 @@ Ask: "what would a veteran old school ui designer want from this tool that it do
 - **Presets:** Corner Blue (four-corner blue, white rounded frame, hard 2px text, stretch open, ☞ cursor), Pixel Black (pixel corners at 2x, DotGothic16, ▶), PS1 Grey (strong dither, bevel, unroll).
 - **UX:** top bar = open theme + tags, Undo/Redo (Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y; whole-theme snapshots, a drag = one step), Use in the game, Done. Built-ins/presets edit through a DRAFT: the first change makes "<name> copy" (and if it was the game's theme the copy becomes it, syncPickerRows first or setHudTheme rejects it). Click any part of the preview to edit that role (dashed pink highlight); preview zoom 1-3x (`zoom`), Replay open, a message-window mock. Every slider has a number box, every colour a hex box. Skin sections collapse (`<details>`, UI.shut). Copy/Paste skin, Use on every role, Reset. Colours tab shows ink-on-plate contrast. Save file / Load file (.ewtheme.json) next to copy/paste text. 9-slices: link cuts, crisp pixels, game textures from a dropdown. Keyboard: a window capture listener eats keys while the maker is open (game hotkeys stay quiet).
 
+## THE UI MAKER — pass 3: the live view, the dodging panel, the hero section (2026-10-16, mondo, token 20261016-uimlive-01-cors)
+Ask: "in the ui editor with the layout and menus sections it would be nice to [see] what i am editing like with arrange on
+the screen. but arrange on screen has a box that has the controls but it doesnt go away and its on top of the very hud
+element i want to adjust. Also i want to be able to adjust and change the horologe hero section. just make the entire ui
+editor better and more robust". All in hud.js (the UI Maker IIFE).
+- **LIVE VIEW** (`liveOn(mode)` / `liveOff`, `UIMaker.live('layout'|'menus')`, `UIMaker.arrange()` = layout): the
+  LAYOUT ⧉ and MENUS ⧉ tabs no longer render in the editor's columns; the maker hides (`html.uim-live`) and the real
+  screen shows. LAYOUT also sets `html.uim-arranging` (hides #pauseOverlay / #hqPause / #settingsPage over the HUD).
+  Layout boxes: pink = on screen, blue = a stand-in for a piece that is not up (where it was LAST SEEN, localStorage
+  `ew_ui_maker_seen` via `noteSeen`/`ghostRect`, re-dressed in the current move + size; else `UIM_PIECES[].def`),
+  orange = pushed off the screen (box clamped to the edge so it can be grabbed). "Not up now" picks which group's
+  stand-ins show (Auto = the group on screen). Smaller boxes sit on top (z by area), so a piece inside a piece stays
+  clickable; the parent's tag sits right (`tagRight`). Drags keep 24 px of the piece on screen. Menus boxes (cyan):
+  every UIM_SURFACES scope that is up; a whole-screen layer boxes its panel/head role elements instead; a menu not up
+  shows a mini preview in the theme it wears (the dock holds the only #uimPreview while live; the editor's middle
+  column is emptied).
+- **THE DOCK** (the controls box): moves itself only when it would cover the selected piece (`dodge`: best of 8 edge
+  spots, fewest other boxes covered, furthest from the selection; top right on ties), fades + lets clicks through
+  while a piece is dragged (`.busy`), drags by its bar, folds (F / ▾), Peek (hold Space or the button) hides boxes +
+  dock. The selected piece's controls sit above the piece list. Keys: Tab / Shift+Tab next piece (or menu), arrows
+  nudge (Shift 8), + / − size, H hide, R reset, Esc / Enter back to the full editor.
+- **THE HOROLOGE HERO SECTION**: new pieces `hero` (.hrlg-side) and `cmds` (.hrlg-panels) beside `rig` (both noHide,
+  grow from the bottom-left corner). `db.hero` = { w, watch, gap, face clock|portrait|dial, glow, header, hide: {watch,
+  chips, name, sub, types, vitals, ap, items, mats} } → `heroCss()` in the layout sheet (same in every theme). New
+  skin ROLE `hero` (battle surface roles.hero = .hrlg-side, drawn after panel so it wins; off = wears the panel skin;
+  `fixTheme` gives every stored / imported theme the role). The preview shows a hero mock (`HERO_MOCK`).
+- **Robustness**: layout + hero CSS ride their own sheet `#ew-ui-layout` after `#ew-ui-maker` (`applyLayout`; a drag
+  rewrites only it, no inline styles React can lose). Layout, hero, per-menu themes and the Settings theme are UNDO
+  steps (`snapLayout`, one step per drag, none for a plain click). The store is sanitised on load (bad layout numbers
+  dropped, broken themes skipped, missing skin parts filled).
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
