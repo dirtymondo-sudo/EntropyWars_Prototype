@@ -974,7 +974,7 @@ const ThreeRenderer = (function () {
         '  float e2 = ch2Core * (1.0 - aS1);',
         '  float arA = aChev * (chCore + chGlow * pulse + e2) + aS2 * tri * 0.95 + aS3 * dotA;',
         '  float arHot = aChev * clamp(chCore + e2, 0.0, 1.0) + (aS2 * tri + aS3 * dotA) * 0.5;',
-        '  vec3 arC = mix(mix(uColor, uArCol, uArOwn), vec3(1.0), arHot * 0.45);',
+        '  vec3 arC = mix(mix(uColor, uArCol, uArOwn), vec3(1.0), arHot * 0.45 * (1.0 - 0.6 * uArOwn));',
         '  if (uMeters > 0.5) {',
         /* CLOCKWISE fraction around the ring, 0 at the screen's 6 o'clock:
            a meter at p fills [6, 6 + p·360°] clockwise — the fill grows up
@@ -1047,7 +1047,7 @@ const ThreeRenderer = (function () {
         '  float arc = (1.0 - smoothstep(0.004, 0.013, ad)) * dash * 0.28 * uRAccent * rOn;',
         /* compose — line cores lift toward white so they read hot/neon */
         '  float rHot = clamp(core * gap * dsh * rOn, 0.0, 1.0);',
-        '  vec3 rC = mix(mix(uColor, uRCol, uROwn), vec3(1.0), rHot * 0.45);',
+        '  vec3 rC = mix(mix(uColor, uRCol, uROwn), vec3(1.0), rHot * 0.45 * (1.0 - 0.6 * uROwn));',
         '  float rA = ring + tick + arc;',
         '  float a = rA + arA;',
         '  vec3 col = (rC * rA + arC * arA) / max(a, 0.0001);',
@@ -34571,7 +34571,7 @@ const ThreeRenderer = (function () {
                 var e2 = ch2Core.mul(one.sub(aS1)).toVar();
                 var arA = aChev.mul(chCore.add(chGlow.mul(pulse)).add(e2)).add(aS2.mul(tri).mul(0.95)).add(aS3.mul(dotA)).toVar();
                 var arHot = aChev.mul(T.clamp(chCore.add(e2), 0, 1)).add(aS2.mul(tri).add(aS3.mul(dotA)).mul(0.5));
-                var arC = T.mix(T.mix(C, ACo, AOw), WHITE, arHot.mul(0.45)).toVar();
+                var arC = T.mix(T.mix(C, ACo, AOw), WHITE, arHot.mul(0.45).mul(T.float(1).sub(AOw.mul(0.6)))).toVar();
                 var out = V4(0).toVar();
                 T.If(Me.greaterThan(0.5), function () {
                     var frac = T.fract(Rot.sub(ang).div(6.2832).add(0.5)).toVar();
@@ -34618,7 +34618,7 @@ const ThreeRenderer = (function () {
                     var dash = T.step(0.45, T.fract(ang.mul(2.2282).sub(Tm.mul(0.25)).add(Ph)));
                     var arc = one.sub(ss(0.004, 0.013, ad)).mul(dash).mul(0.28).mul(RAc).mul(rOn);
                     var rHot = T.clamp(core.mul(gap).mul(dsh).mul(rOn), 0, 1);
-                    var rC = T.mix(T.mix(C, RCo, ROw), WHITE, rHot.mul(0.45));
+                    var rC = T.mix(T.mix(C, RCo, ROw), WHITE, rHot.mul(0.45).mul(T.float(1).sub(ROw.mul(0.6))));
                     var rA = ring.add(tick).add(arc).toVar();
                     var a = rA.add(arA).toVar();
                     var col = rC.mul(rA).add(arC.mul(arA)).div(T.max(a, 0.0001));
