@@ -1188,12 +1188,13 @@
             _hqClockTag();
             return C.h;
         };
-        /* is the sun down in `roomId` at the live hour (a clocked room; a locked room by its own hour) — the fight's first round */
+        /* is the sun down in `roomId` at the live hour (a locked room by its own hour) — the fight's first round. 2026-10-17 (mondo:
+           "indoor areas should still have it mechanically"): a room off the clock (indoors, a HQ_WORLD_CLOCK.still sky) reads the live hour too */
         function _hqClockNightIn(roomId) {
             try {
+                if (typeof window.hqWorldSun !== 'function') return false;
                 const C = (typeof window.hqRoomClock === 'function') ? window.hqRoomClock(roomId) : null;
-                if (!C) return false;
-                return !window.hqWorldSun(C.locked ? C.hour : _hqClockLoad().h).isDay;
+                return !window.hqWorldSun((C && C.locked) ? C.hour : _hqClockLoad().h).isDay;
             } catch (e) { return false; }
         }
         /* the hour on the room's sub-line (THE HQ HUD PASS: no new box — the line under the room's title), in a clocked room only */
@@ -15365,6 +15366,9 @@
                     && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
                     window.ThreeAnim.slowMo(0.4, 550);
                 }
+                /* THE DEATH CLOSE-UP (battle.js playDeathCloseup): a live camera on the falling body; deaths that
+                   land together split the screen. online.js relays it to the guest. */
+                if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(unit);
             }
 
             const MAP_DEATH_DURATION = state.devAutoSim ? 0 : 800;
