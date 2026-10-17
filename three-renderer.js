@@ -3288,7 +3288,13 @@ const ThreeRenderer = (function () {
         return h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y) + _stairStandLift(x, y);
     }
 
+    /* THE RISE: a body standing on a cell that is still climbing stands on the climbing ground */
     function unitSurfaceY(unit) {
+        var y = _unitSurfaceY0(unit);
+        if (_rise.n && unit && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) y -= _riseSinkAt(unit.x, unit.y);
+        return y;
+    }
+    function _unitSurfaceY0(unit) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var ux = unit.x, uy = unit.y;
 
@@ -3638,6 +3644,107 @@ const ThreeRenderer = (function () {
         return (m && typeof m.get === 'function' && typeof m.has === 'function') ? m : null;
     }
 
+    /* ══ THE RISE (2026-10-17, mondo: Rampart "feels like the wall just instantly snaps there. its supposed to rise out of
+       the ground smoothly") ══════════════════════════════════════════════════════════════════════════════════════════════
+       The engine raises a cell in one step (battle.js applyTerrainDeform: Rampart, the walls, Earthquake's mountains; the
+       Build's blocks) and the next rebuild drew the column at its full height in one frame. Now each rebuild compares the
+       board's heights with the ones it drew last: a cell that came UP rises out of the ground over RISE_MS, fast first and
+       settling (ease-out). What is drawn for it (a tile board's column, a field's strata top + faces, the Δ / field patch
+       sheet, its new terrain's skin) is built apart from the merged rest, starts sunk by the height it gained and climbs;
+       a unit standing on it rides up with it (unitSurfaceY). Read from the heights alone, so a guest's state-sync rises the
+       same (RULE #2). A lowered cell and a new board snap as before; the field's static shadow lands when the rise ends.
+       Off: window.EW_NO_TERRAIN_RISE; window.EW_RISE_MS sets the time. */
+    var RISE_MS = 650;
+    var _rise = { snap: null, cells: {}, n: 0, id: 0, groups: [] };
+    function _riseOff() { try { return !!window.EW_NO_TERRAIN_RISE; } catch (e) { return false; } }
+    function _riseEase(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return 1 - (1 - t) * (1 - t) * (1 - t); }
+    function _riseLevelAt(x, y) {
+        if (typeof getBaseHeightAt === 'function') return getBaseHeightAt(x, y) | 0;
+        var r = state.boardHeights && state.boardHeights[y]; return r ? (r[x] | 0) : 0;
+    }
+    /* the top of rebuildTerrain: which cells came up since the last build */
+    function _riseDetect(bw, bh, full) {
+        var now = _animNow(), H = new Int16Array(bw * bh), S = _rise.snap, i, x, y;
+        for (y = 0; y < bh; y++) for (x = 0; x < bw; x++) H[y * bw + x] = _riseLevelAt(x, y);
+        _rise.snap = { w: bw, h: bh, H: H };
+        _rise.groups = [];   // every builder that keeps a rising piece makes its group again below
+        if (_riseOff() || full || !S || S.w !== bw || S.h !== bh || typeof state === 'undefined' || !state || state.phase !== 'battle') { _rise.cells = {}; _rise.n = 0; return; }
+        var up = [];
+        for (i = 0; i < H.length; i++) {
+            if (H[i] > S.H[i]) up.push(i);
+            else if (H[i] < S.H[i]) delete _rise.cells[(i % bw) + ',' + ((i / bw) | 0)];   // lowered mid-rise: it snaps
+        }
+        if (up.length > Math.max(24, (bw * bh / 3) | 0)) up = [];   // most of the board moved: a new board, not a spell
+        if (up.length) {
+            var dur = RISE_MS; try { if (+window.EW_RISE_MS > 0) dur = +window.EW_RISE_MS; } catch (e) {}
+            var recs = {};
+            up.forEach(function (j) {
+                var k = (j % bw) + ',' + ((j / bw) | 0), lv = H[j] - S.H[j], old = _rise.cells[k];
+                if (old) { var ot = (now - old.t0) / old.dur; if (ot < 1) lv += old.lv * (1 - _riseEase(ot)); }   // up again mid-rise: the rest of that rise rides along
+                var rk = lv.toFixed(3);
+                _rise.cells[k] = recs[rk] || (recs[rk] = { id: ++_rise.id, lv: lv, t0: now, dur: dur });
+            });
+        }
+        _rise.n = Object.keys(_rise.cells).length;
+    }
+    /* the cell's live rise, or null */
+    function _riseOf(x, y) {
+        if (!_rise.n) return null;
+        var r = _rise.cells[x + ',' + y];
+        return (r && (_animNow() - r.t0) < r.dur) ? r : null;
+    }
+    /* how far under its drawn height the cell's ground is right now (battle-frame units; 0 = not rising) */
+    function _riseSinkAt(x, y) {
+        var r = _riseOf(x, y); if (!r) return 0;
+        return r.lv * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO * (1 - _riseEase((_animNow() - r.t0) / r.dur));
+    }
+    /* a builder's rising pieces: one group per (rise, levels) under `parent`, lowered by the tick */
+    function _riseGroup(parent, rec, lv, name) {
+        var key = rec.id + ':' + lv;
+        for (var i = 0; i < _rise.groups.length; i++) { var e = _rise.groups[i]; if (e.key === key && e.g.parent === parent) return e.g; }
+        var g = new THREE.Group(); g.name = name || 'terrain_rise'; g._ew_rise = true;
+        var t = (_animNow() - rec.t0) / rec.dur;
+        g.position.y = -lv * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO * (1 - _riseEase(t));
+        parent.add(g);
+        _rise.groups.push({ key: key, g: g, rec: rec, lv: lv });
+        return g;
+    }
+    /* per frame (after the units' own updates): the pieces and the bodies on them climb; the last frame sets them home */
+    function _riseTick() {
+        if (!_rise.n) return;
+        var now = _animNow(), step = (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO, k, i, touched = {}, ended = false;
+        for (i = 0; i < _rise.groups.length; i++) {
+            var e = _rise.groups[i], t = (now - e.rec.t0) / e.rec.dur;
+            e.g.position.y = t >= 1 ? 0 : -e.lv * step * (1 - _riseEase(t));
+        }
+        for (k in _rise.cells) {
+            var r = _rise.cells[k], t2 = (now - r.t0) / r.dur, off = t2 >= 1 ? 0 : r.lv * step * (1 - _riseEase(t2));
+            var m = tileMeshes.get(k);
+            if (m && m._ew_riseBaseY !== undefined) {
+                m.position.y = m._ew_riseBaseY - off;
+                if (!m.matrixAutoUpdate) m.updateMatrix();
+                if (t2 >= 1) delete m._ew_riseBaseY;
+            }
+            touched[k] = true;
+            if (t2 >= 1) { delete _rise.cells[k]; ended = true; }
+        }
+        _rise.n = Object.keys(_rise.cells).length;
+        if (!_rise.n) _rise.groups = [];
+        /* the bodies: each group remembers the sink it was placed with (_buildUnitEntry) and moves by the change */
+        if (unitGroup && typeof state !== 'undefined' && state && state.units) {
+            for (i = 0; i < state.units.length; i++) {
+                var u = state.units[i]; if (!u || u.dead || !touched[u.x + ',' + u.y]) continue;
+                var en = unitEntries.get(u.id), g = en && en.group; if (!g || g._ew_riseOff === undefined || g._ew_riseZ !== u.z) continue;   // a body not rebuilt on its new height yet: the rebuild places it
+                if (_walkTweens.has(u.id) || _displaceTweens.has(u.id) || _jumpTweens.has(u.id) || _strikeTweens.has(u.id) || _clipTravelTweens.has(u.id) || _deathTweens.has(u.id)) continue;
+                var nOff = _riseSinkAt(u.x, u.y), d = g._ew_riseOff - nOff;
+                if (d) { g.position.y += d; if (g._ew_spriteTopY !== undefined) g._ew_spriteTopY += d; }
+                g._ew_riseOff = nOff;
+            }
+        }
+        if (!_fieldGroundLive()) _shadowMotion = true;   // a tile board's shadow follows the column
+        if (ended) _shadowsDirty = true;                 // THE STATIC SHADOW: the field's depth pass lands with the wall
+    }
+
     function rebuildTerrain() {
         if (!terrainGroup) return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -3647,6 +3754,7 @@ const ThreeRenderer = (function () {
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var full = (_bw !== _lastBoardW || _bh !== _lastBoardH);
         if (full) { _clearGroup(terrainGroup); tileMeshes.clear(); }
+        try { _riseDetect(_bw, _bh, full); } catch (e) { _rise.cells = {}; _rise.n = 0; }   // THE RISE
         var lavaTiles = [];
         /* THE SEAMLESS FIELD (2026-09-22 — THE TRUE GROUND): the room drawn round the window IS the ground; no voxel
            column is built (the walls are the shell's, the slab the gallery's, a table its own top) */
@@ -4069,6 +4177,7 @@ const ThreeRenderer = (function () {
                 m._ew_terrain = tKey; m._ew_height = ht; m._ew_tileX = x; m._ew_tileY = y;
                 m._ew_colFp = colFp;
                 if (isLava || (m._ew_hasLava)) m._ew_isLava = true;
+                if (_riseOf(x, y)) { m._ew_riseBaseY = m.position.y; m.position.y -= _riseSinkAt(x, y); }   // THE RISE: the column climbs out of the board
                 terrainGroup.add(m); tileMeshes.set(k, m);
             }
         }
@@ -4381,6 +4490,7 @@ const ThreeRenderer = (function () {
     var _MERGE_NEIGHBORS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
     function _tileMergeable(root) {
         if (root._ew_isLava || root._ew_hasLava) return false;
+        if (root._ew_riseBaseY !== undefined) return false;   // THE RISE: a climbing column moves on its own
         /* canopy blocks are hidden per-tile by the cutaway — never bake them */
         if (root._ew_hasCanopy) return false;
         if (_FLUID_TERRAIN_SET[root._ew_terrain]) return false;
@@ -7964,7 +8074,9 @@ const ThreeRenderer = (function () {
         if (state.units) {
             for (var gi = 0; gi < state.units.length; gi++) {
                 var gu = state.units[gi];
-                if (gu && gu.dead && !gu._dying && !gu._corpseConsumed) {
+                /* THE DEATH CLOSE-UP (2026-10-17): a rigged body's knock-down outlives `_dying` (800 ms vs the 1600 ms clip),
+                   so the grave also waits for the death tween — it used to pop in under a body still falling. */
+                if (gu && gu.dead && !gu._dying && !gu._corpseConsumed && !_deathTweens.has(gu.id)) {
                     h = _hashInt(h, 6); h = _hashInt(h, gu.x); h = _hashInt(h, gu.y);
                     h = _hashVal(h, gu.player); h = _hashStr(h, String(gu.id));
                 }
@@ -9503,7 +9615,7 @@ const ThreeRenderer = (function () {
             var _gvViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (var ug = 0; ug < state.units.length; ug++) {
                 var du = state.units[ug];
-                if (!du || !du.dead || du._dying) continue;
+                if (!du || !du.dead || du._dying || _deathTweens.has(du.id)) continue;   // the rigged clip still falling (see the serial)
                 if (du._corpseConsumed) continue;   // remains raised as a zombie — nothing left to mark
                 var gx = (du._dyingX != null ? du._dyingX : du.x);
                 var gy = (du._dyingY != null ? du._dyingY : du.y);
@@ -13725,6 +13837,8 @@ const ThreeRenderer = (function () {
         }
         group._ew_unitId = unit.id;
         group._ew_subSink = _subSink;
+        group._ew_riseOff = (_rise.n && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) ? _riseSinkAt(unit.x, unit.y) : 0;   // THE RISE: the sink surfY was read with
+        group._ew_riseZ = unit.z;
 
         if (group._ew_isBatSwarm) {
 
@@ -19828,7 +19942,7 @@ const ThreeRenderer = (function () {
        units the local viewer can see. Best-effort everywhere: a missing
        unit freezes its pane's last pose, a forgotten hide() self-kills.
        ═══════════════════════════════════════════════════════════════════ */
-    var _ss = { active: false, panes: [], t0: 0, durationMs: 0, killTimer: null, hidden: null };
+    var _ss = { active: false, panes: [], t0: 0, durationMs: 0, killTimer: null, hidden: null, owner: null, floatPane: false };
 
     function _ssLayoutRects(n, w, h) {
         if (n <= 1) return [{ x: 0, y: 0, w: w, h: h }];
@@ -19901,18 +20015,24 @@ const ThreeRenderer = (function () {
                 drift: ((i % 2 === 0) ? 1 : -1) * (opts.driftDeg != null ? opts.driftDeg : 7) * Math.PI / 180,
                 d0: (opts.dist0 != null ? opts.dist0 : 3.2) * ts,
                 d1: (opts.dist1 != null ? opts.dist1 : 2.25) * ts,
-                lastEye: null, lastAim: null
+                lastEye: null, lastAim: null,
+                death: !!opts.death,
+                launch: !!(opts.death && typeof state !== 'undefined' && state && state._deathStyleById && state._deathStyleById[uid] === 'launch')
             });
         }
         _ss.t0 = performance.now();
         _ss.durationMs = Math.max(300, opts.durationMs || 1600);
         _ss.active = true;
+        _ss.owner = opts.owner || null;
+        /* THE DEATH CLOSE-UP: one full-screen pane keeps the combat numbers, projected through the pane camera
+           (_updateFloatTextTweens), so the killing blow's number still pops over the falling body. */
+        _ss.floatPane = !!opts.keepFloats && list.length === 1;
 
         /* Hide the DOM layers that project through the main camera. */
         _ss.hidden = [];
         var doms = [
             css2dRenderer && css2dRenderer.domElement,
-            _floatDomOverlay,
+            _ss.floatPane ? null : _floatDomOverlay,
             _intentBadgeContainer
         ];
         for (var d = 0; d < doms.length; d++) {
@@ -19930,6 +20050,7 @@ const ThreeRenderer = (function () {
         if (!_ss.active) return;
         _ss.active = false;
         _ss.panes = [];
+        _ss.owner = null; _ss.floatPane = false;
         if (_ss.hidden) {
             for (var i = 0; i < _ss.hidden.length; i++) {
                 try { _ss.hidden[i][0].style.display = _ss.hidden[i][1]; } catch (e) {}
@@ -19948,6 +20069,19 @@ const ThreeRenderer = (function () {
     }
 
     function isSplitscreenActive() { return _ss.active; }
+    /* Push the self-kill back (THE DEATH CLOSE-UP holds as long as a body is still falling): the rig still dies on its
+       own msAhead after its owner stops calling this. */
+    function extendSplitscreen(msAhead) {
+        if (!_ss.active) return;
+        if (_ss.killTimer) window.clearTimeout(_ss.killTimer);
+        _ss.killTimer = window.setTimeout(function () { hideSplitscreen(); }, Math.max(500, msAhead || 1500));
+    }
+    function splitscreenOwner() { return _ss.active ? _ss.owner : null; }
+    /* The camera the combat numbers project through: the single death close-up pane, else the main camera. */
+    function _ssFloatCam() {
+        if (_ss.active && _ss.floatPane && _ss.panes.length === 1 && _ss.panes[0].lastEye) return _ss.panes[0].cam;
+        return null;
+    }
 
     function _ssEase(t) { return 1 - Math.pow(1 - t, 3); }   // easeOutCubic
 
@@ -19984,19 +20118,40 @@ const ThreeRenderer = (function () {
             var p = _ss.panes[i], r = rects[i];
             var g = _ssFindGroup(p.unitId);
             var unit = (typeof _findUnit === 'function') ? _findUnit(p.unitId) : null;
-            if (g && unit && !unit.dead) {
+            /* A death pane keeps following its unit through the whole death clip (dead flips true at 800 ms, the
+               rigged clip runs on); once the body has dissolved it holds its last framing. */
+            if (g && unit && (!unit.dead || (p.death && g.visible !== false))) {
                 var px = g.position.x, py = g.position.y, pz = g.position.z;
                 var headH = Math.max(ts * 0.55, (g._ew_spriteTopY || (py + ts)) - py);
                 var az = _unitFacingYaw(unit) + p.side + p.drift * k;
                 var dist = p.d0 + (p.d1 - p.d0) * k;
+                /* THE DEATH CLOSE-UP: the lens stands off by the body's own height (a gnome gets a tight shot, an
+                   angel's wings still fit), measured against a standard unit. */
+                if (p.death) dist *= Math.max(0.6, Math.min(1.9, headH / (ts * UNIT_SPRITE_SIZE_RATIO + 4)));
+                if (p.launch) dist += ts * 0.6;   // a heavy blow throws the body up and over: give it room
                 var ex = px + Math.sin(az) * dist;
                 var ez = pz + Math.cos(az) * dist;
                 var ey = py + headH * (0.42 + 0.10 * k);
+                var aimY = py + headH * 0.62;
+                if (p.death) {
+                    /* THE DEATH CLOSE-UP: the lens rises a little as the body drops and the aim follows it down,
+                       so the knock-down stays centred from the stagger to the floor. */
+                    ey = py + headH * (0.58 + 0.16 * k);
+                    if (!p.launch) aimY = py + headH * (0.55 - 0.22 * k);
+                    /* The sight line stays above every column between the lens and the body (raised tiles, a
+                       ledge in front of the unit), so the shot never looks through the ground. */
+                    for (var sk = 1; sk <= 4; sk++) {
+                        var sf = sk / 4;
+                        var gY = _ssGroundY(px + (ex - px) * sf, pz + (ez - pz) * sf) + ts * 0.35;
+                        var lineY = aimY + (ey - aimY) * sf;
+                        if (lineY < gY) ey += (gY - lineY) / sf;
+                    }
+                }
                 /* Never sink the eye into a slope in front of the unit. */
                 var floor = _ssGroundY(ex, ez) + ts * 0.22;
                 if (ey < floor) ey = floor;
                 p.lastEye = { x: ex, y: ey, z: ez };
-                p.lastAim = { x: px, y: py + headH * 0.62, z: pz };
+                p.lastAim = { x: px, y: aimY, z: pz };
             }
             if (!p.lastEye) continue;   // unit never resolved — leave the pane to its neighbors' clears
             p.cam.aspect = r.w / Math.max(1, r.h);
@@ -21570,6 +21725,7 @@ const ThreeRenderer = (function () {
     }
 
     function startDeathTween(unitId) {
+        if (_deathTweens.has(unitId)) return;   // already falling (the online guest starts it off the relay too)
         var entry = _getUnitEntry(unitId);
         if (!entry || !entry.group) return;
 
@@ -22495,7 +22651,8 @@ const ThreeRenderer = (function () {
     function _updateFloatTextTweens() {
         if (_floatTweens.length === 0) return;
         var now = _animNow();
-        var cam = ThreeCamera.getCamera();
+        var _paneCam = _ssFloatCam();   // THE DEATH CLOSE-UP: numbers ride the full-screen death pane
+        var cam = _paneCam || ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
         var screenH = _parentEl ? _parentEl.clientHeight : 0;
         // pxScale sets the on-screen size of the numbers (world→screen px factor).
@@ -22544,6 +22701,7 @@ const ThreeRenderer = (function () {
                 _floatProjVec.set(tw.wx, worldY, tw.wz);
                 var dist = _floatProjVec.distanceTo(cam.position);
                 if (dist < 1) dist = 1;
+                if (_paneCam) dist = Math.max(dist, (CONFIG.tileSize || BASE_TILE) * 6);   // a lens two tiles off would blow the number up to fill the screen
                 _floatProjVec.project(cam);
                 // Behind the camera or off-screen depth → hide this frame.
                 if (_floatProjVec.z > 1) {
@@ -23924,6 +24082,26 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the board's site's day look when one of its rooms is on the world clock (data.js
+       hqRoomClock: an outdoor room) — { tint, clouds } | null (an indoor site, a HQ_WORLD_CLOCK.still sky, no site) */
+    var _battleSkyDayCache = { key: null, v: null };
+    function _battleSiteDayLook() {
+        var id = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : '';
+        if (_battleSkyDayCache.key === id) return _battleSkyDayCache.v;
+        var v = null;
+        try {
+            var site = (typeof hqSiteId === 'function') ? hqSiteId(id) : null, D = _hqData(), R = D && D.rooms;
+            if (site && R && typeof hqRoomClock === 'function' && typeof HQ_WORLD_CLOCK !== 'undefined') for (var rk in R) {
+                var rm = R[rk]; if (!rm || !rm.site || hqSiteId(rm.site) !== site) continue;
+                var C = hqRoomClock(rk); if (!C || C.locked) continue;
+                var DL = C.dayLook || {}, CKd = HQ_WORLD_CLOCK.day || {};
+                v = { tint: (DL.tint != null) ? DL.tint : (CKd.tint != null ? CKd.tint : 0x9fc4e8), clouds: (DL.clouds != null) ? DL.clouds : (CKd.clouds || 0) };
+                break;
+            }
+        } catch (e) { v = null; }
+        _battleSkyDayCache.key = id; _battleSkyDayCache.v = v;
+        return v;
+    }
     function _envReadState() {
         var night = 0;
         try {
@@ -24096,14 +24274,33 @@ const ThreeRenderer = (function () {
         S.mapTintAmt += (((me && me.tintAmt) || 0) - S.mapTintAmt) * k;
         S.mapStars += (((me && me.stars != null) ? me.stars : 1) - S.mapStars) * k;
         S.mapNebula += (((me && me.nebula != null) ? me.nebula : 1) - S.mapNebula) * k;
-        S.mapDay += (((me && me.day) || 0) - S.mapDay) * k;           // THE DAY SKY (2026-09-21)
-        S.mapClouds += (((me && me.clouds) || 0) - S.mapClouds) * k;
+        /* THE BATTLE'S DAY AND NIGHT (2026-10-17): an outdoor site's own board with no room round it (a moving Δ, a full site map) —
+           a night-authored sky wears the site's day on a day round (the lights already flip with the round: ThreePost's presets) */
+        var BDL = (!_fieldGroundArmed && me && !(me.day > 0) && !s.night && !(typeof window !== 'undefined' && window.EW_NO_BATTLE_CYCLE)) ? _battleSiteDayLook() : null;
+        S.mapDay += ((BDL ? 1 : ((me && me.day) || 0)) - S.mapDay) * k;           // THE DAY SKY (2026-09-21)
+        S.mapClouds += ((BDL ? BDL.clouds : ((me && me.clouds) || 0)) - S.mapClouds) * k;
         if (me && me.tint != null) {
             if (!_mapTintScratch) { _mapTintScratch = new THREE.Color(); _mapTintTarget = new THREE.Vector3(); }
-            _mapTintScratch.setHex(me.tint);
+            _mapTintScratch.setHex(BDL ? BDL.tint : me.tint);
             _mapTintTarget.set(_mapTintScratch.r, _mapTintScratch.g, _mapTintScratch.b);
             if (_motion.sunNear > 0.001) _mapTintTarget.lerp(_MOTION_SUN_TINT, _motion.sunNear * 0.65);   // the close pass gilds the whole sky
             _envUni.uMapTint.value.lerp(_mapTintTarget, 0.08);
+        }
+        /* THE BATTLE'S DAY AND NIGHT (2026-10-17): an outdoor room's fight — the dome's day sky, clouds, wash and horizon haze follow the
+           round's half (_fieldCycleTick eases it; the map's own values stand for the half the room was authored in) */
+        var FCe = (_fieldCycle && _fieldGroundArmed) ? _fieldCycle : null;
+        if (FCe) {
+            var rc = _fieldCycleRigAt(FCe), tc = rc.t;
+            S.mapDay = rc.day; S.mapClouds = rc.clouds; S.night = 1 - tc;
+            var fHex = (_mapEnvFog && _mapEnvFog.color != null) ? _mapEnvFog.color : null, tHex = (me && me.tint != null) ? me.tint : null;
+            if (!FCe.dome || FCe.dome.tHex !== tHex || FCe.dome.fHex !== fHex) {   // (the rig's rebuild clears it: built once per eased step)
+                var own = (tHex != null) ? new THREE.Color(tHex) : null, fo = (fHex != null) ? new THREE.Color(fHex) : null;
+                FCe.dome = { tHex: tHex, fHex: fHex,
+                             tw: FCe.authNight ? (own || FCe.night.tint).clone().lerp(FCe.day.tint, tc) : FCe.night.tint.clone().lerp(own || FCe.day.tint, tc),
+                             fw: fo ? (FCe.authNight ? fo.lerp(FCe.day.fogC, tc) : FCe.night.fogC.clone().lerp(fo, tc)) : null };
+            }
+            _envUni.uMapTint.value.set(FCe.dome.tw.r, FCe.dome.tw.g, FCe.dome.tw.b);
+            if (FCe.dome.fw && !_retroFogHorizon && _ewSceneFogOn()) _envUni.uFogColor.value.set(FCe.dome.fw.r, FCe.dome.fw.g, FCe.dome.fw.b);
         }
         _envUni.uMapTintAmt.value = S.mapTintAmt;
         _envUni.uMapStars.value = S.mapStars * (1 - 0.7 * _motion.sunNear);   // stars drown beside the sun (MOVING MAPS)
@@ -34704,7 +34901,52 @@ const ThreeRenderer = (function () {
             } else _ewGpuInfo.why = 'three.webgpu.js did not load';
             if (_ewGpuInfo.why) console.warn('[ThreeRenderer] ew_gpu=' + mode + ' asked, but ' + _ewGpuInfo.why + ' — drawing with the classic WebGLRenderer');
         }
-        return new THREE.WebGLRenderer({ canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance' });
+        var glr = new THREE.WebGLRenderer({ canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance' });
+        try { _glKeepSetup(glr); } catch (e) { console.warn('[ThreeRenderer] the kept programs failed', e); }
+        return glr;
+    }
+    /* ══ THE KEPT PROGRAMS ON WEBGL (2026-10-17, mondo: "still frame rate issues with spells like rampart") ══════════════════
+       WebGLRenderer destroys a shader program the moment the last material using it is disposed. A spell's sprites, rings
+       and debris live for a second, so EVERY cast of a spell linked its programs again (sandbox, Rampart cast three times by
+       the same unit on the Fairy Forest arena: 10, 4 and 8 program links), and a link stalls the frame it lands in (Firefox
+       worst). The node renderer already keeps its builds (THE KEPT SHADERS); here each program the classic renderer makes is
+       held once (+1 on its use count), so a disposed material's program stays in three's cache and the next material with
+       the same key takes it back free. Past _GL_KEEP_CAP held programs a new one is no longer held. Off: window.EW_NO_SHADER_KEEP
+       or ?ew_keep=0 (reload).
+       A ShaderMaterial's program key carries the id three's shader-text cache gave its GLSL, and that id is dropped when the
+       last material with the text is disposed, so the same text came back under a new id and a new key (the unit rings and
+       the spell energy sheets: 5 links a cast even with the programs held). So the first disposed material of each shader
+       text that this renderer drew stays undisposed as that text's anchor (one per text, at most _GL_ANCHOR_CAP), keeping
+       the id and the key. */
+    var _GL_KEEP_CAP = 640, _glKeep = { n: 0, len: -1 }, _GL_ANCHOR_CAP = 160, _glAnchor = { n: 0, by: {} };
+    function _glKeepSetup(r) {
+        if (!r || r._ew_glKeep || !r.info || _ewKeepOff()) return;
+        r._ew_glKeep = true;
+        var SM = THREE.ShaderMaterial && THREE.ShaderMaterial.prototype, PR = r.properties;
+        if (SM && PR && typeof PR.has === 'function' && !SM._ew_anchorDispose) {
+            var dsp = SM.dispose;
+            SM._ew_anchorDispose = true;
+            SM.dispose = function () {
+                if (_glAnchor.n < _GL_ANCHOR_CAP && typeof this.vertexShader === 'string' && typeof this.fragmentShader === 'string') {
+                    var k = this.vertexShader.length + ':' + this.fragmentShader.length + ':' + this.vertexShader + '\n#\n' + this.fragmentShader;
+                    if (!_glAnchor.by[k]) {
+                        var pp = PR.has(this) ? PR.get(this) : null;
+                        if (pp && pp.currentProgram) { _glAnchor.by[k] = this; _glAnchor.n++; return; }
+                    }
+                }
+                return dsp.apply(this, arguments);
+            };
+        }
+        var rn = r.render;
+        r.render = function () {
+            var out = rn.apply(this, arguments);
+            var P = this.info.programs;
+            if (P && P.length !== _glKeep.len && _glKeep.n < _GL_KEEP_CAP) {
+                for (var i = 0; i < P.length && _glKeep.n < _GL_KEEP_CAP; i++) { var p = P[i]; if (p && !p._ew_kept) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } }
+                _glKeep.len = P.length;
+            }
+            return out;
+        };
     }
     /* THE SHEET WARM (2026-10-12, node renderer): the spell sheets (three-vfx-effects.js warmNextSheet: the canvas sheets,
        drawn once and cached; three-vfx.js sheetTextures: the sprite sheets) uploaded a few a frame — at most ~2 ms a frame,
@@ -37417,6 +37659,7 @@ const ThreeRenderer = (function () {
 
         _updateEnvironment();
         _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
+        _fieldCycleTick();    // THE BATTLE'S DAY AND NIGHT: an outdoor room's fight eases to the round's half
 
         // A tile-size change (menu MENU_TILE <-> battle BASE_TILE) rescales the
         // entire board. The renderer's animation loop can otherwise rebuild the
@@ -37524,6 +37767,7 @@ const ThreeRenderer = (function () {
         _updateUnitFacing();
         _updateBatSwarms();
         _updateFlyingBob();
+        _riseTick();   // THE RISE
         _updateTowerCubes();
         _updateTrafficLights();
         _updateTorchFlames();
@@ -63912,10 +64156,14 @@ const ThreeRenderer = (function () {
                     field.sun = { color: CV.keyC.getHex(), intensity: CV.keyI, dir: [kd.x, kd.y, kd.z] };
                     nightO = CV.night > 0.5 ? 1 : 0;
                 }
+                /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the round's half of the cycle — the rig starts on round 1's half */
+                var FCy = null; try { FCy = _fieldCycleArm(room, R.roomId, M); } catch (e) { FCy = null; }
+                if (FCy) { var r0 = _fieldCycleRigAt(FCy); field.hemi = r0.hemi; field.sun = r0.sun; nightO = FCy.k < 0.5 ? 1 : 0; }
                 var ofill = new THREE.DirectionalLight(LR.fillColor, LR.fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(ofill);
                 var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
                 (S.lights || []).slice(0, lampMax).forEach(function (Lt) {
                     var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * s, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); lg.add(ml);
+                    if (FCy) { ml.intensity = LRo.nightLamp + (LRo.dayLamp - LRo.nightLamp) * _fieldCycleEase(FCy.k); FCy.lamps.push({ l: ml, d: LRo.dayLamp, n: LRo.nightLamp }); }
                 });
             } else {
                 var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LR.ambientFloor || 0);
@@ -63941,7 +64189,8 @@ const ThreeRenderer = (function () {
         var fogC = 0x0d0e12, fogD = 0.00017 * U / s;
         try {
             if (open) { fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / s : 0.00005 * U / s; if (S.sky.fog && S.sky.fog.color != null) fogC = S.sky.fog.color;
-                try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {} }   // THE WORLD CLOCK: the hour's fog
+                try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {}   // THE WORLD CLOCK: the hour's fog
+                if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
             if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD) : null;   // THE FOG SETTING: Scene Fog off = none
         } catch (e) {}
@@ -63967,6 +64216,76 @@ const ThreeRenderer = (function () {
         if (st.ceil) st.ceil.y = floorY + (S.h || 3) * s;
     }
     var _fieldGroundFog = false;
+    /* ══ THE BATTLE'S DAY AND NIGHT (2026-10-17, mondo: "wood like the fairy forest and bohemian grove etc to still have day and night
+       cycles, for battle and exploration. any outdoor area should have visible day and night. indoor areas should still have it
+       mechanically") ══
+       A fight on an outdoor room (a room on the world clock: data.js hqRoomClock) wears the ROUND's half of the cycle (map.js
+       getCurrentCyclePhase: the rounds flip day ↔ night; a story fight's round 1 is the room's hour): the key (the sun, or the moon),
+       the hemisphere, the lamp masts, the fog's colour and the dome's day sky / clouds / tint ease between the room's day row and its
+       night row (_hqClockVals at a day hour and a night hour — a story fight's own half is the held hour's) over FIELD_CYCLE_SEC. An
+       indoor room, a HQ_WORLD_CLOCK.still sky and a locked room keep the one rig (the half still counts for every rule). Everything
+       is read from state.round, which every seat has, so the online guest sees the host's half; nothing is relayed. */
+    var _fieldCycle = null;   // { id, authNight, day: rig, night: rig, k (1 = day), at, shAt, lamps: [{ l, d, n }] }
+    var FIELD_CYCLE_SEC = 2.5;
+    function _fieldCycleEase(k) { return k * k * (3 - 2 * k); }
+    function _fieldCycleRig(room, id, hour, M) {
+        var V = _hqClockVals(room, id, hour); if (!V || V.locked || !V.keyDir) return null;
+        return { hemiC: V.hemiC.clone(), hemiI: V.hemiI, keyC: V.keyC.clone(), keyI: V.keyI, kd: V.keyDir.clone().transformDirection(M).normalize(),
+                 fogC: V.fogC.clone(), tint: V.tint.clone(), day: (V.env && V.env.day) || 0, clouds: (V.env && V.env.clouds) || 0 };
+    }
+    /* the fight's two rows, and the half it starts on (null = the room keeps one rig) */
+    function _fieldCycleArm(room, id, M) {
+        var W = (typeof window !== 'undefined') ? window : {};
+        if (W.EW_NO_BATTLE_CYCLE || typeof hqRoomClock !== 'function' || typeof hqWorldSun !== 'function') { _fieldCycle = null; return null; }
+        var C = null; try { C = hqRoomClock(id); } catch (e) { C = null; }
+        if (!C || C.locked) { _fieldCycle = null; return null; }
+        var er = W._hqEncounterRun || null, held = _hqClockHourNow(), heldDay = !!hqWorldSun(held).isDay;
+        var dayH = (er && heldDay) ? held : 13.0, nightH = (er && !heldDay) ? held : 1.0;   // a story fight's own half is the hour it was struck at
+        var D = _fieldCycleRig(room, id, dayH, M), N = _fieldCycleRig(room, id, nightH, M);
+        if (!D || !N) { _fieldCycle = null; return null; }
+        /* a canonical half's key comes from where the battle's dome paints its sun / its moon (_envDomeFS's fixed pair), so the shadows
+           fall from the body on screen; the held hour's half keeps the walk's own key (the cut from the walk changes no light) */
+        if (dayH !== held) D.kd.set(0.50, 0.40, -0.58).normalize();
+        if (nightH !== held) N.kd.set(-0.50, 0.40, 0.56).normalize();
+        var k = er ? (er.night ? 0 : 1) : 1;   // round 1's half (getCurrentCyclePhase: round 1 is day unless the story fight starts at night)
+        if (_fieldCycle && _fieldCycle.id === id) k = _fieldCycle.k;   // a rebuild mid-fight keeps the half on screen
+        else { try { if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.round && typeof getCurrentCyclePhase === 'function') k = getCurrentCyclePhase() === 'night' ? 0 : 1; } catch (e) {} }
+        _fieldCycle = { id: id, authNight: !!(room.shell.sky && room.shell.sky.night), day: D, night: N, k: k, at: 0, shAt: 0, lamps: [] };
+        return _fieldCycle;
+    }
+    /* the rig at the cycle's k: ThreePost's field light rows + the fog / tint / dome values */
+    function _fieldCycleRigAt(FC) {
+        if (FC.rig && FC.rigK === FC.k) return FC.rig;   // read every frame by the dome: built again only while the half eases
+        FC.rigK = FC.k; FC.dome = null;
+        return (FC.rig = _fieldCycleRigMake(FC));
+    }
+    function _fieldCycleRigMake(FC) {
+        var t = _fieldCycleEase(FC.k), D = FC.day, N = FC.night;
+        var kd = N.kd.clone().lerp(D.kd, t); if (kd.lengthSq() < 1e-6) kd.copy(t >= 0.5 ? D.kd : N.kd); kd.normalize();
+        return { t: t,
+                 hemi: { sky: N.hemiC.clone().lerp(D.hemiC, t).getHex(), ground: 0x2a2620, intensity: N.hemiI + (D.hemiI - N.hemiI) * t },
+                 sun: { color: N.keyC.clone().lerp(D.keyC, t).getHex(), intensity: N.keyI + (D.keyI - N.keyI) * t, dir: [kd.x, kd.y, kd.z] },
+                 fogC: N.fogC.clone().lerp(D.fogC, t), tint: N.tint.clone().lerp(D.tint, t), day: N.day + (D.day - N.day) * t, clouds: N.clouds + (D.clouds - N.clouds) * t };
+    }
+    /* per frame (beside _fieldGroundTick): ease toward the round's half; nothing is touched while the half holds */
+    function _fieldCycleTick() {
+        var FC = _fieldCycle; if (!FC || !_fieldGroundArmed) return;
+        var now = performance.now(), dt = FC.at ? Math.min(0.5, (now - FC.at) / 1000) : 0; FC.at = now;   // real seconds (a slow machine's frames still finish the fade on time)
+        var tgt = FC.k;
+        try { if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.round && typeof getCurrentCyclePhase === 'function') tgt = getCurrentCyclePhase() === 'night' ? 0 : 1; } catch (e) {}
+        if (FC.k === tgt || !(dt > 0)) return;
+        var step = dt / FIELD_CYCLE_SEC;
+        FC.k = tgt > FC.k ? Math.min(tgt, FC.k + step) : Math.max(tgt, FC.k - step);
+        var r = _fieldCycleRigAt(FC);
+        try {
+            var F = (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null;
+            if (F) { F.hemi = r.hemi; F.sun = r.sun; ThreePost.setFieldLight(F); }
+        } catch (e) {}
+        for (var i = 0; i < FC.lamps.length; i++) { var Lm = FC.lamps[i]; if (Lm.l) Lm.l.intensity = Lm.n + (Lm.d - Lm.n) * r.t; }
+        try { if (typeof scene !== 'undefined' && scene && scene.fog && scene.fog.color) scene.fog.color.copy(r.fogC); } catch (e) {}
+        /* the key turns: the static field shadow is re-drawn a few times a second while it eases (never every frame) */
+        if (now - FC.shAt > 150 || FC.k === tgt) { FC.shAt = now; _shadowsDirty = true; }
+    }
     /* the ceiling piece(s) of a true-ground room: their materials cloned so the fade owns them */
     function _fieldCeilRegister(c, R, ts) {
         var st = _fieldGroundState || (_fieldGroundState = { s: ts / R.T.C, prevFog: (typeof scene !== 'undefined' && scene) ? scene.fog : null, ceil: null });
@@ -64527,13 +64846,15 @@ const ThreeRenderer = (function () {
             if (!(x >= 0 && y >= 0 && x < bw && y < bh)) continue;
             var h = getBaseHeightAt(x, y); if (h === D[dk]) continue;   // put back: the tile's own top shows
             var k = getTerrainAt(x, y); if (!ground(k)) continue;
-            (byKey[k] || (byKey[k] = [])).push({ x: x, y: y, low: h < D[dk] });
+            var rr = _riseOf(x, y), bk = rr ? k + '|' + rr.id : k;   // THE RISE: a climbing cell's sheet climbs with its column
+            (byKey[bk] || (byKey[bk] = [])).push({ x: x, y: y, low: h < D[dk], rise: rr });
         }
         var G = { W: bw, H: bh, ts: ts, elev: elevStep }, grp = null;
-        Object.keys(byKey).forEach(function (k) {
+        Object.keys(byKey).forEach(function (bk) {
+            var k = bk.split('|')[0], rr = byKey[bk][0].rise;
             var core = _fieldPatchSheetMat(k); if (!core) return;
             var fade = _fieldPatchFadeMat(core, 'delta|' + k) || core;
-            _fieldPatchRuns(byKey[k]).forEach(function (run) {
+            _fieldPatchRuns(byKey[bk]).forEach(function (run) {
                 var low = run.some(function (c) { return c.low; });
                 var pLift = Math.max(0.6, ts * 0.008);
                 var geo = _fieldPatchGeo(G, run, yOf, { lift: pLift, solid: true, origin: _fieldPatchOrigin(run, yOf, low), rep: 2 * ts });
@@ -64542,7 +64863,7 @@ const ThreeRenderer = (function () {
                 var m = new THREE.Mesh(geo, [core, fade]);
                 m.raycast = function () {}; m.name = 'delta_deform_patch'; m.receiveShadow = true; m.castShadow = false; m.renderOrder = GROUND_SHEET_ORDER;
                 if (!grp) { grp = new THREE.Group(); grp.name = 'delta_deform_patches'; }
-                grp.add(m); n++;
+                (rr ? _riseGroup(grp, rr, rr.lv, 'delta_patch_rise') : grp).add(m); n++;
             });
         });
         if (grp) { terrainGroup.add(grp); _deltaPatchGroup = grp; }
@@ -64595,6 +64916,22 @@ const ThreeRenderer = (function () {
             return (t === null || t === undefined) ? null : G.floorY + t * G.s + sDelta(x, y) * G.elev;
         };
         var plan = _fieldStrataFaces(G.W, G.H, sYAt, sDelta, elev);
+        /* THE RISE: a raised cell that is still climbing (riseOf: its rise + the levels of it that are column) is built in its
+           own group; the cells beside it face it at its OLD top until it arrives (no gap opens in a wall it climbs beside) */
+        var riseOf = {}, rising = false;
+        plan.tops.forEach(function (c) {
+            var rr = (c.delta > 0) ? _riseOf(c.x, c.y) : null; if (!rr) return;
+            var vis = Math.min(rr.lv, c.delta); if (!(vis > 0)) return;
+            riseOf[c.x + ',' + c.y] = { rec: rr, vis: vis }; rising = true;
+        });
+        if (rising) {
+            var oYAt = function (x, y) { var v = sYAt(x, y), q = riseOf[x + ',' + y]; return (q && v !== null && v !== undefined) ? v - q.vis * elev : v; };
+            var oDelta = function (x, y) { var q = riseOf[x + ',' + y]; return sDelta(x, y) - (q ? q.vis : 0); };
+            var oPlan = _fieldStrataFaces(G.W, G.H, oYAt, oDelta, elev);
+            plan.faces = plan.faces.filter(function (f) { return !!riseOf[f.x + ',' + f.y]; })
+                .concat(oPlan.faces.filter(function (f) { return !riseOf[f.x + ',' + f.y]; }));
+        }
+        var riseG = function (q) { return _riseGroup(grp, q.rec, q.vis, 'field_strata_rise'); };
         if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return sDelta(f.x, f.y) > 0; }); }
         if (!plan.tops.length) return 0;
         var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
@@ -64625,17 +64962,23 @@ const ThreeRenderer = (function () {
                 var cells = plan.tops.filter(function (c) { return up ? c.delta > 0 : !(c.delta > 0); });
                 if (!cells.length) return;
                 var key = up ? floorKey : bed.floor, core = matOf(key), fade = _fieldPatchFadeMat(core, 'strata|' + key);
-                _fieldPatchRuns(cells).forEach(function (run) {
-                    var geo = _fieldPatchGeo(G, run, yTop, { lift: 0.4, solid: true, origin: _fieldPatchOrigin(run, yTop, !up), rep: rep });
-                    if (!geo) return;
-                    var m = new THREE.Mesh(geo, [core, fade || core]);
-                    m.receiveShadow = true; m._ew_fieldStrata = true; m.name = 'field_strata_patch'; m.renderOrder = GROUND_SHEET_ORDER; grp.add(m);
+                var sets = {};   // THE RISE: the still cells, and each climbing (rise, levels) apart
+                cells.forEach(function (c) { var q = riseOf[c.x + ',' + c.y], sk = q ? q.rec.id + ':' + q.vis : ''; (sets[sk] || (sets[sk] = { q: q, cells: [] })).cells.push(c); });
+                Object.keys(sets).forEach(function (sk) {
+                    var S = sets[sk];
+                    _fieldPatchRuns(S.cells).forEach(function (run) {
+                        var geo = _fieldPatchGeo(G, run, yTop, { lift: 0.4, solid: true, origin: _fieldPatchOrigin(run, yTop, !up), rep: rep });
+                        if (!geo) return;
+                        var m = new THREE.Mesh(geo, [core, fade || core]);
+                        m.receiveShadow = true; m._ew_fieldStrata = true; m.name = 'field_strata_patch'; m.renderOrder = GROUND_SHEET_ORDER; (S.q ? riseG(S.q) : grp).add(m);
+                    });
                 });
             });
         } else plan.tops.forEach(function (c) {
             var quadGeo = new THREE.PlaneGeometry(ts, ts); quadGeo.rotateX(-Math.PI / 2);
             var m = new THREE.Mesh(quadGeo, matOf(c.delta > 0 ? floorKey : bed.floor));
-            m.position.set(c.x * ts + ts / 2, c.top + 0.4, c.y * ts + ts / 2); m.receiveShadow = true; m._ew_fieldStrata = true; grp.add(m);
+            m.position.set(c.x * ts + ts / 2, c.top + 0.4, c.y * ts + ts / 2); m.receiveShadow = true; m._ew_fieldStrata = true;
+            var q0 = riseOf[c.x + ',' + c.y]; (q0 ? riseG(q0) : grp).add(m);
         });
         var mergeFaces = !(typeof window !== 'undefined' && window.EW_NO_STRATA_MERGE), faceBins = {};
         plan.faces.forEach(function (f) {
@@ -64659,8 +65002,9 @@ const ThreeRenderer = (function () {
             else if (f.side === 's') { m.position.set(cx, cy, cz + ts / 2); }
             else { m.position.set(cx, cy, cz - ts / 2); m.rotation.y = Math.PI; }
             m.castShadow = f.out; m.receiveShadow = true; m._ew_fieldStrata = true;
-            if (mergeFaces) { var fk = m.material.id + '|' + (f.out ? 1 : 0); (faceBins[fk] || (faceBins[fk] = [])).push(m); }
-            else grp.add(m);
+            var fq = riseOf[f.x + ',' + f.y];   // THE RISE: a climbing cell's faces bake into its own group
+            if (mergeFaces) { var fk = (fq ? fq.rec.id + ':' + fq.vis + '#' : '') + m.material.id + '|' + (f.out ? 1 : 0); var fb = faceBins[fk] || (faceBins[fk] = []); fb.q = fq || null; fb.push(m); }
+            else (fq ? riseG(fq) : grp).add(m);
         });
         /* THE TERRAIN SPELL HITCH (2026-10-13): every face was its own mesh (a raised wall of a few cells = dozens), all made
            anew on each height change — on WebGPU each one a render object, its buffers and bind groups. The faces now bake
@@ -64672,7 +65016,7 @@ const ThreeRenderer = (function () {
             if (!mg) return;
             var mm = new THREE.Mesh(mg, list[0].material);
             mm.castShadow = list[0].castShadow; mm.receiveShadow = true; mm._ew_fieldStrata = true; mm.name = 'field_strata_faces';
-            grp.add(mm);
+            (list.q ? riseG(list.q) : grp).add(mm);
         });
         terrainGroup.add(grp);
         _shadowsDirty = true;
@@ -64715,7 +65059,7 @@ const ThreeRenderer = (function () {
             return m;
         };
         var grp = null, n = 0;
-        var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null;
+        var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null, riseKeys = {};
         for (var pk in painted) {
             var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
             if (!(x >= 0 && y >= 0 && x < G.W && y < G.H)) continue;
@@ -64727,14 +65071,17 @@ const ThreeRenderer = (function () {
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
-            if (byKey) { (byKey[k] || (byKey[k] = [])).push({ x: x, y: y }); n++; if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y }); continue; }   // THE PATCH: drawn below, a run at a time
+            /* THE RISE: the skin of a raised cell that is still climbing (Rampart's stone) climbs with its strata */
+            var rq = null;
+            if (!fluid) { var rr = _riseOf(x, y), rd = rr ? G.deltaAt(x, y) : 0; if (rr && rd > 0) rq = { rec: rr, vis: Math.min(rr.lv, rd) }; }
+            if (byKey) { var bk = rq ? k + '|' + rq.rec.id + ':' + rq.vis : k; (byKey[bk] || (byKey[bk] = [])).push({ x: x, y: y }); if (rq) riseKeys[bk] = rq; n++; if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y }); continue; }   // THE PATCH: drawn below, a run at a time
             var mesh = new THREE.Mesh(_fieldSkinGeo.geo, mat);
             /* over the room's floor and over a strata top (+0.4): a liquid a little higher, its sheet drawn after the floor */
             mesh.position.set(x * ts + ts / 2, top + (fluid ? 0.9 : 0.7), y * ts + ts / 2);
             mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k;
             mesh.castShadow = false; mesh.receiveShadow = !fluid;
             if (fluid) mesh.renderOrder = 2;
-            grp.add(mesh); n++;
+            (rq ? _riseGroup(grp, rq.rec, rq.vis, 'field_skin_rise') : grp).add(mesh); n++;
             if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y });
         }
         /* 🌊 THE RUNOFF (2026-10-15, mondo: liquids should "fall and spread" like Minecraft): on the true ground no flow
@@ -64785,11 +65132,12 @@ const ThreeRenderer = (function () {
                     });
                 });
             }
-            Object.keys(byKey).forEach(function (k) {
+            Object.keys(byKey).forEach(function (bk) {
+                var k = bk.split('|')[0], rq = riseKeys[bk] || null;   // THE RISE: a climbing run's key carries its rise
                 var fluid = !!_FLUID_TERRAIN_SET[k], mat = fluid ? matOf(k) : _fieldPatchSheetMat(k); if (!mat) return;
                 var fade = fluid ? mat : _fieldPatchFadeMat(mat, 'skin|' + k);
                 if (!fade) return;
-                _fieldPatchRuns(byKey[k]).forEach(function (run) {
+                _fieldPatchRuns(byKey[bk]).forEach(function (run) {
                     var low = run.some(function (c) { return G.deltaAt(c.x, c.y) < 0; });
                     var geo = _fieldPatchGeo(G, run, yOf, { lift: fluid ? 0.9 : 0.7, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep });
                     if (!geo) return;
@@ -64797,7 +65145,7 @@ const ThreeRenderer = (function () {
                     mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k; mesh.name = 'field_skin_patch';
                     mesh.castShadow = false; mesh.receiveShadow = !fluid;
                     mesh.renderOrder = fluid ? LIQ_BLEND_ORDER : GROUND_SHEET_ORDER;   // under every tile plate (THE PLATES OVER THE ICE)
-                    grp.add(mesh);
+                    (rq ? _riseGroup(grp, rq.rec, rq.vis, 'field_skin_rise') : grp).add(mesh);
                 });
             });
         }
@@ -64827,7 +65175,7 @@ const ThreeRenderer = (function () {
     }
     /* deactivate(): every dial back */
     function _fieldGroundRelease() {
-        _fieldSeedRelease(); _envSnapPending = false;
+        _fieldSeedRelease(); _envSnapPending = false; _fieldCycle = null;
         var st = _fieldGroundState; _fieldGroundState = null;
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
@@ -68596,7 +68944,8 @@ const ThreeRenderer = (function () {
 
         getSkyShot, playZodiacReveal, playSkyEventReveal,
 
-        showSplitscreen, hideSplitscreen, isSplitscreenActive,
+        showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
+        hasDeathTween: function (uid) { return _deathTweens.has(uid); },
 
         get _scene() { return scene; },
         /* Debug/profiling handle: renderer.info has live draw-call/triangle/
@@ -68642,7 +68991,9 @@ window.ThreeSplitscreen = {
         return ThreeRenderer.isActive() ? ThreeRenderer.showSplitscreen(subjects, opts) : null;
     },
     hide: function () { ThreeRenderer.hideSplitscreen(); },
-    isActive: function () { return ThreeRenderer.isActive() && ThreeRenderer.isSplitscreenActive(); }
+    isActive: function () { return ThreeRenderer.isActive() && ThreeRenderer.isSplitscreenActive(); },
+    owner: function () { return ThreeRenderer.isActive() ? ThreeRenderer.splitscreenOwner() : null; },
+    extend: function (msAhead) { if (ThreeRenderer.isActive()) ThreeRenderer.extendSplitscreen(msAhead); }
 };
 
 window.ThreeAnim = {
@@ -68703,6 +69054,9 @@ window.ThreeAnim = {
 
     death: function(unitId) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startDeathTween(unitId);
+    },
+    isDying: function(unitId) {
+        return ThreeRenderer.isActive() && ThreeRenderer.hasDeathTween(unitId);
     },
 
     /* THE STRIKE FRAME (2026-09-09, sprites.js UAL_SLOTS strikeAt): how many

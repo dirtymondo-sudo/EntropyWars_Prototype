@@ -43093,7 +43093,7 @@ const HQ_STAGE_RULES = {
        file first, Phase 1's rule). `trkMs` = how often the tracker re-walks a waiting part. */
     nearPropM: 60, propsGate: 'near', trkMs: 250,
 };
-/* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every zone with `clock: true`: a day of `dayMin` real
+/* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
    a battle runs or a card loads). The hour is the PROFILE's (`door.hq.clock = { h, at, run }`): a player who closes the game
    mid-walk finds the world ran on by the minutes since (`run`); one who left from a pause, a fight or the menu finds the
@@ -43124,10 +43124,28 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              /* the Grove (old redwoods, a deeper green) and the ranch's corn fields (a dry, dusty haze) by day */
                              site_prebuilt_bohemian_grove_grove: { fog: 0x8aa088, tint: 0x9cbede, clouds: 0.3 },
                              site_prebuilt_skinwalker_fields: { fog: 0xc4bc9e, tint: 0xa6c4e4, clouds: 0.25 },
+                             /* 2026-10-17 (mondo: "any outdoor area should have visible day and night"): the other night rooms' day */
+                             site_prebuilt_strip_streets: { fog: 0xd8c8b0, tint: 0xa8c4e4, clouds: 0.1 },
+                             site_prebuilt_cyberpunk_streets: { fog: 0xa8b0b8, tint: 0x98b0c8, clouds: 0.5 },
+                             site_prebuilt_vatican_observatory: { fog: 0xd8c8a0, tint: 0xa8c0e0, clouds: 0.2 },
+                             site_prebuilt_stonehenge_henge: { fog: 0xb8c4c0, tint: 0xa0bcd8, clouds: 0.5 },
+                             site_prebuilt_technoticlan_templecity: { fog: 0xa8bca0, tint: 0x9fc4e8, clouds: 0.35 },
+                             site_prebuilt_mars_cydonia: { fog: 0xc8a07a, tint: 0xd0a878, clouds: 0.05 },
+                             site_prebuilt_northpole_village: { fog: 0xdce4ee, tint: 0xb8d0ec, clouds: 0.6 },
+                             site_prebuilt_haunted_grounds: { fog: 0x9aa4a0, tint: 0x98a8b8, clouds: 0.7 },
+                             site_prebuilt_revenge_deck: { fog: 0x9fb4c0, tint: 0x8fb0cc, clouds: 0.55 },
                          },
-                         /* 2026-09-27 (mondo: "Grove and skinwalker dont need to have fixed night"): the Grove and the skinwalker fields ride the clock with the woods */
-                         lock: { site_prebuilt_strip_streets: 23.0, site_prebuilt_revenge_deck: 2.0,
-                                 site_prebuilt_haunted_grounds: 0.5, site_prebuilt_vatican_observatory: 22.0 },
+                         /* 2026-09-27 (mondo: "Grove and skinwalker dont need to have fixed night"): the Grove and the skinwalker fields ride the clock with the woods.
+                            2026-10-17 (mondo: "any outdoor area should have visible day and night"): no room keeps a fixed hour any more (the Strip, the
+                            Dutchman, the haunted grounds and the observatory were pinned to the night); a row here pins one again */
+                         lock: {},
+                         /* 2026-10-17: every outdoor room (an open shell with a sky, outside any interior part) rides the clock — these alone keep their
+                            own sky (no sun and night of their own: under the sea, inside the earth, the void, space, Heaven); the hour still runs and
+                            still decides a fight's first round there, like indoors */
+                         still: ['site_prebuilt_atlantis_abyss', 'site_prebuilt_agartha_crystalcity', 'site_prebuilt_hollow_earth_innersun',
+                                 'site_prebuilt_lookingglass_garden', 'site_prebuilt_lookingglass_sea', 'site_prebuilt_singularity_horizon',
+                                 'site_prebuilt_saturn_hexagon', 'site_prebuilt_moon_mare', 'site_prebuilt_derelict_deck',
+                                 'site_prebuilt_heaven_stair', 'site_prebuilt_heaven_gate'],
                          saveMs: 30000, variants: 'world' };
 /* THE CLOCK'S READERS (pure: the renderer and map.js call them; nothing here holds the live hour) */
 function hqClockRate() { return 24 / (Math.max(1, HQ_WORLD_CLOCK.dayMin) * 60); }   // world hours per real second
@@ -43184,7 +43202,7 @@ function hqWorldDir(az, el, rot) {
     const a = (az + ((rot || 0) % 4) * 90) * Math.PI / 180, e = el * Math.PI / 180;
     return { x: Math.sin(a) * Math.cos(e), y: Math.sin(e), z: -Math.cos(a) * Math.cos(e) };
 }
-/* the room's place on the clock: null = no clock (an interior, a zone without one, a room in no zone, a room without a sky);
+/* the room's place on the clock: null = no clock (an interior, a room without a sky, a HQ_WORLD_CLOCK.still room);
    else { zone, rot, locked, hour (the locked hour), dayLook } */
 function hqRoomClock(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell;
@@ -43193,13 +43211,15 @@ function hqRoomClock(roomId) {
         const own = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : null;
         return { zone: 'own', rot: 0, locked: own != null, hour: own != null ? hqClockNorm(own) : null, dayLook: S.sky.dayLook || null };
     }
+    /* 2026-10-17 (mondo: "any outdoor area should have visible day and night"): an outdoor room is on the clock wherever it stands —
+       a site behind a door (no zone since ZONES_PLAN Z0 cut THE LAND) or an open-air part of the building — not only a zone's with
+       `clock: true`; an interior part and the rooms in HQ_WORLD_CLOCK.still keep their own sky */
     const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
-    if (!F || F.interior) return null;
-    const Z = HQ_WORLD.zones[F.zone];
-    if (!Z || !Z.clock) return null;
+    if (F && F.interior) return null;
+    if ((HQ_WORLD_CLOCK.still || []).indexOf(roomId) >= 0) return null;
     const L = HQ_WORLD_CLOCK.lock || {};
     const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
-    return { zone: F.zone, rot: F.rot || 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
+    return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
 }
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {

@@ -3432,6 +3432,10 @@
                     const _dist = Math.max(Math.abs(unit.x - target.x), Math.abs(unit.y - target.y));
                     if (_dist > baneRange) return null;
                     const isEffective = (target.types || []).includes(_baneRule.baneType);
+                    /* THE BANE FORECAST: the engine's own read of the throw */
+                    const _bfc = (typeof baneForecastSpell === 'function') ? forecastOnUnit(unit, target, baneForecastSpell(state.selectedTool)) : null;
+                    if (_bfc) return { type: 'damage', amount: _bfc.dmg, min: _bfc.min, max: _bfc.max, after: Math.max(0, target.hp - _bfc.dmg),
+                        note: _bfc.blocked ? (_FC_BLOCK_TEXT[_bfc.blocked] || String(_bfc.blocked).toUpperCase()) : (isEffective ? 'SUPER EFFECTIVE' : '') };
                     let dmg = _pvSc(_baneRule.baseDmg + (isEffective ? _baneRule.baneDmg : 0));
                     // Banes deal magic damage → mitigated by magic defense (MDEF).
                     dmg = Math.max(1, dmg - Math.round(getEffectiveArmor(target, 'magic') * _pvLsT));
@@ -14199,6 +14203,11 @@
                 _lastAoePreviewX = x; _lastAoePreviewY = y;
                 _lastAoePreviewTool = state.selectedTool || null;
             }
+            /* THE BANE FORECAST (2026-10-17): an armed bane (or the grenade) reads like a damage spell */
+            if (!ov && state.actionMode === 'item' && typeof ITEM_RULES !== 'undefined' && ITEM_RULES[state.selectedTool]?.baneType) {
+                _updateBanePreview(getSelectedUnit(), state.selectedTool, x, y, state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y ? state.pendingTarget.z : undefined);
+                return;
+            }
             if (!ov && state.actionMode !== 'spell') { clearAoePreview(); clearIntentPreview(); return; }
             const unit = ov ? ov.unit : getSelectedUnit();
             if (!unit) { clearAoePreview(); clearIntentPreview(); return; }
@@ -14362,6 +14371,40 @@
         let _aoePreview3dActive = false;
         let _terrainGhost3dActive = false;
 
+        /* THE BANE FORECAST (2026-10-17, mondo: "banes need to have a damage projection just like spells"): the enemy a
+           bane thrown at (x, y) would hit, or null — the same column pick, team rule and reach doItem checks. */
+        function baneThrowTarget(unit, itemKey, x, y, z) {
+            if (!unit || typeof ITEM_RULES === 'undefined' || !ITEM_RULES[itemKey]?.baneType) return null;
+            const t = (typeof resolveUnitInColumn === 'function') ? resolveUnitInColumn(unit, x, y, z, { side: 'enemy' }) : unitAt(x, y);
+            if (!t || t.dead || isAllyUnit(t, unit)) return null;
+            const reach = ((typeof getEffectiveRange === 'function') ? getEffectiveRange(unit, { item: true }) : 1) + 2;
+            if (Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y)) > reach) return null;
+            return t;
+        }
+        window.baneThrowTarget = baneThrowTarget;
+
+        /* The armed bane on the board: every tile it hits gets the crimson hit plate (the aim tile the cursor brackets,
+           the grenade's blast round it), every body it hits the forecast badges — the spells' own painters. */
+        const _baneThrowHeld = () => (window._ewBaneThrowUntil || 0) > (typeof performance !== 'undefined' ? performance.now() : 0);
+        function _updateBanePreview(unit, itemKey, x, y, z) {
+            clearAoePreview();
+            clearIntentPreview();
+            if (_baneThrowHeld()) return;
+            const target = baneThrowTarget(unit, itemKey, x, y, z);
+            if (!target || typeof forecastBanePlan !== 'function') return;
+            const plan = forecastBanePlan(unit, itemKey, target);
+            if (!plan.handled) return;
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                const tiles = (plan.tiles.length ? plan.tiles : [{ x: target.x, y: target.y }]).map(t => {
+                    const isCenter = t.x === target.x && t.y === target.y;
+                    return { x: t.x, y: t.y, color: EW_PREVIEW.hit, opacity: isCenter ? 0.95 : 0.85, cursor: isCenter };
+                });
+                ThreeRenderer.setOverlay('aoe', tiles, 0xff3333, 0.35);
+                _aoePreview3dActive = true;
+            }
+            _fcRenderBadges(unit, plan.spell, plan);
+        }
+
         /* Casts whose aim plate is a DESTINATION, not a hit: the body movers
            and the placements. Their reach lattice must stay readable. */
         const _BODY_MOVE_KINDS = { teleport: 1, swap: 1, escape: 1, rallyPull: 1, dash: 1 };
@@ -14521,6 +14564,15 @@
                     if (typeof forecastBasicAttack !== 'function') return null;
                     const f = forecastBasicAttack(attacker, target, { castFrom: castFrom || null });
                     return f ? Object.assign({ plan: null }, f) : null;
+                }
+                /* a thrown bane rides the same read (spell = baneForecastSpell(itemKey), battle.js forecastBanePlan) */
+                if (spell.kind === 'bane' && spell.item) {
+                    if (typeof forecastBanePlan !== 'function') return null;
+                    const bp = forecastBanePlan(attacker, spell.item, target, { castFrom: castFrom || null });
+                    if (!bp.handled) return null;
+                    const bh = bp.byId[target.id];
+                    if (!bh) return { dmg: 0, min: 0, max: 0, lethal: false, blocked: null, heal: 0, plan: bp };
+                    return { dmg: bh.dmg, min: bh.min, max: bh.max, lethal: bh.lethal, blocked: bh.blocked, heal: bh.heal, plan: bp };
                 }
                 if (typeof forecastSpellPlan !== 'function') return null;
                 /* aim = an off-centre AoE centre (the quick menu's best aim) — the unit is read from the cast there */
@@ -14874,6 +14926,8 @@
                     if (hov.spellName) {
                         spell = (attacker.spells || []).find(s => s.name === hov.spellName)
                             || (attacker._raceAbilities || []).find(s => s.name === hov.spellName);
+                    } else if (hov.itemKey && typeof baneForecastSpell === 'function') {
+                        spell = baneForecastSpell(hov.itemKey);   // a bane row: the throw's forecast (null for other items)
                     }
                     const key = ['hov', attacker.id, target.id,
                         (spell && spell.name) || (hov.isAttack ? 'atk' : '') || (hov.itemKey || ''),
@@ -14946,7 +15000,13 @@
             let spell = null, itemKey = null;
             if (mode === 'item') {
                 itemKey = pt.tool || state.selectedTool;
-                if (!(typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'healPotion') : itemKey === 'healPotion')) return null;
+                /* an armed bane forecasts its throw on the enemy it would hit (battle.js forecastBanePlan) */
+                if (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[itemKey]?.baneType) {
+                    if (_baneThrowHeld() || typeof baneForecastSpell !== 'function'
+                        || !baneThrowTarget(attacker, itemKey, pt.x, pt.y, pt.z) || !isEnemyUnit(attacker, target)) return null;
+                    spell = baneForecastSpell(itemKey);
+                    itemKey = null;
+                } else if (!(typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'healPotion') : itemKey === 'healPotion')) return null;
             } else if (mode === 'spell') {
                 const toolName = pt.tool || state.selectedTool;
                 spell = (attacker.spells || []).find(s => s.name === toolName)
@@ -15125,7 +15185,8 @@
            the board (Mirror Blink's destination tiles never appeared, 2026-10-08). */
         window._renderForecastBadges = function (caster, spell, plan) { if (caster && spell && plan) _fcRenderBadges(caster, spell, plan); };
         function _fcRenderBadges(caster, spell, plan) {
-            const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
+            const _bane = spell.kind === 'bane';   // a thrown bane: its own matchup (h.superEff), no element
+            const _iEl = _bane ? null : (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
             const shown = new Set();
             for (const h of plan.hits) {
                 const target = h.unit;
@@ -15148,7 +15209,8 @@
                 for (const t of h.tags) if (_FC_TAG_TEXT[t]) push(_FC_TAG_TEXT[t], 'intent-status intent-status-debuff', 14);
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
-                    const typeEff = _getTypeEffLabel(caster, target, spell);
+                    const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
+                        : _getTypeEffLabel(caster, target, spell);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     if (_iAff === 'weak') push(_SE_CIRCLE_HTML + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);

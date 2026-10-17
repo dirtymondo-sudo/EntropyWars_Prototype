@@ -1521,3 +1521,15 @@ It should reset control of the nexus whenever a new celestial event happens."
   Black Sun +15% of every heal (getEffectiveHealBonus) and revive %.
 - AI (ai.js): `arena_nexus_celestial` move goal (230) while an event is up and the middle isn't ours; channel
   score +90 there, never halved by the tower push. Nameplate event badge re-keys on the holder.
+
+### Opportunity attacks follow height (2026-10-17, mondo: "opportunity attacks need to take height into account")
+- battle.js `checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH)`: an adjacent enemy only swings when its
+  BASIC ATTACK could hit the mover on the tile it left: `combatDist` (height gap is its own axis) within
+  `getEffectiveRange(enemy)`, and `isRangeBlockedByTerrain` clear (edge walls, a deck/roof slab between the two).
+  So a melee unit (reach 2) still strikes across a 1-2 level step, but not from/to a 3+ level ledge, and a unit on a
+  bridge deck can't hit one walking underneath beside it.
+- The hit's high ground bonus / height soak / range falloff are judged at the tile it left
+  (`applyDamageToUnit` opt `struckAt: {x, y, standH}`), not at the arrival tile. finishMoveAt reads the standing
+  height before the move.
+- Browser-checked on Pyramids of Giza: flat and 2-up both strike (2-up hit harder, high ground); 3-up, 4-up and
+  deck-over-ground do not.
