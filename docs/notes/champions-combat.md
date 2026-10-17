@@ -1622,4 +1622,8 @@ export instructions + summary carry it. The climb design (not built) is /mnt/pro
 - Barrage fix (same PR): Requiem-style self novas land their hits on staggered timers; a slow frame ran finishAction
   first, so they never pressed or paid element entropy. doSpell's `_pendingSpellHits` gate makes finishAction wait
   (≤ 4 s) for the counted hits.
+- Round 3 (same day, mondo "yes make them resistable too"): arcane + metal joined `COMBAT_ELEMENTS` (all 15 tags).
+  Rows: metal — werewolf weak, fairy weak, gargoyle resist, juggernaut resist, kaiju resist, cosmic wraith immune;
+  arcane — scarecrow weak, wizard / fortune teller / gnome resist, machine elves absorb. Element box bands of 8; xl
+  tracks fixed 32px (284px box, Horologe panel 316px).
 - Plan, decisions and the tag-only elements proposal: /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.

@@ -3023,7 +3023,7 @@ function _hrlgQuickStats(panelKey) {
 }
 
 /* THE ELEMENT BOX (2026-09-23): two rows under the clicked unit's stats —
-   the combat elements (in bands of seven since 2026-10-17) over the unit's reaction to each (data.js
+   the combat elements (in bands of eight since 2026-10-17) over the unit's reaction to each (data.js
    elemAffinityBox: – neutral · ! weak · ▼ resist · ∅ immune · ♥ absorb ·
    ? until this unit's race has been hit with that element; your own seat's
    vessels are always read). The same box stands on the INFO card, the
@@ -3877,7 +3877,7 @@ function spellTargetChip(sp) {
 }
 
 // Per-element badge colors (legible over the near-black chip ground).
-// The COMBAT_ELEMENTS (thirteen since 2026-10-17) check target affinities; arcane + metal are flavor.
+// Every element tag is a COMBAT_ELEMENT since 2026-10-17 and checks target affinities.
 const ELEM_BADGE_COLORS = {
   fire: '#ff8a5c', ice: '#8fd8ff', lightning: '#ffd94f', water: '#58a8ff',
   poison: '#9fe060', earth: '#c8a06a', wind: '#a8e0d8', nature: '#7cd08a',

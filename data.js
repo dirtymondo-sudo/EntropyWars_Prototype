@@ -429,15 +429,16 @@ function getFinisherDefForRace(race, types) {
 /* ═══ ELEMENTAL AFFINITIES (2026-09-01 — see ELEMENTAL_TYPES_PLAN.md) ═══
    A SECOND, spell-side layer under the type chart above — never a
    replacement for it. Spells carry an optional `element:` tag (doc block
-   above SPELL_LIBRARY); the thirteen COMBAT_ELEMENTS below also consult
+   above SPELL_LIBRARY); all fifteen tags are COMBAT_ELEMENTS and consult
    RACE_ELEMENT_AFFINITY when they strike a unit (the original six, plus
    wind / nature / sonic / psychic / light / shadow / blood promoted
-   2026-10-17, mondo "all of those"). Since 2026-10-17 a unit's hit
+   2026-10-17, mondo "all of those", and arcane / metal the same day,
+   mondo "yes make them resistable too"). Since 2026-10-17 a unit's hit
    only puts the spell's element SHARE through this layer (THE ELEMENT
    SHARE below):
      weak ×1.5 · resist ×0.5 · immune ×0 (statuses bounce too) ·
      absorb → the damage HEALS the target (Thermal Regen, generalized).
-   Everything else — arcane, metal AND untagged spells — is
+   Untagged spells are
    elementally NEUTRAL and skips this layer entirely. The type-chart
    matchup + STAB above ALWAYS apply regardless of element; both layers
    multiply inside the capped offensive product (battle.js).
@@ -447,10 +448,10 @@ function getFinisherDefForRace(race, types) {
      immune/absorb are signature-only. (Race-editor rows may exceed this:
      dragon, tree person.)
    - Basic attacks are elementless — always neutral.
-   - 'arcane' is deliberately never a combat element (raw magic nothing
-     resists or drinks) — the escape valve vs resist stacking.
-   - 'metal' is a weapon tag, never promote it (it would be stealth
-     physical-resist on top of DEF and gut the gun/blade classes).
+   - 'metal' rides most gun / blade spells: keep its rows RARE (a metal
+     resist works like extra DEF against every gun and blade class).
+   - 'arcane' rows stay rare too: raw magic is the element most races
+     take neutrally.
    - Mechanical races stay lightning-NEUTRAL on purpose: the dry-tech
      Overclock / soaked short-circuit combo (calcElementComboMult) is
      already their lightning story — water is their weakness instead. */
@@ -458,7 +459,7 @@ const SPELL_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'earth', 'wind',
     'poison', 'nature', 'shadow', 'light', 'psychic', 'sonic', 'arcane',
     'blood', 'metal'];
 const COMBAT_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'poison', 'earth', 'wind',
-    'nature', 'sonic', 'psychic', 'light', 'shadow', 'blood'];   // 7 promoted 2026-10-17 (mondo)
+    'nature', 'sonic', 'psychic', 'light', 'shadow', 'blood', 'arcane', 'metal'];   // 9 promoted 2026-10-17 (mondo)
 const ELEMENT_AFFINITY_TIERS = ['weak', 'resist', 'immune', 'absorb'];
 const ELEMENT_AFFINITY_MULT = { weak: 1.5, resist: 0.5, immune: 0 };
 const ELEMENT_ICONS = {
@@ -540,7 +541,7 @@ const RACE_ELEMENT_AFFINITY = {
     'vampire':           { fire: 'weak', light: 'weak', blood: 'absorb' },
     'necromancer':       { poison: 'resist' },
     'ghoul':             { poison: 'resist', light: 'weak' },
-    'gargoyle':          { poison: 'immune', earth: 'resist' },
+    'gargoyle':          { poison: 'immune', earth: 'resist', metal: 'resist' },
     // ── mechanical ── (lightning-neutral: the Overclock combo is their story)
     'robot':             { poison: 'immune', water: 'weak', psychic: 'immune' },
     'android':           { poison: 'immune', water: 'weak', blood: 'immune' },
@@ -557,7 +558,7 @@ const RACE_ELEMENT_AFFINITY = {
     // ── beasts & wilds ──
     'dragon':            { fire: 'resist', ice: 'weak', lightning: 'resist', water: 'resist' }, // race editor 2026-10-17
     'dinosaur':          { ice: 'weak' },
-    'kaiju':             { fire: 'absorb' },   // Thermal Regen, generalized
+    'kaiju':             { fire: 'absorb', metal: 'resist' },   // Thermal Regen, generalized
     'starfish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'deep sea fish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'sharkman': { water: 'resist', lightning: 'weak' },   // 2026-09-30
@@ -577,7 +578,7 @@ const RACE_ELEMENT_AFFINITY = {
     'telepath':          { psychic: 'resist' },
     'grey':              { psychic: 'resist' },
     'dreameater':        { psychic: 'absorb' },
-    'fairy':             { wind: 'weak' },
+    'fairy':             { wind: 'weak', metal: 'weak' },
     'mothman':           { wind: 'weak' },
     'bee queen':         { wind: 'weak' },
     'djinn':             { wind: 'absorb' },
@@ -588,6 +589,15 @@ const RACE_ELEMENT_AFFINITY = {
     'orb of light':      { light: 'absorb', shadow: 'weak' },
     'voidweaver':        { shadow: 'resist' },
     'mushroom girl':     { nature: 'resist' },
+    // ── arcane / metal promotion 2026-10-17 ──
+    'werewolf':          { metal: 'weak' },
+    'juggernaut':        { metal: 'resist' },
+    'cosmic wraith':     { metal: 'immune' },
+    'scarecrow':         { arcane: 'weak' },
+    'wizard':            { arcane: 'resist' },
+    'fortune teller':    { arcane: 'resist' },
+    'gnome':             { arcane: 'resist' },
+    'machine elves':     { arcane: 'absorb' },
     // everyone else: elementally neutral (deliberately no row)
 };
 
@@ -708,10 +718,10 @@ function elemAffinityBox(race, opts) {
             tip: el.toUpperCase() + ' · ' + (known ? ui.word + ' — ' + ui.tip : ui.tip) };
     });
 }
-/* THE BANDS (2026-10-17, thirteen combat elements): the box wraps into
+/* THE BANDS (2026-10-17, fifteen combat elements): the box wraps into
    bands of ELEM_BOX_BAND cells — each band an icon row over its reaction
-   row — so it stays as wide as seven cells. */
-const ELEM_BOX_BAND = 7;
+   row — so it stays as wide as eight cells (fifteen = 8 + 7). */
+const ELEM_BOX_BAND = 8;
 function elemBoxBands(cells) {
     const out = [];
     for (let i = 0; i < cells.length; i += ELEM_BOX_BAND) out.push(cells.slice(i, i + ELEM_BOX_BAND));
@@ -4599,13 +4609,13 @@ function getRaceLabel(race, gender) {
    'earth'|'wind'|'poison'|'nature'|'shadow'|'light'|'psychic'|'sonic'|
    'arcane'|'blood'|'metal'  (canonical list: SPELL_ELEMENTS, near TYPE_CHART).
    Since 2026-09-01 the COMBAT_ELEMENTS (fire/ice/lightning/water/poison/
-   earth, plus wind/nature/sonic/psychic/light/shadow/blood since
-   2026-10-17) are a real combat layer: damage of those elements consults
+   earth, plus wind/nature/sonic/psychic/light/shadow/blood/arcane/metal
+   since 2026-10-17) are a real combat layer: damage of those elements consults
    RACE_ELEMENT_AFFINITY (weak ×1.5 / resist ×0.5 / immune / absorb),
    water-element damage Soaks the target, and elemental statuses couple to
    affinities — see the ELEMENTAL AFFINITIES block + ELEMENTAL_TYPES_PLAN.md.
-   arcane and metal stay flavor-only (VFX theming via _resolveTheme, SFX,
-   library filters) and are elementally neutral — as is every untagged spell.
+   Every tag also themes VFX (_resolveTheme), SFX and library filters; an
+   untagged spell is elementally neutral.
    The element layer is SECONDARY: the type chart + STAB always apply on top.
    The tag is authoritative for battle.js getSpellElement — the legacy
    name-keyword sweep only guesses for UNTAGGED spells now (a tag can no

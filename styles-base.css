@@ -6287,13 +6287,13 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-pp-bagrow[data-cat="battle"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(127,200,255,0.55)); }
 
 /* ═══ THE ELEMENT BOX (2026-09-23) — two rows: the combat elements over
-   the unit's reaction to each (bands of seven since 2026-10-17: thirteen elements) (data.js elemAffinityBoxHtml / elemAffinityBox).
+   the unit's reaction to each (bands of eight since 2026-10-17: fifteen elements) (data.js elemAffinityBoxHtml / elemAffinityBox).
    – neutral · ! weak (the press's green) · ▼ resist · ∅ immune · ♥ absorb ·
    ? unknown. One look everywhere a unit's stats show. ═══════════════════ */
 .ew-elem-box { display: inline-grid; grid-auto-rows: auto; gap: 2px 0; padding: 3px 4px; border-radius: 6px;
   background: rgba(6, 5, 12, 0.55); border: 1px solid rgba(150, 150, 210, 0.16); font-family: inherit; }
 .ew-elem-box[data-label]::before { content: attr(data-label); grid-column: 1 / -1; font-size: 8px; letter-spacing: 0.14em; font-weight: 700; color: #7a7490; padding: 0 2px 1px; }
-.ew-elem-row { display: grid; grid-template-columns: repeat(7, minmax(20px, 1fr)); gap: 0 2px; }
+.ew-elem-row { display: grid; grid-template-columns: repeat(8, minmax(20px, 1fr)); gap: 0 2px; }
 .ew-elem-rxs + .ew-elem-els { margin-top: 3px; }
 .ew-elem-cell { display: flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; line-height: 1; }
 .ew-elem-el { font-size: 12px; border-bottom: 1px solid rgba(150, 150, 210, 0.14); }
@@ -6313,10 +6313,10 @@ body.diorama-3d .tile-underpass.jump::before {
 /* xl (the user 2026-10-07: "way bigger"): the clicked unit's panel + the INFO card */
 .ew-elem-box.xl { padding: 5px 6px; gap: 4px 0; }
 .ew-elem-box.xl[data-label]::before { font-size: 10px; }
-.ew-elem-box.xl .ew-elem-row { grid-template-columns: repeat(7, minmax(36px, 1fr)); gap: 0 2px; }   /* 7 × 36 fits the Horologe's 316px panel */
-.ew-elem-box.xl .ew-elem-cell { min-width: 36px; height: 34px; }
+.ew-elem-box.xl .ew-elem-row { grid-template-columns: repeat(8, 32px); gap: 0 2px; }   /* fixed 8 × 32 = 284px with padding: fits the Horologe's 316px panel */
+.ew-elem-box.xl .ew-elem-cell { min-width: 32px; height: 32px; }
 .ew-elem-box.xl .ew-elem-el { font-size: 24px; }
-.ew-elem-box.xl .ew-elem-el .ew-elem-icon, .ew-elem-box.xl .ew-elem-el .ew-elicon { width: 30px; height: 30px; }
+.ew-elem-box.xl .ew-elem-el .ew-elem-icon, .ew-elem-box.xl .ew-elem-el .ew-elicon { width: 27px; height: 27px; }
 .ew-elem-box.xl .ew-elem-rx { font-size: 20px; }
 .ew-elem-box.xl .ew-elem-rx.weak { font-size: 22px; }
 .ew-elem-box.xl .ew-elem-rx.immune, .ew-elem-box.xl .ew-elem-rx.absorb { font-size: 20px; }
