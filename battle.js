@@ -9198,10 +9198,12 @@
                 }
                 u._dealtDmgThisRound = false;
                 if (u._ambushStrike) delete u._ambushStrike;   // Ambush: a spent cloak never carries past the round
+                // the celestial regen buff (Black Sun, claimed at the middle nexus): that extra share of max HP and max MP
+                const _skyRegen = (typeof getSkyEventBonus === 'function') ? (getSkyEventBonus(u).regenPct || 0) : 0;
                 if (u.hp < u.maxHp) {
                     // The `regenPerRound` hook (% max HP; the Chrono Locket's gear row = 5) on top of the baseline regen.
                     const _regenHook = (typeof unitPassiveValue === 'function') ? (+unitPassiveValue(u, 'regenPerRound') || 0) : 0;
-                    const _regenPct = REGEN_PERCENT + (Math.max(0, _regenHook) + Math.max(0, _condRegen)) / 100;
+                    const _regenPct = REGEN_PERCENT + _skyRegen + (Math.max(0, _regenHook) + Math.max(0, _condRegen)) / 100;
                     const amt = Math.max(1, Math.round(u.maxHp * _regenPct));
                     const before = u.hp;
                     u.hp = Math.min(u.maxHp, u.hp + amt);
@@ -9214,7 +9216,7 @@
 
                 if ((u.mp || 0) < (u.maxMp || 0)) {
                     // THE SPELL AUDIT Batch D — `mpPerRound` (Mana Font: +10 flat MP) on top of the baseline MP regen.
-                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * MP_REGEN_PERCENT))
+                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * (MP_REGEN_PERCENT + _skyRegen)))
                         + Math.max(0, Math.round(unitPassiveSum(u, 'mpPerRound') || 0));
                     const mpBefore = u.mp || 0;
                     u.mp = Math.min(u.maxMp || 0, mpBefore + mpAmt);

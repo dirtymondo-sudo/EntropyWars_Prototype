@@ -1407,7 +1407,7 @@
             return best;
         }
 
-        /* the player whose team gets the celestial event's buff right now (0 = nobody) */
+        /* who holds the middle nexus while a celestial event is up (0 = nobody) — claiming it then hands out the buff */
         function getSkyEventHolder() {
             if (!state.skyEvent) return 0;
             const k = getCelestialNexusKey();
@@ -1415,17 +1415,20 @@
             return (n && n.owner) || 0;
         }
 
+        /* the celestial buff a unit carries (unit.skyBuff = the SKY_EVENTS key, set on a claim of the middle nexus
+           during an event, ui.js claimCelestialBuff); it stays until the unit dies or the next buff is claimed */
         function getSkyEventBonus(unit) {
-            const none = { atkMult: 1, defMult: 1, healMult: 1, active: false };
-            if (!unit || !state.skyEvent) return none;
-            const ev = SKY_EVENTS[state.skyEvent.type];
-            const holder = getSkyEventHolder();
-            if (!ev || !holder || unit.player !== holder) return none;
+            const none = { atkMult: 1, defMult: 1, healMult: 1, regenPct: 0, active: false, type: null };
+            if (!unit || !unit.skyBuff || unit.dead) return none;
+            const ev = SKY_EVENTS[unit.skyBuff];
+            if (!ev) return none;
             return {
                 atkMult: ev.atkMult || 1,
                 defMult: ev.defMult || 1,
                 healMult: ev.healMult || 1,
-                active: true
+                regenPct: ev.regenPct || 0,
+                active: true,
+                type: unit.skyBuff
             };
         }
 
@@ -1469,7 +1472,7 @@
                 state.skyEvent = ev;
                 const meta = SKY_EVENTS[ev.type];
                 const nxKey = getCelestialNexusKey();
-                addLog(`A ${meta.label} ${meta.icon} appears! ${nxKey ? meta.desc + ' ' : ''}for ${ev.remaining} rounds.`);
+                addLog(`A ${meta.label} ${meta.icon} appears for ${ev.remaining} rounds!${nxKey ? ' ' + meta.desc + '.' : ''}`);
                 if (nxKey && typeof resetCelestialNexus === 'function') resetCelestialNexus(nxKey);
                 queueAnnouncement(`${meta.icon} ${meta.label}`, nxKey ? meta.desc : '', 'sky');
             }
@@ -3597,8 +3600,8 @@
                 const _pMdef = ((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0)) + (_aura ? passiveAuraStat(unit, 'mdef') : 0);
                 armor += Math.floor(_pMdef * MDEF_ARMOR_FOLD);
             }
-            /* the celestial event's DEF buff (Lunar Eclipse, the middle nexus holder): the whole physical soak, DEF included */
-            if (dt === 'physical') { const sky = getSkyEventBonus(unit); if (sky.defMult !== 1) armor = Math.round(armor * sky.defMult); }
+            /* the celestial DEF buff (Lunar Eclipse, claimed at the middle nexus): the whole physical and magic soak */
+            if (dt === 'physical' || dt === 'magic') { const sky = getSkyEventBonus(unit); if (sky.defMult !== 1) armor = Math.round(armor * sky.defMult); }
             return Math.max(0, armor);
         }
 
@@ -3633,10 +3636,12 @@
                 : getStatusAtkDelta(unit);
             let bonus = sleepMod + terrainMod + weatherMod + streakBonus + floorBonus + statusDelta;
             { const _zb = getZodiacBonus(unit); if (_zb.active) bonus = Math.round(bonus * _zb.m(axis === 'magic' ? 'int' : 'atk')); }
-            /* the celestial event's ATK buff (Blood Moon, the middle nexus holder): that share of the unit's ATK, physical hits */
-            if (axis !== 'magic') {
+            /* the celestial ATK buff (Blood Moon, claimed at the middle nexus): that share of ATK on physical hits,
+               of M ATK on magic ones */
+            {
                 const sky = getSkyEventBonus(unit);
-                if (sky.atkMult !== 1) bonus += Math.round(((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'atk') : (unit.atk || 0)) * (sky.atkMult - 1));
+                const _sk = axis === 'magic' ? 'int' : 'atk';
+                if (sky.atkMult !== 1) bonus += Math.round(((typeof levelPowerStat === 'function') ? levelPowerStat(unit, _sk) : ((_sk === 'int' ? unit.intStat : unit.atk) || 0)) * (sky.atkMult - 1));
             }
             return bonus;
         }
