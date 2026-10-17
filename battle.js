@@ -642,10 +642,15 @@
             return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
-        function checkOpportunityAttack(unit, fromX, fromY) {
+        /* fromZ / fromStandH: the mover's z and standing height on the tile it
+           LEFT (finishMoveAt reads them before the move). The strike lands
+           there, so height is judged there, not on the tile it arrived at. */
+        function checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH) {
             /* Gameplay must not depend on the animations toggle (host-side rules
                drift online) — only the presentation below is visual-gated. */
             if (!unit || unit.dead) return;
+            if (fromZ == null) fromZ = unit.z ?? 0;
+            if (fromStandH == null) fromStandH = fromZ;
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             for (const enemy of enemies) {
 
@@ -654,6 +659,16 @@
                 const oldDist = Math.abs(enemy.x - fromX) + Math.abs(enemy.y - fromY);
                 const newDist = Math.abs(enemy.x - unit.x) + Math.abs(enemy.y - unit.y);
                 if (newDist <= oldDist) continue;
+
+                /* ⛰ Height (2026-10-17): only a swing the striker's BASIC
+                   ATTACK could make. Same reach as doAttack — combatDist (the
+                   height gap is its own axis) within getEffectiveRange — and
+                   the same point-blank sight rule (an edge wall, or a deck /
+                   roof slab between the two, blocks it). A unit on a ledge
+                   too high to hit, or a flyer overhead, slips away free. */
+                const _oaDist = combatDist(enemy.x, enemy.y, enemy.z ?? 0, fromX, fromY, fromZ);
+                if (_oaDist < 1 || _oaDist > getEffectiveRange(enemy)) continue;
+                if (isRangeBlockedByTerrain(enemy.x, enemy.y, fromX, fromY, enemy.z, fromZ)) continue;
 
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
@@ -676,7 +691,9 @@
                 const dmg = Math.max(1, baseDmg - armor);
                 applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
                     sourceUnit: enemy,
-                    damageType: 'physical'
+                    damageType: 'physical',
+                    // high ground / height soak / range falloff read the tile it left
+                    struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
                 addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
@@ -5562,6 +5579,7 @@
                 const before = unit.ap || 0;
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
+                    unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
                     addLog(`⚡ ${spell.name}: ${unitDisplayName(unit)} regains ${unit.ap - before} AP.`);
                     showFloatingTextForUnit(unit, `+${unit.ap - before} AP`, 'buff', { durationMs: 900 });
                     markDirty('hud', 'selectedUnit');
@@ -12740,6 +12758,117 @@
             return el;
         }
 
+        /* ═══ THE DEATH CLOSE-UP (2026-10-17, mondo: "make the camera more closeup and centered on a unit when
+           they die to see their death animation ... if multiple units die like a double or triple kill then make
+           it split screen like the combo attacks and entropy strikes") ═══════════════════════════════════════════
+           map.js defeatUnit calls playDeathCloseup on every death. One live camera (the ThreeSplitscreen rig, the
+           same one combos and Entropy Strikes use) frames the dying unit close and centred for its whole death
+           clip. Every death that lands while that shot is up (the rest of an AoE, a chain, the next Entropy Strike
+           beat) joins it as its own pane: two kills split the screen in halves, three in thirds, four in quarters,
+           with the combo pane chrome (frame + name). Deaths inside one ~90 ms window open together. Fog-gated per
+           unit on THIS screen (_shouldCameraFollowUnit); online.js relays each death so the guest runs the same
+           shot under its own fog. The turn waits for it (_waitForAnimationsThen). An execution owns its kill (the
+           finisher cinematic IS the close-up), so deaths during one are skipped. Kill switch: EW_NO_DEATH_CAM. */
+        const _dc = { ids: [], openTimer: null, tick: null, live: false, lastAddAt: 0, chromeEl: null, waitSince: 0 };
+        let _dcFinisherUntil = 0;
+        const _DC_MAX_PANES = 4;
+
+        function _deathCamLive() { return _dc.live || !!_dc.openTimer; }
+        window._deathCamLive = _deathCamLive;
+
+        function _dcEligible(unit) {
+            if (window.EW_NO_DEATH_CAM || !unit) return false;
+            if (state.phase !== 'battle' || _skipVisuals() || state.cameraDisabled) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            if (!window.ThreeSplitscreen || !ThreeSplitscreen.isAvailable()) return false;
+            if (Date.now() < _dcFinisherUntil) return false;
+            try { if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false; } catch (err) {}
+            try { if (!_shouldCameraFollowUnit(unit)) return false; } catch (err) { return false; }
+            return true;
+        }
+
+        function _dcDying(id) {
+            try { return !!(window.ThreeAnim && ThreeAnim.isDying && ThreeAnim.isDying(id)); } catch (err) { return false; }
+        }
+
+        function playDeathCloseup(unit) {
+            try {
+                if (!_dcEligible(unit)) return;
+                if (_dc.ids.indexOf(unit.id) >= 0) return;
+                if (_dc.ids.length >= _DC_MAX_PANES) { _dc.lastAddAt = Date.now(); return; }
+                _dc.ids.push(unit.id);
+                _dc.lastAddAt = Date.now();
+                if (_dc.live) { _dcShow(); return; }
+                if (!_dc.openTimer) { _dc.waitSince = Date.now(); _dc.openTimer = window.setTimeout(_dcOpen, 90); }
+            } catch (err) { console.warn('[DeathCam]', err); }
+        }
+        window.playDeathCloseup = playDeathCloseup;
+
+        function _dcOpen() {
+            _dc.openTimer = null;
+            if (state.phase !== 'battle') { _dcEnd(); return; }
+            _dc.ids = _dc.ids.filter(id => _dcDying(id));
+            if (!_dc.ids.length) { _dcEnd(); return; }
+            /* Another split shot is up (a combo's caster panes): wait for it while the bodies are still falling. */
+            if (ThreeSplitscreen.isActive() && ThreeSplitscreen.owner() !== 'death') {
+                if (Date.now() - _dc.waitSince < 1500) { _dc.openTimer = window.setTimeout(_dcOpen, 80); return; }
+                _dcEnd();
+                return;
+            }
+            _dcShow();
+        }
+
+        function _dcShow() {
+            const units = _dc.ids.map(id => unitFromId(id)).filter(Boolean);
+            if (!units.length) { _dcEnd(); return; }
+            const ssRes = ThreeSplitscreen.show(units.map(u => ({ unitId: u.id })), {
+                owner: 'death', death: true, keepFloats: units.length === 1,
+                durationMs: actionMs(1700), fov: 32, sideDeg: 26, driftDeg: 8, dist0: 2.6, dist1: 1.85
+            });
+            if (!ssRes) { _dcEnd(); return; }
+            _dc.live = true;
+            if (_dc.chromeEl && _dc.chromeEl.isConnected) _dc.chromeEl.remove();
+            _dc.chromeEl = null;
+            if (units.length >= 2) {
+                _dc.chromeEl = _ssqShowChrome(
+                    units.map(u => ({ unit: u, accent: _ccinColor((u.types || [])[0]) })),
+                    ssRes, { mute: true, startAt: 0, staggerMs: 0, outAt: 600000, totalMs: 600000 });
+            }
+            if (!_dc.tick) _dc.tick = window.setInterval(_dcTick, 60);
+        }
+
+        function _dcTick() {
+            if (!_dc.live) return;
+            /* Someone else took the screen (a combo, an Entropy Strike): the death shot is over. */
+            if (state.phase !== 'battle' || !ThreeSplitscreen.isActive() || ThreeSplitscreen.owner() !== 'death') { _dcEnd(true); return; }
+            ThreeSplitscreen.extend(1500);   // the rig's own failsafe stays armed just past this tick
+            const since = Date.now() - _dc.lastAddAt;
+            const falling = _dc.ids.some(id => _dcDying(id));
+            /* hold while any body is still falling (min 1.1 s so a sprite death still reads), a beat after the
+               last one dissolves, and never past 4.5 s from the last death */
+            if (since > 4500 || (since > actionMs(1100) && !falling)) {
+                if (!_dc.endAt) _dc.endAt = Date.now() + 160;
+                else if (Date.now() >= _dc.endAt) _dcEnd();
+            } else _dc.endAt = 0;
+        }
+
+        function _dcEnd(lost) {
+            if (_dc.openTimer) { window.clearTimeout(_dc.openTimer); _dc.openTimer = null; }
+            if (_dc.tick) { window.clearInterval(_dc.tick); _dc.tick = null; }
+            if (_dc.live && !lost && window.ThreeSplitscreen && ThreeSplitscreen.owner() === 'death') {
+                try { ThreeSplitscreen.hide(); } catch (err) {}
+            }
+            const el = _dc.chromeEl;
+            if (el && el.isConnected) {
+                el.querySelectorAll('.ssq-pane').forEach(p2 => p2.classList.add('out'));
+                window.setTimeout(() => el.remove(), 320);
+            }
+            _dc.chromeEl = null;
+            _dc.ids = [];
+            _dc.live = false;
+            _dc.endAt = 0;
+        }
+
         /* strikeType: one of ENTROPY_STRIKE_TYPE_ORDER (the apocalypse the
            player picked in the HUD). Omitted / unknown → the best matchup
            for the current targets (legacy callers, the CPU's default). */
@@ -13756,6 +13885,7 @@
             const RESOLVE_MS = actionMs(D.resolveMs);
             const totalMs = CHARGE_MS + STRIKE_MS + RESOLVE_MS;
             const hitAt = CHARGE_MS + STRIKE_MS;
+            _dcFinisherUntil = Date.now() + totalMs + actionMs(300);   // THE DEATH CLOSE-UP: the execution is the kill shot
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
             const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
             const span = Math.max(bw(), bh());
@@ -32334,7 +32464,8 @@
 
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
-                    const tgtH = getUnitStandingHeight(target);
+                    // opts.struckAt: a hit landed on a tile the target already left (opportunity attack)
+                    const tgtH = (opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target);
                     if (srcH > tgtH) {
 
                         const heightAdv = srcH - tgtH;
@@ -32356,7 +32487,7 @@
                 // reactions — opts.noRangeMult) where "distance to the
                 // caster" is meaningless.
                 if (damageType !== 'dot' && !opts.noRangeMult) {
-                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
+                    const _rangeMult = getRangeDamageMult(sourceUnit, opts.struckAt || target);
                     if (_rangeMult !== 1) {
                         _offMult *= _rangeMult;
                         // No callout: falloff hits nearly every ranged action,
@@ -32373,7 +32504,7 @@
                     const _pH = (typeof getUnitStandingHeight === 'function');
                     const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
                         srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
-                        tgtH: _pH ? getUnitStandingHeight(target) : null,
+                        tgtH: _pH ? ((opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target)) : null,
                         fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
                     });
                     if (_psm.mult !== 1) {
@@ -35828,6 +35959,7 @@
 
             const _wasAirborne = canFly(unit) && isUnitAirborne(unit);
             const _fromZ = unit.z ?? 0;
+            const _fromStandH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : _fromZ;
             unit.x = x;
             unit.y = y;
 
@@ -35946,7 +36078,7 @@
             // run in completeMoveAlongPath, so they read the far side.
             if (!opts.noDoor && typeof doorStepThrough === 'function') doorStepThrough(unit);
 
-            checkOpportunityAttack(unit, _originX, _originY);
+            checkOpportunityAttack(unit, _originX, _originY, _fromZ, _fromStandH);
 
             // 🕯 Hex of Toil: moving feeds the curse.
             _procHexedOnAction(unit, 'moves');
@@ -37726,6 +37858,27 @@
                 return Math.min(cost, AP_COST_SPELL);
             },
 
+            /* THE AP PRESS ICONS (hud.js ApPress, mondo 2026-10-17: "always know how much ap i will be left with after
+               an action"): the AP an action REALLY drains from `unit` — the same rules its commit path spends by. A
+               step is 1 AP, the turn's second step all of it (finishMove); attacks, combos, Entropy Strikes, finishers,
+               Guard and damaging/Protect casts take ALL of it (spendAllAP); a support cast its apCost (plus the step
+               of a MOVE→CAST); Clash spends everything on any paid act. kind: 'move' | 'all' | 'spell' | 'flat';
+               opts.spell, opts.move (a step first), opts.cost (flat). */
+            apSpend(unit, kind, opts = {}) {
+                const ap = Math.max(0, (unit && unit.ap) || 0);
+                if (!ap) return 0;
+                const step = ((unit.movesThisTurn || 0) + 1 >= UNIT_MAX_MOVES) ? ap : AP_COST_ACTION;
+                let n;
+                if (kind === 'move') n = step;
+                else if (kind === 'all') n = ap;
+                else if (kind === 'spell') {
+                    const sp = opts.spell;
+                    n = (sp && spellEndsTurn(sp)) ? ap : (opts.move ? step : 0) + TargetQuery.apCost(sp);
+                } else n = opts.cost != null ? (+opts.cost || 0) : AP_COST_ACTION;
+                if (n > 0 && typeof _isClashMode === 'function' && _isClashMode()) n = ap;
+                return Math.max(0, Math.min(ap, n));
+            },
+
             /* THE universal castability guard: ONE method answers "why can't
                this unit cast this spell right now?". The ability drum's
                greying, the quick menus, doSpell and canAfford all route
@@ -38098,6 +38251,7 @@
                 unit.ap = (unit.ap || 0) + refund;
                 unit._pressGainedThisTurn = gained + refund;
                 unit._pressFlashAt = Date.now();
+                unit._apRefundIcons = (unit._apRefundIcons || 0) + refund;   // the AP press icons grow a fresh icon per AP
                 result.apDelta = refund;
                 _staggerLiftByRefund(unit);
                 result.pressed = true;
@@ -38275,6 +38429,7 @@
         function _gauntletResetTurnFlags(u) {
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
+            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
             u._pressPenaltiesThisTurn = 0;
             u._spellsUsedThisTurn = null;
             u._reshapeThisTurn = 0;
@@ -43478,6 +43633,7 @@
             u._altitudeChangesThisTurn = 0;
             u._jumpedThisTurn = false;
             u._pressGainedThisTurn = 0;
+            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
             u._pressPenaltiesThisTurn = 0;
             u._skippedTurn = false;
             u._aiFailedSpells = null;
@@ -45723,6 +45879,7 @@
                 u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
+                u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                 u._pressPenaltiesThisTurn = 0;
                 u._spellsUsedThisTurn = null;
 
@@ -45968,6 +46125,7 @@
                     u._buildCharges = 0;
                     u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
+                    u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                     u._pressPenaltiesThisTurn = 0;
                     u._spellsUsedThisTurn = null;
                     u._skippedTurn = false;
@@ -48878,6 +49036,7 @@
                 u._altitudeChangesThisTurn = 0;
                 u._jumpedThisTurn = false;
                 u._pressGainedThisTurn = 0;
+                u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                 u._pressPenaltiesThisTurn = 0;
             }
 
@@ -50166,6 +50325,7 @@
                             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
+                            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                             u._pressPenaltiesThisTurn = 0;
                             u._spellsUsedThisTurn = null;
                             u._aiFailedSpells = null;
@@ -50317,6 +50477,13 @@
                     return;
                 }
 
+                if (_deathCamLive()) {   // THE DEATH CLOSE-UP: the turn moves on after the body is down
+                    _sawActivity = true;
+                    _dwellStart = 0;
+                    setTimeout(check, 60);
+                    return;
+                }
+
                 if (state.units.some(u => u._dying)) {
                     _sawActivity = true;
                     _dwellStart = 0;
@@ -50445,6 +50612,7 @@
                     || (typeof isCinematicPresent === 'function' && isCinematicPresent())
                     || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy())
                     || state.units.some(u => u._dying)
+                    || _deathCamLive()
                     || (camera && camera.isBusy && camera.isBusy())) return reset();
                 const now = Date.now();
                 if (state._blitzActiveUnitId) {

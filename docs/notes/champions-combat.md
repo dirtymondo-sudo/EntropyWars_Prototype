@@ -1501,3 +1501,15 @@ the gun can actually hit; a walled-off unit is skipped and the turret takes the 
   ability). Now it finds the spell in `_raceAbilities` too, lets every `_teleportLandingPhase` click through to doSpell,
   and an attack / spell / item click on a fogged tile logs "Out of sight — no one on your team can see that tile."
   Checked in a headless browser: P1 blinked onto a fogged lit tile and onto a seen one.
+
+### Opportunity attacks follow height (2026-10-17, mondo: "opportunity attacks need to take height into account")
+- battle.js `checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH)`: an adjacent enemy only swings when its
+  BASIC ATTACK could hit the mover on the tile it left: `combatDist` (height gap is its own axis) within
+  `getEffectiveRange(enemy)`, and `isRangeBlockedByTerrain` clear (edge walls, a deck/roof slab between the two).
+  So a melee unit (reach 2) still strikes across a 1-2 level step, but not from/to a 3+ level ledge, and a unit on a
+  bridge deck can't hit one walking underneath beside it.
+- The hit's high ground bonus / height soak / range falloff are judged at the tile it left
+  (`applyDamageToUnit` opt `struckAt: {x, y, standH}`), not at the arrival tile. finishMoveAt reads the standing
+  height before the move.
+- Browser-checked on Pyramids of Giza: flat and 2-up both strike (2-up hit harder, high ground); 3-up, 4-up and
+  deck-over-ground do not.
