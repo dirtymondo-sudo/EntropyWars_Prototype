@@ -1363,6 +1363,42 @@ Fix (three-renderer.js): `_ssRenderFrame` sets `renderer._ew_paneRender` while i
 WebGPU in the sandbox (stadium, krampus / nephilim / zombie / annunaki): before, combo = nephilim twice, strike = top
 row copies bottom row; after, every pane frames its own unit; WebGL unchanged. Off (`?ew_bundles=0`) also fixes it.
 
+## THE DEATH CLOSE-UP (2026-10-17)
+mondo: "can we make the camera more closeup and centered on a unit when they die to see their death animation? and if
+multiple units die like a double or triple kill then make it split screen like the combo attacks and entropy strikes."
+- map.js `defeatUnit` → battle.js `playDeathCloseup(unit)` (after `ThreeAnim.death`). It opens the combo / Entropy Strike
+  split rig (`ThreeSplitscreen.show(..., { owner: 'death', death: true })`) on the dying unit ~90 ms after the killing
+  hit (so deaths of one hit open together). Every later death while the shot is up joins as its own pane (2 = halves,
+  3 = thirds, 4 = quarters, max 4) with the combo pane chrome (`_ssqShowChrome`, muted: frame + name + race). One pane
+  = no chrome, and the combat numbers stay up, projected through the pane camera (`_ssFloatCam`).
+- The shot holds while any of its bodies still has a death tween (`ThreeAnim.isDying`, rigged = MODEL_DEATH_MS 1600
+  on the warped clock), min 1.1 s, cap 4.5 s after the last death. `_waitForAnimationsThen` and the stall watchdog
+  wait on `_deathCamLive()`, so the turn moves on after the body is down.
+- Pane framing (`_ssRenderFrame`, `p.death`): eye 0.58→0.74 of the body height, aim 0.55→0.33 following the fall
+  (launch deaths keep the aim and add 0.6 tile of room), plus a sight-line floor over every column between lens and body.
+  A death pane keeps tracking after `dead` flips at 800 ms, until the body dissolves. The stand-off scales with the
+  body height (0.6x-1.9x of a standard unit), so a gnome gets a tight shot and big winged bodies still fit.
+- Graves / bone piles now wait for the death tween too (they used to pop in at 800 ms under a rigged body whose clip
+  still had 800 ms to run). `ThreeSplitscreen.extend(ms)` re-arms the rig's self-kill each tick while the shot holds.
+- Skipped: Strike real-time, no-visuals sims, camera off, a 2D cinematic up, during an execution (`_dcFinisherUntil`, the
+  finisher IS the kill shot), and per unit when `_shouldCameraFollowUnit` says no (fog / concealment). A combo's own
+  panes are waited on (≤1.5 s); a combo / Entropy Strike that takes the screen ends the death shot.
+- Online: online.js wraps `playDeathCloseup` → relay `death-cam {unitId, style}`; the guest starts the death tween +
+  slow-mo itself (it never ran defeatUnit, so before this its units just vanished) and runs the shot under its own fog.
+- `startDeathTween` ignores a second call for a unit already falling. Kill switch: `window.EW_NO_DEATH_CAM = true`.
+
+## THE BANE FORECAST (2026-10-17, token 20261017-baneproj-01-cors)
+mondo: "banes need to have a damage projection just like spells". battle.js `forecastBanePlan(thrower, itemKey, target,
+{ castFrom })` reads a thrown bane (and the Entropy Grenade, which rides the bane throw) the doItem way through
+forecastHitOnUnit: baseDmg + baneDmg on a type match (no roll), magic, no mark bonus, the bane's own `typeEffect`; the
+grenade's splash hits every other body in the blast (allies and the thrower too, own team with no source). Same plan shape
+as forecastSpellPlan; `baneForecastSpell(itemKey)` is the stand-in spell (kind 'bane') the UI reads. ui.js forecastOnUnit
+routes kind 'bane' to it, so the HP-bar slice (getPendingDamagePreview, armed + quick-menu hover), the hover HUD
+(getPreviewEffect), the board badges + crimson plates (updateAoePreview → _updateBanePreview, `baneThrowTarget` = doItem's
+column pick + reach) and the hud.js item target drum / enemy quick menu bane rows all show the real number. Badges judge
+SUPER EFFECTIVE from the bane's type (h.superEff), never the thrower's. `window._ewBaneThrowUntil` holds the preview off
+while a throw animates (host doItem + guest online.js wrapper). Browser-checked: Tech Bane and grenade previews matched
+the real HP lost exactly.
 ## THE RISE (2026-10-17, mondo: "it feels like the wall just instantly snaps there. its supposed to rise out of the ground smoothly")
 Cause: terrain spells (Rampart's `terrainDeform`, battle.js `applyTerrainDeform`) change the height in one step and the
 next `rebuildTerrain` drew the new block at full height; there was no tween. Fix (three-renderer.js, render-side only, so

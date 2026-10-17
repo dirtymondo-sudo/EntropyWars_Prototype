@@ -8074,7 +8074,9 @@ const ThreeRenderer = (function () {
         if (state.units) {
             for (var gi = 0; gi < state.units.length; gi++) {
                 var gu = state.units[gi];
-                if (gu && gu.dead && !gu._dying && !gu._corpseConsumed) {
+                /* THE DEATH CLOSE-UP (2026-10-17): a rigged body's knock-down outlives `_dying` (800 ms vs the 1600 ms clip),
+                   so the grave also waits for the death tween — it used to pop in under a body still falling. */
+                if (gu && gu.dead && !gu._dying && !gu._corpseConsumed && !_deathTweens.has(gu.id)) {
                     h = _hashInt(h, 6); h = _hashInt(h, gu.x); h = _hashInt(h, gu.y);
                     h = _hashVal(h, gu.player); h = _hashStr(h, String(gu.id));
                 }
@@ -9613,7 +9615,7 @@ const ThreeRenderer = (function () {
             var _gvViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (var ug = 0; ug < state.units.length; ug++) {
                 var du = state.units[ug];
-                if (!du || !du.dead || du._dying) continue;
+                if (!du || !du.dead || du._dying || _deathTweens.has(du.id)) continue;   // the rigged clip still falling (see the serial)
                 if (du._corpseConsumed) continue;   // remains raised as a zombie — nothing left to mark
                 var gx = (du._dyingX != null ? du._dyingX : du.x);
                 var gy = (du._dyingY != null ? du._dyingY : du.y);
@@ -19939,7 +19941,7 @@ const ThreeRenderer = (function () {
        units the local viewer can see. Best-effort everywhere: a missing
        unit freezes its pane's last pose, a forgotten hide() self-kills.
        ═══════════════════════════════════════════════════════════════════ */
-    var _ss = { active: false, panes: [], t0: 0, durationMs: 0, killTimer: null, hidden: null };
+    var _ss = { active: false, panes: [], t0: 0, durationMs: 0, killTimer: null, hidden: null, owner: null, floatPane: false };
 
     function _ssLayoutRects(n, w, h) {
         if (n <= 1) return [{ x: 0, y: 0, w: w, h: h }];
@@ -20012,18 +20014,24 @@ const ThreeRenderer = (function () {
                 drift: ((i % 2 === 0) ? 1 : -1) * (opts.driftDeg != null ? opts.driftDeg : 7) * Math.PI / 180,
                 d0: (opts.dist0 != null ? opts.dist0 : 3.2) * ts,
                 d1: (opts.dist1 != null ? opts.dist1 : 2.25) * ts,
-                lastEye: null, lastAim: null
+                lastEye: null, lastAim: null,
+                death: !!opts.death,
+                launch: !!(opts.death && typeof state !== 'undefined' && state && state._deathStyleById && state._deathStyleById[uid] === 'launch')
             });
         }
         _ss.t0 = performance.now();
         _ss.durationMs = Math.max(300, opts.durationMs || 1600);
         _ss.active = true;
+        _ss.owner = opts.owner || null;
+        /* THE DEATH CLOSE-UP: one full-screen pane keeps the combat numbers, projected through the pane camera
+           (_updateFloatTextTweens), so the killing blow's number still pops over the falling body. */
+        _ss.floatPane = !!opts.keepFloats && list.length === 1;
 
         /* Hide the DOM layers that project through the main camera. */
         _ss.hidden = [];
         var doms = [
             css2dRenderer && css2dRenderer.domElement,
-            _floatDomOverlay,
+            _ss.floatPane ? null : _floatDomOverlay,
             _intentBadgeContainer
         ];
         for (var d = 0; d < doms.length; d++) {
@@ -20041,6 +20049,7 @@ const ThreeRenderer = (function () {
         if (!_ss.active) return;
         _ss.active = false;
         _ss.panes = [];
+        _ss.owner = null; _ss.floatPane = false;
         if (_ss.hidden) {
             for (var i = 0; i < _ss.hidden.length; i++) {
                 try { _ss.hidden[i][0].style.display = _ss.hidden[i][1]; } catch (e) {}
@@ -20059,6 +20068,19 @@ const ThreeRenderer = (function () {
     }
 
     function isSplitscreenActive() { return _ss.active; }
+    /* Push the self-kill back (THE DEATH CLOSE-UP holds as long as a body is still falling): the rig still dies on its
+       own msAhead after its owner stops calling this. */
+    function extendSplitscreen(msAhead) {
+        if (!_ss.active) return;
+        if (_ss.killTimer) window.clearTimeout(_ss.killTimer);
+        _ss.killTimer = window.setTimeout(function () { hideSplitscreen(); }, Math.max(500, msAhead || 1500));
+    }
+    function splitscreenOwner() { return _ss.active ? _ss.owner : null; }
+    /* The camera the combat numbers project through: the single death close-up pane, else the main camera. */
+    function _ssFloatCam() {
+        if (_ss.active && _ss.floatPane && _ss.panes.length === 1 && _ss.panes[0].lastEye) return _ss.panes[0].cam;
+        return null;
+    }
 
     function _ssEase(t) { return 1 - Math.pow(1 - t, 3); }   // easeOutCubic
 
@@ -20095,19 +20117,40 @@ const ThreeRenderer = (function () {
             var p = _ss.panes[i], r = rects[i];
             var g = _ssFindGroup(p.unitId);
             var unit = (typeof _findUnit === 'function') ? _findUnit(p.unitId) : null;
-            if (g && unit && !unit.dead) {
+            /* A death pane keeps following its unit through the whole death clip (dead flips true at 800 ms, the
+               rigged clip runs on); once the body has dissolved it holds its last framing. */
+            if (g && unit && (!unit.dead || (p.death && g.visible !== false))) {
                 var px = g.position.x, py = g.position.y, pz = g.position.z;
                 var headH = Math.max(ts * 0.55, (g._ew_spriteTopY || (py + ts)) - py);
                 var az = _unitFacingYaw(unit) + p.side + p.drift * k;
                 var dist = p.d0 + (p.d1 - p.d0) * k;
+                /* THE DEATH CLOSE-UP: the lens stands off by the body's own height (a gnome gets a tight shot, an
+                   angel's wings still fit), measured against a standard unit. */
+                if (p.death) dist *= Math.max(0.6, Math.min(1.9, headH / (ts * UNIT_SPRITE_SIZE_RATIO + 4)));
+                if (p.launch) dist += ts * 0.6;   // a heavy blow throws the body up and over: give it room
                 var ex = px + Math.sin(az) * dist;
                 var ez = pz + Math.cos(az) * dist;
                 var ey = py + headH * (0.42 + 0.10 * k);
+                var aimY = py + headH * 0.62;
+                if (p.death) {
+                    /* THE DEATH CLOSE-UP: the lens rises a little as the body drops and the aim follows it down,
+                       so the knock-down stays centred from the stagger to the floor. */
+                    ey = py + headH * (0.58 + 0.16 * k);
+                    if (!p.launch) aimY = py + headH * (0.55 - 0.22 * k);
+                    /* The sight line stays above every column between the lens and the body (raised tiles, a
+                       ledge in front of the unit), so the shot never looks through the ground. */
+                    for (var sk = 1; sk <= 4; sk++) {
+                        var sf = sk / 4;
+                        var gY = _ssGroundY(px + (ex - px) * sf, pz + (ez - pz) * sf) + ts * 0.35;
+                        var lineY = aimY + (ey - aimY) * sf;
+                        if (lineY < gY) ey += (gY - lineY) / sf;
+                    }
+                }
                 /* Never sink the eye into a slope in front of the unit. */
                 var floor = _ssGroundY(ex, ez) + ts * 0.22;
                 if (ey < floor) ey = floor;
                 p.lastEye = { x: ex, y: ey, z: ez };
-                p.lastAim = { x: px, y: py + headH * 0.62, z: pz };
+                p.lastAim = { x: px, y: aimY, z: pz };
             }
             if (!p.lastEye) continue;   // unit never resolved — leave the pane to its neighbors' clears
             p.cam.aspect = r.w / Math.max(1, r.h);
@@ -21681,6 +21724,7 @@ const ThreeRenderer = (function () {
     }
 
     function startDeathTween(unitId) {
+        if (_deathTweens.has(unitId)) return;   // already falling (the online guest starts it off the relay too)
         var entry = _getUnitEntry(unitId);
         if (!entry || !entry.group) return;
 
@@ -22606,7 +22650,8 @@ const ThreeRenderer = (function () {
     function _updateFloatTextTweens() {
         if (_floatTweens.length === 0) return;
         var now = _animNow();
-        var cam = ThreeCamera.getCamera();
+        var _paneCam = _ssFloatCam();   // THE DEATH CLOSE-UP: numbers ride the full-screen death pane
+        var cam = _paneCam || ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
         var screenH = _parentEl ? _parentEl.clientHeight : 0;
         // pxScale sets the on-screen size of the numbers (world→screen px factor).
@@ -22655,6 +22700,7 @@ const ThreeRenderer = (function () {
                 _floatProjVec.set(tw.wx, worldY, tw.wz);
                 var dist = _floatProjVec.distanceTo(cam.position);
                 if (dist < 1) dist = 1;
+                if (_paneCam) dist = Math.max(dist, (CONFIG.tileSize || BASE_TILE) * 6);   // a lens two tiles off would blow the number up to fill the screen
                 _floatProjVec.project(cam);
                 // Behind the camera or off-screen depth → hide this frame.
                 if (_floatProjVec.z > 1) {
@@ -68782,7 +68828,8 @@ const ThreeRenderer = (function () {
 
         getSkyShot, playZodiacReveal, playSkyEventReveal,
 
-        showSplitscreen, hideSplitscreen, isSplitscreenActive,
+        showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
+        hasDeathTween: function (uid) { return _deathTweens.has(uid); },
 
         get _scene() { return scene; },
         /* Debug/profiling handle: renderer.info has live draw-call/triangle/
@@ -68828,7 +68875,9 @@ window.ThreeSplitscreen = {
         return ThreeRenderer.isActive() ? ThreeRenderer.showSplitscreen(subjects, opts) : null;
     },
     hide: function () { ThreeRenderer.hideSplitscreen(); },
-    isActive: function () { return ThreeRenderer.isActive() && ThreeRenderer.isSplitscreenActive(); }
+    isActive: function () { return ThreeRenderer.isActive() && ThreeRenderer.isSplitscreenActive(); },
+    owner: function () { return ThreeRenderer.isActive() ? ThreeRenderer.splitscreenOwner() : null; },
+    extend: function (msAhead) { if (ThreeRenderer.isActive()) ThreeRenderer.extendSplitscreen(msAhead); }
 };
 
 window.ThreeAnim = {
@@ -68889,6 +68938,9 @@ window.ThreeAnim = {
 
     death: function(unitId) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startDeathTween(unitId);
+    },
+    isDying: function(unitId) {
+        return ThreeRenderer.isActive() && ThreeRenderer.hasDeathTween(unitId);
     },
 
     /* THE STRIKE FRAME (2026-09-09, sprites.js UAL_SLOTS strikeAt): how many

@@ -685,8 +685,27 @@
             if (_isHost()) return _hostRunAndSync(_origDoItem, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return;
             _guestActionFeedback('item', unit, x, y);
+            /* THE BANE FORECAST: the host runs the throw — drop the guest's own bane preview and hold it off meanwhile */
+            if (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[state.selectedTool] && ITEM_RULES[state.selectedTool].baneType) {
+                window._ewBaneThrowUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + 3000;
+                if (typeof clearAoePreview === 'function') clearAoePreview();
+            }
             _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
         };
+
+        /* Panacea (1 AP since 2026-10-17): un-relayed, a guest's cure ran on its own copy and the next state-sync undid
+           it (status back, AP back). The host runs it like doItem. */
+        const _origUsePanacea = (typeof usePanacea === 'function') ? usePanacea : null;
+        if (_origUsePanacea) {
+            usePanacea = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origUsePanacea(unit);
+                if (_isHost()) return _hostRunAndSync(_origUsePanacea, [unit]);
+                if (!_guestOwnsAction(unit)) return;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'engine', fn: 'usePanacea', unitId: unit.id });
+                _guestMenuToRoot();
+            };
+        }
 
         const _origDoComboAttack = doComboAttack;
         doComboAttack = function(initiator, partner, targetX, targetY, targetZ) {
@@ -1471,6 +1490,21 @@
             };
         }
 
+        /* THE DEATH CLOSE-UP (battle.js playDeathCloseup, called by map.js defeatUnit): deaths resolve only on
+           the HOST online, so relay each one; the guest starts the body's death clip (it never ran defeatUnit)
+           and runs the same close-up / multi-kill split where its OWN fog gate (inside the function) decides. */
+        const _origPlayDeathCloseup = window.playDeathCloseup;
+        if (typeof _origPlayDeathCloseup === 'function') {
+            window.playDeathCloseup = function(unit) {
+                _origPlayDeathCloseup(unit);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && unit && state.phase === 'battle') {
+                    _emit('relay', { type: 'death-cam', unitId: unit.id,
+                        style: (state._deathStyleById && state._deathStyleById[unit.id]) || null });
+                }
+            };
+        }
+
         /* Fall/grounding camera dive (battle.js followUnitFall): engine-side
            beat — a grounded flyer / knocked-down unit drops and the camera
            rides down with them. Runs only on the HOST online, so relay it;
@@ -1902,6 +1936,7 @@
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
                             case 'doJump': doJump(engUnit, data.x, data.y, data.z); break;
                             case 'doItem': doItem(engUnit, data.x, data.y, data.z); break;
+                            case 'usePanacea': if (typeof usePanacea === 'function') usePanacea(engUnit); break;
                             case 'doComboAttack': {
                                 var engPartner = state.units.find(function(u) { return u.id === data.partnerId && !u.dead; });
                                 if (engPartner) doComboAttack(engUnit, engPartner, data.x, data.y, data.z);
@@ -4322,6 +4357,21 @@
                            hidden enemy's pickup shows nothing positional. */
                         if (typeof window.playKeySecuredFx === 'function') {
                             window.playKeySecuredFx(data.x, data.y, data.n || 1);
+                        }
+                    }
+
+                    if (data.type === 'death-cam' && _ewMirrorView()) {
+                        /* THE DEATH CLOSE-UP: the body falls on this screen too (slow-mo + clip, as on the host),
+                           then the close-up / multi-kill split runs under the GUEST's own fog gate. */
+                        var _dcU = st && st.units
+                            ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (_dcU && window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive()) {
+                            if (data.style) { st._deathStyleById = st._deathStyleById || {}; st._deathStyleById[_dcU.id] = data.style; }
+                            if (!window.ThreeAnim.isDying(_dcU.id)) {
+                                window.ThreeAnim.death(_dcU.id);
+                                if (window.ThreeAnim.slowMo) window.ThreeAnim.slowMo(0.4, 550);
+                            }
+                            if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(_dcU);
                         }
                     }
 
