@@ -586,8 +586,7 @@
                             const mt = state.partyMeta?.[pNum]?.[i] || {};
                             const id = resolveIdentityForBuild(cn, mt);
                             const sel = pNum === bp && i === bs;
-                            const fClass = id.faction ? ('faction-' + id.faction) : '';
-                            return `<div class="roster-slot ${fClass}${sel ? ' selected' : ''}" onclick="state.builderSelectedPlayer=${pNum};state.builderSelectedSlot=${i};renderBuilder()">
+                            return `<div class="roster-slot${sel ? ' selected' : ''}" onclick="state.builderSelectedPlayer=${pNum};state.builderSelectedSlot=${i};renderBuilder()">
                               <div class="roster-sprite-wrap">${renderUnitSprite(cn, pNum, 'roster-sprite-inner', id.race || '', getDefaultEquipment(cn), id.gender || mt.gender || '')}</div>
                               <div class="roster-slot-info">
                                 <div class="roster-slot-name">${escapeHtml(typeof getRaceLabel==='function' ? getRaceLabel(id.race, id.gender||mt.gender||'male') : (RACE_PROFILES[id.race]?.label || id.race || '?'))}</div>
@@ -3433,6 +3432,10 @@
                     const _dist = Math.max(Math.abs(unit.x - target.x), Math.abs(unit.y - target.y));
                     if (_dist > baneRange) return null;
                     const isEffective = (target.types || []).includes(_baneRule.baneType);
+                    /* THE BANE FORECAST: the engine's own read of the throw */
+                    const _bfc = (typeof baneForecastSpell === 'function') ? forecastOnUnit(unit, target, baneForecastSpell(state.selectedTool)) : null;
+                    if (_bfc) return { type: 'damage', amount: _bfc.dmg, min: _bfc.min, max: _bfc.max, after: Math.max(0, target.hp - _bfc.dmg),
+                        note: _bfc.blocked ? (_FC_BLOCK_TEXT[_bfc.blocked] || String(_bfc.blocked).toUpperCase()) : (isEffective ? 'SUPER EFFECTIVE' : '') };
                     let dmg = _pvSc(_baneRule.baseDmg + (isEffective ? _baneRule.baneDmg : 0));
                     // Banes deal magic damage → mitigated by magic defense (MDEF).
                     dmg = Math.max(1, dmg - Math.round(getEffectiveArmor(target, 'magic') * _pvLsT));
@@ -3933,7 +3936,7 @@
                 '';
             const mpPreviewText = preview?.type === 'mp' ? `Potential mana: +${preview.amount} MP` : '';
             const effAtk = unit.atk + getEffectiveAttackBonus(unit);
-            // 'none' → gear/status/faction armor only, without folding the DEF
+            // 'none' → gear/status armor only, without folding the DEF
             // stat in again (we add unit.def explicitly here for the display).
             const effDef = (unit.def || 0) + getEffectiveArmor(unit, 'none');
             const effMDef = (unit.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0);
@@ -3942,7 +3945,7 @@
             const effInt = getEffectiveInt(unit);
 
             // Active statuses are the only extra context worth the pixels —
-            // everything else (zodiac/terrain/weather/faction/items) lives in
+            // everything else (zodiac/terrain/weather/items) lives in
             // other UI and just buried the numbers here.
             const statusEntries = Object.entries(unit.status || {}).filter(([, t]) => (t || 0) > 0);
             let statusPills = '';
@@ -4153,7 +4156,7 @@
               <div class="roster-main">
                 <div class="roster-name">${u.name || u.race || '?'} ${sectionBadge}</div>
                 <div class="roster-sub">${u.race || '?'} · ${coordLabel(u.x, u.y)}</div>
-                <div class="type-badges-block">${renderTypeBadges(u.types || [])}${u.faction ? `<span style="font-size:8px;color:var(--muted);margin-left:2px">${u.faction}</span>` : ''}</div>
+                <div class="type-badges-block">${renderTypeBadges(u.types || [])}</div>
                 ${renderAccessoryBadges(u)}
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
                 <div class="mini-vital"><span class="mini-lbl mp">MP</span><div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div><span class="mini-num">${u.mp}/${u.maxMp}</span></div>
@@ -4438,7 +4441,8 @@
                 let secItems = [];
                 secItems.push(`<span class="sb-sec-icon">${weatherActive ? WEATHER_REGISTRY[state.activeWeather[0].type].icon : '☀'}</span> <span class="sb-sec-val">${weatherText}</span>`);
                 secItems.push(`${zodiacIcon} <span class="sb-sec-val">${zodiacLabel}</span> ${zodiacLeft === 0 ? 'shifts' : zodiacLeft + 'rnd'}`);
-                secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd` : 'Sky —'}`);
+                const skyHolder = (skyActive && typeof getSkyEventHolder === 'function') ? getSkyEventHolder() : 0;   // the middle nexus holder gets the buff
+                secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd${skyHolder ? ` · ⬡ P${skyHolder}` : ''}` : 'Sky —'}`);
                 if (showHourglasses) {
                     secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${carriedHourglassCount(1)}</span>–<span class="sb-sec-val">${carriedHourglassCount(2)}</span>`);
                 }
@@ -5198,6 +5202,12 @@
                     showCombatBanner('⬡ SPAWN RESTORED', `Player ${ev.player} holds a Nexus again — respawns resume`, tone);
                     playSfx('healRegen');
                     break;
+                case 'reset':   // a new celestial event cleared the middle zone (the sky banner names the event)
+                    if (!relayed) {
+                        showFloatingTextAtTile(cx, cy, '⬡ RESET', 'nexus', { durationMs: 1600 });
+                    }
+                    playSfx('debuff');
+                    break;
             }
         }
         window._nexusFx = _nexusFxImpl;
@@ -5233,6 +5243,15 @@
                 addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (💰 +${NEXUS_GOLD_PER_ROUND}/round)`);
             }
 
+            /* the middle zone during a celestial event: the team now carries the event's buff (state.js getSkyEventBonus) */
+            if (state.skyEvent && typeof getCelestialNexusKey === 'function' && getCelestialNexusKey() === section) {
+                const _ev = (typeof SKY_EVENTS !== 'undefined') ? SKY_EVENTS[state.skyEvent.type] : null;
+                if (_ev) {
+                    const _evTxt = `${_ev.icon} ${_ev.label}: ${_ev.buff || _ev.desc}`;
+                    sub = sub ? sub + ' · ' + _evTxt : _evTxt;
+                    addLog(`${_ev.icon} Player ${player} holds the ${label} Nexus under the ${_ev.label} — ${_ev.buff || _ev.desc} for the team.`);
+                }
+            }
             const c = _nexusZoneCenter(nex);
             _nexusFx({ kind: 'capture', section, player, x: c.x, y: c.y, sub });
             if (creditUnit) {
@@ -5260,6 +5279,24 @@
                 }
             }
         }
+
+        /* A new celestial event resets the middle zone to nobody (state.js checkNewSkyEvent, host / offline engine
+           only — the guest gets the zone through state-sync and the beat through the nexus-fx relay). */
+        function resetCelestialNexus(section) {
+            const nex = state.nexusPoints && state.nexusPoints[section];
+            if (!nex) return;
+            const lostOwner = nex.owner || 0;
+            nex.owner = 0;
+            nex.progress = 0;
+            const c = _nexusZoneCenter(nex);
+            addLog(`⬡ The ${_nexusLabel(section)} Nexus resets — nobody holds it.`);
+            _nexusFx({ kind: 'reset', section, player: lostOwner, x: c.x, y: c.y });
+            if (lostOwner && state.nexusPoints['spawn' + lostOwner] && nexusZonesOwnedBy(lostOwner).length === 0) {
+                addLog(`⛔ SPAWN LOCKOUT — Player ${lostOwner} holds NO Nexus. Their fallen cannot respawn until they reclaim one!`);
+                _nexusFx({ kind: 'lockout', section, player: lostOwner, x: c.x, y: c.y });
+            }
+        }
+        window.resetCelestialNexus = resetCelestialNexus;
 
         /* THE tick engine. Moves `nex.progress` `ticks` steps toward `team`,
            neutralizes an enemy owner the moment the bar crosses back through
@@ -8128,7 +8165,6 @@
         window._applyUIScale();
 
         let _codexSelectedRace = null;
-        let _codexFilterFaction = 'all';
         let _codexFilterType = 'all';
 
         const _CODEX_LORE = {
@@ -8136,7 +8172,7 @@
             'giant': 'Bipedal humanoid of extraordinary proportions (est. 3–4m height). First documented in [REDACTED] region during Operation ██████. Subjects display extreme physical resilience but reduced cognitive processing speed. Skeletal density measurements exceed titanium alloy benchmarks. Recommended engagement protocol: avoid direct confrontation.',
             'fairy': 'Micro-scale anomalous entity (12–18cm wingspread). Capable of sustained atmospheric flight via mechanisms that violate known aerodynamic models. Generates localized reality distortion fields. Despite diminutive frame, psionic output rivals entities 40x its mass. Handle with extreme caution — containment breaches have resulted in [REDACTED].',
             'martian': 'Extraterrestrial humanoid recovered from crash site at [REDACTED]. Exhibits cranial elongation consistent with enhanced spatial reasoning. Possesses natural affinity for energy weapon discharge. Cultural artifacts suggest a militaristic civilization with advanced ballistic technology. Subject displays aggression when separated from weaponry.',
-            'nordic': 'Tall humanoid entity (est. 2.1m) of apparently Scandinavian phenotype. First contact during Project ██████ (1952). Exhibits enhanced longevity, telepathic capability, and advanced technological comprehension. Demeanor consistently described as "benevolent" — recommend skepticism. Faction alignment with temporal anomalies remains under investigation.',
+            'nordic': 'Tall humanoid entity (est. 2.1m) of apparently Scandinavian phenotype. First contact during Project ██████ (1952). Exhibits enhanced longevity, telepathic capability, and advanced technological comprehension. Demeanor consistently described as "benevolent" — recommend skepticism.',
             'grey': 'Small-statured extraterrestrial (est. 1.2m) with disproportionately large cranium and ocular organs. Primary species involved in civilian abduction events. Psionic capability rating: EXTREME. Known to operate in coordinated telepathic networks. Recovered craft suggest mastery of gravitational manipulation. Do not make sustained eye contact.',
             'bigfoot': 'Large bipedal cryptid (est. 2.4m, 180kg). Primarily documented in Pacific Northwest regions. Exhibits extraordinary stealth capability despite massive frame. Thermal imaging consistently fails to detect subjects — possible IR-masking biological adaptation. Territorial but non-hostile unless provoked. Odor described as [REDACTED].',
             'shadow entity': 'Non-corporeal anomalous entity capable of existing within shadow-state. Manifests as humanoid silhouette with variable opacity. Can phase through solid matter and exists partially in adjacent dimensional layers. Fastest documented entity in combat scenarios. Origins remain classified — connection to [REDACTED] suspected.',
@@ -8256,7 +8292,7 @@
             'watcher': 'Ancient entity of indeterminate age. Winged humanoid form, height approximately 3m. Subject observes but historically does not intervene in terrestrial events. Maintains awareness of all temporal streams simultaneously (verified through prediction testing: 100% accuracy over 847 trials). Recent behavioral change: subject has begun intervening. This development is classified CONCERN LEVEL: MAXIMUM. "It said: I have watched long enough. It is time to act." The implications of this statement are still being assessed. All leave cancelled until further notice.'
         };
 
-        const _CODEX_FACTION = { space: { label: 'SPACE', color: '#5a8898', stamp: '🌌' }, time: { label: 'TIME', color: '#b8a060', stamp: '⏳' }, chaos: { label: 'CHAOS', color: '#985050', stamp: '🔥' } };
+        const _CODEX_ACCENT = '#b8a060';   // the dossier's one accent (the factions went 2026-10-17)
         const _CODEX_TYPE_COLORS = { divine: '#dcaa1e', unholy: '#9632b4', anomaly: '#dc3c82', tech: '#28a0be', human: '#a0a0c3', alien: '#32aa50' };
         const _CODEX_CLASS_LABELS = { tank: 'HEAVY ARMOR', bruiser: 'ASSAULT', healer: 'MEDICAL', support: 'SUPPORT OPS', assassin: 'BLACK OPS', caster: 'PSI-OPS', ranged: 'LONG RANGE', specialist: 'SPECIALIST', hybrid: 'MULTI-ROLE' };
 
@@ -8398,9 +8434,8 @@
             return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
         }
 
-        function _codexFactionVars(faction) {
-            const col = (_CODEX_FACTION[faction] && _CODEX_FACTION[faction].color) || '#b8a060';
-            const rgb = _codexHexToRgb(col);
+        function _codexAccentVars() {
+            const rgb = _codexHexToRgb(_CODEX_ACCENT);
             return `--cdx-fc-glow:rgba(${rgb},0.26);--cdx-fc-ground:rgba(${rgb},0.50);--cdx-fc-dim:rgba(${rgb},0.10)`;
         }
 
@@ -8425,13 +8460,12 @@
         }
 
         // The hero stage: the selected vessel staged BIG (party-builder style),
-        // identity + faction stamp beside it. Shared by the codex and the shop
+        // identity beside it. Shared by the codex and the shop
         // so both screens read as the same Intelligence Division terminal.
         function _codexHeroHtml(race, opts) {
             opts = opts || {};
             const profile = RACE_PROFILES[race];
             if (!profile) return '';
-            const faction = _CODEX_FACTION[profile.faction] || { label: '???', color: '#888', stamp: '❓' };
             const raceClass = RACE_CLASS[race] || 'hybrid';
             const classLabel = _CODEX_CLASS_LABELS[raceClass] || 'UNCLASSIFIED';
             const types = profile.types || [];   // THE JOBS REMOVAL (2026-09-27): no default job — the role line reads RACE_CLASS
@@ -8449,12 +8483,10 @@
             const viewable = !locked && !!g3d && !!(window.EWCharViewer && window.EWCharViewer.supports(race, g3d));
             const raceAttr = race.replace(/"/g, '&quot;');
             const viewerHtml = viewable
-                ? `<div class="cdx-hero-viewer" data-cv-race="${raceAttr}" data-cv-gender="${g3d}" data-cv-accent="${faction.color}"></div>
+                ? `<div class="cdx-hero-viewer" data-cv-race="${raceAttr}" data-cv-gender="${g3d}" data-cv-accent="${_CODEX_ACCENT}"></div>
                    <div class="cdx-viewer-hint">⟲ DRAG&nbsp;&nbsp;·&nbsp;&nbsp;⌕ SCROLL&nbsp;&nbsp;·&nbsp;&nbsp;✕2 RESET</div>` : '';
 
-            const stamp = locked
-                ? `<div class="cdx-stamp ${profile.faction}">🔒 SEALED FILE</div>`
-                : `<div class="cdx-stamp ${profile.faction}">${faction.stamp} ${faction.label} FACTION</div>`;
+            const stamp = locked ? `<div class="cdx-stamp">🔒 SEALED FILE</div>` : '';
             /* D.O.O.R. customs disposition (DOOR_DESIGN §3.2): the stamp shows
                even on sealed files (it's the tease); the point of entry does not. */
             const customs = (typeof doorCustomsStatus === 'function') ? doorCustomsStatus(race) : null;
@@ -8474,7 +8506,7 @@
                 ? `<div class="cdx-traits-row">${traits.map(t => `<span class="cdx-trait-tag">${t}</span>`).join('')}</div>` : '';
 
             return `
-            <div class="cdx-hero" style="${_codexFactionVars(profile.faction)}">
+            <div class="cdx-hero" style="${_codexAccentVars()}">
                 <div class="cdx-hero-stage${viewable ? ' has-viewer' : ''}">
                     <div class="cdx-hero-glow"></div>
                     <div class="cdx-hero-ground"></div>
@@ -8595,10 +8627,6 @@
         function _codexRenderList() {
             let races = [...AVAILABLE_RACES];
 
-            if (_codexFilterFaction !== 'all') {
-                races = races.filter(r => (RACE_PROFILES[r]?.faction || '') === _codexFilterFaction);
-            }
-
             if (_codexFilterType !== 'all') {
                 races = races.filter(r => (RACE_PROFILES[r]?.types || []).includes(_codexFilterType));
             }
@@ -8609,7 +8637,6 @@
             for (const race of races) {
                 const p = RACE_PROFILES[race];
                 if (!p) continue;
-                const faction = p.faction || 'space';
                 const types = (p.types || []).map(t => t.toUpperCase()).join(' / ');
                 const cls = RACE_CLASS[race] || 'hybrid';
                 const classLbl = _CODEX_CLASS_LABELS[cls] || 'UNCLASSIFIED';
@@ -8627,7 +8654,6 @@
                     <div class="cdx-list-info">
                         <div class="cdx-list-name">${nameHtml}${lockBadge}</div>
                         <div class="cdx-list-tags">
-                            <span class="cdx-list-faction ${faction}">${faction.toUpperCase()}</span>
                             <span class="cdx-list-type">${unlocked ? types : '████'}</span>
                         </div>
                         <div class="cdx-list-class">${unlocked ? classLbl : '████████'}</div>
@@ -8664,14 +8690,8 @@
 
             if (!_codexSelectedRace) _codexSelectedRace = AVAILABLE_RACES[0];
 
-            const factionOpts = ['all', 'space', 'time', 'chaos'];
             const typeOpts = ['all', 'divine', 'unholy', 'anomaly', 'tech', 'human', 'alien'];
-            let filterHtml = '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION</span>';
-            for (const f of factionOpts) {
-                const sel = f === _codexFilterFaction ? ' active' : '';
-                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._codexSetFilter('faction','${f}')">${f === 'all' ? 'ALL' : f.toUpperCase()}</button>`;
-            }
-            filterHtml += '</div><div class="cdx-filter-group"><span class="cdx-filter-label">TYPE</span>';
+            let filterHtml = '<div class="cdx-filter-group"><span class="cdx-filter-label">TYPE</span>';
             for (const t of typeOpts) {
                 const sel = t === _codexFilterType ? ' active' : '';
                 filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._codexSetFilter('type','${t}')">${t === 'all' ? 'ALL' : t.toUpperCase()}</button>`;
@@ -8754,11 +8774,9 @@
 
         window._codexSetFilter = function(type, value) {
             if (typeof playSfx === 'function') playSfx('uiCursorMove');
-            if (type === 'faction') _codexFilterFaction = value;
             if (type === 'type') _codexFilterType = value;
 
             let races = [...AVAILABLE_RACES];
-            if (_codexFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r]?.faction || '') === _codexFilterFaction);
             if (_codexFilterType !== 'all') races = races.filter(r => (RACE_PROFILES[r]?.types || []).includes(_codexFilterType));
             if (!races.includes(_codexSelectedRace) && races.length > 0) {
                 races.sort((a, b) => (RACE_PROFILES[a]?.label || a).localeCompare(RACE_PROFILES[b]?.label || b));
@@ -8771,7 +8789,6 @@
         // ACCOUNT SHOP — declassify (unlock) vessels with account gold / tokens
         // ══════════════════════════════════════════════════════════════════
         let _shopSelectedRace = null;
-        let _shopFilterFaction = 'all';
         let _shopFilterOwn = 'all'; // all | owned | locked
         let _shopSearch = '';
         let _shopConfirming = null; // race awaiting purchase confirmation
@@ -8950,7 +8967,6 @@
 
         function _shopFilteredRaces() {
             let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
-            if (_shopFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r].faction || '') === _shopFilterFaction);
             if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitOwned(r));
             if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitOwned(r));
             if (_shopSearch.trim()) {
@@ -9029,15 +9045,9 @@
                 _shopSelectedRace = firstBuyable || AVAILABLE_RACES.find(r => !isUnitOwned(r)) || AVAILABLE_RACES[0];
             }
 
-            const factionOpts = ['all', 'space', 'time', 'chaos'];
             const ownOpts = [['all', 'ALL'], ['locked', 'LOCKED'], ['owned', 'OWNED']];
             let filterHtml = `<input type="text" class="cdx-search" placeholder="Search vessels…" value="${_shopSearch.replace(/"/g, '&quot;')}" oninput="window._shopSetSearch(this.value)">`;
-            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION</span>';
-            for (const f of factionOpts) {
-                const sel = f === _shopFilterFaction ? ' active' : '';
-                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('faction','${f}')">${f === 'all' ? 'ALL' : f.toUpperCase()}</button>`;
-            }
-            filterHtml += '</div><div class="cdx-filter-group"><span class="cdx-filter-label">STATUS</span>';
+            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">STATUS</span>';
             for (const [v, lbl] of ownOpts) {
                 const sel = v === _shopFilterOwn ? ' active' : '';
                 filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('own','${v}')">${lbl}</button>`;
@@ -9080,7 +9090,6 @@
 
         window._shopSetFilter = function(type, value) {
             if (typeof playSfx === 'function') playSfx('uiCursorMove');
-            if (type === 'faction') _shopFilterFaction = value;
             if (type === 'own') _shopFilterOwn = value;
             window._renderShop();
         };
@@ -9317,7 +9326,7 @@
                 tier, sp: (typeof SPELL_TIER_SP !== 'undefined' && SPELL_TIER_SP[tier]) || tier, mp: typeof d.cost === 'number' ? d.cost : null,
                 ap: typeof d.apCost === 'number' ? d.apCost : 1, cd: d.cooldownRounds || 0,
                 role, element: d.element || '', combat: !!(d.element && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(d.element)),
-                faction: d.spellType || '', kind: d.kind || '', type: d.type || '',
+                stype: d.spellType || '', kind: d.kind || '', type: d.type || '',
                 dmg, hits: Array.isArray(d.hitDamages) ? d.hitDamages.length : 0, heal, range: typeof d.range === 'number' ? d.range : null,
                 minRange: typeof d.minRange === 'number' ? d.minRange : null,
                 foot: _slb2Footprint(d), statuses, bonus, push, pushN,
@@ -9338,7 +9347,7 @@
             { key: 'cd',       label: 'CD',       pri: 2, w: '36px',  sort: r => r.cd, desc: true },
             { key: 'role',     label: 'ROLE',     pri: 0, w: '78px',  sort: r => _SLB2_ROLES.indexOf(r.role) },
             { key: 'element',  label: 'ELEM',     pri: 0, w: '52px',  sort: r => r.element || '~' },
-            { key: 'faction',  label: 'FACTION',  pri: 1, w: '78px',  sort: r => r.faction || '~' },
+            { key: 'stype',    label: 'TYPE',     pri: 1, w: '78px',  sort: r => r.stype || '~' },
             { key: 'kind',     label: 'KIND',     pri: 1, w: 'minmax(90px, 0.9fr)', sort: r => r.kind },
             { key: 'dmg',      label: 'DMG',      pri: 0, w: '60px',  sort: r => r.dmg, desc: true },
             { key: 'heal',     label: 'HEAL',     pri: 1, w: '48px',  sort: r => r.heal, desc: true },
@@ -10144,7 +10153,7 @@
             desc:   { t: 'long', h: 'Tooltip / HUD description.' },
             type:   { t: 'enum', o: _SLB_TYPES, h: 'Coarse category (drives AI + UI grouping).' },
             kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
-            spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Faction/combo type (keys COMBO_REGISTRY).' },
+            spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Spell type / combo type (keys COMBO_REGISTRY).' },
             element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Flavor element — drives VFX theming, NOT the type chart.' },
             damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → M DEF.' },
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
@@ -10598,7 +10607,7 @@
                 case 'cd': return r.cd ? String(r.cd) : '<span class="slb2-dim">—</span>';
                 case 'role': return _slb2RoleChip(r.role, d.roleOverride ? 'role pinned: ' + r.role : 'role: ' + r.role);
                 case 'element': return r.element ? `<span class="slb2-elem" title="${_slbEsc(r.element + (r.combat ? ' · combat element (affinity)' : ' · flavour element (VFX only)'))}"><i style="background:${_slb2FamColor(r.element)}" class="slb2-elemdot${r.combat ? ' combat' : ''}"></i>${_slb2Glyph(r.element)}</span>` : '<span class="slb2-dim">—</span>';
-                case 'faction': return r.faction ? _slb2Chip(r.faction.toUpperCase(), _slb2TypeColor(r.faction), 'spell type: ' + r.faction) : '<span class="slb2-dim">—</span>';
+                case 'stype': return r.stype ? _slb2Chip(r.stype.toUpperCase(), _slb2TypeColor(r.stype), 'spell type: ' + r.stype) : '<span class="slb2-dim">—</span>';
                 case 'kind': return `<span class="slb2-kind" title="${_slbEsc(d.type || '')}">${_slbEsc(r.kind)}</span>`;
                 case 'dmg': return r.dmg ? `<b>${r.dmg}</b>${r.hits ? `<span class="slb2-dim"> ×${r.hits}</span>` : ''}` : '<span class="slb2-dim">—</span>';
                 case 'heal': return r.heal ? `<b class="slb2-heal">${r.heal}</b>` : '<span class="slb2-dim">—</span>';
@@ -10640,7 +10649,7 @@
             const fam = r.families[0];
             return `<div class="slb2-card${r.id === _slbSelectedId ? ' sel' : ''}${_slbSelection.includes(r.id) ? ' multi' : ''}${r.deleted ? ' del' : ''}" data-act="row" data-id="${_slbEsc(r.id)}" style="--fam:${fam ? _slb2FamColor(fam) : '#3a3448'}">
                 <div class="slb2-card-top"><span class="slb2-tier t${r.tier}">${_slb2TierText(r.tier)}</span><span class="slb2-card-name" title="${_slbEsc(r.id)}">${_slbEsc(d.name || r.id)}</span>${_slb2Cell('edit', r)}</div>
-                <div class="slb2-card-badges">${_slb2RoleChip(r.role)}${r.faction ? _slb2Chip(r.faction.toUpperCase(), _slb2TypeColor(r.faction)) : ''}${r.element ? `<span class="slb2-elem">${_slb2Glyph(r.element)}</span>` : ''}${r.statuses.slice(0, 2).map(s => _slb2Chip(_slb2StatusShort(s.id), _slb2StatusColor(s.id))).join('')}${_slb2Cell('bonus', r).replace('<span class="slb2-dim">—</span>', '')}</div>
+                <div class="slb2-card-badges">${_slb2RoleChip(r.role)}${r.stype ? _slb2Chip(r.stype.toUpperCase(), _slb2TypeColor(r.stype)) : ''}${r.element ? `<span class="slb2-elem">${_slb2Glyph(r.element)}</span>` : ''}${r.statuses.slice(0, 2).map(s => _slb2Chip(_slb2StatusShort(s.id), _slb2StatusColor(s.id))).join('')}${_slb2Cell('bonus', r).replace('<span class="slb2-dim">—</span>', '')}</div>
                 <div class="slb2-card-stats">${r.dmg ? `<span>⚔ ${r.dmg}</span>` : ''}${r.heal ? `<span class="slb2-heal">✚ ${r.heal}</span>` : ''}<span>✦ ${r.mp == null ? '—' : r.mp}</span>${r.range != null ? `<span>↔ ${r.range}</span>` : ''}${r.foot ? _slb2Tiles(r.foot, 4) : ''}<span class="slb2-card-owner">${_slbEsc(r.isRace ? _slb2Race(r.owner) : r.owner)}</span></div>
                 <div class="slb2-card-desc">${_slbEsc(d.desc || '')}</div>
             </div>`;
@@ -10703,7 +10712,7 @@
             dmgPerLevel: 'Damage per level', collisionBonus: 'Collision bonus', blastDmg: 'Blast damage', blastRadius: 'Blast radius', aoeDmgPct: 'Splash fraction',
             ignoreArmor: 'Ignores armour', sneakBonus: 'Backstab bonus', executePct: 'Execute below', noDamage: 'Never damages', heal: 'Heal', healAmt: 'Area heal',
             healPerTurn: 'Heal per turn', selfHealPct: 'Self-heal', drainPct: 'Drain', shield: 'Shield', shieldHp: 'Area shield', shieldCapPct: 'Shield cap',
-            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Faction', element: 'Element', school: 'School (legacy)',
+            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Spell type', element: 'Element', school: 'School (legacy)',
             jobPreference: 'AI hint (legacy)', kind: 'Kind (engine branch)',
             range: 'Range', ignoresLineOfSight: 'Ignores line of sight', requireVision: 'Needs vision', requiresFlight: 'Needs flight', allyOnly: 'Allies only',
             friendlyFire: 'Friendly fire', chargeToTarget: 'Charges in', groundsFlyers: 'Grounds flyers', longRange: 'Long range', aoeRadius: 'Area radius',
@@ -14194,6 +14203,11 @@
                 _lastAoePreviewX = x; _lastAoePreviewY = y;
                 _lastAoePreviewTool = state.selectedTool || null;
             }
+            /* THE BANE FORECAST (2026-10-17): an armed bane (or the grenade) reads like a damage spell */
+            if (!ov && state.actionMode === 'item' && typeof ITEM_RULES !== 'undefined' && ITEM_RULES[state.selectedTool]?.baneType) {
+                _updateBanePreview(getSelectedUnit(), state.selectedTool, x, y, state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y ? state.pendingTarget.z : undefined);
+                return;
+            }
             if (!ov && state.actionMode !== 'spell') { clearAoePreview(); clearIntentPreview(); return; }
             const unit = ov ? ov.unit : getSelectedUnit();
             if (!unit) { clearAoePreview(); clearIntentPreview(); return; }
@@ -14357,6 +14371,40 @@
         let _aoePreview3dActive = false;
         let _terrainGhost3dActive = false;
 
+        /* THE BANE FORECAST (2026-10-17, mondo: "banes need to have a damage projection just like spells"): the enemy a
+           bane thrown at (x, y) would hit, or null — the same column pick, team rule and reach doItem checks. */
+        function baneThrowTarget(unit, itemKey, x, y, z) {
+            if (!unit || typeof ITEM_RULES === 'undefined' || !ITEM_RULES[itemKey]?.baneType) return null;
+            const t = (typeof resolveUnitInColumn === 'function') ? resolveUnitInColumn(unit, x, y, z, { side: 'enemy' }) : unitAt(x, y);
+            if (!t || t.dead || isAllyUnit(t, unit)) return null;
+            const reach = ((typeof getEffectiveRange === 'function') ? getEffectiveRange(unit, { item: true }) : 1) + 2;
+            if (Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y)) > reach) return null;
+            return t;
+        }
+        window.baneThrowTarget = baneThrowTarget;
+
+        /* The armed bane on the board: every tile it hits gets the crimson hit plate (the aim tile the cursor brackets,
+           the grenade's blast round it), every body it hits the forecast badges — the spells' own painters. */
+        const _baneThrowHeld = () => (window._ewBaneThrowUntil || 0) > (typeof performance !== 'undefined' ? performance.now() : 0);
+        function _updateBanePreview(unit, itemKey, x, y, z) {
+            clearAoePreview();
+            clearIntentPreview();
+            if (_baneThrowHeld()) return;
+            const target = baneThrowTarget(unit, itemKey, x, y, z);
+            if (!target || typeof forecastBanePlan !== 'function') return;
+            const plan = forecastBanePlan(unit, itemKey, target);
+            if (!plan.handled) return;
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                const tiles = (plan.tiles.length ? plan.tiles : [{ x: target.x, y: target.y }]).map(t => {
+                    const isCenter = t.x === target.x && t.y === target.y;
+                    return { x: t.x, y: t.y, color: EW_PREVIEW.hit, opacity: isCenter ? 0.95 : 0.85, cursor: isCenter };
+                });
+                ThreeRenderer.setOverlay('aoe', tiles, 0xff3333, 0.35);
+                _aoePreview3dActive = true;
+            }
+            _fcRenderBadges(unit, plan.spell, plan);
+        }
+
         /* Casts whose aim plate is a DESTINATION, not a hit: the body movers
            and the placements. Their reach lattice must stay readable. */
         const _BODY_MOVE_KINDS = { teleport: 1, swap: 1, escape: 1, rallyPull: 1, dash: 1 };
@@ -14516,6 +14564,15 @@
                     if (typeof forecastBasicAttack !== 'function') return null;
                     const f = forecastBasicAttack(attacker, target, { castFrom: castFrom || null });
                     return f ? Object.assign({ plan: null }, f) : null;
+                }
+                /* a thrown bane rides the same read (spell = baneForecastSpell(itemKey), battle.js forecastBanePlan) */
+                if (spell.kind === 'bane' && spell.item) {
+                    if (typeof forecastBanePlan !== 'function') return null;
+                    const bp = forecastBanePlan(attacker, spell.item, target, { castFrom: castFrom || null });
+                    if (!bp.handled) return null;
+                    const bh = bp.byId[target.id];
+                    if (!bh) return { dmg: 0, min: 0, max: 0, lethal: false, blocked: null, heal: 0, plan: bp };
+                    return { dmg: bh.dmg, min: bh.min, max: bh.max, lethal: bh.lethal, blocked: bh.blocked, heal: bh.heal, plan: bp };
                 }
                 if (typeof forecastSpellPlan !== 'function') return null;
                 /* aim = an off-centre AoE centre (the quick menu's best aim) — the unit is read from the cast there */
@@ -14869,6 +14926,8 @@
                     if (hov.spellName) {
                         spell = (attacker.spells || []).find(s => s.name === hov.spellName)
                             || (attacker._raceAbilities || []).find(s => s.name === hov.spellName);
+                    } else if (hov.itemKey && typeof baneForecastSpell === 'function') {
+                        spell = baneForecastSpell(hov.itemKey);   // a bane row: the throw's forecast (null for other items)
                     }
                     const key = ['hov', attacker.id, target.id,
                         (spell && spell.name) || (hov.isAttack ? 'atk' : '') || (hov.itemKey || ''),
@@ -14941,7 +15000,13 @@
             let spell = null, itemKey = null;
             if (mode === 'item') {
                 itemKey = pt.tool || state.selectedTool;
-                if (!(typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'healPotion') : itemKey === 'healPotion')) return null;
+                /* an armed bane forecasts its throw on the enemy it would hit (battle.js forecastBanePlan) */
+                if (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[itemKey]?.baneType) {
+                    if (_baneThrowHeld() || typeof baneForecastSpell !== 'function'
+                        || !baneThrowTarget(attacker, itemKey, pt.x, pt.y, pt.z) || !isEnemyUnit(attacker, target)) return null;
+                    spell = baneForecastSpell(itemKey);
+                    itemKey = null;
+                } else if (!(typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'healPotion') : itemKey === 'healPotion')) return null;
             } else if (mode === 'spell') {
                 const toolName = pt.tool || state.selectedTool;
                 spell = (attacker.spells || []).find(s => s.name === toolName)
@@ -15120,7 +15185,8 @@
            the board (Mirror Blink's destination tiles never appeared, 2026-10-08). */
         window._renderForecastBadges = function (caster, spell, plan) { if (caster && spell && plan) _fcRenderBadges(caster, spell, plan); };
         function _fcRenderBadges(caster, spell, plan) {
-            const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
+            const _bane = spell.kind === 'bane';   // a thrown bane: its own matchup (h.superEff), no element
+            const _iEl = _bane ? null : (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
             const shown = new Set();
             for (const h of plan.hits) {
                 const target = h.unit;
@@ -15143,7 +15209,8 @@
                 for (const t of h.tags) if (_FC_TAG_TEXT[t]) push(_FC_TAG_TEXT[t], 'intent-status intent-status-debuff', 14);
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
-                    const typeEff = _getTypeEffLabel(caster, target, spell);
+                    const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
+                        : _getTypeEffLabel(caster, target, spell);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     if (_iAff === 'weak') push(_SE_CIRCLE_HTML + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
@@ -17336,10 +17403,9 @@
         const STAT_RANGE = (typeof RACE_STAT_RANGE !== 'undefined' && RACE_STAT_RANGE) || { vision: [2, 6], crt: [0, 100] };   // data.js
         const SL = Object.fromEntries(STATS);
         const FRAMES = [['base', 'BASE'], ['l1', 'LEVEL 1'], ['l100', 'LEVEL 100']];
-        const FACTIONS = ['space', 'time', 'chaos'];
         const TIERS = ['none', 'weak', 'resist', 'immune', 'absorb'];
         const R = {
-            tab: 'races', frame: 'base', view: 100, sel: null, search: '', role: '', type: '', faction: '',
+            tab: 'races', frame: 'base', view: 100, sel: null, search: '', role: '', type: '',
             sort: { key: 'name', dir: 1 }, rankStat: 'hp', rank: null, rankMode: 'shape', lvRace: null,
             calc: { a: null, d: null, la: 100, ld: 100, dmg: 40, kind: 'physical' },
             undo: [], redo: [], bound: false,
@@ -17353,7 +17419,6 @@
         const label = r => (RACE_PROFILES[r] && RACE_PROFILES[r].label) || r;
         const role = r => (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[r]) || '';
         const types = r => (RACE_PROFILES[r] && RACE_PROFILES[r].types) || [];
-        const faction = r => (RACE_PROFILES[r] && RACE_PROFILES[r].faction) || '';
         const range = r => (typeof raceKit === 'function' ? raceKit(r).range : 1);
         const frameLevel = () => R.frame === 'l1' ? 1 : R.frame === 'l100' ? cap() : 0;
         const toFrame = (k, b) => R.frame === 'base' ? b : raceStatAtLevel(k, b, frameLevel());
@@ -17399,7 +17464,7 @@
         function filtered() {
             const q = R.search.trim().toLowerCase();
             return races().filter(r => (!q || r.includes(q) || label(r).toLowerCase().includes(q))
-                && (!R.role || role(r) === R.role) && (!R.type || types(r).includes(R.type)) && (!R.faction || faction(r) === R.faction));
+                && (!R.role || role(r) === R.role) && (!R.type || types(r).includes(R.type)));
         }
         function sorted(list) {
             const k = R.sort.key, d = R.sort.dir;
@@ -17480,7 +17545,6 @@
                 <label class="slb2-searchwrap rce-search"><span>⌕</span><input class="slb2-search" type="text" placeholder="search a race" value="${esc(R.search)}" data-f="search" spellcheck="false"></label>
                 <select class="slb2-sel" data-f="role">${opt('', R.role, 'every role')}${allRoles().map(x => opt(x, R.role)).join('')}</select>
                 <select class="slb2-sel" data-f="type">${opt('', R.type, 'every type')}${allTypes().map(x => opt(x, R.type)).join('')}</select>
-                <select class="slb2-sel" data-f="faction">${opt('', R.faction, 'every faction')}${FACTIONS.map(x => opt(x, R.faction)).join('')}</select>
                 <span class="slb2-dim rce-count">${filtered().length} of ${races().length} races</span>${extra || ''}
             </div>`;
         }
@@ -17523,7 +17587,6 @@
                     <label>NAME</label><div><input class="rce-txt" value="${esc(pr.label || '')}" data-f="label" data-r="${esc(r)}">${was('label')}</div>
                     <label>MALE NAME</label><div><input class="rce-txt" value="${esc(pr.labelMale || '')}" placeholder="same as name" data-f="labelMale" data-r="${esc(r)}">${was('labelMale')}</div>
                     <label>FEMALE NAME</label><div><input class="rce-txt" value="${esc(pr.labelFemale || '')}" placeholder="same as name" data-f="labelFemale" data-r="${esc(r)}">${was('labelFemale')}</div>
-                    <label>FACTION</label><div><select class="slb2-sel" data-f="faction1" data-r="${esc(r)}">${FACTIONS.map(x => opt(x, pr.faction)).join('')}</select>${was('faction')}</div>
                     <label>TYPE</label><div>${allTypes().map(t => `<button class="slb2-tiny${types(r).includes(t) ? ' on' : ''}" data-act="type" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join(' ')}${was('types')}</div>
                     <label>ROLE</label><div><select class="slb2-sel" data-f="role1" data-r="${esc(r)}">${opt('', role(r), '—')}${allRoles().map(x => opt(x, role(r))).join('')}</select>${was('role')}</div>
                     <label>ATTACK RANGE</label><div><input class="rce-in" type="number" min="1" max="8" value="${range(r)}" data-f="range" data-r="${esc(r)}"> <span class="slb2-dim">tiles (basic attack reach)</span>${was('range')}</div>
@@ -17566,7 +17629,7 @@
         /* ── RANK: one stat, drag to order, floor and ceiling ── */
         function rankInit(force) {
             const k = R.rankStat;
-            const sig = k + '|' + R.search + '|' + R.role + '|' + R.type + '|' + R.faction;
+            const sig = k + '|' + R.search + '|' + R.role + '|' + R.type;
             if (R.rank && R.rank.sig === sig && !force) return R.rank;
             const order = filtered().sort((a, b) => base(b, k) - base(a, k) || label(a).localeCompare(label(b)));
             const ladder = order.map(r => base(r, k));
@@ -17916,7 +17979,7 @@
                 if (f === 'view') { R.view = Math.max(1, Math.min(cap(), +val || 1)); if (live) { document.querySelectorAll('#raceEditorBody .rce-viewnum').forEach(n => { n.textContent = R.view; }); return; } render(); return; }
                 if (live) return;   // everything below writes on change (blur / enter)
                 if (f === 'importFile') { importFile(el); return; }
-                if (f === 'role' || f === 'type' || f === 'faction') { R[f] = val; render(); return; }
+                if (f === 'role' || f === 'type') { R[f] = val; render(); return; }
                 if (f === 'lvRace') { R.lvRace = val; render(); return; }
                 if (f === 'calcA') { R.calc.a = val; render(); return; }
                 if (f === 'calcD') { R.calc.d = val; render(); return; }
@@ -17926,7 +17989,6 @@
                 else if (f === 'rankVal') W(() => { M().setRace(r, R.rankStat, fromFrame(R.rankStat, val)); }, false);
                 else if (f === 'rankCeil' || f === 'rankFloor') { const rk = rankInit(); rk[f === 'rankCeil' ? 'ceil' : 'floor'] = fromFrame(R.rankStat, val); W(() => rankDistribute(), true); }
                 else if (f === 'label' || f === 'labelMale' || f === 'labelFemale') W(() => M().setRace(r, f, val.trim() || (f === 'label' ? M().shipped(r, 'label') : null)));
-                else if (f === 'faction1') W(() => M().setRace(r, 'faction', val));
                 else if (f === 'role1') W(() => M().setRace(r, 'role', val));
                 else if (f === 'range') W(() => M().setRace(r, 'range', Math.max(1, Math.min(8, Math.round(+val || 1)))));
                 else if (f === 'terrain') W(() => M().setRace(r, 'terrain', val));
