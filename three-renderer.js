@@ -10936,7 +10936,11 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < state.units.length; i++) {
                 var u = state.units[i];
                 if (u.dead) continue;
-                if (isInNexusZone(u.x, u.y, key)) {
+                /* the rule's own count (ui.js processNexusIncome): a cloaked or airborne unit doesn't contest — and a
+                   cloaked enemy lighting the bar CONTESTED would give its position away */
+                if (typeof unitHasStatus === 'function' && unitHasStatus(u, 'invisible')) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (isInNexusZone(u.x, u.y, key, u.z)) {
                     if (u.player === 1) hasP1 = true;
                     if (u.player === 2) hasP2 = true;
                 }

@@ -5140,14 +5140,16 @@ function ActionMenu({ st, hidden }) {
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
     const _chOk = _capturable && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
+    /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
+    const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
     const _chLocked = typeof isSpawnLockedOut === 'function' && isSpawnLockedOut(unit.player);
     pushers.push({
       id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: _chLocked ? '#ff8a7a' : '#5fd6ff',
       available: _chOk,
       sub: !_nex ? (_chLocked ? '⛔ NO SPAWN — take a zone' : 'Not on a nexus')
-         : (!_capturable ? 'Already yours' : (_chOk ? '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '') : 'No AP')),
+         : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chThr - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
-      title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it — stepping in also ticks)',
+      title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks)',
       fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
     });
   }
@@ -8724,8 +8726,9 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
       const prog = actingUnit.player === 1 ? Math.max(0, nex.nexus.progress) : Math.max(0, -nex.nexus.progress);
       const thresh = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 3;
+      const _chRead = typeof nexusTeamReadout === 'function' ? nexusTeamReadout(nex.nexus, actingUnit.player) : null;
       actions.push({
-        id: 'channel', label: 'Channel (' + prog + '/' + thresh + ')', icon: '⬡', category: 'actions',
+        id: 'channel', label: 'Channel (' + (_chRead ? _chRead.text.toLowerCase().replace(/^./, c => c.toUpperCase()) : prog + '/' + thresh) + ')', icon: '⬡', category: 'actions',
         apCost: 1, available: true,
         handler: () => {
           state._tileActionTarget = null;
