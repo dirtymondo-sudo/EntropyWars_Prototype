@@ -10924,8 +10924,11 @@ function _hudHideCss() {
       z-index: 12; pointer-events: none;
       transform: scale(var(--ew-ui-scale, 1)); transform-origin: 0 100%;
       font-family: 'IBM Plex Mono', monospace;
-      transition: bottom 0.32s cubic-bezier(0.22,1,0.36,1);
+      transition: bottom 0.32s cubic-bezier(0.22,1,0.36,1), opacity 0.25s ease;
     }
+    /* spell shots: the turn clock steps aside (battle.js showActionCamChrome / hideActionCamChrome toggle the class) */
+    body.ew-spell-shot .ew-turn-col { opacity: 0; }
+    body.ew-spell-shot .ew-turn-col * { pointer-events: none !important; }
     .ew-tc-list { display: flex; flex-direction: column; align-items: flex-start; }
     .ew-tc-list > * + * { margin-top: var(--tc-neg, 0px); }   /* Icon spacing below 0 overlaps them */
     .ew-tc-icon {
