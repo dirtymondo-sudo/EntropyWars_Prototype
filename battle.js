@@ -11622,9 +11622,20 @@
                     sx.putImageData(img, 0, 0);
                 }
                 const gs = hr.glyph ? Math.round(h * 0.46) : 0;       // glyph box
-                const padX = gs ? Math.round(gs * 1.05) : (hr.crit ? Math.round(h * 0.3) : 0);
-                const padY = hr.crit ? Math.round(h * 0.28) : 0;
-                const W = w + padX * 2, H = h + padY * 2;
+                // The ink's own margins inside the stock pop (three-renderer
+                // _buildFloatTextCanvas) — the layout stacks pops by them.
+                const mX = c._ewMarginX || 0, mT = c._ewMarginTop || 0, mB = c._ewMarginBot || 0;
+                /* THE NUMBER IS THE HERO (mondo 2026-10-17): the CRIT stamp
+                   sits on the number's top-right SHOULDER, clear of the
+                   digits — it used to be stamped across the last digit. */
+                const sFs = Math.max(10, Math.round(h * 0.22));
+                const sR = sFs * 1.35;                                  // the starburst's half-height
+                const sCx = w - mX - sR * 0.55, sCy = mT - sR * 0.62;   // in the stock pop's coords
+                const padL = gs ? Math.round(gs * 1.05) : 0;
+                const padR = hr.crit ? Math.max(gs ? padL : 0, Math.ceil(sCx + sR * 1.55 - w)) : padL;
+                const padT = hr.crit ? Math.max(0, Math.ceil(sR - sCy) + 2) : 0;
+                const padX = padL, padY = padT;
+                const W = w + padL + padR, H = h + padT;
                 c.width = W; c.height = H;                              // (clears it)
                 const ctx = c.getContext('2d');
                 if (hr.kill) {
@@ -11638,10 +11649,13 @@
                     ctx.restore();
                 }
                 ctx.drawImage(snap, padX, padY);
-                if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, H / 2, gs);
-                if (hr.crit) _hitReadStamp(ctx, padX + w * 0.8, padY + h * 0.2, h);
+                if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, padY + h / 2, gs);
+                if (hr.crit) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs);
                 c.style.width = Math.round(W * hr.scale) + 'px';
                 c.style.height = Math.round(H * hr.scale) + 'px';
+                c._ewMarginX = (gs || hr.crit ? 0 : mX) * hr.scale;   // glyph / stamp are ink at the edges
+                c._ewMarginTop = (hr.crit ? Math.max(0, padY + sCy - sR) : mT) * hr.scale;
+                c._ewMarginBot = mB * hr.scale;
                 // The afterglow breathes while the killing blow lingers.
                 if (hr.kill && typeof c.animate === 'function') {
                     const gc = hr.glowColor;
@@ -11680,8 +11694,7 @@
         }
         // The crit stamp: a tilted gold plate on a white starburst, "CRIT"
         // punched out in near-black — reads at a glance, even at chip size.
-        function _hitReadStamp(ctx, cx, cy, h) {
-            const fs = Math.max(10, Math.round(h * 0.24));
+        function _hitReadStamp(ctx, cx, cy, fs) {
             ctx.save();
             ctx.translate(cx, cy);
             ctx.rotate(-0.24);
@@ -21622,6 +21635,14 @@
         // ═══════════════════════════════════════════════════════════════════
         let _acChromeEl = null;
         let _acChromeState = null;   // { heavy, total, shown, until, holdUntil, hideTimer, rollRaf }
+        /* THE READOUT LINGERS (mondo 2026-10-17: the corner damage counter
+           "needs to be bigger or stay on screen longer ... its easy to
+           miss"): each hit holds the shot's chrome AC_TALLY_HOLD_MS past it,
+           and when the chrome leaves, the spell name + total stay put
+           AC_TALLY_LINGER_MS more while the letterbox slides away. */
+        const AC_TALLY_HOLD_MS = 1400;
+        const AC_TALLY_LINGER_MS = 1700;
+        let _acLingerTimer = null;
 
         function _ensureActionCamChrome() {
             if (_acChromeEl && _acChromeEl.isConnected) return _acChromeEl;
@@ -21651,7 +21672,8 @@
                 tallyKind: opts.tallyKind === 'heal' ? 'heal' : 'damage',
                 until: performance.now() + totalMs + 400, holdUntil: 0,
                 hideTimer: null, rollRaf: null };
-            el.classList.remove('light', 'hiding', 'finisher');
+            if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
+            el.classList.remove('light', 'hiding', 'finisher', 'dmg-linger');
             if (!opts.heavy) el.classList.add('light');
             // Heal-flavored shots (heals / potions / revives) restyle the
             // corner readout green and re-label it — the healing twin of the
@@ -21672,7 +21694,7 @@
             const dmgRow = el.querySelector('.acam-dmg-row');
             const dmgNum = el.querySelector('.acam-dmg-num');
             if (dmgRow) dmgRow.classList.remove('show');
-            if (dmgNum) { dmgNum.textContent = '0'; dmgNum.classList.remove('crit', 'tick'); }
+            if (dmgNum) { dmgNum.textContent = '0'; dmgNum.classList.remove('crit', 'tick', 'land'); }
             requestAnimationFrame(() => el.classList.add('active'));
             _acChromeState.hideTimer = setTimeout(() => hideActionCamChrome(), totalMs);
             /* the turn clock (hud.js TurnColumn) steps aside for the shot and comes back when the chrome leaves
@@ -21704,6 +21726,17 @@
             }
             _acChromeEl.classList.remove('active');
             _acChromeEl.classList.add('hiding');
+            // A shot that dealt (or healed) something keeps its readout up a
+            // beat longer as the bars leave (styles-cinematic.css .dmg-linger).
+            if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
+            if (st && st.heavy && st.total > 0 && !_skipVisuals()) {
+                const chromeEl = _acChromeEl;
+                chromeEl.classList.add('dmg-linger');
+                _acLingerTimer = setTimeout(() => {
+                    _acLingerTimer = null;
+                    chromeEl.classList.remove('dmg-linger');
+                }, AC_TALLY_LINGER_MS);
+            }
         }
 
         /* Frame punctuation. 'cut' = a subtle dark dip on the cast→hit camera
@@ -21755,7 +21788,14 @@
             const step = () => {
                 if (_acChromeState !== st) return;   // superseded by a new shot
                 const diff = st.total - st.shown;
-                if (diff <= 0) { st.rollRaf = null; return; }
+                if (diff <= 0) {
+                    st.rollRaf = null;
+                    // the roll lands: one bright settle pulse on the final figure
+                    num.classList.remove('land');
+                    void num.offsetWidth;
+                    num.classList.add('land');
+                    return;
+                }
                 st.shown = Math.min(st.total, st.shown + Math.max(1, Math.round(diff * 0.16)));
                 num.textContent = st.shown.toLocaleString();
                 st.rollRaf = requestAnimationFrame(step);
@@ -21779,13 +21819,13 @@
             const num = _acChromeEl.querySelector('.acam-dmg-num');
             if (!row || !num) return false;
             st.total += dmg;
-            // Each hit guarantees ~1s of screen time past the LAST damage tick —
+            // Each hit guarantees AC_TALLY_HOLD_MS of screen time past the LAST damage tick —
             // just enough for the roll-up to settle and be read. The chrome
             // otherwise hides on the shot's own clock, so the readout leaves
             // right as the camera returns instead of outstaying the moment.
             // (Late ticks used to fall outside `until` and get silently
             // dropped — that's why the floating total out-bid the corner.)
-            const HOLD_MS = 1000;
+            const HOLD_MS = AC_TALLY_HOLD_MS;
             const now = performance.now();
             st.until = Math.max(st.until, now + HOLD_MS + 400);
             st.holdUntil = now + HOLD_MS;
@@ -21793,7 +21833,7 @@
             st.hideTimer = setTimeout(() => hideActionCamChrome(), HOLD_MS);
             row.classList.add('show');
             if (isCrit) num.classList.add('crit');
-            num.classList.remove('tick');
+            num.classList.remove('tick', 'land');
             void num.offsetWidth;
             num.classList.add('tick');
             _acRollDamageNum();
@@ -21815,7 +21855,7 @@
             const num = _acChromeEl.querySelector('.acam-dmg-num');
             if (!row || !num) return false;
             st.total += amount;
-            const HOLD_MS = 1000;
+            const HOLD_MS = AC_TALLY_HOLD_MS;
             const now = performance.now();
             st.until = Math.max(st.until, now + HOLD_MS + 400);
             st.holdUntil = now + HOLD_MS;

@@ -4393,6 +4393,22 @@
                             }
                             window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind, _ftOpts);
                         }
+                        /* THE READOUT (mondo 2026-10-17): the host rolls each hit into the
+                           action shot's corner TOTAL DMG inside applyDamageToUnit, which
+                           never runs here — so the mirror rolls its own from the relayed
+                           hit numbers (the shot's chrome is the guest's own, from the
+                           action-camera relay). Heal shots roll TOTAL HEALED the same way. */
+                        var _ftNum = /^([+\-])(\d+)$/.exec(String(data.text || ''));
+                        if (_ftNum) {
+                            var _ftAmt = parseInt(_ftNum[2], 10);
+                            if (_ftNum[1] === '-' && (data.hit || data.dmgAmt > 0)
+                                && (data.kind === 'damage' || data.kind === 'critdmg' || data.kind === 'combo')
+                                && typeof _actionCamTallyDamage === 'function') {
+                                _actionCamTallyDamage(_ftAmt, data.kind === 'critdmg');
+                            } else if (_ftNum[1] === '+' && data.kind === 'heal' && typeof _actionCamTallyHeal === 'function') {
+                                _actionCamTallyHeal(_ftAmt);
+                            }
+                        }
                     }
 
                     if (data.type === 'key-fx' && _ewMirrorView()) {

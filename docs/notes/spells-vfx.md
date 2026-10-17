@@ -1412,3 +1412,16 @@ old heights so nothing pokes up early). `_riseTick` (every frame) moves them; a 
 (`unitSurfaceY` subtracts the sink; units mid-walk/jump/strike are left alone). Lowered cells snap as before. Checked in
 the sandbox: Fairy Forest arena (WebGL + WebGPU) and Göbekli Tepe tile board (WebGL), unit riding the wall. Off:
 `window.EW_NO_TERRAIN_RISE = true`; `window.EW_RISE_MS` sets the duration.
+
+### THE NUMBER IS THE HERO (2026-10-17, mondo: tags covered the damage number; corner total easy to miss)
+- three-renderer.js `_layoutFloatTexts` runs every frame on the showing pops (screen space). Numbers (`_buildFloatTextCanvas`
+  isNumber → `c._ewHero`) are placed first, newest keeps its spot, older ones cascade up; word tags (WEAK!, HIGH GROUND!,
+  BACKSTAB!, SUPER EFFECTIVE!, every `label` kind) are lifted until their ink clears every number in their column, always
+  ABOVE it. Lifts snap up, ease down. Collision uses the ink box (`c._ewMarginX/Top/Bot`), not the padded canvas.
+- Numbers never wait; tags wait `FLOAT_TAG_LEAD_MS` (110, warp clock, so they land after the hitstop releases the number)
+  plus the per-tile stagger. Numbers ×1.12 on screen and live ×1.25; tags ×0.8 (levelup/laststd/nexus/achieve keep full size).
+  Floor: number ink ≥ 6.5% of screen height, tags ≥ 2.7%, number ≤ 15% (`FLOAT_MIN_*` / `FLOAT_MAX_HERO_H`).
+- battle.js `_hitReadDress3D`: the CRIT stamp sits on the number's top-right shoulder (it used to cover the last digit).
+- Action-cam TOTAL DMG (battle.js `AC_TALLY_HOLD_MS` 1400 per hit, `AC_TALLY_LINGER_MS` 1700 after the bars leave via
+  `.dmg-linger`; settle pulse `.land`). CSS: bigger figure on a dark plate, label above. online.js: the guest rolls its own
+  corner total from relayed `-N` hit pops (data.hit / dmgAmt) and `+N` heal pops.
