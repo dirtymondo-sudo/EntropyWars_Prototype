@@ -1513,11 +1513,9 @@
 
         const numEl = document.createElement('div');
         numEl.className = 'nl-num';
-        if (prog === 0) {
-            numEl.textContent = '—';
-        } else {
-            numEl.textContent = `${Math.abs(prog)}/${NEXUS_CAPTURE_THRESHOLD}`;
-        }
+        /* THE ONE BAR: the viewer's count to 8 (nexusTeamReadout) */
+        numEl.textContent = (typeof window.nexusTeamReadout === 'function' && typeof getViewerPlayer === 'function')
+            ? window.nexusTeamReadout(nex, getViewerPlayer()).text : `${Math.abs(prog)}/${NEXUS_CAPTURE_THRESHOLD}`;
         el.appendChild(numEl);
 
         let modeText = '';
@@ -5136,18 +5134,14 @@
         function _nexusThreshold() {
             return (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
         }
-        /* The count a team sees on a zone (mondo 2026-10-17: a channel on an ENEMY zone read 0/4 until it fell).
-           A zone the other team owns counts the NEUTRALIZE ticks (the owner's bar dragged toward zero, 1/4..4/4);
-           any other zone counts the CAPTURE ticks on this team's side of the bar. */
+        /* THE ONE BAR (mondo 2026-10-17): the count a team sees on a zone is one meter to 2 × the threshold (8).
+           The tug-of-war bar (nex.progress, -thr..+thr) read from this team's side: a zone the enemy holds is 0/8,
+           neutral is 4/8, held is 8/8 — 4 to neutralize an enemy zone, 4 more to claim it, the count never stalls. */
         function nexusTeamReadout(nex, team) {
-            const thr = _nexusThreshold();
+            const thr = _nexusThreshold(), total = thr * 2;
             const p = Number((nex && nex.progress) || 0);
-            if (nex && nex.owner && nex.owner !== team) {
-                const n = Math.max(0, Math.min(thr, thr - Math.abs(p)));
-                return { phase: 'neutralize', n, thr, text: `NEUTRALIZE ${n}/${thr}` };
-            }
-            const n = Math.max(0, Math.min(thr, team === 1 ? p : -p));
-            return { phase: 'capture', n, thr, text: `CAPTURE ${n}/${thr}` };
+            const n = Math.max(0, Math.min(total, thr + (team === 1 ? p : -p)));
+            return { n, total, thr, text: `${n}/${total}` };
         }
         window.nexusTeamReadout = nexusTeamReadout;
         function _nexusZoneCenter(nex) {
@@ -5221,6 +5215,10 @@
                         _fireNexusVfx3d(ev.player === 1 ? '_nexusProgressP1' : '_nexusProgressP2', cx, cy);
                     }
                     playSfx(ev.prog >= thr - 1 ? 'levelUp' : 'buff');
+                    break;
+                case 'drop':   // a unit stepped off a zone it was capturing: the count goes back by one
+                    if (!relayed) showFloatingTextAtTile(cx, cy, `⬡ ${ev.text}`, 'debuff', { durationMs: 1300 });
+                    playSfx('debuff');
                     break;
                 case 'contested':
                     if (!relayed) showFloatingTextAtTile(cx, cy, '⚔ CONTESTED', 'damage', { durationMs: 1200 });
@@ -5409,14 +5407,6 @@
             return res;
         }
 
-        /* Alive, grounded, visible enemies of `team` standing in the zone. */
-        function _nexusEnemiesIn(section, nex, team) {
-            return state.units.filter(u => !u.dead && u.player !== team &&
-                !(typeof unitHasStatus === 'function' && unitHasStatus(u, 'invisible')) &&
-                !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) &&
-                nexusZoneContains(nex, u.x, u.y, u.z));
-        }
-
         function channelNexus(unit) {
             if (!unit || unit.dead || (unit.ap || 0) < NEXUS_CHANNEL_COST_AP) {
                 addLog('Not enough AP to channel.');
@@ -5480,27 +5470,26 @@
            completeMoveAlongPath, next to checkFlagPickup). Boots on the ground
            count the moment they land: +1 per unit per zone per round, so four
            bodies on a fresh 2×2 zone flip it on the spot; the last one to step
-           in gets the credit. An enemy already standing there freezes it
-           (CONTESTED) — the fight decides. Cloaked / airborne units don't
-           count (you can't claim ground you aren't visibly standing on). */
-        function nexusOnUnitArrive(unit) {
+           in gets the credit. It counts on a CONTESTED zone too (mondo
+           2026-10-17). `from` = where the move or jump started: a step that
+           starts inside the same zone is not stepping in, so shuffling around
+           inside a zone scores nothing. Cloaked / airborne units don't count
+           (you can't claim ground you aren't visibly standing on). */
+        function nexusOnUnitArrive(unit, from) {
             if (!unit || unit.dead || !state.nexusPoints) return;
             if (state.phase !== 'battle') return;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'invisible')) return;
+            if (from) _nexusOnUnitLeave(unit, from);
             const nData = getNexusAtUnit(unit);
             if (!nData) return;
             const nex = nData.nexus, section = nData.section;
             if (nex.owner === unit.player) return;
+            if (from && nexusZoneContains(nex, from.x, from.y, from.z)) return;
             const stamp = state.round + ':' + section;
             if (unit._nexusStepStamp === stamp) return;   // one step-tick per zone per round
             unit._nexusStepStamp = stamp;
             const c = _nexusZoneCenter(nex);
-            if (_nexusEnemiesIn(section, nex, unit.player).length > 0) {
-                addLog(`⚔ ${unitDisplayName(unit)} steps into the ${_nexusLabel(section)} Nexus — CONTESTED!`);
-                _nexusFx({ kind: 'contested', section, player: unit.player, x: c.x, y: c.y });
-                return;
-            }
             const res = _nexusApplyTicks(nex, section, unit.player, 1, unit);
             if (!res.captured) {
                 addLog(`⬡ ${unitDisplayName(unit)} takes ground in the ${_nexusLabel(section)} Nexus (${res.text})`);
@@ -5508,6 +5497,33 @@
             }
         }
         window.nexusOnUnitArrive = nexusOnUnitArrive;
+
+        /* STEP-OFF (mondo 2026-10-17): a unit that walks or jumps OUT of a zone takes 1 point back off a capture that
+           isn't finished — its own team's half-capture slides toward neutral, its drain on an enemy zone refills the
+           owner by 1. Never past neutral / the owner's full bar, and a zone the team fully holds keeps its 8/8. */
+        function _nexusOnUnitLeave(unit, from) {
+            const team = unit.player;
+            for (const section of Object.keys(state.nexusPoints)) {
+                const nex = state.nexusPoints[section];
+                if (!nex || !nexusZoneContains(nex, from.x, from.y, from.z)) continue;
+                if (nexusZoneContains(nex, unit.x, unit.y, unit.z)) continue;   // still inside
+                if (nex.owner === team) continue;                                 // fully held: stays 8/8
+                const thr = _nexusThreshold();
+                const dir = team === 1 ? 1 : -1;
+                const p = nex.progress || 0;
+                if (nex.owner) {
+                    if (Math.abs(p) >= thr) continue;                             // the owner's bar is full already
+                    nex.progress = p - dir;
+                } else {
+                    if (p * dir <= 0) continue;                                   // nothing of this team's to lose
+                    nex.progress = p - dir;
+                }
+                const ro = nexusTeamReadout(nex, team);
+                const c = _nexusZoneCenter(nex);
+                addLog(`⬡ ${unitDisplayName(unit)} steps off the ${_nexusLabel(section)} Nexus (${ro.text})`);
+                _nexusFx({ kind: 'drop', section, player: team, x: c.x, y: c.y, prog: ro.n, thr, text: ro.text });
+            }
+        }
 
         function _fireNexusVfx3d(spellId, tx, ty) {
             if (typeof window === 'undefined' || !window.ThreeVFXEffects) return;
