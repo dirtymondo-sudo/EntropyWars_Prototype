@@ -769,17 +769,22 @@ let MAP_POOL = [
 (function derivePvpPoolFromDataJs() {
     if (!_dataJs) return;
     try {
-        const ids = require('vm').runInContext('typeof hqArenaPvpPool === "function" ? hqArenaPvpPool() : null', _dataJs);
+        /* THE ARENA SIZES (2026-10-17): the pool holds every size (9 / 10 / 11 / 12), each row its board side and team size (5v5 on
+           the odd boards) from data.js — pickRandomMap deals a queue only its own team size */
+        const rows = require('vm').runInContext('typeof hqArenaPvpPool === "function" ? hqArenaPvpPool().map(function (id) { var e = PREBUILT_MAPS[id] || {}; var w = e.w | 0; return { id: id, w: w, team: (typeof hqArenaTeamFor === "function") ? hqArenaTeamFor(w) : 4 }; }) : null', _dataJs);
+        const ids = Array.isArray(rows) ? rows : null;
         if (Array.isArray(ids) && ids.length) {
-            MAP_POOL = ids.map(id => ({ modeId: String(id), w: 12, h: 12, team: 4 }));
+            MAP_POOL = ids.map(r => ({ modeId: String(r.id), w: r.w || 12, h: r.w || 12, team: r.team || 4 }));
             console.log(`[MM] online PvP pool derived from data.js (${MAP_POOL.length} arenas)`);
         } else console.error('[MM] data.js hqArenaPvpPool() gave nothing — the fallback arena list stands');
     } catch (e) { console.error('[MM] could not read the arena pool from data.js — the fallback arena list stands:', e.message); }
 })();
 
-// every online map is a 12×12 4v4 arena, whatever the queue's team size
+// THE ARENA SIZES (2026-10-17): a 4v4 queue deals the 10×10 / 12×12 arenas, a 5v5 queue the 9×9 / 11×11 ones
 function pickRandomMap(teamSize) {
-    return MAP_POOL[Math.floor(Math.random() * MAP_POOL.length)];
+    const own = MAP_POOL.filter(m => (m.team || 4) === (teamSize || 4));
+    const pool = own.length ? own : MAP_POOL.filter(m => (m.team || 4) === 4);
+    return pool[Math.floor(Math.random() * pool.length)] || MAP_POOL[0];
 }
 
 function getQueue(teamSize) {
@@ -839,7 +844,7 @@ setInterval(() => {
 
                     const rankedMode = a.rankedMode || 'arena';
                     // Clash always plays 4v4 on its fixed JRPG stage.
-                    const actualTeamSize = 4;   // every online board is an 12×12 4v4 arena (MAP_POOL)
+                    const actualTeamSize = rankedMode === 'clash' ? 4 : ((a.teamSize === 5) ? 5 : 4);   // THE ARENA SIZES: the queue's own size (a queue key is size + mode, so both sides agree)
                     const code = generateCode();
                     const map = rankedMode === 'clash' ? { modeId: 'clash_stage' } : pickRandomMap(actualTeamSize);
 
@@ -1900,7 +1905,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('queue-join', (data) => {
-        const teamSize = 4;   // online PvP is 4v4 on the 12×12 arenas (MAP_POOL), whatever the client asks
+        const teamSize = (data && data.teamSize === 5) ? 5 : 4;   // THE ARENA SIZES (2026-10-17): 4v4 (10×10 / 12×12) or 5v5 (9×9 / 11×11), nothing else
         const rankedMode = (data && data.rankedMode) || 'arena';
 
         const auth = authenticatedSockets.get(socket.id);

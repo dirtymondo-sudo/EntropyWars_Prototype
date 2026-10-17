@@ -219,7 +219,21 @@
            lobby (online.js copies it to NET._squad at room-full and locks it in by itself — no builder, no lobby wait).
            Online is always 4v4 (a team under 4 cannot queue); VS CPU fields up to 4 (a smaller team plays NvN). The
            main menu drops the pick (_showTitlePage), so a squad never leaks into a later launch. */
-        const SQ_DEPLOY = 4;
+        /* THE ARENA SIZES (2026-10-17, mondo: "an option to play 5v5"): the desk's 4v4 / 5v5 switch sets how many cross (SQ_DEPLOY,
+           remembered in localStorage ew_sq_team). 5v5 plays the 9×9 / 11×11 arenas (VS CPU's SIZE field, the friendly room, the 5v5
+           Quick Play queue); 4v4 the 10×10 / 12×12 ones and every other board as before. A 5v5 squad needs 5 vessels, online or not. */
+        let SQ_DEPLOY = 4;
+        try { if (localStorage.getItem('ew_sq_team') === '5') SQ_DEPLOY = 5; } catch (e) {}
+        window._sqTeamSize = () => SQ_DEPLOY;
+        function _sqSetTeam(n) {
+            n = (n === 5) ? 5 : 4;
+            if (n === SQ_DEPLOY) return;
+            SQ_DEPLOY = n;
+            try { localStorage.setItem('ew_sq_team', String(n)); } catch (e) {}
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            _sqRender();
+            _sqRoomTeam();
+        }
         let _sqMode = 'online';   // 'online' | 'cpu'
         let _sqNext = 'hub';      // online: 'hub' | 'quickplay' | 'friendly'
         let _sqFocusId = null;    // the focused card's team id (keys + the new-team highlight)
@@ -233,7 +247,7 @@
             const list = (p && Array.isArray(p.teamPresets)) ? p.teamPresets.filter(t => t && Array.isArray(t.slots) && t.slots.length) : [];
             return list.slice().sort((a, b) => String(b.lastUsed || b.createdAt || '').localeCompare(String(a.lastUsed || a.createdAt || '')));
         }
-        function _sqNeed() { return _sqMode === 'online' ? SQ_DEPLOY : 1; }
+        function _sqNeed() { return (_sqMode === 'online' || SQ_DEPLOY === 5) ? SQ_DEPLOY : 1; }
         function _sqRaceLabel(s) {
             try { if (typeof getRaceLabel === 'function') { const l = getRaceLabel(s.race || '', s.gender); if (l) return l; } } catch (e) {}
             try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[s.race] && RACE_PROFILES[s.race].label) return RACE_PROFILES[s.race].label; } catch (e) {}
@@ -294,7 +308,7 @@
             const n = t.slots.length;
             if (n <= SQ_DEPLOY) return t.slots.map((_, i) => i);
             let pick = Array.isArray(t.lastPick) ? Array.from(new Set(t.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n))) : [];
-            if (pick.length !== SQ_DEPLOY) pick = [0, 1, 2, 3];
+            if (pick.length !== SQ_DEPLOY) pick = t.slots.map((_, i) => i).slice(0, SQ_DEPLOY);
             return pick.sort((a, b) => a - b);
         }
         let _sqRoomOn = false;
@@ -339,7 +353,7 @@
             const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
             const online = _sqMode === 'online';
             if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
-            if (sub) sub.textContent = online ? 'Online matches are 4v4. Pick the team you queue with.' : 'Pick a team, then pick the map.';
+            if (sub) sub.textContent = online ? ('Online matches are ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + '. Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             if (count) count.innerHTML = presets.length ? `<b>${presets.length}</b> / ${max} TEAMS` : '';
@@ -391,11 +405,13 @@
                 + `<div class="sq-plate-faces">${t.slots.slice(0, 8).map((s, i) => `<span class="sq-plate-slot${over && shown.indexOf(i) < 0 ? ' is-bench' : ''}" style="--j:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">`
                     + `${_sqFace(s)}<em>${_sqEsc(s.unitName || _sqRaceLabel(s))}</em></span>`).join('')}</div>`
                 + `<div class="sq-plate-foot">`
-                + (locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play online</span>`
+                + (locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play ${SQ_DEPLOY === 5 ? '5v5' : 'online'}</span>`
                     : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
                     : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
                 + `</div>`;
-            if (acts) acts.innerHTML = `<button class="sq-ghost" data-sq-edit="${_sqEsc(t.id)}">Edit</button>`
+            if (acts) acts.innerHTML = `<span class="sq-team-size" role="group" aria-label="Team size">`
+                + [4, 5].map(k => `<button class="sq-ghost sq-size-btn${SQ_DEPLOY === k ? ' is-on' : ''}" data-sq-team="${k}">${k}v${k}</button>`).join('') + `</span>`
+                + `<button class="sq-ghost" data-sq-edit="${_sqEsc(t.id)}">Edit</button>`
                 + (presets.length < max ? `<button class="sq-ghost" data-sq-new>New Team</button>` : '')
                 + `<button class="sq-cta${locked ? '' : ' is-ready'}" data-sq-go${locked ? ' disabled' : ''}>Deploy</button>`;
             if (bump) _sqBump(plate, 'sq-swap');
@@ -566,7 +582,7 @@
             window._msCpuOnly = true;
             window._ewRosterScope = 'all';
             window._hqPreselect = { practice: true, modes: PRACTICE_MODES.slice(), delta: true, doorLabel: 'PLAY VS CPU',
-                teamSize: Math.min(SQ_DEPLOY, sq.slots.length), squad: { name: sq.name, n: Math.min(SQ_DEPLOY, sq.slots.length) } };
+                teamSize: Math.min(SQ_DEPLOY, sq.slots.length), squad: { name: sq.name, n: Math.min(SQ_DEPLOY, sq.slots.length) } };   // n = 5: the 5v5 boards (match-select.js THE ARENA SIZES)
             window._hqCpuPool = null;
             window._hqCodeRedRun = null;
             _showTitlePage('modePage');
@@ -637,6 +653,8 @@
             if (_sqDropOpen && !e.target.closest('#sqDrop')) _sqDropSet(false);
             const step = e.target.closest('[data-sq-step]');
             if (step) { _sqStep(parseInt(step.getAttribute('data-sq-step'), 10) || 1); return; }
+            const tsz = e.target.closest('[data-sq-team]');
+            if (tsz) { _sqSetTeam(parseInt(tsz.getAttribute('data-sq-team'), 10)); return; }   // THE ARENA SIZES: 4v4 / 5v5
             const ed = e.target.closest('[data-sq-edit]');
             if (ed) { _sqForge(ed.getAttribute('data-sq-edit')); return; }
             if (e.target.closest('[data-sq-new]')) { _sqForge(null); return; }
@@ -8983,7 +9001,7 @@
         function _trainMapPoolFor(modeId) {
             if (modeId === 'gauntlet') return _TRAIN_MAP_POOL_FULL;
             try {
-                const p = (typeof window.hqArenaPvpPool === 'function') ? window.hqArenaPvpPool() : null;
+                const p = (typeof window.hqArenaPvpPool === 'function') ? window.hqArenaPvpPool(4) : null;   // THE ARENA SIZES: the labs field 4v4 — the 10s and 12s
                 if (p && p.length) return p;
             } catch (e) {}
             return _TRAIN_MAP_POOL;
@@ -9135,7 +9153,8 @@
             meta.filter(m => m.isDelta).forEach(m => {
                 /* THE ARENAS (E8, 2026-09-30): a site's Δ became its arena (data.js HQ_ARENA_RULES) — `arena` labels it; a complex
                    part's own Δ (`area`) stays registered for the HQ encounter fallback but the console never lists it */
-                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? ' ARENA' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes });
+                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? ' ARENA' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
+                            sizeOf: m.sizeOf || null, arenaSize: m.arenaSize || null });   // THE ARENA SIZES: a 9 / 10 / 11 cut rides its site's card (the SIZE field picks it)
             });
             return list;
         })();
@@ -12412,16 +12431,17 @@
                 state.nexusPoints = {};
                 for (const n of nexuses) {
                     const az = _authoredZ ? _authoredZ[n.x + ',' + n.y] : undefined;
+                    const _nzs = (_arenaHouse() && _arenaHouse().nexusSize) || NEXUS_ZONE_SIZE;   // THE ARENA SIZES: a 5v5 arena's nexus is 3×3
                     const rec = {
                         zoneX: n.x, zoneY: n.y,
-                        zoneSize: NEXUS_ZONE_SIZE,
+                        zoneSize: _nzs,
                         owner: 0, progress: 0
                     };
                     if (az !== undefined && az !== null) rec.z = az;
                     state.nexusPoints[n.key] = rec;
 
-                    for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
-                        for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
+                    for (let dy = 0; dy < _nzs; dy++) {
+                        for (let dx = 0; dx < _nzs; dx++) {
                             const nx = n.x + dx, ny = n.y + dy;
                             if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
                             if (rec.z !== undefined && state.boardVoxels?.[ny]?.[nx]) {
@@ -12546,6 +12566,16 @@
 
                 let t1Pos = _pickTowerFromZone(1);
                 let t2Pos = _pickTowerFromZone(2);
+                /* THE ARENA SIZES (2026-10-17): a 5v5 arena's Cube stands on its zone's back-middle tile (data.js hqArenaHouseTiles) —
+                   each side takes the house Cube nearest its own zone */
+                const _house = _arenaHouse();
+                if (_house && _house.cubes && state.spawnZones && state.spawnZones[1] && state.spawnZones[2]) {
+                    const near = (p, c) => { const z = state.spawnZones[p]; return z.reduce((s, t) => s + Math.abs(t.x - c.x) + Math.abs(t.y - c.y), 0) / z.length; };
+                    const cA = _house.cubes[1], cB = _house.cubes[2];
+                    const aIsP1 = near(1, cA) <= near(1, cB);
+                    t1Pos = { x: (aIsP1 ? cA : cB).x, y: (aIsP1 ? cA : cB).y };
+                    t2Pos = { x: (aIsP1 ? cB : cA).x, y: (aIsP1 ? cB : cA).y };
+                }
 
                 /* Fallback: old spawn-based logic if zones not available */
                 if (!t1Pos || !t2Pos) {
@@ -14800,6 +14830,18 @@
             return col;
         }
 
+        /* THE ARENA SIZES (2026-10-17): the launched board's 5v5 house (data.js hqArenaEntry `house`: the 2×3 zones, the Cubes on
+           their back-middle tiles, the 3×3 nexus) — null on every other board, or when the board on the table is not that entry */
+        function _arenaHouse() {
+            try {
+                const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS && typeof activeGameMode !== 'undefined') ? PREBUILT_MAPS[activeGameMode] : null;
+                const H = e && e.house;
+                if (!H || !H.zones || !H.zones[1] || !H.zones[2] || (e.w | 0) !== bw() || (e.h | 0) !== bh()) return null;
+                return H;
+            } catch (err) { return null; }
+        }
+        window._ewArenaHouse = _arenaHouse;
+
         function autoGenerateSpawnZones() {
             const w = bw(), h = bh();
             // Gauntlet keeps an 8-unit roster but only deploys 4 — size the spawn
@@ -14920,6 +14962,24 @@
                     p2Row = 0;
                 }
 
+                /* THE ARENA SIZES (2026-10-17): a 5v5 arena (9×9 / 11×11, data.js hqArenaEntry `house`) seats each side in its
+                   2×3 block — the 5 tiles round the Cube's back-middle tile — instead of one row; the Cube tile is cleared with
+                   the zone, the egress row is the row in front of the block */
+                const _house = _arenaHouse();
+                if (_house && teamSize <= _house.zones[1].length) {
+                    const flip = p1Row !== h - 1;   // the house's zone 1 sits on the bottom rows (P1's) — a P1 seated on top swaps them
+                    const zA = _house.zones[flip ? 2 : 1], zB = _house.zones[flip ? 1 : 2];
+                    state.spawnZones[1] = zA.map(p => ({ x: p.x, y: p.y }));
+                    state.spawnZones[2] = zB.map(p => ({ x: p.x, y: p.y }));
+                    const c1 = _house.cubes[flip ? 2 : 1], c2 = _house.cubes[flip ? 1 : 2];
+                    const z1 = _spawnZoneGroundHeight(state.spawnZones[1]);
+                    const z2 = _spawnZoneGroundHeight(state.spawnZones[2]);
+                    _clearSpawnZoneTiles(state.spawnZones[1].concat(c1 ? [c1] : []), z1);
+                    _clearSpawnZoneTiles(state.spawnZones[2].concat(c2 ? [c2] : []), z2);
+                    const c0 = _house.cols[0], cn = _house.cols[1] - _house.cols[0] + 1;
+                    _ensureEgressRow(_house.egressRows[flip ? 2 : 1], c0, cn, z1);
+                    _ensureEgressRow(_house.egressRows[flip ? 1 : 2], c0, cn, z2);
+                } else {
                 const startCol = Math.max(0, Math.floor((w - teamSize) / 2));
                 state.spawnZones[1] = [];
                 state.spawnZones[2] = [];
@@ -14941,6 +15001,7 @@
                 const p2EgressRow = p2Row === 0 ? 1 : h - 2;
                 _ensureEgressRow(p1EgressRow, startCol, teamSize, z1);
                 _ensureEgressRow(p2EgressRow, startCol, teamSize, z2);
+                }
 
             } else {
                 /* Horizontal: P1 left col, P2 right col */
