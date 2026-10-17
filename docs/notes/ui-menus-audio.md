@@ -1288,3 +1288,19 @@ mondo: "make sure that passives are a separate color than utility moves." Passiv
 'utility') paint rose `#f28ad0` (glyph ◈) instead of the utility gold in the party builder: rack cards, loadout slots,
 info panel, hover card (party-builder.js `pbColourCat`; TREE_CAT_C / PB_CAT / TREE_CAT_GLYPH `passive`). Filters and
 ordering still use classifySpellLocal. The type chip rule (only on damaging spells) is in champions-combat.md.
+
+## THE STAT CARD BUFF READ (2026-10-17)
+mondo: "make sure the unit info panel has its status effect badges ... green and red numbers ... should only show like that if the
+unit is currently buffed or debuffed". ui.js renderSelectedUnitPanel (#unitHoverHud, the ⓘ card):
+- Before: each stat was tinted green/red whenever the effective number differed from the race's raw stat, so gear armour,
+  terrain, weather, day/night sleep affinity, zodiac and kill streak all lit it, and RNG was ALWAYS green (getEffectiveRange
+  adds the basic attack's +1 reach).
+- Now the number stays the real effective stat, but green/red + the white base tick come only from live buffs/debuffs: status
+  atk/int/armor/mdef/move/range deltas, stat stages, the celestial nexus buff (Blood Moon also folds into M ATK; Lunar Eclipse
+  into DEF / M DEF on the card), a key charge's move, SPD stages crossing a move band. CRT/EVA never tint.
+- The old text pills are replaced by the nameplate/Horologe badge row (hud.js _hrlgStatusChips, class hrlg-schip, one hue per
+  status from _HRLG_SB_COLORS) plus a celestial-buff chip. The panel FP now also keys on statStageMods, skyBuff, hourglassBuff,
+  _killStreak.
+- Known combat quirk found here: getEffectiveArmor clamps gear+status armour at 0 BEFORE folding the DEF stat in, so a DEF / M DEF
+  debuff (and any negative terrain/weather/5G armour mod) does nothing to a unit with no positive armour mods. The card then shows
+  DEF red with an unchanged number.
