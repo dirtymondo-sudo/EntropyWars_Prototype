@@ -4578,7 +4578,7 @@
                 : info.kind === 'thinwall' ? 'the wall'
                 : info.lip ? 'the cliff face' : 'the wall';
             applyDamageToUnit(mover, dmg, `${unitDisplayName(mover)} slams into ${what}: `, {
-                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null
+                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
             });
             addLog(`🎱 ${unitDisplayName(mover)} slams into ${what} and rebounds!`);
         }
@@ -4677,12 +4677,12 @@
                         addLog(`🎳 ${unitDisplayName(target)} crashes into ${unitDisplayName(occ)} — both bodies are battered!`);
                         if (!occ.dead && !occ._dying) {
                             applyDamageToUnit(occ, crash, `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `, {
-                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null
+                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
                             });
                         }
                         if (!target.dead && !target._dying) {
                             applyDamageToUnit(target, crash, `${unitDisplayName(target)} crashes into ${unitDisplayName(occ)}: `, {
-                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null
+                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
                             });
                         }
                         res.slamDamage += crash;
@@ -32769,7 +32769,7 @@
                 // Press Turn: a spell wasted on a Protected enemy cuts the turn
                 // short exactly like a whiff — record a MISS in the collector
                 // (a miss vetoes any press from the rest of the cast).
-                if (_pressDamageCollector && opts.sourceUnit
+                if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
@@ -32788,7 +32788,7 @@
                can hurt you — zone ticks, weather, DoTs and every other unit
                no-op. Link echoes are the partner's own damage, so they pass. */
             if (!opts._linkEcho && isUnitRealmShieldedFrom(target, opts.sourceUnit || null)) {
-                if (_pressDamageCollector && opts.sourceUnit
+                if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
@@ -32872,7 +32872,7 @@
             // attacks, fall damage. DoT ticks ('dot') and magic still land.
             const _immDT = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneDamageType') : undefined;
             if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) {
-                if (_pressDamageCollector && opts.sourceUnit
+                if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
@@ -38330,6 +38330,12 @@
             const c = _pressDamageCollector;
             if (!c || !sourceUnit || !target) return;
             if (sourceUnit.id !== c.casterId) return;       // only the caster's own spell damage
+            /* THE SLAM IS NOT THE SPELL (mondo 2026-10-17: "whenever a spell is super effective but its a displacement
+               spell and the target is immovable it doesnt award the ap refund"): the wall slam and the bowling-pin crash of
+               a push / pull / throw (resolveForcedSlide, `noPress`) carry no spell type, so they were judged by the
+               CASTER's own types, and a target that resists those vetoed the spell's super effective press (and drained
+               an AP). Only the spell's own hits judge the press now. */
+            if (opts && opts.noPress) return;
             if (target.player === sourceUnit.player) return; // enemies only
             /* THE SPELL'S TYPE, never the caster's: a divine spell from an
                anomaly caster is judged as divine vs the target (the caster's
