@@ -881,6 +881,19 @@ const ThreeRenderer = (function () {
        RING_FIELD_LIFT × the plates' own lift — never buried by a slope's bulge or a plate's 7 cm */
     var RING_RENDER_ORDER = 4, RING_FIELD_SEGS = 10, RING_FIELD_LIFT = 1.75;
 
+    /* THE RING LOOK (2026-10-17, mondo: "let me mess with the unit selection rings in the ui editor. like let me change how
+       they look and how the directional arrow looks and also let me choose to have them on only for the current unit"): the
+       UI Maker (hud.js, Bars > Selection rings) publishes window._ewRingLook; _ringLookSync copies it into these SHARED
+       uniform objects (every reticle material points at the same ones, WebGL and WebGPU alike), so a change costs one write.
+       Defaults draw the reticle exactly as before. uRStyle 0 line · 1 dashed (turning) · 2 double · 3 none (pointer only);
+       uArStyle 0 double chevron · 1 single chevron · 2 solid triangle · 3 dot · 4 none; uSpan = the plane's UV→tile span
+       (the mesh is scaled uSpan / RETICLE_SPAN so a big ring or pointer is never clipped). */
+    var _retLookU = {
+        uRStyle: { value: 0 }, uRSize: { value: 1 }, uRThick: { value: 1 }, uRGlow: { value: 1 }, uRPulse: { value: 1 },
+        uRTicks: { value: 1 }, uRAccent: { value: 1 }, uRGap: { value: 1 }, uROwn: { value: 0 }, uRCol: { value: null },
+        uROp: { value: 1 }, uArStyle: { value: 0 }, uArSize: { value: 1 }, uArOwn: { value: 0 }, uArCol: { value: null },
+        uSpan: { value: 1.30 }
+    };
     var _reticleFragmentShader = [
         'uniform vec3 uColor;',
         'uniform float uOpacity;',
@@ -905,6 +918,23 @@ const ThreeRenderer = (function () {
         'uniform float uMeterRot;',
         'uniform vec3 uHpCol;',
         'uniform vec3 uMpCol;',
+        /* THE RING LOOK (shared, see _retLookU) */
+        'uniform float uRStyle;',
+        'uniform float uRSize;',
+        'uniform float uRThick;',
+        'uniform float uRGlow;',
+        'uniform float uRPulse;',
+        'uniform float uRTicks;',
+        'uniform float uRAccent;',
+        'uniform float uRGap;',
+        'uniform float uROwn;',
+        'uniform vec3 uRCol;',
+        'uniform float uROp;',
+        'uniform float uArStyle;',
+        'uniform float uArSize;',
+        'uniform float uArOwn;',
+        'uniform vec3 uArCol;',
+        'uniform float uSpan;',
         'varying vec2 vUv;',
         'float segDist(vec2 p, vec2 a, vec2 b) {',
         '  vec2 pa = p - a, ba = b - a;',
@@ -916,10 +946,35 @@ const ThreeRenderer = (function () {
         '  return smoothstep(lo - 0.004, lo + 0.004, f) * (1.0 - smoothstep(hi - 0.004, hi + 0.004, f));',
         '}',
         'void main() {',
-        '  vec2 p = (vUv - 0.5) * 1.30;',        // tile-space coords, facing = +y
+        '  vec2 p = (vUv - 0.5) * uSpan;',        // tile-space coords, facing = +y
         '  float d = length(p);',
         '  float ang = atan(p.x, p.y);',          // 0 at the facing heading
-        '  float pulse = 0.88 + 0.12 * sin(uTime * 2.2 + uPhase);',
+        '  float pulse = mix(1.0, 0.88 + 0.12 * sin(uTime * 2.2 + uPhase), uRPulse);',
+        '  float th = uRThick;',
+        '  float R = 0.42 * uRSize;',
+        /* THE POINTER, in its own frame q (base on the ring line, +y = facing, uArSize scales it) */
+        '  float base = R + 0.035 * th;',
+        '  vec2 q = (p - vec2(0.0, base)) / uArSize;',
+        '  float ch = min(segDist(q, vec2(0.0, 0.145), vec2(-0.105, 0.0)),',
+        '                 segDist(q, vec2(0.0, 0.145), vec2( 0.105, 0.0))) * uArSize;',
+        '  float chCore = 1.0 - smoothstep(0.008 * th, 0.022 * th, ch);',
+        '  float chGlow = exp(-ch * ch * 420.0 / (th * th)) * 0.5 * uRGlow;',
+        /* smaller echo chevron tucked between the pointer and the ring */
+        '  float ch2 = min(segDist(q, vec2(0.0, 0.07), vec2(-0.075, -0.03)),',
+        '                  segDist(q, vec2(0.0, 0.07), vec2( 0.075, -0.03))) * uArSize;',
+        '  float ch2Core = (1.0 - smoothstep(0.006 * th, 0.016 * th, ch2)) * 0.55;',
+        '  float aS1 = step(0.5, uArStyle) * (1.0 - step(1.5, uArStyle));',
+        '  float aS2 = step(1.5, uArStyle) * (1.0 - step(2.5, uArStyle));',
+        '  float aS3 = step(2.5, uArStyle) * (1.0 - step(3.5, uArStyle));',
+        '  float aS4 = step(3.5, uArStyle);',
+        '  float aChev = 1.0 - aS2 - aS3 - aS4;',
+        '  float triT = (0.145 * (1.0 - abs(q.x) / 0.105) - q.y) * uArSize;',
+        '  float tri = smoothstep(-0.004, 0.006, triT) * smoothstep(-0.004, 0.004, q.y * uArSize);',
+        '  float dotA = 1.0 - smoothstep(0.034, 0.044, length(q - vec2(0.0, 0.06)) * uArSize);',
+        '  float e2 = ch2Core * (1.0 - aS1);',
+        '  float arA = aChev * (chCore + chGlow * pulse + e2) + aS2 * tri * 0.95 + aS3 * dotA;',
+        '  float arHot = aChev * clamp(chCore + e2, 0.0, 1.0) + (aS2 * tri + aS3 * dotA) * 0.5;',
+        '  vec3 arC = mix(mix(uColor, uArCol, uArOwn), vec3(1.0), arHot * 0.45);',
         '  if (uMeters > 0.5) {',
         /* CLOCKWISE fraction around the ring, 0 at the screen's 6 o'clock:
            a meter at p fills [6, 6 + p·360°] clockwise — the fill grows up
@@ -930,13 +985,12 @@ const ThreeRenderer = (function () {
            half turn moves the root to 6. */
         '    float frac = fract((uMeterRot - ang) / 6.2832 + 0.5);',
         /* HP meter on the reticle's own radius (0.42), MP meter inside it */
-        '    float R = 0.42;',
         '    float rd = abs(d - R);',
-        '    float hpBand  = 1.0 - smoothstep(0.028, 0.038, rd);',
-        '    float hpOuter = 1.0 - smoothstep(0.036, 0.048, rd);',
-        '    float mrd = abs(d - 0.335);',
-        '    float mpBand  = 1.0 - smoothstep(0.019, 0.027, mrd);',
-        '    float mpOuter = 1.0 - smoothstep(0.026, 0.036, mrd);',
+        '    float hpBand  = 1.0 - smoothstep(0.028 * th, 0.038 * th, rd);',
+        '    float hpOuter = 1.0 - smoothstep(0.036 * th, 0.048 * th, rd);',
+        '    float mrd = abs(d - 0.335 * uRSize);',
+        '    float mpBand  = 1.0 - smoothstep(0.019 * th, 0.027 * th, mrd);',
+        '    float mpOuter = 1.0 - smoothstep(0.026 * th, 0.036 * th, mrd);',
         /* fills — the spent part of each meter is the dark track */
         /* a FULL meter is the whole ring — no AA sliver at the 12 o'clock seam */
         '    float hpFill = max(1.0 - smoothstep(uHp - 0.004, uHp + 0.004, frac), step(0.999, uHp));',
@@ -960,56 +1014,89 @@ const ThreeRenderer = (function () {
         '    vec3 mpCol = mix(rim, mix(track, mpC, mpFill), mpBand);',
         '    float hpA = hpOuter * mix(0.78, 1.0, max(hpFill, shFill)) * (0.94 + 0.06 * pulse);',
         '    float mpA = mpOuter * mix(0.74, 1.0, mpFill) * (0.94 + 0.06 * pulse);',
-        /* facing chevron OUTSIDE the meters, unchanged (team colour) */
-        '    float ch = min(segDist(p, vec2(0.0, 0.60), vec2(-0.105, 0.455)),',
-        '                   segDist(p, vec2(0.0, 0.60), vec2( 0.105, 0.455)));',
-        '    float chCore = 1.0 - smoothstep(0.008, 0.022, ch);',
-        '    float chGlow = exp(-ch * ch * 420.0) * 0.5;',
-        '    float ch2 = min(segDist(p, vec2(0.0, 0.525), vec2(-0.075, 0.425)),',
-        '                    segDist(p, vec2(0.0, 0.525), vec2( 0.075, 0.425)));',
-        '    float ch2Core = (1.0 - smoothstep(0.006, 0.016, ch2)) * 0.55;',
-        '    float chA = min(chCore + chGlow * pulse + ch2Core, 1.0);',
-        '    vec3 chCol = mix(uColor, vec3(1.0), clamp(chCore + ch2Core, 0.0, 1.0) * 0.45);',
+        /* the facing pointer OUTSIDE the meters */
+        '    float chA = min(arA, 1.0);',
         '    float a = hpA + mpA + chA;',
-        '    vec3 col = (hpCol * hpA + mpCol * mpA + chCol * chA) / max(a, 0.0001);',
-        '    gl_FragColor = vec4(col, min(a, 1.0) * uOpacity);',
+        '    vec3 col = (hpCol * hpA + mpCol * mpA + arC * chA) / max(a, 0.0001);',
+        '    gl_FragColor = vec4(col, min(a, 1.0) * uOpacity * uROp);',
         '    return;',
         '  }',
+        '  float rOn = 1.0 - step(2.5, uRStyle);',
+        '  float rDash = step(0.5, uRStyle) * (1.0 - step(1.5, uRStyle));',
+        '  float rDbl = step(1.5, uRStyle) * (1.0 - step(2.5, uRStyle));',
         /* main ring — crisp core line + gaussian glow, gapped toward facing */
-        '  float R = 0.42;',
         '  float rd = abs(d - R);',
-        '  float core = 1.0 - smoothstep(0.006, 0.018, rd);',
-        '  float glow = exp(-rd * rd * 520.0) * 0.42;',
-        '  float gap = smoothstep(0.34, 0.58, abs(ang));',
-        '  float ring = (core * 0.95 + glow * pulse) * gap;',
+        '  float core = 1.0 - smoothstep(0.006 * th, 0.018 * th, rd);',
+        '  float rdA = abs(d - R - 0.024 * th), rdB = abs(d - R + 0.024 * th);',
+        '  float coreD = max(1.0 - smoothstep(0.004 * th, 0.011 * th, rdA), 1.0 - smoothstep(0.004 * th, 0.011 * th, rdB));',
+        '  core = mix(core, coreD, rDbl);',
+        '  float glow = exp(-rd * rd * 520.0 / (th * th)) * 0.42 * uRGlow;',
+        '  float gap = mix(1.0, smoothstep(0.34, 0.58, abs(ang)), uRGap * (1.0 - aS4));',
+        /* the dashed style: 24 dashes (an integer count keeps the seam at ±π whole), turning */
+        '  float dsh = mix(1.0, step(0.5, fract(ang * 3.8197 - uTime * 0.6 + uPhase)), rDash);',
+        '  float ring = (core * 0.95 + glow * pulse) * gap * dsh * rOn;',
         /* tick marks crossing the ring at ±90° and 180° */
         '  float tickAng = min(abs(abs(ang) - 1.5708), 3.1416 - abs(ang));',
         '  float tickArc = 1.0 - smoothstep(0.045, 0.085, tickAng);',
-        '  float tickRad = 1.0 - smoothstep(0.030, 0.052, rd);',
-        '  float tick = tickArc * tickRad * 0.85;',
-        /* facing chevron OUTSIDE the ring line, in the gap */
-        '  float ch = min(segDist(p, vec2(0.0, 0.60), vec2(-0.105, 0.455)),',
-        '                 segDist(p, vec2(0.0, 0.60), vec2( 0.105, 0.455)));',
-        '  float chCore = 1.0 - smoothstep(0.008, 0.022, ch);',
-        '  float chGlow = exp(-ch * ch * 420.0) * 0.5;',
-        /* smaller echo chevron tucked between the pointer and the ring */
-        '  float ch2 = min(segDist(p, vec2(0.0, 0.525), vec2(-0.075, 0.425)),',
-        '                  segDist(p, vec2(0.0, 0.525), vec2( 0.075, 0.425)));',
-        '  float ch2Core = (1.0 - smoothstep(0.006, 0.016, ch2)) * 0.55;',
-        '  float chev = chCore + chGlow * pulse + ch2Core;',
+        '  float tickRad = 1.0 - smoothstep(0.030 * th, 0.052 * th, rd);',
+        '  float tick = tickArc * tickRad * 0.85 * uRTicks * rOn;',
         /* dashed accent arc drifting inside the ring (14 dashes — an
            integer count keeps the seam at ±π continuous) */
-        '  float ad = abs(d - 0.345);',
+        '  float ad = abs(d - 0.345 * uRSize);',
         '  float dash = step(0.45, fract(ang * 2.2282 - uTime * 0.25 + uPhase));',
-        '  float arc = (1.0 - smoothstep(0.004, 0.013, ad)) * dash * 0.28;',
+        '  float arc = (1.0 - smoothstep(0.004, 0.013, ad)) * dash * 0.28 * uRAccent * rOn;',
         /* compose — line cores lift toward white so they read hot/neon */
-        '  float hot = clamp(core * gap + chCore + ch2Core, 0.0, 1.0);',
-        '  vec3 col = mix(uColor, vec3(1.0), hot * 0.45);',
-        '  float alpha = min((ring + tick + chev + arc) * uOpacity, 1.0);',
-        '  gl_FragColor = vec4(col, alpha);',
+        '  float rHot = clamp(core * gap * dsh * rOn, 0.0, 1.0);',
+        '  vec3 rC = mix(mix(uColor, uRCol, uROwn), vec3(1.0), rHot * 0.45);',
+        '  float rA = ring + tick + arc;',
+        '  float a = rA + arA;',
+        '  vec3 col = (rC * rA + arC * arA) / max(a, 0.0001);',
+        '  gl_FragColor = vec4(col, min(a * uOpacity * uROp, 1.0));',
         '}'
     ].join('\n');
 
+    function _retLookColor(k) {
+        if (!_retLookU[k].value && typeof THREE !== 'undefined') _retLookU[k].value = new THREE.Color(0xffffff);
+        return _retLookU[k];
+    }
+    /* the UI Maker's ring look (window._ewRingLook, bumped window._ewRingLookV) → the shared uniforms; returns the look */
+    var _ringLookV = -1, _ringLookCur = null;
+    var RING_STYLE_IDS = { line: 0, dashed: 1, double: 2, none: 3 }, RING_ARROW_IDS = { double: 0, single: 1, triangle: 2, dot: 3, none: 4 };
+    function _ringLookSync() {
+        var v = window._ewRingLookV || 0;
+        if (v === _ringLookV) return _ringLookCur;
+        _ringLookV = v;
+        var L = window._ewRingLook || null, U = _retLookU, num = function (x, lo, hi, d) { x = +x; return isFinite(x) ? Math.max(lo, Math.min(hi, x)) : d; };
+        _retLookColor('uRCol'); _retLookColor('uArCol');
+        U.uRStyle.value = L && L.style in RING_STYLE_IDS ? RING_STYLE_IDS[L.style] : 0;
+        U.uRSize.value = L ? num(L.size, 0.6, 1.4, 1) : 1;
+        U.uRThick.value = L ? num(L.thick, 0.5, 3, 1) : 1;
+        U.uRGlow.value = L ? num(L.glow, 0, 2, 1) : 1;
+        U.uRPulse.value = L && L.pulse === false ? 0 : 1;
+        U.uRTicks.value = L && L.ticks === false ? 0 : 1;
+        U.uRAccent.value = L && L.accent === false ? 0 : 1;
+        U.uRGap.value = L && L.gap === false ? 0 : 1;
+        U.uROwn.value = L && L.color ? 1 : 0; if (L && L.color) { try { U.uRCol.value.set(L.color); } catch (e) {} }
+        U.uROp.value = L ? num(L.opacity, 0.1, 1, 1) : 1;
+        U.uArStyle.value = L && L.arrow in RING_ARROW_IDS ? RING_ARROW_IDS[L.arrow] : 0;
+        U.uArSize.value = L ? num(L.arrowSize, 0.5, 1.8, 1) : 1;
+        U.uArOwn.value = L && L.arrowColor ? 1 : 0; if (L && L.arrowColor) { try { U.uArCol.value.set(L.arrowColor); } catch (e) {} }
+        /* the plane grows when the ring or the pointer would reach past its edge */
+        var R = 0.42 * U.uRSize.value, th = U.uRThick.value;
+        var ext = Math.max(R + 0.09 * th, R + 0.035 * th + 0.145 * U.uArSize.value + 0.04);
+        U.uSpan.value = Math.max(RETICLE_SPAN, 2 * ext);
+        _ringLookCur = L;
+        return L;
+    }
+    /* who wears a reticle: everyone (the default), the viewer's own units, or the unit whose turn it is */
+    function _ringShownFor(unit, L) {
+        var show = L && L.show;
+        if (!show || show === 'all') return true;
+        if (show === 'none') return false;
+        if (show === 'mine') return _isAllyPlayer(unit.player);
+        var act = (typeof state !== 'undefined' && state) ? (state._blitzActiveUnitId || state.selectedUnitId) : null;
+        return !!act && unit.id === act;
+    }
     function _makeTeamReticleMaterial(color, phase, hpColor) {
         return new THREE.ShaderMaterial({
             uniforms: {
@@ -1026,7 +1113,12 @@ const ThreeRenderer = (function () {
                 uPrevHeal: { value: 0.0 },
                 uMeterRot: { value: 0.0 },
                 uHpCol:    { value: new THREE.Color(hpColor || color) },
-                uMpCol:    { value: new THREE.Color(RING_MP_COLOR) }
+                uMpCol:    { value: new THREE.Color(RING_MP_COLOR) },
+                /* THE RING LOOK: the shared objects themselves (one write restyles every reticle) */
+                uRStyle: _retLookU.uRStyle, uRSize: _retLookU.uRSize, uRThick: _retLookU.uRThick, uRGlow: _retLookU.uRGlow,
+                uRPulse: _retLookU.uRPulse, uRTicks: _retLookU.uRTicks, uRAccent: _retLookU.uRAccent, uRGap: _retLookU.uRGap,
+                uROwn: _retLookU.uROwn, uRCol: _retLookColor('uRCol'), uROp: _retLookU.uROp, uArStyle: _retLookU.uArStyle,
+                uArSize: _retLookU.uArSize, uArOwn: _retLookU.uArOwn, uArCol: _retLookColor('uArCol'), uSpan: _retLookU.uSpan
             },
             vertexShader: _ringVertexShader,
             fragmentShader: _reticleFragmentShader,
@@ -13931,7 +14023,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < g.children.length; i++) { var ch = g.children[i]; if (ch._ew_facingIndicator) { fi = ch; yaw = ch.rotation.y; break; } }
         var ret = (fi && fi.children[0] && fi.children[0]._ew_reticle) ? fi.children[0] : null, sel = g._ew_selTile || null;
         if (!ret && !sel) return;
-        var key = Math.round(g.position.x) + '|' + Math.round(g.position.y) + '|' + Math.round(g.position.z) + '|' + Math.round(yaw * 50) + '|' + ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key;
+        var key = Math.round(g.position.x) + '|' + Math.round(g.position.y) + '|' + Math.round(g.position.z) + '|' + Math.round(yaw * 50) + '|' + ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key + '|' + _retLookU.uSpan.value;
         if (g._ew_ringKey === key) return;
         g._ew_ringKey = key;
         var feetY = g.position.y + (g._ew_subSink || 0);
@@ -20209,6 +20301,7 @@ const ThreeRenderer = (function () {
         // per-unit (half its sprite width + extrude depth + margin), computed
         // inside the loop from group._ew_spriteW.
         var silDepth = UNIT_SPRITE_DEPTH_PX * (ts / 128);
+        var _rLook = _ringLookSync(), _rScale = _retLookU.uSpan.value / RETICLE_SPAN;   // THE RING LOOK
         for (var i = 0; i < unitGroup.children.length; i++) {
             var g = unitGroup.children[i];
             var uid = g._ew_unitId;
@@ -20226,6 +20319,7 @@ const ThreeRenderer = (function () {
                         if (bunit && brv && brv._ew_reticle) _updateRingVitals(brv, bunit, g, cam, bch.rotation.y, dtSec);
                     }
                 }
+                _ringLookApply(g, _findUnit(uid), _rLook, _rScale);
                 _fieldRingsTick(g);   // THE RINGS ABOVE
                 continue;
             }
@@ -20275,6 +20369,7 @@ const ThreeRenderer = (function () {
                         var _rv = ch.children[0];
                         if (_rv && _rv._ew_reticle) _updateRingVitals(_rv, unit, g, cam, curYaw, dtSec);
                     }
+                    if (ch._ew_facingIndicator) _ringLookApply(g, unit, _rLook, _rScale);
                 } else if (ch._ew_silhouette && cam) {
                     // Face the camera and sit in front of the unit's entire
                     // slab (half sprite width covers the worst case: the slab
@@ -20287,6 +20382,17 @@ const ThreeRenderer = (function () {
                 }
             }
             _fieldRingsTick(g);   // THE RINGS ABOVE: the reticle + the selected tile draped on the field's ground
+        }
+    }
+
+    /* THE RING LOOK per unit: who wears one (Show) and the plane's size (a big ring / pointer grows it) */
+    function _ringLookApply(g, unit, L, k) {
+        for (var i = 0; i < g.children.length; i++) {
+            var ch = g.children[i]; if (!ch._ew_facingIndicator) continue;
+            var r = ch.children[0]; if (!r || !r._ew_reticle) continue;
+            var on = unit ? _ringShownFor(unit, L) : true;
+            if (r.visible !== on) r.visible = on;
+            if (r.scale.x !== k) { r.scale.set(k, k, 1); g._ew_ringKey = ''; }
         }
     }
 
@@ -34439,20 +34545,40 @@ const ThreeRenderer = (function () {
                 Me = _ewPU(u.uMeters, 'float'), Hp = _ewPU(u.uHp, 'float'), Mp = _ewPU(u.uMp, 'float'), Sh = _ewPU(u.uShield, 'float'),
                 Pv = _ewPU(u.uPrev, 'float'), PvH = _ewPU(u.uPrevHeal, 'float'), Rot = _ewPU(u.uMeterRot, 'float'),
                 HpC = _ewPU(u.uHpCol, 'color'), MpC = _ewPU(u.uMpCol, 'color');
+            /* THE RING LOOK (shared uniforms, see _retLookU) */
+            var LU = function (k, t) { return _ewPU(u[k] || _retLookU[k], t || 'float'); };
+            var RSt = LU('uRStyle'), RSz = LU('uRSize'), RTh = LU('uRThick'), RGl = LU('uRGlow'), RPu = LU('uRPulse'), RTi = LU('uRTicks'),
+                RAc = LU('uRAccent'), RGa = LU('uRGap'), ROw = LU('uROwn'), RCo = LU('uRCol', 'color'), ROp = LU('uROp'),
+                ASt = LU('uArStyle'), ASz = LU('uArSize'), AOw = LU('uArOwn'), ACo = LU('uArCol', 'color'), Spn = LU('uSpan');
             s.fragmentNode = T.Fn(function () {
-                var p = T.uv().sub(0.5).mul(1.3).toVar(), d = T.length(p).toVar(), ang = T.atan(p.x, p.y).toVar();
-                var pulse = T.sin(Tm.mul(2.2).add(Ph)).mul(0.12).add(0.88).toVar();
-                var ch = T.min(segDist(p, V2(0, 0.6), V2(-0.105, 0.455)), segDist(p, V2(0, 0.6), V2(0.105, 0.455))).toVar();
-                var chCore = one.sub(ss(0.008, 0.022, ch)).toVar(), chGlow = T.exp(ch.mul(ch).mul(-420)).mul(0.5);
-                var ch2 = T.min(segDist(p, V2(0, 0.525), V2(-0.075, 0.425)), segDist(p, V2(0, 0.525), V2(0.075, 0.425)));
-                var ch2Core = one.sub(ss(0.006, 0.016, ch2)).mul(0.55).toVar();
+                var p = T.uv().sub(0.5).mul(Spn).toVar(), d = T.length(p).toVar(), ang = T.atan(p.x, p.y).toVar();
+                var pulse = T.mix(F(1), T.sin(Tm.mul(2.2).add(Ph)).mul(0.12).add(0.88), RPu).toVar();
+                var th = RTh.toVar(), R = RSz.mul(0.42).toVar();
+                /* the pointer, in its own frame */
+                var base = R.add(th.mul(0.035));
+                var q = p.sub(V2(0, base)).div(ASz).toVar();
+                var ch = T.min(segDist(q, V2(0, 0.145), V2(-0.105, 0)), segDist(q, V2(0, 0.145), V2(0.105, 0))).mul(ASz).toVar();
+                var chCore = one.sub(ss(th.mul(0.008), th.mul(0.022), ch)).toVar();
+                var chGlow = T.exp(ch.mul(ch).mul(-420).div(th.mul(th))).mul(0.5).mul(RGl);
+                var ch2 = T.min(segDist(q, V2(0, 0.07), V2(-0.075, -0.03)), segDist(q, V2(0, 0.07), V2(0.075, -0.03))).mul(ASz);
+                var ch2Core = one.sub(ss(th.mul(0.006), th.mul(0.016), ch2)).mul(0.55);
+                var aS1 = T.step(0.5, ASt).mul(one.sub(T.step(1.5, ASt))), aS2 = T.step(1.5, ASt).mul(one.sub(T.step(2.5, ASt)));
+                var aS3 = T.step(2.5, ASt).mul(one.sub(T.step(3.5, ASt))), aS4 = T.step(3.5, ASt).toVar();
+                var aChev = one.sub(aS2).sub(aS3).sub(aS4).toVar();
+                var triT = F(0.145).mul(one.sub(T.abs(q.x).div(0.105))).sub(q.y).mul(ASz);
+                var tri = ss(-0.004, 0.006, triT).mul(ss(-0.004, 0.004, q.y.mul(ASz)));
+                var dotA = one.sub(ss(0.034, 0.044, T.length(q.sub(V2(0, 0.06))).mul(ASz)));
+                var e2 = ch2Core.mul(one.sub(aS1)).toVar();
+                var arA = aChev.mul(chCore.add(chGlow.mul(pulse)).add(e2)).add(aS2.mul(tri).mul(0.95)).add(aS3.mul(dotA)).toVar();
+                var arHot = aChev.mul(T.clamp(chCore.add(e2), 0, 1)).add(aS2.mul(tri).add(aS3.mul(dotA)).mul(0.5));
+                var arC = T.mix(T.mix(C, ACo, AOw), WHITE, arHot.mul(0.45)).toVar();
                 var out = V4(0).toVar();
                 T.If(Me.greaterThan(0.5), function () {
                     var frac = T.fract(Rot.sub(ang).div(6.2832).add(0.5)).toVar();
-                    var rd = T.abs(d.sub(0.42)).toVar();
-                    var hpBand = one.sub(ss(0.028, 0.038, rd)), hpOuter = one.sub(ss(0.036, 0.048, rd));
-                    var mrd = T.abs(d.sub(0.335)).toVar();
-                    var mpBand = one.sub(ss(0.019, 0.027, mrd)), mpOuter = one.sub(ss(0.026, 0.036, mrd));
+                    var rd = T.abs(d.sub(R)).toVar();
+                    var hpBand = one.sub(ss(th.mul(0.028), th.mul(0.038), rd)), hpOuter = one.sub(ss(th.mul(0.036), th.mul(0.048), rd));
+                    var mrd = T.abs(d.sub(RSz.mul(0.335))).toVar();
+                    var mpBand = one.sub(ss(th.mul(0.019), th.mul(0.027), mrd)), mpOuter = one.sub(ss(th.mul(0.026), th.mul(0.036), mrd));
                     var hpFill = T.max(one.sub(ss(Hp.sub(0.004), Hp.add(0.004), frac)), T.step(0.999, Hp)).toVar();
                     var shFill = arcIn(frac, Hp, T.min(1, Hp.add(Sh))).mul(T.step(0.001, Sh)).toVar();
                     var mpFill = T.max(one.sub(ss(Mp.sub(0.004), Mp.add(0.004), frac)), T.step(0.999, Mp)).toVar();
@@ -34470,24 +34596,33 @@ const ThreeRenderer = (function () {
                     var mpCol = T.mix(rim, T.mix(track, mpC, mpFill), mpBand);
                     var hpA = hpOuter.mul(T.mix(0.78, 1, T.max(hpFill, shFill))).mul(pulse.mul(0.06).add(0.94)).toVar();
                     var mpA = mpOuter.mul(T.mix(0.74, 1, mpFill)).mul(pulse.mul(0.06).add(0.94)).toVar();
-                    var chA = T.min(chCore.add(chGlow.mul(pulse)).add(ch2Core), 1).toVar();
-                    var chCol = T.mix(C, WHITE, T.clamp(chCore.add(ch2Core), 0, 1).mul(0.45));
+                    var chA = T.min(arA, 1).toVar();
                     var a = hpA.add(mpA).add(chA).toVar();
-                    var col = hpCol.mul(hpA).add(mpCol.mul(mpA)).add(chCol.mul(chA)).div(T.max(a, 0.0001));
-                    out.assign(V4(col, T.min(a, 1).mul(Op)));
+                    var col = hpCol.mul(hpA).add(mpCol.mul(mpA)).add(arC.mul(chA)).div(T.max(a, 0.0001));
+                    out.assign(V4(col, T.min(a, 1).mul(Op).mul(ROp)));
                 }).Else(function () {
-                    var rd = T.abs(d.sub(0.42)).toVar();
-                    var core = one.sub(ss(0.006, 0.018, rd)), glow = T.exp(rd.mul(rd).mul(-520)).mul(0.42);
-                    var gap = ss(0.34, 0.58, T.abs(ang));
-                    var ring = core.mul(0.95).add(glow.mul(pulse)).mul(gap);
+                    var rOn = one.sub(T.step(2.5, RSt)).toVar();
+                    var rDash = T.step(0.5, RSt).mul(one.sub(T.step(1.5, RSt))), rDbl = T.step(1.5, RSt).mul(one.sub(T.step(2.5, RSt)));
+                    var rd = T.abs(d.sub(R)).toVar();
+                    var core1 = one.sub(ss(th.mul(0.006), th.mul(0.018), rd));
+                    var rdA = T.abs(d.sub(R).sub(th.mul(0.024))), rdB = T.abs(d.sub(R).add(th.mul(0.024)));
+                    var coreD = T.max(one.sub(ss(th.mul(0.004), th.mul(0.011), rdA)), one.sub(ss(th.mul(0.004), th.mul(0.011), rdB)));
+                    var core = T.mix(core1, coreD, rDbl).toVar();
+                    var glow = T.exp(rd.mul(rd).mul(-520).div(th.mul(th))).mul(0.42).mul(RGl);
+                    var gap = T.mix(F(1), ss(0.34, 0.58, T.abs(ang)), RGa.mul(one.sub(aS4))).toVar();
+                    var dsh = T.mix(F(1), T.step(0.5, T.fract(ang.mul(3.8197).sub(Tm.mul(0.6)).add(Ph))), rDash).toVar();
+                    var ring = core.mul(0.95).add(glow.mul(pulse)).mul(gap).mul(dsh).mul(rOn);
                     var tickAng = T.min(T.abs(T.abs(ang).sub(1.5708)), F(3.1416).sub(T.abs(ang)));
-                    var tick = one.sub(ss(0.045, 0.085, tickAng)).mul(one.sub(ss(0.03, 0.052, rd))).mul(0.85);
-                    var chev = chCore.add(chGlow.mul(pulse)).add(ch2Core);
-                    var ad = T.abs(d.sub(0.345));
+                    var tick = one.sub(ss(0.045, 0.085, tickAng)).mul(one.sub(ss(th.mul(0.03), th.mul(0.052), rd))).mul(0.85).mul(RTi).mul(rOn);
+                    var ad = T.abs(d.sub(RSz.mul(0.345)));
                     var dash = T.step(0.45, T.fract(ang.mul(2.2282).sub(Tm.mul(0.25)).add(Ph)));
-                    var arc = one.sub(ss(0.004, 0.013, ad)).mul(dash).mul(0.28);
-                    var hot = T.clamp(core.mul(gap).add(chCore).add(ch2Core), 0, 1);
-                    out.assign(V4(T.mix(C, WHITE, hot.mul(0.45)), T.min(ring.add(tick).add(chev).add(arc).mul(Op), 1)));
+                    var arc = one.sub(ss(0.004, 0.013, ad)).mul(dash).mul(0.28).mul(RAc).mul(rOn);
+                    var rHot = T.clamp(core.mul(gap).mul(dsh).mul(rOn), 0, 1);
+                    var rC = T.mix(T.mix(C, RCo, ROw), WHITE, rHot.mul(0.45));
+                    var rA = ring.add(tick).add(arc).toVar();
+                    var a = rA.add(arA).toVar();
+                    var col = rC.mul(rA).add(arC.mul(arA)).div(T.max(a, 0.0001));
+                    out.assign(V4(col, T.min(a.mul(Op).mul(ROp), 1)));
                 });
                 return out;
             })();
