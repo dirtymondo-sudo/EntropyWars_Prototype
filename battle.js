@@ -21564,6 +21564,9 @@
             if (dmgNum) { dmgNum.textContent = '0'; dmgNum.classList.remove('crit', 'tick'); }
             requestAnimationFrame(() => el.classList.add('active'));
             _acChromeState.hideTimer = setTimeout(() => hideActionCamChrome(), totalMs);
+            /* the turn clock (hud.js TurnColumn) steps aside for the shot and comes back when the chrome leaves
+               (mondo 2026-10-17: "let's hide the turn clock during spell animations") */
+            document.body.classList.add('ew-spell-shot');
         }
 
         function hideActionCamChrome() {
@@ -21581,6 +21584,7 @@
             if (st?.hideTimer) clearTimeout(st.hideTimer);
             if (st?.rollRaf) cancelAnimationFrame(st.rollRaf);
             _acChromeState = null;
+            document.body.classList.remove('ew-spell-shot');
             if (!_acChromeEl) return;
             // Snap the counter to the true final total before it leaves.
             if (st && st.total > 0) {
