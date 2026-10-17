@@ -1195,6 +1195,13 @@ pause/settings menu from the party builder or match select ... ideally it would 
   right-aligned so extra icons spill out to the left), size, spacing, blink time (the pend flash, default now 1s, was 0.62s),
   breathe time, spent opacity, cube + ring colours, glow.
 
+### UI Maker pass 11: turn icons fit the space, scoreboard text layout + split bars (2026-10-17, mondo: "make it bunch up when theres a lot of icons and spread out more when there is less ... ideally it could just always expand to the top of the screen ... remove the arena mode text ... make the team names different colors, and do different settings for the entropy and tower bars ... move the round n/20 underneath the timer")
+
+- **Turn order > Spacing = Fit the space** (db.icons tcFit 'fill', tcGapMin / tcGapMax / tcTop; iconsCss writes `--tc-fit/--tc-gmin/--tc-gmax/--tc-top` on .ew-turn-col). TurnColumn.measure reads them and measures the room ON SCREEN: the column's drawn bottom (getBoundingClientRect, so the UI Maker move + Size are included) up to tcTop px under the screen top, stopping under the AP press icons when they sit top left; divided by the column's real scale (drawn height / offsetHeight). The render spreads the gap over the room, clamped between the tightest and widest spacing; past the tightest the old "+N" fold takes over. **Icon size** tcSize (`--tc-size`, 0 = auto) fixes the icon size in both modes (auto still clamps to TC_MIN..TC_MAX).
+- **Scoreboard > Text layout**: the UI Maker publishes `window._ewSbLook` (sbSignal in applyLayout, repaints with an `ew-state-change` event); Scoreboard builds its rows from it: sModeShow (sudden death still shows), sCapShow (the "SCORE" word), sTimePos line|top|off, sRoundPos line|under|top|off, sPipsPos bottom|top|off. New classes: ew-sb-cap, ew-sb-round, ew-sb-sep, ew-sb-top, ew-sb-under, ew-sb-pips; ScoreSide carries `p1` / `p2`.
+- Per-team colours: sNameP1Col / sNameP2Col (replace sNameCol), sScoreP1Col / sScoreP2Col.
+- The bars split: tower = sTowerH/Fill/Seg/Slant/Fade/Ticks/Label/Ally/Foe/Track/FrameCol/FrameW; entropy = sEntH/Fill/Seg/Slant/Fade/Ticks/Label/Col/Track/FrameCol/FrameW + sWave. uxMigrate (UX_SPLIT) copies a pass-10 shared key into both.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and

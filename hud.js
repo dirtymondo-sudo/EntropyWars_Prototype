@@ -856,7 +856,7 @@ function ScoreSide({ st, mode, player, side, color }) {
   const towerMax = player === 1 ? mode.p1TowerMax : mode.p2TowerMax;
   const keyAlert = mode.keyAlertPlayer === player;
 
-  return h('div', { className: 'ew-score-side ' + side, style: { width: SCORE_SIDE_W }},
+  return h('div', { className: 'ew-score-side ' + side + ' p' + player, style: { width: SCORE_SIDE_W }},
     /* name hugs the inner edge (beside the score); keys / the kill count sit at the outer end */
     h('div', { className: 'ew-ss-head', style: { flexDirection: left ? 'row-reverse' : 'row' }},
       h('span', { className: 'ew-ss-name', style: { flexDirection: left ? 'row-reverse' : 'row' }},
@@ -1318,6 +1318,50 @@ function Scoreboard({ st }) {
   const mono = '"IBM Plex Mono", monospace';
   const serif = '"Cormorant SC", serif';
 
+  /* the text pieces + where each one goes (UI Maker, Layout > Scoreboard > Text layout) */
+  const sbLook = window._ewSbLook || {};
+  const showMode = isSuddenDeath || sbLook.mode !== false;
+  const capEl = scoreCaption && sbLook.cap !== false && h('span', { key: 'cap', className: 'ew-sb-cap', style: { color: EW_T.inkDim, letterSpacing: '0.16em' }}, scoreCaption);
+  const timeEl = sbLook.time !== 'off' && h('span', { key: 'time', className: 'ew-sb-time', style: { fontWeight: 700, color: EW_T.ink }}, mins + ':' + secs);
+  const roundEl = sbLook.round !== 'off' && h('span', { key: 'round', className: 'ew-sb-round' },
+    'R', h('span', { className: 'ew-sb-rnum', style: {
+      fontFamily: serif, fontSize: 12, fontWeight: 600, color: EW.time,
+      textShadow: '0 0 8px ' + EW.time + '55',
+    }}, round),
+    roundLimit > 0 ? '/' + roundLimit : '',
+  );
+  const sbTop = [], sbMid = [], sbUnder = [];
+  (sbLook.time === 'top' ? sbTop : sbMid).push(capEl, timeEl);
+  (sbLook.round === 'top' ? sbTop : sbLook.round === 'under' ? sbUnder : sbMid).push(roundEl);
+  [sbTop, sbMid, sbUnder].forEach(a => { for (let i = a.length - 1; i >= 0; i--) if (!a[i]) a.splice(i, 1); });
+  if (sbMid.length === 1 && sbMid[0] === capEl) sbMid.length = 0;   // the caption names the time; alone it says nothing
+  if (sbTop.length === 1 && sbTop[0] === capEl) sbTop.length = 0;
+  const sbLine = (cls, parts) => h('div', { className: 'ew-sb-line' + (cls ? ' ' + cls : ''), style: {
+    display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, whiteSpace: 'nowrap',
+    fontFamily: mono, fontSize: 9, letterSpacing: '0.1em', color: EW_T.inkMute,
+  }}, parts.flatMap((p, i) => i ? [h('span', { key: 'sep' + i, className: 'ew-sb-sep', style: { color: EW_T.inkDim }}, '·'), p] : [p]));
+  const pipsEl = mode.nexusPips && sbLook.pips !== 'off' && h('div', { className: 'ew-sb-pips', style: {
+          display: 'flex', alignItems: 'center', gap: 7, lineHeight: 1,
+        }},
+          mode.nexusPips.map(z => {
+            const zColor = z.owner === 1 ? EW.space : z.owner === 2 ? EW.chaos : 'rgba(255,255,255,0.28)';
+            const contested = z.owner === 0 && z.progress !== 0;
+            return h('span', {
+              key: z.key,
+              title: z.name + ' Nexus — ' + (z.owner ? 'Player ' + z.owner : contested ? 'contested' : 'unclaimed'),
+              className: mode.nexusAlertPlayer && z.isSpawn && z.key === 'spawn' + mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
+              style: {
+                fontFamily: mono, fontSize: 11, color: zColor,
+                textShadow: z.owner ? '0 0 7px ' + zColor : 'none',
+              },
+            }, z.owner ? '⬢' : '⬡');
+          }),
+          mode.nexusAlertPlayer > 0 && h('span', { className: 'ew-sudden-death', style: {
+            fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
+            textShadow: '0 0 8px ' + EW.bad,
+          }}, '⛔ P' + mode.nexusAlertPlayer + ' SPAWN LOCKED'),
+        );
+
   return h('div', {
     className: 'ew-scoreboard',
     style: {
@@ -1349,13 +1393,17 @@ function Scoreboard({ st }) {
           background: 'linear-gradient(90deg, transparent, ' + EW.space + '88 30%, ' + EW.chaos + '88 70%, transparent)',
         }}),
 
-        h('span', { className: 'ew-sb-mode' + (isSuddenDeath ? ' ew-sudden-death' : ''), style: {
+        /* THE TEXT PIECES in the order the UI Maker's Scoreboard > Text layout sets (window._ewSbLook; the game's own
+           order without one): the mode name, the score, the caption · time · round line, the Nexus pips */
+        showMode && h('span', { className: 'ew-sb-mode' + (isSuddenDeath ? ' ew-sudden-death' : ''), style: {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.32em', lineHeight: 1,
           color: isSuddenDeath ? EW.bad : EW_T.inkMute, textTransform: 'uppercase',
           textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none', whiteSpace: 'nowrap',
           alignSelf: 'stretch', textAlign: 'center',
           borderBottom: '1px solid #262233', paddingBottom: 4, marginBottom: 1,
         }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : (fieldTag + (mode.label || ''))),
+        sbLook.pips === 'top' && pipsEl,
+        sbTop.length > 0 && sbLine('ew-sb-top', sbTop),
 
         h('div', { className: 'ew-sb-scores', style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
           h('span', { className: 'ew-sb-num p1', style: {
@@ -1373,46 +1421,10 @@ function Scoreboard({ st }) {
           }}, mode.p2Score),
         ),
 
-        h('div', { className: 'ew-sb-line', style: {
-          display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, whiteSpace: 'nowrap',
-          fontFamily: mono, fontSize: 9, letterSpacing: '0.1em', color: EW_T.inkMute,
-        }},
-          scoreCaption && h('span', { style: { color: EW_T.inkDim, letterSpacing: '0.16em' }}, scoreCaption),
-          scoreCaption && h('span', { style: { color: EW_T.inkDim }}, '·'),
-          h('span', { className: 'ew-sb-time', style: { fontWeight: 700, color: EW_T.ink }}, mins + ':' + secs),
-          h('span', { style: { color: EW_T.inkDim }}, '·'),
-          h('span', null,
-            'R', h('span', { className: 'ew-sb-rnum', style: {
-              fontFamily: serif, fontSize: 12, fontWeight: 600, color: EW.time,
-              textShadow: '0 0 8px ' + EW.time + '55',
-            }}, round),
-            roundLimit > 0 ? '/' + roundLimit : '',
-          ),
-        ),
+        sbMid.length > 0 && sbLine('', sbMid),
+        sbUnder.length > 0 && sbLine('ew-sb-under', sbUnder),
 
-        /* Nexus zone control pips (Arena) — ownership at a glance; the
-           SPAWN LOCKED tag pulses for a team that holds no zone at all. */
-        mode.nexusPips && h('div', { style: {
-          display: 'flex', alignItems: 'center', gap: 7, lineHeight: 1,
-        }},
-          mode.nexusPips.map(z => {
-            const zColor = z.owner === 1 ? EW.space : z.owner === 2 ? EW.chaos : 'rgba(255,255,255,0.28)';
-            const contested = z.owner === 0 && z.progress !== 0;
-            return h('span', {
-              key: z.key,
-              title: z.name + ' Nexus — ' + (z.owner ? 'Player ' + z.owner : contested ? 'contested' : 'unclaimed'),
-              className: mode.nexusAlertPlayer && z.isSpawn && z.key === 'spawn' + mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
-              style: {
-                fontFamily: mono, fontSize: 11, color: zColor,
-                textShadow: z.owner ? '0 0 7px ' + zColor : 'none',
-              },
-            }, z.owner ? '⬢' : '⬡');
-          }),
-          mode.nexusAlertPlayer > 0 && h('span', { className: 'ew-sudden-death', style: {
-            fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
-            textShadow: '0 0 8px ' + EW.bad,
-          }}, '⛔ P' + mode.nexusAlertPlayer + ' SPAWN LOCKED'),
-        ),
+        sbLook.pips !== 'top' && pipsEl,
       ),
 
       h(ScoreSide, { st, mode, player: 2, side: 'right', color: EW.chaos }),
@@ -1834,7 +1846,7 @@ function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
 
 function TurnColumn({ st }) {
   const ref = useRef(null);
-  const geoRef = useRef({ bottom: null, avail: 480, docked: false, gap: TC_GAP });
+  const geoRef = useRef({ bottom: null, avail: 480, docked: false, gap: TC_GAP, fit: null });
   const [geo, setGeo] = useState(geoRef.current);
   const cmdRef = useRef(false);
   cmdRef.current = _tcViewerCommands(st);
@@ -1862,11 +1874,30 @@ function TurnColumn({ st }) {
     }
     /* the space between the icons: the UI Maker's Layout > Turn order > Icon spacing writes --tc-gap (mondo 2026-10-16:
        "let me change the vertical spacing between the turn clock icons ... without also changing their size") */
-    const gv = parseFloat(getComputedStyle(el).getPropertyValue('--tc-gap'));
+    const cs = getComputedStyle(el), cv = (k) => parseFloat(cs.getPropertyValue(k));
+    const gv = cv('--tc-gap');
     const gap = isFinite(gv) ? Math.max(-30, Math.min(60, gv)) : TC_GAP;
+    /* FIT TO THE SPACE (mondo 2026-10-17: "make it bunch up when theres a lot of icons and spread out more when there is
+       less ... ideally it could just always expand to the top of the screen"): the UI Maker's Turn order > Spacing = Fit
+       writes --tc-fit / --tc-gmin / --tc-gmax / --tc-top; --tc-size = a fixed icon size. Fit measures the room ON SCREEN
+       (the column's drawn bottom up to the top margin, its UI Maker move + size included) so a scaled column still ends
+       at the top of the screen. */
+    const sz = cv('--tc-size');
+    let fit = null;
+    if (cv('--tc-fit') > 0) {
+      const er = el.getBoundingClientRect();
+      const k = el.offsetHeight > 0 && er.height > 0 ? er.height / el.offsetHeight : s;
+      const top = isFinite(cv('--tc-top')) ? cv('--tc-top') : 12;
+      let room = er.bottom - (lr.top + top * s);
+      if (pr && pr.height > 0 && pr.left < er.right + 8 && pr.top < lr.top + lr.height / 2) room = Math.min(room, er.bottom - (pr.bottom + 10 * s));
+      const gmin = cv('--tc-gmin'), gmax = cv('--tc-gmax');
+      fit = { room: Math.max(60, room / k), gmin: isFinite(gmin) ? gmin : -20, gmax: isFinite(gmax) ? gmax : 40 };
+    }
+    const size = isFinite(sz) && sz > 0 ? Math.max(16, Math.min(140, sz)) : 0;
     const g = geoRef.current;
-    if (g.bottom == null || Math.abs(g.bottom - bottom) > 0.5 || Math.abs(g.avail - avail) > 0.5 || g.docked !== docked || g.gap !== gap) {
-      geoRef.current = { bottom, avail, docked, gap };
+    const fk = fit ? Math.round(fit.room) + '|' + fit.gmin + '|' + fit.gmax : '';
+    if (g.bottom == null || Math.abs(g.bottom - bottom) > 0.5 || Math.abs(g.avail - avail) > 0.5 || g.docked !== docked || g.gap !== gap || (g.fk || '') !== fk || (g.size || 0) !== size) {
+      geoRef.current = { bottom, avail, docked, gap, fit, fk, size };
       setGeo(geoRef.current);
     }
   }, []);
@@ -1902,11 +1933,17 @@ function TurnColumn({ st }) {
   const nowRow = !commands && queue.length && queue[0].active;
   const hasSpent = queue.some(e => e.finished) && queue.some(e => !e.finished);
   const fixed = (dead.length ? 24 : 0) + (hasSpent ? 14 : 0);
-  const iconsAvail = Math.max(TC_MIN, geo.avail - fixed);
+  const fitOn = !!geo.fit;
+  const iconsAvail = Math.max(TC_MIN, (fitOn ? geo.fit.room - 4 : geo.avail) - fixed);
   const units = queue.length + (nowRow ? 0.3 : 0);
-  const gap = geo.gap == null ? TC_GAP : geo.gap;
-  let size = Math.floor(iconsAvail / Math.max(1, units) - Math.max(0, gap));
-  size = Math.max(TC_MIN, Math.min(TC_MAX, size));
+  let gap = geo.gap == null ? TC_GAP : geo.gap;
+  let size = geo.size ? geo.size : Math.floor(iconsAvail / Math.max(1, units) - (fitOn ? 0 : Math.max(0, gap)));
+  if (!geo.size) size = Math.max(TC_MIN, Math.min(TC_MAX, size));
+  if (fitOn) {   // the spacing that spreads the icons over the whole room, held between the tightest and the widest
+    const gaps = Math.max(1, queue.length - 1 + (hasSpent ? 1 : 0));
+    gap = Math.floor((iconsAvail - units * size) / gaps);
+    gap = Math.max(geo.fit.gmin, Math.min(geo.fit.gmax, gap));
+  }
   let shown = queue, folded = 0;
   const fit = Math.floor((iconsAvail - (nowRow ? size * 0.3 : 0)) / Math.max(8, size + gap));
   if (queue.length > fit) {
@@ -12231,7 +12268,10 @@ function layoutCss() {
    --tc-gap); dockDir row | col (lead on top) | colup (lead at the bottom); dockGap = px between the party portraits;
    dockTag = the lead's name + HP: none | under (plain text under its bars) | panel (the old plate beside it). The party
    portraits' bars themselves are the Bars mode's "Party portraits" place (rings + bars under them by default). */
-const ICONS_DEF = { tcGap: 6, dockDir: 'row', dockGap: 6, dockTag: 'none' };
+const ICONS_DEF = { tcGap: 6, dockDir: 'row', dockGap: 6, dockTag: 'none',
+  /* tcFit fixed | fill (spread over the room up to tcTop px under the screen top, between tcGapMin and tcGapMax);
+     tcSize = a fixed icon size in px, 0 = fit the room (2026-10-17) */
+  tcFit: 'fixed', tcGapMin: -16, tcGapMax: 40, tcTop: 12, tcSize: 0 };
 function iconsOf() { return Object.assign({}, ICONS_DEF, db.icons || {}); }
 function iconsTidy() {
   const I = db.icons || (db.icons = {});
@@ -12241,6 +12281,8 @@ function iconsCss() {
   const I = iconsOf(), R = ':root:root ', n = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
   let css = '';
   if (+I.tcGap !== ICONS_DEF.tcGap) css += `${R}.ew-turn-col { --tc-gap: ${n(I.tcGap, -30, 60, 6)}; }\n`;
+  if (I.tcFit === 'fill') css += `${R}.ew-turn-col { --tc-fit: 1; --tc-gmin: ${n(I.tcGapMin, -40, 60, -16)}; --tc-gmax: ${Math.max(n(I.tcGapMin, -40, 60, -16), n(I.tcGapMax, -20, 240, 40))}; --tc-top: ${n(I.tcTop, 0, 400, 12)}; }\n`;
+  if (+I.tcSize > 0) css += `${R}.ew-turn-col { --tc-size: ${n(I.tcSize, 16, 140, 0)}; }\n`;
   const D = R + '#hqPage .hq-dock', gap = n(I.dockGap, -20, 60, 6);
   if (I.dockDir === 'col' || I.dockDir === 'colup') css += `${D} { flex-direction: ${I.dockDir === 'col' ? 'column' : 'column-reverse'} !important; align-items: flex-start !important; }\n${D} .hq-dock-pp.lead { margin-right: 0 !important; }\n`;
   if (gap !== ICONS_DEF.dockGap) css += gap >= 0 ? `${D} { gap: ${gap}px !important; }\n` : `${D} { gap: 0 !important; }\n${D} > .hq-dock-pp + .hq-dock-pp { margin-${I.dockDir === 'col' ? 'top' : I.dockDir === 'colup' ? 'bottom' : 'left'}: ${gap}px !important; }\n`;
@@ -12269,14 +12311,39 @@ const UX_DEF = {
   pFont: '', pNameSize: 14, pCase: 'upper', pAllyCol: '', pFoeCol: '', pActiveCol: '', pBarH: 5, pMpH: 4, pAllyOp: 0.8, pFoeOp: 0.42,
   pPanel: 'none', pPanelCol: '',
   sPanel: 'theme', sPanelCol: '', sEdgeCol: '', sFont: '', sScoreFont: '', sScoreSize: 22, sScoreCol: '', sModeSize: 8, sModeCol: '',
-  sLineSize: 9, sTimeCol: '', sRoundCol: '', sNameSize: 12, sNameCol: '', sGap: 12, sSideW: 0, sDot: true,
-  sTowerH: 11, sEntH: 8, sSlant: true, sFade: true, sTicks: true, sWave: true, sLabels: true, sBarFill: 'game', sBarSeg: 10,
-  sTowerAlly: '', sTowerFoe: '', sEntCol: '', sFrameCol: '', sFrameW: 1,
+  sLineSize: 9, sTimeCol: '', sRoundCol: '', sNameSize: 12, sGap: 12, sSideW: 0, sDot: true,
+  /* pass 11 (2026-10-17, mondo: "i want to remove the arena mode text and also be able to make the team names different
+     colors, and do different settings for the entropy and tower bars. let me rearrange where the text goes too, like i
+     would like to move the round n/20 underneath the timer"): the text pieces the Scoreboard reads (window._ewSbLook):
+     sModeShow / sCapShow, sTimePos line | top | off, sRoundPos line | under | top | off, sPipsPos bottom | top | off;
+     a colour per team; the tower bars (sTower*) and the entropy bars (sEnt*) each have their own look */
+  sModeShow: true, sCapShow: true, sTimePos: 'line', sRoundPos: 'line', sPipsPos: 'bottom',
+  sNameP1Col: '', sNameP2Col: '', sScoreP1Col: '', sScoreP2Col: '',
+  sTowerH: 11, sTowerFill: 'game', sTowerSeg: 10, sTowerSlant: true, sTowerFade: true, sTowerTicks: true, sTowerLabel: true,
+  sTowerAlly: '', sTowerFoe: '', sTowerTrack: '', sTowerFrameCol: '', sTowerFrameW: 1,
+  sEntH: 8, sEntFill: 'game', sEntSeg: 10, sEntSlant: true, sEntFade: true, sEntTicks: true, sEntLabel: true, sWave: true,
+  sEntCol: '', sEntTrack: '', sEntFrameCol: '', sEntFrameW: 1,
   /* a* = the AP press icons (mondo 2026-10-17: "they are blinking a little too fast. let me customize them ... when there are
      4, they extend out to the right and get cropped off the screen. ideally they can slide to the left") */
   aGrow: 'right', aAnchor: 2, aSize: 40, aGap: 5, aBlink: 1, aBreathe: 2.6, aGlow: true, aSpentOp: 0.34, aCube: '', aRing: '',
 };
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
+/* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
+const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
+  sLabels: ['sTowerLabel', 'sEntLabel'], sBarFill: ['sTowerFill', 'sEntFill'], sBarSeg: ['sTowerSeg', 'sEntSeg'],
+  sFrameCol: ['sTowerFrameCol', 'sEntFrameCol'], sFrameW: ['sTowerFrameW', 'sEntFrameW'], sNameCol: ['sNameP1Col', 'sNameP2Col'] };
+function uxMigrate() {
+  const X = db.ux; if (!X) return;
+  Object.keys(UX_SPLIT).forEach(o => { if (!(o in X)) return; UX_SPLIT[o].forEach(k => { if (!(k in X)) X[k] = X[o]; }); delete X[o]; });
+}
+/* the scoreboard's text pieces, re-published only when they change (the Scoreboard reads window._ewSbLook each render) */
+let _sbSent = '';
+function sbSignal() {
+  const X = uxOf(), L = { mode: !!X.sModeShow, cap: !!X.sCapShow, time: X.sTimePos, round: X.sRoundPos, pips: X.sPipsPos };
+  const k = JSON.stringify(L); if (k === _sbSent) return;
+  _sbSent = k; window._ewSbLook = L;
+  try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}   // repaint the HUD with it
+}
 function uxTidy() {
   const X = db.ux || (db.ux = {});
   Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
@@ -12365,26 +12432,35 @@ function uxCss() {
   if (X.sTimeCol) css += `${S} .ew-sb-time { color: ${X.sTimeCol} !important; }\n`;
   if (X.sRoundCol) css += `${S} .ew-sb-rnum { color: ${X.sRoundCol} !important; text-shadow: 0 0 8px ${withAlpha(X.sRoundCol, 0.4)} !important; }\n`;
   if (chg('sNameSize')) css += `${S} .ew-ss-text { font-size: ${n('sNameSize', 8, 24)}px !important; }\n`;
-  if (X.sNameCol) css += `${S} .ew-ss-text { color: ${X.sNameCol} !important; }\n`;
+  if (X.sNameP1Col) css += `${S} .ew-score-side.p1 .ew-ss-text { color: ${X.sNameP1Col} !important; }\n`;
+  if (X.sNameP2Col) css += `${S} .ew-score-side.p2 .ew-ss-text { color: ${X.sNameP2Col} !important; }\n`;
+  if (X.sScoreP1Col) css += `${S} .ew-sb-num.p1 { color: ${X.sScoreP1Col} !important; }\n`;
+  if (X.sScoreP2Col) css += `${S} .ew-sb-num.p2 { color: ${X.sScoreP2Col} !important; }\n`;
   if (!X.sDot) css += `${S} .ew-ss-dot { display: none !important; }\n`;
   if (chg('sGap')) css += `${S} .ew-sb-strip { gap: ${n('sGap', 0, 80)}px !important; }\n`;
   if (+X.sSideW > 0) css += `${S} .ew-score-side { width: ${n('sSideW', 100, 520)}px !important; }\n`;
-  if (chg('sTowerH')) css += `${S} .ew-tower-vessel { height: ${n('sTowerH', 3, 30)}px !important; }\n`;
+  /* the tower bars */
+  const TV = `${S} .ew-tower-vessel`, EV = `${S} .ew-entropy-vessel`;
+  if (chg('sTowerH')) css += `${TV} { height: ${n('sTowerH', 3, 30)}px !important; }\n`;
+  if (!X.sTowerSlant) css += `${TV} { transform: none !important; }\n`;
+  if (!X.sTowerFade) css += `${TV} { -webkit-mask-image: none !important; mask-image: none !important; }\n`;
+  if (!X.sTowerTicks) css += `${S} .ew-tower-tick { display: none !important; }\n`;
+  if (!X.sTowerLabel) css += `${S} .ew-meter-lbl { display: none !important; }\n`;
+  if (X.sTowerTrack) css += `${TV} { background: ${X.sTowerTrack} !important; }\n`;
+  const tFill = c => barFill({ fill: X.sTowerFill, seg: X.sTowerSeg }, c);
+  if (X.sTowerFill !== 'game' || X.sTowerAlly) css += `${S} .ew-tower.ally .ew-tower-fill { background: ${tFill(X.sTowerAlly || '#2ed158')} !important; }\n`;
+  if (X.sTowerFill !== 'game' || X.sTowerFoe) css += `${S} .ew-tower.foe .ew-tower-fill { background: ${tFill(X.sTowerFoe || '#ff4a56')} !important; }\n`;
+  if (X.sTowerFrameCol || chg('sTowerFrameW')) css += `${TV} { border: ${n('sTowerFrameW', 0, 4)}px solid ${X.sTowerFrameCol || 'rgba(214,232,218,0.5)'} !important; }\n`;
+  /* the entropy bars */
   if (chg('sEntH')) css += `${S} .ew-ent-line { height: ${n('sEntH', 3, 30)}px !important; }\n`;
-  if (!X.sSlant) css += `${S} .ew-tower-vessel, ${S} .ew-entropy-vessel { transform: none !important; }\n${S} .ew-ent-trace { transform: translateY(-50%) !important; }\n`;
-  if (!X.sFade) css += `${S} .ew-tower-vessel, ${S} .ew-entropy-vessel, ${S} .ew-ent-trace { -webkit-mask-image: none !important; mask-image: none !important; }\n`;
-  if (!X.sTicks) css += `${S} .ew-tower-tick, ${S} .ew-ent-tick { display: none !important; }\n`;
+  if (!X.sEntSlant) css += `${EV} { transform: none !important; }\n${S} .ew-ent-trace { transform: translateY(-50%) !important; }\n`;
+  if (!X.sEntFade) css += `${EV}, ${S} .ew-ent-trace { -webkit-mask-image: none !important; mask-image: none !important; }\n`;
+  if (!X.sEntTicks) css += `${S} .ew-ent-tick { display: none !important; }\n`;
+  if (!X.sEntLabel) css += `${S} .ew-ent-lbl { display: none !important; }\n`;
   if (!X.sWave) css += `${S} .ew-ent-trace { display: none !important; }\n`;
-  if (!X.sLabels) css += `${S} .ew-meter-lbl, ${S} .ew-ent-lbl { display: none !important; }\n`;
-  const sL = { fill: X.sBarFill, seg: X.sBarSeg };
-  const sFill = c => barFill(sL, c);
-  if (X.sBarFill !== 'game' || X.sTowerAlly) css += `${S} .ew-tower.ally .ew-tower-fill { background: ${sFill(X.sTowerAlly || '#2ed158')} !important; }\n`;
-  if (X.sBarFill !== 'game' || X.sTowerFoe) css += `${S} .ew-tower.foe .ew-tower-fill { background: ${sFill(X.sTowerFoe || '#ff4a56')} !important; }\n`;
-  if (X.sBarFill !== 'game' || X.sEntCol) css += `${S} .ew-entropy-fill:not(.ew-entropy-full) { background: ${sFill(X.sEntCol || '#a36cff')} !important; }\n`;
-  if (X.sFrameCol || chg('sFrameW')) {
-    const fw = n('sFrameW', 0, 4), fc = X.sFrameCol || 'rgba(214,232,218,0.5)';
-    css += `${S} .ew-tower-vessel, ${S} .ew-entropy-vessel { border: ${fw}px solid ${fc} !important; }\n`;
-  }
+  if (X.sEntTrack) css += `${EV} { background: ${X.sEntTrack} !important; }\n`;
+  if (X.sEntFill !== 'game' || X.sEntCol) css += `${S} .ew-entropy-fill:not(.ew-entropy-full) { background: ${barFill({ fill: X.sEntFill, seg: X.sEntSeg }, X.sEntCol || '#a36cff')} !important; }\n`;
+  if (X.sEntFrameCol || chg('sEntFrameW')) css += `${EV} { border: ${n('sEntFrameW', 0, 4)}px solid ${X.sEntFrameCol || 'rgba(150,120,220,0.5)'} !important; }\n`;
   return css;
 }
 /* the forms (Bars > Selection rings, Bars > Name plates, Layout > Scoreboard); fields write db.ux via data-xpath / data-xset */
@@ -12441,17 +12517,31 @@ function scoreForm() {
   h += sec('spanel', 'Centre panel', xp(fSeg('Panel', 'sPanel', [['theme', 'Theme'], ['dark', 'Dark'], ['none', 'None']], X.sPanel)
     + fColorOpt('Fill', 'sPanelCol', X.sPanelCol, 'rgba(6,6,12,0.9)', true) + fColorOpt('Edge', 'sEdgeCol', X.sEdgeCol, '#3a3448')
     + fRange('Space to the sides', 'sGap', 0, 80, 1, +X.sGap)));
+  h += sec('slay', 'Text layout', xp(fSeg('Time', 'sTimePos', [['line', 'Under the score'], ['top', 'Above the score'], ['off', 'Hidden']], X.sTimePos)
+    + fSeg('Round', 'sRoundPos', [['line', 'Beside the time'], ['under', 'Under the time'], ['top', 'Above the score'], ['off', 'Hidden']], X.sRoundPos)
+    + fSeg('Nexus pips', 'sPipsPos', [['bottom', 'At the bottom'], ['top', 'At the top'], ['off', 'Hidden']], X.sPipsPos))
+    + xCheck('Mode name (Arena …)', 'sModeShow', X.sModeShow) + xCheck('"Score" word', 'sCapShow', X.sCapShow)
+    + '<div class="uim-note">Sudden death still shows over the score with the mode name hidden.</div>');
   h += sec('stext', 'Text', xp(fSelect('Font', 'sFont', FONTS, X.sFont) + fSelect('Score font', 'sScoreFont', FONTS, X.sScoreFont)
     + fRange('Score size', 'sScoreSize', 12, 56, 1, +X.sScoreSize) + fColorOpt('Score colour', 'sScoreCol', X.sScoreCol, '#ffffff')
+    + fColorOpt('P1 score colour', 'sScoreP1Col', X.sScoreP1Col, '#8fd0ff') + fColorOpt('P2 score colour', 'sScoreP2Col', X.sScoreP2Col, '#ff8fb0')
     + fRange('Mode name size', 'sModeSize', 6, 20, 1, +X.sModeSize) + fColorOpt('Mode name colour', 'sModeCol', X.sModeCol, '#9a93b5')
     + fRange('Time line size', 'sLineSize', 6, 20, 1, +X.sLineSize) + fColorOpt('Time colour', 'sTimeCol', X.sTimeCol, '#ffffff') + fColorOpt('Round colour', 'sRoundCol', X.sRoundCol, '#ffcd6b')
-    + fRange('Team name size', 'sNameSize', 8, 24, 1, +X.sNameSize) + fColorOpt('Team name colour', 'sNameCol', X.sNameCol, '#ffffff'))
+    + fRange('Team name size', 'sNameSize', 8, 24, 1, +X.sNameSize)
+    + fColorOpt('P1 name colour', 'sNameP1Col', X.sNameP1Col, '#8fd0ff') + fColorOpt('P2 name colour', 'sNameP2Col', X.sNameP2Col, '#ff8fb0'))
     + xCheck('Team dots', 'sDot', X.sDot));
-  h += sec('sbars', 'Tower + entropy bars', xp(fRange('Side width (0 = auto)', 'sSideW', 0, 520, 10, +X.sSideW) + fRange('Tower bar thickness', 'sTowerH', 3, 30, 1, +X.sTowerH) + fRange('Entropy bar thickness', 'sEntH', 3, 30, 1, +X.sEntH)
-    + fSeg('Fill', 'sBarFill', BAR_FILLS, X.sBarFill) + (X.sBarFill === 'segments' ? fRange('Block size', 'sBarSeg', 4, 40, 1, +X.sBarSeg) : '')
-    + fColorOpt('Your tower', 'sTowerAlly', X.sTowerAlly, '#2ed158') + fColorOpt('Enemy tower', 'sTowerFoe', X.sTowerFoe, '#ff4a56') + fColorOpt('Entropy', 'sEntCol', X.sEntCol, '#a36cff')
-    + fColorOpt('Frame', 'sFrameCol', X.sFrameCol, '#d6e8da') + fRange('Frame width', 'sFrameW', 0, 4, 1, +X.sFrameW))
-    + xCheck('Slanted', 'sSlant', X.sSlant) + xCheck('Fade at the tip', 'sFade', X.sFade) + xCheck('Quarter ticks', 'sTicks', X.sTicks) + xCheck('Entropy wave', 'sWave', X.sWave) + xCheck('Labels', 'sLabels', X.sLabels));
+  h += sec('sside', 'Sides', xp(fRange('Side width (0 = auto)', 'sSideW', 0, 520, 10, +X.sSideW)));
+  h += sec('stower', 'Tower bars', xp(fRange('Thickness', 'sTowerH', 3, 30, 1, +X.sTowerH)
+    + fSeg('Fill', 'sTowerFill', BAR_FILLS, X.sTowerFill) + (X.sTowerFill === 'segments' ? fRange('Block size', 'sTowerSeg', 4, 40, 1, +X.sTowerSeg) : '')
+    + fColorOpt('Your tower', 'sTowerAlly', X.sTowerAlly, '#2ed158') + fColorOpt('Enemy tower', 'sTowerFoe', X.sTowerFoe, '#ff4a56')
+    + fColorOpt('Track', 'sTowerTrack', X.sTowerTrack, 'rgba(6,6,12,0.8)', true)
+    + fColorOpt('Frame', 'sTowerFrameCol', X.sTowerFrameCol, '#d6e8da') + fRange('Frame width', 'sTowerFrameW', 0, 4, 1, +X.sTowerFrameW))
+    + xCheck('Slanted', 'sTowerSlant', X.sTowerSlant) + xCheck('Fade at the tip', 'sTowerFade', X.sTowerFade) + xCheck('Quarter ticks', 'sTowerTicks', X.sTowerTicks) + xCheck('Label', 'sTowerLabel', X.sTowerLabel));
+  h += sec('sent', 'Entropy bars', xp(fRange('Thickness', 'sEntH', 3, 30, 1, +X.sEntH)
+    + fSeg('Fill', 'sEntFill', BAR_FILLS, X.sEntFill) + (X.sEntFill === 'segments' ? fRange('Block size', 'sEntSeg', 4, 40, 1, +X.sEntSeg) : '')
+    + fColorOpt('Entropy', 'sEntCol', X.sEntCol, '#a36cff') + fColorOpt('Track', 'sEntTrack', X.sEntTrack, 'rgba(14,8,30,0.78)', true)
+    + fColorOpt('Frame', 'sEntFrameCol', X.sEntFrameCol, '#9678dc') + fRange('Frame width', 'sEntFrameW', 0, 4, 1, +X.sEntFrameW))
+    + xCheck('Slanted', 'sEntSlant', X.sEntSlant) + xCheck('Fade at the tip', 'sEntFade', X.sEntFade) + xCheck('Quarter ticks', 'sEntTicks', X.sEntTicks) + xCheck('Wave', 'sWave', X.sWave) + xCheck('Label', 'sEntLabel', X.sEntLabel));
   return h + `<div class="uim-note">The centre panel's skin also follows the Battle HUD theme (Menus).</div>` + xReset('s', 'Reset the scoreboard');
 }
 
@@ -12907,7 +12997,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  heroSignal(); ringSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -14001,7 +14091,13 @@ function iconsForm(which) {
   const seg = (l, k, opts, cur) => `<div class="uim-f"><label>${l}</label><div style="flex-wrap:wrap">${opts.map(([v, t, tip]) => `<button class="uim-btn${String(cur) === v ? ' on' : ''}" data-dk="iconset" data-val="${k}:${v}"${tip ? ` title="${esc(tip)}"` : ''}>${t}</button>`).join('')}</div></div>`;
   let h = `<div class="uim-h">The icons</div>`;
   if (which === 'turns') {
-    h += R('Icon spacing', 'tcGap', -20, 40, 1, +I.tcGap, 'The space between the turn order icons; their size stays (Size above sizes the whole column)')
+    h += seg('Spacing', 'tcFit', [['fixed', 'Fixed'], ['fill', 'Fit the space', 'Bunch up when there are many icons, spread out when there are few, up to the top of the screen']], I.tcFit)
+      + (I.tcFit === 'fill'
+        ? R('Tightest spacing', 'tcGapMin', -40, 60, 1, +I.tcGapMin, 'How close the icons may bunch when there are many (below 0 they overlap)')
+          + R('Widest spacing', 'tcGapMax', -20, 240, 1, +I.tcGapMax, 'How far apart they may spread when there are few')
+          + R('Space at the top', 'tcTop', 0, 400, 1, +I.tcTop, 'Where the column stops under the top of the screen')
+        : R('Icon spacing', 'tcGap', -20, 40, 1, +I.tcGap, 'The space between the turn order icons; their size stays (Size above sizes the whole column)'))
+      + R('Icon size (0 = auto)', 'tcSize', 0, 140, 1, +I.tcSize, 'A fixed size for the icons; 0 sizes them to fit')
       + `<div class="uim-note">Below 0 the icons overlap. The reserves are their own piece now (Reserves).</div>`;
   } else {
     h += seg('Stack', 'dockDir', [['row', 'In a row'], ['col', 'Column, lead on top'], ['colup', 'Column, lead at the bottom']], I.dockDir)
