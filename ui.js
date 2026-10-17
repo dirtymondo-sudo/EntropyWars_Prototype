@@ -17472,6 +17472,9 @@
         const role = r => (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[r]) || '';
         const types = r => (RACE_PROFILES[r] && RACE_PROFILES[r].types) || [];
         const range = r => (typeof raceKit === 'function' ? raceKit(r).range : 1);
+        /* JUMP (2026-10-17): the race's own row in data.js RACE_JUMP, else 1 or 2 from SPD (raceJumpStat) */
+        const jump = r => (typeof raceJumpStat === 'function' ? raceJumpStat(r, base(r, 'spd')) : 1);
+        const jumpOwn = r => typeof RACE_JUMP !== 'undefined' && RACE_JUMP[r] != null;
         const frameLevel = () => R.frame === 'l1' ? 1 : R.frame === 'l100' ? cap() : 0;
         const toFrame = (k, b) => R.frame === 'base' ? b : raceStatAtLevel(k, b, frameLevel());
         const fromFrame = (k, v) => R.frame === 'base' ? Math.max(0, Math.round(+v || 0)) : raceBaseForLevelValue(k, v, frameLevel());
@@ -17521,7 +17524,7 @@
         function sorted(list) {
             const k = R.sort.key, d = R.sort.dir;
             const val = r => k === 'name' ? label(r).toLowerCase() : k === 'role' ? role(r) : k === 'type' ? types(r).join(',') : k === 'mov' ? moveFromSpd(base(r, 'spd'))
-                : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
+                : k === 'jump' ? jump(r) : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
             return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
         }
 
@@ -17608,11 +17611,11 @@
             const rows = list.map(r => `<tr class="${r === R.sel ? 'sel' : ''}" data-act="pick" data-v="${esc(r)}">
                 <td class="rce-name">${art(r, 'thumb')}${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
                 ${STATS.map(([k]) => `<td class="rce-num${edited(r, k) ? ' ed' : ''}">${grade(k, base(r, k))}<span>${toFrame(k, base(r, k))}</span></td>`).join('')}
-                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
+                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num${edited(r, 'jump') ? ' ed' : ''}${jumpOwn(r) ? '' : ' slb2-dim'}" title="${jumpOwn(r) ? 'the race\'s own jump' : 'from SPD'}">${jump(r)}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
             return `<div class="rce-split"><div class="rce-left">${filterBar()}
                 <div class="rce-tablewrap" data-scroll="races"><table class="rce-table"><thead><tr>${th('name', 'RACE')}${th('role', 'ROLE')}${th('type', 'TYPE')}
-                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
-                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
+                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('jump', 'JUMP', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
+                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. JUMP is the race's own (dim = from SPD: 1 below ${typeof JUMP_SPD_FROM !== 'undefined' ? JUMP_SPD_FROM : 90}, 2 from it). POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
                 <div class="rce-right" data-scroll="insp">${inspector(R.sel)}</div></div>`;
         }
         function powerCls(r) { const p = racePowerBudget(RACE_BASE_STATS[r], range(r)); return p > RACE_POWER_TARGET * 1.05 ? 'hi' : p < RACE_POWER_TARGET * 0.95 ? 'lo' : ''; }
@@ -17642,6 +17645,7 @@
                     <label>TYPE</label><div>${allTypes().map(t => `<button class="slb2-tiny${types(r).includes(t) ? ' on' : ''}" data-act="type" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join(' ')}${was('types')}</div>
                     <label>ROLE</label><div><select class="slb2-sel" data-f="role1" data-r="${esc(r)}">${opt('', role(r), '—')}${allRoles().map(x => opt(x, role(r))).join('')}</select>${was('role')}</div>
                     <label>ATTACK RANGE</label><div><input class="rce-in" type="number" min="1" max="8" value="${range(r)}" data-f="range" data-r="${esc(r)}"> <span class="slb2-dim">tiles (basic attack reach)</span>${was('range')}</div>
+                    <label>JUMP</label><div><select class="slb2-sel" data-f="jump" data-r="${esc(r)}">${opt('spd', jumpOwn(r) ? '' : 'spd', 'from SPD (' + (typeof raceJumpStat === 'function' ? raceJumpStat('', base(r, 'spd')) : 1) + ')')}${[1, 2, 3, 4, 5].map(n => opt(n, jumpOwn(r) ? jump(r) : '')).join('')}</select> <span class="slb2-dim">hops up ${jump(r)} level${jump(r) === 1 ? '' : 's'} · leaps ${Math.max(2, jump(r))} tiles</span>${edited(r, 'jump') ? `<span class="rce-was">was ${M().shipped(r, 'jump') == null ? 'from SPD' : M().shipped(r, 'jump')}</span>` : ''}</div>
                     <label>TERRAIN</label><div><select class="slb2-sel" data-f="terrain" data-r="${esc(r)}">${TERRAIN_PREFERENCE_OPTIONS.map(x => opt(x, terr)).join('')}</select> <span class="slb2-dim">${esc(tbTxt)}</span>${was('terrain')}</div>
                     <label>NATIVE TO</label><div class="rce-chips">${allBiomes().map(b => `<button class="slb2-tiny${bi.includes(b) ? ' on' : ''}" data-act="biome" data-v="${esc(b)}" data-r="${esc(r)}">${esc(b.replace(/_/g, ' '))}</button>`).join(' ')}${was('biomes')}</div>
                 </div>
@@ -17649,7 +17653,7 @@
                 <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
                 <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
                 ${statRows}
-                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
+                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>JUMP <b>${jump(r)}</b> up · <b>${Math.max(2, jump(r))}</b> tiles across${jumpOwn(r) ? '' : ' (from SPD)'}</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
                 <div class="rce-sec">HP AND MP FROM LEVEL 1 TO ${cap()}</div>
                 ${chart(r, ['hp', 'mp'], 150)}
                 <div class="rce-sec">ATK · M ATK · DEF · M DEF FROM LEVEL 1 TO ${cap()}</div>
@@ -18044,6 +18048,7 @@
                 else if (f === 'role1') W(() => M().setRace(r, 'role', val));
                 else if (f === 'range') W(() => M().setRace(r, 'range', Math.max(1, Math.min(8, Math.round(+val || 1)))));
                 else if (f === 'terrain') W(() => M().setRace(r, 'terrain', val));
+                else if (f === 'jump') W(() => M().setRace(r, 'jump', val === 'spd' ? null : Math.max(1, Math.min(5, Math.round(+val || 1)))));
                 else if (f === 'band') W(() => { const b = STAT_GRADE_BANDS[k].slice(); b[+el.dataset.i] = Math.round(+val || 0); M().setGlobal('grades', k, b); });
                 else if (f === 'curve') W(() => M().setGlobal('curve', k, Math.max(0, +val || 0) / (+el.dataset.scale || 1)));
                 else if (f === 'gain') W(() => M().setGlobal('gains', k, Math.round(+val || 0)));
