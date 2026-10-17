@@ -5503,6 +5503,12 @@
                 playErrorSfx();
                 return;
             }
+            // Panacea costs 1 AP (mondo 2026-10-17), like a potion or a stim.
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                playErrorSfx();
+                return;
+            }
             pushUndoSnapshot(true);
             unit.items.panacea -= 1;
             let cleared = 0;
@@ -5516,7 +5522,12 @@
             addLog(`💊 ${unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
             showFloatingTextForUnit(unit, `💊 CURED`, 'heal', { durationMs: 1200 });
             playSfx('uiConfirm');
-
+            spendAP(unit, 1);
+            state.actionMode = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.actionMenuView = 'root';
+            endUnitIfDone(unit);
             renderAfterCombat();
         }
 
@@ -15972,7 +15983,7 @@
         const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end' };
         const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
                                abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
-                               guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.hrlg-ap',
+                               guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.ew-ap-press',
                                entropy: '.hrlg-push[data-pid="entropyStrike"]', nexus: '.hrlg-push[data-pid="nexus"]' };
         /* the engine's closure constants, for data.js tutorialFacts (the
            copy's {{numbers}} are always the live rule) */

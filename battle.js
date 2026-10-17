@@ -642,10 +642,15 @@
             return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
-        function checkOpportunityAttack(unit, fromX, fromY) {
+        /* fromZ / fromStandH: the mover's z and standing height on the tile it
+           LEFT (finishMoveAt reads them before the move). The strike lands
+           there, so height is judged there, not on the tile it arrived at. */
+        function checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH) {
             /* Gameplay must not depend on the animations toggle (host-side rules
                drift online) — only the presentation below is visual-gated. */
             if (!unit || unit.dead) return;
+            if (fromZ == null) fromZ = unit.z ?? 0;
+            if (fromStandH == null) fromStandH = fromZ;
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             for (const enemy of enemies) {
 
@@ -654,6 +659,16 @@
                 const oldDist = Math.abs(enemy.x - fromX) + Math.abs(enemy.y - fromY);
                 const newDist = Math.abs(enemy.x - unit.x) + Math.abs(enemy.y - unit.y);
                 if (newDist <= oldDist) continue;
+
+                /* ⛰ Height (2026-10-17): only a swing the striker's BASIC
+                   ATTACK could make. Same reach as doAttack — combatDist (the
+                   height gap is its own axis) within getEffectiveRange — and
+                   the same point-blank sight rule (an edge wall, or a deck /
+                   roof slab between the two, blocks it). A unit on a ledge
+                   too high to hit, or a flyer overhead, slips away free. */
+                const _oaDist = combatDist(enemy.x, enemy.y, enemy.z ?? 0, fromX, fromY, fromZ);
+                if (_oaDist < 1 || _oaDist > getEffectiveRange(enemy)) continue;
+                if (isRangeBlockedByTerrain(enemy.x, enemy.y, fromX, fromY, enemy.z, fromZ)) continue;
 
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
@@ -676,7 +691,9 @@
                 const dmg = Math.max(1, baseDmg - armor);
                 applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
                     sourceUnit: enemy,
-                    damageType: 'physical'
+                    damageType: 'physical',
+                    // high ground / height soak / range falloff read the tile it left
+                    struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
                 addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
@@ -5562,6 +5579,7 @@
                 const before = unit.ap || 0;
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
+                    unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
                     addLog(`⚡ ${spell.name}: ${unitDisplayName(unit)} regains ${unit.ap - before} AP.`);
                     showFloatingTextForUnit(unit, `+${unit.ap - before} AP`, 'buff', { durationMs: 900 });
                     markDirty('hud', 'selectedUnit');
@@ -32446,7 +32464,8 @@
 
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
-                    const tgtH = getUnitStandingHeight(target);
+                    // opts.struckAt: a hit landed on a tile the target already left (opportunity attack)
+                    const tgtH = (opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target);
                     if (srcH > tgtH) {
 
                         const heightAdv = srcH - tgtH;
@@ -32468,7 +32487,7 @@
                 // reactions — opts.noRangeMult) where "distance to the
                 // caster" is meaningless.
                 if (damageType !== 'dot' && !opts.noRangeMult) {
-                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
+                    const _rangeMult = getRangeDamageMult(sourceUnit, opts.struckAt || target);
                     if (_rangeMult !== 1) {
                         _offMult *= _rangeMult;
                         // No callout: falloff hits nearly every ranged action,
@@ -32485,7 +32504,7 @@
                     const _pH = (typeof getUnitStandingHeight === 'function');
                     const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
                         srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
-                        tgtH: _pH ? getUnitStandingHeight(target) : null,
+                        tgtH: _pH ? ((opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target)) : null,
                         fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
                     });
                     if (_psm.mult !== 1) {
@@ -35858,6 +35877,7 @@
 
             const _wasAirborne = canFly(unit) && isUnitAirborne(unit);
             const _fromZ = unit.z ?? 0;
+            const _fromStandH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : _fromZ;
             unit.x = x;
             unit.y = y;
 
@@ -35976,7 +35996,7 @@
             // run in completeMoveAlongPath, so they read the far side.
             if (!opts.noDoor && typeof doorStepThrough === 'function') doorStepThrough(unit);
 
-            checkOpportunityAttack(unit, _originX, _originY);
+            checkOpportunityAttack(unit, _originX, _originY, _fromZ, _fromStandH);
 
             // 🕯 Hex of Toil: moving feeds the curse.
             _procHexedOnAction(unit, 'moves');
@@ -37756,6 +37776,27 @@
                 return Math.min(cost, AP_COST_SPELL);
             },
 
+            /* THE AP PRESS ICONS (hud.js ApPress, mondo 2026-10-17: "always know how much ap i will be left with after
+               an action"): the AP an action REALLY drains from `unit` — the same rules its commit path spends by. A
+               step is 1 AP, the turn's second step all of it (finishMove); attacks, combos, Entropy Strikes, finishers,
+               Guard and damaging/Protect casts take ALL of it (spendAllAP); a support cast its apCost (plus the step
+               of a MOVE→CAST); Clash spends everything on any paid act. kind: 'move' | 'all' | 'spell' | 'flat';
+               opts.spell, opts.move (a step first), opts.cost (flat). */
+            apSpend(unit, kind, opts = {}) {
+                const ap = Math.max(0, (unit && unit.ap) || 0);
+                if (!ap) return 0;
+                const step = ((unit.movesThisTurn || 0) + 1 >= UNIT_MAX_MOVES) ? ap : AP_COST_ACTION;
+                let n;
+                if (kind === 'move') n = step;
+                else if (kind === 'all') n = ap;
+                else if (kind === 'spell') {
+                    const sp = opts.spell;
+                    n = (sp && spellEndsTurn(sp)) ? ap : (opts.move ? step : 0) + TargetQuery.apCost(sp);
+                } else n = opts.cost != null ? (+opts.cost || 0) : AP_COST_ACTION;
+                if (n > 0 && typeof _isClashMode === 'function' && _isClashMode()) n = ap;
+                return Math.max(0, Math.min(ap, n));
+            },
+
             /* THE universal castability guard: ONE method answers "why can't
                this unit cast this spell right now?". The ability drum's
                greying, the quick menus, doSpell and canAfford all route
@@ -38128,6 +38169,7 @@
                 unit.ap = (unit.ap || 0) + refund;
                 unit._pressGainedThisTurn = gained + refund;
                 unit._pressFlashAt = Date.now();
+                unit._apRefundIcons = (unit._apRefundIcons || 0) + refund;   // the AP press icons grow a fresh icon per AP
                 result.apDelta = refund;
                 _staggerLiftByRefund(unit);
                 result.pressed = true;
@@ -38305,6 +38347,7 @@
         function _gauntletResetTurnFlags(u) {
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
+            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
             u._pressPenaltiesThisTurn = 0;
             u._spellsUsedThisTurn = null;
             u._reshapeThisTurn = 0;
@@ -43508,6 +43551,7 @@
             u._altitudeChangesThisTurn = 0;
             u._jumpedThisTurn = false;
             u._pressGainedThisTurn = 0;
+            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
             u._pressPenaltiesThisTurn = 0;
             u._skippedTurn = false;
             u._aiFailedSpells = null;
@@ -45753,6 +45797,7 @@
                 u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
+                u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                 u._pressPenaltiesThisTurn = 0;
                 u._spellsUsedThisTurn = null;
 
@@ -45998,6 +46043,7 @@
                     u._buildCharges = 0;
                     u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
+                    u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                     u._pressPenaltiesThisTurn = 0;
                     u._spellsUsedThisTurn = null;
                     u._skippedTurn = false;
@@ -48908,6 +48954,7 @@
                 u._altitudeChangesThisTurn = 0;
                 u._jumpedThisTurn = false;
                 u._pressGainedThisTurn = 0;
+                u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                 u._pressPenaltiesThisTurn = 0;
             }
 
@@ -50196,6 +50243,7 @@
                             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
+                            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                             u._pressPenaltiesThisTurn = 0;
                             u._spellsUsedThisTurn = null;
                             u._aiFailedSpells = null;
