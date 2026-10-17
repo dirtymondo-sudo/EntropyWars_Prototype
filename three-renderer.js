@@ -2695,6 +2695,13 @@ const ThreeRenderer = (function () {
     var FLOAT_TAG_SCALE = 0.8;      // word tags, on screen
     var FLOAT_HERO_HOLD = 1.25;     // a damage number's life ×
     var FLOAT_LAYOUT_GAP = 4;       // screen px between stacked pops
+    // Readable at any zoom: a pop's stock ink never draws shorter than this
+    // share of the screen height (the zoomed-out tactical view used to shrink
+    // a number to ~10 px), nor a number taller than the cap up close. The
+    // floor scales the whole pop, so a big hit's swell still out-sizes chip.
+    var FLOAT_MIN_HERO_H = 0.05;
+    var FLOAT_MIN_TAG_H = 0.027;
+    var FLOAT_MAX_HERO_H = 0.15;
     // Word pops that are the whole moment on their own (no number to serve)
     // keep their full size.
     var _FLOAT_SOLO_KINDS = { levelup: 1, laststd: 1, nexus: 1, achieve: 1 };
@@ -22687,6 +22694,7 @@ const ThreeRenderer = (function () {
         var inkH = fontSize * 0.95 + outlineW * 2;
         c._ewMarginX = Math.max(0, padX - outlineW * 1.2);
         c._ewMarginTop = c._ewMarginBot = Math.max(0, (th - inkH) / 2);
+        c._ewInkH0 = inkH;   // the stock ink height, before any hit-read swell
         return c;
     }
 
@@ -22923,7 +22931,14 @@ const ThreeRenderer = (function () {
                     var worldToPx = screenH / (2 * dist * halfTanFov);
                     tw._sx = (_floatProjVec.x * 0.5 + 0.5) * screenW;
                     tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * screenH;
-                    tw._k = sc * pxScale * worldToPx * (tw.sizeK || 1);
+                    var settledK = pxScale * worldToPx * (tw.sizeK || 1);
+                    var ink0 = tw.el._ewInkH0 || 0;
+                    if (ink0 > 0) {
+                        var minH = screenH * (tw.hero ? FLOAT_MIN_HERO_H : FLOAT_MIN_TAG_H);
+                        if (ink0 * settledK < minH) settledK = minH / ink0;
+                        else if (tw.hero && ink0 * settledK > screenH * FLOAT_MAX_HERO_H) settledK = screenH * FLOAT_MAX_HERO_H / ink0;
+                    }
+                    tw._k = sc * settledK;
                     tw._op = Math.max(0, opacity);
                     live.push(tw);
                 }
