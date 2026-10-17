@@ -545,11 +545,11 @@ const RACE_ELEMENT_AFFINITY = {
     'cyborg':            { poison: 'resist' },
     'super sentai':      { poison: 'resist' },
     // ── stone & earth ──
-    'golem':             { earth: 'resist', water: 'weak' },   // race editor 2026-10-06: poison immunity dropped
+    'golem':             { earth: 'resist', water: 'weak', ice: 'weak' },   // race editor 2026-10-06: poison immunity dropped // race editor 2026-10-17
     'giant':             { earth: 'resist' },
     'cyclops':           { earth: 'resist' },
     // ── beasts & wilds ──
-    'dragon':            { fire: 'resist', ice: 'weak' },
+    'dragon':            { fire: 'resist', ice: 'weak', lightning: 'resist', water: 'resist' }, // race editor 2026-10-17
     'dinosaur':          { ice: 'weak' },
     'kaiju':             { fire: 'absorb' },   // Thermal Regen, generalized
     'starfish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
@@ -557,9 +557,9 @@ const RACE_ELEMENT_AFFINITY = {
     'sharkman': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'crystal guardian': { earth: 'resist' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
-    'tree person': { fire: 'weak', water: 'resist' },   // 2026-09-30
+    'tree person': { fire: 'weak', water: 'resist', poison: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
     'krampus': { ice: 'resist', fire: 'weak' },   // 2026-09-30
-    'firefighter': { fire: 'resist' },   // 2026-09-30
+    'firefighter': { fire: 'resist', water: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
     'king kong':         { earth: 'resist' },
     'bigfoot':           { earth: 'resist' },
     'black goo':         { poison: 'absorb' },   // race editor 2026-10-06
@@ -3584,6 +3584,7 @@ const RACE_KITS = {
     'vampire': { range: 2, inspect: 2 }, 'cosmic wraith': { range: 4, inspect: 2 }, 'chosen one': { range: 2, inspect: 2 },
     'ghoul': { range: 2, inspect: 2 }, 'barbarella': { range: 2, inspect: 2 }, 'quarterback': { range: 4, inspect: 2 },
     'robinhood': { range: 4, inspect: 2 }, 'symbiote': { range: 2, inspect: 2 },
+    'ice queen': { range: 2 },   // race editor 2026-10-17: range 1 → 2
 };
 function raceKit(race) {
     const k = RACE_KITS[race] || {};
@@ -3948,26 +3949,26 @@ const RACE_BASE_STATS = {
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
     'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
     'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 19 },
-    'machine elves':      { hp: 760, mp: 220, atk:  41, def:  35, mdef:  175, int:  190, vision: 2, crt: 26, spd: 92 },
+    'machine elves':      { hp: 760, mp: 220, atk:  41, def:  67, mdef:  175, int:  190, vision: 2, crt: 26, spd: 92 },   // race editor 2026-10-17: DEF 67
     'glitch':             { hp: 727, mp: 170, atk:  70, def:  49, mdef:  149, int:  167, vision: 3, crt: 19, spd: 117 },
     'homosapien':         { hp: 1410, mp: 140, atk:  83, def:  158, mdef:  70, int:  54, vision: 2, crt: 26, spd: 119 },
-    'pirate':             { hp: 1398, mp: 100, atk:  128, def:  143, mdef:  59, int:  42, vision: 3, crt: 22, spd: 123 },
+    'pirate':             { hp: 1398, mp: 100, atk:  128, def:  98, mdef:  68, int:  42, vision: 3, crt: 22, spd: 123 },   // race editor 2026-10-17: DEF 98, MDEF 68
     'swordfighter':       { hp: 1312, mp:  95, atk:  150, def:  147, mdef:  58, int:  41, vision: 2, crt: 16, spd: 155 },
     'knight':             { hp: 1483, mp:  95, atk:  132, def:  174, mdef:  80, int:  55, vision: 2, crt: 13, spd: 128 },
     'shaman':             { hp: 568, mp: 250, atk:  55, def:  58, mdef:  147, int:  161, vision: 3, crt: 21, spd: 72 },
     'mad scientist':      { hp: 556, mp: 230, atk:  46, def:  33, mdef:  25, int:  153, vision: 3, crt: 26, spd: 39 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
     'cowboy':             { hp: 1532, mp: 150, atk:  130, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 159 },
-    'men in black':       { hp: 410, mp: 145, atk:  89, def:  66, mdef:  135, int:  122, vision: 2, crt: 26, spd: 143 },
+    'men in black':       { hp: 410, mp: 145, atk:  50, def:  66, mdef:  142, int:  122, vision: 2, crt: 26, spd: 143 },   // race editor 2026-10-17: MDEF 142, ATK 50
     'telepath':           { hp: 373, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 59 },
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 1068, mp: 100, atk:  148, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },
-    'nun':                { hp: 544, mp: 250, atk:   8, def:  61, mdef:  120, int:  185, vision: 2, crt: 26, spd: 28 },
+    'nun':                { hp: 544, mp: 250, atk:   8, def:  55, mdef:  120, int:  185, vision: 2, crt: 26, spd: 28 },   // race editor 2026-10-17: DEF 55
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
-    'police officer':     { hp: 1046, mp: 110, atk:  124, def:  168, mdef:  78, int:  23, vision: 3, crt: 26, spd:  131 },
+    'police officer':     { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // race editor 2026-10-17: DEF 140, SPD 112, MDEF 58
     'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  36 },
     'cult leader':        { hp: 861, mp: 220, atk:  47, def:  110, mdef:  152, int:  143, vision: 3, crt: 26, spd:  65 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
@@ -3975,8 +3976,8 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'starfish': { hp: 1178, mp: 220, atk: 63, def: 130, mdef: 132, int: 119, vision: 3, crt: 17, spd: 11 },
     'ringmaster': { hp: 946, mp: 180, atk: 59, def: 118, mdef: 107, int: 114, vision: 2, crt: 26, spd: 57 },
-    'bee queen': { hp: 1020, mp: 210, atk: 62, def: 113, mdef: 124, int: 150, vision: 3, crt: 25, spd: 106 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%)
-    'professor': { hp: 873, mp: 240, atk: 44, def: 98, mdef: 143, int: 163, vision: 3, crt: 26, spd: 31 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%)
+    'bee queen': { hp: 867, mp: 146, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146
+    'professor': { hp: 873, mp: 240, atk: 44, def: 79, mdef: 143, int: 163, vision: 3, crt: 26, spd: 31 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%) // race editor 2026-10-17: DEF 79
     'deep sea fish': { hp: 849, mp: 140, atk: 153, def: 103, mdef: 53, int: 94, vision: 2, crt: 25, spd: 77 },
     // 2026-09-30 — the new-race batch
     'clown': { hp: 812, mp: 130, atk: 93, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },
@@ -3990,17 +3991,17 @@ const RACE_BASE_STATS = {
     'sheriff': { hp: 1202, mp: 110, atk: 114, def: 160, mdef: 63, int: 24, vision: 3, crt: 26, spd: 132 },
     // 2026-09-30 — the new-race batch
     'astronaut': { hp: 1093, mp: 150, atk: 15, def: 163, mdef: 100, int: 106, vision: 2, crt: 26, spd: 52 },
-    'krampus': { hp: 1580, mp: 110, atk: 161, def: 132, mdef: 50, int: 88, vision: 2, crt: 18, spd: 112 },
+    'krampus': { hp: 1580, mp: 110, atk: 161, def: 132, mdef: 54, int: 88, vision: 2, crt: 18, spd: 112 },   // race editor 2026-10-17: MDEF 54
     'rabbit': { hp: 593, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 151 },
     'luchador': { hp: 1446, mp: 90, atk: 115, def: 155, mdef: 41, int: 26, vision: 2, crt: 18, spd: 122 },
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
-    'hippie': { hp: 702, mp: 230, atk: 10, def: 83, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },
+    'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },   // race editor 2026-10-17: DEF 62
     'wizard':             { hp: 349, mp: 255, atk:   5, def:  15, mdef:  198, int:  184, vision: 4, crt: 16, spd: 23 },
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
-    'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  186, mdef:  39, int:  50, vision: 4, crt: 13, spd: 174 },
+    'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
-    'goatman':            { hp: 1520, mp:  90, atk:  159, def:  123, mdef:  29, int:  57, vision: 2, crt: 14, spd: 175 },
+    'goatman':            { hp: 1520, mp:  90, atk:  159, def:  123, mdef:  51, int:  57, vision: 2, crt: 14, spd: 175 },   // race editor 2026-10-17: MDEF 51
     'mermaid':            { hp: 483, mp: 225, atk:   50, def:  100, mdef:  188, int:  151, vision: 3, crt: 23, spd: 40 },
     'demon princess':     { hp: 995, mp: 215, atk:   52, def:  55, mdef:  169, int:  169, vision: 3, crt: 24, spd: 99 },
     'dreameater':         { hp: 1007, mp: 225, atk:   68, def:  63, mdef:  189, int:  193, vision: 3, crt: 26, spd: 109 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
@@ -4011,16 +4012,16 @@ const RACE_BASE_STATS = {
     'cosmic wraith':      { hp: 1080, mp: 140, atk:  101, def:  41, mdef:  61, int:  78, vision: 6, crt: 26, spd: 76 },
     'cyborg':             { hp: 1263, mp: 100, atk:  106, def:  144, mdef:  55, int:  137, vision: 2, crt: 15, spd: 139 },
     'superhero':          { hp: 1032, mp:  90, atk:  190, def:  172, mdef:  10, int:  98, vision: 4, crt: 12, spd: 200 },
-    'general':            { hp: 1471, mp:  95, atk:  111, def:  171, mdef:  109, int:  39, vision: 3, crt: 14, spd: 74 },
+    'general':            { hp: 1471, mp:  95, atk:  111, def:  171, mdef:  97, int:  39, vision: 3, crt: 14, spd: 74 },   // race editor 2026-10-17: MDEF 97
     'droid':              { hp: 983, mp: 220, atk:  37, def:  120, mdef:  197, int:  189, vision: 2, crt: 19, spd: 20 },
     'antihero':           { hp: 1373, mp: 115, atk:  189, def:  152, mdef:  72, int:  60, vision: 4, crt: 25, spd: 198 },
     'conspiracy theorist':{ hp: 1117, mp: 195, atk:  20, def:  75, mdef:  157, int:  138, vision: 3, crt: 26, spd: 60 },
     'overlord':           { hp: 1593, mp:  75, atk:  109, def:  146, mdef:  32, int:  91, vision: 2, crt: 13, spd: 120 },
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
     'politician':         { hp: 1276, mp: 165, atk:  11, def:  141, mdef:  144, int:  132, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
-    'atlantean':          { hp: 1361, mp: 190, atk:  112, def:  64, mdef:  21, int:  117, vision: 2, crt: 20, spd: 157 },
+    'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
     'dinosaur':           { hp: 1715, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 192 },
-    'dragon':             { hp: 1239, mp: 150, atk:  195, def:  84, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },
+    'dragon':             { hp: 1239, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },   // race editor 2026-10-17: DEF 108
     'ghoul':              { hp: 1300, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },
     'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 82 },
     'kaiju':              { hp: 1556, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game)
@@ -4031,8 +4032,8 @@ const RACE_BASE_STATS = {
     'black goo':          { hp: 1434, mp: 160, atk:  75, def:  161, mdef:  110, int:  104, vision: 2, crt: 20, spd: 80 },
     'golem':              { hp: 1800, mp:  70, atk:  192, def: 200, mdef:  104, int:   3, vision: 3, crt: 11, spd: 17 },
     'honda civic':        { hp: 1151, mp:  90, atk:  179, def:  178, mdef:  16, int:  15, vision: 2, crt: 12, spd: 197 },
-    'ice queen':          { hp: 629, mp: 245, atk:   13, def:  36, mdef:  178, int:  156, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP)
-    'juggernaut':         { hp: 1776, mp:  40, atk:  185, def:  189, mdef:  84, int:   2, vision: 3, crt: 11, spd: 172 },
+    'ice queen':          { hp: 629, mp: 245, atk:   13, def:  40, mdef:  178, int:  156, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP) // race editor 2026-10-17: DEF 40
+    'juggernaut':         { hp: 1776, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 172 },   // race editor 2026-10-17: MDEF 55, DEF 155
     'ki fighter':         { hp: 1288, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },
     'king arthur':        { hp: 1495, mp:  80, atk:  120, def:  180, mdef:  66, int:  52, vision: 5, crt: 23, spd: 129 },
     'king kong':          { hp: 1739, mp:  75, atk: 198, def:  157, mdef:  27, int:  31, vision: 5, crt: 13, spd: 88 },
