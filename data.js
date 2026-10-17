@@ -4086,6 +4086,34 @@ function moveFromSpd(spd) {
     return Math.min(5, tiles);
 }
 
+/* THE JUMP STAT (2026-10-17, mondo: "how is a unit's jump stat/range/height calculated? can i see it in the race editor
+   along with the other stats?"). Moved here from battle.js (RACE_JUMP_OVERRIDE + RACE_NIMBLE_JUMP, same values) so the race
+   editor can show and edit it. JUMP = the levels a unit hops UP (Jump action + a Move's jump legs); its leap reach is
+   max(2, JUMP) tiles (battle.js getUnitJumpReach). RACE_JUMP is the race's own jump; a race not listed jumps 1 below
+   JUMP_SPD_FROM SPD and 2 from it. Read by battle.js getUnitJumpStat (after an explicit unit.jump). */
+const RACE_JUMP = {
+    // Colossal: a single bound crosses chasms and clears tall roofs.
+    'kaiju': 3, 'king kong': 3, 'kraken': 3, 'dragon': 3,
+    'loch ness monster': 3, 'juggernaut': 3, 'giant': 3, 'titan': 3,
+    // Large, long-limbed bruisers.
+    'cyclops': 2, 'bigfoot': 2, 'yeti': 2, 'dinosaur': 2,
+    'minotaur': 2, 'nephilim': 2, 'golem': 2, 'mech': 2,
+    'goatman': 2, 'symbiote': 2,
+    // The nimble races (kept explicitly since the 2026-08-29 stat rework).
+    'skeleton': 2, 'werewolf': 2, 'mothman': 2, 'siren': 2, 'android': 2,
+    'shadow entity': 2, 'catgirl': 2, 'mantid': 2, 'skinwalker': 2, 'glitch': 2,
+    'pirate': 2, 'swordfighter': 2, 'men in black': 2, 'marksman': 2, 'halfdemon': 2,
+    'fallen angel': 2, 'cosmic wraith': 2, 'cyborg': 2, 'chosen one': 2, 'ghoul': 2,
+    'barbarella': 2, 'ki fighter': 2, 'robinhood': 2, 'valkraye': 2,
+};
+const JUMP_SPD_FROM = 90;       // a race with no RACE_JUMP row jumps 2 from this SPD, else 1
+const RACE_JUMP_RANGE = [1, 5]; // the race editor's limits
+function raceJumpStat(race, spd) {
+    const j = RACE_JUMP[race];
+    if (j != null) return j;
+    return (spd == null ? 50 : spd) < JUMP_SPD_FROM ? 1 : 2;
+}
+
 function computeUnitStats(race, cls, zodiac) {
     const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
     /* the birth sign's natal changes (ZODIAC_EFFECTS[sign].natal) ride on the base, so the level formula scales them too */
@@ -22794,6 +22822,7 @@ window.EWSpellMods = (function () {
      terrain                          → RACE_TERRAIN_PREFERENCE[race] ('none' = no preference)
      role                             → RACE_CLASS[race]
      range                            → RACE_KITS[race].range
+     jump                             → RACE_JUMP[race] (null = no row: jump from SPD, JUMP_SPD_FROM)
      biomes[]                         → EW_RACE_BIOMES[race] + RACE_PROFILES[race].biomes (where the race is native)
    And three global groups: grades {stat: [S, A, B, C]} → STAT_GRADE_BANDS · curve {hpL1, mpL1, hpExp, statExp} →
    LEVEL_CURVE · gains {hp, mp, atk, int, def, mdef} → LEVEL_TOTAL_STAT_GAINS.
@@ -22873,7 +22902,8 @@ window.EWRaceMods = (function () {
         if (pristine) return;
         const p = { stats: {}, profiles: {}, affinity: {}, terrain: _clone(RACE_TERRAIN_PREFERENCE), role: _clone(RACE_CLASS),
             kits: _clone(RACE_KITS), biomes: _clone(EW_RACE_BIOMES), grades: _clone(STAT_GRADE_BANDS), curve: _clone(LEVEL_CURVE),
-            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP), zodiac: _clone(ZODIAC_EFFECTS), move: _clone(MOVE_SPD_RULE) };
+            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP), zodiac: _clone(ZODIAC_EFFECTS), move: _clone(MOVE_SPD_RULE),
+            jump: _clone(RACE_JUMP) };
         races().forEach(r => {
             p.stats[r] = _clone(RACE_BASE_STATS[r]);
             const pr = RACE_PROFILES[r] || {};
@@ -22898,6 +22928,7 @@ window.EWRaceMods = (function () {
         _setKeys(RACE_TERRAIN_PREFERENCE, pristine.terrain);
         _setKeys(RACE_CLASS, pristine.role);
         _setKeys(RACE_KITS, pristine.kits);
+        _setKeys(RACE_JUMP, pristine.jump);
         _setKeys(EW_RACE_BIOMES, pristine.biomes);
         Object.keys(EW_RACE_BIOMES).forEach(r => { if (RACE_PROFILES[r]) RACE_PROFILES[r].biomes = EW_RACE_BIOMES[r].slice(); });
         Object.keys(pristine.grades).forEach(k => { STAT_GRADE_BANDS[k] = pristine.grades[k].slice(); });
@@ -22931,6 +22962,9 @@ window.EWRaceMods = (function () {
                 if (k.range === 1 && !k.inspect) delete RACE_KITS[r]; else RACE_KITS[r] = k;
             }
             if (Array.isArray(m.biomes)) { EW_RACE_BIOMES[r] = m.biomes.slice(); if (pr) pr.biomes = m.biomes.slice(); }
+            /* JUMP: a number = the race's own jump · null = no row (1 or 2 from SPD) */
+            if (m.jump === null) delete RACE_JUMP[r];
+            else if (Number.isFinite(m.jump)) RACE_JUMP[r] = Math.max(RACE_JUMP_RANGE[0], Math.min(RACE_JUMP_RANGE[1], Math.round(m.jump)));
         });
         Object.keys(doc.grades).forEach(k => {
             const b = doc.grades[k];
@@ -22974,6 +23008,7 @@ window.EWRaceMods = (function () {
         if (field === 'role') return pristine.role[race];
         if (field === 'range') return (pristine.kits[race] && pristine.kits[race].range) || 1;
         if (field === 'biomes') return pristine.biomes[race] || [];
+        if (field === 'jump') return pristine.jump[race] != null ? pristine.jump[race] : null;
         return undefined;
     }
     function shippedGlobal(group, key) { capturePristine(); return _clone((pristine[group] || {})[key]); }
@@ -23027,6 +23062,7 @@ window.EWRaceMods = (function () {
                     const L100a = raceStatAtLevel(f, was, LEVEL_CAP), L100b = raceStatAtLevel(f, m[f], LEVEL_CAP);
                     return `${f.toUpperCase()} base ${was} → ${m[f]} (level 100: ${L100a} → ${L100b}; grade ${statGrade(f, was) || '-'} → ${statGrade(f, m[f]) || '-'})`;
                 }
+                if (f === 'jump') { const j = v => v == null ? `from SPD (${raceJumpStat('', RACE_BASE_STATS[r].spd)})` : v; return `JUMP ${j(was)} → ${j(m[f])}`; }
                 return `${f} ${_fmt(was)} → ${_fmt(m[f])}`;
             });
             lines.push(`RACE ${r}: ${parts.join('; ')}`);
@@ -23058,6 +23094,7 @@ window.EWRaceMods = (function () {
                 + '(BASE stats: level 100 = base + LEVEL_TOTAL_STAT_GAINS, HP/MP through LEVEL_CURVE; the grade reads the base); '
                 + 'label/labelMale/labelFemale/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
                 + 'terrain → RACE_TERRAIN_PREFERENCE; role → RACE_CLASS; range → RACE_KITS; biomes → EW_RACE_BIOMES; '
+                + 'jump → RACE_JUMP (null = drop the race\'s row so it jumps from SPD: 1 below JUMP_SPD_FROM, 2 from it); '
                 + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS; '
                 + 'zodiac.<sign>.sky (percent while the sign rules the sky) / .natal (flat stats for units born under it) → ZODIAC_EFFECTS; '
                 + 'move.{follow, from} → MOVE_SPD_RULE (from = the SPD that walks 2 / 3 / 4 / 5 tiles when follow is false). '
