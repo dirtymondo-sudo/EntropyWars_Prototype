@@ -19,6 +19,12 @@
 //   node bake-arenas.js            (all sites; a few minutes)
 //   node bake-arenas.js --dry-run  (print the picks, write nothing)
 //   node bake-arenas.js prebuilt_lodge prebuilt_shasta   (bake only those sites; every other pick stands)
+// THE ARENA SIZES (2026-10-17, mondo: "add 9x9, 10x10, and 11x11 maps"): `--size N` bakes the N×N cuts (data.js HQ_ARENA_RULES.picks<N>,
+// between its own <ARENA PICKS N> markers) with the house of that size (hqArenaHouseTiles: 5v5 on 9 and 11 — the 2×3 zones, the Cube's
+// back-middle tile, the 3×3 nexus flat; the egress rows in front of the zones open, at most one level up) and the 12×12 caps scaled by
+// area (hqArenaCaps). Only the sites with a 12×12 cut get the extra sizes. `--json <file>` writes the picks to a file instead of data.js
+// (bake several sizes at once), `--apply <file>` files such a bake into data.js:
+//   node bake-arenas.js --size 9 --json /tmp/a9.json   then   node bake-arenas.js --size 9 --apply /tmp/a9.json
 'use strict';
 
 const fs = require('fs');
@@ -27,6 +33,8 @@ const vm = require('vm');
 const { loadGameData } = require('./load-data.js');
 
 const DRY = process.argv.includes('--dry-run');
+const argAfter = (k) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : null; };
+const JSON_OUT = argAfter('--json'), APPLY = argAfter('--apply');
 const DATA = path.join(__dirname, 'data.js');
 
 const sb = loadGameData({ quiet: true });
@@ -34,14 +42,19 @@ const ev = (s) => vm.runInContext(s, sb);
 const META = ev('EW_MAP_META');
 const ROOMS = ev('DOOR_HQ.rooms');
 const ENTRY = ev('(DOOR_HQ.siteRooms || {}).entry || {}');
-const S = ev('HQ_ARENA_RULES.size');
-const OBST = ev('HQ_ARENA_RULES.obstacles');
+const S12 = ev('HQ_ARENA_RULES.size');
+const S = argAfter('--size') ? (parseInt(argAfter('--size'), 10) | 0) : S12;
+if (S !== S12 && ev('HQ_ARENA_EXTRA_SIZES').indexOf(S) < 0) { console.error('--size ' + S + ' is not one of data.js HQ_ARENA_EXTRA_SIZES'); process.exit(1); }
+const PKEY = S === S12 ? 'picks' : 'picks' + S, MARK = S === S12 ? 'ARENA PICKS' : 'ARENA PICKS ' + S;
+const CAPS = sb.hqArenaCaps(S);
+const OBST = CAPS.obstacles;
 const FEAT = ev('HQ_ARENA_RULES.featureMax');
-const WALLS = ev('HQ_ARENA_RULES.wallMax'), TOP = ev('HQ_ARENA_RULES.topMax');
+const WALLS = CAPS.wallMax, TOP = ev('HQ_ARENA_RULES.topMax');
 
 const KEEP = new Set(ev('HQ_ARENA_RULES.keep') || []);   // the sites that keep their Δ board (no pick written)
 const ONLY = process.argv.filter(a => /^prebuilt_/.test(a));   // name sites to bake only them (the rest of the picks stand)
-const sites = META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id) && (!ONLY.length || ONLY.includes(m.id))).map(m => m.id);
+const HAS12 = ev('HQ_ARENA_RULES.picks') || {};   // the extra sizes: only the sites with a 12×12 cut
+const sites = META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id) && (!ONLY.length || ONLY.includes(m.id)) && (S === S12 || HAS12[m.id])).map(m => m.id);
 const bySite = {};
 for (const id of Object.keys(ROOMS)) {
     const r = ROOMS[id];
@@ -50,13 +63,14 @@ for (const id of Object.keys(ROOMS)) {
     if (s) (bySite[s] = bySite[s] || []).push(id);
 }
 
-const HX = sb.hqArenaHouse(S);
-const HOUSE = [];
-for (let x = HX.x0; x <= HX.x1; x++) HOUSE.push([x, 0], [x, 1], [x, S - 2], [x, S - 1]);
-HOUSE.push([HX.n, HX.n], [HX.n + 1, HX.n], [HX.n, HX.n + 1], [HX.n + 1, HX.n + 1]);
+const HT = sb.hqArenaHouseTiles(S), HX = HT.HX;
+const HOUSE = HT.flat.map(p => [p[0], p[1]]);
+const EGRESS = HT.egress.map(p => [p[0], p[1]]);   // 5v5: in front of the zones — open, at most one level up
 const houseSet = new Set(HOUSE.map(p => p[0] + ',' + p[1]));
+const egressSet = new Set(EGRESS.map(p => p[0] + ',' + p[1]));
 const APRON = [];
-for (const row of [0, S - 1]) for (let x = HX.x0 - 1; x <= HX.x1 + 1; x++) for (let dy = -1; dy <= 1; dy++) { const y = row + dy; if (y >= 0 && y < S) APRON.push([x, y]); }
+const apronRows = HX.block ? [0, 1, S - 2, S - 1] : [0, S - 1];
+for (const row of apronRows) for (let x = HX.x0 - 1; x <= HX.x1 + 1; x++) for (let dy = -1; dy <= 1; dy++) { const y = row + dy; if (y >= 0 && y < S) APRON.push([x, y]); }
 
 function marker(roomId) {
     const r = ROOMS[roomId] || {};
@@ -95,12 +109,13 @@ function judge(R, strict) {
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
         const c = R.cells[y][x];
         const open = c.in && !c.rock && !c.hazard;
-        if (!open) { if (houseSet.has(x + ',' + y) || ++out > cap) return null; }
+        if (!open) { if (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || ++out > cap) return null; }
         else { inN++; if ((c.tile | 0) > hi) return null; }
         if ((!open || (c.tile | 0) > 0) && !houseSet.has(x + ',' + y)) { cover++; if (y < S / 2) top++; else bottom++; }
     }
     for (const [x, y] of HOUSE) { const c = R.cells[y][x]; if ((c.tile | 0) !== 0 || c.seat === false || c.fluid || c.prop || c.wall || c.bridge) return null; }
     for (const [x, y] of APRON) { const c = R.cells[y][x]; if (c.in && !c.rock && !c.hazard && (c.tile | 0) > 1) return null; }
+    for (const [x, y] of EGRESS) { const c = R.cells[y][x]; if ((c.tile | 0) > 1 || c.fluid) return null; }
     const a = sb.hqFieldReach(R, HX.n, 0), b = sb.hqFieldReach(R, HX.n, S - 1);
     if (strict) { if (a.size < inN || b.size < inN) return null; }
     else {
@@ -119,10 +134,10 @@ function scanRoom(roomId, strict) {
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
         let off = 0;
         if (strict) {
-            for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }
+            for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }
             if (off > OBST) continue;
         } else {
-            for (let y = 0; y < S && off <= WALLS; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += houseSet.has(x + ',' + y) ? WALLS + 1 : 1; if (off > WALLS) break; }
+            for (let y = 0; y < S && off <= WALLS; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y)) ? WALLS + 1 : 1; if (off > WALLS) break; }
             if (off > WALLS) continue;
         }
         const R = sb.hqFieldRaster(roomId, ox, oz, S, S);
@@ -149,9 +164,10 @@ function encode(R) {
     return { keys, cells: cells.join('') };
 }
 
-const picks = {};
+let picks = {};
 const t0 = Date.now();
-for (const site of sites) {
+if (APPLY) picks = JSON.parse(fs.readFileSync(APPLY, 'utf8'));
+for (const site of (APPLY ? [] : sites)) {
     const rooms = (bySite[site] || []).slice();
     const ent = ENTRY[site] && ENTRY[site].room;
     const size = (id) => { const sh = (ROOMS[id] || {}).shell || {}; return (+sh.w || 0) * (+sh.d || 0); };
@@ -166,19 +182,21 @@ for (const site of sites) {
         }
         if (got) break;
     }
-    if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — keeps its Δ'); continue; }
+    if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
     const enc = encode(got.best.R);
     picks[site] = { room: got.roomId, ox: got.best.ox, oz: got.best.oz, base: got.best.R.floorKey || 'grass_2', open: got.best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
     console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
 }
-console.log(Object.keys(picks).length + ' arenas of ' + sites.length + ' sites in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
+console.log(Object.keys(picks).length + ' arenas of ' + sites.length + ' sites (' + S + '×' + S + ') in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 
 if (DRY) process.exit(0);
+if (JSON_OUT) { fs.writeFileSync(JSON_OUT, JSON.stringify(picks)); console.log('wrote ' + Object.keys(picks).length + ' picks to ' + JSON_OUT); process.exit(0); }
 const src = fs.readFileSync(DATA, 'utf8');
-const re = /(\/\* <ARENA PICKS>[\s\S]*?\*\/\n)([\s\S]*?)(\n[ \t]*\/\* <\/ARENA PICKS> \*\/)/;
-if (!re.test(src)) { console.error('data.js has no <ARENA PICKS> markers'); process.exit(1); }
+const esc = MARK.replace(/ /g, ' ');
+const re = new RegExp('(\\/\\* <' + esc + '>[\\s\\S]*?\\*\\/\\n)([\\s\\S]*?)(\\n[ \\t]*\\/\\* <\\/' + esc + '> \\*\\/)');
+if (!re.test(src)) { console.error('data.js has no <' + MARK + '> markers'); process.exit(1); }
 if (ONLY.length) {   // keep every other site's pick, in its place
-    const old = ev('HQ_ARENA_RULES.picks') || {};
+    const old = ev('HQ_ARENA_RULES.' + PKEY) || {};
     const merged = {};
     Object.keys(old).forEach(k => { if (!ONLY.includes(k)) merged[k] = old[k]; });
     Object.keys(picks).forEach(k => { merged[k] = picks[k]; });
@@ -186,6 +204,6 @@ if (ONLY.length) {   // keep every other site's pick, in its place
     META.forEach(m => { if (merged[m.id]) picks[m.id] = merged[m.id]; });
 }
 const rows = Object.keys(picks).map(site => '        ' + site + ': ' + JSON.stringify(picks[site]) + ',');
-const body = '    picks: {\n' + rows.join('\n') + '\n    },';
+const body = '    ' + PKEY + ': {\n' + rows.join('\n') + '\n    },';
 fs.writeFileSync(DATA, src.replace(re, (m, a, b, c) => a + body + c));
-console.log('wrote HQ_ARENA_RULES.picks into data.js');
+console.log('wrote HQ_ARENA_RULES.' + PKEY + ' into data.js');

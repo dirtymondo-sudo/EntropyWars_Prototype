@@ -317,7 +317,7 @@ function SiteFile({ mp, variant, pre, gameModes, multiplayerModes, gmId }) {
       h('h1', null, mp.name),
       sf && h(DoorStamp, { text: sf.status, tone: sf.tone, title: 'Customs status · ' + sf.juris })
     ),
-    h('div', { className: 'ms-tty-sub' }, mp.arena ? '· arena · 8×8 cut of the site’s own room' : mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
+    h('div', { className: 'ms-tty-sub' }, mp.arena ? '· arena · ' + (mp.w || 12) + '×' + (mp.h || 12) + ' cut of the site’s own room' : mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
     h('div', { className: 'ms-tty-meta' },
       h('span', null, h('em', null, 'SIZE'), boardSizeLabel),
       h('span', null, h('em', null, 'SPAWNS'), (mp.team || 4) + ' per side'),
@@ -402,9 +402,32 @@ function MatchSelect(props) {
     return pre ? !!pre.delta : true;
   });
   const mountedRef = useRef(false);
+  /* THE ARENA SIZES: the first board the desk opens on is the squad's size (a squad of 5 lands on its site's 11) */
+  useEffect(() => { if (isSite) return; const r = resolveIdx(mapIdx, arenaSize); if (r !== mapIdx) setMapIdx(r); }, []);
   const [query, setQuery] = useState('');
   const [teamSize, setTeamSize] = useState(() => (pre && pre.teamSize > 0) ? pre.teamSize : 0);
   const squad = (pre && pre.squad && pre.squad.n > 0) ? pre.squad : null;   // THE SQUAD DESK: the team picked before the desk
+  /* THE ARENA SIZES (2026-10-17, mondo: "add 9x9, 10x10, and 11x11 maps ... an option to play 5v5"): a site's 9 / 10 / 11 cuts are
+     MS_MAP_LIST rows wearing `sizeOf` (the site's 12): the grid lists the site once, the SIZE field picks the cut. A squad of 5 plays
+     the 5v5 boards (9, 11), a squad of 4 or fewer the 4v4 ones (10, 12); the classic desk (no squad) offers every size and the team
+     follows the board. */
+  const squadTeam = squad ? (squad.n | 0) : 0;
+  const sizeTeamOk = (team) => !squadTeam || (squadTeam >= 5 ? team === 5 : team === 4);
+  const baseIdxOf = (i) => { const m = mapList[i]; if (!m || !m.sizeOf) return i; const b = mapList.findIndex(x => x.modeId === m.sizeOf); return b >= 0 ? b : i; };
+  const sizesFor = (i) => {
+    const m = mapList[baseIdxOf(i)];
+    if (!m || !m.isDelta || typeof window.hqArenaSizesOf !== 'function') return [];
+    return window.hqArenaSizesOf(m.modeId).filter(z => sizeTeamOk(z.team))
+      .map(z => Object.assign({}, z, { idx: mapList.findIndex(x => x.modeId === z.id) })).filter(z => z.idx >= 0);
+  };
+  const [arenaSize, setArenaSize] = useState(() => squadTeam >= 5 ? 11 : 12);
+  /* a card (the site's base row) → the row of the wanted size: that size when the site has it, else the biggest it has for the team */
+  const resolveIdx = (i, want) => {
+    const zs = sizesFor(i);
+    if (!zs.length) return baseIdxOf(i);
+    const z = zs.find(q => q.S === want) || zs[zs.length - 1];
+    return z.idx;
+  };
   const [rounds, setRounds] = useState(15);
   /* CPU TEMPO (2026-09-07): ⚡ TRAINING = the CPU's turns resolve instantly
      (no animations, no camera, no banners — battle.js _setAiTurbo); the
@@ -491,6 +514,8 @@ function MatchSelect(props) {
       if (!m) return false;
       if (m.field) return false;   // THE FIELD (Phase 9 stage B): an encounter's rasterised window is never filed from the console
       if (m.area) return false;    // THE ARENAS (E8, 2026-09-30, mondo: not an arena for every little room): a complex part's own Δ is never listed
+      if (m.sizeOf) return false;  // THE ARENA SIZES: a 9 / 10 / 11 cut rides its site's card
+      if (squadTeam >= 5 && m.isDelta && !sizesFor(i).length) return false;   // a squad of 5: only the boards with a 5v5 cut
       /* THE EARNED DOORS (2026-09-20): a console may deal only the sites Otto has built a door to (pre.allow = site ids; since 2026-09-23 the RANGE console passes the earned + visited sites too — only Practice / the classic desk pass none = every site) */
       if (allowSites && !allowSites.has(siteOf(m.modeId))) return false;
       if (deltaOnly && !m.isDelta) return false;
@@ -508,7 +533,7 @@ function MatchSelect(props) {
   useEffect(() => {
     if (isSite) return;
     if (!mountedRef.current) { mountedRef.current = true; return; }   // not on mount: the pre-selection stands
-    if (filteredMaps.length > 0 && !filteredMaps.includes(mapIdx)) setMapIdx(filteredMaps[0]);
+    if (filteredMaps.length > 0 && !filteredMaps.includes(baseIdxOf(mapIdx))) setMapIdx(resolveIdx(filteredMaps[0], arenaSize));
   }, [deltaOnly]);
 
   useEffect(() => {
@@ -586,9 +611,9 @@ function MatchSelect(props) {
      search), never the one already picked when there is a choice */
   function handleRandomMap(sound = true) {
     if (sound) playUi();
-    let pool = filteredMaps.filter(i => i !== mapIdx);
+    let pool = filteredMaps.filter(i => i !== baseIdxOf(mapIdx));
     if (!pool.length) pool = filteredMaps;
-    if (pool.length > 0) setMapIdx(pool[Math.floor(Math.random() * pool.length)]);
+    if (pool.length > 0) setMapIdx(resolveIdx(pool[Math.floor(Math.random() * pool.length)], arenaSize));
   }
   function selectMode(m) {
     if (!m || m.locked || !modeOk(m)) return;
@@ -597,7 +622,15 @@ function MatchSelect(props) {
     playUi();
     setGmIdx(i);
   }
-  function selectMap(i) { playUi(); setMapIdx(i); }
+  function selectMap(i) { playUi(); setMapIdx(resolveIdx(i, arenaSize)); }
+  /* THE ARENA SIZES: a size chip — the site's cut of that size; the classic desk's team follows the board (5v5 on 9 / 11) */
+  function pickSize(z) {
+    if (!z || z.idx === mapIdx) return;
+    playUi();
+    setArenaSize(z.S);
+    setMapIdx(z.idx);
+    if (!squad) setTeamSize(z.team);
+  }
   /* SITE: Δ board ↔ the full site; the team size follows the board (4v4 on
      the Δ board, the site's own size for a deep crossing — HQ plan §3.7) */
   function pickBoard(b) {
@@ -743,7 +776,7 @@ function MatchSelect(props) {
           ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) => h(Chip, { key: k, on: sizeFilter === k, onClick: () => setSizeFilter(sizeFilter === k ? null : k) }, l))
         ),
         h('div', { className: 'ms-tty-cards' },
-          ...filteredMaps.map(i => h(MapCard, { key: mapList[i].modeId, mp: mapList[i], selected: i === mapIdx, onClick: () => selectMap(i) })),
+          ...filteredMaps.map(i => h(MapCard, { key: mapList[i].modeId, mp: mapList[i], selected: i === baseIdxOf(mapIdx), onClick: () => selectMap(i) })),
           filteredMaps.length === 0 && h('div', { className: 'ms-tty-empty' }, 'NO SITES MATCH FILTERS')
         )
       ),
@@ -751,7 +784,13 @@ function MatchSelect(props) {
         h('div', { className: 'ms-tty-h' }, 'CONFIGURATION'),
         h('div', { className: 'ms-tty-form' },
           teamField,
-          h(Field, { label: 'BOARD SIZE' }, h('div', { className: 'ms-tty-ro' }, h('span', null, boardSizeLabel), h('em', null, 'FROM SITE'))),
+          (() => {   // THE ARENA SIZES: the site's cuts as chips (one cut = the read-only line as before)
+            const zs = sizesFor(mapIdx);
+            if (zs.length < 2) return h(Field, { label: 'BOARD SIZE' }, h('div', { className: 'ms-tty-ro' }, h('span', null, boardSizeLabel), h('em', null, 'FROM SITE')));
+            return h(Field, { label: 'BOARD SIZE', hint: squadTeam >= 5 ? '5v5 BOARDS' : squadTeam ? '4v4 BOARDS' : 'THE TEAM FOLLOWS THE BOARD' },
+              h('div', { className: 'ms-tty-chips' },
+                ...zs.map(z => h(Chip, { key: z.S, on: z.idx === mapIdx, onClick: () => pickSize(z), title: z.S + '×' + z.S + ' cut of the site’s own room, ' + z.team + 'v' + z.team }, z.S + '×' + z.S + ' · ' + z.team + 'v' + z.team))));
+          })(),
           reservesField, roundsField, winField, tempoField, assignBlock
         )
       )

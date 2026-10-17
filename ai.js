@@ -4183,7 +4183,7 @@
     // ── macro intent layer (schema 12 shape, currency-denominated) ───────
     const _OBJECTIVE_INTENTS = new Set([
         'ctf_carry_home', 'ctf_intercept_carrier', 'ctf_return_flag', 'ctf_grab_flag',
-        'hotspot_nexus', 'domination_nexus', 'arena_nexus_deny', 'arena_nexus',
+        'hotspot_nexus', 'domination_nexus', 'arena_nexus_deny', 'arena_nexus', 'arena_nexus_celestial',
         'approach_nexus', 'grab_hg', 'approach_hg', 'siege_tower',
         'siege_tower_opportunistic', 'default_siege',
     ]);
@@ -4358,6 +4358,24 @@
                     if (ws.phase === 'tower_defend') s += 90;
                     goals.push({ x: v.ownTower.x, y: v.ownTower.y, score: s, reason: 'defend_tower' });
                 }
+            }
+        }
+
+        // Arena: a celestial event buffs whoever holds the MIDDLE zone (state.js getSkyEventBonus) and a new
+        // event resets it to nobody — while one is up, taking (or retaking) the middle comes before the other zones.
+        if (modeId === 'arena' && g.state.nexusPoints && g.state.skyEvent && typeof getCelestialNexusKey === 'function') {
+            const ck = getCelestialNexusKey();
+            const cn = ck ? g.state.nexusPoints[ck] : null;
+            if (cn && cn.zoneSize && cn.owner !== unit.player) {
+                const ccx = cn.zoneX + Math.floor(cn.zoneSize / 2);
+                const ccy = cn.zoneY + Math.floor(cn.zoneSize / 2);
+                let s = 230;
+                if (v.visibleEnemies.length > 0) s -= 45;
+                const alliesNear = g.state.units.filter(u =>
+                    u.player === unit.player && !u.dead && u.id !== unit.id &&
+                    Math.abs(u.x - ccx) + Math.abs(u.y - ccy) <= 2).length;
+                if (alliesNear >= 2) s -= 90;
+                goals.push({ x: ccx, y: ccy, score: s, reason: 'arena_nexus_celestial' });
             }
         }
 
@@ -4946,7 +4964,9 @@
         const ws = v.winState;
         const towerPushActive = (ws.phase === 'tower_push' || ws.phase === 'numbers_advantage' ||
             ws.enemyDeadCount >= 1 || ws.roundUrgency >= 2);
-        const nexusPenalty = towerPushActive && nexKey === 'earth' ? 0.5 : 1.0;
+        /* the middle zone under a celestial event carries the event's team buff: worth channeling, never halved */
+        const celestial = !!(g.state.skyEvent && typeof getCelestialNexusKey === 'function' && getCelestialNexusKey() === nexKey);
+        const nexusPenalty = towerPushActive && nexKey === 'earth' && !celestial ? 0.5 : 1.0;
         const ownedCount = Object.values(nexusPoints).filter(n => n?.owner === unit.player).length;
 
         const inZone = !!atUnit;
@@ -4985,6 +5005,7 @@
             if (v.closestEnemyDist <= 2) score -= 40;
             if (ownedCount === 0) score += 40;
             score += ownedCount * 20;
+            if (celestial) score += 90;
             score *= nexusPenalty;
             if (score > 0) out.push({ type: 'nexus_channel', score });
         }
@@ -6309,8 +6330,8 @@
                 }
                 g.addLog(`💊 ${g.unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
                 g.showFloatingTextForUnit(unit, '💊 CURED', 'heal', { durationMs: 1200 });
-                g.state.aiThinking = false;
-                g.maybeTriggerComputerTurn();
+                g.spendAP(unit, 1);   // Panacea costs 1 AP (mondo 2026-10-17)
+                g.finishComputerAction();
                 break;
             }
 

@@ -642,10 +642,15 @@
             return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
-        function checkOpportunityAttack(unit, fromX, fromY) {
+        /* fromZ / fromStandH: the mover's z and standing height on the tile it
+           LEFT (finishMoveAt reads them before the move). The strike lands
+           there, so height is judged there, not on the tile it arrived at. */
+        function checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH) {
             /* Gameplay must not depend on the animations toggle (host-side rules
                drift online) — only the presentation below is visual-gated. */
             if (!unit || unit.dead) return;
+            if (fromZ == null) fromZ = unit.z ?? 0;
+            if (fromStandH == null) fromStandH = fromZ;
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             for (const enemy of enemies) {
 
@@ -654,6 +659,16 @@
                 const oldDist = Math.abs(enemy.x - fromX) + Math.abs(enemy.y - fromY);
                 const newDist = Math.abs(enemy.x - unit.x) + Math.abs(enemy.y - unit.y);
                 if (newDist <= oldDist) continue;
+
+                /* ⛰ Height (2026-10-17): only a swing the striker's BASIC
+                   ATTACK could make. Same reach as doAttack — combatDist (the
+                   height gap is its own axis) within getEffectiveRange — and
+                   the same point-blank sight rule (an edge wall, or a deck /
+                   roof slab between the two, blocks it). A unit on a ledge
+                   too high to hit, or a flyer overhead, slips away free. */
+                const _oaDist = combatDist(enemy.x, enemy.y, enemy.z ?? 0, fromX, fromY, fromZ);
+                if (_oaDist < 1 || _oaDist > getEffectiveRange(enemy)) continue;
+                if (isRangeBlockedByTerrain(enemy.x, enemy.y, fromX, fromY, enemy.z, fromZ)) continue;
 
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
@@ -676,7 +691,9 @@
                 const dmg = Math.max(1, baseDmg - armor);
                 applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
                     sourceUnit: enemy,
-                    damageType: 'physical'
+                    damageType: 'physical',
+                    // high ground / height soak / range falloff read the tile it left
+                    struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
                 addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
@@ -5562,6 +5579,7 @@
                 const before = unit.ap || 0;
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
+                    unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
                     addLog(`⚡ ${spell.name}: ${unitDisplayName(unit)} regains ${unit.ap - before} AP.`);
                     showFloatingTextForUnit(unit, `+${unit.ap - before} AP`, 'buff', { durationMs: 900 });
                     markDirty('hud', 'selectedUnit');
@@ -9180,10 +9198,12 @@
                 }
                 u._dealtDmgThisRound = false;
                 if (u._ambushStrike) delete u._ambushStrike;   // Ambush: a spent cloak never carries past the round
+                // the celestial regen buff (Black Sun, claimed at the middle nexus): that extra share of max HP and max MP
+                const _skyRegen = (typeof getSkyEventBonus === 'function') ? (getSkyEventBonus(u).regenPct || 0) : 0;
                 if (u.hp < u.maxHp) {
                     // The `regenPerRound` hook (% max HP; the Chrono Locket's gear row = 5) on top of the baseline regen.
                     const _regenHook = (typeof unitPassiveValue === 'function') ? (+unitPassiveValue(u, 'regenPerRound') || 0) : 0;
-                    const _regenPct = REGEN_PERCENT + (Math.max(0, _regenHook) + Math.max(0, _condRegen)) / 100;
+                    const _regenPct = REGEN_PERCENT + _skyRegen + (Math.max(0, _regenHook) + Math.max(0, _condRegen)) / 100;
                     const amt = Math.max(1, Math.round(u.maxHp * _regenPct));
                     const before = u.hp;
                     u.hp = Math.min(u.maxHp, u.hp + amt);
@@ -9196,7 +9216,7 @@
 
                 if ((u.mp || 0) < (u.maxMp || 0)) {
                     // THE SPELL AUDIT Batch D — `mpPerRound` (Mana Font: +10 flat MP) on top of the baseline MP regen.
-                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * MP_REGEN_PERCENT))
+                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * (MP_REGEN_PERCENT + _skyRegen)))
                         + Math.max(0, Math.round(unitPassiveSum(u, 'mpPerRound') || 0));
                     const mpBefore = u.mp || 0;
                     u.mp = Math.min(u.maxMp || 0, mpBefore + mpAmt);
@@ -9435,7 +9455,26 @@
         // What an ungrown seed does to the unit standing on its tile. Used by
         // (1) the end-of-round tick, (2) planting a seed on an occupied tile
         // (fires immediately), and (3) units stepping onto a seed mid-round.
-        function applySeedEffectToUnit(seed, unit, events = null) {
+        /* THE PLANTED STING (2026-10-17, mondo: "make sure poison seed and leech seed do type damage if placed directly on
+           an enemy, same with bomb"): a seed planted straight under an enemy hits like the contact bomb — the row's
+           type + element judged vs the victim (weak / resist, the planter's STAB, the affinity table), the planter
+           credited, its live ATK bonuses never riding the sting (noAtkBonus). The round ticks and the walk-on procs
+           stay the untyped HP-% drain. One read for the hit and the forecast (_forecastSpellInto). */
+        function seedPlantDamage(type, unit) {
+            if (type === 'poison') return Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
+            if (type === 'leech') return Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
+            return 0;
+        }
+        function seedDamageOpts(seed, caster, planted) {
+            const o = { ignoreArmor: true, damageType: 'dot', consumeMarked: false };
+            if (planted && caster && !caster.dead && seed && seed.spellType) {
+                // preScaled: the sting is a share of max HP — the planter's level never re-scales it (only the type does)
+                Object.assign(o, { sourceUnit: caster, noAtkBonus: true, noRangeMult: true, allowMarkBonus: false, preScaled: true,
+                    spellType: seed.spellType, spellElement: seed.spellElement || null });
+            }
+            return o;
+        }
+        function applySeedEffectToUnit(seed, unit, events = null, planted = false) {
             if (!seed || !unit || unit.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
@@ -9460,15 +9499,12 @@
             if (seed.type === 'poison' && unit.player !== seed.owner) {
                 const caster = unitFromId(seed.casterUnitId);
                 const hpBefore = unit.hp;
-                const dmgAmt = Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
-                // Credit-only (no sourceUnit: that would add atk/type mults to
-                // the tick): _lastDamageSource routes the kill to the planter.
+                const dmgAmt = seedPlantDamage('poison', unit);
+                // Credit-only on a tick (no sourceUnit: that would add atk/type mults to
+                // the tick): _lastDamageSource routes the kill to the planter. A seed
+                // planted ON the enemy is typed (seedDamageOpts, THE PLANTED STING).
                 if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
-                applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
-                    ignoreArmor: true,
-                    damageType: 'dot',
-                    consumeMarked: false
-                });
+                applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, seedDamageOpts(seed, caster, planted));
                 const dmg = hpBefore - unit.hp;
                 if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                 if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('poisonSeed', dmg, unit.dead ? 1 : 0);
@@ -9487,13 +9523,9 @@
                 if (unit.player !== seed.owner) {
                     const caster = unitFromId(seed.casterUnitId);
                     const hpBefore = unit.hp;
-                    const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
+                    const drainAmt = seedPlantDamage('leech', unit);
                     if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
-                    applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
-                        ignoreArmor: true,
-                        damageType: 'dot',
-                        consumeMarked: false
-                    });
+                    applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, seedDamageOpts(seed, caster, planted));
                     const dmg = hpBefore - unit.hp;
                     if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                     if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
@@ -12331,7 +12363,7 @@
                         sourceUnit: sourceUnit || null,
                         noRangeMult: true,
                         damageType: 'physical',
-                        spellType: 'tech'
+                        spellType: obj.spellType || 'tech'   // the deploying row's type (THE TYPE BADGE RULE)
                     });
                     // Balance telemetry: the blast belongs to the spell that
                     // deployed the object, whenever it goes off.
@@ -12738,6 +12770,117 @@
             }, outAt);
             window.setTimeout(() => el.remove(), totalMs + 500);
             return el;
+        }
+
+        /* ═══ THE DEATH CLOSE-UP (2026-10-17, mondo: "make the camera more closeup and centered on a unit when
+           they die to see their death animation ... if multiple units die like a double or triple kill then make
+           it split screen like the combo attacks and entropy strikes") ═══════════════════════════════════════════
+           map.js defeatUnit calls playDeathCloseup on every death. One live camera (the ThreeSplitscreen rig, the
+           same one combos and Entropy Strikes use) frames the dying unit close and centred for its whole death
+           clip. Every death that lands while that shot is up (the rest of an AoE, a chain, the next Entropy Strike
+           beat) joins it as its own pane: two kills split the screen in halves, three in thirds, four in quarters,
+           with the combo pane chrome (frame + name). Deaths inside one ~90 ms window open together. Fog-gated per
+           unit on THIS screen (_shouldCameraFollowUnit); online.js relays each death so the guest runs the same
+           shot under its own fog. The turn waits for it (_waitForAnimationsThen). An execution owns its kill (the
+           finisher cinematic IS the close-up), so deaths during one are skipped. Kill switch: EW_NO_DEATH_CAM. */
+        const _dc = { ids: [], openTimer: null, tick: null, live: false, lastAddAt: 0, chromeEl: null, waitSince: 0 };
+        let _dcFinisherUntil = 0;
+        const _DC_MAX_PANES = 4;
+
+        function _deathCamLive() { return _dc.live || !!_dc.openTimer; }
+        window._deathCamLive = _deathCamLive;
+
+        function _dcEligible(unit) {
+            if (window.EW_NO_DEATH_CAM || !unit) return false;
+            if (state.phase !== 'battle' || _skipVisuals() || state.cameraDisabled) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            if (!window.ThreeSplitscreen || !ThreeSplitscreen.isAvailable()) return false;
+            if (Date.now() < _dcFinisherUntil) return false;
+            try { if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false; } catch (err) {}
+            try { if (!_shouldCameraFollowUnit(unit)) return false; } catch (err) { return false; }
+            return true;
+        }
+
+        function _dcDying(id) {
+            try { return !!(window.ThreeAnim && ThreeAnim.isDying && ThreeAnim.isDying(id)); } catch (err) { return false; }
+        }
+
+        function playDeathCloseup(unit) {
+            try {
+                if (!_dcEligible(unit)) return;
+                if (_dc.ids.indexOf(unit.id) >= 0) return;
+                if (_dc.ids.length >= _DC_MAX_PANES) { _dc.lastAddAt = Date.now(); return; }
+                _dc.ids.push(unit.id);
+                _dc.lastAddAt = Date.now();
+                if (_dc.live) { _dcShow(); return; }
+                if (!_dc.openTimer) { _dc.waitSince = Date.now(); _dc.openTimer = window.setTimeout(_dcOpen, 90); }
+            } catch (err) { console.warn('[DeathCam]', err); }
+        }
+        window.playDeathCloseup = playDeathCloseup;
+
+        function _dcOpen() {
+            _dc.openTimer = null;
+            if (state.phase !== 'battle') { _dcEnd(); return; }
+            _dc.ids = _dc.ids.filter(id => _dcDying(id));
+            if (!_dc.ids.length) { _dcEnd(); return; }
+            /* Another split shot is up (a combo's caster panes): wait for it while the bodies are still falling. */
+            if (ThreeSplitscreen.isActive() && ThreeSplitscreen.owner() !== 'death') {
+                if (Date.now() - _dc.waitSince < 1500) { _dc.openTimer = window.setTimeout(_dcOpen, 80); return; }
+                _dcEnd();
+                return;
+            }
+            _dcShow();
+        }
+
+        function _dcShow() {
+            const units = _dc.ids.map(id => unitFromId(id)).filter(Boolean);
+            if (!units.length) { _dcEnd(); return; }
+            const ssRes = ThreeSplitscreen.show(units.map(u => ({ unitId: u.id })), {
+                owner: 'death', death: true, keepFloats: units.length === 1,
+                durationMs: actionMs(1700), fov: 32, sideDeg: 26, driftDeg: 8, dist0: 2.6, dist1: 1.85
+            });
+            if (!ssRes) { _dcEnd(); return; }
+            _dc.live = true;
+            if (_dc.chromeEl && _dc.chromeEl.isConnected) _dc.chromeEl.remove();
+            _dc.chromeEl = null;
+            if (units.length >= 2) {
+                _dc.chromeEl = _ssqShowChrome(
+                    units.map(u => ({ unit: u, accent: _ccinColor((u.types || [])[0]) })),
+                    ssRes, { mute: true, startAt: 0, staggerMs: 0, outAt: 600000, totalMs: 600000 });
+            }
+            if (!_dc.tick) _dc.tick = window.setInterval(_dcTick, 60);
+        }
+
+        function _dcTick() {
+            if (!_dc.live) return;
+            /* Someone else took the screen (a combo, an Entropy Strike): the death shot is over. */
+            if (state.phase !== 'battle' || !ThreeSplitscreen.isActive() || ThreeSplitscreen.owner() !== 'death') { _dcEnd(true); return; }
+            ThreeSplitscreen.extend(1500);   // the rig's own failsafe stays armed just past this tick
+            const since = Date.now() - _dc.lastAddAt;
+            const falling = _dc.ids.some(id => _dcDying(id));
+            /* hold while any body is still falling (min 1.1 s so a sprite death still reads), a beat after the
+               last one dissolves, and never past 4.5 s from the last death */
+            if (since > 4500 || (since > actionMs(1100) && !falling)) {
+                if (!_dc.endAt) _dc.endAt = Date.now() + 160;
+                else if (Date.now() >= _dc.endAt) _dcEnd();
+            } else _dc.endAt = 0;
+        }
+
+        function _dcEnd(lost) {
+            if (_dc.openTimer) { window.clearTimeout(_dc.openTimer); _dc.openTimer = null; }
+            if (_dc.tick) { window.clearInterval(_dc.tick); _dc.tick = null; }
+            if (_dc.live && !lost && window.ThreeSplitscreen && ThreeSplitscreen.owner() === 'death') {
+                try { ThreeSplitscreen.hide(); } catch (err) {}
+            }
+            const el = _dc.chromeEl;
+            if (el && el.isConnected) {
+                el.querySelectorAll('.ssq-pane').forEach(p2 => p2.classList.add('out'));
+                window.setTimeout(() => el.remove(), 320);
+            }
+            _dc.chromeEl = null;
+            _dc.ids = [];
+            _dc.live = false;
+            _dc.endAt = 0;
         }
 
         /* strikeType: one of ENTROPY_STRIKE_TYPE_ORDER (the apocalypse the
@@ -13756,6 +13899,7 @@
             const RESOLVE_MS = actionMs(D.resolveMs);
             const totalMs = CHARGE_MS + STRIKE_MS + RESOLVE_MS;
             const hitAt = CHARGE_MS + STRIKE_MS;
+            _dcFinisherUntil = Date.now() + totalMs + actionMs(300);   // THE DEATH CLOSE-UP: the execution is the kill shot
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
             const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
             const span = Math.max(bw(), bh());
@@ -20924,7 +21068,7 @@
                     const actualSide = (_slotLeft && _slotLeft.key === key) ? 'left'
                         : (_slotRight && _slotRight.key === key) ? 'right'
                         : (sp.side || 'left');
-                    shakeWrap.style.setProperty('--cs-glow-color', sp.factionColor || '#fff');
+                    shakeWrap.style.setProperty('--cs-glow-color', sp.color || '#fff');
                     shakeWrap.style.setProperty('--cs-glow-side', actualSide === 'left' ? '0%' : '100%');
                 }
             }
@@ -20978,11 +21122,7 @@
                     dlgBox.style.display = '';
                     dlgBox.classList.add('visible');
                     dlgSpeaker.textContent = sp ? sp.name : '';
-                    dlgSpeaker.style.color = sp ? (sp.factionColor || '#fff') : '#fff';
-                    if (sp && sp.faction) {
-                        dlgSpeaker.innerHTML = `${escapeHtml(sp.name)}<span class="cs-dlg-faction">${escapeHtml(sp.faction)} Faction</span>`;
-                        dlgSpeaker.style.color = sp.factionColor || '#fff';
-                    }
+                    dlgSpeaker.style.color = sp ? (sp.color || '#fff') : '#fff';
                     startTypewriter(line.text || '');
                 }
             }
@@ -21160,10 +21300,6 @@
             const defPlayerNum = defUnit.player || 2;
             const atkName = unitDisplayName(attacker);
             const defName = unitDisplayName(defUnit);
-            const atkFaction = attacker.faction || '';
-            const defFaction = defUnit.faction || '';
-            const atkFactionLabel = atkFaction ? atkFaction.charAt(0).toUpperCase() + atkFaction.slice(1) + ' Faction' : '';
-            const defFactionLabel = defFaction ? defFaction.charAt(0).toUpperCase() + defFaction.slice(1) + ' Faction' : '';
 
             const overlay = document.createElement('div');
             overlay.className = 'cin-overlay';
@@ -21213,13 +21349,11 @@
           <div class="cin-player-label cin-label-attacker">
             <div class="cin-label-player">P${atkPlayerNum}</div>
             <div class="cin-label-name">${atkName}</div>
-            ${atkFactionLabel ? `<div class="cin-label-faction faction-${atkFaction}">${atkFactionLabel}</div>` : ''}
             <div class="cin-label-hp" data-cin-hp="atk">HP ${attacker.hp}/${attacker.maxHp}</div>
           </div>
           <div class="cin-player-label cin-label-defender">
             <div class="cin-label-player">P${defPlayerNum}</div>
             <div class="cin-label-name">${defName}</div>
-            ${defFactionLabel ? `<div class="cin-label-faction faction-${defFaction}">${defFactionLabel}</div>` : ''}
             <div class="cin-label-hp" data-cin-hp="def">HP ${defUnit.hp}/${defUnit.maxHp}</div>
           </div>
         </div>
@@ -25520,6 +25654,7 @@
                     // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                     dmg: sp.turretDmg || 40, range: (sp.turretRange || 4) + (unitPassiveSum(caster, 'turretRangeBonus') || 0),
                     spellId: sp.id, hitsToKill: sp.hitsToKill,
+                    spellType: sp.spellType || null,   // the shot is the row's type (THE TYPE BADGE RULE, data.js spellTypeMatters)
                 });
                 try { playSfx('turret', { volume: 0.7 }); } catch (e) {}
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
@@ -26223,12 +26358,12 @@
                         t._rtNext = now + TURRET_MS;
                         try { if (window.ThreeAnim && ThreeAnim.projectile) ThreeAnim.projectile(t.x, t.y, best.x, best.y, 'proj-bullet', 240, t.z || 0, best.z || 0); } catch (e) {}
                         try { playSfx('turret', { volume: 0.45 }); } catch (e) {}
-                        const tid = best.id, dmgT = t.dmg || 40, ownerId = t.casterUnitId;
+                        const tid = best.id, dmgT = t.dmg || 40, ownerId = t.casterUnitId, typeT = t.spellType || null;
                         pendingFx.push({
                             at: now + 240,
                             fn: () => {
                                 const tt = _findU(tid);
-                                if (_alive(tt)) _dmg(tt, dmgT, 'Turret', { sourceUnit: _findU(ownerId) || undefined, damageType: 'physical' });
+                                if (_alive(tt)) _dmg(tt, dmgT, 'Turret', { sourceUnit: _findU(ownerId) || undefined, damageType: 'physical', spellType: typeT });
                             },
                         });
                     }
@@ -32292,7 +32427,7 @@
             if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
                 // ATK/INT split: physical damage rides the ATK axis (Overclock,
                 // Inspired, Discord…); magic damage rides the INT axis (Dark
-                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/faction/
+                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/
                 // streak bonuses apply to both.
                 // opts.noAtkBonus: a placed object's blast (a bomb) is typed and
                 // credited but never rides the placer's live ATK bonuses.
@@ -32334,7 +32469,8 @@
 
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
-                    const tgtH = getUnitStandingHeight(target);
+                    // opts.struckAt: a hit landed on a tile the target already left (opportunity attack)
+                    const tgtH = (opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target);
                     if (srcH > tgtH) {
 
                         const heightAdv = srcH - tgtH;
@@ -32356,7 +32492,7 @@
                 // reactions — opts.noRangeMult) where "distance to the
                 // caster" is meaningless.
                 if (damageType !== 'dot' && !opts.noRangeMult) {
-                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
+                    const _rangeMult = getRangeDamageMult(sourceUnit, opts.struckAt || target);
                     if (_rangeMult !== 1) {
                         _offMult *= _rangeMult;
                         // No callout: falloff hits nearly every ranged action,
@@ -32373,7 +32509,7 @@
                     const _pH = (typeof getUnitStandingHeight === 'function');
                     const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
                         srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
-                        tgtH: _pH ? getUnitStandingHeight(target) : null,
+                        tgtH: _pH ? ((opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target)) : null,
                         fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
                     });
                     if (_psm.mult !== 1) {
@@ -33529,7 +33665,7 @@
 
         const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
-            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed']);
+            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed']);
         function forecastSpellPlan(caster, spell, x, y, z, opts = {}) {
             const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null };
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
@@ -33559,9 +33695,93 @@
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
             }
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
+            // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
+            if ((spell.kind === 'seedPoison' || spell.kind === 'leechSeed') && !plan.hits.length) plan.handled = false;
             return plan;
         }
         window.forecastSpellPlan = forecastSpellPlan;
+
+        /* THE BANE FORECAST (2026-10-17, mondo: "banes need to have a damage projection just like spells"): a thrown
+           bane (and the grenade, which rides the bane throw) read the doItem way — the same raw (baseDmg, + baneDmg
+           on a type match, no roll), the same hit options (magic, no mark bonus, the bane's own matchup), the
+           grenade's splash on every other body in its blast (allies and the thrower too) — through
+           forecastHitOnUnit. Same plan shape as forecastSpellPlan, so every spell preview draws it unchanged;
+           plan.spell is baneForecastSpell(itemKey), a stand-in the badges read the name and kind from. */
+        function baneForecastSpell(itemKey) {
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            if (!rule || !rule.baneType) return null;
+            return { id: itemKey, name: rule.name || itemKey, kind: 'bane', item: itemKey, damageType: 'magic',
+                dmg: rule.baseDmg || 0, aoeRadius: (rule.aoeRadius > 0 && rule.aoeDmg > 0) ? rule.aoeRadius : 0 };
+        }
+        window.baneForecastSpell = baneForecastSpell;
+        function forecastBanePlan(thrower, itemKey, target, opts = {}) {
+            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: baneForecastSpell(itemKey), item: itemKey };
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            if (!thrower || !rule || !rule.baneType || !target || target.dead || target._dying || !state || !Array.isArray(state.units)) return plan;
+            plan.handled = true;
+            const from = opts.castFrom;
+            const ox = thrower.x, oy = thrower.y, oz = thrower.z;
+            const hpUndo = new Map();
+            const entry = (u) => {
+                let h = plan.byId[u.id];
+                if (!h) { h = { unit: u, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[u.id] = h; plan.hits.push(h); }
+                return h;
+            };
+            const hit = (u, raw, hopts, tag) => {
+                if (!u || u.dead || u._dying) return;
+                if (!hpUndo.has(u)) hpUndo.set(u, [u.hp, u.shield]);
+                const f = forecastHitOnUnit(u, Math.max(0, raw), hopts);
+                if (!f) return;
+                const h = entry(u);
+                const d = Math.min(f.dmg, Math.max(0, u.hp));
+                h.dmg += d; h.min += d; h.max += d; h.hits++;
+                if (f.blocked && !h.blocked) h.blocked = f.blocked;
+                if (f.heal) h.heal += f.heal;
+                if (f.indomitable && !h.tags.includes('indomitable')) h.tags.push('indomitable');
+                if (tag && !h.tags.includes(tag)) h.tags.push(tag);
+                if (f.redirectedTo != null) {
+                    const g = unitFromId(f.redirectedTo);
+                    if (g) {
+                        if (!hpUndo.has(g)) hpUndo.set(g, [g.hp, g.shield]);
+                        const gh = entry(g), gd = f.redirectDmg || 0;
+                        gh.dmg += gd; gh.min += gd; gh.max += gd; gh.hits++;
+                        if (!gh.tags.includes('intercepts')) gh.tags.push('intercepts');
+                        g.hp = Math.max(0, g.hp - gd);
+                    }
+                }
+                u.shield = f.shieldLeft != null ? f.shieldLeft : u.shield;
+                u.hp = Math.max(0, u.hp - d);
+            };
+            try {
+                if (from && (from.x !== thrower.x || from.y !== thrower.y)) {
+                    thrower.x = from.x; thrower.y = from.y;
+                    thrower.z = (from.z != null) ? from.z : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(from.x, from.y, thrower.z) : thrower.z);
+                }
+                const eff = (target.types || []).includes(rule.baneType);
+                hit(target, (rule.baseDmg || 0) + (eff ? (rule.baneDmg || 0) : 0),
+                    { sourceUnit: thrower, allowMarkBonus: false, damageType: 'magic', typeEffect: eff ? 'super' : 'neutral' });
+                if (eff && plan.byId[target.id]) plan.byId[target.id].superEff = true;
+                plan.tiles.push({ x: target.x, y: target.y });
+                if (rule.aoeRadius > 0 && rule.aoeDmg > 0) {
+                    const bx = target.x, by = target.y;
+                    for (const t of getSquareArea(bx, by, rule.aoeRadius)) if (t.x !== bx || t.y !== by) plan.tiles.push(t);
+                    for (const other of state.units) {
+                        if (other.dead || other._dying || other.id === target.id) continue;
+                        if (Math.max(Math.abs(other.x - bx), Math.abs(other.y - by)) > rule.aoeRadius) continue;
+                        hit(other, rule.aoeDmg, { sourceUnit: other.player === thrower.player ? null : thrower,
+                            allowMarkBonus: false, damageType: 'magic', typeEffect: 'neutral' }, 'splash');
+                    }
+                }
+            } catch (e) {
+                if (typeof console !== 'undefined') console.warn('[forecast bane]', itemKey, e);
+            } finally {
+                hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
+                thrower.x = ox; thrower.y = oy; thrower.z = oz;
+            }
+            for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
+            return plan;
+        }
+        window.forecastBanePlan = forecastBanePlan;
 
         function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
             const sp = spellPowerOf(unit, spell);
@@ -34101,6 +34321,21 @@
                 return;
             }
 
+            if (kind === 'seedPoison' || kind === 'leechSeed') {
+                /* THE PLANTED STING: the same raw and options the plant resolves with (seedPlantDamage /
+                   seedDamageOpts), only when an enemy stands on the tile (doSpell refuses mountain / lava and a repeat seed) */
+                plan.tiles = [{ x, y }];
+                const _sType = kind === 'seedPoison' ? 'poison' : 'leech';
+                const _t = getTerrainAt(x, y);
+                if (_t === 'mountain' || _t === 'lava') return;
+                if ((state.plantedSeeds || []).some(s => s.x === x && s.y === y && s.type === _sType)) return;
+                const occ = unitAt(x, y);
+                if (!occ || occ.dead || !isEnemyUnit(occ, unit) || (typeof isUnitAirborne === 'function' && isUnitAirborne(occ))) return;
+                const d = seedPlantDamage(_sType, occ);
+                hit(occ, d, d, d, seedDamageOpts({ spellType: spell.spellType || null, spellElement: el || null }, unit, true));
+                return;
+            }
+
             if (kind === 'delayed') {
                 const m = _spellMaskOf(spell);
                 const area = m ? aoeMaskTiles(m, x, y, bw(), bh()) : getSquareArea(x, y, spell.aoeRadius || 1);
@@ -34240,6 +34475,7 @@
                         ignoreArmor: false,
                         damageType: 'physical',
                         sourceUnit: caster || undefined,   // the caster's kill, the caster's XP
+                        spellType: s.turret.spellType || null,   // the summoning row's type (THE TYPE BADGE RULE)
                         noRangeMult: true,
                         scaleByTargetLevel: true,
                         flashColor: 'hit',
@@ -34270,6 +34506,7 @@
                     ignoreArmor: false,
                     damageType: 'physical',
                     sourceUnit: caster || undefined,
+                    spellType: s.turret.spellType || null,   // the deploying row's type (THE TYPE BADGE RULE)
                     noRangeMult: true,
                     // Caster gone (dead/despawned)? Fall back to target-level
                     // scaling so orphaned turrets don't tickle 10k-HP units.
@@ -35746,6 +35983,7 @@
 
             const _wasAirborne = canFly(unit) && isUnitAirborne(unit);
             const _fromZ = unit.z ?? 0;
+            const _fromStandH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : _fromZ;
             unit.x = x;
             unit.y = y;
 
@@ -35864,7 +36102,7 @@
             // run in completeMoveAlongPath, so they read the far side.
             if (!opts.noDoor && typeof doorStepThrough === 'function') doorStepThrough(unit);
 
-            checkOpportunityAttack(unit, _originX, _originY);
+            checkOpportunityAttack(unit, _originX, _originY, _fromZ, _fromStandH);
 
             // 🕯 Hex of Toil: moving feeds the curse.
             _procHexedOnAction(unit, 'moves');
@@ -37644,6 +37882,27 @@
                 return Math.min(cost, AP_COST_SPELL);
             },
 
+            /* THE AP PRESS ICONS (hud.js ApPress, mondo 2026-10-17: "always know how much ap i will be left with after
+               an action"): the AP an action REALLY drains from `unit` — the same rules its commit path spends by. A
+               step is 1 AP, the turn's second step all of it (finishMove); attacks, combos, Entropy Strikes, finishers,
+               Guard and damaging/Protect casts take ALL of it (spendAllAP); a support cast its apCost (plus the step
+               of a MOVE→CAST); Clash spends everything on any paid act. kind: 'move' | 'all' | 'spell' | 'flat';
+               opts.spell, opts.move (a step first), opts.cost (flat). */
+            apSpend(unit, kind, opts = {}) {
+                const ap = Math.max(0, (unit && unit.ap) || 0);
+                if (!ap) return 0;
+                const step = ((unit.movesThisTurn || 0) + 1 >= UNIT_MAX_MOVES) ? ap : AP_COST_ACTION;
+                let n;
+                if (kind === 'move') n = step;
+                else if (kind === 'all') n = ap;
+                else if (kind === 'spell') {
+                    const sp = opts.spell;
+                    n = (sp && spellEndsTurn(sp)) ? ap : (opts.move ? step : 0) + TargetQuery.apCost(sp);
+                } else n = opts.cost != null ? (+opts.cost || 0) : AP_COST_ACTION;
+                if (n > 0 && typeof _isClashMode === 'function' && _isClashMode()) n = ap;
+                return Math.max(0, Math.min(ap, n));
+            },
+
             /* THE universal castability guard: ONE method answers "why can't
                this unit cast this spell right now?". The ability drum's
                greying, the quick menus, doSpell and canAfford all route
@@ -38016,6 +38275,7 @@
                 unit.ap = (unit.ap || 0) + refund;
                 unit._pressGainedThisTurn = gained + refund;
                 unit._pressFlashAt = Date.now();
+                unit._apRefundIcons = (unit._apRefundIcons || 0) + refund;   // the AP press icons grow a fresh icon per AP
                 result.apDelta = refund;
                 _staggerLiftByRefund(unit);
                 result.pressed = true;
@@ -38193,6 +38453,7 @@
         function _gauntletResetTurnFlags(u) {
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
+            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
             u._pressPenaltiesThisTurn = 0;
             u._spellsUsedThisTurn = null;
             u._reshapeThisTurn = 0;
@@ -40276,8 +40537,8 @@
                 ThreeRenderer.clearOverlay('spellApproachShove');
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const targetY = ThreeRenderer.tileTopY(tx, ty);
-                const ghostTint = (typeof getFactionColor === 'function')
-                    ? (parseInt(String(getFactionColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+                const ghostTint = (typeof getUnitAccentColor === 'function')
+                    ? (parseInt(String(getUnitAccentColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
                     : 0x66ddff;
                 const _target = typeof unitAt === 'function' ? unitAt(tx, ty) : null;
                 const _spell = (unit.spells || []).find(s => s.name === state.selectedTool)
@@ -40414,8 +40675,8 @@
                 const _occ = unitAt(x, y);
                 if (_occ && _occ.id !== unit.id) return; // occupied → not a destination
 
-                const ghostTint = (typeof getFactionColor === 'function')
-                    ? (parseInt(String(getFactionColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+                const ghostTint = (typeof getUnitAccentColor === 'function')
+                    ? (parseInt(String(getUnitAccentColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
                     : 0x66ddff;
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const _isAir = canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
@@ -43396,6 +43657,7 @@
             u._altitudeChangesThisTurn = 0;
             u._jumpedThisTurn = false;
             u._pressGainedThisTurn = 0;
+            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
             u._pressPenaltiesThisTurn = 0;
             u._skippedTurn = false;
             u._aiFailedSpells = null;
@@ -45641,6 +45903,7 @@
                 u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
+                u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                 u._pressPenaltiesThisTurn = 0;
                 u._spellsUsedThisTurn = null;
 
@@ -45713,10 +45976,13 @@
             if (typeof EW_MAP_META === 'undefined' || !EW_MAP_META.length) return;
 
             const wantDelta = /_delta$/.test(cur);
+            const curMeta = EW_MAP_META.find(m => m.id === cur) || null;
             const pool = [];
             for (const m of EW_MAP_META) {
                 if (!!m.isDelta !== wantDelta) continue;
                 if (!GAME_MODES[m.id] || m.id === cur) continue;
+                /* THE ARENA SIZES (2026-10-17): a sized cut (9 / 10 / 11) rerolls to another cut of its size, and a 12 never to one */
+                if (curMeta && (m.sizeOf || curMeta.sizeOf) && ((m.w | 0) !== (curMeta.w | 0) || !m.sizeOf !== !curMeta.sizeOf)) continue;
                 pool.push(m.id);
             }
             if (!pool.length) return;
@@ -45886,6 +46152,7 @@
                     u._buildCharges = 0;
                     u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
+                    u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                     u._pressPenaltiesThisTurn = 0;
                     u._spellsUsedThisTurn = null;
                     u._skippedTurn = false;
@@ -48475,7 +48742,6 @@
                         cls: enemy.cls,
                         race: enemy.race,
                         types: enemy.types ? [...enemy.types] : [],
-                        faction: enemy.faction,
                         hp: enemy.hp,
                         maxHp: enemy.maxHp,
                         mp: enemy.mp,
@@ -48508,7 +48774,6 @@
                         cls: null,
                         race: null,
                         types: [],
-                        faction: null,
                         hp: null,
                         maxHp: null,
                         mp: null,
@@ -48796,6 +49061,7 @@
                 u._altitudeChangesThisTurn = 0;
                 u._jumpedThisTurn = false;
                 u._pressGainedThisTurn = 0;
+                u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                 u._pressPenaltiesThisTurn = 0;
             }
 
@@ -50084,6 +50350,7 @@
                             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
+                            u._apRefundIcons = 0;   // the AP press icons' refund row (hud.js ApPress)
                             u._pressPenaltiesThisTurn = 0;
                             u._spellsUsedThisTurn = null;
                             u._aiFailedSpells = null;
@@ -50235,6 +50502,13 @@
                     return;
                 }
 
+                if (_deathCamLive()) {   // THE DEATH CLOSE-UP: the turn moves on after the body is down
+                    _sawActivity = true;
+                    _dwellStart = 0;
+                    setTimeout(check, 60);
+                    return;
+                }
+
                 if (state.units.some(u => u._dying)) {
                     _sawActivity = true;
                     _dwellStart = 0;
@@ -50363,6 +50637,7 @@
                     || (typeof isCinematicPresent === 'function' && isCinematicPresent())
                     || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy())
                     || state.units.some(u => u._dying)
+                    || _deathCamLive()
                     || (camera && camera.isBusy && camera.isBusy())) return reset();
                 const now = Date.now();
                 if (state._blitzActiveUnitId) {
@@ -56573,7 +56848,7 @@
                 const _tdFromZs = _tdVictims.map(u => u.z ?? getBaseHeightAt(u.x, u.y));
                 for (const u of _tdVictims) {
                     applyDamageToUnit(u, dmg, `${trap.spellName || 'Trapdoor'}: `, {
-                        sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                        sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                     });
                 }
                 for (const t of tiles) applyTerrainDeform(t.x, t.y, 0, { centerDelta: -2, edgeDelta: 0 });
@@ -56591,7 +56866,7 @@
                 addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : unitDisplayName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
-                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'root', duration: 2 }], `${trap.spellName || 'Snare Trap'}: `, owner);
@@ -56599,7 +56874,7 @@
                 }
             } else if (trap.trapType === 'frost') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Frost Mine'}: `, {
-                    sourceUnit: owner, damageType: 'magic', noRangeMult: true
+                    sourceUnit: owner, damageType: 'magic', noRangeMult: true, spellType: trap.spellType || null
                 });
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'stun', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);
@@ -56622,7 +56897,7 @@
                 }
             } else if (trap.trapType === 'tremor') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Tremor Charge'}: `, {
-                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
                 const fromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
                 applyTerrainDeform(trap.x, trap.y, 0, { centerDelta: -2, edgeDelta: 0 });
@@ -56632,7 +56907,7 @@
                 addLog('⛏ The ground collapses into a fresh pit!');
             } else if (trap.trapType === 'magnet') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Magnet Mine'}: `, {
-                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock', noRangeMult: true
+                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock', noRangeMult: true, spellType: trap.spellType || null
                 });
                 // Drag every grounded unit within 2 tiles one step toward the mine.
                 let dragged = 0;
@@ -63885,6 +64160,7 @@
                     playErrorSfx();
                     return;
                 }
+                if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();   // the bane forecast's plates + badges
                 setUnitFacing(unit, x - unit.x, y - unit.y);
                 // Long hold: bane sequence = camera hold + throw + travel + impact.
                 _focusPlatesForImpact(unit, x, y, { holdMs: 3200 });
@@ -63972,6 +64248,8 @@
 
                 const _baneSettleMs = Math.max(_baneImpactMs + actionMs(500),
                     (_baneCam?.totalMs ?? 0) + actionMs(120));
+                /* THE BANE FORECAST: the throw keeps the item armed until it settles — no hover re-arms its preview mid-throw */
+                window._ewBaneThrowUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + _baneSettleMs + 50;
                 window.setTimeout(() => {
                     spendAP(unit, AP_COST_ACTION);
                     // Press Turn: a super-effective bane grants a free action,
@@ -64077,7 +64355,7 @@
         const _SFX_THEME_IMPACT = { elec: 'lightningStrike', ice: 'iceImpact', water: 'waterImpact', earth: 'earthImpact' };
 
         // applyDamageToUnit has no spell in scope (its ~80 call sites pass
-        // only the faction spellType), so doSpell records the caster's
+        // only the spellType), so doSpell records the caster's
         // elemental theme at cast-commit and the impact router looks it up
         // by sourceUnit. Module map, NOT a unit field — units are serialized
         // wholesale into online state-sync (see _stageSpellCast's note).
@@ -65249,8 +65527,14 @@
             _pressDamageCollector = null;
             // Damaging terrain casts (Wall of Fire, floods with dmg…) hit
             // through applyDamageToUnit like any nuke, so they press too.
+            /* EVERY DAMAGING CAST PRESSES (mondo 2026-10-17: "i used infernal conscription on an enemy, it said it was
+               super effective, but i didnt get my 2 ap refund"): the kind list above missed every damaging kind added
+               after it (pull, dash, displacement, sky grabs, leap strikes, steals, damaging debuffs…), so those hits
+               showed "It's super effective!" and never refunded. Any cast whose row carries damage (spellDealsDamage —
+               deployables excluded) arms the collector now; `delayed` lands at round end, after this cast resolves. */
             if (_PRESS_SPELL_KINDS.has(spell.kind)
-                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)) {
+                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
+                || (spell.kind !== 'delayed' && spellDealsDamage(spell))) {
                 _armPressCollector(unit);
             }
 
@@ -65872,6 +66156,7 @@
                     id: `summon_${_sd.key || 'pet'}_${state.round || 0}_${unit.id}_${randInt(99999)}`,
                     x, y, owner: unit.player, casterUnitId: unit.id,
                     spellId: spell.id, spellName: _sName,
+                    spellType: spell.spellType || null,   // the bite is the row's type (THE TYPE BADGE RULE)
                     summon: _sd.key || 'pet', hitsToKill: true, hp: _sHits, maxHp: _sHits,
                     dmg: (_sd.dmg || 60) + Math.floor(spellPower * 0.5) + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                     range: 1, move: _sd.move || 3, reveals: _sd.reveals || 0, armored: !!_sd.armored,
@@ -66105,6 +66390,7 @@
                     trapType: spell.trapType || 'spike',
                     dmg: (spell.dmg || 0) + spellPower + ((spell.dmg || 0) > 0 ? passiveDeployBonus(unit).dmg : 0),   // Batch D: Foreman
                     spellId: spell.id,
+                    spellType: spell.spellType || null,   // the trap's hit is the row's type (THE TYPE BADGE RULE)
                     spellName: spell.name,
                     groupId: _gid, anchorX: _tfp.x, anchorY: _tfp.y, size: spell.trapSize || 1,
                     /* THE SPELL AUDIT Batch D (Deathtrap): the row's statuses replace the trapdoor's Stagger 1, and
@@ -68006,7 +68292,7 @@
                             ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player,
                             blastRadius: spell.blastRadius, blastDmg: spell.blastDmg + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                             statusEffects: spell.statusEffects || [],
-                            spellId: spell.id, spellName: spell.name,
+                            spellId: spell.id, spellName: spell.name, spellType: spell.spellType || null,
                             aoeMask: _spellMaskOf(spell) || undefined
                         }, unit);
                     } else {
@@ -68049,6 +68335,7 @@
                     auraRadius: spell.auraRadius || 0,
                     healOnTurnStart: !!spell.healOnTurnStart,
                     spellId: spell.id,
+                    spellType: spell.spellType || null,
                     statusEffects: spell.statusEffects || [],
                     spellName: spell.name,
                     aoeMask: _spellMaskOf(spell) || undefined,      // Phase 2 mask: plain data, rides the snapshot
@@ -69666,14 +69953,15 @@
                         type: 'poison',
                         owner: unit.player,
                         casterUnitId: unit.id,
+                        spellType: spell.spellType || null, spellElement: getSpellElement(spell) || null,   // THE PLANTED STING
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
                     const _wetNowP = _seedRainAt(x, y) || _seedBesideWater(x, y);
                     addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will grow into a Toxin Tree in ${_wetNowP ? 1 : 2} round${_wetNowP ? '' : 's'}${_wetNowP ? ' (well watered!)' : ''} — unless it is destroyed first.`);
-                    // Planting under an enemy's feet stings immediately.
+                    // Planting under an enemy's feet stings immediately — typed (THE PLANTED STING).
                     const _occupant = unitAt(x, y);
-                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant, null, true)) {
                         _newSeed._procs = { [_occupant.id]: state.round || 0 };
                     }
                     scheduleBoardRender();
@@ -69793,6 +70081,7 @@
                         type: 'leech',
                         owner: unit.player,
                         casterUnitId: unit.id,
+                        spellType: spell.spellType || null, spellElement: getSpellElement(spell) || null,   // THE PLANTED STING
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
@@ -69801,7 +70090,7 @@
                     // Planting under someone's feet works immediately — drain an
                     // enemy or nourish an ally standing there right now.
                     const _occupant = unitAt(x, y);
-                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant, null, true)) {
                         _newSeed._procs = { [_occupant.id]: state.round || 0 };
                     }
                     scheduleBoardRender();
@@ -69893,6 +70182,7 @@
                     dmg: turretDmg,
                     range: turretRange,
                     spellId: spell.id,
+                    spellType: spell.spellType || null,   // the shot is the row's type (THE TYPE BADGE RULE, data.js spellTypeMatters)
                     hitsToKill: spell.hitsToKill || 0,
                     auraDebuff: spell.auraDebuff || false,
                     auraDefReduction: spell.auraDefReduction || 0,
