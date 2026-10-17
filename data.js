@@ -4384,7 +4384,7 @@ const ITEM_RULES = {
         name: 'Panacea',
         icon: '💊',
         max: 1,
-        desc: 'Self only. Cures all negative status effects.',
+        desc: 'Self only. 1 AP. Cures all negative status effects.',
         shopPrice: 60
     },
     warpStone: {
