@@ -24081,6 +24081,26 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the board's site's day look when one of its rooms is on the world clock (data.js
+       hqRoomClock: an outdoor room) — { tint, clouds } | null (an indoor site, a HQ_WORLD_CLOCK.still sky, no site) */
+    var _battleSkyDayCache = { key: null, v: null };
+    function _battleSiteDayLook() {
+        var id = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : '';
+        if (_battleSkyDayCache.key === id) return _battleSkyDayCache.v;
+        var v = null;
+        try {
+            var site = (typeof hqSiteId === 'function') ? hqSiteId(id) : null, D = _hqData(), R = D && D.rooms;
+            if (site && R && typeof hqRoomClock === 'function' && typeof HQ_WORLD_CLOCK !== 'undefined') for (var rk in R) {
+                var rm = R[rk]; if (!rm || !rm.site || hqSiteId(rm.site) !== site) continue;
+                var C = hqRoomClock(rk); if (!C || C.locked) continue;
+                var DL = C.dayLook || {}, CKd = HQ_WORLD_CLOCK.day || {};
+                v = { tint: (DL.tint != null) ? DL.tint : (CKd.tint != null ? CKd.tint : 0x9fc4e8), clouds: (DL.clouds != null) ? DL.clouds : (CKd.clouds || 0) };
+                break;
+            }
+        } catch (e) { v = null; }
+        _battleSkyDayCache.key = id; _battleSkyDayCache.v = v;
+        return v;
+    }
     function _envReadState() {
         var night = 0;
         try {
@@ -24253,14 +24273,33 @@ const ThreeRenderer = (function () {
         S.mapTintAmt += (((me && me.tintAmt) || 0) - S.mapTintAmt) * k;
         S.mapStars += (((me && me.stars != null) ? me.stars : 1) - S.mapStars) * k;
         S.mapNebula += (((me && me.nebula != null) ? me.nebula : 1) - S.mapNebula) * k;
-        S.mapDay += (((me && me.day) || 0) - S.mapDay) * k;           // THE DAY SKY (2026-09-21)
-        S.mapClouds += (((me && me.clouds) || 0) - S.mapClouds) * k;
+        /* THE BATTLE'S DAY AND NIGHT (2026-10-17): an outdoor site's own board with no room round it (a moving Δ, a full site map) —
+           a night-authored sky wears the site's day on a day round (the lights already flip with the round: ThreePost's presets) */
+        var BDL = (!_fieldGroundArmed && me && !(me.day > 0) && !s.night && !(typeof window !== 'undefined' && window.EW_NO_BATTLE_CYCLE)) ? _battleSiteDayLook() : null;
+        S.mapDay += ((BDL ? 1 : ((me && me.day) || 0)) - S.mapDay) * k;           // THE DAY SKY (2026-09-21)
+        S.mapClouds += ((BDL ? BDL.clouds : ((me && me.clouds) || 0)) - S.mapClouds) * k;
         if (me && me.tint != null) {
             if (!_mapTintScratch) { _mapTintScratch = new THREE.Color(); _mapTintTarget = new THREE.Vector3(); }
-            _mapTintScratch.setHex(me.tint);
+            _mapTintScratch.setHex(BDL ? BDL.tint : me.tint);
             _mapTintTarget.set(_mapTintScratch.r, _mapTintScratch.g, _mapTintScratch.b);
             if (_motion.sunNear > 0.001) _mapTintTarget.lerp(_MOTION_SUN_TINT, _motion.sunNear * 0.65);   // the close pass gilds the whole sky
             _envUni.uMapTint.value.lerp(_mapTintTarget, 0.08);
+        }
+        /* THE BATTLE'S DAY AND NIGHT (2026-10-17): an outdoor room's fight — the dome's day sky, clouds, wash and horizon haze follow the
+           round's half (_fieldCycleTick eases it; the map's own values stand for the half the room was authored in) */
+        var FCe = (_fieldCycle && _fieldGroundArmed) ? _fieldCycle : null;
+        if (FCe) {
+            var rc = _fieldCycleRigAt(FCe), tc = rc.t;
+            S.mapDay = rc.day; S.mapClouds = rc.clouds; S.night = 1 - tc;
+            var fHex = (_mapEnvFog && _mapEnvFog.color != null) ? _mapEnvFog.color : null, tHex = (me && me.tint != null) ? me.tint : null;
+            if (!FCe.dome || FCe.dome.tHex !== tHex || FCe.dome.fHex !== fHex) {   // (the rig's rebuild clears it: built once per eased step)
+                var own = (tHex != null) ? new THREE.Color(tHex) : null, fo = (fHex != null) ? new THREE.Color(fHex) : null;
+                FCe.dome = { tHex: tHex, fHex: fHex,
+                             tw: FCe.authNight ? (own || FCe.night.tint).clone().lerp(FCe.day.tint, tc) : FCe.night.tint.clone().lerp(own || FCe.day.tint, tc),
+                             fw: fo ? (FCe.authNight ? fo.lerp(FCe.day.fogC, tc) : FCe.night.fogC.clone().lerp(fo, tc)) : null };
+            }
+            _envUni.uMapTint.value.set(FCe.dome.tw.r, FCe.dome.tw.g, FCe.dome.tw.b);
+            if (FCe.dome.fw && !_retroFogHorizon && _ewSceneFogOn()) _envUni.uFogColor.value.set(FCe.dome.fw.r, FCe.dome.fw.g, FCe.dome.fw.b);
         }
         _envUni.uMapTintAmt.value = S.mapTintAmt;
         _envUni.uMapStars.value = S.mapStars * (1 - 0.7 * _motion.sunNear);   // stars drown beside the sun (MOVING MAPS)
@@ -37619,6 +37658,7 @@ const ThreeRenderer = (function () {
 
         _updateEnvironment();
         _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
+        _fieldCycleTick();    // THE BATTLE'S DAY AND NIGHT: an outdoor room's fight eases to the round's half
 
         // A tile-size change (menu MENU_TILE <-> battle BASE_TILE) rescales the
         // entire board. The renderer's animation loop can otherwise rebuild the
@@ -64115,10 +64155,14 @@ const ThreeRenderer = (function () {
                     field.sun = { color: CV.keyC.getHex(), intensity: CV.keyI, dir: [kd.x, kd.y, kd.z] };
                     nightO = CV.night > 0.5 ? 1 : 0;
                 }
+                /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the round's half of the cycle — the rig starts on round 1's half */
+                var FCy = null; try { FCy = _fieldCycleArm(room, R.roomId, M); } catch (e) { FCy = null; }
+                if (FCy) { var r0 = _fieldCycleRigAt(FCy); field.hemi = r0.hemi; field.sun = r0.sun; nightO = FCy.k < 0.5 ? 1 : 0; }
                 var ofill = new THREE.DirectionalLight(LR.fillColor, LR.fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(ofill);
                 var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
                 (S.lights || []).slice(0, lampMax).forEach(function (Lt) {
                     var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * s, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); lg.add(ml);
+                    if (FCy) { ml.intensity = LRo.nightLamp + (LRo.dayLamp - LRo.nightLamp) * _fieldCycleEase(FCy.k); FCy.lamps.push({ l: ml, d: LRo.dayLamp, n: LRo.nightLamp }); }
                 });
             } else {
                 var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LR.ambientFloor || 0);
@@ -64144,7 +64188,8 @@ const ThreeRenderer = (function () {
         var fogC = 0x0d0e12, fogD = 0.00017 * U / s;
         try {
             if (open) { fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / s : 0.00005 * U / s; if (S.sky.fog && S.sky.fog.color != null) fogC = S.sky.fog.color;
-                try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {} }   // THE WORLD CLOCK: the hour's fog
+                try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {}   // THE WORLD CLOCK: the hour's fog
+                if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
             if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD) : null;   // THE FOG SETTING: Scene Fog off = none
         } catch (e) {}
@@ -64170,6 +64215,76 @@ const ThreeRenderer = (function () {
         if (st.ceil) st.ceil.y = floorY + (S.h || 3) * s;
     }
     var _fieldGroundFog = false;
+    /* ══ THE BATTLE'S DAY AND NIGHT (2026-10-17, mondo: "wood like the fairy forest and bohemian grove etc to still have day and night
+       cycles, for battle and exploration. any outdoor area should have visible day and night. indoor areas should still have it
+       mechanically") ══
+       A fight on an outdoor room (a room on the world clock: data.js hqRoomClock) wears the ROUND's half of the cycle (map.js
+       getCurrentCyclePhase: the rounds flip day ↔ night; a story fight's round 1 is the room's hour): the key (the sun, or the moon),
+       the hemisphere, the lamp masts, the fog's colour and the dome's day sky / clouds / tint ease between the room's day row and its
+       night row (_hqClockVals at a day hour and a night hour — a story fight's own half is the held hour's) over FIELD_CYCLE_SEC. An
+       indoor room, a HQ_WORLD_CLOCK.still sky and a locked room keep the one rig (the half still counts for every rule). Everything
+       is read from state.round, which every seat has, so the online guest sees the host's half; nothing is relayed. */
+    var _fieldCycle = null;   // { id, authNight, day: rig, night: rig, k (1 = day), at, shAt, lamps: [{ l, d, n }] }
+    var FIELD_CYCLE_SEC = 2.5;
+    function _fieldCycleEase(k) { return k * k * (3 - 2 * k); }
+    function _fieldCycleRig(room, id, hour, M) {
+        var V = _hqClockVals(room, id, hour); if (!V || V.locked || !V.keyDir) return null;
+        return { hemiC: V.hemiC.clone(), hemiI: V.hemiI, keyC: V.keyC.clone(), keyI: V.keyI, kd: V.keyDir.clone().transformDirection(M).normalize(),
+                 fogC: V.fogC.clone(), tint: V.tint.clone(), day: (V.env && V.env.day) || 0, clouds: (V.env && V.env.clouds) || 0 };
+    }
+    /* the fight's two rows, and the half it starts on (null = the room keeps one rig) */
+    function _fieldCycleArm(room, id, M) {
+        var W = (typeof window !== 'undefined') ? window : {};
+        if (W.EW_NO_BATTLE_CYCLE || typeof hqRoomClock !== 'function' || typeof hqWorldSun !== 'function') { _fieldCycle = null; return null; }
+        var C = null; try { C = hqRoomClock(id); } catch (e) { C = null; }
+        if (!C || C.locked) { _fieldCycle = null; return null; }
+        var er = W._hqEncounterRun || null, held = _hqClockHourNow(), heldDay = !!hqWorldSun(held).isDay;
+        var dayH = (er && heldDay) ? held : 13.0, nightH = (er && !heldDay) ? held : 1.0;   // a story fight's own half is the hour it was struck at
+        var D = _fieldCycleRig(room, id, dayH, M), N = _fieldCycleRig(room, id, nightH, M);
+        if (!D || !N) { _fieldCycle = null; return null; }
+        /* a canonical half's key comes from where the battle's dome paints its sun / its moon (_envDomeFS's fixed pair), so the shadows
+           fall from the body on screen; the held hour's half keeps the walk's own key (the cut from the walk changes no light) */
+        if (dayH !== held) D.kd.set(0.50, 0.40, -0.58).normalize();
+        if (nightH !== held) N.kd.set(-0.50, 0.40, 0.56).normalize();
+        var k = er ? (er.night ? 0 : 1) : 1;   // round 1's half (getCurrentCyclePhase: round 1 is day unless the story fight starts at night)
+        if (_fieldCycle && _fieldCycle.id === id) k = _fieldCycle.k;   // a rebuild mid-fight keeps the half on screen
+        else { try { if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.round && typeof getCurrentCyclePhase === 'function') k = getCurrentCyclePhase() === 'night' ? 0 : 1; } catch (e) {} }
+        _fieldCycle = { id: id, authNight: !!(room.shell.sky && room.shell.sky.night), day: D, night: N, k: k, at: 0, shAt: 0, lamps: [] };
+        return _fieldCycle;
+    }
+    /* the rig at the cycle's k: ThreePost's field light rows + the fog / tint / dome values */
+    function _fieldCycleRigAt(FC) {
+        if (FC.rig && FC.rigK === FC.k) return FC.rig;   // read every frame by the dome: built again only while the half eases
+        FC.rigK = FC.k; FC.dome = null;
+        return (FC.rig = _fieldCycleRigMake(FC));
+    }
+    function _fieldCycleRigMake(FC) {
+        var t = _fieldCycleEase(FC.k), D = FC.day, N = FC.night;
+        var kd = N.kd.clone().lerp(D.kd, t); if (kd.lengthSq() < 1e-6) kd.copy(t >= 0.5 ? D.kd : N.kd); kd.normalize();
+        return { t: t,
+                 hemi: { sky: N.hemiC.clone().lerp(D.hemiC, t).getHex(), ground: 0x2a2620, intensity: N.hemiI + (D.hemiI - N.hemiI) * t },
+                 sun: { color: N.keyC.clone().lerp(D.keyC, t).getHex(), intensity: N.keyI + (D.keyI - N.keyI) * t, dir: [kd.x, kd.y, kd.z] },
+                 fogC: N.fogC.clone().lerp(D.fogC, t), tint: N.tint.clone().lerp(D.tint, t), day: N.day + (D.day - N.day) * t, clouds: N.clouds + (D.clouds - N.clouds) * t };
+    }
+    /* per frame (beside _fieldGroundTick): ease toward the round's half; nothing is touched while the half holds */
+    function _fieldCycleTick() {
+        var FC = _fieldCycle; if (!FC || !_fieldGroundArmed) return;
+        var now = performance.now(), dt = FC.at ? Math.min(0.5, (now - FC.at) / 1000) : 0; FC.at = now;   // real seconds (a slow machine's frames still finish the fade on time)
+        var tgt = FC.k;
+        try { if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.round && typeof getCurrentCyclePhase === 'function') tgt = getCurrentCyclePhase() === 'night' ? 0 : 1; } catch (e) {}
+        if (FC.k === tgt || !(dt > 0)) return;
+        var step = dt / FIELD_CYCLE_SEC;
+        FC.k = tgt > FC.k ? Math.min(tgt, FC.k + step) : Math.max(tgt, FC.k - step);
+        var r = _fieldCycleRigAt(FC);
+        try {
+            var F = (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null;
+            if (F) { F.hemi = r.hemi; F.sun = r.sun; ThreePost.setFieldLight(F); }
+        } catch (e) {}
+        for (var i = 0; i < FC.lamps.length; i++) { var Lm = FC.lamps[i]; if (Lm.l) Lm.l.intensity = Lm.n + (Lm.d - Lm.n) * r.t; }
+        try { if (typeof scene !== 'undefined' && scene && scene.fog && scene.fog.color) scene.fog.color.copy(r.fogC); } catch (e) {}
+        /* the key turns: the static field shadow is re-drawn a few times a second while it eases (never every frame) */
+        if (now - FC.shAt > 150 || FC.k === tgt) { FC.shAt = now; _shadowsDirty = true; }
+    }
     /* the ceiling piece(s) of a true-ground room: their materials cloned so the fade owns them */
     function _fieldCeilRegister(c, R, ts) {
         var st = _fieldGroundState || (_fieldGroundState = { s: ts / R.T.C, prevFog: (typeof scene !== 'undefined' && scene) ? scene.fog : null, ceil: null });
@@ -65059,7 +65174,7 @@ const ThreeRenderer = (function () {
     }
     /* deactivate(): every dial back */
     function _fieldGroundRelease() {
-        _fieldSeedRelease(); _envSnapPending = false;
+        _fieldSeedRelease(); _envSnapPending = false; _fieldCycle = null;
         var st = _fieldGroundState; _fieldGroundState = null;
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
