@@ -1434,9 +1434,11 @@
 
         function rollSkyEvent() {
             if (state.skyEvent) return null;
-            if (state.round < SKY_EVENT_START_ROUND) return null;
-            if (engineRng() > SKY_EVENT_CHANCE) return null;
-            const type = SKY_EVENT_KEYS[Math.floor(engineRng() * SKY_EVENT_KEYS.length)];
+            /* the fixed timer (data.js SKY_EVENT_FIRST_ROUND / SKY_EVENT_EVERY); the event itself is random, never a repeat */
+            if (state.round < SKY_EVENT_FIRST_ROUND || (state.round - SKY_EVENT_FIRST_ROUND) % SKY_EVENT_EVERY !== 0) return null;
+            const pool = SKY_EVENT_KEYS.filter(k => k !== state._lastSkyEventType);
+            const type = pool[Math.floor(engineRng() * pool.length)];
+            state._lastSkyEventType = type;
             return {
                 type,
                 remaining: SKY_EVENT_DURATION
