@@ -3888,9 +3888,15 @@ const ELEM_BADGE_COLORS = {
   arcane: '#c88fff', blood: '#ff6a7a', metal: '#b0b8c0',
 };
 
+// THE TYPE BADGE RULE (data.js spellTypeMatters): the TYPE chip only on a spell whose type changes something —
+// the type only ever drives damage (matchup + STAB), so a heal / buff / move wears none.
+function spellTypeShown(sp) {
+  return !!(sp && sp.spellType) && (typeof spellTypeMatters !== 'function' || spellTypeMatters(sp));
+}
+
 function _hrlgSpellBadges(sp, cat, quick) {
   const badges = [];
-  if (sp.spellType) badges.push({
+  if (spellTypeShown(sp)) badges.push({
     label: sp.spellType.toUpperCase(),
     style: typeBadgeStyleFor(sp.spellType, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Spell type — drives type advantage',
@@ -8897,7 +8903,7 @@ function _renderSpellDescBar() {
   }
   statusLine = _fxParts.join(', ');
 
-  const badge = sp.spellType
+  const badge = spellTypeShown(sp)
     ? '<span style="display:inline-flex;align-items:center;flex:none;' +
       "font-family:'IBM Plex Mono',monospace;" + 'font-size:10px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;' +
       'color:' + badgeInk(tc) + ';background:' + tc + ';font-weight:700;border-radius:999px;' +

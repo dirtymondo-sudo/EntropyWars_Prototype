@@ -9453,7 +9453,26 @@
         // What an ungrown seed does to the unit standing on its tile. Used by
         // (1) the end-of-round tick, (2) planting a seed on an occupied tile
         // (fires immediately), and (3) units stepping onto a seed mid-round.
-        function applySeedEffectToUnit(seed, unit, events = null) {
+        /* THE PLANTED STING (2026-10-17, mondo: "make sure poison seed and leech seed do type damage if placed directly on
+           an enemy, same with bomb"): a seed planted straight under an enemy hits like the contact bomb — the row's
+           type + element judged vs the victim (weak / resist, the planter's STAB, the affinity table), the planter
+           credited, its live ATK bonuses never riding the sting (noAtkBonus). The round ticks and the walk-on procs
+           stay the untyped HP-% drain. One read for the hit and the forecast (_forecastSpellInto). */
+        function seedPlantDamage(type, unit) {
+            if (type === 'poison') return Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
+            if (type === 'leech') return Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
+            return 0;
+        }
+        function seedDamageOpts(seed, caster, planted) {
+            const o = { ignoreArmor: true, damageType: 'dot', consumeMarked: false };
+            if (planted && caster && !caster.dead && seed && seed.spellType) {
+                // preScaled: the sting is a share of max HP — the planter's level never re-scales it (only the type does)
+                Object.assign(o, { sourceUnit: caster, noAtkBonus: true, noRangeMult: true, allowMarkBonus: false, preScaled: true,
+                    spellType: seed.spellType, spellElement: seed.spellElement || null });
+            }
+            return o;
+        }
+        function applySeedEffectToUnit(seed, unit, events = null, planted = false) {
             if (!seed || !unit || unit.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
@@ -9478,15 +9497,12 @@
             if (seed.type === 'poison' && unit.player !== seed.owner) {
                 const caster = unitFromId(seed.casterUnitId);
                 const hpBefore = unit.hp;
-                const dmgAmt = Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
-                // Credit-only (no sourceUnit: that would add atk/type mults to
-                // the tick): _lastDamageSource routes the kill to the planter.
+                const dmgAmt = seedPlantDamage('poison', unit);
+                // Credit-only on a tick (no sourceUnit: that would add atk/type mults to
+                // the tick): _lastDamageSource routes the kill to the planter. A seed
+                // planted ON the enemy is typed (seedDamageOpts, THE PLANTED STING).
                 if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
-                applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
-                    ignoreArmor: true,
-                    damageType: 'dot',
-                    consumeMarked: false
-                });
+                applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, seedDamageOpts(seed, caster, planted));
                 const dmg = hpBefore - unit.hp;
                 if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                 if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('poisonSeed', dmg, unit.dead ? 1 : 0);
@@ -9505,13 +9521,9 @@
                 if (unit.player !== seed.owner) {
                     const caster = unitFromId(seed.casterUnitId);
                     const hpBefore = unit.hp;
-                    const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
+                    const drainAmt = seedPlantDamage('leech', unit);
                     if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
-                    applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
-                        ignoreArmor: true,
-                        damageType: 'dot',
-                        consumeMarked: false
-                    });
+                    applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, seedDamageOpts(seed, caster, planted));
                     const dmg = hpBefore - unit.hp;
                     if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                     if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
@@ -12349,7 +12361,7 @@
                         sourceUnit: sourceUnit || null,
                         noRangeMult: true,
                         damageType: 'physical',
-                        spellType: 'tech'
+                        spellType: obj.spellType || 'tech'   // the deploying row's type (THE TYPE BADGE RULE)
                     });
                     // Balance telemetry: the blast belongs to the spell that
                     // deployed the object, whenever it goes off.
@@ -25650,6 +25662,7 @@
                     // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                     dmg: sp.turretDmg || 40, range: (sp.turretRange || 4) + (unitPassiveSum(caster, 'turretRangeBonus') || 0),
                     spellId: sp.id, hitsToKill: sp.hitsToKill,
+                    spellType: sp.spellType || null,   // the shot is the row's type (THE TYPE BADGE RULE, data.js spellTypeMatters)
                 });
                 try { playSfx('turret', { volume: 0.7 }); } catch (e) {}
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
@@ -26353,12 +26366,12 @@
                         t._rtNext = now + TURRET_MS;
                         try { if (window.ThreeAnim && ThreeAnim.projectile) ThreeAnim.projectile(t.x, t.y, best.x, best.y, 'proj-bullet', 240, t.z || 0, best.z || 0); } catch (e) {}
                         try { playSfx('turret', { volume: 0.45 }); } catch (e) {}
-                        const tid = best.id, dmgT = t.dmg || 40, ownerId = t.casterUnitId;
+                        const tid = best.id, dmgT = t.dmg || 40, ownerId = t.casterUnitId, typeT = t.spellType || null;
                         pendingFx.push({
                             at: now + 240,
                             fn: () => {
                                 const tt = _findU(tid);
-                                if (_alive(tt)) _dmg(tt, dmgT, 'Turret', { sourceUnit: _findU(ownerId) || undefined, damageType: 'physical' });
+                                if (_alive(tt)) _dmg(tt, dmgT, 'Turret', { sourceUnit: _findU(ownerId) || undefined, damageType: 'physical', spellType: typeT });
                             },
                         });
                     }
@@ -33660,7 +33673,7 @@
 
         const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
-            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed']);
+            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed']);
         function forecastSpellPlan(caster, spell, x, y, z, opts = {}) {
             const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null };
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
@@ -33690,6 +33703,8 @@
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
             }
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
+            // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
+            if ((spell.kind === 'seedPoison' || spell.kind === 'leechSeed') && !plan.hits.length) plan.handled = false;
             return plan;
         }
         window.forecastSpellPlan = forecastSpellPlan;
@@ -34314,6 +34329,21 @@
                 return;
             }
 
+            if (kind === 'seedPoison' || kind === 'leechSeed') {
+                /* THE PLANTED STING: the same raw and options the plant resolves with (seedPlantDamage /
+                   seedDamageOpts), only when an enemy stands on the tile (doSpell refuses mountain / lava and a repeat seed) */
+                plan.tiles = [{ x, y }];
+                const _sType = kind === 'seedPoison' ? 'poison' : 'leech';
+                const _t = getTerrainAt(x, y);
+                if (_t === 'mountain' || _t === 'lava') return;
+                if ((state.plantedSeeds || []).some(s => s.x === x && s.y === y && s.type === _sType)) return;
+                const occ = unitAt(x, y);
+                if (!occ || occ.dead || !isEnemyUnit(occ, unit) || (typeof isUnitAirborne === 'function' && isUnitAirborne(occ))) return;
+                const d = seedPlantDamage(_sType, occ);
+                hit(occ, d, d, d, seedDamageOpts({ spellType: spell.spellType || null, spellElement: el || null }, unit, true));
+                return;
+            }
+
             if (kind === 'delayed') {
                 const m = _spellMaskOf(spell);
                 const area = m ? aoeMaskTiles(m, x, y, bw(), bh()) : getSquareArea(x, y, spell.aoeRadius || 1);
@@ -34453,6 +34483,7 @@
                         ignoreArmor: false,
                         damageType: 'physical',
                         sourceUnit: caster || undefined,   // the caster's kill, the caster's XP
+                        spellType: s.turret.spellType || null,   // the summoning row's type (THE TYPE BADGE RULE)
                         noRangeMult: true,
                         scaleByTargetLevel: true,
                         flashColor: 'hit',
@@ -34483,6 +34514,7 @@
                     ignoreArmor: false,
                     damageType: 'physical',
                     sourceUnit: caster || undefined,
+                    spellType: s.turret.spellType || null,   // the deploying row's type (THE TYPE BADGE RULE)
                     noRangeMult: true,
                     // Caster gone (dead/despawned)? Fall back to target-level
                     // scaling so orphaned turrets don't tickle 10k-HP units.
@@ -56823,7 +56855,7 @@
                 const _tdFromZs = _tdVictims.map(u => u.z ?? getBaseHeightAt(u.x, u.y));
                 for (const u of _tdVictims) {
                     applyDamageToUnit(u, dmg, `${trap.spellName || 'Trapdoor'}: `, {
-                        sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                        sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                     });
                 }
                 for (const t of tiles) applyTerrainDeform(t.x, t.y, 0, { centerDelta: -2, edgeDelta: 0 });
@@ -56841,7 +56873,7 @@
                 addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : unitDisplayName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
-                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'root', duration: 2 }], `${trap.spellName || 'Snare Trap'}: `, owner);
@@ -56849,7 +56881,7 @@
                 }
             } else if (trap.trapType === 'frost') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Frost Mine'}: `, {
-                    sourceUnit: owner, damageType: 'magic', noRangeMult: true
+                    sourceUnit: owner, damageType: 'magic', noRangeMult: true, spellType: trap.spellType || null
                 });
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'stun', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);
@@ -56872,7 +56904,7 @@
                 }
             } else if (trap.trapType === 'tremor') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Tremor Charge'}: `, {
-                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
                 const fromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
                 applyTerrainDeform(trap.x, trap.y, 0, { centerDelta: -2, edgeDelta: 0 });
@@ -56882,7 +56914,7 @@
                 addLog('⛏ The ground collapses into a fresh pit!');
             } else if (trap.trapType === 'magnet') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Magnet Mine'}: `, {
-                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock', noRangeMult: true
+                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock', noRangeMult: true, spellType: trap.spellType || null
                 });
                 // Drag every grounded unit within 2 tiles one step toward the mine.
                 let dragged = 0;
@@ -66125,6 +66157,7 @@
                     id: `summon_${_sd.key || 'pet'}_${state.round || 0}_${unit.id}_${randInt(99999)}`,
                     x, y, owner: unit.player, casterUnitId: unit.id,
                     spellId: spell.id, spellName: _sName,
+                    spellType: spell.spellType || null,   // the bite is the row's type (THE TYPE BADGE RULE)
                     summon: _sd.key || 'pet', hitsToKill: true, hp: _sHits, maxHp: _sHits,
                     dmg: (_sd.dmg || 60) + Math.floor(spellPower * 0.5) + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                     range: 1, move: _sd.move || 3, reveals: _sd.reveals || 0, armored: !!_sd.armored,
@@ -66358,6 +66391,7 @@
                     trapType: spell.trapType || 'spike',
                     dmg: (spell.dmg || 0) + spellPower + ((spell.dmg || 0) > 0 ? passiveDeployBonus(unit).dmg : 0),   // Batch D: Foreman
                     spellId: spell.id,
+                    spellType: spell.spellType || null,   // the trap's hit is the row's type (THE TYPE BADGE RULE)
                     spellName: spell.name,
                     groupId: _gid, anchorX: _tfp.x, anchorY: _tfp.y, size: spell.trapSize || 1,
                     /* THE SPELL AUDIT Batch D (Deathtrap): the row's statuses replace the trapdoor's Stagger 1, and
@@ -68259,7 +68293,7 @@
                             ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player,
                             blastRadius: spell.blastRadius, blastDmg: spell.blastDmg + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                             statusEffects: spell.statusEffects || [],
-                            spellId: spell.id, spellName: spell.name,
+                            spellId: spell.id, spellName: spell.name, spellType: spell.spellType || null,
                             aoeMask: _spellMaskOf(spell) || undefined
                         }, unit);
                     } else {
@@ -68302,6 +68336,7 @@
                     auraRadius: spell.auraRadius || 0,
                     healOnTurnStart: !!spell.healOnTurnStart,
                     spellId: spell.id,
+                    spellType: spell.spellType || null,
                     statusEffects: spell.statusEffects || [],
                     spellName: spell.name,
                     aoeMask: _spellMaskOf(spell) || undefined,      // Phase 2 mask: plain data, rides the snapshot
@@ -69919,14 +69954,15 @@
                         type: 'poison',
                         owner: unit.player,
                         casterUnitId: unit.id,
+                        spellType: spell.spellType || null, spellElement: getSpellElement(spell) || null,   // THE PLANTED STING
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
                     const _wetNowP = _seedRainAt(x, y) || _seedBesideWater(x, y);
                     addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will grow into a Toxin Tree in ${_wetNowP ? 1 : 2} round${_wetNowP ? '' : 's'}${_wetNowP ? ' (well watered!)' : ''} — unless it is destroyed first.`);
-                    // Planting under an enemy's feet stings immediately.
+                    // Planting under an enemy's feet stings immediately — typed (THE PLANTED STING).
                     const _occupant = unitAt(x, y);
-                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant, null, true)) {
                         _newSeed._procs = { [_occupant.id]: state.round || 0 };
                     }
                     scheduleBoardRender();
@@ -70046,6 +70082,7 @@
                         type: 'leech',
                         owner: unit.player,
                         casterUnitId: unit.id,
+                        spellType: spell.spellType || null, spellElement: getSpellElement(spell) || null,   // THE PLANTED STING
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
@@ -70054,7 +70091,7 @@
                     // Planting under someone's feet works immediately — drain an
                     // enemy or nourish an ally standing there right now.
                     const _occupant = unitAt(x, y);
-                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant, null, true)) {
                         _newSeed._procs = { [_occupant.id]: state.round || 0 };
                     }
                     scheduleBoardRender();
@@ -70146,6 +70183,7 @@
                     dmg: turretDmg,
                     range: turretRange,
                     spellId: spell.id,
+                    spellType: spell.spellType || null,   // the shot is the row's type (THE TYPE BADGE RULE, data.js spellTypeMatters)
                     hitsToKill: spell.hitsToKill || 0,
                     auraDebuff: spell.auraDebuff || false,
                     auraDefReduction: spell.auraDefReduction || 0,

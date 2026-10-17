@@ -2651,7 +2651,7 @@
                         const why = v.down ? 'DOWN' : v.mp < (sp.cost | 0) ? 'NOT ENOUGH MP' : !targets.length ? (sp.kind === 'revive' ? 'NOBODY IS DOWN' : 'EVERYONE IS FULL') : '';
                         use = `<button class="hq-btn hq-btn-sm hq-pp-use" data-party-act="cast:${_hqEsc(m.id)}:${_hqEsc(sp.id)}"${can && targets.length ? '' : ' disabled'} title="${_hqEsc(why || 'USE OUTSIDE BATTLE')}">${sp.kind === 'healAll' ? 'USE ON ALL' : sp.kind === 'selfHeal' ? 'USE ON SELF' : 'USE ▸'}</button>${why ? `<i class="hq-pp-why">${_hqEsc(why)}</i>` : ''}`;
                     }
-                    html += `<div class="hq-pp-spell${isField ? ' field' : ''}" style="--cc:${cat.c}"><div class="hq-pp-spell-hd"><i class="hq-pp-cat">${cat.g}</i><b>${_hqEsc(sp.name || sp.id)}</b>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : ''}<span>${_hqEsc(bits.join(' · '))}</span>${use}</div>${desc ? `<p>${_hqEsc(desc)}</p>` : ''}</div>`;
+                    html += `<div class="hq-pp-spell${isField ? ' field' : ''}" style="--cc:${cat.c}"><div class="hq-pp-spell-hd"><i class="hq-pp-cat">${cat.g}</i><b>${_hqEsc(sp.name || sp.id)}</b>${_hqTypeShown(sp) ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : ''}<span>${_hqEsc(bits.join(' · '))}</span>${use}</div>${desc ? `<p>${_hqEsc(desc)}</p>` : ''}</div>`;
                 });
                 html += '</div>';
             }
@@ -2715,12 +2715,16 @@
             if (!st) return '';
             return Object.keys(st).map(k => k.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + ':' + (typeof st[k] === 'number' && !/^(fontWeight|lineHeight|opacity|zIndex|flex)$/.test(k) ? st[k] + 'px' : st[k])).join(';');
         }
+        /* THE TYPE BADGE RULE (data.js spellTypeMatters): the TYPE chip only where the type changes something (damage). */
+        function _hqTypeShown(sp) {
+            return !!(sp && sp.spellType) && (typeof spellTypeMatters !== 'function' || spellTypeMatters(sp));
+        }
         function _hqSpellBadgesHtml(sp, max) {
             if (!sp) return '';
             let list = null;
             try { if (typeof _hrlgSpellBadges === 'function') list = _hrlgSpellBadges(sp); } catch (e) { list = null; }
             if (!list) {
-                const tc = sp.spellType ? (_HQ_TYPE_COLORS[sp.spellType] || '#aaa') : null;
+                const tc = _hqTypeShown(sp) ? (_HQ_TYPE_COLORS[sp.spellType] || '#aaa') : null;
                 return tc ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : '';
             }
             return list.slice(0, max || 5).map(b => `<i class="hq-circ-badge" style="${_hqEsc(_hqCssOf(b.style))}"${b.title ? ` title="${_hqEsc(b.title)}"` : ''}>${_hqEsc(b.label)}</i>`).join('');
@@ -2842,7 +2846,7 @@
                     rows.forEach(x => {
                         if (x.fam !== lastFam) { lastFam = x.fam; html += `<div class="hq-circ-famhead" style="--fam:${_hqEsc(x.famColor || '#8a8270')}"><b>${_hqEsc(x.famGlyph || '◇')}</b> ${_hqEsc(String(x.famName || 'Unsorted').toUpperCase())}</div>`; }
                         const sp = x.sp; const cat = _HQ_CAT[sp.type] || _HQ_CAT.utility; const tc = _HQ_TYPE_COLORS[sp.spellType] || '#aaa';
-                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${t ? '' : _hqEsc(x.tier) + ' · '}RACE</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
+                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${_hqTypeShown(sp) ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${t ? '' : _hqEsc(x.tier) + ' · '}RACE</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
                     });
                     html += `</div>`;
                 }
