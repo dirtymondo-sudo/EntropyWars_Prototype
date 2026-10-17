@@ -12740,6 +12740,117 @@
             return el;
         }
 
+        /* ═══ THE DEATH CLOSE-UP (2026-10-17, mondo: "make the camera more closeup and centered on a unit when
+           they die to see their death animation ... if multiple units die like a double or triple kill then make
+           it split screen like the combo attacks and entropy strikes") ═══════════════════════════════════════════
+           map.js defeatUnit calls playDeathCloseup on every death. One live camera (the ThreeSplitscreen rig, the
+           same one combos and Entropy Strikes use) frames the dying unit close and centred for its whole death
+           clip. Every death that lands while that shot is up (the rest of an AoE, a chain, the next Entropy Strike
+           beat) joins it as its own pane: two kills split the screen in halves, three in thirds, four in quarters,
+           with the combo pane chrome (frame + name). Deaths inside one ~90 ms window open together. Fog-gated per
+           unit on THIS screen (_shouldCameraFollowUnit); online.js relays each death so the guest runs the same
+           shot under its own fog. The turn waits for it (_waitForAnimationsThen). An execution owns its kill (the
+           finisher cinematic IS the close-up), so deaths during one are skipped. Kill switch: EW_NO_DEATH_CAM. */
+        const _dc = { ids: [], openTimer: null, tick: null, live: false, lastAddAt: 0, chromeEl: null, waitSince: 0 };
+        let _dcFinisherUntil = 0;
+        const _DC_MAX_PANES = 4;
+
+        function _deathCamLive() { return _dc.live || !!_dc.openTimer; }
+        window._deathCamLive = _deathCamLive;
+
+        function _dcEligible(unit) {
+            if (window.EW_NO_DEATH_CAM || !unit) return false;
+            if (state.phase !== 'battle' || _skipVisuals() || state.cameraDisabled) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            if (!window.ThreeSplitscreen || !ThreeSplitscreen.isAvailable()) return false;
+            if (Date.now() < _dcFinisherUntil) return false;
+            try { if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false; } catch (err) {}
+            try { if (!_shouldCameraFollowUnit(unit)) return false; } catch (err) { return false; }
+            return true;
+        }
+
+        function _dcDying(id) {
+            try { return !!(window.ThreeAnim && ThreeAnim.isDying && ThreeAnim.isDying(id)); } catch (err) { return false; }
+        }
+
+        function playDeathCloseup(unit) {
+            try {
+                if (!_dcEligible(unit)) return;
+                if (_dc.ids.indexOf(unit.id) >= 0) return;
+                if (_dc.ids.length >= _DC_MAX_PANES) { _dc.lastAddAt = Date.now(); return; }
+                _dc.ids.push(unit.id);
+                _dc.lastAddAt = Date.now();
+                if (_dc.live) { _dcShow(); return; }
+                if (!_dc.openTimer) { _dc.waitSince = Date.now(); _dc.openTimer = window.setTimeout(_dcOpen, 90); }
+            } catch (err) { console.warn('[DeathCam]', err); }
+        }
+        window.playDeathCloseup = playDeathCloseup;
+
+        function _dcOpen() {
+            _dc.openTimer = null;
+            if (state.phase !== 'battle') { _dcEnd(); return; }
+            _dc.ids = _dc.ids.filter(id => _dcDying(id));
+            if (!_dc.ids.length) { _dcEnd(); return; }
+            /* Another split shot is up (a combo's caster panes): wait for it while the bodies are still falling. */
+            if (ThreeSplitscreen.isActive() && ThreeSplitscreen.owner() !== 'death') {
+                if (Date.now() - _dc.waitSince < 1500) { _dc.openTimer = window.setTimeout(_dcOpen, 80); return; }
+                _dcEnd();
+                return;
+            }
+            _dcShow();
+        }
+
+        function _dcShow() {
+            const units = _dc.ids.map(id => unitFromId(id)).filter(Boolean);
+            if (!units.length) { _dcEnd(); return; }
+            const ssRes = ThreeSplitscreen.show(units.map(u => ({ unitId: u.id })), {
+                owner: 'death', death: true, keepFloats: units.length === 1,
+                durationMs: actionMs(1700), fov: 32, sideDeg: 26, driftDeg: 8, dist0: 2.6, dist1: 1.85
+            });
+            if (!ssRes) { _dcEnd(); return; }
+            _dc.live = true;
+            if (_dc.chromeEl && _dc.chromeEl.isConnected) _dc.chromeEl.remove();
+            _dc.chromeEl = null;
+            if (units.length >= 2) {
+                _dc.chromeEl = _ssqShowChrome(
+                    units.map(u => ({ unit: u, accent: _ccinColor((u.types || [])[0]) })),
+                    ssRes, { mute: true, startAt: 0, staggerMs: 0, outAt: 600000, totalMs: 600000 });
+            }
+            if (!_dc.tick) _dc.tick = window.setInterval(_dcTick, 60);
+        }
+
+        function _dcTick() {
+            if (!_dc.live) return;
+            /* Someone else took the screen (a combo, an Entropy Strike): the death shot is over. */
+            if (state.phase !== 'battle' || !ThreeSplitscreen.isActive() || ThreeSplitscreen.owner() !== 'death') { _dcEnd(true); return; }
+            ThreeSplitscreen.extend(1500);   // the rig's own failsafe stays armed just past this tick
+            const since = Date.now() - _dc.lastAddAt;
+            const falling = _dc.ids.some(id => _dcDying(id));
+            /* hold while any body is still falling (min 1.1 s so a sprite death still reads), a beat after the
+               last one dissolves, and never past 4.5 s from the last death */
+            if (since > 4500 || (since > actionMs(1100) && !falling)) {
+                if (!_dc.endAt) _dc.endAt = Date.now() + 160;
+                else if (Date.now() >= _dc.endAt) _dcEnd();
+            } else _dc.endAt = 0;
+        }
+
+        function _dcEnd(lost) {
+            if (_dc.openTimer) { window.clearTimeout(_dc.openTimer); _dc.openTimer = null; }
+            if (_dc.tick) { window.clearInterval(_dc.tick); _dc.tick = null; }
+            if (_dc.live && !lost && window.ThreeSplitscreen && ThreeSplitscreen.owner() === 'death') {
+                try { ThreeSplitscreen.hide(); } catch (err) {}
+            }
+            const el = _dc.chromeEl;
+            if (el && el.isConnected) {
+                el.querySelectorAll('.ssq-pane').forEach(p2 => p2.classList.add('out'));
+                window.setTimeout(() => el.remove(), 320);
+            }
+            _dc.chromeEl = null;
+            _dc.ids = [];
+            _dc.live = false;
+            _dc.endAt = 0;
+        }
+
         /* strikeType: one of ENTROPY_STRIKE_TYPE_ORDER (the apocalypse the
            player picked in the HUD). Omitted / unknown → the best matchup
            for the current targets (legacy callers, the CPU's default). */
@@ -13756,6 +13867,7 @@
             const RESOLVE_MS = actionMs(D.resolveMs);
             const totalMs = CHARGE_MS + STRIKE_MS + RESOLVE_MS;
             const hitAt = CHARGE_MS + STRIKE_MS;
+            _dcFinisherUntil = Date.now() + totalMs + actionMs(300);   // THE DEATH CLOSE-UP: the execution is the kill shot
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
             const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
             const span = Math.max(bw(), bh());
@@ -50235,6 +50347,13 @@
                     return;
                 }
 
+                if (_deathCamLive()) {   // THE DEATH CLOSE-UP: the turn moves on after the body is down
+                    _sawActivity = true;
+                    _dwellStart = 0;
+                    setTimeout(check, 60);
+                    return;
+                }
+
                 if (state.units.some(u => u._dying)) {
                     _sawActivity = true;
                     _dwellStart = 0;
@@ -50363,6 +50482,7 @@
                     || (typeof isCinematicPresent === 'function' && isCinematicPresent())
                     || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy())
                     || state.units.some(u => u._dying)
+                    || _deathCamLive()
                     || (camera && camera.isBusy && camera.isBusy())) return reset();
                 const now = Date.now();
                 if (state._blitzActiveUnitId) {
