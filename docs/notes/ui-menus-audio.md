@@ -1242,3 +1242,21 @@ left above the Horologe; the Horologe's portrait is the current unit; units that
 - **Same day again, mondo: "put them on the edge of the screen like a normal turn clock".** Icons are left-aligned
   flush on the screen edge (left 10px, the Horologe plate's edge), not centred over the clock face (token
   20261013-turncol-03-cors).
+
+## THE AP PRESS ICONS (2026-10-17, mondo: "move ap pips to the top left ... a cube inside a circle ... glow when you have AP, fade when it is used, and flash when you are hovering or selected on an action that would use ap ... when you get a press refund it should show 2 new ones so 4 total but those first 2 are still faded ... similar to shin megami tensei v press icons")
+- hud.js `ApPress` (mounted in ReactHUD, own piece, outlives the Horologe hiding while the board animates): one bare
+  cube-in-a-ring SVG per AP of the viewer's active unit, top left (`.ew-ap-press`, l 14 t 12, --ew-ui-scale). Spent
+  icons fade hollow on the LEFT, live ones glow gold on the right; level-up AP green, refund icons white-hot rim.
+  The Horologe's old AP row (`.hrlg-ap`) is gone; its `_hrlgSide` slot stays null so the hero part order holds.
+- Icon count = max AP + `unit._apRefundIcons` (battle.js: grown by applyPressTurn's refund and by onKillRefundAp,
+  reset with `_pressGainedThisTurn` at every turn reset). Synced unit fields only → guest sees the same.
+- THE REAL DRAIN: battle.js `TargetQuery.apSpend(unit, kind, opts)` mirrors the commit paths (step 1 AP, second step
+  all; attack / combo / Entropy Strike / finisher / Guard / damaging or Protect cast = all; support cast = apCost (+
+  the step of MOVE→CAST); Clash = all). hud.js `_hrlgApSpendOf` maps a blade to it (row cost pips now show it too, so
+  Attack shows 2 pips at 2 AP); `_hrlgArmedApSpend` covers armed modes / target lists. HorologeMenu publishes the
+  cursor row's drain through `_apPressSetPending` ('ew-ap-pending' event); those icons flash (remounted per pending
+  set so the flashes stay in step).
+- Juice: deal-in per turn, spend burst + ring, refund icons spin in with a ring, staggered. Fades out with the turn
+  clock during spell shots (`body.ew-spell-shot`); its animations pause there so a mid-shot refund pops in after.
+- UI Maker Layout piece `press` ("AP press icons"). TurnColumn stops under the icons when it would reach them.
+- Browser-checked in a VS-CPU arena: hover Move = 1 flashing, Attack = 2, move then crit attack → 4 icons, first 2 faded.
