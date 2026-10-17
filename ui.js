@@ -3458,8 +3458,14 @@
                 // chart does. Same affinity read as _estimateSpellDamage/ai.js.
                 const _pvEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
                 const _pvAff = (_pvEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _pvEl) : null;
-                const _pvElemNote = _pvAff === 'weak' ? `${_pvEl.toUpperCase()} WEAK ×1.5`
-                    : _pvAff === 'resist' ? `${_pvEl.toUpperCase()} resisted ×0.5` : '';
+                /* THE ELEMENT SHARE (2026-10-17): the affinity speaks for the element PART of the hit (its share of the
+                   damage); immune / absorb only zero the whole preview when the hit is all element. */
+                const _pvShare = (_pvEl && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_pvEl) && typeof spellElemShare === 'function') ? spellElemShare(spell) : 1;
+                const _pvPart = _pvShare < 1 ? ` (${Math.round(_pvShare * 100)}% of the hit)` : '';
+                const _pvElemNote = _pvAff === 'weak' ? `${_pvEl.toUpperCase()} WEAK ×1.5${_pvPart}`
+                    : _pvAff === 'resist' ? `${_pvEl.toUpperCase()} resisted ×0.5${_pvPart}`
+                    : (_pvAff === 'immune' && _pvShare < 1) ? `IMMUNE to ${_pvEl}${_pvPart}`
+                    : (_pvAff === 'absorb' && _pvShare < 1) ? `ABSORBS ${_pvEl}${_pvPart} — that part heals` : '';
                 const _pvNote = (typeNote) => [typeNote, _pvElemNote].filter(Boolean).join(' · ');
                 if (isEnemyUnit(unit, target)) {
                     const _fs = forecastOnUnit(unit, target, spell);
@@ -3469,7 +3475,7 @@
                             note: _bn || _pvNote(getTypeCombatNote(unit, target, spell.spellType || null)) };
                     }
                 }
-                const _pvNullHit = (_pvAff === 'immune' || _pvAff === 'absorb') ? {
+                const _pvNullHit = ((_pvAff === 'immune' || _pvAff === 'absorb') && _pvShare >= 1) ? {
                     type: 'damage',
                     amount: 0, min: 0, max: 0,
                     after: target.hp,
@@ -10237,7 +10243,8 @@
             type:   { t: 'enum', o: _SLB_TYPES, h: 'Coarse category (drives AI + UI grouping).' },
             kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
             spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Spell type / combo type (keys COMBO_REGISTRY).' },
-            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Flavor element — drives VFX theming, NOT the type chart.' },
+            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Element. A combat element (fire · ice · lightning · water · poison · earth) splits the damage: elemShare of it checks the target\'s affinity, the rest rides the type chart. Other tags are VFX only.' },
+            elemShare: { t: 'num', h: 'Share of the damage that is the ELEMENT (0–1; 0.5 when absent). That part takes weak ×1.5 / resist ×0.5 / immune 0 / absorb heals; the rest takes the type matchup. Only read for a combat element.' },
             damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → M DEF.' },
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
             manaCostOverride: { t: 'num', h: 'Pins MP cost, bypassing the derivation formula.' },
@@ -10769,7 +10776,7 @@
                 ['DAMAGE', ['dmg', 'damageType', 'hitDamages', 'dashDamage', 'dmgPerLevel', 'collisionBonus', 'blastDmg', 'blastRadius', 'aoeDmgPct', 'ignoreArmor', 'sneakBonus', 'executePct', 'noDamage']],
                 ['HEAL · SHIELD · DRAIN', ['heal', 'healAmt', 'healPerTurn', 'selfHealPct', 'drainPct', 'shield', 'shieldHp', 'shieldCapPct']],
                 ['RECOIL', ['selfDamagePct', 'recoilPct', 'selfStun']],
-                ['IDENTITY', ['type', 'spellType', 'element', 'school', 'jobPreference']],
+                ['IDENTITY', ['type', 'spellType', 'element', 'elemShare', 'school', 'jobPreference']],
             ],
             target: [
                 ['TARGETING', ['kind', 'range', 'ignoresLineOfSight', 'requireVision', 'requiresFlight', 'allyOnly', 'friendlyFire', 'chargeToTarget', 'groundsFlyers', 'longRange']],
@@ -10795,7 +10802,7 @@
             dmgPerLevel: 'Damage per level', collisionBonus: 'Collision bonus', blastDmg: 'Blast damage', blastRadius: 'Blast radius', aoeDmgPct: 'Splash fraction',
             ignoreArmor: 'Ignores armour', sneakBonus: 'Backstab bonus', executePct: 'Execute below', noDamage: 'Never damages', heal: 'Heal', healAmt: 'Area heal',
             healPerTurn: 'Heal per turn', selfHealPct: 'Self-heal', drainPct: 'Drain', shield: 'Shield', shieldHp: 'Area shield', shieldCapPct: 'Shield cap',
-            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Spell type', element: 'Element', school: 'School (legacy)',
+            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Spell type', element: 'Element', elemShare: 'Element share', school: 'School (legacy)',
             jobPreference: 'AI hint (legacy)', kind: 'Kind (engine branch)',
             range: 'Range', ignoresLineOfSight: 'Ignores line of sight', requireVision: 'Needs vision', requiresFlight: 'Needs flight', allyOnly: 'Allies only',
             friendlyFire: 'Friendly fire', chargeToTarget: 'Charges in', groundsFlyers: 'Grounds flyers', longRange: 'Long range', aoeRadius: 'Area radius',
@@ -10922,7 +10929,7 @@
             let groups = _SLB2_GROUPS[t] || [];
             if (isPassive && t === 'effects') { const hk = g => g[0].indexOf('HOOKS') === 0; groups = groups.filter(hk).concat(groups.filter(g => !hk(g))); }
             const shown = new Set();
-            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'].concat((d.kind || 'damage') === 'damage' ? ['randomTargets', 'splash'] : []), effects: isPassive ? ['hooks'] : ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
+            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'].concat((typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(d.element)) ? ['elemShare'] : []), target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'].concat((d.kind || 'damage') === 'damage' ? ['randomTargets', 'splash'] : []), effects: isPassive ? ['hooks'] : ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
             let html = '';
             groups.forEach(([title, keys]) => {
                 const present = keys.filter(k => Object.prototype.hasOwnProperty.call(d, k) || (ALWAYS[t] || []).includes(k));
@@ -14678,7 +14685,9 @@
             const _esEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : null;
             const _esAff = (_esEl && typeof unitElementAffinity === 'function')
                 ? unitElementAffinity(target, _esEl) : null;
-            if (_esAff === 'immune' || _esAff === 'absorb') return 0;
+            // THE ELEMENT SHARE: only an all-element hit is zeroed; a split hit's main part still lands
+            const _esShare = (_esEl && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_esEl) && typeof spellElemShare === 'function') ? spellElemShare(spell) : 0;
+            if ((_esAff === 'immune' || _esAff === 'absorb') && _esShare >= 1) return 0;
             // Mirrors doSpell's spellPower assembly (incl. Arcane Surge).
             const spellPower = (caster.spellPower || 0) + getHourglassPower(caster)
                 + (typeof getSpellStatBonus === 'function' ? getSpellStatBonus(caster, spell) : 0)
@@ -14713,10 +14722,13 @@
             if (isEnemyUnit(caster, target)) {
                 baseDmg += getEffectiveAttackBonus(caster, spell.damageType === 'magic' ? 'magic' : 'physical');
                 let offMult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
-                // 🜂 Elemental affinity: weak ×1.5 / resist ×0.5, inside the
-                // same capped product as the engine (immune/absorb returned 0
-                // above). Keep in lockstep with applyDamageToUnit + ai.js.
-                if (_esAff === 'weak') offMult *= 1.5;
+                // 🜂 Elemental affinity + THE ELEMENT SHARE, inside the same capped product as the engine (battle.js
+                // _hitDamageMath): a split hit — main part × type, element part × affinity, STAB on both; an
+                // all-element hit — weak ×1.5 / resist ×0.5 on the whole. Keep in lockstep with ai.js estDamage.
+                if (_esShare > 0 && _esShare < 1 && typeof elemSplitFactor === 'function') {
+                    const _esStab = (spell.spellType && (caster.types || []).includes(spell.spellType)) ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+                    offMult = _esStab * elemSplitFactor(offMult / _esStab, _esAff, _esShare);
+                } else if (_esAff === 'weak') offMult *= 1.5;
                 else if (_esAff === 'resist') offMult *= 0.5;
 
                 if (typeof getUnitStandingHeight === 'function') {
@@ -15132,6 +15144,16 @@
             + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
             + 'box-shadow:0 0 6px rgba(232,51,63,0.85)">!</span>';
         const _immBadgeHtml = (word) => _IMM_CIRCLE_HTML + '<span style="color:#ff6b74">' + word + '</span>';
+        /* THE ELEMENT SHARE PRESS for the previews: does the spell's ELEMENT (not its type) make this hit a press?
+           Only a weakness on a neutral type matchup (data.js elemPressVerdict). */
+        function _elemPressesOn(caster, target, spell, aff) {
+            if (aff !== 'weak' || !caster || !target || !spell || typeof getTypeDamageMultiplier !== 'function') return false;
+            const st = spell.spellType || null;
+            const stab = (st && (caster.types || []).includes(st)) ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+            const eff = getTypeDamageMultiplier(caster, target, st) / stab;
+            return eff > 0.999 && eff < 1.001;
+        }
+        window._elemPressesOn = _elemPressesOn;
 
         function _getTypeEffLabel(caster, target, spell) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
@@ -15296,8 +15318,14 @@
                         : _getTypeEffLabel(caster, target, spell);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
-                    if (_iAff === 'weak') push(_SE_CIRCLE_HTML + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
+                    /* THE ELEMENT SHARE (2026-10-17): the element badge speaks for the element PART; the green !-circle
+                       only when that part is what presses (a weakness on a NEUTRAL type matchup, data.js
+                       elemPressVerdict); immune / absorb wear the red one (the main part still lands, no press). */
+                    const _iPress = _elemPressesOn(caster, target, spell, _iAff);
+                    if (_iAff === 'weak') push((_iPress ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
+                    else if (_iAff === 'immune') push(_immBadgeHtml(`${_iEl.toUpperCase()} IMMUNE`), 'intent-type-eff not-effective', 14);
+                    else if (_iAff === 'absorb') push(_immBadgeHtml(`${_iEl.toUpperCase()} ABSORBED`), 'intent-type-eff not-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
                     for (const sl of _getStatusPreviewLabels(spell)) {
@@ -15355,7 +15383,7 @@
                         // (_estimateSpellDamage returns 0) — say WHY instead.
                         if (_iAff === 'immune' || _iAff === 'absorb') {
                             badgeStack.push({
-                                html: _immBadgeHtml(_iAff === 'immune' ? 'IMMUNE' : 'ABSORBS'),
+                                html: _immBadgeHtml((_iEl ? _iEl.toUpperCase() + ' ' : '') + (_iAff === 'immune' ? 'IMMUNE' : 'ABSORBED')),
                                 cls: 'intent-type-eff not-effective', yOff
                             });
                             yOff += 14;
@@ -15401,7 +15429,7 @@
                     // Element weak/resist reads beside the type matchup, named
                     // by its element (immune/absorb already spoke above).
                     if (_iAff === 'weak' && isEnemyUnit(caster, target)) {
-                        badgeStack.push({ html: _SE_CIRCLE_HTML + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: (_elemPressesOn(caster, target, spell, _iAff) ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
                         badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });

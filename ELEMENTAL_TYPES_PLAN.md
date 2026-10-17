@@ -16,6 +16,16 @@ The only live backlog, all optional, none blocking anything:
 3. **P4.17** — new-spell waves to fatten lightning/water; optional
    weather↔element boosts (zodiac resonance is the precedent).
 
+## THE ELEMENT SHARE (2026-10-17, mondo) — supersedes decision #5 and the whole-hit affinity
+A combat-element spell SPLITS its damage: `(1 − elemShare) × type matchup + elemShare × element affinity`
+(STAB and every other bonus on the whole hit; `elemShare` per spell row, default 0.5 = data.js
+`ELEM_SHARE_DEFAULT`). Hits with no unit behind them (ticks, hazards, weather) stay all element. Immune /
+absorb only zero the element part (absorb heals it after the blow). PRESS: the TYPE decides; the element
+presses only on a neutral type; immune / absorb never press (data.js `elemPressVerdict`, battle.js
+`PRESS_OUTCOME.NULL`). Each enemy the element part hits on a weakness pays `ENTROPY_PTS.elemWeak` (4).
+Code: battle.js `_hitElemShare` / `_hitDamageMath` / `forecastHitOnUnit`, ai.js `estDamage` + `pressEV`.
+Plan + open decisions (new combat elements, ratio bands): /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.
+
 ## THE FINAL ELEMENTS (reference — read this before asking again)
 Fifteen tags live on spells (`element:`), split into two tiers:
 - **6 COMBAT elements** (the only ones the affinity table consults):
