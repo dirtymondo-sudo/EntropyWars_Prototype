@@ -1571,3 +1571,12 @@ doorBreach, possess, pulseLattice, placeTrap on contact, damaging debuff rows) s
 applyDamageToUnit but never refunded. Fix: the arm check also takes any `spellDealsDamage(spell)` row except
 `delayed` (lands at round end). `_PRESS_SPELL_KINDS` itself is unchanged (it also decides which kinds end the turn).
 The CPU's press value (ai.js PRESS_KINDS) was left as is.
+
+## DEF / M DEF DEBUFFS BITE (2026-10-17)
+mondo: "every unit has def and m def stats. thats what the buffs affect ... huge bug". state.js getEffectiveArmor clamped the
+extra pool (gear/passive armour + day/night + terrain + weather + DEF/MDEF stages + 5G) at 0 BEFORE folding the DEF / M DEF stat in,
+so on nearly every unit a DEF / M DEF debuff stage, a 5G tower or a bad weather/terrain mod did nothing. Now the pool is signed and
+only the final soak is clamped at 0 (a -1 DEF stage = -20 soak, mirroring a +1 ATK stage's +20 damage). The zodiac blessing's
+DEF / M DEF share now scales the whole physical / magic soak (it scaled only that pool, 0 on most units). getEffectiveArmor(u,
+'none') returns the signed pool so the stat cards show DEF + it (a debuff lowers the number); 'dot' and other types keep the old
+clamp.

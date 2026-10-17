@@ -3579,10 +3579,17 @@
             const statusDelta = dt === 'magic'
                 ? (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0)
                 : getStatusArmorDelta(unit);
-            let armor = Math.max(0, baseArmor + sleepMod + terrainMod + weatherMod + statusDelta - fiveGPenalty);
+            // DEF / M DEF BUFFS BITE (2026-10-17, mondo: "every unit has def and m def stats. thats what the buffs affect"):
+            // this pool used to be clamped at 0 HERE, before the DEF stat was folded in below, so on any unit without
+            // a positive gear/passive mod (nearly all of them) a DEF / M DEF debuff stage, a 5G tower, a bad-weather or
+            // bad-terrain penalty was eaten by the clamp and did nothing. Now they come off the whole soak; the only
+            // clamp is the final one (soak never goes below 0).
+            let armor = baseArmor + sleepMod + terrainMod + weatherMod + statusDelta - fiveGPenalty;
 
             armor += (unit._bossBuffDef || 0);
-            { const _zb = getZodiacBonus(unit); if (_zb.active) armor = Math.max(0, Math.round(armor * _zb.m(dt === 'magic' ? 'mdef' : 'def'))); }
+            // reads without a stat fold ('none' for the stat cards, other damage types) keep the old shape: the zodiac
+            // scales the extra pool only
+            if (dt !== 'physical' && dt !== 'magic') { const _zb = getZodiacBonus(unit); if (_zb.active && armor > 0) armor = Math.round(armor * _zb.m('def')); }
 
             // Fold the relevant defense stat into the flat damage soak.
             // levelPowerStat reads the stat at its LEVEL-CAP equivalent (data.js
@@ -3602,9 +3609,13 @@
                 const _pMdef = ((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0)) + (_aura ? passiveAuraStat(unit, 'mdef') : 0);
                 armor += Math.floor(_pMdef * MDEF_ARMOR_FOLD);
             }
+            /* the zodiac blessing's DEF / M DEF share scales the WHOLE soak, stat included (it used to scale only the
+               extra pool above, which is 0 on nearly every unit, so the blessing did nothing to defence) */
+            if ((dt === 'physical' || dt === 'magic') && armor > 0) { const _zb = getZodiacBonus(unit); if (_zb.active) armor = Math.round(armor * _zb.m(dt === 'magic' ? 'mdef' : 'def')); }
             /* the celestial DEF buff (Lunar Eclipse, claimed at the middle nexus): the whole physical and magic soak */
-            if (dt === 'physical' || dt === 'magic') { const sky = getSkyEventBonus(unit); if (sky.defMult !== 1) armor = Math.round(armor * sky.defMult); }
-            return Math.max(0, armor);
+            if (dt === 'physical' || dt === 'magic') { const sky = getSkyEventBonus(unit); if (sky.defMult !== 1 && armor > 0) armor = Math.round(armor * sky.defMult); }
+            // the 'none' read returns the signed pool: the stat cards show DEF + it, so a debuff lowers the number
+            return dt === 'none' ? armor : Math.max(0, armor);
         }
 
         function getEffectiveHealBonus(unit, baseAmount = 0, target = null) {
