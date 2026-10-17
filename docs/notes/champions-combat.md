@@ -1571,3 +1571,10 @@ doorBreach, possess, pulseLattice, placeTrap on contact, damaging debuff rows) s
 applyDamageToUnit but never refunded. Fix: the arm check also takes any `spellDealsDamage(spell)` row except
 `delayed` (lands at round end). `_PRESS_SPELL_KINDS` itself is unchanged (it also decides which kinds end the turn).
 The CPU's press value (ai.js PRESS_KINDS) was left as is.
+- Slams don't judge the press (2026-10-17, mondo: "whenever a spell is super effective but its a displacement spell and
+  the target is immovable it doesnt award the ap refund"): a body that can't travel slams into the wall / edge / a pin
+  (resolveForcedSlide `_slideSlamDamage` and the bowling-pin crash). Those hits carry no spell type, so
+  `_collectPressHit` judged them by the CASTER's own types; a target resisting those types (or a Protected pin) recorded
+  a RESIST / MISS that vetoed the spell's own super effective press and drained an AP. They now pass `noPress: true`
+  and the collector (and its three MISS pushes) skip them. A colossal target that never slides (dist 0) already
+  refunded (browser-checked, Body Check on a colossal unit: +2 AP).
