@@ -868,3 +868,16 @@ the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
   objects. Checked in a standalone probe: classic WebGL and the node renderer (WebGL2 backend) give identical pixels.
 - Tune live: `EW_POP.world` / `EW_POP.unit` = { x: saturation, y: brightness, w: 1 on / 0 off }. Off at load: `?ew_pop=0`
   or `window.EW_NO_UNIT_POP = true`. A new unit material path must call `_ewPopUnitMat`, or that unit fades with the world.
+
+## THE KEPT PROGRAMS ON WEBGL (2026-10-17, mondo: "still frame rate issues with spells like rampart")
+- Cause: classic WebGLRenderer deletes a shader program when the last material using it is disposed, so every cast of a
+  spell linked its programs again. Sandbox, Rampart cast 3x by the same unit (Fairy Forest arena): 10, 4, 8 links; a link
+  stalls the frame it lands in (worst on Firefox). WebGPU already kept its builds (THE KEPT SHADERS, `_ewKeepSetup`).
+- three-renderer.js `_glKeepSetup` (run on the WebGLRenderer the factory makes): after each render, every program in
+  `renderer.info.programs` not yet held gets `usedTimes++` once (cap `_GL_KEEP_CAP` 640).
+- ShaderMaterial keys also carry the id three's shader-text cache (WebGLShaderCache) gives the GLSL, and that id is dropped
+  when the last material with that text is disposed, so the unit rings (`_makeTeamReticleMaterial`) and the spell energy
+  sheets (three-vfx-effects.js `_SIG_ENERGY_FS`) still made 5 new keys a cast. `ShaderMaterial.prototype.dispose` is
+  wrapped: the first drawn material of each vertex+fragment text that gets disposed stays undisposed as that text's anchor
+  (`_glAnchor`, cap 160). After both: repeat casts link 0 programs (cast 1 still compiles what it first draws).
+- Off: `window.EW_NO_SHADER_KEEP` or `?ew_keep=0` (same switch as WebGPU, reload).
