@@ -688,6 +688,20 @@
             _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
         };
 
+        /* Panacea (1 AP since 2026-10-17): un-relayed, a guest's cure ran on its own copy and the next state-sync undid
+           it (status back, AP back). The host runs it like doItem. */
+        const _origUsePanacea = (typeof usePanacea === 'function') ? usePanacea : null;
+        if (_origUsePanacea) {
+            usePanacea = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origUsePanacea(unit);
+                if (_isHost()) return _hostRunAndSync(_origUsePanacea, [unit]);
+                if (!_guestOwnsAction(unit)) return;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'engine', fn: 'usePanacea', unitId: unit.id });
+                _guestMenuToRoot();
+            };
+        }
+
         const _origDoComboAttack = doComboAttack;
         doComboAttack = function(initiator, partner, targetX, targetY, targetZ) {
             if (!_isOnline() || state._remoteAction) return _origDoComboAttack(initiator, partner, targetX, targetY, targetZ);
@@ -1902,6 +1916,7 @@
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
                             case 'doJump': doJump(engUnit, data.x, data.y, data.z); break;
                             case 'doItem': doItem(engUnit, data.x, data.y, data.z); break;
+                            case 'usePanacea': if (typeof usePanacea === 'function') usePanacea(engUnit); break;
                             case 'doComboAttack': {
                                 var engPartner = state.units.find(function(u) { return u.id === data.partnerId && !u.dead; });
                                 if (engPartner) doComboAttack(engUnit, engPartner, data.x, data.y, data.z);

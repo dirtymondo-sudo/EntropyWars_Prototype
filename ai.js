@@ -6309,8 +6309,8 @@
                 }
                 g.addLog(`💊 ${g.unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
                 g.showFloatingTextForUnit(unit, '💊 CURED', 'heal', { durationMs: 1200 });
-                g.state.aiThinking = false;
-                g.maybeTriggerComputerTurn();
+                g.spendAP(unit, 1);   // Panacea costs 1 AP (mondo 2026-10-17)
+                g.finishComputerAction();
                 break;
             }
 
