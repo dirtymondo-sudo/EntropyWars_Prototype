@@ -21054,7 +21054,7 @@
                     const actualSide = (_slotLeft && _slotLeft.key === key) ? 'left'
                         : (_slotRight && _slotRight.key === key) ? 'right'
                         : (sp.side || 'left');
-                    shakeWrap.style.setProperty('--cs-glow-color', sp.factionColor || '#fff');
+                    shakeWrap.style.setProperty('--cs-glow-color', sp.color || '#fff');
                     shakeWrap.style.setProperty('--cs-glow-side', actualSide === 'left' ? '0%' : '100%');
                 }
             }
@@ -21108,11 +21108,7 @@
                     dlgBox.style.display = '';
                     dlgBox.classList.add('visible');
                     dlgSpeaker.textContent = sp ? sp.name : '';
-                    dlgSpeaker.style.color = sp ? (sp.factionColor || '#fff') : '#fff';
-                    if (sp && sp.faction) {
-                        dlgSpeaker.innerHTML = `${escapeHtml(sp.name)}<span class="cs-dlg-faction">${escapeHtml(sp.faction)} Faction</span>`;
-                        dlgSpeaker.style.color = sp.factionColor || '#fff';
-                    }
+                    dlgSpeaker.style.color = sp ? (sp.color || '#fff') : '#fff';
                     startTypewriter(line.text || '');
                 }
             }
@@ -21290,10 +21286,6 @@
             const defPlayerNum = defUnit.player || 2;
             const atkName = unitDisplayName(attacker);
             const defName = unitDisplayName(defUnit);
-            const atkFaction = attacker.faction || '';
-            const defFaction = defUnit.faction || '';
-            const atkFactionLabel = atkFaction ? atkFaction.charAt(0).toUpperCase() + atkFaction.slice(1) + ' Faction' : '';
-            const defFactionLabel = defFaction ? defFaction.charAt(0).toUpperCase() + defFaction.slice(1) + ' Faction' : '';
 
             const overlay = document.createElement('div');
             overlay.className = 'cin-overlay';
@@ -21343,13 +21335,11 @@
           <div class="cin-player-label cin-label-attacker">
             <div class="cin-label-player">P${atkPlayerNum}</div>
             <div class="cin-label-name">${atkName}</div>
-            ${atkFactionLabel ? `<div class="cin-label-faction faction-${atkFaction}">${atkFactionLabel}</div>` : ''}
             <div class="cin-label-hp" data-cin-hp="atk">HP ${attacker.hp}/${attacker.maxHp}</div>
           </div>
           <div class="cin-player-label cin-label-defender">
             <div class="cin-label-player">P${defPlayerNum}</div>
             <div class="cin-label-name">${defName}</div>
-            ${defFactionLabel ? `<div class="cin-label-faction faction-${defFaction}">${defFactionLabel}</div>` : ''}
             <div class="cin-label-hp" data-cin-hp="def">HP ${defUnit.hp}/${defUnit.maxHp}</div>
           </div>
         </div>
@@ -32422,7 +32412,7 @@
             if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
                 // ATK/INT split: physical damage rides the ATK axis (Overclock,
                 // Inspired, Discord…); magic damage rides the INT axis (Dark
-                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/faction/
+                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/
                 // streak bonuses apply to both.
                 // opts.noAtkBonus: a placed object's blast (a bomb) is typed and
                 // credited but never rides the placer's live ATK bonuses.
@@ -40513,8 +40503,8 @@
                 ThreeRenderer.clearOverlay('spellApproachShove');
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const targetY = ThreeRenderer.tileTopY(tx, ty);
-                const ghostTint = (typeof getFactionColor === 'function')
-                    ? (parseInt(String(getFactionColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+                const ghostTint = (typeof getUnitAccentColor === 'function')
+                    ? (parseInt(String(getUnitAccentColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
                     : 0x66ddff;
                 const _target = typeof unitAt === 'function' ? unitAt(tx, ty) : null;
                 const _spell = (unit.spells || []).find(s => s.name === state.selectedTool)
@@ -40651,8 +40641,8 @@
                 const _occ = unitAt(x, y);
                 if (_occ && _occ.id !== unit.id) return; // occupied → not a destination
 
-                const ghostTint = (typeof getFactionColor === 'function')
-                    ? (parseInt(String(getFactionColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+                const ghostTint = (typeof getUnitAccentColor === 'function')
+                    ? (parseInt(String(getUnitAccentColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
                     : 0x66ddff;
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const _isAir = canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
@@ -48715,7 +48705,6 @@
                         cls: enemy.cls,
                         race: enemy.race,
                         types: enemy.types ? [...enemy.types] : [],
-                        faction: enemy.faction,
                         hp: enemy.hp,
                         maxHp: enemy.maxHp,
                         mp: enemy.mp,
@@ -48748,7 +48737,6 @@
                         cls: null,
                         race: null,
                         types: [],
-                        faction: null,
                         hp: null,
                         maxHp: null,
                         mp: null,
@@ -64330,7 +64318,7 @@
         const _SFX_THEME_IMPACT = { elec: 'lightningStrike', ice: 'iceImpact', water: 'waterImpact', earth: 'earthImpact' };
 
         // applyDamageToUnit has no spell in scope (its ~80 call sites pass
-        // only the faction spellType), so doSpell records the caster's
+        // only the spellType), so doSpell records the caster's
         // elemental theme at cast-commit and the impact router looks it up
         // by sourceUnit. Module map, NOT a unit field — units are serialized
         // wholesale into online state-sync (see _stageSpellCast's note).
