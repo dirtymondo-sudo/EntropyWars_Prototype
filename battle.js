@@ -642,10 +642,15 @@
             return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
-        function checkOpportunityAttack(unit, fromX, fromY) {
+        /* fromZ / fromStandH: the mover's z and standing height on the tile it
+           LEFT (finishMoveAt reads them before the move). The strike lands
+           there, so height is judged there, not on the tile it arrived at. */
+        function checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH) {
             /* Gameplay must not depend on the animations toggle (host-side rules
                drift online) — only the presentation below is visual-gated. */
             if (!unit || unit.dead) return;
+            if (fromZ == null) fromZ = unit.z ?? 0;
+            if (fromStandH == null) fromStandH = fromZ;
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             for (const enemy of enemies) {
 
@@ -654,6 +659,16 @@
                 const oldDist = Math.abs(enemy.x - fromX) + Math.abs(enemy.y - fromY);
                 const newDist = Math.abs(enemy.x - unit.x) + Math.abs(enemy.y - unit.y);
                 if (newDist <= oldDist) continue;
+
+                /* ⛰ Height (2026-10-17): only a swing the striker's BASIC
+                   ATTACK could make. Same reach as doAttack — combatDist (the
+                   height gap is its own axis) within getEffectiveRange — and
+                   the same point-blank sight rule (an edge wall, or a deck /
+                   roof slab between the two, blocks it). A unit on a ledge
+                   too high to hit, or a flyer overhead, slips away free. */
+                const _oaDist = combatDist(enemy.x, enemy.y, enemy.z ?? 0, fromX, fromY, fromZ);
+                if (_oaDist < 1 || _oaDist > getEffectiveRange(enemy)) continue;
+                if (isRangeBlockedByTerrain(enemy.x, enemy.y, fromX, fromY, enemy.z, fromZ)) continue;
 
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
@@ -676,7 +691,9 @@
                 const dmg = Math.max(1, baseDmg - armor);
                 applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
                     sourceUnit: enemy,
-                    damageType: 'physical'
+                    damageType: 'physical',
+                    // high ground / height soak / range falloff read the tile it left
+                    struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
                 addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
@@ -32334,7 +32351,8 @@
 
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
-                    const tgtH = getUnitStandingHeight(target);
+                    // opts.struckAt: a hit landed on a tile the target already left (opportunity attack)
+                    const tgtH = (opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target);
                     if (srcH > tgtH) {
 
                         const heightAdv = srcH - tgtH;
@@ -32356,7 +32374,7 @@
                 // reactions — opts.noRangeMult) where "distance to the
                 // caster" is meaningless.
                 if (damageType !== 'dot' && !opts.noRangeMult) {
-                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
+                    const _rangeMult = getRangeDamageMult(sourceUnit, opts.struckAt || target);
                     if (_rangeMult !== 1) {
                         _offMult *= _rangeMult;
                         // No callout: falloff hits nearly every ranged action,
@@ -32373,7 +32391,7 @@
                     const _pH = (typeof getUnitStandingHeight === 'function');
                     const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
                         srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
-                        tgtH: _pH ? getUnitStandingHeight(target) : null,
+                        tgtH: _pH ? ((opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target)) : null,
                         fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
                     });
                     if (_psm.mult !== 1) {
@@ -35746,6 +35764,7 @@
 
             const _wasAirborne = canFly(unit) && isUnitAirborne(unit);
             const _fromZ = unit.z ?? 0;
+            const _fromStandH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : _fromZ;
             unit.x = x;
             unit.y = y;
 
@@ -35864,7 +35883,7 @@
             // run in completeMoveAlongPath, so they read the far side.
             if (!opts.noDoor && typeof doorStepThrough === 'function') doorStepThrough(unit);
 
-            checkOpportunityAttack(unit, _originX, _originY);
+            checkOpportunityAttack(unit, _originX, _originY, _fromZ, _fromStandH);
 
             // 🕯 Hex of Toil: moving feeds the curse.
             _procHexedOnAction(unit, 'moves');
