@@ -33563,6 +33563,88 @@
         }
         window.forecastSpellPlan = forecastSpellPlan;
 
+        /* THE BANE FORECAST (2026-10-17, mondo: "banes need to have a damage projection just like spells"): a thrown
+           bane (and the grenade, which rides the bane throw) read the doItem way — the same raw (baseDmg, + baneDmg
+           on a type match, no roll), the same hit options (magic, no mark bonus, the bane's own matchup), the
+           grenade's splash on every other body in its blast (allies and the thrower too) — through
+           forecastHitOnUnit. Same plan shape as forecastSpellPlan, so every spell preview draws it unchanged;
+           plan.spell is baneForecastSpell(itemKey), a stand-in the badges read the name and kind from. */
+        function baneForecastSpell(itemKey) {
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            if (!rule || !rule.baneType) return null;
+            return { id: itemKey, name: rule.name || itemKey, kind: 'bane', item: itemKey, damageType: 'magic',
+                dmg: rule.baseDmg || 0, aoeRadius: (rule.aoeRadius > 0 && rule.aoeDmg > 0) ? rule.aoeRadius : 0 };
+        }
+        window.baneForecastSpell = baneForecastSpell;
+        function forecastBanePlan(thrower, itemKey, target, opts = {}) {
+            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: baneForecastSpell(itemKey), item: itemKey };
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            if (!thrower || !rule || !rule.baneType || !target || target.dead || target._dying || !state || !Array.isArray(state.units)) return plan;
+            plan.handled = true;
+            const from = opts.castFrom;
+            const ox = thrower.x, oy = thrower.y, oz = thrower.z;
+            const hpUndo = new Map();
+            const entry = (u) => {
+                let h = plan.byId[u.id];
+                if (!h) { h = { unit: u, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[u.id] = h; plan.hits.push(h); }
+                return h;
+            };
+            const hit = (u, raw, hopts, tag) => {
+                if (!u || u.dead || u._dying) return;
+                if (!hpUndo.has(u)) hpUndo.set(u, [u.hp, u.shield]);
+                const f = forecastHitOnUnit(u, Math.max(0, raw), hopts);
+                if (!f) return;
+                const h = entry(u);
+                const d = Math.min(f.dmg, Math.max(0, u.hp));
+                h.dmg += d; h.min += d; h.max += d; h.hits++;
+                if (f.blocked && !h.blocked) h.blocked = f.blocked;
+                if (f.heal) h.heal += f.heal;
+                if (f.indomitable && !h.tags.includes('indomitable')) h.tags.push('indomitable');
+                if (tag && !h.tags.includes(tag)) h.tags.push(tag);
+                if (f.redirectedTo != null) {
+                    const g = unitFromId(f.redirectedTo);
+                    if (g) {
+                        if (!hpUndo.has(g)) hpUndo.set(g, [g.hp, g.shield]);
+                        const gh = entry(g), gd = f.redirectDmg || 0;
+                        gh.dmg += gd; gh.min += gd; gh.max += gd; gh.hits++;
+                        if (!gh.tags.includes('intercepts')) gh.tags.push('intercepts');
+                        g.hp = Math.max(0, g.hp - gd);
+                    }
+                }
+                u.shield = f.shieldLeft != null ? f.shieldLeft : u.shield;
+                u.hp = Math.max(0, u.hp - d);
+            };
+            try {
+                if (from && (from.x !== thrower.x || from.y !== thrower.y)) {
+                    thrower.x = from.x; thrower.y = from.y;
+                    thrower.z = (from.z != null) ? from.z : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(from.x, from.y, thrower.z) : thrower.z);
+                }
+                const eff = (target.types || []).includes(rule.baneType);
+                hit(target, (rule.baseDmg || 0) + (eff ? (rule.baneDmg || 0) : 0),
+                    { sourceUnit: thrower, allowMarkBonus: false, damageType: 'magic', typeEffect: eff ? 'super' : 'neutral' });
+                if (eff && plan.byId[target.id]) plan.byId[target.id].superEff = true;
+                plan.tiles.push({ x: target.x, y: target.y });
+                if (rule.aoeRadius > 0 && rule.aoeDmg > 0) {
+                    const bx = target.x, by = target.y;
+                    for (const t of getSquareArea(bx, by, rule.aoeRadius)) if (t.x !== bx || t.y !== by) plan.tiles.push(t);
+                    for (const other of state.units) {
+                        if (other.dead || other._dying || other.id === target.id) continue;
+                        if (Math.max(Math.abs(other.x - bx), Math.abs(other.y - by)) > rule.aoeRadius) continue;
+                        hit(other, rule.aoeDmg, { sourceUnit: other.player === thrower.player ? null : thrower,
+                            allowMarkBonus: false, damageType: 'magic', typeEffect: 'neutral' }, 'splash');
+                    }
+                }
+            } catch (e) {
+                if (typeof console !== 'undefined') console.warn('[forecast bane]', itemKey, e);
+            } finally {
+                hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
+                thrower.x = ox; thrower.y = oy; thrower.z = oz;
+            }
+            for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
+            return plan;
+        }
+        window.forecastBanePlan = forecastBanePlan;
+
         function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
             const sp = spellPowerOf(unit, spell);
             const kind = spell.kind;
@@ -63885,6 +63967,7 @@
                     playErrorSfx();
                     return;
                 }
+                if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();   // the bane forecast's plates + badges
                 setUnitFacing(unit, x - unit.x, y - unit.y);
                 // Long hold: bane sequence = camera hold + throw + travel + impact.
                 _focusPlatesForImpact(unit, x, y, { holdMs: 3200 });
@@ -63972,6 +64055,8 @@
 
                 const _baneSettleMs = Math.max(_baneImpactMs + actionMs(500),
                     (_baneCam?.totalMs ?? 0) + actionMs(120));
+                /* THE BANE FORECAST: the throw keeps the item armed until it settles — no hover re-arms its preview mid-throw */
+                window._ewBaneThrowUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + _baneSettleMs + 50;
                 window.setTimeout(() => {
                     spendAP(unit, AP_COST_ACTION);
                     // Press Turn: a super-effective bane grants a free action,

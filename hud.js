@@ -4620,6 +4620,11 @@ function _hrlgItemTargetBlades(unit, st) {
     // (percent-of-max × terrain, clamped — mirrors doItem via ui.js).
     const previewHeal = (isHeal && available && typeof _estimateHealPotionHeal === 'function')
       ? _estimateHealPotionHeal(u, key) : 0;
+    // Bane rows: the throw's forecast blinks white on the row's HP bar with the ≈−N chip, like spell rows
+    // (battle.js forecastBanePlan through ui.js forecastOnUnit — the real hit math).
+    const _bFc = (isBane && typeof forecastOnUnit === 'function' && typeof baneForecastSpell === 'function')
+      ? forecastOnUnit(unit, u, baneForecastSpell(key)) : null;
+    const previewDmg = _bFc ? Math.min(_bFc.dmg, Math.max(0, u.hp)) : 0;
     const portrait = _hrlgPortraitData(u, unit);
     if (portrait && isMana) {
       portrait.showMp = true;
@@ -4638,7 +4643,10 @@ function _hrlgItemTargetBlades(unit, st) {
       portrait: portrait,
       camTarget: { x: u.x, y: u.y, z: u.z, uid: u.id },
       previewHeal: previewHeal,
-      power: previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
+      previewDmg: previewDmg,
+      superEff: baneHit && previewDmg > 0,
+      power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
+        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       meta: { text: t.dist + 't' },
       fire: () => {
         if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
@@ -6442,6 +6450,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
       const isBaneEffective = (targetUnit.types || []).includes(bRule.baneType);
       let baneDmg = (bRule.baseDmg || 48) + (isBaneEffective ? (bRule.baneDmg || 120) : 0);
+      const _bnFcOn = typeof forecastOnUnit === 'function' && typeof baneForecastSpell === 'function';
       // Thrown items resolve through applyDamageToUnit like any hit — quote them
       // in the victim's magnitude (data.js "LEVEL COMBAT MATH").
       const _bnAL = (typeof getUnitLevel === 'function') ? getUnitLevel(actingUnit) : 0;
@@ -6456,6 +6465,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
 
       if (canThrow || bMoveTile) {
+        /* THE BANE FORECAST: the engine's own read of the throw, from the tile it is thrown FROM */
+        const _bnFc = _bnFcOn ? forecastOnUnit(actingUnit, targetUnit, baneForecastSpell(bKey),
+          (!canThrow && bMoveTile && !bMoveTile._heightApproach) ? { x: bMoveTile.x, y: bMoveTile.y, z: bMoveTile.z } : null) : null;
+        if (_bnFc) baneDmg = Math.min(_bnFc.dmg, Math.max(0, targetUnit.hp));
         actions.push({
           id: 'item:' + bKey,
           label: bRule.name,
@@ -6944,10 +6957,23 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   /* THE FORECAST (2026-10-01, combat clarity pass): the hovered cast, read by the engine from the tile it is
      cast FROM — the tiles it hits (crimson), every body it moves (arrow + hologram + landing plate) and the
      same numbers the confirm step shows. Kinds the forecast does not read keep the footprint + shove guess. */
+  const _castFrom = (castX !== actingUnit.x || castY !== actingUnit.y) ? { x: castX, y: castY, z: (mt && mt.z != null) ? mt.z : undefined } : null;
   const _plan = (action && action.spell && typeof forecastSpellPlan === 'function')
-    ? forecastSpellPlan(actingUnit, action.spell, ax, ay, _aim ? undefined : targetUnit.z,
-        { castFrom: (castX !== actingUnit.x || castY !== actingUnit.y) ? { x: castX, y: castY, z: (mt && mt.z != null) ? mt.z : undefined } : null })
+    ? forecastSpellPlan(actingUnit, action.spell, ax, ay, _aim ? undefined : targetUnit.z, { castFrom: _castFrom })
     : null;
+
+  /* THE BANE FORECAST (2026-10-17): a bane row reads its throw like a spell row — the crimson plate on every tile
+     it hits (the grenade's blast too), the numbers over every body (battle.js forecastBanePlan). */
+  const _banePlan = (action && action.itemKey && !action.spell && typeof forecastBanePlan === 'function'
+      && typeof ITEM_RULES !== 'undefined' && ITEM_RULES[action.itemKey] && ITEM_RULES[action.itemKey].baneType)
+    ? forecastBanePlan(actingUnit, action.itemKey, targetUnit, { castFrom: _castFrom }) : null;
+  if (_banePlan && _banePlan.handled) {
+    if (_banePlan.tiles.length > 1) {
+      ThreeRenderer.setOverlay('actionPlanAoe', _banePlan.tiles.map(t => ({ x: t.x, y: t.y, color: _HIT, opacity: (t.x === tx && t.y === ty) ? 0.95 : 0.85 })), _HIT, 0.85);
+    }
+    if (typeof window._renderForecastBadges === 'function') window._renderForecastBadges(actingUnit, _banePlan.spell, _banePlan);
+    return;
+  }
 
   if (action && action.spell && typeof getSpellAoeFootprint === 'function') {
     const sp = action.spell;

@@ -685,6 +685,11 @@
             if (_isHost()) return _hostRunAndSync(_origDoItem, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return;
             _guestActionFeedback('item', unit, x, y);
+            /* THE BANE FORECAST: the host runs the throw — drop the guest's own bane preview and hold it off meanwhile */
+            if (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[state.selectedTool] && ITEM_RULES[state.selectedTool].baneType) {
+                window._ewBaneThrowUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + 3000;
+                if (typeof clearAoePreview === 'function') clearAoePreview();
+            }
             _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
         };
 
