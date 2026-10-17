@@ -3704,8 +3704,9 @@ function zodiacNatalDelta(sign, key) {
 /* THE CELESTIAL EVENTS (factions removed 2026-10-17, mondo): a new event resets the MIDDLE nexus to nobody; the team
    that claims it while the event is up gets the event's buff on every living unit (unit.skyBuff, state.js
    getSkyEventBonus). The buff stays on a unit until it dies or the next buff is claimed, even after the event ends.
-   Rolled at each round end from SKY_EVENT_START_ROUND on, SKY_EVENT_CHANCE when no event is up, lasting
-   SKY_EVENT_DURATION rounds. buff = the short line for banners; atkMult = that share of ATK and M ATK on hits,
+   On a fixed timer (2026-10-17, mondo saw none in a whole match under the old 15% roll): one starts at round
+   SKY_EVENT_FIRST_ROUND and then every SKY_EVENT_EVERY rounds, lasting SKY_EVENT_DURATION rounds (4-6, 9-11, 14-16,
+   19-20), never the same event twice in a row. buff = the short line for banners; atkMult = that share of ATK and M ATK on hits,
    defMult = the whole physical and magic soak, healMult = that share of every heal, regenPct = extra share of
    max HP and max MP restored at each round end. */
 const SKY_EVENTS = {
@@ -3733,8 +3734,8 @@ const SKY_EVENTS = {
     }
 };
 const SKY_EVENT_KEYS = Object.keys(SKY_EVENTS);
-const SKY_EVENT_START_ROUND = 6;
-const SKY_EVENT_CHANCE = 0.15;
+const SKY_EVENT_FIRST_ROUND = 4;
+const SKY_EVENT_EVERY = 5;
 const SKY_EVENT_DURATION = 3;
 
 // ── RACE BASE STATS (2026-08-14 stat identity rework) ──────────────────────

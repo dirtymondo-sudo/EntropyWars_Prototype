@@ -1529,6 +1529,10 @@ It should reset control of the nexus whenever a new celestial event happens."
   getSkyEventBonus reads unit.skyBuff only. Blood Moon +10% ATK and +10% M ATK (magic axis adds 10% of INT),
   Lunar Eclipse ×1.10 physical AND magic soak, Black Sun +15% healing plus `regenPct` 0.05 extra max HP and MP at
   each round end (processEndOfRoundRegen). Status bar shows the carrying team (`🌑 P1`); plate badges key per unit.
+- Rev 3 (2026-10-17, mondo: "i played a whole game and didnt see a celestial event or have the nexus reset"): the
+  15% roll from round 6 often gave no event in a whole match (0.85^n: ~32% none by round 12). Now a fixed timer:
+  data.js SKY_EVENT_FIRST_ROUND 4, SKY_EVENT_EVERY 5, so events run rounds 4-6, 9-11, 14-16, 19-20; the event type is
+  random but never the previous one (`state._lastSkyEventType`).
 
 ### Opportunity attacks follow height (2026-10-17, mondo: "opportunity attacks need to take height into account")
 - battle.js `checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH)`: an adjacent enemy only swings when its
