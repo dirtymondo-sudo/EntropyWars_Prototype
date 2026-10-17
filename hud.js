@@ -829,7 +829,7 @@ function TowerBar({ hp, max, player, left }) {
   const mask = SCORE_TAIL_MASK(left);
   const fill = ally ? HP_ALLY_FILL : HP_ENEMY_FILL;
   const glow = ally ? HP_ALLY : HP_ENEMY;
-  return h('div', { className: 'ew-tower' + (low ? ' low' : ''), title: 'TOWER — ' + Math.round(hp) + '/' + max },
+  return h('div', { className: 'ew-tower' + (low ? ' low' : '') + (ally ? ' ally' : ' foe'), title: 'TOWER — ' + Math.round(hp) + '/' + max },
     h('div', { className: 'ew-meter-lbl', style: { flexDirection: left ? 'row' : 'row-reverse' }},
       h('span', { className: 'ew-meter-glyph' }, '🏰'),
       h('span', { className: 'ew-meter-cap' }, 'TOWER'),
@@ -1049,7 +1049,7 @@ function EntropyWing({ st, player, side }) {
   },
 
     /* ⚛ + tiny caps label above the line, hugging the inner end */
-    h('div', { style: {
+    h('div', { className: 'ew-ent-lbl', style: {
       display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1, marginBottom: 3,
       flexDirection: left ? 'row' : 'row-reverse',
       [left ? 'paddingRight' : 'paddingLeft']: 8,
@@ -1063,7 +1063,7 @@ function EntropyWing({ st, player, side }) {
         },
       }, '⚛'),
       h('span', {
-        className: full ? 'ew-entropy-ready-label' : undefined,
+        className: 'ew-ent-cap' + (full ? ' ew-entropy-ready-label' : ''),
         style: {
           fontFamily: mono, fontSize: 7, fontWeight: 700, letterSpacing: '0.34em',
           textIndent: left ? 0 : '0.34em',
@@ -1079,7 +1079,7 @@ function EntropyWing({ st, player, side }) {
        fading out toward the battlefield edge of the screen. The waveform
        canvas overlays it taller than the groove so peaks breathe past the
        hairlines, sharing the skew + tail mask so everything stays aligned. */
-    h('div', { style: { position: 'relative', width: '100%', height: 8 } },
+    h('div', { className: 'ew-ent-line', style: { position: 'relative', width: '100%', height: 8 } },
       h('div', { className: 'ew-entropy-vessel', style: {
         position: 'absolute', inset: 0, overflow: 'hidden',
         transform: skew,
@@ -1105,18 +1105,18 @@ function EntropyWing({ st, player, side }) {
           [innerEdge]: 'calc(' + pct + '% - 6px)',
         }}),
         /* quarter ticks (measured from the inner edge, like the fill) */
-        [25, 50, 75].map(t => h('div', { key: t, style: {
+        [25, 50, 75].map(t => h('div', { key: t, className: 'ew-ent-tick', style: {
           position: 'absolute', top: 1, bottom: 1, [innerEdge]: t + '%',
           width: 1, background: 'rgba(0,0,0,0.55)',
         }})),
         /* bright team-colored socket cap at the inner end */
-        h('div', { style: {
+        h('div', { className: 'ew-ent-socket', style: {
           position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0, width: 2,
           background: team, boxShadow: '0 0 8px ' + team,
         }}),
       ),
       /* ⚛ the signal — oscilloscope trace riding the gauge (VitalWave kin) */
-      h('div', { style: {
+      h('div', { className: 'ew-ent-trace', style: {
         position: 'absolute', left: 0, right: 0, top: '50%', height: 26,
         transform: 'translateY(-50%) ' + skew, pointerEvents: 'none',
         WebkitMaskImage: tailMask, maskImage: tailMask,
@@ -1329,7 +1329,7 @@ function Scoreboard({ st }) {
     /* No panel box — the strip floats straight over the battlefield; each
        element carries its own contrast (chip frames, text shadows, a soft
        scrim behind the centre score only). */
-    h('div', { style: {
+    h('div', { className: 'ew-sb-strip', style: {
       position: 'relative', display: 'flex', alignItems: 'center', gap: 12,
       filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.65))',
     }},
@@ -1349,7 +1349,7 @@ function Scoreboard({ st }) {
           background: 'linear-gradient(90deg, transparent, ' + EW.space + '88 30%, ' + EW.chaos + '88 70%, transparent)',
         }}),
 
-        h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
+        h('span', { className: 'ew-sb-mode' + (isSuddenDeath ? ' ew-sudden-death' : ''), style: {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.32em', lineHeight: 1,
           color: isSuddenDeath ? EW.bad : EW_T.inkMute, textTransform: 'uppercase',
           textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none', whiteSpace: 'nowrap',
@@ -1357,32 +1357,32 @@ function Scoreboard({ st }) {
           borderBottom: '1px solid #262233', paddingBottom: 4, marginBottom: 1,
         }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : (fieldTag + (mode.label || ''))),
 
-        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
-          h('span', { style: {
+        h('div', { className: 'ew-sb-scores', style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
+          h('span', { className: 'ew-sb-num p1', style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW_T.ink, textShadow: '0 0 14px ' + EW.space + '66',
             minWidth: 18, textAlign: 'right',
           }}, mode.p1Score),
-          h('span', { style: {
+          h('span', { className: 'ew-sb-dash', style: {
             fontFamily: mono, fontSize: 13, color: EW_T.inkDim, lineHeight: 1,
           }}, '–'),
-          h('span', { style: {
+          h('span', { className: 'ew-sb-num p2', style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW_T.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
             minWidth: 18, textAlign: 'left',
           }}, mode.p2Score),
         ),
 
-        h('div', { style: {
+        h('div', { className: 'ew-sb-line', style: {
           display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, whiteSpace: 'nowrap',
           fontFamily: mono, fontSize: 9, letterSpacing: '0.1em', color: EW_T.inkMute,
         }},
           scoreCaption && h('span', { style: { color: EW_T.inkDim, letterSpacing: '0.16em' }}, scoreCaption),
           scoreCaption && h('span', { style: { color: EW_T.inkDim }}, '·'),
-          h('span', { style: { fontWeight: 700, color: EW_T.ink }}, mins + ':' + secs),
+          h('span', { className: 'ew-sb-time', style: { fontWeight: 700, color: EW_T.ink }}, mins + ':' + secs),
           h('span', { style: { color: EW_T.inkDim }}, '·'),
           h('span', null,
-            'R', h('span', { style: {
+            'R', h('span', { className: 'ew-sb-rnum', style: {
               fontFamily: serif, fontSize: 12, fontWeight: 600, color: EW.time,
               textShadow: '0 0 8px ' + EW.time + '55',
             }}, round),
@@ -11070,7 +11070,7 @@ function _hudHideCss() {
     .ew-ap-ico.spent .ew-ap-ring { stroke: rgba(236,231,216,0.55); stroke-width: 1.2; }
     .ew-ap-ico.spent:not(.was) { animation: ewApSpend 0.5s cubic-bezier(0.2,0.8,0.3,1) both; }
     /* the cost of the row under the cursor: those icons flash between lit and spent */
-    .ew-ap-ico.lit.pend .ew-ap-svg { animation: ewApPend 0.62s ease-in-out infinite; }
+    .ew-ap-ico.lit.pend .ew-ap-svg { animation: ewApPend 1s ease-in-out infinite; }   /* mondo 2026-10-17: was 0.62s, "blinking a little too fast" (UI Maker: Layout > AP press icons > Blink time) */
     .ew-ap-ico.lit.pend .ew-ap-ring { stroke: #ffffff; }
     /* a refund: the new icons spin up out of a flash, one after the other */
     .ew-ap-ico.born { animation: ewApBorn 0.7s cubic-bezier(0.18,1.5,0.4,1) var(--ap-d, 0ms) both; }
@@ -11469,6 +11469,7 @@ if (!db.layout || typeof db.layout !== 'object') db.layout = {};
 if (!db.hero || typeof db.hero !== 'object') db.hero = {};
 if (!db.bars || typeof db.bars !== 'object') db.bars = {};
 if (!db.icons || typeof db.icons !== 'object') db.icons = {};
+if (!db.ux || typeof db.ux !== 'object') db.ux = {};
 if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
 if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
@@ -12173,10 +12174,10 @@ const UIM_PIECES = [
   { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
   { id: 'hero', group: 'Battle', label: 'Horologe hero section', sel: '.hrlg-side', noHide: true, hero: true, origin: '0 100%', def: { l: 10, b: 80, w: 216, h: 400 } },
   { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
-  { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', def: { cx: 0, t: 10, w: 440, h: 64 } },
+  { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', score: true, def: { cx: 0, t: 10, w: 440, h: 64 } },
   { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta', def: { r: 12, t: 12, w: 220, h: 40 } },
   { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', icons: 'turns', def: { l: 10, b: 490, w: 56, h: 240 } },
-  { id: 'press', group: 'Battle', label: 'AP press icons', sel: '.ew-ap-press', origin: '0 0', def: { l: 14, t: 12, w: 132, h: 40 } },
+  { id: 'press', group: 'Battle', label: 'AP press icons', sel: '.ew-ap-press', origin: '0 0', ap: true, def: { l: 14, t: 12, w: 132, h: 40 } },
   { id: 'bench', group: 'Battle', label: 'Reserves', sel: '.ew-reserves-box', origin: '100% 100%', def: { r: 12, b: 12, w: 220, h: 40 } },
   { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar', def: { cx: 0, b: 10, wf: 0.92, wmax: 1100, h: 62 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
@@ -12197,7 +12198,7 @@ function layoutCss() {
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
-  return css + heroCss() + barsCss() + iconsCss();
+  return css + heroCss() + barsCss() + iconsCss() + uxCss();
 }
 
 /* ── THE ICON ROWS (mondo 2026-10-16: "let me change the vertical spacing between the turn clock icons ... without also
@@ -12229,6 +12230,206 @@ ${D} .hq-dock-pp > .hq-dock-tag { grid-column: 2; grid-row: 1 / span 2; justify-
   if (I.dockTag === 'none') css += `${D} .hq-dock-tag { display: none !important; }\n`;
   else if (I.dockTag === 'under') css += `${D} .hq-dock-pp > .hq-dock-tag { grid-column: 1; grid-row: 3; justify-self: center; align-items: center; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,0.8); }\n`;
   return css;
+}
+
+/* ── THE UNIT RINGS, THE NAME PLATES, THE SCOREBOARD (pass 10, 2026-10-17, mondo: "let me mess with the unit selection
+   rings in the ui editor. like let me change how they look and how the directional arrow looks and also let me choose to
+   have them on only for the current unit as opposed to everyone ... let me customize stuff with the scoreboard like it's
+   bars and panels and looks and text and stuff ... let me customize the nameplates too and their health bars and type
+   badges and stuff"). db.ux, one flat store, the same in every theme; '' colours / defaults leave the game's own look.
+   r* = the team reticle under every unit (three-renderer.js reads window._ewRingLook, bumped _ewRingLookV: Show, the
+   ring line, the facing pointer); p* = the name plates over the units (.tp-wrap, CSS here); s* = the scoreboard. */
+const UX_DEF = {
+  rShow: 'all', rStyle: 'line', rSize: 1, rThick: 1, rGlow: 1, rOpacity: 1, rPulse: true, rTicks: true, rAccent: true, rGap: true, rColor: '',
+  rArrow: 'double', rArrowSize: 1, rArrowColor: '',
+  pSize: 1, pW: 172, pName: true, pLvl: true, pTypes: 'side', pTypeShape: 'pill', pTypeSize: 9, pNums: true, pMp: true, pStatus: true,
+  pFont: '', pNameSize: 14, pCase: 'upper', pAllyCol: '', pFoeCol: '', pActiveCol: '', pBarH: 5, pMpH: 4, pAllyOp: 0.8, pFoeOp: 0.42,
+  pPanel: 'none', pPanelCol: '',
+  sPanel: 'theme', sPanelCol: '', sEdgeCol: '', sFont: '', sScoreFont: '', sScoreSize: 22, sScoreCol: '', sModeSize: 8, sModeCol: '',
+  sLineSize: 9, sTimeCol: '', sRoundCol: '', sNameSize: 12, sNameCol: '', sGap: 12, sSideW: 0, sDot: true,
+  sTowerH: 11, sEntH: 8, sSlant: true, sFade: true, sTicks: true, sWave: true, sLabels: true, sBarFill: 'game', sBarSeg: 10,
+  sTowerAlly: '', sTowerFoe: '', sEntCol: '', sFrameCol: '', sFrameW: 1,
+  /* a* = the AP press icons (mondo 2026-10-17: "they are blinking a little too fast. let me customize them ... when there are
+     4, they extend out to the right and get cropped off the screen. ideally they can slide to the left") */
+  aGrow: 'right', aAnchor: 2, aSize: 40, aGap: 5, aBlink: 1, aBreathe: 2.6, aGlow: true, aSpentOp: 0.34, aCube: '', aRing: '',
+};
+function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
+function uxTidy() {
+  const X = db.ux || (db.ux = {});
+  Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
+}
+const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k[0] === pre);
+/* the ring look the renderer reads, re-published only when it changes */
+let _ringSent = '';
+function ringSignal() {
+  const X = uxOf(), L = { show: X.rShow, style: X.rStyle, size: +X.rSize, thick: +X.rThick, glow: +X.rGlow, opacity: +X.rOpacity,
+    pulse: !!X.rPulse, ticks: !!X.rTicks, accent: !!X.rAccent, gap: !!X.rGap, color: X.rColor || '', arrow: X.rArrow,
+    arrowSize: +X.rArrowSize, arrowColor: X.rArrowColor || '' };
+  const k = JSON.stringify(L); if (k === _ringSent) return;
+  _ringSent = k; window._ewRingLook = L; window._ewRingLookV = (window._ewRingLookV || 0) + 1;
+}
+/* one-click ring looks */
+const RING_LOOKS = [
+  ['holo', 'Holo', { rStyle: 'line', rThick: 1, rGlow: 1, rTicks: true, rAccent: true, rGap: true, rPulse: true, rArrow: 'double', rArrowSize: 1 }],
+  ['clean', 'Clean', { rStyle: 'line', rThick: 1, rGlow: 0.3, rTicks: false, rAccent: false, rGap: true, rPulse: false, rArrow: 'single', rArrowSize: 1 }],
+  ['bold', 'Bold', { rStyle: 'line', rThick: 2.2, rGlow: 1.2, rTicks: false, rAccent: false, rGap: true, rPulse: true, rArrow: 'triangle', rArrowSize: 1.2 }],
+  ['dashed', 'Turning dashes', { rStyle: 'dashed', rThick: 1.4, rGlow: 0.8, rTicks: false, rAccent: false, rGap: false, rPulse: false, rArrow: 'triangle', rArrowSize: 1 }],
+  ['double', 'Double line', { rStyle: 'double', rThick: 1.2, rGlow: 0.6, rTicks: false, rAccent: false, rGap: true, rPulse: true, rArrow: 'double', rArrowSize: 1 }],
+  ['arrow', 'Arrow only', { rStyle: 'none', rArrow: 'triangle', rArrowSize: 1.3 }],
+];
+function uxCss() {
+  const X = uxOf(), D = UX_DEF, R = ':root:root ', HI = ':root:root:not(#uim-x):not(#uim-x) ', chg = k => String(X[k]) !== String(D[k]);
+  const n = (k, lo, hi) => { const v = +X[k]; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : D[k]; };
+  let css = '';
+  /* ── the name plates ── */
+  const W = HI + '.tp-wrap';
+  if (chg('pSize')) css += `${W} { scale: ${n('pSize', 0.5, 2.5)}; }\n`;
+  if (chg('pW')) css += `${W} { width: ${n('pW', 100, 320)}px !important; }\n`;
+  if (!X.pName) css += `${W} .tp-nm { display: none !important; }\n`;
+  if (!X.pLvl) css += `${W} .tp-lvl { display: none !important; }\n`;
+  if (X.pTypes === 'none') css += `${W} .tp-types { display: none !important; }\n`;
+  else if (X.pTypes === 'above' || X.pTypes === 'below') css += `${W} .tp-body { flex-direction: ${X.pTypes === 'above' ? 'column' : 'column-reverse'} !important; }\n${W} .tp-types { flex-direction: row !important; justify-content: center; }\n${W} .tp-type { flex: none !important; padding: 1px 6px !important; }\n`;
+  if (X.pTypeShape !== 'pill') {
+    if (X.pTypeShape === 'dot') css += `${W} .tp-type { font-size: 0 !important; width: 8px; height: 8px; min-height: 8px !important; padding: 0 !important; flex: none !important; border-radius: 50% !important; }\n`;
+    else css += `${W} .tp-type { border-radius: ${X.pTypeShape === 'square' ? '0' : '3px'} !important; }\n`;
+  }
+  if (chg('pTypeSize') && X.pTypeShape !== 'dot') css += `${W} .tp-type { font-size: ${n('pTypeSize', 6, 16)}px !important; }\n`;
+  if (!X.pNums) css += `${W} .tp-bar-num { display: none !important; }\n${W} .tp-bars { padding-right: 0 !important; }\n`;
+  if (!X.pMp) css += `${W} .tp-bar-mp { display: none !important; }\n`;
+  if (!X.pStatus) css += `${W} .tp-status-row { display: none !important; }\n`;
+  if (X.pFont) css += `${W} .tp-name { font-family: ${X.pFont} !important; }\n`;
+  if (chg('pNameSize')) css += `${W} .tp-name { font-size: ${n('pNameSize', 8, 28)}px !important; height: auto !important; min-height: 15px; }\n`;
+  if (chg('pCase')) css += `${W} .tp-name { text-transform: ${X.pCase === 'lower' ? 'lowercase' : X.pCase === 'title' ? 'capitalize' : 'none'} !important; }\n`;
+  if (X.pAllyCol) css += `${W}.tp-ally:not(.tp-active) .tp-name { color: ${X.pAllyCol} !important; }\n`;
+  if (X.pFoeCol) css += `${W}.tp-enemy:not(.tp-active) .tp-name { color: ${X.pFoeCol} !important; }\n`;
+  if (X.pActiveCol) css += `${W}.tp-active .tp-name { color: ${X.pActiveCol} !important; text-shadow: 0 0 8px ${withAlpha(X.pActiveCol, 0.8)}, 0 1px 3px #000 !important; }\n`;
+  if (chg('pBarH')) css += `${W} .tp-bar:not(.tp-bar-mp) { height: ${n('pBarH', 2, 16)}px !important; }\n`;
+  if (chg('pMpH')) css += `${W} .tp-bar-mp { height: ${n('pMpH', 2, 14)}px !important; }\n`;
+  const calm = ':not(.tp-active):not(.tp-hovered):not(.tp-targeted)';
+  if (chg('pAllyOp')) css += `${W}.tp-ally${calm} { opacity: ${n('pAllyOp', 0.1, 1)} !important; }\n`;
+  if (chg('pFoeOp')) css += `${W}.tp-enemy${calm} { opacity: ${n('pFoeOp', 0.1, 1)} !important; filter: none !important; }\n`;
+  if (X.pPanel !== 'none') {
+    const bg = X.pPanelCol || (X.pPanel === 'theme' ? 'var(--ew-plate-bg, rgba(5,5,8,0.85))' : 'rgba(0,0,0,0.6)');
+    css += `${W} .tp-main { background: ${bg} !important; padding: 3px 6px 4px; border-radius: ${X.pPanel === 'theme' ? '6px' : '3px'}; border: 1px solid ${X.pPanel === 'theme' ? 'var(--ew-plate-edge, rgba(255,255,255,0.2))' : 'rgba(255,255,255,0.12)'}; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }\n`;
+  }
+  /* ── the AP press icons ── */
+  const A = HI + '.ew-ap-press', aSz = n('aSize', 16, 96), aGap = n('aGap', -10, 40);
+  if (chg('aSize')) css += `${A} .ew-ap-ico { width: ${aSz}px !important; height: ${aSz}px !important; }\n`;
+  if (chg('aGap')) css += `${A} { gap: ${aGap}px !important; }\n`;
+  if (X.aGrow === 'left') {   // a fixed box as wide as aAnchor icons, its icons right-aligned: more icons spill out to the LEFT
+    const k = Math.round(n('aAnchor', 1, 12));
+    css += `${A} { width: ${k * aSz + (k - 1) * aGap}px !important; justify-content: flex-end !important; }\n`;
+  }
+  if (chg('aBlink')) css += `${A} .ew-ap-ico.lit.pend .ew-ap-svg { animation-duration: ${n('aBlink', 0.2, 4)}s !important; }\n`;
+  if (chg('aBreathe')) css += +X.aBreathe <= 0 ? `${A} .ew-ap-ico.lit:not(.pend) .ew-ap-svg { animation: none !important; }\n` : `${A} .ew-ap-ico.lit:not(.pend) .ew-ap-svg { animation-duration: ${n('aBreathe', 0.5, 10)}s !important; }\n`;
+  if (!X.aGlow) css += `${A} .ew-ap-ico.lit .ew-ap-svg { filter: none !important; }\n`;
+  if (chg('aSpentOp')) css += `${A} .ew-ap-ico.spent .ew-ap-svg { opacity: ${n('aSpentOp', 0, 1)} !important; }\n`;
+  if (X.aCube) css += `${A} .ew-ap-ico { --ap-t: ${shade(X.aCube, 0.55)} !important; --ap-l: ${X.aCube} !important; --ap-r: ${shade(X.aCube, -0.35)} !important; --ap-glow: ${withAlpha(X.aCube, 0.85)} !important; --ap-burst: ${shade(X.aCube, 0.4)} !important; }\n`;
+  if (X.aRing) css += `${A} .ew-ap-ico { --ap-rim: ${X.aRing} !important; }\n`;
+  /* ── the scoreboard ── */
+  const S = HI + '.ew-scoreboard';
+  if (X.sPanel === 'none') css += `${S} .ew-score-plate { background: none !important; border-color: transparent !important; border-image: none !important; box-shadow: none !important; }\n`;
+  else if (X.sPanel === 'dark') css += `${S} .ew-score-plate { background: rgba(4,4,8,0.88) !important; border: 1px solid rgba(255,255,255,0.16) !important; border-image: none !important; border-radius: 4px !important; }\n`;
+  if (X.sPanelCol) css += `${S} .ew-score-plate { background: ${X.sPanelCol} !important; border-image: none !important; }\n`;
+  if (X.sEdgeCol) css += `${S} .ew-score-plate { border: 1px solid ${X.sEdgeCol} !important; border-image: none !important; }\n${S} .ew-sb-mode { border-bottom-color: ${withAlpha(X.sEdgeCol, 0.6)} !important; }\n`;
+  if (X.sFont) css += `${S} .ew-sb-mode, ${S} .ew-sb-line, ${S} .ew-ss-text, ${S} .ew-ss-sub, ${S} .ew-ss-keys, ${S} .ew-meter-cap, ${S} .ew-meter-num, ${S} .ew-ent-cap { font-family: ${X.sFont} !important; }\n`;
+  if (X.sScoreFont) css += `${S} .ew-sb-num, ${S} .ew-sb-dash { font-family: ${X.sScoreFont} !important; }\n`;
+  if (chg('sScoreSize')) css += `${S} .ew-sb-num { font-size: ${n('sScoreSize', 12, 56)}px !important; }\n`;
+  if (X.sScoreCol) css += `${S} .ew-sb-num { color: ${X.sScoreCol} !important; }\n`;
+  if (chg('sModeSize')) css += `${S} .ew-sb-mode { font-size: ${n('sModeSize', 6, 20)}px !important; }\n`;
+  if (X.sModeCol) css += `${S} .ew-sb-mode:not(.ew-sudden-death) { color: ${X.sModeCol} !important; }\n`;
+  if (chg('sLineSize')) css += `${S} .ew-sb-line { font-size: ${n('sLineSize', 6, 20)}px !important; }\n`;
+  if (X.sTimeCol) css += `${S} .ew-sb-time { color: ${X.sTimeCol} !important; }\n`;
+  if (X.sRoundCol) css += `${S} .ew-sb-rnum { color: ${X.sRoundCol} !important; text-shadow: 0 0 8px ${withAlpha(X.sRoundCol, 0.4)} !important; }\n`;
+  if (chg('sNameSize')) css += `${S} .ew-ss-text { font-size: ${n('sNameSize', 8, 24)}px !important; }\n`;
+  if (X.sNameCol) css += `${S} .ew-ss-text { color: ${X.sNameCol} !important; }\n`;
+  if (!X.sDot) css += `${S} .ew-ss-dot { display: none !important; }\n`;
+  if (chg('sGap')) css += `${S} .ew-sb-strip { gap: ${n('sGap', 0, 80)}px !important; }\n`;
+  if (+X.sSideW > 0) css += `${S} .ew-score-side { width: ${n('sSideW', 100, 520)}px !important; }\n`;
+  if (chg('sTowerH')) css += `${S} .ew-tower-vessel { height: ${n('sTowerH', 3, 30)}px !important; }\n`;
+  if (chg('sEntH')) css += `${S} .ew-ent-line { height: ${n('sEntH', 3, 30)}px !important; }\n`;
+  if (!X.sSlant) css += `${S} .ew-tower-vessel, ${S} .ew-entropy-vessel { transform: none !important; }\n${S} .ew-ent-trace { transform: translateY(-50%) !important; }\n`;
+  if (!X.sFade) css += `${S} .ew-tower-vessel, ${S} .ew-entropy-vessel, ${S} .ew-ent-trace { -webkit-mask-image: none !important; mask-image: none !important; }\n`;
+  if (!X.sTicks) css += `${S} .ew-tower-tick, ${S} .ew-ent-tick { display: none !important; }\n`;
+  if (!X.sWave) css += `${S} .ew-ent-trace { display: none !important; }\n`;
+  if (!X.sLabels) css += `${S} .ew-meter-lbl, ${S} .ew-ent-lbl { display: none !important; }\n`;
+  const sL = { fill: X.sBarFill, seg: X.sBarSeg };
+  const sFill = c => barFill(sL, c);
+  if (X.sBarFill !== 'game' || X.sTowerAlly) css += `${S} .ew-tower.ally .ew-tower-fill { background: ${sFill(X.sTowerAlly || '#2ed158')} !important; }\n`;
+  if (X.sBarFill !== 'game' || X.sTowerFoe) css += `${S} .ew-tower.foe .ew-tower-fill { background: ${sFill(X.sTowerFoe || '#ff4a56')} !important; }\n`;
+  if (X.sBarFill !== 'game' || X.sEntCol) css += `${S} .ew-entropy-fill:not(.ew-entropy-full) { background: ${sFill(X.sEntCol || '#a36cff')} !important; }\n`;
+  if (X.sFrameCol || chg('sFrameW')) {
+    const fw = n('sFrameW', 0, 4), fc = X.sFrameCol || 'rgba(214,232,218,0.5)';
+    css += `${S} .ew-tower-vessel, ${S} .ew-entropy-vessel { border: ${fw}px solid ${fc} !important; }\n`;
+  }
+  return css;
+}
+/* the forms (Bars > Selection rings, Bars > Name plates, Layout > Scoreboard); fields write db.ux via data-xpath / data-xset */
+const xp = html => html.replace(/data-path=/g, 'data-xpath=').replace(/data-set=/g, 'data-xset=');
+const xCheck = (label, k, v, re) => `<div class="uim-f"><label>${label}</label><div><input type="checkbox" data-xpath="${k}" data-bool="1"${re ? ' data-re="1"' : ''}${v ? ' checked' : ''}></div></div>`;
+const xReset = (pre, label) => `<div class="uim-btns"><button class="uim-btn bad" data-dk="uxreset" data-val="${pre}"${uxGroupOn(pre) ? '' : ' disabled'}>${label}</button></div>`;
+function ringDetail() {
+  const X = uxOf();
+  let h = `<div class="uim-note">The ring and facing arrow under each unit in a battle. Your units and the enemy keep their team colours unless you give the ring or the arrow its own.</div>`;
+  h += `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${RING_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="ringlook" data-val="${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  h += sec('rshow', 'Who wears one', xp(fSeg('Show', 'rShow', [['all', 'Everyone'], ['mine', 'My units'], ['current', 'Current unit only', 'The unit whose turn it is'], ['none', 'Nobody']], X.rShow)));
+  h += sec('rring', 'The ring', xp(fSeg('Line', 'rStyle', [['line', 'Line'], ['dashed', 'Turning dashes'], ['double', 'Double'], ['none', 'None']], X.rStyle)
+    + fRange('Size', 'rSize', 0.6, 1.4, 0.05, +X.rSize) + fRange('Thickness', 'rThick', 0.5, 3, 0.1, +X.rThick)
+    + fRange('Glow', 'rGlow', 0, 2, 0.1, +X.rGlow) + fRange('Opacity', 'rOpacity', 0.1, 1, 0.05, +X.rOpacity)
+    + fColorOpt('Colour', 'rColor', X.rColor, '#ffffff', false, 'Unticked = the team colour'))
+    + xCheck('Pulse', 'rPulse', X.rPulse) + xCheck('Side ticks', 'rTicks', X.rTicks) + xCheck('Inner dashes', 'rAccent', X.rAccent) + xCheck('Gap at the arrow', 'rGap', X.rGap));
+  h += sec('rarrow', 'The facing arrow', xp(fSeg('Arrow', 'rArrow', [['double', 'Double chevron'], ['single', 'Chevron'], ['triangle', 'Triangle'], ['dot', 'Dot'], ['none', 'None']], X.rArrow)
+    + fRange('Size', 'rArrowSize', 0.5, 1.8, 0.05, +X.rArrowSize) + fColorOpt('Colour', 'rArrowColor', X.rArrowColor, '#ffffff', false, 'Unticked = the team colour')));
+  h += `<div class="uim-note">When the health rings are on (Settings), the HP / MP meters take the ring's size and thickness too.</div>` + xReset('r', 'Reset the rings');
+  return h;
+}
+function platesDetail() {
+  const X = uxOf();
+  let h = `<div class="uim-note">The name plates over the units. Their bar colours, ends and frame come from the bar look below.</div>`;
+  h += sec('pshow', 'What a plate shows', xCheck('Name', 'pName', X.pName) + xCheck('Level', 'pLvl', X.pLvl) + xCheck('HP / MP numbers', 'pNums', X.pNums) + xCheck('MP bar', 'pMp', X.pMp) + xCheck('Status badges', 'pStatus', X.pStatus));
+  h += sec('psize', 'Size', xp(fRange('Size', 'pSize', 0.5, 2.5, 0.05, +X.pSize) + fRange('Width', 'pW', 100, 320, 2, +X.pW) + fRange('HP bar thickness', 'pBarH', 2, 16, 1, +X.pBarH) + fRange('MP bar thickness', 'pMpH', 2, 14, 1, +X.pMpH)));
+  h += sec('ptext', 'Name text', xp(fSelect('Font', 'pFont', FONTS, X.pFont) + fRange('Size', 'pNameSize', 8, 28, 1, +X.pNameSize)
+    + fSeg('Case', 'pCase', [['upper', 'UPPER'], ['none', 'As written'], ['title', 'Title'], ['lower', 'lower']], X.pCase)
+    + fColorOpt('Your units', 'pAllyCol', X.pAllyCol, '#8fd0e8') + fColorOpt('Enemies', 'pFoeCol', X.pFoeCol, '#e88fb8') + fColorOpt('Current unit', 'pActiveCol', X.pActiveCol, '#f0d060')));
+  h += sec('ptype', 'Type badges', xp(fSeg('Where', 'pTypes', [['side', 'Beside the bars'], ['above', 'Above'], ['below', 'Below'], ['none', 'Hidden']], X.pTypes)
+    + fSeg('Shape', 'pTypeShape', [['pill', 'Pill'], ['round', 'Rounded'], ['square', 'Square'], ['dot', 'Dots']], X.pTypeShape)
+    + fRange('Text size', 'pTypeSize', 6, 16, 1, +X.pTypeSize)));
+  h += sec('ppanel', 'Panel + fade', xp(fSeg('Panel', 'pPanel', [['none', 'None'], ['dark', 'Dark'], ['theme', 'Theme window']], X.pPanel)
+    + fColorOpt('Panel colour', 'pPanelCol', X.pPanelCol, 'rgba(0,0,0,0.6)', true)
+    + fRange('Your units', 'pAllyOp', 0.1, 1, 0.05, +X.pAllyOp) + fRange('Enemies', 'pFoeOp', 0.1, 1, 0.05, +X.pFoeOp))
+    + '<div class="uim-note">Fade = how see-through a plate is while it is not the current, hovered or targeted unit.</div>');
+  return h + xReset('p', 'Reset the name plates');
+}
+function apForm() {
+  const X = uxOf();
+  let h = `<div class="uim-h">The icons</div>`;
+  h += xp(fSeg('Grow toward', 'aGrow', [['right', 'The right'], ['left', 'The left', 'The right end stays put; new icons push in from the left']], X.aGrow)
+    + (X.aGrow === 'left' ? fRange('Right end after', 'aAnchor', 1, 6, 1, +X.aAnchor, 'How many icons fit before they start sliding left (2 = a normal turn)') : '')
+    + fRange('Icon size', 'aSize', 16, 96, 1, +X.aSize) + fRange('Spacing', 'aGap', -10, 40, 1, +X.aGap)
+    + fRange('Blink time (s)', 'aBlink', 0.2, 4, 0.05, +X.aBlink, 'One flash of the icons the action under the cursor would spend; higher = slower')
+    + fRange('Breathe time (s, 0 = still)', 'aBreathe', 0, 10, 0.1, +X.aBreathe) + fRange('Spent icons', 'aSpentOp', 0, 1, 0.02, +X.aSpentOp)
+    + fColorOpt('Cube colour', 'aCube', X.aCube, '#f2c64a') + fColorOpt('Ring colour', 'aRing', X.aRing, '#f0d060'))
+    + xCheck('Glow', 'aGlow', X.aGlow);
+  return h + xReset('a', 'Reset the AP icons');
+}
+function scoreForm() {
+  const X = uxOf();
+  let h = `<div class="uim-h">The scoreboard</div>`;
+  h += sec('spanel', 'Centre panel', xp(fSeg('Panel', 'sPanel', [['theme', 'Theme'], ['dark', 'Dark'], ['none', 'None']], X.sPanel)
+    + fColorOpt('Fill', 'sPanelCol', X.sPanelCol, 'rgba(6,6,12,0.9)', true) + fColorOpt('Edge', 'sEdgeCol', X.sEdgeCol, '#3a3448')
+    + fRange('Space to the sides', 'sGap', 0, 80, 1, +X.sGap)));
+  h += sec('stext', 'Text', xp(fSelect('Font', 'sFont', FONTS, X.sFont) + fSelect('Score font', 'sScoreFont', FONTS, X.sScoreFont)
+    + fRange('Score size', 'sScoreSize', 12, 56, 1, +X.sScoreSize) + fColorOpt('Score colour', 'sScoreCol', X.sScoreCol, '#ffffff')
+    + fRange('Mode name size', 'sModeSize', 6, 20, 1, +X.sModeSize) + fColorOpt('Mode name colour', 'sModeCol', X.sModeCol, '#9a93b5')
+    + fRange('Time line size', 'sLineSize', 6, 20, 1, +X.sLineSize) + fColorOpt('Time colour', 'sTimeCol', X.sTimeCol, '#ffffff') + fColorOpt('Round colour', 'sRoundCol', X.sRoundCol, '#ffcd6b')
+    + fRange('Team name size', 'sNameSize', 8, 24, 1, +X.sNameSize) + fColorOpt('Team name colour', 'sNameCol', X.sNameCol, '#ffffff'))
+    + xCheck('Team dots', 'sDot', X.sDot));
+  h += sec('sbars', 'Tower + entropy bars', xp(fRange('Side width (0 = auto)', 'sSideW', 0, 520, 10, +X.sSideW) + fRange('Tower bar thickness', 'sTowerH', 3, 30, 1, +X.sTowerH) + fRange('Entropy bar thickness', 'sEntH', 3, 30, 1, +X.sEntH)
+    + fSeg('Fill', 'sBarFill', BAR_FILLS, X.sBarFill) + (X.sBarFill === 'segments' ? fRange('Block size', 'sBarSeg', 4, 40, 1, +X.sBarSeg) : '')
+    + fColorOpt('Your tower', 'sTowerAlly', X.sTowerAlly, '#2ed158') + fColorOpt('Enemy tower', 'sTowerFoe', X.sTowerFoe, '#ff4a56') + fColorOpt('Entropy', 'sEntCol', X.sEntCol, '#a36cff')
+    + fColorOpt('Frame', 'sFrameCol', X.sFrameCol, '#d6e8da') + fRange('Frame width', 'sFrameW', 0, 4, 1, +X.sFrameW))
+    + xCheck('Slanted', 'sSlant', X.sSlant) + xCheck('Fade at the tip', 'sFade', X.sFade) + xCheck('Quarter ticks', 'sTicks', X.sTicks) + xCheck('Entropy wave', 'sWave', X.sWave) + xCheck('Labels', 'sLabels', X.sLabels));
+  return h + `<div class="uim-note">The centre panel's skin also follows the Battle HUD theme (Menus).</div>` + xReset('s', 'Reset the scoreboard');
 }
 
 /* ── THE HOROLOGE HERO SECTION (mondo 2026-10-16: "i want to be able to adjust and change the horologe hero
@@ -12400,7 +12601,10 @@ const BAR_PLACES = [
 ];
 const BAR_SHAPES = [['game', 'As made'], ['square', 'Square'], ['round', 'Rounded'], ['pill', 'Pill'], ['slant', 'Slanted']];
 const BAR_FILLS = [['game', 'Sheen', 'Dark to bright along the bar, the game\'s own look'], ['solid', 'Solid'], ['shine', 'Glossy', 'Light on top, shade below'], ['segments', 'Segments', 'Cut into blocks']];
-const BARS_DEF = { heroShape: '', shape: 'game', h: 12, fill: 'game', seg: 10, hp: '#2ed158', foe: '#ff4a56', lowOn: true, low: '#ff4a4a', mp: '#2f9dff', track: '#07060b', frame: '#3a3448', frameW: 1, glow: true, wave: true, nums: true, labels: true, ring: 1, caps: false };
+/* heroOwn + hero*: the Horologe hero section's own bar look (mondo 2026-10-17: "let me make the horologe one look different
+   from the turn icons, like i want the main one to have segments and a deeper outline but it changes the turn icon health
+   bars too") */
+const BARS_DEF = { heroOwn: false, heroFill: 'segments', heroSeg: 10, heroTrack: '#07060b', heroFrame: '#000000', heroFrameW: 2, heroEdge: 1, heroEdgeCol: '#5a5470', heroH: 12, heroGlow: true, heroShape: '', shape: 'game', h: 12, fill: 'game', seg: 10, hp: '#2ed158', foe: '#ff4a56', lowOn: true, low: '#ff4a4a', mp: '#2f9dff', track: '#07060b', frame: '#3a3448', frameW: 1, glow: true, wave: true, nums: true, labels: true, ring: 1, caps: false };
 function barsOf() {
   const B = db.bars || {}, place = {};
   BAR_PLACES.forEach(P => { const v = B.place && B.place[P.id]; place[P.id] = !P.barOnly && (v === 'bar' || v === 'ring' || v === 'both') ? v : P.def; });
@@ -12463,6 +12667,16 @@ function barsCss() {
     const r = { square: '0', round: '3px', pill: '999px', slant: '0' }[L.heroShape] || '0';
     css += `${pick('.hrlg-vbar, .hrlg-vfill, .hrlg-vspend')} { border-radius: ${r} !important; }\n${pick('.hrlg-vbar')} { transform: ${L.heroShape === 'slant' ? 'skewX(-18deg)' : 'none'} !important; }\n`;
     css += `${pick('.hrlg-vbar .hrlg-wave')} { transform: translateY(-50%)${L.heroShape === 'slant' ? ' skewX(18deg)' : ''} !important; }\n`;
+  }
+  if (L.heroOwn) {   // the hero section's bars, over everything above (a higher-specificity prefix)
+    const HX = ':root:root:not(#uim-h):not(#uim-h) ', hL = { fill: L.heroFill, seg: L.heroSeg };
+    const hf = c => barFill(hL, c), hg = c => (L.heroGlow ? `0 0 6px ${withAlpha(c, 0.45)}` : 'none');
+    const hH = Math.max(3, Math.min(30, +L.heroH || 12)), fw = Math.max(0, Math.min(6, +L.heroFrameW || 0)), ew = Math.max(0, Math.min(4, +L.heroEdge || 0));
+    css += `${HX}.hrlg-vrow.hp .hrlg-vfill { background: ${hf(L.hp)} !important; box-shadow: ${hg(L.hp)} !important; }\n`;
+    if (L.lowOn) css += `${HX}.hrlg-vrow.hp.low .hrlg-vfill { background: ${hf(L.low)} !important; box-shadow: ${hg(L.low)} !important; }\n`;
+    css += `${HX}.hrlg-vrow.mp:not(.xp) .hrlg-vfill { background: ${hf(L.mp)} !important; box-shadow: ${hg(L.mp)} !important; }\n`;
+    css += `${HX}.hrlg-vbar { background: ${L.heroTrack} !important; border: ${fw}px solid ${L.heroFrame} !important; ${ew ? `outline: ${ew}px solid ${L.heroEdgeCol} !important; outline-offset: 0;` : 'outline: none !important;'} }\n`;
+    css += `${HX}.hrlg-vrow.hp .hrlg-vbar { height: ${hH}px !important; }\n${HX}.hrlg-vrow.mp:not(.xp) .hrlg-vbar { height: ${Math.max(2, Math.round(hH * 10 / 12))}px !important; }\n`;
   }
   if (!L.wave) css += `${pick('.hrlg-wave')} { display: none !important; }\n`;
   if (!L.nums) css += `${pick('.hrlg-vnum, .hrlg-thp-num, .hrlg-qv-num, .hrlg-vnums')} { display: none !important; }\n`;
@@ -12670,7 +12884,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  heroSignal();
+  heroSignal(); ringSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -13014,7 +13228,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, assign: db.assign, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -13026,7 +13240,7 @@ function travel(from, to) {
     if (e.lay) {
       to.push({ lay: 1, j: layState() });
       const j = JSON.parse(e.j);
-      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.assign = j.assign || {}; HIST.t = 0;
+      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.ux = j.ux || {}; db.assign = j.assign || {}; HIST.t = 0;
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -13753,6 +13967,8 @@ function pieceDetail() {
     + `<div class="uim-btns"><button class="uim-btn" data-dk="piecereset">Reset this piece</button></div>`;
   if (P.hero) h += heroForm();
   if (P.icons) h += iconsForm(P.icons);
+  if (P.score) h += scoreForm();
+  if (P.ap) h += apForm();
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   return h + '</div>';
 }
@@ -13908,7 +14124,8 @@ function dockBarsBody() {
   let h = dockTop() + `<div class="uim-note">Which places get a straight bar, a ring, or both, and how every bar and ring looks. The yellow boxes are the places on screen now; click one to pick it.</div><div class="uim-dk-mock"></div>`;
   h += BAR_PLACES.map(P => `<div class="uim-dk-bar${UI.bar === P.id ? ' on' : ''}" data-bar="${P.id}" title="${esc(P.hint)}"><i></i><div><b>${esc(P.label)}</b><small>${esc(P.hint)}</small></div>`
     + `<div class="uimb-seg">${P.barOnly ? '<span class="uim-note" style="margin:0">Bars only</span>' : [['bar', 'Bar'], ['ring', 'Ring'], ['both', 'Both']].map(([v, l]) => `<button class="uim-btn${place[P.id] === v ? ' on' : ''}" data-dk="bplace" data-place="${P.id}" data-val="${v}"${v === 'ring' && P.ring ? ` title="${esc(P.ring)}"` : ''}>${l}${P.def === v ? ' ·' : ''}</button>`).join('')}</div></div>`).join('');
-  h += `<div class="uim-note">· marks how the game draws it.</div><div class="uim-dk-detail"></div>
+  h += `<div class="uim-dk-bar${UI.bar === 'sel' ? ' on' : ''}" data-bar="sel" title="The ring + facing arrow under every unit"><i></i><div><b>Selection rings</b><small>The ring + facing arrow under each unit</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Look + who</span></div></div>`;
+  h += `<div class="uim-note">· marks how the game draws it. Name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
   <div class="uim-note"><span class="uim-kbd">Tab</span> next place on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
   return h;
 }
@@ -13920,6 +14137,12 @@ function barsDetail() {
     + fColor('HP', P + 'hp', L.hp, false) + fColor('Enemy HP', P + 'foe', L.foe, false)
     + `<div class="uim-f"><label>Low HP</label><div><input type="checkbox" data-bpath="${P}lowOn" data-bool="1" data-re="1"${L.lowOn ? ' checked' : ''} title="Under 30% the HP turns this colour">${L.lowOn ? `<input type="color" value="${toHex(L.low)}" data-bpath="${P}low" data-kind="rgb"><input class="uim-hex" value="${toHex(L.low)}" data-bpath="${P}low" data-kind="hex" maxlength="7" spellcheck="false">` : ''}</div></div>`
     + fColor('MP', P + 'mp', L.mp, false) + fCheck('Glow', P + 'glow', L.glow)));
+  h += sec('bhero', 'Hero section bars', `<div class="uim-f"><label>Own look</label><div><input type="checkbox" data-bpath="${P}heroOwn" data-bool="1" data-re="1"${L.heroOwn ? ' checked' : ''} title="The Horologe hero section's HP / MP bars get their own fill and frame; the turn icons, plates and the rest keep the look below"></div></div>`
+    + (L.heroOwn ? bp(fSeg('Fill', P + 'heroFill', BAR_FILLS, L.heroFill) + (L.heroFill === 'segments' ? fRange('Block size', P + 'heroSeg', 4, 40, 1, +L.heroSeg) : '')
+      + fRange('Thickness', P + 'heroH', 4, 30, 1, +L.heroH) + fColor('Empty part', P + 'heroTrack', L.heroTrack, false)
+      + fColor('Outline', P + 'heroFrame', L.heroFrame, false) + fRange('Outline width', P + 'heroFrameW', 0, 6, 1, +L.heroFrameW)
+      + fColor('Outer edge', P + 'heroEdgeCol', L.heroEdgeCol, false) + fRange('Outer edge width', P + 'heroEdge', 0, 4, 1, +L.heroEdge) + fCheck('Glow', P + 'heroGlow', L.heroGlow))
+      + '<div class="uim-note">Colours come from Fill below (HP, low HP, MP). Ends: Shape > Hero bars.</div>' : '<div class="uim-note">Off: the hero bars wear the same look as every bar.</div>'), L.heroOwn ? 'own' : '');
   h += sec('bframe', 'Track + frame', bp(fColor('Empty part', P + 'track', L.track, false) + fColor('Frame', P + 'frame', L.frame, false) + fRange('Frame width', P + 'frameW', 0, 4, 1, +L.frameW)));
   h += sec('bring', 'Rings', bp(fRange('Thickness', P + 'ring', 0.4, 1.8, 0.05, +L.ring) + fCheck('Round ends', P + 'caps', L.caps)));
   h += sec('bshow', 'Show', bp(fCheck('HP / MP tags', P + 'labels', L.labels) + fCheck('Numbers', P + 'nums', L.nums) + fCheck('Heartbeat line', P + 'wave', L.wave)) + '<div class="uim-note">The heartbeat line rides the hero section\'s HP bar.</div>');
@@ -13960,7 +14183,7 @@ function dockDetail() {
   const A = UI.live; if (!A) return;
   const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
-  else if (A.mode === 'bars') { d.innerHTML = barsDetail(); barsMockRefresh(); }
+  else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -14229,6 +14452,12 @@ function dockDown(e) {
 }
 function dockClick(e) {
   const A = UI.live; if (!A) return;
+  const xs = e.target.closest('button[data-xset]');
+  if (xs) {
+    try { xs.blur(); } catch (er) {}
+    snapLayout(true); db.ux = db.ux || {}; db.ux[xs.dataset.xset] = xs.dataset.val;
+    uxTidy(); touchLayout(); dockDetail(); return;
+  }
   const bs = e.target.closest('button[data-bset]');
   if (bs) {
     try { bs.blur(); } catch (er) {}
@@ -14253,6 +14482,8 @@ function dockClick(e) {
     else if (k === 'ghost') { UI.ghost = v; A.dock.querySelectorAll('[data-dk="ghost"]').forEach(x => x.classList.toggle('on', x.dataset.val === v)); }
     else if (k === 'layreset') { if (confirm('Put every HUD piece back where it was, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; db.icons = {}; touchLayout(); dockBody(); } }
     else if (k === 'piecereset' && P) resetPiece(P);
+    else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
+    else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === v) delete db.ux[x]; }); touchLayout(); dockDetail(); }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroset') { const i = v.indexOf(':'); snapLayout(true); db.hero = db.hero || {}; db.hero[v.slice(0, i)] = v.slice(i + 1); heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'clocklook') { const L = CLOCK_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.hero = Object.assign(db.hero || {}, L[2]); heroTidy(); touchLayout(); dockDetail(); } }
@@ -14306,6 +14537,26 @@ function dockInput(e) {
     L[k] = el.dataset.bool ? el.checked : +el.value;
     syncTwins(el, 'data-lpath', L[k]);
     tidyLayout(id); touchLayout(); return;
+  }
+  if (el.dataset.xpath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    const X = db.ux || (db.ux = {}), k = el.dataset.xpath;
+    let v;
+    if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
+      const hx = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase();
+      v = X[k] && alphaOf(X[k]) < 1 ? withAlpha(hx, alphaOf(X[k])) : hx;
+    }
+    else if (el.dataset.kind === 'alpha') v = withAlpha(X[k] || '#000000', +el.value);
+    else v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
+    snapLayout();
+    X[k] = v; if (el.dataset.kind !== 'rgb' && el.dataset.kind !== 'hex' && el.dataset.kind !== 'alpha') syncTwins(el, 'data-xpath', v);
+    else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
+    uxTidy(); touchLayout();
+    if (el.dataset.re && e.type === 'change') dockDetail();
+    else { const pre = k[0], rs = A.dock.querySelector(`[data-dk="uxreset"][data-val="${pre}"]`); if (rs) rs.disabled = !uxGroupOn(pre); }
+    return;
   }
   if (el.dataset.ipath) {
     if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
