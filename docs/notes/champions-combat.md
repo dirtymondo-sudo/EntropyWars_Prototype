@@ -1502,6 +1502,26 @@ the gun can actually hit; a walled-off unit is skipped and the turret takes the 
   and an attack / spell / item click on a fogged tile logs "Out of sight — no one on your team can see that tile."
   Checked in a headless browser: P1 blinked onto a fogged lit tile and onto a seen one.
 
+## FACTIONS REMOVED + CELESTIAL EVENTS BUFF THE MIDDLE NEXUS HOLDER (2026-10-17, mondo)
+mondo: "get rid of factions ... celestial events ... should give a buff to whoever controls the middle nexus ...
+It should reset control of the nexus whenever a new celestial event happens."
+- Factions are gone everywhere: RACE_PROFILES/DEFAULT_IDENTITY `faction`, FACTION_BONUSES, the faction synergy
+  (state.js Bulwark/Restoration/Fury: 2+ same-faction allies), unit.faction, codex/shop/party-builder filters and
+  stamps, the cinematic label, the race editor FACTION field + filter + export key, the HQ pause chip. Faction
+  accent colours became one accent (hud.js getUnitAccentColor = EW.space, party-builder PB_ACCENT = EW.time,
+  codex _CODEX_ACCENT); the horologe second hand is always the quartz tick. The Spell Library column that was
+  labelled FACTION was the spell TYPE all along (now TYPE).
+- Celestial events (data.js SKY_EVENTS, frequency unchanged: from round 6, 15% per round end while none is up,
+  2 rounds each): state.js getCelestialNexusKey (`earth`, or the non-spawn zone nearest the centre) +
+  getSkyEventHolder; getSkyEventBonus is active for every unit of that zone's owner. checkNewSkyEvent resets the
+  zone to nobody (ui.js resetCelestialNexus, nexus-fx kind `reset`, lockout check); a capture under an event adds
+  the buff to the banner. Modes without a middle nexus (everything but Arena) get no buff.
+- The buffs now do what they say (they used to multiply only the small flat bonus): Blood Moon adds 10% of ATK on
+  physical hits (getEffectiveAttackBonus), Lunar Eclipse ×1.10 the whole physical soak (getEffectiveArmor),
+  Black Sun +15% of every heal (getEffectiveHealBonus) and revive %.
+- AI (ai.js): `arena_nexus_celestial` move goal (230) while an event is up and the middle isn't ours; channel
+  score +90 there, never halved by the tower push. Nameplate event badge re-keys on the holder.
+
 ### Opportunity attacks follow height (2026-10-17, mondo: "opportunity attacks need to take height into account")
 - battle.js `checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH)`: an adjacent enemy only swings when its
   BASIC ATTACK could hit the mover on the tile it left: `combatDist` (height gap is its own axis) within
@@ -1529,3 +1549,13 @@ refund, the WEAK/RESIST callouts); everywhere else it is a VFX tint (projectile 
   walk-on procs stay untyped. Forecast: `_forecastSpellInto` seed branch (only when an enemy stands on the tile).
 - Browser-checked: Poison Seed 86 → 112 vs a weak type, 81 resisted with STAB; Leech 72 → 94; forecast = dealt.
   Place Bomb contact was already typed (276 super effective, forecast 276).
+
+## THE PRESS FOR EVERY DAMAGING CAST (2026-10-17)
+mondo: "i used infernal conscription on an enemy, it said it was super effective, but i didnt get my 2 ap refund."
+Cause: doSpell armed the press collector only for the kinds in `_PRESS_SPELL_KINDS` (damage, multiHit, ricochet,
+lifeDrain, tackle, line, linePush, splitBeam, aoe, barrage, cross, aoePull) plus damaging terrainCreate. Every damaging
+kind added later (pull, dash, displacement, teleport, skyDrop, skyThrow, skySlam, leapStrike, steal, utility,
+doorBreach, possess, pulseLattice, placeTrap on contact, damaging debuff rows) showed "It's super effective!" from
+applyDamageToUnit but never refunded. Fix: the arm check also takes any `spellDealsDamage(spell)` row except
+`delayed` (lands at round end). `_PRESS_SPELL_KINDS` itself is unchanged (it also decides which kinds end the turn).
+The CPU's press value (ai.js PRESS_KINDS) was left as is.

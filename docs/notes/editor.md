@@ -423,6 +423,29 @@ mondo: "Let's make all arena maps 12x12 instead of 8x8. Make whatever changes ne
 - Result: 31 site arenas + the 2 kept boards, all 12×12, = the online pool (33). Hell, Revenge, Bermuda still have no arena
   (they keep their 8×8 voxel Δ and stay out of PvP, as before). Facility boards (Training Room, Holo Sim) stay 8×8.
 
+### E8 follow-up 2 — THE ARENA SIZES: 9×9, 10×10, 11×11 + 5v5 (2026-10-17)
+mondo: "i would like to add 9x9, 10x10, and 11x11 maps ... an option to play 5v5, where each spawn zone is 2x3 and the cube spawns
+in the middle front or back ... for the 9x9 and 11x11 ... the middle nexus can be 3x3 ... The 10x10 is for 4v4 ... Make them the
+same way as the current 12x12s like a cutout of the exploration map".
+- data.js `HQ_ARENA_EXTRA_SIZES = [9, 10, 11]`, `HQ_ARENA_TEAM_BY_SIZE` (9 / 11 → 5v5, 10 / 12 → 4v4). Picks: HQ_ARENA_RULES
+  `picks9` / `picks10` / `picks11` (own `<ARENA PICKS N>` markers), same record as `picks`. Each registers as its own board
+  `<site>_<S>x<S>_delta` + an EW_MAP_META row wearing `sizeOf` (the site's 12) and `arenaSize`; `hqSiteId` strips the size;
+  `hqArenaSizesOf(site)` lists a site's cuts; `hqArenaPvpPool(team)` deals one team size (4: 10s + 12s, 5: 9s + 11s).
+- THE 5v5 HOUSE (`hqArenaHouse` / `hqArenaHouseTiles`): each side's zone is 2 rows × 3 at x (S-3)/2.., the Cube on the back-middle
+  (edge-row) tile, the 5 seats front-middle, front flanks, back flanks; the egress row in front (rows 2 / S-3, open, ≤ 1 level);
+  the 3×3 nexus at dead centre. The entry carries `house` (zones, cubes, nexusSize 3); map.js `_arenaHouse()` feeds
+  autoGenerateSpawnZones (the block instead of a row), _autoPlaceTowersIfNeeded (the Cube tiles) and _initNexusFromObjects
+  (zoneSize 3). 10×10 uses the 4v4 row (x 3..6, egress rows 1 / 8, 2×2 nexus 4..5). The Cube could sit front-middle instead
+  (swap `cubes` and the back-middle seat in hqArenaHouseTiles).
+- bake-arenas.js `--size N` (caps scaled by area: hqArenaCaps; `--json` / `--apply` to bake sizes in parallel, ~3 min each).
+  Result: 31 at 9×9, 30 at 10×10 (no Heaven), 26 at 11×11 (no Heaven, Olympus, Fairy Forest, Agartha, Haunted House): their
+  rooms have no window of that size whose house tiles are all open floor. Göbekli Tepe + the Looking-Glass (kept, hand-authored)
+  stay 12 only. All 87 extra boards build in ~11 ms at load.
+- Picks: the squad desk's 4v4 / 5v5 switch (map.js `SQ_DEPLOY`, localStorage `ew_sq_team`); VS CPU's terminal lists each site
+  once with a BOARD SIZE chip row (match-select.js `sizesFor` / `resolveIdx`); the friendly room has MAP (site) + BOARD SIZE
+  selects (online.js `_friendlyRefreshMaps`); Quick Play queues the squad's size (server.js `queue-join` 4 | 5, `pickRandomMap`
+  by team). A guest whose squad is short of the room's size cannot lock in (online.js `_ewSquadAutoLock`).
+
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
 R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls

@@ -707,21 +707,6 @@ function elemPressTier(aff) {
     return 0;
 }
 
-const FACTION_BONUSES = {
-    space: {
-        label: 'Space Alignment',
-        armorBonus: 8
-    },
-    time: {
-        label: 'Time Alignment',
-        healBonus: 32
-    },
-    chaos: {
-        label: 'Chaos Alignment',
-        atkBonus: 12
-    }
-};
-
 /* ──────────────────────────────────────────────────────────────────────────
  * EW_TERRAIN_COLORS — simplified, semi-transparent overhead colors for EVERY
  * terrain type in the editor (ME_TERRAIN_IDS in map.js). This is the single
@@ -2445,7 +2430,6 @@ const OBJECT_RULES = {
    jobs carried). */
 const DEFAULT_IDENTITY = {
     race: 'homosapien',
-    faction: 'space',
     types: ['human'],
     gender: 'other',
     zodiac: 'sagittarius',
@@ -2457,360 +2441,289 @@ const DEFAULT_IDENTITY = {
 const RACE_PROFILES = {
     homosapien: {
         label: 'Homosapien',
-        faction: 'space',
         types: ['human']
     },
     pirate: {
         label: 'Pirate',
-        faction: 'chaos',
         types: ['human']
     },
     swordfighter: {
         label: 'Swordfighter',
-        faction: 'time',
         types: ['human']
     },
     giant: {
         label: 'Giant',
-        faction: 'time',
         types: ['human']
     },
     fairy: {
         label: 'Fairy',
-        faction: 'chaos',
         types: ['anomaly']
     },
     martian: {
         label: 'Martian',
-        faction: 'space',
         types: ['alien']
     },
     nordic: {
         label: 'Nordic',
-        faction: 'time',
         types: ['alien']
     },
     grey: {
         label: 'Grey',
-        faction: 'chaos',
         types: ['alien']
     },
     bigfoot: {
         label: 'Bigfoot',
-        faction: 'space',
         types: ['anomaly']
     },
     'shadow entity': {
         label: 'Shadow Entity',
-        faction: 'time',
         types: ['anomaly']
     },
     reptilian: {
         label: 'Reptilian',
-        faction: 'chaos',
         types: ['anomaly']
     },
     ai: {
         label: 'AI',
-        faction: 'space',
         types: ['tech']
     },
     robot: {
         label: 'Robot',
-        faction: 'space',
         types: ['tech']
     },
     android: {
         label: 'Android',
-        faction: 'space',
         types: ['tech']
     },
     angel: {
         label: 'Angel',
-        faction: 'time',
         types: ['divine']
     },
     seraphim: {
         label: 'Seraphim',
-        faction: 'time',
         types: ['divine']
     },
     'orb of light': {
         label: 'Orb of Light',
-        faction: 'time',
         types: ['divine']
     },
     demon: {
         label: 'Demon',
-        faction: 'chaos',
         types: ['unholy']
     },
     succubus: {
         label: 'Succubus',
-        faction: 'chaos',
         types: ['unholy']
     },
     skeleton: {
         label: 'Skeleton',
-        faction: 'chaos',
         types: ['unholy']
     },
     mech: {
         label: 'Mech',
-        faction: 'space',
         types: ['human', 'tech']
     },
     ghost: {
         label: 'Ghost',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     zombie: {
         label: 'Zombie',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     annunaki: {
         label: 'Annunaki',
-        faction: 'space',
         types: ['human', 'alien']
     },
     skinwalker: {
         label: 'Skinwalker',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     werewolf: {
         label: 'Werewolf',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     gargoyle: {
         label: 'Gargoyle',
-        faction: 'space',
         types: ['unholy']
     },
     djinn: {
         label: 'Djinn',
-        faction: 'time',
         types: ['divine']
     },
     anubis: {
         label: 'Anubis',
-        faction: 'time',
         types: ['divine', 'unholy']
     },
     catgirl: {
         label: 'Catgirl',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     mantid: {
         label: 'Mantid',
-        faction: 'time',
         types: ['alien']
     },
     antperson: {
         label: 'Antperson',
-        faction: 'space',
         types: ['alien', 'anomaly']
     },
     mothman: {
         label: 'Mothman',
-        faction: 'time',
         types: ['anomaly']
     },
     siren: {
         label: 'Siren',
-        faction: 'space',
         types: ['unholy']
     },
     scarecrow: {
         label: 'Scarecrow',
-        faction: 'chaos',
         types: ['unholy']
     },
     glitch: {
         label: 'Glitch',
-        faction: 'space',
         types: ['tech', 'anomaly']
     },
     'machine elves': {
         label: 'Machine Elves',
-        faction: 'chaos',
         types: ['alien', 'tech']
     },
     cyclops: {
         label: 'Cyclops',
-        faction: 'time',
         types: ['anomaly']
     },
     cyborg: {
         label: 'Cyborg',
-        faction: 'space',
         types: ['tech']
     },
     'demon prince': {
         label: 'Demon Prince',
-        faction: 'chaos',
         types: ['unholy']
     },
     'demon princess': {
         label: 'Demon Princess',
-        faction: 'chaos',
         types: ['unholy']
     },
     dreameater: {
         label: 'Dreameater',
-        faction: 'time',
         types: ['alien']
     },
     'fallen angel': {
         label: 'Fallen Angel',
-        faction: 'chaos',
         types: ['divine', 'unholy']
     },
     goatman: {
         label: 'Goatman',
-        faction: 'chaos',
         types: ['anomaly', 'unholy']
     },
     halfdemon: {
         label: 'Halfdemon',
-        faction: 'chaos',
         types: ['unholy', 'human']
     },
     mermaid: {
         label: 'Mermaid',
-        faction: 'time',
         types: ['anomaly']
     },
     nephilim: {
         label: 'Nephilim',
-        faction: 'time',
         types: ['divine', 'human']
     },
     vampire: {
         label: 'Vampire',
-        faction: 'chaos',
         types: ['unholy']
     },
     voidweaver: {
         label: 'Voidweaver',
-        faction: 'space',
         types: ['alien']
     },
     'cosmic wraith': {
         label: 'Cosmic Wraith',
-        faction: 'space',
         types: ['alien', 'tech']
     },
     superhero: {
         label: 'Superhero',
-        faction: 'space',
         types: ['human', 'alien']
     },
     'general': {
         label: 'General',
-        faction: 'time',
         types: ['human']
     },
     'droid': {
         label: 'Droid',
-        faction: 'space',
         types: ['tech']
     },
     'antihero': {
         label: 'Antihero',
-        faction: 'space',
         types: ['human', 'alien']
     },
     'conspiracy theorist': {
         label: 'Conspiracy Theorist',
-        faction: 'time',
         types: ['human']
     },
     'overlord': {
         label: 'Overlord',
-        faction: 'chaos',
         types: ['unholy']
     },
     'chosen one': {
         label: 'Chosen One',
-        faction: 'time',
         types: ['unholy', 'divine']
     },
     'politician': {
         label: 'Politician',
-        faction: 'time',
         types: ['human']
     },
     'atlantean': {
         label: 'Atlantean',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     'dinosaur': {
         label: 'Dinosaur',
-        faction: 'space',
         types: ['anomaly']
     },
     'dragon': {
         label: 'Dragon',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'ghoul': {
         label: 'Ghoul',
-        faction: 'chaos',
         types: ['unholy']
     },
     'gnome': {
         label: 'Gnome',
-        faction: 'time',
         types: ['anomaly']
     },
     'kaiju': {
         label: 'Kaiju',
-        faction: 'chaos',
         types: ['unholy', 'tech']
     },
     'kraken': {
         label: 'Kraken',
-        faction: 'space',
         types: ['anomaly']
     },
     'loch ness monster': {
         label: 'Loch Ness Monster',
-        faction: 'space',
         types: ['anomaly']
     },
     'yeti': {
         label: 'Yeti',
-        faction: 'time',
         types: ['anomaly']
     },
 
     'knight': {
         label: 'Knight',
-        faction: 'time',
         types: ['human', 'divine']
     },
     'shaman': {
         label: 'Shaman',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     'mad scientist': {
         label: 'Mad Scientist',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'cowboy': {
         label: 'Cowboy',
         labelMale: 'Cowboy',
         labelFemale: 'Cowgirl',
-        faction: 'space',
         types: ['human']
     },
     'men in black': {
@@ -2819,17 +2732,14 @@ const RACE_PROFILES = {
         // A woman can't very well be a Man in Black — she's an Intel Spy.
         // (Portrait art file is still named "glowie" on R2 — path only.)
         labelFemale: 'Intel Spy',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'telepath': {
         label: 'Telepath',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     'marksman': {
         label: 'Marksman',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'priest': {
@@ -2838,7 +2748,6 @@ const RACE_PROFILES = {
         /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.20): the Nun is her own
            race now (below) — the priest's female form is the Priestess. */
         labelFemale: 'Priestess',
-        faction: 'time',
         types: ['human', 'divine']
     },
     /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20): the two new
@@ -2847,22 +2756,19 @@ const RACE_PROFILES = {
        female whitemage assets the priest's female form used to. */
     'gangster': {
         label: 'Gangster',
-        faction: 'space',
         types: ['human']
     },
     'nun': {
         label: 'Nun',
-        faction: 'time',
         types: ['human', 'divine']
     },
     /* THE DOOR AGENT (2026-09-14, DOOR_RACE_DESIGN.md): the Department's own
        officers as a race — a control skirmisher built on DOORS (a placeable
        pair of tiles: a private teleporter that toggles into a wall). The
        jobs are the officer's training; the race is the doors. Types human +
-       anomaly (people who work at right angles), faction TIME (D5). */
+       anomaly (people who work at right angles) (D5). */
     'door agent': {
         label: 'DOOR Agent',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     /* THE 2026-09-21 BATCH (the user's three Meshy rigs): the POLICE OFFICER
@@ -2873,247 +2779,201 @@ const RACE_PROFILES = {
        models (sprites.js DOOR_CAST_MODELS cult1–5), never a race. */
     'police officer': {
         label: 'Police Officer',
-        faction: 'time',
         types: ['human']
     },
     'jellyfish': {
         label: 'Jellyfish',
-        faction: 'chaos',
         types: ['anomaly', 'alien']
     },
     'cult leader': {
         label: 'Cult Leader',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     /* THE 2026-09-22 BATCH: the POPSTAR (the user's "a_blonde_popstar" rig) — human + anomaly (fame at
-       that scale is a field effect), faction SPACE (the tour goes everywhere). A Harbinger support built
+       that scale is a field effect). A Harbinger support built
        on the crowd: sonic hits, the encore, the spotlight, the stadium show. */
     'popstar': {
         label: 'Popstar',
-        faction: 'space',
         types: ['human', 'anomaly']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'starfish': {
         label: 'Starfish',
-        faction: 'time',
         types: ['anomaly']
     },
     'ringmaster': {
         label: 'Ringmaster',
-        faction: 'chaos',
         types: ['human']
     },
     'bee queen': {
         label: 'Bee Queen',
-        faction: 'chaos',
         types: ['alien', 'anomaly']
     },
     'professor': {
         label: 'Professor',
-        faction: 'time',
         types: ['human']
     },
     'deep sea fish': {
         label: 'Deep Sea Fish',
-        faction: 'space',
         types: ['alien', 'anomaly']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'clown': {
         label: 'Clown',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     'bunny girl': {
         label: 'Bunny Girl',
-        faction: 'space',
         types: ['human', 'anomaly']
     },
     'sharkman': {
         label: 'Sharkman',
-        faction: 'chaos',
         types: ['anomaly']
     },
     'crystal guardian': {
         label: 'Crystal Guardian',
-        faction: 'time',
         types: ['anomaly', 'divine']
     },
     'jack o lantern': {
         label: 'Jack-o\'-Lantern',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'sidekick': {
         label: 'Sidekick',
-        faction: 'space',
         types: ['human']
     },
     'mushroom girl': {
         label: 'Mushroom Girl',
-        faction: 'time',
         types: ['anomaly']
     },
     'tree person': {
         label: 'Tree Person',
-        faction: 'time',
         types: ['anomaly']
     },
     'sheriff': {
         label: 'Sheriff',
-        faction: 'time',
         types: ['human']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'astronaut': {
         label: 'Astronaut',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'krampus': {
         label: 'Krampus',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'rabbit': {
         label: 'Rabbit',
-        faction: 'time',
         types: ['anomaly']
     },
     'luchador': {
         label: 'Luchador',
-        faction: 'space',
         types: ['human']
     },
     'firefighter': {
         label: 'Firefighter',
-        faction: 'time',
         types: ['human']
     },
     'goblin': {
         label: 'Goblin',
-        faction: 'chaos',
         types: ['anomaly']
     },
     'hippie': {
         label: 'Hippie',
         labelMale: 'Hippie',
         labelFemale: 'Hippie',
-        faction: 'time',
         types: ['human']
     },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
         labelFemale: 'Witch',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     'fortune teller': {
         label: 'Fortune Teller',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
 
     'barbarella': {
         label: 'Barbarella',
-        faction: 'space',
         types: ['human', 'anomaly']
     },
     'black goo': {
         label: 'Black Goo',
-        faction: 'chaos',
         types: ['anomaly', 'unholy']
     },
     'golem': {
         label: 'Golem',
-        faction: 'time',
         types: ['human', 'divine']
     },
     'honda civic': {
         label: 'Sedan',
-        faction: 'space',
         types: ['tech']
     },
     'ice queen': {
         label: 'Ice Queen',
-        faction: 'time',
         types: ['divine', 'anomaly']
     },
     'juggernaut': {
         label: 'Juggernaut',
-        faction: 'chaos',
         types: ['unholy', 'human']
     },
     'ki fighter': {
         label: 'Ki Fighter',
         labelMale: 'Ki Fighter',
         labelFemale: 'Ki Fighter',
-        faction: 'time',
         types: ['human']
     },
     'king arthur': {
         label: 'King Arthur',
-        faction: 'time',
         types: ['human', 'divine']
     },
     'king kong': {
         label: 'King Kong',
-        faction: 'chaos',
         types: ['anomaly']
     },
     'minotaur': {
         label: 'Minotaur',
-        faction: 'chaos',
         types: ['unholy', 'human']
     },
     'necromancer': {
         label: 'Necromancer',
         labelMale: 'Necromancer',
         labelFemale: 'Necromancer',
-        faction: 'chaos',
         types: ['unholy']
     },
     'occulus': {
         label: 'Occulus',
-        faction: 'time',
         types: ['anomaly', 'divine']
     },
     'quarterback': {
         label: 'Quarterback',
-        faction: 'space',
         types: ['human']
     },
     'robinhood': {
         label: 'Robin Hood',
-        faction: 'time',
         types: ['human']
     },
     'santa clause': {
         label: 'Santa Clause',
-        faction: 'time',
         types: ['divine', 'anomaly']
     },
     'super sentai': {
         label: 'Super Sentai',
-        faction: 'space',
         types: ['tech', 'human']
     },
     'symbiote': {
         label: 'Symbiote',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'valkraye': {
         label: 'Valkraye',
-        faction: 'time',
         types: ['divine']
     },
     'watcher': {
         label: 'The Watcher',
-        faction: 'time',
         types: ['divine', 'anomaly']
     }
 };
@@ -3841,26 +3701,31 @@ function zodiacNatalDelta(sign, key) {
     return Number.isFinite(v) ? Math.round(v) : 0;
 }
 
+/* THE CELESTIAL EVENTS (factions removed 2026-10-17, mondo): an event buffs the team that holds the MIDDLE nexus
+   (state.js getSkyEventHolder) for as long as it lasts and they hold it; a new event resets that zone to nobody.
+   Rolled at each round end from SKY_EVENT_START_ROUND on, SKY_EVENT_CHANCE when no event is up, lasting
+   SKY_EVENT_DURATION rounds. buff = the short line for banners; atkMult = that share of ATK on physical hits,
+   defMult = the whole physical soak, healMult = that share of every heal. */
 const SKY_EVENTS = {
     bloodMoon: {
         label: 'Blood Moon',
         icon: '🌑',
-        faction: 'chaos',
-        desc: 'Chaos units gain +10% ATK',
+        buff: '+10% ATK',
+        desc: 'The middle Nexus holder gains +10% ATK',
         atkMult: 1.10
     },
     solarEclipse: {
         label: 'Black Sun',
         icon: '🌘',
-        faction: 'time',
-        desc: 'Time units gain +15% healing',
+        buff: '+15% healing',
+        desc: 'The middle Nexus holder gains +15% healing',
         healMult: 1.15
     },
     lunarEclipse: {
         label: 'Lunar Eclipse',
         icon: '🌒',
-        faction: 'space',
-        desc: 'Space units gain +10% DEF',
+        buff: '+10% DEF',
+        desc: 'The middle Nexus holder gains +10% DEF',
         defMult: 1.10
     }
 };
@@ -14853,6 +14718,13 @@ _MF_BUILDERS.prebuilt_bermuda = function () {
    ═══════════════════════════════════════════════════════════════════════════ */
 const MF_DELTA_S = 8;
 const HQ_ARENA_SIZE = 12;   // the PvP arena a side (mondo 2026-10-06: "make all arena maps 12x12") — HQ_ARENA_RULES.size and the kept boards read it
+/* THE ARENA SIZES (mondo 2026-10-17: "i would like to add 9x9, 10x10, and 11x11 maps ... an option to play 5v5 ... for the 9x9 and
+   11x11 map to make it symmetrical ... The 10x10 is for 4v4"): every site with a 12×12 cut also gets a 9, a 10 and an 11 cut of
+   the same room (bake-arenas.js --size N, HQ_ARENA_RULES.picks9 / picks10 / picks11). The odd boards are 5v5 (hqArenaHouse: a 2×3
+   spawn zone each side, the Cube on its back-middle tile, the 5 on the other five, a 3×3 nexus at dead centre); 10 and 12 are 4v4
+   on the row of four. A size not named here is 4v4. */
+const HQ_ARENA_EXTRA_SIZES = [9, 10, 11];
+const HQ_ARENA_TEAM_BY_SIZE = { 9: 5, 10: 4, 11: 5, 12: 4 };
 const MF_DELTA_BASE_H = 5;
 const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
 /* MOVING MAPS (2026-09-12): a Δ may carry its OWN five-layer bed (cfg.strata
@@ -22913,7 +22785,7 @@ window.EWSpellMods = (function () {
 
    What a race row may carry (all sparse, absent = shipped):
      hp mp atk int def mdef spd vision crt → RACE_BASE_STATS[race]
-     label labelMale labelFemale faction types[] → RACE_PROFILES[race]
+     label labelMale labelFemale types[] → RACE_PROFILES[race]
      affinity {element: tier}         → RACE_ELEMENT_AFFINITY[race] (the whole row; {} = no affinities)
      terrain                          → RACE_TERRAIN_PREFERENCE[race] ('none' = no preference)
      role                             → RACE_CLASS[race]
@@ -22927,7 +22799,7 @@ const RACE_STAT_KEYS = ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'vision'
 /* VISION is tiles: every race sees 2 to 6 (mondo, 2026-10-09). The race editor clamps to it; RACE_STAT_RANGE is the one place the limits live. */
 const RACE_STAT_RANGE = { vision: [2, 6], crt: [0, 100] };
 if (typeof window !== 'undefined') window.RACE_STAT_RANGE = RACE_STAT_RANGE;
-const RACE_PROFILE_KEYS = ['label', 'labelMale', 'labelFemale', 'faction', 'types'];
+const RACE_PROFILE_KEYS = ['label', 'labelMale', 'labelFemale', 'types'];
 /* the stat text in STAT_HELP carries the bands; rewritten when the grades move */
 function statHelpRefreshGrades() {
     try {
@@ -23180,7 +23052,7 @@ window.EWRaceMods = (function () {
             build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
             instructions: 'Bake into data.js by hand (no script yet): races.<race>.{hp,mp,atk,int,def,mdef,spd,vision,crt} → RACE_BASE_STATS '
                 + '(BASE stats: level 100 = base + LEVEL_TOTAL_STAT_GAINS, HP/MP through LEVEL_CURVE; the grade reads the base); '
-                + 'label/labelMale/labelFemale/faction/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
+                + 'label/labelMale/labelFemale/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
                 + 'terrain → RACE_TERRAIN_PREFERENCE; role → RACE_CLASS; range → RACE_KITS; biomes → EW_RACE_BIOMES; '
                 + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS; '
                 + 'zodiac.<sign>.sky (percent while the sign rules the sky) / .natal (flat stats for units born under it) → ZODIAC_EFFECTS; '
@@ -41636,7 +41508,7 @@ function hqSiteId(mapId) {
     const s = String(mapId || '');
     /* THE FIELD (stage B): a synthetic `field:<roomId>:<ox>,<oz>` id is its ROOM'S site — the CPU pool, the Code Red response, the checklist and the stamp all read Hollow Earth for a fight in its cave */
     if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); const site = f ? hqRoomSite(f.room) : null; if (site) return site; }
-    const bare = s.replace(/_delta$/, '');
+    const bare = s.replace(/_delta$/, '').replace(/_(\d+)x\1$/, '');   // THE ARENA SIZES (2026-10-17): `<site>_9x9_delta` is the site's too
     /* THE AREA BOARDS (2026-09-19): `<roomId>_delta` — a complex part's own Δ — is its ROOM'S site (the CPU pool, the Code Red
        response, the checklist, the stamp, the site file all read the site the part belongs to) */
     if (bare.indexOf('site_') === 0 && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[bare] && DOOR_HQ.rooms[bare].site) { const site = hqSiteId(DOOR_HQ.rooms[bare].site); if (site) return site; }
@@ -51374,7 +51246,7 @@ function hqPortalSafeRoom(roomId) { return !hqRoomSite(roomId); }
    the day + the room (hqHash) so a room's crowd holds for a day. A facility
    room's pool is the OFFICER'S OWN ROSTER (the account's unlocked races, or the
    starters offline) — the hall is the whole department passing through; a city
-   part's pool is the three urban sites' residents + every TIME-faction race
+   part's pool is the three urban sites' residents
    (ordinary people on a street). The renderer (three-renderer.js "THE ROUNDS")
    walks every extra walker — and a spot native that draws `roam` — on a LOOP of
    stops (doors, counters, spots, free cells) at HQ_POPULATION_RULES.walkSpeed,
@@ -55004,24 +54876,167 @@ const HQ_ARENA_RULES = {
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":65,"oz":30,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515151501010101010101151515151501150303010101010101010101150303010101010101010115030303010101010101010102020303"},
     },
     /* </ARENA PICKS> */
+    /* THE ARENA SIZES (mondo 2026-10-17): the 9×9 / 10×10 / 11×11 cuts of the same sites — written by `node bake-arenas.js --size N`,
+       the same rules and the same record as `picks` (S×S pairs), the house tiles of that size (hqArenaHouse: 5v5 on 9 and 11) */
+    /* <ARENA PICKS 9> */
+    picks9: {
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"011121210101212101341101212121210101341111012121212121343411012121212121010111210121210101010121010121210101011101010121210101211101010121210101111101010121210101"},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":20,"oz":0,"base":"grass_2","open":1,"keys":["grass_2","dirt","rock_wall_1"],"cells":"010101010101010111010101010101010111010101010101010111020201010101010111020202010101010111020202010101010111242401010101010111010101010101010111111111111111111111"},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":39,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2"],"cells":"010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101"},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_stair","ox":0,"oz":19,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light"],"cells":"041204111111111111041212111111040404041111111111040404041111111111040404042111111111110404042111111111110404112121212111111104111111111121212121111111111111040411"},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":59,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010203010101010101011515010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":53,"oz":31,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101020303111111111101020203010101010101010101010101010101010101010101010101010101"},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":54,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020201010101010101020201010101010101020201010101010101"},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":7,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"030305010101010102010202010101010102010201010101010101010101010101010101010101010101010101010101010101011111010101010101111111010101010101111105010101010101111111"},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":39,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101010104010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101111101010101010101"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101010101010114010101010101010114010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":8,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101020101010101010101020101010101010101020202010101010101020202010101010101020202010101010101020201010101010101020101010101010101010101010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":16,"base":"marble_light","open":1,"keys":["water","marble_light"],"cells":"010111111111111111010101111111111111010101111111111111111111111111111211111111111111131211111111111111111211121212121212111111111111111111111211111111111111121111"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121110404211111212121110411211121112121111111211121111121111111211111211121111111112111112121212111111121111111111121111111212121112111111111111111"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":16,"base":"cave_floor","open":1,"keys":["cave_floor","cave_wall","crystal"],"cells":"010101010101010101141401212101010101140101212101010101210101212101012121212121212121212101012121212121011414212121212101011414010101212101010101010101212101010101"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"011111110101010101110101110101010101010101011101012401010101011101240124010101011111010111010101011111111101111111010111010124010101010111010101010101010111010124"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":20,"oz":12,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"010101010101010101140101010101010101010101010101010101010101010101020202010101010101020202010101010101020202010101010101020202010101010101010114010101010101010114"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":15,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111"},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"011111010101010101110111110101010101111111111101011111111111111111111111141401011111010101010101011111010101010114011111010101011414011111011414011414011111010101"},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101141401010101010101010101010101010101010101010101010101010101"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101030202010101010101030202010101011501010101010101011501010101010101011501010101010101151501"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101020202010101010101020101010101010101"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111121212010104111111121212010101011111121212010101011111121212010104111111121212010104111111121212010104111111111111"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212121012121212121210101010101010121212121"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121042111212121212121042111212121210404212111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101141414010101010101141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515010101010101151515010101010101010101010101010101010101010101010101010101"},
+    },
+    /* </ARENA PICKS 9> */
+    /* <ARENA PICKS 10> */
+    picks10: {
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101111111211111111111111111110101010101010101010134010101010101010101340101010101013434013401010101010101340101010101013401010101010101010101010101010101010101010101011111"},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":32,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101011111010101010101011111110401010101011111110101010101010111111101010101010111141101010101010101011104010101010101010101040101010101010101010104010101010101010101010101010101010101010101"},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":38,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2","bricks_1"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010124010101111101010124"},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":58,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010203010101010101010115150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":18,"oz":22,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010101010101010101010302020101111111111103030201010101010111010101010101010101010101010101010101010101020202020202020202010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":33,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101"},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010201010101010101010101010101010101010101010101010101010101010101010101011111110101010101011111111101010101010111110404010101010101111111110101010101010111111101010101010101010101"},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":19,"oz":1,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010404"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101011402010101010101010114020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011401010101010101010114140101010101011414"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101020101010101010101010202020101010101010102020201010101010101020202010101010101010202010101010101010102010101010101010101010101010101010101010103010101010101011602020201010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":20,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010302010101010101010101010101010101010101010101010101010101010102010101010101010102010101010101010102010101010101010102010101010101010102010101010101010101010101010115010101010101010101"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01111111110101012424010101010111111111110101012424111111111124240101110101111101012424110101111111110124011101110111111101010111011101011111010101110101110111110101010111010111111111110101011101010111"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":19,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"02020101010111010101020201010101110101011111010101011101012111110101010111012222111101011111111202021111111111011111212111111101343401110121111101013434011101011111010101010111010111110101010101111111"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"02011111010101010103021111110101010101021101011101010101010101010101110101250101010101011101250125010101010111110101111101010101111111110125111111010111010125010101010101110101010101010101011101012531"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111041111111111111111111212111111111111111112040411111111111111121211111111111111111211111111111111121211111111111111111212111111111111111112122111111111111111121221111111111111111111"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101011414010101010101010114140101010101010101141401010101010101011414010101010101010101010101010101010101141414140101141414141414141401011414141414140101010101010101010101010101010101010101"},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01111101010101010101110111110101010101011111111111010111111111111111111111111111141401011111010101010101010111110101010101011401111101010101011414011111011414140114140111110101011401010101111101010101"},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010301010101010101010103010101010101010101020101010101010101010101010101010101010101"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101151515010101010101010115150101010101010101151501010101010101011515150101010101010101010303020201010101010103030202010101011501030101010101010115010101010101010101150101010101010101151501"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101010101010101010101011111110101010202020202021201010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101140202020101010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":20,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011421212121212121010101010121212121212121010101010101012121212121212121010101212121212121210101012121212121212101012121212121212121010121212121212121210101212121212121212101012121141421212121010121"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111121204112111111111111212120421211111111112121204212111111111121212041121111111111212120411211111111112120411112121111111120411111121212121211211112121211121212111212121111111111111"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114141401010101010101141414010101010101011414140101010101010101010101010101010101010101010101010101010101010101010101010101010101010101012121"},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515150101010101011515151501010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+    },
+    /* </ARENA PICKS 10> */
+    /* <ARENA PICKS 11> */
+    picks11: {
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010134010101010101013434013401010101010101013401010101010101340101010101010101010101010101010101010101010101010111110101010101010101011121"},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101010111110101010101010101011111010101010101010111111101040101010101111111010401010101010111111101010101010101111411010101010101010101110401010101010101010101040101010101010101010101040101010101010101010101010101010101010101010101"},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":9,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"01011515010101010101010101010101010101010101012121212121212121010101211515010101212101010121151501010121210101012115150101012121010101211515010101212101010121151501010121212121012115150101010101010101211515010101010101010121151501010101010101"},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":57,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010102030101010101010101011515010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":18,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010103020201011111111111010303020101010101011101010101010101010101011101010101010101010101110102020202020202020212010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":51,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02020101010101010101010202010101010101010101020201010101010101010102020101010101010101010202010101010101010101020201010101010101010102020101010101010101010202010101010101010101020201010101010101010102020201010101010101010202020101010101010101"},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020101010101010101010101010101010101010101010101010101010101010101010101010101111111010101010101011111111101010101010101111104040101010101010111111111010101010101010111111101010101010101010101010101010101010101010101"},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":18,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010404"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101150202020101010101010115020203010101010101010101010201010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010115010101010101151515151501010101010115031503"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101010201010101010101010101020202010101010101010102020201010101010101010202020101010101010101020201010101010101010102010101010101010101010101010101010101010116010301010101010101161602020201010101010101160303020101010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010102010101010101010101030201010101010101010101020101020202020202020101010101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101010101010101011501010101010101010101"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":12,"base":"grass_rocky","open":1,"keys":["grass_2","dirt_2","grass_rocky"],"cells":"04041121211111111121110421112111211111112111212111211121211111211121211121211121111121112121211121211111111111112121211121212111112121112121211111111121211121212121212121111111212121212121212111112121212121212121211111212121212121212104111121"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":15,"oz":21,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01011111111111012424011111111111110101242401010101011111010101010101010101111101010101010101010111110101010101310101011111010101010131310101111101010101013101010111110101010101010101011111010101010101010101111101012424010101010111110101240101"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon","moon_3","moon_2"],"cells":"01010101010101010101010201010101010101010101141401010101010101010102010101010101010101010101010101010102020202010101010101010202020201010101010101020202020101010101010102020202010101010101010101141421010101010101010114142121010101010101010101"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140101010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414"},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":16,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01111111111111111111111101011111111111111111011101011111111111111101010101011111010101010101010101010101010101040411110101111111111111111111010111111111111111041101011111111104110404110101110404040411040411010111111104041111111101011111111104"},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111111111111111110404111111111111111111040411110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05051111111111111111110505111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105051111111111111111110505121211111105111111"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"05121212111111050505051111121111111105050505111111111111110505050505050505051105050505051111111111111105050505111111111111111105050511111111111111110505051111111111111111050505051111111111111111111113131212111111111111111313121211111111051111"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101020202011102020202010112120201110102020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101142121212121212114010101010121212121212121210101010101010121212121212121212101010101212121212121210101010121212121212121010121212121212121212101012121212121212121210101212121212121212121010121142114142121212101012114"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111111212041121111111111111121212042121111111111112121204212111111111111212120411211111111111121212041121111111110412120411112121111111041204111111212121212111121111212121112121212111212121111111111111112121111111111111111111"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":33,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010114141401010101010101011414140101010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":61,"oz":32,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011515151501010101010101151515150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+    },
+    /* </ARENA PICKS 11> */
 };
 /* the Δ's own layout of each site with an arena (the field layout of every other room of that site reads it — hqFieldLayout) */
 const _HQ_ARENA_SITE_LAYOUTS = {};
 function hqArenaSiteLayout(site) { return _HQ_ARENA_SITE_LAYOUTS[site] || null; }
 /* THE HOUSE TILES of an S × S board, centred: the four spawn columns x0..x1 (rows 0 / S-1, egress rows 1 / S-2) and the 2×2
-   nexus at n..n+1 (8: x 2..5, nexus 3..4 — the Δ's own; 12: x 4..7, nexus 5..6) */
+   nexus at n..n+1 (8: x 2..5, nexus 3..4 — the Δ's own; 12: x 4..7, nexus 5..6; 10: x 3..6, nexus 4..5).
+   5v5 (THE ARENA SIZES, 9 and 11 — HQ_ARENA_TEAM_BY_SIZE): `block` — each side's zone is 2 rows deep × 3 wide at x0..x1 (x0 =
+   (S-3)/2: 9 → 3..5, 11 → 4..6), the Cube on the zone's back-middle tile (the edge row), the 5 on the other five, the egress row in
+   front of the zone (rows 2 / S-3), the 3×3 nexus at n..n+2 (n = x0). */
+function hqArenaTeamFor(S) { return HQ_ARENA_TEAM_BY_SIZE[S | 0] || 4; }
 function hqArenaHouse(S) {
-    S = S | 0; const x0 = (S >> 1) - 2;
-    return { S, x0, x1: x0 + 3, n: (S >> 1) - 1 };
+    S = S | 0;
+    if (hqArenaTeamFor(S) === 5) { const c0 = (S - 3) >> 1; return { S, team: 5, block: true, x0: c0, x1: c0 + 2, n: c0, nz: 3 }; }
+    const x0 = (S >> 1) - 2;
+    return { S, team: 4, x0, x1: x0 + 3, n: (S >> 1) - 1, nz: 2 };
 }
-function hqArenaSpawns() {
-    const S = HQ_ARENA_RULES.size, HX = hqArenaHouse(S), p1 = [], p2 = [];
-    for (let i = 0; i < 4; i++) { p1.push({ x: HX.x0 + i, y: S - 1 }); p2.push({ x: HX.x0 + i, y: 0 }); }
-    return { 1: p1, 2: p2 };
+/* the house as tiles: `flat` (flat walkable floor, the zones + the Cube tile + the nexus — the 4v4 egress rows too), `egress`
+   (5v5 only: open, at most one level up), the zones, the Cubes (5v5: the back-middle tile; null = the engine seats them on the
+   egress row as before) — the bake (bake-arenas.js), the entry (hqArenaEntry) and the launch check (hqArenaUpgrade) read it */
+function hqArenaHouseTiles(S) {
+    const HX = hqArenaHouse(S), flat = [], egress = [], nexus = [];
+    for (let dy = 0; dy < HX.nz; dy++) for (let dx = 0; dx < HX.nz; dx++) nexus.push([HX.n + dx, HX.n + dy]);
+    if (!HX.block) {
+        for (let x = HX.x0; x <= HX.x1; x++) flat.push([x, 0], [x, 1], [x, S - 2], [x, S - 1]);
+        const z1 = [], z2 = [];
+        for (let i = 0; i < 4; i++) { z1.push({ x: HX.x0 + i, y: S - 1 }); z2.push({ x: HX.x0 + i, y: 0 }); }
+        return { HX, flat: flat.concat(nexus), egress, nexus, zones: { 1: z1, 2: z2 }, cubes: null };
+    }
+    const m = HX.x0 + 1, L = HX.x0, R = HX.x1;
+    for (let x = L; x <= R; x++) { flat.push([x, 0], [x, 1], [x, S - 2], [x, S - 1]); egress.push([x, 2], [x, S - 3]); }
+    /* the order is the seat order (unit 0 first): the front row's middle, its flanks, then the back row's two either side of the Cube */
+    const z1 = [{ x: m, y: S - 2 }, { x: L, y: S - 2 }, { x: R, y: S - 2 }, { x: L, y: S - 1 }, { x: R, y: S - 1 }];
+    const z2 = z1.map(p => ({ x: S - 1 - p.x, y: S - 1 - p.y }));   // the 180° twin
+    return { HX, flat: flat.concat(nexus), egress, nexus, zones: { 1: z1, 2: z2 }, cubes: { 1: { x: m, y: S - 1 }, 2: { x: S - 1 - m, y: 0 } } };
+}
+function hqArenaSpawns(S) {
+    const Z = hqArenaHouseTiles(S || HQ_ARENA_RULES.size).zones;
+    return { 1: Z[1].map(p => ({ x: p.x, y: p.y })), 2: Z[2].map(p => ({ x: p.x, y: p.y })) };
+}
+/* the baked picks of a board size (12 = `picks`, else `picks<S>`) */
+function hqArenaPicks(S) { S = S | 0; return (S === (HQ_ARENA_RULES.size | 0) ? HQ_ARENA_RULES.picks : HQ_ARENA_RULES['picks' + S]) || {}; }
+/* a size variant's map id: `<site>_<S>x<S>_delta` (it ends in _delta like every arena, so every Δ reader takes it; hqSiteId strips
+   the size) — the 12 keeps `<site>_delta` */
+function hqArenaSizedId(site, S) { S = S | 0; return (S === (HQ_ARENA_RULES.size | 0)) ? site + '_delta' : site + '_' + S + 'x' + S + '_delta'; }
+/* the sizes a site's arena comes in, smallest first: [{ S, team, id }] (the 12 included when it is an arena or a kept board) */
+function hqArenaSizesOf(siteOrId) {
+    if (typeof PREBUILT_MAPS === 'undefined' || !PREBUILT_MAPS) return [];
+    const site = hqSiteId(siteOrId), out = [];
+    const sizes = HQ_ARENA_EXTRA_SIZES.concat([HQ_ARENA_RULES.size | 0]).sort((a, b) => a - b);
+    sizes.forEach(S => {
+        const id = hqArenaSizedId(site, S), e = PREBUILT_MAPS[id];
+        if (!e || (e.w | 0) !== S || !(e.arena || (HQ_ARENA_RULES.keep || []).includes(site))) return;
+        out.push({ S, team: hqArenaTeamFor(S), id });
+    });
+    return out;
 }
 /* the baked cells → rows of { key, tile } */
-function hqArenaCells(pick) {
-    const S = HQ_ARENA_RULES.size, keys = (pick && pick.keys) || [], s = String((pick && pick.cells) || '');
+function hqArenaCells(pick, S) {
+    S = (S | 0) || HQ_ARENA_RULES.size;
+    const keys = (pick && pick.keys) || [], s = String((pick && pick.cells) || '');
     if (s.length !== S * S * 2) return null;
     const rows = [];
     for (let y = 0; y < S; y++) {
@@ -55031,10 +55046,13 @@ function hqArenaCells(pick) {
     }
     return rows;
 }
-/* the map entry: the Δ's frame (the bed, the base height, 4v4 on the Δ's spawn rows, the centre nexus) over the room's cells */
-function hqArenaEntry(site, pick, cells, tints) {
+/* the map entry: the Δ's frame (the bed, the base height, 4v4 on the Δ's spawn rows, the centre nexus) over the room's cells.
+   S = the board's side (THE ARENA SIZES: the cells' own count; 12 when not given). A 5v5 board carries `house` — its zones, its
+   Cubes and its 3×3 nexus — which map.js reads at the launch (autoGenerateSpawnZones, _autoPlaceTowersIfNeeded, _initNexusFromObjects). */
+function hqArenaEntry(site, pick, cells, tints, S) {
     if (!cells || typeof _mfNew !== 'function') return null;
-    const S = HQ_ARENA_RULES.size, B = HQ_FIELD_RULES.base;
+    S = (S | 0) || cells.length || HQ_ARENA_RULES.size;
+    const B = HQ_FIELD_RULES.base;
     const room = (DOOR_HQ.rooms || {})[pick.room] || {};
     const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
     const label = ((meta && meta.label) || site) + ' ' + HQ_ARENA_RULES.label;
@@ -55044,11 +55062,13 @@ function hqArenaEntry(site, pick, cells, tints) {
     });
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
     hqFieldStampDecks(M, cells, B);   // THE TWO FLOORS: the live raster's decks (the baked cells carry none)
-    const sp = hqArenaSpawns();
+    const HT = hqArenaHouseTiles(S), sp = hqArenaSpawns(S);
     M.spawns(sp[1], sp[2]);
-    M.obj(hqArenaHouse(S).n, hqArenaHouse(S).n, 'nexus');   // the centre nexus: Arena stamps the 2×2 zone from it (map.js _initNexusFromObjects), every other mode strips it
+    M.obj(HT.HX.n, HT.HX.n, 'nexus');   // the centre nexus: Arena stamps the 2×2 (5v5: 3×3) zone from it (map.js _initNexusFromObjects), every other mode strips it
     const entry = M.finish();
     entry.isDelta = true;
+    if (HT.HX.block) entry.house = { team: 5, nexusSize: HT.HX.nz, zones: hqArenaSpawns(S), cubes: { 1: Object.assign({}, HT.cubes[1]), 2: Object.assign({}, HT.cubes[2]) },
+                                     cols: [HT.HX.x0, HT.HX.x1], egressRows: { 1: S - 3, 2: 2 } };
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
     entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
     entry.arena = { site, room: pick.room, ox: pick.ox | 0, oz: pick.oz | 0, open: !!pick.open };
@@ -55080,16 +55100,17 @@ function hqArenaUpgrade(mapId, opts) {
     if (!room) { e.arena.failed = true; return false; }
     if (room.terrain && !room._terrainInfo && !opts.compile) return false;
     let built = null, R = null;
-    const AS = HQ_ARENA_RULES.size, HX = hqArenaHouse(AS);
+    const AS = (e.w | 0) || HQ_ARENA_RULES.size, HT = hqArenaHouseTiles(AS);   // THE ARENA SIZES: the board's own side
     try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
-    const sp = hqArenaSpawns(), open = (c) => !!(c && c.in && !c.rock && !c.hazard);
+    const open = (c) => !!(c && c.in && !c.rock && !c.hazard), cap = HQ_ARENA_RULES;   // the 12×12 caps at every size: the bake judged the window (a small board's last pass takes them)
     let out = 0;
     if (R) R.cells.forEach(row => row.forEach(c => { if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));
-    const fits = !!(R && built && out <= Math.max(HQ_ARENA_RULES.obstacles, HQ_ARENA_RULES.wallMax)   // the walled cut's cap (the bake judged the window)
-        && sp[1].concat(sp[2], [{ x: HX.n, y: HX.n }, { x: HX.n + 1, y: HX.n }, { x: HX.n, y: HX.n + 1 }, { x: HX.n + 1, y: HX.n + 1 }]).every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
+    const zoneTiles = HT.zones[1].concat(HT.zones[2], HT.nexus.map(p => ({ x: p[0], y: p[1] })), HT.cubes ? [HT.cubes[1], HT.cubes[2]] : []);
+    const fits = !!(R && built && out <= Math.max(cap.obstacles, cap.wallMax)   // the walled cut's cap (the bake judged the window)
+        && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '' })));
-    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null);
+    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null, AS);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
     next.field = Object.assign({}, built.field, { id, arena: true });
@@ -55112,19 +55133,29 @@ function hqArenaRun(mapId) {
     const board = Object.assign({ N: f.S, W: f.W || f.S, H: f.H || f.S, C: f.C, x0: f.x0, z0: f.z0 }, f.cave ? { cave: true } : f.terrain ? { terrain: true } : { box: true });
     return { room: e.arena.room, field: { board }, fieldId: id, site: e.arena.site, arena: true };
 }
-/* AT LOAD: every baked pick replaces its site's Δ (the entry, the roster row); the Δ's layout is kept for the site's other rooms */
+/* the bake's caps at a board size: the 12×12 numbers (HQ_ARENA_RULES) scaled by the board's area (18 of 144 obstacles, 48 of 144 walls) */
+function hqArenaCaps(S) {
+    S = S | 0; const base = HQ_ARENA_RULES.size | 0, k = (S * S) / (base * base);
+    if (S === base) return { obstacles: HQ_ARENA_RULES.obstacles, wallMax: HQ_ARENA_RULES.wallMax };
+    return { obstacles: Math.round(HQ_ARENA_RULES.obstacles * k), wallMax: Math.round(HQ_ARENA_RULES.wallMax * k) };
+}
+/* AT LOAD: every baked pick replaces its site's Δ (the entry, the roster row); the Δ's layout is kept for the site's other rooms.
+   THE ARENA SIZES (2026-10-17): then every 9 / 10 / 11 pick registers as its own board `<site>_<S>x<S>_delta` — the site's Δ layout,
+   an EW_MAP_META row wearing `sizeOf` (the site's 12, so the console lists the site once and the SIZE field picks the cut), its own
+   team size (hqArenaTeamFor). The boards are small (≤ 121 cells, no voxels), so the whole set builds in a few ms. */
 (function hqArenaRegisterAll() {
-    const P = HQ_ARENA_RULES.picks || {};
     if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
+    const S12 = HQ_ARENA_RULES.size;
+    const P = HQ_ARENA_RULES.picks || {};
     Object.keys(P).forEach(site => {
         try {
             const pick = P[site], did = site + '_delta';
             if ((HQ_ARENA_RULES.keep || []).includes(site)) return;   // a kept site's Δ stands
             const old = PREBUILT_MAPS[did], row = EW_MAP_META.find(m => m.id === did);
             if (!old || !row || !pick || !(DOOR_HQ.rooms || {})[pick.room]) return;
-            const entry = hqArenaEntry(site, pick, hqArenaCells(pick), old.terrainTints || null);
+            const entry = hqArenaEntry(site, pick, hqArenaCells(pick, S12), old.terrainTints || null, S12);
             if (!entry) return;
-            const S = HQ_ARENA_RULES.size;
+            const S = S12;
             if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[did]) {
                 _HQ_ARENA_SITE_LAYOUTS[site] = MAP_LAYOUT_PRESETS[did];
                 /* the arena's own frame: the Δ's layout with the earth rows reaching the arena's last row (the Δ's stop at 7) */
@@ -55136,27 +55167,55 @@ function hqArenaRun(mapId) {
             const room = DOOR_HQ.rooms[pick.room];
             row.w = S; row.h = S;
             row.label = entry.name;
-            row.arena = true; row.room = pick.room;
-            row.desc = HQ_ARENA_RULES.size + '×' + HQ_ARENA_RULES.size + ' arena, ' + HQ_ARENA_RULES.teamSize + 'v' + HQ_ARENA_RULES.teamSize + ' — cut from ' + (room.label || pick.room);
+            row.arena = true; row.room = pick.room; row.arenaSize = S;
+            row.desc = S + '×' + S + ' arena, ' + HQ_ARENA_RULES.teamSize + 'v' + HQ_ARENA_RULES.teamSize + ' — cut from ' + (room.label || pick.room);
         } catch (err) { console.error('[ARENA] the pick failed — the Δ stands', site, err); }
+    });
+    HQ_ARENA_EXTRA_SIZES.forEach(S => {
+        const PS = HQ_ARENA_RULES['picks' + S] || {}, team = hqArenaTeamFor(S);
+        Object.keys(PS).forEach(site => {
+            try {
+                const pick = PS[site], base = site + '_delta', id = hqArenaSizedId(site, S);
+                const baseRow = EW_MAP_META.find(m => m.id === base), baseEntry = PREBUILT_MAPS[base];
+                if (!baseRow || !baseEntry || !pick || !(DOOR_HQ.rooms || {})[pick.room]) return;
+                const entry = hqArenaEntry(site, pick, hqArenaCells(pick, S), baseEntry.terrainTints || null, S);
+                if (!entry) return;
+                const siteMeta = EW_MAP_META.find(m => m.id === site);
+                entry.name = ((siteMeta && siteMeta.label) || site) + ' ' + HQ_ARENA_RULES.label + ' ' + S + '×' + S;
+                PREBUILT_MAPS[id] = entry;
+                const src = _HQ_ARENA_SITE_LAYOUTS[site] || (typeof MAP_LAYOUT_PRESETS !== 'undefined' ? MAP_LAYOUT_PRESETS[base] : null);
+                if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && src) {
+                    const L = Object.assign({}, src);
+                    L.sections = Object.assign({}, L.sections, { earth: Object.assign({}, (L.sections || {}).earth || { startRow: 0, label: 'Earth' }, { endRow: S - 1, baseTerrain: entry.base }) });
+                    MAP_LAYOUT_PRESETS[id] = L;
+                }
+                const room = DOOR_HQ.rooms[pick.room];
+                EW_MAP_META.push({ id, label: entry.name, w: S, h: S, teamSize: team, tier: baseRow.tier, biomes: baseRow.biomes, isDelta: true, base: entry.base, env: baseRow.env,
+                                   arena: true, room: pick.room, arenaSize: S, sizeOf: base,
+                                   desc: S + '×' + S + ' arena, ' + team + 'v' + team + ' — cut from ' + (room.label || pick.room) });
+            } catch (err) { console.error('[ARENA] the ' + S + '×' + S + ' pick failed', site, err); }
+        });
     });
 })();
 /* THE ONLINE PVP POOL (mondo 2026-10-06: "why is online pvp using the old voxel maps and not the new arena maps? why are they
    doing maps that are anything other than 8x8?"): online PvP (Quick Play's server draw and the friendly room's draw) deals ONLY
    these — every site whose `<site>_delta` became its arena, plus the kept sites' own boards (HQ_ARENA_RULES.keep), all HQ_ARENA_RULES.size a side (12×12 since 2026-10-06). Never a
    full launch map, an area part's Δ, a facility, or a site that still wears its old voxel Δ. server.js reads this at boot. */
-function hqArenaPvpPool() {
+function hqArenaPvpPool(teamSize) {
     if (typeof EW_MAP_META === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return [];
-    const S = HQ_ARENA_RULES.size, keep = HQ_ARENA_RULES.keep || [];
+    const S12 = HQ_ARENA_RULES.size, keep = HQ_ARENA_RULES.keep || [];
+    const sizes = HQ_ARENA_EXTRA_SIZES.concat([S12]);
     return EW_MAP_META.filter(m => {
         if (!m || !m.isDelta || m.area || m.facility) return false;
         const e = PREBUILT_MAPS[m.id];
-        if (!e || (e.w | 0) !== S || (e.h | 0) !== S) return false;
-        const site = String(m.id).replace(/_delta$/, '');
+        if (!e || (e.w | 0) !== (e.h | 0) || sizes.indexOf(e.w | 0) < 0) return false;
+        if (m.sizeOf ? (e.w | 0) === S12 : (e.w | 0) !== S12) return false;   // THE ARENA SIZES: the 12 is the site's own row, the rest are `sizeOf` rows
+        if (teamSize && hqArenaTeamFor(e.w) !== (teamSize | 0)) return false;   // a team size deals only its boards (4: the 10s + 12s, 5: the 9s + 11s)
+        const site = hqSiteId(m.id);
         return !!m.arena || keep.includes(site);
     }).map(m => m.id);
 }
-if (typeof window !== 'undefined') window.hqArenaPvpPool = hqArenaPvpPool;
+if (typeof window !== 'undefined') { window.hqArenaPvpPool = hqArenaPvpPool; window.hqArenaSizesOf = hqArenaSizesOf; window.hqArenaSizedId = hqArenaSizedId; window.hqArenaTeamFor = hqArenaTeamFor; }
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
    `state`, nothing relayed (RULE #2). This is the ONE table the rider reads
@@ -57811,7 +57870,7 @@ window.EWDataMods = (function () {
        tables (rooms, maps) belong to the map editor. g = the group in the list. */
     const T = [
         ['Battle', 'CONFIG', CONFIG], ['Battle', 'TYPE_CHART', TYPE_CHART], ['Battle', 'ELEMENT_AFFINITY_MULT', ELEMENT_AFFINITY_MULT],
-        ['Battle', 'FACTION_BONUSES', FACTION_BONUSES], ['Battle', 'STATUS_DEFS', STATUS_DEFS], ['Battle', 'PASSIVE_DEFS', PASSIVE_DEFS],
+        ['Battle', 'STATUS_DEFS', STATUS_DEFS], ['Battle', 'PASSIVE_DEFS', PASSIVE_DEFS],
         ['Battle', 'TERRAIN_RULES', TERRAIN_RULES], ['Battle', 'TERRAIN_PREFERENCE_BONUS', TERRAIN_PREFERENCE_BONUS], ['Battle', 'OBJECT_RULES', OBJECT_RULES],
         ['Battle', 'COMBO_REGISTRY', COMBO_REGISTRY], ['Battle', 'FINISHER_RULES', FINISHER_RULES], ['Battle', 'ENTROPY_STRIKE_TYPES', ENTROPY_STRIKE_TYPES],
         ['Battle', 'GUARD_RESTORE', GUARD_RESTORE], ['Battle', 'RESERVE_RULES', RESERVE_RULES], ['Battle', 'MANA_FORMULA', MANA_FORMULA],

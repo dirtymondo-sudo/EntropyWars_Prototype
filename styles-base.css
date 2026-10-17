@@ -1106,16 +1106,6 @@
         /* NEW PARTY BUILDER — Character Select Screen v2         */
         /* ═══════════════════════════════════════════════════════ */
 
-        /* ── Faction Colors ── */
-        :root {
-            --faction-space: 90, 169, 255;
-            --faction-time: 255, 200, 60;
-            --faction-chaos: 255, 90, 110;
-            --faction-space-glow: rgba(90, 169, 255, 0.5);
-            --faction-time-glow: rgba(255, 200, 60, 0.5);
-            --faction-chaos-glow: rgba(255, 90, 110, 0.5);
-        }
-
         /* ── Toolbar (top bar) — AAA Prematch ── */
 
         .bt-start {
@@ -1278,33 +1268,6 @@
         .roster-slot.selected {
             background: rgba(140, 140, 200, 0.05);
             border-left-color: var(--gold);
-        }
-
-        .roster-slot.faction-space {
-            border-left-color: rgba(var(--faction-space), 0.6);
-        }
-
-        .roster-slot.faction-time {
-            border-left-color: rgba(var(--faction-time), 0.6);
-        }
-
-        .roster-slot.faction-chaos {
-            border-left-color: rgba(var(--faction-chaos), 0.6);
-        }
-
-        .roster-slot.selected.faction-space {
-            border-left-color: rgb(var(--faction-space));
-            background: rgba(var(--faction-space), 0.08);
-        }
-
-        .roster-slot.selected.faction-time {
-            border-left-color: rgb(var(--faction-time));
-            background: rgba(var(--faction-time), 0.06);
-        }
-
-        .roster-slot.selected.faction-chaos {
-            border-left-color: rgb(var(--faction-chaos));
-            background: rgba(var(--faction-chaos), 0.08);
         }
 
         .roster-sprite-wrap {
@@ -3972,7 +3935,7 @@ body.diorama-3d .tile-underpass.jump::before {
     60%  { opacity: 1;    transform: rotate(-4deg) scale(0.94); }
     100% { opacity: 0.92; transform: rotate(-4deg) scale(1); }
 }
-/* Codex hero: the customs stamp sits beside the faction stamp. */
+/* Codex hero: the customs stamp. */
 .cdx-hero-topline .door-stamp { transform: rotate(-3deg) translateY(-1px); }
 .door-customs-line { font-size: 9px; letter-spacing: 1.5px; color: var(--muted, #8f88a8); }
 .door-customs-line b { color: #c9b98a; font-weight: 600; }
@@ -4861,12 +4824,11 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-ident b { font-family: 'Cormorant SC', serif; font-size: clamp(20px, 1.9vw, 28px); font-weight: 600; line-height: 1; color: #f1e9cf; text-shadow: 0 0 30px var(--pb-fc, var(--ph-gold)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pb-ident > span { font-size: 9px; letter-spacing: 0.16em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pb-ident-types { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
-.pb-ident-types em { font-style: normal; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; }
 /* THE WALL (ROSTER, Stage 4 — plan §5.4): the champ-select grid. Square
    tiles (--pb-r corners), the portrait full-bleed or the sprite standing
-   on the tile's floor, a faction ring on hover / active, the type dots,
-   the ★ and the 🔒. The filters are ROUND: six type discs, three faction
-   rings, the SORT / JOB pills open glass windows (.pb-menu-list). */
+   on the tile's floor, a ring on hover / active, the type dots,
+   the ★ and the 🔒. The filters are ROUND: six type discs,
+   the SORT / JOB pills open glass windows (.pb-menu-list). */
 .pb-wall-head { gap: 6px; }
 .pb-wall-count { font-size: 10px; letter-spacing: 0.1em; color: var(--ph-dim); white-space: nowrap; }
 .pb-wall-sub { margin-right: 4px; }
@@ -4884,9 +4846,9 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-type-disc.on { opacity: 1; background: var(--tc); color: #0a0908; box-shadow: 0 0 0 2px #000, 0 0 14px var(--tc); }
 .pb-type-disc.none { opacity: 0.22; cursor: default; }
 .pb-type-disc.none:hover { transform: none; }
-.pb-faction-ring { --fc: var(--ph-dim); height: 26px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--fc); background: rgba(0,0,0,0.45); color: var(--fc); font: inherit; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; opacity: 0.75; transition: opacity 0.12s, box-shadow 0.12s, background 0.12s; }
-.pb-faction-ring:hover { opacity: 1; }
-.pb-faction-ring.on { opacity: 1; background: color-mix(in srgb, var(--fc) 18%, transparent); box-shadow: 0 0 0 2px #000, 0 0 12px var(--fc); }
+.pb-ring-btn { --fc: var(--ph-dim); height: 26px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--fc); background: rgba(0,0,0,0.45); color: var(--fc); font: inherit; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; opacity: 0.75; transition: opacity 0.12s, box-shadow 0.12s, background 0.12s; }
+.pb-ring-btn:hover { opacity: 1; }
+.pb-ring-btn.on { opacity: 1; background: color-mix(in srgb, var(--fc) 18%, transparent); box-shadow: 0 0 0 2px #000, 0 0 12px var(--fc); }
 .pb-roster { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; padding: 8px 10px 12px; align-content: start; }
 .pb-rtile { --fc: var(--ph-gold); position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 4px 5px; border-radius: var(--pb-r); border: 1px solid var(--ph-line); background: rgba(0,0,0,0.35); cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s, background 0.12s; min-width: 0; }
 .pb-rtile:hover, .pb-rtile.hover { border-color: var(--fc); box-shadow: 0 0 0 1px var(--fc), 0 0 16px color-mix(in srgb, var(--fc) 45%, transparent); transform: translateY(-2px); background: color-mix(in srgb, var(--fc) 6%, rgba(0,0,0,0.4)); z-index: 1; }
@@ -6895,6 +6857,11 @@ body.diorama-3d .tile-underpass.jump::before {
 #squadDeskPage .sq-cta:hover:not(:disabled), #squadDeskPage .sq-cta:focus-visible { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-sel);
     box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45); transform: none; }
 #squadDeskPage .sq-ghost, #squadDeskPage .sq-cta { padding: 9px 24px 9px 28px; font-size: 1rem; }
+/* THE ARENA SIZES (2026-10-17): the 4v4 / 5v5 switch beside the commands (map.js _sqSetTeam) */
+#squadDeskPage .sq-team-size { display: inline-flex; gap: 4px; margin-right: 10px; }
+#squadDeskPage .sq-team-size .sq-size-btn { padding: 9px 14px; }
+#squadDeskPage .sq-team-size .sq-size-btn::before { display: none; }
+#squadDeskPage .sq-team-size .sq-size-btn.is-on { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-sel); }
 #squadDeskPage .sq-ghost::before, #squadDeskPage .sq-cta::before { content: '▸'; position: absolute; left: 10px; top: 50%; transform: translate(-4px, -52%); color: var(--hq-sel);
     font-size: 0.8rem; opacity: 0; transition: opacity .14s, transform .14s; }
 #squadDeskPage .sq-ghost:hover::before, #squadDeskPage .sq-ghost:focus-visible::before, #squadDeskPage .sq-cta:hover:not(:disabled)::before, #squadDeskPage .sq-cta.is-ready::before { opacity: 1; transform: translate(0, -52%); }
