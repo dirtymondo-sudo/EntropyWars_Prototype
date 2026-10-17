@@ -1501,3 +1501,13 @@ the gun can actually hit; a walled-off unit is skipped and the turret takes the 
   ability). Now it finds the spell in `_raceAbilities` too, lets every `_teleportLandingPhase` click through to doSpell,
   and an attack / spell / item click on a fogged tile logs "Out of sight — no one on your team can see that tile."
   Checked in a headless browser: P1 blinked onto a fogged lit tile and onto a seen one.
+
+## THE PRESS FOR EVERY DAMAGING CAST (2026-10-17)
+mondo: "i used infernal conscription on an enemy, it said it was super effective, but i didnt get my 2 ap refund."
+Cause: doSpell armed the press collector only for the kinds in `_PRESS_SPELL_KINDS` (damage, multiHit, ricochet,
+lifeDrain, tackle, line, linePush, splitBeam, aoe, barrage, cross, aoePull) plus damaging terrainCreate. Every damaging
+kind added later (pull, dash, displacement, teleport, skyDrop, skyThrow, skySlam, leapStrike, steal, utility,
+doorBreach, possess, pulseLattice, placeTrap on contact, damaging debuff rows) showed "It's super effective!" from
+applyDamageToUnit but never refunded. Fix: the arm check also takes any `spellDealsDamage(spell)` row except
+`delayed` (lands at round end). `_PRESS_SPELL_KINDS` itself is unchanged (it also decides which kinds end the turn).
+The CPU's press value (ai.js PRESS_KINDS) was left as is.
