@@ -107,20 +107,6 @@ if (!document.getElementById('pb-hover-css')) {
       transform: scale(0.97);
     }
 
-    /* Faction filter chips */
-    .pb-faction-chip {
-      transition: background 0.12s, border-color 0.12s, color 0.12s,
-                  box-shadow 0.12s, transform 0.1s !important;
-    }
-    .pb-faction-chip:hover {
-      border-color: rgba(255,255,255,0.4) !important;
-      box-shadow: 0 0 8px rgba(255,255,255,0.06);
-      filter: brightness(1.2);
-    }
-    .pb-faction-chip:active {
-      transform: scale(0.95);
-    }
-
     /* Rich spell tooltip */
     @keyframes pbTipIn {
       from { opacity: 0; transform: translateY(5px); }
@@ -421,8 +407,8 @@ if (!document.getElementById('pb-hover-css')) {
 }
 
 /* Black/minimal chrome — same dialect as the title screen / main menu /
-   loading screen: pure black, white text, white hairline borders. Faction
-   colors (space/time/chaos) and type colors are game CONTENT and stay
+   loading screen: pure black, white text, white hairline borders. Type
+   colors are game CONTENT and stay
    colored; only the panel/border/background chrome is neutralized. */
 const EW = {
   bg: '#000000', bg2: '#050505', bg3: '#0a0a0a',
@@ -458,7 +444,6 @@ if (typeof window !== 'undefined') window.PB_TABS = PB_TABS;
    styles-base.css "THE FORGE TERMINAL". */
 const PB_STAGE_CX = 0.575;
 
-const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
 // the wall's six type discs (Stage 4): a two-letter glyph per damage type
 const PB_TYPE_GLYPH = { human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' };
@@ -481,9 +466,7 @@ const PB_STAT_LOOK = {
   CRT:  { c: '#ff4fa3', g: '✧' },   // ✧
   EVA:  { c: '#58d858', g: '↯' },   // ↯
 };
-/* ── Stage 5: THE STICKY NOTES — paper colour per faction (pink / yellow /
-   cream, plan §5.5 item 1); the rotation is seeded by the race id. ── */
-const PB_NOTE_PAPER = { chaos: 'pink', time: 'yellow', space: 'cream' };
+/* ── Stage 5: THE STICKY NOTES — yellow paper (plan §5.5 item 1); the rotation is seeded by the race id. ── */
 /* ── Stage 5: THE ZODIAC WHEEL — what a sign DOES in the engine. The sky
    cycles through the twelve signs (data.js ZODIAC_CYCLE, five rounds each,
    a random offset per match); while a unit's own sign rules the sky its
@@ -558,7 +541,7 @@ const CODEX_LORE = {
   'giant': 'Bipedal humanoid of extraordinary proportions (est. 3\u20134m height). First documented in [REDACTED] region during Operation \u2588\u2588\u2588\u2588\u2588\u2588. Subjects display extreme physical resilience but reduced cognitive processing speed. Skeletal density measurements exceed titanium alloy benchmarks. Recommended engagement protocol: avoid direct confrontation.',
   'fairy': 'Micro-scale anomalous entity (12\u201318cm wingspread). Capable of sustained atmospheric flight via mechanisms that violate known aerodynamic models. Generates localized reality distortion fields. Despite diminutive frame, psionic output rivals entities 40x its mass. Handle with extreme caution \u2014 containment breaches have resulted in [REDACTED].',
   'martian': 'Extraterrestrial humanoid recovered from crash site at [REDACTED]. Exhibits cranial elongation consistent with enhanced spatial reasoning. Possesses natural affinity for energy weapon discharge. Cultural artifacts suggest a militaristic civilization with advanced ballistic technology. Subject displays aggression when separated from weaponry.',
-  'nordic': 'Tall humanoid entity (est. 2.1m) of apparently Scandinavian phenotype. First contact during Project \u2588\u2588\u2588\u2588\u2588\u2588 (1952). Exhibits enhanced longevity, telepathic capability, and advanced technological comprehension. Demeanor consistently described as "benevolent" \u2014 recommend skepticism. Faction alignment with temporal anomalies remains under investigation.',
+  'nordic': 'Tall humanoid entity (est. 2.1m) of apparently Scandinavian phenotype. First contact during Project \u2588\u2588\u2588\u2588\u2588\u2588 (1952). Exhibits enhanced longevity, telepathic capability, and advanced technological comprehension. Demeanor consistently described as "benevolent" \u2014 recommend skepticism.',
   'grey': 'Small-statured extraterrestrial (est. 1.2m) with disproportionately large cranium and ocular organs. Primary species involved in civilian abduction events. Psionic capability rating: EXTREME. Known to operate in coordinated telepathic networks. Recovered craft suggest mastery of gravitational manipulation. Do not make sustained eye contact.',
   'bigfoot': 'Large bipedal cryptid (est. 2.4m, 180kg). Primarily documented in Pacific Northwest regions. Exhibits extraordinary stealth capability despite massive frame. Thermal imaging consistently fails to detect subjects \u2014 possible IR-masking biological adaptation. Territorial but non-hostile unless provoked.',
   'shadow entity': 'Non-corporeal anomalous entity capable of existing within shadow-state. Manifests as humanoid silhouette with variable opacity. Can phase through solid matter and exists partially in adjacent dimensional layers. Fastest documented entity in combat scenarios. Origins remain classified.',
@@ -680,7 +663,7 @@ const CODEX_LORE = {
 };
 
 function getSt() { return (typeof state !== 'undefined') ? state : window.state; }
-function getFactionColor(faction) { return FACTION_C[faction] || EW.time; }
+const PB_ACCENT = EW.time;   // the one unit accent (the factions went 2026-10-17)
 function getTypeColor(type) { return TYPE_C[type] || EW.human; }
 function _grl(race, gender) { return typeof window.getRaceLabel === 'function' ? window.getRaceLabel(race, gender) : (window.RACE_PROFILES?.[race]?.label || race || '?'); }
 function getSpriteUrl(race, gender, cls) {
@@ -780,7 +763,7 @@ function getCodexLore(race) { return CODEX_LORE[race] || window.RACE_PROFILES?.[
 
 function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
-  return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${getFactionColor(glow)})` : undefined, ...extraStyle }});
+  return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${PB_ACCENT})` : undefined, ...extraStyle }});
 }
 /* Party-rail slot art: the 128×128 character portrait when the vessel has
    one (sprites.js RACE_PORTRAITS), full-bleed like a champ-select card;
@@ -793,7 +776,7 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
     width: '100%', height: '100%',
     backgroundImage: `url('${pUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center',
     imageRendering: 'pixelated',
-    filter: glow ? `drop-shadow(0 0 8px ${getFactionColor(glow)})` : undefined,
+    filter: glow ? `drop-shadow(0 0 8px ${PB_ACCENT})` : undefined,
     ...extraStyle,
   }});
 }
@@ -1029,9 +1012,9 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
    the vessel's rigged GLB with its retargeted idle, drag to orbit,
    wheel to zoom, double-click to reset. The flat sprite renders only
    for sprite-only vessels (never as a loading frame). */
-function HeroViewer3D({ race, gender, cls, faction, focus, appearance }) {
+function HeroViewer3D({ race, gender, cls, focus, appearance }) {
   const hostRef = React.useRef(null);
-  const accent = getFactionColor(faction);
+  const accent = PB_ACCENT;
   const supported = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports(race, gender));
   React.useEffect(() => {
     const host = hostRef.current;
@@ -1059,7 +1042,7 @@ function HeroViewer3D({ race, gender, cls, faction, focus, appearance }) {
     // NO STAND-INS (2026-10-05): a 3D vessel shows nothing until its model is live; the flat sheet is only
     // the art of a sprite-only vessel (no loading frame under the model any more)
     supported ? null : h('div', { className: 'pb-hero3d-fallback' },
-      h(Sprite, { race, gender, cls, size: '100%', glow: faction, style: { width: '100%', height: '97%' } })),
+      h(Sprite, { race, gender, cls, size: '100%', glow: true, style: { width: '100%', height: '97%' } })),
     supported ? h('div', { className: 'pb-hero3d-hint' }, '⟲ DRAG · ⌕ SCROLL · ✕2 RESET') : null);
 }
 function TypeChip({ type, size }) {
@@ -1447,7 +1430,7 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
 
 /* Node color = what the spell DOES, same coding as the in-battle action
    menu (_HRLG_CAT in hud.js): red damage, green heal, blue buff, purple
-   debuff, gold utility. Faction/branch identity lives only in the pillar
+   debuff, gold utility. Branch identity lives only in the pillar
    header labels — never on the nodes. */
 const TREE_CAT_C = { damage:'#ff5f5f', heal:'#58d858', buff:'#5cb2ff', debuff:'#a06bff', utility:'#f0d060' };
 // In-chip glyph = the same category ICON the battle action menu uses
@@ -2220,7 +2203,7 @@ function pbUnitNotes(identity, cls, equipment, spellIds) {
   const race = identity.race || '';
   // THE PASSIVES (Phase 4): the equipped passive / gear rows show as notes beside the race's inherent ones
   const passiveRows = (spellIds || []).filter(id => id && typeof window.spellIsPassive === 'function' && window.spellIsPassive(id));
-  const pseudo = { race, gender: identity.gender || 'male', cls, types: identity.types || [], faction: identity.faction,
+  const pseudo = { race, gender: identity.gender || 'male', cls, types: identity.types || [],
     zodiac: identity.zodiac, status: {}, equipment: equipment || {}, passiveRows };
   let passives = [];
   try { passives = (typeof window.getUnitPassives === 'function') ? (window.getUnitPassives(pseudo) || []) : []; } catch (e) { passives = []; }
@@ -2403,7 +2386,6 @@ function PartyBuilder(props) {
   const [slot, setSlot] = React.useState(() => st.builderSelectedSlot || 0);
   const [sortKey, setSortKey] = React.useState('HP');
   const [sortDir, setSortDir] = React.useState('desc');
-  const [factionFilter, setFactionFilter] = React.useState(null);
   const [typeFilter, setTypeFilter] = React.useState(null);
   const [rosterSearch, setRosterSearch] = React.useState('');
   const [showTeamModal, setShowTeamModal] = React.useState(false);
@@ -2719,9 +2701,9 @@ function PartyBuilder(props) {
 
   const clsName = typeof window.normalizeClassName === 'function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[slot], window.DEFAULT_BUILDS?.[player]?.[slot]) : (st.partyBuilds?.[player]?.[slot] || 'Warrior');
   const meta = st.partyMeta?.[player]?.[slot] || (typeof window.getDefaultIdentity === 'function' ? window.getDefaultIdentity() : {});
-  const identity = typeof window.resolveIdentityForBuild === 'function' ? window.resolveIdentityForBuild(clsName, meta) : { race: meta.race || 'homosapien', faction: 'time', types: ['human'], gender: meta.gender || 'male', zodiac: meta.zodiac || 'aries' };
-  const unitRace = identity.race || '', unitFaction = identity.faction || 'time', unitTypes = identity.types || [];
-  const fc = getFactionColor(unitFaction);
+  const identity = typeof window.resolveIdentityForBuild === 'function' ? window.resolveIdentityForBuild(clsName, meta) : { race: meta.race || 'homosapien', types: ['human'], gender: meta.gender || 'male', zodiac: meta.zodiac || 'aries' };
+  const unitRace = identity.race || '', unitTypes = identity.types || [];
+  const fc = PB_ACCENT;
   const template = computeStats(unitRace, clsName);
   const raceAbilities = getRaceAbilities(unitRace, clsName);
   const prof = window.RACE_PROFILES?.[unitRace];
@@ -2784,8 +2766,8 @@ function PartyBuilder(props) {
       const p = window.RACE_PROFILES?.[rk]; if (!p) continue;
       const genders = typeof window.getAvailableGendersForRace === 'function' ? window.getAvailableGendersForRace(rk) : ['male'];
       const uc = window.UNIT_CLASS || 'Vessel';   // THE JOBS REMOVAL (2026-09-27): no job per vessel
-      if (genders.length > 1) { for (const g of genders) entries.push({ race:rk, gender:g, label:`${_grl(rk,g)} ${g==='female'?'\u2640':'\u2642'}`, cls:uc, faction:p.faction, types:p.types||[], prof:p }); }
-      else entries.push({ race:rk, gender:genders[0], label:_grl(rk,genders[0]), cls:uc, faction:p.faction, types:p.types||[], prof:p });
+      if (genders.length > 1) { for (const g of genders) entries.push({ race:rk, gender:g, label:`${_grl(rk,g)} ${g==='female'?'\u2640':'\u2642'}`, cls:uc, types:p.types||[], prof:p }); }
+      else entries.push({ race:rk, gender:genders[0], label:_grl(rk,genders[0]), cls:uc, types:p.types||[], prof:p });
     }
     return entries;
   }, [_]);
@@ -2798,7 +2780,6 @@ function PartyBuilder(props) {
 
   const filteredRoster = React.useMemo(() => {
     let list = rosterEntries;
-    if (factionFilter) list = list.filter(e => e.faction === factionFilter);
     if (typeFilter) list = list.filter(e => e.types.includes(typeFilter));
     if (rosterSearch) { const q = rosterSearch.toLowerCase(); list = list.filter(e => e.label.toLowerCase().includes(q) || e.race.toLowerCase().includes(q)); }
     const getStatVal = (entry, key) => { const s = computeStats(entry.race, entry.cls), mapped = STAT_MAP[key]; return s[mapped] ?? s[key] ?? s[key.toLowerCase()] ?? 0; };
@@ -2810,7 +2791,7 @@ function PartyBuilder(props) {
       if (af !== bf) return bf - af;
       if (STAT_KEYS.includes(sortKey)) { return sortDir === 'desc' ? getStatVal(b, sortKey) - getStatVal(a, sortKey) : getStatVal(a, sortKey) - getStatVal(b, sortKey); } const av = a[sortKey]||a.label, bv = b[sortKey]||b.label; return sortDir === 'desc' ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv)); });
     return list;
-  }, [rosterEntries, factionFilter, typeFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
+  }, [rosterEntries, typeFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
 
   function pickRace(raceKey, gender) {
     if (!st.partyMeta[player]) st.partyMeta[player] = []; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
@@ -3173,8 +3154,6 @@ function PartyBuilder(props) {
   // Item counts expanded into per-slot units for the RPG-style slot squares.
   const itemUnits = [];
   for (const k of allItemKeys) { const c = unitItems[k] || 0; for (let n = 0; n < c && itemUnits.length < itemSlotMax; n++) itemUnits.push(k); }
-  const fbDef = window.FACTION_BONUSES?.[unitFaction];
-  const factionBonusTxt = fbDef ? (fbDef.atkBonus ? '+' + fbDef.atkBonus + ' ATK' : fbDef.healBonus ? '+' + fbDef.healBonus + ' HEAL' : fbDef.armorBonus ? '+' + fbDef.armorBonus + ' ARMOR' : '') : '';
   const spellSlotsUsed = learnedSpells.reduce((s, sp) => s + spellSlotCost(sp), 0);
   const zodiacs = typeof window.AVAILABLE_ZODIACS!=='undefined' ? window.AVAILABLE_ZODIACS : ['aries','taurus','gemini','cancer','leo','virgo','libra','scorpio','sagittarius','capricorn','aquarius','pisces'];
   const codexLore = getCodexLore(unitRace);
@@ -3208,7 +3187,6 @@ function PartyBuilder(props) {
   const stageRace = stageEntry ? stageEntry.race : unitRace;
   const stageGender = stageEntry ? (stageEntry.gender || 'male') : (identity.gender || 'male');
   const stageCls = stageEntry ? stageEntry.cls : clsName;
-  const stageFaction = stageEntry ? (stageEntry.faction || unitFaction) : unitFaction;
   const stageLabel = stageEntry ? (stageEntry.label || _grl(stageEntry.race, stageEntry.gender)) : raceLabelTxt;
   const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTeamPick(null); setFlSocketPick(null); setPbMenu(null); setNotesOpen(false); hideSpellTip(); };
   const selectPlayer = (p) => { if (p === player) return; st.builderSelectedPlayer = p; st.builderSelectedSlot = 0; setSlot(0); sfx('uiCursorMove'); refresh(); };
@@ -3327,9 +3305,9 @@ function PartyBuilder(props) {
   // ROSTER: the Codex of Vessels — filter row + the wall
   /* ROSTER — THE WALL (Stage 4, §5.4): the champ-select grid. One flat
      wall (C-4) of square tiles with --pb-r corners — the 128×128 portrait
-     when the vessel has one, else the sprite bottom-anchored — a faction
+     when the vessel has one, else the sprite bottom-anchored — a
      ring on hover / active, the type dots, ★ favourite, 🔒 → the Shop.
-     Filters as ROUND chips: six type discs, three faction rings, the SORT
+     Filters as ROUND chips: six type discs, the SORT
      and JOB pills open glass windows (C-9: no native <select> on the
      glass), search is a pill input. filteredRoster / rosterEntries /
      pickRace / isLockedEntry / toggleFav are unchanged. Hover → the stage
@@ -3361,15 +3339,11 @@ function PartyBuilder(props) {
         return h('button', { key: t, className: 'pb-type-disc' + (on ? ' on' : '') + (has ? '' : ' none'), style: { '--tc': c }, disabled: !has,
           onClick: () => setTypeFilter(on ? null : t), title: t.toUpperCase() + (has ? '' : ' — none on the wall') }, PB_TYPE_GLYPH[t] || t.slice(0, 2).toUpperCase());
       }),
-      h('span', { className: 'pb-wall-fsep' }),
-      h('span', { className: 'pb-wall-flabel' }, 'FACTION'),
-      ...['space','time','chaos'].map(fk => h('button', { key: fk, className: 'pb-faction-ring' + (factionFilter === fk ? ' on' : ''), style: { '--fc': FACTION_C[fk] },
-        onClick: () => setFactionFilter(factionFilter === fk ? null : fk), title: fk.toUpperCase() }, fk)),
-      (typeFilter || factionFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setFactionFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
+      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
     h('div', { className: 'pb-roster', onMouseLeave: rosterHoverOut },
       filteredRoster.map((entry, ei) => {
         const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
-        const entryFc = getFactionColor(entry.faction);
+        const entryFc = PB_ACCENT;
         const starred = isFav(entry.race, entry.gender);
         // Account-unlock gate: only the local human's roster (player 1) is restricted.
         const locked = isLockedEntry(entry.race);
@@ -3551,7 +3525,7 @@ function PartyBuilder(props) {
         const filters = h('div', { className: 'pb-wall-filters pb-socket-filters' },
           h('span', { className: 'pb-wall-flabel' }, 'DMG'),
           ...[['physical', 'PHYS', '#ff9a4a', 'Physical damage — scales with ATK, blocked by DEF'], ['magic', 'MAGIC', '#c58cff', 'Magic damage — scales with M ATK, blocked by M DEF']].map(([id, label, c, title]) =>
-            h('button', { key: id, className: 'pb-faction-ring' + (F.dmg === id ? ' on' : ''), style: { '--fc': c },
+            h('button', { key: id, className: 'pb-ring-btn' + (F.dmg === id ? ' on' : ''), style: { '--fc': c },
               onClick: () => setF({ dmg: F.dmg === id ? null : id }), title }, label)),
           h('span', { className: 'pb-wall-fsep' }),
           h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
@@ -3675,7 +3649,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-zone-body', style:{ overflowY:'auto', overflowX:'hidden', gap:6, padding:'10px 14px 10px 12px', position:'relative' } },
         DOOR && h('div', { className:'door-wm', style:{ right:'2%', top:'6%', width:'44%', aspectRatio:'1' } }),
         h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(18px,1.6vw,24px)', fontWeight:600, lineHeight:1.05, color:'#f1e9cf', position:'relative', zIndex:1 } }, raceLabelTxt),
-        h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.16em', position:'relative', zIndex:1 } }, pbRoleLabel(unitRace), ' · ', unitFaction.toUpperCase(), ' ALIGNMENT'),
+        h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.16em', position:'relative', zIndex:1 } }, pbRoleLabel(unitRace)),
         DOOR && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:4 } }, '1.  EXECUTIVE SUMMARY'),
         h('div', { style:{ fontSize:12, lineHeight:1.55, color:'#d3caae', fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8, position:'relative', zIndex:1 } }, codexLore),
         cs && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '2.  CUSTOMS DISPOSITION'),
@@ -3689,7 +3663,7 @@ function PartyBuilder(props) {
 
   // Stage 5: the vessel's notes (the engine's passives + the hand-authored terrain rows)
   const unitNotes = pbUnitNotes(identity, clsName, unitEquipment, customSpells || []);
-  const notePaper = PB_NOTE_PAPER[unitFaction] || 'yellow';
+  const notePaper = 'yellow';
 
   // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, the type chart, the elements
   const zMod = (mapped) => zodiacNatal ? ((zodiacNatal[mapped]||0) > 0 ? 'up' : (zodiacNatal[mapped]||0) < 0 ? 'dn' : null) : null;
@@ -3698,8 +3672,7 @@ function PartyBuilder(props) {
       h('b', null, unitName),
       h('span', null, raceLabelTxt.toUpperCase(), ' · ', pbRoleLabel(unitRace),
         ''),
-      h('div', { className: 'pb-ident-types' }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9})),
-        h('em', { style:{ color:`${fc}bb` }, title: factionBonusTxt || undefined }, unitFaction))),
+      h('div', { className: 'pb-ident-types' }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9})))),
     h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:4 } },
       h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, paddingBottom:6, marginBottom:2, borderBottom:`1px solid ${EW.panelEdge}` } },
         VITAL_KEYS.map(k => {
@@ -3764,14 +3737,14 @@ function PartyBuilder(props) {
       Array.from({length: teamSize}).map((_, i) => {
         const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
         const mt = st.partyMeta?.[player]?.[i] || (typeof window.getDefaultIdentity==='function' ? window.getDefaultIdentity() : {});
-        const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',faction:'time',types:['human'],gender:'male'};
-        const isActive = i===slot, fCol = getFactionColor(id.faction);
+        const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',types:['human'],gender:'male'};
+        const isActive = i===slot, fCol = PB_ACCENT;
         const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
         const nm = resolveUnitName(player, i, cn);
         const rl = (_grl(id.race,id.gender)||id.race||'?');
         return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) },
           h('div', { className:'pb-party-ring' },
-            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null })),
+            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive })),
             h('span', { className:'pb-party-no' }, numerals[i]),
             confirmed && (DOOR
               ? h('span', { className:'door-stamp door-stamp-sm admit pb-party-filed', title:'Locked in' }, 'FILED')
@@ -3882,7 +3855,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-stage-view' },
         h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
         h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx, appearance: !stageEntry && unitRace === 'homosapien' ? meta.appearance : null }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: !stageEntry && unitRace === 'homosapien' ? meta.appearance : null }),
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.
@@ -4034,7 +4007,7 @@ function PartyBuilder(props) {
       : null);   // (the gear picker retired with the accessory slots — THE GEAR MERGE, Phase 4)
 
   /* ── the monitor ── */
-  return h('div', { ref: crtRef, className: `ms-crt ms-crt-page ms-crt-forge pb-tarot pb-tarot-${unitFaction}`, style: { '--pb-fc': fc } },
+  return h('div', { ref: crtRef, className: `ms-crt ms-crt-page ms-crt-forge pb-tarot`, style: { '--pb-fc': fc } },
     h('div', { className: 'ms-crt-bezel' },
       h('div', { className: 'ms-crt-glass' },
         h('div', { className: 'ms-crt-screen' },
@@ -4174,7 +4147,7 @@ function OfficerCreator() {
         h('button', { className: 'ms-tty-btn', onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },
-        h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Vessel', faction: 'human', focus: 0.5, appearance }),
+        h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Vessel', focus: 0.5, appearance }),
         !viewerLoads ? h('p', { className: 'pb-creator-note', style: { position: 'absolute', left: 16, top: 16 } }, 'The 3D stage is unavailable here — the look still files.') : null),
       h('div', { className: 'pb-officer-controls' },
         h('div', { className: 'pb-creator' },

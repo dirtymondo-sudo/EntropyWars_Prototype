@@ -1206,12 +1206,13 @@
             _hqClockTag();
             return C.h;
         };
-        /* is the sun down in `roomId` at the live hour (a clocked room; a locked room by its own hour) — the fight's first round */
+        /* is the sun down in `roomId` at the live hour (a locked room by its own hour) — the fight's first round. 2026-10-17 (mondo:
+           "indoor areas should still have it mechanically"): a room off the clock (indoors, a HQ_WORLD_CLOCK.still sky) reads the live hour too */
         function _hqClockNightIn(roomId) {
             try {
+                if (typeof window.hqWorldSun !== 'function') return false;
                 const C = (typeof window.hqRoomClock === 'function') ? window.hqRoomClock(roomId) : null;
-                if (!C) return false;
-                return !window.hqWorldSun(C.locked ? C.hour : _hqClockLoad().h).isDay;
+                return !window.hqWorldSun((C && C.locked) ? C.hour : _hqClockLoad().h).isDay;
             } catch (e) { return false; }
         }
         /* the hour on the room's sub-line (THE HQ HUD PASS: no new box — the line under the room's title), in a clocked room only */
@@ -2616,7 +2617,7 @@
                 html += `<div class="hq-pp-diamonds"><span><b>${u.vision | 0}</b>VISION</span><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
             }
             html += '</div>';
-            if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
+            if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
             /* THE ELEMENT BOX (2026-09-23): a party member's reactions are always read (own: true) */
             if (u && typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
             else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel?). The bare loadout is below.</p>`;
@@ -8496,7 +8497,6 @@
                 const canAfford = save.gold >= price;
                 const label = prof ? prof.label : (race.charAt(0).toUpperCase() + race.slice(1));
                 const types = prof ? (prof.types || []).join(', ') : '';
-                const faction = prof ? (prof.faction || '') : '';
 
                 const spriteUrl = (typeof getR2RaceSpriteUrl === 'function')
                     ? getR2RaceSpriteUrl(race, 'male', UNIT_CLASS) : '';
@@ -8506,7 +8506,6 @@
                     <div class="cshop-card-info">
                         <div class="cshop-card-name">${_cshopEsc(label)}</div>
                         <div class="cshop-card-sub">${_cshopEsc(types)}</div>
-                        <div class="cshop-card-faction">${_cshopEsc(faction)}</div>
                     </div>
                     <div class="cshop-card-action">`;
 
@@ -15426,6 +15425,9 @@
                     && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
                     window.ThreeAnim.slowMo(0.4, 550);
                 }
+                /* THE DEATH CLOSE-UP (battle.js playDeathCloseup): a live camera on the falling body; deaths that
+                   land together split the screen. online.js relays it to the guest. */
+                if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(unit);
             }
 
             const MAP_DEATH_DURATION = state.devAutoSim ? 0 : 800;
@@ -15891,7 +15893,6 @@
                    the default name is the race label, and there is no job */
                 name: (typeof getRaceLabel === 'function') ? getRaceLabel(identity.race, identity.gender) : identity.race,
                 cls: template.cls,
-                faction: identity.faction,
                 race: identity.race,
                 types: [...identity.types],
                 gender: identity.gender,
@@ -15902,7 +15903,6 @@
                 weatherPreference: identity.weatherPreference,
                 dominantHand: identity.dominantHand || 'right',
                 baseUnit: {
-                    faction: identity.faction,
                     race: identity.race,
                     types: [...identity.types],
                     gender: identity.gender,

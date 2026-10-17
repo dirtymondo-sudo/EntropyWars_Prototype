@@ -955,27 +955,6 @@
             text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5);
         }
 
-        .cin-player-label .cin-label-faction {
-            font-size: clamp(9px, 1.4vw, 14px);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.22em;
-            opacity: 0.65;
-            margin-top: 1px;
-        }
-
-        .cin-player-label .cin-label-faction.faction-space {
-            color: rgb(90, 169, 255);
-        }
-
-        .cin-player-label .cin-label-faction.faction-time {
-            color: rgb(255, 200, 60);
-        }
-
-        .cin-player-label .cin-label-faction.faction-chaos {
-            color: rgb(255, 90, 110);
-        }
-
         .cin-player-label .cin-label-hp {
             font-family: 'Cormorant SC', serif;
             font-size: clamp(10px, 1.5vw, 15px);
