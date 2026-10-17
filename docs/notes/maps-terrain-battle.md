@@ -525,6 +525,14 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
   hides the sheet now. A sweep of every room (axis-aligned sheet edges over lower/level ground) went 72 → 0 on the Haunted
   grounds, and to 0 or to straight-channel edges only on the rest.
 - Kill-switch for both blends: `window.EW_NO_SHORE_BLEND`.
+- 2026-10-17 THE DRAPE (mondo, Moon Arena under a Hurricane: "the edge blending ... instead doing on individual tiles"): the
+  field sheets were FLAT at each cell's one top, so on rolling true ground (craters, slopes, dug bowls) the ground rose through
+  the body in jagged triangles, and a neighbour a third of a level off read as a wall, so shores stopped on square cell edges.
+  `_liqBlendGeo` takes `o.ground` (the highlights' `_fieldGroundSampleAt`, memoised across builds by `_liqDrapeSampler`, keyed on
+  the room + the dig plan + the cell top): the sheet lies on the ground under every vertex (read at every other vertex, the rest
+  averaged) + `HL_FIELD_LIFT`; a neighbour is a fringe when the ground runs on across the shared edge (a slope), a hard edge only
+  where it breaks. The board's own edge fades the sheet out over `LIQ_EDGE_FADE` (0.45 tile) instead of a cut line. Rebuild
+  cost on a flooded 12×12 moon board stayed ~40 ms (sandbox CPU) after the first build.
 
 ## THE PLATES OVER THE WATER (2026-10-16, mondo: "the water coming from rain or hurricanes is not allowing tile highlights to show up on top of them")
 - Cause: PR #216's blended liquid sheets (`_liqBlendMat`: transparent, depthWrite false) drew at renderOrder 2 / 3, after every

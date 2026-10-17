@@ -65100,7 +65100,7 @@ const ThreeRenderer = (function () {
        deep cells' coverage over a wider window (LIQ_DEEP_H), so the colour runs from shallow to deep across half a tile. Vertex alpha,
        no shader hook: the node renderer (WebGPU) draws the same. Which cells are liquid is unchanged — this is only the picture.
        Off: window.EW_NO_SHORE_BLEND. */
-    var LIQ_SHORE_H = 0.4, LIQ_DEEP_H = 0.55, LIQ_SEGS = 6;
+    var LIQ_SHORE_H = 0.4, LIQ_DEEP_H = 0.55, LIQ_SEGS = 6, LIQ_EDGE_FADE = 0.45;
     function _liqEase(e0, e1, x) { var t = (x - e0) / (e1 - e0); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
     /* the share of the square window [u ± h] × [v ± h] (tiles) that `has` cells cover; off the board a cell reads as its edge cell */
     function _liqCover(has, u, v, h, W, H) {
@@ -65115,7 +65115,8 @@ const ThreeRenderer = (function () {
     }
     /* G: { W, H, ts, elev }; cells: [{x, y}] the body (one liquid surface); yOf(x, y) → a cell's surface (battle px) or null;
        o: { lift, deep: [{x, y}] (→ alpha × the deep cells' coverage: the deep sheet over the body), near: [{x, y}] (only the body cells
-       beside these are drawn), noFringe (no fade onto the ground: the shore stays whole) }.
+       beside these are drawn), noFringe (no fade onto the ground: the shore stays whole), ground: fn(wx, wz, x, y, refY) → the true
+       ground under a point of cell (x, y) or null (THE DRAPE) }.
        → a BufferGeometry (position / normal / uv per cell / color rgba) or null */
     function _liqBlendGeo(G, cells, yOf, o) {
         if (!cells || !cells.length) return null;
@@ -65127,13 +65128,28 @@ const ThreeRenderer = (function () {
         var inN = null; if (o.near) { inN = {}; for (i = 0; i < o.near.length; i++) inN[o.near[i].x + ',' + o.near[i].y] = true; }
         /* a ground cell beside the body at the body's own level wears the fade (the fringe); any other neighbour (a wall up, a drop
            down, a hole) is a hard edge the water runs up to, so it counts as covered and the water stays whole to it */
+        /* THE DRAPE (2026-10-17, mondo on the Moon Arena under a Hurricane: "the edge blending looks messed up and not doing it on the
+           perimeter of the body of water and instead doing on individual tiles"): on a true ground that rolls (craters, slopes, a dug
+           bowl) the sheet was FLAT at each cell's one top, so the ground rose through it in jagged triangles inside the body, and a
+           neighbour whose top differed by a third of a level read as a wall, so the shore stopped dead on a cell's square edge. With
+           o.ground the sheet lies on the ground under every vertex, and a neighbour is a fringe when the ground runs on across the
+           border between them (a slope), a hard edge only where it breaks (a cliff, a wall). */
+        var gAt = function (u, v, x, y, ref) {
+            if (!o.ground) return null;
+            var g = o.ground(u * ts, v * ts, x, y, ref);
+            return (g === null || g === undefined || !isFinite(g)) ? null : g;
+        };
         var lvl = {}, fringeOk = function (x, y) {
             var k = x + ',' + y; if (lvl[k] !== undefined) return lvl[k];
             var ok = false, ty = (x >= 0 && y >= 0 && x < W && y < H) ? yOf(x, y) : null;
             if (ty !== null && ty !== undefined && !o.noFringe) {
                 for (var dy = -1; dy <= 1 && !ok; dy++) for (var dx = -1; dx <= 1 && !ok; dx++) {
                     if (!body(x + dx, y + dy)) continue;
-                    var by = yOf(x + dx, y + dy); if (by !== null && by !== undefined && Math.abs(by - ty) <= near) ok = true;
+                    var by = yOf(x + dx, y + dy); if (by === null || by === undefined) continue;
+                    if (Math.abs(by - ty) <= near) { ok = true; continue; }
+                    /* the ground on the shared edge / corner, read from either side: one surface = a slope, the fade runs on */
+                    var pu = x + 0.5 + dx * 0.5, pv = y + 0.5 + dy * 0.5, ga = gAt(pu, pv, x, y, ty), gb = gAt(pu, pv, x + dx, y + dy, by);
+                    if (ga !== null && gb !== null && Math.abs(ga - gb) <= near) ok = true;
                 }
             }
             return (lvl[k] = ok);
@@ -65162,18 +65178,41 @@ const ThreeRenderer = (function () {
             }
         }
         var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+        var S1 = S + 1;
         for (i = 0; i < draw.length; i++) {
             c = draw[i];
-            var v0 = nV, a = [], any = false;
-            for (var j = 0; j <= S; j++) for (var k = 0; k <= S; k++) {
-                var u = c.x + k / S, v = c.y + j / S;
+            var a = [], any = false, j, k, u, v;
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = c.x + k / S; v = c.y + j / S;
                 var al = _liqEase(0.22, 0.78, _liqCover(shore, u, v, LIQ_SHORE_H, W, H));
                 if (inD && al > 0) al *= _liqEase(0.12, 0.88, _liqCover(deep, u, v, LIQ_DEEP_H, W, H));
+                /* the board's edge is the body's edge too (a storm's flood runs to it): the sheet fades out to it, no cut line */
+                if (!o.noFringe && al > 0) al *= _liqEase(0, LIQ_EDGE_FADE, Math.min(u, v, W - u, H - v));
                 a.push(al); if (al > 0.01) any = true;
-                pos.push(u * ts, c.top + lift, v * ts); nrm.push(0, 1, 0); uv.push(k / S, 1 - j / S); col.push(1, 1, 1, al);
+            }
+            if (!any) continue;
+            /* THE DRAPE: the ground under the sheet, read at every other vertex (about the floor mesh's own spacing), the ones
+               between are their neighbours' mean (read too where a neighbour has no ground: a wall's foot) */
+            var gh = null;
+            if (o.ground) {
+                gh = new Array(S1 * S1);
+                for (j = 0; j <= S; j += 2) for (k = 0; k <= S; k += 2) gh[j * S1 + k] = gAt(c.x + k / S, c.y + j / S, c.x, c.y, c.top);
+                for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                    if (!(j & 1) && !(k & 1)) continue;
+                    var nb = (j & 1) && (k & 1) ? [gh[(j - 1) * S1 + k - 1], gh[(j - 1) * S1 + k + 1], gh[(j + 1) * S1 + k - 1], gh[(j + 1) * S1 + k + 1]]
+                           : (j & 1) ? [gh[(j - 1) * S1 + k], gh[(j + 1) * S1 + k]] : [gh[j * S1 + k - 1], gh[j * S1 + k + 1]];
+                    var sum = 0, ok = true;
+                    for (var b = 0; b < nb.length; b++) { if (nb[b] === null) { ok = false; break; } sum += nb[b]; }
+                    gh[j * S1 + k] = ok ? sum / nb.length : gAt(c.x + k / S, c.y + j / S, c.x, c.y, c.top);
+                }
+            }
+            var v0 = nV;
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = c.x + k / S; v = c.y + j / S;
+                var gy = gh ? gh[j * S1 + k] : null;
+                pos.push(u * ts, (gy !== null ? gy : c.top) + lift, v * ts); nrm.push(0, 1, 0); uv.push(k / S, 1 - j / S); col.push(1, 1, 1, a[j * S1 + k]);
                 nV++;
             }
-            if (!any) { pos.length = v0 * 3; nrm.length = v0 * 3; uv.length = v0 * 2; col.length = v0 * 4; nV = v0; continue; }
             for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
                 var p = j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
                 if (a[p] < 0.01 && a[q] < 0.01 && a[r] < 0.01 && a[s2] < 0.01) continue;
@@ -65253,6 +65292,21 @@ const ThreeRenderer = (function () {
         });
         if (grp) { terrainGroup.add(grp); _liqBoardGroup = grp; }
         return grp ? grp.children.length : 0;
+    }
+    /* THE DRAPE's reads, kept between builds (a spreading liquid rebuilds the skins every step): one room, one dig plan
+       (_fieldDeformPlanLive is per height version), a cell's top in the key (a raise / a dig changes it) */
+    var _liqDrape = { key: null, plan: null, map: null };
+    function _liqDrapeSampler() {
+        var key = _fieldGroundCache.key, plan = (typeof _fieldDeformPlanLive === 'function') ? _fieldDeformPlanLive() : null;
+        if (_liqDrape.key !== key || _liqDrape.plan !== plan || !_liqDrape.map || _liqDrape.map.size > 200000) { _liqDrape.key = key; _liqDrape.plan = plan; _liqDrape.map = new Map(); }
+        var M = _liqDrape.map;
+        return function (wx, wz, x, y, ref) {
+            var mk = wx + ',' + wz + ',' + x + ',' + y + ',' + ref, g = M.get(mk);
+            if (g !== undefined) return g;
+            g = _fieldGroundSampleAt(wx, wz, x, y, ref); if (g === undefined || (g !== null && !isFinite(g))) g = null;
+            M.set(mk, g);
+            return g;
+        };
     }
     /* the liquid a body of cells is drawn as: deep water is the shallow sheet with the deep one over it */
     function _liqBodyKey(k) { return k === 'deep_water' ? 'water' : k; }
@@ -65612,8 +65666,11 @@ const ThreeRenderer = (function () {
                     delete byKey[k];
                 });
                 Object.keys(bodies).forEach(function (bk) {
-                    var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 }), order: LIQ_BLEND_ORDER }];
-                    if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05, deep: deeps[bk], near: deeps[bk] }), order: LIQ_BLEND_ORDER + 1 });
+                    /* THE DRAPE: each sheet lies on the true ground under every vertex, a highlight's lift over it (the floor mesh is
+                       sampled coarser than the sheet; the plate lift keeps the ground from rising through between their vertices) */
+                    var gLift = HL_FIELD_LIFT * ts, gFn = _liqDrapeSampler();
+                    var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 + gLift, ground: gFn }), order: LIQ_BLEND_ORDER }];
+                    if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05 + gLift, deep: deeps[bk], near: deeps[bk], ground: gFn }), order: LIQ_BLEND_ORDER + 1 });
                     parts.forEach(function (pt) {
                         var bm = pt.geo && _liqBlendMat(pt.key, pt.over); if (!bm) { if (pt.geo) pt.geo.dispose(); return; }
                         var mesh = new THREE.Mesh(pt.geo, bm);
