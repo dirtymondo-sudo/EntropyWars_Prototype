@@ -18732,7 +18732,7 @@ function flBorrowFamilyIds(race) {
     return out;
 }
 function flRacePool(race) {
-    const own = new Set(raceFamilyPoolIds(race));
+    const own = new Set(raceFamilyPoolIds(race).concat(raceExcludedSpellIds(race)));   // an excluded spell is never borrowed back
     const out = [];
     const seen = new Set();
     for (const f of flBorrowFamilyIds(race)) {
@@ -19067,10 +19067,24 @@ function spellFamilyGroups(ids, race) {
         return { fam: f || null, name: fam ? fam.name : 'Unsorted', glyph: (fam && fam.glyph) || '◇', color: (fam && fam.color) || '#8a8270', desc: (fam && fam.desc) || '', own: !!f && order.includes(f), ids: list };
     });
 }
-/* Every member of the race's families, family by family. */
+/* The spells this race skips inside its families (RACE_SPELL_EXCLUDES, 2026-10-17). */
+function raceExcludedSpellIds(race) {
+    let reg = null;
+    try { reg = RACE_SPELL_EXCLUDES; } catch (e) { reg = null; }
+    const list = reg && race ? reg[race] : null;
+    return Array.isArray(list) ? list.filter(id => typeof id === 'string' && id) : [];
+}
+function raceSpellExcluded(race, id) { return !!id && raceExcludedSpellIds(race).includes(id); }
+/* A family's members this race learns (the family's members minus the race's excludes). */
+function raceFamilyMemberIds(race, fam) {
+    const off = new Set(raceExcludedSpellIds(race));
+    return familyMemberIds(fam).filter(id => !off.has(id));
+}
+/* Every member of the race's families, family by family (minus the race's excludes). */
 function raceFamilyPoolIds(race) {
     const out = [];
-    for (const f of raceFamilyIds(race)) for (const id of familyMemberIds(f)) if (!out.includes(id)) out.push(id);
+    const off = new Set(raceExcludedSpellIds(race));
+    for (const f of raceFamilyIds(race)) for (const id of familyMemberIds(f)) if (!off.has(id) && !out.includes(id)) out.push(id);
     return out;
 }
 
@@ -21397,6 +21411,12 @@ const RACE_FAMILIES = {
     yeti: ['ice', 'winter', 'cryptid', 'sasquatch'],
     zombie: ['zombie', 'poison', 'ghoulish'],
 };
+/* RACE_SPELL_EXCLUDES[race] = [spell ids] (the user, 2026-10-17: "exclude certain spells from a race's family, just a toggle ...
+   keep spell x in the family for other races that have it"): members of the race's families this race does NOT learn. The
+   family keeps the row for every other race; the race's pool, its kits, the AI's picks, the borrow window and the codex all
+   skip it (raceFamilyPoolIds / flRacePool). The library's POOLS tab toggles it, written through the doc's raceExcludes
+   registry (export → bake-spell-mods.js). */
+const RACE_SPELL_EXCLUDES = {};
 /* A row's families (§4.2): the explicit tags, else its element's family, plus the wheel's for a door-wheel row. */
 function spellFamiliesOf(d) {
     if (!d) return [];
@@ -22045,9 +22065,10 @@ Object.assign(window, {
   SPELL_SP_MAX, SPELL_TIER_SP, SPELL_TIER_NUMERALS, spellTierOf, spellTierNumeral, spellSpCost, loadoutSpUsed,
   /* THE SPELL LIBRARY Phase 0 — THE SCHEMA (SPELL_LIBRARY_PLAN.md §4, 2026-09-25) */
   PASSIVE_SLOT_MAX, SPELL_ROLES, SPELL_TIER_RULE, SPELL_DEAD_FIELDS, SPELL_LOS_FIELDS, SPELL_FAMILY_KINDS,
-  SPELL_FAMILIES, SPELL_UPGRADES, RACE_FAMILIES, AOE_PRESETS,
+  SPELL_FAMILIES, SPELL_UPGRADES, RACE_FAMILIES, RACE_SPELL_EXCLUDES, AOE_PRESETS,
   /* THE FAMILY POOL (Phase 6) */
   familyMemberIndex, familyMemberIndexDrop, familyMemberIds, raceFamilyIds, raceFamilyPoolIds,
+  raceExcludedSpellIds, raceSpellExcluded, raceFamilyMemberIds,
   /* THE UPGRADES (Phase 5) */
   SPELL_UPGRADE_MAX, SPELL_UPGRADE_FITS, spellUpgradeFits, spellAllowedUpgrades, spellUpgradeSp, spellUpgradesClean,
   spellUpgradesSpOf, spellUpgradeVerdict, treeLegalUpgrades, buildRandomUpgrades, resolveSpellDef, resolveUnitSpellDef,
@@ -22354,8 +22375,9 @@ window.EWSpellMods = (function () {
        gathers them in `spellNotes` and the bake strips them into docs/spell-notes.md (§7 Q12). Passive rows are `added`
        rows with kind 'passive' (Phase 4). A stored v1 doc loads as v2 (the keys are added). */
     const VERSION = 2;
-    const REGISTRIES = { families: 'SPELL_FAMILIES', upgrades: 'SPELL_UPGRADES', raceFamilies: 'RACE_FAMILIES' };
-    const GROUPS = ['modified', 'added', 'learnsets', 'raceAbilities', 'families', 'upgrades', 'raceFamilies', 'views'];
+    const REGISTRIES = { families: 'SPELL_FAMILIES', upgrades: 'SPELL_UPGRADES', raceFamilies: 'RACE_FAMILIES', raceExcludes: 'RACE_SPELL_EXCLUDES' };
+    const GROUPS = ['modified', 'added', 'learnsets', 'raceAbilities', 'families', 'upgrades', 'raceFamilies', 'raceExcludes', 'views'];
+    const LIST_REGISTRIES = { raceFamilies: 1, raceExcludes: 1 };   // rows are id arrays, not objects
 
     let doc = null;
     let pristine = null;    // exact pre-mod table snapshots (object refs, not clones)
@@ -22364,7 +22386,7 @@ window.EWSpellMods = (function () {
 
     function emptyDoc() {
         return { version: VERSION, enabled: true, modified: {}, added: {}, deleted: [],
-                 learnsets: {}, raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, views: {}, notes: '' };
+                 learnsets: {}, raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, raceExcludes: {}, views: {}, notes: '' };
     }
     function normalize(d) {
         if (!d || typeof d !== 'object') d = emptyDoc();
@@ -22391,7 +22413,7 @@ window.EWSpellMods = (function () {
     }
 
     function _registry(key) {
-        return key === 'families' ? SPELL_FAMILIES : key === 'upgrades' ? SPELL_UPGRADES : RACE_FAMILIES;
+        return key === 'families' ? SPELL_FAMILIES : key === 'upgrades' ? SPELL_UPGRADES : key === 'raceExcludes' ? RACE_SPELL_EXCLUDES : RACE_FAMILIES;
     }
     function _clone(v) { try { return JSON.parse(JSON.stringify(v === undefined ? null : v)); } catch (e) { return v; } }
 
@@ -22500,7 +22522,7 @@ window.EWSpellMods = (function () {
             const live = _registry(k), group = doc[k] || {};
             Object.keys(group).forEach(id => {
                 if (group[id] === null) delete live[id];
-                else if (group[id] && typeof group[id] === 'object') { live[id] = _clone(group[id]); if (k !== 'raceFamilies' && !live[id].id) live[id].id = id; }
+                else if (group[id] && typeof group[id] === 'object') { live[id] = _clone(group[id]); if (!LIST_REGISTRIES[k] && !live[id].id) live[id].id = id; }
             });
         });
         // deletions
@@ -22642,6 +22664,7 @@ window.EWSpellMods = (function () {
             families: Object.keys(doc.families).length,
             upgrades: Object.keys(doc.upgrades).length,
             raceFamilies: Object.keys(doc.raceFamilies).length,
+            raceExcludes: Object.keys(doc.raceExcludes).length,
         };
     }
     function total() { const c = counts(); return Object.keys(c).reduce((n, k) => n + c[k], 0); }
@@ -22669,6 +22692,7 @@ window.EWSpellMods = (function () {
         Object.keys(doc.families).forEach(id => lines.push(doc.families[id] === null ? `FAMILY DELETE ${id}` : `FAMILY ${id}: ${JSON.stringify(doc.families[id])}`));
         Object.keys(doc.upgrades).forEach(id => lines.push(doc.upgrades[id] === null ? `UPGRADE DELETE ${id}` : `UPGRADE ${id}: ${JSON.stringify(doc.upgrades[id])}`));
         Object.keys(doc.raceFamilies).forEach(r => lines.push(doc.raceFamilies[r] === null ? `RACE FAMILIES DELETE ${r}` : `RACE FAMILIES ${r}: [${(doc.raceFamilies[r] || []).join(', ')}]`));
+        Object.keys(doc.raceExcludes).forEach(r => lines.push(doc.raceExcludes[r] === null ? `RACE EXCLUDES CLEAR ${r}` : `RACE EXCLUDES ${r}: [${(doc.raceExcludes[r] || []).join(', ')}]`));
         const notes = spellNotes();
         Object.keys(notes).forEach(id => lines.push(`NOTE ${id}: ${String(notes[id]).split('\n')[0].slice(0, 120)}`));
         if (doc.notes) lines.push(`LIBRARY NOTES: ${doc.notes.split('\n')[0].slice(0, 120)}`);
@@ -22700,12 +22724,13 @@ window.EWSpellMods = (function () {
             exportedAt: new Date().toISOString(),
             build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
             instructions: 'Bake this file with `node bake-spell-mods.js <this file>` (it rewrites the literal rows in data.js: '
-                + 'SPELL_LIBRARY / RACE_ABILITIES / CLASS_SPELL_LEARN_ORDER / SPELL_FAMILIES / SPELL_UPGRADES / RACE_FAMILIES, '
+                + 'SPELL_LIBRARY / RACE_ABILITIES / CLASS_SPELL_LEARN_ORDER / SPELL_FAMILIES / SPELL_UPGRADES / RACE_FAMILIES / RACE_SPELL_EXCLUDES, '
                 + 'strips notes into docs/spell-notes.md and runs npm run test:quick). '
                 + 'baseline holds the pre-edit values for sanity-checking drift. '
                 + 'modified are sparse field patches (null = remove field); added are full defs '
                 + '(_home says where they live); learnsets/raceAbilities are full replacement id arrays; '
-                + 'families/upgrades/raceFamilies are registry rows by id (null = delete).',
+                + 'families/upgrades/raceFamilies/raceExcludes are registry rows by id (null = delete); raceExcludes[race] = the '
+                + 'family members that race does not learn.',
             summary: summary(),
             spellNotes: spellNotes(),
             report,
@@ -22734,7 +22759,7 @@ window.EWSpellMods = (function () {
             rows.push({ group, key: k, mine: had ? doc[group][k] : undefined, theirs: inc[group][k],
                 state: !had ? 'add' : eq(doc[group][k], inc[group][k]) ? 'same' : 'conflict' });
         });
-        ['added', 'learnsets', 'raceAbilities', 'families', 'upgrades', 'raceFamilies', 'views'].forEach(keyed);
+        ['added', 'learnsets', 'raceAbilities', 'families', 'upgrades', 'raceFamilies', 'raceExcludes', 'views'].forEach(keyed);
         inc.deleted.forEach(id => rows.push({ group: 'deleted', key: id, mine: doc.deleted.includes(id) ? id : undefined, theirs: id, state: doc.deleted.includes(id) ? 'same' : 'add' }));
         if (inc.notes && inc.notes !== doc.notes) rows.push({ group: 'notes', key: 'library', mine: doc.notes, theirs: inc.notes, state: doc.notes ? 'conflict' : 'add' });
         return rows;
@@ -22762,7 +22787,7 @@ window.EWSpellMods = (function () {
                     d.modified[id][f] = inc.modified[id][f];
                 });
             });
-            ['added', 'learnsets', 'raceAbilities', 'families', 'upgrades', 'raceFamilies', 'views'].forEach(g => {
+            ['added', 'learnsets', 'raceAbilities', 'families', 'upgrades', 'raceFamilies', 'raceExcludes', 'views'].forEach(g => {
                 Object.keys(inc[g]).forEach(k => { if (take(`${g}:${k}`)) d[g][k] = inc[g][k]; });
             });
             inc.deleted.forEach(id => { if (take(`deleted:${id}`) && !d.deleted.includes(id)) d.deleted.push(id); });
@@ -22882,7 +22907,7 @@ window.EWSpellMods = (function () {
         }
         const c = counts();
         if (total()) {
-            console.log(`[SpellMods] ${doc.enabled ? 'Applied' : 'Loaded (DISABLED)'} — ${c.modified} modified, ${c.added} added, ${c.deleted} deleted, ${c.learnsets} learnsets, ${c.raceAbilities} race movepools, ${c.families} families, ${c.upgrades} upgrades, ${c.raceFamilies} race family rows`);
+            console.log(`[SpellMods] ${doc.enabled ? 'Applied' : 'Loaded (DISABLED)'} — ${c.modified} modified, ${c.added} added, ${c.deleted} deleted, ${c.learnsets} learnsets, ${c.raceAbilities} race movepools, ${c.families} families, ${c.upgrades} upgrades, ${c.raceFamilies} race family rows, ${c.raceExcludes} race exclude rows`);
         }
     } catch (e) {
         console.error('[SpellMods] failed to apply stored spell mods — running vanilla', e);

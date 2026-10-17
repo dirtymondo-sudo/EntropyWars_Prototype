@@ -5178,6 +5178,12 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .slb2-rfrow-m { display: flex; flex-wrap: wrap; gap: 3px; }
 .slb2-rfspell { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #cfc8e0; padding: 1px 6px 1px 2px; border-radius: 3px; background: rgba(160,140,200,0.08); cursor: pointer; }
 .slb2-rfspell:hover { background: rgba(160,140,200,0.2); }
+/* THE EXCLUDES (2026-10-17): the box turns a family member off for this race only */
+.slb2-rfx { width: 14px; height: 14px; padding: 0; margin: 0 1px 0 0; font-size: 10px; line-height: 12px; text-align: center; border-radius: 2px;
+  border: 1px solid rgba(255,216,106,0.6); background: rgba(255,216,106,0.14); color: #ffd86a; cursor: pointer; flex: none; }
+.slb2-rfx:hover { border-color: #fff; color: #fff; }
+.slb2-rfx.off { border-color: rgba(160,140,200,0.45); background: rgba(10,8,16,0.6); }
+.slb2-rfspell.off { color: #7d7690; text-decoration: line-through; background: rgba(10,8,16,0.35); }
 .slb2-rfrow .slb2-mpctl { align-items: center; }
 .slb2-rfpick { display: flex; flex-wrap: wrap; gap: 4px; }
 .slb2-rfchip { font-size: 12px; padding: 4px 8px; border-radius: 12px; border: 1px solid rgba(160,140,200,0.3); border-left: 3px solid var(--fc, #8d84a8);
