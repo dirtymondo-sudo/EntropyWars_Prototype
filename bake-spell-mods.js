@@ -8,7 +8,7 @@
 //
 // The export is EWSpellMods' doc (v1 or v2): sparse `modified` field patches, `added` full defs (`_home` says
 // where they live), `deleted` ids, `learnsets` / `raceAbilities` full id arrays, and the v2 registries
-// `families` / `upgrades` / `raceFamilies` (id → row, null = delete). The tool rewrites the LITERAL rows in
+// `families` / `upgrades` / `raceFamilies` / `raceExcludes` (id → row, null = delete). The tool rewrites the LITERAL rows in
 // data.js in place — field by field, so comments and formatting around them survive — appends added rows to
 // their home array, removes deleted rows, rewrites the learn-order arrays, patches the registries row by row,
 // turns movepool changes into the "Baked movepool shares" table, strips every `notes` field into
@@ -378,7 +378,7 @@ function bakeSource(src, doc, D, opts) {
     const T = indexRows(src, spans);
     const ed = makeEditor(src);
     const notes = {};
-    const registryDecl = { families: 'const SPELL_FAMILIES = {', upgrades: 'const SPELL_UPGRADES = {', raceFamilies: 'const RACE_FAMILIES = {' };
+    const registryDecl = { families: 'const SPELL_FAMILIES = {', upgrades: 'const SPELL_UPGRADES = {', raceFamilies: 'const RACE_FAMILIES = {', raceExcludes: 'const RACE_SPELL_EXCLUDES = {' };
     const touched = new Set();   // spans already edited as a whole (deleted rows) — field edits on them are skipped
     const moves = [];            // own-literal rows a movepool drops: moved to SPELL_LIBRARY after the patches (moveRowsToLibrary)
 

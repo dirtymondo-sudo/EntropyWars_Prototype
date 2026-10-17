@@ -8489,7 +8489,7 @@
             let html = `<div class="cdx-section-note">${fams.length} SPELL FAMILIES · EVERY TECHNIQUE BELOW IS THIS VESSEL'S TO EQUIP · TIER I–IV COSTS 1–4 SP</div>`;
             for (const f of fams) {
                 const fam = SPELL_FAMILIES[f] || {};
-                const ids = familyMemberIds(f);
+                const ids = (typeof raceFamilyMemberIds === 'function') ? raceFamilyMemberIds(race, f) : familyMemberIds(f);   // minus the race's excludes
                 html += `<div class="cdx-fam" style="--fam:${esc(fam.color || '#b8a060')}">
                     <div class="cdx-fam-head"><span class="cdx-fam-glyph">${esc(fam.glyph || '◇')}</span><span class="cdx-fam-name">${esc(fam.name || f)}</span>`
                     + `<span class="cdx-fam-meta">${esc(String(fam.kind || '').toUpperCase())}${fam.unique ? ' · ★ THIS VESSEL\'S OWN' : ''} · ${ids.length} TECHNIQUE${ids.length === 1 ? '' : 'S'}</span></div>`
@@ -9606,7 +9606,7 @@
             }
             if (nDel) { out.push(''); out.push('## Deleted'); out.push(''); d.deleted.forEach(id => out.push('- ' + id)); }
             const reg = (name, group) => { const keys = Object.keys(group || {}); if (!keys.length) return; out.push(''); out.push('## ' + name); out.push(''); keys.forEach(k => out.push(group[k] === null ? `- DELETE ${k}` : `- ${k}: ${JSON.stringify(group[k])}`)); };
-            reg('Families', d.families); reg('Upgrades', d.upgrades); reg('Race families', d.raceFamilies);
+            reg('Families', d.families); reg('Upgrades', d.upgrades); reg('Race families', d.raceFamilies); reg('Race excludes', d.raceExcludes);
             const pools = (name, group) => { const keys = Object.keys(group || {}); if (!keys.length) return; out.push(''); out.push('## ' + name); out.push(''); keys.forEach(k => out.push(`- ${k}: [${(group[k] || []).join(', ')}]`)); };
             pools('Race movepools', d.raceAbilities);
             if (summaryLines && summaryLines.length) { out.push(''); out.push('## One line each'); out.push(''); summaryLines.forEach(l => out.push('- ' + l)); }
@@ -10378,7 +10378,7 @@
         function _slbArchetypes() {
             try { return Object.keys(window.ThreeVFXEffects.STAGE_ARCHETYPES); } catch (e) { return []; }
         }
-        function _slb2Doc() { const M = _slbMods(); return M ? M.doc : { modified: {}, added: {}, deleted: [], raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, views: {}, notes: '' }; }
+        function _slb2Doc() { const M = _slbMods(); return M ? M.doc : { modified: {}, added: {}, deleted: [], raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, raceExcludes: {}, views: {}, notes: '' }; }
         function _slb2Filters() { if (!_slbFilters) _slbFilters = _slb2EmptyFilters(); return _slbFilters; }
         function _slb2Undo() { if (!_slbUndo) _slbUndo = new _Slb2UndoStack(); return _slbUndo; }
         function _slb2Glyph(el) { const f = (typeof SPELL_FAMILIES !== 'undefined') && SPELL_FAMILIES[el]; return f ? f.glyph : (el ? el.slice(0, 2).toUpperCase() : ''); }
@@ -10514,6 +10514,8 @@
                 if (c.raceAbilities) bits.push(`${c.raceAbilities} movepools`);
                 if (c.families) bits.push(`${c.families} families`);
                 if (c.upgrades) bits.push(`${c.upgrades} upgrades`);
+                if (c.raceFamilies) bits.push(`${c.raceFamilies} race families`);
+                if (c.raceExcludes) bits.push(`${c.raceExcludes} race excludes`);
                 cEl.innerHTML = bits.length ? `<span class="slb2-dot">●</span> ${bits.join(' · ')}` : 'no pending edits';
             }
             const tBtn = document.getElementById('slbToggleBtn');
@@ -12086,7 +12088,7 @@
                 <div class="slb2-center"><div class="slb2-chips">
                     <div class="slb2-seg"><span class="slb2-segb on">RACE FAMILIES</span></div>
                     <input class="slb2-search" type="text" placeholder="⌕ filter races" value="${_slbEsc(_slbMpSearch)}" data-input="mpSearch" style="min-width:160px">
-                    <span class="slb2-hint">A race's families (3 to 10): every unit of the race can equip every member of them, plus its RACE_TREE rungs. Click a family below to add or remove it.</span>
+                    <span class="slb2-hint">A race's families (3 to 10): every unit of the race can equip every member of them, plus its RACE_TREE rungs. Click a family below to add or remove it. The ✓ box on a spell turns it off for this race only.</span>
                 </div><div class="slb2-tablewrap slb2-pad" id="slbMpDetail"></div></div>`;
             _slbMpRenderRail(); _slbMpRenderDetail();
         }
@@ -12099,7 +12101,7 @@
             if (!_slbMpKey || !keys.includes(_slbMpKey)) _slbMpKey = keys[0] || null;
             el.innerHTML = `<div class="slb2-rail-head"><span>RACES · ${keys.length}</span></div>` + keys.map(k => {
                 const n = _slbRaceFams(k).length;
-                const touched = Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, k);
+                const touched = _slbRaceTouched(k);
                 const bad = n < _SLB_RACE_FAM_MIN || n > _SLB_RACE_FAM_MAX;
                 return `<div class="slb2-poolrow${k === _slbMpKey ? ' sel' : ''}" data-act="mpPick" data-key="${_slbEsc(k)}"><span>${_slbEsc(_slb2Race(k))}</span>${touched ? '<span class="slb2-flag mod">●</span>' : ''}<span class="${bad ? 'slb2-lint-red' : 'slb2-dim'}">${n}</span></div>`;
             }).join('');
@@ -12118,6 +12120,20 @@
            raceFamilies registry (export → bake-spell-mods.js). ── */
         const _SLB_RACE_FAM_MIN = 3, _SLB_RACE_FAM_MAX = 10;
         function _slbRaceFams(race) { return (typeof raceFamilyIds === 'function') ? raceFamilyIds(race) : ((typeof RACE_FAMILIES !== 'undefined' && RACE_FAMILIES[race]) || []).slice(); }
+        /* THE EXCLUDES (the user, 2026-10-17): a member of the race's families the race does not learn — the family keeps it
+           for every other race. RACE_SPELL_EXCLUDES[race], written through the doc's raceExcludes registry. */
+        function _slbRaceExcl(race) { return (typeof raceExcludedSpellIds === 'function') ? raceExcludedSpellIds(race) : []; }
+        function _slbRaceExclToggle(race, id) {
+            const cur = _slbRaceExcl(race), off = cur.includes(id);
+            const next = off ? cur.filter(x => x !== id) : cur.concat(id);
+            const name = (SPELL_BY_ID[id] || {}).name || id;
+            _slb2WriteReg('raceExcludes', race, next.length ? next : null, `${race}: ${off ? 'learns' : 'skips'} ${name}`);
+            _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome();
+        }
+        function _slbRaceTouched(race) {
+            const doc = _slbMods().doc, has = (g) => Object.prototype.hasOwnProperty.call(doc[g] || {}, race);
+            return has('raceFamilies') || has('raceExcludes');
+        }
         function _slbRaceFamWrite(race, list, label) {
             if (list.length > _SLB_RACE_FAM_MAX) { _slbToast(`✗ ${_SLB_RACE_FAM_MAX} families at most`, true); return; }
             _slb2WriteReg('raceFamilies', race, list.slice(), label);
@@ -12126,7 +12142,8 @@
         function _slbRaceFamHtml(race) {
             const M = _slbMods();
             const fams = _slbRaceFams(race);
-            const touched = Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, race);
+            const touched = _slbRaceTouched(race);
+            const excl = new Set(_slbRaceExcl(race));
             // the pool index leaves the wheel's doors to the wheel part: show a family's own rows when the index has none
             const members = f => { const ids = (typeof familyMemberIds === 'function') ? familyMemberIds(f) : []; return ids.length ? ids : _slb2Rows().filter(r => !r.deleted && r.families.includes(f)).map(r => r.id); };
             const pool = (typeof unitSpellPoolParts === 'function') ? unitSpellPoolParts(race, UNIT_CLASS).race : [];
@@ -12143,10 +12160,11 @@
             </div>
             <div class="slb2-rflist">${fams.map((f, i) => `<div class="slb2-rfrow" style="--fc:${_slb2FamColor(f)}">
                 <span class="slb2-famcard-g">${_slbEsc(_slb2Glyph(f))}</span>
-                <span class="slb2-rfrow-n" data-act="rfOpen" data-fam="${_slbEsc(f)}" title="open the family">${_slbEsc(_slb2FamName(f))}<span class="slb2-dim"> · ${members(f).length} spell${members(f).length === 1 ? '' : 's'}</span></span>
-                <span class="slb2-rfrow-m">${members(f).map(id => `<span class="slb2-rfspell" data-act="jump" data-id="${_slbEsc(id)}"><span class="slb2-tier t${spellTierOf(id)}">${_slb2TierText(spellTierOf(id))}</span>${name(id)}</span>`).join('') || '<span class="slb2-dim">no members</span>'}</span>
+                <span class="slb2-rfrow-n" data-act="rfOpen" data-fam="${_slbEsc(f)}" title="open the family">${_slbEsc(_slb2FamName(f))}<span class="slb2-dim"> · ${members(f).length} spell${members(f).length === 1 ? '' : 's'}${members(f).some(id => excl.has(id)) ? ` · ${members(f).filter(id => excl.has(id)).length} off` : ''}</span></span>
+                <span class="slb2-rfrow-m">${members(f).map(id => { const off = excl.has(id); return `<span class="slb2-rfspell${off ? ' off' : ''}" data-act="jump" data-id="${_slbEsc(id)}"${off ? ' title="this race does not learn it (still in the family for other races)"' : ''}><button class="slb2-rfx${off ? ' off' : ''}" data-act="rfExclude" data-key="${_slbEsc(race)}" data-id="${_slbEsc(id)}" title="${off ? 'off for this race · click to let it learn this again' : 'on · click to stop this race learning it (other races keep it)'}">${off ? '' : '✓'}</button><span class="slb2-tier t${spellTierOf(id)}">${_slb2TierText(spellTierOf(id))}</span>${name(id)}</span>`; }).join('') || '<span class="slb2-dim">no members</span>'}</span>
                 <span class="slb2-mpctl"><button data-act="rfMove" data-key="${_slbEsc(race)}" data-i="${i}" data-dir="-1" title="earlier">↑</button><button data-act="rfMove" data-key="${_slbEsc(race)}" data-i="${i}" data-dir="1" title="later">↓</button><button class="slb2-xbig" data-act="rfToggle" data-key="${_slbEsc(race)}" data-fam="${_slbEsc(f)}" title="remove this family">✕</button></span>
             </div>`).join('') || '<div class="slb2-empty">no families yet</div>'}</div>
+            ${excl.size ? `<div class="slb2-field-h">Off for this race (still in the family for other races): ${Array.from(excl).map(id => `<button class="slb2-rfchip" data-act="rfExclude" data-key="${_slbEsc(race)}" data-id="${_slbEsc(id)}" title="click to let this race learn it again">↺ ${name(id)}</button>`).join(' ')}</div>` : ''}
             ${treeOnly.length ? `<div class="slb2-field-h slb2-lint-red">Tree rungs outside these families (Phase 7: the families ARE the pool, so these are NOT equippable — add their family or re-tag them): ${treeOnly.map(name).join(', ')}</div>` : ''}
             <div class="slb2-group"><div class="slb2-group-h">ALL FAMILIES · click to add or remove</div>
                 <div class="slb2-rfpick">${all.map(f => `<button class="slb2-rfchip${fams.includes(f) ? ' on' : ''}" data-act="rfToggle" data-key="${_slbEsc(race)}" data-fam="${_slbEsc(f)}" style="--fc:${_slb2FamColor(f)}" title="${members(f).length} spells · on ${users(f)} race${users(f) === 1 ? '' : 's'}">${_slbEsc(_slb2Glyph(f))} ${_slbEsc(_slb2FamName(f))} <span class="slb2-dim">${members(f).length}</span></button>`).join('')}</div>
@@ -12913,7 +12931,8 @@
                 case 'mpPick': _slbMpKey = P('data-key'); _slbMpRenderRail(); _slbMpRenderDetail(); return;
                 case 'rfToggle': { const key = P('data-key'), f = P('data-fam'); const list = _slbRaceFams(key); const on = list.includes(f); _slbRaceFamWrite(key, on ? list.filter(x => x !== f) : list.concat(f), `${key}: ${on ? '−' : '+'}${f}`); return; }
                 case 'rfMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const list = _slbRaceFams(key); if (j < 0 || j >= list.length) return; const t = list[i]; list[i] = list[j]; list[j] = t; _slbRaceFamWrite(key, list, `${key}: ${t} moved`); return; }
-                case 'rfRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} families`, () => { delete _slbMods().doc.raceFamilies[key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
+                case 'rfExclude': _slbRaceExclToggle(P('data-key'), id); return;
+                case 'rfRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} families`, () => { const d = _slbMods().doc; delete d.raceFamilies[key]; if (d.raceExcludes) delete d.raceExcludes[key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
                 case 'rfOpen': { _slbFamKey = P('data-fam'); _slbTab = 'families'; _slb2RenderTop(); _slb2RenderTab(); return; }
                 case 'repFilter': { _slbFilters = _slb2EmptyFilters(); if (P('data-role')) _slbFilters.roles = [P('data-role')]; if (P('data-tier')) _slbFilters.tiers = [Number(P('data-tier'))]; if (P('data-element')) _slbFilters.elements = [P('data-element')]; if (P('data-family')) _slbFilters.families = [P('data-family')]; if (P('data-kind')) _slbFilters.kinds = [P('data-kind')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }
                 case 'lintFilter': { _slbFilters = _slb2EmptyFilters(); _slbFilters.lint = [P('data-rule')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }

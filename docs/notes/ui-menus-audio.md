@@ -1311,3 +1311,13 @@ unit is currently buffed or debuffed". ui.js renderSelectedUnitPanel (#unitHover
 - Known combat quirk found here: getEffectiveArmor clamps gear+status armour at 0 BEFORE folding the DEF stat in, so a DEF / M DEF
   debuff (and any negative terrain/weather/5G armour mod) does nothing to a unit with no positive armour mods. The card then shows
   DEF red with an unchanged number.
+
+## THE RACE EXCLUDES (2026-10-17, mondo: "exclude certain spells from a race's family, just a toggle")
+- data.js `RACE_SPELL_EXCLUDES[race] = [spell ids]` (after RACE_FAMILIES): family members that race does not learn. The
+  family keeps the row for every other race. `raceExcludedSpellIds` / `raceSpellExcluded` / `raceFamilyMemberIds`;
+  `raceFamilyPoolIds` drops them, so the pool, DEFAULTS kit, AI kits, recruits, party builder and verdicts follow;
+  `flRacePool` never lets Adaptable borrow one back; the codex family page skips them.
+- Spell Library → POOLS → a race: every member chip has a ✓ box (click = off for this race, struck through; click again =
+  back on); an "Off for this race" line lists them with ↺ chips. REVERT clears the race's families AND excludes.
+- Doc registry `raceExcludes` (EWSpellMods, list registry like raceFamilies; empty list = null), export summary line
+  `RACE EXCLUDES <race>: [...]`, baked by bake-spell-mods.js into `const RACE_SPELL_EXCLUDES = {`.
