@@ -1599,7 +1599,7 @@ Race editor: JUMP column on RACES (dim = from SPD), a JUMP select in the inspect
 export instructions + summary carry it. The climb design (not built) is /mnt/project-files/design/CLIMB_MECHANIC_DESIGN.md.
 
 ## THE ELEMENT SHARE (2026-10-17, mondo: elemental spells split their damage)
-- A combat-element spell (fire/ice/lightning/water/poison/earth) splits: `(1 − elemShare) × type matchup + elemShare ×
+- A combat-element spell (fire/ice/lightning/water/poison/earth; + 7 more in round 2 below) splits: `(1 − elemShare) × type matchup + elemShare ×
   element affinity` (weak ×1.5 / resist ×0.5 / immune 0 / absorb heals that part after the blow). STAB and every other
   bonus ride the whole hit, same ×3 cap. `elemShare` per spell row (Spell Library "Element share"), default 0.5
   (data.js `ELEM_SHARE_DEFAULT`). Source-less hits (ticks, hazards, weather, planted seed stings) stay all element.
@@ -1611,4 +1611,15 @@ export instructions + summary carry it. The climb design (not built) is /mnt/pro
 - Mirrors: `forecastHitOnUnit` (heal = absorbed part), ai.js `estDamage` + `pressEV`, ui.js `_estimateSpellDamage` +
   badges (`_elemPressesOn` decides the green !), hud.js target rows + enemy quick menu. Resolvers thread `elemShare`
   (`_spellElemShare(spell)`); bombs and delayed spells carry it in their records.
+- Round 2 (mondo's answers, same day): (1) no type chart on the element part, (2) no extra drain for immune/absorb —
+  both as built. (3) **Damage-scaled share**: a row without `elemShare` gets `spellElemShareAuto` — 30% element at
+  power ≤ 80, 70% at ≥ 160, linear between (data.js `ELEM_SHARE_BAND`; power = dmg, else summed hitDamages, dashDamage,
+  turretDmg, dotDamage; no power number → 0.5). The Spell Library field shows `auto N%` beside the blank input.
+  (4)+(5) **Seven elements promoted**: wind, nature, sonic, psychic, light, shadow, blood joined `COMBAT_ELEMENTS`
+  (13 now) with the approved RACE_ELEMENT_AFFINITY rows (block "element promotion 2026-10-17"). Arcane + metal stay
+  unresisted pending his card. The element box wraps into bands of 7 (data.js `elemBoxBands`; xl cells 36px so the
+  Horologe's 316px panel fits). No status pairings for the new elements (not asked).
+- Barrage fix (same PR): Requiem-style self novas land their hits on staggered timers; a slow frame ran finishAction
+  first, so they never pressed or paid element entropy. doSpell's `_pendingSpellHits` gate makes finishAction wait
+  (≤ 4 s) for the counted hits.
 - Plan, decisions and the tag-only elements proposal: /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.

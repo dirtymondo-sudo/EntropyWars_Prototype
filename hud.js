@@ -3023,7 +3023,7 @@ function _hrlgQuickStats(panelKey) {
 }
 
 /* THE ELEMENT BOX (2026-09-23): two rows under the clicked unit's stats —
-   the six combat elements over the unit's reaction to each (data.js
+   the combat elements (in bands of seven since 2026-10-17) over the unit's reaction to each (data.js
    elemAffinityBox: – neutral · ! weak · ▼ resist · ∅ immune · ♥ absorb ·
    ? until this unit's race has been hit with that element; your own seat's
    vessels are always read). The same box stands on the INFO card, the
@@ -3034,12 +3034,14 @@ function _hrlgElemBox(u) {
   const own = viewer != null && (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) === viewer;
   const cells = window.elemAffinityBox(u.race, { own, seen: (typeof state !== 'undefined' && state) ? state._elemSeen : undefined });
   const iconHtml = typeof window.elementIconHtml === 'function' ? window.elementIconHtml : null;
+  const bands = typeof window.elemBoxBands === 'function' ? window.elemBoxBands(cells) : [cells];
   return h('div', { className: 'ew-elem-box xl hrlg-qelem', title: 'ELEMENTS · how this unit takes each element' },
-    h('div', { className: 'ew-elem-row ew-elem-els' }, cells.map(c => iconHtml
-      ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
-      : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, c.icon))),
-    h('div', { className: 'ew-elem-row ew-elem-rxs' }, cells.map(c =>
-      h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym))));
+    ...bands.flatMap((band, bi) => [
+      h('div', { key: 'e' + bi, className: 'ew-elem-row ew-elem-els' }, band.map(c => iconHtml
+        ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
+        : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, c.icon))),
+      h('div', { key: 'r' + bi, className: 'ew-elem-row ew-elem-rxs' }, band.map(c =>
+        h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym)))]));
 }
 
 /* THE MENU CAMERA: how long a MOUSE must rest on a target row before the camera
@@ -3875,7 +3877,7 @@ function spellTargetChip(sp) {
 }
 
 // Per-element badge colors (legible over the near-black chip ground).
-// The six COMBAT_ELEMENTS check target affinities; the rest are flavor.
+// The COMBAT_ELEMENTS (thirteen since 2026-10-17) check target affinities; arcane + metal are flavor.
 const ELEM_BADGE_COLORS = {
   fire: '#ff8a5c', ice: '#8fd8ff', lightning: '#ffd94f', water: '#58a8ff',
   poison: '#9fe060', earth: '#c8a06a', wind: '#a8e0d8', nature: '#7cd08a',

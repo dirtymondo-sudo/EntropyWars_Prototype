@@ -65672,7 +65672,13 @@
                 };
             }
 
+            /* THE HIT GATE (2026-10-17): a handler whose hits land on their own staggered timers (the barrage nova)
+               counts them here; finishAction waits until they have all landed, so the press collector and the
+               element entropy see every hit. A slow frame used to run finishAction first: Requiem said "It's super
+               effective!" and never refunded. Capped at 4 s of waiting. */
+            let _pendingSpellHits = 0, _finishWaits = 0;
             const finishAction = () => {
+                if (_pendingSpellHits > 0 && _finishWaits++ < 40) { window.setTimeout(finishAction, 100); return; }
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
                 if (_focusCamSpellCtx && _focusCamSpellCtx.spellId === spell.id) {
                     _focusCamSpellCtx = null;
@@ -67028,10 +67034,11 @@
                     });
                     const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                     const barrageGap = actionMs(200);
+                    if (!spell.noDamage) _pendingSpellHits += enemies.length;
                     window.setTimeout(() => {
                         enemies.forEach((enemy, idx) => {
                             window.setTimeout(() => {
-                                if (enemy.dead) return;
+                                if (enemy.dead) { if (!spell.noDamage) _pendingSpellHits--; return; }
                                 // Pure-debuff barrages (Meow): apply the status to
                                 // everyone in the nova but deal NO damage — melee
                                 // vs magic doesn't apply to a spell that never hits.
@@ -67045,14 +67052,16 @@
                                 playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
                                 playSfx(spellLaunchSfx(spell));
                                 window.setTimeout(() => {
-                                    if (enemy.dead) return;
-                                    applyDamageToUnit(enemy, dmg, `${unitDisplayName(unit)}'s ${spell.name} hits `, {
-                                        sourceUnit: unit,
-                                        allowMarkBonus: false,
-                                        statusEffects: spell.statusEffects,
-                                        damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
-                                    });
+                                    try {
+                                        if (enemy.dead) return;
+                                        applyDamageToUnit(enemy, dmg, `${unitDisplayName(unit)}'s ${spell.name} hits `, {
+                                            sourceUnit: unit,
+                                            allowMarkBonus: false,
+                                            statusEffects: spell.statusEffects,
+                                            damageType: spell.damageType || 'physical',
+                                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        });
+                                    } finally { _pendingSpellHits--; }
                                 }, actionMs(400));
                             }, idx * barrageGap);
                         });

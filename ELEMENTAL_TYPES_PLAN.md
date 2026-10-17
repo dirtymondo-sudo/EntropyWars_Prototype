@@ -24,16 +24,17 @@ absorb only zero the element part (absorb heals it after the blow). PRESS: the T
 presses only on a neutral type; immune / absorb never press (data.js `elemPressVerdict`, battle.js
 `PRESS_OUTCOME.NULL`). Each enemy the element part hits on a weakness pays `ENTROPY_PTS.elemWeak` (4).
 Code: battle.js `_hitElemShare` / `_hitDamageMath` / `forecastHitOnUnit`, ai.js `estDamage` + `pressEV`.
-Plan + open decisions (new combat elements, ratio bands): /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.
+Round 2 (same day): a row without `elemShare` scales with the spell's power — 30% element at ≤ 80, 70% at
+≥ 160, linear between (`ELEM_SHARE_BAND`, `spellElemShareAuto`). Seven elements promoted (below).
+Plan: /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.
 
 ## THE FINAL ELEMENTS (reference — read this before asking again)
 Fifteen tags live on spells (`element:`), split into two tiers:
-- **6 COMBAT elements** (the only ones the affinity table consults):
-  **fire · ice · lightning · water · poison · earth**.
-- **9 FLAVOR elements** (VFX / filter chips only, never resisted):
-  wind · nature · shadow · light · psychic · sonic · arcane · blood · metal.
-  `psychic` / `sonic` are the promotion candidates (P4.16); `arcane` and
-  `metal` are never promoted (decisions above).
+- **13 COMBAT elements** (the only ones the affinity table consults):
+  **fire · ice · lightning · water · poison · earth** + (2026-10-17, mondo
+  "all of those") **wind · nature · sonic · psychic · light · shadow · blood**.
+- **2 FLAVOR elements** (VFX / filter chips only, never resisted):
+  arcane · metal (mondo was asked 2026-10-17 whether to promote them too).
 
 WHERE THE AFFINITIES LIVE: data.js `RACE_ELEMENT_AFFINITY` (the one table —
 38 races have rows, every other race is deliberately NEUTRAL and has no

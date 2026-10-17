@@ -2284,14 +2284,15 @@ function PbAffinityRing({ types }) {
 /* ══ THE ELEMENTS (2026-09-09, rev 9): the elemental weakness / resistance
    layer UNDER the type chart. data.js RACE_ELEMENT_AFFINITY is the table
    and getRaceElementAffinity(race, el) the read (the engine's
-   unitElementAffinity is the same read off the unit's race); only the six
+   unitElementAffinity is the same read off the unit's race); only the
    COMBAT_ELEMENTS ever consult it (fire / ice / lightning / water / poison /
-   earth). weak ×1.5 · resist ×0.5 · immune ×0 (statuses bounce too) ·
+   earth, plus wind / nature / sonic / psychic / light / shadow / blood since
+   2026-10-17). weak ×1.5 · resist ×0.5 · immune ×0 (statuses bounce too) ·
    absorb = the hit HEALS. Neutral is the common case and shows as '—'. */
 const PB_ELEMENT_ORDER = ['fire', 'ice', 'lightning', 'water', 'poison', 'earth'];
 const PB_ELEMENT_C = { fire: '#ff7a3d', ice: '#8fd8ff', lightning: '#ffe25c', water: '#4fa8ff', poison: '#9be25a', earth: '#c9a06a' };
 function pbElementAffinities(race) {
-  const order = (Array.isArray(window.COMBAT_ELEMENTS) && window.COMBAT_ELEMENTS.length === 6) ? window.COMBAT_ELEMENTS : PB_ELEMENT_ORDER;
+  const order = (Array.isArray(window.COMBAT_ELEMENTS) && window.COMBAT_ELEMENTS.length) ? window.COMBAT_ELEMENTS : PB_ELEMENT_ORDER;
   const read = typeof window.getRaceElementAffinity === 'function' ? window.getRaceElementAffinity : (r, el) => ((window.RACE_ELEMENT_AFFINITY || {})[r] || {})[el] || null;
   const mults = window.ELEMENT_AFFINITY_MULT || { weak: 1.5, resist: 0.5, immune: 0 };
   return order.map(el => {
@@ -2309,12 +2310,14 @@ function PbElementRing({ race }) {
      the element (data.js elemAffinityBox; a vessel you own is always read). */
   if (typeof window.elemAffinityBox === 'function') {
     const cells = window.elemAffinityBox(race);
+    const bands = typeof window.elemBoxBands === 'function' ? window.elemBoxBands(cells) : [cells];
     return h('div', { className: 'ew-elem-box md pb-elem-box' },
-      h('div', { className: 'ew-elem-row ew-elem-els' }, cells.map(c => iconHtml
-        ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
-        : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, icons[c.el] || '?'))),
-      h('div', { className: 'ew-elem-row ew-elem-rxs' }, cells.map(c =>
-        h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym))));
+      ...bands.flatMap((band, bi) => [
+        h('div', { key: 'e' + bi, className: 'ew-elem-row ew-elem-els' }, band.map(c => iconHtml
+          ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
+          : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, icons[c.el] || '?'))),
+        h('div', { key: 'r' + bi, className: 'ew-elem-row ew-elem-rxs' }, band.map(c =>
+          h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym)))]));
   }
   return h('div', { className: 'pb-affinity pb-element' },
     ...rows.map(r => {
