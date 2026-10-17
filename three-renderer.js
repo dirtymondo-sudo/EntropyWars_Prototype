@@ -14274,7 +14274,7 @@ const ThreeRenderer = (function () {
 
                 /* Celestial-favour badges: the unit's zodiac glyph ignites gold
                    while the reigning constellation matches; a sky-event moon/sun
-                   badge pulses while a celestial event empowers the faction. */
+                   badge pulses while a celestial event empowers the unit's team (the middle nexus holder). */
                 '.tp-wrap .tp-zodiac, .tp-wrap .tp-skyev {',
                 '  display: none; margin-left: 5px; font-size: 12px; line-height: 1;',
                 '  flex-shrink: 0; position: relative;',
@@ -14438,7 +14438,7 @@ const ThreeRenderer = (function () {
     /* Celestial-favour badges for the nameplate: the unit's zodiac glyph glows
        gold while the reigning constellation matches (the +10% blessing), and a
        sky-event badge pulses while a Blood Moon / Black Sun / Lunar Eclipse is
-       empowering the unit's faction. Both spans are always present (hidden by
+       empowering the unit's team (it holds the middle nexus). Both spans are always present (hidden by
        default) so _updatePlateSkyBadges can live-toggle them when the heavens
        shift mid-match without rebuilding plates. */
     function _plateSkyBadgesHtml(u) {
@@ -14471,7 +14471,8 @@ const ThreeRenderer = (function () {
     var _lastSkyBadgeKey = '';
     function _updatePlateSkyBadges() {
         if (typeof state === 'undefined' || !state) return;
-        var key = (state.activeZodiac || '') + '|' + ((state.skyEvent && state.skyEvent.type) || '');
+        var key = (state.activeZodiac || '') + '|' + ((state.skyEvent && state.skyEvent.type) || '')
+            + '|' + ((typeof getSkyEventHolder === 'function') ? getSkyEventHolder() : 0);
         if (key === _lastSkyBadgeKey) return;
         _lastSkyBadgeKey = key;
         var evm = (typeof SKY_EVENTS !== 'undefined' && state.skyEvent) ? SKY_EVENTS[state.skyEvent.type] : null;
@@ -42991,7 +42992,7 @@ const ThreeRenderer = (function () {
 
     /* Esoteric summoning-circle floor decal, drawn once into a canvas —
        concentric rings + tick "sigil" dashes, tinted per mount via material
-       color so each faction stains the circle its own hue. */
+       color so each accent stains the circle its own hue. */
     function _cvMakeCircleTexture() {
         var cnv = document.createElement('canvas');
         cnv.width = cnv.height = 256;
@@ -43324,7 +43325,7 @@ const ThreeRenderer = (function () {
             return false;
         }
         var def = res.def;
-        // faction accent stains the summoning circle
+        // the accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
         if (v.url === def.model && v.model) {              // same character
             if (v.appearanceRig) {

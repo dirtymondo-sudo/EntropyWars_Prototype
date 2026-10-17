@@ -1387,20 +1387,40 @@
             return { active: true, mult: m('atk'), m };
         }
 
+        /* THE CELESTIAL NEXUS (mondo, 2026-10-17: "they should give a buff to whoever controls the middle nexus"):
+           a celestial event buffs every unit of the team that holds the MIDDLE nexus (state.nexusPoints.earth, or on
+           an authored map the non-spawn zone nearest the board centre), for as long as the event lasts and they hold
+           it. A new event resets that zone to nobody (checkNewSkyEvent). Modes without a middle nexus: no buff. */
+        function getCelestialNexusKey() {
+            const np = state.nexusPoints;
+            if (!np) return null;
+            if (np.earth && np.earth.zoneSize) return 'earth';
+            const h = state.boardTerrain ? state.boardTerrain.length : 0;
+            const w = h && state.boardTerrain[0] ? state.boardTerrain[0].length : 0;
+            let best = null, bestD = Infinity;
+            for (const k of Object.keys(np)) {
+                const n = np[k];
+                if (!n || !n.zoneSize || n.isSpawn || /^spawn/.test(k)) continue;
+                const d = Math.abs(n.zoneX + n.zoneSize / 2 - w / 2) + Math.abs(n.zoneY + n.zoneSize / 2 - h / 2);
+                if (d < bestD) { bestD = d; best = k; }
+            }
+            return best;
+        }
+
+        /* the player whose team gets the celestial event's buff right now (0 = nobody) */
+        function getSkyEventHolder() {
+            if (!state.skyEvent) return 0;
+            const k = getCelestialNexusKey();
+            const n = k ? state.nexusPoints[k] : null;
+            return (n && n.owner) || 0;
+        }
+
         function getSkyEventBonus(unit) {
-            if (!unit || !state.skyEvent) return {
-                atkMult: 1,
-                defMult: 1,
-                healMult: 1,
-                active: false
-            };
+            const none = { atkMult: 1, defMult: 1, healMult: 1, active: false };
+            if (!unit || !state.skyEvent) return none;
             const ev = SKY_EVENTS[state.skyEvent.type];
-            if (!ev || unit.faction !== ev.faction) return {
-                atkMult: 1,
-                defMult: 1,
-                healMult: 1,
-                active: false
-            };
+            const holder = getSkyEventHolder();
+            if (!ev || !holder || unit.player !== holder) return none;
             return {
                 atkMult: ev.atkMult || 1,
                 defMult: ev.defMult || 1,
@@ -1448,8 +1468,10 @@
             if (ev) {
                 state.skyEvent = ev;
                 const meta = SKY_EVENTS[ev.type];
-                addLog(`A ${meta.label} ${meta.icon} appears! ${meta.desc} for ${ev.remaining} rounds.`);
-                queueAnnouncement(`${meta.icon} ${meta.label}`, meta.desc, 'sky');
+                const nxKey = getCelestialNexusKey();
+                addLog(`A ${meta.label} ${meta.icon} appears! ${nxKey ? meta.desc + ' ' : ''}for ${ev.remaining} rounds.`);
+                if (nxKey && typeof resetCelestialNexus === 'function') resetCelestialNexus(nxKey);
+                queueAnnouncement(`${meta.icon} ${meta.label}`, nxKey ? meta.desc : '', 'sky');
             }
         }
 
@@ -3253,7 +3275,6 @@
             }
             return {
                 race,
-                faction: raceProfile.faction,
                 types: [...(raceProfile.types || [])],
                 gender,
                 appearance: lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
@@ -3291,7 +3312,6 @@
             const gender = validGenders[randInt(validGenders.length)];
             return {
                 race,
-                faction: raceProfile.faction,
                 types: [...(raceProfile.types || [])],
                 gender,
                 zodiac,
@@ -3398,21 +3418,6 @@
             if (effMult > 1.001) return "It's super effective!";
             if (effMult < 0.999) return "It wasn't very effective...";
             return '';
-        }
-
-        function getFactionSynergyName(faction) {
-            if (faction === 'space') return 'Bulwark';
-            if (faction === 'time') return 'Restoration';
-            if (faction === 'chaos') return 'Fury';
-            return '';
-        }
-
-        function getFactionUnitCount(player, faction) {
-            return state.units.filter(u => u.player === player && !u.dead && u.faction === faction).length;
-        }
-
-        function hasFactionSynergy(player, faction) {
-            return getFactionUnitCount(player, faction) >= 2;
         }
 
         function getTerrainPreferenceModifier(unit) {
@@ -3553,8 +3558,6 @@
             const sleepMod = getSleepAffinityModifier(unit).armor || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).armor || 0;
             const weatherMod = getWeatherStatMod(unit).def || 0;
-            const spaceArmor = (!unit || unit.faction !== 'space' || !hasFactionSynergy(unit.player, 'space')) ? 0 : Math.max(1, Math.round((unit.def || 0) * (0.20 / 1.2)));
-            const timeArmor = (!unit || unit.faction !== 'time' || !hasFactionSynergy(unit.player, 'time')) ? 0 : 1;
 
             // 5G towers broadcast a mind-scrambling signal: MDEF-only penalty.
             let fiveGPenalty = 0;
@@ -3571,11 +3574,9 @@
             const statusDelta = dt === 'magic'
                 ? (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0)
                 : getStatusArmorDelta(unit);
-            let armor = Math.max(0, baseArmor + spaceArmor + timeArmor + sleepMod + terrainMod + weatherMod + statusDelta - fiveGPenalty);
+            let armor = Math.max(0, baseArmor + sleepMod + terrainMod + weatherMod + statusDelta - fiveGPenalty);
 
             armor += (unit._bossBuffDef || 0);
-            const sky = getSkyEventBonus(unit);
-            if (sky.defMult !== 1) armor = Math.max(0, Math.round(armor * sky.defMult));
             { const _zb = getZodiacBonus(unit); if (_zb.active) armor = Math.max(0, Math.round(armor * _zb.m(dt === 'magic' ? 'mdef' : 'def'))); }
 
             // Fold the relevant defense stat into the flat damage soak.
@@ -3596,45 +3597,47 @@
                 const _pMdef = ((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0)) + (_aura ? passiveAuraStat(unit, 'mdef') : 0);
                 armor += Math.floor(_pMdef * MDEF_ARMOR_FOLD);
             }
+            /* the celestial event's DEF buff (Lunar Eclipse, the middle nexus holder): the whole physical soak, DEF included */
+            if (dt === 'physical') { const sky = getSkyEventBonus(unit); if (sky.defMult !== 1) armor = Math.round(armor * sky.defMult); }
             return Math.max(0, armor);
         }
 
         function getEffectiveHealBonus(unit, baseAmount = 0, target = null) {
             const baseBonus = unit?.healBonus || 0;
-            const synergy = (!unit || unit.faction !== 'time' || !hasFactionSynergy(unit.player, 'time')) ? 0 : Math.max(1, Math.round(baseAmount * 0.2));
             const terrainMult = target ? getTerrainHealMultiplier(target.x, target.y, target) : 1;
-            const skyMult = getSkyEventBonus(unit).healMult || 1;
+            const skyMult = getSkyEventBonus(unit).healMult || 1;   // the celestial event's healing buff: a share of the whole heal
             const weatherHealMult = target ? getWeatherHealMult(target.x, target.y) : 1;
             const _zbH = getZodiacBonus(unit), zodiacMult = _zbH.active ? _zbH.m('heal') : 1;
-            return Math.round((baseBonus + synergy) * terrainMult * skyMult * weatherHealMult * zodiacMult);
+            return Math.round(baseBonus * terrainMult * weatherHealMult * zodiacMult + baseAmount * (skyMult - 1));
         }
 
         function getEffectiveRevivePct(unit, basePct = 0.35) {
             if (!unit) return basePct;
-            const bonus = (unit.faction === 'time' && hasFactionSynergy(unit.player, 'time')) ? 0.08 : 0;
             const skyMult = getSkyEventBonus(unit).healMult || 1;
             const weatherHealMult = unit ? getWeatherHealMult(unit.x, unit.y) : 1;
-            return Math.max(0.1, Math.min(0.75, (basePct + bonus) * skyMult * weatherHealMult));
+            return Math.max(0.1, Math.min(0.75, basePct * skyMult * weatherHealMult));
         }
 
         // axis: 'physical' (default) counts ATK-axis statuses/stages (Overclock,
         // Inspired, Discord…); 'magic' counts INT-axis statuses/stages instead
-        // (Dark Pact, Harmonize, Neuralyzer, Drowsy…). Environmental, faction
-        // and streak bonuses feed both axes.
+        // (Dark Pact, Harmonize, Neuralyzer, Drowsy…). Environmental and
+        // streak bonuses feed both axes.
         function getEffectiveAttackBonus(unit, axis) {
             const sleepMod = getSleepAffinityModifier(unit).atk || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).atk || 0;
             const weatherMod = getWeatherStatMod(unit).atk || 0;
-            const synergy = (!unit || unit.faction !== 'chaos' || !hasFactionSynergy(unit.player, 'chaos')) ? 0 : 16;
             const streakBonus = getStreakAtkBonus(unit);
             const floorBonus = getSectionBuffs(unit).atk || 0;
             const statusDelta = (axis === 'magic' && typeof getStatusIntDelta === 'function')
                 ? getStatusIntDelta(unit)
                 : getStatusAtkDelta(unit);
-            let bonus = synergy + sleepMod + terrainMod + weatherMod + streakBonus + floorBonus + statusDelta;
-            const sky = getSkyEventBonus(unit);
-            if (sky.atkMult !== 1) bonus = Math.round(bonus * sky.atkMult);
+            let bonus = sleepMod + terrainMod + weatherMod + streakBonus + floorBonus + statusDelta;
             { const _zb = getZodiacBonus(unit); if (_zb.active) bonus = Math.round(bonus * _zb.m(axis === 'magic' ? 'int' : 'atk')); }
+            /* the celestial event's ATK buff (Blood Moon, the middle nexus holder): that share of the unit's ATK, physical hits */
+            if (axis !== 'magic') {
+                const sky = getSkyEventBonus(unit);
+                if (sky.atkMult !== 1) bonus += Math.round(((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'atk') : (unit.atk || 0)) * (sky.atkMult - 1));
+            }
             return bonus;
         }
 
@@ -5195,7 +5198,6 @@
                 name: unit.name || unit.cls,
                 cls: unit.cls,
                 race: unit.race || '',
-                faction: unit.faction || '',
                 types: [...(unit.types || [])],
                 zodiac: unit.zodiac || '',
                 sleepPreference: unit.sleepPreference || 'none',
