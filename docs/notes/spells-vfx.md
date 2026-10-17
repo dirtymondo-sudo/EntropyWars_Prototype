@@ -1362,3 +1362,17 @@ Fix (three-renderer.js): `_ssRenderFrame` sets `renderer._ew_paneRender` while i
 `_projectObject` draws bundle groups the classic way under it (as it already did for `_ew_sideRender`). Checked on real
 WebGPU in the sandbox (stadium, krampus / nephilim / zombie / annunaki): before, combo = nephilim twice, strike = top
 row copies bottom row; after, every pane frames its own unit; WebGL unchanged. Off (`?ew_bundles=0`) also fixes it.
+
+## THE RISE (2026-10-17, mondo: "it feels like the wall just instantly snaps there. its supposed to rise out of the ground smoothly")
+Cause: terrain spells (Rampart's `terrainDeform`, battle.js `applyTerrainDeform`) change the height in one step and the
+next `rebuildTerrain` drew the new block at full height; there was no tween. Fix (three-renderer.js, render-side only, so
+host and guest both see it from the height change itself; RULE #2 needs no relay): `_riseDetect` (start of
+`rebuildTerrain`) compares each cell's height to the last build; cells that came up (in battle, at most max(24, a third
+of the board), so map loads and big reshapes don't animate) get a rise record `{id, lv, t0, dur 650 ms}`, eased out. The
+rising parts start sunk by their new levels and climb back: tile boards move each new tile mesh (`_ew_riseBaseY`, kept
+out of the merged terrain while it moves) and `_deltaPatchBuild` rising patches; field arenas build `_fieldStrataBuild`
+tops/faces and `_fieldSkinBuild` painted sheets of rising cells into their own groups (faces of static neighbours use the
+old heights so nothing pokes up early). `_riseTick` (every frame) moves them; a unit standing on a rising cell rides up
+(`unitSurfaceY` subtracts the sink; units mid-walk/jump/strike are left alone). Lowered cells snap as before. Checked in
+the sandbox: Fairy Forest arena (WebGL + WebGPU) and Göbekli Tepe tile board (WebGL), unit riding the wall. Off:
+`window.EW_NO_TERRAIN_RISE = true`; `window.EW_RISE_MS` sets the duration.
