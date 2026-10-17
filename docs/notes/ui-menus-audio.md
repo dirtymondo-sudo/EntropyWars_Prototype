@@ -1173,6 +1173,28 @@ pause/settings menu from the party builder or match select ... ideally it would 
   the flow under the ring (position static); the lead's name + HP plate is hidden by default (dockTag none).
 - Layout > Turn order / Party portraits show "The icons" (iconsForm; data-ipath sliders, data-dk iconset key:value buttons).
 
+### UI Maker pass 10: rings, plates, scoreboard, hero bars, AP icons (2026-10-17, mondo: "let me mess with the unit selection rings ... how the directional arrow looks ... on only for the current unit ... make the horologe one look different from the turn icons ... customize stuff with the scoreboard ... customize the nameplates too and their health bars and type badges"; later "the ap icons, they are blinking a little too fast ... ideally they can slide to the left")
+- db.ux (UX_DEF, uxOf/uxTidy, part of the layout undo; fields write through data-xpath / data-xset, per-group reset
+  data-dk uxreset with the key prefix): r* rings, p* plates, s* scoreboard, a* AP icons. uxCss() rides the layout sheet.
+- THE RING LOOK: three-renderer.js reticle shader (WebGL GLSL + the WebGPU TSL port in _ewProgsInit) reads SHARED uniform
+  objects _retLookU (uRStyle line/dashed/double/none, uRSize, uRThick, uRGlow, uRPulse, uRTicks, uRAccent, uRGap, uROwn+uRCol,
+  uROp, uArStyle double/single/triangle/dot/none, uArSize, uArOwn+uArCol, uSpan). hud.js ringSignal() publishes
+  window._ewRingLook + bumps _ewRingLookV; _ringLookSync() (per frame in the facing loop) copies it once per change and grows
+  uSpan (the mesh is scaled uSpan / RETICLE_SPAN) so a big ring or arrow never clips; _ringLookApply sets each reticle's
+  visible from Show (all / mine / current = _blitzActiveUnitId || selectedUnitId / none) and its scale. Defaults = the old look.
+  The ring-vitals meters take size + thickness too. Bars mode row "Selection rings" (UI.bar 'sel') opens ringDetail;
+  RING_LOOKS = the one-click looks.
+- Name plates: Bars mode > Name plates opens platesDetail above the bar look (size via the CSS scale property, width, name /
+  level / numbers / MP / status toggles, name font/size/case/colours, type badges beside/above/below/hidden + shape + size,
+  panel none/dark/theme, ally / enemy fade). CSS only, prefix :root:root:not(#uim-x):not(#uim-x).
+- Scoreboard: Layout > Scoreboard (scoreForm). Classes added for it: ew-sb-strip/-mode/-scores/-num p1|p2/-dash/-line/-time/
+  -rnum, ew-ent-lbl/-cap/-line/-tick/-socket/-trace, ew-tower ally|foe.
+- Hero bars own look: BARS_DEF heroOwn + heroFill/heroSeg/heroH/heroTrack/heroFrame/heroFrameW/heroEdge/heroEdgeCol/heroGlow
+  (Bars > Hero section bars); written after the shared rules with a higher-specificity prefix, so the turn icons keep theirs.
+- AP press icons: Layout > AP press icons (apForm): Grow toward right | left (left = a box aAnchor icons wide, icons
+  right-aligned so extra icons spill out to the left), size, spacing, blink time (the pend flash, default now 1s, was 0.62s),
+  breathe time, spent opacity, cube + ring colours, glow.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
@@ -1266,3 +1288,19 @@ mondo: "make sure that passives are a separate color than utility moves." Passiv
 'utility') paint rose `#f28ad0` (glyph ◈) instead of the utility gold in the party builder: rack cards, loadout slots,
 info panel, hover card (party-builder.js `pbColourCat`; TREE_CAT_C / PB_CAT / TREE_CAT_GLYPH `passive`). Filters and
 ordering still use classifySpellLocal. The type chip rule (only on damaging spells) is in champions-combat.md.
+
+## THE STAT CARD BUFF READ (2026-10-17)
+mondo: "make sure the unit info panel has its status effect badges ... green and red numbers ... should only show like that if the
+unit is currently buffed or debuffed". ui.js renderSelectedUnitPanel (#unitHoverHud, the ⓘ card):
+- Before: each stat was tinted green/red whenever the effective number differed from the race's raw stat, so gear armour,
+  terrain, weather, day/night sleep affinity, zodiac and kill streak all lit it, and RNG was ALWAYS green (getEffectiveRange
+  adds the basic attack's +1 reach).
+- Now the number stays the real effective stat, but green/red + the white base tick come only from live buffs/debuffs: status
+  atk/int/armor/mdef/move/range deltas, stat stages, the celestial nexus buff (Blood Moon also folds into M ATK; Lunar Eclipse
+  into DEF / M DEF on the card), a key charge's move, SPD stages crossing a move band. CRT/EVA never tint.
+- The old text pills are replaced by the nameplate/Horologe badge row (hud.js _hrlgStatusChips, class hrlg-schip, one hue per
+  status from _HRLG_SB_COLORS) plus a celestial-buff chip. The panel FP now also keys on statStageMods, skyBuff, hourglassBuff,
+  _killStreak.
+- Known combat quirk found here: getEffectiveArmor clamps gear+status armour at 0 BEFORE folding the DEF stat in, so a DEF / M DEF
+  debuff (and any negative terrain/weather/5G armour mod) does nothing to a unit with no positive armour mods. The card then shows
+  DEF red with an unchanged number.

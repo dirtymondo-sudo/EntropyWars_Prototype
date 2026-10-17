@@ -3922,7 +3922,8 @@
                 return;
             }
 
-            const _hpFp = unit.id + '|' + unit.hp + '|' + unit.mp + '|' + unit.ap + '|' + unit.x + ',' + unit.y + '|' + Object.keys(unit.status || {}).filter(k => (unit.status[k] || 0) > 0).map(k => k + unit.status[k]).join(',') + '|' + (state.actionMode||'') + '|' + (state.selectedPanelFlash||'') + '|' + (state.pendingTarget?.x ?? '') + '|' + (state.selectedUnitId||'') + '|' + (state.showUnitInfo ? '1' : '0') + '|' + (unit.shield || 0);
+            const _hpFp = unit.id + '|' + unit.hp + '|' + unit.mp + '|' + unit.ap + '|' + unit.x + ',' + unit.y + '|' + Object.keys(unit.status || {}).filter(k => (unit.status[k] || 0) > 0).map(k => k + unit.status[k]).join(',') + '|' + (state.actionMode||'') + '|' + (state.selectedPanelFlash||'') + '|' + (state.pendingTarget?.x ?? '') + '|' + (state.selectedUnitId||'') + '|' + (state.showUnitInfo ? '1' : '0') + '|' + (unit.shield || 0)
+                + '|' + (Array.isArray(unit.statStageMods) ? unit.statStageMods.map(m => m ? m.stat + m.n + ':' + m.left : '').join(',') : '') + '|' + (unit.skyBuff || '') + '|' + (unit.hourglassBuff || 0) + '|' + (unit._killStreak || 0);
             if (_hpFp === _lastHoverPanelFP) return;
             _lastHoverPanelFP = _hpFp;
             const actingUnit = getSelectedUnit();
@@ -3935,21 +3936,53 @@
                 (preview.text || `Potential healing: +${preview.amount} HP`) :
                 '';
             const mpPreviewText = preview?.type === 'mp' ? `Potential mana: +${preview.amount} MP` : '';
+            // THE BUFF READ (2026-10-17, mondo: "those should only show like that if the unit is currently buffed or
+            // debuffed"): the number stays the unit's real effective stat (gear armour, terrain, weather, day/night,
+            // zodiac, the basic-attack +1 reach all fold in), but green / red and the base tick come ONLY from live
+            // buffs and debuffs: status deltas, stat stages, the celestial nexus buff, a key charge's move.
+            const _sky = (typeof getSkyEventBonus === 'function') ? getSkyEventBonus(unit) : null;
+            const _skyPts = (k, mult) => (mult && mult !== 1) ? Math.round(((typeof levelPowerStat === 'function') ? levelPowerStat(unit, k) : ((k === 'int' ? unit.intStat : unit[k]) || 0)) * (mult - 1)) : 0;
+            const _skyAtk = _sky ? _skyPts('atk', _sky.atkMult) : 0;   // already inside getEffectiveAttackBonus
+            const _skyInt = _sky ? _skyPts('int', _sky.atkMult) : 0;   // M ATK + DEF / M DEF fold it in here for the card
             const effAtk = unit.atk + getEffectiveAttackBonus(unit);
             // 'none' → gear/status armor only, without folding the DEF
             // stat in again (we add unit.def explicitly here for the display).
-            const effDef = (unit.def || 0) + getEffectiveArmor(unit, 'none');
-            const effMDef = (unit.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0);
+            const _defRaw = (unit.def || 0) + getEffectiveArmor(unit, 'none');
+            const _mdefRaw = (unit.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0);
+            const _defMult = (_sky && _sky.defMult) || 1;
+            const effDef = Math.round(_defRaw * _defMult);
+            const effMDef = Math.round(_mdefRaw * _defMult);
             const effMov = getEffectiveMove(unit);
             const effRng = getEffectiveRange(unit);
-            const effInt = getEffectiveInt(unit);
+            const effInt = getEffectiveInt(unit) + _skyInt;
+            const _bAtk = (typeof getStatusAtkDelta === 'function' ? getStatusAtkDelta(unit) : 0) + _skyAtk;
+            const _bInt = (typeof getStatusIntDelta === 'function' ? getStatusIntDelta(unit) : 0) + _skyInt;
+            const _bDef = (typeof getStatusArmorDelta === 'function' ? getStatusArmorDelta(unit) : 0) + (effDef - _defRaw);
+            const _bMdef = (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0) + (effMDef - _mdefRaw);
+            let _bMov = (typeof getStatusMoveDelta === 'function' ? getStatusMoveDelta(unit) : 0)
+                + (typeof getHourglassMoveBonus === 'function' ? getHourglassMoveBonus(unit) : 0);
+            if (typeof moveFromSpd === 'function' && typeof getEffectiveSpd === 'function' && typeof getStatStageDelta === 'function') {
+                const _spdNow = getEffectiveSpd(unit), _spdStg = getStatStageDelta(unit, 'spd');
+                if (_spdStg) _bMov += moveFromSpd(_spdNow) - moveFromSpd(Math.max(1, _spdNow - _spdStg));
+            }
+            const _bRng = getActiveStatusKeys(unit).reduce((sum, k) => sum + (STATUS_DEFS[k]?.rangeDelta || 0), 0)
+                + ((unitHasStatus(unit, 'overclock') && unit.types && unit.types.includes('tech')) ? 1 : 0);
 
-            // Active statuses are the only extra context worth the pixels —
-            // everything else (zodiac/terrain/weather/items) lives in
-            // other UI and just buried the numbers here.
+            // THE STATUS BADGES (2026-10-17): the same badge row the unit's nameplate and the Horologe carry — every
+            // status in its own hue (hud.js _HRLG_SB_COLORS), stat stages as +N / -N chips, MOV, key charge, kill
+            // streak — plus the celestial nexus buff. Hover a badge for the turns left.
+            const _chips = (typeof _hrlgStatusChips === 'function') ? _hrlgStatusChips(unit).slice() : null;
+            if (_chips && _sky && _sky.active && typeof SKY_EVENTS !== 'undefined' && SKY_EVENTS[unit.skyBuff]) {
+                const _ev = SKY_EVENTS[unit.skyBuff];
+                _chips.push({ key: 'sky', label: (_ev.icon || '') + ' ' + String(_ev.label || '').toUpperCase(), kind: 'up', title: (_ev.label || '') + ' — ' + (_ev.buff || '') });
+            }
             const statusEntries = Object.entries(unit.status || {}).filter(([, t]) => (t || 0) > 0);
             let statusPills = '';
-            if (statusEntries.length > 0) {
+            if (_chips) {
+                if (_chips.length) statusPills = '<div class="ins-status">' + _chips.map(c =>
+                    `<span class="hrlg-schip${c.kind ? ' ' + c.kind : ''}"${c.bg ? ` style="background:${c.bg}"` : ''}${c.title ? ` title="${escapeHtml(c.title)}"` : ''}>${escapeHtml(c.label)}</span>`
+                ).join('') + '</div>';
+            } else if (statusEntries.length > 0) {
                 statusPills = '<div class="ins-status">' + statusEntries.map(([name, turns]) => {
                     const sDef = STATUS_DEFS[name];
                     const kind = sDef?.kind === 'debuff' ? ' debuff' : sDef?.kind === 'buff' ? ' buff' : '';
@@ -3969,10 +4002,12 @@
 
             // ONE BAR COLOUR (2026-10-01): every stat bar is EW_STAT_BAR_C; the grade node carries the colour.
             // FFT-style horizontal stat bar: length reads at a glance, exact
-            // number at the end. Buffed/debuffed values tint green/red with a
-            // white tick marking the unbuffed base on the bar.
-            function statBar(label, val, base, cap, color, isPct, tip, gradeKey) {
-                const diff = val - base;
+            // number at the end. `buff` = the live buff/debuff share of `val`
+            // (THE BUFF READ above): green/red and the white unbuffed tick show
+            // only while it is non-zero.
+            function statBar(label, val, buff, cap, color, isPct, tip, gradeKey) {
+                const diff = buff || 0;
+                const base = val - diff;
                 const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
                 const scale = Math.max(cap, val, base, 1);
                 const w = Math.max(2, Math.min(100, (Math.max(0, val) / scale) * 100));
@@ -3993,16 +4028,16 @@
             }
 
             const statBars =
-                statBar('ATK', effAtk, unit.atk, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.atk, 'atk') +
-                statBar('M ATK', effInt, unit.intStat || 0, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.int, 'int') +
-                statBar('DEF', effDef, unit.def || 0, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.def, 'def') +
-                statBar('M DEF', effMDef, unit.mdef || 0, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.mdef, 'mdef') +
-                statBar('MOV', effMov, unit.move, 6, EW_STAT_BAR_C, false, window.STAT_HELP?.move) +
-                statBar('RNG', effRng, unit.range, 8, EW_STAT_BAR_C, false, window.STAT_HELP?.range) +
+                statBar('ATK', effAtk, _bAtk, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.atk, 'atk') +
+                statBar('M ATK', effInt, _bInt, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.int, 'int') +
+                statBar('DEF', effDef, _bDef, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.def, 'def') +
+                statBar('M DEF', effMDef, _bMdef, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.mdef, 'mdef') +
+                statBar('MOV', effMov, _bMov, 6, EW_STAT_BAR_C, false, window.STAT_HELP?.move) +
+                statBar('RNG', effRng, _bRng, 8, EW_STAT_BAR_C, false, window.STAT_HELP?.range) +
                 // CRT/EVA are official stats (data.js formula, shared with the
                 // combat rolls) — hover the row for the full math.
-                statBar('CRT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, EW_STAT_BAR_C, true, window.STAT_HELP?.crt) +
-                statBar('EVA', Math.round(getEvasionChance(unit) * 100), Math.round(getEvasionChance(unit) * 100), 100, EW_STAT_BAR_C, true, window.STAT_HELP?.eva);
+                statBar('CRT', Math.round(getCritChance(unit) * 100), 0, 100, EW_STAT_BAR_C, true, window.STAT_HELP?.crt) +
+                statBar('EVA', Math.round(getEvasionChance(unit) * 100), 0, 100, EW_STAT_BAR_C, true, window.STAT_HELP?.eva);
 
             const isAlly = unit.player === getViewerPlayer();
             const forecastNote = hpPreviewText || mpPreviewText;
@@ -17437,6 +17472,9 @@
         const role = r => (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[r]) || '';
         const types = r => (RACE_PROFILES[r] && RACE_PROFILES[r].types) || [];
         const range = r => (typeof raceKit === 'function' ? raceKit(r).range : 1);
+        /* JUMP (2026-10-17): the race's own row in data.js RACE_JUMP, else 1 or 2 from SPD (raceJumpStat) */
+        const jump = r => (typeof raceJumpStat === 'function' ? raceJumpStat(r, base(r, 'spd')) : 1);
+        const jumpOwn = r => typeof RACE_JUMP !== 'undefined' && RACE_JUMP[r] != null;
         const frameLevel = () => R.frame === 'l1' ? 1 : R.frame === 'l100' ? cap() : 0;
         const toFrame = (k, b) => R.frame === 'base' ? b : raceStatAtLevel(k, b, frameLevel());
         const fromFrame = (k, v) => R.frame === 'base' ? Math.max(0, Math.round(+v || 0)) : raceBaseForLevelValue(k, v, frameLevel());
@@ -17486,7 +17524,7 @@
         function sorted(list) {
             const k = R.sort.key, d = R.sort.dir;
             const val = r => k === 'name' ? label(r).toLowerCase() : k === 'role' ? role(r) : k === 'type' ? types(r).join(',') : k === 'mov' ? moveFromSpd(base(r, 'spd'))
-                : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
+                : k === 'jump' ? jump(r) : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
             return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
         }
 
@@ -17573,11 +17611,11 @@
             const rows = list.map(r => `<tr class="${r === R.sel ? 'sel' : ''}" data-act="pick" data-v="${esc(r)}">
                 <td class="rce-name">${art(r, 'thumb')}${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
                 ${STATS.map(([k]) => `<td class="rce-num${edited(r, k) ? ' ed' : ''}">${grade(k, base(r, k))}<span>${toFrame(k, base(r, k))}</span></td>`).join('')}
-                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
+                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num${edited(r, 'jump') ? ' ed' : ''}${jumpOwn(r) ? '' : ' slb2-dim'}" title="${jumpOwn(r) ? 'the race\'s own jump' : 'from SPD'}">${jump(r)}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
             return `<div class="rce-split"><div class="rce-left">${filterBar()}
                 <div class="rce-tablewrap" data-scroll="races"><table class="rce-table"><thead><tr>${th('name', 'RACE')}${th('role', 'ROLE')}${th('type', 'TYPE')}
-                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
-                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
+                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('jump', 'JUMP', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
+                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. JUMP is the race's own (dim = from SPD: 1 below ${typeof JUMP_SPD_FROM !== 'undefined' ? JUMP_SPD_FROM : 90}, 2 from it). POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
                 <div class="rce-right" data-scroll="insp">${inspector(R.sel)}</div></div>`;
         }
         function powerCls(r) { const p = racePowerBudget(RACE_BASE_STATS[r], range(r)); return p > RACE_POWER_TARGET * 1.05 ? 'hi' : p < RACE_POWER_TARGET * 0.95 ? 'lo' : ''; }
@@ -17607,6 +17645,7 @@
                     <label>TYPE</label><div>${allTypes().map(t => `<button class="slb2-tiny${types(r).includes(t) ? ' on' : ''}" data-act="type" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join(' ')}${was('types')}</div>
                     <label>ROLE</label><div><select class="slb2-sel" data-f="role1" data-r="${esc(r)}">${opt('', role(r), '—')}${allRoles().map(x => opt(x, role(r))).join('')}</select>${was('role')}</div>
                     <label>ATTACK RANGE</label><div><input class="rce-in" type="number" min="1" max="8" value="${range(r)}" data-f="range" data-r="${esc(r)}"> <span class="slb2-dim">tiles (basic attack reach)</span>${was('range')}</div>
+                    <label>JUMP</label><div><select class="slb2-sel" data-f="jump" data-r="${esc(r)}">${opt('spd', jumpOwn(r) ? '' : 'spd', 'from SPD (' + (typeof raceJumpStat === 'function' ? raceJumpStat('', base(r, 'spd')) : 1) + ')')}${[1, 2, 3, 4, 5].map(n => opt(n, jumpOwn(r) ? jump(r) : '')).join('')}</select> <span class="slb2-dim">hops up ${jump(r)} level${jump(r) === 1 ? '' : 's'} · leaps ${Math.max(2, jump(r))} tiles</span>${edited(r, 'jump') ? `<span class="rce-was">was ${M().shipped(r, 'jump') == null ? 'from SPD' : M().shipped(r, 'jump')}</span>` : ''}</div>
                     <label>TERRAIN</label><div><select class="slb2-sel" data-f="terrain" data-r="${esc(r)}">${TERRAIN_PREFERENCE_OPTIONS.map(x => opt(x, terr)).join('')}</select> <span class="slb2-dim">${esc(tbTxt)}</span>${was('terrain')}</div>
                     <label>NATIVE TO</label><div class="rce-chips">${allBiomes().map(b => `<button class="slb2-tiny${bi.includes(b) ? ' on' : ''}" data-act="biome" data-v="${esc(b)}" data-r="${esc(r)}">${esc(b.replace(/_/g, ' '))}</button>`).join(' ')}${was('biomes')}</div>
                 </div>
@@ -17614,7 +17653,7 @@
                 <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
                 <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
                 ${statRows}
-                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
+                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>JUMP <b>${jump(r)}</b> up · <b>${Math.max(2, jump(r))}</b> tiles across${jumpOwn(r) ? '' : ' (from SPD)'}</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
                 <div class="rce-sec">HP AND MP FROM LEVEL 1 TO ${cap()}</div>
                 ${chart(r, ['hp', 'mp'], 150)}
                 <div class="rce-sec">ATK · M ATK · DEF · M DEF FROM LEVEL 1 TO ${cap()}</div>
@@ -18009,6 +18048,7 @@
                 else if (f === 'role1') W(() => M().setRace(r, 'role', val));
                 else if (f === 'range') W(() => M().setRace(r, 'range', Math.max(1, Math.min(8, Math.round(+val || 1)))));
                 else if (f === 'terrain') W(() => M().setRace(r, 'terrain', val));
+                else if (f === 'jump') W(() => M().setRace(r, 'jump', val === 'spd' ? null : Math.max(1, Math.min(5, Math.round(+val || 1)))));
                 else if (f === 'band') W(() => { const b = STAT_GRADE_BANDS[k].slice(); b[+el.dataset.i] = Math.round(+val || 0); M().setGlobal('grades', k, b); });
                 else if (f === 'curve') W(() => M().setGlobal('curve', k, Math.max(0, +val || 0) / (+el.dataset.scale || 1)));
                 else if (f === 'gain') W(() => M().setGlobal('gains', k, Math.round(+val || 0)));

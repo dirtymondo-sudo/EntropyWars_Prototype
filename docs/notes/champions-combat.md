@@ -1578,3 +1578,22 @@ The CPU's press value (ai.js PRESS_KINDS) was left as is.
   a RESIST / MISS that vetoed the spell's own super effective press and drained an AP. They now pass `noPress: true`
   and the collector (and its three MISS pushes) skip them. A colossal target that never slides (dist 0) already
   refunded (browser-checked, Body Check on a colossal unit: +2 AP).
+
+## DEF / M DEF DEBUFFS BITE (2026-10-17)
+mondo: "every unit has def and m def stats. thats what the buffs affect ... huge bug". state.js getEffectiveArmor clamped the
+extra pool (gear/passive armour + day/night + terrain + weather + DEF/MDEF stages + 5G) at 0 BEFORE folding the DEF / M DEF stat in,
+so on nearly every unit a DEF / M DEF debuff stage, a 5G tower or a bad weather/terrain mod did nothing. Now the pool is signed and
+only the final soak is clamped at 0 (a -1 DEF stage = -20 soak, mirroring a +1 ATK stage's +20 damage). The zodiac blessing's
+DEF / M DEF share now scales the whole physical / magic soak (it scaled only that pool, 0 on most units). getEffectiveArmor(u,
+'none') returns the signed pool so the stat cards show DEF + it (a debuff lowers the number); 'dot' and other types keep the old
+clamp.
+
+## THE JUMP STAT IN THE RACE EDITOR (2026-10-17)
+mondo: "how is a unit's jump stat/range/height calculated? can i see it in the race editor along with the other stats?"
+The race jump moved from battle.js (RACE_JUMP_OVERRIDE + RACE_NIMBLE_JUMP) into data.js `RACE_JUMP` (same values, one table)
++ `raceJumpStat(race, spd)`: the race's own row, else 1 below `JUMP_SPD_FROM` (90) SPD and 2 from it. battle.js
+getUnitJumpStat = explicit unit.jump → raceJumpStat. Every race resolves exactly as before (checked headless, 0 diffs).
+Note: on the 200-point SPD scale (2026-10-06) the SPD-90 line gives 44 races jump 2 from SPD alone (78 of 124 jump 2).
+Race editor: JUMP column on RACES (dim = from SPD), a JUMP select in the inspector ("from SPD (n)" or 1-5) with "hops up n
+· leaps max(2,n) tiles", and the derived line. EWRaceMods field `jump` (number, or null = drop the row) → RACE_JUMP; the
+export instructions + summary carry it. The climb design (not built) is /mnt/project-files/design/CLIMB_MECHANIC_DESIGN.md.

@@ -93,7 +93,7 @@
         const FALL_DAMAGE_MIN = 24;
         // Baseline vertical hop (2026-07-23: was 2). Dropped to 1 so authored
         // 2-tile-high walls actually wall most units out — only jump-stat-2+
-        // races (see RACE_JUMP_OVERRIDE) scale them. Horizontal gap-crossing
+        // races (see data.js RACE_JUMP) scale them. Horizontal gap-crossing
         // is a separate floor: getUnitJumpReach never drops below 2, so every
         // unit can still leap a 1-wide gap.
         const JUMP_HEIGHT = 1;
@@ -459,39 +459,15 @@
         // so even a jump-1 unit still clears a 1-wide gap/chasm; jump-3 colossi
         // clear a 2-wide one. Flyers don't jump (they fly).
         //
-        // HUGE races are the exception: a giant or a kaiju isn't "agile" (low spd), but
-        // sheer size means one stride covers ground and clears walls a nimble unit
-        // would have to scramble up. So size overrides the spd derivation for them.
-        // Resolution order: explicit unit.jump → race size override → spd derivation.
-        const RACE_JUMP_OVERRIDE = {
-            // Colossal — a single bound crosses chasms and clears tall roofs.
-            'kaiju': 3, 'king kong': 3, 'kraken': 3, 'dragon': 3,
-            'loch ness monster': 3, 'juggernaut': 3, 'giant': 3, 'titan': 3,
-            // Large, long-limbed bruisers — they vault where heavies plod.
-            'cyclops': 2, 'bigfoot': 2, 'yeti': 2, 'dinosaur': 2,
-            'minotaur': 2, 'nephilim': 2, 'golem': 2, 'mech': 2,
-            'goatman': 2, 'symbiote': 2,
-        };
-        // 2026-08-29 stat rework: the nimble races that cleared 2-high walls on
-        // the old ruler (spd 9-10 of 10) keep that identity explicitly — the
-        // MOV-preserving SPD migration ordered the new values by tiles first,
-        // so a raw threshold alone would have silently stripped their jump.
-        const RACE_NIMBLE_JUMP = new Set([
-            'skeleton', 'werewolf', 'mothman', 'siren', 'android',
-            'shadow entity', 'catgirl', 'mantid', 'skinwalker', 'glitch',
-            'pirate', 'swordfighter', 'men in black', 'marksman', 'halfdemon',
-            'fallen angel', 'cosmic wraith', 'cyborg', 'chosen one', 'ghoul',
-            'barbarella', 'ki fighter', 'robinhood', 'symbiote', 'valkraye',
-        ]);
+        // The race's jump lives in data.js (RACE_JUMP + raceJumpStat, 2026-10-17)
+        // so the race editor can show and edit it: the colossal races 3, the large
+        // bruisers and the nimble races 2, anyone else 1 below JUMP_SPD_FROM SPD
+        // and 2 from it. Resolution order: explicit unit.jump → the race's jump.
         function getUnitJumpStat(unit) {
             if (!unit) return 1;
             if (unit.jump != null) return unit.jump;        // explicit designer override
-            const sizeJump = RACE_JUMP_OVERRIDE[unit.race]; // huge bodies out-leap their spd
-            if (sizeJump != null) return sizeJump;
-            if (RACE_NIMBLE_JUMP.has(unit.race)) return 2;  // legacy spd-9+ crowd
-            const spd = unit.spd ?? 50;
-            if (spd < 90) return 1;   // the broad majority: 2-high walls stop them
-            return 2;                 // truly nimble (S-band, SPD 90+)
+            if (typeof raceJumpStat === 'function') return raceJumpStat(unit.race, unit.spd);
+            return (unit.spd ?? 50) < 90 ? 1 : 2;
         }
         // Max height a unit can hop UP in a single jump (and during a Move's jump
         // legs). 2026-07-23: no more flat JUMP_HEIGHT=2 floor — the jump stat IS
