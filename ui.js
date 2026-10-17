@@ -5503,6 +5503,12 @@
                 playErrorSfx();
                 return;
             }
+            // Panacea costs 1 AP (mondo 2026-10-17), like a potion or a stim.
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                playErrorSfx();
+                return;
+            }
             pushUndoSnapshot(true);
             unit.items.panacea -= 1;
             let cleared = 0;
@@ -5516,7 +5522,12 @@
             addLog(`💊 ${unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
             showFloatingTextForUnit(unit, `💊 CURED`, 'heal', { durationMs: 1200 });
             playSfx('uiConfirm');
-
+            spendAP(unit, 1);
+            state.actionMode = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.actionMenuView = 'root';
+            endUnitIfDone(unit);
             renderAfterCombat();
         }
 
