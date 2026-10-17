@@ -38296,7 +38296,7 @@ const ThreeRenderer = (function () {
         var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
         if (!D || !D.catalogue) return null;
         var th = D.thresholds || {};
-        var id = String(mapId || '').replace(/_delta$/, '');
+        var id = String(mapId || '').replace(/_delta$/, '').replace(/_(\d+)x\1$/, '');   // THE ARENA SIZES: a 9 / 10 / 11 cut wears its site's leaf
         var near = (state.mapEnv && state.mapEnv.near) || _hzNear || null;
         var rec = th[id] || (near ? th['prebuilt_' + near] : null) || null;
         var key = (rec && rec.leaf && D.catalogue[rec.leaf]) ? rec.leaf

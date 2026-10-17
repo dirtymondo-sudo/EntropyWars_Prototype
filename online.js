@@ -3011,6 +3011,7 @@
                 var modeId = NET.ranked ? (NET.matchRankedMode || 'arena') : (fc.mode || 'arena');
                 var mapId = NET.ranked ? NET.matchMapModeId : fc.mapId;
                 var faceHtml = function (s) { return (typeof window._sqFaceHtml === 'function') ? window._sqFaceHtml(s) : ''; };
+                var _rrTeams = NET.ranked ? (NET.matchTeamSize || 4) : (fc.teamSize || sq.slots.length);   // THE ARENA SIZES: the room's size, 4v4 or 5v5
                 var mine = sq.slots.map(function (s, i) { return '<span class="rr-slot" style="--i:' + i + '">' + faceHtml(s) + '<em>' + _rrEsc(s.unitName || '') + '</em></span>'; }).join('');
                 var theirs = sq.slots.map(function (_, i) { return '<span class="rr-slot rr-slot-hidden" style="--i:' + i + '"><span class="sq-face"><i></i><b>?</b></span><em>&nbsp;</em></span>'; }).join('');
                 var el = document.createElement('div');
@@ -3029,7 +3030,7 @@
                     +     '<div class="rr-faces">' + theirs + '</div>'
                     +     '<div class="rr-state" id="rrOppState"><i></i><span>Locking in</span></div></div>'
                     + '</div>'
-                    + '<div class="rr-info"><span>Mode</span><b>' + _rrEsc(_rrLabelMode(modeId)) + '</b><span>Map</span><b>' + _rrEsc(_rrLabelMap(mapId)) + '</b><span>Teams</span><b>' + (sq.slots.length) + 'v' + (sq.slots.length) + '</b></div>'
+                    + '<div class="rr-info"><span>Mode</span><b>' + _rrEsc(_rrLabelMode(modeId)) + '</b><span>Map</span><b>' + _rrEsc(_rrLabelMap(mapId)) + '</b><span>Teams</span><b>' + _rrTeams + 'v' + _rrTeams + '</b></div>'
                     + '<div class="rr-status" id="rrStatus"><span class="rr-dots"><i></i><i></i><i></i></span><span id="rrStatusText">Waiting for both squads</span></div>'
                     + '<button class="rr-leave" type="button">Leave</button>';
                 document.body.appendChild(el);
@@ -3085,6 +3086,16 @@
                party / relays host-locked and starts the match when both are in) */
             window._ewSquadAutoLock = function () {
                 if (!NET.online || !NET._squad) return false;
+                /* THE ARENA SIZES (2026-10-17): a 5v5 room needs a squad of 5 — a squad of 4 never locks in short-handed */
+                var _need = (typeof CONFIG !== 'undefined' && CONFIG.teamSize) ? CONFIG.teamSize : 4;
+                if (NET._squad.slots.length < _need) {
+                    var _t = document.getElementById('rrStatusText');
+                    if (_t) _t.textContent = 'This room is ' + _need + 'v' + _need + '. Leave and deploy a squad of ' + _need + ' on the squad desk.';
+                    var _st = document.getElementById('rrMeState');
+                    if (_st) { var _sp = _st.querySelector('span'); if (_sp) _sp.textContent = 'Squad too small'; }
+                    console.warn('[SQUAD] the room is ' + _need + 'v' + _need + ', the squad has ' + NET._squad.slots.length);
+                    return false;
+                }
                 var seat = NET.myPlayer === 2 ? 2 : 1;
                 if (typeof window._ewApplySquad !== 'function' || !window._ewApplySquad(seat, NET._squad)) return false;
                 NET._waitingForOpponent = false;
@@ -3218,39 +3229,66 @@
                that it is fair"): the host's room draws its map at random from the mode's compatible boards (again on a mode
                change); the card only says RANDOM. The drawn id rides friendly-config as before, so both seats build the same
                board. Online is 4v4 — the squad was picked before the lobby. */
+            /* THE ARENA SIZES (2026-10-17, mondo: "add 9x9, 10x10, and 11x11 maps ... an option to play 5v5"): the room's team size is
+               the host's squad (picked 4v4 or 5v5 on the squad desk, map.js _sqSetTeam) — 5v5 deals the 9×9 / 11×11 arenas, 4v4 the
+               10×10 / 12×12 ones (data.js hqArenaPvpPool, by GAME_MODES teamSize). The MAP list names each site once and the BOARD
+               SIZE list picks its cut; either may stay Random. A guest whose squad is short of the room's size cannot lock in
+               (_ewSquadAutoLock says so). Clash stays 4v4 on its stage. */
+            var _friendlyMapChoice = '';    // a site id ('' = Random)
+            var _friendlyBoardChoice = 0;   // a board side (0 = Random)
+            function _friendlySquadTeam() {
+                var sq = window._ewSquad;
+                return (sq && sq.mode === 'online' && Array.isArray(sq.slots) && sq.slots.length >= 5) ? 5 : 4;
+            }
+            function _friendlySiteOf(id) { return (typeof window.hqSiteId === 'function') ? window.hqSiteId(id) : String(id || '').replace(/_delta$/, ''); }
+            function _friendlyBoardOf(id) { var g = (typeof GAME_MODES !== 'undefined') ? GAME_MODES[id] : null; return g ? (g.boardWidth || g.boardSize || 0) : 0; }
+            function _friendlySiteLabel(id) {
+                var site = _friendlySiteOf(id);
+                var g = (typeof GAME_MODES !== 'undefined') ? (GAME_MODES[site + '_delta'] || GAME_MODES[id]) : null;
+                return String((g && g.label) || id).replace(/\s+\d+×\d+$/, '');
+            }
+            function _friendlyCandidates(maps) {
+                var c = maps.filter(function (m) { return (!_friendlyMapChoice || _friendlySiteOf(m.id) === _friendlyMapChoice) && (!_friendlyBoardChoice || _friendlyBoardOf(m.id) === _friendlyBoardChoice); });
+                if (!c.length) c = maps.filter(function (m) { return !_friendlyMapChoice || _friendlySiteOf(m.id) === _friendlyMapChoice; });
+                return c.length ? c : maps;
+            }
             function _friendlyDrawMap() {
-                _friendlySize = 4;
-                var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
-                if (maps.length) _friendlyMapId = maps[Math.floor(Math.random() * maps.length)].id;
+                var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[_friendlyMode] : null;
+                _friendlySize = (mpMode && mpMode.isClash) ? 4 : _friendlySquadTeam();
+                var c = _friendlyCandidates(_friendlyGetCompatibleMaps(_friendlyMode, _friendlySize));
+                if (c.length) _friendlyMapId = c[Math.floor(Math.random() * c.length)].id;
             }
 
             /* THE MAP PICK (2026-10-07, mondo: "let me select the map for a friendly match"): the host's room card lists the
                room's arenas under RANDOM. RANDOM (the default) still draws one; a picked arena rides friendly-config like the
                draw did, so both seats build the same board. Quick Play stays random. */
-            var _friendlyMapChoice = '';
-            function _friendlyRefreshMaps() {
-                var sel = document.getElementById('friendlyMapSelect');
-                var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
-                var found = false;
-                for (var k = 0; k < maps.length; k++) {
-                    if (maps[k].id === _friendlyMapChoice) { found = true; break; }
-                }
-                if (!found) _friendlyMapChoice = '';
-                if (_friendlyMapChoice) _friendlyMapId = _friendlyMapChoice;
-                else _friendlyDrawMap();
+            function _friendlyFillSelect(sel, opts, value) {
                 if (!sel) return;
                 sel.innerHTML = '';
-                var rnd = document.createElement('option');
-                rnd.value = '';
-                rnd.textContent = 'Random';
-                sel.appendChild(rnd);
-                maps.slice().sort(function (a, b) { return String(a.label).localeCompare(String(b.label)); }).forEach(function (m) {
-                    var opt = document.createElement('option');
-                    opt.value = m.id;
-                    opt.textContent = m.label;
-                    sel.appendChild(opt);
-                });
-                sel.value = _friendlyMapChoice;
+                opts.forEach(function (o) { var opt = document.createElement('option'); opt.value = String(o.value); opt.textContent = o.label; sel.appendChild(opt); });
+                sel.value = String(value);
+            }
+            function _friendlyRefreshMaps() {
+                var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[_friendlyMode] : null;
+                _friendlySize = (mpMode && mpMode.isClash) ? 4 : _friendlySquadTeam();
+                var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
+                var sites = {}, boards = {};
+                maps.forEach(function (m) { sites[_friendlySiteOf(m.id)] = _friendlySiteLabel(m.id); boards[_friendlyBoardOf(m.id)] = true; });
+                if (_friendlyMapChoice && !sites[_friendlyMapChoice]) _friendlyMapChoice = '';
+                if (_friendlyBoardChoice && !boards[_friendlyBoardChoice]) _friendlyBoardChoice = 0;
+                _friendlyDrawMap();
+                /* the sizes the picked site has (every size of the team when the site is Random); the sites that have the picked size */
+                var siteBoards = {};
+                maps.forEach(function (m) { if (!_friendlyMapChoice || _friendlySiteOf(m.id) === _friendlyMapChoice) siteBoards[_friendlyBoardOf(m.id)] = true; });
+                var siteOpts = [{ value: '', label: 'Random' }];
+                Object.keys(sites).filter(function (k) { return !_friendlyBoardChoice || maps.some(function (m) { return _friendlySiteOf(m.id) === k && _friendlyBoardOf(m.id) === _friendlyBoardChoice; }); })
+                    .sort(function (a, b) { return String(sites[a]).localeCompare(String(sites[b])); })
+                    .forEach(function (k) { siteOpts.push({ value: k, label: sites[k] }); });
+                var boardOpts = [{ value: 0, label: 'Random' }];
+                Object.keys(siteBoards).map(Number).filter(Boolean).sort(function (a, b) { return b - a; })
+                    .forEach(function (b) { boardOpts.push({ value: b, label: b + '×' + b + ' · ' + _friendlySize + 'v' + _friendlySize }); });
+                _friendlyFillSelect(document.getElementById('friendlyMapSelect'), siteOpts, _friendlyMapChoice);
+                _friendlyFillSelect(document.getElementById('friendlyBoardSelect'), boardOpts, _friendlyBoardChoice);
             }
 
             function _friendlyConfigLabel() {
@@ -3299,8 +3337,13 @@
                 _friendlyEmitConfig();
             };
 
-            window.friendlySetMap = function(mapId) {
-                _friendlyMapChoice = mapId || '';   // '' = Random (THE MAP PICK)
+            window.friendlySetMap = function(siteId) {
+                _friendlyMapChoice = siteId || '';   // '' = Random (THE MAP PICK) — a site; the BOARD SIZE list picks its cut
+                _friendlyRefreshMaps();
+                _friendlyEmitConfig();
+            };
+            window.friendlySetBoard = function(side) {
+                _friendlyBoardChoice = parseInt(side, 10) || 0;   // 0 = Random (THE ARENA SIZES)
                 _friendlyRefreshMaps();
                 _friendlyEmitConfig();
             };
@@ -3319,8 +3362,9 @@
 
             window.lobbyShowQuickPlay = function() {
                 _showPage('lobbyQuickPlay');
-                /* THE SQUAD DESK (2026-09-30): the squad picked on the way in; online queues are 4v4 */
-                _queueTeamSize = 4;
+                /* THE SQUAD DESK (2026-09-30): the squad picked on the way in; online queues are 4v4 — or 5v5 (THE ARENA SIZES,
+                   2026-10-17: a squad deployed 5v5 queues for the 9×9 / 11×11 arenas; server.js matches it only with another 5v5) */
+                _queueTeamSize = _friendlySquadTeam();
                 var sqHost = document.getElementById('lobbyQueueSquad');
                 if (sqHost && typeof window._sqStripHtml === 'function') sqHost.innerHTML = window._sqStripHtml(window._ewSquad, { change: true });
 

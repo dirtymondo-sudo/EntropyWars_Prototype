@@ -1229,6 +1229,12 @@
                             <div class="lobby-config-label">MAP</div>
                             <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="">Random</option></select>
                         </div>
+                        <!-- THE ARENA SIZES (2026-10-17, mondo): the site's cut — 12×12 / 10×10 for a 4v4 squad, 11×11 / 9×9 for a 5v5 one
+                             (online.js _friendlyRefreshMaps; the squad desk's 4v4 / 5v5 switch sets the room's team size) -->
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">BOARD SIZE</div>
+                            <select id="friendlyBoardSelect" onchange="friendlySetBoard(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="0">Random</option></select>
+                        </div>
                         <div class="lobby-config-section">
                             <div class="lobby-config-label">ROUNDS</div>
                             <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
