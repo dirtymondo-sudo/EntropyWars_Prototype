@@ -10243,7 +10243,7 @@
             type:   { t: 'enum', o: _SLB_TYPES, h: 'Coarse category (drives AI + UI grouping).' },
             kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
             spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Spell type / combo type (keys COMBO_REGISTRY).' },
-            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Element. A combat element (fire · ice · lightning · water · poison · earth · sonic · psychic · wind · light · shadow · blood · nature) splits the damage: elemShare of it checks the target\'s affinity, the rest rides the type chart. Other tags are VFX only.' },
+            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Element. Every element splits the damage: elemShare of it checks the target\'s affinity (weak / resist / immune / absorb), the rest rides the type chart.' },
             elemShare: { t: 'num', h: 'Share of the damage that is the ELEMENT (0–1). Blank = follows the spell\'s damage: 30% at 80 or less, 70% at 160 or more, a straight line between. That part takes weak ×1.5 / resist ×0.5 / immune 0 / absorb heals; the rest takes the type matchup. Only read for a combat element.' },
             damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → M DEF.' },
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
