@@ -1113,7 +1113,7 @@
                     damageType: ds.damageType || 'physical',
                     spellType: ds.spellType || null,
                     bonusVsStatus: ds.bonusVsStatus || null,
-                    spellElement: ds.spellElement || null,
+                    spellElement: ds.spellElement || null, elemShare: ds.elemShare,
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
@@ -1156,7 +1156,7 @@
                         damageType: ds.damageType || 'magic',
                         spellType: ds.spellType || null,
                         bonusVsStatus: ds.bonusVsStatus || null,
-                        spellElement: ds.spellElement || null
+                        spellElement: ds.spellElement || null, elemShare: ds.elemShare
                     });
                     // Balance telemetry: delayed blasts land rounds after the
                     // cast — credit the originating spell's efficiency row.

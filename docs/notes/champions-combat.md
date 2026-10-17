@@ -1597,3 +1597,18 @@ Note: on the 200-point SPD scale (2026-10-06) the SPD-90 line gives 44 races jum
 Race editor: JUMP column on RACES (dim = from SPD), a JUMP select in the inspector ("from SPD (n)" or 1-5) with "hops up n
 · leaps max(2,n) tiles", and the derived line. EWRaceMods field `jump` (number, or null = drop the row) → RACE_JUMP; the
 export instructions + summary carry it. The climb design (not built) is /mnt/project-files/design/CLIMB_MECHANIC_DESIGN.md.
+
+## THE ELEMENT SHARE (2026-10-17, mondo: elemental spells split their damage)
+- A combat-element spell (fire/ice/lightning/water/poison/earth) splits: `(1 − elemShare) × type matchup + elemShare ×
+  element affinity` (weak ×1.5 / resist ×0.5 / immune 0 / absorb heals that part after the blow). STAB and every other
+  bonus ride the whole hit, same ×3 cap. `elemShare` per spell row (Spell Library "Element share"), default 0.5
+  (data.js `ELEM_SHARE_DEFAULT`). Source-less hits (ticks, hazards, weather, planted seed stings) stay all element.
+- Press: the TYPE decides (a super effective type presses even when the element is resisted); the element presses only on
+  a neutral type; immune / absorb never press — `PRESS_OUTCOME.NULL` vetoes a cast's press without the AP drain; a
+  resisted type with an element weakness = no refund, no drain (data.js `elemPressVerdict`).
+- Entropy: `ENTROPY_PTS.elemWeak` (4) per enemy the element part hit on a weakness, press or not (filed on the press
+  collector in applyDamageToUnit, paid in `_consumePressCollector`).
+- Mirrors: `forecastHitOnUnit` (heal = absorbed part), ai.js `estDamage` + `pressEV`, ui.js `_estimateSpellDamage` +
+  badges (`_elemPressesOn` decides the green !), hud.js target rows + enemy quick menu. Resolvers thread `elemShare`
+  (`_spellElemShare(spell)`); bombs and delayed spells carry it in their records.
+- Plan, decisions and the tag-only elements proposal: /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.

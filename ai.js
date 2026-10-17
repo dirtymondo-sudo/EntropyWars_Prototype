@@ -486,26 +486,26 @@
                 && unitPassiveValue(tg, 'immuneDamageType') === (basicMagic || sp?.damageType === 'magic' ? 'magic' : 'physical')) return 0;
         } else if (isProtected(g, tg)) return 0;
 
-        // Element-drinking passives (Thermal Regen): a spell whose element
-        // the target HEALS from is worth zero — never "damage" a kaiju
-        // with fire.
-        if (sp && !opts.noElement && typeof unitPassiveValue === 'function' && typeof classifySpellElement === 'function') {
-            try {
-                const _drink = unitPassiveValue(tg, 'healedByElement');
-                if (_drink && classifySpellElement(sp) === _drink) return 0;
-            } catch (e) {}
-        }
-        // 🜂 Elemental affinity (2026-09-01): an immune/absorb target takes
-        // nothing from this element — same zero as the drink check above.
-        let _elAff = null;
+        // 🜂 Elemental affinity (2026-09-01) + THE ELEMENT SHARE (mondo 2026-10-17): a spell with a combat element
+        // splits — the main part rides the type matchup, the element part (spellElemShare) the target's affinity
+        // (weak ×1.5 / resist ×0.5 / immune 0 / absorb heals). Thermal Regen (healedByElement) drinks like absorb.
+        // Mirrors battle.js _hitDamageMath, so the AI hunts weaknesses and still uses a resisted element's main part.
+        let _elAff = null, _elShare = 0;
         if (sp && !opts.noElement) {
             try {
                 const _el = (typeof getSpellElement === 'function') ? getSpellElement(sp) : null;
-                _elAff = (_el && typeof unitElementAffinity === 'function')
-                    ? unitElementAffinity(tg, _el) : null;
-                if (_elAff === 'immune' || _elAff === 'absorb') return 0;
+                if (_el && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_el)) {
+                    _elShare = (typeof spellElemShare === 'function') ? spellElemShare(sp) : 0.5;
+                    _elAff = (typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
+                    const _drink = (typeof unitPassiveValue === 'function') ? unitPassiveValue(tg, 'healedByElement') : null;
+                    if (_drink && typeof classifySpellElement === 'function' && classifySpellElement(sp) === _drink) _elAff = 'absorb';
+                }
             } catch (e) {}
+            // an all-element spell (share 1) the target nullifies or drinks is worth zero, as before
+            if (_elShare >= 1 && (_elAff === 'immune' || _elAff === 'absorb')) return 0;
         }
+        const _elSplit = _elShare > 0 && _elShare < 1;
+        let _elStab = 1;
 
         const fromX = opts.fromX != null ? opts.fromX : unit.x;
         const fromY = opts.fromY != null ? opts.fromY : unit.y;
@@ -534,12 +534,19 @@
 
         // ── the capped offensive product ──
         let offMult = 1;
-        try { offMult *= (typeof getTypeDamageMultiplier === 'function')
+        let _tm = 1;
+        try { _tm = (typeof getTypeDamageMultiplier === 'function')
             ? (getTypeDamageMultiplier(unit, tg, sp ? (sp.spellType || null) : null) || 1) : 1; } catch (e) {}
-        // 🜂 Elemental affinity: weak ×1.5 / resist ×0.5, inside the capped
-        // product — mirrors applyDamageToUnit so the AI hunts weaknesses.
-        if (_elAff === 'weak') offMult *= 1.5;
-        else if (_elAff === 'resist') offMult *= 0.5;
+        if (_elSplit) {
+            // STAB rides the whole hit; the matchup splits (data.js elemSplitFactor)
+            _elStab = (sp.spellType && (unit.types || []).includes(sp.spellType)) ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+            offMult *= _elStab * ((typeof elemSplitFactor === 'function') ? elemSplitFactor(_tm / _elStab, _elAff, _elShare) : _tm / _elStab);
+        } else {
+            offMult *= _tm;
+            // an all-element hit: weak ×1.5 / resist ×0.5 on the whole of it
+            if (_elShare >= 1 && _elAff === 'weak') offMult *= 1.5;
+            else if (_elShare >= 1 && _elAff === 'resist') offMult *= 0.5;
+        }
         if (!ignoreArmor && myH > tgH) offMult *= 1 + 0.1 * (myH - tgH);      // downhill
         if (!opts.noRangeMult) offMult *= _rangeMult(unit, dist);               // range profile
         if (sp && sp.bonusVsStatus && _bonusVsMatches(tg, sp.bonusVsStatus)) {
@@ -587,6 +594,10 @@
             if (_soak) est -= Math.round(_soak * ds);
         }
         if (est < 1) est = 1;
+        // THE ABSORBED PART: the element part a drinker heals counts against the hit (battle.js absorbHeal)
+        if (_elSplit && _elAff === 'absorb') {
+            try { est = Math.max(1, est - raw * _elShare * _elStab * (_offScale(unit, tg) || 1)); } catch (e) {}
+        }
 
         // Status damage-taken multipliers (guard, vulnerability marks…).
         try {
@@ -657,7 +668,19 @@
         // Only the turn's FIRST press refunds — after that it vents to the
         // entropy gauge (still nice, worth a sliver, not a whole action).
         const alreadyPressed = (unit._pressGainedThisTurn || 0) > 0;
-        const tier = _pressTier(unit, tg, opts.spellType || null);
+        /* THE ELEMENT SHARE PRESS (data.js elemPressVerdict): the type decides, the element presses on a neutral type,
+           an immune / absorbed element never does. opts.spell = the spell being weighed (its element). */
+        let tier = _pressTier(unit, tg, opts.spellType || null);
+        if (opts.spell && typeof elemPressVerdict === 'function') {
+            try {
+                const _el = (typeof getSpellElement === 'function') ? getSpellElement(opts.spell) : null;
+                const _ok = _el && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_el)
+                    && !(typeof spellElemShare === 'function' && spellElemShare(opts.spell) <= 0);
+                const _aff = (_ok && typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
+                const v = elemPressVerdict(tier, _aff);
+                tier = v === 'weak' ? 1 : v === 'resist' ? -1 : 0;
+            } catch (e) {}
+        }
         const critP = (opts.canCrit && typeof g.getCritChance === 'function')
             ? (g.getCritChance(unit) || 0) : 0;
         const landP = opts.landP != null ? opts.landP : 1;
@@ -2173,7 +2196,7 @@
         const pressKind = sp ? PRESS_KINDS.has(sp.kind) : true;
         if (pressKind) {
             val += pressEV(g, unit, tg, {
-                spellType: sp ? (sp.spellType || null) : null,
+                spellType: sp ? (sp.spellType || null) : null, spell: sp || null,
                 canCrit: !sp, landP,
             });
         }
@@ -2568,7 +2591,7 @@
                 const est = Math.round(estDamage(g, unit, comboTarget, pseudo) * (synergy.mult || 1));
                 score = Math.min(est, effHp(comboTarget));
                 if (est >= effHp(comboTarget)) score += killValue(g, unit, comboTarget, v) + wght(g, 'comboKillBonus_v1', 25);
-                score += pressEV(g, unit, comboTarget, { spellType: combo.spellType || null });
+                score += pressEV(g, unit, comboTarget, { spellType: combo.spellType || null, spell: combo });
             } else {
                 score = ((combo.heal || 0)) * 1.0 * (synergy.mult || 1);
             }

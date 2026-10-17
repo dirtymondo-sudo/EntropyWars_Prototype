@@ -601,10 +601,10 @@ function unitElementAffinity(unit, element) {
 const ELEM_KNOWLEDGE_KEY = 'ew_elem_seen_v1';
 const ELEM_REACTION_UI = {
     neutral: { sym: '–', color: '#8f8aa8', word: 'Neutral',  tip: 'takes ×1 from this element' },
-    weak:    { sym: '!', color: '#6ee2a8', word: 'Weak',     tip: 'takes ×1.5 from this element — a press' },
-    resist:  { sym: '▼', color: '#8fb8e8', word: 'Resist',   tip: 'takes ×0.5 from this element — no press' },
-    immune:  { sym: '∅', color: '#c9c9d4', word: 'Immune',   tip: 'takes NO damage from this element — its statuses bounce' },
-    absorb:  { sym: '♥', color: '#7de08a', word: 'Absorbs',  tip: 'this element HEALS the unit instead' },
+    weak:    { sym: '!', color: '#6ee2a8', word: 'Weak',     tip: 'the element part of a hit lands ×1.5 — a press when the type matchup is neutral' },
+    resist:  { sym: '▼', color: '#8fb8e8', word: 'Resist',   tip: 'the element part of a hit lands ×0.5 — the type part still lands and presses' },
+    immune:  { sym: '∅', color: '#c9c9d4', word: 'Immune',   tip: 'the element part of a hit does nothing and its statuses bounce — the type part still lands, never a press' },
+    absorb:  { sym: '♥', color: '#7de08a', word: 'Absorbs',  tip: 'the element part of a hit HEALS the unit — the type part still lands, never a press' },
     unknown: { sym: '?', color: '#6f6a86', word: 'Unknown',  tip: 'hit it with this element to find out' }
 };
 let _elemSeenCache = null;
@@ -696,15 +696,54 @@ function elemAffinityBoxHtml(race, opts) {
     html += '</div>';
     return html;
 }
-/* THE PRESS TIER OF AN ELEMENT (the press system reads it beside the type
-   tier — battle.js _pressOutcomeForHit): weak +1, resist −1, immune /
-   absorb −2 (nothing landed — a super effective TYPE cannot make it a
-   press), neutral / no element 0. */
-function elemPressTier(aff) {
-    if (aff === 'weak') return 1;
-    if (aff === 'resist') return -1;
-    if (aff === 'immune' || aff === 'absorb') return -2;
-    return 0;
+/* ═══ THE ELEMENT SHARE (mondo 2026-10-17) ═══════════════════════════════
+   "any spell with an element will be split up between its main type damage
+   and its elemental damage. There can be different ratios." A spell whose
+   element is a COMBAT element splits its damage in two:
+     main part    = (1 − share) × the TYPE matchup (weak ×1.3 / resist ×0.75)
+     element part =      share  × the ELEMENT affinity (weak ×1.5 /
+                    resist ×0.5 / immune 0 / absorb — that part HEALS)
+   STAB and every other bonus ride the whole hit. `elemShare` on a spell row
+   (0..1) is its ratio; rows without one use ELEM_SHARE_DEFAULT. A hit with
+   no unit behind it (a burn tick, lava, weather) is all element (share 1),
+   exactly as before. battle.js _hitDamageMath is the one place it lands;
+   the AI and the previews read the same two functions below. */
+const ELEM_SHARE_DEFAULT = 0.5;
+function spellElemShare(spell) {
+    const v = spell ? Number(spell.elemShare) : NaN;
+    return (isFinite(v) && spell.elemShare != null) ? Math.max(0, Math.min(1, v)) : ELEM_SHARE_DEFAULT;
+}
+// The element part's multiplier: weak 1.5 · resist 0.5 · immune / absorb 0 (absorb heals it instead) · else 1.
+function elemShareMult(aff) {
+    if (aff === 'weak') return ELEMENT_AFFINITY_MULT.weak;
+    if (aff === 'resist') return ELEMENT_AFFINITY_MULT.resist;
+    if (aff === 'immune' || aff === 'absorb') return 0;
+    return 1;
+}
+// The whole hit's matchup factor (STAB left out): (1 − share) × type + share × element.
+function elemSplitFactor(typeEff, aff, share) {
+    const r = Math.max(0, Math.min(1, share || 0));
+    return (1 - r) * (typeEff == null ? 1 : typeEff) + r * elemShareMult(aff);
+}
+/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17; battle.js _pressOutcomeForHit
+   and the AI's press read it). typeTier = the SPELL's type vs the target
+   (+1 super effective, −1 resisted, 0 neutral); aff = the target's affinity
+   for the spell's element. Returns 'weak' (a press, +2 AP), 'resist' (no
+   press and the AP drain), 'null' (no press, no drain — vetoes the press of
+   the whole cast) or 'normal'.
+   - The TYPE decides: a super effective type presses even when the element
+     is resisted ("just the elemental portion of the spell damage would be
+     resisted"); a resisted type is resisted.
+   - The ELEMENT presses only on a NEUTRAL type matchup ("like tech vs
+     alien but the elemental damage hits an enemy with a weakness"). On a
+     resisted type an element weakness cancels the drain, no press.
+   - An IMMUNE or ABSORBED element never presses, whatever the type ("only
+     if its absorbed or immune should it not give me ap"). */
+function elemPressVerdict(typeTier, aff) {
+    if (aff === 'immune' || aff === 'absorb') return typeTier < 0 ? 'resist' : 'null';
+    if (typeTier > 0) return 'weak';
+    if (typeTier < 0) return aff === 'weak' ? 'normal' : 'resist';
+    return aff === 'weak' ? 'weak' : 'normal';
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -21912,7 +21951,8 @@ Object.assign(window, {
   RACE_ELEMENT_AFFINITY, getRaceElementAffinity, unitElementAffinity,
   /* THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) */
   ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
-  elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, elemPressTier,
+  elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml,
+  ELEM_SHARE_DEFAULT, spellElemShare, elemShareMult, elemSplitFactor, elemPressVerdict,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, ZODIAC_EFFECTS, ZODIAC_SKY_KEYS, ZODIAC_NATAL_KEYS, zodiacSkyMult, zodiacNatalDelta, zodiacSkySummary, zodiacNatalSummary, ZODIAC_KEY_LABELS, MOVE_SPD_RULE, moveSpdFrom, CLASS_TEMPLATES,
   DEFAULT_BUILDS, ITEM_RULES, ITEM_META, ITEM_LIKE_KEYS, itemBase, itemKeysLike, SPELL_LIBRARY, SPELL_SLOT_MAX,
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,

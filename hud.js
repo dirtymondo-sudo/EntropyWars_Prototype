@@ -2631,7 +2631,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   }, '!'));
   // Red !-circle: the target is IMMUNE to (or ABSORBS) this action's element — the warning twin of the green one.
   if (b.immWarn) right.unshift(h('span', {
-    key: 'iw', className: 'hrlg-immwarn', title: b.immWarn === 'absorb' ? 'This target ABSORBS the element — it heals instead!' : 'This target is IMMUNE to the element!',
+    key: 'iw', className: 'hrlg-immwarn', title: b.immWarn === 'absorb' ? 'This target ABSORBS the element — that part of the hit heals it, no AP refund' : 'This target is IMMUNE to the element — that part of the hit does nothing, no AP refund',
   }, '!'));
   // THE CONFIRM BUTTON rides the END of the pending (✓) row itself — a green
   // seal right where the player's eye already is, instead of floating on top
@@ -3911,7 +3911,7 @@ function _hrlgSpellBadges(sp, cat, quick) {
       label: _ELEM_BLADE_GLYPH[_el] || _elIcon || _el.slice(0, 2).toUpperCase(),
       style: Object.assign(typeBadgeStyle(_elCol, { fontSize: 14, padding: '0 5px' }), { lineHeight: '18px', letterSpacing: 0 }),
       title: _el.toUpperCase() + ' · ' + (_elCombat
-        ? 'Element — checks the target\'s affinity: weak ×1.5 · resist ×0.5 · null 0 · absorb heals'
+        ? 'Element — ' + Math.round(((typeof spellElemShare === 'function') ? spellElemShare(sp) : 0.5) * 100) + '% of the damage is ' + _el + ': weak ×1.5 · resist ×0.5 · null 0 · absorb heals that part; the rest rides the type'
         : 'Element — flavor/VFX only (no affinity check)'),
     });
   }
@@ -4520,11 +4520,12 @@ function _hrlgTargetBlades(unit, st, mode) {
       // 🜂 Elemental affinity of the aimed spell vs THIS target (ELEMENTAL_
       // TYPES_PLAN P3): weak joins the green !, resist joins ▼; immune/
       // absorb take over the forecast chip below (their previewDmg is 0).
+      /* THE ELEMENT SHARE (2026-10-17): the green ! is the PRESS — the element adds it only on a neutral type
+         matchup (data.js elemPressVerdict); a resisted element never takes away a super effective type's !. */
       if (spell) {
         const _spEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
         elemAff = (_spEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(tUnit, _spEl) : null;
-        if (elemAff === 'weak') superEff = true;
-        else if (elemAff === 'resist' && !typeAdv) typeAdv = '▼';
+        if (elemAff === 'weak' && !superEff && !typeAdv) superEff = true;
       }
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
@@ -4565,9 +4566,10 @@ function _hrlgTargetBlades(unit, st, mode) {
       previewDmg: previewDmg,
       previewHeal: previewHeal,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
-      // slot). An immune/absorb target forecasts words, not numbers.
-      power: elemAff === 'immune' ? { v: 'IMMUNE', color: '#9aa0b4' }
-        : elemAff === 'absorb' ? { v: 'ABSORBS', color: '#57d97e' }
+      // slot). A target that nullifies / drinks the WHOLE hit forecasts words;
+      // a split hit's main part still lands, so it keeps its number (the red ! warns).
+      power: (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
+        : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       portrait: portrait,
@@ -7509,6 +7511,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       const _eaEl = (typeof getSpellElement === 'function') ? getSpellElement(a.spell) : (a.spell.element || null);
       const _eaAff = _eaEl ? unitElementAffinity(targetUnit, _eaEl) : null;
       if (_eaAff === 'immune' || _eaAff === 'absorb') _eaImm = _eaAff;
+      // THE ELEMENT SHARE: an element weakness on a neutral type matchup is a press too — the green !
+      else if (_eaAff === 'weak' && !typeAdv) typeAdv = '▲';
     }
 
     return {
