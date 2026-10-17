@@ -4441,8 +4441,10 @@
                 let secItems = [];
                 secItems.push(`<span class="sb-sec-icon">${weatherActive ? WEATHER_REGISTRY[state.activeWeather[0].type].icon : '☀'}</span> <span class="sb-sec-val">${weatherText}</span>`);
                 secItems.push(`${zodiacIcon} <span class="sb-sec-val">${zodiacLabel}</span> ${zodiacLeft === 0 ? 'shifts' : zodiacLeft + 'rnd'}`);
-                const skyHolder = (skyActive && typeof getSkyEventHolder === 'function') ? getSkyEventHolder() : 0;   // the middle nexus holder gets the buff
-                secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd${skyHolder ? ` · ⬡ P${skyHolder}` : ''}` : 'Sky —'}`);
+                /* the claimed celestial buff (unit.skyBuff): which team carries it, even after its event has ended */
+                let _skyBuffP = 0, _skyBuffEv = null;
+                for (const u of state.units) { if (u.skyBuff && !u.dead && SKY_EVENTS[u.skyBuff]) { _skyBuffP = u.player; _skyBuffEv = SKY_EVENTS[u.skyBuff]; break; } }
+                secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd` : 'Sky —'}${_skyBuffEv ? ` · ${_skyBuffEv.icon} P${_skyBuffP}` : ''}`);
                 if (showHourglasses) {
                     secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${carriedHourglassCount(1)}</span>–<span class="sb-sec-val">${carriedHourglassCount(2)}</span>`);
                 }
@@ -5243,13 +5245,13 @@
                 addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (💰 +${NEXUS_GOLD_PER_ROUND}/round)`);
             }
 
-            /* the middle zone during a celestial event: the team now carries the event's buff (state.js getSkyEventBonus) */
+            /* the middle zone during a celestial event: claiming it hands the event's buff to the team (claimCelestialBuff) */
             if (state.skyEvent && typeof getCelestialNexusKey === 'function' && getCelestialNexusKey() === section) {
-                const _ev = (typeof SKY_EVENTS !== 'undefined') ? SKY_EVENTS[state.skyEvent.type] : null;
+                const _ev = claimCelestialBuff(player);
                 if (_ev) {
                     const _evTxt = `${_ev.icon} ${_ev.label}: ${_ev.buff || _ev.desc}`;
                     sub = sub ? sub + ' · ' + _evTxt : _evTxt;
-                    addLog(`${_ev.icon} Player ${player} holds the ${label} Nexus under the ${_ev.label} — ${_ev.buff || _ev.desc} for the team.`);
+                    addLog(`${_ev.icon} Player ${player} claims the ${_ev.label} at the ${label} Nexus — ${_ev.buff || _ev.desc} for the team until each unit falls or the next buff is claimed.`);
                 }
             }
             const c = _nexusZoneCenter(nex);
@@ -5297,6 +5299,21 @@
             }
         }
         window.resetCelestialNexus = resetCelestialNexus;
+
+        /* a claim of the middle nexus during a celestial event: the previous buff comes off every unit (both teams),
+           then every living unit of the claiming team carries this event's (unit.skyBuff, state.js getSkyEventBonus)
+           until it dies or the next buff is claimed. Returns the event row, or null. */
+        function claimCelestialBuff(player) {
+            const type = state.skyEvent && state.skyEvent.type;
+            const ev = (type && typeof SKY_EVENTS !== 'undefined') ? SKY_EVENTS[type] : null;
+            if (!ev) return null;
+            for (const u of state.units || []) {
+                if (u.skyBuff) u.skyBuff = null;
+                if (u.player === player && !u.dead && !u._dying) u.skyBuff = type;
+            }
+            return ev;
+        }
+        window.claimCelestialBuff = claimCelestialBuff;
 
         /* THE tick engine. Moves `nex.progress` `ticks` steps toward `team`,
            neutralizes an enemy owner the moment the bar crosses back through

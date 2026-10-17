@@ -15438,6 +15438,7 @@
             setTimeout(() => {
                 unit._dying = false;
                 unit.dead = true;
+                unit.skyBuff = null;   // a celestial buff lasts until the unit dies (ui.js claimCelestialBuff)
 
                 const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
                 if (unit._isBoss) {
@@ -15506,6 +15507,7 @@
             unit._killStreak = 0;
             unit._streakAtkBonus = 0;
             unit._turnKills = 0;
+            unit.skyBuff = null;   // a new life never carries the celestial buff back
         }
 
         /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──

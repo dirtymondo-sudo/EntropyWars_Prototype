@@ -14455,9 +14455,9 @@ const ThreeRenderer = (function () {
         var eOn = false, eIcon = '🌑', eTitle = '';
         try {
             if (typeof getSkyEventBonus === 'function') eOn = !!getSkyEventBonus(u).active;
-            if (eOn && typeof SKY_EVENTS !== 'undefined' && state && state.skyEvent) {
-                var evm = SKY_EVENTS[state.skyEvent.type];
-                if (evm) { eIcon = evm.icon; eTitle = evm.label + ' — ' + evm.desc; }
+            if (eOn && typeof SKY_EVENTS !== 'undefined') {
+                var evm = SKY_EVENTS[u.skyBuff];
+                if (evm) { eIcon = evm.icon; eTitle = evm.label + ' — ' + evm.buff; }
             }
         } catch (e) {}
         html += '<span class="tp-skyev' + (eOn ? ' tp-skyev-on' : '') + '" data-evbadge title="'
@@ -14471,11 +14471,11 @@ const ThreeRenderer = (function () {
     var _lastSkyBadgeKey = '';
     function _updatePlateSkyBadges() {
         if (typeof state === 'undefined' || !state) return;
-        var key = (state.activeZodiac || '') + '|' + ((state.skyEvent && state.skyEvent.type) || '')
-            + '|' + ((typeof getSkyEventHolder === 'function') ? getSkyEventHolder() : 0);
+        var key = (state.activeZodiac || '') + '|' + ((state.skyEvent && state.skyEvent.type) || '');
+        /* the celestial buff is per unit (unit.skyBuff, claimed at the middle nexus) */
+        for (var ku of (state.units || [])) if (ku.skyBuff && !ku.dead) key += '|' + ku.id + ':' + ku.skyBuff;
         if (key === _lastSkyBadgeKey) return;
         _lastSkyBadgeKey = key;
-        var evm = (typeof SKY_EVENTS !== 'undefined' && state.skyEvent) ? SKY_EVENTS[state.skyEvent.type] : null;
         for (var entry of _plateObjs) {
             var uid = entry[0], po = entry[1];
             var u = _unitById.get(uid);
@@ -14494,7 +14494,8 @@ const ThreeRenderer = (function () {
                 var eOn = false;
                 try { eOn = (typeof getSkyEventBonus === 'function') ? !!getSkyEventBonus(u).active : false; } catch (e) {}
                 eb.classList.toggle('tp-skyev-on', eOn);
-                if (eOn && evm) { eb.textContent = evm.icon; eb.title = evm.label + ' — ' + evm.desc; }
+                var evm = (eOn && typeof SKY_EVENTS !== 'undefined') ? SKY_EVENTS[u.skyBuff] : null;
+                if (evm) { eb.textContent = evm.icon; eb.title = evm.label + ' — ' + evm.buff; }
             }
         }
     }

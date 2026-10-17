@@ -1521,6 +1521,14 @@ It should reset control of the nexus whenever a new celestial event happens."
   Black Sun +15% of every heal (getEffectiveHealBonus) and revive %.
 - AI (ai.js): `arena_nexus_celestial` move goal (230) while an event is up and the middle isn't ours; channel
   score +90 there, never halved by the tower push. Nameplate event badge re-keys on the holder.
+- Rev 2 (2026-10-17, mondo: "make the events last every 3 rounds ... +atk and m atk, +def and m def, and healing and
+  health and mana regen ... the buff should last until you die or the next buff is claimed"): SKY_EVENT_DURATION 3.
+  The buff is PER UNIT now: capturing the middle while an event is up = a claim (ui.js `claimCelestialBuff`): every
+  unit's `skyBuff` is cleared, then each living unit of the claiming team gets `skyBuff = <event key>`. It stays
+  after the event ends; cleared on death (map.js death timeout) and on respawn/revive (`resetUnitPowerState`).
+  getSkyEventBonus reads unit.skyBuff only. Blood Moon +10% ATK and +10% M ATK (magic axis adds 10% of INT),
+  Lunar Eclipse ×1.10 physical AND magic soak, Black Sun +15% healing plus `regenPct` 0.05 extra max HP and MP at
+  each round end (processEndOfRoundRegen). Status bar shows the carrying team (`🌑 P1`); plate badges key per unit.
 
 ### Opportunity attacks follow height (2026-10-17, mondo: "opportunity attacks need to take height into account")
 - battle.js `checkOpportunityAttack(unit, fromX, fromY, fromZ, fromStandH)`: an adjacent enemy only swings when its
