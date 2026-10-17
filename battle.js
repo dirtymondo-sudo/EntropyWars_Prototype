@@ -56619,9 +56619,8 @@
             checkStealthReveals(unit);
 
             if (typeof checkFlagPickup === 'function') checkFlagPickup(unit);
-            /* Nexus step-on tick (2026-09-12): boots on a zone count the
-               moment they land — see ui.js nexusOnUnitArrive. */
-            if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit);
+            /* the Nexus step-on tick runs in doMove once the ice slide / warp rune has settled the body
+               (mondo 2026-10-17: a walk that slid off the zone still scored) */
 
             if (typeof _mdCheckStairs === 'function') _mdCheckStairs(unit);
 
@@ -58137,6 +58136,10 @@
             checkWarpRuneTrigger(unit);
             checkSeedStepTrigger(unit);
             checkOverwatchTriggers(unit);
+
+            /* Nexus step-on tick (2026-09-12): boots on a zone count where the move ENDS — after the ice slide and
+               the warp rune, so a walk aimed at the zone that slides off it scores nothing (ui.js nexusOnUnitArrive). */
+            if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit);
 
             if (_aiWalkAnimDelay > 0) {
                 return _aiWalkAnimDelay;

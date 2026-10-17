@@ -5136,6 +5136,20 @@
         function _nexusThreshold() {
             return (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
         }
+        /* The count a team sees on a zone (mondo 2026-10-17: a channel on an ENEMY zone read 0/4 until it fell).
+           A zone the other team owns counts the NEUTRALIZE ticks (the owner's bar dragged toward zero, 1/4..4/4);
+           any other zone counts the CAPTURE ticks on this team's side of the bar. */
+        function nexusTeamReadout(nex, team) {
+            const thr = _nexusThreshold();
+            const p = Number((nex && nex.progress) || 0);
+            if (nex && nex.owner && nex.owner !== team) {
+                const n = Math.max(0, Math.min(thr, thr - Math.abs(p)));
+                return { phase: 'neutralize', n, thr, text: `NEUTRALIZE ${n}/${thr}` };
+            }
+            const n = Math.max(0, Math.min(thr, team === 1 ? p : -p));
+            return { phase: 'capture', n, thr, text: `CAPTURE ${n}/${thr}` };
+        }
+        window.nexusTeamReadout = nexusTeamReadout;
         function _nexusZoneCenter(nex) {
             if (!nex) return { x: 0, y: 0 };
             if (Array.isArray(nex.tiles) && nex.tiles.length) {
@@ -5203,7 +5217,7 @@
             switch (ev.kind) {
                 case 'tick':
                     if (!relayed) {
-                        showFloatingTextAtTile(cx, cy, `⬡ ${ev.prog}/${thr}`, 'nexus', { durationMs: 1300 });
+                        showFloatingTextAtTile(cx, cy, `⬡ ${ev.text || (ev.prog + '/' + thr)}`, 'nexus', { durationMs: 1300 });
                         _fireNexusVfx3d(ev.player === 1 ? '_nexusProgressP1' : '_nexusProgressP2', cx, cy);
                     }
                     playSfx(ev.prog >= thr - 1 ? 'levelUp' : 'buff');
@@ -5291,10 +5305,7 @@
             }
             const c = _nexusZoneCenter(nex);
             _nexusFx({ kind: 'capture', section, player, x: c.x, y: c.y, sub });
-            if (creditUnit) {
-                showFloatingTextForUnit(creditUnit, '⬡ CAPTURED!', 'streak', { durationMs: 1600 });
-                grantXP(creditUnit, 15, 'nexusCapture');
-            }
+            if (creditUnit) grantXP(creditUnit, 15, 'nexusCapture');
 
             if (_lockAware) {
                 if (wasLocked) {
@@ -5382,6 +5393,9 @@
                     }
                 }
             }
+            const ro = nexusTeamReadout(nex, team);
+            res.readout = ro.n;
+            res.text = ro.text;
             if (nex.owner !== team && myProg >= thr) {
                 if (section === 'roaming' && typeof _captureRoamingNexus === 'function') {
                     nex.owner = team;
@@ -5446,11 +5460,12 @@
             _fireNexusVfx3d(unit.player === 1 ? '_nexusChannelP1' : '_nexusChannelP2', unit.x, unit.y);
 
             const res = _nexusApplyTicks(nex, floor, unit.player, 1, unit);
+            /* one count per channel, at the zone centre (the unit's own copy doubled it); the tick that
+               neutralizes shows NEUTRALIZED instead */
             if (!res.captured) {
                 const c = _nexusZoneCenter(nex);
-                addLog(`⬡ ${unitDisplayName(unit)} channels the ${_nexusLabel(floor)} Nexus (${res.prog}/${res.thr})`);
-                showFloatingTextForUnit(unit, `⬡ ${res.prog}/${res.thr}`, 'buff', { durationMs: 1200 });
-                _nexusFx({ kind: 'tick', section: floor, player: unit.player, x: c.x, y: c.y, prog: res.prog, thr: res.thr });
+                addLog(`⬡ ${unitDisplayName(unit)} channels the ${_nexusLabel(floor)} Nexus (${res.text})`);
+                if (!res.neutralized || res.prog > 0) _nexusFx({ kind: 'tick', section: floor, player: unit.player, x: c.x, y: c.y, prog: res.prog, thr: res.thr, text: res.text });
             }
 
             state.actionMode = null;
@@ -5488,8 +5503,8 @@
             }
             const res = _nexusApplyTicks(nex, section, unit.player, 1, unit);
             if (!res.captured) {
-                addLog(`⬡ ${unitDisplayName(unit)} takes ground in the ${_nexusLabel(section)} Nexus (${res.prog}/${res.thr})`);
-                _nexusFx({ kind: 'tick', section, player: unit.player, x: c.x, y: c.y, prog: res.prog, thr: res.thr });
+                addLog(`⬡ ${unitDisplayName(unit)} takes ground in the ${_nexusLabel(section)} Nexus (${res.text})`);
+                if (!res.neutralized || res.prog > 0) _nexusFx({ kind: 'tick', section, player: unit.player, x: c.x, y: c.y, prog: res.prog, thr: res.thr, text: res.text });
             }
         }
         window.nexusOnUnitArrive = nexusOnUnitArrive;
@@ -5531,8 +5546,8 @@
                         const res = _nexusApplyTicks(nex, section, team, ticks, _inZone(team)[0] || null);
                         if (!res.captured) {
                             const c = _nexusZoneCenter(nex);
-                            addLog(`⬡ ${label} Nexus: Player ${team} holds ground… ${res.prog}/${thr}`);
-                            _nexusFx({ kind: 'tick', section, player: team, x: c.x, y: c.y, prog: res.prog, thr });
+                            addLog(`⬡ ${label} Nexus: Player ${team} holds ground… ${res.text}`);
+                            if (!res.neutralized || res.prog > 0) _nexusFx({ kind: 'tick', section, player: team, x: c.x, y: c.y, prog: res.prog, thr, text: res.text });
                         }
                     }
                 } else if (nex.owner === 0 && nex.progress !== 0) {
