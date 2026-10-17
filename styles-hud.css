@@ -1013,13 +1013,6 @@
         }
         .cdx-list-lock { margin-left: auto; font-size: 12px; opacity: 0.7; }
         .cdx-list-tags { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
-        .cdx-list-faction {
-            font-size: 8px; letter-spacing: 1px; font-weight: 700; padding: 1px 5px;
-            border-radius: 2px; text-transform: uppercase;
-        }
-        .cdx-list-faction.space { background: rgba(143,208,232,0.15); color: #5a8898; }
-        .cdx-list-faction.time { background: rgba(160,140,200,0.15); color: #a08cc8; }
-        .cdx-list-faction.chaos { background: rgba(152,80,80,0.15); color: #985050; }
         .cdx-list-type { font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
         .cdx-list-class { font-size: 8px; color: rgba(160,150,140,0.4); letter-spacing: 1px; margin-top: 1px; text-transform: uppercase; }
         .cdx-empty { padding: 30px; text-align: center; color: var(--muted); font-size: 11px; letter-spacing: 1px; }
@@ -1116,10 +1109,8 @@
             letter-spacing: 2px; padding: 3px 10px; border: 2px solid;
             border-radius: 3px; transform: rotate(-1deg);
             text-transform: uppercase;
+            color: #b8a060; border-color: #b8a060; background: rgba(184,160,96,0.08);
         }
-        .cdx-stamp.space { color: #5a8898; border-color: #5a8898; background: rgba(143,208,232,0.08); }
-        .cdx-stamp.time { color: #a08cc8; border-color: #a08cc8; background: rgba(160,140,200,0.08); }
-        .cdx-stamp.chaos { color: #985050; border-color: #985050; background: rgba(152,80,80,0.08); }
         .cdx-doc-id { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; }
         .cdx-classification {
             font-size: 9px; font-weight: 900; color: #c04040;

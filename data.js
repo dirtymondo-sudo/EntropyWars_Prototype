@@ -707,21 +707,6 @@ function elemPressTier(aff) {
     return 0;
 }
 
-const FACTION_BONUSES = {
-    space: {
-        label: 'Space Alignment',
-        armorBonus: 8
-    },
-    time: {
-        label: 'Time Alignment',
-        healBonus: 32
-    },
-    chaos: {
-        label: 'Chaos Alignment',
-        atkBonus: 12
-    }
-};
-
 /* ──────────────────────────────────────────────────────────────────────────
  * EW_TERRAIN_COLORS — simplified, semi-transparent overhead colors for EVERY
  * terrain type in the editor (ME_TERRAIN_IDS in map.js). This is the single
@@ -2445,7 +2430,6 @@ const OBJECT_RULES = {
    jobs carried). */
 const DEFAULT_IDENTITY = {
     race: 'homosapien',
-    faction: 'space',
     types: ['human'],
     gender: 'other',
     zodiac: 'sagittarius',
@@ -2457,360 +2441,289 @@ const DEFAULT_IDENTITY = {
 const RACE_PROFILES = {
     homosapien: {
         label: 'Homosapien',
-        faction: 'space',
         types: ['human']
     },
     pirate: {
         label: 'Pirate',
-        faction: 'chaos',
         types: ['human']
     },
     swordfighter: {
         label: 'Swordfighter',
-        faction: 'time',
         types: ['human']
     },
     giant: {
         label: 'Giant',
-        faction: 'time',
         types: ['human']
     },
     fairy: {
         label: 'Fairy',
-        faction: 'chaos',
         types: ['anomaly']
     },
     martian: {
         label: 'Martian',
-        faction: 'space',
         types: ['alien']
     },
     nordic: {
         label: 'Nordic',
-        faction: 'time',
         types: ['alien']
     },
     grey: {
         label: 'Grey',
-        faction: 'chaos',
         types: ['alien']
     },
     bigfoot: {
         label: 'Bigfoot',
-        faction: 'space',
         types: ['anomaly']
     },
     'shadow entity': {
         label: 'Shadow Entity',
-        faction: 'time',
         types: ['anomaly']
     },
     reptilian: {
         label: 'Reptilian',
-        faction: 'chaos',
         types: ['anomaly']
     },
     ai: {
         label: 'AI',
-        faction: 'space',
         types: ['tech']
     },
     robot: {
         label: 'Robot',
-        faction: 'space',
         types: ['tech']
     },
     android: {
         label: 'Android',
-        faction: 'space',
         types: ['tech']
     },
     angel: {
         label: 'Angel',
-        faction: 'time',
         types: ['divine']
     },
     seraphim: {
         label: 'Seraphim',
-        faction: 'time',
         types: ['divine']
     },
     'orb of light': {
         label: 'Orb of Light',
-        faction: 'time',
         types: ['divine']
     },
     demon: {
         label: 'Demon',
-        faction: 'chaos',
         types: ['unholy']
     },
     succubus: {
         label: 'Succubus',
-        faction: 'chaos',
         types: ['unholy']
     },
     skeleton: {
         label: 'Skeleton',
-        faction: 'chaos',
         types: ['unholy']
     },
     mech: {
         label: 'Mech',
-        faction: 'space',
         types: ['human', 'tech']
     },
     ghost: {
         label: 'Ghost',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     zombie: {
         label: 'Zombie',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     annunaki: {
         label: 'Annunaki',
-        faction: 'space',
         types: ['human', 'alien']
     },
     skinwalker: {
         label: 'Skinwalker',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     werewolf: {
         label: 'Werewolf',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     gargoyle: {
         label: 'Gargoyle',
-        faction: 'space',
         types: ['unholy']
     },
     djinn: {
         label: 'Djinn',
-        faction: 'time',
         types: ['divine']
     },
     anubis: {
         label: 'Anubis',
-        faction: 'time',
         types: ['divine', 'unholy']
     },
     catgirl: {
         label: 'Catgirl',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     mantid: {
         label: 'Mantid',
-        faction: 'time',
         types: ['alien']
     },
     antperson: {
         label: 'Antperson',
-        faction: 'space',
         types: ['alien', 'anomaly']
     },
     mothman: {
         label: 'Mothman',
-        faction: 'time',
         types: ['anomaly']
     },
     siren: {
         label: 'Siren',
-        faction: 'space',
         types: ['unholy']
     },
     scarecrow: {
         label: 'Scarecrow',
-        faction: 'chaos',
         types: ['unholy']
     },
     glitch: {
         label: 'Glitch',
-        faction: 'space',
         types: ['tech', 'anomaly']
     },
     'machine elves': {
         label: 'Machine Elves',
-        faction: 'chaos',
         types: ['alien', 'tech']
     },
     cyclops: {
         label: 'Cyclops',
-        faction: 'time',
         types: ['anomaly']
     },
     cyborg: {
         label: 'Cyborg',
-        faction: 'space',
         types: ['tech']
     },
     'demon prince': {
         label: 'Demon Prince',
-        faction: 'chaos',
         types: ['unholy']
     },
     'demon princess': {
         label: 'Demon Princess',
-        faction: 'chaos',
         types: ['unholy']
     },
     dreameater: {
         label: 'Dreameater',
-        faction: 'time',
         types: ['alien']
     },
     'fallen angel': {
         label: 'Fallen Angel',
-        faction: 'chaos',
         types: ['divine', 'unholy']
     },
     goatman: {
         label: 'Goatman',
-        faction: 'chaos',
         types: ['anomaly', 'unholy']
     },
     halfdemon: {
         label: 'Halfdemon',
-        faction: 'chaos',
         types: ['unholy', 'human']
     },
     mermaid: {
         label: 'Mermaid',
-        faction: 'time',
         types: ['anomaly']
     },
     nephilim: {
         label: 'Nephilim',
-        faction: 'time',
         types: ['divine', 'human']
     },
     vampire: {
         label: 'Vampire',
-        faction: 'chaos',
         types: ['unholy']
     },
     voidweaver: {
         label: 'Voidweaver',
-        faction: 'space',
         types: ['alien']
     },
     'cosmic wraith': {
         label: 'Cosmic Wraith',
-        faction: 'space',
         types: ['alien', 'tech']
     },
     superhero: {
         label: 'Superhero',
-        faction: 'space',
         types: ['human', 'alien']
     },
     'general': {
         label: 'General',
-        faction: 'time',
         types: ['human']
     },
     'droid': {
         label: 'Droid',
-        faction: 'space',
         types: ['tech']
     },
     'antihero': {
         label: 'Antihero',
-        faction: 'space',
         types: ['human', 'alien']
     },
     'conspiracy theorist': {
         label: 'Conspiracy Theorist',
-        faction: 'time',
         types: ['human']
     },
     'overlord': {
         label: 'Overlord',
-        faction: 'chaos',
         types: ['unholy']
     },
     'chosen one': {
         label: 'Chosen One',
-        faction: 'time',
         types: ['unholy', 'divine']
     },
     'politician': {
         label: 'Politician',
-        faction: 'time',
         types: ['human']
     },
     'atlantean': {
         label: 'Atlantean',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     'dinosaur': {
         label: 'Dinosaur',
-        faction: 'space',
         types: ['anomaly']
     },
     'dragon': {
         label: 'Dragon',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'ghoul': {
         label: 'Ghoul',
-        faction: 'chaos',
         types: ['unholy']
     },
     'gnome': {
         label: 'Gnome',
-        faction: 'time',
         types: ['anomaly']
     },
     'kaiju': {
         label: 'Kaiju',
-        faction: 'chaos',
         types: ['unholy', 'tech']
     },
     'kraken': {
         label: 'Kraken',
-        faction: 'space',
         types: ['anomaly']
     },
     'loch ness monster': {
         label: 'Loch Ness Monster',
-        faction: 'space',
         types: ['anomaly']
     },
     'yeti': {
         label: 'Yeti',
-        faction: 'time',
         types: ['anomaly']
     },
 
     'knight': {
         label: 'Knight',
-        faction: 'time',
         types: ['human', 'divine']
     },
     'shaman': {
         label: 'Shaman',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     'mad scientist': {
         label: 'Mad Scientist',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'cowboy': {
         label: 'Cowboy',
         labelMale: 'Cowboy',
         labelFemale: 'Cowgirl',
-        faction: 'space',
         types: ['human']
     },
     'men in black': {
@@ -2819,17 +2732,14 @@ const RACE_PROFILES = {
         // A woman can't very well be a Man in Black — she's an Intel Spy.
         // (Portrait art file is still named "glowie" on R2 — path only.)
         labelFemale: 'Intel Spy',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'telepath': {
         label: 'Telepath',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     'marksman': {
         label: 'Marksman',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'priest': {
@@ -2838,7 +2748,6 @@ const RACE_PROFILES = {
         /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.20): the Nun is her own
            race now (below) — the priest's female form is the Priestess. */
         labelFemale: 'Priestess',
-        faction: 'time',
         types: ['human', 'divine']
     },
     /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20): the two new
@@ -2847,22 +2756,19 @@ const RACE_PROFILES = {
        female whitemage assets the priest's female form used to. */
     'gangster': {
         label: 'Gangster',
-        faction: 'space',
         types: ['human']
     },
     'nun': {
         label: 'Nun',
-        faction: 'time',
         types: ['human', 'divine']
     },
     /* THE DOOR AGENT (2026-09-14, DOOR_RACE_DESIGN.md): the Department's own
        officers as a race — a control skirmisher built on DOORS (a placeable
        pair of tiles: a private teleporter that toggles into a wall). The
        jobs are the officer's training; the race is the doors. Types human +
-       anomaly (people who work at right angles), faction TIME (D5). */
+       anomaly (people who work at right angles) (D5). */
     'door agent': {
         label: 'DOOR Agent',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
     /* THE 2026-09-21 BATCH (the user's three Meshy rigs): the POLICE OFFICER
@@ -2873,247 +2779,201 @@ const RACE_PROFILES = {
        models (sprites.js DOOR_CAST_MODELS cult1–5), never a race. */
     'police officer': {
         label: 'Police Officer',
-        faction: 'time',
         types: ['human']
     },
     'jellyfish': {
         label: 'Jellyfish',
-        faction: 'chaos',
         types: ['anomaly', 'alien']
     },
     'cult leader': {
         label: 'Cult Leader',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     /* THE 2026-09-22 BATCH: the POPSTAR (the user's "a_blonde_popstar" rig) — human + anomaly (fame at
-       that scale is a field effect), faction SPACE (the tour goes everywhere). A Harbinger support built
+       that scale is a field effect). A Harbinger support built
        on the crowd: sonic hits, the encore, the spotlight, the stadium show. */
     'popstar': {
         label: 'Popstar',
-        faction: 'space',
         types: ['human', 'anomaly']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'starfish': {
         label: 'Starfish',
-        faction: 'time',
         types: ['anomaly']
     },
     'ringmaster': {
         label: 'Ringmaster',
-        faction: 'chaos',
         types: ['human']
     },
     'bee queen': {
         label: 'Bee Queen',
-        faction: 'chaos',
         types: ['alien', 'anomaly']
     },
     'professor': {
         label: 'Professor',
-        faction: 'time',
         types: ['human']
     },
     'deep sea fish': {
         label: 'Deep Sea Fish',
-        faction: 'space',
         types: ['alien', 'anomaly']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'clown': {
         label: 'Clown',
-        faction: 'chaos',
         types: ['human', 'anomaly']
     },
     'bunny girl': {
         label: 'Bunny Girl',
-        faction: 'space',
         types: ['human', 'anomaly']
     },
     'sharkman': {
         label: 'Sharkman',
-        faction: 'chaos',
         types: ['anomaly']
     },
     'crystal guardian': {
         label: 'Crystal Guardian',
-        faction: 'time',
         types: ['anomaly', 'divine']
     },
     'jack o lantern': {
         label: 'Jack-o\'-Lantern',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'sidekick': {
         label: 'Sidekick',
-        faction: 'space',
         types: ['human']
     },
     'mushroom girl': {
         label: 'Mushroom Girl',
-        faction: 'time',
         types: ['anomaly']
     },
     'tree person': {
         label: 'Tree Person',
-        faction: 'time',
         types: ['anomaly']
     },
     'sheriff': {
         label: 'Sheriff',
-        faction: 'time',
         types: ['human']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'astronaut': {
         label: 'Astronaut',
-        faction: 'space',
         types: ['human', 'tech']
     },
     'krampus': {
         label: 'Krampus',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'rabbit': {
         label: 'Rabbit',
-        faction: 'time',
         types: ['anomaly']
     },
     'luchador': {
         label: 'Luchador',
-        faction: 'space',
         types: ['human']
     },
     'firefighter': {
         label: 'Firefighter',
-        faction: 'time',
         types: ['human']
     },
     'goblin': {
         label: 'Goblin',
-        faction: 'chaos',
         types: ['anomaly']
     },
     'hippie': {
         label: 'Hippie',
         labelMale: 'Hippie',
         labelFemale: 'Hippie',
-        faction: 'time',
         types: ['human']
     },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
         labelFemale: 'Witch',
-        faction: 'chaos',
         types: ['human', 'unholy']
     },
     'fortune teller': {
         label: 'Fortune Teller',
-        faction: 'time',
         types: ['human', 'anomaly']
     },
 
     'barbarella': {
         label: 'Barbarella',
-        faction: 'space',
         types: ['human', 'anomaly']
     },
     'black goo': {
         label: 'Black Goo',
-        faction: 'chaos',
         types: ['anomaly', 'unholy']
     },
     'golem': {
         label: 'Golem',
-        faction: 'time',
         types: ['human', 'divine']
     },
     'honda civic': {
         label: 'Sedan',
-        faction: 'space',
         types: ['tech']
     },
     'ice queen': {
         label: 'Ice Queen',
-        faction: 'time',
         types: ['divine', 'anomaly']
     },
     'juggernaut': {
         label: 'Juggernaut',
-        faction: 'chaos',
         types: ['unholy', 'human']
     },
     'ki fighter': {
         label: 'Ki Fighter',
         labelMale: 'Ki Fighter',
         labelFemale: 'Ki Fighter',
-        faction: 'time',
         types: ['human']
     },
     'king arthur': {
         label: 'King Arthur',
-        faction: 'time',
         types: ['human', 'divine']
     },
     'king kong': {
         label: 'King Kong',
-        faction: 'chaos',
         types: ['anomaly']
     },
     'minotaur': {
         label: 'Minotaur',
-        faction: 'chaos',
         types: ['unholy', 'human']
     },
     'necromancer': {
         label: 'Necromancer',
         labelMale: 'Necromancer',
         labelFemale: 'Necromancer',
-        faction: 'chaos',
         types: ['unholy']
     },
     'occulus': {
         label: 'Occulus',
-        faction: 'time',
         types: ['anomaly', 'divine']
     },
     'quarterback': {
         label: 'Quarterback',
-        faction: 'space',
         types: ['human']
     },
     'robinhood': {
         label: 'Robin Hood',
-        faction: 'time',
         types: ['human']
     },
     'santa clause': {
         label: 'Santa Clause',
-        faction: 'time',
         types: ['divine', 'anomaly']
     },
     'super sentai': {
         label: 'Super Sentai',
-        faction: 'space',
         types: ['tech', 'human']
     },
     'symbiote': {
         label: 'Symbiote',
-        faction: 'chaos',
         types: ['unholy', 'anomaly']
     },
     'valkraye': {
         label: 'Valkraye',
-        faction: 'time',
         types: ['divine']
     },
     'watcher': {
         label: 'The Watcher',
-        faction: 'time',
         types: ['divine', 'anomaly']
     }
 };
@@ -3841,26 +3701,31 @@ function zodiacNatalDelta(sign, key) {
     return Number.isFinite(v) ? Math.round(v) : 0;
 }
 
+/* THE CELESTIAL EVENTS (factions removed 2026-10-17, mondo): an event buffs the team that holds the MIDDLE nexus
+   (state.js getSkyEventHolder) for as long as it lasts and they hold it; a new event resets that zone to nobody.
+   Rolled at each round end from SKY_EVENT_START_ROUND on, SKY_EVENT_CHANCE when no event is up, lasting
+   SKY_EVENT_DURATION rounds. buff = the short line for banners; atkMult = that share of ATK on physical hits,
+   defMult = the whole physical soak, healMult = that share of every heal. */
 const SKY_EVENTS = {
     bloodMoon: {
         label: 'Blood Moon',
         icon: '🌑',
-        faction: 'chaos',
-        desc: 'Chaos units gain +10% ATK',
+        buff: '+10% ATK',
+        desc: 'The middle Nexus holder gains +10% ATK',
         atkMult: 1.10
     },
     solarEclipse: {
         label: 'Black Sun',
         icon: '🌘',
-        faction: 'time',
-        desc: 'Time units gain +15% healing',
+        buff: '+15% healing',
+        desc: 'The middle Nexus holder gains +15% healing',
         healMult: 1.15
     },
     lunarEclipse: {
         label: 'Lunar Eclipse',
         icon: '🌒',
-        faction: 'space',
-        desc: 'Space units gain +10% DEF',
+        buff: '+10% DEF',
+        desc: 'The middle Nexus holder gains +10% DEF',
         defMult: 1.10
     }
 };
@@ -22893,7 +22758,7 @@ window.EWSpellMods = (function () {
 
    What a race row may carry (all sparse, absent = shipped):
      hp mp atk int def mdef spd vision crt → RACE_BASE_STATS[race]
-     label labelMale labelFemale faction types[] → RACE_PROFILES[race]
+     label labelMale labelFemale types[] → RACE_PROFILES[race]
      affinity {element: tier}         → RACE_ELEMENT_AFFINITY[race] (the whole row; {} = no affinities)
      terrain                          → RACE_TERRAIN_PREFERENCE[race] ('none' = no preference)
      role                             → RACE_CLASS[race]
@@ -22907,7 +22772,7 @@ const RACE_STAT_KEYS = ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'vision'
 /* VISION is tiles: every race sees 2 to 6 (mondo, 2026-10-09). The race editor clamps to it; RACE_STAT_RANGE is the one place the limits live. */
 const RACE_STAT_RANGE = { vision: [2, 6], crt: [0, 100] };
 if (typeof window !== 'undefined') window.RACE_STAT_RANGE = RACE_STAT_RANGE;
-const RACE_PROFILE_KEYS = ['label', 'labelMale', 'labelFemale', 'faction', 'types'];
+const RACE_PROFILE_KEYS = ['label', 'labelMale', 'labelFemale', 'types'];
 /* the stat text in STAT_HELP carries the bands; rewritten when the grades move */
 function statHelpRefreshGrades() {
     try {
@@ -23160,7 +23025,7 @@ window.EWRaceMods = (function () {
             build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
             instructions: 'Bake into data.js by hand (no script yet): races.<race>.{hp,mp,atk,int,def,mdef,spd,vision,crt} → RACE_BASE_STATS '
                 + '(BASE stats: level 100 = base + LEVEL_TOTAL_STAT_GAINS, HP/MP through LEVEL_CURVE; the grade reads the base); '
-                + 'label/labelMale/labelFemale/faction/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
+                + 'label/labelMale/labelFemale/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
                 + 'terrain → RACE_TERRAIN_PREFERENCE; role → RACE_CLASS; range → RACE_KITS; biomes → EW_RACE_BIOMES; '
                 + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS; '
                 + 'zodiac.<sign>.sky (percent while the sign rules the sky) / .natal (flat stats for units born under it) → ZODIAC_EFFECTS; '
@@ -51334,7 +51199,7 @@ function hqPortalSafeRoom(roomId) { return !hqRoomSite(roomId); }
    the day + the room (hqHash) so a room's crowd holds for a day. A facility
    room's pool is the OFFICER'S OWN ROSTER (the account's unlocked races, or the
    starters offline) — the hall is the whole department passing through; a city
-   part's pool is the three urban sites' residents + every TIME-faction race
+   part's pool is the three urban sites' residents
    (ordinary people on a street). The renderer (three-renderer.js "THE ROUNDS")
    walks every extra walker — and a spot native that draws `roam` — on a LOOP of
    stops (doors, counters, spots, free cells) at HQ_POPULATION_RULES.walkSpeed,
@@ -57771,7 +57636,7 @@ window.EWDataMods = (function () {
        tables (rooms, maps) belong to the map editor. g = the group in the list. */
     const T = [
         ['Battle', 'CONFIG', CONFIG], ['Battle', 'TYPE_CHART', TYPE_CHART], ['Battle', 'ELEMENT_AFFINITY_MULT', ELEMENT_AFFINITY_MULT],
-        ['Battle', 'FACTION_BONUSES', FACTION_BONUSES], ['Battle', 'STATUS_DEFS', STATUS_DEFS], ['Battle', 'PASSIVE_DEFS', PASSIVE_DEFS],
+        ['Battle', 'STATUS_DEFS', STATUS_DEFS], ['Battle', 'PASSIVE_DEFS', PASSIVE_DEFS],
         ['Battle', 'TERRAIN_RULES', TERRAIN_RULES], ['Battle', 'TERRAIN_PREFERENCE_BONUS', TERRAIN_PREFERENCE_BONUS], ['Battle', 'OBJECT_RULES', OBJECT_RULES],
         ['Battle', 'COMBO_REGISTRY', COMBO_REGISTRY], ['Battle', 'FINISHER_RULES', FINISHER_RULES], ['Battle', 'ENTROPY_STRIKE_TYPES', ENTROPY_STRIKE_TYPES],
         ['Battle', 'GUARD_RESTORE', GUARD_RESTORE], ['Battle', 'RESERVE_RULES', RESERVE_RULES], ['Battle', 'MANA_FORMULA', MANA_FORMULA],
