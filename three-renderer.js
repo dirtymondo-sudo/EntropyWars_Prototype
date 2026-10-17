@@ -2699,7 +2699,7 @@ const ThreeRenderer = (function () {
     // share of the screen height (the zoomed-out tactical view used to shrink
     // a number to ~10 px), nor a number taller than the cap up close. The
     // floor scales the whole pop, so a big hit's swell still out-sizes chip.
-    var FLOAT_MIN_HERO_H = 0.05;
+    var FLOAT_MIN_HERO_H = 0.065;
     var FLOAT_MIN_TAG_H = 0.027;
     var FLOAT_MAX_HERO_H = 0.15;
     // Word pops that are the whole moment on their own (no number to serve)
