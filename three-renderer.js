@@ -23864,13 +23864,23 @@ const ThreeRenderer = (function () {
         // 1.0 once the real 3D moon model (_skyMoon) is on screen — fades the
         // shader's painted moon DISC out while keeping its soft glow halo, so
         // the glow wraps the mesh and the disc never double-exposes behind it.
-        'uniform float uMoonMesh;\n' + _ENV_COMMON + '\n' +
+        'uniform float uMoonMesh;\n' +
+        // THE CELESTIAL EVENTS (2026-10-17): seconds since the event was revealed (the eclipse's diamond ring, the umbra's slide)
+        'uniform float uEvAge;\n' + _ENV_COMMON + '\n' +
         // THE SKY SEAM (2026-10-14): az=atan(rd.x,rd.z) jumps from +PI to -PI straight behind the board (-Z, the zodiac prime
         // slot), so every fbm fed az cut off in a hard vertical line there. fbmW cross-fades the last 18 deg before the wrap
         // (nd.x -0.8..-1) into the noise continued past +PI (p+per = one full turn on), so -PI meets +PI with the same value.
         // The blend keeps the noise's spread (variance-normalised about its 0.484 mean) so the band reads like the rest.
         'float fbmW(vec2 p,float per,float x){ float a=fbm(p); float w=1.0-smoothstep(-1.0,-0.8,x);\n' +
         '  if(w>0.001){ float b=fbm(p+vec2(per,0.0)); float u=1.0-w; a=0.484+((a-0.484)*u+(b-0.484)*w)/sqrt(u*u+w*w); } return a; }\n' +
+        // THE LUNAR ECLIPSE (2026-10-17): the Earth's umbra on the moon, p in moon radii (x right, y up as seen). The shadow
+        // (2.6 moon radii) slides in from the lower left over the reveal and parks leaving a bright cap upper right; copper
+        // inside, darkest at its heart, a turquoise ozone fringe at its edge, the penumbra greying the lit side. The 3D moon
+        // wears the same multiplier as a texture (_lunUmbraPaint, keep the numbers in step).
+        'vec3 lunUmbra(vec2 p,float age){ vec2 u=vec2(0.748,0.663); float sl=smoothstep(0.0,3.2,age);\n' +
+        '  float d=length(p+u*mix(3.9,2.05,sl))-2.6; float tin=clamp(-d/0.95,0.0,1.0);\n' +
+        '  vec3 cu=mix(vec3(0.62,0.17,0.07),vec3(0.22,0.03,0.015),pow(tin,0.7)); cu=mix(cu,vec3(0.30,0.50,0.70),exp(-pow((d+0.08)/0.07,2.0))*0.6);\n' +
+        '  return mix(cu,vec3(mix(0.55,1.0,smoothstep(0.0,0.45,d))),smoothstep(-0.05,0.05,d)); }\n' +
         'void main(){\n' +
         '  vec3 rd=normalize(vDir); float night=uDayNight; float t=uTime;\n' +
         // MOVING MAPS rev 2 (2026-09-12): a `wheel` map turns the whole dome about the board (uSkyYaw)
@@ -23932,17 +23942,19 @@ const ThreeRenderer = (function () {
         '  float disc=smoothstep(sunR,sunR*0.8,sa); float corona=exp(-sa*(5.0-3.4*uSunNear))*(0.8+1.4*uSunNear)+exp(-sa*1.3)*(0.18+0.55*uSunNear);\n' +
         '  vec3 sunWarm=mix(vec3(1.0,0.92,0.70),vec3(1.0,0.66,0.32),wSand); sunWarm=mix(sunWarm,vec3(1.0,0.58,0.22),uSunNear*0.7);\n' +
         '  vec3 sunC=disc*sunWarm*3.0+corona*sunWarm*1.2;\n' +
-        '  vec3 blackSunC=-disc*vec3(2.5)+smoothstep(sunR*1.7,sunR*1.05,abs(sa-sunR*1.25))*vec3(1.0,0.9,0.7)*2.8+corona*vec3(0.9,0.7,0.95)*0.5;\n' +
-        '  col+=mix(sunC*sunVis,blackSunC,bsun);\n' +
+        '  col+=sunC*sunVis*(1.0-bsun)*(1.0-lun);\n' +
         // ── moon ──
-        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=max(0.35+0.65*night,uMoonNear); float moonR=mix(0.06,0.095,bloodM)+0.42*uMoonNear;\n' +
+        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=max(0.35+0.65*night,uMoonNear); float moonR=mix(0.06,0.095,bloodM)+0.024*lun+0.42*uMoonNear;\n' +
         '  float mdisc=smoothstep(moonR,moonR*0.85,ma); float craters=fbm((rd.xy-moonDir.xy)*(42.0/(1.0+6.0*uMoonNear)));\n' +
         '  vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters); float mGlow=exp(-ma*(7.0-5.2*uMoonNear))*(0.4+0.5*uMoonNear);\n' +
         '  float mMesh=1.0-uMoonMesh;\n' +   // 3D moon model on screen → hide the painted disc, keep the halo
         '  vec3 moonC=mdisc*moonGrey*1.6*mMesh+mGlow*moonGrey*0.6;\n' +
         '  vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);\n' +
         '  vec3 moonEv=mdisc*moonRed*2.0*mMesh+exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;\n' +
-        '  col+=mix(moonC*moonVis,moonEv,max(bloodM,lun));\n' +
+        // the lunar eclipse: the painted disc (only while the 3D moon is not up) wears the umbra; a faint copper halo
+        '  vec3 me1=normalize(cross(moonDir,vec3(0.0,1.0,0.0))); vec3 me2=cross(me1,moonDir);\n' +
+        '  vec3 lunC=mdisc*moonGrey*lunUmbra(vec2(dot(rd,me1),dot(rd,me2))/moonR,uEvAge)*1.6*mMesh+mGlow*moonGrey*0.3+exp(-ma*5.0)*vec3(0.55,0.16,0.08)*0.3;\n' +
+        '  col+=mix(mix(moonC*moonVis,moonEv,bloodM),lunC,lun)*(1.0-bsun);\n' +
         '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.10,0.08,0.18),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
         // ── storm overcast: seamless, weighted to the lower sky, no hard edge ──
         '  if(wStorm>0.01){ float cl=fbmW(vec2(az*2.2+t*0.05+uSkyFlow*5.0, v*3.0 - t*0.02),TAU*2.2,nd.x);\n' +
@@ -23965,7 +23977,7 @@ const ThreeRenderer = (function () {
         //    `uSkyClouds` cover (0 = clear), an overcast that greys the blue as the cover climbs; a storm weather
         //    (uWeather.x) is a full overcast. The day yields to the night cycle (a day map at night is the night
         //    sky) and to a sky event (the blood moon shows through). The map tint below still washes it.
-        '  float dayK=clamp(uSkyDay,0.0,1.0)*(1.0-night*0.9)*(1.0-uSkyAmt*0.7);\n' +
+        '  float dayK=clamp(uSkyDay,0.0,1.0)*(1.0-night*0.9)*(1.0-uSkyAmt*0.7)*(1.0-bsun)*(1.0-0.7*lun);\n' +
         '  if(dayK>0.001){ float h=clamp(el,-1.0,1.0); float dcl=clamp(uSkyClouds+wStorm*0.85,0.0,1.0);\n' +
         // 2026-09-22 (the user: "the city sky is too bright"): the horizon band a notch deeper and bluer, the ground haze below it darker —
         // the pale near-white horizon read as a glowing band once the fog washed into it (the bloom no longer touches it, THE HDR BLOOM)
@@ -23986,6 +23998,44 @@ const ThreeRenderer = (function () {
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
         '  if(uMapTintAmt>0.001){ float ml=dot(col,vec3(0.299,0.587,0.114));\n' +
         '    col=mix(col,uMapTint*(0.45+1.10*ml),clamp(uMapTintAmt,0.0,1.0)); }\n' +
+        // ── THE TOTAL SOLAR ECLIPSE (2026-10-17, mondo: "make the celestial events look more realistic and badass"): drawn
+        //    last (display space) so no day sky or map tint washes it. Daylight collapses to a deep eclipse twilight with a
+        //    sunset glow on every horizon; the moon's disc is pitch black; the pearly corona streams out of it (broad helmet
+        //    streamers stretched along the sun's equator, fine polar plumes), a thin pink chromosphere and prominences hug
+        //    the limb; Venus and Jupiter come out; for the first seconds of the reveal the last bead of sunlight burns as
+        //    the diamond ring. Noise only within a few radii of the sun. ──
+        '  if(bsun>0.001){\n' +
+        '    float hzG=exp(-max(el+0.03,0.0)*11.0)*smoothstep(-0.30,-0.02,el);\n' +
+        '    vec3 twi=mix(vec3(0.085,0.13,0.27),vec3(0.025,0.045,0.12),smoothstep(-0.05,0.75,el));\n' +
+        '    col=mix(col,col*0.30+twi+vec3(0.95,0.46,0.16)*hzG*0.55+vec3(0.35,0.22,0.30)*hzG*hzG*0.25,bsun);\n' +
+        '    float Re=sunR*1.6; float r=sa/Re;\n' +
+        '    vec3 se1=normalize(cross(sunDir,vec3(0.0,1.0,0.0))); vec3 se2=cross(se1,sunDir); vec2 sq=vec2(dot(rd,se1),dot(rd,se2));\n' +
+        '    float dr=smoothstep(0.15,0.6,uEvAge)*(1.0-smoothstep(1.4,3.2,uEvAge));\n' +
+        '    if(r<10.0){ float th=atan(sq.y,sq.x); vec2 cs=vec2(cos(th),sin(th)); float rr=max(r,1.0);\n' +
+        '      float nA=fbm(cs*2.2+vec2(3.1,7.4)); float nB=vnoise(cs*14.0+vec2(1.7,9.2)); float nC=vnoise(cs*38.0+vec2(5.0,2.0));\n' +
+        '      float eq=pow(abs(cos(th-0.35)),2.0); float str=clamp((nA-0.30)*2.2,0.0,1.0)*(0.35+0.65*eq);\n' +
+        '      float fall=mix(3.4,1.35,str);\n' +
+        '      float rays=0.30+1.6*str*str+0.35*nB+0.30*nC*(1.0-eq)*smoothstep(1.02,1.5,rr)*exp(-(rr-1.0)*1.2);\n' +
+        '      float cor=pow(rr,-fall)*rays*1.05+exp(-(rr-1.0)*9.0)*1.1;\n' +
+        '      cor*=step(1.0,r)*(1.0-0.55*dr);\n' +
+        '      vec3 corC=mix(vec3(0.86,0.90,1.0),vec3(1.0,0.95,0.86),exp(-(rr-1.0)*6.0));\n' +
+        '      col+=corC*cor*bsun;\n' +
+        '      float pm=vnoise(cs*7.0+vec2(11.0,4.0)); float pm2=vnoise(cs*23.0+vec2(2.0,8.0)+vec2(0.0,uTime*0.05));\n' +
+        '      float pr=smoothstep(0.64,0.80,pm); float ph=0.05+0.13*pr*(0.5+0.5*pm2);\n' +
+        '      float prom=pr*smoothstep(1.0+ph,1.0+ph*0.35,r)*step(1.0,r)*(0.55+0.65*pm2);\n' +
+        '      float limb=smoothstep(1.0,1.012,r)*smoothstep(1.06,1.015,r)*(0.45+0.55*vnoise(cs*60.0));\n' +
+        '      col+=vec3(1.0,0.28,0.40)*(limb*0.8+prom*1.3)*bsun;\n' +
+        '      vec3 moonBlk=vec3(0.006,0.007,0.011)*(0.8+0.4*vnoise(sq/Re*6.0));\n' +   // a whisper of earthshine on the black disc
+        '      col=mix(col,moonBlk,smoothstep(1.0,0.988,r)*bsun); }\n' +
+        '    if(dr>0.001){ vec2 bp=vec2(cos(2.35),sin(2.35))*Re*0.985; vec2 dd=sq-bp; float dl=length(dd);\n' +
+        '      float bead=exp(-dl*dl/(Re*Re*0.0035))*2.4+exp(-dl/(Re*0.45))*1.0+exp(-dl/(Re*1.6))*0.3;\n' +
+        '      float spk=0.0; for(int k=0;k<3;k++){ float a=float(k)*1.0472+0.42; vec2 nn=vec2(-sin(a),cos(a)); spk+=exp(-abs(dot(dd,nn))/(Re*0.010)); }\n' +
+        '      spk*=exp(-dl/(Re*1.5))*0.85;\n' +
+        '      col+=vec3(1.0,0.97,0.90)*(bead+spk)*dr*bsun; }\n' +
+        '    vec3 venus=normalize(sunDir-se1*0.34-se2*0.10); float vd=acos(clamp(dot(rd,venus),-1.0,1.0));\n' +
+        '    vec3 jup=normalize(sunDir+se1*0.55+se2*0.22); float jd=acos(clamp(dot(rd,jup),-1.0,1.0));\n' +
+        '    col+=(vec3(1.0,0.97,0.88)*(smoothstep(0.0032,0.0012,vd)+exp(-vd*380.0)*0.5)+vec3(1.0,0.93,0.80)*(smoothstep(0.0024,0.0008,jd)*0.75+exp(-jd*450.0)*0.3))*bsun;\n' +
+        '  }\n' +
         // ── retro mood fog: a haze bank hugging the horizon that thins toward the
         //    zenith, so the lower sky drowns in fog while the stars / sun / moon
         //    overhead stay clear. el (rd.y) is the view-ray altitude. The band
@@ -24027,6 +24077,8 @@ const ThreeRenderer = (function () {
                 uMapNebula: { value: 1.0 },
                 // 1 while the real 3D moon model is visible (see _updateSkyMoon)
                 uMoonMesh: { value: 0.0 },
+                // THE CELESTIAL EVENTS (2026-10-17): seconds since the sky event was revealed (_skyEvShownAt)
+                uEvAge: { value: 99.0 },
                 // MOVING MAPS: written by _motionTick every frame (0 on a still map, and in the HQ / menu)
                 uSkyFlow: { value: 0.0 },
                 uSunNear: { value: 0.0 },
@@ -24126,7 +24178,7 @@ const ThreeRenderer = (function () {
                 if (!_skyEvPendingSince) _skyEvPendingSince = _evNow;
                 if (_evNow - _skyEvPendingSince > 9000
                     || (state && (state.devAutoSim || state.animationsDisabled))) {
-                    _skyEvShownType = _evType; _skyEvPendingSince = 0;
+                    _skyEvShownType = _evType; _skyEvPendingSince = 0; _skyEvShownAt = _evNow;
                 } else {
                     ev = 0;
                 }
@@ -24329,6 +24381,7 @@ const ThreeRenderer = (function () {
         _envUni.uDayNight.value = S.night;
         _envUni.uSkyEvent.value = S.skyEvent;
         _envUni.uSkyAmt.value = S.skyAmt;
+        _envUni.uEvAge.value = _skyEvShownAt ? Math.min(99, (performance.now() - _skyEvShownAt) / 1000) : 99;
         _envUni.uZodiac.value = S.zodiac;
         /* MOVING MAPS: the storm a sea map sails into builds with the rounds
            (a floor under the weather's own storm, never a real weather) */
@@ -24371,6 +24424,12 @@ const ThreeRenderer = (function () {
     // Blood moons swell + redden it exactly like the old disc; day dims it.
     var _skyMoon = null, _skyMoonInner = null, _skyMoonMats = [], _skyMoonReady = false;
     var _skyMoonCol = null, _SKY_MOON_RED = null;
+    /* THE LUNAR ECLIPSE (2026-10-17): the Earth's umbra laid over the 3D moon — a camera-facing card just in front of it,
+       sized to the moon's silhouette, MULTIPLYING it by the dome shader's lunUmbra (copper umbra, turquoise fringe, grey
+       penumbra, bright cap). Plain MeshBasicMaterial + a 128px canvas, so WebGL and WebGPU draw it alike; the canvas is
+       repainted only while the shadow slides in (the first 3.2 s of the reveal). */
+    var _lunCard = null, _lunCanvas = null, _lunTex = null, _lunPaintedD = -1;
+    var _LUN_N = 128, _LUN_RP = 58;   // canvas size, moon radius in canvas px (the card reaches 1.03 radii, a soft edge)
     var _SKY_MOON_DIST = 12500;     // from the camera (far plane is 20000)
     var _SKY_MOON_ANG_R = 0.06;     // angular radius the shader disc used
 
@@ -24410,14 +24469,70 @@ const ThreeRenderer = (function () {
         _skyMoonInner.rotation.y = t * 0.006;    // barely-there face drift
         var bloodM = (S.skyEvent > 0.5 && S.skyEvent < 1.5) ? S.skyAmt : 0;
         var lun = (S.skyEvent >= 2.5) ? S.skyAmt : 0;
-        var red = Math.max(bloodM, lun);
-        _skyMoon.scale.setScalar((1 + 0.58 * bloodM) * (1 + 7.0 * _motion.moonNear));   // old disc grew 0.06 → 0.095 rad on blood moons; the Looking-Glass's pass swells it eightfold
+        var bsun = (S.skyEvent > 1.5 && S.skyEvent < 2.5) ? S.skyAmt : 0;
+        var red = bloodM;   // THE LUNAR ECLIPSE no longer reddens the whole moon: the umbra card does it (_updateLunCard)
+        if (bsun > 0.02) { _skyMoon.visible = false; return; }   // a total solar eclipse: the moon IS the black disc over the sun
+        _skyMoon.scale.setScalar((1 + 0.58 * bloodM) * (1 + 0.4 * lun) * (1 + 7.0 * _motion.moonNear));   // old disc grew 0.06 → 0.095 rad on blood moons (0.084 on a lunar eclipse); the Looking-Glass's pass swells it eightfold
         if (!_skyMoonCol) { _skyMoonCol = new THREE.Color(); _SKY_MOON_RED = new THREE.Color(0xc22014); }
         // faint by day, bright by night (the old moonVis beat), washed red by events
         _skyMoonCol.setScalar(0.55 + 0.75 * S.night);
         if (red > 0.01) _skyMoonCol.lerp(_SKY_MOON_RED, red * 0.85);
+        if (lun > 0.01) _skyMoonCol.setScalar(_skyMoonCol.r + (1.7 - _skyMoonCol.r) * lun);   // the uncovered cap burns white over the copper (the umbra card multiplies it)
         for (var i = 0; i < _skyMoonMats.length; i++) _skyMoonMats[i].color.copy(_skyMoonCol);
+        _updateLunCard(cam, lun);
     }
+
+    function _lunSmooth(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+    /* the dome shader's lunUmbra, painted (D = the umbra centre's distance from the moon's, in moon radii) */
+    function _lunUmbraPaint(D) {
+        var N = _LUN_N, c = N / 2, RP = _LUN_RP, ctx = _lunCanvas.getContext('2d'), img = ctx.createImageData(N, N), px = img.data;
+        var ux = 0.748, uy = 0.663;
+        for (var y = 0; y < N; y++) {
+            for (var x = 0; x < N; x++) {
+                var o = (y * N + x) * 4, X = (x + 0.5 - c) / RP, Y = (c - y - 0.5) / RP, r = Math.sqrt(X * X + Y * Y);
+                var a = Math.max(0, Math.min(1, (1.03 - r) / 0.03));
+                if (a <= 0) { px[o] = px[o + 1] = px[o + 2] = 255; px[o + 3] = 0; continue; }
+                var ex = X + ux * D, ey = Y + uy * D, d = Math.sqrt(ex * ex + ey * ey) - 2.6;
+                var tin = Math.pow(Math.max(0, Math.min(1, -d / 0.95)), 0.7);
+                var cr = 0.62 + (0.22 - 0.62) * tin, cg = 0.17 + (0.03 - 0.17) * tin, cb = 0.07 + (0.015 - 0.07) * tin;
+                var bd = Math.exp(-Math.pow((d + 0.08) / 0.07, 2)) * 0.6;
+                cr += (0.30 - cr) * bd; cg += (0.50 - cg) * bd; cb += (0.70 - cb) * bd;
+                var lit = 0.55 + 0.45 * _lunSmooth(0, 0.45, d), kk = _lunSmooth(-0.05, 0.05, d);
+                px[o] = Math.round(255 * (cr + (lit - cr) * kk)); px[o + 1] = Math.round(255 * (cg + (lit - cg) * kk)); px[o + 2] = Math.round(255 * (cb + (lit - cb) * kk));
+                px[o + 3] = Math.round(255 * a);
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        if (_lunTex) _lunTex.needsUpdate = true;
+    }
+    function _updateLunCard(cam, lun) {
+        if (lun < 0.01) { if (_lunCard) _lunCard.visible = false; return; }
+        if (!_lunCard) {
+            if (typeof document === 'undefined') return;
+            _lunCanvas = document.createElement('canvas'); _lunCanvas.width = _lunCanvas.height = _LUN_N;
+            _lunTex = new THREE.CanvasTexture(_lunCanvas);
+            _lunPaintedD = -1;
+            var mat = new THREE.MeshBasicMaterial({ map: _lunTex, transparent: true, premultipliedAlpha: true, blending: THREE.MultiplyBlending,
+                depthWrite: false, depthTest: true, fog: false, toneMapped: false, side: THREE.DoubleSide });
+            _lunCard = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+            _lunCard.name = 'skyMoonUmbra'; _lunCard.frustumCulled = false; _lunCard.renderOrder = 5;
+            _skyMoon.add(_lunCard);
+        }
+        var age = _skyEvShownAt ? (performance.now() - _skyEvShownAt) / 1000 : 99;
+        var D = 3.9 + (2.05 - 3.9) * _lunSmooth(0, 3.2, age);
+        if (Math.abs(D - _lunPaintedD) > 0.01) { _lunPaintedD = D; _lunUmbraPaint(D); }
+        // the card sits 1.1 moon radii toward the camera, sized to the sphere's silhouette there
+        var rl = _SKY_MOON_DIST * Math.tan(_SKY_MOON_ANG_R), sc = _skyMoon.scale.x || 1;
+        var ang = Math.asin(Math.min(0.99, rl * sc / _SKY_MOON_DIST)), dw = _SKY_MOON_DIST - 1.1 * rl * sc;
+        _lunTo = _lunTo || new THREE.Vector3();
+        _lunTo.copy(cam.position).sub(_skyMoon.position).normalize().multiplyScalar(rl * 1.1);
+        _lunCard.position.copy(_lunTo);
+        _lunCard.scale.setScalar(dw * Math.tan(ang) / sc * (_LUN_N / 2) / _LUN_RP);
+        _lunCard.lookAt(cam.position);
+        _lunCard.material.opacity = Math.min(1, lun);
+        _lunCard.visible = true;
+    }
+    var _lunTo = null;
 
     // ════════════════════════════════════════════════════════════════════
     //  ZODIAC CONSTELLATION WHEEL
@@ -24432,7 +24547,7 @@ const ThreeRenderer = (function () {
     //  like the dome, so it tilts/pans with the view and is always up there
     //  when the player cranes the camera past the horizon.
     // ════════════════════════════════════════════════════════════════════
-    var _skyEvShownType = '', _skyEvPendingSince = 0, _skyRevealBoostUntil = 0;
+    var _skyEvShownType = '', _skyEvPendingSince = 0, _skyRevealBoostUntil = 0, _skyEvShownAt = 0;
 
     var _zwGroup = null, _zwSigns = [], _zwInited = false, _zwRimMat = null;
     var _zwRot = 0, _zwShownIdx = -1, _zwReveal = null, _zwAutoAt = 0;
@@ -25008,7 +25123,7 @@ const ThreeRenderer = (function () {
     function playSkyEventReveal(type, opts) {
         _skyEvShownType = type
             || (typeof state !== 'undefined' && state && state.skyEvent && state.skyEvent.type) || '';
-        _skyEvPendingSince = 0;
+        _skyEvPendingSince = 0; _skyEvShownAt = performance.now();
         var ms = (opts && opts.rampMs) || 2200;
         _skyRevealBoostUntil = performance.now() + ms;
         return { totalMs: ms };
@@ -34469,7 +34584,7 @@ const ThreeRenderer = (function () {
                 return v;
             }).setLayout({ name: 'ewFbm5', type: 'float', inputs: [{ name: 'p', type: 'vec2' }] });
             var E = _envUni, R = function (k, t) { return _ewPU(E[k], t); };
-            envLib = { h11: h11, h21: h21, h22: h22, fbm: fbm, R: R,
+            envLib = { h11: h11, h21: h21, h22: h22, vn: vn, fbm: fbm, R: R,
                 tm: function (col) { var c = col.div(col.add(0.6)); return T.pow(T.max(c, 0), V3(0.95)); },
                 lum: function (c) { return T.dot(c, V3(0.299, 0.587, 0.114)); } };
             return envLib;
@@ -34588,7 +34703,16 @@ const ThreeRenderer = (function () {
                 MTint = R('uMapTint', 'vec3'), MTintA = R('uMapTintAmt', 'float'), MStars = R('uMapStars', 'float'), MNeb = R('uMapNebula', 'float'),
                 Flow = R('uSkyFlow', 'float'), SunN = R('uSunNear', 'float'), MoonN = R('uMoonNear', 'float'), Yaw = R('uSkyYaw', 'float'), Lift = R('uSkyLift', 'float'),
                 Day = R('uSkyDay', 'float'), Clouds = R('uSkyClouds', 'float'), SunD = R('uSunDir', 'vec3'), MoonD = R('uMoonDir', 'vec3'), Clock = R('uSunClock', 'float'),
-                Dusk = R('uDusk', 'float'), MMesh = _ewPU(m.uniforms.uMoonMesh, 'float');
+                Dusk = R('uDusk', 'float'), MMesh = _ewPU(m.uniforms.uMoonMesh, 'float'), EvAge = _ewPU(m.uniforms.uEvAge, 'float'), vn = L.vn;
+            /* THE LUNAR ECLIPSE: the GLSL lunUmbra (see _envDomeFS) */
+            var lunUmbra = function (p, age) {
+                var sl = ss(0, 3.2, age), d = T.length(p.add(V2(0.748, 0.663).mul(T.mix(3.9, 2.05, sl)))).sub(2.6).toVar();
+                var tin = T.clamp(d.negate().div(0.95), 0, 1);
+                var cu = T.mix(V3(0.62, 0.17, 0.07), V3(0.22, 0.03, 0.015), T.pow(tin, 0.7)).toVar();
+                var bq = d.add(0.08).div(0.07);
+                cu.assign(T.mix(cu, V3(0.30, 0.50, 0.70), T.exp(bq.mul(bq).negate()).mul(0.6)));
+                return T.mix(cu, V3(T.mix(0.55, 1.0, ss(0, 0.45, d))), ss(-0.05, 0.05, d));
+            };
             /* THE SKY SEAM: the GLSL fbmW (see _envDomeFS): cross-fade the 18 deg before az's -PI wrap into the noise one turn on */
             var fbmW = function (p, per, x) {
                 var pp = V2(p).toVar(), a = fbm(pp).toVar(), w = one.sub(ss(-1, -0.8, x)).toVar();
@@ -34647,16 +34771,18 @@ const ThreeRenderer = (function () {
                 var corona = T.exp(sa.mul(F(5).sub(SunN.mul(3.4))).negate()).mul(SunN.mul(1.4).add(0.8)).add(T.exp(sa.mul(-1.3)).mul(SunN.mul(0.55).add(0.18))).toVar();
                 var sunWarm = T.mix(T.mix(V3(1, 0.92, 0.7), V3(1, 0.66, 0.32), wSand), V3(1, 0.58, 0.22), SunN.mul(0.7));
                 var sunC = sunWarm.mul(disc).mul(3).add(sunWarm.mul(corona).mul(1.2));
-                var blackSunC = V3(2.5).mul(disc).negate().add(V3(1, 0.9, 0.7).mul(ss(sunR.mul(1.7), sunR.mul(1.05), T.abs(sa.sub(sunR.mul(1.25))))).mul(2.8)).add(V3(0.9, 0.7, 0.95).mul(corona).mul(0.5));
-                col.addAssign(T.mix(sunC.mul(sunVis), blackSunC, bsun));
+                col.addAssign(sunC.mul(sunVis).mul(one.sub(bsun)).mul(one.sub(lun)));
                 var ma = T.acos(T.clamp(T.dot(rd, moonDir), -1, 1)).toVar(), moonVis = T.max(night.mul(0.65).add(0.35), MoonN);
-                var moonR = T.mix(0.06, 0.095, bloodM).add(MoonN.mul(0.42)).toVar();
+                var moonR = T.mix(0.06, 0.095, bloodM).add(lun.mul(0.024)).add(MoonN.mul(0.42)).toVar();
                 var mdisc = ss(moonR, moonR.mul(0.85), ma), craters = fbm(rd.xy.sub(moonDir.xy).mul(F(42).div(MoonN.mul(6).add(1)))).toVar();
                 var moonGrey = V3(0.85, 0.88, 0.95).mul(craters.mul(0.3).add(0.8)), mGlow = T.exp(ma.mul(F(7).sub(MoonN.mul(5.2))).negate()).mul(MoonN.mul(0.5).add(0.4));
                 var mMesh = one.sub(MMesh);
                 var moonC = moonGrey.mul(mdisc).mul(1.6).mul(mMesh).add(moonGrey.mul(mGlow).mul(0.6));
                 var moonEv = V3(0.75, 0.12, 0.07).mul(craters.mul(0.5).add(0.7)).mul(mdisc).mul(2).mul(mMesh).add(V3(0.7, 0.12, 0.08).mul(T.exp(ma.mul(-3.5))).mul(0.8));
-                col.addAssign(T.mix(moonC.mul(moonVis), moonEv, T.max(bloodM, lun)));
+                var me1 = T.normalize(T.cross(moonDir, V3(0, 1, 0))).toVar(), me2 = T.cross(me1, moonDir);
+                var lunC = moonGrey.mul(lunUmbra(V2(T.dot(rd, me1), T.dot(rd, me2)).div(moonR), EvAge)).mul(mdisc).mul(1.6).mul(mMesh)
+                    .add(moonGrey.mul(mGlow).mul(0.3)).add(V3(0.55, 0.16, 0.08).mul(T.exp(ma.mul(-5))).mul(0.3));
+                col.addAssign(T.mix(T.mix(moonC.mul(moonVis), moonEv, bloodM), lunC, lun).mul(one.sub(bsun)));
                 col.addAssign(T.mix(V3(0.1, 0.08, 0.18), V3(0.3, 0.25, 0.45), night).mul(ss(0.85, 1, el)).mul(0.14).mul(Oc));
                 T.If(wStorm.greaterThan(0.01), function () {
                     var cl = fbmW(V2(az.mul(2.2).add(t.mul(0.05)).add(Flow.mul(5)), v.mul(3).sub(t.mul(0.02))), PI * 2 * 2.2, nd.x);
@@ -34670,7 +34796,7 @@ const ThreeRenderer = (function () {
                 col.assign(T.mix(col, col.mul(V3(1.35, 0.85, 0.55)).add(V3(0.1, 0.04, 0)), SunN.mul(0.55)));
                 col.assign(T.mix(col, col.mul(V3(0.9, 0.92, 1.15)).add(V3(0.03, 0.03, 0.08)), MoonN.mul(0.35)));
                 col.assign(T.pow(T.max(col.div(col.add(0.6)), 0), V3(0.92)));
-                var dayK = T.clamp(Day, 0, 1).mul(one.sub(night.mul(0.9))).mul(one.sub(Amt.mul(0.7))).toVar();
+                var dayK = T.clamp(Day, 0, 1).mul(one.sub(night.mul(0.9))).mul(one.sub(Amt.mul(0.7))).mul(one.sub(bsun)).mul(one.sub(lun.mul(0.7))).toVar();
                 T.If(dayK.greaterThan(0.001), function () {
                     var h = T.clamp(el, -1, 1).toVar(), dcl = T.clamp(Clouds.add(wStorm.mul(0.85)), 0, 1).toVar();
                     var dsky = T.mix(V3(0.58, 0.72, 0.92), V3(0.17, 0.42, 0.88), T.pow(ss(0, 1, h), 0.55)).toVar();
@@ -34693,6 +34819,44 @@ const ThreeRenderer = (function () {
                 T.If(MTintA.greaterThan(0.001), function () {
                     var ml = L.lum(col);
                     col.assign(T.mix(col, MTint.mul(ml.mul(1.1).add(0.45)), T.clamp(MTintA, 0, 1)));
+                });
+                /* THE TOTAL SOLAR ECLIPSE: the GLSL block (see _envDomeFS) */
+                T.If(bsun.greaterThan(0.001), function () {
+                    var hzG = T.exp(T.max(el.add(0.03), 0).mul(-11)).mul(ss(-0.30, -0.02, el)).toVar();
+                    var twi = T.mix(V3(0.085, 0.13, 0.27), V3(0.025, 0.045, 0.12), ss(-0.05, 0.75, el));
+                    col.assign(T.mix(col, col.mul(0.30).add(twi).add(V3(0.95, 0.46, 0.16).mul(hzG).mul(0.55)).add(V3(0.35, 0.22, 0.30).mul(hzG.mul(hzG)).mul(0.25)), bsun));
+                    var Re = sunR.mul(1.6).toVar(), r = sa.div(Re).toVar();
+                    var se1 = T.normalize(T.cross(sunDir, V3(0, 1, 0))).toVar(), se2 = T.cross(se1, sunDir).toVar();
+                    var sq = V2(T.dot(rd, se1), T.dot(rd, se2)).toVar();
+                    var dr = ss(0.15, 0.6, EvAge).mul(one.sub(ss(1.4, 3.2, EvAge))).toVar();
+                    T.If(r.lessThan(10), function () {
+                        var th = T.atan(sq.y, sq.x).toVar(), cs = V2(T.cos(th), T.sin(th)).toVar(), rr = T.max(r, 1).toVar();
+                        var nA = fbm(cs.mul(2.2).add(V2(3.1, 7.4))).toVar(), nB = vn(cs.mul(14).add(V2(1.7, 9.2))), nC = vn(cs.mul(38).add(V2(5, 2)));
+                        var eq = T.pow(T.abs(T.cos(th.sub(0.35))), 2).toVar(), str = T.clamp(nA.sub(0.30).mul(2.2), 0, 1).mul(eq.mul(0.65).add(0.35)).toVar();
+                        var fall = T.mix(3.4, 1.35, str);
+                        var rays = str.mul(str).mul(1.6).add(0.30).add(nB.mul(0.35)).add(nC.mul(0.30).mul(one.sub(eq)).mul(ss(1.02, 1.5, rr)).mul(T.exp(rr.sub(1).mul(-1.2))));
+                        var cor = T.pow(rr, fall.negate()).mul(rays).mul(1.05).add(T.exp(rr.sub(1).mul(-9)).mul(1.1)).mul(T.step(1, r)).mul(one.sub(dr.mul(0.55)));
+                        var corC = T.mix(V3(0.86, 0.90, 1.0), V3(1.0, 0.95, 0.86), T.exp(rr.sub(1).mul(-6)));
+                        col.addAssign(corC.mul(cor).mul(bsun));
+                        var pm = vn(cs.mul(7).add(V2(11, 4))), pm2 = vn(cs.mul(23).add(V2(2, 8)).add(V2(0, Tm.mul(0.05)))).toVar();
+                        var pr = ss(0.64, 0.80, pm).toVar(), ph = pr.mul(pm2.mul(0.5).add(0.5)).mul(0.13).add(0.05).toVar();
+                        var prom = pr.mul(ss(ph.add(1), ph.mul(0.35).add(1), r)).mul(T.step(1, r)).mul(pm2.mul(0.65).add(0.55));
+                        var limb = ss(1, 1.012, r).mul(ss(1.06, 1.015, r)).mul(vn(cs.mul(60)).mul(0.55).add(0.45));
+                        col.addAssign(V3(1.0, 0.28, 0.40).mul(limb.mul(0.8).add(prom.mul(1.3))).mul(bsun));
+                        var moonBlk = V3(0.006, 0.007, 0.011).mul(vn(sq.div(Re).mul(6)).mul(0.4).add(0.8));
+                        col.assign(T.mix(col, moonBlk, ss(1, 0.988, r).mul(bsun)));
+                    });
+                    T.If(dr.greaterThan(0.001), function () {
+                        var dd = sq.sub(V2(Math.cos(2.35), Math.sin(2.35)).mul(Re.mul(0.985))).toVar(), dl = T.length(dd).toVar();
+                        var bead = T.exp(dl.mul(dl).div(Re.mul(Re).mul(0.0035)).negate()).mul(2.4).add(T.exp(dl.div(Re.mul(0.45)).negate()).mul(1.0)).add(T.exp(dl.div(Re.mul(1.6)).negate()).mul(0.3));
+                        var spk = F(0).toVar();
+                        for (var k = 0; k < 3; k++) { var a = k * 1.0472 + 0.42; spk.addAssign(T.exp(T.abs(T.dot(dd, V2(-Math.sin(a), Math.cos(a)))).div(Re.mul(0.010)).negate())); }
+                        col.addAssign(V3(1.0, 0.97, 0.90).mul(bead.add(spk.mul(T.exp(dl.div(Re.mul(1.5)).negate())).mul(0.85))).mul(dr).mul(bsun));
+                    });
+                    var vd = T.acos(T.clamp(T.dot(rd, T.normalize(sunDir.sub(se1.mul(0.34)).sub(se2.mul(0.10)))), -1, 1)).toVar();
+                    var jd = T.acos(T.clamp(T.dot(rd, T.normalize(sunDir.add(se1.mul(0.55)).add(se2.mul(0.22)))), -1, 1)).toVar();
+                    col.addAssign(V3(1.0, 0.97, 0.88).mul(ss(0.0032, 0.0012, vd).add(T.exp(vd.mul(-380)).mul(0.5)))
+                        .add(V3(1.0, 0.93, 0.80).mul(ss(0.0024, 0.0008, jd).mul(0.75).add(T.exp(jd.mul(-450)).mul(0.3)))).mul(bsun));
                 });
                 T.If(FogA.greaterThan(0.001), function () {
                     var fb = T.pow(one.sub(ss(FogT.sub(FogB), FogT, el)), 1.6);
