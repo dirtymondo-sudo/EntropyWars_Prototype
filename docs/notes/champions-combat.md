@@ -1533,3 +1533,13 @@ It should reset control of the nexus whenever a new celestial event happens."
   height before the move.
 - Browser-checked on Pyramids of Giza: flat and 2-up both strike (2-up hit harder, high ground); 3-up, 4-up and
   deck-over-ground do not.
+
+## THE PRESS FOR EVERY DAMAGING CAST (2026-10-17)
+mondo: "i used infernal conscription on an enemy, it said it was super effective, but i didnt get my 2 ap refund."
+Cause: doSpell armed the press collector only for the kinds in `_PRESS_SPELL_KINDS` (damage, multiHit, ricochet,
+lifeDrain, tackle, line, linePush, splitBeam, aoe, barrage, cross, aoePull) plus damaging terrainCreate. Every damaging
+kind added later (pull, dash, displacement, teleport, skyDrop, skyThrow, skySlam, leapStrike, steal, utility,
+doorBreach, possess, pulseLattice, placeTrap on contact, damaging debuff rows) showed "It's super effective!" from
+applyDamageToUnit but never refunded. Fix: the arm check also takes any `spellDealsDamage(spell)` row except
+`delayed` (lands at round end). `_PRESS_SPELL_KINDS` itself is unchanged (it also decides which kinds end the turn).
+The CPU's press value (ai.js PRESS_KINDS) was left as is.

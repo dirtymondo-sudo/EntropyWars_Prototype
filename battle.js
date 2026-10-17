@@ -65490,8 +65490,14 @@
             _pressDamageCollector = null;
             // Damaging terrain casts (Wall of Fire, floods with dmg…) hit
             // through applyDamageToUnit like any nuke, so they press too.
+            /* EVERY DAMAGING CAST PRESSES (mondo 2026-10-17: "i used infernal conscription on an enemy, it said it was
+               super effective, but i didnt get my 2 ap refund"): the kind list above missed every damaging kind added
+               after it (pull, dash, displacement, sky grabs, leap strikes, steals, damaging debuffs…), so those hits
+               showed "It's super effective!" and never refunded. Any cast whose row carries damage (spellDealsDamage —
+               deployables excluded) arms the collector now; `delayed` lands at round end, after this cast resolves. */
             if (_PRESS_SPELL_KINDS.has(spell.kind)
-                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)) {
+                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
+                || (spell.kind !== 'delayed' && spellDealsDamage(spell))) {
                 _armPressCollector(unit);
             }
 
