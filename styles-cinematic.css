@@ -3495,28 +3495,42 @@
 
 .acam-dmg-row {
     display: none;
-    align-items: baseline;
-    gap: 10px;
-    padding-left: 17px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin-top: 6px;
+    padding: 6px 48px 8px 14px;
+    /* a dark plate fading right: the figure reads over any sky or spell flash */
+    background: linear-gradient(90deg, rgba(0, 0, 0, .62) 0%, rgba(0, 0, 0, .45) 55%, rgba(0, 0, 0, 0) 100%);
+    border-left: 3px solid rgba(255, 90, 60, .85);
 }
-.acam-dmg-row.show { display: flex; }
+.acam-dmg-row.show { display: flex; animation: acamDmgRowIn .28s cubic-bezier(.16, 1, .3, 1); }
+@keyframes acamDmgRowIn {
+    0% { opacity: 0; transform: translateX(-18px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
 .acam-dmg-label {
-    font-size: clamp(9px, 1.2vw, 13px);
+    font-size: clamp(12px, 1.5vw, 18px);
     font-weight: 700;
-    letter-spacing: .22em;
-    color: rgba(255, 220, 180, .65);
+    letter-spacing: .26em;
+    color: rgba(255, 226, 190, .9);
+    text-shadow: 0 2px 0 rgba(0, 0, 0, .7);
 }
+/* THE NUMBER IS THE HERO (mondo 2026-10-17): the running total is the
+   biggest type in the corner, bigger than the spell name above it. */
 .acam-dmg-num {
-    font-size: clamp(30px, 5.5vw, 64px);
+    font-size: clamp(46px, 8vw, 112px);
     font-weight: 900;
-    line-height: 1;
+    line-height: .95;
     color: #ff4444;
     font-variant-numeric: tabular-nums;
     letter-spacing: -1px;
+    transform-origin: 0 60%;
+    -webkit-text-stroke: 2px rgba(40, 0, 0, .55);
     text-shadow:
         0 0 20px rgba(255, 0, 0, .8),
         0 0 40px rgba(255, 0, 0, .4),
-        3px 3px 0 #330000;
+        4px 4px 0 #330000;
 }
 .acam-dmg-num.crit {
     color: #ffdd00;
@@ -3527,7 +3541,14 @@
 }
 .acam-dmg-num.tick { animation: acamDmgTick .3s cubic-bezier(.16, 1, .3, 1); }
 @keyframes acamDmgTick {
-    0% { transform: scale(1.35); filter: brightness(1.8); }
+    0% { transform: scale(1.4); filter: brightness(1.9); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+/* the roll lands on the final figure: one bright settle pulse */
+.acam-dmg-num.land { animation: acamDmgLand .45s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes acamDmgLand {
+    0% { transform: scale(1); filter: brightness(1); }
+    35% { transform: scale(1.18); filter: brightness(2.1); }
     100% { transform: scale(1); filter: brightness(1); }
 }
 
@@ -3535,6 +3556,7 @@
       turns restorative green (label re-labeled TOTAL HEALED by battle.js)
       and the title accent shifts from ember-gold to spring-green ── */
 .acam-chrome.heal-tally .acam-dmg-label { color: rgba(190, 255, 215, .7); }
+.acam-chrome.heal-tally .acam-dmg-row { border-left-color: rgba(110, 240, 170, .85); }
 .acam-chrome.heal-tally .acam-dmg-num {
     color: #4dff88;
     text-shadow:
@@ -3559,11 +3581,15 @@
    same element (that was the "spell name stays in the corner after the
    attack" bug). */
 .acam-chrome.hiding .acam-title { opacity: 0; }
+/* THE READOUT LINGERS: a shot that dealt damage keeps its name + total up
+   (battle.js AC_TALLY_LINGER_MS) after the bars leave, then fades slower. */
+.acam-chrome.hiding.dmg-linger .acam-title { opacity: 1; }
+.acam-chrome.hiding:not(.dmg-linger) .acam-title { transition: opacity .6s ease; }
 
 @media (prefers-reduced-motion: reduce) {
     .acam-bar { transition: none; }
     .acam-spell-name.in { animation: none; opacity: 1; }
-    .acam-dmg-num.tick { animation: none; }
+    .acam-dmg-num.tick, .acam-dmg-num.land, .acam-dmg-row.show { animation: none; }
     .acam-flash.pop, .acam-flash.cut { animation: none; opacity: 0; }
     .acam-speedlines.burst { animation: none; opacity: 0; }
 }

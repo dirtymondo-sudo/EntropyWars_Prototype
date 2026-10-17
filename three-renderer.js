@@ -2676,13 +2676,28 @@ const ThreeRenderer = (function () {
     var FLOAT_RISE_PX = 110;
 
     var _floatTileStagger = {};
-    var FLOAT_STAGGER_Y = 28;
     var FLOAT_STAGGER_WINDOW = 900;
-    // Same-tile pops also cascade in TIME (not just a Y offset): each queued
-    // pop waits this much longer before firing, so "-47" → "BACKSTAB!" → "×2
-    // WEAK!" read one after another instead of landing as a single blur.
+    // Same-tile TAGS cascade in TIME: each queued tag waits this much longer
+    // before firing, so "×2 WEAK!" → "BACKSTAB!" read one after another.
     var FLOAT_STAGGER_DELAY_MS = 150;
     var FLOAT_STAGGER_DELAY_MAX = 600;
+    /* THE NUMBER IS THE HERO (mondo 2026-10-17: the tags "overlap with each
+       other ... so it's hard to read anything ... they dont cover up the
+       actual number"). Numbers ("-128", "+45") never wait: they land the
+       moment they are sent. Word tags (WEAK!, HIGH GROUND!, BACKSTAB!,
+       SUPER EFFECTIVE!) are the supporting cast: they wait FLOAT_TAG_LEAD_MS
+       so the number lands first (the engine sends them during the damage
+       math, before the hitstop releases the number), draw smaller, and the
+       per-frame screen layout (_layoutFloatTexts) stacks them ABOVE every
+       live number instead of on it. */
+    var FLOAT_TAG_LEAD_MS = 110;
+    var FLOAT_HERO_SCALE = 1.12;    // numbers, on screen
+    var FLOAT_TAG_SCALE = 0.8;      // word tags, on screen
+    var FLOAT_HERO_HOLD = 1.25;     // a damage number's life ×
+    var FLOAT_LAYOUT_GAP = 4;       // screen px between stacked pops
+    // Word pops that are the whole moment on their own (no number to serve)
+    // keep their full size.
+    var _FLOAT_SOLO_KINDS = { levelup: 1, laststd: 1, nexus: 1, achieve: 1 };
 
     // Damage/heal/mana NUMBERS render with a vertical gradient (`grad`, top→bottom)
     // and a heavier gothic-serif weight; WORD callouts ("SUPER EFFECTIVE", "DODGE!")
@@ -22665,6 +22680,13 @@ const ThreeRenderer = (function () {
 
         c.style.width = tw + 'px';
         c.style.height = th + 'px';
+        // For the layout (_layoutFloatTexts): hero or tag, and the canvas's
+        // transparent margin around the inked glyphs (CSS px at scale 1) —
+        // pops stack by what you can SEE, not by their padded boxes.
+        c._ewHero = isNumber;
+        var inkH = fontSize * 0.95 + outlineW * 2;
+        c._ewMarginX = Math.max(0, padX - outlineW * 1.2);
+        c._ewMarginTop = c._ewMarginBot = Math.max(0, (th - inkH) / 2);
         return c;
     }
 
@@ -22709,18 +22731,23 @@ const ThreeRenderer = (function () {
         var jx = Number.isFinite(opts.jitterX) ? opts.jitterX * 0.4 : (Math.random() * 8 - 4);
         var jy = Number.isFinite(opts.jitterY) ? opts.jitterY * 0.4 : (Math.random() * 5 - 2.5);
 
-        var tileKey = tileX + ',' + tileY;
-        var stag = _floatTileStagger[tileKey];
-        var staggerIdx = 0;
-        if (stag && (_animNow() - stag.time) < FLOAT_STAGGER_WINDOW) {
-            stag.count++;
-            stag.time = _animNow();
-            staggerIdx = stag.count;
-        } else {
-            _floatTileStagger[tileKey] = { count: 0, time: _animNow() };
+        // Numbers land at once; tags queue per tile behind the number (THE
+        // NUMBER IS THE HERO). The layout keeps them apart on screen, so no
+        // fixed per-pop lift is needed any more.
+        var hero = !!el._ewHero;
+        var staggerIdx = 0, staggerDelay = 0;
+        if (!hero) {
+            var tileKey = tileX + ',' + tileY;
+            var stag = _floatTileStagger[tileKey];
+            if (stag && (_animNow() - stag.time) < FLOAT_STAGGER_WINDOW) {
+                stag.count++;
+                stag.time = _animNow();
+                staggerIdx = stag.count;
+            } else {
+                _floatTileStagger[tileKey] = { count: 0, time: _animNow() };
+            }
+            staggerDelay = FLOAT_TAG_LEAD_MS + Math.min(staggerIdx * FLOAT_STAGGER_DELAY_MS, FLOAT_STAGGER_DELAY_MAX);
         }
-        var staggerLift = staggerIdx * FLOAT_STAGGER_Y;
-        var staggerDelay = Math.min(staggerIdx * FLOAT_STAGGER_DELAY_MS, FLOAT_STAGGER_DELAY_MAX);
 
         var unitAtTile = (typeof unitAt === 'function') ? unitAt(tileX, tileY) : null;
         var zLevel;
@@ -22733,8 +22760,8 @@ const ThreeRenderer = (function () {
 
         // Spawn at the unit's torso/upper-chest (~0.6 of sprite height) instead of
         // above the head — the number then rises (FLOAT_RISE_PX) up past the head
-        // for that punchy JRPG pop. Stagger lift keeps stacked pops from overlapping.
-        var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO * 0.6 + staggerLift;
+        // for that punchy JRPG pop.
+        var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO * 0.6;
 
         var wx = tileX * ts + ts / 2 + jx;
         var wz = tileY * ts + ts / 2 + jy;
@@ -22750,9 +22777,13 @@ const ThreeRenderer = (function () {
             riseY: FLOAT_RISE_PX,
             startTime: _animNow(),
             delayMs: staggerDelay,
-            durationMs: Math.max(400, durationMs || 900),
+            durationMs: Math.max(400, durationMs || 900) * (hero && kind !== 'pickup' ? FLOAT_HERO_HOLD : 1),
             isBig: isBig,
-            staggerIdx: staggerIdx
+            staggerIdx: staggerIdx,
+            hero: hero,
+            // on-screen size × (the hierarchy: the number reads first)
+            sizeK: hero ? FLOAT_HERO_SCALE : (_FLOAT_SOLO_KINDS[kind] ? 1 : FLOAT_TAG_SCALE),
+            layDy: 0, laid: false
         };
         _floatTweens.push(tw);
     }
@@ -22762,9 +22793,67 @@ const ThreeRenderer = (function () {
         tw.el = null;
     }
 
+    var _floatLive = [];
+    var _floatPlaced = [];
+    var _floatLastReal = 0;
+
+    /* THE NUMBER IS THE HERO — the screen layout, run every frame on the
+       pops that are showing. Numbers are placed first (the newest keeps its
+       spot; an older one still on screen is shoved up above it, a cascade);
+       then the word tags, oldest first, each lifted until its ink clears
+       everything placed before it. A tag that sits in or just under a
+       number's column always goes ABOVE that number, never under or on it,
+       so a tag rising behind its number can't climb through it. Lifts snap
+       up at once (a number is never covered, even for a frame) and ease back
+       down when the pop that held them fades away. Screen-space only: works
+       the same for pops over two different units that project close. */
+    function _layoutFloatTexts(list, dtMs) {
+        list.sort(function (a, b) {
+            if (a.hero !== b.hero) return a.hero ? -1 : 1;
+            var ta = a.startTime + (a.delayMs || 0), tb = b.startTime + (b.delayMs || 0);
+            return a.hero ? (tb - ta) : (ta - tb);
+        });
+        var placed = _floatPlaced;
+        placed.length = 0;
+        var relax = 1 - Math.exp(-Math.max(0, dtMs) / 200);
+        var gap = FLOAT_LAYOUT_GAP;
+        for (var i = 0; i < list.length; i++) {
+            var tw = list[i], el = tw.el;
+            if (!tw.boxW) {
+                tw.boxW = parseFloat(el.style.width) || el.width || 0;
+                tw.boxH = parseFloat(el.style.height) || el.height || 0;
+            }
+            var k = tw._k;
+            var halfW = Math.max(0, tw.boxW * k / 2 - (el._ewMarginX || 0) * k);
+            var top0 = tw._sy - tw.boxH * k / 2 + (el._ewMarginTop || 0) * k;
+            var bot0 = tw._sy + tw.boxH * k / 2 - (el._ewMarginBot || 0) * k;
+            var dy = 0;
+            for (var pass = 0; pass < 16; pass++) {
+                var moved = false;
+                for (var j = 0; j < placed.length; j++) {
+                    var p = placed[j];
+                    if (Math.abs(tw._sx - p.cx) >= halfW + p.halfW) continue;
+                    // a tag up to a stack-height below this pop still belongs above it
+                    var reach = tw.hero ? 0 : (p.bot - p.top) * 1.5 + (bot0 - top0);
+                    if (bot0 + dy <= p.top - gap || top0 + dy >= p.bot + gap + reach) continue;
+                    dy = p.top - gap - bot0;
+                    moved = true;
+                }
+                if (!moved) break;
+            }
+            if (!tw.laid || dy < tw.layDy) tw.layDy = dy;
+            else tw.layDy += (dy - tw.layDy) * relax;
+            tw.laid = true;
+            placed.push({ cx: tw._sx, halfW: halfW, top: top0 + tw.layDy, bot: bot0 + tw.layDy });
+        }
+    }
+
     function _updateFloatTextTweens() {
         if (_floatTweens.length === 0) return;
         var now = _animNow();
+        var realNow = performance.now();
+        var realDt = _floatLastReal ? Math.min(100, realNow - _floatLastReal) : 16;
+        _floatLastReal = realNow;
         var _paneCam = _ssFloatCam();   // THE DEATH CLOSE-UP: numbers ride the full-screen death pane
         var cam = _paneCam || ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
@@ -22772,6 +22861,8 @@ const ThreeRenderer = (function () {
         // pxScale sets the on-screen size of the numbers (world→screen px factor).
         var halfTanFov = cam ? Math.tan((cam.fov * Math.PI / 180) / 2) : 0;
         var pxScale = 0.58;
+        var live = _floatLive;
+        live.length = 0;
         var i = _floatTweens.length;
         while (i--) {
             var tw = _floatTweens[i];
@@ -22782,6 +22873,11 @@ const ThreeRenderer = (function () {
                 continue;
             }
             var t = Math.min(elapsed / tw.durationMs, 1);
+            if (t >= 1) {
+                _removeFloatTween(tw);
+                _floatTweens.splice(i, 1);
+                continue;
+            }
 
             var riseT = 1 - Math.pow(1 - t, 3);
             var worldY = tw.startY + tw.riseY * riseT;
@@ -22797,7 +22893,8 @@ const ThreeRenderer = (function () {
             }
 
             var sc;
-            var overshoot = tw.isBig ? 1.6 : 1.35;
+            // Numbers slam in hard; tags pop in softer (they're the caption).
+            var overshoot = tw.hero ? (tw.isBig ? 1.6 : 1.35) : (tw.sizeK < 1 ? 1.15 : 1.6);
             if (t < 0.08) {
                 var slamT = t / 0.08;
                 sc = overshoot * (1 - Math.pow(1 - slamT, 3));
@@ -22821,23 +22918,24 @@ const ThreeRenderer = (function () {
                 if (_floatProjVec.z > 1) {
                     tw.el.style.opacity = '0';
                 } else {
-                    var sx = (_floatProjVec.x * 0.5 + 0.5) * screenW;
-                    var sy = (-_floatProjVec.y * 0.5 + 0.5) * screenH;
                     // World→screen size (px per world unit) at this depth, ×pxScale —
                     // mirrors _scalePlates so numbers track zoom like sprites/plates.
                     var worldToPx = screenH / (2 * dist * halfTanFov);
-                    var k = sc * pxScale * worldToPx;
-                    tw.el.style.left = sx + 'px';
-                    tw.el.style.top = sy + 'px';
-                    tw.el.style.transform = 'translate(-50%,-50%) scale(' + k.toFixed(4) + ')';
-                    tw.el.style.opacity = Math.max(0, opacity).toFixed(3);
+                    tw._sx = (_floatProjVec.x * 0.5 + 0.5) * screenW;
+                    tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * screenH;
+                    tw._k = sc * pxScale * worldToPx * (tw.sizeK || 1);
+                    tw._op = Math.max(0, opacity);
+                    live.push(tw);
                 }
             }
-
-            if (t >= 1) {
-                _removeFloatTween(tw);
-                _floatTweens.splice(i, 1);
-            }
+        }
+        if (live.length) _layoutFloatTexts(live, realDt);
+        for (var li = 0; li < live.length; li++) {
+            var lw = live[li];
+            lw.el.style.left = lw._sx + 'px';
+            lw.el.style.top = (lw._sy + lw.layDy) + 'px';
+            lw.el.style.transform = 'translate(-50%,-50%) scale(' + lw._k.toFixed(4) + ')';
+            lw.el.style.opacity = lw._op.toFixed(3);
         }
     }
 
