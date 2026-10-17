@@ -9843,7 +9843,20 @@ function _hudHideCss() {
       margin-left: auto; font-size: 9px; letter-spacing: 0.08em; color: #7a7490;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .hrlg-push.live:hover  { transform: translateX(3px); filter: brightness(1.3); box-shadow: 0 0 14px var(--pc-soft); }
+    /* hover = the command rows' hover (2026-10-17, mondo: BUILD / CHANNEL didn't light up like the other action
+       buttons): bone frame, lifted fill, white label, glow; the row's own colour stays on the spine. The pulse
+       animation drives box-shadow, so it pauses while hovered or it would paint over the glow. */
+    .hrlg-push.live:not(.entropy):hover {
+      transform: scaleY(1.04); animation: none;
+      background:
+        linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0)),
+        linear-gradient(180deg, #272236 0%, #1a1729 55%, #141122 100%);
+      border-color: rgba(232,228,216,0.9); border-left-color: var(--pc);
+      box-shadow: 0 0 16px var(--pc-faint), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5);
+      filter: brightness(1.25) saturate(1.1);
+    }
+    .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl { color: #fff; text-shadow: 0 0 10px var(--pc-soft); }
+    .hrlg-push.entropy.live:hover { transform: translateX(3px); filter: brightness(1.3); box-shadow: 0 0 14px var(--pc-soft); }
     .hrlg-push.live:active { transform: scale(0.98); }
     .hrlg-push.off { opacity: 0.4; cursor: default; filter: grayscale(0.8); }
     .hrlg-push.pulse { animation: hrlgPushPulse 1.5s ease-in-out infinite; }
@@ -10897,6 +10910,16 @@ function _hudHideCss() {
     }
     .hrlg-push-lbl { color: var(--ew-ink); text-shadow: var(--ew-tshadow); }
     .hrlg-push-sub { color: var(--ew-ink-mute); }
+    /* hovered tool row = the hovered command row under the theme (select colour on frame, label and glyph) */
+    .hrlg-push.live:not(.entropy):hover {
+      background:
+        linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0)),
+        var(--ew-row-sel-bg);
+      border-color: var(--ew-sel); border-left-color: var(--pc);
+      box-shadow: 0 0 16px var(--ew-sel-faint), inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.45);
+    }
+    .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl { color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft); }
+    .hrlg-push.live:not(.entropy):hover .hrlg-push-glyph { color: var(--ew-sel); text-shadow: 0 0 10px var(--ew-sel-soft); }
     .hrlg-item-slot {
       background: var(--ew-row-bg);
       border: 1px solid var(--ew-row-edge);
@@ -11962,13 +11985,13 @@ const UIM_SURFACES = [
     roles: {
       panel: '.hrlg-side, .hrlg-side-low, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
-      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
+      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
       hero: '.hrlg-side, .hrlg-side-low',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     /* the words of a command row (sits deeper than a row's first child), for the text colours + big first letter */
-    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel',
+    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
