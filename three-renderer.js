@@ -38858,6 +38858,69 @@ const ThreeRenderer = (function () {
         try { if (typeof playDoorSfx === 'function') playDoorSfx(key); } catch (e) {}
     }
 
+    /* The battle-frame Y of the room's floor under a team's door, or null (no true-ground field: the board's own level rule).
+       The zone's real top is the reference; a TERRAIN room is sampled across the door's footprint (hqTerrainFeet, the walker's
+       own feet; past the compiled floor's edge — the outer ground a window at the room's rim looks onto — the drawn room under
+       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest (so the dais,
+       0.42 tile thick, still meets the low side of a slope) and never under the ground at the door's centre. A box room's
+       floor is flat: the zone's real top. */
+    var DOOR_FLOOR_SPAN = 0.35;
+    /* the drawn room's ground under battle point (wx, wz): the first upward face a ray from `fromY` meets in the room's group, or null */
+    function _introRoomGroundY(wx, wz, fromY, minY) {
+        if (!_horizonGroup) return null;
+        var meshes = [];
+        _horizonGroup.children.forEach(function (c) { if (c && c.name && c.name.indexOf('hqRoom:') === 0) c.traverse(function (o) { if (o.isMesh && o.visible) meshes.push(o); }); });
+        if (!meshes.length) return null;
+        var rc = new THREE.Raycaster(new THREE.Vector3(wx, fromY, wz), new THREE.Vector3(0, -1, 0), 0, fromY - minY);
+        var hits = rc.intersectObjects(meshes, false), nm = new THREE.Matrix3();
+        for (var i = 0; i < hits.length; i++) {
+            var h = hits[i]; if (!h.face) continue;
+            var n = h.face.normal.clone().applyMatrix3(nm.getNormalMatrix(h.object.matrixWorld)).normalize();
+            if (n.y > 0.5) return h.point.y;
+        }
+        return null;
+    }
+    function _introDoorFloorY(zi, ts, doorOut, ow) {
+        if (typeof _fieldGroundLive !== 'function' || !_fieldGroundLive()) return null;
+        var G = _fieldGround(); if (!G || !G.R) return null;
+        var edge = null;
+        for (var i = 0; i < zi.zone.length; i++) {
+            var t = zi.zone[i], y = _fieldSurfaceY(t.x, t.y);
+            if (y !== null && isFinite(y) && (edge === null || y > edge)) edge = y;
+        }
+        if (edge === null) return null;
+        if (!G.R.terrain || typeof hqTerrainFeet !== 'function') return edge;
+        var info = null;
+        try { info = (typeof hqTerrainInfo === 'function') ? hqTerrainInfo(G.R.roomId) : null; } catch (e) { info = null; }
+        if (!info) return edge;
+        var T = G.R.T, reach = 3 * ts;
+        var dcx = zi.cx + zi.ox * doorOut, dcy = zi.cy + zi.oy * doorOut;
+        var sx = -zi.oy, sy = zi.ox, half = Math.max(0.5, ow / ts / 2 + 0.15);
+        var hi = null, lo = null, mid = null;
+        for (var a = -1; a <= 1; a++) {
+            for (var b = -1; b <= 1; b++) {
+                var tx = dcx + sx * a * half + zi.ox * b * 0.35, ty = dcy + sy * a * half + zi.oy * b * 0.35;
+                var wx = tx * ts + ts / 2, wz = ty * ts + ts / 2;
+                var rx = wx * T.C / ts + T.x0, rz = wz * T.C / ts + T.z0;   // battle px → room metres (the sampler's rule)
+                var wy = null;
+                if (Math.abs(rx) > info.halfW - 0.5 || Math.abs(rz) > info.halfD - 0.5) {
+                    try { wy = _introRoomGroundY(wx, wz, edge + reach, edge - reach); } catch (e) { wy = null; }
+                } else {
+                    var m = null;
+                    try { m = hqTerrainFeet(info, rx, rz, null); } catch (e) { m = null; }   // a FREE query: a bank rising past the edge is still the floor there (the walker's slope rule would refuse it)
+                    if (m !== null && m !== undefined && isFinite(m)) wy = G.floorY + m * G.s;
+                }
+                if (wy === null || !isFinite(wy) || Math.abs(wy - edge) > reach) continue;   // a wall, a cliff, the void: not a floor
+                if (hi === null || wy > hi) hi = wy;
+                if (lo === null || wy < lo) lo = wy;
+                if (a === 0 && b === 0) mid = wy;
+            }
+        }
+        if (hi === null) return edge;
+        /* the sill never below the ground at the door's own centre */
+        return Math.max(mid !== null ? mid : -Infinity, Math.min(hi, lo + DOOR_FLOOR_SPAN * ts));
+    }
+
     /* Build one team's threshold in board space. Local +Z runs OUTWARD from
        the board (the group is spun onto the zone's edge); the door plane sits
        `doorOut` tiles out from the zone centre — past the apron rim and the
@@ -38877,6 +38940,14 @@ const ThreeRenderer = (function () {
         var oh = (wide ? 1.5 : 1.35) * ts;
         var ow = wide ? 1.2 * ts : 0.72 * ts;
         if (cat && cat.aspect > 0) ow = Math.max(wide ? 1.05 : 0.6, Math.min(wide ? 1.5 : 0.95, cat.aspect * (oh / ts))) * ts;
+        /* THE DOOR STANDS ON THE ROOM (2026-10-17, mondo: "the door ... is clipping almost halfway through the floor"): an arena
+           (and an encounter field) is drawn on the room's TRUE GROUND, so the engine level the door used to stand on (the zone's
+           top × the level step) is not where the floor is past the board's edge — the door and the walkers' first steps
+           read the room's own ground under the door instead (_introDoorFloorY) */
+        if (!kit) {
+            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow);
+            if (_dfY !== null) { apronY = _dfY; zB = _dfY / elev; }
+        }
         var jw = 0.14 * ts, lh = 0.2 * ts, pd = 0.2 * ts;
         var hqOk = (typeof DOOR_HQ !== 'undefined');
         var rec = {
