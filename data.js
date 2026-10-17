@@ -429,18 +429,23 @@ function getFinisherDefForRace(race, types) {
 /* ═══ ELEMENTAL AFFINITIES (2026-09-01 — see ELEMENTAL_TYPES_PLAN.md) ═══
    A SECOND, spell-side layer under the type chart above — never a
    replacement for it. Spells carry an optional `element:` tag (doc block
-   above SPELL_LIBRARY); the six COMBAT_ELEMENTS below also consult
-   RACE_ELEMENT_AFFINITY when they strike a unit:
+   above SPELL_LIBRARY); the thirteen COMBAT_ELEMENTS below also consult
+   RACE_ELEMENT_AFFINITY when they strike a unit (the original six, plus
+   wind / nature / sonic / psychic / light / shadow / blood promoted
+   2026-10-17, mondo "all of those"). Since 2026-10-17 a unit's hit
+   only puts the spell's element SHARE through this layer (THE ELEMENT
+   SHARE below):
      weak ×1.5 · resist ×0.5 · immune ×0 (statuses bounce too) ·
      absorb → the damage HEALS the target (Thermal Regen, generalized).
-   Everything else — the other nine tags AND untagged spells — is
+   Everything else — arcane, metal AND untagged spells — is
    elementally NEUTRAL and skips this layer entirely. The type-chart
    matchup + STAB above ALWAYS apply regardless of element; both layers
    multiply inside the capped offensive product (battle.js).
    Design rules (keep these when adding rows):
-   - The table is SPARSE: most races carry 0–2 rows, neutral is the
+   - The table is SPARSE: most races carry 0–3 rows, neutral is the
      default and must stay the common case. Max 2 weaknesses per race;
-     immune/absorb are signature-only.
+     immune/absorb are signature-only. (Race-editor rows may exceed this:
+     dragon, tree person.)
    - Basic attacks are elementless — always neutral.
    - 'arcane' is deliberately never a combat element (raw magic nothing
      resists or drinks) — the escape valve vs resist stacking.
@@ -452,7 +457,8 @@ function getFinisherDefForRace(race, types) {
 const SPELL_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'earth', 'wind',
     'poison', 'nature', 'shadow', 'light', 'psychic', 'sonic', 'arcane',
     'blood', 'metal'];
-const COMBAT_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'poison', 'earth'];
+const COMBAT_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'poison', 'earth', 'wind',
+    'nature', 'sonic', 'psychic', 'light', 'shadow', 'blood'];   // 7 promoted 2026-10-17 (mondo)
 const ELEMENT_AFFINITY_TIERS = ['weak', 'resist', 'immune', 'absorb'];
 const ELEMENT_AFFINITY_MULT = { weak: 1.5, resist: 0.5, immune: 0 };
 const ELEMENT_ICONS = {
@@ -515,8 +521,8 @@ const RACE_ELEMENT_AFFINITY = {
     'santa clause':      { ice: 'resist' },
     'loch ness monster': { ice: 'resist', water: 'resist', lightning: 'weak' },
     // ── deep sea ── (stacks with soaked-shock on purpose: storm bait)
-    'siren':             { water: 'resist', lightning: 'weak' },
-    'mermaid':           { water: 'resist', lightning: 'weak' },
+    'siren':             { water: 'resist', lightning: 'weak', sonic: 'resist' },
+    'mermaid':           { water: 'resist', lightning: 'weak', sonic: 'resist' },
     'atlantean':         { water: 'resist', lightning: 'weak' },
     'kraken':            { water: 'resist', lightning: 'weak' },
     // ── infernal ──
@@ -528,25 +534,25 @@ const RACE_ELEMENT_AFFINITY = {
     'overlord':          { fire: 'resist', ice: 'weak' },
     'goatman':           { fire: 'resist' },
     // ── undead & bloodless ──
-    'skeleton':          { poison: 'immune', fire: 'weak' },
-    'zombie':            { poison: 'resist', fire: 'weak' },
-    'ghost':             { poison: 'immune' },
-    'vampire':           { fire: 'weak' },
+    'skeleton':          { poison: 'immune', fire: 'weak', blood: 'immune' },
+    'zombie':            { poison: 'resist', fire: 'weak', psychic: 'immune' },
+    'ghost':             { poison: 'immune', sonic: 'immune', blood: 'immune' },
+    'vampire':           { fire: 'weak', light: 'weak', blood: 'absorb' },
     'necromancer':       { poison: 'resist' },
-    'ghoul':             { poison: 'resist' },
+    'ghoul':             { poison: 'resist', light: 'weak' },
     'gargoyle':          { poison: 'immune', earth: 'resist' },
     // ── mechanical ── (lightning-neutral: the Overclock combo is their story)
-    'robot':             { poison: 'immune', water: 'weak' },
-    'android':           { poison: 'immune', water: 'weak' },
-    'droid':             { poison: 'immune', water: 'weak' },
+    'robot':             { poison: 'immune', water: 'weak', psychic: 'immune' },
+    'android':           { poison: 'immune', water: 'weak', blood: 'immune' },
+    'droid':             { poison: 'immune', water: 'weak', psychic: 'immune' },
     'ai':                { poison: 'immune', water: 'weak' },
-    'honda civic':       { poison: 'immune', water: 'weak' },
+    'honda civic':       { poison: 'immune', water: 'weak', psychic: 'immune' },
     'mech':              { poison: 'immune', water: 'weak' },
     'cyborg':            { poison: 'resist' },
     'super sentai':      { poison: 'resist' },
     // ── stone & earth ──
     'golem':             { earth: 'resist', water: 'weak', ice: 'weak' },   // race editor 2026-10-06: poison immunity dropped // race editor 2026-10-17
-    'giant':             { earth: 'resist' },
+    'giant':             { earth: 'resist', wind: 'resist' },
     'cyclops':           { earth: 'resist' },
     // ── beasts & wilds ──
     'dragon':            { fire: 'resist', ice: 'weak', lightning: 'resist', water: 'resist' }, // race editor 2026-10-17
@@ -555,14 +561,33 @@ const RACE_ELEMENT_AFFINITY = {
     'starfish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'deep sea fish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
     'sharkman': { water: 'resist', lightning: 'weak' },   // 2026-09-30
-    'crystal guardian': { earth: 'resist' },   // 2026-09-30
+    'crystal guardian': { earth: 'resist', sonic: 'weak' },   // 2026-09-30
     'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
-    'tree person': { fire: 'weak', water: 'resist', poison: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
+    'tree person': { fire: 'weak', water: 'resist', poison: 'absorb', nature: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
     'krampus': { ice: 'resist', fire: 'weak' },   // 2026-09-30
     'firefighter': { fire: 'resist', water: 'absorb' },   // 2026-09-30 // race editor 2026-10-17
     'king kong':         { earth: 'resist' },
-    'bigfoot':           { earth: 'resist' },
+    'bigfoot':           { earth: 'resist', nature: 'resist' },
     'black goo':         { poison: 'absorb' },   // race editor 2026-10-06
+    // ── element promotion 2026-10-17 (sonic / psychic / wind / light / shadow / blood / nature) ──
+    'popstar':           { sonic: 'resist' },
+    'rabbit':            { sonic: 'weak' },
+    'bunny girl':        { sonic: 'weak' },
+    'jellyfish':         { psychic: 'immune' },
+    'telepath':          { psychic: 'resist' },
+    'grey':              { psychic: 'resist' },
+    'dreameater':        { psychic: 'absorb' },
+    'fairy':             { wind: 'weak' },
+    'mothman':           { wind: 'weak' },
+    'bee queen':         { wind: 'weak' },
+    'djinn':             { wind: 'absorb' },
+    'valkraye':          { wind: 'resist' },
+    'shadow entity':     { light: 'weak', shadow: 'absorb' },
+    'angel':             { light: 'resist', shadow: 'weak' },
+    'seraphim':          { light: 'resist' },
+    'orb of light':      { light: 'absorb', shadow: 'weak' },
+    'voidweaver':        { shadow: 'resist' },
+    'mushroom girl':     { nature: 'resist' },
     // everyone else: elementally neutral (deliberately no row)
 };
 
@@ -583,7 +608,7 @@ function unitElementAffinity(unit, element) {
    ONE two-row read of a unit's elemental affinities, everywhere a unit's
    stats show (the Horologe's clicked-unit readout, the INFO card, the
    codex / shop dossier, the forge's STATS column, the pause menu's party
-   sheet): the TOP row is the six COMBAT elements' icons, the BOTTOM row
+   sheet): the TOP row is the COMBAT elements' icons, the BOTTOM row
    the unit's REACTION — a dash for neutral, the green ! of a super
    effective hit for WEAK, ▼ for RESIST, ∅ for IMMUNE, ♥ for ABSORB — and
    a ? until the affinity is KNOWN.
@@ -683,6 +708,15 @@ function elemAffinityBox(race, opts) {
             tip: el.toUpperCase() + ' · ' + (known ? ui.word + ' — ' + ui.tip : ui.tip) };
     });
 }
+/* THE BANDS (2026-10-17, thirteen combat elements): the box wraps into
+   bands of ELEM_BOX_BAND cells — each band an icon row over its reaction
+   row — so it stays as wide as seven cells. */
+const ELEM_BOX_BAND = 7;
+function elemBoxBands(cells) {
+    const out = [];
+    for (let i = 0; i < cells.length; i += ELEM_BOX_BAND) out.push(cells.slice(i, i + ELEM_BOX_BAND));
+    return out;
+}
 /* THE HTML (innerHTML surfaces — the INFO card, the codex, the pause
    menu). opts.size: 'sm' | 'md' (default) | 'lg'; opts.label: a caption. */
 function elemAffinityBoxHtml(race, opts) {
@@ -691,8 +725,10 @@ function elemAffinityBoxHtml(race, opts) {
     const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     const icon = el => (typeof elementIconHtml === 'function') ? elementIconHtml(el, 'ew-elem-icon') : esc(ELEMENT_ICONS[el] || '');
     let html = '<div class="ew-elem-box' + (opts.size ? ' ' + esc(opts.size) : '') + '"' + (opts.label ? ' data-label="' + esc(opts.label) + '"' : '') + '>';
-    html += '<div class="ew-elem-row ew-elem-els">' + cells.map(c => '<span class="ew-elem-cell ew-elem-el" title="' + esc(c.tip) + '">' + icon(c.el) + '</span>').join('') + '</div>';
-    html += '<div class="ew-elem-row ew-elem-rxs">' + cells.map(c => '<span class="ew-elem-cell ew-elem-rx ' + esc(c.tier || 'unknown') + '" style="color:' + c.color + '" title="' + esc(c.tip) + '">' + esc(c.sym) + '</span>').join('') + '</div>';
+    for (const band of elemBoxBands(cells)) {
+        html += '<div class="ew-elem-row ew-elem-els">' + band.map(c => '<span class="ew-elem-cell ew-elem-el" title="' + esc(c.tip) + '">' + icon(c.el) + '</span>').join('') + '</div>';
+        html += '<div class="ew-elem-row ew-elem-rxs">' + band.map(c => '<span class="ew-elem-cell ew-elem-rx ' + esc(c.tier || 'unknown') + '" style="color:' + c.color + '" title="' + esc(c.tip) + '">' + esc(c.sym) + '</span>').join('') + '</div>';
+    }
     html += '</div>';
     return html;
 }
@@ -704,14 +740,37 @@ function elemAffinityBoxHtml(race, opts) {
      element part =      share  × the ELEMENT affinity (weak ×1.5 /
                     resist ×0.5 / immune 0 / absorb — that part HEALS)
    STAB and every other bonus ride the whole hit. `elemShare` on a spell row
-   (0..1) is its ratio; rows without one use ELEM_SHARE_DEFAULT. A hit with
+   (0..1) is its ratio. Rows without one scale with the spell's power
+   (2026-10-17, mondo: "the more damage an elemental spell does the more
+   percentage it should be elemental ... a lower damage spell would be 70%
+   type and 30% elemental"): 30% element at ELEM_SHARE_BAND.lowDmg power or
+   less, 70% at highDmg or more, a straight line between (80 / 160 = the
+   10th / 90th percentile of elemental spell damage). Power = dmg, else the
+   summed hitDamages, dashDamage, turretDmg or dotDamage; a spell with no
+   power number uses ELEM_SHARE_DEFAULT. A hit with
    no unit behind it (a burn tick, lava, weather) is all element (share 1),
    exactly as before. battle.js _hitDamageMath is the one place it lands;
    the AI and the previews read the same two functions below. */
 const ELEM_SHARE_DEFAULT = 0.5;
+const ELEM_SHARE_BAND = { lowDmg: 80, highDmg: 160, low: 0.3, high: 0.7 };
+function spellElemPower(spell) {
+    if (!spell) return 0;
+    const n = v => (isFinite(Number(v)) && Number(v) > 0) ? Number(v) : 0;
+    if (n(spell.dmg)) return n(spell.dmg);
+    const hits = Array.isArray(spell.hitDamages) ? spell.hitDamages.reduce((a, b) => a + n(b), 0) : 0;
+    return hits || n(spell.dashDamage) || n(spell.turretDmg) || n(spell.dotDamage);
+}
+// The share this spell gets when its row sets none (no power number → ELEM_SHARE_DEFAULT).
+function spellElemShareAuto(spell) {
+    const p = spellElemPower(spell);
+    if (!p) return ELEM_SHARE_DEFAULT;
+    const B = ELEM_SHARE_BAND;
+    const t = Math.max(0, Math.min(1, (p - B.lowDmg) / (B.highDmg - B.lowDmg)));
+    return Math.round((B.low + t * (B.high - B.low)) * 100) / 100;
+}
 function spellElemShare(spell) {
     const v = spell ? Number(spell.elemShare) : NaN;
-    return (isFinite(v) && spell.elemShare != null) ? Math.max(0, Math.min(1, v)) : ELEM_SHARE_DEFAULT;
+    return (isFinite(v) && spell.elemShare != null && spell.elemShare !== '') ? Math.max(0, Math.min(1, v)) : spellElemShareAuto(spell);
 }
 // The element part's multiplier: weak 1.5 · resist 0.5 · immune / absorb 0 (absorb heals it instead) · else 1.
 function elemShareMult(aff) {
@@ -4539,12 +4598,13 @@ function getRaceLabel(race, gender) {
    Optional field on any spell: element: 'fire'|'ice'|'lightning'|'water'|
    'earth'|'wind'|'poison'|'nature'|'shadow'|'light'|'psychic'|'sonic'|
    'arcane'|'blood'|'metal'  (canonical list: SPELL_ELEMENTS, near TYPE_CHART).
-   Since 2026-09-01 the six COMBAT_ELEMENTS (fire/ice/lightning/water/poison/
-   earth) are a real combat layer: damage of those elements consults
+   Since 2026-09-01 the COMBAT_ELEMENTS (fire/ice/lightning/water/poison/
+   earth, plus wind/nature/sonic/psychic/light/shadow/blood since
+   2026-10-17) are a real combat layer: damage of those elements consults
    RACE_ELEMENT_AFFINITY (weak ×1.5 / resist ×0.5 / immune / absorb),
    water-element damage Soaks the target, and elemental statuses couple to
    affinities — see the ELEMENTAL AFFINITIES block + ELEMENTAL_TYPES_PLAN.md.
-   The other nine tags stay flavor-only (VFX theming via _resolveTheme, SFX,
+   arcane and metal stay flavor-only (VFX theming via _resolveTheme, SFX,
    library filters) and are elementally neutral — as is every untagged spell.
    The element layer is SECONDARY: the type chart + STAB always apply on top.
    The tag is authoritative for battle.js getSpellElement — the legacy
@@ -21951,8 +22011,8 @@ Object.assign(window, {
   RACE_ELEMENT_AFFINITY, getRaceElementAffinity, unitElementAffinity,
   /* THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) */
   ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
-  elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml,
-  ELEM_SHARE_DEFAULT, spellElemShare, elemShareMult, elemSplitFactor, elemPressVerdict,
+  elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, ELEM_BOX_BAND, elemBoxBands,
+  ELEM_SHARE_DEFAULT, ELEM_SHARE_BAND, spellElemPower, spellElemShareAuto, spellElemShare, elemShareMult, elemSplitFactor, elemPressVerdict,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, ZODIAC_EFFECTS, ZODIAC_SKY_KEYS, ZODIAC_NATAL_KEYS, zodiacSkyMult, zodiacNatalDelta, zodiacSkySummary, zodiacNatalSummary, ZODIAC_KEY_LABELS, MOVE_SPD_RULE, moveSpdFrom, CLASS_TEMPLATES,
   DEFAULT_BUILDS, ITEM_RULES, ITEM_META, ITEM_LIKE_KEYS, itemBase, itemKeysLike, SPELL_LIBRARY, SPELL_SLOT_MAX,
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,

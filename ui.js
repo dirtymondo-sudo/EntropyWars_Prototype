@@ -3994,7 +3994,7 @@
                 }).join('') + '</div>';
             }
 
-            // THE ELEMENT BOX (2026-09-23): the six combat elements over the
+            // THE ELEMENT BOX (2026-09-23): the combat elements over the
             // unit's reaction to each — ? until this race has been hit with
             // that element, every reaction for your own vessels (data.js
             // elemAffinityBoxHtml; the knowledge rule lives there).
@@ -10243,8 +10243,8 @@
             type:   { t: 'enum', o: _SLB_TYPES, h: 'Coarse category (drives AI + UI grouping).' },
             kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
             spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Spell type / combo type (keys COMBO_REGISTRY).' },
-            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Element. A combat element (fire · ice · lightning · water · poison · earth) splits the damage: elemShare of it checks the target\'s affinity, the rest rides the type chart. Other tags are VFX only.' },
-            elemShare: { t: 'num', h: 'Share of the damage that is the ELEMENT (0–1; 0.5 when absent). That part takes weak ×1.5 / resist ×0.5 / immune 0 / absorb heals; the rest takes the type matchup. Only read for a combat element.' },
+            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Element. A combat element (fire · ice · lightning · water · poison · earth · sonic · psychic · wind · light · shadow · blood · nature) splits the damage: elemShare of it checks the target\'s affinity, the rest rides the type chart. Other tags are VFX only.' },
+            elemShare: { t: 'num', h: 'Share of the damage that is the ELEMENT (0–1). Blank = follows the spell\'s damage: 30% at 80 or less, 70% at 160 or more, a straight line between. That part takes weak ×1.5 / resist ×0.5 / immune 0 / absorb heals; the rest takes the type matchup. Only read for a combat element.' },
             damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → M DEF.' },
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
             manaCostOverride: { t: 'num', h: 'Pins MP cost, bypassing the derivation formula.' },
@@ -10985,6 +10985,11 @@
                 let ghost = null;
                 try { if (typeof computeSpellManaCost === 'function' && d) ghost = (typeof snapCostToLadder === 'function') ? snapCostToLadder(computeSpellManaCost(d)) : computeSpellManaCost(d); } catch (e) { ghost = null; }
                 return `<input type="number" step="1" min="0" ${attrs} data-type="num" value="${val != null ? _slbEsc(val) : ''}" title="editing pins the MP (manaCostOverride)"><span class="slb2-ghost" title="what the mana formula would charge">${ghost != null ? 'formula ' + ghost : ''}</span>${d && d.manaCostOverride != null ? `<button class="slb2-tiny on" data-act="unpinMp" data-id="${_slbEsc(id)}" title="follow the ladder again">PINNED</button>` : ''}`;
+            }
+            if (f === 'elemShare') {
+                let ghost = null;
+                try { if (typeof spellElemShareAuto === 'function' && d) ghost = spellElemShareAuto(d); } catch (e) { ghost = null; }
+                return `<input type="number" step="0.05" min="0" max="1" ${attrs} data-type="num" value="${val != null ? _slbEsc(val) : ''}" title="blank = follow the spell's damage"><span class="slb2-ghost" title="the share from the spell's damage (30% at 80 or less, 70% at 160 or more)">${ghost != null ? 'auto ' + Math.round(ghost * 100) + '%' : ''}</span>`;
             }
             if (t === 'bool') return `<label class="slb2-switch"><input type="checkbox" ${attrs} data-type="bool"${val ? ' checked' : ''}><i></i><span>${val ? 'yes' : 'no'}</span></label>`;
             if (t === 'num') {
