@@ -55974,6 +55974,33 @@
             return true;
         }
 
+        /* THE TURN ICON CLICK (2026-10-17, mondo: "The one that opens up when you click on their turn clock icon should
+           open the quick menu instead, since it shows the exact same stats"): hud.js TurnIcon asks here first. The
+           viewer's own controllable turn → that unit's quick menu, exactly the board click's (a second click on the same
+           icon closes it; the acting unit's own icon backs out to its root menu). Off the viewer's turn, or a foe the
+           viewer can't see (no camera swing onto a fogged unit), it says no and the HUD keeps the old info card. */
+        window._ewTurnIconQuickMenu = function (unitId) {
+            const actingUnit = getSelectedUnit();
+            const u = (state.units || []).find(x => x.id === unitId && !x.dead && !x._dying);
+            if (!actingUnit || !u) return false;
+            const canControl = !state.autoPlayers?.[state.activePlayer]
+                && actingUnit.player === state.activePlayer && actingUnit.player === getViewerPlayer()
+                && canUnitAct(actingUnit) && !state.winner;
+            if (!canControl) return false;
+            if (u.player !== actingUnit.player && !_isTileVisibleToViewer(u.x, u.y)) return false;
+            if (u.id === actingUnit.id || (state._enemyActionTargetId === u.id && !state.actionMode)) {
+                state._enemyActionTargetId = null;
+                state._tileActionTarget = null;
+                state.actionMenuView = 'root';
+                if (typeof window._tpsTurnShot === 'function') window._tpsTurnShot();
+                playSfx('uiCursorFocus');
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
+                return true;
+            }
+            return _exitModeAndShowUnitMenu(actingUnit, u);
+        };
+
         /* MOVE MODE → QUICK MENU (2026-10-05, mondo: "if im clicking on the
            cube or another unit from the move action, it needs to bring up its
            quick action menu"). A unit or the Cube is never a move destination,
