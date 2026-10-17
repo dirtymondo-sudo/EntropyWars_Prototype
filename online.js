@@ -1485,6 +1485,21 @@
             };
         }
 
+        /* THE DEATH CLOSE-UP (battle.js playDeathCloseup, called by map.js defeatUnit): deaths resolve only on
+           the HOST online, so relay each one; the guest starts the body's death clip (it never ran defeatUnit)
+           and runs the same close-up / multi-kill split where its OWN fog gate (inside the function) decides. */
+        const _origPlayDeathCloseup = window.playDeathCloseup;
+        if (typeof _origPlayDeathCloseup === 'function') {
+            window.playDeathCloseup = function(unit) {
+                _origPlayDeathCloseup(unit);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && unit && state.phase === 'battle') {
+                    _emit('relay', { type: 'death-cam', unitId: unit.id,
+                        style: (state._deathStyleById && state._deathStyleById[unit.id]) || null });
+                }
+            };
+        }
+
         /* Fall/grounding camera dive (battle.js followUnitFall): engine-side
            beat — a grounded flyer / knocked-down unit drops and the camera
            rides down with them. Runs only on the HOST online, so relay it;
@@ -4337,6 +4352,21 @@
                            hidden enemy's pickup shows nothing positional. */
                         if (typeof window.playKeySecuredFx === 'function') {
                             window.playKeySecuredFx(data.x, data.y, data.n || 1);
+                        }
+                    }
+
+                    if (data.type === 'death-cam' && _ewMirrorView()) {
+                        /* THE DEATH CLOSE-UP: the body falls on this screen too (slow-mo + clip, as on the host),
+                           then the close-up / multi-kill split runs under the GUEST's own fog gate. */
+                        var _dcU = st && st.units
+                            ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (_dcU && window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive()) {
+                            if (data.style) { st._deathStyleById = st._deathStyleById || {}; st._deathStyleById[_dcU.id] = data.style; }
+                            if (!window.ThreeAnim.isDying(_dcU.id)) {
+                                window.ThreeAnim.death(_dcU.id);
+                                if (window.ThreeAnim.slowMo) window.ThreeAnim.slowMo(0.4, 550);
+                            }
+                            if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(_dcU);
                         }
                     }
 

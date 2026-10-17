@@ -15365,6 +15365,9 @@
                     && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
                     window.ThreeAnim.slowMo(0.4, 550);
                 }
+                /* THE DEATH CLOSE-UP (battle.js playDeathCloseup): a live camera on the falling body; deaths that
+                   land together split the screen. online.js relays it to the guest. */
+                if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(unit);
             }
 
             const MAP_DEATH_DURATION = state.devAutoSim ? 0 : 800;

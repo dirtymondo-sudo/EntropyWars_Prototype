@@ -1362,3 +1362,27 @@ Fix (three-renderer.js): `_ssRenderFrame` sets `renderer._ew_paneRender` while i
 `_projectObject` draws bundle groups the classic way under it (as it already did for `_ew_sideRender`). Checked on real
 WebGPU in the sandbox (stadium, krampus / nephilim / zombie / annunaki): before, combo = nephilim twice, strike = top
 row copies bottom row; after, every pane frames its own unit; WebGL unchanged. Off (`?ew_bundles=0`) also fixes it.
+
+## THE DEATH CLOSE-UP (2026-10-17)
+mondo: "can we make the camera more closeup and centered on a unit when they die to see their death animation? and if
+multiple units die like a double or triple kill then make it split screen like the combo attacks and entropy strikes."
+- map.js `defeatUnit` → battle.js `playDeathCloseup(unit)` (after `ThreeAnim.death`). It opens the combo / Entropy Strike
+  split rig (`ThreeSplitscreen.show(..., { owner: 'death', death: true })`) on the dying unit ~90 ms after the killing
+  hit (so deaths of one hit open together). Every later death while the shot is up joins as its own pane (2 = halves,
+  3 = thirds, 4 = quarters, max 4) with the combo pane chrome (`_ssqShowChrome`, muted: frame + name + race). One pane
+  = no chrome, and the combat numbers stay up, projected through the pane camera (`_ssFloatCam`).
+- The shot holds while any of its bodies still has a death tween (`ThreeAnim.isDying`, rigged = MODEL_DEATH_MS 1600
+  on the warped clock), min 1.1 s, cap 4.5 s after the last death. `_waitForAnimationsThen` and the stall watchdog
+  wait on `_deathCamLive()`, so the turn moves on after the body is down.
+- Pane framing (`_ssRenderFrame`, `p.death`): eye 0.58→0.74 of the body height, aim 0.55→0.33 following the fall
+  (launch deaths keep the aim and add 0.6 tile of room), plus a sight-line floor over every column between lens and body.
+  A death pane keeps tracking after `dead` flips at 800 ms, until the body dissolves. The stand-off scales with the
+  body height (0.6x-1.9x of a standard unit), so a gnome gets a tight shot and big winged bodies still fit.
+- Graves / bone piles now wait for the death tween too (they used to pop in at 800 ms under a rigged body whose clip
+  still had 800 ms to run). `ThreeSplitscreen.extend(ms)` re-arms the rig's self-kill each tick while the shot holds.
+- Skipped: Strike real-time, no-visuals sims, camera off, a 2D cinematic up, during an execution (`_dcFinisherUntil`, the
+  finisher IS the kill shot), and per unit when `_shouldCameraFollowUnit` says no (fog / concealment). A combo's own
+  panes are waited on (≤1.5 s); a combo / Entropy Strike that takes the screen ends the death shot.
+- Online: online.js wraps `playDeathCloseup` → relay `death-cam {unitId, style}`; the guest starts the death tween +
+  slow-mo itself (it never ran defeatUnit, so before this its units just vanished) and runs the shot under its own fog.
+- `startDeathTween` ignores a second call for a unit already falling. Kill switch: `window.EW_NO_DEATH_CAM = true`.
