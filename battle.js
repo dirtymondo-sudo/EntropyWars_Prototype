@@ -48536,7 +48536,7 @@
                 const _keyTxt = _kr.fixedPool ? `carry ${_kr.toWin} of the ${_kr.spawn} Keys` : 'secure the Keys';
                 const _nxThr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
                 addLog(`🏰 Arena! Destroy the Cube, ${_keyTxt}, or wipe out the enemy — a win condition MUST be met. ${rl}-round safety cap (Arena score, then Sudden Death) only stops a match that would run forever.`);
-                addLog(`⬡ Nexus rules: ${_nxThr} ticks flip a zone — step in (+1 each), channel (1 AP, +1), or hold it at the round end. A zone you own heals your team standing in it and burns the enemy; you RESPAWN only on a zone you hold (no zone = no respawns!); every non-home zone held is ×1.5 Cube damage. Zones can be built on, dug and flooded.`);
+                addLog(`⬡ Nexus rules: each zone is a count to ${_nxThr * 2} (an enemy zone 0/${_nxThr * 2}, neutral ${_nxThr}/${_nxThr * 2}) — step in (+1 each), channel (1 AP, +1), or hold it at the round end; stepping off a zone you haven't taken gives a point back. A zone you own heals your team standing in it and burns the enemy; you RESPAWN only on a zone you hold (no zone = no respawns!); every non-home zone held is ×1.5 Cube damage. Zones can be built on, dug and flooded.`);
             } else if (mpMode.id === 'dungeon') {
                 if (state._mdPhase === 'hub') {
                     addLog('🏘 Guild Hub — your unlocked characters hang out here. Rest at the spring, then step onto the cave entrance (east edge) to start the dungeon!');
@@ -57999,6 +57999,7 @@
             const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
             const startX = unit.x,
                 startY = unit.y;
+            const _nxFrom = { x: unit.x, y: unit.y, z: unit.z };
 
             const _skipWasdAnim = state._wasdMoveSkipAnim;
             if (_skipWasdAnim) state._wasdMoveSkipAnim = false;
@@ -58139,7 +58140,7 @@
 
             /* Nexus step-on tick (2026-09-12): boots on a zone count where the move ENDS — after the ice slide and
                the warp rune, so a walk aimed at the zone that slides off it scores nothing (ui.js nexusOnUnitArrive). */
-            if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit);
+            if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit, _nxFrom);
 
             if (_aiWalkAnimDelay > 0) {
                 return _aiWalkAnimDelay;
@@ -58653,6 +58654,8 @@
                 // Landing in a guardian's sights: jumping IS movement, so
                 // Overwatch reads it exactly like finishing a walk.
                 checkOverwatchTriggers(unit);
+                /* Jumping IS stepping in: a leap into a Nexus zone ticks it like a walk (mondo 2026-10-17) */
+                if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit, { x: fromX, y: fromY, z: fromZ });
                 /* Jumping IS movement, so it ends like finishMoveAt: back to
                    the ROOT action menu. Staying armed in move mode after a hop
                    made the next click a second, unwanted move (2026-10-07,

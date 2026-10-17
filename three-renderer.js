@@ -10841,7 +10841,7 @@ const ThreeRenderer = (function () {
                 '  box-shadow: 0 2px 10px rgba(0,0,0,0.9), inset 0 1px 3px rgba(0,0,0,0.5);',
                 '}',
                 '.nb-wrap .nb-pip {',
-                '  width: 22px; height: 10px; border-radius: 2px;',
+                '  width: 11px; height: 10px; border-radius: 2px;',   // 8 pips (the one bar) in the old 4-pip footprint
                 '  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);',
                 '  transition: background 0.18s ease-out, box-shadow 0.18s ease-out;',
                 '}',
@@ -10960,14 +10960,17 @@ const ThreeRenderer = (function () {
         else if (nex.owner === 2) { ownerText = 'P2 CONTROLLED'; ownerCls = 'nb-owner nb-owner-p2'; }
         if (isContested) ownerText = 'CONTESTED';
 
-        /* Pips: one per tick, lit in the leading team's colour. */
-        var pipCls = prog > 0 ? 'on-p1' : prog < 0 ? 'on-p2' : '';
+        /* THE ONE BAR (mondo 2026-10-17, ui.js nexusTeamReadout): 8 pips read from the viewer's side — an enemy
+           zone 0/8, neutral 4/8, yours 8/8 — lit in the viewer's colour. */
+        var _vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+        var _ro = (typeof window.nexusTeamReadout === 'function') ? window.nexusTeamReadout(nex, _vp)
+            : { n: Math.max(0, Math.min(capThreshold * 2, capThreshold + (_vp === 1 ? prog : -prog))), total: capThreshold * 2 };
+        var pipCls = _vp === 2 ? 'on-p2' : 'on-p1';
         var pipsHtml = '';
-        for (var pi = 0; pi < capThreshold; pi++) {
-            pipsHtml += '<div class="nb-pip' + (pi < absProgress && pipCls ? ' ' + pipCls : '') + '"></div>';
+        for (var pi = 0; pi < _ro.total; pi++) {
+            pipsHtml += '<div class="nb-pip' + (pi < _ro.n ? ' ' + pipCls : '') + '"></div>';
         }
-        var progText = absProgress + '/' + capThreshold;
-        if (prog === 0 && nex.owner === 0) progText = '0/' + capThreshold;
+        var progText = _ro.n + '/' + _ro.total;
 
         var modeLabel = 'NEXUS';
         if (key === 'roaming' || (state.roamingNexus && nex === state.roamingNexus)) modeLabel = 'HOTSPOT';

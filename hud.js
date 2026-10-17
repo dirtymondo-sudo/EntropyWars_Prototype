@@ -5147,9 +5147,9 @@ function ActionMenu({ st, hidden }) {
       id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: _chLocked ? '#ff8a7a' : '#5fd6ff',
       available: _chOk,
       sub: !_nex ? (_chLocked ? '⛔ NO SPAWN — take a zone' : 'Not on a nexus')
-         : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chThr - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
+         : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
-      title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks)',
+      title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
       fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
     });
   }
@@ -8728,7 +8728,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       const thresh = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 3;
       const _chRead = typeof nexusTeamReadout === 'function' ? nexusTeamReadout(nex.nexus, actingUnit.player) : null;
       actions.push({
-        id: 'channel', label: 'Channel (' + (_chRead ? _chRead.text.toLowerCase().replace(/^./, c => c.toUpperCase()) : prog + '/' + thresh) + ')', icon: '⬡', category: 'actions',
+        id: 'channel', label: 'Channel (' + (_chRead ? _chRead.text : prog + '/' + thresh) + ')', icon: '⬡', category: 'actions',
         apCost: 1, available: true,
         handler: () => {
           state._tileActionTarget = null;
