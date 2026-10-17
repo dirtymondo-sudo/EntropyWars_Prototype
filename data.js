@@ -19433,6 +19433,26 @@ function spellHasDamage(d) {
     if ((typeof d.zoneTickDamage === 'number' && d.zoneTickDamage > 0) || (typeof d.zoneCastDamage === 'number' && d.zoneCastDamage > 0)) return true;
     return false;
 }
+/* THE TYPE BADGE RULE (2026-10-17, mondo: "the type only matters for damage and the type matchup right?"): a row's
+   spellType only ever reaches applyDamageToUnit (the matchup ×1.30 / ×0.75, STAB, the press refund) — on a heal, a
+   buff or a move it changes nothing but the VFX tint. So the TYPE badge shows only on a row that can deal damage:
+   spellHasDamage, the always-rolling kinds, and the deployables / riders whose damage carries the row's type
+   (turret shot, summon bite, trap / blast object, door hits, a seed planted on an enemy, Divine Light's sear,
+   Grapple's yank, a hazard drag). */
+const _TYPED_DMG_FIELDS = ['turretDmg', 'blastDmg', 'arrowDmg', 'laneDmg', 'biteDmg', 'beamDmg', 'healAdjacentDamage', 'dotDamage'];
+const _TYPED_DMG_KINDS = new Set(['barrage', 'skyDrop', 'skyThrow', 'skySlam', 'seedPoison', 'leechSeed']);
+function spellTypeMatters(d) {
+    if (!d || d.kind === 'passive') return false;
+    if (spellHasDamage(d)) return true;
+    if (d.noDamage) return false;
+    if (_TYPED_DMG_KINDS.has(d.kind)) return true;
+    if (_TYPED_DMG_FIELDS.some(k => typeof d[k] === 'number' && d[k] > 0)) return true;
+    if (d.summonDef && d.summonDef.dmg > 0) return true;
+    if (d.pullThroughHazards) return true;
+    if (d.id === 'grapple' || d.id === 'raceGrapple') return true;
+    return false;
+}
+if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
 function spellHasHeal(d) {
     if (!d) return false;
     return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0)

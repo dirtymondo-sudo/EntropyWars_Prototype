@@ -1135,8 +1135,8 @@ function SigilMark() {
   return h('svg',{width:22,height:22,viewBox:'0 0 28 28'},h('circle',{cx:14,cy:14,r:12,fill:'none',stroke:EW.time,strokeWidth:1}),h('circle',{cx:14,cy:14,r:6,fill:'none',stroke:EW.time,strokeWidth:0.5}),h('circle',{cx:14,cy:14,r:2,fill:EW.time}),h('line',{x1:14,y1:0,x2:14,y2:4,stroke:EW.time,strokeWidth:1}),h('line',{x1:14,y1:24,x2:14,y2:28,stroke:EW.time,strokeWidth:1}),h('line',{x1:0,y1:14,x2:4,y2:14,stroke:EW.time,strokeWidth:1}),h('line',{x1:24,y1:14,x2:28,y2:14,stroke:EW.time,strokeWidth:1}));
 }
 function classifySpellLocal(sp) { if (!sp) return 'utility'; if (typeof window.classifySpell==='function') return window.classifySpell(sp); const k=sp.kind||sp.type||''; if (/heal/i.test(k)) return 'heal'; if (/buff|shield/i.test(k)) return 'buff'; if (/debuff/i.test(k)) return 'debuff'; if (/damage|dmg/i.test(k)) return 'damage'; return 'utility'; }
-function spellCategoryColor(cat) { return {damage:'rgba(152,80,80,0.7)',heal:'rgba(90,148,86,0.7)',buff:'rgba(80,126,160,0.7)',debuff:'rgba(200,170,70,0.7)',utility:'rgba(140,100,180,0.65)'}[cat]||'rgba(140,100,180,0.65)'; }
-function spellCategoryLabel(cat) { return {damage:'DAMAGE',heal:'HEAL',buff:'BUFF',debuff:'DEBUFF',utility:'UTILITY'}[cat]||'UTILITY'; }
+function spellCategoryColor(cat) { return {passive:'rgba(176,84,148,0.7)',damage:'rgba(152,80,80,0.7)',heal:'rgba(90,148,86,0.7)',buff:'rgba(80,126,160,0.7)',debuff:'rgba(200,170,70,0.7)',utility:'rgba(140,100,180,0.65)'}[cat]||'rgba(140,100,180,0.65)'; }
+function spellCategoryLabel(cat) { return {passive:'PASSIVE',damage:'DAMAGE',heal:'HEAL',buff:'BUFF',debuff:'DEBUFF',utility:'UTILITY'}[cat]||'UTILITY'; }
 
 // Pokémon-style damage-kind mark (.ew-dmgicon in styles-hud.css): orange
 // spiked burst = physical (scales with ATK), purple ringed orb = magic
@@ -1225,7 +1225,7 @@ function pbSocketFilterMatch(sp, f) {
   if (!f) return true;
   if (f.cat && f.cat !== 'all' && classifySpellLocal(sp) !== f.cat) return false;
   if (f.dmg && pbSpellDmgKind(sp) !== f.dmg) return false;
-  if (f.type && (sp.spellType || '').toLowerCase() !== f.type) return false;
+  if (f.type && (!pbTypeShown(sp) || (sp.spellType || '').toLowerCase() !== f.type)) return false;
   if (f.shape && pbSpellShape(sp) !== f.shape) return false;
   if (f.tier && pbTreeTierOf(sp) !== f.tier) return false;
   if (f.q) {
@@ -1294,7 +1294,7 @@ function pbSpellEffects(sp) {
 // The rich floating spell card. Returns a fixed-positioned React element clamped to the viewport.
 function buildSpellTooltip(sp, x, y) {
   if (!sp) return null;
-  const cat = classifySpellLocal(sp), catC = spellCategoryColor(cat);
+  const cat = pbColourCat(sp), catC = spellCategoryColor(cat);
   const power = (typeof window.getSpellPowerLabel === 'function') ? (window.getSpellPowerLabel(sp) || '') : '';
   const aoe = pbAoeLabel(sp);
   const effects = pbSpellEffects(sp);
@@ -1316,7 +1316,7 @@ function buildSpellTooltip(sp, x, y) {
         h('span', { style: { fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: catC, border: `1px solid ${catC}66`, background: `${catC}1a`, padding: '1px 6px' } }, spellCategoryLabel(cat)),
         // canonical TYPE badge (same chip as the blades / battle menu) —
         // never a bare colored word
-        sp.spellType && h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType),
+        pbTypeShown(sp) && h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType),
         // damage-kind mark + word — icon-first so it can't read as a TYPE chip
         pbDmgIcon(sp, 10) && h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: sp.damageType === 'physical' ? '#e0944a' : '#b56ce0' } },
           pbDmgIcon(sp, 10), sp.damageType === 'physical' ? 'PHYSICAL' : 'MAGIC'))),
@@ -1344,6 +1344,7 @@ const PB_CAT = {
   buff:    { icon: '▲', color: '#5cb2ff' },
   debuff:  { icon: '▼', color: '#a06bff' },
   utility: { icon: '◎', color: '#f0d060' },
+  passive: { icon: '◈', color: '#f28ad0' },
 };
 function pbPowerStat(sp) {
   if (typeof window.spellPowerStat === 'function') return window.spellPowerStat(sp);
@@ -1362,6 +1363,11 @@ function pbPowerVal(sp) { const p = pbPowerStat(sp); return p ? (parseFloat(p.va
    outline chip: 1px frame in the type's color around mono caps, no fill
    wash, no cut corners). Battle-parity: matchup intel looks identical
    on the blade here and mid-fight. */
+/* THE TYPE BADGE RULE (2026-10-17, data.js spellTypeMatters): the TYPE chip only where the type changes something —
+   it only ever drives damage, so a heal / buff / move / passive row wears none (and the TYPE filter skips it). */
+function pbTypeShown(sp) {
+  return !!(sp && sp.spellType) && (typeof spellTypeMatters !== 'function' || spellTypeMatters(sp));
+}
 function pbTypeBadgeStyle(typeKey, fontSize) {
   const k = (typeKey || '').toLowerCase();
   const base = TYPE_C[k] || EW.inkMute;
@@ -1381,7 +1387,7 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
       slotNoNode(slotNums, slotLabel),
       h('span', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.1em' } }, 'EMPTY SLOT'));
   }
-  const cat = classifySpellLocal(sp);
+  const cat = pbColourCat(sp);
   const cc = PB_CAT[cat] || PB_CAT.damage;
   const sc = spellSlotCost(sp);
   const pw = pbPowerStat(sp);
@@ -1410,7 +1416,7 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
       h('div', { className:'pbx-row1' },
         h('span', { className:'pbx-name' }, sp.name),
         pbDmgIcon(sp, 10),
-        sp.spellType ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 9) }, sp.spellType) : null,
+        pbTypeShown(sp) ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 9) }, sp.spellType) : null,
         raceAbility ? h('span', { style:{ flexShrink:0, fontSize:8, letterSpacing:'0.14em', color:'#f2c468', border:'1px solid rgba(242,196,104,0.45)', background:'rgba(8,7,12,0.7)', padding:'1px 5px', whiteSpace:'nowrap' }, title:'Race ability — this vessel’s birthright' }, 'RACE') : null,
         (!pool && onClick) ? h('span', { className:'pbx-x', style:{ marginLeft:'auto' } }, '✕') : null),
       // row 2: what it does + the chips, underneath — nothing ever cut off
@@ -1432,11 +1438,15 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
    menu (_HRLG_CAT in hud.js): red damage, green heal, blue buff, purple
    debuff, gold utility. Branch identity lives only in the pillar
    header labels — never on the nodes. */
-const TREE_CAT_C = { damage:'#ff5f5f', heal:'#58d858', buff:'#5cb2ff', debuff:'#a06bff', utility:'#f0d060' };
+const TREE_CAT_C = { damage:'#ff5f5f', heal:'#58d858', buff:'#5cb2ff', debuff:'#a06bff', utility:'#f0d060', passive:'#f28ad0' };
+/* THE PASSIVE COLOUR (2026-10-17, mondo: "make sure that passives are a separate color than utility moves"): a passive row
+   (kind 'passive', its category reads 'utility') paints rose, not the utility gold, on the rack, the loadout, the info
+   panel and the hover card. pbColourCat is the painter's category only — filters and ordering keep classifySpellLocal. */
+function pbColourCat(sp) { return !sp ? null : sp.kind === 'passive' ? 'passive' : classifySpellLocal(sp); }
 // In-chip glyph = the same category ICON the battle action menu uses
 // (_HRLG_CAT in hud.js) — NOT the tier numeral (most race abilities carry
 // no tier tag, which left race chips blank). Name lives under the chip.
-const TREE_CAT_GLYPH = { damage:'⚔', heal:'♥', buff:'▲', debuff:'▼', utility:'◎' };
+const TREE_CAT_GLYPH = { damage:'⚔', heal:'♥', buff:'▲', debuff:'▼', utility:'◎', passive:'◈' };
 const TREE_NODE_BG = '#0d0d13';   // opaque chip fill — lines must never show through a node
 /* ══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the user: "I would still
    like to see the finishers and their animations in the party builder in
@@ -1625,7 +1635,7 @@ function pbSpellBadges(sp, max) {
   if (!sp) return [];
   let list = null;
   try { if (typeof _hrlgSpellBadges === 'function') list = _hrlgSpellBadges(sp); } catch (e) { list = null; }
-  if (!list) list = sp.spellType ? [{ label: String(sp.spellType).toUpperCase(), style: pbTypeBadgeStyle(sp.spellType, 10), title: 'Spell type — drives type advantage' }] : [];
+  if (!list) list = pbTypeShown(sp) ? [{ label: String(sp.spellType).toUpperCase(), style: pbTypeBadgeStyle(sp.spellType, 10), title: 'Spell type — drives type advantage' }] : [];
   return list.slice(0, max || 6).map((b, i) => h('span', { key: 'b' + i, className: 'pb-badge', style: b.style, title: b.title || undefined }, b.label));
 }
 function pbAoeShape(sp) {
@@ -1665,7 +1675,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
                           selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
   const colourOf = (sp) => {
-    const cat = sp ? classifySpellLocal(sp) : null;
+    const cat = pbColourCat(sp);
     return { cat, nc: cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : EW.time, glyph: cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '' };
   };
   const FAM = window.SPELL_FAMILIES || {};
@@ -1834,7 +1844,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   }
   const { st8, key } = info;
   const sp = info.spD || info.sp;   // THE UPGRADES (Phase 5): an upgraded spell's numbers are its derived def's
-  const cat = sp ? classifySpellLocal(sp) : null;
+  const cat = pbColourCat(sp);
   const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (st8 === 'root' ? '#e6e9f2' : EW.time);
   const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
   // the family names the card's home (THE FAMILY TABS, 2026-09-27); a borrowed / universal row adds where it came from

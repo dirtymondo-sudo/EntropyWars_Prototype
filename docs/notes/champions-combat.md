@@ -1534,6 +1534,22 @@ It should reset control of the nexus whenever a new celestial event happens."
 - Browser-checked on Pyramids of Giza: flat and 2-up both strike (2-up hit harder, high ground); 3-up, 4-up and
   deck-over-ground do not.
 
+## THE TYPE BADGE RULE + THE PLANTED STING (2026-10-17)
+mondo: "get rid of type badges on spells that dont require one ... the type only matters for damage and the type
+matchup right?" Checked: a spell's `spellType` only reaches applyDamageToUnit (matchup ×1.30 / ×0.75, STAB, the press
+refund, the WEAK/RESIST callouts); everywhere else it is a VFX tint (projectile / ring / beam / tether colour).
+- data.js `spellTypeMatters(row)`: spellHasDamage, the always-rolling kinds (barrage / skyDrop / skyThrow / skySlam
+  unless noDamage), seeds, turretDmg / blastDmg / door damage fields / healAdjacentDamage / dotDamage, summonDef.dmg,
+  pullThroughHazards, Grapple. The TYPE chip shows only where it is true (hud.js `spellTypeShown`, party-builder.js
+  `pbTypeShown`, map.js `_hqTypeShown`); the rows keep their spellType (VFX still reads it). 231 of 621 typed rows lose it.
+- Typed now (they used the caster's own types, so the badge meant nothing): turret shots + summon bites (turret
+  `spellType`, grid + realtime), placeTrap hits (trap `spellType`), deployObject blasts (`obj.spellType`, was hard 'tech').
+- THE PLANTED STING: Poison / Leech Seed planted ON an enemy hits typed like the contact bomb (seedDamageOpts:
+  source = planter, noAtkBonus, preScaled so the % of max HP is not level-rescaled, the row's type + element). Ticks and
+  walk-on procs stay untyped. Forecast: `_forecastSpellInto` seed branch (only when an enemy stands on the tile).
+- Browser-checked: Poison Seed 86 → 112 vs a weak type, 81 resisted with STAB; Leech 72 → 94; forecast = dealt.
+  Place Bomb contact was already typed (276 super effective, forecast 276).
+
 ## THE PRESS FOR EVERY DAMAGING CAST (2026-10-17)
 mondo: "i used infernal conscription on an enemy, it said it was super effective, but i didnt get my 2 ap refund."
 Cause: doSpell armed the press collector only for the kinds in `_PRESS_SPELL_KINDS` (damage, multiHit, ricochet,

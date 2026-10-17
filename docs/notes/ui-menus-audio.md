@@ -1260,3 +1260,9 @@ left above the Horologe; the Horologe's portrait is the current unit; units that
   clock during spell shots (`body.ew-spell-shot`); its animations pause there so a mid-shot refund pops in after.
 - UI Maker Layout piece `press` ("AP press icons"). TurnColumn stops under the icons when it would reach them.
 - Browser-checked in a VS-CPU arena: hover Move = 1 flashing, Attack = 2, move then crit attack → 4 icons, first 2 faded.
+
+## THE PASSIVE COLOUR (2026-10-17)
+mondo: "make sure that passives are a separate color than utility moves." Passive rows (kind 'passive', category
+'utility') paint rose `#f28ad0` (glyph ◈) instead of the utility gold in the party builder: rack cards, loadout slots,
+info panel, hover card (party-builder.js `pbColourCat`; TREE_CAT_C / PB_CAT / TREE_CAT_GLYPH `passive`). Filters and
+ordering still use classifySpellLocal. The type chip rule (only on damaging spells) is in champions-combat.md.
