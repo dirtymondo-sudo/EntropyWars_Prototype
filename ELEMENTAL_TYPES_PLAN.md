@@ -30,11 +30,13 @@ Plan: /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.
 
 ## THE FINAL ELEMENTS (reference — read this before asking again)
 Fifteen tags live on spells (`element:`), split into two tiers:
-- **13 COMBAT elements** (the only ones the affinity table consults):
+- **All 15 are COMBAT elements** (the affinity table consults every one):
   **fire · ice · lightning · water · poison · earth** + (2026-10-17, mondo
-  "all of those") **wind · nature · sonic · psychic · light · shadow · blood**.
-- **2 FLAVOR elements** (VFX / filter chips only, never resisted):
-  arcane · metal (mondo was asked 2026-10-17 whether to promote them too).
+  "all of those") **wind · nature · sonic · psychic · light · shadow · blood**
+  + (same day, "yes make them resistable too") **arcane · metal**. Metal rides
+  most gun/blade spells, so its rows stay rare (werewolf/fairy weak; gargoyle,
+  juggernaut, kaiju resist; cosmic wraith immune). Arcane: scarecrow weak;
+  wizard, fortune teller, gnome resist; machine elves absorb.
 
 WHERE THE AFFINITIES LIVE: data.js `RACE_ELEMENT_AFFINITY` (the one table —
 38 races have rows, every other race is deliberately NEUTRAL and has no
