@@ -1386,3 +1386,16 @@ multiple units die like a double or triple kill then make it split screen like t
 - Online: online.js wraps `playDeathCloseup` → relay `death-cam {unitId, style}`; the guest starts the death tween +
   slow-mo itself (it never ran defeatUnit, so before this its units just vanished) and runs the shot under its own fog.
 - `startDeathTween` ignores a second call for a unit already falling. Kill switch: `window.EW_NO_DEATH_CAM = true`.
+
+## THE BANE FORECAST (2026-10-17, token 20261017-baneproj-01-cors)
+mondo: "banes need to have a damage projection just like spells". battle.js `forecastBanePlan(thrower, itemKey, target,
+{ castFrom })` reads a thrown bane (and the Entropy Grenade, which rides the bane throw) the doItem way through
+forecastHitOnUnit: baseDmg + baneDmg on a type match (no roll), magic, no mark bonus, the bane's own `typeEffect`; the
+grenade's splash hits every other body in the blast (allies and the thrower too, own team with no source). Same plan shape
+as forecastSpellPlan; `baneForecastSpell(itemKey)` is the stand-in spell (kind 'bane') the UI reads. ui.js forecastOnUnit
+routes kind 'bane' to it, so the HP-bar slice (getPendingDamagePreview, armed + quick-menu hover), the hover HUD
+(getPreviewEffect), the board badges + crimson plates (updateAoePreview → _updateBanePreview, `baneThrowTarget` = doItem's
+column pick + reach) and the hud.js item target drum / enemy quick menu bane rows all show the real number. Badges judge
+SUPER EFFECTIVE from the bane's type (h.superEff), never the thrower's. `window._ewBaneThrowUntil` holds the preview off
+while a throw animates (host doItem + guest online.js wrapper). Browser-checked: Tech Bane and grenade previews matched
+the real HP lost exactly.
