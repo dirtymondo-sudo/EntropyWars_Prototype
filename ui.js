@@ -2422,11 +2422,14 @@
         // read as "super effective" to a same-type caster (the false green `!`:
         // the nameplate badge trusts these classes). Back STAB out first, same
         // as getTypeCombatNote / _getTypeEffLabel / the target-drum chip.
+        // 'type-strong' is the nameplate's green ! — it is THE PRESS (window._pressOf), never the bare type chart:
+        // an absorbed element vetoes a super effective type, an element weakness on a neutral type earns it.
         const _spellEffClass = (caster, target, spell) => {
+          if ((window._pressOf ? window._pressOf(caster, target, spell).press : false)) return ' type-strong';
           const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
           const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
           const eff = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
-          return eff > 1.001 ? ' type-strong' : eff < 0.999 ? ' type-weak' : '';
+          return eff < 0.999 ? ' type-weak' : '';
         };
         // Spell kinds that hurt whatever they land on — their free-aim range
         // paints red ('spell-range-dmg'), not neutral purple. RED = DAMAGE,
@@ -2693,11 +2696,11 @@
             const _camoHidden = target && isEnemyUnit(target, _selectedForHl) && unitHasStatus(target, 'invisible');
             if (target && isEnemyUnit(target, _selectedForHl) && !_camoHidden) {
               const typeMult = getTypeDamageMultiplier(_selectedForHl, target);
-              const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
+              const typeClass = (window._pressOf ? window._pressOf(_selectedForHl, target, null).press : false) ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
               _hlCache.set(pk, 'attack enemy' + typeClass);
             } else if (skyTarget && isEnemyUnit(skyTarget, _selectedForHl)) {
               const typeMult = getTypeDamageMultiplier(_selectedForHl, skyTarget);
-              const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
+              const typeClass = (window._pressOf ? window._pressOf(_selectedForHl, skyTarget, null).press : false) ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
               _hlCache.set(pk, 'attack enemy' + typeClass);
             } else if (!_inTargetListMode) {
 
@@ -15186,25 +15189,25 @@
             + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
             + 'box-shadow:0 0 6px rgba(232,51,63,0.85)">!</span>';
         const _immBadgeHtml = (word) => _IMM_CIRCLE_HTML + '<span style="color:#ff6b74">' + word + '</span>';
-        /* THE ELEMENT SHARE PRESS for the previews: does the spell's ELEMENT (not its type) make this hit a press?
-           Only a weakness on a neutral type matchup (data.js elemPressVerdict). */
-        function _elemPressesOn(caster, target, spell, aff) {
-            if (aff !== 'weak' || !caster || !target || !spell || typeof getTypeDamageMultiplier !== 'function') return false;
-            const st = spell.spellType || null;
-            const stab = (st && (caster.types || []).includes(st)) ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
-            const eff = getTypeDamageMultiplier(caster, target, st) / stab;
-            return eff > 0.999 && eff < 1.001;
+        /* THE GREEN ! IS THE PRESS (mondo 2026-10-18: "just need the green exclamation point to guarantee the press
+           refund"): it rides only a hit the real refund would pay for — battle.js forecastPressOn, the same press
+           context and worst-case resolve as the cast's collector. The TYPE decides; the element presses only on a
+           neutral type matchup; an immune / absorbed element never presses; a resisted element keeps a super
+           effective type's press. `by` names which badge wears the circle. */
+        function _pressOf(caster, target, spell, opts) {
+            if (typeof forecastPressOn !== 'function') return { press: false, by: null };
+            try { return forecastPressOn(caster, target, spell, opts) || { press: false, by: null }; } catch (e) { return { press: false, by: null }; }
         }
-        window._elemPressesOn = _elemPressesOn;
+        window._pressOf = _pressOf;
 
-        function _getTypeEffLabel(caster, target, spell) {
+        function _getTypeEffLabel(caster, target, spell, pressBy) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
             // STAB is a silent bonus — the label only speaks about the actual
             // weak/resist matchup, so back the STAB factor out first.
             const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
             const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
             const effMult = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
-            if (effMult > 1.001) return { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' };
+            if (effMult > 1.001) return { text: (pressBy === 'type' ? _SE_CIRCLE_HTML : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
             if (effMult < 0.999) return { text: 'RESISTED', cls: 'not-effective' };
             return null;
         }
@@ -15357,13 +15360,13 @@
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
                     const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
-                        : _getTypeEffLabel(caster, target, spell);
+                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     /* THE ELEMENT SHARE (2026-10-17): the element badge speaks for the element PART; the green !-circle
-                       only when that part is what presses (a weakness on a NEUTRAL type matchup, data.js
-                       elemPressVerdict); immune / absorb wear the red one (the main part still lands, no press). */
-                    const _iPress = _elemPressesOn(caster, target, spell, _iAff);
+                       only when the plan presses and that part is what presses (h.pressBy, battle.js THE PRESS
+                       FORECAST); immune / absorb wear the red one (the main part still lands, no press). */
+                    const _iPress = !!(h.press && h.pressBy === 'element');
                     if (_iAff === 'weak') push((_iPress ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'immune') push(_immBadgeHtml(`${_iEl.toUpperCase()} IMMUNE`), 'intent-type-eff not-effective', 14);
@@ -15463,7 +15466,8 @@
                 }
 
                 if (spell.dmg || (spell.hitDamages && spell.hitDamages.length)) {
-                    const typeEff = _getTypeEffLabel(caster, target, spell);
+                    const _iPr = isEnemyUnit(caster, target) ? _pressOf(caster, target, spell, { aim: { x, y } }) : { press: false, by: null };
+                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null);
                     if (typeEff) {
                         badgeStack.push({ html: typeEff.text, cls: `intent-type-eff ${typeEff.cls}`, yOff });
                         yOff += 14;
@@ -15471,7 +15475,7 @@
                     // Element weak/resist reads beside the type matchup, named
                     // by its element (immune/absorb already spoke above).
                     if (_iAff === 'weak' && isEnemyUnit(caster, target)) {
-                        badgeStack.push({ html: (_elemPressesOn(caster, target, spell, _iAff) ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
                         badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });

@@ -2616,10 +2616,48 @@
             }
             return n;
         }
+        /* 🌧️ THE RAIN ON THE GROUND (2026-10-18, mondo: "a thunderstorm started, yet there is still tiles on fire on the map.
+           isnt rain supposed to put out fire? it should be immediately" + "fire spells should still work in the rain im just
+           talking about grass tiles being on fire" + "same if it rains on lava"). Nothing ever asked the rain about the ground
+           fire: tickBurningTiles only puts out a fire whose own tile turned to water or ice. Now a rain weather (def.soaks:
+           Thunderstorm, Hurricane, Blood Rain) puts out every burning tile its rain falls on the moment it forms (fires lit
+           later still burn), and hardens the lava the fight put down under it into stone (map.js lavaWaterMixOf) as it forms
+           and at every round end while it rains. The map's own lava stays, as a Drought leaves the map's own lakes. Under a
+           roof no rain lands. Host-side; state.burningTiles and the terrain ride the state-sync to the guest. */
+        function _rainLandsOn(w, x, y) {
+            if (!weatherRainsOnTile(w, x, y)) return false;
+            const col = state.boardColumns?.[y]?.[x];
+            return !(col && col.some(b => b && b.roof));
+        }
+        function rainOnTheBoard(weather, onForm) {
+            const def = weather && WEATHER_REGISTRY[weather.type];
+            if (!def || !def.soaks) return;
+            let doused = 0, hardened = 0;
+            if (onForm && state.burningTiles) {
+                for (const k of Object.keys(state.burningTiles)) {
+                    const f = state.burningTiles[k];
+                    if (f && _rainLandsOn(weather, f.x, f.y) && typeof extinguishTile === 'function' && extinguishTile(f.x, f.y)) doused++;
+                }
+            }
+            const W = bw(), H = bh(), pf = state.paintedFrom || {};
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                if (getTerrainAt(x, y) !== 'lava') continue;
+                const rec = pf[x + ',' + y];
+                if (!rec || rec.t === 'lava') continue;   // the map's own lava
+                if (!_rainLandsOn(weather, x, y)) continue;
+                if (setTerrainAt(x, y, 'water') !== false && getTerrainAt(x, y) === 'stone') hardened++;
+            }
+            if (doused) addLog(`${def.icon} The ${def.label} puts out the fire on ${doused} tile${doused !== 1 ? 's' : ''}.`);
+            if (hardened && typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+            if ((doused || hardened) && typeof scheduleBoardRender === 'function') scheduleBoardRender();
+        }
+        window.rainOnTheBoard = rainOnTheBoard;
+
         // A weather just formed (natural or cast): a static one reshapes ~30% of its tiles; a Drought dries the water.
         function weatherTerrainOnForm(weather) {
             const def = weather && WEATHER_REGISTRY[weather.type];
             if (!def) return;
+            if (def.soaks) rainOnTheBoard(weather, true);
             if (def.evaporates) evaporateBattleWater(def);
             if (def.seedTerrain && !def.roaming && !weatherDefIsGlobal(weather)) {
                 const n = seedWeatherTerrain(def, weather.tiles, 0.3);
@@ -3092,6 +3130,7 @@
                    (the last round's share comes as it dissipates); a Drought dries what was poured since */
                 const def = WEATHER_REGISTRY[weather.type];
                 if (!def) continue;
+                if (def.soaks) rainOnTheBoard(weather, false);   // 🌧️ the rain keeps hardening the fight's lava
                 if (def.evaporates) evaporateBattleWater(def);
                 if (def.seedTerrain && weatherDefIsGlobal(weather) && weather.remaining > 0) {
                     seedWeatherTerrainRandom(def, Math.max(1, Math.round(_weatherPatchSize(weather, def) * WEATHER_SEED_ROUND_FRAC)));
