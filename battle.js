@@ -3990,6 +3990,7 @@
             let glide = !sopts.noGlide, dx = Math.sign(dirX || 0), dy = Math.sign(dirY || 0);
             const ox = u.x, oy = u.y, oz = u.z;
             const nz = (tx, ty, z0) => (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(tx, ty, z0) : z0;
+            if (sopts.grounded) out.z = getHeightAt(x, y);   // a hook that yanks a flyer down: it lands, and its landing reacts
             const merge = (sub) => {
                 if (sub.simSlams && sub.simSlams.length) out.simSlams = out.simSlams.concat(sub.simSlams);
                 if (sub.simHits && sub.simHits.length) out.simHits = out.simHits.concat(sub.simHits);
@@ -5070,7 +5071,7 @@
                every leg rides res.steps (tagged ice / blast / fling) and res.legs, the end is the landing. */
             if (simulate && res.moved > 0 && !opts.noSimChain) {
                 const ch = simulateArrivalChain(target, cx, cy, cz, res.dirX, res.dirY,
-                    { byUnit: opts.byUnit || null, noGlide: res.spent, viewer: opts.viewer });
+                    { byUnit: opts.byUnit || null, noGlide: res.spent, viewer: opts.viewer, grounded: !!opts.groundFirst });
                 if (ch.legs.length) {
                     for (const st of ch.steps) res.steps.push(st);
                     res.legs = ch.legs;
@@ -9300,6 +9301,63 @@
             }
         }
 
+        /* 🧭 THE LATE NEXUS BURN (2026-10-18, mondo: a chain that throws an enemy "into my nexus so they take massive
+           damage at the end of the round"). The Nexus burn reads who stands in the zone early in the end of round; the
+           delayed blasts, turrets, doors and storms after it still move bodies (a tornado's fling, a blast's throw, the
+           ice glide after them). Once they have all acted, every grounded enemy standing in a Nexus the other team owns
+           that the early pass did not burn this round burns now: the same NEXUS_HOSTILE_DMG_PCT, the same beat. */
+        function processLateNexusBurn(onDone) {
+            const r = state.round || 0;
+            const late = [];
+            for (const unit of state.units) {
+                if (!unit || unit.dead || unit._dying || unit._nexusBurnRound === r) continue;
+                const nz = (typeof getNexusAtUnit === 'function') ? getNexusAtUnit(unit) : null;
+                if (!nz || !nz.nexus || !nz.nexus.owner || nz.nexus.owner === unit.player) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                late.push(unit);
+            }
+            if (!late.length) { if (onDone) onDone(); return; }
+            const pct = (typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : 0.25;
+            const burn = (unit) => {
+                unit._nexusBurnRound = r;
+                const hpBefore = unit.hp;
+                applyDamageToUnit(unit, Math.max(1, Math.floor(unit.maxHp * pct)), 'Hostile Nexus: ', { ignoreArmor: true });
+                const dealt = hpBefore - Math.max(0, unit.hp);
+                addLog(`⬡ The enemy-held Nexus burns ${dealt} damage to ${_ctName(unit)}.`);
+                return dealt;
+            };
+            if (_skipVisuals() || state.winner) {
+                for (const u of late) if (!u.dead) burn(u);
+                scheduleBoardRender(); checkWin();
+                if (onDone) onDone();
+                return;
+            }
+            const viewer = getViewerPlayer();
+            let i = 0;
+            const next = () => {
+                if (state.winner) { for (let k = i; k < late.length; k++) if (!late[k].dead) burn(late[k]); if (onDone) onDone(); return; }
+                if (i >= late.length) { if (onDone) onDone(); return; }
+                const unit = late[i++];
+                if (!unit || unit.dead) { next(); return; }
+                const vis = _isUnitVisibleToViewer(unit, viewer);
+                const dive = vis && !state.cameraDisabled;
+                if (dive) { _eorPhaseLabel('End of Round — Nexus'); eorFocusCamera(unit.x, unit.y, { duration: 520 }); }
+                const beat = () => {
+                    const dealt = burn(unit);
+                    if (vis) {
+                        playHitEffect(unit.x, unit.y, {});
+                        triggerStatusWiggle(unit);
+                        showBattleDialogue([`<span class="dlg-damage">⬡ The enemy-held Nexus burns ${_ctName(unit)} for ${dealt} damage!</span>`], 1400);
+                    }
+                    scheduleBoardRender();
+                    checkWin();
+                    window.setTimeout(next, dive ? actionMs(950) : (vis ? actionMs(650) : 0));
+                };
+                if (dive) window.setTimeout(beat, 560); else beat();
+            };
+            next();
+        }
+
         function processEndOfRoundZonesAndSeeds(onDone) {
 
             const events = [];
@@ -9571,6 +9629,7 @@
                     : SPAWN_ZONE_ENEMY_DMG_PCT;
                 const dmgAmt = Math.max(1, Math.floor(unit.maxHp * _pct));
                 const hpBefore = unit.hp;
+                if (_isNx) unit._nexusBurnRound = state.round || 0;   // 🧭 the late burn (processLateNexusBurn) skips it
                 applyDamageToUnit(unit, dmgAmt, _isNx ? 'Hostile Nexus: ' : 'Spawn zone: ', { ignoreArmor: true });
                 const dealt = hpBefore - Math.max(0, unit.hp);
                 addLog(`${_isNx ? '⬡ The enemy-held Nexus burns' : 'Enemy spawn zone deals'} ${dealt} damage to ${_ctName(unit)}.`);
@@ -35177,7 +35236,9 @@
             /* raw for a variance-v roll with a floor: [mid, lo, hi] */
             const rolled = (base, v, floor) => [Math.max(floor, base), Math.max(floor, base - v), Math.max(floor, base + v)];
             const addMove = (u, toX, toY, mode, extra) => {
-                if (!u || (toX === u.x && toY === u.y)) return;
+                /* a chain can bring a body back to where it started (pulled onto a bomb that throws it back): it still
+                   moved, and its legs are drawn */
+                if (!u || (toX === u.x && toY === u.y && !(extra && extra.legs && extra.legs.length))) return;
                 plan.moves.push(Object.assign({ unit: u, fromX: u.x, fromY: u.y, x: toX, y: toY, mode }, extra || {}));
                 moveTmp(u, toX, toY);
             };
@@ -35521,7 +35582,8 @@
                     const selfOnly = !!spell.selfPullOnly;
                     const allyAnchor = selfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
                     if (!selfOnly && target && isEnemyUnit(target, unit)) {
-                        slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), getUnitPushDistance(target, 2), { stopBefore: { x: unit.x, y: unit.y } }, 'pull');
+                        slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), getUnitPushDistance(target, 2), { stopBefore: { x: unit.x, y: unit.y },
+                            groundFirst: typeof isUnitAirborne === 'function' && isUnitAirborne(target) }, 'pull');
                         grounded(target);
                         const d = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + sp);
                         hit(target, d, d, d, baseOpts('physical', { allowMarkBonus: undefined, element: undefined }));
@@ -35545,7 +35607,8 @@
                 const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull');
                 const anchor = ally ? null : unitResistsDisplace(target, 'pull');
                 if (anchor) tag(target, 'anchored');
-                slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), n, { stopBefore: { x: unit.x, y: unit.y }, noFall: ally }, ally ? 'rescue' : 'pull');
+                slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), n, { stopBefore: { x: unit.x, y: unit.y }, noFall: ally,
+                    groundFirst: !ally && typeof isUnitAirborne === 'function' && isUnitAirborne(target) }, ally ? 'rescue' : 'pull');
                 if (!ally) grounded(target);
                 if (spell.dmg) {
                     const d = Math.max(16, (spell.dmg || 0) + sp);
@@ -51834,6 +51897,10 @@
                     processHomingWeather(function _afterHomingWeatherPhase() {
                     if (state.winner) return;
 
+                    // 🧭 bodies the blasts, doors and storms threw into a hostile Nexus burn this round
+                    processLateNexusBurn(function _afterLateNexusPhase() {
+                    if (state.winner) return;
+
                     processEndOfRoundRegen(function _afterRegenPhase() {
                     if (state.winner) return;
 
@@ -51996,6 +52063,7 @@
                         });
                     });
                     });
+                    });   // _afterLateNexusPhase
                     });
                     });
                     });
@@ -58235,10 +58303,14 @@
                 ? state.units.find(u => u.id === bomb.ownerUnitId && !u.dead) || null
                 : null;
             const _bombVictims = [];
+            /* 🧭 each body's throw is read BEFORE the blast hits it: a hit turns the victim to face its attacker, and
+               "the opposite way it faces" means the way it faced when the bomb went off (what the preview showed) */
+            const _bkCtx = { trigger: opts.trigger || null };
+            const _bkDirs = {};
             for (const tile of area) {
                 const target = unitAt(tile.x, tile.y);
                 if (target && target.player !== bomb.owner) {
-                    if (!_bombVictims.includes(target)) _bombVictims.push(target);
+                    if (!_bombVictims.includes(target)) { _bombVictims.push(target); _bkDirs[target.id] = bombKnockDir(bomb, target, _bkCtx); }
                     const _hpBefore = target.hp;
                     if (_bombCaster) target._lastDamageSourceId = _bombCaster.id;
                     applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
@@ -58259,7 +58331,6 @@
             /* 🧭 THE FORCED MOVE: every body the blast caught is thrown by the bomb's rule (bombKnockDir — the one that
                set it off back the way it came, the rest straight away from it; set off by its owner, the way each body
                faces reversed), through the shared slide once the blast has landed. */
-            const _bkCtx = { trigger: opts.trigger || null };
             const _bkDelay = (opts.fxDelayMs || 0) + (_skipVisuals() ? 0 : actionMs(300));
             for (const victim of _bombVictims) {
                 if (!victim || victim.dead || victim._dying) continue;
@@ -58268,7 +58339,7 @@
                     if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(victim) === 'colossal') addLog(`💥 ${_ctName(victim)} is far too massive to be blown back!`);
                     continue;
                 }
-                const d = bombKnockDir(bomb, victim, _bkCtx);
+                const d = _bkDirs[victim.id] || bombKnockDir(bomb, victim, _bkCtx);
                 resolveForcedSlide(victim, d.dx, d.dy, dist, {
                     byUnit: _bombCaster || null, label: '💥 Bomb blast: ', perStepMs: 160, delayMs: _bkDelay
                 });
@@ -69138,11 +69209,14 @@
                 // masonry), and a body in the drag lane is a bowling pin. The
                 // reel-in still stops cleanly at the caster's tile. Movement,
                 // fall damage, hazards and the drag animation resolve inside.
+                /* 🧭 a hooked enemy flyer is yanked down onto the tile it is dragged to: its landing (a bomb, a trap,
+                   ice, a storm) reacts once it is on the ground, below — not while it still counts as airborne */
+                const _pullYanks = !_plAlly && typeof isUnitAirborne === 'function' && isUnitAirborne(target);
                 const _pullSlide = resolveForcedSlide(target, pdx, pdy, pullDist, {
                     byUnit: unit, label: `${spell.name}: `,
                     perStepMs: 120, delayMs: _yankDelayMs,
                     stopBefore: { x: unit.x, y: unit.y },
-                    noFall: _plAlly,
+                    noFall: _plAlly, noChain: _pullYanks,
                     onStep: spell.pullThroughHazards ? ((sx, sy) => {
                         const terrain = getTerrainAt(sx, sy);
                         if (terrain === 'lava' || terrain === 'poison') {
@@ -69183,6 +69257,8 @@
                     };
                     if (_pullFallMs > 0) window.setTimeout(_pullLandFx, _pullFallMs); else _pullLandFx();
                     followUnitFall(target);   // camera rides the drop
+                    if (_pullYanks && !target.dead) _applyKnockbackHazard(target, {
+                        dirX: _pullSlide.dirX, dirY: _pullSlide.dirY, noGlide: !!_pullSlide.spent, fxDelayMs: _pullFallMs });
                 }
                 if (spell.dmg) {
                     // The hook's damage lands ON CAMERA — at the bite, right
@@ -71113,10 +71189,12 @@
                             // a wall in the lane is a cushion (slam + rebound),
                             // a body in the lane is a bowling pin. Movement,
                             // hazards and the drag animation resolve inside.
+                            /* 🧭 a grappled flyer is reeled down: its landing reacts once it is on the ground (below) */
+                            const _grYanks = typeof isUnitAirborne === 'function' && isUnitAirborne(target);
                             const _grSlide = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, 2), {
                                 byUnit: unit, label: 'Grapple: ',
                                 perStepMs: 120,
-                                stopBefore: { x: unit.x, y: unit.y }
+                                stopBefore: { x: unit.x, y: unit.y }, noChain: _grYanks
                             });
                             const pulled = _grSlide.moved;
                             const _grSteps = _grSlide.steps;
@@ -71141,6 +71219,8 @@
                                 };
                                 if (_grFallMs > 0) window.setTimeout(_grLandFx, _grFallMs); else _grLandFx();
                                 followUnitFall(target);   // camera rides the drop
+                                if (_grYanks && !target.dead) _applyKnockbackHazard(target, {
+                                    dirX: _grSlide.dirX, dirY: _grSlide.dirY, noGlide: !!_grSlide.spent, fxDelayMs: _grFallMs });
                             }
 
                             const grappleDmg = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + spellPower);
