@@ -5622,7 +5622,9 @@ function ActionMenu({ st, hidden }) {
     const _tileOnlyKinds = ['placeTrap', 'placeBlock', 'buildStructure', 'terrainCreate',
       'deployObject', 'deployPair', 'deployTurret', 'warpRune', 'summonWeather', 'placeMirror',
       'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison'];
-    const _listUnits = _aimSp && !_tileOnlyKinds.includes(_aimSp.kind || '')
+    // THE SELF-CAST CONFIRM: a self-cast's only target is the caster — no list, just the green CONFIRM
+    const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
+    const _listUnits = _aimSp && !_aimSelf && !_tileOnlyKinds.includes(_aimSp.kind || '')
       && ((typeof _getSpellValidTargets === 'function'
           && _getSpellValidTargets(unit, _aimSp).length > 0)
         // MOVE→CAST-only situations still get the unit list — the drum shows
@@ -5635,7 +5637,10 @@ function ActionMenu({ st, hidden }) {
     // Orientable spells keep the H/V picker ALIVE while aiming — the current
     // pick highlights, clicking the other (or pressing R) flips in place.
     const _aimOrientable = !!(_aimSp && _aimSp.orientable);
-    if (_listUnits) {
+    if (_aimSelf) {
+      modeLabel = (st.selectedTool + ' — SELF CAST · CONFIRM TO CAST').toUpperCase();
+      panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '⟳', text: st.selectedTool }, blades: [cancelBlade] });
+    } else if (_listUnits) {
       modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
       panels.push(_mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade));
     } else {
@@ -5727,14 +5732,22 @@ function ActionMenu({ st, hidden }) {
     // Multi-strike count picked on the list rides the label ("— Cowboy ×3")
     const _repSuffix = (menuView === 'attackTargets' && _pt._repeatN > 1) ? ' ×' + _pt._repeatN : '';
     confirmObj = {
-      label: (_ptUnit
+      label: _pt.selfCast ? 'SELF' : ((_ptUnit
         ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
-        : (typeof coordLabel === 'function' ? coordLabel(_pt.x, _pt.y) : (_pt.x + ',' + _pt.y))) + _repSuffix,
+        : (typeof coordLabel === 'function' ? coordLabel(_pt.x, _pt.y) : (_pt.x + ',' + _pt.y))) + _repSuffix),
       fire: () => {
         if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
         if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(_pt.x, _pt.y, _pt.z);
       },
     };
+  }
+
+  // THE SELF-CAST CONFIRM on the quick menus: an armed self-cast row (✓) gets the same green CONFIRM
+  if (view !== 'quick') _hrlgSelfArmKey = null;
+  if (!confirmObj && view === 'quick' && !st._actionExecuting) {
+    const _qp = panels[panels.length - 1];
+    const _qb = _qp && (_qp.blades || []).find(b => b && b._selfArmed);
+    if (_qb) confirmObj = { label: 'SELF', fire: _qb.fire };
   }
 
   // ── clock-HUD item slots: the unit's held items ride under the watch
@@ -7874,6 +7887,32 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   }
 }
 
+/* THE SELF-CAST CONFIRM on the quick menus (mondo 2026-10-18: "im tired of clicking on an aoe not realizing its a
+   self cast and then it automatically goes off"): a self-cast row never fires on its first click. The click arms it
+   (✓, the footprint on the caster) and the green CONFIRM on the row, or a second click on it, casts. The key names
+   the menu, the caster, the row and the moment (tile + AP), so an arm never outlives the menu it was made in. */
+let _hrlgSelfArmKey = null;
+function _hrlgSelfCastRow(blade, actingUnit, spell, key) {
+  if (!blade || !blade.available || !spell || typeof isSpellSelfCast !== 'function' || !isSpellSelfCast(spell)) return blade;
+  const k = key + '|' + actingUnit.id + '|' + actingUnit.x + ',' + actingUnit.y + '|' + (actingUnit.ap || 0);
+  const armed = _hrlgSelfArmKey === k;
+  const run = blade.fire;
+  blade.check = armed;
+  blade._selfArmed = armed;
+  blade.fire = () => {
+    if (_hrlgSelfArmKey === k) { _hrlgSelfArmKey = null; run(); return; }
+    _hrlgSelfArmKey = k;
+    if (typeof playSfx === 'function') playSfx('uiCursorFocus');
+    if (typeof updateAoePreview === 'function') {
+      try { updateAoePreview(actingUnit.x, actingUnit.y, { unit: actingUnit, spell: spell }); } catch (e) { /* cosmetic */ }
+    }
+    if (typeof markDirty === 'function') markDirty('board', 'hud');
+    if (typeof renderIfDirty === 'function') renderIfDirty();
+    if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  };
+  return blade;
+}
+
 // The clicked enemy's whole playbook as drum blades: live damage estimate,
 // costs, one-click move+strike combos, unavailability reasons. The view tab
 // carries the target's sprite / name / HP so you always know who you're
@@ -7947,7 +7986,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },
       hoverOut: () => { hideSpellTooltip(); _clearMoveArrowPreview(); },
     };
-  });
+  }).map((b, i) => _hrlgSelfCastRow(b, actingUnit, actions[i].spell, 'enemy|' + targetUnit.id + '|' + actions[i].id));
   if (!blades.length) blades.push({ id: 'none', icon: '⚔', label: 'No actions available', available: false });
 
   // The clicked enemy's face rides the view tab — instant "who am I on".
@@ -8223,7 +8262,7 @@ function _hrlgAllyBlades(actingUnit, st) {
       hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },
       hoverOut: () => { hideSpellTooltip(); _clearMoveArrowPreview(); },
     };
-  });
+  }).map((b, i) => _hrlgSelfCastRow(b, actingUnit, actions[i].spell, 'ally|' + targetUnit.id + '|' + actions[i].id));
   if (!blades.length) blades.push({ id: 'none', icon: '♥', label: 'Nothing to cast on this ally', available: false });
 
   // The ally's face rides the view tab, same as the enemy quick menu —
@@ -8764,7 +8803,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       handler: canCast ? () => {
         state._tileActionTarget = null;
         if (typeof setTool === 'function') setTool('spell', sp.name);
-        state.pendingTarget = { x: tx, y: ty, mode: 'spell', tool: sp.name, viaHover: false };
+        // THE SELF-CAST CONFIRM: setTool armed a self-cast on the caster — keep that pick
+        if (!(typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp))) state.pendingTarget = { x: tx, y: ty, mode: 'spell', tool: sp.name, viaHover: false };
         if (typeof markDirty === 'function') { markDirty('board', 'hud'); }
         if (typeof renderIfDirty === 'function') { renderIfDirty(); }
         if (typeof scheduleBoardRender === 'function') { scheduleBoardRender(); }
@@ -8881,7 +8921,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       handler: canCast ? () => {
         state._tileActionTarget = null;
         if (typeof setTool === 'function') setTool('spell', sp.name);
-        state.pendingTarget = { x: tx, y: ty, mode: 'spell', tool: sp.name, viaHover: false };
+        // THE SELF-CAST CONFIRM: setTool armed a self-cast on the caster — keep that pick
+        if (!(typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp))) state.pendingTarget = { x: tx, y: ty, mode: 'spell', tool: sp.name, viaHover: false };
         if (typeof markDirty === 'function') { markDirty('board', 'hud'); }
         if (typeof renderIfDirty === 'function') { renderIfDirty(); }
         if (typeof scheduleBoardRender === 'function') { scheduleBoardRender(); }
