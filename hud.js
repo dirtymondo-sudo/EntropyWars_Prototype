@@ -203,7 +203,10 @@ const HUD_THEME_TOKENS = {
     'drop': '0 2px 8px rgba(0,0,0,0.35)',
   },
 };
-const HUD_THEME_DEFAULT = 'crystal';
+/* the game's default (2026-10-18, mondo): his Entropy Wars Theme, a UI Maker preset (UIM_PRESETS p_entropy); Classic Blue
+   stays the base every token set rides on (no data-hud-theme) */
+const HUD_THEME_DEFAULT = 'p_entropy';
+const HUD_THEME_BASE = 'crystal';
 const HUD_THEME_KEY = 'ew_hud_theme';
 window.HUD_THEMES = HUD_THEMES;
 window.getHudTheme = function () {
@@ -220,7 +223,7 @@ window.applyHudTheme = function (id) {
   const root = document.documentElement;
   if (!root) return;
   // a UI Maker theme (preset / custom) rides on the Classic Blue base; its tokens come from THE UI MAKER's sheet
-  if (id === HUD_THEME_DEFAULT || !HUD_THEME_TOKENS[id]) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
+  if (id === HUD_THEME_BASE || !HUD_THEME_TOKENS[id]) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
   try { if (window.UIMaker) window.UIMaker.apply(); } catch (e) {}
 };
 window.applyHudTheme(window.getHudTheme());
@@ -12354,6 +12357,36 @@ function preset(id, label, hint, base, fn) {
 }
 function skinOn(t, role, o) { const s = t.skins[role]; Object.assign(s, { on: true }, o || {}); if (o && o.fill) s.fill = Object.assign({}, blankSkin(t.colors, role).fill, o.fill); return s; }
 const UIM_PRESETS = [
+  /* THE GAME DEFAULT (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game"):
+     his own export (Entropy_Wars_Theme.ewtheme.json), every value as he made it. HUD_THEME_DEFAULT wears it wherever no
+     theme was ever picked (a fresh profile); a theme someone picked stays theirs. */
+  {
+    id: 'p_entropy',
+    preset: true,
+    label: 'Entropy Wars Theme',
+    v: 1,
+    colors: {
+      plateTop: '#000000', plateMid: '#000000', plateBot: '#000000', edge: '#ffffff', seam: '#000000', rim: '#000000', lip: 'rgba(0,0,0,0)',
+      headTop: '#000000', headBot: '#000000', headInk: '#ffffff', rowTop: 'rgba(0,0,0,0)', rowBot: 'rgba(0,0,0,0)',
+      rowSelTop: 'rgba(255,255,255,0.18)', rowSelBot: 'rgba(255,255,255,0.18)', rowEdge: 'rgba(255,255,255,0)', ink: '#ffffff', inkMute: '#bcbcbc',
+      inkDim: '#7c7c7c', hair: 'rgba(255,255,255,0.3)', deadBg: '#070708', deadEdge: '#202024', deadInk: '#5e5e68', sel: '#ffffff',
+      accent: '#3cbcfc', good: '#58f898', bad: '#f83800',
+    },
+    scan: false,
+    skins: {
+      panel: { on: true, slice: '', shape: 'square', size: 0, fill: { kind: 'solid', angle: 180, alpha: 0, c1: '#000000', c2: '#000000', c3: '#000000' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 0, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 0.79, pixel: 1 },
+      head: { on: false, slice: '', shape: 'round', size: 10, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#28282c', c2: '', c3: '#161618' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 1, c: '#8c8c96' }, inner: { w: 0, c: '#3a3a42', gap: 1 }, bevel: { w: 2, light: 0.12, dark: 0.3 }, gloss: 0, glow: { r: 0, c: '#f0d060', a: 0.5 }, shadow: { y: 1, blur: 2, a: 0.45 }, opacity: 1 },
+      button: { on: true, slice: '', shape: 'shard', size: 40, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(0,0,0,0)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2.5, c: '#ffffff' }, inner: { w: 3, c: '#000000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 1 },
+      buttonSel: { on: true, slice: '', shape: 'shard', size: 40, fill: { kind: 'gradient', angle: 95, alpha: 1, c1: '#931dff', c2: '#63bdff', c3: '#fee96f' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 4, c: '#ffffff' }, inner: { w: 3, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 12, c: '#ffffff', a: 0.11 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 1 },
+      chip: { on: true, slice: '', shape: 'pixel', size: 8, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(0,0,0,0)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2, c: '#7c7c7c' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 2 },
+      chipOn: { on: true, slice: '', shape: 'pixel', size: 4, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(255,255,255,0.18)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 2 },
+      hero: { on: false, slice: '', shape: 'round', size: 10, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#1c1c1f', c2: '#0f0f11', c3: '#050506' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 1, c: '#8c8c96' }, inner: { w: 1, c: '#3a3a42', gap: 1 }, bevel: { w: 2, light: 0.12, dark: 0.3 }, gloss: 0, glow: { r: 0, c: '#f0d060', a: 0.5 }, shadow: { y: 3, blur: 8, a: 0.45 }, opacity: 1 },
+    },
+    text: { font: "'DotGothic16', monospace", titleFont: '', caps: true, track: 0.03, effect: 'outline', selInk: '#ffd200', bigFirst: 1.25, bigRows: false, italic: false, effectColor: '', shadow2: '', s2x: 1, s2y: 2, outlineW: 1, titleInk: '#61f180', rowInk: '', firstInk: '', titlePlate: '' },
+    drop: 0,
+    motion: { open: 'stretch', ms: 340, cursor: '▶', bob: true, rowTilt: 0.5, rowAlt: false, rowUpright: false, rowSlant: 0, selTilt: 0.5, selGrow: 1.08 },
+    hint: 'Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor.',
+  },
   preset('p_gilded', 'Gilded', 'Navy plates cut on the bevel under a double gold frame.', 'crystal', t => {
     Object.assign(t.colors, { edge: '#e8c66a', rim: '#8a6a24', sel: '#ffe08a', headInk: '#f2dc9a', rowEdge: '#b8933e' });
     skinOn(t, 'panel', { shape: 'bevel', size: 12, outline: { w: 2, c: '#e8c66a' }, inner: { w: 1, c: '#8a6a24', gap: 2 }, bevel: { w: 3, light: 0.18, dark: 0.35 } });
@@ -14785,7 +14818,7 @@ function surfaceCss(S, T, tid, gid) {
 }
 
 /* ── apply: one stylesheet for every surface ── */
-function globalId() { let v = ''; try { v = localStorage.getItem('ew_hud_theme') || ''; } catch (e) {} return themeById(v) ? v : 'crystal'; }
+function globalId() { let v = ''; try { v = localStorage.getItem('ew_hud_theme') || ''; } catch (e) {} return themeById(v) ? v : HUD_THEME_DEFAULT; }
 function effectiveId(S) {
   const a = db.assign[S.id];
   if (a === 'original') return S.native ? globalId() : 'original';
@@ -15718,7 +15751,7 @@ function onClick(e, root) {
     if (!editable(T) || !confirm(`Delete the theme "${T.label}"?`)) return;
     db.themes = db.themes.filter(x => x.id !== T.id);
     Object.keys(db.assign).forEach(k => { if (db.assign[k] === T.id) delete db.assign[k]; });
-    if (globalId() === T.id) window.setHudTheme('crystal');
+    if (globalId() === T.id) window.setHudTheme(HUD_THEME_DEFAULT);
     UI.themeId = globalId(); touch(); render();
   }
   else if (act === 'global') { window.setHudTheme(T.id); render(); toast(`The game now wears "${T.label}".`); }

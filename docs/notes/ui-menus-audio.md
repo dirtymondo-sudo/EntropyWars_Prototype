@@ -1509,3 +1509,8 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   db.ux e* (eHover, eBig, eLift, eBob, eFill, eMark, eLine, eLineW, eGlow, eShape, eMenu) → hud.js `seSignal()` sets the
   variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
   fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.
+
+### THE GAME DEFAULT THEME: mondo's Entropy Wars Theme (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game", with his export Entropy_Wars_Theme.ewtheme.json)
+- **The preset**: hud.js `UIM_PRESETS` opens with `p_entropy` "Entropy Wars Theme", his exported theme as a literal with every value as exported (only the id is the preset's own; `slices` was empty, so no images). Read-only like every preset: editing it makes a copy.
+- **The default**: `HUD_THEME_DEFAULT = 'p_entropy'` (getHudTheme / setHudTheme fallback, UI Maker `globalId()`, the fallback after deleting the theme the game wears). `HUD_THEME_BASE = 'crystal'` keeps Classic Blue as the token base with no data-hud-theme. Only a profile that never picked a theme (no `ew_hud_theme`) gets it; a picked theme stays.
+- Checked in a real browser on a fresh profile (no ew_ui_maker / ew_hud_theme): the battle HUD opened in it, the UI Maker showed it as PRESET + IN THE GAME, and the generated `<style id="ew-ui-maker">` was byte-identical to the one his own export makes when loaded as a custom theme.
