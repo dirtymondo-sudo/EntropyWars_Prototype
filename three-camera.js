@@ -488,11 +488,17 @@ const ThreeCamera = (function () {
         const handHeld = !!((typeof state !== 'undefined' && state && (state._userPanning || state._userOrbiting))
             || (cam._panElevLatch !== null && cam._panElevLatch !== undefined));
         const focalGroundY = _groundYWorld(focalX, focalZ);
-        const subjectLook = !isTps && !cam._cineKeepSubject
+        /* THE MENU FRAMING (2026-10-18, battle.js _menuShotPose): mondo's framed shots sit low, close over the
+           caster's shoulder and may look up at a flyer. While a menu shot is up (and over the move that leaves
+           it) the rig is an exact orbit: eye = focal − distance × gaze, aimed at the focal — no sky crane, no
+           head turn, no subject look; only the flat floor below still holds. */
+        const exactOrbit = !isTps && !handHeld && !!(cam._menuShot || (cam._menuExactUntil || 0) > performance.now());
+        const keepAim = !!cam._cineKeepSubject || exactOrbit;
+        const subjectLook = !isTps && !keepAim
             && (focalY - focalGroundY) > ts * 0.85;
         /* Cinematic sky crane (see SKY-GAZE LIFT below): programmatic board
            shots that pitch at the sky get lifted well above the battlefield. */
-        const skyCrane = !isTps && !cam._cineKeepSubject && !handHeld && !subjectLook;
+        const skyCrane = !isTps && !keepAim && !handHeld && !subjectLook;
 
         /* ══ HEAD TURN PAST THE HORIZON (2026-09-02) ══
            Orbiting is only meaningful while the gaze points at or below the
@@ -507,7 +513,7 @@ const ThreeCamera = (function () {
            aim), so crossing the horizon is seamless. The cinematic sky crane,
            the flyer subject-look and the keep-subject action shots keep their
            own deliberate past-horizon responses. */
-        const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !cam._cineKeepSubject;
+        const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !keepAim;
         const dirHX = -Math.sin(yawRad);
         const dirHZ = -Math.cos(yawRad);
         let eyeX, eyeY, eyeZ;
@@ -665,7 +671,7 @@ const ThreeCamera = (function () {
                 targetLookY = pivY + dirY * ahead;
                 targetLookZ = pivZ + dirZ * ahead;
             }
-        } else if (dirY > 1e-4 && !cam._cineKeepSubject) {
+        } else if (dirY > 1e-4 && !keepAim) {
             if (subjectLook) {
                 /* Raised focal (airborne flyer): NORMAL ORBIT past the
                    horizon — the eye is floored near the ground and the gaze
@@ -1952,6 +1958,28 @@ var EWShots = (function () {
         head.appendChild(el('b', null, 'SHOT RECORDER'));
         var x = el('button', 'ew-cine-btn', '✕'); x.addEventListener('click', function () { close(); }); head.appendChild(x);
         p.appendChild(head);
+        /* drag the panel by its title bar anywhere on screen (mondo: "let me drag the shots panel since i feel like it
+           was messing up my framing"); the spot is kept in this browser */
+        var place = function (l, t) {
+            var w = p.offsetWidth || 380, hh = p.offsetHeight || 200;
+            l = Math.max(0, Math.min(window.innerWidth - Math.min(w, 120), l));
+            t = Math.max(0, Math.min(window.innerHeight - 40, t));
+            p.style.left = l + 'px'; p.style.top = t + 'px'; p.style.right = 'auto';
+            return [l, t];
+        };
+        try { var sp = JSON.parse(localStorage.getItem(STORE + ':pos') || 'null'); if (sp && sp.length === 2) setTimeout(function () { place(sp[0], sp[1]); }, 0); } catch (e) {}
+        head.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || (e.target && e.target.closest && e.target.closest('button'))) return;
+            var r = p.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top, last = null;
+            try { head.setPointerCapture(e.pointerId); } catch (er) {}
+            var mv = function (ev) { last = place(ev.clientX - ox, ev.clientY - oy); };
+            var up = function () {
+                head.removeEventListener('pointermove', mv); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up);
+                if (last) { try { localStorage.setItem(STORE + ':pos', JSON.stringify(last)); } catch (er) {} }
+            };
+            head.addEventListener('pointermove', mv); head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
+            e.preventDefault();
+        });
         var pair = el('div', 'ew-shots-pair'); pair.id = 'ewShotsPair'; p.appendChild(pair);
         function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
         var r1w = el('div', 'ew-cine-row');

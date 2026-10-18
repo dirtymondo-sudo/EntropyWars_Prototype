@@ -4826,3 +4826,5 @@ body.ew-cine { cursor: crosshair; }
 body.ew-shots-frame { cursor: move; }
 body.ew-shots-place { cursor: copy; }
 .ew-shots-meta .ew-shots-in { flex: none; padding: 3px 5px; }
+.ew-shots-head { cursor: grab; user-select: none; touch-action: none; }
+.ew-shots-head:active { cursor: grabbing; }

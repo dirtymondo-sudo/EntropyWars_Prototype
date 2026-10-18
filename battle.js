@@ -22752,6 +22752,7 @@
                 if (this._menuShot && !opts._menuShot) {
                     const _mh = this._menuShot.home;
                     this._menuShot = null;
+                    this._menuExactUntil = performance.now() + Math.max(100, opts.duration ?? 400) + 150;   // the rig stays an exact orbit out of the low pose
                     opts = { ...opts };
                     if (opts.tilt === undefined) opts.tilt = _mh.tilt;
                     if (opts.yaw === undefined) opts.yaw = _mh.yaw;
@@ -27029,6 +27030,7 @@
             if (camera._menuShot) {
                 const h = camera._menuShot.home;
                 camera._menuShot = null;
+                camera._menuExactUntil = performance.now() + 900;   // the cast's own shot takes the rig from here
                 if (!camera._preCineView && camera._cineShotId == null)
                     camera._preCineView = { tilt: Math.min(h.tilt, REST_TILT_MAX), yaw: h.yaw, zoom: h.zoom };
                 return;
@@ -27238,6 +27240,8 @@
             if (!unit || state.cameraDisabled || state.phase !== 'battle') return false;
             if (!_fogCamAllSeen(unit)) return true;   // hidden opponent: no shot, no fallback pan
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
+            // THE TURN SHOT (mondo's framing 2026-10-18): your own unit's turn opening and the menu's root
+            if (!TPS_BETWEEN_ACTIONS && _menuUnitShot(unit, opts.duration)) return true;
             // Between-action TPS retired: returning false hands every caller
             // to its tactical fallback (turn activation, soft-reset, …).
             if (!TPS_BETWEEN_ACTIONS) return false;
@@ -27325,7 +27329,7 @@
             });
             return true;
         }
-        /* ══ THE MENU CAMERA (2026-10-14) ══
+        /* ══ THE MENU CAMERA (2026-10-14; THE FRAMING 2026-10-18) ══
            mondo: "if it is my turn and i click on an enemy, the camera needs to
            switch to a view that focuses on my unit and that enemy with good
            cinematic framing. If i am in the spell menu and select a spell to use
@@ -27334,19 +27338,31 @@
            and the camera work as one continuous shot).
            Every between-action target pick (clicking a unit on your turn, the
            attack / spell / item target lists, the cursor moving down those lists,
-           Tab cycling) lands here through _tpsTargetShot. The shot is a composed
-           TWO-SHOT on the ordinary board rig (no TPS pivot, no occlusion tricks):
-             · the camera stands behind the caster, swung MENU_CAM_SWING degrees off
-               the caster→target line (more side-on for an adjacent pair so the two
-               bodies never stack), pitched down 24-40° (lower pitch as the gap
-               grows so the ground between them reads);
-             · both REAL bodies (feet to HP bar, flight height included) are fitted
-               on the true perspective lens, centred a little right of and above
-               the screen centre: the command menu owns the bottom-left;
-             · of the two sides (and three pitches), the pose whose lines of sight to
-               both units clear the terrain wins, then the one closest to the current
-               yaw and on the same side as the last target — so cycling targets swings
-               one continuous camera move instead of flipping across the pair.
+           Tab cycling) lands here through _tpsTargetShot.
+           THE FRAMING — mondo framed these himself with the shot recorder
+           (EW_CAMERA_SHOTS_20261018-055717.json): "keeping the caster in the middle
+           except nudged to the right a little bit because the action menu with the
+           spell list open takes up like half the screen. the target in the top right
+           of the 3x3 camera grid, but closer to the point in the bottom left of that
+           corner. there should be a little bit of space between the caster and the
+           target, not overlapping. obviously zoomed in way more."
+             · THE TWO-SHOT: a close shot over the caster's shoulder. The eye stands
+               MENU_EYE_DIST from the caster's chest (his seven pair shots: 1.3-1.9
+               tiles, 1.64 on average) and is solved so the caster's chest lands on
+               MENU_CASTER_AT and the target's on MENU_TARGET_AT (screen fractions, y
+               down; his shots average caster 0.50,0.39 and target 0.68,0.30, the
+               lower-left of the top-right third). A flyer above tips the eye up from
+               low, a target below tips it down from high — the solve does that by
+               itself. The eye never sits under MENU_EYE_FLOOR over the ground: there
+               the ground wins and the caster slides down the frame (his look-up shots).
+               Of the candidate eyes, one whose sight line to the target clears the
+               terrain wins, then the one nearest behind-right of the caster and on the
+               side the last target used (cycling targets is one continuous move).
+             · THE TURN SHOT (his last shot: "for when its first one of my units turns
+               or the top of the action menu with no actions selected"): the unit alone,
+               a low three-quarter shot from its front right (_menuUnitShot).
+           ThreeCamera.sync runs both as an EXACT ORBIT (cam._menuShot, and
+           _menuExactUntil over the move that leaves one): no sky crane, no head turn.
            camera._menuShot remembers the TACTICAL view it left (resting tilt/yaw,
            the player's zoom). Any later camera move that does not name its own
            tilt/yaw/zoom (cancel → soft reset, a basic attack's pan, the next turn,
@@ -27354,15 +27370,12 @@
            return view is the tactical one, not this pose (_captureCineReturnView).
            A hand orbit adopts the player's own angle (camera.snap). */
         const MENU_CAM_MS = 560;
-        const MENU_CAM_SWING = 36;          // degrees off the caster→target line
-        const MENU_CAM_SWING_CLOSE = 56;    // adjacent pair: more side-on
-        const MENU_CAM_TILT = 66;           // pitch at melee range (90 = level, lower = more top-down)
-        const MENU_CAM_TILT_FAR = 50;       // floor as the gap grows
-        const MENU_CAM_MARGIN_H = 0.58;     // half-frame share the pair may fill sideways
-        const MENU_CAM_MARGIN_V = 0.56;     // and up/down
-        const MENU_CAM_SHIFT_H = 0.14;      // pair rides right of centre (menu bottom-left)
-        const MENU_CAM_SHIFT_V = 0.08;      // and a touch high (description bar at the bottom)
-        const MENU_CAM_MIN_DIST = 3.0;      // tiles — never closer than this to the frame centre
+        const MENU_CASTER_AT = [0.53, 0.40];   // the caster's chest on screen (x, y from the top-left)
+        const MENU_TARGET_AT = [0.68, 0.30];   // the target's chest: just inside the top-right third
+        const MENU_EYE_DIST = 1.65;            // tiles from the caster's chest, for a 1.45-tile body (feet to HP bar)
+        const MENU_EYE_FLOOR = 0.4;            // tiles over the ground, the lowest the eye goes
+        const MENU_UNIT_EYE = [1.85, 0.65];    // THE TURN SHOT: tiles ahead of the unit and to its right
+        const MENU_UNIT_AT = [0.50, 0.58];     // its chest on screen
         function _menuCamBody(o) {
             const ts = CONFIG.tileSize || BASE_TILE;
             const isUnit = o && o.id != null && o.player != null;
@@ -27380,122 +27393,181 @@
             }
             return { x: o.x * ts + ts / 2, z: o.y * ts + ts / 2, foot, top: foot + hgt };
         }
-        /* Solve one candidate pose: focal + eye distance that fit both bodies at
-           this yaw/pitch. Returns world focal, distance and the occlusion count. */
-        function _menuCamSolve(A, B, yawDeg, tiltDeg) {
-            const ts = CONFIG.tileSize || BASE_TILE;
+        /* the live lens: tan of the half angles */
+        function _menuLens() {
             const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
             const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
-            const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
-            const t = tiltDeg * Math.PI / 180, yw = yawDeg * Math.PI / 180;
+            return { tanV, tanH: tanV * ((cam3 && cam3.aspect) || (16 / 9)) };
+        }
+        /* the yaw / tilt (deg, the rig's convention) that put world point P on screen
+           fraction (sx, sy) for an eye at E — closed form on the rig's basis */
+        function _menuAim(E, P, sx, sy, lens) {
+            const a = (2 * sx - 1) * lens.tanH, b = (1 - 2 * sy) * lens.tanV, n = Math.hypot(a, b, 1);
+            const dx = P[0] - E[0], dy = P[1] - E[1], dz = P[2] - E[2];
+            const L = Math.hypot(dx, dy, dz) || 1;
+            const T = Math.atan2(1, b) + Math.asin(Math.max(-1, Math.min(1, n * dy / L / Math.hypot(b, 1))));
+            const k = b * Math.cos(T) + Math.sin(T);
+            const Y = Math.atan2(-dz, dx) - Math.atan2(k, a);
+            return { yaw: ((Y * 180 / Math.PI) % 360 + 360) % 360, tilt: T * 180 / Math.PI };
+        }
+        /* where world point P lands (screen fractions) for an eye at E with this yaw / tilt; null behind the eye */
+        function _menuProject(E, yaw, tilt, P, lens) {
+            const t = tilt * Math.PI / 180, yw = yaw * Math.PI / 180;
             const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
-            // the rig's basis (three-camera.js sync): gaze, screen-up, screen-right
-            const g = [-sT * sY, -cT, -sT * cY];
-            const up = [-cT * sY, sT, -cT * cY];
-            const rt = [cY, 0, -sY];
-            const half = ts * 0.38;
-            const pts = [];
-            for (const b of [A, B]) {
-                for (const s of [-1, 1]) {
-                    const px = b.x + rt[0] * half * s, pz = b.z + rt[2] * half * s;
-                    pts.push([px, b.foot, pz], [px, b.top, pz]);
-                }
-            }
-            const F = [0, 0, 0];
-            for (const p of pts) { F[0] += p[0]; F[1] += p[1]; F[2] += p[2]; }
-            F[0] /= pts.length; F[1] /= pts.length; F[2] /= pts.length;
-            const gap = Math.hypot(A.x - B.x, A.z - B.z, A.foot - B.foot);
-            let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
-            // fixed-point: centre the projected box on the offset point, then
-            // scale the boom so the box fills the margins (perspective-true)
-            for (let it = 0; it < 8; it++) {
-                const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
-                let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, tooNear = false;
-                for (const p of pts) {
-                    const rx = p[0] - E[0], ry = p[1] - E[1], rz = p[2] - E[2];
-                    const depth = rx * g[0] + ry * g[1] + rz * g[2];
-                    if (depth < ts * 0.6) { tooNear = true; break; }
-                    const sx = (rx * rt[0] + rz * rt[2]) / (depth * tanH);
-                    const sy = (rx * up[0] + ry * up[1] + rz * up[2]) / (depth * tanV);
-                    if (sx < xMin) xMin = sx; if (sx > xMax) xMax = sx;
-                    if (sy < yMin) yMin = sy; if (sy > yMax) yMax = sy;
-                }
-                if (tooNear) { dist *= 1.35; continue; }
-                const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
-                const k = Math.max((xMax - xMin) / 2 / MENU_CAM_MARGIN_H, (yMax - yMin) / 2 / MENU_CAM_MARGIN_V);
-                // slide the focal so the box centre lands on (SHIFT_H, SHIFT_V)
-                const ox = (cx - MENU_CAM_SHIFT_H) * dist * tanH, oy = (cy - MENU_CAM_SHIFT_V) * dist * tanV;
-                F[0] += rt[0] * ox + up[0] * oy; F[1] += up[1] * oy; F[2] += rt[2] * ox + up[2] * oy;
-                dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
-            }
-            if (F[1] < 0) F[1] = 0;
-            const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
-            // lines of sight: the eye to each body's chest must clear the terrain
-            let occl = 0;
-            const W = bw(), H = bh();
-            const groundAt = (wx, wz) => {
-                const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts);
-                if (tx < 0 || ty < 0 || tx >= W || ty >= H) return null;
-                return (typeof window._camGroundPx === 'function') ? (window._camGroundPx(tx, ty) || 0) : 0;
+            const vx = P[0] - E[0], vy = P[1] - E[1], vz = P[2] - E[2];
+            const depth = -sT * sY * vx - cT * vy - sT * cY * vz;
+            if (depth < 1) return null;
+            const rx = cY * vx - sY * vz, uy = -cT * sY * vx + sT * vy - cT * cY * vz;
+            return [(rx / (depth * lens.tanH) + 1) / 2, (1 - uy / (depth * lens.tanV)) / 2];
+        }
+        function _menuGround(wx, wz) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts);
+            if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) return 0;
+            return (typeof window._camGroundPx === 'function') ? (window._camGroundPx(tx, ty) || 0) : 0;
+        }
+        /* an eye + aim → the camera.moveTo pose: the focal rides the gaze at the caster's depth, so the
+           attack's push-in (zoom ×MENU_ATK_PUSH) eases the eye forward a little, never into the bodies */
+        function _menuPoseFromEye(E, aim, Pc) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const bd = ThreeCamera.getBaseDist();
+            if (!(bd > 0)) return null;
+            const t = aim.tilt * Math.PI / 180, yw = aim.yaw * Math.PI / 180;
+            const g = [-Math.sin(t) * Math.sin(yw), -Math.cos(t), -Math.sin(t) * Math.cos(yw)];
+            const s = Math.max(ts * 0.9, bd / 9.5,
+                (Pc[0] - E[0]) * g[0] + (Pc[1] - E[1]) * g[1] + (Pc[2] - E[2]) * g[2]);
+            const F = [E[0] + g[0] * s, E[1] + g[1] * s, E[2] + g[2] * s];
+            return {
+                x: (F[0] - ts / 2) / ts, y: (F[2] - ts / 2) / ts, elevZ: Math.max(0, F[1]),
+                zoom: Math.max(0.15, Math.min(10.0, bd / s)),
+                tilt: aim.tilt, yaw: aim.yaw
             };
-            const eg = groundAt(E[0], E[2]);
-            if (eg != null && E[1] < eg + ts * 0.5) occl += 3;   // the eye itself inside a hill / wall
-            for (const b of [A, B]) {
-                const chest = b.foot + (b.top - b.foot) * 0.5;
-                for (let i = 1; i <= 12; i++) {
-                    const u = i / 13;
-                    const sx = E[0] + (b.x - E[0]) * u, sy = E[1] + (chest - E[1]) * u, sz = E[2] + (b.z - E[2]) * u;
-                    // the subject's own tile and its neighbour stand under it — skip the last stretch
-                    if (Math.hypot(sx - b.x, sz - b.z) < ts * 0.9) break;
-                    const gy = groundAt(sx, sz);
-                    if (gy != null && gy > sy) occl++;
+        }
+        /* the other bodies on the board (never the pair): the shot keeps them off the eye and the sight lines */
+        function _menuOthers(unit, tgt) {
+            const out = [];
+            for (const u of (state.units || [])) {
+                if (!u || u.dead || u._dying || u === unit || (tgt && u.id === tgt.id) || u._insideBuildingId) continue;
+                if (typeof isUnitConcealedFrom === 'function' && typeof getViewerPlayer === 'function'
+                    && u.player !== getViewerPlayer() && isUnitConcealedFrom(u, getViewerPlayer())) continue;
+                out.push(_menuCamBody(u));
+            }
+            return out;
+        }
+        /* how badly other bodies crowd an eye: one standing on it, or across a sight line to a subject */
+        function _menuBlocked(E, subjects, others) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let n = 0;
+            for (const o of others) {
+                const ox = o.x, oz = o.z, oy = (o.foot + o.top) / 2;
+                if (Math.hypot(ox - E[0], oz - E[2]) < ts * 0.9 && E[1] > o.foot - ts * 0.3 && E[1] < o.top) { n += 2; continue; }
+                for (const P of subjects) {
+                    const vx = P[0] - E[0], vy = P[1] - E[1], vz = P[2] - E[2];
+                    const L2 = vx * vx + vy * vy + vz * vz;
+                    if (!(L2 > 1)) continue;
+                    const t = ((ox - E[0]) * vx + (oy - E[1]) * vy + (oz - E[2]) * vz) / L2;
+                    if (t <= 0 || t >= 0.92) continue;
+                    const cx = E[0] + vx * t, cy = E[1] + vy * t, cz = E[2] + vz * t;
+                    if (Math.hypot(ox - cx, oz - cz) < ts * 0.45 && cy > o.foot && cy < o.top) { n++; break; }
                 }
             }
-            return { F, dist, occl, yaw: yawDeg, tilt: tiltDeg };
+            return n;
         }
         function _menuShotPose(unit, tgt) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
                     || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
-                const bd = ThreeCamera.getBaseDist();
-                if (!(bd > 0)) return null;
                 const ts = CONFIG.tileSize || BASE_TILE;
+                const lens = _menuLens();
                 const A = _menuCamBody(unit), B = _menuCamBody(tgt);
-                const dx = (B.x - A.x) / ts, dy = (B.z - A.z) / ts;
-                const L = Math.hypot(dx, dy);
+                const Ac = [A.x, (A.foot + A.top) / 2, A.z], Bc = [B.x, (B.foot + B.top) / 2, B.z];
+                let ux = B.x - A.x, uz = B.z - A.z;
+                const L = Math.hypot(ux, uz);
+                if (L < ts * 0.05) return _menuUnitPose(unit);
+                ux /= L; uz /= L;
+                const d = MENU_EYE_DIST * ts * Math.max(1, Math.min(1.6, (A.top - A.foot) / (ts * 1.45)));
+                const others = _menuOthers(unit, tgt);
+                const floorBase = Math.min(A.foot, _menuGround(A.x, A.z));   // a flyer's eye may stay low; an interior floor is its own
                 const ms = camera._menuShot;
-                const curYaw = Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0);
-                // looking down the caster→target line (gaze = (dx, dy)); a self/same-tile
-                // pick keeps the player's resting yaw
-                const lineYaw = L > 0.01 ? Math.atan2(-dx, -dy) * 180 / Math.PI
-                    : (ms ? ms.home.yaw : (camera._restYaw ?? curYaw));
-                const swing = L <= 0.01 ? 0 : (L <= 1.5 ? MENU_CAM_SWING_CLOSE : MENU_CAM_SWING);
-                const tilt0 = Math.max(MENU_CAM_TILT_FAR, Math.min(MENU_CAM_TILT, MENU_CAM_TILT - Math.max(0, L - 1) * 2.4));
-                const sides = swing ? [1, -1] : [0];
-                const yawGap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+                const lineAz = Math.atan2(ux, uz);
+                const evalAt = (az, el) => {
+                    const E = [Ac[0] + d * Math.cos(el) * Math.sin(az), Ac[1] + d * Math.sin(el), Ac[2] + d * Math.cos(el) * Math.cos(az)];
+                    const fl = Math.max(floorBase, _menuGround(E[0], E[2])) + MENU_EYE_FLOOR * ts;
+                    let floored = false;
+                    if (E[1] < fl) { E[1] = fl; floored = true; }
+                    const aim = _menuAim(E, Bc, MENU_TARGET_AT[0], MENU_TARGET_AT[1], lens);
+                    const c = _menuProject(E, aim.yaw, aim.tilt, Ac, lens);
+                    if (!c) return null;
+                    // behind-right of the caster is home; which side of the line the eye stands
+                    const ex = E[0] - A.x, ez = E[2] - A.z;
+                    const along = ex * ux + ez * uz, side = Math.sign(ex * -uz + ez * ux) || 1;
+                    let cost = Math.pow((c[0] - MENU_CASTER_AT[0]) * 3, 2) + Math.pow(c[1] - MENU_CASTER_AT[1], 2) * (floored ? 0.15 : 1.5);
+                    if (along > 0) cost += along / ts;                         // never in front of the caster
+                    if (ms && ms.side && side !== ms.side) cost += 0.08;       // cycling targets keeps its side
+                    if (side < 0) cost += 0.02;                                 // over the right shoulder, all else equal
+                    // the sight line to the target's chest over the terrain
+                    let occl = 0;
+                    for (let i = 1; i <= 10; i++) {
+                        const u = i / 11;
+                        const sx = E[0] + (Bc[0] - E[0]) * u, sy = E[1] + (Bc[1] - E[1]) * u, sz = E[2] + (Bc[2] - E[2]) * u;
+                        if (Math.hypot(sx - B.x, sz - B.z) < ts * 0.9) break;
+                        if (_menuGround(sx, sz) > sy) occl++;
+                    }
+                    cost += occl * 0.6 + _menuBlocked(E, [Ac, Bc], others) * 0.5;
+                    return { E, aim, cost, side };
+                };
                 let best = null;
-                for (const side of sides) {
-                    for (const drop of [0, 8, 16]) {
-                        const c = _menuCamSolve(A, B, lineYaw + side * swing, Math.max(36, tilt0 - drop));
-                        c.side = side;
-                        c.score = c.occl * 4 + drop / 8 * 0.6
-                            + yawGap(c.yaw, curYaw) / 180
-                            + (ms && ms.side && side && side !== ms.side ? 0.4 : 0);
-                        if (!best || c.score < best.score) best = c;
+                for (let ai = 0; ai < 48; ai++) {
+                    const az = lineAz + Math.PI + (ai - 24) * (Math.PI / 24);
+                    for (let ei = -6; ei <= 12; ei++) {
+                        const r = evalAt(az, ei * 5 * Math.PI / 180);
+                        if (r && (!best || r.cost < best.cost)) { best = r; best.az = az; best.el = ei * 5 * Math.PI / 180; }
                     }
                 }
                 if (!best) return null;
-                return _menuPoseOf(best, bd);
+                // refine around the winner
+                const a0 = best.az, e0 = best.el;
+                for (let ai = -5; ai <= 5; ai++) {
+                    for (let ei = -5; ei <= 5; ei++) {
+                        const r = evalAt(a0 + ai * Math.PI / 360, e0 + ei * Math.PI / 360);
+                        if (r && r.cost < best.cost) best = r;
+                    }
+                }
+                const pose = _menuPoseFromEye(best.E, best.aim, Ac);
+                if (pose) pose.side = best.side;
+                return pose;
             } catch (e) { return null; }
         }
-        /* a solved candidate → the camera.moveTo pose (focal tile, height, zoom, angle) */
-        function _menuPoseOf(c, bd) {
-            const ts = CONFIG.tileSize || BASE_TILE;
-            return {
-                x: (c.F[0] - ts / 2) / ts, y: (c.F[2] - ts / 2) / ts, elevZ: c.F[1],
-                zoom: Math.max(0.15, Math.min(10.0, bd / c.dist)),
-                tilt: c.tilt, yaw: (((c.yaw % 360) + 360) % 360), side: c.side
-            };
+        /* THE TURN SHOT: the unit alone, low from its front right, looking a little up at it */
+        function _menuUnitPose(unit) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                    || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const lens = _menuLens();
+                const A = _menuCamBody(unit);
+                const Ac = [A.x, (A.foot + A.top) / 2, A.z];
+                const f = getUnitFacing(unit);
+                const fl = Math.hypot(f.dx, f.dy) || 1, fx = f.dx / fl, fz = f.dy / fl;
+                const k = Math.max(1, Math.min(1.6, (A.top - A.foot) / (ts * 1.45)));
+                const others = _menuOthers(unit, null);
+                // his front-right three-quarter first; the mirror and wider swings only when a body is in the way
+                let best = null;
+                for (const [sideK, swing] of [[1, 0], [-1, 0], [1, 25], [-1, 25], [1, 50], [-1, 50]]) {
+                    const r0 = Math.hypot(MENU_UNIT_EYE[0], MENU_UNIT_EYE[1]);
+                    const a0 = Math.atan2(MENU_UNIT_EYE[1], MENU_UNIT_EYE[0]) + swing * Math.PI / 180;
+                    const fwd = r0 * Math.cos(a0) * ts * k, rgt = sideK * r0 * Math.sin(a0) * ts * k;
+                    const E = [A.x + fx * fwd - fz * rgt, 0, A.z + fz * fwd + fx * rgt];
+                    E[1] = Math.max(A.foot, _menuGround(E[0], E[2]), _menuGround(A.x, A.z)) + MENU_EYE_FLOOR * ts;
+                    const cost = _menuBlocked(E, [Ac], others) + swing / 100 + (sideK < 0 ? 0.05 : 0);
+                    if (!best || cost < best.cost) best = { E, cost };
+                    if (cost < 0.06) break;
+                }
+                const E = best.E;
+                const pose = _menuPoseFromEye(E, _menuAim(E, Ac, MENU_UNIT_AT[0], MENU_UNIT_AT[1], lens), Ac);
+                if (pose) pose.side = 0;
+                return pose;
+            } catch (e) { return null; }
         }
         /* The on/off switch (Settings → Controls → Camera, mondo 2026-10-14): off =
            target picks keep the old tactical midpoint pan. */
@@ -27507,6 +27579,21 @@
             const pose = _menuShotPose(unit, tgt);
             if (!pose) return false;
             const key = unit.id + '@' + unit.x + ',' + unit.y + '>' + (tgt.id != null ? tgt.id : '') + '@' + tgt.x + ',' + tgt.y;
+            return _menuShotRun(key, pose, MENU_CAM_MS);
+        }
+        /* THE TURN SHOT: the local hand-played unit alone, on its turn (the turn's opening view, the menu's root) */
+        function _menuUnitShot(unit, ms0) {
+            if (!unit || unit.dead || !window._ewMenuCamOn() || state.phase !== 'battle') return false;
+            if (state.controllers?.[unit.player] !== CTRL.LOCAL || state.autoPlayers?.[unit.player]) return false;
+            if (typeof getViewerPlayer === 'function' && unit.player !== getViewerPlayer()) return false;
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== unit.id) return false;
+            const pose = _menuUnitPose(unit);
+            if (!pose) return false;
+            const f = getUnitFacing(unit);
+            const key = 'turn:' + unit.id + '@' + unit.x + ',' + unit.y + '^' + (f.dx || 0).toFixed(2) + ',' + (f.dy || 0).toFixed(2);
+            return _menuShotRun(key, pose, ms0 || MENU_CAM_MS);
+        }
+        function _menuShotRun(key, pose, durMs) {
             const ms = camera._menuShot;
             // the same pair re-picked (the row's confirm click, the drum's default
             // row) keeps the shot running instead of restarting the tween
@@ -27538,7 +27625,7 @@
             if (typeof _cineGuardEnd === 'function') _cineGuardEnd();
             camera.moveTo({
                 x: pose.x, y: pose.y, zoom: pose.zoom, tilt: pose.tilt, yaw: pose.yaw, elevZ: pose.elevZ,
-                duration: MENU_CAM_MS, easing: 'easeInOut',
+                duration: durMs, easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true
             });
             return true;
@@ -27673,6 +27760,8 @@
             if (!force && camera._menuAtk && performance.now() < camera._menuAtk.until) return;
             const uid = state._blitzActiveUnitId;
             const u = uid != null ? (state.units || []).find(un => un.id === uid && !un.dead) : getSelectedUnit();
+            // back at the menu's root with your own unit up → THE TURN SHOT
+            if (!force && u && !state.actionMode && _menuUnitShot(u)) return;
             // no tilt/yaw/zoom named → moveTo restores the remembered tactical view
             camera.moveTo({ x: u ? u.x : camera._tx, y: u ? u.y : camera._ty,
                 duration: MENU_CAM_MS, easing: 'easeInOut', _fogAllowed: true });
@@ -27801,8 +27890,10 @@
                 // the attacker at its landing spot, standing on the victim's footing
                 const land = { x: A.x + (B.x - A.x) * f, z: A.z + (B.z - A.z) * f,
                     foot: B.foot, top: B.foot + (A.top - A.foot) };
-                const out = _menuPoseOf(_menuCamSolve(land, B, ms.pose.yaw, ms.pose.tilt), bd);
+                // the same shot carried with the attacker: same angle, same offsets, moved by its leap
                 const back = ms.pose;
+                const out = { ...back, x: back.x + (land.x - A.x) / ts, y: back.y + (land.z - A.z) / ts,
+                    elevZ: Math.max(0, back.elevZ + (land.foot - A.foot)) };
                 const leapMs = Math.max(120, opts.leapMs || 260);
                 const move = (p, ms2) => {
                     // a mid-shot move: keep playOffensiveActionCamera's end-of-shot timer alive
