@@ -2709,6 +2709,9 @@
             if (!spell) return null;
             if (spell.element && typeof SPELL_ELEMENTS !== 'undefined'
                 && SPELL_ELEMENTS.includes(spell.element)) return spell.element;
+            // a spell of a cut element (vfxElement: light / shadow / arcane, 2026-10-18) or any other tag is
+            // deliberately elementless — never guessed from its name (Radiant "Bolt" is not lightning)
+            if (spell.element || spell.vfxElement) return null;
             const text = ((spell.id || '') + ' ' + (spell.name || ''));
             if (_ELEMENT_REGEX.lightning.test(text)) return 'lightning';
             if (_ELEMENT_REGEX.fire.test(text)) return 'fire';
@@ -2836,21 +2839,19 @@
             }
         }
 
-        // ── ★ ZODIAC ELEMENTAL RESONANCE ──────────────────────────────────
-        // The reigning sign's trine empowers its element for EVERYONE (both
-        // teams): fire signs boost fire spells, air signs boost lightning,
-        // water signs boost frost — time your big elemental turn to the stars.
-        // (The earth trine is reserved for a future terraforming resonance.)
-        const _ZODIAC_TRINE_ELEMENT = {
-            aries: 'fire', leo: 'fire', sagittarius: 'fire',
-            gemini: 'lightning', libra: 'lightning', aquarius: 'lightning',
-            cancer: 'cold', scorpio: 'cold', pisces: 'cold'
-        };
-        const ZODIAC_RESONANCE_MULT = 1.25;
+        // ── ★ THE ZODIAC SPELL SURGE (2026-10-18, mondo) ──────────────────
+        // Every sign surges ONE element for EVERYONE (both teams): Aries fire,
+        // Leo blood, Sagittarius psychic, Cancer water, Scorpio poison, Pisces
+        // ice, Gemini wind, Libra sonic, Aquarius lightning, Taurus ground,
+        // Virgo metal, Capricorn nature (data.js ZODIAC_SURGE_ELEMENT). The
+        // element's spell hits land ×ZODIAC_RESONANCE_MULT (_hitDamageMath).
+        // Was: one element per trine (fire / lightning / frost, earth none).
+        const ZODIAC_RESONANCE_MULT = (typeof ZODIAC_SURGE_MULT === 'number') ? ZODIAC_SURGE_MULT : 1.25;
 
         function getZodiacResonanceElement() {
-            return _ZODIAC_TRINE_ELEMENT[state.activeZodiac] || null;
+            return (typeof ZODIAC_SURGE_ELEMENT !== 'undefined' && ZODIAC_SURGE_ELEMENT[state.activeZodiac]) || null;
         }
+        window.getZodiacResonanceElement = getZodiacResonanceElement;
 
         // ── ⛰ EARTH TRINE RESONANCE (the reserved slot, filled 2026-07-13) ──
         // While an earth sign reigns (Taurus / Virgo / Capricorn) the ground
@@ -2905,11 +2906,9 @@
         // banners, so resonance is discoverable instead of hidden math.
         function getZodiacResonanceDesc() {
             const el = getZodiacResonanceElement();
-            if (el === 'fire') return '🔥 fire spells surge ×1.25';
-            if (el === 'lightning') return '⚡ lightning spells surge ×1.25';
-            if (el === 'cold') return '❄️ frost spells surge ×1.25';
-            if (isEarthZodiacActive()) return '⛰ earthworks empowered — terraforming −25% MP & +1 tile, double salvage, falls ×1.5, crystal/metal blasts amplified';
-            return '';
+            const surge = el ? `${(typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[el]) || '★'} ${el === 'earth' ? 'ground' : el} spells surge ×${ZODIAC_RESONANCE_MULT}` : '';
+            if (isEarthZodiacActive()) return (surge ? surge + ' · ' : '') + '⛰ earthworks empowered — terraforming −25% MP & +1 tile, double salvage, falls ×1.5, crystal/metal blasts amplified';
+            return surge;
         }
         window.getZodiacResonanceDesc = getZodiacResonanceDesc;
 
@@ -32720,20 +32719,21 @@
             const _comboEl = opts.element
                 || ({ fire: 'fire', lightning: 'lightning', ice: 'cold' })[opts.spellElement]
                 || null;
+            // ★ THE ZODIAC SPELL SURGE (2026-10-18): the reigning sign's own element (data.js ZODIAC_SURGE_ELEMENT)
+            // lands ×1.25 on the whole hit, for both teams. A unit's hit only (spells, an elemental rider) — burn /
+            // poison ticks, hazards and storms don't surge.
+            if (_affEl && finalDamage > 0 && sourceUnit && damageType !== 'dot'
+                && getZodiacResonanceElement() === _affEl) {
+                _offMult *= ZODIAC_RESONANCE_MULT;
+                if (live && sourceUnit._zResCalloutRound !== state.round) {
+                    sourceUnit._zResCalloutRound = state.round;
+                    const _zsName = _affEl === 'earth' ? 'ground' : _affEl;
+                    showFloatingTextForUnit(sourceUnit, `★ ${_zsName.toUpperCase()} SURGE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
+                    addLog(`★ The ${state.activeZodiac} sky surges the ${_zsName} — its power swells!`);
+                }
+            }
             let _comboSupercharge = false;
             if (_comboEl && finalDamage > 0) {
-                // ★ Zodiac resonance: the active sign's trine empowers its
-                // element for both teams (fire signs → fire, air → lightning,
-                // water → frost). Time the big elemental turn to the stars.
-                if (typeof getZodiacResonanceElement === 'function'
-                    && getZodiacResonanceElement() === _comboEl) {
-                    _offMult *= ZODIAC_RESONANCE_MULT;
-                    if (live && sourceUnit && sourceUnit._zResCalloutRound !== state.round) {
-                        sourceUnit._zResCalloutRound = state.round;
-                        showFloatingTextForUnit(sourceUnit, `★ RESONANCE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
-                        addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
-                    }
-                }
                 // The interaction table itself is pure (calcElementComboMult,
                 // see PURE DAMAGE MATH); only the callouts stay here.
                 const _cmb = calcElementComboMult(_comboEl, {
