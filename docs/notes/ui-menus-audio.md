@@ -65,6 +65,9 @@ crossing leaf (introCineWarm) landed synchronously before its group was
 parented, so `_introBuildDoor`'s fit ran on `g.parent` = null and bailed —
 the guard is now `rec.dead` (set by `_introDropDoors`). doorhq.test.js
 source-scans the signatures.
+NO DAIS (2026-10-18, mondo): the round platform `_introBuildDoor` stood under every crossing door (menu + match
+intro) is removed; the frame and sill stand straight on the floor below (menu sand/ice, the apron, the room's ground;
+on a void board with no floor the door now hangs in the void like the far roster's lone doors).
 
 ## THE TERMINAL (the match-select screen is a console's CRT) — added 2026-09-08
 Match-select is DIEGETIC: match-select.js renders a full-frame CRT monitor
