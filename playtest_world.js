@@ -78,7 +78,7 @@ const CAM = {
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 800 } });
   const counters = { mirror: 0, local: 0, tex: 0, miss: 0 };
   await installRoutes(context, counters);
-  if (process.env.CLEAN === '1') await context.addInitScript(() => { try { localStorage.setItem('ew_retro', JSON.stringify({ enabled: false, fogEnabled: false })); } catch (e) {} });   // CLEAN=1: no retro filter / no retro fog — the map's own colours
+  if (process.env.CLEAN === '1') await context.addInitScript(() => { try { localStorage.setItem('ew_retro', JSON.stringify({ enabled: false, fogEnabled: false, pixelSize: 1, ditherStrength: 0, grain: 0 })); } catch (e) {} });   // CLEAN=1: no retro filter / no retro fog — the map's own colours
   const page = await context.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(String(e && e.message || e)));

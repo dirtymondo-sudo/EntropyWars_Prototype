@@ -1490,3 +1490,10 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
 - hud.js: the aim view for a self-cast has no target list (`_aimSelf`), mode label "<SPELL> — SELF CAST · CONFIRM TO CAST", the big green CONFIRM reads "CONFIRM — SELF".
 - Quick menus (enemy / ally): `_hrlgSelfCastRow` wraps self-cast rows. The first click arms the row (✓, footprint), the inline green CONFIRM or a second click casts. The arm key (`_hrlgSelfArmKey`, module-level, never on `state`) holds menu + caster + row + tile + AP and is dropped once no quick menu is up. Tile-menu spell rows keep setTool's caster pick for self-casts.
 - Online: the guest arms locally (setTool still relays), the confirm runs the same `doSpell` relay as every other confirmed spell.
+
+## THE RETRO PARTS (2026-10-18)
+mondo: "what is the point of the retro filter toggle that says dither + grade if there is already a dither slider ... what if i want pixelate but no dither?"
+- The old "Retro Filter" toggle switched the whole retro pass (pixelate + grade + dither + quantize + grain) and collapsed the Retro / Haunted section, so pixelate needed it and brought the rest along.
+- Now the toggle is **Color Grade** (mood tint, levels, saturation, Color Depth quantize). three-post.js `_retroLive()` runs the pass while ANY part is on: grade, Pixelate > 1, Dither > 0, Grain > 0. Uniform `uGradeOn` gates `grade()` in all three shaders (GLSL `_RetroShader`, the pmndrs frame built from it, the TSL `_ngFrame`). The dither + quantize block runs only when the grade is on or Dither > 0, so Dither 0 = no weave at all.
+- Pixelate with no dither = Color Grade off, Pixelate 2x+, Dither 0. The section stays open (toggle no longer re-renders), summary lists the live parts.
+- Ownership: `ew_retro_owned` (localStorage) marks every retro setting the player SET in the menu; a scene look (map / room `look.retro`) only fills settings the player never set. Before this, every look's `pixelSize: 1` beat a Pixelate slider left on its 2x factory value.

@@ -7865,6 +7865,10 @@
             // sprites already and look wrong double-pixelated.
             const pixModelsOnly = (retroState.pixelScope || 'models') !== 'screen';
             const tintPct = Math.round(retroState.tintAmount*100);
+            // THE RETRO PARTS (2026-10-18): the Color Grade toggle is the mood grade only; Pixelate / Dither / Grain answer
+            // their own sliders, so the section stays open and live with the toggle off.
+            const retroParts = [retroOn ? 'grade' : '', retroState.pixelSize > 1 ? 'pixel ' + Math.round(retroState.pixelSize) + 'x' : '', retroState.ditherStrength > 0.001 ? 'dither' : '', retroState.grain > 0.0001 ? 'grain' : ''].filter(Boolean);
+            const retroAnyOn = retroParts.length > 0;
             const retroPresetBtns = retroPresets.map(p=>`<button class="pm-seg-btn${retroPreset===p.key?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPreset)ThreePost.setRetroPreset('${p.key}');${RJ}">${p.label}</button>`).join('');
 
             const ps = state.particleSettings || {};
@@ -8048,12 +8052,12 @@
                 <div class="pm-set-group pm-collapsible">
                     <button class="pm-collapse-header" onclick="var b=this.nextElementSibling;var c=this.querySelector('.pm-collapse-chev');if(b.style.display==='none'){b.style.display='block';c.style.transform='rotate(180deg)';}else{b.style.display='none';c.style.transform='rotate(0)';}">
                         <span class="pm-set-group-title" style="margin-bottom:0">Retro / Haunted</span>
-                        <span class="pm-collapse-summary">${retroOn ? 'on' : 'off'}</span>
-                        <span class="pm-collapse-chev"${retroOn?' style="transform:rotate(180deg)"':''}>▾</span>
+                        <span class="pm-collapse-summary">${retroAnyOn ? retroParts.join(' + ') : 'off'}</span>
+                        <span class="pm-collapse-chev"${retroAnyOn?' style="transform:rotate(180deg)"':''}>▾</span>
                     </button>
-                    <div class="pm-collapse-body" style="display:${retroOn?'block':'none'}">
+                    <div class="pm-collapse-body" style="display:${retroAnyOn?'block':'none'}">
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);${RJ}"><span class="pm-toggle-label">Retro Filter</span><span class="pm-toggle-hint">dither + grade</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);"><span class="pm-toggle-label">Color Grade</span><span class="pm-toggle-hint">mood tint + color depth only</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Mood</span>

@@ -1081,6 +1081,18 @@ const ThreePost = (function () {
         }
     } catch (e) {}
 
+    /* the retro settings the player has SET in the menu (even back to a factory number): those win over a scene look —
+       a look laid pixelSize 1 over a Pixelate slider left on 2x, so the slider did nothing on a looked map */
+    var _retroOwned = {};
+    try {
+        var _roSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_retro_owned') || 'null') : null;
+        if (_roSaved && typeof _roSaved === 'object') for (var _rok in _roSaved) if (_roSaved[_rok] === true) _retroOwned[_rok] = true;
+    } catch (e) {}
+    function _ownRetro(key) {
+        _retroOwned[key] = true;
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_retro_owned', JSON.stringify(_retroOwned)); } catch (e) {}
+    }
+
     function _saveRetro() {
         try {
             if (typeof localStorage !== 'undefined') localStorage.setItem('ew_retro', JSON.stringify(_retro));
@@ -1104,7 +1116,10 @@ const ThreePost = (function () {
             // Models-only pixelation: silhouette mask of the 3D GLB meshes
             // (white = model). uMaskMode 0 = pixelate the whole frame.
             'tMask':          { value: null },
-            'uMaskMode':      { value: 0.0 }
+            'uMaskMode':      { value: 0.0 },
+            // THE RETRO PARTS (2026-10-18): 1 = the Color Grade toggle is on (mood tint + levels + colour depth). Pixelate,
+            // Dither and Grain run off their own sliders whether it is on or not.
+            'uGradeOn':       { value: 1.0 }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -1128,6 +1143,7 @@ const ThreePost = (function () {
             'uniform float uGrain;',
             'uniform sampler2D tMask;',
             'uniform float uMaskMode;',
+            'uniform float uGradeOn;',
             'varying vec2 vUv;',
             '',
             '// 4x4 ordered Bayer matrix, 0..15 (unrolled — no dynamic array indexing for WebGL1)',
@@ -1178,15 +1194,19 @@ const ThreePost = (function () {
             '  }',
             '  vec3 c = texture2D(tDiffuse, uv).rgb;',
             '',
-            '  // 2. grade BEFORE dither so the period-correct depth is final',
-            '  c = grade(c);',
+            '  // 2. grade BEFORE dither so the period-correct depth is final (Color Grade toggle)',
+            '  if (uGradeOn > 0.5) c = grade(c);',
             '',
             '  // 3. ordered dither + quantize (the signature weave). Cells are keyed',
             '  //    to the (snapped) uv so they ride along with the pixelation grid.',
-            '  vec2 dcoord = floor(uv * uResolution / max(1.0, uDitherScale));',
-            '  float threshold = bayer4x4(dcoord) - 0.5;',
-            '  c += threshold * (uDitherStrength / uLevels);',
-            '  c = floor(c * uLevels + 0.5) / uLevels;',
+            '  //    Dither 0 = no weave at all; the colour-depth quantize belongs to the',
+            '  //    grade, and to the dither (a weave needs the steps it dithers between).',
+            '  if (uGradeOn > 0.5 || uDitherStrength > 0.001) {',
+            '    vec2 dcoord = floor(uv * uResolution / max(1.0, uDitherScale));',
+            '    float threshold = bayer4x4(dcoord) - 0.5;',
+            '    c += threshold * (uDitherStrength / uLevels);',
+            '    c = floor(c * uLevels + 0.5) / uLevels;',
+            '  }',
             '',
             '  // 4. a little animated grain over the static dither adds life',
             '  if (uGrain > 0.0) {',
@@ -1354,13 +1374,14 @@ const ThreePost = (function () {
     function _lkRetro() {
         if (!_look || !_look.retro) return _retro;
         var o = {}; for (var k in _retro) o[k] = _retro[k];
-        var L = _look.retro, presetOwned = !_lkSame(_retro.preset, _RETRO_FACTORY.preset);
-        for (var k2 in L) if (L[k2] != null && _lkSame(_retro[k2], _RETRO_FACTORY[k2])) o[k2] = L[k2];
+        var _rFree = function (k) { return !_retroOwned[k] && _lkSame(_retro[k], _RETRO_FACTORY[k]); };
+        var L = _look.retro, presetOwned = !_rFree('preset');
+        for (var k2 in L) if (L[k2] != null && _rFree(k2)) o[k2] = L[k2];
         if (!RETRO_PRESETS[o.preset]) o.preset = _retro.preset;
         /* a preset named by the look re-seeds its own levels / tint unless the look pins them — only while the player has not chosen a preset or moved those sliders */
         if (!presetOwned && L.preset && RETRO_PRESETS[L.preset]) {
-            if (L.levels == null && _lkSame(_retro.levels, _RETRO_FACTORY.levels)) o.levels = RETRO_PRESETS[L.preset].levels;
-            if (L.tintAmount == null && _lkSame(_retro.tintAmount, _RETRO_FACTORY.tintAmount)) o.tintAmount = RETRO_PRESETS[L.preset].tintAmount;
+            if (L.levels == null && _rFree('levels')) o.levels = RETRO_PRESETS[L.preset].levels;
+            if (L.tintAmount == null && _rFree('tintAmount')) o.tintAmount = RETRO_PRESETS[L.preset].tintAmount;
         }
         return o;
     }
@@ -1374,7 +1395,7 @@ const ThreePost = (function () {
     function getSceneLookOwned() {
         var own = [];
         for (var k in _LK_FACTORY) if (_lkOwnNum(k, k === 'exposure' ? _exposureUser : k === 'bloom' ? BLOOM_USER_STRENGTH : k === 'dof' ? _dofStrength : _nightMood)) own.push(k);
-        for (var r in _RETRO_FACTORY) if (!_lkSame(_retro[r], _RETRO_FACTORY[r])) own.push('retro.' + r);
+        for (var r in _RETRO_FACTORY) if (_retroOwned[r] || !_lkSame(_retro[r], _RETRO_FACTORY[r])) own.push('retro.' + r);
         for (var c in _CIN_FACTORY) if (!_lkSame(_cin[c], _CIN_FACTORY[c])) own.push('cin.' + c);
         return own;
     }
@@ -1383,7 +1404,7 @@ const ThreePost = (function () {
         if (look && typeof look === 'object') { next = {}; for (var k in look) next[k] = look[k]; }
         _look = next;
         _applyRetroUniforms();
-        if (_retroPass) _retroPass.enabled = !!_lkRetro().enabled;
+        if (_retroPass) _retroPass.enabled = _retroLive();
         _applyCinematicUniforms();
         _applyDofUniforms();
         if (_renderer && _cur) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
@@ -1405,6 +1426,14 @@ const ThreePost = (function () {
         u.uSaturation.value     = p.saturation;
         u.uLevelsInOut.value.set(p.loIn, p.hiIn);
         u.uGrain.value          = R.grain;
+        u.uGradeOn.value        = R.enabled ? 1.0 : 0.0;
+    }
+    /* THE RETRO PARTS (2026-10-18 — the user: "what if i want pixelate but no dither?"): the pass runs while ANY part is
+       on. The Color Grade toggle is the mood grade only; Pixelate (>1), Dither (>0) and Grain (>0) each answer their own
+       slider, so pixelate with no dither is Pixelate up + Dither 0. */
+    function _retroLive(R) {
+        R = R || _lkRetro();
+        return !!(R.enabled || R.pixelSize > 1.0 || R.ditherStrength > 0.001 || R.grain > 0.0001);
     }
 
     // Optional tinted scene fog. Keyed on camera distance, so with the far orbit
@@ -2950,7 +2979,7 @@ const ThreePost = (function () {
             // the stand-ins the rest of this file drives
             _bloomPass = { enabled: BLOOM_USER_STRENGTH > 0, strength: BLOOM_USER_STRENGTH, threshold: BLOOM_USER_THRESHOLD, radius: BLOOM_USER_RADIUS };
             _cinematicPass = { enabled: false, material: { uniforms: cu } };
-            _retroPass = { enabled: !!_lkRetro().enabled, material: { uniforms: ru } };
+            _retroPass = { enabled: _retroLive(), material: { uniforms: ru } };
             _fxaaPass = { enabled: false, material: { uniforms: { resolution: { value: new THREE.Vector2() } } } };
             _smaaPass = { enabled: false, setSize: function () {} };
             _dofPassH = P.dofH; _dofPassV = P.dofV;
@@ -3019,7 +3048,7 @@ const ThreePost = (function () {
         var toneU = { tDiffuse: { value: null }, uExposure: { value: 1.0 }, uMode: { value: 1.0 } };
         _bloomPass = { enabled: BLOOM_USER_STRENGTH > 0, strength: BLOOM_USER_STRENGTH, threshold: BLOOM_USER_THRESHOLD, radius: BLOOM_USER_RADIUS };
         _cinematicPass = { enabled: false, material: { uniforms: cu } };
-        _retroPass = { enabled: !!_lkRetro().enabled, material: { uniforms: ru } };
+        _retroPass = { enabled: _retroLive(), material: { uniforms: ru } };
         _fxaaPass = { enabled: false, material: { uniforms: { resolution: { value: new THREE.Vector2() } } } };
         _smaaPass = { enabled: false, setSize: function () {} };
         _dofPassH = { enabled: false, material: { uniforms: dofHU } }; _dofPassV = { enabled: false, material: { uniforms: dofVU } };
@@ -3178,7 +3207,7 @@ const ThreePost = (function () {
             uGT = _ngR(P, cu.uGradeTint, 'vec3'), uGTA = f(cu.uGradeTintAmt), uMo = f(cu.uMotion), uMoC = _ngR(P, cu.uMotionCenter, 'vec2'), uRip = _ngR(P, cu.uRipple, 'vec4'),
             uCA = _ngR(P, cu.uCssA, 'vec4'), uCB = _ngR(P, cu.uCssB, 'vec4'), uCT1 = _ngR(P, cu.uCssT1, 'vec4'), uCT2 = _ngR(P, cu.uCssT2, 'vec4'), uCM = _ngR(P, cu.uCssM, 'vec2');
         var uPx = f(ru.uPixelSize), uLv = f(ru.uLevels), uDS = f(ru.uDitherStrength), uDSc = f(ru.uDitherScale), uTi = _ngR(P, ru.uTint, 'vec3'),
-            uTA = f(ru.uTintAmount), uSat = f(ru.uSaturation), uLIO = _ngR(P, ru.uLevelsInOut, 'vec2'), uGr = f(ru.uGrain), uMM = f(ru.uMaskMode);
+            uTA = f(ru.uTintAmount), uSat = f(ru.uSaturation), uLIO = _ngR(P, ru.uLevelsInOut, 'vec2'), uGr = f(ru.uGrain), uMM = f(ru.uMaskMode), uGO = f(ru.uGradeOn);
         var LUM = V3(0.299, 0.587, 0.114);
         var S = function (p) { return tex.sample(V2(p.x, F(1).sub(p.y))); };
         var M = function (p) { return P.maskTex.sample(V2(p.x, F(1).sub(p.y))); };
@@ -3277,13 +3306,18 @@ const ThreePost = (function () {
             });
             var src = S(uv).toVar();
             T.If(P.cineOn.greaterThan(0.5), function () { src.assign(cineAt(uv)); });
-            var c = T.clamp(src.rgb.sub(uLIO.x).div(T.max(0.001, uLIO.y.sub(uLIO.x))), 0, 1).toVar();   // the grade: levels, saturation, tint
-            c.assign(T.mix(V3(T.dot(c, LUM)), c, uSat));
-            c.assign(T.mix(c, c.mul(uTi), uTA));
-            var dc = T.floor(uv.mul(uRes).div(T.max(1, uDSc)));   // ordered dither + quantize (cells ride the snapped grid)
-            var bay = m2(T.mod(dc.x, 2), T.mod(dc.y, 2)).mul(4).add(m2(T.mod(T.floor(dc.x.mul(0.5)), 2), T.mod(T.floor(dc.y.mul(0.5)), 2))).div(16);
-            c.addAssign(bay.sub(0.5).mul(uDS.div(uLv)));
-            c.assign(T.floor(c.mul(uLv).add(0.5)).div(uLv));
+            var c = src.rgb.toVar();
+            T.If(uGO.greaterThan(0.5), function () {   // the grade (Color Grade toggle): levels, saturation, tint
+                c.assign(T.clamp(c.sub(uLIO.x).div(T.max(0.001, uLIO.y.sub(uLIO.x))), 0, 1));
+                c.assign(T.mix(V3(T.dot(c, LUM)), c, uSat));
+                c.assign(T.mix(c, c.mul(uTi), uTA));
+            });
+            T.If(uGO.greaterThan(0.5).or(uDS.greaterThan(0.001)), function () {   // ordered dither + quantize (cells ride the snapped grid); Dither 0 = no weave
+                var dc = T.floor(uv.mul(uRes).div(T.max(1, uDSc)));
+                var bay = m2(T.mod(dc.x, 2), T.mod(dc.y, 2)).mul(4).add(m2(T.mod(T.floor(dc.x.mul(0.5)), 2), T.mod(T.floor(dc.y.mul(0.5)), 2))).div(16);
+                c.addAssign(bay.sub(0.5).mul(uDS.div(uLv)));
+                c.assign(T.floor(c.mul(uLv).add(0.5)).div(uLv));
+            });
             var hp = uv.mul(uRes).add(T.fract(uTime));   // a little animated grain over the static dither
             c.addAssign(T.fract(T.sin(T.dot(hp, V2(127.1, 311.7))).mul(43758.5453)).sub(0.5).mul(uGr));
             return V4(T.clamp(c, 0, 1), 1);
@@ -3625,7 +3659,7 @@ const ThreePost = (function () {
         // the eye sees (per the aesthetic guide's recommended pass order).
         _retroPass = new THREE.ShaderPass(_RetroShader);
         _retroPass.material.uniforms['uResolution'].value.set(w, h);
-        _retroPass.enabled = !!_lkRetro().enabled;
+        _retroPass.enabled = _retroLive();
         _applyRetroUniforms();
         _composer.addPass(_retroPass);
         _applySceneFog();
@@ -4086,7 +4120,9 @@ const ThreePost = (function () {
     // ── Retro / Haunted-PS1 filter API ──────────────────────────────────
     function setRetroFilter(enabled) {
         _retro.enabled = !!enabled;
-        if (_retroPass) _retroPass.enabled = !!_lkRetro().enabled;
+        _ownRetro('enabled');
+        _applyRetroUniforms();
+        if (_retroPass) _retroPass.enabled = _retroLive();
         _saveRetro();
     }
     function isRetroFilterEnabled() { return _retro.enabled; }
@@ -4094,6 +4130,7 @@ const ThreePost = (function () {
     function setRetroPreset(name) {
         if (!RETRO_PRESETS[name]) return;
         _retro.preset = name;
+        _ownRetro('preset'); _ownRetro('levels'); _ownRetro('tintAmount');
         // re-seed the preset-driven sliders so they reflect the new mood
         var p = RETRO_PRESETS[name];
         _retro.levels = p.levels;
@@ -4115,7 +4152,9 @@ const ThreePost = (function () {
         if (isNaN(v)) return;
         if (!(key in _retro)) return;
         _retro[key] = v;
+        _ownRetro(key);
         _applyRetroUniforms();
+        if (_retroPass) _retroPass.enabled = _retroLive();
         _saveRetro();
     }
     function getRetroParam(key) { return _retro[key]; }
@@ -4123,6 +4162,7 @@ const ThreePost = (function () {
        the pixel-art terrain sprites untouched. 'screen' = the whole frame. */
     function setRetroPixelScope(scope) {
         _retro.pixelScope = (scope === 'screen') ? 'screen' : 'models';
+        _ownRetro('pixelScope');
         if (_retroPass && _retro.pixelScope === 'screen') {
             _retroPass.material.uniforms['tMask'].value = null;
             _retroPass.material.uniforms['uMaskMode'].value = 0.0;
