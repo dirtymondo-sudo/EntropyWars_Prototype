@@ -10220,7 +10220,7 @@
         const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','steal','cleanseArea','door','doorBreach','doorDelivery','doorSlam','doorExit','doorTrap','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
-        const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];
+        const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','psychic','sonic','metal','blood'];   // twelve since 2026-10-18 (light, shadow, arcane cut)
         const _SLB_DMGTYPES = ['physical', 'magic'];
         const _SLB_TIERS = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): THE tier, numeric = its SP cost
         const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
@@ -12350,10 +12350,10 @@
 
         /* ── NEW ▾ (§5.8): role templates from the census medians, passive templates, families, upgrades ── */
         const _SLB2_ROLE_TEMPLATES = {
-            damage:       { type: 'damage', kind: 'damage', spellType: 'human', element: 'arcane', damageType: 'magic', dmg: 100, range: 3, apCost: 2 },
+            damage:       { type: 'damage', kind: 'damage', spellType: 'human', damageType: 'magic', dmg: 100, range: 3, apCost: 2 },
             damageEffect: { type: 'damage', kind: 'damage', spellType: 'human', element: 'fire', damageType: 'magic', dmg: 80, range: 3, apCost: 2, statusEffects: [{ id: 'burn', duration: 2 }] },
-            effect:       { type: 'debuff', kind: 'debuff', spellType: 'human', element: 'shadow', range: 3, apCost: 1, statusEffects: [{ id: 'slow', duration: 2 }] },
-            heal:         { type: 'heal', kind: 'heal', spellType: 'divine', element: 'light', heal: 100, range: 3, apCost: 1 },
+            effect:       { type: 'debuff', kind: 'debuff', spellType: 'human', range: 3, apCost: 1, statusEffects: [{ id: 'slow', duration: 2 }] },
+            heal:         { type: 'heal', kind: 'heal', spellType: 'divine', heal: 100, range: 3, apCost: 1 },
             utility:      { type: 'utility', kind: 'scan', spellType: 'tech', range: 0, apCost: 1, scanRadius: 4 },
             movement:     { type: 'utility', kind: 'dash', spellType: 'human', range: 3, apCost: 1, dashDamage: 40 },
             deploy:       { type: 'utility', kind: 'deployTurret', spellType: 'tech', element: 'metal', range: 2, apCost: 2, turretHp: 120, turretDmg: 40, turretRange: 3, maxActivePerCaster: 1 },
