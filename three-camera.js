@@ -488,17 +488,11 @@ const ThreeCamera = (function () {
         const handHeld = !!((typeof state !== 'undefined' && state && (state._userPanning || state._userOrbiting))
             || (cam._panElevLatch !== null && cam._panElevLatch !== undefined));
         const focalGroundY = _groundYWorld(focalX, focalZ);
-        /* THE MENU FRAMING (2026-10-18, battle.js _menuShotPose): mondo's framed shots sit low, close over the
-           caster's shoulder and may look up at a flyer. While a menu shot is up (and over the move that leaves
-           it) the rig is an exact orbit: eye = focal − distance × gaze, aimed at the focal — no sky crane, no
-           head turn, no subject look; only the flat floor below still holds. */
-        const exactOrbit = !isTps && !handHeld && !!(cam._menuShot || (cam._menuExactUntil || 0) > performance.now());
-        const keepAim = !!cam._cineKeepSubject || exactOrbit;
-        const subjectLook = !isTps && !keepAim
+        const subjectLook = !isTps && !cam._cineKeepSubject
             && (focalY - focalGroundY) > ts * 0.85;
         /* Cinematic sky crane (see SKY-GAZE LIFT below): programmatic board
            shots that pitch at the sky get lifted well above the battlefield. */
-        const skyCrane = !isTps && !keepAim && !handHeld && !subjectLook;
+        const skyCrane = !isTps && !cam._cineKeepSubject && !handHeld && !subjectLook;
 
         /* ══ HEAD TURN PAST THE HORIZON (2026-09-02) ══
            Orbiting is only meaningful while the gaze points at or below the
@@ -513,7 +507,7 @@ const ThreeCamera = (function () {
            aim), so crossing the horizon is seamless. The cinematic sky crane,
            the flyer subject-look and the keep-subject action shots keep their
            own deliberate past-horizon responses. */
-        const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !keepAim;
+        const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !cam._cineKeepSubject;
         const dirHX = -Math.sin(yawRad);
         const dirHZ = -Math.cos(yawRad);
         let eyeX, eyeY, eyeZ;
@@ -671,7 +665,7 @@ const ThreeCamera = (function () {
                 targetLookY = pivY + dirY * ahead;
                 targetLookZ = pivZ + dirZ * ahead;
             }
-        } else if (dirY > 1e-4 && !keepAim) {
+        } else if (dirY > 1e-4 && !cam._cineKeepSubject) {
             if (subjectLook) {
                 /* Raised focal (airborne flyer): NORMAL ORBIT past the
                    horizon — the eye is floored near the ground and the gaze
