@@ -4910,8 +4910,12 @@ function _hrlgTargetBlades(unit, st, mode) {
         if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, tz);
       },
       // THE STRIKE ARROW (ui.js): the hovered attack row draws the red arrow onto its target, leaving goes back to the pick
-      hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); } : undefined,
-      hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); } : undefined,
+      // THE STRIKE ARROWS (ui.js): a hovered spell row in reach paints its cast (footprint, numbers, an arrow onto
+      // every body it hits, the ricochet hop); leaving goes back to the pick
+      hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); }
+        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y); } : undefined,
+      hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); }
+        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(null); } : undefined,
     };
   });
   // (The ×1/×2/×3 multi-strike picker is gone: an attack ENDS the turn, so
@@ -7298,6 +7302,7 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   // Casting position (where the strike/shove is measured from): the move
   // destination when repositioning, else the unit's current tile.
   let castX = actingUnit.x, castY = actingUnit.y;
+  let _strikePx = actingY;   // the strike arrow's start height (the cast tile's surface)
 
   // "Move Towards" spends the unit's WHOLE remaining movement chasing (see
   // _chainMoveTowards) — preview the REAL chained route and end tile, not
@@ -7398,12 +7403,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       motion: { wps: _mw, kind: _mAir ? 'fly' : 'walk', faceTo: { x: ax, y: ay },
         castSpell: (action && action.spell) || null, attack: !!(action && (action.id === 'attack' || action.id === 'combo')) } });
 
-    // Arced strike arrow lobbing from the move destination onto the target.
-    ThreeRenderer.drawArrow3D(castX, castY, ax, ay, arrowColor, false, castYpx, targetY, { arc: 0.35, flow: true });
-  } else {
-
-    // Arced strike arrow straight from the unit's current tile onto the target.
-    ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, ax, ay, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
+    // Arced strike arrow lobbing from the move destination onto the target (drawn with the forecast below).
+    _strikePx = castYpx;
   }
 
   // Quiet reach field under the loud target/AoE layer (red damage / green
@@ -7422,6 +7423,13 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   const _plan = (action && action.spell && typeof forecastSpellPlan === 'function')
     ? forecastSpellPlan(actingUnit, action.spell, ax, ay, _aim ? undefined : targetUnit.z, { castFrom: _castFrom })
     : null;
+
+  /* THE STRIKE ARROWS (ui.js drawForecastStrikes): a damage cast lobs one arced arrow from the cast tile onto every
+     body the forecast hits from this aim (an AoE's whole blast, the random pool); anything else, or a forecast with
+     no victim, keeps the one arrow onto the aim. */
+  const _struck = (_plan && _plan.handled && typeof window.drawForecastStrikes === 'function')
+    ? window.drawForecastStrikes(_plan, actingUnit, castX, castY, _strikePx) : 0;
+  if (!_struck) ThreeRenderer.drawArrow3D(castX, castY, ax, ay, arrowColor, false, _strikePx, targetY, { arc: 0.35, flow: true });
 
   /* THE BANE FORECAST (2026-10-17): a bane row reads its throw like a spell row — the crimson plate on every tile
      it hits (the grenade's blast too), the numbers over every body (battle.js forecastBanePlan). */

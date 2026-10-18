@@ -14500,6 +14500,14 @@
             _drawAttackAimArrow(x, y, z);
         };
 
+        /* the spell target list's rows (hud.js): (x, y) = the hovered row's target; no x = back to the picked one */
+        window._ewSpellAimHover = function (x, y) {
+            if (state.actionMode !== 'spell') return;
+            const pt = state.pendingTarget;
+            if (x == null) { if (pt && pt.x != null) updateAoePreview(pt.x, pt.y); return; }
+            updateAoePreview(x, y);
+        };
+
         /* ov = { unit, spell }: paint a spell that is NOT armed (the tile quick menu's hovered row, hud.js) with the
            same footprint + forecast the armed cast shows. Without ov it reads the armed tool as always. */
         function updateAoePreview(x, y, ov) {
@@ -15553,6 +15561,29 @@
         }
         window.drawForecastChain = drawForecastChain;
 
+        /* THE STRIKE ARROWS (2026-10-18, mondo: "for an aoe or multi target spell i wanna see multiple damage arrows from
+           the caster to the enemies that change with where i am hovering the spell over"): one arced crimson strike
+           arrow from the tile the cast leaves (fromX, fromY; fromPx = its surface height) onto EVERY body the forecast
+           says the cast itself hits (h.direct, battle.js forecastSpellPlan) — the hops off a victim keep their own
+           arrows (drawForecastChain). Returns how many it drew (0 = the caller's single aim arrow stands). Viewer-local. */
+        function drawForecastStrikes(plan, caster, fromX, fromY, fromPx) {
+            if (!plan || !plan.hits || !plan.hits.length || !caster) return 0;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return 0;
+            if (fromX == null) { fromX = caster.x; fromY = caster.y; }
+            if (fromPx == null) { try { fromPx = (fromX === caster.x && fromY === caster.y) ? ThreeRenderer.unitSurfaceY(caster) : ThreeRenderer.tileTopY(fromX, fromY); } catch (e) {} }
+            let n = 0;
+            for (const h of plan.hits) {
+                const u = h.unit;
+                if (!u || u.dead || u.id === caster.id || !h.direct || !(h.hits > 0)) continue;
+                if (u.x === fromX && u.y === fromY) continue;
+                let toY;
+                try { toY = ThreeRenderer.unitSurfaceY(u); } catch (e) {}
+                try { ThreeRenderer.drawArrow3D(fromX, fromY, u.x, u.y, EW_PREVIEW.hit, false, fromPx, toY, { arc: 0.35, flow: true }); n++; } catch (e) {}
+            }
+            return n;
+        }
+        window.drawForecastStrikes = drawForecastStrikes;
+
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
         const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
@@ -15634,6 +15665,7 @@
             const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y) : null;
             if (_plan && _plan.handled) {
                 _fcRenderBadges(caster, spell, _plan);
+                drawForecastStrikes(_plan, caster);   // THE STRIKE ARROWS: caster → every body it hits from this aim
                 drawForecastMoves(_plan, caster, 'spellLanding');
                 drawForecastChain(_plan, caster, x, y, 'spellChain');
                 return;

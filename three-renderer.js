@@ -15686,6 +15686,7 @@ const ThreeRenderer = (function () {
         /* ricochet / chain / fork victims off the footprint (ui.js drawForecastChain): the same crimson hit plate */
         'spellChain':          { fill: 0.74, edgeGlow: 1.4, inset: 1.0 },
         'actionPlanChain':     { fill: 0.74, edgeGlow: 1.4, inset: 1.0 },
+        'spellApproachChain':  { fill: 0.74, edgeGlow: 1.4, inset: 1.0 },
         'actionPlanTarget':    { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
         'spellApproachTarget': { fill: 0.78, edgeGlow: 1.45, inset: 1.0 }, /* the move+cast footprint: a solid plate */
         'spellRange':          { fill: 0.12, edgeGlow: 1.0 },
