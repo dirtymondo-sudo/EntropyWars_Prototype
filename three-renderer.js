@@ -853,7 +853,8 @@ const ThreeRenderer = (function () {
     /* an overlay's tile: its name says it first (a reach, a landing), then its colour */
     var _HL_OVERLAY_KIND = { enemyRange: function (c) { return c === 0x5aa8ff ? 'allyRange' : 'foeRange'; },
         attackRange: function () { return 'atkReach'; }, spellApproachShove: function () { return 'force'; }, actionPlanShove: function () { return 'force'; },
-        movePreview: function () { return 'move'; }, moveHoverDest: function () { return 'move'; }, spellApproachMove: function () { return 'move'; } };
+        movePreview: function () { return 'move'; }, moveHoverDest: function () { return 'move'; }, spellApproachMove: function () { return 'move'; },
+        weather: function () { return 'none'; } };   // the weather's own tile colours never take a situation's colour
     function _hlKindOfOverlay(name, c) {
         var f = _HL_OVERLAY_KIND[name];
         return (f && f(c)) || _hlKindOfHex(c);

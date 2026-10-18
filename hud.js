@@ -13268,8 +13268,7 @@ const AIM_TILE_KINDS = [
   ['force', 'Push / pull landing', '#bb66ff', 'act'], ['combo', 'Combo target', '#ff8822', 'act'],
   ['foeRange', 'Enemy reach', '#ff4545', 'other', 'Hovering an enemy shows where it can hit'], ['allyRange', 'Your unit\'s reach', '#5aa8ff', 'other', 'Hovering your unit shows where it can hit'],
   ['cursor', 'Cursor', '#ffd83d', 'other'], ['ally', 'Ally', '#ddaa22', 'other'], ['inspect', 'Inspect', '#22eebb', 'other'], ['place', 'Placeable', '#44aaff', 'other'],
-  ['glowFoe', 'About to hit (gold)', '#ffd23d', 'glow', 'The gold ground glow while a spell lands on enemies'], ['glowFriend', 'Lands on your side', '#fff4d6', 'glow'],
-  ['glowCaster', 'The caster', '#ffffff', 'glow']];
+  ['glowFoe', 'About to hit (gold)', '#ffd23d', 'glow', 'The gold ground glow while a spell lands on enemies'], ['glowFriend', 'Lands on your side', '#fff4d6', 'glow', 'The ground glow while a heal or a buff lands']];
 const aimKey = (pre, k) => pre + k[0].toUpperCase() + k.slice(1);
 AIM_ARROW_KINDS.forEach(([k]) => { UX_DEF[aimKey('wc', k)] = ''; });
 AIM_TILE_KINDS.forEach(([k]) => { UX_DEF[aimKey('tc', k)] = ''; });
@@ -14790,7 +14789,7 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
 .uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
 .uim-arr-box.surf > span { background: #138aa3; }
-.uim-aimprev { margin: 6px 0 8px; }
+.uim-aimprev { position: sticky; top: -8px; z-index: 4; margin: 6px -10px 8px; padding: 6px 10px 4px; background: rgb(14,16,22); box-shadow: 0 7px 9px -7px rgba(0,0,0,0.85); }
 .uim-aimprev canvas { display: block; width: 100%; height: 178px; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
 .uim-aimkey { display: flex; flex-wrap: wrap; gap: 2px 9px; margin-top: 5px; font-size: 10px; color: #aab3c3; }
 .uim-aimkey span { display: inline-flex; align-items: center; gap: 4px; }
