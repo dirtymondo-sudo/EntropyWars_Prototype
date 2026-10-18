@@ -4718,8 +4718,10 @@ function _hrlgTargetBlades(unit, st, mode) {
       if (spell) {
         const _spEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
         elemAff = (_spEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(tUnit, _spEl) : null;
-        if (elemAff === 'weak' && !superEff && !typeAdv) superEff = true;
       }
+      /* THE GREEN ! IS THE PRESS (mondo 2026-10-18): only when the real refund would pay (battle.js forecastPressOn —
+         type first, the element on a neutral type only, absorb / immune never, the whole blast worst case). */
+      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, tUnit, spell || null).press : false;
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -4754,7 +4756,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
       note: t._approach ? 'MOVE→CAST' : null,
-      superEff: superEff && elemAff !== 'immune' && elemAff !== 'absorb',
+      superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
@@ -4971,8 +4973,9 @@ function _hrlgComboBlades(unit, st) {
       const _stab = (_cType && (unit.types || []).includes(_cType))
         ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
       const _eff = getTypeDamageMultiplier(unit, t.u, _cType) / _stab;
-      if (_eff > 1.001) superEff = true;
-      else if (_eff < 0.999) typeAdv = '▼';
+      if (_eff < 0.999) typeAdv = '▼';
+      // the green ! is the PRESS doComboAttack would pay (the combo's type, then its element on a neutral type)
+      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, t.u, null, { combo, partner }).press : false;
     }
     // Damage forecast: the projected combo damage blinks white on the row's
     // HP bar + reads as the ≈−N chip — the exact same treatment every
@@ -6138,6 +6141,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       moveTile: canAttack ? null : atkMoveTile,
       preview: canAttack ? atkPreview : moveAtkPreview,
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
+      press: (typeof window._pressOf === 'function') ? !!window._pressOf(actingUnit, targetUnit, null).press : false,
       available: true,
     });
     // (No "Attack ×N" rows anymore: an attack ENDS the turn, so a second
@@ -6588,6 +6592,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // "super effective" (no damage), so no green ! / ▼ on those rows.
         typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
+        // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
+        press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
+          ? !!window._pressOf(actingUnit, targetUnit, sp, {
+              aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
+              castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? { x: spMoveTile.x, y: spMoveTile.y, z: spMoveTile.z } : null,
+            }).press : false,
         available: true,
         spell: sp,
       });
@@ -6654,6 +6664,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         preview: (_cbBest && _cbBest.dmg > 0) ? { type: 'damage', amount: _cbBest.dmg } : null,
         typeNote: (_cbBest && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, _cbBest.combo.spellType || null) : '',
+        press: (_cbBest && typeof window._pressOf === 'function')
+          ? !!window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner }).press : false,
         badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
         _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
         available: true,
@@ -7722,7 +7734,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
-      superEff: typeAdv === '▲' && !_eaImm,
+      // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
+      superEff: (a.press != null) ? !!a.press : (typeAdv === '▲' && !_eaImm),
       immWarn: _eaImm,
       meta: typeAdv === '▼' ? { text: '▼', color: EW.bad } : null,
       note: isMove
