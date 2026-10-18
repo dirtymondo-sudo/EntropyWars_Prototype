@@ -16112,11 +16112,22 @@
         if (skipTrackBtn) skipTrackBtn.onclick = () => {
             skipBattleTrack();
         };
+        /* every volume control (settings, pause menu, HQ menu, mute) ends in
+           one of these slider inputs, so saving here covers them all; the
+           levels load back in state.js _ewSavedVolume */
+        function _ewSaveAudioVolumes() {
+            try {
+                localStorage.setItem('ew_audioVolumes', JSON.stringify({
+                    music: state.musicVolume, sfx: state.sfxVolume, ambience: state.ambienceVolume
+                }));
+            } catch (e) {}
+        }
         if (musicVolumeSlider) {
             musicVolumeSlider.addEventListener('input', (event) => {
                 state.musicVolume = Math.max(0, Math.min(1, Number(event.target.value) / 100));
                 applyMusicVolumeMix();
                 renderAudioControls();
+                _ewSaveAudioVolumes();
             });
         }
         if (sfxVolumeSlider) {
@@ -16124,6 +16135,7 @@
                 state.sfxVolume = Math.max(0, Math.min(1, Number(event.target.value) / 100));
                 refreshVisibleVolumeValues();
                 renderAudioControls();
+                _ewSaveAudioVolumes();
             });
         }
         if (ambienceVolumeSlider) {
@@ -16132,8 +16144,12 @@
                 applyAmbienceVolumeMix();
                 refreshVisibleVolumeValues();
                 renderAudioControls();
+                _ewSaveAudioVolumes();
             });
         }
+        /* the sliders' HTML defaults (68/90/80) would show until first touched,
+           and the pause/HQ menus read their values; set them from the saved levels */
+        if (typeof refreshVisibleVolumeValues === 'function') refreshVisibleVolumeValues();
         if (enterGameBtn) {
             enterGameBtn.onclick = enterGameFromTitle;
         }
