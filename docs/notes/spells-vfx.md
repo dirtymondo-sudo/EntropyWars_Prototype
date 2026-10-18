@@ -1445,6 +1445,6 @@ the sandbox: Fairy Forest arena (WebGL + WebGPU) and Göbekli Tepe tile board (W
   plus the per-tile stagger. Numbers ×1.12 on screen and live ×1.25; tags ×0.8 (levelup/laststd/nexus/achieve keep full size).
   Floor: number ink ≥ 6.5% of screen height, tags ≥ 2.7%, number ≤ 15% (`FLOAT_MIN_*` / `FLOAT_MAX_HERO_H`).
 - battle.js `_hitReadDress3D`: the CRIT stamp sits on the number's top-right shoulder (it used to cover the last digit).
-- Action-cam TOTAL DMG (battle.js `AC_TALLY_HOLD_MS` 1400 per hit, `AC_TALLY_LINGER_MS` 1700 after the bars leave via
+- Action-cam TOTAL DMG (battle.js `AC_TALLY_HOLD_MS` 1400 per hit, `AC_TALLY_LINGER_MS` 1400 (was 1700; turn clock stays hidden until it fades) after the bars leave via
   `.dmg-linger`; settle pulse `.land`). CSS: bigger figure on a dark plate, label above. online.js: the guest rolls its own
   corner total from relayed `-N` hit pops (data.hit / dmgAmt) and `+N` heal pops.

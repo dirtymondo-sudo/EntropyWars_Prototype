@@ -21654,7 +21654,8 @@
            and when the chrome leaves, the spell name + total stay put
            AC_TALLY_LINGER_MS more while the letterbox slides away. */
         const AC_TALLY_HOLD_MS = 1400;
-        const AC_TALLY_LINGER_MS = 1700;
+        const AC_TALLY_LINGER_MS = 1400;   // mondo 2026-10-18: 0.3 s shorter
+        const AC_TALLY_FADE_MS = 600;   // = styles-cinematic.css .acam-title fade after the linger
         let _acLingerTimer = null;
 
         function _ensureActionCamChrome() {
@@ -21727,10 +21728,16 @@
                     Math.max(60, st.holdUntil - performance.now()));
                 return;
             }
+            // a repeat hide while the last shot's readout lingers leaves that linger running
+            if (!st && _acLingerTimer) return;
             if (st?.hideTimer) clearTimeout(st.hideTimer);
             if (st?.rollRaf) cancelAnimationFrame(st.rollRaf);
             _acChromeState = null;
-            document.body.classList.remove('ew-spell-shot');
+            if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
+            const _lingers = !!(st && st.heavy && st.total > 0 && !_skipVisuals() && _acChromeEl);
+            /* the turn clock stays aside until the corner total is GONE — it sits where the readout
+               lingers (mondo 2026-10-18: "it should stay hidden until the damage number goes away") */
+            if (!_lingers) document.body.classList.remove('ew-spell-shot');
             if (!_acChromeEl) return;
             // Snap the counter to the true final total before it leaves.
             if (st && st.total > 0) {
@@ -21740,14 +21747,17 @@
             _acChromeEl.classList.remove('active');
             _acChromeEl.classList.add('hiding');
             // A shot that dealt (or healed) something keeps its readout up a
-            // beat longer as the bars leave (styles-cinematic.css .dmg-linger).
-            if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
-            if (st && st.heavy && st.total > 0 && !_skipVisuals()) {
+            // beat longer as the bars leave (styles-cinematic.css .dmg-linger),
+            // then fades (AC_TALLY_FADE_MS) — and only then does the turn clock return.
+            if (_lingers) {
                 const chromeEl = _acChromeEl;
                 chromeEl.classList.add('dmg-linger');
                 _acLingerTimer = setTimeout(() => {
-                    _acLingerTimer = null;
                     chromeEl.classList.remove('dmg-linger');
+                    _acLingerTimer = setTimeout(() => {
+                        _acLingerTimer = null;
+                        document.body.classList.remove('ew-spell-shot');
+                    }, AC_TALLY_FADE_MS);
                 }, AC_TALLY_LINGER_MS);
             }
         }
