@@ -12554,6 +12554,13 @@ const UX_DEF = {
      column's px (0 = fit); qElemSize; qConeFrom icon | centre; qConeTo port | portcorner | card | corner | name */
   qSpot: 'pin', qPinGap: 8, qNamePos: 'beside', qVitalsPos: 'beside', qTypesPos: 'bars', qStatLook: 'grade', qStatBarW: 46, qStatGap: 14,
   qColInfo: 0, qColStats: 0, qColElem: 0, qElemSize: 1, qConeFrom: 'icon', qConeTo: 'port',
+  /* pass 14 (2026-10-18, mondo: "the space between the columns of the stats only lets me change horizontal space, i need
+     vertical spacing too. let me make the name different colors depending if its my team or the enemy team. let me change
+     the layout and spacing between the elements, vertical and horizontal. i want to change the vertical spacing between
+     the health and mana bars, or at least let me choose if the number go beneath it or next to it on on top of it"):
+     qStatRowGap; qNameAllyCol / qNameFoeCol ('' = the game's own); qGapX / qGapY = the space between the card's parts;
+     qBarGap = HP ↔ MP; qNumPos right | left | above | under | on | off; qBarH = the HP bar's thickness (MP = 80%) */
+  qStatRowGap: 0, qNameAllyCol: '', qNameFoeCol: '', qGapX: 0, qGapY: 0, qBarGap: 4, qNumPos: 'right', qBarH: 10,
 };
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
@@ -12717,6 +12724,20 @@ function uxCss() {
   else if (X.qStatLook === 'number') css += `${QP} .hrlg-qstat .ew-grade { display: none !important; }\n`;
   if (chg('qStatBarW')) css += `${HI}.hrlg-panels { --qp-statbar: ${n('qStatBarW', 16, 140)}px; }\n`;
   if (chg('qElemSize')) css += `${QP} > .hrlg-qelem { zoom: ${n('qElemSize', 0.5, 1.6)}; }\n`;
+  if (chg('qStatRowGap')) css += `${QP} > .hrlg-qstats { row-gap: ${n('qStatRowGap', 0, 40)}px !important; }\n`;
+  if (X.qNameAllyCol) css += `${QP}.ally .hrlg-view-tab-text { color: ${X.qNameAllyCol} !important; }\n`;
+  if (X.qNameFoeCol) css += `${QP}.enemy .hrlg-view-tab-text { color: ${X.qNameFoeCol} !important; }\n`;
+  if (chg('qGapX') || chg('qGapY')) css += `${QP} { column-gap: ${n('qGapX', 0, 80)}px !important; row-gap: ${n('qGapY', 0, 80)}px !important; }\n`;
+  if (chg('qBarGap')) css += `${QP} .hrlg-qvitals { gap: ${n('qBarGap', 0, 40)}px !important; }\n`;
+  if (chg('qBarH')) { const bh = n('qBarH', 3, 30); css += `${QP} .hrlg-thp:not(.mp) { height: ${bh}px !important; }\n${QP} .hrlg-thp.mp { height: ${Math.max(3, Math.round(bh * 0.8))}px !important; }\n`; }
+  /* where the HP / MP numbers go: the row becomes a little grid (label · bar · number · forecast chip) */
+  const NUM = { left: '"lbl num bar fc"', above: '"lbl num fc" "lbl bar bar"', under: '"lbl bar fc" "lbl num num"', on: '"lbl bar fc"' }[X.qNumPos];
+  if (NUM) {
+    const V = `${QP} .hrlg-qv-row`;
+    css += `${V} { display: grid !important; grid-template-areas: ${NUM}; grid-template-columns: ${X.qNumPos === 'left' ? '18px auto 1fr auto' : '18px 1fr auto'}; column-gap: 6px; row-gap: 2px; align-items: center; }\n`
+      + `${V} > .hrlg-qv-lbl { grid-area: lbl; }\n${V} > .hrlg-thp { grid-area: bar; min-width: 0 !important; }\n${V} > .hrlg-qv-num { grid-area: num; }\n${V} > .hrlg-qv-fc { grid-area: fc; }\n`;
+    if (X.qNumPos === 'on') css += `${V} > .hrlg-qv-num { grid-area: bar; justify-self: center; z-index: 1; font-size: 9px; }\n${chg('qBarH') ? '' : `${QP} .hrlg-thp:not(.mp) { height: 14px !important; }\n${QP} .hrlg-thp.mp { height: 12px !important; }\n`}`;
+  } else if (X.qNumPos === 'off') css += `${QP} .hrlg-qv-num { display: none !important; }\n`;
   if (X.qElem === 'off') css += `${QP} > .hrlg-qelem { display: none !important; }\n`;
   if (chg('qNameSize')) css += `${QP} .hrlg-view-tab-text { font-size: ${n('qNameSize', 10, 36)}px !important; }\n`;
   /* ── the scoreboard ── */
@@ -12833,23 +12854,36 @@ function qpForm() {
     h += sec('qname', 'Name, bars + badges', xp(
       fSeg('Name', 'qNamePos', [['beside', 'Beside the portrait'], ['above', 'Above the portrait'], ['on', 'On the portrait']], X.qNamePos)
       + fSeg('HP / MP bars', 'qVitalsPos', [['beside', 'Beside the portrait'], ['under', 'Under the portrait']], X.qVitalsPos)
-      + fSeg('Type badges', 'qTypesPos', [['bars', 'With the bars'], ['under', 'Under the portrait'], ['on', 'On the portrait'], ['off', 'Hidden']], X.qTypesPos))
+      + fSeg('Type badges', 'qTypesPos', [['bars', 'With the bars'], ['under', 'Under the portrait'], ['on', 'On the portrait'], ['off', 'Hidden']], X.qTypesPos)
+      + fSeg('HP / MP numbers', 'qNumPos', [['right', 'Right of the bar'], ['left', 'Left of the bar'], ['above', 'Above it'], ['under', 'Under it'], ['on', 'On the bar'], ['off', 'Hidden']], X.qNumPos)
+      + fRange('Space between HP and MP', 'qBarGap', 0, 40, 1, +X.qBarGap)
+      + fRange('Bar thickness', 'qBarH', 3, 30, 1, +X.qBarH)
+      + fColorOpt('Name colour (my team)', 'qNameAllyCol', X.qNameAllyCol, '#7df0a5', false, 'Unticked = the game\'s own')
+      + fColorOpt('Name colour (enemy team)', 'qNameFoeCol', X.qNameFoeCol, '#ff8d97', false, 'Unticked = the game\'s own'))
       + (port ? '' : '<div class="uim-note">With the portrait size at 0, the bars and badges stay beside it.</div>'));
     h += sec('qparts', 'Stats + elements', xp(fSeg('Stats', 'qStatsPos', [['beside', 'Beside the bars'], ['below', 'Under the bars']], X.qStatsPos)
       + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
       + (X.qStatLook === 'bar' || X.qStatLook === 'both' ? fRange('Bar length', 'qStatBarW', 16, 140, 2, +X.qStatBarW) : '')
       + fRange('Stat columns', 'qCols', 1, 5, 1, +X.qCols)
       + fRange('Space between stat columns', 'qStatGap', 0, 60, 1, +X.qStatGap)
+      + fRange('Space between stat rows', 'qStatRowGap', 0, 40, 1, +X.qStatRowGap)
       + fSeg('Element box', 'qElem', [['below', 'Underneath'], ['right', 'On the right'], ['off', 'Hidden']], X.qElem)
       + fRange('Element box size', 'qElemSize', 0.5, 1.6, 0.05, +X.qElemSize))
       + xCheck('Stats', 'qStats', X.qStats));
-    h += sec('qcols', 'Column widths', xp(fRange('Bars column (0 = fit)', 'qColInfo', 0, 600, 2, +X.qColInfo)
+    h += sec('qcols', 'Column widths + spacing', xp(fRange('Space between parts, sideways', 'qGapX', 0, 80, 1, +X.qGapX)
+      + fRange('Space between parts, up / down', 'qGapY', 0, 80, 1, +X.qGapY)
+      + fRange('Bars column (0 = fit)', 'qColInfo', 0, 600, 2, +X.qColInfo)
       + fRange('Stats column (0 = fit)', 'qColStats', 0, 700, 2, +X.qColStats)
       + fRange('Element box column (0 = fit)', 'qColElem', 0, 600, 2, +X.qColElem))
-      + '<div class="uim-note">The parts that sit side by side each get their own column. 0 = as wide as what is in it.</div>');
+      + '<div class="uim-note">The parts (portrait, name, bars, stats, element box) are laid out on a grid: the two spaces are the gaps between them. The parts that sit side by side each get their own column; 0 = as wide as what is in it.</div>');
   } else h += sec('qparts', 'Stats + elements', xCheck('Stats', 'qStats', X.qStats) + xp(fSeg('Element box', 'qElem', [['below', 'Shown'], ['off', 'Hidden']], X.qElem === 'off' ? 'off' : 'below')
     + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
-    + fSeg('Type badges', 'qTypesPos', [['bars', 'Shown'], ['off', 'Hidden']], X.qTypesPos === 'off' ? 'off' : 'bars')));
+    + fSeg('Type badges', 'qTypesPos', [['bars', 'Shown'], ['off', 'Hidden']], X.qTypesPos === 'off' ? 'off' : 'bars')
+    + fSeg('HP / MP numbers', 'qNumPos', [['right', 'Right of the bar'], ['left', 'Left of the bar'], ['above', 'Above it'], ['under', 'Under it'], ['on', 'On the bar'], ['off', 'Hidden']], X.qNumPos)
+    + fRange('Space between HP and MP', 'qBarGap', 0, 40, 1, +X.qBarGap) + fRange('Bar thickness', 'qBarH', 3, 30, 1, +X.qBarH)
+    + fRange('Space between stat rows', 'qStatRowGap', 0, 40, 1, +X.qStatRowGap)
+    + fColorOpt('Name colour (my team)', 'qNameAllyCol', X.qNameAllyCol, '#7df0a5', false, 'Unticked = the game\'s own')
+    + fColorOpt('Name colour (enemy team)', 'qNameFoeCol', X.qNameFoeCol, '#ff8d97', false, 'Unticked = the game\'s own')));
   h += sec('qcone', 'Zoom cone', xp(fSeg('Starts from', 'qConeFrom', [['icon', 'The whole icon'], ['centre', 'The icon centre']], X.qConeFrom)
     + fSeg('Ends at', 'qConeTo', [['port', 'Portrait'], ['portcorner', 'Portrait corner'], ['card', 'Card edge'], ['corner', 'Card corner'], ['name', 'Name']], X.qConeTo)
     + fColorOpt('Colour', 'qConeCol', X.qConeCol, '#ff4a56', false, 'Unticked = the team colour') + fRange('Strength', 'qConeOp', 0, 1, 0.05, +X.qConeOp))
