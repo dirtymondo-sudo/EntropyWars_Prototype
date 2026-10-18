@@ -90,6 +90,13 @@ const ThreePost = (function () {
         } else _expEaseAt = 0;
         return _lkNum('exposure', _expEased) * ((_expCtx === 'hq') ? _ae.gain : 1);   // THE AUTO EXPOSURE (7.4): the building's adaptive gain
     }
+    /* THE BRIGHTNESS (2026-10-18): with Post FX on the frame draws into the composer's target, and three tone-maps (exposure
+       included) only a draw into the canvas — so toneMappingExposure, and with it the Brightness slider, changed nothing on
+       screen (measured: the walk's frame luminance stayed 0.262 → 0.264 for 1.0 → 1.25). The slider rides the cinematic
+       pass as a plain gain instead: this place's value, eased, the look's if the player never moved it — 1.0 = the frame as
+       it always was. The day / night preset and the building's auto-exposure gain are NOT in it (they never reached the
+       screen either; switching them on would re-light every map). Without Post FX the materials tone-map with the exposure. */
+    function _brightGain() { _expLk(); return Math.max(0.3, Math.min(2, _lkNum('exposure', _expEased))); }
     function setExposureContext(ctx) {
         ctx = EXPOSURE_CTX_KEYS[ctx] ? ctx : 'battle';
         if (ctx === _expCtx) return;
@@ -747,6 +754,7 @@ const ThreePost = (function () {
             'uCrtAmount':     { value: 0.0 },
             'uCurvature':     { value: 0.0 },
             'uNightGrade':    { value: 0.0 },
+            'uGain':          { value: 1.0 },   // THE BRIGHTNESS (2026-10-18): the slider as a plain gain — see _brightGain
             'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) },
             // ── spell grade (see spellGrade() above) ──
             'uSpotDim':       { value: 0.0 },
@@ -797,6 +805,7 @@ const ThreePost = (function () {
             'uniform float uCrtAmount;',
             'uniform float uCurvature;',
             'uniform float uNightGrade;',
+            'uniform float uGain;',
             'uniform vec3 uNightTint;',
             'uniform float uSpotDim;',
             'uniform vec3 uSpotA;',
@@ -952,6 +961,7 @@ const ThreePost = (function () {
             '  float spot = 0.0;',
             '  if (uSpotDim > 0.001) spot = max(spotMask(uv, uSpotA, asp), spotMask(uv, uSpotB, asp));',
             '',
+            '  col.rgb *= uGain;                         // the Brightness slider (1 = untouched)',
             '  float scanY = uv.y * uResolution.y * uScanlineScale;',
             '  float scanline = sin(scanY * 3.14159) * 0.5 + 0.5;',
             '  scanline = pow(scanline, 1.2);',
@@ -1209,9 +1219,18 @@ const ThreePost = (function () {
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
 
-    function _scanPixelMaskTargets() {
-        if (!_scene) return;
-        _scene.traverse(function (n) {
+    /* the walk / menu scenes (2026-10-18): only the PEOPLE — a character group the building marks `_ew_pixelChar`
+       (three-renderer.js _hqSpawnCharacter; its rigs are plain meshes, unflagged) — never the room's props */
+    function _scanPixelChars(n, inChar) {
+        inChar = inChar || !!n._ew_pixelChar;
+        if (inChar && n.isMesh && !n._ew_pixelTagged && !n._ew_silhouette) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
+        for (var i = 0; i < n.children.length; i++) _scanPixelChars(n.children[i], inChar);
+    }
+    function _scanPixelMaskTargets(sc) {
+        sc = sc || _scene;
+        if (!sc) return;
+        if (sc !== _scene) { _scanPixelChars(sc, false); return; }
+        sc.traverse(function (n) {
             if (!n.isMesh || n._ew_pixelTagged) return;
             // Silhouette/x-ray twins share the model's geometry but are a UI
             // read-through, not the model itself — never mask them.
@@ -1228,11 +1247,15 @@ const ThreePost = (function () {
     // background blocks get snapped (invisible on flat sprite texture) — while
     // its x-ray hologram twin, which DOES show through, reads as part of the
     // model anyway.
-    function _renderPixelMask(cam) {
-        if (!_renderer || !_scene || !cam || typeof THREE === 'undefined') return false;
+    /* `sc` (2026-10-18): the scene to mask — renderScene's walk / menu scenes hand their own (Models Only used to pixelate the
+       whole frame there); the battle board's _scene when absent. Each scene keeps its own re-tag clock. */
+    function _renderPixelMask(cam, sc) {
+        sc = sc || _scene;
+        if (!_renderer || !sc || !cam || typeof THREE === 'undefined') return false;
         try {
             var now = performance.now();
-            if (now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _scanPixelMaskTargets(); }
+            if (sc === _scene) { if (now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _scanPixelMaskTargets(sc); } }
+            else if (!(now - (sc._ew_pixScanAt || 0) <= PIX_SCAN_MS)) { sc._ew_pixScanAt = now; _scanPixelMaskTargets(sc); }
 
             if (!_maskVec) _maskVec = new THREE.Vector2();
             _renderer.getDrawingBufferSize(_maskVec);
@@ -1260,7 +1283,10 @@ const ThreePost = (function () {
             }
 
             var prevTarget    = _renderer.getRenderTarget();
-            var prevOverride  = _scene.overrideMaterial;
+            var prevOverride  = sc.overrideMaterial;
+            /* the walk's sky (2026-10-18): a texture background is a mesh three draws in EVERY render — the second (static) pass
+               painted the sky over the people the first (skinned) pass drew. The mask renders with no background. */
+            var prevBg        = sc.background;
             var prevLayers    = cam.layers.mask;
             var prevAutoClear = _renderer.autoClear;
             // Shadows are manually driven (autoUpdate off + needsUpdate pulses);
@@ -1276,16 +1302,18 @@ const ThreePost = (function () {
             if (_renderer.shadowMap) _renderer.shadowMap.needsUpdate = false;
             _renderer.setClearColor(0x000000, 1);
             _renderer.clear(true, true, false);
+            sc.background = null;
 
             cam.layers.set(PIX_LAYER_SKIN);
-            _scene.overrideMaterial = _maskMatSkin;
-            _renderer.render(_scene, cam);
+            sc.overrideMaterial = _maskMatSkin;
+            _renderer.render(sc, cam);
 
             cam.layers.set(PIX_LAYER_STATIC);
-            _scene.overrideMaterial = _maskMatStatic;
-            _renderer.render(_scene, cam);
+            sc.overrideMaterial = _maskMatStatic;
+            _renderer.render(sc, cam);
 
-            _scene.overrideMaterial = prevOverride;
+            sc.overrideMaterial = prevOverride;
+            sc.background = prevBg;
             cam.layers.mask = prevLayers;
             _renderer.setRenderTarget(prevTarget);
             _renderer.setClearColor(_maskClearCol, prevAlpha);
@@ -1295,6 +1323,7 @@ const ThreePost = (function () {
             return true;
         } catch (e) {
             if (_renderer) _renderer._ew_sideRender = false;
+            if (sc && prevBg !== undefined) sc.background = prevBg;
             try { console.warn('[ThreePost] pixel mask pass failed — falling back to full-screen pixelate', e); } catch (e2) {}
             return false;
         }
@@ -1385,7 +1414,13 @@ const ThreePost = (function () {
     // camera it hazes the whole board uniformly — that's why it's opt-in and the
     // density is player-tunable. Colour follows the active mood preset.
     function _applySceneFog() {
-        if (_scene) {
+        /* THE FIELD LIGHT (2026-10-18): a fight on a room wears the ROOM's fog (three-renderer.js _fieldGroundDress) — the toggle
+           turns that fog on and off; the mood's colour and the density slider are the voxel board's haze and never repaint it */
+        var _ff = _fieldLight && _fieldLight.fog;
+        if (_scene && _ff) {
+            if (!_retro.fogEnabled) _scene.fog = null;
+            else if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_ff.color, _ff.density);
+        } else if (_scene) {
             if (_retro.fogEnabled) {
                 var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
                 if (_scene.fog && _scene.fog.isFogExp2) {
@@ -1840,6 +1875,9 @@ const ThreePost = (function () {
         /* the gated depth pass (§4.2) must re-render at the new size/state */
         try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.markShadowsDirty) ThreeRenderer.markShadowsDirty(); } catch (e) {}
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_shadows', q); } catch (e) {}
+        /* the walk's key light arms its own map from this tier (three-renderer.js _hqShadowArm) — re-arm it now, or Off / Low only
+           reached the room after the next door (2026-10-18) */
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.polishApply) ThreeRenderer.hq.polishApply(); } catch (e) {}
     }
     function getShadowQuality() { return _shadowQuality; }
 
@@ -1899,11 +1937,13 @@ const ThreePost = (function () {
 
     // Track the camera's focal point: project it to screen space and slide the
     // sharp band there (damped, so cinematic pans don't snap the blur around).
+    /* `focusAt` (renderScene's opts.focus, 2026-10-18): a world point to hold sharp in a scene the battle camera does not drive
+       (the walk: the walker); a frame with none reads the battle camera's focal point */
     var _dofProjVec = null;
-    function _updateDofFocus(cam) {
+    function _updateDofFocus(cam, focusAt) {
         if (!_dofPassH || !_dofPassH.enabled || !cam) return;
-        var focal = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getFocalWorld)
-                  ? ThreeCamera.getFocalWorld() : null;
+        var focal = focusAt || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getFocalWorld)
+                  ? ThreeCamera.getFocalWorld() : null);
         var target = 0.5;
         if (focal) {
             if (!_dofProjVec) _dofProjVec = new THREE.Vector3();
@@ -3016,7 +3056,7 @@ const ThreePost = (function () {
         var f = function (o) { return _ngR(P, o, 'float'); };
         var uRes = _ngR(P, cu.uResolution, 'vec2'), uTime = f(cu.uTime), uScA = f(cu.uScanlineAlpha), uScS = f(cu.uScanlineScale), uChS = f(cu.uChromaShift),
             uVS = f(cu.uVignetteSize), uVSo = f(cu.uVignetteSoft), uVA = f(cu.uVignetteAmount), uCrt = f(cu.uCrtAmount), uCurv = f(cu.uCurvature),
-            uNG = f(cu.uNightGrade), uNT = _ngR(P, cu.uNightTint, 'vec3'), uSD = f(cu.uSpotDim), uSA = _ngR(P, cu.uSpotA, 'vec3'), uSB = _ngR(P, cu.uSpotB, 'vec3'),
+            uNG = f(cu.uNightGrade), uGn = f(cu.uGain), uNT = _ngR(P, cu.uNightTint, 'vec3'), uSD = f(cu.uSpotDim), uSA = _ngR(P, cu.uSpotA, 'vec3'), uSB = _ngR(P, cu.uSpotB, 'vec3'),
             uSSo = f(cu.uSpotSoft), uSL = f(cu.uSpotLift), uTrip = f(cu.uTrip), uHue = f(cu.uHue), uWarp = f(cu.uWarp), uChR = f(cu.uChromaRadial),
             uGT = _ngR(P, cu.uGradeTint, 'vec3'), uGTA = f(cu.uGradeTintAmt), uMo = f(cu.uMotion), uMoC = _ngR(P, cu.uMotionCenter, 'vec2'), uRip = _ngR(P, cu.uRipple, 'vec4'),
             uCA = _ngR(P, cu.uCssA, 'vec4'), uCB = _ngR(P, cu.uCssB, 'vec4'), uCT1 = _ngR(P, cu.uCssT1, 'vec4'), uCT2 = _ngR(P, cu.uCssT2, 'vec4'), uCM = _ngR(P, cu.uCssM, 'vec2');
@@ -3092,6 +3132,7 @@ const ThreePost = (function () {
             });
             var asp = V2(uRes.x.div(T.max(uRes.y, 1)), 1);
             var spot = T.select(uSD.greaterThan(0.001), T.max(spotMask(uv, uSA, asp), spotMask(uv, uSB, asp)), F(0)).toVar();
+            col.mulAssign(uGn);   // the Brightness slider (1 = untouched)
             var sl = T.pow(T.sin(uv.y.mul(uRes.y).mul(uScS).mul(3.14159)).mul(0.5).add(0.5), 1.2);
             col.mulAssign(F(1).sub(uScA.mul(uCrt).mul(F(1).sub(sl))));
             col.mulAssign(F(1).sub(uCrt.mul(0.006).mul(T.sin(uTime.mul(8.3)))));
@@ -3541,7 +3582,8 @@ const ThreePost = (function () {
             _cinematicPass.material.uniforms['uNightGrade'].value = _nGr;
             var _lc = _lkCin();
             var _sgOn = _cinematicPass.material.uniforms.uCssB ? _sgTick(_cinematicPass.material.uniforms, _nowMs) : false;   // THE SCREEN GRADE
-            _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _nGr > 0.001
+            var _bg = _brightGain(); _cinematicPass.material.uniforms['uGain'].value = _bg;
+            _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _nGr > 0.001 || Math.abs(_bg - 1) > 0.002
                 || _gk > 0.001 || _kick > 0.01 || _mb > 0.001 || _sgOn);
             if (_rip > 0.00001) _cinematicPass.enabled = true;   // a live impact ripple needs the pass too
         }
@@ -3586,21 +3628,20 @@ const ThreePost = (function () {
 
         if (_ng) { _ng.rp.camera = cam; _ng.rp.scene = _scene; } else if (_pp) { _pp.renderPass.camera = cam; _pp.renderPass.scene = _scene; } else _composer.passes[0].camera = cam;
         if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
-        /* THE FIELD LIGHT: no tilt-shift band over the room (the building never had one — a board plane to focus on is what it wants) */
-        var _fdH = _dofPassH ? _dofPassH.enabled : false, _fdV = _dofPassV ? _dofPassV.enabled : false;
-        if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = false; if (_dofPassV) _dofPassV.enabled = false; }
-        try {
-            _tmSync();
-            if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
-        } finally { if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = _fdH; if (_dofPassV) _dofPassV.enabled = _fdV; } }
+        /* THE FIELD LIGHT: the tilt-shift band runs over the room's board too (2026-10-18, mondo: "the tilt shift seems to only
+           affect the voxel maps") — the focus is the battle camera's, the same as a voxel board's */
+        _tmSync();
+        if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
     }
 
     /* ── Render ANOTHER scene through the same post stack ──────────────
        The D.O.O.R. headquarters (three-renderer.js HQ module) is its own
        THREE.Scene with its own camera and lights; it wants the retro grade
        (grain / dither / levels), bloom for the lamp lenses and FXAA, but
-       none of the battle-board plumbing: no sun sync, no tilt-shift band
-       (there is no board plane to focus on), no unit-silhouette pixel mask.
+       none of the battle-board plumbing: no sun sync, no unit-silhouette
+       pixel mask. The tilt-shift band runs only when the caller hands a
+       world point to hold sharp (opts.focus — the walk passes the walker;
+       the menu and the team room pass none, so they stay crisp).
        Swaps the RenderPass scene for one frame and restores everything —
        the battle scene never notices. Falls back to a bare render when the
        composer isn't up. */
@@ -3619,21 +3660,27 @@ const ThreePost = (function () {
         var prevThr = _bloomPass ? _bloomPass.threshold : 0, prevRad = _bloomPass ? _bloomPass.radius : 0;
         try {
             rp.scene = scene; rp.camera = cam;
-            if (_dofPassH) _dofPassH.enabled = false;
-            if (_dofPassV) _dofPassV.enabled = false;
+            if (opts && opts.focus) { _applyDofUniforms(); _updateDofFocus(cam, opts.focus); }   // the Tilt-Shift slider decides on/off
+            else {
+                if (_dofPassH) _dofPassH.enabled = false;
+                if (_dofPassV) _dofPassV.enabled = false;
+            }
             var _mb2 = _motionTick(performance.now());   // 6.4: the building feeds it (the deck, the fall)
             var prevCss = (_cinematicPass && _cinematicPass.material.uniforms.uCssB) ? _cinematicPass.material.uniforms.uCssB.value.w : 0;
             if (_cinematicPass) {
                 if (_cinematicPass.material.uniforms.uCssB) _cinematicPass.material.uniforms.uCssB.value.w = 0;   // THE SCREEN GRADE is the board's
                 _cinematicPass.material.uniforms['uNightGrade'].value = 0;
                 _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
-                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001);
+                var _bg2 = _brightGain(); _cinematicPass.material.uniforms['uGain'].value = _bg2;
+                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001 || Math.abs(_bg2 - 1) > 0.002);
             }
             if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('hq'); }
             if (_retroPass && _retroPass.enabled) {
                 _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
-                _retroPass.material.uniforms['tMask'].value = null;
-                _retroPass.material.uniforms['uMaskMode'].value = 0.0;
+                /* Models Only (2026-10-18): the walker and the people are chunked, the room is not — the same mask the board draws */
+                var _scMask = (_retro.pixelScope !== 'screen') && _lkRetro().pixelSize > 1.0 ? _renderPixelMask(cam, scene) : false;
+                _retroPass.material.uniforms['tMask'].value = _scMask ? _maskRT.texture : null;
+                _retroPass.material.uniforms['uMaskMode'].value = _scMask ? 1.0 : 0.0;
             }
             if (_bloomPass && _bloomPass.enabled) {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
