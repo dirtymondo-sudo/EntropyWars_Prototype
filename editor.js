@@ -344,6 +344,14 @@
     function saveNow() {
         if (!ED.project || !ED.doc) return Promise.resolve(false);
         var rec = { name: ED.project, doc: Core.cleanExport(ED.doc), exported: ED.exported || null, savedAt: Date.now(), cam: Object.assign({}, ED.cam), roomId: ED.mode === 'world' ? ED.roomId : null };
+        /* THE GAME ROOM EDITS (2026-10-18): a game room he edited is saved as what he changed in it (data.js hqRoomEditDiff), under
+           the game's own id; the game lays it over that room at load (hqRoomEditsBoot) */
+        rec.doc.edits = {};
+        Object.keys(rec.doc.rooms).forEach(function (id) {
+            if (W.hqWorldDocIsOwn(id) || typeof W.hqRoomEditDiff !== 'function') return;
+            rec.doc.edits[id] = { diff: W.hqRoomEditDiff(id, ED.doc.rooms[id]), edit: rec.doc.rooms[id].edit || null };
+            delete rec.doc.rooms[id];
+        });
         return idbDo('projects', 'readwrite', function (st) { return st.put(rec); })
             .then(function () { return idbDo('meta', 'readwrite', function (st) { return st.put(ED.project, 'last'); }); })
             .then(function () { ED.dirty = false; ED.savedAt = Date.now(); status(); return true; })
@@ -357,7 +365,15 @@
     /* ══ THE DOC IN THE GAME: his rooms are laid into DOOR_HQ.rooms by reference (hqWorldDocApply), so PLAY HERE and every door
        read them; a room the doc drops is taken out again ═══════════════════════════════════════════════════════════════ */
     function docPrepare(doc) {
-        doc.rooms = doc.rooms || {}; doc.prefabs = doc.prefabs || {}; doc.retire = doc.retire || []; doc.zones = doc.zones || {}; doc.links = doc.links || []; doc.dungeons = doc.dungeons || {};
+        doc.rooms = doc.rooms || {};
+        /* THE GAME ROOM EDITS: each saved edit of a game room is that room again, with his changes over it */
+        Object.keys(doc.edits || {}).forEach(function (id) {
+            var e = doc.edits[id], r = (e && typeof W.hqRoomEditBuild === 'function') ? W.hqRoomEditBuild(id, e.diff) : null;
+            if (!r) return;
+            r.edit = Object.assign({ grid: 1, snapDeg: 15, layers: {}, hidden: [], cam: null, notes: '' }, e.edit || {}, { from: id, over: true });
+            doc.rooms[id] = r;
+        });
+        delete doc.edits; doc.prefabs = doc.prefabs || {}; doc.retire = doc.retire || []; doc.zones = doc.zones || {}; doc.links = doc.links || []; doc.dungeons = doc.dungeons || {};
         Object.keys(doc.prefabs).forEach(function (id) { var pf = doc.prefabs[id]; pf.id = id; pf.terrain = pf.terrain || {}; pf.terrain.features = pf.terrain.features || []; pf.terrain.marks = pf.terrain.marks || []; pf.props = pf.props || []; W.hqWorldDocRowIds(pf); });
         Object.keys(doc.rooms).forEach(function (id) { W.hqWorldDocRowIds(doc.rooms[id]); if (!doc.rooms[id].edit) doc.rooms[id].edit = { grid: 1, snapDeg: 15, layers: {}, hidden: [], cam: null, notes: '' }; });
         if (!doc.start || !doc.rooms[doc.start.room]) { var first = Object.keys(doc.rooms)[0]; doc.start = first ? { room: first, at: { x: 0, z: 0, face: 0 } } : null; }
@@ -391,14 +407,15 @@
         (ids || Object.keys(ED.doc.rooms)).forEach(function (id) {
             var r = ED.doc.rooms[id];
             if (id === PF_ROOM) { if (R[id] && R[id]._terrainInfo) delete R[id]._terrainInfo; return; }
-            if (r) { if (R[id] !== r) R[id] = r; if (r._terrainInfo) delete r._terrainInfo; }
+            if (r) { if (R[id] !== r) { if (W.hqWorldDocIsOwn(id)) R[id] = r; else W.hqRoomEditPut(id, r); } if (r._terrainInfo) delete r._terrainInfo; }
             else if (R[id] && W.hqWorldDocIsOwn(id)) W.hqWorldDocRemoveRoom(id);
+            else if (!W.hqWorldDocIsOwn(id) && W.HQ_ROOM_EDITS && W.HQ_ROOM_EDITS.orig[id]) W.hqRoomEditDrop(id);   // THE GAME ROOM EDITS: his edit undone, the game's room back
         });
         try { W.hqWorldDocRebuild((ids || []).filter(function (x) { return x !== PF_ROOM; })); } catch (e) { console.warn('[editor] rebuild', e); }
     }
     function docLoad(doc, name) {
         /* the previous project's rooms leave DOOR_HQ first */
-        if (ED.doc) Object.keys(ED.doc.rooms).forEach(function (id) { if (!doc.rooms || !doc.rooms[id]) { try { W.hqWorldDocRemoveRoom(id); } catch (e) {} } });
+        if (ED.doc) Object.keys(ED.doc.rooms).forEach(function (id) { if (!(doc.rooms && doc.rooms[id]) && !(doc.edits && doc.edits[id])) { try { if (W.hqWorldDocIsOwn(id)) W.hqWorldDocRemoveRoom(id); else W.hqRoomEditDrop(id); } catch (e) {} } });
         ED.doc = docPrepare(doc); ED.project = name; ED.undo = []; ED.redo = []; ED.sel = []; ED.stepNo = (ED.stepNo || 0) + 1;
         if (ED.mode === 'prefab') { ED.mode = 'world'; ED.pfId = null; }
         prefabSync();
@@ -409,6 +426,9 @@
     /* ══ COMMIT: one undo step ══════════════════════════════════════════════════════════════════════════════════════════ */
     function commit(step, label, o) {
         if (!step || !step.length) return;
+        /* THE GAME ROOM EDITS (2026-10-18): a change to a game room shown from the library (the floor paint wrote straight to it) lands
+           on that room's edit — the room joins his project first */
+        if (ED.mode === 'library' && ED.roomId && ED.doc && !ED.doc.rooms[ED.roomId] && step.some(function (p) { return p.path && p.path[0] === 'rooms' && p.path[1] === ED.roomId && p.path.length > 2; }) && !own()) return;
         try { Core.stepDo(ED.doc, step); } catch (e) { console.warn('[editor] the edit failed', e); toast('THAT EDIT FAILED · ' + e.message, 4000); return; }
         step.label = label || 'edit';
         ED.undo.push(step); if (ED.undo.length > UNDO_MAX) ED.undo.shift();
@@ -423,7 +443,7 @@
         saveSoon();
         ED.sel = ED.sel.filter(selRow);
         if (ids.indexOf(ED.roomId) >= 0 && !(o && o.noReload)) reloadSoon();
-        if (ED.mode === 'world' && ED.roomId && !ED.doc.rooms[ED.roomId]) { if (step.lib && DOOR_HQ.rooms[step.lib]) { enterRoom(step.lib, 'library', { keepCam: true }); panels(); return; } var first = Object.keys(ED.doc.rooms)[0]; if (first) enterRoom(first, 'world'); }
+        if (ED.mode === 'world' && ED.roomId && !ED.doc.rooms[ED.roomId]) { if (step.lib && DOOR_HQ.rooms[step.lib]) { enterRoom(step.lib, ED.doc.rooms[step.lib] ? 'world' : 'library', { keepCam: true }); panels(); return; } var first = Object.keys(ED.doc.rooms)[0]; if (first) enterRoom(first, 'world'); }
         panels();
     }
     function undo() { var s = ED.undo.pop(); if (!s) return; try { Core.stepUndo(ED.doc, s); } catch (e) { toast('UNDO FAILED · ' + e.message); return; } ED.redo.push(s); afterStep(s); toast('UNDO · ' + s.label, 1200); }
@@ -511,7 +531,7 @@
     function enterRoom(id, mode, o) {
         o = o || {};
         var prevRoom = ED.roomId, prevMode = ED.mode;
-        ED.mode = mode || (W.hqWorldDocIsOwn(id) && ED.doc.rooms[id] ? 'world' : 'library');
+        ED.mode = mode || (ED.doc.rooms[id] ? 'world' : 'library');   // a game room he edited is his to edit (THE GAME ROOM EDITS)
         ED.roomId = id; ED.libRoom = ED.mode === 'library' ? id : null;
         if (ED.mode === 'library') libIds(DOOR_HQ.rooms[id]);   // a game room picks like one of his (its rows had no ids: nothing picked)
         if (prevRoom !== id || prevMode !== ED.mode) { ED.sel = []; if (!o.keepCam) camHome(o.at); }
@@ -2003,6 +2023,7 @@
     }
     function deleteRoom() {
         if (!editable()) return;
+        if (!W.hqWorldDocIsOwn(ED.roomId)) { revertRoom(); return; }   // a game room is never deleted: his changes come off it
         var ids = Object.keys(ED.doc.rooms);
         if (ids.length < 2) { toast('THE WORLD KEEPS ONE ROOM AT LEAST'); return; }
         var r = room();
@@ -2020,9 +2041,20 @@
         commit(step, 'delete room');
         enterRoom(ids.filter(function (x) { return x !== id; })[0], 'world');
     }
+    /* THE GAME ROOM EDITS: every change he made to a game room comes off it (the game's own room back; UNDO puts them on again) */
+    function revertRoom() {
+        var id = ED.roomId, r = room(); if (!r || W.hqWorldDocIsOwn(id)) return;
+        if (!confirm('Take every change you made off ' + (r.label || id) + '? The game\'s own room comes back. (UNDO puts your changes back)')) return;
+        var step = [{ path: ['rooms', id], before: Core.clone(r), after: undefined }];
+        if (ED.doc.start && ED.doc.start.room === id) { var other = Object.keys(ED.doc.rooms).filter(function (x) { return x !== id; })[0]; step.push({ path: ['start'], before: Core.clone(ED.doc.start), after: other ? { room: other, at: { x: 0, z: 0, face: 0 } } : null }); }
+        step.lib = id;
+        commit(step, 'undo my changes to ' + String(r.label || id).toLowerCase());
+        toast('THE GAME\'S OWN ' + String(r.label || id).toUpperCase() + ' IS BACK', 4000);
+    }
     function duplicateRoom() {
         if (!editable()) return;
         var id = W.hqWorldDocNextRoomId(ED.doc), r = Core.clone(Core.cleanExport(room())), n = W.hqWorldDocRoomNo(id);
+        if (!W.hqWorldDocIsOwn(ED.roomId)) { ((W.HQ_WORLD_DOC_RULES && W.HQ_WORLD_DOC_RULES.copyDrop) || []).forEach(function (k) { delete r[k]; }); r.edit = Object.assign({}, r.edit, { over: false }); }   // a game room's copy is a room of his
         r.label = 'Room ' + n; r.doors = [];
         var zd = zoneOf(ED.roomId), st = [{ path: ['rooms', id], before: undefined, after: r }];
         if (zd) zoneMovePatches(id, zd, st);   // E7: the copy stands in the same zone
@@ -2030,7 +2062,26 @@
         enterRoom(id, 'world');
         toast('DUPLICATED AS ' + r.label.toUpperCase() + ' (its doors stay with the original)');
     }
-    function copyIntoWorld() { if (ED.mode === 'library' && ED.roomId) own(); }   // the game room becomes his copy (the same as its first change)
+    function copyIntoWorld() { makeCopy(); }   // a new room of his, a copy of this game room (THE GAME ROOM EDITS: the first change edits the game's room itself)
+    /* HIS OLD COPY INTO THE GAME ROOM (2026-10-18): a room of his copied from a game room (before the first change edited the game's
+       room itself) — what it shows becomes the edit of the game room it came from (the game room keeps its own doors, site and part);
+       the copy stays where it is */
+    function copyToGame() {
+        var r = room(), src = r && r.edit && r.edit.from;
+        if (!r || !W.hqWorldDocIsOwn(ED.roomId) || !src || !(W.hqRoomEditBase && W.hqRoomEditBase(src))) { toast('THIS ROOM IS NOT A COPY OF A GAME ROOM'); return; }
+        var base = W.hqRoomEditBuild(src, null), name = String(base.label || src);
+        if (!confirm('Put this room into the game\'s ' + name + '? Its ground, shapes and props replace the game room\'s (the game room keeps its own doors). This room stays as it is. (UNDO takes it back)')) return;
+        var c = Core.clone(Core.cleanExport(r));
+        ((W.HQ_WORLD_DOC_RULES && W.HQ_WORLD_DOC_RULES.copyDrop) || []).concat(['doors', 'label', 'sub']).forEach(function (k) { if (base[k] !== undefined) c[k] = base[k]; else delete c[k]; });
+        if (c.terrain && base.terrain && base.terrain.seedOf === undefined && c.terrain.seedOf === src) delete c.terrain.seedOf;
+        W.hqWorldDocRowIds(c);
+        c.edit = { grid: 1, snapDeg: 15, layers: {}, hidden: [], cam: Core.clone(r.edit.cam || null), notes: '', from: src, over: true };
+        var step = [{ path: ['rooms', src], before: Core.clone(ED.doc.rooms[src]), after: c }];
+        commit(step, 'into ' + name.toLowerCase());
+        enterRoom(src, 'world', { keepCam: true });
+        var ar = arenasOf(src);
+        toast(name.toUpperCase() + ' NOW SHOWS THIS ROOM · SAVED · the game' + (ar.length ? ' and the ' + ar.join(', ') + ' arena' + (ar.length > 1 ? 's' : '') : '') + ' use it', 6000);
+    }
     /* A GAME ROOM IS EDITED AS YOUR COPY (2026-10-05, mondo: "i loaded a map from the game to try to edit it, clicking on an object
        does absolutely nothing"). The library's rows had no ids, so not one of them picked. Now a library room's rows get ids the moment
        it opens (NOT enumerable: the game's own room object never carries them into a JSON copy or the survey), every tool works in it,
@@ -2046,14 +2097,47 @@
             used[id] = 1; try { Object.defineProperty(x, 'id', { value: id, enumerable: false, configurable: true, writable: true }); } catch (e) {}
         }); });
     }
-    /* his copy of a game room, if he made one (the copy remembers where it came from) */
-    function copyOf(src) { var R = (ED.doc && ED.doc.rooms) || {}; for (var k in R) if (R[k] && R[k].edit && R[k].edit.from === src) return k; return null; }
     /* → true when the view can be edited now (a library room becomes his copy first) */
+    /* THE GAME ROOM EDITS (2026-10-18, mondo: "how do i save it without saving a whole new room? and do the arena maps take the
+       changes too?"): the first change to a game room edits THAT room — his project keeps it under the game's own id (no new room),
+       SAVE keeps it, and the game reads it wherever it reads the room: exploration, the encounters, every arena cut from it (data.js
+       hqRoomEditsBoot / hqArenaRoomChanged). MAKE A COPY is the new room of his it used to make. → true when the view can be edited now */
     function own() {
         if (ED.mode !== 'library') return editable();
-        var src = ED.roomId; if (!src || !ED.doc) return false;
-        var mine = copyOf(src);
-        if (mine) { toast('YOU HAVE A COPY OF THIS ROOM ALREADY · ' + String(ED.doc.rooms[mine].label || mine).toUpperCase() + ' · editing that one', 4000); enterRoom(mine, 'world', { keepCam: true }); return false; }
+        var src = ED.roomId, lib = src && DOOR_HQ.rooms[src]; if (!src || !ED.doc || !lib) return false;
+        var r = typeof W.hqRoomEditBuild === 'function' ? W.hqRoomEditBuild(src, null) : null;
+        if (!r) { toast('THAT ROOM CANNOT BE EDITED'); return false; }
+        /* the room keeps the ids its rows were picked by (the library's, not enumerable) */
+        ((W.HQ_WORLD_DOC_RULES && W.HQ_WORLD_DOC_RULES.rowLists) || LISTS).forEach(function (p) {
+            if (p === 'doors') return;
+            var A = listOf(lib, p), B = listOf(r, p); if (!A || !B || A.length !== B.length) return;
+            for (var i = 0; i < A.length; i++) if (A[i] && B[i] && A[i].id != null && B[i].id == null) B[i].id = String(A[i].id);
+        });
+        W.hqWorldDocRowIds(r);
+        r.edit = { grid: 1, snapDeg: 15, layers: {}, hidden: [], cam: null, notes: '', from: src, over: true };
+        var sel = ED.sel.slice(), step = [{ path: ['rooms', src], before: undefined, after: r }];
+        step.lib = src;   // its undo gives back the game's room
+        commit(step, 'edit ' + String(lib.label || src).toLowerCase());
+        enterRoom(src, 'world', { keepCam: true });
+        ED.sel = sel.filter(function (q) { return !!selRow(q); }); gizmoAttach(); panels();
+        var ar = arenasOf(src);
+        toast('EDITING ' + String(lib.label || src).toUpperCase() + ' ITSELF · SAVE keeps it in this room · the game' + (ar.length ? ' and the ' + ar.join(', ') + ' arena' + (ar.length > 1 ? 's' : '') : '') + ' use it', 6000);
+        return editable();
+    }
+    /* the arenas cut from a game room (their site names) */
+    function arenasOf(id) {
+        var out = [], P = W.PREBUILT_MAPS || (typeof PREBUILT_MAPS !== 'undefined' ? PREBUILT_MAPS : null) || {};
+        Object.keys(P).forEach(function (k) {
+            var e = P[k]; if (!e || !e.arena || e.arena.room !== id) return;
+            var m = (W.EW_MAP_META || (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []) || []).filter(function (x) { return x.id === e.arena.site; })[0];
+            var n = (m && m.label) || e.arena.site; if (out.indexOf(n) < 0) out.push(n);
+        });
+        return out;
+    }
+    /* A NEW ROOM OF HIS from a game room (what the first change used to do): a copy under `w_roomN`, the game's room untouched */
+    function makeCopy() {
+        var src = ED.mode === 'library' ? ED.roomId : (room() && room().edit && room().edit.over ? ED.roomId : null);
+        if (!src || !ED.doc) return false;
         var keep = {}; Object.keys(ED.doc.rooms).forEach(function (k) { keep[k] = 1; });
         var id = W.hqWorldDocNextRoomId(ED.doc), c = W.hqWorldDocCopyRoom(src, id, keep), lib = DOOR_HQ.rooms[src];
         if (!c) { toast('THAT ROOM CANNOT BE COPIED'); return false; }
@@ -2066,10 +2150,10 @@
         var name = String((lib && lib.label) || src);
         var sel = ED.sel.slice(), step = [{ path: ['rooms', id], before: undefined, after: c.room }];
         step.lib = src;   // its undo goes back to the game's room
-        commit(step, 'edit ' + name.toLowerCase());
+        commit(step, 'copy ' + name.toLowerCase());
         enterRoom(id, 'world', { keepCam: true });
         ED.sel = sel.filter(function (q) { return !!selRow(q); }); gizmoAttach(); panels();
-        toast('EDITING YOUR COPY OF ' + name.toUpperCase() + ' (' + String(c.room.label).toUpperCase() + ') · the game\'s room stays as it is until your world goes live' + (c.dropped ? ' · ' + c.dropped + ' door(s) to rooms outside your world were left out' : ''), 6000);
+        toast('A NEW ROOM OF YOURS · ' + String(c.room.label).toUpperCase() + ', A COPY OF ' + name.toUpperCase() + ' · the game\'s room is not changed by it' + (c.dropped ? ' · ' + c.dropped + ' door(s) to rooms outside your world were left out' : ''), 6000);
         return editable();
     }
     function setStart() {
@@ -2188,11 +2272,12 @@
     function library() {
         var R = DOOR_HQ.rooms, items = Object.keys(R).filter(function (k) { var r = R[k]; return r && k !== PF_ROOM && !W.hqWorldDocIsOwn(k); }).map(function (k) {
             var r = R[k], S = r.shell || {};
-            return { label: String(r.label || k), sub: k + ' · ' + roomSize(r) + (r.terrain ? ' · terrain' : '') + (r.terrain && r.terrain.gen ? ' (generated)' : '') + ' · ' + (r.props || []).length + ' props', value: k };
+            var ar = arenasOf(k);   // THE GAME ROOM EDITS: the room an arena is cut from says so (mondo could not find Skinwalker Ranch's)
+            return { label: String(r.label || k) + (ar.length ? '  ·  ' + ar.join(', ').toUpperCase() + ' ARENA' : '') + (ED.doc && ED.doc.rooms[k] ? '  ·  EDITED' : ''), sub: k + ' · ' + roomSize(r) + (r.terrain ? ' · terrain' : '') + (r.terrain && r.terrain.gen ? ' (generated)' : '') + ' · ' + (r.props || []).length + ' props', value: k };
         }).sort(function (a, b) { return a.label < b.label ? -1 : 1; });
-        pick('THE LIBRARY · a game room to look at or edit (your first change makes it your own copy)', items, function (k) {
-            var mine = copyOf(k); if (mine) { enterRoom(mine, 'world'); toast('YOUR COPY OF ' + String(DOOR_HQ.rooms[k].label || k).toUpperCase() + ' · ' + String(ED.doc.rooms[mine].label || mine).toUpperCase(), 3500); return; }
-            enterRoom(k, 'library'); toast('GAME ROOM · click things to pick them; the first change makes it your own copy', 4000);
+        pick('THE LIBRARY · a game room to look at or edit (your changes save into that room; the game and its arenas use them)', items, function (k) {
+            if (ED.doc.rooms[k]) { enterRoom(k, 'world'); toast('GAME ROOM · ' + String(DOOR_HQ.rooms[k].label || k).toUpperCase() + ' · with your changes', 3500); return; }
+            enterRoom(k, 'library'); toast('GAME ROOM · click things to pick them; your changes save into this room', 4000);
         });
     }
 
@@ -3582,7 +3667,7 @@
                ['Array… (copies in a row / round)', arraySel], ['Mirror east–west', function () { mirrorSel('x'); }], ['Mirror north–south', function () { mirrorSel('z'); }], null,
                ['Save selection as prefab', selToPrefab], ['Bake the prefab / kit into rows', bakeSel], null, ['Deselect  (Esc)', function () { select(null); }]],
         ADD: function () { return [['Prefab…', addPrefab], ['Kit (the game\'s builders)…', addKit], ['Prop (the catalogue)…', addProp], ['Door…  (click a wall or the ground)', function () { own(); if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; } drawSet('doorway'); }], null].concat(Core.KINDS.map(function (K) { return [K.label, function () { addShape(K.id); }]; })); },   // the draw tools live on the BUILD palette
-        ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this library room into the world', copyIntoWorld]],
+        ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this game room into a new room of mine', copyIntoWorld], ['Put this copy into its game room', copyToGame]],
         VIEW: [['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }], null,
                ['The level band on / off  (L)', function () { bandSet({ on: !ED.band.on }); }], ['The level band up a floor  (Shift L)', function () { bandStep(1); }], ['The level band down a floor', function () { bandStep(-1); }], null,
                ['Audit: invisible walls', function () { auditToggle('walls'); }], ['Audit: pockets (ground nobody reaches)', function () { auditToggle('pockets'); }], ['Audit: the fight field at the cursor', function () { auditToggle('fight'); }], ['Audit: exits in sight of each other', function () { auditToggle('sight'); }], ['Audit: the battle seats in each room', function () { auditToggle('patch'); }]],
@@ -3639,11 +3724,11 @@
             '<input type="number" step="0.5" id="edBandY0" value="' + ED.band.y0 + '" style="width:52px" title="the band\'s bottom (m)"><input type="number" step="0.5" id="edBandY1" value="' + ED.band.y1 + '" style="width:52px" title="the band\'s top (m)">' +
             '<button class="ed-btn" id="edBandDn" title="The band down a floor">▼</button><button class="ed-btn" id="edBandUp" title="The band up a floor (Shift L)">▲</button>' +
             '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The battle field a fight at the cursor would take: the whole room, or its 24 × 24 crop (yellow = cover)'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', 'FIELD', 'Each room of the layout: enough battle seats in one region (green), too few (red), bigger than a 24 × 24 fight (amber)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
-            (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="Make your own copy of this game room now (your first change does it anyway)">MAKE MY COPY</button>' : '');
+            (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="A new room of yours, a copy of this game room (your changes here save into the game\'s room itself)">MAKE A COPY</button>' : '');
         t.querySelectorAll('[data-tool]').forEach(function (b) { b.onclick = function () { tcMode(b.getAttribute('data-tool')); }; });
         $('edSnap').onchange = function () { ED.snap = +this.value; tcMode(ED.tool); };
         $('edRSnap').onchange = function () { ED.rotSnap = +this.value; tcMode(ED.tool); };
-        if ($('edCopy')) $('edCopy').onclick = function () { own(); };
+        if ($('edCopy')) $('edCopy').onclick = function () { makeCopy(); };
         $('edRoof').onclick = function () { roofSet({ off: !ED.roof.off }); };
         if ($('edRoofH')) $('edRoofH').onchange = function () { var v = parseFloat(this.value); if (isFinite(v)) roofSet({ h: v }); };
         $('edBand').onchange = function () { bandSet({ on: this.checked }); };
@@ -3672,7 +3757,7 @@
         loose.forEach(function (id) { h += roomBtn(id, null); });
         h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button><button class="ed-row ed-add" data-act="newzone" title="A group of your rooms: one place on the world map">+ NEW ZONE</button></div>';
         h = h + prefabsHtml();
-        if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">GAME ROOM · your first change makes your copy</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
+        if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">GAME ROOM · your changes save into it</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
         var r = room();
         if (r) {
             var groups = [['terrain.features', 'SHAPES'], ['props', 'PROPS'], ['doors', 'DOORS'], ['counters', 'SIGNS'], ['npcSpots', 'PEOPLE'], ['agents', 'AGENTS'], ['onlineSpots', 'ONLINE SPOTS']];
@@ -3753,7 +3838,7 @@
             h += '<div class="ed-note">A prefab holds shapes and props. Draw them with BUILD (left), or ADD. Every room that places it changes with it.</div>';
         } else if (!hits.length) {
             var S = r.shell || {}, T = r.terrain || {};
-            h += '<div class="ed-hd">' + (lib ? 'GAME ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (lib ? ' · the first change you make edits your own copy of it (the game\'s room is not touched)' : ro ? ' · read only' : '') + '</div>';
+            h += '<div class="ed-hd">' + (lib ? 'GAME ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (lib ? ' · your changes save into this room: the game' + (arenasOf(ED.roomId).length ? ' and the ' + arenasOf(ED.roomId).join(', ') + ' arena' : '') + ' use them' : (r.edit && r.edit.over) ? ' · the game\'s room with your changes (SAVE keeps them; the game' + (arenasOf(ED.roomId).length ? ' and the ' + arenasOf(ED.roomId).join(', ') + ' arena' : '') + ' use them)' : ro ? ' · read only' : '') + '</div>';
             h += '<div class="ed-form" data-scope="room">' + fieldHtml('label', String(r.label || '')) + fieldHtml('sub', String(r.sub || '')) + '</div>';
             if (!ro && ED.mode === 'world') h += zoneSiteHtml(r) + encHtml(r);   // E7 + THE ENCOUNTER TABLE (2026-10-08)
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
@@ -3772,8 +3857,9 @@
             }
             h += '<div class="ed-sub">THE SKY AND THE LIGHT (the SKY tab, left, edits them)</div><div class="ed-form" data-scope="shell">' + fieldHtml('sky', S.sky || null) + fieldHtml('mood', S.mood || null) + '</div>';
             if (r.edit) h += '<div class="ed-sub">NOTES</div><div class="ed-form" data-scope="edit"><label class="ed-f ed-fj"><textarea data-k="notes" data-t="str" rows="3">' + esc(r.edit.notes || '') + '</textarea></label></div>';
-            if (!ro && !lib) h += '<div class="ed-acts"><button class="ed-btn" data-a="dup">DUPLICATE ROOM</button><button class="ed-btn" data-a="start">WORLD STARTS HERE</button><button class="ed-btn ed-danger" data-a="del">DELETE ROOM</button></div>';
-            else h += '<div class="ed-acts"><button class="ed-btn ed-copy" data-a="copy">COPY INTO WORLD</button></div>';
+            if (!ro && !lib && r.edit && r.edit.over) h += '<div class="ed-acts"><button class="ed-btn" data-a="copy">MAKE A COPY</button><button class="ed-btn ed-danger" data-a="del">UNDO ALL MY CHANGES</button></div>';   // THE GAME ROOM EDITS
+            else if (!ro && !lib) h += '<div class="ed-acts"><button class="ed-btn" data-a="dup">DUPLICATE ROOM</button><button class="ed-btn" data-a="start">WORLD STARTS HERE</button><button class="ed-btn ed-danger" data-a="del">DELETE ROOM</button>' + (r.edit && r.edit.from && W.hqRoomEditBase && W.hqRoomEditBase(r.edit.from) ? '<button class="ed-btn ed-copy" data-a="togame" title="This room is a copy of a game room: put what it shows into that game room">PUT INTO ' + esc(String((W.hqRoomEditBase(r.edit.from) || {}).label || r.edit.from).toUpperCase()) + '</button>' : '') + '</div>';
+            else h += '<div class="ed-acts"><button class="ed-btn ed-copy" data-a="copy">MAKE A COPY</button></div>';
             h += '<div class="ed-sub">BUILD</div><div class="ed-note">BUILD (left) draws walls, rooms, floors, stairs, buildings, door gaps and windows on the ground. ADD (top bar) puts a shape, a prefab, a kit, a prop or a door at the cursor. Click a thing to pick it; SHIFT + click adds to the pick. Drag a thing to move it; R turns it 45° (SHIFT R back); - / = size it. C (or HIDE ROOFS, top bar) takes the roofs and ceilings off so you can see in.</div>';
         } else if (hits.length > 1) {
             h += '<div class="ed-hd">' + hits.length + ' PICKED</div><div class="ed-note">' + hits.map(function (x) { return esc(Core.rowLabel(x.list, x.row)); }).join('<br>') + '</div><div class="ed-note">The gizmo moves / turns them together. DEL deletes, CTRL D duplicates.</div>';
@@ -3845,7 +3931,7 @@
         P.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { sizeSel(+b.getAttribute('data-sz')); }; });
         P.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { turnSel(+b.getAttribute('data-turn')); }; });
         if ($('edSizeV')) $('edSizeV').onchange = function () { var h0 = hits[0], z0 = h0 && sizeOf(h0), v = parseFloat(this.value); if (z0 && isFinite(v) && v > 0 && Math.abs(v - z0.v) > 1e-3) sizeSel(v / z0.v, 'size ' + v + ' m'); };
-        act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', function () { own(); });
+        act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', function () { makeCopy(); }); act('togame', copyToGame);
         act('dupr', function () { duplicateSel(); }); act('delr', deleteSel); act('array', arraySel); act('mirx', function () { mirrorSel('x'); }); act('mirz', function () { mirrorSel('z'); });
         act('topf', selToPrefab); act('bake', bakeSel); act('pfedit', function () { if (hits[0] && hits[0].row.pf) enterPrefab(hits[0].row.pf); }); act('pfdone', leavePrefab); act('pfdel', function () { deletePrefab(ED.pfId); }); act('target', function () { if (hits[0]) doorRetarget(hits[0]); }); act('follow', function () { if (hits[0]) doorFollow(hits[0]); });
         if ($('edNewAdd')) $('edNewAdd').onclick = function () {
@@ -3928,7 +4014,7 @@
     }
     function banner() {
         var b = $('edBanner'); if (!b) return;
-        if (ED.mode === 'library') { b.style.display = ''; b.innerHTML = 'GAME ROOM · ' + esc((room() || {}).label || ED.roomId) + ' · edit away: your first change makes it your own copy — <button class="ed-btn ed-copy" id="edBanCopy">MAKE MY COPY NOW</button> <button class="ed-btn" id="edBanBack">BACK TO MY WORLD</button>'; $('edBanCopy').onclick = function () { own(); }; $('edBanBack').onclick = function () { enterRoom((ED.doc.start && ED.doc.rooms[ED.doc.start.room]) ? ED.doc.start.room : Object.keys(ED.doc.rooms)[0], 'world'); }; }
+        if (ED.mode === 'library') { b.style.display = ''; b.innerHTML = 'GAME ROOM · ' + esc((room() || {}).label || ED.roomId) + ' · edit away: your changes save into this room (the game' + (arenasOf(ED.roomId).length ? ' and the ' + esc(arenasOf(ED.roomId).join(', ')) + ' arena' : '') + ' use them) — <button class="ed-btn" id="edBanCopy">MAKE A COPY INSTEAD</button> <button class="ed-btn" id="edBanBack">BACK TO MY WORLD</button>'; $('edBanCopy').onclick = function () { makeCopy(); }; $('edBanBack').onclick = function () { enterRoom((ED.doc.start && ED.doc.rooms[ED.doc.start.room]) ? ED.doc.start.room : Object.keys(ED.doc.rooms)[0], 'world'); }; }
         else if (ED.mode === 'prefab' && ED.doc.prefabs[ED.pfId]) { b.style.display = ''; b.innerHTML = 'PREFAB · ' + esc(ED.doc.prefabs[ED.pfId].label || ED.pfId) + ' · placed ' + prefabUses(ED.pfId) + '× · every placement follows these edits — <button class="ed-btn ed-copy" id="edBanDone">DONE</button>'; $('edBanDone').onclick = leavePrefab; }
         else b.style.display = 'none';
     }
@@ -3987,9 +4073,9 @@
             ['LEADS TO (left tab)', 'your rooms and the doors between them: dashed = secret, an arrow = one way, red = nowhere; click a room to go there; OPEN BIG'],
             ['AUDIT SIGHT · FIELD', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · FIELD: enough battle seats in each room (green), too few (red), bigger than a 24 × 24 fight (amber)'],
             ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'give the mouse back · drop the pick'],
-            ['A game room (ROOM → THE LIBRARY, or EDIT in the pause menu)', 'picks and edits like yours: the first change makes it your own copy (the game\'s room is not touched until your world goes live)'],
+            ['A game room (ROOM → THE LIBRARY, or EDIT in the pause menu)', 'picks and edits like yours: your changes save into that room, and the game and every arena cut from it use them (UNDO ALL MY CHANGES takes them off; MAKE A COPY makes a new room of yours instead)'],
         ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
-        '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a game room to look at or edit (as your copy). FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
+        '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a game room to look at or edit (your changes save into it). FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
         $('edCancel').onclick = modalClose;
     }
 
@@ -4012,7 +4098,6 @@
             var want = opts.room && DOOR_HQ.rooms[opts.room] ? opts.room : null;
             var at = opts.at || null;
             if (want && ED.doc.rooms[want]) enterRoom(want, 'world', { at: at });
-            else if (want && copyOf(want)) enterRoom(copyOf(want), 'world', { at: at });   // he edited this game room already: his copy
             else if (want) enterRoom(want, 'library', { at: at });
             else enterRoom(ED.roomId && ED.doc.rooms[ED.roomId] ? ED.roomId : ED.doc.start.room, 'world', { keepCam: !!ED.roomId });
         };

@@ -804,8 +804,12 @@
         }
         function _hqSurveyOnMessage(ev) {
             const m = ev && ev.data; if (!m || !m.roomId) return;
-            const j = _hqSurveyJobs[m.roomId]; delete _hqSurveyJobs[m.roomId];
+            const j = _hqSurveyJobs[m.roomId];
             if (_hqSurveyBusy === m.roomId) _hqSurveyBusy = null;
+            /* THE GAME ROOM EDITS (2026-10-18): the room changed while it was surveyed (his edit landed, the host's room online) —
+               the record is the old room's: survey it again */
+            if (j && j.rev != null && typeof window.hqRoomRev === 'function' && j.rev !== window.hqRoomRev(m.roomId)) { _hqSurveyQueue.unshift(m.roomId); _hqSurveyPump(); return; }
+            delete _hqSurveyJobs[m.roomId];
             let info = null;
             if (m.info && !m.err) { try { info = (typeof window.hqTerrainAdopt === 'function') ? window.hqTerrainAdopt(m.roomId, m.info) : null; } catch (e) { console.warn('[HQ] survey adopt failed', m.roomId, e); } }
             else if (m.err) console.warn('[HQ] survey failed', m.roomId, m.err);
@@ -824,6 +828,7 @@
                 let room = null; try { room = (typeof window.hqTerrainRoomPlain === 'function') ? window.hqTerrainRoomPlain(id) : null; } catch (e) {}
                 if (!_hqSurveyJobs[id]) _hqSurveyJobs[id] = _hqSurveyJob();
                 _hqSurveyJobs[id].t0 = performance.now();
+                _hqSurveyJobs[id].rev = (typeof window.hqRoomRev === 'function') ? window.hqRoomRev(id) : null;   // THE GAME ROOM EDITS: the room's version this record is of
                 _hqSurveyBusy = id;
                 const prefabs = (typeof HQ_PREFABS !== 'undefined' && Object.keys(HQ_PREFABS).length) ? HQ_PREFABS : null;   // THE SHAPES (E1): the worker is handed the prefabs a room places
                 try { w.postMessage({ id: ++_hqSurveySeq, roomId: id, room, prefabs }); } catch (e) { _hqSurveyKill(); return; }
@@ -1582,6 +1587,8 @@
             opts = opts || {};
             /* THE WORLD FILE (EDITOR_PLAN §4.1, E0): a published world named by index.html is laid over data.js before any room builds */
             try { const WD = window.HQ_WORLD_DOC_STATE; if (WD && WD.ready && !WD.settled) { WD.ready.then(() => window._hqEnter(opts), () => window._hqEnter(opts)); return true; } } catch (e) {}
+            /* THE GAME ROOM EDITS (2026-10-18): his saved edits of the game's rooms (data.js hqRoomEditsBoot) land before any room builds */
+            try { const RE = window.HQ_ROOM_EDITS; if (RE && RE.ready && !RE.settled) { RE.ready.then(() => window._hqEnter(opts), () => window._hqEnter(opts)); return true; } } catch (e) {}
             const loadGeneration = _hqCancelLoadCard();
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') {
                 console.warn('[HQ] ThreeRenderer.hq or DOOR_HQ missing');
@@ -4610,6 +4617,8 @@
            guest each read the same room. */
         function _hqArenaWarm(mapId, urgent) {
             if (typeof window.hqArenaOf !== 'function') return null;
+            /* THE GAME ROOM EDITS (2026-10-18): his saved edits of the game's rooms land first (data.js hqRoomEditsBoot) */
+            try { const RE = window.HQ_ROOM_EDITS; if (RE && RE.ready && !RE.settled && window.hqArenaOf(mapId)) return RE.ready.then(() => _hqArenaWarm(mapId, urgent)); } catch (e) {}
             const a = window.hqArenaOf(mapId);
             if (!a || a.ready || a.failed) return null;
             const midFight = () => (typeof state !== 'undefined' && state.gameState === GS.BATTLE && typeof activeGameMode !== 'undefined' && activeGameMode === a.id);
@@ -4626,7 +4635,8 @@
         function _msArenaGate(mapId) {
             if (typeof window.hqArenaOf !== 'function') return true;
             const a = window.hqArenaOf(mapId);
-            if (!a || a.ready || a.failed) return true;
+            const RE = window.HQ_ROOM_EDITS, editsWait = !!(a && RE && RE.ready && !RE.settled);   // THE GAME ROOM EDITS: his saved edits land first
+            if (!a || ((a.ready || a.failed) && !editsWait)) return true;
             if (_msArenaGateBusy) return false;
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[a.room]) || {};
             let card = null;
@@ -13164,8 +13174,8 @@
         }
 
         /* Does team `player` see tile (tx, ty)? Any living unit's own sight, or
-           the team's structures / reveals. Blind / Jammed units still add their
-           own (shrunken) sight — the team just can't lend them its eyes. */
+           the team's structures / reveals. Blind units add their shrunken sight;
+           Jammed units add their own sight — the team just can't lend them its eyes. */
         function teamSeesTile(player, tx, ty, tz) {
             for (const u of state.units) {
                 if (u.dead || u._dying || u.player !== player) continue;
@@ -13212,7 +13222,7 @@
 
         /* Can `unit` (or its team, for it) see tile (tx, ty)? THE truth for every
            targeting gate (attacks, spells, previews, the action menu, the CPU).
-           VISION ON (default): the unit's own sight, then — unless it is Blind /
+           VISION ON (default): the unit's own sight, then — unless it is
            Jammed (noSharedVision) — any ally's sight and the team's structures
            (shared vision, mondo: "unless an ally unit is close enough to see
            them"). Holds with the fog of war ON or OFF. Enemy smoke hides its

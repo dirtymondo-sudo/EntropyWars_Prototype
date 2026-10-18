@@ -11874,8 +11874,9 @@ const STATUS_DEFS = {
         kind: 'debuff',
         category: 'status',
         stack: 'max',
-        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"):
-        noSharedVision: true,   // sees only the tiles beside it, and can't use its allies' sight
+        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"): sees only the tiles beside it.
+                                // It still uses its team's sight (2026-10-18, mondo: "i had teammates near the unit ... so they
+                                // had vision on him anyway so that shouldnt have been an issue"), so no noSharedVision here.
         iconSrc: createStatusIconDataUri('🌫️', '#2a2e33', '#eef2f6', '#9aa8b5')
         // Attack accuracy penalty is rolled in doAttack (battle.js): a blind
         // attacker misses 50% of the time.
@@ -11970,7 +11971,7 @@ const STATUS_LIBRARY_DESCS = {
     statLock:  'Stats are locked and cannot be raised or lowered.',
     hexed:     'Cursed — every action taken feeds the hex and hurts.',
     frozen:    'Encased in ice: cannot move or act. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
-    blind:     'Vision whited out: attacks miss 50% of the time, VISION drops to 1 (only the tiles beside it) and it can\'t use its allies\' sight.',
+    blind:     'Vision whited out: attacks miss 50% of the time and VISION drops to 1 (only the tiles beside it). It can still hit what its allies see.',
     broken:    'Every passive is switched off while it lasts: no passive hooks, immunities or gear bonuses. A unit that flies by passive falls out of the sky and takes fall damage.',
     siegeMode: 'Anchored down: +1 ATK stage and +2 RNG, but −2 MOV. Cannot be stolen.'
 };
@@ -21916,7 +21917,7 @@ const CAMPAIGN_REGION_THEMES = {
    percent its old AWR gave, so no crit odds moved.)
    Combat context on top (battle.js): a crit deals ×1.8 damage
    (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
-   attacker always misses; hard CC (stun/freeze/root) sets EVA to 0;
+   attacker misses half the time; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
 function critChanceFromStats(crt) {
   return Math.max(0, Math.min(1, (Number(crt) || 0) / 100));
@@ -22019,7 +22020,7 @@ const STAT_HELP = {
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
   vision: 'VISION — how many tiles the unit sees (2 to 6; S 6 · A 5 · B 4 · C 3 · F 2). Walls and blocks still cut sight. A unit can only attack or cast at an enemy its team can see (its own vision or an ally’s) AND that it has line of sight to (spells that ignore line of sight still need the team to see the target). Blind drops vision to 1 and cuts the unit off from its allies’ sight. VISION 4+ also senses cloaked or smoke-hidden enemies from 2 tiles instead of 1.',
   crt: 'CRT — critical hit chance on basic attacks, in percent — its own stat (S 24+ · A 20+ · B 16+ · C 12+ · F below). A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
-  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
+  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker misses half the time, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 
 /* ── VISION RULES (2026-10-09, mondo: "a unit can have 2-6 vision ... it wouldnt be able to see an enemy that far away
@@ -46220,6 +46221,7 @@ function hqWorldDocApply(doc) {
         const why = hqWorldDocRoomOk(room);
         if (why) { out.bad.push({ id, why }); return; }
         (R[id] ? out.replaced : out.added).push(id);
+        if (!hqWorldDocIsOwn(id) && R[id] && !HQ_ROOM_EDITS.orig[id]) HQ_ROOM_EDITS.orig[id] = R[id];   // THE GAME ROOM EDITS: the game's own room is kept to come back to
         R[id] = room;
     });
     if (doc.zones && typeof doc.zones === 'object') Object.keys(doc.zones).forEach(z => {
@@ -46251,6 +46253,9 @@ function hqWorldDocRebuild(ids) {
     const ran = [];
     (ids || []).forEach(id => { const r = (DOOR_HQ.rooms || {})[id]; if (r && r._terrainInfo) delete r._terrainInfo; });   // a changed room compiles again on entry
     ran.push('terrainInfo');
+    /* THE GAME ROOM EDITS: the arenas cut from a changed room read it again at their next launch (every size), and the battle's
+       drawn room is rebuilt (three-renderer.js keys it by hqRoomRev) */
+    (ids || []).forEach(id => { HQ_ROOM_EDITS.rev[id] = (HQ_ROOM_EDITS.rev[id] | 0) + 1; try { hqArenaRoomChanged(id); } catch (e) { console.warn('[world doc] arenas of', id, e); } });
     try { hqRefreshComplexLinks(); ran.push('hqRefreshComplexLinks'); } catch (e) { console.warn('[world doc] hqRefreshComplexLinks', e); }
     try { hqReplateDoors(); ran.push('hqReplateDoors'); } catch (e) { console.warn('[world doc] hqReplateDoors', e); }
     return ran;
@@ -46300,6 +46305,150 @@ if (typeof window !== 'undefined') {
         hqWorldDocIsOwnZone, hqWorldDocNextZoneId, hqWorldDocZoneOf, hqWorldDocRoomOk, hqWorldDocList, hqWorldDocRowIds, hqWorldDocPlain, hqWorldDocCopyRoom, hqWorldDocApply, hqWorldDocRemoveRoom, hqWorldDocRebuild, hqWorldDocUrl,
         hqWorldDocIndexRooms, hqWorldDocFetch, hqWorldDocLoad, hqWorldDocStart });
     if (window._EW_WORLD_ID && !window.importScripts) { try { hqWorldDocLoad(); } catch (e) { console.warn('[world doc] load', e); } }   // never inside the survey worker (it is handed each room)
+}
+/* ══ THE GAME ROOM EDITS (2026-10-18, mondo: "if i make some changes in an existing room in the editor, like just change the
+   terrain of the ground to a different sprite, how do i save it without saving a whole new room? and do the arena maps take the
+   changes too?") ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   A game room (a data.js room) opened in the editor is edited IN PLACE: his project keeps it under the game's own id, never a new
+   `w_roomN`, and the game reads it wherever it reads that room — exploration, the encounters, and every arena cut from it (all
+   sizes: hqArenaUpgrade reads the live room at the launch). It is kept as a DIFF against the data.js room (only what he changed:
+   `{ key: { $set: v } | { $del: 1 } | { nested diff } }`, a changed list whole), so a later data.js change to the rest of the room
+   still shows. The editor saves it in its IndexedDB project (`doc.edits[id] = { diff, edit }`); the game reads the last project's
+   edits at load (hqRoomEditsBoot). ONLINE (RULE #2): both seats build the arena from their own copy of the room, so the host's
+   edit of the match's arena room rides the `arena-check` relay and the guest plays on the host's room (online.js). */
+const HQ_ROOM_EDITS = { orig: {}, rev: {}, ready: null, settled: true };
+/* the room as data.js built it (before any edit of his was laid over it) */
+function hqRoomEditBase(id) { return HQ_ROOM_EDITS.orig[id] || (DOOR_HQ.rooms || {})[id] || null; }
+function hqRoomRev(id) { return HQ_ROOM_EDITS.rev[id] | 0; }
+function _hqRoomEditJson(v) { return JSON.parse(JSON.stringify(_hqPlainCopy(v), (k, x) => (k && k.charAt(0) === '_') ? undefined : x)); }
+function _hqRoomEditPlainObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+/* a list the same as the game's: the row ids the editor gave the game's rows (the game's rows carry none) don't count */
+function _hqRoomEditSameList(a, b) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        let x = a[i], y = b[i];
+        if (_hqRoomEditPlainObj(x) && _hqRoomEditPlainObj(y) && y.id == null && x.id != null) { x = Object.assign({}, x); delete x.id; }
+        if (JSON.stringify(x) !== JSON.stringify(y)) return false;
+    }
+    return true;
+}
+function _hqRoomEditDiffObj(base, ed) {
+    const out = {}; let n = 0;
+    Object.keys(ed).forEach(k => {
+        if (k.charAt(0) === '_' || k === HQ_WORLD_DOC_RULES.editKey) return;
+        const a = ed[k], b = base[k];
+        if (_hqRoomEditPlainObj(a) && _hqRoomEditPlainObj(b)) { const d = _hqRoomEditDiffObj(b, a); if (d) { out[k] = d; n++; } return; }
+        if (Array.isArray(a) && _hqRoomEditSameList(a, b)) return;
+        if (!Array.isArray(a) && JSON.stringify(a) === JSON.stringify(b)) return;
+        out[k] = { $set: a }; n++;
+    });
+    Object.keys(base).forEach(k => { if (k.charAt(0) === '_' || k === HQ_WORLD_DOC_RULES.editKey || k in ed) return; out[k] = { $del: 1 }; n++; });
+    return n ? out : null;
+}
+/* his edited room → the diff against the game's room (null = the same as the game's) */
+function hqRoomEditDiff(id, edited) {
+    const base = hqRoomEditBase(id); if (!base || !edited) return null;
+    return _hqRoomEditDiffObj(_hqRoomEditJson(base), _hqRoomEditJson(edited));
+}
+function _hqRoomEditMerge(o, d) {
+    Object.keys(d || {}).forEach(k => {
+        const v = d[k];
+        if (!_hqRoomEditPlainObj(v)) return;
+        if (v.$del) { delete o[k]; return; }
+        if ('$set' in v) { o[k] = JSON.parse(JSON.stringify(v.$set)); return; }
+        if (!_hqRoomEditPlainObj(o[k])) o[k] = {};
+        _hqRoomEditMerge(o[k], v);
+    });
+    return o;
+}
+/* the game's room with a diff laid over it (a fresh plain object; the game's own room is never touched) */
+function hqRoomEditBuild(id, diff) {
+    const base = hqRoomEditBase(id); if (!base) return null;
+    return _hqRoomEditMerge(_hqRoomEditJson(base), diff || {});
+}
+/* lay a room over a game id (the game's own object is kept to come back to) */
+function hqRoomEditPut(id, room) {
+    const R = DOOR_HQ.rooms || {};
+    if (!room || hqWorldDocIsOwn(id) || !(R[id] || HQ_ROOM_EDITS.orig[id])) return false;
+    if (!HQ_ROOM_EDITS.orig[id]) HQ_ROOM_EDITS.orig[id] = R[id];
+    R[id] = room;
+    return true;
+}
+/* the game's own room back (his edit dropped) */
+function hqRoomEditDrop(id) {
+    const o = HQ_ROOM_EDITS.orig[id]; if (!o) return false;
+    DOOR_HQ.rooms[id] = o; delete HQ_ROOM_EDITS.orig[id];
+    hqWorldDocRebuild([id]);
+    return true;
+}
+/* a set of edits { id: diff } as THE game rooms: each laid over its game room, every room edited before and not in the set
+   comes back as the game built it. → the ids that changed */
+function hqRoomEditsSet(map) {
+    map = map || {};
+    const R = DOOR_HQ.rooms || {}, ids = [];
+    Object.keys(HQ_ROOM_EDITS.orig).forEach(id => { if (!map[id]) { R[id] = HQ_ROOM_EDITS.orig[id]; delete HQ_ROOM_EDITS.orig[id]; ids.push(id); } });
+    Object.keys(map).forEach(id => {
+        if (hqWorldDocIsOwn(id) || !(R[id] || HQ_ROOM_EDITS.orig[id])) return;
+        const key = JSON.stringify(map[id]);
+        if (HQ_ROOM_EDITS.orig[id] && JSON.stringify(hqRoomEditOf(id)) === key) return;   // already the room it plays with
+        const room = hqRoomEditBuild(id, map[id]);
+        if (!room || hqWorldDocRoomOk(room)) { console.warn('[room edits] refused', id, room ? hqWorldDocRoomOk(room) : 'no room'); return; }
+        hqRoomEditPut(id, room); ids.push(id);
+    });
+    if (ids.length) hqWorldDocRebuild(ids);
+    return ids;
+}
+/* the diff a game room plays with now (null = the game's own) and its short signature (the online check) */
+function hqRoomEditOf(id) { return HQ_ROOM_EDITS.orig[id] ? hqRoomEditDiff(id, (DOOR_HQ.rooms || {})[id]) : null; }   // read live: the editor changes the room in place
+function hqRoomEditSig(id) {
+    const d = hqRoomEditOf(id); if (!d) return '';
+    const s = JSON.stringify(d); let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(36) + '.' + s.length;
+}
+/* one room's edit from elsewhere (the host's, online): laid over, or the game's own back when `diff` is null → true when it changed */
+function hqRoomEditUse(id, diff) {
+    if (!diff) return HQ_ROOM_EDITS.orig[id] ? hqRoomEditDrop(id) : false;
+    if (JSON.stringify(hqRoomEditOf(id)) === JSON.stringify(diff)) return false;
+    const room = hqRoomEditBuild(id, diff);
+    if (!room || hqWorldDocRoomOk(room)) return false;
+    hqRoomEditPut(id, room); hqWorldDocRebuild([id]);
+    return true;
+}
+/* THE GAME'S LOAD: the edits of the project the editor last opened (IndexedDB `ew_editor`, read only; a browser with no
+   editor database is left without one) */
+function hqRoomEditsBoot() {
+    if (typeof indexedDB === 'undefined') return null;
+    HQ_ROOM_EDITS.settled = false;
+    HQ_ROOM_EDITS.ready = new Promise(res => {
+        let done = false; const fin = (v) => { if (done) return; done = true; HQ_ROOM_EDITS.settled = true; res(v); };
+        let q; try { q = indexedDB.open('ew_editor'); } catch (e) { fin(null); return; }
+        q.onupgradeneeded = () => { try { q.transaction.abort(); } catch (e) {} };   // no editor database: none is made
+        q.onerror = () => fin(null); q.onblocked = () => fin(null);
+        q.onsuccess = () => {
+            const db = q.result;
+            const close = () => { try { db.close(); } catch (e) {} };
+            if (!db.objectStoreNames.contains('meta') || !db.objectStoreNames.contains('projects')) { close(); fin(null); return; }
+            try {
+                const tx = db.transaction(['meta', 'projects'], 'readonly'), g = tx.objectStore('meta').get('last');
+                g.onsuccess = () => {
+                    const name = g.result; if (!name) return;
+                    const p = tx.objectStore('projects').get(name);
+                    p.onsuccess = () => {
+                        const E = (p.result && p.result.doc && p.result.doc.edits) || {}, map = {};
+                        Object.keys(E).forEach(id => { if (E[id] && E[id].diff) map[id] = E[id].diff; });
+                        try { const ids = hqRoomEditsSet(map); if (ids.length) console.log('[room edits] his edits of ' + ids.join(', ') + ' (editor project ' + name + ')'); } catch (e) { console.warn('[room edits] boot', e); }
+                    };
+                };
+                tx.oncomplete = () => { close(); fin(true); }; tx.onerror = tx.onabort = () => { close(); fin(null); };
+            } catch (e) { close(); fin(null); }
+        };
+    });
+    return HQ_ROOM_EDITS.ready;
+}
+if (typeof window !== 'undefined') {
+    Object.assign(window, { HQ_ROOM_EDITS, hqRoomEditBase, hqRoomRev, hqRoomEditDiff, hqRoomEditBuild, hqRoomEditPut, hqRoomEditDrop, hqRoomEditsSet, hqRoomEditOf, hqRoomEditSig, hqRoomEditUse, hqRoomEditsBoot });
+    if (!window.importScripts) { try { hqRoomEditsBoot(); } catch (e) { console.warn('[room edits] boot', e); } }   // never inside the survey worker (it is handed each room)
 }
 /* ══ THE SHAPES (EDITOR_PLAN.md §4.3 + §5.3 + §6 rows 5–6, E1 — 2026-09-29) ═══════════════════════════════════════════════════
    The building rows the editor's tools write, expanded into the compiler's own rows before hqTerrainCompile reads them
@@ -55282,6 +55431,19 @@ function hqArenaNeedsSurvey(mapId) {
 /* THE LAUNCH: the entry rebuilt from the LIVE raster with THE FIELD's full record, the room's own layout. `compile` lets
    the sync compile run (the no-worker fallback); without it an unsurveyed room returns false. A window that is no longer
    clear (a room changed since the bake) keeps the baked board and the Δ's layout (`failed`, warned once). */
+/* THE GAME ROOM EDITS (2026-10-18): a room changed under its arenas (his edit laid over it, or taken off) — every `<site>_delta`
+   cut from it, at every size, lets go of the full field it attached, so the next launch surveys the room again and rebuilds the
+   board from it (a fight on that map keeps its latched board until it ends) */
+function hqArenaRoomChanged(roomId) {
+    if (typeof PREBUILT_MAPS === 'undefined' || !PREBUILT_MAPS) return 0;
+    let n = 0;
+    Object.keys(PREBUILT_MAPS).forEach(k => {
+        const e = PREBUILT_MAPS[k];
+        if (!e || !e.arena || e.arena.room !== roomId) return;
+        delete e.field; e.arena.failed = false; n++;
+    });
+    return n;
+}
 function hqArenaUpgrade(mapId, opts) {
     opts = opts || {};
     const id = String(mapId || '');

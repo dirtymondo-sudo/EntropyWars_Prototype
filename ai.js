@@ -930,8 +930,8 @@
         if (id === 'minimize') return 0.35 * output * turns;
         if (id === 'hexed') return 90;
         if (id === 'blind') {
-            // 👁 Blind takes the target down to 1 tile of sight and cuts it off from its team's eyes: a ranged
-            // threat loses its shots, a melee one barely notices
+            // 👁 Blind takes the target down to 1 tile of sight and makes half its swings miss (it still shoots
+            // at what its team sees): a ranged threat loses its lone-wolf shots, a melee one barely notices
             let ranged = false;
             try { ranged = (g.getEffectiveRange(tg) || 1) >= 2; } catch (e) {}
             return (ranged ? 0.55 : 0.3) * output * turns;
