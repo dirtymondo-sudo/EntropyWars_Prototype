@@ -834,7 +834,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     // ── Rock / mountain ──
     mountain:'rgba(120,110,100,0.5)', mountain_2:'rgba(110,100,90,0.46)', mountain_top:'rgba(155,150,144,0.5)',
     cliff:'rgba(100,92,84,0.5)', rocks_1:'rgba(110,105,100,0.42)', rocks_2:'rgba(105,100,95,0.42)',
-    rocks_3:'rgba(100,95,90,0.42)', rocks_4:'rgba(95,90,85,0.42)', rocks_5:'rgba(90,85,80,0.42)',
+    rocks_3:'rgba(100,95,90,0.42)', rocks_4:'rgba(95,90,85,0.42)', rocks_5:'rgba(90,85,80,0.42)', stone:'rgba(96,92,88,0.44)',
     rock_wall_1:'rgba(90,85,80,0.52)', rock_wall_2:'rgba(85,80,75,0.52)',
     rubble_1:'rgba(120,110,95,0.42)', rubble_2:'rgba(115,105,90,0.42)', rubble_3:'rgba(110,100,86,0.42)',
     rubble_4:'rgba(105,96,82,0.42)', ruins:'rgba(140,130,110,0.42)',
@@ -1731,6 +1731,18 @@ const TERRAIN_RULES = {
     obsidian: {
         label: 'Obsidian Floor',
         short: 'OBS',
+        passable: true,
+        moveCost: 1,
+        blocksRanged: false,
+        healMultiplier: 1,
+        endTurn(unit) { return null; }
+    },
+    /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo): what lava on water, water / ice on lava, or rain on the fight's lava
+       leaves (map.js lavaWaterMixOf). Plain walkable ground at the tile's height — not a liquid, so no swimming, burning
+       or flowing; it wears the rocks_5 sheet (sprites.js TERRAIN_SPRITES.stone). */
+    stone: {
+        label: 'Stone',
+        short: 'STN',
         passable: true,
         moveCost: 1,
         blocksRanged: false,

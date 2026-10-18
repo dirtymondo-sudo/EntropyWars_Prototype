@@ -562,3 +562,16 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
 - Cause: three-renderer.js `_introBuildDoor` stood the crossing at the zone's ENGINE level × the level step. Arenas are drawn on the room's TRUE GROUND (real tops in metres), so past the board's edge the floor sat 0.2–1.2 tiles above the door on Giza, Heaven, Stonehenge, Shasta, Atlantis, Hollow Earth, Fairy Forest, Bohemian Grove, D.U.M.B., North Pole, Singularity, Saturn (measured in headless Chromium by raycasting the room under each door).
 - Fix: `_introDoorFloorY` (no kit + a live true-ground field only): the zone's real top, and on a terrain room `hqTerrainFeet(info, x, z, null)` sampled 3×3 across the door's footprint (a sample past the compiled floor's edge, e.g. Fairy Forest's south door on the outer bank, raycasts the drawn `hqRoom:` group instead: `_introRoomGroundY`); highest sample, capped at lowest + 0.35 tile (the 0.42-tile dais still meets a slope's low side), never under the centre sample. The door, the dais and the walkers' off-board path nodes (`zB`) all use it; battle.js's door shot reads `zB` too.
 - Probe used: a scratch Playwright run wrapping `ThreeRenderer.introCineStart` and raycasting `ThreeRenderer.hq.dev.scene()` under each `introCrossings` child (jsdelivr is blocked in the sandbox: serve the npm tarballs locally).
+
+## WATER + LAVA = STONE, RAIN PUTS OUT THE GROUND FIRE (2026-10-18)
+mondo: "when water and lava mix i want them to make rock like in mincraft ... hellmouth ... lava lands on water tiles" +
+"same if it rains on lava" + "a thunderstorm started, yet there is still tiles on fire" + "fire spells should still work in
+the rain im just talking about grass tiles being on fire".
+- New terrain `stone` (data.js TERRAIN_RULES, moveCost 1, rocks_5 sheet via sprites.js TERRAIN_SPRITES, ent_slate tint).
+- map.js `lavaWaterMixOf(cur, terrain)`: setTerrainAt turns lava-on-water and water/ice-on-lava into stone (one combat-log line
+  per cast); setTerrainSpringAt only registers a spring when the liquid really landed. Great Flood's old obsidian quench is stone.
+  lineBeamPlan's simulated paint and the terrain ghost colour use the same rule.
+- battle.js triggerTerrainSpellReaction: a water/ice-element hit on lava hardens it.
+- state.js `rainOnTheBoard`: a soaks weather (Thunderstorm, Hurricane, Blood Rain) puts out every burning tile under its rain as
+  it forms (fires lit later still burn), and hardens the fight's lava (state.paintedFrom says it wasn't lava) on forming and
+  every round end. The map's own lava stays. Root cause of the fire bug: tickBurningTiles never asked about rain.

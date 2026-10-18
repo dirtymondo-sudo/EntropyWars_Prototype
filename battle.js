@@ -3359,6 +3359,17 @@
         function triggerTerrainSpellReaction(caster, spell, tiles) {
             if (!caster || !spell || !tiles || !tiles.length) return;
             if (state.phase !== 'battle') return;
+            /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo): a water or ice spell's hit on lava hardens it into stone
+               (map.js lavaWaterMixOf; the paint notes the cells, so the field skins and the state-sync carry it) */
+            const _rawEl = getSpellElement(spell);
+            if (_rawEl === 'water' || _rawEl === 'ice') {
+                let _hard = 0;
+                for (const tile of tiles) {
+                    if (!tile || !isInside(tile.x, tile.y) || getTerrainAt(tile.x, tile.y) !== 'lava') continue;
+                    if (setTerrainAt(tile.x, tile.y, _rawEl === 'ice' ? 'ice' : 'water') !== false && getTerrainAt(tile.x, tile.y) === 'stone') _hard++;
+                }
+                if (_hard) { _invalidateBoardGrid(); scheduleBoardRender(); }
+            }
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
@@ -4890,7 +4901,7 @@
                 t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0 || t.indexOf('rock') === 0 ||
                 t.indexOf('rubble') === 0 || t.indexOf('marble') === 0 || t.indexOf('dungeon') === 0 ||
                 t.indexOf('tilefloor') === 0 ||
-                t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff') return 'stone';
+                t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff' || t === 'stone') return 'stone';
             return null;
         }
 
@@ -6445,13 +6456,14 @@
                 row('boardTerrain', y)[x] = top?.terrain || 'grass';
                 row('boardHeights', y)[x] = top?.z ?? 0;
             };
+            const _mix = (cur, t) => (typeof lavaWaterMixOf === 'function') ? lavaWaterMixOf(cur, t) : t;   // 🪨 lava on water = stone
             const paint = (x, y, terrain) => {
                 if (getColumn(x, y, board).length) {
                     const col = column(x, y);
                     const b = col.slice().reverse().find(b => !b.terrain || !b.terrain.startsWith('void'));
-                    if (b) { b.terrain = terrain; sync(x, y); return; }
+                    if (b) { b.terrain = _mix(b.terrain, terrain); sync(x, y); return; }
                 }
-                row('boardTerrain', y)[x] = terrain;
+                row('boardTerrain', y)[x] = _mix(row('boardTerrain', y)[x], terrain);
             };
             const occupied = (x, y) => board.units.some(u => !u.dead && u.x === x && u.y === y);
             const tiles = [], spine = [], seen = new Set();
@@ -63358,6 +63370,7 @@
             if (t === 'wood_planks' || t === 'wood' || t === 'bridge') return 0xd8a86a;
             if (t.indexOf('metal') === 0 || t === 'aluminium') return 0xb8c4d0;
             if (t === 'mountain' || t === 'castle_wall' || t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0) return 0xd8c9a8;
+            if (t === 'stone') return 0x9a948c;
             if (t.indexOf('flesh') === 0 || t === 'plague_flesh') return 0xd06a6a;
             return 0x9fd8ff;
         }
@@ -63365,7 +63378,7 @@
         function predictTerrainSpellChanges(unit, spell, tx, ty) {
             if (!spell) return [];
             const changes = [];
-            const color = _terrainPreviewColor(spell.terrainType || spell.leaveTerrain);
+            const _color = _terrainPreviewColor(spell.terrainType || spell.leaveTerrain);
 
             /* A monument wall (Rampart's standing stones…) shows a piece only where the placer will really stand one —
                the same check placeSpellMonument makes, units lifted onto the piece rather than skipped. */
@@ -63374,6 +63387,10 @@
                 if (!isInside(x, y)) return;
                 const current = getTerrainAt(x, y);
                 if (current === 'wall') return;
+                /* 🪨 water poured on lava comes out as stone (map.js lavaWaterMixOf): the ghost shows it in stone's colour */
+                const _pt = spell.terrainType || spell.leaveTerrain;
+                const color = (_pt && typeof lavaWaterMixOf === 'function' && lavaWaterMixOf(current, _pt) === 'stone')
+                    ? _terrainPreviewColor('stone') : _color;
                 if (spell.monument && typeof canPlaceSpellMonumentAt === 'function'
                     && !canPlaceSpellMonumentAt(spell.monument.kind, x, y, _monRot, true)) return;
                 const deform = spell.terrainDeform;
@@ -69562,8 +69579,9 @@
                         affectedTiles.push({ x: tx, y: ty });
                     };
                     // 💧 Conjured water behaves like water (2026-07-10): it
-                    // quenches lava it lands on into obsidian and snuffs any
-                    // ground fire it covers.
+                    // quenches lava it lands on (into stone since 2026-10-18,
+                    // map.js lavaWaterMixOf: water + lava = stone, like
+                    // Minecraft) and snuffs any ground fire it covers.
                     const _isWaterPaint = (terrainType === 'water' || terrainType === 'deep_water');
                     /* Multi-floor anchor: paint the FLOOR the cast targeted (the
                        clicked surface / the caster's own storey), not blindly the
@@ -69583,8 +69601,8 @@
                     const _paintTile = (tx, ty, current, tt, pz, spring) => {
                         let t = tt || terrainType;
                         if (_isWaterPaint && current === 'lava') {
-                            t = 'obsidian';
-                            addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into obsidian!`);
+                            t = 'stone';
+                            addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into stone!`);
                         }
                         if (current === t) return false;
                         if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
@@ -69598,7 +69616,7 @@
                             state.liquidSprings = state.liquidSprings || {};
                             state.liquidSprings[tx + ',' + ty] = 1;
                         }
-                        if (_isWaterPaint && t !== 'obsidian' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
+                        if (_isWaterPaint && t !== 'stone' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
                         return true;
                     };
                     // Paint one spell tile IN PLACE. Conjured liquid on a
