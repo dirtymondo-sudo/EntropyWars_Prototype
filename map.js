@@ -13292,6 +13292,21 @@
             return result;
         }
 
+        /* THE SOLO SIGHT (2026-10-18, mondo: "if i am blind then i shouldnt have team vision ... if it was working
+           properly then i wouldnt have been able to click on that unit in the first place"): while a unit cut off from
+           its team's sight (Blind / Jammed, STATUS_DEFS noSharedVision) is the one acting for `player`, the board shows
+           that team only what THAT unit sees — the fog, the drawn enemies and the clickable tiles all follow it, so the
+           screen matches isInVision (the gate every attack and spell runs). Returns that unit, else null. */
+        function fogSoloUnit(player) {
+            if (!_visionOn() || typeof unitLosesSharedVision !== 'function') return null;
+            if (state.phase !== 'battle') return null;
+            const bid = state._blitzActiveUnitId;
+            let u = bid ? state.units.find(x => x.id === bid) : null;
+            if (!u && state.activePlayer === player && typeof getSelectedUnit === 'function') u = getSelectedUnit();
+            if (!u || u.dead || u._dying || u.player !== player) return null;
+            return unitLosesSharedVision(u) ? u : null;
+        }
+
         function computeVisibleTiles(player) {
 
             const visible = new Set();
@@ -13326,7 +13341,44 @@
                 }
             }
 
+            /* Smoke concealment: enemy smoke zones hide their tiles unless a friendly stands beside them. */
+            function _dropEnemySmokeTiles() {
+                if (state._activeZones?.length) {
+                    const smokeZones = state._activeZones.filter(z => z.smokeConcealment && z.ownerPlayer !== player);
+                    if (smokeZones.length > 0) {
+                        const friendlies = state.units.filter(u => !u.dead && u.player === player);
+                        for (const zone of smokeZones) {
+                            const r = (zone.radius ?? 1);
+                            for (let dy = -r; dy <= r; dy++) {
+                                for (let dx = -r; dx <= r; dx++) {
+                                    const sx = zone.x + dx, sy = zone.y + dy;
+                                    if (sx < 0 || sy < 0 || sx >= size || sy >= sizeH) continue;
+                                    const spk = sx + ',' + sy;
+                                    if (!visible.has(spk)) continue;
+                                    /* Keep visible if a friendly is adjacent (dist ≤ 1) to the smoke tile */
+                                    let adjacentFriendly = false;
+                                    for (const f of friendlies) {
+                                        if (Math.abs(f.x - sx) + Math.abs(f.y - sy) <= 1) {
+                                            adjacentFriendly = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!adjacentFriendly) visible.delete(spk);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             const isAlive = u => !u.dead && u.player === player;
+
+            const _solo = fogSoloUnit(player);
+            if (_solo) {
+                addVisibleFrom(_vx(_solo), _vy(_solo), getUnitVisionRange(_solo), _vz(_solo), _solo.wallVision, _losOnlyVision());
+                _dropEnemySmokeTiles();
+                return visible;
+            }
 
             if (state.squadLeaderMode && player === 1 && !state.teamVision) {
                 const leader = state.squadLeaderUnitId ? state.units.find(u => u.id === state.squadLeaderUnitId && isAlive(u)) : null;
@@ -13422,33 +13474,7 @@
                 for (const pk of state._flairRevealTiles[player]) visible.add(pk);
             }
 
-            /* ── Smoke concealment: remove tiles inside enemy smoke zones ── */
-            if (state._activeZones?.length) {
-                const smokeZones = state._activeZones.filter(z => z.smokeConcealment && z.ownerPlayer !== player);
-                if (smokeZones.length > 0) {
-                    const friendlies = state.units.filter(u => !u.dead && u.player === player);
-                    for (const zone of smokeZones) {
-                        const r = (zone.radius ?? 1);
-                        for (let dy = -r; dy <= r; dy++) {
-                            for (let dx = -r; dx <= r; dx++) {
-                                const sx = zone.x + dx, sy = zone.y + dy;
-                                if (sx < 0 || sy < 0 || sx >= size || sy >= sizeH) continue;
-                                const spk = sx + ',' + sy;
-                                if (!visible.has(spk)) continue;
-                                /* Keep visible if a friendly is adjacent (dist ≤ 1) to the smoke tile */
-                                let adjacentFriendly = false;
-                                for (const f of friendlies) {
-                                    if (Math.abs(f.x - sx) + Math.abs(f.y - sy) <= 1) {
-                                        adjacentFriendly = true;
-                                        break;
-                                    }
-                                }
-                                if (!adjacentFriendly) visible.delete(spk);
-                            }
-                        }
-                    }
-                }
-            }
+            _dropEnemySmokeTiles();
 
             return visible;
         }

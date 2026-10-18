@@ -4936,7 +4936,8 @@
         let _fogVisCacheResult = null;
         function computeVisibleTilesCached(player) {
 
-            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '');
+            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
+                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id;   // Blind / Jammed acting: its own sight only
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
@@ -4960,7 +4961,8 @@
         let _fogDistCacheResult = null;
         function computeFogDistancesCached(player) {
 
-            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '');
+            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
+                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id;   // Blind / Jammed acting: its own sight only
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
