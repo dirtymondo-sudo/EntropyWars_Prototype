@@ -56677,7 +56677,7 @@
                        those tiles and the landing never needed sight. Any other aimed click on a fogged tile says why. */
                     if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell))) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
-                            addLog('Out of sight — no one on your team can see that tile.', _actUnit.player);
+                            addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
                         }
                         return;
@@ -61176,6 +61176,16 @@
                 wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
         }
 
+        /* The "can't see it" line for an aimed action (2026-10-18): a Jammed unit (noSharedVision) whose team DOES see
+           the tile is told it is on its own eyes — "no one on your team can see that tile" was false there. */
+        function outOfSightMessage(unit, x, y) {
+            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)
+                && typeof teamSeesTile === 'function' && teamSeesTile(unit.player, x, y)) {
+                return `Out of sight — ${unitDisplayName(unit)} is cut off from the team's sight and can't see that tile itself.`;
+            }
+            return 'Out of sight — no one on your team can see that tile.';
+        }
+
         function doAttack(unit, x, y, z) {
             _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             /* SIMUL plan phase: queue the order instead of executing. */
@@ -61285,7 +61295,7 @@
             const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
             if (visionGatesTargeting(unit) && !isInVision(unit, x, y, (_clickedTarget && _clickedTarget.z != null) ? _clickedTarget.z : undefined) && !_isSkyTelescopeTarget) {
-                addLog('Out of sight — no one on your team can see that tile.');
+                addLog(outOfSightMessage(unit, x, y));
                 playErrorSfx();
                 return 0;
             }
@@ -65870,7 +65880,7 @@
             const _isSpellSkyTelescopeTarget = _spellSkyTelescopeTarget(unit, x, y);
             if (spellVisionGate(unit, spell) && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
                 if (!isInVision(unit, x, y, (_spellClickTarget && _spellClickTarget.z != null) ? _spellClickTarget.z : undefined) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
-                    if (!_silentReject) addLog('Out of sight — no one on your team can see that tile.');
+                    if (!_silentReject) addLog(outOfSightMessage(unit, x, y));
                     state._teleportingUnit = null;
                     playErrorSfx();
                     return 0;

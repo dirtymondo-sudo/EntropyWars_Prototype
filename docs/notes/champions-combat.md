@@ -1351,8 +1351,13 @@ ai-training/AI_IMITATION_ANALYSIS_20261008.md. Code changes from the evidence:
   `VISION_RULES.enabled = false` restores the old LOS-only, fog-gated rule.
 - **Fog default:** state.fogOfWar stays ON (online enforces it); the fog GRID visual stays OFF. Fog now shows the
   range-limited sight. With fog off, enemies are drawn but only targetable when the team sees them.
-- **Blind** = vision 1 and no shared sight (`visionSet: 1, noSharedVision`). **Jammed** = no shared sight + no
-  Scanner/Scan Pulse. Keen sense: vision ≥ 4 (keenSenseVision) senses cloaked/smoke-hidden enemies at 2 tiles.
+- **Blind** = vision 1 and half its basic attacks miss (`visionSet: 1`); since 2026-10-18 it KEEPS its team's sight
+  (mondo: teammates near the target "had vision on him anyway so that shouldnt have been an issue"). Range is
+  untouched. **Jammed** = no shared sight (`noSharedVision`) + no Scanner/Scan Pulse.
+- **Move + Attack sight (2026-10-18):** hud.js `_computeEnemyActions` → findMoveIntoRange(…, needSight) probes
+  isInVision FROM the landing tile (unit relocated + restored), so the quick menu never offers a MOVE→ATK the swing
+  then refuses with "Out of sight". battle.js `outOfSightMessage` tells a Jammed unit it is on its own eyes when
+  the team does see the tile. Keen sense: vision ≥ 4 (keenSenseVision) senses cloaked/smoke-hidden enemies at 2 tiles.
 - **Broken / Break** (STATUS_DEFS.broken, 💔 BRK): getUnitPassives answers [] and unitHasGear false while it lasts
   (every hook, immunity, aura off); canFly false unless Levitating (a status). battle.js breakUnitPassives strips the
   flat stats the passives folded in at build (`unit._passiveStatBonus` → `unit._brokenStrip`) and drops an airborne

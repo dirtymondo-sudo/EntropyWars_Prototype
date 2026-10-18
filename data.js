@@ -11874,8 +11874,9 @@ const STATUS_DEFS = {
         kind: 'debuff',
         category: 'status',
         stack: 'max',
-        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"):
-        noSharedVision: true,   // sees only the tiles beside it, and can't use its allies' sight
+        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"): sees only the tiles beside it.
+                                // It still uses its team's sight (2026-10-18, mondo: "i had teammates near the unit ... so they
+                                // had vision on him anyway so that shouldnt have been an issue"), so no noSharedVision here.
         iconSrc: createStatusIconDataUri('🌫️', '#2a2e33', '#eef2f6', '#9aa8b5')
         // Attack accuracy penalty is rolled in doAttack (battle.js): a blind
         // attacker misses 50% of the time.
@@ -11970,7 +11971,7 @@ const STATUS_LIBRARY_DESCS = {
     statLock:  'Stats are locked and cannot be raised or lowered.',
     hexed:     'Cursed — every action taken feeds the hex and hurts.',
     frozen:    'Encased in ice: cannot move or act. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
-    blind:     'Vision whited out: attacks miss 50% of the time, VISION drops to 1 (only the tiles beside it) and it can\'t use its allies\' sight.',
+    blind:     'Vision whited out: attacks miss 50% of the time and VISION drops to 1 (only the tiles beside it). It can still hit what its allies see.',
     broken:    'Every passive is switched off while it lasts: no passive hooks, immunities or gear bonuses. A unit that flies by passive falls out of the sky and takes fall damage.',
     siegeMode: 'Anchored down: +1 ATK stage and +2 RNG, but −2 MOV. Cannot be stolen.'
 };
@@ -21916,7 +21917,7 @@ const CAMPAIGN_REGION_THEMES = {
    percent its old AWR gave, so no crit odds moved.)
    Combat context on top (battle.js): a crit deals ×1.8 damage
    (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
-   attacker always misses; hard CC (stun/freeze/root) sets EVA to 0;
+   attacker misses half the time; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
 function critChanceFromStats(crt) {
   return Math.max(0, Math.min(1, (Number(crt) || 0) / 100));
@@ -22019,7 +22020,7 @@ const STAT_HELP = {
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
   vision: 'VISION — how many tiles the unit sees (2 to 6; S 6 · A 5 · B 4 · C 3 · F 2). Walls and blocks still cut sight. A unit can only attack or cast at an enemy its team can see (its own vision or an ally’s) AND that it has line of sight to (spells that ignore line of sight still need the team to see the target). Blind drops vision to 1 and cuts the unit off from its allies’ sight. VISION 4+ also senses cloaked or smoke-hidden enemies from 2 tiles instead of 1.',
   crt: 'CRT — critical hit chance on basic attacks, in percent — its own stat (S 24+ · A 20+ · B 16+ · C 12+ · F below). A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
-  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
+  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker misses half the time, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 
 /* ── VISION RULES (2026-10-09, mondo: "a unit can have 2-6 vision ... it wouldnt be able to see an enemy that far away
