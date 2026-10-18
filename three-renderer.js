@@ -249,7 +249,7 @@ const ThreeRenderer = (function () {
         bricks_1:'ent_clay', bricks_2:'ent_clay', mountain_top:'ent_sand', beanstalk:'ent_pine',
         /* stone / structural / neutral → void-stone ramp */
         mountain:'ent_stone', mountain_2:'ent_slate', cliff:'ent_slate', ruins:'ent_ash',
-        rocks_1:'ent_stone', rocks_2:'ent_stone', rocks_3:'ent_stone', rocks_4:'ent_slate', rocks_5:'ent_slate',
+        rocks_1:'ent_stone', rocks_2:'ent_stone', rocks_3:'ent_stone', rocks_4:'ent_slate', rocks_5:'ent_slate', stone:'ent_slate',
         rock_wall_1:'ent_slate', rock_wall_2:'ent_slate', rubble_1:'ent_ash', rubble_2:'ent_ash',
         rubble_3:'ent_ash', rubble_4:'ent_ash', urban_wall:'ent_stone', urban_street:'ent_ash',
         cave_floor:'ent_slate', cave_wall:'ent_graphite', cave_entrance:'ent_pitch'

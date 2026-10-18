@@ -3359,6 +3359,17 @@
         function triggerTerrainSpellReaction(caster, spell, tiles) {
             if (!caster || !spell || !tiles || !tiles.length) return;
             if (state.phase !== 'battle') return;
+            /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo): a water or ice spell's hit on lava hardens it into stone
+               (map.js lavaWaterMixOf; the paint notes the cells, so the field skins and the state-sync carry it) */
+            const _rawEl = getSpellElement(spell);
+            if (_rawEl === 'water' || _rawEl === 'ice') {
+                let _hard = 0;
+                for (const tile of tiles) {
+                    if (!tile || !isInside(tile.x, tile.y) || getTerrainAt(tile.x, tile.y) !== 'lava') continue;
+                    if (setTerrainAt(tile.x, tile.y, _rawEl === 'ice' ? 'ice' : 'water') !== false && getTerrainAt(tile.x, tile.y) === 'stone') _hard++;
+                }
+                if (_hard) { _invalidateBoardGrid(); scheduleBoardRender(); }
+            }
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
@@ -4890,7 +4901,7 @@
                 t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0 || t.indexOf('rock') === 0 ||
                 t.indexOf('rubble') === 0 || t.indexOf('marble') === 0 || t.indexOf('dungeon') === 0 ||
                 t.indexOf('tilefloor') === 0 ||
-                t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff') return 'stone';
+                t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff' || t === 'stone') return 'stone';
             return null;
         }
 
@@ -6445,13 +6456,14 @@
                 row('boardTerrain', y)[x] = top?.terrain || 'grass';
                 row('boardHeights', y)[x] = top?.z ?? 0;
             };
+            const _mix = (cur, t) => (typeof lavaWaterMixOf === 'function') ? lavaWaterMixOf(cur, t) : t;   // 🪨 lava on water = stone
             const paint = (x, y, terrain) => {
                 if (getColumn(x, y, board).length) {
                     const col = column(x, y);
                     const b = col.slice().reverse().find(b => !b.terrain || !b.terrain.startsWith('void'));
-                    if (b) { b.terrain = terrain; sync(x, y); return; }
+                    if (b) { b.terrain = _mix(b.terrain, terrain); sync(x, y); return; }
                 }
-                row('boardTerrain', y)[x] = terrain;
+                row('boardTerrain', y)[x] = _mix(row('boardTerrain', y)[x], terrain);
             };
             const occupied = (x, y) => board.units.some(u => !u.dead && u.x === x && u.y === y);
             const tiles = [], spine = [], seen = new Set();
@@ -34150,7 +34162,8 @@
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
             'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed']);
         function forecastSpellPlan(caster, spell, x, y, z, opts = {}) {
-            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null };
+            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null,
+                pressArmed: !!(spell && spellArmsPress(spell)), pressHits: [], press: null };
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
             plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'));
             if (!plan.handled) return plan;
@@ -34178,11 +34191,83 @@
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
             }
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
+            _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
             if ((spell.kind === 'seedPoison' || spell.kind === 'leechSeed') && !plan.hits.length) plan.handled = false;
             return plan;
         }
         window.forecastSpellPlan = forecastSpellPlan;
+
+        /* THE PRESS FORECAST (mondo 2026-10-18: "basically just need the green exclamation point to guarantee the press
+           refund, so it has to take the elemental damage into account"): every forecast hit records the SAME press
+           context the cast's collector would (_pressCtxForHit — the spell's type, the element part, noPress slams
+           skipped, Protected / Shadow Realm / incorporeal bodies as a miss), and the plan resolves it through
+           resolvePressOutcome, worst case over the whole cast like the real refund. plan.press is the outcome;
+           h.press marks the hits that earn it, h.pressBy says whether the TYPE or the ELEMENT (neutral type only) does. */
+        function _forecastPressRecord(plan, caster, u, o, fm, h, entry) {
+            if (!plan.pressArmed || !o || !o.sourceUnit || o.sourceUnit.id !== caster.id) return;
+            const pc = _pressCtxForHit(caster, u, o);
+            if (!pc) return;
+            plan.pressHits.push(pc);
+            (h._pressCtx || (h._pressCtx = [])).push(pc);
+            if (fm && (fm.blocked === 'protected' || fm.blocked === 'realm' || fm.blocked === 'incorporeal')) {
+                plan.pressHits.push({ evaded: true });
+                h._pressMiss = true;
+            }
+            // Chivalry: the cast's hit is collected on the ward AND on the knight who takes it (applyDamageToUnit recursion)
+            if (fm && fm.redirectedTo != null) {
+                const g = unitFromId(fm.redirectedTo);
+                const gc = g ? _pressCtxForHit(caster, g, o) : null;
+                if (gc) { plan.pressHits.push(gc); const gh = entry(g); (gh._pressCtx || (gh._pressCtx = [])).push(gc); }
+            }
+        }
+        function _forecastPressResolve(plan) {
+            plan.press = (plan.pressArmed && plan.pressHits.length) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
+            const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT;
+            for (const h of plan.hits) {
+                h.press = false; h.pressBy = null;
+                if (!presses || h._pressMiss || !h._pressCtx) continue;
+                const pc = h._pressCtx.find(c => _pressOutcomeForHit(c) === PRESS_OUTCOME.WEAK);
+                if (!pc) continue;
+                const eff = pc.effSummary || {};
+                h.press = true;
+                h.pressBy = (eff.hasStrong && !eff.hasWeak) ? 'type' : 'element';
+            }
+        }
+
+        /* One answer for every green !: does this action on this target hand the +2 AP press back? Spells read the
+           forecast plan aimed at the target (so one resisting / protected body in the blast vetoes it everywhere, as
+           in the real refund); a basic attack reads its type (crit / dodge stay a gamble); a combo its own type and
+           element. Returns { press, by: 'type' | 'element' | null }. Viewer-local, no state writes. */
+        function forecastPressOn(caster, target, spell, opts = {}) {
+            const no = { press: false, by: null };
+            if (!caster || !target || target.dead || !isEnemyUnit(caster, target)) return no;
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return no;   // Mystery Dungeon floors: no press turns
+            const byOf = (pc) => { const e = pc.effSummary || {}; return (e.hasStrong && !e.hasWeak) ? 'type' : 'element'; };
+            if (opts.combo) {
+                const combo = opts.combo, partner = opts.partner || null;
+                const atk = combo.spellType ? [combo.spellType] : [...(caster.types || []), ...((partner && partner.types) || [])];
+                const cEl = getSpellElement(combo);
+                const pc = { effSummary: getTypeEffectSummary(atk, target.types || []),
+                    elemAff: (cEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, cEl) : null };
+                return _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK ? { press: true, by: byOf(pc) } : no;
+            }
+            if (!spell) {
+                if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return no;
+                const pc = { effSummary: getTypeEffectSummary(caster.types || [], target.types || []) };
+                return _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK ? { press: true, by: 'type' } : no;
+            }
+            if (!spellArmsPress(spell)) return no;
+            const aim = opts.aim || target;   // an off-centre AoE aim (the quick menu's) still has to catch the target
+            const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
+            const h = plan.handled ? plan.byId[target.id] : null;
+            if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
+            // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
+            const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
+            return (pc && _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK) ? { press: true, by: byOf(pc) } : no;
+        }
+        window.forecastPressOn = forecastPressOn;
 
         /* THE BANE FORECAST (2026-10-17, mondo: "banes need to have a damage projection just like spells"): a thrown
            bane (and the grenade, which rides the bane throw) read the doItem way — the same raw (baseDmg, + baneDmg
@@ -34306,6 +34391,7 @@
                     if (g) { const gh = entry(g); gh.dmg += fm.redirectDmg || 0; gh.min += fm.redirectDmg || 0; gh.max += fm.redirectDmg || 0; gh.hits++; tag(g, 'intercepts'); }
                 }
                 if (extra && extra.tag) tag(u, extra.tag);
+                _forecastPressRecord(plan, unit, u, o, fm, h, entry);
                 u.shield = fm.shieldLeft != null ? fm.shieldLeft : u.shield;
                 u.hp = Math.max(0, u.hp - take(fm));
                 return fm;
@@ -34326,7 +34412,7 @@
                 else if (r.hitWall || r.hitUnits.length) tag(u, 'slam');
                 for (const s of (r.simSlams || [])) {
                     const v = unitFromId(s.unitId);
-                    if (v) hit(v, s.dmg, s.dmg, s.dmg, { ignoreArmor: true, consumeMarked: false, sourceUnit: unit }, { tag: 'slam' });
+                    if (v) hit(v, s.dmg, s.dmg, s.dmg, { ignoreArmor: true, consumeMarked: false, sourceUnit: unit, noPress: true }, { tag: 'slam' });
                 }
                 for (const c of (r.chain || [])) {
                     if (c.unit && c.res && (c.res.x !== c.unit.x || c.res.y !== c.unit.y)) addMove(c.unit, c.res.x, c.res.y, 'push');
@@ -37868,6 +37954,14 @@
             'line', 'linePush', 'splitBeam',
             'aoe', 'barrage', 'cross', 'aoePull',
         ]);
+        /* Does casting this spell arm the press collector (doSpell)? The previews ask the same question. */
+        function spellArmsPress(spell) {
+            if (!spell) return false;
+            return _PRESS_SPELL_KINDS.has(spell.kind)
+                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
+                || (spell.kind !== 'delayed' && spellDealsDamage(spell));
+        }
+        window.spellArmsPress = spellArmsPress;
 
         // Level 100 (see LEVEL100_PLAN.md). XP_MAX_LEVEL mirrors data.js LEVEL_CAP.
         const XP_MAX_LEVEL = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100;
@@ -38841,13 +38935,21 @@
             const c = _pressDamageCollector;
             if (!c || !sourceUnit || !target) return;
             if (sourceUnit.id !== c.casterId) return;       // only the caster's own spell damage
+            const pc = _pressCtxForHit(sourceUnit, target, opts);
+            if (pc) c.hits.push(pc);
+        }
+
+        /* The press context one hit records (the collector above, and the previews through forecastSpellPlan), or
+           null when the hit does not judge the press. */
+        function _pressCtxForHit(sourceUnit, target, opts) {
+            if (!sourceUnit || !target) return null;
             /* THE SLAM IS NOT THE SPELL (mondo 2026-10-17: "whenever a spell is super effective but its a displacement
                spell and the target is immovable it doesnt award the ap refund"): the wall slam and the bowling-pin crash of
                a push / pull / throw (resolveForcedSlide, `noPress`) carry no spell type, so they were judged by the
                CASTER's own types, and a target that resists those vetoed the spell's super effective press (and drained
                an AP). Only the spell's own hits judge the press now. */
-            if (opts && opts.noPress) return;
-            if (target.player === sourceUnit.player) return; // enemies only
+            if (opts && opts.noPress) return null;
+            if (target.player === sourceUnit.player) return null; // enemies only
             /* THE SPELL'S TYPE, never the caster's: a divine spell from an
                anomaly caster is judged as divine vs the target (the caster's
                own types only ever add STAB). Only a TYPELESS hit (a basic
@@ -38856,7 +38958,7 @@
             const _el = opts && opts.spellElement;
             // only an element PART can press (THE ELEMENT SHARE — a tag no race resists, or a 0 share, has none)
             const elemAff = (_el && _hitElemShare(opts, _el) > 0 && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _el) : null;
-            c.hits.push({ effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff });
+            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff };
         }
 
         function _consumePressCollector(casterUnit, cost) {
@@ -63358,6 +63460,7 @@
             if (t === 'wood_planks' || t === 'wood' || t === 'bridge') return 0xd8a86a;
             if (t.indexOf('metal') === 0 || t === 'aluminium') return 0xb8c4d0;
             if (t === 'mountain' || t === 'castle_wall' || t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0) return 0xd8c9a8;
+            if (t === 'stone') return 0x9a948c;
             if (t.indexOf('flesh') === 0 || t === 'plague_flesh') return 0xd06a6a;
             return 0x9fd8ff;
         }
@@ -63365,7 +63468,7 @@
         function predictTerrainSpellChanges(unit, spell, tx, ty) {
             if (!spell) return [];
             const changes = [];
-            const color = _terrainPreviewColor(spell.terrainType || spell.leaveTerrain);
+            const _color = _terrainPreviewColor(spell.terrainType || spell.leaveTerrain);
 
             /* A monument wall (Rampart's standing stones…) shows a piece only where the placer will really stand one —
                the same check placeSpellMonument makes, units lifted onto the piece rather than skipped. */
@@ -63374,6 +63477,10 @@
                 if (!isInside(x, y)) return;
                 const current = getTerrainAt(x, y);
                 if (current === 'wall') return;
+                /* 🪨 water poured on lava comes out as stone (map.js lavaWaterMixOf): the ghost shows it in stone's colour */
+                const _pt = spell.terrainType || spell.leaveTerrain;
+                const color = (_pt && typeof lavaWaterMixOf === 'function' && lavaWaterMixOf(current, _pt) === 'stone')
+                    ? _terrainPreviewColor('stone') : _color;
                 if (spell.monument && typeof canPlaceSpellMonumentAt === 'function'
                     && !canPlaceSpellMonumentAt(spell.monument.kind, x, y, _monRot, true)) return;
                 const deform = spell.terrainDeform;
@@ -66095,9 +66202,7 @@
                after it (pull, dash, displacement, sky grabs, leap strikes, steals, damaging debuffs…), so those hits
                showed "It's super effective!" and never refunded. Any cast whose row carries damage (spellDealsDamage —
                deployables excluded) arms the collector now; `delayed` lands at round end, after this cast resolves. */
-            if (_PRESS_SPELL_KINDS.has(spell.kind)
-                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
-                || (spell.kind !== 'delayed' && spellDealsDamage(spell))) {
+            if (spellArmsPress(spell)) {
                 _armPressCollector(unit);
             }
 
@@ -69562,8 +69667,9 @@
                         affectedTiles.push({ x: tx, y: ty });
                     };
                     // 💧 Conjured water behaves like water (2026-07-10): it
-                    // quenches lava it lands on into obsidian and snuffs any
-                    // ground fire it covers.
+                    // quenches lava it lands on (into stone since 2026-10-18,
+                    // map.js lavaWaterMixOf: water + lava = stone, like
+                    // Minecraft) and snuffs any ground fire it covers.
                     const _isWaterPaint = (terrainType === 'water' || terrainType === 'deep_water');
                     /* Multi-floor anchor: paint the FLOOR the cast targeted (the
                        clicked surface / the caster's own storey), not blindly the
@@ -69583,8 +69689,8 @@
                     const _paintTile = (tx, ty, current, tt, pz, spring) => {
                         let t = tt || terrainType;
                         if (_isWaterPaint && current === 'lava') {
-                            t = 'obsidian';
-                            addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into obsidian!`);
+                            t = 'stone';
+                            addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into stone!`);
                         }
                         if (current === t) return false;
                         if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
@@ -69598,7 +69704,7 @@
                             state.liquidSprings = state.liquidSprings || {};
                             state.liquidSprings[tx + ',' + ty] = 1;
                         }
-                        if (_isWaterPaint && t !== 'obsidian' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
+                        if (_isWaterPaint && t !== 'stone' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
                         return true;
                     };
                     // Paint one spell tile IN PLACE. Conjured liquid on a
