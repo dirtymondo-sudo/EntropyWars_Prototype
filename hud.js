@@ -1867,6 +1867,7 @@ function QuickCone() {
     let watched = [];
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      _subDodge();
       const svg = ref.current; if (!svg) return;
       const L = window._ewQpCone || {};
       if (ro) {
@@ -1948,6 +1949,39 @@ function _qpPinRoom(L) {
   }
   room = Math.max(60, Math.round(room + (isFinite(+L.gap) ? +L.gap : 8)));
   if (de._ewQpRoom !== room) { de._ewQpRoom = room; de.style.setProperty('--ew-qp-room', room + 'px'); }
+}
+/* THE COMBAT TEXT BOX STEPS ASIDE (mondo 2026-10-18: "i want the combat text box to slide to right to avoid the action
+   menu secondary menus, and slide back whenever it can"): each frame the text box's own spot (its slide undone) is
+   checked against every open sub-menu (the command panels past the root, the quick action list and its BACK chip, not
+   the unit info card); one in the way = the bar slides right until it clears them all (never off the screen's right
+   edge), none = it slides home. The slide eases (CSS transition on the bar's transform). Off while the UI Maker's
+   Layout view is up, so the box sits where it is placed. Viewer-local. */
+function _subDodge() {
+  const bar = document.getElementById('battleSubtitleBar'), txt = bar && bar.firstElementChild;
+  if (!txt) return;
+  const cur = bar._ewDodge || 0;
+  let want = 0;
+  const r = txt.getBoundingClientRect();
+  if (r.width > 0 && r.height > 0 && txt.textContent && !document.documentElement.classList.contains('uim-arranging')) {
+    let now = 0;   // where the slide is this frame (mid-ease too), so the box's home spot stays put
+    try { const tf = getComputedStyle(bar).transform; now = tf && tf !== 'none' ? new DOMMatrixReadOnly(tf).m41 : 0; } catch (e) { now = cur; }
+    const L0 = r.left - now, R0 = r.right - now, obs = [];
+    document.querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)').forEach(p => {
+      for (const c of p.children) {
+        if (c.classList.contains('qp')) continue;   // the unit info card is not a menu
+        const o = c.getBoundingClientRect();
+        if (o.width > 1 && o.height > 1 && o.top < r.bottom + 4 && o.bottom > r.top - 4) obs.push(o);
+      }
+    });
+    for (let n = 0; n < 6; n++) {   // clear one, check the next one along
+      let need = want;
+      obs.forEach(o => { if (o.left < R0 + want && o.right > L0 + want) need = Math.max(need, Math.ceil(o.right + 12 - L0)); });
+      if (need === want) break;
+      want = need;
+    }
+    want = Math.max(0, Math.min(want, Math.floor(innerWidth - 8 - R0)));
+  }
+  if (want !== cur) { bar._ewDodge = want; bar.style.transform = want ? `translateX(${want}px)` : ''; }
 }
 function _qpKeepClear(head, L) {
   const panel = head.parentElement, list = panel && panel.querySelector(':scope > .hrlg-list');
@@ -3149,7 +3183,7 @@ function _hrlgQuickStats(panelKey) {
         ? (c.v > c.base ? ' up' : c.v < c.base ? ' dn' : '') : '';
       // THE GRADE NODE (2026-09-21): label · node · number (data.js statGradeNode)
       const n = (c.g && typeof window !== 'undefined' && typeof window.statGradeNode === 'function' && typeof c.v === 'number') ? window.statGradeNode(c.g, typeof window.statGradeValForUnit === 'function' ? window.statGradeValForUnit(u, c.g, c.v) : c.v) : null;   // base ruler (BALANCE PASS 2026-10-06)
-      return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined },
+      return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined, 'data-qs': c.k.toLowerCase().replace(/\s+/g, '') },
         h('span', { className: 'hrlg-qstat-lbl' }, c.k),
         n ? h('span', { className: n.cls + ' sm', style: { '--pct': n.pct } }, h('i', null, n.g)) : h('span', { className: 'ew-grade sm none' }),
         /* the stat BAR (UI Maker: Unit info panel > Stat look = bars / both): the grade's own share of its ruler, in the
@@ -10419,7 +10453,11 @@ function _hudHideCss() {
        portrait down the left, the name tab across the top, vitals + stats side by side, the element box under them.
        The UI Maker (Layout > Unit info panel) writes the --qp-* variables and the other arrangements. */
     .hrlg-panel.quick { width: var(--qp-list-w, 316px); }
+    /* THE CARD ON ITS OWN (2026-10-18, mondo: "just make the actions list its own separate thing"): the card floats
+       over its quick panel (absolute: it takes no room from the list), its bottom at the pinned room (just above the
+       root menu, --ew-qp-room) or, riding on its list, just above the panel; the list is a plain list under it. */
     .hrlg-panel.quick > .hrlg-thead.qp {
+      position: absolute; right: 0; bottom: var(--ew-qp-room, calc(100% + 6px)); z-index: 3;
       align-self: flex-end; width: var(--qp-w, max-content); max-width: none; margin: 0 7px 0 0;
       display: grid; grid-template-columns: var(--qp-port-col, var(--qp-port, 108px)) minmax(170px, 1fr) auto;
       grid-template-areas: "port tab tab" "port qv stats" "port elem elem"; align-items: start;
@@ -10438,7 +10476,7 @@ function _hudHideCss() {
        up in the same spot above the action menu"): the quick list is a fixed height (QuickCone measures the room from
        the bottom of the command panels to just above the root menu + the hero section into --ew-qp-room), so the card
        over it sits in the same spot whether the unit has one action or eight; a longer list scrolls inside it. */
-    .hrlg-panel.quick > .hrlg-list { height: var(--ew-qp-room, auto); max-height: var(--ew-qp-room, var(--qp-list-h, 400px)); }
+    .hrlg-panel.quick > .hrlg-list { max-height: var(--ew-qp-room, var(--qp-list-h, 400px)); }
     .hrlg-qp-port {
       position: relative; min-height: var(--qp-port, 108px);
       background: rgba(0,0,0,0.55) center / cover no-repeat; image-rendering: pixelated;
@@ -10898,6 +10936,7 @@ function _hudHideCss() {
       top: auto !important;
       bottom: calc(20px + 66px * var(--ew-ui-scale, 1)) !important;
       align-items: flex-end !important;
+      transition: opacity 0.25s, transform 0.22s ease-out;   /* the slide past the sub-menus (_subDodge) */
     }
 
     /* ══════════ THE ROUNDING PASS (2026-09-12) ══════════
@@ -12451,6 +12490,8 @@ const UIM_PIECES = [
   { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', score: true, def: { cx: 0, t: 10, w: 440, h: 64 } },
   { id: 'quick', group: 'Battle', label: 'Unit info panel', sel: '.hrlg-panel.quick > .hrlg-thead.qp', qp: true, origin: '100% 100%', def: { l: 220, b: 520, w: 520, h: 200 } },
+  /* the quick action list on its own (2026-10-18, mondo: "just make the actions list its own separate thing") */
+  { id: 'qlist', group: 'Battle', label: 'Quick action list', sel: '.hrlg-panel.quick > .hrlg-list', origin: '0 100%', def: { l: 560, b: 130, w: 316, h: 300 } },
   { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta', def: { r: 12, t: 12, w: 220, h: 40 } },
   { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', icons: 'turns', def: { l: 10, b: 490, w: 56, h: 240 } },
   { id: 'press', group: 'Battle', label: 'AP press icons', sel: '.ew-ap-press', origin: '0 0', ap: true, def: { l: 14, t: 12, w: 132, h: 40 } },
@@ -12585,6 +12626,9 @@ function layoutCss() {
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
+  /* the quick action list's BACK chip rides with the list */
+  const QL = db.layout.qlist;
+  if (QL && (+QL.x || +QL.y)) css += `${pre('.hrlg-panel.quick > .hrlg-backchip')} { translate: ${+QL.x || 0}px ${+QL.y || 0}px !important; }\n`;
   return css + heroCss() + barsCss() + iconsCss() + uxCss();
 }
 /* ── A PIECE'S OWN LOOK (2026-10-18, every piece of every screen): size, layer and order in its row, a look borrowed from
@@ -12814,6 +12858,8 @@ const UX_DEF = {
      qStatRowGap; qNameAllyCol / qNameFoeCol ('' = the game's own); qGapX / qGapY = the space between the card's parts;
      qBarGap = HP ↔ MP; qNumPos right | left | above | under | on | off; qBarH = the HP bar's thickness (MP = 80%) */
   qStatRowGap: 0, qNameAllyCol: '', qNameFoeCol: '', qGapX: 0, qGapY: 0, qBarGap: 4, qNumPos: 'right', qBarH: 10,
+  /* pass 17 (free parts, backgrounds, stat order; see qpFreeCss) */
+  qArr: 'grid', qFreeW: 560, qFreeH: 210, qStatEach: false, qStatOrder: '', qStatHide: '', qParts: '',
 };
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
@@ -12857,6 +12903,126 @@ function qpGrid(X) {
     stats: +X.qColStats > 0 ? Math.round(+X.qColStats) + 'px' : 'auto', elem: +X.qColElem > 0 ? Math.round(+X.qColElem) + 'px' : 'auto' };
   const cols = (port ? ['var(--qp-port-col, var(--qp-port, 108px))'] : []).concat(main.length ? main.map(a => W[a]) : ['auto']);
   return { areas: rows.map(r => '"' + r + '"').join(' '), cols: cols.join(' ') };
+}
+/* ── THE CARD'S PARTS, FREE (2026-10-18, mondo: "let me change the panel background of the portrait and the elements and
+   let me have the option to add one to the stats. let me rearrange the stats ... i need to be able to move these
+   individual elements freely on the panel or come up with something better than a bunch of checkboxes"): qArr free =
+   the card is a box (qFreeW × qFreeH) and every part sits where it is dragged (db.ux.qParts[id] = { x, y, w, h }, card
+   px); qStatEach = each stat its own part. Every part (free or grid) can wear its own background (look / bg / edge /
+   edgeW / rad / pad) or be hidden. qStatOrder / qStatHide = the stat rows' order and the hidden ones. The first drag of a
+   part in the Layout view measures the card as it stands, so nothing jumps. ── */
+const QP_PARTS = [
+  ['port', 'Portrait', '> .hrlg-qp-port'],
+  ['tab', 'Name', '> .hrlg-view-tab'],
+  ['types', 'Type badges', '> .hrlg-qp-types'],
+  ['hp', 'HP bar', '> .hrlg-qvitals > .hrlg-qv-row:has(> .hrlg-thp:not(.mp))'],
+  ['mp', 'MP bar', '> .hrlg-qvitals > .hrlg-qv-row:has(> .hrlg-thp.mp)'],
+  ['stats', 'Stats', '> .hrlg-qstats'],
+  ['elem', 'Element box', '> .hrlg-qelem'],
+];
+const QP_STATS = [['atk', 'ATK'], ['matk', 'M ATK'], ['def', 'DEF'], ['mdef', 'M DEF'], ['mov', 'MOV'], ['rng', 'RNG'], ['vis', 'VIS'], ['crt', 'CRT'], ['eva', 'EVA']];
+const QP_STAT_IDS = QP_STATS.map(s => s[0]);
+const qpStatSel = k => `> .hrlg-qstats > .hrlg-qstat[data-qs="${k}"]`;
+const qpFree = X => X.qArr === 'free' && X.qShape !== 'tall';
+const qpEach = X => qpFree(X) && !!X.qStatEach;
+/* the parts in play (each stat on its own takes the stats block's place) */
+function qpParts(X) {
+  const out = QP_PARTS.filter(p => !(qpEach(X) && p[0] === 'stats')).map(p => ({ id: p[0], label: p[1], sel: p[2] }));
+  if (qpEach(X)) QP_STATS.forEach(([k, l]) => out.push({ id: 'st-' + k, label: l, sel: qpStatSel(k), stat: k }));
+  return out;
+}
+function qpPartsOf(X) { const P = X.qParts; return P && typeof P === 'object' && !Array.isArray(P) ? P : {}; }
+/* a part with no spot of its own yet (card 560 × 210) */
+function qpDefSpot(id) {
+  const D = { port: [0, 0, 108, 210], tab: [116, 6, 430, 28], types: [116, 38, 220, 22], hp: [116, 66, 220, 16], mp: [116, 88, 220, 14], stats: [350, 40, 200, 116], elem: [116, 160, 430, 44] };
+  if (D[id]) return { x: D[id][0], y: D[id][1], w: D[id][2], h: D[id][3] };
+  const i = Math.max(0, QP_STAT_IDS.indexOf(id.slice(3)));
+  return { x: 350 + (i % 3) * 68, y: 40 + Math.floor(i / 3) * 26, w: 64, h: 22 };
+}
+function qpSpot(X, id) { const q = qpPartsOf(X)[id]; return q && isFinite(+q.x) && isFinite(+q.y) && +q.w > 0 ? q : Object.assign({}, qpDefSpot(id), q || {}); }
+/* the card on screen now (the live one in a battle) */
+function qpHead() { const el = document.querySelector('.hrlg-panel.quick > .hrlg-thead.qp'); return el && el.offsetWidth ? el : null; }
+function qpEl(head, sel) { try { return head.querySelector(':scope ' + sel); } catch (e) { return null; } }
+/* measure the card as it stands: every part's spot (card px), the card's size; kept backgrounds ride along */
+function qpFreeze(onlyStats) {
+  const X = uxOf(), P = JSON.parse(JSON.stringify(qpPartsOf(X))), head = qpHead();
+  const put = (id, r) => { P[id] = Object.assign(P[id] || {}, r); };
+  if (head) {
+    const hr = head.getBoundingClientRect(), k = hr.width / head.offsetWidth || 1;
+    const rel = el => { const r = el && el.getBoundingClientRect(); return r && r.width > 1 && r.height > 1 ? { x: Math.round((r.left - hr.left) / k), y: Math.round((r.top - hr.top) / k), w: Math.round(r.width / k), h: Math.round(r.height / k) } : null; };
+    if (!onlyStats) {
+      QP_PARTS.forEach(([id, , sel]) => {
+        let r = rel(qpEl(head, sel));
+        if (!r && id === 'types') r = rel(qpEl(head, '> .hrlg-qvitals > .hrlg-qtypes'));
+        if (r) put(id, r); else if (!P[id] || !(+P[id].w > 0)) put(id, qpDefSpot(id));
+      });
+      db.ux.qFreeW = head.offsetWidth; db.ux.qFreeH = head.offsetHeight;
+    }
+    QP_STATS.forEach(([s]) => {
+      const r = rel(qpEl(head, qpStatSel(s))); put('st-' + s, r || qpDefSpot('st-' + s));
+    });
+  } else {
+    (onlyStats ? [] : QP_PARTS.map(p => p[0])).concat(QP_STAT_IDS.map(s => 'st-' + s)).forEach(id => { if (!P[id] || !(+P[id].w > 0)) put(id, qpDefSpot(id)); });
+  }
+  db.ux.qParts = P;
+}
+const QP_LOOK = { panel: 'background: var(--ew-plate-scan), var(--ew-plate-bg) !important; border: 1px solid var(--ew-plate-edge) !important;',
+  well: 'background: rgba(0,0,0,0.32) !important; border: 1px solid var(--ew-hair, rgba(255,255,255,0.14)) !important;',
+  clear: 'background: none !important; border-color: transparent !important; box-shadow: none !important;' };
+function qpFreeCss(X, QP) {
+  let css = '';
+  const P = qpPartsOf(X), num = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+  if (qpFree(X)) {
+    css += `${QP} { display: block !important; width: ${Math.round(num(X.qFreeW, 120, 1600, 560))}px !important; height: ${Math.round(num(X.qFreeH, 60, 1000, 210))}px !important; padding: 0 !important; grid-template-areas: none !important; overflow: visible !important; }\n`
+      + `${QP} > .hrlg-qvitals { display: contents !important; }\n${QP} > .hrlg-qvitals > .hrlg-qtypes { display: none !important; }\n${QP} > .hrlg-qp-types { display: flex !important; }\n`;
+    if (qpEach(X)) css += `${QP} > .hrlg-qstats { display: contents !important; }\n`;
+    qpParts(X).forEach(p => {
+      const q = qpSpot(X, p.id);
+      css += `${QP} ${p.sel} { position: absolute !important; left: ${Math.round(num(q.x, -2000, 4000, 0))}px !important; top: ${Math.round(num(q.y, -2000, 4000, 0))}px !important; width: ${Math.round(num(q.w, 4, 2000, 60))}px !important; height: ${Math.round(num(q.h, 4, 2000, 20))}px !important; min-width: 0 !important; min-height: 0 !important; max-width: none !important; margin: 0 !important; box-sizing: border-box !important; grid-area: auto !important; align-self: auto !important; justify-self: auto !important; transform: none; }\n`;
+    });
+  }
+  /* every part's own background + hide (free or grid) */
+  const ids = qpParts(X).concat(qpEach(X) ? [] : QP_STATS.map(([k, l]) => ({ id: 'st-' + k, sel: qpStatSel(k) })));
+  ids.forEach(p => {
+    const q = P[p.id]; if (!q) return;
+    if (q.hide) { css += `${QP} ${p.sel} { display: none !important; }\n`; return; }
+    const d = [], port = p.id === 'port';
+    if (q.look && QP_LOOK[q.look]) d.push(port && q.look === 'panel' ? 'border: 1px solid var(--ew-plate-edge) !important;' : QP_LOOK[q.look]);
+    if (q.bg) d.push(port ? `background-color: ${q.bg} !important;` : `background: ${q.bg} !important;`);
+    if (q.edge) d.push(`border: ${Math.round(num(q.edgeW, 0, 16, 1))}px solid ${q.edge} !important;`);
+    if (q.rad != null && q.rad !== '' && +q.rad >= 0) d.push(`border-radius: ${Math.round(num(q.rad, 0, 400, 0))}px !important;`);
+    if (q.pad != null && q.pad !== '' && +q.pad >= 0) d.push(`padding: ${Math.round(num(q.pad, 0, 80, 0))}px !important;`);
+    if (d.length) css += `${QP} ${p.sel} { ${d.join(' ')} }\n`;
+  });
+  /* the stats' order + the hidden ones */
+  String(X.qStatOrder || '').split(',').filter(k => QP_STAT_IDS.indexOf(k) >= 0).forEach((k, i) => { css += `${QP} .hrlg-qstat[data-qs="${k}"] { order: ${i} !important; }\n`; });
+  String(X.qStatHide || '').split(',').filter(k => QP_STAT_IDS.indexOf(k) >= 0).forEach(k => { css += `${QP} .hrlg-qstat[data-qs="${k}"] { display: none !important; }\n`; });
+  return css;
+}
+/* the stats in the order they show */
+function qpStatOrder(X) {
+  const o = String(X.qStatOrder || '').split(',').filter(k => QP_STAT_IDS.indexOf(k) >= 0);
+  QP_STAT_IDS.forEach(k => { if (o.indexOf(k) < 0) o.push(k); });
+  return o;
+}
+/* one setting of one card part (copy on write: the undo step holds the old object) */
+function qpSet(id, k, v) {
+  db.ux = db.ux || {};
+  const P = JSON.parse(JSON.stringify(qpPartsOf(uxOf())));
+  const q = P[id] || (P[id] = {});
+  if (k === 'x' || k === 'y' || k === 'w' || k === 'h') { const sp = qpSpot(uxOf(), id); ['x', 'y', 'w', 'h'].forEach(j => { if (q[j] == null) q[j] = Math.round(+sp[j]); }); }
+  q[k] = v;
+  db.ux.qParts = P; qpTidy(); uxTidy(); touchLayout();
+}
+function qpTidy() {
+  const X = db.ux; if (!X || !X.qParts) return;
+  if (typeof X.qParts !== 'object') { delete X.qParts; return; }
+  Object.keys(X.qParts).forEach(id => {
+    const q = X.qParts[id]; if (!q || typeof q !== 'object') { delete X.qParts[id]; return; }
+    Object.keys(q).forEach(k => { if (q[k] === '' || q[k] == null || q[k] === false) delete q[k]; });
+    if (!Object.keys(q).length) delete X.qParts[id];
+  });
+  if (!Object.keys(X.qParts).length) delete X.qParts;
 }
 /* the scoreboard's text pieces, re-published only when they change (the Scoreboard reads window._ewSbLook each render) */
 let _sbSent = '';
@@ -12949,11 +13115,11 @@ function uxCss() {
   if (chg('qRowH')) css += `${SUB} .hrlg-blade:not(.trow) { height: ${n('qRowH', 26, 80)}px !important; }\n`;
   if (chg('qRowFont')) css += `${SUB} .hrlg-blabel { font-size: ${n('qRowFont', 10, 28)}px !important; }\n`;
   if (X.qShape === 'tall') {   // the old column: the header as wide as the list, the small portrait in the name row
-    css += `${QP} { display: flex !important; flex-direction: column !important; width: auto !important; align-self: stretch !important; margin: 0 7px 0 5px !important; }\n${QP} > .hrlg-qp-port { display: none !important; }\n${QP} .hrlg-view-tab .hrlg-tport { display: block !important; }\n${QP} > .hrlg-qstats { grid-template-columns: 1fr 1fr !important; border-left: 0 !important; border-top: 1px solid var(--hfc-faint) !important; padding: 4px 18px 7px 13px !important; }\n${QP} > .hrlg-qelem { margin: 0 14px 6px 13px !important; }\n`;
+    css += `${QP} { display: flex !important; flex-direction: column !important; width: auto !important; left: 0 !important; right: 0 !important; align-self: stretch !important; margin: 0 7px 0 5px !important; }\n${QP} > .hrlg-qp-port { display: none !important; }\n${QP} .hrlg-view-tab .hrlg-tport { display: block !important; }\n${QP} > .hrlg-qstats { grid-template-columns: 1fr 1fr !important; border-left: 0 !important; border-top: 1px solid var(--hfc-faint) !important; padding: 4px 18px 7px 13px !important; }\n${QP} > .hrlg-qelem { margin: 0 14px 6px 13px !important; }\n`;
   } else {
     const port = n('qPort', 0, 240);
     if (chg('qW') && +X.qW > 0) css += `${HI}.hrlg-panels { --qp-w: ${n('qW', 300, 1200)}px; }\n`;
-    if (X.qAlign === 'left') css += `${QP} { align-self: flex-start !important; margin: 0 0 0 5px !important; }\n`;
+    if (X.qAlign === 'left') css += `${QP} { align-self: flex-start !important; left: 0 !important; right: auto !important; margin: 0 0 0 5px !important; }\n`;
     if (port <= 0) css += `${QP} > .hrlg-qp-port { display: none !important; }\n${QP} .hrlg-view-tab .hrlg-tport { display: block !important; }\n${HI}.hrlg-panels { --qp-port: 0px; }\n`;
     else {
       if (chg('qPort')) css += `${HI}.hrlg-panels { --qp-port: ${port}px; }\n`;
@@ -13009,6 +13175,7 @@ function uxCss() {
   } else if (X.qNumPos === 'off') css += `${QP} .hrlg-qv-num { display: none !important; }\n`;
   if (X.qElem === 'off') css += `${QP} > .hrlg-qelem { display: none !important; }\n`;
   if (chg('qNameSize')) css += `${QP} .hrlg-view-tab-text { font-size: ${n('qNameSize', 10, 36)}px !important; }\n`;
+  css += qpFreeCss(X, QP);
   /* ── the scoreboard ── */
   const S = HI + '.ew-scoreboard';
   if (X.sPanel === 'none') css += `${S} .ew-score-plate { background: none !important; border-color: transparent !important; border-image: none !important; box-shadow: none !important; }\n`;
@@ -13104,13 +13271,44 @@ function apForm() {
     + xCheck('Glow', 'aGlow', X.aGlow);
   return h + xReset('a', 'Reset the AP icons');
 }
+/* a card part's own settings (data-qppath = "<part id>.<key>", data-qpset the same for a row of buttons) */
+const qpx = (id, html) => html.replace(/data-path="/g, `data-qppath="${id}.`).replace(/data-set="/g, `data-qpset="${id}.`);
+function qpPartForm(X) {
+  const parts = qpParts(X), free = qpFree(X), P = qpPartsOf(X);
+  if (!parts.some(p => p.id === UI.qpart)) UI.qpart = '';
+  let h = '<div class="uim-dk-qparts">' + parts.map(p => `<div class="uim-dk-row qprow${UI.qpart === p.id ? ' on' : ''}" data-qprow="${p.id}"><input type="checkbox" data-qphide="${p.id}"${P[p.id] && P[p.id].hide ? '' : ' checked'} title="Show this part"><span>${esc(p.label)}</span><em>${P[p.id] && (P[p.id].look || P[p.id].bg || P[p.id].edge) ? 'background' : ''}</em></div>`).join('') + '</div>';
+  const p = parts.find(x => x.id === UI.qpart);
+  if (!p) return h + `<div class="uim-note">Click a part (here, or its green box on the card) to ${free ? 'place it and ' : ''}give it a background.${free ? '' : ' Drag a part\'s box on the card to place it freely.'}</div>`;
+  const q = P[p.id] || {}, sp = qpSpot(X, p.id), v = (k, d) => (q[k] == null || q[k] === '' ? d : q[k]);
+  let f = '';
+  if (free) f += qpx(p.id, fRange('X', 'x', -400, 1600, 1, Math.round(+sp.x)) + fRange('Y', 'y', -400, 1000, 1, Math.round(+sp.y)) + fRange('Width', 'w', 4, 1600, 1, Math.round(+sp.w)) + fRange('Height', 'h', 4, 1000, 1, Math.round(+sp.h)));
+  f += qpx(p.id, fSeg('Background', 'look', [['', 'As the game'], ['panel', 'Window'], ['well', 'Inset box'], ['clear', 'None']], v('look', ''))
+    + fColorOpt('Fill', 'bg', v('bg', ''), 'rgba(8,10,20,0.8)', true) + fColorOpt('Frame', 'edge', v('edge', ''), '#6fb4ff', true)
+    + (q.edge ? fRange('Frame width', 'edgeW', 0, 16, 1, +v('edgeW', 1)) : '')
+    + fRange('Corners (−1 = as the game)', 'rad', -1, 60, 1, +v('rad', -1)) + fRange('Inner space (−1 = as the game)', 'pad', -1, 40, 1, +v('pad', -1)));
+  return h + `<div class="uim-dk-sel"><b>${esc(p.label)}</b>${f}<div class="uim-btns"><button class="uim-btn" data-dk="qpartreset" data-val="${p.id}">Reset this part</button></div></div>`;
+}
+function qpStatsForm(X) {
+  const hid = String(X.qStatHide || '').split(','), o = qpStatOrder(X);
+  return '<div class="uim-dk-qstats">' + o.map((k, i) => `<div class="uim-dk-qstat"><input type="checkbox" data-qshide="${k}"${hid.indexOf(k) >= 0 ? '' : ' checked'} title="Show this stat"><span>${esc((QP_STATS.find(s => s[0] === k) || [k, k])[1])}</span><button class="uim-btn" data-dk="qsmove" data-val="${k}:-1"${i ? '' : ' disabled'} title="Earlier">▲</button><button class="uim-btn" data-dk="qsmove" data-val="${k}:1"${i < o.length - 1 ? '' : ' disabled'} title="Later">▼</button></div>`).join('') + '</div>'
+    + `<div class="uim-note">${qpEach(X) ? 'Each stat is its own part: drag them on the card. ▲▼ swaps two stats\' places.' : 'The stats fill their columns in this order.'}</div>`;
+}
 function qpForm() {
-  const X = uxOf(), wide = X.qShape === 'wide', port = wide && +X.qPort > 0;
-  let h = `<div class="uim-note">The card over a clicked unit's quick actions (click a unit, or its turn order icon). Move X / Y above slide it from its spot.</div>`;
-  h += sec('qshape', 'The card', xp(fSeg('Shape', 'qShape', [['wide', 'Wide', 'The actions hang off its bottom right edge'], ['tall', 'Tall (old)', 'The old column over the list']], X.qShape)
+  const X = uxOf(), wide = X.qShape === 'wide', port = wide && +X.qPort > 0, free = qpFree(X);
+  let h = `<div class="uim-note">The card over a clicked unit's quick actions (click a unit, or its turn order icon). Move X / Y above slide the whole card; the quick action list is its own piece (Quick action list).</div>`;
+  if (wide) {
+    h += sec('qarr', 'Arrange the parts', `<div class="uim-f"><label>Parts</label><div style="flex-wrap:wrap"><button class="uim-btn${free ? ' on' : ''}" data-dk="qparr" data-val="free" title="Drag each part (portrait, name, badges, HP, MP, stats or each stat, element box) anywhere on the card, size it from its corner">Free (drag them)</button><button class="uim-btn${free ? '' : ' on'}" data-dk="qparr" data-val="grid" title="The placement settings below (beside / under / on)">Placed by settings</button></div></div>`
+      + (free ? xp(fRange('Card width', 'qFreeW', 120, 1600, 2, +X.qFreeW) + fRange('Card height', 'qFreeH', 60, 1000, 2, +X.qFreeH)) + xCheck('Each stat on its own', 'qStatEach', X.qStatEach, true)
+        + '<div class="uim-btns"><button class="uim-btn" data-dk="qpfit" title="Card width + height wrap the parts where they sit">Fit the card to its parts</button></div>'
+        + '<div class="uim-note">Pick the Unit info panel piece on the screen: every part gets a green box on the card. Drag one to move it (it snaps to the card and to the other parts; Alt = free), drag its corner to size it.</div>'
+        : '<div class="uim-note">Drag a part\'s green box on the card (with the Unit info panel piece picked) and the card switches to Free, keeping where everything is now.</div>'));
+    h += sec('qpparts', 'Parts + backgrounds', qpPartForm(X));
+    h += sec('qpstats', 'Stat order', qpStatsForm(X));
+  }
+  h += sec('qshape', 'The card', xp(fSeg('Shape', 'qShape', [['wide', 'Wide', 'A card of its own over the quick actions'], ['tall', 'Tall (old)', 'The old column over the list']], X.qShape)
     + fSeg('Where', 'qSpot', [['pin', 'Above the menu', 'Always the same spot, just above the command menu, however many actions the unit has'], ['list', 'On its action list', 'Rides on top of the action list: lower with fewer actions']], X.qSpot)
     + (X.qSpot === 'pin' ? fRange('Space above the menu', 'qPinGap', -200, 300, 2, +X.qPinGap) : '')
-    + (wide
+    + (wide && !free
       ? fSeg('Actions hang off', 'qAlign', [['right', 'Its right end'], ['left', 'Its left end']], X.qAlign)
         + fRange('Width (0 = fit)', 'qW', 0, 1200, 10, +X.qW)
       : '')
@@ -13121,29 +13319,29 @@ function qpForm() {
       + fSeg('Shape', 'qPortShape', [['square', 'Square'], ['round', 'Rounded'], ['circle', 'Circle']], X.qPortShape)
       + fRange('Zoom', 'qZoom', 1, 3, 0.05, +X.qZoom, 'For a full-body sprite: 1 = the whole body, higher = closer on the head and shoulders')));
     h += sec('qname', 'Name, bars + badges', xp(
-      fSeg('Name', 'qNamePos', [['beside', 'Beside the portrait'], ['above', 'Above the portrait'], ['on', 'On the portrait']], X.qNamePos)
+      (free ? '' : fSeg('Name', 'qNamePos', [['beside', 'Beside the portrait'], ['above', 'Above the portrait'], ['on', 'On the portrait']], X.qNamePos)
       + fSeg('HP / MP bars', 'qVitalsPos', [['beside', 'Beside the portrait'], ['under', 'Under the portrait']], X.qVitalsPos)
-      + fSeg('Type badges', 'qTypesPos', [['bars', 'With the bars'], ['under', 'Under the portrait'], ['on', 'On the portrait'], ['off', 'Hidden']], X.qTypesPos)
+      + fSeg('Type badges', 'qTypesPos', [['bars', 'With the bars'], ['under', 'Under the portrait'], ['on', 'On the portrait'], ['off', 'Hidden']], X.qTypesPos))
       + fSeg('HP / MP numbers', 'qNumPos', [['right', 'Right of the bar'], ['left', 'Left of the bar'], ['above', 'Above it'], ['under', 'Under it'], ['on', 'On the bar'], ['off', 'Hidden']], X.qNumPos)
       + fRange('Space between HP and MP', 'qBarGap', 0, 40, 1, +X.qBarGap)
       + fRange('Bar thickness', 'qBarH', 3, 30, 1, +X.qBarH)
       + fColorOpt('Name colour (my team)', 'qNameAllyCol', X.qNameAllyCol, '#7df0a5', false, 'Unticked = the game\'s own')
       + fColorOpt('Name colour (enemy team)', 'qNameFoeCol', X.qNameFoeCol, '#ff8d97', false, 'Unticked = the game\'s own'))
-      + (port ? '' : '<div class="uim-note">With the portrait size at 0, the bars and badges stay beside it.</div>'));
-    h += sec('qparts', 'Stats + elements', xp(fSeg('Stats', 'qStatsPos', [['beside', 'Beside the bars'], ['below', 'Under the bars']], X.qStatsPos)
+      + (port || free ? '' : '<div class="uim-note">With the portrait size at 0, the bars and badges stay beside it.</div>'));
+    h += sec('qparts', 'Stats + elements', xp((free ? '' : fSeg('Stats', 'qStatsPos', [['beside', 'Beside the bars'], ['below', 'Under the bars']], X.qStatsPos))
       + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
       + (X.qStatLook === 'bar' || X.qStatLook === 'both' ? fRange('Bar length', 'qStatBarW', 16, 140, 2, +X.qStatBarW) : '')
-      + fRange('Stat columns', 'qCols', 1, 5, 1, +X.qCols)
+      + (qpEach(X) ? '' : fRange('Stat columns', 'qCols', 1, 5, 1, +X.qCols))
       + fRange('Space between stat columns', 'qStatGap', 0, 60, 1, +X.qStatGap)
       + fRange('Space between stat rows', 'qStatRowGap', 0, 40, 1, +X.qStatRowGap)
-      + fSeg('Element box', 'qElem', [['below', 'Underneath'], ['right', 'On the right'], ['off', 'Hidden']], X.qElem)
+      + (free ? '' : fSeg('Element box', 'qElem', [['below', 'Underneath'], ['right', 'On the right'], ['off', 'Hidden']], X.qElem))
       + fRange('Element box size', 'qElemSize', 0.5, 1.6, 0.05, +X.qElemSize, 'Scales the whole box, icons, symbols and spacing together')
       + fRange('Element icon size', 'qElemIcon', 10, 64, 1, +X.qElemIcon)
       + fRange('Space between element icons', 'qElemGapX', 0, 60, 1, +X.qElemGapX)
       + fRange('Space between icons and symbols', 'qElemGapY', 0, 60, 1, +X.qElemGapY))
       + xCheck('Spread the elements across their space', 'qElemSpread', X.qElemSpread)
       + xCheck('Stats', 'qStats', X.qStats));
-    h += sec('qcols', 'Column widths + spacing', xp(fRange('Space between parts, sideways', 'qGapX', 0, 80, 1, +X.qGapX)
+    if (!free) h += sec('qcols', 'Column widths + spacing', xp(fRange('Space between parts, sideways', 'qGapX', 0, 80, 1, +X.qGapX)
       + fRange('Space between parts, up / down', 'qGapY', 0, 80, 1, +X.qGapY)
       + fRange('Bars column (0 = fit)', 'qColInfo', 0, 600, 2, +X.qColInfo)
       + fRange('Stats column (0 = fit)', 'qColStats', 0, 700, 2, +X.qColStats)
@@ -13879,6 +14077,13 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-arr-box.off > span { background: #b8761a; }
 .uim-arr-box > .uim-rs { display: none; position: absolute; right: -6px; bottom: -6px; width: 11px; height: 11px; background: #ff3df0; border: 1px solid #000; cursor: nwse-resize; pointer-events: auto; }
 .uim-arr-box.on:not(.ghost):not(.part):not(.surf):not(.bar) > .uim-rs { display: block; }
+.uim-arr-box.qpart.on > .uim-rs { display: block; background: #66ff8a; }
+.uim-arr-box.qpart { cursor: move; }
+.uim-dk-qparts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1px 4px; margin-bottom: 6px; }
+.uim-dk-qparts .uim-dk-row input { margin: 0; flex: none; }
+.uim-dk-row.qprow.on { border-color: #66ff8a; background: #12301c; }
+.uim-dk-qstat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 5px; margin: 2px 0; }
+.uim-dk-qstat > .uim-btn { padding: 1px 6px; }
 .uim-guide { position: fixed; z-index: 20006; background: #3dfff0; box-shadow: 0 0 3px #3dfff0; pointer-events: none; }
 .uim-guide.v { top: 0; bottom: 0; width: 1px; }
 .uim-guide.h { left: 0; right: 0; height: 1px; }
@@ -14717,9 +14922,9 @@ function layoutBoxes() {
     setText(bx.firstChild, `${P.label}${L.hide && !P.noHide ? ' (hidden)' : ''}${L.s != null && +L.s !== 1 ? ' ' + Math.round(+L.s * 100) + '%' : ''}${off && !ghost ? ' (off screen)' : ''}${ghost ? ' (not up now)' : ''}`);
     setText(bx.lastChild, ghost ? P.label : '');
   });
-  Object.keys(A.boxes).forEach(k => { if (k.indexOf('hp:') !== 0 && !ids.has(k)) A.boxes[k].style.display = 'none'; });   // a removed pick
+  Object.keys(A.boxes).forEach(k => { if (k.indexOf('hp:') !== 0 && k.indexOf('qp:') !== 0 && !ids.has(k)) A.boxes[k].style.display = 'none'; });   // a removed pick
   A.rects = rects; A.real = real;
-  partBoxes();
+  partBoxes(); qpBoxes();
   const key = Object.keys(live).join(',');
   if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
 }
@@ -14745,6 +14950,80 @@ function partBoxes() {
     bx.firstChild.style.display = UI.hpart === k ? '' : 'none';
     setText(bx.firstChild, label + (H.where[k] === 'out' ? ' (outside)' : ''));
   });
+}
+/* the unit info card's parts: a green box on each while the card is picked (drag = place it, corner = size it) */
+function qpBoxes() {
+  const A = UI.live, head = UI.piece === 'quick' ? qpHead() : null, X = uxOf(), P = qpPartsOf(X), keep = new Set();
+  if (head) {
+    const parts = qpParts(X);
+    parts.forEach((p, i) => {
+      const el = qpEl(head, p.sel), v = el && visEl(el);
+      if (!v && !(P[p.id] && P[p.id].hide)) return;
+      const key = 'qp:' + p.id; keep.add(key);
+      const bx = boxEl(key); bx.dataset.qpart = p.id; bx.classList.add('part', 'qpart');
+      let r = v ? v.r : null;
+      if (!r) { const hr = head.getBoundingClientRect(), k = hr.width / head.offsetWidth || 1, sp = qpSpot(X, p.id); r = { left: hr.left + sp.x * k, top: hr.top + sp.y * k, width: sp.w * k, height: sp.h * k }; }
+      placeBox(bx, r.left, r.top, r.width, r.height);
+      bx.style.zIndex = String(20010 + i + (p.stat ? 20 : 0));   // over the card's own box; a stat over the stats
+      bx.classList.toggle('on', UI.qpart === p.id); bx.classList.toggle('hid', !!(P[p.id] && P[p.id].hide));
+      bx.firstChild.style.display = UI.qpart === p.id ? '' : 'none';
+      setText(bx.firstChild, p.label + (P[p.id] && P[p.id].hide ? ' (hidden)' : ''));
+    });
+  }
+  Object.keys(A.boxes).forEach(k => { if (k.indexOf('qp:') === 0 && !keep.has(k)) A.boxes[k].style.display = 'none'; });
+}
+/* a part dragged past the card's right / bottom edge takes the card with it (the sliders can still shrink it after) */
+function qpGrow() {
+  const X = uxOf(); if (!qpFree(X)) return;
+  const P = qpPartsOf(X); let r = 0, b = 0;
+  qpParts(X).forEach(p => { if (P[p.id] && P[p.id].hide) return; const q = qpSpot(X, p.id); r = Math.max(r, +q.x + +q.w); b = Math.max(b, +q.y + +q.h); });
+  if (r > (+X.qFreeW || 0)) db.ux.qFreeW = Math.min(1600, Math.round(r));
+  if (b > (+X.qFreeH || 0)) db.ux.qFreeH = Math.min(1000, Math.round(b));
+}
+/* drag a card part: the first drag of a card placed by settings measures it and goes Free */
+function qpartDown(e, id) {
+  const A = UI.live, head = qpHead(); if (!head) return;
+  const before = layState();
+  if (UI.qpart !== id) { UI.qpart = id; dockDetail(); }
+  let X = uxOf();
+  if (!qpFree(X)) {
+    if (X.qShape === 'tall') { toast('The tall card is placed by its settings; pick the Wide shape to move its parts.'); return; }
+    qpFreeze(false); db.ux.qArr = 'free'; uxTidy(); applyLayout(); X = uxOf(); dockDetail();
+    toast('The card\'s parts are free now: drag them anywhere on it.');
+  }
+  const hr = head.getBoundingClientRect(), k = hr.width / head.offsetWidth || 1;
+  const sp0 = Object.assign({}, qpSpot(X, id)), size = e.target.classList.contains('uim-rs');
+  const lines = { x: [hr.left, hr.left + hr.width / 2, hr.right], y: [hr.top, hr.top + hr.height / 2, hr.bottom] };
+  qpParts(X).forEach(p => { if (p.id === id) return; const bx = A.boxes['qp:' + p.id]; if (!bx || bx.style.display === 'none') return; const r = bx.getBoundingClientRect(); lines.x.push(r.left, (r.left + r.right) / 2, r.right); lines.y.push(r.top, (r.top + r.bottom) / 2, r.bottom); });
+  const d = { x0: e.clientX, y0: e.clientY };
+  A.drag = d; A.dock.classList.add('busy');
+  const mv = ev => {
+    if (!UI.live || UI.live.drag !== d) return;
+    let dx = ev.clientX - d.x0, dy = ev.clientY - d.y0;
+    const free = ev.altKey || !UI.snapTo;
+    const P = JSON.parse(JSON.stringify(qpPartsOf(uxOf()))), q = P[id] || (P[id] = {});
+    if (size) {
+      const sx = free ? null : snapAxis(lines.x, [hr.left + (sp0.x + sp0.w) * k + dx]), sy = free ? null : snapAxis(lines.y, [hr.top + (sp0.y + sp0.h) * k + dy]);
+      if (sx) dx += sx.d; if (sy) dy += sy.d;
+      q.x = sp0.x; q.y = sp0.y; q.w = Math.max(4, Math.round(sp0.w + dx / k)); q.h = Math.max(4, Math.round(sp0.h + dy / k));
+      guides(sx && sx.at, sy && sy.at);
+    } else {
+      const l = hr.left + sp0.x * k + dx, t = hr.top + sp0.y * k + dy, w = sp0.w * k, h = sp0.h * k;
+      const sx = free ? null : snapAxis(lines.x, [l, l + w / 2, l + w]), sy = free ? null : snapAxis(lines.y, [t, t + h / 2, t + h]);
+      if (sx) dx += sx.d; if (sy) dy += sy.d;
+      q.w = sp0.w; q.h = sp0.h; q.x = Math.round(sp0.x + dx / k); q.y = Math.round(sp0.y + dy / k);
+      guides(sx && sx.at, sy && sy.at);
+    }
+    db.ux.qParts = P; applyLayout();
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (UI.live) { UI.live.drag = null; UI.live.dock.classList.remove('busy'); }
+    guides(null, null); qpGrow(); qpTidy(); uxTidy();
+    if (layState() !== before) { HIST.undo.push({ lay: 1, j: before }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; HIST.t = Date.now(); }
+    touchLayout(); dockDetail();
+  };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
 function menuBoxes() {
   const A = UI.live, W = innerWidth, H = innerHeight, rects = {}, live = {}, used = new Set();
@@ -15300,7 +15579,8 @@ function liveDown(e) {
   if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
   if (A.mode === 'bars') { if (bx.dataset.bar) liveSelect(bx.dataset.bar); return; }
   if (bx.dataset.hpart) { partDown(e, bx.dataset.hpart); return; }
-  A.partKeys = false;
+  if (bx.dataset.qpart) { A.partKeys = false; A.qpKeys = true; qpartDown(e, bx.dataset.qpart); return; }
+  A.partKeys = false; A.qpKeys = false;
   const P = livePiece(e); if (!P) return;
   const before = layState();   // one undo step per drag, none for a plain click
   if (UI.piece !== P.id) liveSelect(P.id);
@@ -15557,6 +15837,7 @@ function hidePiece(P) {
 }
 function resetPiece(P) { snapLayout(true); delete db.layout[P.id]; touchLayout(); dockDetail(); }
 function liveWheel(e) {
+  if (e.target.closest('.uim-arr-box[data-qpart]')) { e.preventDefault(); return; }
   const pb = e.target.closest('.uim-arr-box[data-hpart]');
   if (pb) {
     e.preventDefault();
@@ -15593,6 +15874,14 @@ function dockClick(e) {
     snapLayout(true); db.ux = db.ux || {}; db.ux[xs.dataset.xset] = xs.dataset.val;
     uxTidy(); touchLayout(); dockDetail(); return;
   }
+  const qs = e.target.closest('button[data-qpset]');
+  if (qs) {
+    try { qs.blur(); } catch (er) {}
+    const [id, k] = qs.dataset.qpset.split('.');
+    snapLayout(true); qpSet(id, k, qs.dataset.val); dockDetail(); return;
+  }
+  const qr = e.target.closest('[data-qprow]');
+  if (qr && !e.target.closest('input')) { UI.qpart = UI.qpart === qr.dataset.qprow ? '' : qr.dataset.qprow; dockDetail(); return; }
   const ls = e.target.closest('button[data-lset]');
   if (ls) {
     try { ls.blur(); } catch (er) {}
@@ -15638,6 +15927,35 @@ function dockClick(e) {
         if (!pieceById(UI.piece)) UI.piece = '';
         touchLayout(); apply(); dockBody();
       }
+    }
+    else if (k === 'qparr') {
+      snapLayout(true); db.ux = db.ux || {};
+      if (v === 'free') { qpFreeze(false); db.ux.qArr = 'free'; } else delete db.ux.qArr;
+      uxTidy(); qpTidy(); touchLayout(); dockDetail();
+    }
+    else if (k === 'qpfit') {
+      const X = uxOf(); let r = 0, bt = 0;
+      qpParts(X).forEach(p => { const q = qpPartsOf(X)[p.id]; if (q && q.hide) return; const sp = qpSpot(X, p.id); r = Math.max(r, +sp.x + +sp.w); bt = Math.max(bt, +sp.y + +sp.h); });
+      if (r > 0 && bt > 0) { snapLayout(true); db.ux.qFreeW = Math.round(r); db.ux.qFreeH = Math.round(bt); uxTidy(); touchLayout(); dockDetail(); }
+    }
+    else if (k === 'qsmove') {
+      const [sk, dir] = v.split(':'), o = qpStatOrder(uxOf()), i = o.indexOf(sk), j = i + (+dir);
+      if (i >= 0 && j >= 0 && j < o.length) {
+        snapLayout(true); const ok = o[j]; o[i] = ok; o[j] = sk; db.ux.qStatOrder = o.join(',');
+        if (qpEach(uxOf())) {   // each stat on its own: the two swap places on the card too
+          const P = JSON.parse(JSON.stringify(qpPartsOf(uxOf()))), a = qpSpot(uxOf(), 'st-' + sk), b = qpSpot(uxOf(), 'st-' + ok);
+          P['st-' + sk] = Object.assign(P['st-' + sk] || {}, { x: +b.x, y: +b.y, w: +b.w, h: +b.h });
+          P['st-' + ok] = Object.assign(P['st-' + ok] || {}, { x: +a.x, y: +a.y, w: +a.w, h: +a.h });
+          db.ux.qParts = P;
+        }
+        uxTidy(); touchLayout(); dockDetail();
+      }
+    }
+    else if (k === 'qpartreset') {
+      snapLayout(true);
+      const X = uxOf(), P = JSON.parse(JSON.stringify(qpPartsOf(X)));
+      if (P[v]) { const keep = qpFree(X) && P[v].w ? { x: P[v].x, y: P[v].y, w: P[v].w, h: P[v].h } : null; delete P[v]; if (keep) P[v] = keep; }
+      db.ux.qParts = P; qpTidy(); uxTidy(); touchLayout(); dockDetail();
     }
     else if (k === 'pick') pickMode(!UI.picking);
     else if (k === 'pickup' && P && P.pick) pickUp(P);
@@ -15733,6 +16051,34 @@ function dockInput(e) {
     if (el.dataset.optc != null || (el.dataset.re && e.type === 'change')) dockDetail();
     return;
   }
+  if (el.dataset.qppath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    const [id, k] = el.dataset.qppath.split('.'), q0 = qpPartsOf(uxOf())[id] || {};
+    let v;
+    if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
+      const hx = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase();
+      v = q0[k] && alphaOf(q0[k]) < 1 ? withAlpha(hx, alphaOf(q0[k])) : hx;
+    }
+    else if (el.dataset.kind === 'alpha') v = withAlpha(q0[k] || '#000000', +el.value);
+    else v = el.dataset.num ? +el.value : el.value;
+    snapLayout();
+    qpSet(id, k, v);
+    if (el.dataset.kind) A.dock.querySelectorAll(`[data-qppath="${id}.${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
+    else syncTwins(el, 'data-qppath', v);
+    if (el.dataset.optc != null) dockDetail();
+    return;
+  }
+  if (el.dataset.qphide) {
+    snapLayout(true); qpSet(el.dataset.qphide, 'hide', !el.checked); return;
+  }
+  if (el.dataset.qshide) {
+    snapLayout(true);
+    const hid = String(uxOf().qStatHide || '').split(',').filter(k => QP_STAT_IDS.indexOf(k) >= 0 && k !== el.dataset.qshide);
+    if (!el.checked) hid.push(el.dataset.qshide);
+    db.ux = db.ux || {}; db.ux.qStatHide = hid.join(','); uxTidy(); touchLayout(); return;
+  }
   if (el.dataset.wid) {
     const id = el.dataset.wid, o = ((UI.wlist || {})[id] || [])[+el.dataset.wi]; if (o == null) return;
     snapLayout();
@@ -15764,6 +16110,7 @@ function dockInput(e) {
     else v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
     snapLayout();
     X[k] = v; if (el.dataset.kind !== 'rgb' && el.dataset.kind !== 'hex' && el.dataset.kind !== 'alpha') syncTwins(el, 'data-xpath', v);
+    if (k === 'qStatEach' && v) qpFreeze(true);
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
     if (el.dataset.re && e.type === 'change') dockDetail();
@@ -15858,6 +16205,12 @@ function liveKey(e) {
     if (d[0]) nudgePart(UI.hpart, 'x', Math.max(-240, Math.min(240, n.x + d[0] * st)));
     else nudgePart(UI.hpart, 'y', Math.max(-240, Math.min(240, n.y + d[1] * st)));
     return true;
+  }
+  if (d && P.id === 'quick' && A.qpKeys && UI.qpart && qpFree(uxOf())) {   // arrows nudge the picked card part
+    snapLayout();
+    const sp = qpSpot(uxOf(), UI.qpart), st = e.shiftKey ? 8 : 1;
+    if (d[0]) qpSet(UI.qpart, 'x', Math.round(+sp.x + d[0] * st)); else qpSet(UI.qpart, 'y', Math.round(+sp.y + d[1] * st));
+    dockDetail(); return true;
   }
   if (d) {
     snapLayout();
