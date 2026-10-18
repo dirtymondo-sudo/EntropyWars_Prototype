@@ -23342,6 +23342,37 @@
             return false;
         }
         window.isCameraAutoMoving = isCameraAutoMoving;
+        /* THE GAME HAS THE BOARD (2026-10-18, mondo: "when the game is taking over and user input does nothing, i do
+           not want the attack range highlights to show on hover ... i dont want to see any tile highlights during a
+           spell animation, except for the gold anticipation highlight"): true while the engine plays something out
+           and the viewer's input does nothing: an action executing, a walk, a unit the viewer does not control taking
+           its turn (the CPU, the online opponent), a cinematic, the death / key close-up, a body falling.
+           three-renderer.js _syncTakeoverHighlights hides every tile highlight but the action glow's footprint while it
+           is, and keeps the hover highlights down until the mouse really moves again. Viewer-local, nothing relayed. */
+        function isGamePlayingOut() {
+            try {
+                if (!state || state.phase !== 'battle' || state.winner) return false;
+                if (state._actionExecuting || state._walkAnimActive) return true;
+                const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
+                    || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
+                    || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
+                if (!_rt) {
+                    const bu = state._blitzActiveUnitId != null ? unitFromId(state._blitzActiveUnitId) : null;
+                    const p = bu ? bu.player : state.activePlayer;
+                    if (p) {
+                        if (state.autoPlayers?.[p]) return true;
+                        if (window._NET && window._NET.online && window._NET.myPlayer) {
+                            if (p !== window._NET.myPlayer) return true;
+                        } else if (state.controllers?.[p] === CTRL.AI) return true;
+                    }
+                }
+                if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
+                if (_deathCamLive() || _keyCamLive()) return true;
+                if ((state.units || []).some(u => u && u._dying)) return true;
+            } catch (e) { /* cosmetic */ }
+            return false;
+        }
+        window.isGamePlayingOut = isGamePlayingOut;
         function setBoardCameraFocusPoint(x, y, opts = {}) {
             if (state.cameraDisabled) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
@@ -56646,7 +56677,7 @@
                        those tiles and the landing never needed sight. Any other aimed click on a fogged tile says why. */
                     if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell))) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
-                            addLog('Out of sight — no one on your team can see that tile.', _actUnit.player);
+                            addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
                         }
                         return;
@@ -61145,6 +61176,17 @@
                 wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
         }
 
+        /* The "can't see it" line for an aimed action (2026-10-18): a Blind / Jammed unit (noSharedVision) is on its own
+           eyes — "no one on your team can see that tile" was false when its allies did see it. */
+        function outOfSightMessage(unit, x, y) {
+            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)) {
+                const k = Object.keys(unit.status || {}).find(s => (unit.status[s] | 0) > 0 && STATUS_DEFS[s]?.noSharedVision);
+                const why = (k && STATUS_DEFS[k].colorText) || 'cut off from its team';
+                return `Out of sight — ${unitDisplayName(unit)} is ${why} and can't see that tile itself.`;
+            }
+            return 'Out of sight — no one on your team can see that tile.';
+        }
+
         function doAttack(unit, x, y, z) {
             _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             /* SIMUL plan phase: queue the order instead of executing. */
@@ -61254,7 +61296,7 @@
             const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
             if (visionGatesTargeting(unit) && !isInVision(unit, x, y, (_clickedTarget && _clickedTarget.z != null) ? _clickedTarget.z : undefined) && !_isSkyTelescopeTarget) {
-                addLog('Out of sight — no one on your team can see that tile.');
+                addLog(outOfSightMessage(unit, x, y));
                 playErrorSfx();
                 return 0;
             }
@@ -65839,7 +65881,7 @@
             const _isSpellSkyTelescopeTarget = _spellSkyTelescopeTarget(unit, x, y);
             if (spellVisionGate(unit, spell) && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
                 if (!isInVision(unit, x, y, (_spellClickTarget && _spellClickTarget.z != null) ? _spellClickTarget.z : undefined) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
-                    if (!_silentReject) addLog('Out of sight — no one on your team can see that tile.');
+                    if (!_silentReject) addLog(outOfSightMessage(unit, x, y));
                     state._teleportingUnit = null;
                     playErrorSfx();
                     return 0;

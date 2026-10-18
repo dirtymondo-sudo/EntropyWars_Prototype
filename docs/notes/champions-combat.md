@@ -1351,8 +1351,17 @@ ai-training/AI_IMITATION_ANALYSIS_20261008.md. Code changes from the evidence:
   `VISION_RULES.enabled = false` restores the old LOS-only, fog-gated rule.
 - **Fog default:** state.fogOfWar stays ON (online enforces it); the fog GRID visual stays OFF. Fog now shows the
   range-limited sight. With fog off, enemies are drawn but only targetable when the team sees them.
-- **Blind** = vision 1 and no shared sight (`visionSet: 1, noSharedVision`). **Jammed** = no shared sight + no
-  Scanner/Scan Pulse. Keen sense: vision ≥ 4 (keenSenseVision) senses cloaked/smoke-hidden enemies at 2 tiles.
+- **Blind** = vision 1, half its basic attacks miss, no shared sight (`visionSet: 1, noSharedVision`). Range is
+  untouched. **Jammed** = no shared sight (`noSharedVision`) + no Scanner/Scan Pulse.
+- **The solo sight (2026-10-18, mondo: "if i am blind then i shouldnt have team vision ... i wouldnt have been able
+  to click on that unit in the first place"):** map.js `fogSoloUnit(player)` = the team's acting unit (blitz active,
+  else the selected one on its turn) when it is Blind / Jammed; computeVisibleTiles then returns ONLY that unit's own
+  sight (plus the enemy-smoke cut), so the fog, the drawn enemies and the clickable tiles match isInVision.
+  state.js computeVisibleTilesCached / computeFogDistancesCached keys carry the solo id.
+  (PR #300 briefly let Blind keep team sight; mondo rejected that, reverted here.)
+- **Move + Attack sight:** hud.js `_computeEnemyActions` → findMoveIntoRange(…, needSight) probes isInVision FROM
+  the landing tile (unit relocated + restored), so the quick menu never offers a MOVE→ATK the swing then refuses.
+  battle.js `outOfSightMessage`: a Blind / Jammed unit is told it is on its own eyes. Keen sense: vision ≥ 4 (keenSenseVision) senses cloaked/smoke-hidden enemies at 2 tiles.
 - **Broken / Break** (STATUS_DEFS.broken, 💔 BRK): getUnitPassives answers [] and unitHasGear false while it lasts
   (every hook, immunity, aura off); canFly false unless Levitating (a status). battle.js breakUnitPassives strips the
   flat stats the passives folded in at build (`unit._passiveStatBonus` → `unit._brokenStrip`) and drops an airborne
