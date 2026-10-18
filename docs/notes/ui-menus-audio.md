@@ -1339,3 +1339,9 @@ unit is currently buffed or debuffed". ui.js renderSelectedUnitPanel (#unitHover
   back on); an "Off for this race" line lists them with ↺ chips. REVERT clears the race's families AND excludes.
 - Doc registry `raceExcludes` (EWSpellMods, list registry like raceFamilies; empty list = null), export summary line
   `RACE EXCLUDES <race>: [...]`, baked by bake-spell-mods.js into `const RACE_SPELL_EXCLUDES = {`.
+
+### UI Maker pass 15: three fixes (2026-10-18, mondo: "increasing the glow settings on the button makes the entire button bigger"; "the height button for actions list for the unit info panel does nothing ... need it to change where the top button is"; "i still cannot change the spacing between the element icons ... the element box column does nothing")
+- Skins, whole shapes (hex / diamond / circle / shard / jagged): bakeSkin's border-image cut the image at 50%, so the glow / shadow margin stretched along with the shape and a bigger glow drew a bigger shape. Now the margin is its own slice ring (`O` px) sitting in the outset; only the shape stretches to the box.
+- Unit info panel > Action lists > Height: the quick list was pinned to the measured room (`--ew-qp-room`), which beat qListH. qListH now sets the quick list's real height (min 60), so its top button and the card above it move; other lists keep it as their scroll cap.
+- Element box: new db.ux qElemGapX (column-gap between icons), qElemGapY (row-gap between the icon and symbol rows), qElemIcon (icon px; cells = icon + 5), qElemSpread (the box stretches across its grid area, 8 equal columns). qColElem ("Element box width") now sets the box width wherever it sits (it only sized a grid column that exists when the box is on the right) and spreads the icons over it.
+- Browser check: every q* setting in a VS-CPU Training Room battle changes the card on screen (qNameFoeCol needs an enemy card).
