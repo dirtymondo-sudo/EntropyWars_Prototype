@@ -14324,6 +14324,35 @@
             updateAoePreview(_lastAoePreviewX, _lastAoePreviewY);
         };
 
+        /* THE STRIKE ARROW (2026-10-18, mondo: "when i have attack selected and im hovering or selected on an enemy, i
+           need to see the red attack preview arrow, im in the target menu from the attack button and i dont see arrows
+           at all"): a target already in reach (no walk first, so no approach arrow) gets the quick menu's arced red
+           strike arrow from the attacker onto it, on a board hover, the picked row (the one CONFIRM fires) and a
+           hovered row of the Attack target list. Viewer-local, like every preview. */
+        function _drawAttackAimArrow(x, y, z) {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+            const unit = getSelectedUnit();
+            if (!unit || x == null || y == null || (unit.x === x && unit.y === y)) return;
+            const pt = state.pendingTarget;
+            if (z == null && pt && pt.x === x && pt.y === y) z = pt.z;
+            const tu = (typeof unitAt === 'function') ? (((z !== undefined && z !== null) && unitAt(x, y, z)) || unitAt(x, y)) : null;
+            let fromY, toY;
+            try {
+                fromY = ThreeRenderer.unitSurfaceY(unit);
+                toY = (tu && tu.id !== unit.id) ? ThreeRenderer.unitSurfaceY(tu) : ThreeRenderer.tileTopY(x, y);
+            } catch (e) { /* the arrow sits on the tiles then */ }
+            ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0xff3333, false, fromY, toY, { arc: 0.35, flow: true });
+        }
+        /* the Attack target list's rows: (x, y, z) = the hovered row's target; no x = the cursor left the rows, back to
+           the picked one */
+        window._ewAttackAimArrow = function (x, y, z) {
+            if (state.actionMode !== 'attack' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+            ThreeRenderer.clearArrows3D();
+            const pt = state.pendingTarget;
+            if (x == null) { if (pt && pt.mode === 'attack') _drawAttackAimArrow(pt.x, pt.y, pt.z); return; }
+            _drawAttackAimArrow(x, y, z);
+        };
+
         /* ov = { unit, spell }: paint a spell that is NOT armed (the tile quick menu's hovered row, hud.js) with the
            same footprint + forecast the armed cast shows. Without ov it reads the armed tool as always. */
         function updateAoePreview(x, y, ov) {
@@ -14337,7 +14366,11 @@
                 _updateBanePreview(getSelectedUnit(), state.selectedTool, x, y, state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y ? state.pendingTarget.z : undefined);
                 return;
             }
-            if (!ov && state.actionMode !== 'spell') { clearAoePreview(); clearIntentPreview(); return; }
+            if (!ov && state.actionMode !== 'spell') {
+                clearAoePreview(); clearIntentPreview();
+                if (state.actionMode === 'attack') _drawAttackAimArrow(x, y);   // THE STRIKE ARROW
+                return;
+            }
             const unit = ov ? ov.unit : getSelectedUnit();
             if (!unit) { clearAoePreview(); clearIntentPreview(); return; }
             const spell = ov ? ov.spell : ((unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool));

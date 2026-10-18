@@ -56085,6 +56085,7 @@
                 state._attackCycleIndex = 0;
                 if (targets.length > 0) {
                     state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
+                    updateAoePreview(targets[0].x, targets[0].y);   // THE STRIKE ARROW onto the first pick (ui.js)
                     // enemy targeting → third person: caster looking at the target
                     _tpsTargetShot(unit, targets[0].unit || targets[0]);
                 }

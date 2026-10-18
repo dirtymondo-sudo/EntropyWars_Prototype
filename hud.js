@@ -4893,6 +4893,9 @@ function _hrlgTargetBlades(unit, st, mode) {
         if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
         if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, tz);
       },
+      // THE STRIKE ARROW (ui.js): the hovered attack row draws the red arrow onto its target, leaving goes back to the pick
+      hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); } : undefined,
+      hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); } : undefined,
     };
   });
   // (The ×1/×2/×3 multi-strike picker is gone: an attack ENDS the turn, so
