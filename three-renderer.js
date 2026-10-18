@@ -15771,9 +15771,9 @@ const ThreeRenderer = (function () {
     //                         and slowly crescendos toward the impact frame.
     //                         Beams / dashes light tile-by-tile outward from
     //                         the actor (staggerMs) so the lane "draws".
-    //   BURST  (impact frame) the footprint flashes white-hot and settles to
-    //                         a lit afterglow; the actor tile releases (its
-    //                         power has left it).
+    //   BURST  (impact frame) the footprint lets go at once (2026-10-18: no
+    //                         white-hot flash, no afterglow, no actor tile —
+    //                         see THE ANTICIPATION ONLY).
     //   END    (exhale)       everything eases back to bare ground.
     //
     // Colour language: WHITE = the actor + anything benign (heals, buffs,
@@ -15891,11 +15891,10 @@ const ThreeRenderer = (function () {
             casterKey: null
         };
         var seen = {};
-        if (spec.caster && spec.caster.x != null && spec.caster.y != null
-            && _glowTileVisible(spec.caster.x, spec.caster.y)) {
-            var ce = _glowAddEntry(rec, spec.caster.x, spec.caster.y, spec.caster.z, true, 0);
-            if (ce) { rec.casterKey = spec.caster.x + ',' + spec.caster.y; seen[rec.casterKey] = true; }
-        }
+        /* THE ANTICIPATION ONLY (2026-10-18, mondo: "i dont want to see any tile highlights during a spell animation,
+           except for the gold anticipation highlight, but even that should be gone right as the spell actually hits"):
+           the actor's tile no longer lights (spec.caster is ignored), only the footprint the hit will land on; the
+           burst ends it (actionGlowBurst). */
         var tiles = Array.isArray(spec.tiles) ? spec.tiles : [];
         var n = 0, idx = 0;
         for (var i = 0; i < tiles.length && n < _GLOW_MAX_TILES; i++) {
@@ -15916,31 +15915,13 @@ const ThreeRenderer = (function () {
         return rec;
     }
 
-    /* actionGlowBurst(key, opts) — the impact frame. opts.tiles may add
-       footprint tiles the arm beat didn't know (a retargeted burst); a burst
-       with no live glow (guest that joined mid-cast, burst-only callers)
-       conjures a short one so the hit still lights the ground. */
+    /* actionGlowBurst(key, opts) — the impact frame: the anticipation is over, so the footprint lets go at once (a
+       ~80 ms fade, no white-hot flash, THE ANTICIPATION ONLY above). A burst with no live glow (a guest that joined
+       mid-cast, a second hit of the same cast) lights nothing. */
     function actionGlowBurst(key, opts) {
-        opts = opts || {};
         var rec = _glowLive[key];
-        if (!rec) {
-            if (!opts.tiles && !opts.caster) return;
-            rec = actionGlowStart(key, { caster: opts.caster, tiles: opts.tiles,
-                hostile: opts.hostile !== undefined ? opts.hostile : true, riseMs: 60, holdMs: 200 });
-            if (!rec) return;
-        } else if (Array.isArray(opts.tiles)) {
-            var have = {};
-            for (var i = 0; i < rec.entries.length; i++) have[rec.entries[i].x + ',' + rec.entries[i].y] = true;
-            for (var j = 0; j < opts.tiles.length && rec.entries.length < _GLOW_MAX_TILES; j++) {
-                var t = opts.tiles[j];
-                if (!t || t.x == null || have[t.x + ',' + t.y]) continue;
-                if (!_glowTileVisible(t.x, t.y)) continue;
-                var ne = _glowAddEntry(rec, t.x, t.y, t.z, false, 0);
-                if (ne) { ne.t0 = performance.now(); ne.late = true; }
-            }
-        }
-        if (rec.burstAt == null) rec.burstAt = performance.now();
-        rec.autoEndAt = Math.max(rec.autoEndAt, rec.burstAt + 2600);
+        if (!rec) return;
+        actionGlowEnd(key, 80);
         _updateActionGlow();
     }
 
@@ -37377,6 +37358,58 @@ const ThreeRenderer = (function () {
         window.updateEnemyRangePreview(_hoveredUnitId);
     }
 
+    /* ── THE GAME HAS THE BOARD (2026-10-18, mondo: "when a unit is moving or there are spell animations happening,
+       basically when the game is taking over and user input does nothing, i do not want the attack range highlights to
+       show on hover ... i dont want to see any tile highlights during a spell animation, except for the gold
+       anticipation highlight") ──
+       Once per frame, after every highlight write of the frame:
+         playing out (battle.js isGamePlayingOut, or a walk / strike / projectile / shove tween, or a live action glow):
+           every tile highlight hides (range tiles, overlays, previews, arrows, the cursor) except the action glow's
+           footprint and the board's own markings (zones, weather);
+         the hover is not the player's (playing out, the camera flying on its own, a centre banner, the post-cast hold,
+           the CPU's turn, or the mouse has not moved since any of those): the cursor, the selected-tile brackets, the
+           hovered unit's range wash and its ring stay hidden, so a still mouse that a pan or a walk leaves over a unit
+           paints nothing. A real mouse move (or a wheel zoom) hands the hover back.
+       Only visibility is touched (_ew_ctlHid marks what this hid), so every highlight comes back as it was. */
+    var _hoverWaitMove = null;   // { x, y }: the pointer when the game last had the board; cleared by a real move
+    function _gamePlayingOut() {
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || state.winner || _freeRoam) return false;
+        if (typeof window.isGamePlayingOut === 'function' && window.isGamePlayingOut()) return true;
+        if (_projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0) return true;
+        for (var k in _glowLive) return true;
+        return false;
+    }
+    function _syncTakeoverHighlights() {
+        if (!highlightGroup) return;
+        var playing = _gamePlayingOut();
+        var busy = playing;
+        if (!busy && typeof state !== 'undefined' && state && state.phase === 'battle' && !state.winner) {
+            busy = _hoverCursorSuppressed()
+                || (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving())
+                || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy());
+        }
+        var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
+        if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
+        var hoverOff = inBattle && (busy || !!_hoverWaitMove);
+        var ch = highlightGroup.children;
+        for (var i = 0; i < ch.length; i++) {
+            var o = ch[i], ov = o._ew_overlay, hide;
+            if (playing) hide = !(ov === 'actionGlow' || ov === 'zone' || ov === 'weather');
+            else hide = hoverOff && (o === hoverMesh || o === selTileMesh || ov === 'enemyRange');
+            if (hide) {
+                if (o.visible) { o.visible = false; o._ew_ctlHid = true; }
+            } else if (o._ew_ctlHid) {
+                o.visible = true; o._ew_ctlHid = false;
+            }
+        }
+        if (_hoverGlowMesh) _hoverGlowMesh.visible = !hoverOff;
+    }
+    function _hoverPointerMoved(x, y) {
+        if (!_hoverWaitMove) return;
+        if (x == null || _hoverWaitMove.x == null || Math.abs(x - _hoverWaitMove.x) + Math.abs(y - _hoverWaitMove.y) >= 3) _hoverWaitMove = null;
+    }
+
     var _fpsNextDue = 0;          // §4.7 FPS-cap accumulator
     var _turboNextDue = 0;        // dev-sim turbo render throttle accumulator
     var _fpsFrames = 0, _fpsWinStart = 0, _fpsEl = null;
@@ -38284,6 +38317,7 @@ const ThreeRenderer = (function () {
                 _refreshHoverOnCameraMove(cam);
             }
             _syncSelectedTileMarker();
+            _syncTakeoverHighlights();   // THE GAME HAS THE BOARD: after every highlight write of the frame
 
             /* §4.2 shadow-map dirty gating: skip the sun's depth pass when no
                shadow caster could have moved this frame. Camera motion never
@@ -38331,7 +38365,7 @@ const ThreeRenderer = (function () {
         _updateMinimap();
     }
 
-    var _onMouseMove = null, _onClick = null, _onContextMenu = null;
+    var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
     var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
     /* Last known mouse position over the canvas + the camera pose it was last
@@ -38670,6 +38704,7 @@ const ThreeRenderer = (function () {
        reticle instead of the frozen OS cursor. */
     function hoverAtScreen(clientX, clientY) {
         if (!canvas) return;
+        _hoverWaitMove = null;   // THE GAME HAS THE BOARD: the shooter reticle is the player's own aim
         _lastMouseClientX = clientX; _lastMouseClientY = clientY;
         _resolveHoverAt(clientX, clientY);
     }
@@ -38678,6 +38713,8 @@ const ThreeRenderer = (function () {
         if (!canvas) return;
 
         _onMouseMove = function(e) {
+            if (e.movementX || e.movementY) _hoverWaitMove = null;   // THE GAME HAS THE BOARD: a real move hands the hover back
+            else _hoverPointerMoved(e.clientX, e.clientY);
             _lastMouseClientX = e.clientX; _lastMouseClientY = e.clientY;
             _resolveHoverAt(e.clientX, e.clientY);
         };
@@ -38725,6 +38762,7 @@ const ThreeRenderer = (function () {
         };
 
         _onContextMenu = function(e) { e.preventDefault(); };
+        _onWheel = function() { _hoverWaitMove = null; };   // a wheel zoom is the player's own camera
 
         canvas.addEventListener('mousemove', _onMouseMove);
         canvas.addEventListener('click', _onClick);
@@ -38732,6 +38770,7 @@ const ThreeRenderer = (function () {
         canvas.addEventListener('touchstart', _onTouchStart, { passive: true });
         canvas.addEventListener('mouseleave', _onMouseLeave);
         canvas.addEventListener('contextmenu', _onContextMenu);
+        canvas.addEventListener('wheel', _onWheel, { passive: true });
     }
     function _unbindInput() {
         if (!canvas) return;
@@ -38743,7 +38782,8 @@ const ThreeRenderer = (function () {
         if (_onTouchStart) canvas.removeEventListener('touchstart', _onTouchStart);
         if (_onMouseLeave) canvas.removeEventListener('mouseleave', _onMouseLeave);
         if (_onContextMenu) canvas.removeEventListener('contextmenu', _onContextMenu);
-        _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = null;
+        if (_onWheel) canvas.removeEventListener('wheel', _onWheel);
+        _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = _onWheel = null;
         _lastHitX = -1; _lastHitY = -1;
         _lastMouseClientX = _lastMouseClientY = null; _lastHoverCamSig = '';
     }
