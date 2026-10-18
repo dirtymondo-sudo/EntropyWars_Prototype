@@ -39004,8 +39004,8 @@ const ThreeRenderer = (function () {
     /* The battle-frame Y of the room's floor under a team's door, or null (no true-ground field: the board's own level rule).
        The zone's real top is the reference; a TERRAIN room is sampled across the door's footprint (hqTerrainFeet, the walker's
        own feet; past the compiled floor's edge — the outer ground a window at the room's rim looks onto — the drawn room under
-       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest (so the dais,
-       0.42 tile thick, still meets the low side of a slope) and never under the ground at the door's centre. A box room's
+       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest and never under
+       the ground at the door's centre. A box room's
        floor is flat: the zone's real top. */
     var DOOR_FLOOR_SPAN = 0.35;
     /* the drawn room's ground under battle point (wx, wz): the first upward face a ray from `fromY` meets in the room's group, or null */
@@ -39111,14 +39111,9 @@ const ThreeRenderer = (function () {
         var D = new THREE.Group();                        // the door proper, at the door plane
         D.position.set(0, 0, doorOut * ts);
         g.add(D);
-        /* the landing: a threshold slab on an apron, a floating slab in the void */
-        var daisH = kit ? 0.06 * ts : 0.42 * ts, daisR = Math.max(ow * 1.15, 1.05 * ts);
-        var dais = new THREE.Mesh(new THREE.CylinderGeometry(daisR, daisR * (kit ? 1 : 0.86), daisH, 22), sillMat);
-        /* DAIS FLICKER (mondo 2026-10-05): the dais top used to land EXACTLY on another surface — +0.6 is where the
-           Training Room's hazard plate sits in front of each door (no kit), and on a kit apron (top = fy - 0.6) it is
-           the board's tile tops wherever the disc overhangs the rim. Two coplanar faces z-fought all intro. Lift it a
-           clear 0.02 tile above both so it always wins the depth test. */
-        dais.position.set(0, -daisH / 2 + 0.6 + 0.02 * ts, 0); dais.receiveShadow = true; D.add(dais);
+        /* NO LANDING (mondo 2026-10-18: "get rid of the circular platform thing underneath the door"): the round dais that
+           stood under every crossing door (menu + match intro) is gone — the frame and its sill stand straight on the
+           floor under them (the apron, the room's own ground, the menu's sand/ice). */
         /* jambs, lintel, cap, sill */
         var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jL);
         var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jR);
