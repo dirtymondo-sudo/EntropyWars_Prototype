@@ -1486,3 +1486,20 @@ the sandbox: Fairy Forest arena (WebGL + WebGPU) and Göbekli Tepe tile board (W
   (Exhaust Cloud, Iron Dome: squares, the wash drew a diamond) use the true footprint. Glow: bomb = 3×3 (detonateBomb).
 - hud.js quick menu paints `plan.tiles` whenever the forecast hits more than one tile. Drive-By's afterShot victim gets a plate.
 - **How to apply:** a new multi-tile hit rule in doSpell needs its tiles in spellStrikeTiles (or lineBeamPlan for beams).
+
+## THE GAME HAS THE BOARD — no tile highlights while the game plays out (2026-10-18, battle.js + three-renderer.js)
+mondo: "when the game is taking over and user input does nothing, i do not want the attack range highlights to show on
+hover ... i dont want to see any tile highlights during a spell animation, except for the gold anticipation highlight, but
+even that should be gone right as the spell actually hits, i shouldnt still be seeing it during a death animation".
+- battle.js `isGamePlayingOut()`: action executing, walk, a unit the viewer does not control acting (CPU / online
+  opponent / autoPlayers; skipped in simul, strike RT, lockstep), cinematic, death / key close-up, a dying unit.
+- three-renderer.js `_syncTakeoverHighlights()` (renderFrame, after `_syncSelectedTileMarker`): while playing out (above,
+  or a walk/strike/projectile/shove/jump tween, or a live action glow) every highlightGroup child hides except
+  `_ew_overlay` actionGlow / zone / weather. While the hover is not the player's (that, camera auto-move, centre banner,
+  `_hoverCursorSuppressed`) and until a real mouse move / wheel (`_hoverWaitMove` latch), the cursor, the selected-tile
+  brackets, the `enemyRange` wash and the unit hover ring hide. Visibility only (`_ew_ctlHid`), nothing relayed.
+- Action glow: no actor (caster) tile any more; `actionGlowBurst` ends the glow (80 ms fade, no white-hot flash, no
+  afterglow); a burst with no live glow lights nothing.
+- Browser-proved (headless VS-CPU, mouse parked on units, frame sampler on highlightGroup): main showed the hovered
+  unit's ring + range wash during the CPU turn, and range tiles, AoE, cursor, white caster tile and the gold glow through
+  the death close-up; after: zero stray highlights in CPU turn / move / killing spell, hover back after a real move.

@@ -11875,7 +11875,8 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'max',
         visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"):
-        noSharedVision: true,   // sees only the tiles beside it, and can't use its allies' sight
+        noSharedVision: true,   // sees only the tiles beside it, and can't use its allies' sight (2026-10-18, mondo: "if i am
+                                // blind then i shouldnt have team vision") — the board shows only its own tiles on its turn
         iconSrc: createStatusIconDataUri('🌫️', '#2a2e33', '#eef2f6', '#9aa8b5')
         // Attack accuracy penalty is rolled in doAttack (battle.js): a blind
         // attacker misses 50% of the time.
@@ -21916,7 +21917,7 @@ const CAMPAIGN_REGION_THEMES = {
    percent its old AWR gave, so no crit odds moved.)
    Combat context on top (battle.js): a crit deals ×1.8 damage
    (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
-   attacker always misses; hard CC (stun/freeze/root) sets EVA to 0;
+   attacker misses half the time; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
 function critChanceFromStats(crt) {
   return Math.max(0, Math.min(1, (Number(crt) || 0) / 100));
@@ -22019,7 +22020,7 @@ const STAT_HELP = {
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
   vision: 'VISION — how many tiles the unit sees (2 to 6; S 6 · A 5 · B 4 · C 3 · F 2). Walls and blocks still cut sight. A unit can only attack or cast at an enemy its team can see (its own vision or an ally’s) AND that it has line of sight to (spells that ignore line of sight still need the team to see the target). Blind drops vision to 1 and cuts the unit off from its allies’ sight. VISION 4+ also senses cloaked or smoke-hidden enemies from 2 tiles instead of 1.',
   crt: 'CRT — critical hit chance on basic attacks, in percent — its own stat (S 24+ · A 20+ · B 16+ · C 12+ · F below). A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
-  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
+  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker misses half the time, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 
 /* ── VISION RULES (2026-10-09, mondo: "a unit can have 2-6 vision ... it wouldnt be able to see an enemy that far away
