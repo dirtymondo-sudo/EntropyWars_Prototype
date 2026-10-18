@@ -5511,7 +5511,10 @@ function ActionMenu({ st, hidden }) {
     pushers.push({
       id: 'detonate', glyph: '💣', label: 'DETONATE', color: '#ff5e70',
       title: 'Detonate your planted bomb',
-      fire: () => { if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); },
+      /* 🧭 the preview: every blast, the damage and where each body is thrown (ui.js previewDetonate) */
+      hoverIn: () => { if (typeof window.previewDetonate === 'function') window.previewDetonate(unit); },
+      hoverOut: () => { if (typeof window.clearDetonatePreview === 'function') window.clearDetonatePreview(); },
+      fire: () => { if (typeof window.clearDetonatePreview === 'function') window.clearDetonatePreview(); if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); },
     });
   }
   if (typeof getEnterableBuilding === 'function' && getEnterableBuilding(unit)
@@ -13440,12 +13443,15 @@ const UX_DEF = {
    _hlKindOfType): [kind, label, the game's colour, tip] */
 const AIM_ARROW_KINDS = [['move', 'Move', '#3399ff', 'Your unit walking, dashing, jumping or flying there'], ['hit', 'Damage', '#ff3333', 'A strike or a damage spell'],
   ['heal', 'Heal + support', '#33dd66', 'A heal, a buff or any help'], ['force', 'Push / pull', '#bb66ff', 'A body the action moves'], ['util', 'Utility', '#eeeeee', 'Anything else'],
-  ['slide', 'Ice slide', '#00d0ff', 'Your unit sliding on after a walk ends on ice']];
+  ['slide', 'Ice slide', '#00d0ff', 'Your unit sliding on after a walk ends on ice'],
+  ['blast', 'Bomb blast', '#ff8a1e', 'A body a bomb throws back (the forecast\'s chain)'], ['fling', 'Storm fling', '#7fffd4', 'A body a tornado or hurricane flings, and the heading on the storm']];
 const AIM_TILE_KINDS = [
   ['move', 'Walk', '#4da6ff', 'moves', 'Where the unit can walk this move'], ['jump', 'Jump / take off', '#35d0c0', 'moves'],
   ['blocked', 'Can\'t reach', '#cc2222', 'moves', 'In range but not reachable'], ['strike', 'Can strike from here', '#ffcc33', 'moves', 'A move tile you can hit an enemy from'],
   ['hazard', 'Hurts you here', '#ff3a3a', 'moves'], ['benefit', 'Heals you here', '#33dd77', 'moves'], ['acting', 'Current unit\'s tile', '#ffffff', 'moves'],
   ['slide', 'Ice slide', '#00d0ff', 'moves', 'The tiles a walk onto ice slides over'],
+  ['blast', 'Bomb blast', '#ff8a1e', 'act', 'The bomb a forced move sets off, and where it throws the body'],
+  ['fling', 'Storm fling', '#7fffd4', 'act', 'The storm a forced move lands in, and where it flings the body'],
   ['atkReach', 'Basic attack reach', '#ffcc33', 'act'], ['target', 'Enemy you can hit', '#ff2222', 'act'], ['reach', 'Damage spell reach', '#ffa040', 'act'],
   ['hit', 'Tiles that get hit', '#ff3a3a', 'act', 'The spell\'s footprint before you cast'], ['healReach', 'Support spell reach', '#33dd77', 'act'],
   ['heal', 'Heal / support target', '#22ee55', 'act'], ['buffReach', 'Buff spell reach', '#4488ff', 'act'], ['util', 'Utility spell reach', '#8844ee', 'act'],

@@ -831,7 +831,8 @@ const ThreeRenderer = (function () {
         0x33cc55: 'healReach', 0x33dd77: 'healReach', 0x22ee55: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd66: 'heal',
         0x4488ff: 'buffReach', 0x8844ee: 'util', 0x6633bb: 'util', 0xaa33ff: 'util', 0xbb66ff: 'force', 0xff8822: 'combo',
         0xffcc33: 'atkReach', 0xffd83d: 'cursor', 0xddaa22: 'ally', 0x22eebb: 'inspect', 0x44aaff: 'place',
-        0xff4545: 'foeRange', 0x5aa8ff: 'allyRange', 0x00d0ff: 'slide'
+        0xff4545: 'foeRange', 0x5aa8ff: 'allyRange', 0x00d0ff: 'slide',
+        0xff8a1e: 'blast', 0x7fffd4: 'fling'
     };
     function _hlKindOfHex(c) {
         var h = (typeof c === 'number') ? c : (c && c.isColor ? c.getHex() : null);
@@ -850,9 +851,11 @@ const ThreeRenderer = (function () {
             'spell-range': 'util', 'spell-range-bg': 'util', 'heal': 'heal', 'inspect': 'inspect', 'combo-target': 'combo',
             'selected': 'cursor', 'placeable': 'place' }[t] || '';
     }
+    /* a forced move's tiles: the landing is 'force'; a chained leg keeps its own (ice / bomb blast / storm fling) */
+    function _hlForcedKind(c) { return c === 0x00d0ff ? 'slide' : c === 0xff8a1e ? 'blast' : c === 0x7fffd4 ? 'fling' : 'force'; }
     /* an overlay's tile: its name says it first (a reach, a landing), then its colour */
     var _HL_OVERLAY_KIND = { enemyRange: function (c) { return c === 0x5aa8ff ? 'allyRange' : 'foeRange'; },
-        attackRange: function () { return 'atkReach'; }, spellApproachShove: function () { return 'force'; }, actionPlanShove: function () { return 'force'; },
+        attackRange: function () { return 'atkReach'; }, spellApproachShove: _hlForcedKind, actionPlanShove: _hlForcedKind,
         /* the ice-blue tiles of a walk's slide (battle.js THE SLIDE FORECAST) keep their own situation */
         movePreview: function (c) { return c === 0x00d0ff ? 'slide' : 'move'; }, moveHoverDest: function (c) { return c === 0x00d0ff ? 'slide' : 'move'; },
         spellApproachMove: function (c) { return c === 0x00d0ff ? 'slide' : 'move'; },
@@ -16849,6 +16852,7 @@ const ThreeRenderer = (function () {
         // Arrow bodies breathe together; flow dots stream toward the target below.
         if ((window._ewArrowLookV || 0) !== _arrowLookSeen) { _arrowLookSeen = window._ewArrowLookV || 0; _arrowRebuildAll(); }   // THE ARROW LOOK changed
         _arrowTick(_arrowMeshes, _arrowFlowDots, t);
+        _tickVortexHeadings(t);
     }
 
     var _arrowMeshes = [];
@@ -16867,7 +16871,8 @@ const ThreeRenderer = (function () {
        heal / support, purple 0xbb66ff = a body force-moved, white = utility), so a colour names its action (opts.kind
        names it outright). */
     var _ARROW_HEX_KIND = { 0x3399ff: 'move', 0xff3333: 'hit', 0xff2a2a: 'hit', 0xff3a3a: 'hit', 0xff2222: 'hit',
-        0x33dd66: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd77: 'heal', 0x22ee55: 'heal', 0xbb66ff: 'force', 0xeeeeee: 'util', 0x00d0ff: 'slide' };
+        0x33dd66: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd77: 'heal', 0x22ee55: 'heal', 0xbb66ff: 'force', 0xeeeeee: 'util', 0x00d0ff: 'slide',
+        0xff8a1e: 'blast', 0x7fffd4: 'fling' };   // 🧭 THE CHAIN LEGS (ui.js EW_CHAIN_LEG): a bomb's throw-back, a storm's fling
     var _arrowLookC = null, _arrowLookCV = -1;
     function _arrowLook() {
         var v = window._ewArrowLookV || 0;
@@ -36800,6 +36805,56 @@ const ThreeRenderer = (function () {
         _syncSandstormVortices(sandstormZones);
     }
 
+    /* 🧭 THE STORM HEADING (2026-10-18, mondo: "i want the tornado fling to always fling north, east, south, and west, with
+       it rotating each round. so it too is predictable"): every displacing storm (tornado / hurricane) shows the way it
+       flings THIS round — an arrow on the ground from its eye over the tiles it throws a body (battle.js vortexFlingDir;
+       the UI Maker's 'Storm fling' arrow colour + the arrow look). Its own sink under the overlay group, so the previews'
+       clearArrows3D never takes it; rebuilt when a storm moves, turns or the arrow look changes. */
+    var _vhSink = null, _vhKey = '', _vhParent = null;
+    function _vhClear() {
+        if (!_vhSink) return;
+        _arrowDispose(_vhSink.group, _vhSink.meshes);
+        if (_vhSink.group.parent) _vhSink.group.parent.remove(_vhSink.group);
+        _vhSink = null;
+    }
+    function _syncVortexHeadings() {
+        var aw = (typeof state !== 'undefined' && state.phase === 'battle' && !state.devAutoSim) ? (state.activeWeather || []) : [];
+        var reg = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY : null;
+        var heads = [], key = '';
+        if (reg && typeof window.vortexFlingDir === 'function' && highlightGroup) {
+            for (var i = 0; i < aw.length; i++) {
+                var w = aw[i], def = reg[w.type];
+                if (!def || !def.displaces || !w.tiles || !w.tiles.length) continue;
+                var d = window.vortexFlingDir(w);
+                if (!d) continue;
+                heads.push({ x: w.tiles[0].x, y: w.tiles[0].y, d: d, n: def.displaceTiles || 2 });
+                key += w.tiles[0].x + ',' + w.tiles[0].y + d.key + (def.displaceTiles || 2) + '|';
+            }
+        }
+        key += '#' + (window._ewArrowLookV || 0);
+        if (key === _vhKey && _vhParent === highlightGroup && (_vhSink || !heads.length)) return;
+        _vhKey = key; _vhParent = highlightGroup;
+        _vhClear();
+        if (!heads.length || !highlightGroup) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        _vhSink = { group: new THREE.Group(), meshes: [], dots: [] };
+        _vhSink.group.name = 'ew-storm-headings';
+        _vhSink.group._ew_overlay = 'weather';   // rebuildHighlights keeps it; it stays up while the game has the board
+        highlightGroup.add(_vhSink.group);
+        var bwN = (typeof bw === 'function') ? bw() : 99, bhN = (typeof bh === 'function') ? bh() : 99;
+        for (var h = 0; h < heads.length; h++) {
+            var hd = heads[h], pts = [];
+            for (var k = 0; k <= hd.n; k++) {
+                var tx = hd.x + hd.d.dx * k, ty = hd.y + hd.d.dy * k;
+                if (k > 0 && (tx < 0 || ty < 0 || tx >= bwN || ty >= bhN)) break;
+                pts.push(new THREE.Vector3(tx * ts + ts / 2, tileTopY(tx, ty) + ts * 0.1, ty * ts + ts / 2));
+            }
+            if (pts.length < 2) continue;
+            _buildArrowFromPoints(pts, 0x7fffd4, { sink: _vhSink, kind: 'fling', radius: ts * 0.04, flow: true });
+        }
+    }
+    function _tickVortexHeadings(t) { if (_vhSink) _arrowTick(_vhSink.meshes, _vhSink.dots, t); }
+
     // Tornado (2026-10-15): the 99-frame sprite-sheet billboard is gone; the
     // tornado is a 3D funnel like the hurricane/blizzard/sandstorm vortices
     // (ThreeVFXEffects.buildTornadoVortex3D).
@@ -38687,6 +38742,7 @@ const ThreeRenderer = (function () {
 
         _syncWeatherOverlays();
         _syncWeatherVFX();
+        _syncVortexHeadings();
         _updateTurretAim();
         _updateLaserSightBeams();
         _updateTornadoVortices();
