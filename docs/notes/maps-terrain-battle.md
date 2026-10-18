@@ -533,6 +533,14 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
   averaged) + `HL_FIELD_LIFT`; a neighbour is a fringe when the ground runs on across the shared edge (a slope), a hard edge only
   where it breaks. The board's own edge fades the sheet out over `LIQ_EDGE_FADE` (0.45 tile) instead of a cut line. Rebuild
   cost on a flooded 12×12 moon board stayed ~40 ms (sandbox CPU) after the first build.
+- 2026-10-18 THE DRAPE ON THE DRY SKINS (mondo, Skinwalker Ranch arena on WebGPU: ice with "weird edge blending and flickering
+  ... needs the same fix the liquids had"): the dry skins (`_fieldSkinBuild` → `_fieldPatchGeo`: ice, sand, scorch, rubble …
+  a spell or storm laid on the true ground) were still flat per cell, so the rolling ground cut through the ice in dark
+  triangles and shimmered where it met the sheet, and shores stopped on square edges. `_fieldPatchGeo` takes `o.ground` too:
+  same vertex drape + `HL_FIELD_LIFT`, the same slope-is-a-fringe test, the same board-edge fade. Not on a climbing run (THE
+  RISE lifts it with its strata) or a monument cell (THE WALL TOPS: the ground read there is the stone's top). Strata tops and
+  the tile-board Δ patches pass no ground and are unchanged. Checked in headless Chromium, WebGL + WebGPU (SwiftShader),
+  Skinwalker Ranch 12×12 arena with 37 cells painted ice.
 
 ## THE PLATES OVER THE WATER (2026-10-16, mondo: "the water coming from rain or hurricanes is not allowing tile highlights to show up on top of them")
 - Cause: PR #216's blended liquid sheets (`_liqBlendMat`: transparent, depthWrite false) drew at renderOrder 2 / 3, after every
