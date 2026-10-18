@@ -38667,6 +38667,8 @@ const ThreeRenderer = (function () {
         var cam = ThreeCamera.getCamera();
         /* THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine): the free eye takes the board's camera after every sync */
         if (cam && window.EWCine) { try { var _cs = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : ''; window.EWCine.frame(cam, { kind: 'battle', unit: (CONFIG.tileSize || BASE_TILE) / 2, key: _cs, site: (typeof window.hqSiteId === 'function') ? window.hqSiteId(_cs) : _cs.replace(/_delta$/, '') }); } catch (e) {} }
+        /* THE SHOT RECORDER (2026-10-18, three-camera.js EWShots): FRAME IT takes the board's camera the same way */
+        if (cam && window.EWShots && window.EWShots.framing) { try { window.EWShots.frame(cam); } catch (e) {} }
         if (cam) {
             /* Keep the hover pick glued to the cursor while the ENGINE moves the
                camera (blitz pans, cinematics, wheel zoom) and the mouse doesn't. */
@@ -38721,6 +38723,7 @@ const ThreeRenderer = (function () {
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
                 _scalePlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
+                if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
                 if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first (rev 3: once the party's rigs stand, or the hold's cap — _fieldDissolveReady)
             }
         }

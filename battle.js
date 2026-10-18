@@ -27274,6 +27274,7 @@
         function _tpsTargetShot(unit, tgt) {
             if (!unit || !tgt) return false;
             _faceTargetPick(unit, tgt);
+            _shotRecPick = { uid: unit.id, tid: (tgt.id != null && tgt.player != null) ? tgt.id : null, x: tgt.x, y: tgt.y };
             if (state.cameraDisabled || state.phase !== 'battle') return false;
             if (!_fogCamAllSeen(unit, tgt)) return true;   // hidden opponent: no shot, no fallback pan
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
@@ -27550,6 +27551,116 @@
             if (typeof getViewerPlayer === 'function' && u.player !== getViewerPlayer()) return;
             const tu = t.uid != null ? (state.units || []).find(x => x.id === t.uid && !x.dead) : null;
             _tpsTargetShot(u, tu || { x: t.x, y: t.y });
+        };
+        /* ══ THE SHOT RECORDER — the battle side (2026-10-18) ══
+           mondo: "a tool that snapshots/records the current camera orientation for clicking on a unit and facing towards
+           them ... frame the shot myself for different scenarios like being in the air and the target on the ground or
+           vice versa or far away vs close ... export them all at once". The recorder itself (panel, free framing, the
+           export) is three-camera.js EWShots; this hands it the pair the last target pick (_tpsTargetShot) framed, the
+           bodies the menu camera fits (_menuCamBody), the pose the menu camera solves for that pair (_menuShotPose), and
+           the staging moves (VS-CPU only). Viewer-local, nothing relayed. */
+        var _shotRecPick = null;
+        function _shotRecSide(o, viewer) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const b = _menuCamBody(o);
+            const isUnit = o && o.id != null && o.player != null;
+            const cube = !isUnit && typeof towerAt === 'function' && !!towerAt(Math.round(o.x), Math.round(o.y));
+            const side = {
+                kind: isUnit ? (o.player === viewer ? 'ally' : 'enemy') : (cube ? 'cube' : 'tile'),
+                x: o.x, y: o.y, body: b,
+                footTiles: b.foot / ts, heightTiles: (b.top - b.foot) / ts
+            };
+            if (isUnit) {
+                side.id = o.id; side.race = o.race || ''; side.name = unitDisplayName(o); side.player = o.player;
+                side.z = o.z ?? null;
+                side.canFly = typeof canFly === 'function' ? !!canFly(o) : false;
+                side.airborne = side.canFly && typeof isUnitAirborne === 'function' ? !!isUnitAirborne(o) : false;
+                side.groundTiles = (typeof window._camGroundPx === 'function' ? (window._camGroundPx(o.x, o.y) || 0) : 0) / ts;
+            }
+            return side;
+        }
+        window._ewShotRecApi = {
+            tileSize() { return CONFIG.tileSize || BASE_TILE; },
+            /* the pair on screen: the last target pick, while its unit stands and the fight is on */
+            pair() {
+                if (state.phase !== 'battle' || !_shotRecPick) return null;
+                const p = _shotRecPick;
+                const unit = (state.units || []).find(u => u.id === p.uid && !u.dead);
+                if (!unit) return null;
+                const tu = p.tid != null ? (state.units || []).find(u => u.id === p.tid && !u.dead) : null;
+                if (p.tid != null && !tu) return null;
+                const tgt = tu || { x: p.x, y: p.y };
+                const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : unit.player;
+                let spell = null;
+                if (state.actionMode === 'spell' && state.selectedTool) spell = String(state.selectedTool);
+                const mode = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : '';
+                let site = mode;
+                try { if (typeof window.hqSiteId === 'function') site = window.hqSiteId(mode) || mode; } catch (e) {}
+                return {
+                    unit, tgt,
+                    attacker: _shotRecSide(unit, viewer), target: _shotRecSide(tgt, viewer),
+                    context: {
+                        mode, site, round: state.round ?? null,
+                        board: [bw(), bh()],
+                        menu: state.actionMode || 'unit', spell,
+                        menuCamera: window._ewMenuCamOn(),
+                        cameraPreset: getCameraPreset().key
+                    }
+                };
+            },
+            /* what the game's menu camera does for this pair (world px; null in 2D / no solve) */
+            autoPose(pr) {
+                if (!pr) return null;
+                const pose = _menuShotPose(pr.unit, pr.tgt);
+                if (!pose) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const bd = ThreeCamera.getBaseDist();
+                return {
+                    focal: [pose.x * ts + ts / 2, pose.elevZ, pose.y * ts + ts / 2],
+                    dist: bd / pose.zoom, tilt: pose.tilt, yaw: pose.yaw, zoom: pose.zoom
+                };
+            },
+            /* the game's own two-shot for the pair again (after a staging move) */
+            reframe() {
+                const pr = this.pair();
+                if (!pr) return false;
+                if (camera._menuShot) camera._menuShot.key = '';
+                return _tpsTargetShot(pr.unit, pr.tgt);
+            },
+            canStage() {
+                return state.phase === 'battle' && !(typeof isOnlineMatch === 'function' && isOnlineMatch())
+                    && !state._actionExecuting && !state.winner;
+            },
+            /* staging: stand a unit on another free tile (no arrival effects, no AP) */
+            place(uid, x, y) {
+                if (!this.canStage()) return 'not here';
+                const u = (state.units || []).find(v => v.id === uid && !v.dead);
+                if (!u) return 'no unit';
+                if (!isInside(x, y)) return 'off the board';
+                if (u.x === x && u.y === y) return 'already there';
+                const occ = (state.units || []).find(v => v !== u && !v.dead && !v._dying && v.x === x && v.y === y);
+                if (occ) return 'tile taken';
+                const fx = u.x, fy = u.y;
+                const wasAir = typeof isUnitAirborne === 'function' && isUnitAirborne(u);
+                const lift = wasAir ? Math.max(0, (u.z ?? 0) - getFloorBelowZ(fx, fy, u.z ?? 0)) : 0;
+                u.x = x; u.y = y;
+                if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(x, y, u.z ?? 0);
+                if (lift > 0) u.z = (u.z ?? 0) + lift;
+                animateDisplacement(u, fx, fy, x, y, 260, { leap: true });
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                return '';
+            },
+            /* staging: a flyer up / down one level (0-4 over its ground) */
+            lift(uid, dz) {
+                if (!this.canStage()) return 'not here';
+                const u = (state.units || []).find(v => v.id === uid && !v.dead);
+                if (!u) return 'no unit';
+                if (typeof canFly !== 'function' || !canFly(u)) return 'cannot fly';
+                const g = getFloorBelowZ(u.x, u.y, u.z ?? 0);
+                u.z = Math.max(g, Math.min(g + 4, (u.z ?? g) + dz));
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                return '';
+            }
         };
         /* hud.js: the menu left every target view without a camera move of its own
            (the quick menu closed, ESC) → back to the tactical view it came from */

@@ -4785,3 +4785,35 @@ body.enc-arrived .ew-turn-col { transition: opacity .62s cubic-bezier(.22, .61, 
     border-radius: 4px; font: 11px/1 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: #e8dcb5; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
 .ew-cine-toast.on { opacity: 1; }
 body.ew-cine { cursor: crosshair; }
+/* THE SHOT RECORDER (2026-10-18, three-camera.js EWShots): the panel docks top-right, clear of the command menu (bottom-left) */
+.ew-shots-panel { position: fixed; right: 14px; top: 14px; z-index: 2147483000; width: 380px; max-width: calc(100vw - 32px); max-height: calc(100vh - 28px); display: none; flex-direction: column; gap: 7px;
+    padding: 9px 10px; background: rgba(8, 9, 7, 0.88); border: 1px solid rgba(232, 220, 181, 0.22); border-radius: 6px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    font: 11px/1.25 'IBM Plex Mono', monospace; letter-spacing: 0.06em; color: #e8dcb5; box-sizing: border-box; }
+.ew-shots-panel.on { display: flex; }
+.ew-shots-head { display: flex; align-items: center; justify-content: space-between; color: #ffcd6b; letter-spacing: 0.14em; }
+.ew-shots-head .ew-cine-btn { padding: 3px 7px; }
+.ew-shots-pair { white-space: pre-wrap; color: #cfc4a0; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(232, 220, 181, 0.12); border-radius: 3px; padding: 5px 6px; }
+.ew-shots-sliders { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.ew-shots-sliders .ew-cine-sl { display: grid; grid-template-columns: 70px 1fr 46px; }
+.ew-shots-sliders .ew-cine-sl input[type=range] { width: 100%; }
+.ew-shots-in { flex: 1 1 140px; min-width: 0; font: inherit; color: #e8dcb5; background: #1a1915; border: 1px solid rgba(232, 220, 181, 0.25); border-radius: 3px; padding: 5px 6px; }
+.ew-shots-rec { background: #3a1210; border-color: #ff6a5c; color: #ffd8d2; }
+.ew-shots-held { color: #ffcd6b; }
+.ew-shots-list { overflow-y: auto; min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 5px; }
+.ew-shots-item { display: grid; grid-template-columns: 96px 1fr auto; gap: 6px; align-items: center; padding: 4px; border: 1px solid rgba(232, 220, 181, 0.12); border-radius: 3px; }
+.ew-shots-thumb { width: 96px; height: 54px; background: #111 center / cover no-repeat; border-radius: 2px; }
+.ew-shots-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ew-shots-sub { color: #9a8f6e; font-size: 10px; overflow-wrap: anywhere; }
+.ew-shots-acts { display: flex; flex-direction: column; gap: 3px; }
+.ew-shots-acts .ew-cine-btn { padding: 4px 7px; }
+.ew-shots-grid { position: fixed; z-index: 2147482999; pointer-events: none; display: none; }
+.ew-shots-grid i { position: absolute; background: rgba(255, 205, 107, 0.35); }
+.ew-shots-grid i.v { top: 0; bottom: 0; width: 1px; }
+.ew-shots-grid i.v:nth-child(1) { left: 33.333%; } .ew-shots-grid i.v:nth-child(2) { left: 66.666%; }
+.ew-shots-grid i.h { left: 0; right: 0; height: 1px; }
+.ew-shots-grid i.h:nth-child(3) { top: 33.333%; } .ew-shots-grid i.h:nth-child(4) { top: 66.666%; }
+.ew-shots-grid i.cx { left: calc(50% - 8px); top: 50%; width: 17px; height: 1px; background: rgba(255, 255, 255, 0.5); }
+.ew-shots-grid i.cy { top: calc(50% - 8px); left: 50%; height: 17px; width: 1px; background: rgba(255, 255, 255, 0.5); }
+body.ew-shots-frame { cursor: move; }
+body.ew-shots-place { cursor: copy; }
+.ew-shots-meta .ew-shots-in { flex: none; padding: 3px 5px; }

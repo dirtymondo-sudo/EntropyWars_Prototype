@@ -996,6 +996,27 @@ React-heavy; a keyframe path on three's own CatmullRomCurve3 does the pans and z
   `Assets/MapShots/<site>.jpg` so every player sees it. match-select.js `MapShot` = `.ms-crt-shot` inside the tube's
   glass at 0.42 opacity (styles-base.css), fetched with the ?v= token; none = nothing drawn.
 
+## THE SHOT RECORDER (2026-10-18, token 20261018-shotrec-01-cors)
+mondo: "a tool that snapshots/records the current camera orientation for clicking on a unit and facing towards them ...
+frame the shot myself for different scenarios like being in the air and the target on the ground or vice versa or far
+away vs close ... let me export them all at once so you can take it and apply it".
+- Code: three-camera.js `EWShots` (window.EWShots; the panel, the free framing, the store, the export) + battle.js
+  `window._ewShotRecApi` (pair(): the last target pick `_shotRecPick`, set at the top of `_tpsTargetShot`; bodies via
+  `_menuCamBody`; autoPose(): `_menuShotPose`; reframe(); place()/lift() staging). three-renderer.js renderFrame calls
+  `EWShots.frame(cam)` after EWCine.frame (only while FRAME IT is on) and `EWShots.after(canvas)` after the draw (the picture).
+- Open: SHOTS in the battle pause menu (ui.js _pauseCmds) or F7. Panel docks top-right.
+- FRAME IT overrides the THREE camera each frame (the board rig is never touched, so stopping hands the game's camera back
+  as it was): orbit pivot, yaw/tilt in the rig's convention, distance, lens. LEFT-DRAG orbit, RIGHT-DRAG / SHIFT pan, WHEEL
+  dolly, SHIFT+WHEEL lens, WASD pivot, R/F height, Q/E orbit, T/G pitch, Z/X lens, ENTER record, ESC stop. Sliders mirror it.
+  GAME SHOT = the menu camera's own solve (in FRAME IT) or the game re-framing the pair (outside it).
+- RECORD SHOT: `framed` (eye, gaze, lens, swing off the caster→target line, pitch, eye/look offsets in the pair frame,
+  look fraction along the pair, distances, both bodies' feet/head on screen, `moveTo` rig terms) + `scenario` (gap,
+  height gap, who flies, kinds, menu, spell, mode/site) + `game` (the same numbers for _menuShotPose) + a 400 px JPEG.
+  `source` = framed | game. TRY re-applies a shot's swing/pitch/look point/distance/lens to the pair on screen now.
+- MOVE UNITS (VS-CPU only, not online): click a unit then a free tile (no AP, no arrival effects); ▲/▼ lift a flyer 0-4.
+- Store localStorage `ew_shot_rec_v1`; EXPORT ALL = `EW_CAMERA_SHOTS_<stamp>.json` (conventions block inside).
+  Viewer-local, nothing relayed. Browser-checked (WebGL, TDM): game-shot record matches the solver within ~1°.
+
 ## THE UI MAKER — phase 1: the theme engine + the editor screen (2026-10-08, mondo, token 20261008-uimaker-01-cors)
 mondo: "a ui editor that lets me customize all uis and menus and follows the themes in the settings ... set different uis
 to different menus or huds ... shapes of panels like squares or beveled or round or circular or even diamond ... outlines
