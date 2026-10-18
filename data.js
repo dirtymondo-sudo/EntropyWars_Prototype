@@ -11874,9 +11874,9 @@ const STATUS_DEFS = {
         kind: 'debuff',
         category: 'status',
         stack: 'max',
-        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"): sees only the tiles beside it.
-                                // It still uses its team's sight (2026-10-18, mondo: "i had teammates near the unit ... so they
-                                // had vision on him anyway so that shouldnt have been an issue"), so no noSharedVision here.
+        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"):
+        noSharedVision: true,   // sees only the tiles beside it, and can't use its allies' sight (2026-10-18, mondo: "if i am
+                                // blind then i shouldnt have team vision") — the board shows only its own tiles on its turn
         iconSrc: createStatusIconDataUri('🌫️', '#2a2e33', '#eef2f6', '#9aa8b5')
         // Attack accuracy penalty is rolled in doAttack (battle.js): a blind
         // attacker misses 50% of the time.
@@ -11971,7 +11971,7 @@ const STATUS_LIBRARY_DESCS = {
     statLock:  'Stats are locked and cannot be raised or lowered.',
     hexed:     'Cursed — every action taken feeds the hex and hurts.',
     frozen:    'Encased in ice: cannot move or act. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
-    blind:     'Vision whited out: attacks miss 50% of the time and VISION drops to 1 (only the tiles beside it). It can still hit what its allies see.',
+    blind:     'Vision whited out: attacks miss 50% of the time, VISION drops to 1 (only the tiles beside it) and it can\'t use its allies\' sight.',
     broken:    'Every passive is switched off while it lasts: no passive hooks, immunities or gear bonuses. A unit that flies by passive falls out of the sky and takes fall damage.',
     siegeMode: 'Anchored down: +1 ATK stage and +2 RNG, but −2 MOV. Cannot be stolen.'
 };
