@@ -203,7 +203,10 @@ const HUD_THEME_TOKENS = {
     'drop': '0 2px 8px rgba(0,0,0,0.35)',
   },
 };
-const HUD_THEME_DEFAULT = 'crystal';
+/* the game's default (2026-10-18, mondo): his Entropy Wars Theme, a UI Maker preset (UIM_PRESETS p_entropy); Classic Blue
+   stays the base every token set rides on (no data-hud-theme) */
+const HUD_THEME_DEFAULT = 'p_entropy';
+const HUD_THEME_BASE = 'crystal';
 const HUD_THEME_KEY = 'ew_hud_theme';
 window.HUD_THEMES = HUD_THEMES;
 window.getHudTheme = function () {
@@ -220,7 +223,7 @@ window.applyHudTheme = function (id) {
   const root = document.documentElement;
   if (!root) return;
   // a UI Maker theme (preset / custom) rides on the Classic Blue base; its tokens come from THE UI MAKER's sheet
-  if (id === HUD_THEME_DEFAULT || !HUD_THEME_TOKENS[id]) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
+  if (id === HUD_THEME_BASE || !HUD_THEME_TOKENS[id]) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
   try { if (window.UIMaker) window.UIMaker.apply(); } catch (e) {}
 };
 window.applyHudTheme(window.getHudTheme());
@@ -4398,8 +4401,9 @@ function _hrlgSpellBlades(unit, st) {
       note: needsMove ? 'MOVE→CAST' : null,
       sub: reason || null,
       fire: () => { hideSpellTooltip(); if (canCast && typeof setTool === 'function') setTool('spell', sp.name); },
-      hoverIn: (e) => { showSpellTooltip(sp, e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); },
-      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); },
+      /* the green ! over every enemy this spell presses rides the hover even when the spell can't be cast yet */
+      hoverIn: (e) => { showSpellTooltip(sp, e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); if (typeof previewSpellPressMarks === 'function') previewSpellPressMarks(sp.name); },
+      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); if (typeof clearSpellPressMarks === 'function') clearSpellPressMarks(); },
     };
   });
   if (!blades.length) blades.push({ id: 'none', icon: '✦', label: 'No abilities', available: false });
@@ -10980,12 +10984,14 @@ function _hudHideCss() {
     .hrlg-brow1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
     .hrlg-brow2 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
     /* green !-circle = super effective vs this target */
+    /* its look is the UI Maker's (Arrows + tiles > Super effective !, hud.js seSignal: the --ew-se-* variables) */
     .hrlg-supereff {
-      flex: none; width: 16px; height: 16px; border-radius: 50%;
-      display: inline-flex; align-items: center; justify-content: center;
-      background: #2ecc71; color: #06130a;
-      font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: 12px; line-height: 1;
-      box-shadow: 0 0 8px rgba(46,204,113,0.75);
+      flex: none; width: calc(16px * var(--ew-se-menu, 1)); height: calc(16px * var(--ew-se-menu, 1)); border-radius: var(--ew-se-rad, 50%);
+      display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+      background: var(--ew-se-fill, #2ecc71); color: var(--ew-se-mark, #06130a);
+      border: calc(var(--ew-se-lw, 2px) * 0.6) solid var(--ew-se-line, #ffffff);
+      font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: calc(12px * var(--ew-se-menu, 1)); line-height: 1;
+      box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 8px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
     }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
@@ -12351,6 +12357,36 @@ function preset(id, label, hint, base, fn) {
 }
 function skinOn(t, role, o) { const s = t.skins[role]; Object.assign(s, { on: true }, o || {}); if (o && o.fill) s.fill = Object.assign({}, blankSkin(t.colors, role).fill, o.fill); return s; }
 const UIM_PRESETS = [
+  /* THE GAME DEFAULT (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game"):
+     his own export (Entropy_Wars_Theme.ewtheme.json), every value as he made it. HUD_THEME_DEFAULT wears it wherever no
+     theme was ever picked (a fresh profile); a theme someone picked stays theirs. */
+  {
+    id: 'p_entropy',
+    preset: true,
+    label: 'Entropy Wars Theme',
+    v: 1,
+    colors: {
+      plateTop: '#000000', plateMid: '#000000', plateBot: '#000000', edge: '#ffffff', seam: '#000000', rim: '#000000', lip: 'rgba(0,0,0,0)',
+      headTop: '#000000', headBot: '#000000', headInk: '#ffffff', rowTop: 'rgba(0,0,0,0)', rowBot: 'rgba(0,0,0,0)',
+      rowSelTop: 'rgba(255,255,255,0.18)', rowSelBot: 'rgba(255,255,255,0.18)', rowEdge: 'rgba(255,255,255,0)', ink: '#ffffff', inkMute: '#bcbcbc',
+      inkDim: '#7c7c7c', hair: 'rgba(255,255,255,0.3)', deadBg: '#070708', deadEdge: '#202024', deadInk: '#5e5e68', sel: '#ffffff',
+      accent: '#3cbcfc', good: '#58f898', bad: '#f83800',
+    },
+    scan: false,
+    skins: {
+      panel: { on: true, slice: '', shape: 'square', size: 0, fill: { kind: 'solid', angle: 180, alpha: 0, c1: '#000000', c2: '#000000', c3: '#000000' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 0, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 0.79, pixel: 1 },
+      head: { on: false, slice: '', shape: 'round', size: 10, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#28282c', c2: '', c3: '#161618' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 1, c: '#8c8c96' }, inner: { w: 0, c: '#3a3a42', gap: 1 }, bevel: { w: 2, light: 0.12, dark: 0.3 }, gloss: 0, glow: { r: 0, c: '#f0d060', a: 0.5 }, shadow: { y: 1, blur: 2, a: 0.45 }, opacity: 1 },
+      button: { on: true, slice: '', shape: 'shard', size: 40, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(0,0,0,0)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2.5, c: '#ffffff' }, inner: { w: 3, c: '#000000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 1 },
+      buttonSel: { on: true, slice: '', shape: 'shard', size: 40, fill: { kind: 'gradient', angle: 95, alpha: 1, c1: '#931dff', c2: '#63bdff', c3: '#fee96f' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 4, c: '#ffffff' }, inner: { w: 3, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 12, c: '#ffffff', a: 0.11 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 1 },
+      chip: { on: true, slice: '', shape: 'pixel', size: 8, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(0,0,0,0)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2, c: '#7c7c7c' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 2 },
+      chipOn: { on: true, slice: '', shape: 'pixel', size: 4, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(255,255,255,0.18)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 2 },
+      hero: { on: false, slice: '', shape: 'round', size: 10, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#1c1c1f', c2: '#0f0f11', c3: '#050506' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 1, c: '#8c8c96' }, inner: { w: 1, c: '#3a3a42', gap: 1 }, bevel: { w: 2, light: 0.12, dark: 0.3 }, gloss: 0, glow: { r: 0, c: '#f0d060', a: 0.5 }, shadow: { y: 3, blur: 8, a: 0.45 }, opacity: 1 },
+    },
+    text: { font: "'DotGothic16', monospace", titleFont: '', caps: true, track: 0.03, effect: 'outline', selInk: '#ffd200', bigFirst: 1.25, bigRows: false, italic: false, effectColor: '', shadow2: '', s2x: 1, s2y: 2, outlineW: 1, titleInk: '#61f180', rowInk: '', firstInk: '', titlePlate: '' },
+    drop: 0,
+    motion: { open: 'stretch', ms: 340, cursor: '▶', bob: true, rowTilt: 0.5, rowAlt: false, rowUpright: false, rowSlant: 0, selTilt: 0.5, selGrow: 1.08 },
+    hint: 'Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor.',
+  },
   preset('p_gilded', 'Gilded', 'Navy plates cut on the bevel under a double gold frame.', 'crystal', t => {
     Object.assign(t.colors, { edge: '#e8c66a', rim: '#8a6a24', sel: '#ffe08a', headInk: '#f2dc9a', rowEdge: '#b8933e' });
     skinOn(t, 'panel', { shape: 'bevel', size: 12, outline: { w: 2, c: '#e8c66a' }, inner: { w: 1, c: '#8a6a24', gap: 2 }, bevel: { w: 3, light: 0.18, dark: 0.35 } });
@@ -13445,6 +13481,13 @@ const UX_DEF = {
      box's lines or everything; lFade = how far down the top fade reaches (% of the box), lFadeTop = what is left at the
      top; lHoverClear = the mouse on it clears the fade; lGap = px between lines; lHp = the HP after a hit / heal;
      lBack = how dark the box behind the lines is (ui.js window._ewLogLook carries lAuto + lShow) */
+  /* e* = THE GREEN ! (2026-10-18, mondo: "make the icon more clear like give it an outline or add it somewhere in the ui
+     maker so i can make it look better"): eHover = the marks over the enemies while a spell is hovered in the abilities
+     menu (battle.js previewSpellPressMarks); eBig = their px; eMenu = the small ones' size (the badges + menu rows, 1 = as
+     the game); eFill / eMark / eLine = the circle, the ! and the outline ('' = the game's green, dark !, white outline);
+     eLineW = the outline px (0 = none); eGlow; eShape circle | round | square; eLift = px above the head (36 clears the name plate); eBob = the
+     marks bob. seSignal turns them into the CSS variables ui.js _seBangHtml reads */
+  eHover: true, eBig: 26, eMenu: 1, eFill: '', eMark: '', eLine: '', eLineW: 2, eGlow: 1, eShape: 'circle', eLift: 36, eBob: true,
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
 };
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
@@ -13773,6 +13816,23 @@ function aimSignal() {
   if (ka !== _aimSentA) { _aimSentA = ka; window._ewArrowLook = A; window._ewArrowLookV = (window._ewArrowLookV || 0) + 1; }
   if (kt !== _aimSentT) { _aimSentT = kt; window._ewTileLook = T; window._ewTileLookV = (window._ewTileLookV || 0) + 1; }
 }
+/* THE GREEN ! look: CSS variables on the page (every green ! reads them: ui.js _seBangHtml, .hrlg-supereff) + whether
+   the marks over the enemies show (window._ewSeLook.hover, battle.js previewSpellPressMarks), re-published on change */
+let _seSent = '';
+function seSignal() {
+  const X = uxOf();
+  const V = { '--ew-se-fill': X.eFill || '#2ecc71', '--ew-se-mark': X.eMark || '#06130a', '--ew-se-line': X.eLine || '#ffffff',
+    '--ew-se-lw': Math.max(0, +X.eLineW || 0) + 'px', '--ew-se-glow': String(Math.max(0, +X.eGlow || 0)),
+    '--ew-se-rad': X.eShape === 'square' ? '3px' : X.eShape === 'round' ? '28%' : '50%',
+    '--ew-se-menu': String(Math.max(0.5, +X.eMenu || 1)), '--ew-se-big': Math.max(8, +X.eBig || 26) + 'px',
+    '--ew-se-lift': (X.eLift == null ? 36 : +X.eLift || 0) + 'px', '--ew-se-anim': X.eBob ? 'ewSeBob' : 'none' };
+  const k = JSON.stringify(V) + (X.eHover ? 1 : 0); if (k === _seSent) return;
+  _seSent = k;
+  const r = document.documentElement;
+  Object.keys(V).forEach(n => r.style.setProperty(n, V[n]));
+  window._ewSeLook = { hover: !!X.eHover };
+  if (!X.eHover) { try { if (typeof window.clearSpellPressMarks === 'function') window.clearSpellPressMarks(); } catch (e) {} }
+}
 /* the combat log's options ui.js reads (window._ewLogLook), re-published only when they change */
 let _clogSent = '';
 function clogSignal() {
@@ -14086,7 +14146,7 @@ function aimPrevMount() {
 function aimDetail() {
   const X = uxOf();
   const looks = (pre, L) => `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${L.map(([v, l]) => `<button class="uim-btn" data-dk="aimlook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
-  let h = `<div class="uim-h">Arrows</div>` + looks('w', ARROW_LOOKS);
+  let h = seForm(X) + `<div class="uim-h">Arrows</div>` + looks('w', ARROW_LOOKS);
   h += sec('wshape', 'Arrow shape', xp(fSeg('Shaft', 'wShaft', [['solid', 'Solid'], ['dashed', 'Dashed'], ['none', 'None', 'The dots and the head alone']], X.wShaft)
     + fRange('Thickness', 'wThick', 0.1, 3, 0.05, +X.wThick, '1 = as the game; lower = thinner')
     + fSeg('Head', 'wHead', [['cone', 'Cone'], ['none', 'None']], X.wHead)
@@ -14117,6 +14177,25 @@ function aimDetail() {
   });
   h += '<div class="uim-note">Every number is on top of the game\'s own look (1 = as the game), so a reach still reads quieter than a hit.</div>' + xReset('t', 'Reset the tile highlights');
   return h;
+}
+/* the green ! (Arrows + tiles > Super effective !): a specimen of each place it shows, in the look now */
+function seForm(X) {
+  const bang = (px, big) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big) : '!';
+  const spec = `<div class="uim-se-spec"><span class="uim-se-unit">${bang(0, true)}<i></i></span>`
+    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span></div>`;
+  let h = `<div class="uim-h">Super effective !</div>` + spec;
+  h += sec('ehover', 'Over the enemies', xCheck('While a spell is hovered', 'eHover', X.eHover)
+    + xp(fRange('Size', 'eBig', 12, 64, 1, +X.eBig) + fRange('Height above the head', 'eLift', -40, 80, 1, +X.eLift))
+    + xCheck('Bob', 'eBob', X.eBob)
+    + '<div class="uim-note">Hover a damage spell in the abilities menu: every enemy you can see that it is super effective against (the hit refunds AP) wears it.</div>');
+  h += sec('elook', 'Look', xp(fColorOpt('Circle', 'eFill', X.eFill, '#2ecc71', false, 'Unticked = the game\'s green')
+    + fColorOpt('The !', 'eMark', X.eMark, '#06130a', false, 'Unticked = the game\'s dark !')
+    + fColorOpt('Outline', 'eLine', X.eLine, '#ffffff', false, 'Unticked = white')
+    + fRange('Outline width', 'eLineW', 0, 6, 0.5, +X.eLineW, '0 = no outline (the small ones get 60% of it)')
+    + fRange('Glow', 'eGlow', 0, 3, 0.05, +X.eGlow, '0 = none')
+    + fSeg('Shape', 'eShape', [['circle', 'Circle'], ['round', 'Rounded'], ['square', 'Square']], X.eShape)
+    + fRange('Size in badges + menus', 'eMenu', 0.6, 2.5, 0.05, +X.eMenu, '1 = as the game')));
+  return h + xReset('e', 'Reset the green !');
 }
 function platesDetail() {
   const X = uxOf();
@@ -14739,7 +14818,7 @@ function surfaceCss(S, T, tid, gid) {
 }
 
 /* ── apply: one stylesheet for every surface ── */
-function globalId() { let v = ''; try { v = localStorage.getItem('ew_hud_theme') || ''; } catch (e) {} return themeById(v) ? v : 'crystal'; }
+function globalId() { let v = ''; try { v = localStorage.getItem('ew_hud_theme') || ''; } catch (e) {} return themeById(v) ? v : HUD_THEME_DEFAULT; }
 function effectiveId(S) {
   const a = db.assign[S.id];
   if (a === 'original') return S.native ? globalId() : 'original';
@@ -14787,7 +14866,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); clogSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); seSignal(); clogSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15037,6 +15116,11 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
 .uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
 .uim-arr-box.surf > span { background: #138aa3; }
+.uim-se-spec { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin: 4px 0 8px; padding: 10px; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
+.uim-se-unit { display: inline-flex; flex-direction: column; align-items: center; gap: clamp(2px, var(--ew-se-lift, 36px), 14px); padding-top: 6px; }
+.uim-se-unit i { display: block; width: 26px; height: 34px; border-radius: 10px 10px 4px 4px; background: linear-gradient(#7a5e9c, #3b2d52); box-shadow: 0 0 0 1px rgba(255,255,255,0.15); }
+.uim-se-badge { display: inline-flex; align-items: center; font: 700 10px "DotGothic16", "JetBrains Mono", monospace; color: #2ecc71; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,0.65); border: 1px solid rgba(46,204,113,0.55); }
+.uim-se-row { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #cfd6e4; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); }
 .uim-aimprev { position: sticky; top: -8px; z-index: 4; margin: 6px -10px 8px; padding: 6px 10px 4px; background: rgb(14,16,22); box-shadow: 0 7px 9px -7px rgba(0,0,0,0.85); }
 .uim-aimprev canvas { display: block; width: 100%; height: 178px; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
 .uim-aimkey { display: flex; flex-wrap: wrap; gap: 2px 9px; margin-top: 5px; font-size: 10px; color: #aab3c3; }
@@ -15462,7 +15546,7 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove) and the tile highlights look, with a small board that shows every change at once']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights and the green super-effective ! look, with a small board that shows every change at once']];
 /* the tabs that open on the real screen (the live dock) */
 const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim'];
 function renderInspector() {
@@ -15667,7 +15751,7 @@ function onClick(e, root) {
     if (!editable(T) || !confirm(`Delete the theme "${T.label}"?`)) return;
     db.themes = db.themes.filter(x => x.id !== T.id);
     Object.keys(db.assign).forEach(k => { if (db.assign[k] === T.id) delete db.assign[k]; });
-    if (globalId() === T.id) window.setHudTheme('crystal');
+    if (globalId() === T.id) window.setHudTheme(HUD_THEME_DEFAULT);
     UI.themeId = globalId(); touch(); render();
   }
   else if (act === 'global') { window.setHudTheme(T.id); render(); toast(`The game now wears "${T.label}".`); }
@@ -16043,7 +16127,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
-    <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows and the tile highlights look">Arrows</button>
+    <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows, the tile highlights and the green super-effective ! look">Arrows</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
