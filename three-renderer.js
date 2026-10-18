@@ -20522,27 +20522,12 @@ const ThreeRenderer = (function () {
         var t = Math.min(1, (performance.now() - _ss.t0) / _ss.durationMs);
         var k = _ssEase(t);
 
-        /* THE NODE PANES (2026-10-05, "one side of the split screen is completely blank"): on the node renderer a draw with
-           autoClear opens its pass with loadOp 'clear', which wipes the WHOLE canvas whatever the scissor (WebGL's clear
-           honors the scissor), so each pane erased the ones drawn before it and only the last survived. There the canvas
-           is cleared once up front and the panes draw with autoClear off; its viewport / scissor origin is top-left. */
-        var node = !!renderer.isWebGPURenderer, prevAuto = renderer.autoClear, prevBg = null;
-        if (node) {
-            if (scene.background && scene.background.isColor) {   // a colour background forces the clear too: it becomes the one up-front clear
-                prevBg = scene.background;
-                var pcc = renderer.getClearColor(new THREE.Color()), pca = renderer.getClearAlpha();
-                renderer.setClearColor(prevBg, 1);
-                scene.background = null;
-            }
-            renderer.setScissorTest(false);
-            renderer.setViewport(0, 0, w, h);
-            renderer.clear();
-            if (prevBg) renderer.setClearColor(pcc, pca);
-            renderer.autoClear = false;
-        }
-        renderer._ew_paneRender = true;   // THE SPLIT PANES: no render bundles in a pane (_ewBunSetup's _projectObject)
-        try {
-        renderer.setScissorTest(true);
+        /* THE CLOSE-UP LOOK (2026-10-18, mondo: "i want it to match the rest of the battle ... it would get confusing having the
+           closeups use different settings than the rest of the battle"): every pane is posed first, then the panes draw
+           through the battle's own post chain (ThreePost.renderPanes: the pixelation, tilt shift, dither, grade, CRT, AA, AO),
+           so a close-up wears exactly what the settings give the battle. The bare scissored draw below is only for a frame
+           with no chain (post off, the perf lens's post off, the chain still loading), where the battle has none either. */
+        var _posed = [];
         for (var i = 0; i < _ss.panes.length; i++) {
             var p = _ss.panes[i], r = rects[i];
             var g = _ssFindGroup(p.unitId);
@@ -20596,6 +20581,39 @@ const ThreeRenderer = (function () {
             p.cam.up.set(0, 1, 0);
             p.cam.lookAt(p.lastAim.x, p.lastAim.y, p.lastAim.z);
 
+            _posed.push({ cam: p.cam, x: r.x, y: r.y, w: r.w, h: r.h, eye: p.lastEye });
+        }
+        var mainCam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        if (mainCam && mainCam.isPerspectiveCamera && typeof ThreePost !== 'undefined' && ThreePost.renderPanes && ThreePost.isReady() && !(_lens && !_lens.post)) {
+            if (_posed.length) ThreePost.renderPanes(_posed, function (pi) { _aimBillboardsAt(_posed[pi].eye.x, _posed[pi].eye.z); }, mainCam);
+            _bbLastCamX = NaN;   // poison the main-cam billboard cache
+            return;
+        }
+
+        /* THE NODE PANES (2026-10-05, "one side of the split screen is completely blank"): on the node renderer a draw with
+           autoClear opens its pass with loadOp 'clear', which wipes the WHOLE canvas whatever the scissor (WebGL's clear
+           honors the scissor), so each pane erased the ones drawn before it and only the last survived. There the canvas
+           is cleared once up front and the panes draw with autoClear off; its viewport / scissor origin is top-left. */
+        var node = !!renderer.isWebGPURenderer, prevAuto = renderer.autoClear, prevBg = null;
+        if (node) {
+            if (scene.background && scene.background.isColor) {   // a colour background forces the clear too: it becomes the one up-front clear
+                prevBg = scene.background;
+                var pcc = renderer.getClearColor(new THREE.Color()), pca = renderer.getClearAlpha();
+                renderer.setClearColor(prevBg, 1);
+                scene.background = null;
+            }
+            renderer.setScissorTest(false);
+            renderer.setViewport(0, 0, w, h);
+            renderer.clear();
+            if (prevBg) renderer.setClearColor(pcc, pca);
+            renderer.autoClear = false;
+        }
+        renderer._ew_paneRender = true;   // THE SPLIT PANES: no render bundles in a pane (_ewBunSetup's _projectObject)
+        try {
+        renderer.setScissorTest(true);
+        for (var i = 0; i < _ss.panes.length; i++) {
+            var p = _ss.panes[i], r = rects[i];
+            if (!p.lastEye) continue;
             /* Sprites must face THIS pane's camera while it draws. */
             _aimBillboardsAt(p.lastEye.x, p.lastEye.z);
 
