@@ -6386,7 +6386,7 @@
         function lineBeamPlan(unit, spell, dx, dy, aim) {
             const line = lineBeamLine(unit, dx, dy, aim);
             const zig = !!spell.beamZigzag;
-            const cells = [], victims = [];
+            const cells = [], victims = [], laneCells = [];
             const lanes = getLineSpellLaneOffsets(spell, dx, dy);
             const lineRange = spell.range || 4;
             const take = (x, y, z) => {
@@ -6402,10 +6402,19 @@
                 take(x, y, z);
                 for (const [ox, oy] of lanes) {
                     const lx = x + ox, ly = y + oy;
-                    if (isInside(lx, ly) && isTerrainPassable(lx, ly)) take(lx, ly, z);
+                    if (isInside(lx, ly) && isTerrainPassable(lx, ly)) { take(lx, ly, z); laneCells.push({ x: lx, y: ly, z, step: i }); }
                 }
             }
-            return { cells, victims, line };
+            /* THE WIDE WAVE (2026-10-18, mondo: "tsunami only shows a single line for its damage even though it does
+               damage to more tiles than that"): `tiles` = every tile the beam sweeps — the spine AND the side lanes
+               _applyLineDamage runs alongside it (Tsunami / Empty the Clip 3 wide, Plasma Cannon 2). Every preview
+               paints these, never `cells` alone (the spine). */
+            const tiles = [], seen = new Set();
+            for (const c of cells.concat(laneCells)) {
+                const k = c.x + ',' + c.y;
+                if (!seen.has(k)) { seen.add(k); tiles.push({ x: c.x, y: c.y }); }
+            }
+            return { cells, laneCells, tiles, victims, line };
         }
         window.lineBeamPlan = lineBeamPlan;
         window.lineBeamHits = lineBeamHits;
@@ -6901,6 +6910,73 @@
         // hot at impact) vs. white; stagger draws lanes tile-by-tile (beams,
         // dashes).
         // Rides the relayed windup beat (`tiles` is on online.js's whitelist).
+        /* THE TRUE STRIKE AREA (2026-10-18, mondo: "tsunami only shows a single line ... please fix it and any other
+           spells like it"): the tiles a cast can hit for the kinds whose hit area is NOT the aim tile and NOT a plain
+           area shape, read with the doSpell branch's own rules. null = the kind is not one of these (the caller's
+           own shape stands). Shared by the aim preview (ui.js getSpellAoeFootprint / showSelfCastAoePreview), the
+           cast glow below and forecastSpellPlan's tiles, so the plates match what lands.
+             barrage   — every tile in the nova's reach (combatDist: the 8 round the caster are 1, then Manhattan),
+                         only the wet ones for hitsWetOnly (_barrageTargets)
+             dash      — a dash that hurts: the path (every enemy on it is hit), or every tile within dashSweep of
+                         the start + path (Giant Stride)
+             leapStrike / skySlam — the victim + the shockwave square round it (aoeRadius + aoeDmgPct, Seismic Leap)
+             teleport  — an arrival blast (aoeOnArrival, Void Rush): the landing + the square round it */
+        function spellStrikeTiles(unit, spell, tx, ty) {
+            if (!unit || !spell) return null;
+            const kind = spell.kind;
+            const maskAround = (cx, cy, r) => {
+                const m = _spellMaskOf(spell);
+                const out = [{ x: cx, y: cy }];
+                for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                    if (!dx && !dy) continue;
+                    if (m && !m.some(o => o[0] === dx && o[1] === dy)) continue;
+                    if (isInside(cx + dx, cy + dy)) out.push({ x: cx + dx, y: cy + dy });
+                }
+                return out;
+            };
+            const maskReach = (fallback) => { const m = _spellMaskOf(spell); return m ? Math.max(1, aoeMaskBound(m)) : fallback; };
+            if (kind === 'barrage') {
+                const r = (spell.aoeOriginSelf && spell.aoeRadius) ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
+                const out = [];
+                for (let y = 0; y < bh(); y++) for (let x = 0; x < bw(); x++) {
+                    const adx = Math.abs(x - unit.x), ady = Math.abs(y - unit.y);
+                    const d = (adx <= 1 && ady <= 1) ? Math.max(adx, ady) : (adx + ady);
+                    if (d > r) continue;
+                    if (spell.hitsWetOnly && !_isWetTile(x, y)) continue;
+                    out.push({ x, y });
+                }
+                return out;
+            }
+            if (kind === 'dash') {
+                if (tx == null || ty == null) return null;
+                if (!((spell.dashDamage || spell.dmg || 0) > 0)) return null;   // Sprint & co only move
+                const dist = Math.abs(tx - unit.x) + Math.abs(ty - unit.y);
+                if (dist < 1 || dist > getEffectiveSpellRange(unit, spell) || !isInside(tx, ty) || !isTerrainPassable(tx, ty)) return null;
+                const path = getLinePoints(unit.x, unit.y, tx, ty);
+                if (!(spell.dashSweep > 0)) return path;
+                const r = spell.dashSweep, out = [], seen = new Set();
+                for (const pt of [{ x: unit.x, y: unit.y }, ...path]) {
+                    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        const x = pt.x + dx, y = pt.y + dy, k = x + ',' + y;
+                        if (!isInside(x, y) || seen.has(k) || (x === unit.x && y === unit.y)) continue;
+                        seen.add(k); out.push({ x, y });
+                    }
+                }
+                return out;
+            }
+            if (kind === 'leapStrike' || kind === 'skySlam') {
+                if (tx == null || ty == null || !(spell.aoeRadius && spell.aoeDmgPct)) return null;
+                return maskAround(tx, ty, maskReach(spell.aoeRadius));
+            }
+            if (kind === 'teleport') {
+                if (tx == null || ty == null || !spell.aoeOnArrival || !spell.dmg) return null;
+                if (state._teleportingUnit && state._teleportingUnit !== unit) return null;   // moving someone else: no blast
+                return maskAround(tx, ty, maskReach(spell.aoeRadius || 1));
+            }
+            return null;
+        }
+        window.spellStrikeTiles = spellStrikeTiles;
+
         const _GLOW_FRIENDLY_KINDS = {
             heal: 1, selfHeal: 1, healAll: 1, manaRestoreAll: 1, revive: 1, raiseDead: 1,
             cleanse: 1, cleanseArea: 1, seedHeal: 1, shield: 1, aoeShield: 1, buff: 1, warCry: 1,
@@ -6936,7 +7012,7 @@
                         }
                     } else tiles = getSpellAoeArea(spell, cx, cy);
                 } else if (kind === 'bomb') {
-                    tiles = getSquareArea(tx, ty, spell.blastRadius || 1);
+                    tiles = getSquareArea(tx, ty, 1);   // detonateBomb's blast: the mask (above) or the 3×3
                 } else if (kind === 'summonWeather') {
                     tiles = getSquareArea(tx, ty, spell.weatherTiles ? Math.floor(spell.weatherTiles[1] / 2) : 1);
                 } else if (kind === 'cross') {
@@ -6948,20 +7024,20 @@
                     const dx = _gh ? _gh.dx : Math.sign(tx - unit.x), dy = _gh ? _gh.dy : Math.sign(ty - unit.y);
                     if (dx !== 0 || dy !== 0) {
                         // THE 3D LINE: the same cells the cast will fly (lineBeamPlan)
-                        for (const c of lineBeamPlan(unit, spell, dx, dy, { x: tx, y: ty, z: null }).cells) tiles.push({ x: c.x, y: c.y });
+                        for (const c of lineBeamPlan(unit, spell, dx, dy, { x: tx, y: ty, z: null }).tiles) tiles.push({ x: c.x, y: c.y });   // spine + side lanes
                         out.stagger = 45;
                     }
                 } else if (kind === 'dash') {
-                    /* every tile the charge runs through, drawn along the run */
-                    tiles = getLinePoints(unit.x, unit.y, tx, ty);
+                    /* every tile the charge runs through, drawn along the run (a sweeping dash: its whole swath) */
+                    tiles = spellStrikeTiles(unit, spell, tx, ty) || getLinePoints(unit.x, unit.y, tx, ty);
                     out.stagger = 70;
                 } else if (kind === 'cleanseArea') {
                     tiles = getSquareArea(tx, ty, spell.aoeRadius != null ? spell.aoeRadius : 1);
-                } else if (kind === 'leapStrike') {
-                    tiles = spell.aoeRadius ? getSquareArea(tx, ty, spell.aoeRadius) : [{ x: tx, y: ty }];
+                } else if (kind === 'leapStrike' || kind === 'teleport') {
+                    tiles = spellStrikeTiles(unit, spell, tx, ty) || [{ x: tx, y: ty }];
                 } else if (kind === 'barrage') {
                     if (spell.aoeOriginSelf && !spell.hitsWetOnly) {
-                        tiles = getSquareArea(unit.x, unit.y, spell.aoeRadius != null ? spell.aoeRadius : 2);
+                        tiles = spellStrikeTiles(unit, spell, tx, ty);   // the nova's true reach (combatDist), not a square
                     } else if (typeof _barrageTargets === 'function') {
                         tiles = _barrageTargets(unit, spell).map(e => ({ x: e.x, y: e.y }));
                     }
@@ -34151,7 +34227,7 @@
                 const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined });
                 for (let p = 0; p < passes; p++) {
                     const bp = lineBeamPlan(unit, spell, hd.dx, hd.dy, aim);
-                    if (p === 0) plan.tiles = bp.cells.map(c => ({ x: c.x, y: c.y }));
+                    if (p === 0) plan.tiles = bp.tiles.slice();   // the spine AND the side lanes (Tsunami 3 wide)
                     for (const v of bp.victims) {
                         if (v.dead || v.hp <= 0) continue;
                         hit(v, d, Math.max(1, d - SPELL_DMG_VARIANCE), d + SPELL_DMG_VARIANCE, hopts, p ? { tag: 'return' } : null);
@@ -34200,6 +34276,7 @@
             }
 
             if (kind === 'barrage') {
+                plan.tiles = spellStrikeTiles(unit, spell, x, y) || [];   // the nova's reach
                 if (spell.noDamage) { for (const e of _barrageTargets(unit, spell)) tag(e, 'status'); return; }
                 const w = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
                 const b = (spell.dmg || 0) + sp;
@@ -34317,6 +34394,7 @@
                 if (Math.abs(unit.x - x) + Math.abs(unit.y - y) > getEffectiveSpellRange(unit, spell)) return;
                 addMove(mover, x, y, mover === unit ? 'self' : 'teleport', { blink: true });
                 if (spell.aoeOnArrival && spell.dmg && mover === unit) {
+                    plan.tiles = spellStrikeTiles(unit, spell, x, y) || [{ x, y }];
                     const m = _spellMaskOf(spell), r = m ? Math.max(1, aoeMaskBound(m)) : (spell.aoeRadius || 1);
                     const d = Math.max(1, spell.dmg + sp);
                     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -34345,7 +34423,7 @@
                         if ([{ x: unit.x, y: unit.y }, ...path].some(pt => Math.max(Math.abs(e.x - pt.x), Math.abs(e.y - pt.y)) <= spell.dashSweep)) { seen.add(e.id); pts.push({ x: e.x, y: e.y }); }
                     }
                 } else for (const pt of path) pts.push(pt);
-                plan.tiles = path.map(p => ({ x: p.x, y: p.y }));
+                plan.tiles = spellStrikeTiles(unit, spell, x, y) || path.map(p => ({ x: p.x, y: p.y }));   // a sweep's whole swath
                 const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: true, element: undefined });
                 for (const pt of pts) {
                     const v = unitAt(pt.x, pt.y);
@@ -34377,6 +34455,7 @@
                 }
                 const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
                 hit(target, total, total, total, hopts);
+                if (kind !== 'skyDrop') plan.tiles = spellStrikeTiles(unit, spell, target.x, target.y) || [];   // Seismic Leap's shockwave square
                 if (kind !== 'skyDrop' && spell.aoeRadius && spell.aoeDmgPct) {
                     const ad = Math.floor(total * spell.aoeDmgPct);
                     const m = _spellMaskOf(spell), r = m ? Math.max(1, aoeMaskBound(m)) : spell.aoeRadius;
