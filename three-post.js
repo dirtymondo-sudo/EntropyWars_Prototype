@@ -1219,11 +1219,13 @@ const ThreePost = (function () {
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
 
-    /* the walk / menu scenes (2026-10-18): only the PEOPLE — a character group the building marks `_ew_pixelChar`
-       (three-renderer.js _hqSpawnCharacter; its rigs are plain meshes, unflagged) — never the room's props */
+    /* the walk / menu scenes (2026-10-18, mondo: "models only is supposed to pixelate all the meshy models, not just the
+       people"): every model the board would mask (`_ew_modelSkin` / `_ew_pixelate` — the Meshy props, the procs) plus the
+       PEOPLE — a character group the building marks `_ew_pixelChar` (three-renderer.js _hqSpawnCharacter; its rigs are
+       plain meshes, unflagged) */
     function _scanPixelChars(n, inChar) {
         inChar = inChar || !!n._ew_pixelChar;
-        if (inChar && n.isMesh && !n._ew_pixelTagged && !n._ew_silhouette) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
+        if ((inChar || n._ew_modelSkin || n._ew_pixelate) && n.isMesh && !n._ew_pixelTagged && !n._ew_silhouette) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
         for (var i = 0; i < n.children.length; i++) _scanPixelChars(n.children[i], inChar);
     }
     function _scanPixelMaskTargets(sc) {

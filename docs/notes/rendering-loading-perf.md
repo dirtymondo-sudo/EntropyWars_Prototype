@@ -900,7 +900,8 @@ the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
   tags only meshes under such groups for a non-battle scene (`_scanPixelChars`), with a per-scene re-tag clock
   (`sc._ew_pixScanAt`); `renderScene` draws the mask from its own scene. The mask renders with `sc.background = null` — a
   texture sky is a mesh three draws in every render, so the second (static) pass painted the sky over the rigs the first
-  (skinned) pass drew.
+  (skinned) pass drew. Same day, mondo: "models only is supposed to pixelate all the meshy models, not just the people" —
+  the walk's scan also tags every `_ew_modelSkin` / `_ew_pixelate` mesh (the same models the board masks), people included.
 - Voxel-board-only (no effect in rooms, kept; mondo decides): Fog Density, Fog Horizon, the mood preset fog colour, Night
   Mood, Batched Terrain (still used by the moving boards). Dead everywhere: Light Rays (`_buildLightRays` builds nothing since
   the light boxes went, 2026-10-04).
