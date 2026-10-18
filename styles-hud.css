@@ -3642,9 +3642,12 @@
         }
         .battle-subtitle-text .dlg-effective { color: #55d38a; }
         .battle-subtitle-text .dlg-resist { color: #c87070; }
-        .battle-subtitle-text .dlg-status { color: #e8a545; }
-        .battle-subtitle-text .dlg-damage { color: #e06060; }
-        .battle-subtitle-text .dlg-heal { color: #70c870; }
+        /* damage / heal / status lines keep the box's own ink: the coded words inside them carry the colour now
+           (names by side, damage red, heals green, statuses their badge colour — battle.js THE COMBAT TEXT COLOURS);
+           a whole line in red / green / orange hid them */
+        .battle-subtitle-text .dlg-status,
+        .battle-subtitle-text .dlg-damage,
+        .battle-subtitle-text .dlg-heal { color: inherit; }
         .battle-subtitle-text .dlg-levelup {
             color: #ffe066;
             text-shadow: 0 0 12px rgba(255,224,100,0.4), 0 2px 8px rgba(0,0,0,0.85);

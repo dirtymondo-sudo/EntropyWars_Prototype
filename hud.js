@@ -12813,7 +12813,9 @@ const UIM_PIECES = [
   { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar', def: { cx: 0, b: 10, wf: 0.92, wmax: 1100, h: 62 } },
   /* the battle's text box ("<unit> is up — select an action.", the combat lines; ui.js ensureBattleHUD) — mondo 2026-10-18:
      "there is the subtitles or combat text box ... that needs to be part of the layout too and let me change where it is" */
-  { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', def: { cx: 0, b: 86, w: 640, h: 40 } },
+  /* keepCodes: the box's All text colour paints the plain words only, never the colour-coded ones (names by side, damage,
+     heals, spells, statuses — battle.js THE COMBAT TEXT COLOURS); those have their own text parts below */
+  { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', keepCodes: true, def: { cx: 0, b: 86, w: 640, h: 40 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
@@ -12956,7 +12958,9 @@ const TEXT_PARTS = {
   turns: [['loop', 'Round loop mark', '.ew-tc-loop']],
   desc: [['name', 'Name', '.ew-descbar-name'], ['tags', 'Tags', '.ew-descbar-inner > span:not([class])'], ['desc', 'Description', '.ew-descbar-desc'],
     ['stats', 'Range + costs', '.ew-descbar-stats']],
-  subtitle: [['who', 'Unit name', '.dlg-prompt strong, strong'], ['line', 'The line', '.dlg-prompt'], ['hint', 'Key hint', '.dlg-prompt-hint'], ['cursor', 'Cursor', '.dlg-prompt-cursor']],
+  subtitle: [['who', 'Unit name', '.dlg-prompt strong, strong'], ['line', 'The line', '.dlg-prompt'], ['hint', 'Key hint', '.dlg-prompt-hint'], ['cursor', 'Cursor', '.dlg-prompt-cursor'],
+    ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'], ['status', 'Status effects', '.ct-status'],
+    ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko']],
   banner: [['title', 'Title', '.banner-title'], ['sub', 'Second line', '.banner-sub']],
 };
 const txKey = (part, k) => 't:' + part + ':' + k;
@@ -13040,7 +13044,9 @@ function lookCss(P, L) {
   let css = d.length ? `${S} { ${d.join(' ')} }\n` : '';
   if (dl !== d && dl.length) css += `${preP(P.panelSel)} { ${dl.join(' ')} }\n`;
   const t = [];
-  if (L.ink) t.push(`color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important;`);
+  const sels = parts(P.sel);
+  if (L.ink && P.keepCodes) css += `${preP(sels.map(x => x + ', ' + x + ' *:not(.ct):not(.ct *)').join(', '))} { color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important; }\n`;
+  else if (L.ink) t.push(`color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important;`);
   if (L.font) t.push(`font-family: ${L.font} !important;`);
   if (L.fw) t.push(`font-weight: ${L.fw} !important;`);
   if (+L.fsz > 0) t.push(`font-size: ${n(L.fsz, 6, 120)}px !important;`);
@@ -13048,7 +13054,7 @@ function lookCss(P, L) {
   if (set('track')) t.push(`letter-spacing: ${(+L.track || 0).toFixed(2)}em !important;`);
   if (L.tfx && TFX[L.tfx]) t.push(`text-shadow: ${TFX[L.tfx]} !important;`);
   if (L.align) t.push(`text-align: ${L.align} !important;`);
-  if (t.length) css += `${preP(parts(P.sel).map(x => x + ', ' + x + ' *').join(', '))} { ${t.join(' ')} }\n`;
+  if (t.length) css += `${preP(sels.map(x => x + ', ' + x + ' *').join(', '))} { ${t.join(' ')} }\n`;
   return css;
 }
 /* ── THE WORDS (2026-10-18, mondo: "what text shows up in the panels"): db.words[piece id] = { 'the words as the game

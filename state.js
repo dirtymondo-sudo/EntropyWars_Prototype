@@ -5445,7 +5445,7 @@
                     })
                 },
                 units: state.units.map(serializeUnitForExport),
-                combatLog: [...(state._fullLogEntries || state.logEntries || [])].reverse().map(e => _logMsg(e))
+                combatLog: [...(state._fullLogEntries || state.logEntries || [])].reverse().map(e => (typeof _ctPlain === 'function' ? _ctPlain(_logMsg(e)) : _logMsg(e)))
             };
         }
 
