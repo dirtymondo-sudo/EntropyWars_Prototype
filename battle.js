@@ -38921,6 +38921,27 @@
                 return Math.max(0, Math.min(ap, n));
             },
 
+            /* THE ENDS TURN READ (mondo 2026-10-18: "instead of damaging spells costing 2 ap, they really cost 1 ap and
+               end your turn"): what an action COSTS (n) and whether it ENDS the turn (ends). The menus put n on their
+               cost pips and an ENDS TURN tag on the row; the AP press icons flash n and mark the rest as lost. The
+               drain itself is unchanged (apSpend: an ending act still spends the whole pool, and a press refund still
+               hands AP back). Same kinds / opts as apSpend. */
+            apUse(unit, kind, opts = {}) {
+                const ap = Math.max(0, (unit && unit.ap) || 0);
+                if (!ap) return { n: 0, ends: false };
+                let n, ends = false;
+                if (kind === 'move') { n = AP_COST_ACTION; ends = (unit.movesThisTurn || 0) + 1 >= UNIT_MAX_MOVES; }
+                else if (kind === 'all') { n = (opts.cost != null && +opts.cost > 0) ? +opts.cost : AP_COST_ACTION; ends = true; }
+                else if (kind === 'spell') {
+                    const sp = opts.spell;
+                    n = (opts.move ? AP_COST_ACTION : 0) + TargetQuery.apCost(sp);
+                    ends = !!(sp && spellEndsTurn(sp));
+                } else n = opts.cost != null ? (+opts.cost || 0) : AP_COST_ACTION;
+                if (n > 0 && typeof _isClashMode === 'function' && _isClashMode()) ends = true;
+                return { n: Math.max(0, Math.min(ap, n)), ends };
+            },
+            spellEndsTurn(spell) { return spellEndsTurn(spell); },
+
             /* THE universal castability guard: ONE method answers "why can't
                this unit cast this spell right now?". The ability drum's
                greying, the quick menus, doSpell and canAfford all route

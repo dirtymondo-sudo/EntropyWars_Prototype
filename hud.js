@@ -2785,38 +2785,43 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
 //                    name — the spell TYPE badge only; delivery/range
 //                    detail lives in the bottom description bar now
 /* THE AP PRESS ICONS' arithmetic (mondo 2026-10-17: "the point is to always know how much ap i will be left with
-   after an action by quickly visually glancing"): the AP a row REALLY drains, from the engine's own spend rules
-   (battle.js TargetQuery.apSpend) — an attack, a combo or a damaging cast takes the whole pool, the turn's second
-   step takes the rest, a support cast its cost (plus the step of a MOVE→CAST). Same answer on host and guest. */
-function _hrlgApSpendOf(unit, b) {
+   after an action by quickly visually glancing") + THE ENDS TURN READ (mondo 2026-10-18: "instead of damaging spells
+   costing 2 ap, they really cost 1 ap and end your turn ... any damaging spell and the basic attack should have a text
+   that says ENDS TURN on its button"): what a row COSTS (n: its cost pips + the AP icons that flash) and whether it
+   ENDS the turn (ends: the row's ENDS TURN tag + the AP icons' lost look), from the engine (battle.js
+   TargetQuery.apUse). An attack, a combo, Guard, Escape or a damaging / Protect cast costs its own AP and ends the turn;
+   the turn's second step ends it too; a support cast costs its AP (plus the step of a MOVE→CAST). Same on host + guest. */
+const _HRLG_ENDS_IDS = { attack: 1, combo: 1, guard: 1, escape: 1 };
+function _hrlgApUseOf(unit, b) {
   if (!unit || !b || typeof b.cost !== 'number' || b.cost <= 0) return null;
   const q = _TQ();
-  if (!q || typeof q.apSpend !== 'function') return Math.min(b.cost, unit.ap || 0);
-  if (b.apKind) return q.apSpend(unit, b.apKind, { spell: b.spell, cost: b.cost });
+  if (!q || typeof q.apUse !== 'function') return { n: Math.min(b.cost, unit.ap || 0), ends: !!b.endsTurn };
+  if (b.apKind) return q.apUse(unit, b.apKind, { spell: b.spell, cost: b.cost });
   const base = String(b.id || '').replace(/^(ea|aa|ta):/, '').replace(/:\d+$/, '');
   const stepFirst = !!(b.note && /MOVE|JUMP/.test(b.note));
-  if (base === 'attack' || base === 'combo') return q.apSpend(unit, 'all');
-  if (base === 'move' || base === 'moveTowards' || base === 'takeoff-move') return q.apSpend(unit, 'move');
+  if (b.endsTurn || _HRLG_ENDS_IDS[base]) return q.apUse(unit, 'all', { cost: b.cost });
+  if (base === 'move' || base === 'moveTowards' || base === 'takeoff-move') return q.apUse(unit, 'move');
   const own = b.spell && [...(unit.spells || []), ...(unit._raceAbilities || [])].includes(b.spell);
-  if (own) return q.apSpend(unit, 'spell', { spell: b.spell, move: stepFirst });
-  return q.apSpend(unit, 'flat', { cost: b.cost + (stepFirst ? 1 : 0) });
+  if (own) return q.apUse(unit, 'spell', { spell: b.spell, move: stepFirst });
+  return q.apUse(unit, 'flat', { cost: b.cost + (stepFirst ? 1 : 0) });
 }
-/* …and while an action is ARMED (aiming on the board, or picking its target from a list) the armed action's drain */
-function _hrlgArmedApSpend(unit, st, selBlade) {
-  const q = _TQ();
-  if (!unit || !st || !q || typeof q.apSpend !== 'function') return 0;
+/* …and while an action is ARMED (aiming on the board, or picking its target from a list) the armed action's cost */
+function _hrlgArmedApUse(unit, st, selBlade) {
+  const q = _TQ(), none = { n: 0, ends: false };
+  if (!unit || !st || !q || typeof q.apUse !== 'function') return none;
   const am = st.actionMode, mv = st.actionMenuView;
   const stepFirst = !!(selBlade && selBlade.note && /MOVE|JUMP/.test(selBlade.note));
-  if (am === 'move') return q.apSpend(unit, 'move');
-  if (am === 'jump') return q.apSpend(unit, 'flat', { cost: 1 });
-  if (am === 'attack' || am === 'combo' || mv === 'attackTargets' || mv === 'finisherTargets') return q.apSpend(unit, 'all');
+  if (am === 'move') return q.apUse(unit, 'move');
+  if (am === 'jump') return q.apUse(unit, 'flat', { cost: 1 });
+  if (am === 'combo') return q.apUse(unit, 'all', { cost: (window.GAME && window.GAME.COMBO_AP_COST_INITIATOR) || 2 });
+  if (am === 'attack' || mv === 'attackTargets' || mv === 'finisherTargets') return q.apUse(unit, 'all');
   if (am === 'spell' && st.selectedTool) {
     const sp = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean).find(s => s.name === st.selectedTool);
-    return sp ? q.apSpend(unit, 'spell', { spell: sp, move: stepFirst }) : 0;
+    return sp ? q.apUse(unit, 'spell', { spell: sp, move: stepFirst }) : none;
   }
-  if (am === 'item' && st.selectedTool) return q.apSpend(unit, 'flat', { cost: 1 });
-  if (am === 'ward' || am === 'inspect' || am === 'flair') return q.apSpend(unit, 'flat', { cost: 1 });
-  return 0;
+  if (am === 'item' && st.selectedTool) return q.apUse(unit, 'flat', { cost: 1 });
+  if (am === 'ward' || am === 'inspect' || am === 'flair') return q.apUse(unit, 'flat', { cost: 1 });
+  return none;
 }
 
 function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
@@ -2831,10 +2836,19 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   // cost pips on any blade (one beat = one action, whatever it "costs").
   if (!dead && typeof b.cost === 'number' && !b.sub
       && !(typeof window._mdLockstepActive === 'function' && window._mdLockstepActive())) {
-    const _n = (typeof b.apSpend === 'number' && b.available) ? b.apSpend : b.cost;   // the real drain (_hrlgApSpendOf)
+    const _n = (b.apUse && b.available) ? b.apUse.n : b.cost;   // what it costs (_hrlgApUseOf)
     const pips = []; for (let i = 0; i < _n; i++) pips.push(h('span', { key: i, className: 'hrlg-cpip' }));
     right.push(h('span', { key: 'ap', className: 'hrlg-cost' }, pips));
   }
+  /* ENDS TURN (mondo 2026-10-18): an action that ends the turn says so right after its cost, a red tag the rows that
+     leave the turn going never wear (UI Maker text part "ENDS TURN tags"). A press refund (the green !) still hands AP
+     back after it. The narrow root verbs carry it UNDER the name (where a grey-out reason reads), so the name keeps its
+     width. */
+  const endsTag = (!dead && !b.sub && ((b.apUse && b.apUse.ends) || b.endsTurn)
+      && !(typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()))
+    ? h('span', { key: 'et', className: 'hrlg-endsturn', title: 'Ends your turn' + (b.superEff ? ' (the super-effective hit refunds AP, so you act again)' : ' — a super-effective hit refunds AP') }, 'ENDS TURN')
+    : null;
+  if (endsTag && !b.subBelow) right.push(endsTag);
   if (b.count) right.push(h('span', { key: 'ct', className: 'hrlg-cfree' }, b.count));
   if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', title: b.meta.title || undefined, style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
@@ -3018,13 +3032,13 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
             ),
             h('span', { className: 'hrlg-brow2' }, right),
           )
-        : (b.subBelow && b.sub)
+        : (b.subBelow && (b.sub || endsTag))
         ? h(React.Fragment, null,
-            // root verbs: the grey-out reason reads UNDER the name, so the
-            // blade can stay narrow without the reason tag fighting for width
+            // root verbs: the grey-out reason (or the ENDS TURN tag) reads UNDER
+            // the name, so the blade can stay narrow without it fighting for width
             h('span', { className: 'hrlg-lblcol' },
               h('span', { className: 'hrlg-blabel' }, b.label),
-              h('span', { className: 'hrlg-subline' }, b.sub),
+              b.sub ? h('span', { className: 'hrlg-subline' }, b.sub) : endsTag,
             ),
             right,
           )
@@ -3416,15 +3430,17 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     if (selIdx < 0) selIdx = 0;
   }
   const selBlade = blades[selIdx] || null;
-  /* every row's REAL AP drain (its cost pips + the AP press icons read it) */
-  _panels.forEach(p => (p.blades || []).forEach(b => { b.apSpend = _hrlgApSpendOf(apUnit, b); }));
-  /* THE AP PRESS ICONS flash what the cursor row (hover IS selection) would spend — or, with no paid row under the
-     cursor, the armed action's drain (aiming a spell / attack / move, or picking its target from a list) */
+  /* every row's cost + whether it ends the turn (its cost pips, its ENDS TURN tag and the AP press icons read it) */
+  _panels.forEach(p => (p.blades || []).forEach(b => { b.apUse = _hrlgApUseOf(apUnit, b); }));
+  /* THE AP PRESS ICONS flash what the cursor row (hover IS selection) costs, and mark the rest lost when it ends the
+     turn — or, with no paid row under the cursor, the armed action's (aiming a spell / attack / move, or picking its
+     target from a list) */
   const _selLive = selBlade && (selBlade.available || selBlade.forceLive);
-  const apPend = (_selLive && typeof selBlade.apSpend === 'number') ? selBlade.apSpend
-    : (typeof state !== 'undefined' ? _hrlgArmedApSpend(apUnit, state, _selLive ? selBlade : null) : 0);
-  useEffect(() => { _apPressSetPending(unitKey, apPend); }, [unitKey, apPend]);
-  useEffect(() => () => _apPressSetPending(null, 0), []);
+  const _apU = (_selLive && selBlade.apUse) ? selBlade.apUse
+    : (typeof state !== 'undefined' ? _hrlgArmedApUse(apUnit, state, _selLive ? selBlade : null) : null);
+  const apPend = _apU ? _apU.n : 0, apEnds = !!(_apU && _apU.ends && _apU.n > 0);
+  useEffect(() => { _apPressSetPending(unitKey, apPend, apEnds); }, [unitKey, apPend, apEnds]);
+  useEffect(() => () => _apPressSetPending(null, 0, false), []);
 
   const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
   // a fresh unit or a different menu view takes the wheel → reset the cursor
@@ -4543,11 +4559,11 @@ function _hrlgEntropyBlades(unit, st) {
     const card = {
       _objectCard: true,
       name: (def.glyph || '⚛') + ' ' + String(def.name || id).toUpperCase(),
-      _hpLine: 'ENTROPY STRIKE · ' + id.toUpperCase() + ' TYPE · 1 AP · drains the gauge',
+      _hpLine: 'ENTROPY STRIKE · ' + id.toUpperCase() + ' TYPE · 1 AP · ENDS TURN · drains the gauge',
       desc: (def.desc || '') + (fcLine ? '<br><b>' + fcLine + '</b>' : ''),
     };
     return {
-      id: 'ews:' + id,
+      id: 'ews:' + id, endsTurn: true, cost: 1,
       icon: def.glyph || '⚛', iconColor: tc,
       catColor: TYPE_COLORS[id] || tc,
       label: def.name || id,
@@ -4585,12 +4601,12 @@ function _hrlgEntropyBlades(unit, st) {
       const finCard = {
         _objectCard: true,
         name: (fin.glyph || '☠') + ' ' + String(fin.name || 'FINISHER').toUpperCase(),
-        _hpLine: 'FINISHER · ' + String(fin.type).toUpperCase() + ' TYPE · ONE TARGET · 1 AP · drains the gauge',
+        _hpLine: 'FINISHER · ' + String(fin.type).toUpperCase() + ' TYPE · ONE TARGET · 1 AP · ENDS TURN · drains the gauge',
         desc: (fin.desc || '') + (fc ? '<br><b>~' + fc.dmg + ' on ' + (typeof unitDisplayName === 'function' ? unitDisplayName(best.target) : 'the best target') + (fc.kill ? ' — a KILL' : '') + '</b>' : '')
           + (fin.sig ? '' : '<br><i>Typed execution — this race\'s own finisher is designed, not yet built.</i>'),
       };
       blades.unshift({
-        id: 'fin:pick',
+        id: 'fin:pick', endsTurn: true, cost: 1,
         icon: fin.glyph || '☠', iconColor: ftc,
         catColor: TYPE_COLORS[fin.type] || ftc,
         label: fin.name || 'Finisher',
@@ -5218,9 +5234,8 @@ function ActionMenu({ st, hidden }) {
   } else if (apc.canMove) {
     // Second move of the turn consumes ALL remaining AP (moving twice = the
     // whole turn) — show the real price on the pips.
-    const _mvCost = movesUsed >= 1 ? Math.max(1, unit.ap || 0) : 1;
-    moveAction = { id: 'move', label: 'Move', icon: '↑', cost: _mvCost, available: true,
-      sub: movesUsed >= 1 ? 'Ends turn' : null };
+    // (the turn's last step wears the ENDS TURN tag now: _hrlgApUseOf / TargetQuery.apUse)
+    moveAction = { id: 'move', label: 'Move', icon: '↑', cost: 1, available: true, sub: null };
   } else {
     const mvReason = (unit.ap || 0) < 1 ? 'No AP'
       : (typeof UNIT_MAX_MOVES !== 'undefined' && movesUsed >= UNIT_MAX_MOVES) ? 'Max moves' : 'Blocked';
@@ -5362,9 +5377,9 @@ function ActionMenu({ st, hidden }) {
   // always a live way to spend a leftover point.
   const _guardOk = (unit.ap || 0) >= 1 && typeof doGuard === 'function';
   const guardAction = {
-    id: 'guard', label: 'Guard', icon: '🛡', cost: Math.max(1, unit.ap || 0),
+    id: 'guard', label: 'Guard', icon: '🛡', cost: 1, endsTurn: true,
     available: _guardOk,
-    sub: _guardOk ? 'Ends turn' : 'No AP',
+    sub: _guardOk ? null : 'No AP',
   };
 
   // Canonical verb order, top to bottom: Move › Attack › Abilities › Combo ›
@@ -5408,9 +5423,9 @@ function ActionMenu({ st, hidden }) {
   if (typeof window._escapeStoryFight === 'function' && window._escapeStoryFight()) {
     const _escWhy = typeof window.escapeProblem === 'function' ? window.escapeProblem(unit) : 'Unavailable';
     actions.push({
-      id: 'escape', label: 'Escape', icon: '🏃', cost: Math.max(1, unit.ap || 0),
+      id: 'escape', label: 'Escape', icon: '🏃', cost: 1, endsTurn: true,
       available: !_escWhy,
-      sub: _escWhy || 'Unseen · ends turn',
+      sub: _escWhy || null,
     });
     const _tInfo = typeof window.teamEscapeInfo === 'function' ? window.teamEscapeInfo(unit.player) : null;
     if (_tInfo && _tInfo.living >= 2) {
@@ -8426,7 +8441,7 @@ function _hrlgTileBlades(actingUnit, st) {
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
-      apKind: a.apKind,   // a structure attack takes the whole pool (_hrlgApSpendOf)
+      apKind: a.apKind,   // a structure attack ends the turn (_hrlgApUseOf)
       // A move-then-act row (structure attack / inspect out of reach from
       // here) wears the same "↳ MOVE" note as the enemy menu's plans.
       note: (isApproach && a.available) ? '↳ ' + (a.moveTile._jump ? 'JUMP' : 'MOVE') : null,
@@ -9218,11 +9233,12 @@ function _renderSpellDescBar() {
     // Combos cost AP from BOTH dancers, never MP.
     const _cbIni = (typeof COMBO_AP_COST_INITIATOR !== 'undefined') ? COMBO_AP_COST_INITIATOR : 2;
     const _cbPar = (typeof COMBO_AP_COST_PARTNER !== 'undefined') ? COMBO_AP_COST_PARTNER : 1;
-    details.push(_cbIni + ' AP + ' + _cbPar + ' partner AP');
+    details.push(_cbIni + ' AP + ' + _cbPar + ' partner AP · ENDS TURN');
   } else {
     const cost = (_dbUnit && typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(_dbUnit, sp) : (sp.cost || 0);
     const apCost = _tqApCost(sp);
-    details.push(cost + ' MP · ' + apCost + ' AP');
+    const _dbEnds = _TQ() && typeof _TQ().spellEndsTurn === 'function' && _TQ().spellEndsTurn(sp);
+    details.push(cost + ' MP · ' + apCost + ' AP' + (_dbEnds ? ' · ENDS TURN' : ''));
   }
   if (sp.tier) details.push('T·' + (typeof spellTierNumeral === 'function' ? spellTierNumeral(sp) : sp.tier));   // Phase 0: the tier is a number (1–4)
 
@@ -9326,12 +9342,15 @@ function hideSpellTooltip() {
    HorologeMenu → _apPressSetPending). Everything reads the synced unit (ap, movesThisTurn, _apRefundIcons), so the
    online guest sees its own turn the same. Fades out with the turn clock during spell shots (body.ew-spell-shot);
    its animations hold there and play once the shot ends, so a refund that lands mid-shot still pops in on screen.
-   UI Maker piece 'press'. */
-let _apPend = { uid: null, n: 0 };
-function _apPressSetPending(uid, n) {
-  n = Math.max(0, +n || 0);
-  if (_apPend.uid === uid && _apPend.n === n) return;
-  _apPend = { uid, n };
+   UI Maker piece 'press'.
+   ENDS TURN (mondo 2026-10-18: "confused as to why they are hovered on a 1 ap spell but the ap icons show that 2 will
+   be consumed"): an action that ends the turn flashes only its own cost; the AP it leaves behind turns LOST (dark, a
+   red slash, no blink) and the words ENDS TURN sit by the icons (UI Maker: AP press icons > ENDS TURN words). */
+let _apPend = { uid: null, n: 0, ends: false };
+function _apPressSetPending(uid, n, ends) {
+  n = Math.max(0, +n || 0); ends = !!ends && n > 0;
+  if (_apPend.uid === uid && _apPend.n === n && _apPend.ends === ends) return;
+  _apPend = { uid, n, ends };
   try { window.dispatchEvent(new Event('ew-ap-pending')); } catch (e) {}
 }
 const AP_PRESS_MAX = 12;
@@ -9351,6 +9370,14 @@ function ApPress({ st }) {
     return () => window.removeEventListener('ew-ap-pending', f);
   }, []);
   const mem = useRef({ key: null, seen: 0, was: {}, born: {}, last: null });
+  /* the ENDS TURN words sit under the icons, or over them when the icons sit in the lower half of the screen (the UI
+     Maker's AP press icons > ENDS TURN words can pin a side) */
+  const elRef = useRef(null);
+  useEffect(() => {
+    const el = elRef.current; if (!el || !el.classList.contains('ends')) return;
+    const r = el.getBoundingClientRect();
+    el.classList.toggle('ends-above', r.top + r.height / 2 > (window.innerHeight || 1) / 2);
+  });
   if (!st || st.phase !== 'battle') return null;
   /* Mystery Dungeon lockstep: no AP economy on screen (one beat is one action) */
   if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) return null;
@@ -9367,6 +9394,7 @@ function ApPress({ st }) {
     const n = Math.min(AP_PRESS_MAX, Math.max(maxAP + Math.max(0, unit._apRefundIcons || 0), ap));
     const spent = Math.max(0, n - ap);
     const pend = _apPend.uid === unit.id ? Math.min(_apPend.n, ap) : 0;
+    const ends = !!pend && _apPend.uid === unit.id && _apPend.ends;
     const key = unit.id + '|' + (st.round || 0);
     if (M.key !== key) {
       /* a fresh turn deals its icons in; ones already spent (a staggered start) arrive faded, without the burst */
@@ -9380,20 +9408,21 @@ function ApPress({ st }) {
     for (let i = 0; i < n; i++) {
       const isSpent = i < spent;
       const kind = i >= maxAP ? ' press' : i >= baseAP ? ' bonus' : '';
-      const b = M.born[i], isPend = !isSpent && i < spent + pend;
+      const b = M.born[i], isPend = !isSpent && i < spent + pend, isLost = ends && !isSpent && !isPend;
       /* pk: a new set of flashing icons remounts their cubes, so every flash starts together and stays in step */
       icons.push({ i, pk: isPend ? 'p' + spent + '-' + pend : 'n', cls: 'ew-ap-ico' + kind + (isSpent ? ' spent' : ' lit')
-        + (isPend ? ' pend' : '') + (M.was[i] ? ' was' : '') + (b ? ' born' : ' deal'),
+        + (isPend ? ' pend' : '') + (isLost ? ' lost' : '') + (M.was[i] ? ' was' : '') + (b ? ' born' : ' deal'),
         delay: b ? (b - 1) * 110 : i * 55 });
     }
-    view = M.last = { key, icons, label: 'AP ' + ap + ' of ' + n + (pend ? ' · this action spends ' + pend : '') };
+    view = M.last = { key, icons, ends, label: 'AP ' + ap + ' of ' + n + (pend ? ' · this action costs ' + pend + (ends ? ' and ends your turn' : '') : '') };
   }
   if (!view) return null;
   return h('div', {
-    key: view.key, className: 'ew-ap-press' + (live ? '' : ' off'),
+    key: view.key, ref: elRef, className: 'ew-ap-press' + (live ? '' : ' off') + (live && view.ends ? ' ends' : ''),
     role: 'img', 'aria-label': view.label,
   }, view.icons.map(c => h('span', { key: c.i, className: c.cls, style: { '--ap-d': c.delay + 'ms' } },
-    h(React.Fragment, { key: c.pk }, AP_PRESS_SVG))));
+    h(React.Fragment, { key: c.pk }, AP_PRESS_SVG))),
+    live && view.ends ? h('span', { key: 'ends', className: 'ew-ap-ends' }, 'ENDS TURN') : null);
 }
 
 function FrameCorners() {
@@ -10867,6 +10896,12 @@ function _hudHideCss() {
       color: #0a0910; background: #f0d060; padding: 1px 5px; white-space: nowrap;
       box-shadow: 0 0 6px rgba(240,208,96,0.4);
     }
+    /* ENDS TURN (mondo 2026-10-18): the tag an action that ends the turn wears right after its cost pips */
+    .hrlg-endsturn {
+      flex: none; font-size: 8px; font-weight: 800; letter-spacing: 0.12em; line-height: 1.25;
+      color: #fff0f0; background: #b3202f; border: 1px solid #ff7a86; padding: 1px 5px; white-space: nowrap;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.6); box-shadow: 0 0 6px rgba(255,60,80,0.35);
+    }
     .hrlg-check {
       flex: none; font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
       color: #0d1a10; background: #57d98a; padding: 2px 6px; white-space: nowrap;
@@ -11042,6 +11077,7 @@ function _hudHideCss() {
       justify-content: center; gap: 2px;
     }
     .hrlg-lblcol .hrlg-blabel { flex: none; }
+    .hrlg-lblcol > .hrlg-endsturn { align-self: flex-start; font-size: 7px; padding: 0 4px; line-height: 1.3; }
     .hrlg-subline {
       font-size: 8px; letter-spacing: 0.12em; color: #ff8a97; line-height: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -11583,6 +11619,24 @@ function _hudHideCss() {
     /* the cost of the row under the cursor: those icons flash between lit and spent */
     .ew-ap-ico.lit.pend .ew-ap-svg { animation: ewApPend 1s ease-in-out infinite; }   /* mondo 2026-10-17: was 0.62s, "blinking a little too fast" (UI Maker: Layout > AP press icons > Blink time) */
     .ew-ap-ico.lit.pend .ew-ap-ring { stroke: #ffffff; }
+    /* ENDS TURN: the AP an ending action leaves behind is LOST — dark, still, struck through in red */
+    .ew-ap-ico.lit.lost .ew-ap-svg { animation: none !important; opacity: 0.4; filter: grayscale(1) brightness(0.7) !important; }
+    .ew-ap-ico.lit.lost .ew-ap-ring { stroke: #ff5a66; }
+    .ew-ap-ico.lost::before {
+      content: ''; position: absolute; left: 50%; top: 6%; bottom: 6%; width: 3px; margin-left: -1.5px; z-index: 1;
+      background: #ff3b4d; border-radius: 2px; transform: rotate(45deg); box-shadow: 0 0 6px rgba(255,59,77,0.85);
+      animation: ewApLost 0.25s ease-out both;
+    }
+    @keyframes ewApLost { 0% { transform: rotate(45deg) scaleY(0); } 100% { transform: rotate(45deg) scaleY(1); } }
+    .ew-ap-ends {
+      position: absolute; left: 50%; top: 100%; margin-top: 3px; transform: translateX(-50%);
+      font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 800; letter-spacing: 0.14em; line-height: 1.2;
+      color: #fff0f0; background: #b3202f; border: 1px solid #ff7a86; padding: 1px 6px; white-space: nowrap;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.6); box-shadow: 0 0 8px rgba(255,60,80,0.45);
+      animation: ewApEndsIn 0.2s ease-out both;
+    }
+    .ew-ap-press.ends-above .ew-ap-ends { top: auto; bottom: 100%; margin: 0 0 3px; }
+    @keyframes ewApEndsIn { 0% { opacity: 0; } 100% { opacity: 1; } }
     /* a refund: the new icons spin up out of a flash, one after the other */
     .ew-ap-ico.born { animation: ewApBorn 0.7s cubic-bezier(0.18,1.5,0.4,1) var(--ap-d, 0ms) both; }
     .ew-ap-ico::after {
@@ -12935,7 +12989,7 @@ function pieceById(id) { return UIM_PIECES.find(p => p.id === id) || pickPieces(
 const TX_KEYS = ['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'align', 'hide'];
 const TX_ROWS = [['label', 'Action names', '.hrlg-blabel'], ['sub', 'Row notes', '.hrlg-subline'], ['glyph', 'Row icons', '.hrlg-glyph'],
   ['cursor', 'Cursor', '.hrlg-cursor'], ['chip', 'Costs', '.hrlg-chip'], ['badge', 'Type badges', '.hrlg-badges > span'],
-  ['tag', 'Item tags', '.hrlg-tag'], ['key', 'Keys + counts', '.hrlg-cfree']];
+  ['tag', 'Item tags', '.hrlg-tag'], ['key', 'Keys + counts', '.hrlg-cfree'], ['ends', 'ENDS TURN tags', '.hrlg-endsturn']];
 const TEXT_PARTS = {
   quick: [['name', 'Name', '.hrlg-view-tab-text'], ['dist', 'Distance', '.hrlg-view-tab-count'], ['types', 'Type badges', '.hrlg-qtypes > span, .hrlg-qp-types > span'],
     ['hplbl', 'HP label', '.hrlg-qv-lbl:not(.mp)'], ['hpnum', 'HP numbers', '.hrlg-qv-num:not(.mp)'], ['mplbl', 'MP label', '.hrlg-qv-lbl.mp'],
@@ -12956,6 +13010,7 @@ const TEXT_PARTS = {
   meta: [['site', 'Site name', '> div:not([class])'], ['weather', 'Weather', '.ew-weather-chip'], ['zodiac', 'Zodiac', '.ew-meta-plate > span > span:not([class])'],
     ['zsign', 'Zodiac sign', '.ew-zodiac-blessed']],
   turns: [['loop', 'Round loop mark', '.ew-tc-loop']],
+  press: [['ends', 'ENDS TURN words', '.ew-ap-ends']],
   desc: [['name', 'Name', '.ew-descbar-name'], ['tags', 'Tags', '.ew-descbar-inner > span:not([class])'], ['desc', 'Description', '.ew-descbar-desc'],
     ['stats', 'Range + costs', '.ew-descbar-stats']],
   subtitle: [['who', 'Unit name', '.dlg-prompt strong, strong'], ['line', 'The line', '.dlg-prompt'], ['hint', 'Key hint', '.dlg-prompt-hint'], ['cursor', 'Cursor', '.dlg-prompt-cursor'],
@@ -13216,7 +13271,7 @@ const UX_DEF = {
   sEntCol: '', sEntTrack: '', sEntFrameCol: '', sEntFrameW: 1,
   /* a* = the AP press icons (mondo 2026-10-17: "they are blinking a little too fast. let me customize them ... when there are
      4, they extend out to the right and get cropped off the screen. ideally they can slide to the left") */
-  aGrow: 'right', aAnchor: 2, aSize: 40, aGap: 5, aBlink: 1, aBreathe: 2.6, aGlow: true, aSpentOp: 0.34, aCube: '', aRing: '',
+  aGrow: 'right', aAnchor: 2, aSize: 40, aGap: 5, aBlink: 1, aBreathe: 2.6, aGlow: true, aSpentOp: 0.34, aCube: '', aRing: '', aEnds: 'auto',
   /* q* = the unit info panel over a clicked unit's quick actions + the action lists (pass 12, 2026-10-17, mondo: "the info
      panel should be more horizontal than vertical ... The unit portrait should be bigger, and make like a zoom in cone
      thing from the turn clock icon ... extend the panel out horizontally to the right, since a lot of spell names get
@@ -13654,6 +13709,13 @@ function uxCss() {
   if (chg('aSpentOp')) css += `${A} .ew-ap-ico.spent .ew-ap-svg { opacity: ${n('aSpentOp', 0, 1)} !important; }\n`;
   if (X.aCube) css += `${A} .ew-ap-ico { --ap-t: ${shade(X.aCube, 0.55)} !important; --ap-l: ${X.aCube} !important; --ap-r: ${shade(X.aCube, -0.35)} !important; --ap-glow: ${withAlpha(X.aCube, 0.85)} !important; --ap-burst: ${shade(X.aCube, 0.4)} !important; }\n`;
   if (X.aRing) css += `${A} .ew-ap-ico { --ap-rim: ${X.aRing} !important; }\n`;
+  /* where the ENDS TURN words sit (auto = under the icons, over them in the lower half of the screen) */
+  const AE = { below: 'top: 100% !important; bottom: auto !important; left: 50% !important; right: auto !important; margin: 3px 0 0 !important; transform: translateX(-50%) !important;',
+    above: 'top: auto !important; bottom: 100% !important; left: 50% !important; right: auto !important; margin: 0 0 3px !important; transform: translateX(-50%) !important;',
+    right: 'top: 50% !important; bottom: auto !important; left: 100% !important; right: auto !important; margin: 0 0 0 6px !important; transform: translateY(-50%) !important;',
+    left: 'top: 50% !important; bottom: auto !important; left: auto !important; right: 100% !important; margin: 0 6px 0 0 !important; transform: translateY(-50%) !important;',
+    off: 'display: none !important;' }[X.aEnds];
+  if (AE) css += `${A} .ew-ap-ends { ${AE} }\n`;
   /* ── the unit info panel + the action lists ── */
   const QP = HI + '.hrlg-panel.quick > .hrlg-thead.qp', SUB = HI + '.hrlg-panel:not(.root)';
   if (chg('qListW')) { const w = n('qListW', 240, 760); css += `${HI}.hrlg-panels { --qp-list-w: ${w}px; }\n${SUB} { width: ${w}px !important; }\n${HI}.hrlg-panel.bg:not(.root) + .hrlg-panel { margin-left: -${Math.round(w / 2)}px !important; }\n`; }
@@ -13930,6 +13992,9 @@ function apForm() {
     + fRange('Breathe time (s, 0 = still)', 'aBreathe', 0, 10, 0.1, +X.aBreathe) + fRange('Spent icons', 'aSpentOp', 0, 1, 0.02, +X.aSpentOp)
     + fColorOpt('Cube colour', 'aCube', X.aCube, '#f2c64a') + fColorOpt('Ring colour', 'aRing', X.aRing, '#f0d060'))
     + xCheck('Glow', 'aGlow', X.aGlow);
+  h += `<div class="uim-h">ENDS TURN words</div>`;
+  h += xp(fSeg('Where', 'aEnds', [['auto', 'Auto', 'Under the icons; over them when the icons sit in the lower half of the screen'], ['below', 'Under'], ['above', 'Over'], ['right', 'Right'], ['left', 'Left'], ['off', 'Hidden']], X.aEnds || 'auto'))
+    + '<div class="uim-note">Shows while the action under the cursor ends the turn. Its colour, font and size: Text look > Which text > ENDS TURN words.</div>';
   return h + xReset('a', 'Reset the AP icons');
 }
 /* a card part's own settings (data-qppath = "<part id>.<key>", data-qpset the same for a row of buttons) */
