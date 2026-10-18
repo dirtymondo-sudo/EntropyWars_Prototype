@@ -11050,7 +11050,8 @@
             'voidweaver': 'throw',
             'demon prince': 'claw', 'skinwalker': 'claw',
             'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
-            'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch'
+            'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch',
+            'pirate': 'ranged', 'nordic': 'ranged'   // 2026-10-18 — their models' attack is the quick-draw shot (kept when the reach fallback was fixed)
         };
         const BASIC_ATTACK_SHOT_KINDS = { magic: 1, ranged: 1, arrow: 1, throw: 1 };
         /* the ORB a magic person shoots, by the unit's first damage type */
@@ -11070,8 +11071,10 @@
             if (_mage) return _mage;
             const _race = BASIC_ATTACK_RACE_KINDS[unit.race];
             if (_race) return _race;
-            const _reach = (typeof getEffectiveRange === 'function') ? getEffectiveRange(unit) : (unit.range || 1);
-            return _reach > 1 ? 'ranged' : 'melee';
+            // 2026-10-18 (mondo: "why is king arthur's basic attack a bullet? it should be a sword swing"): the race
+            // kit's OWN reach, not getEffectiveRange — that adds the basic attack's +1 for everyone, so every melee
+            // race (King Arthur, knight, swordfighter, Valkraye, zombie…) read as reach 2 and fired the bullet.
+            return (unit.range || 1) > 1 ? 'ranged' : 'melee';
         }
         function basicAttackDelivery(unit) {
             const kind = basicAttackKindOf(unit);
