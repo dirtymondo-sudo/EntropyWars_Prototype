@@ -1681,7 +1681,8 @@
                 duration: [3, 5],
                 ignoresTerrain: true,
                 seedTerrain: 'grass',
-                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches. Leaves grass in its wake.',
+                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches north the round it forms, then east, south, west, turning each round. Leaves grass in its wake.',
+                dmgRange: [32, 71],   // homingDamage's roll, for the forecast (never rolls the engine's dice)
                 homingDamage(unit) {
                     return {
                         amount: engineRandInt(40) + 32,
@@ -1716,7 +1717,8 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and hurls whoever it catches. -10 DEF in the eye. Floods tiles with water.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
+                dmgRange: [24, 43],
                 soaks: true,
                 seedTerrain: 'water',
                 statMod: {
@@ -2134,189 +2136,44 @@
 
         const BLOWBACK_DAMAGE = 3;
 
-        // opts.noAnim: skip the per-step displacement slide — the caller plays
-        // its own full-path animation instead (vortex lift/spin/fling).
+        /* A blast throws `unit` one tile away from (sourceX, sourceY) — 🧭 THE FORCED MOVE (2026-10-18): through the
+           shared slide (battle.js resolveForcedSlide: weight, walls and rebounds, bowling pins, breaches, falls and the
+           landing's chain with the blast's heading). A body ON the source tile is thrown the opposite way it faces
+           (it used to be a random way). opts.dir {dx, dy} names the heading outright; opts.noAnim / noChain: the caller
+           animates / resolves the landing itself. Bombs and storms throw by their own rules (battle.js bombKnockDir,
+           vortexFlingDir); the earthquake's shove lands here. */
         function applyBlowback(unit, sourceX, sourceY, logPrefix, opts) {
             opts = opts || {};
             if (!unit || unit.dead) return null;
-            // ⚖️ Colossal races (RACE_PHYSIQUE ≥ 1000 kg) cannot be blown back.
-            if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(unit) === 'colossal') {
+            const G = window.GAME || {};
+            const fromX = unit.x, fromY = unit.y;
+            let dx, dy;
+            if (opts.dir && (opts.dir.dx || opts.dir.dy)) { dx = Math.sign(opts.dir.dx); dy = Math.sign(opts.dir.dy); }
+            else {
+                dx = Math.sign(unit.x - sourceX); dy = Math.sign(unit.y - sourceY);
+                if (!dx && !dy) {
+                    const f = (typeof G.forcedBackDir === 'function') ? G.forcedBackDir(unit) : { dx: 0, dy: -1 };
+                    dx = f.dx; dy = f.dy;
+                }
+            }
+            const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(unit, 1) : 1;
+            if (!(dist > 0)) {
                 addLog(`${logPrefix || ''}${unitDisplayName(unit)} is far too massive to be blown back!`);
                 return null;
             }
-
-            const rawDx = unit.x - sourceX;
-            const rawDy = unit.y - sourceY;
-
-            let pushDx = rawDx === 0 ? 0 : (rawDx > 0 ? 1 : -1);
-            let pushDy = rawDy === 0 ? 0 : (rawDy > 0 ? 1 : -1);
-
-            if (pushDx === 0 && pushDy === 0) {
-                const dirs = [
-                    [1, 0],
-                    [-1, 0],
-                    [0, 1],
-                    [0, -1]
-                ];
-                const pick = dirs[engineRandInt(dirs.length)];
-                pushDx = pick[0];
-                pushDy = pick[1];
-            }
-
-            if (pushDx !== 0 && pushDy !== 0) {
-                if (Math.abs(rawDx) >= Math.abs(rawDy)) pushDy = 0;
-                else pushDx = 0;
-            }
-
-            const fromX = unit.x,
-                fromY = unit.y;
-
-            const candidates = [{
-                    x: unit.x + pushDx,
-                    y: unit.y + pushDy
-                },
-
-                {
-                    x: unit.x + pushDy,
-                    y: unit.y - pushDx
-                },
-                {
-                    x: unit.x - pushDy,
-                    y: unit.y + pushDx
-                },
-            ];
-
-            for (const c of candidates) {
-                if (isInside(c.x, c.y) && unitCanTraverse(unit, c.x, c.y) && !unitAt(c.x, c.y)) {
-                    const fromZ = unit.z ?? 0;
-                    unit.x = c.x;
-                    unit.y = c.y;
-                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(c.x, c.y, unit.z);
-                    const prefix = logPrefix || '';
-                    addLog(`${prefix}${unitDisplayName(unit)} is blown back from ${coordLabel(fromX, fromY)} to ${coordLabel(c.x, c.y)}!`);
-
-                    if (BLOWBACK_DAMAGE > 0) {
-                        applyDamageToUnit(unit, BLOWBACK_DAMAGE, `Blowback impact: `, {
-                            ignoreArmor: true,
-                            scaleByTargetLevel: true
-                        });
-                    }
-
-                    /* Fall/splash pop rides the throw animation (300ms post-
-                       impact beat + 200ms slide) so it lands WITH the body,
-                       not at frame 0 of the blast. Sync when nothing animates. */
-                    const _bbAnimated = !opts.noAnim && typeof animateDisplacement === 'function'
-                        && !_bufferingRoundEvents
-                        && !(typeof _skipVisuals === 'function' && _skipVisuals());
-                    if (_bbAnimated) {
-                        const _bbFromZ = fromZ, _bbToZ = unit.z ?? 0;
-                        window.setTimeout(() => {
-                            applyFallDamage(unit, _bbFromZ, _bbToZ, prefix, { byEnemy: true });
-                            // A lethal drop landing after the caller's checkWin.
-                            if (typeof checkWin === 'function') checkWin();
-                        }, 520);
-                    } else {
-                        applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
-                    }
-
-                    // 💨 Blown across/into ground fire: embers catch, and the
-                    // gust fans the blaze a tile downwind (battle.js helper).
-                    if (typeof _fanFlamesAlongPush === 'function') {
-                        _fanFlamesAlongPush(unit, [{ x: c.x, y: c.y }], c.x - fromX, c.y - fromY, null);
-                    }
-
-                    if (!opts.noAnim && typeof animateDisplacement === 'function') {
-                        // blast lands first, THEN the body is thrown (post-impact beat)
-                        animateDisplacement(unit, fromX, fromY, c.x, c.y, 200, { delayMs: 300 });
-                    }
-                    // 🧱 Blown onto a debris pile → scooped on landing.
-                    if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
-                        window.GAME.collectMatDropsAt(unit, c.x, c.y);
-                    }
-                    // ⛓ THE CHAIN (2026-09-21): blown onto a bomb / trap / zone /
-                    // vortex → it fires now (a caller mid-fling passes noChain
-                    // and resolves the FINAL landing itself).
-                    if (!opts.noChain && window.GAME && typeof window.GAME.resolveTileArrival === 'function') {
-                        window.GAME.resolveTileArrival(unit, { via: 'blown' });
-                    }
-                    return {
-                        pushed: true,
-                        fromX,
-                        fromY,
-                        toX: c.x,
-                        toY: c.y
-                    };
-                }
-            }
-
-            // 💥 Crash-through (2026-07-17 breach pass): before conceding the
-            // slam, try to SMASH the primary obstacle — a wall weaker than the
-            // hurled body (battle.js hardness rules) gets a hole punched
-            // through it and the throw carries into the breach.
-            const _bc = candidates[0];
-            if (window.GAME && typeof window.GAME._tryCrashThrough === 'function'
-                && isInside(_bc.x, _bc.y) && !unitAt(_bc.x, _bc.y)
-                && window.GAME._tryCrashThrough(unit, _bc.x, _bc.y)
-                && unitCanTraverse(unit, _bc.x, _bc.y)) {
-                const fromZ = unit.z ?? 0;
-                unit.x = _bc.x;
-                unit.y = _bc.y;
-                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(_bc.x, _bc.y, unit.z);
-                const prefix = logPrefix || '';
-                addLog(`${prefix}${unitDisplayName(unit)} is blasted THROUGH the barrier to ${coordLabel(_bc.x, _bc.y)}!`);
-                if (BLOWBACK_DAMAGE > 0) {
-                    applyDamageToUnit(unit, BLOWBACK_DAMAGE, `Blowback impact: `, {
-                        ignoreArmor: true,
-                        scaleByTargetLevel: true
-                    });
-                }
-                /* Same landing-beat deferral as the open-tile branch above. */
-                const _bcAnimated = !opts.noAnim && typeof animateDisplacement === 'function'
-                    && !_bufferingRoundEvents
-                    && !(typeof _skipVisuals === 'function' && _skipVisuals());
-                if (_bcAnimated) {
-                    const _bcFromZ = fromZ, _bcToZ = unit.z ?? 0;
-                    window.setTimeout(() => {
-                        applyFallDamage(unit, _bcFromZ, _bcToZ, prefix, { byEnemy: true });
-                        if (typeof checkWin === 'function') checkWin();
-                    }, 520);
-                } else {
-                    applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
-                }
-                if (typeof _fanFlamesAlongPush === 'function') {
-                    _fanFlamesAlongPush(unit, [{ x: _bc.x, y: _bc.y }], _bc.x - fromX, _bc.y - fromY, null);
-                }
-                if (!opts.noAnim && typeof animateDisplacement === 'function') {
-                    // blast lands first, THEN the body is blasted through (post-impact beat)
-                    animateDisplacement(unit, fromX, fromY, _bc.x, _bc.y, 200, { delayMs: 300 });
-                }
-                if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
-                    window.GAME.collectMatDropsAt(unit, _bc.x, _bc.y);
-                }
-                if (!opts.noChain && window.GAME && typeof window.GAME.resolveTileArrival === 'function') {
-                    window.GAME.resolveTileArrival(unit, { via: 'blown' });   // ⛓
-                }
-                return {
-                    pushed: true,
-                    fromX,
-                    fromY,
-                    toX: _bc.x,
-                    toY: _bc.y
-                };
-            }
-
-            addLog(`${logPrefix || ''}${unitDisplayName(unit)} is slammed against an obstacle!`);
-            applyDamageToUnit(unit, BLOWBACK_DAMAGE + 2, `Blowback crush: `, {
-                ignoreArmor: true,
-                scaleByTargetLevel: true
+            if (typeof G.resolveForcedSlide !== 'function') return null;
+            const res = G.resolveForcedSlide(unit, dx, dy, dist, {
+                label: logPrefix || '', perStepMs: 200, delayMs: opts.noAnim ? 0 : 300,
+                animate: !opts.noAnim, noChain: !!opts.noChain
             });
-            return {
-                pushed: false,
-                fromX,
-                fromY,
-                toX: fromX,
-                toY: fromY
-            };
+            const pushed = unit.x !== fromX || unit.y !== fromY;
+            if (pushed) {
+                addLog(`${logPrefix || ''}${unitDisplayName(unit)} is blown back from ${coordLabel(fromX, fromY)} to ${coordLabel(unit.x, unit.y)}!`);
+                if (BLOWBACK_DAMAGE > 0 && !unit.dead) {
+                    applyDamageToUnit(unit, BLOWBACK_DAMAGE, `Blowback impact: `, { ignoreArmor: true, scaleByTargetLevel: true });
+                }
+            }
+            return { pushed, fromX, fromY, toX: unit.x, toY: unit.y, dirX: res ? res.dirX : dx, dirY: res ? res.dirY : dy };
         }
 
         function applyAreaBlowback(centerX, centerY, tiles, ownerPlayer, logPrefix) {
@@ -2729,6 +2586,7 @@
                 queueAnnouncement(`${def.icon} ${def.label}`, def.desc, 'weather');
                 if (!state.activeWeather) state.activeWeather = [];
                 weather._casterUnitId = null;
+                weather.bornRound = state.round || 0;   // 🧭 a displacing storm's heading turns from this round (vortexFlingDir)
                 state.activeWeather.push(weather);
                 weatherTerrainOnForm(weather);
             }
@@ -3065,36 +2923,17 @@
                             }
                         }
                         if (def.displaces && !v.dead) {
-                            // Resolve the whole multi-tile blowback chain with the
-                            // per-step slides suppressed, then play ONE readable
-                            // lift → spin → hurl arc from where the vortex caught
-                            // them to where they finally land (RULE: no more
-                            // "they just snap to where they land").
-                            const pushes = def.displaceTiles || 2;
-                            const startX = v.x, startY = v.y;
-                            /* ⛓ THE CHAIN: this storm has taken this body this
-                               round — the landing's own chain never re-flings it
-                               (battle.js _chainVortex reads the same stamp). */
+                            /* 🧭 THE FORCED MOVE (2026-10-18): the storm flings on its heading this round — north the
+                               round it formed, then east, south, west (battle.js vortexFlingDir) — through the shared
+                               slide, one lift-spin-hurl arc, and the landing's chain with the fling's momentum (onto
+                               ice it glides on). This storm has taken this body this round: THE CHAIN's step F reads
+                               the same stamp and never re-flings it. */
                             (v._vortexStamps || (v._vortexStamps = {}))[String(weather.id || weather.type)] = state.round || 0;
-                            for (let p = 0; p < pushes; p++) {
-                                const res = applyBlowback(v, nx, ny, `${def.icon} `, { noAnim: true, noChain: true });
-                                if (!res || !res.pushed) break;
+                            const fl = (window.GAME && typeof window.GAME.vortexFlingUnit === 'function')
+                                ? window.GAME.vortexFlingUnit(v, weather, def) : null;
+                            if (fl && fl.moved) {
                                 actedVisibly = true;
-                            }
-                            if ((v.x !== startX || v.y !== startY) && !v.dead) {
-                                const fling = (typeof window !== 'undefined' && typeof window.playVortexFlingFx === 'function')
-                                    ? window.playVortexFlingFx(v, startX, startY, v.x, v.y, weather.type)
-                                    : { usedArc: false, totalMs: 0 };
-                                if (fling && fling.usedArc) {
-                                    maxFlingMs = Math.max(maxFlingMs, fling.totalMs);
-                                } else if (typeof animateDisplacement === 'function') {
-                                    // 2D fallback: a single full-path ghost slide.
-                                    animateDisplacement(v, startX, startY, v.x, v.y, 320, { delayMs: 150 });
-                                }
-                                // ⛓ the fling's landing is an arrival like any other
-                                if (window.GAME && typeof window.GAME.resolveTileArrival === 'function') {
-                                    window.GAME.resolveTileArrival(v, { via: 'flung' });
-                                }
+                                maxFlingMs = Math.max(maxFlingMs, fl.totalMs || 0);
                             }
                         }
                     }
