@@ -1387,6 +1387,22 @@ multiple units die like a double or triple kill then make it split screen like t
   slow-mo itself (it never ran defeatUnit, so before this its units just vanished) and runs the shot under its own fog.
 - `startDeathTween` ignores a second call for a unit already falling. Kill switch: `window.EW_NO_DEATH_CAM = true`.
 
+## THE CLOSE-UP LOOK (2026-10-18, token 20261018-closelook-01-cors)
+mondo asked why the death close-up looked crisper. It was the render path: `_ssRenderFrame` drew every pane through
+`ThreePost.renderDirect` (the scene and a bare tone map), so the close-ups had no models' pixelation, no tilt shift, dither,
+colour depth, mood grade, grain, CRT, vignette, AA or AO. On the node renderer they were also tone-mapped where the battle
+frame is not. mondo: "i want it to match the rest of the battle ... it would get confusing having the closeups use
+different settings".
+- three-post.js `renderPanes(list, aim, mainCam)`: ONE pane (death, key) = the battle camera borrows the pane pose
+  (`_camBorrow`/`_camGiveBack`) and `render()` draws a normal battle frame (same pipelines, AO, render objects, no new
+  node pipeline). SEVERAL panes = each pane draws into its rect of a full-size half-float atlas (stencil kept for the
+  team outlines), and the chain runs once on a quad of it in front of the borrowed camera (`_paneMode.composite`: model
+  mask drawn per pane rect, `_ew_sideRender` so the quad's scene isn't the frame). The node atlas quad has flipped uvs.
+- DoF band snaps to the screen centre (each pane aims at its subject); four-up widens the band to reach both rows.
+- The bare scissored draw is kept only when there is no chain (post off, perf lens post off, chain loading) or
+  `window.EW_BARE_PANES = true`.
+- Sandbox checked WebGL (pmndrs) and WebGPU (node chain, pipelines stayed 1) with 1, 2 and 4 panes.
+
 ## THE TURN HANDOFF (2026-10-18, token 20261018-deathpace-01-cors)
 mondo: "there is a pause after a death, like the camera will just stay on my unit while nothing happens before moving on
 to the next unit's turn ... the closeup death animation fights the normal spell animation ... other spells where it feels

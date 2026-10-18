@@ -1251,7 +1251,9 @@ const ThreePost = (function () {
     // model anyway.
     /* `sc` (2026-10-18): the scene to mask — renderScene's walk / menu scenes hand their own (Models Only used to pixelate the
        whole frame there); the battle board's _scene when absent. Each scene keeps its own re-tag clock. */
-    function _renderPixelMask(cam, sc) {
+    /* panes (THE CLOSE-UP LOOK, renderPanes): [{ cam, x, y, w, h }] as shares of the target — each pane's models drawn into
+       its own rect with its own camera, so the mask lines up with the split screen's picture */
+    function _renderPixelMask(cam, sc, panes) {
         sc = sc || _scene;
         if (!_renderer || !sc || !cam || typeof THREE === 'undefined') return false;
         try {
@@ -1306,13 +1308,26 @@ const ThreePost = (function () {
             _renderer.clear(true, true, false);
             sc.background = null;
 
-            cam.layers.set(PIX_LAYER_SKIN);
-            sc.overrideMaterial = _maskMatSkin;
-            _renderer.render(sc, cam);
+            var mcams = panes ? panes : [{ cam: cam }];
+            try {
+                for (var mi = 0; mi < mcams.length; mi++) {
+                    var mc = mcams[mi].cam, ml = mc.layers.mask;
+                    if (panes) {
+                        var P0 = mcams[mi];
+                        var vx = Math.round(P0.x * w), vy = Math.round(P0.y * h);
+                        _maskRT.viewport.set(vx, vy, Math.max(1, Math.round((P0.x + P0.w) * w) - vx), Math.max(1, Math.round((P0.y + P0.h) * h) - vy));
+                        _renderer.setRenderTarget(_maskRT);
+                    }
+                    mc.layers.set(PIX_LAYER_SKIN);
+                    sc.overrideMaterial = _maskMatSkin;
+                    _renderer.render(sc, mc);
 
-            cam.layers.set(PIX_LAYER_STATIC);
-            sc.overrideMaterial = _maskMatStatic;
-            _renderer.render(sc, cam);
+                    mc.layers.set(PIX_LAYER_STATIC);
+                    sc.overrideMaterial = _maskMatStatic;
+                    _renderer.render(sc, mc);
+                    mc.layers.mask = ml;
+                }
+            } finally { if (panes) _maskRT.viewport.set(0, 0, w, h); }
 
             sc.overrideMaterial = prevOverride;
             sc.background = prevBg;
@@ -1764,6 +1779,120 @@ const ThreePost = (function () {
     }
     var _paneQuad = null, _paneScene = null, _paneCam = null;
 
+    /* ══ THE CLOSE-UP LOOK (2026-10-18, mondo: "i want it to match the rest of the battle and if i like the cleaner look i can
+       always change the settings, it would get confusing having the closeups use different settings") ══
+       The split-screen rig (three-renderer.js _ssRenderFrame: the death close-up, the key close-up, the combo page, the Entropy
+       Strike panes) drew each pane through renderDirect: the scene and a bare tone map, so a close-up dropped the models'
+       pixelation, the tilt shift, the dither / colour depth / mood grade / grain, the CRT and vignette, the AA and the AO,
+       and on the node renderer it was even tone-mapped where the battle's frame is not. renderPanes draws them through the
+       battle's own chain instead (render()), every setting as the battle has it:
+       - ONE pane (a death, the key): the battle's own camera wears the pane's pose for the frame (_camBorrow) and render()
+         draws the frame as any battle frame, so the chain's pipelines, AO and render objects are the ones it already has;
+       - SEVERAL panes: each pane draws, unchanged, into its rect of one full-size target (the atlas, the format of the
+         frame's scene pass), then the chain runs ONCE with that picture as its scene (a quad in front of the borrowed
+         camera): the model mask is drawn per pane (_renderPixelMask's rects), the tilt-shift band sits on the panes'
+         centre line, the CRT and vignette frame the whole screen. The AO has no depth to read there (the quad is flat).
+       The DoF band centres on the pane's subject (the pane's aim is the screen centre). Off: window.EW_BARE_PANES = true. */
+    var _paneMode = null, _cb = null, _atlas = null, _pnV2 = null;
+    function _camBorrow(main, src) {
+        if (!_cb) _cb = { p: new THREE.Vector3(), q: new THREE.Quaternion(), u: new THREE.Vector3() };
+        _cb.p.copy(main.position); _cb.q.copy(main.quaternion); _cb.u.copy(main.up);
+        _cb.fov = main.fov; _cb.aspect = main.aspect; _cb.near = main.near; _cb.far = main.far; _cb.zoom = main.zoom;
+        if (src) {
+            main.position.copy(src.position); main.quaternion.copy(src.quaternion); main.up.copy(src.up);
+            main.fov = src.fov; main.aspect = src.aspect; main.near = src.near; main.far = src.far; main.zoom = src.zoom;
+        }
+        main.updateProjectionMatrix(); main.updateMatrixWorld(true);
+    }
+    function _camGiveBack(main) {
+        main.position.copy(_cb.p); main.quaternion.copy(_cb.q); main.up.copy(_cb.u);
+        main.fov = _cb.fov; main.aspect = _cb.aspect; main.near = _cb.near; main.far = _cb.far; main.zoom = _cb.zoom;
+        main.updateProjectionMatrix(); main.updateMatrixWorld(true);
+    }
+    function _atlasFor(W, H) {
+        var node = !!_renderer.isWebGPURenderer;
+        if (_atlas && _atlas.node !== node) { try { _atlas.rt.dispose(); _atlas.mat.dispose(); } catch (e) {} _atlas = null; }
+        if (!_atlas) {
+            var o = { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, format: THREE.RGBAFormat, type: THREE.HalfFloatType, depthBuffer: true, stencilBuffer: true };   // stencil: the team outlines' mask
+            var rt = node ? new ((window.THREE_GPU && window.THREE_GPU.RenderTarget) || THREE.RenderTarget)(W, H, o) : new THREE.WebGLRenderTarget(W, H, o);
+            var mat = new THREE.MeshBasicMaterial({ map: rt.texture, depthTest: false, depthWrite: false, fog: false, transparent: true, blending: THREE.NoBlending });
+            mat.toneMapped = false;
+            var geo = new THREE.PlaneGeometry(1, 1);
+            if (node) {   // the node renderer's target rows run top-down and a map samples them as stored: the picture's top is v 0
+                var uvA = geo.attributes.uv; for (var ui = 0; ui < uvA.count; ui++) uvA.setY(ui, 1 - uvA.getY(ui));
+                uvA.needsUpdate = true;
+            }
+            var quad = new THREE.Mesh(geo, mat);
+            quad.frustumCulled = false;
+            var sc = new THREE.Scene(); sc.add(quad);
+            _atlas = { node: node, rt: rt, mat: mat, quad: quad, scene: sc, w: W, h: H };
+        } else if (_atlas.w !== W || _atlas.h !== H) { _atlas.rt.setSize(W, H); _atlas.w = W; _atlas.h = H; }
+        return _atlas;
+    }
+    /* list: [{ cam, x, y, w, h }] — each pane's posed camera and its rect in canvas CSS px (top-left origin); aim(i) turns the
+       billboards to pane i; main: the battle's camera. Returns false when the chain can't draw them (the caller draws bare). */
+    function renderPanes(list, aim, main) {
+        if (!_renderer || !_scene || !list || !list.length || !main || !_ready || !_composer) return false;
+        if (typeof window !== 'undefined' && window.EW_BARE_PANES) return false;
+        var r = _renderer;
+        if (list.length === 1) {
+            if (aim) aim(0);
+            _camBorrow(main, list[0].cam);
+            _paneMode = { composite: false };
+            try { render(main); } finally { _paneMode = null; _camGiveBack(main); }
+            return true;
+        }
+        var node = !!r.isWebGPURenderer, pr = r.getPixelRatio();
+        var ds = r.getDrawingBufferSize(_pnV2 || (_pnV2 = new THREE.Vector2()));
+        var W = Math.max(1, ds.x | 0), H = Math.max(1, ds.y | 0);
+        var A = _atlasFor(W, H), rt = A.rt;
+        var prevRT = r.getRenderTarget(), prevAuto = r.autoClear, prevSc = r.getScissorTest ? r.getScissorTest() : false;
+        var bg = _scene.background, pcc = null, pca = 1;
+        var rects = [];
+        try {
+            /* one clear up front (a node draw with autoClear wipes the whole target, whatever the viewport); a colour
+               background is that clear's colour, as in the bare split screen */
+            if (bg && bg.isColor) { pcc = r.getClearColor(new THREE.Color()); pca = r.getClearAlpha(); r.setClearColor(bg, 1); _scene.background = null; }
+            rt.viewport.set(0, 0, W, H); rt.scissor.set(0, 0, W, H); rt.scissorTest = false;
+            if (node) r.setScissorTest(false);
+            r.setRenderTarget(rt); r.clear();
+            if (pcc) r.setClearColor(pcc, pca);
+            r.autoClear = false;
+            r._ew_paneRender = true;   // THE SPLIT PANES: no render bundles in a pane (three-renderer.js _ewBunSetup's _projectObject)
+            for (var i = 0; i < list.length; i++) {
+                var L = list[i];
+                var x0 = Math.round(L.x * pr), x1 = Math.min(W, Math.round((L.x + L.w) * pr));
+                var y0 = Math.round(L.y * pr), y1 = Math.min(H, Math.round((L.y + L.h) * pr));
+                var pw = Math.max(1, x1 - x0), ph = Math.max(1, y1 - y0);
+                var vy = node ? y0 : H - y0 - ph;   // GL origin bottom-left, the node renderer's top-left
+                rects.push({ cam: L.cam, x: x0 / W, y: vy / H, w: pw / W, h: ph / H });
+                if (aim) aim(i);
+                rt.viewport.set(x0, vy, pw, ph); rt.scissor.set(x0, vy, pw, ph); rt.scissorTest = !node;
+                r.setRenderTarget(rt);
+                r.render(_scene, L.cam);
+            }
+        } finally {
+            r._ew_paneRender = false;
+            rt.viewport.set(0, 0, W, H); rt.scissor.set(0, 0, W, H); rt.scissorTest = false;
+            r.setRenderTarget(prevRT); r.autoClear = prevAuto;
+            if (node && r.setScissorTest) r.setScissorTest(prevSc);
+            if (pcc) _scene.background = bg;
+        }
+        /* the picture into the chain: the quad fills the borrowed camera's view at d (fov 90: half-height = d) */
+        _camBorrow(main, null);
+        try {
+            var d = Math.max(2, main.near * 4);
+            main.position.set(0, 0, 0); main.quaternion.set(0, 0, 0, 1); main.up.set(0, 1, 0);
+            main.fov = 90; main.aspect = W / H; main.zoom = 1;
+            main.updateProjectionMatrix(); main.updateMatrixWorld(true);
+            A.quad.position.set(0, 0, -d); A.quad.scale.set(2 * d * main.aspect, 2 * d, 1); A.quad.updateMatrixWorld(true);
+            var rowY = {}; for (var ri = 0; ri < rects.length; ri++) rowY[Math.round(rects[ri].y * 100)] = 1;
+            _paneMode = { composite: true, scene: A.scene, panes: rects, rows: Object.keys(rowY).length };
+            render(main);
+        } finally { _paneMode = null; _camGiveBack(main); }
+        return true;
+    }
+
     function _initLighting(scene) {
 
         _sunLight = new THREE.DirectionalLight(0xfff0d6, 1.0);
@@ -1942,6 +2071,12 @@ const ThreePost = (function () {
     /* `focusAt` (renderScene's opts.focus, 2026-10-18): a world point to hold sharp in a scene the battle camera does not drive
        (the walk: the walker); a frame with none reads the battle camera's focal point */
     var _dofProjVec = null;
+    function _dofFocusAt(v) {
+        if (!_dofPassH || !_dofPassH.enabled) return;
+        _dofFocusCur = v;
+        _dofPassH.material.uniforms['uFocus'].value = v;
+        if (_dofPassV) _dofPassV.material.uniforms['uFocus'].value = v;
+    }
     function _updateDofFocus(cam, focusAt) {
         if (!_dofPassH || !_dofPassH.enabled || !cam) return;
         var focal = focusAt || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getFocalWorld)
@@ -3539,6 +3674,7 @@ const ThreePost = (function () {
         var _gk = _gradeCurrent(_nowMs);
         var _kick = _gradeKickCurrent(_nowMs);
         var _spotOn = false;
+        var _pcam = (_paneMode && _paneMode.composite) ? _paneMode.panes[0].cam : cam;   // THE CLOSE-UP LOOK: the panes' picture projects through pane 0
         if (_cinematicPass) {
             var _gu = _cinematicPass.material.uniforms;
             if (_gk > 0.001 || _kick > 0.01) {
@@ -3549,8 +3685,8 @@ const ThreePost = (function () {
                 var _spotDim = _grade.dim * _gk;
                 _spotOn = _spotDim > 0.001 && _grade.focus.length > 0;
                 var _w = _gu['uResolution'].value.x, _h = _gu['uResolution'].value.y;
-                _writeSpotUniform(_gu, 'uSpotA', _grade.focus[0], cam, _w, _h);
-                _writeSpotUniform(_gu, 'uSpotB', _grade.focus[1] || _grade.focus[0], cam, _w, _h);
+                _writeSpotUniform(_gu, 'uSpotA', _grade.focus[0], _pcam, _w, _h);
+                _writeSpotUniform(_gu, 'uSpotB', _grade.focus[1] || _grade.focus[0], _pcam, _w, _h);
                 _gu['uSpotDim'].value      = _spotOn ? _spotDim : 0.0;
                 _gu['uSpotSoft'].value     = _grade.spotSoft;
                 _gu['uSpotLift'].value     = _grade.spotLift;
@@ -3572,7 +3708,7 @@ const ThreePost = (function () {
             }
         }
         var _mb = _motionTick(_nowMs);   // 6.4: a battle never feeds it, so it decays to 0 here
-        var _rip = _rippleTick(cam, _nowMs);
+        var _rip = _rippleTick(_pcam, _nowMs);
         if (_cinematicPass) {
             var _nGr = _nightF * _lkNum('nightMood', _nightMood) * 0.85;   // (not _ng: a var here would shadow the node chain in all of render())
             if (_fieldLight) _nGr = 0;   // THE FIELD LIGHT: the room wears no night grade
@@ -3615,7 +3751,7 @@ const ThreePost = (function () {
             // Models-only pixelation needs its silhouette mask refreshed before
             // the composer runs. Only when the snap is actually doing something.
             var _wantMask = (_retro.pixelScope !== 'screen') && _lkRetro().pixelSize > 1.0 && cam;
-            var _maskOk = _wantMask ? _renderPixelMask(cam) : false;
+            var _maskOk = _wantMask ? _renderPixelMask(cam, null, (_paneMode && _paneMode.composite) ? _paneMode.panes : null) : false;
             _retroPass.material.uniforms['tMask'].value = _maskOk ? _maskRT.texture : null;
             _retroPass.material.uniforms['uMaskMode'].value = _maskOk ? 1.0 : 0.0;
         }
@@ -3626,14 +3762,33 @@ const ThreePost = (function () {
             return;
         }
 
-        _updateDofFocus(cam);
+        if (_paneMode) _dofFocusAt(0.5); else _updateDofFocus(cam);   // THE CLOSE-UP LOOK: a pane aims at its subject, the screen centre
+        /* THE CLOSE-UP LOOK: panes stacked in rows (the four-up) each have their subject on their own centre line, so the sharp
+           band reaches from the top row's subject to the bottom row's (one band, the battle's own reach round each) */
+        var _bandWas = null;
+        if (_paneMode && _paneMode.rows > 1 && _dofPassH && _dofPassH.enabled) {
+            _bandWas = _dofPassH.material.uniforms['uBand'].value;
+            var _bandPane = _bandWas + 0.5 - 0.5 / _paneMode.rows;
+            _dofPassH.material.uniforms['uBand'].value = _bandPane;
+            if (_dofPassV) _dofPassV.material.uniforms['uBand'].value = _bandPane;
+        }
 
-        if (_ng) { _ng.rp.camera = cam; _ng.rp.scene = _scene; } else if (_pp) { _pp.renderPass.camera = cam; _pp.renderPass.scene = _scene; } else _composer.passes[0].camera = cam;
+        var _sc = (_paneMode && _paneMode.scene) || _scene;
+        if (_ng) { _ng.rp.camera = cam; _ng.rp.scene = _sc; } else if (_pp) { _pp.renderPass.camera = cam; _pp.renderPass.scene = _sc; } else { _composer.passes[0].camera = cam; _composer.passes[0].scene = _sc; }
         if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
         /* THE FIELD LIGHT: the tilt-shift band runs over the room's board too (2026-10-18, mondo: "the tilt shift seems to only
            affect the voxel maps") — the focus is the battle camera's, the same as a voxel board's */
-        _tmSync();
-        if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
+        /* THE CLOSE-UP LOOK: the panes' picture is not the frame's scene render (three-renderer.js _ewGpuCompat: no light rig
+           moved into the quad's scene, no frame ticks — the panes' own draws were the frame) */
+        var _side = !!(_paneMode && _paneMode.composite);
+        try {
+            _tmSync();
+            if (_side) _renderer._ew_sideRender = true;
+            if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
+        } finally {
+            if (_side) _renderer._ew_sideRender = false;
+            if (_bandWas !== null) { _dofPassH.material.uniforms['uBand'].value = _bandWas; if (_dofPassV) _dofPassV.material.uniforms['uBand'].value = _bandWas; }
+        }
     }
 
     /* ── Render ANOTHER scene through the same post stack ──────────────
@@ -4035,6 +4190,7 @@ const ThreePost = (function () {
         render: render,
         renderScene: renderScene,
         renderDirect: renderDirect,
+        renderPanes: renderPanes,
         warmTarget: warmTarget,   // WEBGPU_PLAN W3: the target the room warm-up compiles into (the node chain's scene pass), else null
         isHdrBloom: isHdrBloom,
         resize: resize,
