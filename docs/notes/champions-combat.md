@@ -1429,6 +1429,22 @@ maybe tracking their movement if they have to jump forward to attack them."
   (moves shield boardCameraResetTimer). The post-action `_softResetCameraToUnit` (PR #278 timing untouched) still
   returns the tactical view.
 
+## THE CUBE CAMERA + THE REST ZOOM (2026-10-18)
+mondo: "the camera zooms out really unecessarily far after i attack the cube, please fix. if anything else makes the
+camera zoom out that far or anywhere close, please fix that too".
+- Cause (not PR #287): doAttack's Cube branch moved/snapped with `zoom: getCloseZoom()`, and getCloseZoom = the
+  whole-board overview (`_getBattleZoom`); `snap()` applies zoom directly, so every Cube hit pulled all the way out.
+- THE CUBE CAMERA: the branch names no zoom now. Your own LOCAL swing → `_menuAttackHoldTile` keeps the Target Camera
+  two-shot of unit + Cube (`_menuCamBody` gives a tower tile 1.6 tiles of height) and comes home after the settle
+  while the unit keeps acting; the CPU's / menu-camera-off swings pan attacker → Cube at the zoom on screen. Guest:
+  `_ewMenuAtkPending` also holds for a Cube tile.
+- THE REST ZOOM `getRestZoom()` = engaged hand zoom, else the follow-cam zoom / getTurnFramingZoom (the medium framing
+  your turn opens on). It replaces the getDefaultZoom (overview) fallback in camera.reset(), the soft-reset no-saved
+  branch, the Target Camera home, the three spell-shot → next-turn returns (sim / CPU / remote, `_applyZoom`) and the
+  CPU / remote activation zoom. The end-of-round board read (`eorFocusCamera` overview) zooms to getEorFocusZoom, not
+  getFullMapZoom×0.92 / the 20-row floor. getDefaultZoom stays the yardstick for the engaged test and multipliers;
+  the match-start reveal and hand zoom-out are untouched.
+
 ## THE JUMP FOLLOW (2026-10-14, camera rides your own jumps)
 mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
 - Cause: battle.js `doJump` skipped the follow pan for the LOCAL player's jumps on purpose ("parity with walking": the

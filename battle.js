@@ -22830,8 +22830,7 @@
                     return;
                 }
                 const target = this._getBestResetTarget();
-                const userZoom = getUserZoomScale();
-                const zoom = isUserZoomEngaged() ? userZoom : getDefaultZoom();
+                const zoom = getRestZoom();   // THE REST ZOOM: never the whole-board overview on your own turn
 
                 // Coming back from a cinematic action shot: restore the player's
                 // pre-cine framing as ONE motion — tilt + yaw + ZOOM together — so
@@ -23083,7 +23082,7 @@
                     // user's current tilt/yaw (which already equals _restTilt).
                     const retTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : undefined);
                     const retYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : undefined);
-                    const zoom = isUserZoomEngaged() ? userZoom : (pre ? pre.zoom : getDefaultZoom());
+                    const zoom = isUserZoomEngaged() ? userZoom : (pre ? pre.zoom : getRestZoom());
                     const dur = actionMs(650);
                     this._busy = true;
                     const seq = ++this._seqId;
@@ -23589,6 +23588,17 @@
         const TURN_FRAMING_ZOOM_MULT = 1.5;
         function getTurnFramingZoom() {
             return Math.max(0.15, Math.min(10.0, getDefaultZoom() * TURN_FRAMING_ZOOM_MULT));
+        }
+        /* THE REST ZOOM (mondo 2026-10-18: "the camera zooms out really unecessarily far after i attack the
+           cube ... if anything else makes the camera zoom out that far or anywhere close, please fix that too").
+           The zoom every automatic return lands on: an engaged hand zoom, else — on the local player's own
+           turn and every other — the same medium framing your turn opens on (getTurnFramingZoom / the follow
+           cam), never the whole-board overview (getDefaultZoom) that reset(), the soft-reset fallback, the
+           Target Camera's home, the Cube attack's snap and the CPU / remote turn openings after a spell shot
+           used to pull back to. getDefaultZoom stays the yardstick (the engaged-zoom test, the multipliers). */
+        function getRestZoom() {
+            if (isUserZoomEngaged()) return getUserZoomScale();
+            return (typeof isFollowCamMode === 'function' && isFollowCamMode()) ? getFollowCamZoom() : getTurnFramingZoom();
         }
         function getCloseZoom()      { return _getBattleZoom(); }
         function getWideZoom()       { return _getBattleZoom(); }
@@ -26663,8 +26673,10 @@
             // craned when the tour starts, and the live-tilt zoom resolved
             // ~2× too tight (a zoom-IN masquerading as the "overview").
             const _ovTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
-            const _fitZoom = Math.max(getFullMapZoom() * EOR_OVERVIEW_MARGIN,
-                _zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, _ovTilt));
+            // THE REST ZOOM (mondo 2026-10-18, "anything else that zooms out that far"): the round's board
+            // read is a pan to the centre at the tour's own focus zoom, not a pull back to the whole map
+            // (getFullMapZoom × EOR_OVERVIEW_MARGIN / the 20-row floor).
+            const _fitZoom = getEorFocusZoom();
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
                 zoom: isUserZoomEngaged() ? _uz : _fitZoom,
@@ -27238,6 +27250,7 @@
             if (isUnit && typeof unitElevationZ === 'function') foot = unitElevationZ(o) || 0;
             else if (typeof window._camGroundPx === 'function') foot = window._camGroundPx(Math.round(o.x), Math.round(o.y)) || 0;
             let hgt = isUnit ? ts * 0.95 : ts * 0.6;
+            if (!isUnit && typeof towerAt === 'function' && towerAt(Math.round(o.x), Math.round(o.y))) hgt = ts * 1.6;   // the Cube stands tall
             if (isUnit) {
                 try {
                     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight)
@@ -27390,7 +27403,7 @@
                         tilt: pre ? pre.tilt : restT,
                         yaw: pre ? pre.yaw : restY,
                         zoom: pre ? pre.zoom
-                            : (tactical ? camera._tz : (isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom()))
+                            : (tactical ? camera._tz : getRestZoom())
                     }
                 };
             }
@@ -27461,6 +27474,19 @@
                 return true;
             } catch (e) { return false; }
         }
+        /* THE ATTACK HOLD on a TILE target (the Cube): same rules, the tile is the second body. */
+        function _menuAttackHoldTile(src, x, y, ms) {
+            try {
+                if (!src || !window._ewMenuCamOn() || _skipVisuals()) return false;
+                const su = (state.units || []).find(u => u.id === src.id && !u.dead);
+                if (!su) return false;
+                if (typeof getViewerPlayer === 'function' && su.player !== getViewerPlayer()) return false;
+                if (state.controllers?.[su.player] !== CTRL.LOCAL || state.autoPlayers?.[su.player]) return false;
+                if (!_menuTargetShot(su, { x, y })) return false;
+                camera._menuAtk = { unitId: su.id, targetId: null, timer: null, until: performance.now() + Math.max(0, ms || 0) + 600 };
+                return true;
+            } catch (e) { return false; }
+        }
         /* online.js, the guest's own attack emit: the swing plays back only when the
            host's relayed shot arrives, so hold the two-shot meanwhile (the menu's
            root reset would otherwise send it home first, then swing back). */
@@ -27468,8 +27494,9 @@
             try {
                 if (!unit || !camera._menuShot || !window._ewMenuCamOn()) return;
                 const tu = (typeof unitAt === 'function') ? ((z != null && unitAt(x, y, z)) || unitAt(x, y)) : null;
-                if (!tu || tu.id === unit.id) return;
-                camera._menuAtk = { unitId: unit.id, targetId: tu.id, timer: null, until: performance.now() + 2500 };
+                const tw = !tu && typeof towerAt === 'function' ? towerAt(x, y) : null;   // the Cube: hold its two-shot too
+                if ((!tu && !tw) || (tu && tu.id === unit.id)) return;
+                camera._menuAtk = { unitId: unit.id, targetId: tu ? tu.id : null, timer: null, until: performance.now() + 2500 };
             } catch (e) {}
         };
         /* The leap of a held basic attack (animateStrikeLeap, host + guest): the
@@ -49592,7 +49619,7 @@
                         || _aliveFor(1)[0];
                     if (camU) {
                         const baseZoom = getUserZoomScale();
-                        const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                        const zoom = getRestZoom();   // THE REST ZOOM (was the whole-board overview)
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
                         const _retYaw = getTurnStartCamYaw(camU,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
@@ -51344,7 +51371,7 @@
                         invalidateLayoutCache();
                         renderBoard();
                         const baseZoom = getUserZoomScale();
-                        const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                        const zoom = getRestZoom();   // THE REST ZOOM (was the whole-board overview)
                         // Fold the return-to-tactical-view into the activation
                         // pan: every turn handoff lands at the resting tilt/yaw
                         // (the player's remembered pre-cine framing if a shot is
@@ -51418,7 +51445,7 @@
                         invalidateLayoutCache();
                         renderBoard();
                         const baseZoom = getUserZoomScale();
-                        const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                        const zoom = getRestZoom();   // THE REST ZOOM (was the whole-board overview)
                         // Same turn-handoff rule as the AI branch above: the
                         // activation pan always settles at the resting tactical
                         // orientation, never at a leftover action angle — and
@@ -54393,7 +54420,7 @@
                     const zoom = isUserZoomEngaged() ? baseZoom
                         : (_localActiveTurn
                             ? (isFollowCamMode() ? getFollowCamZoom() : getTurnFramingZoom())
-                            : getDefaultZoom());
+                            : getRestZoom());   // THE REST ZOOM: CPU / remote openings no longer pull to the overview
 
                     if (_cameraActingSideIsAuto()) {
                         // Auto / AI side: follow the newly-activated unit, but
@@ -61109,18 +61136,26 @@
                 const _twFogAI = state.activePlayer !== getViewerPlayer();
                 const _twAttackerVisible = _twFogAI && _shouldCameraFollowUnit(unit);
 
-                const towerCamZoom = getCloseZoom ? getCloseZoom() : getDefaultZoom();
-                if (_twFogAI && !_twAttackerVisible) {
-                    camera.moveTo({ x: x, y: y, zoom: towerCamZoom, duration: actionMs(350), _fogAllowed: true });
-                } else {
-                    camera.moveTo({ x: unit.x, y: unit.y, zoom: towerCamZoom, duration: actionMs(350), _fogAllowed: true });
-                }
-                markDirty('board', 'selectedUnit', 'hud');
-                renderIfDirty();
-
                 const sourceHoldMs = (_twFogAI && !_twAttackerVisible) ? actionMs(400) : actionMs(800);
                 const travelMs = actionMs(480);
                 const impactDelay = sourceHoldMs + travelMs;
+                const settleMs = impactDelay + actionMs(700);
+
+                /* THE CUBE CAMERA (mondo 2026-10-18: "the camera zooms out really unecessarily far after i attack
+                   the cube"): the impact used to SNAP the zoom to getCloseZoom() — the whole-board overview — and
+                   every later pan kept it. The zoom is never touched now: your own swing keeps the Target Camera
+                   two-shot of your unit and the Cube (THE ATTACK HOLD) and comes home after it; any other attack
+                   (the CPU's, the menu camera off) pans attacker → Cube at the zoom already on screen. */
+                const _twHold = !_twFogAI && _menuAttackHoldTile(unit, x, y, settleMs);
+                if (_twHold) {
+                    // the two-shot stands
+                } else if (_twFogAI && !_twAttackerVisible) {
+                    camera.moveTo({ x: x, y: y, duration: actionMs(350), _fogAllowed: true });
+                } else {
+                    camera.moveTo({ x: unit.x, y: unit.y, duration: actionMs(350), _fogAllowed: true });
+                }
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
 
                 window.setTimeout(() => {
                     if (state.winner) return;
@@ -61134,14 +61169,14 @@
                         playProjectile(fakeFromX, fakeFromY, x, y, 'attack', travelMs);
                     } else {
                         playProjectile(unit.x, unit.y, x, y, 'attack', travelMs);
-                        camera.moveTo({ x: x, y: y, zoom: towerCamZoom,
+                        if (!_twHold) camera.moveTo({ x: x, y: y,
                             duration: travelMs, easing: 'easeInOut', _fogAllowed: true });
                     }
                 }, sourceHoldMs);
 
                 window.setTimeout(() => {
                     if (state.winner) return;
-                    camera.snap({ x: x, y: y, zoom: towerCamZoom });
+                    if (!_twHold) camera.snap({ x: x, y: y });
                     tw.hp = Math.max(0, tw.hp - damage);
                     unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
                     addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
@@ -61155,11 +61190,17 @@
                     scheduleBoardRender();
                 }, impactDelay);
 
-                const settleMs = impactDelay + actionMs(700);
                 window.setTimeout(() => {
                     checkWin();
                     endUnitIfDone(unit);
                     renderAfterCombat();
+                    // the held two-shot comes home while this unit keeps acting (a new turn's
+                    // activation pan owns the camera otherwise); no zoom named → the view it left
+                    if (_twHold && camera._menuShot && !state.winner && state.phase === 'battle'
+                        && state._blitzActiveUnitId === unit.id && !unit.dead && !unitFinished(unit)) {
+                        camera._menuAtk = null;
+                        camera.moveTo({ x: unit.x, y: unit.y, duration: actionMs(600), easing: 'easeInOut', _fogAllowed: true });
+                    }
                 }, settleMs);
 
                 return damage;
