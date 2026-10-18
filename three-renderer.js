@@ -56400,6 +56400,7 @@ const ThreeRenderer = (function () {
         unit.facing = { dx: Math.sin(yaw), dy: Math.cos(yaw) };
         var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };
         entry.group.name = 'hq_' + spec.id;
+        entry.group._ew_pixelChar = true;   // Retro → Models Only chunks the people of the walk (ThreePost _scanPixelChars)
         _attachUnitModel(entry, unit, def, BASE_TILE);
         var y = _hqLevelY(S, spec.level || 0) + (spec.y || 0);
         if (spec.y == null && spec.x != null && _hqHasGround()) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
@@ -64343,7 +64344,7 @@ const ThreeRenderer = (function () {
         try {
             if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, { focus: _hqDofFocus(H) });
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fogHold); }
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
@@ -65136,6 +65137,7 @@ const ThreeRenderer = (function () {
                 if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
             if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD) : null;   // THE FOG SETTING: Scene Fog off = none
+            if (field) field.fog = { color: fogC, density: fogD };   // the Scene Fog toggle mid-fight puts THIS fog back (ThreePost._applySceneFog)
         } catch (e) {}
         try {
             var HF = LR.heightFog || {};
@@ -68262,11 +68264,20 @@ const ThreeRenderer = (function () {
        camera move, not a crossfade. */
     var _hqDissolveRec = null;
     function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; if (typeof _fieldDissolveReady === 'function' && !_fieldDissolveReady()) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} }
+    /* THE TILT-SHIFT ON THE WALK (2026-10-18, mondo: "the tilt shift seems to only affect the voxel maps"): the sharp band sits on
+       the walker's body (world px — the walker's group stands at pl.x·U, pl.visY·U, pl.z·U); first person holds the look point */
+    function _hqDofFocus(H) {
+        var pl = H && H.player, c = H && H.cam, U = _hqUnits();
+        if (H && H.fp && c && c.init) return { x: c.lx * U, y: c.ly * U, z: c.lz * U };
+        if (!pl || !isFinite(pl.x) || !isFinite(pl.z)) return (c && c.init) ? { x: c.lx * U, y: c.ly * U, z: c.lz * U } : null;
+        var y = isFinite(pl.visY) ? pl.visY : (+pl.y || 0);
+        return { x: pl.x * U, y: (y + (pl.heightM || 1.75) * 0.5) * U, z: pl.z * U };
+    }
     function _hqRenderOnce(H) {
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
         var fh = _hqFogHold(H);
         try {
-            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, { focus: _hqDofFocus(H) });
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fh); }
     }
