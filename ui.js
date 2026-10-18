@@ -4797,7 +4797,7 @@
                 _commitWasdMove(unit);
             }
             if (!canUnitAct(unit)) {
-                addLog(`${unitDisplayName(unit)} already acted this round.`);
+                addLog(`${_ctName(unit)} already acted this round.`);
                 return;
             }
             /* THE TUTORIAL: the submenus open only when the step allows the verb */
@@ -4806,13 +4806,13 @@
                 if (_tutVerb && !window._tutActionAllowed(_tutVerb, unit)) return;
             }
             if (view === 'spells' && unitSpellsBlocked(unit)) {
-                addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
+                addLog(`${_ctName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
             // Never open a submenu whose every row would be greyed out — it
             // only costs the player the clicks to back out of it again.
             if (view === 'spells' && typeof anyCastableSpellNow === 'function' && !anyCastableSpellNow(unit)) {
-                addLog(`${unitDisplayName(unit)} has no usable abilities right now.`);
+                addLog(`${_ctName(unit)} has no usable abilities right now.`);
                 playErrorSfx();
                 return;
             }
@@ -4833,7 +4833,7 @@
             }
             if (view === 'items' && typeof anyUsableItemNow === 'function' && !anyUsableItemNow(unit)) {
                 const _holdsAny = unit.items && Object.values(unit.items).some(n => (n || 0) > 0);
-                addLog(_holdsAny ? 'No items can be used right now.' : `${unitDisplayName(unit)} has no items.`);
+                addLog(_holdsAny ? 'No items can be used right now.' : `${_ctName(unit)} has no items.`);
                 playErrorSfx();
                 return;
             }
@@ -4922,7 +4922,7 @@
                (checkOverwatchTriggers, battle.js). Disarmed by the same round
                reset that clears _guardCounterBonus. */
             unit._overwatchArmed = true;
-            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter, a little HP/MP back and extra recovery this round — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
+            addLog(`${_ctName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter, a little HP/MP back and extra recovery this round — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 
@@ -4970,7 +4970,7 @@
             /* Recall only works while hidden — you can't slip back to spawn while
                an enemy has eyes on you (the nameplate eye icon shows this). */
             if (typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit)) {
-                addLog(`${unitDisplayName(unit)} can't recall while spotted by the enemy.`);
+                addLog(`${_ctName(unit)} can't recall while spotted by the enemy.`);
                 playErrorSfx();
                 return;
             }
@@ -4985,7 +4985,7 @@
 
             /* Already at spawn zone */
             if (typeof isInSpawnZone === 'function' && isInSpawnZone(unit.x, unit.y, unit.player)) {
-                addLog(`${unitDisplayName(unit)} is already in their spawn zone.`);
+                addLog(`${_ctName(unit)} is already in their spawn zone.`);
                 return;
             }
 
@@ -4995,7 +4995,7 @@
             const blocker = state.units.find(u => !u.dead && u.x === tile.x && u.y === tile.y && u.id !== unit.id);
             if (blocker && blocker.player !== unit.player) {
                 pushUnitToNearestOpen(blocker, tile.x, tile.y);
-                addLog(`⚡ ${unitDisplayName(blocker)} is pushed out of spawn zone!`);
+                addLog(`⚡ ${_ctName(blocker)} is pushed out of spawn zone!`);
             }
 
             /* Find open tile if friendly occupies */
@@ -5019,7 +5019,7 @@
             unit.ap = Math.max(0, (unit.ap || 0) - apCost);
             unit._recallCooldown = cdRounds;
 
-            addLog(`🔵 ${unitDisplayName(unit)} recalls to spawn zone!`);
+            addLog(`🔵 ${_ctName(unit)} recalls to spawn zone!`);
             showFloatingTextForUnit(unit, '🔵 RECALL', 'buff', { durationMs: 1400 });
             playSfx('uiConfirm');
 
@@ -5392,7 +5392,7 @@
                     const lostOwner = nex.owner;
                     nex.owner = 0;
                     res.neutralized = true;
-                    addLog(`⬡ ${creditUnit ? unitDisplayName(creditUnit) : 'Player ' + team} neutralizes the ${_nexusLabel(section)} Nexus!`);
+                    addLog(`⬡ ${creditUnit ? _ctName(creditUnit) : 'Player ' + team} neutralizes the ${_nexusLabel(section)} Nexus!`);
                     _nexusFx({ kind: 'neutral', section, player: team, x: c.x, y: c.y });
                     if (state.nexusPoints && state.nexusPoints['spawn' + lostOwner] && nexusZonesOwnedBy(lostOwner).length === 0) {
                         addLog(`⛔ SPAWN LOCKOUT — Player ${lostOwner} holds NO Nexus. Their fallen cannot respawn until they reclaim one!`);
@@ -5453,7 +5453,7 @@
             // objectives from inside a cloak.
             if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'invisible')) {
                 clearStatus(unit, 'invisible');
-                addLog(`👁 ${unitDisplayName(unit)} is revealed — channeling breaks camouflage!`);
+                addLog(`👁 ${_ctName(unit)} is revealed — channeling breaks camouflage!`);
             }
 
             _fireNexusVfx3d(unit.player === 1 ? '_nexusChannelP1' : '_nexusChannelP2', unit.x, unit.y);
@@ -5463,7 +5463,7 @@
                neutralizes shows NEUTRALIZED instead */
             if (!res.captured) {
                 const c = _nexusZoneCenter(nex);
-                addLog(`⬡ ${unitDisplayName(unit)} channels the ${_nexusLabel(floor)} Nexus (${res.text})`);
+                addLog(`⬡ ${_ctName(unit)} channels the ${_nexusLabel(floor)} Nexus (${res.text})`);
                 if (!res.neutralized || res.prog > 0) _nexusFx({ kind: 'tick', section: floor, player: unit.player, x: c.x, y: c.y, prog: res.prog, thr: res.thr, text: res.text });
             }
 
@@ -5501,7 +5501,7 @@
             const c = _nexusZoneCenter(nex);
             const res = _nexusApplyTicks(nex, section, unit.player, 1, unit);
             if (!res.captured) {
-                addLog(`⬡ ${unitDisplayName(unit)} takes ground in the ${_nexusLabel(section)} Nexus (${res.text})`);
+                addLog(`⬡ ${_ctName(unit)} takes ground in the ${_nexusLabel(section)} Nexus (${res.text})`);
                 if (!res.neutralized || res.prog > 0) _nexusFx({ kind: 'tick', section, player: unit.player, x: c.x, y: c.y, prog: res.prog, thr: res.thr, text: res.text });
             }
         }
@@ -5529,7 +5529,7 @@
                 }
                 const ro = nexusTeamReadout(nex, team);
                 const c = _nexusZoneCenter(nex);
-                addLog(`⬡ ${unitDisplayName(unit)} steps off the ${_nexusLabel(section)} Nexus (${ro.text})`);
+                addLog(`⬡ ${_ctName(unit)} steps off the ${_nexusLabel(section)} Nexus (${ro.text})`);
                 _nexusFx({ kind: 'drop', section, player: team, x: c.x, y: c.y, prog: ro.n, thr, text: ro.text });
             }
         }
@@ -5648,7 +5648,7 @@
                     cleared++;
                 }
             }
-            addLog(`💊 ${unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
+            addLog(`💊 ${_ctName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
             showFloatingTextForUnit(unit, `💊 CURED`, 'heal', { durationMs: 1200 });
             playSfx('uiConfirm');
             spendAP(unit, 1);
@@ -5679,7 +5679,7 @@
             pushUndoSnapshot(true);
             unit.items[itemKey] -= 1;
             applyStatStageBoost(unit, rule.selfBoost, `${rule.name}: `, unit);
-            addLog(`${rule.icon} ${unitDisplayName(unit)} uses ${rule.name}!`);
+            addLog(`${rule.icon} ${_ctName(unit)} uses ${rule.name}!`);
             playSfx('uiConfirm');
             spendAP(unit, AP_COST_ACTION);
             if (!unit._itemLog) unit._itemLog = {};
@@ -5733,7 +5733,7 @@
             unit.items.warpStone -= 1;
             unit.x = x;
             unit.y = y;
-            addLog(`🌀 ${unitDisplayName(unit)} warps to ${coordLabel(x, y)}!`);
+            addLog(`🌀 ${_ctName(unit)} warps to ${coordLabel(x, y)}!`);
             showFloatingTextForUnit(unit, '🌀 WARP', 'buff', { durationMs: 1000 });
             playSfx('uiConfirm');
 
@@ -5812,7 +5812,7 @@
                 zoom: computeZoomForVisibleTiles(14),
                 holdMs: 1200
             });
-            addLog(`🔥 ${unitDisplayName(unit)} fires a Flair at ${coordLabel(x, y)}! A wide area is illuminated for one turn.`, unit.player);
+            addLog(`🔥 ${_ctName(unit)} fires a Flair at ${coordLabel(x, y)}! A wide area is illuminated for one turn.`, unit.player);
             spendAP(unit, AP_COST_ACTION);
             state.actionMode = null;
             state._actionExecuting = false;
@@ -5896,7 +5896,7 @@
 
             if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
             playSfx('uiConfirm');
-            addLog(`👁 ${unitDisplayName(unit)} plants a Vision Ward at ${coordLabel(x, y)}. It reveals a 3-tile radius until destroyed.`, unit.player);
+            addLog(`👁 ${_ctName(unit)} plants a Vision Ward at ${coordLabel(x, y)}. It reveals a 3-tile radius until destroyed.`, unit.player);
             // 🔥🧊 The ward's torch throws enough heat to thaw any Frozen
             // unit on an adjacent tile (see _thawFrozenUnit, battle.js).
             if (typeof _thawFrozenAdjacentTo === 'function') _thawFrozenAdjacentTo(x, y, "The ward's torchlight");
@@ -6750,7 +6750,7 @@
             resetBoardCamera();
             spendAP(source, AP_COST_ACTION);
             if (logs.length) {
-                addLog(`${unitDisplayName(source)} trades with ${unitDisplayName(target)}: ${logs.join(', ')}.`);
+                addLog(`${_ctName(source)} trades with ${_ctName(target)}: ${logs.join(', ')}.`);
             }
             state.actionMode = null;
             state.pendingTarget = null;

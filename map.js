@@ -14621,11 +14621,11 @@
                 applyDamageToUnit(unit, result.amount, '', {
                     ignoreArmor: true
                 });
-                addLog(result.text || `${unitDisplayName(unit)} suffers ${result.amount} damage from ${rule.label}.`);
+                addLog(result.text || `${_ctName(unit)} suffers ${result.amount} damage from ${rule.label}.`);
             } else if (result.type === 'heal') {
                 const healed = applyHealingToUnit(unit, result.amount, null);
                 if (healed > 0) {
-                    addLog(result.text ? `${result.text} ${healed} HP.` : `${unitDisplayName(unit)} recovers ${healed} HP from ${rule.label}.`);
+                    addLog(result.text ? `${result.text} ${healed} HP.` : `${_ctName(unit)} recovers ${healed} HP from ${rule.label}.`);
                 }
             } else if (result.type === 'status') {
                 // wave C: terrain that coats whoever ends a turn on it (goo)
@@ -14638,7 +14638,7 @@
                 unit.mp = Math.min(unit.maxMp, before + result.amount);
                 const restored = unit.mp - before;
                 if (restored > 0) {
-                    addLog(result.text ? `${result.text} ${restored} MP.` : `${unitDisplayName(unit)} restores ${restored} MP from ${rule.label}.`);
+                    addLog(result.text ? `${result.text} ${restored} MP.` : `${_ctName(unit)} restores ${restored} MP from ${rule.label}.`);
                     if (typeof showFloatingTextForUnit === 'function') {
                         showFloatingTextForUnit(unit, `+${restored} MP`, 'heal');
                     }
@@ -14787,7 +14787,7 @@
             if (!unit) return;
             if ((unit.items?.[discardKey] || 0) <= 0) return;
             unit.items[discardKey] -= 1;
-            addLog(`${unitDisplayName(unit)} discards a ${ITEM_RULES[discardKey]?.name || discardKey}.`);
+            addLog(`${_ctName(unit)} discards a ${ITEM_RULES[discardKey]?.name || discardKey}.`);
 
             const dialog = state.uiDialog;
             if (!dialog || dialog.type !== 'itemFound') return;
@@ -14805,7 +14805,7 @@
                     } else {
                         _pickupIcon = ITEM_META[pending.type]?.icon || '📦';
                     }
-                    addLog(`${unitDisplayName(unit)} picks up ${rule?.name || pending.type}.`);
+                    addLog(`${_ctName(unit)} picks up ${rule?.name || pending.type}.`);
                     showFloatingTextForUnit(unit, `${_pickupIcon} +1`, 'pickup', { durationMs: 1000 });
                 }
             }
@@ -14837,7 +14837,7 @@
                 h.visibleTo[1] = true;
                 h.visibleTo[2] = true;
             }
-            if (carried.length) addLog(`${unitDisplayName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            if (carried.length) addLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;
@@ -15514,11 +15514,11 @@
 
                 const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
                 if (unit._isBoss) {
-                    addLog(`👹 ${unitDisplayName(unit)} has been slain!`);
+                    addLog(`👹 ${_ctName(unit)} has been slain!`);
                     shakeBoard('hard');
                 } else if (_gauntlet) {
                     const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
-                    addLog(`💀 ${unitDisplayName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
+                    addLog(`💀 ${_ctName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
                     shakeBoard('normal');
                 } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
                     addLog(unit.player === 1
@@ -15528,22 +15528,22 @@
                 } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
                     /* Strike Mode: StrikeEngine respawns on a real-time clock,
                        not rounds — it logs its own countdown. */
-                    addLog(`💀 ${unitDisplayName(unit)} is down!`);
+                    addLog(`💀 ${_ctName(unit)} is down!`);
                     shakeBoard('normal');
                 } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
                     /* RESERVES rule 2: the ladder still runs; a reserve may take
                        the seat when it opens (battle.js _reserveQueueSeat). */
                     const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
-                    addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
+                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
                     shakeBoard('normal');
                 } else {
-                    addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
+                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
                     shakeBoard('normal');
                 }
 
                 if (!state._recentDefeats) state._recentDefeats = [];
                 state._recentDefeats.push({
-                    name: unitDisplayName(unit),
+                    name: _ctName(unit),   // tagged with its side (battle.js THE COMBAT TEXT COLOURS)
                     player: unit.player
                 });
                 scheduleBoardRender();
@@ -15680,7 +15680,7 @@
                         unit._justRespawned = true;
                         unit._showRespawnBanner = true;
                         resetUnitPowerState(unit);
-                        addLog(`🔄 ${unitDisplayName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                        addLog(`🔄 ${_ctName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                         if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                         continue;
@@ -15730,7 +15730,7 @@
                             unit._justRespawned = true;
                             unit._showRespawnBanner = true;
                             resetUnitPowerState(unit);
-                            addLog(`🧟 ${unitDisplayName(unit)} claws back out of the ground where it fell! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                            addLog(`🧟 ${_ctName(unit)} claws back out of the ground where it fell! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
                             if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                             continue;
                         }
@@ -15767,7 +15767,7 @@
                         const blocker = state.units.find(u => !u.dead && u.x === zoneTile.x && u.y === zoneTile.y && u.id !== unit.id);
                         if (blocker && blocker.player !== unit.player && _respawnTileSafe(zoneTile.x, zoneTile.y)) {
                             pushUnitToNearestOpen(blocker, zoneTile.x, zoneTile.y);
-                            addLog(`⚡ ${unitDisplayName(blocker)} is pushed out of the respawn zone!`);
+                            addLog(`⚡ ${_ctName(blocker)} is pushed out of the respawn zone!`);
                         }
                         let placed = false;
                         const _order = zoneArr.slice(spawnIdx).concat(zoneArr.slice(0, spawnIdx));
@@ -15784,7 +15784,7 @@
                             const _mid = zoneArr[Math.floor(zoneArr.length / 2)] || zoneTile;
                             pushUnitToNearestOpen(unit, _mid.x, _mid.y);
                         }
-                        if (!_rz.home) addLog(`⬡ ${unitDisplayName(unit)} returns through the ${_rz.label} Nexus.`);
+                        if (!_rz.home) addLog(`⬡ ${_ctName(unit)} returns through the ${_rz.label} Nexus.`);
                     } else {
                         /* Fallback: spiral from tower if no zone */
                         const tower = getTower(unit.player);
@@ -15826,7 +15826,7 @@
                     unit._justRespawned = true;
                     unit._showRespawnBanner = true;
                     resetUnitPowerState(unit);
-                    addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                    addLog(`🔄 ${_ctName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                     if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                 }
