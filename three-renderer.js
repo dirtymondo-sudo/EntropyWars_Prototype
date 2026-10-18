@@ -10073,11 +10073,6 @@ const ThreeRenderer = (function () {
         if (list.indexOf(m) < 0) list.push(m);
         return m;
     }
-    function _nxGeo(w, h) {
-        var k = w.toFixed(2) + 'x' + h.toFixed(2), g = _nxGeos[k];
-        if (!g) { g = new THREE.PlaneGeometry(w, h); g._ew_shared = true; _nxGeos[k] = g; }
-        return g;
-    }
     /* THE DRAPED MARKERS (2026-10-13): a zone's floor wash and rim follow the ground like the move tiles. One geometry
        per (tile, piece) kept across rebuilds; a rebuild rewrites its vertices in place, so its id (and the pool) holds. */
     function _nxDrapeGeo(key, build) {
@@ -10085,6 +10080,7 @@ const ThreeRenderer = (function () {
         if (old && old.attributes.position.count === g.attributes.position.count) {
             old.attributes.position.array.set(g.attributes.position.array);
             old.attributes.position.needsUpdate = true;
+            if (old.attributes.uv && g.attributes.uv) { old.attributes.uv.array.set(g.attributes.uv.array); old.attributes.uv.needsUpdate = true; }   // a zone tile's patch of its zone map
             old._ew_rotY = g._ew_rotY;
             old.computeBoundingSphere();
             g.dispose();
@@ -10133,22 +10129,94 @@ const ThreeRenderer = (function () {
         return t;
     }
 
-    /* ══ THE ZONE PERIMETER (NEXUS REWORK 2026-09-12) ══════════════════════
-       "It's really hard to even see the nexus / spawn zones any more." Every
-       zone — the centre, the diagonal pair, the Arena spawn nexuses, the
-       hotspot — now wears a perimeter that HUGS THE TERRAIN: per tile a
-       tinted floor wash on that tile's own top; per exposed edge a bright
-       rim line + halo at that tile's top, a gradient SKIRT down the cliff
-       face wherever the ground steps across the edge (so the line stays
-       connected round a raised or dug tile instead of floating), and a
-       short additive curtain wall standing on the edge. Everything is keyed
-       to tileTopY, and _computeNexusSerial folds the terrain / height /
-       voxel versions in, so building on a zone re-draws it that frame.
-       Owner colour = the viewer-relative team colour, gold while neutral. */
+    /* ══ THE SOFT ZONE (2026-10-18, mondo: "i dont like how the nexus zones are drawn on the ground, they have these ugly
+       hitchmarks, and they have these flat rectangular light panels on thr ground that look bad. they need to atleast fade
+       at the edge or something") ══════════════════════════════════════════════════════════════════════════════════
+       Every zone — the centre, the diagonal pair, the Arena spawn nexuses, the hotspot — is ONE soft decal laid on the
+       ground: the zone's shape is drawn once into a small alpha map (_nxZoneTex) — a faint fill, a glow that rises toward
+       the zone's outer edge, a soft rim just inside it, and a feather to nothing at the edge itself, with rounded corners.
+       Each zone tile drapes the move tiles' own surface (_buildDrapeGeo) full-size, and its UVs read its own patch of that
+       map, so the tiles join with no gaps or seams. Gone: the per-tile washes (their gaps drew the grid of marks), the hard
+       rim ribbon + halo, and the standing curtain / skirt / seam panels. Owner colour = the viewer-relative team colour,
+       gold while neutral; the decal shimmers gently (_updateNexusWallPulse). */
+    var _nxZoneTexs = {};
+    var NX_TEX_PX = 32;   // map texels per tile: the profile is smooth, so a small map reads clean at every zoom
+    function _nxZoneTex(cells, W, H) {
+        var key = W + 'x' + H + ':' + cells.map(function (c) { return c[0] + ',' + c[1]; }).sort().join(';'), t = _nxZoneTexs[key];
+        if (t) return t;
+        var set = {}, segs = [], i;
+        for (i = 0; i < cells.length; i++) set[cells[i][0] + ',' + cells[i][1]] = true;
+        for (i = 0; i < cells.length; i++) {
+            var cx = cells[i][0], cy = cells[i][1];
+            if (!set[cx + ',' + (cy - 1)]) segs.push([cx, cy, cx + 1, cy]);
+            if (!set[cx + ',' + (cy + 1)]) segs.push([cx, cy + 1, cx + 1, cy + 1]);
+            if (!set[(cx - 1) + ',' + cy]) segs.push([cx, cy, cx, cy + 1]);
+            if (!set[(cx + 1) + ',' + cy]) segs.push([cx + 1, cy, cx + 1, cy + 1]);
+        }
+        /* one segment per straight run of edge: the soft-min would dip where two tile edges meet and bead the rim */
+        segs.sort(function (a, b) {
+            var ha = a[1] === a[3], hb = b[1] === b[3];
+            if (ha !== hb) return ha ? -1 : 1;
+            return ha ? (a[1] - b[1] || a[0] - b[0]) : (a[0] - b[0] || a[1] - b[1]);
+        });
+        var runs = [];
+        for (i = 0; i < segs.length; i++) {
+            var sg = segs[i], last = runs[runs.length - 1];
+            if (last && last[1] === last[3] && sg[1] === sg[3] && last[1] === sg[1] && last[2] === sg[0]) { last[2] = sg[2]; continue; }
+            if (last && last[0] === last[2] && sg[0] === sg[2] && last[0] === sg[0] && last[3] === sg[1]) { last[3] = sg[3]; continue; }
+            runs.push(sg.slice());
+        }
+        segs = runs;
+        var PX = NX_TEX_PX, cw = W * PX, chh = H * PX;
+        var canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = chh;
+        var ctx = canvas.getContext('2d'), img = ctx.createImageData(cw, chh), d = img.data;
+        var K = 0.07;   // the soft-min width: the outer corners round off instead of meeting at a point
+        for (var py = 0; py < chh; py++) {
+            for (var px = 0; px < cw; px++) {
+                var u = (px + 0.5) / PX, v = (py + 0.5) / PX, o = (py * cw + px) * 4;
+                d[o] = d[o + 1] = d[o + 2] = 255;
+                if (!set[Math.floor(u) + ',' + Math.floor(v)]) { d[o + 3] = 0; continue; }
+                var sum = 0;
+                for (var s = 0; s < segs.length; s++) {
+                    var g = segs[s], dx = g[2] - g[0], dy = g[3] - g[1];
+                    var k = Math.max(0, Math.min(1, ((u - g[0]) * dx + (v - g[1]) * dy) / (dx * dx + dy * dy)));
+                    var ex = u - (g[0] + k * dx), ey = v - (g[1] + k * dy);
+                    sum += Math.exp(-Math.sqrt(ex * ex + ey * ey) / K);
+                }
+                var dist = sum > 0 ? Math.max(0, -K * Math.log(sum)) : 9;   // tiles from the zone's outer edge
+                var feather = Math.min(1, dist / 0.07); feather = feather * feather * (3 - 2 * feather);
+                var rimD = (dist - 0.1) / 0.055;
+                var a = 0.07 + 0.38 * Math.exp(-dist / 0.3) + 0.62 * Math.exp(-rimD * rimD);
+                d[o + 3] = Math.round(255 * Math.min(1, a * feather));
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        t = new THREE.CanvasTexture(canvas);
+        t.magFilter = THREE.LinearFilter;
+        t.minFilter = THREE.LinearFilter;
+        t.generateMipmaps = false;   // one smooth map per zone shape, made once a match: no mip chain to build (THE TERRAIN SPELL HITCH)
+        t._ew_shared = true;
+        _nxZoneTexs[key] = t;
+        return t;
+    }
+    /* a zone tile's full-size drape with its UVs on its own patch of the zone map (x0/y0 = the zone's top-left tile) */
+    function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts) {
+        var g = _buildDrapeGeo(hx, hy, ts, 1.0), p = g.attributes.position.array, uv = g.attributes.uv;
+        var ry = g._ew_rotY || 0, c = Math.cos(ry), sn = Math.sin(ry);
+        for (var i = 0; i < uv.count; i++) {
+            var lx = p[i * 3], lz = p[i * 3 + 2];
+            var wx = lx * c + lz * sn, wz = -lx * sn + lz * c;   // Object3D rotation.y (a stair's drape is built turned)
+            var u = (hx - x0 + 0.5 + wx / ts) / W, v = (hy - y0 + 0.5 + wz / ts) / H;
+            uv.setXY(i, Math.max(0, Math.min(1, u)), 1 - Math.max(0, Math.min(1, v)));   // the canvas's top row is v = 1
+        }
+        uv.needsUpdate = true;
+        return g;
+    }
     function rebuildNexusWalls() {
         if (!_nexusWallGroup) return;
 
-        _nxPark();   // the pieces' materials, geometries and curtain canvases are shared (_nxMat), the meshes pooled
+        _nxPark();   // the pieces' materials, geometries and zone maps are shared (_nxMat), the meshes pooled
         _nexusWallMats.length = 0;
         _nexusLineMats.length = 0;
 
@@ -10163,10 +10231,6 @@ const ThreeRenderer = (function () {
         if (zones.length === 0) { _lastNexusSerial = _computeNexusSerial(); return; }
 
         var ts = CONFIG.tileSize || BASE_TILE;
-        var elevStep = ts * ELEV_STEP_RATIO;
-        var curtainH = 1.1 * elevStep;
-        var lineT = ts * 0.06;
-        var lineLift = 0.45;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
 
@@ -10174,127 +10238,28 @@ const ThreeRenderer = (function () {
             var nex = zones[zi];
             var color = _nexusOwnerColor(nex.owner || 0);
             var tiles = _nexusZoneTiles(nex);
-            var tileSet = {};
-            var ti;
-            for (ti = 0; ti < tiles.length; ti++) tileSet[tiles[ti].x + ',' + tiles[ti].y] = true;
-
-            /* W5a: every zone piece below is one flat plane, so forceSinglePass — three draws a transparent DoubleSide
-               material twice (back faces, then front) and a plane cannot cover itself: same picture, half the draws */
-            /* ── floor wash: one tinted plane per tile on ITS OWN top ── */
+            var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, ti;
+            for (ti = 0; ti < tiles.length; ti++) {
+                x0 = Math.min(x0, tiles[ti].x); y0 = Math.min(y0, tiles[ti].y);
+                x1 = Math.max(x1, tiles[ti].x); y1 = Math.max(y1, tiles[ti].y);
+            }
+            var W = x1 - x0 + 1, H = y1 - y0 + 1;
+            var tex = _nxZoneTex(tiles.map(function (t) { return [t.x - x0, t.y - y0]; }), W, H);
+            /* W5a: one flat drape per tile, so forceSinglePass — a plane cannot cover itself, and DoubleSide twice is
+               the same picture in two draws */
+            var mat = _nxMat('zone:' + tex.id, color, _nexusLineMats, {
+                color: color, map: tex, transparent: true, opacity: 1,
+                depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
+                polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+            });
             for (ti = 0; ti < tiles.length; ti++) {
                 var ft = tiles[ti];
                 if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
-                var washMat = _nxMat('wash', color, _nexusLineMats, {
-                    color: color, transparent: true, opacity: 0.16,
-                    depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
-                    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
-                });
-                var washGeo = _nxDrapeGeo('dw' + ft.x + ',' + ft.y, function () { return _buildDrapeGeo(ft.x, ft.y, ts, 0.96); });
-                var wash = _nxPiece(washGeo, washMat);
-                wash.rotation.y = washGeo._ew_rotY || 0;
-                wash.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
-                _nexusWallGroup.add(wash);
-            }
-
-            /* ── perimeter edges: a tile edge whose neighbour is not in the zone ── */
-            var edges = [];
-            for (ti = 0; ti < tiles.length; ti++) {
-                var tx = tiles[ti].x, ty = tiles[ti].y;
-                if (!tileSet[tx + ',' + (ty - 1)]) edges.push({ x: tx, y: ty, dir: 'n' });
-                if (!tileSet[tx + ',' + (ty + 1)]) edges.push({ x: tx, y: ty, dir: 's' });
-                if (!tileSet[(tx - 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'w' });
-                if (!tileSet[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'e' });
-            }
-
-            var curtainTex = _nxGradTex(color, 'curtain', [[0, 0], [0.35, 0.2], [1, 0.6]]);
-
-            for (var ei = 0; ei < edges.length; ei++) {
-                var e = edges[ei];
-                if (e.x < 0 || e.y < 0 || e.x >= _bw || e.y >= _bh) continue;
-                var yIn = tileTopY(e.x, e.y);
-                var horiz = (e.dir === 'n' || e.dir === 's');
-                var bx = e.x * ts, bz = e.y * ts;
-                var posX = (e.dir === 'w') ? bx : (e.dir === 'e') ? bx + ts : bx + ts / 2;
-                var posZ = (e.dir === 'n') ? bz : (e.dir === 's') ? bz + ts : bz + ts / 2;
-
-                /* rim line — extended one thickness so corners join cleanly */
-                var lineMat = _nxMat('line', color, _nexusLineMats, {
-                    color: color, transparent: true, opacity: 0.95,
-                    depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true
-                });
-                var line = _nxPiece(_nxDrapeGeo('dl' + e.x + ',' + e.y + e.dir, function () { return _drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineT, lineT); }), lineMat);
-                line.position.set(posX, _drapedTileY(e.x, e.y, lineLift), posZ);
-                _nexusWallGroup.add(line);
-
-                /* soft halo hugging the line */
-                var haloMat = _nxMat('halo', color, _nexusLineMats, {
-                    color: color, transparent: true, opacity: 0.22,
-                    depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending
-                });
-                var halo = _nxPiece(_nxDrapeGeo('dh' + e.x + ',' + e.y + e.dir, function () { return _drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineT * 4.5, ts * 0.05); }), haloMat);
-                halo.position.set(posX, _drapedTileY(e.x, e.y, lineLift - 0.08), posZ);
-                _nexusWallGroup.add(halo);
-
-                /* curtain — the short glowing wall standing on the edge */
-                var curMat = _nxMat('curtain', color, _nexusWallMats, {
-                    map: curtainTex, transparent: true, depthWrite: false,
-                    side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending,
-                    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
-                });
-                curMat._ew_nexusBaseColor = color;
-                var cur = _nxPiece(_nxGeo(ts, curtainH), curMat);
-                cur.position.set(posX, yIn + curtainH / 2, posZ);
-                cur.rotation.y = (e.dir === 'n') ? 0 : (e.dir === 's') ? Math.PI : (e.dir === 'w') ? Math.PI / 2 : -Math.PI / 2;
-                _nexusWallGroup.add(cur);
-
-                /* skirt — the ground steps across this edge: hang a gradient
-                   down the cube face so the rim stays connected */
-                var nx = e.x + (e.dir === 'w' ? -1 : e.dir === 'e' ? 1 : 0);
-                var ny = e.y + (e.dir === 'n' ? -1 : e.dir === 's' ? 1 : 0);
-                if (nx >= 0 && ny >= 0 && nx < _bw && ny < _bh) {
-                    var yOut = tileTopY(nx, ny);
-                    if (Math.abs(yIn - yOut) > 1.5) {
-                        var skTop = Math.max(yIn, yOut) + lineLift * 0.5;
-                        var skBot = Math.min(yIn, yOut) + 0.1;
-                        var skirtMat = _nxMat('skirt', color, _nexusLineMats, {
-                            color: color, transparent: true, opacity: 0.6,
-                            map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
-                            polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
-                        });
-                        var skirt = _nxPiece(_nxGeo(ts, skTop - skBot), skirtMat);
-                        if (!horiz) skirt.rotation.y = Math.PI / 2;
-                        if (yIn < yOut) skirt.scale.y = -1;
-                        skirt.position.set(posX, (skTop + skBot) / 2, posZ);
-                        _nexusWallGroup.add(skirt);
-                    }
-                }
-            }
-
-            /* inner step lines: where two ZONE tiles meet at different
-               heights, a thin skirt on the seam keeps the wash readable as
-               one raised / sunken block instead of a torn carpet */
-            for (ti = 0; ti < tiles.length; ti++) {
-                var a = tiles[ti];
-                var nbrs = [{ x: a.x + 1, y: a.y, horiz: false }, { x: a.x, y: a.y + 1, horiz: true }];
-                for (var ni = 0; ni < nbrs.length; ni++) {
-                    var nb = nbrs[ni];
-                    if (!tileSet[nb.x + ',' + nb.y]) continue;
-                    if (a.x < 0 || a.y < 0 || nb.x >= _bw || nb.y >= _bh) continue;
-                    var ya = tileTopY(a.x, a.y), yb = tileTopY(nb.x, nb.y);
-                    if (Math.abs(ya - yb) <= 1.5) continue;
-                    var sTop = Math.max(ya, yb) + 0.2, sBot = Math.min(ya, yb) + 0.1;
-                    var seamMat = _nxMat('seam', color, _nexusLineMats, {
-                        color: color, transparent: true, opacity: 0.35,
-                        map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
-                        polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
-                    });
-                    var seam = _nxPiece(_nxGeo(ts, sTop - sBot), seamMat);
-                    if (!nb.horiz) seam.rotation.y = Math.PI / 2;
-                    seam.position.set(nb.horiz ? a.x * ts + ts / 2 : a.x * ts + ts,
-                                      (sTop + sBot) / 2,
-                                      nb.horiz ? a.y * ts + ts : a.y * ts + ts / 2);
-                    _nexusWallGroup.add(seam);
-                }
+                var geo = _nxDrapeGeo('dz' + ft.x + ',' + ft.y, function () { return _nxZoneTileGeo(ft.x, ft.y, x0, y0, W, H, ts); });
+                var piece = _nxPiece(geo, mat);
+                piece.rotation.y = geo._ew_rotY || 0;
+                piece.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
+                _nexusWallGroup.add(piece);
             }
         }
 
