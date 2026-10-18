@@ -11817,7 +11817,12 @@ const ThreeRenderer = (function () {
        Set window.EW_DISABLE_3D_UNITS = true to force the sprite path. */
     var _unitGlbCache = {};            // url -> { root, clips, bbox, loading, failed, cbs }
     var _modelAnimState = new Map();   // unit id -> { name, time } — survives rebuilds
-    var MODEL_DEATH_MS = 1600;         // rigged death: knock-down clip + fade tail
+    var MODEL_DEATH_MS = 1600;         // rigged death: knock-down clip + fade tail (fallback when the clip length is unknown)
+    /* THE BODY ON THE FLOOR (2026-10-18, mondo: "i want to see them laying on the ground at least for half a second"):
+       a rigged death now lasts as long as its own knock-down clip, then the body LIES still for MODEL_DEATH_LIE_MS
+       before it dissolves over MODEL_DEATH_FADE_MS. The death close-up cuts away when the dissolve starts. */
+    var MODEL_DEATH_LIE_MS = 650;
+    var MODEL_DEATH_FADE_MS = 650;
     var MODEL_ANIM_FADE = 0.15;        // crossfade between clips (seconds)
 
     /* Per-unit rig cache. rebuildUnits() tears the whole unit group down on
@@ -20139,6 +20144,8 @@ const ThreeRenderer = (function () {
                 d1: (opts.dist1 != null ? opts.dist1 : 2.25) * ts,
                 lastEye: null, lastAim: null,
                 death: !!opts.death,
+                key: !!opts.key,
+                bodyScale: !!(opts.bodyScale || opts.death || opts.key),   // THE CLOSE-UP LENS: stand off by the body's height
                 launch: !!(opts.death && typeof state !== 'undefined' && state && state._deathStyleById && state._deathStyleById[uid] === 'launch')
             });
         }
@@ -20249,12 +20256,19 @@ const ThreeRenderer = (function () {
                 var dist = p.d0 + (p.d1 - p.d0) * k;
                 /* THE DEATH CLOSE-UP: the lens stands off by the body's own height (a gnome gets a tight shot, an
                    angel's wings still fit), measured against a standard unit. */
-                if (p.death) dist *= Math.max(0.6, Math.min(1.9, headH / (ts * UNIT_SPRITE_SIZE_RATIO + 4)));
+                /* THE KEY CLOSE-UP: the frame is the body plus the key hovering at ~1.05 tiles over the floor, so a short
+                   unit still gets the key in shot. */
+                var frameH = p.key ? Math.max(headH, ts * 1.3) : headH;
+                if (p.bodyScale) dist *= Math.max(0.6, Math.min(1.9, frameH / (ts * UNIT_SPRITE_SIZE_RATIO + 4)));
                 if (p.launch) dist += ts * 0.6;   // a heavy blow throws the body up and over: give it room
                 var ex = px + Math.sin(az) * dist;
                 var ez = pz + Math.cos(az) * dist;
                 var ey = py + headH * (0.42 + 0.10 * k);
                 var aimY = py + headH * 0.62;
+                if (p.key) {   // a touch low, looking up at the unit and the key over it
+                    ey = py + frameH * (0.48 + 0.08 * k);
+                    aimY = py + frameH * 0.66;
+                }
                 if (p.death) {
                     /* THE DEATH CLOSE-UP: the lens rises a little as the body drops and the aim follows it down,
                        so the knock-down stays centred from the stagger to the floor. */
@@ -21869,9 +21883,23 @@ const ThreeRenderer = (function () {
         // spin/shrink — give the clip a longer window; _updateUnitModels holds
         // the 'death' state while this tween runs.
         var _isModelDeath = !!entry.mixer;
+        var _dStyle = (typeof state !== 'undefined' && state && state._deathStyleById
+            && state._deathStyleById[unitId]) || null;
+        /* When the body hits the floor: the knock-down clip's own length at its wired speed (the 'launch' style plays
+           hitLaunch instead), else the old 55% mark of MODEL_DEATH_MS. */
+        var _landMs = MODEL_DEATH_MS * 0.55;
+        if (_isModelDeath && entry.actions) {
+            var _dAct = (_dStyle === 'launch' && entry.actions.hitLaunch) ? entry.actions.hitLaunch : entry.actions.death;
+            try {
+                var _dClip = _dAct && _dAct.getClip && _dAct.getClip();
+                var _dTs = Math.abs((_dAct && (_dAct._ew_ts0 || _dAct.timeScale)) || 1) || 1;
+                if (_dClip && _dClip.duration > 0) _landMs = Math.max(450, Math.min(2200, _dClip.duration * 1000 / _dTs));
+            } catch (e) {}
+        }
         _deathTweens.set(unitId, {
             startTime: _animNow(),
-            durationMs: _isModelDeath ? MODEL_DEATH_MS : DEATH_MS,
+            durationMs: _isModelDeath ? (_landMs + MODEL_DEATH_LIE_MS + MODEL_DEATH_FADE_MS) : DEATH_MS,
+            fadeAtMs: _isModelDeath ? (_landMs + MODEL_DEATH_LIE_MS) : DEATH_MS * 0.3,
             isModel: _isModelDeath,
             /* THE NEW CLIPS (2026-09-25): battle.js marks a heavy physical
                killing blow in state._deathStyleById (a plain id → string map,
@@ -21896,8 +21924,9 @@ const ThreeRenderer = (function () {
                 // Rigged unit: the knock-down clip plays via _updateUnitModels
                 // ('death' state, clamped on its final frame). No spin/shrink —
                 // the body just settles, then the whole entry dissolves.
-                if (g && t > 0.55) {
-                    var mFade = (t - 0.55) / 0.45;
+                var _fadeT = tw.fadeAtMs / tw.durationMs;   // THE BODY ON THE FLOOR: it lies still, then dissolves
+                if (g && t > _fadeT) {
+                    var mFade = (t - _fadeT) / Math.max(0.05, 1 - _fadeT);
                     g.traverse(function (o) {
                         var mm = o.material;
                         if (!mm || Array.isArray(mm)) return;
@@ -38838,6 +38867,13 @@ const ThreeRenderer = (function () {
         var tw = _deathTweens.get(uid);
         if (!tw) return -1;
         return Math.max(0, Math.min(1, (_animNow() - tw.startTime) / tw.durationMs));
+    }
+    /* THE BODY ON THE FLOOR: true once the body has fallen AND lain on the floor (its dissolve starts), or when it is
+       not dying at all. The death close-up holds until this is true for every body in it. */
+    function deathShotDone(uid) {
+        var tw = _deathTweens.get(uid);
+        if (!tw) return true;
+        return (_animNow() - tw.startTime) >= tw.fadeAtMs;
     }
 
     function hasActiveAnims() {
@@ -69536,6 +69572,7 @@ const ThreeRenderer = (function () {
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         deathTweenProgress: deathTweenProgress,
+        deathShotDone: deathShotDone,
 
         get _scene() { return scene; },
         /* Debug/profiling handle: renderer.info has live draw-call/triangle/
@@ -69652,6 +69689,10 @@ window.ThreeAnim = {
     deathProgress: function(unitId) {
         if (!ThreeRenderer.isActive() || !ThreeRenderer.deathTweenProgress) return -1;
         return ThreeRenderer.deathTweenProgress(unitId);
+    },
+    deathShotDone: function(unitId) {
+        if (!ThreeRenderer.isActive() || !ThreeRenderer.deathShotDone) return true;
+        return ThreeRenderer.deathShotDone(unitId);
     },
 
     /* THE STRIKE FRAME (2026-09-09, sprites.js UAL_SLOTS strikeAt): how many

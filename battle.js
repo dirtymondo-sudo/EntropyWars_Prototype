@@ -10359,10 +10359,54 @@
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()
                     && typeof ThreeRenderer.keyPickupFx === 'function') {
                     ThreeRenderer.keyPickupFx(x, y, { count: count || 1 });
+                    _playKeyCloseup(x, y);
                 }
             } catch (e) { console.warn('[KeyFx] failed', e); }
         }
         window.playKeySecuredFx = playKeySecuredFx;
+
+        /* THE KEY CLOSE-UP (2026-10-18, mondo: "want a similar camera closeup for the finding a key animation"): the
+           death close-up's lens (CLOSEUP_LENS, one full-screen pane of the ThreeSplitscreen rig, owner 'key') on the unit
+           that secured the Key, framed low so the key rising and spinning over it is in shot, for the length of the key
+           celebration (ThreeRenderer _KEYFX_RISE + _KEYFX_HOLD). The fog gate is playKeySecuredFx's; online the guest
+           runs it from the 'key-fx' relay. The turn loop and the menu wait for it like the death close-up. A death
+           that lands meanwhile takes the screen over. Kill switch: EW_NO_KEY_CAM. */
+        const _kc = { timer: null, live: false };
+        function _keyCamLive() {
+            if (!_kc.live) return false;
+            if (!window.ThreeSplitscreen || ThreeSplitscreen.owner() !== 'key') { _keyCamEnd(true); return false; }
+            return true;
+        }
+        window._keyCamLive = _keyCamLive;
+        function _keyCamEnd(lost) {
+            if (_kc.timer) { window.clearTimeout(_kc.timer); _kc.timer = null; }
+            if (_kc.live && !lost && window.ThreeSplitscreen && ThreeSplitscreen.owner() === 'key') {
+                try { ThreeSplitscreen.hide(); } catch (err) {}
+            }
+            _kc.live = false;
+        }
+        function _playKeyCloseup(x, y) {
+            try {
+                if (window.EW_NO_KEY_CAM || state.phase !== 'battle' || _skipVisuals() || state.cameraDisabled) return;
+                if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return;
+                if (!window.ThreeSplitscreen || !ThreeSplitscreen.isAvailable()) return;
+                if (ThreeSplitscreen.isActive() && ThreeSplitscreen.owner() !== 'key') return;   // a death / combo shot has the screen
+                if (_deathCamLive()) return;
+                try { if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return; } catch (err) {}
+                const unit = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+                if (!unit || unit.dead || unit._dying) return;
+                try { if (!_shouldCameraFollowUnit(unit)) return; } catch (err) { return; }
+                const ssRes = ThreeSplitscreen.show([{ unitId: unit.id }], {
+                    owner: 'key', key: true, keepFloats: true,
+                    durationMs: actionMs(2100), fov: CLOSEUP_LENS.fov, sideDeg: 18, driftDeg: 10,
+                    dist0: CLOSEUP_LENS.dist0, dist1: CLOSEUP_LENS.dist1
+                });
+                if (!ssRes) return;
+                _kc.live = true;
+                if (_kc.timer) window.clearTimeout(_kc.timer);
+                _kc.timer = window.setTimeout(() => { _kc.timer = null; _keyCamEnd(); }, actionMs(2150));
+            } catch (e) { console.warn('[KeyCam]', e); }
+        }
 
         function _isTileVisibleToViewer(tx, ty) {
             if (!state.fogOfWar) return true;
@@ -12874,6 +12918,8 @@
            shot under its own fog. The turn waits for it (_waitForAnimationsThen). An execution owns its kill (the
            finisher cinematic IS the close-up), so deaths during one are skipped. Kill switch: EW_NO_DEATH_CAM. */
         const _dc = { ids: [], openTimer: null, tick: null, live: false, lastAddAt: 0, chromeEl: null, waitSince: 0 };
+        /* THE CLOSE-UP LENS: the death close-up's lens, shared by every close-up (see CINE_CLOSEUP_DIST_TILES). */
+        const CLOSEUP_LENS = { fov: 32, dist0: 2.6, dist1: 1.85 };
         let _dcFinisherUntil = 0;
         const _DC_MAX_PANES = 4;
 
@@ -12894,16 +12940,14 @@
         function _dcDying(id) {
             try { return !!(window.ThreeAnim && ThreeAnim.isDying && ThreeAnim.isDying(id)); } catch (err) { return false; }
         }
-        /* THE TURN HANDOFF (2026-10-18, mondo: "there is a pause after a death"): the shot holds until the body is DOWN,
-           not until it has fully dissolved. A rigged body lands at ~0.55 of its death tween and then fades; the last
-           stretch of the fade is what the turn used to sit on. The dissolve finishes on the board view. */
-        const _DC_DOWN_T = 0.72;
+        /* THE TURN HANDOFF (2026-10-18, mondo: "there is a pause after a death"): the shot no longer waits for the
+           body to fully dissolve. THE BODY ON THE FLOOR (same day, "now the game cuts too fast away from the death
+           animation, i want to see them laying on the ground at least for half a second"): it holds through the
+           knock-down AND the body lying still on the floor (ThreeRenderer MODEL_DEATH_LIE_MS), and cuts as the dissolve
+           starts; the dissolve finishes on the board view. */
         function _dcStillFalling(id) {
             try {
-                if (window.ThreeAnim && typeof ThreeAnim.deathProgress === 'function') {
-                    const t = ThreeAnim.deathProgress(id);
-                    return t >= 0 && t < _DC_DOWN_T;
-                }
+                if (window.ThreeAnim && typeof ThreeAnim.deathShotDone === 'function') return !ThreeAnim.deathShotDone(id);
             } catch (err) {}
             return _dcDying(id);
         }
@@ -12927,7 +12971,7 @@
             _dc.ids = _dc.ids.filter(id => _dcDying(id));
             if (!_dc.ids.length) { _dcEnd(); return; }
             /* Another split shot is up (a combo's caster panes): wait for it while the bodies are still falling. */
-            if (ThreeSplitscreen.isActive() && ThreeSplitscreen.owner() !== 'death') {
+            if (ThreeSplitscreen.isActive() && ThreeSplitscreen.owner() !== 'death' && ThreeSplitscreen.owner() !== 'key') {
                 if (Date.now() - _dc.waitSince < 1500) { _dc.openTimer = window.setTimeout(_dcOpen, 80); return; }
                 _dcEnd();
                 return;
@@ -12940,7 +12984,8 @@
             if (!units.length) { _dcEnd(); return; }
             const ssRes = ThreeSplitscreen.show(units.map(u => ({ unitId: u.id })), {
                 owner: 'death', death: true, keepFloats: units.length === 1,
-                durationMs: actionMs(1700), fov: 32, sideDeg: 26, driftDeg: 8, dist0: 2.6, dist1: 1.85
+                durationMs: actionMs(1700), fov: CLOSEUP_LENS.fov, sideDeg: 26, driftDeg: 8,
+                dist0: CLOSEUP_LENS.dist0, dist1: CLOSEUP_LENS.dist1
             });
             if (!ssRes) { _dcEnd(); return; }
             _dc.live = true;
@@ -13210,7 +13255,8 @@
             if (ssCasters.length) _ewsSafe(() => {
                 const ssRes = ThreeSplitscreen.show(
                     ssCasters.map(a => ({ unitId: a.id })),
-                    { durationMs: splitEnd, fov: 34, sideDeg: 20, driftDeg: 6, dist0: 3.3, dist1: 2.35 });
+                    { durationMs: splitEnd, fov: CLOSEUP_LENS.fov, sideDeg: 20, driftDeg: 6,
+                      dist0: CLOSEUP_LENS.dist0, dist1: CLOSEUP_LENS.dist1, bodyScale: true });   // THE CLOSE-UP LENS
                 if (ssRes) {
                     _ssqShowChrome(
                         ssCasters.map(a => ({ unit: a, accent: def.accent || _ccinColor((a.types || [])[0]) })),
@@ -14060,7 +14106,8 @@
             const paneMs = Math.max(actionMs(700), CHARGE_MS - actionMs(500));
             let panes = false;
             if (_cineOK && _see(unit) && window.ThreeSplitscreen && ThreeSplitscreen.isAvailable()) _ewsSafe(() => {
-                const ssRes = ThreeSplitscreen.show([{ unitId: unit.id }], { durationMs: paneMs, fov: 30, sideDeg: 24, driftDeg: 7, dist0: 3.0, dist1: 2.1 });
+                const ssRes = ThreeSplitscreen.show([{ unitId: unit.id }], { durationMs: paneMs, fov: CLOSEUP_LENS.fov, sideDeg: 24, driftDeg: 7,
+                    dist0: CLOSEUP_LENS.dist0, dist1: CLOSEUP_LENS.dist1, bodyScale: true });   // THE CLOSE-UP LENS
                 if (!ssRes) return;
                 panes = true;
                 _ssqShowChrome([{ unit, accent: (getEntropyStrikeType(def.type).accent) }], ssRes, {
@@ -26961,9 +27008,19 @@
         // Two-beat JRPG action shot (see _playCineActionShot): boom lengths and
         // angles for the CAST close-up (beat 1, facing the caster) and the HIT
         // reverse cut (beat 2, framing the victim).
-        const CINE_FACE_DIST_TILES = 2.8;  // beat 1 — tight hero framing of the caster
+        /* THE CLOSE-UP LENS (2026-10-18, mondo: "how closeup the death camera is, is how all closeup the camera should
+           be for all spells that have a closeup"): every close-up frames a body as big as the death close-up does. The
+           split-screen panes (death, dual techs, Entropy Strike, the executioner cut-in) share CLOSEUP_LENS as is; the
+           main rig's close-up beats use the boom that frames the same body size through the main 45° lens (the
+           death lens's mid-dolly distance × tan(fov/2) ratio, about 1.5 tiles; the rig still scales it by body
+           height, _cineSizeK). Wide and two-shot framings keep their own numbers. */
+        const CINE_CLOSEUP_DIST_TILES = ((CLOSEUP_LENS.dist0 + CLOSEUP_LENS.dist1) / 2)
+            * Math.tan(CLOSEUP_LENS.fov / 2 * Math.PI / 180) / Math.tan(45 / 2 * Math.PI / 180);
+        const CINE_FACE_DIST_TILES = CINE_CLOSEUP_DIST_TILES;  // beat 1 — tight hero framing of the caster
+        const CINE_OTS_CAST_DIST_TILES = 2.8;                   // beat 1 over the shoulder: caster + target in one frame
         const CINE_FACE_TILT       = 76;   // beat 1 pitch: a touch above eye line, looking down
-        const CINE_HIT_DIST_TILES  = 3.2;  // beat 2 — victim framing (close JRPG hit shot)
+        const CINE_HIT_DIST_TILES  = CINE_CLOSEUP_DIST_TILES;  // beat 2 — victim close-up (pair shots fit both)
+        const CINE_HIT_WIDE_TILES  = 3.2;  // beat 2 over several victims: the wide floor of the fit
         const CINE_HIT_TILT        = 74;   // beat 2 pitch
         const CINE_HIT_SWING       = 26;   // extra yaw past the OTS offset → ¾ view of the victim
         // Behind-the-shoulder frame (SPELL_CINEMATICS.md keeps the standard
@@ -27935,7 +27992,7 @@
                     const _lead = Math.min(1.3, len * 0.38);
                     _leadFrac = _lead / len;
                     _castZoom = Math.min(
-                        _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES + len * 0.35),
+                        _tpsZoomForBoomTiles(CINE_OTS_CAST_DIST_TILES + len * 0.35),
                         _tpsZoomFitTiles(_vGapTiles + 3.0, len + 2.6));
                     const _low = _shot === 'lowHero';
                     _cineBeatMove({
@@ -27965,14 +28022,14 @@
                         // HIGHER tilt number is a more level / upward lens, so the
                         // low angle is +degrees, not -.
                         _faceTilt = CINE_FACE_TILT + 16;
-                        _faceDist = CINE_FACE_DIST_TILES - 0.5;   // step in closer
+                        _faceDist = CINE_FACE_DIST_TILES;         // already the close-up lens
                         _faceRise = CINE_FOCAL_RISE * 0.35;       // aim at the chest
                         _faceMs   = 520;                          // slower swoop
                     } else if (_shot === 'sky') {
                         // Crane up and back so the caster sits low in frame with a
                         // lot of air above them — the payload arrives INTO the shot.
                         _faceTilt = CINE_FACE_TILT + 26;
-                        _faceDist = CINE_FACE_DIST_TILES + 1.6;
+                        _faceDist = CINE_OTS_CAST_DIST_TILES + 1.6;   // wide: air above the caster
                         _faceRise = CINE_FOCAL_RISE * 2.4;
                         _faceMs   = 560;
                     }
@@ -28049,7 +28106,7 @@
                         const _span = Math.max(_maxX - _minX, _maxY - _minY);
                         const _vSpan = Math.max(0, (_highPx - _lowPx) / ts);
                         const _tiltWide = CINE_HIT_TILT - 8;
-                        const _zoomWide = Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
+                        const _zoomWide = Math.min(_tpsZoomForBoomTiles(CINE_HIT_WIDE_TILES),
                             _tpsZoomFitTiles(Math.max((_span + 3.0) * 0.5, _vSpan + 1.6), _span + 3.0));
                         const _gPx = (typeof window._camGroundPx === 'function')
                             ? window._camGroundPx(Math.round(_wcx), Math.round(_wcy)) : 0;
@@ -28574,7 +28631,7 @@
         /* ── [NEW: face cam] ── the Boo shot: TPS anchor at HEAD height, short
            boom, near-level lens, framed off-centre so the subject's far
            shoulder keeps negative space for whatever arrives in it. */
-        const CINE_FACE_CAM_DIST = 2.2;
+        const CINE_FACE_CAM_DIST = CINE_CLOSEUP_DIST_TILES;   // THE CLOSE-UP LENS
         function cineFaceCam(unit, opts = {}) {
             if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null), { liftFrac: 0.92 })) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
@@ -28827,7 +28884,7 @@
                 : ((typeof getFollowCamYaw === 'function') ? getFollowCamYaw(unit, camera.yaw) : camera._tyaw) + 38;
             const framing = {
                 x: unit.x, y: unit.y,
-                zoom: _tpsZoomForBoomTiles(opts.dist ?? 2.5),
+                zoom: _tpsZoomForBoomTiles(opts.dist ?? CINE_CLOSEUP_DIST_TILES),   // THE CLOSE-UP LENS
                 tilt: opts.tilt ?? 92,                        // low, looking up the body
                 yaw: baseYaw, elevZ: px + ts * 0.45
             };
@@ -32366,7 +32423,7 @@
             // ── BEAT 1 — THE BRACE: low front ¾, looking back at the charger.
             _cineBeatMove({
                 x: fromPoint.x + dirx * 0.15, y: fromPoint.y + diry * 0.15,
-                zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES - 0.4),
+                zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
                 tilt: CINE_FACE_TILT + 14,
                 yaw: yawChase + 180 - CINE_CAM_YAW_OFFSET * 1.2,
                 elevZ: fromPx + ts * CINE_FOCAL_RISE * 0.6,
@@ -32377,7 +32434,7 @@
 
             // ── BEAT 2 — THE RUN: hard cut behind the charger, chase the lane.
             const chaseZoom = Math.min(
-                _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES + 0.8),
+                _tpsZoomForBoomTiles(CINE_HIT_WIDE_TILES + 0.8),
                 _tpsZoomFitTiles(3.0, Math.min(len + 2.5, 7)));
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
@@ -50974,7 +51031,7 @@
                     return;
                 }
 
-                if (_deathCamLive()) {   // THE DEATH CLOSE-UP: the turn moves on after the body is down
+                if (_deathCamLive() || _keyCamLive()) {   // THE DEATH / KEY CLOSE-UP: the turn moves on after the shot
                     _sawActivity = true;
                     _afterDeathCam = true;
                     _dwellStart = 0;
@@ -51101,7 +51158,7 @@
                     || (typeof isCinematicPresent === 'function' && isCinematicPresent())
                     || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy())
                     || state.units.some(u => u._dying)
-                    || _deathCamLive()
+                    || _deathCamLive() || _keyCamLive()
                     || (camera && camera.isBusy && camera.isBusy())) return reset();
                 const now = Date.now();
                 if (state._blitzActiveUnitId) {
@@ -54173,7 +54230,7 @@
                 try {
                     let hard = !!(_walkAnimActive || state._walkAnimActive)
                         || (typeof isCinematicPresent === 'function' && isCinematicPresent())
-                        || _deathCamLive()
+                        || _deathCamLive() || _keyCamLive()
                         || state.units.some(u => u._dying)
                         || (projectileLayerEl && projectileLayerEl.childElementCount > 0)
                         || _blockingAnimsLive();
@@ -63802,7 +63859,8 @@
                     && !initiator.dead && !partner.dead && _see(initiator) && _see(partner)) {
                     ssRes = ThreeSplitscreen.show(
                         [{ unitId: initiator.id }, { unitId: partner.id }],
-                        { durationMs: splitEnd, fov: 34, sideDeg: 24, driftDeg: 7, dist0: 3.2, dist1: 2.25 });
+                        { durationMs: splitEnd, fov: CLOSEUP_LENS.fov, sideDeg: 24, driftDeg: 7,
+                          dist0: CLOSEUP_LENS.dist0, dist1: CLOSEUP_LENS.dist1, bodyScale: true });   // THE CLOSE-UP LENS
                 }
                 _ssqShowChrome(
                     ssRes ? [

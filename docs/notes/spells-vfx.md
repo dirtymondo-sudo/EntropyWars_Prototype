@@ -1410,6 +1410,29 @@ the caster's overhead restore when AP is left) just sat there through (2)-(4).
 - Sandbox note: SwiftShader draws ~2 fps here, so absolute times in the probe are inflated (the VFX clock clamps dt to
   50 ms, the anim clock to 250 ms; the probe served un-clamped copies). The gate ORDER is what proves it.
 
+## THE BODY ON THE FLOOR + THE CLOSE-UP LENS + THE KEY CLOSE-UP (2026-10-18, token 20261018-closeups-01-cors)
+mondo, after THE TURN HANDOFF: "now the game cuts too fast away from the death animation, i want to see them laying on the
+ground at least for half a second. also how closeup the death camera is, is how all closeup the camera should be for all
+spells that have a closeup. also want a similar camera closeup for the finding a key animation".
+- Body on the floor (three-renderer.js startDeathTween): a rigged death lasts its own knock-down clip (the death or
+  hitLaunch action's clip length at its wired timeScale, clamped 450-2200 ms; else 880 ms), then the body lies still
+  MODEL_DEATH_LIE_MS 650, then dissolves over MODEL_DEATH_FADE_MS 650 (tw.fadeAtMs). `deathShotDone(uid)` /
+  `ThreeAnim.deathShotDone` = the dissolve has started. battle.js `_dcStillFalling` holds the death close-up until that
+  is true for every body (min 1.1 s, cap 4.5 s, then a 100 ms beat), so the shot cuts as the body starts to fade.
+- Close-up lens (battle.js): `CLOSEUP_LENS` {fov 32, dist0 2.6, dist1 1.85 tiles} is the death close-up's lens; the dual
+  tech panes, the Entropy Strike team panes and the executioner cut-in now use it too, with `bodyScale` (stand-off by
+  body height, as the death pane). The main rig's close-up beats use `CINE_CLOSEUP_DIST_TILES` (~1.54 tiles: the lens's
+  mid-dolly distance × tan(16°)/tan(22.5°), same body size on screen through the 45° main lens, still × _cineSizeK):
+  CINE_FACE_DIST_TILES (cast beat, self-cast hero shot, give beat, brace beat, lowHero), CINE_HIT_DIST_TILES (victim
+  beat; pair shots still fit both), cineFaceCam, cineGlamCam. Wide framings keep their numbers: the over-the-shoulder
+  cast two-shot (CINE_OTS_CAST_DIST_TILES 2.8), the 'sky' cast (2.8 + 1.6), the multi-victim wide (CINE_HIT_WIDE_TILES
+  3.2), the charge chase (3.2 + 0.8). The frame guard still widens any shot whose bodies would not fit.
+- Key close-up (battle.js `_playKeyCloseup`, from playKeySecuredFx, so the guest gets it off the 'key-fx' relay under
+  its own fog): one full-screen ThreeSplitscreen pane, owner 'key', the close-up lens, `key: true` framing (frame height
+  max(body, 1.3 tiles) so the key hovering at 1.05 tiles is in shot, lens a touch low looking up), for 2.15 s (the key's
+  rise + hold). Turn loop, boardBusy and the watchdog wait on `_keyCamLive()`; a death that lands meanwhile takes the
+  screen (_dcOpen treats 'key' like its own). Kill switch `EW_NO_KEY_CAM`.
+
 ## THE BANE FORECAST (2026-10-17, token 20261017-baneproj-01-cors)
 mondo: "banes need to have a damage projection just like spells". battle.js `forecastBanePlan(thrower, itemKey, target,
 { castFrom })` reads a thrown bane (and the Entropy Grenade, which rides the bane throw) the doItem way through
