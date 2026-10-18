@@ -15907,9 +15907,9 @@ const ThreeRenderer = (function () {
     //                         and slowly crescendos toward the impact frame.
     //                         Beams / dashes light tile-by-tile outward from
     //                         the actor (staggerMs) so the lane "draws".
-    //   BURST  (impact frame) the footprint flashes white-hot and settles to
-    //                         a lit afterglow; the actor tile releases (its
-    //                         power has left it).
+    //   BURST  (impact frame) the footprint lets go at once (2026-10-18: no
+    //                         white-hot flash, no afterglow, no actor tile —
+    //                         see THE ANTICIPATION ONLY).
     //   END    (exhale)       everything eases back to bare ground.
     //
     // Colour language: WHITE = the actor + anything benign (heals, buffs,
@@ -16027,11 +16027,10 @@ const ThreeRenderer = (function () {
             casterKey: null
         };
         var seen = {};
-        if (spec.caster && spec.caster.x != null && spec.caster.y != null
-            && _glowTileVisible(spec.caster.x, spec.caster.y)) {
-            var ce = _glowAddEntry(rec, spec.caster.x, spec.caster.y, spec.caster.z, true, 0);
-            if (ce) { rec.casterKey = spec.caster.x + ',' + spec.caster.y; seen[rec.casterKey] = true; }
-        }
+        /* THE ANTICIPATION ONLY (2026-10-18, mondo: "i dont want to see any tile highlights during a spell animation,
+           except for the gold anticipation highlight, but even that should be gone right as the spell actually hits"):
+           the actor's tile no longer lights (spec.caster is ignored), only the footprint the hit will land on; the
+           burst ends it (actionGlowBurst). */
         var tiles = Array.isArray(spec.tiles) ? spec.tiles : [];
         var n = 0, idx = 0;
         for (var i = 0; i < tiles.length && n < _GLOW_MAX_TILES; i++) {
@@ -16052,31 +16051,13 @@ const ThreeRenderer = (function () {
         return rec;
     }
 
-    /* actionGlowBurst(key, opts) — the impact frame. opts.tiles may add
-       footprint tiles the arm beat didn't know (a retargeted burst); a burst
-       with no live glow (guest that joined mid-cast, burst-only callers)
-       conjures a short one so the hit still lights the ground. */
+    /* actionGlowBurst(key, opts) — the impact frame: the anticipation is over, so the footprint lets go at once (a
+       ~80 ms fade, no white-hot flash, THE ANTICIPATION ONLY above). A burst with no live glow (a guest that joined
+       mid-cast, a second hit of the same cast) lights nothing. */
     function actionGlowBurst(key, opts) {
-        opts = opts || {};
         var rec = _glowLive[key];
-        if (!rec) {
-            if (!opts.tiles && !opts.caster) return;
-            rec = actionGlowStart(key, { caster: opts.caster, tiles: opts.tiles,
-                hostile: opts.hostile !== undefined ? opts.hostile : true, riseMs: 60, holdMs: 200 });
-            if (!rec) return;
-        } else if (Array.isArray(opts.tiles)) {
-            var have = {};
-            for (var i = 0; i < rec.entries.length; i++) have[rec.entries[i].x + ',' + rec.entries[i].y] = true;
-            for (var j = 0; j < opts.tiles.length && rec.entries.length < _GLOW_MAX_TILES; j++) {
-                var t = opts.tiles[j];
-                if (!t || t.x == null || have[t.x + ',' + t.y]) continue;
-                if (!_glowTileVisible(t.x, t.y)) continue;
-                var ne = _glowAddEntry(rec, t.x, t.y, t.z, false, 0);
-                if (ne) { ne.t0 = performance.now(); ne.late = true; }
-            }
-        }
-        if (rec.burstAt == null) rec.burstAt = performance.now();
-        rec.autoEndAt = Math.max(rec.autoEndAt, rec.burstAt + 2600);
+        if (!rec) return;
+        actionGlowEnd(key, 80);
         _updateActionGlow();
     }
 
@@ -37737,6 +37718,58 @@ const ThreeRenderer = (function () {
         window.updateEnemyRangePreview(_hoveredUnitId);
     }
 
+    /* ── THE GAME HAS THE BOARD (2026-10-18, mondo: "when a unit is moving or there are spell animations happening,
+       basically when the game is taking over and user input does nothing, i do not want the attack range highlights to
+       show on hover ... i dont want to see any tile highlights during a spell animation, except for the gold
+       anticipation highlight") ──
+       Once per frame, after every highlight write of the frame:
+         playing out (battle.js isGamePlayingOut, or a walk / strike / projectile / shove tween, or a live action glow):
+           every tile highlight hides (range tiles, overlays, previews, arrows, the cursor) except the action glow's
+           footprint and the board's own markings (zones, weather);
+         the hover is not the player's (playing out, the camera flying on its own, a centre banner, the post-cast hold,
+           the CPU's turn, or the mouse has not moved since any of those): the cursor, the selected-tile brackets, the
+           hovered unit's range wash and its ring stay hidden, so a still mouse that a pan or a walk leaves over a unit
+           paints nothing. A real mouse move (or a wheel zoom) hands the hover back.
+       Only visibility is touched (_ew_ctlHid marks what this hid), so every highlight comes back as it was. */
+    var _hoverWaitMove = null;   // { x, y }: the pointer when the game last had the board; cleared by a real move
+    function _gamePlayingOut() {
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || state.winner || _freeRoam) return false;
+        if (typeof window.isGamePlayingOut === 'function' && window.isGamePlayingOut()) return true;
+        if (_projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0) return true;
+        for (var k in _glowLive) return true;
+        return false;
+    }
+    function _syncTakeoverHighlights() {
+        if (!highlightGroup) return;
+        var playing = _gamePlayingOut();
+        var busy = playing;
+        if (!busy && typeof state !== 'undefined' && state && state.phase === 'battle' && !state.winner) {
+            busy = _hoverCursorSuppressed()
+                || (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving())
+                || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy());
+        }
+        var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
+        if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
+        var hoverOff = inBattle && (busy || !!_hoverWaitMove);
+        var ch = highlightGroup.children;
+        for (var i = 0; i < ch.length; i++) {
+            var o = ch[i], ov = o._ew_overlay, hide;
+            if (playing) hide = !(ov === 'actionGlow' || ov === 'zone' || ov === 'weather');
+            else hide = hoverOff && (o === hoverMesh || o === selTileMesh || ov === 'enemyRange');
+            if (hide) {
+                if (o.visible) { o.visible = false; o._ew_ctlHid = true; }
+            } else if (o._ew_ctlHid) {
+                o.visible = true; o._ew_ctlHid = false;
+            }
+        }
+        if (_hoverGlowMesh) _hoverGlowMesh.visible = !hoverOff;
+    }
+    function _hoverPointerMoved(x, y) {
+        if (!_hoverWaitMove) return;
+        if (x == null || _hoverWaitMove.x == null || Math.abs(x - _hoverWaitMove.x) + Math.abs(y - _hoverWaitMove.y) >= 3) _hoverWaitMove = null;
+    }
+
     var _fpsNextDue = 0;          // §4.7 FPS-cap accumulator
     var _turboNextDue = 0;        // dev-sim turbo render throttle accumulator
     var _fpsFrames = 0, _fpsWinStart = 0, _fpsEl = null;
@@ -38645,6 +38678,7 @@ const ThreeRenderer = (function () {
                 _refreshHoverOnCameraMove(cam);
             }
             _syncSelectedTileMarker();
+            _syncTakeoverHighlights();   // THE GAME HAS THE BOARD: after every highlight write of the frame
 
             /* §4.2 shadow-map dirty gating: skip the sun's depth pass when no
                shadow caster could have moved this frame. Camera motion never
@@ -38692,7 +38726,7 @@ const ThreeRenderer = (function () {
         _updateMinimap();
     }
 
-    var _onMouseMove = null, _onClick = null, _onContextMenu = null;
+    var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
     var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
     /* Last known mouse position over the canvas + the camera pose it was last
@@ -39031,6 +39065,7 @@ const ThreeRenderer = (function () {
        reticle instead of the frozen OS cursor. */
     function hoverAtScreen(clientX, clientY) {
         if (!canvas) return;
+        _hoverWaitMove = null;   // THE GAME HAS THE BOARD: the shooter reticle is the player's own aim
         _lastMouseClientX = clientX; _lastMouseClientY = clientY;
         _resolveHoverAt(clientX, clientY);
     }
@@ -39039,6 +39074,8 @@ const ThreeRenderer = (function () {
         if (!canvas) return;
 
         _onMouseMove = function(e) {
+            if (e.movementX || e.movementY) _hoverWaitMove = null;   // THE GAME HAS THE BOARD: a real move hands the hover back
+            else _hoverPointerMoved(e.clientX, e.clientY);
             _lastMouseClientX = e.clientX; _lastMouseClientY = e.clientY;
             _resolveHoverAt(e.clientX, e.clientY);
         };
@@ -39086,6 +39123,7 @@ const ThreeRenderer = (function () {
         };
 
         _onContextMenu = function(e) { e.preventDefault(); };
+        _onWheel = function() { _hoverWaitMove = null; };   // a wheel zoom is the player's own camera
 
         canvas.addEventListener('mousemove', _onMouseMove);
         canvas.addEventListener('click', _onClick);
@@ -39093,6 +39131,7 @@ const ThreeRenderer = (function () {
         canvas.addEventListener('touchstart', _onTouchStart, { passive: true });
         canvas.addEventListener('mouseleave', _onMouseLeave);
         canvas.addEventListener('contextmenu', _onContextMenu);
+        canvas.addEventListener('wheel', _onWheel, { passive: true });
     }
     function _unbindInput() {
         if (!canvas) return;
@@ -39104,7 +39143,8 @@ const ThreeRenderer = (function () {
         if (_onTouchStart) canvas.removeEventListener('touchstart', _onTouchStart);
         if (_onMouseLeave) canvas.removeEventListener('mouseleave', _onMouseLeave);
         if (_onContextMenu) canvas.removeEventListener('contextmenu', _onContextMenu);
-        _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = null;
+        if (_onWheel) canvas.removeEventListener('wheel', _onWheel);
+        _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = _onWheel = null;
         _lastHitX = -1; _lastHitY = -1;
         _lastMouseClientX = _lastMouseClientY = null; _lastHoverCamSig = '';
     }
@@ -39365,8 +39405,8 @@ const ThreeRenderer = (function () {
     /* The battle-frame Y of the room's floor under a team's door, or null (no true-ground field: the board's own level rule).
        The zone's real top is the reference; a TERRAIN room is sampled across the door's footprint (hqTerrainFeet, the walker's
        own feet; past the compiled floor's edge — the outer ground a window at the room's rim looks onto — the drawn room under
-       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest (so the dais,
-       0.42 tile thick, still meets the low side of a slope) and never under the ground at the door's centre. A box room's
+       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest and never under
+       the ground at the door's centre. A box room's
        floor is flat: the zone's real top. */
     var DOOR_FLOOR_SPAN = 0.35;
     /* the drawn room's ground under battle point (wx, wz): the first upward face a ray from `fromY` meets in the room's group, or null */
@@ -39472,14 +39512,9 @@ const ThreeRenderer = (function () {
         var D = new THREE.Group();                        // the door proper, at the door plane
         D.position.set(0, 0, doorOut * ts);
         g.add(D);
-        /* the landing: a threshold slab on an apron, a floating slab in the void */
-        var daisH = kit ? 0.06 * ts : 0.42 * ts, daisR = Math.max(ow * 1.15, 1.05 * ts);
-        var dais = new THREE.Mesh(new THREE.CylinderGeometry(daisR, daisR * (kit ? 1 : 0.86), daisH, 22), sillMat);
-        /* DAIS FLICKER (mondo 2026-10-05): the dais top used to land EXACTLY on another surface — +0.6 is where the
-           Training Room's hazard plate sits in front of each door (no kit), and on a kit apron (top = fy - 0.6) it is
-           the board's tile tops wherever the disc overhangs the rim. Two coplanar faces z-fought all intro. Lift it a
-           clear 0.02 tile above both so it always wins the depth test. */
-        dais.position.set(0, -daisH / 2 + 0.6 + 0.02 * ts, 0); dais.receiveShadow = true; D.add(dais);
+        /* NO LANDING (mondo 2026-10-18: "get rid of the circular platform thing underneath the door"): the round dais that
+           stood under every crossing door (menu + match intro) is gone — the frame and its sill stand straight on the
+           floor under them (the apron, the room's own ground, the menu's sand/ice). */
         /* jambs, lintel, cap, sill */
         var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jL);
         var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jR);
@@ -65400,10 +65435,21 @@ const ThreeRenderer = (function () {
         return Math.max(G.ts, Math.min(6 * G.ts, rep));
     }
     /* cells: [{x, y}] of one surface; yOf(x, y) → the top (battle px) or null; o: { lift, solid, origin: {x, y} (tiles), rep (px),
-       fringe: false to draw no fade onto the neighbours }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
+       fringe: false to draw no fade onto the neighbours, ground: fn(wx, wz, x, y, refY) → the true ground under a point of cell
+       (x, y) or null (THE DRAPE, as _liqBlendGeo) }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
     function _fieldPatchGeo(G, cells, yOf, o) {
         if (!cells.length) return null;
         var ts = G.ts, S = FIELD_PATCH_SEGS, in_ = {}, i, c;
+        /* THE DRAPE ON THE DRY SKINS (2026-10-18, mondo on Skinwalker Ranch: ice with "weird edge blending and flickering ... needs
+           the same fix the liquids had"): a skin was flat at each cell's one top, so on rolling true ground the ground rose through
+           it in jagged triangles, met it at a hair's depth and shimmered, and a neighbour a third of a level off was a hard square
+           edge. With o.ground the sheet lies on the ground under every vertex, a neighbour across a slope wears the fade, and the
+           board's edge fades the sheet out — THE DRAPE's rules for the liquids. */
+        var gAt = function (u, v, x, y, ref) {
+            if (!o.ground) return null;
+            var g = o.ground(u * ts, v * ts, x, y, ref);
+            return (g === null || g === undefined || !isFinite(g)) ? null : g;
+        };
         for (i = 0; i < cells.length; i++) in_[cells[i].x + ',' + cells[i].y] = true;
         var has = function (x, y) { return !!in_[x + ',' + y]; };
         var ox = (o.origin ? o.origin.x : 0) * ts, oz = (o.origin ? o.origin.y : 0) * ts, rep = o.rep || ts * 2, lift = o.lift || 0;
@@ -65435,24 +65481,51 @@ const ThreeRenderer = (function () {
                 for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
                     var fx = c.x + dx, fy = c.y + dy, fk = fx + ',' + fy;
                     if ((!dx && !dy) || has(fx, fy) || seen[fk] || fx < 0 || fy < 0 || fx >= G.W || fy >= G.H) continue;
-                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined || Math.abs(fyy - cy0) > near) continue;
+                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined) continue;
+                    if (Math.abs(fyy - cy0) > near) {
+                        /* THE DRAPE: the ground on the shared edge / corner, read from either side — one surface is a slope, the fade runs on */
+                        var pu = c.x + 0.5 + dx * 0.5, pv = c.y + 0.5 + dy * 0.5, ga = gAt(pu, pv, c.x, c.y, cy0), gb = gAt(pu, pv, fx, fy, fyy);
+                        if (ga === null || gb === null || Math.abs(ga - gb) > near) continue;
+                    }
                     seen[fk] = true; fringe.push({ x: fx, y: fy });
                 }
             }
         }
         var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+        var S1 = S + 1;
         var quadCell = function (cx, cy, top, solidCell) {
-            var v0 = nV, a = [], any = false;
-            for (var j = 0; j <= S; j++) for (var k = 0; k <= S; k++) {
-                var u = cx + k / S, v = cy + j / S, wx = u * ts, wz = v * ts;
-                var al = alphaAt(u, v, cx, cy, solidCell); a.push(al); if (al > 0.01) any = true;
-                pos.push(wx, top + lift, wz); nrm.push(0, 1, 0);
+            var v0 = nV, a = [], any = false, j, k, u, v;
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = cx + k / S; v = cy + j / S;
+                var al = alphaAt(u, v, cx, cy, solidCell);
+                /* THE DRAPE: on the true ground the board's edge fades the sheet out (the room's floor runs on past it) */
+                if (o.ground && al > 0) al *= _liqEase(0, LIQ_EDGE_FADE, Math.min(u, v, G.W - u, G.H - v));
+                a.push(al); if (al > 0.01) any = true;
+            }
+            if (!any) return 0;
+            /* THE DRAPE: the ground read at every other vertex, the ones between their neighbours' mean (read too where one has none) */
+            var gh = null;
+            if (o.ground) {
+                gh = new Array(S1 * S1);
+                for (j = 0; j <= S; j += 2) for (k = 0; k <= S; k += 2) gh[j * S1 + k] = gAt(cx + k / S, cy + j / S, cx, cy, top);
+                for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                    if (!(j & 1) && !(k & 1)) continue;
+                    var nb = (j & 1) && (k & 1) ? [gh[(j - 1) * S1 + k - 1], gh[(j - 1) * S1 + k + 1], gh[(j + 1) * S1 + k - 1], gh[(j + 1) * S1 + k + 1]]
+                           : (j & 1) ? [gh[(j - 1) * S1 + k], gh[(j + 1) * S1 + k]] : [gh[j * S1 + k - 1], gh[j * S1 + k + 1]];
+                    var sum = 0, ok = true;
+                    for (var b = 0; b < nb.length; b++) { if (nb[b] === null) { ok = false; break; } sum += nb[b]; }
+                    gh[j * S1 + k] = ok ? sum / nb.length : gAt(cx + k / S, cy + j / S, cx, cy, top);
+                }
+            }
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = cx + k / S; v = cy + j / S;
+                var wx = u * ts, wz = v * ts, gy = gh ? gh[j * S1 + k] : null;
+                pos.push(wx, (gy !== null ? gy : top) + lift, wz); nrm.push(0, 1, 0);
                 if (o.cellUV) uv.push(k / S, 1 - j / S);   // a liquid's sheets: one per cell (its base sheet clamps), its flow and caustics are world space already
                 else uv.push((wx - ox) / rep + 0.5, 0.5 - (wz - oz) / rep);
-                col.push(1, 1, 1, al);
+                col.push(1, 1, 1, a[j * S1 + k]);
                 nV++;
             }
-            if (!any) { pos.length -= (S + 1) * (S + 1) * 3; nrm.length = pos.length; uv.length -= (S + 1) * (S + 1) * 2; col.length -= (S + 1) * (S + 1) * 4; nV = v0; return 0; }
             for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
                 var p = v0 + j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
                 if (!solidCell && a[p - v0] < 0.01 && a[q - v0] < 0.01 && a[r - v0] < 0.01 && a[s2 - v0] < 0.01) continue;
@@ -66091,9 +66164,17 @@ const ThreeRenderer = (function () {
                 var fluid = !!_FLUID_TERRAIN_SET[k], mat = fluid ? matOf(k) : _fieldPatchSheetMat(k); if (!mat) return;
                 var fade = fluid ? mat : _fieldPatchFadeMat(mat, 'skin|' + k);
                 if (!fade) return;
+                /* THE DRAPE ON THE DRY SKINS: ice, sand, scorch … lie on the true ground under every vertex, a highlight's lift over it
+                   (not a climbing run: its rise lifts the sheet with its strata) */
+                var gDry = null, dLift = 0;
+                if (!fluid && !rq) {
+                    var gS = _liqDrapeSampler();   // THE WALL TOPS: a monument cell keeps its floor's flat sheet (the ground read there is the stone's top)
+                    gDry = function (wx, wz, x, y, ref) { return monFloor(x, y) !== null ? null : gS(wx, wz, x, y, ref); };
+                    dLift = HL_FIELD_LIFT * ts;
+                }
                 _fieldPatchRuns(byKey[bk]).forEach(function (run) {
                     var low = run.some(function (c) { return G.deltaAt(c.x, c.y) < 0; });
-                    var geo = _fieldPatchGeo(G, run, yOf, { lift: fluid ? 0.9 : 0.7, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep });
+                    var geo = _fieldPatchGeo(G, run, yOf, { lift: (fluid ? 0.9 : 0.7) + dLift, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep, ground: gDry });
                     if (!geo) return;
                     var mesh = new THREE.Mesh(geo, [fade, fade]);
                     mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k; mesh.name = 'field_skin_patch';

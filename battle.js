@@ -23342,6 +23342,37 @@
             return false;
         }
         window.isCameraAutoMoving = isCameraAutoMoving;
+        /* THE GAME HAS THE BOARD (2026-10-18, mondo: "when the game is taking over and user input does nothing, i do
+           not want the attack range highlights to show on hover ... i dont want to see any tile highlights during a
+           spell animation, except for the gold anticipation highlight"): true while the engine plays something out
+           and the viewer's input does nothing: an action executing, a walk, a unit the viewer does not control taking
+           its turn (the CPU, the online opponent), a cinematic, the death / key close-up, a body falling.
+           three-renderer.js _syncTakeoverHighlights hides every tile highlight but the action glow's footprint while it
+           is, and keeps the hover highlights down until the mouse really moves again. Viewer-local, nothing relayed. */
+        function isGamePlayingOut() {
+            try {
+                if (!state || state.phase !== 'battle' || state.winner) return false;
+                if (state._actionExecuting || state._walkAnimActive) return true;
+                const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
+                    || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
+                    || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
+                if (!_rt) {
+                    const bu = state._blitzActiveUnitId != null ? unitFromId(state._blitzActiveUnitId) : null;
+                    const p = bu ? bu.player : state.activePlayer;
+                    if (p) {
+                        if (state.autoPlayers?.[p]) return true;
+                        if (window._NET && window._NET.online && window._NET.myPlayer) {
+                            if (p !== window._NET.myPlayer) return true;
+                        } else if (state.controllers?.[p] === CTRL.AI) return true;
+                    }
+                }
+                if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
+                if (_deathCamLive() || _keyCamLive()) return true;
+                if ((state.units || []).some(u => u && u._dying)) return true;
+            } catch (e) { /* cosmetic */ }
+            return false;
+        }
+        window.isGamePlayingOut = isGamePlayingOut;
         function setBoardCameraFocusPoint(x, y, opts = {}) {
             if (state.cameraDisabled) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
@@ -61145,12 +61176,13 @@
                 wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
         }
 
-        /* The "can't see it" line for an aimed action (2026-10-18): a Jammed unit (noSharedVision) whose team DOES see
-           the tile is told it is on its own eyes — "no one on your team can see that tile" was false there. */
+        /* The "can't see it" line for an aimed action (2026-10-18): a Blind / Jammed unit (noSharedVision) is on its own
+           eyes — "no one on your team can see that tile" was false when its allies did see it. */
         function outOfSightMessage(unit, x, y) {
-            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)
-                && typeof teamSeesTile === 'function' && teamSeesTile(unit.player, x, y)) {
-                return `Out of sight — ${unitDisplayName(unit)} is cut off from the team's sight and can't see that tile itself.`;
+            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)) {
+                const k = Object.keys(unit.status || {}).find(s => (unit.status[s] | 0) > 0 && STATUS_DEFS[s]?.noSharedVision);
+                const why = (k && STATUS_DEFS[k].colorText) || 'cut off from its team';
+                return `Out of sight — ${unitDisplayName(unit)} is ${why} and can't see that tile itself.`;
             }
             return 'Out of sight — no one on your team can see that tile.';
         }
