@@ -17154,7 +17154,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE, COLS = 7, ROWS = 4;
         var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 2, ts * 0.2, ts * 60);
         var cx = COLS * ts / 2, cz = ROWS * ts / 2;
-        cam.position.set(cx + ts * 0.7, ts * 4.6, cz + ts * 5.4); cam.lookAt(cx, 0, cz + ts * 0.1);
+        cam.position.set(cx + ts * 0.35, ts * 5.1, cz + ts * 6.3); cam.lookAt(cx, 0, cz + ts * 0.15);
         var at = function (c, rw, y) { return new THREE.Vector3(c * ts + ts / 2, y || 0, rw * ts + ts / 2); };
         /* the board: plain dark tiles, a hair apart */
         var tileGeo = new THREE.BoxGeometry(ts * 0.985, ts * 0.3, ts * 0.985);
