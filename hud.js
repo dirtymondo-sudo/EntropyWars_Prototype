@@ -6010,7 +6010,21 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const distFrom = (fx, fy, fz) => _distFromTo(fx, fy, fz);
 
-  const findMoveIntoRange = (requiredRange, actionApCost, longRange) => {
+  /* Would the unit still SEE the target from tile t? doAttack's vision gate (isInVision: its own sight, plus its
+     team's unless it is Jammed) asked from the landing tile — the unit is relocated for the probe and put back.
+     Without it the menu offered MOVE→ATK from a tile the swing then refused: "Out of sight" after the walk. */
+  const _seesTargetFrom = (t) => {
+    if (typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(actingUnit) || typeof isInVision !== 'function') return true;
+    const sx = actingUnit.x, sy = actingUnit.y, sz = actingUnit.z;
+    try {
+      actingUnit.x = t.x; actingUnit.y = t.y; actingUnit.z = t.z ?? sz;
+      return isInVision(actingUnit, tx, ty, targetUnit.z);
+    } finally {
+      actingUnit.x = sx; actingUnit.y = sy; actingUnit.z = sz;
+    }
+  };
+
+  const findMoveIntoRange = (requiredRange, actionApCost, longRange, needSight) => {
     // Mystery Dungeon lockstep: one beat = one action — never offer a
     // move-into-range (or jump-into-range) plan from the quick menu.
     if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) return null;
@@ -6051,6 +6065,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           // from where the unit will actually stand. That mismatch is what
           // produced "moves into position, then: Terrain blocks the path".
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
+          if (needSight && !_seesTargetFrom(t)) continue;
 
           if (!bestTile || dFromTile > bestDist) {
             bestTile = { moveCost: t._takeoff ? (_mirAltAp + 1) : 1, x: t.x, y: t.y, z: t.z };
@@ -6071,6 +6086,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         const dFromTile = _dm(t.x, t.y, t.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
+          if (needSight && !_seesTargetFrom(t)) continue;
           if (!bestTile || dFromTile > bestDist) {
             bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
             bestDist = dFromTile;
@@ -6106,7 +6122,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   let atkMoveTile = null;
   if (!canAttack) {
-    atkMoveTile = findMoveIntoRange(effRange, G.AP_COST_ACTION || 1);
+    atkMoveTile = findMoveIntoRange(effRange, G.AP_COST_ACTION || 1, false, true);
   }
 
   // 🗯 Provoke: while the challenger is attackable from here, doAttack refuses
@@ -6189,7 +6205,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       preview: null,
       typeNote: '',
       available: false,
-      reason: losBlocked ? 'No line of sight' : 'Out of range',
+      reason: losBlocked ? 'No line of sight' : (!_fogSees && dist >= 1 && dist <= effRange) ? 'Out of sight' : 'Out of range',
     });
   }
 

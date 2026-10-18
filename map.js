@@ -13174,8 +13174,8 @@
         }
 
         /* Does team `player` see tile (tx, ty)? Any living unit's own sight, or
-           the team's structures / reveals. Blind / Jammed units still add their
-           own (shrunken) sight — the team just can't lend them its eyes. */
+           the team's structures / reveals. Blind units add their shrunken sight;
+           Jammed units add their own sight — the team just can't lend them its eyes. */
         function teamSeesTile(player, tx, ty, tz) {
             for (const u of state.units) {
                 if (u.dead || u._dying || u.player !== player) continue;
@@ -13222,7 +13222,7 @@
 
         /* Can `unit` (or its team, for it) see tile (tx, ty)? THE truth for every
            targeting gate (attacks, spells, previews, the action menu, the CPU).
-           VISION ON (default): the unit's own sight, then — unless it is Blind /
+           VISION ON (default): the unit's own sight, then — unless it is
            Jammed (noSharedVision) — any ally's sight and the team's structures
            (shared vision, mondo: "unless an ally unit is close enough to see
            them"). Holds with the fog of war ON or OFF. Enemy smoke hides its

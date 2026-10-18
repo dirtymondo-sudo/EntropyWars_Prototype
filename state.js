@@ -3741,7 +3741,7 @@
             return Math.max(lo, Math.min(hi, v));
         }
 
-        /* Does a status cut this unit off from its team's shared sight (Blind, Jammed)? It still sees
+        /* Does a status cut this unit off from its team's shared sight (Jammed; Blind no longer does since 2026-10-18)? It still sees
            its own tiles; it only loses the allies' eyes for targeting. */
         function unitLosesSharedVision(unit) {
             if (!unit || !unit.status) return false;
