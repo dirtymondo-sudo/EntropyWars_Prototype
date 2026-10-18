@@ -12184,8 +12184,11 @@ function bakeSkin(s) {
     if (src.indexOf('data:image/') !== 0 || (g.N === 1 && !(+s.dither > 0) && src.indexOf('data:image/webp') !== 0)) src = cv.toDataURL('image/png');
   } catch (e) { src = ''; }   // a texture without CORS taints the canvas
   if (!src) { const r = { css: 'none', src: '', g }; _skinCache.set(key, r); return r; }
+  /* a whole shape: the glow / shadow margin is its own slice ring that sits in the outset, so only the shape itself
+     stretches to the box (2026-10-18, mondo: "increasing the glow settings on the button makes the entire button
+     bigger"; the old 50% cut stretched the margin along with the shape, so a bigger glow drew a bigger hex / diamond) */
   const css = g.full
-    ? `url("${src}") 50% fill / 50% / ${g.O}px stretch`
+    ? `url("${src}") ${g.O * K} fill / ${g.O}px / ${g.O}px stretch`
     : `url("${src}") ${(g.O + g.C) * K} fill / ${g.O + g.C}px / ${g.O}px stretch`;
   const r = { css, src, g, k: K, pixel: g.N > 1, slice: g.full ? null : (g.O + g.C) * K };
   if (r.pixel) _pixelCss.add(css);
@@ -12554,6 +12557,9 @@ const UX_DEF = {
      column's px (0 = fit); qElemSize; qConeFrom icon | centre; qConeTo port | portcorner | card | corner | name */
   qSpot: 'pin', qPinGap: 8, qNamePos: 'beside', qVitalsPos: 'beside', qTypesPos: 'bars', qStatLook: 'grade', qStatBarW: 46, qStatGap: 14,
   qColInfo: 0, qColStats: 0, qColElem: 0, qElemSize: 1, qConeFrom: 'icon', qConeTo: 'port',
+  /* the element box's own spacing (2026-10-18, mondo: "i still cannot change the spacing between the element icons ... the
+     element box column does nothing"): px between icons sideways / between its rows, the icon size, spread across its space */
+  qElemGapX: 2, qElemGapY: 4, qElemIcon: 27, qElemSpread: false,
   /* pass 14 (2026-10-18, mondo: "the space between the columns of the stats only lets me change horizontal space, i need
      vertical spacing too. let me make the name different colors depending if its my team or the enemy team. let me change
      the layout and spacing between the elements, vertical and horizontal. i want to change the vertical spacing between
@@ -12688,7 +12694,11 @@ function uxCss() {
   /* ── the unit info panel + the action lists ── */
   const QP = HI + '.hrlg-panel.quick > .hrlg-thead.qp', SUB = HI + '.hrlg-panel:not(.root)';
   if (chg('qListW')) { const w = n('qListW', 240, 760); css += `${HI}.hrlg-panels { --qp-list-w: ${w}px; }\n${SUB} { width: ${w}px !important; }\n${HI}.hrlg-panel.bg:not(.root) + .hrlg-panel { margin-left: -${Math.round(w / 2)}px !important; }\n`; }
-  if (chg('qListH')) css += `${SUB}:not(.quick) .hrlg-list { max-height: ${n('qListH', 160, 1000)}px !important; }\n${HI}.hrlg-panels { --qp-list-h: ${n('qListH', 160, 1000)}px; }\n`;
+  /* Height: the quick action list (the one under the unit info panel) takes it as its real height, so the top button and
+     the card above it move with the slider (2026-10-18, mondo: "the height button for actions list for the unit info
+     panel does nothing ... need it to change where the top button is": the pinned spot's measured room won over it);
+     every other list keeps it as its tallest size before it scrolls */
+  if (chg('qListH')) { const lh = n('qListH', 60, 1000); css += `${SUB}:not(.quick) .hrlg-list { max-height: ${lh}px !important; }\n${HI}.hrlg-panels { --qp-list-h: ${lh}px; }\n${SUB}.quick > .hrlg-list { height: ${lh}px !important; max-height: ${lh}px !important; }\n`; }
   if (chg('qRowH')) css += `${SUB} .hrlg-blade:not(.trow) { height: ${n('qRowH', 26, 80)}px !important; }\n`;
   if (chg('qRowFont')) css += `${SUB} .hrlg-blabel { font-size: ${n('qRowFont', 10, 28)}px !important; }\n`;
   if (X.qShape === 'tall') {   // the old column: the header as wide as the list, the small portrait in the name row
@@ -12713,7 +12723,10 @@ function uxCss() {
     if (port > 0 && X.qTypesPos === 'on') css += `${QP} > .hrlg-qp-types { grid-area: port !important; align-self: end; justify-self: start; margin: 0 0 8px 6px !important; }\n`;
     if (chg('qColStats') || chg('qStatGap')) css += `${QP} > .hrlg-qstats { gap: 0 ${n('qStatGap', 0, 60)}px !important; }\n`;
     if (+X.qColStats > 0) css += `${QP} > .hrlg-qstats { grid-template-columns: repeat(var(--qp-cols, 3), minmax(0, 1fr)) !important; }\n${QP} .hrlg-qstat { overflow: hidden; }\n${QP} .hrlg-qstat-lbl { flex: 0 1 34px !important; width: auto !important; min-width: 0; overflow: hidden; }\n`;
-    if (+X.qColElem > 0) css += `${QP} > .hrlg-qelem { justify-self: stretch !important; overflow: hidden; }\n`;
+    /* the element box width works wherever the box sits (before it only sized a column that exists when the box is on
+       the right); with a width or Spread the icons share it evenly instead of the fixed 8 × 32 px slots */
+    if (+X.qColElem > 0) css += `${QP} > .hrlg-qelem { width: ${Math.round(n('qColElem', 60, 600))}px !important; max-width: none !important; justify-self: start !important; box-sizing: border-box !important; overflow: hidden; }\n`;
+    else if (X.qElemSpread) css += `${QP} > .hrlg-qelem { justify-self: stretch !important; width: auto !important; box-sizing: border-box !important; }\n`;
     if (X.qStatsPos === 'below') css += `${QP} > .hrlg-qstats { border-left: 0 !important; border-top: 1px solid var(--hfc-faint) !important; }\n`;
     if (X.qElem === 'right') css += `${QP} > .hrlg-qelem { align-self: center; border-left: 1px solid var(--hfc-faint); padding-left: 10px; margin: 6px 12px 6px 0 !important; }\n`;
   }
@@ -12724,6 +12737,13 @@ function uxCss() {
   else if (X.qStatLook === 'number') css += `${QP} .hrlg-qstat .ew-grade { display: none !important; }\n`;
   if (chg('qStatBarW')) css += `${HI}.hrlg-panels { --qp-statbar: ${n('qStatBarW', 16, 140)}px; }\n`;
   if (chg('qElemSize')) css += `${QP} > .hrlg-qelem { zoom: ${n('qElemSize', 0.5, 1.6)}; }\n`;
+  {
+    const E = QP + ' > .hrlg-qelem', ic = n('qElemIcon', 10, 64), cell = ic + 5, spread = (+X.qColElem > 0 && X.qShape !== 'tall') || X.qElemSpread;
+    if (chg('qElemIcon')) css += `${E} .ew-elem-cell { min-width: ${cell}px !important; height: ${cell}px !important; }\n${E} .ew-elem-el .ew-elem-icon, ${E} .ew-elem-el .ew-elicon { width: ${ic}px !important; height: ${ic}px !important; }\n${E} .ew-elem-el { font-size: ${Math.round(ic * 0.9)}px !important; }\n${E} .ew-elem-rx { font-size: ${Math.round(ic * 0.74)}px !important; }\n${spread ? '' : `${E} .ew-elem-row { grid-template-columns: repeat(8, ${cell}px) !important; }\n`}`;
+    if (spread) css += `${E} .ew-elem-row { grid-template-columns: repeat(8, minmax(${chg('qElemIcon') ? cell : 32}px, 1fr)) !important; }\n`;
+    if (chg('qElemGapX')) css += `${E} .ew-elem-row { column-gap: ${n('qElemGapX', 0, 60)}px !important; }\n`;
+    if (chg('qElemGapY')) css += `${E} { row-gap: ${n('qElemGapY', 0, 60)}px !important; }\n`;
+  }
   if (chg('qStatRowGap')) css += `${QP} > .hrlg-qstats { row-gap: ${n('qStatRowGap', 0, 40)}px !important; }\n`;
   if (X.qNameAllyCol) css += `${QP}.ally .hrlg-view-tab-text { color: ${X.qNameAllyCol} !important; }\n`;
   if (X.qNameFoeCol) css += `${QP}.enemy .hrlg-view-tab-text { color: ${X.qNameFoeCol} !important; }\n`;
@@ -12868,13 +12888,17 @@ function qpForm() {
       + fRange('Space between stat columns', 'qStatGap', 0, 60, 1, +X.qStatGap)
       + fRange('Space between stat rows', 'qStatRowGap', 0, 40, 1, +X.qStatRowGap)
       + fSeg('Element box', 'qElem', [['below', 'Underneath'], ['right', 'On the right'], ['off', 'Hidden']], X.qElem)
-      + fRange('Element box size', 'qElemSize', 0.5, 1.6, 0.05, +X.qElemSize))
+      + fRange('Element box size', 'qElemSize', 0.5, 1.6, 0.05, +X.qElemSize, 'Scales the whole box, icons, symbols and spacing together')
+      + fRange('Element icon size', 'qElemIcon', 10, 64, 1, +X.qElemIcon)
+      + fRange('Space between element icons', 'qElemGapX', 0, 60, 1, +X.qElemGapX)
+      + fRange('Space between icons and symbols', 'qElemGapY', 0, 60, 1, +X.qElemGapY))
+      + xCheck('Spread the elements across their space', 'qElemSpread', X.qElemSpread)
       + xCheck('Stats', 'qStats', X.qStats));
     h += sec('qcols', 'Column widths + spacing', xp(fRange('Space between parts, sideways', 'qGapX', 0, 80, 1, +X.qGapX)
       + fRange('Space between parts, up / down', 'qGapY', 0, 80, 1, +X.qGapY)
       + fRange('Bars column (0 = fit)', 'qColInfo', 0, 600, 2, +X.qColInfo)
       + fRange('Stats column (0 = fit)', 'qColStats', 0, 700, 2, +X.qColStats)
-      + fRange('Element box column (0 = fit)', 'qColElem', 0, 600, 2, +X.qColElem))
+      + fRange('Element box width (0 = fit)', 'qColElem', 0, 600, 2, +X.qColElem, 'The icons share this width evenly'))
       + '<div class="uim-note">The parts (portrait, name, bars, stats, element box) are laid out on a grid: the two spaces are the gaps between them. The parts that sit side by side each get their own column; 0 = as wide as what is in it.</div>');
   } else h += sec('qparts', 'Stats + elements', xCheck('Stats', 'qStats', X.qStats) + xp(fSeg('Element box', 'qElem', [['below', 'Shown'], ['off', 'Hidden']], X.qElem === 'off' ? 'off' : 'below')
     + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
@@ -12882,13 +12906,17 @@ function qpForm() {
     + fSeg('HP / MP numbers', 'qNumPos', [['right', 'Right of the bar'], ['left', 'Left of the bar'], ['above', 'Above it'], ['under', 'Under it'], ['on', 'On the bar'], ['off', 'Hidden']], X.qNumPos)
     + fRange('Space between HP and MP', 'qBarGap', 0, 40, 1, +X.qBarGap) + fRange('Bar thickness', 'qBarH', 3, 30, 1, +X.qBarH)
     + fRange('Space between stat rows', 'qStatRowGap', 0, 40, 1, +X.qStatRowGap)
+    + fRange('Element icon size', 'qElemIcon', 10, 64, 1, +X.qElemIcon)
+    + fRange('Space between element icons', 'qElemGapX', 0, 60, 1, +X.qElemGapX)
+    + fRange('Space between icons and symbols', 'qElemGapY', 0, 60, 1, +X.qElemGapY)
     + fColorOpt('Name colour (my team)', 'qNameAllyCol', X.qNameAllyCol, '#7df0a5', false, 'Unticked = the game\'s own')
-    + fColorOpt('Name colour (enemy team)', 'qNameFoeCol', X.qNameFoeCol, '#ff8d97', false, 'Unticked = the game\'s own')));
+    + fColorOpt('Name colour (enemy team)', 'qNameFoeCol', X.qNameFoeCol, '#ff8d97', false, 'Unticked = the game\'s own'))
+    + xCheck('Spread the elements across their space', 'qElemSpread', X.qElemSpread));
   h += sec('qcone', 'Zoom cone', xp(fSeg('Starts from', 'qConeFrom', [['icon', 'The whole icon'], ['centre', 'The icon centre']], X.qConeFrom)
     + fSeg('Ends at', 'qConeTo', [['port', 'Portrait'], ['portcorner', 'Portrait corner'], ['card', 'Card edge'], ['corner', 'Card corner'], ['name', 'Name']], X.qConeTo)
     + fColorOpt('Colour', 'qConeCol', X.qConeCol, '#ff4a56', false, 'Unticked = the team colour') + fRange('Strength', 'qConeOp', 0, 1, 0.05, +X.qConeOp))
     + xCheck('Cone', 'qCone', X.qCone) + xCheck('Edge lines', 'qConeEdges', X.qConeEdges));
-  h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 160, 1000, 10, +X.qListH)
+  h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 60, 1000, 10, +X.qListH, 'The quick action list under the unit info panel takes this height (its top button and the card move with it); other lists scroll past it')
     + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
     + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names. With the card above the menu, the quick actions fill the room under it (a long list scrolls).</div>');
   return h + xReset('q', 'Reset the unit info panel');
