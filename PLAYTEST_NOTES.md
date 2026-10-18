@@ -3289,6 +3289,12 @@ still act, unlike doAttack/doSpell which restore the PREVIOUS view. Fixes:
   'items'` at resolve time — quick-cast and clock-slot fires leave it 'root')
   AND `anyUsableItemNow(unit)` — else land on the root verbs. Side benefit:
   a guest-initiated remote doItem no longer forces the HOST's menu to 'items'.
+  **SUPERSEDED 2026-10-18 (mondo: "after i use an item it should take me back
+  to the beginning of the action menu, not stay in the items menu")**: every
+  item use (doItem's scanner / capture-door / bane / shared tails, useStimItem,
+  usePanacea) now lands on 'root' unconditionally; online.js's guest doItem
+  wrapper calls `_guestMenuToRoot()` after its emit. Don't bring the stay-in-
+  Items rule back.
 - **New probes `anyUsableItemNow` / `anyCastableSpellNow`** (battle.js, next to
   `canUseItemNow`): "would this submenu have ≥1 live row?" The spell probe is
   cooldown/guard-aware (canAffordSpell + getSpellMpCostFor) and covers race
