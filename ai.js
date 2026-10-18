@@ -490,10 +490,12 @@
         // splits — the main part rides the type matchup, the element part (spellElemShare) the target's affinity
         // (weak ×1.5 / resist ×0.5 / immune 0 / absorb heals). Thermal Regen (healedByElement) drinks like absorb.
         // Mirrors battle.js _hitDamageMath, so the AI hunts weaknesses and still uses a resisted element's main part.
-        let _elAff = null, _elShare = 0;
+        let _elAff = null, _elShare = 0, _elSurge = false;
         if (sp && !opts.noElement) {
             try {
                 const _el = (typeof getSpellElement === 'function') ? getSpellElement(sp) : null;
+                // THE ZODIAC SPELL SURGE (2026-10-18): the reigning sign's element lands ×1.25 (battle.js _hitDamageMath)
+                _elSurge = !!(_el && typeof window.getZodiacResonanceElement === 'function' && window.getZodiacResonanceElement() === _el);
                 if (_el && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_el)) {
                     _elShare = (typeof spellElemShare === 'function') ? spellElemShare(sp) : 0.5;
                     _elAff = (typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
@@ -552,6 +554,7 @@
         if (sp && sp.bonusVsStatus && _bonusVsMatches(tg, sp.bonusVsStatus)) {
             offMult *= (sp.bonusVsStatus.mult || 1.5);                        // status combo
         }
+        if (_elSurge) offMult *= (typeof ZODIAC_SURGE_MULT === 'number') ? ZODIAC_SURGE_MULT : 1.25;   // zodiac spell surge
         // THE SPELL AUDIT Batch D — the family passives' strike multipliers (battle.js passiveStrikeMult: high ground,
         // flank, finisher, ambush out of Invisible), so the CPU walks its Pack Tactics bruiser next to an ally.
         if (typeof passiveStrikeMult === 'function') {

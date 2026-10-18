@@ -12985,10 +12985,11 @@ function uxCss() {
   if (chg('qStatBarW')) css += `${HI}.hrlg-panels { --qp-statbar: ${n('qStatBarW', 16, 140)}px; }\n`;
   if (chg('qElemSize')) css += `${QP} > .hrlg-qelem { zoom: ${n('qElemSize', 0.5, 1.6)}; }\n`;
   {
+    const bandN = (typeof window !== 'undefined' && window.ELEM_BOX_BAND) || 6;   // cells per element-box band (data.js)
     const E = QP + ' > .hrlg-qelem', ic = n('qElemIcon', 10, 64), cell = ic + 5, spread = (+X.qColElem > 0 && X.qShape !== 'tall') || X.qElemSpread;
-    if (chg('qElemIcon')) css += `${E} .ew-elem-cell { min-width: ${cell}px !important; height: ${cell}px !important; }\n${E} .ew-elem-el .ew-elem-icon, ${E} .ew-elem-el .ew-elicon { width: ${ic}px !important; height: ${ic}px !important; }\n${E} .ew-elem-el { font-size: ${Math.round(ic * 0.9)}px !important; }\n${E} .ew-elem-rx { font-size: ${Math.round(ic * 0.74)}px !important; }\n${spread ? '' : `${E} .ew-elem-row { grid-template-columns: repeat(8, ${cell}px) !important; }\n`}`;
+    if (chg('qElemIcon')) css += `${E} .ew-elem-cell { min-width: ${cell}px !important; height: ${cell}px !important; }\n${E} .ew-elem-el .ew-elem-icon, ${E} .ew-elem-el .ew-elicon { width: ${ic}px !important; height: ${ic}px !important; }\n${E} .ew-elem-el { font-size: ${Math.round(ic * 0.9)}px !important; }\n${E} .ew-elem-rx { font-size: ${Math.round(ic * 0.74)}px !important; }\n${spread ? '' : `${E} .ew-elem-row { grid-template-columns: repeat(${bandN}, ${cell}px) !important; }\n`}`;
     /* spread: eight equal columns that also shrink, so a box narrower than the icons squeezes them instead of cutting the last ones off */
-    if (spread) css += `${E} .ew-elem-row { grid-template-columns: repeat(8, minmax(0, 1fr)) !important; }\n${E} .ew-elem-cell { min-width: 0 !important; }\n${E} .ew-elem-el .ew-elem-icon, ${E} .ew-elem-el .ew-elicon { max-width: 100% !important; object-fit: contain; }\n`;
+    if (spread) css += `${E} .ew-elem-row { grid-template-columns: repeat(${bandN}, minmax(0, 1fr)) !important; }\n${E} .ew-elem-cell { min-width: 0 !important; }\n${E} .ew-elem-el .ew-elem-icon, ${E} .ew-elem-el .ew-elicon { max-width: 100% !important; object-fit: contain; }\n`;
     if (chg('qElemGapX')) css += `${E} .ew-elem-row { column-gap: ${n('qElemGapX', 0, 60)}px !important; }\n`;
     if (chg('qElemGapY')) css += `${E} { row-gap: ${n('qElemGapY', 0, 60)}px !important; }\n`;
   }

@@ -283,8 +283,9 @@ const ThreeVFXEffects = (function () {
 
     function _resolveTheme(spellType, spellId, spellName) {
         var def = _spellDefFor(spellId);
-        if (def && def.element && _ELEMENT_THEME[def.element]) {
-            return _THEME_MAP[_ELEMENT_THEME[def.element]];
+        var _el = def && (def.element || def.vfxElement);   // vfxElement: a cut element's look (light / shadow / arcane, 2026-10-18)
+        if (_el && _ELEMENT_THEME[_el]) {
+            return _THEME_MAP[_ELEMENT_THEME[_el]];
         }
         var s = ((spellId || '') + (spellName || '')).toLowerCase();
         if (/fire|flame|inferno|burn|blaze|scorch|ember|magma|lava|solar|corona/.test(s)) return _THEME_MAP.fire;
@@ -20993,8 +20994,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (ov && _STAGE_ARCHETYPES[ov]) return ov;
         if (def && def.vfxArchetype && _STAGE_ARCHETYPES[def.vfxArchetype]) return def.vfxArchetype;
         if (def && def.kind && _STAGE_BY_KIND[def.kind]) return _STAGE_BY_KIND[def.kind];
-        if (def && def.element && _ELEMENT_THEME[def.element]
-            && _STAGE_ARCHETYPES[_ELEMENT_THEME[def.element]]) return _ELEMENT_THEME[def.element];
+        var _stEl = def && (def.element || def.vfxElement);
+        if (_stEl && _ELEMENT_THEME[_stEl]
+            && _STAGE_ARCHETYPES[_ELEMENT_THEME[_stEl]]) return _ELEMENT_THEME[_stEl];
         /* fall back to the same name-regex the projectile themes use so
            "Fire Arrow" stages hot even without an element tag */
         var s = ((spellId || '') + ' ' + ((def && def.name) || '')).toLowerCase();
@@ -37433,8 +37435,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             return _beamColorFor(beamDef && beamDef.beamType || null, beamDef && beamDef.beamElement || null);
         var d = _spellDefFor(spellId);
         if (!d) return _beamColorFor(null, null);
-        var el = d.element && _BEAM_COLORS[d.element] ? d.element : null;
-        return _beamColorFor(el || d.spellType || null, d.element || null);
+        var _dEl = d.element || d.vfxElement || null;
+        var el = _dEl && _BEAM_COLORS[_dEl] ? _dEl : null;
+        return _beamColorFor(el || d.spellType || null, _dEl);
     }
 
     /* ── RIDES: the kit vehicle a spell rolls in on ─────────────────────
