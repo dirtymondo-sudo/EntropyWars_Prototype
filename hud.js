@@ -12969,6 +12969,9 @@ function qpFreeze(onlyStats) {
 const QP_LOOK = { panel: 'background: var(--ew-plate-scan), var(--ew-plate-bg) !important; border: 1px solid var(--ew-plate-edge) !important;',
   well: 'background: rgba(0,0,0,0.32) !important; border: 1px solid var(--ew-hair, rgba(255,255,255,0.14)) !important;',
   clear: 'background: none !important; border-color: transparent !important; box-shadow: none !important;' };
+const QP_PORT_LOOK = { panel: 'border: 1px solid var(--ew-plate-edge) !important;',
+  well: 'background-color: rgba(0,0,0,0.32) !important; border: 1px solid var(--ew-hair, rgba(255,255,255,0.14)) !important;',
+  clear: 'background-color: transparent !important; border: 0 !important; box-shadow: none !important; outline: 0 !important;' };
 function qpFreeCss(X, QP) {
   let css = '';
   const P = qpPartsOf(X), num = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -12987,7 +12990,10 @@ function qpFreeCss(X, QP) {
     const q = P[p.id]; if (!q) return;
     if (q.hide) { css += `${QP} ${p.sel} { display: none !important; }\n`; return; }
     const d = [], port = p.id === 'port';
-    if (q.look && QP_LOOK[q.look]) d.push(port && q.look === 'panel' ? 'border: 1px solid var(--ew-plate-edge) !important;' : QP_LOOK[q.look]);
+    /* the portrait's sprite IS its background image (inline style): its looks touch only the colour, frame and shading
+       under it, never the image (a 'background: none' wiped the sprite, mondo 2026-10-18: "I just want the sprite with
+       no background") */
+    if (q.look && QP_LOOK[q.look]) d.push(!port ? QP_LOOK[q.look] : QP_PORT_LOOK[q.look] || '');
     if (q.bg) d.push(port ? `background-color: ${q.bg} !important;` : `background: ${q.bg} !important;`);
     if (q.edge) d.push(`border: ${Math.round(num(q.edgeW, 0, 16, 1))}px solid ${q.edge} !important;`);
     if (q.rad != null && q.rad !== '' && +q.rad >= 0) d.push(`border-radius: ${Math.round(num(q.rad, 0, 400, 0))}px !important;`);
@@ -13166,10 +13172,12 @@ function uxCss() {
   if (chg('qBarGap')) css += `${QP} .hrlg-qvitals { gap: ${n('qBarGap', 0, 40)}px !important; }\n`;
   if (chg('qBarH')) { const bh = n('qBarH', 3, 30); css += `${QP} .hrlg-thp:not(.mp) { height: ${bh}px !important; }\n${QP} .hrlg-thp.mp { height: ${Math.max(3, Math.round(bh * 0.8))}px !important; }\n`; }
   /* where the HP / MP numbers go: the row becomes a little grid (label · bar · number · forecast chip) */
-  const NUM = { left: '"lbl num bar fc"', above: '"lbl num fc" "lbl bar bar"', under: '"lbl bar fc" "lbl num num"', on: '"lbl bar fc"' }[X.qNumPos];
+  /* 'right' is a grid too: the flex row wraps (the vitals-under rows set flex-basis 100% on the bar), which dropped the
+     number under the bar (mondo 2026-10-18: "right of the bar puts the hp and mp numbers under the bar") */
+  const NUM = { right: '"lbl bar num fc"', left: '"lbl num bar fc"', above: '"lbl num fc" "lbl bar bar"', under: '"lbl bar fc" "lbl num num"', on: '"lbl bar fc"' }[X.qNumPos];
   if (NUM) {
     const V = `${QP} .hrlg-qv-row`;
-    css += `${V} { display: grid !important; grid-template-areas: ${NUM}; grid-template-columns: ${X.qNumPos === 'left' ? '18px auto 1fr auto' : '18px 1fr auto'}; column-gap: 6px; row-gap: 2px; align-items: center; }\n`
+    css += `${V} { display: grid !important; grid-template-areas: ${NUM}; grid-template-columns: ${X.qNumPos === 'left' ? '18px auto minmax(0, 1fr) auto' : X.qNumPos === 'right' ? '18px minmax(0, 1fr) auto auto' : '18px minmax(0, 1fr) auto'}; column-gap: 6px; row-gap: 2px; align-items: center; }\n`
       + `${V} > .hrlg-qv-lbl { grid-area: lbl; }\n${V} > .hrlg-thp { grid-area: bar; min-width: 0 !important; }\n${V} > .hrlg-qv-num { grid-area: num; }\n${V} > .hrlg-qv-fc { grid-area: fc; }\n`;
     if (X.qNumPos === 'on') css += `${V} > .hrlg-qv-num { grid-area: bar; justify-self: center; z-index: 1; font-size: 9px; }\n${chg('qBarH') ? '' : `${QP} .hrlg-thp:not(.mp) { height: 14px !important; }\n${QP} .hrlg-thp.mp { height: 12px !important; }\n`}`;
   } else if (X.qNumPos === 'off') css += `${QP} .hrlg-qv-num { display: none !important; }\n`;
