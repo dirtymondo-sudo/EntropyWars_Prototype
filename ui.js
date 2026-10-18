@@ -2673,12 +2673,17 @@
               // predictFallDamage (state.js) mirrors applyFallDamage exactly
               // (threshold, splash-landing, physique, zodiac).
               const _dropZ = _tz ?? (typeof getHeightAt === 'function' ? getHeightAt(_tx, _ty) : 0);
+              /* THE SLIDE FORECAST (battle.js predictWalkLanding): a walk onto ice ends where the slide stops, so the
+                 strike / hazard / benefit read of an ice tile is the read of that landing tile */
+              const _sl = (_cls !== 'move-takeoff' && typeof predictWalkLanding === 'function')
+                ? predictWalkLanding(_self, _tx, _ty, _tz) : null;
+              const _ex = _sl ? _sl.x : _tx, _ey = _sl ? _sl.y : _ty, _ez = _sl ? _sl.z : _tz;
               if (_cls === 'move-jump' && typeof predictFallDamage === 'function'
                   && predictFallDamage(_self, _self.z ?? 0, _dropZ, _tx, _ty) > 0) _tok += ' hazard';
-              else if (_strikeFrom(_tx, _ty, _tz)) _tok += ' strike';
-              else if (_hazardTile(_tx, _ty, _tz)) _tok += ' hazard';
+              else if (_strikeFrom(_ex, _ey, _ez)) _tok += ' strike';
+              else if (_hazardTile(_ex, _ey, _ez)) _tok += ' hazard';
               else {
-                const _rule = getTerrainRule(_terrAt(_tx, _ty, _tz));
+                const _rule = getTerrainRule(_terrAt(_ex, _ey, _ez));
                 if (_rule && _rule.healMultiplier > 1) _tok += ' benefit';
               }
               if (_tok !== _cls) _hlCache.set(_pk, _tok);
@@ -4114,7 +4119,149 @@
         document.addEventListener('fullscreenchange', _updateFullscreenBtn);
         document.addEventListener('webkitfullscreenchange', _updateFullscreenBtn);
 
-        function renderFloatCombatLog() {}
+        /* ── THE COMBAT LOG (2026-10-18, mondo: "lets add a collapsaible combat log on the right side of the screen of
+           course editable with the ui maker. it should be easy to read and track damage and health changes, basically the
+           same stuff in the combat text panel but i can scroll all the way up to the start of the match. make it fade
+           towards the top. allow me to adjust the size and everything. one button collapse, auto hide during spell
+           animations/camera movements and any other time it is not necessary") ──
+           #ewCombatLog (the UI Maker piece 'clog'): every line the combat text box shows, from the start of the match —
+           state.logEntries through the box's own filters (fog + _isDialogueWorthy), with the box's beats from
+           state.logDialogue (battle.js _clogKeepBeats) in their place; coloured by the one formatter (_ctDecorate: names
+           by side, damage red, heals green, spells + statuses in caps). A damage / heal line ends with the unit's HP after
+           it (entry.h). Newest at the bottom, the top fades out (a mask), the wheel scrolls back to round 1; ▾ folds it to
+           its bar (viewer-local, localStorage ew_clog_folded). Away while the game has the board (body.ew-board-busy /
+           ew-board-cam from three-renderer _syncTakeoverHighlights, body.ew-spell-shot): it fades out at once and comes
+           back a beat after the board is the player's again. Nothing relayed: the guest builds its own from the synced
+           log. Its look and options come from the UI Maker (window._ewLogLook, hud.js clogSignal). */
+        const CLOG_FOLD_KEY = 'ew_clog_folded', CLOG_MAX = 3000;
+        let _clogEl = null, _clogBody = null, _clogList = null, _clogNewBtn = null;
+        let _clogN = 0, _clogD = 0, _clogFirst = '', _clogSig = '', _clogFolded = null, _clogUnread = 0;
+        function _clogLook() { return window._ewLogLook || { auto: 'board', show: 'combat', rounds: true }; }
+        function _clogIsFolded() {
+            if (_clogFolded == null) { try { _clogFolded = localStorage.getItem(CLOG_FOLD_KEY) === '1'; } catch (e) { _clogFolded = false; } }
+            return _clogFolded;
+        }
+        function _clogAtBottom() { return !_clogBody || _clogBody.scrollHeight - _clogBody.scrollTop - _clogBody.clientHeight < 24; }
+        function _clogToBottom() { if (_clogBody) _clogBody.scrollTop = _clogBody.scrollHeight; _clogUnread = 0; if (_clogNewBtn) _clogNewBtn.classList.remove('on'); }
+        function _clogSetFold(on) {
+            _clogFolded = !!on;
+            try { localStorage.setItem(CLOG_FOLD_KEY, on ? '1' : '0'); } catch (e) {}
+            if (!_clogEl) return;
+            _clogEl.classList.toggle('folded', _clogFolded);
+            /* inline !important: a UI Maker height on the piece must not hold the folded box open */
+            if (_clogFolded) { _clogEl.style.setProperty('height', 'auto', 'important'); _clogEl.style.setProperty('min-height', '0', 'important'); }
+            else { _clogEl.style.removeProperty('height'); _clogEl.style.removeProperty('min-height'); }
+            const b = _clogEl.querySelector('.ew-clog-fold');
+            if (b) { b.textContent = _clogFolded ? '▸' : '▾'; b.title = _clogFolded ? 'Open the combat log' : 'Collapse the combat log'; }
+            if (!_clogFolded) requestAnimationFrame(_clogToBottom);
+        }
+        function _clogEnsure() {
+            if (_clogEl && _clogEl.isConnected) return _clogEl;
+            const mapRow = document.getElementById('mapRow');
+            if (!mapRow) return null;
+            const el = document.createElement('div');
+            el.id = 'ewCombatLog';
+            el.className = 'ew-clog';
+            el.innerHTML = '<div class="ew-clog-body"><div class="ew-clog-lines" role="log" aria-live="off"></div></div>'
+                + '<button type="button" class="ew-clog-new" tabindex="-1" title="Jump to the newest line">▼ NEW</button>'
+                + '<div class="ew-clog-bar"><span class="ew-clog-title">COMBAT LOG</span><button type="button" class="ew-clog-fold"></button></div>';
+            /* the board never sees a wheel / drag / click on it (the wheel scrolls the log, never zooms the camera) */
+            ['wheel', 'mousedown', 'pointerdown', 'contextmenu', 'click', 'dblclick'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+            el.addEventListener('mouseenter', () => el.classList.add('hold'));
+            el.addEventListener('mouseleave', () => el.classList.remove('hold'));
+            el.querySelector('.ew-clog-fold').addEventListener('click', () => _clogSetFold(!_clogIsFolded()));
+            el.querySelector('.ew-clog-title').addEventListener('click', () => _clogSetFold(!_clogIsFolded()));
+            _clogNewBtn = el.querySelector('.ew-clog-new');
+            _clogNewBtn.addEventListener('click', _clogToBottom);
+            _clogBody = el.querySelector('.ew-clog-body');
+            _clogList = el.querySelector('.ew-clog-lines');
+            _clogBody.addEventListener('scroll', () => { if (_clogUnread && _clogAtBottom()) { _clogUnread = 0; _clogNewBtn.classList.remove('on'); } }, { passive: true });
+            mapRow.appendChild(el);
+            _clogEl = el;
+            _clogN = 0; _clogD = 0; _clogFirst = ''; _clogSig = '';
+            _clogSetFold(_clogIsFolded());
+            return el;
+        }
+        function _clogLineHtml(html, h, plain, fresh) {
+            let cls = 'ew-clog-line';
+            if (/^\s*⚡\s*Round \d+/.test(plain)) cls += ' ew-clog-round';
+            if (fresh) cls += ' fresh';
+            let hp = '';
+            if (h && +h[1] > 0) {
+                const f = Math.max(0, Math.min(1, (+h[0] || 0) / +h[1]));
+                hp = `<span class="ew-clog-hp ${f > 0.5 ? 'hi' : f > 0.25 ? 'mid' : 'lo'}"><i class="ew-clog-hpb"><b style="width:${(f * 100).toFixed(1)}%"></b></i><span class="ew-clog-hpn">${h[0] | 0}/${h[1] | 0}</span></span>`;
+            }
+            return `<div class="${cls}">${html}${hp}</div>`;
+        }
+        /* one hit, one line: the game often writes a hit twice (the hit's own "takes 442 HP damage" and the source's
+           "the Nexus burns 442 damage to …", or the text box beat after it); a damage line naming the same unit(s) and the
+           same number as one of the last few lines is left out */
+        let _clogHitKeys = [];
+        function _clogHitKey(raw) {
+            const plain = _ctPlain(raw).replace(/<[^>]*>/g, '');
+            const m = /(\d[\d,]*)\s*(?:HP\s*)?(?:damage|dmg)\b/i.exec(plain);
+            if (!m) return '';
+            const names = [];
+            String(raw).replace(/([\uE001-\uE00A])([^\uE000-\uE00F]*)\uE000/g, (x, mk, nm) => { names.push(mk + nm); return x; });
+            return names.length ? names.sort().join(',') + '|' + m[1].replace(/,/g, '') : '';
+        }
+        function _clogDupHit(raw) {
+            const k = _clogHitKey(raw);
+            if (!k) { _clogHitKeys.push(''); if (_clogHitKeys.length > 4) _clogHitKeys.shift(); return false; }
+            if (_clogHitKeys.indexOf(k) >= 0) return true;
+            _clogHitKeys.push(k); if (_clogHitKeys.length > 4) _clogHitKeys.shift();
+            return false;
+        }
+        function renderFloatCombatLog() {
+            const on = state.phase === 'battle' && !state.winner;
+            if (!on) { if (_clogEl) _clogEl.classList.add('off'); return; }
+            const el = _clogEnsure();
+            if (!el) return;
+            el.classList.remove('off');
+            const look = _clogLook();
+            const auto = look.auto === 'off' || look.auto === 'shots' ? look.auto : 'board';
+            if (!el.classList.contains('auto-' + auto)) { el.classList.remove('auto-board', 'auto-shots', 'auto-off'); el.classList.add('auto-' + auto); }
+            const lines = state.logEntries || [], dlg = state.logDialogue || [];
+            const first = lines.length ? _logMsg(lines[0]) : '';
+            /* a new match / a reset log, another viewer, another filter: build it again from the start */
+            const sig = (typeof _ctViewer === 'function' ? _ctViewer() : getViewerPlayer()) + '|' + (look.show || 'combat') + '|' + (state.fogOfWar ? 1 : 0) + '|' + (ONLINE_RULES.active ? 1 : 0);
+            let rebuild = sig !== _clogSig || lines.length < _clogN || dlg.length < _clogD || first !== _clogFirst;
+            if (!rebuild && lines.length === _clogN && dlg.length === _clogD) return;
+            if (rebuild) { _clogSig = sig; _clogFirst = first; _clogN = 0; _clogD = 0; _clogList.innerHTML = ''; _clogUnread = 0; _clogNewBtn.classList.remove('on'); el.classList.add('empty'); _clogHitKeys = []; }
+            const all = look.show === 'all';
+            const fog = ONLINE_RULES.active || state.fogOfWar;
+            const stick = rebuild || _clogAtBottom();
+            let html = '', added = 0;
+            const take = (msgHtml, h, plain) => { html += _clogLineHtml(msgHtml, h, plain, !rebuild); added++; };
+            const beatsUpTo = at => {
+                while (_clogD < dlg.length && (dlg[_clogD].at | 0) <= at) {
+                    const b = dlg[_clogD++];
+                    if (!b || !b.m) continue;
+                    if (fog && !_logVisible({ m: b.m })) continue;
+                    if (_clogDupHit(b.m)) continue;
+                    take(_ctDecorate(b.m), b.h, _ctPlain(b.m).replace(/<[^>]*>/g, ''));
+                }
+            };
+            for (let i = _clogN; i < lines.length; i++) {
+                beatsUpTo(i);
+                const e = lines[i];
+                if (fog && !_logVisible(e)) continue;
+                if (!all && !_isDialogueWorthy(e)) continue;
+                const msg = _logMsg(e);
+                if (_clogDupHit(msg)) continue;
+                take(formatCombatLogLine(msg), e && e.h, _ctPlain(msg));
+            }
+            beatsUpTo(lines.length);
+            _clogN = lines.length;
+            el.classList.toggle('empty', !_clogList.firstElementChild && !added);
+            if (!added) return;
+            _clogList.insertAdjacentHTML('beforeend', html);
+            const extra = _clogList.childElementCount - CLOG_MAX;
+            for (let k = 0; k < extra; k++) _clogList.firstElementChild.remove();
+            if (stick) _clogToBottom();
+            else { _clogUnread += added; _clogNewBtn.classList.add('on'); }
+        }
+        window.renderFloatCombatLog = renderFloatCombatLog;
         function renderHudScoreboard() {}
         function renderTurnClock() {}
         function _getHudActiveUnit() {

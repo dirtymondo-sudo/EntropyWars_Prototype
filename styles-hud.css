@@ -3689,6 +3689,113 @@
             100% { opacity: 1; transform: translateY(0); }
         }
 
+        /* ── THE COMBAT LOG (2026-10-18, ui.js renderFloatCombatLog; UI Maker piece 'clog', hud.js clogSignal) ──
+           The right side, newest line at the bottom, the top fading out (a mask on the whole box, so a UI Maker fill
+           fades with it; the bar under it stays solid). --clog-fade = how far down the fade reaches, --clog-top = what is
+           left at the very top (0 = gone); the mouse on it clears the fade (--clog-top-h) so old lines read while
+           scrolling. Away while the game has the board: out in 0.18 s, back 0.5 s after it is the player's again (a
+           quick camera pan between two beats never blinks it). */
+        .ew-clog {
+            --clog-fade: 45%; --clog-top: 0; --clog-top-h: 1; --clog-gap: 2px;
+            position: absolute;
+            right: 12px; bottom: 120px;
+            width: 340px; height: min(340px, calc(100vh - 380px));
+            min-height: 90px;
+            z-index: 58;
+            display: flex; flex-direction: column;
+            box-sizing: border-box;
+            padding: 0;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12.5px;
+            line-height: 1.38;
+            color: var(--ink, #e9e6dc);
+            background: linear-gradient(180deg, rgba(6, 8, 14, 0) 0%, rgba(6, 8, 14, 0.62) 40%, rgba(6, 8, 14, 0.72) 100%);
+            pointer-events: auto;
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,var(--clog-top)) 0, #000 var(--clog-fade), #000 100%);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,var(--clog-top)) 0, #000 var(--clog-fade), #000 100%);
+            opacity: 1; visibility: visible;
+            transition: opacity 0.35s ease 0.5s, visibility 0s linear 0.5s;
+        }
+        .ew-clog:hover { --clog-top: var(--clog-top-h); }
+        .ew-clog.folded { -webkit-mask-image: none; mask-image: none; background: none; min-height: 0; }
+        .ew-clog.folded .ew-clog-body, .ew-clog.folded .ew-clog-new { display: none; }
+        .ew-clog.off, .ew-clog.empty { display: none; }
+        /* away: the game has the board (Hide while = Whenever the game has the board), or only its camera (= Spell shots +
+           camera), never while the mouse is on it */
+        body.ew-board-busy .ew-clog.auto-board:not(.hold),
+        body.ew-board-cam .ew-clog.auto-board:not(.hold), body.ew-board-cam .ew-clog.auto-shots:not(.hold),
+        body.ew-spell-shot .ew-clog.auto-board:not(.hold), body.ew-spell-shot .ew-clog.auto-shots:not(.hold) {
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+        }
+        /* the UI Maker's Layout view always shows it */
+        html.uim-arranging .ew-clog { opacity: 1 !important; visibility: visible !important; transition: none !important; }
+        html.uim-arranging .ew-clog.empty { display: flex; }
+        .ew-clog-body {
+            flex: 1 1 auto; min-height: 0;
+            overflow-y: auto; overflow-x: hidden;
+            overscroll-behavior: contain;
+            padding: 8px 10px 4px 10px;
+            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.22) transparent;
+        }
+        .ew-clog-body::-webkit-scrollbar { width: 6px; }
+        .ew-clog-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 3px; }
+        .ew-clog-lines { display: flex; flex-direction: column; gap: var(--clog-gap); min-height: 100%; justify-content: flex-end; }
+        .ew-clog-line {
+            text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.55);
+            overflow-wrap: anywhere;
+        }
+        .ew-clog-line .dlg-status, .ew-clog-line .dlg-damage, .ew-clog-line .dlg-heal,
+        .ew-clog-line .dlg-effective, .ew-clog-line .dlg-resist { color: inherit; }
+        .ew-clog-line.fresh { animation: ewClogIn 0.9s ease-out; }
+        @keyframes ewClogIn { 0% { background: rgba(255, 215, 106, 0.18); } 100% { background: transparent; } }
+        .ew-clog-round {
+            margin-top: 6px;
+            color: #ffd76a;
+            font-weight: 700; letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border-top: 1px solid rgba(255, 215, 106, 0.28);
+            padding-top: 3px;
+        }
+        /* the unit's HP after the hit / the heal */
+        .ew-clog-hp { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; white-space: nowrap; vertical-align: 0.05em; }
+        .ew-clog-hpb { display: inline-block; width: 38px; height: 5px; background: rgba(255,255,255,0.14); box-shadow: 0 0 0 1px rgba(0,0,0,0.6); }
+        .ew-clog-hpb b { display: block; height: 100%; background: #4fe36f; }
+        .ew-clog-hp.mid .ew-clog-hpb b { background: #f2c64a; }
+        .ew-clog-hp.lo .ew-clog-hpb b { background: #ff3d3d; }
+        .ew-clog-hpn { font-size: 0.86em; color: #b9c0d4; font-variant-numeric: tabular-nums; }
+        .ew-clog-bar {
+            flex: none;
+            display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+            padding: 3px 6px 3px 10px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+        .ew-clog.folded .ew-clog-bar { border-top: 0; background: rgba(6, 8, 14, 0.72); }
+        .ew-clog-title {
+            flex: 1 1 auto;
+            font-size: 10px; letter-spacing: 0.22em; color: #8d96ab;
+            cursor: pointer; user-select: none;
+        }
+        .ew-clog-fold {
+            flex: none;
+            width: 22px; height: 18px; padding: 0;
+            font: 700 12px/1 'IBM Plex Mono', monospace;
+            color: #f0d060;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(240, 208, 96, 0.4);
+            cursor: pointer;
+        }
+        .ew-clog-fold:hover { background: rgba(240, 208, 96, 0.18); }
+        .ew-clog-new {
+            position: absolute; right: 12px; bottom: 30px;
+            display: none;
+            padding: 2px 8px;
+            font: 700 10px/1.4 'IBM Plex Mono', monospace; letter-spacing: 0.12em;
+            color: #10131c; background: #f0d060; border: 0;
+            cursor: pointer;
+        }
+        .ew-clog-new.on { display: block; }
+
         /* ── Floating Unit Action Menu (positioned near selected unit in board-space) ── */
         /* ══════════════════════════════════════════════════════════
            FLOAT ACTION MENU — fixed bottom-right, two-panel layout

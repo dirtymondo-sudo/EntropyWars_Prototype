@@ -3728,29 +3728,33 @@
         // from doMove after the path resolves; deterministic (no RNG) so the
         // online guest's doMove replay stays in sync. Units whose terrain
         // preference is ice (yeti) are sure-footed and never slide.
-        function _resolveIceSlide(unit, dir) {
+        /* THE SLIDE FORECAST (2026-10-18, mondo: "the spell preview/move forecast should account for sliding on ice. i
+           dont want to move+cast and then move and be out of cast range bc i slid"): the slide rule lives in
+           _unitSlidesOnIce + _iceSlideSteps, read by the real slide below AND by predictWalkLanding, so every move
+           preview, move-then-cast / attack / inspect finder and forecast measures from the tile the slide really
+           leaves the unit on. */
+        function _unitSlidesOnIce(unit) {
             if (!unit || unit.dead || unit._dying) return false;
             if (state.phase !== 'battle') return false;
             if (typeof canFly === 'function' && canFly(unit)
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            if (!_isIceTile(unit.x, unit.y)) return false;
             if (unit.terrainPreference === 'ice') return false;
             // THE SPELL AUDIT Batch D — Snowborn's `noIceSlide`: sure-footed like the yeti (a unit-row read the guest mirrors).
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'noIceSlide')) return false;
-            /* `dir` (THE CHAIN's ice rule): a displaced body slides in its TRAVEL direction, not the way it faces */
-            const f = (dir && (dir.dx || dir.dy)) ? { dx: dir.dx, dy: dir.dy }
-                : (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
-            if (!f) return false;
-            const dx = Math.sign(f.dx || 0), dy = Math.sign(f.dy || 0);
-            if (!dx && !dy) return false;
-            const fromX = unit.x, fromY = unit.y;
-            let cx = fromX, cy = fromY, guard = 0;
+            return true;
+        }
+        /* The tiles a body glides over from (fromX, fromY) heading (dx, dy), the last one where it stops; [] = no slide.
+           The sliding body itself never blocks its own way (a forecast runs while it still stands on its start tile). */
+        function _iceSlideSteps(unit, fromX, fromY, dx, dy) {
             const steps = [];
+            if (!dx && !dy) return steps;
+            let cx = fromX, cy = fromY, guard = 0;
             while (_isIceTile(cx, cy) && guard++ < 64) {
                 const nx = cx + dx, ny = cy + dy;
                 if (!isInside(nx, ny)) break;
                 if (!isTerrainPassable(nx, ny)) break;
-                if (unitAt(nx, ny)) break;
+                const occ = unitAt(nx, ny);
+                if (occ && occ !== unit) break;
                 // No sliding uphill, no launching off cliffs — the surface has
                 // to stay level (or dip at most one step) to keep the glide.
                 const dh = getHeightAt(nx, ny) - getHeightAt(cx, cy);
@@ -3758,7 +3762,62 @@
                 cx = nx; cy = ny;
                 steps.push({ x: cx, y: cy });
             }
+            return steps;
+        }
+        /* Where a doMove(unit, x, y, z) really ends: null when the walk doesn't slide, else { x, y, z, steps } — the
+           slide doMove runs after the walk (heading = the walk's last step, the facing doMove sets). opts.takeoff: a
+           teal fly-to tile (doMove takes off first, an airborne body never slides). opts.path: the route if known. */
+        function predictWalkLanding(unit, x, y, z, opts) {
+            opts = opts || {};
+            if (!unit || opts.takeoff || !isInside(x, y) || !_isIceTile(x, y)) return null;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            if (sx === x && sy === y) return null;
+            try {
+                let path = opts.path;
+                if (!path) { try { path = findMovePath(unit, x, y, z); } catch (e) { path = null; } }
+                let dx, dy;
+                if (path && path.length >= 2) {
+                    const prev = path[path.length - 2];
+                    dx = x - prev.x; dy = y - prev.y;
+                } else {
+                    dx = x - sx; dy = y - sy;
+                }
+                dx = Math.sign(dx || 0); dy = Math.sign(dy || 0);
+                if (!dx && !dy) return null;
+                unit.x = x; unit.y = y;
+                unit.z = (z !== undefined && z !== null) ? z
+                    : (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, sz) : sz);
+                if (!_unitSlidesOnIce(unit)) return null;
+                const steps = _iceSlideSteps(unit, x, y, dx, dy);
+                if (!steps.length) return null;
+                const end = steps[steps.length - 1];
+                const ez = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(end.x, end.y, unit.z) : unit.z;
+                for (const st of steps) st.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(st.x, st.y, unit.z) : unit.z;
+                return { x: end.x, y: end.y, z: ez, steps, fromX: x, fromY: y, fromZ: unit.z };
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+        }
+        /* The tile a walk to t leaves the unit standing on (t itself when it doesn't slide). */
+        function walkLandingTile(unit, t) {
+            if (!t) return t;
+            const L = predictWalkLanding(unit, t.x, t.y, t.z, { takeoff: !!t._takeoff });
+            return L ? { x: L.x, y: L.y, z: L.z, slid: true } : t;
+        }
+
+        function _resolveIceSlide(unit, dir) {
+            if (!_unitSlidesOnIce(unit)) return false;
+            if (!_isIceTile(unit.x, unit.y)) return false;
+            /* `dir` (THE CHAIN's ice rule): a displaced body slides in its TRAVEL direction, not the way it faces */
+            const f = (dir && (dir.dx || dir.dy)) ? { dx: dir.dx, dy: dir.dy }
+                : (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
+            if (!f) return false;
+            const dx = Math.sign(f.dx || 0), dy = Math.sign(f.dy || 0);
+            if (!dx && !dy) return false;
+            const fromX = unit.x, fromY = unit.y;
+            const steps = _iceSlideSteps(unit, fromX, fromY, dx, dy);
             if (!steps.length) return false;
+            const cx = steps[steps.length - 1].x, cy = steps[steps.length - 1].y;
             unit.x = cx;
             unit.y = cy;
             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(cx, cy, unit.z);
@@ -4774,6 +4833,24 @@
             }
 
             res.x = cx; res.y = cy; res.z = cz;
+
+            /* THE SLIDE FORECAST: a body shoved onto ice glides on the way it was pushed (THE CHAIN's ice rule, via
+               _applyKnockbackHazard below), so the forecast's landing is the end of that glide too. */
+            if (simulate && res.moved > 0 && _isIceTile(cx, cy)) {
+                const ox = target.x, oy = target.y, oz = target.z;
+                try {
+                    target.x = cx; target.y = cy; target.z = cz;
+                    const ice = _unitSlidesOnIce(target) ? _iceSlideSteps(target, cx, cy, Math.sign(dx || 0), Math.sign(dy || 0)) : [];
+                    if (ice.length) {
+                        const e = ice[ice.length - 1];
+                        const ez = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(e.x, e.y, cz) : cz;
+                        for (const st of ice) res.steps.push({ x: st.x, y: st.y, z: ez, ice: 1 });
+                        res.x = e.x; res.y = e.y; res.z = ez; res.iceSlid = ice.length;
+                    }
+                } finally {
+                    target.x = ox; target.y = oy; target.z = oz;
+                }
+            }
 
             /* Achievement counter: an ENEMY body actually moved by your push/
                pull/hurl. Chained bowling-pin knocks recurse through here with
@@ -11647,6 +11724,28 @@
             }
         }
 
+        /* THE COMBAT LOG: the text box's own beats (round-end heals, Free action!, FLOW STATE …) go into the log too
+           (state.logDialogue = [{ at: log length then, m: html, h? }], synced to the guest with the log). A beat the
+           log already wrote (the DOT hit, CRITICAL HIT, the dodge) is left out. Only the engine's side writes it. */
+        function _clogKeepBeats(messages) {
+            try {
+                if (window._NET && window._NET.online && window._NET.role !== 'host') return;
+                const toks = s => (_ctPlain(String(s)).replace(/<[^>]*>/g, ' ').replace(/&#39;|&amp;|&quot;|&lt;|&gt;/g, ' ').toLowerCase()
+                    .match(/[a-z]{3,}|\d+/g) || []).filter(w => w !== 'the' && w !== 'from');
+                const log = state.logEntries || [];
+                const recent = log.slice(-40).map(e => new Set(toks(_logMsg(e))));
+                state.logDialogue = state.logDialogue || [];
+                for (const html of messages) {
+                    const t = toks(html);
+                    if (t.length < 2) continue;
+                    if (recent.some(r => t.filter(w => r.has(w)).length >= Math.ceil(t.length * 0.7))) continue;
+                    const row = { at: log.length, m: String(html) };
+                    const hp = _clogHealHp(html);
+                    if (hp) row.h = hp;
+                    state.logDialogue.push(row);
+                }
+            } catch (e) { /* the log is cosmetic */ }
+        }
         function showBattleDialogue(messages, duration) {
             if (!messages || messages.length === 0) return;
             if (_skipVisuals()) return;
@@ -11661,6 +11760,7 @@
             if (_skipVisuals()) return;
             const dur = duration || (1200 + messages.length * 600);
             state.battleDialogueQueue = messages;
+            _clogKeepBeats(messages);
 
             _renderDialogueBox(null);
             if (state.battleDialogueTimer) clearTimeout(state.battleDialogueTimer);
@@ -12251,6 +12351,7 @@
                     sourceUnit._matchHealCasts = (sourceUnit._matchHealCasts || 0) + 1;
                 }
             }
+            _clogNoteHp(target);   // THE COMBAT LOG: the heal line written next carries the HP
             flashHeal(target);
             showFloatingTextForUnit(target, `+${actual}`, opts.kind || 'heal', opts);
             // Heal-cinematic corner readout (TOTAL HEALED) — no-ops unless a
@@ -17677,7 +17778,7 @@
                 charge(c) {
                     const V = c.VFX, u = c.unit;
                     if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x1a5a9a, color2: 0xd8f4ff });
-                    if (V.sigRuneSphere3D) V.sigRuneSphere3D(u.x, u.y, { color: 0x1a5a9a, runeColor: 0x9fe8ff, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.6, spin: true });
+                    if (V.sigRuneSphere3D) V.sigRuneSphere3D(u.x, u.y, { color: 0x1a5a9a, runeColor: 0x00d0ff, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.6, spin: true });
                     c.snd('waterCast');
                 },
                 cam(c) {
@@ -17705,7 +17806,7 @@
                 strike(c) {
                     const p = c.pos(c.target);
                     c.freeze(actionMs(170), { grade: 'cool' });
-                    c.ring(p.x, p.y, 0x9fe8ff, { r1: c.ts * 4.0, ms: 700, torus: true });
+                    c.ring(p.x, p.y, 0x00d0ff, { r1: c.ts * 4.0, ms: 700, torus: true });
                     c.flash('#d8f4ff', 220, 0.8); c.kick(20, 300);
                     c.snd('waterImpact'); c.dsnd('slam');
                 },
@@ -34174,7 +34275,7 @@
                         hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0
                     });
                 }
-                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`);
+                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
                 if (sourceUnit && typeNote) {
                     const dlg = [];
@@ -37890,14 +37991,38 @@
         let _logRenderQueued = false;
         let _logThrottleTimer = null;
 
-        function addLog(msg, vis) {
+        /* THE COMBAT LOG's HP readout (ui.js renderFloatCombatLog): a damage / heal line carries the unit's HP after it
+           (entry.h = [hp, maxHp], numbers only, never a unit). applyDamageToUnit hands it to addLog; applyHealingToUnit
+           notes who was healed to what, and the heal line written right after it (a log line or a text box beat) takes it. */
+        let _clogHealNotes = [];
+        function _clogNoteHp(unit) {
+            if (!unit) return;
+            const now = Date.now();
+            _clogHealNotes = _clogHealNotes.filter(n => now - n.at < 1500 && n.id !== unit.id);
+            _clogHealNotes.push({ id: unit.id, p: unit.player | 0, nm: unitDisplayName(unit) || '', hp: Math.max(0, Math.round(unit.hp)), max: Math.round(unit.maxHp || 0), at: now });
+        }
+        function _clogHealHp(msg) {
+            if (!_clogHealNotes.length) return null;
+            const raw = String(msg), plain = _ctPlain(raw).replace(/<[^>]*>/g, '');
+            if (!CT_HEAL_LINE.test(plain)) return null;
+            const now = Date.now();
+            for (let i = _clogHealNotes.length - 1; i >= 0; i--) {
+                const n = _clogHealNotes[i];
+                if (now - n.at > 1500 || !n.nm) continue;
+                const tagged = String.fromCharCode(0xE000 + (n.p >= 1 && n.p <= 9 ? n.p : 10)) + n.nm + CT_END;
+                if (raw.indexOf(tagged) >= 0 || plain.indexOf(n.nm) >= 0) { _clogHealNotes.splice(i, 1); return [n.hp, n.max]; }
+            }
+            return null;
+        }
+
+        function addLog(msg, vis, hp) {
             if (!msg) return;
             if (/\b(?:has used its action|skips .*?'s action|skips .* action\.)\b/i.test(msg)) return;
             state.logEntries = state.logEntries || [];
-            const entry = (vis === 1 || vis === 2) ? {
-                m: msg,
-                v: vis
-            } : msg;
+            if (!hp) { try { hp = _clogHealHp(msg); } catch (e) { hp = null; } }
+            const entry = (vis === 1 || vis === 2 || hp) ? { m: msg } : msg;
+            if (vis === 1 || vis === 2) entry.v = vis;
+            if (hp) entry.h = hp;
             state.logEntries.push(entry);
 
             if (!state._fullLogEntries) state._fullLogEntries = [];
@@ -39061,7 +39186,9 @@
                             // finder (and the AP budget) would then refuse.
                             if (t._jump || t._takeoff) continue;
                             if (unitAt(t.x, t.y, t.z)) continue;
-                            unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                            unit.x = sx; unit.y = sy; unit.z = sz;
+                            const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST
+                            unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                             if (hasSpellTargetInRange(unit, spell)) return true;
                         }
                         unit.x = sx; unit.y = sy; unit.z = sz;
@@ -40574,10 +40701,13 @@
                 for (const t of ring1) {
                     if (t._jump || t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    // THE SLIDE FORECAST: a walk onto ice casts from where the slide stops, not the tile walked to.
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                    const land = predictWalkLanding(unit, t.x, t.y, t.z);
+                    unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                     if (_hitsTarget()) {
-                        const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
-                        if (d > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = d; }
+                        const d = Math.abs(unit.x - tx) + Math.abs(unit.y - ty);
+                        if (d > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1, land: land || undefined }; bestScore = d; }
                     }
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
@@ -40636,9 +40766,10 @@
                 for (const t of ring1) {
                     if (t._jump || t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST
+                    unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                     const n = _hits();
-                    if (n > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = n; }
+                    if (n > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1, land: land || undefined }; bestScore = n; }
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
                 if (best) return best;
@@ -40829,7 +40960,9 @@
                     // the swing — skip it unless the unit can pay all three.
                     if (t._takeoff && (unit.ap || 0) < _ahAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                    const land = predictWalkLanding(unit, t.x, t.y, t.z, { takeoff: !!t._takeoff });   // THE SLIDE FORECAST
+                    unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                     if (_getAttackValidTargets(unit, opts).length > 0) return true;
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
@@ -40857,10 +40990,13 @@
                     // Mirror attackHasReachableTarget: takeoff+move+swing = 3 AP.
                     if (t._takeoff && (unit.ap || 0) < _faAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    // THE SLIDE FORECAST: swing from where the ice leaves the unit.
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                    const land = predictWalkLanding(unit, t.x, t.y, t.z, { takeoff: !!t._takeoff });
+                    unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                     if (_hitsTarget()) {
-                        const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
-                        if (d > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = d; }
+                        const d = Math.abs(unit.x - tx) + Math.abs(unit.y - ty);
+                        if (d > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1, land: land || undefined }; bestScore = d; }
                     }
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
@@ -40991,12 +41127,14 @@
                 for (const t of getMoveTiles(unit)) {
                     if (t._jump || t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
-                    const d = Math.max(Math.abs(t.x - tx), Math.abs(t.y - ty));
+                    const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST: scan from where the slide stops
+                    const lx = land ? land.x : t.x, ly = land ? land.y : t.y;
+                    const d = Math.max(Math.abs(lx - tx), Math.abs(ly - ty));
                     if (d > reach) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
-                    if (isRangeBlockedByTerrain(t.x, t.y, tx, ty, unit.z)) { unit.x = sx; unit.y = sy; unit.z = sz; continue; }
-                    const score = Math.abs(t.x - tx) + Math.abs(t.y - ty);
-                    if (score > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = score; }
+                    unit.x = lx; unit.y = ly; unit.z = land ? land.z : (t.z ?? sz);
+                    if (isRangeBlockedByTerrain(lx, ly, tx, ty, unit.z)) { unit.x = sx; unit.y = sy; unit.z = sz; continue; }
+                    const score = Math.abs(lx - tx) + Math.abs(ly - ty);
+                    if (score > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1, land: land || undefined }; bestScore = score; }
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
             } finally {
@@ -41580,6 +41718,29 @@
             return tiles;
         }
 
+        /* THE SLIDE FORECAST on the board: a walk that ends on ice draws its slide as its own ice-blue arrow (the UI
+           Maker's 'Ice slide' arrow + tile colours) from the tile walked to over every tile glided across, those tiles
+           marked, the landing marked as the destination. Returns the slide's waypoints for the hologram's motion
+           (flagged slide: it glides that leg, three-renderer THE ACTION PREVIEW MOTION). */
+        var ICE_SLIDE_HEX = 0x00d0ff;
+        function _drawIceSlideLeg(land, yAt) {
+            if (!land || !land.steps || !land.steps.length) return [];
+            const wps = [{ x: land.fromX, y: land.fromY, yOverride: yAt(land.fromX, land.fromY, land.fromZ) }];
+            for (const st of land.steps) wps.push({ x: st.x, y: st.y, yOverride: yAt(st.x, st.y, st.z), slide: true });
+            try { ThreeRenderer.drawPathArrow3D(wps, ICE_SLIDE_HEX); } catch (e) { /* cosmetic */ }
+            return wps.slice(1);
+        }
+        /* The tile marks of a slide: the walked-to tile and each glided tile in ice blue (the landing is the caller's). */
+        function _iceSlideMarks(land) {
+            if (!land || !land.steps) return [];
+            const out = [{ x: land.fromX, y: land.fromY, z: land.fromZ, color: ICE_SLIDE_HEX, opacity: 0.45 }];
+            for (let i = 0; i < land.steps.length - 1; i++) {
+                const st = land.steps[i];
+                out.push({ x: st.x, y: st.y, z: st.z, color: ICE_SLIDE_HEX, opacity: 0.45 });
+            }
+            return out;
+        }
+
         function _drawSpellApproachPreview(unit, approach, tx, ty) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -41606,18 +41767,23 @@
                 }
 
                 let destY;
-                if (typeof canFly === 'function' && canFly(unit)
-                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+                const _airApp = typeof canFly === 'function' && canFly(unit)
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+                const _yAt = (wx, wy) => {
+                    if (!_airApp) return ThreeRenderer.tileTopY(wx, wy);
                     const ts = CONFIG.tileSize || BASE_TILE;
                     const curGnd = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
                     const clearance = (unit.z || 0) - curGnd;
-                    const destGnd = typeof getHeightAt === 'function' ? getHeightAt(approach.x, approach.y) : 0;
+                    const destGnd = typeof getHeightAt === 'function' ? getHeightAt(wx, wy) : 0;
                     const destZ = destGnd + clearance;
                     const destElev = (typeof window._getElevationPx === 'function') ? window._getElevationPx(destZ) : destZ * ts;
-                    destY = Math.max(ts * 0.04, destElev);
-                } else {
-                    destY = ThreeRenderer.tileTopY(approach.x, approach.y);
-                }
+                    return Math.max(ts * 0.04, destElev);
+                };
+                destY = _yAt(approach.x, approach.y);
+                /* THE SLIDE FORECAST: the walk ends on ice → the cast comes from where the slide stops */
+                const land = (!approach._jump && approach.land) ? approach.land : null;
+                const castX = land ? land.x : approach.x, castY = land ? land.y : approach.y;
+                const castYpx = land ? _yAt(castX, castY) : destY;
 
                 // Arrow palette: blue = your own movement (walk AND jump legs).
                 const routeColor = 0x3399ff;
@@ -41630,27 +41796,29 @@
                     ], routeColor);
                     ThreeRenderer.setOverlay('spellApproachMove', [
                         { x: approach.via.x, y: approach.via.y, color: routeColor, opacity: 0.3 },
-                        { x: approach.x, y: approach.y, color: routeColor, opacity: 0.45 },
+                        ..._iceSlideMarks(land),
+                        { x: castX, y: castY, color: routeColor, opacity: 0.45 },
                     ], routeColor, 0.45);
                 } else {
                     ThreeRenderer.drawPathArrow3D([
                         { x: unit.x, y: unit.y, yOverride: actingY },
                         { x: approach.x, y: approach.y, yOverride: destY },
                     ], routeColor);
-                    ThreeRenderer.setOverlay('spellApproachMove', [{ x: approach.x, y: approach.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
+                    ThreeRenderer.setOverlay('spellApproachMove', [..._iceSlideMarks(land), { x: castX, y: castY, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
                 }
+                const _slideWps = land ? _drawIceSlideLeg(land, (wx, wy) => _yAt(wx, wy)) : [];
                 {
-                    /* the hologram walks the route and casts on arrival, on a loop */
+                    /* the hologram walks the route (and glides the ice) and casts on arrival, on a loop */
                     const _mw = [{ x: unit.x, y: unit.y, yOverride: actingY }];
                     if (approach.via) _mw.push({ x: approach.via.x, y: approach.via.y, yOverride: ThreeRenderer.tileTopY(approach.via.x, approach.via.y) });
                     _mw.push({ x: approach.x, y: approach.y, yOverride: destY });
-                    const _air = typeof canFly === 'function' && canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
-                    ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85,
-                        motion: { wps: _mw, kind: _air ? 'fly' : 'walk', castSpell: _spell || null, faceTo: { x: tx, y: ty } } });
+                    _mw.push(..._slideWps);
+                    ThreeRenderer.showGhostUnit(unit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
+                        motion: { wps: _mw, kind: _airApp ? 'fly' : 'walk', castSpell: _spell || null, faceTo: { x: tx, y: ty } } });
                 }
-                ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff3333, false, destY, targetY, { arc: 0.35, flow: true });
-                ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, approach.x, approach.y, tx, ty), 0xff3333, 0.5);
-                _drawSpellApproachShove(_spell, _target, approach.x, approach.y, targetY);
+                ThreeRenderer.drawArrow3D(castX, castY, tx, ty, 0xff3333, false, castYpx, targetY, { arc: 0.35, flow: true });
+                ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, castX, castY, tx, ty), 0xff3333, 0.5);
+                _drawSpellApproachShove(_spell, _target, castX, castY, targetY);
                 state._spellApproachActive = true;
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
         }
@@ -41750,15 +41918,19 @@
                         ? window._getElevationPx(gnd + clearance) : (gnd + clearance) * ts;
                     return Math.max(ts * 0.04, elev);
                 };
-                const _showDest = (routeColor, viaTile, destZ, motion) => {
+                const _showDest = (routeColor, viaTile, destZ, motion, land) => {
                     const marks = [];
                     if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3, z: viaTile.z });
+                    /* THE SLIDE FORECAST: a walk onto ice ends where the slide stops — the ghost + the destination
+                       marker sit there, the walked-to tile and the glide in ice blue */
+                    const ex = land ? land.x : x, ey = land ? land.y : y, ez = land ? land.z : destZ;
+                    if (land) marks.push(..._iceSlideMarks(land));
                     /* carry the landing SURFACE so a sub-roof destination
                        marker draws on its own floor, not on the roof above */
-                    marks.push({ x: x, y: y, color: routeColor, opacity: 0.45, z: destZ });
+                    marks.push({ x: ex, y: ey, color: routeColor, opacity: 0.45, z: ez });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
-                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.85,
-                        badges: _moveGhostBadges(unit, x, y, destZ), motion: motion || null });
+                    ThreeRenderer.showGhostUnit(unit, ex, ey, _wpY(ex, ey, ez), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                        badges: _moveGhostBadges(unit, ex, ey, ez), motion: motion || null });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
                 };
@@ -41870,7 +42042,10 @@
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
                         else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y, dest.z), { flow: true });
                         if (wps.length < 2) wps.push({ x: x, y: y, yOverride: _wpY(x, y, dest.z) });
-                        _showDest(routeColor, null, dest.z, { wps: wps, kind: _isAir ? 'fly' : 'walk' });
+                        // THE SLIDE FORECAST: the ice leg after the walk (doMove's own slide rule)
+                        const land = predictWalkLanding(unit, x, y, dest.z, { path: path });
+                        if (land) wps.push(..._drawIceSlideLeg(land, _wpY));
+                        _showDest(routeColor, null, dest.z, { wps: wps, kind: _isAir ? 'fly' : 'walk' }, land);
                         return;
                     }
                 }
@@ -41927,18 +42102,27 @@
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, towardsColor);
                         else ThreeRenderer.drawArrow3D(savedX, savedY, approach.x, approach.y, towardsColor,
                             false, actingY, _wpY(approach.x, approach.y, approach.z), { flow: true });
+                        if (wps.length < 2) wps.push({ x: approach.x, y: approach.y, yOverride: _wpY(approach.x, approach.y, approach.z) });
+                        /* THE SLIDE FORECAST: the walk's last leg ends on ice → the slide, from the tile the leg starts on */
+                        let land = null;
+                        if (!approach._jump) {
+                            if (approach.via) { unit.x = approach.via.x; unit.y = approach.via.y; unit.z = approach.via.z ?? savedZ; }
+                            try { land = predictWalkLanding(unit, approach.x, approach.y, approach.z); }
+                            finally { unit.x = savedX; unit.y = savedY; unit.z = savedZ; }
+                        }
+                        if (land) wps.push(..._drawIceSlideLeg(land, _wpY));
+                        const gx = land ? land.x : approach.x, gy = land ? land.y : approach.y, gz = land ? land.z : approach.z;
                         // Dim goal marker on the tile the player actually pointed at.
-                        const marks = [
-                            { x: approach.x, y: approach.y, color: towardsColor, opacity: 0.45 },
+                        const marks = [..._iceSlideMarks(land),
+                            { x: gx, y: gy, color: towardsColor, opacity: 0.45 },
                         ];
-                        if (!(x === approach.x && y === approach.y)) {
+                        if (!(x === gx && y === gy)) {
                             marks.push({ x: x, y: y, color: towardsColor, opacity: 0.18 });
                         }
                         ThreeRenderer.setOverlay('moveHoverDest', marks, towardsColor, 0.45);
-                        if (wps.length < 2) wps.push({ x: approach.x, y: approach.y, yOverride: _wpY(approach.x, approach.y, approach.z) });
-                        ThreeRenderer.showGhostUnit(unit, approach.x, approach.y,
-                            _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
-                                badges: _moveGhostBadges(unit, approach.x, approach.y, approach.z),
+                        ThreeRenderer.showGhostUnit(unit, gx, gy,
+                            _wpY(gx, gy, gz), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                                badges: _moveGhostBadges(unit, gx, gy, gz),
                                 motion: { wps: wps, kind: _isAir ? 'fly' : 'walk' } });
                         state._moveHoverActive = true;
                         scheduleBoardRender();
@@ -46824,6 +47008,7 @@
             state._matchAchievements = [];
             state.logEntries = [];
             state._fullLogEntries = [];
+            state.logDialogue = [];
             _logRenderedCount = 0;
             state.hitFlashIds = new Set();
             state.healFlashIds = new Set();
@@ -47438,6 +47623,7 @@
             hideResultOverlay();
             state.logEntries = [];
             state._fullLogEntries = [];
+            state.logDialogue = [];
             _logRenderedCount = 0;
             _lastFclHtml = '';
             _lastHudSbHtml = '';
@@ -60572,12 +60758,14 @@
                     if (t._jump || t._takeoff) continue;
                     if (t.x === tx && t.y === ty) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST: fire from where the slide stops
+                    if (land && land.x === tx && land.y === ty) continue;
+                    unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                     const ok = captureDoorLegalTiles(unit).some(p => p.x === tx && p.y === ty);
+                    const score = Math.abs(unit.x - tx) + Math.abs(unit.y - ty);
                     unit.x = sx; unit.y = sy; unit.z = sz;
                     if (!ok) continue;
-                    const score = Math.abs(t.x - tx) + Math.abs(t.y - ty);
-                    if (score > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = score; }
+                    if (score > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1, land: land || undefined }; bestScore = score; }
                 }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
@@ -67129,7 +67317,7 @@
                    victim (ThreeVFXEffects.sigSpiralBeam3D). Stasis Beam caps it
                    with the frozen-light stasis column on the target. ── */
                 const _spiralBeamSpells = {
-                    raceStasisBeam: { color: 0x9fe8ff, coreColor: 0xffffff, stasisColumn: 0xbfefff },
+                    raceStasisBeam: { color: 0x00d0ff, coreColor: 0xffffff, stasisColumn: 0xbfefff },
                 };
                 const _spiralCfg = _spiralBeamSpells[spell.id];
                 if (_spiralCfg && !_skipVisuals()
