@@ -563,7 +563,7 @@ function UnitSprite({ unit, size, glow }) {
       return [getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || UNIT_CLASS) || '', false];
     }
     return ['', false];
-  }, [unit?.id, unit?.race, unit?.cls, unit?.gender, unit?.player]);
+  }, [unit?.id, unit?.race, unit?.cls, unit?.gender, unit?.player, window._ewFaceGen]);   // _ewFaceGen: a UI Maker face got ready or re-aimed
 
   const fc = getUnitAccentColor(unit);
   return h('div', { style: {
@@ -1738,7 +1738,7 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     }
     if (typeof getUnitSprite === 'function') return [getUnitSprite(unit.cls, unit.player, unit), false];
     return ['', false];
-  }, [unit && unit.id, unit && unit.race, unit && unit.cls, unit && unit.gender]);
+  }, [unit && unit.id, unit && unit.race, unit && unit.cls, unit && unit.gender, window._ewFaceGen]);
 
   const dead = !!unit.dead;
   const maxHp = unit.maxHp || 0, maxMp = unit.maxMp || 0;
@@ -4751,8 +4751,10 @@ function _hrlgTargetBlades(unit, st, mode) {
       if (spell) {
         const _spEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
         elemAff = (_spEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(tUnit, _spEl) : null;
-        if (elemAff === 'weak' && !superEff && !typeAdv) superEff = true;
       }
+      /* THE GREEN ! IS THE PRESS (mondo 2026-10-18): only when the real refund would pay (battle.js forecastPressOn —
+         type first, the element on a neutral type only, absorb / immune never, the whole blast worst case). */
+      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, tUnit, spell || null).press : false;
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -4787,7 +4789,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
       note: t._approach ? 'MOVE→CAST' : null,
-      superEff: superEff && elemAff !== 'immune' && elemAff !== 'absorb',
+      superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
@@ -5004,8 +5006,9 @@ function _hrlgComboBlades(unit, st) {
       const _stab = (_cType && (unit.types || []).includes(_cType))
         ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
       const _eff = getTypeDamageMultiplier(unit, t.u, _cType) / _stab;
-      if (_eff > 1.001) superEff = true;
-      else if (_eff < 0.999) typeAdv = '▼';
+      if (_eff < 0.999) typeAdv = '▼';
+      // the green ! is the PRESS doComboAttack would pay (the combo's type, then its element on a neutral type)
+      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, t.u, null, { combo, partner }).press : false;
     }
     // Damage forecast: the projected combo damage blinks white on the row's
     // HP bar + reads as the ≈−N chip — the exact same treatment every
@@ -6171,6 +6174,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       moveTile: canAttack ? null : atkMoveTile,
       preview: canAttack ? atkPreview : moveAtkPreview,
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
+      press: (typeof window._pressOf === 'function') ? !!window._pressOf(actingUnit, targetUnit, null).press : false,
       available: true,
     });
     // (No "Attack ×N" rows anymore: an attack ENDS the turn, so a second
@@ -6621,6 +6625,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // "super effective" (no damage), so no green ! / ▼ on those rows.
         typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
+        // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
+        press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
+          ? !!window._pressOf(actingUnit, targetUnit, sp, {
+              aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
+              castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? { x: spMoveTile.x, y: spMoveTile.y, z: spMoveTile.z } : null,
+            }).press : false,
         available: true,
         spell: sp,
       });
@@ -6687,6 +6697,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         preview: (_cbBest && _cbBest.dmg > 0) ? { type: 'damage', amount: _cbBest.dmg } : null,
         typeNote: (_cbBest && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, _cbBest.combo.spellType || null) : '',
+        press: (_cbBest && typeof window._pressOf === 'function')
+          ? !!window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner }).press : false,
         badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
         _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
         available: true,
@@ -7755,7 +7767,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
-      superEff: typeAdv === '▲' && !_eaImm,
+      // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
+      superEff: (a.press != null) ? !!a.press : (typeAdv === '▲' && !_eaImm),
       immWarn: _eaImm,
       meta: typeAdv === '▼' ? { text: '▼', color: EW.bad } : null,
       note: isMove
@@ -11855,6 +11868,8 @@ if (!db.ux || typeof db.ux !== 'object') db.ux = {};
 if (!db.words || typeof db.words !== 'object' || Array.isArray(db.words)) db.words = {};
 if (!Array.isArray(db.picks)) db.picks = [];
 db.picks = db.picks.filter(k => k && typeof k === 'object' && typeof k.id === 'string' && typeof k.sel === 'string');
+if (!db.faces || typeof db.faces !== 'object' || Array.isArray(db.faces)) db.faces = {};
+if (!db.faces.u || typeof db.faces.u !== 'object' || Array.isArray(db.faces.u)) db.faces.u = {};
 if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
 if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
@@ -11887,6 +11902,112 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
   catch (e) { if (!_saveWarned) { _saveWarned = true; try { alert('UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image.'); } catch (_) {} } return false; }
 }
+
+/* ── THE FACES (pass 19, 2026-10-18, mondo: "for units that dont have a portrait and just a sprite, add a section in the
+   ui maker that makes a portrait from their sprite by zooming in on their face. let me be able to readjust them and
+   choose whether to use their portrait or their zoomed in sprite if they have both"). sprites.js getUnitPortraitUrl
+   asks EWFaces.url: the face is a square cut from the unit's own map sprite (no new art), drawn once on a canvas and
+   handed out as a data URL, so every place that shows a portrait (turn icons, the unit info card, the Horologe, the
+   name plates, lists, party slots, the debrief) wears it with no change of its own. db.faces = { off: no faces for units
+   without art, u: { 'race|gender': { use: 'art' | 'face' | 'sprite', x, y, s } } }: x / y the middle of the square (parts
+   of the sprite's width / height), s its side (part of the height); no s = the auto aim. Viewer-local, nothing relayed. ── */
+const FACE_PX = 192;
+const _faceImgs = new Map(), _faceUrls = new Map();
+let _faceGen = 0, _faceRaf = 0;
+function faceKey(u) { return String(u.race) + '|' + (u.gender || 'male'); }
+function faceSet(key) { return (db.faces.u || {})[key] || null; }
+function faceUse(key, art) {
+  const c = faceSet(key), u = c && c.use;
+  if (u === 'art' && art) return 'art';
+  if (u === 'face' || u === 'sprite') return u;
+  return art ? 'art' : db.faces.off ? 'sprite' : 'face';
+}
+function faceSprite(u) {
+  try {
+    if (u.id != null && typeof getBattleMapSpriteUrl === 'function') { const s = getBattleMapSpriteUrl(u); if (s) return s; }
+    if (typeof getR2RaceSpriteUrl === 'function') return getR2RaceSpriteUrl(u.race, u.gender || 'male', u.cls || (typeof UNIT_CLASS !== 'undefined' ? UNIT_CLASS : 'Freelancer')) || '';
+  } catch (e) {}
+  return '';
+}
+/* the auto aim, from the drawn pixels: a head-and-shoulders square from the top of the figure (most of a squat one:
+   tall / its middle row's width), centred on the head rows near the figure's own middle (wings, a staff, a cape to one
+   side pull it off the face otherwise), widened while it is mostly empty (wings, tentacles, a body that is not on top) */
+function faceAim(im) {
+  const W = im.naturalWidth, H = im.naturalHeight;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, W, H).data;   // a sprite served without CORS throws here: it keeps the whole sprite
+  const on = (x, y) => d[(y * W + x) * 4 + 3] > 40;
+  let x0 = W, x1 = -1, y0 = H, y1 = -1, gx = 0, gn = 0;
+  const rows = new Array(H).fill(0);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (on(x, y)) { rows[y]++; gx += x; gn++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return { x: 0.5, y: 0.3, s: 0.5 };
+  const hb = y1 - y0 + 1, srt = rows.slice(y0, y1 + 1).sort((a, b) => a - b), asp = hb / Math.max(1, srt[srt.length >> 1]);
+  const k = asp >= 1.8 ? 0.34 : asp <= 1.2 ? 0.8 : 0.8 - (asp - 1.2) / 0.6 * 0.46;
+  let side = Math.max(6, hb * k);
+  const gc = gx / gn + 0.5, lo = gc - side * 0.45, hi = gc + side * 0.45, hy = Math.min(y1, Math.round(y0 + side * 0.6));
+  let sx = 0, n = 0;
+  for (let y = y0; y <= hy; y++) for (let x = x0; x <= x1; x++) if (on(x, y) && x + 0.5 >= lo && x + 0.5 <= hi) { sx += x; n++; }
+  const cx = n ? sx / n + 0.5 : gc;
+  const cover = sd => {
+    const l = cx - sd / 2, t = y0 - sd * 0.08; let c = 0;
+    for (let y = Math.max(0, Math.floor(t)); y < Math.min(H, Math.floor(t + sd)); y++) for (let x = Math.max(0, Math.floor(l)); x < Math.min(W, Math.floor(l + sd)); x++) if (on(x, y)) c++;
+    return c / (sd * sd);
+  };
+  for (let i = 0; i < 8 && side < Math.max(hb, x1 - x0 + 1) && cover(side) < 0.3; i++) side *= 1.2;
+  return { x: cx / W, y: (y0 + side * 0.42) / H, s: side / H };
+}
+function faceImg(src) {
+  if (!src) return { ok: false, fail: true };
+  let e = _faceImgs.get(src); if (e) return e;
+  e = { ok: false, fail: false }; _faceImgs.set(src, e);
+  const im = new Image(); im.crossOrigin = 'anonymous';
+  im.onload = () => { try { e.aim = faceAim(im); e.im = im; e.w = im.naturalWidth; e.h = im.naturalHeight; e.ok = true; } catch (er) { e.fail = true; } faceBump(); };
+  im.onerror = () => { e.fail = true; faceBump(); };
+  im.src = src;
+  return e;
+}
+function faceCrop(key, e) { const c = faceSet(key); return c && +c.s > 0 && isFinite(+c.x) && isFinite(+c.y) ? c : e.aim; }
+function faceDraw(e, c) {
+  const W = e.w, H = e.h, side = Math.max(1, c.s * H), sx = c.x * W - side / 2, sy = c.y * H - side / 2, k = FACE_PX / side;
+  const cv = document.createElement('canvas'); cv.width = cv.height = FACE_PX;
+  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  const ax = Math.max(0, sx), ay = Math.max(0, sy), bx = Math.min(W, sx + side), by = Math.min(H, sy + side);   // the part on the sprite (a square past its edge stays clear there)
+  if (bx > ax && by > ay) g.drawImage(e.im, ax, ay, bx - ax, by - ay, (ax - sx) * k, (ay - sy) * k, (bx - ax) * k, (by - ay) * k);
+  return cv.toDataURL('image/png');
+}
+function faceOf(src, key) {
+  const e = faceImg(src); if (!e.ok) return '';
+  const c = faceCrop(key, e), id = src + '#' + (+c.x).toFixed(4) + ',' + (+c.y).toFixed(4) + ',' + (+c.s).toFixed(4);
+  let d = _faceUrls.get(id);
+  if (d == null) { if (_faceUrls.size > 300) _faceUrls.clear(); try { d = faceDraw(e, c); } catch (er) { d = ''; } _faceUrls.set(id, d); }
+  return d;
+}
+/* a face got ready or changed: the HUD redraws (its memos key on window._ewFaceGen), the markup ones repaint */
+function faceBump() {
+  _faceGen++; window._ewFaceGen = _faceGen;
+  if (_faceRaf) return;
+  _faceRaf = requestAnimationFrame(() => { _faceRaf = 0; window.dispatchEvent(new Event('ew-state-change')); faceSweep(); faceDockRefresh(); });
+}
+function faceSweep() {
+  const units = (typeof state !== 'undefined' && state && state.units) || [];
+  document.querySelectorAll('[data-ew-face]').forEach(el => {
+    const u = units.find(x => String(x.id) === el.dataset.ewFace); if (!u) return;
+    let p = null; try { p = getUnitPortraitUrl(u); } catch (e) {}
+    const url = p || faceSprite(u); if (!url || el._ewFace === url) return;
+    el._ewFace = url; el.style.backgroundImage = 'url("' + url + '")';
+    if (el.dataset.ewFaceSc) el.classList.toggle(el.dataset.ewFaceSc, !p);
+  });
+}
+window.EWFaces = {
+  url(u, art) {
+    const key = faceKey(u), use = faceUse(key, art);
+    if (use === 'art') return undefined;
+    if (use === 'sprite') return null;
+    const src = faceSprite(u);
+    return (src && faceOf(src, key)) || (art ? undefined : null);
+  },
+};
 
 /* ── a custom theme from a built-in token set ── */
 function colorsFromTokens(t) {
@@ -14357,6 +14478,17 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.part.on { border-style: solid; border-width: 2px; background: rgba(102,255,138,0.12); }
 .uim-arr-box.part > span { background: #1f8a3c; }
 .uim-dk-mock { position: sticky; top: -8px; z-index: 2; background: rgba(14,16,22,0.97); padding-top: 2px; }
+.uim-dk-bar.uim-face-row { grid-template-columns: 10px 28px 1fr; }
+.uim-face-th { width: 28px; height: 28px; border-radius: 50%; background: #0d0f14 center / cover no-repeat; image-rendering: pixelated; border: 1px solid #3a4050; }
+.uim-face-th.whole { background-size: contain; background-position: center bottom; }
+.uim-face-ed { position: sticky; top: -8px; z-index: 2; background: rgba(14,16,22,0.97); padding: 4px 0 2px; }
+.uim-face-ed canvas { display: block; margin: 0 auto; width: 232px; height: 232px; border: 1px solid #2a2e38; border-radius: 5px; cursor: move; touch-action: none; }
+.uim-face-pv { display: flex; gap: 12px; justify-content: center; align-items: flex-end; margin: 6px 0 2px; }
+.uim-face-pv > div { display: flex; flex-direction: column; align-items: center; gap: 3px; color: #7d8699; font-size: 10px; }
+.uim-face-pv span { display: block; background: #0d0f14 center / cover no-repeat; image-rendering: pixelated; border: 1px solid #3a4050; }
+.uim-face-pv span.whole { background-size: contain; background-position: center bottom; }
+.uim-face-pv .c { width: 52px; height: 52px; border-radius: 50%; }
+.uim-face-pv .s { width: 72px; height: 72px; border-radius: 6px; }
 .uimb-mock { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; margin: 6px 0 8px; padding: 10px; border-radius: 6px; background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 80%); }
 .uimb-rows { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .uimb-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -14422,7 +14554,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, faces: db.faces, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -14435,6 +14567,7 @@ function travel(from, to) {
       to.push({ lay: 1, j: layState() });
       const j = JSON.parse(e.j);
       db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.ux = j.ux || {}; db.assign = j.assign || {}; db.words = j.words || {}; db.picks = j.picks || []; HIST.t = 0;
+      db.faces = j.faces && typeof j.faces === 'object' ? j.faces : {}; if (!db.faces.u || typeof db.faces.u !== 'object') db.faces.u = {}; faceBump();
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -14691,10 +14824,10 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite']];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
-  if (UI.tab === 'layout' || UI.tab === 'menus' || UI.tab === 'bars') UI.tab = UI.back || 'skins';
+  if (UI.tab === 'layout' || UI.tab === 'menus' || UI.tab === 'bars' || UI.tab === 'faces') UI.tab = UI.back || 'skins';
   let h = `<div class="uim-tabs">${TABS.map(([v, l, tip]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div>`;
   if (UI.tab === 'slices') return h + slicesForm();
   if (!editable(T)) h += `<div class="uim-ro"><b>${esc(T.label)}</b> is ${T.builtin ? 'a built-in theme' : 'a preset'}. Change anything below and it becomes your own copy; the original stays.</div>`;
@@ -14868,7 +15001,7 @@ function onClick(e, root) {
   const T = curTheme();
   if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; UI.draft = null; render(); return; }
   if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
-  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus' || b.dataset.tab === 'bars') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
+  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus' || b.dataset.tab === 'bars' || b.dataset.tab === 'faces') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
   if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
   if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
   if (b.dataset.zoom) { UI.zoom = +b.dataset.zoom; render(); return; }
@@ -15260,6 +15393,7 @@ function dockHead() {
     <button class="uim-btn${lay ? ' on' : ''}" data-dk="layout" title="Move, size, fade or hide the HUD pieces">Layout</button>
     <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
+    <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -15578,9 +15712,195 @@ function barBoxes() {
   if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
 }
 
+/* ── THE PORTRAITS panel (pass 19): pick a unit (its row, or its portrait on screen), choose portrait art, a face cut
+   from its sprite or the whole sprite, and aim the face on the sprite ── */
+function faceArt(u) { try { return typeof getUnitPortraitArtUrl === 'function' ? getUnitPortraitArtUrl(u) : null; } catch (e) { return null; } }
+function faceSplit(key) { const i = String(key).lastIndexOf('|'); return { race: key.slice(0, i), gender: key.slice(i + 1) }; }
+/* the unit a key stands for: one on the field (its own sprite, a job's sheet or a form), else the race's own */
+function faceUnit(key) {
+  const units = (typeof state !== 'undefined' && state && state.units) || [];
+  return units.find(u => !u.dead && u.race && faceKey(u) === key) || units.find(u => u.race && faceKey(u) === key) || faceSplit(key);
+}
+function faceLabel(key) {
+  const { race, gender } = faceSplit(key);
+  let l = race;
+  try { if (typeof getRaceLabel === 'function') l = getRaceLabel(race, gender) || race; } catch (e) {}
+  let two = false;
+  try { two = typeof getAvailableGendersForRace === 'function' && getAvailableGendersForRace(race).length > 1; } catch (e) {}
+  return String(l).replace(/\b\w/g, c => c.toUpperCase()) + (two ? (gender === 'female' ? ' ♀' : ' ♂') : '');
+}
+function faceUseDef(key) { return faceArt(faceSplit(key)) ? 'art' : db.faces.off ? 'sprite' : 'face'; }
+/* what a key shows now: [url, whole] (whole = the full sprite, drawn standing) */
+function faceShow(key) {
+  const u = faceUnit(key), art = faceArt(u), use = faceUse(key, art);
+  if (use === 'art') return [art, false];
+  const src = faceSprite(u);
+  if (use === 'face') { const f = src && faceOf(src, key); if (f) return [f, false]; }
+  return [src, true];
+}
+function faceFieldKeys() {
+  const units = (typeof state !== 'undefined' && state && state.units) || [], me = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1, out = [];
+  units.filter(u => u.race).sort((a, b) => (a.player === me ? 0 : 1) - (b.player === me ? 0 : 1)).forEach(u => { const k = faceKey(u); if (out.indexOf(k) < 0) out.push(k); });
+  return out;
+}
+const FACE_USES = [['art', 'Portrait', 'Its portrait art'], ['face', 'Zoomed sprite', 'A face cut from its sprite, aimed below'], ['sprite', 'Whole sprite', 'The whole sprite, standing']];
+function faceTag(key) {
+  const c = faceSet(key), use = faceUse(key, faceArt(faceSplit(key)));
+  return use === 'face' ? 'Zoomed sprite' + (c && +c.s > 0 ? ' · aimed' : ' · auto aim') : (FACE_USES.find(x => x[0] === use) || ['', ''])[1];
+}
+function faceRow(key) {
+  const [url, whole] = faceShow(key);
+  return `<div class="uim-dk-bar uim-face-row${UI.face === key ? ' on' : ''}" data-face="${esc(key)}"><i></i><span class="uim-face-th${whole ? ' whole' : ''}"${url ? ` style="background-image:url('${esc(url)}')"` : ''}></span><div><b>${esc(faceLabel(key))}</b><small>${esc(faceTag(key))}</small></div></div>`;
+}
+function dockFacesBody() {
+  const keys = faceFieldKeys();
+  if (!UI.face || (keys.indexOf(UI.face) < 0 && !UI.faceAny)) UI.face = keys[0] || UI.face || '';
+  let h = dockTop() + `<div class="uim-note">A portrait made from a unit's own sprite, zoomed on its face. Pick a unit below or click its portrait on the screen, then drag the square onto its face.</div>`
+    + `<div class="uim-f" title="Units without portrait art get a face cut from their sprite; off, they show their whole sprite as before"><label>No art</label><div><input type="checkbox" data-dk="faceoff"${db.faces.off ? '' : ' checked'}><span class="uim-note" style="margin:0">Units without portrait art get a zoomed sprite</span></div></div>`
+;
+  if (UI.face && keys.indexOf(UI.face) < 0) h += `<div class="uim-h">Picked</div>` + faceRow(UI.face);
+  h += `<div class="uim-h">On the field</div>` + (keys.length ? keys.map(faceRow).join('') : `<div class="uim-note">No units are up right now. Pick any unit below, or open the UI Maker in a battle to see them on the screen.</div>`);
+  let all = [];
+  try { all = Object.keys(RACE_PROFILES); } catch (e) {}
+  const opts = [];
+  all.forEach(r => { let gs = ['male']; try { gs = getAvailableGendersForRace(r); } catch (e) {} gs.forEach(g => opts.push(r + '|' + g)); });
+  opts.sort((a, b) => faceLabel(a).localeCompare(faceLabel(b)));
+  h += `<div class="uim-f"><label>Any unit</label><div><select data-dk="faceany"><option value="">Pick a unit…</option>${opts.map(k => `<option value="${esc(k)}"${k === UI.face ? ' selected' : ''}>${esc(faceLabel(k))}${faceSet(k) ? ' •' : ''}</option>`).join('')}</select></div></div>`;
+  h += `<div class="uim-dk-detail"></div><div class="uim-btns"><button class="uim-btn bad" data-dk="facesreset"${Object.keys(db.faces.u || {}).length || db.faces.off ? '' : ' disabled'}>Reset every portrait</button></div>
+  <div class="uim-note">• = changed. <span class="uim-kbd">Tab</span> next portrait on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
+  return h;
+}
+function facesDetail() {
+  const key = UI.face; if (!key) return '<div class="uim-note">Pick a unit.</div>';
+  const u = faceUnit(key), art = faceArt(u), use = faceUse(key, art), def = faceUseDef(key);
+  const c = faceSet(key) || {};
+  let h = `<div class="uim-h">${esc(faceLabel(key))}</div>`;
+  h += `<div class="uim-f"><label>Portrait</label><div style="flex-wrap:wrap">${FACE_USES.filter(([v]) => v !== 'art' || art).map(([v, l, tip]) => `<button class="uim-btn${use === v ? ' on' : ''}" data-dk="faceuse" data-val="${v}" title="${esc(tip)}">${l}${def === v ? ' ·' : ''}</button>`).join('')}</div></div>`;
+  if (!art) h += `<div class="uim-note">No portrait art for this unit. · marks the default.</div>`;
+  if (use === 'face') {
+    const src = faceSprite(u), e = src ? faceImg(src) : null, cr = e && e.ok ? faceCrop(key, e) : null;
+    h += `<div class="uim-face-ed"><canvas data-fcv="1" title="Drag the square onto the face · scroll to zoom · drag its corner to size it"></canvas></div>`;
+    if (e && !e.ok && !e.fail) h += `<span data-fwait="${esc(src)}" hidden></span>`;   // redrawn when the sprite is in (faceDockRefresh)
+    if (e && e.fail) h += `<div class="uim-note">This sprite could not be cut (it did not load), so the whole sprite shows.</div>`;
+    else h += `<div class="uim-note">Drag the square onto the face, scroll on it to zoom, drag its corner to size it.</div>`;
+    if (cr) {
+      const R = (l, k, mn, mx, st, v, tip) => `<div class="uim-f" title="${esc(tip)}"><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-fpath="${k}"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-fpath="${k}"></div></div>`;
+      h += R('Zoom', 'z', 1, 10, 0.05, Math.min(10, Math.max(1, 1 / cr.s)), 'How close the face is: 1 = the whole sprite\'s height')
+        + R('Left / right', 'x', -20, 120, 0.5, +(cr.x * 100).toFixed(1), 'The middle of the square, across the sprite (%)')
+        + R('Up / down', 'y', -20, 120, 0.5, +(cr.y * 100).toFixed(1), 'The middle of the square, down the sprite (%)');
+    }
+    h += `<div class="uim-btns"><button class="uim-btn" data-dk="faceaim"${+c.s > 0 ? '' : ' disabled'} title="Back to the square the game aims by itself">Auto aim</button></div>`;
+  } else h += `<div class="uim-note">${use === 'art' ? 'Shows its portrait art.' : 'Shows the whole sprite, standing, as before.'}</div>`;
+  const [url, whole] = faceShow(key), st = url ? ` style="background-image:url('${esc(url)}')"` : '';
+  h += `<div class="uim-face-pv"><div><span class="c${whole ? ' whole' : ''}" data-fpv="1"${st}></span>Turn icon</div><div><span class="s${whole ? ' whole' : ''}" data-fpv="1"${st}></span>Unit info</div></div>`;
+  return h;
+}
+/* the aiming view: the whole sprite with the square on it */
+function faceEdDraw() {
+  const A = UI.live, cv = A && A.dock.querySelector('canvas[data-fcv]'); if (!cv) return;
+  const S = 232, dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (cv.width !== S * dpr) { cv.width = S * dpr; cv.height = S * dpr; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.imageSmoothingEnabled = false;
+  for (let y = 0; y < S; y += 8) for (let x = 0; x < S; x += 8) { g.fillStyle = (x + y) % 16 ? '#171a21' : '#1e222b'; g.fillRect(x, y, 8, 8); }
+  const key = UI.face, u = key ? faceUnit(key) : null, src = u ? faceSprite(u) : '', e = src ? faceImg(src) : null;
+  if (!e || !e.ok) { A.faceEd = null; g.fillStyle = '#7d8699'; g.font = '11px monospace'; g.textAlign = 'center'; g.fillText(e && e.fail ? 'No sprite to cut' : 'Loading the sprite…', S / 2, S / 2); return; }
+  const k = S * 0.9 / Math.max(e.w, e.h), ox = (S - e.w * k) / 2, oy = (S - e.h * k) / 2;
+  g.drawImage(e.im, ox, oy, e.w * k, e.h * k);
+  const c = faceCrop(key, e), side = c.s * e.h * k, cx = ox + c.x * e.w * k, cy = oy + c.y * e.h * k;
+  g.beginPath(); g.rect(0, 0, S, S); g.rect(cx - side / 2, cy - side / 2, side, side); g.fillStyle = 'rgba(0,0,0,0.58)'; g.fill('evenodd');
+  g.strokeStyle = '#ffd23d'; g.lineWidth = 1.5; g.strokeRect(cx - side / 2, cy - side / 2, side, side);
+  g.fillStyle = '#ffd23d'; g.fillRect(cx + side / 2 - 4, cy + side / 2 - 4, 8, 8);
+  A.faceEd = { ox, oy, k, w: e.w, h: e.h, cx, cy, half: side / 2 };
+}
+/* a new aim: kept on db.faces, the aiming view + previews + the row redrawn, the HUD told */
+function faceAimSet(key, c) {
+  const s = Math.max(0.03, Math.min(1.5, +c.s || 0.3)), x = Math.max(-0.2, Math.min(1.2, +c.x)), y = Math.max(-0.2, Math.min(1.2, +c.y));
+  const F = db.faces.u, o = F[key] || (F[key] = {});
+  o.x = +x.toFixed(4); o.y = +y.toFixed(4); o.s = +s.toFixed(4);
+  faceTouch(key);
+}
+function faceTidy(key) { const o = db.faces.u[key]; if (o && !o.use && !(+o.s > 0)) delete db.faces.u[key]; }
+function faceTouch(key) {
+  clearTimeout(_saveT); _saveT = setTimeout(save, 250);
+  faceBump(); dockUndo();
+  const A = UI.live; if (!A || A.mode !== 'faces') return;
+  faceEdDraw();
+  const [url, whole] = faceShow(key);
+  A.dock.querySelectorAll('[data-fpv]').forEach(el => { el.style.backgroundImage = url ? 'url("' + url + '")' : ''; el.classList.toggle('whole', whole); });
+  const e = faceImg(faceSprite(faceUnit(key)));
+  if (e.ok) {
+    const c = faceCrop(key, e), v = { z: Math.min(10, Math.max(1, 1 / c.s)), x: c.x * 100, y: c.y * 100 };
+    A.dock.querySelectorAll('input[data-fpath]').forEach(el => { if (el === document.activeElement && el.type === 'number') return; el.value = el.type === 'number' ? fmt(v[el.dataset.fpath], el.step) : v[el.dataset.fpath]; });
+  }
+  const ab = A.dock.querySelector('[data-dk="faceaim"]'); if (ab) ab.disabled = !(+(faceSet(key) || {}).s > 0);
+  const rs = A.dock.querySelector('[data-dk="facesreset"]'); if (rs) rs.disabled = !(Object.keys(db.faces.u).length || db.faces.off);
+}
+/* a sprite came in or a face changed: the rows' faces + tags, and the open unit's controls once its sprite is in */
+function faceDockRefresh() {
+  const A = UI.live; if (!A || A.mode !== 'faces') return;
+  const w = A.dock.querySelector('[data-fwait]');
+  if (w) { const e = faceImg(w.dataset.fwait); if (e.ok || e.fail) dockDetail(); }
+  A.dock.querySelectorAll('.uim-face-row[data-face]').forEach(r => {
+    const key = r.dataset.face, [url, whole] = faceShow(key), th = r.querySelector('.uim-face-th'), want = url ? 'url("' + url + '")' : '';
+    if (th && th._ewF !== want) { th._ewF = want; th.style.backgroundImage = want; th.classList.toggle('whole', whole); }
+    const sm = r.querySelector('small'); if (sm) setText(sm, faceTag(key));
+  });
+}
+function faceEdDown(e, cv) {
+  const A = UI.live, m = A && A.faceEd, key = UI.face; if (!m || !key || e.button !== 0) return;
+  const ent = faceImg(faceSprite(faceUnit(key))); if (!ent.ok) return;
+  e.preventDefault(); snapLayout(true);
+  const r = cv.getBoundingClientRect(), lx = e.clientX - r.left, ly = e.clientY - r.top, ux = m.w * m.k, uy = m.h * m.k;
+  const c0 = Object.assign({}, faceCrop(key, ent));
+  const corner = Math.abs(lx - (m.cx + m.half)) < 10 && Math.abs(ly - (m.cy + m.half)) < 10;
+  if (!corner && (Math.abs(lx - m.cx) > m.half || Math.abs(ly - m.cy) > m.half)) { c0.x = (lx - m.ox) / ux; c0.y = (ly - m.oy) / uy; faceAimSet(key, c0); }
+  const cx = m.ox + c0.x * ux, cy = m.oy + c0.y * uy;
+  const mv = ev => {
+    if (UI.live !== A) return;
+    if (corner) faceAimSet(key, { x: c0.x, y: c0.y, s: 2 * Math.max(3, Math.abs(ev.clientX - r.left - cx), Math.abs(ev.clientY - r.top - cy)) / uy });
+    else faceAimSet(key, { x: c0.x + (ev.clientX - e.clientX) / ux, y: c0.y + (ev.clientY - e.clientY) / uy, s: c0.s });
+  };
+  const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+function faceEdWheel(e) {
+  const A = UI.live; if (!A || A.mode !== 'faces' || !e.target.closest('canvas[data-fcv]')) return;
+  e.preventDefault();
+  const key = UI.face, ent = key && faceImg(faceSprite(faceUnit(key))); if (!ent || !ent.ok) return;
+  snapLayout();
+  const c = faceCrop(key, ent);
+  faceAimSet(key, { x: c.x, y: c.y, s: c.s * (e.deltaY < 0 ? 1 / 1.1 : 1.1) });
+}
+/* the portraits on screen: a yellow box on each, click one to pick its unit */
+function faceBoxes() {
+  const A = UI.live, W = innerWidth, H = innerHeight, rects = {}, live = {}, used = new Set();
+  const st = typeof state !== 'undefined' ? state : null, units = (st && st.units) || [], spots = [];
+  allVis('.ew-turn-col .ew-tc-icon[data-uid]', 40).forEach(v => spots.push([v, v.el.getAttribute('data-uid')]));
+  allVis('.hrlg-thead.qp[data-uid] > .hrlg-qp-port', 3).forEach(v => spots.push([v, v.el.parentElement.getAttribute('data-uid')]));
+  if (st) allVis('.hrlg-hub', 1).forEach(v => spots.push([v, String(st._blitzActiveUnitId || st.selectedUnitId)]));
+  allVis('.tp-portrait[data-ew-face]', 40).forEach(v => spots.push([v, v.el.dataset.ewFace]));
+  const named = {};
+  spots.forEach(([v, id], i) => {
+    const u = units.find(x => String(x.id) === String(id)); if (!u || !u.race) return;
+    const key = faceKey(u), k = 'face:' + i, r = v.r; used.add(k);
+    const bx = boxEl(k); bx.dataset.face = key; bx.classList.add('bar');
+    const l = Math.max(0, r.left), t = Math.max(0, r.top), w = Math.min(W - l, r.left + r.width - l), h = Math.min(H - t, r.top + r.height - t);
+    if (w < 2 || h < 2) { bx.style.display = 'none'; return; }
+    placeBox(bx, l, t, w, h);
+    const on = UI.face === key; bx.classList.toggle('on', on);
+    bx.firstChild.style.display = on && !named[key] ? '' : 'none'; named[key] = named[key] || on;
+    setText(bx.firstChild, faceLabel(key)); bx.title = faceLabel(key);
+    (rects[key] || (rects[key] = [])).push({ left: l, top: t, right: l + w, bottom: t + h }); live[key] = 1;
+  });
+  Object.keys(A.boxes).forEach(k => { if (!used.has(k)) A.boxes[k].style.display = 'none'; });
+  A.rects = rects;
+  const key = Object.keys(live).join(',');
+  if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
+}
+
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
 }
 function dockDetail() {
@@ -15588,6 +15908,7 @@ function dockDetail() {
   const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
   else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
+  else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -15603,6 +15924,8 @@ function markRows() {
   A.dock.querySelectorAll('[data-piece]').forEach(r => r.classList.toggle('on', r.dataset.piece === UI.piece));
   A.dock.querySelectorAll('[data-surf]').forEach(r => r.classList.toggle('on', r.dataset.surf === UI.surf));
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(r => r.classList.toggle('on', r.dataset.bar === UI.bar));
+  A.dock.querySelectorAll('.uim-dk-bar[data-face]').forEach(r => r.classList.toggle('on', r.dataset.face === UI.face));
+  const fa = A.dock.querySelector('select[data-dk="faceany"]'); if (fa) fa.value = [...fa.options].some(o => o.value === UI.face) ? UI.face : '';
 }
 function liveBadges() {
   const A = UI.live; if (!A) return;
@@ -15617,6 +15940,7 @@ function liveBadges() {
   });
   A.dock.querySelectorAll('.uim-dk-surf[data-surf]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.surf] ? 'live' : ''; row.title = A.liveSet[row.dataset.surf] ? 'On screen now' : 'Not on screen right now'; });
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.bar] ? 'live' : ''; });
+  A.dock.querySelectorAll('.uim-dk-bar[data-face]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.face] ? 'live' : ''; row.title = A.liveSet[row.dataset.face] ? 'On screen now (yellow box)' : 'Not on screen right now'; });
   const st = A.dock.querySelector('.uim-dk-status');
   if (st) {
     const gg = A.mode === 'layout' ? ghostGroup() : '', S = UIM_SURFACES.find(x => x.id === gg);
@@ -15630,7 +15954,7 @@ function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); a
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
-  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else UI.surf = id;
+  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
   if (det && bd) {   // the controls for the pick (above the list) come into view from their top
@@ -15649,7 +15973,7 @@ function placeDock(x, y) {
 function selRects() {
   const A = UI.live;
   if (A.mode === 'layout') return A.rects[UI.piece] ? [A.rects[UI.piece]] : [];
-  return A.rects[A.mode === 'bars' ? UI.bar : UI.surf] || [];
+  return A.rects[A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf] || [];
 }
 function dodge(force) {
   const A = UI.live; if (!A || !A.dock) return;
@@ -15688,7 +16012,7 @@ function foldDock() {
 /* ── on / off ── */
 function liveOn(mode) {
   if (!UI.el) { window.openUiMaker(); if (!UI.el) return; }
-  if (UI.tab !== 'layout' && UI.tab !== 'menus' && UI.tab !== 'bars') UI.back = UI.tab;
+  if (UI.tab !== 'layout' && UI.tab !== 'menus' && UI.tab !== 'bars' && UI.tab !== 'faces') UI.back = UI.tab;
   if (UI.live) { if (UI.live.mode !== mode) liveMode(mode); return; }
   const ov = document.createElement('div'); ov.className = 'uim-arr';
   ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div><div class="uim-arr-catch"></div><div class="uim-arr-hi"><span></span></div>';
@@ -15704,7 +16028,7 @@ function liveOn(mode) {
   cat.addEventListener('pointermove', pickMove); cat.addEventListener('pointerdown', pickDown); cat.addEventListener('wheel', pickWheel, { passive: false });
   cat.addEventListener('contextmenu', ev => { ev.preventDefault(); pickMode(false); });
   dock.addEventListener('click', dockClick); dock.addEventListener('input', dockInput); dock.addEventListener('change', dockInput);
-  dock.addEventListener('pointerdown', dockDown);
+  dock.addEventListener('pointerdown', dockDown); dock.addEventListener('wheel', faceEdWheel, { passive: false });
   dock.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.sec) UI.shut[d.dataset.sec] = !d.open; }, true);
   A.onResize = () => { if (UI.live) { placeDock(A.dockX || 0, A.dockY || 0); dodge(true); } };
   window.addEventListener('resize', A.onResize);
@@ -15713,7 +16037,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -15775,6 +16099,7 @@ function liveDown(e) {
   if (document.activeElement && A.dock.contains(document.activeElement)) document.activeElement.blur();   // the arrows go to the piece now
   if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
   if (A.mode === 'bars') { if (bx.dataset.bar) liveSelect(bx.dataset.bar); return; }
+  if (A.mode === 'faces') { if (bx.dataset.face) liveSelect(bx.dataset.face); return; }
   if (bx.dataset.hpart) { partDown(e, bx.dataset.hpart); return; }
   if (bx.dataset.qpart) { A.partKeys = false; A.qpKeys = true; qpartDown(e, bx.dataset.qpart); return; }
   A.partKeys = false; A.qpKeys = false;
@@ -16053,6 +16378,7 @@ function liveDbl(e) { const P = livePiece(e); if (P) resetPiece(P); }
 /* ── the panel's own input ── */
 function dockDown(e) {
   const A = UI.live; if (!A) return;
+  const fcv = e.target.closest('canvas[data-fcv]'); if (fcv) { faceEdDown(e, fcv); return; }
   const pk = e.target.closest('[data-dk="peek"]');
   if (pk) { e.preventDefault(); peek(true); const off = () => { peek(false); window.removeEventListener('pointerup', off); window.removeEventListener('pointercancel', off); }; window.addEventListener('pointerup', off); window.addEventListener('pointercancel', off); return; }
   if (!e.target.closest('.uim-dock-hd') || e.target.closest('button, input, select, label') || e.button !== 0) return;
@@ -16108,7 +16434,7 @@ function dockClick(e) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
     const k = b.dataset.dk, v = b.dataset.val, P = pieceById(UI.piece);
-    if (k === 'layout' || k === 'menus' || k === 'bars') liveOn(k);
+    if (k === 'layout' || k === 'menus' || k === 'bars' || k === 'faces') liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
     else if (k === 'fold') foldDock();
@@ -16202,20 +16528,38 @@ function dockClick(e) {
       const rs = A.dock.querySelector('[data-dk="barsreset"]'); if (rs) rs.disabled = !Object.keys(db.bars || {}).length;
     }
     else if (k === 'barsreset') { if (confirm('Put every health bar and ring back to how the game draws them?')) { snapLayout(true); db.bars = {}; touchLayout(); dockBody(); } }
+    else if (k === 'faceuse' && UI.face) {
+      snapLayout(true);
+      const o = db.faces.u[UI.face] || (db.faces.u[UI.face] = {});
+      if (v === faceUseDef(UI.face)) delete o.use; else o.use = v;
+      faceTidy(UI.face); faceTouch(UI.face); dockDetail(); markRows();
+    }
+    else if (k === 'faceaim' && UI.face) { snapLayout(true); const o = db.faces.u[UI.face]; if (o) { delete o.x; delete o.y; delete o.s; } faceTidy(UI.face); faceTouch(UI.face); dockDetail(); }
+    else if (k === 'facesreset') { if (confirm('Put every portrait back: the art where a unit has it, an auto-aimed zoomed sprite where it does not?')) { snapLayout(true); db.faces = { u: {} }; clearTimeout(_saveT); _saveT = setTimeout(save, 250); faceBump(); dockBody(); } }
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
     return;
   }
   const hp = e.target.closest('.uim-hp-row[data-hpart]');
   if (hp && !e.target.closest('input, label')) { UI.hpart = UI.hpart === hp.dataset.hpart ? '' : hp.dataset.hpart; dockDetail(); return; }
-  const row = e.target.closest('[data-piece], [data-surf], [data-bar]');
+  const row = e.target.closest('[data-piece], [data-surf], [data-bar], [data-face]');
   if (!row || !A.dock.contains(row)) return;
-  const id = row.dataset.piece || row.dataset.surf || row.dataset.bar;
-  if ((A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : UI.surf) !== id) liveSelect(id);
+  const id = row.dataset.piece || row.dataset.surf || row.dataset.bar || row.dataset.face;
+  if ((A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf) !== id) liveSelect(id);
 }
 function dockInput(e) {
   const el = e.target, A = UI.live; if (!A) return;
   const dk = el.dataset.dk;
+  if (dk === 'faceoff') { snapLayout(true); if (el.checked) delete db.faces.off; else db.faces.off = true; faceBump(); clearTimeout(_saveT); _saveT = setTimeout(save, 250); dockBody(); return; }
+  if (dk === 'faceany') { if (e.type !== 'change' || !el.value) return; UI.face = el.value; UI.faceAny = true; dockBody(); return; }
+  if (el.dataset.fpath) {
+    if (el.value === '' || isNaN(+el.value) || !UI.face) return;
+    const ent = faceImg(faceSprite(faceUnit(UI.face))); if (!ent.ok) return;
+    snapLayout();
+    const c = Object.assign({}, faceCrop(UI.face, ent)), f = el.dataset.fpath, n = +el.value;
+    if (f === 'z') c.s = 1 / Math.max(1, n); else if (f === 'x') c.x = n / 100; else c.y = n / 100;
+    faceAimSet(UI.face, c); return;
+  }
   if (dk === 'snap') { UI.snap = el.checked; return; }
   if (dk === 'snapto') { UI.snapTo = el.checked; return; }
   if (dk === 'screen') {
@@ -16391,8 +16735,8 @@ function liveKey(e) {
   if (e.code === 'Space' || e.key === ' ') { if (!e.repeat) peek(true); return true; }
   if (e.key === 'f' || e.key === 'F') { foldDock(); return true; }
   if (e.key === 'Tab') {
-    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
-    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
+    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : A.mode === 'faces' ? faceFieldKeys().filter(k => A.liveSet[k]) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
+    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
     return true;
   }
   if (A.mode !== 'layout') return false;
@@ -16476,7 +16820,7 @@ window.UIMaker = {
   apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS, pieces: UIM_PIECES,
   has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
   arrange: () => { window.openUiMaker(); liveOn('layout'); },
-  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' || mode === 'bars' ? mode : 'layout'); },
+  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' || mode === 'bars' || mode === 'faces' ? mode : 'layout'); },
   hero: () => heroOf(),
   bars: () => barsOf(),
   get db() { return db; },

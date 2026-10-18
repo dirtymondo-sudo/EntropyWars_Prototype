@@ -9386,7 +9386,7 @@
                 bricks_1:'rgba(150,100,70,0.45)', bricks_2:'rgba(140,90,65,0.4)',
                 wood_planks:'rgba(160,120,70,0.4)', wood:'rgba(140,100,60,0.35)',
                 rubble_1:'rgba(120,110,95,0.35)', rubble_2:'rgba(115,105,90,0.35)',
-                rock_wall_1:'rgba(90,85,80,0.5)', rock_wall_2:'rgba(85,80,75,0.5)',
+                rock_wall_1:'rgba(90,85,80,0.5)', rock_wall_2:'rgba(85,80,75,0.5)', stone:'rgba(96,92,88,0.45)',
                 urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(58,58,64,0.5)',
                 wasteland:'rgba(140,120,80,0.35)', cave_entrance:'rgba(70,60,50,0.45)',
                 barrier_passage:'rgba(140,140,200,0.2)', cloud:'rgba(200,210,230,0.3)',
@@ -10711,6 +10711,27 @@
             pf[k] = { t, z };
         }
 
+        /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo: "when water and lava mix i want them to make rock like in minecraft. so
+           if use hellmouth and some of the lava lands on water tiles then they need to be converted to stone"). Lava painted
+           onto water, or water / ice painted onto lava, leaves plain walkable `stone` (data.js TERRAIN_RULES.stone, the
+           rocks_5 sheet) instead — every mid-fight paint goes through setTerrainAt, so Hellmouth, any leaveTerrain, Great
+           Flood, the timed paints and the weather all agree. Rain on the fight's lava hardens it too (state.js
+           rainOnTheBoard). Returns the terrain the cell really becomes for a paint of `terrain` over `cur`. */
+        let _stoneMixN = 0;
+        function lavaWaterMixOf(cur, terrain, note) {
+            const nf = liquidFamilyOf(terrain), cf = liquidFamilyOf(cur);
+            if ((nf === 'lava' && cf === 'water') || (cf === 'lava' && (nf === 'water' || terrain === 'ice'))) {
+                /* one combat-log line per cast, however many tiles hardened (the paint loops call this a tile at a time) */
+                if (note && !_stoneMixN++ && typeof queueMicrotask === 'function') queueMicrotask(() => {
+                    const n = _stoneMixN; _stoneMixN = 0;
+                    if (typeof addLog === 'function') addLog(`♨️ Lava meets water: ${n} tile${n !== 1 ? 's' : ''} harden${n === 1 ? 's' : ''} into stone!`);
+                });
+                return 'stone';
+            }
+            return terrain;
+        }
+        window.lavaWaterMixOf = lavaWaterMixOf;
+
         function setTerrainAt(x, y, terrain, z) {
             /* 🌊 A liquid never goes INTO a solid monument (the mast, a pillar): its column carries hidden collision
                voxels, and painting the top one made a source block hang in the air with waterfalls down every side.
@@ -10733,6 +10754,7 @@
                     }
                 }
                 if (blk) {
+                    terrain = lavaWaterMixOf(blk.terrain, terrain, true);   // 🪨 water + lava = stone
                     blk.terrain = terrain;
                     const vCol = state.boardVoxels?.[y]?.[x];
                     if (vCol) {
@@ -10744,9 +10766,11 @@
                     const top = col[col.length - 1];
                     if (state.boardTerrain?.[y]) state.boardTerrain[y][x] = top.terrain || 'grass';
                 } else if (state.boardTerrain?.[y]) {
+                    terrain = lavaWaterMixOf(state.boardTerrain[y][x], terrain, true);
                     state.boardTerrain[y][x] = terrain;
                 }
             } else if (state.boardTerrain?.[y]) {
+                terrain = lavaWaterMixOf(state.boardTerrain[y][x], terrain, true);
                 state.boardTerrain[y][x] = terrain;
             }
 
@@ -10775,7 +10799,8 @@
            sitting as a settled pool that never moves. A paint on a lower floor (z given) stays a settled pool. */
         function setTerrainSpringAt(x, y, terrain, z) {
             if (setTerrainAt(x, y, terrain, z) === false) return false;
-            if ((z === undefined || z === null) && liquidFamilyOf(terrain)) {
+            // the cell may have come out as stone (water + lava): only a liquid that really landed is a spring
+            if ((z === undefined || z === null) && liquidFamilyOf(terrain) && liquidFamilyOf(getTerrainAt(x, y))) {
                 state.liquidSprings = state.liquidSprings || {};
                 state.liquidSprings[x + ',' + y] = 1;
             }
@@ -15162,9 +15187,19 @@
             if (isFieldSpawnZones()) return;   // THE FIELD: a Code Red fight on the seats has no spawn nexus to steal
             if (!state.nexusPoints) state.nexusPoints = {};
             const thr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 6;
+            const _house = _arenaHouse();
             for (const p of [1, 2]) {
-                const tiles = state.spawnZones[p];
+                let tiles = state.spawnZones[p];
                 if (!tiles || tiles.length === 0) continue;
+                /* THE CUBE IN ITS ZONE (2026-10-18, mondo: "in 5v5 the idea was for the cube to be inside the nexus zone but it
+                   is drawn around it"): a 5v5 seat block is the 5 tiles round the Cube, so the zone takes the Cube's back-middle
+                   tile too — the full 2×3. Nobody can stand on the Cube, so no capture count changes; the seats stay the 5.
+                   The front-middle seat goes to the list's middle slot: the zone's centre (zoneX/Y, the AI goal, the meter). */
+                const cube = _house && _house.cubes && [_house.cubes[1], _house.cubes[2]].find(c => c && tiles.some(t => Math.abs(t.x - c.x) + Math.abs(t.y - c.y) === 1));
+                if (cube && !tiles.some(t => t.x === cube.x && t.y === cube.y)) {
+                    const rest = tiles.slice(1).concat([{ x: cube.x, y: cube.y }]), k = Math.floor((rest.length + 1) / 2);
+                    tiles = rest.slice(0, k).concat([tiles[0]], rest.slice(k));
+                }
                 const mid = tiles[Math.floor(tiles.length / 2)];
                 state.nexusPoints['spawn' + p] = {
                     zoneX: mid.x, zoneY: mid.y, zoneSize: 1,
