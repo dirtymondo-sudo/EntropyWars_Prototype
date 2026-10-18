@@ -13491,6 +13491,8 @@
         const _dc = { ids: [], openTimer: null, tick: null, live: false, lastAddAt: 0, chromeEl: null, waitSince: 0 };
         /* THE CLOSE-UP LENS: the death close-up's lens, shared by every close-up (see CINE_CLOSEUP_DIST_TILES). */
         const CLOSEUP_LENS = { fov: 32, dist0: 2.6, dist1: 1.85 };
+        /* THE DEATH HANDOFF: the glide off the body (ThreeCamera.seedPose's swoop: the gaze leads, a slight boom up, a damped follow of the next shot). */
+        const DC_HANDOFF = { ms: 1100, crane: { bow: 0.12, lookLead: 1.15, fovLate: 0, follow: 0.22 } };
         let _dcFinisherUntil = 0;
         const _DC_MAX_PANES = 4;
 
@@ -13589,7 +13591,12 @@
             if (_dc.openTimer) { window.clearTimeout(_dc.openTimer); _dc.openTimer = null; }
             if (_dc.tick) { window.clearInterval(_dc.tick); _dc.tick = null; }
             if (_dc.live && !lost && window.ThreeSplitscreen && ThreeSplitscreen.owner() === 'death') {
-                try { ThreeSplitscreen.hide(); } catch (err) {}
+                /* THE DEATH HANDOFF (2026-10-18, mondo: "after the death animation the camera should move from the dead body
+                   to the next position/action in one continuous motion, not cut back abruptly to a wide shot"): the battle
+                   camera starts on the close-up's own last frame and glides from the body to the next shot. */
+                const handoff = window.EW_DEATH_CAM_CUT ? null
+                    : { easeS: actionMs(DC_HANDOFF.ms) / 1000, crane: DC_HANDOFF.crane, pane: 0 };
+                try { ThreeSplitscreen.hide(handoff ? { handoff } : undefined); } catch (err) {}
             }
             const el = _dc.chromeEl;
             if (el && el.isConnected) {

@@ -20535,9 +20535,29 @@ const ThreeRenderer = (function () {
         return { rects: rects, w: w, h: h };
     }
 
-    function hideSplitscreen() {
+    /* THE DEATH HANDOFF (2026-10-18, mondo: "after the death animation the camera should move from the dead body to the
+       next position/action in one continuous motion, not cut back abruptly to a wide shot"): hide({ handoff: { easeS,
+       crane, pane } }) seeds the battle camera with that pane's own eye, gaze and lens (ThreeCamera.seedPose), so the first
+       board frame IS the close-up's last frame and the battle camera then glides from it to wherever the game is pointing
+       it (the next unit, the rest of the spell), read live while it moves. */
+    function _ssHandoff(h) {
+        if (!h || typeof ThreeCamera === 'undefined' || !ThreeCamera.seedPose) return;
+        var p = _ss.panes[Math.max(0, Math.min(_ss.panes.length - 1, h.pane | 0))];
+        if (!p || !p.lastEye || !p.lastAim) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var dx = p.lastAim.x - p.lastEye.x, dy = p.lastAim.y - p.lastEye.y, dz = p.lastAim.z - p.lastEye.z;
+        var len = Math.hypot(dx, dy, dz);
+        if (!(len > 1)) return;
+        try {
+            ThreeCamera.seedPose({ tx: p.lastEye.x / ts, tz: p.lastEye.z / ts, up: 0, wy: p.lastEye.y,
+                dx: dx / len, dy: dy / len, dz: dz / len, look: len / ts, fov: p.cam.fov }, h.easeS, h.crane);
+        } catch (e) {}
+    }
+
+    function hideSplitscreen(opts) {
         if (_ss.killTimer) { window.clearTimeout(_ss.killTimer); _ss.killTimer = null; }
         if (!_ss.active) return;
+        if (opts && opts.handoff) _ssHandoff(opts.handoff);
         _ss.active = false;
         _ss.panes = [];
         _ss.owner = null; _ss.floatPane = false;
@@ -70411,7 +70431,7 @@ window.ThreeSplitscreen = {
     show: function (subjects, opts) {
         return ThreeRenderer.isActive() ? ThreeRenderer.showSplitscreen(subjects, opts) : null;
     },
-    hide: function () { ThreeRenderer.hideSplitscreen(); },
+    hide: function (opts) { ThreeRenderer.hideSplitscreen(opts); },
     isActive: function () { return ThreeRenderer.isActive() && ThreeRenderer.isSplitscreenActive(); },
     owner: function () { return ThreeRenderer.isActive() ? ThreeRenderer.splitscreenOwner() : null; },
     extend: function (msAhead) { if (ThreeRenderer.isActive()) ThreeRenderer.extendSplitscreen(msAhead); }

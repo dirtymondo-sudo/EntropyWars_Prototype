@@ -1387,6 +1387,24 @@ multiple units die like a double or triple kill then make it split screen like t
   slow-mo itself (it never ran defeatUnit, so before this its units just vanished) and runs the shot under its own fog.
 - `startDeathTween` ignores a second call for a unit already falling. Kill switch: `window.EW_NO_DEATH_CAM = true`.
 
+## THE DEATH HANDOFF (2026-10-18, token 20261018-deathglide-01-cors)
+mondo: "after the death animation the camera should move from the dead body to the next position/action in one
+continuous motion, not cut back abruptly to a wide shot". The close-up was a split-screen pane camera; hiding it showed
+the battle camera wherever it had been parked (the attack's shot or the board view), a hard cut.
+- battle.js `_dcEnd` hides the rig with `ThreeSplitscreen.hide({ handoff: { easeS, crane, pane: 0 } })` (`DC_HANDOFF`:
+  1.1 s × actionMs, bow 0.12, lookLead 1.15, follow 0.22). three-renderer.js `_ssHandoff` seeds `ThreeCamera.seedPose`
+  with pane 0's last eye, gaze and lens (new seed field `wy` = an absolute world eye height), so the first board frame is
+  the close-up's last frame and THE SWOOP glides to whatever the battle camera is aiming at, read live (the next unit's
+  turn pan, the rest of a spell). A lost shot (a combo / Entropy Strike took the screen) does not hand off.
+- three-camera.js: crane `follow` (s) = the swoop lands on a damped copy of the ideal, so a target that snaps mid-glide
+  bends the move instead of jerking it; THE LEVEL HORIZON: world up while a swoop runs (the tilt/yaw up vector rolled the
+  seeded frame onto its side), the same vector once the gaze is the board's own.
+- Viewer-local: the guest runs its own close-up from the `death-cam` relay, so it hands off the same way. Old cut:
+  `window.EW_DEATH_CAM_CUT = true`.
+- Sandbox check: the camera drawn each frame (ThreePost.render / renderPanes wrapped) had 0.00 tiles between the last pane
+  frame and the first board frame, lens 32 tweening to 45, then a smooth pull-back to the next unit (seed stretched ×12 to
+  see it at SwiftShader's ~1 fps).
+
 ## THE CLOSE-UP LOOK (2026-10-18, token 20261018-closelook-01-cors)
 mondo asked why the death close-up looked crisper. It was the render path: `_ssRenderFrame` drew every pane through
 `ThreePost.renderDirect` (the scene and a bare tone map), so the close-ups had no models' pixelation, no tilt shift, dither,

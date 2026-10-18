@@ -771,22 +771,35 @@ const ThreeCamera = (function () {
             if (_seedHoldOn) { _seedT0 = now; _seedUntil = now + _seedEase; }   // held: the clock starts when the hold lifts
             const u = Math.max(0, Math.min(1, (now - _seedT0) / _seedEase));
             const C = _seedCrane;
+            /* THE FOLLOW (the death handoff): the swoop lands on a DAMPED copy of the frame's ideal, so a target that jumps
+               mid-move (the next turn's snap onto its unit) bends the glide instead of jerking it by the eased share */
+            let tPX = targetPosX, tPY = targetPosY, tPZ = targetPosZ, tLX = targetLookX, tLY = targetLookY, tLZ = targetLookZ;
+            if (C && C.follow > 0) {
+                const T = _seedFrom.tgt;
+                if (!T) _seedFrom.tgt = { px: tPX, py: tPY, pz: tPZ, lx: tLX, ly: tLY, lz: tLZ };
+                else {
+                    T.px = _damp(T.px, tPX, C.follow, dt); T.py = _damp(T.py, tPY, C.follow, dt); T.pz = _damp(T.pz, tPZ, C.follow, dt);
+                    T.lx = _damp(T.lx, tLX, C.follow, dt); T.ly = _damp(T.ly, tLY, C.follow, dt); T.lz = _damp(T.lz, tLZ, C.follow, dt);
+                    tPX = T.px; tPY = T.py; tPZ = T.pz; tLX = T.lx; tLY = T.ly; tLZ = T.lz;
+                }
+            }
             const k = C ? _seedEaseK(u) : u * u * (3 - 2 * u);
             const kl = C ? _seedEaseK(u * C.lookLead) : k;   // the gaze ahead of the body
             /* the bow: the eye's lift over the straight line — a share of its travel (read live: the target may drift) */
-            const bow = C && C.bow ? Math.sin(Math.PI * u) * C.bow * Math.hypot(targetPosX - _seedFrom.px, targetPosY - _seedFrom.py, targetPosZ - _seedFrom.pz) : 0;
-            _smoothPosX  = _seedFrom.px + (targetPosX  - _seedFrom.px) * k;
-            _smoothPosY  = _seedFrom.py + (targetPosY  - _seedFrom.py) * k + bow;
-            _smoothPosZ  = _seedFrom.pz + (targetPosZ  - _seedFrom.pz) * k;
-            _smoothLookX = _seedFrom.lx + (targetLookX - _seedFrom.lx) * kl;
-            _smoothLookY = _seedFrom.ly + (targetLookY - _seedFrom.ly) * kl;
-            _smoothLookZ = _seedFrom.lz + (targetLookZ - _seedFrom.lz) * kl;
+            const bow = C && C.bow ? Math.sin(Math.PI * u) * C.bow * Math.hypot(tPX - _seedFrom.px, tPY - _seedFrom.py, tPZ - _seedFrom.pz) : 0;
+            _smoothPosX  = _seedFrom.px + (tPX - _seedFrom.px) * k;
+            _smoothPosY  = _seedFrom.py + (tPY - _seedFrom.py) * k + bow;
+            _smoothPosZ  = _seedFrom.pz + (tPZ - _seedFrom.pz) * k;
+            _smoothLookX = _seedFrom.lx + (tLX - _seedFrom.lx) * kl;
+            _smoothLookY = _seedFrom.ly + (tLY - _seedFrom.ly) * kl;
+            _smoothLookZ = _seedFrom.lz + (tLZ - _seedFrom.lz) * kl;
             if (_seedFrom.fov && threeCamera) {
                 const kf = C ? _seedEaseK((u - C.fovLate) / Math.max(0.05, 1 - C.fovLate)) : k;   // the lens tightens late
                 const f = _seedFrom.fov + (_seedFrom.fovTo - _seedFrom.fov) * kf;
                 if (Math.abs(threeCamera.fov - f) > 0.01) { threeCamera.fov = f; threeCamera.updateProjectionMatrix(); }
             }
             if (u >= 1) { _seedFrom = null; _seedCrane = null; }
+            else _seedLevelUp();
         } else if (!seeded) {
             const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);
             if (_smoothOverride > 0) _smoothOverride--;
@@ -799,8 +812,18 @@ const ThreeCamera = (function () {
             _smoothLookZ = _damp(_smoothLookZ, targetLookZ, st, dt);
         }
 
+        if (seeded) _seedLevelUp();
         threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
         threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
+    }
+    /* THE LEVEL HORIZON (2026-10-18, the death handoff): while the swoop runs, the gaze is the seed's blending into the
+       board's, not the one the tilt/yaw up vector above was built for, so that up would roll the frame (the close-up's
+       last frame came back tipped on its side). World up is the same vector once the gaze is the board's own, so the
+       swoop lands without a seam; a gaze straight down keeps the gimbal-safe up. */
+    function _seedLevelUp() {
+        const gx = _smoothLookX - _smoothPosX, gy = _smoothLookY - _smoothPosY, gz = _smoothLookZ - _smoothPosZ;
+        const gl = Math.hypot(gx, gy, gz);
+        if (gl > 1e-3 && Math.abs(gy / gl) < 0.995) threeCamera.up.set(0, 1, 0);
     }
 
     /* One shared Raycaster for all picking — these run on every mousemove AND
@@ -1033,13 +1056,15 @@ const ThreeCamera = (function () {
     function seedPose(seed, easeS) {
         if (!seed || !isFinite(seed.tx + seed.tz + seed.up + seed.dx + seed.dy + seed.dz)) { _seed = null; return false; }
         _seed = { tx: +seed.tx, tz: +seed.tz, up: +seed.up, dx: +seed.dx, dy: +seed.dy, dz: +seed.dz, look: (isFinite(seed.look) && seed.look > 0) ? +seed.look : 3,
-                  fov: (isFinite(seed.fov) && seed.fov > 0) ? +seed.fov : null };   // rev 3: the walker's lens — the frame starts at it and the swoop tweens it to the board's
+                  fov: (isFinite(seed.fov) && seed.fov > 0) ? +seed.fov : null,   // rev 3: the walker's lens — the frame starts at it and the swoop tweens it to the board's
+                  wy: isFinite(seed.wy) ? +seed.wy : null };   // THE DEATH HANDOFF: an eye height in world units (a close-up pane's own eye), in place of `up`
         const ease = (isFinite(easeS) && easeS > 0) ? +easeS : 1.2;
         _seedSt = ease / 3;   // a damp settles ~95 % in three time constants
         _seedEase = ease; _seedFrom = null;
         /* THE ARRIVAL: the crane's shape rides as a third argument { bow, lookLead, fovLate } (see _seedCrane) */
         const co = arguments[2];
-        _seedCrane = (co && typeof co === 'object') ? { bow: isFinite(+co.bow) ? Math.max(0, +co.bow) : 0, lookLead: (isFinite(+co.lookLead) && +co.lookLead >= 1) ? +co.lookLead : 1, fovLate: isFinite(+co.fovLate) ? Math.max(0, Math.min(0.9, +co.fovLate)) : 0 } : null;
+        _seedCrane = (co && typeof co === 'object') ? { bow: isFinite(+co.bow) ? Math.max(0, +co.bow) : 0, lookLead: (isFinite(+co.lookLead) && +co.lookLead >= 1) ? +co.lookLead : 1, fovLate: isFinite(+co.fovLate) ? Math.max(0, Math.min(0.9, +co.fovLate)) : 0,
+                                                       follow: (isFinite(+co.follow) && +co.follow > 0) ? +co.follow : 0 } : null;
         _seedUntil = performance.now() / 1000 + ease;
         return true;
     }
@@ -1047,7 +1072,7 @@ const ThreeCamera = (function () {
         const S = _seed; _seed = null;
         const ts = tileSize;
         const ex = S.tx * ts, ez = S.tz * ts;
-        const ey = _groundYWorld(ex, ez) + S.up * ts;
+        const ey = (S.wy != null) ? S.wy : _groundYWorld(ex, ez) + S.up * ts;
         const L = S.look * ts;
         const lx = ex + S.dx * L, ly = ey + S.dy * L, lz = ez + S.dz * L;
         if (!isFinite(ex + ey + ez + lx + ly + lz)) { _seedUntil = 0; return false; }
@@ -1056,7 +1081,7 @@ const ThreeCamera = (function () {
         _initialized = true;
         if (nowS > _seedUntil) _seedUntil = nowS + _seedSt * 3;   // seeded long before the first sync: the ease starts now
         /* THE SWOOP starts from this very frame and lands at the window's end */
-        _seedFrom = { px: ex, py: ey, pz: ez, lx: lx, ly: ly, lz: lz, fov: null, fovTo: null }; _seedT0 = nowS; _seedEase = Math.max(0.05, _seedUntil - nowS);
+        _seedFrom = { px: ex, py: ey, pz: ez, lx: lx, ly: ly, lz: lz, fov: null, fovTo: null, tgt: null }; _seedT0 = nowS; _seedEase = Math.max(0.05, _seedUntil - nowS);
         if (S.fov && threeCamera) { _seedFrom.fov = S.fov; _seedFrom.fovTo = threeCamera.fov; threeCamera.fov = S.fov; threeCamera.updateProjectionMatrix(); }
         return true;
     }
