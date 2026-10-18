@@ -543,10 +543,13 @@ function HudBar({ label, val, max, color, pip, small, pressFlash }) {
   );
 }
 
+/* THE battle HUD's type badge — the VESSEL DATA panel and the unit info panel both draw this one (mondo 2026-10-18:
+   "the type badge in the unit info panel is not the same type badge as everywhere else on the hud"). `ew-type-chip`
+   keeps a UI Maker piece's All text look off it; its own "Type badges" text entry still styles it. */
 function TypeChip({ name, color }) {
   const k = (name || '').toLowerCase();
   const base = color || TYPE_COLORS[k] || EW.inkMute;
-  return h('span', { style: typeBadgeStyle(base, { text: TYPE_TEXT_COLORS[k] || base, fontSize: 8 }) },
+  return h('span', { className: 'ew-type-chip', style: typeBadgeStyle(base, { text: TYPE_TEXT_COLORS[k] || base, fontSize: 8 }) },
     (name || '').toUpperCase());
 }
 
@@ -3195,7 +3198,7 @@ function _hrlgQuickVitals(panelKey) {
   return h('div', { key: 'qv', className: 'hrlg-qvitals' + (ally ? ' ally' : ' enemy') },
     /* the clicked unit's TYPE badge(s) — the matchup intel, first thing under the name (the user 2026-10-07) */
     (u.types && u.types.length) ? h('div', { className: 'hrlg-qtypes' },
-      u.types.slice(0, 2).map(t => h('span', { key: t, style: typeBadgeStyleFor(t, { fontSize: 11, padding: '2px 9px' }) }, String(t).toUpperCase()))) : null,
+      u.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
     h('div', { className: 'hrlg-qv-row' },
       h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
       h('span', { className: 'hrlg-thp' },
@@ -3394,7 +3397,7 @@ function _hrlgQuickCard(key, title, qv) {
     qv,
     /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
     qu && qu.types && qu.types.length ? h('div', { className: 'hrlg-qp-types' },
-      qu.types.slice(0, 2).map(t => h('span', { key: t, style: typeBadgeStyleFor(t, { fontSize: 11, padding: '2px 9px' }) }, String(t).toUpperCase()))) : null,
+      qu.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
     _hrlgQuickStats(key),
   );
 }
@@ -13268,7 +13271,8 @@ function lookCss(P, L) {
   if (set('track')) t.push(`letter-spacing: ${(+L.track || 0).toFixed(2)}em !important;`);
   if (L.tfx && TFX[L.tfx]) t.push(`text-shadow: ${TFX[L.tfx]} !important;`);
   if (L.align) t.push(`text-align: ${L.align} !important;`);
-  if (t.length) css += `${preP(sels.map(x => x + ', ' + x + ' *').join(', '))} { ${t.join(' ')} }\n`;
+  /* a type badge keeps the one badge look (TypeChip); :where() so the rule's weight is what it always was */
+  if (t.length) css += `${preP(sels.map(x => x + ', ' + x + ' *:where(:not(.ew-type-chip))').join(', '))} { ${t.join(' ')} }\n`;
   return css;
 }
 /* ── THE WORDS (2026-10-18, mondo: "what text shows up in the panels"): db.words[piece id] = { 'the words as the game
