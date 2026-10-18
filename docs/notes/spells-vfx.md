@@ -1448,3 +1448,18 @@ the sandbox: Fairy Forest arena (WebGL + WebGPU) and Göbekli Tepe tile board (W
 - Action-cam TOTAL DMG (battle.js `AC_TALLY_HOLD_MS` 1400 per hit, `AC_TALLY_LINGER_MS` 1400 (was 1700; turn clock stays hidden until it fades) after the bars leave via
   `.dmg-linger`; settle pulse `.land`). CSS: bigger figure on a dark plate, label above. online.js: the guest rolls its own
   corner total from relayed `-N` hit pops (data.hit / dmgAmt) and `+N` heal pops.
+
+### THE TRUE STRIKE AREA (2026-10-18, mondo: "tsunami only shows a single line for its damage even though it does damage to more tiles than that, please fix it and any other spells like it")
+- Cause: battle.js `lineBeamPlan` returned only the spine `cells`; every preview (ui.js getSpellAoeFootprint, the cast glow
+  `_spellGlowTiles`, forecastSpellPlan `plan.tiles` → hud quick menu) painted those, while `_applyLineDamage` also sweeps the
+  side lanes (`getLineSpellLaneOffsets`). Now `lineBeamPlan` also returns `laneCells` + `tiles` (spine + lanes, deduped) and
+  every preview paints `tiles`. Affects Tsunami (3 wide), Empty the Clip (3), Plasma Cannon (2). Browser-checked in the Spell
+  Lab: live showed row 4 only while the dummy on row 3 took 294; fixed shows all 3 rows.
+- battle.js `spellStrikeTiles(unit, spell, tx, ty)` = the hit tiles of kinds whose area is neither the aim tile nor a plain
+  shape, read with the doSpell branch's rules: barrage (combatDist reach: a radius-1 nova is the full 3×3, not a plus;
+  wet-only novae only the wet tiles), a dash that hurts (path, or Giant Stride's dashSweep swath), leapStrike/skySlam
+  shockwave (Seismic Leap), teleport aoeOnArrival (Void Rush). Used by the aim footprint, the glow and plan.tiles.
+- ui.js showSelfCastAoePreview: self-centred aoePull (Crowd Surge / Round Up drew nothing) and zoneDebuff/zoneHeal/aoeShield
+  (Exhaust Cloud, Iron Dome: squares, the wash drew a diamond) use the true footprint. Glow: bomb = 3×3 (detonateBomb).
+- hud.js quick menu paints `plan.tiles` whenever the forecast hits more than one tile. Drive-By's afterShot victim gets a plate.
+- **How to apply:** a new multi-tile hit rule in doSpell needs its tiles in spellStrikeTiles (or lineBeamPlan for beams).

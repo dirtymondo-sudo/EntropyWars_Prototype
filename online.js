@@ -693,6 +693,7 @@
                 if (typeof clearAoePreview === 'function') clearAoePreview();
             }
             _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
+            _guestMenuToRoot();   // the guest lands on the root verbs too (the Scanner calls doItem straight from the list)
         };
 
         /* Panacea (1 AP since 2026-10-17): un-relayed, a guest's cure ran on its own copy and the next state-sync undid

@@ -5684,11 +5684,8 @@
             state.actionMode = null;
             state.selectedTool = null;
             state.pendingTarget = null;
-            // Stay in the Items submenu only if the stim was used FROM it
-            // (clock-slot uses fire from root) and something is still usable.
-            state.actionMenuView = (!unitFinished(unit) && !unit.dead
-                && state.actionMenuView === 'items'
-                && typeof anyUsableItemNow === 'function' && anyUsableItemNow(unit)) ? 'items' : 'root';
+            // Back to the root verbs after every item (mondo 2026-10-18).
+            state.actionMenuView = 'root';
             endUnitIfDone(unit);
             renderAfterCombat();
         }
@@ -10220,7 +10217,7 @@
         const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','steal','cleanseArea','door','doorBreach','doorDelivery','doorSlam','doorExit','doorTrap','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
-        const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];
+        const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','psychic','sonic','metal','blood'];   // twelve since 2026-10-18 (light, shadow, arcane cut)
         const _SLB_DMGTYPES = ['physical', 'magic'];
         const _SLB_TIERS = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): THE tier, numeric = its SP cost
         const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
@@ -12350,10 +12347,10 @@
 
         /* ── NEW ▾ (§5.8): role templates from the census medians, passive templates, families, upgrades ── */
         const _SLB2_ROLE_TEMPLATES = {
-            damage:       { type: 'damage', kind: 'damage', spellType: 'human', element: 'arcane', damageType: 'magic', dmg: 100, range: 3, apCost: 2 },
+            damage:       { type: 'damage', kind: 'damage', spellType: 'human', damageType: 'magic', dmg: 100, range: 3, apCost: 2 },
             damageEffect: { type: 'damage', kind: 'damage', spellType: 'human', element: 'fire', damageType: 'magic', dmg: 80, range: 3, apCost: 2, statusEffects: [{ id: 'burn', duration: 2 }] },
-            effect:       { type: 'debuff', kind: 'debuff', spellType: 'human', element: 'shadow', range: 3, apCost: 1, statusEffects: [{ id: 'slow', duration: 2 }] },
-            heal:         { type: 'heal', kind: 'heal', spellType: 'divine', element: 'light', heal: 100, range: 3, apCost: 1 },
+            effect:       { type: 'debuff', kind: 'debuff', spellType: 'human', range: 3, apCost: 1, statusEffects: [{ id: 'slow', duration: 2 }] },
+            heal:         { type: 'heal', kind: 'heal', spellType: 'divine', heal: 100, range: 3, apCost: 1 },
             utility:      { type: 'utility', kind: 'scan', spellType: 'tech', range: 0, apCost: 1, scanRadius: 4 },
             movement:     { type: 'utility', kind: 'dash', spellType: 'human', range: 3, apCost: 1, dashDamage: 40 },
             deploy:       { type: 'utility', kind: 'deployTurret', spellType: 'tech', element: 'metal', range: 2, apCost: 2, turretHp: 120, turretDmg: 40, turretRange: 3, maxActivePerCaster: 1 },
@@ -14252,7 +14249,7 @@
                         const hd = lineSpellHeadingTo(spell, casterUnit.x, casterUnit.y, casterUnit.z ?? null, tx, ty, _tu ? _tu.z : undefined);
                         if (!hd) return [];
                         const _aimZ = (typeof lineBeamAimZ === 'function') ? lineBeamAimZ(tx, ty, _tu ? _tu.z : undefined, casterUnit.id) : undefined;
-                        return lineBeamPlan(casterUnit, spell, hd.dx, hd.dy, { x: tx, y: ty, lineZ: _aimZ }).cells.map(c => ({ x: c.x, y: c.y }));
+                        return lineBeamPlan(casterUnit, spell, hd.dx, hd.dy, { x: tx, y: ty, lineZ: _aimZ }).tiles;   // spine + side lanes (Tsunami 3 wide)
                     } catch (e) { /* fall through to the flat read */ }
                 }
                 const dx = Math.sign(tx - casterUnit.x);
@@ -14260,6 +14257,7 @@
                 if (dx === 0 && dy === 0) return [];
                 const lineRange = spell.range || 4;
                 const tiles = [];
+                const lanes = (typeof getLineSpellLaneOffsets === 'function') ? getLineSpellLaneOffsets(spell, dx, dy) : [];
                 for (let i = 1; i <= lineRange; i++) {
                     const lx = casterUnit.x + dx * i;
                     const ly = casterUnit.y + dy * i;
@@ -14267,8 +14265,20 @@
                     if (!isTerrainPassable(lx, ly) && !spell.destroysObstacles) break;
                     if (typeof _lineLosBlocked === 'function' && _lineLosBlocked(casterUnit, spell, lx, ly)) break;
                     tiles.push({ x: lx, y: ly });
+                    for (const [ox, oy] of lanes) {   // the side lanes of a wide beam
+                        const sx = lx + ox, sy = ly + oy;
+                        if (sx >= 0 && sy >= 0 && sx < bw() && sy < bh() && isTerrainPassable(sx, sy) && !tiles.some(t => t.x === sx && t.y === sy)) tiles.push({ x: sx, y: sy });
+                    }
                 }
                 return tiles;
+            }
+            /* THE TRUE STRIKE AREA (2026-10-18): a dash that hurts lights its path (Giant Stride its whole swath),
+               Seismic Leap its shockwave square, Void Rush its arrival blast — battle.js spellStrikeTiles, the doSpell
+               branches' own rules. Before, these lit only the aim tile. */
+            if (spell.kind === 'dash' || spell.kind === 'leapStrike' || spell.kind === 'skySlam' || spell.kind === 'teleport') {
+                if (!casterUnit || typeof spellStrikeTiles !== 'function') return [];
+                if (spell.kind === 'teleport' && !_aimTileLegal(casterUnit, spell, tx, ty)) return [];
+                return spellStrikeTiles(casterUnit, spell, tx, ty) || [];
             }
             if (spell.kind === 'aoePull') {
                 return getSquareArea(tx, ty, spell.aoeRadius || 1);
@@ -14586,7 +14596,7 @@
             } else if (kind === 'selfHeal' || kind === 'escape') {
                 radius = 0;
                 isHeal = kind === 'selfHeal';
-            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross' || kind === 'zoneDebuff' || kind === 'zoneHeal' || kind === 'aoeShield')) {
+            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross' || kind === 'aoePull' || kind === 'zoneDebuff' || kind === 'zoneHeal' || kind === 'aoeShield')) {
                 radius = spell.aoeRadius || spell.crossRadius || 1;
                 isHeal = (kind === 'zoneHeal' || kind === 'aoeShield');
             }
@@ -14609,7 +14619,12 @@
             // bursts and can't draw the new shapes at all. Auras (warCry/
             // barrage/healAll/scan) keep the Manhattan wash: that IS their rule.
             let tiles = [];
-            if (spell.hitsWetOnly && typeof _isWetTile === 'function') {
+            if (kind === 'barrage' && !_selfMask && typeof spellStrikeTiles === 'function') {
+                // THE TRUE STRIKE AREA (2026-10-18): a nova's reach is combatDist, the battle.js barrage rule — the 8
+                // round the caster are all 1 away (a radius-1 nova hits the full 3×3, not a plus), then Manhattan.
+                // Wet-only novae (Poseidon's Wrath) paint only the wet tiles in it.
+                tiles = spellStrikeTiles(unit, spell, unit.x, unit.y) || [];
+            } else if (spell.hitsWetOnly && typeof _isWetTile === 'function') {
                 // Wet-only novae (Poseidon's Wrath): the TRUE footprint is
                 // "every wet tile" — a map-wide radius-99 red wash would lie
                 // about who's actually in danger. Paint the water instead.
@@ -14618,7 +14633,10 @@
                         if (_isWetTile(wx, wy)) tiles.push({ x: wx, y: wy });
                     }
                 }
-            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross' || (_selfMask && kind !== 'selfHeal' && kind !== 'escape'))) {
+            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross' || kind === 'aoePull' || kind === 'zoneDebuff' || kind === 'zoneHeal' || kind === 'aoeShield'
+                       || (_selfMask && kind !== 'selfHeal' && kind !== 'escape'))) {
+                // self-centred areas: their TRUE footprint (Crowd Surge's 5×5 pull, Exhaust Cloud's 3×3 zone — squares,
+                // never the Manhattan wash below; a pull drew nothing at all before)
                 tiles = getSpellAoeFootprint(spell, unit.x, unit.y, unit);
             } else if (_rndRow && typeof getSpellRangeTiles === 'function') {
                 tiles = getSpellRangeTiles(unit, spell);
@@ -15275,7 +15293,7 @@
            a fork, a split, a splash) gets the same crimson hit plate as the footprint, and the hop is drawn as a
            crimson arrow from the body it leaves (chains hop victim to victim; bounces, forks and splits leave the
            first victim). Their numbers ride the forecast badges with a RICOCHET / CHAIN / FORK tag. Viewer-local. */
-        const _FC_HOP_TAGS = { bounce: 1, chain: 1, fork: 1, split: 1, splash: 1 };
+        const _FC_HOP_TAGS = { bounce: 1, chain: 1, fork: 1, split: 1, splash: 1, afterShot: 1 };   // afterShot: Drive-By's shot from the landing
         function drawForecastChain(plan, caster, aimX, aimY, overlayName) {
             if (!plan || !plan.hits || !plan.hits.length) return;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -15293,7 +15311,7 @@
                 if (!onFoot.has(u.x + ',' + u.y)) plates.push({ x: u.x, y: u.y, color: HIT, opacity: 0.85 });
                 const isChain = h.tags.includes('chain');
                 const from = isChain ? prev : (first ? first.unit : null);
-                if (from && from.id !== u.id && !h.tags.includes('splash')) {
+                if (from && from.id !== u.id && !h.tags.includes('splash') && !h.tags.includes('afterShot')) {
                     try { ThreeRenderer.drawArrow3D(from.x, from.y, u.x, u.y, HIT, false, uY(from), uY(u), { arc: 0.28, flow: true }); } catch (e) {}
                 }
                 if (isChain) prev = u;

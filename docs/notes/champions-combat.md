@@ -1648,3 +1648,18 @@ export instructions + summary carry it. The climb design (not built) is /mnt/pro
   arcane — scarecrow weak, wizard / fortune teller / gnome resist, machine elves absorb. Element box bands of 8; xl
   tracks fixed 32px (284px box, Horologe panel 316px).
 - Plan, decisions and the tag-only elements proposal: /mnt/project-files/design/ELEMENTAL_DAMAGE_SPLIT_PLAN.md.
+
+## THE TWELVE ELEMENTS + THE ZODIAC SPELL SURGE (2026-10-18, mondo)
+- "cut out light and shadow (too close to divine and unholy) and also arcane (thats basically just magic damage, it
+  doesnt need an element)". SPELL_ELEMENTS = COMBAT_ELEMENTS = fire, ice, lightning, water, poison, earth (= ground),
+  wind, nature, sonic, psychic, blood, metal. The 108 spells tagged light / shadow / arcane now carry `vfxElement:`
+  instead — the look only (three-vfx-effects _resolveTheme / _stageArchetype / beam colour read `element || vfxElement`;
+  data.js spellFamiliesOf keeps their family pool). battle.js getSpellElement returns null for any tag outside
+  SPELL_ELEMENTS (never name-guessed). Their race affinity rows are gone; a race-editor doc's cut-element rows drop on
+  apply. Element box bands = 6 (ELEM_BOX_BAND, styles-base .ew-elem-row repeat(6), hud.js UI Maker reads the band).
+- THE SURGE: data.js ZODIAC_SURGE_ELEMENT gives every sign one element (Aries fire, Leo blood, Sagittarius psychic,
+  Cancer water, Scorpio poison, Pisces ice, Gemini wind, Libra sonic, Aquarius lightning, Taurus earth, Virgo metal,
+  Capricorn nature — order inside each trine is Claude's default, mondo may swap). battle.js _hitDamageMath: a unit's
+  non-DoT hit whose element (_affEl) is the sky's lands ×ZODIAC_SURGE_MULT 1.25 on the whole hit (forecasts include
+  it; ai.js estDamage mirrors). Was one element per trine (fire / lightning / frost via the combo vocab). Earth signs
+  keep their earthworks on top. Banner text = getZodiacResonanceDesc.
