@@ -5361,7 +5361,7 @@
                     }, fly);
                 }, at);
             });
-            const names = picks.map(u => unitDisplayName(u));
+            const names = picks.map(u => _ctName(u));   // tagged with their side (THE COMBAT TEXT COLOURS)
             addLog(`🎲 ${_ctName(unit)} casts ${_ctSp(spell.name)} — ${picks.length} ${picks.length === 1 ? 'shot' : 'shots'}: ${names.join(', ')}.`);
             return completion;
         }
@@ -38635,7 +38635,7 @@
 
         function applyLevelUpRewards(unit, level) {
             if (!unit) return;
-            const name = unitDisplayName(unit);
+            const name = _ctName(unit);   // only ever written into log + dialogue lines (THE COMBAT TEXT COLOURS)
 
             // Stat growth lives in _recomputeStatsForLevel (additive classic
             // scale, delta-applied). This function only grants level milestones.
@@ -60888,7 +60888,7 @@
                 _gunDoorStatus(u, 'burn', sp.burnRounds || 2, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
-            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(unitDisplayName).join(', ') : ''}.`);
+            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }
         /* ❄ FROST — the ice lane: the lane's tiles turn to ICE for `terrainRounds` (timed terrain — the round tick thaws
@@ -60914,7 +60914,7 @@
                 _gunDoorStatus(u, 'slow', sp.slowRounds || 1, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
-            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} freezes ${_gdPlural(frozen || lane.length, 'tile')}${hit.length ? ' and chills ' + hit.map(unitDisplayName).join(', ') : ''}.`);
+            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} freezes ${_gdPlural(frozen || lane.length, 'tile')}${hit.length ? ' and chills ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }
         /* 🕳 MAW — the draught: every enemy within the radius is drawn ONE tile toward the door (the nearest first, so the
@@ -60994,7 +60994,7 @@
                 _gunDoorHit(door, u, sp.beamDmg || 60, { flash: 'shock' });
                 hit.push(u);
             }
-            if (hit.length) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} burns ${hit.map(unitDisplayName).join(', ')}.`);
+            if (hit.length) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} burns ${hit.map(u => _ctName(u)).join(', ')}.`);
             return hit;
         }
         /* ✨ LIGHT — the shaft: the owner's side in the lane heals + is cleansed; the other side takes the holy blast + Blind */

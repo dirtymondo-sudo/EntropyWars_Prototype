@@ -14561,7 +14561,7 @@
             if ((terrain === 'water' || terrain === 'deep_water' || terrain === 'healing_spring')
                 && unit.status && unit.status.burn) {
                 clearStatus(unit, 'burn');
-                const _dNm = (typeof unitDisplayName === 'function') ? unitDisplayName(unit) : (unit.name || 'Unit');
+                const _dNm = (typeof _ctName === 'function') ? _ctName(unit) : (unit.name || 'Unit');
                 if (typeof addLog === 'function') addLog(`💧 ${_dNm} wades into the water — the flames are doused!`);
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
             }
