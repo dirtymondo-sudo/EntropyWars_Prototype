@@ -1449,3 +1449,8 @@ one of my units turns or the top of the action menu with no actions selected. le
 - **The SHOTS panel drags** by its header; position saved in localStorage `ew_shot_rec_v1:pos`, clamped to the window.
 - Checked in a real VS-CPU arena (headless, 7 s settle per shot): pairs landed caster ≈ (0.53, 0.35-0.44), target ≈
   (0.66-0.73, 0.26-0.35); the turn shot caster ≈ (0.50, 0.58); the panel drag moved and was restored.
+
+### ROUND 2 UNDONE (2026-10-18, token 20261018-shotundo-01-cors)
+mondo: "lets go ahead and undo those shots, they didnt turn out the way i wanted". battle.js is back to its pre-#311 state
+(the old MENU CAMERA: _menuCamSolve / _menuPoseOf / MENU_CAM_SWING, no turn shot) and the three-camera.js exact orbit is
+gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section above is history only.
