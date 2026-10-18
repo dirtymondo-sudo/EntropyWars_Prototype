@@ -12164,6 +12164,31 @@
             unit.facing = { dx: dx / len, dy: dy / len };
         }
 
+        /* THE CLICK FACE (mondo 2026-10-18): "whenever i click on an enemy or a
+           unit, my unit should turn to face them". Every between-action unit
+           pick (_tpsTargetShot: a unit click, the attack / spell / item target
+           lists, Tab cycling) squares the acting unit up on the picked unit.
+           It is the REAL facing (the arc math reads it), so the body on the
+           board is the body a back attack checks; the renderer turns it at
+           UNIT_TURN_RATE. Wrapped by online.js as an engine action: the guest
+           turns locally and emits, the host applies it and syncs it back. */
+        function doFaceUnit(unit, targetId) {
+            if (!unit || unit.dead || state.phase !== 'battle' || state.winner) return false;
+            if (state._actionExecuting || unit.player !== state.activePlayer) return false;
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== unit.id) return false;
+            const t = (state.units || []).find(u => u.id === targetId && !u.dead);
+            if (!t || t.id === unit.id) return false;
+            const dx = t.x - unit.x, dy = t.y - unit.y;
+            const len = Math.hypot(dx, dy);
+            if (!(len > 0)) return false;
+            const f = unit.facing;
+            if (f && Math.abs(f.dx - dx / len) < 1e-3 && Math.abs(f.dy - dy / len) < 1e-3) return false;
+            setUnitFacing(unit, dx, dy);
+            markDirty('board');
+            scheduleBoardRender();
+            return true;
+        }
+
         function getUnitFacing(unit) {
             if (!unit) return { dx: 0, dy: 1 };
             if (!unit.facing || (!unit.facing.dx && !unit.facing.dy)) {
@@ -27103,8 +27128,23 @@
             });
             return true;
         }
+        /* THE CLICK FACE: the local player's acting unit turns to the unit it
+           just picked (enemy or ally; a tile pick or a self pick turns nobody).
+           A unit the viewer cannot see is never faced (no tell). */
+        function _faceTargetPick(unit, tgt) {
+            if (!unit || !tgt || tgt.id == null || tgt.player == null || tgt.id === unit.id) return;
+            if (state.phase !== 'battle' || typeof doFaceUnit !== 'function') return;
+            if (state.controllers?.[unit.player] !== CTRL.LOCAL || state.autoPlayers?.[unit.player]) return;
+            const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : unit.player;
+            if (unit.player !== viewer) return;
+            if (tgt.player !== viewer && (isUnitConcealedFrom(tgt, viewer)
+                || (state.fogOfWar && !_isTileVisibleToViewer(tgt.x, tgt.y)))) return;
+            try { doFaceUnit(unit, tgt.id); } catch (e) {}
+        }
         function _tpsTargetShot(unit, tgt) {
-            if (!unit || !tgt || state.cameraDisabled || state.phase !== 'battle') return false;
+            if (!unit || !tgt) return false;
+            _faceTargetPick(unit, tgt);
+            if (state.cameraDisabled || state.phase !== 'battle') return false;
             if (!_fogCamAllSeen(unit, tgt)) return true;   // hidden opponent: no shot, no fallback pan
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
             // Between-action TPS retired: browsing/cycling targets keeps the
@@ -27312,12 +27352,17 @@
                     }
                 }
                 if (!best) return null;
-                return {
-                    x: (best.F[0] - ts / 2) / ts, y: (best.F[2] - ts / 2) / ts, elevZ: best.F[1],
-                    zoom: Math.max(0.15, Math.min(10.0, bd / best.dist)),
-                    tilt: best.tilt, yaw: (((best.yaw % 360) + 360) % 360), side: best.side
-                };
+                return _menuPoseOf(best, bd);
             } catch (e) { return null; }
+        }
+        /* a solved candidate → the camera.moveTo pose (focal tile, height, zoom, angle) */
+        function _menuPoseOf(c, bd) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            return {
+                x: (c.F[0] - ts / 2) / ts, y: (c.F[2] - ts / 2) / ts, elevZ: c.F[1],
+                zoom: Math.max(0.15, Math.min(10.0, bd / c.dist)),
+                tilt: c.tilt, yaw: (((c.yaw % 360) + 360) % 360), side: c.side
+            };
         }
         /* The on/off switch (Settings → Controls → Camera, mondo 2026-10-14): off =
            target picks keep the old tactical midpoint pan. */
@@ -27351,6 +27396,8 @@
             }
             camera._menuShot.key = key;
             camera._menuShot.side = pose.side || camera._menuShot.side || 0;
+            camera._menuShot.pose = pose;   // THE ATTACK HOLD tracks a leap off this pose's angle
+            camera._menuAtk = null;
             // a held action shot (press-turn) or a Move overhead hands over to the menu shot
             camera._preCineView = null;
             camera._cineShotId = null;
@@ -27378,12 +27425,94 @@
         window._ewMenuCamHome = function (force) {
             if (!camera._menuShot || state.phase !== 'battle' || state._actionExecuting || camera._cineShotId != null) return;
             if (!force && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) return;
+            // THE ATTACK HOLD: the menu resets to its root as the swing starts — the
+            // held two-shot stays until the action's own soft reset brings the view home
+            if (!force && camera._menuAtk && performance.now() < camera._menuAtk.until) return;
             const uid = state._blitzActiveUnitId;
             const u = uid != null ? (state.units || []).find(un => un.id === uid && !un.dead) : getSelectedUnit();
             // no tilt/yaw/zoom named → moveTo restores the remembered tactical view
             camera.moveTo({ x: u ? u.x : camera._tx, y: u ? u.y : camera._ty,
                 duration: MENU_CAM_MS, easing: 'easeInOut', _fogAllowed: true });
         };
+
+        /* ══ THE ATTACK HOLD (mondo 2026-10-18) ══
+           "if all i do is basic attack them, i think the camera should sort of
+           stay the way it already is (since it changes to show who you have
+           selected) and just show that view of the unit attacking the target,
+           maybe tracking their movement if they have to jump forward".
+           A basic attack by the viewer's own (hand-played) unit keeps the menu
+           two-shot of attacker + target instead of the tactical midpoint pan
+           (the same pair keeps the running shot; a pair the camera was not on
+           yet gets the two-shot now). playOffensiveActionCamera runs this on
+           the host AND on the guest's relayed replay (opts.menuHold), each for
+           its own viewer, so each player gets it for their own attacks. The
+           post-action soft reset still brings the tactical view back. */
+        function _menuAttackHold(src, tgt, timings) {
+            try {
+                if (!src || !tgt || src.id == null || tgt.id == null || !window._ewMenuCamOn() || _skipVisuals()) return false;
+                const su = (state.units || []).find(u => u.id === src.id && !u.dead);
+                const tu = (state.units || []).find(u => u.id === tgt.id && !u.dead);
+                if (!su || !tu || su.id === tu.id) return false;
+                if (typeof getViewerPlayer === 'function' && su.player !== getViewerPlayer()) return false;
+                if (state.controllers?.[su.player] !== CTRL.LOCAL || state.autoPlayers?.[su.player]) return false;
+                if (!_menuTargetShot(su, tu)) return false;
+                camera._menuAtk = { unitId: su.id, targetId: tu.id, timer: null,
+                    until: performance.now() + Math.max(0, (timings && timings.totalMs) || 0) + 600 };
+                return true;
+            } catch (e) { return false; }
+        }
+        /* online.js, the guest's own attack emit: the swing plays back only when the
+           host's relayed shot arrives, so hold the two-shot meanwhile (the menu's
+           root reset would otherwise send it home first, then swing back). */
+        window._ewMenuAtkPending = function (unit, x, y, z) {
+            try {
+                if (!unit || !camera._menuShot || !window._ewMenuCamOn()) return;
+                const tu = (typeof unitAt === 'function') ? ((z != null && unitAt(x, y, z)) || unitAt(x, y)) : null;
+                if (!tu || tu.id === unit.id) return;
+                camera._menuAtk = { unitId: unit.id, targetId: tu.id, timer: null, until: performance.now() + 2500 };
+            } catch (e) {}
+        };
+        /* The leap of a held basic attack (animateStrikeLeap, host + guest): the
+           shot keeps its angle and slides its frame with the attacker — out to
+           the landing beside the victim over the leap, back over the return. */
+        function _menuAttackTrackLeap(unit, tx, ty, opts) {
+            const ma = camera._menuAtk, ms = camera._menuShot;
+            if (!ma || !ms || !ms.pose || !unit || !opts || ma.unitId !== unit.id || opts.targetId !== ma.targetId) return;
+            if (performance.now() > ma.until || state.cameraDisabled || _skipVisuals()) return;
+            if (Math.max(Math.abs(tx - unit.x), Math.abs(ty - unit.y)) <= 1) return;   // a step-in strike: the shot already holds it
+            try {
+                const tu = (state.units || []).find(u => u.id === ma.targetId && !u.dead);
+                if (!tu || !ThreeCamera.getBaseDist) return;
+                const bd = ThreeCamera.getBaseDist();
+                if (!(bd > 0)) return;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const A = _menuCamBody(unit), B = _menuCamBody(tu);
+                const len = Math.hypot(B.x - A.x, B.z - A.z) / ts;
+                const f = len > 0 ? Math.max(0, len - Math.min(len, opts.stopShort || 0)) / len : 1;
+                // the attacker at its landing spot, standing on the victim's footing
+                const land = { x: A.x + (B.x - A.x) * f, z: A.z + (B.z - A.z) * f,
+                    foot: B.foot, top: B.foot + (A.top - A.foot) };
+                const out = _menuPoseOf(_menuCamSolve(land, B, ms.pose.yaw, ms.pose.tilt), bd);
+                const back = ms.pose;
+                const leapMs = Math.max(120, opts.leapMs || 260);
+                const move = (p, ms2) => {
+                    // a mid-shot move: keep playOffensiveActionCamera's end-of-shot timer alive
+                    const keep = boardCameraResetTimer;
+                    boardCameraResetTimer = null;
+                    camera.moveTo({ x: p.x, y: p.y, zoom: p.zoom, tilt: p.tilt, yaw: p.yaw, elevZ: p.elevZ,
+                        duration: ms2, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true });
+                    boardCameraResetTimer = keep;
+                };
+                move(out, leapMs);
+                if (ma.timer) clearTimeout(ma.timer);
+                ma.timer = setTimeout(() => {
+                    ma.timer = null;
+                    if (camera._menuShot !== ms || camera._menuAtk !== ma) return;   // something else owns the camera now
+                    move(back, Math.max(120, opts.returnMs || 220));
+                }, leapMs + Math.max(0, opts.holdMs || 70));
+            } catch (e) {}
+        }
 
         /* ui.js (cancelActionSelection) calls this when the player backs out
            to the root menu: return to the third-person turn shot. */
@@ -32393,6 +32522,12 @@
                     partnerId: opts.comboPartnerId,
                     spell: _cineSpellById(_cineSpellIdForShot)
                 });
+            } else if (opts.menuHold && _menuAttackHold(sourceUnit, target, timings)) {
+                /* THE ATTACK HOLD: the viewer's own basic attack stays in the
+                   menu two-shot of attacker + target (no midpoint pan); the
+                   frame guard keeps both bodies in it. */
+                _cineArmFrameGuard({ seq: sequenceId, cine: false, caster: sourceUnit,
+                    victimIds: _shotVictimIds, all: true, totalMs: timings.totalMs });
             } else {
 
                 const focusX = (sourceUnit.x + target.x) / 2;
@@ -57899,6 +58034,8 @@
                 });
             }
 
+            // THE ATTACK HOLD: a held basic attack's camera rides the leap
+            if (opts && opts.targetId != null && camera._menuAtk) _menuAttackTrackLeap(unit, tx, ty, opts);
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.strikeLeap(unit, tx, ty, opts);
                 return;
@@ -61326,7 +61463,10 @@
                 _noCinematic: true,
                 // Basic attacks stay in the tactical board view — the
                 // over-the-shoulder action cam is for spells/abilities only.
-                noActionCam: true
+                noActionCam: true,
+                // …and the player's own swing keeps the menu two-shot it was
+                // already on (THE ATTACK HOLD)
+                menuHold: true
             });
             markDirty('board', 'selectedUnit', 'hud');
             renderIfDirty();
