@@ -13245,7 +13245,34 @@ const UX_DEF = {
      numbers"): the stat words / numbers / grade sizes (px; the defaults are the game's), the numbers on or off; qBuffAt
      = where a buff / debuff with a stat on the card shows (stat | part | both); qChipSize = the status + buff badges */
   qStatLblSize: 9, qStatNumSize: 12, qGradeSize: 16, qStatNum: true, qBuffAt: 'stat', qChipSize: 9,
+  /* THE ARROWS + TILES (2026-10-18, mondo: "i dont really like how the arrows look for spell/move previews ... add a
+     section for them and the tile highlights to the ui maker"): w* = the preview arrows (three-renderer.js reads
+     window._ewArrowLook, bumped _ewArrowLookV: _arrowLook), t* = the tile highlights (window._ewTileLook, _ewTileLookV:
+     _tileLook / the shared uniforms _hlLookU). Numbers are multipliers on the game's own look (1 = as the game); wc* /
+     tc* = a colour per action / per situation ('' = the game's, AIM_ARROW_KINDS / AIM_TILE_KINDS) */
+  wShaft: 'solid', wThick: 1, wGlow: 1, wGlowW: 1, wCore: 0, wBright: 1, wOpacity: 1, wPulse: 1, wPulseSpd: 1, wHead: 'cone', wHeadLen: 1, wHeadW: 1,
+  wDots: true, wDotShape: 'ball', wDotSize: 1, wDotCount: 1, wDotSpd: 1, wDotBright: 1, wDotCol: '',
+  tLine: 1, tEdge: 1, tHalo: 1, tHot: 1, tLineCol: '', tSize: 1, tRound: 0, tFill: 1, tBright: 1, tOpacity: 1, tPulse: 1, tSpeed: 1,
 };
+/* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
+   _hlKindOfType): [kind, label, the game's colour, tip] */
+const AIM_ARROW_KINDS = [['move', 'Move', '#3399ff', 'Your unit walking, dashing, jumping or flying there'], ['hit', 'Damage', '#ff3333', 'A strike or a damage spell'],
+  ['heal', 'Heal + support', '#33dd66', 'A heal, a buff or any help'], ['force', 'Push / pull', '#bb66ff', 'A body the action moves'], ['util', 'Utility', '#eeeeee', 'Anything else']];
+const AIM_TILE_KINDS = [
+  ['move', 'Walk', '#4da6ff', 'moves', 'Where the unit can walk this move'], ['jump', 'Jump / take off', '#35d0c0', 'moves'],
+  ['blocked', 'Can\'t reach', '#cc2222', 'moves', 'In range but not reachable'], ['strike', 'Can strike from here', '#ffcc33', 'moves', 'A move tile you can hit an enemy from'],
+  ['hazard', 'Hurts you here', '#ff3a3a', 'moves'], ['benefit', 'Heals you here', '#33dd77', 'moves'], ['acting', 'Current unit\'s tile', '#ffffff', 'moves'],
+  ['atkReach', 'Basic attack reach', '#ffcc33', 'act'], ['target', 'Enemy you can hit', '#ff2222', 'act'], ['reach', 'Damage spell reach', '#ffa040', 'act'],
+  ['hit', 'Tiles that get hit', '#ff3a3a', 'act', 'The spell\'s footprint before you cast'], ['healReach', 'Support spell reach', '#33dd77', 'act'],
+  ['heal', 'Heal / support target', '#22ee55', 'act'], ['buffReach', 'Buff spell reach', '#4488ff', 'act'], ['util', 'Utility spell reach', '#8844ee', 'act'],
+  ['force', 'Push / pull landing', '#bb66ff', 'act'], ['combo', 'Combo target', '#ff8822', 'act'],
+  ['foeRange', 'Enemy reach', '#ff4545', 'other', 'Hovering an enemy shows where it can hit'], ['allyRange', 'Your unit\'s reach', '#5aa8ff', 'other', 'Hovering your unit shows where it can hit'],
+  ['cursor', 'Cursor', '#ffd83d', 'other'], ['ally', 'Ally', '#ddaa22', 'other'], ['inspect', 'Inspect', '#22eebb', 'other'], ['place', 'Placeable', '#44aaff', 'other'],
+  ['glowFoe', 'About to hit (gold)', '#ffd23d', 'glow', 'The gold ground glow while a spell lands on enemies'], ['glowFriend', 'Lands on your side', '#fff4d6', 'glow'],
+  ['glowCaster', 'The caster', '#ffffff', 'glow']];
+const aimKey = (pre, k) => pre + k[0].toUpperCase() + k.slice(1);
+AIM_ARROW_KINDS.forEach(([k]) => { UX_DEF[aimKey('wc', k)] = ''; });
+AIM_TILE_KINDS.forEach(([k]) => { UX_DEF[aimKey('tc', k)] = ''; });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -13534,6 +13561,21 @@ function uxTidy() {
   Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
 }
 const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k[0] === pre);
+/* the arrow + tile looks the renderer reads, each re-published only when it changes */
+let _aimSentA = '', _aimSentT = '';
+function aimSignal() {
+  const X = uxOf(), ac = {}, tc = {};
+  AIM_ARROW_KINDS.forEach(([k]) => { const v = X[aimKey('wc', k)]; if (v) ac[k] = v; });
+  AIM_TILE_KINDS.forEach(([k]) => { const v = X[aimKey('tc', k)]; if (v) tc[k] = v; });
+  const A = { shaft: X.wShaft, thick: +X.wThick, glow: +X.wGlow, glowW: +X.wGlowW, core: +X.wCore, bright: +X.wBright, opacity: +X.wOpacity,
+    pulse: +X.wPulse, pulseSpd: +X.wPulseSpd, head: X.wHead, headLen: +X.wHeadLen, headW: +X.wHeadW, dots: !!X.wDots, dotShape: X.wDotShape,
+    dotSize: +X.wDotSize, dotCount: +X.wDotCount, dotSpd: +X.wDotSpd, dotBright: +X.wDotBright, dotCol: X.wDotCol || '', cols: ac };
+  const T = { line: +X.tLine, edge: +X.tEdge, halo: +X.tHalo, hot: +X.tHot, lineCol: X.tLineCol || '', size: +X.tSize, round: +X.tRound, fill: +X.tFill,
+    bright: +X.tBright, opacity: +X.tOpacity, pulse: +X.tPulse, speed: +X.tSpeed, cols: tc };
+  const ka = JSON.stringify(A), kt = JSON.stringify(T);
+  if (ka !== _aimSentA) { _aimSentA = ka; window._ewArrowLook = A; window._ewArrowLookV = (window._ewArrowLookV || 0) + 1; }
+  if (kt !== _aimSentT) { _aimSentT = kt; window._ewTileLook = T; window._ewTileLookV = (window._ewTileLookV || 0) + 1; }
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -13774,6 +13816,80 @@ function ringDetail() {
   h += sec('rarrow', 'The facing arrow', xp(fSeg('Arrow', 'rArrow', [['double', 'Double chevron'], ['single', 'Chevron'], ['triangle', 'Triangle'], ['dot', 'Dot'], ['none', 'None']], X.rArrow)
     + fRange('Size', 'rArrowSize', 0.5, 1.8, 0.05, +X.rArrowSize) + fColorOpt('Colour', 'rArrowColor', X.rArrowColor, '#ffffff', false, 'Unticked = the team colour')));
   h += `<div class="uim-note">When the health rings are on (Settings), the HP / MP meters take the ring's size and thickness too.</div>` + xReset('r', 'Reset the rings');
+  return h;
+}
+/* ── THE ARROWS + TILES VIEW (live mode 'aim'): the preview arrows and the tile highlights; a small board of the game's
+   own (ThreeRenderer.lookPreview, its own context on the dock's canvas) shows every change at once, in a battle or out
+   of one, and in a battle the real arrows + tiles change with it (the view leaves the board clickable) ── */
+const ARROW_LOOKS = [['game', 'As the game', {}],
+  ['fine', 'Fine', { wThick: 0.45, wGlow: 0.7, wGlowW: 1.5, wCore: 0.6, wHeadLen: 0.8, wHeadW: 0.75, wDotShape: 'streak', wDotSize: 0.6, wDotSpd: 1.5, wPulse: 0.4 }],
+  ['laser', 'Laser', { wThick: 0.3, wGlow: 1.8, wGlowW: 2.4, wCore: 1, wBright: 1.2, wHeadLen: 0.7, wHeadW: 0.7, wDotShape: 'streak', wDotSize: 0.7, wDotCount: 1.5, wDotSpd: 2, wPulse: 0.3 }],
+  ['dashed', 'Dashed', { wShaft: 'dashed', wThick: 0.6, wGlow: 0.5, wDots: false, wHeadLen: 0.85 }],
+  ['comet', 'Comet', { wShaft: 'none', wDotCount: 2.5, wDotSize: 0.8, wDotSpd: 1.2, wGlow: 1.2, wHeadLen: 0.9 }]];
+const TILE_LOOKS = [['game', 'As the game', {}],
+  ['clean', 'Clean', { tLine: 0.7, tHalo: 0.35, tHot: 0.6, tFill: 0.75, tPulse: 0 }],
+  ['neon', 'Neon', { tLine: 1.3, tHalo: 1.8, tHot: 1.8, tFill: 0.55, tBright: 1.15 }],
+  ['soft', 'Soft', { tRound: 0.16, tSize: 0.95, tLine: 0.6, tHalo: 0.6, tFill: 1.1 }],
+  ['bold', 'Bold', { tLine: 1.6, tEdge: 1.4, tFill: 1.3, tOpacity: 1.1 }]];
+function dockAimBody() {
+  return dockTop() + `<div class="uim-note">The arrows and tile highlights a battle shows before you act. The board below changes as you drag; in a battle the real ones change too (hover a tile, a unit or a spell while this is open).</div>
+  <div class="uim-aimprev"><canvas data-aimcv="1"></canvas><div class="uim-aimkey"></div></div>
+  <div class="uim-dk-detail"></div>`;
+}
+/* the little board's key: what each arrow + tile on it is, in the colours now */
+let _aimKeySeen = '';
+function aimKeyRefresh(force) {
+  const A = UI.live, el = A && A.dock.querySelector('.uim-aimkey'); if (!el) return;
+  const X = uxOf(), sig = (window._ewArrowLookV || 0) + ':' + (window._ewTileLookV || 0);
+  if (!force && sig === _aimKeySeen && el.childNodes.length) return;
+  _aimKeySeen = sig;
+  const ac = k => X[aimKey('wc', k)] || (AIM_ARROW_KINDS.find(x => x[0] === k) || [])[2];
+  const tcol = k => X[aimKey('tc', k)] || (AIM_TILE_KINDS.find(x => x[0] === k) || [])[2];
+  const dot = (c, l, tile) => `<span><i class="${tile ? 'tl' : 'ar'}" style="--c:${esc(c)}"></i>${esc(l)}</span>`;
+  el.innerHTML = dot(ac('move'), 'Walk') + dot(ac('hit'), 'Strike') + dot(ac('heal'), 'Heal') + dot(ac('force'), 'Shove')
+    + dot(tcol('move'), 'Walk tiles', 1) + dot(tcol('jump'), 'Jump', 1) + dot(tcol('strike'), 'Strike from', 1) + dot(tcol('reach'), 'Reach', 1)
+    + dot(tcol('hit'), 'Hit', 1) + dot(tcol('glowFoe'), 'About to hit', 1);
+}
+function aimPrevMount() {
+  const A = UI.live, cv = A && A.dock.querySelector('canvas[data-aimcv]'); if (!cv) return;
+  let ok = null;
+  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.lookPreview ? ThreeRenderer.lookPreview(cv) : null; } catch (e) { ok = null; }
+  if (!ok) cv.parentElement.insertAdjacentHTML('afterbegin', '<div class="uim-note">The little board could not start here; the real board in a battle still shows every change.</div>');
+  aimKeyRefresh(true);
+}
+function aimDetail() {
+  const X = uxOf();
+  const looks = (pre, L) => `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${L.map(([v, l]) => `<button class="uim-btn" data-dk="aimlook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  let h = `<div class="uim-h">Arrows</div>` + looks('w', ARROW_LOOKS);
+  h += sec('wshape', 'Arrow shape', xp(fSeg('Shaft', 'wShaft', [['solid', 'Solid'], ['dashed', 'Dashed'], ['none', 'None', 'The dots and the head alone']], X.wShaft)
+    + fRange('Thickness', 'wThick', 0.1, 3, 0.05, +X.wThick, '1 = as the game; lower = thinner')
+    + fSeg('Head', 'wHead', [['cone', 'Cone'], ['none', 'None']], X.wHead)
+    + fRange('Head length', 'wHeadLen', 0.2, 3, 0.05, +X.wHeadLen) + fRange('Head width', 'wHeadW', 0.2, 3, 0.05, +X.wHeadW)
+    + fRange('Opacity', 'wOpacity', 0.05, 1, 0.05, +X.wOpacity)));
+  h += sec('wlight', 'Arrow light', xp(fRange('Brightness', 'wBright', 0.2, 2.5, 0.05, +X.wBright)
+    + fRange('Glow', 'wGlow', 0, 4, 0.05, +X.wGlow, 'The soft light around the shaft and the head (0 = none)') + fRange('Glow width', 'wGlowW', 0.3, 4, 0.05, +X.wGlowW)
+    + fRange('Hot core', 'wCore', 0, 1, 0.05, +X.wCore, 'A thin white-hot line inside the shaft')
+    + fRange('Pulse', 'wPulse', 0, 2.5, 0.05, +X.wPulse, 'How much the arrow breathes (0 = steady)') + fRange('Pulse speed', 'wPulseSpd', 0, 6, 0.05, +X.wPulseSpd)));
+  h += sec('wdots', 'Travelling dots', xCheck('Dots', 'wDots', X.wDots) + xp(fSeg('Shape', 'wDotShape', [['ball', 'Ball'], ['diamond', 'Diamond'], ['streak', 'Streak'], ['ring', 'Ring']], X.wDotShape)
+    + fRange('Size', 'wDotSize', 0.1, 4, 0.05, +X.wDotSize) + fRange('How many', 'wDotCount', 0.2, 4, 0.05, +X.wDotCount)
+    + fRange('Speed', 'wDotSpd', 0, 6, 0.05, +X.wDotSpd, '0 = they stand still') + fRange('Brightness', 'wDotBright', 0, 2.5, 0.05, +X.wDotBright)
+    + fColorOpt('Colour', 'wDotCol', X.wDotCol, '#ffffff', false, 'Unticked = the arrow\'s colour')));
+  h += sec('wcols', 'Arrow colours', xp(AIM_ARROW_KINDS.map(([k, l, d, tip]) => fColorOpt(l, aimKey('wc', k), X[aimKey('wc', k)], d, false, tip)).join(''))
+    + '<div class="uim-note">Ticked = its own colour for that action; unticked = the game\'s.</div>');
+  h += xReset('w', 'Reset the arrows');
+  h += `<div class="uim-h">Tile highlights</div>` + looks('t', TILE_LOOKS);
+  h += sec('tline', 'Outline', xp(fRange('Width', 'tLine', 0, 4, 0.05, +X.tLine, '0 = no outline') + fRange('Strength', 'tEdge', 0, 3, 0.05, +X.tEdge)
+    + fRange('Glow', 'tHalo', 0, 4, 0.05, +X.tHalo, 'The soft light just inside the outline') + fRange('White-hot edge', 'tHot', 0, 3, 0.05, +X.tHot)
+    + fColorOpt('Colour', 'tLineCol', X.tLineCol, '#ffffff', false, 'Unticked = each tile\'s own colour')));
+  h += sec('tfill', 'Fill + light', xp(fRange('Fill', 'tFill', 0, 3, 0.05, +X.tFill, 'How solid the inside of a tile is (0 = the outline alone)')
+    + fRange('Brightness', 'tBright', 0.2, 2.5, 0.05, +X.tBright) + fRange('Opacity', 'tOpacity', 0.05, 1.5, 0.05, +X.tOpacity)
+    + fRange('Pulse', 'tPulse', 0, 8, 0.1, +X.tPulse, 'How much the tiles breathe (0 = steady)') + fRange('Pulse speed', 'tSpeed', 0, 6, 0.05, +X.tSpeed)));
+  h += sec('tshape', 'Shape', xp(fRange('Size', 'tSize', 0.4, 1.08, 0.01, +X.tSize, '1 = as the game; smaller leaves a gap between the tiles')
+    + fRange('Rounded corners', 'tRound', 0, 0.5, 0.01, +X.tRound)));
+  [['moves', 'Colours: moving'], ['act', 'Colours: attacks + spells'], ['other', 'Colours: other'], ['glow', 'Colours: spell glow on the ground']].forEach(([g, t]) => {
+    h += sec('tc' + g, t, xp(AIM_TILE_KINDS.filter(x => x[3] === g).map(([k, l, d, , tip]) => fColorOpt(l, aimKey('tc', k), X[aimKey('tc', k)], d, false, tip)).join('')));
+  });
+  h += '<div class="uim-note">Every number is on top of the game\'s own look (1 = as the game), so a reach still reads quieter than a hit.</div>' + xReset('t', 'Reset the tile highlights');
   return h;
 }
 function platesDetail() {
@@ -14424,7 +14540,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -14674,6 +14790,12 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
 .uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
 .uim-arr-box.surf > span { background: #138aa3; }
+.uim-aimprev { margin: 6px 0 8px; }
+.uim-aimprev canvas { display: block; width: 100%; height: 178px; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
+.uim-aimkey { display: flex; flex-wrap: wrap; gap: 2px 9px; margin-top: 5px; font-size: 10px; color: #aab3c3; }
+.uim-aimkey span { display: inline-flex; align-items: center; gap: 4px; }
+.uim-aimkey i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); box-shadow: 0 0 4px var(--c); }
+.uim-aimkey i.tl { width: 9px; height: 9px; border-radius: 2px; background: transparent; border: 1.5px solid var(--c); box-shadow: inset 0 0 0 9px color-mix(in srgb, var(--c) 35%, transparent); }
 .uim-dock { position: fixed; z-index: 10061; width: 364px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
@@ -15093,10 +15215,12 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove) and the tile highlights look, with a small board that shows every change at once']];
+/* the tabs that open on the real screen (the live dock) */
+const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim'];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
-  if (UI.tab === 'layout' || UI.tab === 'menus' || UI.tab === 'bars' || UI.tab === 'faces') UI.tab = UI.back || 'skins';
+  if (LIVE_MODES.indexOf(UI.tab) >= 0) UI.tab = UI.back || 'skins';
   let h = `<div class="uim-tabs">${TABS.map(([v, l, tip]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div>`;
   if (UI.tab === 'slices') return h + slicesForm();
   if (!editable(T)) h += `<div class="uim-ro"><b>${esc(T.label)}</b> is ${T.builtin ? 'a built-in theme' : 'a preset'}. Change anything below and it becomes your own copy; the original stays.</div>`;
@@ -15270,7 +15394,7 @@ function onClick(e, root) {
   const T = curTheme();
   if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; UI.draft = null; render(); return; }
   if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
-  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus' || b.dataset.tab === 'bars' || b.dataset.tab === 'faces') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
+  if (b.dataset.tab) { if (LIVE_MODES.indexOf(b.dataset.tab) >= 0) { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
   if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
   if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
   if (b.dataset.zoom) { UI.zoom = +b.dataset.zoom; render(); return; }
@@ -15672,6 +15796,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
+    <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows and the tile highlights look">Arrows</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -16179,8 +16304,9 @@ function faceBoxes() {
 
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
+  if (A.mode === 'aim') aimPrevMount();
 }
 function dockDetail() {
   const A = UI.live; if (!A) return;
@@ -16188,6 +16314,7 @@ function dockDetail() {
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
   else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
+  else if (A.mode === 'aim') d.innerHTML = aimDetail();
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -16233,6 +16360,7 @@ function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); a
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
+  if (A.mode === 'aim') return;   // no boxes to pick: the board below the panel is the game's own
   if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
@@ -16291,7 +16419,7 @@ function foldDock() {
 /* ── on / off ── */
 function liveOn(mode) {
   if (!UI.el) { window.openUiMaker(); if (!UI.el) return; }
-  if (UI.tab !== 'layout' && UI.tab !== 'menus' && UI.tab !== 'bars' && UI.tab !== 'faces') UI.back = UI.tab;
+  if (LIVE_MODES.indexOf(UI.tab) < 0) UI.back = UI.tab;
   if (UI.live) { if (UI.live.mode !== mode) liveMode(mode); return; }
   const ov = document.createElement('div'); ov.className = 'uim-arr';
   ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div><div class="uim-arr-catch"></div><div class="uim-arr-hi"><span></span></div>';
@@ -16316,7 +16444,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -16713,7 +16841,7 @@ function dockClick(e) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
     const k = b.dataset.dk, v = b.dataset.val, P = pieceById(UI.piece);
-    if (k === 'layout' || k === 'menus' || k === 'bars' || k === 'faces') liveOn(k);
+    if (LIVE_MODES.indexOf(k) >= 0) liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
     else if (k === 'fold') foldDock();
@@ -16776,6 +16904,10 @@ function dockClick(e) {
     else if (k === 'wreset' && P) { snapLayout(true); if (db.words) delete db.words[P.id]; touchLayout(); dockDetail(); }
     else if (k === 'piecereset' && P) resetPiece(P);
     else if (k === 'txpart') { const i = v.indexOf(':'); UI.txpart = UI.txpart || {}; UI.txpart[v.slice(0, i)] = v.slice(i + 1); dockDetail(); }
+    else if (k === 'aimlook') {   // a one-click look: the shape + light keys of that side (w / t) go back first, the colours stay
+      const pre = v[0], L = (pre === 'w' ? ARROW_LOOKS : TILE_LOOKS).find(x => x[0] === v.slice(2));
+      if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === pre && x[1] !== 'c') delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
+    }
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
     else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
@@ -17110,7 +17242,7 @@ window.UIMaker = {
   apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS, pieces: UIM_PIECES,
   has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
   arrange: () => { window.openUiMaker(); liveOn('layout'); },
-  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' || mode === 'bars' || mode === 'faces' ? mode : 'layout'); },
+  live: mode => { window.openUiMaker(); liveOn(LIVE_MODES.indexOf(mode) >= 0 ? mode : 'layout'); },
   hero: () => heroOf(),
   bars: () => barsOf(),
   get db() { return db; },
