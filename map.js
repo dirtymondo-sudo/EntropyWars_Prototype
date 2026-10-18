@@ -12309,6 +12309,7 @@
             state.paintedTiles = {};   // THE SKINS: a fresh board has no painted surfaces (setTerrainAt notes them)
             state.paintedFrom = {};   // THE WEATHER'S TERRAIN: nor what a painted cell was before (notePaintOrigin)
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
+            state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so

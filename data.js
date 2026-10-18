@@ -4686,7 +4686,11 @@ const SPELL_LIBRARY = [
            turns to mountain stone and climbs two levels (applyTerrainDeform:
            units on it ride up). The standing-stone monument (2026-09-18) is
            retired for Rampart; Walls of Camelot / Pyramid Protocol keep theirs. */
-        terrainDeform: { centerDelta: 2, edgeDelta: 0 },
+        /* 2026-10-18 (mondo): "since this isnt the voxel map its kind of weird for it to be a perfect cube wall … raise the
+           elevation like how raising elevation works in the map editor, and make the sides/walls dirt". `mound`: on a
+           true-ground field the raised cells are drawn as the ground swelling with dirt banks (three-renderer.js
+           _fieldMoundBuild); a voxel board (Holo Sim, Training Room) keeps the block. Rules unchanged. */
+        terrainDeform: { centerDelta: 2, edgeDelta: 0, mound: true },
         /* Tank capstone (ring 4 = tier III, spell-tree redesign). */
         tier: 2,
         school: 'Tank',
