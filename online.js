@@ -311,6 +311,7 @@
                                     : sentActionMode === 'jump' ? 'jump'
                                     : null;
                                 if (_fbKind) _guestActionFeedback(_fbKind, actingUnit, x, y);
+                                if (_fbKind === 'attack' && typeof window._ewMenuAtkPending === 'function') window._ewMenuAtkPending(actingUnit, x, y, sentPendingTarget.z);
                             }
 
                             state.actionMode = null;
@@ -536,6 +537,7 @@
             if (_isHost()) return _hostRunAndSync(_origDoAttack, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return 0;
             _guestActionFeedback('attack', unit, x, y);
+            if (typeof window._ewMenuAtkPending === 'function') window._ewMenuAtkPending(unit, x, y, z);
             _emit('game-action', { type: 'engine', fn: 'doAttack', unitId: unit.id, x: x, y: y, z: z });
             return 1200; /* nominal delay — the real visuals arrive via host relays */
         };
@@ -840,6 +842,22 @@
                 _emit('game-action', { type: 'engine', fn: 'doGuard', unitId: unit.id });
             };
             window.doGuard = doGuard;
+        }
+
+        /* THE CLICK FACE (battle.js doFaceUnit): picking a unit turns the
+           acting unit to it. The guest turns its own copy at once (the click
+           must answer now) and the host applies the same facing and syncs it. */
+        const _origDoFaceUnit = (typeof doFaceUnit === 'function') ? doFaceUnit : null;
+        if (_origDoFaceUnit) {
+            doFaceUnit = function(unit, targetId) {
+                if (!_isOnline() || state._remoteAction) return _origDoFaceUnit(unit, targetId);
+                if (_isHost()) return _hostRunAndSync(_origDoFaceUnit, [unit, targetId]);
+                if (!_guestOwnsAction(unit)) return false;
+                if (!_origDoFaceUnit(unit, targetId)) return false;   // same facing already: nothing to send
+                _emit('game-action', { type: 'engine', fn: 'doFaceUnit', unitId: unit.id, targetId: targetId });
+                return true;
+            };
+            window.doFaceUnit = doFaceUnit;
         }
 
         /* Inspect / Ward / Detonate — the remaining engine verbs the
@@ -1267,6 +1285,9 @@
                        EVERY relayed attack replay as a full cinematic. */
                     if (opts.noActionCam) camEvt.noActionCam = true;
                     if (opts._noCinematic) camEvt._noCinematic = true;
+                    /* THE ATTACK HOLD: the guest's own basic attack keeps its
+                       menu two-shot (battle.js _menuAttackHold decides per viewer) */
+                    if (opts.menuHold) camEvt.menuHold = true;
                     /* Multi-target shots (line skewers, AoE blasts, split
                        beams): without these the guest's beat 2 framed only
                        the first victim while the host got the wide group cut. */
@@ -1965,6 +1986,9 @@
                                 break;
                             case 'doGuard':
                                 if (typeof doGuard === 'function') doGuard(engUnit);
+                                break;
+                            case 'doFaceUnit':
+                                if (typeof doFaceUnit === 'function') doFaceUnit(engUnit, data.targetId);
                                 break;
                             case 'doInspect':
                                 if (typeof doInspect === 'function') doInspect(engUnit, data.x, data.y);
@@ -4264,6 +4288,7 @@
                                 if (camEvt.descentCam) camOpts.descentCam = camEvt.descentCam;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
+                                if (camEvt.menuHold) camOpts.menuHold = true;
                                 if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
                                 if (Array.isArray(camEvt.frameUnitIds) && camEvt.frameUnitIds.length) camOpts.frameUnitIds = camEvt.frameUnitIds;
                                 if (camEvt.extraTargetIds && camEvt.extraTargetIds.length

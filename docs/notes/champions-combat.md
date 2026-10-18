@@ -1408,6 +1408,27 @@ row the cursor lands on reframes the caster + that target, one continuous camera
   midpoint pan; switching it off mid-shot returns home (_ewMenuCamHome(true)).
 - Local only (menu browsing is never relayed). Only syntax-checked plus a node check of the fit maths.
 
+## THE CLICK FACE + THE ATTACK HOLD (2026-10-18)
+mondo: "whenever i click on an enemy or a unit, my unit should turn to face them. if all i do is basic attack them ...
+the camera should sort of stay the way it already is ... and just show that view of the unit attacking the target,
+maybe tracking their movement if they have to jump forward to attack them."
+- THE CLICK FACE: battle.js `_faceTargetPick` (top of `_tpsTargetShot`, so every between-action UNIT pick: board click,
+  quick menu open, attack/spell/item lists, Tab cycling, the list cursor) → `doFaceUnit(unit, targetId)`, which sets the
+  REAL `unit.facing` (arc math reads it; the renderer turns the body at UNIT_TURN_RATE). Local hand-played unit only,
+  its own turn, not mid-action; a hidden/fogged enemy is never faced; tile and self picks turn nobody. Side effect by
+  design: clicking a unit is now a free way to choose facing before ending the turn.
+  Online: online.js wraps `doFaceUnit` (engine action 'doFaceUnit' + targetId); the guest turns its copy at once and
+  emits only when the facing changed, the host applies + syncs.
+- THE ATTACK HOLD: doAttack passes `menuHold: true`; playOffensiveActionCamera's tactical branch calls
+  `_menuAttackHold` first: the viewer's own non-auto attacker keeps (same pair = no move) or gets the menu two-shot
+  instead of the midpoint pan (which used to drop the shot back to the tactical view). online.js relays `menuHold`;
+  each side decides for its own viewer, so each player gets it for their own swings. `camera._menuShot.pose` +
+  `camera._menuAtk {unitId, targetId, until}`.
+- The leap: `animateStrikeLeap` (host + guest replay) → `_menuAttackTrackLeap`: for a leap of 2+ tiles the shot keeps
+  its yaw/tilt and re-fits the frame with the attacker at its landing spot over leapMs, back to the pose over returnMs
+  (moves shield boardCameraResetTimer). The post-action `_softResetCameraToUnit` (PR #278 timing untouched) still
+  returns the tactical view.
+
 ## THE JUMP FOLLOW (2026-10-14, camera rides your own jumps)
 mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
 - Cause: battle.js `doJump` skipped the follow pan for the LOCAL player's jumps on purpose ("parity with walking": the
