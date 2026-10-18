@@ -6947,6 +6947,7 @@
             }
             cmds.push({ id: 'library', label: 'STATUSES', sub: 'EVERY EFFECT IN THE GAME' });
             if (!inEditor && window.EWCine) cmds.push({ id: 'camera', label: 'CAMERA', sub: 'CINEMATIC · PHOTOS · VIDEO' });   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
+            if (!inEditor && window.EWShots) cmds.push({ id: 'shots', label: 'SHOTS', sub: 'FRAME + RECORD THE TARGET CAMERA (F7)' });   // THE SHOT RECORDER (2026-10-18, three-camera.js EWShots)
             if (window.openDataPanel && !(typeof isOnlineMatch === 'function' && isOnlineMatch())) cmds.push({ id: 'data', label: 'DATA', sub: 'LIVE TABLES · ITEMS (F9)' });   // THE DATA PANEL (2026-10-08)
             cmds.push({ id: 'settings', label: 'SETTINGS', sub: 'AUDIO · VIDEO · CONTROLS' });
             if (!inEditor) cmds.push({ id: 'forfeit', label: 'FORFEIT', sub: 'COUNTS AS A LOSS', danger: true });
@@ -7071,6 +7072,7 @@
             if (id === 'resume') { closePauseMenu(); return; }
             if (id === 'forfeit') { closePauseMenu(); document.getElementById('forfeitBtn')?.click(); return; }
             if (id === 'camera') { closePauseMenu(); if (window.EWCine) window.EWCine.enter({ force: true }); return; }
+            if (id === 'shots') { closePauseMenu(); if (window.EWShots) window.EWShots.enter(); return; }
             if (id === 'data') { closePauseMenu(); if (window.openDataPanel) window.openDataPanel(); return; }
             _pauseTab = id;
             _pauseCursor = Math.max(0, _pauseCmds().findIndex(c => c.id === id));
