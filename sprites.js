@@ -3742,6 +3742,7 @@ const TERRAIN_SPRITES = {
     ruins:          [`${_T}/ruins.png`],
     crystal:        [`${_T}/crystal.png`],
     obsidian:       [`${_T}/obsidian.png`],
+    stone:          [`${_T}/rocks_5.png`],   // 🪨 water + lava (map.js lavaWaterMixOf): the cliffs' rock sheet
     healing_spring: [`${_T}/healing_spring.png`],
     fog_wall:       [`${_T}/fog.png`],
     nexus:          [`${_T}/nexus.png`],
