@@ -65039,10 +65039,21 @@ const ThreeRenderer = (function () {
         return Math.max(G.ts, Math.min(6 * G.ts, rep));
     }
     /* cells: [{x, y}] of one surface; yOf(x, y) → the top (battle px) or null; o: { lift, solid, origin: {x, y} (tiles), rep (px),
-       fringe: false to draw no fade onto the neighbours }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
+       fringe: false to draw no fade onto the neighbours, ground: fn(wx, wz, x, y, refY) → the true ground under a point of cell
+       (x, y) or null (THE DRAPE, as _liqBlendGeo) }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
     function _fieldPatchGeo(G, cells, yOf, o) {
         if (!cells.length) return null;
         var ts = G.ts, S = FIELD_PATCH_SEGS, in_ = {}, i, c;
+        /* THE DRAPE ON THE DRY SKINS (2026-10-18, mondo on Skinwalker Ranch: ice with "weird edge blending and flickering ... needs
+           the same fix the liquids had"): a skin was flat at each cell's one top, so on rolling true ground the ground rose through
+           it in jagged triangles, met it at a hair's depth and shimmered, and a neighbour a third of a level off was a hard square
+           edge. With o.ground the sheet lies on the ground under every vertex, a neighbour across a slope wears the fade, and the
+           board's edge fades the sheet out — THE DRAPE's rules for the liquids. */
+        var gAt = function (u, v, x, y, ref) {
+            if (!o.ground) return null;
+            var g = o.ground(u * ts, v * ts, x, y, ref);
+            return (g === null || g === undefined || !isFinite(g)) ? null : g;
+        };
         for (i = 0; i < cells.length; i++) in_[cells[i].x + ',' + cells[i].y] = true;
         var has = function (x, y) { return !!in_[x + ',' + y]; };
         var ox = (o.origin ? o.origin.x : 0) * ts, oz = (o.origin ? o.origin.y : 0) * ts, rep = o.rep || ts * 2, lift = o.lift || 0;
@@ -65074,24 +65085,51 @@ const ThreeRenderer = (function () {
                 for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
                     var fx = c.x + dx, fy = c.y + dy, fk = fx + ',' + fy;
                     if ((!dx && !dy) || has(fx, fy) || seen[fk] || fx < 0 || fy < 0 || fx >= G.W || fy >= G.H) continue;
-                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined || Math.abs(fyy - cy0) > near) continue;
+                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined) continue;
+                    if (Math.abs(fyy - cy0) > near) {
+                        /* THE DRAPE: the ground on the shared edge / corner, read from either side — one surface is a slope, the fade runs on */
+                        var pu = c.x + 0.5 + dx * 0.5, pv = c.y + 0.5 + dy * 0.5, ga = gAt(pu, pv, c.x, c.y, cy0), gb = gAt(pu, pv, fx, fy, fyy);
+                        if (ga === null || gb === null || Math.abs(ga - gb) > near) continue;
+                    }
                     seen[fk] = true; fringe.push({ x: fx, y: fy });
                 }
             }
         }
         var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+        var S1 = S + 1;
         var quadCell = function (cx, cy, top, solidCell) {
-            var v0 = nV, a = [], any = false;
-            for (var j = 0; j <= S; j++) for (var k = 0; k <= S; k++) {
-                var u = cx + k / S, v = cy + j / S, wx = u * ts, wz = v * ts;
-                var al = alphaAt(u, v, cx, cy, solidCell); a.push(al); if (al > 0.01) any = true;
-                pos.push(wx, top + lift, wz); nrm.push(0, 1, 0);
+            var v0 = nV, a = [], any = false, j, k, u, v;
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = cx + k / S; v = cy + j / S;
+                var al = alphaAt(u, v, cx, cy, solidCell);
+                /* THE DRAPE: on the true ground the board's edge fades the sheet out (the room's floor runs on past it) */
+                if (o.ground && al > 0) al *= _liqEase(0, LIQ_EDGE_FADE, Math.min(u, v, G.W - u, G.H - v));
+                a.push(al); if (al > 0.01) any = true;
+            }
+            if (!any) return 0;
+            /* THE DRAPE: the ground read at every other vertex, the ones between their neighbours' mean (read too where one has none) */
+            var gh = null;
+            if (o.ground) {
+                gh = new Array(S1 * S1);
+                for (j = 0; j <= S; j += 2) for (k = 0; k <= S; k += 2) gh[j * S1 + k] = gAt(cx + k / S, cy + j / S, cx, cy, top);
+                for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                    if (!(j & 1) && !(k & 1)) continue;
+                    var nb = (j & 1) && (k & 1) ? [gh[(j - 1) * S1 + k - 1], gh[(j - 1) * S1 + k + 1], gh[(j + 1) * S1 + k - 1], gh[(j + 1) * S1 + k + 1]]
+                           : (j & 1) ? [gh[(j - 1) * S1 + k], gh[(j + 1) * S1 + k]] : [gh[j * S1 + k - 1], gh[j * S1 + k + 1]];
+                    var sum = 0, ok = true;
+                    for (var b = 0; b < nb.length; b++) { if (nb[b] === null) { ok = false; break; } sum += nb[b]; }
+                    gh[j * S1 + k] = ok ? sum / nb.length : gAt(cx + k / S, cy + j / S, cx, cy, top);
+                }
+            }
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = cx + k / S; v = cy + j / S;
+                var wx = u * ts, wz = v * ts, gy = gh ? gh[j * S1 + k] : null;
+                pos.push(wx, (gy !== null ? gy : top) + lift, wz); nrm.push(0, 1, 0);
                 if (o.cellUV) uv.push(k / S, 1 - j / S);   // a liquid's sheets: one per cell (its base sheet clamps), its flow and caustics are world space already
                 else uv.push((wx - ox) / rep + 0.5, 0.5 - (wz - oz) / rep);
-                col.push(1, 1, 1, al);
+                col.push(1, 1, 1, a[j * S1 + k]);
                 nV++;
             }
-            if (!any) { pos.length -= (S + 1) * (S + 1) * 3; nrm.length = pos.length; uv.length -= (S + 1) * (S + 1) * 2; col.length -= (S + 1) * (S + 1) * 4; nV = v0; return 0; }
             for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
                 var p = v0 + j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
                 if (!solidCell && a[p - v0] < 0.01 && a[q - v0] < 0.01 && a[r - v0] < 0.01 && a[s2 - v0] < 0.01) continue;
@@ -65730,9 +65768,17 @@ const ThreeRenderer = (function () {
                 var fluid = !!_FLUID_TERRAIN_SET[k], mat = fluid ? matOf(k) : _fieldPatchSheetMat(k); if (!mat) return;
                 var fade = fluid ? mat : _fieldPatchFadeMat(mat, 'skin|' + k);
                 if (!fade) return;
+                /* THE DRAPE ON THE DRY SKINS: ice, sand, scorch … lie on the true ground under every vertex, a highlight's lift over it
+                   (not a climbing run: its rise lifts the sheet with its strata) */
+                var gDry = null, dLift = 0;
+                if (!fluid && !rq) {
+                    var gS = _liqDrapeSampler();   // THE WALL TOPS: a monument cell keeps its floor's flat sheet (the ground read there is the stone's top)
+                    gDry = function (wx, wz, x, y, ref) { return monFloor(x, y) !== null ? null : gS(wx, wz, x, y, ref); };
+                    dLift = HL_FIELD_LIFT * ts;
+                }
                 _fieldPatchRuns(byKey[bk]).forEach(function (run) {
                     var low = run.some(function (c) { return G.deltaAt(c.x, c.y) < 0; });
-                    var geo = _fieldPatchGeo(G, run, yOf, { lift: fluid ? 0.9 : 0.7, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep });
+                    var geo = _fieldPatchGeo(G, run, yOf, { lift: (fluid ? 0.9 : 0.7) + dLift, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep, ground: gDry });
                     if (!geo) return;
                     var mesh = new THREE.Mesh(geo, [fade, fade]);
                     mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k; mesh.name = 'field_skin_patch';
