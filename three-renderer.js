@@ -38820,6 +38820,26 @@ const ThreeRenderer = (function () {
         return any;
     }
 
+    /* THE TURN HANDOFF (2026-10-18, mondo: "there is a pause after a death ... other spells where it feels like there
+       is empty space at the end where nothing is happening"): the turn loop splits hasActiveAnims in two. Blocking =
+       bodies still moving or a shot still flying (the next turn must wait). Decor = damage numbers fading, impact
+       flashes, a dead body dissolving: they finish on screen while the next turn starts (battle.js caps that tail). */
+    function hasBlockingAnims() {
+        if (_freeRoam) return true;
+        return _projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0;
+    }
+    function hasDecorAnims() {
+        return _floatTweens.length > 0 || _hitFxTweens.length > 0 || _deathTweens.size > 0;
+    }
+    /* 0..1 through a unit's death tween on the anim clock (a rigged body is down by ~0.55, then it dissolves), -1 when
+       it is not dying. */
+    function deathTweenProgress(uid) {
+        var tw = _deathTweens.get(uid);
+        if (!tw) return -1;
+        return Math.max(0, Math.min(1, (_animNow() - tw.startTime) / tw.durationMs));
+    }
+
     function hasActiveAnims() {
         if (_freeRoam) return true;   // hub free-roam moves the unit every frame
         if (_floatTweens.length > 0) return true;
@@ -69250,7 +69270,7 @@ const ThreeRenderer = (function () {
         keyPickupFx, keyFxWarm,
         warmProjectileModels: _warmProjectileModels,   // THE MATCH WARM (2026-09-20)
 
-        hasActiveAnims,
+        hasActiveAnims, hasBlockingAnims, hasDecorAnims,
 
         /* D.O.O.R. headquarters — the walkable facility (own scene + loop; map.js _hqEnter) */
         hq: _hqApi,
@@ -69494,6 +69514,7 @@ const ThreeRenderer = (function () {
 
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
+        deathTweenProgress: deathTweenProgress,
 
         get _scene() { return scene; },
         /* Debug/profiling handle: renderer.info has live draw-call/triangle/
@@ -69605,6 +69626,11 @@ window.ThreeAnim = {
     },
     isDying: function(unitId) {
         return ThreeRenderer.isActive() && ThreeRenderer.hasDeathTween(unitId);
+    },
+    /* THE TURN HANDOFF: how far through its death tween a body is (0..1), -1 when it is not dying. */
+    deathProgress: function(unitId) {
+        if (!ThreeRenderer.isActive() || !ThreeRenderer.deathTweenProgress) return -1;
+        return ThreeRenderer.deathTweenProgress(unitId);
     },
 
     /* THE STRIKE FRAME (2026-09-09, sprites.js UAL_SLOTS strikeAt): how many

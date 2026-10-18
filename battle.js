@@ -12794,6 +12794,19 @@
         function _dcDying(id) {
             try { return !!(window.ThreeAnim && ThreeAnim.isDying && ThreeAnim.isDying(id)); } catch (err) { return false; }
         }
+        /* THE TURN HANDOFF (2026-10-18, mondo: "there is a pause after a death"): the shot holds until the body is DOWN,
+           not until it has fully dissolved. A rigged body lands at ~0.55 of its death tween and then fades; the last
+           stretch of the fade is what the turn used to sit on. The dissolve finishes on the board view. */
+        const _DC_DOWN_T = 0.72;
+        function _dcStillFalling(id) {
+            try {
+                if (window.ThreeAnim && typeof ThreeAnim.deathProgress === 'function') {
+                    const t = ThreeAnim.deathProgress(id);
+                    return t >= 0 && t < _DC_DOWN_T;
+                }
+            } catch (err) {}
+            return _dcDying(id);
+        }
 
         function playDeathCloseup(unit) {
             try {
@@ -12847,11 +12860,11 @@
             if (state.phase !== 'battle' || !ThreeSplitscreen.isActive() || ThreeSplitscreen.owner() !== 'death') { _dcEnd(true); return; }
             ThreeSplitscreen.extend(1500);   // the rig's own failsafe stays armed just past this tick
             const since = Date.now() - _dc.lastAddAt;
-            const falling = _dc.ids.some(id => _dcDying(id));
-            /* hold while any body is still falling (min 1.1 s so a sprite death still reads), a beat after the
-               last one dissolves, and never past 4.5 s from the last death */
+            const falling = _dc.ids.some(id => _dcStillFalling(id));
+            /* hold while any body is still falling (min 1.1 s so a sprite death still reads), a short beat once the
+               last one is down, and never past 4.5 s from the last death */
             if (since > 4500 || (since > actionMs(1100) && !falling)) {
-                if (!_dc.endAt) _dc.endAt = Date.now() + 160;
+                if (!_dc.endAt) _dc.endAt = Date.now() + 100;
                 else if (Date.now() >= _dc.endAt) _dcEnd();
             } else _dc.endAt = 0;
         }
@@ -50565,6 +50578,36 @@
             if (onDone) onDone();
         }
 
+        /* THE TURN HANDOFF (2026-10-18, mondo: "there is a pause after a death, like the camera will just stay on my
+           unit while nothing happens before moving on to the next unit's turn ... other spells where it feels like there
+           is empty space at the end"). The turn loop (and the HUD's boardBusy) used to wait for EVERY last damage number,
+           impact flash, dissolving body and spark of spell dust to die out before the next unit could go; those tails
+           ran a second or more past the end of the action with nothing left to watch. They are decor now: once nothing
+           is moving or flying (walks, projectiles, the camera, a death close-up, a banner), the decor may hold the turn
+           for DECOR_TAIL_MS more, then it keeps fading on screen while the next turn starts. One shared clock, so the
+           second wait of a handoff (endUnitIfDone, then _continueBlitzWithUnit) does not start the tail over. */
+        const DECOR_TAIL_MS = 250;
+        let _decorTailSince = 0;
+        function _blockingAnimsLive() {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return false;
+            if (typeof ThreeRenderer.hasBlockingAnims === 'function') return ThreeRenderer.hasBlockingAnims();
+            return typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims();
+        }
+        function _decorLive() {
+            if ((state.hitFlashIds && state.hitFlashIds.size > 0) || (state.healFlashIds && state.healFlashIds.size > 0)) return true;
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
+                && typeof ThreeRenderer.hasDecorAnims === 'function' && ThreeRenderer.hasDecorAnims()) return true;
+            return typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
+                && ThreeVFX.hasActiveParticles();
+        }
+        /* Call only once nothing blocking is live: true while the decor tail may still hold. */
+        function _decorTailHolds() {
+            if (!_decorLive()) { _decorTailSince = 0; return false; }
+            const now = performance.now();
+            if (!_decorTailSince) _decorTailSince = now;
+            return now - _decorTailSince < actionMs(DECOR_TAIL_MS);
+        }
+
         function _waitForAnimationsThen(callback) {
             // Turbo fast path: in a no-anims auto-sim (AI Training / Balance
             // Lab / Strength Test) every visual this function polls for is
@@ -50587,6 +50630,7 @@
             var _dwellStart = 0;
             var _sawActivity = false;
             var _idleChecked = false;
+            var _afterDeathCam = false;   // the close-up ends on its own beat: no second settle after it
             function check() {
                 if (state.winner) return;
                 if (Date.now() - start > MAX_WAIT) { callback(); return; }
@@ -50616,60 +50660,52 @@
 
                 if (_deathCamLive()) {   // THE DEATH CLOSE-UP: the turn moves on after the body is down
                     _sawActivity = true;
+                    _afterDeathCam = true;
                     _dwellStart = 0;
-                    setTimeout(check, 60);
+                    _decorTailSince = 0;
+                    setTimeout(check, 30);
                     return;
                 }
 
                 if (state.units.some(u => u._dying)) {
                     _sawActivity = true;
                     _dwellStart = 0;
-                    setTimeout(check, 100);
+                    _decorTailSince = 0;
+                    setTimeout(check, 50);
                     return;
                 }
 
                 if (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) {
                     _sawActivity = true;
+                    _afterDeathCam = false;
                     _dwellStart = 0;
+                    _decorTailSince = 0;
                     setTimeout(check, 120);
                     return;
                 }
 
-                if ((state.hitFlashIds && state.hitFlashIds.size > 0) ||
-                    (state.healFlashIds && state.healFlashIds.size > 0)) {
+                if ((projectileLayerEl && projectileLayerEl.childElementCount > 0) || _blockingAnimsLive()) {
                     _sawActivity = true;
+                    _afterDeathCam = false;
                     _dwellStart = 0;
-                    setTimeout(check, 60);
-                    return;
-                }
-
-                if (projectileLayerEl && projectileLayerEl.childElementCount > 0) {
-                    _sawActivity = true;
-                    _dwellStart = 0;
-                    setTimeout(check, 50);
-                    return;
-                }
-
-                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
-                    && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) {
-                    _sawActivity = true;
-                    _dwellStart = 0;
-                    setTimeout(check, 50);
-                    return;
-                }
-
-                if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
-                    && ThreeVFX.hasActiveParticles()) {
-                    _sawActivity = true;
-                    _dwellStart = 0;
+                    _decorTailSince = 0;
                     setTimeout(check, 50);
                     return;
                 }
 
                 if (camera.isBusy()) {
                     _sawActivity = true;
+                    _afterDeathCam = false;
                     _dwellStart = 0;
+                    _decorTailSince = 0;
                     setTimeout(check, 50);
+                    return;
+                }
+
+                /* THE TURN HANDOFF: numbers, flashes, a dissolving body, spell dust: a short tail, then the turn goes on
+                   while they finish fading. */
+                if (!_afterDeathCam && _decorTailHolds()) {   // the close-up already gave the kill its beat
+                    setTimeout(check, 40);
                     return;
                 }
 
@@ -50682,7 +50718,7 @@
                             setTimeout(check, IDLE_GRACE);
                             return;
                         }
-                    } else if (POST_ANIM_DWELL > 0) {
+                    } else if (POST_ANIM_DWELL > 0 && !_afterDeathCam) {
                         if (_dwellStart === 0) {
                             _dwellStart = Date.now();
                             setTimeout(check, POST_ANIM_DWELL);
@@ -53819,21 +53855,20 @@
                animation (walks, spells, projectiles, deaths, camera travel). */
             boardBusy(opts) {
                 try {
-                    if (_walkAnimActive || state._walkAnimActive) return true;
-                    if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
-                    if (state.units.some(u => u._dying)) return true;
-                    if ((state.hitFlashIds && state.hitFlashIds.size > 0) ||
-                        (state.healFlashIds && state.healFlashIds.size > 0)) return true;
-                    if (projectileLayerEl && projectileLayerEl.childElementCount > 0) return true;
-                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
-                        && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) return true;
-                    if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
-                        && ThreeVFX.hasActiveParticles()) return true;
+                    let hard = !!(_walkAnimActive || state._walkAnimActive)
+                        || (typeof isCinematicPresent === 'function' && isCinematicPresent())
+                        || _deathCamLive()
+                        || state.units.some(u => u._dying)
+                        || (projectileLayerEl && projectileLayerEl.childElementCount > 0)
+                        || _blockingAnimsLive();
                     /* ignoreCamera: while the player browses a TARGET LIST the
                        caster→target preview shot glides the camera — hiding the
                        menu for a camera-only glide made the whole Horologe
                        blink out on every target pick. */
-                    if (!(opts && opts.ignoreCamera) && camera.isBusy()) return true;
+                    if (!hard && !(opts && opts.ignoreCamera) && camera.isBusy()) hard = true;
+                    if (hard) { _decorTailSince = 0; return true; }
+                    /* THE TURN HANDOFF: the menu comes back while the last numbers / dust fade (a short tail). */
+                    if (_decorTailHolds()) return true;
                 } catch (_) {}
                 return false;
             },

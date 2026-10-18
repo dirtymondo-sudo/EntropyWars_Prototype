@@ -1387,6 +1387,29 @@ multiple units die like a double or triple kill then make it split screen like t
   slow-mo itself (it never ran defeatUnit, so before this its units just vanished) and runs the shot under its own fog.
 - `startDeathTween` ignores a second call for a unit already falling. Kill switch: `window.EW_NO_DEATH_CAM = true`.
 
+## THE TURN HANDOFF (2026-10-18, token 20261018-deathpace-01-cors)
+mondo: "there is a pause after a death, like the camera will just stay on my unit while nothing happens before moving on
+to the next unit's turn ... the closeup death animation fights the normal spell animation ... other spells where it feels
+like there is empty space at the end". Watched in real VS-CPU battles with a timing probe (every _waitForAnimationsThen
+poll logged with the gate holding it): after a kill the turn sat on (1) the death close-up until the body had FULLY
+dissolved + 160 ms, then (2) on the decor tails, spell particles still fading, hit flashes, damage numbers and the
+dissolving body (hasActiveAnims counted _floatTweens / _hitFxTweens / _deathTweens), then (3) a 160 ms settle, then (4) a
+second wait in _continueBlitzWithUnit that hit the same tails again. The revealed main camera (the spell's last beat, or
+the caster's overhead restore when AP is left) just sat there through (2)-(4).
+- three-renderer.js: `hasBlockingAnims()` (walks, displacement, jumps, strikes, clip travel, projectiles, tethers) and
+  `hasDecorAnims()` (numbers, impact fx, death dissolve); `deathTweenProgress(uid)` / `ThreeAnim.deathProgress(uid)`
+  (0..1, -1 = not dying). hasActiveAnims is unchanged for other callers.
+- battle.js `_waitForAnimationsThen` + `GAME.boardBusy`: blocking things hold as before; decor (`_decorLive`: hit/heal
+  flash, hasDecorAnims, non-zone particles) may hold only `DECOR_TAIL_MS` 250 more (`_decorTailHolds`, one shared clock
+  so the second wait does not restart it), then keeps fading while the next turn starts / the menu returns. Right after a
+  death close-up there is no decor tail and no 160 ms settle (the close-up ends on its own beat). boardBusy now also
+  holds the menu during the close-up (`_deathCamLive`), since the death dissolve no longer does.
+- Death close-up: holds until every body is DOWN (`_DC_DOWN_T` 0.72 of its death tween, a rigged body lands at ~0.55
+  and then fades), min 1.1 s, cap 4.5 s, then a 100 ms beat (was full dissolve + 160 ms). The dissolve finishes on the
+  board view.
+- Sandbox note: SwiftShader draws ~2 fps here, so absolute times in the probe are inflated (the VFX clock clamps dt to
+  50 ms, the anim clock to 250 ms; the probe served un-clamped copies). The gate ORDER is what proves it.
+
 ## THE BANE FORECAST (2026-10-17, token 20261017-baneproj-01-cors)
 mondo: "banes need to have a damage projection just like spells". battle.js `forecastBanePlan(thrower, itemKey, target,
 { castFrom })` reads a thrown bane (and the Entropy Grenade, which rides the bane throw) the doItem way through
