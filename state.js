@@ -4348,6 +4348,17 @@
             return isOnlineMatch() ? [getLocalPlayer()] : [1, 2];
         }
 
+        /* The player's own Music / SFX / Ambience slider levels survive a
+           reload (localStorage `ew_audioVolumes`, written by ui.js
+           _ewSaveAudioVolumes on every slider input). */
+        function _ewSavedVolume(key, fallback) {
+            try {
+                const o = JSON.parse(localStorage.getItem('ew_audioVolumes') || 'null');
+                const v = o ? Number(o[key]) : NaN;
+                return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback;
+            } catch (e) { return fallback; }
+        }
+
         const GS = {
             TITLE: 'title',
             MAIN_MENU: 'main_menu',
@@ -4372,9 +4383,9 @@
             currentMusic: null,
             currentBattleTrackKey: null,
             lastBattleTrackKey: null,
-            musicVolume: 0.68,
-            sfxVolume: 0.9,
-            ambienceVolume: 0.8,
+            musicVolume: _ewSavedVolume('music', 0.68),
+            sfxVolume: _ewSavedVolume('sfx', 0.9),
+            ambienceVolume: _ewSavedVolume('ambience', 0.8),
             activePlayer: 1,
             round: 0,
             selectedUnitId: null,
