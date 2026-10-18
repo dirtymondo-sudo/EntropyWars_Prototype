@@ -881,3 +881,27 @@ the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
   wrapped: the first drawn material of each vertex+fragment text that gets disposed stays undisposed as that text's anchor
   (`_glAnchor`, cap 160). After both: repeat casts link 0 programs (cast 1 still compiles what it first draws).
 - Off: `window.EW_NO_SHADER_KEEP` or `?ew_keep=0` (same switch as WebGPU, reload).
+
+## THE SETTINGS IN THE ROOMS (2026-10-18, mondo: "the tilt shift seems to only affect the voxel maps ... are there any other settings that are voxel only")
+- **Tilt-Shift** (three-post.js): `render()` no longer turns the DoF off on a field-light board (room arenas, encounters);
+  `renderScene(scene, cam, { focus })` runs the band when the caller hands a world point. The walk passes
+  `_hqDofFocus(H)` (three-renderer.js: the walker's body centre, or the first-person look point); the menu and the team
+  room pass none and stay crisp.
+- **Brightness**: with Post FX on, the frame is drawn into a render target and three tone-maps only canvas draws, so
+  `toneMappingExposure` never reached the screen (measured: exposure 1.55→1.94, luminance 0.262→0.264). The slider is now a
+  gain in the cinematic pass (`uGain`, `_brightGain()` = the eased exposure, clamped 0.3-2; GLSL + TSL `_ngFrame`), and the pass
+  switches on when the gain is off 1. Filmic Tone and the HQ Auto Exposure still only move `toneMappingExposure` (dead with
+  post); left as they are, reported to mondo.
+- **Shadows**: `setShadowQuality` re-arms the walk's key light (`ThreeRenderer.hq.polishApply()`), so Off/Low/High apply while
+  exploring without re-entering the room.
+- **Scene Fog**: `_fieldGroundDress` stores the room's own fog on the field light (`field.fog`); `_applySceneFog` restores
+  THAT fog when the toggle comes back on mid-fight instead of the voxel mood preset's.
+- **Retro → Models Only** in the walk: `_hqSpawnCharacter` marks the character group `_ew_pixelChar`; `_scanPixelMaskTargets(sc)`
+  tags only meshes under such groups for a non-battle scene (`_scanPixelChars`), with a per-scene re-tag clock
+  (`sc._ew_pixScanAt`); `renderScene` draws the mask from its own scene. The mask renders with `sc.background = null` — a
+  texture sky is a mesh three draws in every render, so the second (static) pass painted the sky over the rigs the first
+  (skinned) pass drew. Same day, mondo: "models only is supposed to pixelate all the meshy models, not just the people" —
+  the walk's scan also tags every `_ew_modelSkin` / `_ew_pixelate` mesh (the same models the board masks), people included.
+- Voxel-board-only (no effect in rooms, kept; mondo decides): Fog Density, Fog Horizon, the mood preset fog colour, Night
+  Mood, Batched Terrain (still used by the moving boards). Dead everywhere: Light Rays (`_buildLightRays` builds nothing since
+  the light boxes went, 2026-10-04).
