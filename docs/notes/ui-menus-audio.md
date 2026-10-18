@@ -1425,6 +1425,35 @@ unit is currently buffed or debuffed". ui.js renderSelectedUnitPanel (#unitHover
 - **Now** (ui.js `_drawAttackAimArrow` + `window._ewAttackAimArrow`): `updateAoePreview` in attack mode draws a red arc (0xff3333, arc 0.35, flowing dots, unit torso → target torso via `unitSurfaceY`) onto the hovered/picked tile. battle.js `setTool('attack')` calls `updateAoePreview` on the default pick so the arrow is there the moment the menu opens. hud.js `_hrlgTargetBlades` gives attack rows `hoverIn` (arrow onto that row's target) / `hoverOut` (arrow back onto `state.pendingTarget`). Confirm still clears it (`clearAoePreview`), and the PR #302 takeover hide still hides it while the attack plays out. Viewer-local like every preview (no relay). It takes the UI Maker arrow look like every board arrow.
 - Checked in a real VS-CPU arena with real clicks: opening the menu, hovering each row, hovering an enemy on the board, picking a row and Confirm (the hit landed, the arrow cleared, no errors).
 
+### THE SHOT RECORDER, ROUND 2: his framing applied (2026-10-18, token 20261018-shotframe-01-cors)
+mondo exported 11 shots (EW_CAMERA_SHOTS_20261018-055717.json): "keeping the caster in the middle except nudged to the
+right a little bit because the action menu with the spell list open takes up like half the screen. the target in the top
+right of the 3x3 camera grid, but closer to the point in the bottom left of that corner. there should be a little bit of
+space between the caster and the target, not overlapping. obviously zoomed in way more. the last one is for when its first
+one of my units turns or the top of the action menu with no actions selected. let me drag the shots panel".
+- **Averages of his pair shots** (look-up shots and the turn shot left out): caster chest at screen (0.50, 0.39), target
+  chest (0.68, 0.30), eye 1.64 tiles from the caster chest, behind-right at about shoulder height (often on the floor clamp).
+- **battle.js THE MENU CAMERA, rewritten** (old _menuCamSolve / _menuPoseOf / MENU_CAM_SWING gone): `MENU_CASTER_AT`
+  [0.53, 0.40], `MENU_TARGET_AT` [0.68, 0.30], `MENU_EYE_DIST` 1.65 tiles (scaled up to 1.6x for big bodies),
+  `MENU_EYE_FLOOR` 0.4 tiles. `_menuShotPose` grid-searches the eye on a sphere round the caster chest (azimuth round
+  behind the line, elevation -30..60°), `_menuAim` solves yaw/tilt in closed form so the TARGET chest lands exactly on
+  MENU_TARGET_AT, and the cost scores the caster's screen error, terrain occlusion, other bodies in the way and side
+  changes. `_menuPoseFromEye` turns eye + aim into the rig's {x,y,elevZ,zoom,tilt,yaw}.
+- **The turn shot** (his last shot): `_menuUnitPose` / `_menuUnitShot` — eye `MENU_UNIT_EYE` 1.85 tiles ahead, 0.65 to the
+  side of the unit's facing, low, chest at `MENU_UNIT_AT` [0.50, 0.58]; swings 25/50° or flips side when a body blocks.
+  Used on a local hand-played unit's turn start (`_tpsUnitShot`), back to the root of the action menu (`_tpsTurnShot`) and
+  menu home (`_ewMenuCamHome` when no action is selected).
+- **Exact orbit** (three-camera.js sync): while `cam._menuShot` (or `_menuExactUntil`, set when leaving a menu shot and in
+  `_captureCineReturnView`) the sky crane, head turn and subject look are off, so the eye sits where the solver put it.
+- `_menuAttackTrackLeap` now translates the hold pose by the landing offset instead of re-solving.
+- **The SHOTS panel drags** by its header; position saved in localStorage `ew_shot_rec_v1:pos`, clamped to the window.
+- Checked in a real VS-CPU arena (headless, 7 s settle per shot): pairs landed caster ≈ (0.53, 0.35-0.44), target ≈
+  (0.66-0.73, 0.26-0.35); the turn shot caster ≈ (0.50, 0.58); the panel drag moved and was restored.
+
+### ROUND 2 UNDONE (2026-10-18, token 20261018-shotundo-01-cors)
+mondo: "lets go ahead and undo those shots, they didnt turn out the way i wanted". battle.js is back to its pre-#311 state
+(the old MENU CAMERA: _menuCamSolve / _menuPoseOf / MENU_CAM_SWING, no turn shot) and the three-camera.js exact orbit is
+gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section above is history only.
 ### THE COMBAT TEXT COLOURS: names by side, damage red, heals green, spells + statuses in caps (2026-10-18, mondo: "there is a green heart emoji for hp which is confusing ... the damage number should always be in red, if its a heal the number should be in green ... Enemy names should ALWAYS be red ... ally name's ... blue (OBVIOUSLY). Status effects need to be capitalized ... spell names need to be made capital ... Easy to tell what is happening at a glance with color coding and caps")
 - **Cause**: the log's `decorateTextWithIcons` put the Heal badge (💚) on every "HP", so "takes 45 HP damage" wore a green heart; "Player N" was only coloured before a few words ("turn", "wins"), so "Player 1's team attack is READY" stayed white; dialogue lines (`showBattleDialogue`) never went through the colouring at all, and their whole-line classes painted names too (the defeat line was one colour, name included); names were matched by text, so a mirror match (both sides "Grey") coloured both the same.
 - **Now** (battle.js "THE COMBAT TEXT COLOURS", `_ctDecorate`): one formatter for the combat log AND the combat text box (log beats, dialogue lines, prompts — `_renderDialogueBox`). Unit names: your side blue (`.ct-ally`), the other red (`.ct-enemy`), "Player N" too; spell names gold CAPS (`.ct-spell`); status effects CAPS in their badge's colour (the stroke of the STATUS_DEFS icon, `--ct-c`) with the badge in front (`.ct-status`); damage numbers red (`.ct-dmg`), heal numbers green (`.ct-heal`); KO words caps (`.ct-ko`: RETURNED TO THE VOID, IS DEFEATED …). No HP badge. Hotseat keeps P1 blue / P2 red; online each screen colours its own side blue.

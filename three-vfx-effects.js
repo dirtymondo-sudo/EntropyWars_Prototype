@@ -884,7 +884,7 @@ const ThreeVFXEffects = (function () {
         e.group.position.set(c.x - pad, tileZ(tx, ty) + 2, c.y - pad);
         e.born = _flameBurstTime;
         e.until = _flameBurstTime + life;
-        scene.add(e.group);
+        _vfxAdd(scene, e.group);
         _flameBursts[key] = e;
     }
 
@@ -1216,7 +1216,7 @@ const ThreeVFXEffects = (function () {
             var entry = _tileFlames[k2];
             if (!entry) {
                 entry = _buildTileFlame(bt);
-                scene.add(entry.group);
+                _vfxAdd(scene, entry.group);
                 _tileFlames[k2] = entry;
             }
             var c = tilePx(bt.x, bt.y);
@@ -5557,7 +5557,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         domeOuter.scale.set(0.01, 0.01, 0.01);
         domeOuter.position.set(worldX, floorY, worldZ);
         domeOuter.renderOrder = 150;
-        scene.add(domeOuter);
+        _vfxAdd(scene, domeOuter);
 
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x64ff96),
@@ -5571,7 +5571,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         domeInner.scale.set(0.01, 0.01, 0.01);
         domeInner.position.set(worldX, floorY, worldZ);
         domeInner.renderOrder = 151;
-        scene.add(domeInner);
+        _vfxAdd(scene, domeInner);
 
         var wfGeo = new THREE.SphereGeometry(
             1, 12, 6,
@@ -5590,7 +5590,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         domeWire.scale.set(0.01, 0.01, 0.01);
         domeWire.position.set(worldX, floorY, worldZ);
         domeWire.renderOrder = 152;
-        scene.add(domeWire);
+        _vfxAdd(scene, domeWire);
 
         var startTime = performance.now();
         var expandMs   = 350;
@@ -5703,6 +5703,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _getVFXScene() {
         return window.ThreeVFX && window.ThreeVFX._getScene
             ? window.ThreeVFX._getScene() : null;
+    }
+    /* Every effect this file puts in the scene goes through here and is stamped with when it went in (_ew_vfxAt): the
+       renderer's void stage keeps the effects of the cast that is playing on screen instead of hiding the spell along
+       with the world (THE TARGET STAYS, 2026-10-18 — three-renderer.js cineVoidEnter). */
+    function _vfxAdd(parent, obj) {
+        if (obj) obj._ew_vfxAt = performance.now();
+        return parent.add(obj);
     }
 
     /* ═══════════════ CINEMATIC PROP FRAMING ═══════════════════════════════
@@ -5860,7 +5867,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         mesh.scale.set(0.01, 0.01, 0.01);
         mesh.position.set(pos.x, pos.y, pos.z);
         mesh.renderOrder = renderOrder || 150;
-        scene.add(mesh);
+        _vfxAdd(scene, mesh);
         return mesh;
     }
 
@@ -6023,7 +6030,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             m.quaternion.copy(quat);
             m.scale.set(0.01, 0.01, 0.01);
             m.renderOrder = renderOrder;
-            scene.add(m);
+            _vfxAdd(scene, m);
             return { mesh: m, mat: mat, baseR: radius, baseOp: opacity };
         }
 
@@ -6046,7 +6053,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         mid.mesh.quaternion.copy(quat);
         mid.mesh.scale.set(0.01, 0.01, 0.01);
         mid.mesh.renderOrder = 211;
-        scene.add(mid.mesh);
+        _vfxAdd(scene, mid.mesh);
         layers.splice(1, 0, mid);
 
         /* 2026-07-26: ENERGY RINGS riding the beam — ring-textured discs
@@ -6064,7 +6071,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 rMesh.quaternion.copy(ringQuat);
                 rMesh.position.copy(start);
                 rMesh.renderOrder = 213;
-                scene.add(rMesh);
+                _vfxAdd(scene, rMesh);
                 rings.push({ mesh: rMesh, mat: rMat, off: rI / ringN });
             }
         }
@@ -6246,7 +6253,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 m.position.set(wp.x, wp.y + pillarH * 0.5, wp.z);
                 m.scale.set(0.01, 0.01, 0.01);
                 m.renderOrder = renderOrder;
-                scene.add(m);
+                _vfxAdd(scene, m);
                 return { mesh: m, mat: mat, baseR: radius, baseOp: opacity };
             }
 
@@ -6264,7 +6271,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             sheath.mesh.position.set(wp.x, wp.y + pillarH * 0.5, wp.z);
             sheath.mesh.scale.set(0.01, 0.01, 0.01);
             sheath.mesh.renderOrder = 156;
-            scene.add(sheath.mesh);
+            _vfxAdd(scene, sheath.mesh);
             var pillars = [outer, sheath, inner];
             var riseMs = 160, holdMs = 260, pfadeMs = 380;
             var pTotal = riseMs + holdMs + pfadeMs;
@@ -6452,7 +6459,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         cone.rotation.x = Math.PI;
         cone.position.set(wp.x, wp.y + coneHeight * 0.5, wp.z);
         cone.renderOrder = 150;
-        scene.add(cone);
+        _vfxAdd(scene, cone);
 
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xcc44ff),
@@ -6466,7 +6473,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         coneInner.rotation.x = Math.PI;
         coneInner.position.set(wp.x, wp.y + coneHeight * 0.5, wp.z);
         coneInner.renderOrder = 151;
-        scene.add(coneInner);
+        _vfxAdd(scene, coneInner);
 
         var ringGeo = new THREE.TorusGeometry(1, 0.08, 8, 24);
         var matRing = new THREE.MeshBasicMaterial({
@@ -6481,7 +6488,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ring.position.set(wp.x, wp.y + coneHeight, wp.z);
         ring.rotation.x = Math.PI * 0.5;
         ring.renderOrder = 152;
-        scene.add(ring);
+        _vfxAdd(scene, ring);
 
         var expandMs = 300, holdMs = 700, fadeMs = 500;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -6538,7 +6545,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y + 3, wp.z);
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         /* funnel shells: open cones, wide rim UP at the surface, throat
            sunk below ground. CylinderGeometry's axis is Y, so a plain
@@ -6671,7 +6678,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         beam.scale.set(0.01, 0.01, 0.01);
         beam.position.set(wp.x, wp.y + beamHeight * 0.5, wp.z);
         beam.renderOrder = 148;
-        scene.add(beam);
+        _vfxAdd(scene, beam);
 
         var matCore = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xaaffcc),
@@ -6684,7 +6691,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         beamCore.scale.set(0.01, 0.01, 0.01);
         beamCore.position.set(wp.x, wp.y + beamHeight * 0.5, wp.z);
         beamCore.renderOrder = 149;
-        scene.add(beamCore);
+        _vfxAdd(scene, beamCore);
 
         var expandMs = 250, holdMs = 1200, fadeMs = 400;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -6744,7 +6751,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         stem.scale.set(0.01, 0.01, 0.01);
         stem.position.set(wp.x, wp.y + stemHeight * 0.5, wp.z);
         stem.renderOrder = 153;
-        scene.add(stem);
+        _vfxAdd(scene, stem);
 
         var capGeo = new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5);
         var matCap = new THREE.MeshBasicMaterial({
@@ -6758,7 +6765,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         cap.scale.set(0.01, 0.01, 0.01);
         cap.position.set(wp.x, wp.y + stemHeight, wp.z);
         cap.renderOrder = 154;
-        scene.add(cap);
+        _vfxAdd(scene, cap);
 
         var matCapGlow = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xffaa44),
@@ -6771,7 +6778,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         capGlow.scale.set(0.01, 0.01, 0.01);
         capGlow.position.set(wp.x, wp.y + stemHeight, wp.z);
         capGlow.renderOrder = 155;
-        scene.add(capGlow);
+        _vfxAdd(scene, capGlow);
 
         var collarGeo = new THREE.TorusGeometry(1, 0.3, 8, 20);
         var matCollar = new THREE.MeshBasicMaterial({
@@ -6786,7 +6793,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         collar.position.set(wp.x, wp.y + stemHeight * 0.85, wp.z);
         collar.rotation.x = Math.PI * 0.5;
         collar.renderOrder = 156;
-        scene.add(collar);
+        _vfxAdd(scene, collar);
 
         var riseMs = 600, holdMs = 800, fadeMs = 600;
         var totalMs = riseMs + holdMs + fadeMs;
@@ -6856,7 +6863,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         rock.scale.set(0.01, 0.01, 0.01);
         rock.position.set(wp.x, startZ, wp.z);
         rock.renderOrder = 160;
-        scene.add(rock);
+        _vfxAdd(scene, rock);
 
         var glowGeo = new THREE.SphereGeometry(1, 12, 8);
         var matGlow = new THREE.MeshBasicMaterial({
@@ -6870,7 +6877,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glow.scale.set(0.01, 0.01, 0.01);
         glow.position.set(wp.x, startZ, wp.z);
         glow.renderOrder = 159;
-        scene.add(glow);
+        _vfxAdd(scene, glow);
 
         var matCore = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xffcc44),
@@ -6882,7 +6889,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         core.scale.set(0.01, 0.01, 0.01);
         core.position.set(wp.x, startZ, wp.z);
         core.renderOrder = 161;
-        scene.add(core);
+        _vfxAdd(scene, core);
 
         var totalMs = descentMs || 700;
         var entry = { meshes: [rock, glow, core], done: false };
@@ -6936,7 +6943,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         cage.scale.set(0.01, 0.01, 0.01);
         cage.position.set(wp.x, wp.y + cageHeight * 0.5, wp.z);
         cage.renderOrder = 150;
-        scene.add(cage);
+        _vfxAdd(scene, cage);
 
         var matGlow = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x66ddff),
@@ -6949,7 +6956,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glow.scale.set(0.01, 0.01, 0.01);
         glow.position.set(wp.x, wp.y + cageHeight * 0.5, wp.z);
         glow.renderOrder = 151;
-        scene.add(glow);
+        _vfxAdd(scene, glow);
 
         var fineGeo = new THREE.SphereGeometry(1, 16, 10);
         var matFine = new THREE.MeshBasicMaterial({
@@ -6963,7 +6970,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fineWire.scale.set(0.01, 0.01, 0.01);
         fineWire.position.set(wp.x, wp.y + cageHeight * 0.5, wp.z);
         fineWire.renderOrder = 152;
-        scene.add(fineWire);
+        _vfxAdd(scene, fineWire);
 
         var expandMs = 250, holdMs = 900, fadeMs = 400;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -7022,7 +7029,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ring.position.set(wp.x, wp.y + 3, wp.z);
         ring.rotation.x = Math.PI * 0.5;
         ring.renderOrder = 148;
-        scene.add(ring);
+        _vfxAdd(scene, ring);
 
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x88ff99),
@@ -7036,7 +7043,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ringInner.position.set(wp.x, wp.y + 5, wp.z);
         ringInner.rotation.x = Math.PI * 0.5;
         ringInner.renderOrder = 149;
-        scene.add(ringInner);
+        _vfxAdd(scene, ringInner);
 
         var expandMs = 400, holdMs = 600, fadeMs = 500;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -7088,7 +7095,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         thorns.position.set(wp.x, wp.y + ts * 0.15, wp.z);
         thorns.rotation.x = Math.PI * 0.5;
         thorns.renderOrder = 148;
-        scene.add(thorns);
+        _vfxAdd(scene, thorns);
 
         var wfGeo = new THREE.TorusGeometry(1, 0.3, 4, 12);
         var matWf = new THREE.MeshBasicMaterial({
@@ -7103,7 +7110,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         wf.position.set(wp.x, wp.y + ts * 0.15, wp.z);
         wf.rotation.x = Math.PI * 0.5;
         wf.renderOrder = 149;
-        scene.add(wf);
+        _vfxAdd(scene, wf);
 
         var expandMs = 300, holdMs = 500, fadeMs = 400;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -7260,7 +7267,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var boost = unitZBoost();
         rock.position.set(wp0.x, wp0.y + boost, wp0.z);
         rock.renderOrder = 160;
-        scene.add(rock);
+        _vfxAdd(scene, rock);
 
         var shadowGeo = new THREE.CircleGeometry(rockRadius * 0.7, 8);
         var shadowMat = new THREE.MeshBasicMaterial({
@@ -7271,7 +7278,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         shadow.rotation.x = -Math.PI / 2;
         shadow.position.set(wp0.x, wp0.y + 2, wp0.z);
         shadow.renderOrder = 140;
-        scene.add(shadow);
+        _vfxAdd(scene, shadow);
 
         var durMs = travelMs || 520;
         var entry = { meshes: [rock, shadow], done: false };
@@ -7434,7 +7441,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             debris.push({ mesh: db, angle: (i / debrisCount) * Math.PI * 2, yOff: 0.3 + Math.random() * 0.5, orbitR: 0.5 + Math.random() * 0.4 });
         }
 
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         return {
             group: group,
@@ -7618,7 +7625,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             debris.push({ mesh: db, angle: (i / debrisCount) * Math.PI * 2, yOff: Math.random(), orbitR: 0.6 + Math.random() * 0.4 });
         }
 
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         return {
             group: group, sway: sway,
@@ -7780,7 +7787,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             shards.push({ mesh: sh, angle: (i / shardCount) * Math.PI * 2, yOff: 0.3 + Math.random() * 0.5, orbitR: 0.4 + Math.random() * 0.3 });
         }
 
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         return {
             group: group,
@@ -7936,7 +7943,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             shards.push({ mesh: sh, angle: (i / shardCount) * Math.PI * 2, yOff: 0.3 + Math.random() * 0.5, orbitR: 0.4 + Math.random() * 0.3 });
         }
 
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         return {
             group: group,
@@ -8028,7 +8035,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var boost = unitZBoost();
         shard.position.set(wp0.x, wp0.y + boost, wp0.z);
         shard.renderOrder = 160;
-        scene.add(shard);
+        _vfxAdd(scene, shard);
 
         var glowGeo = new THREE.OctahedronGeometry(1, 0);
         var matGlow = new THREE.MeshBasicMaterial({
@@ -8042,7 +8049,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glowShard.scale.set(shardLen * 0.55, shardLen * 1.2, shardLen * 0.55);
         glowShard.position.set(wp0.x, wp0.y + boost, wp0.z);
         glowShard.renderOrder = 159;
-        scene.add(glowShard);
+        _vfxAdd(scene, glowShard);
 
         var shadowGeo = new THREE.CircleGeometry(shardLen * 0.4, 6);
         var shadowMat = new THREE.MeshBasicMaterial({
@@ -8053,7 +8060,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         shadow.rotation.x = -Math.PI / 2;
         shadow.position.set(wp0.x, wp0.y + 2, wp0.z);
         shadow.renderOrder = 140;
-        scene.add(shadow);
+        _vfxAdd(scene, shadow);
 
         var durMs = travelMs || 450;
         var entry = { meshes: [shard, glowShard, shadow], done: false };
@@ -8113,7 +8120,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         pillar.scale.set(0.01, 0.01, 0.01);
         pillar.position.set(wp.x, wp.y, wp.z);
         pillar.renderOrder = 155;
-        scene.add(pillar);
+        _vfxAdd(scene, pillar);
 
         var matPillarGlow = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x66ccff),
@@ -8126,7 +8133,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         pillarGlow.scale.set(0.01, 0.01, 0.01);
         pillarGlow.position.set(wp.x, wp.y, wp.z);
         pillarGlow.renderOrder = 154;
-        scene.add(pillarGlow);
+        _vfxAdd(scene, pillarGlow);
 
         var shards = [];
         var shardMats = [];
@@ -8142,7 +8149,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             sh.scale.set(0.01, 0.01, 0.01);
             sh.position.set(wp.x, wp.y, wp.z);
             sh.renderOrder = 156;
-            scene.add(sh);
+            _vfxAdd(scene, sh);
             shards.push(sh);
             shardMats.push(matShard);
         }
@@ -8159,7 +8166,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         frostRing.position.set(wp.x, wp.y + 3, wp.z);
         frostRing.rotation.x = Math.PI * 0.5;
         frostRing.renderOrder = 153;
-        scene.add(frostRing);
+        _vfxAdd(scene, frostRing);
 
         var allMeshes = [pillar, pillarGlow, frostRing].concat(shards);
         var growMs = 400, holdMs = 500, shatterMs = 500;
@@ -8283,7 +8290,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var oz = (Math.random() - 0.5) * spread * 2;
             sh.position.set(wp.x + ox, wp.y + ts * 3 + Math.random() * ts * 2, wp.z + oz);
             sh.renderOrder = 158;
-            scene.add(sh);
+            _vfxAdd(scene, sh);
             shards.push(sh);
             shardMats.push(mat);
             shardData.push({
@@ -8426,7 +8433,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         dust.renderOrder = 144;
         group.add(dust);
 
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         var expandMs = 300, holdMs = 600, fadeMs = 500;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -8496,7 +8503,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ring.position.set(wp.x, wp.y + ts * 0.35, wp.z);
         ring.rotation.x = Math.PI * 0.5;
         ring.renderOrder = 155;
-        scene.add(ring);
+        _vfxAdd(scene, ring);
 
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x88ccff),
@@ -8510,7 +8517,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ringInner.position.set(wp.x, wp.y + ts * 0.35, wp.z);
         ringInner.rotation.x = Math.PI * 0.5;
         ringInner.renderOrder = 156;
-        scene.add(ringInner);
+        _vfxAdd(scene, ringInner);
 
         var wfGeo = new THREE.TorusGeometry(1, 0.06, 6, 12);
         var matWf = new THREE.MeshBasicMaterial({
@@ -8525,7 +8532,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ringWf.position.set(wp.x, wp.y + ts * 0.35, wp.z);
         ringWf.rotation.x = Math.PI * 0.5;
         ringWf.renderOrder = 157;
-        scene.add(ringWf);
+        _vfxAdd(scene, ringWf);
 
         var expandMs = 200, holdMs = 400, fadeMs = 350;
         var totalMs = expandMs + holdMs + fadeMs;
@@ -8585,7 +8592,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         trunk.scale.set(0.01, 0.01, 0.01);
         trunk.position.set(wp.x, wp.y, wp.z);
         trunk.renderOrder = 153;
-        scene.add(trunk);
+        _vfxAdd(scene, trunk);
 
         var canopyGeo = new THREE.SphereGeometry(1, 12, 8);
         var forestTex = _getForestTexture();
@@ -8598,7 +8605,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         canopy.scale.set(0.01, 0.01, 0.01);
         canopy.position.set(wp.x, wp.y + trunkH, wp.z);
         canopy.renderOrder = 154;
-        scene.add(canopy);
+        _vfxAdd(scene, canopy);
 
         var matCanopyGlow = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x44aa44),
@@ -8611,7 +8618,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         canopyGlow.scale.set(0.01, 0.01, 0.01);
         canopyGlow.position.set(wp.x, wp.y + trunkH, wp.z);
         canopyGlow.renderOrder = 155;
-        scene.add(canopyGlow);
+        _vfxAdd(scene, canopyGlow);
 
         var rootGeo = new THREE.TorusGeometry(1, 0.15, 6, 12);
         var matRoot = new THREE.MeshBasicMaterial({
@@ -8625,7 +8632,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         rootRing.position.set(wp.x, wp.y + 3, wp.z);
         rootRing.rotation.x = Math.PI * 0.5;
         rootRing.renderOrder = 152;
-        scene.add(rootRing);
+        _vfxAdd(scene, rootRing);
 
         var growMs = 500, holdMs = 600, fadeMs = 500;
         var totalMs = growMs + holdMs + fadeMs;
@@ -8718,7 +8725,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ufo = _sigBuildUFO(bodyR);
         var saucer = ufo.group;
         saucer.position.set(wp.x, hoverY, wp.z);
-        scene.add(saucer);
+        _vfxAdd(scene, saucer);
         ufo.hullMat.opacity = 0; ufo.rimMat.opacity = 0;
         ufo.domeMat.opacity = 0; ufo.glowMat.opacity = 0;
         for (var _li = 0; _li < ufo.lights.length; _li++) ufo.lights[_li].opacity = 0;
@@ -8729,25 +8736,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var beamGeo = new THREE.CylinderGeometry(0.18, 1, 1, 20, 1, true);
         var matBeam = new THREE.MeshBasicMaterial({ color: 0x55ff99, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
         var beam = new THREE.Mesh(beamGeo, matBeam);
-        beam.renderOrder = 158; scene.add(beam);
+        beam.renderOrder = 158; _vfxAdd(scene, beam);
 
         // Probe shaft (polished metal)
         var shaftGeo = new THREE.CylinderGeometry(1, 1, 1, 10);
         var matShaft = new THREE.MeshBasicMaterial({ color: 0xc6cdd8, transparent: true, opacity: 0, depthWrite: true });
         var shaft = new THREE.Mesh(shaftGeo, matShaft);
-        shaft.renderOrder = 164; scene.add(shaft);
+        shaft.renderOrder = 164; _vfxAdd(scene, shaft);
 
         // Probe tip (sharp cone, points down)
         var tipGeo = new THREE.ConeGeometry(1, 1, 10);
         var matTip = new THREE.MeshBasicMaterial({ color: 0x767f8d, transparent: true, opacity: 0, depthWrite: true });
         var tip = new THREE.Mesh(tipGeo, matTip);
-        tip.rotation.x = Math.PI; tip.renderOrder = 165; scene.add(tip);
+        tip.rotation.x = Math.PI; tip.renderOrder = 165; _vfxAdd(scene, tip);
 
         // Pierce flash
         var flashGeo = new THREE.SphereGeometry(1, 12, 8);
         var matFlash = new THREE.MeshBasicMaterial({ color: 0xccffdd, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
         var flash = new THREE.Mesh(flashGeo, matFlash);
-        flash.renderOrder = 166; scene.add(flash);
+        flash.renderOrder = 166; _vfxAdd(scene, flash);
 
         var totalMs = 1350;
         var entry = { meshes: [saucer].concat(saucerParts, [beam, shaft, tip, flash]), done: false };
@@ -8837,7 +8844,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         group.position.set(wp0.x, wp0.y + boost, wp0.z);
         group.renderOrder = 162;
-        scene.add(group);
+        _vfxAdd(scene, group);
 
         var shadowGeo = new THREE.CircleGeometry(canopyR * 0.85, 12);
         var shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
@@ -8845,7 +8852,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         shadow.rotation.x = -Math.PI / 2;
         shadow.position.set(wp0.x, wp0.y + 2, wp0.z);
         shadow.renderOrder = 140;
-        scene.add(shadow);
+        _vfxAdd(scene, shadow);
 
         var durMs = travelMs || 550;
         var dx = wp1.x - wp0.x, dz = wp1.z - wp0.z;
@@ -8917,7 +8924,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
                     spr.position.set(sx, sy, sz0);
                     spr.renderOrder = 166;
-                    sc.add(spr);
+                    _vfxAdd(sc, spr);
 
                     var entry = { meshes: [spr], done: false };
                     _animate3D(entry, dur, function(elapsed) {
@@ -8981,7 +8988,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
                             spr.position.set(landX - lean, startY, landZ - leanZ);
                             spr.renderOrder = 168;
-                            sc.add(spr);
+                            _vfxAdd(sc, spr);
 
                             var entry = { meshes: [spr], done: false };
                             _animate3D(entry, fallMs, function(elapsed) {
@@ -9035,7 +9042,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ring.position.set(wp.x, wp.y + 4, wp.z);
         ring.rotation.x = Math.PI * 0.5;
         ring.renderOrder = 148;
-        scene.add(ring);
+        _vfxAdd(scene, ring);
 
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(opts.innerColor || 0xffaa66),
@@ -9049,7 +9056,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ringInner.position.set(wp.x, wp.y + 5, wp.z);
         ringInner.rotation.x = Math.PI * 0.5;
         ringInner.renderOrder = 149;
-        scene.add(ringInner);
+        _vfxAdd(scene, ringInner);
 
         var expandMs = opts.expandMs || 450;
         var entry = { meshes: [ring, ringInner], done: false };
@@ -9099,7 +9106,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         shaft.rotation.x = Math.PI / 2;
         shaft.scale.set(ts * 0.08, ts * 0.6, ts * 0.08);
         shaft.renderOrder = 160;
-        scene.add(shaft);
+        _vfxAdd(scene, shaft);
 
         var headGeo = new THREE.ConeGeometry(1, 2, 4, 1, false);
         var matHead = new THREE.MeshBasicMaterial({
@@ -9112,7 +9119,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         head.rotation.x = Math.PI / 2;
         head.scale.set(ts * 0.15, ts * 0.2, ts * 0.15);
         head.renderOrder = 161;
-        scene.add(head);
+        _vfxAdd(scene, head);
 
         var glowGeo = new THREE.CylinderGeometry(1.5, 1.5, 1, 8, 1, false);
         var matGlow = new THREE.MeshBasicMaterial({
@@ -9126,7 +9133,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glow.rotation.x = Math.PI / 2;
         glow.scale.set(ts * 0.12, ts * 0.5, ts * 0.12);
         glow.renderOrder = 159;
-        scene.add(glow);
+        _vfxAdd(scene, glow);
 
         var allMeshes = [shaft, head, glow];
         var entry = { meshes: allMeshes, done: false };
@@ -9592,7 +9599,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!scene) return null;
         if (_sigActive >= _SIG_MAX_ACTIVE) return null;
         _sigActive++;
-        scene.add(group);
+        _vfxAdd(scene, group);
         var entry = { done: false, group: group };
         _sigEntries.push(entry);
         var t0 = performance.now();
@@ -9676,7 +9683,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 document.body.appendChild(_sigFlashEl);
             }
             var el = _sigFlashEl;
-            el.style.background = (typeof color === 'string') ? color : _sigCss(color);
+            /* THE TARGET STAYS (2026-10-18, mondo: the target must never vanish behind a whole-screen effect): the flash
+               floods the frame AROUND the target's body (battle.js window._cineFocusScreen, client px), or around the
+               centre of the frame where the action camera keeps its subject — never over it. */
+            var fc = null;
+            try { fc = (typeof window._cineFocusScreen === 'function') ? window._cineFocusScreen() : null; } catch (e) { fc = null; }
+            var hole = fc ? ('ellipse ' + Math.round(fc.rx) + 'px ' + Math.round(fc.ry) + 'px at ' + Math.round(fc.x) + 'px ' + Math.round(fc.y) + 'px')
+                : 'ellipse 18% 32% at 50% 48%';
+            var cssCol = (typeof color === 'string') ? color : _sigCss(color);
+            el.style.background = 'radial-gradient(' + hole + ', transparent 0%, transparent 50%, ' + cssCol + ' 100%)';
             var t0 = performance.now();
             var total = ms || 180;
             var pk = peak != null ? peak : 0.3;
@@ -31957,11 +31972,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bubble = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.75, 20, 14), bubbleMat); dream.add(bubble);
         var bubbleRim = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.76, 20, 14), _finBasic(0xffffff, { opacity: 0.12, additive: true, side: THREE.BackSide })); dream.add(bubbleRim);
         var scene = new THREE.Group(); scene.position.y = -ts * 0.3; dream.add(scene);
-        var ground = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.5, 20), _finBasic(0x3a8a4a)); ground.rotation.x = -Math.PI / 2; scene.add(ground);
-        var house = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.18, ts * 0.16, ts * 0.16), _finBasic(0xe8d8b0)); house.position.set(-ts * 0.12, ts * 0.08, 0); scene.add(house);
-        var roof = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.15, ts * 0.12, 4), _finBasic(0xa04030)); roof.position.set(-ts * 0.12, ts * 0.22, 0); roof.rotation.y = Math.PI / 4; scene.add(roof);
-        var trunk = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.025, ts * 0.14, 5), _finBasic(0x5a3a20)); trunk.position.set(ts * 0.2, ts * 0.07, ts * 0.05); scene.add(trunk);
-        var crownT = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 8, 6), _finBasic(0x4aa040)); crownT.position.set(ts * 0.2, ts * 0.2, ts * 0.05); scene.add(crownT);
+        var ground = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.5, 20), _finBasic(0x3a8a4a)); ground.rotation.x = -Math.PI / 2; _vfxAdd(scene, ground);
+        var house = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.18, ts * 0.16, ts * 0.16), _finBasic(0xe8d8b0)); house.position.set(-ts * 0.12, ts * 0.08, 0); _vfxAdd(scene, house);
+        var roof = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.15, ts * 0.12, 4), _finBasic(0xa04030)); roof.position.set(-ts * 0.12, ts * 0.22, 0); roof.rotation.y = Math.PI / 4; _vfxAdd(scene, roof);
+        var trunk = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.025, ts * 0.14, 5), _finBasic(0x5a3a20)); trunk.position.set(ts * 0.2, ts * 0.07, ts * 0.05); _vfxAdd(scene, trunk);
+        var crownT = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 8, 6), _finBasic(0x4aa040)); crownT.position.set(ts * 0.2, ts * 0.2, ts * 0.05); _vfxAdd(scene, crownT);
         var moon = _finSprite(0xfff2c0, _sigGlowTex(), ts * 0.24, 158); moon.position.set(ts * 0.25, ts * 0.5, -ts * 0.1); moon.material.opacity = 0.9; dream.add(moon);
         var stars = [];
         for (var s = 0; s < 3; s++) { var st = _finSprite(0xffffff, _sigGlowTex(), ts * 0.08, 158); st.position.set(rn(-ts * 0.4, ts * 0.1), rn(ts * 0.2, ts * 0.5), rn(-ts * 0.2, ts * 0.2)); st.material.opacity = 0.8; dream.add(st); stars.push(st); }

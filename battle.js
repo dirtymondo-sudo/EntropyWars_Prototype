@@ -22106,6 +22106,7 @@
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
             f.classList.remove('pop', 'cut');
+            if (kind === 'kill') _cineStampFocusHole();   // THE TARGET STAYS: the white kill pop leaves the falling body clear
             void f.offsetWidth;
             f.classList.add(kind === 'kill' ? 'pop' : 'cut');
         }
@@ -28851,6 +28852,7 @@
             CINE_GRADES.forEach(k => el.classList.remove('g-' + k));
             kinds.forEach(k => el.classList.add('g-' + k));
             if (opts.strength != null) el.style.setProperty('--cine-grade-str', String(opts.strength));
+            if (kinds.includes('whiteout')) _cineStampFocusHole();   // THE TARGET STAYS: the whiteout leaves the target's body clear
             el.classList.add('on');
             if (_cineGradeTimer) clearTimeout(_cineGradeTimer);
             _cineGradeTimer = window.setTimeout(() => cineGradeClear(), Math.max(80, Number(ms) || 400));
@@ -29324,6 +29326,65 @@
            to full cover (IN), the swap happens hidden behind it, then the
            veil parts on the other side (OUT). Both directions. */
         const VOID_VEIL_IN_MS = 280;
+        /* ═══ THE TARGET STAYS (2026-10-18) ═══ mondo: "for spells whose vfx change the whole screen like lump of coal
+           there shouldnt ever be a time where the target becomes invisible and i just see nothing at all on the screen.
+           the target is the main priority for a damage spell animation". Every whole-screen layer (the void's veil, the
+           whiteout grade, the kill pop, the VFX impact flash) now leaves the bodies that matter CLEAR: a soft hole cut
+           around each one's on-screen body, re-measured every frame while the layer is up (the camera cuts under it).
+           _cineBodyHoles(ids, rel) → [{ x, y, rx, ry }] in px relative to `rel` (a client rect) — ThreeRenderer
+           .unitScreenBox per body; a body off screen or without a model gets no hole. */
+        function _cineBodyHoles(ids, rel) {
+            const out = [];
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.unitScreenBox) return out;
+            for (const id of (ids || [])) {
+                let b = null;
+                try { b = ThreeRenderer.unitScreenBox(id); } catch (e) {}
+                if (!b || !(b.h > 0)) continue;
+                const h = Math.max(120, b.h);
+                out.push({ x: b.x - (rel ? rel.left : 0), y: b.y - (rel ? rel.top : 0), rx: h * 0.62, ry: h * 0.95 });
+            }
+            return out;
+        }
+        /* Who a flash / whiteout keeps clear: the unit on the tile the live cast was aimed at, then whoever the cast's
+           forecast hits, then the unit the shot is framed on (the GUEST has no cast context: its relayed shots still set
+           the camera subject). Dying bodies count — the kill pop lands on one. */
+        function _cineFocusIds() {
+            const ids = [];
+            const at = (x, y) => (state.units || []).find(u => u && !u.dead && Math.round(u.x) === x && Math.round(u.y) === y);
+            const c = _cineCastCtx;
+            if (c && performance.now() - c.at < 8000) {
+                if (c.tx != null && c.ty != null) { const u = at(Math.round(c.tx), Math.round(c.ty)); if (u && u.id !== c.casterId) ids.push(u.id); }
+                for (const id of (c.hitIds || [])) if (!ids.includes(id)) ids.push(id);
+            }
+            if (!ids.length && camera._tpsSubject) {
+                const u = at(Math.round(camera._tpsSubject.x), Math.round(camera._tpsSubject.y));
+                if (u) ids.push(u.id);
+            }
+            return ids.slice(0, 3);
+        }
+        /* The primary focus in CLIENT px ({ x, y, rx, ry }), or null — three-vfx-effects.js _sigScreenFlash reads it. */
+        function _cineFocusScreen() {
+            const h = _cineBodyHoles(_cineFocusIds(), null);
+            return h.length ? h[0] : null;
+        }
+        window._cineFocusScreen = _cineFocusScreen;
+        /* Stamp the focus hole on the game viewport as CSS variables (--cine-hole-x/-y/-rx/-ry) for the DOM layers that
+           cut it in CSS (styles-cinematic.css: the whiteout grade, the kill pop). No focus → the centre of the frame,
+           where the action camera puts its subject. */
+        function _cineStampFocusHole() {
+            const root = document.getElementById('game-viewport');
+            if (!root) return;
+            const r = root.getBoundingClientRect();
+            const h = _cineBodyHoles(_cineFocusIds(), r)[0];
+            const st = root.style;
+            if (h) {
+                st.setProperty('--cine-hole-x', Math.round(h.x) + 'px'); st.setProperty('--cine-hole-y', Math.round(h.y) + 'px');
+                st.setProperty('--cine-hole-rx', Math.round(h.rx) + 'px'); st.setProperty('--cine-hole-ry', Math.round(h.ry) + 'px');
+            } else {
+                st.setProperty('--cine-hole-x', '50%'); st.setProperty('--cine-hole-y', '48%');
+                st.setProperty('--cine-hole-rx', '18%'); st.setProperty('--cine-hole-ry', '32%');
+            }
+        }
         const VoidStage = {
             active: false,
             _timer: null,
@@ -29351,6 +29412,7 @@
                 this.active = true;
                 this._palette = opts.palette || 'abyss';
                 this._pal = pal;
+                this._actorIds = ids;   // the bodies the veil keeps clear (THE TARGET STAYS)
                 this._lastRound = state.round || 0;
                 this._clearTimers();
                 // SMOOTH transition in: the palette veil blooms over the real
@@ -29385,24 +29447,81 @@
             },
             /* The palette-tinted cross-fade veil. Sits above the void layer
                and the action-cam chrome; CSS owns the fade timings. */
+            /* THE TARGET STAYS (2026-10-18): the veil was one solid sheet of the palette — for the ~0.5 s it took to bloom
+               in and the ~0.5 s to bloom out, the whole screen was ONE colour (a black one for abyss / shadow / hearth /
+               starfield) and the target was simply gone. It is a small 2D canvas now: the same palette gradient, with a
+               soft hole cut around every actor's body, redrawn each frame while it is up (the face cam cuts in under it),
+               so the world dissolves AROUND the caster and the target and they never leave the screen. Quarter
+               resolution (it is a soft gradient), a DOM layer over the canvas like before (no filter, no blend). */
             _veilEl: null,
+            _veilRaf: 0,
+            _veilUntil: 0,
             _veilShow(pal) {
-                if (!this._veilEl || !this._veilEl.isConnected) {
-                    const el = document.createElement('div');
+                if (!this._veilEl || !this._veilEl.isConnected || this._veilEl.tagName !== 'CANVAS') {
+                    const el = document.createElement('canvas');
                     el.className = 'void-veil';
                     (document.getElementById('game-viewport') || document.body).appendChild(el);
                     this._veilEl = el;
                 }
-                const sky = (pal && pal.sky) || ['#000', '#000'];
-                this._veilEl.style.background =
-                    'radial-gradient(120% 95% at 50% 40%, ' + sky[0] + ' 0%, '
-                    + sky[Math.min(1, sky.length - 1)] + ' 55%, '
-                    + sky[sky.length - 1] + ' 100%)';
+                this._veilPal = pal;
+                this._veilDraw();
                 void this._veilEl.offsetWidth;
                 this._veilEl.classList.add('on');
+                this._veilRun(1500);
             },
             _veilHide() {
-                if (this._veilEl) this._veilEl.classList.remove('on');
+                if (!this._veilEl) return;
+                this._veilEl.classList.remove('on');
+                this._veilRun(600);   // keep the holes on the bodies through the CSS fade-out
+            },
+            _veilRun(ms) {
+                this._veilUntil = Math.max(this._veilUntil, performance.now() + ms);
+                if (this._veilRaf) return;
+                const tick = () => {
+                    this._veilRaf = 0;
+                    if (!this._veilEl || !this._veilEl.isConnected) return;
+                    this._veilDraw();
+                    if (performance.now() < this._veilUntil) this._veilRaf = requestAnimationFrame(tick);
+                };
+                this._veilRaf = requestAnimationFrame(tick);
+            },
+            _veilDraw() {
+                const el = this._veilEl, host = el && el.parentNode;
+                if (!el || !host) return;
+                const r = host.getBoundingClientRect();
+                const Q = 4;
+                const w = Math.max(8, Math.round(r.width / Q)), h = Math.max(8, Math.round(r.height / Q));
+                if (el.width !== w) el.width = w;
+                if (el.height !== h) el.height = h;
+                const g = el.getContext('2d');
+                if (!g) return;
+                const sky = (this._veilPal && this._veilPal.sky) || ['#000', '#000'];
+                g.globalCompositeOperation = 'source-over';
+                g.clearRect(0, 0, w, h);
+                const grad = g.createRadialGradient(w * 0.5, h * 0.4, 0, w * 0.5, h * 0.4, Math.hypot(w, h) * 0.62);
+                grad.addColorStop(0, sky[0]);
+                grad.addColorStop(0.55, sky[Math.min(1, sky.length - 1)]);
+                grad.addColorStop(1, sky[sky.length - 1]);
+                g.fillStyle = grad;
+                g.fillRect(0, 0, w, h);
+                const holes = _cineBodyHoles(this._actorIds, r);
+                if (!holes.length) return;
+                g.globalCompositeOperation = 'destination-out';
+                for (const hl of holes) {
+                    const ry = hl.ry / Q;
+                    g.save();
+                    g.translate(hl.x / Q, hl.y / Q);
+                    g.scale(hl.rx / hl.ry, 1);
+                    const hg = g.createRadialGradient(0, 0, ry * 0.5, 0, 0, ry);
+                    hg.addColorStop(0, 'rgba(0,0,0,1)');
+                    hg.addColorStop(1, 'rgba(0,0,0,0)');
+                    g.fillStyle = hg;
+                    g.beginPath();
+                    g.arc(0, 0, ry, 0, Math.PI * 2);
+                    g.fill();
+                    g.restore();
+                }
+                g.globalCompositeOperation = 'source-over';
             },
             _ensureLayer(pal, opts) {
                 if (!this._layerEl || !this._layerEl.isConnected) {
@@ -31974,7 +32093,8 @@
             raceVoidContract(ctx)   { _voidBeat('bloodlust', ctx, { ms: 1500, subject: 'target' }); return true; },
             exorcism(ctx)           { _voidBeat('bone',      ctx, { ms: 1600, subject: 'target', dist: 3.0 }); return true; },
             sharedHexOfToil(ctx)    { _voidBeat('hex',       ctx, { ms: 1500, subject: 'target', tilt: 74 }); return true; },
-            raceLumpOfCoal(ctx)     { _voidBeat('hearth',    ctx, { ms: 1500, subject: 'target', dist: 2.8 }); return true; },
+            /* Lump of Coal has NO void (mondo 2026-10-18: "lump of coal doesnt even need one, its just supposed to be santa
+               clause throwing a lump of coal"): the strike family shoots the throw and the coal landing on the target. */
             raceNeuralHack(ctx) {
                 _voidBeat('code', ctx, {
                     ms: 1500, subject: 'target',
@@ -32391,7 +32511,8 @@
         let _cineCastCtx = null;
         function _cineNoteCast(unit, spell, x, y, z) {
             if (!spell || !spell.id) { _cineCastCtx = null; return; }
-            _cineCastCtx = { spellId: spell.id, casterId: unit ? unit.id : null, at: performance.now() };
+            _cineCastCtx = { spellId: spell.id, casterId: unit ? unit.id : null, at: performance.now(),
+                tx: Number.isFinite(x) ? x : null, ty: Number.isFinite(y) ? y : null };
             /* THE FRAME GUARD: who this cast will actually hit, read off the
                engine's own forecast HERE — the commit point, before anything
                resolves (later the board is already mid-cast). The cast's

@@ -1952,6 +1952,28 @@ var EWShots = (function () {
         head.appendChild(el('b', null, 'SHOT RECORDER'));
         var x = el('button', 'ew-cine-btn', '✕'); x.addEventListener('click', function () { close(); }); head.appendChild(x);
         p.appendChild(head);
+        /* drag the panel by its title bar anywhere on screen (mondo: "let me drag the shots panel since i feel like it
+           was messing up my framing"); the spot is kept in this browser */
+        var place = function (l, t) {
+            var w = p.offsetWidth || 380, hh = p.offsetHeight || 200;
+            l = Math.max(0, Math.min(window.innerWidth - Math.min(w, 120), l));
+            t = Math.max(0, Math.min(window.innerHeight - 40, t));
+            p.style.left = l + 'px'; p.style.top = t + 'px'; p.style.right = 'auto';
+            return [l, t];
+        };
+        try { var sp = JSON.parse(localStorage.getItem(STORE + ':pos') || 'null'); if (sp && sp.length === 2) setTimeout(function () { place(sp[0], sp[1]); }, 0); } catch (e) {}
+        head.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || (e.target && e.target.closest && e.target.closest('button'))) return;
+            var r = p.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top, last = null;
+            try { head.setPointerCapture(e.pointerId); } catch (er) {}
+            var mv = function (ev) { last = place(ev.clientX - ox, ev.clientY - oy); };
+            var up = function () {
+                head.removeEventListener('pointermove', mv); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up);
+                if (last) { try { localStorage.setItem(STORE + ':pos', JSON.stringify(last)); } catch (er) {} }
+            };
+            head.addEventListener('pointermove', mv); head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
+            e.preventDefault();
+        });
         var pair = el('div', 'ew-shots-pair'); pair.id = 'ewShotsPair'; p.appendChild(pair);
         function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
         var r1w = el('div', 'ew-cine-row');
