@@ -252,6 +252,7 @@ const ThreeLightning = (function () {
             _addBranches(group, branches, corePath, o, 0);
         }
 
+        group._ew_vfxAt = performance.now();   // a live bolt stays up through the void stage (three-renderer.js cineVoidEnter)
         _scene.add(group);
 
         var boltEntry = {

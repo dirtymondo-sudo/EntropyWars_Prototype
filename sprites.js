@@ -679,7 +679,8 @@ const SPELL_ANIM_VERBS = {
   tackle: ['raceGoreCharge', 'raceApexCharge', 'raceRamCharge', 'raceUnstoppableCharge', 'raceBullRush',
     'raceBlitz'],
   dash: ['raceDarkFeather', 'raceShadowInfiltration'],   // the low lunging stab (a spear thrust)
-  throw: ['sharedSmokeScreen'],
+  throw: ['sharedSmokeScreen',
+    'raceLumpOfCoal'],   // mondo 2026-10-18: "its just supposed to be santa clause throwing a lump of coal" (overhand throw)
   // ── THE NEW CLIPS (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8): mondo's third
   // Meshy batch, consolidated into MAL3_Sniper.glb (lib 4). Each verb was
   // assigned from the clip SEEN (anim-sheets.js --follow, the in-game viewer),
