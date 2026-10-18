@@ -1219,20 +1219,9 @@ const ThreePost = (function () {
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
 
-    /* the walk / menu scenes (2026-10-18, mondo: "models only is supposed to pixelate all the meshy models, not just the
-       people"): every model the board would mask (`_ew_modelSkin` / `_ew_pixelate` — the Meshy props, the procs) plus the
-       PEOPLE — a character group the building marks `_ew_pixelChar` (three-renderer.js _hqSpawnCharacter; its rigs are
-       plain meshes, unflagged) */
-    function _scanPixelChars(n, inChar) {
-        inChar = inChar || !!n._ew_pixelChar;
-        if ((inChar || n._ew_modelSkin || n._ew_pixelate) && n.isMesh && !n._ew_pixelTagged && !n._ew_silhouette) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
-        for (var i = 0; i < n.children.length; i++) _scanPixelChars(n.children[i], inChar);
-    }
-    function _scanPixelMaskTargets(sc) {
-        sc = sc || _scene;
-        if (!sc) return;
-        if (sc !== _scene) { _scanPixelChars(sc, false); return; }
-        sc.traverse(function (n) {
+    function _scanPixelMaskTargets() {
+        if (!_scene) return;
+        _scene.traverse(function (n) {
             if (!n.isMesh || n._ew_pixelTagged) return;
             // Silhouette/x-ray twins share the model's geometry but are a UI
             // read-through, not the model itself — never mask them.
@@ -1249,8 +1238,6 @@ const ThreePost = (function () {
     // background blocks get snapped (invisible on flat sprite texture) — while
     // its x-ray hologram twin, which DOES show through, reads as part of the
     // model anyway.
-    /* `sc` (2026-10-18): the scene to mask — renderScene's walk / menu scenes hand their own (Models Only used to pixelate the
-       whole frame there); the battle board's _scene when absent. Each scene keeps its own re-tag clock. */
     /* panes (THE CLOSE-UP LOOK, renderPanes): [{ cam, x, y, w, h }] as shares of the target — each pane's models drawn into
        its own rect with its own camera, so the mask lines up with the split screen's picture */
     function _renderPixelMask(cam, sc, panes) {
@@ -1258,8 +1245,7 @@ const ThreePost = (function () {
         if (!_renderer || !sc || !cam || typeof THREE === 'undefined') return false;
         try {
             var now = performance.now();
-            if (sc === _scene) { if (now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _scanPixelMaskTargets(sc); } }
-            else if (!(now - (sc._ew_pixScanAt || 0) <= PIX_SCAN_MS)) { sc._ew_pixScanAt = now; _scanPixelMaskTargets(sc); }
+            if (now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _scanPixelMaskTargets(); }
 
             if (!_maskVec) _maskVec = new THREE.Vector2();
             _renderer.getDrawingBufferSize(_maskVec);
@@ -1288,9 +1274,6 @@ const ThreePost = (function () {
 
             var prevTarget    = _renderer.getRenderTarget();
             var prevOverride  = sc.overrideMaterial;
-            /* the walk's sky (2026-10-18): a texture background is a mesh three draws in EVERY render — the second (static) pass
-               painted the sky over the people the first (skinned) pass drew. The mask renders with no background. */
-            var prevBg        = sc.background;
             var prevLayers    = cam.layers.mask;
             var prevAutoClear = _renderer.autoClear;
             // Shadows are manually driven (autoUpdate off + needsUpdate pulses);
@@ -1306,7 +1289,6 @@ const ThreePost = (function () {
             if (_renderer.shadowMap) _renderer.shadowMap.needsUpdate = false;
             _renderer.setClearColor(0x000000, 1);
             _renderer.clear(true, true, false);
-            sc.background = null;
 
             var mcams = panes ? panes : [{ cam: cam }];
             try {
@@ -1330,7 +1312,6 @@ const ThreePost = (function () {
             } finally { if (panes) _maskRT.viewport.set(0, 0, w, h); }
 
             sc.overrideMaterial = prevOverride;
-            sc.background = prevBg;
             cam.layers.mask = prevLayers;
             _renderer.setRenderTarget(prevTarget);
             _renderer.setClearColor(_maskClearCol, prevAlpha);
@@ -1340,7 +1321,6 @@ const ThreePost = (function () {
             return true;
         } catch (e) {
             if (_renderer) _renderer._ew_sideRender = false;
-            if (sc && prevBg !== undefined) sc.background = prevBg;
             try { console.warn('[ThreePost] pixel mask pass failed — falling back to full-screen pixelate', e); } catch (e2) {}
             return false;
         }
@@ -3834,10 +3814,8 @@ const ThreePost = (function () {
             if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('hq'); }
             if (_retroPass && _retroPass.enabled) {
                 _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
-                /* Models Only (2026-10-18): the walker and the people are chunked, the room is not — the same mask the board draws */
-                var _scMask = (_retro.pixelScope !== 'screen') && _lkRetro().pixelSize > 1.0 ? _renderPixelMask(cam, scene) : false;
-                _retroPass.material.uniforms['tMask'].value = _scMask ? _maskRT.texture : null;
-                _retroPass.material.uniforms['uMaskMode'].value = _scMask ? 1.0 : 0.0;
+                _retroPass.material.uniforms['tMask'].value = null;
+                _retroPass.material.uniforms['uMaskMode'].value = 0.0;
             }
             if (_bloomPass && _bloomPass.enabled) {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the

@@ -56447,7 +56447,6 @@ const ThreeRenderer = (function () {
         unit.facing = { dx: Math.sin(yaw), dy: Math.cos(yaw) };
         var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };
         entry.group.name = 'hq_' + spec.id;
-        entry.group._ew_pixelChar = true;   // Retro → Models Only chunks the people of the walk (ThreePost _scanPixelChars)
         _attachUnitModel(entry, unit, def, BASE_TILE);
         var y = _hqLevelY(S, spec.level || 0) + (spec.y || 0);
         if (spec.y == null && spec.x != null && _hqHasGround()) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
