@@ -37752,6 +37752,7 @@ const ThreeRenderer = (function () {
                 || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy());
         }
         var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
+        _takeoverBodyClasses(inBattle && busy, inBattle && !state.winner && _takeoverCamBusy());
         if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
         var hoverOff = inBattle && (busy || !!_hoverWaitMove);
         var ch = highlightGroup.children;
@@ -37766,6 +37767,28 @@ const ThreeRenderer = (function () {
             }
         }
         if (_hoverGlowMesh) _hoverGlowMesh.visible = !hoverOff;
+    }
+    /* the same signal for the HUD (THE COMBAT LOG, ui.js renderFloatCombatLog): body.ew-board-busy while the game has
+       the board (all of the above), body.ew-board-cam while the camera is the game's (a flight, a cinematic, a death
+       close-up, a centre banner); written only when it flips */
+    var _tkBusyWas = false, _tkCamWas = false;
+    function _takeoverCamBusy() {
+        try {
+            if (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving()) return true;
+            if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
+            if (typeof _deathCamLive === 'function' && _deathCamLive()) return true;
+            if (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) return true;
+            if (typeof camera !== 'undefined' && camera && !state._userPanning && !state._userOrbiting && (camera._cineShotId != null || camera._cineTps)) return true;
+        } catch (e) {}
+        return false;
+    }
+    function _takeoverBodyClasses(busy, cam) {
+        busy = !!busy; cam = !!cam;
+        if (busy === _tkBusyWas && cam === _tkCamWas) return;
+        _tkBusyWas = busy; _tkCamWas = cam;
+        var b = document.body; if (!b) return;
+        b.classList.toggle('ew-board-busy', busy);
+        b.classList.toggle('ew-board-cam', cam);
     }
     function _hoverPointerMoved(x, y) {
         if (!_hoverWaitMove) return;
