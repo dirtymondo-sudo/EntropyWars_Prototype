@@ -4006,6 +4006,7 @@ const ThreeRenderer = (function () {
             _deltaPatchTops = {}; _liquidFlowTops = {};   // THE SKIN LINE: no tile-board sheet survives into a field
             _fieldPickBuild(ts);   // THE CLICKS: an invisible quad per IN cell at its real top — screenToTile raycasts terrainGroup, and there was nothing in it
             try { _fieldStrataBuild(ts); } catch (e) { console.warn('[HQ→battle] the strata failed', e); }   // THE STRATA: a column only where the engine dug or built
+            try { _fieldMoundBuild(ts); } catch (e) { console.warn('[HQ→battle] the mound failed', e); }   // THE EARTHWORK MOUND: Rampart's raise swells the ground
             var _skinLava = [];
             try { _fieldSkinBuild(ts, _skinLava); } catch (e) { console.warn('[HQ→battle] the skins failed', e); }   // THE SKINS: a sheet only where a spell changed the ground
             _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
@@ -64948,14 +64949,17 @@ const ThreeRenderer = (function () {
         var T = G.R.T, ts = G.ts;
         /* THE DEFORM (2026-09-23): a box room's cells are flat (null — the plate stays a plane) until a dig bowls one;
            a dug cell's shape is the bowl's (_fieldDeformDyAt), a raise is a block (the cell's delta, flat) */
-        var fn = function (wx, wz, x, y, refY) {
+        /* THE EARTHWORK MOUND: a mound cell's top is the swell's (_fieldMoundPlanLive), and its bank reaches into the cells beside
+           it; `bare` = the room's own ground with any dig, no raise (the mound's mesh lays itself on it) */
+        var fn = function (wx, wz, x, y, refY, bare) {
             var row = G.tops[y]; var top = row ? row[x] : null;
             if (top === null || top === undefined) return null;
             /* THE TWO FLOORS: a two-floor cell answers for the floor nearest refY (a plate / a ring / a walk under the deck reads the ground) */
             var onLow = false;
             if (refY !== undefined && refY !== null && G.lows) { var fl = G.floorNear(x, y, refY); if (fl && fl.low) { top = fl.m; onLow = true; } }
             var dug = (typeof _fieldDeformDug === 'function') && _fieldDeformDug();   // typeof: the highlights-conform test evals the block alone
-            if (!feet && !dug && !onLow) return null;
+            var mnd = (!bare && typeof _fieldMoundPlanLive === 'function') ? _fieldMoundPlanLive() : null;
+            if (!feet && !dug && !onLow && !(mnd && mnd.has[x + ',' + y]) && !bare) return null;
             var base = G.floorY + top * G.s;
             if (onLow && !feet) return base;
             /* a DECK top is level by rule (data.js hqTerrainBridges): the plate lies flat on it — sampled, its edge past the slab drooped to the ground */
@@ -64970,8 +64974,10 @@ const ThreeRenderer = (function () {
                 base += dy;
             }
             if (onLow) return base;   // a deck cell is never dug or raised (THE NO-DEFORM FLAG 'B')
-            var d = G.deltaAt(x, y);
-            return base + (d > 0 ? d * G.elev : 0) + (dug ? _fieldDeformDyAt(wx, wz) : 0);
+            var d = G.deltaAt(x, y), dgy = dug ? _fieldDeformDyAt(wx, wz) : 0;
+            if (bare) return base + dgy;
+            if (mnd && mnd.has[x + ',' + y]) return base + dgy + mnd.dyAt(wx / ts, wz / ts);   // the cell beside keeps its plate flat (its bank foot covers the plate's edge, as a wall's face did)
+            return base + (d > 0 ? d * G.elev : 0) + dgy;
         };
         _fieldGroundSamplerCache.key = key; _fieldGroundSamplerCache.fn = fn;
         return fn;
@@ -65416,6 +65422,165 @@ const ThreeRenderer = (function () {
         try { _fieldFloorMeshes().forEach(_fieldDeformRestoreMesh); } catch (e) {}
         try { if (_facilityNearGroup) _facilityNearGroup.traverse(function (o) { if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase; }); } catch (e) {}
         _fieldDeformCache.key = null; _fieldDeformCache.plan = null;
+    }
+    /* ══ THE EARTHWORK MOUND (2026-10-18, mondo: Rampart "since this isnt the voxel map its kind of weird for it to be a perfect cube
+       wall. can you just raise the elevation like how raising elevation works in the map editor, and make the sides/walls dirt") ══
+       On the true ground a cell a MOUND deform raised (data.js terrainDeform.mound — Rampart; battle.js applyTerrainDeform notes it
+       in state.moundTiles, plain state, so the guest's state-sync draws the same) is no column: the ground itself swells, the
+       editor's RAISE brush in the battle. The cell's centre stands at the engine's full height (tileTopY's number — the unit on it
+       stands on the crest); the bank runs smoothly from FIELD_MOUND_BAND tiles inside the cell's edge to as far into the neighbour
+       (whose centre stays where it was), with a little roughness on it. Drawn as one mesh per mound: dirt banks
+       (FIELD_MOUND_SIDE), the room's own floor sheet back on the flat crest, the foot fading into the ground like a dirt path.
+       The sampler every highlight, walk and ring reads (_fieldGroundSampler) follows the same shape on the mound's own cells (the
+       cells beside keep their flat plates — the bank's foot covers their edge, as the block's face did). The rules are untouched (the
+       cell is still +2 levels: jump-only, blocks the sight). A tile board (Holo Sim, Training Room) keeps its voxel column.
+       Off: window.EW_NO_FIELD_MOUND (the block, as before). */
+    var FIELD_MOUND_BAND = 0.32, FIELD_MOUND_SKIRT = 0.08, FIELD_MOUND_ROUGH = 0.1, FIELD_MOUND_SEGS = 10;
+    var FIELD_MOUND_SIDES = ['dirt_2', 'dirt', 'dirt_3'];
+    var _fieldMoundCache = { key: null, plan: null };
+    function _fieldMoundOn() { return !(typeof window !== 'undefined' && window.EW_NO_FIELD_MOUND); }
+    /* → { cells: [{x, y, delta}], has: {'x,y': true}, at(tx, tz) → { h, peak, skirt } (battle px), dyAt(tx, tz) → h } or null */
+    function _fieldMoundPlanLive() {
+        var G = _fieldGround(), M = (typeof state !== 'undefined' && state) ? state.moundTiles : null;
+        if (!G || !G.levels || !M || !_fieldMoundOn()) { _fieldMoundCache.key = null; _fieldMoundCache.plan = null; return null; }
+        var mk = Object.keys(M); if (!mk.length) return null;
+        var monM = _monumentMap();
+        var key = (state._heightVersion || 0) + '|' + _fieldGroundCache.key + '|' + mk.join(';') + '|' + (monM ? monM.size : 0);
+        if (_fieldMoundCache.key === key) return _fieldMoundCache.plan;
+        var W = G.W, H = G.H, D = new Float32Array(W * H), has = {}, cells = [];
+        mk.forEach(function (k) {
+            var pc = k.indexOf(','), x = +k.slice(0, pc), y = +k.slice(pc + 1);
+            if (!(x >= 0 && y >= 0 && x < W && y < H) || (monM && monM.has(k))) return;
+            var d = G.deltaAt(x, y); if (!(d > 0) || G.yAt(x, y) === null) return;
+            D[y * W + x] = d * G.elev; has[k] = true; cells.push({ x: x, y: y, delta: d });
+        });
+        var plan = null;
+        if (cells.length) {
+            var at = function (x, y) { return (x < 0 || y < 0 || x >= W || y >= H) ? 0 : D[y * W + x]; };
+            var ss = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+            /* the share a cell keeps of a point `d` tiles in from its near edge, over a bank `b` either side of that edge */
+            var own = function (d, b) { return d >= b ? 1 : ss((d + b) / (2 * b)); };
+            var shape = function (tx, tz, b) {
+                var cx = Math.floor(tx), cz = Math.floor(tz), fx = tx - cx, fz = tz - cz;
+                var sx = fx < 0.5 ? -1 : 1, sz = fz < 0.5 ? -1 : 1;
+                var wx = own(fx < 0.5 ? fx : 1 - fx, b), wz = own(fz < 0.5 ? fz : 1 - fz, b);
+                var d00 = at(cx, cz), d10 = at(cx + sx, cz), d01 = at(cx, cz + sz), d11 = at(cx + sx, cz + sz);
+                return { h: wx * wz * d00 + (1 - wx) * wz * d10 + wx * (1 - wz) * d01 + (1 - wx) * (1 - wz) * d11, peak: Math.max(d00, d10, d01, d11) };
+            };
+            var nse = function (u, v) { return (typeof _hqTNoise === 'function') ? _hqTNoise(u, v, 0.45, 53) : Math.sin(u * 7.1 + v * 3.7) * Math.cos(v * 5.3 - u * 2.9); };
+            var info = function (tx, tz) {
+                var s = shape(tx, tz, FIELD_MOUND_BAND), h = s.h;
+                if (h > 0 && s.peak > 0) { var t = h / s.peak; h += nse(tx, tz) * FIELD_MOUND_ROUGH * G.elev * 4 * t * (1 - t); }   // a lumpy bank: none on the crest or at the foot
+                return { h: h > 0 ? h : 0, peak: s.peak, skirt: shape(tx, tz, FIELD_MOUND_BAND + FIELD_MOUND_SKIRT).h };
+            };
+            plan = { cells: cells, has: has, at: info, dyAt: function (tx, tz) { return info(tx, tz).h; } };
+        }
+        _fieldMoundCache.key = key; _fieldMoundCache.plan = plan;
+        return plan;
+    }
+    var _fieldMoundGeoGroup = null;
+    function _fieldMoundBuild(ts) {
+        var P = _fieldMoundPlanLive(), G = _fieldGround(); if (!P || !G || !terrainGroup || typeof THREE === 'undefined') return 0;
+        var fn = _fieldGroundSampler(), elev = G.elev;
+        /* the room's own ground under a point (the dig's bowl in it, no raise): a cell off the board / OUT reads the board's edge cell / the mound's */
+        var bare = function (wx, wz, x, y, fb) {
+            var cx = x < 0 ? 0 : x >= G.W ? G.W - 1 : x, cy = y < 0 ? 0 : y >= G.H ? G.H - 1 : y;
+            var v = fn ? fn(wx, wz, cx, cy, undefined, true) : null;
+            if (v === null || v === undefined || !isFinite(v)) { var row = G.tops[cy], t = row ? row[cx] : null; v = (t === null || t === undefined) ? fb : G.floorY + t * G.s; }
+            return v;
+        };
+        var sideTex = null, sideKey = null;
+        for (var si = 0; si < FIELD_MOUND_SIDES.length && !sideTex; si++) { sideTex = _hzTex(FIELD_MOUND_SIDES[si]); if (sideTex) sideKey = FIELD_MOUND_SIDES[si]; }
+        var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
+        var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
+        var matOf = function (key) {
+            _fieldStrataMats = _fieldStrataMats || {};
+            if (!_fieldStrataMats[key]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[key] = m; }
+            return _fieldStrataMats[key];
+        };
+        var dirt = matOf(sideKey || bed.floor), dirtFade = _fieldPatchFadeMat(dirt, 'mound|' + (sideKey || bed.floor)) || dirt;
+        var crest = _fieldPatchFadeMat(matOf(floorKey), 'mound|' + floorKey);
+        var rep = _fieldPatchRep(G), lift = Math.max(0.5, ts * 0.006), S = FIELD_MOUND_SEGS;
+        /* THE RISE: the cells of one cast climb together — one mesh per (rise, levels), the still mounds in one */
+        var sets = {};
+        P.cells.forEach(function (c) {
+            var rr = _riseOf(c.x, c.y), vis = rr ? Math.min(rr.lv, c.delta) : 0, sk = (rr && vis > 0) ? rr.id + ':' + vis : '';
+            (sets[sk] || (sets[sk] = { rr: (rr && vis > 0) ? rr : null, vis: vis, cells: [] })).cells.push(c);
+        });
+        var grp = new THREE.Group(); grp.name = 'field_mounds'; grp._ew_fieldStrata = true;
+        var n = 0, nzE = 0.02;
+        Object.keys(sets).forEach(function (sk) {
+            var set = sets[sk], area = {}, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, fbOf = {};
+            set.cells.forEach(function (c) {
+                var fb = G.floorY + ((G.tops[c.y] && G.tops[c.y][c.x]) || 0) * G.s;
+                for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+                    var ax = c.x + dx, ay = c.y + dy, ak = ax + ',' + ay;
+                    if ((dx || dy) && P.has[ak]) continue;   // a mound cell of another set draws itself
+                    area[ak] = true; if (fbOf[ak] === undefined) fbOf[ak] = fb;
+                    if (ax < x0) x0 = ax; if (ay < y0) y0 = ay; if (ax > x1) x1 = ax; if (ay > y1) y1 = ay;
+                }
+            });
+            var NX = (x1 - x0 + 1) * S + 1, NZ = (y1 - y0 + 1) * S + 1, nv = NX * NZ;
+            var pos = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), colD = new Float32Array(nv * 4), colC = new Float32Array(nv * 4);
+            for (var j = 0; j < NZ; j++) for (var i = 0; i < NX; i++) {
+                var v = j * NX + i, tx = x0 + i / S, tz = y0 + j / S, wx = tx * ts, wz = tz * ts;
+                var cx = Math.min(x1, Math.floor(tx)), cz = Math.min(y1, Math.floor(tz)), ck = cx + ',' + cz;
+                var fb = fbOf[ck]; if (fb === undefined) { var ak2 = Math.max(x0, cx - 1) + ',' + cz; fb = fbOf[ak2] !== undefined ? fbOf[ak2] : G.floorY; }
+                var I = P.at(tx, tz), g0 = bare(wx, wz, cx, cz, fb);
+                pos[v * 3] = wx; pos[v * 3 + 1] = g0 + I.h + lift; pos[v * 3 + 2] = wz;
+                /* the bank's slope (rise per run) → the sheet runs down the bank, not stretched up it; none on the crest / the flat */
+                var gx = (P.dyAt(tx + nzE, tz) - P.dyAt(tx - nzE, tz)) / (2 * nzE * ts), gz = (P.dyAt(tx, tz + nzE) - P.dyAt(tx, tz - nzE)) / (2 * nzE * ts);
+                var gm = Math.sqrt(gx * gx + gz * gz), gk = 1 / Math.sqrt(gm * gm + 0.36);
+                uv[v * 2] = (wx + gx * gk * I.h) / rep; uv[v * 2 + 1] = -(wz + gz * gk * I.h) / rep;
+                /* the dirt: solid on the bank, its foot fading out over the ground beside it with a ragged edge */
+                var nz = (typeof _hqTNoise === 'function') ? _hqTNoise(tx, tz, 0.3, 71) : 0;
+                var aD = (I.h > 0.12 * elev) ? 1 : Math.max(0, Math.min(1, I.skirt / (0.1 * elev) + nz * 0.35));
+                colD[v * 4] = colD[v * 4 + 1] = colD[v * 4 + 2] = 1; colD[v * 4 + 3] = aD;
+                /* the crest: the room's floor where the top is flat */
+                var ct = I.peak > 0 ? Math.max(0, Math.min(1, (I.h / I.peak - 0.72) / 0.2)) : 0;
+                var flat = Math.max(0, Math.min(1, 1 - (gm - 0.35) / 0.6));
+                colC[v * 4] = colC[v * 4 + 1] = colC[v * 4 + 2] = 1; colC[v * 4 + 3] = ct * ct * (3 - 2 * ct) * flat;
+            }
+            var core = [], fringe = [], crestIdx = [];
+            for (var cj = 0; cj < NZ - 1; cj++) for (var ci = 0; ci < NX - 1; ci++) {
+                var qx = x0 + Math.floor(ci / S), qz = y0 + Math.floor(cj / S);
+                if (!area[qx + ',' + qz]) continue;
+                var p = cj * NX + ci, q = p + 1, r = p + NX, s2 = r + 1;
+                var a0 = colD[p * 4 + 3], a1 = colD[q * 4 + 3], a2 = colD[r * 4 + 3], a3 = colD[s2 * 4 + 3];
+                if (a0 > 0.999 && a1 > 0.999 && a2 > 0.999 && a3 > 0.999) core.push(p, r, q, q, r, s2);
+                else if (a0 > 0.01 || a1 > 0.01 || a2 > 0.01 || a3 > 0.01) fringe.push(p, r, q, q, r, s2);
+                if (colC[p * 4 + 3] > 0.01 || colC[q * 4 + 3] > 0.01 || colC[r * 4 + 3] > 0.01 || colC[s2 * 4 + 3] > 0.01) crestIdx.push(p, r, q, q, r, s2);
+            }
+            if (!core.length && !fringe.length) return;
+            var idxD = core.concat(fringe);
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            geo.setAttribute('color', new THREE.BufferAttribute(colD, 4));
+            geo.setIndex(idxD);
+            geo.computeVertexNormals();   // one lattice: the bank shades smoothly across the cells
+            if (core.length) geo.addGroup(0, core.length, 0);
+            if (fringe.length) geo.addGroup(core.length, fringe.length, 1);
+            geo.computeBoundingSphere(); geo.computeBoundingBox();
+            var holder = set.rr ? _riseGroup(grp, set.rr, set.vis, 'field_mound_rise') : grp;
+            var m = new THREE.Mesh(geo, [dirt, dirtFade]);
+            m.raycast = function () {}; m.name = 'field_mound'; m._ew_fieldStrata = true; m.castShadow = true; m.receiveShadow = true;
+            holder.add(m); n++;
+            if (crest && crestIdx.length) {
+                var pos2 = new Float32Array(pos); for (var k2 = 1; k2 < pos2.length; k2 += 3) pos2[k2] += lift;
+                var tg = new THREE.BufferGeometry();
+                tg.setAttribute('position', new THREE.BufferAttribute(pos2, 3));
+                tg.setAttribute('normal', geo.attributes.normal);
+                tg.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+                tg.setAttribute('color', new THREE.BufferAttribute(colC, 4));
+                tg.setIndex(crestIdx); tg.computeBoundingSphere(); tg.computeBoundingBox();
+                var tm = new THREE.Mesh(tg, crest);
+                tm.raycast = function () {}; tm.name = 'field_mound_crest'; tm._ew_fieldStrata = true; tm.castShadow = false; tm.receiveShadow = true; tm.renderOrder = GROUND_SHEET_ORDER;
+                holder.add(tm);
+            }
+        });
+        if (n) { terrainGroup.add(grp); _fieldMoundGeoGroup = grp; _shadowsDirty = true; }
+        return n;
     }
     /* ══ THE PATCH (2026-10-05, mondo: "each tile has the same texture pattern so it looks stupid/unrealistic. it should stem
        from the middle or lowest deformed tile and spread out and use the edge blending like for dirt paths") ══
@@ -65925,6 +66090,12 @@ const ThreeRenderer = (function () {
             return (t === null || t === undefined) ? null : G.floorY + t * G.s + sDelta(x, y) * G.elev;
         };
         var plan = _fieldStrataFaces(G.W, G.H, sYAt, sDelta, elev);
+        /* THE EARTHWORK MOUND: a mound cell is no column — _fieldMoundBuild swells the ground there */
+        var moundP = _fieldMoundPlanLive();
+        if (moundP) {
+            plan.tops = plan.tops.filter(function (c) { return !moundP.has[c.x + ',' + c.y]; });
+            plan.faces = plan.faces.filter(function (f) { return !moundP.has[f.x + ',' + f.y]; });
+        }
         /* THE RISE: a raised cell that is still climbing (riseOf: its rise + the levels of it that are column) is built in its
            own group; the cells beside it face it at its OLD top until it arrives (no gap opens in a wall it climbs beside) */
         var riseOf = {}, rising = false;
@@ -66080,7 +66251,7 @@ const ThreeRenderer = (function () {
             if (t === null || t === undefined) return null;
             return G.floorY + t * G.s + ((lr && lr[x] != null) ? ((fl - lr[x]) || 0) : 0) * G.elev;
         };
-        var grp = null, n = 0;
+        var grp = null, n = 0, moundP = _fieldMoundPlanLive();
         var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null, riseKeys = {};
         for (var pk in painted) {
             var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
@@ -66094,6 +66265,7 @@ const ThreeRenderer = (function () {
             var top = skinY(x, y); if (top === null || top === undefined) continue;
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
+            if (!fluid && moundP && moundP.has[pk]) continue;   // THE EARTHWORK MOUND: the swell wears its own dirt and crest
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
             /* THE RISE: the skin of a raised cell that is still climbing (Rampart's stone) climbs with its strata */
             var rq = null;

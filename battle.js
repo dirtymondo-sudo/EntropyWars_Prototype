@@ -63203,6 +63203,13 @@
                        the moved cells of a tile board as one ground, not a tile pattern. Plain state: rides the state-sync. */
                     const _dTiles = state.deformedTiles || (state.deformedTiles = {}), _dKey = tx + ',' + ty;
                     if (!(_dKey in _dTiles)) _dTiles[_dKey] = oldH;
+                    /* THE EARTHWORK MOUND (2026-10-18): a cell a `mound` deform raised (Rampart) is drawn on a true-ground field as
+                       the ground itself swelling (three-renderer.js _fieldMoundBuild), not a block; any other raise makes it a block
+                       again. Plain state: rides the state-sync. */
+                    if (newH > oldH) {
+                        const _mTiles = state.moundTiles || (state.moundTiles = {});
+                        if (deform.mound) _mTiles[_dKey] = 1; else delete _mTiles[_dKey];
+                    }
                 }
             }
 
