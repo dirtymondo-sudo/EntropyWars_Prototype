@@ -65436,18 +65436,23 @@ const ThreeRenderer = (function () {
         var D = (typeof state !== 'undefined' && state) ? state.deformedTiles : null;
         if (!D || !terrainGroup || _naturalTerrainActive() || typeof getBaseHeightAt !== 'function' || typeof getTerrainAt !== 'function') return 0;
         var ground = function (k) { return !!k && k.indexOf('void') !== 0 && k !== 'lava' && !_FLUID_TERRAIN_SET[k] && k !== 'wall' && k !== 'barrier_passage'; };
+        /* THE WALL TOPS (2026-10-18): a spell monument's cell reads its hidden collision stamp as height and terrain — the
+           sheet of a cell deformed before the wall stood belongs on the ground at the piece's recorded floor, not on its top */
+        var monM = _monumentMap();
+        var hAt = function (x, y) { var f = monM ? monM.get(x + ',' + y) : undefined; return (f === undefined || f === null) ? getBaseHeightAt(x, y) : f; };
+        var tAt = function (x, y) { var f = monM ? monM.get(x + ',' + y) : undefined; return (f === undefined || f === null || typeof getTerrainAt3D !== 'function') ? getTerrainAt(x, y) : getTerrainAt3D(x, y, f); };
         var yOf = function (x, y) {
             if (x < 0 || y < 0 || x >= bw || y >= bh) return null;
-            if (!ground(getTerrainAt(x, y))) return null;
-            return getBaseHeightAt(x, y) * elevStep;
+            if (!ground(tAt(x, y))) return null;
+            return hAt(x, y) * elevStep;
         };
         var byKey = {}, n = 0;
         for (var dk in D) {
             var pc = dk.indexOf(','), x = +dk.slice(0, pc), y = +dk.slice(pc + 1);
             if (!(x >= 0 && y >= 0 && x < bw && y < bh)) continue;
-            var h = getBaseHeightAt(x, y); if (h === D[dk]) continue;   // put back: the tile's own top shows
-            var k = getTerrainAt(x, y); if (!ground(k)) continue;
-            var rr = _riseOf(x, y), bk = rr ? k + '|' + rr.id : k;   // THE RISE: a climbing cell's sheet climbs with its column
+            var h = hAt(x, y); if (h === D[dk]) continue;   // put back: the tile's own top shows
+            var k = tAt(x, y); if (!ground(k)) continue;
+            var rr = (monM && monM.has(dk)) ? null : _riseOf(x, y), bk = rr ? k + '|' + rr.id : k;   // THE RISE: a climbing cell's sheet climbs with its column (a monument's floor stays put)
             (byKey[bk] || (byKey[bk] = [])).push({ x: x, y: y, low: h < D[dk], rise: rr });
         }
         var G = { W: bw, H: bh, ts: ts, elev: elevStep }, grp = null;
@@ -65659,22 +65664,37 @@ const ThreeRenderer = (function () {
             _fieldSkinMats[mk] = m;
             return m;
         };
+        /* THE WALL TOPS (2026-10-18, mondo: Walls of Camelot "puts the tile of the ground it raised on top as squares"): a spell
+           monument's cell carries hidden collision blocks (map.js placeSpellMonument), so its top terrain is the stamp's fill and
+           G.yAt is the stone's top. A cell repainted BEFORE the wall stood (weather, an earlier spell) laid its sheet up there, a
+           ground square over the bricks. On a monument cell the skin is the ground the piece stands on: the terrain of the block
+           at its recorded floor, at that floor's height (the strata's rule, _fieldStrataBuild) — the piece covers the rest. */
+        var monM = _monumentMap();
+        var monFloor = function (x, y) { var f = monM ? monM.get(x + ',' + y) : undefined; return (f === undefined || f === null) ? null : f; };
+        var skinY = function (x, y) {
+            var fl = monFloor(x, y); if (fl === null) return G.yAt(x, y);
+            var row = G.tops[y], t = row ? row[x] : null, lr = G.levels && G.levels[y];
+            if (t === null || t === undefined) return null;
+            return G.floorY + t * G.s + ((lr && lr[x] != null) ? ((fl - lr[x]) || 0) : 0) * G.elev;
+        };
         var grp = null, n = 0;
         var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null, riseKeys = {};
         for (var pk in painted) {
             var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
             if (!(x >= 0 && y >= 0 && x < G.W && y < G.H)) continue;
-            var k = cur[y] && cur[y][x]; if (!k || k.indexOf('void') === 0) continue;
+            var mfl = monFloor(x, y);
+            var k = (mfl !== null && typeof getTerrainAt3D === 'function') ? getTerrainAt3D(x, y, mfl) : (cur[y] && cur[y][x]);
+            if (!k || k.indexOf('void') === 0) continue;
             /* painted back to what the room was built with (a melt, an expiry): the room's own floor shows, no sheet */
             var gr = grid && grid[y], tid = gr ? (gr[x] | 0) : 0;
             if (tid && ids && k === (ids[tid] || 'grass')) continue;   // map.js's own tid → key (generateTerrainBoard)
-            var top = G.yAt(x, y); if (top === null || top === undefined) continue;
+            var top = skinY(x, y); if (top === null || top === undefined) continue;
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
             /* THE RISE: the skin of a raised cell that is still climbing (Rampart's stone) climbs with its strata */
             var rq = null;
-            if (!fluid) { var rr = _riseOf(x, y), rd = rr ? G.deltaAt(x, y) : 0; if (rr && rd > 0) rq = { rec: rr, vis: Math.min(rr.lv, rd) }; }
+            if (!fluid && mfl === null) { var rr = _riseOf(x, y), rd = rr ? G.deltaAt(x, y) : 0; if (rr && rd > 0) rq = { rec: rr, vis: Math.min(rr.lv, rd) }; }
             if (byKey) { var bk = rq ? k + '|' + rq.rec.id + ':' + rq.vis : k; (byKey[bk] || (byKey[bk] = [])).push({ x: x, y: y }); if (rq) riseKeys[bk] = rq; n++; if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y }); continue; }   // THE PATCH: drawn below, a run at a time
             var mesh = new THREE.Mesh(_fieldSkinGeo.geo, mat);
             /* over the room's floor and over a strata top (+0.4): a liquid a little higher, its sheet drawn after the floor */
@@ -65694,6 +65714,7 @@ const ThreeRenderer = (function () {
             for (var ry = 0; ry < G.H; ry++) for (var rx = 0; rx < G.W; rx++) {
                 var rfl = getLiquidFlowAt(rx, ry); if (!rfl || !rfl.sp) continue;
                 var rk = _rfKey[rfl.t]; if (!rk) continue;
+                if (monFloor(rx, ry) !== null) continue;   // THE WALL TOPS: no runoff sheet on a monument's stone
                 var rTop = G.yAt(rx, ry); if (rTop === null || rTop === undefined) continue;
                 var rMat = matOf(rk); if (!rMat) continue;
                 if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
@@ -65709,11 +65730,11 @@ const ThreeRenderer = (function () {
            cell when the ground there was dug); a dry one fades into the room's floor round its edge like a dirt path, a liquid
            keeps its shore (one continuous surface, no fade: water and lava stand in their own pool) */
         if (byKey) {
-            var rep = _fieldPatchRep(G), yOf = function (x, y) { return G.yAt(x, y); };
+            var rep = _fieldPatchRep(G), yOf = skinY;   // THE WALL TOPS: a monument cell's sheet lies at its floor
             /* THE SHORE BLEND: the liquids, one body per liquid (deep water joins the shallow body, its own sheet over it) —
                a soft, bevelled shore and deep running into shallow (_liqBlendGeo); the dry skins below as before */
             if (_liqBlendOn()) {
-                var bodies = {}, deeps = {}, bG = { W: G.W, H: G.H, ts: ts, elev: G.elev }, bY = function (x, y) { var t = G.yAt(x, y); return (t === null || t === undefined) ? null : t; };
+                var bodies = {}, deeps = {}, bG = { W: G.W, H: G.H, ts: ts, elev: G.elev }, bY = function (x, y) { var t = skinY(x, y); return (t === null || t === undefined) ? null : t; };
                 Object.keys(byKey).forEach(function (k) {
                     if (!_FLUID_TERRAIN_SET[k]) return;
                     var bk = _liqBodyKey(k);
