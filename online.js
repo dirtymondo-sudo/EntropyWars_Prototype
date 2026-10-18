@@ -1006,7 +1006,18 @@
            when its own room AND the guest's (relay `arena-ready`) are ready. A seat that never answers (no worker and a failed
            compile) is waited for at most ARENA_WAIT_MS; then the match starts as before. Viewer-local work, nothing on `state`. */
         var ARENA_WAIT_MS = 45000, ARENA_POLL_MS = 4000, ARENA_CAP_MS = 180000;   // silence that gives up / the re-ask / the hard cap
-        var _arenaPrep = { id: null, ready: false };
+        var _arenaPrep = { id: null, ready: false, gen: 0 };
+        /* THE GAME ROOM EDITS (2026-10-18, mondo edits a game room in the editor and its arenas use it — data.js hqRoomEditsBoot):
+           each seat builds the arena from its OWN copy of the room, so the host's edit of the match's arena room (or none) rides
+           `arena-check`, the guest lays it over its room before it surveys, and `arena-ready` carries the signature of the room
+           the guest surveyed — the host counts only a ready on its own room. Viewer-local, nothing on `state`. */
+        function _arenaRoomOf(mapId) { try { var a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null; return a ? a.room : null; } catch (e) { return null; } }
+        function _arenaRoomSig(mapId) { var r = _arenaRoomOf(mapId); try { return (r && typeof window.hqRoomEditSig === 'function') ? window.hqRoomEditSig(r) : ''; } catch (e) { return ''; } }
+        function _arenaCheckMsg(mapId) {
+            var m = { type: 'arena-check', mapId: mapId }, r = _arenaRoomOf(mapId);
+            if (r && typeof window.hqRoomEditOf === 'function') { try { m.room = r; m.edit = window.hqRoomEditOf(r) || null; m.sig = _arenaRoomSig(mapId); } catch (e) {} }
+            return m;
+        }
         function _onlineMatchMapId() {
             var NET = window._NET;
             if (!NET) return null;
@@ -1016,12 +1027,13 @@
             var id = String(mapId || '');
             if (!id) return;
             if (_arenaPrep.id === id) {
-                if (_arenaPrep.ready && _isGuest()) _emit('relay', { type: 'arena-ready', mapId: id });
+                if (_arenaPrep.ready && _isGuest()) _emit('relay', { type: 'arena-ready', mapId: id, sig: _arenaRoomSig(id) });
                 return;
             }
-            _arenaPrep = { id: id, ready: false };
+            var gen = (_arenaPrep.gen | 0) + 1;
+            _arenaPrep = { id: id, ready: false, gen: gen };
             var finish = function() {
-                if (_arenaPrep.id !== id || _arenaPrep.ready) return;
+                if (_arenaPrep.id !== id || _arenaPrep.gen !== gen || _arenaPrep.ready) return;
                 _arenaPrep.ready = true;
                 /* applyGameMode read the map's layout before the room was attached — read it again (the room's own layout) */
                 try {
@@ -1029,7 +1041,7 @@
                     if (!startReady && a && a.ready && typeof activeGameMode !== 'undefined' && activeGameMode === id
                         && !(typeof state !== 'undefined' && state.gameState === GS.BATTLE) && typeof applyGameMode === 'function') applyGameMode(id, true);
                 } catch (e) { console.warn('[ARENA] online re-apply failed', id, e); }
-                if (_isGuest()) _emit('relay', { type: 'arena-ready', mapId: id });
+                if (_isGuest()) _emit('relay', { type: 'arena-ready', mapId: id, sig: _arenaRoomSig(id) });
                 else _tryAutoStartRanked();
             };
             var a0 = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(id) : null;
@@ -1054,7 +1066,7 @@
             if (_arenaPrep.id !== id) _onlineArenaPrep(id);
             var guestOk = NET._guestArenaReady === id;
             if (_arenaPrep.ready && guestOk) return true;
-            if (!guestOk) _emit('relay', { type: 'arena-check', mapId: id });
+            if (!guestOk) _emit('relay', _arenaCheckMsg(id));
             /* THE SLOW SEAT (2026-10-07, mondo: friendly rooms "still using the voxel maps"): the biggest rooms take 25-40 s to
                survey on a fast machine (downtown, cyberpunk, stadium), so a slower PC ran past the old flat 45 s wait and the match
                started on the bare baked board. Now the wait only gives up on a seat that stopped answering: the host asks again
@@ -1069,7 +1081,7 @@
                     var now = Date.now(), hostBusy = !(_arenaPrep.id === id && _arenaPrep.ready), guestOk = NET._guestArenaReady === id;
                     var guestAlive = guestOk || (now - (NET._guestArenaBusyAt || 0)) < ARENA_WAIT_MS;
                     if ((hostBusy || !guestOk) && guestAlive && now - NET._arenaWaitT0 < ARENA_CAP_MS) {
-                        if (!guestOk) _emit('relay', { type: 'arena-check', mapId: id });
+                        if (!guestOk) _emit('relay', _arenaCheckMsg(id));
                         setTimeout(tick, ARENA_POLL_MS);
                         return;
                     }
@@ -4200,13 +4212,19 @@
 
                     /* THE ARENAS ONLINE: the guest surveys the match's arena when asked and says when its room is ready */
                     if (data.type === 'arena-check' && NET.role === 'guest' && data.mapId) {
+                        /* THE GAME ROOM EDITS: the host's room for this arena (its edit, or the game's own) before the survey */
+                        if (data.room && typeof window.hqRoomEditUse === 'function') {
+                            var _reChanged = false;
+                            try { _reChanged = window.hqRoomEditUse(String(data.room), data.edit || null); } catch (e) { console.warn('[ARENA] the host\'s room edit did not apply', data.room, e); }
+                            if (_reChanged && _arenaPrep.id === String(data.mapId)) _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen };
+                        }
                         _onlineArenaPrep(data.mapId);
                         if (window._ewOnlineArenaBusy && window._ewOnlineArenaBusy(data.mapId)) _emit('relay', { type: 'arena-busy', mapId: data.mapId });   // THE SLOW SEAT: still surveying
                     }
                     if (data.type === 'arena-busy' && NET.role === 'host' && data.mapId) NET._guestArenaBusyAt = Date.now();
                     if (data.type === 'arena-ready' && NET.role === 'host' && data.mapId) {
-                        NET._guestArenaReady = String(data.mapId);
-                        _tryAutoStartRanked();
+                        if ((data.sig || '') !== _arenaRoomSig(String(data.mapId))) _emit('relay', _arenaCheckMsg(String(data.mapId)));   // THE GAME ROOM EDITS: surveyed on another room — ask again with the host's
+                        else { NET._guestArenaReady = String(data.mapId); _tryAutoStartRanked(); }
                     }
 
                     if (data.type === 'host-locked') {

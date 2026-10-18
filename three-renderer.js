@@ -64427,7 +64427,8 @@ const ThreeRenderer = (function () {
         if (!run || !run.room) { _hqBattleRoomCache.key = null; _hqBattleRoomCache.R = null; return null; }
         /* read once per run (the scenery key asks every frame; the marker is a fresh object per call) */
         var bd = run.field && run.field.board;
-        var ck = run.room + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
+        var rev = (typeof hqRoomRev === 'function') ? hqRoomRev(run.room) : 0;   // THE GAME ROOM EDITS (2026-10-18): an edited room is read again
+        var ck = run.room + '|' + rev + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
         if (_hqBattleRoomCache.key === ck) return _hqBattleRoomCache.R;
         var R = null;
         try {
@@ -64448,7 +64449,7 @@ const ThreeRenderer = (function () {
                        void room stand 4–9 m over room metre 0: drawn at base + 0 they rose 3 tiles over the levels the camera, the fog
                        and every elevation read use, and the action shots sat inside / under the island. */
                     var refM = (fld && isFinite(+fld.ref)) ? +fld.ref : 0;
-                    R = { room: room, roomId: run.room, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld,
+                    R = { room: room, roomId: run.room, rev: rev, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld,
                           grid: (entry && Array.isArray(entry.grid)) ? entry.grid : null };   // THE SKINS: the surface each cell was built with (tids)   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
                 }
             }
@@ -64465,7 +64466,7 @@ const ThreeRenderer = (function () {
         return off + (half + 26) * k;
     }
     /* the scenery key's share: the room and the window it is drawn round ('' = no room) */
-    function _hqBattleRoomKey() { var R = _hqBattleRoom(); return R ? ('hq:' + R.roomId + ':' + R.T.x0.toFixed(2) + ',' + R.T.z0.toFixed(2)) : ''; }
+    function _hqBattleRoomKey() { var R = _hqBattleRoom(); return R ? ('hq:' + R.roomId + ':' + (R.rev | 0) + ':' + R.T.x0.toFixed(2) + ',' + R.T.z0.toFixed(2)) : ''; }
     /* the matrix: room metres (the HQ's U px per metre) → the battle's frame */
     /* the battle-frame Y of room metre 0: the base plane less the reference floor (THE FLOOR LINE above) */
     function _hqBattleRoomFloorY(R, ts) { return R.base * ts * ELEV_STEP_RATIO - (R.refM || 0) * ts / R.T.C; }

@@ -551,3 +551,29 @@ tables) from the dev-tools list.
   whose `if` flag is set and `not` flag is not), shows a page at a time in the subtitle bar (NEXT / E / ENTER / SPACE; 1-4 pick a choice on
   the last page; a 250 ms guard keeps the opening E from turning the first page). Finishing sets `set` and the choice's `set` via
   `hqStoryFlagSet` on `profile.door.hq.flags` (viewer-local, never relayed). ESC abandons without setting flags. No talk = the old `say`.
+
+## THE GAME ROOM EDITS (2026-10-18, thread "Room saves and arena boards")
+
+R2 files: editor.js, data.js, map.js, online.js, three-renderer.js. mondo: "if i make some changes in an existing room in the editor,
+like just change the terrain of the ground to a different sprite, how do i save it without saving a whole new room? and do the arena
+maps take the changes too?" (He painted THE CORN FIELDS, which IS Skinwalker Ranch's arena room, and the first change made a `w_roomN`
+copy that nothing in the game reads.)
+
+- **In place:** the first change to a game room (editor.js `own()`; `commit()` routes any library-room write through it) no longer
+  copies: his project keeps the room under the game's OWN id (`edit.over: true`), with site/part/doors kept. MAKE A COPY (`makeCopy`)
+  is the old new-room copy. A copy made before this (`edit.from` on a `w_roomN`) has PUT INTO <game room> (`copyToGame`: the copy's
+  content over the game room, the game room keeping its doors / label / site / part). DELETE on a game room = UNDO ALL MY CHANGES
+  (`revertRoom`). THE LIBRARY labels each room with its arenas ("· SKINWALKER RANCH ARENA") and "EDITED".
+- **Saved as a diff:** `saveNow` writes `doc.edits[id] = { diff, edit }` (data.js `hqRoomEditDiff`: `{ key: { $set } | { $del } | nested }`,
+  a changed list whole, row ids the editor added ignored); `docPrepare` rebuilds the room (`hqRoomEditBuild`) over the CURRENT data.js
+  room, so a later data.js change to the rest of the room still shows.
+- **The game:** data.js `hqRoomEditsBoot` (main page only) reads the editor's last project from IndexedDB `ew_editor` (opens read-only,
+  aborts the upgrade so it never creates the db) and lays the edits over DOOR_HQ.rooms (`HQ_ROOM_EDITS.orig` keeps the game's object;
+  `hqRoomEditPut` / `hqRoomEditDrop`). map.js `_hqEnter`, `_hqArenaWarm` and `_msArenaGate` wait for `HQ_ROOM_EDITS.ready`.
+- **Arenas:** `hqWorldDocRebuild` bumps `hqRoomRev(id)` and calls `hqArenaRoomChanged(id)`, which drops the attached `field` of every
+  `<site>_delta` / `_NxN_delta` cut from that room so the next launch re-surveys and rebuilds the board from the live room (all sizes).
+  The baked cells (thumbnails, the fallback when the window no longer fits) stay data.js's until bake-arenas.js is rerun.
+  three-renderer.js keys the battle's drawn room by the rev; map.js re-surveys a room whose rev moved while the worker had it.
+- **Online (RULE #2):** each seat builds the arena from its own room, so the host's `arena-check` carries `room` + `edit` (its diff or
+  null) + `sig`; the guest lays it over (`hqRoomEditUse`), re-surveys, and its `arena-ready` carries `sig`; the host counts only a ready
+  whose sig matches its own room.
