@@ -831,7 +831,7 @@ const ThreeRenderer = (function () {
         0x33cc55: 'healReach', 0x33dd77: 'healReach', 0x22ee55: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd66: 'heal',
         0x4488ff: 'buffReach', 0x8844ee: 'util', 0x6633bb: 'util', 0xaa33ff: 'util', 0xbb66ff: 'force', 0xff8822: 'combo',
         0xffcc33: 'atkReach', 0xffd83d: 'cursor', 0xddaa22: 'ally', 0x22eebb: 'inspect', 0x44aaff: 'place',
-        0xff4545: 'foeRange', 0x5aa8ff: 'allyRange'
+        0xff4545: 'foeRange', 0x5aa8ff: 'allyRange', 0x00d0ff: 'slide'
     };
     function _hlKindOfHex(c) {
         var h = (typeof c === 'number') ? c : (c && c.isColor ? c.getHex() : null);
@@ -853,7 +853,9 @@ const ThreeRenderer = (function () {
     /* an overlay's tile: its name says it first (a reach, a landing), then its colour */
     var _HL_OVERLAY_KIND = { enemyRange: function (c) { return c === 0x5aa8ff ? 'allyRange' : 'foeRange'; },
         attackRange: function () { return 'atkReach'; }, spellApproachShove: function () { return 'force'; }, actionPlanShove: function () { return 'force'; },
-        movePreview: function () { return 'move'; }, moveHoverDest: function () { return 'move'; }, spellApproachMove: function () { return 'move'; },
+        /* the ice-blue tiles of a walk's slide (battle.js THE SLIDE FORECAST) keep their own situation */
+        movePreview: function (c) { return c === 0x00d0ff ? 'slide' : 'move'; }, moveHoverDest: function (c) { return c === 0x00d0ff ? 'slide' : 'move'; },
+        spellApproachMove: function (c) { return c === 0x00d0ff ? 'slide' : 'move'; },
         weather: function () { return 'none'; } };   // the weather's own tile colours never take a situation's colour
     function _hlKindOfOverlay(name, c) {
         var f = _HL_OVERLAY_KIND[name];
@@ -16409,6 +16411,8 @@ const ThreeRenderer = (function () {
             }
             var nb = P(wps[i]);
             var lt = kind === 'leap' ? 'jump' : (kind === 'blink' ? 'blink' : kind);
+            /* a waypoint flagged slide (battle.js THE SLIDE FORECAST): the body glides that leg on the ice, no steps */
+            if (wps[i].slide) lt = 'slide';
             // a walk leg that climbs / drops a lot is the hop the board plays there
             var hop = (lt === 'walk' && Math.abs(nb.y - prev.y) > ts * 0.6);
             if (hop) lt = 'jump';
@@ -16431,6 +16435,7 @@ const ThreeRenderer = (function () {
             L.dur = (L.type === 'jump') ? 0.5 + d * 0.07
                 : (L.type === 'dash') ? Math.max(0.2, d * 0.085)
                 : (L.type === 'shove') ? Math.max(0.2, d * 0.11)
+                : (L.type === 'slide') ? Math.max(0.09, d * 0.09)
                 : (L.type === 'blink') ? 0.0001
                 : (L.type === 'fly') ? Math.max(0.3, d * 0.32 + dv * 0.2)
                 : Math.max(0.2, d * 0.3 + dv * 0.15);
@@ -16470,6 +16475,7 @@ const ThreeRenderer = (function () {
                     dash: ['runCharge', 'run', 'walk', 'idle'],
                     jump: ['jump', 'walk', 'idle'],
                     shove: ['hitHeavy', 'hit', 'idle'],
+                    slide: ['idle'],
                     blink: ['idle']
                 };
                 if (motion.castSpell && typeof classifySpellAnimKind === 'function') {
@@ -16861,7 +16867,7 @@ const ThreeRenderer = (function () {
        heal / support, purple 0xbb66ff = a body force-moved, white = utility), so a colour names its action (opts.kind
        names it outright). */
     var _ARROW_HEX_KIND = { 0x3399ff: 'move', 0xff3333: 'hit', 0xff2a2a: 'hit', 0xff3a3a: 'hit', 0xff2222: 'hit',
-        0x33dd66: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd77: 'heal', 0x22ee55: 'heal', 0xbb66ff: 'force', 0xeeeeee: 'util' };
+        0x33dd66: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd77: 'heal', 0x22ee55: 'heal', 0xbb66ff: 'force', 0xeeeeee: 'util', 0x00d0ff: 'slide' };
     var _arrowLookC = null, _arrowLookCV = -1;
     function _arrowLook() {
         var v = window._ewArrowLookV || 0;
@@ -27977,7 +27983,7 @@ const ThreeRenderer = (function () {
         var H1 = ts * 1.05, H2 = ts * 0.7;
         _hzAt(g, _hzBox(ts * 1.0, H1, ts * 1.0, ts, m()), 0, H1 / 2, 0);
         _hzAt(g, _hzBox(ts * 0.72, H2, ts * 0.72, ts, m(0xe0c69c)), 0, H1 + H2 / 2, 0);
-        var band = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.02, ts * 0.07, ts * 1.02), _hzGlowMat(0x9fe8ff, 0.5));   // the glyph band
+        var band = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.02, ts * 0.07, ts * 1.02), _hzGlowMat(0x00d0ff, 0.5));   // the glyph band
         _hzAt(g, band, 0, H1 * 0.72, 0);
         return g;
     }
@@ -31448,7 +31454,7 @@ const ThreeRenderer = (function () {
             var b1 = K.box(bw1, bh1, bd1, podMat); b1.position.set(bx + bw1 / 2, top + bh1 / 2 - 0.1 * ts, K.CZ); K.addW('e', K.lit(b1, true));
             var bw2 = 2.0 * ts, bd2 = HW * 0.7, bh2 = 0.95 * ts;
             var b2 = K.box(bw2, bh2, bd2, podMat); b2.position.set(bx + 0.6 * ts + bw2 / 2, top + bh1 + bh2 / 2 - 0.1 * ts, K.CZ); K.addW('e', K.lit(b2, true));
-            var winMat = K.glow(0x9fe8ff, 0.85); _hzPulse(winMat, null, 0.1, 0, 0.9);
+            var winMat = K.glow(0x00d0ff, 0.85); _hzPulse(winMat, null, 0.1, 0, 0.9);
             var wf = new THREE.Mesh(new THREE.PlaneGeometry(bd2 * 0.9, 0.34 * ts), winMat); wf.rotation.y = Math.PI / 2; wf.position.set(bx + 0.6 * ts + bw2 + 0.5, top + bh1 + bh2 * 0.6 - 0.1 * ts, K.CZ); K.addW('e', wf);
             [-1, 1].forEach(function (sd) { var ws = new THREE.Mesh(new THREE.PlaneGeometry(bw2 * 0.85, 0.3 * ts), winMat); ws.rotation.y = sd > 0 ? 0 : Math.PI; ws.position.set(bx + 0.6 * ts + bw2 / 2, top + bh1 + bh2 * 0.6 - 0.1 * ts, K.CZ + sd * (bd2 / 2 + 0.5)); K.addW('e', ws); });
             var mast = K.cyl(0.05 * ts, 0.08 * ts, 3.2 * ts, 6, dark); mast.position.set(bx + 1.2 * ts, top + bh1 + bh2 + 1.5 * ts, K.CZ - bd2 * 0.3); K.addW('e', K.lit(mast));
@@ -46115,7 +46121,7 @@ const ThreeRenderer = (function () {
         way:     { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: 0xcfe4ff, barOp: 0.6 },
         counter: { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: 0x7fd9dd, barOp: 0.6 },
         battle:  { ink: 0xffd39a, mute: 0xb8c1ee, bar: 0xffb020, barOp: 0.85 },
-        portal:  { ink: 0x9fe8ff, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
+        portal:  { ink: 0x00d0ff, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
         portal_a: { ink: 0x7fd0ff, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
         portal_b: { ink: 0xffc389, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
         sign:    { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: null }
@@ -53079,7 +53085,7 @@ const ThreeRenderer = (function () {
             var steel = _hqMat('metal_3', 2, 1, { color: 0x6e7880, shininess: 60 });
             var plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, 0.6 * U, 0.5 * U, 16), steel); plinth.position.y = 0.25 * U; g.add(plinth);
             var dish = new THREE.Mesh(new THREE.CylinderGeometry(0.45 * U, 0.35 * U, 0.08 * U, 16), _hqMat(null, 1, 1, { color: 0x2a3a48, shininess: 90 })); dish.position.y = 0.54 * U; g.add(dish);
-            var orbMat = new THREE.MeshPhongMaterial({ color: 0x9fe8ff, emissive: 0x3fb8ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.85, shininess: 160, specular: 0xffffff });
+            var orbMat = new THREE.MeshPhongMaterial({ color: 0x00d0ff, emissive: 0x3fb8ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.85, shininess: 160, specular: 0xffffff });
             var orb = new THREE.Mesh(new THREE.SphereGeometry(0.28 * U, 24, 18), orbMat); orb.position.y = 1.35 * U; g.add(orb);
             var core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.12 * U, 1), _hqBasic(0xffffff)); core.position.y = 1.35 * U; g.add(core);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.42 * U, 0.02 * U, 8, 40), new THREE.MeshBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 0.6 })); ring.position.y = 1.35 * U; ring.rotation.x = Math.PI / 2 + 0.4; g.add(ring);
@@ -54189,7 +54195,7 @@ const ThreeRenderer = (function () {
             var lower = new THREE.Mesh(new THREE.ConeGeometry(3.0 * U, 0.7 * U, 28), hull); lower.position.y = 2.05 * U; lower.rotation.x = Math.PI; g.add(lower);
             var upper = new THREE.Mesh(new THREE.ConeGeometry(3.0 * U, 1.0 * U, 28), hull); upper.position.y = 2.9 * U; g.add(upper);
             var rim = new THREE.Mesh(new THREE.TorusGeometry(3.0 * U, 0.06 * U, 6, 48), dark); rim.position.y = 2.4 * U; rim.rotation.x = Math.PI / 2; g.add(rim);
-            var domeMat = new THREE.MeshPhongMaterial({ color: 0x9fe8ff, emissive: 0x3fb8ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, shininess: 160 });
+            var domeMat = new THREE.MeshPhongMaterial({ color: 0x00d0ff, emissive: 0x3fb8ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, shininess: 160 });
             var dome = new THREE.Mesh(new THREE.SphereGeometry(0.8 * U, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), domeMat); dome.position.y = 3.35 * U; g.add(dome);
             /* the port lights round the rim */
             var portMat = new THREE.MeshBasicMaterial({ color: 0xffd080 });
@@ -62528,9 +62534,9 @@ const ThreeRenderer = (function () {
             var white = _hqMat(null, 1, 1, { color: 0xeeeeea, shininess: 70, specular: 0x666666 });
             var trough = _hqBox(1.0, 0.5, 2.2, white); trough.position.y = 0.25 * U; g.add(trough);
             var pad = _hqBox(0.84, 0.06, 2.0, _hqMat(null, 1, 1, { color: 0x3a4a5a, shininess: 10 })); pad.position.y = 0.53 * U; g.add(pad);
-            var dome = new THREE.Mesh(new THREE.CylinderGeometry(0.48 * U, 0.48 * U, 2.1 * U, 24, 1, true, 0, Math.PI), new THREE.MeshPhongMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.32, shininess: 160, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
+            var dome = new THREE.Mesh(new THREE.CylinderGeometry(0.48 * U, 0.48 * U, 2.1 * U, 24, 1, true, 0, Math.PI), new THREE.MeshPhongMaterial({ color: 0x00d0ff, transparent: true, opacity: 0.32, shininess: 160, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
             dome.rotation.z = Math.PI / 2; dome.rotation.y = Math.PI / 2; dome.position.y = 0.52 * U; g.add(dome);
-            var strip = _hqBox(0.03, 0.02, 1.9, _hqMat(null, 1, 1, { color: 0x9fe8ff, emissive: 0x6fd8ff, emissiveIntensity: 1.0 })); strip.position.set(0.4 * U, 0.56 * U, 0); g.add(strip);
+            var strip = _hqBox(0.03, 0.02, 1.9, _hqMat(null, 1, 1, { color: 0x00d0ff, emissive: 0x6fd8ff, emissiveIntensity: 1.0 })); strip.position.set(0.4 * U, 0.56 * U, 0); g.add(strip);
             var strip2 = strip.clone(); strip2.position.x = -0.4 * U; g.add(strip2);
             return g;
         },
