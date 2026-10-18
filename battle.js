@@ -57141,9 +57141,42 @@
         }
         window.previewSpellRange = previewSpellRange;
 
+        /* THE PRESS MARKS (2026-10-18, mondo: "hovering over a spell from the abilities menu needs to show the green
+           exclamation point super effective icon on the enemy units that spell is super effective against. this way i
+           can see what is super effective without clicking on an enemy first"): the abilities menu's hover puts the
+           green ! over every enemy this spell would press if it were cast on it — forecastPressOn aimed at that body,
+           the same rule as the badges (PR #295: only a hit the refund really pays for). Every enemy the viewer can see,
+           in reach or not; a fogged / hidden one gets nothing (_shouldCameraFollowUnit, the screen-true fog gate).
+           Viewer-local display, nothing relayed: the guest's own hover reads its own copy of the state. Cleared with
+           the range preview. UI Maker: Arrows + tiles > Super effective ! (Over the enemies off = no marks). */
+        function previewSpellPressMarks(spellName) {
+            clearSpellPressMarks();
+            if (window._ewSeLook && window._ewSeLook.hover === false) return;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive() || !ThreeRenderer.showPressMarks) return;
+            const unit = getSelectedUnit();
+            if (!unit || state.phase !== 'battle') return;
+            const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
+            if (!spell || !spellArmsPress(spell)) return;
+            const ids = [];
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying || !isEnemyUnit(unit, u)) continue;
+                try { if (!_shouldCameraFollowUnit(u)) continue; } catch (e) { continue; }
+                let pr = null;
+                try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
+                if (pr && pr.press) ids.push(u.id);
+            }
+            if (ids.length) ThreeRenderer.showPressMarks(ids);
+        }
+        window.previewSpellPressMarks = previewSpellPressMarks;
+        function clearSpellPressMarks() {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks(); } catch (e) {}
+        }
+        window.clearSpellPressMarks = clearSpellPressMarks;
+
         function clearSpellRangePreview() {
             for (const t of _spellRangePreviewTiles) t.classList.remove('spell-range-preview');
             _spellRangePreviewTiles = [];
+            clearSpellPressMarks();
             if (typeof ThreeRenderer !== 'undefined') {
                 ThreeRenderer.clearOverlay('spellRange');
                 ThreeRenderer.clearOverlay('spellRangeElem');
