@@ -3899,7 +3899,7 @@
             const isFace = !!url;
             if (!url && typeof getBattleMapSpriteUrl === 'function') url = getBattleMapSpriteUrl(unit);
             if (!url) return '';
-            return `<div class="unit-portrait${isFace ? '' : ' sprite'}" style="background-image:url('${url}')"></div>`;
+            return `<div class="unit-portrait${isFace ? '' : ' sprite'}" data-ew-face="${String(unit.id).replace(/"/g, '')}" data-ew-face-sc="sprite" style="background-image:url('${url}')"></div>`;
         }
 
         function renderSelectedUnitPanel() {
