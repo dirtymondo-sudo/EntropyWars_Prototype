@@ -45264,10 +45264,21 @@ const ThreeRenderer = (function () {
         /* Hide every scene child except the unit group and the lights — the
            actors still need to be lit, and a hidden light would black them
            out along with the world. */
+        /* THE TARGET STAYS (2026-10-18, mondo: "there shouldnt ever be a time where the target becomes invisible ... the
+           target is the main priority for a damage spell animation"): the void used to hide the SPELL along with the world —
+           the projectile in flight, the impact burst, the particles, the floating damage number — and the groups of lights
+           the units are lit by (unitLights: hiding them also changed the light count every lit shader is built for). Kept
+           now: the spell layers (projectiles, hit FX, float text, laser beams, the particle batches and pools, and every
+           effect a VFX module added during this cast — _ew_vfxAt, three-vfx-effects.js _vfxAdd) and any subtree that holds
+           only lights. Older effects (a burning tile, a zone dome across the board) still go with the world. */
+        var _vfxFresh = performance.now() - 6000;
         var hidden = [];
         for (var i = 0; i < scene.children.length; i++) {
             var ch = scene.children[i];
             if (ch === unitGroup || ch.isLight || ch._ew_rig) continue;   // THE LIGHT RIG holds the copies of the lights: its set must not change mid-cast
+            if (ch === projectileGroup || ch === hitFxGroup || ch === floatTextGroup || ch === _laserBeamGroup) continue;
+            if (ch._ew_fxBatch || ch._ew_fxPool || (ch._ew_vfxAt && ch._ew_vfxAt > _vfxFresh)) continue;
+            if (_voidLightsOnly(ch)) continue;
             if (ch.visible) { hidden.push(ch); ch.visible = false; }
         }
         /* …and every unit that isn't in the scene. */
@@ -45374,6 +45385,17 @@ const ThreeRenderer = (function () {
             prevFog: prevFog, fogWas: fogWas, discs: discs, lights: lights, bg: scene.background };
         _shadowsDirty = true;
         return true;
+    }
+
+    /* A subtree that holds lights and nothing drawable (unitLights, streetLampLights, wardLights …): it stays up through
+       the void — it lights the actors and draws nothing. */
+    function _voidLightsOnly(root) {
+        var lit = false, drawn = false;
+        root.traverse(function (o) {
+            if (o.isLight) lit = true;
+            else if (o.isMesh || o.isSprite || o.isPoints || o.isLine) drawn = true;
+        });
+        return lit && !drawn;
     }
 
     /* Shared soft radial falloff for the void glow pools (white core →
@@ -69999,6 +70021,27 @@ const ThreeRenderer = (function () {
             if (!isFinite(p.x + p.y + p.z)) return false;
             out[0] = p.x; out[1] = p.y; out[2] = p.z;
             return true;
+        },
+        /* Where a unit's body is ON SCREEN this frame (client px): the centre of the body and its drawn height. The
+           whole-screen spell layers (battle.js VoidStage's veil, the whiteout, the impact flash) leave this patch clear so
+           the target never disappears behind them. null when it has no live model or sits behind the lens. */
+        unitScreenBox: function (uid) {
+            var e = _getUnitEntry(uid);
+            var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            if (!e || !e.group || !cam || !canvas) return null;
+            var p = e.group.position;
+            if (!isFinite(p.x + p.y + p.z)) return null;
+            var ts = CONFIG.tileSize || BASE_TILE;
+            var h = ts * UNIT_SPRITE_SIZE_RATIO * ((e.modelDef && e.modelDef.heightRatio) || 1);
+            _projVec2.set(p.x, p.y, p.z).project(cam);
+            if (_projVec2.z > 1 || _projVec2.z < -1) return null;
+            var fx = _projVec2.x, fy = _projVec2.y;
+            _projVec2.set(p.x, p.y + h, p.z).project(cam);
+            if (_projVec2.z > 1 || _projVec2.z < -1) return null;
+            var r = canvas.getBoundingClientRect();
+            var x0 = (fx + 1) / 2 * r.width, y0 = (1 - fy) / 2 * r.height;
+            var x1 = (_projVec2.x + 1) / 2 * r.width, y1 = (1 - _projVec2.y) / 2 * r.height;
+            return { x: r.left + (x0 + x1) / 2, y: r.top + (y0 + y1) / 2, h: Math.hypot(x1 - x0, y1 - y0) };
         },
 
         /* §4 performance pass — Video-settings hooks + shadow gate */

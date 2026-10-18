@@ -1503,3 +1503,25 @@ even that should be gone right as the spell actually hits, i shouldnt still be s
 - Browser-proved (headless VS-CPU, mouse parked on units, frame sampler on highlightGroup): main showed the hovered
   unit's ring + range wash during the CPU turn, and range tiles, AoE, cursor, white caster tile and the gold glow through
   the death close-up; after: zero stray highlights in CPU turn / move / killing spell, hover back after a real move.
+
+## THE TARGET STAYS — whole-screen spell layers never hide the target (2026-10-18)
+mondo: "for spells whose vfx change the whole screen like lump of coal there shouldnt ever be a time where the target
+becomes invisible and i just see nothing at all on the screen. the target is the main priority for a damage spell
+animation ... lump of coal doesnt even need one, its just supposed to be santa clause throwing a lump of coal".
+- Cause (browser-proved): VoidStage's `.void-veil` was one solid sheet of the palette at opacity 1 for the bloom in
+  (~0.5 s) and out (~0.5 s) — a flat black frame on abyss / shadow / hearth / starfield. And `cineVoidEnter` hid every
+  scene child but unitGroup + lights: the spell itself (projectileGroup, hitFxGroup, floatTextGroup, the fxBatch
+  particles, every three-vfx-effects group) and the `unitLights` group vanished for the whole void.
+- Lump of Coal: its `_voidBeat('hearth')` sequence is gone (the strike family shoots it); sprites.js SPELL_ANIM_VERBS
+  `throw` += raceLumpOfCoal (castThrow OverhandThrow — Santa's basic-attack throw). The `hearth` palette stays (unused).
+- The veil is a quarter-res 2D `<canvas>` now (same gradient), with a soft hole cut around every actor's body
+  (battle.js `_cineBodyHoles` ← three-renderer.js `ThreeRenderer.unitScreenBox(uid)` = body centre + drawn height in
+  client px), redrawn every frame while up (`_veilRun`), so the face cam cutting in under it keeps the target clear.
+- `cineVoidEnter` keeps: projectileGroup, hitFxGroup, floatTextGroup, _laserBeamGroup, `_ew_fxBatch`, `_ew_fxPool`
+  (three-vfx.js sprite/world/quad/glob pools + the quarks root), anything stamped `_ew_vfxAt` in the last 6 s
+  (three-vfx-effects.js `_vfxAdd(parent, obj)` wraps every `scene.add`; three-lightning.js bolts) and light-only
+  subtrees (`_voidLightsOnly`). Older effects (a burning tile, a zone) still leave with the world.
+- Whiteout grade + the kill pop (`.acam-flash.pop`): white AROUND the target — `_cineStampFocusHole()` writes
+  `--cine-hole-x/-y/-rx/-ry` on #game-viewport (CSS radial gradient, clear core). `_sigScreenFlash` (three-vfx-effects)
+  reads `window._cineFocusScreen()` the same way. Focus = the unit on the cast's aimed tile (`_cineCastCtx.tx/ty`), then
+  the forecast hits, then the unit under `camera._tpsSubject` (the guest path); none → the frame centre.
