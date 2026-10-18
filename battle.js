@@ -3826,7 +3826,9 @@
             showFloatingTextForUnit(unit, '⛸ SLIDES!', 'debuff', { durationMs: 1000 });
             addLog(`⛸ ${_ctName(unit)} hits the ice at ${coordLabel(fromX, fromY)} and slides to ${coordLabel(cx, cy)}!`);
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
-            _applyKnockbackHazard(unit);
+            /* 🧭 the glide's landing keeps its heading (a bomb there throws it back up the ice); it never glides twice */
+            _applyKnockbackHazard(unit, { dirX: dx, dirY: dy, noGlide: true,
+                fxDelayMs: _skipVisuals() ? 0 : ((dir && dir.delayMs) || 0) + steps.length * 90 });
             return true;
         }
 
@@ -3878,9 +3880,222 @@
         //  opts.fxDelayMs: the slide tween still playing — VFX beats that can
         //            wait (a bomb's blast) ride it; state never does.
         //  Returns the number of reactions that fired at this depth.
+        //  opts.dirX / dirY: the way the body was TRAVELLING as it arrived (a
+        //            shove, a pull, a blast, a fling, a throw) — the ice glides
+        //            on that way, a bomb throws it back the way it came.
+        //  opts.noGlide: the body handed its momentum on (a bowling pin took
+        //            the hit, a glide already ended) — no ice glide.
         //  RULE #2: host-only engine work; positions sync, the VFX it fires
         //  (VFX3D.fire, playVortexFlingFx, the floats) ride their own relays.
         // ═══════════════════════════════════════════════════════════════════
+
+        /* ═══════════ 🧭 THE FORCED MOVE (2026-10-18) ═══════════════════════
+           mondo: "All forced movement needs to be one shared underlying resolution system to allow for chains like
+           pulling an enemy into a bomb that detonates and knocks them back into a tornado that flings them onto a row
+           of ice tiles (momentum from the tornado fling should keep the unit moving) and into my nexus so they take
+           massive damage at the end of the round". Every body something else moves walks resolveForcedSlide (walls
+           and rebounds, bowling pins, holes, breaches, falls, anchors, weight) and lands through THE CHAIN with the
+           way it was travelling, so each reaction reads the same momentum. The directions are fixed rules, so they can
+           be planned around and the forecast draws them (simulateArrivalChain):
+             · a BOMB a body sets off throws it back the way it came (its travel reversed; a walk's = its facing); a
+               body caught in someone else's trigger is thrown straight away from the bomb; a bomb its owner sets off
+               (Detonate, a contact throw, a scan) throws every body it catches the opposite way that body faces;
+             · a TORNADO / HURRICANE flings due north the round it forms, then east, south, west — a quarter turn each
+               round (vortexFlingDir; the board draws the heading on the storm);
+             · ice keeps a moved body gliding the way it was going; a body that hit a pin gave the pin its momentum.
+           Airborne bodies set off nothing below them (THE CHAIN step A, the walk's pickup stops). */
+        const BOMB_KNOCK_TILES = 1;
+        const VORTEX_COMPASS = [{ key: 'N', word: 'north', dx: 0, dy: -1 }, { key: 'E', word: 'east', dx: 1, dy: 0 },
+            { key: 'S', word: 'south', dx: 0, dy: 1 }, { key: 'W', word: 'west', dx: -1, dy: 0 }];
+        /* a facing vector → the nearest of the 8 board directions */
+        function _snapDir8(dx, dy) {
+            const len = Math.hypot(dx || 0, dy || 0);
+            if (!(len > 0)) return null;
+            const t = 0.3827;   // sin 22.5°
+            const sx = Math.abs(dx / len) >= t ? Math.sign(dx) : 0, sy = Math.abs(dy / len) >= t ? Math.sign(dy) : 0;
+            return (sx || sy) ? { dx: sx, dy: sy } : null;
+        }
+        /* "knocked backwards": the opposite of the way the body faces */
+        function forcedBackDir(unit) {
+            const f = (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
+            const s = f ? _snapDir8(f.dx, f.dy) : null;
+            return s ? { dx: -s.dx, dy: -s.dy } : { dx: 0, dy: -1 };
+        }
+        /* The way a bomb's blast throws `victim`. ctx.trigger = { unitId, dirX, dirY }: the body that set it off and how
+           it was travelling; no trigger = the owner set it off. */
+        function bombKnockDir(bomb, victim, ctx) {
+            const trig = ctx && ctx.trigger;
+            if (trig && victim.id === trig.unitId) {
+                if (trig.dirX || trig.dirY) return { dx: -Math.sign(trig.dirX || 0), dy: -Math.sign(trig.dirY || 0) };
+                return forcedBackDir(victim);   // a walk / a blink onto it: it came the way it faces
+            }
+            if (trig) {
+                const ax = Math.sign(victim.x - bomb.x), ay = Math.sign(victim.y - bomb.y);
+                if (ax || ay) return { dx: ax, dy: ay };
+            }
+            return forcedBackDir(victim);
+        }
+        /* A displacing storm's heading this round: north the round it formed, then a quarter turn clockwise a round. */
+        function vortexFlingDir(weather) {
+            const born = (weather && Number.isFinite(weather.bornRound)) ? weather.bornRound : 0;
+            const i = ((((state.round || 0) - born) % 4) + 4) % 4;
+            return VORTEX_COMPASS[i];
+        }
+        window.vortexFlingDir = vortexFlingDir;
+        /* 🌪 THE FLING: a displacing storm takes `v` displaceTiles along its heading — the shared slide, the lift-spin-
+           hurl arc, then the landing's own chain with the fling's momentum. THE CHAIN's step F and the end-of-round
+           strike (state.js processHomingWeather) both throw through here. Returns { moved, totalMs }. */
+        function vortexFlingUnit(v, weather, def) {
+            const out = { moved: false, totalMs: 0 };
+            if (!v || v.dead || v._dying || !weather || !def) return out;
+            const d = vortexFlingDir(weather);
+            const dist = getUnitPushDistance(v, def.displaceTiles || 2);
+            if (!(dist > 0)) {
+                addLog(`${def.icon} ${_ctName(v)} holds firm against the ${def.label}.`);
+                return out;
+            }
+            const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
+            const startX = v.x, startY = v.y;
+            const res = resolveForcedSlide(v, d.dx, d.dy, dist, {
+                byUnit: (caster && !caster.dead) ? caster : null, label: `${def.icon} ${def.label}: `,
+                animate: false, noChain: true, perStepMs: 120
+            });
+            if (v.dead || v._dying || (v.x === startX && v.y === startY)) return out;
+            out.moved = true;
+            addLog(`${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word} to ${coordLabel(v.x, v.y)}!`);
+            const fling = (typeof window.playVortexFlingFx === 'function')
+                ? window.playVortexFlingFx(v, startX, startY, v.x, v.y, weather.type) : null;
+            if (fling && fling.usedArc) out.totalMs = fling.totalMs || 0;
+            else if (typeof animateDisplacement === 'function') {
+                animateDisplacement(v, startX, startY, v.x, v.y, 320, { delayMs: 150 });
+                out.totalMs = 470;
+            }
+            showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 });
+            resolveTileArrival(v, { via: 'flung', dirX: res.dirX, dirY: res.dirY, noGlide: !!res.spent,
+                fxDelayMs: _skipVisuals() ? 0 : out.totalMs });
+            return out;
+        }
+
+        /* THE CHAIN FORECAST: what a forced move's landing at (x, y, z) sets off, walked with the real rules and no side
+           effects — the ice glide, a bomb the forecaster's side can see (bombs and traps are hidden from the other
+           side), a storm's fling on its heading, again from every new landing, and the hostile Nexus the body ends in.
+           Returns { x, y, z, legs: [{ kind: 'ice'|'bomb'|'fling', fromX, fromY, fromZ, steps }], steps, simHits:
+           [{ unitId, mid, lo, hi, opts, tag }], simNotes: [{ unitId, kind, x, y, dmg?, dir? }], simSlams, chain }. */
+        function simulateArrivalChain(u, x, y, z, dirX, dirY, sopts = {}) {
+            const out = { x, y, z, legs: [], steps: [], simHits: [], simNotes: [], simSlams: [], chain: [] };
+            if (!u || u.dead || state.phase !== 'battle') return out;
+            const viewer = (sopts.viewer != null) ? sopts.viewer
+                : (sopts.byUnit ? sopts.byUnit.player : (typeof getViewerPlayer === 'function' ? getViewerPlayer() : null));
+            const usedBombs = new Set(), usedStorms = new Set();
+            let glide = !sopts.noGlide, dx = Math.sign(dirX || 0), dy = Math.sign(dirY || 0);
+            const ox = u.x, oy = u.y, oz = u.z;
+            const nz = (tx, ty, z0) => (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(tx, ty, z0) : z0;
+            const merge = (sub) => {
+                if (sub.simSlams && sub.simSlams.length) out.simSlams = out.simSlams.concat(sub.simSlams);
+                if (sub.simHits && sub.simHits.length) out.simHits = out.simHits.concat(sub.simHits);
+                if (sub.simNotes && sub.simNotes.length) out.simNotes = out.simNotes.concat(sub.simNotes);
+                if (sub.chain && sub.chain.length) out.chain = out.chain.concat(sub.chain);
+            };
+            const leg = (kind, sub, tag) => {
+                const L = { kind, fromX: out.x, fromY: out.y, fromZ: out.z, steps: sub.steps.filter(s => !s.bump).map(s => ({ x: s.x, y: s.y, z: s.z })) };
+                if (!L.steps.length) L.steps.push({ x: sub.x, y: sub.y, z: sub.z });
+                out.legs.push(L);
+                for (const s of sub.steps) out.steps.push(Object.assign({}, s, { [tag]: 1 }));
+                out.x = sub.x; out.y = sub.y; out.z = sub.z;
+            };
+            try {
+                for (let depth = 0; depth < CHAIN_RULES.maxDepth; depth++) {
+                    u.x = out.x; u.y = out.y; u.z = out.z;
+                    // A · an airborne body glides over everything below
+                    if (typeof canFly === 'function' && canFly(u) && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) break;
+                    // B′ · ice: the glide goes on the way the body was travelling
+                    if (glide && (dx || dy) && _isIceTile(out.x, out.y) && _unitSlidesOnIce(u)) {
+                        const ice = _iceSlideSteps(u, out.x, out.y, dx, dy);
+                        glide = false;
+                        if (ice.length) {
+                            const steps = ice.map(st => ({ x: st.x, y: st.y, z: nz(st.x, st.y, out.z) }));
+                            const e = steps[steps.length - 1];
+                            leg('ice', { steps, x: e.x, y: e.y, z: e.z }, 'ice');
+                            continue;
+                        }
+                    }
+                    // D′ / T · a door takes the body somewhere the forecast does not follow
+                    if (typeof captureDoorAt === 'function' && captureDoorAt(out.x, out.y)) break;
+                    { const _tr = (typeof doorAt === 'function') ? doorAt(out.x, out.y) : null; if (_tr && _tr.transit && _tr.open) break; }
+                    // D · a bomb the forecaster's side can see
+                    const bomb = (state.bombs || []).find(b => b && b.x === out.x && b.y === out.y && b.owner !== u.player
+                        && !usedBombs.has(b) && (viewer == null || b.owner === viewer));
+                    if (bomb) {
+                        usedBombs.add(bomb);
+                        out.simNotes.push({ unitId: u.id, kind: 'bomb', x: out.x, y: out.y });
+                        const owner = bomb.ownerUnitId ? unitFromId(bomb.ownerUnitId) : null;
+                        const src = (owner && !owner.dead) ? owner : null;
+                        const area = (bomb.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(bomb.aoeMask))
+                            ? aoeMaskTiles(bomb.aoeMask, bomb.x, bomb.y, bw(), bh()) : getSquareArea(bomb.x, bomb.y, 1);
+                        const bOpts = { allowMarkBonus: false, sourceUnit: src || undefined, noAtkBonus: true,
+                            spellType: bomb.spellType || 'tech', spellElement: bomb.spellElement || null, elemShare: bomb.elemShare };
+                        const ctx = { trigger: { unitId: u.id, dirX: dx, dirY: dy } };
+                        for (const t of area) {
+                            const v = (t.x === out.x && t.y === out.y) ? u : unitAt(t.x, t.y);
+                            if (!v || v.dead || v.player === bomb.owner) continue;
+                            out.simHits.push({ unitId: v.id, mid: bomb.dmg, lo: bomb.dmg, hi: bomb.dmg, opts: bOpts, tag: 'bomb' });
+                            if (v === u) continue;
+                            const bd = bombKnockDir(bomb, v, ctx), bn = getUnitPushDistance(v, BOMB_KNOCK_TILES);
+                            if (bn > 0) {
+                                const sub = resolveForcedSlide(v, bd.dx, bd.dy, bn, { simulate: true, byUnit: src, viewer, _depth: 1 });
+                                out.chain.push({ unit: v, res: sub });
+                                merge(sub);
+                            }
+                        }
+                        const kd = bombKnockDir(bomb, u, ctx), kn = getUnitPushDistance(u, BOMB_KNOCK_TILES);
+                        if (!(kn > 0)) break;
+                        const sub = resolveForcedSlide(u, kd.dx, kd.dy, kn, { simulate: true, byUnit: src, viewer, noSimChain: true });
+                        merge(sub);
+                        if (!(sub.moved > 0)) break;
+                        leg('bomb', sub, 'blast');
+                        dx = sub.dirX; dy = sub.dirY; glide = !sub.spent;
+                        continue;
+                    }
+                    // D · a hidden trap the forecaster's side laid springs (it moves nobody; the chain goes on)
+                    if ((state.traps || []).some(t => t && t.x === out.x && t.y === out.y && t.owner !== u.player && (viewer == null || t.owner === viewer))) {
+                        out.simNotes.push({ unitId: u.id, kind: 'trap', x: out.x, y: out.y });
+                    }
+                    // F · a displacing storm flings it on its heading (once per storm per round)
+                    const vh = _chainVortexAt(out.x, out.y);
+                    const vKey = vh ? String(vh.weather.id || vh.weather.type) : '';
+                    if (vh && !usedStorms.has(vKey) && !((u._vortexStamps || {})[vKey] === (state.round || 0))) {
+                        usedStorms.add(vKey);
+                        const fd = vortexFlingDir(vh.weather), fn = getUnitPushDistance(u, vh.def.displaceTiles || 2);
+                        const caster = vh.weather._casterUnitId ? unitFromId(vh.weather._casterUnitId) : null;
+                        const rng = vh.def.dmgRange;
+                        if (rng) out.simHits.push({ unitId: u.id, mid: Math.round((rng[0] + rng[1]) / 2), lo: rng[0], hi: rng[1],
+                            opts: { ignoreArmor: false, element: vh.def.element || null, scaleByTargetLevel: true, sourceUnit: (caster && !caster.dead) ? caster : undefined }, tag: 'fling' });
+                        out.simNotes.push({ unitId: u.id, kind: 'fling', x: out.x, y: out.y, dir: fd.key });
+                        if (!(fn > 0)) break;
+                        const sub = resolveForcedSlide(u, fd.dx, fd.dy, fn, { simulate: true, byUnit: (caster && !caster.dead) ? caster : null, viewer, noSimChain: true });
+                        merge(sub);
+                        if (!(sub.moved > 0) || (sub.x === out.x && sub.y === out.y)) break;
+                        leg('fling', sub, 'fling');
+                        dx = sub.dirX; dy = sub.dirY; glide = !sub.spent;
+                        continue;
+                    }
+                    break;
+                }
+                // the hostile Nexus the body ends in burns it at the round's end
+                u.x = out.x; u.y = out.y; u.z = out.z;
+                const nx = (typeof getNexusAtUnit === 'function') ? getNexusAtUnit(u) : null;
+                if (nx && nx.nexus && nx.nexus.owner && nx.nexus.owner !== u.player
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
+                    const pct = (typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : 0.25;
+                    out.simNotes.push({ unitId: u.id, kind: 'nexus', x: out.x, y: out.y, dmg: Math.max(1, Math.floor((u.maxHp || 0) * pct)) });
+                }
+            } finally {
+                u.x = ox; u.y = oy; u.z = oz;
+            }
+            return out;
+        }
+        window.simulateArrivalChain = simulateArrivalChain;
+
         const CHAIN_RULES = { maxDepth: 8, floatMs: 1100 };
         let _chainDepth = 0;
         let _chainFired = 0;
@@ -3981,7 +4196,7 @@
                 // a pull — never a walk, doMove's own slide owns that) keeps sliding the way it was travelling until it
                 // leaves the ice; the slide's landing runs its own chain. A Frost lane turns a 2-tile swing into the
                 // lane's whole length.
-                if (via !== 'move' && (opts.dirX || opts.dirY) && typeof _isIceTile === 'function' && _isIceTile(unit.x, unit.y)
+                if (via !== 'move' && (opts.dirX || opts.dirY) && !opts.noGlide && typeof _isIceTile === 'function' && _isIceTile(unit.x, unit.y)
                     && typeof _resolveIceSlide === 'function'
                     && _resolveIceSlide(unit, { dx: opts.dirX, dy: opts.dirY, delayMs: opts.fxDelayMs || 0 })) {
                     fired++;
@@ -4130,7 +4345,9 @@
                 const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
                 if (bombIndex >= 0) {
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
-                    detonateBomb(bomb, `💣 Bomb trap detonates under ${unitDisplayName(unit)} at ${coordLabel(x, y)}.`, { fxDelayMs: opts.fxDelayMs || 0 });
+                    /* 🧭 the body that set it off is thrown back the way it came (bombKnockDir) */
+                    detonateBomb(bomb, `💣 Bomb trap detonates under ${unitDisplayName(unit)} at ${coordLabel(x, y)}.`, { fxDelayMs: opts.fxDelayMs || 0,
+                        trigger: { unitId: unit.id, dirX: Math.sign(opts.dirX || 0), dirY: Math.sign(opts.dirY || 0) } });
                     fired++;
                     if (unit.dead || unit.x !== x || unit.y !== y) return fired;
                 }
@@ -4205,8 +4422,6 @@
             if (!hit) return 0;
             const { weather, def } = hit;
             if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) return 0;
-            if (typeof applyBlowback !== 'function') return 0;
-            const eye = weather.tiles[0] || { x: unit.x, y: unit.y };
             addLog(`${def.icon} ${_ctName(unit)} lands in the ${def.label} at ${coordLabel(unit.x, unit.y)}!`);
             const roll = def.homingDamage ? def.homingDamage(unit) : null;
             if (roll && roll.amount > 0) {
@@ -4215,23 +4430,8 @@
                 });
                 if (unit.dead) return 1;
             }
-            const startX = unit.x, startY = unit.y;
-            const pushes = def.displaceTiles || 2;
-            for (let p = 0; p < pushes; p++) {
-                const res = applyBlowback(unit, eye.x, eye.y, `${def.icon} `, { noAnim: true, noChain: true });
-                if (!res || !res.pushed) break;
-            }
-            if (!unit.dead && (unit.x !== startX || unit.y !== startY)) {
-                const fling = (typeof window.playVortexFlingFx === 'function')
-                    ? window.playVortexFlingFx(unit, startX, startY, unit.x, unit.y, weather.type)
-                    : { usedArc: false };
-                if (!(fling && fling.usedArc) && typeof animateDisplacement === 'function') {
-                    animateDisplacement(unit, startX, startY, unit.x, unit.y, 320, { delayMs: 150 });
-                }
-                showFloatingTextForUnit(unit, `${def.icon} FLUNG!`, 'debuff', { durationMs: 1000 });
-                // The landing is an arrival like any other.
-                resolveTileArrival(unit, { via: 'flung' });
-            }
+            /* 🧭 THE FORCED MOVE: the storm's heading this round (vortexFlingDir), the shared slide, the landing's chain */
+            vortexFlingUnit(unit, weather, def);
             return 1;
         }
 
@@ -4676,9 +4876,21 @@
                            reeling in stops at the caster — no slam)
              onStep(x,y,z) — per-tile callback (pull-through-hazards drags)
              animate     — false: caller animates from res.steps itself
-             simulate    — pure prediction (previews/AI): NO side effects
+             toward      — {x,y}: a pull INTO a point (Black Hole, Round Up,
+                           a magnet): re-aims at it every step, stops once
+                           within opts.stopWithin (Chebyshev, default 1) of
+                           it; a wall in the way is a slam with no rebound
+             noChain     — the caller runs the landing's chain itself (a fling
+                           that plays its own arc first)
+             simulate    — pure prediction (previews/AI): NO side effects; the
+                           landing's chain is forecast too (simulateArrivalChain,
+                           opts.noSimChain skips it) — res.legs / simHits /
+                           simNotes
            Returns { fromX, fromY, fromZ, x, y, z, moved, steps, hitWall,
-                     hitUnits, bounces, slamDamage, animMs, chain }. */
+                     hitUnits, bounces, slamDamage, animMs, chain, dirX, dirY,
+                     spent }. dirX/dirY = the way the body was last travelling
+           (THE FORCED MOVE: the landing's ice glide and a bomb's throw-back read
+           it); spent = it handed its momentum to a pin. */
         function resolveForcedSlide(target, dx, dy, dist, opts = {}) {
             const cfg = _collisionCfg();
             const simulate = !!opts.simulate;
@@ -4690,14 +4902,21 @@
                 fromZ: target ? (target.z ?? 0) : 0,
                 x: target ? target.x : 0, y: target ? target.y : 0, z: target ? (target.z ?? 0) : 0,
                 moved: 0, steps: [], hitWall: false, hitUnits: [], bounces: 0,
-                slamDamage: 0, animMs: 0, chain: [], simSlams: []
+                slamDamage: 0, animMs: 0, chain: [], simSlams: [], simHits: [], simNotes: [], legs: [],
+                dirX: Math.sign(dx || 0), dirY: Math.sign(dy || 0), spent: false
             };
+            const toward = opts.toward || null;
+            const within = (toward && opts.stopWithin != null) ? opts.stopWithin : 1;
+            if (toward && target) {
+                dx = Math.sign(toward.x - target.x); dy = Math.sign(toward.y - target.y);
+                res.dirX = dx; res.dirY = dy;
+            }
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
             /* THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne): a forced slide an ENEMY drives (a reel-in with
                stopBefore is a pull, the rest are pushes / throws) does not move the anchored body. Callers that pass a
                raw distance (door guns, grapples) meet the same gate getUnitPushDistance applies. */
             if (opts.byUnit && opts.byUnit.id !== target.id && isEnemyUnit(opts.byUnit, target)) {
-                const _anchor = unitResistsDisplace(target, opts.stopBefore ? 'pull' : 'push');
+                const _anchor = unitResistsDisplace(target, (opts.stopBefore || toward) ? 'pull' : 'push');
                 if (_anchor) {
                     if (!simulate) showFloatingTextForUnit(target, `${_anchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 900 });
                     return res;
@@ -4711,6 +4930,7 @@
             const impacts = [];               // {x, y, atMs, kind} FX beats
 
             const stepTo = (nx, ny, nz) => {
+                res.dirX = Math.sign(nx - cx); res.dirY = Math.sign(ny - cy);
                 cx = nx; cy = ny; cz = nz;
                 res.steps.push({ x: cx, y: cy, z: cz });
                 m--; res.moved++;
@@ -4721,6 +4941,11 @@
             };
 
             while (m > 0 && guard-- > 0) {
+                if (toward) {
+                    if (Math.max(Math.abs(cx - toward.x), Math.abs(cy - toward.y)) <= within) break;
+                    vx = Math.sign(toward.x - cx); vy = Math.sign(toward.y - cy);
+                    if (!vx && !vy) break;
+                }
                 const info = _slideStepInfo(target, cx, cy, cz, vx, vy);
                 if (opts.stopBefore && info.nx === opts.stopBefore.x && info.ny === opts.stopBefore.y) break;
 
@@ -4762,27 +4987,32 @@
                     if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
-                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1
+                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1,
+                                toward, stopWithin: opts.stopWithin, viewer: opts.viewer
                             });
                             res.chain.push({ unit: occ, res: sub });
                             if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
                             if (sub.simSlams && sub.simSlams.length) res.simSlams = res.simSlams.concat(sub.simSlams);
+                            if (sub.simHits && sub.simHits.length) res.simHits = res.simHits.concat(sub.simHits);
+                            if (sub.simNotes && sub.simNotes.length) res.simNotes = res.simNotes.concat(sub.simNotes);
                         }
                         if (!simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
                                 byUnit: opts.byUnit, label: opts.label,
                                 perStepMs, delayMs: atMs + Math.floor(perStepMs / 2),
                                 stopBefore: opts.stopBefore || null,
+                                toward, stopWithin: opts.stopWithin,
                                 _depth: depth + 1
                             });
                             res.chain.push({ unit: occ, res: sub });
                             if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
                         }
                         m = 0;   // momentum handed over — the striker stops here
+                        res.dirX = vx; res.dirY = vy; res.spent = true;
                         break;
                     }
-                    // The pin would not budge — a cushion. Bounce off it.
-                    if (res.bounces >= cfg.maxBounces || m <= 0) break;
+                    // The pin would not budge — a cushion. Bounce off it (a pull into a point just stops against it).
+                    if (toward || res.bounces >= cfg.maxBounces || m <= 0) break;
                     res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                     res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
                     const uref = _slideReflect(target, cx, cy, cz, vx, vy);
@@ -4825,7 +5055,7 @@
                 // Half-tile lunge INTO the wall face and back — sells the hit.
                 res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                 res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
-                if (res.bounces >= cfg.maxBounces) break;
+                if (toward || res.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
                 const refl = _slideReflect(target, cx, cy, cz, vx, vy);
                 vx = refl.dx; vy = refl.dy;
                 res.bounces++;
@@ -4833,23 +5063,25 @@
             }
 
             res.x = cx; res.y = cy; res.z = cz;
+            res.landX = cx; res.landY = cy; res.landZ = cz;   // where the slide itself ends, before its chain
 
-            /* THE SLIDE FORECAST: a body shoved onto ice glides on the way it was pushed (THE CHAIN's ice rule, via
-               _applyKnockbackHazard below), so the forecast's landing is the end of that glide too. */
-            if (simulate && res.moved > 0 && _isIceTile(cx, cy)) {
-                const ox = target.x, oy = target.y, oz = target.z;
-                try {
-                    target.x = cx; target.y = cy; target.z = cz;
-                    const ice = _unitSlidesOnIce(target) ? _iceSlideSteps(target, cx, cy, Math.sign(dx || 0), Math.sign(dy || 0)) : [];
-                    if (ice.length) {
-                        const e = ice[ice.length - 1];
-                        const ez = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(e.x, e.y, cz) : cz;
-                        for (const st of ice) res.steps.push({ x: st.x, y: st.y, z: ez, ice: 1 });
-                        res.x = e.x; res.y = e.y; res.z = ez; res.iceSlid = ice.length;
-                    }
-                } finally {
-                    target.x = ox; target.y = oy; target.z = oz;
+            /* THE CHAIN FORECAST (THE FORCED MOVE): the landing's chain walked with the real rules — a body shoved onto
+               ice glides on the way it was going, a bomb throws it back, a storm flings it on its heading, and so on;
+               every leg rides res.steps (tagged ice / blast / fling) and res.legs, the end is the landing. */
+            if (simulate && res.moved > 0 && !opts.noSimChain) {
+                const ch = simulateArrivalChain(target, cx, cy, cz, res.dirX, res.dirY,
+                    { byUnit: opts.byUnit || null, noGlide: res.spent, viewer: opts.viewer });
+                if (ch.legs.length) {
+                    for (const st of ch.steps) res.steps.push(st);
+                    res.legs = ch.legs;
+                    res.x = ch.x; res.y = ch.y; res.z = ch.z;
+                    const iceLeg = ch.legs.find(L => L.kind === 'ice');
+                    if (iceLeg) res.iceSlid = iceLeg.steps.length;
                 }
+                if (ch.simSlams.length) res.simSlams = res.simSlams.concat(ch.simSlams);
+                if (ch.simHits.length) res.simHits = res.simHits.concat(ch.simHits);
+                if (ch.simNotes.length) res.simNotes = res.simNotes.concat(ch.simNotes);
+                if (ch.chain.length) res.chain = res.chain.concat(ch.chain);
             }
 
             /* Achievement counter: an ENEMY body actually moved by your push/
@@ -4899,8 +5131,9 @@
                         }
                     }
                     if (res.moved > 0) {
-                        _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: Math.sign(dx || 0), dirY: Math.sign(dy || 0) });
-                        _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), dx, dy, opts.byUnit || null);
+                        /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
+                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent });
+                        _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
                     }
                 }
                 for (const imp of impacts) {
@@ -6006,6 +6239,7 @@
             /* THE SPELL AUDIT Batch D: a `pullDistance` inward pull (Round Up) — the bodies to haul, run after the
                loop nearest-first so the inner ring makes room; a noDamage area pulls too (it used to skip it). */
             const _pullJobs = [];
+            const _pull1Jobs = [];
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
             for (const tile of tiles) {
@@ -6082,10 +6316,7 @@
                         _pullJobs.push(target.id);
                     } else if (!target.dead && spell.pullToCenter && opts.pullCenter && !_pullAnchor
                         && !(typeof _isClashMode === 'function' && _isClashMode())) {
-                        const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
-                        const nx = target.x + pdx, ny = target.y + pdy;
-                        const _apOldX = target.x, _apOldY = target.y;
-                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180, { delayMs: actionMs(320), stagger: true }); _applyKnockbackHazard(target); }
+                        _pull1Jobs.push(target.id);   // 🧭 the one-step pull into the centre: the shared slide, nearest first, after the loop
                     }
 
                     // Ground airborne units
@@ -6179,6 +6410,7 @@
             }
 
             if (_pullJobs.length) _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter);
+            if (_pull1Jobs.length) _runAoePullJobs(unit, spell, _pull1Jobs, opts.pullCenter, { dist: 1, within: 0 });
             if (spell.leaveTerrain) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
@@ -6212,34 +6444,25 @@
 
         /* THE SPELL AUDIT Batch D: the N-tile inward pull (Round Up's 2). Nearest body first; each takes up to
            pullDistance steps (Heavy / anchored rules via getUnitPushDistance), re-aiming at the centre every step and
-           stopping beside it, at a blocked tile, or on a transit door mouth (Twin Doors). One path tween each, then
-           the landing hazards (resolveTileArrival — a transit door sends the body through). */
-        function _runAoePullJobs(unit, spell, ids, center) {
+           stopping beside it. 🧭 THE FORCED MOVE (2026-10-18): the shared slide (resolveForcedSlide `toward`) — a wall in
+           the way is a slam, a body in the way a bowling pin hauled on toward the centre, a transit door mouth swallows
+           it, and the landing's chain runs with the pull's heading (onto ice it glides on). jopts { dist, within }: the
+           one-step pull of a plain pullToCenter area (Gravity Well, Black Hole) may land ON the centre (within 0). */
+        function _runAoePullJobs(unit, spell, ids, center, jopts = {}) {
             if (!center) return;
+            const within = (jopts.within != null) ? jopts.within : 1;
             const cheb = (u) => Math.max(Math.abs(u.x - center.x), Math.abs(u.y - center.y));
             const bodies = ids.map(id => unitFromId(id)).filter(u => u && !u.dead);
             bodies.sort((a, b) => cheb(a) - cheb(b));
             for (const t of bodies) {
-                const n = getUnitPushDistance(t, spell.pullDistance, 'pull');
-                if (!(n > 0)) continue;
-                const fx = t.x, fy = t.y;
-                const steps = [];
-                for (let i = 0; i < n; i++) {
-                    if (cheb(t) <= 1) break;
-                    const nx = t.x + Math.sign(center.x - t.x), ny = t.y + Math.sign(center.y - t.y);
-                    if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
-                    if (typeof doorBlocksMove === 'function' && doorBlocksMove(nx, ny)) break;
-                    t.x = nx; t.y = ny;
-                    if (typeof nearestWalkableZ === 'function') t.z = nearestWalkableZ(nx, ny, t.z);
-                    steps.push({ x: nx, y: ny });
-                    const _dm = (typeof doorAt === 'function') ? doorAt(nx, ny) : null;
-                    if (_dm && _dm.transit) break;
-                }
-                if (!steps.length) continue;
-                addLog(`${_ctName(t)} is hauled ${steps.length} tile${steps.length > 1 ? 's' : ''} in by ${_ctSp(spell.name)}!`);
-                if (typeof animateDisplacementPath === 'function') animateDisplacementPath(t, fx, fy, steps, 120, { delayMs: actionMs(320), stagger: true });
-                else animateDisplacement(t, fx, fy, t.x, t.y, 180, { delayMs: actionMs(320), stagger: true });
-                _applyKnockbackHazard(t);
+                if (t.dead || t._dying) continue;
+                const n = getUnitPushDistance(t, jopts.dist || spell.pullDistance, 'pull');
+                if (!(n > 0) || cheb(t) <= within) continue;
+                const r = resolveForcedSlide(t, Math.sign(center.x - t.x), Math.sign(center.y - t.y), n, {
+                    byUnit: unit, label: `${spell.name}: `, toward: center, stopWithin: within,
+                    perStepMs: 120, delayMs: actionMs(320)
+                });
+                if (r.moved > 0) addLog(`${_ctName(t)} is hauled ${r.moved} tile${r.moved > 1 ? 's' : ''} in by ${_ctSp(spell.name)}!`);
             }
         }
 
@@ -11059,6 +11282,7 @@
                 if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
                     try { window.ThreeAnim.walkPath(v, [{ x: ox, y: oy, z: toZ }]); } catch (e) {}
                 }
+                const _tdDx = Math.sign(ox - v.x), _tdDy = Math.sign(oy - v.y);   // 🧭 the drag's heading rides the landing
                 v.x = ox; v.y = oy; v.z = toZ;
                 addLog(`${def.icon || '🪢'} ${_ctName(v)} is dragged ${tiles} tile${tiles === 1 ? '' : 's'} behind ${_ctName(roper)}!`);
                 const dmg = ((v._tetherDragDmg > 0) ? v._tetherDragDmg : (def.dragDamagePerTile || 0)) * tiles;   // Barbed Rope: 35 a tile
@@ -11076,7 +11300,7 @@
                     if (took > 0 && roper.player !== v.player) roper._trackDmgDealt = (roper._trackDmgDealt || 0) + took;
                 }
                 if (typeof markDirty === 'function') markDirty('board');
-                resolveTileArrival(v, { via: 'dragged' });   // ⛓ dragged onto whatever waits there
+                resolveTileArrival(v, { via: 'dragged', dirX: _tdDx, dirY: _tdDy });   // ⛓ dragged onto whatever waits there
             }
         }
 
@@ -34707,7 +34931,10 @@
 
         const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
-            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed']);
+            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed', 'detonate']);
+        /* 🧭 the Detonate action read as a cast (hud.js: hovering DETONATE previews every blast, throw and chain) */
+        const DETONATE_FORECAST_SPELL = { id: 'detonate', kind: 'detonate', name: 'Detonate', spellType: 'tech' };
+        window.DETONATE_FORECAST_SPELL = DETONATE_FORECAST_SPELL;
         function forecastSpellPlan(caster, spell, x, y, z, opts = {}) {
             const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null,
                 pressArmed: !!(spell && spellArmsPress(spell)), pressHits: [], press: null };
@@ -34950,21 +35177,61 @@
                 plan.moves.push(Object.assign({ unit: u, fromX: u.x, fromY: u.y, x: toX, y: toY, mode }, extra || {}));
                 moveTmp(u, toX, toY);
             };
+            /* 🧭 THE CHAIN FORECAST: what a forced move's landing sets off (battle.js simulateArrivalChain) — its blasts,
+               flings and the storm's damage ride the real hit pipeline, the hostile Nexus it ends in is noted with its
+               end-of-round burn, and every leg rides the move so the board draws it (ui.js drawForecastMoves). */
+            const chainHits = (r) => {
+                for (const s of (r.simHits || [])) {
+                    const v = unitFromId(s.unitId);
+                    if (v) hit(v, s.mid, s.lo, s.hi, Object.assign({ consumeMarked: false, noPress: true }, s.opts || {}), { tag: s.tag });
+                }
+                for (const n of (r.simNotes || [])) {
+                    const v = unitFromId(n.unitId);
+                    if (!v) continue;
+                    if (n.kind === 'nexus') { entry(v).nexusBurn = n.dmg; tag(v, 'nexus'); }
+                    else if (n.kind === 'trap') tag(v, 'trap');
+                    else if (n.kind === 'fling') { const h = entry(v); (h.flingDirs || (h.flingDirs = [])).push(n.dir); }
+                }
+            };
+            const legsOf = (r) => (r && r.legs && r.legs.length)
+                ? { legs: r.legs, landX: r.landX, landY: r.landY, landZ: r.landZ } : null;
             /* A forced slide with the engine's own physics (simulate): the landing, plus the slams it would take. */
             const slide = (u, dx, dy, dist, sopts, mode) => {
                 if (!u || u.dead || !(dist > 0) || (!dx && !dy)) return null;
-                const r = resolveForcedSlide(u, dx, dy, dist, Object.assign({ simulate: true, byUnit: unit }, sopts || {}));
+                const r = resolveForcedSlide(u, dx, dy, dist, Object.assign({ simulate: true, byUnit: unit, viewer: unit.player }, sopts || {}));
                 if (!r) return null;
-                if (r.moved > 0 || r.x !== u.x || r.y !== u.y) addMove(u, r.x, r.y, mode, { slam: !!(r.hitWall || r.hitUnits.length) });
+                if (r.moved > 0 || r.x !== u.x || r.y !== u.y) addMove(u, r.x, r.y, mode, Object.assign({ slam: !!(r.hitWall || r.hitUnits.length) }, legsOf(r) || {}));
                 else if (r.hitWall || r.hitUnits.length) tag(u, 'slam');
                 for (const s of (r.simSlams || [])) {
                     const v = unitFromId(s.unitId);
                     if (v) hit(v, s.dmg, s.dmg, s.dmg, { ignoreArmor: true, consumeMarked: false, sourceUnit: unit, noPress: true }, { tag: 'slam' });
                 }
                 for (const c of (r.chain || [])) {
-                    if (c.unit && c.res && (c.res.x !== c.unit.x || c.res.y !== c.unit.y)) addMove(c.unit, c.res.x, c.res.y, 'push');
+                    if (c.unit && c.res && (c.res.x !== c.unit.x || c.res.y !== c.unit.y)) addMove(c.unit, c.res.x, c.res.y, 'push', legsOf(c.res));
                 }
+                chainHits(r);
                 return r;
+            };
+            /* A body the cast puts down on (toX, toY) heading (dx, dy) without a slide (a throw, a shove aside): the move,
+               then the chain its landing sets off. */
+            const chainMove = (u, toX, toY, dx, dy, mode, cmopts) => {
+                if (!u || u.dead) return;
+                if (toX === u.x && toY === u.y) return;
+                addMove(u, toX, toY, mode);
+                const ch = simulateArrivalChain(u, u.x, u.y, u.z, dx, dy, Object.assign({ byUnit: unit, viewer: unit.player }, cmopts || {}));
+                if (ch.legs.length) {
+                    const last = plan.moves[plan.moves.length - 1];
+                    Object.assign(last, { legs: ch.legs, landX: toX, landY: toY, landZ: u.z, x: ch.x, y: ch.y });
+                    moveTmp(u, ch.x, ch.y);
+                }
+                for (const s of ch.simSlams) {
+                    const v = unitFromId(s.unitId);
+                    if (v) hit(v, s.dmg, s.dmg, s.dmg, { ignoreArmor: true, consumeMarked: false, sourceUnit: unit, noPress: true }, { tag: 'slam' });
+                }
+                for (const c of ch.chain) {
+                    if (c.unit && c.res && (c.res.x !== c.unit.x || c.res.y !== c.unit.y)) addMove(c.unit, c.res.x, c.res.y, 'push', legsOf(c.res));
+                }
+                chainHits(ch);
             };
             const enemyAt = (tx, ty, tz) => {
                 const t = (tz != null ? (unitAt(tx, ty, tz) || unitAt(tx, ty)) : unitAt(tx, ty));
@@ -35091,7 +35358,7 @@
                 const enemies = aliveUnitsFor(enemyOf(unit.player));
                 const clash = _isClashMode();
                 const canPullIn = !!(spell.pullToCenter && mopts.pullCenter && !clash);
-                const pullJobs = [];
+                const pullJobs = [], pull1Jobs = [];
                 const hopts = baseOpts(spell.damageType || 'magic');
                 for (const tile of area) {
                     for (const t of enemies.filter(e => e.x === tile.x && e.y === tile.y && !e.dead)) {
@@ -35110,31 +35377,23 @@
                         const anchor = (spell.pullToCenter && mopts.pullCenter) ? unitResistsDisplace(t, 'pull') : null;
                         if (anchor) tag(t, 'anchored');
                         if (canPullIn && spell.pullDistance && !anchor) pullJobs.push(t);
-                        else if (spell.pullToCenter && mopts.pullCenter && !anchor && !clash) {
-                            const nx = t.x + Math.sign(mopts.pullCenter.x - t.x), ny = t.y + Math.sign(mopts.pullCenter.y - t.y);
-                            if (isInside(nx, ny) && canOccupy(nx, ny)) addMove(t, nx, ny, 'pull');
-                        }
+                        else if (spell.pullToCenter && mopts.pullCenter && !anchor && !clash) pull1Jobs.push(t);
                         if (mopts.groundAirborne) grounded(t);
                     }
                 }
-                if (pullJobs.length && mopts.pullCenter) {
+                /* 🧭 the pulls into the centre, nearest first — the same shared slide as _runAoePullJobs */
+                const runPulls = (list, dist, within) => {
+                    if (!list.length || !mopts.pullCenter) return;
                     const c = mopts.pullCenter, cheb = (u) => Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y));
-                    pullJobs.sort((a, b) => cheb(a) - cheb(b));
-                    for (const t of pullJobs) {
-                        const n = getUnitPushDistance(t, spell.pullDistance, 'pull');
-                        let px = t.x, py = t.y;
-                        for (let i = 0; i < n; i++) {
-                            if (Math.max(Math.abs(px - c.x), Math.abs(py - c.y)) <= 1) break;
-                            const nx = px + Math.sign(c.x - px), ny = py + Math.sign(c.y - py);
-                            if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
-                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(nx, ny)) break;
-                            px = nx; py = ny;
-                            const dm = (typeof doorAt === 'function') ? doorAt(nx, ny) : null;
-                            if (dm && dm.transit) break;
-                        }
-                        addMove(t, px, py, 'pull');
+                    list.sort((a, b) => cheb(a) - cheb(b));
+                    for (const t of list) {
+                        if (t.hp <= 0 || cheb(t) <= within) continue;
+                        const n = getUnitPushDistance(t, dist, 'pull');
+                        if (n > 0) slide(t, Math.sign(c.x - t.x), Math.sign(c.y - t.y), n, { toward: c, stopWithin: within }, 'pull');
                     }
-                }
+                };
+                runPulls(pullJobs, spell.pullDistance, 1);
+                runPulls(pull1Jobs, 1, 0);
                 return;
             }
 
@@ -35351,7 +35610,7 @@
                     const d = (split && pt.x === x && pt.y === y) ? primDmg : pathDmg;
                     if (d > 0) hit(v, d, d, d, hopts);
                 }
-                for (const s of dashShovePlan(unit, x, y, z)) addMove(s.unit, s.x, s.y, 'push');
+                for (const s of dashShovePlan(unit, x, y, z)) chainMove(s.unit, s.x, s.y, Math.sign(s.x - s.unit.x), Math.sign(s.y - s.unit.y), 'push');
                 addMove(unit, x, y, 'self');
                 if (spell.afterShot) {
                     const t = _afterShotTarget(unit, x, y, spell.afterShot.range || 3);
@@ -35411,17 +35670,46 @@
                     const cb = spell.collisionBonus || 50;
                     hit(tt, total + cb, total + cb, total + cb, hopts);
                     hit(col, cb, cb, cb, baseOpts('physical', { allowMarkBonus: undefined, element: undefined }), { tag: 'collision' });
-                    const pt = [{ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }].find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
-                    if (pt && col.hp > 0) addMove(col, pt.x, pt.y, 'push');
-                } else {
-                    hit(tt, total, total, total, hopts);
+                    /* 🧭 the body it lands on is a pin knocked on the way the throw travelled (doSpell's skyThrow) */
+                    const tdx = Math.sign(x - tt.x), tdy = Math.sign(y - tt.y);
+                    const r = (col.hp > 0 && (tdx || tdy)) ? slide(col, tdx, tdy, getUnitPushDistance(col, 1), null, 'push') : null;
+                    if (!(r && (r.x !== x || r.y !== y)) && col.hp > 0) {
+                        const pt = [{ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }].find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                        if (pt) addMove(col, pt.x, pt.y, 'push');
+                    }
+                    chainMove(tt, x, y, Math.sign(x - tt.x), Math.sign(y - tt.y), 'thrown', { noGlide: true });
+                    return;
                 }
-                addMove(tt, x, y, 'thrown');
+                hit(tt, total, total, total, hopts);
+                chainMove(tt, x, y, Math.sign(x - tt.x), Math.sign(y - tt.y), 'thrown');
                 return;
             }
 
             if (kind === 'rallyPull') {
                 for (const r of rallyPullPlan(unit)) addMove(r.unit, r.x, r.y, 'rally');
+                return;
+            }
+
+            if (kind === 'detonate') {
+                /* doDetonate: every bomb this unit owns goes off in turn — its owner set it off, so each body a blast
+                   catches is thrown the opposite way it faces (detonateBomb with no trigger), then the next bomb */
+                for (const b of (state.bombs || []).filter(bb => bb.ownerUnitId === unit.id)) {
+                    const area = (b.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(b.aoeMask))
+                        ? aoeMaskTiles(b.aoeMask, b.x, b.y, bw(), bh()) : getSquareArea(b.x, b.y, 1);
+                    const caught = [];
+                    for (const t of area) {
+                        plan.tiles.push({ x: t.x, y: t.y });
+                        const v = unitAt(t.x, t.y);
+                        if (!v || v.dead || v.player === b.owner || caught.includes(v)) continue;
+                        hit(v, b.dmg, b.dmg, b.dmg, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: b.spellType || 'tech', spellElement: b.spellElement || null, elemShare: b.elemShare });
+                        caught.push(v);
+                    }
+                    for (const v of caught) {
+                        if (v.hp <= 0) continue;
+                        const kd = bombKnockDir(b, v, { trigger: null });
+                        slide(v, kd.dx, kd.dy, getUnitPushDistance(v, BOMB_KNOCK_TILES), null, 'push');
+                    }
+                }
                 return;
             }
 
@@ -35433,9 +35721,16 @@
                 plan.tiles = area;
                 if (!contact) { plan.notes.push('armed'); return; }
                 const d = (spell.dmg || 0) + sp;
+                const caught = [];
                 for (const t of area) {
                     const v = unitAt(t.x, t.y);
-                    if (v && !v.dead && v.player !== unit.player) hit(v, d, d, d, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: spell.spellType || 'tech', spellElement: el || null, elemShare: _spellElemShare(spell) });
+                    if (v && !v.dead && v.player !== unit.player) { hit(v, d, d, d, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: spell.spellType || 'tech', spellElement: el || null, elemShare: _spellElemShare(spell) }); caught.push(v); }
+                }
+                /* 🧭 a contact blast is set off by its thrower: every body caught is thrown the opposite way it faces */
+                for (const v of caught) {
+                    if (v.hp <= 0) continue;
+                    const kd = bombKnockDir({ x, y }, v, { trigger: null });
+                    slide(v, kd.dx, kd.dy, getUnitPushDistance(v, BOMB_KNOCK_TILES), null, 'push');
                 }
                 return;
             }
@@ -46008,6 +46303,7 @@
                                 remaining: 999,   // frozen — cleared by the next floor's startMatch
                                 id: 'w_md_' + state._mdRun.floor + '_' + randInt(9999),
                                 _casterUnitId: null,
+                                bornRound: state.round || 0,
                                 global: !!_wDef.global || undefined,
                             };
                             state.activeWeather.push(_mdW);
@@ -54901,6 +55197,7 @@
             // (bounces, crash-through, bowling-pin chains) + its impact FX.
             // simulate:true = pure landing-tile prediction (previews / AI).
             resolveForcedSlide, playCollisionImpactFx,
+            vortexFlingUnit, vortexFlingDir, forcedBackDir, bombKnockDir, simulateArrivalChain,
             // ⛓ THE CHAIN (2026-09-21): the one arrival resolver + its readers
             resolveTileArrival, _chainZonesAt, _chainVortexAt,
             get CHAIN_RULES() { return CHAIN_RULES; },
@@ -57924,9 +58221,11 @@
             const _bombCaster = bomb.ownerUnitId
                 ? state.units.find(u => u.id === bomb.ownerUnitId && !u.dead) || null
                 : null;
+            const _bombVictims = [];
             for (const tile of area) {
                 const target = unitAt(tile.x, tile.y);
                 if (target && target.player !== bomb.owner) {
+                    if (!_bombVictims.includes(target)) _bombVictims.push(target);
                     const _hpBefore = target.hp;
                     if (_bombCaster) target._lastDamageSourceId = _bombCaster.id;
                     applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
@@ -57944,7 +58243,23 @@
                 }
             }
 
-            applyAreaBlowback(bomb.x, bomb.y, area, bomb.owner, '💥 ');
+            /* 🧭 THE FORCED MOVE: every body the blast caught is thrown by the bomb's rule (bombKnockDir — the one that
+               set it off back the way it came, the rest straight away from it; set off by its owner, the way each body
+               faces reversed), through the shared slide once the blast has landed. */
+            const _bkCtx = { trigger: opts.trigger || null };
+            const _bkDelay = (opts.fxDelayMs || 0) + (_skipVisuals() ? 0 : actionMs(300));
+            for (const victim of _bombVictims) {
+                if (!victim || victim.dead || victim._dying) continue;
+                const dist = getUnitPushDistance(victim, BOMB_KNOCK_TILES);
+                if (!(dist > 0)) {
+                    if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(victim) === 'colossal') addLog(`💥 ${_ctName(victim)} is far too massive to be blown back!`);
+                    continue;
+                }
+                const d = bombKnockDir(bomb, victim, _bkCtx);
+                resolveForcedSlide(victim, d.dx, d.dy, dist, {
+                    byUnit: _bombCaster || null, label: '💥 Bomb blast: ', perStepMs: 160, delayMs: _bkDelay
+                });
+            }
             checkWin();
         }
 
@@ -58239,17 +58554,17 @@
                     const u = unitAt(pt.x, pt.y);
                     if (!u || u.dead || u.id === victim.id) continue;
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
-                    if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(u) === 'colossal') continue;
                     const pdx = Math.sign(trap.x - u.x), pdy = Math.sign(trap.y - u.y);
                     if (pdx === 0 && pdy === 0) continue;
-                    const nx = u.x + pdx, ny = u.y + pdy;
-                    if (!isInside(nx, ny) || !canOccupy(nx, ny)) continue;
-                    const _mgFromX = u.x, _mgFromY = u.y;
-                    u.x = nx; u.y = ny;
-                    if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(nx, ny, u.z);
-                    animateDisplacement(u, _mgFromX, _mgFromY, nx, ny, 160);
-                    _applyKnockbackHazard(u);
-                    dragged++;
+                    if (Math.max(Math.abs(trap.x - u.x), Math.abs(trap.y - u.y)) <= 1) continue;   // already beside the mine
+                    /* 🧭 THE FORCED MOVE: one step in toward the mine through the shared slide (weight, walls, pins, the chain) */
+                    const _mgN = getUnitPushDistance(u, 1, 'pull');
+                    if (!(_mgN > 0)) continue;
+                    const _mgR = resolveForcedSlide(u, pdx, pdy, _mgN, {
+                        byUnit: (owner && owner.player !== u.player) ? owner : null, label: `${trap.spellName || 'Magnet Mine'}: `,
+                        toward: { x: trap.x, y: trap.y }, stopWithin: 1, perStepMs: 160
+                    });
+                    if (_mgR.moved > 0) dragged++;
                 }
                 if (dragged > 0) addLog(`🧲 The magnetic pulse drags ${dragged} unit${dragged !== 1 ? 's' : ''} toward the mine!`);
                 // The shock is lightning — let it conduct through water/metal.
@@ -63152,7 +63467,7 @@
                 addLog(`${_ctName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
                 showFloatingTextForUnit(occupant, 'PUSHED!', 'streak', { durationMs: 800 });
                 if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180, { stagger: true });
-                _applyKnockbackHazard(occupant);   // ⛓ knocked aside onto whatever waits there
+                _applyKnockbackHazard(occupant, { dirX: t.x - fx, dirY: t.y - fy });   // ⛓ knocked aside onto whatever waits there (🧭 with that heading)
                 return targetZ;
             }
 
@@ -63687,7 +64002,7 @@
                         });
                         showFloatingTextForUnit(info.enemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
                         addLog(`${_ctName(unit)}'s block erupts under ${_ctName(info.enemyOcc)}, hurling them aside!`);
-                        if (!info.enemyOcc.dead) _applyKnockbackHazard(info.enemyOcc);
+                        if (!info.enemyOcc.dead) _applyKnockbackHazard(info.enemyOcc, { dirX: Math.sign(info.shoveTo.x - _fromX), dirY: Math.sign(info.shoveTo.y - _fromY) });
                         if (!info.enemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(info.enemyOcc);
                     }
                     setBlockAt(x, y, info.oldH + 1, matDef.terrain);
@@ -67917,6 +68232,7 @@
                 weather.patch = tiles.length;   // THE WEATHER'S TERRAIN: a map-wide one seeds by its patch
                 if (!state.activeWeather) state.activeWeather = [];
                 weather._casterUnitId = unit?.id ?? null;
+                weather.bornRound = state.round || 0;   // 🧭 a displacing storm's heading turns from this round (vortexFlingDir)
                 if (unit) unit._matchStorms = (unit._matchStorms || 0) + 1;
                 state.activeWeather.push(weather);
                 if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(weather);   // a Drought dries the water, a static one reshapes its tiles
@@ -70282,7 +70598,7 @@
                         /* Manual shove (bypasses resolveForcedSlide) — count
                            the displacement for the §4.3 ladder here. */
                         unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
-                        if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc);
+                        if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc, { dirX: Math.sign(_pbShoveTo.x - _fromX), dirY: Math.sign(_pbShoveTo.y - _fromY) });
                         if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
                     }
                     setBlockAt(x, y, _pbOldH + 1, blockTerrain);
@@ -72000,7 +72316,7 @@
                             addLog(`${_ctName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
                             showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
                             animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180, { stagger: true });
-                            _applyKnockbackHazard(destOccupant);   // ⛓ knocked aside onto whatever waits there
+                            _applyKnockbackHazard(destOccupant, { dirX: Math.sign(pushTo.x - _dashPushFromX), dirY: Math.sign(pushTo.y - _dashPushFromY) });   // ⛓ knocked aside onto whatever waits there (🧭 with that heading)
                         } else {
 
                             const fullPath = [{ x: casterStartX, y: casterStartY }, ...dashPath];
@@ -72022,6 +72338,7 @@
                                 addLog(`${_ctName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
                                 showFloatingTextForUnit(entry.unit, 'SHIFTED!', 'streak', { durationMs: 800 });
                                 animateDisplacement(entry.unit, _shiftFromX, _shiftFromY, prevTile.x, prevTile.y, 180);
+                                _applyKnockbackHazard(entry.unit, { dirX: Math.sign(prevTile.x - _shiftFromX), dirY: Math.sign(prevTile.y - _shiftFromY) });   // ⛓ 🧭 shoved back onto whatever waits there
                             }
                         }
                     }
@@ -72319,11 +72636,23 @@
                             showFloatingTextForUnit(collisionTarget, `COLLISION!`, 'streak', { durationMs: 900 });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
 
+                            /* 🧭 THE FORCED MOVE: the body it lands on is a bowling pin knocked on the way the throw
+                               travelled (the shared slide and its chain); only a pin that cannot go that way is shoved
+                               aside to the first open side as before */
+                            const _thDx = Math.sign(x - throwTarget.x), _thDy = Math.sign(y - throwTarget.y);
+                            let _thPinMoved = false;
+                            if ((_thDx || _thDy) && !collisionTarget.dead) {
+                                const _thN = getUnitPushDistance(collisionTarget, 1);
+                                if (_thN > 0) {
+                                    const _thR = resolveForcedSlide(collisionTarget, _thDx, _thDy, _thN, { byUnit: unit, label: `${spell.name}: `, perStepMs: 150 });
+                                    _thPinMoved = collisionTarget.x !== x || collisionTarget.y !== y;
+                                }
+                            }
                             const pushDirs = [
                                 { x: x + 1, y: y }, { x: x - 1, y: y },
                                 { x: x, y: y + 1 }, { x: x, y: y - 1 }
                             ];
-                            const pushTo = pushDirs.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                            const pushTo = _thPinMoved ? null : pushDirs.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
                             if (pushTo && !collisionTarget.dead) {
                                 const _pFromX = collisionTarget.x, _pFromY = collisionTarget.y;
                                 collisionTarget.x = pushTo.x;
@@ -72336,7 +72665,7 @@
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
-                            resolveTileArrival(throwTarget, { via: 'thrown' });   // ⛓ the throw's landing
+                            resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx, dirY: _thDy, noGlide: true });   // ⛓ the throw's landing (it hit a body: no glide)
                         } else {
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
@@ -72344,10 +72673,12 @@
                                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
+                            /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
+                            const _thDx2 = Math.sign(x - throwTarget.x), _thDy2 = Math.sign(y - throwTarget.y);
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
-                            resolveTileArrival(throwTarget, { via: 'thrown' });   // ⛓ the throw's landing
+                            resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2 });   // ⛓ the throw's landing
                         }
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);

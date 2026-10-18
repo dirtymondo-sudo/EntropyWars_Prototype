@@ -15421,14 +15421,28 @@
         /* Every body a forecast plan moves: one arrow from where it stands to where it ENDS (a slide that rebounds,
            a pin that is knocked on — the last move wins), a hologram on the landing tile and a landing plate in the
            overlay `overlayName`. Teleports / escapes draw a straight dashed line (no travel). Viewer-local. */
+        /* 🧭 THE CHAIN LEGS (2026-10-18, mondo: "a theoretical chain should be able to be seen from the spell preview with
+           arrows and such"): a forced move whose landing sets more off (battle.js simulateArrivalChain) carries its legs —
+           the cast's own push / pull is the purple arrow to where the slide stops, then each reaction is its own arrow
+           in its own colour (the UI Maker's Arrows + tiles: Ice slide, Bomb blast, Storm fling), the tile that set it
+           off is plated in that colour, and the hologram travels the whole chain. */
+        const EW_CHAIN_LEG = { ice: 0x00d0ff, bomb: 0xff8a1e, fling: 0x7fffd4 };
+        window.EW_CHAIN_LEG = EW_CHAIN_LEG;
         function drawForecastMoves(plan, caster, overlayName) {
             if (!plan || !plan.moves || !plan.moves.length) return;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
             const per = new Map();
             for (const m of plan.moves) {
                 const p = per.get(m.unit.id);
-                if (p) { p.x = m.x; p.y = m.y; p.slam = p.slam || m.slam; p.blink = p.blink && !!(m.blink || m.escape); }
-                else per.set(m.unit.id, { unit: m.unit, fromX: m.fromX, fromY: m.fromY, x: m.x, y: m.y, mode: m.mode, slam: !!m.slam, blink: !!(m.blink || m.escape) });
+                const legs = (m.legs && m.legs.length) ? m.legs : null;
+                if (p) {
+                    /* a later move of the same body: when it is a chained one, the earlier ones up to its start stay the
+                       body's own push (its first purple arrow) */
+                    p.x = m.x; p.y = m.y; p.slam = p.slam || m.slam; p.blink = p.blink && !!(m.blink || m.escape);
+                    p.legs = legs; p.landX = legs ? m.landX : m.x; p.landY = legs ? m.landY : m.y;
+                }
+                else per.set(m.unit.id, { unit: m.unit, fromX: m.fromX, fromY: m.fromY, x: m.x, y: m.y, mode: m.mode, slam: !!m.slam, blink: !!(m.blink || m.escape),
+                    legs, landX: legs ? m.landX : m.x, landY: legs ? m.landY : m.y });
             }
             const plates = [];
             /* THE ACTION PREVIEW MOTION (2026-10-13): each hologram performs its move on a loop — the caster's dash
@@ -15443,16 +15457,35 @@
             list.sort((a, b) => ((caster && b.unit.id === caster.id) ? 1 : 0) - ((caster && a.unit.id === caster.id) ? 1 : 0));
             const ownMoves = !!(caster && list.some(m => m.unit.id === caster.id && !(m.x === m.fromX && m.y === m.fromY)));
             list.forEach(m => {
-                if (m.x === m.fromX && m.y === m.fromY) return;
+                if (m.x === m.fromX && m.y === m.fromY && !m.legs) return;
                 const own = !!(caster && m.unit.id === caster.id);
                 const col = own ? EW_PREVIEW.self : EW_PREVIEW.forced;
-                let fromY, toY;
-                try { fromY = ThreeRenderer.tileTopY(m.fromX, m.fromY); toY = ThreeRenderer.tileTopY(m.x, m.y); } catch (e) {}
+                let fromY, toY, landY;
+                try { fromY = ThreeRenderer.tileTopY(m.fromX, m.fromY); toY = ThreeRenderer.tileTopY(m.x, m.y); landY = ThreeRenderer.tileTopY(m.landX, m.landY); } catch (e) {}
                 const arc = m.blink ? 0 : (m.mode === 'pull' || m.mode === 'rescue' ? 0.18 : (own ? 0.24 : 0.3));
-                ThreeRenderer.drawArrow3D(m.fromX, m.fromY, m.x, m.y, col, !!m.blink, fromY, toY, { arc: arc, flow: !m.blink });
+                /* the cast's own move: to the end of the chain, or (chained) to where its own slide stops */
+                if (!(m.legs && m.landX === m.fromX && m.landY === m.fromY)) {
+                    ThreeRenderer.drawArrow3D(m.fromX, m.fromY, m.legs ? m.landX : m.x, m.legs ? m.landY : m.y, col, !!m.blink, fromY, m.legs ? landY : toY, { arc: arc, flow: !m.blink });
+                }
+                const legWps = [];
+                if (m.legs) {
+                    for (const L of m.legs) {
+                        const hex = EW_CHAIN_LEG[L.kind] || col;
+                        const pts = [{ x: L.fromX, y: L.fromY }].concat(L.steps.map(st => ({ x: st.x, y: st.y })));
+                        try { ThreeRenderer.drawPathArrow3D(pts, hex); } catch (e) {}
+                        if (L.kind !== 'ice') plates.push({ x: L.fromX, y: L.fromY, color: hex, opacity: 0.7 });
+                        for (const st of L.steps) {
+                            let sy; try { sy = ThreeRenderer.tileTopY(st.x, st.y); } catch (e) {}
+                            legWps.push({ x: st.x, y: st.y, yOverride: sy, slide: L.kind === 'ice' || undefined });
+                        }
+                        for (let i = 0; i < L.steps.length - 1; i++) plates.push({ x: L.steps[i].x, y: L.steps[i].y, color: hex, opacity: 0.4 });
+                    }
+                }
                 let motion = null;
                 if (fromY != null && toY != null) {
-                    const wps = [{ x: m.fromX, y: m.fromY, yOverride: fromY }, { x: m.x, y: m.y, yOverride: toY }];
+                    const wps = m.legs
+                        ? [{ x: m.fromX, y: m.fromY, yOverride: fromY }, { x: m.landX, y: m.landY, yOverride: landY }].concat(legWps)
+                        : [{ x: m.fromX, y: m.fromY, yOverride: fromY }, { x: m.x, y: m.y, yOverride: toY }];
                     const kind = (m.blink || m.mode === 'swap') ? 'blink'
                         : own ? ((spKind === 'leapStrike' || spKind === 'skySlam' || spKind === 'skyDrop') ? 'leap' : 'dash')
                         : (m.mode === 'thrown') ? 'leap'
@@ -15472,6 +15505,21 @@
             if (plates.length && overlayName) ThreeRenderer.setOverlay(overlayName, plates, plates[0].color, 0.62);
         }
         window.drawForecastMoves = drawForecastMoves;
+
+        /* 🧭 Hovering DETONATE (hud.js) previews it like a cast: every blast tile, the damage on every body caught, and
+           where each is thrown (the opposite way it faces) with the chain each throw sets off. */
+        function previewDetonate(unit) {
+            clearIntentPreview();
+            if (!unit || typeof forecastSpellPlan !== 'function' || !window.DETONATE_FORECAST_SPELL) return;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+            const plan = forecastSpellPlan(unit, window.DETONATE_FORECAST_SPELL, unit.x, unit.y);
+            if (!plan || !plan.handled) return;
+            if (plan.tiles.length) ThreeRenderer.setOverlay('spellChain', plan.tiles.map(t => ({ x: t.x, y: t.y, color: EW_PREVIEW.hit, opacity: 0.55 })), EW_PREVIEW.hit, 0.55);
+            _fcRenderBadges(unit, plan.spell, plan);
+            drawForecastMoves(plan, unit, 'spellLanding');
+        }
+        window.previewDetonate = previewDetonate;
+        window.clearDetonatePreview = function () { clearIntentPreview(); };
 
         /* THE CHAIN HITS (2026-10-05, mondo: "i need to see ricochet damage like who will get hit with ricochet in the
            spell preview"): every body the forecast hits OFF the footprint (a ricochet / upgrade bounce, a chain hop,
@@ -15506,8 +15554,8 @@
         window.drawForecastChain = drawForecastChain;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
-        const _FC_SECONDARY = { splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
+        const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
            why it takes nothing, what the movement does to it, the matchup and the statuses it will carry. */
@@ -15539,6 +15587,9 @@
                 }
                 if (h.heal > 0) push(`+${h.heal}`, 'intent-heal', 18);
                 for (const t of h.tags) if (_FC_TAG_TEXT[t]) push(_FC_TAG_TEXT[t], 'intent-status intent-status-debuff', 14);
+                /* 🧭 THE CHAIN FORECAST: the storm's fling (its heading) and the hostile Nexus it is left standing in */
+                if (h.flingDirs && h.flingDirs.length) push(`🌪 FLUNG ${h.flingDirs.join(' → ')}`, 'intent-status intent-status-debuff', 14);
+                if (h.nexusBurn > 0) push(`⬡ NEXUS −${h.nexusBurn} AT ROUND END`, 'intent-status intent-status-debuff', 14);
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
                     const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
