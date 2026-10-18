@@ -2532,11 +2532,13 @@
         const _origPlayBasicAttackShot = playBasicAttackShot;
         playBasicAttackShot = function(unit, target, delivery, flyMs) {
             var _netOnline = window._NET && window._NET.online;
-            if ((_netOnline && _isHost() || _ewRecOn()) && unit && target) {
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit && target && unit.id != null) {   // a fog stand-in (no id) is host-only
                 var dv = delivery || (typeof basicAttackDelivery === 'function' ? basicAttackDelivery(unit) : null);
                 _emit('relay', {
                     type: 'basic-shot',
                     unitId: unit.id, targetId: target.id,
+                    // a shot at a structure (the Cube) has no target unit: the guest aims at the tile
+                    toX: target.x, toY: target.y, toZ: target.z != null ? target.z : null,
                     kind: dv ? dv.kind : null, bolt: dv ? dv.bolt : null, proj: dv ? dv.proj : null,
                     flyMs: flyMs || 0
                 });
@@ -4792,6 +4794,7 @@
                     if (data.type === 'basic-shot' && _ewMirrorView()) {
                         var _bsU = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         var _bsT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                        if (!_bsT && data.targetId == null && data.toX != null) _bsT = { id: null, x: data.toX, y: data.toY, z: data.toZ != null ? data.toZ : undefined };   // the Cube
                         if (_bsU && _bsT && typeof window.playBasicAttackShot === 'function') {
                             var _bsShow = true;
                             if (st.fogOfWar) {
