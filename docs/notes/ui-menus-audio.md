@@ -1490,3 +1490,22 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
 - hud.js: the aim view for a self-cast has no target list (`_aimSelf`), mode label "<SPELL> — SELF CAST · CONFIRM TO CAST", the big green CONFIRM reads "CONFIRM — SELF".
 - Quick menus (enemy / ally): `_hrlgSelfCastRow` wraps self-cast rows. The first click arms the row (✓, footprint), the inline green CONFIRM or a second click casts. The arm key (`_hrlgSelfArmKey`, module-level, never on `state`) holds menu + caster + row + tile + AP and is dropped once no quick menu is up. Tile-menu spell rows keep setTool's caster pick for self-casts.
 - Online: the guest arms locally (setTool still relays), the confirm runs the same `doSpell` relay as every other confirmed spell.
+
+### THE PRESS MARKS + UI Maker pass 22: the green ! over the enemies a hovered spell presses (2026-10-18, mondo: "hovering over a spell from the abilities menu needs to show the green exclamation point super effective icon on the enemy units that spell is super effective against. this way i can see what is super effective without clicking on an enemy first. also make the icon more clear like give it an outline or add it somewhere in the ui maker so i can make it look better")
+- Hover a spell row in the abilities menu (hud.js `_hrlgSpellBlades` hoverIn) → battle.js `previewSpellPressMarks(name)`: every enemy the
+  viewer can see (`_shouldCameraFollowUnit`, the screen-true fog gate; Blind/Jammed solo sight comes with it) for which
+  `forecastPressOn(caster, enemy, spell)` presses (aimed at that body, in reach or not) gets a mark. Same rule as PR #295:
+  only a hit the refund really pays for. Shows even when the row is greyed (no AP / no target in reach). Cleared on hoverOut
+  and by `clearSpellRangePreview` (every cast / mode change). Viewer-local, nothing relayed (the guest's own hover reads its
+  own state copy).
+- three-renderer.js `showPressMarks(ids)` / `clearPressMarks()`: `.ti-press-mark` DOM marks in the intent badge overlay,
+  re-projected every frame (`_updatePressMarks` in the loop) at the unit's `_ew_spriteTopY`, so camera moves keep them on the
+  head; dropped when the phase leaves battle or an action executes.
+- ONE LOOK for every green ! (the intent badges' `_SE_CIRCLE_HTML`, the menu rows' `.hrlg-supereff`, the marks): ui.js
+  `_seBangHtml(px, big)` (window._ewSeBangHtml) builds it from CSS variables `--ew-se-fill/-mark/-line/-lw/-glow/-rad/-menu/
+  -big/-lift/-anim`; the var() fallbacks are the defaults (green, dark !, 2px WHITE OUTLINE new, glow, mark 26px, 36px above
+  the head so it clears the name plate, bobs).
+- UI Maker: Arrows + tiles ⧉ > "Super effective !" (top of the panel, with a specimen of the mark, the badge and a menu row):
+  db.ux e* (eHover, eBig, eLift, eBob, eFill, eMark, eLine, eLineW, eGlow, eShape, eMenu) → hud.js `seSignal()` sets the
+  variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
+  fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.

@@ -17362,6 +17362,55 @@ const ThreeRenderer = (function () {
         _intentBadgeEls = [];
     }
 
+    /* THE PRESS MARKS (2026-10-18, mondo: "hovering over a spell from the abilities menu needs to show the green
+       exclamation point super effective icon on the enemy units that spell is super effective against ... make the icon
+       more clear like give it an outline or add it somewhere in the ui maker"): a green ! over the head of every enemy
+       the hovered spell would press (battle.js previewSpellPressMarks picks them: forecastPressOn + the fog gate), held
+       over the unit every frame so a camera move keeps it on the head. The look is the UI Maker's (Arrows + tiles >
+       Super effective !), CSS variables on the page read by ui.js _seBangHtml. Viewer-local, nothing relayed. */
+    var _pressMarks = [];   // { id, el }
+    function showPressMarks(ids) {
+        clearPressMarks();
+        if (!ids || !ids.length) return;
+        _ensureIntentBadgeContainer();
+        if (!_intentBadgeContainer) return;
+        var bang = (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(0, true) : '!';
+        for (var i = 0; i < ids.length; i++) {
+            var el = document.createElement('div');
+            el.className = 'ti-press-mark';
+            el.style.cssText = 'position:absolute;pointer-events:none;z-index:16;transform:translate(-50%,-100%);margin-top:calc(-1 * var(--ew-se-lift, 36px));visibility:hidden;';
+            el.innerHTML = bang;
+            _intentBadgeContainer.appendChild(el);
+            _pressMarks.push({ id: ids[i], el: el });
+        }
+        _updatePressMarks();
+    }
+    function clearPressMarks() {
+        for (var i = 0; i < _pressMarks.length; i++) _pressMarks[i].el.remove();
+        _pressMarks = [];
+    }
+    function _updatePressMarks() {
+        if (!_pressMarks.length) return;
+        var cam = ThreeCamera.getCamera();
+        if (!cam || !canvas) return;
+        if (state.phase !== 'battle' || state._actionExecuting) { clearPressMarks(); return; }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var cw = canvas.clientWidth, ch = canvas.clientHeight;
+        for (var i = 0; i < _pressMarks.length; i++) {
+            var m = _pressMarks[i];
+            var u = _unitById.get(m.id) || (state.units || []).find(function (x) { return x.id === m.id; });
+            if (!u || u.dead || u._dying) { m.el.style.visibility = 'hidden'; continue; }
+            var ue = unitEntries.get(u.id);
+            var topY = (ue && ue.group && ue.group._ew_spriteTopY != null) ? ue.group._ew_spriteTopY : tileTopY(u.x, u.y) + ts * 0.6;
+            _projVec2.set(u.x * ts + ts / 2, topY, u.y * ts + ts / 2);
+            _projVec2.project(cam);
+            if (_projVec2.z > 1) { m.el.style.visibility = 'hidden'; continue; }
+            m.el.style.left = (((_projVec2.x + 1) / 2) * cw) + 'px';
+            m.el.style.top = (((1 - _projVec2.y) / 2) * ch) + 'px';
+            m.el.style.visibility = '';
+        }
+    }
+
     function _computeHlKey() {
         if (!state.selectedUnitId || !state.actionMode || state.phase !== 'battle' || state._actionExecuting) return '';
         var sel = (function(){ var _u = _unitById.get(state.selectedUnitId); return (_u && !_u.dead) ? _u : null; })();
@@ -24236,6 +24285,7 @@ const ThreeRenderer = (function () {
         _updateProjectileTweens();
         _updateTetherTweens();
         _updateFloatTextTweens();
+        _updatePressMarks();
         _updateHitFxTweens();
         _updateLungeTweens();
         _updateDodgeTweens();
@@ -36184,6 +36234,7 @@ const ThreeRenderer = (function () {
         _clearNexusBars();
         if (_intentBadgeContainer) _intentBadgeContainer.style.display = 'none';
         clearIntentBadges();
+        clearPressMarks();
         clearArrows3D();
         clearGhostUnit();
         var boardEl = document.getElementById('board');
@@ -70014,7 +70065,7 @@ const ThreeRenderer = (function () {
            convert jumpArcApex heights with this. */
         elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
-        showIntentBadges, clearIntentBadges, worldToScreen,
+        showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, worldToScreen,
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,

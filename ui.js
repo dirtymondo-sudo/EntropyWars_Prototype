@@ -15369,10 +15369,30 @@
 
         // Green !-circle marking a super-effective hit (inline-styled so it
         // renders identically through the 3D intent badges and the DOM path).
-        const _SE_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
-            + 'width:14px;height:14px;border-radius:50%;background:#2ecc71;color:#06130a;'
-            + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
-            + 'box-shadow:0 0 6px rgba(46,204,113,0.8)">!</span>';
+        /* THE GREEN ! LOOK (2026-10-18, mondo: "make the icon more clear like give it an outline or add it somewhere in
+           the ui maker so i can make it look better"): every green ! (these badges, the menu rows' hrlg-supereff chip,
+           the marks over the enemies while a spell is hovered) reads the same CSS variables, which the UI Maker sets on
+           the page (hud.js seSignal, Arrows + tiles > Super effective !): --ew-se-fill / -mark / -line (outline colour)
+           / -lw (outline px) / -glow / -rad (shape) / -menu (size of the small ones) / -big (size over a unit) / -lift /
+           -anim. The var() fallbacks ARE the game's own look: green, a dark !, a white outline. big = the mark over a
+           unit (it bobs); px = the small one's size before -menu scales it. */
+        function _seBangHtml(px, big) {
+            const sz = big ? 'var(--ew-se-big, 26px)' : `calc(${px || 14}px * var(--ew-se-menu, 1))`;
+            const lw = big ? 'var(--ew-se-lw, 2px)' : 'calc(var(--ew-se-lw, 2px) * 0.6)';
+            if (!document.getElementById('ew-se-keys')) {
+                const st = document.createElement('style'); st.id = 'ew-se-keys';
+                st.textContent = '@keyframes ewSeBob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.08); } }';
+                document.head.appendChild(st);
+            }
+            return '<span class="ew-se-bang" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;'
+                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:var(--ew-se-fill, #2ecc71);color:var(--ew-se-mark, #06130a);`
+                + `border:${lw} solid var(--ew-se-line, #ffffff);font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
+                + 'vertical-align:middle;flex:none;text-shadow:none;'
+                + (big ? 'animation:var(--ew-se-anim, ewSeBob) 1.2s ease-in-out infinite;' : 'margin-right:4px;')
+                + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
+        }
+        window._ewSeBangHtml = _seBangHtml;
+        const _SE_CIRCLE_HTML = _seBangHtml(14);
         // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
         const _IMM_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
             + 'width:14px;height:14px;border-radius:50%;background:#e8333f;color:#fff;'
