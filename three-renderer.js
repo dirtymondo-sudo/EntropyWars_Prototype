@@ -14608,8 +14608,10 @@ const ThreeRenderer = (function () {
         var isFace = !!url;
         if (!url && typeof getBattleMapSpriteUrl === 'function') url = getBattleMapSpriteUrl(u);
         if (!url) return '';
+        /* data-ew-face: the UI Maker's Portraits repaint it in place when a face is cut or re-aimed (hud.js faceSweep) */
         return '<div class="tp-portrait' + (isFace ? '' : ' tp-portrait-sprite')
-            + '" style="background-image:url(&quot;' + url + '&quot;)"></div>';
+            + '" data-ew-face="' + String(u.id).replace(/"/g, '') + '" data-ew-face-sc="tp-portrait-sprite"'
+            + ' style="background-image:url(&quot;' + url + '&quot;)"></div>';
     }
 
     function _createPlate(unit) {

@@ -3215,11 +3215,21 @@ const RACE_PORTRAITS = {
   'valkraye':    { female: _pf('valkraye') },
 };
 
-function getUnitPortraitUrl(unit) {
+function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
   const set = RACE_PORTRAITS[unit.race];
   if (!set) return null;
   return set[unit.gender || 'male'] || null;
+}
+
+/* The UI Maker's Portraits (hud.js EWFaces) can stand a face cut from the unit's own sprite in for the art (a unit
+   without art gets one by default), or show the whole sprite: undefined = keep the art. */
+function getUnitPortraitUrl(unit) {
+  const art = getUnitPortraitArtUrl(unit);
+  if (unit && unit.race && typeof window !== 'undefined' && window.EWFaces) {
+    try { const f = window.EWFaces.url(unit, art); if (f !== undefined) return f; } catch (e) {}
+  }
+  return art;
 }
 
 const RACE_SPRITES = {
