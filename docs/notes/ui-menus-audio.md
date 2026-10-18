@@ -1216,6 +1216,10 @@ pause/settings menu from the party builder or match select ... ideally it would 
 - **Cone anchors**: qConeFrom icon | centre (a point), qConeTo port | portcorner | card | corner | name (corners = a narrow tip at the top-left).
 - **Combat text box**: UIM_PIECES `subtitle` = `#battleSubtitleText` (ui.js ensureBattleHUD's text box: the "is up — select an action" prompt and the combat lines), Layout > Combat text box.
 
+### UI Maker pass 14: spacing + numbers + name colours on the unit info panel (2026-10-18, mondo: "the space between the columns of the stats only lets me change horizontal space, i need vertical spacing too. let me make the name different colors depending if its my team or the enemy team. let me change the layout and spacing between the elements, vertical and horizontal. i want to change the vertical spacing between the health and mana bars, or at least let me choose if the number go beneath it or next to it on on top of it etc.")
+
+- db.ux: qStatRowGap (stats grid row-gap), qNameAllyCol / qNameFoeCol (the card's `.hrlg-thead.qp.ally|.enemy .hrlg-view-tab-text`; ally/enemy = the quick panel key, i.e. relative to the acting unit = the viewer's turn), qGapX / qGapY (the card grid's column-gap / row-gap between its parts), qBarGap (`.hrlg-qvitals` gap = HP ↔ MP), qBarH (the card's HP bar height, MP 80%; beats the Bars mode's global height inside the card), qNumPos right | left | above | under | on | off: anything but right turns `.hrlg-qv-row` into a small grid (areas lbl / bar / num / fc); `on` puts the number in the bar's area, centred (bars 14/12 px unless qBarH is set). Form: Name, bars + badges (numbers, HP↔MP space, thickness, the two name colours), Stats (stat rows space), Column widths + spacing (the two part gaps). The tall shape gets the same rows in its Stats + elements section.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
