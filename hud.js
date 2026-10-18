@@ -7171,7 +7171,10 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     const hasAoe = sp.aoeRadius || sp.crossRadius || sp.kind === 'cross' || sp.kind === 'aoe'
                  || sp.kind === 'barrage' || sp.kind === 'aoePull' || sp.kind === 'aoePush'
                  || sp.kind === 'line' || sp.kind === 'linePush' || sp.kind === 'bomb' || sp.kind === 'delayed'
-                 || (typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask));
+                 || (typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask))
+                 // THE TRUE STRIKE AREA (2026-10-18): any cast whose forecast hits more than one tile (a hurting
+                 // dash's path, Seismic Leap's shockwave, Void Rush's arrival blast) paints all of them
+                 || !!(_plan && _plan.handled && _plan.tiles && _plan.tiles.length > 1);
     if (hasAoe) {
       const aoeTiles = (_plan && _plan.handled && _plan.tiles && _plan.tiles.length) ? _plan.tiles : getSpellAoeFootprint(sp, ax, ay, actingUnit);
       if (aoeTiles && aoeTiles.length > 0) {
