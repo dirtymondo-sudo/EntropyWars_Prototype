@@ -11736,6 +11736,9 @@ if (!db.hero || typeof db.hero !== 'object') db.hero = {};
 if (!db.bars || typeof db.bars !== 'object') db.bars = {};
 if (!db.icons || typeof db.icons !== 'object') db.icons = {};
 if (!db.ux || typeof db.ux !== 'object') db.ux = {};
+if (!db.words || typeof db.words !== 'object' || Array.isArray(db.words)) db.words = {};
+if (!Array.isArray(db.picks)) db.picks = [];
+db.picks = db.picks.filter(k => k && typeof k === 'object' && typeof k.id === 'string' && typeof k.sel === 'string');
 if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
 if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
@@ -12456,13 +12459,121 @@ const UIM_PIECES = [
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
-const GROUPS = [['explore', 'Exploration'], ['battle', 'Battle']];
-const groupOf = P => (P.group === 'Battle' ? 'battle' : 'explore');
+/* ── EVERY SCREEN IN LAYOUT (2026-10-18, mondo: "i can only use the layout feature in the ui editor with the battle and
+   exploration huds, i want to be able to do that with any screen/menu. like the match select, i want to be able to change
+   how it's arranged or what text shows up in the panels or what the panels look like and color ... it might help to make
+   it like obs where you can snap panels into place and above and below other panels"). Each menu screen (a UIM_SURFACES
+   id) gets its main windows as pieces; "Pick a part" makes ANY element a piece (db.picks); every piece, the HUD ones
+   too, takes the same move / size / width / height / layer / look / text / words settings. A screen that is not up
+   shows as its stand-in (UIM_SPECIMENS) and its pieces are boxed and dragged on that. ── */
+const MSC = '.ms-crt:not(.ms-crt-forge) ', PBC = '.ms-crt-forge ';
+[
+  ['match', 'mhead', 'Header bar', MSC + '.ms-tty-head'],
+  ['match', 'mmodes', 'Game mode column', MSC + '.ms-tty-modes'],
+  ['match', 'msites', 'Sites column', MSC + '.ms-tty-body > .ms-tty-col:has(> .ms-tty-cards)'],
+  ['match', 'mband', 'Site preview', MSC + '.ms-tty-band'],
+  ['match', 'mfilt', 'Site filters', MSC + '.ms-tty-filters'],
+  ['match', 'mcards', 'Site cards', MSC + '.ms-tty-cards'],
+  ['match', 'mconf', 'Configuration column', MSC + '.ms-tty-body > .ms-tty-col:has(> .ms-tty-form)'],
+  ['match', 'mform', 'Configuration rows', MSC + '.ms-tty-form'],
+  ['match', 'mfoot', 'Bottom bar', MSC + '.ms-tty-foot'],
+  ['match', 'msum', 'Summary', MSC + '.ms-tty-sum'],
+  ['match', 'mok', 'Confirm button', MSC + '.ms-tty-btn.primary'],
+  ['forge', 'fhead', 'Header bar', PBC + '.pb-head'],
+  ['forge', 'ftabs', 'Tabs', PBC + '.pb-tabbar'],
+  ['forge', 'froster', 'Roster', PBC + '.pb-zone-roster'],
+  ['forge', 'fstage', 'Unit stage', PBC + '.pb-stage'],
+  ['forge', 'fcard', 'Unit card', PBC + '.pb-stage-card'],
+  ['forge', 'fparty', 'Party bar', PBC + '.pb-party'],
+  ['forge', 'fslots', 'Party slots', PBC + '.pb-party-slots'],
+  ['forge', 'ffoot', 'Party buttons', PBC + '.pb-foot'],
+  ['menu', 'mmlogo', 'Logo', '#mainMenuPage .mm-logo, #playHubPage .mm-logo'],
+  ['menu', 'mmsub', 'Line under the logo', '#mainMenuPage .mm-sub, #playHubPage .mm-sub'],
+  ['menu', 'mmlist', 'Button list', '#mainMenuPage .mm-buttons, #playHubPage .mm-buttons'],
+  ['menu', 'mmb1', 'New Game / Continue', '#mainMenuPage .mm-btn-multiplayer'],
+  ['menu', 'mmb2', 'Online PvP', '#mainMenuPage .mm-btn-online'],
+  ['menu', 'mmb3', 'Play VS CPU', '#mainMenuPage .mm-btn-practice'],
+  ['menu', 'mmb4', 'Party Builder', '#mainMenuPage .mm-btn-teambuilder'],
+  ['menu', 'mmb5', 'Tutorial', '#mainMenuPage .mm-btn-tutorial'],
+  ['menu', 'mmb6', 'Challenge', '#mainMenuPage .mm-btn-campaign'],
+  ['menu', 'mmb7', 'Mystery Dungeon', '#mainMenuPage .mm-btn-dungeon'],
+  ['menu', 'mmb8', 'Profile', '#mainMenuPage .mm-btn-profile'],
+  ['menu', 'mmb9', 'Replay', '#mainMenuPage .mm-btn-replay'],
+  ['menu', 'mmb10', 'Codex', '#mainMenuPage .mm-btn-codex'],
+  ['menu', 'mmb11', 'Shop', '#mainMenuPage .mm-btn-shop'],
+  ['menu', 'mmb12', 'Editor', '#mainMenuPage .mm-btn-editor'],
+  ['menu', 'mmb13', 'Leaderboard', '#mainMenuPage .mm-btn-leaderboard'],
+  ['menu', 'mmb14', 'Community Maps', '#mainMenuPage .mm-btn-community'],
+  ['menu', 'mmb15', 'Settings', '#mainMenuPage .mm-btn-settings'],
+  ['menu', 'mmseal', 'D.O.O.R. seal', '#mainMenuPage .door-menu-seal'],
+  ['menu', 'mmwallet', 'Rank + wallet', '#mainMenuPage .mm-elo-display, #playHubPage .mm-elo-display'],
+  ['squad', 'sqhead', 'Title bar', '#squadDeskPage .sq-head'],
+  ['squad', 'sqstage', 'Team stage', '#squadDeskPage .sq-stage'],
+  ['squad', 'sqdrop', 'Team list', '#squadDeskPage .sq-drop'],
+  ['squad', 'sqbar', 'Team plate', '#squadDeskPage .sq-bar'],
+  ['squad', 'sqact', 'Buttons', '#squadDeskPage .sq-actions'],
+  ['squad', 'sqfoot', 'Bottom line', '#squadDeskPage .sq-foot'],
+  ['settings', 'sttop', 'Title bar', '#settingsPage .ms-top-bar'],
+  ['settings', 'stbody', 'Settings list', '#settingsPage .mm-settings-body'],
+  ['settings', 'stgroup', 'Every group box', '#settingsPage .pm-set-group'],
+  ['shell', 'shtop', 'Title bar', '.codex-container .ms-top-bar'],
+  ['shell', 'shtools', 'Codex filters', '#codexPage .cdx-toolbar'],
+  ['shell', 'shlist', 'Codex list', '#codexPage .cdx-list'],
+  ['shell', 'shdetail', 'Codex page', '#codexPage .cdx-detail'],
+  ['lobby', 'lbcard', 'Lobby card', '#lobbyPage .mode-card.lobby-inner'],
+  ['lobby', 'lbtitle', 'Title', '#lobbyPage .lobby-title'],
+  ['lobby', 'lbcode', 'Room code', '#lobbyPage .lobby-code-display'],
+  ['lobby', 'lbconf', 'Match settings', '#lobbyPage .lobby-config-section'],
+  ['lobby', 'lbback', 'Back button', '#lobbyPage .lobby-back'],
+  ['dialog', 'dgcard', 'Dialog window', '#uiDialogOverlay .ui-dialog-card'],
+  ['dialog', 'dgtitle', 'Title', '#uiDialogOverlay .ui-dialog-title'],
+  ['dialog', 'dgbtns', 'Buttons', '#uiDialogOverlay .ui-dialog-actions, #uiDialogOverlay .pickup-choices'],
+  ['loading', 'lsart', 'Art', '.ls-overlay .ls-art-wrap'],
+  ['loading', 'lscard', 'Title card', '.ls-overlay .ls-card'],
+  ['loading', 'lshint', 'Tip box', '.ls-overlay .ls-hint, #hqLoad .hq-load-hint'],
+  ['loading', 'lsstat', 'Status line', '.ls-overlay .ls-status'],
+  ['loading', 'lsbar', 'Loading bar', '.ls-overlay .ls-bar, #hqLoad .hq-load-bar'],
+  ['results', 'vtitle', 'Title', '#resultOverlay .vic-title-wrap'],
+  ['results', 'vparty', 'Party', '#resultOverlay .vic-party'],
+  ['results', 'vmvp', 'MVP plate', '#resultOverlay .vic-mvp-tag'],
+  ['results', 'vstamp', 'Stamp', '#resultOverlay .door-result-stamp'],
+  ['results', 'vdeb', 'Debrief', '#resultOverlay .vic-debrief'],
+  ['results', 'vbtns', 'Buttons', '#resultOverlay .vic-bottom'],
+  ['pause', 'bpcard', 'Pause window', '#pauseOverlay .pause-card'],
+  ['pause', 'bphead', 'Title bar', '#pauseOverlay .bp-head'],
+  ['pause', 'bpnav', 'Commands', '#pauseOverlay .bp-nav'],
+  ['pause', 'bpbody', 'Page', '#pauseOverlay .bp-body'],
+  ['pause', 'bpfoot', 'Bottom line', '#pauseOverlay .bp-foot'],
+  ['battlePop', 'ppcard', 'Inspect card', '#unitHoverHud .ins-card'],
+  ['battlePop', 'ppweather', 'Weather tip', '.ew-weather-tip'],
+  ['editor', 'edtop', 'Top bar', '#edRoot .ed-top'],
+  ['editor', 'edleft', 'Left panel', '#edRoot .ed-left'],
+  ['editor', 'edright', 'Right panel', '#edRoot .ed-right'],
+  ['editor', 'edstat', 'Status bar', '#edRoot .ed-status'],
+].forEach(([surf, id, label, sel]) => {
+  const S = UIM_SURFACES.find(x => x.id === surf);
+  UIM_PIECES.push({ id, surf, group: surf === 'explore' ? 'Exploration' : (S ? S.label : surf), label, sel });
+});
+/* the group (screen) a piece belongs to = a UIM_SURFACES id; the HUD rows keep their Battle / Exploration groups */
+const groupOf = P => P.surf || (P.group === 'Battle' ? 'battle' : 'explore');
+const HUD_GROUPS = { battle: 1, explore: 1 };
+/* the screens the Layout view can show, in its Screen picker order */
+function screenList() { return UIM_SURFACES.filter(S => UIM_PIECES.some(P => groupOf(P) === S.id) || (db.picks || []).some(k => k.surf === S.id)).map(S => [S.id, S.label]); }
+/* "Pick a part": any element made a piece (db.picks = [{ id, surf, label, sel, selAll, all }]) */
+function pickPieces() {
+  return (db.picks || []).filter(k => k && k.id && k.sel).map(k => {
+    const S = UIM_SURFACES.find(x => x.id === k.surf);
+    return { id: k.id, surf: k.surf || 'battle', group: S ? S.label : 'Picked', label: k.label || 'Picked part', sel: k.all && k.selAll ? k.selAll : k.sel, pick: true };
+  });
+}
+function allPieces() { return UIM_PIECES.concat(pickPieces()); }
+function pieceById(id) { return UIM_PIECES.find(p => p.id === id) || pickPieces().find(p => p.id === id) || null; }
 function layoutCss() {
   let css = '';
   const arranging = !!(UI.live && UI.live.mode === 'layout');
-  UIM_PIECES.forEach(P => {
+  allPieces().forEach(P => {
     const L = db.layout[P.id]; if (!L) return;
+    css += lookCss(P, L);
     const d = [];
     if (+L.x || +L.y) d.push(`translate: ${+L.x || 0}px ${+L.y || 0}px !important;`);
     if (L.s != null && +L.s !== 1) { d.push(`scale: ${+L.s} !important;`); if (P.origin) d.push(`transform-origin: ${P.origin} !important;`); }
@@ -12472,6 +12583,139 @@ function layoutCss() {
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
   return css + heroCss() + barsCss() + iconsCss() + uxCss();
+}
+/* ── A PIECE'S OWN LOOK (2026-10-18, every piece of every screen): size, layer and order in its row, a look borrowed from
+   any theme's role, its own fill / frame / corners / shadow / glow, its text. Stored on db.layout[id] next to x / y / s /
+   o / hide; LOOK_DEF = untouched (nothing written). ── */
+const LOOK_DEF = { w: 0, h: 0, pad: -1, z: '', zrel: false, ord: '', skin: '', skinT: '', bg: '', bg2: '', edge: '', edgeW: 2, rad: -1, shad: 0, glow: 0, glowC: '',
+  ink: '', font: '', fw: '', fsz: 0, tcase: '', track: 0, tfx: '', align: '' };
+const LOOK_ROLES = [['', 'As the screen draws it'], ['none', 'Plain (no window)'], ['panel', 'Window'], ['head', 'Title strip'], ['well', 'Inset box'], ['button', 'Button'], ['buttonSel', 'Selected button'], ['chip', 'Chip'], ['input', 'Text field']];
+const TFX = { none: 'none', drop: '0 1px 2px rgba(0,0,0,0.75)', hard: '1px 1px 0 #000', hard2: '2px 2px 0 #000, 1px 1px 0 #000', outline: ringShadow(1, '#000'), glow: '0 0 6px currentColor' };
+function lookOn(L) { return Object.keys(LOOK_DEF).some(k => L[k] != null && String(L[k]) !== String(LOOK_DEF[k])); }
+function preP(list) { return parts(list).map(s => ':root:root:not(#uim-p):not(#uim-p):not(#uim-p) ' + s).join(', '); }
+function lookCss(P, L) {
+  if (!lookOn(L)) return '';
+  const S = preP(P.sel), n = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0)), set = k => L[k] != null && String(L[k]) !== String(LOOK_DEF[k]);
+  const d = [];
+  if (+L.w > 0) d.push(`width: ${n(L.w, 8, 4000)}px !important; min-width: 0 !important; max-width: none !important; flex: 0 0 auto !important; box-sizing: border-box !important;`);
+  if (+L.h > 0) d.push(`height: ${n(L.h, 8, 3000)}px !important; min-height: 0 !important; max-height: none !important; box-sizing: border-box !important; overflow: auto !important;`);
+  if (set('pad') && +L.pad >= 0) d.push(`padding: ${n(L.pad, 0, 200)}px !important;`);
+  if (set('z')) d.push(`z-index: ${Math.round(n(L.z, -50, 500))} !important;${L.zrel ? ' position: relative !important;' : ''}`);
+  if (set('ord')) d.push(`order: ${Math.round(n(L.ord, -50, 50))} !important;`);
+  const own = !!(L.bg || L.edge);
+  if (L.skin === 'none' || (own && !L.skin)) d.push('border-image: none !important;');
+  if (L.skin === 'none') d.push('background: none !important; box-shadow: none !important; border-color: transparent !important;');
+  if (L.bg) d.push(`background: ${L.bg2 ? `linear-gradient(180deg, ${L.bg}, ${L.bg2})` : L.bg} !important;`);
+  if (L.edge) d.push(`border: ${n(L.edgeW == null ? 2 : L.edgeW, 0, 16)}px solid ${L.edge} !important;`);
+  if (set('rad') && +L.rad >= 0) d.push(`border-radius: ${n(L.rad, 0, 400)}px !important;`);
+  const sh = [];
+  if (+L.shad > 0) sh.push(`0 ${Math.round(+L.shad / 3)}px ${n(L.shad, 0, 80)}px rgba(0,0,0,0.7)`);
+  if (+L.glow > 0) sh.push(`0 0 ${n(L.glow, 0, 80)}px ${L.glowC || 'var(--ew-sel, #ffd76a)'}`);
+  if (sh.length) d.push(`box-shadow: ${sh.join(', ')} !important;`);
+  let css = d.length ? `${S} { ${d.join(' ')} }\n` : '';
+  const t = [];
+  if (L.ink) t.push(`color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important;`);
+  if (L.font) t.push(`font-family: ${L.font} !important;`);
+  if (L.fw) t.push(`font-weight: ${L.fw} !important;`);
+  if (+L.fsz > 0) t.push(`font-size: ${n(L.fsz, 6, 120)}px !important;`);
+  if (L.tcase) t.push(`text-transform: ${CASE_CSS[L.tcase] || 'none'} !important;`);
+  if (set('track')) t.push(`letter-spacing: ${(+L.track || 0).toFixed(2)}em !important;`);
+  if (L.tfx && TFX[L.tfx]) t.push(`text-shadow: ${TFX[L.tfx]} !important;`);
+  if (L.align) t.push(`text-align: ${L.align} !important;`);
+  if (t.length) css += `${preP(parts(P.sel).map(x => x + ', ' + x + ' *').join(', '))} { ${t.join(' ')} }\n`;
+  return css;
+}
+/* ── THE WORDS (2026-10-18, mondo: "what text shows up in the panels"): db.words[piece id] = { 'the words as the game
+   writes them': 'what to show instead' } ('' = hidden). Text nodes inside the piece are swapped in place: a
+   MutationObserver re-swaps whatever the game writes again (React only touches a text node when its own text changes),
+   and the original comes back when the entry goes. Viewer-local, like the rest of the UI Maker. ── */
+const _wRec = new WeakMap(), _wNodes = new Set();
+let _wIdx = null, _wObs = null;
+function wordsIndex() {
+  const m = new Map();
+  Object.keys(db.words || {}).forEach(id => {
+    const P = pieceById(id), W = db.words[id]; if (!P || !W || typeof W !== 'object') return;
+    Object.keys(W).forEach(o => { const k = o.trim(); if (!k || typeof W[o] !== 'string') return; if (!m.has(k)) m.set(k, []); m.get(k).push({ sel: P.sel, val: W[o] }); });
+  });
+  return m;
+}
+/* the words the game wrote in this text node (ours undone) */
+function wordsOrig(node) { const r = _wRec.get(node); return r && node.nodeValue === r.val ? r.orig : node.nodeValue; }
+function wordsFix(node, idx) {
+  if (!node || node.nodeType !== 3) return;
+  let r = _wRec.get(node);
+  if (r && node.nodeValue !== r.val) { _wRec.delete(node); _wNodes.delete(node); r = null; }   // the game wrote new words
+  const orig = r ? r.orig : node.nodeValue, key = orig.trim();
+  let val = null;
+  const hits = key && idx ? idx.get(key) : null, pe = node.parentElement;
+  if (hits && pe) for (const h of hits) { try { if (pe.closest(h.sel)) { val = h.val; break; } } catch (e) {} }
+  if (val == null) {
+    if (r) { _wRec.delete(node); _wNodes.delete(node); if (node.nodeValue === r.val) node.nodeValue = r.orig; }
+    return;
+  }
+  const nv = val === '' ? '' : orig.match(/^\s*/)[0] + val + orig.match(/\s*$/)[0];
+  _wRec.set(node, { orig, val: nv }); _wNodes.add(node);
+  if (node.nodeValue !== nv) node.nodeValue = nv;
+}
+function wordsWalk(root, idx) {
+  if (!root) return;
+  if (root.nodeType === 3) { wordsFix(root, idx); return; }
+  if (root.nodeType !== 1 || (root.closest && root.closest('.uim-dock, .uim-arr, #uimRoot'))) return;
+  const doc = root.ownerDocument || document, tw = doc.createTreeWalker(root, 4);
+  for (let n = tw.nextNode(); n; n = tw.nextNode()) wordsFix(n, idx);
+}
+function wordsApply(doc) {
+  doc = doc || document;
+  const idx = wordsIndex();
+  if (doc === document) {
+    _wIdx = idx;
+    _wNodes.forEach(n => { if (!n.isConnected) { _wNodes.delete(n); return; } if (n.ownerDocument === document) wordsFix(n, idx); });
+    if (idx.size && !_wObs && typeof MutationObserver === 'function' && document.body) {
+      _wObs = new MutationObserver(muts => {
+        const ix = _wIdx; if (!ix || !ix.size) return;
+        for (const m of muts) {
+          if (m.type === 'characterData') wordsFix(m.target, ix);
+          else for (const a of m.addedNodes) wordsWalk(a, ix);
+        }
+      });
+      _wObs.observe(document.body, { subtree: true, childList: true, characterData: true });
+    } else if (!idx.size && _wObs) { _wObs.disconnect(); _wObs = null; }
+  } else _wNodes.forEach(n => { if (n.ownerDocument === doc) { if (!n.isConnected) _wNodes.delete(n); else wordsFix(n, idx); } });
+  if (!idx.size) return;
+  Object.keys(db.words || {}).forEach(id => {
+    const P = pieceById(id); if (!P) return;
+    let els = []; try { els = doc.querySelectorAll(P.sel); } catch (e) {}
+    els.forEach(el => wordsWalk(el, idx));
+  });
+}
+/* the words shown in a piece now (the game's own, before any swap), for the Words list */
+const WORDS_SKIP = /^[\d\s.,:;\/%+\-−×x#()\[\]·•|→←↑↓▲▼▸◂»«…]*$/;
+function pieceWordsNow(el) {
+  const out = [];
+  if (!el) return out;
+  const tw = (el.ownerDocument || document).createTreeWalker(el, 4);
+  for (let n = tw.nextNode(); n && out.length < 60; n = tw.nextNode()) {
+    const k = wordsOrig(n).trim();
+    if (!k || k.length > 240 || WORDS_SKIP.test(k) || out.indexOf(k) >= 0) continue;
+    out.push(k);
+  }
+  return out;
+}
+/* a piece that wears another role's look ("Look like"): that theme's tokens + its paint for the role, and its skin when
+   it has one. In the theme sheet (apply), so a drag never rewrites the baked images. */
+function pieceSkinCss() {
+  let css = '', pending = false;
+  allPieces().forEach(P => {
+    const L = db.layout[P.id]; if (!L || !L.skin || L.skin === 'none' || !PAINT[L.skin]) return;
+    const S = UIM_SURFACES.find(x => x.id === groupOf(P)), tid = L.skinT && themeById(L.skinT) ? L.skinT : (S ? effectiveId(S) : globalId());
+    const T = themeById(tid === 'original' ? globalId() : tid); if (!T) return;
+    let r = `${tokenBlock(T)} ${PAINT[L.skin]}`;
+    const bi = roleSkin(T, L.skin);
+    if (bi === null) pending = true;
+    else if (bi) r += ` border-image: ${bi} !important; background: none !important; box-shadow: none !important;${_pixelCss.has(bi) ? ' image-rendering: pixelated !important;' : ''}`;
+    css += `${preP(P.sel)} { ${r} }\n`;
+  });
+  return { css, pending };
 }
 
 /* ── THE ICON ROWS (mondo 2026-10-16: "let me change the vertical spacing between the turn clock icons ... without also
@@ -13393,6 +13637,7 @@ function apply() {
     css += r.css; pending = pending || r.pending;
   });
   if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
+  { const r = pieceSkinCss(); css += r.css; pending = pending || r.pending; }
   let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
   css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css;
   let el = document.getElementById('ew-ui-maker');
@@ -13413,6 +13658,8 @@ function applyLayout() {
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
   if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
   if (el.textContent !== css) el.textContent = css;
+  _stages.forEach(st => stageLay(st, css));
+  wordsApply();
 }
 
 /* ── THE SCREEN STAND-INS (pass 7, 2026-10-16, mondo: "i cant see the screen i am editing unless i am on that screen in
@@ -13459,7 +13706,7 @@ function mountStage(host, sid, theme, onPick) {
   const bat = []; for (const a of document.body.attributes) if (a.name.indexOf('data-') === 0) bat.push(`${a.name}="${esc(a.value)}"`);
   d.open();
   d.write(`<!doctype html><html ${at.join(' ')} class="${esc(cls)}"><head><meta charset="utf-8"><base href="${esc(location.href)}">${stageSheets()}<style id="uim-stage-css"></style>`
-    + `<style>html, body { margin: 0; width: ${STAGE_W}px; height: ${STAGE_H}px; overflow: hidden; background: #05060a; } a { pointer-events: none; }</style></head>`
+    + `<style>html, body { margin: 0; width: ${STAGE_W}px; height: ${STAGE_H}px; overflow: hidden; background: #05060a; } a { pointer-events: none; } html.uim-picking * { pointer-events: auto !important; }</style><style id="uim-stage-lay"></style></head>`
     + `<body ${bat.join(' ')}>${html}</body></html>`);
   d.close();
   const st = { fr, S, theme, host };
@@ -13473,6 +13720,17 @@ function stageRefresh(st) {
   const d = st.fr.contentDocument, el = d && d.getElementById('uim-stage-css'); if (!el) return;
   const T = st.theme(), css = stageCss(st.S, T && T !== 'original' ? T : null).css;
   if (el.textContent !== css) el.textContent = css;
+  stageLay(st);
+}
+/* the stand-in wears the layout too (every piece's move, size and look, the words) */
+function stageLay(st, lay) {
+  const d = st.fr.contentDocument, el = d && d.getElementById('uim-stage-lay'); if (!el) return;
+  const keep = _skinVars; _skinVars = new Map();
+  let css = '';
+  try { css = (lay == null ? layoutCss() : lay.replace(/^\/\*[^*]*\*\/\n/, '')) + pieceSkinCss().css; } catch (e) {}
+  _skinVars = keep;
+  if (el.textContent !== css) el.textContent = css;
+  wordsApply(d);
 }
 function stagesRefresh() { _stages.forEach(st => { if (!st.fr.isConnected) { _stages.delete(st); return; } stageRefresh(st); }); }
 function unmountStage(st) { if (!st) return; _stages.delete(st); st.fr.remove(); }
@@ -13487,7 +13745,7 @@ function stagePick(S, el) {
 }
 
 /* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
-const UI = { screen: '', el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', hpart: '', ghost: 'auto', snap: true, guides: true, fold: false };
+const UI = { screen: '', el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', hpart: '', ghost: 'auto', snap: true, snapTo: true, picking: false, guides: true, fold: false };
 const UIM_CSS = `
 .uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
 .uim-root * { box-sizing: border-box; }
@@ -13614,6 +13872,24 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-arr-box.hid > span { background: #6a7284; }
 .uim-arr-box.ghost > span { background: #4a56c8; }
 .uim-arr-box.off > span { background: #b8761a; }
+.uim-arr-box > .uim-rs { display: none; position: absolute; right: -6px; bottom: -6px; width: 11px; height: 11px; background: #ff3df0; border: 1px solid #000; cursor: nwse-resize; pointer-events: auto; }
+.uim-arr-box.on:not(.ghost):not(.part):not(.surf):not(.bar) > .uim-rs { display: block; }
+.uim-guide { position: fixed; z-index: 20006; background: #3dfff0; box-shadow: 0 0 3px #3dfff0; pointer-events: none; }
+.uim-guide.v { top: 0; bottom: 0; width: 1px; }
+.uim-guide.h { left: 0; right: 0; height: 1px; }
+.uim-arr-catch { display: none; position: fixed; inset: 0; z-index: 20004; pointer-events: auto; cursor: crosshair; touch-action: none; }
+.uim-arr.picking .uim-arr-catch { display: block; }
+.uim-arr.picking .uim-arr-boxes { visibility: hidden; }
+.uim-arr-hi { display: none; position: fixed; z-index: 20005; border: 2px solid #66ff8a; background: rgba(102,255,138,0.12); pointer-events: none; box-sizing: border-box; }
+.uim-arr-hi > span { position: absolute; left: -2px; bottom: 100%; color: #04150a; background: #66ff8a; padding: 1px 5px; white-space: nowrap; font-size: 10px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.uim-arr-hi.low > span { bottom: auto; top: 100%; }
+html.uim-picking body * { pointer-events: auto !important; }
+html.uim-picking .uim-arr, html.uim-picking .uim-arr * { pointer-events: none !important; }
+html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
+.uim-dk-word { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) auto; align-items: center; gap: 5px; margin: 3px 0; }
+.uim-dk-word > label { color: #9aa3b5; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uim-dk-word.hid > label { text-decoration: line-through; color: #6a7284; }
+.uim-dk-word > .uim-btn { padding: 2px 6px; }
 .uim-arr-box.surf { border-color: #3de0ff; background: rgba(61,224,255,0.05); cursor: pointer; }
 .uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
 .uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
@@ -13751,7 +14027,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -13763,7 +14039,7 @@ function travel(from, to) {
     if (e.lay) {
       to.push({ lay: 1, j: layState() });
       const j = JSON.parse(e.j);
-      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.ux = j.ux || {}; db.assign = j.assign || {}; HIST.t = 0;
+      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.ux = j.ux || {}; db.assign = j.assign || {}; db.words = j.words || {}; db.picks = j.picks || []; HIST.t = 0;
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -14020,7 +14296,7 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen: move, size, fade or hide each HUD piece and shape the Horologe hero section'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring']];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
   if (UI.tab === 'layout' || UI.tab === 'menus' || UI.tab === 'bars') UI.tab = UI.back || 'skins';
@@ -14151,7 +14427,9 @@ function onInput(e) {
 }
 function tidyLayout(id) {
   const L = db.layout[id]; if (!L) return;
-  if (!+L.x && !+L.y && (L.s == null || +L.s === 1) && (L.o == null || +L.o >= 1) && !L.hide) delete db.layout[id];
+  Object.keys(LOOK_DEF).forEach(k => { if (L[k] != null && String(L[k]) === String(LOOK_DEF[k])) delete L[k]; });
+  if (L.z == null) delete L.zrel;
+  if (!+L.x && !+L.y && (L.s == null || +L.s === 1) && (L.o == null || +L.o >= 1) && !L.hide && !lookOn(L)) delete db.layout[id];
 }
 let _svT = 0;
 function drawSliceViewSoon() { clearTimeout(_svT); _svT = setTimeout(drawSliceView, 60); }
@@ -14340,18 +14618,63 @@ function ghostRect(P) {
   t = oy - fy * h + (+L.y || 0) - (sn ? +sn.y || 0 : 0);
   return { left: l, top: t, width: w, height: h, right: l + w, bottom: t + h };
 }
+/* a menu screen is up: its scope is on screen (visibility aside: the HUD layout hides the pause menus / Settings) */
+function surfUp(id) {
+  const S = UIM_SURFACES.find(x => x.id === id); if (!S) return false;
+  let els = []; try { els = document.querySelectorAll(S.scope); } catch (e) { return false; }
+  for (const el of els) {
+    if (el.closest(LIVE_SKIP)) continue;
+    const r = el.getBoundingClientRect(); if (r.width < 4 || r.height < 4) continue;
+    try { if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true })) continue; } catch (e) {}
+    if (getComputedStyle(el).display === 'none') continue;
+    /* and not under another page (the party builder sits in the DOM under the menus): something of it is on top */
+    const pts = [[0.5, 0.5], [0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+    for (const [fx, fy] of pts) {
+      let hits = []; try { hits = document.elementsFromPoint(r.left + r.width * fx, r.top + r.height * fy); } catch (e) {}
+      const top = hits.find(h => !h.closest(LIVE_SKIP + ', .uim-stand'));
+      if (top && el.contains(top)) return true;
+    }
+  }
+  return false;
+}
+const AUTO_ORDER = ['dialog', 'results', 'loading', 'pause', 'settings', 'lobby', 'shell', 'match', 'forge', 'squad', 'menu', 'editor'];
+function autoGroup() {
+  if (allVis('.hrlg-rig, .ew-scoreboard, .ew-turn-col', 1).length) return 'battle';
+  if (allVis('#hqPage .hq-strip-l, #hqPage .hq-dock', 1).length) return 'explore';
+  for (const id of AUTO_ORDER) if (surfUp(id)) return id;
+  return 'battle';
+}
+/* the screen the Layout view works on: the Screen picker, or Auto = the one up now */
 function ghostGroup() {
   const A = UI.live;
-  if (UI.ghost === 'off') return '';
-  if (UI.ghost !== 'auto') return UI.ghost;
-  if (UIM_PIECES.some(P => A.liveSet[P.id] && groupOf(P) === 'battle')) return 'battle';
-  if (UIM_PIECES.some(P => A.liveSet[P.id] && groupOf(P) === 'explore')) return 'explore';
-  return 'battle';
+  if (UI.ghost && UI.ghost !== 'auto' && UI.ghost !== 'off' && UIM_SURFACES.some(S => S.id === UI.ghost)) return UI.ghost;
+  if (!A) return 'battle';
+  if (!A.autoG || A.frame - (A.autoF || 0) > 20) { A.autoG = autoGroup(); A.autoF = A.frame; }
+  return A.autoG;
+}
+/* where a piece is drawn now: on the real screen, or on the screen's stand-in (then k = the stand-in's scale) */
+function pieceVis(P) {
+  const A = UI.live, st = A && A.stand;
+  if (st && st.k && st.S.id === groupOf(P)) {
+    const d = st.fr.contentDocument; let els = [];
+    try { els = d ? d.querySelectorAll(P.sel) : []; } catch (e) {}
+    const hb = st.host.getBoundingClientRect();
+    for (const el of els) {
+      const q = el.getBoundingClientRect(); if (q.width < 2 || q.height < 2) continue;
+      const cs = d.defaultView.getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const l = hb.left + st.ox + q.left * st.k, t = hb.top + st.oy + q.top * st.k, w = q.width * st.k, h = q.height * st.k;
+      return { el, cs, k: st.k, stand: true, r: { left: l, top: t, width: w, height: h, right: l + w, bottom: t + h } };
+    }
+    return null;
+  }
+  const v = allVis(P.sel, 1)[0];
+  if (v) v.k = 1;
+  return v || null;
 }
 function boxEl(key) {
   const A = UI.live;
   let bx = A.boxes[key];
-  if (!bx) { bx = A.boxes[key] = document.createElement('div'); bx.className = 'uim-arr-box'; bx.innerHTML = '<span></span><b></b>'; A.wrap.appendChild(bx); }
+  if (!bx) { bx = A.boxes[key] = document.createElement('div'); bx.className = 'uim-arr-box'; bx.innerHTML = '<span></span><i class="uim-rs" title="Drag to size"></i><b></b>'; A.wrap.appendChild(bx); }
   return bx;
 }
 function placeBox(bx, l, t, w, h) {
@@ -14362,12 +14685,19 @@ function placeBox(bx, l, t, w, h) {
 }
 function setText(el, txt) { if (el && el.textContent !== txt) el.textContent = txt; }
 function layoutBoxes() {
-  const A = UI.live, W = innerWidth, H = innerHeight, gg = ghostGroup(), rects = {}, live = {};
-  UIM_PIECES.forEach(P => {
-    const v = allVis(P.sel, 1)[0];
+  const A = UI.live, W = innerWidth, H = innerHeight, gg = ghostGroup(), rects = {}, real = {}, live = {};
+  document.documentElement.classList.toggle('uim-arranging', !!HUD_GROUPS[gg]);   // the pause menus step aside only for a HUD
+  liveStand();
+  if (gg !== A.listGroup) { A.listGroup = gg; dockBody(); }
+  const ids = new Set();
+  allPieces().forEach(P => {
+    ids.add(P.id);
+    const old = A.boxes[P.id];
+    if (groupOf(P) !== gg && UI.piece !== P.id) { if (old) old.style.display = 'none'; return; }
+    const v = pieceVis(P), hud = !!HUD_GROUPS[groupOf(P)];
     let r = null, ghost = false;
-    if (v) { live[P.id] = 1; r = v.r; if (!A.drag) noteSeen(P, v); }
-    else if (gg === groupOf(P) || UI.piece === P.id) { r = ghostRect(P); ghost = true; }
+    if (v) { live[P.id] = 1; r = v.r; if (!A.drag && !v.stand && hud) noteSeen(P, v); }
+    else if (hud) { r = ghostRect(P); ghost = true; }
     const bx = boxEl(P.id); bx.dataset.piece = P.id;
     if (!r) { bx.style.display = 'none'; return; }
     let l = r.left, t = r.top, w = r.width, h = r.height;
@@ -14375,13 +14705,15 @@ function layoutBoxes() {
     if (off) { w = Math.min(w, 180); h = Math.min(h, 60); l = Math.max(0, Math.min(W - w, l)); t = Math.max(0, Math.min(H - h, t)); }
     placeBox(bx, l, t, w, h);
     rects[P.id] = { left: l, top: t, right: l + w, bottom: t + h };
+    real[P.id] = { left: r.left, top: r.top, right: r.left + r.width, bottom: r.top + r.height, k: v ? v.k : 1 };
     const L = db.layout[P.id] || {};
     bx.classList.toggle('on', UI.piece === P.id); bx.classList.toggle('hid', !!L.hide && !P.noHide);
     bx.classList.toggle('ghost', ghost); bx.classList.toggle('off', off && !ghost); bx.classList.toggle('tagr', !!P.tagRight);
     setText(bx.firstChild, `${P.label}${L.hide && !P.noHide ? ' (hidden)' : ''}${L.s != null && +L.s !== 1 ? ' ' + Math.round(+L.s * 100) + '%' : ''}${off && !ghost ? ' (off screen)' : ''}${ghost ? ' (not up now)' : ''}`);
     setText(bx.lastChild, ghost ? P.label : '');
   });
-  A.rects = rects;
+  Object.keys(A.boxes).forEach(k => { if (k.indexOf('hp:') !== 0 && !ids.has(k)) A.boxes[k].style.display = 'none'; });   // a removed pick
+  A.rects = rects; A.real = real;
   partBoxes();
   const key = Object.keys(live).join(',');
   if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
@@ -14464,29 +14796,47 @@ function dockTop() {
   return `<div class="uim-btns"><button class="uim-btn" data-dk="full" title="Back to the full editor (Esc)">◀ Full editor</button><button class="uim-btn pri" data-dk="done" title="Close the UI Maker. Everything is already saved.">Done</button></div>`;
 }
 function dockLayoutBody() {
-  let h = dockTop() + `<div class="uim-dock-tools">
+  const A = UI.live, gg = ghostGroup(), hud = !!HUD_GROUPS[gg], scr = screenList();
+  const auto = A && A.autoG ? (scr.find(x => x[0] === A.autoG) || [0, ''])[1] : '';
+  let h = dockTop() + `<div class="uim-f" title="The screen whose pieces you arrange. Auto = the one up now; a screen that is not up shows as its stand-in, and what you change there goes on the real screen too"><label>Screen</label><div><select data-dk="screen">
+      <option value="auto"${UI.ghost === 'auto' || !scr.some(x => x[0] === UI.ghost) ? ' selected' : ''}>Auto${auto ? ` (${esc(auto)})` : ''}</option>${scr.map(([id, l]) => `<option value="${id}"${UI.ghost === id ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
+  <div class="uim-dock-tools">
+    <label title="A dragged piece snaps its edges and middle to the other pieces and to the screen, so it sits flush beside, above or below them (hold Alt to drag free)"><input type="checkbox" data-dk="snapto"${UI.snapTo ? ' checked' : ''}> Snap to pieces</label>
     <label><input type="checkbox" data-dk="snap"${UI.snap ? ' checked' : ''}> Snap 8px</label>
     <label><input type="checkbox" data-dk="guides"${UI.guides ? ' checked' : ''}> Grid + safe area</label></div>
-  <div class="uim-f"><label>Not up now</label><div style="flex-wrap:wrap">${[['auto', 'Auto', 'The group that is on screen'], ['battle', 'Battle'], ['explore', 'Exploration'], ['off', 'Hide']].map(([v, l, tip]) => `<button class="uim-btn${UI.ghost === v ? ' on' : ''}" data-dk="ghost" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>
+  <div class="uim-btns"><button class="uim-btn${UI.picking ? ' on' : ''}" data-dk="pick" title="Point at anything on the screen (a panel, a line of text, a button) and click it to make it a piece of its own: then move it, size it, give it its own look and words. The wheel picks the part around it.">✚ Pick a part</button></div>
   <div class="uim-note uim-dk-status"></div><div class="uim-dk-detail"></div><div class="uim-dk-list">`;
+  const mine = allPieces().filter(P => groupOf(P) === gg);
   let grp = '';
-  UIM_PIECES.forEach(P => {
-    if (P.group !== grp) { grp = P.group; h += `<div class="uim-h">${esc(grp)}</div>`; }
+  mine.forEach(P => {
+    const g = P.pick ? 'Picked parts' : P.group;
+    if (g !== grp) { grp = g; h += `<div class="uim-h">${esc(grp)}</div>`; }
     h += `<div class="uim-dk-row${UI.piece === P.id ? ' on' : ''}" data-piece="${P.id}"><i></i><span>${esc(P.label)}</span><em></em></div>`;
   });
+  const S = UIM_SURFACES.find(x => x.id === gg);
+  const any = Object.keys(db.layout).length || Object.keys(db.hero || {}).length || Object.keys(db.icons || {}).length || Object.keys(db.words || {}).length || (db.picks || []).length;
+  const here = mine.some(P => db.layout[P.id] || (db.words || {})[P.id] || P.pick);
   h += `</div>
-  <div class="uim-note">Drag a box · wheel sizes · arrows nudge (Shift 8px) · <span class="uim-kbd">Tab</span> next piece · <span class="uim-kbd">+</span> <span class="uim-kbd">−</span> size · <span class="uim-kbd">H</span> hide · <span class="uim-kbd">R</span> reset · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>
-  <div class="uim-btns"><button class="uim-btn bad" data-dk="layreset"${Object.keys(db.layout).length || Object.keys(db.hero || {}).length || Object.keys(db.icons || {}).length ? '' : ' disabled'}>Reset the whole layout</button></div>`;
+  <div class="uim-note">Drag a box · drag its corner to size it · wheel scales · arrows nudge (Shift 8px) · <span class="uim-kbd">Tab</span> next piece · <span class="uim-kbd">+</span> <span class="uim-kbd">−</span> scale · <span class="uim-kbd">H</span> hide · <span class="uim-kbd">R</span> reset · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">F4</span> on any screen opens this view · <span class="uim-kbd">Esc</span> full editor</div>
+  <div class="uim-btns">${hud ? '' : `<button class="uim-btn bad" data-dk="scrreset"${here ? '' : ' disabled'}>Reset ${esc(S ? S.label : 'this screen')}</button>`}<button class="uim-btn bad" data-dk="layreset"${any ? '' : ' disabled'}>Reset the whole layout</button></div>`;
   return h;
 }
+/* a piece's own settings (data-lpath = "<piece id>.<key>", data-lset the same for a row of buttons) */
+const lp = (id, html) => html.replace(/data-path="/g, `data-lpath="${id}.`).replace(/data-set="/g, `data-lset="${id}.`);
 function pieceDetail() {
-  const P = UIM_PIECES.find(x => x.id === UI.piece);
-  if (!P) return '<div class="uim-note">Click a box on the screen, or a piece above, to adjust it.</div>';
+  const P = pieceById(UI.piece);
+  if (!P) return '<div class="uim-note">Click a box on the screen, or a piece above, to adjust it. ✚ Pick a part makes anything on the screen a piece.</div>';
   const L = db.layout[P.id] || {};
   const R = (l, k, mn, mx, st, v) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-lpath="${P.id}.${k}" data-num="1"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-lpath="${P.id}.${k}" data-num="1"></div></div>`;
-  let h = `<div class="uim-dk-sel"><b>${esc(P.label)}</b>`
-    + (P.noHide ? '' : `<div class="uim-f"><label>Hide</label><div><input type="checkbox" data-lpath="${P.id}.hide" data-bool="1"${L.hide ? ' checked' : ''}></div></div>`)
-    + R('Move X', 'x', -1600, 1600, 1, +L.x || 0) + R('Move Y', 'y', -1000, 1000, 1, +L.y || 0) + R('Size', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
+  let h = `<div class="uim-dk-sel"><b>${esc(P.label)}</b>`;
+  if (P.pick) {
+    const K = (db.picks || []).find(k => k.id === P.id) || {};
+    h += `<div class="uim-f"><label>Name</label><div><input class="uim-in" data-pick="label" value="${esc(K.label || '')}" spellcheck="false"></div></div>`
+      + (K.selAll && K.selAll !== K.sel ? `<div class="uim-f" title="Every part that looks like this one on this screen takes these settings, not only the one you picked"><label>Every one like it</label><div><input type="checkbox" data-pick="all"${K.all ? ' checked' : ''}></div></div>` : '')
+      + `<div class="uim-btns"><button class="uim-btn" data-dk="pickup" title="Make the part around this one the piece instead">⬑ The part around it</button><button class="uim-btn bad" data-dk="pickdel" title="Stop treating this as a piece; its settings go too">Remove</button></div>`;
+  }
+  h += (P.noHide ? '' : `<div class="uim-f"><label>Hide</label><div><input type="checkbox" data-lpath="${P.id}.hide" data-bool="1"${L.hide ? ' checked' : ''}></div></div>`)
+    + R('Move X', 'x', -1600, 1600, 1, +L.x || 0) + R('Move Y', 'y', -1000, 1000, 1, +L.y || 0) + R('Scale', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
     + `<div class="uim-btns"><button class="uim-btn" data-dk="piecereset">Reset this piece</button></div>`;
   if (P.hero) h += heroForm();
   if (P.icons) h += iconsForm(P.icons);
@@ -14494,7 +14844,50 @@ function pieceDetail() {
   if (P.ap) h += apForm();
   if (P.qp) h += qpForm();
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
+  h += lookForm(P, L) + wordsForm(P);
   return h + '</div>';
+}
+/* size / layer / order, the window look, the text (LOOK_DEF keys on db.layout[id]) */
+function lookForm(P, L) {
+  const v = k => (L[k] == null ? LOOK_DEF[k] : L[k]);
+  const box = lp(P.id, `${fRange('Width', 'w', 0, 1600, 2, +v('w'))}${fRange('Height', 'h', 0, 1200, 2, +v('h'))}${fRange('Inner space', 'pad', -1, 80, 1, +v('pad'))}
+    ${fSeg('Layer', 'z', [['', 'As the game'], ['-1', 'Behind', 'Under the parts next to it'], ['20', 'Above', 'Over the parts next to it'], ['400', 'On top', 'Over everything on this screen']], v('z'))}
+    ${fSeg('Order', 'ord', [['', 'As the game'], ['-1', 'First', 'First in its row or column: the top of a column, the left of a row'], ['1', 'Last', 'Last in its row or column']], v('ord'))}`)
+    + '<div class="uim-note">Width / Height 0 and Inner space −1 = as the game. Order moves the piece above or below the parts it sits in a column with (left or right in a row).</div>';
+  const ths = [['', 'This screen\'s theme']].concat(allThemes().map(t => [t.id, t.label]));
+  let look = lp(P.id, `${fSelect('Look like', 'skin', LOOK_ROLES, v('skin'))}${v('skin') && v('skin') !== 'none' ? fSelect('From theme', 'skinT', ths, v('skinT')) : ''}
+    ${fColorOpt('Fill', 'bg', v('bg'), '#101622', true)}${v('bg') ? fColorOpt('Fade to', 'bg2', v('bg2'), '#05070c', true, 'A second fill colour: the fill fades into it top to bottom') : ''}
+    ${fColorOpt('Frame', 'edge', v('edge'), '#6fb4ff', true)}${v('edge') ? fRange('Frame width', 'edgeW', 0, 16, 1, +v('edgeW')) : ''}
+    ${fRange('Corners', 'rad', -1, 60, 1, +v('rad'))}${fRange('Shadow', 'shad', 0, 60, 1, +v('shad'))}${fRange('Glow', 'glow', 0, 60, 1, +v('glow'))}${+v('glow') > 0 ? fColorOpt('Glow colour', 'glowC', v('glowC'), '#ffd76a', true) : ''}`)
+    + '<div class="uim-note">Look like dresses the piece as that part of a theme (its 9-slice skin too). Corners −1 = as the game.</div>';
+  const tx = lp(P.id, `${fColorOpt('Colour', 'ink', v('ink'), '#ffffff', false)}${fSelect('Font', 'font', FONTS, v('font'))}${fSeg('Weight', 'fw', WEIGHTS, v('fw'))}
+    ${fRange('Size', 'fsz', 0, 72, 1, +v('fsz'))}
+    ${fSeg('Case', 'tcase', [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed']], v('tcase'))}
+    ${fRange('Letter spacing', 'track', -0.1, 0.5, 0.01, +v('track') || 0)}
+    ${fSeg('Effect', 'tfx', [['', 'As the game'], ['none', 'None'], ['drop', 'Soft shadow'], ['hard', 'Hard 1px'], ['hard2', 'Hard 2px'], ['outline', 'Outline'], ['glow', 'Glow']], v('tfx'))}
+    ${fSeg('Align', 'align', [['', 'As the game'], ['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], v('align'))}`)
+    + '<div class="uim-note">Goes on every word inside the piece. Size 0 = as the game.</div>';
+  const on = k => Object.keys(LOOK_DEF).filter(x => k.indexOf(x) >= 0).some(x => L[x] != null && String(L[x]) !== String(LOOK_DEF[x]));
+  return sec('lb', 'Size + order', box, on(['w', 'h', 'pad', 'z', 'ord']) ? 'changed' : '')
+    + sec('lk', 'Panel look', look, on(['skin', 'bg', 'edge', 'rad', 'shad', 'glow']) ? 'changed' : '')
+    + sec('lt', 'Text look', tx, on(['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'align']) ? 'changed' : '');
+}
+/* the words in a piece: type what shows instead, ⊘ hides them, empty = the game's own words */
+function wordsForm(P) {
+  const W = (db.words || {})[P.id] || {}, v = pieceVis(P);
+  const list = pieceWordsNow(v && v.el);
+  Object.keys(W).forEach(o => { if (list.indexOf(o) < 0) list.push(o); });
+  UI.wlist = UI.wlist || {}; UI.wlist[P.id] = list;
+  let h = '';
+  list.forEach((o, i) => {
+    const has = Object.prototype.hasOwnProperty.call(W, o), hid = has && W[o] === '';
+    h += `<div class="uim-dk-word${hid ? ' hid' : ''}"><label title="${esc(o)}">${esc(o)}</label><input class="uim-in" data-wid="${P.id}" data-wi="${i}" value="${esc(has ? W[o] : '')}" placeholder="${esc(hid ? '(hidden)' : o)}" spellcheck="false"${hid ? ' disabled' : ''}><button class="uim-btn" data-dk="whide" data-val="${i}" title="${hid ? 'Show these words again' : 'Hide these words'}">${hid ? 'Show' : '⊘'}</button></div>`;
+  });
+  if (!list.length) h = `<div class="uim-note">${v ? 'No words in this piece.' : 'Open this screen (or pick it under Screen) to see its words.'}</div>`;
+  else h += '<div class="uim-note">Type what shows instead of the game\'s words; leave a box empty for the game\'s own. Numbers and names the game fills in keep changing as they do now.</div>';
+  const n = Object.keys(W).length;
+  if (n) h += `<div class="uim-btns"><button class="uim-btn" data-dk="wreset">Put back the game's words</button></div>`;
+  return sec('lw', 'Words', h, n ? n + ' changed' : '');
 }
 function iconsForm(which) {
   const I = iconsOf();
@@ -14733,16 +15126,24 @@ function markRows() {
 function liveBadges() {
   const A = UI.live; if (!A) return;
   A.dock.querySelectorAll('.uim-dk-row[data-piece]').forEach(row => {
-    const P = UIM_PIECES.find(x => x.id === row.dataset.piece), L = db.layout[P.id] || {};
+    const P = pieceById(row.dataset.piece); if (!P) return;
+    const L = db.layout[P.id] || {};
     const moved = !!(+L.x || +L.y || (L.s != null && +L.s !== 1) || (L.o != null && +L.o < 1));
+    const tags = [L.hide && !P.noHide ? 'hidden' : moved ? 'moved' : '', lookOn(L) ? 'look' : '', (db.words || {})[P.id] ? 'words' : '', P.hero && Object.keys(db.hero || {}).length ? 'shaped' : ''].filter(Boolean);
     row.firstChild.className = A.liveSet[P.id] ? 'live' : 'ghost';
-    setText(row.lastChild, (L.hide && !P.noHide ? 'hidden' : moved ? 'moved' : '') + (P.hero && Object.keys(db.hero || {}).length ? (moved || L.hide ? ' · ' : '') + 'shaped' : ''));
-    row.title = P.label + (A.liveSet[P.id] ? ': on screen now' : ': not up right now, the blue box stands in for it');
+    setText(row.lastChild, tags.join(' · '));
+    row.title = P.label + (A.liveSet[P.id] ? (A.stand ? ': on the stand-in' : ': on screen now') : HUD_GROUPS[groupOf(P)] ? ': not up right now, the blue box stands in for it' : ': not on this screen right now');
   });
   A.dock.querySelectorAll('.uim-dk-surf[data-surf]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.surf] ? 'live' : ''; row.title = A.liveSet[row.dataset.surf] ? 'On screen now' : 'Not on screen right now'; });
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.bar] ? 'live' : ''; });
   const st = A.dock.querySelector('.uim-dk-status');
-  if (st) setText(st, Object.keys(A.liveSet).length ? '' : 'No HUD is up right now. The blue boxes stand in for the pieces, where they were last seen; open the UI Maker from the pause menu in a battle or while exploring to see the real ones.');
+  if (st) {
+    const gg = A.mode === 'layout' ? ghostGroup() : '', S = UIM_SURFACES.find(x => x.id === gg);
+    setText(st, A.mode !== 'layout' || Object.keys(A.liveSet).length && !A.stand ? ''
+      : A.stand ? `${S ? S.label : 'This screen'} is not up, so its stand-in shows here. What you change goes on the real screen too; press F4 on that screen to arrange the real one.`
+      : HUD_GROUPS[gg] ? 'No HUD is up right now. The blue boxes stand in for the pieces, where they were last seen; open the UI Maker from the pause menu in a battle or while exploring to see the real ones.'
+      : `${S ? S.label : 'This screen'} is not up right now.`);
+  }
 }
 function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); applyLayout(); liveBadges(); dockUndo(); }
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
@@ -14809,7 +15210,7 @@ function liveOn(mode) {
   if (UI.tab !== 'layout' && UI.tab !== 'menus' && UI.tab !== 'bars') UI.back = UI.tab;
   if (UI.live) { if (UI.live.mode !== mode) liveMode(mode); return; }
   const ov = document.createElement('div'); ov.className = 'uim-arr';
-  ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div>';
+  ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div><div class="uim-arr-catch"></div><div class="uim-arr-hi"><span></span></div>';
   const dock = document.createElement('div'); dock.className = 'uim-dock' + (UI.fold ? ' fold' : '');
   dock.style.left = Math.max(4, innerWidth - 352) + 'px'; dock.style.top = '12px';
   document.body.appendChild(ov); document.body.appendChild(dock);   // the dock after the overlay: peek hides both
@@ -14818,6 +15219,9 @@ function liveOn(mode) {
   document.documentElement.classList.add('uim-live');
   ov.addEventListener('pointerdown', liveDown); ov.addEventListener('wheel', liveWheel, { passive: false });
   ov.addEventListener('contextmenu', liveContext); ov.addEventListener('dblclick', liveDbl);
+  const cat = ov.querySelector('.uim-arr-catch');
+  cat.addEventListener('pointermove', pickMove); cat.addEventListener('pointerdown', pickDown); cat.addEventListener('wheel', pickWheel, { passive: false });
+  cat.addEventListener('contextmenu', ev => { ev.preventDefault(); pickMode(false); });
   dock.addEventListener('click', dockClick); dock.addEventListener('input', dockInput); dock.addEventListener('change', dockInput);
   dock.addEventListener('pointerdown', dockDown);
   dock.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.sec) UI.shut[d.dataset.sec] = !d.open; }, true);
@@ -14837,7 +15241,8 @@ function liveOn(mode) {
 }
 function liveMode(mode) {
   const A = UI.live;
-  A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null;
+  A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null; A.listGroup = null;
+  if (mode !== 'layout' && UI.picking) pickMode(false);
   document.documentElement.classList.toggle('uim-arranging', mode !== 'menus');   // the pause menus step aside so the HUD shows
   A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = mode === 'layout' && UI.guides ? '' : 'none'; });
   A.dock.innerHTML = dockHead(); A.dock.dataset.mode = mode;
@@ -14845,9 +15250,18 @@ function liveMode(mode) {
   requestAnimationFrame(() => dodge(true));
 }
 /* the Menus view: a menu that is not on screen shows as a stand-in behind the panel, in the theme it wears */
+/* the Layout view: a screen picked under Screen that is not up shows as its stand-in, its pieces boxed on it */
 function liveStand() {
   const A = UI.live; if (!A) return;
-  const want = A.mode === 'menus' && UI.surf && !A.liveSet[UI.surf] && UIM_SPECIMENS[UI.surf] ? UI.surf : '';
+  let want = '';
+  if (A.mode === 'menus') want = UI.surf && !A.liveSet[UI.surf] && UIM_SPECIMENS[UI.surf] ? UI.surf : '';
+  else if (A.mode === 'layout') {
+    const gg = ghostGroup();
+    if (!HUD_GROUPS[gg] && UIM_SPECIMENS[gg]) {
+      if (A.standG !== gg || A.frame - (A.standF || 0) > 20) { A.standG = gg; A.standF = A.frame; A.standUp = surfUp(gg); }
+      if (!A.standUp) want = gg;
+    }
+  }
   if (A.stand && A.stand.S.id === want) return;
   if (A.stand) { unmountStage(A.stand); A.stand = null; }
   if (A.standHost) { A.standHost.remove(); A.standHost = null; }
@@ -14857,12 +15271,13 @@ function liveStand() {
   const S = UIM_SURFACES.find(x => x.id === want);
   A.standHost = host;
   A.stand = mountStage(host, want, () => { const tid = effectiveId(S); return tid === 'original' ? null : themeById(tid); });
-  if (A.stand) fitStage(A.stand);
+  if (A.stand) { fitStage(A.stand); pickStage(); }
 }
 function liveOff(quiet) {
   const A = UI.live; if (!A) return;
   if (A.stand) unmountStage(A.stand); if (A.standHost) A.standHost.remove();
-  cancelAnimationFrame(A.raf); A.ov.remove(); A.dock.remove(); UI.live = null;
+  cancelAnimationFrame(A.raf); A.ov.remove(); A.dock.remove(); UI.live = null; UI.picking = false;
+  document.documentElement.classList.remove('uim-picking');
   window.removeEventListener('resize', A.onResize);
   document.documentElement.classList.remove('uim-live', 'uim-arranging');
   saveSeen(); save();
@@ -14871,7 +15286,7 @@ function liveOff(quiet) {
 }
 
 /* ── the boxes ── */
-function livePiece(e) { const bx = e.target.closest('.uim-arr-box'); return bx && bx.dataset.piece ? UIM_PIECES.find(p => p.id === bx.dataset.piece) : null; }
+function livePiece(e) { const bx = e.target.closest('.uim-arr-box'); return bx && bx.dataset.piece ? pieceById(bx.dataset.piece) : null; }
 function liveDown(e) {
   const A = UI.live; if (!A) return;
   const bx = e.target.closest('.uim-arr-box'); if (!bx || e.button !== 0) return;
@@ -14884,8 +15299,10 @@ function liveDown(e) {
   const P = livePiece(e); if (!P) return;
   const before = layState();   // one undo step per drag, none for a plain click
   if (UI.piece !== P.id) liveSelect(P.id);
-  const L0 = db.layout[P.id] || {};
-  const d = { x0: e.clientX, y0: e.clientY, lx: +L0.x || 0, ly: +L0.y || 0, r0: A.rects[P.id] || bx.getBoundingClientRect() };
+  const L0 = db.layout[P.id] || {}, re = A.real && A.real[P.id], k = (re && re.k) || 1;
+  const r0 = re || A.rects[P.id] || bx.getBoundingClientRect();
+  if (e.target.classList.contains('uim-rs')) { sizeDrag(e, P, before, k); return; }
+  const d = { x0: e.clientX, y0: e.clientY, lx: +L0.x || 0, ly: +L0.y || 0, r0, k, lines: UI.snapTo ? snapLines(P) : null };
   A.drag = d; A.dock.classList.add('busy');
   const mv = ev => {
     if (!UI.live || UI.live.drag !== d) return;
@@ -14893,9 +15310,192 @@ function liveDown(e) {
     let dx = ev.clientX - d.x0, dy = ev.clientY - d.y0;
     dx = Math.max(24 - d.r0.right, Math.min(W - 24 - d.r0.left, dx));   // at least 24px of the piece stays on the screen
     dy = Math.max(24 - d.r0.bottom, Math.min(H - 24 - d.r0.top, dy));
+    const sx = d.lines && !ev.altKey ? snapAxis(d.lines.x, [d.r0.left + dx, (d.r0.left + d.r0.right) / 2 + dx, d.r0.right + dx]) : null;
+    const sy = d.lines && !ev.altKey ? snapAxis(d.lines.y, [d.r0.top + dy, (d.r0.top + d.r0.bottom) / 2 + dy, d.r0.bottom + dy]) : null;
+    if (sx) dx += sx.d; if (sy) dy += sy.d;
     const L = db.layout[P.id] || (db.layout[P.id] = {});
-    L.x = Math.round((d.lx + dx) / g) * g; L.y = Math.round((d.ly + dy) / g) * g;
+    L.x = sx ? Math.round(d.lx + dx / d.k) : Math.round((d.lx + dx / d.k) / g) * g;
+    L.y = sy ? Math.round(d.ly + dy / d.k) : Math.round((d.ly + dy / d.k) / g) * g;
+    guides(sx && sx.at, sy && sy.at);
     applyLayout(); dodge(false);
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (UI.live) { UI.live.drag = null; UI.live.dock.classList.remove('busy'); }
+    guides(null, null);
+    tidyLayout(P.id);
+    if (layState() !== before) { HIST.undo.push({ lay: 1, j: before }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; HIST.t = Date.now(); }
+    touchLayout(); dockDetail();
+  };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+/* ── PICK A PART: point at anything on the screen (or its stand-in), click = it becomes a piece (db.picks) ── */
+function pickMode(on) {
+  const A = UI.live; if (!A) return;
+  UI.picking = !!on && A.mode === 'layout';
+  A.ov.classList.toggle('picking', UI.picking);
+  document.documentElement.classList.toggle('uim-picking', UI.picking);
+  pickStage();
+  const b = A.dock.querySelector('[data-dk="pick"]'); if (b) b.classList.toggle('on', UI.picking);
+  const hi = A.ov.querySelector('.uim-arr-hi'); if (hi && !UI.picking) hi.style.display = 'none';
+  A.pickBase = null; A.pickN = 0;
+  if (UI.picking) toast('Point at a part and click it. The wheel picks the part around it; Esc stops.');
+}
+function pickStage() { const A = UI.live, d = A && A.stand && A.stand.fr.contentDocument; if (d) d.documentElement.classList.toggle('uim-picking', !!UI.picking); }
+/* the element under the pointer: the stand-in's own when it is showing there */
+function pickAt(x, y) {
+  const A = UI.live, st = A.stand;
+  let doc = document, px = x, py = y;
+  if (st && st.k) {
+    const hb = st.host.getBoundingClientRect(), fx = (x - hb.left - st.ox) / st.k, fy = (y - hb.top - st.oy) / st.k;
+    if (fx >= 0 && fy >= 0 && fx < STAGE_W && fy < STAGE_H && st.fr.contentDocument) { doc = st.fr.contentDocument; px = fx; py = fy; }
+  }
+  let list = []; try { list = doc.elementsFromPoint(px, py); } catch (e) {}
+  for (const el of list) {
+    if (el === doc.documentElement || el === doc.body) continue;
+    if (doc === document && el.closest(LIVE_SKIP + ', .uim-stand')) continue;
+    const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
+    try { if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue; } catch (e) {}
+    return { el, doc };
+  }
+  return null;
+}
+function pickTarget(e) {
+  const A = UI.live, hit = pickAt(e.clientX, e.clientY); if (!hit) return null;
+  if (A.pickBase !== hit.el) { A.pickBase = hit.el; A.pickN = 0; }
+  let el = hit.el;
+  for (let i = 0; i < A.pickN && el.parentElement && el.parentElement !== hit.doc.body; i++) el = el.parentElement;
+  return { el, doc: hit.doc };
+}
+/* the screen rect of an element (mapped out of the stand-in) */
+function elRect(el, doc) {
+  const q = el.getBoundingClientRect(), st = UI.live && UI.live.stand;
+  if (doc === document || !st) return q;
+  const hb = st.host.getBoundingClientRect(), l = hb.left + st.ox + q.left * st.k, t = hb.top + st.oy + q.top * st.k;
+  return { left: l, top: t, width: q.width * st.k, height: q.height * st.k };
+}
+function pickLabel(el) {
+  const t = String(pieceWordsNow(el)[0] || '').replace(/\s+/g, ' ').trim();
+  if (t && t.length <= 28) return t;
+  if (t) return t.slice(0, 26) + '…';
+  const c = Array.from(el.classList).find(x => x.indexOf('uim-') !== 0);
+  return c ? c.replace(/[-_]+/g, ' ') : el.tagName.toLowerCase();
+}
+const PICK_STATE = /^(on|sel|selected|active|armed|live|hover|focus|focused|open|disabled|dead|muted|current|uim-.*|is-.*)$/;
+/* a selector for el: up to 5 named steps from it to the nearest id; nth = pin each step to its place among
+   look-alike brothers (the one part), else every part like it */
+function pickSteps(el, doc, nth) {
+  const out = []; let n = el, depth = 0;
+  while (n && n.nodeType === 1 && n !== doc.body && n !== doc.documentElement && depth < 5) {
+    if (n.id && /^[A-Za-z][\w-]*$/.test(n.id)) { out.unshift('#' + n.id); break; }
+    const cls = Array.from(n.classList).filter(c => !PICK_STATE.test(c) && /^[A-Za-z_][\w-]*$/.test(c));
+    if (n === el || cls.length) {
+      let st = cls.length ? cls.map(c => '.' + c).join('') : n.tagName.toLowerCase();
+      if (nth && n.parentElement) {
+        const sib = Array.from(n.parentElement.children);
+        if (sib.filter(c => c.tagName === n.tagName && cls.every(x => c.classList.contains(x))).length > 1) st += `:nth-child(${sib.indexOf(n) + 1})`;
+      }
+      out.unshift(st); depth++;
+    }
+    n = n.parentElement;
+  }
+  return out.join(' ');
+}
+function pickSels(el, doc) {
+  let sel = pickSteps(el, doc, true), all = pickSteps(el, doc, false);
+  try { if (!Array.from(doc.querySelectorAll(sel)).includes(el)) sel = all; } catch (e) { sel = all; }
+  try { doc.querySelectorAll(all); } catch (e) { all = sel; }
+  return { sel, selAll: all };
+}
+function pickMove(e) {
+  const A = UI.live; if (!A || !UI.picking) return;
+  const hi = A.ov.querySelector('.uim-arr-hi'); if (!hi) return;
+  const t = pickTarget(e);
+  if (!t) { hi.style.display = 'none'; return; }
+  const r = elRect(t.el, t.doc);
+  placeBox(hi, r.left, r.top, r.width, r.height); hi.style.zIndex = ''; hi.style.display = 'block';
+  setText(hi.firstChild, pickLabel(t.el));
+}
+function pickWheel(e) {
+  const A = UI.live; if (!A || !UI.picking) return;
+  e.preventDefault();
+  A.pickN = Math.max(0, (A.pickN || 0) + (e.deltaY < 0 ? 1 : -1));
+  pickMove(e);
+}
+function pickDown(e) {
+  const A = UI.live; if (!A || !UI.picking || e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const t = pickTarget(e); if (!t) return;
+  let surf = A.stand && t.doc !== document ? A.stand.S.id : '';
+  if (!surf) { const S = UIM_SURFACES.find(x => { try { return !!t.el.closest(x.scope); } catch (er) { return false; } }); surf = S ? S.id : ghostGroup(); }
+  const ss = pickSels(t.el, t.doc);
+  snapLayout(true);
+  const id = 'pk' + Date.now().toString(36) + Math.floor(Math.random() * 36 * 36).toString(36);
+  db.picks = db.picks || [];
+  db.picks.push({ id, surf, label: pickLabel(t.el), sel: ss.sel, selAll: ss.selAll, all: false });
+  if (surf !== ghostGroup()) UI.ghost = surf;
+  UI.piece = id;
+  pickMode(false);
+  A.listGroup = ghostGroup(); touchLayout(); dockBody();
+  toast('Picked: drag it, size it from its corner, or give it its own look and words below.');
+}
+/* ⬑ the part around a picked one */
+function pickUp(P) {
+  const A = UI.live, K = (db.picks || []).find(k => k.id === P.id); if (!K) return;
+  const doc = A.stand && A.stand.S.id === K.surf && A.stand.fr.contentDocument ? A.stand.fr.contentDocument : document;
+  let el = null; try { el = doc.querySelector(K.sel); } catch (e) {}
+  const up = el && el.parentElement;
+  if (!up || up === doc.body || up === doc.documentElement) { toast('This part has nothing around it to pick.'); return; }
+  snapLayout(true);
+  const ss = pickSels(up, doc);
+  K.sel = ss.sel; K.selAll = ss.selAll; K.label = pickLabel(up);
+  touchLayout(); apply(); dockBody();
+}
+/* OBS-style snapping: the edges and middles of every other piece on this screen, and of the screen (or stand-in) */
+function snapLines(P) {
+  const A = UI.live, gg = groupOf(P), xs = [], ys = [];
+  const add = r => { xs.push(r.left, (r.left + r.right) / 2, r.right); ys.push(r.top, (r.top + r.bottom) / 2, r.bottom); };
+  const st = A.stand;
+  if (st && st.k) { const hb = st.host.getBoundingClientRect(), l = hb.left + st.ox, t = hb.top + st.oy; add({ left: l, top: t, right: l + STAGE_W * st.k, bottom: t + STAGE_H * st.k }); }
+  else add({ left: 0, top: 0, right: innerWidth, bottom: innerHeight });
+  const pv = pieceVis(P), pe = pv && pv.el;
+  Object.keys(A.real || {}).forEach(id => {
+    if (id === P.id) return;
+    const Q = pieceById(id); if (!Q || groupOf(Q) !== gg || !A.liveSet[id]) return;
+    const qv = pe ? pieceVis(Q) : null; if (qv && pe.contains(qv.el)) return;   // its own parts ride along with it
+    add(A.real[id]);
+  });
+  return { x: xs, y: ys };
+}
+/* the nearest line within 7px to any of the mover's edges / middle: how far to shift, and where to draw the guide */
+function snapAxis(lines, mine) {
+  let best = null;
+  mine.forEach(m => lines.forEach(l => { const dd = l - m; if (Math.abs(dd) <= 7 && (!best || Math.abs(dd) < Math.abs(best.d))) best = { d: dd, at: l }; }));
+  return best;
+}
+function guides(x, y) {
+  const A = UI.live; if (!A) return;
+  ['v', 'h'].forEach(t => {
+    let g = A.ov.querySelector('.uim-guide.' + t);
+    const at = t === 'v' ? x : y;
+    if (at == null) { if (g) g.style.display = 'none'; return; }
+    if (!g) { g = document.createElement('div'); g.className = 'uim-guide ' + t; A.ov.appendChild(g); }
+    g.style.display = ''; if (t === 'v') g.style.left = Math.round(at) + 'px'; else g.style.top = Math.round(at) + 'px';
+  });
+}
+/* the corner handle: drag to give the piece its own width + height (in the screen's pixels, before its scale) */
+function sizeDrag(e, P, before, k) {
+  const A = UI.live, v = pieceVis(P); if (!v) return;
+  const L0 = db.layout[P.id] || {}, s = L0.s == null ? 1 : +L0.s;
+  const d = { x0: e.clientX, y0: e.clientY, w0: v.el.offsetWidth || v.r.width / k, h0: v.el.offsetHeight || v.r.height / k, f: k * s };
+  A.drag = d; A.dock.classList.add('busy');
+  const mv = ev => {
+    if (!UI.live || UI.live.drag !== d) return;
+    const g = UI.snap && !ev.altKey ? 2 : 1;
+    const L = db.layout[P.id] || (db.layout[P.id] = {});
+    L.w = Math.max(8, Math.round((d.w0 + (ev.clientX - d.x0) / d.f) / g) * g);
+    L.h = Math.max(8, Math.round((d.h0 + (ev.clientY - d.y0) / d.f) / g) * g);
+    applyLayout();
   };
   const up = () => {
     window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
@@ -14988,6 +15588,20 @@ function dockClick(e) {
     snapLayout(true); db.ux = db.ux || {}; db.ux[xs.dataset.xset] = xs.dataset.val;
     uxTidy(); touchLayout(); dockDetail(); return;
   }
+  const ls = e.target.closest('button[data-lset]');
+  if (ls) {
+    try { ls.blur(); } catch (er) {}
+    const [id, k] = ls.dataset.lset.split('.'), v = ls.dataset.val;
+    snapLayout(true);
+    const L = db.layout[id] || (db.layout[id] = {});
+    L[k] = v;
+    if (k === 'z') {   // a layer needs a positioned box: a static one goes relative (never an absolute / fixed one)
+      const pv = pieceVis(pieceById(id) || {});
+      L.zrel = !!(v !== '' && pv && pv.cs && pv.cs.position === 'static');
+      if (!L.zrel) delete L.zrel;
+    }
+    tidyLayout(id); touchLayout(); dockDetail(); return;
+  }
   const bs = e.target.closest('button[data-bset]');
   if (bs) {
     try { bs.blur(); } catch (er) {}
@@ -15002,15 +15616,39 @@ function dockClick(e) {
   if (b) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
-    const k = b.dataset.dk, v = b.dataset.val, P = UIM_PIECES.find(x => x.id === UI.piece);
+    const k = b.dataset.dk, v = b.dataset.val, P = pieceById(UI.piece);
     if (k === 'layout' || k === 'menus' || k === 'bars') liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
     else if (k === 'fold') foldDock();
     else if (k === 'full') liveOff();
     else if (k === 'done') window.closeUiMaker();
-    else if (k === 'ghost') { UI.ghost = v; A.dock.querySelectorAll('[data-dk="ghost"]').forEach(x => x.classList.toggle('on', x.dataset.val === v)); }
-    else if (k === 'layreset') { if (confirm('Put every HUD piece back where it was, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; db.icons = {}; touchLayout(); dockBody(); } }
+    else if (k === 'layreset') { if (confirm('Put every piece of every screen back where it was and how it looked, the game\'s own words back, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; db.icons = {}; db.words = {}; db.picks = []; UI.piece = ''; touchLayout(); apply(); dockBody(); } }
+    else if (k === 'scrreset') {
+      const gg = ghostGroup(), S = UIM_SURFACES.find(x => x.id === gg);
+      if (confirm(`Put every piece of ${S ? S.label : 'this screen'} back where it was and how it looked, and its words back? Picked parts go too.`)) {
+        snapLayout(true);
+        allPieces().forEach(Q => { if (groupOf(Q) === gg) { delete db.layout[Q.id]; if (db.words) delete db.words[Q.id]; } });
+        db.picks = (db.picks || []).filter(q => q.surf !== gg);
+        if (!pieceById(UI.piece)) UI.piece = '';
+        touchLayout(); apply(); dockBody();
+      }
+    }
+    else if (k === 'pick') pickMode(!UI.picking);
+    else if (k === 'pickup' && P && P.pick) pickUp(P);
+    else if (k === 'pickdel' && P && P.pick) {
+      snapLayout(true);
+      db.picks = (db.picks || []).filter(q => q.id !== P.id); delete db.layout[P.id]; if (db.words) delete db.words[P.id];
+      UI.piece = ''; touchLayout(); apply(); dockBody();
+    }
+    else if (k === 'whide' && P) {
+      const o = ((UI.wlist || {})[P.id] || [])[+v]; if (o == null) return;
+      snapLayout(true); db.words = db.words || {}; const W = db.words[P.id] || (db.words[P.id] = {});
+      if (W[o] === '') delete W[o]; else W[o] = '';
+      if (!Object.keys(W).length) delete db.words[P.id];
+      touchLayout(); dockDetail();
+    }
+    else if (k === 'wreset' && P) { snapLayout(true); if (db.words) delete db.words[P.id]; touchLayout(); dockDetail(); }
     else if (k === 'piecereset' && P) resetPiece(P);
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
     else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === v) delete db.ux[x]; }); touchLayout(); dockDetail(); }
@@ -15058,15 +15696,54 @@ function dockInput(e) {
   const el = e.target, A = UI.live; if (!A) return;
   const dk = el.dataset.dk;
   if (dk === 'snap') { UI.snap = el.checked; return; }
+  if (dk === 'snapto') { UI.snapTo = el.checked; return; }
+  if (dk === 'screen') {
+    if (e.type !== 'change') return;
+    UI.ghost = el.value; A.autoG = null; A.autoF = 0;
+    const gg = ghostGroup(); if (UI.piece && (!pieceById(UI.piece) || groupOf(pieceById(UI.piece)) !== gg)) UI.piece = '';
+    A.listGroup = gg; dockBody(); return;
+  }
   if (dk === 'guides') { UI.guides = el.checked; A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = el.checked ? '' : 'none'; }); return; }
   if (el.dataset.lpath) {
     if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
-    snapLayout();
     const [id, k] = el.dataset.lpath.split('.');
+    const L0 = db.layout[id] || {};
+    let v;
+    if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
+      const hx = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase();
+      v = L0[k] && alphaOf(L0[k]) < 1 ? withAlpha(hx, alphaOf(L0[k])) : hx;
+    }
+    else if (el.dataset.kind === 'alpha') v = withAlpha(L0[k] || '#000000', +el.value);
+    else v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
+    snapLayout();
     const L = db.layout[id] || (db.layout[id] = {});
-    L[k] = el.dataset.bool ? el.checked : +el.value;
-    syncTwins(el, 'data-lpath', L[k]);
-    tidyLayout(id); touchLayout(); return;
+    L[k] = v;
+    if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex' || el.dataset.kind === 'alpha') A.dock.querySelectorAll(`[data-lpath="${id}.${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
+    else syncTwins(el, 'data-lpath', v);
+    if (k === 'skin' && !v) delete L.skinT;
+    tidyLayout(id); touchLayout();
+    if (k === 'skin' || k === 'skinT') apply();
+    if (el.dataset.optc != null || (el.dataset.re && e.type === 'change')) dockDetail();
+    return;
+  }
+  if (el.dataset.wid) {
+    const id = el.dataset.wid, o = ((UI.wlist || {})[id] || [])[+el.dataset.wi]; if (o == null) return;
+    snapLayout();
+    db.words = db.words || {}; const W = db.words[id] || (db.words[id] = {});
+    if (el.value.trim() === '') delete W[o]; else W[o] = el.value;
+    if (!Object.keys(W).length) delete db.words[id];
+    touchLayout(); return;
+  }
+  if (el.dataset.pick) {
+    const K = (db.picks || []).find(k => k.id === UI.piece); if (!K) return;
+    snapLayout();
+    if (el.dataset.pick === 'all') K.all = !!el.checked; else K.label = el.value.slice(0, 40);
+    touchLayout();
+    if (el.dataset.pick === 'all') { apply(); dockDetail(); }
+    else { const row = A.dock.querySelector(`.uim-dk-row[data-piece="${K.id}"] span`); if (row) setText(row, K.label || 'Picked part'); }
+    return;
   }
   if (el.dataset.xpath) {
     if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
@@ -15159,16 +15836,17 @@ function liveKey(e) {
   if ((z || y) && !(inField && /^(text|number)$/.test(e.target.type || ''))) { if (y || e.shiftKey) travel(HIST.redo, HIST.undo); else travel(HIST.undo, HIST.redo); return true; }
   if (inField) { if (e.key === 'Escape') { e.target.blur(); return true; } return false; }
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.key === 'Escape' && UI.picking) { pickMode(false); return true; }
   if (e.key === 'Escape' || e.key === 'Enter') { liveOff(); return true; }
   if (e.code === 'Space' || e.key === ' ') { if (!e.repeat) peek(true); return true; }
   if (e.key === 'f' || e.key === 'F') { foldDock(); return true; }
   if (e.key === 'Tab') {
-    const ids = A.mode === 'layout' ? UIM_PIECES.filter(P => A.rects[P.id]).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
+    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
     if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
     return true;
   }
   if (A.mode !== 'layout') return false;
-  const P = UIM_PIECES.find(x => x.id === UI.piece); if (!P) return false;
+  const P = pieceById(UI.piece); if (!P) return false;
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (d && P.id === 'hero' && A.partKeys && UI.hpart) {
     const n = heroOf().nudge[UI.hpart] || { x: 0, y: 0 }, st = e.shiftKey ? 8 : 1;
@@ -15226,6 +15904,16 @@ window.closeUiMaker = function () {
   save(); UI.el.remove(); UI.el = null; _previewTheme = null; UI.draft = null; apply();
   try { if (typeof window._uimOnClose === 'function') window._uimOnClose(); } catch (e) {}
 };
+
+/* F4 on any screen: the Layout view on that screen (Auto picks the one up) */
+window.addEventListener('keydown', e => {
+  if (e.key !== 'F4' || e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
+  e.preventDefault(); e.stopPropagation();
+  if (UI.live && UI.live.mode === 'layout') { if (UI.f4) window.closeUiMaker(); else liveOff(); return; }
+  if (!UI.el) UI.f4 = true; else if (!UI.live) UI.f4 = false;   // F4 again goes back where it came from
+  if (!UI.live) UI.ghost = 'auto';
+  liveOn('layout');
+}, true);
 
 /* ── public ── */
 window.UIMaker = {
