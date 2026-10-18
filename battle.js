@@ -61145,12 +61145,13 @@
                 wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
         }
 
-        /* The "can't see it" line for an aimed action (2026-10-18): a Jammed unit (noSharedVision) whose team DOES see
-           the tile is told it is on its own eyes — "no one on your team can see that tile" was false there. */
+        /* The "can't see it" line for an aimed action (2026-10-18): a Blind / Jammed unit (noSharedVision) is on its own
+           eyes — "no one on your team can see that tile" was false when its allies did see it. */
         function outOfSightMessage(unit, x, y) {
-            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)
-                && typeof teamSeesTile === 'function' && teamSeesTile(unit.player, x, y)) {
-                return `Out of sight — ${unitDisplayName(unit)} is cut off from the team's sight and can't see that tile itself.`;
+            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)) {
+                const k = Object.keys(unit.status || {}).find(s => (unit.status[s] | 0) > 0 && STATUS_DEFS[s]?.noSharedVision);
+                const why = (k && STATUS_DEFS[k].colorText) || 'cut off from its team';
+                return `Out of sight — ${unitDisplayName(unit)} is ${why} and can't see that tile itself.`;
             }
             return 'Out of sight — no one on your team can see that tile.';
         }
