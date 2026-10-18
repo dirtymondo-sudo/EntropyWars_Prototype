@@ -1490,3 +1490,34 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
 - hud.js: the aim view for a self-cast has no target list (`_aimSelf`), mode label "<SPELL> — SELF CAST · CONFIRM TO CAST", the big green CONFIRM reads "CONFIRM — SELF".
 - Quick menus (enemy / ally): `_hrlgSelfCastRow` wraps self-cast rows. The first click arms the row (✓, footprint), the inline green CONFIRM or a second click casts. The arm key (`_hrlgSelfArmKey`, module-level, never on `state`) holds menu + caster + row + tile + AP and is dropped once no quick menu is up. Tile-menu spell rows keep setTool's caster pick for self-casts.
 - Online: the guest arms locally (setTool still relays), the confirm runs the same `doSpell` relay as every other confirmed spell.
+
+### THE PRESS MARKS + UI Maker pass 22: the green ! over the enemies a hovered spell presses (2026-10-18, mondo: "hovering over a spell from the abilities menu needs to show the green exclamation point super effective icon on the enemy units that spell is super effective against. this way i can see what is super effective without clicking on an enemy first. also make the icon more clear like give it an outline or add it somewhere in the ui maker so i can make it look better")
+- Hover a spell row in the abilities menu (hud.js `_hrlgSpellBlades` hoverIn) → battle.js `previewSpellPressMarks(name)`: every enemy the
+  viewer can see (`_shouldCameraFollowUnit`, the screen-true fog gate; Blind/Jammed solo sight comes with it) for which
+  `forecastPressOn(caster, enemy, spell)` presses (aimed at that body, in reach or not) gets a mark. Same rule as PR #295:
+  only a hit the refund really pays for. Shows even when the row is greyed (no AP / no target in reach). Cleared on hoverOut
+  and by `clearSpellRangePreview` (every cast / mode change). Viewer-local, nothing relayed (the guest's own hover reads its
+  own state copy).
+- three-renderer.js `showPressMarks(ids)` / `clearPressMarks()`: `.ti-press-mark` DOM marks in the intent badge overlay,
+  re-projected every frame (`_updatePressMarks` in the loop) at the unit's `_ew_spriteTopY`, so camera moves keep them on the
+  head; dropped when the phase leaves battle or an action executes.
+- ONE LOOK for every green ! (the intent badges' `_SE_CIRCLE_HTML`, the menu rows' `.hrlg-supereff`, the marks): ui.js
+  `_seBangHtml(px, big)` (window._ewSeBangHtml) builds it from CSS variables `--ew-se-fill/-mark/-line/-lw/-glow/-rad/-menu/
+  -big/-lift/-anim`; the var() fallbacks are the defaults (green, dark !, 2px WHITE OUTLINE new, glow, mark 26px, 36px above
+  the head so it clears the name plate, bobs).
+- UI Maker: Arrows + tiles ⧉ > "Super effective !" (top of the panel, with a specimen of the mark, the badge and a menu row):
+  db.ux e* (eHover, eBig, eLift, eBob, eFill, eMark, eLine, eLineW, eGlow, eShape, eMenu) → hud.js `seSignal()` sets the
+  variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
+  fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.
+
+### THE GAME DEFAULT THEME: mondo's Entropy Wars Theme (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game", with his export Entropy_Wars_Theme.ewtheme.json)
+- **The preset**: hud.js `UIM_PRESETS` opens with `p_entropy` "Entropy Wars Theme", his exported theme as a literal with every value as exported (only the id is the preset's own; `slices` was empty, so no images). Read-only like every preset: editing it makes a copy.
+- **The default**: `HUD_THEME_DEFAULT = 'p_entropy'` (getHudTheme / setHudTheme fallback, UI Maker `globalId()`, the fallback after deleting the theme the game wears). `HUD_THEME_BASE = 'crystal'` keeps Classic Blue as the token base with no data-hud-theme. Only a profile that never picked a theme (no `ew_hud_theme`) gets it; a picked theme stays.
+- Checked in a real browser on a fresh profile (no ew_ui_maker / ew_hud_theme): the battle HUD opened in it, the UI Maker showed it as PRESET + IN THE GAME, and the generated `<style id="ew-ui-maker">` was byte-identical to the one his own export makes when loaded as a custom theme.
+
+## THE RETRO PARTS (2026-10-18)
+mondo: "what is the point of the retro filter toggle that says dither + grade if there is already a dither slider ... what if i want pixelate but no dither?"
+- The old "Retro Filter" toggle switched the whole retro pass (pixelate + grade + dither + quantize + grain) and collapsed the Retro / Haunted section, so pixelate needed it and brought the rest along.
+- Now the toggle is **Color Grade** (mood tint, levels, saturation, Color Depth quantize). three-post.js `_retroLive()` runs the pass while ANY part is on: grade, Pixelate > 1, Dither > 0, Grain > 0. Uniform `uGradeOn` gates `grade()` in all three shaders (GLSL `_RetroShader`, the pmndrs frame built from it, the TSL `_ngFrame`). The dither + quantize block runs only when the grade is on or Dither > 0, so Dither 0 = no weave at all.
+- Pixelate with no dither = Color Grade off, Pixelate 2x+, Dither 0. The section stays open (toggle no longer re-renders), summary lists the live parts.
+- Ownership: `ew_retro_owned` (localStorage) marks every retro setting the player SET in the menu; a scene look (map / room `look.retro`) only fills settings the player never set. Before this, every look's `pixelSize: 1` beat a Pixelate slider left on its 2x factory value.

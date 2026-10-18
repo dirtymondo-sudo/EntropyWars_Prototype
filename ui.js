@@ -7865,6 +7865,10 @@
             // sprites already and look wrong double-pixelated.
             const pixModelsOnly = (retroState.pixelScope || 'models') !== 'screen';
             const tintPct = Math.round(retroState.tintAmount*100);
+            // THE RETRO PARTS (2026-10-18): the Color Grade toggle is the mood grade only; Pixelate / Dither / Grain answer
+            // their own sliders, so the section stays open and live with the toggle off.
+            const retroParts = [retroOn ? 'grade' : '', retroState.pixelSize > 1 ? 'pixel ' + Math.round(retroState.pixelSize) + 'x' : '', retroState.ditherStrength > 0.001 ? 'dither' : '', retroState.grain > 0.0001 ? 'grain' : ''].filter(Boolean);
+            const retroAnyOn = retroParts.length > 0;
             const retroPresetBtns = retroPresets.map(p=>`<button class="pm-seg-btn${retroPreset===p.key?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPreset)ThreePost.setRetroPreset('${p.key}');${RJ}">${p.label}</button>`).join('');
 
             const ps = state.particleSettings || {};
@@ -8048,12 +8052,12 @@
                 <div class="pm-set-group pm-collapsible">
                     <button class="pm-collapse-header" onclick="var b=this.nextElementSibling;var c=this.querySelector('.pm-collapse-chev');if(b.style.display==='none'){b.style.display='block';c.style.transform='rotate(180deg)';}else{b.style.display='none';c.style.transform='rotate(0)';}">
                         <span class="pm-set-group-title" style="margin-bottom:0">Retro / Haunted</span>
-                        <span class="pm-collapse-summary">${retroOn ? 'on' : 'off'}</span>
-                        <span class="pm-collapse-chev"${retroOn?' style="transform:rotate(180deg)"':''}>▾</span>
+                        <span class="pm-collapse-summary">${retroAnyOn ? retroParts.join(' + ') : 'off'}</span>
+                        <span class="pm-collapse-chev"${retroAnyOn?' style="transform:rotate(180deg)"':''}>▾</span>
                     </button>
-                    <div class="pm-collapse-body" style="display:${retroOn?'block':'none'}">
+                    <div class="pm-collapse-body" style="display:${retroAnyOn?'block':'none'}">
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);${RJ}"><span class="pm-toggle-label">Retro Filter</span><span class="pm-toggle-hint">dither + grade</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);"><span class="pm-toggle-label">Color Grade</span><span class="pm-toggle-hint">mood tint + color depth only</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Mood</span>
@@ -15369,10 +15373,30 @@
 
         // Green !-circle marking a super-effective hit (inline-styled so it
         // renders identically through the 3D intent badges and the DOM path).
-        const _SE_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
-            + 'width:14px;height:14px;border-radius:50%;background:#2ecc71;color:#06130a;'
-            + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
-            + 'box-shadow:0 0 6px rgba(46,204,113,0.8)">!</span>';
+        /* THE GREEN ! LOOK (2026-10-18, mondo: "make the icon more clear like give it an outline or add it somewhere in
+           the ui maker so i can make it look better"): every green ! (these badges, the menu rows' hrlg-supereff chip,
+           the marks over the enemies while a spell is hovered) reads the same CSS variables, which the UI Maker sets on
+           the page (hud.js seSignal, Arrows + tiles > Super effective !): --ew-se-fill / -mark / -line (outline colour)
+           / -lw (outline px) / -glow / -rad (shape) / -menu (size of the small ones) / -big (size over a unit) / -lift /
+           -anim. The var() fallbacks ARE the game's own look: green, a dark !, a white outline. big = the mark over a
+           unit (it bobs); px = the small one's size before -menu scales it. */
+        function _seBangHtml(px, big) {
+            const sz = big ? 'var(--ew-se-big, 26px)' : `calc(${px || 14}px * var(--ew-se-menu, 1))`;
+            const lw = big ? 'var(--ew-se-lw, 2px)' : 'calc(var(--ew-se-lw, 2px) * 0.6)';
+            if (!document.getElementById('ew-se-keys')) {
+                const st = document.createElement('style'); st.id = 'ew-se-keys';
+                st.textContent = '@keyframes ewSeBob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.08); } }';
+                document.head.appendChild(st);
+            }
+            return '<span class="ew-se-bang" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;'
+                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:var(--ew-se-fill, #2ecc71);color:var(--ew-se-mark, #06130a);`
+                + `border:${lw} solid var(--ew-se-line, #ffffff);font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
+                + 'vertical-align:middle;flex:none;text-shadow:none;'
+                + (big ? 'animation:var(--ew-se-anim, ewSeBob) 1.2s ease-in-out infinite;' : 'margin-right:4px;')
+                + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
+        }
+        window._ewSeBangHtml = _seBangHtml;
+        const _SE_CIRCLE_HTML = _seBangHtml(14);
         // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
         const _IMM_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
             + 'width:14px;height:14px;border-radius:50%;background:#e8333f;color:#fff;'
