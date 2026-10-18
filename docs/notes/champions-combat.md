@@ -1689,7 +1689,7 @@ export instructions + summary carry it. The climb design (not built) is /mnt/pro
   it; ai.js estDamage mirrors). Was one element per trine (fire / lightning / frost via the combo vocab). Earth signs
   keep their earthworks on top. Banner text = getZodiacResonanceDesc.
 
-## THE SOFT ZONE + THE CUBE IN ITS ZONE (2026-10-18, token 20261018-nexuszone-02-cors)
+## THE SOFT ZONE + THE CUBE IN ITS ZONE (2026-10-18, token 20261018-nexuszone-03-cors)
 mondo: "i dont like how the nexus zones are drawn on the ground, they have these ugly hitchmarks, and they have these flat
 rectangular light panels ... they need to atleast fade at the edge or something. also in 5v5 the idea was for the cube to be
 inside the nexus zone but it is drawn around it".

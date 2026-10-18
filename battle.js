@@ -20473,7 +20473,9 @@
             if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
                 const viewer = getViewerPlayer();
                 const targetUnit = state.units.find(u => !u.dead && u.x === toX && u.y === toY && u.player === viewer);
-                if (!targetUnit) return;
+                // the viewer's own Cube being shot shows too (THE CUBE SWING, 2026-10-18)
+                const _ownCube = !targetUnit && typeof towerAt === 'function' && towerAt(Math.round(toX), Math.round(toY));
+                if (!targetUnit && !(_ownCube && _ownCube.owner === viewer)) return;
 
                 /* Only clamp when the SHOOTER is actually hidden from the
                    viewer (fogged tile or concealment). The old unconditional
@@ -61332,8 +61334,18 @@
             if (tw && !target && tw.owner !== unit.player) {
                 pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
-                if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
-                else animateStrikeLeap(unit, x, y);
+                /* THE CUBE SWING (mondo 2026-10-18: "mech's basic attack should be a bullet, not the fist sprite"): the
+                   Cube was the last basic attack that still threw proj_human.png — every attacker, gun or sword, flew
+                   the fist at it. It now plays the unit's own BASIC ATTACK DELIVERY like a swing at a unit: a shooter
+                   draws its attack clip and fires its bullet / orb / arrow / prop at the Cube, everyone else leaps in
+                   and its library clip lands the blow on the impact beat. With the camera off it all happens at once. */
+                const _cubeDelivery = basicAttackDelivery(unit);
+                const _cubeShot = _cubeDelivery.mode === 'shot';
+                const _cubeTarget = { id: null, x, y, z: (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0 };   // the Cube stands on its tile's surface
+                if (state.cameraDisabled) {
+                    if (_cubeShot) { triggerAttackAnim(unit, x, y); playBasicAttackShot(unit, _cubeTarget, _cubeDelivery, actionMs(300)); }
+                    else _meleeStrikeAnim(unit, x, y, {});
+                }
                 const _cubeHit = getCubeAttackDamage(unit, tw, randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                 const damage = _cubeHit.damage, _nxSiege = _cubeHit.siege;
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('cube', { uid: unit.id, player: unit.player, damage });
@@ -61384,18 +61396,39 @@
                 markDirty('board', 'selectedUnit', 'hud');
                 renderIfDirty();
 
+                if (_cubeShot) {
+                    // the draw starts its strike-frame lead early so the shot frame IS the launch
+                    const _cubeLead = _attackStrikeLeadMs(unit, x, y);
+                    window.setTimeout(() => {
+                        if (state.winner) return;
+                        triggerAttackAnim(unit, x, y);
+                    }, Math.max(0, sourceHoldMs - _cubeLead));
+                } else {
+                    // the leap arrives, then the clip's strike lead lands the blow on the impact beat
+                    const _cubeClip = _unitAttacksWithClip(unit);
+                    const _cubeMeleeLead = _cubeClip ? _attackStrikeLeadMs(unit, x, y) : 0;
+                    const _cubeTiles = Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y));
+                    const _cubeLeapMs = 260 + 110 * Math.max(0, _cubeTiles - 1);
+                    window.setTimeout(() => {
+                        if (state.winner) return;
+                        _meleeStrikeAnim(unit, x, y, { clip: _cubeClip, strikeLeadMs: _cubeMeleeLead, leapMs: _cubeLeapMs });
+                    }, Math.max(0, impactDelay - _cubeMeleeLead - actionMs(_cubeLeapMs)));
+                }
                 window.setTimeout(() => {
                     if (state.winner) return;
                     playSfx('basicAttack');
                     if (_twFogAI && !_twAttackerVisible) {
+                        // a hidden attacker: the shot (if it is one) flies in from 1.5 tiles off the Cube, never from
+                        // the attacker's real tile — the stand-in carries no id, so nothing is relayed for it
                         const dx = unit.x - x, dy = unit.y - y;
                         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
                         const clampDist = 1.5;
                         const fakeFromX = x + (dx / dist) * clampDist;
                         const fakeFromY = y + (dy / dist) * clampDist;
-                        playProjectile(fakeFromX, fakeFromY, x, y, 'attack', travelMs);
+                        if (_cubeShot) playBasicAttackShot({ id: null, race: unit.race, gender: unit.gender, player: unit.player,
+                            x: fakeFromX, y: fakeFromY, z: unit.z }, _cubeTarget, _cubeDelivery, travelMs);
                     } else {
-                        playProjectile(unit.x, unit.y, x, y, 'attack', travelMs);
+                        if (_cubeShot) playBasicAttackShot(unit, _cubeTarget, _cubeDelivery, travelMs);
                         if (!_twHold) camera.moveTo({ x: x, y: y,
                             duration: travelMs, easing: 'easeInOut', _fogAllowed: true });
                     }
