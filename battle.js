@@ -64337,13 +64337,10 @@
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = null;
-                if (!unitFinished(unit) && !unit.dead) {
-                    state.actionMode = null;
-                    state.actionMenuView = 'items';
-                } else {
-                    state.actionMode = null;
-                    state.actionMenuView = 'root';
-                }
+                // Every item use lands back on the root verbs (mondo 2026-10-18: "after i use an item it should take me
+                // back to the beginning of the action menu, not stay in the items menu").
+                state.actionMode = null;
+                state.actionMenuView = 'root';
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 renderBattleUpdate();
@@ -64401,8 +64398,7 @@
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = null;
                 state.actionMode = null;
-                state.actionMenuView = (!unitFinished(unit) && !unit.dead
-                    && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
+                state.actionMenuView = 'root';   // back to the root verbs after every item (mondo 2026-10-18)
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
@@ -64530,15 +64526,9 @@
                     state._actionExecuting = false;
                     state._tileActionTarget = null;
                     state._enemyActionTargetId = null;
-                    // Return to the Items submenu ONLY when the throw was armed
-                    // FROM it (a quick-cast throw off the enemy menu never was)
-                    // and something in it is still usable — otherwise land on
-                    // the root verbs, matching doAttack/doSpell. Unconditionally
-                    // forcing 'items' here is what dumped players into a fully-
-                    // greyed item list after quick-casting a bane.
+                    // Back to the root verbs after every throw, matching doAttack/doSpell (mondo 2026-10-18).
                     state.actionMode = null;
-                    state.actionMenuView = (!unitFinished(unit) && !unit.dead
-                        && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
+                    state.actionMenuView = 'root';
                     state.selectedTool = null;
                     state.pendingTarget = null;
                     // Same guard as doSpell/doAttack: if the throw finished the
@@ -64568,12 +64558,9 @@
             state._actionExecuting = false;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
-            // Same rule as the bane branch above: only fall back INTO the
-            // Items submenu when the item was used from it and another item
-            // is still usable — never force a dead/unrelated menu open.
+            // Same rule as the bane branch above: back to the root verbs after every item (mondo 2026-10-18).
             state.actionMode = null;
-            state.actionMenuView = (!unitFinished(unit) && !unit.dead
-                && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
+            state.actionMenuView = 'root';
             state.selectedTool = null;
             state.pendingTarget = null;
             endUnitIfDone(unit);

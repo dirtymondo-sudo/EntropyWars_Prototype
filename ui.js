@@ -5684,11 +5684,8 @@
             state.actionMode = null;
             state.selectedTool = null;
             state.pendingTarget = null;
-            // Stay in the Items submenu only if the stim was used FROM it
-            // (clock-slot uses fire from root) and something is still usable.
-            state.actionMenuView = (!unitFinished(unit) && !unit.dead
-                && state.actionMenuView === 'items'
-                && typeof anyUsableItemNow === 'function' && anyUsableItemNow(unit)) ? 'items' : 'root';
+            // Back to the root verbs after every item (mondo 2026-10-18).
+            state.actionMenuView = 'root';
             endUnitIfDone(unit);
             renderAfterCombat();
         }
