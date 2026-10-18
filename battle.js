@@ -11724,6 +11724,28 @@
             }
         }
 
+        /* THE COMBAT LOG: the text box's own beats (round-end heals, Free action!, FLOW STATE …) go into the log too
+           (state.logDialogue = [{ at: log length then, m: html, h? }], synced to the guest with the log). A beat the
+           log already wrote (the DOT hit, CRITICAL HIT, the dodge) is left out. Only the engine's side writes it. */
+        function _clogKeepBeats(messages) {
+            try {
+                if (window._NET && window._NET.online && window._NET.role !== 'host') return;
+                const toks = s => (_ctPlain(String(s)).replace(/<[^>]*>/g, ' ').replace(/&#39;|&amp;|&quot;|&lt;|&gt;/g, ' ').toLowerCase()
+                    .match(/[a-z]{3,}|\d+/g) || []).filter(w => w !== 'the' && w !== 'from');
+                const log = state.logEntries || [];
+                const recent = log.slice(-40).map(e => new Set(toks(_logMsg(e))));
+                state.logDialogue = state.logDialogue || [];
+                for (const html of messages) {
+                    const t = toks(html);
+                    if (t.length < 2) continue;
+                    if (recent.some(r => t.filter(w => r.has(w)).length >= Math.ceil(t.length * 0.7))) continue;
+                    const row = { at: log.length, m: String(html) };
+                    const hp = _clogHealHp(html);
+                    if (hp) row.h = hp;
+                    state.logDialogue.push(row);
+                }
+            } catch (e) { /* the log is cosmetic */ }
+        }
         function showBattleDialogue(messages, duration) {
             if (!messages || messages.length === 0) return;
             if (_skipVisuals()) return;
@@ -11738,6 +11760,7 @@
             if (_skipVisuals()) return;
             const dur = duration || (1200 + messages.length * 600);
             state.battleDialogueQueue = messages;
+            _clogKeepBeats(messages);
 
             _renderDialogueBox(null);
             if (state.battleDialogueTimer) clearTimeout(state.battleDialogueTimer);
@@ -12328,6 +12351,7 @@
                     sourceUnit._matchHealCasts = (sourceUnit._matchHealCasts || 0) + 1;
                 }
             }
+            _clogNoteHp(target);   // THE COMBAT LOG: the heal line written next carries the HP
             flashHeal(target);
             showFloatingTextForUnit(target, `+${actual}`, opts.kind || 'heal', opts);
             // Heal-cinematic corner readout (TOTAL HEALED) — no-ops unless a
@@ -34242,7 +34266,7 @@
                         hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0
                     });
                 }
-                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`);
+                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
                 if (sourceUnit && typeNote) {
                     const dlg = [];
@@ -37958,14 +37982,38 @@
         let _logRenderQueued = false;
         let _logThrottleTimer = null;
 
-        function addLog(msg, vis) {
+        /* THE COMBAT LOG's HP readout (ui.js renderFloatCombatLog): a damage / heal line carries the unit's HP after it
+           (entry.h = [hp, maxHp], numbers only, never a unit). applyDamageToUnit hands it to addLog; applyHealingToUnit
+           notes who was healed to what, and the heal line written right after it (a log line or a text box beat) takes it. */
+        let _clogHealNotes = [];
+        function _clogNoteHp(unit) {
+            if (!unit) return;
+            const now = Date.now();
+            _clogHealNotes = _clogHealNotes.filter(n => now - n.at < 1500 && n.id !== unit.id);
+            _clogHealNotes.push({ id: unit.id, p: unit.player | 0, nm: unitDisplayName(unit) || '', hp: Math.max(0, Math.round(unit.hp)), max: Math.round(unit.maxHp || 0), at: now });
+        }
+        function _clogHealHp(msg) {
+            if (!_clogHealNotes.length) return null;
+            const raw = String(msg), plain = _ctPlain(raw).replace(/<[^>]*>/g, '');
+            if (!CT_HEAL_LINE.test(plain)) return null;
+            const now = Date.now();
+            for (let i = _clogHealNotes.length - 1; i >= 0; i--) {
+                const n = _clogHealNotes[i];
+                if (now - n.at > 1500 || !n.nm) continue;
+                const tagged = String.fromCharCode(0xE000 + (n.p >= 1 && n.p <= 9 ? n.p : 10)) + n.nm + CT_END;
+                if (raw.indexOf(tagged) >= 0 || plain.indexOf(n.nm) >= 0) { _clogHealNotes.splice(i, 1); return [n.hp, n.max]; }
+            }
+            return null;
+        }
+
+        function addLog(msg, vis, hp) {
             if (!msg) return;
             if (/\b(?:has used its action|skips .*?'s action|skips .* action\.)\b/i.test(msg)) return;
             state.logEntries = state.logEntries || [];
-            const entry = (vis === 1 || vis === 2) ? {
-                m: msg,
-                v: vis
-            } : msg;
+            if (!hp) { try { hp = _clogHealHp(msg); } catch (e) { hp = null; } }
+            const entry = (vis === 1 || vis === 2 || hp) ? { m: msg } : msg;
+            if (vis === 1 || vis === 2) entry.v = vis;
+            if (hp) entry.h = hp;
             state.logEntries.push(entry);
 
             if (!state._fullLogEntries) state._fullLogEntries = [];
@@ -46949,6 +46997,7 @@
             state._matchAchievements = [];
             state.logEntries = [];
             state._fullLogEntries = [];
+            state.logDialogue = [];
             _logRenderedCount = 0;
             state.hitFlashIds = new Set();
             state.healFlashIds = new Set();
@@ -47563,6 +47612,7 @@
             hideResultOverlay();
             state.logEntries = [];
             state._fullLogEntries = [];
+            state.logDialogue = [];
             _logRenderedCount = 0;
             _lastFclHtml = '';
             _lastHudSbHtml = '';
