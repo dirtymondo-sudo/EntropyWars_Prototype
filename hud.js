@@ -6053,6 +6053,19 @@ function spellPowerStat(sp) {
   return null;
 }
 
+/* THE SLIDE FORECAST (battle.js predictWalkLanding): the tile a menu's move tile really leaves the unit on — a walk
+   onto ice slides on. _mtLand probes a candidate (null = no slide; jumps never slide), _mtCastTile reads a picked
+   moveTile (its .land when the walk slides). */
+function _mtLand(unit, t) {
+  if (!t || t._jump || t._jumpVerb || typeof predictWalkLanding !== 'function') return null;
+  return predictWalkLanding(unit, t.x, t.y, t.z, { takeoff: !!t._takeoff });
+}
+function _mtCastTile(mt) {
+  if (!mt) return null;
+  const L = (!mt._jump && mt.land) ? mt.land : null;
+  return L ? { x: L.x, y: L.y, z: L.z } : { x: mt.x, y: mt.y, z: mt.z };
+}
+
 function _computeEnemyActions(actingUnit, targetUnit) {
   if (!actingUnit || !targetUnit || targetUnit.dead) return [];
   const actions = [];
@@ -6155,18 +6168,21 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // unless the unit can pay that AND the action afterward.
         if (t._takeoff && (unitAP - (_mirAltAp + 1)) < actionApCost) continue;
 
-        const dFromTile = _dm(t.x, t.y, t.z);
+        // THE SLIDE FORECAST: measure from where a walk onto ice really stops.
+        const land = _mtLand(actingUnit, t);
+        const p = land || t;
+        const dFromTile = _dm(p.x, p.y, p.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
 
           // Pass the LANDING z as sourceZ — omitting it makes the LOS ray
           // infer a z from the (still empty) tile's column, which can differ
           // from where the unit will actually stand. That mismatch is what
           // produced "moves into position, then: Terrain blocks the path".
-          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
-          if (needSight && !_seesTargetFrom(t)) continue;
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(p.x, p.y, tx, ty, p.z)) continue;
+          if (needSight && !_seesTargetFrom(p)) continue;
 
           if (!bestTile || dFromTile > bestDist) {
-            bestTile = { moveCost: t._takeoff ? (_mirAltAp + 1) : 1, x: t.x, y: t.y, z: t.z };
+            bestTile = { moveCost: t._takeoff ? (_mirAltAp + 1) : 1, x: t.x, y: t.y, z: t.z, land: land || undefined };
             bestDist = dFromTile;
           }
         }
@@ -6260,7 +6276,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       /* THE BASIC ATTACK FLOOR (2026-10-06): the move-then-attack row reads the engine's own forecast from the tile
          the unit would swing from (battle.js forecastBasicAttack, castFrom) — the floor, the coefficient and every
          modifier included. The estimate below only answers when the forecast is missing. */
-      const _maFc = (typeof forecastOnUnit === 'function') ? forecastOnUnit(actingUnit, targetUnit, null, atkMoveTile) : null;
+      const _maFc = (typeof forecastOnUnit === 'function') ? forecastOnUnit(actingUnit, targetUnit, null, _mtCastTile(atkMoveTile)) : null;
       const minRoll = -2, maxRoll = 2;
       const _maCoef = (typeof BASIC_ATTACK_COEF !== 'undefined') ? BASIC_ATTACK_COEF : 0.75;
       const _maMinRaw = (typeof BASIC_ATTACK_MIN_RAW !== 'undefined') ? BASIC_ATTACK_MIN_RAW : 30;
@@ -6624,10 +6640,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             for (const t of cand) {
               if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
               if (t.x === tx && t.y === ty) continue;
-              if (!crossArmHits(t.x, t.y)) continue;
+              const land = _mtLand(actingUnit, t), p = land || t;   // THE SLIDE FORECAST
+              if (p.x === tx && p.y === ty) continue;
+              if (!crossArmHits(p.x, p.y)) continue;
               // Farthest hitting tile wins (kite/safety), matching findMoveIntoRange.
-              const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
-              if (d > bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb }; }
+              const d = Math.abs(p.x - tx) + Math.abs(p.y - ty);
+              if (d > bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined }; }
             }
             spMoveTile = best;
           }
@@ -6659,9 +6677,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           for (const t of cand) {
             if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
             if (t.x === tx && t.y === ty) continue;
-            if (!beamRayHits(t.x, t.y, t.z)) continue;
+            const land = _mtLand(actingUnit, t), p = land || t;   // THE SLIDE FORECAST
+            if (p.x === tx && p.y === ty) continue;
+            if (!beamRayHits(p.x, p.y, p.z)) continue;
             const d = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
-            if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb }; }
+            if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined }; }
           }
           spMoveTile = best;
         }
@@ -6698,12 +6718,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         for (const t of cand) {
           if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
           if (t.x === tx && t.y === ty) continue;
-          const aim = findBestAoeAimForTarget(actingUnit, sp, tx, ty, { castFrom: { x: t.x, y: t.y, z: t.z } });
+          const land = _mtLand(actingUnit, t), p = land || t;   // THE SLIDE FORECAST
+          const aim = findBestAoeAimForTarget(actingUnit, sp, tx, ty, { castFrom: { x: p.x, y: p.y, z: p.z } });
           if (!aim) continue;
           const walk = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
           if ((aim.foes || 0) > bestFoes || ((aim.foes || 0) === bestFoes && walk < bestWalk)) {
             bestFoes = aim.foes || 0; bestWalk = walk;
-            best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb };
+            best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined };
           }
         }
         spMoveTile = best;
@@ -6711,7 +6732,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       if (spMoveTile && (unitAP - spMoveTile.moveCost) < spellApCost) spMoveTile = null;
       if (spMoveTile && _tileAoe && _fogSees) {
         aoeAim = spMoveTile._heightApproach ? null
-          : findBestAoeAimForTarget(actingUnit, sp, tx, ty, { castFrom: { x: spMoveTile.x, y: spMoveTile.y, z: spMoveTile.z } });
+          : findBestAoeAimForTarget(actingUnit, sp, tx, ty, { castFrom: _mtCastTile(spMoveTile) });
       }
     }
 
@@ -6732,7 +6753,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         moveTile: canCast ? null : spMoveTile,
         // the off-centre AoE centre + the tile it is cast from (see THE OFF-CENTRE AIM above)
         aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
-        aimFrom: aoeAim ? (canCast ? { x: actingUnit.x, y: actingUnit.y } : { x: spMoveTile.x, y: spMoveTile.y }) : null,
+        aimFrom: aoeAim ? (canCast ? { x: actingUnit.x, y: actingUnit.y } : _mtCastTile(spMoveTile)) : null,
         preview: dmgEstimate ? { type: 'damage', amount: dmgEstimate } : null,
         powerLabel: powerLabel,
         // Matchup note only for damaging casts — a debuff can't be
@@ -6743,7 +6764,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
           ? !!window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
-              castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? { x: spMoveTile.x, y: spMoveTile.y, z: spMoveTile.z } : null,
+              castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
             }).press : false,
         available: true,
         spell: sp,
@@ -6851,7 +6872,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       if (canThrow || bMoveTile) {
         /* THE BANE FORECAST: the engine's own read of the throw, from the tile it is thrown FROM */
         const _bnFc = _bnFcOn ? forecastOnUnit(actingUnit, targetUnit, baneForecastSpell(bKey),
-          (!canThrow && bMoveTile && !bMoveTile._heightApproach) ? { x: bMoveTile.x, y: bMoveTile.y, z: bMoveTile.z } : null) : null;
+          (!canThrow && bMoveTile && !bMoveTile._heightApproach) ? _mtCastTile(bMoveTile) : null) : null;
         if (_bnFc) baneDmg = Math.min(_bnFc.dmg, Math.max(0, targetUnit.hp));
         actions.push({
           id: 'item:' + bKey,
@@ -7123,9 +7144,14 @@ function _showTileMoveTowardsPreview(actingUnit, action) {
     if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, towardsColor);
     else ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, approach.x, approach.y,
       towardsColor, false, actingY, ThreeRenderer.tileTopY(approach.x, approach.y), { flow: true });
+    if (wps.length < 2) wps.push({ x: approach.x, y: approach.y, yOverride: ThreeRenderer.tileTopY(approach.x, approach.y) });
+    /* THE SLIDE FORECAST: a step onto ice slides on — the ice leg, and the ghost where it stops */
+    const land = approach.via ? null : _mtLand(actingUnit, approach);
+    if (land && typeof _drawIceSlideLeg === 'function') wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));
+    const gx = land ? land.x : approach.x, gy = land ? land.y : approach.y;
     // Bright stop tile + dim marker on the clicked goal.
-    const marks = [{ x: approach.x, y: approach.y, opacity: 0.6 }];
-    if (!(goal.x === approach.x && goal.y === approach.y)) {
+    const marks = [...(land && typeof _iceSlideMarks === 'function' ? _iceSlideMarks(land) : []), { x: gx, y: gy, opacity: 0.6 }];
+    if (!(goal.x === gx && goal.y === gy)) {
       marks.push({ x: goal.x, y: goal.y, opacity: 0.25 });
     }
     ThreeRenderer.setOverlay('actionPlanTarget', marks, towardsColor, 0.5);
@@ -7133,10 +7159,35 @@ function _showTileMoveTowardsPreview(actingUnit, action) {
       ? (parseInt(String(getUnitAccentColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
       : 0x66ddff;
     // The hologram walks the route on a loop (three-renderer THE ACTION PREVIEW MOTION).
-    if (wps.length < 2) wps.push({ x: approach.x, y: approach.y, yOverride: ThreeRenderer.tileTopY(approach.x, approach.y) });
-    ThreeRenderer.showGhostUnit(actingUnit, approach.x, approach.y,
-      ThreeRenderer.tileTopY(approach.x, approach.y), { tag: 'caster', color: ghostTint, opacity: 0.85,
+    ThreeRenderer.showGhostUnit(actingUnit, gx, gy,
+      ThreeRenderer.tileTopY(gx, gy), { tag: 'caster', color: ghostTint, opacity: 0.85,
         motion: { wps: wps, kind: 'walk' } });
+  } catch (e) { /* preview is cosmetic — never let it break hover */ }
+}
+
+/* THE SLIDE FORECAST on the tile menu's "Move here": a walk that ends on ice shows the route, the ice leg and the
+   ghost on the tile the slide stops on (a walk that doesn't slide draws nothing new). Cleared by _clearMoveArrowPreview. */
+function _showTileMoveSlidePreview(actingUnit, tx, ty, tz) {
+  _clearMoveArrowPreview();
+  if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive() || !actingUnit) return;
+  try {
+    let path = [];
+    try { path = (typeof findMovePath === 'function' ? findMovePath(actingUnit, tx, ty, tz) : []) || []; } catch (e) { path = []; }
+    const land = (typeof predictWalkLanding === 'function') ? predictWalkLanding(actingUnit, tx, ty, tz, { path }) : null;
+    if (!land || typeof _drawIceSlideLeg !== 'function') return;
+    const routeColor = 0x3399ff;
+    const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: ThreeRenderer.unitSurfaceY(actingUnit) }];
+    for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
+    if (wps.length < 2) wps.push({ x: tx, y: ty, yOverride: ThreeRenderer.tileTopY(tx, ty) });
+    ThreeRenderer.drawPathArrow3D(wps, routeColor);
+    wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));
+    ThreeRenderer.setOverlay('movePreview', [..._iceSlideMarks(land), { x: land.x, y: land.y, color: routeColor, opacity: 0.6 }], routeColor, 0.45);
+    const ghostTint = (typeof getUnitAccentColor === 'function')
+      ? (parseInt(String(getUnitAccentColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+      : 0x66ddff;
+    ThreeRenderer.showGhostUnit(actingUnit, land.x, land.y, ThreeRenderer.tileTopY(land.x, land.y),
+      { tag: 'caster', color: ghostTint, opacity: 0.85, motion: { wps: wps, kind: 'walk' } });
+    if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
   } catch (e) { /* preview is cosmetic — never let it break hover */ }
 }
 
@@ -7206,8 +7257,9 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       comboPartnerId: (action && action.id === 'combo') ? (action._comboPartnerId ?? null) : null,
       // Potion rows (ally quick menu): forecast the item's heal the same way.
       itemKey: (action && action.itemKey) || null,
-      // Move-then-cast rows forecast from the tile they cast FROM (height, facing, reach all change)
-      castFrom: (mt && !mt._heightApproach && mt.x != null) ? { x: mt.x, y: mt.y, z: mt.z } : null,
+      // Move-then-cast rows forecast from the tile they cast FROM (height, facing, reach all change; a walk onto
+      // ice casts from where the slide stops — battle.js THE SLIDE FORECAST)
+      castFrom: (mt && !mt._heightApproach && mt.x != null) ? _mtCastTile(mt) : null,
       // Off-centre AoE rows forecast the cast at the centre they will really use
       aim: (action && action.aim) ? { x: action.aim.x, y: action.aim.y } : null,
     };
@@ -7286,7 +7338,10 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     } else {
       destY = ThreeRenderer.tileTopY(mt.x, mt.y);
     }
-    castX = mt.x; castY = mt.y;
+    /* THE SLIDE FORECAST: a walk onto ice ends — and casts — where the slide stops */
+    const land = (!mt._jump && mt.land) ? mt.land : null;
+    castX = land ? land.x : mt.x; castY = land ? land.y : mt.y;
+    const castYpx = land ? (destY - ThreeRenderer.tileTopY(mt.x, mt.y) + ThreeRenderer.tileTopY(castX, castY)) : destY;
 
     // One continuous bending walk-route arrow through any waypoint, plus tile
     // markers so the destination reads even head-on.
@@ -7301,7 +7356,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
 
       ThreeRenderer.setOverlay('movePreview', [
         { x: mt.via.x, y: mt.via.y, color: routeColor, opacity: 0.3 },
-        { x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 },
+        ...(land && typeof _iceSlideMarks === 'function' ? _iceSlideMarks(land) : []),
+        { x: castX, y: castY, color: routeColor, opacity: 0.45 },
       ], routeColor, 0.45);
     } else {
       ThreeRenderer.drawPathArrow3D([
@@ -7309,20 +7365,25 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
         { x: mt.x, y: mt.y, yOverride: destY },
       ], routeColor);
 
-      ThreeRenderer.setOverlay('movePreview', [{ x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
+      ThreeRenderer.setOverlay('movePreview', [...(land && typeof _iceSlideMarks === 'function' ? _iceSlideMarks(land) : []),
+        { x: castX, y: castY, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
     }
+    // the ice leg: its own ice-blue arrow over every tile the slide crosses
+    const _slideWps = (land && typeof _drawIceSlideLeg === 'function')
+      ? _drawIceSlideLeg(land, (wx, wy) => destY - ThreeRenderer.tileTopY(mt.x, mt.y) + ThreeRenderer.tileTopY(wx, wy)) : [];
 
     // Hologram of the caster walking there and striking / casting, on a loop.
     const _mw = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
     if (mt.via) _mw.push({ x: mt.via.x, y: mt.via.y, yOverride: ThreeRenderer.tileTopY(mt.via.x, mt.via.y) });
     _mw.push({ x: mt.x, y: mt.y, yOverride: destY });
+    _mw.push(..._slideWps);
     const _mAir = typeof canFly === 'function' && canFly(actingUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
-    ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85,
+    ThreeRenderer.showGhostUnit(actingUnit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
       motion: { wps: _mw, kind: _mAir ? 'fly' : 'walk', faceTo: { x: ax, y: ay },
         castSpell: (action && action.spell) || null, attack: !!(action && (action.id === 'attack' || action.id === 'combo')) } });
 
     // Arced strike arrow lobbing from the move destination onto the target.
-    ThreeRenderer.drawArrow3D(mt.x, mt.y, ax, ay, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
+    ThreeRenderer.drawArrow3D(castX, castY, ax, ay, arrowColor, false, castYpx, targetY, { arc: 0.35, flow: true });
   } else {
 
     // Arced strike arrow straight from the unit's current tile onto the target.
@@ -7341,7 +7402,7 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   /* THE FORECAST (2026-10-01, combat clarity pass): the hovered cast, read by the engine from the tile it is
      cast FROM — the tiles it hits (crimson), every body it moves (arrow + hologram + landing plate) and the
      same numbers the confirm step shows. Kinds the forecast does not read keep the footprint + shove guess. */
-  const _castFrom = (castX !== actingUnit.x || castY !== actingUnit.y) ? { x: castX, y: castY, z: (mt && mt.z != null) ? mt.z : undefined } : null;
+  const _castFrom = (castX !== actingUnit.x || castY !== actingUnit.y) ? { x: castX, y: castY, z: (mt && mt.land && !mt._jump) ? mt.land.z : (mt && mt.z != null) ? mt.z : undefined } : null;
   const _plan = (action && action.spell && typeof forecastSpellPlan === 'function')
     ? forecastSpellPlan(actingUnit, action.spell, ax, ay, _aim ? undefined : targetUnit.z, { castFrom: _castFrom })
     : null;
@@ -8448,7 +8509,7 @@ function _hrlgTileBlades(actingUnit, st) {
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => {
         hideSpellTooltip();
-        if (a.id === 'moveTowards') _clearMoveArrowPreview();
+        if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.available && a.handler) a.handler();
       },
@@ -8456,6 +8517,7 @@ function _hrlgTileBlades(actingUnit, st) {
         if (a.spell) showSpellTooltip(a.spell, e);
         else if (isObjAtk) showSpellTooltip(objCard, e);
         if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
+        if (a.id === 'move' && a._slideZ !== undefined) _showTileMoveSlidePreview(actingUnit, tx, ty, a._slideZ);
         // THE TILE-MENU SPELL HOVER (2026-10-05, mondo: "if its an aoe it doesnt show its aoe preview when i hover
         // on it"): a spell row paints exactly what the armed cast on this tile would: footprint, hit plates,
         // forecast numbers, landings, ricochet hops (ui.js updateAoePreview with the row's spell).
@@ -8472,7 +8534,7 @@ function _hrlgTileBlades(actingUnit, st) {
       },
       hoverOut: () => {
         hideSpellTooltip();
-        if (a.id === 'moveTowards') _clearMoveArrowPreview();
+        if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.spell && !isApproach && typeof clearAoePreview === 'function' && state.actionMode !== 'spell') clearAoePreview();
       },
@@ -8607,6 +8669,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
         actions.push({
           id: 'move', label: 'Move here', icon: '⬆', category: 'movement',
           apCost: 1, available: true,
+          // THE SLIDE FORECAST: an ice tile's row previews the slide on hover
+          _slideZ: (_mtLand(actingUnit, moveTile) ? (moveTile.z ?? null) : undefined),
           handler: () => {
             state._tileActionTarget = null;
             if (typeof setActionMode === 'function') setActionMode('move');
@@ -12870,6 +12934,9 @@ const UIM_PIECES = [
   /* keepCodes: the box's All text colour paints the plain words only, never the colour-coded ones (names by side, damage,
      heals, spells, statuses — battle.js THE COMBAT TEXT COLOURS); those have their own text parts below */
   { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', keepCodes: true, def: { cx: 0, b: 86, w: 640, h: 40 } },
+  /* THE COMBAT LOG (2026-10-18, ui.js renderFloatCombatLog): the whole match's combat lines on the right; its own options
+     are the l* keys (clogForm); keepCodes like the text box, so an All text colour leaves the colour-coded words alone */
+  { id: 'clog', group: 'Battle', label: 'Combat log', sel: '#ewCombatLog', origin: '100% 100%', keepCodes: true, noScroll: true, clog: true, def: { r: 12, b: 120, w: 340, h: 340 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
@@ -13017,6 +13084,10 @@ const TEXT_PARTS = {
     ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'], ['status', 'Status effects', '.ct-status'],
     ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko']],
   banner: [['title', 'Title', '.banner-title'], ['sub', 'Second line', '.banner-sub']],
+  clog: [['title', 'COMBAT LOG title', '.ew-clog-title'], ['fold', 'Collapse button', '.ew-clog-fold'], ['round', 'Round lines', '.ew-clog-round'],
+    ['hpn', 'HP numbers', '.ew-clog-hpn'], ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'],
+    ['status', 'Status effects', '.ct-status'], ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko'],
+    ['big', 'Big words', '.ct-crit, .ct-over, .ct-good']],
 };
 const txKey = (part, k) => 't:' + part + ':' + k;
 function txOn(L, part) { return TX_KEYS.some(k => { const v = L[txKey(part, k)]; return v != null && String(v) !== String(k === 'hide' ? false : LOOK_DEF[k]); }); }
@@ -13317,15 +13388,23 @@ const UX_DEF = {
   wShaft: 'solid', wThick: 1, wGlow: 1, wGlowW: 1, wCore: 0, wBright: 1, wOpacity: 1, wPulse: 1, wPulseSpd: 1, wHead: 'cone', wHeadLen: 1, wHeadW: 1,
   wDots: true, wDotShape: 'ball', wDotSize: 1, wDotCount: 1, wDotSpd: 1, wDotBright: 1, wDotCol: '',
   tLine: 1, tEdge: 1, tHalo: 1, tHot: 1, tLineCol: '', tSize: 1, tRound: 0, tFill: 1, tBright: 1, tOpacity: 1, tPulse: 1, tSpeed: 1,
+  /* l* = THE COMBAT LOG (2026-10-18, mondo: "allow me to adjust the size and everything"): lAuto = when it steps away on
+     its own (board = whenever the game has the board, shots = spell shots + camera only, off = never); lShow = the text
+     box's lines or everything; lFade = how far down the top fade reaches (% of the box), lFadeTop = what is left at the
+     top; lHoverClear = the mouse on it clears the fade; lGap = px between lines; lHp = the HP after a hit / heal;
+     lBack = how dark the box behind the lines is (ui.js window._ewLogLook carries lAuto + lShow) */
+  lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
 };
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
    _hlKindOfType): [kind, label, the game's colour, tip] */
 const AIM_ARROW_KINDS = [['move', 'Move', '#3399ff', 'Your unit walking, dashing, jumping or flying there'], ['hit', 'Damage', '#ff3333', 'A strike or a damage spell'],
-  ['heal', 'Heal + support', '#33dd66', 'A heal, a buff or any help'], ['force', 'Push / pull', '#bb66ff', 'A body the action moves'], ['util', 'Utility', '#eeeeee', 'Anything else']];
+  ['heal', 'Heal + support', '#33dd66', 'A heal, a buff or any help'], ['force', 'Push / pull', '#bb66ff', 'A body the action moves'], ['util', 'Utility', '#eeeeee', 'Anything else'],
+  ['slide', 'Ice slide', '#00d0ff', 'Your unit sliding on after a walk ends on ice']];
 const AIM_TILE_KINDS = [
   ['move', 'Walk', '#4da6ff', 'moves', 'Where the unit can walk this move'], ['jump', 'Jump / take off', '#35d0c0', 'moves'],
   ['blocked', 'Can\'t reach', '#cc2222', 'moves', 'In range but not reachable'], ['strike', 'Can strike from here', '#ffcc33', 'moves', 'A move tile you can hit an enemy from'],
   ['hazard', 'Hurts you here', '#ff3a3a', 'moves'], ['benefit', 'Heals you here', '#33dd77', 'moves'], ['acting', 'Current unit\'s tile', '#ffffff', 'moves'],
+  ['slide', 'Ice slide', '#00d0ff', 'moves', 'The tiles a walk onto ice slides over'],
   ['atkReach', 'Basic attack reach', '#ffcc33', 'act'], ['target', 'Enemy you can hit', '#ff2222', 'act'], ['reach', 'Damage spell reach', '#ffa040', 'act'],
   ['hit', 'Tiles that get hit', '#ff3a3a', 'act', 'The spell\'s footprint before you cast'], ['healReach', 'Support spell reach', '#33dd77', 'act'],
   ['heal', 'Heal / support target', '#22ee55', 'act'], ['buffReach', 'Buff spell reach', '#4488ff', 'act'], ['util', 'Utility spell reach', '#8844ee', 'act'],
@@ -13639,6 +13718,14 @@ function aimSignal() {
   if (ka !== _aimSentA) { _aimSentA = ka; window._ewArrowLook = A; window._ewArrowLookV = (window._ewArrowLookV || 0) + 1; }
   if (kt !== _aimSentT) { _aimSentT = kt; window._ewTileLook = T; window._ewTileLookV = (window._ewTileLookV || 0) + 1; }
 }
+/* the combat log's options ui.js reads (window._ewLogLook), re-published only when they change */
+let _clogSent = '';
+function clogSignal() {
+  const X = uxOf(), L = { auto: X.lAuto, show: X.lShow };
+  const k = JSON.stringify(L); if (k === _clogSent) return;
+  _clogSent = k; window._ewLogLook = L;
+  try { if (typeof window.renderFloatCombatLog === 'function') window.renderFloatCombatLog(); } catch (e) {}
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -13661,6 +13748,20 @@ function uxCss() {
   const X = uxOf(), D = UX_DEF, R = ':root:root ', HI = ':root:root:not(#uim-x):not(#uim-x) ', chg = k => String(X[k]) !== String(D[k]);
   const n = (k, lo, hi) => { const v = +X[k]; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : D[k]; };
   let css = '';
+  /* ── the combat log (l*) ── */
+  const CL = HI + '#ewCombatLog', lv = [];
+  if (chg('lFade')) lv.push(`--clog-fade: ${n('lFade', 0, 100)}%`);
+  if (chg('lFadeTop')) lv.push(`--clog-top: ${n('lFadeTop', 0, 1)}`);
+  if (!X.lHoverClear) lv.push(`--clog-top-h: ${n('lFadeTop', 0, 1)}`);
+  if (chg('lGap')) lv.push(`--clog-gap: ${n('lGap', 0, 24)}px`);
+  if (lv.length) css += `${CL} { ${lv.join('; ')}; }\n`;
+  if (chg('lBack')) { const a = n('lBack', 0, 1); css += `${CL}:not(.folded) { background: linear-gradient(180deg, rgba(6,8,14,0) 0%, rgba(6,8,14,${(a * 0.86).toFixed(3)}) 40%, rgba(6,8,14,${a}) 100%); }\n${CL}.folded .ew-clog-bar { background: rgba(6,8,14,${a}); }\n`; }
+  if (X.lHp === 'bar') css += `${CL} .ew-clog-hpn { display: none; }\n`;
+  else if (X.lHp === 'num') css += `${CL} .ew-clog-hpb { display: none; }\n`;
+  else if (X.lHp === 'off') css += `${CL} .ew-clog-hp { display: none; }\n`;
+  if (!X.lRounds) css += `${CL} .ew-clog-round { margin-top: 0; color: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: none; border-top: 0; padding-top: 0; }\n`;
+  if (!X.lTitle) css += `${CL} .ew-clog-title { visibility: hidden; }\n`;
+  if (!X.lFlash) css += `${CL} .ew-clog-line.fresh { animation: none; }\n`;
   /* ── the name plates ── */
   const W = HI + '.tp-wrap';
   if (chg('pSize')) css += `${W} { scale: ${n('pSize', 0.5, 2.5)}; }\n`;
@@ -13981,6 +14082,24 @@ function platesDetail() {
     + fRange('Your units', 'pAllyOp', 0.1, 1, 0.05, +X.pAllyOp) + fRange('Enemies', 'pFoeOp', 0.1, 1, 0.05, +X.pFoeOp))
     + '<div class="uim-note">Fade = how see-through a plate is while it is not the current, hovered or targeted unit.</div>');
   return h + xReset('p', 'Reset the name plates');
+}
+/* the combat log's own settings (Layout > Combat log) */
+function clogForm() {
+  const X = uxOf();
+  let h = `<div class="uim-h">The combat log</div>`;
+  h += sec('lshow', 'What it shows', xp(fSeg('Lines', 'lShow', [['combat', 'Combat lines', 'The lines the combat text box shows: hits, heals, spells, statuses, knock-outs, the rounds'], ['all', 'Everything', 'Moves and the game\'s notes too']], X.lShow)
+    + fSeg('HP after a hit', 'lHp', [['both', 'Bar + number'], ['bar', 'Bar'], ['num', 'Number'], ['off', 'Off']], X.lHp))
+    + xCheck('Round lines', 'lRounds', X.lRounds) + xCheck('COMBAT LOG title', 'lTitle', X.lTitle) + xCheck('Flash new lines', 'lFlash', X.lFlash));
+  h += sec('lfade', 'Fade to the top', xp(fRange('Fade length (%)', 'lFade', 0, 100, 1, +X.lFade, 'How far down from the top the lines fade in (0 = no fade)')
+    + fRange('Left at the top', 'lFadeTop', 0, 1, 0.05, +X.lFadeTop, '0 = the top line is gone; 1 = no fade'))
+    + xCheck('Clear while the mouse is on it', 'lHoverClear', X.lHoverClear));
+  h += sec('lhide', 'Hide on its own', xp(fSeg('Hide while', 'lAuto', [['board', 'The game has the board', 'The CPU\'s or the opponent\'s turn, moves, spells, camera flights, death close-ups, banners'],
+    ['shots', 'Spell shots + camera', 'Only spell shots, camera flights, close-ups and banners'], ['off', 'Never', 'Always on screen (its ▾ button still folds it)']], X.lAuto))
+    + '<div class="uim-note">It fades out at once and comes back half a second after the board is yours again. It stays while the mouse is on it.</div>');
+  h += sec('llook', 'Spacing + backing', xp(fRange('Space between lines', 'lGap', 0, 24, 1, +X.lGap)
+    + fRange('Backing', 'lBack', 0, 1, 0.02, +X.lBack, 'How dark the box behind the lines is (0 = none). A Fill under Panel look replaces it')));
+  h += '<div class="uim-note">Drag it, size it from its corner (or Width / Height under Size + order), text sizes and colours under Text look. The ▾ on the log folds it to its bar.</div>';
+  return h + xReset('l', 'Reset the combat log');
 }
 function apForm() {
   const X = uxOf();
@@ -14613,7 +14732,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); clogSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15926,6 +16045,7 @@ function pieceDetail() {
   if (P.icons) h += iconsForm(P.icons);
   if (P.score) h += scoreForm();
   if (P.ap) h += apForm();
+  if (P.clog) h += clogForm();
   if (P.qp) h += qpForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);

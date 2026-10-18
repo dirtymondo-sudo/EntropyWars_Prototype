@@ -896,12 +896,10 @@ the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
   exploring without re-entering the room.
 - **Scene Fog**: `_fieldGroundDress` stores the room's own fog on the field light (`field.fog`); `_applySceneFog` restores
   THAT fog when the toggle comes back on mid-fight instead of the voxel mood preset's.
-- **Retro → Models Only** in the walk: `_hqSpawnCharacter` marks the character group `_ew_pixelChar`; `_scanPixelMaskTargets(sc)`
-  tags only meshes under such groups for a non-battle scene (`_scanPixelChars`), with a per-scene re-tag clock
-  (`sc._ew_pixScanAt`); `renderScene` draws the mask from its own scene. The mask renders with `sc.background = null` — a
-  texture sky is a mesh three draws in every render, so the second (static) pass painted the sky over the rigs the first
-  (skinned) pass drew. Same day, mondo: "models only is supposed to pixelate all the meshy models, not just the people" —
-  the walk's scan also tags every `_ew_modelSkin` / `_ew_pixelate` mesh (the same models the board masks), people included.
+- **Retro → Models Only** in the walk: PR #316/#317 masked the walk's models (people, then every flagged model); mondo
+  (same day): "i dont even think anything was wrong with it other than it not showing up on the closeups" — all of it is
+  reverted: the walk pixelates the whole frame as before (renderScene hands no mask), the battle mask is as it was. A later
+  try (pixel-pack trees unflagged, an occluder depth pass) was dropped unshipped.
 - Voxel-board-only (no effect in rooms, kept; mondo decides): Fog Density, Fog Horizon, the mood preset fog colour, Night
   Mood, Batched Terrain (still used by the moving boards). Dead everywhere: Light Rays (`_buildLightRays` builds nothing since
   the light boxes went, 2026-10-04).
