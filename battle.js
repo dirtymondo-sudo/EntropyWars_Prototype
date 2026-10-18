@@ -24840,6 +24840,12 @@
                     } catch (e) {}
                     return;
                 }
+                /* THE SELF-CAST CONFIRM: an armed self-cast aims at the caster, never the reticle — LMB is its confirm */
+                const _scPt = state.pendingTarget;
+                if (state.actionMode === 'spell' && _scPt && _scPt.selfCast) {
+                    selectTargetFromMenu(_scPt.x, _scPt.y, _scPt.z);
+                    return;
+                }
                 if (state.actionMode === 'spell' || state.actionMode === 'attack') {
                     /* the reticle IS the mouse: run the exact click pipeline */
                     if (ThreeRenderer.clickAtScreen) ThreeRenderer.clickAtScreen(aim.x, aim.y);
@@ -24857,7 +24863,10 @@
                         const movedS = !!(orgS && (orgS.x !== u.x || orgS.y !== u.y));
                         _stopRoam();
                         setTool('spell', spSel.name);
-                        if (!movedS && state.actionMode === 'spell' && ThreeRenderer.clickAtScreen) {
+                        const _rePt = state.pendingTarget;
+                        if (!movedS && state.actionMode === 'spell' && _rePt && _rePt.selfCast) {
+                            selectTargetFromMenu(_rePt.x, _rePt.y, _rePt.z);
+                        } else if (!movedS && state.actionMode === 'spell' && ThreeRenderer.clickAtScreen) {
                             ThreeRenderer.clickAtScreen(aim.x, aim.y);
                         }
                     } else {
@@ -38166,6 +38175,8 @@
                     const spell = (unit.spells || []).find(s => s && s.name === state.selectedTool)
                         || (unit._raceAbilities || []).find(s => s && s.name === state.selectedTool);
                     if (!spell) return _promptBarHtml('Select an ability to cast.', 'ESC back');
+                    // THE SELF-CAST CONFIRM: the caster is the only target, so there is nothing else to pick
+                    if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
                 }
@@ -55298,16 +55309,9 @@
                         targets = targets.concat(_getSpellApproachTargets(unit, spell, _have));
                     }
 
-                    if (targets.length === 1 && targets[0].unit && targets[0].unit.id === unit.id) {
-                        state._actionExecuting = true;
-                        _focusPlatesForAction(unit, unit.x, unit.y);
-                        clearAoePreview();
-                        clearHoveredTarget();
-                        clearSpellRangePreview();
-                        if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                        _execAction(() => doSpell(unit, unit.x, unit.y));
-                        scheduleBoardRender();
-                    } else {
+                    /* THE SELF-CAST CONFIRM: a spell whose only target is the caster no longer fires on the pick —
+                       it lists the caster pre-marked (✓) with the green CONFIRM, like any other target. */
+                    {
                         state.actionMenuView = 'spellTargets';
                         state._spellCycleTargets = targets;
                         state._spellCycleIndex = 0;
@@ -55320,26 +55324,15 @@
                     }
                 } else if (spell && isSpellSelfCast(spell)) {
 
-                    /* Self-origin damage novae (Crossfire's X): if the arms hit
-                       nothing from HERE but a one-step walk/jump puts an enemy
-                       on the footprint, run the same MOVE→CAST the quick menu
-                       offers instead of detonating on empty air. */
-                    if (spell.kind === 'cross' && spell.aoeOriginSelf && (spell.dmg || 0) > 0
-                        && !_selfNovaHasTarget(unit, spell)) {
-                        const _nvApproach = _findSelfNovaApproachTile(unit, spell);
-                        if (_nvApproach) {
-                            _moveThenCast(unit, _nvApproach, spell.name, _nvApproach.x, _nvApproach.y, _nvApproach.z);
-                            return;
-                        }
-                    }
-                    state._actionExecuting = true;
-                    _focusPlatesForAction(unit, unit.x, unit.y);
-                    clearAoePreview();
-                    clearHoveredTarget();
-                    clearSpellRangePreview();
-                    if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                    _execAction(() => doSpell(unit, unit.x, unit.y));
-                    scheduleBoardRender();
+                    /* THE SELF-CAST CONFIRM (mondo 2026-10-18: "im tired of clicking on an aoe not realizing its a
+                       self cast and then it automatically goes off"): picking a self-cast ARMS it on the caster's
+                       own tile, footprint up, and waits for the green CONFIRM (or a click on the caster). No target
+                       list: the caster is the only target. The cast itself is _fireSelfCast. */
+                    state.actionMenuView = 'spells';
+                    state._spellCycleTargets = [];
+                    state._spellCycleIndex = 0;
+                    state.pendingTarget = { x: unit.x, y: unit.y, z: unit.z, mode: 'spell', tool: toolName, viaHover: false, selfCast: true };
+                    updateAoePreview(unit.x, unit.y);
                 } else {
 
                     state.actionMenuView = 'spells';
@@ -56123,6 +56116,28 @@
             return true;
         }
 
+        /* THE SELF-CAST CONFIRM: the confirmed self-cast. Self-origin damage novae (Crossfire's X) that hit nothing
+           from HERE but reach an enemy after a one-step walk/jump run the same MOVE→CAST the quick menu offers
+           instead of detonating on empty air; everything else casts on the caster's own tile. */
+        function _fireSelfCast(unit, spell) {
+            if (spell.kind === 'cross' && spell.aoeOriginSelf && (spell.dmg || 0) > 0
+                && !_selfNovaHasTarget(unit, spell)) {
+                const _nvApproach = _findSelfNovaApproachTile(unit, spell);
+                if (_nvApproach) {
+                    _moveThenCast(unit, _nvApproach, spell.name, _nvApproach.x, _nvApproach.y, _nvApproach.z);
+                    return;
+                }
+            }
+            state._actionExecuting = true;
+            _focusPlatesForAction(unit, unit.x, unit.y);
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            _execAction(() => doSpell(unit, unit.x, unit.y));
+            scheduleBoardRender();
+        }
+
         function selectTargetFromMenu(x, y, z) {
             const unit = getSelectedUnit();
             if (!unit) return;
@@ -56191,6 +56206,7 @@
                         _mtcApproach = findSpellApproachTile(unit, _mtcSp, x, y, execZ);
                     }
                     if (_mtcApproach) { _moveThenCast(unit, _mtcApproach, _mtcSp.name, x, y, execZ); }
+                    else if (_mtcSp && isSpellSelfCast(_mtcSp)) { _fireSelfCast(unit, _mtcSp); }
                     else { _execAction(() => doSpell(unit, x, y, execZ)); }
                 }
                 else if (state.actionMode === 'item') {
@@ -56772,6 +56788,9 @@
                 const unit = getSelectedUnit();
                 if (unit) {
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                    // THE SELF-CAST CONFIRM: the armed self-cast's pick is the caster and never moves — hovering
+                    // the board must not re-aim it, clear its footprint or drop the green CONFIRM.
+                    if (spell && isSpellSelfCast(spell)) return false;
                     if (spell) {
 
                         // Line beams included: getSpellRangeTiles returns their
@@ -57316,6 +57335,15 @@
                     // capped 8-ray footprint, so a click past the beam's reach
                     // routes into move-then-cast (or errors) instead of firing
                     // a cast that stops short and hits zero targets.
+                    // THE SELF-CAST CONFIRM: an armed self-cast fires on the caster only — a click anywhere else
+                    // says so and keeps it armed (the caster's tile or the green CONFIRM casts it).
+                    if (isSpellSelfCast(spell) && (x !== actingUnit.x || y !== actingUnit.y)) {
+                        addLog(`${_ctSp(spell.name)} is cast on ${_ctName(actingUnit)}: press CONFIRM.`, actingUnit.player);
+                        playErrorSfx();
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+                        return;
+                    }
                     {
                     const rangeTiles = getSpellRangeTiles(actingUnit, spell);
                     const inRange = rangeTiles.some(t => t.x === x && t.y === y);
