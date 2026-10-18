@@ -1712,3 +1712,21 @@ inside the nexus zone but it is drawn around it".
   seats (spawnZones) stay the 5. Nobody can stand on the Cube, so no capture / respawn / lockout count changes (respawn
   already skips tower tiles). The front-middle seat sits in the list's middle slot, so zoneX/Y (AI goal) and the centre
   stay on it. 4v4 boards are unchanged (their Cube stands outside the row zone).
+
+## THE SLIDE FORECAST (2026-10-18)
+mondo: "the spell preview/move forecast should account for sliding on ice. i dont want to move+cast and then move and be out
+of cast range bc i slid, that should already be accounted for/the arrow or preview should communicate that i will slide on ice".
+- battle.js: the slide rule is `_unitSlidesOnIce` (who slides) + `_iceSlideSteps` (the glide), read by the real
+  `_resolveIceSlide` AND by `predictWalkLanding(unit, x, y, z, {path, takeoff})` = where a doMove to (x,y) really ends
+  (heading = the walk's last step, the facing doMove sets; null = no slide). `walkLandingTile` is the short form.
+- Every move-then-act finder measures from that landing and returns `land` on its approach tile (x/y stay the tile doMove
+  walks to): findSpellApproachTile, _findSelfNovaApproachTile, findAttackApproachTile, findInspectApproachTile,
+  findCaptureDoorApproachTile, TargetQuery.hasReachableTarget, attackHasReachableTarget, hud.js findMoveIntoRange + the
+  cross / beam / tile-AoE candidate loops (`_mtLand`, `_mtCastTile`). Forecasts / press / AoE aim cast from the landing.
+- Board: the move hover, the move-towards hover, the move+cast/attack/inspect approach preview, the quick-menu row hover and
+  the tile menu's "Move here" draw the walk arrow to the tile walked to, then an ice-blue arrow (0x00d0ff, UI Maker kind
+  'slide' in Arrows + tiles, arrow and tile) over the glide; glided tiles marked ice blue, ghost + destination marker on the
+  landing; the hologram glides that leg (three-renderer motion leg type 'slide'). Gold 'strike' / hazard / benefit move
+  tiles (ui.js) are read at the landing.
+- Shoves: resolveForcedSlide's simulate path now adds THE CHAIN's ice glide (travel direction) to res.x/y + steps
+  (`iceSlid`), so push/pull previews land where the ice leaves the body. Live slides unchanged.

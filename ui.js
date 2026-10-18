@@ -2673,12 +2673,17 @@
               // predictFallDamage (state.js) mirrors applyFallDamage exactly
               // (threshold, splash-landing, physique, zodiac).
               const _dropZ = _tz ?? (typeof getHeightAt === 'function' ? getHeightAt(_tx, _ty) : 0);
+              /* THE SLIDE FORECAST (battle.js predictWalkLanding): a walk onto ice ends where the slide stops, so the
+                 strike / hazard / benefit read of an ice tile is the read of that landing tile */
+              const _sl = (_cls !== 'move-takeoff' && typeof predictWalkLanding === 'function')
+                ? predictWalkLanding(_self, _tx, _ty, _tz) : null;
+              const _ex = _sl ? _sl.x : _tx, _ey = _sl ? _sl.y : _ty, _ez = _sl ? _sl.z : _tz;
               if (_cls === 'move-jump' && typeof predictFallDamage === 'function'
                   && predictFallDamage(_self, _self.z ?? 0, _dropZ, _tx, _ty) > 0) _tok += ' hazard';
-              else if (_strikeFrom(_tx, _ty, _tz)) _tok += ' strike';
-              else if (_hazardTile(_tx, _ty, _tz)) _tok += ' hazard';
+              else if (_strikeFrom(_ex, _ey, _ez)) _tok += ' strike';
+              else if (_hazardTile(_ex, _ey, _ez)) _tok += ' hazard';
               else {
-                const _rule = getTerrainRule(_terrAt(_tx, _ty, _tz));
+                const _rule = getTerrainRule(_terrAt(_ex, _ey, _ez));
                 if (_rule && _rule.healMultiplier > 1) _tok += ' benefit';
               }
               if (_tok !== _cls) _hlCache.set(_pk, _tok);
