@@ -1688,3 +1688,18 @@ export instructions + summary carry it. The climb design (not built) is /mnt/pro
   non-DoT hit whose element (_affEl) is the sky's lands ×ZODIAC_SURGE_MULT 1.25 on the whole hit (forecasts include
   it; ai.js estDamage mirrors). Was one element per trine (fire / lightning / frost via the combo vocab). Earth signs
   keep their earthworks on top. Banner text = getZodiacResonanceDesc.
+
+## THE SOFT ZONE + THE CUBE IN ITS ZONE (2026-10-18, token 20261018-nexuszone-01-cors)
+mondo: "i dont like how the nexus zones are drawn on the ground, they have these ugly hitchmarks, and they have these flat
+rectangular light panels ... they need to atleast fade at the edge or something. also in 5v5 the idea was for the cube to be
+inside the nexus zone but it is drawn around it".
+- Look (three-renderer.js rebuildNexusWalls): every zone is ONE soft decal. `_nxZoneTex` draws the zone's shape once into a
+  32 px/tile alpha map (soft-min distance to the merged outer edge runs: faint fill, glow rising to the edge, soft rim 0.1
+  tile in, feather to 0 at the edge, rounded corners), cached per shape; each tile is a full-size drape (`_nxZoneTileGeo`,
+  the move tiles' own _buildDrapeGeo) whose UVs read its patch of the map, tinted by owner colour, in the shimmer list.
+  Removed: the 0.96 per-tile washes (their gaps were the grid of "hatch" marks), the rim ribbon + halo, and the standing
+  curtain / cliff skirt / seam panels ("light panels"). `_nxDrapeGeo` now copies UVs too when it reuses a geometry.
+- 5v5 rule (map.js _initArenaSpawnNexuses): the spawn nexus's `tiles` take the Cube's back-middle tile (the full 2×3); the
+  seats (spawnZones) stay the 5. Nobody can stand on the Cube, so no capture / respawn / lockout count changes (respawn
+  already skips tower tiles). The front-middle seat sits in the list's middle slot, so zoneX/Y (AI goal) and the centre
+  stay on it. 4v4 boards are unchanged (their Cube stands outside the row zone).

@@ -15152,9 +15152,19 @@
             if (isFieldSpawnZones()) return;   // THE FIELD: a Code Red fight on the seats has no spawn nexus to steal
             if (!state.nexusPoints) state.nexusPoints = {};
             const thr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 6;
+            const _house = _arenaHouse();
             for (const p of [1, 2]) {
-                const tiles = state.spawnZones[p];
+                let tiles = state.spawnZones[p];
                 if (!tiles || tiles.length === 0) continue;
+                /* THE CUBE IN ITS ZONE (2026-10-18, mondo: "in 5v5 the idea was for the cube to be inside the nexus zone but it
+                   is drawn around it"): a 5v5 seat block is the 5 tiles round the Cube, so the zone takes the Cube's back-middle
+                   tile too — the full 2×3. Nobody can stand on the Cube, so no capture count changes; the seats stay the 5.
+                   The front-middle seat goes to the list's middle slot: the zone's centre (zoneX/Y, the AI goal, the meter). */
+                const cube = _house && _house.cubes && [_house.cubes[1], _house.cubes[2]].find(c => c && tiles.some(t => Math.abs(t.x - c.x) + Math.abs(t.y - c.y) === 1));
+                if (cube && !tiles.some(t => t.x === cube.x && t.y === cube.y)) {
+                    const rest = tiles.slice(1).concat([{ x: cube.x, y: cube.y }]), k = Math.floor((rest.length + 1) / 2);
+                    tiles = rest.slice(0, k).concat([tiles[0]], rest.slice(k));
+                }
                 const mid = tiles[Math.floor(tiles.length / 2)];
                 state.nexusPoints['spawn' + p] = {
                     zoneX: mid.x, zoneY: mid.y, zoneSize: 1,
