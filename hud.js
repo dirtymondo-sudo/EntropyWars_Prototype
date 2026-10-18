@@ -1861,25 +1861,41 @@ function QuickCone() {
   useEffect(() => {
     let raf = 0;
     const hide = (svg) => { if (svg && svg.style.display !== 'none') svg.style.display = 'none'; };
+    /* the pinned room is re-measured in a ResizeObserver too: it runs after layout but BEFORE paint, so the frame the
+       card opens (the panels grow, the hero section changes height) already shows it in its spot — no one-frame jump */
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => _qpPinRoom(window._ewQpCone || {})) : null;
+    let watched = [];
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const svg = ref.current; if (!svg) return;
+      const L = window._ewQpCone || {};
+      if (ro) {
+        const els = [document.querySelector('.hrlg-panels'), document.querySelector('.hrlg-side')];
+        if (els[0] !== watched[0] || els[1] !== watched[1]) { ro.disconnect(); watched = els; els.forEach(el => { if (el) ro.observe(el); }); }
+      }
+      _qpPinRoom(L);
       if (typeof state === 'undefined' || !state || state._enemyActionTargetId == null) { hide(svg); return; }
       const head = document.querySelector('.hrlg-panel.quick.on > .hrlg-thead.qp');
       if (!head) { hide(svg); return; }
-      const L = window._ewQpCone || {};
       _qpKeepClear(head, L);
       const uid = head.getAttribute('data-uid');
       let icon = null;
       for (const el of document.querySelectorAll('.ew-turn-col .ew-tc-icon[data-uid]')) { if (el.getAttribute('data-uid') === uid) { icon = el; break; } }
       if (L.off || !icon) { hide(svg); return; }
-      const port = head.querySelector('.hrlg-qp-port');
-      const tr = (port && port.offsetWidth > 0 ? port : head).getBoundingClientRect();
+      /* where it ends (UI Maker: Zoom cone > Ends at, mondo 2026-10-18: "Let me change where the zoom cone is attached or
+         anchored to"): the portrait's / the card's / the name's near edge, or a corner point of the portrait / card */
+      const to = L.to || 'port';
+      const port = head.querySelector('.hrlg-qp-port'), tab = head.querySelector(':scope > .hrlg-view-tab');
+      const portOn = port && port.offsetWidth > 0 && getComputedStyle(port).display !== 'none';
+      const tgt = (to === 'card' || to === 'corner') ? head : to === 'name' ? (tab || head) : (portOn ? port : head);
+      const tr = tgt.getBoundingClientRect();
       const ir = (icon.querySelector('svg') || icon).getBoundingClientRect();
       if (!tr.width || !ir.width) { hide(svg); return; }
-      const cx = ir.left + ir.width / 2, cy = ir.top + ir.height / 2, r = Math.min(ir.width, ir.height) / 2;
+      const cx = ir.left + ir.width / 2, cy = ir.top + ir.height / 2, r = L.from === 'centre' ? 0.5 : Math.min(ir.width, ir.height) / 2;
       const ex = tr.left < cx ? tr.right : tr.left;   // a card left of the icon: the cone meets its right edge
-      const pts = [[cx, cy - r], [ex, tr.top], [ex, tr.bottom], [cx, cy + r]];
+      const pt = (to === 'corner' || to === 'portcorner');
+      const cyB = pt ? tr.top + Math.min(tr.height, 18) : tr.bottom;   // a corner: a narrow tip on it
+      const pts = [[cx, cy - r], [ex, tr.top], [ex, cyB], [cx, cy + r]];
       const d = 'M' + pts.map(q => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' L') + ' Z';
       const fill = svg.querySelector('.ew-qp-cone-fill'), e1 = svg.querySelector('.ew-qp-cone-e1'), e2 = svg.querySelector('.ew-qp-cone-e2');
       if (fill.getAttribute('d') !== d) {
@@ -1900,7 +1916,7 @@ function QuickCone() {
       if (svg.style.display === 'none') svg.style.display = '';
     };
     tick();
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); if (ro) ro.disconnect(); };
   }, []);
   return h('svg', { ref, className: 'ew-qp-cone', style: { display: 'none' }, 'aria-hidden': 'true' },
     h('defs', null, h('linearGradient', { id: 'ewQpConeGrad', gradientUnits: 'userSpaceOnUse' },
@@ -1914,6 +1930,25 @@ function QuickCone() {
    section. When it would cover either (a short action list), its list grows a little empty room under the rows so the
    card rides above them (the L stays joined); and a card that would run off the left edge of the screen slides right.
    Both measured each frame from the card's own spot (its earlier nudge undone). UI Maker: Unit info panel > Keep clear. */
+/* THE PINNED ROOM: the quick list's fixed height = from the bottom of the command panels up to just above the root
+   menu (and the hero section, when the card hangs left over it) + the UI Maker's gap — in the panels' own CSS px
+   (layout sizes, so the root's dimmed 0.96 scale doesn't nudge it). Written on <html> as --ew-qp-room; cleared in the
+   list mode (the card rides on its list again). */
+function _qpPinRoom(L) {
+  const de = document.documentElement;
+  if (L.spot === 'list') { if (de._ewQpRoom) { de._ewQpRoom = 0; de.style.removeProperty('--ew-qp-room'); } return; }
+  const panels = document.querySelector('.hrlg-panels'), root = panels && panels.querySelector(':scope > .hrlg-panel.root');
+  if (!root || !root.offsetHeight) return;   // no root menu up: keep the last room
+  const pr = panels.getBoundingClientRect(), k = panels.offsetHeight > 0 && pr.height > 0 ? pr.height / panels.offsetHeight : 1;
+  let room = root.offsetHeight;
+  if (L.align !== 'left') {
+    const side = document.querySelector('.hrlg-side');
+    const sr = side && side.getBoundingClientRect();
+    if (sr && sr.height > 0 && sr.right <= pr.left + 40) room = Math.max(room, (pr.bottom - sr.top) / k);
+  }
+  room = Math.max(60, Math.round(room + (isFinite(+L.gap) ? +L.gap : 8)));
+  if (de._ewQpRoom !== room) { de._ewQpRoom = room; de.style.setProperty('--ew-qp-room', room + 'px'); }
+}
 function _qpKeepClear(head, L) {
   const panel = head.parentElement, list = panel && panel.querySelector(':scope > .hrlg-list');
   if (!list) return;
@@ -1921,7 +1956,7 @@ function _qpKeepClear(head, L) {
   const r = head.getBoundingClientRect();
   const left = r.left - shift, bottom = r.bottom + lift, right = r.right - shift;
   let nLift = 0;
-  if (L.keep !== false) {
+  if (L.spot === 'list' && L.keep !== false) {
     let top = Infinity;
     document.querySelectorAll('.hrlg-panel.root, .hrlg-side, .hrlg-side-top, .hrlg-side-low').forEach(el => {
       if (el === panel || panel.contains(el)) return;
@@ -1930,7 +1965,12 @@ function _qpKeepClear(head, L) {
     });
     if (top < Infinity) nLift = Math.max(0, Math.min(600, Math.round(r.top + lift - 8), Math.round(bottom - (top - 6))));   // never past the top of the screen
   }
-  const nShift = left < 8 ? Math.round(8 - left) : 0;
+  /* the left limit: the screen edge, or the turn order column when the card is level with it (a wide card would slide
+     under its icons) */
+  let minL = 8;
+  const tc = document.querySelector('.ew-turn-col'), tcr = tc && tc.getBoundingClientRect();
+  if (tcr && tcr.width && tcr.right < r.right - shift - 100 && tcr.top < r.bottom + lift && tcr.bottom > r.top + lift) minL = Math.max(minL, tcr.right + 6);
+  const nShift = left < minL ? Math.round(minL - left) : 0;
   if (nLift !== lift) {
     list._ewLift = nLift;
     const mh = nLift ? (list.getBoundingClientRect().height - lift + nLift) + 'px' : '';
@@ -3112,6 +3152,9 @@ function _hrlgQuickStats(panelKey) {
       return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined },
         h('span', { className: 'hrlg-qstat-lbl' }, c.k),
         n ? h('span', { className: n.cls + ' sm', style: { '--pct': n.pct } }, h('i', null, n.g)) : h('span', { className: 'ew-grade sm none' }),
+        /* the stat BAR (UI Maker: Unit info panel > Stat look = bars / both): the grade's own share of its ruler, in the
+           grade's colour; an ungraded stat (MOV / RNG / CRT / EVA) keeps an empty slot so the columns line up */
+        h('span', { className: 'hrlg-qstat-bar' + (n ? '' : ' none') }, n ? h('i', { style: { width: n.pct + '%', background: n.color } }) : null),
         h('span', { className: 'hrlg-qstat-val' }, String(c.v)));
     }),
   ), _hrlgElemBox(u));
@@ -3726,6 +3769,9 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
                   style: _pd ? { backgroundImage: 'url("' + _pd.url + '")' } : undefined }),
                 p.title && h('div', { className: 'hrlg-view-tab' }, p.title.node || h('span', { className: 'hrlg-view-tab-text' }, p.title.text)),
                 _qv,
+                /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
+                _qu && _qu.types && _qu.types.length ? h('div', { className: 'hrlg-qp-types' },
+                  _qu.types.slice(0, 2).map(t => h('span', { key: t, style: typeBadgeStyleFor(t, { fontSize: 11, padding: '2px 9px' }) }, String(t).toUpperCase()))) : null,
                 _hrlgQuickStats(p.key),
               );
             }
@@ -10381,6 +10427,15 @@ function _hudHideCss() {
     .hrlg-thead.qp > .hrlg-qstats { grid-area: stats; grid-template-columns: repeat(var(--qp-cols, 3), auto); border-top: 0; border-left: 1px solid var(--hfc-faint); padding: 5px 14px 6px 12px; gap: 0 14px; }
     .hrlg-thead.qp > .hrlg-qelem { grid-area: elem; justify-self: start; margin: 2px 14px 7px 12px; }
     .hrlg-thead.qp .hrlg-view-tab .hrlg-tport { display: none; }
+    .hrlg-thead.qp > .hrlg-qp-types { grid-area: types; display: none; gap: 5px; flex-wrap: wrap; margin: 6px 8px 2px; position: relative; z-index: 2; }
+    .hrlg-qstat-bar { display: none; flex: 0 1 var(--qp-statbar, 46px); min-width: 10px; position: relative; width: auto; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1); overflow: hidden; }
+    .hrlg-qstat-bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+    .hrlg-qstat-bar.none { background: none; }
+    /* PINNED (UI Maker: Unit info panel > Where = above the menu, the default; mondo 2026-10-18: "i want it to always pop
+       up in the same spot above the action menu"): the quick list is a fixed height (QuickCone measures the room from
+       the bottom of the command panels to just above the root menu + the hero section into --ew-qp-room), so the card
+       over it sits in the same spot whether the unit has one action or eight; a longer list scrolls inside it. */
+    .hrlg-panel.quick > .hrlg-list { height: var(--ew-qp-room, auto); max-height: var(--ew-qp-room, var(--qp-list-h, 400px)); }
     .hrlg-qp-port {
       position: relative; min-height: var(--qp-port, 108px);
       background: rgba(0,0,0,0.55) center / cover no-repeat; image-rendering: pixelated;
@@ -12392,6 +12447,9 @@ const UIM_PIECES = [
   { id: 'press', group: 'Battle', label: 'AP press icons', sel: '.ew-ap-press', origin: '0 0', ap: true, def: { l: 14, t: 12, w: 132, h: 40 } },
   { id: 'bench', group: 'Battle', label: 'Reserves', sel: '.ew-reserves-box', origin: '100% 100%', def: { r: 12, b: 12, w: 220, h: 40 } },
   { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar', def: { cx: 0, b: 10, wf: 0.92, wmax: 1100, h: 62 } },
+  /* the battle's text box ("<unit> is up — select an action.", the combat lines; ui.js ensureBattleHUD) — mondo 2026-10-18:
+     "there is the subtitles or combat text box ... that needs to be part of the layout too and let me change where it is" */
+  { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', def: { cx: 0, b: 86, w: 640, h: 40 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
@@ -12487,6 +12545,15 @@ const UX_DEF = {
      sub-menu list (spells, targets, quick actions); qCone* = the zoom cone */
   qShape: 'wide', qW: 0, qAlign: 'right', qPort: 108, qPortShape: 'square', qNameSize: 18, qStats: true, qStatsPos: 'beside', qCols: 3,
   qElem: 'below', qKeep: true, qZoom: 1.5, qListW: 316, qListH: 400, qRowH: 40, qRowFont: 16, qCone: true, qConeCol: '', qConeOp: 0.35, qConeEdges: true,
+  /* pass 13 (2026-10-18, mondo: "i want it to always pop up in the same spot above the action menu ... put the hp bars and
+     type badges beneath the portrait maybe, or use stat bars instead of letter grade, or both. Maybe i wanna put the name
+     on top of the portrait ... there was no way for me to resize their individual columns ... Let me change where the
+     zoom cone is attached"): qSpot pin (a fixed spot qPinGap px above the root menu) | list (rides on its list, qKeep);
+     qNamePos beside | above | on (over the portrait); qVitalsPos beside | under (the portrait); qTypesPos bars | under |
+     on | off; qStatLook grade | bar | both | number (+ qStatBarW, qStatGap); qColInfo / qColStats / qColElem = each
+     column's px (0 = fit); qElemSize; qConeFrom icon | centre; qConeTo port | portcorner | card | corner | name */
+  qSpot: 'pin', qPinGap: 8, qNamePos: 'beside', qVitalsPos: 'beside', qTypesPos: 'bars', qStatLook: 'grade', qStatBarW: 46, qStatGap: 14,
+  qColInfo: 0, qColStats: 0, qColElem: 0, qElemSize: 1, qConeFrom: 'icon', qConeTo: 'port',
 };
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
@@ -12500,18 +12567,35 @@ function uxMigrate() {
 /* the zoom cone's look (QuickCone reads window._ewQpCone every frame) */
 function qpSignal() {
   const X = uxOf();
-  window._ewQpCone = { off: !X.qCone, color: X.qConeCol || '', opacity: +X.qConeOp, edges: !!X.qConeEdges, keep: !!X.qKeep };
+  window._ewQpCone = { off: !X.qCone, color: X.qConeCol || '', opacity: +X.qConeOp, edges: !!X.qConeEdges, keep: !!X.qKeep,
+    spot: X.qSpot, gap: +X.qPinGap, align: X.qShape === 'tall' ? 'tall' : X.qAlign, from: X.qConeFrom, to: X.qConeTo };
 }
-/* the unit info card's grid: the big portrait down the left, the name across the top, then the vitals / stats / element
-   box placed by qStatsPos + qElem */
+/* the unit info card's grid. The portrait column down the left holds the portrait, then (UI Maker) the type badges and
+   the HP / MP bars under it; the right side holds the name, then one row of side-by-side parts (the bars, the stats, the
+   element box: each its own column, its own width), then the parts placed underneath. The name can also run across the
+   top of everything, or sit on the portrait (it then shares the portrait's area). */
 function qpGrid(X) {
+  const port = +X.qPort > 0;
+  const vUnder = port && X.qVitalsPos === 'under', tUnder = port && X.qTypesPos === 'under';
   const statsBeside = X.qStats && X.qStatsPos !== 'below', statsBelow = X.qStats && X.qStatsPos === 'below';
   const elemRight = X.qElem === 'right', elemBelow = X.qElem === 'below';
-  const main = ['qv'].concat(statsBeside ? ['stats'] : []), n = main.length + (elemRight ? 1 : 0);
-  const rows = ['port' + ' tab'.repeat(n), 'port ' + main.join(' ') + (elemRight ? ' elem' : '')];
-  if (statsBelow) rows.push('port' + ' stats'.repeat(main.length) + (elemRight ? ' elem' : ''));
-  if (elemBelow) rows.push('port' + ' elem'.repeat(n));
-  const cols = ['var(--qp-port-col, var(--qp-port, 108px))', 'minmax(170px, 1fr)'].concat(Array(n - 1).fill('auto'));
+  const main = (vUnder ? [] : ['qv']).concat(statsBeside ? ['stats'] : [], elemRight ? ['elem'] : []);
+  const n = Math.max(1, main.length);
+  const R = [];
+  if (X.qNamePos === 'beside' || (!port && X.qNamePos === 'on')) R.push(Array(n).fill('tab'));
+  if (main.length) R.push(main);
+  if (statsBelow) R.push(Array(n).fill('stats'));
+  if (elemBelow) R.push(Array(n).fill('elem'));
+  if (!R.length) R.push(['.']);
+  const Ls = port ? ['port'].concat(tUnder ? ['types'] : [], vUnder ? ['qv'] : []) : [];
+  const total = Math.max(R.length, Ls.length);
+  while (R.length < total) R.push(R[R.length - 1].slice());
+  const span = total - Math.max(0, Ls.length - 1);
+  const rows = R.map((r, i) => (port ? (i < span ? 'port' : Ls[i - span + 1]) + ' ' : '') + r.join(' '));
+  if (X.qNamePos === 'above') rows.unshift(Array((port ? 1 : 0) + n).fill('tab').join(' '));
+  const W = { qv: +X.qColInfo > 0 ? Math.round(+X.qColInfo) + 'px' : 'minmax(170px, 1fr)',
+    stats: +X.qColStats > 0 ? Math.round(+X.qColStats) + 'px' : 'auto', elem: +X.qColElem > 0 ? Math.round(+X.qColElem) + 'px' : 'auto' };
+  const cols = (port ? ['var(--qp-port-col, var(--qp-port, 108px))'] : []).concat(main.length ? main.map(a => W[a]) : ['auto']);
   return { areas: rows.map(r => '"' + r + '"').join(' '), cols: cols.join(' ') };
 }
 /* the scoreboard's text pieces, re-published only when they change (the Scoreboard reads window._ewSbLook each render) */
@@ -12597,7 +12681,7 @@ function uxCss() {
   /* ── the unit info panel + the action lists ── */
   const QP = HI + '.hrlg-panel.quick > .hrlg-thead.qp', SUB = HI + '.hrlg-panel:not(.root)';
   if (chg('qListW')) { const w = n('qListW', 240, 760); css += `${HI}.hrlg-panels { --qp-list-w: ${w}px; }\n${SUB} { width: ${w}px !important; }\n${HI}.hrlg-panel.bg:not(.root) + .hrlg-panel { margin-left: -${Math.round(w / 2)}px !important; }\n`; }
-  if (chg('qListH')) css += `${SUB} .hrlg-list { max-height: ${n('qListH', 160, 1000)}px !important; }\n`;
+  if (chg('qListH')) css += `${SUB}:not(.quick) .hrlg-list { max-height: ${n('qListH', 160, 1000)}px !important; }\n${HI}.hrlg-panels { --qp-list-h: ${n('qListH', 160, 1000)}px; }\n`;
   if (chg('qRowH')) css += `${SUB} .hrlg-blade:not(.trow) { height: ${n('qRowH', 26, 80)}px !important; }\n`;
   if (chg('qRowFont')) css += `${SUB} .hrlg-blabel { font-size: ${n('qRowFont', 10, 28)}px !important; }\n`;
   if (X.qShape === 'tall') {   // the old column: the header as wide as the list, the small portrait in the name row
@@ -12614,11 +12698,25 @@ function uxCss() {
     }
     if (chg('qCols')) css += `${HI}.hrlg-panels { --qp-cols: ${Math.round(n('qCols', 1, 5))}; }\n`;
     if (chg('qZoom')) css += `${HI}.hrlg-panels { --qp-zoom: ${n('qZoom', 1, 3)}; }\n${+X.qZoom <= 1 ? `${QP} > .hrlg-qp-port.sprite { background-size: contain !important; background-position: center bottom !important; }\n` : ''}`;
-    if (!X.qStats || chg('qStatsPos') || chg('qElem')) { const G = qpGrid(X); css += `${QP} { grid-template-areas: ${G.areas} !important; grid-template-columns: ${G.cols} !important; }\n`; }
+    if (!X.qStats || port <= 0 || ['qStatsPos', 'qElem', 'qNamePos', 'qVitalsPos', 'qTypesPos', 'qColInfo', 'qColStats', 'qColElem'].some(chg)) { const G = qpGrid(X); css += `${QP} { grid-template-areas: ${G.areas} !important; grid-template-columns: ${G.cols} !important; }\n`; }
+    /* the name over the portrait / across the top; the bars + the badges under the portrait or on it */
+    if (port > 0 && X.qNamePos === 'on') css += `${QP} > .hrlg-view-tab { grid-area: port !important; align-self: start !important; z-index: 2; margin: 0 !important; background: linear-gradient(180deg, rgba(0,0,0,0.78), rgba(0,0,0,0)) !important; min-width: 0; }\n${QP} > .hrlg-view-tab .hrlg-view-tab-text { white-space: nowrap !important; letter-spacing: 0.06em !important; }\n${QP} > .hrlg-view-tab { overflow: hidden; }\n`;
+    if (port > 0 && X.qVitalsPos === 'under') css += `${QP} > .hrlg-qvitals { padding: 6px 8px 6px 8px !important; }\n${QP} > .hrlg-qvitals .hrlg-qv-row { flex-wrap: wrap; }\n${QP} > .hrlg-qvitals .hrlg-thp { min-width: 0 !important; flex-basis: 100% !important; }\n${QP} > .hrlg-qstats { border-left: 0 !important; }\n`;
+    if (port > 0 && (X.qTypesPos === 'under' || X.qTypesPos === 'on')) css += `${QP} > .hrlg-qp-types { display: flex !important; }\n${QP} > .hrlg-qvitals .hrlg-qtypes { display: none !important; }\n`;
+    if (port > 0 && X.qTypesPos === 'on') css += `${QP} > .hrlg-qp-types { grid-area: port !important; align-self: end; justify-self: start; margin: 0 0 8px 6px !important; }\n`;
+    if (chg('qColStats') || chg('qStatGap')) css += `${QP} > .hrlg-qstats { gap: 0 ${n('qStatGap', 0, 60)}px !important; }\n`;
+    if (+X.qColStats > 0) css += `${QP} > .hrlg-qstats { grid-template-columns: repeat(var(--qp-cols, 3), minmax(0, 1fr)) !important; }\n${QP} .hrlg-qstat { overflow: hidden; }\n${QP} .hrlg-qstat-lbl { flex: 0 1 34px !important; width: auto !important; min-width: 0; overflow: hidden; }\n`;
+    if (+X.qColElem > 0) css += `${QP} > .hrlg-qelem { justify-self: stretch !important; overflow: hidden; }\n`;
     if (X.qStatsPos === 'below') css += `${QP} > .hrlg-qstats { border-left: 0 !important; border-top: 1px solid var(--hfc-faint) !important; }\n`;
     if (X.qElem === 'right') css += `${QP} > .hrlg-qelem { align-self: center; border-left: 1px solid var(--hfc-faint); padding-left: 10px; margin: 6px 12px 6px 0 !important; }\n`;
   }
   if (!X.qStats) css += `${QP} > .hrlg-qstats { display: none !important; }\n`;
+  if (X.qTypesPos === 'off') css += `${QP} .hrlg-qtypes, ${QP} > .hrlg-qp-types { display: none !important; }\n`;
+  if (X.qStatLook === 'bar') css += `${QP} .hrlg-qstat .ew-grade { display: none !important; }\n${QP} .hrlg-qstat-bar { display: block !important; }\n`;
+  else if (X.qStatLook === 'both') css += `${QP} .hrlg-qstat-bar { display: block !important; }\n`;
+  else if (X.qStatLook === 'number') css += `${QP} .hrlg-qstat .ew-grade { display: none !important; }\n`;
+  if (chg('qStatBarW')) css += `${HI}.hrlg-panels { --qp-statbar: ${n('qStatBarW', 16, 140)}px; }\n`;
+  if (chg('qElemSize')) css += `${QP} > .hrlg-qelem { zoom: ${n('qElemSize', 0.5, 1.6)}; }\n`;
   if (X.qElem === 'off') css += `${QP} > .hrlg-qelem { display: none !important; }\n`;
   if (chg('qNameSize')) css += `${QP} .hrlg-view-tab-text { font-size: ${n('qNameSize', 10, 36)}px !important; }\n`;
   /* ── the scoreboard ── */
@@ -12717,29 +12815,48 @@ function apForm() {
   return h + xReset('a', 'Reset the AP icons');
 }
 function qpForm() {
-  const X = uxOf();
-  let h = `<div class="uim-note">The card over a clicked unit's quick actions (click a unit, or its turn order icon). Move X / Y above slide it against its action list.</div>`;
+  const X = uxOf(), wide = X.qShape === 'wide', port = wide && +X.qPort > 0;
+  let h = `<div class="uim-note">The card over a clicked unit's quick actions (click a unit, or its turn order icon). Move X / Y above slide it from its spot.</div>`;
   h += sec('qshape', 'The card', xp(fSeg('Shape', 'qShape', [['wide', 'Wide', 'The actions hang off its bottom right edge'], ['tall', 'Tall (old)', 'The old column over the list']], X.qShape)
-    + (X.qShape === 'wide'
+    + fSeg('Where', 'qSpot', [['pin', 'Above the menu', 'Always the same spot, just above the command menu, however many actions the unit has'], ['list', 'On its action list', 'Rides on top of the action list: lower with fewer actions']], X.qSpot)
+    + (X.qSpot === 'pin' ? fRange('Space above the menu', 'qPinGap', -200, 300, 2, +X.qPinGap) : '')
+    + (wide
       ? fSeg('Actions hang off', 'qAlign', [['right', 'Its right end'], ['left', 'Its left end']], X.qAlign)
         + fRange('Width (0 = fit)', 'qW', 0, 1200, 10, +X.qW)
       : '')
     + fRange('Name size', 'qNameSize', 10, 36, 1, +X.qNameSize))
-    + xCheck('Keep clear of the menu', 'qKeep', X.qKeep) + '<div class="uim-note">Keep clear: with only a few actions, the card rides up above the command menu and the hero section instead of covering them.</div>');
-  if (X.qShape === 'wide') {
+    + (X.qSpot === 'list' ? xCheck('Keep clear of the menu', 'qKeep', X.qKeep) + '<div class="uim-note">Keep clear: with only a few actions, the card rides up above the command menu and the hero section instead of covering them.</div>' : ''));
+  if (wide) {
     h += sec('qport', 'Portrait', xp(fRange('Size (0 = small, in the name row)', 'qPort', 0, 240, 2, +X.qPort)
       + fSeg('Shape', 'qPortShape', [['square', 'Square'], ['round', 'Rounded'], ['circle', 'Circle']], X.qPortShape)
       + fRange('Zoom', 'qZoom', 1, 3, 0.05, +X.qZoom, 'For a full-body sprite: 1 = the whole body, higher = closer on the head and shoulders')));
+    h += sec('qname', 'Name, bars + badges', xp(
+      fSeg('Name', 'qNamePos', [['beside', 'Beside the portrait'], ['above', 'Above the portrait'], ['on', 'On the portrait']], X.qNamePos)
+      + fSeg('HP / MP bars', 'qVitalsPos', [['beside', 'Beside the portrait'], ['under', 'Under the portrait']], X.qVitalsPos)
+      + fSeg('Type badges', 'qTypesPos', [['bars', 'With the bars'], ['under', 'Under the portrait'], ['on', 'On the portrait'], ['off', 'Hidden']], X.qTypesPos))
+      + (port ? '' : '<div class="uim-note">With the portrait size at 0, the bars and badges stay beside it.</div>'));
     h += sec('qparts', 'Stats + elements', xp(fSeg('Stats', 'qStatsPos', [['beside', 'Beside the bars'], ['below', 'Under the bars']], X.qStatsPos)
+      + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
+      + (X.qStatLook === 'bar' || X.qStatLook === 'both' ? fRange('Bar length', 'qStatBarW', 16, 140, 2, +X.qStatBarW) : '')
       + fRange('Stat columns', 'qCols', 1, 5, 1, +X.qCols)
-      + fSeg('Element box', 'qElem', [['below', 'Underneath'], ['right', 'On the right'], ['off', 'Hidden']], X.qElem))
+      + fRange('Space between stat columns', 'qStatGap', 0, 60, 1, +X.qStatGap)
+      + fSeg('Element box', 'qElem', [['below', 'Underneath'], ['right', 'On the right'], ['off', 'Hidden']], X.qElem)
+      + fRange('Element box size', 'qElemSize', 0.5, 1.6, 0.05, +X.qElemSize))
       + xCheck('Stats', 'qStats', X.qStats));
-  } else h += sec('qparts', 'Stats + elements', xCheck('Stats', 'qStats', X.qStats) + xp(fSeg('Element box', 'qElem', [['below', 'Shown'], ['off', 'Hidden']], X.qElem === 'off' ? 'off' : 'below')));
-  h += sec('qcone', 'Zoom cone', xp(fColorOpt('Colour', 'qConeCol', X.qConeCol, '#ff4a56', false, 'Unticked = the team colour') + fRange('Strength', 'qConeOp', 0, 1, 0.05, +X.qConeOp))
+    h += sec('qcols', 'Column widths', xp(fRange('Bars column (0 = fit)', 'qColInfo', 0, 600, 2, +X.qColInfo)
+      + fRange('Stats column (0 = fit)', 'qColStats', 0, 700, 2, +X.qColStats)
+      + fRange('Element box column (0 = fit)', 'qColElem', 0, 600, 2, +X.qColElem))
+      + '<div class="uim-note">The parts that sit side by side each get their own column. 0 = as wide as what is in it.</div>');
+  } else h += sec('qparts', 'Stats + elements', xCheck('Stats', 'qStats', X.qStats) + xp(fSeg('Element box', 'qElem', [['below', 'Shown'], ['off', 'Hidden']], X.qElem === 'off' ? 'off' : 'below')
+    + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
+    + fSeg('Type badges', 'qTypesPos', [['bars', 'Shown'], ['off', 'Hidden']], X.qTypesPos === 'off' ? 'off' : 'bars')));
+  h += sec('qcone', 'Zoom cone', xp(fSeg('Starts from', 'qConeFrom', [['icon', 'The whole icon'], ['centre', 'The icon centre']], X.qConeFrom)
+    + fSeg('Ends at', 'qConeTo', [['port', 'Portrait'], ['portcorner', 'Portrait corner'], ['card', 'Card edge'], ['corner', 'Card corner'], ['name', 'Name']], X.qConeTo)
+    + fColorOpt('Colour', 'qConeCol', X.qConeCol, '#ff4a56', false, 'Unticked = the team colour') + fRange('Strength', 'qConeOp', 0, 1, 0.05, +X.qConeOp))
     + xCheck('Cone', 'qCone', X.qCone) + xCheck('Edge lines', 'qConeEdges', X.qConeEdges));
   h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 160, 1000, 10, +X.qListH)
     + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
-    + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names.</div>');
+    + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names. With the card above the menu, the quick actions fill the room under it (a long list scrolls).</div>');
   return h + xReset('q', 'Reset the unit info panel');
 }
 function scoreForm() {
