@@ -34889,6 +34889,7 @@
         }
         window.forecastBanePlan = forecastBanePlan;
 
+        const _FC_DIRECT_TAGS = { random: 1, return: 1, shockwave: 1, delayed: 1 };   // tagged hits the cast still lands itself
         function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
             const sp = spellPowerOf(unit, spell);
             const kind = spell.kind;
@@ -34929,6 +34930,9 @@
                     if (g) { const gh = entry(g); gh.dmg += fm.redirectDmg || 0; gh.min += fm.redirectDmg || 0; gh.max += fm.redirectDmg || 0; gh.hits++; tag(g, 'intercepts'); }
                 }
                 if (extra && extra.tag) tag(u, extra.tag);
+                /* THE STRIKE ARROWS (ui.js drawForecastStrikes): a body the cast itself reaches — not a hop off a
+                   victim (ricochet / chain / fork / split / splash) or a knock-on (crash, pin, Drive-By's shot) */
+                if (!(extra && extra.tag) || _FC_DIRECT_TAGS[extra.tag]) h.direct = true;
                 _forecastPressRecord(plan, unit, u, o, fm, h, entry);
                 u.shield = fm.shieldLeft != null ? fm.shieldLeft : u.shield;
                 u.hp = Math.max(0, u.hp - take(fm));
@@ -41389,6 +41393,7 @@
                 ThreeRenderer.clearOverlay('spellApproachMove');
                 ThreeRenderer.clearOverlay('spellApproachTarget');
                 ThreeRenderer.clearOverlay('spellApproachShove');
+                ThreeRenderer.clearOverlay('spellApproachChain');
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
         }
 
@@ -41422,18 +41427,24 @@
         }
 
         // Hologram + bent arrow showing where the spell will knock/pull the target.
-        function _drawSpellApproachShove(spell, target, castX, castY, targetY) {
+        /* Returns how many strike arrows the forecast drew (0 = the caller draws its single arrow onto the target). */
+        function _drawSpellApproachShove(spell, target, castX, castY, targetY, castYpx) {
             try {
-                if (!spell || !target) return;
+                if (!spell || !target) return 0;
                 /* THE FORECAST (2026-10-01): the engine's own read from the cast tile — every body the cast moves */
                 const _caster = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
                 if (_caster && typeof window.drawForecastMoves === 'function') {
                     const plan = forecastSpellPlan(_caster, spell, target.x, target.y, target.z,
                         { castFrom: (castX !== _caster.x || castY !== _caster.y) ? { x: castX, y: castY } : null });
-                    if (plan.handled) { window.drawForecastMoves(plan, _caster, 'spellApproachShove'); return; }
+                    if (plan.handled) {
+                        window.drawForecastMoves(plan, _caster, 'spellApproachShove');
+                        /* THE STRIKE ARROWS + the ricochet / chain hops from the cast tile (ui.js) */
+                        if (typeof window.drawForecastChain === 'function') window.drawForecastChain(plan, _caster, target.x, target.y, 'spellApproachChain');
+                        return (typeof window.drawForecastStrikes === 'function') ? window.drawForecastStrikes(plan, _caster, castX, castY, castYpx) : 0;
+                    }
                 }
                 const shove = _predictSpellApproachShove(spell, target, castX, castY);
-                if (!shove) return;
+                if (!shove) return 0;
                 // Arrow palette: purple = target being force-moved (push AND pull).
                 const shoveColor = 0xbb66ff;
                 const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
@@ -41443,6 +41454,7 @@
                     { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
                 ThreeRenderer.setOverlay('spellApproachShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
             } catch (e) { /* cosmetic */ }
+            return 0;
         }
 
         // World-px carry height for a skyThrow lift — shared by the grab-phase
@@ -41736,6 +41748,7 @@
                 ThreeRenderer.clearArrows3D();
                 ThreeRenderer.clearGhostUnit();
                 ThreeRenderer.clearOverlay('spellApproachShove');
+                ThreeRenderer.clearOverlay('spellApproachChain');
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const targetY = ThreeRenderer.tileTopY(tx, ty);
                 const ghostTint = (typeof getUnitAccentColor === 'function')
@@ -41748,9 +41761,9 @@
                 // In-place height approach (take off / land / raise) — casts from the
                 // caster's own tile, so there's no move arrow/ghost, just aim the target.
                 if (approach._heightApproach) {
-                    ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff3333, false, actingY, targetY, { arc: 0.35, flow: true });
                     ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, unit.x, unit.y, tx, ty), 0xff3333, 0.5);
-                    _drawSpellApproachShove(_spell, _target, unit.x, unit.y, targetY);
+                    if (!_drawSpellApproachShove(_spell, _target, unit.x, unit.y, targetY, actingY))
+                        ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff3333, false, actingY, targetY, { arc: 0.35, flow: true });
                     state._spellApproachActive = true;
                     return;
                 }
@@ -41805,9 +41818,9 @@
                     ThreeRenderer.showGhostUnit(unit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
                         motion: { wps: _mw, kind: _airApp ? 'fly' : 'walk', castSpell: _spell || null, faceTo: { x: tx, y: ty } } });
                 }
-                ThreeRenderer.drawArrow3D(castX, castY, tx, ty, 0xff3333, false, castYpx, targetY, { arc: 0.35, flow: true });
                 ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, castX, castY, tx, ty), 0xff3333, 0.5);
-                _drawSpellApproachShove(_spell, _target, castX, castY, targetY);
+                if (!_drawSpellApproachShove(_spell, _target, castX, castY, targetY, castYpx))
+                    ThreeRenderer.drawArrow3D(castX, castY, tx, ty, 0xff3333, false, castYpx, targetY, { arc: 0.35, flow: true });
                 state._spellApproachActive = true;
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
         }
@@ -56835,7 +56848,7 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearOverlay) {
                 for (const ov of ['spellApproachMove', 'spellApproachTarget', 'spellApproachShove',
                                   'movePreview', 'actionPlanTarget', 'actionPlanAoe', 'actionPlanShove',
-                                  'actionPlanRange', 'actionPlanChain', 'moveHoverDest', 'enemyRange']) {
+                                  'actionPlanRange', 'actionPlanChain', 'spellApproachChain', 'moveHoverDest', 'enemyRange']) {
                     ThreeRenderer.clearOverlay(ov);
                 }
                 if (ThreeRenderer.clearArrows3D) ThreeRenderer.clearArrows3D();
