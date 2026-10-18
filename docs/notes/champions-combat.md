@@ -1426,8 +1426,17 @@ maybe tracking their movement if they have to jump forward to attack them."
   `camera._menuAtk {unitId, targetId, until}`.
 - The leap: `animateStrikeLeap` (host + guest replay) → `_menuAttackTrackLeap`: for a leap of 2+ tiles the shot keeps
   its yaw/tilt and re-fits the frame with the attacker at its landing spot over leapMs, back to the pose over returnMs
-  (moves shield boardCameraResetTimer). The post-action `_softResetCameraToUnit` (PR #278 timing untouched) still
-  returns the tactical view.
+  (moves shield boardCameraResetTimer). The post-action `_softResetCameraToUnit` (PR #278 timing untouched) returned
+  the tactical view until THE PUSH-IN below.
+- THE PUSH-IN (same day, mondo: "basic attack camera still spins around from the view that shows when i have a target
+  selected. i specificaly said its supposed to stay the same, just with a slight zoom in or push in as my unit
+  attacks"). Browser repro: the two-shot held through the swing, then the soft reset's moveTo (no `_menuShot`) restored
+  the menu home = tilt 65→40, yaw 349→45, the spin. Now `_menuAttackPush` creeps the held pose in ×MENU_ATK_PUSH (1.12)
+  over the wind-up to the hit (same angle), and softResetToUnit → `_menuAttackSettle` eases back to the pose and KEEPS
+  the two-shot while the pair stands (attacker on the solved tile, target alive and unmoved; a kill / displacement /
+  new turn falls through to the normal return). The view goes tactical when the menu leaves its target views
+  (`_ewMenuCamHome`), a Move pans, or the next turn's activation pan. Guest: the push's own timer eases it back out
+  (no soft reset there). The Cube swing uses the same push + settle.
 
 ## THE CUBE CAMERA + THE REST ZOOM (2026-10-18)
 mondo: "the camera zooms out really unecessarily far after i attack the cube, please fix. if anything else makes the
@@ -1435,8 +1444,8 @@ camera zoom out that far or anywhere close, please fix that too".
 - Cause (not PR #287): doAttack's Cube branch moved/snapped with `zoom: getCloseZoom()`, and getCloseZoom = the
   whole-board overview (`_getBattleZoom`); `snap()` applies zoom directly, so every Cube hit pulled all the way out.
 - THE CUBE CAMERA: the branch names no zoom now. Your own LOCAL swing → `_menuAttackHoldTile` keeps the Target Camera
-  two-shot of unit + Cube (`_menuCamBody` gives a tower tile 1.6 tiles of height) and comes home after the settle
-  while the unit keeps acting; the CPU's / menu-camera-off swings pan attacker → Cube at the zoom on screen. Guest:
+  two-shot of unit + Cube (`_menuCamBody` gives a tower tile 1.6 tiles of height), pushes in and stays on the pair
+  after the settle (THE PUSH-IN); the CPU's / menu-camera-off swings pan attacker → Cube at the zoom on screen. Guest:
   `_ewMenuAtkPending` also holds for a Cube tile.
 - THE REST ZOOM `getRestZoom()` = engaged hand zoom, else the follow-cam zoom / getTurnFramingZoom (the medium framing
   your turn opens on). It replaces the getDefaultZoom (overview) fallback in camera.reset(), the soft-reset no-saved

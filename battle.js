@@ -22950,6 +22950,19 @@
                     this._releaseCineSubject(actionMs(700));
                     return;
                 }
+                // THE ATTACK HOLD's end: the selection two-shot stays (eased out of the push-in)
+                // instead of swinging back to the tactical view.
+                if (!opts.focusTarget && targetUnit && this._menuAtk && typeof _menuAttackSettle === 'function') {
+                    if (_menuAttackSettle(targetUnit)) {
+                        ++boardCameraSequenceId;
+                        if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                        this._savedState = null;
+                        this._cineShotId = null;
+                        this._busy = false;
+                        if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
+                        return;
+                    }
+                }
                 // ── Press-turn HOLD: the unit can still act — stay in the shot ──
                 // After an offensive action, if the acting unit still has AP
                 // (press-turn refund, multi-action turn), KEEP the third-person
@@ -27439,7 +27452,7 @@
             if (!camera._menuShot || state.phase !== 'battle' || state._actionExecuting || camera._cineShotId != null) return;
             if (!force && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) return;
             // THE ATTACK HOLD: the menu resets to its root as the swing starts — the
-            // held two-shot stays until the action's own soft reset brings the view home
+            // held two-shot stays through the swing (and after it: _menuAttackSettle)
             if (!force && camera._menuAtk && performance.now() < camera._menuAtk.until) return;
             const uid = state._blitzActiveUnitId;
             const u = uid != null ? (state.units || []).find(un => un.id === uid && !un.dead) : getSelectedUnit();
@@ -27458,8 +27471,10 @@
            (the same pair keeps the running shot; a pair the camera was not on
            yet gets the two-shot now). playOffensiveActionCamera runs this on
            the host AND on the guest's relayed replay (opts.menuHold), each for
-           its own viewer, so each player gets it for their own attacks. The
-           post-action soft reset still brings the tactical view back. */
+           its own viewer, so each player gets it for their own attacks. Since
+           THE PUSH-IN the view creeps in over the swing and STAYS on the pair
+           after it (_menuAttackSettle); the tactical view comes back when the
+           menu leaves its target views or the next move / turn pans. */
         function _menuAttackHold(src, tgt, timings) {
             try {
                 if (!src || !tgt || src.id == null || tgt.id == null || !window._ewMenuCamOn() || _skipVisuals()) return false;
@@ -27471,6 +27486,8 @@
                 if (!_menuTargetShot(su, tu)) return false;
                 camera._menuAtk = { unitId: su.id, targetId: tu.id, timer: null,
                     until: performance.now() + Math.max(0, (timings && timings.totalMs) || 0) + 600 };
+                _menuAttackPush(timings ? (timings.sourceHold || 0) + (timings.travelMs || 0) : 0,
+                    (timings && timings.totalMs) || 0);
                 return true;
             } catch (e) { return false; }
         }
@@ -27484,8 +27501,56 @@
                 if (state.controllers?.[su.player] !== CTRL.LOCAL || state.autoPlayers?.[su.player]) return false;
                 if (!_menuTargetShot(su, { x, y })) return false;
                 camera._menuAtk = { unitId: su.id, targetId: null, timer: null, until: performance.now() + Math.max(0, ms || 0) + 600 };
+                _menuAttackPush(Math.max(0, (ms || 0) - actionMs(700)), ms || 0);
                 return true;
             } catch (e) { return false; }
+        }
+        /* THE PUSH-IN (mondo 2026-10-18: "basic attack camera still spins around from the view that shows when i
+           have a target selected. i specificaly said its supposed to stay the same, just with a slight zoom in or
+           push in as my unit attacks"). The held two-shot keeps its angle and creeps in MENU_ATK_PUSH closer over
+           the wind-up to the hit; _menuAttackSettle eases it back out afterwards and the view STAYS on the pair. */
+        const MENU_ATK_PUSH = 1.12;
+        function _menuAttackPush(toImpactMs, totalMs) {
+            const ma = camera._menuAtk, ms = camera._menuShot, p = ms && ms.pose;
+            if (!ma || !p) return;
+            camera.moveTo({ x: p.x, y: p.y, zoom: p.zoom * MENU_ATK_PUSH, tilt: p.tilt, yaw: p.yaw, elevZ: p.elevZ,
+                duration: Math.max(actionMs(420), toImpactMs || 0), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true });
+            // the guest gets no post-action soft reset: ease back out on its own clock
+            // (on the host the soft reset's settle lands on the same pose — no double move)
+            if (ma.timer) clearTimeout(ma.timer);
+            ma.timer = setTimeout(() => {
+                ma.timer = null;
+                if (camera._menuAtk === ma && camera._menuShot === ms && !state._actionExecuting) _menuAttackEaseOut(ms);
+            }, Math.max(actionMs(600), (totalMs || 0) + actionMs(250)));
+        }
+        function _menuAttackEaseOut(ms) {
+            const p = ms && ms.pose;
+            if (!p) return;
+            camera.moveTo({ x: p.x, y: p.y, zoom: p.zoom, tilt: p.tilt, yaw: p.yaw, elevZ: p.elevZ,
+                duration: actionMs(520), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true });
+        }
+        /* The action's end (softResetToUnit, the Cube's settle): a held swing whose pair still stands (attacker on
+           the tile the shot was solved on, the target alive and where it was) keeps the two-shot — eased back out
+           of the push — instead of the old return to the tactical view (the "spin"). A kill, a displaced body or a
+           new turn falls through to the normal return. The menu leaving its target views later (ESC, another
+           action) still brings the tactical view home through _ewMenuCamHome. */
+        function _menuAttackSettle(unit) {
+            const ma = camera._menuAtk, ms = camera._menuShot;
+            if (!ma || !ms || !ms.pose || !unit || unit.dead || ma.unitId !== unit.id) return false;
+            if (performance.now() > ma.until + 4000 || !window._ewMenuCamOn() || _skipVisuals()) return false;
+            if (state._blitzActiveUnitId != null && state._blitzActiveUnitId !== unit.id) return false;
+            const key = String(ms.key || '');
+            if (key.indexOf(unit.id + '@' + unit.x + ',' + unit.y + '>') !== 0) return false;
+            if (ma.targetId != null) {
+                const tu = (state.units || []).find(u => u.id === ma.targetId);
+                if (!tu || tu.dead || tu._dying || !key.endsWith('>' + tu.id + '@' + tu.x + ',' + tu.y)) return false;
+            }
+            if (ma.timer) { clearTimeout(ma.timer); ma.timer = null; }
+            camera._menuAtk = null;
+            _menuAttackEaseOut(ms);
+            return true;
         }
         /* online.js, the guest's own attack emit: the swing plays back only when the
            host's relayed shot arrives, so hold the two-shot meanwhile (the menu's
@@ -61194,12 +61259,12 @@
                     checkWin();
                     endUnitIfDone(unit);
                     renderAfterCombat();
-                    // the held two-shot comes home while this unit keeps acting (a new turn's
-                    // activation pan owns the camera otherwise); no zoom named → the view it left
+                    // the held two-shot stays on unit + Cube, eased out of the push-in, while this
+                    // unit keeps acting (a new turn's activation pan owns the camera otherwise)
                     if (_twHold && camera._menuShot && !state.winner && state.phase === 'battle'
-                        && state._blitzActiveUnitId === unit.id && !unit.dead && !unitFinished(unit)) {
-                        camera._menuAtk = null;
-                        camera.moveTo({ x: unit.x, y: unit.y, duration: actionMs(600), easing: 'easeInOut', _fogAllowed: true });
+                        && !unitFinished(unit)) {
+                        camera._busy = false;
+                        _menuAttackSettle(unit);
                     }
                 }, settleMs);
 
