@@ -845,6 +845,25 @@
             font-weight: 700;
         }
 
+        /* THE COMBAT TEXT COLOURS (2026-10-18, battle.js _ctDecorate): every coded word of a combat line. Your side
+           blue, the other side red, damage red, heals green, spell names gold caps, status effects caps in their
+           badge's colour (--ct-c). -webkit-text-fill-color follows the colour so a box-wide text colour (UI Maker
+           All text) never paints over them. */
+        .ct { font-weight: 700; -webkit-text-fill-color: currentColor; }
+        .ct-ally { color: #5aa8ff; }
+        .ct-enemy { color: #ff5a5a; }
+        .ct-spell { color: #ffd24a; letter-spacing: 0.03em; }
+        .ct-status { color: var(--ct-c, #e8a545); white-space: nowrap; }
+        .ct-status img { width: 1.05em; height: 1.05em; vertical-align: -0.16em; margin-right: 0.18em; image-rendering: pixelated; }
+        .ct-dmg { color: #ff3d3d; }
+        .ct-heal { color: #4fe36f; }
+        .ct-ko { color: #f4f0e6; letter-spacing: 0.04em; }
+        .ct-crit { color: #ffd166; font-weight: 900; }
+        .ct-over { color: #b78cff; font-weight: 900; }
+        .ct-good { color: #4fe36f; }
+        .ct-weak { color: #a9b0d0; font-style: italic; font-weight: 400; }
+        .ct-ally-word { color: #85a9ff; }
+
         .hourglass-text {
             color: #ffd76a;
             font-weight: 700;

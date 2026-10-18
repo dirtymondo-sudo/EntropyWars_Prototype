@@ -4686,7 +4686,11 @@ const SPELL_LIBRARY = [
            turns to mountain stone and climbs two levels (applyTerrainDeform:
            units on it ride up). The standing-stone monument (2026-09-18) is
            retired for Rampart; Walls of Camelot / Pyramid Protocol keep theirs. */
-        terrainDeform: { centerDelta: 2, edgeDelta: 0 },
+        /* 2026-10-18 (mondo): "since this isnt the voxel map its kind of weird for it to be a perfect cube wall … raise the
+           elevation like how raising elevation works in the map editor, and make the sides/walls dirt". `mound`: on a
+           true-ground field the raised cells are drawn as the ground swelling with dirt banks (three-renderer.js
+           _fieldMoundBuild); a voxel board (Holo Sim, Training Room) keeps the block. Rules unchanged. */
+        terrainDeform: { centerDelta: 2, edgeDelta: 0, mound: true },
         /* Tank capstone (ring 4 = tier III, spell-tree redesign). */
         tier: 2,
         school: 'Tank',
@@ -11874,9 +11878,9 @@ const STATUS_DEFS = {
         kind: 'debuff',
         category: 'status',
         stack: 'max',
-        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"): sees only the tiles beside it.
-                                // It still uses its team's sight (2026-10-18, mondo: "i had teammates near the unit ... so they
-                                // had vision on him anyway so that shouldnt have been an issue"), so no noSharedVision here.
+        visionSet: 1,           // 2026-10-09 VISION (mondo: "Blindness status effect should affect vision now too"):
+        noSharedVision: true,   // sees only the tiles beside it, and can't use its allies' sight (2026-10-18, mondo: "if i am
+                                // blind then i shouldnt have team vision") — the board shows only its own tiles on its turn
         iconSrc: createStatusIconDataUri('🌫️', '#2a2e33', '#eef2f6', '#9aa8b5')
         // Attack accuracy penalty is rolled in doAttack (battle.js): a blind
         // attacker misses 50% of the time.
@@ -11971,7 +11975,7 @@ const STATUS_LIBRARY_DESCS = {
     statLock:  'Stats are locked and cannot be raised or lowered.',
     hexed:     'Cursed — every action taken feeds the hex and hurts.',
     frozen:    'Encased in ice: cannot move or act. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
-    blind:     'Vision whited out: attacks miss 50% of the time and VISION drops to 1 (only the tiles beside it). It can still hit what its allies see.',
+    blind:     'Vision whited out: attacks miss 50% of the time, VISION drops to 1 (only the tiles beside it) and it can\'t use its allies\' sight.',
     broken:    'Every passive is switched off while it lasts: no passive hooks, immunities or gear bonuses. A unit that flies by passive falls out of the sky and takes fall damage.',
     siegeMode: 'Anchored down: +1 ATK stage and +2 RNG, but −2 MOV. Cannot be stolen.'
 };

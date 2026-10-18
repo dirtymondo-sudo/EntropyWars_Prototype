@@ -671,7 +671,7 @@
                     // high ground / height soak / range falloff read the tile it left
                     struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
-                addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
+                addLog(`⚔️ ${_ctName(enemy)} lands an opportunity attack on ${_ctName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
                 if (!_skipVisuals()) {
                     showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
@@ -2234,7 +2234,7 @@
             // spent) so the AI marks the spell failed and humans get feedback.
             const tower = !target ? towerAt(x, y) : null;
             if (tower && tower.owner !== unit.player) {
-                addLog(`⬡ The Cube shrugs off ${spell.name} — only physical strikes damage it.`);
+                addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`);
                 playErrorSfx();
                 return { handled: true, returnVal: 0 };
             }
@@ -2285,7 +2285,7 @@
                     } else {
                         state._deployedObjects.splice(dobjIdx, 1);
                         _onDecoyBroken(dobj, unit);   // THE SPELL AUDIT Batch D: Stuffed Double's Fear
-                        addLog(`${unitDisplayName(unit)} casts ${spell.name} and destroys ${dobj.spellName || 'deployed object'} at ${coordLabel(x, y)}!`);
+                        addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} and destroys ${_ctSp(dobj.spellName || 'deployed object')} at ${coordLabel(x, y)}!`);
                         showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                         playSfx(spellLaunchSfx(spell));
                     }
@@ -2315,7 +2315,7 @@
                     unit.mp -= effectiveSpellCost;
                     const _etcTravelMs = actionMs(420);
                     playProjectile(unit.x, unit.y, x, y, 'damage', _etcTravelMs, spell.spellType, spell.projectileOverride || null, spell);
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name} at ${coordLabel(x, y)} — it ${_etc.hint}!`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} at ${coordLabel(x, y)} — it ${_etc.hint}!`);
                     window.setTimeout(() => {
                         if (state.phase !== 'battle') return;
                         // lightning gets a real sky bolt at the tile instead of
@@ -2374,7 +2374,7 @@
             const sh = Math.max(0, target.shield || 0);
             if (sh > 0) target.shield = 0;
             if (n || sh) {
-                addLog(`${spell.name} unmakes ${unitDisplayName(target)}'s wards — ${n} buff${n !== 1 ? 's' : ''}${sh ? ` and a ${sh} HP shield` : ''} gone before the blow.`);
+                addLog(`${_ctSp(spell.name)} unmakes ${_ctName(target)}'s wards — ${n} buff${n !== 1 ? 's' : ''}${sh ? ` and a ${sh} HP shield` : ''} gone before the blow.`);
                 showFloatingTextForUnit(target, '✂ WARDS UNMADE', 'debuff', { durationMs: 1000 });
             }
             return n + (sh ? 1 : 0);
@@ -2410,7 +2410,7 @@
             for (const s of stages) applyStatStageBoost(thief, { [s.stat]: s.n }, label, thief, { rounds: s.left });
             const n = taken.length + stages.length;
             if (n) {
-                addLog(`${unitDisplayName(thief)} lifts ${n} buff${n !== 1 ? 's' : ''} off ${unitDisplayName(victim)} — ${spell.name}!`);
+                addLog(`${_ctName(thief)} lifts ${n} buff${n !== 1 ? 's' : ''} off ${_ctName(victim)} — ${_ctSp(spell.name)}!`);
                 showFloatingTextForUnit(victim, '✋ BUFFS LIFTED', 'debuff', { durationMs: 1000 });
                 showFloatingTextForUnit(thief, `✋ +${n} BUFF${n !== 1 ? 'S' : ''}`, 'buff', { durationMs: 1100 });
             }
@@ -2430,7 +2430,7 @@
             if (spell.purgeBuffs && target && !target.dead) {
                 const _pn = removeBuffs(target);
                 if (_pn) {
-                    addLog(`${spell.name} strips ${_pn} buff${_pn !== 1 ? 's' : ''} from ${unitDisplayName(target)}!`);
+                    addLog(`${_ctSp(spell.name)} strips ${_pn} buff${_pn !== 1 ? 's' : ''} from ${_ctName(target)}!`);
                     showFloatingTextForUnit(target, '✂ BUFFS STRIPPED', 'debuff', { durationMs: 1000 });
                 }
             }
@@ -2453,7 +2453,7 @@
                         unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                     }
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
-                    addLog(`${unitDisplayName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
+                    addLog(`${_ctName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 }
@@ -2473,7 +2473,7 @@
                             unit.z = nearestWalkableZ(unit.x, unit.y, unit.z);
                             target.z = nearestWalkableZ(target.x, target.y, target.z);
                         }
-                        addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
+                        addLog(`${_ctName(unit)} swaps positions with ${_ctName(target)}!`);
                         showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
                         animateDisplacement(unit, ux, uy, tx, ty, 200);
                         animateDisplacement(target, tx, ty, ux, uy, 200);
@@ -2517,7 +2517,7 @@
                                 animateDisplacement(unit, _ufx, _ufy, rx, ry, Math.max(200, slide.animMs || 0));
                                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the carrier's landing
                             }
-                            addLog(`${unitDisplayName(unit)} carries ${unitDisplayName(target)} ${slide.moved} tile${slide.moved !== 1 ? 's' : ''} down the line!`);
+                            addLog(`${_ctName(unit)} carries ${_ctName(target)} ${slide.moved} tile${slide.moved !== 1 ? 's' : ''} down the line!`);
                         }
                         if (hitObstacle && !target.dead) {
                             if (spell.collisionBonus) {
@@ -2530,7 +2530,7 @@
                                 applyStatusEffects(target, [spell.collisionStatus], `${spell.name} collision: `, unit);
                             }
                             showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
-                            addLog(`${unitDisplayName(target)} is slammed into an obstacle by ${spell.name}!`);
+                            addLog(`${_ctName(target)} is slammed into an obstacle by ${_ctSp(spell.name)}!`);
                         }
                     }
                 }
@@ -2648,7 +2648,7 @@
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true, charge: true });
                 }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
-                addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+                addLog(`${_ctName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
                 scheduleBoardRender();
             };
             if (_chargeDelay > 0) window.setTimeout(_runCharge, _chargeDelay);
@@ -2782,7 +2782,7 @@
             if (!u || u.dead || u._dying) return false;
             if (!(u.status && u.status.burn)) return false;
             clearStatus(u, 'burn');
-            addLog(`💧 ${label || 'The water'} douses the flames on ${unitDisplayName(u)}!`);
+            addLog(`💧 ${label || 'The water'} douses the flames on ${_ctName(u)}!`);
             showFloatingTextForUnit(u, '💧 Doused', 'heal', { durationMs: 1000 });
             return true;
         }
@@ -3172,7 +3172,7 @@
                 zapped++;
             }
             if (body.length > 1 || zapped > 0) {
-                addLog(`⚡ ${spell.name} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                addLog(`⚡ ${_ctSp(spell.name)} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
         }
@@ -3195,7 +3195,7 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`❄️ ${spell.name} flash-freezes the water solid — the pool turns to slick ice${frozenUnits ? `, locking ${frozenUnits} unit${frozenUnits !== 1 ? 's' : ''} in place` : ''}!`);
+            addLog(`❄️ ${_ctSp(spell.name)} flash-freezes the water solid — the pool turns to slick ice${frozenUnits ? `, locking ${frozenUnits} unit${frozenUnits !== 1 ? 's' : ''} in place` : ''}!`);
         }
 
         // 🔥 The forest goes up: connected trees CATCH FIRE and keep burning —
@@ -3217,7 +3217,7 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`🔥 ${spell.name} sets the forest ablaze — ${lit} tile${lit !== 1 ? 's' : ''} catch fire${ignited ? `, torching ${ignited} unit${ignited !== 1 ? 's' : ''}` : ''}! The blaze will burn (and spread) until the fuel is spent.`);
+            addLog(`🔥 ${_ctSp(spell.name)} sets the forest ablaze — ${lit} tile${lit !== 1 ? 's' : ''} catch fire${ignited ? `, torching ${ignited} unit${ignited !== 1 ? 's' : ''}` : ''}! The blaze will burn (and spread) until the fuel is spent.`);
         }
 
         // 🔥💧 Fire melts ice: the connected ice sheet thaws back to shallow
@@ -3230,7 +3230,7 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`🔥 ${spell.name} melts the ice — ${body.length} tile${body.length !== 1 ? 's' : ''} thaw back into water!`);
+            addLog(`🔥 ${_ctSp(spell.name)} melts the ice — ${body.length} tile${body.length !== 1 ? 's' : ''} thaw back into water!`);
             if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType, 450);
         }
 
@@ -3280,7 +3280,7 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`💥 ${spell.name} ignites the oil — the whole slick detonates (${slick.length} tile${slick.length !== 1 ? 's' : ''})${victims.length ? `, engulfing ${victims.length} unit${victims.length !== 1 ? 's' : ''}` : ''}!`);
+            addLog(`💥 ${_ctSp(spell.name)} ignites the oil — the whole slick detonates (${slick.length} tile${slick.length !== 1 ? 's' : ''})${victims.length ? `, engulfing ${victims.length} unit${victims.length !== 1 ? 's' : ''}` : ''}!`);
             if (typeof playSfx === 'function') playSfx('burningDamage');
         }
 
@@ -3318,7 +3318,7 @@
                 zapped++;
             }
             if (sheet.length > 1 || zapped > 0) {
-                addLog(`⚡ ${spell.name} electrifies the metal — the charge races across ${sheet.length} tile${sheet.length !== 1 ? 's' : ''}${zapped ? `, shocking ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                addLog(`⚡ ${_ctSp(spell.name)} electrifies the metal — the charge races across ${sheet.length} tile${sheet.length !== 1 ? 's' : ''}${zapped ? `, shocking ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
         }
@@ -3348,7 +3348,7 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`💎 ${spell.name} detonates the crystal vein — ${vein.length} tile${vein.length !== 1 ? 's' : ''} explode into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
+            addLog(`💎 ${_ctSp(spell.name)} detonates the crystal vein — ${vein.length} tile${vein.length !== 1 ? 's' : ''} explode into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
             if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType, 500);
         }
 
@@ -3426,11 +3426,11 @@
             if (_lit) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
-                addLog(`🔥 ${spell.name} sets ${_lit} tile${_lit !== 1 ? 's' : ''} ablaze!`);
+                addLog(`🔥 ${_ctSp(spell.name)} sets ${_lit} tile${_lit !== 1 ? 's' : ''} ablaze!`);
             }
             if (_doused) {
                 scheduleBoardRender();
-                addLog(`❄️ ${spell.name} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
+                addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
             }
         }
 
@@ -3668,7 +3668,7 @@
             if (!unit || unit.dead || !unitHasStatus(unit, 'frozen')) return false;
             clearStatus(unit, 'frozen');
             showFloatingTextForUnit(unit, '💧 THAWED!', 'buff', { durationMs: 1100 });
-            addLog(`💧 ${why} thaws ${unitDisplayName(unit)} out of the ice!`);
+            addLog(`💧 ${why} thaws ${_ctName(unit)} out of the ice!`);
             return true;
         }
 
@@ -3765,7 +3765,7 @@
             animateDisplacementPath(unit, fromX, fromY, steps, 90, (dir && dir.delayMs) ? { delayMs: dir.delayMs } : undefined);
             playSfx('iceSlide');
             showFloatingTextForUnit(unit, '⛸ SLIDES!', 'debuff', { durationMs: 1000 });
-            addLog(`⛸ ${unitDisplayName(unit)} hits the ice at ${coordLabel(fromX, fromY)} and slides to ${coordLabel(cx, cy)}!`);
+            addLog(`⛸ ${_ctName(unit)} hits the ice at ${coordLabel(fromX, fromY)} and slides to ${coordLabel(cx, cy)}!`);
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             _applyKnockbackHazard(unit);
             return true;
@@ -4023,7 +4023,7 @@
                 });
                 fired++;
                 if (_lavaDrinker) return fired;
-                addLog(`🌋 ${unitDisplayName(unit)} is knocked into the lava — and bursts into flame!`);
+                addLog(`🌋 ${_ctName(unit)} is knocked into the lava — and bursts into flame!`);
                 showFloatingTextForUnit(unit, '🌋 LAVA!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('burningDamage');
             } else if (via !== 'move' && terr === 'deep_water') {
@@ -4034,7 +4034,7 @@
                     ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'drowning'
                 });
                 fired++;
-                addLog(`🌊 ${unitDisplayName(unit)} is knocked into deep water and starts to drown!`);
+                addLog(`🌊 ${_ctName(unit)} is knocked into deep water and starts to drown!`);
                 showFloatingTextForUnit(unit, '🌊 SINK!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('drowningDamage');
             } else if (_tileIsBurning(x, y)) {
@@ -4046,7 +4046,7 @@
                     // Shoved into a burning tile → the flames bite immediately.
                     _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
                         `${unitDisplayName(unit)} is hurled into the flames: `);
-                    addLog(`🔥 ${unitDisplayName(unit)} is knocked into the burning ground!`);
+                    addLog(`🔥 ${_ctName(unit)} is knocked into the burning ground!`);
                 }
                 fired++;
             }
@@ -4088,7 +4088,7 @@
                 if (trapIdx >= 0) {
                     const trap = state._deployedObjects[trapIdx];
                     trap._detonated = true;
-                    addLog(`${trap.spellName || 'Trap'} triggers on ${unitDisplayName(unit)} at ${coordLabel(x, y)}!`);
+                    addLog(`${_ctSp(trap.spellName || 'Trap')} triggers on ${_ctName(unit)} at ${coordLabel(x, y)}!`);
                     /* Blast damage — credited to the trap's OWNER. */
                     if (trap.blastRadius > 0 && trap.blastDmg > 0) {
                         const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
@@ -4133,7 +4133,7 @@
                 }
                 if (!applied) continue;
                 fired++;
-                addLog(`🔮 ${unitDisplayName(unit)} enters the ${zone.spellName} zone at ${coordLabel(unit.x, unit.y)} — afflicted on the spot.`);
+                addLog(`🔮 ${_ctName(unit)} enters the ${_ctSp(zone.spellName)} zone at ${coordLabel(unit.x, unit.y)} — afflicted on the spot.`);
                 if (!_skipVisuals()) playSfx('debuff');
                 if (unit.dead) break;
             }
@@ -4148,7 +4148,7 @@
             if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) return 0;
             if (typeof applyBlowback !== 'function') return 0;
             const eye = weather.tiles[0] || { x: unit.x, y: unit.y };
-            addLog(`${def.icon} ${unitDisplayName(unit)} lands in the ${def.label} at ${coordLabel(unit.x, unit.y)}!`);
+            addLog(`${def.icon} ${_ctName(unit)} lands in the ${def.label} at ${coordLabel(unit.x, unit.y)}!`);
             const roll = def.homingDamage ? def.homingDamage(unit) : null;
             if (roll && roll.amount > 0) {
                 applyDamageToUnit(unit, roll.amount, `${roll.text}`, {
@@ -4409,7 +4409,7 @@
                     applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the tree: `, {
                         ignoreArmor: true, consumeMarked: false
                     });
-                    addLog(`💥 ${unitDisplayName(unit)} smashes straight through a tree!`);
+                    addLog(`💥 ${_ctName(unit)} smashes straight through a tree!`);
                     showFloatingTextForUnit(unit, '💥 CRASH!', 'damage', { durationMs: 900 });
                     return true;
                 }
@@ -4431,7 +4431,7 @@
             applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the ${_crashLabel} wall: `, {
                 ignoreArmor: true, consumeMarked: false
             });
-            addLog(`💥 ${unitDisplayName(unit)} smashes a hole clean through the ${_crashLabel} wall — debris everywhere!`);
+            addLog(`💥 ${_ctName(unit)} smashes a hole clean through the ${_crashLabel} wall — debris everywhere!`);
             showFloatingTextForUnit(unit, '💥 CRASH!', 'damage', { durationMs: 900 });
             if (typeof shakeBoard === 'function') shakeBoard('normal');
             return true;
@@ -4552,7 +4552,7 @@
                     ignoreArmor: true, consumeMarked: false
                 });
             }
-            addLog(`💥 ${unitDisplayName(mover)} smashes straight through the ${label} wall!`);
+            addLog(`💥 ${_ctName(mover)} smashes straight through the ${label} wall!`);
             showFloatingTextForUnit(mover, '💥 CRASH!', 'damage', { durationMs: 900 });
             if (opts.byUnit) addEntropy(opts.byUnit.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
             if (typeof shakeBoard === 'function') shakeBoard('normal');
@@ -4590,7 +4590,7 @@
             applyDamageToUnit(mover, dmg, `${unitDisplayName(mover)} slams into ${what}: `, {
                 ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
             });
-            addLog(`🎱 ${unitDisplayName(mover)} slams into ${what} and rebounds!`);
+            addLog(`🎱 ${_ctName(mover)} slams into ${what} and rebounds!`);
         }
 
         // Which axis did a diagonal slide actually hit? Probe each component;
@@ -4684,7 +4684,7 @@
                     const atMs = baseDelay + res.steps.length * perStepMs;
                     if (!simulate) {
                         impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'unit' });
-                        addLog(`🎳 ${unitDisplayName(target)} crashes into ${unitDisplayName(occ)} — both bodies are battered!`);
+                        addLog(`🎳 ${_ctName(target)} crashes into ${_ctName(occ)} — both bodies are battered!`);
                         if (!occ.dead && !occ._dying) {
                             applyDamageToUnit(occ, crash, `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `, {
                                 ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
@@ -5049,7 +5049,7 @@
             }
             if (scoopedBy) {
                 const label = Object.keys(scooped).map(m => `+${scooped[m]} ${MAT_ICONS[m] || m}`).join('  ');
-                addLog(`🧱 Debris lands at ${unitDisplayName(scoopedBy)}'s feet: ${label}.`);
+                addLog(`🧱 Debris lands at ${_ctName(scoopedBy)}'s feet: ${label}.`);
                 showFloatingTextForUnit(scoopedBy, label, 'pickup', { durationMs: 1000 });
             }
         }
@@ -5074,7 +5074,7 @@
             if (!took) return;
             _bumpMatDropVersion();
             const label = parts.join('  ');
-            addLog(`🧱 ${unitDisplayName(unit)} scoops up the debris: ${label}.`);
+            addLog(`🧱 ${_ctName(unit)} scoops up the debris: ${label}.`);
             showFloatingTextAtTile(x, y, label, 'pickup', { durationMs: 1000 });
             if (!state.devAutoSim) { try { playSfx('uiConfirm'); } catch (e) {} }
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
@@ -5226,7 +5226,7 @@
                     element: classifySpellElement(spell)
                 });
             }
-            addLog(`💥 ${spell.name} splashes ${hit.length} ${hit.length === 1 ? 'unit' : 'units'} round ${unitDisplayName(victim)}.`);
+            addLog(`💥 ${_ctSp(spell.name)} splashes ${hit.length} ${hit.length === 1 ? 'unit' : 'units'} round ${_ctName(victim)}.`);
             return hit.length;
         }
         /* ── THE UPGRADE RIDERS (SPELL_LIBRARY_PLAN.md §4.4 / §6.3, Phase 5) — an upgraded spell's derived def carries them
@@ -5293,7 +5293,7 @@
                         }, skip ? 0 : fly);
                     }, skip ? 0 : (i + 1) * gap);
                 });
-                if (list.length) addLog(`⑂ ${spell.name} forks to ${list.map(u => unitDisplayName(u)).join(', ')}.`);
+                if (list.length) addLog(`⑂ ${_ctSp(spell.name)} forks to ${list.map(u => _ctName(u)).join(', ')}.`);
             }
             return n;
         }
@@ -5361,8 +5361,8 @@
                     }, fly);
                 }, at);
             });
-            const names = picks.map(u => unitDisplayName(u));
-            addLog(`🎲 ${unitDisplayName(unit)} casts ${spell.name} — ${picks.length} ${picks.length === 1 ? 'shot' : 'shots'}: ${names.join(', ')}.`);
+            const names = picks.map(u => _ctName(u));   // tagged with their side (THE COMBAT TEXT COLOURS)
+            addLog(`🎲 ${_ctName(unit)} casts ${_ctSp(spell.name)} — ${picks.length} ${picks.length === 1 ? 'shot' : 'shots'}: ${names.join(', ')}.`);
             return completion;
         }
 
@@ -5403,7 +5403,7 @@
                     const _probe = calcChainTargets(target, aliveUnitsFor(enemyOf(unit.player)), _chainProfile.length, spell.chainRadius || 1);
                     if (_probe.some(u => u && (unitHasStatus(u, 'wet') || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(u))))) {
                         _chainProfile = _chainProfile.concat(Array(spell.chainWetHops).fill(_chainProfile[_chainProfile.length - 1]));
-                        addLog(`⚡💧 ${spell.name} finds water — the chain jumps further!`);
+                        addLog(`⚡💧 ${_ctSp(spell.name)} finds water — the chain jumps further!`);
                     }
                 }
                 const chain = calcChainTargets(target,
@@ -5476,13 +5476,13 @@
                 const _execArmed = !!spell.executeBelowPct && target.maxHp > 0
                     && (target.hp / target.maxHp) <= spell.executeBelowPct;
                 if (_riders.echoed) {
-                    addLog(`⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow in reverse — ${_riders.echoDmg} damage returns to sender!`);
+                    addLog(`⏪ ${_ctSp(spell.name)} replays ${_ctName(target)}'s last blow in reverse — ${_riders.echoDmg} damage returns to sender!`);
                 }
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
-                    addLog(`🗡️ ${unitDisplayName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
+                    addLog(`🗡️ ${_ctName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
                 }
                 if (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) {
-                    addLog(`⚖️ ${spell.name}: ${unitDisplayName(target)} is under half HP — the hit lands ×${+(1 + spell.executeBonusPct).toFixed(2)}.`);
+                    addLog(`⚖️ ${_ctSp(spell.name)}: ${_ctName(target)} is under half HP — the hit lands ×${+(1 + spell.executeBonusPct).toFixed(2)}.`);
                 }
                 /* Phase 5 wave C (2026-09-08): statusFirst (Goo Shot) — the
                    status lands BEFORE the hit so its own damage multiplier
@@ -5539,7 +5539,7 @@
             if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
             const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
             const nm = (spell && spell.name) || 'Execute';
-            addLog(`💀 ${nm}: ${unitDisplayName(target)} was at ${Math.max(1, Math.round(100 * target.hp / target.maxHp))}% — EXECUTED!`);
+            addLog(`💀 ${nm}: ${_ctName(target)} was at ${Math.max(1, Math.round(100 * target.hp / target.maxHp))}% — EXECUTED!`);
             showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
             applyDamageToUnit(target, lethal, `${nm} executes `, {
                 sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
@@ -5558,7 +5558,7 @@
             if (!spell || !target || !(target.dead || target._dying) || !unit || unit.dead) return;
             if (spell.onKillHealPct) {
                 const healed = applyHealingToUnit(unit, Math.round((unit.maxHp || 0) * spell.onKillHealPct), unit);
-                if (healed > 0) addLog(`🩸 ${spell.name}: the kill feeds ${unitDisplayName(unit)} — +${healed} HP.`);
+                if (healed > 0) addLog(`🩸 ${_ctSp(spell.name)}: the kill feeds ${_ctName(unit)} — +${healed} HP.`);
             }
             if (spell.onKillRefundAp) {
                 const cap = (typeof UNIT_MAX_AP !== 'undefined' ? UNIT_MAX_AP : 2) + (unit._xpBonusAP || 0);
@@ -5566,7 +5566,7 @@
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
                     unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
-                    addLog(`⚡ ${spell.name}: ${unitDisplayName(unit)} regains ${unit.ap - before} AP.`);
+                    addLog(`⚡ ${_ctSp(spell.name)}: ${_ctName(unit)} regains ${unit.ap - before} AP.`);
                     showFloatingTextForUnit(unit, `+${unit.ap - before} AP`, 'buff', { durationMs: 900 });
                     markDirty('hud', 'selectedUnit');
                 }
@@ -5588,7 +5588,7 @@
                 if ((state._deployedObjects || []).some(o => o.hp > 0 && o.x === tx && o.y === ty)) continue;
                 _cands.push({ x: tx, y: ty });
             }
-            if (!_cands.length) { addLog(`${spell ? spell.name : 'Decoy'}: no room beside ${unitDisplayName(unit)} for a decoy.`); return null; }
+            if (!_cands.length) { addLog(`${spell ? spell.name : 'Decoy'}: no room beside ${_ctName(unit)} for a decoy.`); return null; }
             _cands.sort((a, b) => _near(b) - _near(a));
             const at = _cands[0];
             if (!state._deployedObjects) state._deployedObjects = [];
@@ -5607,7 +5607,7 @@
                 spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
             };
             state._deployedObjects.push(decoy);
-            addLog(`${unitDisplayName(unit)} leaves a double at ${coordLabel(at.x, at.y)}.`, unit.player);
+            addLog(`${_ctName(unit)} leaves a double at ${coordLabel(at.x, at.y)}.`, unit.player);
             scheduleBoardRender();
             return decoy;
         }
@@ -5632,7 +5632,7 @@
             for (const u of foes) {
                 for (const eff of obj.breakStatus) applyStatusPayload(u, { id: eff.id, duration: eff.duration || 1 }, `${obj.spellName || 'The decoy'} comes apart → `, (src && !src.dead) ? src : null);
             }
-            if (foes.length) addLog(`${obj.spellName || 'The decoy'} comes apart — ${foes.length} ${foes.length === 1 ? 'enemy runs' : 'enemies run'}.`);
+            if (foes.length) addLog(`${_ctSp(obj.spellName || 'The decoy')} comes apart — ${foes.length} ${foes.length === 1 ? 'enemy runs' : 'enemies run'}.`);
         }
 
         /* THE SPELL AUDIT Batch D — THE DAMAGE ZONE (zoneTickDamage). An area row (kind aoe) carrying zoneTickDamage
@@ -5660,7 +5660,7 @@
                 spellName: spell.name
             };
             state._activeZones.push(zone);
-            addLog(`${unitDisplayName(unit)} lays ${spell.name} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`);
+            addLog(`${_ctName(unit)} lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`);
             scheduleBoardRender();
             return zone;
         }
@@ -5755,9 +5755,9 @@
             });
 
             if (spell.markLogText) {
-                addLog(`⚔ ${unitDisplayName(unit)} ${spell.markLogText.replace('{target}', unitDisplayName(target))}`, unit.player);
+                addLog(`⚔ ${_ctName(unit)} ${spell.markLogText.replace('{target}', _ctName(target))}`, unit.player);
             } else {
-                addLog(`🔴 ${unitDisplayName(unit)} paints ${unitDisplayName(target)} with ${spell.name} — the shot lands at the end of the round unless they break the laser's line of sight.`, unit.player);
+                addLog(`🔴 ${_ctName(unit)} paints ${_ctName(target)} with ${_ctSp(spell.name)} — the shot lands at the end of the round unless they break the laser's line of sight.`, unit.player);
             }
             scheduleBoardRender();
 
@@ -5846,7 +5846,7 @@
 
             // Cubes are immune to ALL spells by design — only basic attacks
             // damage them. Reject cleanly (no MP/AP spent).
-            addLog(`⬡ The Cube shrugs off ${spell.name} — only physical strikes damage it.`);
+            addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`);
             playErrorSfx();
             return { handled: true, returnVal: 0 };
         }
@@ -6027,7 +6027,7 @@
                         const _gaFallMs = playForcedFallAnim(target, _gaToZ);
                         target.z = _gaToZ;
                         if (typeof triggerFallAnim === 'function') triggerFallAnim(target);
-                        addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                        addLog(`${_ctName(target)} is yanked out of the sky!`);
                         const _gaLandFx = () => {
                             showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                             // 2026-07-17 fix: the yank now deals forced fall damage
@@ -6065,7 +6065,7 @@
                         if ((_aoeDObj.detonateOnAttack || _aoeDObj.detonateOnFire) && _aoeDObj.blastRadius > 0) {
                             detonateDeployedObject(_aoeDObj, unit);
                         } else {
-                            addLog(`${spell.name} destroys ${_aoeDObj.spellName || 'deployed object'} at ${coordLabel(tile.x, tile.y)}!`);
+                            addLog(`${_ctSp(spell.name)} destroys ${_ctSp(_aoeDObj.spellName || 'deployed object')} at ${coordLabel(tile.x, tile.y)}!`);
                             showFloatingTextAtTile(tile.x, tile.y, 'DESTROYED', 'damage');
                             const _aoeDIdx = state._deployedObjects.indexOf(_aoeDObj);
                             if (_aoeDIdx >= 0) state._deployedObjects.splice(_aoeDIdx, 1);
@@ -6119,7 +6119,7 @@
                 const _aldMult = spell.aoeLifeDrain * ((typeof unitPassiveMult === 'function' ? unitPassiveMult(unit, 'lifeSapMult') : 1) || 1);
                 const _aldHealed = applyHealingToUnit(unit, Math.max(1, Math.round(_aoeDrainTotal * _aldMult)), unit, { preScaled: true });
                 if (_aldHealed > 0) {
-                    addLog(`🩸 ${spell.name}: ${unitDisplayName(unit)} drinks ${_aldHealed} HP from the swarm's work.`);
+                    addLog(`🩸 ${_ctSp(spell.name)}: ${_ctName(unit)} drinks ${_aldHealed} HP from the swarm's work.`);
                     _vfxHeal(unit.x, unit.y, { soft: true });
                 }
             }
@@ -6159,7 +6159,7 @@
                     if (_dm && _dm.transit) break;
                 }
                 if (!steps.length) continue;
-                addLog(`${unitDisplayName(t)} is hauled ${steps.length} tile${steps.length > 1 ? 's' : ''} in by ${spell.name}!`);
+                addLog(`${_ctName(t)} is hauled ${steps.length} tile${steps.length > 1 ? 's' : ''} in by ${_ctSp(spell.name)}!`);
                 if (typeof animateDisplacementPath === 'function') animateDisplacementPath(t, fx, fy, steps, 120, { delayMs: actionMs(320), stagger: true });
                 else animateDisplacement(t, fx, fy, t.x, t.y, 180, { delayMs: actionMs(320), stagger: true });
                 _applyKnockbackHazard(t);
@@ -6582,14 +6582,14 @@
                         if (typeof _tileHasTree === 'function' && _tileHasTree(bx, by)) {
                             if (_borePow >= getTerrainHardness('tree') && _fellTreeAt(bx, by, unit, { credit: false })) {
                                 spawnMaterialDrops(bx, by, [{ terrain: 'tree' }], { log: false });
-                                addLog(`💥 ${spell.name} blasts the tree at ${coordLabel(bx, by)} to splinters and carries on!`);
+                                addLog(`💥 ${_ctSp(spell.name)} blasts the tree at ${coordLabel(bx, by)} to splinters and carries on!`);
                                 showFloatingTextAtTile(bx, by, '💥 BREACH!', 'damage', { durationMs: 900 });
                                 _bored = true;
                             }
                         } else {
                             const _bChk = _breachWindowCheck(bx, by, _boreZ, _borePow);
                             if (_bChk && _breachWallAt(bx, by, _boreZ, _bChk, { byUnit: unit }).length) {
-                                addLog(`💥 ${spell.name} bores a hole clean through the wall at ${coordLabel(bx, by)}!`);
+                                addLog(`💥 ${_ctSp(spell.name)} bores a hole clean through the wall at ${coordLabel(bx, by)}!`);
                                 showFloatingTextAtTile(bx, by, '💥 BREACH!', 'damage', { durationMs: 900 });
                                 if (typeof shakeBoard === 'function') shakeBoard('normal');
                                 _bored = true;
@@ -6625,7 +6625,7 @@
                         if ((_lnDObj.detonateOnAttack || _lnDObj.detonateOnFire) && _lnDObj.blastRadius > 0) {
                             detonateDeployedObject(_lnDObj, unit);
                         } else {
-                            addLog(`${spell.name} destroys ${_lnDObj.spellName || 'deployed object'} at ${coordLabel(cx, cy)}!`);
+                            addLog(`${_ctSp(spell.name)} destroys ${_ctSp(_lnDObj.spellName || 'deployed object')} at ${coordLabel(cx, cy)}!`);
                             showFloatingTextAtTile(cx, cy, 'DESTROYED', 'damage');
                             const _lnIdx = state._deployedObjects.indexOf(_lnDObj);
                             if (_lnIdx >= 0) state._deployedObjects.splice(_lnIdx, 1);
@@ -6686,7 +6686,7 @@
                     });
                     _lzN++;
                 }
-                if (_lzN) addLog(`${spell.name} leaves ${_lzN} tile${_lzN !== 1 ? 's' : ''} burning for ${spell.zoneDuration || 2} rounds.`);
+                if (_lzN) addLog(`${_ctSp(spell.name)} leaves ${_lzN} tile${_lzN !== 1 ? 's' : ''} burning for ${spell.zoneDuration || 2} rounds.`);
             }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
             for (const hit of hitTargets) {
@@ -6726,7 +6726,7 @@
                             for (const p of _pinned) if (!p.dead) applyStatusEffects(p, [spell.collisionStatus], `${spell.name} pins: `, unit);
                         }
                         showFloatingTextForUnit(hit, '📌 PINNED!', 'streak', { durationMs: 1000 });
-                        addLog(`${unitDisplayName(hit)} is pinned by ${spell.name}!`);
+                        addLog(`${_ctName(hit)} is pinned by ${_ctSp(spell.name)}!`);
                     }
                 }
             }
@@ -8049,7 +8049,7 @@
                     if ((boost[k] || 0) < 0) _dropped = true; else if (boost[k]) _kept[k] = boost[k];
                 }
                 if (_dropped) {
-                    addLog(`🖤 ${unitDisplayName(target)}'s Pure Negativity shrugs off the stat drop${sourceLabel ? ` (${sourceLabel.trim()})` : ''}.`);
+                    addLog(`🖤 ${_ctName(target)}'s Pure Negativity shrugs off the stat drop${sourceLabel ? ` (${sourceLabel.trim()})` : ''}.`);
                     if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '🖤 IMMUNE', 'heal', { durationMs: 900 });
                 }
                 if (!Object.keys(_kept).length) return;
@@ -8061,7 +8061,7 @@
             // through; stageMod-carrying statuses are blocked separately in
             // applyStatusPayload.
             if (unitHasStatus(target, 'statLock')) {
-                addLog(`🔏 ${unitDisplayName(target)}'s stats are locked — ${sourceLabel || 'the stat change '}washes over them with no effect.`);
+                addLog(`🔏 ${_ctName(target)}'s stats are locked — ${sourceLabel || 'the stat change '}washes over them with no effect.`);
                 if (typeof showFloatingTextForUnit === 'function') {
                     showFloatingTextForUnit(target, '🔏 LOCKED', 'buff', { durationMs: 1000 });
                 }
@@ -8263,51 +8263,223 @@
             return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
-        function colorizeCombatLogText(htmlText) {
-            let output = htmlText;
+        /* ── THE COMBAT TEXT COLOURS (mondo 2026-10-18: "Easy to tell what is happening at a glance with color coding and
+           caps for important words like spell names and status effects") ──
+           One formatter for every combat line: the combat log, and the combat text box (its log beats, its dialogue lines,
+           its prompts — _renderDialogueBox runs them all through _ctDecorate).
+           - Unit names: your side BLUE, the other side RED, always ("Player N" too). The writer tags each name with its
+             player (_ctName: private-use marks around the name, U+E001-E009 = player 1-9, U+E00A = no player, U+E000 =
+             end), so a mirror match (both sides "Grey") still colours each one right; an untagged name falls back to a
+             name match against the units on the board.
+           - Spell names: CAPS gold (_ctSp tags them; multi-word names from the spell tables are matched as well).
+           - Status effects: CAPS in the badge's own colour (the stroke of its STATUS_DEFS icon), the badge in front.
+           - Damage numbers RED, heal numbers GREEN. No green-heart HP badge any more (it sat on "takes 45 HP damage").
+           Every coded word is a span.ct (+ ct-ally / ct-enemy / ct-spell / ct-status / ct-dmg / ct-heal / ct-ko); the UI
+           Maker's Combat text box has a text part for each, and its All text colour leaves them alone (hud.js keepCodes).
+           Colours are viewer-local: the guest formats its own synced log, so its side is blue on its screen. */
+        const CT_END = '\uE000', CT_SPELL = '\uE00B';
+        function _ctName(unit) {
+            const nm = unitDisplayName(unit);
+            if (!unit || !nm) return nm;
+            const p = unit.player | 0;
+            return String.fromCharCode(0xE000 + (p >= 1 && p <= 9 ? p : 10)) + nm + CT_END;
+        }
+        function _ctSp(name) { return name ? CT_SPELL + name + CT_END : name; }
+        function _ctPlain(text) { return String(text == null ? '' : text).replace(/[\uE000-\uE00F]/g, ''); }
+        if (typeof window !== 'undefined') { window._ctName = _ctName; window._ctSp = _ctSp; window._ctPlain = _ctPlain; }
 
-            output = output
-                .replace(/\bPlayer 1\b(?=(?:'s)?\s+(?:turn|wins?|won|party|auto mode|forfeits?|goes first|is computer-controlled))/g, '<span class="ally-text">Player 1</span>')
-                .replace(/\bPlayer 2\b(?=(?:'s)?\s+(?:turn|wins?|won|party|auto mode|forfeits?|goes first|is computer-controlled))/g, '<span class="enemy-text">Player 2</span>')
-                .replace(/\bKeys?\b/g, m => `<span class="hourglass-text">${m}</span>`)
-                .replace(/It's super effective!/g, '<span style="color:#55d38a;font-weight:700">It\'s super effective!</span>')
-                .replace(/It wasn't very effective\.\.\./g, '<span style="color:#a9b0d0;font-style:italic">It wasn\'t very effective...</span>')
-                .replace(/CRITICAL HIT/g, '<span style="color:#ffd166;font-weight:900">CRITICAL HIT</span>')
-                .replace(/\bDODGE!\b/g, '<span style="color:#85a9ff;font-weight:700">DODGE!</span>')
-                .replace(/\bOVERKILL\b/g, '<span style="color:#b78cff;font-weight:900">OVERKILL</span>')
-                .replace(/\bLAST STAND\b/g, '<span style="color:#ff6b6b;font-weight:900">LAST STAND</span>')
-                .replace(/\bFLOW STATE\b/g, '<span style="color:#ffc84d;font-weight:900">FLOW STATE</span>')
-                .replace(/\b(Double Kill!|Triple Kill!|Rampage!|GODLIKE!)\b/g, m => `<span style="color:#f8d66d;font-weight:900">${m}</span>`)
-                .replace(/\breturned to the void\b/g, '<span style="color:#ff6b6b;font-weight:700">returned to the void</span>');
-
-            const viewer = getViewerPlayer();
-            const labels = [];
-            (state.units || []).forEach(unit => {
-                if (!unit) return;
-                const displayLabel = unitDisplayName(unit);
-                if (!displayLabel) return;
-                const sideClass = unit.player === viewer ? 'ally-text' : 'enemy-text';
-                labels.push({
-                    label: displayLabel,
-                    sideClass
-                });
-            });
-
-            labels
-                .sort((a, b) => b.label.length - a.label.length)
-                .forEach(({
-                    label,
-                    sideClass
-                }) => {
-                    const pattern = new RegExp(`(^|[^>\\w])(${escapeRegex(label)})(?=$|[^<\\w])`, 'g');
-                    output = output.replace(pattern, (match, prefix, found) => `${prefix}<span class="${sideClass}">${escapeHtml(found)}</span>`);
-                });
-
-            return output;
+        /* whose side is "ours": the local seat; a hotseat match (both seats local) keeps Player 1 blue, Player 2 red */
+        function _ctViewer() {
+            try {
+                const net = window._NET && window._NET.online;
+                if (!net && state.controllers && state.controllers[1] === CTRL.LOCAL && state.controllers[2] === CTRL.LOCAL) return 1;
+                return getViewerPlayer() || 1;
+            } catch (e) { return 1; }
         }
 
+        /* run fn over the TEXT of an html string: never inside a tag, never inside a span.ct already coded */
+        const CT_VOID_TAGS = { img: 1, br: 1, hr: 1, input: 1, wbr: 1 };
+        function _ctEach(html, fn) {
+            const parts = String(html).split(/(<[^>]*>)/);
+            const stack = [];
+            let coded = 0;
+            for (let i = 0; i < parts.length; i++) {
+                const p = parts[i];
+                if (!p) continue;
+                if (p.charCodeAt(0) === 60 && p.charCodeAt(p.length - 1) === 62) {
+                    if (p.charCodeAt(1) === 47) { if (stack.length && stack.pop()) coded--; continue; }
+                    const tag = ((/^<([a-zA-Z0-9]+)/.exec(p) || [])[1] || '').toLowerCase();
+                    if (!tag || CT_VOID_TAGS[tag] || /\/>$/.test(p)) continue;
+                    const isCt = /\bclass="(?:[^"]* )?ct(?: |")/.test(p);
+                    stack.push(isCt);
+                    if (isCt) coded++;
+                    continue;
+                }
+                if (!coded) parts[i] = fn(p);
+            }
+            return parts.join('');
+        }
+
+        const CT_STATUS_WORDS = {
+            burn: 'burn|burning|burned|burnt', poison: 'poison|poisoned', bleed: 'bleeding|bleed', goo: 'gooed', haunted: 'haunted',
+            corroded: 'corroded', feared: 'feared', possessed: 'possessed', infected: 'infected', stoneform: 'stoneform', voodoo: 'voodoo',
+            tethered: 'roped', sparkling: 'sparkling', levitating: 'levitating', blessed: 'blessed', quickened: 'quickened',
+            silence: 'silence|silenced', stun: 'stun|stunned', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
+            jammed: 'jammed', drowning: 'drowning', wet: 'soaked', protect: 'protect|protected', discord: 'discord', slow: 'slow|slowed',
+            overclock: 'overclock|overclocked', regen: 'regen', indomitable: 'indomitable', guarding: 'guarding', statUp: 'empowered',
+            statDown: 'weakened', shield: 'shield|shielded', invisible: 'invisible', charm: 'charm|charmed', taunt: 'provoked|taunted',
+            minimize: 'minimized', hexed: 'hexed', frozen: 'frozen', blind: 'blind|blinded'
+        };
+        // not status words in a sentence (forms, pickups, the stat pseudo-badges)
+        const CT_STATUS_SKIP = { wolfForm: 1, carForm: 1, mechaForm: 1, monster: 1, hourglass: 1, scanner: 1, heal: 1, mana: 1, damage: 1 };
+        let _ctStatusList = null;
+        function _ctStatusRules() {
+            if (_ctStatusList) return _ctStatusList;
+            const rules = [];
+            if (typeof STATUS_DEFS === 'undefined') return rules;
+            const tint = key => {
+                let m = null;
+                try { m = /stroke="([^"]+)"/.exec(decodeURIComponent(String(STATUS_DEFS[key].iconSrc || ''))); } catch (e) {}
+                return m ? m[1] : '#e8a545';
+            };
+            const add = (key, alts, flags, len) => rules.push({ key, len, tint: tint(key), label: STATUS_DEFS[key].label || key,
+                re: new RegExp('(?<![\\w-])(' + alts + ')(?![\\w-])', flags) });
+            for (const key of Object.keys(CT_STATUS_WORDS)) if (STATUS_DEFS[key]) add(key, CT_STATUS_WORDS[key], 'gi', 1);
+            for (const key of Object.keys(STATUS_DEFS)) {
+                const def = STATUS_DEFS[key];
+                if (CT_STATUS_WORDS[key] || CT_STATUS_SKIP[key] || !def || !def.label || (def.kind !== 'buff' && def.kind !== 'debuff')) continue;
+                add(key, escapeRegex(escapeHtml(def.label)), 'g', def.label.length);
+            }
+            rules.sort((a, b) => b.len - a.len);   // the multi-word labels first
+            return (_ctStatusList = rules);
+        }
+
+        let _ctSpellRe;   // multi-word spell names from the tables (one word is too often a plain word: "Heal", "Fear")
+        function _ctSpellRegex() {
+            if (_ctSpellRe !== undefined) return _ctSpellRe;
+            const names = new Set();
+            const take = tbl => { if (tbl) for (const k of Object.keys(tbl)) { const n = tbl[k] && tbl[k].name; if (typeof n === 'string' && /\S\s+\S/.test(n) && n.length < 40) names.add(n.trim()); } };
+            try { if (typeof SPELL_BY_ID !== 'undefined') take(SPELL_BY_ID); } catch (e) {}
+            try { if (typeof RACE_ABILITY_BY_ID !== 'undefined') take(RACE_ABILITY_BY_ID); } catch (e) {}
+            try { if (typeof COMBO_REGISTRY !== 'undefined') take(COMBO_REGISTRY); } catch (e) {}
+            const list = [...names].sort((a, b) => b.length - a.length).map(n => escapeRegex(escapeHtml(n)));
+            _ctSpellRe = list.length ? new RegExp('(?<![\\w-])(' + list.join('|') + ')(?![\\w-])', 'g') : null;
+            return _ctSpellRe;
+        }
+
+        const CT_HEAL_LINE = /\b(?:heal(?:s|ed|ing)?|restor(?:e|es|ed|ing)|regen\w*|regains?|recover(?:s|ed|ing)?|drinks?|siphons?|channels|nourish\w*|feeds|revives?|mends?|answers — \+)/i;
+        const CT_KEYWORDS = [
+            [/It&#39;s super effective!/g, '<span class="ct ct-good">IT&#39;S SUPER EFFECTIVE!</span>'],
+            [/It wasn&#39;t very effective\.\.\./g, '<span class="ct ct-weak">It wasn&#39;t very effective...</span>'],
+            [/CRITICAL HIT/g, '<span class="ct ct-crit">CRITICAL HIT</span>'],
+            [/\bDODGE!/g, '<span class="ct ct-ally-word">DODGE!</span>'],
+            [/\bOVERKILL\b/g, '<span class="ct ct-over">OVERKILL</span>'],
+            [/\bLAST STAND\b/g, '<span class="ct ct-dmg">LAST STAND</span>'],
+            [/\bFLOW STATE\b/g, '<span class="ct ct-crit">FLOW STATE</span>'],
+            [/\b(Double Kill!|Triple Kill!|Rampage!|GODLIKE!)/g, m => `<span class="ct ct-crit">${m.toUpperCase()}</span>`],
+            [/\b(returned to the void|is defeated|has been slain|has fallen|is down|EXECUTED)(?=[\s!.,—]|$)/gi, m => `<span class="ct ct-ko">${m.toUpperCase()}</span>`],
+            [/\bKeys?\b/g, m => `<span class="ct hourglass-text">${m.toUpperCase()}</span>`]
+        ];
+
+        function _ctNumbers(html, healLine) {
+            const N = '(\\d[\\d,]*)';
+            const rep = (re, cls) => { html = _ctEach(html, t => t.replace(re, (m, a, b) => `<span class="ct ${cls}">${a}${b || ''}</span>`)); };
+            // "45 damage", "45 HP damage", "45 dmg"
+            rep(new RegExp('(?<![\\w#&;/.+-])' + N + '( HP)?(?= (?:damage|dmg|DMG)\\b)', 'g'), 'ct-dmg');
+            // "-45" / "-45 HP"
+            rep(new RegExp('(?<![\\w#&;/.])(-\\d[\\d,]*)( HP)?(?![\\d%\\w./])', 'g'), 'ct-dmg');
+            // "+45 HP" / "+45" — never "+25%", "+2 AP", "+1 ATK"
+            rep(new RegExp('(?<![\\w#&;])(\\+\\d[\\d,]*)( HP)?(?![\\d%.,/\\w])(?! (?:AP|MP|ATK|DEF|M\\.? ?ATK|M\\.? ?DEF|SPD|MOV|RNG|CRT|EVA|ACC|KEY|Keys?|DMG|dmg|each|stages?|rounds?|turns?|tiles?|range|vision)\\b)', 'g'), 'ct-heal');
+            if (healLine) {
+                // "heals 30 from Regen", "restores 30 to"
+                rep(new RegExp('(?<=\\b(?:heals|restores|regains|recovers) )' + N + '()(?![\\d%\\w./])(?! (?:MP|AP)\\b)', 'g'), 'ct-heal');
+                // "for 30 HP", "restoring 30 HP", "drinks 30 HP" — not "45/100 HP", "a 30 HP shield"
+                rep(new RegExp('(?<![\\w#&;/.+-])' + N + '( HP)(?! (?:damage|shield|barrier))(?![\\w/])', 'g'), 'ct-heal');
+            }
+            // "for 45", "takes 45", "deals 45" left over — the hit's number
+            html = _ctEach(html, t => t.replace(/\b(for|takes|deals|dealing|dealt|loses|suffers) (\d[\d,]*)( HP)?(?![\d%.,/\w])(?! (?:rounds?|turns?|tiles?|AP|MP|moves?|seconds?|more|kills?|stacks?|units?|targets?|allies|enemies|HP shield|HP barrier)\b)/g,
+                (m, w, n, hp) => `${w} <span class="ct ${healLine ? 'ct-heal' : 'ct-dmg'}">${n}${hp || ''}</span>`));
+            return html;
+        }
+
+        /* the whole pass over one html line (already escaped text, or the game's own dialogue / prompt html) */
+        function _ctDecorateRaw(html, viewer) {
+            const side = p => (p === viewer ? 'ct-ally' : 'ct-enemy');
+            // 1. the writer's tags → spans (a tag that landed in an attribute is just dropped)
+            const parts = String(html).split(/(<[^>]*>)/);
+            for (let i = 0; i < parts.length; i++) {
+                const p = parts[i];
+                if (!p || !/[\uE000-\uE00F]/.test(p)) continue;
+                if (p.charCodeAt(0) === 60) { parts[i] = _ctPlain(p); continue; }
+                parts[i] = p.replace(/([\uE001-\uE00B])([^\uE000-\uE00F]*)\uE000/g, (m, mark, txt) => {
+                    const code = mark.charCodeAt(0) - 0xE000;
+                    if (code === 11) return `<span class="ct ct-spell">${txt.toUpperCase()}</span>`;
+                    return `<span class="ct ${side(code)}">${txt}</span>`;
+                }).replace(/[\uE000-\uE00F]/g, '');
+            }
+            html = parts.join('');
+            const plain = html.replace(/<[^>]*>/g, '');
+            // 2. "Player N"
+            html = _ctEach(html, t => t.replace(/\bPlayer ([1-9])\b/g, (m, n) => `<span class="ct ${side(+n)}">Player ${n}</span>`));
+            // 3. multi-word spell names
+            const spRe = _ctSpellRegex();
+            if (spRe) html = _ctEach(html, t => t.replace(spRe, m => `<span class="ct ct-spell">${m.toUpperCase()}</span>`));
+            // 4. names nobody tagged: by name; a name both sides wear goes to the unit on turn first, the other side after
+            const byName = new Map();
+            (state.units || []).forEach(u => {
+                const nm = u && unitDisplayName(u);
+                if (!nm) return;
+                const k = escapeHtml(nm);
+                if (!byName.has(k)) byName.set(k, new Set());
+                byName.get(k).add(u.player | 0);
+            });
+            const active = state._blitzActiveUnitId != null ? (state.units || []).find(u => u && u.id === state._blitzActiveUnitId) : null;
+            [...byName.keys()].sort((a, b) => b.length - a.length).forEach(label => {
+                const sides = byName.get(label);
+                let seen = 0;
+                const re = new RegExp('(?<![\\w-])(' + escapeRegex(label) + ')(?![\\w-])', 'g');
+                html = _ctEach(html, t => t.replace(re, m => {
+                    let p = [...sides][0];
+                    if (sides.size > 1) {
+                        const first = active && escapeHtml(unitDisplayName(active)) === label ? (active.player | 0) : viewer;
+                        p = seen === 0 ? first : ([...sides].find(x => x !== first) ?? first);
+                    }
+                    seen++;
+                    return `<span class="ct ${side(p)}">${m}</span>`;
+                }));
+            });
+            // 5. status effects: the badge, the word in CAPS in the badge's colour
+            for (const r of _ctStatusRules()) {
+                html = _ctEach(html, t => t.replace(r.re, m => `<span class="ct ct-status" style="--ct-c:${r.tint}">${renderStatusIcon(r.key, 'sm', r.label)}${m.toUpperCase()}</span>`));
+            }
+            // 6. the numbers
+            html = _ctNumbers(html, CT_HEAL_LINE.test(plain));
+            // 7. the big words
+            for (const [re, to] of CT_KEYWORDS) html = _ctEach(html, t => t.replace(re, to));
+            return html;
+        }
+
+        const _ctCache = new Map();
+        let _ctCacheSig = '', _ctSigAt = -1e9, _ctSigNow = '';
+        function _ctDecorate(html) {
+            if (!html) return html;
+            const viewer = _ctViewer();
+            // who is on the board, read at most every 100 ms (the combat log formats every line on each render)
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            if (now - _ctSigAt > 100) { _ctSigAt = now; _ctSigNow = (state.units || []).map(u => (u && u.player) + ':' + unitDisplayName(u)).join(','); }
+            const sig = viewer + '|' + (state._blitzActiveUnitId != null ? state._blitzActiveUnitId : '') + '|' + _ctSigNow;
+            if (sig !== _ctCacheSig || _ctCache.size > 3000) { _ctCache.clear(); _ctCacheSig = sig; }
+            let out = _ctCache.get(html);
+            if (out === undefined) {
+                try { out = _ctDecorateRaw(html, viewer); } catch (e) { out = String(html).replace(/[\uE000-\uE00F]/g, ''); }
+                _ctCache.set(html, out);
+            }
+            return out;
+        }
+        if (typeof window !== 'undefined') window._ctDecorate = _ctDecorate;
+
         function formatCombatLogLine(text) {
-            return colorizeCombatLogText(decorateTextWithIcons(text));
+            return _ctDecorate(escapeHtml(text));
         }
 
         function removeDebuffs(unit) {
@@ -8348,7 +8520,7 @@
             const label = opts.verb || 'steals';
             out.keys = moveHourglassesBetweenUnits(victim, thief, opts.keys != null ? opts.keys : 1);
             if (out.keys) {
-                addLog(`${unitDisplayName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${unitDisplayName(victim)}!`);
+                addLog(`${_ctName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
                 showFloatingTextForUnit(thief, `+${out.keys} KEY`, 'pickup', { durationMs: 1200 });
                 showFloatingTextForUnit(victim, `-${out.keys} KEY`, 'damage', { durationMs: 1000 });
             }
@@ -8364,7 +8536,7 @@
                 wantItems--;
             }
             if (out.items.length) {
-                addLog(`${unitDisplayName(thief)} — ${label}: ${out.items.join(', ')} taken from ${unitDisplayName(victim)}!`);
+                addLog(`${_ctName(thief)} — ${label}: ${out.items.join(', ')} taken from ${_ctName(victim)}!`);
                 showFloatingTextForUnit(thief, `📦 Stole ${out.items[0]}${out.items.length > 1 ? ' +' + (out.items.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
             }
             return out;
@@ -8391,7 +8563,7 @@
             // A flag carrier can't cloak — the flag stays visible no matter what.
             if (payload.id === 'invisible' && state.flags &&
                 [1, 2].some(p => state.flags[p] && state.flags[p].carriedBy === target.id)) {
-                addLog(`👁 ${unitDisplayName(target)} can't hide while carrying the flag!`);
+                addLog(`👁 ${_ctName(target)} can't hide while carrying the flag!`);
                 return false;
             }
             // 💧 A soaked unit can't catch fire — the water flashes to steam
@@ -8402,7 +8574,7 @@
             if (payload.id === 'burn' && (unitHasStatus(target, 'wet')
                 || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
                 || (typeof _unitInRain === 'function' && _unitInRain(target)))) {
-                addLog(`💧 ${unitDisplayName(target)} is too soaked to catch fire!`);
+                addLog(`💧 ${_ctName(target)} is too soaked to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
             }
@@ -8414,7 +8586,7 @@
             const _immPassive = (typeof unitPassiveBlocksStatus === 'function')
                 ? unitPassiveBlocksStatus(target, payload.id) : null;
             if (_immPassive) {
-                addLog(`${_immPassive.icon} ${unitDisplayName(target)}'s ${_immPassive.name} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
+                addLog(`${_immPassive.icon} ${_ctName(target)}'s ${_immPassive.name} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immPassive.icon} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
@@ -8424,7 +8596,7 @@
             const _immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneKind') : undefined;
             if (_immKind && STATUS_DEFS[payload.id]?.kind === _immKind) {
                 const _immDef = (typeof getUnitPassives === 'function' ? getUnitPassives(target) : []).find(p => p.immuneKind === _immKind);
-                addLog(`${_immDef?.icon || '🖤'} ${unitDisplayName(target)}'s ${_immDef?.name || 'passive'} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
+                addLog(`${_immDef?.icon || '🖤'} ${_ctName(target)}'s ${_immDef?.name || 'passive'} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immDef?.icon || '🖤'} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
@@ -8441,14 +8613,14 @@
                 ? unitElementAffinity(target, _stAffEl) : null;
             if (_stAff === 'immune' || _stAff === 'absorb') {
                 const _stIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_stAffEl]) || '∅';
-                addLog(`${_stIcon} ${unitDisplayName(target)} is immune to ${_stAffEl} — ${(STATUS_DEFS[payload.id]?.label) || payload.id} has no effect!`);
+                addLog(`${_stIcon} ${_ctName(target)} is immune to ${_stAffEl} — ${(STATUS_DEFS[payload.id]?.label) || payload.id} has no effect!`);
                 showFloatingTextForUnit(target, `${_stIcon} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
             /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
                partner (or the unit itself) never reaches a unit in the realm. */
             if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) {
-                addLog(`🌑 ${unitDisplayName(target)} is beyond reach in the Shadow Realm.`);
+                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -8458,7 +8630,7 @@
             // off a locked unit entirely. The carrier statuses statUp/statDown
             // are gated in applyStatStageBoost before they ever get here.
             if (meta.stageMod && unitHasStatus(target, 'statLock')) {
-                addLog(`🔏 ${unitDisplayName(target)}'s stats are locked — ${meta.label} has no effect!`);
+                addLog(`🔏 ${_ctName(target)}'s stats are locked — ${meta.label} has no effect!`);
                 if (typeof showFloatingTextForUnit === 'function') {
                     showFloatingTextForUnit(target, '🔏 LOCKED', 'buff', { durationMs: 1000 });
                 }
@@ -8468,7 +8640,7 @@
             if (isEnemyDebuff) {
                 const chance = getStatusApplyChance(sourceUnit, target, payload);
                 if (engineRng() > chance) {
-                    addLog(`${sourceLabel}${unitDisplayName(target)} resists ${meta.label}.`);
+                    addLog(`${sourceLabel}${_ctName(target)} resists ${meta.label}.`);
                     return false;
                 }
             }
@@ -8536,7 +8708,7 @@
             if (typeof meta.onApply === 'function') {
                 try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
-            addLog(`${sourceLabel}${unitDisplayName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
+            addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
 
             if (!_skipVisuals()) {
                 const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1, discord:1 };
@@ -8612,7 +8784,7 @@
                 target._censerRound = state.round || 0;
                 clearStatus(target, payload.id);
                 if (payload.id === 'marked') target.markBonus = 0;
-                addLog(`⚱️ ${unitDisplayName(target)}'s ${_purgeName} burns away ${meta.label}!`);
+                addLog(`⚱️ ${_ctName(target)}'s ${_purgeName} burns away ${meta.label}!`);
                 showFloatingTextForUnit(target, '⚱️ PURGED', 'buff', { durationMs: 1100 });
                 const _lashPct = (typeof _purge === 'object' && typeof _purge.lashAtkPct === 'number') ? _purge.lashAtkPct : 0.4;
                 if (sourceUnit && !sourceUnit.dead && !sourceUnit._dying && _lashPct > 0) {
@@ -8651,11 +8823,11 @@
             if (payload.id === 'stagger' && unitHasStatus(target, 'stagger')) {
                 if ((target.ap || 0) > 0) {
                     target.ap -= 1;
-                    addLog(`💫 ${unitDisplayName(target)} is staggered and loses 1 AP!`);
+                    addLog(`💫 ${_ctName(target)} is staggered and loses 1 AP!`);
                     showFloatingTextForUnit(target, '💫 -1 AP', 'debuff', { durationMs: 1000 });
                 } else {
                     target._staggerApDebt = (target._staggerApDebt || 0) + 1;
-                    addLog(`💫 ${unitDisplayName(target)} is staggered — starts next round with 1 less AP!`);
+                    addLog(`💫 ${_ctName(target)} is staggered — starts next round with 1 less AP!`);
                     showFloatingTextForUnit(target, '💫 -1 AP next round', 'debuff', { durationMs: 1000 });
                 }
             }
@@ -8771,12 +8943,12 @@
                     def.onRoundEnd(unit);
 
                     if (unit.dead) {
-                        dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${unitDisplayName(unit)} was claimed by ${def.label || key}</span>`);
+                        dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${_ctName(unit)} was claimed by ${def.label || key}</span>`);
                         break;
                     }
                     const hpLost = hpBefore - unit.hp;
                     if (hpLost > 0) {
-                        dlgMsgs.push(`<span class="dlg-damage">${def.icon || '⚠'} ${unitDisplayName(unit)} takes ${hpLost} damage from ${def.label || key}!</span>`);
+                        dlgMsgs.push(`<span class="dlg-damage">${def.icon || '⚠'} ${_ctName(unit)} takes ${hpLost} damage from ${def.label || key}!</span>`);
                         if (isVisible) {
                             // NOTE: def.onRoundEnd already routes through applyDamageToUnit,
                             // which shows the floating "-N". Don't show a second one here.
@@ -8786,7 +8958,7 @@
                             playSfx(_dotSfxMap[key] || 'damage');
                         }
                     } else if (hpLost < 0) {
-                        dlgMsgs.push(`<span class="dlg-heal">${def.icon || '💚'} ${unitDisplayName(unit)} heals ${Math.abs(hpLost)} from ${def.label || key}</span>`);
+                        dlgMsgs.push(`<span class="dlg-heal">${def.icon || '💚'} ${_ctName(unit)} heals ${Math.abs(hpLost)} from ${def.label || key}</span>`);
                         if (isVisible) {
                             // applyHealingToUnit (called by onRoundEnd) already shows the "+N".
                             _vfxHeal(unit.x, unit.y, { soft: true });
@@ -8849,9 +9021,9 @@
                                 if (healed > 0) {
                                     let evt = events.find(e => e.unit === ally);
                                     if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
-                                    evt.msgs.push(`<span class="dlg-heal">✨ ${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
+                                    evt.msgs.push(`<span class="dlg-heal">✨ ${_ctSp(zone.spellName)} heals ${_ctName(ally)} for ${healed} HP</span>`);
                                     evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
-                                    addLog(`${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP.`);
+                                    addLog(`${_ctSp(zone.spellName)} heals ${_ctName(ally)} for ${healed} HP.`);
                                 }
                                 /* THE SPELL AUDIT Batch D: a heal zone's `cleanse` (Temporal Tide) — each ally inside sheds
                                    that many debuffs at every round end. */
@@ -8859,7 +9031,7 @@
                                     const _zcDebuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
                                     const _zcDrop = _zcDebuffs.slice(0, zone.cleanse === true ? 1 : zone.cleanse);
                                     for (const k of _zcDrop) clearStatus(ally, k);
-                                    if (_zcDrop.length) addLog(`${zone.spellName} washes ${_zcDrop.map(k => STATUS_DEFS[k]?.label || k).join(', ')} off ${unitDisplayName(ally)}.`);
+                                    if (_zcDrop.length) addLog(`${_ctSp(zone.spellName)} washes ${_zcDrop.map(k => STATUS_DEFS[k]?.label || k).join(', ')} off ${_ctName(ally)}.`);
                                 }
                             }
                         }
@@ -8872,7 +9044,7 @@
                                 for (const eff of zone.enemyStatusEffects) applyStatusPayload(foe, { id: eff.id, duration: eff.duration || 1 }, `${zone.spellName} → `, (_zhCaster && !_zhCaster.dead) ? _zhCaster : null);
                                 let evt = events.find(e => e.unit === foe);
                                 if (!evt) { evt = { unit: foe, msgs: [], floats: [] }; events.push(evt); }
-                                evt.msgs.push(`<span class="dlg-damage">🔮 ${zone.spellName} drags at ${unitDisplayName(foe)}</span>`);
+                                evt.msgs.push(`<span class="dlg-damage">🔮 ${_ctSp(zone.spellName)} drags at ${_ctName(foe)}</span>`);
                             }
                         }
                     } else if (zone.type === 'debuff') {
@@ -8916,8 +9088,8 @@
                                 let evt = events.find(e => e.unit === enemy);
                                 if (!evt) { evt = { unit: enemy, msgs: [], floats: [] }; events.push(evt); }
                                 evt.msgs.push(zone.tickDamage > 0
-                                    ? `<span class="dlg-damage">🔮 ${zone.spellName} deals ${_ztDealt} damage to ${unitDisplayName(enemy)}</span>`
-                                    : `<span class="dlg-damage">🔮 ${zone.spellName} zone afflicts ${unitDisplayName(enemy)}</span>`);
+                                    ? `<span class="dlg-damage">🔮 ${_ctSp(zone.spellName)} deals ${_ztDealt} damage to ${_ctName(enemy)}</span>`
+                                    : `<span class="dlg-damage">🔮 ${_ctSp(zone.spellName)} zone afflicts ${_ctName(enemy)}</span>`);
                                 addLog(zone.tickDamage > 0
                                     ? `${zone.spellName} deals ${_ztDealt} damage to ${unitDisplayName(enemy)}.`
                                     : `${zone.spellName} zone affects ${unitDisplayName(enemy)}.`);
@@ -8950,9 +9122,9 @@
                                 if (!isTerrainPassable(t.x, t.y)) continue;
                                 setTerrainAt(t.x, t.y, zone.expireTerrain); _zt++;
                             }
-                            if (_zt) addLog(`❄️ ${zone.spellName} leaves ${_zt} tile${_zt !== 1 ? 's' : ''} of ${zone.expireTerrain} behind.`);
+                            if (_zt) addLog(`❄️ ${_ctSp(zone.spellName)} leaves ${_zt} tile${_zt !== 1 ? 's' : ''} of ${zone.expireTerrain} behind.`);
                         }
-                        addLog(`${zone.spellName} zone at ${coordLabel(zone.x, zone.y)} fades.`);
+                        addLog(`${_ctSp(zone.spellName)} zone at ${coordLabel(zone.x, zone.y)} fades.`);
                         return false;
                     }
                     return true;
@@ -8986,9 +9158,9 @@
                             _totemHealedAny = true;
                             let evt = events.find(e => e.unit === ally);
                             if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
-                            evt.msgs.push(`<span class="dlg-heal">✨ ${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
+                            evt.msgs.push(`<span class="dlg-heal">✨ ${_ctSp(obj.spellName || 'Totem')} heals ${_ctName(ally)} for ${healed} HP</span>`);
                             evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
-                            addLog(`${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP.`);
+                            addLog(`${_ctSp(obj.spellName || 'Totem')} heals ${_ctName(ally)} for ${healed} HP.`);
                         }
                     }
                     // The totem visibly exhales its healing wave (new regen-pulse VFX).
@@ -9057,15 +9229,15 @@
                             let evt = events.find(e => e.unit === unit);
                             if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
                             if (healed > 0) {
-                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} restores ${unitDisplayName(unit)} for ${healed} HP</span>`);
+                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} restores ${_ctName(unit)} for ${healed} HP</span>`);
                                 evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                             }
                             if (manaAmt > 0) {
-                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} restores ${unitDisplayName(unit)} ${manaAmt} MP</span>`);
+                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} restores ${_ctName(unit)} ${manaAmt} MP</span>`);
                                 evt.didMana = true; // blue restore signature in _showFieldEffects
                             }
                             if (cleansedAny) {
-                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} cleanses ${unitDisplayName(unit)}</span>`);
+                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} cleanses ${_ctName(unit)}</span>`);
                             }
                             if (healed > 0 || manaAmt > 0) _szRegenUnits++;
                             if (cleansedAny) _szCleanseUnits++;
@@ -9101,7 +9273,7 @@
                 const hpBefore = unit.hp;
                 applyDamageToUnit(unit, dmgAmt, _isNx ? 'Hostile Nexus: ' : 'Spawn zone: ', { ignoreArmor: true });
                 const dealt = hpBefore - Math.max(0, unit.hp);
-                addLog(`${_isNx ? '⬡ The enemy-held Nexus burns' : 'Enemy spawn zone deals'} ${dealt} damage to ${unitDisplayName(unit)}.`);
+                addLog(`${_isNx ? '⬡ The enemy-held Nexus burns' : 'Enemy spawn zone deals'} ${dealt} damage to ${_ctName(unit)}.`);
                 return dealt;
             }
 
@@ -9141,7 +9313,7 @@
                         if (isVisible && !_skipVisuals()) {
                             playHitEffect(unit.x, unit.y, {});
                             triggerStatusWiggle(unit);
-                            showBattleDialogue([`<span class="dlg-damage">⚡ Spawn zone scorches ${unitDisplayName(unit)} for ${dealt} damage!</span>`], 1400);
+                            showBattleDialogue([`<span class="dlg-damage">⚡ Spawn zone scorches ${_ctName(unit)} for ${dealt} damage!</span>`], 1400);
                         }
                         scheduleBoardRender();
                         checkWin();
@@ -9307,7 +9479,7 @@
                             const _hd = Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y));
                             if (_hd > _hagR) continue;
                             clearStatus(e, 'invisible');
-                            addLog(`👁️ ${unitDisplayName(u)}'s ${_hagName} pierces the veil — ${unitDisplayName(e)} is revealed!`);
+                            addLog(`👁️ ${_ctName(u)}'s ${_hagName} pierces the veil — ${_ctName(e)} is revealed!`);
                             showFloatingTextForUnit(e, '👁️ Revealed!', 'debuff');
                         }
                     }
@@ -9326,7 +9498,7 @@
                             _found++;
                         }
                         if (_found > 0) {
-                            addLog(`🪄 ${unitDisplayName(u)}'s Dowsing Rod quivers — ${_found} hidden enemy trap${_found > 1 ? 's' : ''} revealed nearby!`, u.player);
+                            addLog(`🪄 ${_ctName(u)}'s Dowsing Rod quivers — ${_found} hidden enemy trap${_found > 1 ? 's' : ''} revealed nearby!`, u.player);
                             showFloatingTextForUnit(u, '🪄 TRAPS FOUND', 'buff', { durationMs: 1200 });
                             scheduleBoardRender();
                         }
@@ -9349,7 +9521,7 @@
                             if (Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y)) > +at.within) continue;
                             if (at.status && !unitHasStatus(e, at.status)) continue;
                             e._lastDamageSourceId = u.id;
-                            addLog(`${p.icon || '✦'} ${unitDisplayName(u)}'s ${p.name} arcs into ${unitDisplayName(e)}!`);
+                            addLog(`${p.icon || '✦'} ${_ctName(u)}'s ${p.name} arcs into ${_ctName(e)}!`);
                             if (applyDamageToUnit(e, +at.dmg, `${p.name}: `, {
                                 ignoreArmor: true, damageType: 'dot', consumeMarked: false, scaleByTargetLevel: true
                             })) _auraTickKill = true;
@@ -9553,8 +9725,8 @@
                 const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
                 if (healed > 0) {
-                    pushEvt(unit, `<span class="dlg-heal">🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
-                    addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
+                    pushEvt(unit, `<span class="dlg-heal">🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}.`);
                 }
                 return healed > 0;
             }
@@ -9575,9 +9747,9 @@
                     applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
                 }
                 if (unit.dead) {
-                    pushEvt(unit, `<span class="dlg-damage">🌿 Poison Seed claims ${unitDisplayName(unit)}</span>`, null);
+                    pushEvt(unit, `<span class="dlg-damage">🌿 Poison Seed claims ${_ctName(unit)}</span>`, null);
                 } else if (dmg > 0) {
-                    pushEvt(unit, `<span class="dlg-damage">🌿 Poison Seed stings ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                    pushEvt(unit, `<span class="dlg-damage">🌿 Poison Seed stings ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 return true;
             }
@@ -9593,7 +9765,7 @@
                     if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                     if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
                     if (dmg > 0) {
-                        pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                        pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                     }
                     // Everything drained is channeled to the owner's weakest ally.
                     const ownerAllies = aliveUnitsFor(seed.owner);
@@ -9601,16 +9773,16 @@
                         const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                         const healed = applyHealingToUnit(target, dmg, null);
                         if (healed > 0) {
-                            pushEvt(target, `<span class="dlg-heal">🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
-                            addLog(`🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}.`);
+                            pushEvt(target, `<span class="dlg-heal">🌿 Leech Seed channels ${healed} HP to ${_ctName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
+                            addLog(`🌿 Leech Seed channels ${healed} HP to ${_ctName(target)}.`);
                         }
                     }
                     return true;
                 }
                 const healed = applyHealingToUnit(unit, Math.max(_lvlScaledMin(10, unit), Math.round(unit.maxHp * SEED_LEECH_ALLY_PCT)), null);
                 if (healed > 0) {
-                    pushEvt(unit, `<span class="dlg-heal">🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP</span>`, { text: `+${healed}`, type: 'heal' });
-                    addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
+                    pushEvt(unit, `<span class="dlg-heal">🌿 Leech Seed nourishes ${_ctName(unit)} for ${healed} HP</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌿 Leech Seed nourishes ${_ctName(unit)} for ${healed} HP.`);
                 }
                 return healed > 0;
             }
@@ -9671,7 +9843,7 @@
             if (n) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
-                addLog(`🌱 ${spell.name} sows ${n} seed${n !== 1 ? 's' : ''} around the edge — a wood by next round.`);
+                addLog(`🌱 ${_ctSp(spell.name)} sows ${n} seed${n !== 1 ? 's' : ''} around the edge — a wood by next round.`);
             }
             return n;
         }
@@ -9715,11 +9887,11 @@
                     if (!isInside(nx, ny) || unitAt(nx, ny) || !canOccupy(nx, ny)) continue;
                     occupant.x = nx; occupant.y = ny;
                     occupant.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, occupant.z ?? 999) : getHeightAt(nx, ny);
-                    addLog(`🌳 The sprouting ${_auraTreeName(seed.type)} pushes ${unitDisplayName(occupant)} to ${coordLabel(nx, ny)}.`);
+                    addLog(`🌳 The sprouting ${_auraTreeName(seed.type)} pushes ${_ctName(occupant)} to ${coordLabel(nx, ny)}.`);
                     if (events) {
                         let evt = events.find(e => e.unit === occupant);
                         if (!evt) { evt = { unit: occupant, msgs: [], floats: [] }; events.push(evt); }
-                        evt.msgs.push(`<span class="dlg-heal">🌳 A ${_auraTreeName(seed.type)} sprouts under ${unitDisplayName(occupant)} — shoved aside!</span>`);
+                        evt.msgs.push(`<span class="dlg-heal">🌳 A ${_auraTreeName(seed.type)} sprouts under ${_ctName(occupant)} — shoved aside!</span>`);
                     }
                     break;
                 }
@@ -9744,7 +9916,7 @@
             state._treeTick = (state._treeTick || 0) + 1;
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             const caster = unitFromId(seed.casterUnitId);
-            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${unitDisplayName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : ' Its aura pulses every round until it is destroyed.'}`);
+            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : ' Its aura pulses every round until it is destroyed.'}`);
             if (state.phase === 'battle' && !_skipVisuals()) {
                 showFloatingTextAtTile(gx, gy, '🌳', 'heal', { durationMs: 1000 });
                 /* Reuse the Overgrowth signature grow-in (fired through the
@@ -9774,8 +9946,8 @@
                 const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
                 if (healed > 0) {
-                    pushEvt(unit, `<span class="dlg-heal">🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
-                    addLog(`🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
+                    pushEvt(unit, `<span class="dlg-heal">🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}.`);
                 }
                 return healed > 0;
             }
@@ -9797,9 +9969,9 @@
                     applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌳 Toxin Tree: ', caster);
                 }
                 if (unit.dead) {
-                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree claims ${unitDisplayName(unit)}</span>`, null);
+                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree claims ${_ctName(unit)}</span>`, null);
                 } else if (dmg > 0) {
-                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree sickens ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree sickens ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 return true;
             }
@@ -9818,7 +9990,7 @@
                 if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                 if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
                 if (dmg > 0) {
-                    pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                    pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 // Everything drained is channeled to the owner's weakest ally.
                 const ownerAllies = aliveUnitsFor(tree.owner);
@@ -9826,8 +9998,8 @@
                     const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                     const healed = applyHealingToUnit(target, dmg, null);
                     if (healed > 0) {
-                        pushEvt(target, `<span class="dlg-heal">🌳 Leech Tree channels ${healed} HP to ${unitDisplayName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
-                        addLog(`🌳 Leech Tree channels ${healed} HP to ${unitDisplayName(target)}.`);
+                        pushEvt(target, `<span class="dlg-heal">🌳 Leech Tree channels ${healed} HP to ${_ctName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
+                        addLog(`🌳 Leech Tree channels ${healed} HP to ${_ctName(target)}.`);
                     }
                 }
                 return true;
@@ -10070,7 +10242,7 @@
                         }
                     } else if (wearing) {
                         clearStatus(u, 'wolfForm');
-                        addLog(`🌅 Dawn — ${unitDisplayName(u)} is human again.`);
+                        addLog(`🌅 Dawn — ${_ctName(u)} is human again.`);
                     }
                 }
                 const spr = unitPassiveValue(u, 'stagePerRounds');
@@ -10305,7 +10477,7 @@
                 if (!revealer) continue;
 
                 clearStatus(u, 'invisible');
-                addLog(`👁️ ${unitDisplayName(u)} is revealed — too close to ${unitDisplayName(revealer)}!`, u.player);
+                addLog(`👁️ ${_ctName(u)} is revealed — too close to ${_ctName(revealer)}!`, u.player);
                 try { playSfx('uiConfirm'); } catch (e) {}
 
                 /* Routed through the window global so online.js can wrap it —
@@ -10503,7 +10675,7 @@
                 for (const key of tick.expired) {
                     const def = STATUS_DEFS[key];
                     clearStatus(u, key);
-                    addLog(`${def.icon || '✓'} ${unitDisplayName(u)}'s ${def.label || key} wore off.`);
+                    addLog(`${def.icon || '✓'} ${_ctName(u)}'s ${def.label || key} wore off.`);
                 }
                 // Stat-stage ledger tick: every application counts down on its
                 // OWN timer — the old +3 falls off on schedule while a later
@@ -10703,7 +10875,7 @@
             }
             if (state._enemyActionTargetId === target.id) state._enemyActionTargetId = null;
             showFloatingTextForUnit(target, `${def.icon || '🎭'} ${String(def.label || sid).toUpperCase()}`, 'debuff', { durationMs: 1200 });
-            addLog(`${def.icon || '🎭'} ${unitDisplayName(target)} is ${def.colorText || 'controlled'} — Player ${caster.player} steers it for ${n} activation${n === 1 ? '' : 's'}!`);
+            addLog(`${def.icon || '🎭'} ${_ctName(target)} is ${def.colorText || 'controlled'} — Player ${caster.player} steers it for ${n} activation${n === 1 ? '' : 's'}!`);
             if (window.RenderBus) {
                 window.RenderBus.emit('unit:statusChanged', { unit: target });
                 window.RenderBus.emit('fog:dirty', {});
@@ -10723,7 +10895,7 @@
             delete unit._controllerPlayer;
             delete unit._possessLeft;
             if (had && !opts.quiet) {
-                addLog(`🎭 ${unitDisplayName(unit)} is its own again.`);
+                addLog(`🎭 ${_ctName(unit)} is its own again.`);
                 if (window.RenderBus) {
                     window.RenderBus.emit('unit:statusChanged', { unit });
                     window.RenderBus.emit('fog:dirty', {});
@@ -10763,7 +10935,7 @@
             if (!unit || !unitHasStatus(unit, 'stagger')) return;
             clearStatus(unit, 'stagger');
             unit._staggerApDebt = 0;
-            addLog(`💫 ${unitDisplayName(unit)} shakes off the stagger.`);
+            addLog(`💫 ${_ctName(unit)} shakes off the stagger.`);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         /* The stolen activation's beat (engine-side; online.js relays it so
@@ -10774,7 +10946,7 @@
             const sid = unitHasStatus(unit, 'infected') ? 'infected' : 'possessed';
             const def = STATUS_DEFS[sid] || {};
             try {
-                showBattleDialogue([`<span class="dlg-status">${def.icon || '🎭'} ${unitDisplayName(unit)}</span> is <span class="dlg-status">${def.label || sid}</span> — a hostile will moves it (${Math.max(1, unit._possessLeft | 0)} left)`], 1800);
+                showBattleDialogue([`<span class="dlg-status">${def.icon || '🎭'} ${_ctName(unit)}</span> is <span class="dlg-status">${def.label || sid}</span> — a hostile will moves it (${Math.max(1, unit._possessLeft | 0)} left)`], 1800);
             } catch (e) {}
             try {
                 if (typeof VoidStage !== 'undefined' && VoidStage.canPlay([unit])) {
@@ -10811,7 +10983,7 @@
                     try { window.ThreeAnim.walkPath(v, [{ x: ox, y: oy, z: toZ }]); } catch (e) {}
                 }
                 v.x = ox; v.y = oy; v.z = toZ;
-                addLog(`${def.icon || '🪢'} ${unitDisplayName(v)} is dragged ${tiles} tile${tiles === 1 ? '' : 's'} behind ${unitDisplayName(roper)}!`);
+                addLog(`${def.icon || '🪢'} ${_ctName(v)} is dragged ${tiles} tile${tiles === 1 ? '' : 's'} behind ${_ctName(roper)}!`);
                 const dmg = ((v._tetherDragDmg > 0) ? v._tetherDragDmg : (def.dragDamagePerTile || 0)) * tiles;   // Barbed Rope: 35 a tile
                 if (dmg > 0) {
                     if (roper.player !== v.player) v._lastDamageSourceId = roper.id;
@@ -10847,7 +11019,7 @@
             if (!next) return;
             const landed = applyStatusPayload(next, { id: 'haunted', duration: left, restless: true }, 'Restless: ', (src && !src.dead) ? src : null);
             if (landed) {
-                addLog(`👻 The haunting will not rest — it leaves ${unitDisplayName(dead)} for ${unitDisplayName(next)} (${left} round${left === 1 ? '' : 's'}).`);
+                addLog(`👻 The haunting will not rest — it leaves ${_ctName(dead)} for ${_ctName(next)} (${left} round${left === 1 ? '' : 's'}).`);
                 showFloatingTextForUnit(next, '👻 RESTLESS', 'debuff', { durationMs: 1100 });
             }
         }
@@ -10872,10 +11044,10 @@
                 if (d > bestD) { best = t; bestD = d; }
             }
             if (!best) {
-                addLog(`😱 ${unitDisplayName(unit)} cowers in fear — nowhere to run!`);
+                addLog(`😱 ${_ctName(unit)} cowers in fear — nowhere to run!`);
                 return false;
             }
-            addLog(`😱 ${unitDisplayName(unit)} flees in terror${src ? ' from ' + unitDisplayName(src) : ''}!`);
+            addLog(`😱 ${_ctName(unit)} flees in terror${src ? ' from ' + _ctName(src) : ''}!`);
             if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '😱 FLEE!', 'debuff', { durationMs: 1000 });
             try { return doMove(unit, best.x, best.y, best.z) !== false; } catch (e) { return false; }
         }
@@ -10893,7 +11065,7 @@
                 try { window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: newZ }]); } catch (e) {}
             }
             unit.z = newZ;
-            addLog(`🪽 ${unitDisplayName(unit)} rises on fairy dust!`);
+            addLog(`🪽 ${_ctName(unit)} rises on fairy dust!`);
             if (typeof markDirty === 'function') markDirty('board');
             return true;
         }
@@ -12059,7 +12231,7 @@
                         const _hrDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
                         for (const k of _hrDebuffs.slice(0, _hrn)) clearStatus(target, k);
                         if (_hrDebuffs.length) {
-                            addLog(`👼 ${unitDisplayName(sourceUnit)}'s ${_hrp.name} lifts ${_hrDebuffs.slice(0, _hrn).map(k => STATUS_DEFS[k]?.label || k).join(', ')} off ${unitDisplayName(target)}.`);
+                            addLog(`👼 ${_ctName(sourceUnit)}'s ${_hrp.name} lifts ${_hrDebuffs.slice(0, _hrn).map(k => STATUS_DEFS[k]?.label || k).join(', ')} off ${_ctName(target)}.`);
                             showFloatingTextForUnit(target, '✨ CLEANSED', 'buff', { durationMs: 1000 });
                         }
                     }
@@ -12458,10 +12630,10 @@
                 if (!state._arenaBountyCount) state._arenaBountyCount = { 1: 0, 2: 0 };
                 state._arenaBountyCount[killer.player] = (state._arenaBountyCount[killer.player] || 0) + 1;
             }
-            addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} shatters ${unitDisplayName(victim)}'s flow (+${bounty} Hazard Pay${bountyPts ? `, +${bountyPts} pts` : ''})`);
+            addLog(`💰 BOUNTY CLAIMED! ${_ctName(killer)} shatters ${_ctName(victim)}'s flow (+${bounty} Hazard Pay${bountyPts ? `, +${bountyPts} pts` : ''})`);
             if (!_skipVisuals()) {
                 showFloatingTextForUnit(killer, `💰 BOUNTY +${bounty}`, 'pickup', { durationMs: 1500 });
-                showBattleDialogue([`<span class="dlg-effective">💰 Bounty claimed — ${unitDisplayName(victim)}'s flow is broken!</span>`], 1400);
+                showBattleDialogue([`<span class="dlg-effective">💰 Bounty claimed — ${_ctName(victim)}'s flow is broken!</span>`], 1400);
             }
             addEntropy(killer.player, ENTROPY_PTS.bounty, 'bounty', killer);
         }
@@ -12496,7 +12668,7 @@
                 const idx = state._deployedObjects.indexOf(obj);
                 if (idx >= 0) state._deployedObjects.splice(idx, 1);
             }
-            addLog(`💥 ${obj.spellName || 'Deployed object'} at ${coordLabel(bx, by)} detonates!`);
+            addLog(`💥 ${_ctSp(obj.spellName || 'Deployed object')} at ${coordLabel(bx, by)} detonates!`);
             showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
             playSfx('explosion');
             const _omask = (obj.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(obj.aoeMask)) ? obj.aoeMask : null;
@@ -12571,7 +12743,7 @@
             if (turnKills >= 2) {
                 const mkLabel = MULTIKILL_LABELS[Math.min(turnKills, 5)];
                 if (mkLabel) {
-                    addLog(`${mkLabel.icon} ${unitDisplayName(killer)}: ${mkLabel.text} (${turnKills} kills this turn!)`);
+                    addLog(`${mkLabel.icon} ${_ctName(killer)}: ${mkLabel.text} (${turnKills} kills this turn!)`);
                     showFloatingTextForUnit(killer, mkLabel.text, 'streak', {
                         durationMs: 1400
                     });
@@ -12585,7 +12757,7 @@
             const streak = killer._killStreak;
             const label = STREAK_LABELS[Math.min(streak, 5)];
             if (streak >= 2 && label && turnKills < 2) {
-                addLog(`${label.icon} ${unitDisplayName(killer)}: ${label.text} (${streak} kill streak)`);
+                addLog(`${label.icon} ${_ctName(killer)}: ${label.text} (${streak} kill streak)`);
                 showFloatingTextForUnit(killer, label.text, 'streak', {
                     durationMs: 1400
                 });
@@ -12595,9 +12767,9 @@
             // Reaching FLOW STATE puts a bounty on your head — announce it so
             // the other team knows there's gold to collect.
             if (streak === BOUNTY_STREAK_MIN) {
-                addLog(`💰 BOUNTY POSTED: ${unitDisplayName(killer)} enters FLOW STATE — worth +${getUnitBountyGold(killer)} Hazard Pay to whoever puts them down!`);
+                addLog(`💰 BOUNTY POSTED: ${_ctName(killer)} enters FLOW STATE — worth +${getUnitBountyGold(killer)} Hazard Pay to whoever puts them down!`);
                 if (!_skipVisuals()) {
-                    showBattleDialogue([`<span class="dlg-effective">🌀 ${unitDisplayName(killer)} enters FLOW STATE! A bounty has been posted.</span>`], 1600);
+                    showBattleDialogue([`<span class="dlg-effective">🌀 ${_ctName(killer)} enters FLOW STATE! A bounty has been posted.</span>`], 1600);
                 }
             }
 
@@ -13090,7 +13262,7 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
 
-            addLog(`⚛ ${unitDisplayName(unit)} triggers the ENTROPY STRIKE — ${String(def.name || '').toUpperCase()}! Player ${unit.player}'s team attacks as one (${def.id.toUpperCase()}-type).`);
+            addLog(`⚛ ${_ctName(unit)} triggers the ENTROPY STRIKE — ${String(def.name || '').toUpperCase()}! Player ${unit.player}'s team attacks as one (${def.id.toUpperCase()}-type).`);
 
             /* The whole team attacks as one — every cloaked ally on the team
                breaks camouflage (attacking always blows cover; 2026-07-27
@@ -13098,7 +13270,7 @@
             for (const _esa of allies) {
                 if (unitHasStatus(_esa, 'invisible')) {
                     clearStatus(_esa, 'invisible');
-                    addLog(`${unitDisplayName(_esa)} breaks camouflage!`);
+                    addLog(`${_ctName(_esa)} breaks camouflage!`);
                 }
             }
 
@@ -14006,8 +14178,8 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
 
-            addLog(`☠ ${unitDisplayName(unit)} executes ${unitDisplayName(target)} — ${String(def.name || '').toUpperCase()}! (${String(def.type).toUpperCase()}-type finisher)`);
-            if (unitHasStatus(unit, 'invisible')) { clearStatus(unit, 'invisible'); addLog(`${unitDisplayName(unit)} breaks camouflage!`); }
+            addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)} — ${String(def.name || '').toUpperCase()}! (${String(def.type).toUpperCase()}-type finisher)`);
+            if (unitHasStatus(unit, 'invisible')) { clearStatus(unit, 'invisible'); addLog(`${_ctName(unit)} breaks camouflage!`); }
             try { setUnitFacing(unit, target.x, target.y); } catch (err) {}
 
             const applyHit = () => {
@@ -18970,7 +19142,7 @@
             if (unit.hp > 0 && unit.hp <= unit.maxHp * 0.20) {
                 unit._lastStandTriggered = true;
                 unit._lastStandAtkBonus = 16;
-                addLog(`💢 ${unitDisplayName(unit)} enters LAST STAND! (+16 ATK)`);
+                addLog(`💢 ${_ctName(unit)} enters LAST STAND! (+16 ATK)`);
                 showFloatingTextForUnit(unit, 'LAST STAND!', 'laststd', {
                     durationMs: 1200
                 });
@@ -18990,7 +19162,7 @@
                     showFloatingTextForUnit(killer, `+${actual} MP`, 'mp');
                 }
             }
-            addLog(`💥 OVERKILL! ${unitDisplayName(killer)} obliterates ${unitDisplayName(target)}!`);
+            addLog(`💥 OVERKILL! ${_ctName(killer)} obliterates ${_ctName(target)}!`);
             showFloatingTextForUnit(target, 'OVERKILL!', 'overkill', {
                 durationMs: 1200
             });
@@ -21934,6 +22106,7 @@
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
             f.classList.remove('pop', 'cut');
+            if (kind === 'kill') _cineStampFocusHole();   // THE TARGET STAYS: the white kill pop leaves the falling body clear
             void f.offsetWidth;
             f.classList.add(kind === 'kill' ? 'pop' : 'cut');
         }
@@ -23342,6 +23515,37 @@
             return false;
         }
         window.isCameraAutoMoving = isCameraAutoMoving;
+        /* THE GAME HAS THE BOARD (2026-10-18, mondo: "when the game is taking over and user input does nothing, i do
+           not want the attack range highlights to show on hover ... i dont want to see any tile highlights during a
+           spell animation, except for the gold anticipation highlight"): true while the engine plays something out
+           and the viewer's input does nothing: an action executing, a walk, a unit the viewer does not control taking
+           its turn (the CPU, the online opponent), a cinematic, the death / key close-up, a body falling.
+           three-renderer.js _syncTakeoverHighlights hides every tile highlight but the action glow's footprint while it
+           is, and keeps the hover highlights down until the mouse really moves again. Viewer-local, nothing relayed. */
+        function isGamePlayingOut() {
+            try {
+                if (!state || state.phase !== 'battle' || state.winner) return false;
+                if (state._actionExecuting || state._walkAnimActive) return true;
+                const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
+                    || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
+                    || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
+                if (!_rt) {
+                    const bu = state._blitzActiveUnitId != null ? unitFromId(state._blitzActiveUnitId) : null;
+                    const p = bu ? bu.player : state.activePlayer;
+                    if (p) {
+                        if (state.autoPlayers?.[p]) return true;
+                        if (window._NET && window._NET.online && window._NET.myPlayer) {
+                            if (p !== window._NET.myPlayer) return true;
+                        } else if (state.controllers?.[p] === CTRL.AI) return true;
+                    }
+                }
+                if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
+                if (_deathCamLive() || _keyCamLive()) return true;
+                if ((state.units || []).some(u => u && u._dying)) return true;
+            } catch (e) { /* cosmetic */ }
+            return false;
+        }
+        window.isGamePlayingOut = isGamePlayingOut;
         function setBoardCameraFocusPoint(x, y, opts = {}) {
             if (state.cameraDisabled) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
@@ -25855,7 +26059,7 @@
                     n++;
                 });
                 if (n) {
-                    addLog(`✨ ${unitDisplayName(caster)} calls fallen allies back to the fight!`);
+                    addLog(`✨ ${_ctName(caster)} calls fallen allies back to the fight!`);
                     try { playSfx('levelUp', { volume: 0.8 }); } catch (e) {}
                 }
             }
@@ -27243,6 +27447,7 @@
         function _tpsTargetShot(unit, tgt) {
             if (!unit || !tgt) return false;
             _faceTargetPick(unit, tgt);
+            _shotRecPick = { uid: unit.id, tid: (tgt.id != null && tgt.player != null) ? tgt.id : null, x: tgt.x, y: tgt.y };
             if (state.cameraDisabled || state.phase !== 'battle') return false;
             if (!_fogCamAllSeen(unit, tgt)) return true;   // hidden opponent: no shot, no fallback pan
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
@@ -27519,6 +27724,116 @@
             if (typeof getViewerPlayer === 'function' && u.player !== getViewerPlayer()) return;
             const tu = t.uid != null ? (state.units || []).find(x => x.id === t.uid && !x.dead) : null;
             _tpsTargetShot(u, tu || { x: t.x, y: t.y });
+        };
+        /* ══ THE SHOT RECORDER — the battle side (2026-10-18) ══
+           mondo: "a tool that snapshots/records the current camera orientation for clicking on a unit and facing towards
+           them ... frame the shot myself for different scenarios like being in the air and the target on the ground or
+           vice versa or far away vs close ... export them all at once". The recorder itself (panel, free framing, the
+           export) is three-camera.js EWShots; this hands it the pair the last target pick (_tpsTargetShot) framed, the
+           bodies the menu camera fits (_menuCamBody), the pose the menu camera solves for that pair (_menuShotPose), and
+           the staging moves (VS-CPU only). Viewer-local, nothing relayed. */
+        var _shotRecPick = null;
+        function _shotRecSide(o, viewer) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const b = _menuCamBody(o);
+            const isUnit = o && o.id != null && o.player != null;
+            const cube = !isUnit && typeof towerAt === 'function' && !!towerAt(Math.round(o.x), Math.round(o.y));
+            const side = {
+                kind: isUnit ? (o.player === viewer ? 'ally' : 'enemy') : (cube ? 'cube' : 'tile'),
+                x: o.x, y: o.y, body: b,
+                footTiles: b.foot / ts, heightTiles: (b.top - b.foot) / ts
+            };
+            if (isUnit) {
+                side.id = o.id; side.race = o.race || ''; side.name = unitDisplayName(o); side.player = o.player;
+                side.z = o.z ?? null;
+                side.canFly = typeof canFly === 'function' ? !!canFly(o) : false;
+                side.airborne = side.canFly && typeof isUnitAirborne === 'function' ? !!isUnitAirborne(o) : false;
+                side.groundTiles = (typeof window._camGroundPx === 'function' ? (window._camGroundPx(o.x, o.y) || 0) : 0) / ts;
+            }
+            return side;
+        }
+        window._ewShotRecApi = {
+            tileSize() { return CONFIG.tileSize || BASE_TILE; },
+            /* the pair on screen: the last target pick, while its unit stands and the fight is on */
+            pair() {
+                if (state.phase !== 'battle' || !_shotRecPick) return null;
+                const p = _shotRecPick;
+                const unit = (state.units || []).find(u => u.id === p.uid && !u.dead);
+                if (!unit) return null;
+                const tu = p.tid != null ? (state.units || []).find(u => u.id === p.tid && !u.dead) : null;
+                if (p.tid != null && !tu) return null;
+                const tgt = tu || { x: p.x, y: p.y };
+                const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : unit.player;
+                let spell = null;
+                if (state.actionMode === 'spell' && state.selectedTool) spell = String(state.selectedTool);
+                const mode = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : '';
+                let site = mode;
+                try { if (typeof window.hqSiteId === 'function') site = window.hqSiteId(mode) || mode; } catch (e) {}
+                return {
+                    unit, tgt,
+                    attacker: _shotRecSide(unit, viewer), target: _shotRecSide(tgt, viewer),
+                    context: {
+                        mode, site, round: state.round ?? null,
+                        board: [bw(), bh()],
+                        menu: state.actionMode || 'unit', spell,
+                        menuCamera: window._ewMenuCamOn(),
+                        cameraPreset: getCameraPreset().key
+                    }
+                };
+            },
+            /* what the game's menu camera does for this pair (world px; null in 2D / no solve) */
+            autoPose(pr) {
+                if (!pr) return null;
+                const pose = _menuShotPose(pr.unit, pr.tgt);
+                if (!pose) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const bd = ThreeCamera.getBaseDist();
+                return {
+                    focal: [pose.x * ts + ts / 2, pose.elevZ, pose.y * ts + ts / 2],
+                    dist: bd / pose.zoom, tilt: pose.tilt, yaw: pose.yaw, zoom: pose.zoom
+                };
+            },
+            /* the game's own two-shot for the pair again (after a staging move) */
+            reframe() {
+                const pr = this.pair();
+                if (!pr) return false;
+                if (camera._menuShot) camera._menuShot.key = '';
+                return _tpsTargetShot(pr.unit, pr.tgt);
+            },
+            canStage() {
+                return state.phase === 'battle' && !(typeof isOnlineMatch === 'function' && isOnlineMatch())
+                    && !state._actionExecuting && !state.winner;
+            },
+            /* staging: stand a unit on another free tile (no arrival effects, no AP) */
+            place(uid, x, y) {
+                if (!this.canStage()) return 'not here';
+                const u = (state.units || []).find(v => v.id === uid && !v.dead);
+                if (!u) return 'no unit';
+                if (!isInside(x, y)) return 'off the board';
+                if (u.x === x && u.y === y) return 'already there';
+                const occ = (state.units || []).find(v => v !== u && !v.dead && !v._dying && v.x === x && v.y === y);
+                if (occ) return 'tile taken';
+                const fx = u.x, fy = u.y;
+                const wasAir = typeof isUnitAirborne === 'function' && isUnitAirborne(u);
+                const lift = wasAir ? Math.max(0, (u.z ?? 0) - getFloorBelowZ(fx, fy, u.z ?? 0)) : 0;
+                u.x = x; u.y = y;
+                if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(x, y, u.z ?? 0);
+                if (lift > 0) u.z = (u.z ?? 0) + lift;
+                animateDisplacement(u, fx, fy, x, y, 260, { leap: true });
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                return '';
+            },
+            /* staging: a flyer up / down one level (0-4 over its ground) */
+            lift(uid, dz) {
+                if (!this.canStage()) return 'not here';
+                const u = (state.units || []).find(v => v.id === uid && !v.dead);
+                if (!u) return 'no unit';
+                if (typeof canFly !== 'function' || !canFly(u)) return 'cannot fly';
+                const g = getFloorBelowZ(u.x, u.y, u.z ?? 0);
+                u.z = Math.max(g, Math.min(g + 4, (u.z ?? g) + dz));
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                return '';
+            }
         };
         /* hud.js: the menu left every target view without a camera move of its own
            (the quick menu closed, ESC) → back to the tactical view it came from */
@@ -28537,6 +28852,7 @@
             CINE_GRADES.forEach(k => el.classList.remove('g-' + k));
             kinds.forEach(k => el.classList.add('g-' + k));
             if (opts.strength != null) el.style.setProperty('--cine-grade-str', String(opts.strength));
+            if (kinds.includes('whiteout')) _cineStampFocusHole();   // THE TARGET STAYS: the whiteout leaves the target's body clear
             el.classList.add('on');
             if (_cineGradeTimer) clearTimeout(_cineGradeTimer);
             _cineGradeTimer = window.setTimeout(() => cineGradeClear(), Math.max(80, Number(ms) || 400));
@@ -29010,6 +29326,65 @@
            to full cover (IN), the swap happens hidden behind it, then the
            veil parts on the other side (OUT). Both directions. */
         const VOID_VEIL_IN_MS = 280;
+        /* ═══ THE TARGET STAYS (2026-10-18) ═══ mondo: "for spells whose vfx change the whole screen like lump of coal
+           there shouldnt ever be a time where the target becomes invisible and i just see nothing at all on the screen.
+           the target is the main priority for a damage spell animation". Every whole-screen layer (the void's veil, the
+           whiteout grade, the kill pop, the VFX impact flash) now leaves the bodies that matter CLEAR: a soft hole cut
+           around each one's on-screen body, re-measured every frame while the layer is up (the camera cuts under it).
+           _cineBodyHoles(ids, rel) → [{ x, y, rx, ry }] in px relative to `rel` (a client rect) — ThreeRenderer
+           .unitScreenBox per body; a body off screen or without a model gets no hole. */
+        function _cineBodyHoles(ids, rel) {
+            const out = [];
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.unitScreenBox) return out;
+            for (const id of (ids || [])) {
+                let b = null;
+                try { b = ThreeRenderer.unitScreenBox(id); } catch (e) {}
+                if (!b || !(b.h > 0)) continue;
+                const h = Math.max(120, b.h);
+                out.push({ x: b.x - (rel ? rel.left : 0), y: b.y - (rel ? rel.top : 0), rx: h * 0.62, ry: h * 0.95 });
+            }
+            return out;
+        }
+        /* Who a flash / whiteout keeps clear: the unit on the tile the live cast was aimed at, then whoever the cast's
+           forecast hits, then the unit the shot is framed on (the GUEST has no cast context: its relayed shots still set
+           the camera subject). Dying bodies count — the kill pop lands on one. */
+        function _cineFocusIds() {
+            const ids = [];
+            const at = (x, y) => (state.units || []).find(u => u && !u.dead && Math.round(u.x) === x && Math.round(u.y) === y);
+            const c = _cineCastCtx;
+            if (c && performance.now() - c.at < 8000) {
+                if (c.tx != null && c.ty != null) { const u = at(Math.round(c.tx), Math.round(c.ty)); if (u && u.id !== c.casterId) ids.push(u.id); }
+                for (const id of (c.hitIds || [])) if (!ids.includes(id)) ids.push(id);
+            }
+            if (!ids.length && camera._tpsSubject) {
+                const u = at(Math.round(camera._tpsSubject.x), Math.round(camera._tpsSubject.y));
+                if (u) ids.push(u.id);
+            }
+            return ids.slice(0, 3);
+        }
+        /* The primary focus in CLIENT px ({ x, y, rx, ry }), or null — three-vfx-effects.js _sigScreenFlash reads it. */
+        function _cineFocusScreen() {
+            const h = _cineBodyHoles(_cineFocusIds(), null);
+            return h.length ? h[0] : null;
+        }
+        window._cineFocusScreen = _cineFocusScreen;
+        /* Stamp the focus hole on the game viewport as CSS variables (--cine-hole-x/-y/-rx/-ry) for the DOM layers that
+           cut it in CSS (styles-cinematic.css: the whiteout grade, the kill pop). No focus → the centre of the frame,
+           where the action camera puts its subject. */
+        function _cineStampFocusHole() {
+            const root = document.getElementById('game-viewport');
+            if (!root) return;
+            const r = root.getBoundingClientRect();
+            const h = _cineBodyHoles(_cineFocusIds(), r)[0];
+            const st = root.style;
+            if (h) {
+                st.setProperty('--cine-hole-x', Math.round(h.x) + 'px'); st.setProperty('--cine-hole-y', Math.round(h.y) + 'px');
+                st.setProperty('--cine-hole-rx', Math.round(h.rx) + 'px'); st.setProperty('--cine-hole-ry', Math.round(h.ry) + 'px');
+            } else {
+                st.setProperty('--cine-hole-x', '50%'); st.setProperty('--cine-hole-y', '48%');
+                st.setProperty('--cine-hole-rx', '18%'); st.setProperty('--cine-hole-ry', '32%');
+            }
+        }
         const VoidStage = {
             active: false,
             _timer: null,
@@ -29037,6 +29412,7 @@
                 this.active = true;
                 this._palette = opts.palette || 'abyss';
                 this._pal = pal;
+                this._actorIds = ids;   // the bodies the veil keeps clear (THE TARGET STAYS)
                 this._lastRound = state.round || 0;
                 this._clearTimers();
                 // SMOOTH transition in: the palette veil blooms over the real
@@ -29071,24 +29447,81 @@
             },
             /* The palette-tinted cross-fade veil. Sits above the void layer
                and the action-cam chrome; CSS owns the fade timings. */
+            /* THE TARGET STAYS (2026-10-18): the veil was one solid sheet of the palette — for the ~0.5 s it took to bloom
+               in and the ~0.5 s to bloom out, the whole screen was ONE colour (a black one for abyss / shadow / hearth /
+               starfield) and the target was simply gone. It is a small 2D canvas now: the same palette gradient, with a
+               soft hole cut around every actor's body, redrawn each frame while it is up (the face cam cuts in under it),
+               so the world dissolves AROUND the caster and the target and they never leave the screen. Quarter
+               resolution (it is a soft gradient), a DOM layer over the canvas like before (no filter, no blend). */
             _veilEl: null,
+            _veilRaf: 0,
+            _veilUntil: 0,
             _veilShow(pal) {
-                if (!this._veilEl || !this._veilEl.isConnected) {
-                    const el = document.createElement('div');
+                if (!this._veilEl || !this._veilEl.isConnected || this._veilEl.tagName !== 'CANVAS') {
+                    const el = document.createElement('canvas');
                     el.className = 'void-veil';
                     (document.getElementById('game-viewport') || document.body).appendChild(el);
                     this._veilEl = el;
                 }
-                const sky = (pal && pal.sky) || ['#000', '#000'];
-                this._veilEl.style.background =
-                    'radial-gradient(120% 95% at 50% 40%, ' + sky[0] + ' 0%, '
-                    + sky[Math.min(1, sky.length - 1)] + ' 55%, '
-                    + sky[sky.length - 1] + ' 100%)';
+                this._veilPal = pal;
+                this._veilDraw();
                 void this._veilEl.offsetWidth;
                 this._veilEl.classList.add('on');
+                this._veilRun(1500);
             },
             _veilHide() {
-                if (this._veilEl) this._veilEl.classList.remove('on');
+                if (!this._veilEl) return;
+                this._veilEl.classList.remove('on');
+                this._veilRun(600);   // keep the holes on the bodies through the CSS fade-out
+            },
+            _veilRun(ms) {
+                this._veilUntil = Math.max(this._veilUntil, performance.now() + ms);
+                if (this._veilRaf) return;
+                const tick = () => {
+                    this._veilRaf = 0;
+                    if (!this._veilEl || !this._veilEl.isConnected) return;
+                    this._veilDraw();
+                    if (performance.now() < this._veilUntil) this._veilRaf = requestAnimationFrame(tick);
+                };
+                this._veilRaf = requestAnimationFrame(tick);
+            },
+            _veilDraw() {
+                const el = this._veilEl, host = el && el.parentNode;
+                if (!el || !host) return;
+                const r = host.getBoundingClientRect();
+                const Q = 4;
+                const w = Math.max(8, Math.round(r.width / Q)), h = Math.max(8, Math.round(r.height / Q));
+                if (el.width !== w) el.width = w;
+                if (el.height !== h) el.height = h;
+                const g = el.getContext('2d');
+                if (!g) return;
+                const sky = (this._veilPal && this._veilPal.sky) || ['#000', '#000'];
+                g.globalCompositeOperation = 'source-over';
+                g.clearRect(0, 0, w, h);
+                const grad = g.createRadialGradient(w * 0.5, h * 0.4, 0, w * 0.5, h * 0.4, Math.hypot(w, h) * 0.62);
+                grad.addColorStop(0, sky[0]);
+                grad.addColorStop(0.55, sky[Math.min(1, sky.length - 1)]);
+                grad.addColorStop(1, sky[sky.length - 1]);
+                g.fillStyle = grad;
+                g.fillRect(0, 0, w, h);
+                const holes = _cineBodyHoles(this._actorIds, r);
+                if (!holes.length) return;
+                g.globalCompositeOperation = 'destination-out';
+                for (const hl of holes) {
+                    const ry = hl.ry / Q;
+                    g.save();
+                    g.translate(hl.x / Q, hl.y / Q);
+                    g.scale(hl.rx / hl.ry, 1);
+                    const hg = g.createRadialGradient(0, 0, ry * 0.5, 0, 0, ry);
+                    hg.addColorStop(0, 'rgba(0,0,0,1)');
+                    hg.addColorStop(1, 'rgba(0,0,0,0)');
+                    g.fillStyle = hg;
+                    g.beginPath();
+                    g.arc(0, 0, ry, 0, Math.PI * 2);
+                    g.fill();
+                    g.restore();
+                }
+                g.globalCompositeOperation = 'source-over';
             },
             _ensureLayer(pal, opts) {
                 if (!this._layerEl || !this._layerEl.isConnected) {
@@ -31660,7 +32093,8 @@
             raceVoidContract(ctx)   { _voidBeat('bloodlust', ctx, { ms: 1500, subject: 'target' }); return true; },
             exorcism(ctx)           { _voidBeat('bone',      ctx, { ms: 1600, subject: 'target', dist: 3.0 }); return true; },
             sharedHexOfToil(ctx)    { _voidBeat('hex',       ctx, { ms: 1500, subject: 'target', tilt: 74 }); return true; },
-            raceLumpOfCoal(ctx)     { _voidBeat('hearth',    ctx, { ms: 1500, subject: 'target', dist: 2.8 }); return true; },
+            /* Lump of Coal has NO void (mondo 2026-10-18: "lump of coal doesnt even need one, its just supposed to be santa
+               clause throwing a lump of coal"): the strike family shoots the throw and the coal landing on the target. */
             raceNeuralHack(ctx) {
                 _voidBeat('code', ctx, {
                     ms: 1500, subject: 'target',
@@ -32077,7 +32511,8 @@
         let _cineCastCtx = null;
         function _cineNoteCast(unit, spell, x, y, z) {
             if (!spell || !spell.id) { _cineCastCtx = null; return; }
-            _cineCastCtx = { spellId: spell.id, casterId: unit ? unit.id : null, at: performance.now() };
+            _cineCastCtx = { spellId: spell.id, casterId: unit ? unit.id : null, at: performance.now(),
+                tx: Number.isFinite(x) ? x : null, ty: Number.isFinite(y) ? y : null };
             /* THE FRAME GUARD: who this cast will actually hit, read off the
                engine's own forecast HERE — the commit point, before anything
                resolves (later the board is already mid-cast). The cast's
@@ -32990,7 +33425,7 @@
                 if (live && damageType !== 'dot' && !_skipVisuals()) {
                     showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
                 }
-                if (live) addLog(`⚗ Combo! ${unitDisplayName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
+                if (live) addLog(`⚗ Combo! ${_ctName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
             }
             /* THE SPELL AUDIT Batch D (Frostbite): bonusVsStatus.extra = { status, flat, consume } — the hit on that status
                also deals +flat and ends it (data.js _upgApplyPatch 'statusBonus' writes it). */
@@ -33000,7 +33435,7 @@
                 if (live && _bvsX.consume) {
                     clearStatus(target, _bvsX.status);
                     const _bvsXLabel = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_bvsX.status]?.label) || _bvsX.status;
-                    addLog(`${unitDisplayName(target)} is no longer ${_bvsXLabel}${_bvsX.flat > 0 ? ` — the break deals +${_bvsX.flat}` : ''}.`);
+                    addLog(`${_ctName(target)} is no longer ${_bvsXLabel}${_bvsX.flat > 0 ? ` — the break deals +${_bvsX.flat}` : ''}.`);
                     if (damageType !== 'dot' && !_skipVisuals()) showFloatingTextForUnit(target, _bvsX.status === 'frozen' ? '🧊 THAW!' : '✂ BROKEN', 'mult', { durationMs: 1000 });
                 }
             }
@@ -33066,13 +33501,13 @@
                 const _part = _splitHit ? ` (${Math.round(_eShare * 100)}% of the hit)` : '';
                 if (!live) { /* forecast: no callouts */ } else if (_affinity === 'weak') {
                     _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
-                    addLog(`${_affIcon} ${unitDisplayName(target)} is weak to ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}!`);
+                    addLog(`${_affIcon} ${_ctName(target)} is weak to ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}!`);
                 } else if (_affinity === 'resist') {
                     _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
-                    addLog(`${_affIcon} ${unitDisplayName(target)} resists ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}.`);
+                    addLog(`${_affIcon} ${_ctName(target)} resists ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}.`);
                 } else if (_affinity === 'immune') {
                     _multCallout(target, `${_affIcon} IMMUNE`, 1000);
-                    addLog(`${_affIcon} ${unitDisplayName(target)} is immune to ${_affEl} — the ${_affEl} damage${_part} does nothing.`);
+                    addLog(`${_affIcon} ${_ctName(target)} is immune to ${_affEl} — the ${_affEl} damage${_part} does nothing.`);
                 }
             }
 
@@ -33086,7 +33521,7 @@
                 if (live) {
                 clearStatus(target, 'marked');
                 target.markBonus = 0;
-                addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
+                addLog(`${_ctName(target)} was marked, so the hit deals extra damage.`);
                 }
             }
 
@@ -33187,7 +33622,7 @@
                     guardian._guardingAlly = null;
                     // Dash the guardian to an open tile beside their ward for the intercept.
                     Object.assign(guardian, getChivalryLanding(guardian, target));
-                    addLog(`🛡 ${unitDisplayName(guardian)} honors their oath of Chivalry and intercepts the attack meant for ${unitDisplayName(target)}!`);
+                    addLog(`🛡 ${_ctName(guardian)} honors their oath of Chivalry and intercepts the attack meant for ${_ctName(target)}!`);
                     showFloatingTextForUnit(target, 'GUARDED!', 'protect-block', { durationMs: 1000 });
                     scheduleBoardRender();
                     return applyDamageToUnit(guardian, damage, sourceText, Object.assign({}, opts, { _chivalryRedirected: true }));
@@ -33245,7 +33680,7 @@
                         window.setTimeout(() => {
                             if (target.dead || !unitHasStatus(target, _pKeyHeld) || (target._protectBlocks | 0) > 0) return;
                             clearStatus(target, _pKeyHeld);
-                            addLog(`${STATUS_DEFS[_pKeyHeld]?.icon || '🛡️'} ${unitDisplayName(target)}'s ${STATUS_DEFS[_pKeyHeld]?.label || _pKeyHeld} is spent.`);
+                            addLog(`${STATUS_DEFS[_pKeyHeld]?.icon || '🛡️'} ${_ctName(target)}'s ${STATUS_DEFS[_pKeyHeld]?.label || _pKeyHeld} is spent.`);
                             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
                             scheduleBoardRender();
                         }, 0);
@@ -33261,7 +33696,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`${sourceText}${unitDisplayName(target)} is protected and takes no damage!`);
+                addLog(`${sourceText}${_ctName(target)} is protected and takes no damage!`);
                 flashUnit(target.id, 'heal');
                 showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
 
@@ -33280,7 +33715,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`🌑 ${sourceText}${unitDisplayName(target)} is beyond reach in the Shadow Realm.`);
+                addLog(`🌑 ${sourceText}${_ctName(target)} is beyond reach in the Shadow Realm.`);
                 return false;
             }
 
@@ -33332,10 +33767,10 @@
                 const _regen = Math.max(1, Math.round(damage));
                 target.hp = Math.min(target.maxHp, (target.hp || 0) + _regen);
                 if (_drinks) {
-                    addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen drinks the flames — restores ${_regen} HP!`);
+                    addLog(`🔥 ${_ctName(target)}'s Thermal Regen drinks the flames — restores ${_regen} HP!`);
                 } else {
                     const _drinkIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '🜂';
-                    addLog(`${_drinkIcon} ${unitDisplayName(target)} drinks the ${_affEl} — restores ${_regen} HP!`);
+                    addLog(`${_drinkIcon} ${_ctName(target)} drinks the ${_affEl} — restores ${_regen} HP!`);
                 }
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, `🔥 +${_regen}`, 'heal', { durationMs: 1200 });
@@ -33352,7 +33787,7 @@
             // applyStatusPayload). weak/resist multiply in _hitDamageMath.
             if (_affinity === 'immune' && _wholeElem && damage > 0) {
                 const _immIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '∅';
-                addLog(`${_immIcon} ${unitDisplayName(target)} is immune to ${_affEl} — no effect!`);
+                addLog(`${_immIcon} ${_ctName(target)} is immune to ${_affEl} — no effect!`);
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, `${_immIcon} IMMUNE`, 'protect-block', { durationMs: 1200 });
                     flashUnit(target.id, 'block');
@@ -33372,7 +33807,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`👻 ${sourceText}${unitDisplayName(target)} has no body to strike — the ${_immDT} blow passes straight through!`);
+                addLog(`👻 ${sourceText}${_ctName(target)} has no body to strike — the ${_immDT} blow passes straight through!`);
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, '👻 PASSES THROUGH', 'protect-block', { durationMs: 1200 });
                     flashUnit(target.id, 'block');
@@ -33404,7 +33839,7 @@
             const _guardBroke = _res.absorbed > 0 && !(_res.shieldLeft > 0) && _res.dmg > 0;
             if (_res.absorbed > 0) {
                 target.shield = _res.shieldLeft;
-                addLog(`${unitDisplayName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
+                addLog(`${_ctName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
 
@@ -33414,7 +33849,7 @@
             if (finalDamage >= target.hp && unitHasStatus(target, 'indomitable')) {
                 finalDamage = Math.max(0, target.hp - 1);
                 clearStatus(target, 'indomitable');
-                addLog(`💢 ${unitDisplayName(target)} refuses to die — Indomitable Will holds them at 1 HP!`);
+                addLog(`💢 ${_ctName(target)} refuses to die — Indomitable Will holds them at 1 HP!`);
                 /* SPELL_CINEMATICS.md #42 — the race's whole identity in
                    800ms, and it fires on the SAVE, not on a cast. */
                 if (typeof window !== 'undefined' && window.CineFX) {
@@ -33431,7 +33866,7 @@
                 if (_absHeal > 0) {
                     target.hp += _absHeal;   // the blow comes off right below
                     const _absIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '🜂';
-                    addLog(`${_absIcon} ${unitDisplayName(target)} drinks the ${_affEl} part of the hit — restores ${_absHeal} HP.`);
+                    addLog(`${_absIcon} ${_ctName(target)} drinks the ${_affEl} part of the hit — restores ${_absHeal} HP.`);
                     if (!_skipVisuals()) showFloatingTextForUnit(target, `${_absIcon} +${_absHeal}`, 'heal', { durationMs: 1200, jitterY: -18 });
                 }
             }
@@ -33447,7 +33882,7 @@
                    reliable counterplay to stealth. */
                 if (sourceUnit && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, 'invisible')) {
                     clearStatus(target, 'invisible');
-                    addLog(`👁️ ${unitDisplayName(target)} is revealed — the hit gives them away!`, target.player);
+                    addLog(`👁️ ${_ctName(target)} is revealed — the hit gives them away!`, target.player);
                     if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '👁️ Revealed!', 'debuff');
                 }
 
@@ -33564,7 +33999,7 @@
                             applyHealingToUnit(contractor, contractHeal, null);
                             const healed = contractor.hp - hpBefore;
                             if (healed > 0) {
-                                addLog(`📜 Contract: ${unitDisplayName(sourceUnit)}'s violence feeds ${unitDisplayName(contractor)} for ${healed} HP.`);
+                                addLog(`📜 Contract: ${_ctName(sourceUnit)}'s violence feeds ${_ctName(contractor)} for ${healed} HP.`);
                                 showFloatingTextForUnit(contractor, `📜 +${healed}`, 'heal');
                             }
                         }
@@ -33693,7 +34128,7 @@
                     const _mpGain = Math.min(Math.round(finalDamage * _pcMagic), (target.maxMp || 0) - (target.mp || 0));
                     if (_mpGain > 0) {
                         target.mp = (target.mp || 0) + _mpGain;
-                        addLog(`⚡ ${unitDisplayName(target)}'s Power Core stores the blast — +${_mpGain} MP.`);
+                        addLog(`⚡ ${_ctName(target)}'s Power Core stores the blast — +${_mpGain} MP.`);
                         if (!_skipVisuals()) showFloatingTextForUnit(target, `⚡ +${_mpGain} MP`, 'mp', { durationMs: 1000 });
                     }
                 }
@@ -33730,7 +34165,7 @@
                         hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0
                     });
                 }
-                addLog(`${sourceText}${unitDisplayName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`);
+                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`);
 
                 if (sourceUnit && typeNote) {
                     const dlg = [];
@@ -33740,7 +34175,7 @@
                 }
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
-                addLog(`${sourceText}${unitDisplayName(target)} blocks the hit.`);
+                addLog(`${sourceText}${_ctName(target)} blocks the hit.`);
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
@@ -33773,7 +34208,7 @@
                         showFloatingTextForUnit(target, `+${_mpGain} MP`, 'mp');
                     }
                     showFloatingTextForUnit(target, '⚙️ SUPERCHARGED!', 'buff', { durationMs: 1200 });
-                    addLog(`⚙️ The surge overloads ${unitDisplayName(target)}'s circuits — SUPERCHARGED (Overclock)!`);
+                    addLog(`⚙️ The surge overloads ${_ctName(target)}'s circuits — SUPERCHARGED (Overclock)!`);
                 } else if (_comboEl === 'cold' && _unitIsSoaked(target) && !unitHasStatus(target, 'stun')) {
                     // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
                     // solid for a turn (soak them first, then bring the cold).
@@ -33838,7 +34273,7 @@
                 const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
                 target._talismanSpent = true;
                 target.hp = 1;
-                addLog(`✨ ${unitDisplayName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
+                addLog(`✨ ${_ctName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
                 showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
                 flashUnit(target.id, 'heal');
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
@@ -33856,13 +34291,13 @@
                     const _hobBefore = target.hp;
                     target.hp = Math.min(target.maxHp, target.hp + _hobAmt);
                     const _hobName = (getUnitPassives(target).find(p => p && p.healOnceBelowPct) || {}).name || 'Second Wind';
-                    addLog(`💚 ${unitDisplayName(target)}'s ${_hobName} answers — +${target.hp - _hobBefore} HP!`);
+                    addLog(`💚 ${_ctName(target)}'s ${_hobName} answers — +${target.hp - _hobBefore} HP!`);
                     showFloatingTextForUnit(target, `+${target.hp - _hobBefore}`, 'heal', { durationMs: 1200 });
                     // THE SPELL AUDIT Batch D — the hook's optional `cleanse: N` (Consecrated sheds 1 debuff with the heal)
                     if (+_hob.cleanse > 0) {
                         const _hobDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
                         for (const k of _hobDebuffs.slice(0, +_hob.cleanse)) clearStatus(target, k);
-                        if (_hobDebuffs.length) addLog(`💚 ${_hobName} sheds ${unitDisplayName(target)}'s ${_hobDebuffs.slice(0, +_hob.cleanse).map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`);
+                        if (_hobDebuffs.length) addLog(`💚 ${_hobName} sheds ${_ctName(target)}'s ${_hobDebuffs.slice(0, +_hob.cleanse).map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`);
                     }
                     flashUnit(target.id, 'heal');
                     if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
@@ -33951,7 +34386,7 @@
                         if (!_next) continue;
                         const _left = Math.max(1, Number(target.status[_se.id]) || 1);
                         if (applyStatusPayload(_next, { id: _se.id, duration: _left }, `${_se.name}: `, _se.by)) {
-                            addLog(`🪄 ${unitDisplayName(_se.by)}'s ${_se.name}: the ${(STATUS_DEFS[_se.id]?.label) || _se.id} jumps from ${unitDisplayName(target)} to ${unitDisplayName(_next)}!`);
+                            addLog(`🪄 ${_ctName(_se.by)}'s ${_se.name}: the ${(STATUS_DEFS[_se.id]?.label) || _se.id} jumps from ${_ctName(target)} to ${_ctName(_next)}!`);
                             showFloatingTextForUnit(_next, `🪄 ${(STATUS_DEFS[_se.id]?.label || _se.id).toUpperCase()} JUMPS`, 'debuff', { durationMs: 1100 });
                         }
                     }
@@ -34970,7 +35405,7 @@
                                 if (!unitHasStatus(e, 'invisible')) continue;
                                 if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > turret.reveals) continue;
                                 clearStatus(e, 'invisible');
-                                addLog(`👃 ${turret.spellName} sniffs out ${unitDisplayName(e)} — revealed!`);
+                                addLog(`👃 ${_ctSp(turret.spellName)} sniffs out ${_ctName(e)} — revealed!`);
                                 showFloatingTextForUnit(e, '👁️ Revealed!', 'debuff');
                             }
                         }
@@ -35043,7 +35478,7 @@
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
                 if (s.summon) {
-                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${s.turret.spellName} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${_ctName(s.target)} for ${s.dmg} damage!`);
                     const _sHpBefore = s.target.hp;
                     applyDamageToUnit(s.target, s.dmg, `${s.turret.spellName}: `, {
                         ignoreArmor: false,
@@ -35063,7 +35498,7 @@
                     return;
                 }
                 if (s.zombie) {
-                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${_ctName(s.target)} for ${s.dmg} damage!`);
                     applyDamageToUnit(s.target, s.dmg, `🧟 Zombie maul: `, {
                         ignoreArmor: false,
                         damageType: 'physical',
@@ -35074,7 +35509,7 @@
                     });
                     return;
                 }
-                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${_ctName(s.target)} for ${s.dmg} damage!`);
                 const _hpBefore = s.target.hp;
                 applyDamageToUnit(s.target, s.dmg, `🔧 Turret blast: `, {
                     ignoreArmor: false,
@@ -35422,7 +35857,7 @@
             const pw = _networkPower(owner);
             const dmg = Math.max(28, Math.floor((42 + pw * 0.5) * f.dmgMult));
             const ownerId = laserOwnerUnitId(owner);
-            addLog(`${f.glyph} ${unitDisplayName(unit)} crosses a laser beam at ${coordLabel(x, y)}!`);
+            addLog(`${f.glyph} ${_ctName(unit)} crosses a laser beam at ${coordLabel(x, y)}!`);
             showFloatingTextAtTile(x, y, f.glyph, 'damage', { durationMs: 650 });
             applyDamageToUnit(unit, dmg, `${f.glyph} Laser beam: `, {
                 damageType: 'magic', spellType: f.spellType,
@@ -35509,7 +35944,7 @@
                 }
             }
             const shape = net.isPrism ? 'a perfect prism detonates' : net.is3DVolume ? 'the 3-D volume flares' : 'the beams flare';
-            addLog(`⚡ ${unitDisplayName(unit)} pulses the lattice — ${shape}! ${hit} enem${hit === 1 ? 'y' : 'ies'} caught.`, unit.player);
+            addLog(`⚡ ${_ctName(unit)} pulses the lattice — ${shape}! ${hit} enem${hit === 1 ? 'y' : 'ies'} caught.`, unit.player);
             playSfx('physicalAbility');
             checkWin();
             scheduleBoardRender();
@@ -35543,7 +35978,7 @@
             }
             const gone = new Set(prisms.map(m => m.id));
             state.mirrors = (state.mirrors || []).filter(m => !gone.has(m.id));
-            addLog(`💥 ${unitDisplayName(unit)} shatters the lattice in ${f.label} — ${prisms.length} prism${prisms.length !== 1 ? 's' : ''} burst, ${hits} hit${hits !== 1 ? 's' : ''}.`, unit.player);
+            addLog(`💥 ${_ctName(unit)} shatters the lattice in ${f.label} — ${prisms.length} prism${prisms.length !== 1 ? 's' : ''} burst, ${hits} hit${hits !== 1 ? 's' : ''}.`, unit.player);
             if (typeof shakeBoard === 'function') shakeBoard('normal');
             checkWin();
             scheduleBoardRender();
@@ -35674,7 +36109,7 @@
             /* A heap of debris on the anchor tile sells the collapse. */
             setObjectAt(b.x, b.y, 'ruins');
 
-            addLog(`🏚 ${label} at ${coordLabel(b.x, b.y)} COLLAPSES${attackerUnit ? ` under ${unitDisplayName(attackerUnit)}'s assault` : ''}! Rubble covers the ground.`);
+            addLog(`🏚 ${label} at ${coordLabel(b.x, b.y)} COLLAPSES${attackerUnit ? ` under ${_ctName(attackerUnit)}'s assault` : ''}! Rubble covers the ground.`);
             // 🧱 A felled building is a quarry: its masonry and fittings
             // scatter over the rubble field as debris cubes for whoever
             // walks the site.
@@ -35715,7 +36150,7 @@
                 const dmg = Math.max(_crMin, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
                 applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
                 if (!u.dead) {
-                    addLog(`💥 ${unitDisplayName(u)} crawls out of the rubble!`);
+                    addLog(`💥 ${_ctName(u)} crawls out of the rubble!`);
                     _settleUnitAfterCollapse(u, tiles);
                 }
             }
@@ -35775,7 +36210,7 @@
             unit.x = ent.doorTile.x;
             unit.y = ent.doorTile.y;
             unit.z = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ent.doorTile.x, ent.doorTile.y) : 0;
-            addLog(`🛗 ${unitDisplayName(unit)} slips inside ${buildingDisplayName(ent.building)} — riding the lift to the roof…`, unit.player);
+            addLog(`🛗 ${_ctName(unit)} slips inside ${buildingDisplayName(ent.building)} — riding the lift to the roof…`, unit.player);
             showFloatingTextAtTile(ent.doorTile.x, ent.doorTile.y, '🛗 ENTER', 'buff', { durationMs: 900 });
             playSfx('uiConfirm');
             unit.ap = 0;                                             // the lift takes the rest of the turn
@@ -35815,14 +36250,14 @@
                 unit.x = t.x;
                 unit.y = t.y;
                 unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(t.x, t.y, 999) : getHeightAt(t.x, t.y);
-                addLog(`🛗 ${unitDisplayName(unit)} emerges on the roof of ${buildingDisplayName(b)}!`);
+                addLog(`🛗 ${_ctName(unit)} emerges on the roof of ${buildingDisplayName(b)}!`);
                 showFloatingTextForUnit(unit, '🛗 ROOF', 'buff', { durationMs: 900 });
                 scheduleBoardRender();
                 return true;
             }
             /* Roof packed — hold the lift for another round. */
             unit._insideBuildingTurns = (unit._insideBuildingTurns || 0) + 1;
-            addLog(`🛗 The roof of ${buildingDisplayName(b)} is crowded — ${unitDisplayName(unit)} waits inside.`, unit.player);
+            addLog(`🛗 The roof of ${buildingDisplayName(b)} is crowded — ${_ctName(unit)} waits inside.`, unit.player);
             return false;
         }
 
@@ -36535,7 +36970,7 @@
                 unit._smokeCloaked = false;
                 if (unitHasStatus(unit, 'invisible')) {
                     clearStatus(unit, 'invisible');
-                    addLog(`👁 ${unitDisplayName(unit)} steps out of the smoke and is revealed!`);
+                    addLog(`👁 ${_ctName(unit)} steps out of the smoke and is revealed!`);
                     showFloatingTextForUnit(unit, '👁 Revealed', 'debuff', { durationMs: 1000 });
                     /* Same viewer-relative banner (and online relay) as the
                        adjacency reveal — the other player must see it too. */
@@ -36654,7 +37089,7 @@
             state.pendingTarget = null;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
-            addLog(`${unitDisplayName(unit)} moves to ${moveLabel}.`, unit.player);
+            addLog(`${_ctName(unit)} moves to ${moveLabel}.`, unit.player);
 
             // Fairy passive: shed pixie dust on the tile she left; anyone
             // arriving on a mote resolves it (ally collects / enemy stamps).
@@ -36703,7 +37138,7 @@
                 if (_corpse && typeof lootCorpseItems === 'function') {
                     const _got = lootCorpseItems(unit, _corpse);
                     if (_got > 0) {
-                        addLog(`🦴 ${unitDisplayName(unit)} loots ${_got} item${_got === 1 ? '' : 's'} from the remains of ${unitDisplayName(_corpse)}.`, unit.player);
+                        addLog(`🦴 ${_ctName(unit)} loots ${_got} item${_got === 1 ? '' : 's'} from the remains of ${_ctName(_corpse)}.`, unit.player);
                         showFloatingTextForUnit(unit, `📦 Looted ${_got}`, 'pickup', { durationMs: 1200 });
                         playSfx('uiConfirm');
                     }
@@ -37595,7 +38030,7 @@
         // Per-kind targeting instructions for the selected spell. Falls back
         // to SPELL_KIND_META flags so new kinds still get a sensible line.
         function _spellTargetPromptText(spell, esc) {
-            const nm = '<strong>' + esc(spell.name) + '</strong>';
+            const nm = '<strong>' + esc(_ctSp(spell.name)) + '</strong>';
             if (spell.hinge) return nm + ': select the HINGE — an empty tile beside an enemy. The door swings through them and pushes them ' + (spell.pushDistance || 2) + ' tiles straight away from it.';
             if (spell.kind === 'doorDeploy') {   // 🚪 THE STANDING DOORS: the tile, then (a lane door) the face
                 const _gdd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[spell.door]) || {};
@@ -37626,7 +38061,7 @@
                     const _pk = _twoClickPick(spell);
                     const _tm = _twoClickTeams(spell);
                     const _word = t => (t === 'ally' ? 'an ally' : 'an enemy');
-                    if (_pk) return nm + ': <strong>' + esc(unitDisplayName(_pk)) + '</strong> chosen — now select ' + _word(_tm[1])
+                    if (_pk) return nm + ': <strong>' + esc(_ctName(_pk)) + '</strong> chosen — now select ' + _word(_tm[1])
                         + (spell.pairRange ? ' within ' + spell.pairRange + ' tiles of it' : '') + '.';
                     return nm + ': select ' + _word(_tm[0]) + ' first, then ' + _word(_tm[1]) + '.';
                 }
@@ -37701,7 +38136,7 @@
                 let ptLabel = null;
                 if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
                     const tu = unitAt(pt.x, pt.y);
-                    ptLabel = '<strong>' + (tu ? esc(unitDisplayName(tu)) : coordLabel(pt.x, pt.y)) + '</strong>';
+                    ptLabel = '<strong>' + (tu ? esc(_ctName(tu)) : coordLabel(pt.x, pt.y)) + '</strong>';
                 }
 
                 if (am === 'move') {
@@ -37718,7 +38153,7 @@
                 if (am === 'combo') {
                     if (!state.comboPartner) return _promptBarHtml('Combo: select an adjacent ally to team up with.', 'ESC cancel');
                     const combo = (typeof getComboForUnits === 'function') ? getComboForUnits(unit, state.comboPartner) : null;
-                    return _promptBarHtml('<strong>' + esc(combo?.name || 'Combo') + '</strong> ready — select an enemy target.', 'ESC cancel');
+                    return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong> ready — select an enemy target.', 'ESC cancel');
                 }
                 if (am === 'spell') {
                     if (menuView === 'spellOrientation') {
@@ -37726,12 +38161,12 @@
                     }
                     if (unit._skyThrowGrab) {
                         const grabbed = (state.units || []).find(u => u.id === unit._skyThrowGrab.id);
-                        return _promptBarHtml('Select a tile to throw <strong>' + esc(unitDisplayName(grabbed)) + '</strong> to!');
+                        return _promptBarHtml('Select a tile to throw <strong>' + esc(_ctName(grabbed)) + '</strong> to!');
                     }
                     const spell = (unit.spells || []).find(s => s && s.name === state.selectedTool)
                         || (unit._raceAbilities || []).find(s => s && s.name === state.selectedTool);
                     if (!spell) return _promptBarHtml('Select an ability to cast.', 'ESC back');
-                    if (ptLabel) return _promptBarHtml('<strong>' + esc(spell.name) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                    if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
                 }
                 if (am === 'item') {
@@ -37756,7 +38191,7 @@
                 if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
                 if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
                 if (menuView === 'switch') return _promptBarHtml('Select a reserve to switch in.', 'ESC back');
-                return _promptBarHtml('<strong>' + esc(unitDisplayName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
+                return _promptBarHtml('<strong>' + esc(_ctName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
             } catch (err) {
                 return null; // a broken prompt must never take the game down
             }
@@ -37782,7 +38217,7 @@
             if (bdq.length > 0) {
                 const html = bdq[bdq.length - 1];
                 if (html !== _lastDialogueHtml) {
-                    textEl.innerHTML = html;
+                    textEl.innerHTML = _ctDecorate(html);   // THE COMBAT TEXT COLOURS
                     _lastDialogueHtml = html;
                 }
                 bar.classList.add('visible');
@@ -37849,7 +38284,7 @@
                     _renderDialogueBox(null);
                 }, Math.max(80, DLG_LOG_HOLD_MS - logAge + 40));
             } else if (promptHtml) {
-                html = promptHtml;
+                html = _ctDecorate(promptHtml);   // THE COMBAT TEXT COLOURS: names by side, spell names in caps
             }
 
             if (html) {
@@ -38183,7 +38618,7 @@
                     const dAtk = (unit.atk || 0) - _b.atk, dDef = (unit.def || 0) - _b.def;
                     const dMdef = (unit.mdef || 0) - _b.mdef, dInt = (unit.intStat || 0) - _b.int;
                     const dlgLines = [
-                        `<span class="dlg-levelup">⬆ ${escapeHtml(unitDisplayName(unit))} — LEVEL ${newLevel}!</span>`,
+                        `<span class="dlg-levelup">⬆ ${escapeHtml(_ctName(unit))} — LEVEL ${newLevel}!</span>`,
                         `<span class="dlg-levelup" style="font-size:15px">HP ${_gain(dHp)} · MP ${_gain(dMp)}</span>`,
                         `<span class="dlg-levelup" style="font-size:15px">ATK ${_gain(dAtk)} · M.ATK ${_gain(dInt)} · DEF ${_gain(dDef)} · M.DEF ${_gain(dMdef)}</span>`,
                     ];
@@ -38200,7 +38635,7 @@
 
         function applyLevelUpRewards(unit, level) {
             if (!unit) return;
-            const name = unitDisplayName(unit);
+            const name = _ctName(unit);   // only ever written into log + dialogue lines (THE COMBAT TEXT COLOURS)
 
             // Stat growth lives in _recomputeStatsForLevel (additive classic
             // scale, delta-applied). This function only grants level milestones.
@@ -39114,7 +39549,7 @@
             if (!unit || unit.dead || unit._dying) return false;
             const COST = _gauntletSwitchCost();
             if ((unit.ap || 0) < COST) {
-                addLog(`${unitDisplayName(unit)} needs ${COST} AP to switch out.`);
+                addLog(`${_ctName(unit)} needs ${COST} AP to switch out.`);
                 return false;
             }
             /* Reserves rule 3: at most RESERVE_RULES.switchesPerRound voluntary
@@ -39163,7 +39598,7 @@
                 if (!state._switchesThisRound) state._switchesThisRound = { 1: 0, 2: 0 };
                 state._switchesThisRound[unit.player] = (state._switchesThisRound[unit.player] || 0) + 1;
             }
-            addLog(`🔄 ${unitDisplayName(unit)} switches out — ${unitDisplayName(incoming)} enters the fray!`);
+            addLog(`🔄 ${_ctName(unit)} switches out — ${_ctName(incoming)} enters the fray!`);
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
             scheduleBoardRender();
             if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
@@ -39242,7 +39677,7 @@
             _gauntletResetTurnFlags(u);
             state.units.push(u);
 
-            addLog(`🛡 ${unitDisplayName(u)} is sent into battle!`);
+            addLog(`🛡 ${_ctName(u)} is sent into battle!`);
 
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
 
@@ -39323,9 +39758,9 @@
             }
             if (reserve && fallen) {
                 reserve._seatFor = fallen.id;
-                addLog(`🪑 ${unitDisplayName(reserve)} will take ${unitDisplayName(fallen)}'s seat when it opens.`);
+                addLog(`🪑 ${_ctName(reserve)} will take ${_ctName(fallen)}'s seat when it opens.`);
             } else if (fallen) {
-                addLog(`⏳ ${unitDisplayName(fallen)} keeps the seat — respawns in ${fallen._respawnIn || 0} round${(fallen._respawnIn || 0) === 1 ? '' : 's'}.`);
+                addLog(`⏳ ${_ctName(fallen)} keeps the seat — respawns in ${fallen._respawnIn || 0} round${(fallen._respawnIn || 0) === 1 ? '' : 's'}.`);
             }
             if (resume === true) {
                 if (state._gauntletReplaceQueue && state._gauntletReplaceQueue.length) state._gauntletReplaceQueue.shift();
@@ -39368,7 +39803,7 @@
             reserve._showRespawnBanner = true;
             _gauntletResetTurnFlags(reserve);
             state.units.push(reserve);
-            addLog(`🪑 ${unitDisplayName(reserve)} takes ${unitDisplayName(fallen)}'s seat (${reserve.hp}/${reserve.maxHp} HP) — ${unitDisplayName(fallen)} recovers on the bench.`);
+            addLog(`🪑 ${_ctName(reserve)} takes ${_ctName(fallen)}'s seat (${reserve.hp}/${reserve.maxHp} HP) — ${_ctName(fallen)} recovers on the bench.`);
             if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit: reserve });
             return true;
         }
@@ -39498,13 +39933,13 @@
         }
         function doEscape(unit) {
             const why = escapeProblem(unit);
-            if (why) { addLog(`🏃 ${unitDisplayName(unit)} cannot escape — ${why}.`); return false; }
+            if (why) { addLog(`🏃 ${_ctName(unit)} cannot escape — ${why}.`); return false; }
             /* the last body on the board: the fight ends as THE RETREAT (the bench goes with it) */
             if (!_escapeLiving(unit.player).some(u => u.id !== unit.id)) return _escapeAll(unit, true);
             const R = _escapeRules();
             state._actionExecuting = true;
             _escapeClearUi();
-            addLog(`🏃 ${unitDisplayName(unit)} slips out of the fight unseen — ESCAPED.`);
+            addLog(`🏃 ${_ctName(unit)} slips out of the fight unseen — ESCAPED.`);
             _escapeWalkOff(unit);
             unit.ap = 0;
             scheduleBoardRender();
@@ -39533,7 +39968,7 @@
             state._actionExecuting = true;
             _escapeClearUi();
             clearAiSafetyTimer();
-            addLog(single ? `🏃 ${unitDisplayName(unit)} slips out — the last one standing. THE RETREAT.` : `🏃 TEAM ESCAPE — the party slips out of the fight. THE RETREAT.`);
+            addLog(single ? `🏃 ${_ctName(unit)} slips out — the last one standing. THE RETREAT.` : `🏃 TEAM ESCAPE — the party slips out of the fight. THE RETREAT.`);
             bodies.forEach(b => { _escapeWalkOff(b); b.ap = 0; });
             scheduleBoardRender();
             if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
@@ -43958,7 +44393,7 @@
                 const s = state._mdStairs;
                 if (s && unit.x === s.x && unit.y === s.y) {
                     if (unit.id !== _mdLeaderId()) {
-                        addLog(`🪜 ${unitDisplayName(unit)} found the stairs — bring your LEADER here to descend.`);
+                        addLog(`🪜 ${_ctName(unit)} found the stairs — bring your LEADER here to descend.`);
                         return;
                     }
                     _mdPromptDescend();
@@ -44021,7 +44456,7 @@
             /* The lockstep clock hands you exactly one character: the leader is
                always yours, and never switches to AI tactics. */
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive() && u.id === _mdLeaderId()) {
-                addLog(`🎮 ${unitDisplayName(u)} is your delver — the rest of the party fights on its own.`);
+                addLog(`🎮 ${_ctName(u)} is your delver — the rest of the party fights on its own.`);
                 playSfx('uiCursorMove');
                 return;
             }
@@ -44040,7 +44475,7 @@
             const label = next === 'manual' ? '🎮 MANUAL — you control them'
                 : next === 'auto' ? '⚔ AUTO — fights on their own'
                 : '🛡 STAY CLOSE — fights beside the leader';
-            addLog(`📋 ${unitDisplayName(u)} tactics → ${label}`);
+            addLog(`📋 ${_ctName(u)} tactics → ${label}`);
             playSfx('uiCursorMove');
             /* flipping the ACTIVE unit onto auto hands its turn to the AI now */
             if (state._blitzActiveUnitId === u.id && _mdUnitAuto(u) && !state.aiThinking
@@ -44100,7 +44535,7 @@
             /* only announce sightings the player can actually see — a hidden
                monster waking up silently is fog working as intended */
             if (typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
-                addLog(`👁 ${unitDisplayName(unit)} has spotted the party — it's coming!`);
+                addLog(`👁 ${_ctName(unit)} has spotted the party — it's coming!`);
                 try { showFloatingTextForUnit(unit, '❗', 'pickup', { durationMs: 900 }); } catch (e) {}
             }
         }
@@ -45011,7 +45446,7 @@
             state._mdItems.push({ x: u.x, y: u.y, type: itemKey });
             const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
             const icon = (rule && rule.icon) || '📦';
-            addLog(`⤵ ${unitDisplayName(u)} drops a ${(rule && rule.name) || itemKey} on the floor.`);
+            addLog(`⤵ ${_ctName(u)} drops a ${(rule && rule.name) || itemKey} on the floor.`);
             try { showFloatingTextForUnit(u, `${icon} ⤵`, 'pickup', { durationMs: 900 }); } catch (e) {}
             playSfx('uiCursorMove');
             markDirty('board', 'hud', 'selectedUnit');
@@ -45040,13 +45475,13 @@
                     ? getItemCapForClass(unit, it.type) : ((rule && rule.max) || 1);
                 const bagFull = (typeof unitItemsFull === 'function') && unitItemsFull(unit);
                 if ((unit.items[it.type] || 0) >= cap || bagFull) {
-                    addLog(`🎒 ${unitDisplayName(unit)} steps over a ${name} — pockets full, it stays on the floor.`);
+                    addLog(`🎒 ${_ctName(unit)} steps over a ${name} — pockets full, it stays on the floor.`);
                     continue;
                 }
                 items.splice(i, 1);
                 unit.items[it.type] = (unit.items[it.type] || 0) + 1;
                 const icon = (typeof ITEM_META !== 'undefined' && ITEM_META[it.type] && ITEM_META[it.type].icon) || '📦';
-                addLog(`${icon} ${unitDisplayName(unit)} picks up a ${name}!`);
+                addLog(`${icon} ${_ctName(unit)} picks up a ${name}!`);
                 try { showFloatingTextForUnit(unit, `${icon} +1`, 'pickup', { durationMs: 1000 }); } catch (e) {}
                 if (!state.devAutoSim) { try { playSfx('uiConfirm'); } catch (e) {} }
                 markDirty('board', 'selectedUnit', 'hud');
@@ -45453,7 +45888,7 @@
                 if (!best) continue;
                 u.x = best.x; u.y = best.y;
                 if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(best.x, best.y, u.z);
-                if (typeof addLog === 'function') addLog(`🧱 ${unitDisplayName(u)} slipped back inside the ruins.`);
+                if (typeof addLog === 'function') addLog(`🧱 ${_ctName(u)} slipped back inside the ruins.`);
             }
         }
 
@@ -49193,7 +49628,7 @@
                 state.squadLeaderUnitId = firstP1 ? firstP1.id : null;
                 state.fogOfWar = true;
                 state.teamVision = false;
-                if (firstP1) addLog(`🎖 ${unitDisplayName(firstP1)} is your Squad Leader. You control them — AI handles the rest of your team.`);
+                if (firstP1) addLog(`🎖 ${_ctName(firstP1)} is your Squad Leader. You control them — AI handles the rest of your team.`);
             }
 
             beginBlitzRound();
@@ -49321,7 +49756,7 @@
                 icon: pingDef.icon,
                 round: state.round
             });
-            addLog(`${unitDisplayName(unit)} pings ${coordLabel(x, y)}: ${pingDef.icon} ${pingDef.label}`);
+            addLog(`${_ctName(unit)} pings ${coordLabel(x, y)}: ${pingDef.icon} ${pingDef.label}`);
             spendAP(unit, AP_COST_ACTION);
             state._actionExecuting = false;
             state._tileActionTarget = null;
@@ -50052,11 +50487,11 @@
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 if (!spell) { addLog('No spell selected.'); return 0; }
                 if (spell.kind === 'skyThrow' || spell.kind === 'teleport' || _kindMeta(spell).twoClick) {
-                    addLog(`🌀 ${spell.name} cannot be planned in Simul mode (yet).`);
+                    addLog(`🌀 ${_ctSp(spell.name)} cannot be planned in Simul mode (yet).`);
                     playErrorSfx();
                     return 0;
                 }
-                if (!canAffordSpell(unit, spell)) { addLog(`Cannot plan ${spell.name} right now.`); playErrorSfx(); return 0; }
+                if (!canAffordSpell(unit, spell)) { addLog(`Cannot plan ${_ctSp(spell.name)} right now.`); playErrorSfx(); return 0; }
                 if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) { addLog('Not enough MP.'); playErrorSfx(); return 0; }
                 let x = step.x, y = step.y, z = step.z;
                 if (isSpellSelfCast(spell)) { x = unit.x; y = unit.y; z = unit.z; }
@@ -50364,7 +50799,7 @@
                 if (order[0].unit && order[1].unit) {
                     const why = _planPriority(order[0].plan) > _planPriority(order[1].plan) ? 'priority'
                         : (order[0].speed !== order[1].speed ? (reverseSpeed ? 'Trick Room speed' : 'speed') : 'initiative');
-                    addLog(`⚡ ${unitDisplayName(order[0].unit)} acts first (${why}).`);
+                    addLog(`⚡ ${_ctName(order[0].unit)} acts first (${why}).`);
                 }
                 _execPlanEntry(order[0], () => {
                     if (state.winner) { _finishSimulTurn(); return; }
@@ -50378,7 +50813,7 @@
                 if (!plan || !plan.unitId || !plan.steps || !plan.steps.length) { done(); return; }
                 const unit = state.units.find(u => u.id === plan.unitId);
                 if (!unit || unit.dead || unit._dying) {
-                    if (unit) addLog(`💀 ${unitDisplayName(unit)} falls before their order resolves!`);
+                    if (unit) addLog(`💀 ${_ctName(unit)} falls before their order resolves!`);
                     done();
                     return;
                 }
@@ -50418,7 +50853,7 @@
 
             function _whiff(unit, label) {
                 showFloatingTextForUnit(unit, '💨 WHIFF', 'status', { durationMs: 1300 });
-                addLog(`💨 ${unitDisplayName(unit)}'s planned ${label} finds no target!`);
+                addLog(`💨 ${_ctName(unit)}'s planned ${label} finds no target!`);
             }
 
             function _spellWhiff(unit, spell) {
@@ -50463,7 +50898,7 @@
 
             function _execMove(unit, step) {
                 if (!canUnitMove(unit)) {
-                    addLog(`🚫 ${unitDisplayName(unit)} can no longer move!`);
+                    addLog(`🚫 ${_ctName(unit)} can no longer move!`);
                     return 0;
                 }
                 const tiles = getMoveTiles(unit) || [];
@@ -50484,11 +50919,11 @@
                     }
                     if (bestT && bestD < standD) {
                         dest = bestT;
-                        addLog(`↪️ ${unitDisplayName(unit)}'s path changed — they adapt.`);
+                        addLog(`↪️ ${_ctName(unit)}'s path changed — they adapt.`);
                     }
                 }
                 if (!dest) {
-                    addLog(`🚫 ${unitDisplayName(unit)} can't reach their planned position.`);
+                    addLog(`🚫 ${_ctName(unit)} can't reach their planned position.`);
                     spendAP(unit, AP_COST_ACTION);
                     return 300;
                 }
@@ -50512,11 +50947,11 @@
                     }
                     if (bestT && bestD < standD) {
                         dest = bestT;
-                        addLog(`↪️ ${unitDisplayName(unit)}'s jump is re-aimed.`);
+                        addLog(`↪️ ${_ctName(unit)}'s jump is re-aimed.`);
                     }
                 }
                 if (!dest) {
-                    addLog(`🚫 ${unitDisplayName(unit)} can't make their planned jump.`);
+                    addLog(`🚫 ${_ctName(unit)} can't make their planned jump.`);
                     spendAP(unit, AP_COST_ACTION);
                     return 300;
                 }
@@ -50543,7 +50978,7 @@
                     const alt = valid.filter(v => v.unit)
                         .sort((a, b) => (a.dist - b.dist) || (a.unit.hp - b.unit.hp))[0];
                     if (alt) {
-                        addLog(`🔄 ${unitDisplayName(unit)}'s target slipped away — they strike ${unitDisplayName(alt.unit)} instead!`);
+                        addLog(`🔄 ${_ctName(unit)}'s target slipped away — they strike ${_ctName(alt.unit)} instead!`);
                         tile = { x: alt.x, y: alt.y, z: alt.unit.z };
                     }
                 }
@@ -50568,7 +51003,7 @@
                     || (unit._raceAbilities || []).find(s => s.name === step.tool);
                 if (!spell) { _whiff(unit, step.tool || 'spell'); return 400; }
                 if (!canAffordSpell(unit, spell) || (unit.mp || 0) < getSpellMpCostFor(unit, spell)) {
-                    addLog(`🚫 ${unitDisplayName(unit)} can no longer cast ${spell.name}!`);
+                    addLog(`🚫 ${_ctName(unit)} can no longer cast ${_ctSp(spell.name)}!`);
                     spendAllAP(unit);
                     return 400;
                 }
@@ -50612,7 +51047,7 @@
                         const alt = valid.filter(v => v.unit)
                             .sort((a, b) => (a.dist - b.dist) || (a.unit.hp - b.unit.hp))[0];
                         if (alt) {
-                            addLog(`🔄 ${unitDisplayName(unit)} redirects ${spell.name} at ${unitDisplayName(alt.unit)}!`);
+                            addLog(`🔄 ${_ctName(unit)} redirects ${_ctSp(spell.name)} at ${_ctName(alt.unit)}!`);
                             cx = alt.x; cy = alt.y; cz = alt.unit.z;
                         } else {
                             _spellWhiff(unit, spell);
@@ -50630,7 +51065,7 @@
                             if (d < bestD) { bestD = d; bestT = t2; }
                         }
                         if (bestT) {
-                            addLog(`🎯 ${unitDisplayName(unit)} adjusts their aim.`);
+                            addLog(`🎯 ${_ctName(unit)} adjusts their aim.`);
                             cx = bestT.x; cy = bestT.y; cz = bestT.z;
                         } else {
                             _spellWhiff(unit, spell);
@@ -50946,7 +51381,7 @@
                             // AP → the loss was banked as a debt; settle it here.
                             u.ap = Math.max(0, getUnitMaxAP(u) - (u._staggerApDebt || 0));
                             if (u._staggerApDebt) {
-                                addLog(`💫 ${unitDisplayName(u)} starts the round staggered (-${u._staggerApDebt} AP).`);
+                                addLog(`💫 ${_ctName(u)} starts the round staggered (-${u._staggerApDebt} AP).`);
                                 u._staggerApDebt = 0;
                             }
                             u.movesThisTurn = 0;
@@ -50968,7 +51403,7 @@
                             u._overwatchArmed = false;
                             u._skippedTurn = false;
                             const stunned = getActiveStatusKeys(u).some(k => STATUS_DEFS[k]?.blockMove);
-                            if (stunned) addLog(`${unitDisplayName(u)} is stunned and cannot move!`);
+                            if (stunned) addLog(`${_ctName(u)} is stunned and cannot move!`);
 
                         }
                     }
@@ -51462,16 +51897,16 @@
 
                     if (nextUnit._showRespawnBanner) {
                         nextUnit._showRespawnBanner = false;
-                        dlgLines.push(`<span class="dlg-heal">🔄 ${unitDisplayName(nextUnit)} has respawned!</span>`);
+                        dlgLines.push(`<span class="dlg-heal">🔄 ${_ctName(nextUnit)} has respawned!</span>`);
                     }
 
                     if (state._recentDefeats?.length) {
                         const viewer = getViewerPlayer();
                         for (const d of state._recentDefeats) {
                             const isEnemy = d.player !== viewer;
-                            const cls = isEnemy ? 'dlg-effective' : 'dlg-damage';
                             const icon = isEnemy ? '⚔' : '💀';
-                            dlgLines.push(`<span class="${cls}">${icon} ${d.name} returned to the void</span>`);
+                            // no line colour: the name wears its side's colour, the words their caps (THE COMBAT TEXT COLOURS)
+                            dlgLines.push(`${icon} ${d.name} returned to the void`);
                         }
                         state._recentDefeats.length = 0;
                     }
@@ -51491,7 +51926,7 @@
                             const icon = def?.icon || def?.glyph || '⚠';
                             const label = def?.label || k;
                             const turns = nextUnit.status[k];
-                            return `<span class="dlg-status">${icon} ${unitDisplayName(nextUnit)}</span> is <span class="dlg-status">${label}</span> (${turns} rnd)`;
+                            return `<span class="dlg-status">${icon} ${_ctName(nextUnit)}</span> is <span class="dlg-status">${label}</span> (${turns} rnd)`;
                         });
                         showBattleDialogue(dlgMsgs, 1800);
                     }
@@ -51510,7 +51945,7 @@
                         applyHealingToUnit(nextUnit, _bcnObj.auraHeal, null);
                         const _bcnHealed = nextUnit.hp - _bcnHpBefore;
                         if (_bcnHealed > 0) {
-                            addLog(`✨ ${_bcnObj.spellName || 'Beacon'} pulses ${_bcnHealed} HP of regeneration into ${unitDisplayName(nextUnit)}.`);
+                            addLog(`✨ ${_ctSp(_bcnObj.spellName || 'Beacon')} pulses ${_bcnHealed} HP of regeneration into ${_ctName(nextUnit)}.`);
                             if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined') {
                                 const _bcnTs = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
                                 if (ThreeVFXEffects.sigRegenPulse3D) {
@@ -54568,7 +55003,7 @@
                     const currentUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
                     if (currentUnit && !currentUnit.dead) {
                         currentUnit.ap = 0;
-                        addLog(`${unitDisplayName(currentUnit)}'s turn is auto-skipped — ${unitDisplayName(unit)} takes over!`);
+                        addLog(`${_ctName(currentUnit)}'s turn is auto-skipped — ${_ctName(unit)} takes over!`);
                     }
 
                     unit._skippedTurn = false;
@@ -54788,11 +55223,11 @@
                 if (mode !== 'spell' || !_grabSp || _grabSp.name !== toolName) _releaseSkyThrowGrab(unit);
             }
             if (!canUnitAct(unit)) {
-                addLog(`${unitDisplayName(unit)} already acted this round.`);
+                addLog(`${_ctName(unit)} already acted this round.`);
                 return;
             }
             if (mode === 'spell' && unitSpellsBlocked(unit)) {
-                addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
+                addLog(`${_ctName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
             state.actionMode = mode;
@@ -55845,11 +56280,11 @@
                 return;
             }
             if (!canUnitAct(unit)) {
-                addLog(`${unitDisplayName(unit)} already acted this round.`);
+                addLog(`${_ctName(unit)} already acted this round.`);
                 return;
             }
             if (mode === 'spell' && unitSpellsBlocked(unit)) {
-                addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
+                addLog(`${_ctName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
             if (mode === 'build') {
@@ -55943,6 +56378,7 @@
                 state._attackCycleIndex = 0;
                 if (targets.length > 0) {
                     state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
+                    updateAoePreview(targets[0].x, targets[0].y);   // THE STRIKE ARROW onto the first pick (ui.js)
                     // enemy targeting → third person: caster looking at the target
                     _tpsTargetShot(unit, targets[0].unit || targets[0]);
                 }
@@ -56923,7 +57359,7 @@
                         && !_kindMeta(spell).directional
                         && !spellTargetUsableOn(actingUnit, spell, clickedUnit)) {
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                        addLog(`${spell.name} would have no effect on that target.`, actingUnit.player);
+                        addLog(`${_ctSp(spell.name)} would have no effect on that target.`, actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
@@ -57206,7 +57642,7 @@
                             state.comboPartner = clickedUnit;
                             const combo = getComboForUnits(actingUnit, clickedUnit);
                             const syn = getComboTypeSynergy(actingUnit, clickedUnit);
-                            addLog(`Partner selected: ${unitDisplayName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
+                            addLog(`Partner selected: ${_ctName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
                             state.pendingTarget = null;
                             renderBattleSelectionUI();
                         } else {
@@ -57300,7 +57736,7 @@
                 const wardIdx = state.wards.findIndex(w => w.x === unit.x && w.y === unit.y && w.owner !== unit.player);
                 if (wardIdx >= 0) {
                     state.wards.splice(wardIdx, 1);
-                    addLog(`👁💥 ${unitDisplayName(unit)} destroys an enemy Ward at ${coordLabel(unit.x, unit.y)}!`);
+                    addLog(`👁💥 ${_ctName(unit)} destroys an enemy Ward at ${coordLabel(unit.x, unit.y)}!`);
                     if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
                 }
             }
@@ -57395,10 +57831,10 @@
                 unit.mp = Math.min(unit.maxMp || unit.mp + _pdMana, (unit.mp || 0) + _pdMana);
                 playSfx('healRegen');
                 showFloatingTextForUnit(unit, `✨ +${healed} HP +${_pdMana} MP`, 'heal', { durationMs: 1100 });
-                addLog(`✨ ${unitDisplayName(unit)} collects pixie dust! (+${healed} HP, +${_pdMana} MP)`);
+                addLog(`✨ ${_ctName(unit)} collects pixie dust! (+${healed} HP, +${_pdMana} MP)`);
                 if (typeof flashHeal === 'function') flashHeal(unit);
             } else {
-                addLog(`${unitDisplayName(unit)} stamps out a patch of pixie dust.`);
+                addLog(`${_ctName(unit)} stamps out a patch of pixie dust.`);
                 // ✨ Glitter (Sparkling, STATUS_DEFS shedMotes.blindOnStep):
                 // the enemy who stamped it out gets an eyeful.
                 if (mote.blindOnStep > 0 && typeof applyStatusPayload === 'function' && STATUS_DEFS.blind) {
@@ -57434,7 +57870,7 @@
             unit.y = dest.y;
             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(dest.x, dest.y);
             playSfx('teleport');
-            addLog(`🔮 ${unitDisplayName(unit)} triggers a Warp Rune at ${oldLabel} and is teleported to ${coordLabel(dest.x, dest.y)}!`);
+            addLog(`🔮 ${_ctName(unit)} triggers a Warp Rune at ${oldLabel} and is teleported to ${coordLabel(dest.x, dest.y)}!`);
 
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX: unit.x, fromY: unit.y });
 
@@ -57465,7 +57901,7 @@
         function _springTrap(trap, victim) {
             const owner = state.units.find(u => u.id === trap.casterUnitId) || null;
             const _trapHpBefore = victim.hp;
-            addLog(`🪤 ${unitDisplayName(victim)} springs a hidden ${trap.spellName || 'trap'} at ${coordLabel(trap.x, trap.y)}!`);
+            addLog(`🪤 ${_ctName(victim)} springs a hidden ${_ctSp(trap.spellName || 'trap')} at ${coordLabel(trap.x, trap.y)}!`);
             showFloatingTextForUnit(victim, '🪤 TRAP!', 'damage', { durationMs: 1100 });
             playSfx('damage');
             if (typeof shakeBoard === 'function') shakeBoard('normal');
@@ -57516,7 +57952,7 @@
                     }
                 });
                 if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-                addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : unitDisplayName(victim)}!`);
+                addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : _ctName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
@@ -58555,7 +58991,7 @@
                 setUnitFacing(mover, guardian.x - mover.x, guardian.y - mover.y);
             }
             const dmg = getCounterDamage(guardian);
-            addLog(`👁 OVERWATCH! ${unitDisplayName(guardian)} snaps off a reaction shot at ${unitDisplayName(mover)}!`);
+            addLog(`👁 OVERWATCH! ${_ctName(guardian)} snaps off a reaction shot at ${_ctName(mover)}!`);
             showFloatingTextForUnit(guardian, '👁 OVERWATCH!', 'counter', { durationMs: 1100 });
             const _isMelee = dist <= 1;
             const _shotDelay = actionMs(320);
@@ -59093,9 +59529,9 @@
             triggerFallAnim(unit);   // rigged models flail on the way down
             followUnitFall(unit);    // camera rides the drop to the ground
             if (opts.reason === 'wounded') {
-                addLog(`${unitDisplayName(unit)} is too wounded to stay airborne and crashes to the ground!`);
+                addLog(`${_ctName(unit)} is too wounded to stay airborne and crashes to the ground!`);
             } else {
-                addLog(`${unitDisplayName(unit)} is forced out of the sky${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
+                addLog(`${_ctName(unit)} is forced out of the sky${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
             }
             const _fgLandFx = () => {
                 if (opts.reason === 'wounded') {
@@ -59188,12 +59624,12 @@
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) {
-                addLog(`${unitDisplayName(unit)} is too wounded to fly! (below 25% HP)`);
+                addLog(`${_ctName(unit)} is too wounded to fly! (below 25% HP)`);
                 return false;
             }
             // 🕳 Gravity Crush: no wings beat hard enough inside the field.
             if (getGravityFieldAt(unit.x, unit.y) === 'super') {
-                addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                 return false;
             }
             if (typeof getMinFlyingZ !== 'function') return false;
@@ -59211,7 +59647,7 @@
             if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'in');
             playSfx('buff');
             showFloatingTextForUnit(unit, '⬆ SWOOP', 'buff', { durationMs: 900 });
-            addLog(`${unitDisplayName(unit)} sweeps into the air!`);
+            addLog(`${_ctName(unit)} sweeps into the air!`);
             scheduleBoardRender();
             return true;
         }
@@ -59236,7 +59672,7 @@
             }
             if (unitMoveBlockedByStatus(unit)) {
                 if (!state.autoPlayers?.[unit.player]) {
-                    addLog(`${unitDisplayName(unit)} is rooted and cannot jump.`, unit.player);
+                    addLog(`${_ctName(unit)} is rooted and cannot jump.`, unit.player);
                     playErrorSfx();
                 }
                 return false;
@@ -59268,7 +59704,7 @@
             if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
             // 🧱 Landing on a debris pile banks it.
             collectMatDropsAt(unit, x, y);
-            addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
+            addLog(`${_ctName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
             playSfx('moveStep');
             checkStealthReveals(unit);
             const hDiff = z - fromZ;
@@ -59745,7 +60181,7 @@
             if (!door || !door.open) return false;
             const twin = doorTwin(door);
             if (!twin || !twin.open) return false;
-            if (unitAt(twin.x, twin.y)) { addLog(`🚪 ${unitDisplayName(unit)} waits in the doorway — the far side is occupied.`, unit.player); return false; }
+            if (unitAt(twin.x, twin.y)) { addLog(`🚪 ${_ctName(unit)} waits in the doorway — the far side is occupied.`, unit.player); return false; }
             if (typeof canOccupy === 'function' && !canOccupy(twin.x, twin.y)) return false;
             const fx = unit.x, fy = unit.y;
             unit.x = twin.x; unit.y = twin.y;
@@ -59754,7 +60190,7 @@
             playSfx('teleport');
             if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz');
             if (!_skipVisuals()) _vfxTeleport(fx, fy, twin.x, twin.y);
-            addLog(`🚪 ${unitDisplayName(unit)} steps through the door at ${coordLabel(fx, fy)} and out at ${coordLabel(twin.x, twin.y)}.`);
+            addLog(`🚪 ${_ctName(unit)} steps through the door at ${coordLabel(fx, fy)} and out at ${coordLabel(twin.x, twin.y)}.`);
             _doorTouched();
             return true;
         }
@@ -59864,7 +60300,7 @@
                 /* the way back out: a door opens on the landing tile and shuts behind them */
                 window._doorGeom('raceExit:out', unit.x, unit.y, { fromX: tw ? tw.x : fx, fromY: tw ? tw.y : fy });
                 delete unit._exited;
-                addLog(`🚪 ${unitDisplayName(unit)} comes back through the door at ${coordLabel(unit.x, unit.y)}, reeling.`);
+                addLog(`🚪 ${_ctName(unit)} comes back through the door at ${coordLabel(unit.x, unit.y)}, reeling.`);
                 applyStatusPayload(unit, { id: 'stagger', duration: 1 }, 'EXIT: ');
                 _doorTouched();
             };
@@ -59958,7 +60394,7 @@
                 setTimeout(() => { if (door._revealAt) { delete door._revealAt; _doorTouched(); } }, _shotMs + 30);
                 showFloatingTextAtTile(x, y, `🚪 ${rule.name.toUpperCase()}`, 'buff');
             }
-            addLog(`🚪 ${unitDisplayName(unit)} fires a ${rule.name}${type ? ' (' + type.toUpperCase() + ')' : ''} onto ${coordLabel(x, y)} — whoever lands on it is held.`);
+            addLog(`🚪 ${_ctName(unit)} fires a ${rule.name}${type ? ' (' + type.toUpperCase() + ')' : ''} onto ${coordLabel(x, y)} — whoever lands on it is held.`);
             _doorTouched();
             return door;
         }
@@ -59997,7 +60433,7 @@
                 window._doorGeom('raceCaptureDoor:take', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, seal });   // Phase 2: the void opens, the body is pulled in
             }
             if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-            addLog(`🚪 The door at ${coordLabel(door.x, door.y)} takes ${unitDisplayName(unit)} — HELD. Hold it ${seal} round${seal === 1 ? '' : 's'} to seal it.`);
+            addLog(`🚪 The door at ${coordLabel(door.x, door.y)} takes ${_ctName(unit)} — HELD. Hold it ${seal} round${seal === 1 ? '' : 's'} to seal it.`);
             _doorTouched();
             return true;
         }
@@ -60008,7 +60444,7 @@
             unit._captureGraceUntil = (state.round || 0) + (R.grace || 0);
             for (const d of _doors()) if (d.kind === 'capture' && d.held && d.held.unitId === unit.id) d.held = null;
             if (R.freeStagger) applyStatusPayload(unit, { id: 'stagger', duration: R.freeStagger }, 'THE DOOR: ');
-            addLog(`🚪 ${unitDisplayName(unit)} stumbles out of the broken door at ${coordLabel(unit.x, unit.y)}.`);
+            addLog(`🚪 ${_ctName(unit)} stumbles out of the broken door at ${coordLabel(unit.x, unit.y)}.`);
             _doorTouched();
         }
         /* BREAK (breakDoorPair's capture branch): the door is gone — its captive comes out */
@@ -60055,7 +60491,7 @@
                 window._doorGeom('raceCaptureDoor:seal', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, tier: door.tier || 1 });   // Phase 2: the leaf slams, the stamp, the frame folds away
             }
             if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-            addLog(`🚪 SEALED — ${unitDisplayName(unit)} is behind the door for good${opts.reason ? ' (' + opts.reason + ')' : ''}.`);
+            addLog(`🚪 SEALED — ${_ctName(unit)} is behind the door for good${opts.reason ? ' (' + opts.reason + ')' : ''}.`);
             _doorTouched();
             return true;
         }
@@ -60452,7 +60888,7 @@
                 _gunDoorStatus(u, 'burn', sp.burnRounds || 2, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
-            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(unitDisplayName).join(', ') : ''}.`);
+            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }
         /* ❄ FROST — the ice lane: the lane's tiles turn to ICE for `terrainRounds` (timed terrain — the round tick thaws
@@ -60478,7 +60914,7 @@
                 _gunDoorStatus(u, 'slow', sp.slowRounds || 1, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
-            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} freezes ${_gdPlural(frozen || lane.length, 'tile')}${hit.length ? ' and chills ' + hit.map(unitDisplayName).join(', ') : ''}.`);
+            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} freezes ${_gdPlural(frozen || lane.length, 'tile')}${hit.length ? ' and chills ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }
         /* 🕳 MAW — the draught: every enemy within the radius is drawn ONE tile toward the door (the nearest first, so the
@@ -60494,7 +60930,7 @@
             if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { bite: 1, delay: opts.delayMs || 0, owner: door.owner });
             _gunDoorHit(door, u, sp.biteDmg || 50, {});
             _gunDoorStatus(u, 'stagger', 1, `${def.icon} ${def.name}: `);
-            addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} bites ${unitDisplayName(u)} and spits it out.`);
+            addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} bites ${_ctName(u)} and spits it out.`);
             if (!u.dead && !u._dying && _gunDoorMovable(u)) {
                 let bx = -Math.sign(door.faceX || 0), by = -Math.sign(door.faceY || 0);
                 if (!bx && !by) by = -1;
@@ -60525,7 +60961,7 @@
                 if (u.x !== fx0 || u.y !== fy0) {
                     moved.push(u);
                     if (!_skipVisuals()) showFloatingTextForUnit(u, `${def.icon} DRAWN IN`, 'debuff', { durationMs: 1000 });
-                    addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} draws ${unitDisplayName(u)} from ${coordLabel(fx0, fy0)} to ${coordLabel(u.x, u.y)}.`);
+                    addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} draws ${_ctName(u)} from ${coordLabel(fx0, fy0)} to ${coordLabel(u.x, u.y)}.`);
                 }
             }
             return moved;
@@ -60558,7 +60994,7 @@
                 _gunDoorHit(door, u, sp.beamDmg || 60, { flash: 'shock' });
                 hit.push(u);
             }
-            if (hit.length) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} burns ${hit.map(unitDisplayName).join(', ')}.`);
+            if (hit.length) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} burns ${hit.map(u => _ctName(u)).join(', ')}.`);
             return hit;
         }
         /* ✨ LIGHT — the shaft: the owner's side in the lane heals + is cleansed; the other side takes the holy blast + Blind */
@@ -60579,7 +61015,7 @@
                         if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured') { delete u.status[k]; cleansed++; }
                     }
                     if (!_skipVisuals()) showFloatingTextForUnit(u, cleansed ? `${def.icon} CLEANSED` : `${def.icon} +${Math.round(healed || 0)}`, 'heal', { durationMs: 1000 });
-                    addLog(`${def.icon} The ${def.name}'s light ${healed ? 'heals' : 'bathes'} ${unitDisplayName(u)}${cleansed ? ' and lifts ' + _gdPlural(cleansed, 'debuff') : ''}.`);
+                    addLog(`${def.icon} The ${def.name}'s light ${healed ? 'heals' : 'bathes'} ${_ctName(u)}${cleansed ? ' and lifts ' + _gdPlural(cleansed, 'debuff') : ''}.`);
                 } else {
                     _gunDoorHit(door, u, sp.laneDmg || 45, {});
                     _gunDoorStatus(u, 'blind', sp.blindRounds || 1, `${def.icon} ${def.name}: `);
@@ -60638,7 +61074,7 @@
                 if (res && (res.moved > 0 || u.x !== fromX || u.y !== fromY)) {
                     moved.push(u);
                     if (!_skipVisuals()) showFloatingTextForUnit(u, `${def.icon} BLOWN`, 'debuff', { durationMs: 1000 });
-                    addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} blows ${unitDisplayName(u)} from ${coordLabel(fromX, fromY)} to ${coordLabel(u.x, u.y)}.`);
+                    addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} blows ${_ctName(u)} from ${coordLabel(fromX, fromY)} to ${coordLabel(u.x, u.y)}.`);
                 }
             }
             return moved;
@@ -60688,7 +61124,7 @@
                     const applied = Math.max(0, hp0 - Math.max(0, target.hp || 0));
                     _balAddSpellEffect(door.spellId, applied, (target.dead || target._dying || (target.hp || 0) <= 0) ? 1 : 0);
                 }
-                addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} looses ${n} arrows at ${unitDisplayName(target)}.`);
+                addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} looses ${n} arrows at ${_ctName(target)}.`);
                 if (!_skipVisuals() && !target.dead) triggerStatusWiggle(target);
             };
             const wait = (opts.deferMs != null ? opts.deferMs : 0);
@@ -60804,7 +61240,7 @@
                 setTimeout(() => { if (door._revealAt) { delete door._revealAt; _doorTouched(); } }, shotMs + 30);
                 showFloatingTextAtTile(x, y, `${def.icon} ${def.name.toUpperCase()}`, 'buff');
             }
-            addLog(`${def.icon} ${unitDisplayName(unit)} fires a ${def.name} onto ${coordLabel(x, y)}${def.lane ? ' facing ' + _gunFaceWord(f.faceX, f.faceY) : ''}.`);
+            addLog(`${def.icon} ${_ctName(unit)} fires a ${def.name} onto ${coordLabel(x, y)}${def.lane ? ' facing ' + _gunFaceWord(f.faceX, f.faceY) : ''}.`);
             _doorTouched();
             /* THE PLACEMENT ACT — the state now, the beat after the unfold (the slides / the arrows wait on `delayMs`) */
             const actAt = shotMs + unfoldMs;
@@ -60932,7 +61368,7 @@
                     }
                     if (!_skipVisuals() && !lead.dead) showFloatingTextForUnit(lead, `${def.icon} ${String(def.name).toUpperCase()}`, 'debuff', { durationMs: 1200 });
                 }
-                addLog(`${def.icon} THE DOOR STRUCK FIRST — the ${def.name} caught ${unitDisplayName(lead)} before the fight began.`);
+                addLog(`${def.icon} THE DOOR STRUCK FIRST — the ${def.name} caught ${_ctName(lead)} before the fight began.`);
             } catch (e) { console.warn('[HQ] the door opening failed', e); }
             scheduleBoardRender();
             if (typeof checkWin === 'function') checkWin();
@@ -61145,12 +61581,13 @@
                 wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
         }
 
-        /* The "can't see it" line for an aimed action (2026-10-18): a Jammed unit (noSharedVision) whose team DOES see
-           the tile is told it is on its own eyes — "no one on your team can see that tile" was false there. */
+        /* The "can't see it" line for an aimed action (2026-10-18): a Blind / Jammed unit (noSharedVision) is on its own
+           eyes — "no one on your team can see that tile" was false when its allies did see it. */
         function outOfSightMessage(unit, x, y) {
-            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)
-                && typeof teamSeesTile === 'function' && teamSeesTile(unit.player, x, y)) {
-                return `Out of sight — ${unitDisplayName(unit)} is cut off from the team's sight and can't see that tile itself.`;
+            if (unit && typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit)) {
+                const k = Object.keys(unit.status || {}).find(s => (unit.status[s] | 0) > 0 && STATUS_DEFS[s]?.noSharedVision);
+                const why = (k && STATUS_DEFS[k].colorText) || 'cut off from its team';
+                return `Out of sight — ${unitDisplayName(unit)} is ${why} and can't see that tile itself.`;
             }
             return 'Out of sight — no one on your team can see that tile.';
         }
@@ -61169,7 +61606,7 @@
             {
                 const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
                 if (_actBlock) {
-                    addLog(`${unitDisplayName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -61324,7 +61761,7 @@
                 const _tdD = Math.abs(unit.x - _atkDecoy.x) + Math.abs(unit.y - _atkDecoy.y);
                 if (_tdD >= 1 && _tdD <= getEffectiveRange(unit)
                     && !isRangeBlockedByTerrain(unit.x, unit.y, _atkDecoy.x, _atkDecoy.y, unit.z)) {
-                    addLog(`🗯 ${unitDisplayName(unit)} is provoked — only ${_atkDecoy.spellName || 'the decoy'} can be attacked!`);
+                    addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctSp(_atkDecoy.spellName || 'the decoy')} can be attacked!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -61334,7 +61771,7 @@
                 const _tntD = combatDist(unit.x, unit.y, unit.z ?? 0, _atkTaunter.x, _atkTaunter.y, _atkTaunter.z ?? 0);
                 if (_tntD >= 1 && _tntD <= getEffectiveRange(unit)
                     && !isRangeBlockedByTerrain(unit.x, unit.y, _atkTaunter.x, _atkTaunter.y, unit.z)) {
-                    addLog(`🗯 ${unitDisplayName(unit)} is provoked — only ${unitDisplayName(_atkTaunter)} can be attacked!`);
+                    addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctName(_atkTaunter)} can be attacked!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -61370,7 +61807,7 @@
                 if (state.cameraDisabled) {
                     tw.hp = Math.max(0, tw.hp - damage);
                     unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
-                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
+                    addLog(`⬡ ${_ctName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     if (_nxSiege > 1) showFloatingTextAtTile(x, y, `⬡ SIEGE ×${_nxSiege}`, 'nexus', { durationMs: 1200 });
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
@@ -61449,7 +61886,7 @@
                     if (!_twHold) camera.snap({ x: x, y: y });
                     tw.hp = Math.max(0, tw.hp - damage);
                     unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
-                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
+                    addLog(`⬡ ${_ctName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
                     showFloatingTextAtTile(x, y, `-${damage}`, _nxSiege > 1 ? 'crit' : 'damage');
@@ -61560,7 +61997,7 @@
                     } else {
 
                         dObj.hp = 0;
-                        addLog(`${unitDisplayName(unit)} destroys ${dObj.spellName || 'deployed object'} at ${coordLabel(x, y)}!`);
+                        addLog(`${_ctName(unit)} destroys ${_ctSp(dObj.spellName || 'deployed object')} at ${coordLabel(x, y)}!`);
                         showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                         playSfx('uiConfirm');
                         state._deployedObjects.splice(dObjIdx, 1);
@@ -61588,7 +62025,7 @@
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
                     state.plantedSeeds.splice(seedIdx, 1);
-                    addLog(`${unitDisplayName(unit)} destroys a ${seedName} Seed at ${coordLabel(x, y)}!`);
+                    addLog(`${_ctName(unit)} destroys a ${seedName} Seed at ${coordLabel(x, y)}!`);
                     showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                     playSfx('uiConfirm');
                     spendAllAP(unit);   // attacking ends the turn
@@ -61617,7 +62054,7 @@
                 // cover (and banking 🪵 build material).
                 // (THE JOBS REMOVAL 2026-09-27: a Green Thumb bearer — the `plantedTrees` hook — was the Harvester job)
                 const _lumberNote = unitPassiveValue(unit, 'plantedTrees') ? ` (Lumber felled: ${state.lumber[unit.player] || 0})` : '';
-                addLog(`🪓 ${unitDisplayName(unit)} chops down a ${wasPlanted ? 'planted ' : ''}tree at ${coordLabel(x, y)}!${_lumberNote}`);
+                addLog(`🪓 ${_ctName(unit)} chops down a ${wasPlanted ? 'planted ' : ''}tree at ${coordLabel(x, y)}!${_lumberNote}`);
                 showFloatingTextAtTile(x, y, '🪓 TIMBER!', 'damage', { durationMs: 1100 });
                 playSfx('basicAttack');
                 grantXP(unit, 4, 'chop');
@@ -61642,7 +62079,7 @@
                 const _oldH = getBaseHeightAt(x, y);
                 animateStrikeLeap(unit, x, y);
                 smashTerrainAt(x, y, unit);
-                addLog(`🔨 ${unitDisplayName(unit)} smashes the terrain at ${coordLabel(x, y)}! (Height ${_oldH} → ${_oldH - 1})`);
+                addLog(`🔨 ${_ctName(unit)} smashes the terrain at ${coordLabel(x, y)}! (Height ${_oldH} → ${_oldH - 1})`);
                 showFloatingTextAtTile(x, y, '🔨 CRUMBLE!', 'damage', { durationMs: 1100 });
                 playSfx('basicAttack');
                 if (typeof shakeBoard === 'function') shakeBoard('normal');
@@ -61664,18 +62101,18 @@
             }
 
             if (unitHasStatus(target, 'invisible') && !unitHasStatus(target, 'marked')) {
-                addLog(`${unitDisplayName(target)} is camouflaged and cannot be targeted.`);
+                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`);
                 playErrorSfx();
                 return 0;
             }
             if (unitCryptidHiddenFrom(target, unit.player)) {
-                addLog(`📷 ${unitDisplayName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
+                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
                 playErrorSfx();
                 return 0;
             }
             // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
             if (isUnitRealmShieldedFrom(target, unit)) {
-                addLog(`🌑 ${unitDisplayName(target)} is beyond reach in the Shadow Realm.`);
+                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
                 playErrorSfx();
                 return 0;
             }
@@ -61692,7 +62129,7 @@
 
             if (unitHasStatus(unit, 'invisible')) {
                 clearStatus(unit, 'invisible');
-                addLog(`${unitDisplayName(unit)} breaks camouflage!`);
+                addLog(`${_ctName(unit)} breaks camouflage!`);
             }
 
             // Facing: square the attacker up on the target, then read which
@@ -61703,7 +62140,7 @@
             const _atkArc = (_doorOrg || unit._doorAttackOrigin) ? 'back' : getAttackArc(unit, target);
             if (_doorOrg || unit._doorAttackOrigin) {
                 const _dOr = _doorOrg || unit._doorAttackOrigin;
-                addLog(`🚪 ${unitDisplayName(unit)} strikes out of the door at ${coordLabel(_dOr.x, _dOr.y)} — from behind!`);
+                addLog(`🚪 ${_ctName(unit)} strikes out of the door at ${coordLabel(_dOr.x, _dOr.y)} — from behind!`);
                 delete unit._doorAttackOrigin;
             }
             const _facingMult = getFacingDamageMult(_atkArc);
@@ -61712,7 +62149,7 @@
             // from the back arc, where normal evasion can't save the target.
             const _blindMiss = unitHasStatus(unit, 'blind') && engineRng() < 0.5;
             if (_blindMiss) {
-                addLog(`🌫️ ${unitDisplayName(unit)} swings blind — and misses!`);
+                addLog(`🌫️ ${_ctName(unit)} swings blind — and misses!`);
                 showFloatingTextForUnit(unit, '🌫️ BLIND!', 'debuff', { durationMs: 900 });
             }
             const evaded = _blindMiss ? true : (_atkArc === 'back' ? false : rollEvasion(target));
@@ -61858,8 +62295,8 @@
                     if (!_blindMiss) target._matchTrueDodges = (target._matchTrueDodges || 0) + 1;
 
                     grantXP(target, XP_DODGE, 'dodge');
-                    addLog(`${unitDisplayName(target)} dodges ${unitDisplayName(unit)}'s attack!`);
-                    showBattleDialogue([`<span class="dlg-resist">💨 ${unitDisplayName(target)} dodges the attack!</span>`], 1200);
+                    addLog(`${_ctName(target)} dodges ${_ctName(unit)}'s attack!`);
+                    showBattleDialogue([`<span class="dlg-resist">💨 ${_ctName(target)} dodges the attack!</span>`], 1200);
                     showFloatingTextForUnit(target, 'DODGE!', 'dodge', {
                         durationMs: 1000
                     });
@@ -61872,10 +62309,10 @@
                     const preHp = target.hp;
                     if (_atkArc === 'back') {
                         unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
-                        addLog(`🗡️ BACKSTAB! ${unitDisplayName(unit)} strikes ${unitDisplayName(target)} from behind (+25% damage)!`);
+                        addLog(`🗡️ BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
                         showFloatingTextForUnit(target, 'BACKSTAB!', 'crit', { durationMs: 1100, jitterY: -14 });
                     } else if (_atkArc === 'side') {
-                        addLog(`🗡️ ${unitDisplayName(unit)} flanks ${unitDisplayName(target)} (+10% damage)!`);
+                        addLog(`🗡️ ${_ctName(unit)} flanks ${_ctName(target)} (+10% damage)!`);
                         showFloatingTextForUnit(target, 'FLANKED!', 'counter', { durationMs: 900 });
                     }
                     if (isCrit) {
@@ -61914,7 +62351,7 @@
                     if (_pcHit && !unit.dead && (unit.mp || 0) < (unit.maxMp || 0)) {
                         const _pcGain = Math.min(_pcHit, (unit.maxMp || 0) - (unit.mp || 0));
                         unit.mp = (unit.mp || 0) + _pcGain;
-                        addLog(`⚡ ${unitDisplayName(unit)}'s Power Core recharges +${_pcGain} MP.`);
+                        addLog(`⚡ ${_ctName(unit)}'s Power Core recharges +${_pcGain} MP.`);
                         if (!_skipVisuals()) showFloatingTextForUnit(unit, `⚡ +${_pcGain} MP`, 'mp', { durationMs: 1000 });
                     }
 
@@ -61943,7 +62380,7 @@
                         const _drain = Math.round(_hpLost * _hemoPct);
                         if (_drain > 0 && unit.hp < unit.maxHp) {
                             unit.hp = Math.min(unit.maxHp, (unit.hp || 0) + _drain);
-                            addLog(`🩸 ${unitDisplayName(unit)}'s Hemophage drinks ${_drain} HP!`);
+                            addLog(`🩸 ${_ctName(unit)}'s Hemophage drinks ${_drain} HP!`);
                             if (!_skipVisuals()) {
                                 showFloatingTextForUnit(unit, `🩸 +${_drain}`, 'heal', { durationMs: 1100 });
                                 flashUnit(unit.id, 'heal');
@@ -62027,7 +62464,7 @@
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
                     grantXP(target, XP_COUNTER, 'counter');
-                    addLog(`⚔️ ${unitDisplayName(target)} counter-attacks for ${counterDmg} damage!`);
+                    addLog(`⚔️ ${_ctName(target)} counter-attacks for ${counterDmg} damage!`);
                     // Press Turn: getting countered wastes your momentum — the
                     // same extra AP drain as a whiff, on top of the swing's own
                     // press result (a weak-hit refund gets eaten by the riposte).
@@ -62090,7 +62527,7 @@
                                 const _fuDmg = Math.max(24, Math.floor(pwrAtk(_fuAlly) * 0.4) + randInt(24));
                                 _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
                                 grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
-                                addLog(`🤝 ${unitDisplayName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
+                                addLog(`🤝 ${_ctName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
                                 showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
                                 applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
                                     sourceUnit: _fuAlly,
@@ -62179,7 +62616,7 @@
             }
             const inspectReach = getEffectiveInspect(unit);
             if (inspectReach <= 0) {
-                addLog(`${unitDisplayName(unit)} cannot inspect right now.`);
+                addLog(`${_ctName(unit)} cannot inspect right now.`);
                 return;
             }
             const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
@@ -62261,7 +62698,7 @@
                 shakeBoard('normal');
             }
 
-            addLog(`${unitDisplayName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`, unit.player);
+            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`, unit.player);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
@@ -62273,7 +62710,7 @@
             }
 
             if (lootedNow > 0) {
-                addLog(`${unitDisplayName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
+                addLog(`${_ctName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
             }
 
             focusBoardCameraOnTiles([{
@@ -62475,7 +62912,7 @@
                 occupant.x = t.x;
                 occupant.y = t.y;
                 occupant.z = tz;
-                addLog(`${unitDisplayName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
+                addLog(`${_ctName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
                 showFloatingTextForUnit(occupant, 'PUSHED!', 'streak', { durationMs: 800 });
                 if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180, { stagger: true });
                 _applyKnockbackHazard(occupant);   // ⛓ knocked aside onto whatever waits there
@@ -62544,7 +62981,7 @@
                     console.warn('[enforceUnitSeparation] unstacked', unitDisplayName(mover),
                         'from (' + fx + ',' + fy + ',z' + fz + ') shared with', unitDisplayName(stay),
                         context ? '(' + context + ')' : '');
-                    addLog(`⚠ ${unitDisplayName(mover)} is jostled off ${unitDisplayName(stay)}'s position!`);
+                    addLog(`⚠ ${_ctName(mover)} is jostled off ${_ctName(stay)}'s position!`);
                     if (typeof animateDisplacement === 'function' && (mover.x !== fx || mover.y !== fy)) {
                         animateDisplacement(mover, fx, fy, mover.x, mover.y, 160);
                     }
@@ -62600,7 +63037,7 @@
                 playSfx('buff');
                 const altAboveGround = newZ - groundZ;
                 showFloatingTextForUnit(unit, `⬆ TAKE OFF (Alt ${altAboveGround})`, 'buff', { durationMs: 900 });
-                addLog(`${unitDisplayName(unit)} takes off to altitude ${altAboveGround} above ground! (Z ${oldZ} → ${newZ})`);
+                addLog(`${_ctName(unit)} takes off to altitude ${altAboveGround} above ground! (Z ${oldZ} → ${newZ})`);
             } else {
 
                 const newZ = groundZ;
@@ -62638,7 +63075,7 @@
                 } else {
                     showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
                 }
-                addLog(`${unitDisplayName(unit)} lands on the ground! (Z ${oldZ} → ${_finalZ})`);
+                addLog(`${_ctName(unit)} lands on the ground! (Z ${oldZ} → ${_finalZ})`);
                 // 💧 Touching down in water soaks the lander & douses burn.
                 _onFlyerLanded(unit);
             }
@@ -62734,7 +63171,7 @@
                 unit.z = newZ;
                 playSfx('physicalAbility');
                 showFloatingTextForUnit(unit, '🔺 RAISE', 'buff', { durationMs: 900 });
-                addLog(`${unitDisplayName(unit)} raises the ground beneath them! (Height ${oldHeight} → ${newZ})`);
+                addLog(`${_ctName(unit)} raises the ground beneath them! (Height ${oldHeight} → ${newZ})`);
             } else {
 
                 removeBlockAt(x, y, oldHeight);
@@ -62743,7 +63180,7 @@
                 unit.z = Math.max(0, newHeight);
                 playSfx('physicalAbility');
                 showFloatingTextForUnit(unit, '🔻 LOWER', 'neutral', { durationMs: 900 });
-                addLog(`${unitDisplayName(unit)} lowers the ground beneath them! (Height ${oldHeight} → ${newHeight})`);
+                addLog(`${_ctName(unit)} lowers the ground beneath them! (Height ${oldHeight} → ${newHeight})`);
                 // Digging below a neighboring waterline floods the fresh pit
                 // (yes, onto the digger — water doesn't care).
                 if (typeof settleWaterAround === 'function') settleWaterAround([{ x, y }]);
@@ -62972,7 +63409,7 @@
                     _fellTreeAt(x, y, unit);   // credits +1 🪵 (+ lumber + entropy)
                     playSfx('physicalAbility');
                     showFloatingTextForUnit(unit, '⛏ CHOP', 'neutral', { durationMs: 800 });
-                    addLog(`${unitDisplayName(unit)} chops down the tree at ${coordLabel(x, y)}.`);
+                    addLog(`${_ctName(unit)} chops down the tree at ${coordLabel(x, y)}.`);
                 } else {
                     const oldH = info.oldH;
                     removeBlockAt(x, y, oldH);
@@ -62984,7 +63421,7 @@
                     if (occ && !occ.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occ))) {
                         occ.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, occ.z) : Math.max(0, oldH - 1);
                         if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: occ, fromX: x, fromY: y });
-                        if (occ.id !== unit.id) addLog(`${unitDisplayName(occ)} drops as the ground is dug out underfoot!`);
+                        if (occ.id !== unit.id) addLog(`${_ctName(occ)} drops as the ground is dug out underfoot!`);
                         // Digging out your own footing: ride the camera down to
                         // the new floor (same natural-height ease as a fall).
                         if (occ.id === unit.id && typeof followUnitFall === 'function') {
@@ -62993,14 +63430,14 @@
                     }
                     playSfx('physicalAbility');
                     showFloatingTextForUnit(unit, '⛏ DIG', 'neutral', { durationMs: 800 });
-                    addLog(`${unitDisplayName(unit)} digs out ${coordLabel(x, y)} (height ${oldH} → ${oldH - 1}).`);
+                    addLog(`${_ctName(unit)} digs out ${coordLabel(x, y)} (height ${oldH} → ${oldH - 1}).`);
                 }
             } else {
                 const matDef = BUILD_MATERIALS[tool];
                 spendMaterials(unit.player, { [tool]: 1 });
                 if (info.isWater) {
                     setTerrainAt(x, y, matDef.terrain);
-                    addLog(`${unitDisplayName(unit)} sinks a ${matDef.label} block into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
+                    addLog(`${_ctName(unit)} sinks a ${matDef.label} block into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
                 } else {
                     if (info.enemyOcc && info.shoveTo) {
                         // Erupting block: shove first, then raise the column.
@@ -63012,7 +63449,7 @@
                             sourceUnit: unit, damageType: 'physical', noRangeMult: true
                         });
                         showFloatingTextForUnit(info.enemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
-                        addLog(`${unitDisplayName(unit)}'s block erupts under ${unitDisplayName(info.enemyOcc)}, hurling them aside!`);
+                        addLog(`${_ctName(unit)}'s block erupts under ${_ctName(info.enemyOcc)}, hurling them aside!`);
                         if (!info.enemyOcc.dead) _applyKnockbackHazard(info.enemyOcc);
                         if (!info.enemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(info.enemyOcc);
                     }
@@ -63021,7 +63458,7 @@
                     if (rider && !rider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(rider)) && !isEnemyUnit(rider, unit)) {
                         rider.z = info.oldH + 1;
                         if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: rider, fromX: x, fromY: y });
-                        if (rider.id !== unit.id) addLog(`${unitDisplayName(rider)} rides the new block up!`);
+                        if (rider.id !== unit.id) addLog(`${_ctName(rider)} rides the new block up!`);
                         // Building under your own feet: the camera RISES with
                         // the unit. followUnitFall despite the name just eases
                         // the focal onto the tile and hands the height back to
@@ -63031,7 +63468,7 @@
                             followUnitFall(rider, { duration: actionMs(420) });
                         }
                     }
-                    addLog(`${unitDisplayName(unit)} stacks a ${matDef.label} block at ${coordLabel(x, y)} (1 ${matDef.icon} spent).`);
+                    addLog(`${_ctName(unit)} stacks a ${matDef.label} block at ${coordLabel(x, y)} (1 ${matDef.icon} spent).`);
                 }
                 playSfx('physicalAbility');
                 showFloatingTextForUnit(unit, `🧱 ${matDef.icon} BUILD`, 'buff', { durationMs: 800 });
@@ -63171,6 +63608,13 @@
                        the moved cells of a tile board as one ground, not a tile pattern. Plain state: rides the state-sync. */
                     const _dTiles = state.deformedTiles || (state.deformedTiles = {}), _dKey = tx + ',' + ty;
                     if (!(_dKey in _dTiles)) _dTiles[_dKey] = oldH;
+                    /* THE EARTHWORK MOUND (2026-10-18): a cell a `mound` deform raised (Rampart) is drawn on a true-ground field as
+                       the ground itself swelling (three-renderer.js _fieldMoundBuild), not a block; any other raise makes it a block
+                       again. Plain state: rides the state-sync. */
+                    if (newH > oldH) {
+                        const _mTiles = state.moundTiles || (state.moundTiles = {});
+                        if (deform.mound) _mTiles[_dKey] = 1; else delete _mTiles[_dKey];
+                    }
                 }
             }
 
@@ -64202,7 +64646,7 @@
                 for (const _cu of [initiator, partner]) {
                     if (unitHasStatus(_cu, 'invisible')) {
                         clearStatus(_cu, 'invisible');
-                        addLog(`${unitDisplayName(_cu)} breaks camouflage!`);
+                        addLog(`${_ctName(_cu)} breaks camouflage!`);
                     }
                 }
             }
@@ -64307,7 +64751,7 @@
                     hits: (combo.kind === 'multiHit') ? (combo.hitDamages || [combo.dmg || 10]).length : 1
                 });
             }
-            addLog(`${unitDisplayName(initiator)} & ${unitDisplayName(partner)} perform ${combo.name}!${synergyLabel}`);
+            addLog(`${_ctName(initiator)} & ${_ctName(partner)} perform ${_ctSp(combo.name)}!${synergyLabel}`);
 
             initiator._matchCombos = (initiator._matchCombos || 0) + 1;
             partner._matchCombos = (partner._matchCombos || 0) + 1;
@@ -64346,7 +64790,7 @@
                             const _gain = Math.min(_drain, (_du.maxHp || 0) - (_du.hp || 0));
                             if (_gain > 0) {
                                 applyHealingToUnit(_du, _gain, initiator);
-                                addLog(`${combo.name} siphons ${_gain} HP to ${unitDisplayName(_du)}.`);
+                                addLog(`${_ctSp(combo.name)} siphons ${_gain} HP to ${_ctName(_du)}.`);
                             }
                         }
                     }
@@ -64429,7 +64873,7 @@
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
-                        addLog(`${combo.name} heals ${unitDisplayName(ally)} for ${hpGain} HP.`);
+                        addLog(`${_ctSp(combo.name)} heals ${_ctName(ally)} for ${hpGain} HP.`);
                     }
                 }
             }
@@ -64440,12 +64884,12 @@
                 const gain = Math.min(shieldAmt, cap - (initiator.shield || 0));
                 if (gain > 0) {
                     initiator.shield = (initiator.shield || 0) + gain;
-                    addLog(`${combo.name} grants ${unitDisplayName(initiator)} ${gain} shield.`);
+                    addLog(`${_ctSp(combo.name)} grants ${_ctName(initiator)} ${gain} shield.`);
                 }
                 const gain2 = Math.min(shieldAmt, cap - (partner.shield || 0));
                 if (gain2 > 0) {
                     partner.shield = (partner.shield || 0) + gain2;
-                    addLog(`${combo.name} grants ${unitDisplayName(partner)} ${gain2} shield.`);
+                    addLog(`${_ctSp(combo.name)} grants ${_ctName(partner)} ${gain2} shield.`);
                 }
             }
 
@@ -64454,7 +64898,7 @@
                     applyStatusPayload(initiator, eff, `${combo.name}: `, initiator);
                     applyStatusPayload(partner, eff, `${combo.name}: `, initiator);
                 }
-                addLog(`${combo.name} buffs both ${unitDisplayName(initiator)} and ${unitDisplayName(partner)}.`);
+                addLog(`${_ctSp(combo.name)} buffs both ${_ctName(initiator)} and ${_ctName(partner)}.`);
             }
 
             if (combo.comboHeal && combo.comboHeal > 0) {
@@ -64463,7 +64907,7 @@
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
-                        addLog(`${combo.name} also heals ${unitDisplayName(ally)} for ${hpGain} HP.`);
+                        addLog(`${_ctSp(combo.name)} also heals ${_ctName(ally)} for ${hpGain} HP.`);
                     }
                 }
             }
@@ -64537,7 +64981,7 @@
                     return;
                 }
                 if (target.hp >= target.maxHp) {
-                    addLog(`${unitDisplayName(target)} is already at full HP.`);
+                    addLog(`${_ctName(target)} is already at full HP.`);
                     playErrorSfx();
                     return;
                 }
@@ -64614,7 +65058,7 @@
                     }
                     const healed = applyHealingToUnit(target, heal, unit, { preScaled: true });
                     flashSelectedUnitPanel('heal');
-                    addLog(`${unitDisplayName(unit)} uses ${_itRule.name || 'Healing Potion'} on ${unitDisplayName(target)}, restoring ${healed} HP.`);
+                    addLog(`${_ctName(unit)} uses ${_itRule.name || 'Healing Potion'} on ${_ctName(target)}, restoring ${healed} HP.`);
                     renderBattleUpdate();
                 }, _hpArrive);
                 if (_hpCine) {
@@ -64714,7 +65158,7 @@
                     target.mp = Math.min(target.maxMp, target.mp + restore);
                     flashSelectedUnitPanel('heal');
                     if (mpGain > 0) showFloatingTextForUnit(target, `+${mpGain} MP`, 'mp');
-                    addLog(`${unitDisplayName(unit)} uses ${_itRule.name || 'Mana Potion'} on ${unitDisplayName(target)}, restoring ${mpGain} MP.`);
+                    addLog(`${_ctName(unit)} uses ${_itRule.name || 'Mana Potion'} on ${_ctName(target)}, restoring ${mpGain} MP.`);
                     renderBattleUpdate();
                 }, _mpArrive);
                 if (_mpCine) {
@@ -64740,7 +65184,7 @@
                     return;
                 }
                 if (unitHasStatus(unit, 'jammed')) {
-                    addLog(`${unitDisplayName(unit)} cannot use Scanner while jammed.`);
+                    addLog(`${_ctName(unit)} cannot use Scanner while jammed.`);
                     playErrorSfx();
                     return;
                 }
@@ -65581,7 +66025,7 @@
                 if (s && s.id && s.kind !== 'basicAttack') pool.push({ from: 'race', spell: s });
             }
             if (!pool.length) {
-                addLog(`${label}${unitDisplayName(target)} has no spell to steal.`);
+                addLog(`${label}${_ctName(target)} has no spell to steal.`);
                 return false;
             }
             let candidates = pool.filter(p => !known.has(p.spell.id));
@@ -65601,7 +66045,7 @@
                 caster.spells.push(Object.assign({}, stolen));
                 if (Array.isArray(caster._spellSlots)) caster._spellSlots.push(stolen.id);
             }
-            addLog(`${label}${unitDisplayName(caster)} steals ${stolen.name} from ${unitDisplayName(target)}!`);
+            addLog(`${label}${_ctName(caster)} steals ${stolen.name} from ${_ctName(target)}!`);
             showFloatingTextForUnit(caster, `STOLE ${stolen.name}`, 'streak', { durationMs: 1100 });
             return true;
         }
@@ -65620,7 +66064,7 @@
             {
                 const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
                 if (_actBlock) {
-                    addLog(`${unitDisplayName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -65636,7 +66080,7 @@
                this catches stale online/AI edge cases). */
             if (spell && typeof _isClashMode === 'function' && _isClashMode()
                 && typeof window._clashSpellAllowed === 'function' && !window._clashSpellAllowed(spell)) {
-                addLog(`${spell.name} has no place in a Clash formation battle.`);
+                addLog(`${_ctSp(spell.name)} has no place in a Clash formation battle.`);
                 return 0;
             }
             if (!spell) {
@@ -65670,7 +66114,7 @@
                 _gunDoorAim = doorGunAimResolve(unit, spell, x, y, { auto: _gdAuto });
                 if (_gunDoorAim.error) {
                     if (state.controllers?.[unit.player] !== CTRL.AI) {
-                        addLog(`${spell.name}: pick an empty tile within ${getEffectiveSpellRange(unit, spell) || spell.range || 4} you can see.`);
+                        addLog(`${_ctSp(spell.name)}: pick an empty tile within ${getEffectiveSpellRange(unit, spell) || spell.range || 4} you can see.`);
                         playErrorSfx();
                     }
                     if (_gunDoorPick(spell)) clearSpellPick();
@@ -65704,7 +66148,7 @@
                 const _visEnemies = state.units.filter(u =>
                     !u.dead && !u._dying && isEnemyUnit(u, unit) && _isUnitVisibleToViewer(u, unit.player));
                 if (!_visEnemies.length) {
-                    addLog(`${unitDisplayName(unit)} smells no blood — no visible enemies to hunt.`);
+                    addLog(`${_ctName(unit)} smells no blood — no visible enemies to hunt.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -65735,7 +66179,7 @@
             // else: the held body drops back onto its tile (never left floating).
             if (unit._skyThrowGrab && spell.id !== unit._skyThrowGrab.spellId) _releaseSkyThrowGrab(unit);
             if (unitSpellsBlocked(unit)) {
-                addLog(`${unitDisplayName(unit)} is silenced and cannot cast spells this turn.`);
+                addLog(`${_ctName(unit)} is silenced and cannot cast spells this turn.`);
                 state._teleportingUnit = null;
                 return 0;
             }
@@ -65751,7 +66195,7 @@
             if (_brandAccName && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId) {
                 const _lockedSpell = (unit.spells || []).concat(unit._raceAbilities || [])
                     .find(s => s && s.id === unit._brandLockSpellId);
-                addLog(`🔒 ${unitDisplayName(unit)} is bound by the ${_brandAccName} — only ${_lockedSpell?.name || 'their chosen spell'} can be cast this life.`);
+                addLog(`🔒 ${_ctName(unit)} is bound by the ${_brandAccName} — only ${_lockedSpell?.name || 'their chosen spell'} can be cast this life.`);
                 state._teleportingUnit = null;
                 playErrorSfx();
                 return 0;
@@ -65863,7 +66307,7 @@
                 const _sw = swingDoorResolve(unit, spell, x, y, { auto: _auto });
                 if (_sw.error || (_sw.victim && isUnitRealmShieldedFrom(_sw.victim, unit))) {
                     if (!_silentReject) {
-                        addLog(`${spell.name}: pick the hinge — an empty tile beside an enemy you can see.`);
+                        addLog(`${_ctSp(spell.name)}: pick the hinge — an empty tile beside an enemy you can see.`);
                         playErrorSfx();
                     }
                     delete unit._swingHinge;
@@ -65883,7 +66327,7 @@
                 const _cryTgt = unitAt(x, y);
                 if (_cryTgt && isEnemyUnit(_cryTgt, unit) && unitCryptidHiddenFrom(_cryTgt, unit.player)) {
                     if (!_silentReject) {
-                        addLog(`📷 ${unitDisplayName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`);
+                        addLog(`📷 ${_ctName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`);
                         playErrorSfx();
                     }
                     state._teleportingUnit = null;
@@ -65893,7 +66337,7 @@
                 // aimed at only by its partner.
                 if (_cryTgt && isUnitRealmShieldedFrom(_cryTgt, unit)) {
                     if (!_silentReject) {
-                        addLog(`🌑 ${unitDisplayName(_cryTgt)} is beyond reach in the Shadow Realm.`);
+                        addLog(`🌑 ${_ctName(_cryTgt)} is beyond reach in the Shadow Realm.`);
                         playErrorSfx();
                     }
                     state._teleportingUnit = null;
@@ -65919,7 +66363,7 @@
                     if (_spTd >= (_spMeta.minRange ?? 1) && _spTd <= getEffectiveSpellRange(unit, spell)
                         && _spTVisible
                         && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, _spTaunter.x, _spTaunter.y, unit.z ?? 0))) {
-                        addLog(`🗯 ${unitDisplayName(unit)} is provoked — ${spell.name} can only target ${unitDisplayName(_spTaunter)}!`);
+                        addLog(`🗯 ${_ctName(unit)} is provoked — ${_ctSp(spell.name)} can only target ${_ctName(_spTaunter)}!`);
                         state._teleportingUnit = null;
                         playErrorSfx();
                         return 0;
@@ -65952,14 +66396,14 @@
             }
             const _cdLeft = getSpellCooldownRemaining(unit, spell);
             if (_cdLeft > 0) {
-                addLog(`⏳ ${spell.name} is on cooldown for ${_cdLeft} more round${_cdLeft > 1 ? 's' : ''}.`);
+                addLog(`⏳ ${_ctSp(spell.name)} is on cooldown for ${_cdLeft} more round${_cdLeft > 1 ? 's' : ''}.`);
                 state._teleportingUnit = null;
                 playErrorSfx();
                 return 0;
             }
             if (!canAffordSpell(unit, spell)) {
                 if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
-                    addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
+                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
                 } else if (getSpellBlockReason(unit, spell) === '1 spell/turn') {
                     addLog('Only one spell or ability per turn — a press refund (weakness/crit) earns another.');
                 } else {
@@ -65994,7 +66438,7 @@
                 if (_psT && !_psT.dead && !spellTargetUsableOn(unit, spell, _psT)) {
                     const _fx0 = spell.statusEffects[0] || {};
                     const _lbl = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_fx0.id]?.label) || _fx0.id || 'that status';
-                    addLog(`${unitDisplayName(_psT)} already has ${_lbl} — ${spell.name} would do nothing.`);
+                    addLog(`${_ctName(_psT)} already has ${_lbl} — ${_ctSp(spell.name)} would do nothing.`);
                     state._teleportingUnit = null;
                     playErrorSfx();
                     return 0;
@@ -66008,7 +66452,7 @@
                 if (!_silentReject) {
                     playSfx('uiConfirm');
                     showFloatingTextAtTile(x, y, '🚪 ①', 'buff', { durationMs: 900 });
-                    addLog(`${spell.name}: the door goes on ${coordLabel(x, y)} — now pick which way it faces (click a lane, or the tile again to face away from you).`, unit.player);
+                    addLog(`${_ctSp(spell.name)}: the door goes on ${coordLabel(x, y)} — now pick which way it faces (click a lane, or the tile again to face away from you).`, unit.player);
                 }
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                 if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
@@ -66022,14 +66466,14 @@
             if (spell.throwAnyDirection && spell.kind === 'displacement' && !_throwResolved) {
                 const _thT = unitAt(x, y, z) || unitAt(x, y);
                 if (!_thT || _thT.dead || !isEnemyUnit(_thT, unit)) {
-                    if (!_silentReject) { addLog(`${spell.name}: choose an enemy to throw.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: choose an enemy to throw.`); playErrorSfx(); }
                     return 0;
                 }
                 state._spellPick1 = { id: _thT.id, spellId: spell.id, x: _thT.x, y: _thT.y };
                 if (!_silentReject) {
                     playSfx('uiConfirm');
                     showFloatingTextForUnit(_thT, `① ${spell.name.toUpperCase()}`, 'buff', { durationMs: 900 });
-                    addLog(`${spell.name}: ${unitDisplayName(_thT)} is caught — now click which way to throw it (a tile beside it), or click it again to throw it straight back.`, unit.player);
+                    addLog(`${_ctSp(spell.name)}: ${_ctName(_thT)} is caught — now click which way to throw it (a tile beside it), or click it again to throw it straight back.`, unit.player);
                 }
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                 if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
@@ -66050,14 +66494,14 @@
                     && Math.abs(unit.x - tx) + Math.abs(unit.y - ty) <= _ppReach;
                 const _pk = _ppAuto ? null : _gunDoorPick(spell);
                 if (!_ppOk(x, y)) {
-                    if (!_silentReject) { addLog(`${spell.name}: pick an empty tile within ${_ppReach}.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: pick an empty tile within ${_ppReach}.`); playErrorSfx(); }
                     return 0;
                 }
                 if (!_ppAuto && !_pk) {
                     state._spellPick1 = { tile: true, id: null, spellId: spell.id, x, y };
                     playSfx('uiConfirm');
                     showFloatingTextAtTile(x, y, '🚪 ①', 'buff', { durationMs: 900 });
-                    addLog(`${spell.name}: the first door goes on ${coordLabel(x, y)} — now pick the second (click it again to cancel).`, unit.player);
+                    addLog(`${_ctSp(spell.name)}: the first door goes on ${coordLabel(x, y)} — now pick the second (click it again to cancel).`, unit.player);
                     if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
                     scheduleBoardRender();
                     return 0;
@@ -66065,7 +66509,7 @@
                 if (_pk && _pk.x === x && _pk.y === y) { clearSpellPick(); return 0; }
                 _pairPick = _pk ? { x: _pk.x, y: _pk.y } : _doorNearSpot(unit, { x, y });
                 if (!_pairPick || !_ppOk(_pairPick.x, _pairPick.y) || (_pairPick.x === x && _pairPick.y === y)) {
-                    if (!_silentReject) { addLog(`${spell.name}: the first tile is no longer free.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: the first tile is no longer free.`); playErrorSfx(); }
                     clearSpellPick();
                     return 0;
                 }
@@ -66084,7 +66528,7 @@
                 if (!_pk1 || (_pkT && _pkT.id === _pk1.id)) {
                     if (!_pkT || !_twoClickTeamOk(unit, _pkT, _pkTeams[0])) {
                         if (!_silentReject) {
-                            addLog(`${spell.name}: choose ${_pkWord(_pkTeams[0])} first, then ${_pkWord(_pkTeams[1])}.`);
+                            addLog(`${_ctSp(spell.name)}: choose ${_pkWord(_pkTeams[0])} first, then ${_pkWord(_pkTeams[1])}.`);
                             playErrorSfx();
                         }
                         state._teleportingUnit = null;
@@ -66100,7 +66544,7 @@
                     if (!_silentReject) {
                         playSfx('uiConfirm');
                         showFloatingTextForUnit(_pkT, `① ${spell.name.toUpperCase()}`, 'buff', { durationMs: 900 });
-                        addLog(`${spell.name}: ${unitDisplayName(_pkT)} chosen — now pick ${_pkWord(_pkTeams[1])}${spell.pairRange ? ` within ${spell.pairRange} tiles of it` : ''}.`);
+                        addLog(`${_ctSp(spell.name)}: ${_ctName(_pkT)} chosen — now pick ${_pkWord(_pkTeams[1])}${spell.pairRange ? ` within ${spell.pairRange} tiles of it` : ''}.`);
                     }
                     if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
                     if (typeof renderIfDirty === 'function') renderIfDirty();
@@ -66111,14 +66555,14 @@
                 // within pairRange of the first pick.
                 if (!_pkT || !_twoClickTeamOk(unit, _pkT, _pkTeams[1])) {
                     if (!_silentReject) {
-                        addLog(`${spell.name}: now choose ${_pkWord(_pkTeams[1])} (not ${unitDisplayName(_pk1)}).`);
+                        addLog(`${_ctSp(spell.name)}: now choose ${_pkWord(_pkTeams[1])} (not ${_ctName(_pk1)}).`);
                         playErrorSfx();
                     }
                     return 0;
                 }
                 if (spell.pairRange && (Math.abs(_pkT.x - _pk1.x) + Math.abs(_pkT.y - _pk1.y)) > spell.pairRange) {
                     if (!_silentReject) {
-                        addLog(`${spell.name}: the two must be within ${spell.pairRange} tiles of each other.`);
+                        addLog(`${_ctSp(spell.name)}: the two must be within ${spell.pairRange} tiles of each other.`);
                         playErrorSfx();
                     }
                     return 0;
@@ -66148,13 +66592,13 @@
             /* 🚪 the rear-attack rider: a door spell that says so, or any cast
                launched out of a twin door under The Long Way Round */
             state._doorRearCast = (spell.rearAttack || _doorOrg) ? { unitId: unit.id, spellId: spell.id, x: _doorOrg ? _doorOrg.x : null, y: _doorOrg ? _doorOrg.y : null } : null;
-            if (_doorOrg && !_kindMeta(spell).doorOrigin) addLog(`🚪 ${unitDisplayName(unit)} casts ${spell.name} out of the door at ${coordLabel(_doorOrg.x, _doorOrg.y)}.`);
+            if (_doorOrg && !_kindMeta(spell).doorOrigin) addLog(`🚪 ${_ctName(unit)} casts ${_ctSp(spell.name)} out of the door at ${coordLabel(_doorOrg.x, _doorOrg.y)}.`);
 
             // Choice lock commits here — every validation gate has passed, so
             // this cast WILL happen and it becomes the unit's bound spell.
             if (_brandAccName && !unit._brandLockSpellId) {
                 unit._brandLockSpellId = spell.id;
-                addLog(`🔒 The ${_brandAccName} binds ${unitDisplayName(unit)} to ${spell.name} for this life!`);
+                addLog(`🔒 The ${_brandAccName} binds ${_ctName(unit)} to ${_ctSp(spell.name)} for this life!`);
                 showFloatingTextForUnit(unit, `🔒 ${spell.name}`, 'buff', { durationMs: 1200 });
             }
 
@@ -66214,7 +66658,7 @@
 
             if (unitHasStatus(unit, 'invisible') && _kindMeta(spell).breaksStealth) {
                 clearStatus(unit, 'invisible');
-                addLog(`${unitDisplayName(unit)} breaks camouflage!`);
+                addLog(`${_ctName(unit)} breaks camouflage!`);
             }
 
             const spellPower = spellPowerOf(unit, spell);   // the forecast reads the same sum
@@ -66371,7 +66815,7 @@
                 const _rndPool = _randomTargetPool(unit, spell, _rndRider);
                 if (!_rndPool.length) {
                     if (!_silentReject) {
-                        addLog(`${spell.name}: no ${_rndRider.scope === 'units' ? 'unit' : 'enemy'} in range and in sight to hit.`);
+                        addLog(`${_ctSp(spell.name)}: no ${_rndRider.scope === 'units' ? 'unit' : 'enemy'} in range and in sight to hit.`);
                         playErrorSfx();
                     }
                     return 0;
@@ -66495,7 +66939,7 @@
                     }
                     // THE SPELL AUDIT Batch B: a heal row's own statusEffects land on the ally (Soothe's Regen)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_ht, spell.statusEffects, `${spell.name}: `, unit);
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${healed} HP to ${_ctName(_ht)}.`);
                     /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — the light that mends the ally burns
                        every enemy standing next to it (the 8 tiles round the ally): N + spell power, magic, the row's element. */
                     if (spell.healAdjacentDamage && !_ht.dead) {
@@ -66510,7 +66954,7 @@
                                 element: classifySpellElement(spell)
                             });
                         }
-                        if (_hadFoes.length) { addLog(`✨ ${spell.name} sears ${_hadFoes.length} ${_hadFoes.length === 1 ? 'enemy' : 'enemies'} beside ${unitDisplayName(_ht)}.`); checkWin(); }
+                        if (_hadFoes.length) { addLog(`✨ ${_ctSp(spell.name)} sears ${_hadFoes.length} ${_hadFoes.length === 1 ? 'enemy' : 'enemies'} beside ${_ctName(_ht)}.`); checkWin(); }
                     }
                     markDirty('hud');
                     renderIfDirty();
@@ -66533,7 +66977,7 @@
                 const shieldGain = Math.min(_shBase, Math.max(0, shieldCap - _st.shield));
                 _st.shield += shieldGain;
                 if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_st, spell.statusEffects, `${spell.name}: `, unit);   // THE SPELL AUDIT: Prayer's Blessed
-                addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(_st)} a ${shieldGain} HP shield.`);
+                addLog(`${_ctName(unit)} grants ${_ctName(_st)} a ${shieldGain} HP shield.`);
                 completionDelay = Math.max(completionDelay, _shResult.completionDelay);
             } else if (spell.kind === 'buff') {
                 // Phase 4 migration: buff uses ally support pipeline
@@ -66570,7 +67014,7 @@
                     if (spell.stageIfBelowPct && spell.stageIfBelowPct.boost && _bt.maxHp > 0
                         && (_bt.hp / _bt.maxHp) < (spell.stageIfBelowPct.pct || 0.5)) {
                         _bBoost = spell.stageIfBelowPct.boost;
-                        addLog(`${spell.name}: ${unitDisplayName(_bt)} is under ${Math.round((spell.stageIfBelowPct.pct || 0.5) * 100)}% HP — the surge runs stronger.`);
+                        addLog(`${_ctSp(spell.name)}: ${_ctName(_bt)} is under ${Math.round((spell.stageIfBelowPct.pct || 0.5) * 100)}% HP — the surge runs stronger.`);
                     }
                     if (spell.stageHigherOf) {
                         const _shStats = (Array.isArray(spell.stageHigherOf.stats) && spell.stageHigherOf.stats.length) ? spell.stageHigherOf.stats : ['atk', 'int'];
@@ -66589,7 +67033,7 @@
                         if (_bsGain > 0) {
                             _bt.shield = (_bt.shield || 0) + _bsGain;
                             showFloatingTextForUnit(_bt, `+${_bsGain} 🛡`, 'heal');
-                            addLog(`${spell.name}: ${unitDisplayName(_bt)} gains a ${_bsGain} HP barrier.`);
+                            addLog(`${_ctSp(spell.name)}: ${_ctName(_bt)} gains a ${_bsGain} HP barrier.`);
                         }
                     }
                     /* THE SPELL AUDIT Batch D: tauntEnemiesWithin { radius, duration } (Shield Maiden) — every enemy within
@@ -66599,7 +67043,7 @@
                         const _teFoes = getHostileUnits(_bt.player, _bt).filter(e =>
                             Math.abs(e.x - _bt.x) + Math.abs(e.y - _bt.y) <= _teR);
                         for (const e of _teFoes) applyStatusPayload(e, { id: 'taunt', duration: spell.tauntEnemiesWithin.duration || 1 }, `${spell.name} → `, _bt);
-                        if (_teFoes.length) addLog(`🗯 ${unitDisplayName(_bt)} calls out ${_teFoes.length} ${_teFoes.length === 1 ? 'enemy' : 'enemies'} — they must face her.`);
+                        if (_teFoes.length) addLog(`🗯 ${_ctName(_bt)} calls out ${_teFoes.length} ${_teFoes.length === 1 ? 'enemy' : 'enemies'} — they must face her.`);
                     }
                     // THE SPELL AUDIT Batch D: spawnDecoy on a buff row (Mimicry) — the Shed Skin decoy beside the caster
                     if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
@@ -66714,9 +67158,9 @@
                         const _zIcon = (typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[target.zodiac]) || '✦';
                         if (target.zodiac && state.activeZodiac === target.zodiac) {
                             _zodiacMult = 1.5;
-                            addLog(`${_zIcon} ${unitDisplayName(target)}'s sign rules the sky — the reading strikes 50% harder!`);
+                            addLog(`${_zIcon} ${_ctName(target)}'s sign rules the sky — the reading strikes 50% harder!`);
                         }
-                        addLog(`${_zIcon} ${spell.name} reads ${unitDisplayName(target)}'s chart: a ${_zEl} sign.`);
+                        addLog(`${_zIcon} ${_ctSp(spell.name)} reads ${_ctName(target)}'s chart: a ${_zEl} sign.`);
                     }
                     if (spell.dmg) {
                         const _debDmg = Math.round((spell.dmg + spellPower) * _zodiacMult);
@@ -66742,7 +67186,7 @@
                         if (_mdLost > 0) {
                             target.mp -= _mdLost;
                             showFloatingTextForUnit(target, `-${_mdLost} MP`, 'debuff', { durationMs: 1000 });
-                            addLog(`${spell.name}: ${unitDisplayName(target)} leaks ${_mdLost} MP.`);
+                            addLog(`${_ctSp(spell.name)}: ${_ctName(target)} leaks ${_mdLost} MP.`);
                             markDirty('teams', 'selectedUnit', 'hud');
                         }
                     }
@@ -66775,7 +67219,7 @@
                     return 0;
                 }
                 if (spell.oneRevivePerUnitPerMatch && target.reviveLocked) {
-                    addLog(`${unitDisplayName(target)} cannot be revived again this match.`);
+                    addLog(`${_ctName(target)} cannot be revived again this match.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -66801,7 +67245,7 @@
                     }
                 }
                 showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
-                addLog(`${unitDisplayName(unit)} revives ${unitDisplayName(target)} with ${target.hp} HP.`);
+                addLog(`${_ctName(unit)} revives ${_ctName(target)} with ${target.hp} HP.`);
             } else if (spell.kind === 'raiseDead') {
                 // Necromancer: reanimate ANY unconsumed remains (ally gravestone or
                 // enemy bone pile) into an uncontrolled zombie flesh abomination.
@@ -66836,7 +67280,7 @@
                     }
                 }
                 showFloatingTextAtTile(x, y, '🧟 RISE', 'damage', { durationMs: 1200 });
-                addLog(`${unitDisplayName(unit)} raises the remains of ${unitDisplayName(corpse)} — a flesh abomination claws out of the ground! It mauls the nearest unit, friend or foe, at the end of every round (${_zHits} hits to destroy).`, unit.player);
+                addLog(`${_ctName(unit)} raises the remains of ${_ctName(corpse)} — a flesh abomination claws out of the ground! It mauls the nearest unit, friend or foe, at the end of every round (${_zHits} hits to destroy).`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
             } else if (spell.kind === 'summonUnit') {
@@ -66852,7 +67296,7 @@
                 const _sd = spell.summonDef || {};
                 if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y)
                     || (state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y)) {
-                    addLog(`${spell.name}: pick an empty tile beside you.`);
+                    addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -66861,7 +67305,7 @@
                 const _sMine = state.turrets.filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id);
                 while (_sMine.length >= _sCap) {
                     const old = _sMine.shift();
-                    addLog(`${old.spellName} at ${coordLabel(old.x, old.y)} is dismissed.`);
+                    addLog(`${_ctSp(old.spellName)} at ${coordLabel(old.x, old.y)} is dismissed.`);
                     state.turrets.splice(state.turrets.indexOf(old), 1);
                 }
                 playSfx(spellLaunchSfx(spell));
@@ -66893,7 +67337,7 @@
                     if (_stT) _stT.trailTerrain = { terrain: _sd.trailTerrain.terrain, radius: 0, rounds: _sd.trailTerrain.rounds || 3 };
                 }
                 showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
-                addLog(`${unitDisplayName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
+                addLog(`${_ctName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
             } else if (spell.kind === 'bomb') {
@@ -66933,7 +67377,7 @@
                 const _bOcc = unitAt(x, y);
                 if (_bOcc && !_bOcc.dead && _bOcc.player !== unit.player
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_bOcc))) {
-                    addLog(`${unitDisplayName(unit)} hurls a bomb right at ${unitDisplayName(_bOcc)}!`, unit.player);
+                    addLog(`${_ctName(unit)} hurls a bomb right at ${_ctName(_bOcc)}!`, unit.player);
                     const cam = playOffensiveActionCamera(unit, _bOcc, {
                         attackName: spell.name, spellId: spell.id
                     });
@@ -66961,7 +67405,7 @@
                     const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
                     if (ownedBombs.length >= (spell.maxActivePerCaster || 2)) state.bombs = state.bombs.filter(b => b !== ownedBombs[0]);
                     state.bombs.push(_newBomb);
-                    addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+                    addLog(`${_ctName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
                     /* the caster's OverhandThrow clip already plays (classify
                        →'throw') — give it a bomb to actually throw: a short
                        lobbed arc onto the tile, ARMED tag as it settles */
@@ -67020,7 +67464,7 @@
                     window.ThreeVFXEffects.fire('impact', 'racePrismMirror', { tx: x, ty: y });
                 }
                 showFloatingTextAtTile(x, y, '🔺', 'buff', { durationMs: 900 });
-                addLog(`${unitDisplayName(unit)} folds a prism into being at ${coordLabel(x, y)} — ${_mNet.count} prism${_mNet.count !== 1 ? 's' : ''} linked.`, unit.player);
+                addLog(`${_ctName(unit)} folds a prism into being at ${coordLabel(x, y)} — ${_mNet.count} prism${_mNet.count !== 1 ? 's' : ''} linked.`, unit.player);
                 scheduleBoardRender();
             } else if (spell.kind === 'tuneFrequency') {
                 if (!state._mirrorFreq) state._mirrorFreq = { 1: 0, 2: 0 };
@@ -67038,12 +67482,12 @@
                         window.ThreeVFXEffects.fire('impact', _tuneFx, { tx: _tm.x, ty: _tm.y });
                     }
                 }
-                addLog(`${unitDisplayName(unit)} tunes the lattice to ${_f.glyph} ${_f.label} — every beam now ${_f.verb}.`, unit.player);
+                addLog(`${_ctName(unit)} tunes the lattice to ${_f.glyph} ${_f.label} — every beam now ${_f.verb}.`, unit.player);
                 scheduleBoardRender();
             } else if (spell.kind === 'pulseLattice' && spell.shatterPrisms) {
                 /* THE SPELL AUDIT Batch D: Shatter the Lattice — any number of prisms, linked or not */
                 if (!(state.mirrors || []).some(m => m.owner === unit.player && m.hp > 0)) {
-                    if (!_silentReject) { addLog(`${spell.name}: you have no prisms standing.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you have no prisms standing.`); playErrorSfx(); }
                     return 0;
                 }
                 playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
@@ -67084,7 +67528,7 @@
                 // a `trapSize` row is a footprint (the trapdoor's 2×2).
                 const _tfp = _trapFootprint(x, y, spell.trapSize || 1);
                 if (_tfp.problem) {
-                    addLog(`${spell.name}: ${_tfp.problem}.`);
+                    addLog(`${_ctSp(spell.name)}: ${_tfp.problem}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -67124,10 +67568,10 @@
                     window._doorGeom('raceDoorGun:shot', _tfp.x, _tfp.y, { fromX: unit.x, fromY: unit.y, size: spell.trapSize || 1, onlyPlayer: unit.player });
                     window._doorGeom('raceTrapdoor:set', _tfp.x, _tfp.y, { size: spell.trapSize || 1, delay: 300, onlyPlayer: unit.player });
                 }
-                addLog(`${unitDisplayName(unit)} hides a ${spell.name} at ${coordLabel(_tfp.x, _tfp.y)}${_tfp.tiles.length > 1 ? ' (' + _tfp.tiles.length + ' tiles)' : ''}.`, unit.player);
+                addLog(`${_ctName(unit)} hides a ${_ctSp(spell.name)} at ${coordLabel(_tfp.x, _tfp.y)}${_tfp.tiles.length > 1 ? ' (' + _tfp.tiles.length + ' tiles)' : ''}.`, unit.player);
             } else if (spell.kind === 'scan') {
                 if (unitHasStatus(unit, 'jammed')) {
-                    addLog(`${unitDisplayName(unit)} cannot emit Scan Pulse while jammed.`);
+                    addLog(`${_ctName(unit)} cannot emit Scan Pulse while jammed.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -67157,10 +67601,10 @@
                     else if (bestDist <= 10) temp = '🟡 WARM — A Key is in the area.';
                     else if (bestDist <= 16) temp = '🔵 COOL — A Key is fairly far away.';
                     else temp = '❄️ FREEZING — Hourglasses are very far away.';
-                    addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). ${temp}`, unit.player);
+                    addLog(`${_ctName(unit)} emits Scan Pulse (${side}x${side}). ${temp}`, unit.player);
                     showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
                 } else {
-                    addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). No Keys remain.`, unit.player);
+                    addLog(`${_ctName(unit)} emits Scan Pulse (${side}x${side}). No Keys remain.`, unit.player);
                 }
 
                 focusBoardCameraOnTiles([{
@@ -67277,7 +67721,7 @@
                     if (_bhN > 0) {
                         const _bhDmg = _bh.dmg || (spell.hitDamages && spell.hitDamages[0]) || 20;
                         _mhSpell = Object.assign({}, spell, { hitDamages: [...(spell.hitDamages || [8, 8]), ...Array(_bhN).fill(_bhDmg)] });
-                        addLog(`${spell.name}: ${_bhN} ${_bhN === 1 ? 'ally joins' : 'allies join'} in — +${_bhN} hit${_bhN === 1 ? '' : 's'}.`);
+                        addLog(`${_ctSp(spell.name)}: ${_bhN} ${_bhN === 1 ? 'ally joins' : 'allies join'} in — +${_bhN} hit${_bhN === 1 ? '' : 's'}.`);
                     }
                 }
                 const hits = _mhSpell.hitDamages || [8, 8];
@@ -67399,7 +67843,7 @@
                         actionMs(800)
                     );
 
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
                 } else if (_useVfx3dHealAllAura) {
                     const _allyStagger = actionMs(80);
                     const _healLandingDelay = actionMs(280);
@@ -67438,7 +67882,7 @@
                         (_haCam?.totalMs ?? 0) + actionMs(120),
                         actionMs(800)
                     );
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
                 } else {
 
                     // Beat 1: a SOFT cast glow on the caster — the caster is
@@ -67467,7 +67911,7 @@
                         (_haCam?.totalMs ?? 0) + actionMs(120),
                         actionMs(800)
                     );
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, healing ${allies.length} allies.`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, healing ${allies.length} allies.`);
                 }
 
                 // Unified team support for healAll: cleanse debuffs + apply a stat
@@ -67542,7 +67986,7 @@
                     (_mrCam?.totalMs ?? 0) + actionMs(120),
                     actionMs(800)
                 );
-                addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring MP across the team.`);
+                addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring MP across the team.`);
             } else if (spell.kind === 'aoe') {
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
@@ -67577,7 +68021,7 @@
                             pullCenter: spell.pullToCenter ? { x, y } : null
                         });
                     if (spell.zoneTickDamage > 0) _pushDamageZone(unit, spell, x, y, spellPower);
-                    else if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
+                    else if (hitCount === 0) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
                     if (spell.rimSeeds) _plantRimSeeds(unit, spell, x, y);   // THE SPELL AUDIT Batch D: Bumper Crop
                 }, timing.impactDelay);
             } else if (spell.kind === 'barrage') {
@@ -67587,7 +68031,7 @@
                 // click could still reach here and used to burn 55 MP on a nova
                 // that hit nothing.
                 if (spell.hitsWetOnly && _barrageTargets(unit, spell).length === 0) {
-                    addLog(`${spell.name}: no enemies are standing in water.`);
+                    addLog(`${_ctSp(spell.name)}: no enemies are standing in water.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -67613,7 +68057,7 @@
                 const enemies = _barrageTargets(unit, spell);
                 if (enemies.length === 0) {
                     _spellFocusCamera(unit, x, y);
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name} but no enemies are in range.`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} but no enemies are in range.`);
                 } else {
 
                     const cam = playOffensiveActionCamera(unit, enemies[0], {
@@ -67659,7 +68103,7 @@
                             }, idx * barrageGap);
                         });
                     }, impactDelay);
-                    addLog(`${spell.name} ${spell.noDamage ? 'affects' : 'hits'} ${enemies.length} target${enemies.length > 1 ? 's' : ''}.`);
+                    addLog(`${_ctSp(spell.name)} ${spell.noDamage ? 'affects' : 'hits'} ${enemies.length} target${enemies.length > 1 ? 's' : ''}.`);
                     completionDelay = Math.max(impactDelay + (enemies.length - 1) * barrageGap + actionMs(700),
                         (cam?.totalMs ?? (impactDelay + actionMs(600))) + actionMs(120));
                 }
@@ -67704,7 +68148,7 @@
                     verb: spell.name,
                 });
                 if (!_stTook.keys && !_stTook.items) {
-                    addLog(`${unitDisplayName(target)} had nothing worth taking.`);
+                    addLog(`${_ctName(target)} had nothing worth taking.`);
                 }
                 completionDelay = actionMs(650);
             }
@@ -67717,7 +68161,7 @@
             else if (spell.kind === 'cleanseArea') {
                 const _caDist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                 if (!isInside(x, y) || _caDist > getEffectiveSpellRange(unit, spell)) {
-                    addLog(`${spell.name}: that tile is out of range.`);
+                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -67752,7 +68196,7 @@
                     }
                 }
                 if (_caCleansed > 0) unit._matchCleanses = (unit._matchCleanses || 0) + _caCleansed;
-                addLog(`${unitDisplayName(unit)} casts ${spell.name}: ${_caCleansed} debuff${_caCleansed === 1 ? '' : 's'} lifted from ${_caAllies} all${_caAllies === 1 ? 'y' : 'ies'}, ${_caPurged} buff${_caPurged === 1 ? '' : 's'} stripped from ${_caEnemies} enem${_caEnemies === 1 ? 'y' : 'ies'}.`);
+                addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}: ${_caCleansed} debuff${_caCleansed === 1 ? '' : 's'} lifted from ${_caAllies} all${_caAllies === 1 ? 'y' : 'ies'}, ${_caPurged} buff${_caPurged === 1 ? '' : 's'} stripped from ${_caEnemies} enem${_caEnemies === 1 ? 'y' : 'ies'}.`);
                 completionDelay = actionMs(700);
             }
 
@@ -67761,7 +68205,7 @@
                 // with nothing on them (map clicks bypass the target drum).
                 const _clPre = (unitAt(x, y, z) || unitAt(x, y));
                 if (_clPre && !spellTargetUsableOn(unit, spell, _clPre)) {
-                    addLog(`${unitDisplayName(_clPre)} has no debuffs to cleanse.`);
+                    addLog(`${_ctName(_clPre)} has no debuffs to cleanse.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -67781,7 +68225,7 @@
                 }
                 if (cleansedCount > 0) unit._matchCleanses = (unit._matchCleanses || 0) + cleansedCount;
                 if (spell.statStageBoost) applyStatStageBoost(_ct, spell.statStageBoost, `${spell.name}: `, unit);   // THE SPELL AUDIT: Inner Peace
-                addLog(`${unitDisplayName(unit)} cleanses ${unitDisplayName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
+                addLog(`${_ctName(unit)} cleanses ${_ctName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
                 flashUnit(_ct.id, 'heal');
                 completionDelay = Math.max(actionMs(500), _clResult.completionDelay);
@@ -67815,7 +68259,7 @@
                     const dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2);
                     const _displaceFromX = target.x, _displaceFromY = target.y;
                     if (dist === 0) {
-                        addLog(`${unitDisplayName(target)} is far too heavy to budge!`);
+                        addLog(`${_ctName(target)} is far too heavy to budge!`);
                         showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                     }
                     // 🎱 The fling, with full collision physics: crash-through,
@@ -67838,7 +68282,7 @@
                         element: classifySpellElement(spell)
                     });
                     if (hitObstacle) {
-                        addLog(`${unitDisplayName(target)} slams into an obstacle for bonus damage!`);
+                        addLog(`${_ctName(target)} slams into an obstacle for bonus damage!`);
                         showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
                     }
 
@@ -67885,7 +68329,7 @@
                 if (_hd) { dx = _hd.dx; dy = _hd.dy; }
                 else if (_silentReject) { dx = Math.sign(x - unit.x); dy = Math.sign(y - unit.y); }
                 else {
-                    addLog(`${spell.name} fires in a straight line — along a row, a column or a diagonal — and nothing it can reach stands on that tile.`, unit.player);
+                    addLog(`${_ctSp(spell.name)} fires in a straight line — along a row, a column or a diagonal — and nothing it can reach stands on that tile.`, unit.player);
                     playErrorSfx();
                     return 0;
                 }
@@ -67992,7 +68436,7 @@
                     // Damage resolution
                     window.setTimeout(() => {
                         const hitTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim);
-                        addLog(`${spell.name} hits ${hitTargets.length} target${hitTargets.length !== 1 ? 's' : ''} in a line.`);
+                        addLog(`${_ctSp(spell.name)} hits ${hitTargets.length} target${hitTargets.length !== 1 ? 's' : ''} in a line.`);
                         scheduleBoardRender();
                     }, impactDelay);
 
@@ -68007,7 +68451,7 @@
                             if (state.phase !== 'battle') return;
                             const backTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim);
                             if (backTargets.length > 0) {
-                                addLog(`🪃 ${spell.name} scythes back through the line — ${backTargets.length} target${backTargets.length !== 1 ? 's' : ''} hit again!`);
+                                addLog(`🪃 ${_ctSp(spell.name)} scythes back through the line — ${backTargets.length} target${backTargets.length !== 1 ? 's' : ''} hit again!`);
                             }
                             scheduleBoardRender();
                         }, impactDelay + _boomReturnMs);
@@ -68022,7 +68466,7 @@
                 // twin, protecting every entry point (board clicks, quick
                 // menus, online relays) before MP/AP are spent.
                 if (spell.aoeOriginSelf && (spell.dmg || 0) > 0 && !_selfNovaHasTarget(unit, spell)) {
-                    addLog(`${spell.name}: no target in the blast pattern from here!`);
+                    addLog(`${_ctSp(spell.name)}: no target in the blast pattern from here!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -68049,7 +68493,7 @@
                             pushFromCenter: spell.pushDistance ? { x: cx, y: cy } : null,
                             deformCenter: { x: cx, y: cy }
                         });
-                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a${spell.diamond ? ' resonant diamond' : spell.diagonal ? 'n X pattern' : ' cross pattern'}.`);
+                    addLog(`${_ctSp(spell.name)} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a${spell.diamond ? ' resonant diamond' : spell.diagonal ? 'n X pattern' : ' cross pattern'}.`);
                     scheduleBoardRender();
                 }, timing.impactDelay);
             }
@@ -68064,7 +68508,7 @@
                     : (!target || isAllyUnit(target, unit));
                 if (_plBad) {
                     if (!_silentReject) {
-                        addLog(_plAlly ? `${spell.name}: choose a friendly unit to haul in.` : 'Invalid target for pull.');
+                        addLog(_plAlly ? `${_ctSp(spell.name)}: choose a friendly unit to haul in.` : 'Invalid target for pull.');
                         playErrorSfx();
                     }
                     return 0;
@@ -68101,7 +68545,7 @@
                 // feather +1, heavy -1, colossal 0, Clash freezes everyone).
                 if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal'
                     && !(typeof _isClashMode === 'function' && _isClashMode())) {
-                    addLog(`${unitDisplayName(target)} is far too heavy to drag!`);
+                    addLog(`${_ctName(target)} is far too heavy to drag!`);
                     showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                 }
                 // an ally haul (Rescue Line) is a rescue, not a pull: Windborne's anchor and Event Horizon's rider skip it
@@ -68109,7 +68553,7 @@
                 // THE SPELL AUDIT Batch D — Windborne (`immuneDisplace: ['pull']`) holds; Event Horizon's `pullRider` lands.
                 const _pullAnchor = _plAlly ? null : unitResistsDisplace(target, 'pull');
                 if (_pullAnchor && (spell.pullDistance || 3) > 0) {
-                    addLog(`${_pullAnchor.icon || '⚓'} ${unitDisplayName(target)}'s ${_pullAnchor.name} holds — the pull cannot move them!`);
+                    addLog(`${_pullAnchor.icon || '⚓'} ${_ctName(target)}'s ${_pullAnchor.name} holds — the pull cannot move them!`);
                     showFloatingTextForUnit(target, `${_pullAnchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 1000 });
                 }
                 const _pullRider = _plAlly ? null : passivePullRider(unit, spell);
@@ -68160,7 +68604,7 @@
                         _pullFallMs = playForcedFallAnim(target, _pullGroundZ);
                     }
                     target.z = _pullGroundZ;
-                    addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                    addLog(`${_ctName(target)} is yanked out of the sky!`);
                     const _pullLandFx = () => {
                         showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                         // 2026-07-17 fix: the drop from flight altitude now deals
@@ -68203,11 +68647,11 @@
                     const _plGone = _plDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse);
                     for (const k of _plGone) clearStatus(target, k);
                     if (_plGone.length) {
-                        addLog(`${spell.name} frees ${unitDisplayName(target)} of ${_plGone.map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`);
+                        addLog(`${_ctSp(spell.name)} frees ${_ctName(target)} of ${_plGone.map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`);
                         window.setTimeout(() => { if (!target.dead) showFloatingTextForUnit(target, '✨ CLEANSED', 'heal', { durationMs: 900 }); }, Math.max(0, _yankDelayMs || 0));
                     }
                 }
-                addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
+                addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
 
                 let _pullTotalAnimMs = 0;
 
@@ -68305,7 +68749,7 @@
                     : (!target || isAllyUnit(target, unit));
                 if (_swBad) {
                     if (!_silentReject) {
-                        addLog(spell.allyOnly ? `${spell.name}: choose a friendly unit to swap with.` : 'Invalid target for swap.');
+                        addLog(spell.allyOnly ? `${_ctSp(spell.name)}: choose a friendly unit to swap with.` : 'Invalid target for swap.');
                         playErrorSfx();
                     }
                     return 0;
@@ -68335,14 +68779,14 @@
                     // ⛓ both bodies arrive somewhere new
                     resolveTileArrival(unit, { via: 'self' });
                     resolveTileArrival(target, { via: 'displaced' });
-                    addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
+                    addLog(`${_ctName(unit)} swaps positions with ${_ctName(target)}!`);
                     showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
                     /* THE SPELL AUDIT Batch D: healOnSwap (Miracle) — an ALLY that trades places with the caster is healed
                        on arrival (a flat heal, scaled like any other). Enemies swapped are never healed. */
                     if (spell.healOnSwap > 0 && isAllyUnit(target, unit) && !target.dead) {
                         const _hosHealed = applyHealingToUnit(target, spell.healOnSwap + getHourglassPower(unit), unit);
                         if (_hosHealed > 0) {
-                            addLog(`${spell.name}: ${unitDisplayName(target)} arrives healed for ${_hosHealed} HP.`);
+                            addLog(`${_ctSp(spell.name)}: ${_ctName(target)} arrives healed for ${_hosHealed} HP.`);
                             _vfxHeal(target.x, target.y, { soft: true });
                         }
                     }
@@ -68394,7 +68838,7 @@
                     else _vfxBuff(unit.x, unit.y);
                 }
                 showFloatingTextForUnit(unit, `${_nextDef.icon || '🔁'} ${String(_nextDef.label || _next).toUpperCase()}`, 'buff', { durationMs: 1100 });
-                addLog(`${unitDisplayName(unit)} transforms — ${_nextDef.colorText || _nextDef.label || _next}!`);
+                addLog(`${_ctName(unit)} transforms — ${_nextDef.colorText || _nextDef.label || _next}!`);
                 markDirty('board', 'hud', 'selectedUnit');
                 scheduleBoardRender();
                 completionDelay = actionMs(700);
@@ -68408,12 +68852,12 @@
                    kind means EXTRA activations (Enthrall ×2 vs Charmed). */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog(`Choose an enemy target for ${spell.name}.`);
+                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`);
                     playErrorSfx();
                     return 0;
                 }
                 if (target._isBoss) {
-                    addLog(`${unitDisplayName(target)}'s will is too vast to steal.`);
+                    addLog(`${_ctName(target)}'s will is too vast to steal.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -68455,14 +68899,14 @@
                             drainMult *= (unitPassiveMult(unit, 'lifeSapMult') || 1);   // Green Thumb (was the Harvester job; THE JOBS REMOVAL 2026-09-27)
                             const healed = applyHealingToUnit(unit, Math.max(1, Math.round(took * drainMult)), unit);
                             if (healed > 0) {
-                                addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
+                                addLog(`${_ctName(unit)} absorbs ${healed} HP.`);
                                 _vfxHeal(unit.x, unit.y, { soft: true });
                             }
                         }
                     }
                     if (target.dead || target._dying || unit.dead) return;
                     if (!possessUnit(unit, target, spell, _psActs)) {
-                        addLog(`${unitDisplayName(target)} resists ${spell.name}!`);
+                        addLog(`${_ctName(target)} resists ${_ctSp(spell.name)}!`);
                     }
                 }, impactDelay);
             }
@@ -68475,12 +68919,12 @@
                    (CINE_SEQUENCES.raceShadowRealm). */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog(`Choose an enemy target for ${spell.name}.`);
+                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`);
                     playErrorSfx();
                     return 0;
                 }
                 if (target._isBoss) {
-                    addLog(`${unitDisplayName(target)} cannot be dragged into the realm.`);
+                    addLog(`${_ctName(target)} cannot be dragged into the realm.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -68511,11 +68955,11 @@
                     // bounces), then the caster.
                     const okT = applyStatusPayload(target, { id: 'shadowRealm', duration: _srDur, partnerId: unit.id }, `${spell.name}: `, unit);
                     if (!okT || !unitHasStatus(target, 'shadowRealm')) {
-                        addLog(`${unitDisplayName(target)} slips the realm's pull!`);
+                        addLog(`${_ctName(target)} slips the realm's pull!`);
                         return;
                     }
                     applyStatusPayload(unit, { id: 'shadowRealm', duration: _srDur, partnerId: target.id }, `${spell.name}: `, unit);
-                    addLog(`🌑 ${unitDisplayName(unit)} and ${unitDisplayName(target)} are gone — into the Shadow Realm for ${_srDur} rounds.`);
+                    addLog(`🌑 ${_ctName(unit)} and ${_ctName(target)} are gone — into the Shadow Realm for ${_srDur} rounds.`);
                     if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
                     markDirty('board', 'hud', 'selectedUnit');
                     scheduleBoardRender();
@@ -68532,7 +68976,7 @@
                 const second = (unitAt(x, y, z) || unitAt(x, y));
                 clearSpellPick();
                 if (!first || !second) {
-                    addLog(`${spell.name} lost its target.`);
+                    addLog(`${_ctSp(spell.name)} lost its target.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -68564,15 +69008,15 @@
                         const okA = !first.dead && applyStatusPayload(first, { id: fx.id, duration: fx.duration, partnerId: second.id }, `${spell.name}: `, unit);
                         const okB = !second.dead && applyStatusPayload(second, { id: fx.id, duration: fx.duration, partnerId: first.id }, `${spell.name}: `, unit);
                         if (okA && okB) {
-                            addLog(`${def.icon || '⛓'} ${unitDisplayName(first)} and ${unitDisplayName(second)} are chained soul to soul!`);
+                            addLog(`${def.icon || '⛓'} ${_ctName(first)} and ${_ctName(second)} are chained soul to soul!`);
                         } else {
                             if (okA) clearStatus(first, fx.id);
                             if (okB) clearStatus(second, fx.id);
-                            addLog(`${spell.name} fails to take hold on both.`);
+                            addLog(`${_ctSp(spell.name)} fails to take hold on both.`);
                         }
                     } else {
                         const ok = !first.dead && applyStatusPayload(first, { id: fx.id, duration: fx.duration, allyId: second.id }, `${spell.name}: `, unit);
-                        if (ok) addLog(`${def.icon || '🪆'} ${unitDisplayName(first)}'s doll is tied to ${unitDisplayName(second)} — what the ally suffers, the doll shares.`);
+                        if (ok) addLog(`${def.icon || '🪆'} ${_ctName(first)}'s doll is tied to ${_ctName(second)} — what the ally suffers, the doll shares.`);
                     }
                     markDirty('board', 'hud');
                     scheduleBoardRender();
@@ -68587,12 +69031,12 @@
                 const receiver = (unitAt(x, y, z) || unitAt(x, y));
                 clearSpellPick();
                 if (!giver || !receiver) {
-                    addLog(`${spell.name} lost its target.`);
+                    addLog(`${_ctSp(spell.name)} lost its target.`);
                     playErrorSfx();
                     return 0;
                 }
                 if ((receiver.hp || 0) >= (receiver.maxHp || 0)) {
-                    addLog(`${unitDisplayName(receiver)} is already at full HP.`);
+                    addLog(`${_ctName(receiver)} is already at full HP.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -68603,7 +69047,7 @@
                 const give = Math.max(1, Math.round(take * (spell.givePct || 1.5)) + Math.floor(spellPower * 0.5));
                 giver.hp = Math.max(1, giver.hp - take);
                 showFloatingTextForUnit(giver, `-${take}`, 'damage', { durationMs: 1000 });
-                addLog(`${unitDisplayName(giver)} gives ${take} HP to the spirits.`);
+                addLog(`${_ctName(giver)} gives ${take} HP to the spirits.`);
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: giver });
                 const _trVFX = window.ThreeVFXEffects;
                 if (state.phase === 'battle' && !_skipVisuals()) {
@@ -68623,7 +69067,7 @@
                     if (state.phase !== 'battle' || receiver.dead) return;
                     const healed = applyHealingToUnit(receiver, give, unit);
                     if (healed > 0) {
-                        addLog(`${unitDisplayName(receiver)} is restored for ${healed} HP.`);
+                        addLog(`${_ctName(receiver)} is restored for ${healed} HP.`);
                         if (!_skipVisuals()) _vfxHeal(receiver.x, receiver.y);
                     }
                     markDirty('board', 'hud', 'selectedUnit');
@@ -68660,7 +69104,7 @@
                     _vfxHeal(unit.x, unit.y);
                 }
                 showFloatingTextAtTile(x, y, '🦴 DEVOURED', 'damage', { durationMs: 1100 });
-                addLog(`${unitDisplayName(unit)} feeds on the remains of ${unitDisplayName(corpse)} — heals ${healed} HP${_cbDelayed ? `; ${unitDisplayName(corpse)}'s respawn is delayed ${_cbDelay} rounds` : ''}.`);
+                addLog(`${_ctName(unit)} feeds on the remains of ${_ctName(corpse)} — heals ${healed} HP${_cbDelayed ? `; ${_ctName(corpse)}'s respawn is delayed ${_cbDelay} rounds` : ''}.`);
                 markDirty('board', 'hud', 'selectedUnit');
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
@@ -68683,7 +69127,7 @@
                     const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                     const toCleanse = debuffs.slice(0, spell.cleanse);
                     for (const k of toCleanse) clearStatus(unit, k);
-                    if (toCleanse.length) addLog(`${unitDisplayName(unit)} cleanses ${toCleanse.length} debuff${toCleanse.length > 1 ? 's' : ''}.`);
+                    if (toCleanse.length) addLog(`${_ctName(unit)} cleanses ${toCleanse.length} debuff${toCleanse.length > 1 ? 's' : ''}.`);
                 }
 
                 const decoyX = unit.x, decoyY = unit.y;
@@ -68736,7 +69180,7 @@
                 /* THE SPELL AUDIT (2026-09-30): an escape's `selfHealPct` (Reassemble) heals the caster on landing. */
                 if (spell.selfHealPct && !unit.dead) {
                     const _escHeal = applyHealingToUnit(unit, Math.floor(unit.maxHp * spell.selfHealPct), unit, { preScaled: true });
-                    if (_escHeal > 0) addLog(`${unitDisplayName(unit)} restores ${_escHeal} HP.`);
+                    if (_escHeal > 0) addLog(`${_ctName(unit)} restores ${_escHeal} HP.`);
                 }
 
                 if (spell.spawnDecoy) {
@@ -68763,7 +69207,7 @@
                         spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
                     });
                     if (!_stealthDecoy) {
-                        addLog(`${unitDisplayName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`, unit.player);
+                        addLog(`${_ctName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`, unit.player);
                         showFloatingTextForUnit(unit, 'SHED!', 'heal', { durationMs: 800 });
                     }
                 }
@@ -68797,7 +69241,7 @@
                     // THE SPELL AUDIT Batch C: a self heal may also land
                     // statuses on the caster (Lunar Regeneration: Regen).
                     if (spell.statusEffects) applyStatusEffects(unit, spell.statusEffects, `${spell.name}: `, unit);
-                    addLog(`${unitDisplayName(unit)} uses ${spell.name}! Heals ${healAmt} HP.`);
+                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Heals ${healAmt} HP.`);
                     markDirty('hud');
                     renderIfDirty();
                 }, _shApplyAt);
@@ -68837,7 +69281,7 @@
                             groundAirborne: true,
                             deformCenter: { x, y }
                         });
-                    addLog(`${spell.name} ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`);
+                    addLog(`${_ctSp(spell.name)} ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`);
 
                     if (spell.leaveTerrain) {
                         for (const tile of area) {
@@ -68925,7 +69369,7 @@
                             }, splitProjectileMs + actionMs(60));
                         }, hitDelay);
                     });
-                    addLog(`${spell.name} hits primary target and splits to ${nearby.length} nearby enem${nearby.length === 1 ? 'y' : 'ies'}.`);
+                    addLog(`${_ctSp(spell.name)} hits primary target and splits to ${nearby.length} nearby enem${nearby.length === 1 ? 'y' : 'ies'}.`);
                 }, splitStartDelay);
                 completionDelay = Math.max(splitStartDelay + (splitCount - 1) * splitGap + splitProjectileMs + actionMs(400),
                     (cam?.totalMs ?? (impactDelay + actionMs(600))) + actionMs(120));
@@ -68956,7 +69400,7 @@
                     terrainDeform: spell.terrainDeform || null,
                     demolishesBuildings: !!spell.demolishesBuildings
                 });
-                addLog(`${unitDisplayName(unit)} marks ${coordLabel(x, y)} with ${spell.name}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
+                addLog(`${_ctName(unit)} marks ${coordLabel(x, y)} with ${_ctSp(spell.name)}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(unit, `${spell.name}!`, 'streak', { durationMs: 1000 });
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -68976,7 +69420,7 @@
                     ? { x: _own.obj.x, y: _own.obj.y, z: _own.obj.z, ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player, spellId: spell.id, spellName: spell.name, statusEffects: [] }
                     : _own.obj;
                 _bomb.blastRadius = 1; _bomb.blastDmg = Math.max(1, _boom); delete _bomb.aoeMask;
-                addLog(`💥 ${unitDisplayName(unit)} blows the ${spell.name} at ${coordLabel(x, y)}!`, unit.player);
+                addLog(`💥 ${_ctName(unit)} blows the ${_ctSp(spell.name)} at ${coordLabel(x, y)}!`, unit.player);
                 detonateDeployedObject(_bomb, unit);
                 scheduleBoardRender();
                 completionDelay = actionMs(700);
@@ -69004,7 +69448,7 @@
                 if (!state._deployedObjects) state._deployedObjects = [];
 
                 if (_dContact) {
-                    addLog(`${unitDisplayName(unit)} throws ${spell.name} right onto ${unitDisplayName(_dOcc)}!`, unit.player);
+                    addLog(`${_ctName(unit)} throws ${_ctSp(spell.name)} right onto ${_ctName(_dOcc)}!`, unit.player);
                     if ((spell.blastRadius || 0) > 0 && (spell.blastDmg || 0) > 0) {
                         // Blast trap: full detonation on the occupant's tile.
                         detonateDeployedObject({
@@ -69079,14 +69523,14 @@
                             e._tauntObjKey = x + ',' + y;
                         }
                     }
-                    if (_dtFoes.length) addLog(`🗯 ${spell.name} draws the eye of ${_dtFoes.length} ${_dtFoes.length === 1 ? 'enemy' : 'enemies'}.`, unit.player);
+                    if (_dtFoes.length) addLog(`🗯 ${_ctSp(spell.name)} draws the eye of ${_dtFoes.length} ${_dtFoes.length === 1 ? 'enemy' : 'enemies'}.`, unit.player);
                 }
                 /* Don't announce an ENEMY clone — naming it in the log defeats the
                    decoy. The viewer's own deploys (and all non-decoy deploys) still
                    log normally. */
                 const _depViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
                 if (!_deployedEntry.isDecoy || unit.player === _depViewer) {
-                    addLog(`${unitDisplayName(unit)} deploys ${spell.name} at ${coordLabel(x, y)}.`, _deployedEntry.isDecoy ? unit.player : undefined);
+                    addLog(`${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)}.`, _deployedEntry.isDecoy ? unit.player : undefined);
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -69105,7 +69549,7 @@
                     window._doorGeom('raceDoorGun:shot', _pairPick.x, _pairPick.y, { fromX: unit.x, fromY: unit.y });
                     window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y, delay: 140 });
                 }
-                addLog(`${unitDisplayName(unit)} opens ${spell.name} at ${coordLabel(_pairPick.x, _pairPick.y)} and ${coordLabel(x, y)} — whatever goes in one comes out the other.`);
+                addLog(`${_ctName(unit)} opens ${_ctSp(spell.name)} at ${coordLabel(_pairPick.x, _pairPick.y)} and ${coordLabel(x, y)} — whatever goes in one comes out the other.`);
                 scheduleBoardRender();
                 completionDelay = actionMs(450);
             }
@@ -69117,7 +69561,7 @@
                    toggle, no Slam; whoever ends a move on one steps out of
                    the other. */
                 if (!doorTileFree(x, y) || doorAt(unit.x, unit.y)) {
-                    addLog(`${spell.name}: that tile is taken.`);
+                    addLog(`${_ctSp(spell.name)}: that tile is taken.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -69125,7 +69569,7 @@
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 placeDoorPair(unit, unit.x, unit.y, x, y, { spellName: spell.name, fixed: true, perAgent: spell.maxActivePerCaster || 1 });
-                addLog(`${unitDisplayName(unit)} creates ${spell.name} gates between ${coordLabel(unit.x, unit.y)} and ${coordLabel(x, y)}.`);
+                addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} gates between ${coordLabel(unit.x, unit.y)} and ${coordLabel(x, y)}.`);
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
             }
@@ -69153,7 +69597,7 @@
                     _spellFocusCamera(unit, x, y);
                     setDoorOpen(_dTarget, !_dTarget.open);
                     { const _tw = doorTwin(_dTarget); window._doorGeom('raceKnockKnock', x, y, { toggle: true, open: !!_dTarget.open, twinX: _tw ? _tw.x : x, twinY: _tw ? _tw.y : y }); }
-                    addLog(`🚪 ${unitDisplayName(unit)} ${_dTarget.open ? 'opens' : 'shuts'} the door at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
+                    addLog(`🚪 ${_ctName(unit)} ${_dTarget.open ? 'opens' : 'shuts'} the door at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
                     if (_free) { unit._doorFreeRound = state.round || 0; _doorFreeAction = true; }
                     completionDelay = actionMs(350);
                 } else {
@@ -69176,7 +69620,7 @@
                     window._doorGeom('raceKnockKnock', _near.x, _near.y, { twinX: x, twinY: y });
                     window._doorGeom('raceKnockKnock', x, y, { twinX: _near.x, twinY: _near.y });
                     if (typeof playDoorSfx === 'function') playDoorSfx('doorbell');
-                    addLog(`🚪 ${unitDisplayName(unit)} knocks twice — a door opens at ${coordLabel(x, y)} and its twin beside them at ${coordLabel(_near.x, _near.y)}.`);
+                    addLog(`🚪 ${_ctName(unit)} knocks twice — a door opens at ${coordLabel(x, y)} and its twin beside them at ${coordLabel(_near.x, _near.y)}.`);
                     completionDelay = actionMs(500);
                 }
             }
@@ -69275,7 +69719,7 @@
                     if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: _dvFrom.x, fromY: _dvFrom.y });
                     applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
                     if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    addLog(`🚪 Signature required: ${unitDisplayName(target)} takes the package out of the door at ${coordLabel(_dvFrom.x, _dvFrom.y)} — from behind.`);
+                    addLog(`🚪 Signature required: ${_ctName(target)} takes the package out of the door at ${coordLabel(_dvFrom.x, _dvFrom.y)} — from behind.`);
                 }, _dvTravel);
                 completionDelay = _dvTravel + actionMs(500);
             }
@@ -69318,7 +69762,7 @@
                         if (spell.statusEffects) applyStatusEffects(v, spell.statusEffects, `${spell.name}: `, unit);
                     }
                 }
-                addLog(`🚪 ${unitDisplayName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
+                addLog(`🚪 ${_ctName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
                 completionDelay = Math.max(actionMs(600), _slamMax + actionMs(300));
             }
 
@@ -69338,7 +69782,7 @@
                 unit.mp -= effectiveSpellCost;
                 const _exDur = (spell.statusEffects && spell.statusEffects[0] && spell.statusEffects[0].duration) || 1;
                 const ok = applyStatusPayload(target, { id: 'exited', duration: _exDur }, `${spell.name}: `, unit);
-                if (!ok) { addLog(`${unitDisplayName(target)} shrugs off the EXIT.`); }
+                if (!ok) { addLog(`${_ctName(target)} shrugs off the EXIT.`); }
                 else {
                     target._exitDoorId = _doorOrg ? _doorOrg.doorId : null;
                     target._exited = true;
@@ -69348,7 +69792,7 @@
                     window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     window._doorGeom('raceExit', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     if (!_skipVisuals()) { _vfxTeleport(target.x, target.y, _doorOrg ? _doorOrg.x : target.x, _doorOrg ? _doorOrg.y : target.y); showFloatingTextForUnit(target, '🚪 EXITED', 'debuff'); }
-                    addLog(`🚪 Extradimensional Incident Transfer: ${unitDisplayName(unit)} files ${unitDisplayName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`);
+                    addLog(`🚪 Extradimensional Incident Transfer: ${_ctName(unit)} files ${_ctName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`);
                 }
                 completionDelay = actionMs(700);
             }
@@ -69398,7 +69842,7 @@
                             playSfx('teleport');
                             window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
                             if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
-                            addLog(`🚪 The floor gives way — ${unitDisplayName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + unitDisplayName(unit)}.`);
+                            addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`);
                             _doorTouched();
                         }, _tdDelay);
                         completionDelay = _tdDelay + actionMs(500);
@@ -69431,7 +69875,7 @@
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(ally, spell.statusEffects, `${spell.name}: `, unit);
                     if (!VFX || !VFX.hasMapping(spell.id, 'aura')) _vfxBuff(ally.x, ally.y);
                 }
-                addLog(`${unitDisplayName(unit)} projects ${spell.name}! ${allies.length} all${allies.length === 1 ? 'y' : 'ies'} shielded for ${shieldPerAlly} each.`);
+                addLog(`${_ctName(unit)} projects ${_ctSp(spell.name)}! ${allies.length} all${allies.length === 1 ? 'y' : 'ies'} shielded for ${shieldPerAlly} each.`);
                 scheduleBoardRender();
                 completionDelay = actionMs(200);
             }
@@ -69483,7 +69927,7 @@
                         }
                     }
                 }
-                addLog(`${unitDisplayName(unit)} creates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
                 /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
                    CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
                 if (spell.zoneCastDamage > 0) {
@@ -69532,7 +69976,7 @@
                     enemyStatusEffects: Array.isArray(spell.enemyStatusEffects) ? spell.enemyStatusEffects : undefined,
                     spellName: spell.name
                 });
-                addLog(`${unitDisplayName(unit)} consecrates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                addLog(`${_ctName(unit)} consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -69565,7 +70009,7 @@
                 const _pbInfo = {};
                 const _pbProblem = _placeBlockProblem(unit, spell, x, y, _pbInfo);
                 if (_pbProblem) {
-                    addLog(`${spell.name}: ${_pbProblem}.`);
+                    addLog(`${_ctSp(spell.name)}: ${_pbProblem}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -69574,7 +70018,7 @@
                 const _pbEnemyOcc = _pbInfo.enemyOcc || null;
                 const _pbShoveTo = _pbInfo.shoveTo || null;
                 if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
-                    addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}.`);
+                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -69584,7 +70028,7 @@
                 if (_pbIsWater) {
                     setTerrainAt(x, y, blockTerrain);
                     trackTilesChanged(unit, 1);
-                    addLog(`${unitDisplayName(unit)} sinks a ${spell.name} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
+                    addLog(`${_ctName(unit)} sinks a ${_ctSp(spell.name)} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
                 } else {
                     if (_pbEnemyOcc && _pbShoveTo) {
                         // Erupting block: shove first, then raise the column.
@@ -69597,7 +70041,7 @@
                             sourceUnit: unit, damageType: 'physical'
                         });
                         showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
-                        addLog(`${unitDisplayName(unit)}'s ${spell.name} erupts under ${unitDisplayName(_pbEnemyOcc)}, hurling them aside!`);
+                        addLog(`${_ctName(unit)}'s ${_ctSp(spell.name)} erupts under ${_ctName(_pbEnemyOcc)}, hurling them aside!`);
                         /* Manual shove (bypasses resolveForcedSlide) — count
                            the displacement for the §4.3 ladder here. */
                         unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
@@ -69610,9 +70054,9 @@
                     if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
                         _pbRider.z = _pbOldH + 1;
                         if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbRider, fromX: x, fromY: y });
-                        if (_pbRider.id !== unit.id) addLog(`${unitDisplayName(_pbRider)} rides the new block up!`);
+                        if (_pbRider.id !== unit.id) addLog(`${_ctName(_pbRider)} rides the new block up!`);
                     }
-                    addLog(`${unitDisplayName(unit)} stacks a ${spell.name} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
+                    addLog(`${_ctName(unit)} stacks a ${_ctSp(spell.name)} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
                 }
                 _invalidateBoardGrid();
                 if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
@@ -69635,7 +70079,7 @@
                     return 0;
                 }
                 if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
-                    addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}.`);
+                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -69666,7 +70110,7 @@
                 if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
                 if (typeof shakeBoard === 'function') shakeBoard('normal');
                 scheduleBoardRender();
-                addLog(`${unitDisplayName(unit)} raises ${spell.name} — ${stamped} tile${stamped !== 1 ? 's' : ''} of fresh construction${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}!`);
+                addLog(`${_ctName(unit)} raises ${_ctSp(spell.name)} — ${stamped} tile${stamped !== 1 ? 's' : ''} of fresh construction${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}!`);
                 completionDelay = actionMs(800);
             }
 
@@ -69903,7 +70347,7 @@
                                 if (spell.executePct && hit.hp <= hit.maxHp * spell.executePct) {
                                     dmg = Math.max(dmg, hit.hp);
                                     showFloatingTextForUnit(hit, 'OVERBOARD!', 'damage', { durationMs: 1300 });
-                                    addLog(`${unitDisplayName(hit)} is dragged under by the flood — executed!`);
+                                    addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
                                 }
                                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                     sourceUnit: unit,
@@ -69921,7 +70365,7 @@
                                     if ((_tcDObj.detonateOnAttack || _tcDObj.detonateOnFire) && _tcDObj.blastRadius > 0) {
                                         detonateDeployedObject(_tcDObj, unit);
                                     } else {
-                                        addLog(`${spell.name} destroys ${_tcDObj.spellName || 'deployed object'} at ${coordLabel(ct.x, ct.y)}!`);
+                                        addLog(`${_ctSp(spell.name)} destroys ${_ctSp(_tcDObj.spellName || 'deployed object')} at ${coordLabel(ct.x, ct.y)}!`);
                                         showFloatingTextAtTile(ct.x, ct.y, 'DESTROYED', 'damage');
                                         const _tcIdx = state._deployedObjects.indexOf(_tcDObj);
                                         if (_tcIdx >= 0) state._deployedObjects.splice(_tcIdx, 1);
@@ -69972,7 +70416,7 @@
                         if (_wtWithered || _wtCleared) markDirty('board');
                     }
 
-                    addLog(`${unitDisplayName(unit)} uses ${spell.name}! Converted ${convertedTiles.length} tile${convertedTiles.length !== 1 ? 's' : ''} to ${terrainType}.`);
+                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${convertedTiles.length} tile${convertedTiles.length !== 1 ? 's' : ''} to ${terrainType}.`);
 
                     // 🔥 Fire terrain-walls IGNITE what they touch: the wall
                     // keeps burning on the board for several rounds (biting
@@ -69985,7 +70429,7 @@
                         for (const at of affectedTiles) {
                             if (igniteTile(at.x, at.y, spell.burningRounds || 3, unit)) _tcLit++;
                         }
-                        if (_tcLit) addLog(`🔥 ${spell.name} leaves ${_tcLit} tile${_tcLit !== 1 ? 's' : ''} BURNING — the flames will rage (and spread) for the next few rounds!`);
+                        if (_tcLit) addLog(`🔥 ${_ctSp(spell.name)} leaves ${_tcLit} tile${_tcLit !== 1 ? 's' : ''} BURNING — the flames will rage (and spread) for the next few rounds!`);
                     }
                     // Terrain-shaping spells now feed the element→terrain
                     // reaction system too (a fire wall cast into a treeline
@@ -70042,7 +70486,7 @@
                             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
                             if (typeof shakeBoard === 'function') shakeBoard('normal');
-                            addLog(`🪨 ${spell.name}: ${_monPlaced} piece${_monPlaced !== 1 ? 's' : ''} of wall stand${_monPlaced === 1 ? 's' : ''} where the ground was.`);
+                            addLog(`🪨 ${_ctSp(spell.name)}: ${_monPlaced} piece${_monPlaced !== 1 ? 's' : ''} of wall stand${_monPlaced === 1 ? 's' : ''} where the ground was.`);
                         }
                         scheduleBoardRender();
                     }
@@ -70061,13 +70505,13 @@
                     const _grSelfOnly = !!spell.selfPullOnly;
                     const _grAllyAnchor = _grSelfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
                     if (_grSelfOnly && target && !_grAllyAnchor) {
-                        if (!_silentReject) { addLog(`${spell.name} hooks a wall, a door or an ally — not ${target.id === unit.id ? 'yourself' : 'an enemy'}.`); playErrorSfx(); }
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)} hooks a wall, a door or an ally — not ${target.id === unit.id ? 'yourself' : 'an enemy'}.`); playErrorSfx(); }
                         return 0;
                     }
                     if (_grSelfOnly && !target) {
                         const _grDoorHere = (typeof doorAt === 'function') ? doorAt(x, y) : null;
                         if (isTerrainPassable(x, y) && !_grDoorHere && !objectBlocksLanding(x, y)) {
-                            if (!_silentReject) { addLog(`${spell.name} needs something to hook — a wall, a door or an ally.`); playErrorSfx(); }
+                            if (!_silentReject) { addLog(`${_ctSp(spell.name)} needs something to hook — a wall, a door or an ally.`); playErrorSfx(); }
                             return 0;
                         }
                     }
@@ -70125,7 +70569,7 @@
                                     _grFallMs = playForcedFallAnim(target, _grGroundZ);
                                 }
                                 target.z = _grGroundZ;
-                                addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                                addLog(`${_ctName(target)} is yanked out of the sky!`);
                                 const _grLandFx = () => {
                                     showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                                 };
@@ -70136,7 +70580,7 @@
                             const grappleDmg = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + spellPower);
                             applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
-                            addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
+                            addLog(`${_ctName(unit)} grapples ${_ctName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
 
                             if (_grSteps.length > 0) {
@@ -70186,7 +70630,7 @@
                             if (_p.x === x && _p.y === y) break;
                         }
                         if (moved === 0) {
-                            if (!_silentReject) { addLog(_grSelfOnly ? `${spell.name}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.'); playErrorSfx(); }
+                            if (!_silentReject) { addLog(_grSelfOnly ? `${_ctSp(spell.name)}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.'); playErrorSfx(); }
                             return 0;
                         }
                         playSfx('uiConfirm');
@@ -70223,7 +70667,7 @@
                             }
                             scheduleBoardRender();
                         }, _grShootMs + actionMs(60));
-                        addLog(`${unitDisplayName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grAllyAnchor ? ` to ${unitDisplayName(target)}'s side` : ''}.`);
+                        addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grAllyAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
                         completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
                     } else {
                         addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');
@@ -70257,7 +70701,7 @@
 
                     let stolen = false;
                     if (moveHourglassesBetweenUnits(target, unit, 1) > 0) {
-                        addLog(`${unitDisplayName(unit)} plunders a Key from ${unitDisplayName(target)}!`);
+                        addLog(`${_ctName(unit)} plunders a Key from ${_ctName(target)}!`);
                         showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
                         showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });
                         stolen = true;
@@ -70269,13 +70713,13 @@
                             target.items[pick]--;
                             if (!unit.items) unit.items = {};
                             unit.items[pick] = (unit.items[pick] || 0) + 1;
-                            addLog(`${unitDisplayName(unit)} plunders a ${pick} from ${unitDisplayName(target)}!`);
+                            addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
                             showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
                             stolen = true;
                         }
                     }
                     if (!stolen) {
-                        addLog(`${unitDisplayName(unit)} tries to plunder ${unitDisplayName(target)}, but they have nothing to steal.`);
+                        addLog(`${_ctName(unit)} tries to plunder ${_ctName(target)}, but they have nothing to steal.`);
                     }
                     completionDelay = actionMs(500);
                 } else if (spell.id === 'mimic') {
@@ -70295,7 +70739,7 @@
                     playSfx('manaRegen');
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
-                    addLog(`${unitDisplayName(unit)} mimics ${mimicSpell.name} at full power!`);
+                    addLog(`${_ctName(unit)} mimics ${mimicSpell.name} at full power!`);
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (mimicSpell.kind === 'damage' && target && isEnemyUnit(target, unit)) {
@@ -70304,7 +70748,7 @@
                     } else if (mimicSpell.kind === 'heal' && target && isAllyUnit(target, unit)) {
                         const healAmt = Math.max(24, Math.floor((mimicSpell.heal || 80) + spellPower));
                         applyHealingToUnit(target, healAmt, unit);
-                        addLog(`Mimic heals ${unitDisplayName(target)} for ${healAmt}.`);
+                        addLog(`Mimic heals ${_ctName(target)} for ${healAmt}.`);
                     } else if (mimicSpell.kind === 'buff' && target && isAllyUnit(target, unit)) {
                         applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
                     } else if (mimicSpell.kind === 'debuff' && target && isEnemyUnit(target, unit)) {
@@ -70319,7 +70763,7 @@
                     completionDelay = actionMs(600);
                 } else {
 
-                    addLog(`${spell.name} has no effect yet.`);
+                    addLog(`${_ctSp(spell.name)} has no effect yet.`);
                     unit.mp -= effectiveSpellCost;
                     completionDelay = actionMs(300);
                 }
@@ -70355,7 +70799,7 @@
                     x, y, floor: _rvFloor, player: unit.player,
                     tiles: wardTiles, remaining: 3
                 });
-                addLog(`${unitDisplayName(unit)} casts ${spell.name} — a 5×5 area at ${coordLabel(x, y)} (${_rvFloor}) is revealed for 3 turns.`);
+                addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} — a 5×5 area at ${coordLabel(x, y)} (${_rvFloor}) is revealed for 3 turns.`);
                 showFloatingTextAtTile(x, y, '👁️ Revealed', 'buff');
                 completionDelay = actionMs(400);
             }
@@ -70372,7 +70816,7 @@
                             return 0;
                         }
                         state._teleportingUnit = teleTarget;
-                        addLog(`Select a destination tile for ${unitDisplayName(teleTarget)}. Click the unit again to cancel.`);
+                        addLog(`Select a destination tile for ${_ctName(teleTarget)}. Click the unit again to cancel.`);
                         state.pendingTarget = null;
                         markDirty('board', 'log', 'hud');
                         renderIfDirty();
@@ -70416,7 +70860,7 @@
                     /* wave C: onlyTerrain (Icky Surprise) — destinations are
                        that terrain only; LOS never mattered for teleports. */
                     if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) {
-                        addLog(`${spell.name}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`);
+                        addLog(`${_ctSp(spell.name)}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`);
                         playErrorSfx();
                         return 0;
                     }
@@ -70433,7 +70877,7 @@
                        covers the second click). */
                     if (spell.needsLoS && destDist >= 1
                         && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0))) {
-                        if (!_silentReject) { addLog(`${spell.name}: you need a clear line to that tile.`); playErrorSfx(); }
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you need a clear line to that tile.`); playErrorSfx(); }
                         return 0;
                     }
                     const tUnit = state._teleportingUnit;
@@ -70506,7 +70950,7 @@
                                     const dmg = Math.max(1, spell.dmg + spellPwr);
                                     applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
                                     showFloatingTextForUnit(hit, `-${dmg}`, 'damage', { durationMs: 900 });
-                                    addLog(`${unitDisplayName(hit)} takes ${dmg} damage from ${spell.name}!`);
+                                    addLog(`${_ctName(hit)} takes ${dmg} damage from ${_ctSp(spell.name)}!`);
                                     if (spell.statusEffects && spell.statusEffects.length > 0) {
                                         applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
                                     }
@@ -70551,7 +70995,7 @@
                     owner: unit.player,
                     casterUnitId: unit.id
                 });
-                addLog(`${unitDisplayName(unit)} inscribes a Warp Rune at ${coordLabel(x, y)}.`);
+                addLog(`${_ctName(unit)} inscribes a Warp Rune at ${coordLabel(x, y)}.`);
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -70617,7 +71061,7 @@
                     };
                     state.plantedSeeds.push(_newSeed);
                     const _wetNow = _seedRainAt(x, y) || _seedBesideWater(x, y);
-                    addLog(`${unitDisplayName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will grow into a Healing Tree in ${_wetNow ? 1 : 2} round${_wetNow ? '' : 's'}${_wetNow ? ' (well watered!)' : ''} — unless it is destroyed first.`);
+                    addLog(`${_ctName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will grow into a Healing Tree in ${_wetNow ? 1 : 2} round${_wetNow ? '' : 's'}${_wetNow ? ' (well watered!)' : ''} — unless it is destroyed first.`);
                     // Planting under an ally's feet works right away — no waiting
                     // a round for the first tick (rain still doubles the heal).
                     const _occupant = unitAt(x, y);
@@ -70679,7 +71123,7 @@
                     };
                     state.plantedSeeds.push(_newSeed);
                     const _wetNowP = _seedRainAt(x, y) || _seedBesideWater(x, y);
-                    addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will grow into a Toxin Tree in ${_wetNowP ? 1 : 2} round${_wetNowP ? '' : 's'}${_wetNowP ? ' (well watered!)' : ''} — unless it is destroyed first.`);
+                    addLog(`${_ctName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will grow into a Toxin Tree in ${_wetNowP ? 1 : 2} round${_wetNowP ? '' : 's'}${_wetNowP ? ' (well watered!)' : ''} — unless it is destroyed first.`);
                     // Planting under an enemy's feet stings immediately — typed (THE PLANTED STING).
                     const _occupant = unitAt(x, y);
                     if (_occupant && applySeedEffectToUnit(_newSeed, _occupant, null, true)) {
@@ -70693,7 +71137,7 @@
             else if (spell.kind === 'lifeDrain') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog(`Choose an enemy target for ${spell.name}.`);
+                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -70727,7 +71171,7 @@
                     const healAmt = Math.max(1, Math.round(dmg * drainMult));
                     const healed = applyHealingToUnit(unit, healAmt, unit);
                     if (healed > 0) {
-                        addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
+                        addLog(`${_ctName(unit)} absorbs ${healed} HP.`);
                         // the absorbed life blooms green on the caster
                         _vfxHeal(unit.x, unit.y, { soft: true });
                     }
@@ -70807,7 +71251,7 @@
                     };
                     state.plantedSeeds.push(_newSeed);
                     const _wetNowL = _seedRainAt(x, y) || _seedBesideWater(x, y);
-                    addLog(`${unitDisplayName(unit)} plants a Leech Seed at ${coordLabel(x, y)}. It will grow into a Leech Tree in ${_wetNowL ? 1 : 2} round${_wetNowL ? '' : 's'}${_wetNowL ? ' (well watered!)' : ''} — unless it is destroyed first.`);
+                    addLog(`${_ctName(unit)} plants a Leech Seed at ${coordLabel(x, y)}. It will grow into a Leech Tree in ${_wetNowL ? 1 : 2} round${_wetNowL ? '' : 's'}${_wetNowL ? ' (well watered!)' : ''} — unless it is destroyed first.`);
                     // Planting under someone's feet works immediately — drain an
                     // enemy or nourish an ally standing there right now.
                     const _occupant = unitAt(x, y);
@@ -70825,7 +71269,7 @@
                     && Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y)) <= 1 && unit._doorFreeRound !== (state.round || 0);
                 _spellFocusCamera(unit, x, y);
                 setDoorOpen(_shutToggle, !_shutToggle.open);
-                addLog(`🚪 ${unitDisplayName(unit)} ${_shutToggle.open ? 'opens' : 'shuts'} the ${spell.name} at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
+                addLog(`🚪 ${_ctName(unit)} ${_shutToggle.open ? 'opens' : 'shuts'} the ${_ctSp(spell.name)} at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
                 if (_free) { unit._doorFreeRound = state.round || 0; _doorFreeAction = true; }
                 completionDelay = actionMs(350);
                 scheduleBoardRender();
@@ -70839,7 +71283,7 @@
                 if (_gunDoorPick(spell)) state._spellPick1 = null;
                 if (!_gdoor) {
                     unit.mp += effectiveSpellCost;
-                    addLog(`${spell.name}: the tile is no longer free.`);
+                    addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -70920,7 +71364,7 @@
                         window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
                     }
                 }
-                addLog(`${unitDisplayName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
+                addLog(`${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
                 scheduleBoardRender();
             }
 
@@ -70950,7 +71394,7 @@
                     showFloatingTextAtTile(x, y, '🌉', 'buff', {
                         durationMs: 900
                     });
-                    addLog(`${unitDisplayName(unit)} builds a bridge at ${coordLabel(x, y)}! The deep water is now passable.`);
+                    addLog(`${_ctName(unit)} builds a bridge at ${coordLabel(x, y)}! The deep water is now passable.`);
                     _invalidateBoardGrid();
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
@@ -70985,7 +71429,7 @@
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, '🎵', 'buff');
-                    addLog(`${unitDisplayName(unit)} holds ${spell.name} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} carried by the chord.`);
+                    addLog(`${_ctName(unit)} holds ${_ctSp(spell.name)} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} carried by the chord.`);
                 } else if (spell.randomTeamBuff) {
                     // Tarot Draw: one random stat, boosted for the WHOLE team.
                     const _rtb = spell.randomTeamBuff;
@@ -71004,7 +71448,7 @@
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, `🎴 ${_card.card}`, 'buff');
-                    addLog(`${unitDisplayName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
+                    addLog(`${_ctName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
                 } else {
                     // §2.1 single-stat rule: a warCry with its own statStageBoost
                     // applies EXACTLY that (it used to stack on top of the old
@@ -71020,7 +71464,7 @@
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, '🎵', 'buff');
-                    addLog(`${unitDisplayName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
+                    addLog(`${_ctName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
                 }
                 /* THE SPELL AUDIT Batch D (Reprise): the song also hands Encore's AP to the nearest ally in the aura who has
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
@@ -71034,7 +71478,7 @@
                         _rep.acted = false;
                         if (_rep.ap !== undefined) _rep.ap = 1;
                         showFloatingTextForUnit(_rep, '🎶 Encore!', 'buff');
-                        addLog(`${spell.name} rolls into a Reprise — ${unitDisplayName(_rep)} can act again this turn!`);
+                        addLog(`${_ctSp(spell.name)} rolls into a Reprise — ${_ctName(_rep)} can act again this turn!`);
                         markDirty('hud');
                     }
                 }
@@ -71065,7 +71509,7 @@
                     _rpSummoned++;
                 }
                 showFloatingTextForUnit(unit, '👑 Knights of Round', 'buff');
-                addLog(`${unitDisplayName(unit)} convenes the Round Table — ${_rpSummoned} all${_rpSummoned === 1 ? 'y answers' : 'ies answer'} the King's call!`, unit.player);
+                addLog(`${_ctName(unit)} convenes the Round Table — ${_rpSummoned} all${_rpSummoned === 1 ? 'y answers' : 'ies answer'} the King's call!`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(700);
             }
@@ -71081,7 +71525,7 @@
                     window.ThreeVFXEffects.fire('aura', spell.id, { tx: unit.x, ty: unit.y });
                 } else { _vfxBuff(unit.x, unit.y); }
                 showFloatingTextForUnit(unit, '🔄 Trick Room', 'buff');
-                addLog(`${unitDisplayName(unit)} twists time with Trick Room! Turn order is reversed for ${dur} rounds — the slow act first.`);
+                addLog(`${_ctName(unit)} twists time with Trick Room! Turn order is reversed for ${dur} rounds — the slow act first.`);
                 completionDelay = actionMs(400);
             }
 
@@ -71111,7 +71555,7 @@
                 unit._guardingAlly = target.id;
                 _vfxBuff(target.x, target.y);
                 showFloatingTextForUnit(target, '🛡 Guarded', 'buff');
-                addLog(`${unitDisplayName(unit)} pledges Chivalry to ${unitDisplayName(target)} — the next attack against them will be intercepted.`);
+                addLog(`${_ctName(unit)} pledges Chivalry to ${_ctName(target)} — the next attack against them will be intercepted.`);
                 completionDelay = actionMs(400);
             }
 
@@ -71123,19 +71567,19 @@
                     return 0;
                 }
                 if (target.id === unit.id) {
-                    addLog(`${unitDisplayName(unit)} cannot Encore themselves.`);   // no job name (THE JOBS REMOVAL 2026-09-27)
+                    addLog(`${_ctName(unit)} cannot Encore themselves.`);   // no job name (THE JOBS REMOVAL 2026-09-27)
                     playErrorSfx();
                     return 0;
                 }
 
                 if (!unitFinished(target) && (target.ap === undefined || target.ap > 0)) {
-                    addLog(`${unitDisplayName(target)} hasn't finished acting yet. Encore targets units that are done.`);
+                    addLog(`${_ctName(target)} hasn't finished acting yet. Encore targets units that are done.`);
                     playErrorSfx();
                     return 0;
                 }
 
                 if (target._encoreThisRound) {
-                    addLog(`${unitDisplayName(target)} already received an Encore this round.`);
+                    addLog(`${_ctName(target)} already received an Encore this round.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -71157,7 +71601,7 @@
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
                     window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
                 }
-                addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(target)} an Encore! They can act again this turn.`);
+                addLog(`${_ctName(unit)} grants ${_ctName(target)} an Encore! They can act again this turn.`);
                 completionDelay = actionMs(400);
             }
 
@@ -71292,7 +71736,7 @@
                             // THE SPELL AUDIT Batch D (Overdrive): the first kill on the dash runs the on-kill riders (1 AP back)
                             if ((victim.dead || victim._dying) && !_dashKillFed) { _dashKillFed = true; _applyOnKillRiders(unit, victim, spell); }
                             dashHitCount++;
-                            addLog(`${unitDisplayName(victim)} is hit for ${hitDmg} as ${unitDisplayName(unit)} dashes through!`);
+                            addLog(`${_ctName(victim)} is hit for ${hitDmg} as ${_ctName(unit)} dashes through!`);
                         }
                     }
 
@@ -71316,7 +71760,7 @@
                             destOccupant.x = pushTo.x;
                             destOccupant.y = pushTo.y;
                             if (typeof nearestWalkableZ === 'function') destOccupant.z = nearestWalkableZ(pushTo.x, pushTo.y, destOccupant.z);
-                            addLog(`${unitDisplayName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
+                            addLog(`${_ctName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
                             showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
                             animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180, { stagger: true });
                             _applyKnockbackHazard(destOccupant);   // ⛓ knocked aside onto whatever waits there
@@ -71338,7 +71782,7 @@
                                 entry.unit.x = prevTile.x;
                                 entry.unit.y = prevTile.y;
                                 if (typeof nearestWalkableZ === 'function') entry.unit.z = nearestWalkableZ(prevTile.x, prevTile.y, entry.unit.z);
-                                addLog(`${unitDisplayName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
+                                addLog(`${_ctName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
                                 showFloatingTextForUnit(entry.unit, 'SHIFTED!', 'streak', { durationMs: 800 });
                                 animateDisplacement(entry.unit, _shiftFromX, _shiftFromY, prevTile.x, prevTile.y, 180);
                             }
@@ -71367,7 +71811,7 @@
                         }
                         if (_dlPainted) {
                             trackTilesChanged(unit, _dlPainted);
-                            addLog(`❄️ ${spell.name} leaves ${_dlPainted} tile${_dlPainted !== 1 ? 's' : ''} of ${spell.leaveTerrain} in the wake!`);
+                            addLog(`❄️ ${_ctSp(spell.name)} leaves ${_dlPainted} tile${_dlPainted !== 1 ? 's' : ''} of ${spell.leaveTerrain} in the wake!`);
                             if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
                             scheduleBoardRender();
                         }
@@ -71390,9 +71834,9 @@
                         applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
                     }
                     if (dashHitCount > 0) {
-                        addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
+                        addLog(`${_ctName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
                     } else {
-                        addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
+                        addLog(`${_ctName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
                     }
                     scheduleBoardRender();
 
@@ -71441,12 +71885,12 @@
                                         damageType: spell.afterShot.damageType || spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    addLog(`${unitDisplayName(unit)} fires from the window — ${unitDisplayName(_asT)} takes ${_asDmg}!`);
+                                    addLog(`${_ctName(unit)} fires from the window — ${_ctName(_asT)} takes ${_asDmg}!`);
                                     scheduleBoardRender();
                                 }, _skipVisuals() ? 0 : _asTravel);
                             }, _skipVisuals() ? 0 : dashAnimMs);
                         } else {
-                            addLog(`${unitDisplayName(unit)} rolls up — nobody within ${_asR} tiles to shoot at.`);
+                            addLog(`${_ctName(unit)} rolls up — nobody within ${_asR} tiles to shoot at.`);
                         }
                     }
                 };
@@ -71493,7 +71937,7 @@
                 // dirt. Reject cleanly (menus grey this via getSpellBlockReason).
                 if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                    addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                    addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -71526,7 +71970,7 @@
                         showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 800 });
                     }
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
-                    addLog(`${unitDisplayName(unit)} drops ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
                     /* applyDamageToUnit already floats the real post-mitigation
                        number — no second (pre-armor) float. */
 
@@ -71632,7 +72076,7 @@
                                 sourceUnit: unit, damageType: 'physical',
                                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                             });
-                            addLog(`${unitDisplayName(throwTarget)} is hurled into ${unitDisplayName(collisionTarget)}! Collision!`);
+                            addLog(`${_ctName(throwTarget)} is hurled into ${_ctName(collisionTarget)}! Collision!`);
                             /* damage floats come from applyDamageToUnit; keep only
                                the flavor callout on the struck bystander */
                             showFloatingTextForUnit(collisionTarget, `COLLISION!`, 'streak', { durationMs: 900 });
@@ -71669,7 +72113,7 @@
                             resolveTileArrival(throwTarget, { via: 'thrown' });   // ⛓ the throw's landing
                         }
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
-                        addLog(`${unitDisplayName(unit)} hurls ${unitDisplayName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
+                        addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
                         scheduleBoardRender();
                     };
 
@@ -71738,7 +72182,7 @@
                     }
                     if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
                         && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                        addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                        addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                         playErrorSfx();
                         return 0;
                     }
@@ -71748,7 +72192,7 @@
 
                     unit._skyThrowGrab = { id: target.id, spellId: spell.id };
                     playSfx(spellLaunchSfx(spell));
-                    addLog(`${unitDisplayName(unit)} grabs ${unitDisplayName(target)}! Choose where to throw them.`);
+                    addLog(`${_ctName(unit)} grabs ${_ctName(target)}! Choose where to throw them.`);
                     showFloatingTextForUnit(target, 'GRABBED!', 'streak', { durationMs: 1000 });
 
                     /* Grab visuals: lock-on pillar + the victim hauled up and
@@ -71809,7 +72253,7 @@
                 // dirt. Reject cleanly (menus grey this via getSpellBlockReason).
                 if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                    addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                    addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                     playErrorSfx();
                     return 0;
                 }
@@ -71881,7 +72325,7 @@
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
-                    addLog(`${unitDisplayName(unit)} slams ${unitDisplayName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(slamX, slamY, spell.aoeRadius || 0, spell.terrainDeform);
@@ -72038,7 +72482,7 @@
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
-                    addLog(`${unitDisplayName(unit)} leaps onto ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, spell.aoeRadius || 0, spell.terrainDeform);
@@ -72296,7 +72740,7 @@
                     state.winner = bestUnit.player;
                     state._winCondition = 'most_kills';
                     state._ffaWinnerUnitId = bestUnit.id;
-                    addLog(`${unitDisplayName(bestUnit)} wins with ${bestKills} kills!`);
+                    addLog(`${_ctName(bestUnit)} wins with ${bestKills} kills!`);
                 } else {
                     state.winner = 1;
                     state._winCondition = 'most_kills';
@@ -72490,7 +72934,7 @@
             if (state.shotClock.activationId != null && _shotClockExpiredActivation === state.shotClock.activationId) return;
             _shotClockExpiredActivation = state.shotClock.activationId;
             state.shotClock.active = false;
-            addLog(`⏱ Shot clock! ${unitDisplayName(unit)}'s turn ends automatically.`);
+            addLog(`⏱ Shot clock! ${_ctName(unit)}'s turn ends automatically.`);
             showFloatingTextForUnit(unit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
             playSfx('uiBack');
 
@@ -72744,9 +73188,9 @@
                 // Grabbing the flag breaks stealth — no invisible flag runners.
                 if (unitHasStatus(unit, 'invisible')) {
                     clearStatus(unit, 'invisible');
-                    addLog(`👁 ${unitDisplayName(unit)} is revealed — carrying the flag breaks camouflage!`);
+                    addLog(`👁 ${_ctName(unit)} is revealed — carrying the flag breaks camouflage!`);
                 }
-                addLog(`🏳️ ${unitDisplayName(unit)} grabs Player ${enemyPlayer}'s flag!`);
+                addLog(`🏳️ ${_ctName(unit)} grabs Player ${enemyPlayer}'s flag!`);
                 showFloatingTextForUnit(unit, '🏳️ FLAG!', 'streak', { durationMs: 1400 });
                 showCombatBanner('🏳️ FLAG TAKEN!', `Player ${unit.player} has the flag!`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
                 playSfx('playerHourglass');
@@ -72755,7 +73199,7 @@
 
             if (ownFlag && !ownFlag.carriedBy && !ownFlag.atBase && ownFlag.x === unit.x && ownFlag.y === unit.y) {
                 _returnFlagToBase(unit.player);
-                addLog(`🏳️ ${unitDisplayName(unit)} returns their team's flag to base!`);
+                addLog(`🏳️ ${_ctName(unit)} returns their team's flag to base!`);
                 showFloatingTextForUnit(unit, '🏳️ RETURNED', 'buff', { durationMs: 1200 });
             }
 

@@ -1894,6 +1894,7 @@ function QuickCone() {
     const tick = () => {
       raf = requestAnimationFrame(tick);
       _subDodge();
+      _listRoom();
       const svg = ref.current; if (!svg) return;
       const L = window._ewQpCone || {};
       if (ro) {
@@ -2020,6 +2021,48 @@ function _subDodge() {
     want = Math.max(0, Math.min(want, Math.floor(innerWidth - 8 - R0)));
   }
   if (want !== cur) { bar._ewDodge = want; bar.style.transform = want ? `translateX(${want}px)` : ''; }
+}
+/* THE GROWN ROW KEEPS ITS EDGES (mondo 2026-10-18: "i have the setting on where the selected button grows bigger, but its
+   making it clip out of the bounding box of the actions list when i actually play the game"): an action list scrolls
+   (overflow auto), and a scroll box cuts everything past its edges, so the selected row the UI Maker grows (or tilts,
+   or slants) lost its ends and its top / bottom. Each frame, with the battle theme's grow / tilt / slant read off the
+   HUD (--uim-sel-grow / --uim-sel-tilt / --uim-row-tilt / --uim-row-slant, UI Maker MOTION): a list whose rows all fit
+   lets them out of its box (.ew-fits); a list too long for its box keeps scrolling and makes room inside it for the
+   grown row (.ew-room: side margins on every row, a top / bottom one on the first / last). Measured from the rows' own
+   layout boxes (a transform never counts), so it never flips back and forth. Nothing grows = nothing changes. */
+function _listRoom() {
+  const lists = document.querySelectorAll('.hrlg-panels .hrlg-list');
+  if (!lists.length) return;
+  const cs0 = getComputedStyle(lists[0]), rd = Math.PI / 180;
+  const g = Math.max(1, parseFloat(cs0.getPropertyValue('--uim-sel-grow')) || 1);
+  const t = Math.min(30, Math.max(Math.abs(parseFloat(cs0.getPropertyValue('--uim-sel-tilt')) || 0), Math.abs(parseFloat(cs0.getPropertyValue('--uim-row-tilt')) || 0))) * rd;
+  const sk = Math.min(40, Math.abs(parseFloat(cs0.getPropertyValue('--uim-row-slant')) || 0)) * rd;
+  const any = g > 1.001 || t > 0.0001 || sk > 0.0001;
+  lists.forEach(L => {
+    const rows = L.children;
+    if (!any || !rows.length) {
+      if (L.classList.contains('ew-fits') || L.classList.contains('ew-room')) { L.classList.remove('ew-fits', 'ew-room'); L.style.removeProperty('--ew-room-x'); L.style.removeProperty('--ew-room-t'); L.style.removeProperty('--ew-room-b'); }
+      return;
+    }
+    const cs = getComputedStyle(L), pT = parseFloat(cs.paddingTop) || 0, pB = parseFloat(cs.paddingBottom) || 0, pL = parseFloat(cs.paddingLeft) || 0, pR = parseFloat(cs.paddingRight) || 0;
+    const first = rows[0], last = rows[rows.length - 1];
+    const fits = last.offsetTop + last.offsetHeight - first.offsetTop + pT + pB <= L.clientHeight + 1;
+    L.classList.toggle('ew-fits', fits);
+    let rx = 0, rt = 0, rb = 0;
+    if (!fits) {
+      const sel = L.querySelector(':scope > .hrlg-blade.sel') || first, h0 = sel.offsetHeight || 40;
+      const W = L.clientWidth - pL - pR, p = Math.min(pL, pR);
+      /* the widest row whose grown (tilted, slanted) shape still lands inside the box, centred where the rows are */
+      const w = Math.max(40, ((W + 2 * p) / g - h0 * Math.sin(t) - h0 * Math.tan(sk)) / Math.cos(t));
+      rx = Math.max(0, Math.ceil((W - w) / 2));
+      const half = g * (h0 * Math.cos(t) + Math.min(W, w) * Math.sin(t)) / 2 - h0 / 2;
+      rt = Math.max(0, Math.ceil(half - pT)); rb = Math.max(0, Math.ceil(half - pB));
+    }
+    const room = !fits && (rx > 0 || rt > 0 || rb > 0);
+    L.classList.toggle('ew-room', room);
+    const set = (k, v) => { const s = room ? v + 'px' : ''; if (L.style.getPropertyValue(k) !== s) { if (s) L.style.setProperty(k, s); else L.style.removeProperty(k); } };
+    set('--ew-room-x', rx); set('--ew-room-t', rt); set('--ew-room-b', rb);
+  });
 }
 function _qpKeepClear(head, L) {
   const shift = head._ewShift || 0;
@@ -3044,6 +3087,26 @@ const _HRLG_SB_COLORS = {
   shadowRealm:'#4b2a6b',exited:'#3d8bfd',captured:'#e0a030',sealed:'#b03060',
   hourglass:'#e0c060',scanner:'#40c0c0',heal:'#27ae60',mana:'#3a7bd5',damage:'#e74c3c'
 };
+/* a stat's live stages (one stage = ±20 on the 0-100 ruler = one letter grade): the EFFECTIVE stages after the ruler
+   clamp, { n, capped }, or null. Shared by the status chips and the unit info card's marks beside each stat. */
+function _hrlgStageOf(unit, stat) {
+  if (!unit || typeof getStatStageCount !== 'function') return null;
+  const raw = getStatStageCount(unit, stat);
+  if (!raw) return null;
+  let n = raw;
+  if (typeof getStatStageDelta === 'function') {
+    const d = getStatStageDelta(unit, stat);
+    n = d > 0 ? Math.max(1, Math.round(d / 20)) : d < 0 ? Math.min(-1, Math.round(d / 20)) : 0;
+    if (!n) return null;   // fully saturated: the stat can't move this way
+  }
+  return { n, capped: Math.abs(n) < Math.abs(raw) };
+}
+/* the movement change from active effects (+ the key charge's half) */
+function _hrlgMovDelta(unit) {
+  const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
+  const hgBuff = (unit && unit.hourglassBuff) || 0;
+  return movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
+}
 function _hrlgStatusChips(unit) {
   const chips = [];
   if (!unit || typeof getActiveStatusKeys !== 'function' || typeof _STATUS_EFFECT_IDS === 'undefined') return chips;
@@ -3061,30 +3124,22 @@ function _hrlgStatusChips(unit) {
   // (2026-08-29 rework). The chip shows the EFFECTIVE stages after the
   // ruler clamp (getStatStageDelta saturates at 100 / the floor), so a
   // maxed stat honestly reads as maxed instead of advertising dead stacks.
-  if (typeof getStatStageCount === 'function') {
-    for (const [stat, lbl] of [['atk','ATK'],['def','DEF'],['int','M ATK'],['mdef','M DEF'],['spd','SPD']]) {
-      const raw = getStatStageCount(unit, stat);
-      if (!raw) continue;
-      let n = raw;
-      if (typeof getStatStageDelta === 'function') {
-        const d = getStatStageDelta(unit, stat);
-        n = d > 0 ? Math.max(1, Math.round(d / 20)) : d < 0 ? Math.min(-1, Math.round(d / 20)) : 0;
-        if (!n) continue;   // fully saturated: the stat can't move this way
-      }
-      const capped = Math.abs(n) < Math.abs(raw);
-      chips.push({
-        key: 'stg-' + stat, label: (n > 0 ? '+' : '') + n + ' ' + lbl + (capped ? (n > 0 ? ' (maxed)' : ' (floored)') : ''), kind: n > 0 ? 'up' : 'dn',
-        title: n + ' ' + lbl + ' stage' + (Math.abs(n) > 1 ? 's' : '') + ' — one stage = one letter grade (±20)',
-      });
-    }
+  for (const [stat, lbl] of [['atk','ATK'],['def','DEF'],['int','M ATK'],['mdef','M DEF'],['spd','SPD']]) {
+    const g = _hrlgStageOf(unit, stat);
+    if (!g) continue;
+    const n = g.n;
+    chips.push({
+      key: 'stg-' + stat, label: (n > 0 ? '+' : '') + n + ' ' + lbl + (g.capped ? (n > 0 ? ' (maxed)' : ' (floored)') : ''), kind: n > 0 ? 'up' : 'dn',
+      title: n + ' ' + lbl + ' stage' + (Math.abs(n) > 1 ? 's' : '') + ' — one stage = one letter grade (±20)',
+      stat: { atk: 'atk', def: 'def', int: 'matk', mdef: 'mdef' }[stat] || '',
+    });
   }
-  const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
   const hgBuff = unit.hourglassBuff || 0;
-  const totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
+  const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
-    title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects',
+    title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
   });
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
@@ -3157,6 +3212,22 @@ function _hrlgQuickVitals(panelKey) {
       ),
       h('span', { className: 'hrlg-qv-num mp' }, Math.max(0, Math.round(u.mp)) + '/' + u.maxMp),
     ),
+    /* THE STATUS EFFECTS + THE BUFFS / DEBUFFS (mondo 2026-10-18: "the unit info panel needs to have the unit's status
+       effect badges and debuffs/buffs as sections too. ideally the debuffs can show next to their relevant stat"): the
+       hero column's chips, split in two rows that are card parts of their own (UI Maker: Parts). A buff / debuff whose
+       stat is on the card also marks that stat (_hrlgQuickStats); the UI Maker picks where they show (qBuffAt). Both rows
+       are always there (empty when nothing is on the unit), so the UI Maker can place them on any unit. */
+    (() => {
+      const chips = _hrlgStatusChips(u);
+      const chip = c => h('span', {
+        key: c.key, className: 'hrlg-schip' + (c.kind ? ' ' + c.kind : ''), 'data-st': c.stat || undefined,
+        style: c.bg ? { background: c.bg } : undefined, title: c.title || undefined,
+      }, c.label);
+      const buff = c => /^(stg-|hg$|mov$)/.test(c.key);
+      return h(React.Fragment, null,
+        h('div', { className: 'hrlg-qp-status' }, chips.filter(c => !buff(c)).map(chip)),
+        h('div', { className: 'hrlg-qp-buffs' }, chips.filter(buff).map(chip)));
+    })(),
   );
 }
 
@@ -3195,6 +3266,12 @@ function _hrlgQuickStats(panelKey) {
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
     { k: 'EVA',  v: eva + '%',  tip: HELP.eva },
   ];
+  /* each stat's live buff / debuff (stat stages; MOV = the move change from active effects) */
+  ['atk', 'int', 'def', 'mdef'].forEach(st => {
+    const s = _hrlgStageOf(u, st), c = s && cells.find(x => x.g === st);
+    if (c) c.stg = s.n;
+  });
+  { const mv = _hrlgMovDelta(u), c = cells.find(x => x.k === 'MOV'); if (mv && c) { c.stg = mv; c.mv = true; } }
   // Letter grade beside the number (2026-08-29 stat rework) — computed from
   // the displayed EFFECTIVE value; ungraded keys (MOV/RNG/CRT/EVA) get none.
   const _grade = (typeof window !== 'undefined' && typeof window.statGrade === 'function') ? window.statGrade : null;
@@ -3210,7 +3287,10 @@ function _hrlgQuickStats(panelKey) {
         /* the stat BAR (UI Maker: Unit info panel > Stat look = bars / both): the grade's own share of its ruler, in the
            grade's colour; an ungraded stat (MOV / RNG / CRT / EVA) keeps an empty slot so the columns line up */
         h('span', { className: 'hrlg-qstat-bar' + (n ? '' : ' none') }, n ? h('i', { style: { width: n.pct + '%', background: n.color } }) : null),
-        h('span', { className: 'hrlg-qstat-val' }, String(c.v)));
+        h('span', { className: 'hrlg-qstat-val' }, String(c.v)),
+        /* the stat's live buff / debuff, beside it (the UI Maker can move these into the Buffs + debuffs part) */
+        c.stg ? h('span', { className: 'hrlg-qstat-stg ' + (c.stg > 0 ? 'up' : 'dn'), title: (c.stg > 0 ? '+' : '') + c.stg + ' ' + c.k + (c.mv ? ' from active effects' : ' stage' + (Math.abs(c.stg) > 1 ? 's' : '') + ' — one stage = one letter grade (±20)') },
+          (c.stg > 0 ? '▲' : '▼') + Math.abs(c.stg)) : null);
     }),
   ), _hrlgElemBox(u));
 }
@@ -4813,6 +4893,9 @@ function _hrlgTargetBlades(unit, st, mode) {
         if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
         if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, tz);
       },
+      // THE STRIKE ARROW (ui.js): the hovered attack row draws the red arrow onto its target, leaving goes back to the pick
+      hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); } : undefined,
+      hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); } : undefined,
     };
   });
   // (The ×1/×2/×3 multi-strike picker is gone: an attack ENDS the turn, so
@@ -10457,6 +10540,12 @@ function _hudHideCss() {
       scrollbar-width: thin; scrollbar-color: var(--hfc-soft) rgba(255,255,255,0.05);
       overscroll-behavior: contain;
     }
+    /* THE GROWN ROW KEEPS ITS EDGES (_listRoom): a list whose rows all fit stops cutting at its box (a selected row that
+       grows or tilts can stand out of it); a list that really scrolls makes room inside for the grown row */
+    :root:root:not(#ew-lr):not(#ew-lr):not(#ew-lr):not(#ew-lr) .hrlg-list.ew-fits { overflow: visible !important; }
+    .hrlg-list.ew-room > * { margin-left: var(--ew-room-x, 0px) !important; margin-right: var(--ew-room-x, 0px) !important; }
+    .hrlg-list.ew-room > :first-child { margin-top: var(--ew-room-t, 0px) !important; }
+    .hrlg-list.ew-room > :last-child { margin-bottom: var(--ew-room-b, 0px) !important; }
     .hrlg-list::-webkit-scrollbar { width: 5px; }
     .hrlg-list::-webkit-scrollbar-thumb { background: var(--hfc-soft); }
     .hrlg-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
@@ -10610,6 +10699,17 @@ function _hudHideCss() {
     }
     .hrlg-qstat.up .hrlg-qstat-val { color: #7df0a5; }
     .hrlg-qstat.dn .hrlg-qstat-val { color: #ff8d97; }
+    /* the unit info card's status effects + buffs / debuffs (the hero column's chips, in two rows of their own); a buff
+       whose stat is on the card marks that stat instead (.hrlg-qstat-stg) unless the UI Maker says otherwise */
+    .hrlg-qp-status, .hrlg-qp-buffs { display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start; gap: 3px; min-width: 0; pointer-events: auto; }
+    .hrlg-qp-buffs > [data-st] { display: none; }
+    .hrlg-qp-status:empty, .hrlg-qp-buffs:empty, .hrlg-qp-buffs:not(:has(> :not([data-st]))) { display: none; }
+    .hrlg-qstat-stg {
+      flex: none; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; padding: 2px 3px; border-radius: 3px;
+      color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.85); white-space: nowrap;
+    }
+    .hrlg-qstat-stg.up { background: rgba(34,140,60,0.92); }
+    .hrlg-qstat-stg.dn { background: rgba(165,45,45,0.92); }
     /* aiming-state instruction ("MOVING — CLICK A TILE") */
     .hrlg-mode {
       position: relative; margin: 0 7px 0 5px; padding: 7px 16px; flex: none;
@@ -10913,7 +11013,7 @@ function _hudHideCss() {
        aim-mode blade) + the input glyph (right-click mouse / pad B) */
     .hrlg-backchip {
       align-self: flex-start; margin: 0 0 2px 6px; flex: none;
-      display: inline-flex; align-items: center; gap: 6px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       height: 24px; padding: 0 10px;
       cursor: pointer; pointer-events: auto; z-index: 3;
       font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #ff9184;
@@ -12703,6 +12803,9 @@ const UIM_PIECES = [
   { id: 'quick', group: 'Battle', label: 'Unit info panel', sel: '.hrlg-panel.quick > .hrlg-thead.qp', panelSel: '.hrlg-panel.quick > .hrlg-thead.qp > .hrlg-qp-bg', qp: true, origin: '100% 100%', def: { l: 220, b: 520, w: 520, h: 200 } },
   /* the quick action list on its own (2026-10-18, mondo: "just make the actions list its own separate thing") */
   { id: 'qlist', group: 'Battle', label: 'Quick action list', sel: '.hrlg-panel.quick > .hrlg-list', origin: '0 0', def: { l: 560, b: 130, w: 316, h: 300 } },
+  /* the red BACK chip over every action list (mondo 2026-10-18: "let me move the red back button in the actions list
+     around and resize it"): moved from its spot over its list (on the quick list it still rides along with the list) */
+  { id: 'qback', group: 'Battle', label: 'Back button', sel: '.hrlg-panel:not(.root) > .hrlg-backchip', origin: '0 100%', noScroll: true, flowH: 24, def: { l: 560, b: 440, w: 86, h: 24 } },
   { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta', def: { r: 12, t: 12, w: 220, h: 40 } },
   { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', icons: 'turns', def: { l: 10, b: 490, w: 56, h: 240 } },
   { id: 'press', group: 'Battle', label: 'AP press icons', sel: '.ew-ap-press', origin: '0 0', ap: true, def: { l: 14, t: 12, w: 132, h: 40 } },
@@ -12710,7 +12813,9 @@ const UIM_PIECES = [
   { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar', def: { cx: 0, b: 10, wf: 0.92, wmax: 1100, h: 62 } },
   /* the battle's text box ("<unit> is up — select an action.", the combat lines; ui.js ensureBattleHUD) — mondo 2026-10-18:
      "there is the subtitles or combat text box ... that needs to be part of the layout too and let me change where it is" */
-  { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', def: { cx: 0, b: 86, w: 640, h: 40 } },
+  /* keepCodes: the box's All text colour paints the plain words only, never the colour-coded ones (names by side, damage,
+     heals, spells, statuses — battle.js THE COMBAT TEXT COLOURS); those have their own text parts below */
+  { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', keepCodes: true, def: { cx: 0, b: 86, w: 640, h: 40 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
@@ -12844,6 +12949,7 @@ const TEXT_PARTS = {
   cmds: [['title', 'Menu titles', '.hrlg-thead:not(.qp) > .hrlg-view-tab .hrlg-view-tab-text'], ['mode', 'Mode line', '.hrlg-mode'],
     ['back', 'BACK chip', '.hrlg-backchip-lbl, .hrlg-backchip-arrow']].concat(TX_ROWS),
   qlist: TX_ROWS,
+  qback: [['word', 'BACK word', '.hrlg-backchip-lbl'], ['arrow', 'Arrow', '.hrlg-backchip-arrow']],
   score: [['names', 'Team names', '.ew-ss-text'], ['score', 'Score', '.ew-sb-num'], ['dash', 'Score dash', '.ew-sb-dash'], ['scap', 'SCORE label', '.ew-sb-cap'],
     ['mode', 'Mode name', '.ew-sb-mode'], ['time', 'Timer', '.ew-sb-time'], ['round', 'Round', '.ew-sb-round'], ['pips', 'Pips', '.ew-sb-pips > span'],
     ['keys', 'Keys', '.ew-ss-keys'], ['tcap', 'TOWER label', '.ew-meter-cap'], ['tnum', 'Tower HP', '.ew-meter-num'], ['ecap', 'ENTROPY label', '.ew-ent-cap']],
@@ -12852,7 +12958,9 @@ const TEXT_PARTS = {
   turns: [['loop', 'Round loop mark', '.ew-tc-loop']],
   desc: [['name', 'Name', '.ew-descbar-name'], ['tags', 'Tags', '.ew-descbar-inner > span:not([class])'], ['desc', 'Description', '.ew-descbar-desc'],
     ['stats', 'Range + costs', '.ew-descbar-stats']],
-  subtitle: [['who', 'Unit name', '.dlg-prompt strong, strong'], ['line', 'The line', '.dlg-prompt'], ['hint', 'Key hint', '.dlg-prompt-hint'], ['cursor', 'Cursor', '.dlg-prompt-cursor']],
+  subtitle: [['who', 'Unit name', '.dlg-prompt strong, strong'], ['line', 'The line', '.dlg-prompt'], ['hint', 'Key hint', '.dlg-prompt-hint'], ['cursor', 'Cursor', '.dlg-prompt-cursor'],
+    ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'], ['status', 'Status effects', '.ct-status'],
+    ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko']],
   banner: [['title', 'Title', '.banner-title'], ['sub', 'Second line', '.banner-sub']],
 };
 const txKey = (part, k) => 't:' + part + ':' + k;
@@ -12893,9 +13001,9 @@ function layoutCss() {
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
-  /* the quick action list's BACK chip rides with the list */
-  const QL = db.layout.qlist;
-  if (QL && (+QL.x || +QL.y)) css += `${pre('.hrlg-panel.quick > .hrlg-backchip')} { translate: ${+QL.x || 0}px ${+QL.y || 0}px !important; }\n`;
+  /* the quick action list's BACK chip rides with the list, plus its own move (the Back button piece) */
+  const QL = db.layout.qlist || {}, QB = db.layout.qback || {};
+  if (+QL.x || +QL.y) css += `${pre('.hrlg-panel.quick > .hrlg-backchip')} { translate: ${(+QL.x || 0) + (+QB.x || 0)}px ${(+QL.y || 0) + (+QB.y || 0)}px !important; }\n`;
   return css + heroCss() + barsCss() + iconsCss() + uxCss();
 }
 /* ── A PIECE'S OWN LOOK (2026-10-18, every piece of every screen): size, layer and order in its row, a look borrowed from
@@ -12914,7 +13022,12 @@ function lookCss(P, L) {
      order stay on the piece */
   const d = [], dl = P.panelSel ? [] : d;
   if (+L.w > 0) d.push(`width: ${n(L.w, 8, 4000)}px !important; min-width: 0 !important; max-width: none !important; flex: 0 0 auto !important; box-sizing: border-box !important;`);
-  if (+L.h > 0) d.push(`height: ${n(L.h, 8, 3000)}px !important; min-height: 0 !important; max-height: none !important; box-sizing: border-box !important; overflow: auto !important;`);
+  /* a set height scrolls what does not fit, except on a piece whose parts are placed past its edge on purpose (the unit
+     info card: mondo 2026-10-18, "they are bound by the borders of the panel and they get cropped when they go past it")
+     or a button (the BACK chip) */
+  if (+L.h > 0) d.push(`height: ${n(L.h, 8, 3000)}px !important; min-height: 0 !important; max-height: none !important; box-sizing: border-box !important;${P.qp || P.noScroll ? '' : ' overflow: auto !important;'}`);
+  /* a piece in a column that must not push the rest (the BACK chip over its list): it grows upward, its old room kept */
+  if (+L.h > 0 && P.flowH) d.push(`margin-top: ${P.flowH - Math.round(n(L.h, 8, 3000))}px !important;`);
   if (set('pad') && +L.pad >= 0) d.push(`padding: ${n(L.pad, 0, 200)}px !important;`);
   if (set('z')) d.push(`z-index: ${Math.round(n(L.z, -50, 500))} !important;${L.zrel ? ' position: relative !important;' : ''}`);
   if (set('ord')) d.push(`order: ${Math.round(n(L.ord, -50, 50))} !important;`);
@@ -12931,7 +13044,9 @@ function lookCss(P, L) {
   let css = d.length ? `${S} { ${d.join(' ')} }\n` : '';
   if (dl !== d && dl.length) css += `${preP(P.panelSel)} { ${dl.join(' ')} }\n`;
   const t = [];
-  if (L.ink) t.push(`color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important;`);
+  const sels = parts(P.sel);
+  if (L.ink && P.keepCodes) css += `${preP(sels.map(x => x + ', ' + x + ' *:not(.ct):not(.ct *)').join(', '))} { color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important; }\n`;
+  else if (L.ink) t.push(`color: ${L.ink} !important; -webkit-text-fill-color: ${L.ink} !important;`);
   if (L.font) t.push(`font-family: ${L.font} !important;`);
   if (L.fw) t.push(`font-weight: ${L.fw} !important;`);
   if (+L.fsz > 0) t.push(`font-size: ${n(L.fsz, 6, 120)}px !important;`);
@@ -12939,7 +13054,7 @@ function lookCss(P, L) {
   if (set('track')) t.push(`letter-spacing: ${(+L.track || 0).toFixed(2)}em !important;`);
   if (L.tfx && TFX[L.tfx]) t.push(`text-shadow: ${TFX[L.tfx]} !important;`);
   if (L.align) t.push(`text-align: ${L.align} !important;`);
-  if (t.length) css += `${preP(parts(P.sel).map(x => x + ', ' + x + ' *').join(', '))} { ${t.join(' ')} }\n`;
+  if (t.length) css += `${preP(sels.map(x => x + ', ' + x + ' *').join(', '))} { ${t.join(' ')} }\n`;
   return css;
 }
 /* ── THE WORDS (2026-10-18, mondo: "what text shows up in the panels"): db.words[piece id] = { 'the words as the game
@@ -13110,7 +13225,7 @@ const UX_DEF = {
      portrait px (0 = the small one in the name row); qStatsPos beside | below; qElem below | right | off; qList* = every
      sub-menu list (spells, targets, quick actions); qCone* = the zoom cone */
   qShape: 'wide', qW: 0, qAlign: 'right', qPort: 108, qPortShape: 'square', qNameSize: 18, qStats: true, qStatsPos: 'beside', qCols: 3,
-  qElem: 'below', qZoom: 1.5, qListW: 316, qListH: 400, qRowH: 40, qRowFont: 16, qCone: true, qConeCol: '', qConeOp: 0.35, qConeEdges: true,
+  qElem: 'below', qZoom: 1.5, qListW: 316, qListH: 400, qListMin: 0, qListMax: 0, qRowH: 40, qRowFont: 16, qCone: true, qConeCol: '', qConeOp: 0.35, qConeEdges: true,
   /* pass 13 (2026-10-18, mondo: "i want it to always pop up in the same spot above the action menu ... put the hp bars and
      type badges beneath the portrait maybe, or use stat bars instead of letter grade, or both. Maybe i wanna put the name
      on top of the portrait ... there was no way for me to resize their individual columns ... Let me change where the
@@ -13134,7 +13249,38 @@ const UX_DEF = {
   qStatRowGap: 0, qNameAllyCol: '', qNameFoeCol: '', qGapX: 0, qGapY: 0, qBarGap: 4, qNumPos: 'right', qBarH: 10,
   /* pass 17 (free parts, backgrounds, stat order; see qpFreeCss) */
   qArr: 'grid', qFreeW: 560, qFreeH: 210, qStatEach: false, qStatOrder: '', qStatHide: '', qParts: '',
+  /* pass 20 (mondo 2026-10-18: "i can hardly read the ATK and DEF etc ... let me change the size of the letter grades",
+     "let me be able to show and hide the number just like the letter grades and bars. and change the size of the
+     numbers"): the stat words / numbers / grade sizes (px; the defaults are the game's), the numbers on or off; qBuffAt
+     = where a buff / debuff with a stat on the card shows (stat | part | both); qChipSize = the status + buff badges */
+  qStatLblSize: 9, qStatNumSize: 12, qGradeSize: 16, qStatNum: true, qBuffAt: 'stat', qChipSize: 9,
+  /* THE ARROWS + TILES (2026-10-18, mondo: "i dont really like how the arrows look for spell/move previews ... add a
+     section for them and the tile highlights to the ui maker"): w* = the preview arrows (three-renderer.js reads
+     window._ewArrowLook, bumped _ewArrowLookV: _arrowLook), t* = the tile highlights (window._ewTileLook, _ewTileLookV:
+     _tileLook / the shared uniforms _hlLookU). Numbers are multipliers on the game's own look (1 = as the game); wc* /
+     tc* = a colour per action / per situation ('' = the game's, AIM_ARROW_KINDS / AIM_TILE_KINDS) */
+  wShaft: 'solid', wThick: 1, wGlow: 1, wGlowW: 1, wCore: 0, wBright: 1, wOpacity: 1, wPulse: 1, wPulseSpd: 1, wHead: 'cone', wHeadLen: 1, wHeadW: 1,
+  wDots: true, wDotShape: 'ball', wDotSize: 1, wDotCount: 1, wDotSpd: 1, wDotBright: 1, wDotCol: '',
+  tLine: 1, tEdge: 1, tHalo: 1, tHot: 1, tLineCol: '', tSize: 1, tRound: 0, tFill: 1, tBright: 1, tOpacity: 1, tPulse: 1, tSpeed: 1,
 };
+/* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
+   _hlKindOfType): [kind, label, the game's colour, tip] */
+const AIM_ARROW_KINDS = [['move', 'Move', '#3399ff', 'Your unit walking, dashing, jumping or flying there'], ['hit', 'Damage', '#ff3333', 'A strike or a damage spell'],
+  ['heal', 'Heal + support', '#33dd66', 'A heal, a buff or any help'], ['force', 'Push / pull', '#bb66ff', 'A body the action moves'], ['util', 'Utility', '#eeeeee', 'Anything else']];
+const AIM_TILE_KINDS = [
+  ['move', 'Walk', '#4da6ff', 'moves', 'Where the unit can walk this move'], ['jump', 'Jump / take off', '#35d0c0', 'moves'],
+  ['blocked', 'Can\'t reach', '#cc2222', 'moves', 'In range but not reachable'], ['strike', 'Can strike from here', '#ffcc33', 'moves', 'A move tile you can hit an enemy from'],
+  ['hazard', 'Hurts you here', '#ff3a3a', 'moves'], ['benefit', 'Heals you here', '#33dd77', 'moves'], ['acting', 'Current unit\'s tile', '#ffffff', 'moves'],
+  ['atkReach', 'Basic attack reach', '#ffcc33', 'act'], ['target', 'Enemy you can hit', '#ff2222', 'act'], ['reach', 'Damage spell reach', '#ffa040', 'act'],
+  ['hit', 'Tiles that get hit', '#ff3a3a', 'act', 'The spell\'s footprint before you cast'], ['healReach', 'Support spell reach', '#33dd77', 'act'],
+  ['heal', 'Heal / support target', '#22ee55', 'act'], ['buffReach', 'Buff spell reach', '#4488ff', 'act'], ['util', 'Utility spell reach', '#8844ee', 'act'],
+  ['force', 'Push / pull landing', '#bb66ff', 'act'], ['combo', 'Combo target', '#ff8822', 'act'],
+  ['foeRange', 'Enemy reach', '#ff4545', 'other', 'Hovering an enemy shows where it can hit'], ['allyRange', 'Your unit\'s reach', '#5aa8ff', 'other', 'Hovering your unit shows where it can hit'],
+  ['cursor', 'Cursor', '#ffd83d', 'other'], ['ally', 'Ally', '#ddaa22', 'other'], ['inspect', 'Inspect', '#22eebb', 'other'], ['place', 'Placeable', '#44aaff', 'other'],
+  ['glowFoe', 'About to hit (gold)', '#ffd23d', 'glow', 'The gold ground glow while a spell lands on enemies'], ['glowFriend', 'Lands on your side', '#fff4d6', 'glow', 'The ground glow while a heal or a buff lands']];
+const aimKey = (pre, k) => pre + k[0].toUpperCase() + k.slice(1);
+AIM_ARROW_KINDS.forEach(([k]) => { UX_DEF[aimKey('wc', k)] = ''; });
+AIM_TILE_KINDS.forEach(([k]) => { UX_DEF[aimKey('tc', k)] = ''; });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -13202,6 +13348,9 @@ const QP_PARTS = [
   ['types', 'Type badges', '> .hrlg-qp-types'],
   ['hp', 'HP bar', '> .hrlg-qvitals > .hrlg-qv-row:has(> .hrlg-thp:not(.mp))'],
   ['mp', 'MP bar', '> .hrlg-qvitals > .hrlg-qv-row:has(> .hrlg-thp.mp)'],
+  /* mondo 2026-10-18: "the unit info panel needs to have the unit's status effect badges and debuffs/buffs as sections" */
+  ['status', 'Status effects', '> .hrlg-qvitals > .hrlg-qp-status'],
+  ['buffs', 'Buffs + debuffs', '> .hrlg-qvitals > .hrlg-qp-buffs'],
   ['stats', 'Stats', '> .hrlg-qstats'],
   ['elem', 'Element box', '> .hrlg-qelem'],
 ];
@@ -13219,13 +13368,24 @@ function qpParts(X) {
 function qpPartsOf(X) { const P = X.qParts; return P && typeof P === 'object' && !Array.isArray(P) ? P : {}; }
 /* a part with no spot of its own yet (card 560 × 210) */
 function qpDefSpot(id) {
-  const D = { port: [0, 0, 108, 210], tab: [116, 6, 430, 28], types: [116, 38, 220, 22], hp: [116, 66, 220, 16], mp: [116, 88, 220, 14], stats: [350, 40, 200, 116], elem: [116, 160, 430, 44] };
+  const D = { port: [0, 0, 108, 210], tab: [116, 6, 430, 28], types: [116, 38, 220, 22], hp: [116, 66, 220, 16], mp: [116, 88, 220, 14],
+    status: [116, 108, 226, 20], buffs: [116, 132, 226, 20], stats: [350, 40, 200, 116], elem: [116, 160, 430, 44] };
   if (D[id]) return { x: D[id][0], y: D[id][1], w: D[id][2], h: D[id][3] };
   if (id === 'panel') return { x: 0, y: 0, w: 560, h: 210 };
   const i = Math.max(0, QP_STAT_IDS.indexOf(id.slice(3)));
   return { x: 350 + (i % 3) * 68, y: 40 + Math.floor(i / 3) * 26, w: 64, h: 22 };
 }
-function qpSpot(X, id) { const q = qpPartsOf(X)[id]; return q && isFinite(+q.x) && isFinite(+q.y) && +q.w > 0 ? q : Object.assign({}, id === 'panel' ? qpPanelSpot(X) : qpDefSpot(id), q || {}); }
+function qpSpot(X, id) { const q = qpPartsOf(X)[id]; return q && isFinite(+q.x) && isFinite(+q.y) && +q.w > 0 ? q : Object.assign({}, id === 'panel' ? qpPanelSpot(X) : qpUnderMp(X, id) || qpDefSpot(id), q || {}); }
+/* the status effects + buffs rows with no spot of their own yet (a card made free before they existed): under the MP
+   bar wherever it was put, the buffs under the status effects */
+function qpUnderMp(X, id) {
+  if (id !== 'status' && id !== 'buffs') return null;
+  const P = qpPartsOf(X), m = P.mp;
+  if (!m || !(+m.w > 0) || !isFinite(+m.y)) return null;
+  const st = id === 'buffs' && P.status && +P.status.w > 0 ? P.status : null;
+  if (st) return { x: +st.x, y: +st.y + +st.h + 4, w: +st.w, h: 20 };
+  return { x: +m.x, y: +m.y + +m.h + 4 + (id === 'buffs' ? 24 : 0), w: Math.max(120, +m.w), h: 20 };
+}
 /* the card panel with no spot of its own: the whole card, or (the portrait's background set to None, the portrait at the
    card's left edge) from the portrait's right edge on, so nothing sits behind the sprite (mondo 2026-10-18: "I just want
    the sprite with no background. there is still a dark panel behind it") */
@@ -13278,7 +13438,13 @@ function qpFreeCss(X, QP) {
     if (qpEach(X)) css += `${QP} > .hrlg-qstats { display: contents !important; }\n`;
     qpParts(X).forEach(p => {
       const q = qpSpot(X, p.id);
-      css += `${QP} ${p.sel} { position: absolute !important; left: ${Math.round(num(q.x, -2000, 4000, 0))}px !important; top: ${Math.round(num(q.y, -2000, 4000, 0))}px !important; width: ${Math.round(num(q.w, 4, 2000, 60))}px !important; height: ${Math.round(num(q.h, 4, 2000, 20))}px !important; min-width: 0 !important; min-height: 0 !important; max-width: none !important; margin: 0 !important; box-sizing: border-box !important; grid-area: auto !important; align-self: auto !important; justify-self: auto !important; transform: none; }\n`;
+      /* the badge rows grow down with their badges, the stats grow to fit their text (bigger names, numbers, grades):
+         the set size is the least they take, so nothing spills over the next stat or out of its row */
+      const hh = Math.round(num(q.h, 4, 2000, 20)), ww = Math.round(num(q.w, 4, 2000, 60)), grow = p.id === 'status' || p.id === 'buffs', fit = p.id === 'stats' || !!p.stat;
+      const size = grow ? `width: ${ww}px !important; min-width: 0 !important; height: auto !important; min-height: ${hh}px !important; align-content: flex-start !important;`
+        : fit ? `width: max-content !important; min-width: ${ww}px !important; height: auto !important; min-height: ${hh}px !important;`
+        : `width: ${ww}px !important; min-width: 0 !important; height: ${hh}px !important; min-height: 0 !important;`;
+      css += `${QP} ${p.sel} { position: absolute !important; left: ${Math.round(num(q.x, -2000, 4000, 0))}px !important; top: ${Math.round(num(q.y, -2000, 4000, 0))}px !important; ${size} max-width: none !important; margin: 0 !important; box-sizing: border-box !important; grid-area: auto !important; align-self: auto !important; justify-self: auto !important; transform: none; }\n`;
     });
   }
   /* every part's own background + hide (free or grid) */
@@ -13321,8 +13487,64 @@ function qpSet(id, k, v) {
   const P = JSON.parse(JSON.stringify(qpPartsOf(uxOf())));
   const q = P[id] || (P[id] = {});
   if (k === 'x' || k === 'y' || k === 'w' || k === 'h') { const sp = qpSpot(uxOf(), id); ['x', 'y', 'w', 'h'].forEach(j => { if (q[j] == null) q[j] = Math.round(+sp[j]); }); }
-  q[k] = v;
+  if (k.indexOf('.') > 0) { if (k.indexOf('sk.') === 0 && (!q.sk || typeof q.sk !== 'object')) q.sk = {}; setPath(q, k, v); }
+  else q[k] = v;
   db.ux.qParts = P; qpTidy(); uxTidy(); touchLayout();
+  if (k.indexOf('sk.') === 0) scheduleApply();   // a part's own skin is baked in the theme sheet (apply), not the layout one
+}
+/* A PART'S OWN SKIN (pass 20, mondo 2026-10-18: "for the backgrounds i need the same panel options as the main ui editor
+   that has the different shapes like hex and slanted and diamond and circle and everything"): db.ux.qParts[id].sk holds
+   only what was changed; the rest is a Panel skin in the battle theme's colours. Baked like a theme role's skin. */
+function qpBlankSkin() {
+  const S = UIM_SURFACES.find(x => x.id === 'battle'), id = S ? effectiveId(S) : globalId();
+  const T = themeById(id === 'original' ? globalId() : id) || themeById('crystal');
+  return blankSkin(T && !T.builtin && T.colors ? T.colors : colorsFromTokens(T && T.tokens ? T.tokens : HUD_THEME_TOKENS.crystal), 'panel');
+}
+function qpSkinOf(q) {
+  const b = qpBlankSkin(), s = q && q.sk && typeof q.sk === 'object' ? q.sk : null;
+  if (!s) return b;
+  const o = Object.assign({}, b, s);
+  ['fill', 'material', 'outline', 'inner', 'bevel', 'glow', 'shadow'].forEach(k => { o[k] = Object.assign({}, b[k], s[k] && typeof s[k] === 'object' ? s[k] : {}); });
+  return o;
+}
+/* the sprite inside a skinned portrait follows a whole shape's outline (a circle, a diamond, a hex, a torn card, the
+   cut corners) instead of poking out of it; w / h = the portrait's size, for the hex's corner */
+function qpShapeClip(s, w, h) {
+  const z = Math.max(0, +s.size || 0), k = Math.min(1, z / 20), pc = v => Math.round(v * 10) / 10 + '%';
+  switch (s.shape) {
+    case 'circle': return 'ellipse(50% 50% at 50% 50%)';
+    case 'diamond': return 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
+    case 'hex': { const d = Math.max(1, Math.round(Math.min(h / 2, w / 4))); return `polygon(${d}px 0, calc(100% - ${d}px) 0, 100% 50%, calc(100% - ${d}px) 100%, ${d}px 100%, 0 50%)`; }
+    case 'shard': return `polygon(${pc(8 * k)} ${pc(16 * k)}, 100% 0, ${pc(100 - 5 * k)} ${pc(100 - 10 * k)}, 0 100%)`;
+    case 'bevel': return `polygon(${z}px 0, calc(100% - ${z}px) 0, 100% ${z}px, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, ${z}px 100%, 0 calc(100% - ${z}px), 0 ${z}px)`;
+    case 'notch': return `polygon(${z}px 0, 100% 0, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, 0 100%, 0 ${z}px)`;
+    case 'round': case 'pill': case 'tab': case 'scoop': case 'pixel': return `inset(0 round ${z}px)`;
+    default: return '';
+  }
+}
+/* every part's own skin (in the theme sheet, so a drag never rebakes it); over the part's background, the theme's skin
+   on the card panel and the Layout look */
+function qpSkinCss() {
+  let css = '', pending = false;
+  const X = uxOf(), P = qpPartsOf(X), QK = ':root:root:not(#qp-k):not(#qp-k):not(#qp-k):not(#qp-k):not(#qp-k) .hrlg-panel.quick > .hrlg-thead.qp';
+  const ids = qpParts(X).concat(qpEach(X) ? [] : QP_STATS.map(([k, l]) => ({ id: 'st-' + k, sel: qpStatSel(k) })));
+  ids.forEach(p => {
+    const q = P[p.id]; if (!q || !q.sk || !q.sk.on) return;
+    const s = qpSkinOf(q);
+    let bi = '';
+    if (s.slice) bi = sliceCss(db.slices.find(x => x.id === s.slice));
+    else { const b = bakeSkin(s); if (b === null) { pending = true; return; } bi = b.css; }
+    if (!bi || bi === 'none') return;
+    const px = _pixelCss.has(bi);
+    css += `${QK} ${p.sel} { border: 0 solid transparent !important; border-radius: 0 !important; border-image: ${skinVar(bi)} !important; background: none !important; box-shadow: none !important;${px ? ' image-rendering: pixelated !important;' : ''} }\n`;
+    if (px) css += `${QK} ${p.sel} > * { image-rendering: auto !important; }\n`;
+    if (p.id === 'port') {
+      const sp = qpFree(X) ? qpSpot(X, 'port') : { w: +X.qPort || 108, h: 210 }, cp = s.slice ? '' : qpShapeClip(s, +sp.w || 108, +sp.h || 210);
+      css += `${QK} > .hrlg-qp-port { overflow: visible !important; }\n${QK} > .hrlg-qp-port::after { display: none !important; }\n`;
+      if (cp) css += `${QK} > .hrlg-qp-port > .hrlg-qp-img { clip-path: ${cp}; }\n`;
+    }
+  });
+  return { css, pending };
 }
 function qpTidy() {
   const X = db.ux; if (!X || !X.qParts) return;
@@ -13347,6 +13569,21 @@ function uxTidy() {
   Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
 }
 const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k[0] === pre);
+/* the arrow + tile looks the renderer reads, each re-published only when it changes */
+let _aimSentA = '', _aimSentT = '';
+function aimSignal() {
+  const X = uxOf(), ac = {}, tc = {};
+  AIM_ARROW_KINDS.forEach(([k]) => { const v = X[aimKey('wc', k)]; if (v) ac[k] = v; });
+  AIM_TILE_KINDS.forEach(([k]) => { const v = X[aimKey('tc', k)]; if (v) tc[k] = v; });
+  const A = { shaft: X.wShaft, thick: +X.wThick, glow: +X.wGlow, glowW: +X.wGlowW, core: +X.wCore, bright: +X.wBright, opacity: +X.wOpacity,
+    pulse: +X.wPulse, pulseSpd: +X.wPulseSpd, head: X.wHead, headLen: +X.wHeadLen, headW: +X.wHeadW, dots: !!X.wDots, dotShape: X.wDotShape,
+    dotSize: +X.wDotSize, dotCount: +X.wDotCount, dotSpd: +X.wDotSpd, dotBright: +X.wDotBright, dotCol: X.wDotCol || '', cols: ac };
+  const T = { line: +X.tLine, edge: +X.tEdge, halo: +X.tHalo, hot: +X.tHot, lineCol: X.tLineCol || '', size: +X.tSize, round: +X.tRound, fill: +X.tFill,
+    bright: +X.tBright, opacity: +X.tOpacity, pulse: +X.tPulse, speed: +X.tSpeed, cols: tc };
+  const ka = JSON.stringify(A), kt = JSON.stringify(T);
+  if (ka !== _aimSentA) { _aimSentA = ka; window._ewArrowLook = A; window._ewArrowLookV = (window._ewArrowLookV || 0) + 1; }
+  if (kt !== _aimSentT) { _aimSentT = kt; window._ewTileLook = T; window._ewTileLookV = (window._ewTileLookV || 0) + 1; }
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -13425,6 +13662,15 @@ function uxCss() {
      panel does nothing ... need it to change where the top button is": the pinned spot's measured room won over it);
      every other list keeps it as its tallest size before it scrolls */
   if (chg('qListH')) { const lh = n('qListH', 60, 1000); css += `${SUB}:not(.quick) .hrlg-list { max-height: ${lh}px !important; }\n${HI}.hrlg-panels { --qp-list-h: ${lh}px; }\n${SUB}.quick > .hrlg-list { height: ${lh}px !important; max-height: ${lh}px !important; }\n`; }
+  /* SHORTEST + TALLEST (2026-10-18, mondo: "sometimes the list is long and it needs to be higher to fit more stuff, but
+     other times the list is short ... never go below a certain height and never go past a certain height"): either one
+     set = the quick list sizes to its rows between them (over the fixed Height here and the piece's own Height), its top
+     still right under the card, so only its bottom end moves and the card never does. Both stay inside the room under the
+     card (to the bottom of the command menu, 100% of the quick panel), so no row ends up off the screen; 0 = no limit */
+  if (+X.qListMin > 0 || +X.qListMax > 0) {
+    const mn = +X.qListMin > 0 ? n('qListMin', 0, 1000) : 0, mx = +X.qListMax > 0 ? n('qListMax', 20, 1000) : 0;
+    css += `:root:root:not(#ew-lh):not(#ew-lh):not(#ew-lh):not(#ew-lh) .hrlg-panel.quick > .hrlg-list { height: auto !important; min-height: ${mn ? `min(${mn}px, 100%)` : '0'} !important; max-height: ${mx ? `min(${Math.max(mn, mx)}px, 100%)` : '100%'} !important; flex: 0 1 auto !important; overflow-y: auto !important; }\n`;
+  }
   if (chg('qRowH')) css += `${SUB} .hrlg-blade:not(.trow) { height: ${n('qRowH', 26, 80)}px !important; }\n`;
   if (chg('qRowFont')) css += `${SUB} .hrlg-blabel { font-size: ${n('qRowFont', 10, 28)}px !important; }\n`;
   if (X.qShape === 'tall') {   // the old column (as wide as a default list, on its own like the wide card), the small portrait in the name row
@@ -13464,6 +13710,26 @@ function uxCss() {
   if (X.qStatLook === 'bar') css += `${QP} .hrlg-qstat .ew-grade { display: none !important; }\n${QP} .hrlg-qstat-bar { display: block !important; }\n`;
   else if (X.qStatLook === 'both') css += `${QP} .hrlg-qstat-bar { display: block !important; }\n`;
   else if (X.qStatLook === 'number') css += `${QP} .hrlg-qstat .ew-grade { display: none !important; }\n`;
+  if (!X.qStatNum) css += `${QP} .hrlg-qstat-val { display: none !important; }\n`;
+  /* the stat words keep their column: the 34 px slot grows with the letters */
+  if (chg('qStatLblSize')) { const z = n('qStatLblSize', 6, 32), w = Math.round(34 * z / 9); css += `${QP} .hrlg-qstat-lbl { font-size: ${z}px !important; width: auto !important; min-width: ${w}px !important; flex: none !important; white-space: nowrap !important; }\n`; }
+  if (chg('qStatNumSize')) css += `${QP} .hrlg-qstat-val { font-size: ${n('qStatNumSize', 6, 40)}px !important; }\n`;
+  /* the grade node itself grows (its ring, face and letter), not only the letter */
+  if (chg('qGradeSize')) { const g = n('qGradeSize', 8, 60); css += `${QP} .hrlg-qstat .ew-grade.sm { --gsz: ${g}px !important; }\n${QP} .hrlg-qstat .ew-grade.sm i { font-size: ${Math.round(g * 5.6) / 10}px !important; }\n`; }
+  if (chg('qChipSize')) { const c = n('qChipSize', 6, 28); css += `${QP} .hrlg-qp-status > .hrlg-schip, ${QP} .hrlg-qp-buffs > .hrlg-schip, ${QP} .hrlg-qstat-stg { font-size: ${c}px !important; }\n`; }
+  /* where a buff / debuff whose stat is on the card shows: beside the stat (the game's), in the Buffs + debuffs part, or
+     both; a stat that is hidden (or the stats taken off) always sends its buffs to the part */
+  {
+    const P = qpPartsOf(X), off = !X.qStats || (P.stats && P.stats.hide && !qpEach(X));
+    const B = `${QP} .hrlg-qp-buffs`;
+    if (X.qBuffAt === 'part' || X.qBuffAt === 'both' || off) css += `${B} > [data-st] { display: inline-flex !important; }\n${B}:not(:empty) { display: flex !important; }\n`;
+    else {
+      const hid = String(X.qStatHide || '').split(',').filter(k => QP_STAT_IDS.indexOf(k) >= 0);
+      if (qpEach(X)) QP_STAT_IDS.forEach(k => { if (P['st-' + k] && P['st-' + k].hide && hid.indexOf(k) < 0) hid.push(k); });
+      hid.forEach(k => { css += `${B} > [data-st="${k}"] { display: inline-flex !important; }\n${B}:has(> [data-st="${k}"]) { display: flex !important; }\n`; });
+    }
+    if (X.qBuffAt === 'part' || off) css += `${QP} .hrlg-qstat-stg { display: none !important; }\n`;
+  }
   if (chg('qStatBarW')) css += `${HI}.hrlg-panels { --qp-statbar: ${n('qStatBarW', 16, 140)}px; }\n`;
   if (chg('qElemSize')) css += `${QP} > .hrlg-qelem { zoom: ${n('qElemSize', 0.5, 1.6)}; }\n`;
   {
@@ -13560,6 +13826,80 @@ function ringDetail() {
   h += `<div class="uim-note">When the health rings are on (Settings), the HP / MP meters take the ring's size and thickness too.</div>` + xReset('r', 'Reset the rings');
   return h;
 }
+/* ── THE ARROWS + TILES VIEW (live mode 'aim'): the preview arrows and the tile highlights; a small board of the game's
+   own (ThreeRenderer.lookPreview, its own context on the dock's canvas) shows every change at once, in a battle or out
+   of one, and in a battle the real arrows + tiles change with it (the view leaves the board clickable) ── */
+const ARROW_LOOKS = [['game', 'As the game', {}],
+  ['fine', 'Fine', { wThick: 0.45, wGlow: 0.7, wGlowW: 1.5, wCore: 0.6, wHeadLen: 0.8, wHeadW: 0.75, wDotShape: 'streak', wDotSize: 0.6, wDotSpd: 1.5, wPulse: 0.4 }],
+  ['laser', 'Laser', { wThick: 0.3, wGlow: 1.8, wGlowW: 2.4, wCore: 1, wBright: 1.2, wHeadLen: 0.7, wHeadW: 0.7, wDotShape: 'streak', wDotSize: 0.7, wDotCount: 1.5, wDotSpd: 2, wPulse: 0.3 }],
+  ['dashed', 'Dashed', { wShaft: 'dashed', wThick: 0.6, wGlow: 0.5, wDots: false, wHeadLen: 0.85 }],
+  ['comet', 'Comet', { wShaft: 'none', wDotCount: 2.5, wDotSize: 0.8, wDotSpd: 1.2, wGlow: 1.2, wHeadLen: 0.9 }]];
+const TILE_LOOKS = [['game', 'As the game', {}],
+  ['clean', 'Clean', { tLine: 0.7, tHalo: 0.35, tHot: 0.6, tFill: 0.75, tPulse: 0 }],
+  ['neon', 'Neon', { tLine: 1.3, tHalo: 1.8, tHot: 1.8, tFill: 0.55, tBright: 1.15 }],
+  ['soft', 'Soft', { tRound: 0.16, tSize: 0.95, tLine: 0.6, tHalo: 0.6, tFill: 1.1 }],
+  ['bold', 'Bold', { tLine: 1.6, tEdge: 1.4, tFill: 1.3, tOpacity: 1.1 }]];
+function dockAimBody() {
+  return dockTop() + `<div class="uim-note">The arrows and tile highlights a battle shows before you act. The board below changes as you drag; in a battle the real ones change too (hover a tile, a unit or a spell while this is open).</div>
+  <div class="uim-aimprev"><canvas data-aimcv="1"></canvas><div class="uim-aimkey"></div></div>
+  <div class="uim-dk-detail"></div>`;
+}
+/* the little board's key: what each arrow + tile on it is, in the colours now */
+let _aimKeySeen = '';
+function aimKeyRefresh(force) {
+  const A = UI.live, el = A && A.dock.querySelector('.uim-aimkey'); if (!el) return;
+  const X = uxOf(), sig = (window._ewArrowLookV || 0) + ':' + (window._ewTileLookV || 0);
+  if (!force && sig === _aimKeySeen && el.childNodes.length) return;
+  _aimKeySeen = sig;
+  const ac = k => X[aimKey('wc', k)] || (AIM_ARROW_KINDS.find(x => x[0] === k) || [])[2];
+  const tcol = k => X[aimKey('tc', k)] || (AIM_TILE_KINDS.find(x => x[0] === k) || [])[2];
+  const dot = (c, l, tile) => `<span><i class="${tile ? 'tl' : 'ar'}" style="--c:${esc(c)}"></i>${esc(l)}</span>`;
+  el.innerHTML = dot(ac('move'), 'Walk') + dot(ac('hit'), 'Strike') + dot(ac('heal'), 'Heal') + dot(ac('force'), 'Shove')
+    + dot(tcol('move'), 'Walk tiles', 1) + dot(tcol('jump'), 'Jump', 1) + dot(tcol('strike'), 'Strike from', 1) + dot(tcol('reach'), 'Reach', 1)
+    + dot(tcol('hit'), 'Hit', 1) + dot(tcol('glowFoe'), 'About to hit', 1);
+}
+function aimPrevMount() {
+  const A = UI.live, cv = A && A.dock.querySelector('canvas[data-aimcv]'); if (!cv) return;
+  let ok = null;
+  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.lookPreview ? ThreeRenderer.lookPreview(cv) : null; } catch (e) { ok = null; }
+  if (!ok) cv.parentElement.insertAdjacentHTML('afterbegin', '<div class="uim-note">The little board could not start here; the real board in a battle still shows every change.</div>');
+  aimKeyRefresh(true);
+}
+function aimDetail() {
+  const X = uxOf();
+  const looks = (pre, L) => `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${L.map(([v, l]) => `<button class="uim-btn" data-dk="aimlook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  let h = `<div class="uim-h">Arrows</div>` + looks('w', ARROW_LOOKS);
+  h += sec('wshape', 'Arrow shape', xp(fSeg('Shaft', 'wShaft', [['solid', 'Solid'], ['dashed', 'Dashed'], ['none', 'None', 'The dots and the head alone']], X.wShaft)
+    + fRange('Thickness', 'wThick', 0.1, 3, 0.05, +X.wThick, '1 = as the game; lower = thinner')
+    + fSeg('Head', 'wHead', [['cone', 'Cone'], ['none', 'None']], X.wHead)
+    + fRange('Head length', 'wHeadLen', 0.2, 3, 0.05, +X.wHeadLen) + fRange('Head width', 'wHeadW', 0.2, 3, 0.05, +X.wHeadW)
+    + fRange('Opacity', 'wOpacity', 0.05, 1, 0.05, +X.wOpacity)));
+  h += sec('wlight', 'Arrow light', xp(fRange('Brightness', 'wBright', 0.2, 2.5, 0.05, +X.wBright)
+    + fRange('Glow', 'wGlow', 0, 4, 0.05, +X.wGlow, 'The soft light around the shaft and the head (0 = none)') + fRange('Glow width', 'wGlowW', 0.3, 4, 0.05, +X.wGlowW)
+    + fRange('Hot core', 'wCore', 0, 1, 0.05, +X.wCore, 'A thin white-hot line inside the shaft')
+    + fRange('Pulse', 'wPulse', 0, 2.5, 0.05, +X.wPulse, 'How much the arrow breathes (0 = steady)') + fRange('Pulse speed', 'wPulseSpd', 0, 6, 0.05, +X.wPulseSpd)));
+  h += sec('wdots', 'Travelling dots', xCheck('Dots', 'wDots', X.wDots) + xp(fSeg('Shape', 'wDotShape', [['ball', 'Ball'], ['diamond', 'Diamond'], ['streak', 'Streak'], ['ring', 'Ring']], X.wDotShape)
+    + fRange('Size', 'wDotSize', 0.1, 4, 0.05, +X.wDotSize) + fRange('How many', 'wDotCount', 0.2, 4, 0.05, +X.wDotCount)
+    + fRange('Speed', 'wDotSpd', 0, 6, 0.05, +X.wDotSpd, '0 = they stand still') + fRange('Brightness', 'wDotBright', 0, 2.5, 0.05, +X.wDotBright)
+    + fColorOpt('Colour', 'wDotCol', X.wDotCol, '#ffffff', false, 'Unticked = the arrow\'s colour')));
+  h += sec('wcols', 'Arrow colours', xp(AIM_ARROW_KINDS.map(([k, l, d, tip]) => fColorOpt(l, aimKey('wc', k), X[aimKey('wc', k)], d, false, tip)).join(''))
+    + '<div class="uim-note">Ticked = its own colour for that action; unticked = the game\'s.</div>');
+  h += xReset('w', 'Reset the arrows');
+  h += `<div class="uim-h">Tile highlights</div>` + looks('t', TILE_LOOKS);
+  h += sec('tline', 'Outline', xp(fRange('Width', 'tLine', 0, 4, 0.05, +X.tLine, '0 = no outline') + fRange('Strength', 'tEdge', 0, 3, 0.05, +X.tEdge)
+    + fRange('Glow', 'tHalo', 0, 4, 0.05, +X.tHalo, 'The soft light just inside the outline') + fRange('White-hot edge', 'tHot', 0, 3, 0.05, +X.tHot)
+    + fColorOpt('Colour', 'tLineCol', X.tLineCol, '#ffffff', false, 'Unticked = each tile\'s own colour')));
+  h += sec('tfill', 'Fill + light', xp(fRange('Fill', 'tFill', 0, 3, 0.05, +X.tFill, 'How solid the inside of a tile is (0 = the outline alone)')
+    + fRange('Brightness', 'tBright', 0.2, 2.5, 0.05, +X.tBright) + fRange('Opacity', 'tOpacity', 0.05, 1.5, 0.05, +X.tOpacity)
+    + fRange('Pulse', 'tPulse', 0, 8, 0.1, +X.tPulse, 'How much the tiles breathe (0 = steady)') + fRange('Pulse speed', 'tSpeed', 0, 6, 0.05, +X.tSpeed)));
+  h += sec('tshape', 'Shape', xp(fRange('Size', 'tSize', 0.4, 1.08, 0.01, +X.tSize, '1 = as the game; smaller leaves a gap between the tiles')
+    + fRange('Rounded corners', 'tRound', 0, 0.5, 0.01, +X.tRound)));
+  [['moves', 'Colours: moving'], ['act', 'Colours: attacks + spells'], ['other', 'Colours: other'], ['glow', 'Colours: spell glow on the ground']].forEach(([g, t]) => {
+    h += sec('tc' + g, t, xp(AIM_TILE_KINDS.filter(x => x[3] === g).map(([k, l, d, , tip]) => fColorOpt(l, aimKey('tc', k), X[aimKey('tc', k)], d, false, tip)).join('')));
+  });
+  h += '<div class="uim-note">Every number is on top of the game\'s own look (1 = as the game), so a reach still reads quieter than a hit.</div>' + xReset('t', 'Reset the tile highlights');
+  return h;
+}
 function platesDetail() {
   const X = uxOf();
   let h = `<div class="uim-note">The name plates over the units. Their bar colours, ends and frame come from the bar look below.</div>`;
@@ -13597,7 +13937,7 @@ const qpx = (id, html) => html.replace(/data-path="/g, `data-qppath="${id}.`).re
 function qpPartForm(X) {
   const parts = qpParts(X), free = qpFree(X), P = qpPartsOf(X);
   if (!parts.some(p => p.id === UI.qpart)) UI.qpart = '';
-  let h = '<div class="uim-dk-qparts">' + parts.map(p => `<div class="uim-dk-row qprow${UI.qpart === p.id ? ' on' : ''}" data-qprow="${p.id}"><input type="checkbox" data-qphide="${p.id}"${P[p.id] && P[p.id].hide ? '' : ' checked'} title="Show this part"><span>${esc(p.label)}</span><em>${P[p.id] && (P[p.id].look || P[p.id].bg || P[p.id].edge) ? 'background' : ''}</em></div>`).join('') + '</div>';
+  let h = '<div class="uim-dk-qparts">' + parts.map(p => `<div class="uim-dk-row qprow${UI.qpart === p.id ? ' on' : ''}" data-qprow="${p.id}"><input type="checkbox" data-qphide="${p.id}"${P[p.id] && P[p.id].hide ? '' : ' checked'} title="Show this part"><span>${esc(p.label)}</span><em>${P[p.id] && P[p.id].sk && P[p.id].sk.on ? 'shape' : P[p.id] && (P[p.id].look || P[p.id].bg || P[p.id].edge) ? 'background' : ''}</em></div>`).join('') + '</div>';
   const p = parts.find(x => x.id === UI.qpart);
   if (!p) return h + `<div class="uim-note">Click a part (here, or its green box on the card) to ${free ? 'place it and ' : ''}give it a background.${free ? '' : ' Drag a part\'s box on the card to place it freely.'}</div>`;
   const q = P[p.id] || {}, sp = qpSpot(X, p.id), v = (k, d) => (q[k] == null || q[k] === '' ? d : q[k]);
@@ -13607,12 +13947,41 @@ function qpPartForm(X) {
     + fColorOpt('Fill', 'bg', v('bg', ''), 'rgba(8,10,20,0.8)', true) + fColorOpt('Frame', 'edge', v('edge', ''), '#6fb4ff', true)
     + (q.edge ? fRange('Frame width', 'edgeW', 0, 16, 1, +v('edgeW', 1)) : '')
     + fRange('Corners (−1 = as the game)', 'rad', -1, 60, 1, +v('rad', -1)) + fRange('Inner space (−1 = as the game)', 'pad', -1, 40, 1, +v('pad', -1)));
+  /* the main editor's skin form (shape, fill, texture, frame, light + shadow, retro) for this part alone */
+  const sk = qpSkinOf(q);
+  f += sec('qpsk', 'Shape + skin', qpx(p.id, skinForm(null, 'panel', true, { skin: sk, path: 'sk' })), q.sk && q.sk.on ? (SHAPES.find(x => x[0] === sk.shape) || [0, ''])[1] : '');
   return h + `<div class="uim-dk-sel"><b>${esc(p.label)}</b>${f}<div class="uim-btns"><button class="uim-btn" data-dk="qpartreset" data-val="${p.id}">Reset this part</button></div></div>`;
 }
 function qpStatsForm(X) {
   const hid = String(X.qStatHide || '').split(','), o = qpStatOrder(X);
   return '<div class="uim-dk-qstats">' + o.map((k, i) => `<div class="uim-dk-qstat"><input type="checkbox" data-qshide="${k}"${hid.indexOf(k) >= 0 ? '' : ' checked'} title="Show this stat"><span>${esc((QP_STATS.find(s => s[0] === k) || [k, k])[1])}</span><button class="uim-btn" data-dk="qsmove" data-val="${k}:-1"${i ? '' : ' disabled'} title="Earlier">▲</button><button class="uim-btn" data-dk="qsmove" data-val="${k}:1"${i < o.length - 1 ? '' : ' disabled'} title="Later">▼</button></div>`).join('') + '</div>'
     + `<div class="uim-note">${qpEach(X) ? 'Each stat is its own part: drag them on the card. ▲▼ swaps two stats\' places.' : 'The stats fill their columns in this order.'}</div>`;
+}
+/* what each stat shows: its letter grade, its bar, its number, each on or off (qStatLook holds the grade + bar pair:
+   grade | bar | both | number = neither; qStatNum the number) */
+function qpStatShow(X) {
+  const L = X.qStatLook, on = { grade: L === 'grade' || L === 'both', bar: L === 'bar' || L === 'both' };
+  const C = (lbl, attr, v, tip) => `<label class="uim-btn" title="${esc(tip)}"><input type="checkbox" ${attr}${v ? ' checked' : ''} style="vertical-align:-2px"> ${lbl}</label>`;
+  return `<div class="uim-f"><label>Each stat shows</label><div style="flex-wrap:wrap">`
+    + C('Letter grade', 'data-qslook="grade"', on.grade, 'The grade circle beside each stat')
+    + C('Bar', 'data-qslook="bar"', on.bar, 'A bar of the stat\'s share of its ruler, in the grade\'s colour')
+    + C('Number', 'data-xpath="qStatNum" data-bool="1"', X.qStatNum, 'The stat\'s value')
+    + '</div></div>';
+}
+/* the stat words, numbers and letter grades: their sizes; the status + buff badges: where they show, their size */
+/* the quick action list's least + most height (fits its rows between them); the same two in Action lists and in the
+   Quick action list piece */
+function qlistFit(X) {
+  return fRange('Shortest', 'qListMin', 0, 1000, 10, +X.qListMin || 0, 'The quick action list is never shorter than this (0 = no least height)')
+    + fRange('Tallest', 'qListMax', 0, 1000, 10, +X.qListMax || 0, 'The quick action list is never taller than this; more rows scroll (0 = down to the bottom of the command menu)')
+    + '<div class="uim-note">Shortest or Tallest set: the quick action list fits its rows between them. It hangs right under the unit info panel and grows down, so a long list only moves its bottom end; the panel never moves. Neither one runs past the bottom of the command menu. Both at 0 = a set Height decides (none set, the list fits its rows down to the bottom of the command menu).</div>';
+}
+function qpStatSizes(X) {
+  return fRange('Stat name size (ATK, DEF …)', 'qStatLblSize', 6, 32, 1, +X.qStatLblSize)
+    + fRange('Stat number size', 'qStatNumSize', 6, 40, 1, +X.qStatNumSize)
+    + fRange('Letter grade size', 'qGradeSize', 8, 60, 1, +X.qGradeSize, 'The whole grade circle and its letter')
+    + fSeg('Buffs + debuffs', 'qBuffAt', [['stat', 'Beside their stat', 'A buff or debuff of a stat on the card shows next to that stat (the others stay in the Buffs + debuffs part)'], ['part', 'In their own part', 'Every buff and debuff in the Buffs + debuffs part'], ['both', 'Both']], X.qBuffAt)
+    + fRange('Status + buff badge size', 'qChipSize', 6, 28, 1, +X.qChipSize);
 }
 function qpForm() {
   const X = uxOf(), wide = X.qShape === 'wide', port = wide && +X.qPort > 0, free = qpFree(X);
@@ -13648,8 +14017,8 @@ function qpForm() {
       + fColorOpt('Name colour (my team)', 'qNameAllyCol', X.qNameAllyCol, '#7df0a5', false, 'Unticked = the game\'s own')
       + fColorOpt('Name colour (enemy team)', 'qNameFoeCol', X.qNameFoeCol, '#ff8d97', false, 'Unticked = the game\'s own'))
       + (port || free ? '' : '<div class="uim-note">With the portrait size at 0, the bars and badges stay beside it.</div>'));
-    h += sec('qparts', 'Stats + elements', xp((free ? '' : fSeg('Stats', 'qStatsPos', [['beside', 'Beside the bars'], ['below', 'Under the bars']], X.qStatsPos))
-      + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
+    h += sec('qparts', 'Stats + elements', xp((free ? '' : fSeg('Stats', 'qStatsPos', [['beside', 'Beside the bars'], ['below', 'Under the bars']], X.qStatsPos)))
+      + qpStatShow(X) + xp(qpStatSizes(X)
       + (X.qStatLook === 'bar' || X.qStatLook === 'both' ? fRange('Bar length', 'qStatBarW', 16, 140, 2, +X.qStatBarW) : '')
       + (qpEach(X) ? '' : fRange('Stat columns', 'qCols', 1, 5, 1, +X.qCols))
       + fRange('Space between stat columns', 'qStatGap', 0, 60, 1, +X.qStatGap)
@@ -13667,8 +14036,8 @@ function qpForm() {
       + fRange('Stats column (0 = fit)', 'qColStats', 0, 700, 2, +X.qColStats)
       + fRange('Element box width (0 = fit)', 'qColElem', 0, 600, 2, +X.qColElem, 'The icons share this width evenly'))
       + '<div class="uim-note">The parts (portrait, name, bars, stats, element box) are laid out on a grid: the two spaces are the gaps between them. The parts that sit side by side each get their own column; 0 = as wide as what is in it.</div>');
-  } else h += sec('qparts', 'Stats + elements', xCheck('Stats', 'qStats', X.qStats) + xp(fSeg('Element box', 'qElem', [['below', 'Shown'], ['off', 'Hidden']], X.qElem === 'off' ? 'off' : 'below')
-    + fSeg('Stat look', 'qStatLook', [['grade', 'Letter grades'], ['bar', 'Bars'], ['both', 'Both'], ['number', 'Numbers only']], X.qStatLook)
+  } else h += sec('qparts', 'Stats + elements', xCheck('Stats', 'qStats', X.qStats) + qpStatShow(X) + xp(fSeg('Element box', 'qElem', [['below', 'Shown'], ['off', 'Hidden']], X.qElem === 'off' ? 'off' : 'below')
+    + qpStatSizes(X)
     + fSeg('Type badges', 'qTypesPos', [['bars', 'Shown'], ['off', 'Hidden']], X.qTypesPos === 'off' ? 'off' : 'bars')
     + fSeg('HP / MP numbers', 'qNumPos', [['right', 'Right of the bar'], ['left', 'Left of the bar'], ['above', 'Above it'], ['under', 'Under it'], ['on', 'On the bar'], ['off', 'Hidden']], X.qNumPos)
     + fRange('Space between HP and MP', 'qBarGap', 0, 40, 1, +X.qBarGap) + fRange('Bar thickness', 'qBarH', 3, 30, 1, +X.qBarH)
@@ -13683,8 +14052,8 @@ function qpForm() {
     + fSeg('Ends at', 'qConeTo', [['port', 'Portrait'], ['portcorner', 'Portrait corner'], ['card', 'Card edge'], ['corner', 'Card corner'], ['name', 'Name']], X.qConeTo)
     + fColorOpt('Colour', 'qConeCol', X.qConeCol, '#ff4a56', false, 'Unticked = the team colour') + fRange('Strength', 'qConeOp', 0, 1, 0.05, +X.qConeOp))
     + xCheck('Cone', 'qCone', X.qCone) + xCheck('Edge lines', 'qConeEdges', X.qConeEdges));
-  h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 60, 1000, 10, +X.qListH, 'The quick action list takes this height (it hangs under the unit info panel, so only its bottom end moves; the panel stays where it is, and the list never runs past the room below the panel); other lists scroll past it')
-    + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
+  h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 60, 1000, 10, +X.qListH, 'The quick action list takes this height (it hangs under the unit info panel, so only its bottom end moves; the panel stays where it is, and the list never runs past the room below the panel); other lists scroll past it. A Shortest or Tallest below wins over it.')
+    + qlistFit(X) + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
     + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names. Untouched, the quick actions stop under the card and a long list scrolls. The Quick action list piece moves, sizes and dresses the quick list on its own.</div>');
   return h + xReset('q', 'Reset the unit info panel');
 }
@@ -14083,6 +14452,8 @@ function surfaceCss(S, T, tid, gid) {
     if (+mo.rowTilt && mo.rowAlt) css += `${pre(bt.map(x => x + ':nth-child(even), :nth-child(even) > ' + x.trim().split(/\s+/).pop() + ':only-child').join(', '))} { rotate: ${-mo.rowTilt}deg !important; }\n`;
     if (sl && mo.rowUpright) css += `${pre(bt.map(x => x + ' > *').join(', '))} { transform: skewX(${sl}deg); }\n`;
     if (S.roles.buttonSel && (+mo.selTilt || +mo.selGrow !== 1)) css += `${preHi(S.roles.buttonSel)} { ${+mo.selTilt ? `rotate: ${+mo.selTilt}deg !important;` : ''} ${+mo.selGrow !== 1 ? `scale: ${+mo.selGrow} !important;` : ''} z-index: 2; }\n`;
+    /* the numbers on the screen's root, for the action lists to make room for them (hud.js _listRoom) */
+    css += `${pre(S.scope)} { --uim-sel-grow: ${+mo.selGrow || 1}; --uim-sel-tilt: ${+mo.selTilt || 0}; --uim-row-tilt: ${+mo.rowTilt || 0}; --uim-row-slant: ${sl}; }\n`;
   }
   if (mo && S.roles.panel && +mo.panelTilt) css += `${pre(S.roles.panel)} { rotate: ${+mo.panelTilt}deg !important; }\n`;
   // the text
@@ -14162,6 +14533,7 @@ function apply() {
   });
   if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
   { const r = pieceSkinCss(); css += r.css; pending = pending || r.pending; }
+  { const r = qpSkinCss(); css += r.css; pending = pending || r.pending; }
   let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
   css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css;
   let el = document.getElementById('ew-ui-maker');
@@ -14176,7 +14548,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -14426,6 +14798,12 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
 .uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
 .uim-arr-box.surf > span { background: #138aa3; }
+.uim-aimprev { position: sticky; top: -8px; z-index: 4; margin: 6px -10px 8px; padding: 6px 10px 4px; background: rgb(14,16,22); box-shadow: 0 7px 9px -7px rgba(0,0,0,0.85); }
+.uim-aimprev canvas { display: block; width: 100%; height: 178px; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
+.uim-aimkey { display: flex; flex-wrap: wrap; gap: 2px 9px; margin-top: 5px; font-size: 10px; color: #aab3c3; }
+.uim-aimkey span { display: inline-flex; align-items: center; gap: 4px; }
+.uim-aimkey i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); box-shadow: 0 0 4px var(--c); }
+.uim-aimkey i.tl { width: 9px; height: 9px; border-radius: 2px; background: transparent; border: 1.5px solid var(--c); box-shadow: inset 0 0 0 9px color-mix(in srgb, var(--c) 35%, transparent); }
 .uim-dock { position: fixed; z-index: 10061; width: 364px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
@@ -14714,12 +15092,16 @@ function markPreview() {
   const t = draftOf(curTheme());   // with no Hero skin the hero section wears the Panel one
   if (UI.role === 'panel' && !(t.skins && t.skins.hero && t.skins.hero.on)) pv.querySelectorAll('[data-r="hero"]').forEach(e => e.classList.add('uim-hl'));
 }
-function skinForm(t, role, inDock) {
-  const s = t.skins[role], P = `skins.${role}`;
-  const sel = role === 'buttonSel' || role === 'chipOn';
-  let h = `<div class="uim-f"><label>Custom skin</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : role === 'hero' ? 'Off: the hero section wears the Panel skin.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
-  if (role === 'hero' && !inDock) h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
-  if (!s.on) return h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
+/* o (optional) = { skin, path }: the same form for a skin kept anywhere else (a unit info card part's own skin,
+   db.ux.qParts[id].sk, mondo 2026-10-18: "for the backgrounds i need the same panel options as the main ui editor that
+   has the different shapes like hex and slanted and diamond and circle and everything"): no theme buttons then */
+function skinForm(t, role, inDock, o) {
+  o = o || {};
+  const own = !!o.skin, s = own ? o.skin : t.skins[role], P = own ? o.path : `skins.${role}`;
+  const sel = !own && (role === 'buttonSel' || role === 'chipOn');
+  let h = `<div class="uim-f"><label>${own ? 'Shaped skin' : 'Custom skin'}</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${own ? (s.on ? 'This part wears the skin below (over the background above).' : 'Off: the background above.') : s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : role === 'hero' ? 'Off: the hero section wears the Panel skin.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
+  if (role === 'hero' && !inDock && !own) h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
+  if (!s.on) return own ? h : h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
   h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
   if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
   const full = FULL_SHAPES[s.shape];
@@ -14757,6 +15139,7 @@ function skinForm(t, role, inDock) {
     + fSeg('Dither', `${P}.dither`, [['0', 'Off'], ['1', 'Light', '15-bit colour, like the PS1'], ['2', 'Strong', '12-bit colour, visible dots']], String(s.dither || 0))
     + '<div class="uim-note">Pixel size draws the skin with big square pixels (pair it with the Pixel shape). Dither breaks gradients into a fine dot pattern.</div>',
     [(+s.pixel > 1 ? s.pixel + '× pixels' : ''), (+s.dither ? 'dither' : '')].filter(Boolean).join(', '));
+  if (own) return h;
   h += `<div class="uim-btns"><button class="uim-btn" data-act="copyskin">Copy skin</button><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button><button class="uim-btn" data-act="skinall" title="Every other role gets this shape, frame and light (keeping its own colours)">Use on every role</button><button class="uim-btn" data-act="resetskin">Reset</button><button class="uim-btn" data-act="toslice">Save as a 9-slice</button></div>`;
   return h;
 }
@@ -14840,10 +15223,12 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove) and the tile highlights look, with a small board that shows every change at once']];
+/* the tabs that open on the real screen (the live dock) */
+const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim'];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
-  if (UI.tab === 'layout' || UI.tab === 'menus' || UI.tab === 'bars' || UI.tab === 'faces') UI.tab = UI.back || 'skins';
+  if (LIVE_MODES.indexOf(UI.tab) >= 0) UI.tab = UI.back || 'skins';
   let h = `<div class="uim-tabs">${TABS.map(([v, l, tip]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div>`;
   if (UI.tab === 'slices') return h + slicesForm();
   if (!editable(T)) h += `<div class="uim-ro"><b>${esc(T.label)}</b> is ${T.builtin ? 'a built-in theme' : 'a preset'}. Change anything below and it becomes your own copy; the original stays.</div>`;
@@ -15017,7 +15402,7 @@ function onClick(e, root) {
   const T = curTheme();
   if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; UI.draft = null; render(); return; }
   if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
-  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus' || b.dataset.tab === 'bars' || b.dataset.tab === 'faces') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
+  if (b.dataset.tab) { if (LIVE_MODES.indexOf(b.dataset.tab) >= 0) { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
   if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
   if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
   if (b.dataset.zoom) { UI.zoom = +b.dataset.zoom; render(); return; }
@@ -15294,13 +15679,15 @@ function qpBoxes() {
     const parts = qpParts(X);
     parts.forEach((p, i) => {
       const el = qpEl(head, p.sel), v = el && visEl(el);
-      if (!v && !(P[p.id] && P[p.id].hide)) return;
+      /* free: a part with nothing to show on this unit (no status effects, no MP) keeps its box at its spot */
+      if (!v && !(P[p.id] && P[p.id].hide) && !qpFree(X)) return;
       const key = 'qp:' + p.id; keep.add(key);
       const bx = boxEl(key); bx.dataset.qpart = p.id; bx.classList.add('part', 'qpart');
       let r = v ? v.r : null;
       if (!r) { const hr = head.getBoundingClientRect(), k = hr.width / head.offsetWidth || 1, sp = qpSpot(X, p.id); r = { left: hr.left + sp.x * k, top: hr.top + sp.y * k, width: sp.w * k, height: sp.h * k }; }
       placeBox(bx, r.left, r.top, r.width, r.height);
-      bx.style.zIndex = String(20010 + i + (p.stat ? 20 : 0));   // over the card's own box; a stat over the stats
+      /* the smaller box on top, so a part laid over a bigger one (a badge row over the element box) still takes the mouse */
+      bx.style.zIndex = String(20010 + (p.stat ? 400 : 0) + Math.max(0, 390 - Math.round(Math.sqrt(Math.max(1, r.width * r.height)))));
       bx.classList.toggle('on', UI.qpart === p.id); bx.classList.toggle('hid', !!(P[p.id] && P[p.id].hide));
       bx.firstChild.style.display = UI.qpart === p.id ? '' : 'none';
       setText(bx.firstChild, p.label + (P[p.id] && P[p.id].hide ? ' (hidden)' : ''));
@@ -15311,11 +15698,18 @@ function qpBoxes() {
   }
   Object.keys(A.boxes).forEach(k => { if (k.indexOf('qp:') === 0 && !keep.has(k)) A.boxes[k].style.display = 'none'; });
 }
+/* a part's spot with the size it really takes on the card now (the stats + badge rows grow past their set size to fit) */
+function qpLiveSpot(X, p) {
+  const sp = qpSpot(X, p.id), head = qpHead(), el = head && qpEl(head, p.sel);
+  if (!el || !el.offsetWidth) return sp;
+  const k = head.getBoundingClientRect().width / head.offsetWidth || 1, r = el.getBoundingClientRect();
+  return Object.assign({}, sp, { w: Math.max(+sp.w, Math.round(r.width / k)), h: Math.max(+sp.h, Math.round(r.height / k)) });
+}
 /* a part dragged past the card's right / bottom edge takes the card with it (the sliders can still shrink it after) */
 function qpGrow() {
   const X = uxOf(); if (!qpFree(X)) return;
   const P = qpPartsOf(X); let r = 0, b = 0;
-  qpParts(X).forEach(p => { if (P[p.id] && P[p.id].hide) return; const q = qpSpot(X, p.id); r = Math.max(r, +q.x + +q.w); b = Math.max(b, +q.y + +q.h); });
+  qpParts(X).forEach(p => { if (P[p.id] && P[p.id].hide) return; const q = qpLiveSpot(X, p); r = Math.max(r, +q.x + +q.w); b = Math.max(b, +q.y + +q.h); });
   if (r > (+X.qFreeW || 0)) db.ux.qFreeW = Math.min(1600, Math.round(r));
   if (b > (+X.qFreeH || 0)) db.ux.qFreeH = Math.min(1000, Math.round(b));
 }
@@ -15410,6 +15804,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
+    <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows and the tile highlights look">Arrows</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -15467,6 +15862,7 @@ function pieceDetail() {
   if (P.score) h += scoreForm();
   if (P.ap) h += apForm();
   if (P.qp) h += qpForm();
+  if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   h += lookForm(P, L) + wordsForm(P);
   return h + '</div>';
@@ -15916,8 +16312,9 @@ function faceBoxes() {
 
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
+  if (A.mode === 'aim') aimPrevMount();
 }
 function dockDetail() {
   const A = UI.live; if (!A) return;
@@ -15925,6 +16322,7 @@ function dockDetail() {
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
   else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
+  else if (A.mode === 'aim') d.innerHTML = aimDetail();
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -15970,6 +16368,7 @@ function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); a
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
+  if (A.mode === 'aim') return;   // no boxes to pick: the board below the panel is the game's own
   if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
@@ -16028,7 +16427,7 @@ function foldDock() {
 /* ── on / off ── */
 function liveOn(mode) {
   if (!UI.el) { window.openUiMaker(); if (!UI.el) return; }
-  if (UI.tab !== 'layout' && UI.tab !== 'menus' && UI.tab !== 'bars' && UI.tab !== 'faces') UI.back = UI.tab;
+  if (LIVE_MODES.indexOf(UI.tab) < 0) UI.back = UI.tab;
   if (UI.live) { if (UI.live.mode !== mode) liveMode(mode); return; }
   const ov = document.createElement('div'); ov.className = 'uim-arr';
   ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div><div class="uim-arr-catch"></div><div class="uim-arr-hi"><span></span></div>';
@@ -16053,7 +16452,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -16416,7 +16815,7 @@ function dockClick(e) {
   const qs = e.target.closest('button[data-qpset]');
   if (qs) {
     try { qs.blur(); } catch (er) {}
-    const [id, k] = qs.dataset.qpset.split('.');
+    const t = qs.dataset.qpset, i = t.indexOf('.'), id = t.slice(0, i), k = t.slice(i + 1);
     snapLayout(true); qpSet(id, k, qs.dataset.val); dockDetail(); return;
   }
   const qr = e.target.closest('[data-qprow]');
@@ -16450,7 +16849,7 @@ function dockClick(e) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
     const k = b.dataset.dk, v = b.dataset.val, P = pieceById(UI.piece);
-    if (k === 'layout' || k === 'menus' || k === 'bars' || k === 'faces') liveOn(k);
+    if (LIVE_MODES.indexOf(k) >= 0) liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
     else if (k === 'fold') foldDock();
@@ -16474,7 +16873,7 @@ function dockClick(e) {
     }
     else if (k === 'qpfit') {   // a card panel that follows the card's size doesn't count
       const X = uxOf(); let r = 0, bt = 0;
-      qpParts(X).forEach(p => { const q = qpPartsOf(X)[p.id]; if (q && q.hide) return; if (p.id === 'panel' && !(q && +q.w > 0)) return; const sp = qpSpot(X, p.id); r = Math.max(r, +sp.x + +sp.w); bt = Math.max(bt, +sp.y + +sp.h); });
+      qpParts(X).forEach(p => { const q = qpPartsOf(X)[p.id]; if (q && q.hide) return; if (p.id === 'panel' && !(q && +q.w > 0)) return; const sp = qpLiveSpot(X, p); r = Math.max(r, +sp.x + +sp.w); bt = Math.max(bt, +sp.y + +sp.h); });
       if (r > 0 && bt > 0) { snapLayout(true); db.ux.qFreeW = Math.round(r); db.ux.qFreeH = Math.round(bt); uxTidy(); touchLayout(); dockDetail(); }
     }
     else if (k === 'qsmove') {
@@ -16494,7 +16893,7 @@ function dockClick(e) {
       snapLayout(true);
       const X = uxOf(), P = JSON.parse(JSON.stringify(qpPartsOf(X)));
       if (P[v]) { const keep = qpFree(X) && P[v].w && v !== 'panel' ? { x: P[v].x, y: P[v].y, w: P[v].w, h: P[v].h } : null; delete P[v]; if (keep) P[v] = keep; }   // the panel goes back to following the card
-      db.ux.qParts = P; qpTidy(); uxTidy(); touchLayout(); dockDetail();
+      db.ux.qParts = P; qpTidy(); uxTidy(); touchLayout(); dockDetail(); scheduleApply();   // its own skin goes too
     }
     else if (k === 'pick') pickMode(!UI.picking);
     else if (k === 'pickup' && P && P.pick) pickUp(P);
@@ -16513,8 +16912,12 @@ function dockClick(e) {
     else if (k === 'wreset' && P) { snapLayout(true); if (db.words) delete db.words[P.id]; touchLayout(); dockDetail(); }
     else if (k === 'piecereset' && P) resetPiece(P);
     else if (k === 'txpart') { const i = v.indexOf(':'); UI.txpart = UI.txpart || {}; UI.txpart[v.slice(0, i)] = v.slice(i + 1); dockDetail(); }
+    else if (k === 'aimlook') {   // a one-click look: the shape + light keys of that side (w / t) go back first, the colours stay
+      const pre = v[0], L = (pre === 'w' ? ARROW_LOOKS : TILE_LOOKS).find(x => x[0] === v.slice(2));
+      if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === pre && x[1] !== 'c') delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
+    }
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
-    else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === v) delete db.ux[x]; }); touchLayout(); dockDetail(); }
+    else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroset') { const i = v.indexOf(':'); snapLayout(true); db.hero = db.hero || {}; db.hero[v.slice(0, i)] = v.slice(i + 1); heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'clocklook') { const L = CLOCK_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.hero = Object.assign(db.hero || {}, L[2]); heroTidy(); touchLayout(); dockDetail(); } }
@@ -16611,22 +17014,33 @@ function dockInput(e) {
   }
   if (el.dataset.qppath) {
     if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
-    const [id, k] = el.dataset.qppath.split('.'), q0 = qpPartsOf(uxOf())[id] || {};
+    const t = el.dataset.qppath, i = t.indexOf('.'), id = t.slice(0, i), k = t.slice(i + 1), q0 = qpPartsOf(uxOf())[id] || {};
+    /* a skin key reads the skin as it shows (its untouched keys are the blank Panel skin's) */
+    const cur = k.indexOf('sk.') === 0 ? getPath({ sk: qpSkinOf(q0) }, k) : q0[k];
     let v;
     if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.mid) v = el.checked ? (qpSkinOf(q0).fill.c1 || '#444444') : '';
+    else if (el.dataset.bool) v = !!el.checked;
     else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
       const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
       const hx = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase();
-      v = q0[k] && alphaOf(q0[k]) < 1 ? withAlpha(hx, alphaOf(q0[k])) : hx;
+      v = cur && alphaOf(cur) < 1 ? withAlpha(hx, alphaOf(cur)) : hx;
     }
-    else if (el.dataset.kind === 'alpha') v = withAlpha(q0[k] || '#000000', +el.value);
+    else if (el.dataset.kind === 'alpha') v = withAlpha(cur || '#000000', +el.value);
     else v = el.dataset.num ? +el.value : el.value;
     snapLayout();
     qpSet(id, k, v);
-    if (el.dataset.kind) A.dock.querySelectorAll(`[data-qppath="${id}.${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
+    if (el.dataset.kind) A.dock.querySelectorAll(`[data-qppath="${t}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
     else syncTwins(el, 'data-qppath', v);
-    if (el.dataset.optc != null) dockDetail();
+    if (el.dataset.optc != null || el.dataset.mid || (el.dataset.re && e.type === 'change')) dockDetail();
     return;
+  }
+  if (el.dataset.qslook) {
+    const L = uxOf().qStatLook, on = { grade: L === 'grade' || L === 'both', bar: L === 'bar' || L === 'both' };
+    on[el.dataset.qslook] = el.checked;
+    snapLayout(true); db.ux = db.ux || {};
+    db.ux.qStatLook = on.grade && on.bar ? 'both' : on.grade ? 'grade' : on.bar ? 'bar' : 'number';
+    uxTidy(); touchLayout(); dockDetail(); return;
   }
   if (el.dataset.qphide) {
     snapLayout(true); qpSet(el.dataset.qphide, 'hide', !el.checked); return;
@@ -16836,7 +17250,7 @@ window.UIMaker = {
   apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS, pieces: UIM_PIECES,
   has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
   arrange: () => { window.openUiMaker(); liveOn('layout'); },
-  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' || mode === 'bars' || mode === 'faces' ? mode : 'layout'); },
+  live: mode => { window.openUiMaker(); liveOn(LIVE_MODES.indexOf(mode) >= 0 ? mode : 'layout'); },
   hero: () => heroOf(),
   bars: () => barsOf(),
   get db() { return db; },

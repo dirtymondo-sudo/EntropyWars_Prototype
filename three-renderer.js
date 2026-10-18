@@ -691,14 +691,32 @@ const ThreeRenderer = (function () {
         'uniform float uHatch;',
         'uniform float uInset;',
         'uniform int uDots;',
+        /* THE TILE LOOK (2026-10-18, the UI Maker's Arrows + tiles view, shared by every highlight: _hlLookU) */
+        'uniform float uLkLine;',
+        'uniform float uLkEdge;',
+        'uniform float uLkHalo;',
+        'uniform float uLkHot;',
+        'uniform float uLkFill;',
+        'uniform float uLkBright;',
+        'uniform float uLkOp;',
+        'uniform float uLkPulse;',
+        'uniform float uLkSpeed;',
+        'uniform float uLkSize;',
+        'uniform float uLkRound;',
+        'uniform vec3 uLkLineCol;',
+        'uniform float uLkLineOwn;',
         'varying vec2 vUv;',
         '',
         'void main() {',
-        '  vec2 uv = vUv;',
-        '',
-        '  float edgeX = min(uv.x, 1.0 - uv.x);',
-        '  float edgeY = min(uv.y, 1.0 - uv.y);',
-        '  float edge = min(edgeX, edgeY);',
+        /* the plate's own frame: Size shrinks it toward the tile's centre, Corners rounds it (a rounded box's inside
+           distance; at size 1 and no rounding this is the old min(edgeX, edgeY) exactly) */
+        '  vec2 c = (vUv - 0.5) / uLkSize;',
+        '  vec2 qd = abs(c) - vec2(0.5 - uLkRound);',
+        '  float edge = -(length(max(qd, 0.0)) + min(max(qd.x, qd.y), 0.0) - uLkRound);',
+        '  vec2 uv = c + 0.5;',
+        '  float inside = step(0.0, edge);',
+        '  float lw = max(uLkLine, 0.02);',
+        '  float lineOn = clamp(uLkLine / 0.02, 0.0, 1.0);',
         /* Visual-weight pass (2026-07-10): a tile is now built from FOUR
            independent dials instead of one everything-on recipe —
              uEdgeGlow → crisp thin OUTLINE (every tile's base "drawn line")
@@ -713,12 +731,12 @@ const ThreeRenderer = (function () {
            crisp line plus a wider soft halo, with a white-hot core (see the
            bright mix below). Fills stay semi-transparent; the OUTLINE is the
            bright layer now. */
-        '  float borderHard = 1.0 - smoothstep(0.02, 0.055, edge);',
-        '  float borderSoft = (1.0 - smoothstep(0.0, 0.16, edge)) * 0.40;',
+        '  float borderHard = (1.0 - smoothstep(0.02 * lw, 0.055 * lw, edge)) * lineOn;',
+        '  float borderSoft = (1.0 - smoothstep(0.0, 0.16 * lw, edge)) * 0.40 * uLkHalo;',
         '',
         // Calmer highlights (2026-07-07 readability pass): tiny pulse — the
         // old ±12% throb made the whole board feel like it was shouting.
-        '  float pulse = 0.94 + 0.06 * sin(uTime * 2.2);',
+        '  float pulse = 1.0 - 0.06 * uLkPulse + 0.06 * uLkPulse * sin(uTime * 2.2 * uLkSpeed);',
         '',
         '  float brackets = 0.0;',
         '  if (uBrackets > 0.0) {',
@@ -773,8 +791,8 @@ const ThreeRenderer = (function () {
         // Interior fill strength is now per-style (uFill), and the wash-toward-
         // white is kept low so each highlight KEEPS ITS COLOR — color is how
         // the player tells move/strike/hazard/terrain apart at a glance.
-        '  float fill = uFill * pulse;',
-        '  float border = (borderHard * 1.35 + borderSoft) * uEdgeGlow * pulse;',
+        '  float fill = uFill * uLkFill * pulse;',
+        '  float border = (borderHard * 1.35 + borderSoft) * uEdgeGlow * uLkEdge * pulse;',
         /* THE CLARITY PASS (2026-10-01): uInset → a static second frame inside the edge — the "this tile WILL be
            hit" mark, so a damage footprint differs from a reach lattice by SHAPE as well as colour (no motion). */
         '  float inset = 0.0;',
@@ -782,21 +800,130 @@ const ThreeRenderer = (function () {
         '    inset = (smoothstep(0.115, 0.135, edge) - smoothstep(0.165, 0.185, edge)) * uInset;',
         '  }',
         '',
-        '  float alpha = (fill + border + brackets + hatch * 0.55 + dots + inset) * uOpacity;',
+        '  float alpha = (fill + border + brackets + hatch * 0.55 + dots + inset) * uOpacity * uLkOp * inside;',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
-        '  float bright = borderHard * uEdgeGlow * 0.42 + brackets * 0.30 + dots * 0.85 + inset * 0.6;',
-        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.55));',
-        '  gl_FragColor = vec4(col, alpha);',
+        '  float bright = borderHard * uEdgeGlow * 0.42 * uLkHot + brackets * 0.30 + dots * 0.85 + inset * 0.6;',
+        '  vec3 base = mix(uColor, uLkLineCol, uLkLineOwn * clamp(borderHard + borderSoft, 0.0, 1.0));',
+        '  vec3 col = mix(base, vec3(1.0), clamp(bright, 0.0, 0.55 * max(1.0, uLkHot)));',
+        '  gl_FragColor = vec4(col * uLkBright, alpha);',
         '}'
     ].join('\n');
 
+    /* THE TILE LOOK (2026-10-18, mondo: "add a section for them and the tile highlights to the ui maker ... Let me change
+       the perimeter outline, the opacity of the fill in, the brightness, the colors for different situations"): the UI
+       Maker (hud.js, Arrows + tiles) publishes window._ewTileLook (bumped _ewTileLookV); _hlLookSync copies it into these
+       SHARED uniform objects, which every highlight material points at (its x-ray twin and the node renderer's twin read
+       the same objects), so one write restyles the whole board. Defaults draw every tile exactly as before. Each one is a
+       multiplier over the per-type recipe (HL_FILL / HL_EDGE_GLOW), so the tiers keep their order. */
+    var _hlLookU = {
+        uLkLine: { value: 1 }, uLkEdge: { value: 1 }, uLkHalo: { value: 1 }, uLkHot: { value: 1 }, uLkFill: { value: 1 },
+        uLkBright: { value: 1 }, uLkOp: { value: 1 }, uLkPulse: { value: 1 }, uLkSpeed: { value: 1 }, uLkSize: { value: 1 },
+        uLkRound: { value: 0 }, uLkLineCol: { value: null }, uLkLineOwn: { value: 0 }
+    };
+    /* the situations a tile can show, for the UI Maker's colour per situation (hud.js AIM_TILE_KINDS lists the same keys).
+       A tile typed by rebuildHighlights takes its kind from its type (_hlKindOfType); an overlay from its name, else its
+       colour: the preview palette is shared by every caller (EW_PREVIEW, HL_COLORS, the arrow palette), so a colour names
+       its situation */
+    var _HL_HEX_KIND = {
+        0x3399ff: 'move', 0x4da6ff: 'move', 0x35d0c0: 'jump', 0xcc2222: 'blocked',
+        0xff2a2a: 'hit', 0xff3333: 'hit', 0xff3a3a: 'hit', 0xff2222: 'target', 0xffa040: 'reach',
+        0x33cc55: 'healReach', 0x33dd77: 'healReach', 0x22ee55: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd66: 'heal',
+        0x4488ff: 'buffReach', 0x8844ee: 'util', 0x6633bb: 'util', 0xaa33ff: 'util', 0xbb66ff: 'force', 0xff8822: 'combo',
+        0xffcc33: 'atkReach', 0xffd83d: 'cursor', 0xddaa22: 'ally', 0x22eebb: 'inspect', 0x44aaff: 'place',
+        0xff4545: 'foeRange', 0x5aa8ff: 'allyRange'
+    };
+    function _hlKindOfHex(c) {
+        var h = (typeof c === 'number') ? c : (c && c.isColor ? c.getHex() : null);
+        return (h !== null && _HL_HEX_KIND[h]) || '';
+    }
+    function _hlKindOfType(hlType) {
+        var t = String(hlType || ''), base = t.split(' ')[0];
+        if (base.indexOf('move') === 0 && base !== 'move-edge') {
+            if (t.indexOf(' strike') !== -1) return 'strike';
+            if (t.indexOf(' hazard') !== -1) return 'hazard';
+            if (t.indexOf(' benefit') !== -1) return 'benefit';
+            return (base === 'move-jump' || base === 'move-takeoff') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
+        }
+        if (t.indexOf('attack enemy') === 0) return 'target';
+        return { 'move-edge': 'blocked', 'attack': 'atkReach', 'spell-damage': 'hit', 'spell-range-dmg': 'reach', 'heal-range': 'healReach',
+            'spell-range': 'util', 'spell-range-bg': 'util', 'heal': 'heal', 'inspect': 'inspect', 'combo-target': 'combo',
+            'selected': 'cursor', 'placeable': 'place' }[t] || '';
+    }
+    /* an overlay's tile: its name says it first (a reach, a landing), then its colour */
+    var _HL_OVERLAY_KIND = { enemyRange: function (c) { return c === 0x5aa8ff ? 'allyRange' : 'foeRange'; },
+        attackRange: function () { return 'atkReach'; }, spellApproachShove: function () { return 'force'; }, actionPlanShove: function () { return 'force'; },
+        movePreview: function () { return 'move'; }, moveHoverDest: function () { return 'move'; }, spellApproachMove: function () { return 'move'; },
+        weather: function () { return 'none'; } };   // the weather's own tile colours never take a situation's colour
+    function _hlKindOfOverlay(name, c) {
+        var f = _HL_OVERLAY_KIND[name];
+        return (f && f(c)) || _hlKindOfHex(c);
+    }
+    var _tileLookC = null, _tileLookCV = -1;
+    function _lookHex(v) {
+        if (v === null || v === undefined || v === '') return null;
+        try { return new THREE.Color().setStyle(String(v)).getHex(); } catch (e) { return null; }
+    }
+    /* the UI Maker's tile look, read once per change */
+    function _tileLook() {
+        var v = window._ewTileLookV || 0;
+        if (_tileLookC && _tileLookCV === v) return _tileLookC;
+        var L = window._ewTileLook || {}, num = function (x, lo, hi, d) { x = +x; return (x === x && isFinite(x)) ? Math.max(lo, Math.min(hi, x)) : d; };
+        var cols = {}, src = L.cols || {};
+        for (var k in src) { var hx = _lookHex(src[k]); if (hx !== null) cols[k] = hx; }
+        _tileLookC = { line: num(L.line, 0, 4, 1), edge: num(L.edge, 0, 3, 1), halo: num(L.halo, 0, 4, 1), hot: num(L.hot, 0, 3, 1),
+            fill: num(L.fill, 0, 3, 1), bright: num(L.bright, 0.2, 2.5, 1), opacity: num(L.opacity, 0.05, 1.5, 1), pulse: num(L.pulse, 0, 8, 1),
+            speed: num(L.speed, 0, 6, 1), size: num(L.size, 0.4, 1.08, 1), round: num(L.round, 0, 0.5, 0), lineCol: _lookHex(L.lineCol), cols: cols };
+        _tileLookCV = v;
+        return _tileLookC;
+    }
+    /* a tile's colour: the UI Maker's own for its situation, else the game's */
+    function _hlLookColor(src, kind) {
+        var L = _tileLook(), o = kind ? L.cols[kind] : undefined;
+        return (o !== undefined) ? o : src;
+    }
+    /* the look → the shared uniforms, and every live tile repainted in its situation's colour (once per change) */
+    var _hlLookSeen = -1;
+    function _hlLookSync() {
+        var v = window._ewTileLookV || 0;
+        if (v === _hlLookSeen) return;
+        _hlLookSeen = v;
+        var L = _tileLook(), U = _hlLookU;
+        if (!U.uLkLineCol.value) U.uLkLineCol.value = new THREE.Color(0xffffff);
+        U.uLkLine.value = L.line; U.uLkEdge.value = L.edge; U.uLkHalo.value = L.halo; U.uLkHot.value = L.hot; U.uLkFill.value = L.fill;
+        U.uLkBright.value = L.bright; U.uLkOp.value = L.opacity; U.uLkPulse.value = L.pulse; U.uLkSpeed.value = L.speed;
+        U.uLkSize.value = L.size; U.uLkRound.value = L.round;
+        if (L.lineCol !== null) U.uLkLineCol.value.setHex(L.lineCol);
+        U.uLkLineOwn.value = L.lineCol !== null ? 1 : 0;
+        _hlMatCache.forEach(_hlPaintMat);
+        _hlPaint(scene);
+    }
+    /* a highlight material in its situation's colour now */
+    function _hlPaintMat(m) {
+        var d = m && m.userData && m.userData.ewHl;
+        if (!d || !m.uniforms || !m.uniforms.uColor || !m.uniforms.uColor.value) return;
+        var hx = _hlLookColor(d.src, d.kind);
+        if (m._ew_glowBase) m._ew_glowBase.setHex(hx); else m.uniforms.uColor.value.setHex(hx);
+    }
+    function _hlPaint(root) {
+        if (root) root.traverse(function (o) { if (o.material && !Array.isArray(o.material)) _hlPaintMat(o.material); });
+    }
+    /* point a highlight material's look uniforms at the shared ones (a clone() deep-copies them, so it calls this too) */
+    function _hlShareLook(m) {
+        if (!m || !m.uniforms) return m;
+        if (!_hlLookU.uLkLineCol.value) _hlLookU.uLkLineCol.value = new THREE.Color(0xffffff);
+        for (var k in _hlLookU) m.uniforms[k] = _hlLookU[k];
+        return m;
+    }
     /* style (optional): { fill, brackets, hatch } — the visual-weight dials.
-       Defaults preserve the old look for callers that don't pass one. */
-    function _makeHlMaterial(color, opacity, edgeGlow, dotCount, style) {
-        var c = new THREE.Color(color);
+       Defaults preserve the old look for callers that don't pass one.
+       kind (optional): the situation the tile shows (see _HL_KINDS), so the UI Maker's colour for it applies; unset = the
+       colour's own situation (by the shared palette, _hlKindOfHex), or none */
+    function _makeHlMaterial(color, opacity, edgeGlow, dotCount, style, kind) {
+        var k = kind || _hlKindOfHex(color);
+        var c = new THREE.Color(_hlLookColor(color, k));
         var st = style || {};
-        return new THREE.ShaderMaterial({
+        var m = new THREE.ShaderMaterial({
             uniforms: {
                 uColor:    { value: c },
                 uOpacity:  { value: opacity },
@@ -814,6 +941,8 @@ const ThreeRenderer = (function () {
             depthWrite: false,
             side: THREE.DoubleSide
         });
+        m.userData.ewHl = { src: (typeof color === 'number') ? color : new THREE.Color(color).getHex(), kind: k || '' };
+        return _hlShareLook(m);
     }
 
     var _ringVertexShader = [
@@ -3877,6 +4006,7 @@ const ThreeRenderer = (function () {
             _deltaPatchTops = {}; _liquidFlowTops = {};   // THE SKIN LINE: no tile-board sheet survives into a field
             _fieldPickBuild(ts);   // THE CLICKS: an invisible quad per IN cell at its real top — screenToTile raycasts terrainGroup, and there was nothing in it
             try { _fieldStrataBuild(ts); } catch (e) { console.warn('[HQ→battle] the strata failed', e); }   // THE STRATA: a column only where the engine dug or built
+            try { _fieldMoundBuild(ts); } catch (e) { console.warn('[HQ→battle] the mound failed', e); }   // THE EARTHWORK MOUND: Rampart's raise swells the ground
             var _skinLava = [];
             try { _fieldSkinBuild(ts, _skinLava); } catch (e) { console.warn('[HQ→battle] the skins failed', e); }   // THE SKINS: a sheet only where a spell changed the ground
             _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
@@ -13907,7 +14037,7 @@ const ThreeRenderer = (function () {
             var _selSegs = 1;   // rev 2: flat on a field too
             var selTile = new THREE.Mesh(
                 new THREE.PlaneGeometry(ts * 0.96, ts * 0.96, _selSegs, _selSegs),
-                _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 })
+                _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 }, 'acting')
             );
             selTile.rotation.x = -Math.PI / 2;
             selTile.position.y = SELECTED_RING_OFFSET - 0.15;
@@ -15240,6 +15370,7 @@ const ThreeRenderer = (function () {
                         /* clone() deep-copies uniforms — re-share the global
                            clock or the shader animation freezes on the clone */
                         if (v.uniforms) v.uniforms.uTime = _hlGlobalTime;
+                        _hlShareLook(v);   // THE TILE LOOK rides the clone too
                         if (v.uniforms && v.uniforms.uOpacity) v.uniforms.uOpacity.value *= 0.85;
                         v._ew_shared = true;
                         v._ew_baseOpacity = (mat._ew_baseOpacity !== undefined) ? mat._ew_baseOpacity * 0.85 : undefined;
@@ -15360,7 +15491,26 @@ const ThreeRenderer = (function () {
         var matKey = hlType;
         if (hlType.indexOf('attack enemy') === 0) matKey = 'attack enemy';
         if (_hlMatCache.has(matKey)) return _hlMatCache.get(matKey);
+        var R = _hlRecipe(hlType), baseTok = R.baseTok;
 
+        var mat = _makeHlMaterial(R.color, R.opacity, R.edgeGlow, R.dotCount, R.style, _hlKindOfType(hlType));
+        mat._ew_shared = true;
+        mat._ew_baseOpacity = R.opacity;
+        /* Context tiles yield when an AoE footprint is on screen (see
+           _updateHlFocusDim): ranges dim so the consequence pops. Valid-target
+           tiles (attack enemy / heal / combo) and the cursor stay full. */
+        mat._ew_dimmable = (matKey === 'spell-range' || matKey === 'spell-range-bg' ||
+                            matKey === 'spell-range-dmg' || matKey === 'heal-range' ||
+                            matKey === 'attack' || matKey === 'inspect' ||
+                            matKey.indexOf('attack enemy') === 0 ||   // candidates yield to the aimed footprint too
+                            baseTok.indexOf('move') === 0);
+        _hlMatCache.set(matKey, mat);
+        return mat;
+    }
+    /* a highlight type's recipe: colour, opacity, edge, dots, style (the shared material above, the UI Maker's preview) */
+    function _hlRecipe(hlType) {
+        var matKey = hlType;
+        if (hlType.indexOf('attack enemy') === 0) matKey = 'attack enemy';
         var color, opacity, edgeGlow, dotCount, style;
         var baseTok = hlType.split(' ')[0];
 
@@ -15395,19 +15545,7 @@ const ThreeRenderer = (function () {
             if (matKey === 'spell-damage') style.inset = 1.0;   // the hit mark
         }
 
-        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount, style);
-        mat._ew_shared = true;
-        mat._ew_baseOpacity = opacity;
-        /* Context tiles yield when an AoE footprint is on screen (see
-           _updateHlFocusDim): ranges dim so the consequence pops. Valid-target
-           tiles (attack enemy / heal / combo) and the cursor stay full. */
-        mat._ew_dimmable = (matKey === 'spell-range' || matKey === 'spell-range-bg' ||
-                            matKey === 'spell-range-dmg' || matKey === 'heal-range' ||
-                            matKey === 'attack' || matKey === 'inspect' ||
-                            matKey.indexOf('attack enemy') === 0 ||   // candidates yield to the aimed footprint too
-                            baseTok.indexOf('move') === 0);
-        _hlMatCache.set(matKey, mat);
-        return mat;
+        return { color: color, opacity: opacity, edgeGlow: edgeGlow, dotCount: dotCount, style: style, baseTok: baseTok };
     }
 
     function rebuildHighlights() {
@@ -15567,7 +15705,7 @@ const ThreeRenderer = (function () {
     var _cursorBracketMat = null;
     function _getCursorBracketMat() {
         if (!_cursorBracketMat) {
-            _cursorBracketMat = _makeHlMaterial(0xffd83d, 0.95, 0.0, 0, { fill: 0.0, brackets: 1.0 });
+            _cursorBracketMat = _makeHlMaterial(0xffd83d, 0.95, 0.0, 0, { fill: 0.0, brackets: 1.0 }, 'cursor');
             _cursorBracketMat._ew_shared = true;
         }
         return _cursorBracketMat;
@@ -15585,7 +15723,7 @@ const ThreeRenderer = (function () {
             var t = tiles[i];
             var tileColor = (t.color !== undefined) ? t.color : color;
             var tileOpacity = (t.opacity !== undefined) ? t.opacity : opacity;
-            var oMat = _makeHlMaterial(tileColor, tileOpacity, style.edgeGlow, style.dots || 0, style);
+            var oMat = _makeHlMaterial(tileColor, tileOpacity, style.edgeGlow, style.dots || 0, style, _hlKindOfOverlay(name, tileColor));
             oMat._ew_baseOpacity = tileOpacity;
             var plane = _makeHlTile(t.x, t.y, oMat, 0.92, (name === 'aoe' ? 0.6 : 0.2), t.z);
             plane._ew_overlay = name;
@@ -15771,9 +15909,9 @@ const ThreeRenderer = (function () {
     //                         and slowly crescendos toward the impact frame.
     //                         Beams / dashes light tile-by-tile outward from
     //                         the actor (staggerMs) so the lane "draws".
-    //   BURST  (impact frame) the footprint flashes white-hot and settles to
-    //                         a lit afterglow; the actor tile releases (its
-    //                         power has left it).
+    //   BURST  (impact frame) the footprint lets go at once (2026-10-18: no
+    //                         white-hot flash, no afterglow, no actor tile —
+    //                         see THE ANTICIPATION ONLY).
     //   END    (exhale)       everything eases back to bare ground.
     //
     // Colour language: WHITE = the actor + anything benign (heals, buffs,
@@ -15812,11 +15950,11 @@ const ThreeRenderer = (function () {
         return true;
     }
 
-    function _glowMakeMat(color, fill, edge) {
-        var m = _makeHlMaterial(color, 0.0, edge, 0, { fill: fill });
+    function _glowMakeMat(color, fill, edge, kind) {
+        var m = _makeHlMaterial(color, 0.0, edge, 0, { fill: fill }, kind || 'none');
         m.blending = THREE.AdditiveBlending;
         m._ew_glow = true;
-        m._ew_glowBase = new THREE.Color(color);
+        m._ew_glowBase = new THREE.Color(_hlLookColor(color, kind));   // THE TILE LOOK: the cast glow's own colours
         return m;
     }
 
@@ -15827,7 +15965,7 @@ const ThreeRenderer = (function () {
         var color = isCaster ? _GLOW_COL.caster : (rec.hostile ? _GLOW_COL.hostile : _GLOW_COL.friendly);
         /* actor: thin bright outline, quieter body — "who is acting";
            footprint: solid lit body — "where it lands" */
-        var mat = _glowMakeMat(color, isCaster ? 0.42 : 0.72, isCaster ? 1.45 : 1.15);
+        var mat = _glowMakeMat(color, isCaster ? 0.42 : 0.72, isCaster ? 1.45 : 1.15, isCaster ? 'glowCaster' : (rec.hostile ? 'glowFoe' : 'glowFriend'));
         var mesh = _makeHlTile(x, y, mat, 0.96, 0.75, z);
         mesh._ew_overlay = 'actionGlow';
         mesh.renderOrder = 3;
@@ -15891,11 +16029,10 @@ const ThreeRenderer = (function () {
             casterKey: null
         };
         var seen = {};
-        if (spec.caster && spec.caster.x != null && spec.caster.y != null
-            && _glowTileVisible(spec.caster.x, spec.caster.y)) {
-            var ce = _glowAddEntry(rec, spec.caster.x, spec.caster.y, spec.caster.z, true, 0);
-            if (ce) { rec.casterKey = spec.caster.x + ',' + spec.caster.y; seen[rec.casterKey] = true; }
-        }
+        /* THE ANTICIPATION ONLY (2026-10-18, mondo: "i dont want to see any tile highlights during a spell animation,
+           except for the gold anticipation highlight, but even that should be gone right as the spell actually hits"):
+           the actor's tile no longer lights (spec.caster is ignored), only the footprint the hit will land on; the
+           burst ends it (actionGlowBurst). */
         var tiles = Array.isArray(spec.tiles) ? spec.tiles : [];
         var n = 0, idx = 0;
         for (var i = 0; i < tiles.length && n < _GLOW_MAX_TILES; i++) {
@@ -15916,31 +16053,13 @@ const ThreeRenderer = (function () {
         return rec;
     }
 
-    /* actionGlowBurst(key, opts) — the impact frame. opts.tiles may add
-       footprint tiles the arm beat didn't know (a retargeted burst); a burst
-       with no live glow (guest that joined mid-cast, burst-only callers)
-       conjures a short one so the hit still lights the ground. */
+    /* actionGlowBurst(key, opts) — the impact frame: the anticipation is over, so the footprint lets go at once (a
+       ~80 ms fade, no white-hot flash, THE ANTICIPATION ONLY above). A burst with no live glow (a guest that joined
+       mid-cast, a second hit of the same cast) lights nothing. */
     function actionGlowBurst(key, opts) {
-        opts = opts || {};
         var rec = _glowLive[key];
-        if (!rec) {
-            if (!opts.tiles && !opts.caster) return;
-            rec = actionGlowStart(key, { caster: opts.caster, tiles: opts.tiles,
-                hostile: opts.hostile !== undefined ? opts.hostile : true, riseMs: 60, holdMs: 200 });
-            if (!rec) return;
-        } else if (Array.isArray(opts.tiles)) {
-            var have = {};
-            for (var i = 0; i < rec.entries.length; i++) have[rec.entries[i].x + ',' + rec.entries[i].y] = true;
-            for (var j = 0; j < opts.tiles.length && rec.entries.length < _GLOW_MAX_TILES; j++) {
-                var t = opts.tiles[j];
-                if (!t || t.x == null || have[t.x + ',' + t.y]) continue;
-                if (!_glowTileVisible(t.x, t.y)) continue;
-                var ne = _glowAddEntry(rec, t.x, t.y, t.z, false, 0);
-                if (ne) { ne.t0 = performance.now(); ne.late = true; }
-            }
-        }
-        if (rec.burstAt == null) rec.burstAt = performance.now();
-        rec.autoEndAt = Math.max(rec.autoEndAt, rec.burstAt + 2600);
+        if (!rec) return;
+        actionGlowEnd(key, 80);
         _updateActionGlow();
     }
 
@@ -16722,10 +16841,55 @@ const ThreeRenderer = (function () {
         }
 
         // Arrow bodies breathe together; flow dots stream toward the target below.
-        if (_arrowMeshes.length > 0) {
-            var arrowPulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 2.5));
-            for (var i = 0; i < _arrowMeshes.length; i++) {
-                var m = _arrowMeshes[i];
+        if ((window._ewArrowLookV || 0) !== _arrowLookSeen) { _arrowLookSeen = window._ewArrowLookV || 0; _arrowRebuildAll(); }   // THE ARROW LOOK changed
+        _arrowTick(_arrowMeshes, _arrowFlowDots, t);
+    }
+
+    var _arrowMeshes = [];
+    var _arrowFlowDots = [];
+    /* every arrow drawn now, as it was asked for, so a UI Maker change redraws them in the new look on the spot */
+    var _arrowBuilds = [];
+    var _arrowLookSeen = 0;
+
+    /* THE ARROW LOOK (2026-10-18, mondo: "i dont really like how the arrows look for spell/move previews ... for the
+       arrows i want to control their thickness/thinness (too thick right now), their brightness, their pulse, their color,
+       those little dots that pulse through it i want to control what those look like and their speed. let me change the
+       colors for different actions like move would be a blue or yellow arrow, damage would be a red arrow, heal would be a
+       green arrow"): the UI Maker (hud.js, Arrows + tiles) publishes window._ewArrowLook, bumped _ewArrowLookV. Every
+       arrow is built from it (_buildArrowFromPoints) and breathes by it (_arrowTick); the defaults draw the old arrow.
+       The colour per action: the callers' palette is shared (blue 0x3399ff = your own movement, red = damage, green =
+       heal / support, purple 0xbb66ff = a body force-moved, white = utility), so a colour names its action (opts.kind
+       names it outright). */
+    var _ARROW_HEX_KIND = { 0x3399ff: 'move', 0xff3333: 'hit', 0xff2a2a: 'hit', 0xff3a3a: 'hit', 0xff2222: 'hit',
+        0x33dd66: 'heal', 0x33ff33: 'heal', 0x22cc22: 'heal', 0x33dd77: 'heal', 0x22ee55: 'heal', 0xbb66ff: 'force', 0xeeeeee: 'util' };
+    var _arrowLookC = null, _arrowLookCV = -1;
+    function _arrowLook() {
+        var v = window._ewArrowLookV || 0;
+        if (_arrowLookC && _arrowLookCV === v) return _arrowLookC;
+        var L = window._ewArrowLook || {}, num = function (x, lo, hi, d) { x = +x; return (x === x && isFinite(x)) ? Math.max(lo, Math.min(hi, x)) : d; };
+        var cols = {}, src = L.cols || {};
+        for (var k in src) { var hx = _lookHex(src[k]); if (hx !== null) cols[k] = hx; }
+        _arrowLookC = {
+            shaft: (L.shaft === 'dashed' || L.shaft === 'none') ? L.shaft : 'solid', thick: num(L.thick, 0.1, 4, 1),
+            glow: num(L.glow, 0, 4, 1), glowW: num(L.glowW, 0.3, 4, 1), core: num(L.core, 0, 1, 0), bright: num(L.bright, 0.2, 2.5, 1),
+            opacity: num(L.opacity, 0.05, 1, 1), pulse: num(L.pulse, 0, 2.5, 1), pulseSpd: num(L.pulseSpd, 0, 6, 1),
+            head: L.head === 'none' ? 'none' : 'cone', headLen: num(L.headLen, 0.2, 3, 1), headW: num(L.headW, 0.2, 3, 1),
+            dots: L.dots !== false, dotShape: (L.dotShape === 'diamond' || L.dotShape === 'streak' || L.dotShape === 'ring') ? L.dotShape : 'ball',
+            dotSize: num(L.dotSize, 0.1, 4, 1), dotCount: num(L.dotCount, 0.2, 4, 1), dotSpd: num(L.dotSpd, 0, 6, 1),
+            dotBright: num(L.dotBright, 0, 2.5, 1), dotCol: _lookHex(L.dotCol), cols: cols
+        };
+        _arrowLookCV = v;
+        return _arrowLookC;
+    }
+    /* the bodies breathe, the dots stream toward the target (the board's arrows and the UI Maker's preview alike) */
+    var _arrowUp = null;
+    function _arrowTick(meshes, dots, t) {
+        var L = _arrowLook();
+        if (meshes.length > 0) {
+            var depth = Math.min(0.95, 0.4 * L.pulse);
+            var arrowPulse = (1 - depth) + depth * Math.abs(Math.sin(t * 2.5 * L.pulseSpd));
+            for (var i = 0; i < meshes.length; i++) {
+                var m = meshes[i];
                 if (m._ew_flowDot) continue;
                 if (m.material && m.material.opacity !== undefined) {
                     var baseOp = m._ew_baseOpacity;
@@ -16737,36 +16901,60 @@ const ThreeRenderer = (function () {
                 }
             }
         }
-
-        for (var f = 0; f < _arrowFlowDots.length; f++) {
-            var fd = _arrowFlowDots[f];
-            var tt = (fd.phase + t * 0.55) % 1.0;
+        for (var f = 0; f < dots.length; f++) {
+            var fd = dots[f];
+            var tt = ((fd.phase + t * 0.55 * L.dotSpd) % 1.0 + 1.0) % 1.0;
             if (fd.curve && fd.mesh) {
-                var p = fd.curve.getPointAt(Math.min(1, tt * fd.tEnd));
+                var u = Math.min(1, tt * fd.tEnd);
+                var p = fd.curve.getPointAt(u);
                 fd.mesh.position.copy(p);
-                if (fd.mesh.material) fd.mesh.material.opacity = 0.25 + 0.6 * Math.sin(tt * Math.PI);
+                if (fd.orient) {   // a streak lies along the arrow, a ring faces along it
+                    if (!_arrowUp) _arrowUp = new THREE.Vector3(0, 1, 0);
+                    fd.mesh.quaternion.setFromUnitVectors(_arrowUp, fd.curve.getTangentAt(u).normalize());
+                }
+                if (fd.mesh.material) fd.mesh.material.opacity = Math.min(1, (0.25 + 0.6 * Math.sin(tt * Math.PI)) * L.dotBright * L.opacity);
             }
         }
     }
 
-    var _arrowMeshes = [];
-    var _arrowFlowDots = [];
-
-    function _addArrowMesh(mesh) {
+    function _addArrowMesh(mesh, sink) {
         mesh._ew_overlay = 'arrow';
+        if (sink) { sink.group.add(mesh); sink.meshes.push(mesh); return; }
         if (highlightGroup) highlightGroup.add(mesh);
         _arrowMeshes.push(mesh);
+    }
+    /* free an arrow's meshes (the board's or a preview's) */
+    function _arrowDispose(group, meshes) {
+        for (var i = 0; i < meshes.length; i++) {
+            if (group) group.remove(meshes[i]);
+            if (meshes[i].geometry) meshes[i].geometry.dispose();
+            if (meshes[i].material) meshes[i].material.dispose();
+        }
+    }
+    /* the look changed: every arrow on the board comes down and goes up again in it, from the points it was asked for */
+    function _arrowRebuildAll() {
+        if (!_arrowBuilds.length) return;
+        var builds = _arrowBuilds;
+        _arrowDispose(highlightGroup, _arrowMeshes);
+        _arrowMeshes = []; _arrowFlowDots = []; _arrowBuilds = [];
+        for (var i = 0; i < builds.length; i++) _buildArrowFromPoints(builds[i].pts, builds[i].hex, builds[i].opts);
     }
 
     // Core arrow builder — draws a glowing tube shaft that follows an arbitrary
     // 3D curve (straight, arced through the air, or bending through waypoints),
     // caps it with a cone head aimed along the final tangent, and seeds a few
     // "energy" dots that stream toward the target so direction reads at a glance.
-    // opts: { radius, headLen, flow(bool), dotColor }
+    // opts: { radius, headLen, flow(bool), dotColor, kind, sink }
+    //   kind = the action ('move' | 'hit' | 'heal' | 'force' | 'util'), else read from the colour (_ARROW_HEX_KIND)
+    //   sink = { group, meshes, dots } to draw somewhere else (the UI Maker's preview); unset = the board
+    // THE ARROW LOOK (_arrowLook) sizes, lights and colours every part.
     function _buildArrowFromPoints(pts, hexColor, opts) {
-        if (!highlightGroup || !pts || pts.length < 2) return;
         opts = opts || {};
+        var sink = opts.sink || null;
+        if ((!sink && !highlightGroup) || !pts || pts.length < 2) return;
         var ts = CONFIG.tileSize || BASE_TILE;
+        var L = _arrowLook();
+        if (!sink) _arrowBuilds.push({ pts: pts.map(function (v) { return v.clone(); }), hex: hexColor, opts: opts });
 
         var curve = (pts.length === 2)
             ? new THREE.LineCurve3(pts[0], pts[1])
@@ -16774,52 +16962,88 @@ const ThreeRenderer = (function () {
         var fullLen = curve.getLength();
         if (fullLen < 2) return;
 
-        var shaftRad = opts.radius || ts * 0.03;
-        var headLen = Math.min(opts.headLen || ts * 0.26, 38);
-        var headRad = headLen * 0.5;
+        /* the action's colour (the UI Maker's own, else the caller's) at the look's brightness */
+        var kind = opts.kind || _ARROW_HEX_KIND[hexColor] || '';
+        var colHex = (kind && L.cols[kind] !== undefined) ? L.cols[kind] : hexColor;
+        var col = new THREE.Color(colHex).multiplyScalar(L.bright);
+        var op = L.opacity;
+
+        var shaftRad = (opts.radius || ts * 0.03) * L.thick;
+        var headLen = Math.min(opts.headLen || ts * 0.26, 38) * L.headLen;
+        var headRad = headLen * 0.5 * L.headW;
+        var hasHead = L.head !== 'none';
         // Stop the shaft short so the cone head isn't buried in the tube.
-        var tEnd = fullLen > headLen * 1.3 ? (fullLen - headLen * 0.85) / fullLen : 0.9;
+        var tEnd = !hasHead ? 1.0 : (fullLen > headLen * 1.3 ? (fullLen - headLen * 0.85) / fullLen : 0.9);
 
         var segs = Math.max(6, Math.min(80, Math.round(fullLen / (ts * 0.13))));
-        var shaftPts = [];
-        for (var s = 0; s <= segs; s++) shaftPts.push(curve.getPointAt(tEnd * (s / segs)));
-        var shaftCurve = new THREE.CatmullRomCurve3(shaftPts);
-
-        var shaftMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.9, depthWrite: false });
-        _addArrowMesh(new THREE.Mesh(new THREE.TubeGeometry(shaftCurve, segs, shaftRad, 8, false), shaftMat));
-
-        var glowMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending });
-        _addArrowMesh(new THREE.Mesh(new THREE.TubeGeometry(shaftCurve, segs, shaftRad * 2.7, 8, false), glowMat));
+        var sub = function (t0, t1, n) {
+            var sp = [];
+            for (var s = 0; s <= n; s++) sp.push(curve.getPointAt(t0 + (t1 - t0) * (s / n)));
+            return new THREE.CatmullRomCurve3(sp);
+        };
+        /* the shaft: a solid tube, a row of dashes, or nothing (the dots + head alone); its glow + the hot core ride the
+           same pieces */
+        var pieces = [];
+        if (L.shaft === 'solid') pieces.push([sub(0, tEnd, segs), segs]);
+        else if (L.shaft === 'dashed') {
+            var dashT = Math.max(0.02, (ts * 0.16) / fullLen), gapT = dashT * 0.8, t0 = 0;
+            while (t0 < tEnd - 0.005 && pieces.length < 60) {
+                var t1 = Math.min(tEnd, t0 + dashT);
+                pieces.push([sub(t0, t1, 3), 3]);
+                t0 = t1 + gapT;
+            }
+        }
+        var add = function (mesh, baseOp) { mesh._ew_baseOpacity = baseOp; _addArrowMesh(mesh, sink); };
+        pieces.forEach(function (pc) {
+            add(new THREE.Mesh(new THREE.TubeGeometry(pc[0], pc[1], shaftRad, 8, false),
+                new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9 * op, depthWrite: false })), 0.9 * op);
+            if (L.glow > 0) add(new THREE.Mesh(new THREE.TubeGeometry(pc[0], pc[1], shaftRad * 2.7 * L.glowW, 8, false),
+                new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.13 * L.glow * op, depthWrite: false, blending: THREE.AdditiveBlending })), 0.13 * L.glow * op);
+            if (L.core > 0) add(new THREE.Mesh(new THREE.TubeGeometry(pc[0], pc[1], shaftRad * 0.42, 6, false),
+                new THREE.MeshBasicMaterial({ color: col.clone().lerp(new THREE.Color(0xffffff), 0.75), transparent: true, opacity: 0.95 * L.core * op, depthWrite: false, blending: THREE.AdditiveBlending })), 0.95 * L.core * op);
+        });
 
         // Cone head at the true end, oriented along the curve's final tangent so
         // it points cleanly even when the arrow arcs or bends.
-        var endPt = curve.getPointAt(1);
-        var tan = curve.getTangentAt(1).normalize();
-        var q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tan);
+        if (hasHead) {
+            var endPt = curve.getPointAt(1);
+            var tan = curve.getTangentAt(1).normalize();
+            var q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tan);
 
-        var coneMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.95, depthWrite: false });
-        var cone = new THREE.Mesh(new THREE.ConeGeometry(headRad, headLen, 12), coneMat);
-        cone.quaternion.copy(q);
-        cone.position.copy(endPt).addScaledVector(tan, -headLen * 0.32);
-        _addArrowMesh(cone);
+            var cone = new THREE.Mesh(new THREE.ConeGeometry(headRad, headLen, 12),
+                new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.95 * op, depthWrite: false }));
+            cone.quaternion.copy(q);
+            cone.position.copy(endPt).addScaledVector(tan, -headLen * 0.32);
+            add(cone, 0.95 * op);
 
-        var haloMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending });
-        var halo = new THREE.Mesh(new THREE.ConeGeometry(headRad * 1.7, headLen * 1.25, 12), haloMat);
-        halo.quaternion.copy(q);
-        halo.position.copy(cone.position);
-        _addArrowMesh(halo);
+            if (L.glow > 0) {
+                var halo = new THREE.Mesh(new THREE.ConeGeometry(headRad * 1.7, headLen * 1.25, 12),
+                    new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.16 * L.glow * op, depthWrite: false, blending: THREE.AdditiveBlending }));
+                halo.quaternion.copy(q);
+                halo.position.copy(cone.position);
+                add(halo, 0.16 * L.glow * op);
+            }
+        }
 
-        if (opts.flow !== false) {
-            var dotColor = (opts.dotColor !== undefined) ? opts.dotColor : hexColor;
-            var dotN = Math.max(2, Math.min(6, Math.round(fullLen / (ts * 0.6))));
+        if (opts.flow !== false && L.dots) {
+            var dotColor = (L.dotCol !== null) ? new THREE.Color(L.dotCol).multiplyScalar(L.bright)
+                : (opts.dotColor !== undefined && !(kind && L.cols[kind] !== undefined)) ? new THREE.Color(opts.dotColor).multiplyScalar(L.bright) : col;
+            var dotN = Math.max(1, Math.min(24, Math.round(Math.max(2, Math.min(6, Math.round(fullLen / (ts * 0.6)))) * L.dotCount)));
+            var dr = shaftRad / L.thick * 2.3 * L.dotSize;   // the dots keep their own size when the shaft thins
             for (var d = 0; d < dotN; d++) {
                 var dotMat = new THREE.MeshBasicMaterial({ color: dotColor, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending });
-                var dot = new THREE.Mesh(new THREE.SphereGeometry(shaftRad * 2.3, 8, 8), dotMat);
+                var geo = L.dotShape === 'diamond' ? new THREE.OctahedronGeometry(dr * 1.15, 0)
+                    : L.dotShape === 'ring' ? new THREE.TorusGeometry(dr * 1.1, dr * 0.28, 6, 16).rotateX(Math.PI / 2)
+                    : new THREE.SphereGeometry(dr, 8, 8);
+                var dot = new THREE.Mesh(geo, dotMat);
+                if (L.dotShape === 'streak') dot.scale.set(0.55, 3.2, 0.55);
                 dot._ew_overlay = 'arrow';
                 dot._ew_flowDot = true;
+                var fd = { mesh: dot, curve: curve, tEnd: tEnd, phase: d / dotN, orient: L.dotShape === 'streak' || L.dotShape === 'ring' };
+                if (sink) { sink.group.add(dot); sink.meshes.push(dot); sink.dots.push(fd); continue; }
                 if (highlightGroup) highlightGroup.add(dot);
                 _arrowMeshes.push(dot);
-                _arrowFlowDots.push({ mesh: dot, curve: curve, tEnd: tEnd, phase: d / dotN });
+                _arrowFlowDots.push(fd);
             }
         }
     }
@@ -16909,13 +17133,122 @@ const ThreeRenderer = (function () {
     }
 
     function clearArrows3D() {
-        for (var i = 0; i < _arrowMeshes.length; i++) {
-            if (highlightGroup) highlightGroup.remove(_arrowMeshes[i]);
-            if (_arrowMeshes[i].geometry) _arrowMeshes[i].geometry.dispose();
-            if (_arrowMeshes[i].material) _arrowMeshes[i].material.dispose();
-        }
+        _arrowDispose(highlightGroup, _arrowMeshes);
         _arrowMeshes = [];
         _arrowFlowDots = [];
+        _arrowBuilds = [];
+    }
+
+    /* THE LOOK PREVIEW (2026-10-18, mondo: "i guess i have to be in battle to see these changes in real time? Or can you
+       show them on screen as im changing them regardless like a separate window or section or renderer"): the UI Maker's
+       Arrows + tiles view draws a small board of its own on the dock's canvas, its own WebGL context, built by the board's
+       own builders (each situation's highlight recipe through _makeHlMaterial, the arrows through _buildArrowFromPoints
+       into a sink, the cast glow's material), so every setting shows the moment it moves, in a battle or out of one. The
+       real board takes the same look at the same time. One preview at a time; it stops itself when its canvas leaves the
+       page, and stop() frees its context. */
+    var _lookPrev = null;
+    function lookPreview(cv) {
+        if (_lookPrev) { if (_lookPrev.cv === cv) return _lookPrev; _lookPrev.stop(); }
+        if (!cv || typeof THREE === 'undefined' || !THREE.WebGLRenderer) return null;
+        var r;
+        try { r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { return null; }
+        r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        var ts = CONFIG.tileSize || BASE_TILE, COLS = 7, ROWS = 4;
+        var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 2, ts * 0.2, ts * 60);
+        var cx = COLS * ts / 2, cz = ROWS * ts / 2;
+        cam.position.set(cx + ts * 0.35, ts * 5.1, cz + ts * 6.3); cam.lookAt(cx, 0, cz + ts * 0.15);
+        var at = function (c, rw, y) { return new THREE.Vector3(c * ts + ts / 2, y || 0, rw * ts + ts / 2); };
+        /* the board: plain dark tiles, a hair apart */
+        var tileGeo = new THREE.BoxGeometry(ts * 0.985, ts * 0.3, ts * 0.985);
+        var tileMats = [new THREE.MeshBasicMaterial({ color: 0x1b2331 }), new THREE.MeshBasicMaterial({ color: 0x212a3a })];
+        for (var gx = 0; gx < COLS; gx++) for (var gz = 0; gz < ROWS; gz++) {
+            var tm = new THREE.Mesh(tileGeo, tileMats[(gx + gz) % 2]); tm.position.copy(at(gx, gz, -ts * 0.15)); sc.add(tm);
+        }
+        /* the units: you + an ally (blue), the enemy (red), as small markers at the arrows' chest height */
+        var chest = ts * UNIT_SPRITE_SIZE_RATIO * 0.5;
+        var markGeo = new THREE.OctahedronGeometry(ts * 0.13, 0);
+        [[1, 2, 0x5aa8ff], [3, 3, 0x5aa8ff], [5, 1, 0xff4545]].forEach(function (u) {
+            var mk = new THREE.Mesh(markGeo, new THREE.MeshBasicMaterial({ color: u[2] }));
+            mk.position.copy(at(u[0], u[1], chest)); mk.scale.set(1, 1.7, 1); sc.add(mk);
+        });
+        /* the tiles: every situation the board paints, each with the board's own recipe */
+        var plate = function (c, rw, mat, y, frac) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * (frac || 0.92), ts * (frac || 0.92)), mat);
+            m.rotation.x = -Math.PI / 2; m.position.copy(at(c, rw, y || 0.6)); m.renderOrder = 2; sc.add(m); return m;
+        };
+        var typed = function (c, rw, type) { var R = _hlRecipe(type); plate(c, rw, _makeHlMaterial(R.color, R.opacity, R.edgeGlow, R.dotCount, R.style, _hlKindOfType(type))); };
+        var over = function (c, rw, name, col, op, cursor) {
+            var st = _OVERLAY_STYLE[name] || { fill: 0.34, edgeGlow: 0.65 };
+            plate(c, rw, _makeHlMaterial(col, op, st.edgeGlow, st.dots || 0, st, _hlKindOfOverlay(name, col)), 0.8);
+            if (cursor) plate(c, rw, _makeHlMaterial(0xffd83d, 0.95, 0.0, 0, { fill: 0.0, brackets: 1.0 }, 'cursor'), 1.0, 0.98);
+        };
+        typed(0, 0, 'move benefit'); typed(1, 0, 'move hazard'); typed(2, 0, 'move-edge');
+        typed(0, 1, 'move'); typed(1, 1, 'move'); typed(2, 1, 'move-jump');
+        typed(0, 2, 'move'); typed(2, 2, 'move'); typed(3, 2, 'move strike');
+        typed(0, 3, 'move'); typed(1, 3, 'move'); typed(2, 3, 'move');
+        typed(4, 0, 'spell-range-dmg'); typed(4, 1, 'spell-range-dmg'); typed(4, 2, 'spell-range-dmg'); typed(6, 3, 'spell-range-dmg');
+        typed(3, 3, 'heal'); typed(4, 3, 'heal-range');
+        over(5, 1, 'spellApproachTarget', 0xff3333, 0.5, true); over(5, 2, 'spellApproachTarget', 0xff3333, 0.5); over(6, 1, 'spellApproachTarget', 0xff3333, 0.5);
+        over(6, 0, 'spellApproachShove', 0xbb66ff, 0.4);
+        plate(1, 2, _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 }, 'acting'), 1.2, 0.96);
+        /* the cast glow (the gold "about to hit" on the ground) */
+        var glows = [_glowMakeMat(_GLOW_COL.hostile, 0.72, 1.15, 'glowFoe'), _glowMakeMat(_GLOW_COL.hostile, 0.72, 1.15, 'glowFoe')];
+        plate(5, 3, glows[0], 0.9); plate(6, 2, glows[1], 0.9);
+        /* the arrows: walk (blue), the strike (red), a heal (green), the shove (purple) */
+        var sink = { group: new THREE.Group(), meshes: [], dots: [] };
+        sc.add(sink.group);
+        var arc = function (a, b, k) {
+            var pts = [], flat = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z));
+            var peak = Math.max(a.y, b.y) + Math.min(ts * 2.6, flat * k) + ts * 0.3, hLob = peak - (a.y + b.y) / 2;
+            for (var i = 0; i <= 8; i++) { var t = i / 8; pts.push(new THREE.Vector3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t + hLob * 4 * t * (1 - t), a.z + (b.z - a.z) * t)); }
+            return pts;
+        };
+        var inset = function (a, b) { var d = b.clone().sub(a).normalize().multiplyScalar(ts * 0.22); return [a.clone().add(d), b.clone().sub(d)]; };
+        var buildArrows = function () {
+            _arrowDispose(sink.group, sink.meshes); sink.meshes = []; sink.dots = [];
+            var lift = ts * 0.14;
+            _buildArrowFromPoints([at(1, 2, lift), at(2, 2, lift), at(3, 2, lift)], 0x3399ff, { radius: ts * 0.028, sink: sink });
+            var s1 = inset(at(3, 2, chest), at(5, 1, chest));
+            _buildArrowFromPoints(arc(s1[0], s1[1], 0.35), 0xff3333, { radius: ts * 0.032, sink: sink });
+            var s2 = inset(at(1, 2, chest), at(3, 3, chest));
+            _buildArrowFromPoints(arc(s2[0], s2[1], 0.35), 0x33dd66, { radius: ts * 0.032, sink: sink });
+            var s3 = inset(at(5, 1, chest), at(6, 0, chest));
+            _buildArrowFromPoints(arc(s3[0], s3[1], 0.3), 0xbb66ff, { radius: ts * 0.032, sink: sink });
+        };
+        buildArrows();
+        _hlLookSync();
+        var seenT = window._ewTileLookV || 0, seenA = window._ewArrowLookV || 0, raf = 0, lw = 0, lh = 0, dead = false;
+        var api = { cv: cv, stop: null, cam: cam };
+        var loop = function () {
+            if (dead) return;
+            if (!cv.isConnected) { api.stop(); return; }
+            raf = requestAnimationFrame(loop);
+            if (document.hidden) return;
+            var w = cv.clientWidth | 0, h = cv.clientHeight | 0;
+            if (w < 2 || h < 2) return;
+            if (w !== lw || h !== lh) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); lw = w; lh = h; }
+            var t = performance.now() / 1000;
+            _hlGlobalTime.value = t;
+            _hlLookSync();
+            var tv = window._ewTileLookV || 0, av = window._ewArrowLookV || 0;
+            if (tv !== seenT) { seenT = tv; _hlPaint(sc); }
+            if (av !== seenA) { seenA = av; buildArrows(); }
+            _arrowTick(sink.meshes, sink.dots, t);
+            /* the glow breathes as it gathers toward the hit */
+            var lvl = 0.55 + 0.3 * (0.5 + 0.5 * Math.sin(t * 2.4));
+            glows.forEach(function (g) { var u = g.uniforms; u.uOpacity.value = 0.92 * lvl; u.uFill.value = 0.52 + 0.42 * lvl; u.uEdgeGlow.value = 0.95 + 0.55 * lvl; u.uColor.value.copy(g._ew_glowBase); });
+            try { r.render(sc, cam); } catch (e) { api.stop(); }
+        };
+        api.stop = function () {
+            if (dead) return;
+            dead = true; cancelAnimationFrame(raf);
+            sc.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material)) o.material.dispose(); });
+            try { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } catch (e) {}
+            if (_lookPrev === api) _lookPrev = null;
+        };
+        _lookPrev = api;
+        loop();
+        return api;
     }
 
     var _intentBadgeContainer = null;
@@ -17116,7 +17449,7 @@ const ThreeRenderer = (function () {
         /* The cursor: yellow corner brackets + a whisper of fill. The ONLY
            tile on the board that wears brackets (plus the AoE impact tile),
            so "where am I pointing" is always a one-glance read. */
-        var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
+        var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 }, 'cursor');
         /* THE DRAPED MARKERS: on the column top the cursor is the move tiles' drape (slopes, swells, stairs, the field's
            ground, the skin line), so its corners ride the surface instead of sinking into it */
         if (!_hvSub) return _drapedTileMesh(tx, ty, 0.95, hMat, 0.5);
@@ -34615,11 +34948,20 @@ const ThreeRenderer = (function () {
             var u = m.uniforms, s = _ewProgMat(m);
             var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Eg = _ewPU(u.uEdgeGlow, 'float'),
                 Fi = _ewPU(u.uFill, 'float'), Br = _ewPU(u.uBrackets, 'float'), Ha = _ewPU(u.uHatch, 'float'), In = _ewPU(u.uInset, 'float'), Do = _ewPU(u.uDots, 'float');
+            /* THE TILE LOOK (shared uniforms, see _hlLookU) */
+            var LK = function (k, t) { return _ewPU(u[k] || _hlLookU[k], t || 'float'); };
+            var kLine = LK('uLkLine'), kEdge = LK('uLkEdge'), kHalo = LK('uLkHalo'), kHot = LK('uLkHot'), kFill = LK('uLkFill'), kBright = LK('uLkBright'),
+                kOp = LK('uLkOp'), kPulse = LK('uLkPulse'), kSpeed = LK('uLkSpeed'), kSize = LK('uLkSize'), kRound = LK('uLkRound'),
+                kLineCol = LK('uLkLineCol', 'color'), kLineOwn = LK('uLkLineOwn');
             s.fragmentNode = T.Fn(function () {
-                var uv = T.uv(), x = uv.x, y = uv.y;
-                var edge = T.min(T.min(x, one.sub(x)), T.min(y, one.sub(y))).toVar();
-                var bHard = one.sub(ss(0.02, 0.055, edge)), bSoft = one.sub(ss(0, 0.16, edge)).mul(0.4);
-                var pulse = T.sin(Tm.mul(2.2)).mul(0.06).add(0.94);
+                var c = T.uv().sub(0.5).div(kSize).toVar();
+                var qd = T.abs(c).sub(F(0.5).sub(kRound)).toVar();
+                var edge = F(0).sub(T.length(T.max(qd, 0)).add(T.min(T.max(qd.x, qd.y), 0)).sub(kRound)).toVar();
+                var uv = c.add(0.5).toVar(), x = uv.x, y = uv.y;
+                var inside = T.step(F(0), edge);
+                var lw = T.max(kLine, 0.02).toVar(), lineOn = T.clamp(kLine.div(0.02), 0, 1);
+                var bHard = one.sub(ss(lw.mul(0.02), lw.mul(0.055), edge)).mul(lineOn).toVar(), bSoft = one.sub(ss(F(0), lw.mul(0.16), edge)).mul(0.4).mul(kHalo).toVar();
+                var pulse = T.sin(Tm.mul(2.2).mul(kSpeed)).mul(kPulse.mul(0.06)).add(one.sub(kPulse.mul(0.06))).toVar();
                 var L = F(0.26), W = F(0.065), iL = F(0.74), iW = F(0.935);
                 var bTL = T.step(x, L).mul(T.step(y, W)).add(T.step(y, L).mul(T.step(x, W)));
                 var bTR = T.step(iL, x).mul(T.step(y, W)).add(T.step(y, L).mul(T.step(iW, x)));
@@ -34634,11 +34976,12 @@ const ThreeRenderer = (function () {
                 };
                 var dots = Do.lessThan(0.5).select(0, Do.lessThan(1.5).select(dot(0.5), Do.lessThan(2.5).select(T.max(dot(0.37), dot(0.63)),
                     T.max(T.max(dot(0.28), dot(0.5)), dot(0.72))))).toVar();
-                var fill = Fi.mul(pulse), border = bHard.mul(1.35).add(bSoft).mul(Eg).mul(pulse);
+                var fill = Fi.mul(kFill).mul(pulse), border = bHard.mul(1.35).add(bSoft).mul(Eg).mul(kEdge).mul(pulse);
                 var inset = In.greaterThan(0).select(ss(0.115, 0.135, edge).sub(ss(0.165, 0.185, edge)).mul(In), 0).toVar();
-                var alpha = T.clamp(fill.add(border).add(brackets).add(hatch.mul(0.55)).add(dots).add(inset).mul(Op), 0, 1);
-                var bright = bHard.mul(Eg).mul(0.42).add(brackets.mul(0.3)).add(dots.mul(0.85)).add(inset.mul(0.6));
-                return V4(T.mix(C, WHITE, T.clamp(bright, 0, 0.55)), alpha);
+                var alpha = T.clamp(fill.add(border).add(brackets).add(hatch.mul(0.55)).add(dots).add(inset).mul(Op).mul(kOp).mul(inside), 0, 1);
+                var bright = bHard.mul(Eg).mul(0.42).mul(kHot).add(brackets.mul(0.3)).add(dots.mul(0.85)).add(inset.mul(0.6));
+                var base = T.mix(C, kLineCol, kLineOwn.mul(T.clamp(bHard.add(bSoft), 0, 1)));
+                return V4(T.mix(base, WHITE, T.clamp(bright, 0, T.max(kHot, 1).mul(0.55))).mul(kBright), alpha);
             })();
             return s;
         });
@@ -37377,6 +37720,58 @@ const ThreeRenderer = (function () {
         window.updateEnemyRangePreview(_hoveredUnitId);
     }
 
+    /* ── THE GAME HAS THE BOARD (2026-10-18, mondo: "when a unit is moving or there are spell animations happening,
+       basically when the game is taking over and user input does nothing, i do not want the attack range highlights to
+       show on hover ... i dont want to see any tile highlights during a spell animation, except for the gold
+       anticipation highlight") ──
+       Once per frame, after every highlight write of the frame:
+         playing out (battle.js isGamePlayingOut, or a walk / strike / projectile / shove tween, or a live action glow):
+           every tile highlight hides (range tiles, overlays, previews, arrows, the cursor) except the action glow's
+           footprint and the board's own markings (zones, weather);
+         the hover is not the player's (playing out, the camera flying on its own, a centre banner, the post-cast hold,
+           the CPU's turn, or the mouse has not moved since any of those): the cursor, the selected-tile brackets, the
+           hovered unit's range wash and its ring stay hidden, so a still mouse that a pan or a walk leaves over a unit
+           paints nothing. A real mouse move (or a wheel zoom) hands the hover back.
+       Only visibility is touched (_ew_ctlHid marks what this hid), so every highlight comes back as it was. */
+    var _hoverWaitMove = null;   // { x, y }: the pointer when the game last had the board; cleared by a real move
+    function _gamePlayingOut() {
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || state.winner || _freeRoam) return false;
+        if (typeof window.isGamePlayingOut === 'function' && window.isGamePlayingOut()) return true;
+        if (_projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0) return true;
+        for (var k in _glowLive) return true;
+        return false;
+    }
+    function _syncTakeoverHighlights() {
+        if (!highlightGroup) return;
+        var playing = _gamePlayingOut();
+        var busy = playing;
+        if (!busy && typeof state !== 'undefined' && state && state.phase === 'battle' && !state.winner) {
+            busy = _hoverCursorSuppressed()
+                || (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving())
+                || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy());
+        }
+        var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
+        if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
+        var hoverOff = inBattle && (busy || !!_hoverWaitMove);
+        var ch = highlightGroup.children;
+        for (var i = 0; i < ch.length; i++) {
+            var o = ch[i], ov = o._ew_overlay, hide;
+            if (playing) hide = !(ov === 'actionGlow' || ov === 'zone' || ov === 'weather');
+            else hide = hoverOff && (o === hoverMesh || o === selTileMesh || ov === 'enemyRange');
+            if (hide) {
+                if (o.visible) { o.visible = false; o._ew_ctlHid = true; }
+            } else if (o._ew_ctlHid) {
+                o.visible = true; o._ew_ctlHid = false;
+            }
+        }
+        if (_hoverGlowMesh) _hoverGlowMesh.visible = !hoverOff;
+    }
+    function _hoverPointerMoved(x, y) {
+        if (!_hoverWaitMove) return;
+        if (x == null || _hoverWaitMove.x == null || Math.abs(x - _hoverWaitMove.x) + Math.abs(y - _hoverWaitMove.y) >= 3) _hoverWaitMove = null;
+    }
+
     var _fpsNextDue = 0;          // §4.7 FPS-cap accumulator
     var _turboNextDue = 0;        // dev-sim turbo render throttle accumulator
     var _fpsFrames = 0, _fpsWinStart = 0, _fpsEl = null;
@@ -38202,6 +38597,7 @@ const ThreeRenderer = (function () {
         _updateExhaustedRingDim();
 
         _hlGlobalTime.value = performance.now() / 1000.0;
+        _hlLookSync();   // THE TILE LOOK: the UI Maker's changes, once each
         /* grass wind (vertex shader sway) — freezing the clock stills the field */
         if (!window.EW_DISABLE_GRASS_WIND) _grassWindTime.value = _hlGlobalTime.value;
         _updateLavaEmissive();
@@ -38271,6 +38667,8 @@ const ThreeRenderer = (function () {
         var cam = ThreeCamera.getCamera();
         /* THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine): the free eye takes the board's camera after every sync */
         if (cam && window.EWCine) { try { var _cs = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : ''; window.EWCine.frame(cam, { kind: 'battle', unit: (CONFIG.tileSize || BASE_TILE) / 2, key: _cs, site: (typeof window.hqSiteId === 'function') ? window.hqSiteId(_cs) : _cs.replace(/_delta$/, '') }); } catch (e) {} }
+        /* THE SHOT RECORDER (2026-10-18, three-camera.js EWShots): FRAME IT takes the board's camera the same way */
+        if (cam && window.EWShots && window.EWShots.framing) { try { window.EWShots.frame(cam); } catch (e) {} }
         if (cam) {
             /* Keep the hover pick glued to the cursor while the ENGINE moves the
                camera (blitz pans, cinematics, wheel zoom) and the mouse doesn't. */
@@ -38284,6 +38682,7 @@ const ThreeRenderer = (function () {
                 _refreshHoverOnCameraMove(cam);
             }
             _syncSelectedTileMarker();
+            _syncTakeoverHighlights();   // THE GAME HAS THE BOARD: after every highlight write of the frame
 
             /* §4.2 shadow-map dirty gating: skip the sun's depth pass when no
                shadow caster could have moved this frame. Camera motion never
@@ -38324,6 +38723,7 @@ const ThreeRenderer = (function () {
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
                 _scalePlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
+                if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
                 if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first (rev 3: once the party's rigs stand, or the hold's cap — _fieldDissolveReady)
             }
         }
@@ -38331,7 +38731,7 @@ const ThreeRenderer = (function () {
         _updateMinimap();
     }
 
-    var _onMouseMove = null, _onClick = null, _onContextMenu = null;
+    var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
     var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
     /* Last known mouse position over the canvas + the camera pose it was last
@@ -38670,6 +39070,7 @@ const ThreeRenderer = (function () {
        reticle instead of the frozen OS cursor. */
     function hoverAtScreen(clientX, clientY) {
         if (!canvas) return;
+        _hoverWaitMove = null;   // THE GAME HAS THE BOARD: the shooter reticle is the player's own aim
         _lastMouseClientX = clientX; _lastMouseClientY = clientY;
         _resolveHoverAt(clientX, clientY);
     }
@@ -38678,6 +39079,8 @@ const ThreeRenderer = (function () {
         if (!canvas) return;
 
         _onMouseMove = function(e) {
+            if (e.movementX || e.movementY) _hoverWaitMove = null;   // THE GAME HAS THE BOARD: a real move hands the hover back
+            else _hoverPointerMoved(e.clientX, e.clientY);
             _lastMouseClientX = e.clientX; _lastMouseClientY = e.clientY;
             _resolveHoverAt(e.clientX, e.clientY);
         };
@@ -38725,6 +39128,7 @@ const ThreeRenderer = (function () {
         };
 
         _onContextMenu = function(e) { e.preventDefault(); };
+        _onWheel = function() { _hoverWaitMove = null; };   // a wheel zoom is the player's own camera
 
         canvas.addEventListener('mousemove', _onMouseMove);
         canvas.addEventListener('click', _onClick);
@@ -38732,6 +39136,7 @@ const ThreeRenderer = (function () {
         canvas.addEventListener('touchstart', _onTouchStart, { passive: true });
         canvas.addEventListener('mouseleave', _onMouseLeave);
         canvas.addEventListener('contextmenu', _onContextMenu);
+        canvas.addEventListener('wheel', _onWheel, { passive: true });
     }
     function _unbindInput() {
         if (!canvas) return;
@@ -38743,7 +39148,8 @@ const ThreeRenderer = (function () {
         if (_onTouchStart) canvas.removeEventListener('touchstart', _onTouchStart);
         if (_onMouseLeave) canvas.removeEventListener('mouseleave', _onMouseLeave);
         if (_onContextMenu) canvas.removeEventListener('contextmenu', _onContextMenu);
-        _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = null;
+        if (_onWheel) canvas.removeEventListener('wheel', _onWheel);
+        _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = _onWheel = null;
         _lastHitX = -1; _lastHitY = -1;
         _lastMouseClientX = _lastMouseClientY = null; _lastHoverCamSig = '';
     }
@@ -39004,8 +39410,8 @@ const ThreeRenderer = (function () {
     /* The battle-frame Y of the room's floor under a team's door, or null (no true-ground field: the board's own level rule).
        The zone's real top is the reference; a TERRAIN room is sampled across the door's footprint (hqTerrainFeet, the walker's
        own feet; past the compiled floor's edge — the outer ground a window at the room's rim looks onto — the drawn room under
-       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest (so the dais,
-       0.42 tile thick, still meets the low side of a slope) and never under the ground at the door's centre. A box room's
+       it, _introRoomGroundY), the highest sample wins but never more than DOOR_FLOOR_SPAN tiles over the lowest and never under
+       the ground at the door's centre. A box room's
        floor is flat: the zone's real top. */
     var DOOR_FLOOR_SPAN = 0.35;
     /* the drawn room's ground under battle point (wx, wz): the first upward face a ray from `fromY` meets in the room's group, or null */
@@ -39111,14 +39517,9 @@ const ThreeRenderer = (function () {
         var D = new THREE.Group();                        // the door proper, at the door plane
         D.position.set(0, 0, doorOut * ts);
         g.add(D);
-        /* the landing: a threshold slab on an apron, a floating slab in the void */
-        var daisH = kit ? 0.06 * ts : 0.42 * ts, daisR = Math.max(ow * 1.15, 1.05 * ts);
-        var dais = new THREE.Mesh(new THREE.CylinderGeometry(daisR, daisR * (kit ? 1 : 0.86), daisH, 22), sillMat);
-        /* DAIS FLICKER (mondo 2026-10-05): the dais top used to land EXACTLY on another surface — +0.6 is where the
-           Training Room's hazard plate sits in front of each door (no kit), and on a kit apron (top = fy - 0.6) it is
-           the board's tile tops wherever the disc overhangs the rim. Two coplanar faces z-fought all intro. Lift it a
-           clear 0.02 tile above both so it always wins the depth test. */
-        dais.position.set(0, -daisH / 2 + 0.6 + 0.02 * ts, 0); dais.receiveShadow = true; D.add(dais);
+        /* NO LANDING (mondo 2026-10-18: "get rid of the circular platform thing underneath the door"): the round dais that
+           stood under every crossing door (menu + match intro) is gone — the frame and its sill stand straight on the
+           floor under them (the apron, the room's own ground, the menu's sand/ice). */
         /* jambs, lintel, cap, sill */
         var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jL);
         var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jR);
@@ -44863,10 +45264,21 @@ const ThreeRenderer = (function () {
         /* Hide every scene child except the unit group and the lights — the
            actors still need to be lit, and a hidden light would black them
            out along with the world. */
+        /* THE TARGET STAYS (2026-10-18, mondo: "there shouldnt ever be a time where the target becomes invisible ... the
+           target is the main priority for a damage spell animation"): the void used to hide the SPELL along with the world —
+           the projectile in flight, the impact burst, the particles, the floating damage number — and the groups of lights
+           the units are lit by (unitLights: hiding them also changed the light count every lit shader is built for). Kept
+           now: the spell layers (projectiles, hit FX, float text, laser beams, the particle batches and pools, and every
+           effect a VFX module added during this cast — _ew_vfxAt, three-vfx-effects.js _vfxAdd) and any subtree that holds
+           only lights. Older effects (a burning tile, a zone dome across the board) still go with the world. */
+        var _vfxFresh = performance.now() - 6000;
         var hidden = [];
         for (var i = 0; i < scene.children.length; i++) {
             var ch = scene.children[i];
             if (ch === unitGroup || ch.isLight || ch._ew_rig) continue;   // THE LIGHT RIG holds the copies of the lights: its set must not change mid-cast
+            if (ch === projectileGroup || ch === hitFxGroup || ch === floatTextGroup || ch === _laserBeamGroup) continue;
+            if (ch._ew_fxBatch || ch._ew_fxPool || (ch._ew_vfxAt && ch._ew_vfxAt > _vfxFresh)) continue;
+            if (_voidLightsOnly(ch)) continue;
             if (ch.visible) { hidden.push(ch); ch.visible = false; }
         }
         /* …and every unit that isn't in the scene. */
@@ -44973,6 +45385,17 @@ const ThreeRenderer = (function () {
             prevFog: prevFog, fogWas: fogWas, discs: discs, lights: lights, bg: scene.background };
         _shadowsDirty = true;
         return true;
+    }
+
+    /* A subtree that holds lights and nothing drawable (unitLights, streetLampLights, wardLights …): it stays up through
+       the void — it lights the actors and draws nothing. */
+    function _voidLightsOnly(root) {
+        var lit = false, drawn = false;
+        root.traverse(function (o) {
+            if (o.isLight) lit = true;
+            else if (o.isMesh || o.isSprite || o.isPoints || o.isLine) drawn = true;
+        });
+        return lit && !drawn;
     }
 
     /* Shared soft radial falloff for the void glow pools (white core →
@@ -64552,14 +64975,17 @@ const ThreeRenderer = (function () {
         var T = G.R.T, ts = G.ts;
         /* THE DEFORM (2026-09-23): a box room's cells are flat (null — the plate stays a plane) until a dig bowls one;
            a dug cell's shape is the bowl's (_fieldDeformDyAt), a raise is a block (the cell's delta, flat) */
-        var fn = function (wx, wz, x, y, refY) {
+        /* THE EARTHWORK MOUND: a mound cell's top is the swell's (_fieldMoundPlanLive), and its bank reaches into the cells beside
+           it; `bare` = the room's own ground with any dig, no raise (the mound's mesh lays itself on it) */
+        var fn = function (wx, wz, x, y, refY, bare) {
             var row = G.tops[y]; var top = row ? row[x] : null;
             if (top === null || top === undefined) return null;
             /* THE TWO FLOORS: a two-floor cell answers for the floor nearest refY (a plate / a ring / a walk under the deck reads the ground) */
             var onLow = false;
             if (refY !== undefined && refY !== null && G.lows) { var fl = G.floorNear(x, y, refY); if (fl && fl.low) { top = fl.m; onLow = true; } }
             var dug = (typeof _fieldDeformDug === 'function') && _fieldDeformDug();   // typeof: the highlights-conform test evals the block alone
-            if (!feet && !dug && !onLow) return null;
+            var mnd = (!bare && typeof _fieldMoundPlanLive === 'function') ? _fieldMoundPlanLive() : null;
+            if (!feet && !dug && !onLow && !(mnd && mnd.has[x + ',' + y]) && !bare) return null;
             var base = G.floorY + top * G.s;
             if (onLow && !feet) return base;
             /* a DECK top is level by rule (data.js hqTerrainBridges): the plate lies flat on it — sampled, its edge past the slab drooped to the ground */
@@ -64574,8 +65000,10 @@ const ThreeRenderer = (function () {
                 base += dy;
             }
             if (onLow) return base;   // a deck cell is never dug or raised (THE NO-DEFORM FLAG 'B')
-            var d = G.deltaAt(x, y);
-            return base + (d > 0 ? d * G.elev : 0) + (dug ? _fieldDeformDyAt(wx, wz) : 0);
+            var d = G.deltaAt(x, y), dgy = dug ? _fieldDeformDyAt(wx, wz) : 0;
+            if (bare) return base + dgy;
+            if (mnd && mnd.has[x + ',' + y]) return base + dgy + mnd.dyAt(wx / ts, wz / ts);   // the cell beside keeps its plate flat (its bank foot covers the plate's edge, as a wall's face did)
+            return base + (d > 0 ? d * G.elev : 0) + dgy;
         };
         _fieldGroundSamplerCache.key = key; _fieldGroundSamplerCache.fn = fn;
         return fn;
@@ -65022,6 +65450,165 @@ const ThreeRenderer = (function () {
         try { if (_facilityNearGroup) _facilityNearGroup.traverse(function (o) { if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase; }); } catch (e) {}
         _fieldDeformCache.key = null; _fieldDeformCache.plan = null;
     }
+    /* ══ THE EARTHWORK MOUND (2026-10-18, mondo: Rampart "since this isnt the voxel map its kind of weird for it to be a perfect cube
+       wall. can you just raise the elevation like how raising elevation works in the map editor, and make the sides/walls dirt") ══
+       On the true ground a cell a MOUND deform raised (data.js terrainDeform.mound — Rampart; battle.js applyTerrainDeform notes it
+       in state.moundTiles, plain state, so the guest's state-sync draws the same) is no column: the ground itself swells, the
+       editor's RAISE brush in the battle. The cell's centre stands at the engine's full height (tileTopY's number — the unit on it
+       stands on the crest); the bank runs smoothly from FIELD_MOUND_BAND tiles inside the cell's edge to as far into the neighbour
+       (whose centre stays where it was), with a little roughness on it. Drawn as one mesh per mound: dirt banks
+       (FIELD_MOUND_SIDE), the room's own floor sheet back on the flat crest, the foot fading into the ground like a dirt path.
+       The sampler every highlight, walk and ring reads (_fieldGroundSampler) follows the same shape on the mound's own cells (the
+       cells beside keep their flat plates — the bank's foot covers their edge, as the block's face did). The rules are untouched (the
+       cell is still +2 levels: jump-only, blocks the sight). A tile board (Holo Sim, Training Room) keeps its voxel column.
+       Off: window.EW_NO_FIELD_MOUND (the block, as before). */
+    var FIELD_MOUND_BAND = 0.32, FIELD_MOUND_SKIRT = 0.08, FIELD_MOUND_ROUGH = 0.1, FIELD_MOUND_SEGS = 10;
+    var FIELD_MOUND_SIDES = ['dirt_2', 'dirt', 'dirt_3'];
+    var _fieldMoundCache = { key: null, plan: null };
+    function _fieldMoundOn() { return !(typeof window !== 'undefined' && window.EW_NO_FIELD_MOUND); }
+    /* → { cells: [{x, y, delta}], has: {'x,y': true}, at(tx, tz) → { h, peak, skirt } (battle px), dyAt(tx, tz) → h } or null */
+    function _fieldMoundPlanLive() {
+        var G = _fieldGround(), M = (typeof state !== 'undefined' && state) ? state.moundTiles : null;
+        if (!G || !G.levels || !M || !_fieldMoundOn()) { _fieldMoundCache.key = null; _fieldMoundCache.plan = null; return null; }
+        var mk = Object.keys(M); if (!mk.length) return null;
+        var monM = _monumentMap();
+        var key = (state._heightVersion || 0) + '|' + _fieldGroundCache.key + '|' + mk.join(';') + '|' + (monM ? monM.size : 0);
+        if (_fieldMoundCache.key === key) return _fieldMoundCache.plan;
+        var W = G.W, H = G.H, D = new Float32Array(W * H), has = {}, cells = [];
+        mk.forEach(function (k) {
+            var pc = k.indexOf(','), x = +k.slice(0, pc), y = +k.slice(pc + 1);
+            if (!(x >= 0 && y >= 0 && x < W && y < H) || (monM && monM.has(k))) return;
+            var d = G.deltaAt(x, y); if (!(d > 0) || G.yAt(x, y) === null) return;
+            D[y * W + x] = d * G.elev; has[k] = true; cells.push({ x: x, y: y, delta: d });
+        });
+        var plan = null;
+        if (cells.length) {
+            var at = function (x, y) { return (x < 0 || y < 0 || x >= W || y >= H) ? 0 : D[y * W + x]; };
+            var ss = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+            /* the share a cell keeps of a point `d` tiles in from its near edge, over a bank `b` either side of that edge */
+            var own = function (d, b) { return d >= b ? 1 : ss((d + b) / (2 * b)); };
+            var shape = function (tx, tz, b) {
+                var cx = Math.floor(tx), cz = Math.floor(tz), fx = tx - cx, fz = tz - cz;
+                var sx = fx < 0.5 ? -1 : 1, sz = fz < 0.5 ? -1 : 1;
+                var wx = own(fx < 0.5 ? fx : 1 - fx, b), wz = own(fz < 0.5 ? fz : 1 - fz, b);
+                var d00 = at(cx, cz), d10 = at(cx + sx, cz), d01 = at(cx, cz + sz), d11 = at(cx + sx, cz + sz);
+                return { h: wx * wz * d00 + (1 - wx) * wz * d10 + wx * (1 - wz) * d01 + (1 - wx) * (1 - wz) * d11, peak: Math.max(d00, d10, d01, d11) };
+            };
+            var nse = function (u, v) { return (typeof _hqTNoise === 'function') ? _hqTNoise(u, v, 0.45, 53) : Math.sin(u * 7.1 + v * 3.7) * Math.cos(v * 5.3 - u * 2.9); };
+            var info = function (tx, tz) {
+                var s = shape(tx, tz, FIELD_MOUND_BAND), h = s.h;
+                if (h > 0 && s.peak > 0) { var t = h / s.peak; h += nse(tx, tz) * FIELD_MOUND_ROUGH * G.elev * 4 * t * (1 - t); }   // a lumpy bank: none on the crest or at the foot
+                return { h: h > 0 ? h : 0, peak: s.peak, skirt: shape(tx, tz, FIELD_MOUND_BAND + FIELD_MOUND_SKIRT).h };
+            };
+            plan = { cells: cells, has: has, at: info, dyAt: function (tx, tz) { return info(tx, tz).h; } };
+        }
+        _fieldMoundCache.key = key; _fieldMoundCache.plan = plan;
+        return plan;
+    }
+    var _fieldMoundGeoGroup = null;
+    function _fieldMoundBuild(ts) {
+        var P = _fieldMoundPlanLive(), G = _fieldGround(); if (!P || !G || !terrainGroup || typeof THREE === 'undefined') return 0;
+        var fn = _fieldGroundSampler(), elev = G.elev;
+        /* the room's own ground under a point (the dig's bowl in it, no raise): a cell off the board / OUT reads the board's edge cell / the mound's */
+        var bare = function (wx, wz, x, y, fb) {
+            var cx = x < 0 ? 0 : x >= G.W ? G.W - 1 : x, cy = y < 0 ? 0 : y >= G.H ? G.H - 1 : y;
+            var v = fn ? fn(wx, wz, cx, cy, undefined, true) : null;
+            if (v === null || v === undefined || !isFinite(v)) { var row = G.tops[cy], t = row ? row[cx] : null; v = (t === null || t === undefined) ? fb : G.floorY + t * G.s; }
+            return v;
+        };
+        var sideTex = null, sideKey = null;
+        for (var si = 0; si < FIELD_MOUND_SIDES.length && !sideTex; si++) { sideTex = _hzTex(FIELD_MOUND_SIDES[si]); if (sideTex) sideKey = FIELD_MOUND_SIDES[si]; }
+        var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
+        var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
+        var matOf = function (key) {
+            _fieldStrataMats = _fieldStrataMats || {};
+            if (!_fieldStrataMats[key]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[key] = m; }
+            return _fieldStrataMats[key];
+        };
+        var dirt = matOf(sideKey || bed.floor), dirtFade = _fieldPatchFadeMat(dirt, 'mound|' + (sideKey || bed.floor)) || dirt;
+        var crest = _fieldPatchFadeMat(matOf(floorKey), 'mound|' + floorKey);
+        var rep = _fieldPatchRep(G), lift = Math.max(0.5, ts * 0.006), S = FIELD_MOUND_SEGS;
+        /* THE RISE: the cells of one cast climb together — one mesh per (rise, levels), the still mounds in one */
+        var sets = {};
+        P.cells.forEach(function (c) {
+            var rr = _riseOf(c.x, c.y), vis = rr ? Math.min(rr.lv, c.delta) : 0, sk = (rr && vis > 0) ? rr.id + ':' + vis : '';
+            (sets[sk] || (sets[sk] = { rr: (rr && vis > 0) ? rr : null, vis: vis, cells: [] })).cells.push(c);
+        });
+        var grp = new THREE.Group(); grp.name = 'field_mounds'; grp._ew_fieldStrata = true;
+        var n = 0, nzE = 0.02;
+        Object.keys(sets).forEach(function (sk) {
+            var set = sets[sk], area = {}, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, fbOf = {};
+            set.cells.forEach(function (c) {
+                var fb = G.floorY + ((G.tops[c.y] && G.tops[c.y][c.x]) || 0) * G.s;
+                for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+                    var ax = c.x + dx, ay = c.y + dy, ak = ax + ',' + ay;
+                    if ((dx || dy) && P.has[ak]) continue;   // a mound cell of another set draws itself
+                    area[ak] = true; if (fbOf[ak] === undefined) fbOf[ak] = fb;
+                    if (ax < x0) x0 = ax; if (ay < y0) y0 = ay; if (ax > x1) x1 = ax; if (ay > y1) y1 = ay;
+                }
+            });
+            var NX = (x1 - x0 + 1) * S + 1, NZ = (y1 - y0 + 1) * S + 1, nv = NX * NZ;
+            var pos = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), colD = new Float32Array(nv * 4), colC = new Float32Array(nv * 4);
+            for (var j = 0; j < NZ; j++) for (var i = 0; i < NX; i++) {
+                var v = j * NX + i, tx = x0 + i / S, tz = y0 + j / S, wx = tx * ts, wz = tz * ts;
+                var cx = Math.min(x1, Math.floor(tx)), cz = Math.min(y1, Math.floor(tz)), ck = cx + ',' + cz;
+                var fb = fbOf[ck]; if (fb === undefined) { var ak2 = Math.max(x0, cx - 1) + ',' + cz; fb = fbOf[ak2] !== undefined ? fbOf[ak2] : G.floorY; }
+                var I = P.at(tx, tz), g0 = bare(wx, wz, cx, cz, fb);
+                pos[v * 3] = wx; pos[v * 3 + 1] = g0 + I.h + lift; pos[v * 3 + 2] = wz;
+                /* the bank's slope (rise per run) → the sheet runs down the bank, not stretched up it; none on the crest / the flat */
+                var gx = (P.dyAt(tx + nzE, tz) - P.dyAt(tx - nzE, tz)) / (2 * nzE * ts), gz = (P.dyAt(tx, tz + nzE) - P.dyAt(tx, tz - nzE)) / (2 * nzE * ts);
+                var gm = Math.sqrt(gx * gx + gz * gz), gk = 1 / Math.sqrt(gm * gm + 0.36);
+                uv[v * 2] = (wx + gx * gk * I.h) / rep; uv[v * 2 + 1] = -(wz + gz * gk * I.h) / rep;
+                /* the dirt: solid on the bank, its foot fading out over the ground beside it with a ragged edge */
+                var nz = (typeof _hqTNoise === 'function') ? _hqTNoise(tx, tz, 0.3, 71) : 0;
+                var aD = (I.h > 0.12 * elev) ? 1 : Math.max(0, Math.min(1, I.skirt / (0.1 * elev) + nz * 0.35));
+                colD[v * 4] = colD[v * 4 + 1] = colD[v * 4 + 2] = 1; colD[v * 4 + 3] = aD;
+                /* the crest: the room's floor where the top is flat */
+                var ct = I.peak > 0 ? Math.max(0, Math.min(1, (I.h / I.peak - 0.72) / 0.2)) : 0;
+                var flat = Math.max(0, Math.min(1, 1 - (gm - 0.35) / 0.6));
+                colC[v * 4] = colC[v * 4 + 1] = colC[v * 4 + 2] = 1; colC[v * 4 + 3] = ct * ct * (3 - 2 * ct) * flat;
+            }
+            var core = [], fringe = [], crestIdx = [];
+            for (var cj = 0; cj < NZ - 1; cj++) for (var ci = 0; ci < NX - 1; ci++) {
+                var qx = x0 + Math.floor(ci / S), qz = y0 + Math.floor(cj / S);
+                if (!area[qx + ',' + qz]) continue;
+                var p = cj * NX + ci, q = p + 1, r = p + NX, s2 = r + 1;
+                var a0 = colD[p * 4 + 3], a1 = colD[q * 4 + 3], a2 = colD[r * 4 + 3], a3 = colD[s2 * 4 + 3];
+                if (a0 > 0.999 && a1 > 0.999 && a2 > 0.999 && a3 > 0.999) core.push(p, r, q, q, r, s2);
+                else if (a0 > 0.01 || a1 > 0.01 || a2 > 0.01 || a3 > 0.01) fringe.push(p, r, q, q, r, s2);
+                if (colC[p * 4 + 3] > 0.01 || colC[q * 4 + 3] > 0.01 || colC[r * 4 + 3] > 0.01 || colC[s2 * 4 + 3] > 0.01) crestIdx.push(p, r, q, q, r, s2);
+            }
+            if (!core.length && !fringe.length) return;
+            var idxD = core.concat(fringe);
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            geo.setAttribute('color', new THREE.BufferAttribute(colD, 4));
+            geo.setIndex(idxD);
+            geo.computeVertexNormals();   // one lattice: the bank shades smoothly across the cells
+            if (core.length) geo.addGroup(0, core.length, 0);
+            if (fringe.length) geo.addGroup(core.length, fringe.length, 1);
+            geo.computeBoundingSphere(); geo.computeBoundingBox();
+            var holder = set.rr ? _riseGroup(grp, set.rr, set.vis, 'field_mound_rise') : grp;
+            var m = new THREE.Mesh(geo, [dirt, dirtFade]);
+            m.raycast = function () {}; m.name = 'field_mound'; m._ew_fieldStrata = true; m.castShadow = true; m.receiveShadow = true;
+            holder.add(m); n++;
+            if (crest && crestIdx.length) {
+                var pos2 = new Float32Array(pos); for (var k2 = 1; k2 < pos2.length; k2 += 3) pos2[k2] += lift;
+                var tg = new THREE.BufferGeometry();
+                tg.setAttribute('position', new THREE.BufferAttribute(pos2, 3));
+                tg.setAttribute('normal', geo.attributes.normal);
+                tg.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+                tg.setAttribute('color', new THREE.BufferAttribute(colC, 4));
+                tg.setIndex(crestIdx); tg.computeBoundingSphere(); tg.computeBoundingBox();
+                var tm = new THREE.Mesh(tg, crest);
+                tm.raycast = function () {}; tm.name = 'field_mound_crest'; tm._ew_fieldStrata = true; tm.castShadow = false; tm.receiveShadow = true; tm.renderOrder = GROUND_SHEET_ORDER;
+                holder.add(tm);
+            }
+        });
+        if (n) { terrainGroup.add(grp); _fieldMoundGeoGroup = grp; _shadowsDirty = true; }
+        return n;
+    }
     /* ══ THE PATCH (2026-10-05, mondo: "each tile has the same texture pattern so it looks stupid/unrealistic. it should stem
        from the middle or lowest deformed tile and spread out and use the edge blending like for dirt paths") ══
        The strata tops and the skins were one 0–1 quad per cell, so a crater, a raised mound or a flooded patch printed the
@@ -65041,10 +65628,21 @@ const ThreeRenderer = (function () {
         return Math.max(G.ts, Math.min(6 * G.ts, rep));
     }
     /* cells: [{x, y}] of one surface; yOf(x, y) → the top (battle px) or null; o: { lift, solid, origin: {x, y} (tiles), rep (px),
-       fringe: false to draw no fade onto the neighbours }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
+       fringe: false to draw no fade onto the neighbours, ground: fn(wx, wz, x, y, refY) → the true ground under a point of cell
+       (x, y) or null (THE DRAPE, as _liqBlendGeo) }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
     function _fieldPatchGeo(G, cells, yOf, o) {
         if (!cells.length) return null;
         var ts = G.ts, S = FIELD_PATCH_SEGS, in_ = {}, i, c;
+        /* THE DRAPE ON THE DRY SKINS (2026-10-18, mondo on Skinwalker Ranch: ice with "weird edge blending and flickering ... needs
+           the same fix the liquids had"): a skin was flat at each cell's one top, so on rolling true ground the ground rose through
+           it in jagged triangles, met it at a hair's depth and shimmered, and a neighbour a third of a level off was a hard square
+           edge. With o.ground the sheet lies on the ground under every vertex, a neighbour across a slope wears the fade, and the
+           board's edge fades the sheet out — THE DRAPE's rules for the liquids. */
+        var gAt = function (u, v, x, y, ref) {
+            if (!o.ground) return null;
+            var g = o.ground(u * ts, v * ts, x, y, ref);
+            return (g === null || g === undefined || !isFinite(g)) ? null : g;
+        };
         for (i = 0; i < cells.length; i++) in_[cells[i].x + ',' + cells[i].y] = true;
         var has = function (x, y) { return !!in_[x + ',' + y]; };
         var ox = (o.origin ? o.origin.x : 0) * ts, oz = (o.origin ? o.origin.y : 0) * ts, rep = o.rep || ts * 2, lift = o.lift || 0;
@@ -65076,24 +65674,51 @@ const ThreeRenderer = (function () {
                 for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
                     var fx = c.x + dx, fy = c.y + dy, fk = fx + ',' + fy;
                     if ((!dx && !dy) || has(fx, fy) || seen[fk] || fx < 0 || fy < 0 || fx >= G.W || fy >= G.H) continue;
-                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined || Math.abs(fyy - cy0) > near) continue;
+                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined) continue;
+                    if (Math.abs(fyy - cy0) > near) {
+                        /* THE DRAPE: the ground on the shared edge / corner, read from either side — one surface is a slope, the fade runs on */
+                        var pu = c.x + 0.5 + dx * 0.5, pv = c.y + 0.5 + dy * 0.5, ga = gAt(pu, pv, c.x, c.y, cy0), gb = gAt(pu, pv, fx, fy, fyy);
+                        if (ga === null || gb === null || Math.abs(ga - gb) > near) continue;
+                    }
                     seen[fk] = true; fringe.push({ x: fx, y: fy });
                 }
             }
         }
         var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+        var S1 = S + 1;
         var quadCell = function (cx, cy, top, solidCell) {
-            var v0 = nV, a = [], any = false;
-            for (var j = 0; j <= S; j++) for (var k = 0; k <= S; k++) {
-                var u = cx + k / S, v = cy + j / S, wx = u * ts, wz = v * ts;
-                var al = alphaAt(u, v, cx, cy, solidCell); a.push(al); if (al > 0.01) any = true;
-                pos.push(wx, top + lift, wz); nrm.push(0, 1, 0);
+            var v0 = nV, a = [], any = false, j, k, u, v;
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = cx + k / S; v = cy + j / S;
+                var al = alphaAt(u, v, cx, cy, solidCell);
+                /* THE DRAPE: on the true ground the board's edge fades the sheet out (the room's floor runs on past it) */
+                if (o.ground && al > 0) al *= _liqEase(0, LIQ_EDGE_FADE, Math.min(u, v, G.W - u, G.H - v));
+                a.push(al); if (al > 0.01) any = true;
+            }
+            if (!any) return 0;
+            /* THE DRAPE: the ground read at every other vertex, the ones between their neighbours' mean (read too where one has none) */
+            var gh = null;
+            if (o.ground) {
+                gh = new Array(S1 * S1);
+                for (j = 0; j <= S; j += 2) for (k = 0; k <= S; k += 2) gh[j * S1 + k] = gAt(cx + k / S, cy + j / S, cx, cy, top);
+                for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                    if (!(j & 1) && !(k & 1)) continue;
+                    var nb = (j & 1) && (k & 1) ? [gh[(j - 1) * S1 + k - 1], gh[(j - 1) * S1 + k + 1], gh[(j + 1) * S1 + k - 1], gh[(j + 1) * S1 + k + 1]]
+                           : (j & 1) ? [gh[(j - 1) * S1 + k], gh[(j + 1) * S1 + k]] : [gh[j * S1 + k - 1], gh[j * S1 + k + 1]];
+                    var sum = 0, ok = true;
+                    for (var b = 0; b < nb.length; b++) { if (nb[b] === null) { ok = false; break; } sum += nb[b]; }
+                    gh[j * S1 + k] = ok ? sum / nb.length : gAt(cx + k / S, cy + j / S, cx, cy, top);
+                }
+            }
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                u = cx + k / S; v = cy + j / S;
+                var wx = u * ts, wz = v * ts, gy = gh ? gh[j * S1 + k] : null;
+                pos.push(wx, (gy !== null ? gy : top) + lift, wz); nrm.push(0, 1, 0);
                 if (o.cellUV) uv.push(k / S, 1 - j / S);   // a liquid's sheets: one per cell (its base sheet clamps), its flow and caustics are world space already
                 else uv.push((wx - ox) / rep + 0.5, 0.5 - (wz - oz) / rep);
-                col.push(1, 1, 1, al);
+                col.push(1, 1, 1, a[j * S1 + k]);
                 nV++;
             }
-            if (!any) { pos.length -= (S + 1) * (S + 1) * 3; nrm.length = pos.length; uv.length -= (S + 1) * (S + 1) * 2; col.length -= (S + 1) * (S + 1) * 4; nV = v0; return 0; }
             for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
                 var p = v0 + j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
                 if (!solidCell && a[p - v0] < 0.01 && a[q - v0] < 0.01 && a[r - v0] < 0.01 && a[s2 - v0] < 0.01) continue;
@@ -65492,6 +66117,12 @@ const ThreeRenderer = (function () {
             return (t === null || t === undefined) ? null : G.floorY + t * G.s + sDelta(x, y) * G.elev;
         };
         var plan = _fieldStrataFaces(G.W, G.H, sYAt, sDelta, elev);
+        /* THE EARTHWORK MOUND: a mound cell is no column — _fieldMoundBuild swells the ground there */
+        var moundP = _fieldMoundPlanLive();
+        if (moundP) {
+            plan.tops = plan.tops.filter(function (c) { return !moundP.has[c.x + ',' + c.y]; });
+            plan.faces = plan.faces.filter(function (f) { return !moundP.has[f.x + ',' + f.y]; });
+        }
         /* THE RISE: a raised cell that is still climbing (riseOf: its rise + the levels of it that are column) is built in its
            own group; the cells beside it face it at its OLD top until it arrives (no gap opens in a wall it climbs beside) */
         var riseOf = {}, rising = false;
@@ -65647,7 +66278,7 @@ const ThreeRenderer = (function () {
             if (t === null || t === undefined) return null;
             return G.floorY + t * G.s + ((lr && lr[x] != null) ? ((fl - lr[x]) || 0) : 0) * G.elev;
         };
-        var grp = null, n = 0;
+        var grp = null, n = 0, moundP = _fieldMoundPlanLive();
         var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null, riseKeys = {};
         for (var pk in painted) {
             var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
@@ -65661,6 +66292,7 @@ const ThreeRenderer = (function () {
             var top = skinY(x, y); if (top === null || top === undefined) continue;
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
+            if (!fluid && moundP && moundP.has[pk]) continue;   // THE EARTHWORK MOUND: the swell wears its own dirt and crest
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
             /* THE RISE: the skin of a raised cell that is still climbing (Rampart's stone) climbs with its strata */
             var rq = null;
@@ -65732,9 +66364,17 @@ const ThreeRenderer = (function () {
                 var fluid = !!_FLUID_TERRAIN_SET[k], mat = fluid ? matOf(k) : _fieldPatchSheetMat(k); if (!mat) return;
                 var fade = fluid ? mat : _fieldPatchFadeMat(mat, 'skin|' + k);
                 if (!fade) return;
+                /* THE DRAPE ON THE DRY SKINS: ice, sand, scorch … lie on the true ground under every vertex, a highlight's lift over it
+                   (not a climbing run: its rise lifts the sheet with its strata) */
+                var gDry = null, dLift = 0;
+                if (!fluid && !rq) {
+                    var gS = _liqDrapeSampler();   // THE WALL TOPS: a monument cell keeps its floor's flat sheet (the ground read there is the stone's top)
+                    gDry = function (wx, wz, x, y, ref) { return monFloor(x, y) !== null ? null : gS(wx, wz, x, y, ref); };
+                    dLift = HL_FIELD_LIFT * ts;
+                }
                 _fieldPatchRuns(byKey[bk]).forEach(function (run) {
                     var low = run.some(function (c) { return G.deltaAt(c.x, c.y) < 0; });
-                    var geo = _fieldPatchGeo(G, run, yOf, { lift: fluid ? 0.9 : 0.7, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep });
+                    var geo = _fieldPatchGeo(G, run, yOf, { lift: (fluid ? 0.9 : 0.7) + dLift, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep, ground: gDry });
                     if (!geo) return;
                     var mesh = new THREE.Mesh(geo, [fade, fade]);
                     mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k; mesh.name = 'field_skin_patch';
@@ -69259,7 +69899,7 @@ const ThreeRenderer = (function () {
            the duration of an attack / spell — see the ACTION TILE GLOW block. */
         actionGlowStart, actionGlowBurst, actionGlowEnd, actionGlowKillAll,
 
-        drawArrow3D, drawPathArrow3D, clearArrows3D,
+        drawArrow3D, drawPathArrow3D, clearArrows3D, lookPreview,
 
         showGhostUnit, clearGhostUnit,
 
@@ -69392,6 +70032,27 @@ const ThreeRenderer = (function () {
             if (!isFinite(p.x + p.y + p.z)) return false;
             out[0] = p.x; out[1] = p.y; out[2] = p.z;
             return true;
+        },
+        /* Where a unit's body is ON SCREEN this frame (client px): the centre of the body and its drawn height. The
+           whole-screen spell layers (battle.js VoidStage's veil, the whiteout, the impact flash) leave this patch clear so
+           the target never disappears behind them. null when it has no live model or sits behind the lens. */
+        unitScreenBox: function (uid) {
+            var e = _getUnitEntry(uid);
+            var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            if (!e || !e.group || !cam || !canvas) return null;
+            var p = e.group.position;
+            if (!isFinite(p.x + p.y + p.z)) return null;
+            var ts = CONFIG.tileSize || BASE_TILE;
+            var h = ts * UNIT_SPRITE_SIZE_RATIO * ((e.modelDef && e.modelDef.heightRatio) || 1);
+            _projVec2.set(p.x, p.y, p.z).project(cam);
+            if (_projVec2.z > 1 || _projVec2.z < -1) return null;
+            var fx = _projVec2.x, fy = _projVec2.y;
+            _projVec2.set(p.x, p.y + h, p.z).project(cam);
+            if (_projVec2.z > 1 || _projVec2.z < -1) return null;
+            var r = canvas.getBoundingClientRect();
+            var x0 = (fx + 1) / 2 * r.width, y0 = (1 - fy) / 2 * r.height;
+            var x1 = (_projVec2.x + 1) / 2 * r.width, y1 = (1 - _projVec2.y) / 2 * r.height;
+            return { x: r.left + (x0 + x1) / 2, y: r.top + (y0 + y1) / 2, h: Math.hypot(x1 - x0, y1 - y0) };
         },
 
         /* §4 performance pass — Video-settings hooks + shadow gate */

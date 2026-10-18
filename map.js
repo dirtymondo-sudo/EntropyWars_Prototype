@@ -12309,6 +12309,7 @@
             state.paintedTiles = {};   // THE SKINS: a fresh board has no painted surfaces (setTerrainAt notes them)
             state.paintedFrom = {};   // THE WEATHER'S TERRAIN: nor what a painted cell was before (notePaintOrigin)
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
+            state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so
@@ -13174,8 +13175,8 @@
         }
 
         /* Does team `player` see tile (tx, ty)? Any living unit's own sight, or
-           the team's structures / reveals. Blind units add their shrunken sight;
-           Jammed units add their own sight — the team just can't lend them its eyes. */
+           the team's structures / reveals. Blind / Jammed units still add their
+           own (shrunken) sight — the team just can't lend them its eyes. */
         function teamSeesTile(player, tx, ty, tz) {
             for (const u of state.units) {
                 if (u.dead || u._dying || u.player !== player) continue;
@@ -13222,7 +13223,7 @@
 
         /* Can `unit` (or its team, for it) see tile (tx, ty)? THE truth for every
            targeting gate (attacks, spells, previews, the action menu, the CPU).
-           VISION ON (default): the unit's own sight, then — unless it is
+           VISION ON (default): the unit's own sight, then — unless it is Blind /
            Jammed (noSharedVision) — any ally's sight and the team's structures
            (shared vision, mondo: "unless an ally unit is close enough to see
            them"). Holds with the fog of war ON or OFF. Enemy smoke hides its
@@ -13291,6 +13292,21 @@
             return result;
         }
 
+        /* THE SOLO SIGHT (2026-10-18, mondo: "if i am blind then i shouldnt have team vision ... if it was working
+           properly then i wouldnt have been able to click on that unit in the first place"): while a unit cut off from
+           its team's sight (Blind / Jammed, STATUS_DEFS noSharedVision) is the one acting for `player`, the board shows
+           that team only what THAT unit sees — the fog, the drawn enemies and the clickable tiles all follow it, so the
+           screen matches isInVision (the gate every attack and spell runs). Returns that unit, else null. */
+        function fogSoloUnit(player) {
+            if (!_visionOn() || typeof unitLosesSharedVision !== 'function') return null;
+            if (state.phase !== 'battle') return null;
+            const bid = state._blitzActiveUnitId;
+            let u = bid ? state.units.find(x => x.id === bid) : null;
+            if (!u && state.activePlayer === player && typeof getSelectedUnit === 'function') u = getSelectedUnit();
+            if (!u || u.dead || u._dying || u.player !== player) return null;
+            return unitLosesSharedVision(u) ? u : null;
+        }
+
         function computeVisibleTiles(player) {
 
             const visible = new Set();
@@ -13325,7 +13341,44 @@
                 }
             }
 
+            /* Smoke concealment: enemy smoke zones hide their tiles unless a friendly stands beside them. */
+            function _dropEnemySmokeTiles() {
+                if (state._activeZones?.length) {
+                    const smokeZones = state._activeZones.filter(z => z.smokeConcealment && z.ownerPlayer !== player);
+                    if (smokeZones.length > 0) {
+                        const friendlies = state.units.filter(u => !u.dead && u.player === player);
+                        for (const zone of smokeZones) {
+                            const r = (zone.radius ?? 1);
+                            for (let dy = -r; dy <= r; dy++) {
+                                for (let dx = -r; dx <= r; dx++) {
+                                    const sx = zone.x + dx, sy = zone.y + dy;
+                                    if (sx < 0 || sy < 0 || sx >= size || sy >= sizeH) continue;
+                                    const spk = sx + ',' + sy;
+                                    if (!visible.has(spk)) continue;
+                                    /* Keep visible if a friendly is adjacent (dist ≤ 1) to the smoke tile */
+                                    let adjacentFriendly = false;
+                                    for (const f of friendlies) {
+                                        if (Math.abs(f.x - sx) + Math.abs(f.y - sy) <= 1) {
+                                            adjacentFriendly = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!adjacentFriendly) visible.delete(spk);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             const isAlive = u => !u.dead && u.player === player;
+
+            const _solo = fogSoloUnit(player);
+            if (_solo) {
+                addVisibleFrom(_vx(_solo), _vy(_solo), getUnitVisionRange(_solo), _vz(_solo), _solo.wallVision, _losOnlyVision());
+                _dropEnemySmokeTiles();
+                return visible;
+            }
 
             if (state.squadLeaderMode && player === 1 && !state.teamVision) {
                 const leader = state.squadLeaderUnitId ? state.units.find(u => u.id === state.squadLeaderUnitId && isAlive(u)) : null;
@@ -13421,33 +13474,7 @@
                 for (const pk of state._flairRevealTiles[player]) visible.add(pk);
             }
 
-            /* ── Smoke concealment: remove tiles inside enemy smoke zones ── */
-            if (state._activeZones?.length) {
-                const smokeZones = state._activeZones.filter(z => z.smokeConcealment && z.ownerPlayer !== player);
-                if (smokeZones.length > 0) {
-                    const friendlies = state.units.filter(u => !u.dead && u.player === player);
-                    for (const zone of smokeZones) {
-                        const r = (zone.radius ?? 1);
-                        for (let dy = -r; dy <= r; dy++) {
-                            for (let dx = -r; dx <= r; dx++) {
-                                const sx = zone.x + dx, sy = zone.y + dy;
-                                if (sx < 0 || sy < 0 || sx >= size || sy >= sizeH) continue;
-                                const spk = sx + ',' + sy;
-                                if (!visible.has(spk)) continue;
-                                /* Keep visible if a friendly is adjacent (dist ≤ 1) to the smoke tile */
-                                let adjacentFriendly = false;
-                                for (const f of friendlies) {
-                                    if (Math.abs(f.x - sx) + Math.abs(f.y - sy) <= 1) {
-                                        adjacentFriendly = true;
-                                        break;
-                                    }
-                                }
-                                if (!adjacentFriendly) visible.delete(spk);
-                            }
-                        }
-                    }
-                }
-            }
+            _dropEnemySmokeTiles();
 
             return visible;
         }
@@ -14534,7 +14561,7 @@
             if ((terrain === 'water' || terrain === 'deep_water' || terrain === 'healing_spring')
                 && unit.status && unit.status.burn) {
                 clearStatus(unit, 'burn');
-                const _dNm = (typeof unitDisplayName === 'function') ? unitDisplayName(unit) : (unit.name || 'Unit');
+                const _dNm = (typeof _ctName === 'function') ? _ctName(unit) : (unit.name || 'Unit');
                 if (typeof addLog === 'function') addLog(`💧 ${_dNm} wades into the water — the flames are doused!`);
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
             }
@@ -14594,11 +14621,11 @@
                 applyDamageToUnit(unit, result.amount, '', {
                     ignoreArmor: true
                 });
-                addLog(result.text || `${unitDisplayName(unit)} suffers ${result.amount} damage from ${rule.label}.`);
+                addLog(result.text || `${_ctName(unit)} suffers ${result.amount} damage from ${rule.label}.`);
             } else if (result.type === 'heal') {
                 const healed = applyHealingToUnit(unit, result.amount, null);
                 if (healed > 0) {
-                    addLog(result.text ? `${result.text} ${healed} HP.` : `${unitDisplayName(unit)} recovers ${healed} HP from ${rule.label}.`);
+                    addLog(result.text ? `${result.text} ${healed} HP.` : `${_ctName(unit)} recovers ${healed} HP from ${rule.label}.`);
                 }
             } else if (result.type === 'status') {
                 // wave C: terrain that coats whoever ends a turn on it (goo)
@@ -14611,7 +14638,7 @@
                 unit.mp = Math.min(unit.maxMp, before + result.amount);
                 const restored = unit.mp - before;
                 if (restored > 0) {
-                    addLog(result.text ? `${result.text} ${restored} MP.` : `${unitDisplayName(unit)} restores ${restored} MP from ${rule.label}.`);
+                    addLog(result.text ? `${result.text} ${restored} MP.` : `${_ctName(unit)} restores ${restored} MP from ${rule.label}.`);
                     if (typeof showFloatingTextForUnit === 'function') {
                         showFloatingTextForUnit(unit, `+${restored} MP`, 'heal');
                     }
@@ -14760,7 +14787,7 @@
             if (!unit) return;
             if ((unit.items?.[discardKey] || 0) <= 0) return;
             unit.items[discardKey] -= 1;
-            addLog(`${unitDisplayName(unit)} discards a ${ITEM_RULES[discardKey]?.name || discardKey}.`);
+            addLog(`${_ctName(unit)} discards a ${ITEM_RULES[discardKey]?.name || discardKey}.`);
 
             const dialog = state.uiDialog;
             if (!dialog || dialog.type !== 'itemFound') return;
@@ -14778,7 +14805,7 @@
                     } else {
                         _pickupIcon = ITEM_META[pending.type]?.icon || '📦';
                     }
-                    addLog(`${unitDisplayName(unit)} picks up ${rule?.name || pending.type}.`);
+                    addLog(`${_ctName(unit)} picks up ${rule?.name || pending.type}.`);
                     showFloatingTextForUnit(unit, `${_pickupIcon} +1`, 'pickup', { durationMs: 1000 });
                 }
             }
@@ -14810,7 +14837,7 @@
                 h.visibleTo[1] = true;
                 h.visibleTo[2] = true;
             }
-            if (carried.length) addLog(`${unitDisplayName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            if (carried.length) addLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;
@@ -15487,11 +15514,11 @@
 
                 const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
                 if (unit._isBoss) {
-                    addLog(`👹 ${unitDisplayName(unit)} has been slain!`);
+                    addLog(`👹 ${_ctName(unit)} has been slain!`);
                     shakeBoard('hard');
                 } else if (_gauntlet) {
                     const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
-                    addLog(`💀 ${unitDisplayName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
+                    addLog(`💀 ${_ctName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
                     shakeBoard('normal');
                 } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
                     addLog(unit.player === 1
@@ -15501,22 +15528,22 @@
                 } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
                     /* Strike Mode: StrikeEngine respawns on a real-time clock,
                        not rounds — it logs its own countdown. */
-                    addLog(`💀 ${unitDisplayName(unit)} is down!`);
+                    addLog(`💀 ${_ctName(unit)} is down!`);
                     shakeBoard('normal');
                 } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
                     /* RESERVES rule 2: the ladder still runs; a reserve may take
                        the seat when it opens (battle.js _reserveQueueSeat). */
                     const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
-                    addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
+                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
                     shakeBoard('normal');
                 } else {
-                    addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
+                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
                     shakeBoard('normal');
                 }
 
                 if (!state._recentDefeats) state._recentDefeats = [];
                 state._recentDefeats.push({
-                    name: unitDisplayName(unit),
+                    name: _ctName(unit),   // tagged with its side (battle.js THE COMBAT TEXT COLOURS)
                     player: unit.player
                 });
                 scheduleBoardRender();
@@ -15653,7 +15680,7 @@
                         unit._justRespawned = true;
                         unit._showRespawnBanner = true;
                         resetUnitPowerState(unit);
-                        addLog(`🔄 ${unitDisplayName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                        addLog(`🔄 ${_ctName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                         if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                         continue;
@@ -15703,7 +15730,7 @@
                             unit._justRespawned = true;
                             unit._showRespawnBanner = true;
                             resetUnitPowerState(unit);
-                            addLog(`🧟 ${unitDisplayName(unit)} claws back out of the ground where it fell! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                            addLog(`🧟 ${_ctName(unit)} claws back out of the ground where it fell! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
                             if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                             continue;
                         }
@@ -15740,7 +15767,7 @@
                         const blocker = state.units.find(u => !u.dead && u.x === zoneTile.x && u.y === zoneTile.y && u.id !== unit.id);
                         if (blocker && blocker.player !== unit.player && _respawnTileSafe(zoneTile.x, zoneTile.y)) {
                             pushUnitToNearestOpen(blocker, zoneTile.x, zoneTile.y);
-                            addLog(`⚡ ${unitDisplayName(blocker)} is pushed out of the respawn zone!`);
+                            addLog(`⚡ ${_ctName(blocker)} is pushed out of the respawn zone!`);
                         }
                         let placed = false;
                         const _order = zoneArr.slice(spawnIdx).concat(zoneArr.slice(0, spawnIdx));
@@ -15757,7 +15784,7 @@
                             const _mid = zoneArr[Math.floor(zoneArr.length / 2)] || zoneTile;
                             pushUnitToNearestOpen(unit, _mid.x, _mid.y);
                         }
-                        if (!_rz.home) addLog(`⬡ ${unitDisplayName(unit)} returns through the ${_rz.label} Nexus.`);
+                        if (!_rz.home) addLog(`⬡ ${_ctName(unit)} returns through the ${_rz.label} Nexus.`);
                     } else {
                         /* Fallback: spiral from tower if no zone */
                         const tower = getTower(unit.player);
@@ -15799,7 +15826,7 @@
                     unit._justRespawned = true;
                     unit._showRespawnBanner = true;
                     resetUnitPowerState(unit);
-                    addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                    addLog(`🔄 ${_ctName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                     if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                 }

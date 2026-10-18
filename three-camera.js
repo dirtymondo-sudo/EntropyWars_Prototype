@@ -1557,3 +1557,620 @@ var EWCine = (function () {
     };
 })();
 if (typeof window !== 'undefined') window.EWCine = EWCine;
+
+/* ══ THE SHOT RECORDER (2026-10-18, mondo: "a tool that snapshots/records the current camera orientation for clicking on a
+   unit and facing towards them. basically i want to frame the shot myself for different scenarios like being in the air
+   and the target on the ground or vice versa or far away vs close etc so you can get an idea of how the camera is supposed
+   to look. let me export them all at once so you can take it and apply it").
+   F7 (or SHOTS in the battle pause menu) opens the panel; it frames the PAIR the last target pick framed (battle.js
+   _ewShotRecApi: clicking a unit on your turn, the attack / spell / item target lists).
+     FRAME IT: the recorder takes the board's camera (after every sync, like EWCine) and orbits a pivot: LEFT-DRAG orbits,
+       RIGHT-DRAG (or SHIFT + left) pans the pivot across the screen, the WHEEL dollies, SHIFT + wheel sets the lens;
+       W A S D move the pivot level with the ground, R / F raise / lower it, Q / E orbit, T / G pitch, Z / X lens. The
+       sliders read and set the same pose. GAME SHOT puts the menu camera's own solve for the pair back as the start.
+       Off = the game's own camera again (nothing on the board's rig was touched).
+     RECORD SHOT (ENTER): the frame now — the eye, the gaze, the lens, the pair (bodies, gap, height gap, who flies), each
+       body's place on screen, the same numbers for the game's own solve, and a small picture. TRY puts a recorded
+       shot's framing (its angle off the caster→target line, pitch, distance, look point along the pair) on the pair on
+       screen now, to check one rule across scenarios.
+     MOVE UNITS (VS-CPU only): click a unit, then a free tile; ▲ / ▼ lift a flyer — staging the scenarios.
+     EXPORT ALL: one JSON with every shot (pictures inside), for the thread that applies them.
+   Kept in this browser (localStorage `ew_shot_rec_v1`). Viewer-local, nothing on `state`, nothing relayed (RULE #2). ══ */
+var EWShots = (function () {
+    'use strict';
+    if (typeof window === 'undefined') return null;
+    var STORE = 'ew_shot_rec_v1', D2R = Math.PI / 180, R2D = 180 / Math.PI;
+    var S = {
+        open: false, frame: false, place: false, hold: null, grid: true, hudOff: false, hidden: [],
+        shots: [], pose: null, cur: null, cam: null, fov0: null, far0: null, keys: {}, drag: null,
+        want: null, panel: null, gridEl: null, last: 0, tick: 0, clearArm: 0, seq: 0
+    };
+    var MOVEK = { w: 1, a: 1, s: 1, d: 1, r: 1, f: 1, q: 1, e: 1, t: 1, g: 1, z: 1, x: 1 };
+
+    function api() { return window._ewShotRecApi || null; }
+    function ts() { var a = api(); return (a && a.tileSize()) || 64; }
+    function cam3() { return (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; }
+    function canvasEl() {
+        var c = document.getElementById('threeCanvas');
+        if (!c && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getCanvas) { try { c = ThreeRenderer.getCanvas(); } catch (e) {} }
+        return c || null;
+    }
+    function inBattle() { return typeof state !== 'undefined' && state && state.phase === 'battle'; }
+    function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+    function r3(v) { return Math.round(v * 1000) / 1000; }
+    function r1(v) { return Math.round(v * 10) / 10; }
+    function wrap180(a) { return ((((a + 180) % 360) + 360) % 360) - 180; }
+    function wrap360(a) { return ((a % 360) + 360) % 360; }
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function stamp() { var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+    function toast(msg) {
+        var t = document.getElementById('ewShotsToast');
+        if (!t) { t = el('div', 'ew-cine-toast'); t.id = 'ewShotsToast'; document.body.appendChild(t); }
+        t.textContent = msg; t.classList.add('on');
+        clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2600);
+    }
+    function download(blob, name) {
+        var a = document.createElement('a'), url = URL.createObjectURL(blob);
+        a.href = url; a.download = name; a.style.display = 'none';
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { try { URL.revokeObjectURL(url); a.remove(); } catch (e) {} }, 4000);
+    }
+
+    /* ── the board rig's basis (ThreeCamera.sync): tilt 0 = straight down, 90 = level, past 90 = up; yaw 0 looks at −Z ── */
+    function dirOf(yaw, tilt) { var t = tilt * D2R, y = yaw * D2R; return [-Math.sin(t) * Math.sin(y), -Math.cos(t), -Math.sin(t) * Math.cos(y)]; }
+    function upOf(yaw, tilt) { var t = tilt * D2R, y = yaw * D2R; return [-Math.cos(t) * Math.sin(y), Math.sin(t), -Math.cos(t) * Math.cos(y)]; }
+    function rightOf(yaw) { var y = yaw * D2R; return [Math.cos(y), 0, -Math.sin(y)]; }
+    function angOf(g) { return { yaw: wrap360(Math.atan2(-g[0], -g[2]) * R2D), tilt: Math.acos(clamp(-g[1], -1, 1)) * R2D }; }
+    function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+    function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+    function len(a) { return Math.hypot(a[0], a[1], a[2]); }
+
+    /* ── the pair frame: from the caster's feet, u = caster → target on the ground, r = the caster's right as it faces
+       the target, up = world up; heights are tiles (one elevation level = one tile) ── */
+    function pairFrame(pr) {
+        var T = ts(), A = pr.attacker.body, B = pr.target.body;
+        var lx = B.x - A.x, lz = B.z - A.z, L = Math.hypot(lx, lz);
+        var u = L > T * 0.05 ? [lx / L, 0, lz / L] : null;
+        return {
+            T: T, A: A, B: B, L: L, u: u,
+            Af: [A.x, A.foot, A.z], Bf: [B.x, B.foot, B.z],
+            Ac: [A.x, (A.foot + A.top) / 2, A.z], Bc: [B.x, (B.foot + B.top) / 2, B.z],
+            mid: [(A.x + B.x) / 2, ((A.foot + A.top) / 2 + (B.foot + B.top) / 2) / 2, (A.z + B.z) / 2]
+        };
+    }
+    function frameAxes(F, g) {
+        var u = F.u;
+        if (!u) { var h = Math.hypot(g[0], g[2]) || 1; u = [g[0] / h, 0, g[2] / h]; }
+        return { u: u, r: [-u[2], 0, u[0]] };
+    }
+    function relOf(F, ax, p) { var d = sub(p, F.Af); return [r3(dot(d, ax.u) / F.T), r3(dot(d, ax.r) / F.T), r3(d[1] / F.T)]; }
+
+    var _tc = null, _v = null;
+    function project(eye, look, up, fov, aspect, p) {
+        if (typeof THREE === 'undefined') return null;
+        if (!_tc) { _tc = new THREE.PerspectiveCamera(45, 1, 1, 1e7); _v = new THREE.Vector3(); }
+        _tc.fov = fov; _tc.aspect = aspect; _tc.updateProjectionMatrix();
+        _tc.position.set(eye[0], eye[1], eye[2]); _tc.up.set(up[0], up[1], up[2]); _tc.lookAt(look[0], look[1], look[2]);
+        _tc.updateMatrixWorld(true);
+        _v.set(p[0], p[1], p[2]).project(_tc);
+        var g = sub(look, eye), behind = dot(sub(p, eye), g) <= 0;
+        return [r3((_v.x + 1) / 2), r3((1 - _v.y) / 2), behind];
+    }
+    function bodyOnScreen(eye, look, up, fov, aspect, b) {
+        var f = project(eye, look, up, fov, aspect, [b.x, b.foot, b.z]), h = project(eye, look, up, fov, aspect, [b.x, b.top, b.z]);
+        if (!f || !h) return null;
+        var inside = function (q) { return !q[2] && q[0] >= 0 && q[0] <= 1 && q[1] >= 0 && q[1] <= 1; };
+        return { feet: [f[0], f[1]], head: [h[0], h[1]], heightFrac: r3(Math.abs(f[1] - h[1])), inFrame: inside(f) && inside(h), behindCamera: f[2] || h[2] };
+    }
+    /* one framing, described against the pair: eye + gaze + lens → angles off the line, offsets, distances, the screen */
+    function describe(eye, g, up, fov, aspect, pr) {
+        var T = ts(), a = angOf(g), out = {
+            eye: [r3(eye[0] / T), r3(eye[1] / T), r3(eye[2] / T)], gaze: [r3(g[0]), r3(g[1]), r3(g[2])],
+            yaw: r1(a.yaw), tilt: r1(a.tilt), fov: r1(fov), aspect: r3(aspect)
+        };
+        if (!pr) return out;
+        var F = pairFrame(pr), ax = frameAxes(F, g);
+        var lineYaw = wrap360(Math.atan2(-ax.u[0], -ax.u[2]) * R2D);
+        var tLook = Math.max(T * 0.25, dot(sub(F.mid, eye), g));
+        var look = [eye[0] + g[0] * tLook, eye[1] + g[1] * tLook, eye[2] + g[2] * tLook];
+        var dl = sub(look, F.Af), along = dot(dl, ax.u);
+        var frac = F.L > T * 0.5 ? along / F.L : null;
+        var heightAtLook = F.A.foot + (frac == null ? 0 : clamp(frac, 0, 1) * (F.B.foot - F.A.foot));
+        out.lineYaw = r1(lineYaw);
+        out.swing = r1(wrap180(a.yaw - lineYaw));   // + = the camera's gaze turned clockwise (seen from above) off caster → target
+        out.eyeRel = relOf(F, ax, eye);             // [along the line, to the caster's right, up] tiles from the caster's feet
+        out.eyeSide = out.eyeRel[1] > 0.05 ? 'right' : (out.eyeRel[1] < -0.05 ? 'left' : 'behind');
+        out.eyeAboveAttackerFeet = r3((eye[1] - F.A.foot) / T);
+        out.eyeAboveTargetFeet = r3((eye[1] - F.B.foot) / T);
+        out.lookRel = relOf(F, ax, look);
+        out.lookAlongFrac = frac == null ? null : r3(frac);   // 0 = the caster, 1 = the target
+        out.lookUpFromFeetLine = r3((look[1] - heightAtLook) / T);
+        out.lookDist = r3(tLook / T);
+        out.distToAttacker = r3(len(sub(F.Ac, eye)) / T);
+        out.distToTarget = r3(len(sub(F.Bc, eye)) / T);
+        out.screen = {
+            attacker: bodyOnScreen(eye, look, up, fov, aspect, F.A),
+            target: bodyOnScreen(eye, look, up, fov, aspect, F.B)
+        };
+        /* the board rig's own terms (battle.js camera.moveTo): focal tile + height, zoom = baseDist / distance */
+        var bd = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist) ? ThreeCamera.getBaseDist() : 0;
+        out.moveTo = { x: r3((look[0] - T / 2) / T), y: r3((look[2] - T / 2) / T), elevZ: r3(look[1]), zoom: bd > 0 ? r3(bd / tLook) : null, tilt: r1(a.tilt), yaw: r1(a.yaw), fov: r1(fov) };
+        return out;
+    }
+    function scenario(pr) {
+        var T = ts(), F = pairFrame(pr), gap = F.L / T, dh = (F.B.foot - F.A.foot) / T;
+        var range = gap <= 1.5 ? 'adjacent' : gap <= 3.5 ? 'close' : gap <= 6.5 ? 'mid' : 'far';
+        var height = dh <= -0.75 ? 'attacker above' : dh >= 0.75 ? 'target above' : 'level';
+        var tags = [range, height];
+        if (pr.attacker.airborne) tags.push('attacker in the air');
+        if (pr.target.airborne) tags.push('target in the air');
+        if (pr.target.kind !== 'enemy') tags.push('target ' + pr.target.kind);
+        if (pr.context && pr.context.menu && pr.context.menu !== 'unit') tags.push(pr.context.menu + ' menu');
+        return {
+            tags: tags, gapTiles: r3(gap), heightGapTiles: r3(dh), gap3dTiles: r3(len(sub(F.Bc, F.Ac)) / T),
+            attacker: sideOut(pr.attacker), target: sideOut(pr.target), context: pr.context
+        };
+    }
+    function sideOut(s) {
+        var T = ts(), o = { kind: s.kind, tile: [s.x, s.y], feetTiles: r3(s.footTiles), bodyTiles: r3(s.heightTiles) };
+        if (s.id != null) { o.id = s.id; o.race = s.race; o.name = s.name; o.player = s.player; o.z = s.z; o.canFly = s.canFly; o.airborne = s.airborne; o.groundTiles = r3(s.groundTiles || 0); }
+        return o;
+    }
+    function autoOut(pr) {
+        var a = api(); if (!a || !pr) return null;
+        var p = a.autoPose(pr); if (!p) return null;
+        var g = dirOf(p.yaw, p.tilt), eye = [p.focal[0] - g[0] * p.dist, p.focal[1] - g[1] * p.dist, p.focal[2] - g[2] * p.dist];
+        var c = cam3(), fov = c ? c.fov : 45, aspect = c ? c.aspect : 16 / 9;
+        var d = describe(eye, g, upOf(p.yaw, p.tilt), fov, aspect, pr);
+        d.solver = { focal: [r3(p.focal[0] / ts()), r3(p.focal[1] / ts()), r3(p.focal[2] / ts())], zoom: r3(p.zoom), tilt: r1(p.tilt), yaw: r1(p.yaw) };
+        return d;
+    }
+
+    /* ── the store ── */
+    function load() { try { var j = JSON.parse(localStorage.getItem(STORE) || 'null'); if (j && Array.isArray(j.shots)) { S.shots = j.shots; S.seq = j.seq || S.shots.length; } } catch (e) {} }
+    function save() {
+        try { localStorage.setItem(STORE, JSON.stringify({ seq: S.seq, shots: S.shots })); return; } catch (e) {}
+        try {
+            localStorage.setItem(STORE, JSON.stringify({ seq: S.seq, shots: S.shots.map(function (s) { var c = {}; for (var k in s) if (k !== 'thumb') c[k] = s[k]; return c; }) }));
+            toast('BROWSER STORAGE FULL · PICTURES KEPT UNTIL RELOAD · EXPORT SOON');
+        } catch (e2) { toast('BROWSER STORAGE FULL · EXPORT NOW'); }
+    }
+
+    /* ── FRAME IT: the pose (pivot world px, yaw, tilt, distance px, lens) ── */
+    function poseFromCam(c) {
+        c.updateMatrixWorld(true);
+        var v = new THREE.Vector3(); c.getWorldDirection(v);
+        var g = [v.x, v.y, v.z], eye = [c.position.x, c.position.y, c.position.z], a = angOf(g);
+        var pr = api() && api().pair(), d = ts() * 8;
+        if (pr) { var F = pairFrame(pr), t = dot(sub(F.mid, eye), g); if (t > ts()) d = t; }
+        return { p: [eye[0] + g[0] * d, eye[1] + g[1] * d, eye[2] + g[2] * d], yaw: a.yaw, tilt: a.tilt, dist: d, fov: c.fov };
+    }
+    function poseCopy(p) { return { p: p.p.slice(), yaw: p.yaw, tilt: p.tilt, dist: p.dist, fov: p.fov }; }
+    function frameSet(on) {
+        on = !!on;
+        if (on === S.frame) return;
+        if (on && window.EWCine && window.EWCine.on) window.EWCine.exit();
+        if (on && S.place) placeSet(false);
+        var c = cam3();
+        if (on) {
+            if (!c) { toast('NO 3D CAMERA HERE'); return; }
+            S.pose = poseFromCam(c); S.cur = poseCopy(S.pose); S.cam = c; S.fov0 = c.fov; S.far0 = c.far; S.keys = {};
+        } else {
+            if (c && S.fov0 != null) { c.fov = S.fov0; c.updateProjectionMatrix(); }
+            if (c && S.far0 != null) { c.far = S.far0; c.updateProjectionMatrix(); }
+            S.fov0 = S.far0 = null; S.cam = null; S.drag = null; S.keys = {};
+        }
+        S.frame = on;
+        document.body.classList.toggle('ew-shots-frame', on);
+        sync();
+    }
+    function frame(c) {
+        if (!S.frame || !c) return;
+        if (window.EWCine && window.EWCine.on) return;
+        if (S.cam !== c) { S.cam = c; S.fov0 = c.fov; S.far0 = c.far; }
+        var now = performance.now(), dt = S.last ? Math.min(0.1, (now - S.last) / 1000) : 0.016;
+        S.last = now;
+        var P = S.pose, k = S.keys, T = ts();
+        var mf = (k.w ? 1 : 0) - (k.s ? 1 : 0), mr = (k.d ? 1 : 0) - (k.a ? 1 : 0), mu = (k.r ? 1 : 0) - (k.f ? 1 : 0);
+        if (mf || mr || mu) {
+            var sp = T * Math.max(2, P.dist / T * 0.6) * dt, y = P.yaw * D2R;
+            var fx = -Math.sin(y), fz = -Math.cos(y), rx = Math.cos(y), rz = -Math.sin(y);
+            P.p[0] += (fx * mf + rx * mr) * sp; P.p[2] += (fz * mf + rz * mr) * sp; P.p[1] += mu * sp;
+        }
+        if (k.q) P.yaw = wrap360(P.yaw + 70 * dt);
+        if (k.e) P.yaw = wrap360(P.yaw - 70 * dt);
+        if (k.t) P.tilt = clamp(P.tilt + 40 * dt, 2, 170);
+        if (k.g) P.tilt = clamp(P.tilt - 40 * dt, 2, 170);
+        if (k.z) P.fov = clamp(P.fov - 20 * dt, 10, 90);
+        if (k.x) P.fov = clamp(P.fov + 20 * dt, 10, 90);
+        var C = S.cur, e = Math.min(1, dt * 14);
+        for (var i = 0; i < 3; i++) C.p[i] += (P.p[i] - C.p[i]) * e;
+        C.yaw = wrap360(C.yaw + wrap180(P.yaw - C.yaw) * e);
+        C.tilt += (P.tilt - C.tilt) * e; C.dist += (P.dist - C.dist) * e; C.fov += (P.fov - C.fov) * e;
+        var g = dirOf(C.yaw, C.tilt), up = upOf(C.yaw, C.tilt);
+        c.position.set(C.p[0] - g[0] * C.dist, C.p[1] - g[1] * C.dist, C.p[2] - g[2] * C.dist);
+        c.up.set(up[0], up[1], up[2]);
+        c.lookAt(C.p[0], C.p[1], C.p[2]);
+        if (Math.abs(c.fov - C.fov) > 1e-3) { c.fov = C.fov; c.updateProjectionMatrix(); }
+        if (S.far0 != null && c.far < C.dist * 6) { c.far = C.dist * 6; c.updateProjectionMatrix(); }
+        c.updateMatrixWorld(true);
+        if (now - S.tick > 120) { S.tick = now; slidersSync(); }
+    }
+    function gameShot() {
+        var a = api(), pr = a && a.pair();
+        if (!pr) { toast('NO PAIR · CLICK A UNIT ON YOUR TURN'); return; }
+        if (!S.frame) { a.reframe(); return; }
+        var p = a.autoPose(pr);
+        if (!p) { toast('THE GAME HAS NO SHOT FOR THIS PAIR'); return; }
+        S.pose = { p: p.focal.slice(), yaw: p.yaw, tilt: p.tilt, dist: p.dist, fov: S.fov0 != null ? S.fov0 : S.pose.fov };
+        sync();
+    }
+    /* TRY: a recorded framing on the pair on screen now (same angle off the line, pitch, distance and look point) */
+    function tryShot(shot) {
+        var a = api(), pr = a && a.pair(), f = shot && shot.framed;
+        if (!pr) { toast('NO PAIR · CLICK A UNIT ON YOUR TURN'); return; }
+        if (!f || f.swing == null) { toast('THAT SHOT HAS NO PAIR TO COPY'); return; }
+        if (!S.frame) frameSet(true);
+        if (!S.frame) return;
+        var F = pairFrame(pr), T = F.T, ax = frameAxes(F, dirOf(f.yaw, f.tilt));
+        var lineYaw = wrap360(Math.atan2(-ax.u[0], -ax.u[2]) * R2D);
+        var along = (f.lookAlongFrac != null && F.L > T * 0.5) ? f.lookAlongFrac * F.L : f.lookRel[0] * T;
+        var frac = F.L > T * 0.5 ? along / F.L : 0;
+        var hy = F.A.foot + clamp(frac, 0, 1) * (F.B.foot - F.A.foot) + f.lookUpFromFeetLine * T;
+        var look = [F.Af[0] + ax.u[0] * along + ax.r[0] * f.lookRel[1] * T, hy, F.Af[2] + ax.u[2] * along + ax.r[2] * f.lookRel[1] * T];
+        S.pose = { p: look, yaw: wrap360(lineYaw + f.swing), tilt: f.tilt, dist: f.lookDist * T, fov: f.fov };
+        sync();
+        toast('TRYING · ' + (shot.name || ('SHOT ' + shot.n)));
+    }
+
+    /* ── RECORD ── */
+    function record() {
+        var c = cam3();
+        if (!c || !inBattle()) { toast('OPEN A BATTLE FIRST'); return; }
+        c.updateMatrixWorld(true);
+        var v = new THREE.Vector3(); c.getWorldDirection(v);
+        var a = api(), pr = a && a.pair();
+        var g = [v.x, v.y, v.z], eye = [c.position.x, c.position.y, c.position.z], up = [c.up.x, c.up.y, c.up.z];
+        var nameIn = document.getElementById('ewShotsName'), noteIn = document.getElementById('ewShotsNote');
+        S.seq++;
+        var shot = {
+            n: S.seq, at: new Date().toISOString(),
+            source: S.frame ? 'framed' : 'game',
+            name: '', note: noteIn ? noteIn.value.trim() : '',
+            view: { width: (canvasEl() || {}).clientWidth || 0, height: (canvasEl() || {}).clientHeight || 0 },
+            tileSize: ts(),
+            framed: describe(eye, g, up, c.fov, c.aspect, pr)
+        };
+        if (pr) { shot.scenario = scenario(pr); shot.game = autoOut(pr); }
+        shot.name = (nameIn && nameIn.value.trim()) || (shot.scenario ? shot.scenario.tags.slice(0, 4).join(' · ') : 'no pair') + (shot.source === 'game' ? ' (game shot)' : '');
+        S.shots.push(shot);
+        if (nameIn) nameIn.value = '';
+        if (noteIn) noteIn.value = '';
+        save(); listRender();
+        S.want = function (cv) {
+            try {
+                var w = 400, h = Math.max(2, Math.round(w * cv.height / Math.max(1, cv.width)));
+                var m = document.createElement('canvas'); m.width = w; m.height = h;
+                m.getContext('2d').drawImage(cv, 0, 0, w, h);
+                shot.thumb = m.toDataURL('image/jpeg', 0.78);
+                save(); listRender();
+            } catch (e) {}
+        };
+        toast('SHOT ' + shot.n + ' RECORDED' + (pr ? '' : ' · NO PAIR'));
+    }
+    function after(canvas) {
+        if (!S.want || !canvas) return;
+        var f = S.want; S.want = null;
+        f(canvas);
+    }
+    function exportAll() {
+        if (!S.shots.length) { toast('NO SHOTS YET'); return; }
+        var out = {
+            kind: 'entropy-wars-camera-shots', version: 1, exportedAt: new Date().toISOString(),
+            build: window._EW_BUILD_TOKEN || '', count: S.shots.length,
+            conventions: {
+                units: 'tiles (1 tile = tileSize world px; 1 elevation level = 1 tile of height)',
+                tiltYaw: 'the board rig (ThreeCamera.sync): tilt 0 = straight down, 90 = level, >90 looks up; yaw 0 looks toward -Z (up the board rows), degrees',
+                swing: 'camera yaw minus the caster->target line yaw, -180..180; + turns the gaze clockwise seen from above',
+                eyeRel_lookRel: '[along caster->target, to the caster\'s right as it faces the target, up] from the caster\'s feet',
+                lookAlongFrac: '0 = the caster, 1 = the target (null when the pair shares a tile)',
+                screen: 'x 0..1 left->right, y 0..1 top->bottom; heightFrac = feet-to-head share of the frame height',
+                moveTo: 'the same frame in battle.js camera.moveTo terms (focal tile x/y, elevZ px, zoom = baseDist/distance); fov must match too',
+                game: 'what the menu camera (_menuShotPose) solves for the same pair at record time',
+                source: '"framed" = mondo framed it by hand, "game" = the game\'s own shot recorded as is'
+            },
+            shots: S.shots
+        };
+        download(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }), 'EW_CAMERA_SHOTS_' + stamp() + '.json');
+        toast('EXPORTED ' + S.shots.length + ' SHOTS');
+    }
+
+    /* ── MOVE UNITS (staging) ── */
+    function placeSet(on) {
+        on = !!on;
+        if (on && !(api() && api().canStage())) { toast('MOVING UNITS WORKS IN VS-CPU ONLY'); on = false; }
+        if (on && S.frame) frameSet(false);
+        S.place = on; S.hold = null;
+        document.body.classList.toggle('ew-shots-place', on);
+        sync();
+    }
+    function placeClick(e) {
+        var a = api(); if (!a || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.pickAtScreen) return;
+        var hit = ThreeRenderer.pickAtScreen(e.clientX, e.clientY);
+        if (!hit) return;
+        if (hit.unitId != null && hit.unitId !== S.hold) { S.hold = hit.unitId; sync(); return; }
+        if (S.hold == null) return;
+        var why = a.place(S.hold, hit.tileX, hit.tileY);
+        if (why) toast(why.toUpperCase());
+        sync();
+    }
+    function liftHeld(dz) {
+        var a = api(); if (!a) return;
+        var uid = S.hold;
+        if (uid == null) { var pr = a.pair(); if (pr && pr.unit) uid = pr.unit.id; }
+        if (uid == null) { toast('CLICK A UNIT FIRST'); return; }
+        var why = a.lift(uid, dz);
+        if (why) toast(why.toUpperCase());
+        sync();
+    }
+
+    /* ── THE HUD toggle and the framing grid ── */
+    function hudSet(off) {
+        S.hidden.forEach(function (r) { try { r[0].style.opacity = r[1]; } catch (e) {} });
+        S.hidden = [];
+        S.hudOff = !!off;
+        if (!S.hudOff) return;
+        var c = canvasEl(); if (!c) return;
+        for (var n = c; n && n.parentElement && n !== document.body; n = n.parentElement) {
+            var sibs = n.parentElement.children;
+            for (var i = 0; i < sibs.length; i++) {
+                var s = sibs[i];
+                if (s === n || s === S.panel || s === S.gridEl || s.id === 'ewShotsToast' || /^(SCRIPT|STYLE|LINK)$/.test(s.tagName)) continue;
+                S.hidden.push([s, s.style.opacity]); s.style.opacity = '0';
+            }
+        }
+    }
+    function gridSync() {
+        var show = S.open && S.grid && inBattle();
+        if (!S.gridEl && show) {
+            S.gridEl = el('div', 'ew-shots-grid');
+            for (var i = 0; i < 6; i++) S.gridEl.appendChild(el('i', i < 2 ? 'v' : i < 4 ? 'h' : (i === 4 ? 'cx' : 'cy')));
+            document.body.appendChild(S.gridEl);
+        }
+        if (!S.gridEl) return;
+        S.gridEl.style.display = show ? 'block' : 'none';
+        var c = canvasEl();
+        if (show && c) { var b = c.getBoundingClientRect(); S.gridEl.style.left = b.left + 'px'; S.gridEl.style.top = b.top + 'px'; S.gridEl.style.width = b.width + 'px'; S.gridEl.style.height = b.height + 'px'; }
+    }
+
+    /* ── THE PANEL ── */
+    var _sl = {};
+    function panelBuild() {
+        if (S.panel) return S.panel;
+        var p = el('div', 'ew-shots-panel'); p.id = 'ewShotsPanel';
+        var head = el('div', 'ew-shots-head');
+        head.appendChild(el('b', null, 'SHOT RECORDER'));
+        var x = el('button', 'ew-cine-btn', '✕'); x.addEventListener('click', function () { close(); }); head.appendChild(x);
+        p.appendChild(head);
+        /* drag the panel by its title bar anywhere on screen (mondo: "let me drag the shots panel since i feel like it
+           was messing up my framing"); the spot is kept in this browser */
+        var place = function (l, t) {
+            var w = p.offsetWidth || 380, hh = p.offsetHeight || 200;
+            l = Math.max(0, Math.min(window.innerWidth - Math.min(w, 120), l));
+            t = Math.max(0, Math.min(window.innerHeight - 40, t));
+            p.style.left = l + 'px'; p.style.top = t + 'px'; p.style.right = 'auto';
+            return [l, t];
+        };
+        try { var sp = JSON.parse(localStorage.getItem(STORE + ':pos') || 'null'); if (sp && sp.length === 2) setTimeout(function () { place(sp[0], sp[1]); }, 0); } catch (e) {}
+        head.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || (e.target && e.target.closest && e.target.closest('button'))) return;
+            var r = p.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top, last = null;
+            try { head.setPointerCapture(e.pointerId); } catch (er) {}
+            var mv = function (ev) { last = place(ev.clientX - ox, ev.clientY - oy); };
+            var up = function () {
+                head.removeEventListener('pointermove', mv); head.removeEventListener('pointerup', up); head.removeEventListener('pointercancel', up);
+                if (last) { try { localStorage.setItem(STORE + ':pos', JSON.stringify(last)); } catch (er) {} }
+            };
+            head.addEventListener('pointermove', mv); head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
+            e.preventDefault();
+        });
+        var pair = el('div', 'ew-shots-pair'); pair.id = 'ewShotsPair'; p.appendChild(pair);
+        function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
+        var r1w = el('div', 'ew-cine-row');
+        btn(r1w, 'FRAME IT', function () { frameSet(!S.frame); }, 'ewShotsFrame');
+        btn(r1w, 'GAME SHOT', gameShot);
+        btn(r1w, 'GRID', function () { S.grid = !S.grid; sync(); }, 'ewShotsGrid');
+        btn(r1w, 'HUD', function () { hudSet(!S.hudOff); sync(); }, 'ewShotsHud');
+        p.appendChild(r1w);
+        var sls = el('div', 'ew-shots-sliders'); sls.id = 'ewShotsSliders';
+        function slider(key, label, min, max, step, get, set, fmt) {
+            var w = el('label', 'ew-cine-sl'), s = el('input'), v = el('em');
+            s.type = 'range'; s.min = min; s.max = max; s.step = step;
+            w.appendChild(el('span', null, label)); w.appendChild(s); w.appendChild(v); sls.appendChild(w);
+            s.addEventListener('input', function () { if (S.pose) { set(+s.value); v.textContent = fmt(+s.value); } });
+            _sl[key] = function () { if (!S.pose) return; var val = get(); if (document.activeElement !== s) s.value = val; v.textContent = fmt(val); };
+        }
+        slider('yaw', 'ORBIT', 0, 360, 1, function () { return S.pose.yaw; }, function (v) { S.pose.yaw = v; }, function (v) { return Math.round(v) + '°'; });
+        slider('tilt', 'PITCH', 2, 170, 1, function () { return S.pose.tilt; }, function (v) { S.pose.tilt = v; }, function (v) { return Math.round(v) + '°'; });
+        slider('dist', 'DISTANCE', 0.5, 40, 0.1, function () { return S.pose.dist / ts(); }, function (v) { S.pose.dist = v * ts(); }, function (v) { return (+v).toFixed(1); });
+        slider('fov', 'LENS', 10, 90, 1, function () { return S.pose.fov; }, function (v) { S.pose.fov = v; }, function (v) { return Math.round(v) + '°'; });
+        slider('h', 'HEIGHT', -4, 12, 0.05, function () { return S.pose.p[1] / ts(); }, function (v) { S.pose.p[1] = v * ts(); }, function (v) { return (+v).toFixed(2); });
+        p.appendChild(sls);
+        var r2w = el('div', 'ew-cine-row');
+        var nm = el('input', 'ew-shots-in'); nm.id = 'ewShotsName'; nm.placeholder = 'NAME (blank = the scenario)'; nm.maxLength = 80;
+        var nt = el('input', 'ew-shots-in'); nt.id = 'ewShotsNote'; nt.placeholder = 'NOTE'; nt.maxLength = 400;
+        r2w.appendChild(nm); r2w.appendChild(nt); p.appendChild(r2w);
+        var r3w = el('div', 'ew-cine-row');
+        var rec = btn(r3w, '● RECORD SHOT', record); rec.classList.add('ew-shots-rec');
+        btn(r3w, 'EXPORT ALL', exportAll, 'ewShotsExport');
+        btn(r3w, 'CLEAR ALL', function () {
+            if (!S.shots.length) return;
+            if (performance.now() - S.clearArm > 2500) { S.clearArm = performance.now(); toast('PRESS CLEAR ALL AGAIN TO DELETE ' + S.shots.length + ' SHOTS'); return; }
+            S.clearArm = 0; S.shots = []; save(); listRender(); toast('ALL SHOTS DELETED');
+        });
+        p.appendChild(r3w);
+        var r4w = el('div', 'ew-cine-row'); r4w.id = 'ewShotsStage';
+        btn(r4w, 'MOVE UNITS', function () { placeSet(!S.place); }, 'ewShotsPlace');
+        btn(r4w, '▲ FLY UP', function () { liftHeld(1); });
+        btn(r4w, '▼ FLY DOWN', function () { liftHeld(-1); });
+        var hl = el('span', 'ew-shots-held'); hl.id = 'ewShotsHeld'; r4w.appendChild(hl);
+        p.appendChild(r4w);
+        var list = el('div', 'ew-shots-list'); list.id = 'ewShotsList'; p.appendChild(list);
+        document.body.appendChild(p);
+        S.panel = p;
+        listRender();
+        return p;
+    }
+    function slidersSync() { for (var k in _sl) _sl[k](); }
+    function pairText() {
+        var a = api(), pr = a && a.pair();
+        if (!pr) return 'NO PAIR · CLICK A UNIT ON YOUR TURN';
+        var sc = scenario(pr), A = pr.attacker, B = pr.target;
+        var nm = function (s) { return s.id != null ? (s.name || s.race) : s.kind.toUpperCase(); };
+        return nm(A) + ' (' + A.x + ',' + A.y + ')' + (A.airborne ? ' ✈' : '') + '  →  ' + nm(B) + ' (' + B.x + ',' + B.y + ')' + (B.airborne ? ' ✈' : '')
+            + '\nGAP ' + sc.gapTiles.toFixed(1) + ' · HEIGHT ' + (sc.heightGapTiles >= 0 ? '+' : '') + sc.heightGapTiles.toFixed(1) + ' · ' + sc.tags.join(' · ');
+    }
+    function sync() {
+        var p = S.panel; if (!p) return;
+        p.classList.toggle('on', S.open);
+        var t = document.getElementById('ewShotsPair'); if (t) t.textContent = pairText();
+        var fb = document.getElementById('ewShotsFrame'); if (fb) { fb.classList.toggle('hot', S.frame); fb.textContent = S.frame ? 'FRAMING · STOP' : 'FRAME IT'; }
+        var gb = document.getElementById('ewShotsGrid'); if (gb) gb.classList.toggle('hot', S.grid);
+        var hb = document.getElementById('ewShotsHud'); if (hb) hb.classList.toggle('hot', S.hudOff);
+        var sl = document.getElementById('ewShotsSliders'); if (sl) sl.style.display = S.frame ? '' : 'none';
+        var st = document.getElementById('ewShotsStage'); if (st) st.style.display = (api() && api().canStage()) ? '' : 'none';
+        var pb = document.getElementById('ewShotsPlace'); if (pb) pb.classList.toggle('hot', S.place);
+        var hl = document.getElementById('ewShotsHeld');
+        if (hl) {
+            var u = S.hold != null && typeof state !== 'undefined' ? (state.units || []).find(function (q) { return q.id === S.hold; }) : null;
+            hl.textContent = S.place ? (u ? 'HOLDING ' + String(u.race || '').toUpperCase() + ' · CLICK A TILE' : 'CLICK A UNIT') : '';
+        }
+        var eb = document.getElementById('ewShotsExport'); if (eb) eb.textContent = 'EXPORT ALL (' + S.shots.length + ')';
+        if (S.frame) slidersSync();
+        gridSync();
+    }
+    function listRender() {
+        var L = document.getElementById('ewShotsList'); if (!L) return;
+        L.textContent = '';
+        for (var i = S.shots.length - 1; i >= 0; i--) (function (shot, idx) {
+            var row = el('div', 'ew-shots-item');
+            var im = el('div', 'ew-shots-thumb'); if (shot.thumb) im.style.backgroundImage = 'url(' + shot.thumb + ')';
+            row.appendChild(im);
+            var mid = el('div', 'ew-shots-meta');
+            var nm = el('input', 'ew-shots-in'); nm.value = shot.name || ''; nm.maxLength = 80;
+            nm.addEventListener('change', function () { shot.name = nm.value.trim(); save(); });
+            mid.appendChild(nm);
+            var f = shot.framed || {};
+            mid.appendChild(el('div', 'ew-shots-sub', '#' + shot.n + ' · ' + (shot.source === 'game' ? 'GAME' : 'FRAMED')
+                + (f.swing != null ? ' · SWING ' + f.swing + '° · PITCH ' + f.tilt + '° · ' + f.lookDist + ' TILES' : '')));
+            if (shot.note) mid.appendChild(el('div', 'ew-shots-sub', shot.note));
+            row.appendChild(mid);
+            var bs = el('div', 'ew-shots-acts');
+            var tb = el('button', 'ew-cine-btn', 'TRY'); tb.addEventListener('click', function () { tryShot(shot); tb.blur(); }); bs.appendChild(tb);
+            var db = el('button', 'ew-cine-btn', '✕'); db.addEventListener('click', function () { S.shots.splice(S.shots.indexOf(shot), 1); save(); listRender(); }); bs.appendChild(db);
+            row.appendChild(bs);
+            L.appendChild(row);
+        })(S.shots[i], i);
+        var eb = document.getElementById('ewShotsExport'); if (eb) eb.textContent = 'EXPORT ALL (' + S.shots.length + ')';
+    }
+
+    /* ── open / close ── */
+    var _iv = 0;
+    function open() {
+        if (!inBattle()) { toast('THE SHOT RECORDER WORKS IN A BATTLE'); return false; }
+        if (window.EWCine && window.EWCine.on) window.EWCine.exit();
+        if (!S.shots.length) load();
+        panelBuild();
+        S.open = true; sync();
+        clearInterval(_iv); _iv = setInterval(function () { if (!S.open) return; if (!inBattle()) { close(); return; } var t = document.getElementById('ewShotsPair'); if (t) t.textContent = pairText(); gridSync(); }, 300);
+        return true;
+    }
+    function close() {
+        if (!S.open) return;
+        frameSet(false); placeSet(false); hudSet(false);
+        S.open = false; clearInterval(_iv); sync();
+    }
+
+    /* ── INPUT: window capture listeners, so while FRAME IT / MOVE UNITS is on the board under them never hears a click ── */
+    function inPanel(t) { return !!(t && t.closest && t.closest('#ewShotsPanel')); }
+    function typing(t) { return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)); }
+    function onKeyDown(e) {
+        if (e.key === 'F7' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            if (S.open) close(); else if (!open()) return;
+            e.preventDefault(); e.stopImmediatePropagation(); return;
+        }
+        if (!S.open || e.ctrlKey || e.metaKey || /^F\d+$/.test(e.key)) return;
+        if (typing(e.target) && e.target.type !== 'range') { if (e.key === 'Enter') { e.preventDefault(); record(); } e.stopImmediatePropagation(); return; }
+        if (!S.frame && !S.place) return;
+        var k = (e.key || '').toLowerCase();
+        if (k === 'escape') { e.preventDefault(); e.stopImmediatePropagation(); if (S.frame) frameSet(false); else placeSet(false); return; }
+        if (k === 'enter') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) record(); return; }
+        if (S.frame) {
+            e.stopImmediatePropagation();
+            if (k !== 'tab') e.preventDefault();
+            if (MOVEK[k]) S.keys[k] = true;
+        }
+    }
+    function onKeyUp(e) {
+        if (!S.frame) return;
+        var k = (e.key || '').toLowerCase();
+        S.keys[k] = false;
+        if (!typing(e.target)) e.stopImmediatePropagation();
+    }
+    function onMouse(e) {
+        if (!S.open || (!S.frame && !S.place) || inPanel(e.target)) return;
+        var ty = e.type;
+        if (S.place) {
+            if (ty === 'mousemove' || ty === 'pointermove') return;   // the hover still reads the board
+            if (ty === 'wheel') return;                               // the zoom stays the game's
+            if (ty === 'click' && e.button === 0) placeClick(e);
+            if (ty === 'contextmenu') { S.hold = null; sync(); }
+            e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault();
+            return;
+        }
+        var P = S.pose; if (!P) return;
+        if (ty === 'pointerdown' || ty === 'mousedown') {
+            if (ty === 'pointerdown' || !S.drag) S.drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.button === 1 || e.shiftKey };
+        } else if (ty === 'pointermove' || ty === 'mousemove') {
+            if (S.drag && (e.buttons || 0) !== 0) {
+                var dx = e.clientX - S.drag.x, dy = e.clientY - S.drag.y;
+                S.drag.x = e.clientX; S.drag.y = e.clientY;
+                if (ty === 'pointermove') {
+                    if (S.drag.pan) {
+                        var c = canvasEl(), H = (c && c.clientHeight) || window.innerHeight;
+                        var k = 2 * P.dist * Math.tan(P.fov * D2R / 2) / H;
+                        var rt = rightOf(P.yaw), up = upOf(P.yaw, P.tilt);
+                        for (var i = 0; i < 3; i++) P.p[i] += (-rt[i] * dx + up[i] * dy) * k;
+                    } else {
+                        P.yaw = wrap360(P.yaw - dx * 0.3);
+                        P.tilt = clamp(P.tilt - dy * 0.3, 2, 170);
+                    }
+                }
+            } else if (S.drag && !(e.buttons || 0)) S.drag = null;
+        } else if (ty === 'pointerup' || ty === 'mouseup') {
+            S.drag = null;
+        } else if (ty === 'wheel') {
+            var s = e.deltaY > 0 ? 1 : -1;
+            if (e.shiftKey || e.altKey) P.fov = clamp(P.fov + s * 2, 10, 90);
+            else P.dist = clamp(P.dist * (s > 0 ? 1.1 : 1 / 1.1), ts() * 0.5, ts() * 40);
+        }
+        e.stopImmediatePropagation();
+        if (e.cancelable) e.preventDefault();
+    }
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+    ['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'pointerdown', 'pointerup', 'mousemove', 'pointermove'].forEach(function (t) { window.addEventListener(t, onMouse, true); });
+    window.addEventListener('wheel', onMouse, { capture: true, passive: false });
+    window.addEventListener('blur', function () { S.keys = {}; S.drag = null; });
+    window.addEventListener('resize', function () { if (S.open) gridSync(); });
+
+    return {
+        get open() { return S.open; },
+        get framing() { return S.frame; },
+        get wants() { return !!S.want; },
+        enter: open, exit: close, toggle: function () { if (S.open) close(); else open(); },
+        frame: frame, after: after, record: record, exportAll: exportAll,
+        shots: function () { return S.shots; }
+    };
+})();
+if (typeof window !== 'undefined') window.EWShots = EWShots;

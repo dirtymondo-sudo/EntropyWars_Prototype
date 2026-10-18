@@ -3741,7 +3741,7 @@
             return Math.max(lo, Math.min(hi, v));
         }
 
-        /* Does a status cut this unit off from its team's shared sight (Jammed; Blind no longer does since 2026-10-18)? It still sees
+        /* Does a status cut this unit off from its team's shared sight (Blind, Jammed)? It still sees
            its own tiles; it only loses the allies' eyes for targeting. */
         function unitLosesSharedVision(unit) {
             if (!unit || !unit.status) return false;
@@ -4936,7 +4936,8 @@
         let _fogVisCacheResult = null;
         function computeVisibleTilesCached(player) {
 
-            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '');
+            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
+                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id;   // Blind / Jammed acting: its own sight only
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
@@ -4960,7 +4961,8 @@
         let _fogDistCacheResult = null;
         function computeFogDistancesCached(player) {
 
-            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '');
+            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
+                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id;   // Blind / Jammed acting: its own sight only
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
@@ -5443,7 +5445,7 @@
                     })
                 },
                 units: state.units.map(serializeUnitForExport),
-                combatLog: [...(state._fullLogEntries || state.logEntries || [])].reverse().map(e => _logMsg(e))
+                combatLog: [...(state._fullLogEntries || state.logEntries || [])].reverse().map(e => (typeof _ctPlain === 'function' ? _ctPlain(_logMsg(e)) : _logMsg(e)))
             };
         }
 

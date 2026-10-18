@@ -1007,3 +1007,16 @@ mondo: "the maps used for the floating crystal battle icon ... are those the vox
 - Browser-checked: Stonehenge (handed over), Camelot Arena mode, the Dutchman on its own sailing deck.
 - Hitting a native still uses an area Δ in the 4 rooms the field rasteriser refuses (Bermuda sea, Downtown harbour,
   Atlantis abyss, Dutchman deck).
+
+## THE EARTHWORK MOUND — Rampart swells the ground on a true-ground field (2026-10-18, mondo)
+mondo: Rampart "since this isnt the voxel map its kind of weird for it to be a perfect cube wall. can you just raise the
+elevation like how raising elevation works in the map editor, and make the sides/walls dirt".
+- data.js rampart `terrainDeform.mound: true`; battle.js applyTerrainDeform notes every cell a mound deform raised in
+  `state.moundTiles` (any other raise on the cell deletes it; map.js initMap resets it). Plain state → the guest syncs it.
+- three-renderer.js `_fieldMoundPlanLive` (the shape: centre at the engine's full height, a smoothstep bank FIELD_MOUND_BAND
+  0.32 tiles either side of the cell edge, roughness on the bank only) + `_fieldMoundBuild` (one lattice mesh per rise set:
+  dirt_2 banks, the room's floor sheet back on the flat crest, the foot fading over FIELD_MOUND_SKIRT). The strata drop
+  mound cells (no column, no faces) and the skins skip a dry skin on them; `_fieldGroundSampler` gives mound cells the
+  swell (highlights / walks / rings), the cells beside keep flat plates. Rules untouched (+2 levels, jump-only, LOS).
+- Tile boards (Training Room, Holo Sim, every Δ / moving board) keep the voxel column. Off: `window.EW_NO_FIELD_MOUND`.
+- Proof shots: /mnt/project-files/rampart-mound/.

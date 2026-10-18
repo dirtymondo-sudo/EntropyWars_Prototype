@@ -1670,6 +1670,7 @@ const ThreeVFX = (function () {
             sprite.visible = false;
             sprite.frustumCulled = false;
             sprite.renderOrder = 100;
+            sprite._ew_fxPool = true;   // particle pool: stays up through the void stage (three-renderer.js cineVoidEnter)
             _scene.add(sprite);
             pool.push({ sprite: sprite, material: mat, inUse: false });
         }
@@ -1694,6 +1695,7 @@ const ThreeVFX = (function () {
             mesh.visible = false;
             mesh.frustumCulled = false;
             mesh.renderOrder = renderOrder || 101;
+            mesh._ew_fxPool = true;   // particle pool: stays up through the void stage (three-renderer.js cineVoidEnter)
             _scene.add(mesh);
             pool.push({ mesh: mesh, material: mat, inUse: false });
         }
@@ -1987,6 +1989,7 @@ const ThreeVFX = (function () {
         _qk.root.name = 'fxQuarks';
         _qk.br = new _qk.lib.BatchedRenderer();
         _qk.root.add(_qk.br);
+        _qk.root._ew_fxPool = true;   // the quarks bursts: stay up through the void stage
         _scene.add(_qk.root);
         return true;
     }
@@ -2142,6 +2145,7 @@ const ThreeVFX = (function () {
             mesh.visible = false;
             mesh.frustumCulled = false;
             mesh.renderOrder = 99;
+            mesh._ew_fxPool = true;   // glob pool: stays up through the void stage
             _scene.add(mesh);
             pool.push({ mesh: mesh, material: mat, inUse: false });
         }
