@@ -12816,6 +12816,9 @@ const UIM_PIECES = [
   /* keepCodes: the box's All text colour paints the plain words only, never the colour-coded ones (names by side, damage,
      heals, spells, statuses — battle.js THE COMBAT TEXT COLOURS); those have their own text parts below */
   { id: 'subtitle', group: 'Battle', label: 'Combat text box', sel: '#battleSubtitleText', origin: '50% 100%', keepCodes: true, def: { cx: 0, b: 86, w: 640, h: 40 } },
+  /* THE COMBAT LOG (2026-10-18, ui.js renderFloatCombatLog): the whole match's combat lines on the right; its own options
+     are the l* keys (clogForm); keepCodes like the text box, so an All text colour leaves the colour-coded words alone */
+  { id: 'clog', group: 'Battle', label: 'Combat log', sel: '#ewCombatLog', origin: '100% 100%', keepCodes: true, noScroll: true, clog: true, def: { r: 12, b: 120, w: 340, h: 340 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
@@ -12962,6 +12965,10 @@ const TEXT_PARTS = {
     ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'], ['status', 'Status effects', '.ct-status'],
     ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko']],
   banner: [['title', 'Title', '.banner-title'], ['sub', 'Second line', '.banner-sub']],
+  clog: [['title', 'COMBAT LOG title', '.ew-clog-title'], ['fold', 'Collapse button', '.ew-clog-fold'], ['round', 'Round lines', '.ew-clog-round'],
+    ['hpn', 'HP numbers', '.ew-clog-hpn'], ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'],
+    ['status', 'Status effects', '.ct-status'], ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko'],
+    ['big', 'Big words', '.ct-crit, .ct-over, .ct-good']],
 };
 const txKey = (part, k) => 't:' + part + ':' + k;
 function txOn(L, part) { return TX_KEYS.some(k => { const v = L[txKey(part, k)]; return v != null && String(v) !== String(k === 'hide' ? false : LOOK_DEF[k]); }); }
@@ -13262,6 +13269,12 @@ const UX_DEF = {
   wShaft: 'solid', wThick: 1, wGlow: 1, wGlowW: 1, wCore: 0, wBright: 1, wOpacity: 1, wPulse: 1, wPulseSpd: 1, wHead: 'cone', wHeadLen: 1, wHeadW: 1,
   wDots: true, wDotShape: 'ball', wDotSize: 1, wDotCount: 1, wDotSpd: 1, wDotBright: 1, wDotCol: '',
   tLine: 1, tEdge: 1, tHalo: 1, tHot: 1, tLineCol: '', tSize: 1, tRound: 0, tFill: 1, tBright: 1, tOpacity: 1, tPulse: 1, tSpeed: 1,
+  /* l* = THE COMBAT LOG (2026-10-18, mondo: "allow me to adjust the size and everything"): lAuto = when it steps away on
+     its own (board = whenever the game has the board, shots = spell shots + camera only, off = never); lShow = the text
+     box's lines or everything; lFade = how far down the top fade reaches (% of the box), lFadeTop = what is left at the
+     top; lHoverClear = the mouse on it clears the fade; lGap = px between lines; lHp = the HP after a hit / heal;
+     lBack = how dark the box behind the lines is (ui.js window._ewLogLook carries lAuto + lShow) */
+  lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
 };
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
    _hlKindOfType): [kind, label, the game's colour, tip] */
@@ -13584,6 +13597,14 @@ function aimSignal() {
   if (ka !== _aimSentA) { _aimSentA = ka; window._ewArrowLook = A; window._ewArrowLookV = (window._ewArrowLookV || 0) + 1; }
   if (kt !== _aimSentT) { _aimSentT = kt; window._ewTileLook = T; window._ewTileLookV = (window._ewTileLookV || 0) + 1; }
 }
+/* the combat log's options ui.js reads (window._ewLogLook), re-published only when they change */
+let _clogSent = '';
+function clogSignal() {
+  const X = uxOf(), L = { auto: X.lAuto, show: X.lShow };
+  const k = JSON.stringify(L); if (k === _clogSent) return;
+  _clogSent = k; window._ewLogLook = L;
+  try { if (typeof window.renderFloatCombatLog === 'function') window.renderFloatCombatLog(); } catch (e) {}
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -13606,6 +13627,20 @@ function uxCss() {
   const X = uxOf(), D = UX_DEF, R = ':root:root ', HI = ':root:root:not(#uim-x):not(#uim-x) ', chg = k => String(X[k]) !== String(D[k]);
   const n = (k, lo, hi) => { const v = +X[k]; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : D[k]; };
   let css = '';
+  /* ── the combat log (l*) ── */
+  const CL = HI + '#ewCombatLog', lv = [];
+  if (chg('lFade')) lv.push(`--clog-fade: ${n('lFade', 0, 100)}%`);
+  if (chg('lFadeTop')) lv.push(`--clog-top: ${n('lFadeTop', 0, 1)}`);
+  if (!X.lHoverClear) lv.push(`--clog-top-h: ${n('lFadeTop', 0, 1)}`);
+  if (chg('lGap')) lv.push(`--clog-gap: ${n('lGap', 0, 24)}px`);
+  if (lv.length) css += `${CL} { ${lv.join('; ')}; }\n`;
+  if (chg('lBack')) { const a = n('lBack', 0, 1); css += `${CL}:not(.folded) { background: linear-gradient(180deg, rgba(6,8,14,0) 0%, rgba(6,8,14,${(a * 0.86).toFixed(3)}) 40%, rgba(6,8,14,${a}) 100%); }\n${CL}.folded .ew-clog-bar { background: rgba(6,8,14,${a}); }\n`; }
+  if (X.lHp === 'bar') css += `${CL} .ew-clog-hpn { display: none; }\n`;
+  else if (X.lHp === 'num') css += `${CL} .ew-clog-hpb { display: none; }\n`;
+  else if (X.lHp === 'off') css += `${CL} .ew-clog-hp { display: none; }\n`;
+  if (!X.lRounds) css += `${CL} .ew-clog-round { margin-top: 0; color: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: none; border-top: 0; padding-top: 0; }\n`;
+  if (!X.lTitle) css += `${CL} .ew-clog-title { visibility: hidden; }\n`;
+  if (!X.lFlash) css += `${CL} .ew-clog-line.fresh { animation: none; }\n`;
   /* ── the name plates ── */
   const W = HI + '.tp-wrap';
   if (chg('pSize')) css += `${W} { scale: ${n('pSize', 0.5, 2.5)}; }\n`;
@@ -13919,6 +13954,24 @@ function platesDetail() {
     + fRange('Your units', 'pAllyOp', 0.1, 1, 0.05, +X.pAllyOp) + fRange('Enemies', 'pFoeOp', 0.1, 1, 0.05, +X.pFoeOp))
     + '<div class="uim-note">Fade = how see-through a plate is while it is not the current, hovered or targeted unit.</div>');
   return h + xReset('p', 'Reset the name plates');
+}
+/* the combat log's own settings (Layout > Combat log) */
+function clogForm() {
+  const X = uxOf();
+  let h = `<div class="uim-h">The combat log</div>`;
+  h += sec('lshow', 'What it shows', xp(fSeg('Lines', 'lShow', [['combat', 'Combat lines', 'The lines the combat text box shows: hits, heals, spells, statuses, knock-outs, the rounds'], ['all', 'Everything', 'Moves and the game\'s notes too']], X.lShow)
+    + fSeg('HP after a hit', 'lHp', [['both', 'Bar + number'], ['bar', 'Bar'], ['num', 'Number'], ['off', 'Off']], X.lHp))
+    + xCheck('Round lines', 'lRounds', X.lRounds) + xCheck('COMBAT LOG title', 'lTitle', X.lTitle) + xCheck('Flash new lines', 'lFlash', X.lFlash));
+  h += sec('lfade', 'Fade to the top', xp(fRange('Fade length (%)', 'lFade', 0, 100, 1, +X.lFade, 'How far down from the top the lines fade in (0 = no fade)')
+    + fRange('Left at the top', 'lFadeTop', 0, 1, 0.05, +X.lFadeTop, '0 = the top line is gone; 1 = no fade'))
+    + xCheck('Clear while the mouse is on it', 'lHoverClear', X.lHoverClear));
+  h += sec('lhide', 'Hide on its own', xp(fSeg('Hide while', 'lAuto', [['board', 'The game has the board', 'The CPU\'s or the opponent\'s turn, moves, spells, camera flights, death close-ups, banners'],
+    ['shots', 'Spell shots + camera', 'Only spell shots, camera flights, close-ups and banners'], ['off', 'Never', 'Always on screen (its ▾ button still folds it)']], X.lAuto))
+    + '<div class="uim-note">It fades out at once and comes back half a second after the board is yours again. It stays while the mouse is on it.</div>');
+  h += sec('llook', 'Spacing + backing', xp(fRange('Space between lines', 'lGap', 0, 24, 1, +X.lGap)
+    + fRange('Backing', 'lBack', 0, 1, 0.02, +X.lBack, 'How dark the box behind the lines is (0 = none). A Fill under Panel look replaces it')));
+  h += '<div class="uim-note">Drag it, size it from its corner (or Width / Height under Size + order), text sizes and colours under Text look. The ▾ on the log folds it to its bar.</div>';
+  return h + xReset('l', 'Reset the combat log');
 }
 function apForm() {
   const X = uxOf();
@@ -14548,7 +14601,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); clogSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15861,6 +15914,7 @@ function pieceDetail() {
   if (P.icons) h += iconsForm(P.icons);
   if (P.score) h += scoreForm();
   if (P.ap) h += apForm();
+  if (P.clog) h += clogForm();
   if (P.qp) h += qpForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);

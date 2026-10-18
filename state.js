@@ -4523,6 +4523,7 @@
             comboPartner: null,
             logEntries: [],
             _fullLogEntries: [],
+            logDialogue: [],   // the combat text box beats the combat log keeps (battle.js _clogKeepBeats)
             showPlayer2Builder: false,
             copiedUnitBuild: null,
             savedTeamsSnapshot: null,
