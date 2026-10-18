@@ -9376,7 +9376,7 @@
                 bricks_1:'rgba(150,100,70,0.45)', bricks_2:'rgba(140,90,65,0.4)',
                 wood_planks:'rgba(160,120,70,0.4)', wood:'rgba(140,100,60,0.35)',
                 rubble_1:'rgba(120,110,95,0.35)', rubble_2:'rgba(115,105,90,0.35)',
-                rock_wall_1:'rgba(90,85,80,0.5)', rock_wall_2:'rgba(85,80,75,0.5)',
+                rock_wall_1:'rgba(90,85,80,0.5)', rock_wall_2:'rgba(85,80,75,0.5)', stone:'rgba(96,92,88,0.45)',
                 urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(58,58,64,0.5)',
                 wasteland:'rgba(140,120,80,0.35)', cave_entrance:'rgba(70,60,50,0.45)',
                 barrier_passage:'rgba(140,140,200,0.2)', cloud:'rgba(200,210,230,0.3)',
@@ -10701,6 +10701,27 @@
             pf[k] = { t, z };
         }
 
+        /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo: "when water and lava mix i want them to make rock like in minecraft. so
+           if use hellmouth and some of the lava lands on water tiles then they need to be converted to stone"). Lava painted
+           onto water, or water / ice painted onto lava, leaves plain walkable `stone` (data.js TERRAIN_RULES.stone, the
+           rocks_5 sheet) instead — every mid-fight paint goes through setTerrainAt, so Hellmouth, any leaveTerrain, Great
+           Flood, the timed paints and the weather all agree. Rain on the fight's lava hardens it too (state.js
+           rainOnTheBoard). Returns the terrain the cell really becomes for a paint of `terrain` over `cur`. */
+        let _stoneMixN = 0;
+        function lavaWaterMixOf(cur, terrain, note) {
+            const nf = liquidFamilyOf(terrain), cf = liquidFamilyOf(cur);
+            if ((nf === 'lava' && cf === 'water') || (cf === 'lava' && (nf === 'water' || terrain === 'ice'))) {
+                /* one combat-log line per cast, however many tiles hardened (the paint loops call this a tile at a time) */
+                if (note && !_stoneMixN++ && typeof queueMicrotask === 'function') queueMicrotask(() => {
+                    const n = _stoneMixN; _stoneMixN = 0;
+                    if (typeof addLog === 'function') addLog(`♨️ Lava meets water: ${n} tile${n !== 1 ? 's' : ''} harden${n === 1 ? 's' : ''} into stone!`);
+                });
+                return 'stone';
+            }
+            return terrain;
+        }
+        window.lavaWaterMixOf = lavaWaterMixOf;
+
         function setTerrainAt(x, y, terrain, z) {
             /* 🌊 A liquid never goes INTO a solid monument (the mast, a pillar): its column carries hidden collision
                voxels, and painting the top one made a source block hang in the air with waterfalls down every side.
@@ -10723,6 +10744,7 @@
                     }
                 }
                 if (blk) {
+                    terrain = lavaWaterMixOf(blk.terrain, terrain, true);   // 🪨 water + lava = stone
                     blk.terrain = terrain;
                     const vCol = state.boardVoxels?.[y]?.[x];
                     if (vCol) {
@@ -10734,9 +10756,11 @@
                     const top = col[col.length - 1];
                     if (state.boardTerrain?.[y]) state.boardTerrain[y][x] = top.terrain || 'grass';
                 } else if (state.boardTerrain?.[y]) {
+                    terrain = lavaWaterMixOf(state.boardTerrain[y][x], terrain, true);
                     state.boardTerrain[y][x] = terrain;
                 }
             } else if (state.boardTerrain?.[y]) {
+                terrain = lavaWaterMixOf(state.boardTerrain[y][x], terrain, true);
                 state.boardTerrain[y][x] = terrain;
             }
 
@@ -10765,7 +10789,8 @@
            sitting as a settled pool that never moves. A paint on a lower floor (z given) stays a settled pool. */
         function setTerrainSpringAt(x, y, terrain, z) {
             if (setTerrainAt(x, y, terrain, z) === false) return false;
-            if ((z === undefined || z === null) && liquidFamilyOf(terrain)) {
+            // the cell may have come out as stone (water + lava): only a liquid that really landed is a spring
+            if ((z === undefined || z === null) && liquidFamilyOf(terrain) && liquidFamilyOf(getTerrainAt(x, y))) {
                 state.liquidSprings = state.liquidSprings || {};
                 state.liquidSprings[x + ',' + y] = 1;
             }
