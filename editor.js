@@ -512,7 +512,7 @@
         var hits = ED.sel.map(selRow).filter(function (h) { return h && h.list !== 'spawn' && h.list !== 'doors'; });
         if (!hits.length) { if (to) toast('THE SPAWN AND DOORS ARE NOT COPIED (a door: the DOOR tool)', 2000); return; }
         var off = { dx: Math.max(ED.snap, 1), dz: Math.max(ED.snap, 1) };
-        if (to) { var an = Core.rowAnchor(hits[0].row); off = { dx: snapPt(to.x) - an.x, dz: snapPt(to.z) - an.z }; }
+        if (to) { var an = Core.rowAnchor(hits[0].row); off = { dx: snapPt(to.x, 'x') - an.x, dz: snapPt(to.z, 'z') - an.z }; }
         var step = [], r = room(), max = +nextId(r).slice(1) - 1, sel = [];
         var ends = {};
         hits.forEach(function (h) {
@@ -598,13 +598,17 @@
        ground is compiled then: the lines ride a raised block, never hide under it) */
     var TILE = 1.75;
     function tileMode() { return Math.abs((+ED.snap || 0) - TILE) < 1e-6; }
+    /* where the squares' edges sit on each axis: k · TILE from the room's centre, or (k + ½) · TILE on an axis the room has an odd
+       count of squares on (data.js hqFieldGridOffset — THE FIELD's lattice reads the same, so these ARE the battle's squares) */
+    function tileOff(ax) { var r = room(), o = r && W.hqFieldGridOffset ? W.hqFieldGridOffset(r, ED.roomId) : null; return o ? (ax === 'z' ? o.z : o.x) : 0; }
+    function tileLine(v, ax) { var o = tileOff(ax); return Math.round((Core.snap(v - o, TILE) + o) * 10000) / 10000; }   // the nearest square edge
     /* a point's snap: in TILE mode the middle of the square it is on, else the grid (0.25 m at least, as before) */
-    function snapPt(v) { return tileMode() ? Math.round((Math.floor(v / TILE) * TILE + TILE / 2) * 10000) / 10000 : Core.snap(v, Math.max(0.25, ED.snap || 0)); }
+    function snapPt(v, ax) { var o = tileOff(ax); return tileMode() ? Math.round((Math.floor((v - o) / TILE) * TILE + o + TILE / 2) * 10000) / 10000 : Core.snap(v, Math.max(0.25, ED.snap || 0)); }
     /* the squares a press and a release cover, whole (TILE mode): from the press's square to the release's, both in */
     function tileRect(a, b) {
         var ax = a.rx != null ? a.rx : a.x, az = a.rz != null ? a.rz : a.z, bx = b.rx != null ? b.rx : b.x, bz = b.rz != null ? b.rz : b.z;
-        var q = function (v) { return Math.round(v * 10000) / 10000; };
-        return { x0: q(Math.floor(Math.min(ax, bx) / TILE) * TILE), x1: q((Math.floor(Math.max(ax, bx) / TILE) + 1) * TILE), z0: q(Math.floor(Math.min(az, bz) / TILE) * TILE), z1: q((Math.floor(Math.max(az, bz) / TILE) + 1) * TILE) };
+        var q = function (v) { return Math.round(v * 10000) / 10000; }, ox = tileOff('x'), oz = tileOff('z');
+        return { x0: q(Math.floor((Math.min(ax, bx) - ox) / TILE) * TILE + ox), x1: q((Math.floor((Math.max(ax, bx) - ox) / TILE) + 1) * TILE + ox), z0: q(Math.floor((Math.min(az, bz) - oz) / TILE) * TILE + oz), z1: q((Math.floor((Math.max(az, bz) - oz) / TILE) + 1) * TILE + oz) };
     }
     function gridBuild() {
         if (!ED.group) return;
@@ -619,8 +623,9 @@
             for (var i = 1; i <= n; i++) { var qx = x0 + (x1 - x0) * i / n, qz = z0 + (z1 - z0) * i / n, qy = y(qx, qz); P.push(px * u, py, pz * u, qx * u, qy, qz * u); px = qx; pz = qz; py = qy; }
         };
         var k;
-        for (k = Math.ceil(-hw / TILE - 1e-6); k * TILE < hw - 1e-3; k++) if (k * TILE > -hw + 1e-3) line(k * TILE, -hd, k * TILE, hd);
-        for (k = Math.ceil(-hd / TILE - 1e-6); k * TILE < hd - 1e-3; k++) if (k * TILE > -hd + 1e-3) line(-hw, k * TILE, hw, k * TILE);
+        var gx = tileOff('x'), gz = tileOff('z'), v;
+        for (k = Math.ceil((-hw - gx) / TILE - 1e-6); (v = k * TILE + gx) < hw - 1e-3; k++) if (v > -hw + 1e-3) line(v, -hd, v, hd);
+        for (k = Math.ceil((-hd - gz) / TILE - 1e-6); (v = k * TILE + gz) < hd - 1e-3; k++) if (v > -hd + 1e-3) line(-hw, v, hw, v);
         if (P.length) {
             var gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
             var grid = new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0x6fd3ff, transparent: true, opacity: 0.55, depthWrite: false, fog: false }));
@@ -752,7 +757,7 @@
     function tileDelta(x0, z0, dx, dz) {
         var hits = ED.sel.map(selRow).filter(Boolean), r0 = hits.length === 1 ? hits[0].row : null;
         var point = r0 && isFinite(r0.x) && isFinite(r0.z) && !(r0.w > 0) && !(r0.d > 0) && !(r0.r > 0) && r0.x0 == null && !r0.pts;
-        if (point) return { dx: snapPt(x0 + dx) - x0, dz: snapPt(z0 + dz) - z0 };
+        if (point) return { dx: snapPt(x0 + dx, 'x') - x0, dz: snapPt(z0 + dz, 'z') - z0 };
         return { dx: Core.snap(dx, TILE), dz: Core.snap(dz, TILE) };
     }
     function dragMove() {
@@ -982,6 +987,7 @@
             var dx = p.x - a.x, dz = p.z - a.z, L = Math.hypot(dx, dz), q = Math.round(Math.atan2(dz, dx) / (Math.PI / 4)) * (Math.PI / 4);
             L = Core.snap(L, sn); return { x: Core.snap(a.x + Math.cos(q) * L, 0.0001), z: Core.snap(a.z + Math.sin(q) * L, 0.0001) };
         }
+        if (tileMode()) return { x: tileLine(p.x, 'x'), z: tileLine(p.z, 'z'), rx: p.x, rz: p.z };   // TILE: a corner of the squares
         return { x: Core.snap(p.x, sn), z: Core.snap(p.z, sn), rx: p.x, rz: p.z };   // rx/rz: the raw point (TILE mode: the square it is on)
     }
     var _pvMat = null;
@@ -1081,8 +1087,8 @@
             if (D.entry) { palDrop(D, c); return; }   // E2: a palette tile
             if (D.tool === 'lamp') { lampAt(c); return; }   // E6: the tool stays armed for more
             var row = D.row ? Core.clone(D.row) : Core.kindRow(D.tool, c.x, c.z);
-            if (D.row) { row.x = snapPt(c.x); row.z = snapPt(c.z); }
-            else if (row && tileMode()) row = Core.rowTransform(row, { dx: snapPt(c.x) - Core.rowAnchor(row).x, dz: snapPt(c.z) - Core.rowAnchor(row).z, px: 0, pz: 0 });   // TILE: an ADD-list shape lands on the middle of its square
+            if (D.row) { row.x = snapPt(c.x, 'x'); row.z = snapPt(c.z, 'z'); }
+            else if (row && tileMode()) row = Core.rowTransform(row, { dx: snapPt(c.x, 'x') - Core.rowAnchor(row).x, dz: snapPt(c.z, 'z') - Core.rowAnchor(row).z, px: 0, pz: 0 });   // TILE: an ADD-list shape lands on the middle of its square
             drawSet(null); if (row) addRow(D.list || 'terrain.features', row, D.label);
             return;
         }
@@ -1414,11 +1420,11 @@
             var q4 = function (v) { return Math.round(v * 10000) / 10000; };
             if (f === 'rect') {
                 if (!click) return Object.assign({ form: f }, tileRect(a, p));
-                var n = Math.max(1, Math.round(2 * R0 / TILE)), ox = n % 2 ? snapPt(a.rx) : Core.snap(a.rx, TILE), oz = n % 2 ? snapPt(a.rz) : Core.snap(a.rz, TILE);
+                var n = Math.max(1, Math.round(2 * R0 / TILE)), ox = n % 2 ? snapPt(a.rx, 'x') : tileLine(a.rx, 'x'), oz = n % 2 ? snapPt(a.rz, 'z') : tileLine(a.rz, 'z');
                 return { form: f, x0: q4(ox - n * TILE / 2), x1: q4(ox + n * TILE / 2), z0: q4(oz - n * TILE / 2), z1: q4(oz + n * TILE / 2) };
             }
             var dc = Math.hypot(p.rx - a.rx, p.rz - a.rz);
-            return { form: f, x: snapPt(a.rx), z: snapPt(a.rz), r: click ? R0 : Math.max(TILE / 2, Math.round(dc / (TILE / 2)) * TILE / 2) };
+            return { form: f, x: snapPt(a.rx, 'x'), z: snapPt(a.rz, 'z'), r: click ? R0 : Math.max(TILE / 2, Math.round(dc / (TILE / 2)) * TILE / 2) };
         }
         if (f === 'disc') return { form: f, x: a.x, z: a.z, r: click ? R0 : Math.round(drag * 4) / 4 };
         if (f === 'rect') return click ? { form: f, x0: a.x - R0, x1: a.x + R0, z0: a.z - R0, z1: a.z + R0 } : Object.assign({ form: f }, rectOf(a, p));
@@ -2089,8 +2095,10 @@
 
     /* ══ ROOMS ══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
     function newRoom() {
-        ask('NEW ROOM', [{ name: 'w', label: 'Width (m, east–west)', value: 128, type: 'number' }, { name: 'd', label: 'Depth (m, north–south)', value: 128, type: 'number' }], function (v) {
-            var id = W.hqWorldDocNextRoomId(ED.doc), r = W.hqWorldDocNewRoom(id, { w: +v.w, d: +v.d });
+        /* 2026-10-19 (mondo: "when i pick the room size it needs to based on tile size"): the size is in battle squares (TILE m each) */
+        ask('NEW ROOM', [{ name: 'w', label: 'Width (squares, east–west)', value: 72, type: 'number' }, { name: 'd', label: 'Depth (squares, north–south)', value: 72, type: 'number' }], function (v) {
+            var sq = function (n) { return Math.max(5, Math.round(+n || 0)) * TILE; };
+            var id = W.hqWorldDocNextRoomId(ED.doc), r = W.hqWorldDocNewRoom(id, { w: sq(v.w), d: sq(v.d) });
             commit([{ path: ['rooms', id], before: undefined, after: r }], 'new room');
             enterRoom(id, 'world');
             toast(r.label.toUpperCase() + ' · a flat empty ground');
@@ -2599,7 +2607,7 @@
     /* DUNGEONS (world.json `dungeons` = { label, look, levels: [{ room, y }] }): a new dungeon is its Level 1 room, dressed for its look,
        with one room drawn round the spawn; + LEVEL adds the next one (join them with the DOOR tool) */
     function dungeonRoom(id, look, label, n) {
-        var L = DUNGEON_LOOKS[look] || DUNGEON_LOOKS.walls, r = W.hqWorldDocNewRoom(id, { w: 96, d: 96, floor: L.floor, label: label });
+        var L = DUNGEON_LOOKS[look] || DUNGEON_LOOKS.walls, r = W.hqWorldDocNewRoom(id, { w: 56 * TILE, d: 56 * TILE, floor: L.floor, label: label });   // 56 × 56 battle squares
         var S = r.shell; S.open = L.open; if (L.open) S.edge = 'open'; else delete S.edge; S.h = L.h; S.wallH = L.h; S.wall = L.wall; S.ceiling = L.wall; S.skirt = L.path; S.dado = L.path; S.mood = Core.clone(L.mood);
         if (L.forest) S.forest = true;
         r.terrain.floor = L.floor; r.terrain.cliff = L.wall; r.terrain.path = L.path;
@@ -3368,7 +3376,7 @@
         if (!own()) return;
         var r = room(), S = r && r.shell; if (!S || !c || !editable()) return;
         var ls = Core.clone(S.lights || []);
-        ls.push({ x: snapPt(c.x), z: snapPt(c.z) });
+        ls.push({ x: snapPt(c.x, 'x'), z: snapPt(c.z, 'z') });
         shellPut('lights', ls, 'lamp');
     }
 
@@ -3497,7 +3505,7 @@
     /* the eye's heading turned round: what a placed thing faces (degrees clockwise from north) */
     function faceEye() { return Math.round(((ED.cam.yaw * 180 / Math.PI + 180) % 360 + 360) % 360); }
     function palDrop(D, c) {
-        var e = D.entry, x = snapPt(c.x), z = snapPt(c.z);
+        var e = D.entry, x = snapPt(c.x, 'x'), z = snapPt(c.z, 'z');
         if (e.list === 'spawn') {
             var r = room(); if (!r || ED.mode === 'prefab') return;
             var face = Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360);
@@ -3524,7 +3532,7 @@
         else if (e && e.row && e.row.k === 'tree') { h = +ED.opts.treeSize || treeDefH(e.row) * treeTile(); w = d = Math.max(1.2, h * 0.3); }
         else if (e && e.row && (e.row.k === 'grove' || e.row.k === 'scatter')) { w = d = 2 * (e.row.r || 6); h = 0.3; }
         else if (D.row && D.row.k === 'kit') { w = d = 4; h = 2; }
-        var x = snapPt(c.x), z = snapPt(c.z), f = faceEye() * Math.PI / 180;
+        var x = snapPt(c.x, 'x'), z = snapPt(c.z, 'z'), f = faceEye() * Math.PI / 180;
         drawPreview([{ cx: x, cz: z, w: w, L: d, y0: g, y1: g + h, yaw: -f }, { cx: x + Math.sin(f) * (d / 2 + 0.3), cz: z - Math.cos(f) * (d / 2 + 0.3), w: 0.18, L: 0.6, y0: g, y1: g + 0.12, yaw: -f }]);
     }
 
@@ -3549,7 +3557,7 @@
                 sp = { x: cx, z: cz, face: Math.round(((Math.atan2(nx, -nz) * 180 / Math.PI) % 360 + 360) % 360), wallId: w.id, at: at, ow: ow, oh: S.doorH || 2.2 };
             }
         }
-        if (!sp) { var c = rayGround(e.clientX, e.clientY); if (!c) return; sp = { x: snapPt(c.x), z: snapPt(c.z), face: faceEye() }; }
+        if (!sp) { var c = rayGround(e.clientX, e.clientY); if (!c) return; sp = { x: snapPt(c.x, 'x'), z: snapPt(c.z, 'z'), face: faceEye() }; }
         drawSet(null);
         doorModal(null, function (v) { doorWrite(sp, ent, v); });
     }
@@ -3918,7 +3926,11 @@
             if (!ro && ED.mode === 'world') h += zoneSiteHtml(r) + encHtml(r);   // E7 + THE ENCOUNTER TABLE (2026-10-08)
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
-            h += '<div class="ed-sub">THE SHELL</div><div class="ed-form" data-scope="shell">' + shellKeys.map(function (k) { return fieldHtml(k, S[k]); }).join('') + '</div>';
+            h += '<div class="ed-sub">THE SHELL</div><div class="ed-form" data-scope="shell">' + shellKeys.map(function (k) {
+                /* the room's size in battle squares (TILE m each, the squares a fight here stands on); the metres follow */
+                if ((k === 'w' || k === 'd') && typeof S[k] === 'number') return '<label class="ed-f" title="' + (k === 'w' ? 'Width, east–west' : 'Depth, north–south') + ' in battle squares (' + TILE + ' m each) · ' + S[k] + ' m"><span>' + k + ' squares</span><input type="number" step="1" min="5" data-k="' + k + 'Sq" data-t="num" value="' + esc(+(S[k] / TILE).toFixed(2)) + '"></label>';
+                return fieldHtml(k, S[k]);
+            }).join('') + '</div>';
             if (r.terrain) {
                 h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + fieldHtml('floor', String(T.floor || '')) + fieldHtml('cliff', String(T.cliff || '')) + fieldHtml('path', String(T.path || '')) + fieldHtml('base', +T.base || 0) + fieldHtml('stairs', String(T.stairs || ''), 'terrain') + '</div>';
                 h += '<div class="ed-note">stairs = the stairs pack kind every flight here is drawn as unless it names its own (empty: timber in a forest, the site\'s own, else concrete).</div>';
@@ -4054,7 +4066,8 @@
             return true;
         }
         var base = scope === 'room' ? [] : [scope], r = room(), cur = scope === 'room' ? r : r[scope];
-        if (scope === 'shell' && (k === 'w' || k === 'd')) { v = Math.max(8, Math.min(W.HQ_WORLD_DOC_RULES.maxRoomM, v)); }
+        if (scope === 'shell' && (k === 'wSq' || k === 'dSq')) { k = k.charAt(0); v = Math.max(5, Math.round(v)) * TILE; }   // whole squares
+        if (scope === 'shell' && (k === 'w' || k === 'd')) { v = Math.max(8, Math.min(Math.floor(W.HQ_WORLD_DOC_RULES.maxRoomM / TILE) * TILE, v)); }
         if (scope === 'shell' && k === 'w' && r.terrain) { /* the ground follows */ }
         commit([{ path: ['rooms', ED.roomId].concat(base, [k]), before: cur ? Core.clone(cur[k]) : undefined, after: v }], k, { noReload: scope === 'edit' || (scope === 'room' && k !== 'label') });
         return true;
@@ -4070,7 +4083,7 @@
             '<b>' + esc(ED.mode === 'library' ? 'LIBRARY' : ED.mode === 'prefab' ? 'PREFAB' : ED.project || '') + '</b>',
             esc((r && r.label) || ED.roomId || '') + (ED.mode === 'world' && zoneOf(ED.roomId) ? ' · ' + esc(zoneLabel(zoneOf(ED.roomId))) : ''),
             c ? 'x ' + c.x.toFixed(2) + ' z ' + c.z.toFixed(2) + ' ground ' + c.y.toFixed(2) + ' m' : 'the cursor is off the ground',
-            r && r.shell && +r.shell.w > 0 ? 'room ' + (+r.shell.w) + ' × ' + (+r.shell.d) + ' m = ' + +(r.shell.w / TILE).toFixed(1) + ' × ' + +(r.shell.d / TILE).toFixed(1) + ' squares' + (tileMode() ? ' · <b>SNAP TILE</b>' : '') : '',
+            r && r.shell && +r.shell.w > 0 ? 'room ' + +(r.shell.w / TILE).toFixed(1) + ' × ' + +(r.shell.d / TILE).toFixed(1) + ' squares (' + (+r.shell.w) + ' × ' + (+r.shell.d) + ' m)' + (tileMode() ? ' · <b>SNAP TILE</b>' : '') : '',
             ED.draw ? '<b>' + esc(DRAWS[ED.draw.tool] ? DRAWS[ED.draw.tool].label : 'PLACE') + '</b>' + (ED._drawInfo ? ' ' + esc(ED._drawInfo) : '') : '',
             'eye ' + ED.cam.x.toFixed(1) + ', ' + ED.cam.y.toFixed(1) + ', ' + ED.cam.z.toFixed(1) + ' · ' + ED.cam.speed.toFixed(0) + ' m/s',
             ED.ready ? 'READY' : 'BUILDING…',
