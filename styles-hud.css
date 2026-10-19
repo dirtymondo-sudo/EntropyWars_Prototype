@@ -3728,6 +3728,12 @@
             opacity: 0; visibility: hidden;
             transition: opacity 0.18s ease, visibility 0s linear 0.18s;
         }
+        /* the end of round keeps it up the whole way (mondo 2026-10-19: it faded out and back between every camera
+           move of the round's beats, too fast to read): body.ew-eor from battle.js isEndOfRoundLive */
+        body.ew-eor .ew-clog.auto-board:not(.hold):not(.off), body.ew-eor .ew-clog.auto-shots:not(.hold):not(.off) {
+            opacity: 1; visibility: visible;
+            transition: opacity 0.35s ease 0.5s, visibility 0s linear 0.5s;
+        }
         /* the UI Maker's Layout view always shows it */
         html.uim-arranging .ew-clog { opacity: 1 !important; visibility: visible !important; transition: none !important; }
         html.uim-arranging .ew-clog.empty { display: flex; }

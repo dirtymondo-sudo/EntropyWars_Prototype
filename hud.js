@@ -4518,7 +4518,7 @@ function _hrlgBuildBlades(unit, st) {
    STAB chip when the triggering unit shares the type, a green ! when the
    pick is super-effective across the board, and BEST on the row the CPU
    would take. Hover/cursor feeds the bottom description bar with the
-   apocalypse's flavour + the forecast sentence. Firing a row IS the strike. */
+   apocalypse's own flavour line. Firing a row IS the strike. */
 function _hrlgEntropyBlades(unit, st) {
   const order = (typeof window.getEntropyStrikeTypeOrder === 'function') ? window.getEntropyStrikeTypeOrder()
     : ((typeof ENTROPY_STRIKE_TYPE_ORDER !== 'undefined') ? ENTROPY_STRIKE_TYPE_ORDER : ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly']);
@@ -4556,18 +4556,14 @@ function _hrlgEntropyBlades(unit, st) {
       title: 'Damage type the whole team\'s strike carries — judged by the type chart on every enemy',
     }];
     if (fc && fc.stab) badges.push({ label: 'STAB', plain: true, title: 'Your unit shares this type: ×' + stabMult + ' on every hit' });
-    // description-bar card (the _objectCard path: name + stats line + prose)
-    const fcLine = fc
-      ? (fc.targets + ' target' + (fc.targets === 1 ? '' : 's')
-        + ' · ' + fc.weak + ' weak ×1.3 · ' + fc.resist + ' resist ×0.75 · ' + fc.neutral + ' neutral'
-        + (fc.stab ? ' · STAB ×' + stabMult : '')
-        + ' → ~' + proj + ' per enemy')
-      : '';
+    // description-bar card (the _objectCard path: name + stats line + prose).
+    // Just the strike's own prose (mondo 2026-10-19: no weak/resist/neutral
+    // tallies down there; the row's power + chip already carry the matchup).
     const card = {
       _objectCard: true,
       name: (def.glyph || '⚛') + ' ' + String(def.name || id).toUpperCase(),
       _hpLine: 'ENTROPY STRIKE · ' + id.toUpperCase() + ' TYPE · 1 AP · ENDS TURN · drains the gauge',
-      desc: (def.desc || '') + (fcLine ? '<br><b>' + fcLine + '</b>' : ''),
+      desc: def.desc || '',
     };
     return {
       id: 'ews:' + id, endsTurn: true, cost: 1,
@@ -4837,7 +4833,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     let superEff = false, typeAdv = '', elemAff = null;
     // Matchup markers only make sense for casts that actually DEAL damage —
     // a pure debuff/utility can't be "super effective".
-    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellShowsDamage(spell)))
+    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellCanPress(spell)))
         && typeof getTypeDamageMultiplier === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
       const _spType = spell ? (spell.spellType || null) : null;
@@ -6003,6 +5999,15 @@ function hudSpellShowsDamage(sp) {
   return ['barrage', 'skyDrop', 'skyThrow', 'skySlam'].includes(sp.kind || '');
 }
 
+/* Can this spell earn the green ! (the press)? Every damaging row, plus the casts whose sting has no dmg field but
+   still judges the press when it lands on an enemy (Poison Seed / Leech Seed planted under one: battle.js
+   spellArmsPress). The ! itself is always battle.js forecastPressOn, aimed at the target. */
+function hudSpellCanPress(sp) {
+  if (!sp) return false;
+  if (hudSpellShowsDamage(sp)) return true;
+  return typeof window.spellArmsPress === 'function' && !!window.spellArmsPress(sp);
+}
+
 // Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
 // `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
 // burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
@@ -6788,7 +6793,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
-        press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
+        press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
           ? !!window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
@@ -7980,7 +7985,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
     // the spell's element vs THIS enemy: immune / absorb wears the red !-circle
     let _eaImm = null;
     if (a.spell && typeof unitElementAffinity === 'function' && typeof isEnemyUnit === 'function' && isEnemyUnit(actingUnit, targetUnit)
-        && (typeof hudSpellShowsDamage !== 'function' || hudSpellShowsDamage(a.spell))) {
+        && (typeof hudSpellCanPress !== 'function' || hudSpellCanPress(a.spell))) {
       const _eaEl = (typeof getSpellElement === 'function') ? getSpellElement(a.spell) : (a.spell.element || null);
       const _eaAff = _eaEl ? unitElementAffinity(targetUnit, _eaEl) : null;
       if (_eaAff === 'immune' || _eaAff === 'absorb') _eaImm = _eaAff;
@@ -12880,8 +12885,11 @@ function edgeClip(s, E) {
   }
   const w = Math.max(0.5, +E.w || 0), r = v => Math.round(v * 1000) / 1000;
   const L = (a, b) => (a && b ? `calc(${r(a)}% + ${r(b)}px)` : a ? `${r(a)}%` : `${r(b)}px`);
-  const left = ch.map(p => `${L(p[0] + gx[0], p[1] + gx[1])} ${L(p[2], p[3])}`);
-  const right = ch.slice().reverse().map(p => `${L(p[0] + gx[0], p[1] + gx[1] + w)} ${L(p[2], p[3])}`);
+  // end gaps past half the row meet in the middle and stay shut (a short row never gets the band back flipped)
+  const T = L(ch[0][2], ch[0][3]), B = L(ch[ch.length - 1][2], ch[ch.length - 1][3]), M = `calc((${T} + ${B}) / 2)`;
+  const Y = p => `clamp(min(${T}, ${M}), ${L(p[2], p[3])}, max(${B}, ${M}))`;
+  const left = ch.map(p => `${L(p[0] + gx[0], p[1] + gx[1])} ${Y(p)}`);
+  const right = ch.slice().reverse().map(p => `${L(p[0] + gx[0], p[1] + gx[1] + w)} ${Y(p)}`);
   return `polygon(${left.concat(right).join(', ')})`;
 }
 function edgeCss(S, T) {

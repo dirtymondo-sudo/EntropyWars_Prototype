@@ -23927,9 +23927,9 @@
                 if (state._actionExecuting || state._walkAnimActive) return true;
                 /* THE END OF ROUND IS THE GAME'S (2026-10-19, mondo: "i do not want to see the attack ranges when i hover
                    over a unit during the end of round phase"): from the last turn of the round until the next round's
-                   first unit activates, no unit is active and the tour plays itself. state._eorRunning is set by the
-                   host's round advance and rides the snapshot, so the guest gets the same rule. */
-                if (state._eorRunning && state._blitzActiveUnitId == null) return true;
+                   first unit activates, no unit is active and the tour plays itself. state._eorLive is set by the
+                   host's round advance (_setRoundAdvance) and rides the snapshot, so the guest gets the same rule. */
+                if (state._eorLive && state._blitzActiveUnitId == null) return true;
                 const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
                     || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
                     || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
@@ -35115,6 +35115,8 @@
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
+            // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
+            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
@@ -38912,6 +38914,15 @@
         /* Does casting this spell arm the press collector (doSpell)? The previews ask the same question. */
         function spellArmsPress(spell) {
             if (!spell) return false;
+            /* THE CONTACT BOMB PRESSES (mondo 2026-10-19: "i am using it on a cowboy ... it WAS super effective, so why
+               does it not show it in the spell list"): Place Bomb dropped straight onto a grounded enemy goes off inside
+               the cast (doSpell _placementStruck) and ends the turn like any damaging cast, so its blast judges the press
+               and the green ! shows it. A bomb on an empty tile records no hit: no press, the turn stays alive. */
+            if (spell.kind === 'bomb') return true;
+            /* …and so do the two damaging seeds (mondo 2026-10-19: "posion seed and leech seed need the same fix as the
+               place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
+               the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
+            if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
             return _PRESS_SPELL_KINDS.has(spell.kind)
                 || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
                 || (spell.kind !== 'delayed' && spellDealsDamage(spell));
@@ -47534,7 +47545,7 @@
                 CONFIG.tileSize = computeBattleTileSize();
             }
             state.round = 1;
-            _roundAdvanceInProgress = false; state._eorRunning = false;
+            _setRoundAdvance(false);
             state.startingPlayer = engineRng() < 0.5 ? 1 : 2;
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
@@ -47790,7 +47801,7 @@
             state._blitzActiveUnitId = null;
             state._skippedUnit = null;
             _blitzTurnGen++;
-            _roundAdvanceInProgress = false; state._eorRunning = false;
+            _setRoundAdvance(false);
 
             for (const u of state.units) {
                 if (!u.dead) {
@@ -51858,8 +51869,7 @@
 
                 if (!nextUnit) {
 
-                    _roundAdvanceInProgress = true;
-                    state._eorRunning = true;   // isGamePlayingOut: the end of round has the board
+                    _setRoundAdvance(true);
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -52077,7 +52087,7 @@
                             processPendingEarthquake(() => {
                             if (_blitzTurnGen !== savedGen || state.winner) return;
 
-                            _roundAdvanceInProgress = false; state._eorRunning = false;
+                            _setRoundAdvance(false);
                             const firstUnit = getNextBlitzUnit();
                             _continueBlitzWithUnit(firstUnit);
                             });
@@ -52359,7 +52369,7 @@
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
-                _roundAdvanceInProgress = false; state._eorRunning = false;
+                _setRoundAdvance(false);
                 state._actionExecuting = false;
                 state.aiThinking = false;
                 maybeAdvanceTurn();
@@ -52785,6 +52795,21 @@
         let _aiActionGen = 0;
 
         let _roundAdvanceInProgress = false;
+        /* THE STEADY END OF ROUND (2026-10-19, mondo: "during the end of round, the combat log keeps fading in and out
+           between camera movements, either keep it on or keep it off for the end of round"): state._eorLive mirrors the
+           end-of-round sequence (synced, so the online guest has it too); three-renderer _takeoverBodyClasses turns it
+           into body.ew-eor and the combat log stays up from the first beat to the round's first unit. */
+        function _setRoundAdvance(on) {
+            _roundAdvanceInProgress = !!on;
+            if (!!state._eorLive !== !!on) {
+                state._eorLive = !!on;
+                if (typeof window._broadcastState === 'function') { try { window._broadcastState(); } catch (e) {} }
+            }
+        }
+        function isEndOfRoundLive() {
+            return !!(state && state.phase === 'battle' && !state.winner && state._eorLive);
+        }
+        window.isEndOfRoundLive = isEndOfRoundLive;
 
         function clearAiSafetyTimer() {
             if (_aiSafetyTimer) {
