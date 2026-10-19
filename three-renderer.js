@@ -70655,6 +70655,7 @@ const ThreeRenderer = (function () {
         actionGlowStart, actionGlowBurst, actionGlowEnd, actionGlowKillAll,
 
         drawArrow3D, drawPathArrow3D, clearArrows3D, lookPreview, floatPreview,
+        floatShows: function (text, kind) { return _floatShows(text, kind); },
 
         showGhostUnit, clearGhostUnit,
 
@@ -71118,6 +71119,8 @@ window.ThreeAnim = {
         if (ThreeRenderer.isActive()) return ThreeRenderer.startFloatingText(tileX, tileY, text, kind, durationMs, opts);
         return null;
     },
+    // false when this viewer's Floating text look hides this pop (UI Maker > Which pops show); the 2D board asks too
+    floatShows: function(text, kind) { return ThreeRenderer.floatShows(text, kind); },
 
     hitEffect: function(tileX, tileY, variant, isCrit, durationMs) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startHitEffect(tileX, tileY, variant, isCrit, durationMs);

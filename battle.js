@@ -12508,6 +12508,8 @@
                 return;
             }
 
+            // the 2D board keeps this viewer's Which pops show too
+            if (window.ThreeAnim && window.ThreeAnim.floatShows && !window.ThreeAnim.floatShows(String(textValue ?? ''), kind)) return;
             const boardEl = document.getElementById('board');
             if (!boardEl) return;
             const _bw = bw();
