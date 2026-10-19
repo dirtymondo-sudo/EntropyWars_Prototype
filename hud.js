@@ -3161,6 +3161,10 @@ function _hrlgStatusChips(unit) {
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
   });
+  /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
+  if (typeof getWeatherStatChips === 'function') {
+    for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
@@ -7209,7 +7213,8 @@ function _showTileMoveSlidePreview(actingUnit, tx, ty, tz) {
     if (!land || typeof _drawIceSlideLeg !== 'function') return;
     const routeColor = 0x3399ff;
     const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: ThreeRenderer.unitSurfaceY(actingUnit) }];
-    for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
+    const route = (typeof walkRouteOf === 'function') ? walkRouteOf(path, land) : path;   // a storm stops the walk on its eye
+    for (const p of route) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
     if (wps.length < 2) wps.push({ x: tx, y: ty, yOverride: ThreeRenderer.tileTopY(tx, ty) });
     ThreeRenderer.drawPathArrow3D(wps, routeColor);
     wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));
@@ -7667,10 +7672,50 @@ function _chainMoveTowards(actingUnit, targetUnit) {
   }
 }
 
+/* THE AOE PLACEMENT on the quick menus (mondo 2026-10-19: "when i choose a placeable aoe spell from a unit's quick
+   target menu, it needs to let me place it first, not just fire automatically"): a tile-aimed area spell picked from
+   the enemy / ally quick menu no longer casts on the pick. It arms like the Abilities pick (setTool: the 'spells' aim
+   view, its range lit), the footprint starts on the row's own centre (the off-centre aim) and follows the cursor;
+   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms. */
+function _hrlgPlaceableAoe(spell, tx, ty) {
+  if (!spell || typeof isSpellTileTargeted !== 'function' || !isSpellTileTargeted(spell)) return false;
+  if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) return false;
+  if (typeof isTileAoeSpell === 'function' && isTileAoeSpell(spell)) return true;
+  const m = typeof _kindMeta === 'function' ? (_kindMeta(spell) || {}) : {};
+  if (m.directional || spell.hinge || spell.kind === 'teleport' || spell.kind === 'dash' || spell.kind === 'warpRune') return false;
+  const fp = typeof getSpellAoeFootprint === 'function' ? (getSpellAoeFootprint(spell, tx, ty) || []) : [];
+  return fp.length > 1;
+}
+function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
+  state._actionExecuting = false;
+  state._enemyActionTargetId = null;
+  state.pendingTarget = null;
+  if (typeof getSelectedUnit === 'function' && getSelectedUnit() !== actingUnit) return false;
+  setTool('spell', spell.name);
+  if (state.actionMode !== 'spell' || state.selectedTool !== spell.name) return true;   // refused: setTool said why
+  if (state.actionMenuView === 'spells') {
+    state.pendingTarget = { x: x, y: y, mode: 'spell', tool: spell.name, viaHover: false };
+    if (typeof updateAoePreview === 'function') {
+      try { updateAoePreview(x, y); } catch (e) { /* cosmetic */ }
+    }
+  }
+  if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+  if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  return true;
+}
+
 function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (!a.available) return;
   hideSpellTooltip();
   _clearMoveArrowPreview();
+  const _placeAoe = !!(a.spell && a.id.startsWith('spell:') && !a._teamCast && typeof setTool === 'function'
+    && _hrlgPlaceableAoe(a.spell, targetUnit.x, targetUnit.y));
+  if (_placeAoe && !a.moveTile) {
+    if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+    const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
+    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y)) return;
+  }
   // Sweep every lingering targeting visual (range overlays from blade hover,
   // AoE preview, terrain ghost, arrows) the moment the quick-cast fires —
   // doSpell/doAttack sweep again post-validation, but the walk of a
@@ -7774,6 +7819,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }
+      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
         else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));

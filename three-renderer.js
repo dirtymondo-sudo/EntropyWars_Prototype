@@ -11343,6 +11343,11 @@ const ThreeRenderer = (function () {
             }
             h = _hashInt(h, u.hourglassBuff || 0);
             h = _hashInt(h, u._killStreak || 0);
+            /* a storm moving onto / off a standing unit changes its badge row without the unit moving */
+            if (state.activeWeather && state.activeWeather.length && typeof getWeatherStatChips === 'function') {
+                var _wxc = getWeatherStatChips(u);
+                for (var wci = 0; wci < _wxc.length; wci++) h = _hashStr(h, _wxc[wci].key);
+            }
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
@@ -11423,6 +11428,13 @@ const ThreeRenderer = (function () {
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
         else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
+        /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
+        if (typeof getWeatherStatChips === 'function') {
+            var _wx = getWeatherStatChips(unit);
+            for (var wi = 0; wi < _wx.length; wi++) {
+                badges.push('<span class="tp-sbadge ' + (_wx[wi].kind === 'up' ? 'tp-stat-up' : 'tp-stat-dn') + '" title="' + _wx[wi].title + '">' + _wx[wi].label + '</span>');
+            }
+        }
 
         /* 🌀 Killstreak heat: HEATING UP at 2 kills, FLOW STATE (+ bounty) at 3+. */
         var _ks = unit._killStreak || 0;

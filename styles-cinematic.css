@@ -592,6 +592,7 @@
         .vic-tally-row .p1 { text-align: right; color: var(--vic-p1); opacity: 0.75; }
         .vic-tally-row .p2 { text-align: left; color: var(--vic-p2); opacity: 0.75; }
         .vic-tally-row .lead { opacity: 1; font-weight: 800; }
+        .vic-tally-raw { font-style: normal; font-size: 10px; letter-spacing: 0.08em; opacity: 0.8; }
         .vic-tally-lbl { font-size: 10px; letter-spacing: 0.1em; color: var(--vic-mute); white-space: nowrap; }
         .vic-stats-table {
             width: 100%; border-collapse: collapse;
