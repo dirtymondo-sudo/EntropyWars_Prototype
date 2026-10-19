@@ -1524,7 +1524,29 @@
     // findMovePath) crosses or ends on a door that would take this body.
     let _capMoveCache = { key: '', tiles: null };
     function _aiMoveTiles(g, unit) {
-        return _gdStreamFilter(g, unit, _aiMoveTilesCap(g, unit));
+        return _aiStormFilter(g, unit, _gdStreamFilter(g, unit, _aiMoveTilesCap(g, unit)));
+    }
+    // 🌪 A tornado / hurricane eye stops any walk that meets it and flings the walker (battle.js getPathPickupEvent
+    // 'storm'), so a destination whose ENGINE path meets one is not a destination: drop it (battle.js walkStormStopAt
+    // says which eyes would take this body; a body they cannot move walks through).
+    function _aiStormFilter(g, unit, tiles) {
+        if (!tiles || !tiles.length || typeof window === 'undefined' || typeof window.walkStormStopAt !== 'function') return tiles;
+        const ws = g && g.state && g.state.activeWeather;
+        if (!ws || !ws.length) return tiles;
+        const eyes = new Set();
+        for (const w of ws) for (const t of (w.tiles || [])) { try { if (window.walkStormStopAt(unit, t.x, t.y)) eyes.add(t.x + ',' + t.y); } catch (e) {} }
+        if (!eyes.size) return tiles;
+        const eyeTiles = [...eyes].map(k => { const p = k.split(','); return { x: +p[0], y: +p[1] }; });
+        let budget = 0;
+        for (const t of tiles) budget = Math.max(budget, Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y));
+        return tiles.filter(t => {
+            if (eyes.has(t.x + ',' + t.y)) return false;
+            if (!eyeTiles.some(w => Math.abs(unit.x - w.x) + Math.abs(unit.y - w.y) + Math.abs(w.x - t.x) + Math.abs(w.y - t.y) <= budget + 1)) return true;
+            if (typeof g.findMovePath !== 'function') return true;
+            let path = null;
+            try { path = g.findMovePath(unit, t.x, t.y, t.z); } catch (e) { return true; }
+            return !(path || []).some(p => p && eyes.has(p.x + ',' + p.y));
+        });
     }
     // ── 🚪 THE STANDING DOORS' LANES (the door wheel Phase 2, DOOR_GUN_PLAN §6.2) ──────────────────────
     // THE GUST STREAM stops any walk that enters it (battle.js getPathPickupEvent 'gust') and blows the walker down

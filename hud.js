@@ -3161,6 +3161,10 @@ function _hrlgStatusChips(unit) {
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
   });
+  /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
+  if (typeof getWeatherStatChips === 'function') {
+    for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
@@ -4833,7 +4837,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     let superEff = false, typeAdv = '', elemAff = null;
     // Matchup markers only make sense for casts that actually DEAL damage —
     // a pure debuff/utility can't be "super effective".
-    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellShowsDamage(spell)))
+    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellCanPress(spell)))
         && typeof getTypeDamageMultiplier === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
       const _spType = spell ? (spell.spellType || null) : null;
@@ -5999,6 +6003,15 @@ function hudSpellShowsDamage(sp) {
   return ['barrage', 'skyDrop', 'skyThrow', 'skySlam'].includes(sp.kind || '');
 }
 
+/* Can this spell earn the green ! (the press)? Every damaging row, plus the casts whose sting has no dmg field but
+   still judges the press when it lands on an enemy (Poison Seed / Leech Seed planted under one: battle.js
+   spellArmsPress). The ! itself is always battle.js forecastPressOn, aimed at the target. */
+function hudSpellCanPress(sp) {
+  if (!sp) return false;
+  if (hudSpellShowsDamage(sp)) return true;
+  return typeof window.spellArmsPress === 'function' && !!window.spellArmsPress(sp);
+}
+
 // Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
 // `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
 // burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
@@ -6784,7 +6797,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
-        press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
+        press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
           ? !!window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
@@ -7200,7 +7213,8 @@ function _showTileMoveSlidePreview(actingUnit, tx, ty, tz) {
     if (!land || typeof _drawIceSlideLeg !== 'function') return;
     const routeColor = 0x3399ff;
     const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: ThreeRenderer.unitSurfaceY(actingUnit) }];
-    for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
+    const route = (typeof walkRouteOf === 'function') ? walkRouteOf(path, land) : path;   // a storm stops the walk on its eye
+    for (const p of route) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
     if (wps.length < 2) wps.push({ x: tx, y: ty, yOverride: ThreeRenderer.tileTopY(tx, ty) });
     ThreeRenderer.drawPathArrow3D(wps, routeColor);
     wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));
@@ -8017,7 +8031,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
     // the spell's element vs THIS enemy: immune / absorb wears the red !-circle
     let _eaImm = null;
     if (a.spell && typeof unitElementAffinity === 'function' && typeof isEnemyUnit === 'function' && isEnemyUnit(actingUnit, targetUnit)
-        && (typeof hudSpellShowsDamage !== 'function' || hudSpellShowsDamage(a.spell))) {
+        && (typeof hudSpellCanPress !== 'function' || hudSpellCanPress(a.spell))) {
       const _eaEl = (typeof getSpellElement === 'function') ? getSpellElement(a.spell) : (a.spell.element || null);
       const _eaAff = _eaEl ? unitElementAffinity(targetUnit, _eaEl) : null;
       if (_eaAff === 'immune' || _eaAff === 'absorb') _eaImm = _eaAff;
