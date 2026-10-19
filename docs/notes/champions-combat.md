@@ -1750,3 +1750,15 @@ of cast range bc i slid, that should already be accounted for/the arrow or previ
   tiles (ui.js) are read at the landing.
 - Shoves: resolveForcedSlide's simulate path now adds THE CHAIN's ice glide (travel direction) to res.x/y + steps
   (`iceSlid`), so push/pull previews land where the ice leaves the body. Live slides unchanged.
+
+## NO SELF-COMBO (2026-10-19, mondo)
+mondo: no base spell may both apply a status and deal bonus damage (`bonusVsStatus`) against that same status ("makes
+other spells that apply that effect useless"). A status or bonus gained through an UPGRADE is fine. Default taken: each
+spell keeps its status, the self-payoff left `bonusVsStatus` (+ the desc sentence). Removed outright: Meteor (burn),
+Mind Shatter (silence), Requiem (discord), Miasma (poison), Shadow Crush (slow), Dark Lullaby (silence), Kiss of Decay
+(poison), Descending Wrath (burn), Wrath of the Watchers (burn; its desc wrongly said Staggered), Venom Fang (poison),
+Heat Vision (burn), Dragonfire (burn), Tidal Slam (slow), Avalanche Strike (frozen). Trimmed: Dark Dominion keeps the
+Stagger payoff, Bad Trip keeps Voodoo. Checked and left: Boo (applies Discord, pays on Haunted), Formic Acid (poison
+GROUND only ticks damage, never the Poison status), Star Decree (no status). Forecasts / AI read `spell.bonusVsStatus`
+generically, so nothing else changed. A new row must not pair a `statusEffects` id with the same (or a countsAs) id in
+`bonusVsStatus`.
