@@ -4518,7 +4518,7 @@ function _hrlgBuildBlades(unit, st) {
    STAB chip when the triggering unit shares the type, a green ! when the
    pick is super-effective across the board, and BEST on the row the CPU
    would take. Hover/cursor feeds the bottom description bar with the
-   apocalypse's flavour + the forecast sentence. Firing a row IS the strike. */
+   apocalypse's own flavour line. Firing a row IS the strike. */
 function _hrlgEntropyBlades(unit, st) {
   const order = (typeof window.getEntropyStrikeTypeOrder === 'function') ? window.getEntropyStrikeTypeOrder()
     : ((typeof ENTROPY_STRIKE_TYPE_ORDER !== 'undefined') ? ENTROPY_STRIKE_TYPE_ORDER : ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly']);
@@ -4556,18 +4556,14 @@ function _hrlgEntropyBlades(unit, st) {
       title: 'Damage type the whole team\'s strike carries — judged by the type chart on every enemy',
     }];
     if (fc && fc.stab) badges.push({ label: 'STAB', plain: true, title: 'Your unit shares this type: ×' + stabMult + ' on every hit' });
-    // description-bar card (the _objectCard path: name + stats line + prose)
-    const fcLine = fc
-      ? (fc.targets + ' target' + (fc.targets === 1 ? '' : 's')
-        + ' · ' + fc.weak + ' weak ×1.3 · ' + fc.resist + ' resist ×0.75 · ' + fc.neutral + ' neutral'
-        + (fc.stab ? ' · STAB ×' + stabMult : '')
-        + ' → ~' + proj + ' per enemy')
-      : '';
+    // description-bar card (the _objectCard path: name + stats line + prose).
+    // Just the strike's own prose (mondo 2026-10-19: no weak/resist/neutral
+    // tallies down there; the row's power + chip already carry the matchup).
     const card = {
       _objectCard: true,
       name: (def.glyph || '⚛') + ' ' + String(def.name || id).toUpperCase(),
       _hpLine: 'ENTROPY STRIKE · ' + id.toUpperCase() + ' TYPE · 1 AP · ENDS TURN · drains the gauge',
-      desc: (def.desc || '') + (fcLine ? '<br><b>' + fcLine + '</b>' : ''),
+      desc: def.desc || '',
     };
     return {
       id: 'ews:' + id, endsTurn: true, cost: 1,
