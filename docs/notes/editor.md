@@ -598,3 +598,10 @@ out from it and goes on forever".
 - **The wedge:** the outer ground's skip test was strict (`qx0 > -hx`), and its 2 m lattice lands on ±hx exactly, so the ring of
   coarse outer quads lying just inside the edge (0.1 under the field) was drawn and poked through the side of a block raised near
   the edge. Quads on the bound are skipped now (the field runs 0.5 m past hx, so nothing opens).
+- **Rooms in squares (same day, mondo: "if I pick 12x12 m room then there should be 12x12 grid ... the exploration is supposed
+  to seamlessly transition in to a square grid battle"):** NEW ROOM asks for squares (default 72 × 72 = 126 m; NEW WORLD's
+  Room 1 is 126 m, a new dungeon 56 squares), THE SHELL shows `w squares` / `d squares` (whole squares; the metres follow,
+  `wSq`/`dSq` in fieldCommit). data.js `hqFieldGridOffset`: for his rooms (`w_` ids) an axis with an ODD whole count of squares
+  runs an odd lattice offset half a square (hqFieldTerrainInfo), so the room's edges are square edges on both sides; game rooms
+  keep the even, centred rule (site_prebuilt_hollow_earth_vent's d = 9 squares is the one game room it would have moved). The
+  editor's grid and TILE snap read the same offset (`tileOff`).
