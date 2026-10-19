@@ -47529,7 +47529,7 @@
                 CONFIG.tileSize = computeBattleTileSize();
             }
             state.round = 1;
-            _roundAdvanceInProgress = false;
+            _setRoundAdvance(false);
             state.startingPlayer = engineRng() < 0.5 ? 1 : 2;
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
@@ -47785,7 +47785,7 @@
             state._blitzActiveUnitId = null;
             state._skippedUnit = null;
             _blitzTurnGen++;
-            _roundAdvanceInProgress = false;
+            _setRoundAdvance(false);
 
             for (const u of state.units) {
                 if (!u.dead) {
@@ -51853,7 +51853,7 @@
 
                 if (!nextUnit) {
 
-                    _roundAdvanceInProgress = true;
+                    _setRoundAdvance(true);
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -52071,7 +52071,7 @@
                             processPendingEarthquake(() => {
                             if (_blitzTurnGen !== savedGen || state.winner) return;
 
-                            _roundAdvanceInProgress = false;
+                            _setRoundAdvance(false);
                             const firstUnit = getNextBlitzUnit();
                             _continueBlitzWithUnit(firstUnit);
                             });
@@ -52353,7 +52353,7 @@
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
-                _roundAdvanceInProgress = false;
+                _setRoundAdvance(false);
                 state._actionExecuting = false;
                 state.aiThinking = false;
                 maybeAdvanceTurn();
@@ -52779,6 +52779,21 @@
         let _aiActionGen = 0;
 
         let _roundAdvanceInProgress = false;
+        /* THE STEADY END OF ROUND (2026-10-19, mondo: "during the end of round, the combat log keeps fading in and out
+           between camera movements, either keep it on or keep it off for the end of round"): state._eorLive mirrors the
+           end-of-round sequence (synced, so the online guest has it too); three-renderer _takeoverBodyClasses turns it
+           into body.ew-eor and the combat log stays up from the first beat to the round's first unit. */
+        function _setRoundAdvance(on) {
+            _roundAdvanceInProgress = !!on;
+            if (!!state._eorLive !== !!on) {
+                state._eorLive = !!on;
+                if (typeof window._broadcastState === 'function') { try { window._broadcastState(); } catch (e) {} }
+            }
+        }
+        function isEndOfRoundLive() {
+            return !!(state && state.phase === 'battle' && !state.winner && state._eorLive);
+        }
+        window.isEndOfRoundLive = isEndOfRoundLive;
 
         function clearAiSafetyTimer() {
             if (_aiSafetyTimer) {
