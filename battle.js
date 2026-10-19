@@ -23925,6 +23925,11 @@
             try {
                 if (!state || state.phase !== 'battle' || state.winner) return false;
                 if (state._actionExecuting || state._walkAnimActive) return true;
+                /* THE END OF ROUND IS THE GAME'S (2026-10-19, mondo: "i do not want to see the attack ranges when i hover
+                   over a unit during the end of round phase"): from the last turn of the round until the next round's
+                   first unit activates, no unit is active and the tour plays itself. state._eorLive is set by the
+                   host's round advance (_setRoundAdvance) and rides the snapshot, so the guest gets the same rule. */
+                if (state._eorLive && state._blitzActiveUnitId == null) return true;
                 const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
                     || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
                     || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
