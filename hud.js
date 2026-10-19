@@ -12880,8 +12880,11 @@ function edgeClip(s, E) {
   }
   const w = Math.max(0.5, +E.w || 0), r = v => Math.round(v * 1000) / 1000;
   const L = (a, b) => (a && b ? `calc(${r(a)}% + ${r(b)}px)` : a ? `${r(a)}%` : `${r(b)}px`);
-  const left = ch.map(p => `${L(p[0] + gx[0], p[1] + gx[1])} ${L(p[2], p[3])}`);
-  const right = ch.slice().reverse().map(p => `${L(p[0] + gx[0], p[1] + gx[1] + w)} ${L(p[2], p[3])}`);
+  // end gaps past half the row meet in the middle and stay shut (a short row never gets the band back flipped)
+  const T = L(ch[0][2], ch[0][3]), B = L(ch[ch.length - 1][2], ch[ch.length - 1][3]), M = `calc((${T} + ${B}) / 2)`;
+  const Y = p => `clamp(min(${T}, ${M}), ${L(p[2], p[3])}, max(${B}, ${M}))`;
+  const left = ch.map(p => `${L(p[0] + gx[0], p[1] + gx[1])} ${Y(p)}`);
+  const right = ch.slice().reverse().map(p => `${L(p[0] + gx[0], p[1] + gx[1] + w)} ${Y(p)}`);
   return `polygon(${left.concat(right).join(', ')})`;
 }
 function edgeCss(S, T) {
