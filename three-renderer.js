@@ -47962,8 +47962,12 @@ const ThreeRenderer = (function () {
             var edgeH = hqTerrainHeight(info, cx, cz);
             var roll = 1.1 * nse(x, z, 9, seed + 3) + 0.35 * nse(x, z, 3.2, seed + 5);
             var swell = 2.4 * sm(e / 22) - 7.0 * sm((e - 24) / 26);
-            if (OO.flat) return edgeH;   // THE EDITOR (E0, 2026-09-29): `outer.flat` = the plain runs on flat to the fog (mondo's flat empty world: no roll, no rises)
             var k = sm(e / 2.5);
+            /* THE EDITOR (E0, 2026-09-29): `outer.flat` = the plain runs on flat to the fog (mondo's flat empty world: no roll, no rises).
+               2026-10-19 (mondo: a raised block "makes a half raised part that extends out from it and goes on forever"): the plain is
+               the room's BASE, never the edge's height carried out — a shape at the edge used to run on as a strip to the fog; now it
+               settles back to the base over the same 2.5 m the rolling ground takes */
+            if (OO.flat) { var fb = +room.terrain.base || 0; return edgeH * (1 - k) + fb * k; }
             var yy = edgeH * (1 - k) + (edgeH * oKeep + roll + swell + oLift * sm(e / 30)) * k;
             /* THE PASSAGES (2026-10-01): the ground under a trail / a tunnel past the edge is its floor (and settles back either side) */
             for (var pci = 0; pci < passC.length; pci++) {
@@ -48002,9 +48006,11 @@ const ThreeRenderer = (function () {
            over the paths, gone when the walker crossed (the other part left the stage) and back in the part just left */
         var ownId = (_hq.opts && _hq.opts.room) || room.id, stNear = _hqStageOff() ? [] : _hqStageNearbyOf(ownId), sideIdx = {}, sideIds0 = {};
         for (var j2 = 0; j2 + 1 < nz; j2++) { for (var i2 = 0; i2 + 1 < nx; i2++) {
-            /* a quad wholly inside the field's bound is the field's own */
+            /* a quad wholly inside the field's bound is the field's own. 2026-10-19: one ON the bound too (the 2 m lattice lands on
+               ±hx exactly): that ring of coarse quads, 0.1 under the field, poked through the side of a block raised near the edge
+               (the wedge cut out of mondo's 1-tile block) */
             var qx0 = X0 + i2 * cs, qz0 = Z0 + j2 * cs, qx1 = qx0 + cs, qz1 = qz0 + cs;
-            if (qx0 > -hx && qx1 < hx && qz0 > -hz && qz1 < hz) continue;
+            if (qx0 >= -hx - 1e-6 && qx1 <= hx + 1e-6 && qz0 >= -hz - 1e-6 && qz1 <= hz + 1e-6) continue;
             var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1, into = idx;
             if (stNear.length) {
                 var sk = hqStageNearerKey(ownId, qx0 + cs / 2, qz0 + cs / 2, stNear);   // the SET of nearer parts: one mesh per set
