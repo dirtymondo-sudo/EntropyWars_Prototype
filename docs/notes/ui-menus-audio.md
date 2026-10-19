@@ -1521,6 +1521,17 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   _ewZoneLookV → three-renderer.js `_zoneLook()`. One-click ZONE_LOOKS per side (colours + Show stay).
 - Reset groups are now `uxGroupOf(k)`: the first letter, except the zones' first two (zs / zn), so each side resets alone.
 - Viewer-local like the rest of the UI Maker: nothing relayed, the guest draws its own look over its own state copy.
+- **Both at once (2026-10-19, mondo: "with the nexus and spawn zones, i would like the option to edit that together or copy
+  paste the settings from on to the other")**: a "Spawn + nexus together" block heads the tab. **Edit both together** = db.ux
+  `zLink` (UX_DEF, false): the tab shows ONE form ("Spawn + nexus zones", the zs keys) and hud.js `zoneTwin(k)` makes every
+  change land on the other side too (the data-xpath ranges / checks / colours, the data-xset segments), plus the one-click
+  looks and **Reset both** (uxreset zs resets zs + zn while linked). Turning it on while the two differ asks "Which look should
+  both start from?" (zonelinkfrom zs | zn copies that side over, then links; UI.zLinkAsk); a saved zLink with sides that differ
+  shows the same ask. Unlinked, **Copy: Spawn → nexus / Nexus → spawn** (zonecopy) puts EVERY zone key of one side (Show and
+  the colours too, `ZONE_KEYS` = zoneDefs keys) onto the other, one undo step. The renderer is unchanged (zoneSignal still
+  publishes both looks). Browser-checked in a VS-CPU Arena (spawn nexuses + the earth nexus) and TDM (the spawn strips): the
+  spawn colours alone turned only the spawn zones green, the copy turned the earth nexus green too, linked colour + light walls
+  changed every zone, Undo / Reset both / unlink behaved.
 
 ### UI Maker pass 24: Floating text, the pops over the units (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look like with a model with a nameplate for scale")
 - Live mode `float` (dock head button **Pops**, tab "Floating text" in TABS). db.ux f* keys (UX_DEF, hud.js): font / weight / case /
