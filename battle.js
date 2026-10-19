@@ -50196,41 +50196,20 @@
                     1: { x: mid1.x, y: mid1.y, carriedBy: null, atBase: true, owner: 1 },
                     2: { x: mid2.x, y: mid2.y, carriedBy: null, atBase: true, owner: 2 },
                 };
-                addLog('🏳️ Capture the Flag! Steal the enemy flag and return it to your spawn zone to score.');
             }
 
             if (mpMode.hasRoamingNexus) {
                 _spawnRoamingNexus();
-                addLog('🔥 Hotspot! One Nexus spawns at a time. Capture it to score — then it moves!');
             }
 
-            if (mpMode.id === 'tdm' || mpMode.id === 'ffa') {
-                const rl = mpMode.roundLimit || '?';
-                addLog(`💀 ${mpMode.label}! ${rl}-round limit. Most kills wins. Wipeout also wins instantly.`);
-            } else if (mpMode.id === 'domination') {
-                addLog('🚩 Domination! Capture Nexus points to earn points every round. Most points when rounds end wins.');
-            } else if (mpMode.id === 'arena') {
-                const rl = (state.matchClock && state.matchClock.roundLimit) || mpMode.roundLimit || '?';
-                const _kr = getArenaKeyRules(mpMode);
-                const _keyTxt = _kr.fixedPool ? `carry ${_kr.toWin} of the ${_kr.spawn} Keys` : 'secure the Keys';
-                const _nxThr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
-                addLog(`🏰 Arena! Destroy the Cube, ${_keyTxt}, or wipe out the enemy — a win condition MUST be met. ${rl}-round safety cap (Arena score, then Sudden Death) only stops a match that would run forever.`);
-                addLog(`⬡ Nexus rules: each zone is a count to ${_nxThr * 2} (an enemy zone 0/${_nxThr * 2}, neutral ${_nxThr}/${_nxThr * 2}) — step in (+1 each), channel (1 AP, +1), or hold it at the round end; stepping off a zone you haven't taken gives a point back. A zone you own heals your team standing in it and burns the enemy; you RESPAWN only on a zone you hold (no zone = no respawns!); every non-home zone held is ×1.5 Cube damage. Zones can be built on, dug and flooded.`);
-            } else if (mpMode.id === 'dungeon') {
-                if (state._mdPhase === 'hub') {
-                    addLog('🏘 Guild Hub — your unlocked characters hang out here. Rest at the spring, then step onto the cave entrance (east edge) to start the dungeon!');
-                } else if (state._mdRun) {
-                    const foes = state.units.filter(u => u.player === 2 && !u.dead).length;
-                    addLog(`🗝️ Floor ${state._mdRun.floor} — find the stairs and step onto them! ${foes} enem${foes === 1 ? 'y' : 'ies'} lurk${foes === 1 ? 's' : ''} in the dark. No respawns!`);
-                    addLog('💧 Healing springs restore HP and 💎 crystal veins restore MP — end a turn standing on them.');
-                    if (state._mdItems && state._mdItems.length) {
-                        addLog(`🎁 ${state._mdItems.length} loose item${state._mdItems.length === 1 ? '' : 's'} glint${state._mdItems.length === 1 ? 's' : ''} on this floor — walk over them to scoop them up.`);
-                    }
-                    addLog('🤫 Monsters roam their own rooms until they SEE you — strike first, or sneak past to the stairs.');
-                    const _mdPartyN = state.units.filter(u => u.player === 1 && !u._mdNpc && !u.dead).length;
-                    if (_mdPartyN > 1) addLog('📋 Companions fight on AUTO — tap their chip on the floor badge (top) to switch ⚔ Auto / 🛡 Stay Close / 🎮 Manual.');
-                }
-            }
+            /* THE SHORT OPENING (2026-10-19, mondo): the combat log opens with one line. The rules intro the boot used
+               to write here (mode rules, Keys, Nexus rules, training notes, "Battle started for match N") is dropped,
+               along with anything placement logged; the rules screens and banners still carry that text. */
+            state.logEntries = [];
+            state._fullLogEntries = [];
+            state.logDialogue = [];
+            _logRenderedCount = 0;
+            addLog('A fight breaks out!');
 
             /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
                (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
@@ -50253,15 +50232,6 @@
             }
 
             beginBlitzRound();
-            addLog(state.devAutoSim ?
-                `Dev sim battle started for match ${state.matchNumber}. Both teams are automated and running at accelerated pace.` :
-                `⚡ Battle started for match ${state.matchNumber}. Units act in speed order!`);
-            if (state.isRankedMatch && !state.devAutoSim) {
-                const cs = loadCareerStats();
-                const ri = getEloRankInfo(cs.elo);
-                const _pName2 = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'You';
-                addLog(`🏆 RANKED MATCH — ${_pName2} ${ri.icon} ${ri.name} (${cs.elo} Elo) vs Bot (~${state._botElo || '?'} Elo)`);
-            }
             addLog(`⚡ Round ${state.round}`);
             syncMusicToState();
 
