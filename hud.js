@@ -3161,6 +3161,10 @@ function _hrlgStatusChips(unit) {
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
   });
+  /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
+  if (typeof getWeatherStatChips === 'function') {
+    for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
@@ -7200,7 +7204,8 @@ function _showTileMoveSlidePreview(actingUnit, tx, ty, tz) {
     if (!land || typeof _drawIceSlideLeg !== 'function') return;
     const routeColor = 0x3399ff;
     const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: ThreeRenderer.unitSurfaceY(actingUnit) }];
-    for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
+    const route = (typeof walkRouteOf === 'function') ? walkRouteOf(path, land) : path;   // a storm stops the walk on its eye
+    for (const p of route) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
     if (wps.length < 2) wps.push({ x: tx, y: ty, yOverride: ThreeRenderer.tileTopY(tx, ty) });
     ThreeRenderer.drawPathArrow3D(wps, routeColor);
     wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));

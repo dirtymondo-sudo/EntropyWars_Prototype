@@ -1750,3 +1750,22 @@ of cast range bc i slid, that should already be accounted for/the arrow or previ
   tiles (ui.js) are read at the landing.
 - Shoves: resolveForcedSlide's simulate path now adds THE CHAIN's ice glide (travel direction) to res.x/y + steps
   (`iceSlid`), so push/pull previews land where the ice leaves the body. Live slides unchanged.
+
+## THE STORMS UNDERFOOT + THE WALK'S BURNS (2026-10-19, mondo, token 20261019-tilepath-01-cors)
+mondo: "Check all cyclones to make sure their effects or flinging happen when a unit lands on them. Or path through them.
+Same for lava and fire too, if i walk on them at any point in my path, i should get burned." + "shouldnt i see the stat
+change on the name plate right away?"
+- **One strike:** state.js `stormStrikeUnit` is the homing storm's hit on one body (soak, roll, blizzard blind,
+  thunder bolt); the round-end strike and THE CHAIN's F both call it. F (`_chainVortex`) now covers every homing storm
+  (tornado, hurricane, thunderstorm, blizzard, sandstorm), once per storm per body per round (`_vortexStamps`); tornado /
+  hurricane then fling (`vortexFlingUnit`, fling fx waits for the walk tween: `fopts.delayMs`).
+- **Walks:** a tornado / hurricane eye that can move the walker stops the walk on it (getPathPickupEvent `storm`,
+  `_walkStormStopAt`) and flings it; doMove now animates the walk only up to the first tile that stops it (bombs, traps,
+  gusts, doors too). Other eyes strike in passing (`_walkPassHazards`). Lava (`LAVA_WALK_DAMAGE` 30 fire + burn 3) and
+  ground fire (18 + burn) bite once each per walk, on any tile of the path or the landing (`_walkBurnt`).
+- **Preview:** predictWalkLanding returns the storm stop (`_predictWalkStorm`: stopIdx + fling legs from
+  simulateArrivalChain), `walkRouteOf` cuts the route at the eye, the ghost "-N" adds `predictWalkHazardDamage`.
+  `_slideStepInfo` no longer reads the simulated body as blocking its own rebound tile (forecasts of edge rebounds were
+  one tile off). AI drops destinations whose path meets a flinging eye (ai.js `_aiStormFilter`).
+- **Name plate:** state.js `getWeatherStatChips` (e.g. "🏜 VISION-5") on the 3D plate badge row and the Horologe /
+  unit card chips; the plate serial hashes them so a storm moving onto a standing unit refreshes it.
