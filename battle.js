@@ -35110,6 +35110,7 @@
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
+            if (spell.kind === 'bomb') return no;   // a bomb that does not go off on the body (airborne, an empty tile) never presses
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
@@ -38907,6 +38908,11 @@
         /* Does casting this spell arm the press collector (doSpell)? The previews ask the same question. */
         function spellArmsPress(spell) {
             if (!spell) return false;
+            /* THE CONTACT BOMB PRESSES (mondo 2026-10-19: "i am using it on a cowboy ... it WAS super effective, so why
+               does it not show it in the spell list"): Place Bomb dropped straight onto a grounded enemy goes off inside
+               the cast (doSpell _placementStruck) and ends the turn like any damaging cast, so its blast judges the press
+               and the green ! shows it. A bomb on an empty tile records no hit: no press, the turn stays alive. */
+            if (spell.kind === 'bomb') return true;
             return _PRESS_SPELL_KINDS.has(spell.kind)
                 || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
                 || (spell.kind !== 'delayed' && spellDealsDamage(spell));
