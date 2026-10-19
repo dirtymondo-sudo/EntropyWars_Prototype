@@ -1751,7 +1751,7 @@ of cast range bc i slid, that should already be accounted for/the arrow or previ
 - Shoves: resolveForcedSlide's simulate path now adds THE CHAIN's ice glide (travel direction) to res.x/y + steps
   (`iceSlid`), so push/pull previews land where the ice leaves the body. Live slides unchanged.
 
-## THE STORMS UNDERFOOT + THE WALK'S BURNS (2026-10-19, mondo, token 20261019-tilepath-01-cors)
+## THE STORMS UNDERFOOT + THE WALK'S BURNS (2026-10-19, mondo, token 20261019-tilepath-02-cors)
 mondo: "Check all cyclones to make sure their effects or flinging happen when a unit lands on them. Or path through them.
 Same for lava and fire too, if i walk on them at any point in my path, i should get burned." + "shouldnt i see the stat
 change on the name plate right away?"
