@@ -1713,6 +1713,22 @@ inside the nexus zone but it is drawn around it".
   already skips tower tiles). The front-middle seat sits in the list's middle slot, so zoneX/Y (AI goal) and the centre
   stay on it. 4v4 boards are unchanged (their Cube stands outside the row zone).
 
+## THE ZONE LOOK (2026-10-19)
+mondo: "why do the spawn zones and nexus Zones look like shit? i know we just changed them but now they look even worse. add
+them to the arrows and highlights section so i can change their settings and appearance and glow and all that".
+- Why worse: THE SOFT ZONE kept none of the old light (the additive halo + curtains, the 16% wash): a 7% fill and a
+  normal-blended rim, so a zone read as a dull painted line; TDM's spawn strips still wore the old per-tile washes (gaps =
+  grid marks), absolute P1-blue / P2-red, and the standing sanctuary panels.
+- Now (three-renderer.js THE ZONE LOOK): every zone (centre, diagonal pair, hotspot, Arena spawn nexuses, TDM spawn strips)
+  is two draped layers off one alpha map of its shape (`_zoneMaskDraw`, 48 px/tile): PAINT (fill + rim solid / dashed /
+  dotted / double + pattern; normal blend) and LIGHT (inner glow to the edge + rim halo; additive), plus optional light
+  walls on the edge (rebuildSanctuaryWalls now stands them for any zone, height 0 = none = the default). Spawn zones (TDM +
+  Arena spawn nexus) wear the spawn look, every other nexus the nexus look; colours viewer-relative (yours blue, enemy red,
+  neutral gold) unless the UI Maker sets one.
+- Maps redraw in place on a look change (`_nxZoneTex` keeps one texture per shape + look + layer, `_ewSig`); materials
+  are shared per (map, side) and `_zonePaint` writes colour × brightness, opacity and the pulse every frame. Look defaults
+  live twice: three-renderer.js ZONE_LOOK_DEF and hud.js zoneDefs(); keep them equal.
+
 ## THE SLIDE FORECAST (2026-10-18)
 mondo: "the spell preview/move forecast should account for sliding on ice. i dont want to move+cast and then move and be out
 of cast range bc i slid, that should already be accounted for/the arrow or preview should communicate that i will slide on ice".

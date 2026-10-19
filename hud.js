@@ -13411,6 +13411,13 @@ ${D} .hq-dock-pp > .hq-dock-tag { grid-column: 2; grid-row: 1 / span 2; justify-
    badges and stuff"). db.ux, one flat store, the same in every theme; '' colours / defaults leave the game's own look.
    r* = the team reticle under every unit (three-renderer.js reads window._ewRingLook, bumped _ewRingLookV: Show, the
    ring line, the facing pointer); p* = the name plates over the units (.tp-wrap, CSS here); s* = the scoreboard. */
+/* one zone look's keys (THE ZONES, zs* / zn*) with the game's values */
+function zoneDefs(pre) {
+  const D = { Show: true, Fill: 0.14, Rim: 0.85, RimW: 0.07, RimIn: 0.05, RimStyle: 'solid', Soft: 0.05, Round: 0.08, Glow: 0.3, GlowW: 0.32,
+    Halo: 0.45, HaloW: 0.1, Pat: 'none', PatAmt: 0.18, PatScale: 3, Bright: 1, Op: 1, Pulse: 0.15, PulseSpd: 1, Wall: 0, WallOp: 0.5,
+    ColAlly: '', ColFoe: '', ColNeutral: '' };
+  const o = {}; Object.keys(D).forEach(k => { o[pre + k] = D[k]; }); return o;
+}
 const UX_DEF = {
   rShow: 'all', rStyle: 'line', rSize: 1, rThick: 1, rGlow: 1, rOpacity: 1, rPulse: true, rTicks: true, rAccent: true, rGap: true, rColor: '',
   rArrow: 'double', rArrowSize: 1, rArrowColor: '',
@@ -13492,6 +13499,13 @@ const UX_DEF = {
      eLineW = the outline px (0 = none); eGlow; eShape circle | round | square; eLift = px above the head (36 clears the name plate); eBob = the
      marks bob. seSignal turns them into the CSS variables ui.js _seBangHtml reads */
   eHover: true, eBig: 26, eMenu: 1, eFill: '', eMark: '', eLine: '', eLineW: 2, eGlow: 1, eShape: 'circle', eLift: 36, eBob: true,
+  /* zs* / zn* = THE ZONES (2026-10-19, mondo: "why do the spawn zones and nexus Zones look like shit? ... add them to the
+     arrows and highlights section so i can change their settings and appearance and glow and all that"): zs = the spawn
+     zones (TDM's spawn strips + the Arena spawn nexuses), zn = every other nexus. zoneSignal turns each into
+     window._ewZoneLook, which three-renderer.js draws (THE ZONE LOOK; its ZONE_LOOK_DEF holds the same defaults). Fill /
+     Rim / Glow / Halo are strengths, RimW / RimIn / Soft / Round / GlowW / HaloW are in tiles, Wall = the light walls'
+     height in tiles (0 = none); Col* = a colour for that side ('' = the game's: yours blue, the enemy's red, neutral gold) */
+  ...zoneDefs('zs'), ...zoneDefs('zn'),
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
 };
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
@@ -13804,7 +13818,9 @@ function uxTidy() {
   const X = db.ux || (db.ux = {});
   Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
 }
-const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k[0] === pre);
+const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k.indexOf(pre) === 0);
+/* a db.ux key's reset group: its first letter, the zones' first two (zs = spawn zones, zn = nexus zones) */
+const uxGroupOf = k => k[0] === 'z' ? k.slice(0, 2) : k[0];
 /* the arrow + tile looks the renderer reads, each re-published only when it changes */
 let _aimSentA = '', _aimSentT = '';
 function aimSignal() {
@@ -13819,6 +13835,22 @@ function aimSignal() {
   const ka = JSON.stringify(A), kt = JSON.stringify(T);
   if (ka !== _aimSentA) { _aimSentA = ka; window._ewArrowLook = A; window._ewArrowLookV = (window._ewArrowLookV || 0) + 1; }
   if (kt !== _aimSentT) { _aimSentT = kt; window._ewTileLook = T; window._ewTileLookV = (window._ewTileLookV || 0) + 1; }
+}
+/* THE ZONES look the renderer reads (window._ewZoneLook, bumped _ewZoneLookV: three-renderer.js _zoneLook), re-published
+   only when it changes */
+let _zoneSent = '';
+function zoneSignal() {
+  const X = uxOf();
+  const one = pre => {
+    const g = k => X[pre + k];
+    return { show: !!g('Show'), fill: +g('Fill'), rim: +g('Rim'), rimW: +g('RimW'), rimIn: +g('RimIn'), rimStyle: g('RimStyle'), soft: +g('Soft'), round: +g('Round'),
+      glow: +g('Glow'), glowW: +g('GlowW'), halo: +g('Halo'), haloW: +g('HaloW'), pattern: g('Pat'), patAmt: +g('PatAmt'), patScale: +g('PatScale'),
+      bright: +g('Bright'), opacity: +g('Op'), pulse: +g('Pulse'), speed: +g('PulseSpd'), wall: +g('Wall'), wallOp: +g('WallOp'),
+      cols: { ally: g('ColAlly') || '', foe: g('ColFoe') || '', neutral: g('ColNeutral') || '' } };
+  };
+  const L = { spawn: one('zs'), nexus: one('zn') }, k = JSON.stringify(L);
+  if (k === _zoneSent) return;
+  _zoneSent = k; window._ewZoneLook = L; window._ewZoneLookV = (window._ewZoneLookV || 0) + 1;
 }
 /* THE GREEN ! look: CSS variables on the page (every green ! reads them: ui.js _seBangHtml, .hrlg-supereff) + whether
    the marks over the enemies show (window._ewSeLook.hover, battle.js previewSpellPressMarks), re-published on change */
@@ -14121,8 +14153,19 @@ const TILE_LOOKS = [['game', 'As the game', {}],
   ['neon', 'Neon', { tLine: 1.3, tHalo: 1.8, tHot: 1.8, tFill: 0.55, tBright: 1.15 }],
   ['soft', 'Soft', { tRound: 0.16, tSize: 0.95, tLine: 0.6, tHalo: 0.6, tFill: 1.1 }],
   ['bold', 'Bold', { tLine: 1.6, tEdge: 1.4, tFill: 1.3, tOpacity: 1.1 }]];
+/* one-click zone looks (THE ZONES): the keys after the zs / zn of that side; the colours and Show stay */
+const ZONE_LOOKS = [['game', 'As the game', {}],
+  ['soft', 'Soft glow', { Fill: 0.1, Rim: 0.45, RimW: 0.14, Soft: 0.14, Round: 0.22, Glow: 0.5, GlowW: 0.5, Halo: 0.25, HaloW: 0.2 }],
+  ['neon', 'Neon', { Fill: 0.05, Rim: 1, RimW: 0.045, RimIn: 0.04, Glow: 0.2, GlowW: 0.18, Halo: 1.1, HaloW: 0.1, Bright: 1.35, Pulse: 0.25 }],
+  ['paint', 'Painted', { Fill: 0.3, Rim: 1, RimW: 0.09, Glow: 0, Halo: 0 }],
+  ['line', 'Outline only', { Fill: 0, Rim: 1, RimW: 0.05, Glow: 0, Halo: 0.35 }],
+  ['dashed', 'Dashed', { RimStyle: 'dashed', Rim: 1, RimW: 0.06, Fill: 0.08 }],
+  ['hatched', 'Hatched', { Pat: 'stripes', PatAmt: 0.22, PatScale: 3, Fill: 0.08 }],
+  ['walls', 'Light walls', { Wall: 0.8, WallOp: 0.6, Halo: 0.6 }]];
 function dockAimBody() {
-  return dockTop() + `<div class="uim-note">The arrows and tile highlights a battle shows before you act. The board below changes as you drag; in a battle the real ones change too (hover a tile, a unit or a spell while this is open).</div>
+  const z = UI.aimPrev === 'zones';
+  return dockTop() + `<div class="uim-note">${z ? 'The spawn zones and the nexus zones on the ground.' : 'The arrows and tile highlights a battle shows before you act.'} The board below changes as you drag; in a battle the real ones change too${z ? '' : ' (hover a tile, a unit or a spell while this is open)'}.</div>
+  <div class="uim-btns"><button class="uim-btn${z ? '' : ' on'}" data-dk="aimprev" data-val="tiles">Arrows + tiles</button><button class="uim-btn${z ? ' on' : ''}" data-dk="aimprev" data-val="zones" title="The spawn zones and the nexus zones: fill, rim, glow, pattern, light walls, colours">Spawn + nexus zones</button></div>
   <div class="uim-aimprev"><canvas data-aimcv="1"></canvas><div class="uim-aimkey"></div></div>
   <div class="uim-dk-detail"></div>`;
 }
@@ -14130,12 +14173,18 @@ function dockAimBody() {
 let _aimKeySeen = '';
 function aimKeyRefresh(force) {
   const A = UI.live, el = A && A.dock.querySelector('.uim-aimkey'); if (!el) return;
-  const X = uxOf(), sig = (window._ewArrowLookV || 0) + ':' + (window._ewTileLookV || 0);
+  const X = uxOf(), z = UI.aimPrev === 'zones', sig = (z ? 'z' : '') + (window._ewArrowLookV || 0) + ':' + (window._ewTileLookV || 0) + ':' + (window._ewZoneLookV || 0);
   if (!force && sig === _aimKeySeen && el.childNodes.length) return;
   _aimKeySeen = sig;
   const ac = k => X[aimKey('wc', k)] || (AIM_ARROW_KINDS.find(x => x[0] === k) || [])[2];
   const tcol = k => X[aimKey('tc', k)] || (AIM_TILE_KINDS.find(x => x[0] === k) || [])[2];
   const dot = (c, l, tile) => `<span><i class="${tile ? 'tl' : 'ar'}" style="--c:${esc(c)}"></i>${esc(l)}</span>`;
+  if (z) {   // the zones' board, left to right
+    const zc = (pre, side, d) => X[pre + 'Col' + side] || d;
+    el.innerHTML = dot(zc('zs', 'Ally', '#3399ff'), 'Your spawn', 1) + dot(zc('zn', 'Neutral', '#ddaa33'), 'Neutral nexus', 1) + dot(zc('zn', 'Ally', '#3399ff'), 'Your nexus', 1)
+      + dot(zc('zn', 'Foe', '#ff3355'), 'Enemy nexus', 1) + dot(zc('zs', 'Foe', '#ff3355'), 'Enemy spawn', 1);
+    return;
+  }
   el.innerHTML = dot(ac('move'), 'Walk') + dot(ac('hit'), 'Strike') + dot(ac('heal'), 'Heal') + dot(ac('force'), 'Shove')
     + dot(tcol('move'), 'Walk tiles', 1) + dot(tcol('jump'), 'Jump', 1) + dot(tcol('strike'), 'Strike from', 1) + dot(tcol('reach'), 'Reach', 1)
     + dot(tcol('hit'), 'Hit', 1) + dot(tcol('glowFoe'), 'About to hit', 1);
@@ -14143,12 +14192,15 @@ function aimKeyRefresh(force) {
 function aimPrevMount() {
   const A = UI.live, cv = A && A.dock.querySelector('canvas[data-aimcv]'); if (!cv) return;
   let ok = null;
-  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.lookPreview ? ThreeRenderer.lookPreview(cv) : null; } catch (e) { ok = null; }
+  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.lookPreview ? ThreeRenderer.lookPreview(cv, UI.aimPrev === 'zones' ? 'zones' : 'tiles') : null; } catch (e) { ok = null; }
   if (!ok) cv.parentElement.insertAdjacentHTML('afterbegin', '<div class="uim-note">The little board could not start here; the real board in a battle still shows every change.</div>');
   aimKeyRefresh(true);
 }
 function aimDetail() {
   const X = uxOf();
+  if (UI.aimPrev === 'zones') return zoneForm(X, 'zs', 'Spawn zones', 'Where each team starts: TDM\'s spawn strips and the Arena spawn nexuses. Neutral = an Arena spawn nexus while nobody holds it.')
+    + zoneForm(X, 'zn', 'Nexus zones', 'Every other nexus: the centre, the diagonal pair and the hotspot. Gold while nobody holds it, then the holder\'s colour.')
+    + '<div class="uim-note">Strengths go from 0 (none); widths, insets, reach and wall height are in tiles. The game shows nothing different online: these are your own look.</div>';
   const looks = (pre, L) => `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${L.map(([v, l]) => `<button class="uim-btn" data-dk="aimlook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
   let h = seForm(X) + `<div class="uim-h">Arrows</div>` + looks('w', ARROW_LOOKS);
   h += sec('wshape', 'Arrow shape', xp(fSeg('Shaft', 'wShaft', [['solid', 'Solid'], ['dashed', 'Dashed'], ['none', 'None', 'The dots and the head alone']], X.wShaft)
@@ -14181,6 +14233,35 @@ function aimDetail() {
   });
   h += '<div class="uim-note">Every number is on top of the game\'s own look (1 = as the game), so a reach still reads quieter than a hit.</div>' + xReset('t', 'Reset the tile highlights');
   return h;
+}
+/* THE ZONES (Arrows + tiles > Spawn + nexus zones): one look's form, pre = zs (spawn) or zn (nexus) */
+function zoneForm(X, pre, title, note) {
+  const g = k => X[pre + k];
+  const looks = `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${ZONE_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="zonelook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  let h = `<div class="uim-h">${title}</div><div class="uim-note">${note}</div>` + xCheck('Show them', pre + 'Show', g('Show')) + looks;
+  h += sec(pre + 'fill', 'Fill + rim', xp(fRange('Fill', pre + 'Fill', 0, 1, 0.01, +g('Fill'), 'How solid the inside of the zone is (0 = clear)')
+    + fRange('Rim', pre + 'Rim', 0, 1.5, 0.05, +g('Rim'), 'The line round the zone (0 = none)')
+    + fSeg('Rim line', pre + 'RimStyle', [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['double', 'Double']], g('RimStyle'))
+    + fRange('Rim width', pre + 'RimW', 0.01, 0.45, 0.01, +g('RimW'), 'In tiles')
+    + fRange('Rim inset', pre + 'RimIn', 0, 0.45, 0.01, +g('RimIn'), 'How far in from the zone\'s edge the rim sits, in tiles')
+    + fRange('Edge softness', pre + 'Soft', 0.005, 0.5, 0.005, +g('Soft'), 'How far the zone fades in from its outer edge, in tiles')
+    + fRange('Rounded corners', pre + 'Round', 0, 0.5, 0.01, +g('Round'))));
+  h += sec(pre + 'glow', 'Glow + light', xp(fRange('Inner glow', pre + 'Glow', 0, 2, 0.05, +g('Glow'), 'Light rising toward the edge from inside (0 = none)')
+    + fRange('Glow reach', pre + 'GlowW', 0.03, 2, 0.01, +g('GlowW'), 'How far in the inner glow reaches, in tiles')
+    + fRange('Rim glow', pre + 'Halo', 0, 2, 0.05, +g('Halo'), 'Light round the rim (0 = none)')
+    + fRange('Rim glow width', pre + 'HaloW', 0.01, 0.6, 0.01, +g('HaloW'))
+    + fRange('Brightness', pre + 'Bright', 0.2, 3, 0.05, +g('Bright'))
+    + fRange('Opacity', pre + 'Op', 0, 1, 0.05, +g('Op'))
+    + fRange('Pulse', pre + 'Pulse', 0, 1, 0.05, +g('Pulse'), 'How much the zone breathes (0 = steady)')
+    + fRange('Pulse speed', pre + 'PulseSpd', 0, 6, 0.05, +g('PulseSpd'))));
+  h += sec(pre + 'pat', 'Pattern', xp(fSeg('Pattern', pre + 'Pat', [['none', 'None'], ['stripes', 'Stripes'], ['grid', 'Grid'], ['dots', 'Dots'], ['checker', 'Checker']], g('Pat'))
+    + fRange('Strength', pre + 'PatAmt', 0, 1, 0.01, +g('PatAmt')) + fRange('Scale', pre + 'PatScale', 1, 8, 0.5, +g('PatScale'), 'How many per tile')));
+  h += sec(pre + 'wall', 'Light walls', xp(fRange('Height', pre + 'Wall', 0, 3, 0.05, +g('Wall'), 'A glowing curtain standing on the zone\'s edge, in tiles (0 = none)')
+    + fRange('Strength', pre + 'WallOp', 0, 1.5, 0.05, +g('WallOp'))));
+  h += sec(pre + 'col', 'Colours', xp(fColorOpt('Yours', pre + 'ColAlly', g('ColAlly'), '#3399ff', false, 'Unticked = the game\'s blue')
+    + fColorOpt('The enemy\'s', pre + 'ColFoe', g('ColFoe'), '#ff3355', false, 'Unticked = the game\'s red')
+    + fColorOpt('Neutral', pre + 'ColNeutral', g('ColNeutral'), '#ddaa33', false, 'Unticked = the game\'s gold')));
+  return h + xReset(pre, 'Reset the ' + title.toLowerCase());
 }
 /* the green ! (Arrows + tiles > Super effective !): a specimen of each place it shows, in the look now */
 function seForm(X) {
@@ -14870,7 +14951,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); seSignal(); clogSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15550,7 +15631,7 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights and the green super-effective ! look, with a small board that shows every change at once']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once']];
 /* the tabs that open on the real screen (the live dock) */
 const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim'];
 function renderInspector() {
@@ -17244,8 +17325,16 @@ function dockClick(e) {
       const pre = v[0], L = (pre === 'w' ? ARROW_LOOKS : TILE_LOOKS).find(x => x[0] === v.slice(2));
       if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === pre && x[1] !== 'c') delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
     }
+    else if (k === 'aimprev') { UI.aimPrev = v === 'zones' ? 'zones' : ''; dockBody(); const bd = A.dock.querySelector('.uim-dock-bd'); if (bd) bd.scrollTop = 0; }
+    else if (k === 'zonelook') {   // a one-click zone look: that side's shape + light keys go back first, its colours and Show stay
+      const pre = v.slice(0, 2), L = ZONE_LOOKS.find(x => x[0] === v.slice(3));
+      if (L && (pre === 'zs' || pre === 'zn')) {
+        snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x.indexOf(pre) === 0 && x.indexOf(pre + 'Col') !== 0 && x !== pre + 'Show') delete db.ux[x]; });
+        db.ux = db.ux || {}; Object.keys(L[2]).forEach(x => { db.ux[pre + x] = L[2][x]; }); uxTidy(); touchLayout(); dockDetail();
+      }
+    }
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
-    else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
+    else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (uxGroupOf(x) === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroset') { const i = v.indexOf(':'); snapLayout(true); db.hero = db.hero || {}; db.hero[v.slice(0, i)] = v.slice(i + 1); heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'clocklook') { const L = CLOCK_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.hero = Object.assign(db.hero || {}, L[2]); heroTidy(); touchLayout(); dockDetail(); } }
@@ -17414,7 +17503,7 @@ function dockInput(e) {
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
     if (el.dataset.re && e.type === 'change') dockDetail();
-    else { const pre = k[0], rs = A.dock.querySelector(`[data-dk="uxreset"][data-val="${pre}"]`); if (rs) rs.disabled = !uxGroupOn(pre); }
+    else { const pre = uxGroupOf(k), rs = A.dock.querySelector(`[data-dk="uxreset"][data-val="${pre}"]`); if (rs) rs.disabled = !uxGroupOn(pre); }
     return;
   }
   if (el.dataset.ipath) {
