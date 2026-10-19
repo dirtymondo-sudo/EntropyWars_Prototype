@@ -512,7 +512,7 @@
         var hits = ED.sel.map(selRow).filter(function (h) { return h && h.list !== 'spawn' && h.list !== 'doors'; });
         if (!hits.length) { if (to) toast('THE SPAWN AND DOORS ARE NOT COPIED (a door: the DOOR tool)', 2000); return; }
         var off = { dx: Math.max(ED.snap, 1), dz: Math.max(ED.snap, 1) };
-        if (to) { var an = Core.rowAnchor(hits[0].row), sn = Math.max(0.25, ED.snap || 0); off = { dx: Core.snap(to.x, sn) - an.x, dz: Core.snap(to.z, sn) - an.z }; }
+        if (to) { var an = Core.rowAnchor(hits[0].row); off = { dx: snapPt(to.x) - an.x, dz: snapPt(to.z) - an.z }; }
         var step = [], r = room(), max = +nextId(r).slice(1) - 1, sel = [];
         var ends = {};
         hits.forEach(function (h) {
@@ -539,7 +539,7 @@
         ED.hook.play = false;
         clearTimeout(ED.reloadTimer); ED.reloadTimer = null;
         ED.stroke = null; ED.auditRes = {};
-        var ok = W._hqEditEnter({ room: id, edit: ED.hook, onReady: function () { ED.ready = true; rebuildProxies(); ED.roofHidden = []; roofHide(); bandClip(); auditSoon(); status(); }, onEscape: null });
+        var ok = W._hqEditEnter({ room: id, edit: ED.hook, onReady: function () { ED.ready = true; rebuildProxies(); gridBuild(); ED.roofHidden = []; roofHide(); bandClip(); auditSoon(); status(); }, onEscape: null });
         if (!ok) { toast('THE ROOM DID NOT BUILD · ' + id, 5000); return false; }
         if (!ED.rmb && !ED.look) lookLock(false);   // THE POINTER: a lock the walk carried back from PLAY HERE goes (flying keeps it)
         overlayBuild();
@@ -576,10 +576,8 @@
         if (!ED.view) return;
         var u = U(), sc = ED.view.scene, r = ED.view.room || {};
         var G = new THREE.Group(); G.name = 'editor'; G.renderOrder = 10; sc.add(G); ED.group = G;
-        var S = r.shell || {}, size = Math.max(8, Math.ceil(Math.max(S.w || 40, S.d || 40) / 2) * 2 + 8), step = Math.max(0.25, ED.snap >= 1 ? ED.snap : 1);
-        var grid = new THREE.GridHelper(size * u, Math.round(size / step), 0x6fd3ff, 0x2a4a5a);
-        grid.material.transparent = true; grid.material.opacity = 0.35; grid.material.depthWrite = false; grid.material.fog = false;
-        grid.position.y = 0.03 * u; grid.visible = ED.grid; grid.renderOrder = 11; G.add(grid); ED.gridObj = grid;
+        var S = r.shell || {};
+        ED.gridObj = ED.outlineObj = null; gridBuild();
         /* the spawn: a cone pointing where the walker faces (picked as 'spawn') */
         var sp = new THREE.Mesh(new THREE.ConeGeometry(0.35 * u, 1.1 * u, 12), new THREE.MeshBasicMaterial({ color: 0x57f287, transparent: true, opacity: 0.85, depthTest: false, fog: false }));
         sp.rotation.x = Math.PI / 2; var spW = new THREE.Group(); spW.add(sp); spW.userData.edSel = { list: 'spawn' }; G.add(spW); ED.spawnObj = spW; spawnPlace();
@@ -592,6 +590,55 @@
         tcBuild();
         rebuildProxies();
         ED.view.camera.near = 0.05 * u; ED.view.camera.far = Math.max(400, Math.hypot(S.w || 100, S.d || 100) * 2) * u; ED.view.camera.updateProjectionMatrix();
+    }
+    /* THE TILE GRID (2026-10-19 — mondo: "i select the size of the room to be something like 12x12, but then i cant see the outline
+       of that 12x12"): the board's squares draped on the ground over the room (THE FIELD's lattice: edges at k · TILE m from the
+       room's centre, data.js hqFieldTerrainInfo — the squares a fight in this room stands on) and the room's own edge (the shell's
+       w × d) as a bright band round them. G toggles the squares; the edge always shows. Built again once the room is ready (the
+       ground is compiled then: the lines ride a raised block, never hide under it) */
+    var TILE = 1.75;
+    function tileMode() { return Math.abs((+ED.snap || 0) - TILE) < 1e-6; }
+    /* a point's snap: in TILE mode the middle of the square it is on, else the grid (0.25 m at least, as before) */
+    function snapPt(v) { return tileMode() ? Math.round((Math.floor(v / TILE) * TILE + TILE / 2) * 10000) / 10000 : Core.snap(v, Math.max(0.25, ED.snap || 0)); }
+    /* the squares a press and a release cover, whole (TILE mode): from the press's square to the release's, both in */
+    function tileRect(a, b) {
+        var ax = a.rx != null ? a.rx : a.x, az = a.rz != null ? a.rz : a.z, bx = b.rx != null ? b.rx : b.x, bz = b.rz != null ? b.rz : b.z;
+        var q = function (v) { return Math.round(v * 10000) / 10000; };
+        return { x0: q(Math.floor(Math.min(ax, bx) / TILE) * TILE), x1: q((Math.floor(Math.max(ax, bx) / TILE) + 1) * TILE), z0: q(Math.floor(Math.min(az, bz) / TILE) * TILE), z1: q((Math.floor(Math.max(az, bz) / TILE) + 1) * TILE) };
+    }
+    function gridBuild() {
+        if (!ED.group) return;
+        [ED.gridObj, ED.outlineObj].forEach(function (o) { if (o) { if (o.parent) o.parent.remove(o); o.geometry.dispose(); } });
+        ED.gridObj = ED.outlineObj = null;
+        var r = room() || (ED.view && ED.view.room), S = r && r.shell; if (!S || !(+S.w > 0) || !(+S.d > 0)) return;
+        var u = U(), hw = +S.w / 2, hd = +S.d / 2, step = Math.max(0.35, Math.max(hw, hd) / 150);
+        var y = function (x, z) { return (ground(x, z) + 0.06) * u + 0.3; };   // the field mesh stands 0.3 up (three-renderer.js), the brush ring rides the same
+        var P = [];
+        var line = function (x0, z0, x1, z1) {
+            var n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / step)), px = x0, pz = z0, py = y(x0, z0);
+            for (var i = 1; i <= n; i++) { var qx = x0 + (x1 - x0) * i / n, qz = z0 + (z1 - z0) * i / n, qy = y(qx, qz); P.push(px * u, py, pz * u, qx * u, qy, qz * u); px = qx; pz = qz; py = qy; }
+        };
+        var k;
+        for (k = Math.ceil(-hw / TILE - 1e-6); k * TILE < hw - 1e-3; k++) if (k * TILE > -hw + 1e-3) line(k * TILE, -hd, k * TILE, hd);
+        for (k = Math.ceil(-hd / TILE - 1e-6); k * TILE < hd - 1e-3; k++) if (k * TILE > -hd + 1e-3) line(-hw, k * TILE, hw, k * TILE);
+        if (P.length) {
+            var gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+            var grid = new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0x6fd3ff, transparent: true, opacity: 0.55, depthWrite: false, fog: false }));
+            grid.renderOrder = 11; grid.frustumCulled = false; grid.visible = ED.grid; ED.group.add(grid); ED.gridObj = grid;
+        }
+        /* the room's edge: a flat band (a line is one pixel), as wide as the room is big enough to need from afar */
+        var bw = Math.max(0.08, Math.min(0.35, Math.max(hw, hd) / 120)), V = [], I = [];
+        [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
+            var L = Math.hypot(e[2] - e[0], e[3] - e[1]), n = Math.max(1, Math.ceil(L / step)), nx = -(e[3] - e[1]) / L, nz = (e[2] - e[0]) / L;
+            for (var i = 0; i <= n; i++) {
+                var t = i / n, x = e[0] + (e[2] - e[0]) * t, z = e[1] + (e[3] - e[1]) * t, yy = y(x, z) + 0.02 * u, b = V.length / 3;
+                V.push((x - nx * bw / 2) * u, yy, (z - nz * bw / 2) * u, (x + nx * bw / 2) * u, yy, (z + nz * bw / 2) * u);
+                if (i) I.push(b - 2, b - 1, b, b - 1, b + 1, b);
+            }
+        });
+        var og = new THREE.BufferGeometry(); og.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); og.setIndex(I);
+        var ol = new THREE.Mesh(og, new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        ol.renderOrder = 12; ol.frustumCulled = false; ED.group.add(ol); ED.outlineObj = ol;
     }
     function spawnPlace() {
         var r = room(), o = ED.spawnObj; if (!o || !r) return;
@@ -676,7 +723,7 @@
         if (!ED.tc) return;
         ED.tc.setMode(m);
         ED.tc.showX = m !== 'rotate'; ED.tc.showZ = m !== 'rotate'; ED.tc.showY = true;
-        ED.tc.setTranslationSnap(ED.snap > 0 ? ED.snap * U() : null);
+        ED.tc.setTranslationSnap(ED.snap > 0 && !tileMode() ? ED.snap * U() : null);   // TILE: dragMove puts the pivot on the squares (the gizmo's own snap lands on their corners)
         ED.tc.setRotationSnap(ED.rotSnap > 0 ? ED.rotSnap * Math.PI / 180 : null);
         ED.tc.setScaleSnap(0.05);
         panels();
@@ -701,8 +748,20 @@
         var S = ED.tcStart, P = ED.pivot, u = U(); if (!S) return null;
         return { dx: (P.position.x - S.p.x) / u, dy: (P.position.y - S.p.y) / u, dz: (P.position.z - S.p.z) / u, rot: -(P.rotation.y - S.ry) * 180 / Math.PI, sx: P.scale.x, sy: P.scale.y, sz: P.scale.z, px: S.p.x / u, pz: S.p.z / u };
     }
+    /* TILE: a move goes in whole squares; one thing that stands on a point (a prop, a door, a light…) lands on the middle of a square */
+    function tileDelta(x0, z0, dx, dz) {
+        var hits = ED.sel.map(selRow).filter(Boolean), r0 = hits.length === 1 ? hits[0].row : null;
+        var point = r0 && isFinite(r0.x) && isFinite(r0.z) && !(r0.w > 0) && !(r0.d > 0) && !(r0.r > 0) && r0.x0 == null && !r0.pts;
+        if (point) return { dx: snapPt(x0 + dx) - x0, dz: snapPt(z0 + dz) - z0 };
+        return { dx: Core.snap(dx, TILE), dz: Core.snap(dz, TILE) };
+    }
     function dragMove() {
-        var S = ED.tcStart, d = dragDelta(); if (!S || !d) return;
+        var S = ED.tcStart;
+        if (S && tileMode() && ED.tool === 'translate' && ED.pivot) {
+            var u0 = U(), P0 = ED.pivot.position, td = tileDelta(S.p.x / u0, S.p.z / u0, (P0.x - S.p.x) / u0, (P0.z - S.p.z) / u0);
+            P0.x = S.p.x + td.dx * u0; P0.z = S.p.z + td.dz * u0; P0.y = S.p.y + Core.snap((P0.y - S.p.y) / u0, 0.25) * u0;
+        }
+        var d = dragDelta(); if (!S || !d) return;
         var u = U(), c = Math.cos(-d.rot * Math.PI / 180), s = Math.sin(-d.rot * Math.PI / 180);
         S.objs.forEach(function (e) {
             var rx = e.p.x - S.p.x, rz = e.p.z - S.p.z;
@@ -923,7 +982,7 @@
             var dx = p.x - a.x, dz = p.z - a.z, L = Math.hypot(dx, dz), q = Math.round(Math.atan2(dz, dx) / (Math.PI / 4)) * (Math.PI / 4);
             L = Core.snap(L, sn); return { x: Core.snap(a.x + Math.cos(q) * L, 0.0001), z: Core.snap(a.z + Math.sin(q) * L, 0.0001) };
         }
-        return { x: Core.snap(p.x, sn), z: Core.snap(p.z, sn) };
+        return { x: Core.snap(p.x, sn), z: Core.snap(p.z, sn), rx: p.x, rz: p.z };   // rx/rz: the raw point (TILE mode: the square it is on)
     }
     var _pvMat = null;
     function drawPreview(boxes) {
@@ -953,7 +1012,7 @@
         var cw = D.tool === 'lhall' ? O.hallW : O.streamW;
         if (how === 'course' && D.pts && D.pts.length) { for (var ci = 0; ci + 1 < D.pts.length; ci++) out.push(segPv(D.pts[ci], D.pts[ci + 1], cw, ground(D.pts[ci].x, D.pts[ci].z) - 0.1, ground(D.pts[ci].x, D.pts[ci].z) + 0.1)); out.push(segPv(D.pts[D.pts.length - 1], p, cw, g - 0.1, g + 0.1)); }
         if (a && how === 'rect') {
-            var R = rectOf(a, p), top = (D.tool === 'slab' || D.tool === 'platform' || D.tool === 'deck') ? O.height : D.tool === 'building' ? g + O.storeys * 3.5 : g + O.wallH, bot = D.tool === 'slab' ? O.height - 0.28 : D.tool === 'platform' ? O.height - 0.8 : D.tool === 'deck' ? O.height - 0.3 : g;
+            var R = tileMode() ? tileRect(a, p) : rectOf(a, p), top = (D.tool === 'slab' || D.tool === 'platform' || D.tool === 'deck') ? O.height : D.tool === 'building' ? g + O.storeys * 3.5 : g + O.wallH, bot = D.tool === 'slab' ? O.height - 0.28 : D.tool === 'platform' ? O.height - 0.8 : D.tool === 'deck' ? O.height - 0.3 : g;
             if (D.tool === 'lroom' || D.tool === 'lround') { top = g + 0.35; bot = g - 0.05; }   // E5: a floor footprint
             if (D.tool === 'room') { var c = [{ x: R.x0, z: R.z0 }, { x: R.x1, z: R.z0 }, { x: R.x1, z: R.z1 }, { x: R.x0, z: R.z1 }]; for (var i = 0; i < 4; i++) out.push(segPv(c[i], c[(i + 1) % 4], O.wallT, bot, top)); }
             else out.push({ cx: (R.x0 + R.x1) / 2, cz: (R.z0 + R.z1) / 2, w: R.x1 - R.x0, L: R.z1 - R.z0, y0: bot, y1: top });
@@ -1003,7 +1062,7 @@
         var D = ED.draw, p = drawPt(e.clientX, e.clientY, e); if (!D || !p) return;
         var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
         if (how === 'rect' || how === 'line' || how === 'disc') { D.a = p; D.b = p; return; }
-        if (how === 'stamp') { D.a = { x: p.x, z: p.z, y: ground(p.x, p.z) }; return; }
+        if (how === 'stamp') { D.a = { x: p.x, z: p.z, rx: p.rx, rz: p.rz, y: ground(p.x, p.z) }; return; }
         if (how === 'mod') { D.a = modPt(e.clientX, e.clientY); return; }
         if (how === 'brush') strokeStart(e);
     }
@@ -1022,7 +1081,8 @@
             if (D.entry) { palDrop(D, c); return; }   // E2: a palette tile
             if (D.tool === 'lamp') { lampAt(c); return; }   // E6: the tool stays armed for more
             var row = D.row ? Core.clone(D.row) : Core.kindRow(D.tool, c.x, c.z);
-            if (D.row) { row.x = Core.snap(c.x, Math.max(0.25, ED.snap || 0)); row.z = Core.snap(c.z, Math.max(0.25, ED.snap || 0)); }
+            if (D.row) { row.x = snapPt(c.x); row.z = snapPt(c.z); }
+            else if (row && tileMode()) row = Core.rowTransform(row, { dx: snapPt(c.x) - Core.rowAnchor(row).x, dz: snapPt(c.z) - Core.rowAnchor(row).z, px: 0, pz: 0 });   // TILE: an ADD-list shape lands on the middle of its square
             drawSet(null); if (row) addRow(D.list || 'terrain.features', row, D.label);
             return;
         }
@@ -1052,7 +1112,7 @@
             drawRows(stairs && O.stairHand === 'yes' ? [rr, stairHandRow(rr)] : [rr], stairs ? 'stairs' : 'ramp');
             return;
         }
-        var R = rectOf(a, p), w = R.x1 - R.x0, d = R.z1 - R.z0; if (w < 0.5 || d < 0.5) return;
+        var R = tileMode() ? tileRect(a, p) : rectOf(a, p), w = R.x1 - R.x0, d = R.z1 - R.z0; if (w < 0.5 || d < 0.5) return;
         var cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
         if (D.tool === 'lroom' || D.tool === 'lround') {
             var sp = { k: 'space', x: Core.snap(cx, 0.01), z: Core.snap(cz, 0.01), w: Core.snap(w, 0.01), d: Core.snap(d, 0.01) }; if (D.tool === 'lround') sp.round = true;
@@ -1345,7 +1405,21 @@
        (a ridge's click runs across the view). A shape's height is measured from the ground where the press began ═══ */
     function stampGeom(tool, a, p) {   // → { form, x, z, r } | { form, x0, x1, z0, z1 } | { form, a, b, w }; a = the press (may be null)
         var f = DRAWS[tool].form, O = ED.opts, R0 = Math.max(1, +O.shapeR || 8), drag = a && p ? Math.hypot(p.x - a.x, p.z - a.z) : 0, click = drag < 0.5;
+        if (tileMode() && f !== 'line' && a && p && a.rx != null && p.rx != null) {   // TILE: whole squares (a click = SIZE's worth of squares round the one clicked)
+            var sq = function (v) { return Math.floor(v / TILE); };
+            click = sq(a.rx) === sq(p.rx) && sq(a.rz) === sq(p.rz);
+        }
         if (click) a = p;
+        if (tileMode() && f !== 'line' && a && a.rx != null) {
+            var q4 = function (v) { return Math.round(v * 10000) / 10000; };
+            if (f === 'rect') {
+                if (!click) return Object.assign({ form: f }, tileRect(a, p));
+                var n = Math.max(1, Math.round(2 * R0 / TILE)), ox = n % 2 ? snapPt(a.rx) : Core.snap(a.rx, TILE), oz = n % 2 ? snapPt(a.rz) : Core.snap(a.rz, TILE);
+                return { form: f, x0: q4(ox - n * TILE / 2), x1: q4(ox + n * TILE / 2), z0: q4(oz - n * TILE / 2), z1: q4(oz + n * TILE / 2) };
+            }
+            var dc = Math.hypot(p.rx - a.rx, p.rz - a.rz);
+            return { form: f, x: snapPt(a.rx), z: snapPt(a.rz), r: click ? R0 : Math.max(TILE / 2, Math.round(dc / (TILE / 2)) * TILE / 2) };
+        }
         if (f === 'disc') return { form: f, x: a.x, z: a.z, r: click ? R0 : Math.round(drag * 4) / 4 };
         if (f === 'rect') return click ? { form: f, x0: a.x - R0, x1: a.x + R0, z0: a.z - R0, z1: a.z + R0 } : Object.assign({ form: f }, rectOf(a, p));
         if (click) { var yw = ED.cam.yaw || 0, L = 1.5 * R0; return { form: f, a: { x: a.x - Math.cos(yw) * L, z: a.z - Math.sin(yw) * L }, b: { x: a.x + Math.cos(yw) * L, z: a.z + Math.sin(yw) * L }, w: R0 }; }
@@ -1791,7 +1865,8 @@
     function grabMove(e) {
         var G = ED.grab, g = rayGround(e.clientX, e.clientY); if (!G || !g) return;
         var u = U(), sn = ED.snap > 0 ? ED.snap : 0, dx = g.x - G.g0.x, dz = g.z - G.g0.z;
-        if (sn) { dx = Core.snap(dx, sn); dz = Core.snap(dz, sn); }
+        if (tileMode()) { var td = tileDelta(G.p0.x / u, G.p0.z / u, dx, dz); dx = td.dx; dz = td.dz; }
+        else if (sn) { dx = Core.snap(dx, sn); dz = Core.snap(dz, sn); }
         ED.pivot.position.set(G.p0.x + dx * u, G.p0.y, G.p0.z + dz * u); ED.pivot.updateMatrixWorld(true);
         dragMove();
     }
@@ -3292,8 +3367,8 @@
     function lampAt(c) {
         if (!own()) return;
         var r = room(), S = r && r.shell; if (!S || !c || !editable()) return;
-        var sn = Math.max(0.25, ED.snap || 0), ls = Core.clone(S.lights || []);
-        ls.push({ x: Core.snap(c.x, sn), z: Core.snap(c.z, sn) });
+        var ls = Core.clone(S.lights || []);
+        ls.push({ x: snapPt(c.x), z: snapPt(c.z) });
         shellPut('lights', ls, 'lamp');
     }
 
@@ -3422,7 +3497,7 @@
     /* the eye's heading turned round: what a placed thing faces (degrees clockwise from north) */
     function faceEye() { return Math.round(((ED.cam.yaw * 180 / Math.PI + 180) % 360 + 360) % 360); }
     function palDrop(D, c) {
-        var e = D.entry, sn = Math.max(0.25, ED.snap || 0), x = Core.snap(c.x, sn), z = Core.snap(c.z, sn);
+        var e = D.entry, x = snapPt(c.x), z = snapPt(c.z);
         if (e.list === 'spawn') {
             var r = room(); if (!r || ED.mode === 'prefab') return;
             var face = Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360);
@@ -3449,7 +3524,7 @@
         else if (e && e.row && e.row.k === 'tree') { h = +ED.opts.treeSize || treeDefH(e.row) * treeTile(); w = d = Math.max(1.2, h * 0.3); }
         else if (e && e.row && (e.row.k === 'grove' || e.row.k === 'scatter')) { w = d = 2 * (e.row.r || 6); h = 0.3; }
         else if (D.row && D.row.k === 'kit') { w = d = 4; h = 2; }
-        var sn = Math.max(0.25, ED.snap || 0), x = Core.snap(c.x, sn), z = Core.snap(c.z, sn), f = faceEye() * Math.PI / 180;
+        var x = snapPt(c.x), z = snapPt(c.z), f = faceEye() * Math.PI / 180;
         drawPreview([{ cx: x, cz: z, w: w, L: d, y0: g, y1: g + h, yaw: -f }, { cx: x + Math.sin(f) * (d / 2 + 0.3), cz: z - Math.cos(f) * (d / 2 + 0.3), w: 0.18, L: 0.6, y0: g, y1: g + 0.12, yaw: -f }]);
     }
 
@@ -3474,7 +3549,7 @@
                 sp = { x: cx, z: cz, face: Math.round(((Math.atan2(nx, -nz) * 180 / Math.PI) % 360 + 360) % 360), wallId: w.id, at: at, ow: ow, oh: S.doorH || 2.2 };
             }
         }
-        if (!sp) { var c = rayGround(e.clientX, e.clientY); if (!c) return; var sn = Math.max(0.25, ED.snap || 0); sp = { x: Core.snap(c.x, sn), z: Core.snap(c.z, sn), face: faceEye() }; }
+        if (!sp) { var c = rayGround(e.clientX, e.clientY); if (!c) return; sp = { x: snapPt(c.x), z: snapPt(c.z), face: faceEye() }; }
         drawSet(null);
         doorModal(null, function (v) { doorWrite(sp, ent, v); });
     }
@@ -3714,7 +3789,7 @@
         var t = $('edTools'); if (!t) return;
         var snaps = [0, 0.25, 0.5, 1, 1.75], rs = [0, 5, 15, 45, 90];
         t.innerHTML = ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE · or drag the thing itself', rotate: 'TURN · R turns 45°, SHIFT R back', scale: 'SIZE (T) · - / = size the pick' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') +
-            '<label class="ed-lab">SNAP <select id="edSnap">' + snaps.map(function (s) { return '<option value="' + s + '"' + (s === ED.snap ? ' selected' : '') + '>' + (s ? s + ' m' : 'off') + '</option>'; }).join('') + '</select></label>' +
+            '<label class="ed-lab" title="SNAP (the grid\'s fidelity, like a quantize): off = anywhere; TILE = only on the board\'s squares (1.75 m, the squares a fight stands on): a thing goes on the middle of a square, a block or a room covers whole squares, a wall runs on their edges, a move goes square by square">SNAP <select id="edSnap">' + snaps.map(function (s) { return '<option value="' + s + '"' + (s === ED.snap ? ' selected' : '') + '>' + (s === TILE ? 'TILE' : s ? s + ' m' : 'off') + '</option>'; }).join('') + '</select></label>' +
             '<label class="ed-lab"><select id="edRSnap">' + rs.map(function (s) { return '<option value="' + s + '"' + (s === ED.rotSnap ? ' selected' : '') + '>' + (s ? s + '°' : 'free') + '</option>'; }).join('') + '</select></label>' +
             /* E6: the roofs */
             '<button class="ed-btn' + (ED.roof.off ? ' on' : '') + '" id="edRoof" title="HIDE THE ROOFS AND CEILINGS (C): see inside a room; everything higher than the number (metres over the floor) is cut away in the view. Nothing in the room changes">' + (ED.roof.off ? 'ROOFS HIDDEN' : 'HIDE ROOFS') + '</button>' +
@@ -3995,6 +4070,7 @@
             '<b>' + esc(ED.mode === 'library' ? 'LIBRARY' : ED.mode === 'prefab' ? 'PREFAB' : ED.project || '') + '</b>',
             esc((r && r.label) || ED.roomId || '') + (ED.mode === 'world' && zoneOf(ED.roomId) ? ' · ' + esc(zoneLabel(zoneOf(ED.roomId))) : ''),
             c ? 'x ' + c.x.toFixed(2) + ' z ' + c.z.toFixed(2) + ' ground ' + c.y.toFixed(2) + ' m' : 'the cursor is off the ground',
+            r && r.shell && +r.shell.w > 0 ? 'room ' + (+r.shell.w) + ' × ' + (+r.shell.d) + ' m = ' + +(r.shell.w / TILE).toFixed(1) + ' × ' + +(r.shell.d / TILE).toFixed(1) + ' squares' + (tileMode() ? ' · <b>SNAP TILE</b>' : '') : '',
             ED.draw ? '<b>' + esc(DRAWS[ED.draw.tool] ? DRAWS[ED.draw.tool].label : 'PLACE') + '</b>' + (ED._drawInfo ? ' ' + esc(ED._drawInfo) : '') : '',
             'eye ' + ED.cam.x.toFixed(1) + ', ' + ED.cam.y.toFixed(1) + ', ' + ED.cam.z.toFixed(1) + ' · ' + ED.cam.speed.toFixed(0) + ' m/s',
             ED.ready ? 'READY' : 'BUILDING…',
