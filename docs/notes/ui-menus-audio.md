@@ -1510,7 +1510,18 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
   fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.
 
-### UI Maker pass 23: Floating text, the pops over the units (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look like with a model with a nameplate for scale")
+### UI Maker pass 23: Spawn + nexus zones (2026-10-19, mondo: "add them to the arrows and highlights section so i can change their settings and appearance and glow and all that")
+- Arrows + tiles ⧉ has two tabs over the little board: "Arrows + tiles" (as before) and "Spawn + nexus zones" (UI.aimPrev;
+  `ThreeRenderer.lookPreview(cv, 'zones')` = an 8 × 4 board with your spawn, a neutral, a yours and an enemy nexus and the
+  enemy spawn, built by the board's own `_zoneMaskDraw` / `_zonePaint`, own maps + materials + context).
+- db.ux zs* (spawn zones: TDM strips + Arena spawn nexuses) and zn* (every other nexus), keys from hud.js `zoneDefs(pre)`:
+  Show, Fill, Rim, RimStyle, RimW, RimIn, Soft, Round, Glow, GlowW, Halo, HaloW, Pat / PatAmt / PatScale, Bright, Op,
+  Pulse, PulseSpd, Wall, WallOp, ColAlly / ColFoe / ColNeutral. `zoneSignal()` → window._ewZoneLook {spawn, nexus} +
+  _ewZoneLookV → three-renderer.js `_zoneLook()`. One-click ZONE_LOOKS per side (colours + Show stay).
+- Reset groups are now `uxGroupOf(k)`: the first letter, except the zones' first two (zs / zn), so each side resets alone.
+- Viewer-local like the rest of the UI Maker: nothing relayed, the guest draws its own look over its own state copy.
+
+### UI Maker pass 24: Floating text, the pops over the units (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look like with a model with a nameplate for scale")
 - Live mode `float` (dock head button **Pops**, tab "Floating text" in TABS). db.ux f* keys (UX_DEF, hud.js): font / weight / case /
   letter spacing / icons, sizes (numbers, words, smallest + biggest number and smallest word as % of the screen height, big-hit
   swell, small hits smaller), outline + its colour, shadow, shine, gradient or flat, glow + its colour, the hit read (element

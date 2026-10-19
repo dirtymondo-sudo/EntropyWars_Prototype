@@ -10240,7 +10240,7 @@ const ThreeRenderer = (function () {
         return out;
     }
 
-    var _nexusLineMats = [];   /* the bright rim — pulses gently, never fades out */
+    var _nexusLineMats = [];   /* every zone layer's material (THE ZONE LOOK): _zonePaint gives each its colour, opacity + pulse */
     /* THE TERRAIN SPELL HITCH (2026-10-13): the zone pieces used to be made new on every rebuild — a material and a
        geometry per piece and a fresh gradient canvas per zone. On WebGPU each new material is a new render object +
        bind groups, each freed geometry re-records the bundles holding it, and each new canvas is a
@@ -10310,21 +10310,66 @@ const ThreeRenderer = (function () {
         return t;
     }
 
-    /* ══ THE SOFT ZONE (2026-10-18, mondo: "i dont like how the nexus zones are drawn on the ground, they have these ugly
-       hitchmarks, and they have these flat rectangular light panels on thr ground that look bad. they need to atleast fade
-       at the edge or something") ══════════════════════════════════════════════════════════════════════════════════
-       Every zone — the centre, the diagonal pair, the Arena spawn nexuses, the hotspot — is ONE soft decal laid on the
-       ground: the zone's shape is drawn once into a small alpha map (_nxZoneTex) — a faint fill, a glow that rises toward
-       the zone's outer edge, a soft rim just inside it, and a feather to nothing at the edge itself, with rounded corners.
-       Each zone tile drapes the move tiles' own surface (_buildDrapeGeo) full-size, and its UVs read its own patch of that
-       map, so the tiles join with no gaps or seams. Gone: the per-tile washes (their gaps drew the grid of marks), the hard
-       rim ribbon + halo, and the standing curtain / skirt / seam panels. Owner colour = the viewer-relative team colour,
-       gold while neutral; the decal shimmers gently (_updateNexusWallPulse). */
-    var _nxZoneTexs = {};
-    var NX_TEX_PX = 32;   // map texels per tile: the profile is smooth, so a small map reads clean at every zoom
-    function _nxZoneTex(cells, W, H) {
-        var key = W + 'x' + H + ':' + cells.map(function (c) { return c[0] + ',' + c[1]; }).sort().join(';'), t = _nxZoneTexs[key];
-        if (t) return t;
+    /* ══ THE ZONE LOOK (2026-10-19, mondo: "why do the spawn zones and nexus Zones look like shit? i know we just changed
+       them but now they look even worse. add them to the arrows and highlights section so i can change their settings
+       and appearance and glow and all that") ═══════════════════════════════════════════════════════════════════════
+       THE SOFT ZONE (2026-10-18) made each zone one soft decal but kept none of the light the old one had: a 7% fill and a
+       normal-blended rim, so a zone read as a dull painted line, and TDM's spawn strips still wore the old per-tile washes
+       (gaps = grid marks) and the standing light panels. Now EVERY zone — the centre, the diagonal pair, the hotspot, the
+       Arena spawn nexuses and TDM's spawn strips — is two draped layers off one alpha map of its shape: the PAINT (a fill,
+       a rim that can be solid / dashed / dotted / double, an optional pattern; normal blend) and the LIGHT (a glow rising
+       toward the edge and a halo round the rim; additive), plus optional light walls standing on the edge. The UI Maker
+       (hud.js, Arrows + tiles > Zones) publishes window._ewZoneLook (bumped _ewZoneLookV): one look for the spawn zones and
+       one for the other nexuses. A setting that moves redraws the maps in place (same textures, same materials) and the
+       colour / opacity / pulse are written every frame (_zonePaint), so a drag shows at once on both renderers. Owner
+       colour = the viewer-relative team colour, gold while neutral, unless the UI Maker gives that side its own. */
+    var ZONE_LOOK_DEF = {
+        show: true, fill: 0.14, rim: 0.85, rimW: 0.07, rimIn: 0.05, rimStyle: 'solid', soft: 0.05, round: 0.08,
+        glow: 0.3, glowW: 0.32, halo: 0.45, haloW: 0.1, pattern: 'none', patAmt: 0.18, patScale: 3,
+        bright: 1, opacity: 1, pulse: 0.15, speed: 1, wall: 0, wallOp: 0.5
+    };
+    var ZONE_GAME_COL = { neutral: 0xddaa33, ally: 0x3399ff, foe: 0xff3355 };
+    function _zoneLookOne(o) {
+        o = o || {};
+        var D = ZONE_LOOK_DEF;
+        var num = function (k, lo, hi) { var x = +o[k]; return (o[k] !== '' && o[k] != null && x === x && isFinite(x)) ? Math.max(lo, Math.min(hi, x)) : D[k]; };
+        var pick = function (k, list) { return list.indexOf(o[k]) >= 0 ? o[k] : D[k]; };
+        var cols = {}, src = o.cols || {};
+        ['neutral', 'ally', 'foe'].forEach(function (k) { var hx = _lookHex(src[k]); if (hx !== null) cols[k] = hx; });
+        var P = {
+            show: o.show === undefined ? D.show : !!o.show,
+            fill: num('fill', 0, 1), rim: num('rim', 0, 1.5), rimW: num('rimW', 0.01, 0.45), rimIn: num('rimIn', 0, 0.45),
+            rimStyle: pick('rimStyle', ['solid', 'dashed', 'dotted', 'double']), soft: num('soft', 0.005, 0.5), round: num('round', 0, 0.5),
+            glow: num('glow', 0, 2), glowW: num('glowW', 0.03, 2), halo: num('halo', 0, 2), haloW: num('haloW', 0.01, 0.6),
+            pattern: pick('pattern', ['none', 'stripes', 'grid', 'dots', 'checker']), patAmt: num('patAmt', 0, 1), patScale: num('patScale', 1, 8),
+            bright: num('bright', 0.2, 3), opacity: num('opacity', 0, 1), pulse: num('pulse', 0, 1), speed: num('speed', 0, 6),
+            wall: num('wall', 0, 3), wallOp: num('wallOp', 0, 1.5), cols: cols
+        };
+        /* what the alpha maps are drawn from: a change here redraws them, anything else is a uniform */
+        P.sig = [P.fill, P.rim, P.rimW, P.rimIn, P.rimStyle, P.soft, P.round, P.glow, P.glowW, P.halo, P.haloW, P.pattern, P.patAmt, P.patScale].join('|');
+        return P;
+    }
+    var _zoneLookC = null, _zoneLookCV = -1;
+    /* the UI Maker's two zone looks, read once per change */
+    function _zoneLook() {
+        var v = window._ewZoneLookV || 0;
+        if (_zoneLookC && _zoneLookCV === v) return _zoneLookC;
+        var L = window._ewZoneLook || {};
+        _zoneLookC = { spawn: _zoneLookOne(L.spawn), nexus: _zoneLookOne(L.nexus) };
+        _zoneLookCV = v;
+        return _zoneLookC;
+    }
+    /* whose a zone is, as the viewer sees it: neutral / ally / foe */
+    function _zoneOwnKey(owner) { return !owner ? 'neutral' : (_isAllyPlayer(owner) ? 'ally' : 'foe'); }
+    function _zoneColor(P, own) { return (P.cols[own] !== undefined) ? P.cols[own] : ZONE_GAME_COL[own]; }
+    /* a zone's two looks: the Arena spawn nexuses are spawn zones, every other nexus a nexus zone */
+    function _zoneTypeOf(nex) { return (nex && nex.isSpawn) ? 'spawn' : 'nexus'; }
+
+    /* one layer of a zone's alpha map ('paint' = fill + rim + pattern, 'light' = glow + halo) into `canvas`: cells are the
+       zone's tiles relative to its top-left, W × H its box. The distance from the zone's outer edge is a soft-min over the
+       edge runs (rounded outer corners); a dash / dot follows the nearest run. */
+    var NX_TEX_PX = 48;   // map texels per tile: the rim stays crisp at a close-up, the map stays small
+    function _zoneMaskDraw(canvas, cells, W, H, P, layer) {
         var set = {}, segs = [], i;
         for (i = 0; i < cells.length; i++) set[cells[i][0] + ',' + cells[i][1]] = true;
         for (i = 0; i < cells.length; i++) {
@@ -10349,37 +10394,120 @@ const ThreeRenderer = (function () {
         }
         segs = runs;
         var PX = NX_TEX_PX, cw = W * PX, chh = H * PX;
-        var canvas = document.createElement('canvas');
-        canvas.width = cw; canvas.height = chh;
+        if (canvas.width !== cw) canvas.width = cw;
+        if (canvas.height !== chh) canvas.height = chh;
         var ctx = canvas.getContext('2d'), img = ctx.createImageData(cw, chh), d = img.data;
-        var K = 0.07;   // the soft-min width: the outer corners round off instead of meeting at a point
+        var K = Math.max(0.004, P.round);
+        var hw = P.rimW / 2, rc = P.rimIn + hw, paint = layer === 'paint';
+        var rimEnd = P.rimIn + P.rimW * (P.rimStyle === 'double' ? 2.1 : 1);
+        var TAU = Math.PI * 2, ps = P.patScale;
+        var sstep = function (a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+        var line = function (dd, h) { var q = dd / Math.max(1e-4, h); q = q * q; return Math.exp(-q * q); };   // flat-topped, soft-sided
+        /* a dotted rim: round dots a little fatter than the line, spaced so the gaps read at battle distance */
+        var dotR = hw * 1.4, dotPer = Math.max(0.2, P.rimW * 4);
+        var dotD = function (al, dd) { var f = (al / dotPer - Math.floor(al / dotPer) - 0.5) * dotPer; return Math.sqrt(f * f + (dd - rc) * (dd - rc)); };
         for (var py = 0; py < chh; py++) {
             for (var px = 0; px < cw; px++) {
                 var u = (px + 0.5) / PX, v = (py + 0.5) / PX, o = (py * cw + px) * 4;
                 d[o] = d[o + 1] = d[o + 2] = 255;
                 if (!set[Math.floor(u) + ',' + Math.floor(v)]) { d[o + 3] = 0; continue; }
-                var sum = 0;
+                var sum = 0, best = 1e9, along = 0;
                 for (var s = 0; s < segs.length; s++) {
-                    var g = segs[s], dx = g[2] - g[0], dy = g[3] - g[1];
-                    var k = Math.max(0, Math.min(1, ((u - g[0]) * dx + (v - g[1]) * dy) / (dx * dx + dy * dy)));
-                    var ex = u - (g[0] + k * dx), ey = v - (g[1] + k * dy);
-                    sum += Math.exp(-Math.sqrt(ex * ex + ey * ey) / K);
+                    var g = segs[s], dx = g[2] - g[0], dy = g[3] - g[1], len2 = dx * dx + dy * dy;
+                    var k = Math.max(0, Math.min(1, ((u - g[0]) * dx + (v - g[1]) * dy) / len2));
+                    var ex = u - (g[0] + k * dx), ey = v - (g[1] + k * dy), e = Math.sqrt(ex * ex + ey * ey);
+                    sum += Math.exp(-e / K);
+                    if (e < best) { best = e; along = k * Math.sqrt(len2); }
                 }
                 var dist = sum > 0 ? Math.max(0, -K * Math.log(sum)) : 9;   // tiles from the zone's outer edge
-                var feather = Math.min(1, dist / 0.07); feather = feather * feather * (3 - 2 * feather);
-                var rimD = (dist - 0.1) / 0.055;
-                var a = 0.07 + 0.38 * Math.exp(-dist / 0.3) + 0.62 * Math.exp(-rimD * rimD);
-                d[o + 3] = Math.round(255 * Math.min(1, a * feather));
+                var feather = sstep(0, P.soft, dist);
+                var a;
+                if (paint) {
+                    var rim;
+                    if (P.rimStyle === 'double') rim = Math.max(line(dist - (P.rimIn + hw * 0.5), hw * 0.5), line(dist - (P.rimIn + P.rimW * 1.6), hw * 0.5));
+                    else if (P.rimStyle === 'dotted') rim = line(dotD(along, dist), dotR);
+                    else {
+                        rim = line(dist - rc, hw);
+                        if (P.rimStyle === 'dashed') { var fd = along / 0.4 - Math.floor(along / 0.4); rim *= sstep(0, 0.08, fd) * (1 - sstep(0.52, 0.6, fd)); }
+                    }
+                    var pat = 0;
+                    if (P.pattern !== 'none' && P.patAmt > 0) {
+                        if (P.pattern === 'stripes') pat = sstep(0.3, 0.7, 0.5 + 0.5 * Math.cos(TAU * (u + v) * ps / 1.414));
+                        else if (P.pattern === 'grid') {
+                            var gx = Math.abs(u * ps - Math.round(u * ps)) / ps, gy = Math.abs(v * ps - Math.round(v * ps)) / ps;
+                            pat = 1 - sstep(0.01, 0.03, Math.min(gx, gy));
+                        } else if (P.pattern === 'dots') {
+                            var qx = (u * ps - Math.floor(u * ps) - 0.5) / ps, qy = (v * ps - Math.floor(v * ps) - 0.5) / ps;
+                            pat = 1 - sstep(0.2 / ps, 0.2 / ps + 0.025, Math.sqrt(qx * qx + qy * qy));
+                        } else pat = ((Math.floor(u * ps) + Math.floor(v * ps)) & 1) ? 1 : 0;
+                        pat *= P.patAmt * sstep(rimEnd, rimEnd + 0.06, dist);
+                    }
+                    a = P.fill + P.rim * rim + pat;
+                } else {
+                    /* the rim glow follows a dashed or dotted rim (a solid band of light over the gaps hid them) */
+                    var hd = P.rimStyle === 'dotted' ? dotD(along, dist) : dist - rc, hr = P.rimStyle === 'dotted' ? dotR + P.haloW * 0.6 : hw + P.haloW;
+                    var hm = 1;
+                    if (P.rimStyle === 'dashed') { var fh = along / 0.4 - Math.floor(along / 0.4); hm = 0.15 + 0.85 * sstep(0, 0.1, fh) * (1 - sstep(0.5, 0.62, fh)); }
+                    a = P.glow * Math.exp(-dist / P.glowW) + P.halo * hm * Math.exp(-Math.pow(hd / hr, 2));
+                }
+                d[o + 3] = Math.round(255 * Math.max(0, Math.min(1, a)) * feather);
             }
         }
         ctx.putImageData(img, 0, 0);
-        t = new THREE.CanvasTexture(canvas);
+    }
+    function _zoneTexNew() {
+        var t = new THREE.CanvasTexture(document.createElement('canvas'));
         t.magFilter = THREE.LinearFilter;
         t.minFilter = THREE.LinearFilter;
-        t.generateMipmaps = false;   // one smooth map per zone shape, made once a match: no mip chain to build (THE TERRAIN SPELL HITCH)
-        t._ew_shared = true;
-        _nxZoneTexs[key] = t;
+        t.generateMipmaps = false;   // one smooth map per zone shape: no mip chain to build (THE TERRAIN SPELL HITCH)
         return t;
+    }
+    /* the board's map for one zone shape + look + layer, made once and redrawn in place when the look's shape keys move */
+    var _nxZoneTexs = {};
+    function _nxZoneTex(cells, W, H, type, layer, P) {
+        var key = W + 'x' + H + ':' + cells.map(function (c) { return c[0] + ',' + c[1]; }).sort().join(';') + '|' + type + '|' + layer;
+        var t = _nxZoneTexs[key];
+        if (t && t._ewSig === P.sig) return t;
+        if (!t) { t = _zoneTexNew(); t._ew_shared = true; _nxZoneTexs[key] = t; }
+        _zoneMaskDraw(t.image, cells, W, H, P, layer);
+        t._ewSig = P.sig;
+        t.needsUpdate = true;
+        return t;
+    }
+    /* a zone layer's material: one per (map, side), shared across rebuilds; _zonePaint gives it its colour + opacity */
+    function _zoneMatOpts(tex, layer) {
+        var light = layer === 'light';
+        return { color: 0xffffff, map: tex, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
+            blending: light ? THREE.AdditiveBlending : THREE.NormalBlending,
+            polygonOffset: true, polygonOffsetFactor: light ? -3 : -2, polygonOffsetUnits: light ? -3 : -2 };
+    }
+    function _zoneMat(tex, layer, type, own, list) {
+        var m = _nxMat('zone' + layer + ':' + tex.id + ':' + type + ':' + own, 0xffffff, list, _zoneMatOpts(tex, layer));
+        m._ewZone = { type: type, own: own, layer: layer };
+        return m;
+    }
+    /* the look's colour, brightness, opacity and pulse onto a list of zone materials (every frame) */
+    function _zonePaint(list, t) {
+        if (!list.length) return;
+        var Z = _zoneLook();
+        for (var i = 0; i < list.length; i++) {
+            var m = list[i], z = m._ewZone;
+            if (!z) continue;
+            var P = Z[z.type], pul = 1 - P.pulse * (0.5 + 0.5 * Math.sin(t * 2.6 * P.speed));
+            m.color.setHex(_zoneColor(P, z.own)).multiplyScalar(P.bright);
+            m.opacity = Math.max(0, Math.min(1, P.opacity * (z.layer === 'wall' ? P.wallOp : 1) * pul));
+        }
+    }
+    /* the layers a look draws (the light only when it has some) */
+    function _zoneLayers(P) { return (P.glow > 0 || P.halo > 0) ? ['paint', 'light'] : ['paint']; }
+    /* a zone's tiles → its box and its cells relative to the box's top-left */
+    function _zoneBox(tiles) {
+        var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, i;
+        for (i = 0; i < tiles.length; i++) {
+            x0 = Math.min(x0, tiles[i].x); y0 = Math.min(y0, tiles[i].y);
+            x1 = Math.max(x1, tiles[i].x); y1 = Math.max(y1, tiles[i].y);
+        }
+        return { x0: x0, y0: y0, W: x1 - x0 + 1, H: y1 - y0 + 1, cells: tiles.map(function (t) { return [t.x - x0, t.y - y0]; }) };
     }
     /* a zone tile's full-size drape with its UVs on its own patch of the zone map (x0/y0 = the zone's top-left tile) */
     function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts) {
@@ -10414,43 +10542,38 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
+        var Z = _zoneLook();
 
         for (var zi = 0; zi < zones.length; zi++) {
-            var nex = zones[zi];
-            var color = _nexusOwnerColor(nex.owner || 0);
-            var tiles = _nexusZoneTiles(nex);
-            var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, ti;
-            for (ti = 0; ti < tiles.length; ti++) {
-                x0 = Math.min(x0, tiles[ti].x); y0 = Math.min(y0, tiles[ti].y);
-                x1 = Math.max(x1, tiles[ti].x); y1 = Math.max(y1, tiles[ti].y);
-            }
-            var W = x1 - x0 + 1, H = y1 - y0 + 1;
-            var tex = _nxZoneTex(tiles.map(function (t) { return [t.x - x0, t.y - y0]; }), W, H);
+            var nex = zones[zi], type = _zoneTypeOf(nex), P = Z[type];
+            if (!P.show) continue;
+            var own = _zoneOwnKey(nex.owner || 0);
+            var tiles = _nexusZoneTiles(nex), B = _zoneBox(tiles), ti;
             /* W5a: one flat drape per tile, so forceSinglePass — a plane cannot cover itself, and DoubleSide twice is
                the same picture in two draws */
-            var mat = _nxMat('zone:' + tex.id, color, _nexusLineMats, {
-                color: color, map: tex, transparent: true, opacity: 1,
-                depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
-                polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
-            });
+            var mats = _zoneLayers(P).map(function (layer) { return _zoneMat(_nxZoneTex(B.cells, B.W, B.H, type, layer, P), layer, type, own, _nexusLineMats); });
             for (ti = 0; ti < tiles.length; ti++) {
                 var ft = tiles[ti];
                 if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
-                var geo = _nxDrapeGeo('dz' + ft.x + ',' + ft.y, function () { return _nxZoneTileGeo(ft.x, ft.y, x0, y0, W, H, ts); });
-                var piece = _nxPiece(geo, mat);
-                piece.rotation.y = geo._ew_rotY || 0;
-                piece.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
-                _nexusWallGroup.add(piece);
+                var geo = _nxDrapeGeo('dz' + ft.x + ',' + ft.y, function () { return _nxZoneTileGeo(ft.x, ft.y, B.x0, B.y0, B.W, B.H, ts); });
+                for (var li = 0; li < mats.length; li++) {
+                    var piece = _nxPiece(geo, mats[li]);
+                    piece.renderOrder = li;   // the light over the paint
+                    piece.rotation.y = geo._ew_rotY || 0;
+                    piece.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
+                    _nexusWallGroup.add(piece);
+                }
             }
         }
 
         _lastNexusSerial = _computeNexusSerial();
     }
 
-    /* ── Spawn Zone floor overlays ── */
+    /* ── Spawn Zone floor overlays (TDM's spawn strips; an Arena spawn zone is a nexus, rebuildNexusWalls draws it) ── */
     var _spawnZoneGroup = null;
     var _spawnZoneMats = [];
     var _lastSpawnZoneSerial = '';
+    var _zoneLookSeen = -1;
 
     function _computeSpawnZoneSerial() {
         if (!state.spawnZones) return 0;
@@ -10470,78 +10593,111 @@ const ThreeRenderer = (function () {
         }
         var ser = _computeSpawnZoneSerial();
         if (ser === _lastSpawnZoneSerial) return;
-        _clearGroup(_spawnZoneGroup);
+        _clearGroup(_spawnZoneGroup);   // the maps + materials are shared (_nxZoneTex / _zoneMat), the drapes go
         _spawnZoneMats.length = 0;
         /* THE FIELD (Phase 9 Delivery 7): an encounter's zones are the seats and wear no wash */
         if (!state.spawnZones || state.spawnZones.field) { _lastSpawnZoneSerial = ser; return; }
 
         var ts = CONFIG.tileSize || BASE_TILE;
-        var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
-
-        var P1_COLOR = 0x3388ff;
-        var P2_COLOR = 0xff3333;
+        var P = _zoneLook().spawn;
 
         for (var p = 1; p <= 2; p++) {
             var zone = state.spawnZones[p];
-            if (!zone) continue;
-            /* Arena: the spawn zone is a nexus — rebuildNexusWalls draws its
-               owner-tinted wash + perimeter; a second wash here would double up. */
+            if (!zone || !zone.length || !P.show) continue;
+            /* Arena: the spawn zone is a nexus — rebuildNexusWalls draws it; a second one here would double up. */
             if (state.nexusPoints && state.nexusPoints['spawn' + p]) continue;
-            var color = p === 1 ? P1_COLOR : P2_COLOR;
-
-            for (var i = 0; i < zone.length; i++) {
-                var tile = zone[i];
-                if (tile.x < 0 || tile.y < 0 || tile.x >= _bw || tile.y >= _bh) continue;
-
-                var mat = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.18,
-                    depthWrite: false,
-                    // Floor decal sits all but coplanar with the terrain top, so a
-                    // tiny lift alone z-fights (flickers) as the camera moves. A
-                    // negative polygonOffset biases the plane toward the camera in
-                    // the depth buffer so it reliably renders ON the ground without
-                    // shimmering, while depthTest still lets units/props occlude it.
-                    polygonOffset: true,
-                    polygonOffsetFactor: -2,
-                    polygonOffsetUnits: -2,
-                    side: THREE.DoubleSide
-                });
-                _spawnZoneMats.push(mat);
+            var own = _isAllyPlayer(p) ? 'ally' : 'foe';
+            var tiles = zone.filter(function (t) { return t.x >= 0 && t.y >= 0 && t.x < _bw && t.y < _bh; });
+            if (!tiles.length) continue;
+            var B = _zoneBox(tiles);
+            var mats = _zoneLayers(P).map(function (layer) { return _zoneMat(_nxZoneTex(B.cells, B.W, B.H, 'spawn', layer, P), layer, 'spawn', own, _spawnZoneMats); });
+            for (var i = 0; i < tiles.length; i++) {
+                var tile = tiles[i];
                 // Anchored to the REAL terrain top and draped over it like the move tiles (THE DRAPED MARKERS)
-                var mesh = _drapedTileMesh(tile.x, tile.y, 0.95, mat, ts * 0.012);
-                _spawnZoneGroup.add(mesh);
+                var geo = _nxZoneTileGeo(tile.x, tile.y, B.x0, B.y0, B.W, B.H, ts);
+                for (var li = 0; li < mats.length; li++) {
+                    var mesh = new THREE.Mesh(geo, mats[li]);
+                    mesh.renderOrder = li;
+                    if (geo._ew_rotY !== undefined) mesh.rotation.y = geo._ew_rotY;
+                    mesh.position.set(tile.x * ts + ts / 2, _drapedTileY(tile.x, tile.y, ts * 0.012), tile.y * ts + ts / 2);
+                    _spawnZoneGroup.add(mesh);
+                }
             }
         }
         _lastSpawnZoneSerial = ser;
     }
 
     function _updateSpawnZonePulse() {
-        if (_spawnZoneMats.length === 0) return;
-        var t = performance.now() / 1000;
-        var pulse = 0.12 + 0.08 * Math.sin(t * 1.5);
-        for (var i = 0; i < _spawnZoneMats.length; i++) {
-            _spawnZoneMats[i].opacity = pulse;
-        }
+        _zonePaint(_spawnZoneMats, performance.now() / 1000);
     }
 
-    /* ── Sanctuary / Spawn-Zone Walls of Light ── */
+    /* ── THE LIGHT WALLS: a glowing curtain standing on a zone's outer edge (once the sanctuary walls round TDM's spawn
+       strips). Since THE ZONE LOOK every zone can wear them — the UI Maker's Light walls height (0 = none, the game's
+       default, mondo 2026-10-18: "flat rectangular light panels ... look bad") — owner-tinted like the floor ── */
     var _sanctuaryWallGroup = null;
     var _sanctuaryWallMats = [];
     var _lastSanctuaryWallSerial = '';
 
     function _computeSanctuaryWallSerial() {
         var h = _computeSpawnZoneSerial();
-        /* Arena: spawn walls recolor when a spawn nexus changes hands. */
+        h = _hashInt(h, _computeNexusSerial());   // every zone's tiles, owner and the ground under it
+        return _hashInt(h, window._ewZoneLookV || 0);
+    }
+    /* the zones that stand walls: [{ tiles, type, own }] */
+    function _zoneWallList() {
+        var out = [], Z = _zoneLook(), k;
         if (state.nexusPoints) {
-            var s1 = state.nexusPoints.spawn1, s2 = state.nexusPoints.spawn2;
-            h = _hashInt(h, s1 ? ((s1.owner || 0) + 1) : 0);
-            h = _hashInt(h, s2 ? ((s2.owner || 0) + 1) : 0);
+            for (k in state.nexusPoints) {
+                var n = state.nexusPoints[k];
+                if (n && (n.zoneSize || (n.tiles && n.tiles.length))) out.push({ tiles: _nexusZoneTiles(n), type: _zoneTypeOf(n), own: _zoneOwnKey(n.owner || 0) });
+            }
         }
-        return h;
+        if (state.roamingNexus) out.push({ tiles: _nexusZoneTiles(state.roamingNexus), type: 'nexus', own: _zoneOwnKey(state.roamingNexus.owner || 0) });
+        if (state.spawnZones && !state.spawnZones.field) {
+            for (var p = 1; p <= 2; p++) {
+                var zone = state.spawnZones[p];
+                if (!zone || !zone.length || (state.nexusPoints && state.nexusPoints['spawn' + p])) continue;
+                out.push({ tiles: zone, type: 'spawn', own: _isAllyPlayer(p) ? 'ally' : 'foe' });
+            }
+        }
+        return out.filter(function (w) { var P = Z[w.type]; return P.show && P.wall > 0 && P.wallOp > 0; });
+    }
+    /* a zone's exposed edges: [{ x, y, dir }] */
+    function _zoneEdges(tiles) {
+        var set = {}, edges = [], i;
+        for (i = 0; i < tiles.length; i++) set[tiles[i].x + ',' + tiles[i].y] = true;
+        for (i = 0; i < tiles.length; i++) {
+            var tx = tiles[i].x, ty = tiles[i].y;
+            if (!set[tx + ',' + (ty - 1)]) edges.push({ x: tx, y: ty, dir: 'n' });
+            if (!set[tx + ',' + (ty + 1)]) edges.push({ x: tx, y: ty, dir: 's' });
+            if (!set[(tx - 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'w' });
+            if (!set[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'e' });
+        }
+        return edges;
+    }
+    /* a wall's material: one per (look, side), white gradient tinted by _zonePaint */
+    function _zoneWallMat(type, own, list) {
+        var m = _nxMat('zonewall:' + type + ':' + own, 0xffffff, list, {
+            map: _nxGradTex(0xffffff, 'zonewall', [[0, 0], [0.3, 0.2], [0.7, 0.55], [1, 1]]), color: 0xffffff,
+            transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending,
+            // The wall plane sits exactly on the perimeter tile edge, so a taller neighbour's cliff face on that same plane
+            // z-fights; a negative polygonOffset lets the wall win the depth test cleanly.
+            polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+        });
+        m._ewZone = { type: type, own: own, layer: 'wall' };
+        return m;
+    }
+    /* one standing wall per exposed edge, `h` tall, on that tile's top */
+    function _zoneWallMesh(e, ts, h, mat) {
+        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = tileTopY(e.x, e.y);
+        var cx = e.x * ts + ts / 2, cz = e.y * ts + ts / 2, half = ts / 2;
+        if (e.dir === 'n') mesh.position.set(cx, tileY + h / 2, cz - half);
+        else if (e.dir === 's') { mesh.position.set(cx, tileY + h / 2, cz + half); mesh.rotation.y = Math.PI; }
+        else if (e.dir === 'w') { mesh.position.set(cx - half, tileY + h / 2, cz); mesh.rotation.y = Math.PI / 2; }
+        else { mesh.position.set(cx + half, tileY + h / 2, cz); mesh.rotation.y = -Math.PI / 2; }
+        return mesh;
     }
 
     function rebuildSanctuaryWalls() {
@@ -10554,110 +10710,25 @@ const ThreeRenderer = (function () {
         var ser = _computeSanctuaryWallSerial();
         if (ser === _lastSanctuaryWallSerial) return;
 
-        _clearGroup(_sanctuaryWallGroup);   // the gradient canvas is one per colour (_nxGradTex), kept
+        _clearGroup(_sanctuaryWallGroup);   // the gradient canvas + the materials are shared (_nxGradTex / _nxMat), kept
         _sanctuaryWallMats.length = 0;
 
-        /* THE FIELD (Phase 9 Delivery 7): the seats are zones for the respawn only — no curtain round them */
-        if (!state.spawnZones || state.spawnZones.field) { _lastSanctuaryWallSerial = ser; return; }
-
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var elevStep = ts * ELEV_STEP_RATIO;
-        var wallHeight = 1.3 * elevStep; /* shorter than nexus (2×elevStep) */
-
-        for (var p = 1; p <= 2; p++) {
-            var zone = state.spawnZones[p];
-            if (!zone || zone.length === 0) continue;
-
-            /* Arena: the spawn zone doubles as a nexus — since 2026-09-12 its
-               perimeter (rim + skirts + curtain, owner-tinted) comes from
-               rebuildNexusWalls; the sanctuary curtain here would stack on it. */
-            var _spNex = state.nexusPoints && state.nexusPoints['spawn' + p];
-            if (_spNex) continue;
-            var _spOwner = p;
-            var color = _viewerPlayerColor(_spOwner);
-
-            /* Build a Set of zone tile keys for fast neighbor lookup */
-            var zoneSet = {};
-            for (var i = 0; i < zone.length; i++) {
-                zoneSet[zone[i].x + ',' + zone[i].y] = true;
-            }
-
-            /* Find perimeter edges: tile edge exposed to non-zone neighbor */
-            var edges = [];
-            for (var i = 0; i < zone.length; i++) {
-                var tx = zone[i].x;
-                var ty = zone[i].y;
-                if (!zoneSet[tx + ',' + (ty - 1)]) edges.push({ x: tx, y: ty, dir: 'n' });
-                if (!zoneSet[tx + ',' + (ty + 1)]) edges.push({ x: tx, y: ty, dir: 's' });
-                if (!zoneSet[(tx - 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'w' });
-                if (!zoneSet[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'e' });
-            }
-
-            for (var ei = 0; ei < edges.length; ei++) {
-                var e = edges[ei];
-                var tileY = tileTopY(e.x, e.y);
-
-                var geo = new THREE.PlaneGeometry(ts, wallHeight);
-
-                /* Gradient canvas — transparent at top, color at bottom (same as
-                   nexus). Peak alpha kept low: additive + DoubleSide stacks the
-                   near and far perimeter walls along the view ray, and higher
-                   alphas summed to blown-out white over bright terrain. */
-                var tex = _nxGradTex(color, 'sanctuary', [[0, 0], [0.3, 0.16], [0.7, 0.34], [1, 0.5]]);
-
-                var mat = new THREE.MeshBasicMaterial({
-                    map: tex,
-                    transparent: true,
-                    depthWrite: false,
-                    // The wall plane sits exactly on the perimeter tile edge, so when
-                    // a taller neighbouring tile's cliff face lands on that same plane
-                    // the two are coplanar and z-fight (the light flickers on/off as
-                    // the camera moves). A negative polygonOffset biases the wall
-                    // toward the camera so it wins the depth test cleanly. (Maps are
-                    // *supposed* to keep higher terrain off the spawn perimeter, but
-                    // this makes the effect robust regardless of map authoring.)
-                    polygonOffset: true,
-                    polygonOffsetFactor: -2,
-                    polygonOffsetUnits: -2,
-                    side: THREE.DoubleSide,
-                    blending: THREE.AdditiveBlending
-                });
-                _sanctuaryWallMats.push(mat);
-
-                var mesh = new THREE.Mesh(geo, mat);
-
-                var cx = e.x * ts + ts / 2;
-                var cz = e.y * ts + ts / 2;
-                var halfTs = ts / 2;
-
-                if (e.dir === 'n') {
-                    mesh.position.set(cx, tileY + wallHeight / 2, cz - halfTs);
-                    mesh.rotation.y = 0;
-                } else if (e.dir === 's') {
-                    mesh.position.set(cx, tileY + wallHeight / 2, cz + halfTs);
-                    mesh.rotation.y = Math.PI;
-                } else if (e.dir === 'w') {
-                    mesh.position.set(cx - halfTs, tileY + wallHeight / 2, cz);
-                    mesh.rotation.y = Math.PI / 2;
-                } else if (e.dir === 'e') {
-                    mesh.position.set(cx + halfTs, tileY + wallHeight / 2, cz);
-                    mesh.rotation.y = -Math.PI / 2;
-                }
-
-                _sanctuaryWallGroup.add(mesh);
-            }
-        }
+        var ts = CONFIG.tileSize || BASE_TILE, elevStep = ts * ELEV_STEP_RATIO, Z = _zoneLook();
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        _zoneWallList().forEach(function (w) {
+            var mat = _zoneWallMat(w.type, w.own, _sanctuaryWallMats), h = Z[w.type].wall * elevStep;
+            _zoneEdges(w.tiles).forEach(function (e) {
+                if (e.x < 0 || e.y < 0 || e.x >= _bw || e.y >= _bh) return;
+                _sanctuaryWallGroup.add(_zoneWallMesh(e, ts, h, mat));
+            });
+        });
 
         _lastSanctuaryWallSerial = ser;
     }
 
     function _updateSanctuaryWallPulse() {
-        if (_sanctuaryWallMats.length === 0) return;
-        var t = performance.now() / 1000;
-        var pulse = 0.5 + 0.15 * Math.sin(t * 1.8);
-        for (var i = 0; i < _sanctuaryWallMats.length; i++) {
-            _sanctuaryWallMats[i].opacity = pulse;
-        }
+        _zonePaint(_sanctuaryWallMats, performance.now() / 1000);
     }
 
     /* ── Mystery Dungeon ground-item pickups ──────────────────────────────
@@ -10880,20 +10951,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateNexusWallPulse() {
-        var t = performance.now() / 1000;
-        if (_nexusWallMats.length) {
-            var pulse = 0.55 + 0.15 * Math.sin(t * 2.0);
-            for (var i = 0; i < _nexusWallMats.length; i++) _nexusWallMats[i].opacity = pulse;
-        }
-        if (_nexusLineMats.length) {
-            /* the rim never dips below readable — a shimmer, not a fade */
-            var shimmer = 1 - 0.08 * (0.5 + 0.5 * Math.sin(t * 2.6));
-            for (var j = 0; j < _nexusLineMats.length; j++) {
-                var m = _nexusLineMats[j];
-                if (m._baseOp === undefined) m._baseOp = m.opacity;
-                m.opacity = m._baseOp * shimmer;
-            }
-        }
+        _zonePaint(_nexusLineMats, performance.now() / 1000);   // THE ZONE LOOK: colour, opacity + the UI Maker's pulse
     }
 
     function _updateZoneBorderPulse() {
@@ -17203,25 +17261,29 @@ const ThreeRenderer = (function () {
        own builders (each situation's highlight recipe through _makeHlMaterial, the arrows through _buildArrowFromPoints
        into a sink, the cast glow's material), so every setting shows the moment it moves, in a battle or out of one. The
        real board takes the same look at the same time. One preview at a time; it stops itself when its canvas leaves the
-       page, and stop() frees its context. */
+       page, and stop() frees its context. mode 'zones' (THE ZONE LOOK, 2026-10-19) is the same little board wearing the
+       spawn + nexus zones instead (_lookPreviewZones). */
     var _lookPrev = null;
-    function lookPreview(cv) {
-        if (_lookPrev) { if (_lookPrev.cv === cv) return _lookPrev; _lookPrev.stop(); }
+    function lookPreview(cv, mode) {
+        mode = mode === 'zones' ? 'zones' : 'tiles';
+        if (_lookPrev) { if (_lookPrev.cv === cv && _lookPrev.mode === mode) return _lookPrev; _lookPrev.stop(); }
         if (!cv || typeof THREE === 'undefined' || !THREE.WebGLRenderer) return null;
         var r;
         try { r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { return null; }
         r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-        var ts = CONFIG.tileSize || BASE_TILE, COLS = 7, ROWS = 4;
+        var ts = CONFIG.tileSize || BASE_TILE, COLS = mode === 'zones' ? 8 : 7, ROWS = 4;
         var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 2, ts * 0.2, ts * 60);
         var cx = COLS * ts / 2, cz = ROWS * ts / 2;
         cam.position.set(cx + ts * 0.35, ts * 5.1, cz + ts * 6.3); cam.lookAt(cx, 0, cz + ts * 0.15);
         var at = function (c, rw, y) { return new THREE.Vector3(c * ts + ts / 2, y || 0, rw * ts + ts / 2); };
-        /* the board: plain dark tiles, a hair apart */
+        /* the board: plain dark tiles, a hair apart (the zones lie on a grass tone, as they mostly do in a battle) */
         var tileGeo = new THREE.BoxGeometry(ts * 0.985, ts * 0.3, ts * 0.985);
-        var tileMats = [new THREE.MeshBasicMaterial({ color: 0x1b2331 }), new THREE.MeshBasicMaterial({ color: 0x212a3a })];
+        var tileMats = mode === 'zones' ? [new THREE.MeshBasicMaterial({ color: 0x3a4630 }), new THREE.MeshBasicMaterial({ color: 0x404d35 })]
+            : [new THREE.MeshBasicMaterial({ color: 0x1b2331 }), new THREE.MeshBasicMaterial({ color: 0x212a3a })];
         for (var gx = 0; gx < COLS; gx++) for (var gz = 0; gz < ROWS; gz++) {
             var tm = new THREE.Mesh(tileGeo, tileMats[(gx + gz) % 2]); tm.position.copy(at(gx, gz, -ts * 0.15)); sc.add(tm);
         }
+        if (mode === 'zones') return _lookPreviewZones(cv, r, sc, cam, ts);
         /* the units: you + an ally (blue), the enemy (red), as small markers at the arrows' chest height */
         var chest = ts * UNIT_SPRITE_SIZE_RATIO * 0.5;
         var markGeo = new THREE.OctahedronGeometry(ts * 0.13, 0);
@@ -17276,7 +17338,7 @@ const ThreeRenderer = (function () {
         buildArrows();
         _hlLookSync();
         var seenT = window._ewTileLookV || 0, seenA = window._ewArrowLookV || 0, raf = 0, lw = 0, lh = 0, dead = false;
-        var api = { cv: cv, stop: null, cam: cam };
+        var api = { cv: cv, stop: null, cam: cam, mode: 'tiles' };
         var loop = function () {
             if (dead) return;
             if (!cv.isConnected) { api.stop(); return; }
@@ -17301,6 +17363,90 @@ const ThreeRenderer = (function () {
             if (dead) return;
             dead = true; cancelAnimationFrame(raf);
             sc.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material)) o.material.dispose(); });
+            try { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } catch (e) {}
+            if (_lookPrev === api) _lookPrev = null;
+        };
+        _lookPrev = api;
+        loop();
+        return api;
+    }
+
+    /* the zones' little board (8 × 4): your spawn strip down the left, the enemy's down the right, a neutral 2 × 2 nexus in
+       the middle and one nexus held by each side, each drawn by the board's own map painter (_zoneMaskDraw) and tinted by
+       the board's own _zonePaint, with the light walls when the look stands them. Its own maps, materials and context
+       (the live board's are never shared with it); a look change rebuilds it. */
+    function _lookPreviewZones(cv, r, sc, cam, ts) {
+        var Z0 = [
+            { tiles: [[0, 0], [0, 1], [0, 2], [0, 3]], type: 'spawn', own: 'ally' },
+            { tiles: [[7, 0], [7, 1], [7, 2], [7, 3]], type: 'spawn', own: 'foe' },
+            { tiles: [[2, 1], [3, 1], [2, 2], [3, 2]], type: 'nexus', own: 'neutral' },
+            { tiles: [[4, 0], [5, 0]], type: 'nexus', own: 'ally' },
+            { tiles: [[4, 3], [5, 3]], type: 'nexus', own: 'foe' }
+        ];
+        var grp = new THREE.Group(), mats = [], texs = [], wallTex = null;
+        sc.add(grp);
+        var build = function () {
+            grp.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+            while (grp.children.length) grp.remove(grp.children[0]);
+            mats.forEach(function (m) { m.dispose(); }); mats = [];
+            texs.forEach(function (t) { t.dispose(); }); texs = [];
+            var Z = _zoneLook();
+            Z0.forEach(function (z) {
+                var P = Z[z.type];
+                if (!P.show) return;
+                var B = _zoneBox(z.tiles.map(function (c) { return { x: c[0], y: c[1] }; }));
+                _zoneLayers(P).forEach(function (layer, li) {
+                    var tex = _zoneTexNew(); _zoneMaskDraw(tex.image, B.cells, B.W, B.H, P, layer); tex.needsUpdate = true; texs.push(tex);
+                    var m = new THREE.MeshBasicMaterial(_zoneMatOpts(tex, layer)); m._ewZone = { type: z.type, own: z.own, layer: layer }; mats.push(m);
+                    var pl = new THREE.Mesh(new THREE.PlaneGeometry(B.W * ts, B.H * ts), m);
+                    pl.rotation.x = -Math.PI / 2; pl.renderOrder = 2 + li;
+                    pl.position.set((B.x0 + B.W / 2) * ts, 0.6, (B.y0 + B.H / 2) * ts);
+                    grp.add(pl);
+                });
+                if (P.wall > 0 && P.wallOp > 0) {
+                    if (!wallTex) {
+                        var c = document.createElement('canvas'); c.width = 4; c.height = 64;
+                        var g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+                        [[0, 0], [0.3, 0.2], [0.7, 0.55], [1, 1]].forEach(function (s) { gr.addColorStop(s[0], 'rgba(255,255,255,' + s[1] + ')'); });
+                        g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
+                        wallTex = new THREE.CanvasTexture(c);
+                    }
+                    var wm = new THREE.MeshBasicMaterial({ map: wallTex, color: 0xffffff, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+                    wm._ewZone = { type: z.type, own: z.own, layer: 'wall' }; mats.push(wm);
+                    var h = P.wall * ts * ELEV_STEP_RATIO;
+                    _zoneEdges(z.tiles.map(function (c) { return { x: c[0], y: c[1] }; })).forEach(function (e) {
+                        var wl = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), wm), x = e.x * ts + ts / 2, zz = e.y * ts + ts / 2, half = ts / 2;
+                        if (e.dir === 'n') wl.position.set(x, h / 2, zz - half);
+                        else if (e.dir === 's') { wl.position.set(x, h / 2, zz + half); wl.rotation.y = Math.PI; }
+                        else if (e.dir === 'w') { wl.position.set(x - half, h / 2, zz); wl.rotation.y = Math.PI / 2; }
+                        else { wl.position.set(x + half, h / 2, zz); wl.rotation.y = -Math.PI / 2; }
+                        wl.renderOrder = 4;
+                        grp.add(wl);
+                    });
+                }
+            });
+        };
+        build();
+        var seen = window._ewZoneLookV || 0, raf = 0, lw = 0, lh = 0, dead = false;
+        var api = { cv: cv, stop: null, cam: cam, mode: 'zones' };
+        var loop = function () {
+            if (dead) return;
+            if (!cv.isConnected) { api.stop(); return; }
+            raf = requestAnimationFrame(loop);
+            if (document.hidden) return;
+            var w = cv.clientWidth | 0, h = cv.clientHeight | 0;
+            if (w < 2 || h < 2) return;
+            if (w !== lw || h !== lh) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); lw = w; lh = h; }
+            var v = window._ewZoneLookV || 0;
+            if (v !== seen) { seen = v; build(); }
+            _zonePaint(mats, performance.now() / 1000);
+            try { r.render(sc, cam); } catch (e) { api.stop(); }
+        };
+        api.stop = function () {
+            if (dead) return;
+            dead = true; cancelAnimationFrame(raf);
+            sc.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material)) o.material.dispose(); });
+            texs.forEach(function (t) { t.dispose(); }); if (wallTex) wallTex.dispose();
             try { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } catch (e) {}
             if (_lookPrev === api) _lookPrev = null;
         };
@@ -39096,6 +39242,8 @@ const ThreeRenderer = (function () {
         if (tSer !== _lastTurretSerial) { rebuildTurrets(); _objDirty = true; }
         var dSer = _computeDeployableSerial();
         if (dSer !== _lastDeployableSerial) { rebuildDeployables(); _objDirty = true; }
+        /* THE ZONE LOOK moved (the UI Maker): every zone redraws its maps this frame */
+        if ((window._ewZoneLookV || 0) !== _zoneLookSeen) { _zoneLookSeen = window._ewZoneLookV || 0; _lastNexusSerial = null; _lastSpawnZoneSerial = null; }
         var nSer = _computeNexusSerial();
         if (nSer !== _lastNexusSerial) { rebuildNexusWalls(); _shadowsDirty = true; }
         rebuildSpawnZoneOverlays();
@@ -48389,8 +48537,12 @@ const ThreeRenderer = (function () {
             var edgeH = hqTerrainHeight(info, cx, cz);
             var roll = 1.1 * nse(x, z, 9, seed + 3) + 0.35 * nse(x, z, 3.2, seed + 5);
             var swell = 2.4 * sm(e / 22) - 7.0 * sm((e - 24) / 26);
-            if (OO.flat) return edgeH;   // THE EDITOR (E0, 2026-09-29): `outer.flat` = the plain runs on flat to the fog (mondo's flat empty world: no roll, no rises)
             var k = sm(e / 2.5);
+            /* THE EDITOR (E0, 2026-09-29): `outer.flat` = the plain runs on flat to the fog (mondo's flat empty world: no roll, no rises).
+               2026-10-19 (mondo: a raised block "makes a half raised part that extends out from it and goes on forever"): the plain is
+               the room's BASE, never the edge's height carried out — a shape at the edge used to run on as a strip to the fog; now it
+               settles back to the base over the same 2.5 m the rolling ground takes */
+            if (OO.flat) { var fb = +room.terrain.base || 0; return edgeH * (1 - k) + fb * k; }
             var yy = edgeH * (1 - k) + (edgeH * oKeep + roll + swell + oLift * sm(e / 30)) * k;
             /* THE PASSAGES (2026-10-01): the ground under a trail / a tunnel past the edge is its floor (and settles back either side) */
             for (var pci = 0; pci < passC.length; pci++) {
@@ -48429,9 +48581,11 @@ const ThreeRenderer = (function () {
            over the paths, gone when the walker crossed (the other part left the stage) and back in the part just left */
         var ownId = (_hq.opts && _hq.opts.room) || room.id, stNear = _hqStageOff() ? [] : _hqStageNearbyOf(ownId), sideIdx = {}, sideIds0 = {};
         for (var j2 = 0; j2 + 1 < nz; j2++) { for (var i2 = 0; i2 + 1 < nx; i2++) {
-            /* a quad wholly inside the field's bound is the field's own */
+            /* a quad wholly inside the field's bound is the field's own. 2026-10-19: one ON the bound too (the 2 m lattice lands on
+               ±hx exactly): that ring of coarse quads, 0.1 under the field, poked through the side of a block raised near the edge
+               (the wedge cut out of mondo's 1-tile block) */
             var qx0 = X0 + i2 * cs, qz0 = Z0 + j2 * cs, qx1 = qx0 + cs, qz1 = qz0 + cs;
-            if (qx0 > -hx && qx1 < hx && qz0 > -hz && qz1 < hz) continue;
+            if (qx0 >= -hx - 1e-6 && qx1 <= hx + 1e-6 && qz0 >= -hz - 1e-6 && qz1 <= hz + 1e-6) continue;
             var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1, into = idx;
             if (stNear.length) {
                 var sk = hqStageNearerKey(ownId, qx0 + cs / 2, qz0 + cs / 2, stNear);   // the SET of nearer parts: one mesh per set

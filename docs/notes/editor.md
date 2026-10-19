@@ -577,3 +577,31 @@ copy that nothing in the game reads.)
 - **Online (RULE #2):** each seat builds the arena from its own room, so the host's `arena-check` carries `room` + `edit` (its diff or
   null) + `sig`; the guest lays it over (`hqRoomEditUse`), re-surveys, and its `arena-ready` carries `sig`; the host counts only a ready
   whose sig matches its own room.
+
+## THE TILE GRID + SNAP TILE + the flat plain (2026-10-19)
+mondo: "i select the size of the room to be something like 12x12, but then i cant see the outline of that 12x12 ... let me
+'quantize' the fidelity of the grid ... when i make a new room and raise a single 1x1x1 tile ... a half raised part that extends
+out from it and goes on forever".
+
+- **The grid:** editor.js `gridBuild` replaced the 1 m GridHelper (it lay at y 0.03 under the field mesh, which stands 0.3 up,
+  so it never showed). It drapes THE FIELD's squares (edges at k · 1.75 m from the room's centre, `TILE`) on the ground over the
+  shell's w × d, plus the room's edge as a yellow band; rebuilt in `onReady` (the ground is compiled then). G still toggles the
+  squares; the edge always shows. The status bar shows the room as metres and squares (12 m = 6.9 squares; 12 squares = 21 m).
+- **SNAP TILE:** the SNAP select's 1.75 option is TILE (`tileMode()`): points land on a square's middle (`snapPt`: click rows,
+  palette drops, lamps, doors, paste), rect draws cover whole squares from the press's square to the release's (`tileRect`,
+  drawPt keeps the raw `rx/rz`), stamps: a rect click = round(2·SIZE/1.75) squares round the clicked one, a disc centres on a
+  square; walls/lines still snap to square corners; moves go whole squares and one point-row lands on a middle (`tileDelta`;
+  the gizmo's own snap is off in TILE and `dragMove` places the pivot). Edge "smooth" still eases a block past its squares.
+- **The strip:** three-renderer.js `_hqBuildOuterGround`'s `outer.flat` (every new editor room) returned the field's CLAMPED edge
+  height for the whole plain, so a shape touching the room's edge ran on to the fog as a raised strip. Now the plain settles from
+  the edge back to `terrain.base` over 2.5 m (the rolling ground's own blend).
+- **The wedge:** the outer ground's skip test was strict (`qx0 > -hx`), and its 2 m lattice lands on ±hx exactly, so the ring of
+  coarse outer quads lying just inside the edge (0.1 under the field) was drawn and poked through the side of a block raised near
+  the edge. Quads on the bound are skipped now (the field runs 0.5 m past hx, so nothing opens).
+- **Rooms in squares (same day, mondo: "if I pick 12x12 m room then there should be 12x12 grid ... the exploration is supposed
+  to seamlessly transition in to a square grid battle"):** NEW ROOM asks for squares (default 72 × 72 = 126 m; NEW WORLD's
+  Room 1 is 126 m, a new dungeon 56 squares), THE SHELL shows `w squares` / `d squares` (whole squares; the metres follow,
+  `wSq`/`dSq` in fieldCommit). data.js `hqFieldGridOffset`: for his rooms (`w_` ids) an axis with an ODD whole count of squares
+  runs an odd lattice offset half a square (hqFieldTerrainInfo), so the room's edges are square edges on both sides; game rooms
+  keep the even, centred rule (site_prebuilt_hollow_earth_vent's d = 9 squares is the one game room it would have moved). The
+  editor's grid and TILE snap read the same offset (`tileOff`).
