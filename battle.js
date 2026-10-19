@@ -44634,7 +44634,7 @@
                     const kills = state.matchKills?.[p] || 0;
                     const killPts = kills * ARENA_PTS.kill;
                     pts += killPts;
-                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡' });
+                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡', unit: ['KILL', 'KILLS'] });
                     const eTw = state.towers?.[enemy];
                     let tDmg = 0;
                     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
@@ -44673,7 +44673,11 @@
                     const f1 = as1.details.find(d => d.label === lbl), f2 = as2.details.find(d => d.label === lbl);
                     const tpl = f1 || f2;
                     const a = f1 ? f1.pts : 0, b = f2 ? f2.pts : 0;
-                    return `<div class="vic-tally-row"><span class="p1${a > b ? ' lead' : ''}">${a}</span><span class="vic-tally-lbl">${tpl.icon} ${lbl}</span><span class="p2${b > a ? ' lead' : ''}">${b}</span></div>`;
+                    /* a row with a unit (Kills) also shows the real count beside the points,
+                       on the outer side of each column: "3 KILLS · 75 | 🗡 Kills | 75 · 3 KILLS" */
+                    const raw = (f) => { const n = f ? (f.raw || 0) : 0; return `<em class="vic-tally-raw">${n} ${tpl.unit[n === 1 ? 0 : 1]}</em>`; };
+                    const c1 = tpl.unit ? `${raw(f1)} · ${a}` : a, c2 = tpl.unit ? `${b} · ${raw(f2)}` : b;
+                    return `<div class="vic-tally-row"><span class="p1${a > b ? ' lead' : ''}">${c1}</span><span class="vic-tally-lbl">${tpl.icon} ${lbl}</span><span class="p2${b > a ? ' lead' : ''}">${c2}</span></div>`;
                 }).join('');
                 return `<div class="vic-card vic-tally">
                     <div class="vic-card-cap">ARENA SCORE${state.suddenDeathActive ? ' · <em class="vic-sd">⚡ SUDDEN DEATH</em>' : ''}</div>
