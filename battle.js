@@ -23925,6 +23925,11 @@
             try {
                 if (!state || state.phase !== 'battle' || state.winner) return false;
                 if (state._actionExecuting || state._walkAnimActive) return true;
+                /* THE END OF ROUND IS THE GAME'S (2026-10-19, mondo: "i do not want to see the attack ranges when i hover
+                   over a unit during the end of round phase"): from the last turn of the round until the next round's
+                   first unit activates, no unit is active and the tour plays itself. state._eorRunning is set by the
+                   host's round advance and rides the snapshot, so the guest gets the same rule. */
+                if (state._eorRunning && state._blitzActiveUnitId == null) return true;
                 const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
                     || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
                     || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
@@ -47529,7 +47534,7 @@
                 CONFIG.tileSize = computeBattleTileSize();
             }
             state.round = 1;
-            _roundAdvanceInProgress = false;
+            _roundAdvanceInProgress = false; state._eorRunning = false;
             state.startingPlayer = engineRng() < 0.5 ? 1 : 2;
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
@@ -47785,7 +47790,7 @@
             state._blitzActiveUnitId = null;
             state._skippedUnit = null;
             _blitzTurnGen++;
-            _roundAdvanceInProgress = false;
+            _roundAdvanceInProgress = false; state._eorRunning = false;
 
             for (const u of state.units) {
                 if (!u.dead) {
@@ -51854,6 +51859,7 @@
                 if (!nextUnit) {
 
                     _roundAdvanceInProgress = true;
+                    state._eorRunning = true;   // isGamePlayingOut: the end of round has the board
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -52071,7 +52077,7 @@
                             processPendingEarthquake(() => {
                             if (_blitzTurnGen !== savedGen || state.winner) return;
 
-                            _roundAdvanceInProgress = false;
+                            _roundAdvanceInProgress = false; state._eorRunning = false;
                             const firstUnit = getNextBlitzUnit();
                             _continueBlitzWithUnit(firstUnit);
                             });
@@ -52353,7 +52359,7 @@
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
-                _roundAdvanceInProgress = false;
+                _roundAdvanceInProgress = false; state._eorRunning = false;
                 state._actionExecuting = false;
                 state.aiThinking = false;
                 maybeAdvanceTurn();
