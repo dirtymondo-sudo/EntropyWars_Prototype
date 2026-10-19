@@ -3161,6 +3161,10 @@ function _hrlgStatusChips(unit) {
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
   });
+  /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
+  if (typeof getWeatherStatChips === 'function') {
+    for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
@@ -4833,7 +4837,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     let superEff = false, typeAdv = '', elemAff = null;
     // Matchup markers only make sense for casts that actually DEAL damage —
     // a pure debuff/utility can't be "super effective".
-    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellShowsDamage(spell)))
+    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellCanPress(spell)))
         && typeof getTypeDamageMultiplier === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
       const _spType = spell ? (spell.spellType || null) : null;
@@ -5999,6 +6003,15 @@ function hudSpellShowsDamage(sp) {
   return ['barrage', 'skyDrop', 'skyThrow', 'skySlam'].includes(sp.kind || '');
 }
 
+/* Can this spell earn the green ! (the press)? Every damaging row, plus the casts whose sting has no dmg field but
+   still judges the press when it lands on an enemy (Poison Seed / Leech Seed planted under one: battle.js
+   spellArmsPress). The ! itself is always battle.js forecastPressOn, aimed at the target. */
+function hudSpellCanPress(sp) {
+  if (!sp) return false;
+  if (hudSpellShowsDamage(sp)) return true;
+  return typeof window.spellArmsPress === 'function' && !!window.spellArmsPress(sp);
+}
+
 // Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
 // `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
 // burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
@@ -6784,7 +6797,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
-        press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
+        press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
           ? !!window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
@@ -7200,7 +7213,8 @@ function _showTileMoveSlidePreview(actingUnit, tx, ty, tz) {
     if (!land || typeof _drawIceSlideLeg !== 'function') return;
     const routeColor = 0x3399ff;
     const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: ThreeRenderer.unitSurfaceY(actingUnit) }];
-    for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
+    const route = (typeof walkRouteOf === 'function') ? walkRouteOf(path, land) : path;   // a storm stops the walk on its eye
+    for (const p of route) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
     if (wps.length < 2) wps.push({ x: tx, y: ty, yOverride: ThreeRenderer.tileTopY(tx, ty) });
     ThreeRenderer.drawPathArrow3D(wps, routeColor);
     wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));
@@ -7658,10 +7672,50 @@ function _chainMoveTowards(actingUnit, targetUnit) {
   }
 }
 
+/* THE AOE PLACEMENT on the quick menus (mondo 2026-10-19: "when i choose a placeable aoe spell from a unit's quick
+   target menu, it needs to let me place it first, not just fire automatically"): a tile-aimed area spell picked from
+   the enemy / ally quick menu no longer casts on the pick. It arms like the Abilities pick (setTool: the 'spells' aim
+   view, its range lit), the footprint starts on the row's own centre (the off-centre aim) and follows the cursor;
+   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms. */
+function _hrlgPlaceableAoe(spell, tx, ty) {
+  if (!spell || typeof isSpellTileTargeted !== 'function' || !isSpellTileTargeted(spell)) return false;
+  if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) return false;
+  if (typeof isTileAoeSpell === 'function' && isTileAoeSpell(spell)) return true;
+  const m = typeof _kindMeta === 'function' ? (_kindMeta(spell) || {}) : {};
+  if (m.directional || spell.hinge || spell.kind === 'teleport' || spell.kind === 'dash' || spell.kind === 'warpRune') return false;
+  const fp = typeof getSpellAoeFootprint === 'function' ? (getSpellAoeFootprint(spell, tx, ty) || []) : [];
+  return fp.length > 1;
+}
+function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
+  state._actionExecuting = false;
+  state._enemyActionTargetId = null;
+  state.pendingTarget = null;
+  if (typeof getSelectedUnit === 'function' && getSelectedUnit() !== actingUnit) return false;
+  setTool('spell', spell.name);
+  if (state.actionMode !== 'spell' || state.selectedTool !== spell.name) return true;   // refused: setTool said why
+  if (state.actionMenuView === 'spells') {
+    state.pendingTarget = { x: x, y: y, mode: 'spell', tool: spell.name, viaHover: false };
+    if (typeof updateAoePreview === 'function') {
+      try { updateAoePreview(x, y); } catch (e) { /* cosmetic */ }
+    }
+  }
+  if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+  if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  return true;
+}
+
 function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (!a.available) return;
   hideSpellTooltip();
   _clearMoveArrowPreview();
+  const _placeAoe = !!(a.spell && a.id.startsWith('spell:') && !a._teamCast && typeof setTool === 'function'
+    && _hrlgPlaceableAoe(a.spell, targetUnit.x, targetUnit.y));
+  if (_placeAoe && !a.moveTile) {
+    if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+    const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
+    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y)) return;
+  }
   // Sweep every lingering targeting visual (range overlays from blade hover,
   // AoE preview, terrain ghost, arrows) the moment the quick-cast fires —
   // doSpell/doAttack sweep again post-validation, but the walk of a
@@ -7765,6 +7819,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }
+      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
         else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
@@ -7976,7 +8031,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
     // the spell's element vs THIS enemy: immune / absorb wears the red !-circle
     let _eaImm = null;
     if (a.spell && typeof unitElementAffinity === 'function' && typeof isEnemyUnit === 'function' && isEnemyUnit(actingUnit, targetUnit)
-        && (typeof hudSpellShowsDamage !== 'function' || hudSpellShowsDamage(a.spell))) {
+        && (typeof hudSpellCanPress !== 'function' || hudSpellCanPress(a.spell))) {
       const _eaEl = (typeof getSpellElement === 'function') ? getSpellElement(a.spell) : (a.spell.element || null);
       const _eaAff = _eaEl ? unitElementAffinity(targetUnit, _eaEl) : null;
       if (_eaAff === 'immune' || _eaAff === 'absorb') _eaImm = _eaAff;

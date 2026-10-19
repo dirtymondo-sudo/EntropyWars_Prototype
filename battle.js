@@ -3769,7 +3769,10 @@
            teal fly-to tile (doMove takes off first, an airborne body never slides). opts.path: the route if known. */
         function predictWalkLanding(unit, x, y, z, opts) {
             opts = opts || {};
-            if (!unit || opts.takeoff || !isInside(x, y) || !_isIceTile(x, y)) return null;
+            if (!unit || opts.takeoff || !isInside(x, y)) return null;
+            /* 🌪 a storm eye on the way stops the walk and flings it (resolveMovePath + THE CHAIN's F) */
+            { const st = _predictWalkStorm(unit, x, y, z, opts); if (st) return st; }
+            if (!_isIceTile(x, y)) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             if (sx === x && sy === y) return null;
             try {
@@ -3797,6 +3800,70 @@
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
+        }
+        /* THE STORM FORECAST: a walk to (x, y) whose path meets a tornado / hurricane eye that would fling this body
+           (_walkStormStopAt — the tile resolveMovePath stops it on) lands where the fling's chain ends: the chain is
+           simulateArrivalChain from the eye, travelling the way the walk came in (no glide on the eye itself — a walk
+           landing never glides there). Returns the landing like the ice slide's { x, y, z, steps, fromX, fromY, fromZ }
+           plus stopIdx (the eye's index on the path: the walk route ends there) and legs (each drawn in its colour),
+           or null. */
+        function _predictWalkStorm(unit, x, y, z, opts) {
+            if (!state.activeWeather || !state.activeWeather.length || state.phase !== 'battle') return null;
+            if (!state.activeWeather.some(w => { const d = WEATHER_REGISTRY[w.type]; return d && d.homing && d.displaces; })) return null;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
+            if (unit.x === x && unit.y === y) return null;
+            let path = opts && opts.path;
+            if (!path) { try { path = findMovePath(unit, x, y, z); } catch (e) { path = null; } }
+            if (!path || !path.length) return null;
+            for (let i = 0; i < path.length; i++) {
+                const p = path[i];
+                if (!_walkStormStopAt(unit, p.x, p.y)) continue;
+                const prev = i > 0 ? path[i - 1] : { x: unit.x, y: unit.y };
+                const pz = (p.z !== undefined && p.z !== null) ? p.z : (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(p.x, p.y, unit.z) : unit.z);
+                const ch = simulateArrivalChain(unit, p.x, p.y, pz, p.x - prev.x, p.y - prev.y, { noGlide: true });
+                const steps = (ch.steps || []).filter(st => !st.bump).map(st => ({ x: st.x, y: st.y, z: st.z }));
+                return { x: ch.x, y: ch.y, z: ch.z, steps, fromX: p.x, fromY: p.y, fromZ: pz, stopIdx: i, legs: ch.legs || [], simHits: ch.simHits || [] };
+            }
+            return null;
+        }
+        window._predictWalkStorm = _predictWalkStorm;
+        window.walkStormStopAt = (unit, x, y) => !!_walkStormStopAt(unit, x, y);
+        /* the walk route the board draws: up to the tile the walk stops on when a storm takes it */
+        function walkRouteOf(path, land) {
+            return (land && land.stopIdx != null && path) ? path.slice(0, land.stopIdx + 1) : path;
+        }
+        window.walkRouteOf = walkRouteOf;
+        /* The "-N" the move ghost adds for the walk itself (THE WALK'S BURNS + the storms on the way): lava once, fire
+           once, every storm eye the route crosses (the one that stops it rides the fling's forecast hits) — each through
+           the real hit math (forecastHitOnUnit). */
+        function predictWalkHazardDamage(unit, path, land) {
+            if (!unit || unit.dead || !path || !path.length) return 0;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return 0;
+            const route = walkRouteOf(path, land);
+            const f = (raw, o) => { try { const r = forecastHitOnUnit(unit, raw, o); return r ? (r.dmg || 0) : 0; } catch (e) { return 0; } };
+            const burnO = { ignoreArmor: true, damageType: 'dot', consumeMarked: false, element: 'fire' };
+            const lavaProof = typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit);
+            let dmg = 0, lava = false, fire = false;
+            const seen = new Set();
+            route.forEach((p, i) => {
+                if (_isLavaTile(p.x, p.y)) {
+                    if (!lava && !lavaProof) { lava = true; dmg += f(LAVA_WALK_DAMAGE, burnO); }
+                } else if (_tileIsBurning(p.x, p.y)) {
+                    if (!fire && !lavaProof) { fire = true; dmg += f(BURNING_ENTER_DAMAGE, burnO); }
+                }
+                const stop = land && land.stopIdx === i;
+                for (const { weather, def } of _chainStormsAt(p.x, p.y)) {
+                    const k = String(weather.id || weather.type);
+                    if (seen.has(k) || _stormTookUnit(unit, weather)) continue;
+                    seen.add(k);
+                    if (stop && def.displaces) continue;   // the fling's own forecast hit below
+                    const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
+                    const sh = _stormSimHit(unit, def, caster);
+                    if (sh) dmg += f(sh.mid, sh.opts);
+                }
+            });
+            for (const sh of ((land && land.simHits) || [])) if (sh.unitId === unit.id) dmg += f(sh.mid, sh.opts);
+            return Math.round(dmg);
         }
         /* The tile a walk to t leaves the unit standing on (t itself when it doesn't slide). */
         function walkLandingTile(unit, t) {
@@ -3945,8 +4012,11 @@
         /* 🌪 THE FLING: a displacing storm takes `v` displaceTiles along its heading — the shared slide, the lift-spin-
            hurl arc, then the landing's own chain with the fling's momentum. THE CHAIN's step F and the end-of-round
            strike (state.js processHomingWeather) both throw through here. Returns { moved, totalMs }. */
-        function vortexFlingUnit(v, weather, def) {
+        /* fopts.delayMs: a walk tween still carrying the body into the eye — the lift-spin-hurl waits for it to arrive
+           (state never waits) */
+        function vortexFlingUnit(v, weather, def, fopts) {
             const out = { moved: false, totalMs: 0 };
+            const _fDelay = (fopts && fopts.delayMs > 0 && !_skipVisuals()) ? fopts.delayMs : 0;
             if (!v || v.dead || v._dying || !weather || !def) return out;
             const d = vortexFlingDir(weather);
             const dist = getUnitPushDistance(v, def.displaceTiles || 2);
@@ -3963,19 +4033,35 @@
             if (v.dead || v._dying || (v.x === startX && v.y === startY)) return out;
             out.moved = true;
             addLog(`${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word} to ${coordLabel(v.x, v.y)}!`);
-            const fling = (typeof window.playVortexFlingFx === 'function')
-                ? window.playVortexFlingFx(v, startX, startY, v.x, v.y, weather.type) : null;
-            if (fling && fling.usedArc) out.totalMs = fling.totalMs || 0;
-            else if (typeof animateDisplacement === 'function') {
-                animateDisplacement(v, startX, startY, v.x, v.y, 320, { delayMs: 150 });
-                out.totalMs = 470;
-            }
-            showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 });
+            const _endX = v.x, _endY = v.y;
+            const _hurl = () => {
+                const fling = (typeof window.playVortexFlingFx === 'function')
+                    ? window.playVortexFlingFx(v, startX, startY, _endX, _endY, weather.type) : null;
+                if (fling && fling.usedArc) return fling.totalMs || 0;
+                if (typeof animateDisplacement === 'function') animateDisplacement(v, startX, startY, _endX, _endY, 320, { delayMs: 150 });
+                return 470;
+            };
+            if (_fDelay > 0) {
+                /* the arc's length is the fx's own; a walk-in's hurl reads about the same */
+                window.setTimeout(_hurl, _fDelay);
+                out.totalMs = _fDelay + 1300;
+            } else out.totalMs = _hurl();
+            if (_fDelay > 0) window.setTimeout(() => showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 }), _fDelay);
+            else showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 });
             resolveTileArrival(v, { via: 'flung', dirX: res.dirX, dirY: res.dirY, noGlide: !!res.spent,
                 fxDelayMs: _skipVisuals() ? 0 : out.totalMs });
             return out;
         }
 
+        /* A storm eye's strike as a forecast hit (simHits row): the roll's range from the def (never the engine's dice),
+           the same hit options as state.js stormStrikeUnit; null when the storm spares this body. */
+        function _stormSimHit(u, def, caster) {
+            const rng = def && def.dmgRange;
+            if (!rng || !u) return null;
+            if (def.dmgSparesType && (u.types || []).includes(def.dmgSparesType)) return null;
+            return { unitId: u.id, mid: Math.round((rng[0] + rng[1]) / 2), lo: rng[0], hi: rng[1],
+                opts: { ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true, sourceUnit: (caster && !caster.dead) ? caster : undefined }, tag: def.displaces ? 'fling' : 'storm' };
+        }
         /* THE CHAIN FORECAST: what a forced move's landing at (x, y, z) sets off, walked with the real rules and no side
            effects — the ice glide, a bomb the forecaster's side can see (bombs and traps are hidden from the other
            side), a storm's fling on its heading, again from every new landing, and the hostile Nexus the body ends in.
@@ -4061,16 +4147,18 @@
                     if ((state.traps || []).some(t => t && t.x === out.x && t.y === out.y && t.owner !== u.player && (viewer == null || t.owner === viewer))) {
                         out.simNotes.push({ unitId: u.id, kind: 'trap', x: out.x, y: out.y });
                     }
-                    // F · a displacing storm flings it on its heading (once per storm per round)
-                    const vh = _chainVortexAt(out.x, out.y);
-                    const vKey = vh ? String(vh.weather.id || vh.weather.type) : '';
-                    if (vh && !usedStorms.has(vKey) && !((u._vortexStamps || {})[vKey] === (state.round || 0))) {
+                    // F · every storm eye on the tile strikes it, and a displacing one flings it on its heading (once per
+                    // storm per round — THE CHAIN's _chainVortex)
+                    let flung = false;
+                    for (const vh of _chainStormsAt(out.x, out.y)) {
+                        const vKey = String(vh.weather.id || vh.weather.type);
+                        if (usedStorms.has(vKey) || _stormTookUnit(u, vh.weather)) continue;
                         usedStorms.add(vKey);
-                        const fd = vortexFlingDir(vh.weather), fn = getUnitPushDistance(u, vh.def.displaceTiles || 2);
                         const caster = vh.weather._casterUnitId ? unitFromId(vh.weather._casterUnitId) : null;
-                        const rng = vh.def.dmgRange;
-                        if (rng) out.simHits.push({ unitId: u.id, mid: Math.round((rng[0] + rng[1]) / 2), lo: rng[0], hi: rng[1],
-                            opts: { ignoreArmor: false, element: vh.def.element || null, scaleByTargetLevel: true, sourceUnit: (caster && !caster.dead) ? caster : undefined }, tag: 'fling' });
+                        const sh = _stormSimHit(u, vh.def, caster);
+                        if (sh) out.simHits.push(sh);
+                        if (!vh.def.displaces) continue;
+                        const fd = vortexFlingDir(vh.weather), fn = getUnitPushDistance(u, vh.def.displaceTiles || 2);
                         out.simNotes.push({ unitId: u.id, kind: 'fling', x: out.x, y: out.y, dir: fd.key });
                         if (!(fn > 0)) break;
                         const sub = resolveForcedSlide(u, fd.dx, fd.dy, fn, { simulate: true, byUnit: (caster && !caster.dead) ? caster : null, viewer, noSimChain: true });
@@ -4078,8 +4166,10 @@
                         if (!(sub.moved > 0) || (sub.x === out.x && sub.y === out.y)) break;
                         leg('fling', sub, 'fling');
                         dx = sub.dirX; dy = sub.dirY; glide = !sub.spent;
-                        continue;
+                        flung = true;
+                        break;
                     }
+                    if (flung) continue;
                     break;
                 }
                 // the hostile Nexus the body ends in burns it at the round's end
@@ -4244,8 +4334,8 @@
                 if (typeof _chainStandingDoors === 'function') fired += _chainStandingDoors(unit, opts);
                 if (moved()) return fired;
 
-                // ── F · THE VORTEX ──────────────────────────────────────────
-                fired += _chainVortex(unit);
+                // ── F · THE STORMS ──────────────────────────────────────────
+                fired += _chainVortex(unit, { delayMs: (via === 'move') ? _walkTweenLeftMs(unit) : 0 });
                 if (moved()) return fired;
 
                 // ── G · THE RUNE ────────────────────────────────────────────
@@ -4282,7 +4372,10 @@
                 _soakUnit(unit);   // douses burn + applies Soaked
                 fired++;
             }
-            if (via !== 'move' && _isLavaTile(x, y)) {
+            if (via === 'move' && _isLavaTile(x, y)) {
+                // 🌋 walking onto lava burns on the spot (the walk's own once-per-walk burn)
+                if (_walkLavaBurn(unit, x, y, false)) fired++;
+            } else if (via !== 'move' && _isLavaTile(x, y)) {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return fired;
                 /* Lava is fire-element (2026-07-23): the splash damage rides the
                    pipeline with element:'fire', so a Thermal Regen kaiju HEALS
@@ -4314,9 +4407,8 @@
                 if (typeof playSfx === 'function') playSfx('drowningDamage');
             } else if (_tileIsBurning(x, y)) {
                 if (via === 'move') {
-                    // Walking into ground fire hurts NOW (and sets you burning).
-                    _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
-                        `${unitDisplayName(unit)} steps into the flames: `);
+                    // Walking into ground fire hurts NOW (and sets you burning) — once a walk.
+                    _walkFireBurn(unit, x, y, false);
                 } else {
                     // Shoved into a burning tile → the flames bite immediately.
                     _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
@@ -4417,23 +4509,48 @@
             return fired;
         }
 
-        // F · a tornado / hurricane standing on the tile takes the body NOW
-        function _chainVortex(unit) {
-            const hit = _chainVortexAt(unit.x, unit.y);
-            if (!hit) return 0;
-            const { weather, def } = hit;
-            if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) return 0;
-            addLog(`${def.icon} ${_ctName(unit)} lands in the ${def.label} at ${coordLabel(unit.x, unit.y)}!`);
-            const roll = def.homingDamage ? def.homingDamage(unit) : null;
-            if (roll && roll.amount > 0) {
-                applyDamageToUnit(unit, roll.amount, `${roll.text}`, {
-                    ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true
-                });
-                if (unit.dead) return 1;
+        /* F · THE STORMS: every homing storm whose eye holds the tile strikes the body that lands on it NOW (mondo
+           2026-10-19: "Check all cyclones to make sure their effects or flinging happen when a unit lands on them. Or
+           path through them") — the same strike as the round's end (state.js stormStrikeUnit: the soak, the roll, the
+           blind), and a tornado / hurricane then flings it on its heading. Once per storm per body per round. A walk
+           that crosses an eye meets it here too (resolveMovePath: a flinging eye stops the walk on it, the others
+           strike in passing). fopts.delayMs: the walk tween still carrying the body in. */
+        function _chainStormsAt(x, y) {
+            const list = state.activeWeather;
+            if (!list || !list.length || typeof WEATHER_REGISTRY === 'undefined') return [];
+            const out = [];
+            for (const w of list) {
+                const def = WEATHER_REGISTRY[w.type];
+                if (!def || !def.homing || !w.tiles) continue;
+                if (w.tiles.some(t => t.x === x && t.y === y)) out.push({ weather: w, def });
             }
-            /* 🧭 THE FORCED MOVE: the storm's heading this round (vortexFlingDir), the shared slide, the landing's chain */
-            vortexFlingUnit(unit, weather, def);
-            return 1;
+            return out;
+        }
+        window._chainStormsAt = _chainStormsAt;
+        /* has this storm already taken this body this round (the round-end strike, a landing, a walk through)? */
+        function _stormTookUnit(unit, weather) {
+            return ((unit && unit._vortexStamps) || {})[String(weather.id || weather.type)] === (state.round || 0);
+        }
+        function _chainVortex(unit, fopts) {
+            let fired = 0;
+            const x = unit.x, y = unit.y;
+            for (const { weather, def } of _chainStormsAt(x, y)) {
+                if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) continue;
+                addLog(`${def.icon} ${_ctName(unit)} ${(fopts && fopts.passing) ? 'runs through' : 'lands in'} the ${def.label} at ${coordLabel(x, y)}!`);
+                fired++;
+                stormStrikeUnit(unit, weather, def);
+                if (unit.dead || unit._dying) return fired;
+                /* 🧭 THE FORCED MOVE: the storm's heading this round (vortexFlingDir), the shared slide, the landing's chain */
+                if (def.displaces) {
+                    vortexFlingUnit(unit, weather, def, fopts);
+                    if (unit.dead || unit._dying || unit.x !== x || unit.y !== y) return fired;
+                }
+            }
+            return fired;
+        }
+        /* the time left on this body's walk tween (0 when it isn't walking) */
+        function _walkTweenLeftMs(unit) {
+            return (!_skipVisuals() && _walkAnimActive && unit && _walkAnimUnitId === unit.id) ? Math.max(0, _walkAnimEndAt - Date.now()) : 0;
         }
 
         // 🌋 Knockback into hazards (the historical name every displacement
@@ -4762,7 +4879,15 @@
             const nz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, z) : 0;
             const climbCap = (typeof MAX_CLIMB_HEIGHT !== 'undefined') ? MAX_CLIMB_HEIGHT : 1;
             if (nz - z > climbCap) return { kind: 'wall', nx, ny, lip: true };
-            if (!canOccupy(nx, ny)) return { kind: 'wall', nx, ny };   // turret / tower / object
+            /* a forecast (simulate) leaves the body standing where it started: a rebound back onto that tile must not
+               read the body itself as the blocker (the real slide has already moved it off) */
+            let _free;
+            if (occ === mover) {
+                const _ox = mover.x, _oy = mover.y;
+                mover.x = -999; mover.y = -999;
+                try { _free = canOccupy(nx, ny); } finally { mover.x = _ox; mover.y = _oy; }
+            } else _free = canOccupy(nx, ny);
+            if (!_free) return { kind: 'wall', nx, ny };   // turret / tower / object
             return { kind: 'open', nx, ny, nz };
         }
 
@@ -10792,16 +10917,18 @@
             return Math.round(dmg);
         }
 
+        let _moveHoverWalk = null;   // the hovered walk's { path, land } while its ghost is drawn (the walk's own "-N")
         /* Bundle both predictions for the ghost hologram. Returns null when
            there is nothing to warn about (no badge → no visual noise). */
-        function _moveGhostBadges(unit, x, y, z) {
+        function _moveGhostBadges(unit, x, y, z, walk) {
             const badges = {};
             try {
                 const st = predictStealthAtTile(unit, x, y, z);
                 if (st) badges.eye = st.seen ? 'seen' : 'hidden';
             } catch (e) {}
             try {
-                const d = predictMoveHazardDamage(unit, x, y, z);
+                const d = predictMoveHazardDamage(unit, x, y, z)
+                    + ((walk && walk.path) ? predictWalkHazardDamage(unit, walk.path, walk.land) : 0);
                 if (d > 0) badges.dmg = d;
             } catch (e) {}
             return (badges.eye || badges.dmg) ? badges : null;
@@ -23925,6 +24052,11 @@
             try {
                 if (!state || state.phase !== 'battle' || state.winner) return false;
                 if (state._actionExecuting || state._walkAnimActive) return true;
+                /* THE END OF ROUND IS THE GAME'S (2026-10-19, mondo: "i do not want to see the attack ranges when i hover
+                   over a unit during the end of round phase"): from the last turn of the round until the next round's
+                   first unit activates, no unit is active and the tour plays itself. state._eorLive is set by the
+                   host's round advance (_setRoundAdvance) and rides the snapshot, so the guest gets the same rule. */
+                if (state._eorLive && state._blitzActiveUnitId == null) return true;
                 const _rt = (typeof window._isSimulMode === 'function' && window._isSimulMode())
                     || (typeof window._isStrikeRT === 'function' && window._isStrikeRT())
                     || (typeof _mdLockstepActive === 'function' && _mdLockstepActive());
@@ -35110,6 +35242,8 @@
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
+            // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
+            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
@@ -37425,6 +37559,9 @@
                 /* 🌬 THE GUST STREAM (the user, 2026-09-25): a walk into a Gust Door's lane stops on the first windy tile and
                    the wind takes it from there (the chain's E′) — a body the wind cannot move (colossal) walks on */
                 if (typeof gustStreamAt === 'function' && gustStreamAt(unit, x, y)) return { kind: 'gust', x, y };
+                /* 🌪 a tornado / hurricane eye stops the walk on it and flings the walker (the chain's F, mondo
+                   2026-10-19) — once per storm per body per round; a body it cannot move walks on through it */
+                if (_walkStormStopAt(unit, x, y)) return { kind: 'storm', x, y };
             }
             const visibleHourglasses = groundHourglassesAt(x, y).filter(h => h.visibleTo?.[unit.player]);
 
@@ -38907,6 +39044,15 @@
         /* Does casting this spell arm the press collector (doSpell)? The previews ask the same question. */
         function spellArmsPress(spell) {
             if (!spell) return false;
+            /* THE CONTACT BOMB PRESSES (mondo 2026-10-19: "i am using it on a cowboy ... it WAS super effective, so why
+               does it not show it in the spell list"): Place Bomb dropped straight onto a grounded enemy goes off inside
+               the cast (doSpell _placementStruck) and ends the turn like any damaging cast, so its blast judges the press
+               and the green ! shows it. A bomb on an empty tile records no hit: no press, the turn stays alive. */
+            if (spell.kind === 'bomb') return true;
+            /* …and so do the two damaging seeds (mondo 2026-10-19: "posion seed and leech seed need the same fix as the
+               place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
+               the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
+            if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
             return _PRESS_SPELL_KINDS.has(spell.kind)
                 || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
                 || (spell.kind !== 'delayed' && spellDealsDamage(spell));
@@ -42130,6 +42276,18 @@
            (flagged slide: it glides that leg, three-renderer THE ACTION PREVIEW MOTION). */
         var ICE_SLIDE_HEX = 0x00d0ff;
         function _drawIceSlideLeg(land, yAt) {
+            if (land && land.legs) {
+                /* 🌪 a storm's fling (and what it sets off): each leg its own arrow in its own colour (ui.js EW_CHAIN_LEG) */
+                const wps = [];
+                for (const L of land.legs) {
+                    const hex = ((typeof window !== 'undefined' && window.EW_CHAIN_LEG) || {})[L.kind] || ICE_SLIDE_HEX;
+                    const pts = [{ x: L.fromX, y: L.fromY, yOverride: yAt(L.fromX, L.fromY, L.fromZ) }];
+                    for (const st of L.steps) pts.push({ x: st.x, y: st.y, yOverride: yAt(st.x, st.y, st.z), slide: L.kind === 'ice' || undefined });
+                    try { ThreeRenderer.drawPathArrow3D(pts, hex); } catch (e) { /* cosmetic */ }
+                    wps.push(...pts.slice(1));
+                }
+                return wps;
+            }
             if (!land || !land.steps || !land.steps.length) return [];
             const wps = [{ x: land.fromX, y: land.fromY, yOverride: yAt(land.fromX, land.fromY, land.fromZ) }];
             for (const st of land.steps) wps.push({ x: st.x, y: st.y, yOverride: yAt(st.x, st.y, st.z), slide: true });
@@ -42138,6 +42296,15 @@
         }
         /* The tile marks of a slide: the walked-to tile and each glided tile in ice blue (the landing is the caller's). */
         function _iceSlideMarks(land) {
+            if (land && land.legs) {
+                const fl = ((typeof window !== 'undefined' && window.EW_CHAIN_LEG) || {}).fling || 0x7fffd4;
+                const out = [{ x: land.fromX, y: land.fromY, z: land.fromZ, color: fl, opacity: 0.7 }];
+                for (const L of land.legs) {
+                    const hex = ((typeof window !== 'undefined' && window.EW_CHAIN_LEG) || {})[L.kind] || ICE_SLIDE_HEX;
+                    for (let i = 0; i < L.steps.length - 1; i++) out.push({ x: L.steps[i].x, y: L.steps[i].y, z: L.steps[i].z, color: hex, opacity: 0.4 });
+                }
+                return out;
+            }
             if (!land || !land.steps) return [];
             const out = [{ x: land.fromX, y: land.fromY, z: land.fromZ, color: ICE_SLIDE_HEX, opacity: 0.45 }];
             for (let i = 0; i < land.steps.length - 1; i++) {
@@ -42337,7 +42504,7 @@
                     marks.push({ x: ex, y: ey, color: routeColor, opacity: 0.45, z: ez });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
                     ThreeRenderer.showGhostUnit(unit, ex, ey, _wpY(ex, ey, ez), { tag: 'caster', color: ghostTint, opacity: 0.85,
-                        badges: _moveGhostBadges(unit, ex, ey, ez), motion: motion || null });
+                        badges: _moveGhostBadges(unit, ex, ey, ez, _moveHoverWalk), motion: motion || null });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
                 };
@@ -42444,15 +42611,19 @@
                         }
 
                         const path = findMovePath(unit, x, y, dest.z);
+                        // THE SLIDE FORECAST: the ice leg after the walk (doMove's own slide rule) — or the storm that
+                        // stops the walk on its eye and flings it (the route ends on the eye)
+                        const land = predictWalkLanding(unit, x, y, dest.z, { path: path });
+                        const route = walkRouteOf(path, land);
                         const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
-                        _pushPathWps(wps, { x: unit.x, y: unit.y, z: unit.z ?? 0 }, path);
+                        _pushPathWps(wps, { x: unit.x, y: unit.y, z: unit.z ?? 0 }, route);
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
                         else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y, dest.z), { flow: true });
                         if (wps.length < 2) wps.push({ x: x, y: y, yOverride: _wpY(x, y, dest.z) });
-                        // THE SLIDE FORECAST: the ice leg after the walk (doMove's own slide rule)
-                        const land = predictWalkLanding(unit, x, y, dest.z, { path: path });
                         if (land) wps.push(..._drawIceSlideLeg(land, _wpY));
-                        _showDest(routeColor, null, dest.z, { wps: wps, kind: _isAir ? 'fly' : 'walk' }, land);
+                        _moveHoverWalk = { path, land };
+                        try { _showDest(routeColor, null, dest.z, { wps: wps, kind: _isAir ? 'fly' : 'walk' }, land); }
+                        finally { _moveHoverWalk = null; }
                         return;
                     }
                 }
@@ -47533,7 +47704,7 @@
                 CONFIG.tileSize = computeBattleTileSize();
             }
             state.round = 1;
-            _roundAdvanceInProgress = false;
+            _setRoundAdvance(false);
             state.startingPlayer = engineRng() < 0.5 ? 1 : 2;
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
@@ -47789,7 +47960,7 @@
             state._blitzActiveUnitId = null;
             state._skippedUnit = null;
             _blitzTurnGen++;
-            _roundAdvanceInProgress = false;
+            _setRoundAdvance(false);
 
             for (const u of state.units) {
                 if (!u.dead) {
@@ -51857,7 +52028,7 @@
 
                 if (!nextUnit) {
 
-                    _roundAdvanceInProgress = true;
+                    _setRoundAdvance(true);
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -52075,7 +52246,7 @@
                             processPendingEarthquake(() => {
                             if (_blitzTurnGen !== savedGen || state.winner) return;
 
-                            _roundAdvanceInProgress = false;
+                            _setRoundAdvance(false);
                             const firstUnit = getNextBlitzUnit();
                             _continueBlitzWithUnit(firstUnit);
                             });
@@ -52357,7 +52528,7 @@
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
-                _roundAdvanceInProgress = false;
+                _setRoundAdvance(false);
                 state._actionExecuting = false;
                 state.aiThinking = false;
                 maybeAdvanceTurn();
@@ -52783,6 +52954,21 @@
         let _aiActionGen = 0;
 
         let _roundAdvanceInProgress = false;
+        /* THE STEADY END OF ROUND (2026-10-19, mondo: "during the end of round, the combat log keeps fading in and out
+           between camera movements, either keep it on or keep it off for the end of round"): state._eorLive mirrors the
+           end-of-round sequence (synced, so the online guest has it too); three-renderer _takeoverBodyClasses turns it
+           into body.ew-eor and the combat log stays up from the first beat to the round's first unit. */
+        function _setRoundAdvance(on) {
+            _roundAdvanceInProgress = !!on;
+            if (!!state._eorLive !== !!on) {
+                state._eorLive = !!on;
+                if (typeof window._broadcastState === 'function') { try { window._broadcastState(); } catch (e) {} }
+            }
+        }
+        function isEndOfRoundLive() {
+            return !!(state && state.phase === 'battle' && !state.winner && state._eorLive);
+        }
+        window.isEndOfRoundLive = isEndOfRoundLive;
 
         function clearAiSafetyTimer() {
             if (_aiSafetyTimer) {
@@ -58721,6 +58907,66 @@
         }
 
         function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
+            _walkBurnt = {};
+            try { _resolveMovePath(unit, path, destinationX, destinationY, startIndex, destZ); }
+            finally { _walkBurnt = null; }
+        }
+        /* 🔥 THE WALK'S BURNS (mondo 2026-10-19: "if i walk on them at any point in my path, i should get burned"): lava
+           and ground fire bite a walker on every tile of the path, the landing included (THE CHAIN's B reads this) —
+           once each per walk, so a run through a wall of fire burns once, not once a tile. */
+        let _walkBurnt = null;
+        const LAVA_WALK_DAMAGE = 30;   // wading into lava (being THROWN in is _chainGround's 60)
+        function _walkLavaBurn(unit, x, y, passing) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (_walkBurnt && _walkBurnt.lava) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return false;
+            if (_walkBurnt) _walkBurnt.lava = 1;
+            /* fire element: a Thermal Regen kaiju drinks it (the pipeline heals) and takes no burn */
+            const _drinker = (typeof unitPassiveValue === 'function') && unitPassiveValue(unit, 'healedByElement') === 'fire';
+            if (!_drinker) {
+                const st = ensureUnitStatus(unit);
+                st.burn = Math.max(st.burn || 0, 3);
+            }
+            applyDamageToUnit(unit, LAVA_WALK_DAMAGE, `${unitDisplayName(unit)} ${passing ? 'wades through' : 'steps into'} the lava: `, {
+                ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn', element: 'fire'
+            });
+            if (_drinker) return true;
+            addLog(`🌋 ${_ctName(unit)} ${passing ? 'wades through' : 'steps into'} the lava at ${coordLabel(x, y)} and bursts into flame!`);
+            showFloatingTextForUnit(unit, '🌋 LAVA!', 'damage', { durationMs: 1200 });
+            if (typeof playSfx === 'function') playSfx('burningDamage');
+            return true;
+        }
+        function _walkFireBurn(unit, x, y, passing) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (_walkBurnt && _walkBurnt.fire) return false;
+            if (_walkBurnt) _walkBurnt.fire = 1;
+            return _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE, `${unitDisplayName(unit)} ${passing ? 'runs through' : 'steps into'} the flames: `);
+        }
+        /* a tornado / hurricane eye on (x, y) that would fling this walker now (getPathPickupEvent stops the walk there) */
+        function _walkStormStopAt(unit, x, y) {
+            if (!unit || (typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) return null;
+            return _chainStormsAt(x, y).find(h => h.def.displaces && !_stormTookUnit(unit, h.weather)
+                && getUnitPushDistance(unit, h.def.displaceTiles || 2) > 0) || null;
+        }
+        /* What a tile the walk crosses (not the one it ends on: that is THE CHAIN's) does to the walker in passing:
+           lava, ground fire, and every storm eye on it (a flinging eye already stopped the walk; one that cannot move
+           this body strikes it and it walks on). */
+        function _walkPassHazards(unit, x, y) {
+            if (!unit || unit.dead || unit._dying) return;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
+            if (_isLavaTile(x, y)) _walkLavaBurn(unit, x, y, true);
+            else if (_tileIsBurning(x, y)) _walkFireBurn(unit, x, y, true);
+            if (unit.dead || unit._dying) return;
+            for (const { weather, def } of _chainStormsAt(x, y)) {
+                if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) continue;
+                addLog(`${def.icon} ${_ctName(unit)} runs through the ${def.label} at ${coordLabel(x, y)}!`);
+                stormStrikeUnit(unit, weather, def, { x, y });
+                if (unit.dead || unit._dying) return;
+                if (def.displaces) vortexFlingUnit(unit, weather, def);   // it holds firm (weight / Windborne)
+            }
+        }
+        function _resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
             // Machine Elves' laser beams sear anything that walks across them
             // (once per move; airborne units pass over untouched).
             const _laserNet = _enemyBeamTilesFor(unit);
@@ -58752,7 +58998,16 @@
                 collectMatDropsAt(unit, step.x, step.y);
 
                 const event = getPathPickupEvent(unit, step.x, step.y);
-                if (!event) continue;
+                if (!event) {
+                    if (i < path.length - 1) {
+                        _walkPassHazards(unit, step.x, step.y);
+                        if (unit.dead || unit._dying) {
+                            completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z);
+                            return;
+                        }
+                    }
+                    continue;
+                }
 
                 completeMoveAlongPath(unit, event.x, event.y, event.kind, destinationX, destinationY,
                     (event.x === step.x && event.y === step.y) ? step.z : undefined);
@@ -59788,6 +60043,14 @@
             }
 
             const path = findMovePath(unit, x, y, z);
+            /* The walk the board plays ends where the walk really stops — the first tile on the path that takes the
+               body (an enemy bomb or trap, a door, a gust, a storm eye that flings it: resolveMovePath stops there),
+               so the tween never runs on past the tile it is thrown from. */
+            let _walkPath = path;
+            for (let _wi = 0; _wi < path.length - 1; _wi++) {
+                if (getPathPickupEvent(unit, path[_wi].x, path[_wi].y)) { _walkPath = path.slice(0, _wi + 1); break; }
+            }
+            const _wEnd = _walkPath.length ? _walkPath[_walkPath.length - 1] : { x, y };
             // A REPLAYED remote move executes on the host as "human", but the
             // local viewer is the opponent — take the AI (fog-aware, partial-
             // path) animation branch below so the camera never trails a hidden
@@ -59799,41 +60062,41 @@
 
             const _skipWasdAnim = state._wasdMoveSkipAnim;
             if (_skipWasdAnim) state._wasdMoveSkipAnim = false;
-            const shouldAnimate = !_skipWasdAnim && !state.cameraDisabled && path.length > 0;
+            const shouldAnimate = !_skipWasdAnim && !state.cameraDisabled && _walkPath.length > 0;
             let _aiWalkAnimDelay = 0;
 
             /* Unit animation override: race-specific moving sprite */
             if (_applySpriteOverride(unit, null, 'moveSprite')) {
                 const ov = UNIT_ANIM_OVERRIDES[unit.race];
                 if (ov?.flipOnTravel) {
-                    const _travelDx = x - unit.x;
+                    const _travelDx = _wEnd.x - unit.x;
                     unit._spriteFlipX = (_travelDx > 0);
                 }
                 markDirty('board');
             }
 
             if (isHuman && shouldAnimate) {
-                animateWalkPath(unit, path);
+                animateWalkPath(unit, _walkPath);
             } else if (!isHuman && shouldAnimate) {
                 const unitCurrentlyVisible = _shouldCameraFollowUnit(unit);
-                const destVisible = _isTileVisibleToViewer(x, y);
+                const destVisible = _isTileVisibleToViewer(_wEnd.x, _wEnd.y);
 
                 if (unitCurrentlyVisible) {
                     if (destVisible) {
 
-                        animateWalkPath(unit, path);
-                        const stepMs = Math.max(80, Math.min(160, 140 - path.length * 8));
-                        const walkDurationMs = path.length * stepMs;
+                        animateWalkPath(unit, _walkPath);
+                        const stepMs = Math.max(80, Math.min(160, 140 - _walkPath.length * 8));
+                        const walkDurationMs = _walkPath.length * stepMs;
                         animateBoardCameraPath(
                             { x: startX, y: startY },
-                            { x: x, y: y },
+                            { x: _wEnd.x, y: _wEnd.y },
                             { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                         );
                         playSfx('moveStep');
                         _aiWalkAnimDelay = walkDurationMs + 180;
                     } else {
 
-                        const fullPath = [{ x: startX, y: startY }, ...path];
+                        const fullPath = [{ x: startX, y: startY }, ..._walkPath];
                         let lastVisibleIdx = 0;
                         for (let i = 0; i < fullPath.length; i++) {
                             if (_isTileVisibleToViewer(fullPath[i].x, fullPath[i].y)) {
@@ -59860,7 +60123,7 @@
                     }
                 } else if (destVisible && !isUnitConcealedFrom(unit, getViewerPlayer())) {
 
-                    const fullPath = [{ x: startX, y: startY }, ...path];
+                    const fullPath = [{ x: startX, y: startY }, ..._walkPath];
                     let firstVisibleIdx = -1;
                     for (let i = 0; i < fullPath.length; i++) {
                         if (_isTileVisibleToViewer(fullPath[i].x, fullPath[i].y)) {
@@ -59885,7 +60148,7 @@
 
                             animateBoardCameraPath(
                                 { x: entryX, y: entryY },
-                                { x: x, y: y },
+                                { x: _wEnd.x, y: _wEnd.y },
                                 { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                             );
                             playSfx('moveStep');
@@ -59915,11 +60178,11 @@
             if (_hadMoveSprite && !unit._spriteOverride) markDirty('board');
 
             // Facing: end the move looking the way the last step traveled.
-            if (path.length >= 2) {
-                const _fPrev = path[path.length - 2];
-                setUnitFacing(unit, x - _fPrev.x, y - _fPrev.y);
+            if (_walkPath.length >= 2) {
+                const _fPrev = _walkPath[_walkPath.length - 2];
+                setUnitFacing(unit, _wEnd.x - _fPrev.x, _wEnd.y - _fPrev.y);
             } else {
-                setUnitFacing(unit, x - startX, y - startY);
+                setUnitFacing(unit, _wEnd.x - startX, _wEnd.y - startY);
             }
 
             resolveMovePath(unit, path, x, y, 0, z);
