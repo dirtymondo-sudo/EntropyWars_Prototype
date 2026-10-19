@@ -10357,6 +10357,9 @@ const ThreeRenderer = (function () {
         var TAU = Math.PI * 2, ps = P.patScale;
         var sstep = function (a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
         var line = function (dd, h) { var q = dd / Math.max(1e-4, h); q = q * q; return Math.exp(-q * q); };   // flat-topped, soft-sided
+        /* a dotted rim: round dots a little fatter than the line, spaced so the gaps read at battle distance */
+        var dotR = hw * 1.4, dotPer = Math.max(0.2, P.rimW * 4);
+        var dotD = function (al, dd) { var f = (al / dotPer - Math.floor(al / dotPer) - 0.5) * dotPer; return Math.sqrt(f * f + (dd - rc) * (dd - rc)); };
         for (var py = 0; py < chh; py++) {
             for (var px = 0; px < cw; px++) {
                 var u = (px + 0.5) / PX, v = (py + 0.5) / PX, o = (py * cw + px) * 4;
@@ -10376,12 +10379,10 @@ const ThreeRenderer = (function () {
                 if (paint) {
                     var rim;
                     if (P.rimStyle === 'double') rim = Math.max(line(dist - (P.rimIn + hw * 0.5), hw * 0.5), line(dist - (P.rimIn + P.rimW * 1.6), hw * 0.5));
-                    else if (P.rimStyle === 'dotted') {
-                        var per = Math.max(0.08, P.rimW * 2.4), f = (along / per - Math.floor(along / per) - 0.5) * per;
-                        rim = line(Math.sqrt(f * f + (dist - rc) * (dist - rc)), hw);
-                    } else {
+                    else if (P.rimStyle === 'dotted') rim = line(dotD(along, dist), dotR);
+                    else {
                         rim = line(dist - rc, hw);
-                        if (P.rimStyle === 'dashed') { var fd = along / 0.25 - Math.floor(along / 0.25); rim *= sstep(0, 0.08, fd) * (1 - sstep(0.52, 0.6, fd)); }
+                        if (P.rimStyle === 'dashed') { var fd = along / 0.4 - Math.floor(along / 0.4); rim *= sstep(0, 0.08, fd) * (1 - sstep(0.52, 0.6, fd)); }
                     }
                     var pat = 0;
                     if (P.pattern !== 'none' && P.patAmt > 0) {
@@ -10397,7 +10398,11 @@ const ThreeRenderer = (function () {
                     }
                     a = P.fill + P.rim * rim + pat;
                 } else {
-                    a = P.glow * Math.exp(-dist / P.glowW) + P.halo * Math.exp(-Math.pow((dist - rc) / (hw + P.haloW), 2));
+                    /* the rim glow follows a dashed or dotted rim (a solid band of light over the gaps hid them) */
+                    var hd = P.rimStyle === 'dotted' ? dotD(along, dist) : dist - rc, hr = P.rimStyle === 'dotted' ? dotR + P.haloW * 0.6 : hw + P.haloW;
+                    var hm = 1;
+                    if (P.rimStyle === 'dashed') { var fh = along / 0.4 - Math.floor(along / 0.4); hm = 0.15 + 0.85 * sstep(0, 0.1, fh) * (1 - sstep(0.5, 0.62, fh)); }
+                    a = P.glow * Math.exp(-dist / P.glowW) + P.halo * hm * Math.exp(-Math.pow(hd / hr, 2));
                 }
                 d[o + 3] = Math.round(255 * Math.max(0, Math.min(1, a)) * feather);
             }

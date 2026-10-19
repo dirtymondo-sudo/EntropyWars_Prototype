@@ -1728,6 +1728,10 @@ them to the arrows and highlights section so i can change their settings and app
 - Maps redraw in place on a look change (`_nxZoneTex` keeps one texture per shape + look + layer, `_ewSig`); materials
   are shared per (map, side) and `_zonePaint` writes colour × brightness, opacity and the pulse every frame. Look defaults
   live twice: three-renderer.js ZONE_LOOK_DEF and hud.js zoneDefs(); keep them equal.
+- The rim glow follows a dashed or dotted rim (dash period 0.4 tiles; dots 1.4× the line, spaced max(0.2, 4 × width)):
+  with a solid band of glow over the gaps, a dotted rim read exactly like a solid one on the real board.
+- Checked in a real battle (Arena + TDM, classic WebGL and ?ew_gpu=webgl2): every zs* / zn* control and colour changes
+  the board. ?ew_gpu=webgpu in the sandbox Chromium draws black (three's createView `swizzle` is not supported there).
 
 ## THE SLIDE FORECAST (2026-10-18)
 mondo: "the spell preview/move forecast should account for sliding on ice. i dont want to move+cast and then move and be out
