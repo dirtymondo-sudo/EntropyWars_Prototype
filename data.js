@@ -5562,8 +5562,7 @@ const SPELL_LIBRARY = [
         }],
         terrainDeform: { centerDelta: -2, edgeDelta: -1 },
         demolishesBuildings: true,
-        bonusVsStatus: { status: 'burn', mult: 1.5 },
-        desc: 'Deals HEAVY magic damage to All Enemies in a 3×3 AOE. Applies Burn. Knocks flying targets out of the sky. Destroys buildings. Leaves scorched tiles behind. Reshapes the ground on impact. Cooldown: 2 rounds. Deals bonus damage to Burning targets.'
+        desc: 'Deals HEAVY magic damage to All Enemies in a 3×3 AOE. Applies Burn. Knocks flying targets out of the sky. Destroys buildings. Leaves scorched tiles behind. Reshapes the ground on impact. Cooldown: 2 rounds.'
     },
 
 
@@ -5615,8 +5614,7 @@ const SPELL_LIBRARY = [
             id: 'silence',
             duration: 1
         }],
-        bonusVsStatus: { status: 'silence', mult: 1.5 },
-        desc: 'Deals HEAVY magic damage to All Enemies in a 3×3 and Silences them. Deals bonus damage to Silenced targets.'
+        desc: 'Deals HEAVY magic damage to All Enemies in a 3×3 and Silences them.'
     },
 
     {
@@ -5688,8 +5686,7 @@ const SPELL_LIBRARY = [
             id: 'discord',
             duration: 2
         }],
-        bonusVsStatus: { status: 'discord', mult: 1.5 },
-        desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to targets with Discord. Cooldown: 2 rounds.'
+        desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Lowers ATK by 2 stages and DEF by 1 stage. Cooldown: 2 rounds.'
     },
 
 
@@ -6147,9 +6144,8 @@ const SPELL_LIBRARY = [
         { id: 'raceMiasma', name: 'Miasma', tier: 4, families: ['poison'], cost: 100, apCost: 2, cooldownRounds: 2,
           spellType: 'unholy', element: 'poison', type: 'damage', kind: 'aoe', range: 4, dmg: 160,
           damageType: 'magic', aoeRadius: 2, statusEffects: [{ id: 'poison', duration: 3 }],
-          bonusVsStatus: { status: 'poison', mult: 1.5 },
           leaveTerrain: 'poison', leaveTerrainRadius: 1,   // THE SPELL AUDIT Batch D: only the middle 3x3 stays poisoned
-          desc: 'The air goes green. HEAVY magic damage to a 5x5, Poison on all of it, and the middle stays poisoned after. Deals bonus damage to targets with Poison. The centre 3x3 turns to poison ground.' },
+          desc: 'The air goes green. HEAVY magic damage to a 5x5, Poison on all of it, and the middle stays poisoned after. The centre 3x3 turns to poison ground.' },
         { id: 'raceCampaignPromise', name: 'Campaign Promise', tier: 2, families: ['politics'], cost: 50, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round.' },
@@ -6940,8 +6936,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 100, range: 3, apCost: 1,
           kind: 'damage', damageType: 'magic', vfxWeight: 'standard',
           statusEffects: [{ id: 'slow', duration: 2 }],
-          bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow. Deals bonus damage to targets with Slow.' },
+          desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow.' },
         SHARED_SMOKE_SCREEN,
     ],
     'werewolf': [
@@ -7422,9 +7417,10 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 3, families: ['psychadelic'], cost: 75, dmg: 140, range: 3,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          /* §6.9 (wave B): Voodoo joins Slow as the payoff status. */
-          bonusVsStatus: { status: ['slow', 'voodoo'], mult: 1.5 },
-          desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Slow. Deals bonus damage to targets with Slow or Voodoo.' },
+          /* §6.9 (wave B): Voodoo joined Slow as the payoff status. 2026-10-19 (mondo): no spell pays off on a status it
+             applies itself, so Slow left the payoff — Voodoo only. */
+          bonusVsStatus: { status: 'voodoo', mult: 1.5 },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Slow. Deals bonus damage to targets with Voodoo.' },
         /* §6.9 Sacrifice (Phase 5 wave B, 2026-09-08): the `transfer` kind —
            TWO clicks (the ally who gives, then the ally who receives): takes
            30% of the giver's max HP (never below 1 HP) and heals the
@@ -8249,7 +8245,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 3, families: ['infernalcourt'], cost: 75, dmg: 115, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
-          bonusVsStatus: { status: ['burn', 'stagger'], mult: 1.5 },
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },   // 2026-10-19 (mondo): Burn left — it applies Burn itself
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Burn. Deals bonus damage to Staggered targets.' },
         { id: 'raceDemonicRoar', tier: 1, families: ['demonicabilities'], spellType: 'unholy', name: 'Demonic Roar',
           type: 'debuff', cost: 25, range: 0, apCost: 1,
@@ -8269,8 +8265,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 3, families: ['infernalcourt'], cost: 75, dmg: 125, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'silence', duration: 1 }],
-          bonusVsStatus: { status: 'silence', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence. Deals bonus damage to targets with Silence.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence.' },
         /* Ring-3 payoff since 2026-08-16 (was ring 1 — top-10 dmg/MP in
            stats18 at 25 MP): the drain kiss now prices as tier II. */
         { id: 'raceKissOfDecay', element: 'poison', spellType: 'unholy', name: 'Kiss of Decay',
@@ -8278,8 +8273,7 @@ const RACE_ABILITIES = {
           families: ['infernalcourt'],
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
           statusEffects: [{ id: 'poison', duration: 3 }],
-          bonusVsStatus: { status: 'poison', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Poison. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
+          desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Poison. Heals the caster for part of the damage dealt.' },
         SHARED_POISON_SWAMP,
         SHARED_SUMMON_BLOOD_RAIN
     ],
@@ -8326,8 +8320,7 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           statusEffects: [{ id: 'burn', duration: 2 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          bonusVsStatus: { status: 'burn', mult: 1.5 },
-          desc: 'Dives from the sky onto the target, dealing MEDIUM magic damage. Applies Burn. Deals bonus damage to targets with Burn. Caster must be flying.' },
+          desc: 'Dives from the sky onto the target, dealing MEDIUM magic damage. Applies Burn. Caster must be flying.' },
         SHARED_SUMMON_BLOOD_RAIN,
         SHARED_WING_ATTACK
     ],
@@ -8390,8 +8383,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 4, families: ['fallenangel'], cost: 60, dmg: 160, range: 4,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 1 }],
-          bonusVsStatus: { status: 'burn', mult: 1.5 },
-          desc: 'Deals HEAVY magic damage to All Enemies in a cross-shaped AOE. Applies Burn. Deals bonus damage to Staggered targets.' },
+          desc: 'Deals HEAVY magic damage to All Enemies in a cross-shaped AOE. Applies Burn.' },
         SHARED_FISSURE,
         SHARED_WING_ATTACK
     ],
@@ -8437,8 +8429,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'poison', duration: 3 }],
-          bonusVsStatus: { status: 'poison', mult: 1.5 },
-          desc: 'Deals MEDIUM physical damage to a Single Enemy and Poisons them. A second bite on an envenomed target finds the vein.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy and Poisons them.' },
         { id: 'raceDimensionalWeb', tier: 3, families: ['arachnid'], spellType: 'alien', name: 'Dimensional Web',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -8479,8 +8470,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 4, families: ['superheropowers'], cost: 60, dmg: 160, range: 3,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'burn', duration: 1 }],
-          bonusVsStatus: { status: 'burn', mult: 1.5 },
-          desc: 'Deals HEAVY magic damage to All Enemies in a line. Applies Burn. Deals bonus damage to Burning targets.' },
+          desc: 'Deals HEAVY magic damage to All Enemies in a line. Applies Burn.' },
         { id: 'raceShockwaveClap', tier: 3, statusEffects: [{ id: 'stagger', duration: 1 }], families: ['superheropowers'], element: 'sonic', spellType: 'human', name: 'Shockwave Clap',
           type: 'damage', cost: 25, dmg: 125, range: 4,
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
@@ -8722,7 +8712,7 @@ const RACE_ABILITIES = {
           lineZone: true, zoneDuration: 2,
           desc: 'A short gout of flame. Deals MEDIUM magic damage to All Enemies in a 3-tile line and Burns them; the tiles keep burning for 2 rounds — anyone ending a turn there catches fire.' },
         { id: 'raceDragonfire', element: 'fire', spellType: 'unholy', name: 'Dragonfire',
-          type: 'damage', tier: 4, bonusVsStatus: { status: 'burn', mult: 1.5 }, families: ['dragonabilities'], cost: 60, dmg: 160, range: 4,
+          type: 'damage', tier: 4, families: ['dragonabilities'], cost: 60, dmg: 160, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'burn', duration: 3 }],
           desc: 'Exhale a roaring column of dragonfire, dealing HEAVY magic damage to All Enemies in a line. Applies Burn.' },
@@ -8859,8 +8849,7 @@ const RACE_ABILITIES = {
           leaveTerrain: 'deep_water',
           statusEffects: [{ id: 'slow', duration: 2 }],
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },
-          bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Applies Slow. Deals bonus damage to targets with Slow. Leaves deep_water behind. Cooldown: 2 rounds.' },
+          desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Applies Slow. Leaves deep_water behind. Cooldown: 2 rounds.' },
         { id: 'raceCryptidVanish', tier: 2, families: ['cryptid'], spellType: 'anomaly', name: 'Cryptid Vanish',
           type: 'utility', cost: 50, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 2,
@@ -8891,8 +8880,7 @@ const RACE_ABILITIES = {
         _mkCharge({ id: 'raceAvalancheStrike', upgradesBlock: ['upBlast'], spellType: 'anomaly', element: 'ice', name: 'Avalanche Strike',
           tier: 4, cooldownRounds: 2, families: ['winter'], cost: 100, dmg: 180, range: 3, apCost: 1,
           statusEffects: [{ id: 'frozen', duration: 1 }],
-          bonusVsStatus: { status: 'frozen', mult: 1.5 },
-          desc: 'Charges into melee in a wall of snow, dealing HEAVY physical damage to a Single Enemy and freezing it solid for 1 turn. Deals bonus damage to targets already Frozen.' }),
+          desc: 'Charges into melee in a wall of snow, dealing HEAVY physical damage to a Single Enemy and freezing it solid for 1 turn.' }),
         /* 2026-08-16 balance (stats18): at its ring-2 ladder price (50 MP)
            this was ~2 dmg/MP, bottom of the game — numbers raised to earn
            the slot. */
