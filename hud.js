@@ -12068,10 +12068,15 @@ const ROLES = [
 const SHAPES = [
   ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
   ['tab', 'Tab'], ['scoop', 'Scoop'], ['pixel', 'Pixel'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
-  ['shard', 'Shard'], ['jagged', 'Jagged'],
+  ['shard', 'Shard'], ['jagged', 'Jagged'], ['trap', 'Trapezoid'],
 ];
-const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1 };   // drawn whole and scaled to the box
-const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes' };                       // whole shapes the size slider still shapes
+const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1, trap: 1 };   // drawn whole and scaled to the box
+const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes', trap: 'Slant' };                // whole shapes the size slider still shapes
+/* THE TRAPEZOID (mondo 2026-10-19: "i would like a trapezoid shape for the panels please, the closest right now is shard
+   but i want a trapezoid with straight top and bottom edges"): the size slants both sides, 0..40 = 0..20% of the width
+   in at the top; below 0 the top is the wide edge; lean = both sides slant the same way (straight top + bottom still).
+   The key shapePath draws: 'trapl' is the leaning one. */
+function shapeKey(s) { return s && s.shape === 'trap' && s.lean ? 'trapl' : (s && s.shape) || 'round'; }
 const MATERIALS = [
   ['aluminium', 'Aluminium'], ['gunmetal', 'Gunmetal'], ['metal', 'Steel'], ['copper', 'Copper'], ['gold', 'Gold'],
   ['marble', 'Marble'], ['marble_light', 'Light marble'], ['enamel', 'Enamel'], ['crystal', 'Crystal'],
@@ -12576,9 +12581,19 @@ function img(src) {
   return (_img[src] = e);
 }
 function shapePath(ctx, shape, x, y, w, h, s) {
+  const s0 = +s || 0;
   s = Math.max(0, Math.min(s, w / 2, h / 2));
   ctx.beginPath();
   switch (shape) {
+    case 'trap': case 'trapl': {
+      const a = Math.min(0.2, Math.abs(s0) / 200) * w, up = s0 >= 0;
+      if (shape === 'trap') {
+        if (up) { ctx.moveTo(x + a, y); ctx.lineTo(x + w - a, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); }
+        else { ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - a, y + h); ctx.lineTo(x + a, y + h); }
+      } else if (up) { ctx.moveTo(x + a, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - a, y + h); ctx.lineTo(x, y + h); }
+      else { ctx.moveTo(x, y); ctx.lineTo(x + w - a, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x + a, y + h); }
+      break;
+    }
     case 'round': case 'pill': ctx.moveTo(x + s, y); ctx.arcTo(x + w, y, x + w, y + h, s); ctx.arcTo(x + w, y + h, x, y + h, s); ctx.arcTo(x, y + h, x, y, s); ctx.arcTo(x, y, x + w, y, s); break;
     case 'tab': ctx.moveTo(x + s, y); ctx.arcTo(x + w, y, x + w, y + h, s); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.arcTo(x, y, x + w, y, s); break;
     case 'bevel': ctx.moveTo(x + s, y); ctx.lineTo(x + w - s, y); ctx.lineTo(x + w, y + s); ctx.lineTo(x + w, y + h - s); ctx.lineTo(x + w - s, y + h); ctx.lineTo(x + s, y + h); ctx.lineTo(x, y + h - s); ctx.lineTo(x, y + s); break;
@@ -12634,7 +12649,7 @@ function shapePath(ctx, shape, x, y, w, h, s) {
   }
   ctx.closePath();
 }
-function insetSize(shape, s, d) { return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
+function insetSize(shape, s, d) { if (shape === 'trap' || shape === 'trapl') return s; return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
 function skinGeom(s) {
   const full = !!FULL_SHAPES[s.shape];
   const N0 = Math.max(1, Math.min(4, Math.round(+s.pixel || 1))), px = v => (N0 > 1 && v > 0 ? Math.max(N0, Math.round(v / N0) * N0) : v);
@@ -12653,7 +12668,8 @@ function skinGeom(s) {
 const _skinCache = new Map(), _pixelCss = new Set();
 function bakeSkin(s) {
   if (!s) return null;
-  const key = JSON.stringify(s);
+  const key = JSON.stringify(s, (k, v) => (k === 'edge' ? undefined : v));   // the colour edge is drawn by CSS, not baked
+  const SK = shapeKey(s);
   if (_skinCache.has(key)) return _skinCache.get(key);
   const mat = s.fill && s.fill.kind === 'material' && s.material && s.material.src ? img(s.material.src)
     : (s.material && s.material.src && +s.material.mix > 0 ? img(s.material.src) : null);
@@ -12666,12 +12682,12 @@ function bakeSkin(s) {
   const x = g.O, y = g.O, w = g.W - 2 * g.O, h = g.H - 2 * g.O, sz = +s.size || 0;
   ctx.globalAlpha = Math.max(0, Math.min(1, s.opacity == null ? 1 : +s.opacity));
   // shadow + glow under the shape, then cut the shape out so a see-through fill stays see-through
-  const drawUnder = (col, blur, oy) => { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * K; ctx.shadowOffsetY = oy * K; ctx.fillStyle = '#000'; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.fill(); ctx.restore(); };
+  const drawUnder = (col, blur, oy) => { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * K; ctx.shadowOffsetY = oy * K; ctx.fillStyle = '#000'; shapePath(ctx, SK, x, y, w, h, sz); ctx.fill(); ctx.restore(); };
   if (s.shadow && +s.shadow.a > 0 && (+s.shadow.blur || +s.shadow.y)) drawUnder(`rgba(0,0,0,${+s.shadow.a})`, +s.shadow.blur || 0, +s.shadow.y || 0);
   if (s.glow && +s.glow.r > 0 && +s.glow.a > 0) { drawUnder(withAlpha(s.glow.c, +s.glow.a), +s.glow.r, 0); drawUnder(withAlpha(s.glow.c, +s.glow.a * 0.6), +s.glow.r * 0.5, 0); }
-  ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.globalAlpha = 1; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.globalAlpha = 1; shapePath(ctx, SK, x, y, w, h, sz); ctx.fill(); ctx.restore();
   // the fill
-  ctx.save(); shapePath(ctx, s.shape, x, y, w, h, sz); ctx.clip();
+  ctx.save(); shapePath(ctx, SK, x, y, w, h, sz); ctx.clip();
   const f = s.fill || {};
   const fa = f.alpha == null ? 1 : +f.alpha;
   ctx.globalAlpha *= fa;
@@ -12720,7 +12736,7 @@ function bakeSkin(s) {
     const bv2 = ctx.createLinearGradient(x, y, x + w, y + h);
     bv2.addColorStop(0, `rgba(255,255,255,${+s.bevel.light})`); bv2.addColorStop(0.5, 'rgba(0,0,0,0)'); bv2.addColorStop(1, `rgba(0,0,0,${+s.bevel.dark})`);
     ctx.lineWidth = +s.bevel.w * 2 + g.ow * 2;
-    ctx.strokeStyle = g.full ? bv2 : bv2; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.stroke();
+    ctx.strokeStyle = g.full ? bv2 : bv2; shapePath(ctx, SK, x, y, w, h, sz); ctx.stroke();
     // the corner slices keep the light/dark split on the long edges too
     ctx.lineWidth = +s.bevel.w; ctx.strokeStyle = `rgba(255,255,255,${+s.bevel.light})`;
     ctx.beginPath(); ctx.moveTo(x, y + g.ow + +s.bevel.w / 2); ctx.lineTo(x + w, y + g.ow + +s.bevel.w / 2); ctx.stroke();
@@ -12729,8 +12745,8 @@ function bakeSkin(s) {
   }
   ctx.restore();
   // the outlines
-  if (g.ow > 0) { const d = g.ow / 2; ctx.lineWidth = g.ow; ctx.strokeStyle = s.outline.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
-  if (g.iw > 0) { const d = g.ow + g.gap + g.iw / 2; ctx.lineWidth = g.iw; ctx.strokeStyle = s.inner.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
+  if (g.ow > 0) { const d = g.ow / 2; ctx.lineWidth = g.ow; ctx.strokeStyle = s.outline.c; shapePath(ctx, SK, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(SK, sz, d)); ctx.stroke(); }
+  if (g.iw > 0) { const d = g.ow + g.gap + g.iw / 2; ctx.lineWidth = g.iw; ctx.strokeStyle = s.inner.c; shapePath(ctx, SK, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(SK, sz, d)); ctx.stroke(); }
   if (+s.dither > 0) {   // PS1 colour: an ordered (Bayer 4x4) dither down to 15-bit (or 12-bit for the strong one)
     try {
       const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data, W4 = cv.width;
@@ -12785,6 +12801,110 @@ function roleSkin(t, role) {
   return b ? b.css : null;            // null = still loading
 }
 
+/* ── THE COLOUR EDGE (mondo 2026-10-19: "see the colored lines sticking out at the left end of the action menu? those need
+   to be put into the ui maker or they need to automatically follow what the shape of the button panel is so that they
+   dont stick out like that"). A battle command row wears its job's colour (move teal, attack red, a spell's type) as a
+   band down its LEFT side. Under a skin that band was a 3px inset shadow on the square box, so a shard / hex / round
+   button showed it poking out past its shape. Now it is drawn INSIDE the skin's own shape: the shape's left side
+   (edgeChain), moved in by the gap, as wide as the width, above the skin and under the words. skins.button.edge (every
+   row) + skins.buttonSel.edge (the selected row, which follows the Selected shape; unset keys come from the Button one).
+   A surface opts in with edge: { row, sel, dead, pe, legacy }. ── */
+const EDGE_DEF = { on: true, w: 3, gap: null, ends: null, a: 1, c: '', dead: true };
+function edgeOf(t, role) {
+  const sk = (t && t.skins) || {}, b = sk.button && sk.button.edge, e = role === 'buttonSel' && sk.buttonSel && sk.buttonSel.on ? sk.buttonSel.edge : null;
+  const E = Object.assign({}, EDGE_DEF, b && typeof b === 'object' ? b : {}, e && typeof e === 'object' ? e : {});
+  ['gap', 'ends'].forEach(k => { if (E[k] === '' || (E[k] != null && !isFinite(+E[k]))) E[k] = null; });
+  return E;
+}
+/* the skin a command row wears for a role (null = no skin: the row keeps the game's own look); an unset Selected skin is
+   the Button one with a frame of at least 2px, as roleSkin makes it */
+function roleSpec(t, role) {
+  if (!t || t.builtin || !t.skins) return null;
+  let s = t.skins[role];
+  if ((!s || !s.on) && role === 'buttonSel') {
+    const b = t.skins.button; if (!b || !b.on) return null;
+    s = b.slice ? b : Object.assign({}, b, { outline: Object.assign({}, b.outline, { w: Math.max(2, +b.outline.w || 0) }) });
+  }
+  return s && s.on ? s : null;
+}
+/* the left side of a skin's shape, top to bottom, as [x %, x px, y %, y px] points: the border box IS the shape (a whole
+   shape is stretched to it, a sliced one keeps its corners in px); a 9-slice image counts as square */
+function edgeChain(s) {
+  const P = (fx, px, fy, py) => [fx, px, fy, py], out = [];
+  if (!s || s.slice) return [P(0, 0, 0, 0), P(0, 0, 100, 0)];
+  const z = Math.max(0, +s.size || 0);
+  const arc = (r, a0, a1, bot, n) => { for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; out.push(P(0, r + r * Math.cos(a), bot ? 100 : 0, (bot ? -r : r) + r * Math.sin(a))); } };
+  switch (s.shape) {
+    case 'round': case 'pill': case 'pixel': arc(z, Math.PI * 1.5, Math.PI, false, 6); arc(z, Math.PI, Math.PI / 2, true, 6); return out;
+    case 'tab': arc(z, Math.PI * 1.5, Math.PI, false, 6); out.push(P(0, 0, 100, 0)); return out;
+    case 'bevel': return [P(0, z, 0, 0), P(0, 0, 0, z), P(0, 0, 100, -z), P(0, z, 100, 0)];
+    case 'notch': return [P(0, z, 0, 0), P(0, 0, 0, z), P(0, 0, 100, 0)];
+    case 'scoop':
+      for (let i = 0; i <= 6; i++) { const a = Math.PI / 2 * i / 6; out.push(P(0, z * Math.cos(a), 0, z * Math.sin(a))); }
+      for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + Math.PI / 2 * i / 6; out.push(P(0, z * Math.cos(a), 100, z * Math.sin(a))); }
+      return out;
+    case 'hex': return [P(25, 0, 0, 0), P(0, 0, 50, 0), P(25, 0, 100, 0)];
+    case 'diamond': return [P(50, 0, 0, 0), P(0, 0, 50, 0), P(50, 0, 100, 0)];
+    case 'circle': for (let d = 240; d >= 120; d -= 10) { const a = d * Math.PI / 180; out.push(P(50 + 50 * Math.cos(a), 0, 50 + 50 * Math.sin(a), 0)); } return out;
+    case 'shard': { const k = Math.min(1, z / 20); return [P(8 * k, 0, 16 * k, 0), P(0, 0, 100, 0)]; }
+    case 'trap': { const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2); return s0 >= 0 ? [P(a, 0, 0, 0), P(0, 0, 100, 0)] : [P(0, 0, 0, 0), P(a, 0, 100, 0)]; }
+    case 'jagged': { const d = Math.min(Math.max(z, 2), 50, 30); return [P(d / 2, 0, d / 1.2, 0), P(d / 2, 0, 100 - d / 1.2, 0)]; }   // the spikes' base line
+    default: return [P(0, 0, 0, 0), P(0, 0, 100, 0)];
+  }
+}
+/* the band as a clip-path: the left side moved in by the gap, the ends pulled in by the end gap; auto = just inside the
+   outline (a whole shape's outline is stretched with it, so its auto gaps are parts of the box) */
+function edgeClip(s, E) {
+  const g = s && !s.slice ? skinGeom(s) : null, full = !!(g && g.full), ow = g ? g.ow : 0;
+  const gx = E.gap != null ? [0, +E.gap] : full ? [ow / (g.W - 2 * g.O) * 100, 0] : [0, ow];
+  const gy = E.ends != null ? [0, +E.ends] : full ? [ow / (g.H - 2 * g.O) * 100, 0] : [0, ow];
+  let ch = edgeChain(s);
+  if (!full) {   // sliced corners are in px from their own edge: cut exactly where the ends land
+    const v = gy[1];
+    let i = 0; while (i < ch.length && ch[i][2] === 0 && ch[i][3] < v) i++;
+    if (i > 0) {
+      const A = ch[i - 1], B = ch[i];
+      const p = B && B[2] === 0 ? [0, A[1] + (B[1] - A[1]) * (v - A[3]) / ((B[3] - A[3]) || 1), 0, v] : [A[0], A[1], 0, v];
+      ch = [p].concat(ch.slice(i));
+    }
+    let j = ch.length - 1; while (j >= 0 && ch[j][2] === 100 && ch[j][3] > -v) j--;
+    if (j < ch.length - 1) {
+      const A = ch[j + 1], B = ch[j];
+      const p = B && B[2] === 100 ? [0, A[1] + (B[1] - A[1]) * (-v - A[3]) / ((B[3] - A[3]) || 1), 100, -v] : [A[0], A[1], 100, -v];
+      ch = ch.slice(0, j + 1).concat([p]);
+    }
+  } else {
+    ch = ch.map(p => p.slice());
+    ch[0][2] += gy[0]; ch[0][3] += gy[1];
+    ch[ch.length - 1][2] -= gy[0]; ch[ch.length - 1][3] -= gy[1];
+  }
+  const w = Math.max(0.5, +E.w || 0), r = v => Math.round(v * 1000) / 1000;
+  const L = (a, b) => (a && b ? `calc(${r(a)}% + ${r(b)}px)` : a ? `${r(a)}%` : `${r(b)}px`);
+  const left = ch.map(p => `${L(p[0] + gx[0], p[1] + gx[1])} ${L(p[2], p[3])}`);
+  const right = ch.slice().reverse().map(p => `${L(p[0] + gx[0], p[1] + gx[1] + w)} ${L(p[2], p[3])}`);
+  return `polygon(${left.concat(right).join(', ')})`;
+}
+function edgeCss(S, T) {
+  const X = S.edge; if (!X || !T || T.builtin) return '';
+  const pe = X.pe || '::before', kids = list => parts(list).map(x => x + pe).join(', ');
+  let css = '', any = false;
+  [['button', X.row], ['buttonSel', X.sel]].forEach(([role, list]) => {
+    const s = roleSpec(T, role);
+    if (!s) {   // no skin: the row keeps the game's own left border (and the inset line the command window always had)
+      if (X.legacy) css += `${pre(list)} { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; }\n`;
+      css += `${pre(kids(list))} { content: none; }\n`;
+      return;
+    }
+    any = true;
+    const E = edgeOf(T, role);
+    css += `${pre(list)} { isolation: isolate; }\n`;
+    if (E.on && +E.w > 0 && +E.a > 0) css += `${pre(kids(list))} { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: ${E.c || 'var(--bc, var(--hfc, transparent))'}; opacity: ${Math.max(0, Math.min(1, +E.a))}; clip-path: ${edgeClip(s, E)}; }\n`;
+    else css += `${pre(kids(list))} { content: none; }\n`;
+  });
+  if (any && X.dead && !edgeOf(T, 'button').dead) css += `${preHi(kids(X.dead))} { content: none !important; }\n`;
+  return css;
+}
+
 /* ── THE SURFACES: every menu / HUD the maker can theme ──
    native: the screen already reads the tokens (THE COLOUR PASS / THE HQ HUD PASS), so only
    skins + text are added. Otherwise the generated THEME PASS paints its roles from the tokens.
@@ -12807,7 +12927,11 @@ const UIM_SURFACES = [
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
        its plate tokens when the theme has no panel skin. Built-in themes keep their solid rows and no window. */
-    keep: '.hrlg-blade .hrlg-body { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; } .hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
+    /* each command row's colour edge, inside its skin's shape (THE COLOUR EDGE, edgeCss); a row with no skin keeps the
+       inset line it always had (legacy) */
+    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
+      dead: '.hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body', legacy: true },
+    keep: '.hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
   { id: 'battlePop', label: 'Battle pop-ups', hint: 'The inspect card, the weather tip, the centre banner.', native: false, def: 'theme', noAnim: true,
     scope: '#unitHoverHud, .ew-weather-tip, #announcementBanner',
     roles: {
@@ -12993,7 +13117,8 @@ const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
     buttonSel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', chip: '#uimPreview .uimp-chip', chipOn: '#uimPreview .uimp-chip.on',
     input: '#uimPreview .uimp-input', ink: '#uimPreview .uimp-ink', mute: '#uimPreview .uimp-mute', dim: '#uimPreview .uimp-dim',
     hero: '#uimPreview .uimp-hero' },
-  titles: '#uimPreview .uimp-title', cursor: '#uimPreview .uimp-btn.sel::before' };
+  titles: '#uimPreview .uimp-title', cursor: '#uimPreview .uimp-btn.sel::before',
+  edge: { row: '#uimPreview .uimp-btn', sel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', dead: '#uimPreview .uimp-btn.off', pe: '::after' } };
 
 /* ── THE HUD LAYOUT: pieces the player can move, scale, fade or hide (db.layout[id] = { x, y, s, o, hide }) ──
    def = where the piece sits on a 16:9 screen before it has been seen (l/r/t/b px from that edge, cx/cy px from the
@@ -13793,6 +13918,11 @@ function qpShapeClip(s, w, h) {
     case 'diamond': return 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
     case 'hex': { const d = Math.max(1, Math.round(Math.min(h / 2, w / 4))); return `polygon(${d}px 0, calc(100% - ${d}px) 0, 100% 50%, calc(100% - ${d}px) 100%, ${d}px 100%, 0 50%)`; }
     case 'shard': return `polygon(${pc(8 * k)} ${pc(16 * k)}, 100% 0, ${pc(100 - 5 * k)} ${pc(100 - 10 * k)}, 0 100%)`;
+    case 'trap': {
+      const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2), up = s0 >= 0;
+      if (s.lean) return up ? `polygon(${pc(a)} 0, 100% 0, ${pc(100 - a)} 100%, 0 100%)` : `polygon(0 0, ${pc(100 - a)} 0, 100% 100%, ${pc(a)} 100%)`;
+      return up ? `polygon(${pc(a)} 0, ${pc(100 - a)} 0, 100% 100%, 0 100%)` : `polygon(0 0, 100% 0, ${pc(100 - a)} 100%, ${pc(a)} 100%)`;
+    }
     case 'bevel': return `polygon(${z}px 0, calc(100% - ${z}px) 0, 100% ${z}px, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, ${z}px 100%, 0 calc(100% - ${z}px), 0 ${z}px)`;
     case 'notch': return `polygon(${z}px 0, 100% 0, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, 0 100%, 0 ${z}px)`;
     case 'round': case 'pill': case 'tab': case 'scoop': case 'pixel': return `inset(0 round ${z}px)`;
@@ -15029,6 +15159,7 @@ function surfaceCss(S, T, tid, gid) {
     if (r === 'buttonSel' || r === 'chipOn') css += `${pre(S.roles[r])} { color: var(--ew-sel) !important; }\n`;
   });
   if (S.keep && T && !T.builtin) css += preRules(S.keep) + '\n';
+  css += edgeCss(S, T);
   // the motion: windows open, the cursor points
   const mo = T && !T.builtin ? motionOf(T) : null;
   if (mo && mo.open !== 'none' && S.roles.panel && !S.noAnim) {
@@ -15546,7 +15677,7 @@ function shapeIcon(shape) {
   const cv = document.createElement('canvas'); cv.width = 80; cv.height = 48;
   const ctx = cv.getContext('2d'); ctx.scale(2, 2);
   ctx.fillStyle = '#2a4f86'; ctx.strokeStyle = '#cfe2ff'; ctx.lineWidth = 1.5;
-  shapePath(ctx, shape, 3, 3, 34, 18, 7); ctx.fill(); ctx.stroke();
+  shapePath(ctx, shape, 3, 3, 34, 18, shape === 'trap' ? 30 : 7); ctx.fill(); ctx.stroke();
   return cv;
 }
 /* ── undo / redo (whole-theme snapshots; a slider drag is one step) ── */
@@ -15671,10 +15802,10 @@ function renderPreview() {
         <div class="uimp-ink" data-r="ink">The ink: names and numbers</div>
         <div class="uimp-mute" data-r="mute">The muted ink: sub-lines</div>
         <div class="uimp-dim" data-r="dim">The dim ink: notes</div>
-        <div class="uimp-btn" data-r="button"><span>MOVE</span><span>⇢</span></div>
-        <div class="uimp-btn sel" data-r="buttonSel"><span>ATTACK</span><span>⚔</span></div>
-        <div class="uimp-btn" data-r="button"><span>ABILITIES</span><span>▲</span></div>
-        <div class="uimp-btn off" data-r="button"><span>ITEMS</span><span>✕</span></div>
+        <div class="uimp-btn" data-r="button" style="--bc:#3fd9c8"><span>MOVE</span><span>⇢</span></div>
+        <div class="uimp-btn sel" data-r="buttonSel" style="--bc:#ff5a4a"><span>ATTACK</span><span>⚔</span></div>
+        <div class="uimp-btn" data-r="button" style="--bc:#5aa8ff"><span>ABILITIES</span><span>▲</span></div>
+        <div class="uimp-btn off" data-r="button" style="--bc:#4fe08a"><span>ITEMS</span><span>✕</span></div>
         <div class="uimp-chips"><span class="uimp-chip on" data-r="chipOn">ON</span><span class="uimp-chip" data-r="chip">OFF</span><span class="uimp-chip" data-r="chip">AUTO</span></div>
         <div class="uimp-well" data-r="well"><span class="uimp-mute">A well inside a window</span><input class="uimp-input" data-r="input" value="Text field"></div>
       </div>
@@ -15713,10 +15844,16 @@ function skinForm(t, role, inDock, o) {
   if (role === 'hero' && !inDock && !own) h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
   if (!s.on) return own ? h : h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
   h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
-  if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
+  const edge = !own && (role === 'button' || role === 'buttonSel') ? edgeForm(t, role, s) : '';
+  if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>` + edge;
   const full = FULL_SHAPES[s.shape];
+  const sized = s.shape === 'trap'
+    ? fRange('Slant', `${P}.size`, -40, 40, 1, s.size, 'Above 0 the top edge is the short one, below 0 the bottom edge')
+      + `<div class="uim-f"><label>Lean one way</label><div><input type="checkbox" data-path="${P}.lean" data-bool="1"${s.lean ? ' checked' : ''}><span class="uim-note" style="margin:0">Both sides slant the same way; the top and bottom stay straight.</span></div></div>`
+    : SIZED_FULL[s.shape] ? fRange(SIZED_FULL[s.shape], `${P}.size`, 0, 40, 1, s.size) : '';
   h += sec('shape', 'Shape', `<div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`
-    + (full ? (SIZED_FULL[s.shape] ? fRange(SIZED_FULL[s.shape], `${P}.size`, 0, 40, 1, s.size) : '') + '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
+    + (full ? sized + '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
+  h += edge;
   const f = s.fill, k = f.kind;
   let fb = fSeg('Kind', `${P}.fill.kind`, [['solid', 'Solid'], ['gradient', 'Gradient'], ['corners', '4 corners', 'Each corner its own colour, blended across the window'], ['radial', 'Radial'], ['material', 'Material'], ['none', 'None']], k);
   if (k === 'corners') {
@@ -15752,6 +15889,22 @@ function skinForm(t, role, inDock, o) {
   if (own) return h;
   h += `<div class="uim-btns"><button class="uim-btn" data-act="copyskin">Copy skin</button><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button><button class="uim-btn" data-act="skinall" title="Every other role gets this shape, frame and light (keeping its own colours)">Use on every role</button><button class="uim-btn" data-act="resetskin">Reset</button><button class="uim-btn" data-act="toslice">Save as a 9-slice</button></div>`;
   return h;
+}
+/* THE COLOUR EDGE's section (Button + Selected roles): what is set on Selected is for the selected row only */
+function edgeForm(t, role, s) {
+  const E = edgeOf(t, role), P = `skins.${role}.edge`, g = s.slice ? null : skinGeom(s), ow = g ? g.ow : 0, sel = role === 'buttonSel';
+  let b = `<div class="uim-f"><label>Show</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${E.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${E.on ? 'Each battle action row wears its colour down the left side of this shape.' : 'Off: no colour edge on ' + (sel ? 'the selected row.' : 'the action rows.')}</span></div></div>`;
+  if (E.on) {
+    b += fRange('Width', `${P}.w`, 0.5, 16, 0.5, E.w)
+      + fRange('Gap from the side', `${P}.gap`, 0, 24, 0.5, E.gap != null ? E.gap : ow, 'How far in from the left side of the shape the colour starts (until moved: just inside the outline)')
+      + fRange('Gap at the ends', `${P}.ends`, 0, 24, 0.5, E.ends != null ? E.ends : ow, 'How far short of the top and bottom of the shape the colour stops')
+      + fColorOpt('One colour', `${P}.c`, E.c, '#ffffff', true, 'Off: each action its own colour (move teal, attack red, abilities blue, a spell its type colour)')
+      + fRange('Opacity', `${P}.a`, 0, 1, 0.01, E.a);
+    if (!sel) b += `<div class="uim-f"><label>Greyed-out rows</label><div><input type="checkbox" data-path="${P}.dead" data-bool="1"${E.dead ? ' checked' : ''}><span class="uim-note" style="margin:0">Rows you cannot pick keep a grey edge.</span></div></div>`;
+  }
+  b += `<div class="uim-note">${sel ? 'The selected row\'s edge follows the Selected shape. What you set here is for the selected row only; the rest comes from the Button role.' : 'The edge follows the shape above (its slant, its points, its round corners) and never sticks out of it. The selected row follows the Selected role\'s shape.'}</div>`
+    + `<div class="uim-btns"><button class="uim-btn" data-act="resetedge">Reset edge</button></div>`;
+  return sec('edge', 'Colour edge', b, E.on ? E.w + 'px' : 'off');
 }
 function contrast(a, b) {
   const L = c => { const p = parseCss(c) || { r: 0, g: 0, b: 0 }; const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(p.r) + 0.7152 * f(p.g) + 0.0722 * f(p.b); };
@@ -16027,6 +16180,7 @@ function onClick(e, root) {
     if (path.endsWith('.fill.kind') && v === 'corners') { s.fill.c2 = s.fill.c2 || shade(s.fill.c1 || '#223', -0.3); s.fill.c4 = s.fill.c4 || shade(s.fill.c3 || '#000', -0.3); }
     if (path.endsWith('.shape') && v === 'pill' && (+s.size || 0) < 10) s.size = 14;
     if (path.endsWith('.shape') && v === 'pixel' && (+s.size || 0) < 6) s.size = 8;
+    if (path.endsWith('.shape') && v === 'trap' && !(Math.abs(+s.size || 0) >= 4 && Math.abs(+s.size || 0) <= 24)) s.size = 12;
     touch('insp'); return;
   }
   const act = b.dataset.act; if (!act) return;
@@ -16062,6 +16216,7 @@ function onClick(e, root) {
   }
   else if (act === 'copyskin') { UI.clip = clone(draftOf(T).skins[UI.role]); toast('Skin copied. Open another role (or theme) and PASTE SKIN.'); render('insp'); }
   else if (act === 'pasteskin') { if (!UI.clip) return; const t = materialize(); snap(t, true); t.skins[UI.role] = Object.assign(clone(UI.clip), { on: true }); touch('insp'); }
+  else if (act === 'resetedge') { const t = materialize(); snap(t, true); if (t.skins[UI.role]) delete t.skins[UI.role].edge; touch('insp'); }
   else if (act === 'resetskin') { const t = materialize(); snap(t, true); t.skins[UI.role] = blankSkin(t.colors, UI.role); t.skins[UI.role].on = true; touch('insp'); }
   else if (act === 'skinall') {
     const t = materialize(); snap(t, true); const s = t.skins[UI.role];
