@@ -46081,7 +46081,7 @@ const HQ_WORLD_DOC_RULES = {
     roomPrefix: 'w_room',           // w_room1, w_room2 … (labels Room 1, Room 2 … until he types one — plain labels, R5)
     /* NEW WORLD's first room = a FLAT EMPTY ground: one open terrain room, no features, no props, no doors, no treeline, a plain
        day sky with no scenery roster (the sheets are the bucket's own: lawn grass_2, cliff rocks_5, path dirt — mondo's ruling) */
-    room: { w: 128, d: 128, h: 9, floor: 'grass_2', cliff: 'rocks_5', path: 'dirt' },
+    room: { w: 126, d: 126, h: 9, floor: 'grass_2', cliff: 'rocks_5', path: 'dirt' },   // 72 × 72 battle squares (1.75 m): the editor sizes rooms in squares (2026-10-19)
     maxRoomM: 512,                  // a room's side (the compile is per room)
     editKey: 'edit',                // the ONE key the runtime ignores (R1)
     rowLists: ['terrain.features', 'terrain.marks', 'props', 'doors', 'counters', 'agents', 'npcSpots', 'onlineSpots', 'climbs', 'stairs'],
@@ -54510,6 +54510,19 @@ function hqFieldRaster(roomId, ox, oz, W, H, opts) {
    at the centre, `key` the sheet under it (the path sheet on a path, the wade's water, the room's floor), `hazard` a liquid
    the walker never enters, `tree` a trunk, `bridge` a deck's layer when the ground under the centre is not walked. A cell's
    LEVEL is not decided here — it is THE TIER RULE over the window's own lowest IN cell (hqFieldRasterTerrain). */
+/* THE SQUARES OF AN EDITOR ROOM (2026-10-19 — mondo: "if I pick 12x12 m room then there should be 12x12 grid ... the exploration is
+   supposed to seamlessly transition in to a square grid battle"): the editor sizes his rooms in whole battle squares; a terrain
+   lattice is centred on the room with an EVEN count (edges at k · C), which put an odd-sized room's edges half a square off its
+   squares. For his rooms (`w_` ids) an axis whose side is an odd whole number of squares is offset half a square (edges at
+   (k + ½) · C), so the room's edge is a square's edge on both sides. Game rooms keep the even rule (their arenas are baked on it).
+   → { x, z }: 0 or C / 2, the lattice edges' offset from the room's centre (the editor's drawn grid reads the same) */
+function hqFieldGridOffset(room, roomId) {
+    const C = HQ_FIELD_RULES.terrain.cell, S = (room && room.shell) || {}, out = { x: 0, z: 0 };
+    if (!room || !room.terrain || String(roomId || '').indexOf(HQ_WORLD_DOC_RULES.idPrefix) !== 0) return out;
+    const odd = v => { const n = (+v || 0) / C, r = Math.round(n); return r > 0 && Math.abs(n - r) < 1e-6 && (r % 2) === 1; };
+    if (odd(S.w)) out.x = C / 2; if (odd(S.d)) out.z = C / 2;
+    return out;
+}
 function hqFieldTerrainInfo(roomId) {
     const room = (DOOR_HQ.rooms || {})[roomId];
     if (!room || !room.terrain) return null;
@@ -54518,8 +54531,10 @@ function hqFieldTerrainInfo(roomId) {
     const TR = HQ_FIELD_RULES.terrain, C = TR.cell, R = info.rules || HQ_TERRAIN_RULES;
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
     const known = (k) => !!(k && (!tid || tid[k]));
-    const halfW = info.halfW - TR.margin, halfD = info.halfD - TR.margin;
-    const w = Math.max(1, 2 * Math.floor(halfW / C)), h = Math.max(1, 2 * Math.floor(halfD / C));
+    const halfW = info.halfW - TR.margin, halfD = info.halfD - TR.margin, GO = hqFieldGridOffset(room, roomId);
+    /* an axis the editor sized to an ODD number of squares runs an odd count, so the squares' edges are the room's (GO) */
+    const w = GO.x ? Math.max(1, 2 * Math.floor((halfW - C / 2) / C) + 1) : Math.max(1, 2 * Math.floor(halfW / C));
+    const h = GO.z ? Math.max(1, 2 * Math.floor((halfD - C / 2) / C) + 1) : Math.max(1, 2 * Math.floor(halfD / C));
     const x0 = -(w / 2) * C, z0 = -(h / 2) * C;
     const floorKey = known(info.floor) ? info.floor : (known(room.shell && room.shell.floor) ? room.shell.floor : 'grass_2');
     const rockKey = known(info.cliff) ? info.cliff : 'rock_wall_1';
@@ -58139,7 +58154,7 @@ if (typeof window !== 'undefined') {
     window.doorGunUnlocked = doorGunUnlocked; window.doorGunWheel = doorGunWheel; window.doorGunLaneTiles = doorGunLaneTiles; window.doorGunLedger = doorGunLedger; window.doorGunLedgerUnion = doorGunLedgerUnion; window.doorGunKeyOfSpell = doorGunKeyOfSpell; window.doorGunSpellTier = doorGunSpellTier; window.doorGunWheelPool = doorGunWheelPool; window.doorGunSnapFacing = doorGunSnapFacing; window.swingDoorPushDir = swingDoorPushDir;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
-    window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
+    window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldGridOffset = hqFieldGridOffset; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldFrame = hqFieldFrame; window.hqFieldBuild = hqFieldBuild; window.hqFieldFixedCells = hqFieldFixedCells; window.hqFieldFixedAt = hqFieldFixedAt; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldTierOf = hqFieldTierOf; window.hqFieldGroundOn = hqFieldGroundOn; window.hqFieldBedFor = hqFieldBedFor; window.hqFieldStrataOn = hqFieldStrataOn; window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
