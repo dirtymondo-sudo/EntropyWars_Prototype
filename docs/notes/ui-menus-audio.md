@@ -1521,6 +1521,34 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
 - Reset groups are now `uxGroupOf(k)`: the first letter, except the zones' first two (zs / zn), so each side resets alone.
 - Viewer-local like the rest of the UI Maker: nothing relayed, the guest draws its own look over its own state copy.
 
+### UI Maker pass 24: Floating text, the pops over the units (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look like with a model with a nameplate for scale")
+- Live mode `float` (dock head button **Pops**, tab "Floating text" in TABS). db.ux f* keys (UX_DEF, hud.js): font / weight / case /
+  letter spacing / icons, sizes (numbers, words, smallest + biggest number and smallest word as % of the screen height, big-hit
+  swell, small hits smaller), outline + its colour, shadow, shine, gradient or flat, glow + its colour, the hit read (element
+  colours, CRIT stamp, weakness icon, killing-blow glow), motion (rise, life, pop, fade start, start height chest/head/above,
+  scatter, word wait, gap), which pops show (damage, heal, MP, TOTAL, hit words, status words, XP/pickups/Nexus) and a colour per
+  kind (`fc<Kind>`, FLOAT_KINDS). Looks row FLOAT_LOOKS (As the game, Clean, Pixel, Comic, Impact, Glow). Reset = `xReset('f')`.
+- `floatSignal()` (in the applyLayout signal chain) publishes ONLY the keys that differ from UX_DEF as `window._ewFloatLook`
+  (null when untouched, so an untouched look draws the exact old pops) and bumps `window._ewFloatLookV`; a picked font is
+  `document.fonts.load`ed first (a canvas never fetches one) and the version bumps again when it lands.
+- three-renderer.js: `_buildFloatTextCanvas(text, kind, look)` reads the look (fonts, weights, case, emoji strip, colours as
+  gradients from one colour, outline/shadow/shine/glow, chip). `_floatSpawn(ctx, ...)` + `_floatStep(ctx, cam, viewW, viewH,
+  fullH, pane)` are the ONE spawn + step for the board (`_floatGameCtx`) and the preview: rise/life/pop/fade/start/scatter/wait/
+  gap and the min/max sizes; Size multiplies AFTER the min/max clamp so it shows at every zoom. `_floatShows` hides a pop group.
+  `startFloatingText` / `ThreeAnim.floatingText` return the pop (null when hidden) and battle.js dresses only that one.
+- battle.js `_hitReadStyle` reads the look (elem, stamp, glyph, swell, killGlow); `window._ewHitReadDress(c, kind, opts)` lets
+  the preview dress its pops with the same hit read. Viewer-local styling on both ends (the pop facts already ride the relay),
+  so nothing new is relayed (RULE #2).
+- The preview: `ThreeRenderer.floatPreview(host, opts)` = its own WebGL context (like lookPreview): the race's rigged model on a
+  few tiles, its name plate (`_buildClonePlate`, global .tp-wrap CSS so the Name plates look shows), the battle lens (FOV 45,
+  40° pitch, 45° yaw, board / turn / close-up distances) and a crop of a whole screen this size (setViewOffset), so number,
+  plate and body keep battle proportions. Beats (FLOAT_PREV_BEATS): Hit, Crit, Heal, Status, Miss, MP + XP, Combo, KO; Loop;
+  model picker (this turn's unit in a battle, else Fortune teller, or any race with a 3D model). A look change redraws the
+  pops on screen at once.
+- Browser-checked (scratchpad probe, jsdelivr served from a local npm mirror since the sandbox proxy blocks it): the dock
+  preview showed the model, its plate and looping pops; in a VS-CPU arena battle each control was set through the dock's own
+  inputs and the next real pop (window.showFloatingTextAtTile) was measured against one before.
+
 ### THE GAME DEFAULT THEME: mondo's Entropy Wars Theme (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game", with his export Entropy_Wars_Theme.ewtheme.json)
 - **The preset**: hud.js `UIM_PRESETS` opens with `p_entropy` "Entropy Wars Theme", his exported theme as a literal with every value as exported (only the id is the preset's own; `slices` was empty, so no images). Read-only like every preset: editing it makes a copy.
 - **The default**: `HUD_THEME_DEFAULT = 'p_entropy'` (getHudTheme / setHudTheme fallback, UI Maker `globalId()`, the fallback after deleting the theme the game wears). `HUD_THEME_BASE = 'crystal'` keeps Classic Blue as the token base with no data-hud-theme. Only a profile that never picked a theme (no `ew_hud_theme`) gets it; a picked theme stays.

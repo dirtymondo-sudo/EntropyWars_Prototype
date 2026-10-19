@@ -2886,6 +2886,52 @@ const ThreeRenderer = (function () {
         'record-near':   { color: '#ffd86b', grad: ['#fff8dc', '#ffd86b', '#c88a00'], stroke: '#3a2600', fontSize: 50 },
     };
 
+    /* THE FLOATING TEXT LOOK (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage
+       and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text
+       will look like with a model with a nameplate for scale"). hud.js floatSignal() publishes window._ewFloatLook from
+       the UI Maker's Floating text view (db.ux f*); every field is optional and a missing one is the game's own look, so
+       an empty look draws exactly what the pops drew before. Viewer-local like every UI Maker setting: host and guest
+       each pop their own numbers through this (RULE #2 needs no relay for a look).
+       numFont / wordFont / numWeight / wordWeight, wordCase ('' | upper | title | lower), emoji (false = icons off),
+       track (word letter spacing ×), numSize / wordSize (× on screen), minNum / minWord / maxNum (% of the screen
+       height), chip (small hits draw smaller), line (outline ×), lineCol, shadow ×, sheen ×, grad ('flat' = no
+       gradient), glow (a soft halo, 0 = none) + glowCol, cols { kind: '#hex' }, rise ×, life ×, pop ×, fadeAt (share
+       of the life the fade starts), start (chest | head | above), spread ×, wordWait (ms), gap (px), show { group: false }
+       (_floatGroup). battle.js's hit read reads elem / stamp / glyph / killGlow / swell from the same object. */
+    var _FLOAT_LOOK0 = {};
+    function _floatLook() { return (typeof window !== 'undefined' && window._ewFloatLook) || _FLOAT_LOOK0; }
+    function _floatNum(v, d, lo, hi) { v = +v; if (!isFinite(v)) return d; return Math.max(lo, Math.min(hi, v)); }
+    var _FLOAT_START = { chest: 0.6, head: 1.0, above: 1.35 };
+    var _FLOAT_EMOJI_RE = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{20E3}]/gu;
+    // a '#rrggbb' toward white (k > 0) or black (k < 0)
+    function _floatShade(hex, k) {
+        var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+        if (!m) return hex;
+        var n = parseInt(m[1], 16), t = k > 0 ? 255 : 0, a = Math.min(1, Math.abs(k));
+        var r = Math.round(((n >> 16) & 255) + (t - ((n >> 16) & 255)) * a);
+        var g = Math.round(((n >> 8) & 255) + (t - ((n >> 8) & 255)) * a);
+        var b = Math.round((n & 255) + (t - (n & 255)) * a);
+        return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+    }
+    /* which "Show" box a pop answers to: dmg / heal / mp / total (numbers), hit / status / misc (words) */
+    var _FLOAT_HIT_WORDS = { crit: 1, mult: 1, dodge: 1, counter: 1, streak: 1, overkill: 1, 'protect-block': 1 };
+    var _FLOAT_STATUS_WORDS = { buff: 1, debuff: 1, status: 1, neutral: 1, heal: 1, mp: 1, damage: 1, critdmg: 1, combo: 1, record: 1, 'record-near': 1 };
+    function _floatGroup(kind, isNumber) {
+        if (isNumber) return kind === 'heal' || kind === 'revive' ? 'heal' : kind === 'mp' ? 'mp' : kind === 'total' ? 'total' : kind === 'pickup' ? 'misc' : 'dmg';
+        return _FLOAT_HIT_WORDS[kind] ? 'hit' : _FLOAT_STATUS_WORDS[kind] ? 'status' : 'misc';
+    }
+    function _floatIsNumber(raw, kind) {
+        var st = _FLOAT_STYLES[kind] || _FLOAT_STYLES['damage'];
+        return /^[+\-]?\d/.test(String(raw == null ? '' : raw).trim()) && !st.label;
+    }
+    /* false = this viewer's look hides the pop (a Show box is off, or icons are off and it is an icon alone) */
+    function _floatShows(text, kind, L) {
+        L = L || _floatLook();
+        if (L.show && L.show[_floatGroup(kind, _floatIsNumber(text, kind))] === false) return false;
+        if (L.emoji === false && !String(text == null ? '' : text).replace(_FLOAT_EMOJI_RE, '').trim()) return false;
+        return true;
+    }
+
     var hitFxGroup = null;
     var _hitFxTweens = [];
     var _hitFxIdCounter = 0;
@@ -17409,6 +17455,304 @@ const ThreeRenderer = (function () {
         return api;
     }
 
+    /* THE FLOATING TEXT PREVIEW (2026-10-19, mondo: "make it like the arrow and tile highlights editor where i can see a
+       preview of what the floating text will look like with a model with a nameplate for scale"): the UI Maker's
+       Floating text view gives the dock a unit of its own, its own WebGL context like the Arrows + tiles board: the
+       race's rigged model idling on a few tiles at the board's size, its name plate (the board's own plate markup, so
+       the Bars > Name plates look shows on it) and pops through the board's own spawn + step (_floatSpawn / _floatStep)
+       with this viewer's look, dressed by battle.js's hit read (window._ewHitReadDress). The lens is the board's: FOV
+       45, the resting 40° pitch, 45° yaw, at the distance a battle zoom puts it (board / turn / close). The dock shows
+       a CROP of a whole screen the size of the game here (setViewOffset), shrunk to fit, so the number, the plate and
+       the body keep the sizes they have to each other in a battle on this screen. A look change redraws the pops on
+       screen at once (or fires the last beat again). One preview at a time; it stops itself when its host leaves the
+       page. opts: { zoom, unit: { race, gender, name, types, level, appearance }, loop } (api.set takes the same). */
+    var _floatPrev = null;
+    var FLOAT_PREV_BEATS = {
+        hit: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1000]],
+        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB!', 'crit', null, 0, 1100]],
+        heal: [['+64', 'heal'], ['✨ CLEANSED', 'buff', null, 0, 1000]],
+        status: [['🔥 BURNING!', 'damage', null, 0, 1100], ['❄️ FROZEN!', 'debuff', null, 0, 1100], ['🛡 PROTECTED!', 'protect-block', null, 0, 1000]],
+        miss: [['DODGE!', 'dodge', null, 0, 1000], ['⬇ LAND', 'neutral', null, 260, 900]],
+        mp: [['+20 MP', 'mp', null, 0, 1000], ['+35 XP', 'xp', null, 120, 1000]],
+        combo: [['-46', 'damage', { _hitPct: 6, _hitType: 'lightning', _hitW: 0 }], ['-52', 'combo', null, 280], ['-61', 'damage', { _hitPct: 8, _hitType: 'lightning', _hitW: 0 }, 560],
+            ['159 TOTAL!', 'total', null, 1760, 1500]],
+        ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]]
+    };
+    var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko'];
+    function floatPreview(host, opts) {
+        if (_floatPrev) { if (_floatPrev.host === host) { _floatPrev.set(opts || {}); return _floatPrev; } _floatPrev.stop(); }
+        if (!host || typeof THREE === 'undefined' || !THREE.WebGLRenderer) return null;
+        opts = opts || {};
+        var cv = document.createElement('canvas');
+        cv.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;display:block;';
+        var stage = document.createElement('div');
+        stage.className = 'ew-fp-stage';
+        stage.style.cssText = 'position:absolute;left:0;top:0;overflow:hidden;pointer-events:none;transform-origin:0 0;';
+        host.appendChild(cv); host.appendChild(stage);
+        var r;
+        try { r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); }
+        catch (e) { host.removeChild(cv); host.removeChild(stage); return null; }
+        r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        r.setClearColor(0x000000, 0);
+        if (_EW_CS) r.outputColorSpace = THREE.SRGBColorSpace; else r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        var ts = BASE_TILE, D2R = Math.PI / 180;
+        var sc = new THREE.Scene();
+        sc.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));
+        var key = new THREE.DirectionalLight(0xfff1da, 1.2); key.position.set(1.7, 2.7, 2.2); sc.add(key);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6); rim.position.set(-2.2, 1.6, -2.5); sc.add(rim);
+        /* the ground: plain dark tiles a hair apart, the unit on the middle one */
+        var tileGeo = new THREE.BoxGeometry(ts * 0.985, ts * 0.3, ts * 0.985);
+        var tileMats = [new THREE.MeshBasicMaterial({ color: 0x1b2331 }), new THREE.MeshBasicMaterial({ color: 0x232c3d })];
+        for (var gx = -2; gx <= 2; gx++) for (var gz = -2; gz <= 2; gz++) {
+            var tm = new THREE.Mesh(tileGeo, tileMats[(gx + gz + 4) % 2]); tm.position.set(gx * ts, -ts * 0.15, gz * ts); sc.add(tm);
+        }
+        var cam = new THREE.PerspectiveCamera(45, 16 / 9, 1, 20000);
+        var body = new THREE.Group(); sc.add(body);
+        body.rotation.y = 0.62;   // turned to the lens (the board's 45° yaw), a touch to its side
+        var U = { race: 'fortune teller', gender: 'male', name: '', types: ['human'], level: 100 };
+        var zoomMode = 'turn', looping = opts.loop !== false;
+        var modelH = 1, mixer = null, rig = null, rigRoot = null, ownMats = [], ownTex = [], spr = null, utok = 0;
+        var plate = null, ctx = { tweens: [], stagger: {}, now: function () { return performance.now(); }, live: [], lastReal: 0 };
+        var raf = 0, dead = false, lastKey = '', lastT = 0, crop = { w: 1, h: 1, x: 0, y: 0, fullH: 1 };
+        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, refireAt = 0;
+        var _pv = new THREE.Vector3();
+
+        function clearUnit() {
+            utok++;
+            if (rig) { try { rig.dispose(); } catch (e) {} }
+            rig = null; rigRoot = null;
+            if (mixer) { try { mixer.stopAllAction(); } catch (e) {} }
+            mixer = null;
+            while (body.children.length) body.remove(body.children[0]);   // clones share the cached GLB's geometry: never dispose it
+            ownMats.forEach(function (m) { try { m.dispose(); } catch (e) {} }); ownMats = [];
+            ownTex.forEach(function (t) { try { t.dispose(); } catch (e) {} }); ownTex = [];
+            if (spr) { try { spr.material.map && spr.material.map.dispose(); spr.material.dispose(); } catch (e) {} spr = null; }
+        }
+        /* a race with no rigged model (or one that fails to load) stands as its map sprite */
+        function spriteUnit(tok) {
+            if (tok !== utok || dead || spr) return;
+            var url = (typeof getBattleMapSpriteUrl === 'function') ? getBattleMapSpriteUrl({ race: U.race, gender: U.gender }) : null;
+            if (!url) return;
+            new THREE.TextureLoader().load(url, function (tex) {
+                if (tok !== utok || dead) { tex.dispose(); return; }
+                _ewTexSetSRGB(tex, true);
+                var asp = (tex.image && tex.image.height) ? tex.image.width / tex.image.height : 0.5;
+                spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: 0.05, toneMapped: false }));
+                spr.center.set(0.5, 0);
+                spr.scale.set(ts * UNIT_SPRITE_SIZE_RATIO * asp, ts * UNIT_SPRITE_SIZE_RATIO, 1);
+                body.add(spr);
+            });
+        }
+        function setUnit(u) {
+            clearUnit();
+            U = Object.assign({ race: 'fortune teller', gender: 'male', types: ['human'], level: 100 }, u || {});
+            if (!U.name) U.name = _plateRaceLabel(U) || U.race;
+            var tok = utok;
+            var res = _cvResolveDef(U.race, U.gender, U.appearance);
+            modelH = res ? Math.max(0.35, Math.min(2.8, res.def.heightRatio || 1)) : 1;
+            buildPlate();
+            lastKey = '';
+            if (!res) { spriteUnit(tok); return; }
+            var def = res.def;
+            _loadUnitGLB(def.model, function (entry) {
+                if (tok !== utok || dead || !entry || !entry.root) return;
+                var m = _cloneUnitModel(entry.root);
+                var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1;
+                var s = ts * UNIT_SPRITE_SIZE_RATIO * (def.heightRatio || 1) / rawH;   // the board's own height (128 px art = 1 tile)
+                m.scale.setScalar(s);
+                m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+                var hasSkin = _cvOwnBakes(m, ownMats, ownTex);
+                if (def.creatorBase && typeof _createAppearanceRig === 'function') {
+                    try { rig = _createAppearanceRig(m, typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance); rigRoot = m; } catch (e) { rig = null; }
+                }
+                var inner = new THREE.Group();
+                inner.rotation.y = def.yawOffset || 0;
+                inner.add(m);
+                body.add(inner);
+                if (!hasSkin) return;
+                var mx = mixer = new THREE.AnimationMixer(m);
+                var playIdle = function (clip, tsc) {
+                    if (tok !== utok || dead || mixer !== mx || !clip) return;
+                    var act = mx.clipAction(clip);
+                    act.setLoop(THREE.LoopRepeat, Infinity);
+                    if (tsc) act.timeScale = tsc;
+                    act.play();
+                };
+                var meshyIdle = function () {
+                    if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                };
+                if (_animLibActive(def)) {
+                    _animLibBakeForModel(def, entry, function (baked) {
+                        if (baked && baked.idle) playIdle(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
+                        else meshyIdle();
+                    });
+                } else meshyIdle();
+            });
+            var ce = _unitGlbCache[def.model];
+            if (ce && ce.failed) spriteUnit(tok);
+            else if (ce && !ce.root) (ce.doneCbs = ce.doneCbs || []).push(function (e2) { if (e2 && e2.failed) spriteUnit(tok); });
+        }
+        /* the name plate: the board's markup + classes (the current unit's, full opacity) */
+        function buildPlate() {
+            if (plate && plate.outer && plate.outer.parentNode) plate.outer.parentNode.removeChild(plate.outer);
+            plate = null;
+            var su = { id: 'ew-fp', race: U.race, gender: U.gender, name: U.name, types: U.types || [], level: U.level,
+                maxHp: U.maxHp || 1240, maxMp: U.maxMp || 180, player: 1, zodiac: U.zodiac };
+            var pl = null;
+            try { pl = _buildClonePlate(su, 1); } catch (e) { pl = null; }
+            if (!pl || !pl.el || !pl.el.parentNode) return;
+            pl.el.classList.add('tp-ally', 'tp-active');
+            var outer = pl.el.parentNode;
+            outer.style.position = 'absolute';
+            stage.insertBefore(outer, stage.firstChild);
+            plate = { outer: outer, el: pl.el, css2d: pl.css2d, _headY: ts * UNIT_SPRITE_SIZE_RATIO * modelH + 16, _footY: SELECTED_RING_OFFSET + 2 };
+        }
+        function zoomNow(FH) {
+            var board = Math.max(0.15, Math.min(10, FH / (16 * ts * Math.cos(40 * D2R))));   // a 12-tile board's resting zoom on this screen
+            return zoomMode === 'close' ? 2.2 : zoomMode === 'board' ? board : board * 1.5;  // the turn framing = ×1.5 (battle.js)
+        }
+        /* the lens + the crop: feet to a fixed height above the head, as wide as the dock is */
+        function frame(w, h, FW, FH) {
+            var dist = 800 / zoomNow(FH), tr = 40 * D2R, yr = 45 * D2R;
+            cam.position.set(Math.sin(tr) * Math.sin(yr) * dist, Math.cos(tr) * dist, Math.sin(tr) * Math.cos(yr) * dist);
+            cam.up.set(-Math.cos(tr) * Math.sin(yr), Math.sin(tr), -Math.cos(tr) * Math.cos(yr));
+            cam.lookAt(0, 0, 0);
+            cam.aspect = FW / FH;
+            cam.clearViewOffset();
+            cam.updateProjectionMatrix();
+            cam.updateMatrixWorld(true);
+            var topY = ts * Math.max(2.75, modelH + 1.6);
+            _pv.set(0, 0, 0).project(cam);
+            var sx0 = (_pv.x * 0.5 + 0.5) * FW, sy0 = (-_pv.y * 0.5 + 0.5) * FH;
+            _pv.set(0, topY, 0).project(cam);
+            var sy1 = (-_pv.y * 0.5 + 0.5) * FH;
+            var vh = Math.max(60, (sy0 - sy1) * 1.14), vw = vh * (w / h);
+            crop = { w: vw, h: vh, x: sx0 - vw / 2, y: sy1, fullH: FH };
+            cam.setViewOffset(FW, FH, crop.x, crop.y, vw, vh);
+            cam.updateProjectionMatrix();
+            stage.style.width = vw.toFixed(1) + 'px';
+            stage.style.height = vh.toFixed(1) + 'px';
+            stage.style.transform = 'scale(' + (w / vw).toFixed(5) + ')';
+        }
+        function placePlate(FH) {
+            if (!plate) return;
+            var dist = cam.position.length(), halfTan = Math.tan(cam.fov * D2R / 2);
+            var projW = (ts * FH) / (2 * Math.max(1, dist) * halfTan);
+            _plateFarToggle(plate, plate.el, projW);
+            _writePlateTransform(plate, Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE)), projW);
+            _pv.set(0, plate.css2d.position.y, 0).project(cam);
+            plate.outer.style.left = ((_pv.x * 0.5 + 0.5) * crop.w).toFixed(1) + 'px';
+            plate.outer.style.top = ((-_pv.y * 0.5 + 0.5) * crop.h).toFixed(1) + 'px';
+        }
+        /* one pop, made the way the board makes it (the look, the hit read) */
+        function makePop(p, L) {
+            var el = _floatMakeEl(p.text, p.kind, L);
+            if (p.opts && typeof window._ewHitReadDress === 'function') { try { window._ewHitReadDress(el, p.kind, p.opts); } catch (e) {} }
+            return el;
+        }
+        function popMs(p, L) {
+            var hr = p.opts && p.opts._hitKill && window.EW_HIT_READ ? (+window.EW_HIT_READ.killLinger || 1) : 1;
+            return Math.max(400, p.ms || 900) * hr;
+        }
+        function spawn(p) {
+            var L = _floatLook();
+            if (!_floatShows(p.text, p.kind, L)) return;
+            var el = makePop(p, L);
+            stage.appendChild(el);
+            var spread = _floatNum(L.spread, 1, 0, 12);
+            var jx = (Math.random() * 18 - 9) * 0.4, jz = (Math.random() * 10 - 5) * 0.4;   // the board's own scatter (battle.js jitter × 0.4)
+            var tw = _floatSpawn(ctx, el, p.kind, popMs(p, L), jx * spread, jz * spread, ts * UNIT_SPRITE_SIZE_RATIO * (_FLOAT_START[L.start] || _FLOAT_START.chest), 'u', L);
+            tw.src = p; tw.jx = jx; tw.jz = jz;
+        }
+        function fireBeat(name) {
+            var B = FLOAT_PREV_BEATS[name]; if (!B) return;
+            lastBeat = name;
+            var t0 = performance.now();
+            B.forEach(function (b) { queue.push({ at: t0 + (b[3] || 0), text: b[0], kind: b[1], opts: b[2] || null, ms: b[4] || 0 }); });
+        }
+        /* a look change: every pop on screen is made again in the new look, keeping its place in its life */
+        function relook() {
+            var L = _floatLook(), any = false;
+            for (var i = ctx.tweens.length - 1; i >= 0; i--) {
+                var tw = ctx.tweens[i], p = tw.src;
+                if (!p || !tw.el) continue;
+                if (!_floatShows(p.text, p.kind, L)) { _removeFloatTween(tw); ctx.tweens.splice(i, 1); continue; }
+                var el = makePop(p, L);
+                el.style.left = tw.el.style.left; el.style.top = tw.el.style.top; el.style.transform = tw.el.style.transform; el.style.opacity = tw.el.style.opacity;
+                stage.replaceChild(el, tw.el);
+                tw.el = el; tw.boxW = 0; tw.boxH = 0;
+                tw.hero = !!el._ewHero;
+                tw.riseY = FLOAT_RISE_PX * _floatNum(L.rise, 1, -1, 5);
+                tw.durationMs = popMs(p, L) * (tw.hero && p.kind !== 'pickup' ? FLOAT_HERO_HOLD : 1) * _floatNum(L.life, 1, 0.3, 5);
+                tw.startY = ts * UNIT_SPRITE_SIZE_RATIO * (_FLOAT_START[L.start] || _FLOAT_START.chest);
+                var spread = _floatNum(L.spread, 1, 0, 12);
+                tw.wx = (tw.jx || 0) * spread; tw.wz = (tw.jz || 0) * spread;
+                any = true;
+            }
+            return any;
+        }
+        var api = { host: host, stop: null,
+            set: function (o) {
+                o = o || {};
+                if (o.zoom && o.zoom !== zoomMode) { zoomMode = o.zoom; lastKey = ''; }
+                if (o.loop != null) looping = !!o.loop;
+                if (o.unit && (o.unit.race !== U.race || o.unit.gender !== U.gender || o.unit.name !== U.name)) setUnit(o.unit);
+            },
+            fire: function (name) { fireBeat(name); beatAt = performance.now() + 2600; beatIdx = Math.max(0, FLOAT_PREV_ORDER.indexOf(name)) + 1; },
+            loop: function (on) { looping = on !== false; },
+            unit: function () { return U; }
+        };
+        var loop = function () {
+            if (dead) return;
+            if (!host.isConnected) { api.stop(); return; }
+            raf = requestAnimationFrame(loop);
+            if (document.hidden) return;
+            var w = host.clientWidth | 0, h = host.clientHeight | 0;
+            if (w < 2 || h < 2) return;
+            var FW = (_parentEl && _parentEl.clientWidth > 50) ? _parentEl.clientWidth : window.innerWidth;
+            var FH = (_parentEl && _parentEl.clientHeight > 50) ? _parentEl.clientHeight : window.innerHeight;
+            var k = w + 'x' + h + ':' + FW + 'x' + FH + ':' + zoomMode + ':' + modelH;
+            if (k !== lastKey) { lastKey = k; r.setSize(w, h, false); frame(w, h, FW, FH); }
+            var now = performance.now(), dt = lastT ? Math.min(0.1, (now - lastT) / 1000) : 0;
+            lastT = now;
+            if (mixer) mixer.update(dt);
+            if (rig && rigRoot) { try { rigRoot.updateMatrixWorld(true); rig.tick(); } catch (e) {} }
+            var v = window._ewFloatLookV || 0;
+            if (v !== seenV) {
+                var first = seenV < 0;
+                seenV = v;
+                if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; }
+            }
+            if (looping && now >= beatAt) {
+                fireBeat(FLOAT_PREV_ORDER[beatIdx % FLOAT_PREV_ORDER.length]);
+                beatIdx++;
+                beatAt = now + (lastBeat === 'combo' ? 3400 : 2300);
+            }
+            for (var qi = queue.length - 1; qi >= 0; qi--) if (queue[qi].at <= now) { var q = queue.splice(qi, 1)[0]; spawn(q); }
+            placePlate(FH);
+            try { r.render(sc, cam); } catch (e) { api.stop(); return; }
+            _floatStep(ctx, cam, crop.w, crop.h, FH, false);
+        };
+        api.stop = function () {
+            if (dead) return;
+            dead = true; cancelAnimationFrame(raf);
+            clearUnit();
+            ctx.tweens.forEach(_removeFloatTween); ctx.tweens.length = 0;
+            tileGeo.dispose(); tileMats.forEach(function (m) { m.dispose(); });
+            try { r.dispose(); if (r.forceContextLoss) r.forceContextLoss(); } catch (e) {}
+            if (cv.parentNode) cv.parentNode.removeChild(cv);
+            if (stage.parentNode) stage.parentNode.removeChild(stage);
+            if (_floatPrev === api) _floatPrev = null;
+        };
+        _floatPrev = api;
+        setUnit(opts.unit);
+        if (opts.zoom) zoomMode = opts.zoom;
+        loop();
+        return api;
+    }
+
     var _intentBadgeContainer = null;
     var _intentBadgeEls = [];
     var _projVec2 = new THREE.Vector3();
@@ -23165,20 +23509,39 @@ const ThreeRenderer = (function () {
         _tetherTweens.length = 0;
     }
 
-    function _buildFloatTextCanvas(text, kind) {
+    function _buildFloatTextCanvas(text, kind, look) {
         var style = _FLOAT_STYLES[kind] || _FLOAT_STYLES['damage'];
+        var L = look || _floatLook();
         var raw = String(text == null ? '' : text);
 
         // A "number" pop (e.g. "-128", "+45", "+30 MP") gets the punchy gradient
         // glyph; everything else is a word callout ("SUPER EFFECTIVE!", "DODGE!")
         // rendered flat + letter-spaced so it reads as a different layer of feedback.
         var isNumber = /^[+\-]?\d/.test(raw.trim()) && !style.label;
+        // THE FLOATING TEXT LOOK: icons off, the words' case
+        if (L.emoji === false) raw = raw.replace(_FLOAT_EMOJI_RE, '').replace(/\s+/g, ' ').trim() || raw;
+        if (!isNumber && L.wordCase) {
+            raw = L.wordCase === 'upper' ? raw.toUpperCase() : L.wordCase === 'lower' ? raw.toLowerCase()
+                : L.wordCase === 'title' ? raw.toLowerCase().replace(/(^|[\s\-(])(\S)/g, function (m, a, c) { return a + c.toUpperCase(); }) : raw;
+        }
+        // the colours: the look's own for this kind (a gradient built from it), else the game's
+        var fillCol = style.color || '#ffffff', grad = style.grad, strokeCol = style.stroke || '#000000';
+        var own = L.cols && L.cols[kind];
+        if (own) {
+            fillCol = own;
+            grad = style.grad ? [_floatShade(own, 0.62), own, _floatShade(own, -0.42)] : null;
+            strokeCol = _floatShade(own, -0.86);
+        }
+        if (L.lineCol) strokeCol = L.lineCol;
+        if (L.grad === 'flat') grad = null;
+        var lineK = _floatNum(L.line, 1, 0, 4), shK = _floatNum(L.shadow, 1, 0, 3), sheenK = _floatNum(L.sheen, 1, 0, 2.5);
+        var glowK = _floatNum(L.glow, 0, 0, 3);
 
         var fontSize = style.fontSize || 48;
         // Damage-class numbers scale with magnitude — chip damage whispers,
         // heavy hits shout. The style's base size is the CAP (never bigger),
         // so the hierarchy reads: chip < solid < heavy < crit/combo color.
-        if (isNumber && (kind === 'damage' || kind === 'critdmg' || kind === 'combo')) {
+        if (isNumber && L.chip !== false && (kind === 'damage' || kind === 'critdmg' || kind === 'combo')) {
             var mag = Math.abs(parseInt(raw.replace(/[^0-9\-]/g, ''), 10) || 0);
             fontSize = Math.round(fontSize * (mag < 20 ? 0.78 : mag < 45 ? 0.88 : mag < 80 ? 0.96 : 1));
         }
@@ -23186,9 +23549,10 @@ const ThreeRenderer = (function () {
         /* Cinzel is BANNED for words everywhere else in the game (2026-08-10)
            but this is the damage-number face — numbers are exactly where its
            carved-capital look works. Keep it HERE and nowhere word-shaped. */
-        var fontFamily = "'Cinzel', Georgia, 'Times New Roman', serif";
-        var fontWeight = isNumber ? '900' : '700';
-        var letterSpacing = isNumber ? 0 : Math.max(1, Math.round(fontSize * 0.06));
+        var fontFamily = (isNumber ? L.numFont : L.wordFont) || "'Cinzel', Georgia, 'Times New Roman', serif";
+        var fontWeight = String((isNumber ? L.numWeight : L.wordWeight) || (isNumber ? '900' : '700'));
+        var letterSpacing = isNumber ? 0 : (L.track != null ? Math.max(0, Math.round(fontSize * 0.06 * _floatNum(L.track, 1, 0, 5)))
+            : Math.max(1, Math.round(fontSize * 0.06)));
         var fontStr = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
 
         var c = document.createElement('canvas');
@@ -23198,8 +23562,10 @@ const ThreeRenderer = (function () {
         var metrics = ctx.measureText(raw);
 
         var outlineW = Math.max(3, Math.round(fontSize * (isNumber ? 0.09 : 0.07)));
-        var padX = outlineW * 4 + 8 + letterSpacing;
-        var padY = outlineW * 4 + 8;
+        // room for a halo / a longer shadow than the game's own
+        var fxPad = Math.round(Math.max(glowK * fontSize * 0.4, (shK - 1) * 12, (lineK - 1) * outlineW * 1.4, 0));
+        var padX = outlineW * 4 + 8 + letterSpacing + fxPad;
+        var padY = outlineW * 4 + 8 + fxPad;
         var tw = Math.ceil(metrics.width) + padX * 2;
         var th = Math.ceil(fontSize * 1.4) + padY * 2;
         c.width = tw; c.height = th;
@@ -23213,51 +23579,69 @@ const ThreeRenderer = (function () {
         var cy = th / 2;
 
         // Drop shadow (offset, soft) for legibility over any board color.
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.85)';
-        ctx.shadowBlur = isNumber ? 10 : 7;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 4;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText(raw, cx, cy);
-        ctx.restore();
+        if (shK > 0) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.85)';
+            ctx.shadowBlur = (isNumber ? 10 : 7) * shK;
+            ctx.shadowOffsetX = 2 * shK;
+            ctx.shadowOffsetY = 4 * shK;
+            ctx.fillStyle = 'rgba(0,0,0,' + Math.min(0.85, 0.5 * shK).toFixed(3) + ')';
+            ctx.fillText(raw, cx, cy);
+            ctx.restore();
+        }
+
+        // THE FLOATING TEXT LOOK: the halo, in the text's own colour (or the look's)
+        if (glowK > 0) {
+            ctx.save();
+            ctx.shadowColor = L.glowCol || fillCol;
+            ctx.shadowBlur = Math.round(fontSize * 0.32 * glowK);
+            ctx.fillStyle = L.glowCol || fillCol;
+            ctx.globalAlpha = Math.min(1, 0.55 + 0.25 * glowK);
+            ctx.fillText(raw, cx, cy);
+            if (glowK > 1) ctx.fillText(raw, cx, cy);
+            ctx.restore();
+        }
 
         // Thick dark outline → thin black inner outline (two passes for a clean edge).
-        ctx.save();
-        ctx.lineWidth = outlineW * 2.5;
-        ctx.lineJoin = 'round';
-        ctx.miterLimit = 2;
-        ctx.strokeStyle = style.stroke || '#000000';
-        ctx.strokeText(raw, cx, cy);
-        ctx.lineWidth = outlineW * 1.1;
-        ctx.strokeStyle = '#000000';
-        ctx.strokeText(raw, cx, cy);
-        ctx.restore();
+        if (lineK > 0) {
+            ctx.save();
+            ctx.lineWidth = outlineW * 2.5 * lineK;
+            ctx.lineJoin = 'round';
+            ctx.miterLimit = 2;
+            ctx.strokeStyle = strokeCol;
+            ctx.strokeText(raw, cx, cy);
+            ctx.lineWidth = outlineW * 1.1 * lineK;
+            ctx.strokeStyle = L.lineCol || '#000000';
+            ctx.strokeText(raw, cx, cy);
+            ctx.restore();
+        }
 
         // Fill: vertical gradient for numbers, flat color for word callouts.
         ctx.save();
-        if (isNumber && style.grad && style.grad.length) {
+        if (isNumber && grad && grad.length) {
             var g = ctx.createLinearGradient(0, cy - fontSize * 0.62, 0, cy + fontSize * 0.55);
-            var stops = style.grad;
+            var stops = grad;
             for (var si = 0; si < stops.length; si++) {
                 g.addColorStop(stops.length === 1 ? 0 : si / (stops.length - 1), stops[si]);
             }
             ctx.fillStyle = g;
         } else {
-            ctx.fillStyle = style.color || '#ffffff';
+            ctx.fillStyle = fillCol;
         }
         ctx.fillText(raw, cx, cy);
         ctx.restore();
 
         // Top sheen — a bright highlight on the upper third sells the metallic pop.
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 0, tw, cy);
-        ctx.clip();
-        ctx.globalAlpha = isNumber ? 0.42 : 0.25;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(raw, cx, cy - Math.max(1, fontSize * 0.03));
-        ctx.restore();
+        if (sheenK > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, tw, cy);
+            ctx.clip();
+            ctx.globalAlpha = Math.min(1, (isNumber ? 0.42 : 0.25) * sheenK);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(raw, cx, cy - Math.max(1, fontSize * 0.03));
+            ctx.restore();
+        }
 
         c.style.width = tw + 'px';
         c.style.height = th + 'px';
@@ -23266,8 +23650,9 @@ const ThreeRenderer = (function () {
         // pops stack by what you can SEE, not by their padded boxes.
         c._ewHero = isNumber;
         var inkH = fontSize * 0.95 + outlineW * 2;
-        c._ewMarginX = Math.max(0, padX - outlineW * 1.2);
-        c._ewMarginTop = c._ewMarginBot = Math.max(0, (th - inkH) / 2);
+        var lineInk = outlineW * 1.2 * Math.max(1, lineK);
+        c._ewMarginX = Math.max(0, padX - lineInk);
+        c._ewMarginTop = c._ewMarginBot = Math.max(0, (th - inkH) / 2 - (lineInk - outlineW * 1.2));
         c._ewInkH0 = inkH;   // the stock ink height, before any hit-read swell
         return c;
     }
@@ -23295,41 +23680,37 @@ const ThreeRenderer = (function () {
         _floatDomOverlay = ov;
     }
 
-    function startFloatingText(tileX, tileY, text, kind, durationMs, opts) {
-        _ensureFloatOverlay();
-        if (!_floatDomOverlay) return;
-        opts = opts || {};
-        var ts = CONFIG.tileSize || BASE_TILE;
-
-        var el = _buildFloatTextCanvas(text, kind);
+    /* a pop's <canvas>, ready for an overlay (hidden until its first laid-out frame) */
+    function _floatMakeEl(text, kind, L) {
+        var el = _buildFloatTextCanvas(text, kind, L);
         el.style.position = 'absolute';
         el.style.left = '0';
         el.style.top = '0';
         el.style.transformOrigin = '50% 50%';
         el.style.willChange = 'transform, opacity';
         el.style.opacity = '0';
+        return el;
+    }
+
+    /* The board's pops and the UI Maker preview's (floatPreview) each run a CONTEXT through the same spawn + step, so
+       the preview moves, sizes and stacks its pops exactly as a battle does: { tweens, stagger (per-tile tag queue),
+       now() (the clock), live (scratch), lastReal }. */
+    var _floatGameCtx = { tweens: _floatTweens, stagger: _floatTileStagger, now: function () { return _animNow(); }, live: [], lastReal: 0 };
+
+    function startFloatingText(tileX, tileY, text, kind, durationMs, opts) {
+        _ensureFloatOverlay();
+        if (!_floatDomOverlay) return null;
+        opts = opts || {};
+        var L = _floatLook();
+        if (!_floatShows(text, kind, L)) return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+
+        var el = _floatMakeEl(text, kind, L);
         _floatDomOverlay.appendChild(el);
 
-        var jx = Number.isFinite(opts.jitterX) ? opts.jitterX * 0.4 : (Math.random() * 8 - 4);
-        var jy = Number.isFinite(opts.jitterY) ? opts.jitterY * 0.4 : (Math.random() * 5 - 2.5);
-
-        // Numbers land at once; tags queue per tile behind the number (THE
-        // NUMBER IS THE HERO). The layout keeps them apart on screen, so no
-        // fixed per-pop lift is needed any more.
-        var hero = !!el._ewHero;
-        var staggerIdx = 0, staggerDelay = 0;
-        if (!hero) {
-            var tileKey = tileX + ',' + tileY;
-            var stag = _floatTileStagger[tileKey];
-            if (stag && (_animNow() - stag.time) < FLOAT_STAGGER_WINDOW) {
-                stag.count++;
-                stag.time = _animNow();
-                staggerIdx = stag.count;
-            } else {
-                _floatTileStagger[tileKey] = { count: 0, time: _animNow() };
-            }
-            staggerDelay = FLOAT_TAG_LEAD_MS + Math.min(staggerIdx * FLOAT_STAGGER_DELAY_MS, FLOAT_STAGGER_DELAY_MAX);
-        }
+        var spread = _floatNum(L.spread, 1, 0, 12);
+        var jx = (Number.isFinite(opts.jitterX) ? opts.jitterX * 0.4 : (Math.random() * 8 - 4)) * spread;
+        var jy = (Number.isFinite(opts.jitterY) ? opts.jitterY * 0.4 : (Math.random() * 5 - 2.5)) * spread;
 
         var unitAtTile = (typeof unitAt === 'function') ? unitAt(tileX, tileY) : null;
         var zLevel;
@@ -23342,11 +23723,32 @@ const ThreeRenderer = (function () {
 
         // Spawn at the unit's torso/upper-chest (~0.6 of sprite height) instead of
         // above the head — the number then rises (FLOAT_RISE_PX) up past the head
-        // for that punchy JRPG pop.
-        var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO * 0.6;
+        // for that punchy JRPG pop. (The look's start: chest / head / above.)
+        var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO * (_FLOAT_START[L.start] || _FLOAT_START.chest);
 
-        var wx = tileX * ts + ts / 2 + jx;
-        var wz = tileY * ts + ts / 2 + jy;
+        _floatSpawn(_floatGameCtx, el, kind, durationMs, tileX * ts + ts / 2 + jx, tileY * ts + ts / 2 + jy, startY, tileX + ',' + tileY, L);
+        return el;
+    }
+
+    function _floatSpawn(ctx, el, kind, durationMs, wx, wz, startY, tileKey, L) {
+        L = L || _floatLook();
+        var now = ctx.now();
+        // Numbers land at once; tags queue per tile behind the number (THE
+        // NUMBER IS THE HERO). The layout keeps them apart on screen, so no
+        // fixed per-pop lift is needed any more.
+        var hero = !!el._ewHero;
+        var staggerIdx = 0, staggerDelay = 0;
+        if (!hero) {
+            var stag = ctx.stagger[tileKey];
+            if (stag && (now - stag.time) < FLOAT_STAGGER_WINDOW) {
+                stag.count++;
+                stag.time = now;
+                staggerIdx = stag.count;
+            } else {
+                ctx.stagger[tileKey] = { count: 0, time: now };
+            }
+            staggerDelay = _floatNum(L.wordWait, FLOAT_TAG_LEAD_MS, 0, 2000) + Math.min(staggerIdx * FLOAT_STAGGER_DELAY_MS, FLOAT_STAGGER_DELAY_MAX);
+        }
 
         var isBig = (kind === 'crit' || kind === 'overkill' || kind === 'levelup' || kind === 'laststd' || kind === 'total' || kind === 'record');
 
@@ -23356,10 +23758,10 @@ const ThreeRenderer = (function () {
             wx: wx,
             wz: wz,
             startY: startY,
-            riseY: FLOAT_RISE_PX,
-            startTime: _animNow(),
+            riseY: FLOAT_RISE_PX * _floatNum(L.rise, 1, -1, 5),
+            startTime: now,
             delayMs: staggerDelay,
-            durationMs: Math.max(400, durationMs || 900) * (hero && kind !== 'pickup' ? FLOAT_HERO_HOLD : 1),
+            durationMs: Math.max(400, durationMs || 900) * (hero && kind !== 'pickup' ? FLOAT_HERO_HOLD : 1) * _floatNum(L.life, 1, 0.3, 5),
             isBig: isBig,
             staggerIdx: staggerIdx,
             hero: hero,
@@ -23367,7 +23769,8 @@ const ThreeRenderer = (function () {
             sizeK: hero ? FLOAT_HERO_SCALE : (_FLOAT_SOLO_KINDS[kind] ? 1 : FLOAT_TAG_SCALE),
             layDy: 0, laid: false
         };
-        _floatTweens.push(tw);
+        ctx.tweens.push(tw);
+        return tw;
     }
 
     function _removeFloatTween(tw) {
@@ -23375,9 +23778,7 @@ const ThreeRenderer = (function () {
         tw.el = null;
     }
 
-    var _floatLive = [];
     var _floatPlaced = [];
-    var _floatLastReal = 0;
 
     /* THE NUMBER IS THE HERO — the screen layout, run every frame on the
        pops that are showing. Numbers are placed first (the newest keeps its
@@ -23389,7 +23790,7 @@ const ThreeRenderer = (function () {
        up at once (a number is never covered, even for a frame) and ease back
        down when the pop that held them fades away. Screen-space only: works
        the same for pops over two different units that project close. */
-    function _layoutFloatTexts(list, dtMs) {
+    function _layoutFloatTexts(list, dtMs, gapPx) {
         list.sort(function (a, b) {
             if (a.hero !== b.hero) return a.hero ? -1 : 1;
             var ta = a.startTime + (a.delayMs || 0), tb = b.startTime + (b.delayMs || 0);
@@ -23398,7 +23799,7 @@ const ThreeRenderer = (function () {
         var placed = _floatPlaced;
         placed.length = 0;
         var relax = 1 - Math.exp(-Math.max(0, dtMs) / 200);
-        var gap = FLOAT_LAYOUT_GAP;
+        var gap = gapPx != null ? gapPx : FLOAT_LAYOUT_GAP;
         for (var i = 0; i < list.length; i++) {
             var tw = list[i], el = tw.el;
             if (!tw.boxW) {
@@ -23432,22 +23833,37 @@ const ThreeRenderer = (function () {
 
     function _updateFloatTextTweens() {
         if (_floatTweens.length === 0) return;
-        var now = _animNow();
-        var realNow = performance.now();
-        var realDt = _floatLastReal ? Math.min(100, realNow - _floatLastReal) : 16;
-        _floatLastReal = realNow;
         var _paneCam = _ssFloatCam();   // THE DEATH CLOSE-UP: numbers ride the full-screen death pane
         var cam = _paneCam || ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
         var screenH = _parentEl ? _parentEl.clientHeight : 0;
+        _floatStep(_floatGameCtx, cam, screenW, screenH, screenH, !!_paneCam);
+    }
+
+    /* One frame of a context's pops: cam = its lens; viewW × viewH = the px its overlay spans (the lens's view, or the
+       crop of it a setViewOffset lens draws); fullH = the height of the WHOLE screen that lens stands for (the size
+       maths: world → px and the smallest / biggest on-screen size are shares of it); pane = the death close-up lens. */
+    function _floatStep(ctx, cam, viewW, viewH, fullH, pane) {
+        var L = _floatLook();
+        var now = ctx.now();
+        var realNow = performance.now();
+        var realDt = ctx.lastReal ? Math.min(100, realNow - ctx.lastReal) : 16;
+        ctx.lastReal = realNow;
         // pxScale sets the on-screen size of the numbers (world→screen px factor).
         var halfTanFov = cam ? Math.tan((cam.fov * Math.PI / 180) / 2) : 0;
         var pxScale = 0.58;
-        var live = _floatLive;
+        var numK = _floatNum(L.numSize, 1, 0.2, 4), wordK = _floatNum(L.wordSize, 1, 0.2, 4);
+        var minHero = _floatNum(L.minNum, FLOAT_MIN_HERO_H * 100, 0, 40) / 100;
+        var minTag = _floatNum(L.minWord, FLOAT_MIN_TAG_H * 100, 0, 30) / 100;
+        var maxHero = Math.max(minHero, _floatNum(L.maxNum, FLOAT_MAX_HERO_H * 100, 1, 60) / 100);
+        var popK = _floatNum(L.pop, 1, 0, 3);
+        var fadeAt = _floatNum(L.fadeAt, 0.75, 0.2, 0.97);
+        var live = ctx.live;
         live.length = 0;
-        var i = _floatTweens.length;
+        var tweens = ctx.tweens;
+        var i = tweens.length;
         while (i--) {
-            var tw = _floatTweens[i];
+            var tw = tweens[i];
             // Queued same-tile pop still waiting its turn — keep it hidden.
             var elapsed = now - tw.startTime - (tw.delayMs || 0);
             if (elapsed < 0) {
@@ -23457,7 +23873,7 @@ const ThreeRenderer = (function () {
             var t = Math.min(elapsed / tw.durationMs, 1);
             if (t >= 1) {
                 _removeFloatTween(tw);
-                _floatTweens.splice(i, 1);
+                tweens.splice(i, 1);
                 continue;
             }
 
@@ -23467,34 +23883,35 @@ const ThreeRenderer = (function () {
             var opacity;
             if (t < 0.06) {
                 opacity = Math.min(1, t / 0.06);
-            } else if (t < 0.75) {
+            } else if (t < fadeAt) {
                 opacity = 1;
             } else {
-                var fadeT = (t - 0.75) / 0.25;
+                var fadeT = (t - fadeAt) / (1 - fadeAt);
                 opacity = 1 - fadeT * fadeT;
             }
 
             var sc;
             // Numbers slam in hard; tags pop in softer (they're the caption).
             var overshoot = tw.hero ? (tw.isBig ? 1.6 : 1.35) : (tw.sizeK < 1 ? 1.15 : 1.6);
+            overshoot = 1 + (overshoot - 1) * popK;
             if (t < 0.08) {
                 var slamT = t / 0.08;
-                sc = overshoot * (1 - Math.pow(1 - slamT, 3));
+                sc = popK > 0 ? overshoot * (1 - Math.pow(1 - slamT, 3)) : 1;
             } else if (t < 0.18) {
                 var settleT = (t - 0.08) / 0.10;
                 sc = overshoot + (1.0 - overshoot) * (1 - Math.pow(1 - settleT, 2));
             } else if (t < 0.22) {
                 var bounceT = (t - 0.18) / 0.04;
-                sc = 1.0 + 0.05 * Math.sin(bounceT * Math.PI);
+                sc = 1.0 + 0.05 * popK * Math.sin(bounceT * Math.PI);
             } else {
                 sc = 1.0;
             }
 
-            if (tw.el && cam && screenH > 0 && halfTanFov > 0) {
+            if (tw.el && cam && viewH > 0 && fullH > 0 && halfTanFov > 0) {
                 _floatProjVec.set(tw.wx, worldY, tw.wz);
                 var dist = _floatProjVec.distanceTo(cam.position);
                 if (dist < 1) dist = 1;
-                if (_paneCam) dist = Math.max(dist, (CONFIG.tileSize || BASE_TILE) * 6);   // a lens two tiles off would blow the number up to fill the screen
+                if (pane) dist = Math.max(dist, (CONFIG.tileSize || BASE_TILE) * 6);   // a lens two tiles off would blow the number up to fill the screen
                 _floatProjVec.project(cam);
                 // Behind the camera or off-screen depth → hide this frame.
                 if (_floatProjVec.z > 1) {
@@ -23502,23 +23919,24 @@ const ThreeRenderer = (function () {
                 } else {
                     // World→screen size (px per world unit) at this depth, ×pxScale —
                     // mirrors _scalePlates so numbers track zoom like sprites/plates.
-                    var worldToPx = screenH / (2 * dist * halfTanFov);
-                    tw._sx = (_floatProjVec.x * 0.5 + 0.5) * screenW;
-                    tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * screenH;
+                    var worldToPx = fullH / (2 * dist * halfTanFov);
+                    tw._sx = (_floatProjVec.x * 0.5 + 0.5) * viewW;
+                    tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * viewH;
                     var settledK = pxScale * worldToPx * (tw.sizeK || 1);
                     var ink0 = tw.el._ewInkH0 || 0;
                     if (ink0 > 0) {
-                        var minH = screenH * (tw.hero ? FLOAT_MIN_HERO_H : FLOAT_MIN_TAG_H);
+                        var minH = fullH * (tw.hero ? minHero : minTag);
                         if (ink0 * settledK < minH) settledK = minH / ink0;
-                        else if (tw.hero && ink0 * settledK > screenH * FLOAT_MAX_HERO_H) settledK = screenH * FLOAT_MAX_HERO_H / ink0;
+                        else if (tw.hero && ink0 * settledK > fullH * maxHero) settledK = fullH * maxHero / ink0;
                     }
-                    tw._k = sc * settledK;
+                    // the look's size rides on top of the clamps, so it shows at every zoom
+                    tw._k = sc * settledK * (tw.hero ? numK : wordK);
                     tw._op = Math.max(0, opacity);
                     live.push(tw);
                 }
             }
         }
-        if (live.length) _layoutFloatTexts(live, realDt);
+        if (live.length) _layoutFloatTexts(live, realDt, _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60));
         for (var li = 0; li < live.length; li++) {
             var lw = live[li];
             lw.el.style.left = lw._sx + 'px';
@@ -44289,6 +44707,41 @@ const ThreeRenderer = (function () {
         return mat;
     }
 
+    /* a viewer's clone of a cached unit GLB wears its OWN copies of the materials it changes (sRGB-tagged map clones,
+       THE MATTE BAKE), never the cache-shared ones; the copies land in ownedMats / ownedTex for the caller to dispose.
+       Returns whether the clone is skinned. (The character viewer and the UI Maker's floating text preview.) */
+    function _cvOwnBakes(m, ownedMats, ownedTex) {
+        var hasSkin = false;
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            n.frustumCulled = false;
+            if (n.isSkinnedMesh) hasSkin = true;
+            var src = Array.isArray(n.material) ? n.material : [n.material];
+            var changed = false;
+            var out = src.map(function (sm) {
+                if (!sm) return sm;
+                var pbr = !!(sm.isMeshStandardMaterial || sm.isMeshPhysicalMaterial);
+                var flip = !!(sm.map && !_ewTexIsSRGB(sm.map));
+                if (!pbr && !flip) return sm;
+                var mat2 = sm.clone();
+                if (flip) {
+                    var tex2 = sm.map.clone();
+                    _ewTexSetSRGB(tex2, true);
+                    tex2.needsUpdate = true;
+                    mat2.map = tex2;
+                    if (sm.emissiveMap === sm.map) mat2.emissiveMap = tex2;
+                    ownedTex.push(tex2);
+                }
+                if (pbr) _cvMatteBake(mat2);
+                ownedMats.push(mat2);
+                changed = true;
+                return mat2;
+            });
+            if (changed) n.material = Array.isArray(n.material) ? out : out[0];
+        });
+        return hasSkin;
+    }
+
     function _cvEnsure() {
         if (_cv) return _cv;
         if (typeof THREE === 'undefined') return null;
@@ -44651,33 +45104,7 @@ const ThreeRenderer = (function () {
             // the cache-shared material. The board / the HQ never see this: they swap
             // every unit material to Lambert in _attachUnitModel.
             v.ownedMats = []; v.ownedTex = [];
-            m.traverse(function (n) {
-                if (!n.isMesh) return;
-                n.frustumCulled = false;
-                if (n.isSkinnedMesh) hasSkin = true;
-                var src = Array.isArray(n.material) ? n.material : [n.material];
-                var changed = false;
-                var out = src.map(function (sm) {
-                    if (!sm) return sm;
-                    var pbr = !!(sm.isMeshStandardMaterial || sm.isMeshPhysicalMaterial);
-                    var flip = !!(sm.map && !_ewTexIsSRGB(sm.map));
-                    if (!pbr && !flip) return sm;
-                    var mat2 = sm.clone();
-                    if (flip) {
-                        var tex2 = sm.map.clone();
-                        _ewTexSetSRGB(tex2, true);
-                        tex2.needsUpdate = true;
-                        mat2.map = tex2;
-                        if (sm.emissiveMap === sm.map) mat2.emissiveMap = tex2;
-                        v.ownedTex.push(tex2);
-                    }
-                    if (pbr) _cvMatteBake(mat2);
-                    v.ownedMats.push(mat2);
-                    changed = true;
-                    return mat2;
-                });
-                if (changed) n.material = Array.isArray(n.material) ? out : out[0];
-            });
+            hasSkin = _cvOwnBakes(m, v.ownedMats, v.ownedTex);
             if (def.creatorBase) {
                 v.appearanceRig = _createAppearanceRig(m, appearance);
                 v.appearanceRoot = m; v.appearanceScale = s / h; v.appearanceY = m.position.y / h;
@@ -70227,7 +70654,8 @@ const ThreeRenderer = (function () {
            the duration of an attack / spell — see the ACTION TILE GLOW block. */
         actionGlowStart, actionGlowBurst, actionGlowEnd, actionGlowKillAll,
 
-        drawArrow3D, drawPathArrow3D, clearArrows3D, lookPreview,
+        drawArrow3D, drawPathArrow3D, clearArrows3D, lookPreview, floatPreview,
+        floatShows: function (text, kind) { return _floatShows(text, kind); },
 
         showGhostUnit, clearGhostUnit,
 
@@ -70687,8 +71115,12 @@ window.ThreeAnim = {
     },
 
     floatingText: function(tileX, tileY, text, kind, durationMs, opts) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.startFloatingText(tileX, tileY, text, kind, durationMs, opts);
+        // the pop's canvas (null when none was made: the look hides it) — battle.js's hit read dresses that one
+        if (ThreeRenderer.isActive()) return ThreeRenderer.startFloatingText(tileX, tileY, text, kind, durationMs, opts);
+        return null;
     },
+    // false when this viewer's Floating text look hides this pop (UI Maker > Which pops show); the 2D board asks too
+    floatShows: function(text, kind) { return ThreeRenderer.floatShows(text, kind); },
 
     hitEffect: function(tileX, tileY, variant, isCrit, durationMs) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startHitEffect(tileX, tileY, variant, isCrit, durationMs);

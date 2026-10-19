@@ -13635,6 +13635,20 @@ const UX_DEF = {
      height in tiles (0 = none); Col* = a colour for that side ('' = the game's: yours blue, the enemy's red, neutral gold) */
   ...zoneDefs('zs'), ...zoneDefs('zn'),
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
+  /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
+     stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
+     like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
+     these into window._ewFloatLook (+ _ewFloatLookV), read by three-renderer.js (_buildFloatTextCanvas, _floatStep) and
+     battle.js's hit read (fElem / fStamp / fGlyph / fKill / fSwell). Numbers are multipliers on the game's own look
+     (1 = as the game); fMinNum / fMinWord / fMaxNum = % of the screen height; fFade = % of a pop's life the fade starts;
+     fWait = ms a word waits for its number; fGap = px between stacked pops; fShow* = which pops show; fc<Kind> = a colour
+     per kind of pop ('' = the game's, FLOAT_KINDS) */
+  fNumFont: '', fWordFont: '', fNumWeight: '', fWordWeight: '', fCase: '', fEmoji: true, fTrack: 1,
+  fNumSize: 1, fWordSize: 1, fMinNum: 6.5, fMinWord: 2.7, fMaxNum: 15, fChip: true, fSwell: 1.6,
+  fLine: 1, fLineCol: '', fShadow: 1, fSheen: 1, fGrad: 'grad', fGlow: 0, fGlowCol: '',
+  fElem: true, fStamp: true, fGlyph: true, fKill: true,
+  fRise: 1, fLife: 1, fPop: 1, fFade: 75, fStart: 'chest', fSpread: 1, fWait: 110, fGap: 4,
+  fShowDmg: true, fShowHeal: true, fShowMp: true, fShowTotal: true, fShowHit: true, fShowStatus: true, fShowMisc: true,
 };
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
    _hlKindOfType): [kind, label, the game's colour, tip] */
@@ -13659,6 +13673,19 @@ const AIM_TILE_KINDS = [
 const aimKey = (pre, k) => pre + k[0].toUpperCase() + k.slice(1);
 AIM_ARROW_KINDS.forEach(([k]) => { UX_DEF[aimKey('wc', k)] = ''; });
 AIM_TILE_KINDS.forEach(([k]) => { UX_DEF[aimKey('tc', k)] = ''; });
+/* the kinds of floating text (three-renderer _FLOAT_STYLES): [kind, label, the game's colour, numbers | words, tip] */
+const FLOAT_KINDS = [
+  ['damage', 'Damage', '#ff5a4a', 'nums', 'Damage numbers, and damage words like BURNING! or CRASH!'], ['critdmg', 'Critical hit', '#ffcc00', 'nums', 'The number of a critical hit'],
+  ['combo', 'Chain hit', '#5fd4ff', 'nums', 'Counter and follow-up hits in a chain'], ['total', 'TOTAL', '#ffe27a', 'nums', 'The N TOTAL! after a flurry of hits'],
+  ['heal', 'Heal', '#5cf07e', 'nums', 'Heal numbers, and heal words like Doused'], ['mp', 'MP', '#6ec8ff', 'nums'], ['revive', 'Revive + AP', '#ffd700', 'nums'],
+  ['crit', 'CRIT / BACKSTAB', '#ffcc00', 'words'], ['mult', '×N WEAK / RESIST', '#ffd86b', 'words', 'The multiplier words: WEAK!, RESIST, HIGH GROUND!, POINT BLANK'],
+  ['streak', 'SUPER EFFECTIVE / PUSHED', '#ff6a4a', 'words', 'SUPER EFFECTIVE!, PUSHED!, COLLISION!, SWAP!, a spell name'], ['counter', 'FLANKED / counter', '#ff9a55', 'words'],
+  ['overkill', 'OVERKILL', '#ff3a2a', 'words'], ['dodge', 'DODGE / MISS', '#d6d9e6', 'words'], ['protect-block', 'PROTECTED / IMMUNE', '#5cb8ff', 'words'],
+  ['buff', 'Buffs', '#9fe6ff', 'words'], ['debuff', 'Debuffs', '#d68cff', 'words'], ['status', 'Statuses', '#ffd86b', 'words', 'GRAPPLED!, HOOKED!, Blocked!'],
+  ['neutral', 'Moves (LAND, DROP)', '#f0f0f0', 'words'], ['xp', 'XP', '#dda0ff', 'words'], ['levelup', 'Level up', '#ffe27a', 'words'],
+  ['pickup', 'Pickups + gold', '#ffd86b', 'words'], ['nexus', 'Nexus', '#ffd86b', 'words']];
+const fcKey = k => 'fc' + k.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
+FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -14001,6 +14028,68 @@ function seSignal() {
   Object.keys(V).forEach(n => r.style.setProperty(n, V[n]));
   window._ewSeLook = { hover: !!X.eHover };
   if (!X.eHover) { try { if (typeof window.clearSpellPressMarks === 'function') window.clearSpellPressMarks(); } catch (e) {} }
+}
+/* THE FLOATING TEXT look the renderer reads (window._ewFloatLook): only the keys that differ from the game's own, so an
+   untouched look draws exactly the old pops; re-published (and _ewFloatLookV bumped) only when it changes. A font the
+   page has not drawn yet is loaded first (a canvas does not fetch one), then the version bumps again so it shows. */
+let _floatSent = '';
+const _floatFontsAsked = {};
+function floatSignal() {
+  const X = uxOf(), D = UX_DEF, ch = k => String(X[k]) !== String(D[k]), L = {};
+  const num = (k, lo, hi) => Math.max(lo, Math.min(hi, +X[k] || 0));
+  if (X.fNumFont) L.numFont = X.fNumFont;
+  if (X.fWordFont) L.wordFont = X.fWordFont;
+  if (X.fNumWeight) L.numWeight = X.fNumWeight;
+  if (X.fWordWeight) L.wordWeight = X.fWordWeight;
+  if (X.fCase) L.wordCase = X.fCase;
+  if (!X.fEmoji) L.emoji = false;
+  if (ch('fTrack')) L.track = num('fTrack', 0, 5);
+  if (ch('fNumSize')) L.numSize = num('fNumSize', 0.2, 4);
+  if (ch('fWordSize')) L.wordSize = num('fWordSize', 0.2, 4);
+  if (ch('fMinNum')) L.minNum = num('fMinNum', 0, 40);
+  if (ch('fMinWord')) L.minWord = num('fMinWord', 0, 30);
+  if (ch('fMaxNum')) L.maxNum = num('fMaxNum', 1, 60);
+  if (!X.fChip) L.chip = false;
+  if (ch('fSwell')) L.swell = num('fSwell', 1, 3);
+  if (ch('fLine')) L.line = num('fLine', 0, 4);
+  if (X.fLineCol) L.lineCol = X.fLineCol;
+  if (ch('fShadow')) L.shadow = num('fShadow', 0, 3);
+  if (ch('fSheen')) L.sheen = num('fSheen', 0, 2.5);
+  if (X.fGrad === 'flat') L.grad = 'flat';
+  if (ch('fGlow')) L.glow = num('fGlow', 0, 3);
+  if (X.fGlowCol) L.glowCol = X.fGlowCol;
+  if (!X.fElem) L.elem = false;
+  if (!X.fStamp) L.stamp = false;
+  if (!X.fGlyph) L.glyph = false;
+  if (!X.fKill) L.killGlow = false;
+  if (ch('fRise')) L.rise = num('fRise', -1, 5);
+  if (ch('fLife')) L.life = num('fLife', 0.3, 5);
+  if (ch('fPop')) L.pop = num('fPop', 0, 3);
+  if (ch('fFade')) L.fadeAt = num('fFade', 20, 97) / 100;
+  if (X.fStart && X.fStart !== 'chest') L.start = X.fStart;
+  if (ch('fSpread')) L.spread = num('fSpread', 0, 12);
+  if (ch('fWait')) L.wordWait = num('fWait', 0, 2000);
+  if (ch('fGap')) L.gap = num('fGap', -20, 60);
+  const show = {};
+  [['dmg', 'fShowDmg'], ['heal', 'fShowHeal'], ['mp', 'fShowMp'], ['total', 'fShowTotal'], ['hit', 'fShowHit'], ['status', 'fShowStatus'], ['misc', 'fShowMisc']]
+    .forEach(([g, k]) => { if (!X[k]) show[g] = false; });
+  if (Object.keys(show).length) L.show = show;
+  const cols = {};
+  FLOAT_KINDS.forEach(([k]) => { const v = X[fcKey(k)]; if (v) cols[k] = v; });
+  if (Object.keys(cols).length) L.cols = cols;
+  const k = JSON.stringify(L); if (k === _floatSent) return;
+  _floatSent = k;
+  window._ewFloatLook = Object.keys(L).length ? L : null;
+  window._ewFloatLookV = (window._ewFloatLookV || 0) + 1;
+  /* a weight on the game's own face asks for that Cinzel weight (index.html lists 400 / 700 / 900) */
+  [[L.numFont, L.numWeight], [L.wordFont, L.wordWeight]].forEach(([f, w]) => {
+    if ((!f && !w) || !document.fonts || !document.fonts.load) return;
+    const fam = f || "'Cinzel', serif", key = fam + '|' + (w || '');
+    if (_floatFontsAsked[key]) return;
+    _floatFontsAsked[key] = 1;
+    Promise.all((w ? [w] : ['400', '700', '900']).map(x => document.fonts.load(x + ' 48px ' + fam, '-0123456789+ABC').catch(() => null)))
+      .then(() => { window._ewFloatLookV = (window._ewFloatLookV || 0) + 1; });
+  });
 }
 /* the combat log's options ui.js reads (window._ewLogLook), re-published only when they change */
 let _clogSent = '';
@@ -14414,6 +14503,113 @@ function seForm(X) {
     + fSeg('Shape', 'eShape', [['circle', 'Circle'], ['round', 'Rounded'], ['square', 'Square']], X.eShape)
     + fRange('Size in badges + menus', 'eMenu', 0.6, 2.5, 0.05, +X.eMenu, '1 = as the game')));
   return h + xReset('e', 'Reset the green !');
+}
+/* ── THE FLOATING TEXT VIEW (live mode 'float', 2026-10-19, mondo: "in the ui maker, lets add a floating text editor like
+   for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the
+   floating text will look like with a model with a nameplate for scale"): the damage numbers, heals and words that pop
+   over the units. The dock carries a unit of its own (ThreeRenderer.floatPreview: the race's model on the board's tiles,
+   its name plate, the pops looping through the board's own spawn + step with the look now) at the sizes a battle on this
+   screen gives them; in a battle the real pops change too (the view leaves the board clickable). ── */
+const FLOAT_LOOKS = [['game', 'As the game', {}],
+  ['clean', 'Clean', { fGrad: 'flat', fSheen: 0, fLine: 0.65, fShadow: 0.5, fNumFont: "'Helvetica Neue', Helvetica, Arial, sans-serif", fWordFont: "'Helvetica Neue', Helvetica, Arial, sans-serif", fNumWeight: '700', fWordWeight: '700' }],
+  ['pixel', 'Pixel', { fNumFont: "'DotGothic16', monospace", fWordFont: "'DotGothic16', monospace", fNumWeight: '400', fWordWeight: '400', fGrad: 'flat', fSheen: 0, fLine: 0.8, fShadow: 0.4, fPop: 0.5 }],
+  ['comic', 'Comic', { fNumFont: "'Bangers', cursive", fWordFont: "'Bangers', cursive", fNumWeight: '400', fWordWeight: '400', fLine: 1.5, fPop: 1.5, fTrack: 1.6, fNumSize: 1.1 }],
+  ['impact', 'Impact', { fNumFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", fWordFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", fNumWeight: '400', fWordWeight: '400', fLine: 1.2, fGlow: 0.6 }],
+  ['glow', 'Glow', { fGlow: 1.4, fLine: 0.6, fShadow: 0.3, fSheen: 0.5 }]];
+const FLOAT_BEATS = [['hit', 'Hit', 'A fire hit that is super effective'], ['crit', 'Crit', 'A critical hit from behind'], ['heal', 'Heal'], ['status', 'Status', 'BURNING!, FROZEN!, PROTECTED!'],
+  ['miss', 'Miss'], ['mp', 'MP + XP'], ['combo', 'Combo', 'Three quick hits, then the TOTAL'], ['ko', 'KO', 'The killing blow']];
+/* the preview's own choices (this session only): the battle zoom it shows, the model ('' = the unit whose turn it is in a
+   battle, else the fortune teller), and whether the pops loop */
+function fpState() { return UI.fp || (UI.fp = { zoom: 'turn', race: '', loop: true }); }
+function fpBattleUnit() {
+  try {
+    if (typeof state === 'undefined' || !state || state.phase !== 'battle' || !Array.isArray(state.units)) return null;
+    const live = state.units.filter(u => u && !u.dead && u.race);
+    const id = state._blitzActiveUnitId || state.selectedUnitId;
+    return live.find(u => String(u.id) === String(id)) || live.find(u => u.player === 1) || live[0] || null;
+  } catch (e) { return null; }
+}
+function fpRaces() {
+  if (typeof RACE_MODELS_3D === 'undefined') return [];
+  return Object.keys(RACE_MODELS_3D).map(r => [r, (typeof getRaceLabel === 'function' ? getRaceLabel(r, Object.keys(RACE_MODELS_3D[r] || {})[0]) : '') || r])
+    .sort((a, b) => a[1].localeCompare(b[1]));
+}
+function fpUnit() {
+  const F = fpState(), u = F.race ? null : fpBattleUnit();
+  if (u) {
+    let lvl = 100; try { if (typeof getUnitLevel === 'function') lvl = getUnitLevel(u); } catch (e) {}
+    return { race: u.race, gender: u.gender, name: u.name || '', types: u.types || [], level: lvl, maxHp: u.maxHp, maxMp: u.maxMp, appearance: u.appearance, zodiac: u.zodiac };
+  }
+  const race = F.race || 'fortune teller', set = (typeof RACE_MODELS_3D !== 'undefined' && RACE_MODELS_3D[race]) || {};
+  const gender = set.male ? 'male' : Object.keys(set)[0] || 'male';
+  let types = ['human']; try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[race] && Array.isArray(RACE_PROFILES[race].types)) types = RACE_PROFILES[race].types; } catch (e) {}
+  return { race, gender, name: '', types, level: 100 };
+}
+function dockFloatBody() {
+  const F = fpState(), bu = fpBattleUnit();
+  const races = fpRaces();
+  const model = `<select data-dk="fprace" title="The unit the pops float over">`
+    + `<option value=""${F.race ? '' : ' selected'}>${bu ? 'This turn\'s unit' : 'Fortune teller'}</option>`
+    + races.map(([r, l]) => `<option value="${esc(r)}"${F.race === r ? ' selected' : ''}>${esc(l)}</option>`).join('') + `</select>`;
+  return dockTop() + `<div class="uim-note">The numbers and words that pop over the units. The unit below shows them as you drag, as big next to a body and its name plate as a battle on this screen draws them; in a battle the real ones change too.</div>
+  <div class="uim-fprev"><div class="uim-fphost" data-fphost="1"></div>
+  <div class="uim-fpbar">${FLOAT_BEATS.map(([v, l, tip]) => `<button class="uim-btn" data-dk="fpbeat" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div>
+  <div class="uim-fpbar">${[['board', 'Board', 'The whole-board zoom'], ['turn', 'Turn', 'The zoom your turn opens on'], ['close', 'Close-up', 'An action close-up']].map(([v, l, tip]) =>
+    `<button class="uim-btn${F.zoom === v ? ' on' : ''}" data-dk="fpzoom" data-val="${v}" title="${esc(tip)}">${l}</button>`).join('')}
+    <button class="uim-btn${F.loop ? ' on' : ''}" data-dk="fploop" title="Keep the pops coming, one after another">Loop</button>${model}</div></div>
+  <div class="uim-dk-detail"></div>`;
+}
+function floatPrevMount() {
+  const A = UI.live, host = A && A.dock.querySelector('[data-fphost]'); if (!host) return;
+  const F = fpState();
+  let ok = null;
+  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.floatPreview ? ThreeRenderer.floatPreview(host, { zoom: F.zoom, unit: fpUnit(), loop: F.loop }) : null; } catch (e) { console.warn('UI Maker floating text preview', e); ok = null; }
+  if (!ok) host.insertAdjacentHTML('afterbegin', '<div class="uim-note">The preview could not start here; the real pops in a battle still show every change.</div>');
+  UI.fpApi = ok;
+}
+function floatDetail() {
+  const X = uxOf();
+  const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0]));
+  const WT = [['', 'As the game'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']];
+  let h = `<div class="uim-h">Floating text</div><div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${FLOAT_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="floatlook" data-val="${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  h += sec('ffont', 'Font', xp(fSelect('Numbers', 'fNumFont', FF, X.fNumFont) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
+    + fSelect('Words', 'fWordFont', FF, X.fWordFont) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
+    + fSeg('Word case', 'fCase', [['', 'As written'], ['upper', 'UPPER'], ['title', 'Title'], ['lower', 'lower']], X.fCase)
+    + fRange('Letter spacing in words', 'fTrack', 0, 4, 0.05, +X.fTrack, '1 = as the game; 0 = the letters touch'))
+    + xCheck('Icons in words (🔥 ❄️ ⛰)', 'fEmoji', X.fEmoji));
+  h += sec('fsize', 'Size', xp(fRange('Numbers', 'fNumSize', 0.3, 3, 0.05, +X.fNumSize, '1 = as the game') + fRange('Words', 'fWordSize', 0.3, 3, 0.05, +X.fWordSize, '1 = as the game')
+    + fRange('Smallest number (% of screen)', 'fMinNum', 0, 20, 0.5, +X.fMinNum, 'Zoomed out, a number stops shrinking at this share of the screen height (then Size scales it)')
+    + fRange('Biggest number (% of screen)', 'fMaxNum', 3, 40, 0.5, +X.fMaxNum, 'Up close, a number stops growing at this share of the screen height (then Size scales it)')
+    + fRange('Smallest word (% of screen)', 'fMinWord', 0, 12, 0.1, +X.fMinWord)
+    + fRange('Big hits swell to', 'fSwell', 1, 3, 0.05, +X.fSwell, 'A hit that takes a big share of the target\'s HP draws up to this much bigger (1 = no swell)'))
+    + xCheck('Small hits draw smaller', 'fChip', X.fChip));
+  h += sec('fink', 'Outline + light', xp(fRange('Outline', 'fLine', 0, 3, 0.05, +X.fLine, '0 = no outline')
+    + fColorOpt('Outline colour', 'fLineCol', X.fLineCol, '#000000', false, 'Unticked = a dark shade of each pop\'s own colour')
+    + fRange('Shadow', 'fShadow', 0, 3, 0.05, +X.fShadow, '0 = none') + fRange('Shine', 'fSheen', 0, 2.5, 0.05, +X.fSheen, 'The bright top half of each letter (0 = none)')
+    + fSeg('Number fill', 'fGrad', [['grad', 'Gradient'], ['flat', 'Flat colour']], X.fGrad)
+    + fRange('Glow', 'fGlow', 0, 3, 0.05, +X.fGlow, 'A soft halo in the pop\'s colour (0 = none)')
+    + fColorOpt('Glow colour', 'fGlowCol', X.fGlowCol, '#ffffff', false, 'Unticked = each pop\'s own colour')));
+  h += sec('fhit', 'Hits', xCheck('Element colours on hits', 'fElem', X.fElem) + xCheck('CRIT stamp', 'fStamp', X.fStamp)
+    + xCheck('Weakness icon', 'fGlyph', X.fGlyph) + xCheck('Killing blow glow', 'fKill', X.fKill)
+    + '<div class="uim-note">Element colours on: a fire hit\'s number wears the fire colour, and the Damage colour below shows on hits with no element. Off: every hit wears the Damage colour (Critical hit for a crit).</div>');
+  h += sec('fmove', 'Motion', xp(fRange('Rise', 'fRise', 0, 3, 0.05, +X.fRise, 'How far a pop floats up (0 = it stays put)')
+    + fRange('How long they stay', 'fLife', 0.4, 3, 0.05, +X.fLife, '1 = as the game')
+    + fRange('Pop', 'fPop', 0, 2.5, 0.05, +X.fPop, 'How hard a pop slams in (0 = it just appears)')
+    + fRange('Fade starts at (%)', 'fFade', 20, 95, 1, +X.fFade, 'The share of its life a pop stays solid before it fades out')
+    + fSeg('Starts at', 'fStart', [['chest', 'Chest'], ['head', 'Head'], ['above', 'Above the head']], X.fStart)
+    + fRange('Scatter', 'fSpread', 0, 12, 0.1, +X.fSpread, 'How far apart pops land at random (1 = as the game, 0 = always the same spot, 12 = about a third of a tile)')
+    + fRange('Words wait (ms)', 'fWait', 0, 800, 10, +X.fWait, 'How long a word waits so its number lands first')
+    + fRange('Gap between pops (px)', 'fGap', -10, 40, 1, +X.fGap, 'The space kept between pops stacked over each other')));
+  h += sec('fshow', 'Which pops show', xCheck('Damage numbers', 'fShowDmg', X.fShowDmg) + xCheck('Heal numbers', 'fShowHeal', X.fShowHeal)
+    + xCheck('MP numbers', 'fShowMp', X.fShowMp) + xCheck('TOTAL after a flurry', 'fShowTotal', X.fShowTotal)
+    + xCheck('Hit words (WEAK!, CRIT, DODGE!, SUPER EFFECTIVE!)', 'fShowHit', X.fShowHit)
+    + xCheck('Status + effect words (BURNING!, FROZEN!, LAND)', 'fShowStatus', X.fShowStatus)
+    + xCheck('XP, level ups, pickups, Nexus', 'fShowMisc', X.fShowMisc));
+  h += sec('fcnum', 'Colours: numbers', xp(FLOAT_KINDS.filter(x => x[3] === 'nums').map(([k, l, d, , tip]) => fColorOpt(l, fcKey(k), X[fcKey(k)], d, false, tip)).join('')));
+  h += sec('fcword', 'Colours: words', xp(FLOAT_KINDS.filter(x => x[3] === 'words').map(([k, l, d, , tip]) => fColorOpt(l, fcKey(k), X[fcKey(k)], d, false, tip)).join('')));
+  h += '<div class="uim-note">Ticked = its own colour for that kind of pop (a number gets a gradient made from it); unticked = the game\'s. A new setting shows on the next pop; the unit above redraws its pops at once.</div>'
+    + xReset('f', 'Reset the floating text');
+  return h;
 }
 function platesDetail() {
   const X = uxOf();
@@ -15085,7 +15281,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15346,6 +15542,12 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-aimkey span { display: inline-flex; align-items: center; gap: 4px; }
 .uim-aimkey i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); box-shadow: 0 0 4px var(--c); }
 .uim-aimkey i.tl { width: 9px; height: 9px; border-radius: 2px; background: transparent; border: 1.5px solid var(--c); box-shadow: inset 0 0 0 9px color-mix(in srgb, var(--c) 35%, transparent); }
+.uim-fprev { position: sticky; top: -8px; z-index: 4; margin: 6px -10px 8px; padding: 6px 10px 5px; background: rgb(14,16,22); box-shadow: 0 7px 9px -7px rgba(0,0,0,0.85); }
+.uim-fphost { position: relative; width: 100%; height: 232px; overflow: hidden; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
+.uim-fphost > .uim-note { position: absolute; inset: 8px; z-index: 2; }
+.uim-fpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 5px; }
+.uim-fpbar .uim-btn { padding: 2px 6px; font-size: 10px; }
+.uim-fpbar select { margin-left: auto; max-width: 128px; font-size: 10px; }
 .uim-dock { position: fixed; z-index: 10061; width: 364px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
@@ -15787,9 +15989,9 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once'], ['float', 'Floating text ⧉', 'Opens on the real screen: how the damage numbers, heals and words that pop over the units look and move, with a unit and its name plate that show every change at once']];
 /* the tabs that open on the real screen (the live dock) */
-const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim'];
+const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim', 'float'];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
   if (LIVE_MODES.indexOf(UI.tab) >= 0) UI.tab = UI.back || 'skins';
@@ -16371,6 +16573,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
     <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows, the tile highlights and the green super-effective ! look">Arrows</button>
+    <button class="uim-btn${UI.live.mode === 'float' ? ' on' : ''}" data-dk="float" title="Floating text: how the damage numbers, heals and words that pop over the units look">Pops</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -16879,9 +17082,10 @@ function faceBoxes() {
 
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : A.mode === 'float' ? dockFloatBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
   if (A.mode === 'aim') aimPrevMount();
+  else if (A.mode === 'float') floatPrevMount();
 }
 function dockDetail() {
   const A = UI.live; if (!A) return;
@@ -16890,6 +17094,7 @@ function dockDetail() {
   else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else if (A.mode === 'aim') d.innerHTML = aimDetail();
+  else if (A.mode === 'float') d.innerHTML = floatDetail();
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -16935,7 +17140,7 @@ function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); a
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
-  if (A.mode === 'aim') return;   // no boxes to pick: the board below the panel is the game's own
+  if (A.mode === 'aim' || A.mode === 'float') return;   // no boxes to pick: the board below the panel is the game's own
   if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
@@ -17019,7 +17224,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.mode === 'float') { /* the preview runs itself */ } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -17491,6 +17696,16 @@ function dockClick(e) {
         db.ux = db.ux || {}; Object.keys(L[2]).forEach(x => { db.ux[pre + x] = L[2][x]; }); uxTidy(); touchLayout(); dockDetail();
       }
     }
+    else if (k === 'floatlook') {   // a one-click look: the font, ink and motion keys go back first; the colours and the Show boxes stay
+      const L = FLOAT_LOOKS.find(x => x[0] === v);
+      if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === 'f' && x[1] !== 'c' && x.indexOf('fShow') !== 0) delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
+    }
+    else if (k === 'fpbeat') { if (UI.fpApi) UI.fpApi.fire(v); }
+    else if (k === 'fpzoom') {
+      fpState().zoom = v; if (UI.fpApi) UI.fpApi.set({ zoom: v });
+      A.dock.querySelectorAll('[data-dk="fpzoom"]').forEach(x => x.classList.toggle('on', x.dataset.val === v));
+    }
+    else if (k === 'fploop') { const F = fpState(); F.loop = !F.loop; b.classList.toggle('on', F.loop); if (UI.fpApi) UI.fpApi.loop(F.loop); }
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
     else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (uxGroupOf(x) === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
@@ -17546,6 +17761,7 @@ function dockInput(e) {
   const dk = el.dataset.dk;
   if (dk === 'faceoff') { snapLayout(true); if (el.checked) delete db.faces.off; else db.faces.off = true; faceBump(); clearTimeout(_saveT); _saveT = setTimeout(save, 250); dockBody(); return; }
   if (dk === 'faceany') { if (e.type !== 'change' || !el.value) return; UI.face = el.value; UI.faceAny = true; dockBody(); return; }
+  if (dk === 'fprace') { if (e.type !== 'change') return; fpState().race = el.value; if (UI.fpApi) UI.fpApi.set({ unit: fpUnit() }); return; }
   if (el.dataset.fpath) {
     if (el.value === '' || isNaN(+el.value) || !UI.face) return;
     const ent = faceImg(faceSprite(faceUnit(UI.face))); if (!ent.ok) return;
@@ -17657,6 +17873,8 @@ function dockInput(e) {
     else v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
     snapLayout();
     X[k] = v; if (el.dataset.kind !== 'rgb' && el.dataset.kind !== 'hex' && el.dataset.kind !== 'alpha') syncTwins(el, 'data-xpath', v);
+    /* a glow colour with the Glow at 0 would show nothing: ticking it brings a glow along (the slider shows it) */
+    if (k === 'fGlowCol' && v && !(+uxOf().fGlow > 0)) X.fGlow = 1;
     if (k === 'qStatEach' && v) qpFreeze(true);
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
