@@ -35110,7 +35110,8 @@
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
-            if (spell.kind === 'bomb') return no;   // a bomb that does not go off on the body (airborne, an empty tile) never presses
+            // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
+            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
@@ -38913,6 +38914,10 @@
                the cast (doSpell _placementStruck) and ends the turn like any damaging cast, so its blast judges the press
                and the green ! shows it. A bomb on an empty tile records no hit: no press, the turn stays alive. */
             if (spell.kind === 'bomb') return true;
+            /* …and so do the two damaging seeds (mondo 2026-10-19: "posion seed and leech seed need the same fix as the
+               place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
+               the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
+            if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
             return _PRESS_SPELL_KINDS.has(spell.kind)
                 || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
                 || (spell.kind !== 'delayed' && spellDealsDamage(spell));
