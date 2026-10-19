@@ -1521,6 +1521,34 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
 - Reset groups are now `uxGroupOf(k)`: the first letter, except the zones' first two (zs / zn), so each side resets alone.
 - Viewer-local like the rest of the UI Maker: nothing relayed, the guest draws its own look over its own state copy.
 
+### UI Maker pass 24: Floating text, the pops over the units (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look like with a model with a nameplate for scale")
+- Live mode `float` (dock head button **Pops**, tab "Floating text" in TABS). db.ux f* keys (UX_DEF, hud.js): font / weight / case /
+  letter spacing / icons, sizes (numbers, words, smallest + biggest number and smallest word as % of the screen height, big-hit
+  swell, small hits smaller), outline + its colour, shadow, shine, gradient or flat, glow + its colour, the hit read (element
+  colours, CRIT stamp, weakness icon, killing-blow glow), motion (rise, life, pop, fade start, start height chest/head/above,
+  scatter, word wait, gap), which pops show (damage, heal, MP, TOTAL, hit words, status words, XP/pickups/Nexus) and a colour per
+  kind (`fc<Kind>`, FLOAT_KINDS). Looks row FLOAT_LOOKS (As the game, Clean, Pixel, Comic, Impact, Glow). Reset = `xReset('f')`.
+- `floatSignal()` (in the applyLayout signal chain) publishes ONLY the keys that differ from UX_DEF as `window._ewFloatLook`
+  (null when untouched, so an untouched look draws the exact old pops) and bumps `window._ewFloatLookV`; a picked font is
+  `document.fonts.load`ed first (a canvas never fetches one) and the version bumps again when it lands.
+- three-renderer.js: `_buildFloatTextCanvas(text, kind, look)` reads the look (fonts, weights, case, emoji strip, colours as
+  gradients from one colour, outline/shadow/shine/glow, chip). `_floatSpawn(ctx, ...)` + `_floatStep(ctx, cam, viewW, viewH,
+  fullH, pane)` are the ONE spawn + step for the board (`_floatGameCtx`) and the preview: rise/life/pop/fade/start/scatter/wait/
+  gap and the min/max sizes; Size multiplies AFTER the min/max clamp so it shows at every zoom. `_floatShows` hides a pop group.
+  `startFloatingText` / `ThreeAnim.floatingText` return the pop (null when hidden) and battle.js dresses only that one.
+- battle.js `_hitReadStyle` reads the look (elem, stamp, glyph, swell, killGlow); `window._ewHitReadDress(c, kind, opts)` lets
+  the preview dress its pops with the same hit read. Viewer-local styling on both ends (the pop facts already ride the relay),
+  so nothing new is relayed (RULE #2).
+- The preview: `ThreeRenderer.floatPreview(host, opts)` = its own WebGL context (like lookPreview): the race's rigged model on a
+  few tiles, its name plate (`_buildClonePlate`, global .tp-wrap CSS so the Name plates look shows), the battle lens (FOV 45,
+  40° pitch, 45° yaw, board / turn / close-up distances) and a crop of a whole screen this size (setViewOffset), so number,
+  plate and body keep battle proportions. Beats (FLOAT_PREV_BEATS): Hit, Crit, Heal, Status, Miss, MP + XP, Combo, KO; Loop;
+  model picker (this turn's unit in a battle, else Fortune teller, or any race with a 3D model). A look change redraws the
+  pops on screen at once.
+- Browser-checked (scratchpad probe, jsdelivr served from a local npm mirror since the sandbox proxy blocks it): the dock
+  preview showed the model, its plate and looping pops; in a VS-CPU arena battle each control was set through the dock's own
+  inputs and the next real pop (window.showFloatingTextAtTile) was measured against one before.
+
 ### THE GAME DEFAULT THEME: mondo's Entropy Wars Theme (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game", with his export Entropy_Wars_Theme.ewtheme.json)
 - **The preset**: hud.js `UIM_PRESETS` opens with `p_entropy` "Entropy Wars Theme", his exported theme as a literal with every value as exported (only the id is the preset's own; `slices` was empty, so no images). Read-only like every preset: editing it makes a copy.
 - **The default**: `HUD_THEME_DEFAULT = 'p_entropy'` (getHudTheme / setHudTheme fallback, UI Maker `globalId()`, the fallback after deleting the theme the game wears). `HUD_THEME_BASE = 'crystal'` keeps Classic Blue as the token base with no data-hud-theme. Only a profile that never picked a theme (no `ew_hud_theme`) gets it; a picked theme stays.
@@ -1532,3 +1560,11 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
 - Now the toggle is **Color Grade** (mood tint, levels, saturation, Color Depth quantize). three-post.js `_retroLive()` runs the pass while ANY part is on: grade, Pixelate > 1, Dither > 0, Grain > 0. Uniform `uGradeOn` gates `grade()` in all three shaders (GLSL `_RetroShader`, the pmndrs frame built from it, the TSL `_ngFrame`). The dither + quantize block runs only when the grade is on or Dither > 0, so Dither 0 = no weave at all.
 - Pixelate with no dither = Color Grade off, Pixelate 2x+, Dither 0. The section stays open (toggle no longer re-renders), summary lists the live parts.
 - Ownership: `ew_retro_owned` (localStorage) marks every retro setting the player SET in the menu; a scene look (map / room `look.retro`) only fills settings the player never set. Before this, every look's `pixelSize: 1` beat a Pixelate slider left on its 2x factory value.
+
+### UI Maker pass 22: the colour edge follows the button shape + the Trapezoid shape (2026-10-19, mondo: "see the colored lines sticking out at the left end of the action menu? those need to be put into the ui maker or they need to automatically follow what the shape of the button panel is so that they dont stick out like that. also i would like a trapezoid shape for the panels please, the closest right now is shard but i want a trapezoid with straight top and bottom edges")
+- **The cause**: the battle surface's `keep` rule drew each command row's colour (`--bc`: move teal, attack red, a spell's type) as `box-shadow: inset 3px 0 0` on the square box. A skin's border-image fill covers an inset shadow, so under his shard skin only the part OUTSIDE the slanted shape showed: a straight line with a round top poking out at the left.
+- **THE COLOUR EDGE** (hud.js after `roleSkin`): `edgeCss(S, T)` for surfaces with `edge: { row, sel, dead, pe, legacy }` (battle rows; the Sample windows preview on `::after`, its MOVE / ATTACK / ABILITIES / ITEMS carry the verbs' `--bc`). A skinned row gets `isolation: isolate` + a `::before` at `z-index: -1` (above the skin, under the words) filled with `--bc` and clipped by `edgeClip(s, E)`: `edgeChain(s)` = the shape's left side as `[x%, x px, y%, y px]` points (whole shapes in % because they are stretched, sliced shapes in px corners; 9-slice images count as square), moved right by the gap, as wide as the width, ends cut by the end gap (px-exact on sliced corners). Auto gaps = just inside the outline (in % for whole shapes, whose outline stretches). The selected row follows the Selected skin's shape. A role with no skin keeps the old inset line (`legacy`), so skinless themes look as before.
+- **Settings** (`skins.button.edge`, `skins.buttonSel.edge`; Selected's unset keys come from Button; edge is left out of the bake cache key): Skins > Button / Selected > "Colour edge": Show, Width, Gap from the side, Gap at the ends, One colour (off = each action's own), Opacity, Greyed-out rows (Button only), Reset edge.
+- **THE TRAPEZOID** (`trap`, a whole shape like shard): straight top + bottom, the Slant slider (-40..40 = 0..20% of the width; above 0 the top is the short edge, below 0 the bottom) + "Lean one way" (`lean`, both sides slant the same way; shapePath key `trapl` via `shapeKey(s)`). Also in card-part skins (`qpShapeClip`). Like every whole shape it is stretched to the box, so its outline is thinner along the top and bottom of a wide row (as shard).
+- Browser-checked in a VS-CPU battle (local files swapped in for the CDN): the default theme's stripes now sit inside the shard's slanted side; all 14 shapes (trapezoid +/- slant, leaning, hex, round, pill, bevel, notch, scoop, diamond, circle, square, jagged, tab, pixel) keep the band inside; the spell list's type colours follow it; Width / Gap / One colour / Opacity / Greyed-out rows / Selected-only / no skin all changed the rows; the UI Maker's Trapezoid button, Slant -14 and Lean drew \‾\ rows live.
+- **End gap clamp** (after review, 2026-10-19): `edgeClip` wraps every y in `clamp(min(top, mid), y, max(bottom, mid))`, so a Gap at the ends past half the row closes the band in the middle and keeps it shut. Before, a 21-24 px end gap on a 42 px battle row crossed the ends and brought the band back as a growing block in the middle. Measured on the ABILITIES row: 10 px = 18 coloured rows, 16 px = 6, 19 / 20 / 21 / 24 px = 0; trapezoid and shard at 24 px = none.

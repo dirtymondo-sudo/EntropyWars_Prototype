@@ -12239,6 +12239,9 @@
            read on this pop, or the viewer's kill-switch is thrown). */
         function _hitReadStyle(kind, opts) {
             if (!opts || opts._hitPct == null || !_hitReadOn()) return null;
+            /* THE FLOATING TEXT LOOK (UI Maker > Floating text, hud.js floatSignal): this viewer's element colours,
+               crit stamp, weakness icon, killing-blow glow and big-hit swell — missing = the game's own */
+            const FL = (typeof window !== 'undefined' && window._ewFloatLook) || {};
             const key = opts._hitType || null;
             const col = key && ((typeof ELEM_BADGE_COLORS !== 'undefined' && ELEM_BADGE_COLORS[key])
                 || (typeof TYPE_TEXT_COLORS !== 'undefined' && TYPE_TEXT_COLORS[key])) || null;
@@ -12249,8 +12252,9 @@
             const span = Math.max(1, HIT_READ.maxPct - HIT_READ.minPct);
             const f = Math.max(0, Math.min(1, ((Number(opts._hitPct) || 0) - HIT_READ.minPct) / span));
             const weak = opts._hitWeak > 0, resist = opts._hitWeak < 0;
-            const glyph = weak
+            const glyph = weak && FL.glyph !== false
                 ? ((key && typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[key]) || '▲') : '';
+            const maxScale = (FL.swell != null && isFinite(+FL.swell)) ? Math.max(1, Math.min(3, +FL.swell)) : HIT_READ.maxScale;
             /* THE JUICE PASS (Phase 7): the PUNCH — the swell (share of max
                HP) × the hit's weight (a light jab reads smaller than a
                capstone's number at the same %), a killing blow a touch more */
@@ -12260,25 +12264,25 @@
                 if (opts._hitKill) punch *= HIT_READ.killPunch;
             }
             return {
-                color: (tintable && !own) ? col : null,
+                color: (tintable && !own && FL.elem !== false) ? col : null,
                 glowColor: col || '#ff5a3a',
-                scale: own ? 1 : Math.min(HIT_READ.maxScale * 1.35, (1 + f * (HIT_READ.maxScale - 1)) * punch),
-                crit: !!opts._hitCrit,
+                scale: own ? 1 : Math.min(maxScale * 1.35, (1 + f * (maxScale - 1)) * punch),
+                crit: !!opts._hitCrit && FL.stamp !== false,
                 weak, resist, glyph,
                 kill: !!opts._hitKill,
+                killGlow: !!opts._hitKill && FL.killGlow !== false,
             };
         }
 
         /* 3D path: ThreeAnim.floatingText (three-renderer.js) builds the pop
            as a <canvas> in #floatTextOverlay and animates only its left /
-           top / transform / opacity each frame — so the pop it JUST appended
-           can be re-painted and re-sized here without touching the renderer.
+           top / transform / opacity each frame — so the pop it returns (c;
+           null when the viewer's Floating text look hides it) can be
+           re-painted and re-sized here without touching the renderer.
            The tween centres it with translate(-50%,-50%), so a bigger canvas
            (the swell, the stamp's margin) stays on its anchor. */
-        function _hitReadDress3D(hr) {
+        function _hitReadDress3D(hr, c) {
             try {
-                const ov = document.getElementById('floatTextOverlay');
-                const c = ov && ov.lastElementChild;
                 if (!c || c.tagName !== 'CANVAS' || c._hitRead) return;
                 c._hitRead = 1;
                 const w = c.width, h = c.height;
@@ -12327,7 +12331,7 @@
                 const W = w + padL + padR, H = h + padT;
                 c.width = W; c.height = H;                              // (clears it)
                 const ctx = c.getContext('2d');
-                if (hr.kill) {
+                if (hr.killGlow) {
                     // The afterglow: the number painted once through a wide
                     // soft shadow in its own colour, then crisp on top.
                     ctx.save();
@@ -12346,7 +12350,7 @@
                 c._ewMarginTop = (hr.crit ? Math.max(0, padY + sCy - sR) : mT) * hr.scale;
                 c._ewMarginBot = mB * hr.scale;
                 // The afterglow breathes while the killing blow lingers.
-                if (hr.kill && typeof c.animate === 'function') {
+                if (hr.killGlow && typeof c.animate === 'function') {
                     const gc = hr.glowColor;
                     c.animate([
                         { filter: 'drop-shadow(0 0 4px ' + gc + ')' },
@@ -12356,6 +12360,8 @@
                 }
             } catch (_e) { /* the stock pop stands */ }
         }
+        /* THE FLOATING TEXT PREVIEW (UI Maker, three-renderer floatPreview): its pops wear this viewer's hit read too */
+        window._ewHitReadDress = (c, kind, opts) => { const hr = _hitReadStyle(kind, opts); if (hr) _hitReadDress3D(hr, c); return hr; };
         function _hitReadRgb(hex) {
             const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
             if (!m) return [255, 255, 255];
@@ -12497,11 +12503,13 @@
             const jitterY = Number.isFinite(opts.jitterY) ? opts.jitterY : (Math.random() * 10 - 5);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
-                window.ThreeAnim.floatingText(x, y, String(textValue ?? ''), kind, durationMs, { jitterX, jitterY });
-                if (_hr) _hitReadDress3D(_hr);
+                const _fel = window.ThreeAnim.floatingText(x, y, String(textValue ?? ''), kind, durationMs, { jitterX, jitterY });
+                if (_hr && _fel) _hitReadDress3D(_hr, _fel);
                 return;
             }
 
+            // the 2D board keeps this viewer's Which pops show too
+            if (window.ThreeAnim && window.ThreeAnim.floatShows && !window.ThreeAnim.floatShows(String(textValue ?? ''), kind)) return;
             const boardEl = document.getElementById('board');
             if (!boardEl) return;
             const _bw = bw();

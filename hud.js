@@ -12064,10 +12064,15 @@ const ROLES = [
 const SHAPES = [
   ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
   ['tab', 'Tab'], ['scoop', 'Scoop'], ['pixel', 'Pixel'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
-  ['shard', 'Shard'], ['jagged', 'Jagged'],
+  ['shard', 'Shard'], ['jagged', 'Jagged'], ['trap', 'Trapezoid'],
 ];
-const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1 };   // drawn whole and scaled to the box
-const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes' };                       // whole shapes the size slider still shapes
+const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1, trap: 1 };   // drawn whole and scaled to the box
+const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes', trap: 'Slant' };                // whole shapes the size slider still shapes
+/* THE TRAPEZOID (mondo 2026-10-19: "i would like a trapezoid shape for the panels please, the closest right now is shard
+   but i want a trapezoid with straight top and bottom edges"): the size slants both sides, 0..40 = 0..20% of the width
+   in at the top; below 0 the top is the wide edge; lean = both sides slant the same way (straight top + bottom still).
+   The key shapePath draws: 'trapl' is the leaning one. */
+function shapeKey(s) { return s && s.shape === 'trap' && s.lean ? 'trapl' : (s && s.shape) || 'round'; }
 const MATERIALS = [
   ['aluminium', 'Aluminium'], ['gunmetal', 'Gunmetal'], ['metal', 'Steel'], ['copper', 'Copper'], ['gold', 'Gold'],
   ['marble', 'Marble'], ['marble_light', 'Light marble'], ['enamel', 'Enamel'], ['crystal', 'Crystal'],
@@ -12572,9 +12577,19 @@ function img(src) {
   return (_img[src] = e);
 }
 function shapePath(ctx, shape, x, y, w, h, s) {
+  const s0 = +s || 0;
   s = Math.max(0, Math.min(s, w / 2, h / 2));
   ctx.beginPath();
   switch (shape) {
+    case 'trap': case 'trapl': {
+      const a = Math.min(0.2, Math.abs(s0) / 200) * w, up = s0 >= 0;
+      if (shape === 'trap') {
+        if (up) { ctx.moveTo(x + a, y); ctx.lineTo(x + w - a, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); }
+        else { ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - a, y + h); ctx.lineTo(x + a, y + h); }
+      } else if (up) { ctx.moveTo(x + a, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - a, y + h); ctx.lineTo(x, y + h); }
+      else { ctx.moveTo(x, y); ctx.lineTo(x + w - a, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x + a, y + h); }
+      break;
+    }
     case 'round': case 'pill': ctx.moveTo(x + s, y); ctx.arcTo(x + w, y, x + w, y + h, s); ctx.arcTo(x + w, y + h, x, y + h, s); ctx.arcTo(x, y + h, x, y, s); ctx.arcTo(x, y, x + w, y, s); break;
     case 'tab': ctx.moveTo(x + s, y); ctx.arcTo(x + w, y, x + w, y + h, s); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.arcTo(x, y, x + w, y, s); break;
     case 'bevel': ctx.moveTo(x + s, y); ctx.lineTo(x + w - s, y); ctx.lineTo(x + w, y + s); ctx.lineTo(x + w, y + h - s); ctx.lineTo(x + w - s, y + h); ctx.lineTo(x + s, y + h); ctx.lineTo(x, y + h - s); ctx.lineTo(x, y + s); break;
@@ -12630,7 +12645,7 @@ function shapePath(ctx, shape, x, y, w, h, s) {
   }
   ctx.closePath();
 }
-function insetSize(shape, s, d) { return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
+function insetSize(shape, s, d) { if (shape === 'trap' || shape === 'trapl') return s; return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
 function skinGeom(s) {
   const full = !!FULL_SHAPES[s.shape];
   const N0 = Math.max(1, Math.min(4, Math.round(+s.pixel || 1))), px = v => (N0 > 1 && v > 0 ? Math.max(N0, Math.round(v / N0) * N0) : v);
@@ -12649,7 +12664,8 @@ function skinGeom(s) {
 const _skinCache = new Map(), _pixelCss = new Set();
 function bakeSkin(s) {
   if (!s) return null;
-  const key = JSON.stringify(s);
+  const key = JSON.stringify(s, (k, v) => (k === 'edge' ? undefined : v));   // the colour edge is drawn by CSS, not baked
+  const SK = shapeKey(s);
   if (_skinCache.has(key)) return _skinCache.get(key);
   const mat = s.fill && s.fill.kind === 'material' && s.material && s.material.src ? img(s.material.src)
     : (s.material && s.material.src && +s.material.mix > 0 ? img(s.material.src) : null);
@@ -12662,12 +12678,12 @@ function bakeSkin(s) {
   const x = g.O, y = g.O, w = g.W - 2 * g.O, h = g.H - 2 * g.O, sz = +s.size || 0;
   ctx.globalAlpha = Math.max(0, Math.min(1, s.opacity == null ? 1 : +s.opacity));
   // shadow + glow under the shape, then cut the shape out so a see-through fill stays see-through
-  const drawUnder = (col, blur, oy) => { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * K; ctx.shadowOffsetY = oy * K; ctx.fillStyle = '#000'; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.fill(); ctx.restore(); };
+  const drawUnder = (col, blur, oy) => { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * K; ctx.shadowOffsetY = oy * K; ctx.fillStyle = '#000'; shapePath(ctx, SK, x, y, w, h, sz); ctx.fill(); ctx.restore(); };
   if (s.shadow && +s.shadow.a > 0 && (+s.shadow.blur || +s.shadow.y)) drawUnder(`rgba(0,0,0,${+s.shadow.a})`, +s.shadow.blur || 0, +s.shadow.y || 0);
   if (s.glow && +s.glow.r > 0 && +s.glow.a > 0) { drawUnder(withAlpha(s.glow.c, +s.glow.a), +s.glow.r, 0); drawUnder(withAlpha(s.glow.c, +s.glow.a * 0.6), +s.glow.r * 0.5, 0); }
-  ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.globalAlpha = 1; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.globalAlpha = 1; shapePath(ctx, SK, x, y, w, h, sz); ctx.fill(); ctx.restore();
   // the fill
-  ctx.save(); shapePath(ctx, s.shape, x, y, w, h, sz); ctx.clip();
+  ctx.save(); shapePath(ctx, SK, x, y, w, h, sz); ctx.clip();
   const f = s.fill || {};
   const fa = f.alpha == null ? 1 : +f.alpha;
   ctx.globalAlpha *= fa;
@@ -12716,7 +12732,7 @@ function bakeSkin(s) {
     const bv2 = ctx.createLinearGradient(x, y, x + w, y + h);
     bv2.addColorStop(0, `rgba(255,255,255,${+s.bevel.light})`); bv2.addColorStop(0.5, 'rgba(0,0,0,0)'); bv2.addColorStop(1, `rgba(0,0,0,${+s.bevel.dark})`);
     ctx.lineWidth = +s.bevel.w * 2 + g.ow * 2;
-    ctx.strokeStyle = g.full ? bv2 : bv2; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.stroke();
+    ctx.strokeStyle = g.full ? bv2 : bv2; shapePath(ctx, SK, x, y, w, h, sz); ctx.stroke();
     // the corner slices keep the light/dark split on the long edges too
     ctx.lineWidth = +s.bevel.w; ctx.strokeStyle = `rgba(255,255,255,${+s.bevel.light})`;
     ctx.beginPath(); ctx.moveTo(x, y + g.ow + +s.bevel.w / 2); ctx.lineTo(x + w, y + g.ow + +s.bevel.w / 2); ctx.stroke();
@@ -12725,8 +12741,8 @@ function bakeSkin(s) {
   }
   ctx.restore();
   // the outlines
-  if (g.ow > 0) { const d = g.ow / 2; ctx.lineWidth = g.ow; ctx.strokeStyle = s.outline.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
-  if (g.iw > 0) { const d = g.ow + g.gap + g.iw / 2; ctx.lineWidth = g.iw; ctx.strokeStyle = s.inner.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
+  if (g.ow > 0) { const d = g.ow / 2; ctx.lineWidth = g.ow; ctx.strokeStyle = s.outline.c; shapePath(ctx, SK, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(SK, sz, d)); ctx.stroke(); }
+  if (g.iw > 0) { const d = g.ow + g.gap + g.iw / 2; ctx.lineWidth = g.iw; ctx.strokeStyle = s.inner.c; shapePath(ctx, SK, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(SK, sz, d)); ctx.stroke(); }
   if (+s.dither > 0) {   // PS1 colour: an ordered (Bayer 4x4) dither down to 15-bit (or 12-bit for the strong one)
     try {
       const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data, W4 = cv.width;
@@ -12781,6 +12797,113 @@ function roleSkin(t, role) {
   return b ? b.css : null;            // null = still loading
 }
 
+/* ── THE COLOUR EDGE (mondo 2026-10-19: "see the colored lines sticking out at the left end of the action menu? those need
+   to be put into the ui maker or they need to automatically follow what the shape of the button panel is so that they
+   dont stick out like that"). A battle command row wears its job's colour (move teal, attack red, a spell's type) as a
+   band down its LEFT side. Under a skin that band was a 3px inset shadow on the square box, so a shard / hex / round
+   button showed it poking out past its shape. Now it is drawn INSIDE the skin's own shape: the shape's left side
+   (edgeChain), moved in by the gap, as wide as the width, above the skin and under the words. skins.button.edge (every
+   row) + skins.buttonSel.edge (the selected row, which follows the Selected shape; unset keys come from the Button one).
+   A surface opts in with edge: { row, sel, dead, pe, legacy }. ── */
+const EDGE_DEF = { on: true, w: 3, gap: null, ends: null, a: 1, c: '', dead: true };
+function edgeOf(t, role) {
+  const sk = (t && t.skins) || {}, b = sk.button && sk.button.edge, e = role === 'buttonSel' && sk.buttonSel && sk.buttonSel.on ? sk.buttonSel.edge : null;
+  const E = Object.assign({}, EDGE_DEF, b && typeof b === 'object' ? b : {}, e && typeof e === 'object' ? e : {});
+  ['gap', 'ends'].forEach(k => { if (E[k] === '' || (E[k] != null && !isFinite(+E[k]))) E[k] = null; });
+  return E;
+}
+/* the skin a command row wears for a role (null = no skin: the row keeps the game's own look); an unset Selected skin is
+   the Button one with a frame of at least 2px, as roleSkin makes it */
+function roleSpec(t, role) {
+  if (!t || t.builtin || !t.skins) return null;
+  let s = t.skins[role];
+  if ((!s || !s.on) && role === 'buttonSel') {
+    const b = t.skins.button; if (!b || !b.on) return null;
+    s = b.slice ? b : Object.assign({}, b, { outline: Object.assign({}, b.outline, { w: Math.max(2, +b.outline.w || 0) }) });
+  }
+  return s && s.on ? s : null;
+}
+/* the left side of a skin's shape, top to bottom, as [x %, x px, y %, y px] points: the border box IS the shape (a whole
+   shape is stretched to it, a sliced one keeps its corners in px); a 9-slice image counts as square */
+function edgeChain(s) {
+  const P = (fx, px, fy, py) => [fx, px, fy, py], out = [];
+  if (!s || s.slice) return [P(0, 0, 0, 0), P(0, 0, 100, 0)];
+  const z = Math.max(0, +s.size || 0);
+  const arc = (r, a0, a1, bot, n) => { for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; out.push(P(0, r + r * Math.cos(a), bot ? 100 : 0, (bot ? -r : r) + r * Math.sin(a))); } };
+  switch (s.shape) {
+    case 'round': case 'pill': case 'pixel': arc(z, Math.PI * 1.5, Math.PI, false, 6); arc(z, Math.PI, Math.PI / 2, true, 6); return out;
+    case 'tab': arc(z, Math.PI * 1.5, Math.PI, false, 6); out.push(P(0, 0, 100, 0)); return out;
+    case 'bevel': return [P(0, z, 0, 0), P(0, 0, 0, z), P(0, 0, 100, -z), P(0, z, 100, 0)];
+    case 'notch': return [P(0, z, 0, 0), P(0, 0, 0, z), P(0, 0, 100, 0)];
+    case 'scoop':
+      for (let i = 0; i <= 6; i++) { const a = Math.PI / 2 * i / 6; out.push(P(0, z * Math.cos(a), 0, z * Math.sin(a))); }
+      for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + Math.PI / 2 * i / 6; out.push(P(0, z * Math.cos(a), 100, z * Math.sin(a))); }
+      return out;
+    case 'hex': return [P(25, 0, 0, 0), P(0, 0, 50, 0), P(25, 0, 100, 0)];
+    case 'diamond': return [P(50, 0, 0, 0), P(0, 0, 50, 0), P(50, 0, 100, 0)];
+    case 'circle': for (let d = 240; d >= 120; d -= 10) { const a = d * Math.PI / 180; out.push(P(50 + 50 * Math.cos(a), 0, 50 + 50 * Math.sin(a), 0)); } return out;
+    case 'shard': { const k = Math.min(1, z / 20); return [P(8 * k, 0, 16 * k, 0), P(0, 0, 100, 0)]; }
+    case 'trap': { const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2); return s0 >= 0 ? [P(a, 0, 0, 0), P(0, 0, 100, 0)] : [P(0, 0, 0, 0), P(a, 0, 100, 0)]; }
+    case 'jagged': { const d = Math.min(Math.max(z, 2), 50, 30); return [P(d / 2, 0, d / 1.2, 0), P(d / 2, 0, 100 - d / 1.2, 0)]; }   // the spikes' base line
+    default: return [P(0, 0, 0, 0), P(0, 0, 100, 0)];
+  }
+}
+/* the band as a clip-path: the left side moved in by the gap, the ends pulled in by the end gap; auto = just inside the
+   outline (a whole shape's outline is stretched with it, so its auto gaps are parts of the box) */
+function edgeClip(s, E) {
+  const g = s && !s.slice ? skinGeom(s) : null, full = !!(g && g.full), ow = g ? g.ow : 0;
+  const gx = E.gap != null ? [0, +E.gap] : full ? [ow / (g.W - 2 * g.O) * 100, 0] : [0, ow];
+  const gy = E.ends != null ? [0, +E.ends] : full ? [ow / (g.H - 2 * g.O) * 100, 0] : [0, ow];
+  let ch = edgeChain(s);
+  if (!full) {   // sliced corners are in px from their own edge: cut exactly where the ends land
+    const v = gy[1];
+    let i = 0; while (i < ch.length && ch[i][2] === 0 && ch[i][3] < v) i++;
+    if (i > 0) {
+      const A = ch[i - 1], B = ch[i];
+      const p = B && B[2] === 0 ? [0, A[1] + (B[1] - A[1]) * (v - A[3]) / ((B[3] - A[3]) || 1), 0, v] : [A[0], A[1], 0, v];
+      ch = [p].concat(ch.slice(i));
+    }
+    let j = ch.length - 1; while (j >= 0 && ch[j][2] === 100 && ch[j][3] > -v) j--;
+    if (j < ch.length - 1) {
+      const A = ch[j + 1], B = ch[j];
+      const p = B && B[2] === 100 ? [0, A[1] + (B[1] - A[1]) * (-v - A[3]) / ((B[3] - A[3]) || 1), 100, -v] : [A[0], A[1], 100, -v];
+      ch = ch.slice(0, j + 1).concat([p]);
+    }
+  } else {
+    ch = ch.map(p => p.slice());
+    ch[0][2] += gy[0]; ch[0][3] += gy[1];
+    ch[ch.length - 1][2] -= gy[0]; ch[ch.length - 1][3] -= gy[1];
+  }
+  const w = Math.max(0.5, +E.w || 0), r = v => Math.round(v * 1000) / 1000;
+  const L = (a, b) => (a && b ? `calc(${r(a)}% + ${r(b)}px)` : a ? `${r(a)}%` : `${r(b)}px`);
+  // end gaps past half the row meet in the middle and stay shut (a short row never gets the band back flipped)
+  const T = L(ch[0][2], ch[0][3]), B = L(ch[ch.length - 1][2], ch[ch.length - 1][3]), M = `calc((${T} + ${B}) / 2)`;
+  const Y = p => `clamp(min(${T}, ${M}), ${L(p[2], p[3])}, max(${B}, ${M}))`;
+  const left = ch.map(p => `${L(p[0] + gx[0], p[1] + gx[1])} ${Y(p)}`);
+  const right = ch.slice().reverse().map(p => `${L(p[0] + gx[0], p[1] + gx[1] + w)} ${Y(p)}`);
+  return `polygon(${left.concat(right).join(', ')})`;
+}
+function edgeCss(S, T) {
+  const X = S.edge; if (!X || !T || T.builtin) return '';
+  const pe = X.pe || '::before', kids = list => parts(list).map(x => x + pe).join(', ');
+  let css = '', any = false;
+  [['button', X.row], ['buttonSel', X.sel]].forEach(([role, list]) => {
+    const s = roleSpec(T, role);
+    if (!s) {   // no skin: the row keeps the game's own left border (and the inset line the command window always had)
+      if (X.legacy) css += `${pre(list)} { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; }\n`;
+      css += `${pre(kids(list))} { content: none; }\n`;
+      return;
+    }
+    any = true;
+    const E = edgeOf(T, role);
+    css += `${pre(list)} { isolation: isolate; }\n`;
+    if (E.on && +E.w > 0 && +E.a > 0) css += `${pre(kids(list))} { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: ${E.c || 'var(--bc, var(--hfc, transparent))'}; opacity: ${Math.max(0, Math.min(1, +E.a))}; clip-path: ${edgeClip(s, E)}; }\n`;
+    else css += `${pre(kids(list))} { content: none; }\n`;
+  });
+  if (any && X.dead && !edgeOf(T, 'button').dead) css += `${preHi(kids(X.dead))} { content: none !important; }\n`;
+  return css;
+}
+
 /* ── THE SURFACES: every menu / HUD the maker can theme ──
    native: the screen already reads the tokens (THE COLOUR PASS / THE HQ HUD PASS), so only
    skins + text are added. Otherwise the generated THEME PASS paints its roles from the tokens.
@@ -12803,7 +12926,11 @@ const UIM_SURFACES = [
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
        its plate tokens when the theme has no panel skin. Built-in themes keep their solid rows and no window. */
-    keep: '.hrlg-blade .hrlg-body { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; } .hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
+    /* each command row's colour edge, inside its skin's shape (THE COLOUR EDGE, edgeCss); a row with no skin keeps the
+       inset line it always had (legacy) */
+    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
+      dead: '.hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body', legacy: true },
+    keep: '.hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
   { id: 'battlePop', label: 'Battle pop-ups', hint: 'The inspect card, the weather tip, the centre banner.', native: false, def: 'theme', noAnim: true,
     scope: '#unitHoverHud, .ew-weather-tip, #announcementBanner',
     roles: {
@@ -12989,7 +13116,8 @@ const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
     buttonSel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', chip: '#uimPreview .uimp-chip', chipOn: '#uimPreview .uimp-chip.on',
     input: '#uimPreview .uimp-input', ink: '#uimPreview .uimp-ink', mute: '#uimPreview .uimp-mute', dim: '#uimPreview .uimp-dim',
     hero: '#uimPreview .uimp-hero' },
-  titles: '#uimPreview .uimp-title', cursor: '#uimPreview .uimp-btn.sel::before' };
+  titles: '#uimPreview .uimp-title', cursor: '#uimPreview .uimp-btn.sel::before',
+  edge: { row: '#uimPreview .uimp-btn', sel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', dead: '#uimPreview .uimp-btn.off', pe: '::after' } };
 
 /* ── THE HUD LAYOUT: pieces the player can move, scale, fade or hide (db.layout[id] = { x, y, s, o, hide }) ──
    def = where the piece sits on a 16:9 screen before it has been seen (l/r/t/b px from that edge, cx/cy px from the
@@ -13503,6 +13631,20 @@ const UX_DEF = {
      height in tiles (0 = none); Col* = a colour for that side ('' = the game's: yours blue, the enemy's red, neutral gold) */
   ...zoneDefs('zs'), ...zoneDefs('zn'),
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
+  /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
+     stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
+     like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
+     these into window._ewFloatLook (+ _ewFloatLookV), read by three-renderer.js (_buildFloatTextCanvas, _floatStep) and
+     battle.js's hit read (fElem / fStamp / fGlyph / fKill / fSwell). Numbers are multipliers on the game's own look
+     (1 = as the game); fMinNum / fMinWord / fMaxNum = % of the screen height; fFade = % of a pop's life the fade starts;
+     fWait = ms a word waits for its number; fGap = px between stacked pops; fShow* = which pops show; fc<Kind> = a colour
+     per kind of pop ('' = the game's, FLOAT_KINDS) */
+  fNumFont: '', fWordFont: '', fNumWeight: '', fWordWeight: '', fCase: '', fEmoji: true, fTrack: 1,
+  fNumSize: 1, fWordSize: 1, fMinNum: 6.5, fMinWord: 2.7, fMaxNum: 15, fChip: true, fSwell: 1.6,
+  fLine: 1, fLineCol: '', fShadow: 1, fSheen: 1, fGrad: 'grad', fGlow: 0, fGlowCol: '',
+  fElem: true, fStamp: true, fGlyph: true, fKill: true,
+  fRise: 1, fLife: 1, fPop: 1, fFade: 75, fStart: 'chest', fSpread: 1, fWait: 110, fGap: 4,
+  fShowDmg: true, fShowHeal: true, fShowMp: true, fShowTotal: true, fShowHit: true, fShowStatus: true, fShowMisc: true,
 };
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
    _hlKindOfType): [kind, label, the game's colour, tip] */
@@ -13527,6 +13669,19 @@ const AIM_TILE_KINDS = [
 const aimKey = (pre, k) => pre + k[0].toUpperCase() + k.slice(1);
 AIM_ARROW_KINDS.forEach(([k]) => { UX_DEF[aimKey('wc', k)] = ''; });
 AIM_TILE_KINDS.forEach(([k]) => { UX_DEF[aimKey('tc', k)] = ''; });
+/* the kinds of floating text (three-renderer _FLOAT_STYLES): [kind, label, the game's colour, numbers | words, tip] */
+const FLOAT_KINDS = [
+  ['damage', 'Damage', '#ff5a4a', 'nums', 'Damage numbers, and damage words like BURNING! or CRASH!'], ['critdmg', 'Critical hit', '#ffcc00', 'nums', 'The number of a critical hit'],
+  ['combo', 'Chain hit', '#5fd4ff', 'nums', 'Counter and follow-up hits in a chain'], ['total', 'TOTAL', '#ffe27a', 'nums', 'The N TOTAL! after a flurry of hits'],
+  ['heal', 'Heal', '#5cf07e', 'nums', 'Heal numbers, and heal words like Doused'], ['mp', 'MP', '#6ec8ff', 'nums'], ['revive', 'Revive + AP', '#ffd700', 'nums'],
+  ['crit', 'CRIT / BACKSTAB', '#ffcc00', 'words'], ['mult', '×N WEAK / RESIST', '#ffd86b', 'words', 'The multiplier words: WEAK!, RESIST, HIGH GROUND!, POINT BLANK'],
+  ['streak', 'SUPER EFFECTIVE / PUSHED', '#ff6a4a', 'words', 'SUPER EFFECTIVE!, PUSHED!, COLLISION!, SWAP!, a spell name'], ['counter', 'FLANKED / counter', '#ff9a55', 'words'],
+  ['overkill', 'OVERKILL', '#ff3a2a', 'words'], ['dodge', 'DODGE / MISS', '#d6d9e6', 'words'], ['protect-block', 'PROTECTED / IMMUNE', '#5cb8ff', 'words'],
+  ['buff', 'Buffs', '#9fe6ff', 'words'], ['debuff', 'Debuffs', '#d68cff', 'words'], ['status', 'Statuses', '#ffd86b', 'words', 'GRAPPLED!, HOOKED!, Blocked!'],
+  ['neutral', 'Moves (LAND, DROP)', '#f0f0f0', 'words'], ['xp', 'XP', '#dda0ff', 'words'], ['levelup', 'Level up', '#ffe27a', 'words'],
+  ['pickup', 'Pickups + gold', '#ffd86b', 'words'], ['nexus', 'Nexus', '#ffd86b', 'words']];
+const fcKey = k => 'fc' + k.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
+FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -13762,6 +13917,11 @@ function qpShapeClip(s, w, h) {
     case 'diamond': return 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
     case 'hex': { const d = Math.max(1, Math.round(Math.min(h / 2, w / 4))); return `polygon(${d}px 0, calc(100% - ${d}px) 0, 100% 50%, calc(100% - ${d}px) 100%, ${d}px 100%, 0 50%)`; }
     case 'shard': return `polygon(${pc(8 * k)} ${pc(16 * k)}, 100% 0, ${pc(100 - 5 * k)} ${pc(100 - 10 * k)}, 0 100%)`;
+    case 'trap': {
+      const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2), up = s0 >= 0;
+      if (s.lean) return up ? `polygon(${pc(a)} 0, 100% 0, ${pc(100 - a)} 100%, 0 100%)` : `polygon(0 0, ${pc(100 - a)} 0, 100% 100%, ${pc(a)} 100%)`;
+      return up ? `polygon(${pc(a)} 0, ${pc(100 - a)} 0, 100% 100%, 0 100%)` : `polygon(0 0, 100% 0, ${pc(100 - a)} 100%, ${pc(a)} 100%)`;
+    }
     case 'bevel': return `polygon(${z}px 0, calc(100% - ${z}px) 0, 100% ${z}px, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, ${z}px 100%, 0 calc(100% - ${z}px), 0 ${z}px)`;
     case 'notch': return `polygon(${z}px 0, 100% 0, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, 0 100%, 0 ${z}px)`;
     case 'round': case 'pill': case 'tab': case 'scoop': case 'pixel': return `inset(0 round ${z}px)`;
@@ -13864,6 +14024,68 @@ function seSignal() {
   Object.keys(V).forEach(n => r.style.setProperty(n, V[n]));
   window._ewSeLook = { hover: !!X.eHover };
   if (!X.eHover) { try { if (typeof window.clearSpellPressMarks === 'function') window.clearSpellPressMarks(); } catch (e) {} }
+}
+/* THE FLOATING TEXT look the renderer reads (window._ewFloatLook): only the keys that differ from the game's own, so an
+   untouched look draws exactly the old pops; re-published (and _ewFloatLookV bumped) only when it changes. A font the
+   page has not drawn yet is loaded first (a canvas does not fetch one), then the version bumps again so it shows. */
+let _floatSent = '';
+const _floatFontsAsked = {};
+function floatSignal() {
+  const X = uxOf(), D = UX_DEF, ch = k => String(X[k]) !== String(D[k]), L = {};
+  const num = (k, lo, hi) => Math.max(lo, Math.min(hi, +X[k] || 0));
+  if (X.fNumFont) L.numFont = X.fNumFont;
+  if (X.fWordFont) L.wordFont = X.fWordFont;
+  if (X.fNumWeight) L.numWeight = X.fNumWeight;
+  if (X.fWordWeight) L.wordWeight = X.fWordWeight;
+  if (X.fCase) L.wordCase = X.fCase;
+  if (!X.fEmoji) L.emoji = false;
+  if (ch('fTrack')) L.track = num('fTrack', 0, 5);
+  if (ch('fNumSize')) L.numSize = num('fNumSize', 0.2, 4);
+  if (ch('fWordSize')) L.wordSize = num('fWordSize', 0.2, 4);
+  if (ch('fMinNum')) L.minNum = num('fMinNum', 0, 40);
+  if (ch('fMinWord')) L.minWord = num('fMinWord', 0, 30);
+  if (ch('fMaxNum')) L.maxNum = num('fMaxNum', 1, 60);
+  if (!X.fChip) L.chip = false;
+  if (ch('fSwell')) L.swell = num('fSwell', 1, 3);
+  if (ch('fLine')) L.line = num('fLine', 0, 4);
+  if (X.fLineCol) L.lineCol = X.fLineCol;
+  if (ch('fShadow')) L.shadow = num('fShadow', 0, 3);
+  if (ch('fSheen')) L.sheen = num('fSheen', 0, 2.5);
+  if (X.fGrad === 'flat') L.grad = 'flat';
+  if (ch('fGlow')) L.glow = num('fGlow', 0, 3);
+  if (X.fGlowCol) L.glowCol = X.fGlowCol;
+  if (!X.fElem) L.elem = false;
+  if (!X.fStamp) L.stamp = false;
+  if (!X.fGlyph) L.glyph = false;
+  if (!X.fKill) L.killGlow = false;
+  if (ch('fRise')) L.rise = num('fRise', -1, 5);
+  if (ch('fLife')) L.life = num('fLife', 0.3, 5);
+  if (ch('fPop')) L.pop = num('fPop', 0, 3);
+  if (ch('fFade')) L.fadeAt = num('fFade', 20, 97) / 100;
+  if (X.fStart && X.fStart !== 'chest') L.start = X.fStart;
+  if (ch('fSpread')) L.spread = num('fSpread', 0, 12);
+  if (ch('fWait')) L.wordWait = num('fWait', 0, 2000);
+  if (ch('fGap')) L.gap = num('fGap', -20, 60);
+  const show = {};
+  [['dmg', 'fShowDmg'], ['heal', 'fShowHeal'], ['mp', 'fShowMp'], ['total', 'fShowTotal'], ['hit', 'fShowHit'], ['status', 'fShowStatus'], ['misc', 'fShowMisc']]
+    .forEach(([g, k]) => { if (!X[k]) show[g] = false; });
+  if (Object.keys(show).length) L.show = show;
+  const cols = {};
+  FLOAT_KINDS.forEach(([k]) => { const v = X[fcKey(k)]; if (v) cols[k] = v; });
+  if (Object.keys(cols).length) L.cols = cols;
+  const k = JSON.stringify(L); if (k === _floatSent) return;
+  _floatSent = k;
+  window._ewFloatLook = Object.keys(L).length ? L : null;
+  window._ewFloatLookV = (window._ewFloatLookV || 0) + 1;
+  /* a weight on the game's own face asks for that Cinzel weight (index.html lists 400 / 700 / 900) */
+  [[L.numFont, L.numWeight], [L.wordFont, L.wordWeight]].forEach(([f, w]) => {
+    if ((!f && !w) || !document.fonts || !document.fonts.load) return;
+    const fam = f || "'Cinzel', serif", key = fam + '|' + (w || '');
+    if (_floatFontsAsked[key]) return;
+    _floatFontsAsked[key] = 1;
+    Promise.all((w ? [w] : ['400', '700', '900']).map(x => document.fonts.load(x + ' 48px ' + fam, '-0123456789+ABC').catch(() => null)))
+      .then(() => { window._ewFloatLookV = (window._ewFloatLookV || 0) + 1; });
+  });
 }
 /* the combat log's options ui.js reads (window._ewLogLook), re-published only when they change */
 let _clogSent = '';
@@ -14277,6 +14499,113 @@ function seForm(X) {
     + fSeg('Shape', 'eShape', [['circle', 'Circle'], ['round', 'Rounded'], ['square', 'Square']], X.eShape)
     + fRange('Size in badges + menus', 'eMenu', 0.6, 2.5, 0.05, +X.eMenu, '1 = as the game')));
   return h + xReset('e', 'Reset the green !');
+}
+/* ── THE FLOATING TEXT VIEW (live mode 'float', 2026-10-19, mondo: "in the ui maker, lets add a floating text editor like
+   for the damage and stuff. make it like the arrow and tile highlights editor where i can see a preview of what the
+   floating text will look like with a model with a nameplate for scale"): the damage numbers, heals and words that pop
+   over the units. The dock carries a unit of its own (ThreeRenderer.floatPreview: the race's model on the board's tiles,
+   its name plate, the pops looping through the board's own spawn + step with the look now) at the sizes a battle on this
+   screen gives them; in a battle the real pops change too (the view leaves the board clickable). ── */
+const FLOAT_LOOKS = [['game', 'As the game', {}],
+  ['clean', 'Clean', { fGrad: 'flat', fSheen: 0, fLine: 0.65, fShadow: 0.5, fNumFont: "'Helvetica Neue', Helvetica, Arial, sans-serif", fWordFont: "'Helvetica Neue', Helvetica, Arial, sans-serif", fNumWeight: '700', fWordWeight: '700' }],
+  ['pixel', 'Pixel', { fNumFont: "'DotGothic16', monospace", fWordFont: "'DotGothic16', monospace", fNumWeight: '400', fWordWeight: '400', fGrad: 'flat', fSheen: 0, fLine: 0.8, fShadow: 0.4, fPop: 0.5 }],
+  ['comic', 'Comic', { fNumFont: "'Bangers', cursive", fWordFont: "'Bangers', cursive", fNumWeight: '400', fWordWeight: '400', fLine: 1.5, fPop: 1.5, fTrack: 1.6, fNumSize: 1.1 }],
+  ['impact', 'Impact', { fNumFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", fWordFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", fNumWeight: '400', fWordWeight: '400', fLine: 1.2, fGlow: 0.6 }],
+  ['glow', 'Glow', { fGlow: 1.4, fLine: 0.6, fShadow: 0.3, fSheen: 0.5 }]];
+const FLOAT_BEATS = [['hit', 'Hit', 'A fire hit that is super effective'], ['crit', 'Crit', 'A critical hit from behind'], ['heal', 'Heal'], ['status', 'Status', 'BURNING!, FROZEN!, PROTECTED!'],
+  ['miss', 'Miss'], ['mp', 'MP + XP'], ['combo', 'Combo', 'Three quick hits, then the TOTAL'], ['ko', 'KO', 'The killing blow']];
+/* the preview's own choices (this session only): the battle zoom it shows, the model ('' = the unit whose turn it is in a
+   battle, else the fortune teller), and whether the pops loop */
+function fpState() { return UI.fp || (UI.fp = { zoom: 'turn', race: '', loop: true }); }
+function fpBattleUnit() {
+  try {
+    if (typeof state === 'undefined' || !state || state.phase !== 'battle' || !Array.isArray(state.units)) return null;
+    const live = state.units.filter(u => u && !u.dead && u.race);
+    const id = state._blitzActiveUnitId || state.selectedUnitId;
+    return live.find(u => String(u.id) === String(id)) || live.find(u => u.player === 1) || live[0] || null;
+  } catch (e) { return null; }
+}
+function fpRaces() {
+  if (typeof RACE_MODELS_3D === 'undefined') return [];
+  return Object.keys(RACE_MODELS_3D).map(r => [r, (typeof getRaceLabel === 'function' ? getRaceLabel(r, Object.keys(RACE_MODELS_3D[r] || {})[0]) : '') || r])
+    .sort((a, b) => a[1].localeCompare(b[1]));
+}
+function fpUnit() {
+  const F = fpState(), u = F.race ? null : fpBattleUnit();
+  if (u) {
+    let lvl = 100; try { if (typeof getUnitLevel === 'function') lvl = getUnitLevel(u); } catch (e) {}
+    return { race: u.race, gender: u.gender, name: u.name || '', types: u.types || [], level: lvl, maxHp: u.maxHp, maxMp: u.maxMp, appearance: u.appearance, zodiac: u.zodiac };
+  }
+  const race = F.race || 'fortune teller', set = (typeof RACE_MODELS_3D !== 'undefined' && RACE_MODELS_3D[race]) || {};
+  const gender = set.male ? 'male' : Object.keys(set)[0] || 'male';
+  let types = ['human']; try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[race] && Array.isArray(RACE_PROFILES[race].types)) types = RACE_PROFILES[race].types; } catch (e) {}
+  return { race, gender, name: '', types, level: 100 };
+}
+function dockFloatBody() {
+  const F = fpState(), bu = fpBattleUnit();
+  const races = fpRaces();
+  const model = `<select data-dk="fprace" title="The unit the pops float over">`
+    + `<option value=""${F.race ? '' : ' selected'}>${bu ? 'This turn\'s unit' : 'Fortune teller'}</option>`
+    + races.map(([r, l]) => `<option value="${esc(r)}"${F.race === r ? ' selected' : ''}>${esc(l)}</option>`).join('') + `</select>`;
+  return dockTop() + `<div class="uim-note">The numbers and words that pop over the units. The unit below shows them as you drag, as big next to a body and its name plate as a battle on this screen draws them; in a battle the real ones change too.</div>
+  <div class="uim-fprev"><div class="uim-fphost" data-fphost="1"></div>
+  <div class="uim-fpbar">${FLOAT_BEATS.map(([v, l, tip]) => `<button class="uim-btn" data-dk="fpbeat" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div>
+  <div class="uim-fpbar">${[['board', 'Board', 'The whole-board zoom'], ['turn', 'Turn', 'The zoom your turn opens on'], ['close', 'Close-up', 'An action close-up']].map(([v, l, tip]) =>
+    `<button class="uim-btn${F.zoom === v ? ' on' : ''}" data-dk="fpzoom" data-val="${v}" title="${esc(tip)}">${l}</button>`).join('')}
+    <button class="uim-btn${F.loop ? ' on' : ''}" data-dk="fploop" title="Keep the pops coming, one after another">Loop</button>${model}</div></div>
+  <div class="uim-dk-detail"></div>`;
+}
+function floatPrevMount() {
+  const A = UI.live, host = A && A.dock.querySelector('[data-fphost]'); if (!host) return;
+  const F = fpState();
+  let ok = null;
+  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.floatPreview ? ThreeRenderer.floatPreview(host, { zoom: F.zoom, unit: fpUnit(), loop: F.loop }) : null; } catch (e) { console.warn('UI Maker floating text preview', e); ok = null; }
+  if (!ok) host.insertAdjacentHTML('afterbegin', '<div class="uim-note">The preview could not start here; the real pops in a battle still show every change.</div>');
+  UI.fpApi = ok;
+}
+function floatDetail() {
+  const X = uxOf();
+  const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0]));
+  const WT = [['', 'As the game'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']];
+  let h = `<div class="uim-h">Floating text</div><div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${FLOAT_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="floatlook" data-val="${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  h += sec('ffont', 'Font', xp(fSelect('Numbers', 'fNumFont', FF, X.fNumFont) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
+    + fSelect('Words', 'fWordFont', FF, X.fWordFont) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
+    + fSeg('Word case', 'fCase', [['', 'As written'], ['upper', 'UPPER'], ['title', 'Title'], ['lower', 'lower']], X.fCase)
+    + fRange('Letter spacing in words', 'fTrack', 0, 4, 0.05, +X.fTrack, '1 = as the game; 0 = the letters touch'))
+    + xCheck('Icons in words (🔥 ❄️ ⛰)', 'fEmoji', X.fEmoji));
+  h += sec('fsize', 'Size', xp(fRange('Numbers', 'fNumSize', 0.3, 3, 0.05, +X.fNumSize, '1 = as the game') + fRange('Words', 'fWordSize', 0.3, 3, 0.05, +X.fWordSize, '1 = as the game')
+    + fRange('Smallest number (% of screen)', 'fMinNum', 0, 20, 0.5, +X.fMinNum, 'Zoomed out, a number stops shrinking at this share of the screen height (then Size scales it)')
+    + fRange('Biggest number (% of screen)', 'fMaxNum', 3, 40, 0.5, +X.fMaxNum, 'Up close, a number stops growing at this share of the screen height (then Size scales it)')
+    + fRange('Smallest word (% of screen)', 'fMinWord', 0, 12, 0.1, +X.fMinWord)
+    + fRange('Big hits swell to', 'fSwell', 1, 3, 0.05, +X.fSwell, 'A hit that takes a big share of the target\'s HP draws up to this much bigger (1 = no swell)'))
+    + xCheck('Small hits draw smaller', 'fChip', X.fChip));
+  h += sec('fink', 'Outline + light', xp(fRange('Outline', 'fLine', 0, 3, 0.05, +X.fLine, '0 = no outline')
+    + fColorOpt('Outline colour', 'fLineCol', X.fLineCol, '#000000', false, 'Unticked = a dark shade of each pop\'s own colour')
+    + fRange('Shadow', 'fShadow', 0, 3, 0.05, +X.fShadow, '0 = none') + fRange('Shine', 'fSheen', 0, 2.5, 0.05, +X.fSheen, 'The bright top half of each letter (0 = none)')
+    + fSeg('Number fill', 'fGrad', [['grad', 'Gradient'], ['flat', 'Flat colour']], X.fGrad)
+    + fRange('Glow', 'fGlow', 0, 3, 0.05, +X.fGlow, 'A soft halo in the pop\'s colour (0 = none)')
+    + fColorOpt('Glow colour', 'fGlowCol', X.fGlowCol, '#ffffff', false, 'Unticked = each pop\'s own colour')));
+  h += sec('fhit', 'Hits', xCheck('Element colours on hits', 'fElem', X.fElem) + xCheck('CRIT stamp', 'fStamp', X.fStamp)
+    + xCheck('Weakness icon', 'fGlyph', X.fGlyph) + xCheck('Killing blow glow', 'fKill', X.fKill)
+    + '<div class="uim-note">Element colours on: a fire hit\'s number wears the fire colour, and the Damage colour below shows on hits with no element. Off: every hit wears the Damage colour (Critical hit for a crit).</div>');
+  h += sec('fmove', 'Motion', xp(fRange('Rise', 'fRise', 0, 3, 0.05, +X.fRise, 'How far a pop floats up (0 = it stays put)')
+    + fRange('How long they stay', 'fLife', 0.4, 3, 0.05, +X.fLife, '1 = as the game')
+    + fRange('Pop', 'fPop', 0, 2.5, 0.05, +X.fPop, 'How hard a pop slams in (0 = it just appears)')
+    + fRange('Fade starts at (%)', 'fFade', 20, 95, 1, +X.fFade, 'The share of its life a pop stays solid before it fades out')
+    + fSeg('Starts at', 'fStart', [['chest', 'Chest'], ['head', 'Head'], ['above', 'Above the head']], X.fStart)
+    + fRange('Scatter', 'fSpread', 0, 12, 0.1, +X.fSpread, 'How far apart pops land at random (1 = as the game, 0 = always the same spot, 12 = about a third of a tile)')
+    + fRange('Words wait (ms)', 'fWait', 0, 800, 10, +X.fWait, 'How long a word waits so its number lands first')
+    + fRange('Gap between pops (px)', 'fGap', -10, 40, 1, +X.fGap, 'The space kept between pops stacked over each other')));
+  h += sec('fshow', 'Which pops show', xCheck('Damage numbers', 'fShowDmg', X.fShowDmg) + xCheck('Heal numbers', 'fShowHeal', X.fShowHeal)
+    + xCheck('MP numbers', 'fShowMp', X.fShowMp) + xCheck('TOTAL after a flurry', 'fShowTotal', X.fShowTotal)
+    + xCheck('Hit words (WEAK!, CRIT, DODGE!, SUPER EFFECTIVE!)', 'fShowHit', X.fShowHit)
+    + xCheck('Status + effect words (BURNING!, FROZEN!, LAND)', 'fShowStatus', X.fShowStatus)
+    + xCheck('XP, level ups, pickups, Nexus', 'fShowMisc', X.fShowMisc));
+  h += sec('fcnum', 'Colours: numbers', xp(FLOAT_KINDS.filter(x => x[3] === 'nums').map(([k, l, d, , tip]) => fColorOpt(l, fcKey(k), X[fcKey(k)], d, false, tip)).join('')));
+  h += sec('fcword', 'Colours: words', xp(FLOAT_KINDS.filter(x => x[3] === 'words').map(([k, l, d, , tip]) => fColorOpt(l, fcKey(k), X[fcKey(k)], d, false, tip)).join('')));
+  h += '<div class="uim-note">Ticked = its own colour for that kind of pop (a number gets a gradient made from it); unticked = the game\'s. A new setting shows on the next pop; the unit above redraws its pops at once.</div>'
+    + xReset('f', 'Reset the floating text');
+  return h;
 }
 function platesDetail() {
   const X = uxOf();
@@ -14829,6 +15158,7 @@ function surfaceCss(S, T, tid, gid) {
     if (r === 'buttonSel' || r === 'chipOn') css += `${pre(S.roles[r])} { color: var(--ew-sel) !important; }\n`;
   });
   if (S.keep && T && !T.builtin) css += preRules(S.keep) + '\n';
+  css += edgeCss(S, T);
   // the motion: windows open, the cursor points
   const mo = T && !T.builtin ? motionOf(T) : null;
   if (mo && mo.open !== 'none' && S.roles.panel && !S.noAnim) {
@@ -14947,7 +15277,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15208,6 +15538,12 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-aimkey span { display: inline-flex; align-items: center; gap: 4px; }
 .uim-aimkey i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--c); box-shadow: 0 0 4px var(--c); }
 .uim-aimkey i.tl { width: 9px; height: 9px; border-radius: 2px; background: transparent; border: 1.5px solid var(--c); box-shadow: inset 0 0 0 9px color-mix(in srgb, var(--c) 35%, transparent); }
+.uim-fprev { position: sticky; top: -8px; z-index: 4; margin: 6px -10px 8px; padding: 6px 10px 5px; background: rgb(14,16,22); box-shadow: 0 7px 9px -7px rgba(0,0,0,0.85); }
+.uim-fphost { position: relative; width: 100%; height: 232px; overflow: hidden; border-radius: 6px; background: radial-gradient(ellipse at 50% 40%, #121a29, #070a10); border: 1px solid rgba(111,180,255,0.35); }
+.uim-fphost > .uim-note { position: absolute; inset: 8px; z-index: 2; }
+.uim-fpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 5px; }
+.uim-fpbar .uim-btn { padding: 2px 6px; font-size: 10px; }
+.uim-fpbar select { margin-left: auto; max-width: 128px; font-size: 10px; }
 .uim-dock { position: fixed; z-index: 10061; width: 364px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
@@ -15340,7 +15676,7 @@ function shapeIcon(shape) {
   const cv = document.createElement('canvas'); cv.width = 80; cv.height = 48;
   const ctx = cv.getContext('2d'); ctx.scale(2, 2);
   ctx.fillStyle = '#2a4f86'; ctx.strokeStyle = '#cfe2ff'; ctx.lineWidth = 1.5;
-  shapePath(ctx, shape, 3, 3, 34, 18, 7); ctx.fill(); ctx.stroke();
+  shapePath(ctx, shape, 3, 3, 34, 18, shape === 'trap' ? 30 : 7); ctx.fill(); ctx.stroke();
   return cv;
 }
 /* ── undo / redo (whole-theme snapshots; a slider drag is one step) ── */
@@ -15465,10 +15801,10 @@ function renderPreview() {
         <div class="uimp-ink" data-r="ink">The ink: names and numbers</div>
         <div class="uimp-mute" data-r="mute">The muted ink: sub-lines</div>
         <div class="uimp-dim" data-r="dim">The dim ink: notes</div>
-        <div class="uimp-btn" data-r="button"><span>MOVE</span><span>⇢</span></div>
-        <div class="uimp-btn sel" data-r="buttonSel"><span>ATTACK</span><span>⚔</span></div>
-        <div class="uimp-btn" data-r="button"><span>ABILITIES</span><span>▲</span></div>
-        <div class="uimp-btn off" data-r="button"><span>ITEMS</span><span>✕</span></div>
+        <div class="uimp-btn" data-r="button" style="--bc:#3fd9c8"><span>MOVE</span><span>⇢</span></div>
+        <div class="uimp-btn sel" data-r="buttonSel" style="--bc:#ff5a4a"><span>ATTACK</span><span>⚔</span></div>
+        <div class="uimp-btn" data-r="button" style="--bc:#5aa8ff"><span>ABILITIES</span><span>▲</span></div>
+        <div class="uimp-btn off" data-r="button" style="--bc:#4fe08a"><span>ITEMS</span><span>✕</span></div>
         <div class="uimp-chips"><span class="uimp-chip on" data-r="chipOn">ON</span><span class="uimp-chip" data-r="chip">OFF</span><span class="uimp-chip" data-r="chip">AUTO</span></div>
         <div class="uimp-well" data-r="well"><span class="uimp-mute">A well inside a window</span><input class="uimp-input" data-r="input" value="Text field"></div>
       </div>
@@ -15507,10 +15843,16 @@ function skinForm(t, role, inDock, o) {
   if (role === 'hero' && !inDock && !own) h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
   if (!s.on) return own ? h : h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
   h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
-  if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
+  const edge = !own && (role === 'button' || role === 'buttonSel') ? edgeForm(t, role, s) : '';
+  if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>` + edge;
   const full = FULL_SHAPES[s.shape];
+  const sized = s.shape === 'trap'
+    ? fRange('Slant', `${P}.size`, -40, 40, 1, s.size, 'Above 0 the top edge is the short one, below 0 the bottom edge')
+      + `<div class="uim-f"><label>Lean one way</label><div><input type="checkbox" data-path="${P}.lean" data-bool="1"${s.lean ? ' checked' : ''}><span class="uim-note" style="margin:0">Both sides slant the same way; the top and bottom stay straight.</span></div></div>`
+    : SIZED_FULL[s.shape] ? fRange(SIZED_FULL[s.shape], `${P}.size`, 0, 40, 1, s.size) : '';
   h += sec('shape', 'Shape', `<div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`
-    + (full ? (SIZED_FULL[s.shape] ? fRange(SIZED_FULL[s.shape], `${P}.size`, 0, 40, 1, s.size) : '') + '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
+    + (full ? sized + '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
+  h += edge;
   const f = s.fill, k = f.kind;
   let fb = fSeg('Kind', `${P}.fill.kind`, [['solid', 'Solid'], ['gradient', 'Gradient'], ['corners', '4 corners', 'Each corner its own colour, blended across the window'], ['radial', 'Radial'], ['material', 'Material'], ['none', 'None']], k);
   if (k === 'corners') {
@@ -15546,6 +15888,22 @@ function skinForm(t, role, inDock, o) {
   if (own) return h;
   h += `<div class="uim-btns"><button class="uim-btn" data-act="copyskin">Copy skin</button><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button><button class="uim-btn" data-act="skinall" title="Every other role gets this shape, frame and light (keeping its own colours)">Use on every role</button><button class="uim-btn" data-act="resetskin">Reset</button><button class="uim-btn" data-act="toslice">Save as a 9-slice</button></div>`;
   return h;
+}
+/* THE COLOUR EDGE's section (Button + Selected roles): what is set on Selected is for the selected row only */
+function edgeForm(t, role, s) {
+  const E = edgeOf(t, role), P = `skins.${role}.edge`, g = s.slice ? null : skinGeom(s), ow = g ? g.ow : 0, sel = role === 'buttonSel';
+  let b = `<div class="uim-f"><label>Show</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${E.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${E.on ? 'Each battle action row wears its colour down the left side of this shape.' : 'Off: no colour edge on ' + (sel ? 'the selected row.' : 'the action rows.')}</span></div></div>`;
+  if (E.on) {
+    b += fRange('Width', `${P}.w`, 0.5, 16, 0.5, E.w)
+      + fRange('Gap from the side', `${P}.gap`, 0, 24, 0.5, E.gap != null ? E.gap : ow, 'How far in from the left side of the shape the colour starts (until moved: just inside the outline)')
+      + fRange('Gap at the ends', `${P}.ends`, 0, 24, 0.5, E.ends != null ? E.ends : ow, 'How far short of the top and bottom of the shape the colour stops')
+      + fColorOpt('One colour', `${P}.c`, E.c, '#ffffff', true, 'Off: each action its own colour (move teal, attack red, abilities blue, a spell its type colour)')
+      + fRange('Opacity', `${P}.a`, 0, 1, 0.01, E.a);
+    if (!sel) b += `<div class="uim-f"><label>Greyed-out rows</label><div><input type="checkbox" data-path="${P}.dead" data-bool="1"${E.dead ? ' checked' : ''}><span class="uim-note" style="margin:0">Rows you cannot pick keep a grey edge.</span></div></div>`;
+  }
+  b += `<div class="uim-note">${sel ? 'The selected row\'s edge follows the Selected shape. What you set here is for the selected row only; the rest comes from the Button role.' : 'The edge follows the shape above (its slant, its points, its round corners) and never sticks out of it. The selected row follows the Selected role\'s shape.'}</div>`
+    + `<div class="uim-btns"><button class="uim-btn" data-act="resetedge">Reset edge</button></div>`;
+  return sec('edge', 'Colour edge', b, E.on ? E.w + 'px' : 'off');
 }
 function contrast(a, b) {
   const L = c => { const p = parseCss(c) || { r: 0, g: 0, b: 0 }; const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(p.r) + 0.7152 * f(p.g) + 0.0722 * f(p.b); };
@@ -15627,9 +15985,9 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once'], ['float', 'Floating text ⧉', 'Opens on the real screen: how the damage numbers, heals and words that pop over the units look and move, with a unit and its name plate that show every change at once']];
 /* the tabs that open on the real screen (the live dock) */
-const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim'];
+const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim', 'float'];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
   if (LIVE_MODES.indexOf(UI.tab) >= 0) UI.tab = UI.back || 'skins';
@@ -15821,6 +16179,7 @@ function onClick(e, root) {
     if (path.endsWith('.fill.kind') && v === 'corners') { s.fill.c2 = s.fill.c2 || shade(s.fill.c1 || '#223', -0.3); s.fill.c4 = s.fill.c4 || shade(s.fill.c3 || '#000', -0.3); }
     if (path.endsWith('.shape') && v === 'pill' && (+s.size || 0) < 10) s.size = 14;
     if (path.endsWith('.shape') && v === 'pixel' && (+s.size || 0) < 6) s.size = 8;
+    if (path.endsWith('.shape') && v === 'trap' && !(Math.abs(+s.size || 0) >= 4 && Math.abs(+s.size || 0) <= 24)) s.size = 12;
     touch('insp'); return;
   }
   const act = b.dataset.act; if (!act) return;
@@ -15856,6 +16215,7 @@ function onClick(e, root) {
   }
   else if (act === 'copyskin') { UI.clip = clone(draftOf(T).skins[UI.role]); toast('Skin copied. Open another role (or theme) and PASTE SKIN.'); render('insp'); }
   else if (act === 'pasteskin') { if (!UI.clip) return; const t = materialize(); snap(t, true); t.skins[UI.role] = Object.assign(clone(UI.clip), { on: true }); touch('insp'); }
+  else if (act === 'resetedge') { const t = materialize(); snap(t, true); if (t.skins[UI.role]) delete t.skins[UI.role].edge; touch('insp'); }
   else if (act === 'resetskin') { const t = materialize(); snap(t, true); t.skins[UI.role] = blankSkin(t.colors, UI.role); t.skins[UI.role].on = true; touch('insp'); }
   else if (act === 'skinall') {
     const t = materialize(); snap(t, true); const s = t.skins[UI.role];
@@ -16209,6 +16569,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
     <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows, the tile highlights and the green super-effective ! look">Arrows</button>
+    <button class="uim-btn${UI.live.mode === 'float' ? ' on' : ''}" data-dk="float" title="Floating text: how the damage numbers, heals and words that pop over the units look">Pops</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -16717,9 +17078,10 @@ function faceBoxes() {
 
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : A.mode === 'float' ? dockFloatBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
   if (A.mode === 'aim') aimPrevMount();
+  else if (A.mode === 'float') floatPrevMount();
 }
 function dockDetail() {
   const A = UI.live; if (!A) return;
@@ -16728,6 +17090,7 @@ function dockDetail() {
   else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else if (A.mode === 'aim') d.innerHTML = aimDetail();
+  else if (A.mode === 'float') d.innerHTML = floatDetail();
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -16773,7 +17136,7 @@ function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); a
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
-  if (A.mode === 'aim') return;   // no boxes to pick: the board below the panel is the game's own
+  if (A.mode === 'aim' || A.mode === 'float') return;   // no boxes to pick: the board below the panel is the game's own
   if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
@@ -16857,7 +17220,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.mode === 'float') { /* the preview runs itself */ } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -17329,6 +17692,16 @@ function dockClick(e) {
         db.ux = db.ux || {}; Object.keys(L[2]).forEach(x => { db.ux[pre + x] = L[2][x]; }); uxTidy(); touchLayout(); dockDetail();
       }
     }
+    else if (k === 'floatlook') {   // a one-click look: the font, ink and motion keys go back first; the colours and the Show boxes stay
+      const L = FLOAT_LOOKS.find(x => x[0] === v);
+      if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === 'f' && x[1] !== 'c' && x.indexOf('fShow') !== 0) delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
+    }
+    else if (k === 'fpbeat') { if (UI.fpApi) UI.fpApi.fire(v); }
+    else if (k === 'fpzoom') {
+      fpState().zoom = v; if (UI.fpApi) UI.fpApi.set({ zoom: v });
+      A.dock.querySelectorAll('[data-dk="fpzoom"]').forEach(x => x.classList.toggle('on', x.dataset.val === v));
+    }
+    else if (k === 'fploop') { const F = fpState(); F.loop = !F.loop; b.classList.toggle('on', F.loop); if (UI.fpApi) UI.fpApi.loop(F.loop); }
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
     else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (uxGroupOf(x) === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
@@ -17384,6 +17757,7 @@ function dockInput(e) {
   const dk = el.dataset.dk;
   if (dk === 'faceoff') { snapLayout(true); if (el.checked) delete db.faces.off; else db.faces.off = true; faceBump(); clearTimeout(_saveT); _saveT = setTimeout(save, 250); dockBody(); return; }
   if (dk === 'faceany') { if (e.type !== 'change' || !el.value) return; UI.face = el.value; UI.faceAny = true; dockBody(); return; }
+  if (dk === 'fprace') { if (e.type !== 'change') return; fpState().race = el.value; if (UI.fpApi) UI.fpApi.set({ unit: fpUnit() }); return; }
   if (el.dataset.fpath) {
     if (el.value === '' || isNaN(+el.value) || !UI.face) return;
     const ent = faceImg(faceSprite(faceUnit(UI.face))); if (!ent.ok) return;
@@ -17495,6 +17869,8 @@ function dockInput(e) {
     else v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
     snapLayout();
     X[k] = v; if (el.dataset.kind !== 'rgb' && el.dataset.kind !== 'hex' && el.dataset.kind !== 'alpha') syncTwins(el, 'data-xpath', v);
+    /* a glow colour with the Glow at 0 would show nothing: ticking it brings a glow along (the slider shows it) */
+    if (k === 'fGlowCol' && v && !(+uxOf().fGlow > 0)) X.fGlow = 1;
     if (k === 'qStatEach' && v) qpFreeze(true);
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
