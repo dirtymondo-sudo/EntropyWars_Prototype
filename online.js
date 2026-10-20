@@ -694,6 +694,8 @@
             }
             _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
             _guestMenuToRoot();   // the guest lands on the root verbs too (the Scanner calls doItem straight from the list)
+            /* THE PLAY-OUT HOLD: the Horologe stays down until the host's own hold for this item lands (playout-hold relay) */
+            if (typeof window._ewHoldPlayout === 'function') window._ewHoldPlayout(700);
         };
 
         /* Panacea (1 AP since 2026-10-17): un-relayed, a guest's cure ran on its own copy and the next state-sync undid
@@ -2925,6 +2927,16 @@
             window._playSupportCineShot = _playSupportCineShot;
         }
 
+        /* THE PLAY-OUT HOLD (2026-10-20): an action's timeline keeps the Horologe down for its whole play-out
+           (battle.js _holdPlayout, read by boardBusy). The guest's menu gate reads its own copy, so the host relays it. */
+        if (typeof window._ewHoldPlayout === 'function') {
+            const _origHoldPlayout = window._ewHoldPlayout;
+            window._ewHoldPlayout = function(ms) {
+                _origHoldPlayout(ms);
+                if (window._NET && window._NET.online && _isHost()) _emit('relay', { type: 'playout-hold', ms: ms });
+            };
+        }
+
         const _origSpellFocusCamera = (typeof _spellFocusCamera === 'function') ? _spellFocusCamera : null;
         if (_origSpellFocusCamera) {
             _spellFocusCamera = function(casterUnit, tx, ty, opts) {
@@ -4965,6 +4977,10 @@
                     /* Support "gift" camera (heal/buff on an ally, deploys,
                        zones): replay the two-beat shot. Fog gating runs
                        inside the shot against THIS viewer's vision. */
+                    if (data.type === 'playout-hold' && _ewMirrorView() && typeof window._ewHoldPlayout === 'function') {
+                        try { window._ewHoldPlayout(data.ms); } catch (e) {}
+                    }
+
                     if (data.type === 'support-cine' && _ewMirrorView()) {
                         try {
                             var _scU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
