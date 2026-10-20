@@ -3161,6 +3161,10 @@ function _hrlgStatusChips(unit) {
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
   });
+  /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
+  if (typeof getWeatherStatChips === 'function') {
+    for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
@@ -4833,7 +4837,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     let superEff = false, typeAdv = '', elemAff = null;
     // Matchup markers only make sense for casts that actually DEAL damage —
     // a pure debuff/utility can't be "super effective".
-    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellShowsDamage(spell)))
+    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellCanPress(spell)))
         && typeof getTypeDamageMultiplier === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
       const _spType = spell ? (spell.spellType || null) : null;
@@ -5999,6 +6003,15 @@ function hudSpellShowsDamage(sp) {
   return ['barrage', 'skyDrop', 'skyThrow', 'skySlam'].includes(sp.kind || '');
 }
 
+/* Can this spell earn the green ! (the press)? Every damaging row, plus the casts whose sting has no dmg field but
+   still judges the press when it lands on an enemy (Poison Seed / Leech Seed planted under one: battle.js
+   spellArmsPress). The ! itself is always battle.js forecastPressOn, aimed at the target. */
+function hudSpellCanPress(sp) {
+  if (!sp) return false;
+  if (hudSpellShowsDamage(sp)) return true;
+  return typeof window.spellArmsPress === 'function' && !!window.spellArmsPress(sp);
+}
+
 // Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
 // `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
 // burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
@@ -6784,7 +6797,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
-        press: (hudSpellShowsDamage(sp) && typeof window._pressOf === 'function')
+        press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
           ? !!window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
@@ -7200,7 +7213,8 @@ function _showTileMoveSlidePreview(actingUnit, tx, ty, tz) {
     if (!land || typeof _drawIceSlideLeg !== 'function') return;
     const routeColor = 0x3399ff;
     const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: ThreeRenderer.unitSurfaceY(actingUnit) }];
-    for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
+    const route = (typeof walkRouteOf === 'function') ? walkRouteOf(path, land) : path;   // a storm stops the walk on its eye
+    for (const p of route) wps.push({ x: p.x, y: p.y, yOverride: ThreeRenderer.tileTopY(p.x, p.y) });
     if (wps.length < 2) wps.push({ x: tx, y: ty, yOverride: ThreeRenderer.tileTopY(tx, ty) });
     ThreeRenderer.drawPathArrow3D(wps, routeColor);
     wps.push(..._drawIceSlideLeg(land, (wx, wy) => ThreeRenderer.tileTopY(wx, wy)));
@@ -7658,10 +7672,50 @@ function _chainMoveTowards(actingUnit, targetUnit) {
   }
 }
 
+/* THE AOE PLACEMENT on the quick menus (mondo 2026-10-19: "when i choose a placeable aoe spell from a unit's quick
+   target menu, it needs to let me place it first, not just fire automatically"): a tile-aimed area spell picked from
+   the enemy / ally quick menu no longer casts on the pick. It arms like the Abilities pick (setTool: the 'spells' aim
+   view, its range lit), the footprint starts on the row's own centre (the off-centre aim) and follows the cursor;
+   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms. */
+function _hrlgPlaceableAoe(spell, tx, ty) {
+  if (!spell || typeof isSpellTileTargeted !== 'function' || !isSpellTileTargeted(spell)) return false;
+  if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) return false;
+  if (typeof isTileAoeSpell === 'function' && isTileAoeSpell(spell)) return true;
+  const m = typeof _kindMeta === 'function' ? (_kindMeta(spell) || {}) : {};
+  if (m.directional || spell.hinge || spell.kind === 'teleport' || spell.kind === 'dash' || spell.kind === 'warpRune') return false;
+  const fp = typeof getSpellAoeFootprint === 'function' ? (getSpellAoeFootprint(spell, tx, ty) || []) : [];
+  return fp.length > 1;
+}
+function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
+  state._actionExecuting = false;
+  state._enemyActionTargetId = null;
+  state.pendingTarget = null;
+  if (typeof getSelectedUnit === 'function' && getSelectedUnit() !== actingUnit) return false;
+  setTool('spell', spell.name);
+  if (state.actionMode !== 'spell' || state.selectedTool !== spell.name) return true;   // refused: setTool said why
+  if (state.actionMenuView === 'spells') {
+    state.pendingTarget = { x: x, y: y, mode: 'spell', tool: spell.name, viaHover: false };
+    if (typeof updateAoePreview === 'function') {
+      try { updateAoePreview(x, y); } catch (e) { /* cosmetic */ }
+    }
+  }
+  if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+  if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  return true;
+}
+
 function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (!a.available) return;
   hideSpellTooltip();
   _clearMoveArrowPreview();
+  const _placeAoe = !!(a.spell && a.id.startsWith('spell:') && !a._teamCast && typeof setTool === 'function'
+    && _hrlgPlaceableAoe(a.spell, targetUnit.x, targetUnit.y));
+  if (_placeAoe && !a.moveTile) {
+    if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+    const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
+    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y)) return;
+  }
   // Sweep every lingering targeting visual (range overlays from blade hover,
   // AoE preview, terrain ghost, arrows) the moment the quick-cast fires —
   // doSpell/doAttack sweep again post-validation, but the walk of a
@@ -7765,6 +7819,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }
+      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
         else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
@@ -7976,7 +8031,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
     // the spell's element vs THIS enemy: immune / absorb wears the red !-circle
     let _eaImm = null;
     if (a.spell && typeof unitElementAffinity === 'function' && typeof isEnemyUnit === 'function' && isEnemyUnit(actingUnit, targetUnit)
-        && (typeof hudSpellShowsDamage !== 'function' || hudSpellShowsDamage(a.spell))) {
+        && (typeof hudSpellCanPress !== 'function' || hudSpellCanPress(a.spell))) {
       const _eaEl = (typeof getSpellElement === 'function') ? getSpellElement(a.spell) : (a.spell.element || null);
       const _eaAff = _eaEl ? unitElementAffinity(targetUnit, _eaEl) : null;
       if (_eaAff === 'immune' || _eaAff === 'absorb') _eaImm = _eaAff;
@@ -13630,6 +13685,8 @@ const UX_DEF = {
      Rim / Glow / Halo are strengths, RimW / RimIn / Soft / Round / GlowW / HaloW are in tiles, Wall = the light walls'
      height in tiles (0 = none); Col* = a colour for that side ('' = the game's: yours blue, the enemy's red, neutral gold) */
   ...zoneDefs('zs'), ...zoneDefs('zn'),
+  /* zLink = the two edited together (one form, every change lands on both; see zoneBoth) */
+  zLink: false,
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
   /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
@@ -14416,9 +14473,12 @@ function aimPrevMount() {
 }
 function aimDetail() {
   const X = uxOf();
-  if (UI.aimPrev === 'zones') return zoneForm(X, 'zs', 'Spawn zones', 'Where each team starts: TDM\'s spawn strips and the Arena spawn nexuses. Neutral = an Arena spawn nexus while nobody holds it.')
-    + zoneForm(X, 'zn', 'Nexus zones', 'Every other nexus: the centre, the diagonal pair and the hotspot. Gold while nobody holds it, then the holder\'s colour.')
-    + '<div class="uim-note">Strengths go from 0 (none); widths, insets, reach and wall height are in tiles. The game shows nothing different online: these are your own look.</div>';
+  if (UI.aimPrev === 'zones') {
+    const tail = '<div class="uim-note">Strengths go from 0 (none); widths, insets, reach and wall height are in tiles. The game shows nothing different online: these are your own look.</div>';
+    if (X.zLink && zoneSame(X)) return zoneBoth(X) + zoneForm(X, 'zs', 'Spawn + nexus zones', 'One set of settings for both: TDM\'s spawn strips, the Arena spawn nexuses and every other nexus. Neutral = a nexus (or an Arena spawn nexus) while nobody holds it.', true) + tail;
+    return zoneBoth(X) + zoneForm(X, 'zs', 'Spawn zones', 'Where each team starts: TDM\'s spawn strips and the Arena spawn nexuses. Neutral = an Arena spawn nexus while nobody holds it.')
+      + zoneForm(X, 'zn', 'Nexus zones', 'Every other nexus: the centre, the diagonal pair and the hotspot. Gold while nobody holds it, then the holder\'s colour.') + tail;
+  }
   const looks = (pre, L) => `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${L.map(([v, l]) => `<button class="uim-btn" data-dk="aimlook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
   let h = seForm(X) + `<div class="uim-h">Arrows</div>` + looks('w', ARROW_LOOKS);
   h += sec('wshape', 'Arrow shape', xp(fSeg('Shaft', 'wShaft', [['solid', 'Solid'], ['dashed', 'Dashed'], ['none', 'None', 'The dots and the head alone']], X.wShaft)
@@ -14452,8 +14512,33 @@ function aimDetail() {
   h += '<div class="uim-note">Every number is on top of the game\'s own look (1 = as the game), so a reach still reads quieter than a hit.</div>' + xReset('t', 'Reset the tile highlights');
   return h;
 }
-/* THE ZONES (Arrows + tiles > Spawn + nexus zones): one look's form, pre = zs (spawn) or zn (nexus) */
-function zoneForm(X, pre, title, note) {
+/* THE ZONES, BOTH SIDES AT ONCE (2026-10-19, mondo: "with the nexus and spawn zones, i would like the option to edit that
+   together or copy paste the settings from on to the other"): db.ux.zLink = one form (the zs keys) whose every change,
+   one-click look and reset lands on the zn keys too (zoneTwin, in the dock handlers); turning it on while the two differ
+   first asks which look both start from. The copy buttons put every zone setting of one side (Show + colours included)
+   onto the other. */
+const ZONE_KEYS = Object.keys(zoneDefs(''));
+const zoneSame = X => ZONE_KEYS.every(k => String(X['zs' + k]) === String(X['zn' + k]));
+/* the other side's key while the two are edited together, else '' */
+const zoneTwin = k => (db.ux && db.ux.zLink && /^z[sn][A-Z]/.test(k) && (k.slice(2) in zoneDefs(''))) ? (k[1] === 's' ? 'zn' : 'zs') + k.slice(2) : '';
+function zoneCopy(from, to) {
+  const X = uxOf(); db.ux = db.ux || {};
+  ZONE_KEYS.forEach(k => { db.ux[to + k] = X[from + k]; });
+}
+function zoneBoth(X) {
+  const on = !!X.zLink;
+  let h = `<div class="uim-h">Spawn + nexus together</div>`;
+  if (on && !zoneSame(X) || UI.zLinkAsk) {
+    return h + `<div class="uim-note">The spawn zones and the nexus zones look different now. Which look should both start from?</div>
+      <div class="uim-btns"><button class="uim-btn pri" data-dk="zonelinkfrom" data-val="zs" title="The nexus zones take every spawn zone setting, then both change together">The spawn look</button><button class="uim-btn pri" data-dk="zonelinkfrom" data-val="zn" title="The spawn zones take every nexus zone setting, then both change together">The nexus look</button><button class="uim-btn" data-dk="zonelink" data-val="0">Cancel</button></div>`;
+  }
+  h += `<div class="uim-btns"><button class="uim-btn${on ? ' on' : ''}" data-dk="zonelink" data-val="${on ? '0' : '1'}" title="${on ? 'Split them again: the spawn zones and the nexus zones each get their own settings (they start the same)' : 'One set of settings for the spawn zones and the nexus zones: every change lands on both'}">${on ? '✓ Editing both together' : 'Edit both together'}</button></div>`;
+  if (!on) h += `<div class="uim-f" title="Every setting of one side (Show and the colours too) goes onto the other. Undo puts it back."><label>Copy</label><div style="flex-wrap:wrap"><button class="uim-btn" data-dk="zonecopy" data-val="zs">Spawn → nexus</button><button class="uim-btn" data-dk="zonecopy" data-val="zn">Nexus → spawn</button></div></div>`;
+  return h;
+}
+/* THE ZONES (Arrows + tiles > Spawn + nexus zones): one look's form, pre = zs (spawn) or zn (nexus); both = the one form of
+   the two edited together (it shows the zs keys, the handlers write the zn ones too) */
+function zoneForm(X, pre, title, note, both) {
   const g = k => X[pre + k];
   const looks = `<div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${ZONE_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="zonelook" data-val="${pre}:${v}">${esc(l)}</button>`).join('')}</div></div>`;
   let h = `<div class="uim-h">${title}</div><div class="uim-note">${note}</div>` + xCheck('Show them', pre + 'Show', g('Show')) + looks;
@@ -14479,6 +14564,7 @@ function zoneForm(X, pre, title, note) {
   h += sec(pre + 'col', 'Colours', xp(fColorOpt('Yours', pre + 'ColAlly', g('ColAlly'), '#3399ff', false, 'Unticked = the game\'s blue')
     + fColorOpt('The enemy\'s', pre + 'ColFoe', g('ColFoe'), '#ff3355', false, 'Unticked = the game\'s red')
     + fColorOpt('Neutral', pre + 'ColNeutral', g('ColNeutral'), '#ddaa33', false, 'Unticked = the game\'s gold')));
+  if (both) return h + `<div class="uim-btns"><button class="uim-btn bad" data-dk="uxreset" data-val="zs"${uxGroupOn('zs') || uxGroupOn('zn') ? '' : ' disabled'}>Reset both</button></div>`;
   return h + xReset(pre, 'Reset the ' + title.toLowerCase());
 }
 /* the green ! (Arrows + tiles > Super effective !): a specimen of each place it shows, in the look now */
@@ -17578,6 +17664,7 @@ function dockClick(e) {
   if (xs) {
     try { xs.blur(); } catch (er) {}
     snapLayout(true); db.ux = db.ux || {}; db.ux[xs.dataset.xset] = xs.dataset.val;
+    const tw = zoneTwin(xs.dataset.xset); if (tw) db.ux[tw] = xs.dataset.val;
     uxTidy(); touchLayout(); dockDetail(); return;
   }
   const qs = e.target.closest('button[data-qpset]');
@@ -17688,9 +17775,27 @@ function dockClick(e) {
     else if (k === 'zonelook') {   // a one-click zone look: that side's shape + light keys go back first, its colours and Show stay
       const pre = v.slice(0, 2), L = ZONE_LOOKS.find(x => x[0] === v.slice(3));
       if (L && (pre === 'zs' || pre === 'zn')) {
-        snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x.indexOf(pre) === 0 && x.indexOf(pre + 'Col') !== 0 && x !== pre + 'Show') delete db.ux[x]; });
-        db.ux = db.ux || {}; Object.keys(L[2]).forEach(x => { db.ux[pre + x] = L[2][x]; }); uxTidy(); touchLayout(); dockDetail();
+        snapLayout(true);
+        (zoneTwin(pre + 'Fill') ? ['zs', 'zn'] : [pre]).forEach(p => {   // edited together: both sides
+          Object.keys(db.ux || {}).forEach(x => { if (x.indexOf(p) === 0 && x.indexOf(p + 'Col') !== 0 && x !== p + 'Show') delete db.ux[x]; });
+          db.ux = db.ux || {}; Object.keys(L[2]).forEach(x => { db.ux[p + x] = L[2][x]; });
+        });
+        uxTidy(); touchLayout(); dockDetail();
       }
+    }
+    else if (k === 'zonelink') {   // edit the spawn + nexus zones together (asks which look both start from when they differ) / split them
+      if (v === '1') {
+        if (zoneSame(uxOf())) { UI.zLinkAsk = false; snapLayout(true); db.ux = db.ux || {}; db.ux.zLink = true; uxTidy(); touchLayout(); }
+        else UI.zLinkAsk = true;
+      } else { UI.zLinkAsk = false; if (db.ux && db.ux.zLink) { snapLayout(true); delete db.ux.zLink; touchLayout(); } }
+      dockDetail();
+    }
+    else if (k === 'zonecopy' || k === 'zonelinkfrom') {   // every setting of one side onto the other (then edited together)
+      const from = v === 'zn' ? 'zn' : 'zs', to = from === 'zs' ? 'zn' : 'zs';
+      snapLayout(true); zoneCopy(from, to);
+      if (k === 'zonelinkfrom') { UI.zLinkAsk = false; db.ux.zLink = true; }
+      uxTidy(); touchLayout(); dockDetail();
+      if (k === 'zonecopy') toast(from === 'zs' ? 'The nexus zones now look like the spawn zones.' : 'The spawn zones now look like the nexus zones.');
     }
     else if (k === 'floatlook') {   // a one-click look: the font, ink and motion keys go back first; the colours and the Show boxes stay
       const L = FLOAT_LOOKS.find(x => x[0] === v);
@@ -17703,7 +17808,10 @@ function dockClick(e) {
     }
     else if (k === 'fploop') { const F = fpState(); F.loop = !F.loop; b.classList.toggle('on', F.loop); if (UI.fpApi) UI.fpApi.loop(F.loop); }
     else if (k === 'ringlook') { const L = RING_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); } }
-    else if (k === 'uxreset') { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (uxGroupOf(x) === v) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply(); }
+    else if (k === 'uxreset') {
+      const both = (v === 'zs' || v === 'zn') && zoneTwin(v + 'Fill');   // the zones edited together reset together
+      snapLayout(true); Object.keys(db.ux || {}).forEach(x => { const g = uxGroupOf(x); if (g === v || (both && (g === 'zs' || g === 'zn'))) delete db.ux[x]; }); touchLayout(); dockDetail(); if (v === 'q') scheduleApply();
+    }
     else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroset') { const i = v.indexOf(':'); snapLayout(true); db.hero = db.hero || {}; db.hero[v.slice(0, i)] = v.slice(i + 1); heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'clocklook') { const L = CLOCK_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.hero = Object.assign(db.hero || {}, L[2]); heroTidy(); touchLayout(); dockDetail(); } }
@@ -17869,6 +17977,7 @@ function dockInput(e) {
     else v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
     snapLayout();
     X[k] = v; if (el.dataset.kind !== 'rgb' && el.dataset.kind !== 'hex' && el.dataset.kind !== 'alpha') syncTwins(el, 'data-xpath', v);
+    const tw = zoneTwin(k); if (tw) X[tw] = v;   // the spawn + nexus zones edited together: the other side too
     /* a glow colour with the Glow at 0 would show nothing: ticking it brings a glow along (the slider shows it) */
     if (k === 'fGlowCol' && v && !(+uxOf().fGlow > 0)) X.fGlow = 1;
     if (k === 'qStatEach' && v) qpFreeze(true);

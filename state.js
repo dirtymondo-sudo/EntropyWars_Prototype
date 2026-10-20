@@ -1807,6 +1807,7 @@
                 element: 'lightning',
                 soaks: true,
                 seedTerrain: 'water',
+                dmgRange: [32, 63],
                 statMod: {
                     def: -5
                 },
@@ -1863,6 +1864,8 @@
                 },
                 convertTerrain: 'ice',
                 blinds: 2,
+                dmgRange: [15, 24],   // a Frozen body takes about twice
+                dmgSparesType: 'anomaly',
                 homingDamage(unit) {
                     const isAnomaly = (unit.types || []).includes('anomaly');
                     if (!isAnomaly) {
@@ -1888,6 +1891,8 @@
                 homingSpeed: 2,
                 duration: [3, 5],
                 desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 VISION in the eye.',
+                dmgRange: [20, 29],
+                dmgSparesType: 'human',
                 statMod: {
                     vision: -5
                 },
@@ -2722,6 +2727,85 @@
             }
         }
 
+        /* 🌪 THE STORM'S STRIKE: what a homing storm's eye does to one body it catches — the soak (hurricane,
+           thunderstorm), the roll, the blind (blizzard), the lightning — but not the fling (the caller throws it:
+           battle.js vortexFlingUnit). The round-end strike below and THE CHAIN's step F (a body that lands on or walks
+           through the eye, mondo 2026-10-19) both hit through here, so the two can never drift. Returns true when the
+           storm hurt the body. at: the tile it is struck on when that is not where it stands (a walk in passing). */
+        function stormStrikeUnit(v, weather, def, at) {
+            if (!v || v.dead || v._dying || !weather || !def) return false;
+            const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
+            // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
+            // drench whoever they sweep over — BEFORE the strike,
+            // so a thunderstorm fries its own soaked victims. The
+            // drenching also douses any burn on the spot.
+            if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(v))) {
+                if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(v, `The ${def.label.toLowerCase()}`);
+                const _wPrev = Number((v.status && v.status.wet) || 0);
+                if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
+                else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
+            }
+            const hit = def.homingDamage ? def.homingDamage(v) : null;
+            // 🌫️ Blinding storms (blizzard): whoever the eye
+            // batters staggers out snow-blind — attacks whiff 50%
+            // while it lasts. Rides the same immunity as the
+            // damage roll (anomaly units shrug the whiteout off).
+            // THE SPELL AUDIT Batch D — `weatherStatusImmune: { blizzard: ['blind'] }` (Snowborn): this weather's status never lands.
+            const _wsi = (typeof unitPassiveValue === 'function') ? unitPassiveValue(v, 'weatherStatusImmune') : null;
+            const _wsiBlind = !!(_wsi && Array.isArray(_wsi[weather.type]) && _wsi[weather.type].includes('blind'));
+            if (hit && hit.amount > 0 && def.blinds && !_wsiBlind) {
+                applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
+            }
+            if (!(hit && hit.amount > 0)) return false;
+            applyDamageToUnit(v, hit.amount, `${String(hit.text || '').replace(/\s+for$/, '')}: `, {
+                ignoreArmor: false,
+                sourceUnit: (caster && !caster.dead) ? caster : undefined,
+                // Elemental storms ride the combo layer
+                // (lightning fries the soaked / supercharges
+                // tech; blizzard flash-freezes the wet).
+                element: def.element || null,
+                // Natural storms have no caster — scale by the
+                // victim's level (see applyWeatherTurnEffects).
+                scaleByTargetLevel: true
+            });
+            if (weather.type === 'thunderstorm' && window.playStormLightningFx) {
+                // ⚡ same crack + delayed rumble as the
+                // per-turn strike above — fires live here (the
+                // camera is already following the storm).
+                window.playStormLightningFx(at ? at.x : v.x, at ? at.y : v.y);
+            }
+            return true;
+        }
+        window.stormStrikeUnit = stormStrikeUnit;
+
+        /* THE STORM CHIPS (mondo 2026-10-19: "shouldnt i see the stat change on the name plate right away?"): every
+           stat a weather changes for this body where it stands now (getWeatherStatMod's read, one chip per weather), for
+           the nameplate badge row (three-renderer _plateStatusBadgesHtml) and the Horologe / unit card chips (hud.js
+           _hrlgStatusChips). [{ key, label, kind: 'up'|'dn', title }] */
+        const _WEATHER_CHIP_STATS = [['atk', 'ATK'], ['def', 'DEF'], ['int', 'M ATK'], ['vision', 'VISION'], ['move', 'MOV'], ['rng', 'RNG']];
+        function getWeatherStatChips(unit) {
+            const out = [];
+            if (!unit || unit.dead || !state.activeWeather || !state.activeWeather.length) return out;
+            for (const w of state.activeWeather) {
+                if (!weatherOnTile(w, unit.x, unit.y)) continue;
+                const def = WEATHER_REGISTRY[w.type];
+                if (!def) continue;
+                const mods = Object.assign({}, def.statMod || {});
+                if (def.conditionalStatMod) {
+                    const cond = def.conditionalStatMod(unit) || {};
+                    for (const k in cond) mods[k] = (mods[k] || 0) + cond[k];
+                }
+                for (const [k, lbl] of _WEATHER_CHIP_STATS) {
+                    const n = mods[k] || 0;
+                    if (!n) continue;
+                    out.push({ key: 'wx-' + w.type + '-' + k, label: `${def.icon} ${lbl}${n > 0 ? '+' : ''}${n}`, kind: n > 0 ? 'up' : 'dn',
+                        title: `${def.label}: ${n > 0 ? '+' : ''}${n} ${lbl} while standing in it` });
+                }
+            }
+            return out;
+        }
+        window.getWeatherStatChips = getWeatherStatChips;
+
         // End-of-round: homing storms (tornado, hurricane, thunderstorm, blizzard, sandstorm)
         // path toward and damage their two nearest units. Runs before end-of-round healing so
         // healing always resolves last. Cast storms only hunt the caster's enemies; natural
@@ -2881,47 +2965,7 @@
                     // Damage — and for tornado/hurricane, displace — everyone it caught.
                     for (const v of struck) {
                         if (!v || v.dead) continue;
-                        // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
-                        // drench whoever they sweep over — BEFORE the strike,
-                        // so a thunderstorm fries its own soaked victims. The
-                        // drenching also douses any burn on the spot.
-                        if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(v))) {
-                            if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(v, `The ${def.label.toLowerCase()}`);
-                            const _wPrev = Number((v.status && v.status.wet) || 0);
-                            if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
-                            else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
-                        }
-                        const hit = def.homingDamage ? def.homingDamage(v) : null;
-                        // 🌫️ Blinding storms (blizzard): whoever the eye
-                        // batters staggers out snow-blind — attacks whiff 50%
-                        // while it lasts. Rides the same immunity as the
-                        // damage roll (anomaly units shrug the whiteout off).
-                        // THE SPELL AUDIT Batch D — `weatherStatusImmune: { blizzard: ['blind'] }` (Snowborn): this weather's status never lands.
-                        const _wsi = (typeof unitPassiveValue === 'function') ? unitPassiveValue(v, 'weatherStatusImmune') : null;
-                        const _wsiBlind = !!(_wsi && Array.isArray(_wsi[weather.type]) && _wsi[weather.type].includes('blind'));
-                        if (hit && hit.amount > 0 && def.blinds && !_wsiBlind) {
-                            applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
-                        }
-                        if (hit && hit.amount > 0) {
-                            actedVisibly = true;
-                            applyDamageToUnit(v, hit.amount, `${hit.text}`, {
-                                ignoreArmor: false,
-                                sourceUnit: caster || undefined,
-                                // Elemental storms ride the combo layer
-                                // (lightning fries the soaked / supercharges
-                                // tech; blizzard flash-freezes the wet).
-                                element: def.element || null,
-                                // Natural storms have no caster — scale by the
-                                // victim's level (see applyWeatherTurnEffects).
-                                scaleByTargetLevel: true
-                            });
-                            if (weather.type === 'thunderstorm' && window.playStormLightningFx) {
-                                // ⚡ same crack + delayed rumble as the
-                                // per-turn strike above — fires live here (the
-                                // camera is already following the storm).
-                                window.playStormLightningFx(v.x, v.y);
-                            }
-                        }
+                        if (stormStrikeUnit(v, weather, def)) actedVisibly = true;
                         if (def.displaces && !v.dead) {
                             /* 🧭 THE FORCED MOVE (2026-10-18): the storm flings on its heading this round — north the
                                round it formed, then east, south, west (battle.js vortexFlingDir) — through the shared
