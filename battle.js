@@ -4389,7 +4389,7 @@
                 const by = (o.byUnitId != null) ? unitFromId(o.byUnitId) : null;
                 addLog(`🌋 ${_ctName(unit)} falls into the lava!`);
                 showFloatingTextForUnit(unit, '🌋 INTO THE LAVA!', 'damage', { durationMs: 1400 });
-                if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard('normal');
+                if (!_skipVisuals() && typeof window.playLavaPitFallFx === 'function') window.playLavaPitFallFx(unit.x, unit.y);   // online.js relays it to the guest
                 applyDamageToUnit(unit, Math.max(1, unit.hp | 0), `${unitDisplayName(unit)} falls into the lava: `, {
                     pitFall: true, ignoreArmor: true, damageType: 'dot', consumeMarked: false, noPress: true, flashColor: 'burn',
                     sourceUnit: (by && !by.dead && by.id !== unit.id && isEnemyUnit(by, unit)) ? by : undefined
@@ -4406,6 +4406,8 @@
             return true;
         }
         window._fallIntoLavaPit = _fallIntoLavaPit;
+        /* the fall's impact beat (the board shake); its own window fn so online.js can relay it to the guest, fog-gated */
+        window.playLavaPitFallFx = function (x, y) { if (typeof shakeBoard === 'function') shakeBoard('normal'); };
 
         /* the forecast's row for a body that would land in a pit (simHits): its whole HP, the pit's own hit */
         function _pitSimHit(u, byUnit) {
@@ -60769,7 +60771,7 @@
             _onFlyerLanded(unit);
             // ⛓ THE CHAIN: a flyer grounded onto a bomb / trap / zone / vortex
             // takes it now — the grounding IS an arrival (2026-09-21).
-            resolveTileArrival(unit, { via: 'grounded', fxDelayMs: _fgFallMs });
+            resolveTileArrival(unit, { via: 'grounded', fxDelayMs: _fgFallMs, byUnitId: (opts.byUnit && opts.byUnit.id != null) ? opts.byUnit.id : undefined });
             scheduleBoardRender();
             return true;
         }
