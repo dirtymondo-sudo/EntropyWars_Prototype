@@ -15151,9 +15151,12 @@
                 SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
 
-            /* Relocate existing units into their spawn zone tiles (units are created before map init) */
+            /* Relocate existing units into their spawn zone tiles (units are created before map init).
+               A tutorial lesson pins every unit on its own tile (ui.js _tutorialLaunch writes them into SPAWNS before the
+               units are made) — those stay where the lesson put them (2026-10-20: the lessons had been starting on the rows) */
+            const _tutPins = typeof window !== 'undefined' && !!window._tutActive;
             for (const unit of state.units) {
-                if (unit.dead) continue;
+                if (unit.dead || _tutPins) continue;
                 const zoneArr = state.spawnZones[unit.player];
                 if (!zoneArr || zoneArr.length === 0) continue;
                 const idx = unit._spawnIndex || 0;

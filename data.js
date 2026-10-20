@@ -29503,6 +29503,97 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: -8.4, face: 180 },
         },
+        /* ══ THE TRAINING ROOM MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room
+           and holo sim. They should be able to be built with the tools in the map editor ... design them with square tiles in mind")
+           — the `prebuilt_training` board is no longer the voxel Δ: it is the 8×8 cut of THIS room (HQ_ARENA_RULES.own.prebuilt_training,
+           baked by `node bake-arenas.js --own prebuilt_training`). Every number is in battle squares (C = 1.75 m): the room is 18 × 18 squares,
+           4 high; THE MATS are the 8 × 8 in the middle (x, z −7..7 = squares 5..12), the lessons' own tiles (TUTORIAL_LESSONS pins
+           them on the 8×8: keep it flat and open). West: the bleachers (six rows facing the mats). East: the mezzanine 2 squares
+           up (the steel stair along the north wall, the desk over the mats). North: the wall pads, the dummies. South (the camera's
+           side): low things only. Not linked into the building (Room 64 is still the walk's training room). ══ */
+        training_hall: {
+            label: 'TRAINING ROOM',
+            sub: 'THE MATS · 8 × 8',
+            kind: 'box',
+            site: 'prebuilt_training',
+            shell: {
+                w: 31.5, d: 31.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.75,
+                floor: 'training_floor', wall: 'concrete', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: true,
+                lights: [{ x: -5.25, z: -5.25 }, { x: 5.25, z: -5.25 }, { x: -5.25, z: 5.25 }, { x: 5.25, z: 5.25 },
+                         { x: -12.25, z: -5.25 }, { x: -12.25, z: 5.25 }, { x: 14.0, z: -7.0 }, { x: 14.0, z: 7.0 }],
+                mood: { light: 0xf2f4ff, ambient: 2.0 },
+                fog: { color: 0x16181d, density: 0.0 },
+                look: { name: 'TRAINING ROOM', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.22, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.0, bloom: 0 },
+            },
+            terrain: {
+                floor: 'training_floor', cliff: 'concrete', path: 'urban:ConcreteStriped2a',
+                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false, stairs: 'steel',
+                marks: [
+                    /* the red line round the mats' apron, the yellow line along the bleachers' foot */
+                    { k: 'line', x0: -8.05, z0: -8.05, x1: 8.05, z1: -8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: -8.05, z0: 8.05, x1: 8.05, z1: 8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: -8.05, z0: -8.05, x1: -8.05, z1: 8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: 8.05, z0: -8.05, x1: 8.05, z1: 8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: -8.6, z0: -8.75, x1: -8.6, z1: 8.75, w: 0.1, color: 0xffd34a },
+                ],
+                features: [
+                    /* THE MATS: 8 × 8 foam squares, one battle square each, blue and black (the plateau under them is the mats' 4 cm) */
+                    { k: 'board', x: 0, z: 0, n: 8, cell: 1.75, keys: ['urban:RubberNonSlip5a', 'urban:RubberNonSlip1a'], colors: [0xffffff, 0xe0e0e0], h: 0.06 },
+                    /* THE BLEACHERS (west, facing the mats): six rows, 0.44 up and 0.875 deep each, the walk behind the top row; the two end walls */
+                    { k: 'wall', x0: -9.1875, z0: -8.75, x1: -9.1875, z1: 8.75, y: 0.44, t: 0.875, key: 'concrete', tier: true, seat: 0x2a4f8c, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -10.0625, z0: -8.75, x1: -10.0625, z1: 8.75, y: 0.88, t: 0.875, key: 'concrete', tier: true, seat: 0x8c2a28, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -10.9375, z0: -8.75, x1: -10.9375, z1: 8.75, y: 1.32, t: 0.875, key: 'concrete', tier: true, seat: 0x2a4f8c, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -11.8125, z0: -8.75, x1: -11.8125, z1: 8.75, y: 1.76, t: 0.875, key: 'concrete', tier: true, seat: 0x8c2a28, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -12.6875, z0: -8.75, x1: -12.6875, z1: 8.75, y: 2.2, t: 0.875, key: 'concrete', tier: true, seat: 0x2a4f8c, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -13.5625, z0: -8.75, x1: -13.5625, z1: 8.75, y: 2.64, t: 0.875, key: 'concrete', tier: true, seat: 0x8c2a28, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -14.875, z0: -8.75, x1: -14.875, z1: 8.75, y: 2.64, t: 1.75, key: 'concrete', tier: true, rail: false },
+                    { k: 'wall', x0: -8.75, z0: -8.95, x1: -11.4, z1: -8.95, h: 1.6, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -11.4, z0: -8.95, x1: -15.75, z1: -8.95, h: 3.3, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -8.75, z0: 8.95, x1: -11.4, z1: 8.95, h: 1.6, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -11.4, z0: 8.95, x1: -15.75, z1: 8.95, h: 3.3, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'rail', x0: -14.0, z0: -8.6, x1: -14.0, z1: 8.6, y: 2.64, model: 'pipe', block: false },
+                    /* THE MEZZANINE (east): a steel grate 2 squares up along the east wall, its rail on the mats' side; the steel stair up the north wall */
+                    { k: 'bridge', x0: 13.875, z0: -15.5, x1: 13.875, z1: 15.5, w: 3.25, y: 3.5, thick: 0.3, rails: false, key: 'urban:MetalSubwayGrill1a', id: 'mezzanine' },
+                    { k: 'ramp', x0: 2.75, z0: -14.5, x1: 12.25, z1: -14.5, w: 2.0, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.01 },
+                    { k: 'rail', x0: 12.35, z0: -13.35, x1: 12.35, z1: 15.4, y: 3.5, model: 'pipe' },
+                    { k: 'wall', x0: 12.6, z0: -10.5, x1: 12.62, z1: -10.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                    { k: 'wall', x0: 12.6, z0: -3.5, x1: 12.62, z1: -3.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                    { k: 'wall', x0: 12.6, z0: 3.5, x1: 12.62, z1: 3.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                    { k: 'wall', x0: 12.6, z0: 10.5, x1: 12.62, z1: 10.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                ],
+            },
+            props: [
+                /* ── NORTH: the wall pads behind the mats, the clock over them, the banners; the dummies on the floor ── */
+                { key: 'wall_padding',   wall: 'n', x: -1.75 }, { key: 'wall_padding', wall: 'n', x: 1.75 },
+                { key: 'wall_clock',     wall: 'n', x: 0, mount: 4.4 },
+                { key: 'banner',         wall: 'n', x: -7.5, mount: 6.2 }, { key: 'banner', wall: 'n', x: 7.5, mount: 6.2 },
+                { key: 'armour_stand',   x: -6.0, z: -13.2, face: 180 }, { key: 'armour_stand', x: -8.2, z: -13.2, face: 160 },
+                { key: 'metal_shelving', wall: 'n', x: -12.6 },
+                { key: 'cardboard_boxes', x: -14.4, z: -12.0, face: 20 },
+                /* ── WEST over the bleachers: the round windows, the vent ── */
+                { key: 'observation_window', wall: 'w', z: -4.5, mount: 5.0 }, { key: 'observation_window', wall: 'w', z: 4.5, mount: 5.0 },
+                { key: 'vent_grille',    wall: 'w', z: 0, mount: 5.4 },
+                /* ── EAST under the mezzanine: the lockers, the bench; on it: the desk over the mats, the monitors ── */
+                { key: 'locker',         wall: 'e', z: -7.0 }, { key: 'locker', wall: 'e', z: -6.1 }, { key: 'locker', wall: 'e', z: -5.2 }, { key: 'locker', wall: 'e', z: -4.3 },
+                { key: 'locker_bench',   x: 14.2, z: -5.6, face: 270 },
+                { key: 'locker',         wall: 'e', z: 4.3 }, { key: 'locker', wall: 'e', z: 5.2 }, { key: 'locker', wall: 'e', z: 6.1 }, { key: 'locker', wall: 'e', z: 7.0 },
+                { key: 'locker_bench',   x: 14.2, z: 5.6, face: 270 },
+                { key: 'steel_table',    x: 14.4, z: 0, y: 3.5, face: 270 },
+                { key: 'crt_terminal',   x: 14.3, z: 0.3, y: 4.26, face: 270 },
+                { key: 'folding_chair',  x: 15.1, z: 0, y: 3.5, face: 270 },
+                { key: 'monitor_stack',  x: 15.4, z: -3.0, y: 3.5, face: 270 },
+                /* ── SOUTH (the camera's side, kept low): the shutter, the exit, the cooler, the board, the extinguisher ── */
+                { key: 'roller_shutter', wall: 's', x: 0 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.1 },
+                { key: 'water_cooler',   wall: 's', x: -5.0 },
+                { key: 'notice_board',   wall: 's', x: 5.0 },
+                { key: 'fire_extinguisher', wall: 's', x: 7.4, mount: 1.0 },
+                { key: 'security_camera', x: 15.2, z: 15.2, face: 315, mount: 5.6 },
+            ],
+            spawn: { x: 0, z: 12.0, face: 0 },
+        },
         /* ══════════════════════════════════════════════════════════════════
            THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
            building grows DOWN and UP through THE CAR. The elevator on the
@@ -56183,6 +56274,10 @@ DOOR_HQ.rooms.facility_holosim = {
     spawn: { x: 0, z: 12.25, face: 180, level: 0 },
 };
 HQ_ARENA_RULES.own.prebuilt_holosim = {"room":"facility_holosim","ox":5,"oz":5,"base":"holo","open":0,"keys":["holo"],"cells":"01010101010101010101010101010102010102010101010103010101010101010101010101010103010101010102010102010101010101010101010101010101"};   // <OWN PICK prebuilt_holosim> — written by bake-arenas.js --own
+/* ── THE TRAINING ROOM (2026-10-20) ── Room 64's mats rebuilt as a room: DOOR_HQ.rooms.training_hall (in DOOR_HQ.rooms, after Room 64's
+   `training` room) — a gym hall 18 × 18 squares, the 8 × 8 mats in the middle (one rubber mat per battle square), bleachers west, a steel
+   mezzanine east. Every lesson keeps reading `prebuilt_training`; the voxel board stays as `prebuilt_training_voxel`. */
+HQ_ARENA_RULES.own.prebuilt_training = {"room":"training_hall","ox":5,"oz":5,"base":"training_floor","open":0,"keys":["training_floor"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"};   // <OWN PICK prebuilt_training> — written by bake-arenas.js --own
 /* the runner: every own pick becomes its map's arena; the voxel board it replaces is kept as `<mapId>_voxel` */
 (function hqArenaRegisterOwn() {
     if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;

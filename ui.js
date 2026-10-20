@@ -16803,6 +16803,7 @@
             if (!_tut.active) return true;
             if (unit && unit.player !== 1) return true;                       // the dummies follow the script, not the gate
             if (_tut.finished || _tut.booting) return false;
+            if (_tut.passing && kind === 'end') return true;                  // the script passing a vessel's turn (_tutPoll)
             const allow = _tutAllowList();
             if (allow === null) return true;
             let ok = allow.includes(kind);
@@ -16930,6 +16931,19 @@
             if (state.phase !== 'battle') return;
             const st = _tut.step;
             if (!st || !st.goal || st.goal.type === 'ack') return;
+            /* THEIR TURN with one of yours still up (a Press refunded the AP after the step's strike — the step allows nothing,
+               so the lesson stood still): the vessel passes, as the coach says it has (2026-10-20) */
+            if (st.goal.type === 'cpuDone' && !state._actionExecuting && !state.aiThinking) {
+                const au = (state.units || []).find(u => u.id === state._blitzActiveUnitId);
+                if (au && au.player === 1 && !au.dead) {
+                    if (!_tut.passAt) _tut.passAt = Date.now();
+                    else if (Date.now() - _tut.passAt > 1200 && typeof triggerEndTurn === 'function') {
+                        _tut.passAt = 0; _tut.passing = true; state.selectedUnitId = au.id;
+                        try { triggerEndTurn(); } catch (e) { console.warn('[Tutorial] pass', e); }
+                        _tut.passing = false;
+                    }
+                } else _tut.passAt = 0;
+            }
             if (_tut.metAt) { if (Date.now() - _tut.metAt > 650) { _tut.metAt = 0; _tutAdvance(); } return; }
             let met = false;
             try { met = _tutGoalMet(st.goal); } catch (e) { console.warn('[Tutorial] goal', e); }

@@ -639,3 +639,18 @@ the rain im just talking about grass tiles being on fire".
 - Arenas (bake-arenas.js): 12 = the waist, teams at the port/starboard bulwarks; 9 = quarterdeck + poop; 10 and 11 cut too.
   The old voxel Δ stays in VS CPU as "The Flying Dutchman Δ · voxel" (`HQ_ARENA_RULES.voxelKeep`).
 - Screenshots: /mnt/project-files/new-maps/dutchman/ (before_* = the voxel board, after_* = the new room).
+
+## THE TRAINING ROOM (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim")
+- `prebuilt_training` (every tutorial lesson on it + its VS CPU slot) is the 8 × 8 cut of its OWN editor room
+  `DOOR_HQ.rooms.training_hall` (data.js, its own block after Room 64's `training` room): a 31.5 m gym hall, concrete walls with an
+  oxblood dado, the mats a `board` of urban:RubberNonSlip5a / 1a squares (one per tile) with red/yellow tape marks round them, six rows of
+  bleachers (tier `wall` rows with InstancedMesh seats) on the west, a steel mezzanine (`bridge` + `ramp` stairs model 'steel' + pipe
+  rail) on the east over lockers, columns, banners, clock, observation windows, a roller shutter, eight ceiling lamps.
+- Registered through THE OWN ARENAS (`HQ_ARENA_RULES.own.prebuilt_training`, `node bake-arenas.js --own prebuilt_training`;
+  docs/notes/editor.md): the old voxel board stays as `prebuilt_training_voxel` ("Training Room · voxel", VS CPU match select).
+- Tutorial fixes found walking the lessons on it: map.js autoGenerateSpawnZones no longer moves a lesson's pinned units onto the
+  spawn rows (the bug was already on main: every lesson started on the rows), and ui.js `_tutPoll` passes a vessel's turn on a
+  THEIR TURN step when a Press refund left it up (the step allows no action, so the lesson stood still). No game rule changed.
+- Draw calls: the room's scenery ~230-500 per frame by pose (the voxel board's scenery was ~3300). Text tape marks cost a call each, so the
+  marks are plain lines.
+- Screens: /mnt/project-files/new-maps/training/ (before_* = voxel board, after_* = the hall, tut_* = lessons on it).

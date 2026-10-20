@@ -485,6 +485,22 @@ built with the tools in the map editor ... design them with square tiles in mind
   before, only the battle tile sheet glowed. Shell `wallTile` overrides the 3.2 m wall texture repeat.
 - ui.js `_tutorialLaunch` waits for an arena's room survey (like _msArenaGate) so the HIGH GROUND lesson opens in the room.
 
+### E8 follow-up 5 — THE TRAINING ROOM on THE OWN ARENAS (2026-10-20, thread "New map: Training Room")
+Same ask as follow-up 4. `prebuilt_training` = `HQ_ARENA_RULES.own.prebuilt_training` (window 5,5 of the room; `node bake-arenas.js
+--own prebuilt_training`), the voxel board kept as `prebuilt_training_voxel` ("Training Room · voxel").
+- THE ROOM: data.js `DOOR_HQ.rooms.training_hall` (inside DOOR_HQ.rooms after Room 64's `training`; `site: 'prebuilt_training'`, not
+  linked into the building — Room 64 stays the walk's training room). 18 × 18 squares (31.5 m), 4 high; terrain features + marks +
+  props only. THE MATS = a `board` feature (8 × 8, urban:RubberNonSlip5a / 1a, plateau 0.06) at the centre, x / z −7..7; red tape
+  lines round it; west BLEACHERS (six `tier` wall rows 0.44 up / 0.875 deep, seats instanced, a walk behind, two end walls); east
+  MEZZANINE (a grate bridge 2 squares up, the `steel` ramp stair along the north wall, a pipe rail, four columns, desk + CRT +
+  monitors on it, lockers + benches under it); north: wall pads, clock, banners, armour-stand dummies; south kept low. 8 shell
+  lights, mood ambient 2.0, inline `look` bloom 0, fog density 0.
+- Draw calls (perf lens, battle, 1280×800): the room ~230–500 a frame by pose; the voxel board's scenery read 3312 in the same probe.
+  Wall pads cost 37 meshes each, `balusters_b` rails ~60 (use model 'pipe'), a text mark one call each (the tape is plain lines).
+- Tutorial fixes found walking the lessons on it: map.js autoGenerateSpawnZones skips relocation while `window._tutActive` (the
+  lesson's pinned tiles were being overwritten by the spawn rows — already broken on main); ui.js `_tutPoll` passes a P1 unit's turn
+  on a `cpuDone` step after 1.2 s (`_tut.passing` lets the gated end through) — a Press refund left the unit up with no allowed action.
+
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
 R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls
