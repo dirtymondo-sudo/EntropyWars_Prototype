@@ -1603,3 +1603,30 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
 - Browser-checked (scratchpad probe, VS-CPU arena): all 61 load a face and measure differently from their fallback on a
   canvas; the Text tab's stand-ins, the battle menus + HUD, the name plates and a real pop (showFloatingTextAtTile) all drew
   the picked fonts.
+
+## THE FULL STORAGE (2026-10-20, mondo: "UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image." ... "getting this error but i dont even have any 9 slices saved")
+- **Cause**: a site gets ~5,120 K characters of localStorage in all (Firefox and Chrome alike; measured 5,242,240 in the
+  sandbox Chromium), shared by every key. The bulk was the game's own data, written by code that swallowed a refused write,
+  so it grew until the storage was at the brim: the Balance Lab stats (battle.js `ew-balance-stats-v4`: `builds[race].loadouts`
+  gains a row for nearly every random loadout, ~3.7 MB after a lab run; `-v3` and older stayed behind), the AI weights /
+  training / imitation / A/B / strength stats, the Shot Recorder pictures (`ew_shot_rec_v1`, a ~25-40 KB JPEG data URL per
+  shot) and the room file list (`ew_hqFileBook_v1`, up to 48 rooms x 900 urls). The UI Maker was just the first writer to
+  say so, and its message guessed at 9-slices. Reproduced in the browser with main's code: the exact message, his change lost.
+- **The stats** (battle.js `_aiStorageGet` / `_aiStorageSet`, the only way to them): IndexedDB `ew_stats` (store `kv`, same
+  key, same JSON string). A key in localStorage is MOVED, never dropped: on its first read and by the boot sweep (every key
+  matching `AI_IDB_KEY_RE`, old versions too; `window._ewStatsMoved` is its promise). A localStorage copy is always the
+  newest (a write that reaches IndexedDB removes it), so a read prefers it. No IndexedDB = localStorage as before.
+- **The pictures** (three-camera.js EWShots): IndexedDB `ew_shot_rec` (store `thumbs`, key = shot n). `S.inIdb` = the pictures
+  IndexedDB confirmed; only those leave the localStorage copy. Moved on load and 6 s after boot (`window._ewShotsThumbsOut`).
+  EXPORT ALL waits for them to come back.
+- **The room file list** (three-renderer.js): kept under `HQ_BOOK_CHARS` (400 K) by dropping the oldest rooms; a refused write
+  removes it; `window._ewHqBookDrop()` empties it. **The download store**: best-effort cap = min(1.5 GB, half the quota)
+  (Firefox counts it and localStorage against one site limit); `_ewAssetStore.trim(frac)` evicts LRU to that share and
+  deletes stored files the index lost.
+- **The UI Maker save** (hud.js THE FULL STORAGE): refused → drop the room file list, retry; wait (≤ 4 s) for the stats and
+  pictures to move, retry; localStorage not the full one (`lsFull`) → trim the download store by half, retry; only then one
+  alert naming the real holders, biggest first (`lsLedger`, `LS_NAMES` plain names). A new 9-slice is taken back out only if
+  that last step fails (`save(undo)`). Console: `UIMaker.storage()` = the ledger.
+- Checked in the sandbox browser: main's storage state (5,118 KB, 1,873 chars free) → main shows the old message and loses the
+  edit; the fix saves it with no message, localStorage 695 KB, every stats value byte-identical in IndexedDB, 14/14 pictures
+  there and shown again in the SHOTS panel; custom maps filling it → the message names "custom maps: 5,119 KB".
