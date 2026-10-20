@@ -4802,6 +4802,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (_aimStep >= 1 && _endStep >= 1) {
                 _startW = _worldTorsoAtLevel(fromX, fromY, params.fromZ);
                 var _aimW = _worldTorsoAtLevel(params.tx, params.ty, params.tz);
+                /* THE SIDE LANE (2026-10-20, mondo: "it needs to take the heights of both the caster and
+                   the target into account"): a wide beam's aimed body can stand in a side lane (ax/ay),
+                   not on the spine tile tx/ty — the spine then crosses that step at the body's OWN
+                   rendered torso, never at an empty tile's guess of its level. */
+                if (params.ax != null && params.ay != null && (params.ax !== params.tx || params.ay !== params.ty)) {
+                    _aimW.y = _worldTorsoAtLevel(params.ax, params.ay, params.tz).y;
+                }
                 var _k = _endStep / _aimStep;
                 _endW = { x: _startW.x + (_aimW.x - _startW.x) * _k,
                           y: _startW.y + (_aimW.y - _startW.y) * _k,
@@ -5947,7 +5954,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (y == null) {
             var gh = (typeof getHeightAt === 'function') ? (getHeightAt(ix, iy) || 0) : 0;
             if (Math.abs(lz - gh) < 0.01 || typeof window._getElevationPx !== 'function') y = tileZ(tx, ty);
-            else y = window._getElevationPx(lz) + (tileZ(tx, ty) - window._getElevationPx(gh));
+            else {
+                /* a level in the AIR draws where a flyer at that level is drawn: the renderer's hover
+                   sink (three-renderer.js _flyVisualY — 0.65 under its true z, floored at 1.35 over the
+                   ground). The raw level aimed a beam at a flyer 0.65 of a tile over its body. */
+                var clr = lz - gh;
+                if (clr > 0) clr = Math.max(Math.min(clr, 1.35), clr - 0.65);
+                y = window._getElevationPx(gh + clr) + (tileZ(tx, ty) - window._getElevationPx(gh));
+            }
         }
         wp.y = y + 3 + unitZBoost();
         return wp;
