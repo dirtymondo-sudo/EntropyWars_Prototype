@@ -24086,7 +24086,7 @@ const TUTORIAL_LESSONS = [
         order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
         steps: [
             { id: 'height', title: 'HEIGHT',
-              say: 'Room 404 projects a floor with two <b>risers</b>. Attacking <b>downhill</b> is ×{{DOWNHILL}} per level; attacking <b>uphill</b> costs a flat −{{HIGH_DEF}} damage per level. A ranged vessel two levels up reaches <b>+{{HIGH_RANGE}}</b> tile.',
+              say: 'Room 404 projects a floor of <b>risers</b> (one level up) and two tall <b>pylons</b> (two levels up). Attacking <b>downhill</b> is ×{{DOWNHILL}} per level; attacking <b>uphill</b> costs a flat −{{HIGH_DEF}} damage per level. A ranged vessel two levels up reaches <b>+{{HIGH_RANGE}}</b> tile.',
               goal: { type: 'ack' } },
             { id: 'climb', title: 'CLIMB',
               say: 'Move SCOPE onto the marked riser (one level up).',
@@ -55934,6 +55934,136 @@ function hqArenaCaps(S) {
                                    desc: S + '×' + S + ' arena, ' + team + 'v' + team + ' — cut from ' + (room.label || pick.room) });
             } catch (err) { console.error('[ARENA] the ' + S + '×' + S + ' pick failed', site, err); }
         });
+    });
+})();
+/* ══ THE OWN ARENAS (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim.
+   They should be able to be built with the tools in the map editor, and remember to design them with square tiles in mind") ══
+   A board that is not a site's `<site>_delta` (the facility boards, the Clash stage) is cut from its OWN room the same way: the
+   room is a plain DOOR_HQ.rooms entry made of the editor's own rows, `HQ_ARENA_RULES.own[<mapId>]` is its pick (the same record
+   as `picks`: room, ox, oz, base, open, keys, cells — `node bake-arenas.js --own` re-encodes the cells after the room changes),
+   and at load the map id becomes the room's arena (hqArenaEntry; hqArenaUpgrade / hqArenaRun already go by the map id). The old
+   voxel board is KEPT (mondo: "Dont delete these voxel maps"): it stays in the game as `<mapId>_voxel`, "<label> · voxel", with
+   its own layout, pickable in VS CPU's match select like before (a facility row stays out of the online pool). Each map's thread
+   files its own room + pick in its own block below; this runner reads them all. */
+HQ_ARENA_RULES.own = HQ_ARENA_RULES.own || {};
+/* ── ROOM 404 · THE HOLO SIM (2026-10-20) ── Arcane Engineering's simulation deck, rebuilt as a room (the voxel board stays as
+   `prebuilt_holosim_voxel`). A black grid hall 18 × 18 squares (31.5 m) and 6 squares high: the floor, the walls and the ceiling
+   are the board's own `holo` plates, one plate per battle square (1.75 m — the field's lattice edges sit on the plates' rims, so
+   the projected grid IS the battle grid). The 8 × 8 board is the middle of the floor; its cover is solid projected blocks, each
+   exactly one square (a WALL row as thick as a square, zero long: a cube in the editor's own terms), one or two squares high —
+   the voxel board's four risers where they were (the HIGH GROUND lesson climbs the one at 5,5) and two 2-high pylons on the
+   flanks. Round the board, stepped block terraces climb into the four corners (4 squares up), each crowned by an emitter orb
+   (the room's real coloured lights). The exit arch is in the north wall (its doors shut while the program runs), the operator's
+   gallery hangs on the east wall (the racks, the monitors, the console's amber lamp), two dark monoliths stand by the west wall. */
+DOOR_HQ.rooms.facility_holosim = {
+    label: 'ROOM 404 · THE HOLO SIM', sub: 'ARCANE ENGINEERING · THE FLOOR IS A PROJECTION', kind: 'box',
+    shell: {
+        w: 31.5, d: 31.5, h: 10.5, wallH: 10.5, dadoH: 0.12, open: false, edge: 'walls',
+        floor: 'holo', wall: 'holo', dado: 'holo_red', trim: 'gunmetal', ceiling: 'holo', apron: 'holo', skirt: 'holo',
+        floorColor: 0xffffff, wallColor: 0xd8f4ff, dadoColor: 0xffffff, ceilColor: 0x9ab8c8, ceilTile: 1.75, wallTile: 1.75,
+        pipes: false, strips: false,
+        lights: [{ x: -7, z: -7 }, { x: 7, z: -7 }, { x: -7, z: 7 }, { x: 7, z: 7 }],
+        mood: { light: 0x9fe8ff, strip: 0x7fe8ff, ambient: 1.4, night: 0 },
+        look: { name: 'THE HOLO SIM', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.22, levels: 28 },
+                cin: { vignette: true, vigAmount: 0.34, vigSize: 0.56 }, nightMood: 0.15 },
+        fog: { color: 0x050912, density: 0.012 },
+    },
+    terrain: {
+        floor: 'holo', cliff: 'holo', path: 'holo', base: 0, noise: { amp: 0, scale: 8 }, crag: false,
+        bed: { side: 'gunmetal', floor: 'holo' },
+        features: [
+            /* THE BOARD's cover (board squares x, y → x0 = −6.125 + 1.75 x, z0 = −6.125 + 1.75 y): the four risers, the two pylons */
+            { k: 'wall', x0: -2.625, z0: -2.625, x1: -2.625, z1: -2.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 2.625, z0: 2.625, x1: 2.625, z1: 2.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 6.125, z0: -4.375, x1: 6.125, z1: -4.375, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: -6.125, z0: 4.375, x1: -6.125, z1: 4.375, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: -6.125, z0: -0.875, x1: -6.125, z1: -0.875, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 6.125, z0: 0.875, x1: 6.125, z1: 0.875, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            /* THE TERRACES: rings of blocks round each corner square, 4 squares up in the corner, 1 at the foot */
+            { k: 'wall', x0: 14.875, z0: -14.875, x1: 14.875, z1: -14.875, t: 1.75, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 13.125, z0: -14.875, x1: 13.125, z1: -13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: -13.125, x1: 14.875, z1: -13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: 11.375, z0: -14.875, x1: 11.375, z1: -11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: -11.375, x1: 13.125, z1: -11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 9.625, z0: -14.875, x1: 9.625, z1: -9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: -9.625, x1: 11.375, z1: -9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: 14.875, x1: 14.875, z1: 14.875, t: 1.75, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 13.125, z0: 14.875, x1: 13.125, z1: 13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: 13.125, x1: 14.875, z1: 13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: 11.375, z0: 14.875, x1: 11.375, z1: 11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: 11.375, x1: 13.125, z1: 11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 9.625, z0: 14.875, x1: 9.625, z1: 9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 14.875, z0: 9.625, x1: 11.375, z1: 9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: 14.875, x1: -14.875, z1: 14.875, t: 1.75, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -13.125, z0: 14.875, x1: -13.125, z1: 13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: 13.125, x1: -14.875, z1: 13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: -11.375, z0: 14.875, x1: -11.375, z1: 11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: 11.375, x1: -13.125, z1: 11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -9.625, z0: 14.875, x1: -9.625, z1: 9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: 9.625, x1: -11.375, z1: 9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: -14.875, x1: -14.875, z1: -14.875, t: 1.75, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -13.125, z0: -14.875, x1: -13.125, z1: -13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: -13.125, x1: -14.875, z1: -13.125, t: 1.75, h: 5.25, key: 'holo', rail: false },
+            { k: 'wall', x0: -11.375, z0: -14.875, x1: -11.375, z1: -11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: -11.375, x1: -13.125, z1: -11.375, t: 1.75, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -9.625, z0: -14.875, x1: -9.625, z1: -9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: -14.875, z0: -9.625, x1: -11.375, z1: -9.625, t: 1.75, h: 1.75, key: 'holo', rail: false },
+            /* THE ARCH (north wall): two pillars, the lintel over them, the two door leaves shut in the frame */
+            { k: 'wall', x0: -2.45, z0: -15.3, x1: -2.45, z1: -15.3, t: 0.9, h: 5.6, key: 'gunmetal', rail: false },
+            { k: 'wall', x0: 2.45, z0: -15.3, x1: 2.45, z1: -15.3, t: 0.9, h: 5.6, key: 'gunmetal', rail: false },
+            { k: 'wall', x0: -2.0, z0: -15.3, x1: 2.0, z1: -15.3, t: 1.0, h: 5.6, lift: 4.55, key: 'gunmetal', rail: false },
+            { k: 'wall', x0: -1.95, z0: -15.62, x1: -0.06, z1: -15.62, t: 0.12, h: 4.55, key: 'aluminium', rail: false },
+            { k: 'wall', x0: 0.06, z0: -15.62, x1: 1.95, z1: -15.62, t: 0.12, h: 4.55, key: 'aluminium', rail: false },
+            /* THE GALLERY (east wall): the operators' deck three squares up, railed */
+            { k: 'bridge', x0: 14.45, z0: -5.25, x1: 14.45, z1: 5.25, w: 2.6, y: 5.25, thick: 0.3, key: 'gunmetal', rails: true },
+            /* THE MONOLITHS (west wall) */
+            { k: 'wall', x0: -13.9, z0: -3.9, x1: -13.9, z1: -3.1, t: 0.6, h: 6.4, key: 'obsidian', rail: false },
+            { k: 'wall', x0: -13.9, z0: 3.1, x1: -13.9, z1: 3.9, t: 0.6, h: 6.4, key: 'obsidian', rail: false },
+        ],
+        marks: [],
+    },
+    doors: [], counters: [], npcSpots: [], agents: [],
+    props: [
+        /* the emitters: an orb on each corner's top block (the room's coloured light falls from them) */
+        { key: 'floating_orb', x: 14.875, z: -14.875, y: 7 }, { key: 'floating_orb', x: 14.875, z: 14.875, y: 7 },
+        { key: 'floating_orb', x: -14.875, z: 14.875, y: 7 }, { key: 'floating_orb', x: -14.875, z: -14.875, y: 7 },
+        /* the arch's panel */
+        { key: 'retro_control_panel', x: 3.9, z: -14.9, face: 180 },
+        /* the operators: racks and monitors on the wall, the console at the rail, two chairs */
+        { key: 'server_rack', wall: 'e', z: -4.2, mount: 5.25 }, { key: 'server_rack', wall: 'e', z: -3.4, mount: 5.25 },
+        { key: 'monitor_stack', wall: 'e', z: 0, mount: 5.25 },
+        { key: 'server_rack', wall: 'e', z: 3.4, mount: 5.25 }, { key: 'server_rack', wall: 'e', z: 4.2, mount: 5.25 },
+        { key: 'retro_console', x: 13.8, z: -1.4, y: 5.25, face: 270 }, { key: 'retro_console', x: 13.8, z: 1.4, y: 5.25, face: 270 },
+        { key: 'computer_chair_blue', x: 14.9, z: -1.4, y: 5.25, face: 270 }, { key: 'computer_chair_grey', x: 14.9, z: 1.4, y: 5.25, face: 270 },
+        /* the projector between the monoliths */
+        { key: 'star_projector', x: -13.6, z: 0, face: 90 },
+    ],
+    spawn: { x: 0, z: 12.25, face: 180, level: 0 },
+};
+HQ_ARENA_RULES.own.prebuilt_holosim = {"room":"facility_holosim","ox":5,"oz":5,"base":"holo","open":0,"keys":["holo"],"cells":"01010101010101010101010101010102010102010101010103010101010101010101010101010103010101010102010102010101010101010101010101010101"};   // <OWN PICK prebuilt_holosim> — written by bake-arenas.js --own
+/* the runner: every own pick becomes its map's arena; the voxel board it replaces is kept as `<mapId>_voxel` */
+(function hqArenaRegisterOwn() {
+    if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
+    const O = HQ_ARENA_RULES.own || {};
+    Object.keys(O).forEach(id => {
+        try {
+            const pick = O[id], old = PREBUILT_MAPS[id], row = EW_MAP_META.find(m => m.id === id);
+            if (!pick || !old || !row || old.arena || !(DOOR_HQ.rooms || {})[pick.room]) return;
+            const S = (pick.S | 0) || (old.w | 0) || HQ_ARENA_RULES.size;
+            const cells = hqArenaCells(pick, S);
+            const entry = cells ? hqArenaEntry(id, pick, cells, old.terrainTints || null, S) : null;
+            if (!entry) { console.warn('[ARENA] the own pick has no cells — the voxel board stands (run bake-arenas.js --own)', id); return; }
+            /* the voxel board, kept under its own id with its own layout and roster row */
+            const vid = id + '_voxel', room = DOOR_HQ.rooms[pick.room];
+            PREBUILT_MAPS[vid] = old;
+            if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[id]) { MAP_LAYOUT_PRESETS[vid] = MAP_LAYOUT_PRESETS[id]; _HQ_ARENA_SITE_LAYOUTS[id] = MAP_LAYOUT_PRESETS[id]; }
+            if (!EW_MAP_META.some(m => m.id === vid)) EW_MAP_META.push(Object.assign({}, row, { id: vid, label: row.label + ' · voxel', voxelOf: id, arena: false, room: undefined,
+                desc: (old.w | 0) + '×' + (old.h | 0) + ' voxel board, ' + (row.teamSize || 4) + 'v' + (row.teamSize || 4) + ' — the old ' + row.label + ' (kept)' }));
+            entry.name = row.label; entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
+            PREBUILT_MAPS[id] = entry;
+            row.arena = true; row.room = pick.room; row.arenaSize = S; row.w = S; row.h = S;
+            row.desc = S + '×' + S + ' board, ' + (row.teamSize || 4) + 'v' + (row.teamSize || 4) + ' — cut from ' + (room.label || pick.room);
+        } catch (err) { console.error('[ARENA] the own pick failed — the voxel board stands', id, err); }
     });
 })();
 /* THE ONLINE PVP POOL (mondo 2026-10-06: "why is online pvp using the old voxel maps and not the new arena maps? why are they
