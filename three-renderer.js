@@ -29259,14 +29259,20 @@ const ThreeRenderer = (function () {
         return g;
     }
     // Ziggurat Protocol — a stepped sandstone block
+    /* 2026-10-20 (mondo: "why is the textures so zoomed in/stretched for pyramid protocol"): _hzBox tiles at the far-horizon
+       density (HZ_TEX_DENSITY 0.5 = one sheet per TWO tiles), so the block wore its sheet twice the size of the board's
+       desert ground beside it; and it was authored 1.75 tiles tall, so _buildMonumentObj's fit to the 2-tile grid box
+       stretched it ×1.14 up and squeezed it ×0.98 across. Now: the board's density (one sheet per tile, _nrBoxUV) and
+       authored at exactly 2 tiles (the same tier proportions it was drawn at), so the fit is uniform. */
     function _hzZigguratBlock(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('desert') || _hzTex('sand') || _hzTex('cliff');
         var m = function (c) { return _hzGeoMat(tex, c || 0xd9bb8a); };
-        var H1 = ts * 1.05, H2 = ts * 0.7;
-        _hzAt(g, _hzBox(ts * 1.0, H1, ts * 1.0, ts, m()), 0, H1 / 2, 0);
-        _hzAt(g, _hzBox(ts * 0.72, H2, ts * 0.72, ts, m(0xe0c69c)), 0, H1 + H2 / 2, 0);
+        var box = function (w, h, d, mat) { var geo = new THREE.BoxGeometry(w, h, d); _nrBoxUV(geo, w, h, d, ts, 1); return new THREE.Mesh(geo, mat); };
+        var H1 = ts * 1.2, H2 = ts * 0.8;
+        _hzAt(g, box(ts * 1.0, H1, ts * 1.0, m()), 0, H1 / 2, 0);
+        _hzAt(g, box(ts * 0.72, H2, ts * 0.72, m(0xe0c69c)), 0, H1 + H2 / 2, 0);
         var band = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.02, ts * 0.07, ts * 1.02), _hzGlowMat(0x00d0ff, 0.5));   // the glyph band
         _hzAt(g, band, 0, H1 * 0.72, 0);
         return g;
