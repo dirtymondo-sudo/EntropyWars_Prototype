@@ -39364,7 +39364,7 @@ const DOOR_HQ = {
             label: 'GÖBEKLI TEPE · THE TELL',
             sub: 'THE MOUND · FOUR ENCLOSURES · THE T-PILLARS · THE SENTINEL · THE DIG · THE FIRST DOORWAY',
             kind: 'box', site: 'prebuilt_gobekli', part: 'tell',
-            shell: hqAncientShell({ w: 110, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xc8a878, floorColor: 0xc8a878, plate: { x: 0, z: -43.8, y: 4.4 },
+            shell: hqAncientShell({ w: 136, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xc8a878, floorColor: 0xc8a878, plate: { x: 0, z: -43.8, y: 4.4 },   // w 110 → 136 (2026-10-20): the mound reaches east round ENCLOSURE E
                                     sky: { night: 0, tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'ruins', density: 0.6 },
                                     look: HQ_ROOM_LOOKS.tell }),
             /* THE FIELD (110 × 90 m; LEVEL_DESIGN_PLAN L6, 2026-09-30 — §3 #9, "built walls and plazas instead of banks where a
@@ -39477,6 +39477,60 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-6, 40], [-22, 40], [-22, 32]], w: 2.2 },                                                 // the dig's track
                     { k: 'scatter', key: 'cave_stone', n: 10, seed: 6 },
                     { k: 'scatter', key: 'menhir', n: 3, x: -27, z: -30, r: 6, seed: 7 },                                        // the fallen pillars by the trenches
+                    /* ENCLOSURE E — THE ROCK TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... built with the
+                       tools in the map editor ... design them with square tiles in mind"): Göbekli Tepe's PvP map, the old voxel Δ remade as
+                       a room. A pit cut 1.75 m (one battle level) into the bedrock east of D, laid out on THE FIELD's squares: the 12 × 12
+                       board is x 33.25..54.25, z −10.5..10.5 (squares (i, j) from its NW corner, edges on k · 1.75 from the room's centre).
+                       Every piece below sits on whole squares and the layout turns into itself half a turn round the middle (both teams
+                       get the same ground): the four corners are the ring wall's stone BASTIONS (three squares each, a brazier on top),
+                       the bedrock left standing is a TERRACE on each flank (squares 0..1 × 1..6 west, 10..11 × 5..10 east, one level up)
+                       with a built stair down to the floor at its end, the TWO GREAT PILLARS stand on their pedestals either side of the
+                       nexus (squares 3 and 8 × 5..6), two lesser pillars (2 × 8, 9 × 3) and two stone benches (3 × 3, 8 × 8, one level
+                       up) are the cover — the middle four columns stay open ground, so the 9 / 10 / 11 cuts all fit, and ten lesser pillars stand in the ring wall round the pit facing in. Outside the ring a ledge runs round
+                       the pit at the old ground (the walk round it, the ring wall's two gaps on the terraces), the unexcavated tell
+                       stands round that, a hall west to hall C and one south to the east flank. bake-arenas.js cuts every arena size
+                       here (HQ_ARENA_RULES.within). */
+                    { k: 'space', x: 43.75, z: 0, w: 37, d: 37, round: true },                                                    // ENCLOSURE E (the pit, the ring wall, the ledge round it)
+                    { k: 'hall', pts: [[27, -3.5], [17.5, -3.5]], w: 3 },                                                       // its west hall, to hall C
+                    { k: 'hall', pts: [[40, 15], [40, 26], [35, 26]], w: 3 },                                                     // its south hall, to the east flank (loop 4)
+                    { k: 'plateau', x: 43.75, z: 0, w: 14, d: 21, h: -1.75, sink: true, edge: 0.15 },                             // the pit: squares 2..9 × 0..11
+                    { k: 'plateau', x: 35.0, z: 4.375, w: 3.5, d: 5.25, h: -1.75, sink: true, edge: 0.15 },                       // the pit west of it: 0..1 × 7..9 (the west stair, its foot)
+                    { k: 'plateau', x: 52.5, z: -4.375, w: 3.5, d: 5.25, h: -1.75, sink: true, edge: 0.15 },                      // the pit east of it: 10..11 × 2..4 (the east stair, its foot)
+                    { k: 'ramp', x0: 35.0, z0: 5.25, x1: 35.0, z1: 1.75, w: 3.5, h0: -1.75, h1: 0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },     // the west stair up to the west terrace (0..1 × 7..8)
+                    { k: 'ramp', x0: 52.5, z0: -5.25, x1: 52.5, z1: -1.75, w: 3.5, h0: -1.75, h1: 0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // the east stair up to the east terrace (10..11 × 3..4)
+                    { k: 'plateau', x: 39.375, z: 0, w: 1.75, d: 3.5, h: -1.45, blend: 'ground', edge: 0.1 },                     // the west great pillar's pedestal (3 × 5..6)
+                    { k: 'plateau', x: 48.125, z: 0, w: 1.75, d: 3.5, h: -1.45, blend: 'ground', edge: 0.1 },                     // the east great pillar's pedestal (8 × 5..6)
+                    /* the ring wall (1.8 m on the ledge, its inner face on the board's edge; a wall row draws its box half its thickness past
+                       each end, so the runs below meet square at the corners) and its two gaps: the west terrace (squares 3..4), the east (7..8) */
+                    { k: 'wall', x0: 32.8, z0: -10.95, x1: 54.7, z1: -10.95, h: 1.8, t: 0.9, key: 'rock_wall_1' },                // north
+                    { k: 'wall', x0: 32.8, z0: 10.95, x1: 54.7, z1: 10.95, h: 1.8, t: 0.9, key: 'rock_wall_1' },                  // south
+                    { k: 'wall', x0: 32.8, z0: -10.95, x1: 32.8, z1: -5.7, h: 1.8, t: 0.9, key: 'rock_wall_1' },                  // west
+                    { k: 'wall', x0: 32.8, z0: -1.3, x1: 32.8, z1: 10.95, h: 1.8, t: 0.9, key: 'rock_wall_1' },
+                    { k: 'wall', x0: 54.7, z0: -10.95, x1: 54.7, z1: 1.3, h: 1.8, t: 0.9, key: 'rock_wall_1' },                   // east
+                    { k: 'wall', x0: 54.7, z0: 5.7, x1: 54.7, z1: 10.95, h: 1.8, t: 0.9, key: 'rock_wall_1' },
+                    /* the four BASTIONS: one stone block per square (a zero-length row t 1.75 is a box exactly its square, and THE FIELD
+                       reads its top on that square only), 2.2 m on the old ground — two levels over the pit floor */
+                    { k: 'wall', x0: 34.125, z0: -9.625, x1: 34.125, z1: -9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },          // NW: 0 × 0
+                    { k: 'wall', x0: 35.875, z0: -9.625, x1: 35.875, z1: -9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },          // 1 × 0
+                    { k: 'wall', x0: 34.125, z0: -7.875, x1: 34.125, z1: -7.875, h: 2.2, t: 1.75, key: 'rock_wall_1' },          // 0 × 1
+                    { k: 'wall', x0: 53.375, z0: -9.625, x1: 53.375, z1: -9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },          // NE: 11 × 0
+                    { k: 'wall', x0: 51.625, z0: -9.625, x1: 51.625, z1: -9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },          // 10 × 0
+                    { k: 'wall', x0: 53.375, z0: -7.875, x1: 53.375, z1: -7.875, h: 2.2, t: 1.75, key: 'rock_wall_1' },          // 11 × 1
+                    { k: 'wall', x0: 34.125, z0: 9.625, x1: 34.125, z1: 9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },            // SW: 0 × 11
+                    { k: 'wall', x0: 35.875, z0: 9.625, x1: 35.875, z1: 9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },            // 1 × 11
+                    { k: 'wall', x0: 34.125, z0: 7.875, x1: 34.125, z1: 7.875, h: 2.2, t: 1.75, key: 'rock_wall_1' },            // 0 × 10
+                    { k: 'wall', x0: 53.375, z0: 9.625, x1: 53.375, z1: 9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },            // SE: 11 × 11
+                    { k: 'wall', x0: 51.625, z0: 9.625, x1: 51.625, z1: 9.625, h: 2.2, t: 1.75, key: 'rock_wall_1' },            // 10 × 11
+                    { k: 'wall', x0: 53.375, z0: 7.875, x1: 53.375, z1: 7.875, h: 2.2, t: 1.75, key: 'rock_wall_1' },            // 11 × 10
+                    { k: 'wall', x0: 39.375, z0: -4.375, x1: 39.375, z1: -4.375, h: 1.3, t: 1.75, key: 'rock_wall_1' },          // a stone bench, one level up (3 × 3)
+                    { k: 'wall', x0: 48.125, z0: 4.375, x1: 48.125, z1: 4.375, h: 1.3, t: 1.75, key: 'rock_wall_1' },            // its twin (8 × 8)
+                    /* the pillars' own stone for the battle: a wall row inside each shaft (never seen — the pillar is drawn round it) is the
+                       ground THE FIELD reads there, as Stonehenge's sarsens are, so a pillar is a tall square nobody walks through */
+                    { k: 'wall', x0: 39.375, z0: -0.45, x1: 39.375, z1: 0.45, h: 5.45, t: 0.5, key: 'rock_wall_1' },             // the west great pillar (3 × 5..6)
+                    { k: 'wall', x0: 48.125, z0: -0.45, x1: 48.125, z1: 0.45, h: 5.45, t: 0.5, key: 'rock_wall_1' },             // the east great pillar (8 × 5..6)
+                    { k: 'wall', x0: 37.375, z0: 4.375, x1: 37.875, z1: 4.375, h: 3.15, t: 0.3, key: 'rock_wall_1' },            // the lesser pillar at 2 × 8
+                    { k: 'wall', x0: 49.625, z0: -4.375, x1: 50.125, z1: -4.375, h: 3.15, t: 0.3, key: 'rock_wall_1' },          // the lesser pillar at 9 × 3
+                    { k: 'path', pts: [[60.65, 0.0], [60.07, 4.37], [58.39, 8.45], [55.7, 11.95], [52.2, 14.64], [48.12, 16.32], [43.75, 16.9], [39.38, 16.32], [35.3, 14.64], [31.8, 11.95], [29.11, 8.45], [27.43, 4.37], [26.85, 0.0], [27.43, -4.37], [29.11, -8.45], [31.8, -11.95], [35.3, -14.64], [39.38, -16.32], [43.75, -16.9], [48.12, -16.32], [52.2, -14.64], [55.7, -11.95], [58.39, -8.45], [60.07, -4.37], [60.65, -0.0]], w: 1.4 },   // the walk round the ring wall
                 ],
             },
             doors: [
@@ -39505,6 +39559,17 @@ const DOOR_HQ = {
                 { key: 'sea_chest',      x: -27, z: 18, face: 200 },
                 { key: 'brazier',        x: -13.5, z: -40 }, { key: 'brazier', x: -6.5, z: -40 },
                 { key: 'brazier',        x: 18, z: 12.3 },
+                /* ENCLOSURE E (2026-10-20): the two great pillars on their pedestals either side of the nexus (broad faces to each other),
+                   the ten lesser ones set in the ring wall (narrow face in, as the dig found them), two standing in the pit, two stones,
+                   a brazier on each bastion (the pit's light) — every one on its square, the layout half-turn symmetric */
+                { key: 't_pillar',       x: 39.375, z: 0, face: 90, h: 5.5 }, { key: 't_pillar', x: 48.125, z: 0, face: 270, h: 5.5 },
+                { key: 't_pillar',       x: 39.375, z: -10.85, face: 90, h: 3.2 }, { key: 't_pillar', x: 48.125, z: -10.85, face: 90, h: 3.4 },
+                { key: 't_pillar',       x: 39.375, z: 10.85, face: 270, h: 3.4 }, { key: 't_pillar', x: 48.125, z: 10.85, face: 270, h: 3.2 },
+                { key: 't_pillar',       x: 32.9, z: -6.125, face: 180, h: 3.0 }, { key: 't_pillar', x: 32.9, z: 0.875, face: 180, h: 3.4 }, { key: 't_pillar', x: 32.9, z: 6.125, face: 180, h: 3.2 },
+                { key: 't_pillar',       x: 54.6, z: 6.125, face: 0, h: 3.0 }, { key: 't_pillar', x: 54.6, z: -0.875, face: 0, h: 3.4 }, { key: 't_pillar', x: 54.6, z: -6.125, face: 0, h: 3.2 },
+                { key: 't_pillar',       x: 37.625, z: 4.375, face: 0, h: 3.2 }, { key: 't_pillar', x: 49.875, z: -4.375, face: 180, h: 3.2 },
+                { key: 'brazier',        x: 34.125, z: -9.625, y: 2.2 }, { key: 'brazier', x: 53.375, z: -9.625, y: 2.2 },
+                { key: 'brazier',        x: 34.125, z: 9.625, y: 2.2 }, { key: 'brazier', x: 53.375, z: 9.625, y: 2.2 },
             ],
             agents: [],
             npcSpots: [
@@ -55177,7 +55242,14 @@ const HQ_ARENA_RULES = {
     label: 'Arena',
     /* the sites that keep their Δ board whatever fits (mondo 2026-09-30: "keep the looking glass delta map, for that one there needs
        to be a chessboard in the looking glass explorable area" — the garden's own chessboard, THE BOARD below) */
-    keep: ['prebuilt_lookingglass', 'prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines
+    keep: ['prebuilt_lookingglass'],
+    /* THE ARENA'S PLACE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps"): a site whose map was BUILT for its
+       board — every size of its arena is cut from that room, from windows centred within r m of (x, z) (bake-arenas.js). Göbekli Tepe:
+       ENCLOSURE E in THE TELL (mondo 2026-10-05: its own board, never the ley lines); its old voxel Δ stays in VS CPU (voxelKeep) */
+    within: {
+        prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 43.75, z: 0, r: 3 },
+    },
+    voxelKeep: ['prebuilt_gobekli'],   // the old voxel Δ boards kept beside the new maps, VS CPU only (hqArenaRegisterAll)
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
@@ -55202,6 +55274,7 @@ const HQ_ARENA_RULES = {
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151503010101010101010101010202010101010101010115151503151501011515151515151515151501011515151515151515010101010101010101010101010101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":7,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"030303011111010101010101020203010111010101010101110202010111110101010101111101010101110101010101011111010101111101010101011111111101010111110101010101111111111101111101010101011111111111111111010101010101011111111111010101010101011515010111010101010101010101010111010101010101010101150111"},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201040101010104010202020201040101010104010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141401141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313130511111111111111111313130511111111111111111313130511111111111111111113131111111111111111111113131111111111111111111112121111111111111111111111111111111111111111111111111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515150101010101010101010101030302020101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101011515010101150115151515151501010101150115151515150101010101150115151515150101011515150101010101010101010115150101010101010101010115"},
@@ -55239,6 +55312,7 @@ const HQ_ARENA_RULES = {
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":15,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"011111010101010101110111110101010101111111111101011111111111111111111111141401011111010101010101011111010101010114011111010101011414011111011414011414011111010101"},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010102010101010101010101010201010101010301010101010101010102010401010101040102010401010101040102010101010101010102030101010101020102010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101141401010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101030202010101010101030202010101011501010101010101011501010101010101011501010101010101151501"},
@@ -55273,6 +55347,7 @@ const HQ_ARENA_RULES = {
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101011414010101010101010114140101010101010101141401010101010101011414010101010101010101010101010101010101141414140101141414141414141401011414141414140101010101010101010101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01111101010101010101110111110101010101011111111111010111111111111111111111111111141401011111010101010101010111110101010101011401111101010101011414011111011414140114140111110101011401010101111101010101"},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101030102010101010101010102020104010101010401020201040101010104010202010101010101010102010301010101010201020101010101010101010202010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010301010101010101010103010101010101010101020101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101151515010101010101010115150101010101010101151501010101010101011515150101010101010101010303020201010101010103030202010101011501030101010101010115010101010101010101150101010101010101151501"},
@@ -55304,6 +55379,7 @@ const HQ_ARENA_RULES = {
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140101010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":16,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01111111111111111111111101011111111111111111011101011111111111111101010101011111010101010101010101010101010101040411110101111111111111111111010111111111111111041101011111111104110404110101110404040411040411010111111104041111111101011111111104"},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020104010101010401020202010401010101040102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010203"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111111111111111110404111111111111111111040411110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05051111111111111111110505111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105051111111111111111110505121211111105111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"05121212111111050505051111121111111105050505111111111111110505050505050505051105050505051111111111111105050505111111111111111105050511111111111111110505051111111111111111050505051111111111111111111113131212111111111111111313121211111111051111"},
@@ -55506,6 +55582,18 @@ function hqArenaCaps(S) {
             if (!old || !row || !pick || !(DOOR_HQ.rooms || {})[pick.room]) return;
             const entry = hqArenaEntry(site, pick, hqArenaCells(pick, S12), old.terrainTints || null, S12);
             if (!entry) return;
+            /* THE VOXEL KEEP (2026-10-20, mondo: "Dont delete these voxel maps though"): a site in voxelKeep files its old voxel Δ as
+               `<site>_<w>x<h>_delta` (its own layout, a plain Δ row — never an arena, so VS CPU lists it and the online pool never deals it) */
+            if ((HQ_ARENA_RULES.voxelKeep || []).includes(site)) {
+                const vid = site + '_' + (old.w | 0) + 'x' + (old.h | 0) + '_delta';
+                if (!PREBUILT_MAPS[vid]) {
+                    PREBUILT_MAPS[vid] = old;
+                    if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[did]) MAP_LAYOUT_PRESETS[vid] = MAP_LAYOUT_PRESETS[did];
+                    const siteMeta = EW_MAP_META.find(m => m.id === site);
+                    EW_MAP_META.push(Object.assign({}, row, { id: vid, label: ((siteMeta && siteMeta.label) || site) + ' Δ · voxel', voxel: true,
+                                                              desc: (old.w | 0) + '×' + (old.h | 0) + ' voxel Δ, the old hand-built board' }));
+                }
+            }
             const S = S12;
             if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[did]) {
                 _HQ_ARENA_SITE_LAYOUTS[site] = MAP_LAYOUT_PRESETS[did];
