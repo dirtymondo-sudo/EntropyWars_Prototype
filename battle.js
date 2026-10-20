@@ -6005,6 +6005,7 @@
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
                     unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
+                    unit._jumpedThisTurn = false;   // a refund hands the jump back too (applyPressTurn)
                     addLog(`⚡ ${_ctSp(spell.name)}: ${_ctName(unit)} regains ${unit.ap - before} AP.`);
                     showFloatingTextForUnit(unit, `+${unit.ap - before} AP`, 'buff', { durationMs: 900 });
                     markDirty('hud', 'selectedUnit');
@@ -40024,6 +40025,11 @@
                 result.apDelta = refund;
                 _staggerLiftByRefund(unit);
                 result.pressed = true;
+                /* ...and the leap: a jump spent before the press (jump + attack)
+                   is free to use again on the refunded AP (mondo 2026-10-20:
+                   "make sure i can jump again if i get the ap refund"). Plain
+                   unit data, so state-sync carries it to the guest. */
+                unit._jumpedThisTurn = false;
                 // A press refund hands back a fresh action, so it hands back a
                 // full shot clock too. The host runs this for both players; the
                 // guest picks the reset up from the next state-sync snapshot.
