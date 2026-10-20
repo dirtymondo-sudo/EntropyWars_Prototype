@@ -25,6 +25,10 @@
 // area (hqArenaCaps). Only the sites with a 12×12 cut get the extra sizes. `--json <file>` writes the picks to a file instead of data.js
 // (bake several sizes at once), `--apply <file>` files such a bake into data.js:
 //   node bake-arenas.js --size 9 --json /tmp/a9.json   then   node bake-arenas.js --size 9 --apply /tmp/a9.json
+// THE OWN ARENAS (2026-10-20, mondo: "all of those voxel maps remade as new maps"): `--own [mapId…]` re-reads the boards a map's
+// own room was BUILT for (data.js HQ_ARENA_RULES.own — the room and its window are hand-placed, nothing is searched): it rasters the
+// window at the map's size, checks the house tiles are flat open floor and both spawn rows join, prints the grid and rewrites that
+// map's `<OWN PICK id>` line. Rerun after the room changes:   node bake-arenas.js --own prebuilt_holosim   (--dry-run prints only)
 'use strict';
 
 const fs = require('fs');
@@ -162,6 +166,35 @@ function encode(R) {
         cells.push(k.toString(36) + String(Math.max(0, Math.min(9, (c.tile | 0) + 1))));   // the level + 1 (a pool sits at -1)
     }
     return { keys, cells: cells.join('') };
+}
+
+/* THE OWN ARENAS (2026-10-20): `--own [mapId …]` re-encodes the boards cut from their OWN rooms (data.js HQ_ARENA_RULES.own — the
+   facility boards, the Clash stage): the window is the room's own design (room, ox, oz stand as filed), so nothing is searched — the
+   window is rasterised, judged by the walled-cut rule at the board's own size and its cells written back on its `<OWN PICK id>` line */
+if (process.argv.includes('--own')) {
+    const OWN = ev('HQ_ARENA_RULES.own') || {};
+    const ids = Object.keys(OWN).filter(id => !ONLY.length || ONLY.includes(id));
+    let src = fs.readFileSync(DATA, 'utf8'), wrote = 0;
+    for (const id of ids) {
+        const p = OWN[id], N = (p.S | 0) || ((ev('PREBUILT_MAPS[' + JSON.stringify(id + '_voxel') + ']') || ev('PREBUILT_MAPS[' + JSON.stringify(id) + ']') || {}).w | 0) || S12;
+        const t = Date.now();
+        const R = sb.hqFieldRaster(p.room, p.ox, p.oz, N, N);
+        if (!R) { console.error(id + ': the room ' + p.room + ' could not be read'); continue; }
+        const HTn = sb.hqArenaHouseTiles(N), bad = [];
+        HTn.flat.forEach(([x, y]) => { const c = R.cells[y][x]; if (!(c.in && !c.rock && !c.hazard) || (c.tile | 0) !== 0 || c.wall) bad.push(x + ',' + y); });
+        const a = sb.hqFieldReach(R, HTn.HX.n, 0);
+        if (!a.has(HTn.HX.n + ',' + (N - 1))) bad.push('the spawn rows are not joined');
+        const enc = (() => { const keys = [], cells = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const c = R.cells[y][x]; let k = keys.indexOf(c.key); if (k < 0) { k = keys.length; keys.push(c.key); } cells.push(k.toString(36) + String(Math.max(0, Math.min(9, (c.tile | 0) + 1)))); } return { keys, cells: cells.join('') }; })();
+        console.log(id + ': ' + p.room + ' @ ' + p.ox + ',' + p.oz + ' ' + N + '×' + N + (bad.length ? ' — HOUSE TILES NOT CLEAR: ' + bad.join(' ') : ' ok') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)');
+        for (let y = 0; y < N; y++) console.log('   ' + R.cells[y].map(c => c.rock ? '#' : c.hazard ? '~' : String(c.tile | 0)).join(' '));
+        const rec = { room: p.room, ox: p.ox, oz: p.oz }; if (p.S) rec.S = p.S;
+        Object.assign(rec, { base: R.floorKey || p.base || 'grass_2', open: R.open ? 1 : 0, keys: enc.keys, cells: enc.cells });
+        const re = new RegExp('(HQ_ARENA_RULES\\.own\\.' + id + ' = )\\{.*?\\}(;[^\\n]*<OWN PICK ' + id + '>)');
+        if (!re.test(src)) { console.error(id + ': data.js has no <OWN PICK ' + id + '> line'); continue; }
+        src = src.replace(re, (m, a1, b1) => a1 + JSON.stringify(rec) + b1); wrote++;
+    }
+    if (!DRY && wrote) { fs.writeFileSync(DATA, src); console.log('wrote ' + wrote + ' own pick(s) into data.js'); }
+    process.exit(0);
 }
 
 let picks = {};

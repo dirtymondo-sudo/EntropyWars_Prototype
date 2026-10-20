@@ -446,6 +446,23 @@ same way as the current 12x12s like a cutout of the exploration map".
   selects (online.js `_friendlyRefreshMaps`); Quick Play queues the squad's size (server.js `queue-join` 4 | 5, `pickRandomMap`
   by team). A guest whose squad is short of the room's size cannot lock in (online.js `_ewSquadAutoLock`).
 
+### E8 follow-up 3 — THE OWN ARENAS: voxel maps remade as rooms (2026-10-20, thread "New Holo Sim map")
+mondo 10-20: "i want all of those voxel maps remade as new maps. Even the training room and holo sim. They should be able to be
+built with the tools in the map editor ... design them with square tiles in mind". One thread per map.
+- `HQ_ARENA_RULES.own.<mapId>` (data.js, after hqArenaRegisterAll) = a board CUT FROM A ROOM BUILT FOR IT: `{room, ox, oz, base,
+  open, keys, cells}` like a site pick, but hand-placed (no search). The runner `hqArenaRegisterOwn` swaps PREBUILT_MAPS[id] for the
+  arena entry (same id, so every use keeps working: tutorial, match select, range console) and keeps the voxel board as
+  `<id>_voxel`, labelled "<Label> · voxel" in match select (its layout preset + site layout copied). Facility rows stay out of the
+  online pool. `node bake-arenas.js --own <id>` re-reads the window and rewrites the `<OWN PICK id>` line.
+- ROOM 404 · THE HOLO SIM = DOOR_HQ.rooms.facility_holosim: a 31.5 m (18-square) closed box, every surface the `holo` sheet at
+  1.75 m (floor via HQ_TERRAIN_RULES.tile, walls via the new shell `wallTile`, ceiling `ceilTile`), so the projected grid IS the
+  battle grid. Lattice is 18×18 from -15.75, board window ox = oz = 5 (cells x,z ∈ [-7, 7]; cell centre = -6.125 + 1.75·i).
+  Cover = WALL rows t 1.75 with zero length (exact one-square cubes; the free feet stand on the top), h 1.75 = 1 level, 3.5 = 2.
+  Corner block terraces, north exit arch, east gallery (bridge + racks/monitors/console/chairs), west monoliths, corner orbs.
+- three-renderer: `holo` / `holo_red` sheets are self-lit wherever they land (_hqMat, terrain walls, _hqTerrainMat emissive) —
+  before, only the battle tile sheet glowed. Shell `wallTile` overrides the 3.2 m wall texture repeat.
+- ui.js `_tutorialLaunch` waits for an arena's room survey (like _msArenaGate) so the HIGH GROUND lesson opens in the room.
+
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
 R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls
