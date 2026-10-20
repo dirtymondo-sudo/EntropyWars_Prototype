@@ -9192,6 +9192,8 @@
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
             list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
+            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut; the old voxel Temple stays beside it under Clash */
+            list.push({ modeId: 'clash_stage_voxel', name: 'Temple · voxel', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
             // The 8×8 Δ boards — one per launch map, played as-is in every mode
             // (Arena included: each carries its own centre nexus zone).
             meta.filter(m => m.isDelta).forEach(m => {
@@ -9492,7 +9494,8 @@
         window._msConfirm = function() {
             /* THE ARENAS (E8): an arena waits for its room's survey before anything launches (the gate calls back in here) */
             { const _amp = MS_MAP_LIST[_msSelectedMap], _agm = MS_GAME_MODES[_msSelectedGM];
-              if (_amp && !(_agm && _agm.id === 'clash') && !_msArenaGate(_amp.modeId)) return; }
+              const _clashId = (_agm && _agm.id === 'clash') ? ((_amp && /^clash_stage/.test(_amp.modeId)) ? _amp.modeId : 'clash_stage') : null;   // THE CLASH TEMPLE: the stage's room is surveyed like an arena's
+              if (_amp && !_msArenaGate(_clashId || _amp.modeId)) return; }
             playSfx('uiButtonConfirm');
             /* THE TERMINAL: filed on a console's screen — the building goes
                down with it (the match owns the canvas next); the return spot
@@ -9528,7 +9531,7 @@
             /* Clash always plays 4v4 on its fixed JRPG stage — whatever map
                card or team size happened to be selected doesn't apply. */
             if (gm && gm.id === 'clash') {
-                launchModeId = 'clash_stage';
+                launchModeId = /^clash_stage/.test(mp.modeId) ? mp.modeId : 'clash_stage';   // THE CLASH TEMPLE: the stage, or the voxel Temple when that card is picked
                 _msSelectedTeamSize = 4;
             }
             applyGameMode(launchModeId);
@@ -11715,23 +11718,6 @@
             return TERRAIN_RULES[terrain] || TERRAIN_RULES.grass;
         }
 
-        /* 🌋 THE LAVA PITS (2026-10-20, mondo: "high platforms and walkways with pits of lava deep below that you can actually
-           fall into"): a board cut from a room whose terrain says `pits` (data.js hqFieldRasterTerrain — Hell's walkways) carries
-           `state.lavaPits`, one '0' / '1' a cell row-major; a '1' cell that is still lava is a PIT — a walker never steps in
-           (unitCanTraverse), a flyer crosses, and a grounded body that lands in one falls into the lava (battle.js
-           _fallIntoLavaPit, on the shared forced-move chain). Lava cooled to stone is a pit no more. */
-        function isLavaPitTile(x, y) {
-            const m = state.lavaPits;
-            if (!m || typeof m !== 'string') return false;
-            const w = bw();
-            if (x < 0 || y < 0 || x >= w || y >= bh()) return false;
-            if (m.charCodeAt(y * w + x) !== 49) return false;
-            if (getTerrainAt(x, y) === 'lava') return true;
-            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
-            return !!(fl && fl.t === 'lava');
-        }
-        window.isLavaPitTile = isLavaPitTile;
-
         function isTerrainPassable(x, y, board = state) {
             const groundPassable = getTerrainRule(getTerrainAt(x, y, board)).passable !== false;
 
@@ -12358,7 +12344,6 @@
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
             state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
-            state.lavaPits = null;   // 🌋 THE LAVA PITS: only a board cut from a pit room carries them (below)
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so
                a previous custom match's walls never leak into the next map. */
@@ -12868,8 +12853,6 @@
                 }
                 /* On-board monuments (reused esoteric 3D geometry). */
                 state.monuments = Array.isArray(_pb.monuments) ? _pb.monuments : null;
-                /* 🌋 THE LAVA PITS (data.js hqArenaEntry / hqFieldBuild `pits`): the board's pit cells */
-                if (typeof _pb.pits === 'string' && _pb.pits.length === w * h && _pb.pits.indexOf('1') >= 0) state.lavaPits = _pb.pits;
                 if (_pb.heightMap) {
 
                     for (let _hy = 0; _hy < h; _hy++) {
@@ -13684,7 +13667,6 @@
             if (terrain === 'chasm' || terrain === 'void' || terrain === 'cloud_gap') {
                 return canFly(unit);
             }
-            if (isLavaPitTile(x, y)) return canFly(unit);   // 🌋 THE LAVA PITS: nobody walks into one (lava-adapted or not); a flyer crosses
 
             // Mountains are passable (moveCost: 2 in TERRAIN_RULES).
             // Climbing boots / mountain traverser / flying reduce the cost in getTerrainMoveCost.
@@ -15169,9 +15151,12 @@
                 SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
 
-            /* Relocate existing units into their spawn zone tiles (units are created before map init) */
+            /* Relocate existing units into their spawn zone tiles (units are created before map init).
+               A tutorial lesson pins every unit on its own tile (ui.js _tutorialLaunch writes them into SPAWNS before the
+               units are made) — those stay where the lesson put them (2026-10-20: the lessons had been starting on the rows) */
+            const _tutPins = typeof window !== 'undefined' && !!window._tutActive;
             for (const unit of state.units) {
-                if (unit.dead) continue;
+                if (unit.dead || _tutPins) continue;
                 const zoneArr = state.spawnZones[unit.player];
                 if (!zoneArr || zoneArr.length === 0) continue;
                 const idx = unit._spawnIndex || 0;

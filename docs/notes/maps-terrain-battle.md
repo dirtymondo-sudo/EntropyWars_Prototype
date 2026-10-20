@@ -603,5 +603,54 @@ the rain im just talking about grass tiles being on fire".
 ## THE HELL WALKWAYS (2026-10-20, mondo: "i imagine hell being more like high platforms and walkways with pits of lava deep below that you can actually fall into")
 - Hell's map is no longer its voxel Δ: it is `site_prebuilt_hell_walkways` (`arenaRoom: true` — bake-arenas.js scans a room wearing it before the site's entry part), a 42 m closed cavern behind a new door in THE PIT's alcove (pit east wall z 13.4, y 1.75 ↔ walkways south wall, the south shelf). Built only from editor pieces: one lava `pool` (r 27, sheet 0.3) under rock `plateau` walkways at 7.5 m, four 1.4 m daises (one battle level, the walker's jump), `bridge`s (the two middle ones railed, the side planks open), the plan's `solid` discs as rock pillars (look 'rock', wallH 13; `minIsland: 1.2` so a one-square pillar is kept), braziers / cave torches / chains / skulls / the demon statue on the two shelves. Light: shell h 18, five invisible roof lamps (`strips: false`) in the lake's orange over the walkways + mood.ambient 1.3 (0.34 left the tops black in battle). `terrain.res: 0.25` keeps the tier edges on the squares (0.5 smeared a 1.75 m dais into a slope); every walkway plateau is 0.15 m proud of its squares so a corner square stands whole.
 - The 12 × 12 window (ox 6, oz 6) is drawn in the room's comment; pick in HQ_ARENA_RULES.picks.prebuilt_hell (`pits` + `pitTile` -4 ride the pick: the cell digit stops at -1). `prebuilt_hell_delta` keeps every old slot (match select, crystal fight, the training rotation) and is in the online pool like every arena; the voxel board is `prebuilt_hell_8x8_delta` "Hell Δ · voxel" (voxelKeep).
-- THE LAVA PITS: `terrain.pits: { levels }` → hqFieldRasterTerrain stands each lava hazard cell under the floor `levels` deep (≤ base−1) with `c.pit`; hqFieldBuild / hqArenaEntry write `entry.pits` ('0'/'1' row-major); map.js initMap → `state.lavaPits` (rides state-sync); map.js `isLavaPitTile(x, y)` = mask && still lava (cooled lava is a floor). unitCanTraverse refuses a pit to walkers (lava-adapted too), flyers cross. battle.js `_slideStepInfo` kind 'pit' → resolveForcedSlide steps INTO it and stops (`res.pit`); resolveTileArrival's ground step calls `_fallIntoLavaPit` first (every forced move: pushes, knockbacks, bombs, storms' flings, throws, groundings, teleports), timed to the slide's touchdown; applyDamageToUnit `pitFall` = lethal past Protect / realm / guard / indomitable / talisman, credit to the pusher (`byUnitId`), death style 'pit' (three-renderer sinks the body). state.js applyFallDamage skips a pit landing. Forecast: simulateArrivalChain notes kind 'pit' + a whole-HP simHit (tag 'pit', ui.js "🌋 INTO THE LAVA" + LETHAL). Railed bridges hold (hidden low rails); the open planks do not.
+- THE LAVA PITS: `terrain.pits: { levels }` → hqFieldRasterTerrain stands each lava hazard cell under the floor `levels` deep (≤ base−1) with `c.pit` (the bake's bookkeeping; hqFieldBuild / hqArenaEntry still write `entry.pits`, nothing in the fight reads it). The depth is ALL a pit is: a body pushed off a walkway drops 4 levels and the game's own rules take it (applyFallDamage — a liquid landing negates the impact; lava's endTurn burn stacks; walking/climbing by the normal height rules). An insta-kill pit rule shipped in #371/#373 and was REMOVED the same day (mondo 10-20: "we already have rules for lava and fall damage, why would you add new rules?"). Never add a map-specific death or movement rule; a map gets its danger from geometry + existing terrain.
 - Screens: /mnt/project-files/new-maps/hell/ (before_* = voxel Δ, after_* = the walkways).
+
+## THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... Even the training room and holo sim ... built with the tools in the map editor ... square tiles in mind ... Dont delete these voxel maps")
+- Clash's stage (`clash_stage`, every Clash match, ranked and friendly rooms included) is a 10×10 cut of its OWN editor room
+  `DOOR_HQ.rooms.clash_temple` (THE TEMPLE), not a widened Göbekli space: a sanctuary on a 10 m mesa (rocks_5 cliffs, ledges) in a
+  meadow bowl ringed by terrain ridges (16-26 m) with three distant peaks. The court = a `board` row of sanctuary / bricks_1 flagstones,
+  one per tile, sunk a 0.74 m step inside the stylobate; 18 greek_column props + four plain `bridge` slabs (the entablature); north a
+  built stone flight (`terrain.stairs: 'stone'`, side cobblestone_2) to the shrine terrace (altar, candle ring, trilithon, obelisks,
+  statues, back wall); south the gate trilithon and the processional stair down the cliff. Ten braziers are the room's first ten props
+  (the battle lights only the first 10: court corners, colonnade sides, shrine, gate).
+- `HQ_CLASH_STAGE` (data.js, after hqArenaRegisterAll) holds the room, the formation (P1 x 3, P2 x 6, rows 3..6) and the baked
+  `pick` (`node bake-arenas.js clash_stage`, between `<CLASH PICK>` markers; rerun after the room changes). hqArenaEntry/hqArenaUpgrade
+  take `opts.formation` in place of the arena house (no nexus, no Cube). The layout's env is the room's own sky.
+- The old voxel board stays as `clash_stage_voxel` ("Temple · voxel"): PREBUILT_MAPS + its layout, GAME_MODES, MS_MAP_LIST, and
+  MULTIPLAYER_MODES.clash.compatibleMaps (VS CPU match select under Clash). Online (online.js `_friendlyGetCompatibleMaps`, server
+  ranked) deals only `clash_stage`. Not done via HQ_ARENA_RULES.voxelKeep: that list re-registers `<site>_delta` boards, and the Clash
+  stage is not a site Δ.
+
+## THE GALLEON — the new Flying Dutchman (2026-10-20, mondo: remake the voxel maps as editor rooms)
+- The deck is an editor room: data.js `HQ_AREA_SPECS.prebuilt_revenge` (59.5 × 24.5 m, every edge on the 1.75 m square
+  lines). Waist at 0, quarterdeck + forecastle plateaus at +1.5, poop at +3.0, built wood stairs (`model 'wood'`), bulwarks
+  as room walls with gun ports (sill + lintel), a starboard gangway gap for the bay door, masts/capstan/helm as `trees`
+  (they block their squares; the renderer skips the tree model for `_HQ_SHIP_TREES` and draws them itself).
+- `float.hull.kind: 'galleon'` → three-renderer.js `_hqBuildGalleon`: the lofted hull (sheer from the plate's rim
+  heights), wales, gun-deck ports (some lit), stern gallery + name plate, beakhead, bowsprit, three rigs (`hqGalleonMast`,
+  each its own occlusion piece, `_ew_occEye`: fades when the camera is within 2 squares of it), sails from `_hqSailTex`,
+  ratlines/stays as one LineSegments, wake foam scrolled by the voyage (`_hq.galleonWake`). One mesh per material.
+- `voyage: true` + `sea.field: true`: the room keeps the site's motion + far roster in battle; the sea sheet runs
+  `outer.m` 320 m (a float plate builds no outer ground, so `outer.m` only sizes the sea). The sea sheet never receives
+  shadows (`_hqShadowFlags`): its edge past the shadow map drew a pale box round the ship.
+- Look: `HQ_ROOM_LOOKS.galleon` (dream, light tint — the faded print greyed it), fogD 0.007, the day row in
+  HQ_WORLD_CLOCK.dayLook is a clear sea day. It rides the world clock (day + night both checked).
+- Arenas (bake-arenas.js): 12 = the waist, teams at the port/starboard bulwarks; 9 = quarterdeck + poop; 10 and 11 cut too.
+  The old voxel Δ stays in VS CPU as "The Flying Dutchman Δ · voxel" (`HQ_ARENA_RULES.voxelKeep`).
+- Screenshots: /mnt/project-files/new-maps/dutchman/ (before_* = the voxel board, after_* = the new room).
+
+## THE TRAINING ROOM (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim")
+- `prebuilt_training` (every tutorial lesson on it + its VS CPU slot) is the 8 × 8 cut of its OWN editor room
+  `DOOR_HQ.rooms.training_hall` (data.js, its own block after Room 64's `training` room): a 31.5 m gym hall, concrete walls with an
+  oxblood dado, the mats a `board` of urban:RubberNonSlip5a / 1a squares (one per tile) with red/yellow tape marks round them, six rows of
+  bleachers (tier `wall` rows with InstancedMesh seats) on the west, a steel mezzanine (`bridge` + `ramp` stairs model 'steel' + pipe
+  rail) on the east over lockers, columns, banners, clock, observation windows, a roller shutter, eight ceiling lamps.
+- Registered through THE OWN ARENAS (`HQ_ARENA_RULES.own.prebuilt_training`, `node bake-arenas.js --own prebuilt_training`;
+  docs/notes/editor.md): the old voxel board stays as `prebuilt_training_voxel` ("Training Room · voxel", VS CPU match select).
+- Tutorial fixes found walking the lessons on it: map.js autoGenerateSpawnZones no longer moves a lesson's pinned units onto the
+  spawn rows (the bug was already on main: every lesson started on the rows), and ui.js `_tutPoll` passes a vessel's turn on a
+  THEIR TURN step when a Press refund left it up (the step allows no action, so the lesson stood still). No game rule changed.
+- Draw calls: the room's scenery ~230-500 per frame by pose (the voxel board's scenery was ~3300). Text tape marks cost a call each, so the
+  marks are plain lines.
+- Screens: /mnt/project-files/new-maps/training/ (before_* = voxel board, after_* = the hall, tut_* = lessons on it).

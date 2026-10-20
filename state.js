@@ -412,8 +412,9 @@
             Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
             MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
             MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
-            /* Clash always plays on its fixed JRPG stage — no map picking. */
-            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage'];
+            /* Clash always plays on its fixed JRPG stage — no map picking. THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's
+               cut; the old voxel Temple stays pickable beside it in VS CPU (online deals only the stage — online.js). */
+            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage', 'clash_stage_voxel'];
             /* Mystery Dungeon never appears in the PvP map picker — its hub and
                generated floors are loaded directly by the MD runtime. */
             MULTIPLAYER_MODES.dungeon.compatibleMaps = [];
@@ -425,7 +426,7 @@
            GAME_MODES entry is written here by hand — same as the Guild Hub. */
         GAME_MODES.clash_stage = {
             id: 'clash_stage', label: 'Temple',
-            desc: '10×10 raised temple plateau — two formation columns of 4 facing each other across the sanctum',
+            desc: '10×10 temple court on a mountain top — two formation columns of 4 facing each other across the flagstones',
             boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
             winHourglasses: 0, hiddenItemSpawns: 0,
             blitzMode: true, hasTowers: false, isPrebuilt: true,
@@ -439,6 +440,12 @@
                 2: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
             },
         };
+        /* THE CLASH TEMPLE (2026-10-20): the old voxel Temple, kept under its own id (data.js hqClashStageRegister) */
+        GAME_MODES.clash_stage_voxel = Object.assign({}, GAME_MODES.clash_stage, {
+            id: 'clash_stage_voxel', label: 'Temple · voxel',
+            desc: 'The old 10×10 voxel temple plateau — two formation columns of 4 facing each other across the sanctum',
+            spawns: { 1: GAME_MODES.clash_stage.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: GAME_MODES.clash_stage.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+        });
 
         /* ── Mystery Dungeon board registrations ──────────────────────────────
            The Guild Hub is a real prebuilt map (built in data.js) that must NOT
@@ -2037,8 +2044,6 @@
             // counts, where a voluntary hop-down forgives the first 2.
             const _forced = !!(opts && opts.forced);
             if (!_forced && typeof canFly === 'function' && canFly(unit)) return 0;
-            /* 🌋 THE LAVA PITS: a body that lands in a pit is not hurt by the drop — the lava takes it (battle.js _fallIntoLavaPit) */
-            if (typeof isLavaPitTile === 'function' && isLavaPitTile(unit.x, unit.y)) return 0;
             const FALL_THRESHOLD = _forced ? 1
                 : ((typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3);
             const drop = (fromZ ?? 0) - (toZ ?? 0);
