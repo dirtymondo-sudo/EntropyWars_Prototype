@@ -599,3 +599,19 @@ the rain im just talking about grass tiles being on fire".
 - `terrain.sea.field: true` (hqFieldRoomOk / hqFieldTerrainInfo): a sea room may host THE FIELD; ground deeper than wadeMax under the sea is not standable, shallows are wade cells, deep sea is a `deep_water` hazard. Without the flag a sea room is still refused.
 - Palms: HQ_TREE_KINDS `palm` = `kit:Meshy_AI_palm_tree_0910054114_texture.glb` (three-renderer foliage `kit:` prefix → DOOR_HQ.assets.models; the manifest's .opt.glb loads in its place). The old sea room's three bare trees are now palms.
 - Screens: /mnt/project-files/new-maps/bermuda/ (before_* = the voxel board, after_* = the island).
+
+## THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... Even the training room and holo sim ... built with the tools in the map editor ... square tiles in mind ... Dont delete these voxel maps")
+- Clash's stage (`clash_stage`, every Clash match, ranked and friendly rooms included) is a 10×10 cut of its OWN editor room
+  `DOOR_HQ.rooms.clash_temple` (THE TEMPLE), not a widened Göbekli space: a sanctuary on a 10 m mesa (rocks_5 cliffs, ledges) in a
+  meadow bowl ringed by terrain ridges (16-26 m) with three distant peaks. The court = a `board` row of sanctuary / bricks_1 flagstones,
+  one per tile, sunk a 0.74 m step inside the stylobate; 18 greek_column props + four plain `bridge` slabs (the entablature); north a
+  built stone flight (`terrain.stairs: 'stone'`, side cobblestone_2) to the shrine terrace (altar, candle ring, trilithon, obelisks,
+  statues, back wall); south the gate trilithon and the processional stair down the cliff. Ten braziers are the room's first ten props
+  (the battle lights only the first 10: court corners, colonnade sides, shrine, gate).
+- `HQ_CLASH_STAGE` (data.js, after hqArenaRegisterAll) holds the room, the formation (P1 x 3, P2 x 6, rows 3..6) and the baked
+  `pick` (`node bake-arenas.js clash_stage`, between `<CLASH PICK>` markers; rerun after the room changes). hqArenaEntry/hqArenaUpgrade
+  take `opts.formation` in place of the arena house (no nexus, no Cube). The layout's env is the room's own sky.
+- The old voxel board stays as `clash_stage_voxel` ("Temple · voxel"): PREBUILT_MAPS + its layout, GAME_MODES, MS_MAP_LIST, and
+  MULTIPLAYER_MODES.clash.compatibleMaps (VS CPU match select under Clash). Online (online.js `_friendlyGetCompatibleMaps`, server
+  ranked) deals only `clash_stage`. Not done via HQ_ARENA_RULES.voxelKeep: that list re-registers `<site>_delta` boards, and the Clash
+  stage is not a site Δ.
