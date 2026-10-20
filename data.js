@@ -36879,7 +36879,12 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'cave_stone', n: 5, seed: 4 },
                 ],
             },
-            doors: [],
+            doors: [
+                /* THE WALKWAYS (2026-10-20): the alcove's dead end opens on Hell's battle map — a tunnel out onto the south shelf */
+                { id: 'walkways', wall: 'e', z: 13.4, y: 1.75, way: 'tunnel',
+                  label: 'THE WALKWAYS', sub: 'HIGH PLATFORMS · THE LAVA BELOW',
+                  action: { room: 'site_prebuilt_hell_walkways', at: 'pit' } },
+            ],
             counters: [],
             props: [
                 { key: 'cave_torch',     x: -4.0, z: 16.6 },                                     // the torches: the rim, the foot of the descent, the warm ledge, the south-east
@@ -36890,10 +36895,10 @@ const DOOR_HQ = {
                 { key: 'wall_torch',     wall: 's', x: 5.0, mount: 6.0 },                        // over the rim (5 m of tier under the wall's foot)
                 { key: 'wall_chains',    wall: 'n', x: -12.0 },                                    // the colossus's chains run to the wall
                 { key: 'wall_chains',    wall: 'n', x: -8.5 },
-                { key: 'wall_chains',    wall: 'e', z: 14.5, mount: 1.75 },
+                { key: 'wall_chains',    wall: 'e', z: 15.6, mount: 1.75 },
                 { key: 'stocks',         x: 14.0, z: 12.5, face: 270 },
                 { key: 'stone_altar',    x: 11.0, z: 9.5, face: 180 },                            // the obsidian altar on the gallery ledge
-                { key: 'fire_extinguisher', wall: 'e', z: 12.0, mount: 1.75 },                                 // inspected monthly
+                { key: 'fire_extinguisher', wall: 'e', z: 11.0, mount: 1.75 },                                 // inspected monthly
                 { key: 'floor_stain',    x: -6.5, z: 5.5 },
                 { key: 'paper_sheet',    x: 3.2, z: 17.0, y: 0.01, face: 300 },                   // FORM 666 on the rim, filled in by hand
                 /* THE VATICAN BATCH (2026-09-17): the colossus, chained beside its plinth; the bones; the braziers */
@@ -36917,6 +36922,131 @@ const DOOR_HQ = {
                 '“Three flights down from the mouth.” “And then?” “And then the bowl. And then the lava. And then it is not our department.”',
             ],
             spawn: { x: 0, z: 16.2, face: 0 },
+        },
+        /* ── THE WALKWAYS (2026-10-20, mondo: "i imagine hell being more like high platforms and walkways with pits of lava deep below
+           that you can actually fall into") — Hell's battle map, the room its arena is cut from (HQ_ARENA_RULES.picks.prebuilt_hell).
+           Built from the editor's own pieces, on the 1.75 m squares: the cavern floor is a LAKE OF LAVA (one pool, 7.2 m under the
+           walkways), the walkways are rock PLATEAUS 7.5 m up standing out of it, every plateau edge on a square's edge; the BRIDGES
+           between them (the two in the middle railed, the side planks open); the ROCK PILLARS are the plan's solid (gen.solid), cover
+           to the fight and columns to the eye; the four raised DAISES round the middle are one battle level up. The battle window is the
+           middle 12 × 12 squares (x, z −10.5…10.5), drawn as the grid below ('.' walkway, h dais, L lava, b bridge, # pillar):
+               LLL......LLL      the north base (P2's spawn row 0)
+               LL........LL
+               L..#....#..L
+               LbLLLbbLLLbL      the middle bridge (railed) + the two side planks
+               #..Lh..hL...      the west ledge · the middle (the nexus at 5..6) · the east ledge
+               ..b......b..
+               ..b......b..
+               ...Lh..hL..#
+               LbLLLbbLLLbL
+               L..#....#..L
+               LL........LL
+               LLL......LLL      the south base (P1's spawn row 11)
+           `terrain.pits` = THE LAVA PITS: the window's lava cells stand at their TRUE depth on the battle board (4 levels under the
+           walkways, hqFieldRasterTerrain) and are PITS — a body pushed, knocked, flung or thrown into one falls into the lava and is
+           gone (battle.js _fallIntoLavaPit); a walker never steps in (unitCanTraverse), a flyer crosses. The door comes in on the
+           south shelf from THE PIT's alcove; the north shelf is its twin. ── */
+        site_prebuilt_hell_walkways: {
+            label: 'THE DIVINE STAIR · THE WALKWAYS',
+            sub: 'HIGH PLATFORMS · WALKWAYS · THE LAVA BELOW',
+            kind: 'box', site: 'prebuilt_hell', part: 'walkways',
+            arenaRoom: true,   // the site's battle map: bake-arenas.js scans it first (the pit stays the entry part)
+            shell: {
+                w: 42, d: 42, h: 18,
+                wallH: 18, dadoH: 1.05,
+                floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: 'obsidian',
+                floorColor: 0xc07050, wallColor: 0x4a2c38, dadoColor: 0x4a3038, ceilColor: 0x1e1016,
+                pipes: false, strips: false,
+                /* the lake's glow off the cavern roof (no fixture: `strips: false`), over the walkways — 10 m above them, so the tops read */
+                lights: [{ x: 0, z: 0 }, { x: -7, z: -7 }, { x: 7, z: -7 }, { x: -7, z: 7 }, { x: 7, z: 7 }],
+                mood: { light: 0xff8a4a, ambient: 1.3 },
+                plate: { x: 0, z: 19.6, y: 10.6 },
+                fog: { color: 0x1a0604, density: 0.018 },
+                look: HQ_ROOM_LOOKS.hell,
+            },
+            terrain: {
+                floor: 'scorched', cliff: 'rocks_5', path: 'rocks_3',
+                noise: { amp: 0.1, scale: 4.5 }, crag: false,
+                pits: { levels: 4 },
+                res: 0.25,   // the field sampled every quarter metre: the walkways' and daises' edges stay on their squares' edges (0.5 m smeared a 1.75 m dais into a slope)
+                gen: { kind: 'plan', look: 'rock', wallH: 13, rim: 0, edge: 0.12, minIsland: 1.2,   // a pillar is one square's column (2.3 m²), never opened as a bump
+                       solid: [
+                           { x: -4.375, z: -6.125, r: 0.86 }, { x: 4.375, z: -6.125, r: 0.86 },     // the pillars on the bases (squares 3,2 / 8,2 · 3,9 / 8,9)
+                           { x: -4.375, z: 6.125, r: 0.86 }, { x: 4.375, z: 6.125, r: 0.86 },
+                           { x: -9.625, z: -2.625, r: 0.86 }, { x: 9.625, z: 2.625, r: 0.86 },      // the pillars on the ledges' outer corners (0,4 / 11,7)
+                           { x: -15.5, z: -9, r: 2.4 }, { x: 15.5, z: 9, r: 2.4 },                // the spires out in the lake
+                           { x: -16, z: 7.5, r: 1.8 }, { x: 16, z: -7.5, r: 1.8 },
+                           { x: -13.5, z: 15, r: 1.6 }, { x: 13.5, z: -15, r: 1.6 },
+                           { x: 14.5, z: 15.5, r: 2.0 }, { x: -14.5, z: -15.5, r: 2.0 },
+                       ] },
+                features: [
+                    { k: 'space', x: 0, z: 0, w: 39, d: 39, round: true },                                                  // the cavern
+                    { k: 'pool', x: 0, z: 0, r: 27, y: 0.3, depth: 0.8, bank: 0.4, key: 'lava' },                          // THE LAKE OF LAVA (the pits)
+                    /* the walkways — every edge on a square's edge (window square k's west edge at x = −10.5 + 1.75 k), each tier 0.15 m proud of it all round
+                       (the edge blend falls inside the lava square, so a corner square of a walkway stands whole) */
+                    { k: 'plateau', x: 0, z: -7.875, w: 10.8, d: 5.55, h: 7.5, edge: 0.12 },                                // the north base
+                    { k: 'plateau', x: 0, z: -7, w: 14.3, d: 3.8, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: -6.125, w: 17.8, d: 2.05, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: -7.875, z: -2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },                           // the west ledge
+                    { k: 'plateau', x: -8.75, z: 0, w: 3.8, d: 7.3, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: -7.875, z: 2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 0, w: 7.3, d: 7.3, h: 7.5, edge: 0.12 },                                           // the middle
+                    { k: 'plateau', x: 0, z: 0, w: 10.8, d: 3.8, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 7.875, z: -2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },                            // the east ledge
+                    { k: 'plateau', x: 8.75, z: 0, w: 3.8, d: 7.3, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 7.875, z: 2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 6.125, w: 17.8, d: 2.05, h: 7.5, edge: 0.12 },                                 // the south base
+                    { k: 'plateau', x: 0, z: 7, w: 14.3, d: 3.8, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 7.875, w: 10.8, d: 5.55, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: -2.625, z: -2.625, w: 2.05, d: 2.05, h: 8.9, edge: 0.12 },                          // the four daises, a level up (1.4 m: the walker's jump, one battle level)
+                    { k: 'plateau', x: 2.625, z: -2.625, w: 2.05, d: 2.05, h: 8.9, edge: 0.12 },
+                    { k: 'plateau', x: -2.625, z: 2.625, w: 2.05, d: 2.05, h: 8.9, edge: 0.12 },
+                    { k: 'plateau', x: 2.625, z: 2.625, w: 2.05, d: 2.05, h: 8.9, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 18.5, w: 14, d: 5, h: 7.5, edge: 0.15 },                                       // the south shelf (the door)
+                    { k: 'plateau', x: 0, z: -18.5, w: 14, d: 5, h: 7.5, edge: 0.15 },                                      // the north shelf
+                    /* the bridges */
+                    { k: 'bridge', x0: 0, z0: -5.45, x1: 0, z1: -3.3, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },         // the middle bridges (railed)
+                    { k: 'bridge', x0: 0, z0: 5.45, x1: 0, z1: 3.3, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },
+                    { k: 'bridge', x0: -7.875, z0: -5.45, x1: -7.875, z1: -3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },   // the side planks (open)
+                    { k: 'bridge', x0: 7.875, z0: -5.45, x1: 7.875, z1: -3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: -7.875, z0: 5.45, x1: -7.875, z1: 3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: 7.875, z0: 5.45, x1: 7.875, z1: 3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: -7.2, z0: 0, x1: -5.05, z1: 0, w: 3.5, y: 7.5, rails: false, key: 'rocks_3' },        // the ledges to the middle (open)
+                    { k: 'bridge', x0: 7.2, z0: 0, x1: 5.05, z1: 0, w: 3.5, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: 0, z0: 16.2, x1: 0, z1: 10.4, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },          // the shelves to the bases
+                    { k: 'bridge', x0: 0, z0: -16.2, x1: 0, z1: -10.4, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },
+                ],
+            },
+            doors: [
+                { id: 'pit', wall: 's', x: 0, y: 7.5, way: 'tunnel',
+                  label: 'THE PIT', sub: 'BACK TO THE ALCOVE',
+                  action: { room: 'site_prebuilt_hell_pit', at: 'walkways' } },
+            ],
+            counters: [
+                { id: 'battle', proc: 'battle_marker', x: 0, z: 0, radius: 1.2 },
+            ],
+            props: [
+                { key: 'brazier',        x: -5.5, z: 19.5 },                                    // the shelves' braziers
+                { key: 'brazier',        x: 5.5, z: 19.5 },
+                { key: 'brazier',        x: -5.5, z: -19.5 },
+                { key: 'brazier',        x: 5.5, z: -19.5 },
+                { key: 'demon_statue',   x: 0, z: -20.0, face: 180 },                          // on the north shelf, looking down the walkways
+                { key: 'skull_pile',     x: -4.2, z: -17.6 },
+                { key: 'skull_pile',     x: 4.0, z: 17.4 },
+                { key: 'cave_torch',     x: -3.2, z: 16.4 },                                    // at the bridges' heads
+                { key: 'cave_torch',     x: 3.2, z: 16.4 },
+                { key: 'cave_torch',     x: -3.2, z: -16.4 },
+                { key: 'cave_torch',     x: 3.2, z: -16.4 },
+                { key: 'wall_chains',    wall: 'n', x: -8.0, mount: 9.0 },
+                { key: 'wall_chains',    wall: 'n', x: 8.0, mount: 9.0 },
+                { key: 'wall_chains',    wall: 's', x: -8.0, mount: 9.0 },
+                { key: 'wall_chains',    wall: 's', x: 8.0, mount: 9.0 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 18.2, face: 0 },
         },
         /* ── THE STAIRWAY TO HEAVEN — four flights of cloud stairs from the foot (the telescope's far end) to the gate at 12 m, and THE FALL ── */
         site_prebuilt_heaven_stair: {
@@ -54864,6 +54994,7 @@ function hqFieldTerrainInfo(roomId) {
    a HAZARD in its liquid, an IN cell at THE TIER of its top over the window's lowest IN top */
 function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
     const S = HQ_FIELD_RULES.size, C = ti.C;
+    const pitRoom = (DOOR_HQ.rooms || {})[ti.roomId], pits = (pitRoom && pitRoom.terrain && pitRoom.terrain.pits) || null;
     W = (W > 0) ? (W | 0) : S; H = (H > 0) ? (H | 0) : S;
     ox = ox | 0; oz = oz | 0;
     const cells = []; let ref = Infinity; const insTop = [];
@@ -54894,7 +55025,17 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
                the body under a slab fills the two cells over its floor; the slab hugs the top of its cell) */
             if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, null, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
         }
-        else if (c.hazard) c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref) : HQ_FIELD_RULES.fluidMin;
+        else if (c.hazard) {
+            c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref) : HQ_FIELD_RULES.fluidMin;
+            /* 🌋 THE LAVA PITS (2026-10-20, Hell's walkways): in a room whose terrain says `pits`, a lava cell under the floor stands at
+               its TRUE depth (`pits.levels` under the window's floor, else the sheet's own drop in squares; at most base − 1 — the
+               bed's floor) and is a PIT on the board (`c.pit` → the entry's `pits` → state.lavaPits, map.js isLavaPitTile) */
+            if (pits && c.fluid === 'lava' && c.sheet != null && c.sheet < ref) {
+                const drop = (pits.levels > 0) ? (pits.levels | 0) : Math.round((ref - c.sheet) / C);
+                c.tile = -Math.max(1, Math.min(HQ_FIELD_RULES.base - 1, drop));
+                c.pit = true;
+            }
+        }
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
@@ -55276,6 +55417,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     M.spawns(sp[1], sp[2]);
     const entry = M.finish();
     entry.isDelta = true;
+    if (R.cells.some(row => row.some(c => c.pit))) entry.pits = R.cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('');   // 🌋 THE LAVA PITS (map.js → state.lavaPits)
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = baseKey;
     entry.deltaDesc = HQ_FIELD_RULES.label + ' — ' + (room.label || roomId) + ' (' + R.ox + ',' + R.oz + ')';
     entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, W: RW, H: RH, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave, terrain: !!R.terrain, open: !!R.open, ref: (R.ref != null) ? R.ref : 0,
@@ -55393,7 +55535,7 @@ const HQ_ARENA_RULES = {
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
        online pool (not an arena, not kept) */
-    voxelKeep: ['prebuilt_lookingglass', 'prebuilt_gobekli', 'prebuilt_bermuda'],
+    voxelKeep: ['prebuilt_lookingglass', 'prebuilt_gobekli', 'prebuilt_bermuda', 'prebuilt_hell'],
     keep: [],   // THE CHESS COURT (2026-10-20): the Looking-Glass left the list — its arena is the garden's 12 × 12 board; Göbekli Tepe left it too — its arena is ENCLOSURE E in THE TELL
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
@@ -55402,6 +55544,7 @@ const HQ_ARENA_RULES = {
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","rock_wall_1"],"cells":"010101010101010101111112010101010101010101111126010101010101010101111111010101010101010111111101010401010101011111110101040101010101011111110101010101010101111411010101010101010101011104010101010101010101010104010101010101010101010101040101010101010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010114140101010101010101010114140101010101010101010114140101010101010101010114140101010101010101010114140101010101010114010101010101010101010114012121212121212121010114012114140101012121010101012114140101012121010101012114140101012121010101012114140101012121010101012114140101012121212114"},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":5,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light","deep_water"],"cells":"041111112121111111111111041111041111212111111111041104311131041121110411041111311131040411111104111111111104040404040404121211111111110404040404111111112111111104040404111111111121040404040404122121111121040404111111121111212111211111112121111111111111212121111111111111111111212111111111"},
+        prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":56,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010203010101010101010101011515010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":18,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101030202010111111111110101030302010101010101110101010101010101010101011101010101010101010101011101010202020202020202021202010101010101010101010111010101010101010101010111010101010101010101010111010101010101010101010101"},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":32,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101"},
@@ -55608,7 +55751,12 @@ function hqArenaCells(pick, S) {
     const rows = [];
     for (let y = 0; y < S; y++) {
         const row = [];
-        for (let x = 0; x < S; x++) { const i = (y * S + x) * 2; row.push({ key: keys[parseInt(s.charAt(i), 36)] || pick.base || 'grass_2', tile: (parseInt(s.charAt(i + 1), 10) || 1) - 1 }); }
+        for (let x = 0; x < S; x++) {
+            const i = (y * S + x) * 2, c = { key: keys[parseInt(s.charAt(i), 36)] || pick.base || 'grass_2', tile: (parseInt(s.charAt(i + 1), 10) || 1) - 1 };
+            /* 🌋 THE LAVA PITS: the pick's `pits` ('1' a pit cell, row-major) stand `pitTile` deep (the digit stops at a pool's −1) */
+            if (pick.pits && pick.pits.charAt(y * S + x) === '1') { c.tile = (pick.pitTile | 0) || -4; c.pit = true; }
+            row.push(c);
+        }
         rows.push(row);
     }
     return rows;
@@ -55629,6 +55777,7 @@ function hqArenaEntry(site, pick, cells, tints, S) {
     });
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
     hqFieldStampDecks(M, cells, B);   // THE TWO FLOORS: the live raster's decks (the baked cells carry none)
+    const _pits = cells.some(row => row.some(c => c.pit)) ? cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('') : null;   // 🌋 THE LAVA PITS
     const HT = hqArenaHouseTiles(S), sp = hqArenaSpawns(S);
     M.spawns(sp[1], sp[2]);
     M.obj(HT.HX.n, HT.HX.n, 'nexus');   // the centre nexus: Arena stamps the 2×2 (5v5: 3×3) zone from it (map.js _initNexusFromObjects), every other mode strips it
@@ -55639,6 +55788,7 @@ function hqArenaEntry(site, pick, cells, tints, S) {
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
     entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
     entry.arena = { site, room: pick.room, ox: pick.ox | 0, oz: pick.oz | 0, open: !!pick.open };
+    if (_pits) entry.pits = _pits;
     return entry;
 }
 /* the arena of a map id (a `<site>_delta` wearing `arena`): { site, room, ox, oz, ready } — ready = the full field is attached */
@@ -55684,12 +55834,12 @@ function hqArenaUpgrade(mapId, opts) {
     try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
     const open = (c) => !!(c && c.in && !c.rock && !c.hazard), cap = HQ_ARENA_RULES;   // the 12×12 caps at every size: the bake judged the window (a small board's last pass takes them)
     let out = 0;
-    if (R) R.cells.forEach(row => row.forEach(c => { if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));
+    if (R) R.cells.forEach(row => row.forEach(c => { if (c.pit) return; if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));   // 🌋 a lava pit is the map's own design, never an obstacle
     const zoneTiles = HT.zones[1].concat(HT.zones[2], HT.nexus.map(p => ({ x: p[0], y: p[1] })), HT.cubes ? [HT.cubes[1], HT.cubes[2]] : []);
     const fits = !!(R && built && out <= Math.max(cap.obstacles, cap.wallMax)   // the walled cut's cap (the bake judged the window)
         && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
-    const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '' })));
+    const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
     const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null, AS);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;

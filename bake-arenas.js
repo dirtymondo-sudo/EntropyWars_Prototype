@@ -85,19 +85,29 @@ function marker(roomId) {
     return m ? { x: m.x, z: +m.z || 0 } : { x: 0, z: 0 };
 }
 
+/* 🌋 THE LAVA PITS (2026-10-20, Hell's walkways): in a room whose terrain says `pits`, a lava lattice cell is the map's own design —
+   never an obstacle or a wall the caps count, never part of a blocked patch (a pillar standing out of the lake is its own feature) */
+function pitCell(Lt, roomId, gx, gy) {
+    const r = ROOMS[roomId];
+    if (!r || !r.terrain || !r.terrain.pits || Lt.kind !== 'terrain') return false;
+    const c = Lt.info.cells[gy] && Lt.info.cells[gy][gx];
+    return !!(c && c.hazard && c.fluid === 'lava');
+}
+
 /* the room's FEATURES: every blocked lattice patch of at most FEAT cells that touches no edge of the lattice */
-function features(Lt) {
+function features(Lt, roomId) {
     const feat = new Set(), seen = new Set();
+    const blocked = (x, y) => !Lt.walk(x, y) && !pitCell(Lt, roomId, x, y);
     for (let gy = 0; gy < Lt.h; gy++) for (let gx = 0; gx < Lt.w; gx++) {
         const k0 = gx + ',' + gy;
-        if (seen.has(k0) || Lt.walk(gx, gy)) continue;
+        if (seen.has(k0) || !blocked(gx, gy)) continue;
         const comp = [], q = [[gx, gy]]; seen.add(k0); let edge = false;
         while (q.length) {
             const [x, y] = q.pop(); comp.push(x + ',' + y);
             if (x === 0 || y === 0 || x === Lt.w - 1 || y === Lt.h - 1) edge = true;
             for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                 const nx = x + dx, ny = y + dy, k = nx + ',' + ny;
-                if (nx < 0 || ny < 0 || nx >= Lt.w || ny >= Lt.h || seen.has(k) || Lt.walk(nx, ny)) continue;
+                if (nx < 0 || ny < 0 || nx >= Lt.w || ny >= Lt.h || seen.has(k) || !blocked(nx, ny)) continue;
                 seen.add(k); q.push([nx, ny]);
             }
         }
@@ -116,6 +126,7 @@ function judge(R, strict) {
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
         const c = R.cells[y][x];
         const open = c.in && !c.rock && !c.hazard;
+        if (c.pit) { if (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y)) return null; continue; }   // 🌋 a lava pit: the map's own, uncounted
         if (!open) { if (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || ++out > cap) return null; }
         else { inN++; if ((c.tile | 0) > hi) return null; }
         if ((!open || (c.tile | 0) > 0) && !houseSet.has(x + ',' + y)) { cover++; if (y < S / 2) top++; else bottom++; }
@@ -149,17 +160,18 @@ function scanRoom(roomId, strict, place) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
     const Lt = sb.hqFieldLattice(roomId);
     if (!Lt || Lt.w < S || Lt.h < S) return null;
-    const mk = marker(roomId), feat = features(Lt), BW = boardWindows(roomId, Lt);
+    const mk = marker(roomId), feat = features(Lt, roomId), BW = boardWindows(roomId, Lt);
+    const off1 = (gx, gy) => !Lt.walk(gx, gy) && !pitCell(Lt, roomId, gx, gy);
     let best = null, clear = 0;
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
         if (place && Math.hypot(Lt.x0 + (ox + S / 2) * Lt.C - place.x, Lt.z0 + (oz + S / 2) * Lt.C - place.z) > place.r) continue;   // THE ARENA'S PLACE: only windows centred there
         if (BW && (ox < BW.x0 || ox > BW.x1 || oz < BW.z0 || oz > BW.z1)) continue;
         let off = 0;
         if (strict) {
-            for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }
+            for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (off1(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }
             if (off > OBST) continue;
         } else {
-            for (let y = 0; y < S && off <= WALLS; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y)) ? WALLS + 1 : 1; if (off > WALLS) break; }
+            for (let y = 0; y < S && off <= WALLS; y++) for (let x = 0; x < S; x++) if (off1(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y)) ? WALLS + 1 : 1; if (off > WALLS) break; }
             if (off > WALLS) continue;
         }
         const R = sb.hqFieldRaster(roomId, ox, oz, S, S);
@@ -182,6 +194,12 @@ function encode(R) {
         let k = keys.indexOf(c.key);
         if (k < 0) { k = keys.length; keys.push(c.key); }
         cells.push(k.toString(36) + String(Math.max(0, Math.min(9, (c.tile | 0) + 1))));   // the level + 1 (a pool sits at -1)
+    }
+    /* 🌋 THE LAVA PITS: their cells and their depth ride the pick (the digit stops at −1; data.js hqArenaCells reads them) */
+    const pitRows = R.cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('');
+    if (pitRows.indexOf('1') >= 0) {
+        const t = R.cells.flat().filter(c => c.pit).map(c => c.tile | 0);
+        return { keys, cells: cells.join(''), pits: pitRows, pitTile: Math.min.apply(null, t) };
     }
     return { keys, cells: cells.join('') };
 }
@@ -223,7 +241,9 @@ for (const site of (APPLY ? [] : sites)) {
     const rooms = (bySite[site] || []).slice();
     const ent = ENTRY[site] && ENTRY[site].room;
     const size = (id) => { const sh = (ROOMS[id] || {}).shell || {}; return (+sh.w || 0) * (+sh.d || 0); };
-    let order = (ent && rooms.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent).sort((a, b) => size(b) - size(a)));
+    /* a room built as the site's battle map (`arenaRoom: true` — Hell's walkways) is scanned first, then the entry part, then the rest by size */
+    const built = rooms.filter(r => (ROOMS[r] || {}).arenaRoom);
+    let order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
     const place = WITHIN[site] || null;
     if (place) order = order.filter(r => r === place.room);
     let got = null;
@@ -239,6 +259,7 @@ for (const site of (APPLY ? [] : sites)) {
     if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
     const enc = encode(got.best.R);
     picks[site] = { room: got.roomId, ox: got.best.ox, oz: got.best.oz, base: got.best.R.floorKey || 'grass_2', open: got.best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
+    if (enc.pits) { picks[site].pits = enc.pits; picks[site].pitTile = enc.pitTile; }
     console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
 }
 console.log(Object.keys(picks).length + ' arenas of ' + sites.length + ' sites (' + S + '×' + S + ') in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
