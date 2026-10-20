@@ -53415,6 +53415,53 @@
             }
         }
 
+        /* THE STATS LIVE IN INDEXEDDB (2026-10-20, mondo: "UI Maker: the browser storage is full, the last change was not
+           saved. Delete an unused 9-slice image." ... "i dont even have any 9 slices saved"). The AI weights, the training /
+           imitation / A/B / strength stats and the Balance Lab stats (its loadouts map gains a row for nearly every random
+           loadout, so a few thousand lab matches are megabytes) sat in localStorage, which a site gets about 5 MB of in all,
+           and a failed write here was silent: they filled it to the brim and the next UI Maker save failed. They now live in
+           IndexedDB `ew_stats` (store `kv`: the same key, the same JSON string). A key still in localStorage (every old
+           version too) is MOVED, never dropped: by its first read and by the boot sweep below, IndexedDB first, the
+           localStorage copy removed only once IndexedDB holds it. A copy in localStorage is always the newest (a write
+           that reaches IndexedDB removes it), so a read prefers it. No IndexedDB = localStorage, as before. */
+        const AI_IDB_NAME = 'ew_stats', AI_IDB_STORE = 'kv';
+        const AI_IDB_KEY_RE = /^(ai-(weights|training-stats|ab-experiments|imitation-stats)-v\d+|ew-(balance|strength)-stats-v\d+)$/;
+        let _aiIdbP = null;
+        function _aiIdb() {
+            if (_aiIdbP) return _aiIdbP;
+            _aiIdbP = new Promise(ok => {
+                try {
+                    if (typeof indexedDB === 'undefined' || !indexedDB) { ok(null); return; }
+                    const q = indexedDB.open(AI_IDB_NAME, 1);
+                    q.onupgradeneeded = () => { try { if (!q.result.objectStoreNames.contains(AI_IDB_STORE)) q.result.createObjectStore(AI_IDB_STORE); } catch (e) {} };
+                    q.onsuccess = () => ok(q.result);
+                    q.onerror = () => ok(null);
+                    q.onblocked = () => ok(null);
+                } catch (e) { ok(null); }
+            });
+            return _aiIdbP;
+        }
+        function _aiIdbGet(db, key) {
+            return new Promise(ok => {
+                try { const q = db.transaction(AI_IDB_STORE, 'readonly').objectStore(AI_IDB_STORE).get(key); q.onsuccess = () => ok(typeof q.result === 'string' ? q.result : null); q.onerror = () => ok(null); }
+                catch (e) { ok(null); }
+            });
+        }
+        function _aiIdbPut(db, key, value) {
+            return new Promise(ok => {
+                try { const t = db.transaction(AI_IDB_STORE, 'readwrite'); t.objectStore(AI_IDB_STORE).put(value, key); t.oncomplete = () => ok(true); t.onerror = t.onabort = () => ok(false); }
+                catch (e) { ok(false); }
+            });
+        }
+        // one key out of localStorage into IndexedDB (it stays in localStorage when IndexedDB refuses it); its value, or null
+        async function _aiMoveKey(db, key) {
+            let val = null;
+            try { val = localStorage.getItem(key); } catch (e) {  }
+            if (val == null) return null;
+            if (await _aiIdbPut(db, key, val)) { try { localStorage.removeItem(key); } catch (e) {  } }
+            return val;
+        }
+
         async function _aiStorageGet(key) {
             try {
                 if (typeof window.storage !== 'undefined' && window.storage?.get) {
@@ -53422,6 +53469,12 @@
                     if (result && result.value) return result.value;
                 }
             } catch (e) {  }
+            const db = await _aiIdb();
+            if (db) {
+                const moved = await _aiMoveKey(db, key);
+                if (moved) return moved;
+                return (await _aiIdbGet(db, key)) || null;
+            }
             try {
                 const val = localStorage.getItem(key);
                 if (val) return val;
@@ -53435,10 +53488,27 @@
                     await window.storage.set(key, value);
                 }
             } catch (e) {  }
+            const db = await _aiIdb();
+            if (db && await _aiIdbPut(db, key, value)) {
+                try { localStorage.removeItem(key); } catch (e) {  }
+                return;
+            }
             try {
                 localStorage.setItem(key, value);
             } catch (e) {  }
         }
+
+        // the boot sweep: every stats key still in localStorage moves now, the old versions nothing reads any more too
+        // (window._ewStatsMoved: the UI Maker waits on it before it calls the storage full)
+        window._ewStatsMoved = (async function _aiStorageSweep() {
+            try {
+                const db = await _aiIdb(); if (!db) return;
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && AI_IDB_KEY_RE.test(k)) keys.push(k); }
+                for (const k of keys) await _aiMoveKey(db, k);
+                if (keys.length) console.info('[AI] moved ' + keys.length + ' stats keys from localStorage to IndexedDB ew_stats:', keys.join(', '));
+            } catch (e) {  }
+        })();
 
         async function loadAIWeights() {
             try {

@@ -12248,10 +12248,88 @@ function fixTheme(t) {
 let seen = {};
 try { const j = JSON.parse(localStorage.getItem(KEY + '_seen') || 'null'); if (j && typeof j === 'object') seen = j; } catch (e) {}
 function saveSeen() { try { localStorage.setItem(KEY + '_seen', JSON.stringify(seen)); } catch (e) {} }
-let _saveWarned = false;
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
-  catch (e) { if (!_saveWarned) { _saveWarned = true; try { alert('UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image.'); } catch (_) {} } return false; }
+/* THE FULL STORAGE (2026-10-20, mondo: "UI Maker: the browser storage is full, the last change was not saved. Delete an
+   unused 9-slice image." ... "getting this error but i dont even have any 9 slices saved"). The UI Maker shares the
+   ~5 MB of localStorage a site gets with every other part of the game, and the old message guessed at 9-slices. What
+   filled it was the game's own bulk data, which now lives in IndexedDB (the AI + Balance Lab stats, battle.js; the Shot
+   Recorder pictures, three-camera.js) or keeps small (the room file list, three-renderer.js). A refused save now:
+   (1) empties the room file list (a cache the game rebuilds as you walk) and tries again at once; (2) waits for the
+   stats and the pictures to finish moving out, tries again; (3) when localStorage itself is not what is full (Firefox
+   counts the game files downloaded to disk against the same site limit), shrinks that download store and tries again;
+   (4) only then says so, naming what really holds the space, biggest first. Nothing he made is deleted to make room. */
+const LS_LIMIT = 5120 * 1024;   // what Firefox and Chrome give a site, counted in characters
+const LS_NAMES = [
+  [/^ew_ui_maker/, 'UI Maker settings'], [/^ew-balance-stats-v/, 'Balance Lab stats'],
+  [/^ai-(weights|training-stats|ab-experiments|imitation-stats)-v/, 'AI training data'], [/^ew-strength-stats-v/, 'AI strength test stats'],
+  [/^ew_shot_rec/, 'Shot Recorder shots'], [/^ew_hqFileBook/, 'room file list'], [/^ew_asset_index$/, 'downloaded files list'],
+  [/^ew_custom_maps$/, 'custom maps'], [/^ew_spell_mods/, 'Spell Library changes'], [/^ew_race_mods/, 'race editor changes'],
+  [/^ew_data_mods/, 'data editor changes'], [/^ew_saved_teams|^ew-profile-teams-/, 'saved teams'], [/^ew-profile-|^ew-active-profile$/, 'profiles'],
+  [/^ew-campaign|campaign/i, 'campaign saves'], [/^ew-md-save/, 'story save'], [/^ew_saved_looks$/, 'saved character looks'],
+  [/^ew_cine_path:/, 'camera paths'], [/achievements|career/, 'achievements + career'],
+];
+function lsLedger() {
+  const by = {}; let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (k == null) continue;
+      const n = k.length + (localStorage.getItem(k) || '').length; total += n;
+      const nm = (LS_NAMES.find(r => r[0].test(k)) || [0, k])[1];
+      by[nm] = (by[nm] || 0) + n;
+    }
+  } catch (e) {}
+  return { total, rows: Object.keys(by).map(k => [k, by[k]]).sort((a, b) => b[1] - a[1]) };
+}
+function kb(n) { return Math.max(1, Math.round(n / 1024)).toLocaleString('en-US') + ' KB'; }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+/* would this save go past localStorage's own limit? (else what refused it is the site's storage as a whole) */
+function lsFull() { let old = 0; try { old = (localStorage.getItem(KEY) || '').length; } catch (e) {} return lsLedger().total - old + JSON.stringify(db).length > LS_LIMIT * 0.97; }
+let _saveWarned = false, _saveFixing = false, _saveUndo = [];
+/* undo: what to take back if this save is still refused once saveFix has tried everything (a new 9-slice) */
+function save(undo) {
+  if (lsSet(KEY, JSON.stringify(db))) { _saveWarned = false; return true; }
+  let freed = 0;
+  try { if (typeof window._ewHqBookDrop === 'function') freed = window._ewHqBookDrop() || 0; } catch (e) {}
+  if (freed && lsSet(KEY, JSON.stringify(db))) { _saveWarned = false; console.info('[UI Maker] storage was full: emptied the room file list (' + kb(freed) + ') and saved'); return true; }
+  if (typeof undo === 'function') _saveUndo.push(undo);
+  if (!_saveFixing) saveFix();
+  return false;
+}
+function saveFix() {
+  _saveFixing = true;
+  const again = () => lsSet(KEY, JSON.stringify(db));
+  const moved = [window._ewStatsMoved, typeof window._ewShotsThumbsOut === 'function' ? window._ewShotsThumbsOut() : null];
+  let quota = null, trimmed = false, gameBytes = 0;
+  Promise.race([Promise.all(moved.map(p => Promise.resolve(p).catch(() => null))), new Promise(r => setTimeout(r, 4000))]).then(() => {
+    if (again()) return true;
+    const est = navigator.storage && navigator.storage.estimate ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null);
+    return est.then(q => {
+      quota = q;
+      const S = window._ewAssetStore;
+      if (lsFull() || !S || typeof S.trim !== 'function') return false;
+      try { gameBytes = +S.stats().bytes || 0; } catch (e) {}
+      return S.trim(0.5).then(() => { trimmed = true; return again(); });
+    });
+  }).then(ok => ok, () => false).then(ok => {
+    _saveFixing = false;
+    const undo = _saveUndo; _saveUndo = [];
+    if (ok) { _saveWarned = false; console.info('[UI Maker] storage was full: made room and saved'); return; }
+    undo.forEach(f => { try { f(); } catch (e) {} });
+    const L = lsLedger();
+    console.warn('[UI Maker] save refused. localStorage ' + kb(L.total) + ' of about ' + kb(LS_LIMIT), L.rows.map(r => r[0] + ' ' + kb(r[1])), quota);
+    if (_saveWarned) return;
+    _saveWarned = true;
+    let msg;
+    if (lsFull()) {
+      msg = 'UI Maker: the last change was not saved. This site\'s browser storage is full (' + kb(L.total) + ' of about ' + kb(LS_LIMIT) + ').\n\nWhat fills it:\n'
+        + L.rows.filter((r, i) => !i || r[1] >= 16384).slice(0, 5).map(r => '  ' + r[0] + ': ' + kb(r[1])).join('\n');
+    } else {
+      const mb = n => Math.round(n / 1048576).toLocaleString('en-US') + ' MB';
+      msg = 'UI Maker: the last change was not saved. The browser refused it: this site\'s storage on disk is full'
+        + (quota && quota.quota ? ' (' + mb(quota.usage || 0) + ' of ' + mb(quota.quota) + (gameBytes > (quota.usage || 0) * 0.5 ? ', most of it game files kept on disk' : '') + ')' : '')
+        + '.' + (trimmed ? ' Half of the game files kept on disk were cleared and it still did not fit, so the disk itself may be nearly full.' : '');
+    }
+    try { alert(msg + '\n\nEverything saved before this change is kept.'); } catch (_) {}
+  });
 }
 
 /* ── THE FACES (pass 19, 2026-10-18, mondo: "for units that dont have a portrait and just a sprite, add a section in the
@@ -16215,7 +16293,7 @@ function drawSliceViewSoon() { clearTimeout(_svT); _svT = setTimeout(drawSliceVi
 function addSlice(name, src, w, h, t, r, b, l) {
   const sl = { id: uid('s_'), name, src, w, h, t, r, b, l, scale: 1, outset: 0, repeat: 'stretch', fill: true };
   db.slices.push(sl); UI.sliceId = sl.id; UI.tab = 'slices';
-  if (!save()) { db.slices.pop(); UI.sliceId = ''; }
+  save(() => { const i = db.slices.indexOf(sl); if (i >= 0) db.slices.splice(i, 1); if (UI.sliceId === sl.id) UI.sliceId = ''; if (UI.el) render('insp'); });   // a save the full storage still refuses takes it back out
   render('insp');
 }
 function sliceFromTex(name) {
@@ -18152,6 +18230,7 @@ window.UIMaker = {
   hero: () => heroOf(),
   bars: () => barsOf(),
   get db() { return db; },
+  storage: () => { const L = lsLedger(); return { total: kb(L.total), limit: kb(LS_LIMIT), rows: L.rows.map(r => r[0] + ': ' + kb(r[1])) }; },
 };
 syncPickerRows();
 window.applyHudTheme(window.getHudTheme());
