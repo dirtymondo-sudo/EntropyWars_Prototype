@@ -2689,6 +2689,25 @@
               if (_tok !== _cls) _hlCache.set(_pk, _tok);
             }
           }
+          /* 🧗 THE CLIMB: the ledges this unit can climb this turn (straight up / down a face, or after one walk to
+             its foot) paint sandstone on the Move overlay — a click there climbs (battle.js doClimb). */
+          if (!_wasdOrigin && typeof getClimbTiles === 'function') {
+            for (const c of getClimbTiles(_selectedForHl)) {
+              const pk = posKey(c.x, c.y);
+              if (_hlCache.has(pk) && String(_hlCache.get(pk)).indexOf('move-edge') !== 0) continue;
+              _hlCache.set(pk, 'move-climb');
+              _hlZCache.set(pk, c.z);
+            }
+          }
+        } else if (state.actionMode === 'climb' && canUnitAct(_selectedForHl)) {
+          if (typeof getClimbTiles === 'function') {
+            for (const c of getClimbTiles(_selectedForHl)) {
+              const pk = posKey(c.x, c.y);
+              if (_hlCache.get(pk) === 'move-climb') continue;   // the straight climb (listed first) keeps its surface
+              _hlCache.set(pk, 'move-climb');
+              _hlZCache.set(pk, c.z);
+            }
+          }
         } else if (state.actionMode === 'attack' && canUnitAct(_selectedForHl)) {
           _cachedAttackTiles = getAttackTiles(_selectedForHl);
           const _telescopeSkyMap = unitHasTelescope(_selectedForHl) && getSectionForUnit(_selectedForHl) === 'earth'
@@ -3233,7 +3252,7 @@
               // hide EVERY enemy health bar while aiming tile-targeted
               // spells (Meteor etc.) — only movement-preview tiles and the
               // caster's own marker are irrelevant.
-              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge'
+              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge' || _thl === 'move-climb'
                   || _thl === 'selected' || _thl === 'spell-range-bg') continue;
 
               _targetSet.add(_tu.id);
@@ -16567,8 +16586,29 @@
             opts = opts || {};
             const L = (typeof tutorialLesson === 'function') ? tutorialLesson(lessonId) : null;
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
-            if (_tut.booting) return false;
+            if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
+               _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
+            const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
+            if (_ta && !_ta.ready && !_ta.failed && !opts._arenaWarm) {
+                const p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(L.map, true) : null;
+                if (p) {
+                    _tut.arenaWait = true;
+                    /* the player can walk away during the survey (the shelf's BACK, the building): the lesson then never starts */
+                    const pageNow = () => { const a = document.querySelector('#startOverlay .title-page.active'); return a ? a.id : ''; };
+                    const tok = _tut.arenaTok = (_tut.arenaTok | 0) + 1, gs0 = state.gameState, pg0 = pageNow();   // _tutorialLeave bumps the token too
+                    const go = () => {
+                        if (_tut.arenaTok !== tok) return;   // called off (or superseded)
+                        _tut.arenaWait = false;
+                        if (state.gameState !== gs0 || pageNow() !== pg0) return;   // the player went elsewhere meanwhile
+                        window._tutorialLaunch(lessonId, Object.assign({}, opts, { _arenaWarm: true }));
+                    };
+                    p.then(go, go);
+                    return true;
+                }
+                try { if (!_ta.ready) window.hqArenaUpgrade(L.map, { compile: true }); } catch (e) { console.warn('[Tutorial] arena upgrade failed', L.map, e); }
+            }
             if (_tut.active) _tutStopMatchSide();
             const n1 = L.board.p1.length, n2 = L.board.p2.length;
             _tut.saved = _tut.saved || { introCine: window.EW_DISABLE_INTRO_CINE, fog: state.fogOfWar };
@@ -16766,6 +16806,7 @@
             if (!_tut.active) return true;
             if (unit && unit.player !== 1) return true;                       // the dummies follow the script, not the gate
             if (_tut.finished || _tut.booting) return false;
+            if (_tut.passing && kind === 'end') return true;                  // the script passing a vessel's turn (_tutPoll)
             const allow = _tutAllowList();
             if (allow === null) return true;
             let ok = allow.includes(kind);
@@ -16893,6 +16934,19 @@
             if (state.phase !== 'battle') return;
             const st = _tut.step;
             if (!st || !st.goal || st.goal.type === 'ack') return;
+            /* THEIR TURN with one of yours still up (a Press refunded the AP after the step's strike — the step allows nothing,
+               so the lesson stood still): the vessel passes, as the coach says it has (2026-10-20) */
+            if (st.goal.type === 'cpuDone' && !state._actionExecuting && !state.aiThinking) {
+                const au = (state.units || []).find(u => u.id === state._blitzActiveUnitId);
+                if (au && au.player === 1 && !au.dead) {
+                    if (!_tut.passAt) _tut.passAt = Date.now();
+                    else if (Date.now() - _tut.passAt > 1200 && typeof triggerEndTurn === 'function') {
+                        _tut.passAt = 0; _tut.passing = true; state.selectedUnitId = au.id;
+                        try { triggerEndTurn(); } catch (e) { console.warn('[Tutorial] pass', e); }
+                        _tut.passing = false;
+                    }
+                } else _tut.passAt = 0;
+            }
             if (_tut.metAt) { if (Date.now() - _tut.metAt > 650) { _tut.metAt = 0; _tutAdvance(); } return; }
             let met = false;
             try { met = _tutGoalMet(st.goal); } catch (e) { console.warn('[Tutorial] goal', e); }
@@ -17036,6 +17090,7 @@
         /* ✕ / THE SHELF: leave the lesson. `quiet` = no confirm (a finished
            lesson, a failed boot) */
         window._tutorialLeave = function (quiet) {
+            if (_tut.arenaWait) { _tut.arenaWait = false; _tut.arenaTok = (_tut.arenaTok | 0) + 1; }   // a launch still waiting on its room's survey is called off
             if (!_tut.active) return;
             const go = () => _tutTeardown((from) => {
                 if (from !== 'hq' && typeof _showTitlePage === 'function') {

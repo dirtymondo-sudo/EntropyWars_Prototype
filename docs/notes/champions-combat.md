@@ -1733,6 +1733,15 @@ them to the arrows and highlights section so i can change their settings and app
 - Checked in a real battle (Arena + TDM, classic WebGL and ?ew_gpu=webgl2): every zs* / zn* control and colour changes
   the board. ?ew_gpu=webgpu in the sandbox Chromium draws black (three's createView `swizzle` is not supported there).
 
+## THE ZONE ON THE GROUND (2026-10-20)
+mondo: "on some arena maps there is a bridge spanning a gap and it crosses over the middle nexus zone, which paints the nexus
+zone halfway on the bridge and half on the ground. It needs to be all on the ground".
+- Cause: a zone tile under a field's deck (THE TWO FLOORS: `field.lows`) was placed and draped at tileTopY = the DECK.
+- three-renderer.js `_zoneGroundY` / `_zoneTileY`: such a tile drapes the ground (`_buildDrapeGeo` refY = `G.lowAt`) and sits
+  there + HL_FIELD_LIFT; every zone (nexus, Arena spawn nexus, TDM spawn strips) and its light walls. Capture rules unchanged.
+- Affected at the time (bake picks): nexus under a deck on Giza 12, Area 51 9, Antarctica 9, Downtown 9/10/11; spawn
+  zones under one on Antarctica 12/9/11, CERN 9/10/11, Area 51 11.
+
 ## THE SLIDE FORECAST (2026-10-18)
 mondo: "the spell preview/move forecast should account for sliding on ice. i dont want to move+cast and then move and be out
 of cast range bc i slid, that should already be accounted for/the arrow or preview should communicate that i will slide on ice".
@@ -1770,17 +1779,16 @@ change on the name plate right away?"
 - **Name plate:** state.js `getWeatherStatChips` (e.g. "🏜 VISION-5") on the 3D plate badge row and the Horologe /
   unit card chips; the plate serial hashes them so a storm moving onto a standing unit refreshes it.
 
-## NO SELF-COMBO (2026-10-19, mondo)
-mondo: no base spell may both apply a status and deal bonus damage (`bonusVsStatus`) against that same status ("makes
-other spells that apply that effect useless"). A status or bonus gained through an UPGRADE is fine. Default taken: each
-spell keeps its status, the self-payoff left `bonusVsStatus` (+ the desc sentence). Removed outright: Meteor (burn),
-Mind Shatter (silence), Requiem (discord), Miasma (poison), Shadow Crush (slow), Dark Lullaby (silence), Kiss of Decay
-(poison), Descending Wrath (burn), Wrath of the Watchers (burn; its desc wrongly said Staggered), Venom Fang (poison),
-Heat Vision (burn), Dragonfire (burn), Tidal Slam (slow), Avalanche Strike (frozen). Trimmed: Dark Dominion keeps the
-Stagger payoff, Bad Trip keeps Voodoo. Checked and left: Boo (applies Discord, pays on Haunted), Formic Acid (poison
-GROUND only ticks damage, never the Poison status), Star Decree (no status). Forecasts / AI read `spell.bonusVsStatus`
-generically, so nothing else changed. A new row must not pair a `statusEffects` id with the same (or a countsAs) id in
-`bonusVsStatus`.
+## NO SELF-COMBO (2026-10-19, flipped 2026-10-20, mondo)
+mondo: no base spell may both apply a status and deal bonus damage (`bonusVsStatus`) against that same status. A status or
+bonus gained through an UPGRADE is fine. His rule (10-20, after the first pass got it backwards): LOW-tier spells apply the
+status, HIGHER-tier spells are the finishers. So the tier III/IV self-combo rows keep `bonusVsStatus` and lost their own
+`statusEffects`: Meteor, Mind Shatter, Requiem (its Discord stat drop went with it), Miasma, Bad Trip, Dark Dominion (pays
+on Burn or Stagger), Dark Lullaby, Kiss of Decay, Descending Wrath, Wrath of the Watchers, Heat Vision, Dragonfire, Tidal
+Slam, Avalanche Strike. The tier I ones keep the status and lost the bonus: Shadow Crush (Slow), Venom Fang (Poison).
+Checked and left: Boo (applies Discord, pays on Haunted), Formic Acid (poison GROUND only ticks damage, never the Poison
+status), Star Decree (no status). Forecasts / AI read `spell.bonusVsStatus` generically. A new row must not pair a
+`statusEffects` id with the same (or a countsAs) id in `bonusVsStatus`.
 
 ## THE LANDING PICK (2026-10-20, mondo: To the Moon lifted the target, a lit landing tile said it was out of range, and a right-click left the target in the air; "there are other similar spells")
 Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl). battle.js:
@@ -1797,3 +1805,48 @@ Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, I
   its tile, the spell stays uncast, the grab's MP (`_skyThrowGrab.mpPaid`) comes back. Every release
   (`_releaseSkyThrowGrab`: another action, reselect, turn change) refunds it too. online.js routes the guest's
   cancel to the host (`fn: 'cancelSkyThrowGrab'`). A pick-a-unit teleport forgets its picked unit on back-out.
+
+## THE BATTLE CLIMB (2026-10-20, mondo: "Did climbing ever get added to the game? ... in battle" → yes to design/CLIMB_MECHANIC_DESIGN.md's recommended answers)
+battle.js (after doJump) `getClimbTilesFrom` / `getClimbTiles` / `doClimb` / `_startClimb` / `knockOffClimber` /
+`processClimbArrival`; data.js STATUS_DEFS `climbing`.
+- A face TALLER than the unit's jump (`getUnitJumpClimb`) and at most jump + `CLIMB_RULES.capOverJump` (2) high, from
+  one of the 4 straight neighbours (Low Gravity +2, Gravity Crush none). Down: the same cap, only where the drop would
+  hurt (predictFallDamage > 0). Never: an edge-wall panel on that edge, arena rock (`fieldCellRock`), roofWalkable
+  roofs, a roof over the lane (`columnLaneClear`), Clash, Mystery Dungeon, Simul, a flyer that can still fly.
+- Climb ENDS THE TURN (spendAllAP). Move + Climb = one walk to the foot (needs 2 AP, no move spent), then the climb
+  (doClimb chains doMove → `_startClimb`; online the guest emits the whole doClimb, the host runs both legs).
+- The climber STAYS IN THE FOOT COLUMN: unit.x/y/z = the bottom of the face (up: its own tile; down: it moves into the
+  lower column at the start). `unit._climb = { dir, rise, wallX, wallY, wallZ, footX, footY, footZ, round }` is plain
+  data → state-sync. Reach, occupancy and hits all read the foot tile (the design's "half-way up" reach was not built:
+  too many separate range paths to keep the previews honest).
+- The `climbing` status (marker, 99 rounds, only `_endClimb` removes it): blockMove = 0 dodge; stageMod −2 DEF / −2 M.DEF.
+  getCounterChance → 0 and checkOpportunityAttack skips a climber.
+- Knock-off: any damage with a sourceUnit that isn't a DoT tick (applyDamageToUnit hook before the death check), any
+  resolveForcedSlide, any blockAction status (stun / frozen / sleep, applyStatusPayload). Fall damage = the whole rise
+  with forced threshold 1, 300 ms later; `predictClimbFallDamage` (rise + 2 into predictFallDamage) is the same number
+  on the quick-menu button and in the log. `unit._climbKnockSeq` tells the renderer it was a fall.
+- Arrival: the activation (beside processBuildingEmerge) calls `processClimbArrival` first. Up: re-checks the ledge
+  (free, surface still there, within the cap, no Gravity Crush, lane clear) → jump arc onto it (relayed), Overwatch,
+  Nexus, resolveTileArrival; else drops back to the foot unhurt. Either way the unit keeps its full turn.
+- UI: root verb CLIMB (only when a climb exists this turn; MOVE→CLIMB note when only via a walk), action mode 'climb'
+  (sandstone `move-climb` tiles), the Move overlay paints the same ledges and a click there climbs, tile quick menu
+  "Climb up here / Move + climb up (fall −N HP)".
+- Look (three-renderer `_updateBattleClimbers`, UAL_SLOTS `climbWall` = MAL3 Fast_Ladder_Climb, `climbMantle` =
+  UAL2 ClimbUp_1m, both defer): body pushed 0.30 tile against the face, feet rising to 42% of the rise over 1 s with
+  the climb clip (down: played backwards), then the clip FREEZES (timeScale 0) as the hang. Release: moved = mantle
+  one-shot under the jump arc; not moved = a 220 ms drop to the foot (+ the fall clip on a knock-off).
+- Not built: AI climbing / AI pathing over climbable faces; Nexus ignoring climbers.
+
+## THE REAL-LOOKING COPY (2026-10-20) — battle.js, three-renderer.js
+mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all copy/clone
+moves. From the enemy perspective they need to look indistinguishable from the actual unit."
+- Every decoy (Shed Skin, Mimicry, Stuffed Double, Cloning Machine) stores `decoyId` + `spriteUnit = _decoyLookOf(unit)`
+  (battle.js): race, gender, appearance, sprite override, zodiac, facing, flyer lift — plain data, rides the snapshot.
+- three-renderer.js `rebuildDeployables` builds it with `_buildDecoyEntry` → the SAME `_buildUnitEntry` as a real
+  unit (rigged model idling on its own rig keyed by decoyId, or the sprite slab for a sprite race; team ring, outline,
+  x-ray ghost). Its plate is `_buildPlateDom` (shared with `_createPlate`) fed the caster's LIVE HP / MP / shield /
+  statuses / stages; `_decoyOwnerSerial` re-plates it when those change. `_updateDecoyEntries` (per frame) runs the
+  idle clip, self-glow (incl. the acting-unit breath), ring look + vitals, flyer bob, tp-active / tp-targeted.
+  Hover lights it like a unit (`_resolveHoverAt` → `_decoyGroups`). The old flat sprite card is only the fallback.
+- Not mirrored: the hover info card (enemy decoys still show the tile card, hud.js), and a hit on the copy (it just
+  breaks, no death clip).

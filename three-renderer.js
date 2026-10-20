@@ -573,6 +573,7 @@ const ThreeRenderer = (function () {
         'move':            0x4da6ff,
         'move-jump':       0x35d0c0,
         'move-takeoff':    0x35d0c0,
+        'move-climb':      0xd9a066,   /* sandstone — a face this unit can CLIMB (battle.js getClimbTiles) */
         'move-edge':       0xcc2222,
         /* Tactical move-tile overlays (appended as tokens by ui.js): */
         'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
@@ -653,6 +654,7 @@ const ThreeRenderer = (function () {
         'move':         1.0,
         'move-jump':    1.05,
         'move-takeoff': 1.0,
+        'move-climb':   1.05,
         'move-edge':    0.55,
         'attack':       1.1,
         'attack enemy': 1.3,
@@ -844,7 +846,7 @@ const ThreeRenderer = (function () {
             if (t.indexOf(' strike') !== -1) return 'strike';
             if (t.indexOf(' hazard') !== -1) return 'hazard';
             if (t.indexOf(' benefit') !== -1) return 'benefit';
-            return (base === 'move-jump' || base === 'move-takeoff') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
+            return (base === 'move-jump' || base === 'move-takeoff' || base === 'move-climb') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
         }
         if (t.indexOf('attack enemy') === 0) return 'target';
         return { 'move-edge': 'blocked', 'attack': 'atkReach', 'spell-damage': 'hit', 'spell-range-dmg': 'reach', 'heal-range': 'healReach',
@@ -2607,6 +2609,10 @@ const ThreeRenderer = (function () {
        real units (HP/MP/name bars). Tracked separately for per-frame scale + fog
        visibility, and cleared whenever deployables rebuild. */
     var _decoyPlates = [];
+    /* THE REAL-LOOKING COPY (2026-10-20): every live decoy's unit-style entry, keyed by its rig id (battle.js
+       decoyId). Built by _buildUnitEntry exactly like a real unit (model, ring, outline), driven per frame by
+       _updateDecoyEntries; its rig lives in _unitModelRigs under the same id. */
+    var _decoyEntries = new Map();
     /* Opacity applied to the VIEWER'S OWN sprite while it carries the Invisible
        status — the player needs a clear "you are cloaked" cue. */
     var INVIS_OWN_OPACITY = 0.45;
@@ -6044,8 +6050,13 @@ const ThreeRenderer = (function () {
         tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
-    function _foliageIsGlb(name) { return typeof name === 'string' && name.slice(0, 3) === 'rt:'; }
-    function _foliageUrl(name) { return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj'; }
+    /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
+    function _foliageIsKit(name) { return typeof name === 'string' && name.slice(0, 4) === 'kit:'; }
+    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name)); }
+    function _foliageUrl(name) {
+        if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/door/models/'; return KB + encodeURIComponent(name.slice(4)); }
+        return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
+    }
     /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): data.js HQ_TREE_KINDS names the other fourteen OBJs in the folder (tree_7 …
        tree_20) for the editor's TREES tab; a key the board already maps keeps its model */
     if (typeof HQ_TREE_KINDS !== 'undefined') Object.keys(HQ_TREE_KINDS).forEach(function (k) { if (HQ_TREE_KINDS[k].model) _FOLIAGE_MODEL_FOR_KEY[k] = HQ_TREE_KINDS[k].model; });
@@ -8472,6 +8483,7 @@ const ThreeRenderer = (function () {
                 if (d.hp > 0) {
                     h = _hashInt(h, 5); h = _hashInt(h, d.x); h = _hashInt(h, d.y);
                     h = _hashVal(h, d.ownerPlayer); h = _hashStr(h, d.spellName || ''); h = _hashInt(h, d.hp);
+                    if (d.isDecoy) h = _decoyOwnerSerial(h, d);   // THE REAL-LOOKING COPY: its plate mirrors the caster
                 }
             }
         }
@@ -9694,6 +9706,9 @@ const ThreeRenderer = (function () {
             if (_dpe.css2d && _dpe.css2d.parent) _dpe.css2d.parent.remove(_dpe.css2d);
         }
         _decoyPlates.length = 0;
+        var _prevDecoyIds = Array.from(_decoyEntries.keys());
+        if (_hoveredUnitId != null && _decoyEntries.has(_hoveredUnitId)) { _hoverGlowMesh = null; _hoveredUnitId = null; }   // the glow goes with the group
+        _decoyEntries.clear();
 
         for (var entry of deployableMeshes) {
             objectGroup.remove(entry[1]);
@@ -9865,6 +9880,16 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* a decoy that is gone takes its rig with it */
+        for (var _pdi = 0; _pdi < _prevDecoyIds.length; _pdi++) {
+            var _pdId = _prevDecoyIds[_pdi];
+            if (_decoyEntries.has(_pdId)) continue;
+            var _pdRig = _unitModelRigs.get(_pdId);
+            if (_pdRig) { _disposeModelRig(_pdRig); _unitModelRigs.delete(_pdId); }
+            _modelAnimState.delete(_pdId);
+            _lastHpPctById.delete(_pdId); _lastMpPctById.delete(_pdId);
+        }
+
         _lastDeployableSerial = _computeDeployableSerial();
 
         /* ── Render state._deployedObjects (traps, decoys, walls, totems) ── */
@@ -9877,10 +9902,23 @@ const ThreeRenderer = (function () {
                 var dx = dObj.x, dy = dObj.y;
                 var topY = tileTopY(dx, dy);
 
-                /* Decoys/clones wear the caster's sprite. Render them to look EXACTLY
-                   like a live unit — full opacity, native sprite dimensions, matching
-                   facing, plus a fake nameplate — so the opponent can't pick the real
-                   unit out from its decoy. */
+                /* THE REAL-LOOKING COPY (2026-10-20, mondo: "scarecrow's stuffed double needs to be its actual 3d
+                   model, not its pixel sprite. this goes for all copy/clone moves"): a decoy is built by the SAME
+                   _buildUnitEntry as the caster — the rigged model idling (or the sprite slab for a sprite race),
+                   the team ring, the outline, the x-ray ghost — plus a plate built like a real one from the
+                   caster's live HP / MP / buffs. The flat sprite card below is only the fallback if that throws. */
+                if (dObj.isDecoy && dObj.spriteUnit) {
+                    var _dBuilt = null;
+                    try { _dBuilt = _buildDecoyEntry(dObj); } catch (_dErr) { console.warn('[ThreeRenderer] decoy build failed', _dErr); _dBuilt = null; }
+                    if (_dBuilt) {
+                        _dBuilt._ew_deployable = true;
+                        _dBuilt._ew_depX = dx; _dBuilt._ew_depY = dy;
+                        _dBuilt._ew_depOwner = dObj.ownerPlayer;
+                        objectGroup.add(_dBuilt);
+                        deployableMeshes.set(dKey, _dBuilt);
+                        continue;
+                    }
+                }
                 if (dObj.isDecoy && dObj.spriteUnit) {
                     var sprUrl = (typeof getBattleMapSpriteUrl === 'function') ? getBattleMapSpriteUrl(dObj.spriteUnit) : null;
                     if (sprUrl) {
@@ -10629,9 +10667,24 @@ const ThreeRenderer = (function () {
         }
         return { x0: x0, y0: y0, W: x1 - x0 + 1, H: y1 - y0 + 1, cells: tiles.map(function (t) { return [t.x - x0, t.y - y0]; }) };
     }
+    /* THE ZONE ON THE GROUND (2026-10-20, mondo: "on some arena maps there is a bridge spanning a gap and it crosses over the
+       middle nexus zone, which paints the nexus zone halfway on the bridge and half on the ground. It needs to be all on the
+       ground"): a zone tile under a field's deck (THE TWO FLOORS) paints the GROUND under it, never the deck over it — every
+       zone (the nexuses, the Arena spawn nexuses, TDM's spawn strips) and its light walls. The battle-frame Y of that ground,
+       or null (one floor: the tile's top, as ever). The capture rules are the engine's and stay as they are. */
+    function _zoneGroundY(x, y) {
+        if (!_fieldTwoFloorAt(x, y)) return null;
+        var G = _fieldGround(), ly = G ? G.lowAt(x, y) : null;
+        return (ly === null || ly === undefined || !isFinite(ly)) ? null : ly;
+    }
+    /* where a zone tile's drape sits: the move tiles' own placement (_drapedTileY), or the ground under a deck + the field lift */
+    function _zoneTileY(x, y, yOff, ts) {
+        var ly = _zoneGroundY(x, y);
+        return (ly === null) ? _drapedTileY(x, y, yOff) : ly + (yOff || 0) + HL_FIELD_LIFT * ts;
+    }
     /* a zone tile's full-size drape with its UVs on its own patch of the zone map (x0/y0 = the zone's top-left tile) */
     function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts) {
-        var g = _buildDrapeGeo(hx, hy, ts, 1.0), p = g.attributes.position.array, uv = g.attributes.uv;
+        var g = _buildDrapeGeo(hx, hy, ts, 1.0, _zoneGroundY(hx, hy)), p = g.attributes.position.array, uv = g.attributes.uv;
         var ry = g._ew_rotY || 0, c = Math.cos(ry), sn = Math.sin(ry);
         for (var i = 0; i < uv.count; i++) {
             var lx = p[i * 3], lz = p[i * 3 + 2];
@@ -10680,7 +10733,7 @@ const ThreeRenderer = (function () {
                     var piece = _nxPiece(geo, mats[li]);
                     piece.renderOrder = li;   // the light over the paint
                     piece.rotation.y = geo._ew_rotY || 0;
-                    piece.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
+                    piece.position.set(ft.x * ts + ts / 2, _zoneTileY(ft.x, ft.y, ts * 0.012, ts), ft.y * ts + ts / 2);
                     _nexusWallGroup.add(piece);
                 }
             }
@@ -10741,7 +10794,7 @@ const ThreeRenderer = (function () {
                     var mesh = new THREE.Mesh(geo, mats[li]);
                     mesh.renderOrder = li;
                     if (geo._ew_rotY !== undefined) mesh.rotation.y = geo._ew_rotY;
-                    mesh.position.set(tile.x * ts + ts / 2, _drapedTileY(tile.x, tile.y, ts * 0.012), tile.y * ts + ts / 2);
+                    mesh.position.set(tile.x * ts + ts / 2, _zoneTileY(tile.x, tile.y, ts * 0.012, ts), tile.y * ts + ts / 2);
                     _spawnZoneGroup.add(mesh);
                 }
             }
@@ -10809,9 +10862,9 @@ const ThreeRenderer = (function () {
         m._ewZone = { type: type, own: own, layer: 'wall' };
         return m;
     }
-    /* one standing wall per exposed edge, `h` tall, on that tile's top */
+    /* one standing wall per exposed edge, `h` tall, on that tile's top (the ground under a deck: THE ZONE ON THE GROUND) */
     function _zoneWallMesh(e, ts, h, mat) {
-        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = tileTopY(e.x, e.y);
+        var gy = _zoneGroundY(e.x, e.y), mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = (gy === null) ? tileTopY(e.x, e.y) : gy;
         var cx = e.x * ts + ts / 2, cz = e.y * ts + ts / 2, half = ts / 2;
         if (e.dir === 'n') mesh.position.set(cx, tileY + h / 2, cz - half);
         else if (e.dir === 's') { mesh.position.set(cx, tileY + h / 2, cz + half); mesh.rotation.y = Math.PI; }
@@ -13331,6 +13384,7 @@ const ThreeRenderer = (function () {
         );
         pick.position.y = _pickH * 0.5;
         pick._ew_shadowFlagged = true;
+        pick._ew_pickPillar = true;   // a decoy keeps only this pickable (_updateDecoyEntries)
         wrap.add(pick);
 
         var apSpent = unit.ap <= 0;
@@ -14016,6 +14070,7 @@ const ThreeRenderer = (function () {
                 // walk timescale the Meshy clip sets keep using).
                 want = (entry._ew_sprinting && entry.actions && entry.actions.run)
                     ? ((entry._ew_charging && entry.actions.runCharge) ? 'runCharge' : 'run') : 'walk';
+            else if (entry._ew_climbWant && entry.actions && entry.actions[entry._ew_climbWant]) want = entry._ew_climbWant;   // 🧗 the hang (_updateBattleClimbers)
             else want = 'idle';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
@@ -14464,6 +14519,7 @@ const ThreeRenderer = (function () {
     function rebuildUnits() {
         if (!unitGroup) return;
 
+        if (_hoveredUnitId != null && _decoyEntries.has(_hoveredUnitId)) _clearUnitHover();   // a hovered copy outlives the unit rebuild
         _hoverGlowMesh = null; _hoveredUnitId = null;
 
         _selChevronMesh = null; _selChevronUnitId = null; _selChevronColor = null;
@@ -14498,7 +14554,7 @@ const ThreeRenderer = (function () {
         // Evict cached model rigs whose unit left the board (died, despawned)
         // — live units just had theirs re-parented by _attachUnitModel.
         _unitModelRigs.forEach(function (rig, uid) {
-            if (!unitEntries.has(uid)) {
+            if (!unitEntries.has(uid) && !_decoyEntries.has(uid)) {   // a decoy's rig is evicted by rebuildDeployables
                 _disposeModelRig(rig);
                 _unitModelRigs.delete(uid);
                 _modelAnimState.delete(uid);
@@ -14985,7 +15041,9 @@ const ThreeRenderer = (function () {
             + ' style="background-image:url(&quot;' + url + '&quot;)"></div>';
     }
 
-    function _createPlate(unit) {
+    /* The plate's DOM, shared by every real unit (_createPlate) and every decoy (_buildClonePlate) so a copy's
+       plate is the same markup to the last class. `active` marks the acting unit (tp-active). */
+    function _buildPlateDom(unit, hpStartPct, mpStartPct, active) {
         _ensurePlateStyles();
 
         /* Outer container: 0×0 point, CSS2DRenderer positions this */
@@ -14998,8 +15056,7 @@ const ThreeRenderer = (function () {
            the visual-hierarchy dimming keys off this, not the raw p1/p2 side. */
         pCls += _isAllyPlayer(unit.player) ? ' tp-ally' : ' tp-enemy';
 
-        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
-        if (blitzUnit && blitzUnit.id === unit.id) pCls += ' tp-active';
+        if (active) pCls += ' tp-active';
         wrap.className = 'tp-wrap ' + pCls + _plateStyleClass();
 
         var lvl = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 1;
@@ -15009,13 +15066,6 @@ const ThreeRenderer = (function () {
         if (mode === 'race' || mode === 'job') label = _plateRaceLabel(unit);
         else if (mode !== 'none') label = unit.name || _plateRaceLabel(unit);
 
-        var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
-        var mpPct = Math.max(0, Math.round(100 * unit.mp / (unit.maxMp || 1)));
-        /* If this unit already had a plate (it's being rebuilt mid-combat), start the
-           fill at the previously rendered width so the CSS width-transition can drain
-           it down to the new value instead of snapping. */
-        var hpStartPct = _lastHpPctById.has(unit.id) ? _lastHpPctById.get(unit.id) : hpPct;
-        var mpStartPct = _lastMpPctById.has(unit.id) ? _lastMpPctById.get(unit.id) : mpPct;
         var allyCls = _isAllyPlayer(unit.player) ? 'tp-hp-ally' : 'tp-hp-enemy';
 
         var shieldAmt = unit.shield || 0;
@@ -15087,8 +15137,21 @@ const ThreeRenderer = (function () {
         effEl.className = 'tp-eff-badge';
         effEl.setAttribute('data-eff', '');
         wrap.appendChild(effEl);
-
         outer.appendChild(wrap);
+        return { outer: outer, wrap: wrap, statusBadgesHtml: _sbInner };
+    }
+
+    function _createPlate(unit) {
+        var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
+        var mpPct = Math.max(0, Math.round(100 * unit.mp / (unit.maxMp || 1)));
+        /* If this unit already had a plate (it's being rebuilt mid-combat), start the
+           fill at the previously rendered width so the CSS width-transition can drain
+           it down to the new value instead of snapping. */
+        var hpStartPct = _lastHpPctById.has(unit.id) ? _lastHpPctById.get(unit.id) : hpPct;
+        var mpStartPct = _lastMpPctById.has(unit.id) ? _lastMpPctById.get(unit.id) : mpPct;
+        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
+        var _pd = _buildPlateDom(unit, hpStartPct, mpStartPct, !!(blitzUnit && blitzUnit.id === unit.id));
+        var outer = _pd.outer, wrap = _pd.wrap, _sbInner = _pd.statusBadgesHtml;
 
         var css2d = new THREE.CSS2DObject(outer);
         var ue = unitEntries.get(unit.id);
@@ -15190,6 +15253,195 @@ const ThreeRenderer = (function () {
         outer.appendChild(wrap);
 
         return { css2d: new THREE.CSS2DObject(outer), el: wrap };
+    }
+
+    /* ── THE REAL-LOOKING COPY (2026-10-20) ─────────────────────────────
+       mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all
+       copy/clone moves. From the enemy perspective they need to look indistinguishable from the actual unit".
+       A decoy (Shed Skin, Mimicry, Stuffed Double, Cloning Machine — battle.js _decoyLookOf) is a fake unit built
+       by _buildUnitEntry: the body is the caster's look at cast time standing on the decoy's tile; the plate, the
+       ring vitals, the AP grey and the acting-unit glow mirror the caster LIVE, so nothing on the board reads
+       differently between the two. The copy idles on its own rig (keyed by decoyId in _unitModelRigs). */
+    function _decoyRigId(dObj) {
+        return dObj.decoyId || ('decoy_' + (dObj.ownerUnitId != null ? dObj.ownerUnitId : 'p' + dObj.ownerPlayer) + '_' + dObj.x + '_' + dObj.y);
+    }
+    function _decoyOwnerOf(dObj) {
+        var o = (dObj && dObj.ownerUnitId != null) ? _findUnit(dObj.ownerUnitId) : null;
+        return (o && !o.dead) ? o : null;
+    }
+    /* What the copy's plate shows of its caster — folded into the deployable serial so a hit, a buff or a spent AP
+       on the caster re-plates the copy the same frame the real plate changes. */
+    function _decoyOwnerSerial(h, dObj) {
+        var o = _decoyOwnerOf(dObj);
+        if (!o) return _hashInt(h, 77);
+        h = _hashInt(h, o.hp | 0); h = _hashInt(h, o.maxHp | 0); h = _hashInt(h, o.mp | 0); h = _hashInt(h, o.maxMp | 0);
+        h = _hashInt(h, o.ap | 0); h = _hashInt(h, o.shield || 0); h = _hashInt(h, o._xp || 0);
+        h = _hashInt(h, o.hourglassBuff || 0); h = _hashInt(h, o._killStreak || 0); h = _hashStr(h, o.skyBuff || '');
+        if (typeof getActiveStatusKeys === 'function' && o.status) {
+            var sk = getActiveStatusKeys(o);
+            for (var i = 0; i < sk.length; i++) h = _hashStr(h, sk[i]);
+        }
+        if (typeof getStatStageCount === 'function') {
+            var st = ['atk', 'def', 'mdef', 'spd', 'int'];
+            for (var j = 0; j < st.length; j++) h = _hashInt(h, getStatStageCount(o, st[j]) || 0);
+        }
+        h = _hashStr(h, state.nametagMode || '');
+        return h;
+    }
+    function _decoyBodyUnit(dObj, rigId, owner) {
+        var su = dObj.spriteUnit, u = {};
+        for (var k in su) if (Object.prototype.hasOwnProperty.call(su, k)) u[k] = su[k];
+        u.id = rigId;
+        u.player = (dObj.ownerPlayer != null) ? dObj.ownerPlayer : su.player;
+        u.x = dObj.x; u.y = dObj.y;
+        u.z = ((dObj.z != null) ? dObj.z : (owner ? (owner.z || 0) : 0)) + (su.airDz || 0);   // a flyer's copy hovers like it
+        u.facing = su.facing ? { dx: su.facing.dx, dy: su.facing.dy } : undefined;
+        u.maxHp = owner ? owner.maxHp : (su.maxHp || 1);
+        u.hp = owner ? owner.hp : u.maxHp;
+        u.maxMp = owner ? owner.maxMp : (su.maxMp || 0);
+        u.mp = owner ? owner.mp : u.maxMp;
+        u.shield = owner ? (owner.shield || 0) : 0;
+        u.ap = owner ? owner.ap : 1;
+        return u;
+    }
+    /* The plate reads the caster's live badges (statuses, stat stages, sky buff, streak) on the copy's tile. */
+    function _decoyPlateUnit(body, owner) {
+        if (!owner) return body;
+        var p = {};
+        for (var k in body) if (Object.prototype.hasOwnProperty.call(body, k)) p[k] = body[k];
+        p.status = owner.status; p.statStageMods = owner.statStageMods;
+        p.hourglassBuff = owner.hourglassBuff; p._killStreak = owner._killStreak;
+        p.skyBuff = owner.skyBuff; p.zodiac = owner.zodiac; p._xp = owner._xp;
+        if (owner.level != null) p.level = owner.level;
+        return p;
+    }
+    function _buildDecoyEntry(dObj) {
+        var rigId = _decoyRigId(dObj);
+        var owner = _decoyOwnerOf(dObj);
+        var body = _decoyBodyUnit(dObj, rigId, owner);
+        var entry = _buildUnitEntry(body);
+        var g = entry.group;
+        entry._ew_decoy = { rigId: rigId, ownerId: dObj.ownerUnitId, body: body };
+
+        var pu = _decoyPlateUnit(body, owner);
+        var hpPct = Math.max(0, Math.round(100 * pu.hp / (pu.maxHp || 1)));
+        var mpPct = Math.max(0, Math.round(100 * pu.mp / (pu.maxMp || 1)));
+        var hpStart = _lastHpPctById.has(rigId) ? _lastHpPctById.get(rigId) : hpPct;
+        var mpStart = _lastMpPctById.has(rigId) ? _lastMpPctById.get(rigId) : mpPct;
+        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
+        var pd = _buildPlateDom(pu, hpStart, mpStart, !!(owner && blitzUnit && blitzUnit.id === owner.id));
+        var css2d = new THREE.CSS2DObject(pd.outer);
+        var headY = g._ew_spriteTopY - g.position.y + 12;
+        css2d.position.set(0, headY, 0);
+        g.add(css2d);
+        var dpo = { css2d: css2d, el: pd.wrap, mesh: g, x: dObj.x, y: dObj.y, ownerId: dObj.ownerUnitId,
+                    _headY: headY, _footY: SELECTED_RING_OFFSET + 2 };
+        _decoyPlates.push(dpo);
+        _anchorPlateForStyle(dpo);
+        entry._ew_decoyPlate = dpo;
+        if (hpStart !== hpPct || mpStart !== mpPct) {
+            requestAnimationFrame(function () {
+                var hf = pd.wrap.querySelector('.tp-hp-fill'); if (hf) hf.style.width = hpPct + '%';
+                var mf = pd.wrap.querySelector('.tp-mp-fill'); if (mf) mf.style.width = mpPct + '%';
+            });
+        }
+        _lastHpPctById.set(rigId, hpPct); _lastMpPctById.set(rigId, mpPct);
+
+        _decoyEntries.set(rigId, entry);
+        return g;
+    }
+    /* Per frame, what _updateUnitModels / _updateUnitSelfGlow / _updateUnitFacing do for a real unit: the idle
+       clip, the self-glow (with the caster's acting-unit breath), the ring look + vitals, the sprite x-ray ghost
+       kept camera-side, and the acting plate class. */
+    function _decoyGroups() {
+        var out = [];
+        _decoyEntries.forEach(function (e) { if (e.group && e.group.parent) out.push(e.group); });
+        return out;
+    }
+    var _decoyClockPrev = 0;
+    function _updateDecoyEntries() {
+        if (!_decoyEntries.size) { _decoyClockPrev = 0; return; }
+        var now = _animNow();
+        var dt = _decoyClockPrev ? Math.min((now - _decoyClockPrev) / 1000, 0.1) : 0.016;
+        _decoyClockPrev = now;
+        var animsOff = _ewAnimsOff();
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var silDepth = UNIT_SPRITE_DEPTH_PX * (ts / 128);
+        var pulseUid = (state && state.phase === 'battle') ? state._blitzActiveUnitId : null;
+        var pulse = 0.24 + 0.18 * Math.sin(performance.now() * 0.005);   // the same breath as _updateUnitSelfGlow
+        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
+        var rLook = _ringLookSync(), rScale = _retLookU.uSpan.value / RETICLE_SPAN;
+        _decoyEntries.forEach(function (entry, rid) {
+            var d = entry._ew_decoy, g = entry.group;
+            if (!d || !g) return;
+            var owner = (d.ownerId != null) ? _findUnit(d.ownerId) : null;
+            if (owner && owner.dead) owner = null;
+            var body = d.body;
+            if (owner) { body.hp = owner.hp; body.maxHp = owner.maxHp; body.mp = owner.mp; body.maxMp = owner.maxMp; body.shield = owner.shield || 0; body.ap = owner.ap; }
+
+            /* only the pick pillar (or the sprite card) answers the pointer — a bind-pose arm in the next tile must not */
+            if (!entry._ew_decoyRayFixed && (entry._ew_modelAttached || !entry.modelDef)) {
+                entry._ew_decoyRayFixed = true;
+                g.traverse(function (n) {
+                    if (n.isMesh && !n._ew_pickPillar && n !== entry.sprite) n.raycast = function () {};
+                });
+            }
+
+            var inten = _unitSelfGlowIntensity(body);
+            if (owner && owner.id === pulseUid && !_deathTweens.has(owner.id)) inten += pulse;
+            if (entry.sprite && entry.sprite.material && entry.sprite.material.emissiveMap) entry.sprite.material.emissiveIntensity = inten;
+            if (entry.modelMats && entry.modelMats.length) {
+                var grey = ((body.ap <= 0) ? 0.5 : 1) * _modelDiffuseScale();
+                for (var mi = 0; mi < entry.modelMats.length; mi++) {
+                    var mm = entry.modelMats[mi];
+                    if (mm.color.r !== grey) mm.color.setRGB(grey, grey, grey);
+                    if (mm.emissiveMap) mm.emissiveIntensity = inten;
+                }
+            }
+
+            for (var ci = 0; ci < g.children.length; ci++) {
+                var ch = g.children[ci];
+                if (ch._ew_facingIndicator) {
+                    if (_plateLook.rings && cam) {
+                        var rv = ch.children[0];
+                        if (rv && rv._ew_reticle) _updateRingVitals(rv, body, g, cam, ch.rotation.y, dt);
+                    }
+                } else if (ch._ew_silhouette && cam) {
+                    var syaw = Math.atan2(cam.position.x - g.position.x, cam.position.z - g.position.z);
+                    var silOff = (g._ew_spriteW || ts) * 0.5 + silDepth + ts * 0.02;
+                    ch.rotation.y = syaw;
+                    ch.position.x = Math.sin(syaw) * silOff;
+                    ch.position.z = Math.cos(syaw) * silOff;
+                }
+            }
+            _ringLookApply(g, owner || body, rLook, rScale);   // a ring shown only on the acting unit shows on its copy too
+            _fieldRingsTick(g);
+
+            /* a flyer's copy bobs in the air like it (_updateFlyingBob) */
+            if (typeof canFly === 'function' && typeof isUnitAirborne === 'function' && canFly(body) && isUnitAirborne(body)) {
+                var bh = 0, bid = String(rid);
+                for (var bc = 0; bc < bid.length; bc++) bh = (bh * 31 + bid.charCodeAt(bc)) | 0;
+                var bob = Math.sin(performance.now() / 1000 * FLY_BOB_SPEED * Math.PI * 2 + (Math.abs(bh) % 1000) * 0.00637) * FLY_BOB_AMP;
+                g.position.y = unitSurfaceY(body) + bob;
+            }
+
+            var dpo = entry._ew_decoyPlate;
+            if (dpo && dpo.el) {
+                var act = !!(owner && blitzUnit && blitzUnit.id === owner.id);
+                if (dpo.el.classList.contains('tp-active') !== act) dpo.el.classList.toggle('tp-active', act);
+                /* aimed at (the armed confirm target on its tile) = full strength, like _syncTargetedPlateClass */
+                var pt = state.pendingTarget;
+                var tgt = !!(pt && pt.x === body.x && pt.y === body.y);
+                if (dpo.el.classList.contains('tp-targeted') !== tgt) dpo.el.classList.toggle('tp-targeted', tgt);
+            }
+
+            if (animsOff || !entry.mixer) return;
+            if (!entry._ew_curAnim || entry._ew_curAnim !== 'idle') _playUnitModelAnim(entry, 'idle');
+            entry.mixer.update(dt);
+            var cur = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
+            if (cur) _modelAnimState.set(rid, { name: entry._ew_curAnim, time: cur.time });
+        });
     }
 
     /* ── Per-frame plate scaling: match plate width to projected sprite width ── */
@@ -15384,9 +15636,20 @@ const ThreeRenderer = (function () {
            plate filter hides them too: a decoy can never be in the focus set,
            so a plate that ignored the filter while every uninvolved real
            unit's plate hid would instantly betray it as fake. */
+        /* THE REAL-LOOKING COPY: while aiming (the ui.js tile set, not an action's focus) a copy keeps its plate by the
+           same rule ui.js gives a real unit — an action-relevant highlight on its tile — so an enemy in reach and its
+           copy in reach both keep theirs. */
+        var _dvAim = targetSet && !(_af && _af.set === targetSet);
+        var _dvHl = (_dvAim && window._ewHlCache) ? window._ewHlCache.map : null;
         for (var _dvi = 0; _dvi < _decoyPlates.length; _dvi++) {
             var _dve = _decoyPlates[_dvi];
-            _dve.css2d.visible = targetSet ? false : (_dve.mesh ? !!_dve.mesh.visible : true);
+            var _dvVis = _dve.mesh ? !!_dve.mesh.visible : true;
+            if (targetSet) {
+                var _dvT = (_dvHl && _dve.x != null) ? (_dvHl.get(_dve.x + ',' + _dve.y) || '') : '';
+                _dvVis = _dvVis && !!_dvT && _dvT !== 'move' && _dvT !== 'move-jump' && _dvT !== 'move-takeoff'
+                    && _dvT !== 'move-edge' && _dvT !== 'selected' && _dvT !== 'spell-range-bg';
+            }
+            _dve.css2d.visible = _dvVis;
         }
     }
 
@@ -15877,6 +16140,9 @@ const ThreeRenderer = (function () {
                     highlightGroup.add(_makeHlTile(jbt.x, jbt.y, _getSharedHlMat('move-edge'), 0.92, 0.3, jbt.z));
                 }
             }
+        } else if (state.actionMode === 'climb' && typeof G.getClimbTiles === 'function') {
+            tiles = G.getClimbTiles(sel);
+            for (var ci = 0; tiles && ci < tiles.length; ci++) highlightGroup.add(_makeHlTile(tiles[ci].x, tiles[ci].y, _getSharedHlMat('move-climb'), 0.92, 0.3, tiles[ci].z));
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
             tiles = G.getAttackTiles(sel);
             if (tiles) {
@@ -18232,17 +18498,18 @@ const ThreeRenderer = (function () {
             if (canvas) canvas.style.cursor = '';
             return;
         }
+        var _hDecoy = _decoyEntries.get(unitId) || null;   // THE REAL-LOOKING COPY
         if (canvas) {
-            var hUnit = _findUnit(unitId);
+            var hUnit = _hDecoy ? _hDecoy._ew_decoy.body : _findUnit(unitId);
             var hCol = (hUnit && hUnit.player === _viewerPlayerNum()) ? TURN_COLOR_OWN : TURN_COLOR_ENEMY;
             canvas.style.cursor = _unitHoverCursor(hCol);
         }
 
         /* Bring the hovered unit's nameplate to full strength (visual hierarchy). */
-        var hpo = _plateObjs.get(unitId);
+        var hpo = _hDecoy ? _hDecoy._ew_decoyPlate : _plateObjs.get(unitId);
         if (hpo && hpo.el) hpo.el.classList.add('tp-hovered');
 
-        var entry = unitEntries.get(unitId);
+        var entry = _hDecoy || unitEntries.get(unitId);
         if (!entry || !entry.group) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         _hoverGlowMesh = new THREE.Mesh(
@@ -18257,7 +18524,8 @@ const ThreeRenderer = (function () {
     }
     function _clearUnitHover() {
         if (_hoveredUnitId != null) {
-            var cpo = _plateObjs.get(_hoveredUnitId);
+            var _cDecoy = _decoyEntries.get(_hoveredUnitId);
+            var cpo = _cDecoy ? _cDecoy._ew_decoyPlate : _plateObjs.get(_hoveredUnitId);
             if (cpo && cpo.el) cpo.el.classList.remove('tp-hovered');
         }
         if (_hoverGlowMesh) {
@@ -19805,6 +20073,16 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+        /* THE RIG AT THE EYE (2026-10-20, the Flying Dutchman): a mast's rig (`_ew_occEye` on the piece) stands over the board, so a
+           camera swung up among the yards sat inside a sail that hid nothing it could ray-test — a rig the eye is within 2 squares of fades */
+        if (fieldSet) {
+            for (var ei = 0; ei < fieldSet.roots.length; ei++) {
+                var er = fieldSet.roots[ei], ec = er.o.children[0];
+                if (!ec || !ec._ew_occEye || roots.has(er.o)) continue;
+                if (!er.eyeBox) { er.eyeBox = new THREE.Box3(); try { er.o.updateMatrixWorld(true); er.eyeBox.setFromObject(er.o); } catch (e) { er.eyeBox.makeEmpty(); } }
+                if (!er.eyeBox.isEmpty() && er.eyeBox.distanceToPoint(eye) < ts * 2) roots.add(er.o);
+            }
+        }
         /* Unit blockers — cinematic action shots only. The opening
            cinematic frames whole rosters (units deliberately overlap in its
            beats), so it keeps every unit solid. */
@@ -20759,6 +21037,97 @@ const ThreeRenderer = (function () {
             g._ew_spriteTopY = baseY + bob + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
             g._ew_bobActive = true;
             _shadowMotion = true;   // the unit's shadow proxy bobs with it (§4.2)
+        }
+    }
+
+    /* ── 🧗 THE BATTLE CLIMB (2026-10-20, battle.js doClimb) ───────────────
+       The engine keeps a climber in the column at the FOOT of the face (unit.x/y/z) and marks the hang in
+       unit._climb (plain data — state-sync carries it, so host and guest draw the same thing from it). This pass
+       puts the body ON the wall: pushed against the face, its feet ~40% of the way up, climbing there over
+       CLIMB_VIS.climbMs with climbWall (Fast_Ladder_Climb) and then FROZEN on that frame (timeScale 0) — the hang
+       pose holds until the unit's next turn. When _climb goes: moved = the arrival (the engine's jump arc carries
+       the body; climbMantle plays ClimbUp_1m over the top), else a short drop to the foot (a knock-off flails with
+       the fall clip). Sprite units get the same placement, no clip. */
+    var CLIMB_VIS = { climbMs: 1000, hangFrac: 0.42, faceInset: 0.30, dropMs: 220 };
+    var _climbVis = new Map();   // uid → { key, t0, fromY, frozenAt, ts0, footX, footY, knock, drop }
+    function _climbEntryAct(uid) {
+        var e = _getUnitEntry(uid);
+        return (e && e.actions && e.actions.climbWall) ? { e: e, act: e.actions.climbWall } : null;
+    }
+    function _climbRestoreClip(uid, cv) {
+        var ea = _climbEntryAct(uid);
+        if (ea && cv.ts0 != null) ea.act.timeScale = cv.ts0;
+        var e = _getUnitEntry(uid);
+        if (e) e._ew_climbWant = null;
+    }
+    function _updateBattleClimbers() {
+        if (!unitGroup) return;
+        var inBattle = (typeof state !== 'undefined' && state && state.phase === 'battle');
+        if (!inBattle && !_climbVis.size) return;
+        var now = performance.now();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var lvl = ts * ELEV_STEP_RATIO;
+        for (var j = 0; j < unitGroup.children.length; j++) {
+            var g = unitGroup.children[j];
+            var uid = g._ew_unitId;
+            if (!uid) continue;
+            var unit = inBattle ? _findUnit(uid) : null;
+            var c = (unit && !unit.dead && !unit._dying && unit._climb && unit.x === unit._climb.footX && unit.y === unit._climb.footY) ? unit._climb : null;
+            var cv = _climbVis.get(uid);
+            var busy = _walkTweens.has(uid) || _displaceTweens.has(uid) || _jumpTweens.has(uid)
+                || _strikeTweens.has(uid) || _deathTweens.has(uid);
+            if (!c) {
+                if (!cv) continue;
+                if (!cv.drop) {
+                    _climbRestoreClip(uid, cv);
+                    if (!unit || unit.dead) { _climbVis.delete(uid); continue; }
+                    if (unit.x !== cv.footX || unit.y !== cv.footY) {
+                        _maybeStartModelAnim(uid, ['climbMantle', 'jump'], 1000);   // the pull-up over the top
+                        _climbVis.delete(uid);
+                        continue;
+                    }
+                    if ((unit._climbKnockSeq || 0) !== cv.knock) _maybeStartModelAnim(uid, ['fall', 'hit'], 900);
+                    cv.drop = { t0: now, fromY: g.position.y, fromX: g.position.x, fromZ: g.position.z };
+                }
+                if (busy) { _climbVis.delete(uid); continue; }
+                var dk = Math.min(1, (now - cv.drop.t0) / CLIMB_VIS.dropMs);
+                var dE = dk * dk;
+                g.position.y = cv.drop.fromY + (unitSurfaceY(unit) - cv.drop.fromY) * dE;
+                g.position.x = cv.drop.fromX + (unit.x * ts + ts / 2 - cv.drop.fromX) * dE;
+                g.position.z = cv.drop.fromZ + (unit.y * ts + ts / 2 - cv.drop.fromZ) * dE;
+                _shadowMotion = true;
+                if (dk >= 1) _climbVis.delete(uid);
+                continue;
+            }
+            if (busy) continue;
+            var key = c.dir + '|' + c.wallX + ',' + c.wallY + '|' + c.footX + ',' + c.footY + '|' + c.round;
+            var footY = unitSurfaceY(unit);
+            var hangY = footY + c.rise * lvl * CLIMB_VIS.hangFrac;
+            if (!cv || cv.key !== key) {
+                if (cv) _climbRestoreClip(uid, cv);
+                cv = { key: key, t0: now, fromY: (c.dir === 'down') ? footY + c.rise * lvl : footY, frozenAt: null, ts0: null,
+                       footX: c.footX, footY: c.footY, knock: unit._climbKnockSeq || 0, drop: null };
+                _climbVis.set(uid, cv);
+            }
+            var k = Math.min(1, (now - cv.t0) / CLIMB_VIS.climbMs);
+            var kE = 1 - (1 - k) * (1 - k);
+            var dxW = Math.sign(c.wallX - c.footX), dyW = Math.sign(c.wallY - c.footY);
+            g.position.x = unit.x * ts + ts / 2 + dxW * ts * CLIMB_VIS.faceInset;
+            g.position.z = unit.y * ts + ts / 2 + dyW * ts * CLIMB_VIS.faceInset;
+            g.position.y = cv.fromY + (hangY - cv.fromY) * kE;
+            _shadowMotion = true;
+            var ea = _climbEntryAct(uid);
+            if (ea) {
+                ea.e._ew_climbWant = 'climbWall';
+                if (cv.ts0 == null) cv.ts0 = (ea.act.timeScale > 0) ? ea.act.timeScale : 1;
+                if (k < 1) {
+                    ea.act.timeScale = (c.dir === 'down') ? -cv.ts0 : cv.ts0;   // down: the same climb played backwards
+                } else if (ea.e._ew_curAnim === 'climbWall') {
+                    if (cv.frozenAt == null) cv.frozenAt = ea.act.time;
+                    ea.act.timeScale = 0;
+                    if (Math.abs(ea.act.time - cv.frozenAt) > 1e-3) ea.act.time = cv.frozenAt;   // a flinch one-shot reset it
+                }
+            }
         }
     }
 
@@ -25135,6 +25504,7 @@ const ThreeRenderer = (function () {
         _updateSpriteAnimTweens();
         _updateUnitModels();
         _updateUnitSelfGlow();
+        _updateDecoyEntries();
     }
 
     function _clearAnimations() {
@@ -28892,14 +29262,20 @@ const ThreeRenderer = (function () {
         return g;
     }
     // Ziggurat Protocol — a stepped sandstone block
+    /* 2026-10-20 (mondo: "why is the textures so zoomed in/stretched for pyramid protocol"): _hzBox tiles at the far-horizon
+       density (HZ_TEX_DENSITY 0.5 = one sheet per TWO tiles), so the block wore its sheet twice the size of the board's
+       desert ground beside it; and it was authored 1.75 tiles tall, so _buildMonumentObj's fit to the 2-tile grid box
+       stretched it ×1.14 up and squeezed it ×0.98 across. Now: the board's density (one sheet per tile, _nrBoxUV) and
+       authored at exactly 2 tiles (the same tier proportions it was drawn at), so the fit is uniform. */
     function _hzZigguratBlock(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('desert') || _hzTex('sand') || _hzTex('cliff');
         var m = function (c) { return _hzGeoMat(tex, c || 0xd9bb8a); };
-        var H1 = ts * 1.05, H2 = ts * 0.7;
-        _hzAt(g, _hzBox(ts * 1.0, H1, ts * 1.0, ts, m()), 0, H1 / 2, 0);
-        _hzAt(g, _hzBox(ts * 0.72, H2, ts * 0.72, ts, m(0xe0c69c)), 0, H1 + H2 / 2, 0);
+        var box = function (w, h, d, mat) { var geo = new THREE.BoxGeometry(w, h, d); _nrBoxUV(geo, w, h, d, ts, 1); return new THREE.Mesh(geo, mat); };
+        var H1 = ts * 1.2, H2 = ts * 0.8;
+        _hzAt(g, box(ts * 1.0, H1, ts * 1.0, m()), 0, H1 / 2, 0);
+        _hzAt(g, box(ts * 0.72, H2, ts * 0.72, m(0xe0c69c)), 0, H1 + H2 / 2, 0);
         var band = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.02, ts * 0.07, ts * 1.02), _hzGlowMat(0x00d0ff, 0.5));   // the glyph band
         _hzAt(g, band, 0, H1 * 0.72, 0);
         return g;
@@ -32859,6 +33235,25 @@ const ThreeRenderer = (function () {
             g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
             return g;
         };
+    }
+    /* THE LOOKING-GLASS ARENA (2026-10-20): a chess piece standing in a ROOM (data.js HQ_TREE_KINDS chess_* — the terrain room plants
+       it as a tree: the walker bumps it, THE FIELD's raster makes its square solid cover). The board's own lathe (_hzChessPiece) at
+       room scale on a square marble plinth one square wide, white or black marble (the plinth the other colour, as on the Δ). hM =
+       metres tall, the plinth included; the base on y 0, the knight's head toward +Z. Materials shared per colour (one draw state). */
+    var _hqChessMats = {};
+    function _hqChessStatue(kind, dark, hM, U) {
+        var piece = _CHESS_PROFILES[kind] ? kind : 'pawn';
+        var mat = function (k, col, shine) {
+            var m = _hqChessMats[k];
+            if (!m) { m = _hqMat('marble_light', 1, 1, { color: col, shininess: shine, specular: dark ? 0x3a3a44 : 0x5a5a5a }); m._ew_shared = true; _hqChessMats[k] = m; }
+            return m;
+        };
+        var body = mat(dark ? 'b' : 'w', dark ? 0x3a3348 : 0xf4f0e8, 70), foot = mat(dark ? 'bp' : 'wp', dark ? 0xe8e2d6 : 0x2e2a38, 30);
+        var g = new THREE.Group(), side = 1.56, plinthH = 0.16, rMul = { pawn: 0.66, knight: 0.72, rook: 0.56, bishop: 0.56, queen: 0.58, king: 0.58 }[piece] || 0.6;
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(side * U, plinthH * U, side * U), foot); plinth.position.y = plinthH / 2 * U; g.add(plinth);
+        var pc = _hzChessPiece(piece, (hM - plinthH) * U, body, 1.75 * U, rMul); pc.position.y = plinthH * U; g.add(pc);
+        g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        return g;
     }
     function _hzChessPieceFar(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -39581,6 +39976,7 @@ const ThreeRenderer = (function () {
         _updateBatSwarms();
         _updateFlyingBob();
         _riseTick();   // THE RISE
+        _updateBattleClimbers();   // 🧗 the hang on the wall
         _updateTowerCubes();
         _updateTrafficLights();
         _updateTorchFlames();
@@ -39865,7 +40261,7 @@ const ThreeRenderer = (function () {
     function _fieldFloorLit(x, y, z) {
         if (typeof state === 'undefined' || !state || !state.actionMode || !state.selectedUnitId) return null;
         var mode = state.actionMode;
-        if (mode === 'move' || mode === 'jump') {
+        if (mode === 'move' || mode === 'jump' || mode === 'climb') {
             var cache = window._ewHlCache, pk = x + ',' + y;
             if (!cache || !cache.map || !cache.key || String(cache.key).indexOf(state.selectedUnitId + '|' + mode) !== 0) return null;
             var cls = cache.map.get(pk);
@@ -39916,7 +40312,9 @@ const ThreeRenderer = (function () {
        changes under a stationary mouse. */
     function _resolveHoverAt(clientX, clientY) {
         var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
-        _updateUnitHover(unitHit ? unitHit.unitId : null);
+        /* THE REAL-LOOKING COPY: a decoy under the pointer lights up like a unit (hover ring, full-strength plate) */
+        var _decoyHit = (!unitHit && _decoyEntries.size) ? ThreeCamera.screenToUnit(clientX, clientY, canvas, { children: _decoyGroups() }) : null;
+        _updateUnitHover(unitHit ? unitHit.unitId : (_decoyHit ? _decoyHit.unitId : null));
 
         var hit = _editorResolveTile(clientX, clientY);
         var _ffpH = _fieldFloorPick(clientX, clientY);   // THE TWO FLOORS: the lit floor under the pointer
@@ -40213,6 +40611,7 @@ const ThreeRenderer = (function () {
         _nexusBarGroup = null;
         textureCache.clear(); tileMeshes.clear(); objectMeshes.clear();
         turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear();
+        _decoyEntries.clear(); _decoyPlates.length = 0;
         _disposeAllModelRigs();
         _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();
@@ -46630,6 +47029,7 @@ const ThreeRenderer = (function () {
         });
         if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
         if (name) _evBaseTint(m, name);   // THE BASE TINT (2026-09-16): a borrowed sheet keeps its identity in the building too
+        if (name && m.map && _EMISSIVE_TERRAIN[name] && !opts.emissive) _emissiveTerrainMat(m, name, m.map);   // THE HOLO SIM (2026-10-20): a self-lit sheet (the holo plates) glows on a room's walls and ceiling as on the board
         if (!opts.noAo) m.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: the room-box AO (strength 0 outside a box room)
         return m;
     }
@@ -47820,13 +48220,13 @@ const ThreeRenderer = (function () {
                     wRuns = nx.filter(function (rn) { return rn[1] - rn[0] > 0.01; });
                 });
                 var cutRun = cuts.length ? wRuns : [null];
-                cutRun.forEach(function (rn) {
+                cutRun.forEach(function (rn) {   // `wallTile` (2026-10-20, the Holo Sim): metres per wall tile in a closed room (its plates are one battle square)
                     var L = rn ? rn[1] - rn[0] : len;
-                    G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, L / (TR || 3.2), H / (TR || 3.2), wallOpts), rn));
+                    G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, L / (S.wallTile || TR || 3.2), H / (S.wallTile || TR || 3.2), wallOpts), rn));
                     G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, L / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), rn));
                 });
-                cuts.forEach(function (c) { if (H - c.top > 0.02) G.add(slab(c.top, H, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), (H - c.top) / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); });
-                cuts.forEach(function (c) { if (c.bot > 0.02) { var bt = Math.min(c.bot, H); G.add(slab(0, bt, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), bt / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); if (bt > S.dadoH) G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, 2 * c.half / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), [c.at - c.half, c.at + c.half])); } });   // THE PASSAGES: the wall under a raised opening
+                cuts.forEach(function (c) { if (H - c.top > 0.02) G.add(slab(c.top, H, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (S.wallTile || TR || 3.2), (H - c.top) / (S.wallTile || TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); });
+                cuts.forEach(function (c) { if (c.bot > 0.02) { var bt = Math.min(c.bot, H); G.add(slab(0, bt, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (S.wallTile || TR || 3.2), bt / (S.wallTile || TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); if (bt > S.dadoH) G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, 2 * c.half / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), [c.at - c.half, c.at + c.half])); } });   // THE PASSAGES: the wall under a raised opening
                 var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
                 cutRun.forEach(function (rn) { G.add(slab(0, 0.08, 0.03, 0.05, trim, rn)); G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim, rn)); });
                 G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
@@ -47851,7 +48251,7 @@ const ThreeRenderer = (function () {
             }
             /* 'low': the field wall, a cap on it */
             var lowH = HQ_EDGE_LOW_H;
-            var lowMat = _hqMat(texWall, len / (TR || 3.2), lowH / (TR || 3.2), { shininess: 4, specular: 0x101010 });
+            var lowMat = _hqMat(texWall, len / (S.wallTile || TR || 3.2), lowH / (S.wallTile || TR || 3.2), { shininess: 4, specular: 0x101010 });
             runs.forEach(function (rn) {
                 G.add(slab(0, lowH, 0.0, 0.42, lowMat, rn));
                 G.add(slab(lowH, lowH + 0.07, 0.0, 0.5, edgeTrim, rn));
@@ -48747,6 +49147,9 @@ const ThreeRenderer = (function () {
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
+        /* THE HOLO SIM (2026-10-20): a self-lit floor sheet (the holo plates, _EMISSIVE_TERRAIN) — the emissive is multiplied by the
+           sheet's own texel below, so only the plates' rims glow and the dark fill stays dark, as on the old board */
+        if (_EMISSIVE_TERRAIN[info.floor]) m.emissive = new THREE.Color(_EMISSIVE_TERRAIN[info.floor].color).multiplyScalar(_EMISSIVE_TERRAIN[info.floor].intensity);
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
@@ -49901,6 +50304,380 @@ const ThreeRenderer = (function () {
         });
         G.add(hull);
     }
+    /* THE GALLEON (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... dont delete these voxel maps though, some
+       of them still look good like the dutchman, but they can still be made to look better and more realistic"): a FLOATING room whose
+       `terrain.float.hull.kind` is 'galleon' (THE FLYING DUTCHMAN's main deck, data.js HQ_AREA_SPECS.prebuilt_revenge) hangs a sailing
+       ship round its field in place of the starship — THE HULL lofted under the plate (bow east): its sides up to the deck's own rim
+       (the sheer steps up at every castle), a little tumblehome down to the waterline, the dark bottom rounding through the bilge to the
+       keel, the bow drawn out past the forecastle into THE BEAKHEAD (its own low deck and rail), the flat TRANSOM at the stern with THE
+       STERN GALLERY (the great cabin's lit windows, the balcony, her name) and THE STERN LANTERNS on the taffrail (one real light); the
+       WALES, the CHANNELS at every mast, the GUN DECK's row of ports down each side (some lit from inside), the RUDDER; THE BOWSPRIT and
+       its jib boom with the spritsail; THE MASTS where the room's terrain trees of kind 'mast' stand (lower mast, fighting top, topmast,
+       topgallant, crosstrees), their YARDS and TATTERED SAILS bellied forward by the wind astern (the main course furled over the waist,
+       where the fights are; the mizzen a lateen), the Jolly Roger and the pennants, a lantern on each mast (the mainmast's a real
+       light over the waist); THE RIGGING (shrouds with their ratlines, stays, backstays, lifts) as ONE line batch; THE CAPSTAN and THE
+       HELM (the wheel GLB) where their trees stand; THE MAIN HATCH's grating at the plaza (the nexus) and the fore hatch's; THE WAKE
+       down both sides and astern, scrolling with the voyage. Room metres in the field's frame (U px each); the hull's pieces are one
+       merged mesh per material and never fade (_ew_occSkip), each mast's rig is its own piece that fades when it stands between the eye
+       and a unit. `hull` keys: draft (m of hull under the sea's sheet; 3.8), bow (m the beakhead runs past the deck's east edge; 9.5),
+       stern (m the transom stands past its west edge; 0.05). */
+    var _HQ_SHIP_TREES = { mast: 1, capstan: 1, helm: 1 };   // terrain trees the ship draws itself (three-renderer.js treeOne plants no foliage for them)
+    var _hqSailTexCache = {};
+    function _hqSailTex(seed) {
+        if (_hqSailTexCache[seed]) return _hqSailTexCache[seed];
+        if (typeof document === 'undefined') return null;
+        var r = _mulberry32(0x5a11 + seed * 131), W = 128, Hh = 128, c = document.createElement('canvas'); c.width = W; c.height = Hh;
+        var g = c.getContext('2d');
+        g.fillStyle = '#e4dccb'; g.fillRect(0, 0, W, Hh);
+        /* the cloths (vertical seams), the weather's grime toward the foot, a reef band */
+        g.strokeStyle = 'rgba(90,76,58,0.45)'; g.lineWidth = 1;
+        for (var x = 8; x < W; x += 12) { g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, Hh); g.stroke(); }
+        var gr = g.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, 'rgba(60,50,36,0)'); gr.addColorStop(1, 'rgba(60,50,36,0.38)');
+        g.fillStyle = gr; g.fillRect(0, 0, W, Hh);
+        g.fillStyle = 'rgba(80,66,48,0.35)'; g.fillRect(0, 18, W, 2);
+        for (var s = 0; s < 14; s++) { g.fillStyle = 'rgba(70,58,42,' + (0.06 + r() * 0.12) + ')'; g.beginPath(); g.ellipse(r() * W, r() * Hh, 4 + r() * 14, 3 + r() * 10, r() * 3, 0, Math.PI * 2); g.fill(); }
+        /* TATTERED: the foot torn ragged, rents and holes through the cloth (cut to clear: the material's alphaTest drops them) */
+        g.globalCompositeOperation = 'destination-out';
+        g.beginPath(); g.moveTo(0, Hh);
+        for (var fx = 0; fx <= W; fx += 6) g.lineTo(fx, Hh - 4 - r() * (r() < 0.25 ? 34 : 12));
+        g.lineTo(W, Hh); g.closePath(); g.fill();
+        for (var h = 0; h < 5 + (seed % 3); h++) {
+            var hx = 14 + r() * (W - 28), hy = 24 + r() * (Hh - 50), hw = 3 + r() * 9, hh = 6 + r() * 22;
+            g.beginPath(); g.moveTo(hx, hy - hh / 2);
+            for (var k = 1; k <= 9; k++) { var a = k / 9 * Math.PI * 2; g.lineTo(hx + Math.sin(a) * hw * (0.6 + r() * 0.6), hy - Math.cos(a) * hh / 2 * (0.7 + r() * 0.5)); }
+            g.closePath(); g.fill();
+        }
+        for (var t = 0; t < 2; t++) {   // a rent up from the foot
+            var tx = 20 + r() * (W - 40); g.beginPath(); g.moveTo(tx - 3, Hh); g.lineTo(tx + (r() - 0.5) * 8, Hh - 30 - r() * 40); g.lineTo(tx + 4, Hh); g.closePath(); g.fill();
+        }
+        g.globalCompositeOperation = 'source-over';
+        var tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter;
+        _hqSailTexCache[seed] = tex;
+        return tex;
+    }
+    function _hqBuildGalleon(room, info, G, TM, rng, hl) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
+        var Y = function (m) { return m * U + 0.3; };
+        var V3 = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1))); return g; };
+        var xMin = x0, xMax = x0 + (nx - 1) * res, zMax = z0 + (nz - 1) * res, zc = (z0 + zMax) / 2, hd = (zMax - z0) / 2;
+        var hAt = function (x, z) { var i = Math.max(0, Math.min(nx - 1, Math.round((x - x0) / res))), j = Math.max(0, Math.min(nz - 1, Math.round((z - z0) / res))); return H[j * nx + i]; };
+        var rimH = function (x) { return Math.max(hAt(x, z0), hAt(x, zMax)); };
+        var sea = room.terrain && room.terrain.sea, seaY = (sea && typeof sea.y === 'number') ? sea.y : -4.2, wl = seaY + 0.25;
+        var draft = Math.max(1.5, +hl.draft || 3.8), yKeel = seaY - draft;
+        var bowL = Math.max(2, (hl.bow != null) ? +hl.bow : 9.5), sternX = xMin - ((hl.stern != null) ? +hl.stern : 0.05), stemX = xMax + bowL;
+        var hb0 = hd + 0.08, TUM = 1.07, beakY = 0.75, beakRail = 1.6;
+        /* THE MATERIALS: Phong with a self-lit lift (the ship sails at night: a plain side face reads black), one mesh per material */
+        var phong = function (map, col, emi, shin, o) { var m = new THREE.MeshPhongMaterial({ map: map || null, color: col, shininess: shin || 8, side: THREE.DoubleSide }); m.emissive = new THREE.Color(emi); if (o) Object.assign(m, o); return m; };
+        var hullMat = phong(_hzTex('wood'), 0xa07850, 0x2a1c10, 6), bottomMat = phong(_hzTex('wood'), 0x3c3430, 0x0e0c0a, 4);
+        var darkMat = phong(_hzTex('wood'), 0x5a3e28, 0x1c120a, 6), deckMat = phong(_hzTex('wood_planks'), 0xb9885a, 0x2a1e12, 4);
+        var mastMat = phong(_hzTex('wood'), 0x7a5a3c, 0x22180e, 8), ironMat = phong(null, 0x3a3a3e, 0x121214, 30);
+        var glowMat = function (col, op, amp, spd, map) {
+            var m = new THREE.MeshBasicMaterial({ map: map || null, color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+            if (amp) _hq.fxPulse.push({ mat: m, baseOp: op, opAmp: amp, spd: spd || 1, phase: rng() * Math.PI * 2 });
+            return m;
+        };
+        var hull = new THREE.Group(); hull.name = 'hqGalleon'; hull._ew_hqPart = 'underside';
+        var add = function (grp, geo, mat, occ) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; if (!occ) m._ew_occSkip = true; m._ew_hqPart = 'underside'; grp.add(m); return m; };
+        var kitTs0 = _hzKitTs; _hzKitTs = 1.75 * U;   // the misc kit sizes itself in this room's squares
+        try {
+        /* ── THE HULL'S LINES: the sheer (the deck's rim; the beakhead's rail past the bow), the half-beam at the sheer, the keel ── */
+        var topY = function (x) {
+            if (x <= xMax) return rimH(Math.max(xMin, x)) - 0.02;
+            var v = (x - xMax) / bowL; return beakRail + 0.9 * Math.pow(v, 2.5);
+        };
+        var hbT = function (x) {
+            if (x <= xMax) return hb0;
+            var v = Math.min(1, (x - xMax) / bowL); return hb0 * Math.pow(Math.max(0, Math.cos(v * Math.PI / 2)), 0.72);
+        };
+        var keelY = function (x) {
+            var xf = xMax - 6;
+            if (x <= xf) return yKeel;
+            var v = Math.min(1, (x - xf) / (stemX - xf)); return yKeel + (wl + 0.8 - yKeel) * Math.pow(v, 1.7);
+        };
+        var fine = function (x) {   // the bottom's fullness: a full midship section, a fine entry and run
+            if (x > xMax - 4) return 0.5 + 0.9 * Math.min(1, (x - (xMax - 4)) / (bowL + 4));
+            if (x < xMin + 8) return 0.5 + 0.5 * Math.min(1, (xMin + 8 - x) / 8);
+            return 0.5;
+        };
+        var NA = 4, NB = 6;
+        var sideAt = function (x) {   // starboard: the sheer → the waterline (NA steps) → the keel (NB steps)
+            var yt = topY(x), b = hbT(x), yk = keelY(x), p = fine(x), out = [];
+            for (var a = 0; a <= NA; a++) { var f = a / NA; out.push({ y: yt + (wl - yt) * f, z: b * (1 + (TUM - 1) * Math.sin(f * Math.PI / 2)) }); }
+            for (var k = 1; k <= NB; k++) { var an = k / NB * Math.PI / 2; out.push({ y: wl - (wl - yk) * Math.sin(an), z: b * TUM * Math.pow(Math.cos(an), p) }); }
+            return out;
+        };
+        var halfAt = function (x, y) {   // the hull's half-beam at height y (the wales, the ports, the channels sit on it)
+            var yt = topY(x), b = hbT(x);
+            if (y >= wl) { var f = Math.max(0, Math.min(1, (yt - y) / Math.max(0.01, yt - wl))); return b * (1 + (TUM - 1) * Math.sin(f * Math.PI / 2)); }
+            var yk = keelY(x), s = Math.max(0, Math.min(1, (wl - y) / Math.max(0.01, wl - yk))); return b * TUM * Math.pow(Math.cos(Math.asin(s)), fine(x));
+        };
+        /* the stations: every grid node along the plate (the sheer follows the castles' steps exactly), the bow drawn out on a cosine */
+        var xs = [sternX], st = Math.max(1, Math.round(0.5 / res));
+        for (var ii = 0; ii < nx; ii += st) xs.push(x0 + ii * res);
+        if (xs[xs.length - 1] < xMax - 1e-6) xs.push(xMax);
+        for (var bi = 1; bi <= 14; bi++) xs.push(xMax + bowL * (0.5 - 0.5 * Math.cos(bi / 14 * Math.PI)) * (bi === 14 ? 0.999 : 1));
+        var secs = xs.map(sideAt);
+        var ring = function (s, x, from, to, port) {   // world points of a section, starboard from → to (port mirrored, reversed)
+            var pts = [], k;
+            for (k = from; k <= to; k++) pts.push({ x: x * U, y: Y(s[k].y), z: (zc + s[k].z) * U });
+            if (port) for (k = to - 1; k >= from; k--) pts.push({ x: x * U, y: Y(s[k].y), z: (zc - s[k].z) * U });
+            return pts;
+        };
+        var hullSkin = [], bottom = [], trim = [], dark = [], deck = [], iron = [];
+        /* the topsides (two strips, starboard and port: the deck between them is the field), the bottom (one ring through the keel) */
+        hullSkin.push(_nrLoft(secs.map(function (s, i) { return ring(s, xs[i], 0, NA, false); }), TM, { open: true }));
+        hullSkin.push(_nrLoft(secs.map(function (s, i) { return ring(s, xs[i], 0, NA, false).map(function (p) { return { x: p.x, y: p.y, z: 2 * zc * U - p.z }; }); }), TM, { open: true }));
+        bottom.push(_nrLoft(secs.map(function (s, i) { return ring(s, xs[i], NA, NA + NB, true); }), TM, { open: true }));
+        /* THE TRANSOM: the stern section filled flat */
+        var s0 = secs[0], sh = new THREE.Shape(), k0;
+        sh.moveTo(s0[0].z, s0[0].y);
+        for (k0 = 1; k0 < s0.length; k0++) sh.lineTo(s0[k0].z, s0[k0].y);
+        for (k0 = s0.length - 2; k0 >= 0; k0--) sh.lineTo(-s0[k0].z, s0[k0].y);
+        var tg = new THREE.ShapeGeometry(sh), tp = tg.getAttribute('position'), tuv = tg.getAttribute('uv');
+        for (k0 = 0; k0 < tp.count; k0++) { var tz = tp.getX(k0), ty = tp.getY(k0); tp.setXYZ(k0, sternX * U, Y(ty), (zc + tz) * U); tuv.setXY(k0, tz * U / TM, ty * U / TM); }
+        tg.computeVertexNormals(); hullSkin.push(tg);
+        /* THE WALES: two dark strakes the length of her, proud of the planking; the boot-top at the waterline */
+        [-0.6, -2.3, wl + 0.12].forEach(function (yw, wi) {
+            [-1, 1].forEach(function (sd) {
+                var pts = [];
+                for (var x = sternX + 0.05; x <= stemX - 1.2; x += 1.25) { if (topY(x) - yw < 0.25) continue; pts.push(V3(x * U, Y(yw), (zc + sd * (halfAt(x, yw) + 0.04)) * U)); }
+                if (pts.length > 3) (wi === 2 ? dark : trim).push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, (wi === 2 ? 0.07 : 0.14) * U, 5, false));
+            });
+        });
+        /* THE RUDDER on the sternpost */
+        var rg = new THREE.BoxGeometry(0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U); _hzBoxUV(rg, 0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U, TM);
+        dark.push(place(rg, (sternX - 0.45) * U, Y((wl + 1.5 + yKeel) / 2), zc * U));
+        /* THE GUN DECK's ports down each side (between the wales): a dark lid frame each, some lit from inside */
+        var portLit = [], portY = -1.45;
+        for (var px = xMin + 3.5; px <= xMax - 3; px += 3.5) {
+            [-1, 1].forEach(function (sd) {
+                var z = zc + sd * (halfAt(px, portY) + 0.05);
+                var fg = new THREE.BoxGeometry(0.9 * U, 0.9 * U, 0.08 * U); dark.push(place(fg, px * U, Y(portY), z * U));
+                if (rng() < 0.55) portLit.push(place(new THREE.PlaneGeometry(0.62 * U, 0.62 * U), px * U, Y(portY), (z + sd * 0.05) * U));
+                else trim.push(place(new THREE.BoxGeometry(0.7 * U, 0.7 * U, 0.1 * U), px * U, Y(portY), (z + sd * 0.04) * U));
+            });
+        }
+        /* THE STERN GALLERY: the great cabin's windows across the transom, the balcony under them, her name below */
+        var tW = s0[0].z, galY = 0.35, win = [];
+        for (var wz = -tW * 0.72; wz <= tW * 0.72 + 0.01; wz += tW * 0.72 / 2.5) {
+            win.push(place(new THREE.PlaneGeometry(1.3 * U, 1.25 * U), (sternX - 0.04) * U, Y(galY + 0.75), (zc + wz) * U, 0, -Math.PI / 2, 0));
+            dark.push(place(new THREE.BoxGeometry(0.1 * U, 1.5 * U, 0.12 * U), (sternX - 0.06) * U, Y(galY + 0.75), (zc + wz - 0.72) * U));
+        }
+        dark.push(place(new THREE.BoxGeometry(0.12 * U, 0.14 * U, tW * 1.6 * U), (sternX - 0.06) * U, Y(galY + 1.48), zc * U));
+        var balc = new THREE.BoxGeometry(1.1 * U, 0.16 * U, tW * 1.7 * U); _hzBoxUV(balc, 1.1 * U, 0.16 * U, tW * 1.7 * U, TM); deck.push(place(balc, (sternX - 0.55) * U, Y(galY - 0.08), zc * U));
+        trim.push(place(new THREE.BoxGeometry(0.08 * U, 0.08 * U, tW * 1.7 * U), (sternX - 1.05) * U, Y(galY + 0.95), zc * U));
+        for (var bz = -tW * 0.85; bz <= tW * 0.85 + 0.01; bz += tW * 0.85 / 7) trim.push(place(new THREE.BoxGeometry(0.07 * U, 0.95 * U, 0.07 * U), (sternX - 1.05) * U, Y(galY + 0.47), (zc + bz) * U));
+        var nameTex = _hzTextTex('fd_name_hull', ['THE FLYING DUTCHMAN'], { w: 512, h: 64, bg: '#2a1a10', border: '#d8a860', color: '#f4e4c8', pad: 0.12 });
+        if (nameTex) { var nm = new THREE.MeshPhongMaterial({ map: nameTex, color: 0xffffff, side: THREE.DoubleSide }); nm.emissive = new THREE.Color(0x3a2a14); add(hull, place(new THREE.PlaneGeometry(Math.min(10, tW * 1.4) * U, 1.25 * U), (sternX - 0.05) * U, Y(galY - 0.95), zc * U, 0, -Math.PI / 2, 0), nm); }
+        /* THE BEAKHEAD: its low deck and grating past the forecastle, the forecastle's bulkhead down to it */
+        var bs = new THREE.Shape(), bk = [];
+        for (var bx = xMax; bx <= stemX - 0.3; bx += bowL / 12) bk.push([bx, hbT(bx) * 0.97]);
+        bs.moveTo(bk[0][0], -bk[0][1]); bk.forEach(function (p) { bs.lineTo(p[0], -p[1]); }); for (var bj = bk.length - 1; bj >= 0; bj--) bs.lineTo(bk[bj][0], bk[bj][1]);
+        var bg2 = new THREE.ShapeGeometry(bs), bp = bg2.getAttribute('position'), buv = bg2.getAttribute('uv');
+        for (k0 = 0; k0 < bp.count; k0++) { var bxx = bp.getX(k0), bzz = bp.getY(k0); bp.setXYZ(k0, bxx * U, Y(beakY), (zc + bzz) * U); buv.setXY(k0, bxx * U / TM, bzz * U / TM); }
+        bg2.computeVertexNormals(); deck.push(bg2);
+        var fcTop = rimH(xMax);
+        if (fcTop > beakY + 0.1) { var bh = new THREE.BoxGeometry(0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U); _hzBoxUV(bh, 0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U, TM); hullSkin.push(place(bh, (xMax + 0.07) * U, Y((fcTop + beakY) / 2), zc * U)); }
+        /* ── THE MAIN HATCH (the plaza: the nexus) and the castles' hatches: a grating of slats over the dark hold ── */
+        var grate = function (cx, cz, w) {
+            var y = hAt(cx, cz) + 0.03, n = Math.round(w / 0.42);
+            var hole = new THREE.PlaneGeometry(w * U, w * U); hole.rotateX(-Math.PI / 2); iron.push(place(hole, cx * U, Y(y - 0.02), cz * U));
+            for (var q = 0; q <= n; q++) {
+                var o = -w / 2 + q * (w / n);
+                trim.push(place(new THREE.BoxGeometry(w * U, 0.05 * U, 0.08 * U), cx * U, Y(y), (cz + o) * U));
+                trim.push(place(new THREE.BoxGeometry(0.08 * U, 0.05 * U, w * U), (cx + o) * U, Y(y + 0.01), cz * U));
+            }
+        };
+        var plaza = (room.counters || []).find(function (c) { return c && c.id === 'battle'; });
+        grate(plaza ? plaza.x : 0, plaza ? plaza.z : 0, 3.2);
+        /* ── THE BOWSPRIT and the jib boom, rising off the forecastle over the beakhead; the spritsail under it ── */
+        var spA = 0.42, spBase = V3(xMax - 1.2, fcTop + 0.5, zc), spL = bowL + 9, spDir = V3(Math.cos(spA), Math.sin(spA), 0);
+        var spTip = spBase.clone().addScaledVector(spDir, spL);
+        var spar = function (a, b, r0, r1, list) {
+            var d = b.clone().sub(a), L = d.length(), g = new THREE.CylinderGeometry(r1 * U, r0 * U, L * U, 8);
+            g.applyMatrix4(new THREE.Matrix4().compose(V3((a.x + b.x) / 2 * U, Y((a.y + b.y) / 2), (a.z + b.z) / 2 * U), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d.normalize()), V3(1, 1, 1)));
+            (list || dark).push(g); return g;
+        };
+        spar(spBase, spTip, 0.42, 0.2);
+        var jibTip = spTip.clone().addScaledVector(spDir, 7);
+        spar(spTip.clone().addScaledVector(spDir, -2), jibTip, 0.16, 0.08);
+        /* ── THE RIG: one group per mast (it fades in front of the eye) ── */
+        var lines = [];
+        var L2 = function (a, b) { lines.push(a.x * U, Y(a.y), a.z * U, b.x * U, Y(b.y), b.z * U); };
+        var lanternDone = 0;
+        var trees = (info.trees || []).filter(function (t) { return t && _HQ_SHIP_TREES[t.kind]; });
+        var masts = trees.filter(function (t) { return t.kind === 'mast'; }).sort(function (a, b) { return a.x - b.x; });
+        var mainM = masts.slice().sort(function (a, b) { return (b.h || 0) - (a.h || 0); })[0];
+        var chOut = hb0 + 0.38;
+        var sailGeo = function (mx, yTop, yBot, wTop, wBot, depth, foot) {   // a square sail across the beam, bellied forward (+x)
+            var g = new THREE.PlaneGeometry(1, 1, 8, 6), p = g.getAttribute('position'), uvA = g.getAttribute('uv');
+            for (var i = 0; i < p.count; i++) {
+                var u = uvA.getX(i), v = 1 - uvA.getY(i), w = wTop + (wBot - wTop) * v;
+                var bel = depth * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, v * 0.9 + 0.1))) + (foot || 0) * v;
+                p.setXYZ(i, (mx + bel) * U, Y(yTop - (yTop - yBot) * v), (zc + (u - 0.5) * w) * U);
+            }
+            g.computeVertexNormals(); return g;
+        };
+        masts.forEach(function (t) {
+            var mx = t.x, mz = zc + (t.z - zc), y0 = hAt(t.x, t.z), h = Math.max(8, t.h || 24), s = Math.max(0.5, (t.r || 0.9) / 0.9), r0 = Math.max(0.24, (t.r || 0.9) * 0.48);
+            var isMain = t === mainM, isMizzen = masts.length > 2 && t === masts[0];
+            var rgp = new THREE.Group(); rgp.name = 'hqGalleonMast'; rgp._ew_hqPart = 'underside'; rgp._ew_occEye = true;
+            var mWood = [], mDark = [], mSail = [], mFurl = [];
+            var yT = y0 + h * 0.5, yHead = y0 + h * 0.84, yC = y0 + h * 0.46, yTs = y0 + h * 0.76, yTg = y0 + h * 0.95;
+            var cyl = function (ra, rb, ya, yb, list) { var g = new THREE.CylinderGeometry(rb * U, ra * U, (yb - ya) * U, 10); list.push(place(g, mx * U, Y((ya + yb) / 2), mz * U)); };
+            cyl(r0, r0 * 0.82, y0 - 0.4, yT + 0.6, mWood);                 // the lower mast
+            cyl(r0 * 0.6, r0 * 0.45, yT - 1.0, yHead + 0.4, mWood);        // the topmast (doubled at the top)
+            cyl(r0 * 0.33, r0 * 0.18, yHead - 0.8, y0 + h, mWood);         // the topgallant
+            /* the fighting top: its platform, a rail round it; the crosstrees at the topmast head */
+            var topR = 2.2 * s;
+            mDark.push(place(new THREE.CylinderGeometry(topR * U, topR * 0.9 * U, 0.24 * U, 16), mx * U, Y(yT), mz * U));
+            var tor = new THREE.TorusGeometry(topR * 0.96 * U, 0.06 * U, 4, 20); tor.rotateX(Math.PI / 2); mDark.push(place(tor, mx * U, Y(yT + 0.75), mz * U));
+            for (var pq = 0; pq < 8; pq++) { var pa = pq / 8 * Math.PI * 2; mDark.push(place(new THREE.BoxGeometry(0.07 * U, 0.75 * U, 0.07 * U), (mx + Math.cos(pa) * topR * 0.96) * U, Y(yT + 0.37), (mz + Math.sin(pa) * topR * 0.96) * U)); }
+            mDark.push(place(new THREE.BoxGeometry(0.14 * U, 0.14 * U, 3.0 * s * U), mx * U, Y(yHead), mz * U));
+            mDark.push(place(new THREE.BoxGeometry(2.0 * s * U, 0.14 * U, 0.14 * U), mx * U, Y(yHead), mz * U));
+            /* the yards and their sails */
+            var Lc = Math.min(2 * hd * 1.02, 26) * s;
+            var yard = function (y, L) { var g = new THREE.CylinderGeometry(0.1 * U, 0.1 * U, L * U, 6); g.rotateX(Math.PI / 2); mWood.push(place(g, (mx + 0.45) * U, Y(y), mz * U)); var g2 = new THREE.CylinderGeometry(0.2 * U, 0.2 * U, L * 0.45 * U, 8); g2.rotateX(Math.PI / 2); mWood.push(place(g2, (mx + 0.45) * U, Y(y), mz * U)); };
+            var sail = function (yA, yB, wA, wB) { mSail.push(sailGeo(mx + 0.55, yA - 0.1, yB, wA * 0.96, wB * 0.98, Math.max(0.6, wA * 0.09), 0.6)); };
+            if (isMizzen) {
+                /* the MIZZEN wears a LATEEN: the long yard slung slantwise fore and aft, the triangle under it; a small topsail over it */
+                var la = V3(mx - 7.5 * s, y0 + h * 0.2, mz), lb = V3(mx + 6.0 * s, y0 + h * 0.62, mz);
+                var lg = new THREE.CylinderGeometry(0.1 * U, 0.14 * U, la.distanceTo(lb) * U, 6), ld = lb.clone().sub(la).normalize();
+                lg.applyMatrix4(new THREE.Matrix4().compose(V3((la.x + lb.x) / 2 * U, Y((la.y + lb.y) / 2), (mz + 0.4) * U), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), ld), V3(1, 1, 1))); mWood.push(lg);
+                var lt = new THREE.BufferGeometry(), foot = V3(mx - 5.5 * s, y0 + 2.6, mz), N = 6, lpos = [], luv = [], lidx = [];
+                for (var a2 = 0; a2 <= N; a2++) for (var b2 = 0; b2 <= N - a2; b2++) {
+                    var fa = a2 / N, fb = b2 / N, fc = 1 - fa - fb, P = V3(la.x * fc + lb.x * fa + foot.x * fb, la.y * fc + lb.y * fa + foot.y * fb, mz);
+                    var bell = Math.max(0, fa * fb * fc) * 6 * 1.4;
+                    lpos.push(P.x * U, Y(P.y), (P.z + 0.45 + bell) * U); luv.push(fa + fb * 0.5, fb);
+                }
+                var idxOf = function (a3, b3) { var o = 0; for (var q2 = 0; q2 < a3; q2++) o += N + 1 - q2; return o + b3; };
+                for (a2 = 0; a2 < N; a2++) for (b2 = 0; b2 < N - a2; b2++) { lidx.push(idxOf(a2, b2), idxOf(a2 + 1, b2), idxOf(a2, b2 + 1)); if (b2 < N - a2 - 1) lidx.push(idxOf(a2 + 1, b2), idxOf(a2 + 1, b2 + 1), idxOf(a2, b2 + 1)); }
+                lt.setAttribute('position', new THREE.Float32BufferAttribute(lpos, 3)); lt.setAttribute('uv', new THREE.Float32BufferAttribute(luv, 2)); lt.setIndex(lidx); lt.computeVertexNormals(); mSail.push(lt);
+                L2(la, foot); L2(foot, V3(mx - 9, rimH(mx - 9) + 0.2, mz));
+                yard(yTs, Lc * 0.5); sail(yTs, yT + 0.9, Lc * 0.5, Lc * 0.62);
+            } else {
+                yard(yC, Lc); yard(yTs, Lc * 0.68); yard(yTg, Lc * 0.42);
+                if (isMain) { var fu = new THREE.CylinderGeometry(0.42 * U, 0.42 * U, Lc * 0.86 * U, 8); fu.rotateX(Math.PI / 2); mFurl.push(place(fu, (mx + 0.5) * U, Y(yC - 0.42), mz * U)); }   // the main course FURLED over the waist (the fights are under it)
+                else sail(yC, y0 + h * 0.15, Lc, Lc * 1.04);
+                sail(yTs, yC + 0.35, Lc * 0.68, Lc * 0.94);
+                sail(yTg, yTs + 0.3, Lc * 0.42, Lc * 0.66);
+                /* the lifts, from the heads to the yards' arms */
+                [-1, 1].forEach(function (sd) { L2(V3(mx, yHead + 0.3, mz), V3(mx + 0.45, yTs, mz + sd * Lc * 0.34)); L2(V3(mx, yT + 1.0, mz), V3(mx + 0.45, yC, mz + sd * Lc * 0.5)); L2(V3(mx, y0 + h * 0.97, mz), V3(mx + 0.45, yTg, mz + sd * Lc * 0.21)); });
+            }
+            /* THE CHANNELS (the shrouds' ledges outside the hull) and THE SHROUDS with their ratlines; the topmast shrouds to the top's rim */
+            var chY = rimH(mx) - 0.35;
+            [-1, 1].forEach(function (sd) {
+                var cz = zc + sd * chOut, chG = new THREE.BoxGeometry(5.0 * s * U, 0.14 * U, 0.6 * U);
+                _hzBoxUV(chG, 5.0 * s * U, 0.14 * U, 0.6 * U, TM); mDark.push(place(chG, (mx - 0.9) * U, Y(chY), (cz - sd * 0.1) * U));
+                var tops = [], feet = [];
+                for (var q3 = 0; q3 < 6; q3++) { var dx = -2.6 * s + q3 * 0.85 * s; tops.push(V3(mx + dx * 0.12, yT - 0.2, mz + sd * r0 * 1.2)); feet.push(V3(mx + dx, chY + 0.1, cz)); L2(tops[q3], feet[q3]); }
+                for (var ry = chY + 0.7; ry < yT - 0.6; ry += 0.6) {
+                    var f = (ry - chY - 0.1) / (yT - 0.2 - chY - 0.1);
+                    for (var q4 = 0; q4 < 5; q4++) L2(feet[q4].clone().lerp(tops[q4], f), feet[q4 + 1].clone().lerp(tops[q4 + 1], f));
+                }
+                for (var q5 = 0; q5 < 3; q5++) L2(V3(mx, yHead - 0.3, mz + sd * 0.2), V3(mx - topR * 0.6 + q5 * topR * 0.5, yT + 0.1, mz + sd * topR * 0.85));
+                L2(V3(mx, yHead, mz), V3(mx - 7 * s, rimH(mx - 7 * s) + 0.1, zc + sd * chOut));   // the backstay
+            });
+            /* the flags: the Jolly Roger on the main truck, a long pennant on the others */
+            if (isMain) {
+                var flagTex = _hzTextTex('qar_flag', ['☠'], { w: 128, h: 96, bg: '#111111', color: '#eeeeee', pad: 0.1, sizes: [70] });
+                if (flagTex) { var fmat = new THREE.MeshLambertMaterial({ map: flagTex, side: THREE.DoubleSide }); fmat.emissive = new THREE.Color(0x202020); add(rgp, place(new THREE.PlaneGeometry(2.8 * U, 1.9 * U), (mx - 1.45) * U, Y(y0 + h + 0.4), mz * U), fmat, true); }
+            } else {
+                var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute([mx * U, Y(y0 + h + 0.2), mz * U, mx * U, Y(y0 + h - 0.4), mz * U, (mx - 5.5) * U, Y(y0 + h - 0.35), mz * U], 3)); pg.computeVertexNormals();
+                var pmat = new THREE.MeshLambertMaterial({ color: 0x7a1a14, side: THREE.DoubleSide }); pmat.emissive = new THREE.Color(0x2a0806); add(rgp, pg, pmat, true);
+            }
+            /* a lantern on the mast's fore side over its deck (the mainmast's a real light over the waist) */
+            var ly = y0 + 4.6, lx = mx + r0 + 0.28;
+            var lan = _hzMiscKit('lantern', { metres: 0.9, fit: 'height', hang: true, lift: 0.75, rng: rng, low: 'skip' }); lan.position.set(lx * U, Y(ly), mz * U); rgp.add(lan);
+            var lgs = _hzGlowSprite(2.2 * U, 0xffb060, 0.7, 0, 0, 0); lgs.position.set(lx * U, Y(ly - 0.5), mz * U); lgs._ew_occSkip = true; rgp.add(lgs);
+            _hq.fxPulse.push({ mat: lgs.material, baseOp: 0.7, opAmp: 0.12, spd: 2.2 + rng(), phase: rng() * 6 });
+            if (isMain && !lanternDone && (_hq.propLights || 0) < HQ_PROP_LIGHT_MAX) { var pl = new THREE.PointLight(0xffb070, 1.0, 16 * U, 2); pl.position.set(lx * U, Y(ly - 0.5), mz * U); rgp.add(pl); _hq.propLights = (_hq.propLights || 0) + 1; lanternDone = 1; }
+            /* one mesh per material in the rig */
+            if (mWood.length) add(rgp, _hqHullMerge(mWood), mastMat, true);
+            if (mDark.length) add(rgp, _hqHullMerge(mDark), darkMat, true);
+            if (mFurl.length) add(rgp, _hqHullMerge(mFurl), phong(null, 0xc8bea6, 0x26221a, 4), true);
+            if (mSail.length) {
+                var sm = new THREE.MeshLambertMaterial({ map: _hqSailTex(Math.round(mx * 7) & 7), color: 0xd6ccb4, side: THREE.DoubleSide, alphaTest: 0.45 });
+                sm.emissive = new THREE.Color(0x24221c); sm.emissiveMap = sm.map;
+                add(rgp, _hqHullMerge(mSail), sm, true);
+            }
+            G.add(rgp);
+        });
+        /* the stays: the mainstay to the foremast's foot, the forestay to the bowsprit, the topmast stays one mast forward / to the jib boom */
+        var byX = masts.slice().sort(function (a, b) { return a.x - b.x; });
+        byX.forEach(function (t, i) {
+            var h = Math.max(8, t.h || 24), y0 = hAt(t.x, t.z), yT = y0 + h * 0.5, yHead = y0 + h * 0.84, nxt = byX[i + 1];
+            if (nxt) { L2(V3(t.x, yT + 0.4, t.z), V3(nxt.x - 1.2, hAt(nxt.x, nxt.z) + 0.8, nxt.z)); L2(V3(t.x, yHead, t.z), V3(nxt.x, hAt(nxt.x, nxt.z) + Math.max(8, nxt.h || 24) * 0.5, nxt.z)); }
+            else { L2(V3(t.x, yT + 0.4, t.z), spBase.clone().addScaledVector(spDir, spL * 0.55)); L2(V3(t.x, yHead, t.z), spTip); L2(V3(t.x, y0 + h * 0.97, t.z), jibTip); }
+        });
+        /* the spritsail under the bowsprit */
+        var sy = spBase.clone().addScaledVector(spDir, spL * 0.62), syL = 0.42 * Math.min(2 * hd, 26);
+        var syG = new THREE.CylinderGeometry(0.09 * U, 0.09 * U, syL * U, 6); syG.rotateX(Math.PI / 2); dark.push(place(syG, sy.x * U, Y(sy.y - 0.3), sy.z * U));
+        var spSail = sailGeo(sy.x, sy.y - 0.35, sy.y - 4.2, syL * 0.95, syL, 0.9, 0.4);
+        var spm = new THREE.MeshLambertMaterial({ map: _hqSailTex(9), color: 0xd6ccb4, side: THREE.DoubleSide, alphaTest: 0.45 }); spm.emissive = new THREE.Color(0x24221c); spm.emissiveMap = spm.map;
+        add(hull, spSail, spm);
+        if (lines.length) {
+            var lgeo = new THREE.BufferGeometry(); lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+            var lseg = new THREE.LineSegments(lgeo, new THREE.LineBasicMaterial({ color: 0x2a2118 })); lseg._ew_hqPart = 'underside'; lseg.renderOrder = 1; G.add(lseg);
+        }
+        /* ── THE CAPSTAN and THE HELM where their trees stand ── */
+        trees.forEach(function (t) {
+            var y0 = hAt(t.x, t.z);
+            if (t.kind === 'capstan') {
+                var cg = new THREE.CylinderGeometry(0.5 * U, 0.62 * U, 0.95 * U, 12); trim.push(place(cg, t.x * U, Y(y0 + 0.47), t.z * U));
+                hullSkin.push(place(new THREE.CylinderGeometry(0.74 * U, 0.74 * U, 0.2 * U, 12), t.x * U, Y(y0 + 1.02), t.z * U));
+                for (var cb = 0; cb < 8; cb++) { var ca = cb / 8 * Math.PI * 2, bar = new THREE.BoxGeometry(1.25 * U, 0.08 * U, 0.08 * U); bar.rotateY(-ca); trim.push(place(bar, (t.x + Math.cos(ca) * 1.25) * U, Y(y0 + 0.98), (t.z + Math.sin(ca) * 1.25) * U)); }
+            } else if (t.kind === 'helm') {
+                var wh = _hzMiscKit('wheel', { metres: t.h || 1.7, fit: 'height', lift: 0.45, cast: true, foot: 0.3, rng: rng });
+                wh.position.set(t.x * U, Y(y0), t.z * U); wh.rotation.y = Math.PI / 2; wh._ew_hqPart = 'underside'; G.add(wh);
+                iron.push(place(new THREE.CylinderGeometry(0.22 * U, 0.3 * U, 1.1 * U, 8), (t.x + 1.3) * U, Y(y0 + 0.55), t.z * U));   // the binnacle
+            }
+        });
+        /* ── THE STERN LANTERNS on the taffrail (the middle one a real light) ── */
+        var tafY = 0; for (var tq = 0; tq < (room.terrain.features || []).length; tq++) { var wf = room.terrain.features[tq]; if (wf && wf.k === 'wall' && Math.abs(wf.x0 - wf.x1) < 0.01 && wf.x0 < xMin + 1 && typeof wf.y === 'number') tafY = Math.max(tafY, wf.y); }
+        if (!tafY) tafY = rimH(xMin) + 1.1;
+        [-0.62, 0, 0.62].forEach(function (f, li) {
+            var lz = zc + f * tW, lx = xMin - 0.35, big = li === 1;
+            iron.push(place(new THREE.BoxGeometry(0.6 * U, 0.08 * U, 0.08 * U), (lx + 0.2) * U, Y(tafY + 0.02), lz * U));
+            var sl = _hzMiscKit('lantern', { metres: big ? 1.5 : 1.1, fit: 'height', lift: 0.8, rng: rng, low: 'skip' }); sl.position.set(lx * U, Y(tafY + 0.05), lz * U); sl._ew_hqPart = 'underside'; G.add(sl);
+            var gs = _hzGlowSprite((big ? 3.4 : 2.4) * U, 0xffb060, 0.75, 0, 0, 0); gs.position.set(lx * U, Y(tafY + (big ? 0.8 : 0.6)), lz * U); gs._ew_occSkip = true; hull.add(gs);
+            _hq.fxPulse.push({ mat: gs.material, baseOp: 0.75, opAmp: 0.12, spd: 1.8 + rng(), phase: rng() * 6 });
+            if (big && (_hq.propLights || 0) < HQ_PROP_LIGHT_MAX) { var sll = new THREE.PointLight(0xffb060, 1.0, 18 * U, 2); sll.position.set(lx * U, Y(tafY + 0.9), lz * U); hull.add(sll); _hq.propLights = (_hq.propLights || 0) + 1; }
+        });
+        /* the anchors catted at the bow, a side each */
+        [-1, 1].forEach(function (sd) {
+            var an = _hzMiscKit('anchor', { metres: 2.6, fit: 'height', lift: 0.4, rng: rng, low: 'skip' });
+            var ax = xMax - 1.5; an.position.set(ax * U, Y(-1.8), (zc + sd * (halfAt(ax, -0.8) + 0.45)) * U); an.rotation.y = sd > 0 ? 0 : Math.PI; an._ew_hqPart = 'underside'; G.add(an);
+        });
+        /* ── THE WAKE: foam down both sides from the bow, and the long wake astern — they scroll with the voyage ── */
+        var wakeTex = [];
+        var foam = function (cx, cz, len, wid, op, seed) {
+            var base = _nrStreakTex(seed); if (!base) return;
+            var tx = base.clone(); tx.needsUpdate = true; tx.wrapS = THREE.RepeatWrapping;
+            var g = new THREE.PlaneGeometry(len * U, wid * U); var uvw = g.getAttribute('uv'); for (var i = 0; i < uvw.count; i++) uvw.setX(i, uvw.getX(i) * len / 3.5);
+            g.rotateX(-Math.PI / 2);
+            var m = new THREE.Mesh(g, glowMat(0xeaf6ff, op, op * 0.25, 0.7, tx)); m.position.set(cx * U, Y(seaY + 0.06), cz * U); m.renderOrder = 2; m._ew_occSkip = true; m._ew_hqPart = 'underside'; hull.add(m);
+            wakeTex.push({ tex: tx, per: 3.5 * U });
+        };
+        var hbW = hb0 * TUM, wakeL = stemX - sternX + 14;
+        foam((stemX + sternX) / 2 - 7, zc - hbW - 1.3, wakeL, 2.8, 0.55, 1); foam((stemX + sternX) / 2 - 7, zc + hbW + 1.3, wakeL, 2.8, 0.55, 2);
+        foam(sternX - 16, zc, 34, hbW * 1.7, 0.32, 3);
+        for (var sp = 0; sp < 6; sp++) { var sps = _hzGlowSprite((1.6 + rng() * 1.6) * U, 0xe8f6ff, 0.5, 0.3, 0.2, 3 + rng() * 4); sps.position.set((stemX - 0.6 - rng() * 2.4) * U, Y(seaY + 0.3 + rng() * 0.9), (zc + (rng() - 0.5) * 3.2) * U); sps._ew_occSkip = true; hull.add(sps); }
+        _hq.galleonWake = wakeTex;
+        if (typeof _motionScroll !== 'undefined') wakeTex.forEach(function (w) { _motionScroll.push({ tex: w.tex, per: w.per, sign: 1 }); });
+        /* ── one mesh per material ── */
+        add(hull, _hqHullMerge(hullSkin), hullMat);
+        add(hull, _hqHullMerge(bottom), bottomMat);
+        if (trim.length) add(hull, _hqHullMerge(trim), mastMat);
+        if (dark.length) add(hull, _hqHullMerge(dark), darkMat);
+        if (deck.length) add(hull, _hqHullMerge(deck), deckMat);
+        if (iron.length) add(hull, _hqHullMerge(iron), ironMat);
+        if (portLit.length) add(hull, _hqHullMerge(portLit), glowMat(0xffb060, 0.8, 0.12, 0.9));
+        if (win.length) add(hull, _hqHullMerge(win), glowMat(0xffc070, 0.85, 0.08, 0.6));
+        G.add(hull);
+        } finally { _hzKitTs = kitTs0; }
+    }
     /* THE ROOF OVER THE CITY (2026-10-05, mondo: "why is the vatican observatory a landscape? it should be like the top of the
        vatican building looking out over vatican/italian city"): the observatory's field ran on past its parapet as open ground
        to the fog. Now it is a FLOATING room (no outer ground) whose `terrain.float` carries `roof`: the field is the top of a
@@ -50699,7 +51476,8 @@ const ThreeRenderer = (function () {
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
-        if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
+        if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
+        else if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
         else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
         else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
@@ -50787,7 +51565,7 @@ const ThreeRenderer = (function () {
         /* THE HALLS (D.U.M.B., 2026-09-17): a keyed wall material is made ONCE per sheet — a floor plan's traced walls (info.planWalls) are hundreds of rows in one sheet */
         var keyedMats = {};
         var keyedMat = function (key) {
-            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); keyedMats[key] = km; }
+            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); if (km.map) _emissiveTerrainMat(km, key, km.map); keyedMats[key] = km; }   // THE HOLO SIM (2026-10-20): a self-lit sheet's rims glow on a wall row (the projected blocks)
             return keyedMats[key];
         };
         var glassMat = null;
@@ -50849,9 +51627,16 @@ const ThreeRenderer = (function () {
             return tg;
         };
         var treeOne = function (t) {
+            var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[t.kind] && HQ_TREE_KINDS[t.kind].chess) ? HQ_TREE_KINDS[t.kind] : null;
+            if (CK) {   // THE LOOKING-GLASS ARENA: a marble chess piece, solid cover on its square (never the foliage kit)
+                var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U);
+                cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; G.add(cg);
+                _hq.blockers.push({ obj: cg, y: t.y, top: null, rad: t.r || 0.72, tree: true });
+                return;
+            }
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
-            plantTree(t.kind, h, t.x, t.z, t.y * U, t.face);
+            if (!_HQ_SHIP_TREES[t.kind]) plantTree(t.kind, h, t.x, t.z, t.y * U, t.face);   // THE GALLEON: a mast / the capstan / the helm is the ship's own (_hqBuildGalleon), still a blocker
             var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
             _hq.blockers.push({ obj: blk, y: t.y, top: null, rad: t.r || 0.38, tree: true });
         };
@@ -64222,7 +65007,11 @@ const ThreeRenderer = (function () {
         var t = _fluidTimeSec;
         _fluidTimeUniform.value = t;
         _fluidTileUniform.value = mt.tile;
-        if (_fluidFlowUniform.value) _fluidFlowUniform.value.set(0, 0);   // the building's water holds still (MOVING MAPS)
+        /* the building's water holds still (MOVING MAPS) — but a VOYAGE room's own sea (THE GALLEON, 2026-10-20: the Flying Dutchman's deck) runs
+           past her on the walk as it does in a fight on her deck, by the distance the sky's voyage has run; her wake scrolls with it */
+        var VYm = _hq.sky && _hq.sky.voyage, seaRun = !!(VYm && _hq.room && _hq.room.terrain && _hq.room.terrain.sea);
+        if (_fluidFlowUniform.value) { if (seaRun) _fluidFlowUniform.value.set(VYm.axis === 'z' ? 0 : VYm.dist, VYm.axis === 'z' ? VYm.dist : 0); else _fluidFlowUniform.value.set(0, 0); }
+        if (seaRun && _hq.galleonWake) _hq.galleonWake.forEach(function (w) { w.tex.offset.x = (VYm.dist / w.per) % 1; });
         (mt.keys || [mt.key]).forEach(function (key) {   // THE CAVE (rev 11): water AND lava in one room
             var drift = _FLUID_DRIFT_3D[key];
             var o1 = _fluidTextures[key + '_off1'], o2 = _fluidTextures[key + '_off2'];
@@ -64666,6 +65455,7 @@ const ThreeRenderer = (function () {
                 var r = g.parameters.radiusTop || g.parameters.radius || g.parameters.outerRadius || 0; big = r > 4 * U;
             }
             if ((o._ew_hqPart && _HQ_NO_CAST_PART[o._ew_hqPart]) || big || o._ew_hqGround || o._ew_hqOuter) o.castShadow = false;
+            if (o._ew_hqSea) o.receiveShadow = false;   // (2026-10-20) the sea's sheet runs far past the shadow map: its edge drew a pale box round the Dutchman
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
     }
@@ -69737,6 +70527,8 @@ const ThreeRenderer = (function () {
             } catch (e) { cb(null); }
         },
         treePreview: function (kind, cb) {
+            var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].chess) ? HQ_TREE_KINDS[kind] : null;
+            if (CK) { try { cb(_hqChessStatue(CK.chess, !!CK.dark, (CK.h || 2) * 1.75, _hqUnits())); } catch (e) { cb(null); } return; }   // THE LOOKING-GLASS ARENA
             var name = _FOLIAGE_MODEL_FOR_KEY[kind] || (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] ? HQ_TREE_KINDS[kind].model : null);
             if (!name) { cb(null); return; }
             var t0 = Date.now();

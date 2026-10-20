@@ -1681,3 +1681,23 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
 The ROSTER tab's quick card under the hero (party-builder.js `quickCard`, `QUICK_STAT_KEYS`) shows every main stat with the
 race editor's names in a two-column grid (`.pb-stage-stats`, styles-base.css), paired row by row: HP|MP, ATK|M ATK, DEF|M DEF,
 SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follows the hovered wall tile like before.
+
+## THE SPELL BUTTON ROWS + DAMAGE-KIND ICONS (2026-10-20, mondo: "it should be the crossed sword for physical attacks and a magic wand or like 3 diamond looking things for magic damage ... the spell description at the bottom needs to use the same symbols ... let me choose what goes on the top row and what goes on the bottom row ... the spell menu as well as the quick action menu ... i dont want to have edit them individually")
+- **Icons**: the separate PHYSICAL/MAGIC burst/orb marks (`.ew-dmgicon`, `spellDeliveryBadge`) are gone. A damage spell's
+  button glyph is the kind itself: ⚔ physical (`damageType === 'physical'`), three diamonds magic (hud.js `EW_MAGIC_PATH`,
+  an inline 16×16 SVG in `currentColor`, so it sits in the same red chip at the same size). `spellDamageKind`,
+  `ewDmgKindIcon` (React) / `ewDmgKindHtml` (string). The party builder's spell rows use the same chip (`.ew-dmgkind`).
+- **One look for every spell button**: `_hrlgSpellLook(sp)` = icon, colours, title, badges (each tagged `part`: type / elem /
+  status / riders / ups), area shape, power. The Abilities list, the enemy / ally / tile quick menus all spread it, so a spell
+  reads the same everywhere; the quick menu keeps the forecast on the clicked unit as the power when it has one.
+- **The rows**: HorologeBlade puts each part in the row the layout says (`rows: true` blades: spells, Attack, combos).
+  Layout string `ux.bRows` = `id:side|top|bot|off` per part, in order (`EW_BTN_PARTS`, default `EW_BTN_ROWS_DEF` = the
+  old look); `ux.bFold` = a button whose top row is only the name stays on one line. `btnSignal()` publishes
+  `window._ewBtnRows` and repaints. The red ENDS TURN tag and the struck AP on hover are their own parts (ends / ap).
+- **UI Maker**: Layout > Unit info panel, Command panels, or Quick action list > "Spell buttons: top + bottom row" (one
+  setting for all of them): Beside / Top / Bottom / Hide per part, ▲▼ to order within a row, the one-line check, reset.
+- **The description bar** (`_renderSpellDescBar`): the same icon chip, badges (`_hrlgBadgeEl`), area shape and cost chips
+  (MP, AP pips, ENDS TURN) as the button, plus "Physical damage" / "Magic damage" in the stat line. `_ewStaticHtml` renders
+  a React element to HTML for it. TEXT_PARTS desc: icon, badges, cost chips.
+- Browser-checked: default rows unchanged apart from the icons; clicking type → Bottom, element → Bottom, power → Top in the
+  real dock moved them in the Abilities list and the quick menu alike; unticking one line put Attack on two lines.
