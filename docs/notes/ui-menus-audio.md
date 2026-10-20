@@ -1568,6 +1568,33 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   preview showed the model, its plate and looping pops; in a VS-CPU arena battle each control was set through the dock's own
   inputs and the next real pop (window.showFloatingTextAtTile) was measured against one before.
 
+### UI Maker pass 25: the floating text's gradient + layout (2026-10-20, mondo: "for the floating text, add more options for the gradient like the angle and all that" and "they like stack on top of each other but i want them to do more of a scatter and be side by side or and on top of each other, can we add settings for that, more motion settings i guess")
+- **THE GRADIENT** (Pops > section "Gradient"; "Number fill" moved here from Outline + light): Type Linear / Radial / Sweep
+  (fGradType), Angle (fGradAng, CSS degrees, 180 = top to bottom = the game's; the Sweep's start angle), Size % (fGradLen),
+  Shift % (fGradOff, linear) or Centre left/right + up/down % (fGradX / fGradY, radial + sweep), Colour stops As the game / 2-5
+  (fGradStops; each stop fGs<n>At %, fGs<n>Sh -100 darker .. 100 lighter, fGs<n>Col own colour, '' = the pop's own colour so
+  damage stays red and heals green; picking a count re-spreads them evenly, `fgsSpread`), Bands (fGradBands, hard steps),
+  Repeat (fGradRep), Reverse (fGradRev), Words get it too (fGradWords: words wear their kind's gradient, or one made from their
+  colour). Only the controls the picked type uses show.
+- three-renderer.js `_floatStops` (stops → reversed → banded → repeated), `_floatGradient` (linear: the line through the ink
+  box's centre at the angle, half length (|w sin| + |h cos|) / 2 × Size, so 180° at 100% is exactly the game's cy - 0.62 →
+  cy + 0.55 of the font size; sweep: createConicGradient, falls back to linear where missing), `_floatPaintRadial` (an ellipse
+  through the box's corners: the text on a scratch canvas, source-in, the gradient under a scale transform). The hit read's
+  element tint still works (it re-tints by luminance).
+- **THE LAYOUT** (section "Layout", When pops meet, fLay): Stack (the old `_layoutFloatTexts`, untouched), Side by side,
+  Side + stack (fRow pops in a row, then a row up), Scatter (fScat % of the screen height: each pop thrown that far on its
+  own random heading, then on along it until clear). Gap above / below (fGap, moved here from Motion) + Gap beside (fGapX).
+  `_floatPlaceFree`: candidates beside / above what is placed, the first clear one nearest (each pop leans to its own side,
+  `tw.rnd`), keeps its last spot while it stays clear (no flip-flop), snaps clear at once and eases back like the stack.
+  Placed order unchanged: newest number keeps its spot, so a word never covers a number in any layout.
+- **Motion** adds Path (fPath: Rise = the game's ease-out, Steady, Hop = up and back onto its spot, Bounce = a hop and two
+  smaller ones, `_floatRiseT`), Drift sideways (fDrift × 5% of the screen height over its life, random side), Tilt (fTilt,
+  a random lean up to that many degrees). The old "Scatter" slider (fSpread) is now labelled "Random spot".
+- All viewer-local like the rest of the look (nothing relayed). Browser-checked in a VS-CPU arena battle (sandbox at 5 fps
+  with the perf lens at res 0.35, post + shadows off): every gradient control changed the next real pop's fill (measured by
+  the ink's left / right / top / bottom colour and a contact sheet), and each layout's burst of 3 numbers + 3 words measured
+  0 overlaps with the spread going sideways for Side by side, both ways for Side + stack and Scatter.
+
 ### THE GAME DEFAULT THEME: mondo's Entropy Wars Theme (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game", with his export Entropy_Wars_Theme.ewtheme.json)
 - **The preset**: hud.js `UIM_PRESETS` opens with `p_entropy` "Entropy Wars Theme", his exported theme as a literal with every value as exported (only the id is the preset's own; `slices` was empty, so no images). Read-only like every preset: editing it makes a copy.
 - **The default**: `HUD_THEME_DEFAULT = 'p_entropy'` (getHudTheme / setHudTheme fallback, UI Maker `globalId()`, the fallback after deleting the theme the game wears). `HUD_THEME_BASE = 'crystal'` keeps Classic Blue as the token base with no data-hud-theme. Only a profile that never picked a theme (no `ew_hud_theme`) gets it; a picked theme stays.
