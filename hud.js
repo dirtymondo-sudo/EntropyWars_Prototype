@@ -5675,6 +5675,11 @@ function ActionMenu({ st, hidden }) {
     if (_aimSelf) {
       modeLabel = (st.selectedTool + ' — SELF CAST · CONFIRM TO CAST').toUpperCase();
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '⟳', text: st.selectedTool }, blades: [cancelBlade] });
+    } else if (_aimSp && _aimSp.kind === 'skyThrow' && typeof skyThrowLandingPhase === 'function' && skyThrowLandingPhase(unit)) {
+      // THE LANDING PICK: the held body lands on a lit tile; enemies standing on one are listed (thrown into)
+      modeLabel = (st.selectedTool + ' — CLICK A LIT TILE TO THROW').toUpperCase();
+      panels.push(_listUnits ? _mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade)
+        : { key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     } else if (_listUnits) {
       modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
       panels.push(_mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade));

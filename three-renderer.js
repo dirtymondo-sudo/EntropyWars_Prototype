@@ -39998,6 +39998,13 @@ const ThreeRenderer = (function () {
         if (!canvas) return;
         var tx, ty;
         var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+        /* THE LANDING PICK (2026-10-20): while a sky throw holds a body, the click names the TILE under the pointer,
+           the one the hover lights and holograms, never a body hanging or standing in front of it */
+        if (unitHit && typeof state !== 'undefined' && state && state._skyThrowHighlight && state.actionMode === 'spell'
+            && typeof getSelectedUnit === 'function') {
+            var _lpU = getSelectedUnit();
+            if (_lpU && _lpU._skyThrowGrab) unitHit = null;
+        }
         if (unitHit) {
 
             var _clickUnit = _unitById.get(unitHit.unitId) || null;
