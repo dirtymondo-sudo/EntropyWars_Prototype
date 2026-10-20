@@ -2689,6 +2689,25 @@
               if (_tok !== _cls) _hlCache.set(_pk, _tok);
             }
           }
+          /* 🧗 THE CLIMB: the ledges this unit can climb this turn (straight up / down a face, or after one walk to
+             its foot) paint sandstone on the Move overlay — a click there climbs (battle.js doClimb). */
+          if (!_wasdOrigin && typeof getClimbTiles === 'function') {
+            for (const c of getClimbTiles(_selectedForHl)) {
+              const pk = posKey(c.x, c.y);
+              if (_hlCache.has(pk) && String(_hlCache.get(pk)).indexOf('move-edge') !== 0) continue;
+              _hlCache.set(pk, 'move-climb');
+              _hlZCache.set(pk, c.z);
+            }
+          }
+        } else if (state.actionMode === 'climb' && canUnitAct(_selectedForHl)) {
+          if (typeof getClimbTiles === 'function') {
+            for (const c of getClimbTiles(_selectedForHl)) {
+              const pk = posKey(c.x, c.y);
+              if (_hlCache.get(pk) === 'move-climb') continue;   // the straight climb (listed first) keeps its surface
+              _hlCache.set(pk, 'move-climb');
+              _hlZCache.set(pk, c.z);
+            }
+          }
         } else if (state.actionMode === 'attack' && canUnitAct(_selectedForHl)) {
           _cachedAttackTiles = getAttackTiles(_selectedForHl);
           const _telescopeSkyMap = unitHasTelescope(_selectedForHl) && getSectionForUnit(_selectedForHl) === 'earth'
@@ -3233,7 +3252,7 @@
               // hide EVERY enemy health bar while aiming tile-targeted
               // spells (Meteor etc.) — only movement-preview tiles and the
               // caster's own marker are irrelevant.
-              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge'
+              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge' || _thl === 'move-climb'
                   || _thl === 'selected' || _thl === 'spell-range-bg') continue;
 
               _targetSet.add(_tu.id);

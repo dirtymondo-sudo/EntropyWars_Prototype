@@ -2024,7 +2024,7 @@
        doors, signs and the spawn keep their size. → the row at f × its size, or null */
     /* a tree row's `h` is in the terrain's TILES (1.75 m; the renderer's _nrTree also varies each tree 0.85-1.3 ×): SIZE shows metres */
     function treeTile() { return (W.HQ_TERRAIN_RULES && +W.HQ_TERRAIN_RULES.tile) || 1.75; }
-    function treeDefH(row) { var dead = false; try { dead = W.hqTreeDead ? W.hqTreeDead(row.kind || 'tree') : false; } catch (e) {} return row.kind === 'tree_4' ? 5.6 : dead ? 2.3 : 2.9; }
+    function treeDefH(row) { var dead = false, T = (W.HQ_TREE_KINDS || {})[row.kind]; if (T && T.chess && T.h) return T.h; try { dead = W.hqTreeDead ? W.hqTreeDead(row.kind || 'tree') : false; } catch (e) {} return row.kind === 'tree_4' ? 5.6 : dead ? 2.3 : 2.9; }   // a chess piece: its own height (data.js HQ_TREE_KINDS)
     function sizeOf(h) {   // the size shown: { v (m), what }
         var row = h.row;
         if (h.list === 'props') { var cat = DOOR_HQ.catalogue[row.key] || {}, sp = row.span != null || (cat.span != null && cat.h == null); return sp ? { v: +(row.span || cat.span || 1), what: 'wide' } : { v: +(row.h || cat.h || 1), what: 'tall' }; }
@@ -3684,7 +3684,7 @@
     function thumbStoreKey(k) {
         var p = k.split(':'), kind = p[0], key = p.slice(1).join(':');
         if (kind === 'prop') { var c = DOOR_HQ.catalogue[key] || {}; return k + '|' + (c.file || c.proc || ''); }
-        if (kind === 'tree') { var T = (W.HQ_TREE_KINDS || {})[key]; return k + '|' + (T ? T.model : ''); }
+        if (kind === 'tree') { var T = (W.HQ_TREE_KINDS || {})[key]; return k + '|' + (T ? (T.model || ('chess:' + T.chess + (T.dark ? ':dark' : ''))) : ''); }
         return k;
     }
     function thumbFill(P) { P.querySelectorAll('[data-th]').forEach(function (b) { thumbWant(b.getAttribute('data-th')); }); }

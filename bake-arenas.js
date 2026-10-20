@@ -29,6 +29,8 @@
 // HQ_CLASH_STAGE.room) whose formation tiles (P1 x 3, P2 x 6, rows 3..6) and the two columns between them stand flat, open and
 // seated, the walled cut's caps on the rest, the window nearest the room's centre — into HQ_CLASH_STAGE.pick (<CLASH PICK> markers).
 // Rerun it after the Temple room changes (`--dry-run` prints the pick).
+// THE ARENA'S PLACE (2026-10-20, the voxel maps remade as rooms): HQ_ARENA_RULES.within[site] = { room, x, z, r } — a site whose map was
+// built for its board (Göbekli Tepe's ENCLOSURE E) is cut only from that room, from windows whose centre lies within r metres of (x, z).
 'use strict';
 
 const fs = require('fs');
@@ -57,6 +59,7 @@ const FEAT = ev('HQ_ARENA_RULES.featureMax');
 const WALLS = CAPS.wallMax, TOP = ev('HQ_ARENA_RULES.topMax');
 
 const KEEP = new Set(ev('HQ_ARENA_RULES.keep') || []);   // the sites that keep their Δ board (no pick written)
+const WITHIN = ev('HQ_ARENA_RULES.within') || {};   // THE ARENA'S PLACE (2026-10-20): site → { room, x, z, r } — every size of its arena is cut there (a map built for its board)
 const ONLY = process.argv.filter(a => /^prebuilt_/.test(a));   // name sites to bake only them (the rest of the picks stand)
 const HAS12 = ev('HQ_ARENA_RULES.picks') || {};   // the extra sizes: only the sites with a 12×12 cut
 const sites = META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id) && (!ONLY.length || ONLY.includes(m.id)) && (S === S12 || HAS12[m.id])).map(m => m.id);
@@ -130,13 +133,28 @@ function judge(R, strict) {
     return { cover, out, imbalance: Math.abs(top - bottom), strict };
 }
 
-function scanRoom(roomId, strict) {
+/* THE BOARD IS THE ARENA (2026-10-20, THE CHESS COURT): a terrain room with a `board` feature at least S squares a side on the
+   lattice fights ON it — only the windows inside the board are scanned (the Looking-Glass garden's 12 × 12 chessboard; a cover-rich
+   window half on the tea lawn outscored it). Null = no such board: every window. */
+function boardWindows(roomId, Lt) {
+    const r = ROOMS[roomId];
+    if (!r || !r.terrain || Lt.kind !== 'terrain') return null;
+    const b = (r.terrain.features || []).filter(f => f && f.k === 'board').map(f => sb.hqTerrainBoard(f)).find(b => b.n >= S && Math.abs(b.C - Lt.C) < 1e-6);
+    if (!b) return null;
+    const bx = Math.round((b.x0 - Lt.x0) / Lt.C), bz = Math.round((b.z0 - Lt.z0) / Lt.C);
+    if (Math.abs(bx * Lt.C + Lt.x0 - b.x0) > 0.01 || Math.abs(bz * Lt.C + Lt.z0 - b.z0) > 0.01) return null;   // a board off the lattice: no rule
+    return { x0: bx, z0: bz, x1: bx + b.n - S, z1: bz + b.n - S };
+}
+
+function scanRoom(roomId, strict, place) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
     const Lt = sb.hqFieldLattice(roomId);
     if (!Lt || Lt.w < S || Lt.h < S) return null;
-    const mk = marker(roomId), feat = features(Lt);
+    const mk = marker(roomId), feat = features(Lt), BW = boardWindows(roomId, Lt);
     let best = null, clear = 0;
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
+        if (place && Math.hypot(Lt.x0 + (ox + S / 2) * Lt.C - place.x, Lt.z0 + (oz + S / 2) * Lt.C - place.z) > place.r) continue;   // THE ARENA'S PLACE: only windows centred there
+        if (BW && (ox < BW.x0 || ox > BW.x1 || oz < BW.z0 || oz > BW.z1)) continue;
         let off = 0;
         if (strict) {
             for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }
@@ -209,12 +227,14 @@ for (const site of (APPLY ? [] : sites)) {
     const rooms = (bySite[site] || []).slice();
     const ent = ENTRY[site] && ENTRY[site].room;
     const size = (id) => { const sh = (ROOMS[id] || {}).shell || {}; return (+sh.w || 0) * (+sh.d || 0); };
-    const order = (ent && rooms.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent).sort((a, b) => size(b) - size(a)));
+    let order = (ent && rooms.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent).sort((a, b) => size(b) - size(a)));
+    const place = WITHIN[site] || null;
+    if (place) order = order.filter(r => r === place.room);
     let got = null;
     for (const strict of [true, false]) {   // an open-ground window in any room first, then the walled cut
         for (const roomId of order) {
             const t = Date.now();
-            const best = scanRoom(roomId, strict);
+            const best = scanRoom(roomId, strict, place);
             process.stderr.write('  ' + site + ' · ' + roomId + (strict ? '' : ' (walled)') + ': ' + (best ? best.clear + ' fit, pick ' + best.ox + ',' + best.oz + ' cover ' + best.cover + ' solid ' + best.out + ' ' + best.dist.toFixed(1) + ' m from the marker' : 'no ' + S + 'x' + S + ' fits') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)\n');
             if (best) { got = { roomId, best }; break; }
         }
