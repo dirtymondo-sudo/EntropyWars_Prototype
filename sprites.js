@@ -1186,6 +1186,16 @@ const UAL_SLOTS = {
   hitShot:        { clip: 'Gunshot_Reaction',    lib: 4, ts: 1.8,  trim: [0.15, 1.5], pinXZ: true, defer: true },
   hitSlap:        { clip: 'Slap_Reaction',       lib: 4, ts: 2.2,  trim: [0.85, 2.6], pinXZ: true, defer: true },
   hitLaunch:      { clip: 'BeHit_FlyUp',         lib: 4, ts: 1.0,                                    defer: true },
+  // THE GORE (2026-10-20, mondo: "is there more than one death animation"):
+  // the two other library clips that END ON THE FLOOR, picked per death by
+  // battle.js (state._deathStyleById → three-renderer.js _deathSlotFor).
+  //   deathKnock    UAL2 Hit_Knockback 0.83s — flung flat on the back, down
+  //                 by 0.38 (→1.1s at 0.75; the shot / blast that throws them)
+  //   deathCollapse UAL1 Death01 2.4s — the knees go and the body folds to
+  //                 the floor, down by 1.2 (→1.85s at 1.3)
+  // With Dead (the default slot) and hitLaunch that is four ways to die.
+  deathKnock:     { clip: 'Hit_Knockback',       lib: 1, ts: 0.75,                                   defer: true },
+  deathCollapse:  { clip: 'Death01',             lib: 0, ts: 1.3,                                    defer: true },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
