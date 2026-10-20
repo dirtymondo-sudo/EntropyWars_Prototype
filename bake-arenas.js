@@ -192,12 +192,12 @@ function encode(R) {
 if (process.argv.includes('--own')) {
     const OWN = ev('HQ_ARENA_RULES.own') || {};
     const ids = Object.keys(OWN).filter(id => !ONLY.length || ONLY.includes(id));
-    let src = fs.readFileSync(DATA, 'utf8'), wrote = 0;
+    let src = fs.readFileSync(DATA, 'utf8'), wrote = 0, failed = 0;
     for (const id of ids) {
         const p = OWN[id], N = (p.S | 0) || ((ev('PREBUILT_MAPS[' + JSON.stringify(id + '_voxel') + ']') || ev('PREBUILT_MAPS[' + JSON.stringify(id) + ']') || {}).w | 0) || S12;
         const t = Date.now();
         const R = sb.hqFieldRaster(p.room, p.ox, p.oz, N, N);
-        if (!R) { console.error(id + ': the room ' + p.room + ' could not be read'); continue; }
+        if (!R) { console.error(id + ': the room ' + p.room + ' could not be read'); failed++; continue; }
         const HTn = sb.hqArenaHouseTiles(N), bad = [];
         HTn.flat.forEach(([x, y]) => { const c = R.cells[y][x]; if (!(c.in && !c.rock && !c.hazard) || (c.tile | 0) !== 0 || c.wall) bad.push(x + ',' + y); });
         const a = sb.hqFieldReach(R, HTn.HX.n, 0);
@@ -205,14 +205,15 @@ if (process.argv.includes('--own')) {
         const enc = (() => { const keys = [], cells = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const c = R.cells[y][x]; let k = keys.indexOf(c.key); if (k < 0) { k = keys.length; keys.push(c.key); } cells.push(k.toString(36) + String(Math.max(0, Math.min(9, (c.tile | 0) + 1)))); } return { keys, cells: cells.join('') }; })();
         console.log(id + ': ' + p.room + ' @ ' + p.ox + ',' + p.oz + ' ' + N + '×' + N + (bad.length ? ' — HOUSE TILES NOT CLEAR: ' + bad.join(' ') : ' ok') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)');
         for (let y = 0; y < N; y++) console.log('   ' + R.cells[y].map(c => c.rock ? '#' : c.hazard ? '~' : String(c.tile | 0)).join(' '));
+        if (bad.length) { console.error(id + ': NOT written — the old pick stands until the room is fixed'); failed++; continue; }   // never bake a board units cannot spawn on
         const rec = { room: p.room, ox: p.ox, oz: p.oz }; if (p.S) rec.S = p.S;
         Object.assign(rec, { base: R.floorKey || p.base || 'grass_2', open: R.open ? 1 : 0, keys: enc.keys, cells: enc.cells });
         const re = new RegExp('(HQ_ARENA_RULES\\.own\\.' + id + ' = )\\{.*?\\}(;[^\\n]*<OWN PICK ' + id + '>)');
-        if (!re.test(src)) { console.error(id + ': data.js has no <OWN PICK ' + id + '> line'); continue; }
+        if (!re.test(src)) { console.error(id + ': data.js has no <OWN PICK ' + id + '> line'); failed++; continue; }
         src = src.replace(re, (m, a1, b1) => a1 + JSON.stringify(rec) + b1); wrote++;
     }
     if (!DRY && wrote) { fs.writeFileSync(DATA, src); console.log('wrote ' + wrote + ' own pick(s) into data.js'); }
-    process.exit(0);
+    process.exit(failed ? 1 : 0);
 }
 
 let picks = {};
