@@ -1429,7 +1429,6 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
       // row 1: name + TYPE badge own the line (matchup intel never clips)
       h('div', { className:'pbx-row1' },
         h('span', { className:'pbx-name' }, sp.name),
-        cat === 'damage' ? null : pbDmgIcon(sp, 10),   // a damage row's glyph already says physical / magic
         pbTypeShown(sp) ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 9) }, sp.spellType) : null,
         raceAbility ? h('span', { style:{ flexShrink:0, fontSize:8, letterSpacing:'0.14em', color:'#f2c468', border:'1px solid rgba(242,196,104,0.45)', background:'rgba(8,7,12,0.7)', padding:'1px 5px', whiteSpace:'nowrap' }, title:'Race ability — this vessel’s birthright' }, 'RACE') : null,
         (!pool && onClick) ? h('span', { className:'pbx-x', style:{ marginLeft:'auto' } }, '✕') : null),
@@ -1461,6 +1460,13 @@ function pbColourCat(sp) { return !sp ? null : sp.kind === 'passive' ? 'passive'
 // (_HRLG_CAT in hud.js) — NOT the tier numeral (most race abilities carry
 // no tier tag, which left race chips blank). Name lives under the chip.
 const TREE_CAT_GLYPH = { damage:'⚔', heal:'♥', buff:'▲', debuff:'▼', utility:'◎', passive:'◈' };
+/* the category disc's glyph (2026-10-20, mondo: "I dont want the physical/magical icon after the name, it needs to be the
+   red circle icon at the front"): a damage spell's red disc says its damage kind, as in battle: ⚔ physical, three
+   diamonds magic (hud.js ewDmgKindIcon). Nothing after the name says it. */
+function pbCatGlyph(sp, cat) {
+  if (cat === 'damage' && sp && typeof ewDmgKindIcon === 'function') return ewDmgKindIcon(sp.damageType === 'physical' ? 'phys' : 'magic');
+  return TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility;
+}
 const TREE_NODE_BG = '#0d0d13';   // opaque chip fill — lines must never show through a node
 /* ══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the user: "I would still
    like to see the finishers and their animations in the party builder in
@@ -1690,7 +1696,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
   const colourOf = (sp) => {
     const cat = pbColourCat(sp);
-    return { cat, nc: cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : EW.time, glyph: cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '' };
+    return { cat, nc: cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : EW.time, glyph: cat ? pbCatGlyph(sp, cat) : '' };
   };
   const FAM = window.SPELL_FAMILIES || {};
   const famLook = (id) => { const f = ctx.famOf(id); const d = FAM[f] || {}; return { f, name: d.name || 'Unsorted', glyph: d.glyph || '◇', color: d.color || '#8a8270' }; };
@@ -1860,7 +1866,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   const sp = info.spD || info.sp;   // THE UPGRADES (Phase 5): an upgraded spell's numbers are its derived def's
   const cat = pbColourCat(sp);
   const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (st8 === 'root' ? '#e6e9f2' : EW.time);
-  const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
+  const glyph = cat ? pbCatGlyph(sp, cat) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
   // the family names the card's home (THE FAMILY TABS, 2026-09-27); a borrowed / universal row adds where it came from
   const srcTxt = info.source && info.source !== 'race' ? PB_SOURCE_LABEL[info.source] : null;
   const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
@@ -1914,8 +1920,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: st8 === 'equipped' || st8 === 'root' ? TREE_NODE_BG : nc, background: (st8 === 'equipped' || st8 === 'root') ? nc : 'transparent' } }, glyph),
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, kicker),
-      h('div', { className: 'pb-technique-name' }, name,
-        sp ? pbDmgIcon(sp, 12) : null),
+      h('div', { className: 'pb-technique-name' }, name),
       sp ? h('div', { className: 'pb-technique-badges' }, ...pbSpellBadges(sp, 8), pbAoeTiles(sp, true)) : null,
       h('div', { className: 'pb-technique-desc' }, desc),
       (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },

@@ -1701,3 +1701,8 @@ SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follow
   a React element to HTML for it. TEXT_PARTS desc: icon, badges, cost chips.
 - Browser-checked: default rows unchanged apart from the icons; clicking type → Bottom, element → Bottom, power → Top in the
   real dock moved them in the Abilities list and the quick menu alike; unticking one line put Attack on two lines.
+- **The party builder's discs** (2026-10-20, mondo: "there are still magic spells with the crosses swords ... I dont want the
+  physical/magical icon after the name, it needs to be the red circle icon at the front"): TECHNIQUES' red category circles
+  (spell card `.pb-sc-disc`, loadout slot `.pb-ls-disc`, the info panel's `.pb-technique-disc`) drew TREE_CAT_GLYPH's ⚔ for
+  every damage spell. party-builder.js `pbCatGlyph(sp, cat)` gives them the kind (⚔ / three diamonds); the `.ew-dmgkind` chip
+  after the name (info panel, SpellBlade rows) is gone. Checked: all 353 damage spells, 177 magic, none draws ⚔.
