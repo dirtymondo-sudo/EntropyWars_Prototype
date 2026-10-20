@@ -702,3 +702,21 @@ commit (`hqPartyAfterMatch`) never reordered. Fix (data.js `hqPartyDownBack`, ru
 commit and in `hqPartySwap`): when slot 1 is DOWN and anyone is fit, the fit keep their order at the front and the down
 drop to the back in theirs. Whole party down = untouched (loss / ward flow). The commit sets `leadChanged`, the return
 toast says "X LEADS THE PARTY"; a swap of a DOWN member into slot 1 is refused (`reason: 'down'`).
+
+## ONE OF EACH — no team fields the same unit twice (2026-10-20)
+mondo: "disallow more than one of the same unit on a single team. In the story mode, i guess make it to where you cant
+capture a unit you already own. For PvP, make sure the random buttons and ai sims also dont allow more than one of the
+same unit on a team". A unit = its race (units are named after their race; a gender or a creator look is the same unit).
+- state.js `teamDuplicateRaces(races)` is the one read. `randomizeIdentity(ownedOnly, forceRace, exclude)` skips
+  `exclude`; `randomizePartyIdentities` passes the races already rolled, so 🎲 ALL, the VS-CPU opponent roll, Dev Sim,
+  AI training (`_mirrorRandomizeTeams`) and the Balance Lab never repeat a race. A pinned pool (`_hqCpuPool`, the story's
+  enemies) keeps its order: story swarms / encounter groups are untouched. battle.js `randomizeUnitSlot` (🎲 ONE)
+  excludes the other slots. `ownedRaceForSlot` / `cpu3DRaceForSlot` take the taken races (default parties, + SLOT).
+- party-builder.js: the wall greys a race another slot holds ("ON TEAM", click refused with a toast); a sheet saved
+  before the rule keeps its slots (never rewritten) but they wear a red TWICE badge, the archive / LOAD rows say
+  "TWICE: X", and SEAL YOUR FATE / START refuse it. THE PICK (choose N of a bigger sheet) refuses a second of a race.
+- map.js Squad Desk: `_sqTwice(t)` — a team whose deployed members repeat a race says "Same unit twice: X · Edit the
+  team" and Deploy is disabled; THE PICK opens on the first different races and refuses a second one.
+- battle.js `captureRaceOwned(unit)`: `captureDoorCanTake` refuses a race the account owns (data.js `hqCaptureOwned`:
+  starters, bought, captured before) or one another door holds / sealed this fight. The door is open floor for it (no
+  stop, no hold); arriving on it shows "🚪 ALREADY OWNED" once. ai.js reads the same rule through captureDoorCanTake.

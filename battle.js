@@ -6012,6 +6012,33 @@
         /* THE SPELL AUDIT Batch D: spawnDecoy outside the escape kind (Mimicry) — the same Shed Skin decoy (a clone of
            the caster, hp 1, blocks, draws attacks) on the free tile beside the caster farthest from the nearest enemy.
            Cap 3 owned decoys, like escape. Plain data on state._deployedObjects (rides the snapshot). */
+        /* THE REAL-LOOKING COPY (2026-10-20, mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its
+           pixel sprite. this goes for all copy/clone moves"). Every decoy (Shed Skin, Mimicry, Stuffed Double, Cloning
+           Machine) carries this snapshot of the caster's look, and three-renderer builds it through the SAME unit
+           pipeline as the real body: the rigged model (or the sprite slab for a sprite race), the team ring, outline and
+           plate. Plain data (rides the snapshot to the guest). `decoyId` keys the copy's own rig in the renderer. */
+        function _decoyIdFor(unit) {
+            state._decoySeq = (state._decoySeq || 0) + 1;
+            return 'decoy_' + unit.id + '_' + state._decoySeq;
+        }
+        function _decoyLookOf(unit) {
+            const f = getUnitFacing(unit);
+            let airDz = 0;
+            try {
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit) && typeof getFloorBelowZ === 'function')
+                    airDz = Math.max(0, (unit.z || 0) - getFloorBelowZ(unit.x, unit.y, unit.z || 0));
+            } catch (e) { airDz = 0; }
+            return {
+                cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment,
+                name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0,
+                _spriteFlipX: unit._spriteFlipX, zodiac: unit.zodiac,
+                appearance: unit.appearance ? JSON.parse(JSON.stringify(unit.appearance)) : undefined,
+                _spriteOverride: unit._spriteOverride || undefined,
+                facing: f ? { dx: f.dx || 0, dy: f.dy || 0 } : undefined,
+                airDz: airDz || undefined
+            };
+        }
+
         function _spawnCasterDecoy(unit, spell) {
             if (!unit || unit.dead) return null;
             const _foes = getHostileUnits(unit.player, unit);
@@ -6040,7 +6067,7 @@
                 hp: 1, maxHp: 1, blastRadius: 0, blastDmg: 0,
                 blocksMovement: true, drawsRangedAttack: true, drawsMeleeAttack: true, detonateOnAttack: false,
                 spellName: 'Decoy', isDecoy: true,
-                spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
+                decoyId: _decoyIdFor(unit), spriteUnit: _decoyLookOf(unit)
             };
             state._deployedObjects.push(decoy);
             addLog(`${_ctName(unit)} leaves a double at ${coordLabel(at.x, at.y)}.`, unit.player);
@@ -38320,7 +38347,8 @@
             }
             syncPartyBuildsFromInputs();
             ensurePartyMeta();
-            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player));
+            const _others = (state.partyMeta[player] || []).filter((m, j) => j !== idx && m && m.race).map(m => m.race);   // ONE OF EACH (2026-10-20): never a race the team already fields
+            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player), null, _others);
             const slotRace = state.partyMeta[player][idx]?.race || '';
             const cls = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job
             state.partyBuilds[player][idx] = cls;
@@ -61478,7 +61506,26 @@
             if (unit._isBoss || unit.isBoss || unit._isCube) return false;
             if ((unit._captureGraceUntil | 0) >= (state.round || 0)) return false;
             if (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'exited')) return false;
+            if (captureRaceOwned(unit)) return false;   // ONE OF EACH: a unit you already own walks over the door
             return true;
+        }
+        /* ONE OF EACH (mondo, 2026-10-20: "make it to where you cant capture a unit you already own"): a race the account
+           owns (a starter, a Quartermaster buy, an earlier capture — data.js hqCaptureOwned), or one a door already holds or
+           sealed in this fight, is not taken: the door stays open floor for it (no stop, no hold; the AI reads the same rule
+           through captureDoorCanTake). A unit is its race, the same rule the teams follow. */
+        function captureRaceOwned(unit) {
+            const race = String((unit && (unit.race || (unit.meta && unit.meta.race))) || '').toLowerCase();
+            if (!race) return false;
+            try {
+                const prof = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
+                if (typeof hqCaptureOwned === 'function' && hqCaptureOwned(prof, race)) return true;
+            } catch (e) {}
+            if ((state.captures || []).some(c => c && String(c.race || '').toLowerCase() === race)) return true;
+            return _doors().some(d => {
+                if (d.kind !== 'capture' || !d.held || d.held.unitId === unit.id) return false;
+                const h = unitFromId(d.held.unitId);
+                return !!h && String(h.race || (h.meta && h.meta.race) || '').toLowerCase() === race;
+            });
         }
         /* the encounter's LEAD (the named native — it holds out a round longer) */
         function _captureIsLead(unit) {
@@ -61491,7 +61538,18 @@
         }
         /* TAKE: the door swallows the body — HELD under the seal time */
         function captureDoorTake(door, unit, via) {
-            if (!captureDoorCanTake(door, unit)) return false;
+            if (!captureDoorCanTake(door, unit)) {
+                /* ONE OF EACH: say why the door let an enemy through (once per body per door) */
+                if (door && door.kind === 'capture' && door.hp > 0 && !door.held && unit && !unit.dead && door.owner !== unit.player && captureRaceOwned(unit)) {
+                    if (!door._ownedSaid) door._ownedSaid = [];
+                    if (door._ownedSaid.indexOf(unit.id) < 0) {
+                        door._ownedSaid.push(unit.id);
+                        if (!_skipVisuals()) showFloatingTextForUnit(unit, '🚪 ALREADY OWNED', 'buff');
+                        addLog(`🚪 The door at ${coordLabel(door.x, door.y)} lets ${_ctName(unit)} through — you already own that unit.`);
+                    }
+                }
+                return false;
+            }
             const seal = (typeof captureSealFor === 'function') ? captureSealFor(door, unit, { lead: _captureIsLead(unit) }) : 3;
             door.held = { unitId: unit.id, seal, total: seal, tookRound: state.round || 0, via: via || 'move' };
             if (!unit.status) unit.status = {};
@@ -69489,6 +69547,8 @@
                             _beamFx.tx = unit.x + dx * _beamPlan.line.aimStep;
                             _beamFx.ty = unit.y + dy * _beamPlan.line.aimStep;
                             _beamFx.tz = _beamPlan.line.aimZ;
+                            // the aimed body's own tile (a side lane of a wide beam): the VFX takes its height from it
+                            _beamFx.ax = x; _beamFx.ay = y;
                         }
                         if (spell.beamZigzag && _beamPlan.cells.length) {
                             const _stepOf = (u) => ((u.x - unit.x) * dx + (u.y - unit.y) * dy) / (dx * dx + dy * dy);
@@ -70288,7 +70348,7 @@
                         detonateOnAttack: false,
                         spellName: 'Decoy',
                         isDecoy: true,
-                        spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
+                        decoyId: _decoyIdFor(unit), spriteUnit: _decoyLookOf(unit)
                     });
                     if (!_stealthDecoy) {
                         addLog(`${_ctName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`, unit.player);
@@ -70592,7 +70652,8 @@
 
                 if (spell.drawsRangedAttack || spell.drawsMeleeAttack) {
                     _deployedEntry.isDecoy = true;
-                    _deployedEntry.spriteUnit = { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX };
+                    _deployedEntry.decoyId = _decoyIdFor(unit);
+                    _deployedEntry.spriteUnit = _decoyLookOf(unit);
                 }
                 state._deployedObjects.push(_deployedEntry);
                 /* THE SPELL AUDIT Batch D: decoyTaunt { radius, duration } (Stuffed Double) — every enemy within radius of

@@ -1770,17 +1770,16 @@ change on the name plate right away?"
 - **Name plate:** state.js `getWeatherStatChips` (e.g. "🏜 VISION-5") on the 3D plate badge row and the Horologe /
   unit card chips; the plate serial hashes them so a storm moving onto a standing unit refreshes it.
 
-## NO SELF-COMBO (2026-10-19, mondo)
-mondo: no base spell may both apply a status and deal bonus damage (`bonusVsStatus`) against that same status ("makes
-other spells that apply that effect useless"). A status or bonus gained through an UPGRADE is fine. Default taken: each
-spell keeps its status, the self-payoff left `bonusVsStatus` (+ the desc sentence). Removed outright: Meteor (burn),
-Mind Shatter (silence), Requiem (discord), Miasma (poison), Shadow Crush (slow), Dark Lullaby (silence), Kiss of Decay
-(poison), Descending Wrath (burn), Wrath of the Watchers (burn; its desc wrongly said Staggered), Venom Fang (poison),
-Heat Vision (burn), Dragonfire (burn), Tidal Slam (slow), Avalanche Strike (frozen). Trimmed: Dark Dominion keeps the
-Stagger payoff, Bad Trip keeps Voodoo. Checked and left: Boo (applies Discord, pays on Haunted), Formic Acid (poison
-GROUND only ticks damage, never the Poison status), Star Decree (no status). Forecasts / AI read `spell.bonusVsStatus`
-generically, so nothing else changed. A new row must not pair a `statusEffects` id with the same (or a countsAs) id in
-`bonusVsStatus`.
+## NO SELF-COMBO (2026-10-19, flipped 2026-10-20, mondo)
+mondo: no base spell may both apply a status and deal bonus damage (`bonusVsStatus`) against that same status. A status or
+bonus gained through an UPGRADE is fine. His rule (10-20, after the first pass got it backwards): LOW-tier spells apply the
+status, HIGHER-tier spells are the finishers. So the tier III/IV self-combo rows keep `bonusVsStatus` and lost their own
+`statusEffects`: Meteor, Mind Shatter, Requiem (its Discord stat drop went with it), Miasma, Bad Trip, Dark Dominion (pays
+on Burn or Stagger), Dark Lullaby, Kiss of Decay, Descending Wrath, Wrath of the Watchers, Heat Vision, Dragonfire, Tidal
+Slam, Avalanche Strike. The tier I ones keep the status and lost the bonus: Shadow Crush (Slow), Venom Fang (Poison).
+Checked and left: Boo (applies Discord, pays on Haunted), Formic Acid (poison GROUND only ticks damage, never the Poison
+status), Star Decree (no status). Forecasts / AI read `spell.bonusVsStatus` generically. A new row must not pair a
+`statusEffects` id with the same (or a countsAs) id in `bonusVsStatus`.
 
 ## THE LANDING PICK (2026-10-20, mondo: To the Moon lifted the target, a lit landing tile said it was out of range, and a right-click left the target in the air; "there are other similar spells")
 Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl). battle.js:
@@ -1797,3 +1796,17 @@ Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, I
   its tile, the spell stays uncast, the grab's MP (`_skyThrowGrab.mpPaid`) comes back. Every release
   (`_releaseSkyThrowGrab`: another action, reselect, turn change) refunds it too. online.js routes the guest's
   cancel to the host (`fn: 'cancelSkyThrowGrab'`). A pick-a-unit teleport forgets its picked unit on back-out.
+
+## THE REAL-LOOKING COPY (2026-10-20) — battle.js, three-renderer.js
+mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all copy/clone
+moves. From the enemy perspective they need to look indistinguishable from the actual unit."
+- Every decoy (Shed Skin, Mimicry, Stuffed Double, Cloning Machine) stores `decoyId` + `spriteUnit = _decoyLookOf(unit)`
+  (battle.js): race, gender, appearance, sprite override, zodiac, facing, flyer lift — plain data, rides the snapshot.
+- three-renderer.js `rebuildDeployables` builds it with `_buildDecoyEntry` → the SAME `_buildUnitEntry` as a real
+  unit (rigged model idling on its own rig keyed by decoyId, or the sprite slab for a sprite race; team ring, outline,
+  x-ray ghost). Its plate is `_buildPlateDom` (shared with `_createPlate`) fed the caster's LIVE HP / MP / shield /
+  statuses / stages; `_decoyOwnerSerial` re-plates it when those change. `_updateDecoyEntries` (per frame) runs the
+  idle clip, self-glow (incl. the acting-unit breath), ring look + vitals, flyer bob, tp-active / tp-targeted.
+  Hover lights it like a unit (`_resolveHoverAt` → `_decoyGroups`). The old flat sprite card is only the fallback.
+- Not mirrored: the hover info card (enemy decoys still show the tile card, hud.js), and a hit on the copy (it just
+  breaks, no death clip).
