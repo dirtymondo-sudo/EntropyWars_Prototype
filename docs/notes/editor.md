@@ -446,30 +446,60 @@ same way as the current 12x12s like a cutout of the exploration map".
   selects (online.js `_friendlyRefreshMaps`); Quick Play queues the squad's size (server.js `queue-join` 4 | 5, `pickRandomMap`
   by team). A guest whose squad is short of the room's size cannot lock in (online.js `_ewSquadAutoLock`).
 
-### E8 follow-up 3 — THE FACILITY MAPS: the Training Room is a room now (2026-10-20, thread "New map: Training Room")
-mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim. They should be able to be built
-with the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete
-these voxel maps though".
-- THE ROOM: data.js `DOOR_HQ.rooms.training_hall` (after Room 64's `training`; `site: 'prebuilt_training'`, not linked into the
-  building — Room 64 stays the walk's training room). 18 × 18 squares (31.5 m), 4 high; terrain features + marks + props only, so
-  the map editor opens and edits it like any terrain room. THE MATS = a `board` feature (8 × 8, urban:RubberNonSlip5a / 1a, the
-  plateau 0.06 under it) at the centre, x / z −7..7 = lattice squares 5..12; the red apron line; the west BLEACHERS (six `tier`
-  wall rows, 0.44 up / 0.875 deep, seats instanced, a walk behind, two end walls); the east MEZZANINE (a grate bridge 2 squares up,
-  the `steel` stair up the north wall, a pipe rail, four columns, the desk + CRT + monitors on it, lockers + benches under it);
-  north: two wall pads, the clock, two banners, two armour-stand dummies; south (the camera side) kept low. 8 shell lights,
-  mood ambient 2.0, an inline `look` with bloom 0, fog density 0.
-- THE CUT: `HQ_ARENA_RULES.facilities = { prebuilt_training: { room, size: 8, at: [5, 5] } }` → `facilityPicks` (own
-  `<ARENA PICKS FACILITY>` markers) by `node bake-arenas.js --facility` (judges only the `at` window; rerun after the room changes).
-  `hqArenaRegisterFacilities` (after hqArenaRegisterAll) builds the entry with hqArenaEntry at S = 8 under the SAME id, so every
-  tutorial lesson, the RANGE console's sparring, the earned door, the dossier and the level band keep reading `prebuilt_training`;
-  the launch rebuilds it from the live raster like any arena (hqArenaUpgrade / hqArenaRun); `_HQ_ARENA_SITE_LAYOUTS` gets the old
-  env minus fog + scenery (hqFieldLayout's closed dome). The house tiles are the old Δ's (spawns x 2..5 rows 0 / 7, nexus 3..4).
-- THE VOXEL BOARD KEPT: `prebuilt_training_8x8_delta`, "Training Room Δ · voxel" — the old entry + layout (training_room scenery),
-  a facility row (VS CPU match select lists it, hqArenaPvpPool never deals it). Same naming as the Dutchman thread's `voxelKeep`.
-- THE LESSONS: ui.js `_tutorialLaunch` waits on map.js `_hqArenaGateThen` (the SURVEYING card, the room surveyed, then the launch
-  runs again with `_surveyed`); `_msArenaGate` is that gate with `_msConfirm` as its continuation.
-- Draw calls (perf lens, battle, 1280×800): the room ~210–320 a frame over all passes depending on the pose; the old voxel board's
-  scenery read 3312 in the same probe. The heavy props are the wall pads (37 meshes each) and the armour stands.
+### E8 follow-up 3 — Göbekli Tepe's voxel Δ remade as a room map: ENCLOSURE E (2026-10-20)
+mondo: "i want all of those voxel maps remade as new maps ... built with the tools in the map editor, and remember to design them
+with square tiles in mind ... Dont delete these voxel maps". Thread "New Göbekli Tepe map" (one of eight, one per voxel map).
+- **The room:** THE TELL (`site_prebuilt_gobekli_tell`) shell w 110 → 136 so the mound reaches east; a new round space
+  (x 43.75, z 0, 37 m) east of D, a hall west to hall C and one south to the east flank. Inside it the pit, cut one battle level
+  (1.75 m), laid out on THE FIELD's squares: the 12×12 board is x 33.25..54.25, z −10.5..10.5 and every piece is on whole squares,
+  half-turn symmetric: corner BASTIONS (3 stone blocks each, 2 levels, a brazier on each), a bedrock TERRACE each flank (1 level,
+  a built stair at its end), the two great T-pillars either side of the nexus (3 levels), two lesser pillars (2), two stone
+  benches (1); the middle four columns stay open so the 9/10/11 cuts fit. Ring wall 1.8 m on a ledge round the pit, ten lesser
+  pillars set in it facing in, the walk round it. All rows the editor writes (space, hall, plateau sink, ramp built, wall, path, props).
+- **Gotchas found:** a terrain room's props are NOT obstacles to THE FIELD (only trees, walls, the plan's mass) — each battle pillar
+  carries a hidden wall row inside its shaft (Stonehenge's sarsens are walls the same way). A wall row is a CAPSULE to the raster
+  (t/2 + bodyR 0.34) but draws as a box L + t long, so a long block bleeds a square past its end: a one-square block is a
+  ZERO-LENGTH row with t 1.75 (a box exactly its square, read on that square only). A one-square sink between two blocks goes OUT
+  (its edge samples fail the slope), so those corner squares stay terrace.
+- **The cut:** `HQ_ARENA_RULES.within[site] = { room, x, z, r }` (bake-arenas.js: that room only, windows centred within r) —
+  Göbekli Tepe left `keep`; picks at 12 (58,20), 11 (59,20), 10 (59,21), 9 (60,21). Online pool: 12 + 10 (4v4), 11 + 9 (5v5).
+- **The old board:** `HQ_ARENA_RULES.voxelKeep` (shared with the Looking-Glass / Dutchman threads; Göbekli Tepe added to it,
+  `keep` is now empty): hqArenaRegisterAll files the old voxel Δ as `prebuilt_gobekli_12x12_delta` ("Göbekli Tepe Δ · voxel",
+  `voxel: true`) — a plain Δ row, so VS CPU lists it and the online pool never deals it.
+- **Night:** even rounds are night (map.js getCurrentCyclePhase), so the pit reads by its four braziers on the bastions.
+
+### E8 follow-up 4 — THE OWN ARENAS: voxel maps remade as rooms (2026-10-20, thread "New Holo Sim map")
+mondo 10-20: "i want all of those voxel maps remade as new maps. Even the training room and holo sim. They should be able to be
+built with the tools in the map editor ... design them with square tiles in mind". One thread per map.
+- `HQ_ARENA_RULES.own.<mapId>` (data.js, after hqArenaRegisterAll) = a board CUT FROM A ROOM BUILT FOR IT: `{room, ox, oz, base,
+  open, keys, cells}` like a site pick, but hand-placed (no search). The runner `hqArenaRegisterOwn` swaps PREBUILT_MAPS[id] for the
+  arena entry (same id, so every use keeps working: tutorial, match select, range console) and keeps the voxel board as
+  `<id>_voxel`, labelled "<Label> · voxel" in match select (its layout preset + site layout copied). Facility rows stay out of the
+  online pool. `node bake-arenas.js --own <id>` re-reads the window and rewrites the `<OWN PICK id>` line.
+- ROOM 404 · THE HOLO SIM = DOOR_HQ.rooms.facility_holosim: a 31.5 m (18-square) closed box, every surface the `holo` sheet at
+  1.75 m (floor via HQ_TERRAIN_RULES.tile, walls via the new shell `wallTile`, ceiling `ceilTile`), so the projected grid IS the
+  battle grid. Lattice is 18×18 from -15.75, board window ox = oz = 5 (cells x,z ∈ [-7, 7]; cell centre = -6.125 + 1.75·i).
+  Cover = WALL rows t 1.75 with zero length (exact one-square cubes; the free feet stand on the top), h 1.75 = 1 level, 3.5 = 2.
+  Corner block terraces, north exit arch, east gallery (bridge + racks/monitors/console/chairs), west monoliths, corner orbs.
+- three-renderer: `holo` / `holo_red` sheets are self-lit wherever they land (_hqMat, terrain walls, _hqTerrainMat emissive) —
+  before, only the battle tile sheet glowed. Shell `wallTile` overrides the 3.2 m wall texture repeat.
+- ui.js `_tutorialLaunch` waits for an arena's room survey (like _msArenaGate) so the HIGH GROUND lesson opens in the room.
+
+### E8 follow-up 5 — THE TRAINING ROOM on THE OWN ARENAS (2026-10-20, thread "New map: Training Room")
+Same ask as follow-up 4. `prebuilt_training` = `HQ_ARENA_RULES.own.prebuilt_training` (window 5,5 of the room; `node bake-arenas.js
+--own prebuilt_training`), the voxel board kept as `prebuilt_training_voxel` ("Training Room · voxel").
+- THE ROOM: data.js `DOOR_HQ.rooms.training_hall` (inside DOOR_HQ.rooms after Room 64's `training`; `site: 'prebuilt_training'`, not
+  linked into the building — Room 64 stays the walk's training room). 18 × 18 squares (31.5 m), 4 high; terrain features + marks +
+  props only. THE MATS = a `board` feature (8 × 8, urban:RubberNonSlip5a / 1a, plateau 0.06) at the centre, x / z −7..7; red tape
+  lines round it; west BLEACHERS (six `tier` wall rows 0.44 up / 0.875 deep, seats instanced, a walk behind, two end walls); east
+  MEZZANINE (a grate bridge 2 squares up, the `steel` ramp stair along the north wall, a pipe rail, four columns, desk + CRT +
+  monitors on it, lockers + benches under it); north: wall pads, clock, banners, armour-stand dummies; south kept low. 8 shell
+  lights, mood ambient 2.0, inline `look` bloom 0, fog density 0.
+- Draw calls (perf lens, battle, 1280×800): the room ~230–500 a frame by pose; the voxel board's scenery read 3312 in the same probe.
+  Wall pads cost 37 meshes each, `balusters_b` rails ~60 (use model 'pipe'), a text mark one call each (the tape is plain lines).
+- Tutorial fixes found walking the lessons on it: map.js autoGenerateSpawnZones skips relocation while `window._tutActive` (the
+  lesson's pinned tiles were being overwritten by the spawn rows — already broken on main); ui.js `_tutPoll` passes a P1 unit's turn
+  on a `cpuDone` step after 1.2 s (`_tut.passing` lets the gated end through) — a Press refund left the unit up with no allowed action.
 
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 

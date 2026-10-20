@@ -584,7 +584,55 @@ the rain im just talking about grass tiles being on fire".
   it forms (fires lit later still burn), and hardens the fight's lava (state.paintedFrom says it wasn't lava) on forming and
   every round end. The map's own lava stays. Root cause of the fire bug: tickBurningTiles never asked about rain.
 
-## THE TRAINING ROOM MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim")
-`prebuilt_training` is no longer the voxel Δ: it is the 8×8 cut of the editor room `training_hall` (the mats in a gym hall with
-bleachers and a mezzanine). The old voxel board stays as `prebuilt_training_8x8_delta` ("Training Room Δ · voxel"). Full note:
-docs/notes/editor.md "E8 follow-up 3 — THE FACILITY MAPS".
+## THE LOOKING-GLASS CHESS COURT (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... built with the tools in the map editor ... designed with square tiles in mind ... make them look good")
+- The Looking-Glass's online map is no longer its voxel Δ: it is THE BOARD in `site_prebuilt_lookingglass_garden` (HQ_AREA_SPECS.prebuilt_lookingglass), grown to 12 × 12 battle squares (x −10.5..10.5, z −1.75..19.25, centre (0, 8.75)). Picks 12/11/10/9 are all windows on that board (HQ_ARENA_RULES.picks*), so `prebuilt_lookingglass_delta` + 9/10/11 cuts fight on it with the garden drawn round it.
+- Pieces = HQ_TREE_KINDS `chess_<piece>[_dark]` (h in squares): terrain `tree` features, so they block their cell on THE FIELD lattice (walker bumps, battle LOS/height) and the editor lists them under "Chess pieces". three-renderer.js `_hqChessStatue` turns the old `_hzChessPiece` lathe profiles into marble statues on a plinth (shared materials). Black set north half (P2), white set the 180° twin south (P1), kept to columns 0..3 / 8..11 so the 5v5 middle houses fit every size.
+- The garden: lawn grass_2 + marble walks, a walk ring a square wide round the board, braziers on its corners, giant king/queen pairs at the fountain (north) and the south gate.
+- Terrain compile forces a `board` feature's whole square (plus a square margin) open in the hedge maze (was only the plateau core, which put a hedge on row 0).
+- bake-arenas.js THE BOARD IS THE ARENA: a terrain room with a `board` feature of n ≥ S only cuts windows inside that board.
+- The voxel board stays: HQ_ARENA_RULES.voxelKeep lists sites whose old voxel Δ is re-registered as `<site>_<W>x<W>_delta` ("<Site> Δ · voxel", VS CPU pickable, not in the PvP pool). Looking-Glass left HQ_ARENA_RULES.keep.
+- Screens: /mnt/project-files/new-maps/lookingglass/ (before_* = voxel board + old garden, after_* = new arena + garden).
+
+## THE BERMUDA ISLAND (2026-10-20, mondo: "Literally just an island in the ocean ... that y2k beach aesthetic")
+- New room `site_prebuilt_bermuda_island` (data.js, its own block before THE HARBOUR): an 84 m sea room (hqSeaShell, look HQ_ROOM_LOOKS.island) with a lagoon plateau, a sand island (plateau r 14 × rz 21, floor `desert`), two granite shelves one level up (rocks_5 paint), boulder hills drawn by asteroid props, palms, a wooden pier with tiki torches, beach umbrellas/loungers/lifeguard chair, rowboat, buoys, coral + fish scatters in the sea.
+- bake-arenas.js picks: 12×12 @ 18,18 (symmetric under 180°), 9 @ 19,18, 10 @ 20,18, 11 @ 19,17. The arena takes `prebuilt_bermuda_delta` ("The Bermuda Triangle Arena"), so Bermuda joins the online pool and its crystal fights this island. The old voxel board stays via HQ_ARENA_RULES.voxelKeep as `prebuilt_bermuda_8x8_delta`.
+- `terrain.sea.field: true` (hqFieldRoomOk / hqFieldTerrainInfo): a sea room may host THE FIELD; ground deeper than wadeMax under the sea is not standable, shallows are wade cells, deep sea is a `deep_water` hazard. Without the flag a sea room is still refused.
+- Palms: HQ_TREE_KINDS `palm` = `kit:Meshy_AI_palm_tree_0910054114_texture.glb` (three-renderer foliage `kit:` prefix → DOOR_HQ.assets.models; the manifest's .opt.glb loads in its place). The old sea room's three bare trees are now palms.
+- Screens: /mnt/project-files/new-maps/bermuda/ (before_* = the voxel board, after_* = the island).
+
+## THE HELL WALKWAYS (2026-10-20, mondo: "i imagine hell being more like high platforms and walkways with pits of lava deep below that you can actually fall into")
+- Hell's map is no longer its voxel Δ: it is `site_prebuilt_hell_walkways` (`arenaRoom: true` — bake-arenas.js scans a room wearing it before the site's entry part), a 42 m closed cavern behind a new door in THE PIT's alcove (pit east wall z 13.4, y 1.75 ↔ walkways south wall, the south shelf). Built only from editor pieces: one lava `pool` (r 27, sheet 0.3) under rock `plateau` walkways at 7.5 m, four 1.4 m daises (one battle level, the walker's jump), `bridge`s (the two middle ones railed, the side planks open), the plan's `solid` discs as rock pillars (look 'rock', wallH 13; `minIsland: 1.2` so a one-square pillar is kept), braziers / cave torches / chains / skulls / the demon statue on the two shelves. Light: shell h 18, five invisible roof lamps (`strips: false`) in the lake's orange over the walkways + mood.ambient 1.3 (0.34 left the tops black in battle). `terrain.res: 0.25` keeps the tier edges on the squares (0.5 smeared a 1.75 m dais into a slope); every walkway plateau is 0.15 m proud of its squares so a corner square stands whole.
+- The 12 × 12 window (ox 6, oz 6) is drawn in the room's comment; pick in HQ_ARENA_RULES.picks.prebuilt_hell (`pits` + `pitTile` -4 ride the pick: the cell digit stops at -1). `prebuilt_hell_delta` keeps every old slot (match select, crystal fight, the training rotation) and is in the online pool like every arena; the voxel board is `prebuilt_hell_8x8_delta` "Hell Δ · voxel" (voxelKeep).
+- THE LAVA PITS: `terrain.pits: { levels }` → hqFieldRasterTerrain stands each lava hazard cell under the floor `levels` deep (≤ base−1) with `c.pit` (the bake's bookkeeping; hqFieldBuild / hqArenaEntry still write `entry.pits`, nothing in the fight reads it). The depth is ALL a pit is: a body pushed off a walkway drops 4 levels and the game's own rules take it (applyFallDamage — a liquid landing negates the impact; lava's endTurn burn stacks; walking/climbing by the normal height rules). An insta-kill pit rule shipped in #371/#373 and was REMOVED the same day (mondo 10-20: "we already have rules for lava and fall damage, why would you add new rules?"). Never add a map-specific death or movement rule; a map gets its danger from geometry + existing terrain.
+- Screens: /mnt/project-files/new-maps/hell/ (before_* = voxel Δ, after_* = the walkways).
+
+## THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... Even the training room and holo sim ... built with the tools in the map editor ... square tiles in mind ... Dont delete these voxel maps")
+- Clash's stage (`clash_stage`, every Clash match, ranked and friendly rooms included) is a 10×10 cut of its OWN editor room
+  `DOOR_HQ.rooms.clash_temple` (THE TEMPLE), not a widened Göbekli space: a sanctuary on a 10 m mesa (rocks_5 cliffs, ledges) in a
+  meadow bowl ringed by terrain ridges (16-26 m) with three distant peaks. The court = a `board` row of sanctuary / bricks_1 flagstones,
+  one per tile, sunk a 0.74 m step inside the stylobate; 18 greek_column props + four plain `bridge` slabs (the entablature); north a
+  built stone flight (`terrain.stairs: 'stone'`, side cobblestone_2) to the shrine terrace (altar, candle ring, trilithon, obelisks,
+  statues, back wall); south the gate trilithon and the processional stair down the cliff. Ten braziers are the room's first ten props
+  (the battle lights only the first 10: court corners, colonnade sides, shrine, gate).
+- `HQ_CLASH_STAGE` (data.js, after hqArenaRegisterAll) holds the room, the formation (P1 x 3, P2 x 6, rows 3..6) and the baked
+  `pick` (`node bake-arenas.js clash_stage`, between `<CLASH PICK>` markers; rerun after the room changes). hqArenaEntry/hqArenaUpgrade
+  take `opts.formation` in place of the arena house (no nexus, no Cube). The layout's env is the room's own sky.
+- The old voxel board stays as `clash_stage_voxel` ("Temple · voxel"): PREBUILT_MAPS + its layout, GAME_MODES, MS_MAP_LIST, and
+  MULTIPLAYER_MODES.clash.compatibleMaps (VS CPU match select under Clash). Online (online.js `_friendlyGetCompatibleMaps`, server
+  ranked) deals only `clash_stage`. Not done via HQ_ARENA_RULES.voxelKeep: that list re-registers `<site>_delta` boards, and the Clash
+  stage is not a site Δ.
+
+## THE TRAINING ROOM (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim")
+- `prebuilt_training` (every tutorial lesson on it + its VS CPU slot) is the 8 × 8 cut of its OWN editor room
+  `DOOR_HQ.rooms.training_hall` (data.js, its own block after Room 64's `training` room): a 31.5 m gym hall, concrete walls with an
+  oxblood dado, the mats a `board` of urban:RubberNonSlip5a / 1a squares (one per tile) with red/yellow tape marks round them, six rows of
+  bleachers (tier `wall` rows with InstancedMesh seats) on the west, a steel mezzanine (`bridge` + `ramp` stairs model 'steel' + pipe
+  rail) on the east over lockers, columns, banners, clock, observation windows, a roller shutter, eight ceiling lamps.
+- Registered through THE OWN ARENAS (`HQ_ARENA_RULES.own.prebuilt_training`, `node bake-arenas.js --own prebuilt_training`;
+  docs/notes/editor.md): the old voxel board stays as `prebuilt_training_voxel` ("Training Room · voxel", VS CPU match select).
+- Tutorial fixes found walking the lessons on it: map.js autoGenerateSpawnZones no longer moves a lesson's pinned units onto the
+  spawn rows (the bug was already on main: every lesson started on the rows), and ui.js `_tutPoll` passes a vessel's turn on a
+  THEIR TURN step when a Press refund left it up (the step allows no action, so the lesson stood still). No game rule changed.
+- Draw calls: the room's scenery ~230-500 per frame by pose (the voxel board's scenery was ~3300). Text tape marks cost a call each, so the
+  marks are plain lines.
+- Screens: /mnt/project-files/new-maps/training/ (before_* = voxel board, after_* = the hall, tut_* = lessons on it).

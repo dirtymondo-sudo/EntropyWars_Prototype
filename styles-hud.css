@@ -5634,19 +5634,33 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
     .slb-tl { right: 10px; }
 }
 
-/* ── Damage-kind icons (2026-08-09) ──────────────────────────────────────
-   Pokémon-style physical/special split marks so a spell's DAMAGE KIND reads
-   at a glance and can't be confused with the elemental TYPE chips (which are
-   text pills): PHYSICAL = orange spiked impact burst, MAGIC = purple ringed
-   orb. Shared by the battle desc bar (hud.js spellDeliveryBadge) and the
-   party builder (party-builder.js pbDmgIcon) — styles-hud.css loads on every
-   screen, so both can use these classes. Keep them plain background/clip-path
-   (no filter) so they stay safe inside any preserve-3d ancestor. */
-.ew-dmgicon {
+/* ── Damage-kind icons (2026-10-20, mondo: "it should be the crossed sword for physical attacks and a magic wand or like
+   3 diamond looking things for magic damage") ─────────────────────────────
+   Physical = the ⚔ glyph, magic = three diamonds (hud.js ewMagicIcon / ewDmgKindHtml: an inline SVG in currentColor,
+   sized in em so it sits where a glyph would, at the glyph's size and ink). The battle rows, the description bar and the
+   party builder (party-builder.js pbDmgIcon, the .ew-dmgkind chip) all wear them; the old orange burst / purple orb
+   marks are gone. */
+.ew-magic-ico {
     display: inline-block;
-    width: 11px;
-    height: 11px;
+    width: 0.92em;
+    height: 0.92em;
+    vertical-align: -0.1em;
+    fill: currentColor;
+    overflow: visible;
     flex: none;
+}
+/* the party builder's mark: the battle rows' red damage chip in small */
+.ew-dmgkind {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    border-radius: 28%;
+    background: #ff5f5f;
+    color: #0b0810;
+    line-height: 1;
+    font-family: "IBM Plex Mono", monospace;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.5);
 }
 /* Element icon art (data.js ELEMENT_ICON_FILES via elementIconHtml / the
    Horologe badge renderer): sized to the surrounding text so the R2 PNG
@@ -5664,24 +5678,6 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .hrlg-badges .ew-elicon { width: 12px; height: 12px; vertical-align: -2px; margin-right: 3px; }
 .ins-affin-pill .ew-elicon { width: 11px; height: 11px; vertical-align: -2px; margin: 0 1px; }
 .cdx-elem-pill .ew-elicon { width: 11px; height: 11px; vertical-align: -2px; }
-.ew-dmgicon.phys {
-    background: radial-gradient(circle at 50% 45%,
-        #fff3c4 0%, #ffcf6e 22%, #f08a3c 48%, #d84e1a 72%, #7e2508 100%);
-    clip-path: polygon(50% 0%, 61% 24%, 86% 12%, 76% 37%, 100% 50%,
-        76% 63%, 86% 88%, 61% 76%, 50% 100%, 39% 76%, 14% 88%, 24% 63%,
-        0% 50%, 24% 37%, 14% 12%, 39% 24%);
-}
-.ew-dmgicon.magic {
-    border-radius: 50%;
-    background: radial-gradient(circle,
-        #f3e3ff 0%, #f3e3ff 14%,
-        #5b2b8f 20%, #5b2b8f 30%,
-        #c48cf2 36%, #c48cf2 48%,
-        #3d1a63 54%, #3d1a63 64%,
-        #9a5fd8 70%, #9a5fd8 82%,
-        #2a1145 88%, #2a1145 100%);
-    box-shadow: 0 0 4px rgba(181, 108, 224, 0.5);
-}
 
 /* ═══ THE RACE EDITOR (2026-10-06) — ui.js RCE block, #raceEditorPage; rides the .slb2 look ═══ */
 #raceEditorBody { display: flex; flex-direction: column; min-height: 0; }

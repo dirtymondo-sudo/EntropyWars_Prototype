@@ -4662,10 +4662,7 @@
         /* _msConfirm's gate: the arena's room surveyed before the launch. A small card over the screen says so; no worker = the
            sync compile under that card (the old HQ fallback). true = go on now. */
         let _msArenaGateBusy = false;
-        function _msArenaGate(mapId) { return _hqArenaGateThen(mapId, () => window._msConfirm()); }
-        /* the same gate for any launch (THE FACILITY MAPS, 2026-10-20: a tutorial lesson on the Training Room's mats): true = go on
-           now; false = the card is up and `then` runs once the room is surveyed (or the survey gave up — the baked board plays) */
-        function _hqArenaGateThen(mapId, then) {
+        function _msArenaGate(mapId) {
             if (typeof window.hqArenaOf !== 'function') return true;
             const a = window.hqArenaOf(mapId);
             const RE = window.HQ_ROOM_EDITS, editsWait = !!(a && RE && RE.ready && !RE.settled);   // THE GAME ROOM EDITS: his saved edits land first
@@ -4681,14 +4678,13 @@
                 document.body.appendChild(card);
             } catch (e) { card = null; }
             _msArenaGateBusy = true;
-            const done = () => { _msArenaGateBusy = false; try { if (card && card.parentNode) card.parentNode.removeChild(card); } catch (e) {} then(); };
+            const done = () => { _msArenaGateBusy = false; try { if (card && card.parentNode) card.parentNode.removeChild(card); } catch (e) {} window._msConfirm(); };
             const p = _hqArenaWarm(mapId, true);
             if (p) { p.then(done, done); return false; }
             /* no worker (or the record is already here): compile after the card paints */
             _hqDeferBuild(() => { try { window.hqArenaUpgrade(mapId, { compile: true }); } catch (e) { console.warn('[ARENA] upgrade failed', mapId, e); } done(); });
             return false;
         }
-        window._hqArenaGateThen = _hqArenaGateThen;
         /* the strip pill / the panel button: draw or holster */
         window._hqPortalDraw = function (on) {
             if (_hqSuspended || state.gameState !== GS.HQ) return false;
@@ -9196,6 +9192,8 @@
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
             list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
+            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut; the old voxel Temple stays beside it under Clash */
+            list.push({ modeId: 'clash_stage_voxel', name: 'Temple · voxel', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
             // The 8×8 Δ boards — one per launch map, played as-is in every mode
             // (Arena included: each carries its own centre nexus zone).
             meta.filter(m => m.isDelta).forEach(m => {
@@ -9496,7 +9494,8 @@
         window._msConfirm = function() {
             /* THE ARENAS (E8): an arena waits for its room's survey before anything launches (the gate calls back in here) */
             { const _amp = MS_MAP_LIST[_msSelectedMap], _agm = MS_GAME_MODES[_msSelectedGM];
-              if (_amp && !(_agm && _agm.id === 'clash') && !_msArenaGate(_amp.modeId)) return; }
+              const _clashId = (_agm && _agm.id === 'clash') ? ((_amp && /^clash_stage/.test(_amp.modeId)) ? _amp.modeId : 'clash_stage') : null;   // THE CLASH TEMPLE: the stage's room is surveyed like an arena's
+              if (_amp && !_msArenaGate(_clashId || _amp.modeId)) return; }
             playSfx('uiButtonConfirm');
             /* THE TERMINAL: filed on a console's screen — the building goes
                down with it (the match owns the canvas next); the return spot
@@ -9532,7 +9531,7 @@
             /* Clash always plays 4v4 on its fixed JRPG stage — whatever map
                card or team size happened to be selected doesn't apply. */
             if (gm && gm.id === 'clash') {
-                launchModeId = 'clash_stage';
+                launchModeId = /^clash_stage/.test(mp.modeId) ? mp.modeId : 'clash_stage';   // THE CLASH TEMPLE: the stage, or the voxel Temple when that card is picked
                 _msSelectedTeamSize = 4;
             }
             applyGameMode(launchModeId);

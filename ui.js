@@ -16583,12 +16583,29 @@
             opts = opts || {};
             const L = (typeof tutorialLesson === 'function') ? tutorialLesson(lessonId) : null;
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
-            if (_tut.booting) return false;
+            if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
-            /* THE FACILITY MAPS (2026-10-20): the lesson's board is cut from its room — the room surveyed first (map.js
-               _hqArenaGateThen's card), then the launch runs again with the room's own board */
-            if (typeof window._hqArenaGateThen === 'function' && !opts._surveyed
-                && !window._hqArenaGateThen(L.map, () => window._tutorialLaunch(lessonId, Object.assign({}, opts, { _surveyed: true })))) return true;
+            /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
+               _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
+            const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
+            if (_ta && !_ta.ready && !_ta.failed && !opts._arenaWarm) {
+                const p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(L.map, true) : null;
+                if (p) {
+                    _tut.arenaWait = true;
+                    /* the player can walk away during the survey (the shelf's BACK, the building): the lesson then never starts */
+                    const pageNow = () => { const a = document.querySelector('#startOverlay .title-page.active'); return a ? a.id : ''; };
+                    const tok = _tut.arenaTok = (_tut.arenaTok | 0) + 1, gs0 = state.gameState, pg0 = pageNow();   // _tutorialLeave bumps the token too
+                    const go = () => {
+                        if (_tut.arenaTok !== tok) return;   // called off (or superseded)
+                        _tut.arenaWait = false;
+                        if (state.gameState !== gs0 || pageNow() !== pg0) return;   // the player went elsewhere meanwhile
+                        window._tutorialLaunch(lessonId, Object.assign({}, opts, { _arenaWarm: true }));
+                    };
+                    p.then(go, go);
+                    return true;
+                }
+                try { if (!_ta.ready) window.hqArenaUpgrade(L.map, { compile: true }); } catch (e) { console.warn('[Tutorial] arena upgrade failed', L.map, e); }
+            }
             if (_tut.active) _tutStopMatchSide();
             const n1 = L.board.p1.length, n2 = L.board.p2.length;
             _tut.saved = _tut.saved || { introCine: window.EW_DISABLE_INTRO_CINE, fog: state.fogOfWar };
@@ -17070,6 +17087,7 @@
         /* ✕ / THE SHELF: leave the lesson. `quiet` = no confirm (a finished
            lesson, a failed boot) */
         window._tutorialLeave = function (quiet) {
+            if (_tut.arenaWait) { _tut.arenaWait = false; _tut.arenaTok = (_tut.arenaTok | 0) + 1; }   // a launch still waiting on its room's survey is called off
             if (!_tut.active) return;
             const go = () => _tutTeardown((from) => {
                 if (from !== 'hq' && typeof _showTitlePage === 'function') {
