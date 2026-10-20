@@ -1587,3 +1587,19 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
 - **THE TRAPEZOID** (`trap`, a whole shape like shard): straight top + bottom, the Slant slider (-40..40 = 0..20% of the width; above 0 the top is the short edge, below 0 the bottom) + "Lean one way" (`lean`, both sides slant the same way; shapePath key `trapl` via `shapeKey(s)`). Also in card-part skins (`qpShapeClip`). Like every whole shape it is stretched to the box, so its outline is thinner along the top and bottom of a wide row (as shard).
 - Browser-checked in a VS-CPU battle (local files swapped in for the CDN): the default theme's stripes now sit inside the shard's slanted side; all 14 shapes (trapezoid +/- slant, leaning, hex, round, pill, bevel, notch, scoop, diamond, circle, square, jagged, tab, pixel) keep the band inside; the spell list's type colours follow it; Width / Gap / One colour / Opacity / Greyed-out rows / Selected-only / no skin all changed the rows; the UI Maker's Trapezoid button, Slant -14 and Lean drew \‾\ rows live.
 - **End gap clamp** (after review, 2026-10-19): `edgeClip` wraps every y in `clamp(min(top, mid), y, max(bottom, mid))`, so a Gap at the ends past half the row closes the band in the middle and keeps it shut. Before, a 21-24 px end gap on a 42 px battle row crossed the ends and brought the band back as a growing block in the middle. Measured on the ABILITIES row: 10 px = 18 coloured rows, 16 px = 6, 19 / 20 / 21 / 24 px = 0; trapezoid and shard at 24 px = none.
+
+### MORE FONTS: 61 Google fonts in every UI Maker font list (2026-10-20, mondo: "can we possibly add more fonts to the game")
+- **Where they load**: index.html, a second Google Fonts link under the game's own (comment MORE FONTS). Only the @font-face
+  rules load there (about 6 KB compressed); a font file downloads once text on screen uses it, so an unpicked font costs
+  nothing. Same host as the game's nine web fonts, so nothing new goes to R2. Japanese display faces (Dela Gothic One,
+  Reggae One, RocknRoll One) were left out: each one's rules alone are ~115 KB.
+- **The list**: hud.js `FONTS` is now in groups; an entry `[null, name]` opens one, and `fSelect` draws them as `<optgroup>`
+  headings: The game's own, Pixel + retro, Fantasy + medieval, Sci-fi + tech, Bold + display, Horror, Hand-drawn +
+  typewriter, On your computer. The groups after the game's own list the families in the index.html link's order: add a
+  font in BOTH places. The floating text list (`FF`) keeps the groups (`f[0] !== ''`).
+- **The picker**: `fFont(label, path, val, opts)` = the list plus a line of sample text in the picked font under it (no line
+  for the game's own face). Every font list uses it: Text tab body + title, Layout part text, Name plates, scoreboard text +
+  score, Floating text numbers + words. The canvas pops already load a picked face first (floatSignal `document.fonts.load`).
+- Browser-checked (scratchpad probe, VS-CPU arena): all 61 load a face and measure differently from their fallback on a
+  canvas; the Text tab's stand-ins, the battle menus + HUD, the name plates and a real pop (showFloatingTextAtTile) all drew
+  the picked fonts.
