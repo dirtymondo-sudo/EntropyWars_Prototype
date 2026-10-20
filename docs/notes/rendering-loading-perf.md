@@ -903,3 +903,28 @@ the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
 - Voxel-board-only (no effect in rooms, kept; mondo decides): Fog Density, Fog Horizon, the mood preset fog colour, Night
   Mood, Batched Terrain (still used by the moving boards). Dead everywhere: Light Rays (`_buildLightRays` builds nothing since
   the light boxes went, 2026-10-04).
+
+## THE ROOM SETTINGS (2026-10-20, mondo: "can we not just make those settings work with the current non voxel maps?? why do we have to get rid of them??")
+The six settings the 10-18 audit found dead or voxel-only now change the picture on every map (voxel board, a fight on a room,
+the walk), on the classic, pmndrs and node (TSL) chains. Nothing was removed. Defaults keep the picture players already saw.
+- **Light Rays** (pause slider, `ew_lightRays`, default now 0): the box shafts stay gone (NO LIGHT BOX). The frame pass
+  (`_CinematicShader` `lightRays` / `_ngFrame` twin, `uRays uRayPos uRayCol uRayThr`) marches 24 taps from each pixel toward the
+  key light's screen point and adds the bright ones it passes. `three-post.js _raysAim`: the light's own point when it is in front
+  of the eye, else a point past the screen edge along the light's on-screen direction (the battle camera has the sun behind it).
+  The bar a pixel must pass is the frame's own mean luminance (the auto exposure's 16 × 16 read, `_aeMeasure`, which also runs
+  while the rays are on), so a dark forest at night still throws moonbeams. Battle: `_sunLight`; walk: `_hqPostOpts` hands the
+  room's `keyDir` / `keyLight`. The Polish sheet's Light Shafts row turns them off in the building.
+- **Filmic Tone**: three never tone-maps a render into a target, so ACES never reached the screen with Post FX on. The frame pass
+  draws decode · ACES (×1.3) · encode itself (`uFilmic`). Default OFF with the chain, ON in EW_PERF_LOW (no chain, the materials
+  tone-map as before).
+- **Auto Exposure** (Polish row, def now false): `_brightGain` multiplies `_ae.gain` in the building context (the walk and a
+  fight on a room); the read is of the frame pass's input, so the loop is open and stable.
+- **Fog Density / Fog Horizon** in a room: relative to their factory spots (`getRetroFogScale` = density / 0.00044,
+  `getRetroFogLift` = horizon − 0.075). Walk: `_hqFogHold` now also SHAPES the fog while Scene Fog is on (scene.fog, height fog,
+  dome band amount × scale; band top + lift, a room with no band gets one in its fog colour; the height fog's reach ×
+  `_ewFogClimb(lift)`, ½ … 3.5×), restored after the frame; factory sliders = no hold. Many rooms paint their sky in the fog
+  colour, so the band alone changed nothing there: the climbing ground mist is what Horizon shows in a room. Fight on a room:
+  `_applySceneFog` scales the room's FogExp2 and `ThreeRenderer.setFieldFogScale` its height fog.
+- **Night Mood** in a room: `_roomNight(night)` grades from the room's own night (walk: `H.sky.night`; fight: `field.night`
+  from `_fieldCycle`). Factory 0.40 = as before; higher feeds `uNightGrade`, lower lifts the gain at night. Day = untouched.
+- Probe (scratchpad, not in repo): SwiftShader frames take seconds, so a shot needs `frames` drawn after a setting change.

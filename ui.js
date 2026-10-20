@@ -7841,7 +7841,7 @@
             const dofPct = Math.round(dofStr*100);
             const ambStr = (typeof ThreeVFX!=='undefined'&&ThreeVFX.getAmbientDensity)?ThreeVFX.getAmbientDensity():0;
             const ambPct = Math.round(ambStr*100);
-            const rayStr = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getLightRayStrength)?ThreeRenderer.getLightRayStrength():1.0;
+            const rayStr = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getLightRayStrength)?ThreeRenderer.getLightRayStrength():0;
             const rayPct = Math.round(rayStr*100);
             const expVal = (typeof ThreePost!=='undefined'&&ThreePost.getExposureScale)?ThreePost.getExposureScale():1.0;
             const expRange = (typeof ThreePost!=='undefined'&&ThreePost.getExposureRange)?ThreePost.getExposureRange():{min:0.55,max:1.25};
@@ -7957,6 +7957,9 @@
                         <input type="range" min="0" max="150" step="5" value="${rayPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setLightRayStrength)ThreeRenderer.setLightRayStrength(this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
                         <span class="pm-vol-val">${rayPct===0?'off':rayStr.toFixed(2)}</span>
                     </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">shafts of light from the sun, the moon or a room's key light, on every map</span>
+                    </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Bloom</span>
                         <input type="range" min="0" max="${bloomMaxPct}" step="1" value="${bloomPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setBloomStrength)ThreePost.setBloomStrength(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
@@ -7973,7 +7976,7 @@
                         <span class="pm-vol-val">${nightMoodPct===0?'soft':nightMood.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
-                        <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light</span>
+                        <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light. In a room or zone it grades from the room's own night</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Impact Flash</span>
@@ -8104,7 +8107,7 @@
                             <span class="pm-vol-val">${(grainPct/100).toFixed(2)}</span>
                         </div>
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze (affects board)</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze · in a room or zone, Density and Horizon scale the room's own fog</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Fog Density</span>

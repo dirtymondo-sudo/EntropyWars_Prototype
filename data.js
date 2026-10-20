@@ -55693,7 +55693,7 @@ const HQ_POLISH_PREFS = [
        particles on fire / explosion spells (three-vfx.js "THE QUARKS LAYER"; the library is fetched on first use) */
     { key: 'quarksFx',     label: 'Spell FX Layer',     hint: 'experimental: three.quarks fire, embers and smoke on fire and explosion spells, on top of the usual particles', kind: 'level', def: 0, levels: [[0, 'Off'], [1, 'Quarks']], scope: 'both', live: true },
     { key: 'heightFog',    label: 'Height Fog',         hint: 'the mist that thickens toward the floor', kind: 'toggle', def: true, scope: 'hq', live: true },
-    { key: 'shafts',       label: 'Light Shafts',       hint: 'the beams from a window, a skylight, a torch', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'shafts',       label: 'Light Shafts',       hint: 'the Light Rays in the building (their strength is the Light Rays slider)', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'atmos',        label: 'Atmosphere',         hint: 'dust, spores, fireflies, snow, rain — the count per room', kind: 'level', def: 1, levels: [[0, 'Off'], [0.5, 'Few'], [1, 'Normal'], [1.6, 'Full']], scope: 'hq', live: false },
     { key: 'wind',         label: 'Wind',               hint: 'the foliage sways', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'ripples',      label: 'Ripples',            hint: 'rings under a wader, a swimmer, the skiff', kind: 'toggle', def: true, scope: 'hq', live: true },
@@ -55703,7 +55703,8 @@ const HQ_POLISH_PREFS = [
     { key: 'kicks',        label: 'Kickable Props',     hint: 'bins, cones and cans roll when you walk into them', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'camFeel',      label: 'Camera Feel',        hint: 'the stride bob, the landing shake, the sprint lens, the carve roll', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
-    { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: true, scope: 'hq', live: true },
+    /* THE ROOM SETTINGS (2026-10-20): Auto Exposure now reaches the screen (three-post.js _brightGain); def false keeps the picture as it was */
+    { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: false, scope: 'hq', live: true },
     { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },
 ];

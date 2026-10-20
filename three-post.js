@@ -96,7 +96,10 @@ const ThreePost = (function () {
        pass as a plain gain instead: this place's value, eased, the look's if the player never moved it — 1.0 = the frame as
        it always was. The day / night preset and the building's auto-exposure gain are NOT in it (they never reached the
        screen either; switching them on would re-light every map). Without Post FX the materials tone-map with the exposure. */
-    function _brightGain() { _expLk(); return Math.max(0.3, Math.min(2, _lkNum('exposure', _expEased))); }
+    /* THE AUTO EXPOSURE ON SCREEN (2026-10-20): the building's adaptive gain rides the same plain gain (it only ever multiplied the
+       toneMappingExposure, which never reaches the screen with Post FX on). The measurement reads the frame BEFORE this gain
+       (the frame pass's input), so the loop is open: the gain is the room's own (AE_TARGET / luminance)^0.55, clamped. */
+    function _brightGain() { _expLk(); return Math.max(0.3, Math.min(2, _lkNum('exposure', _expEased) * ((_expCtx === 'hq') ? _ae.gain : 1))); }
     function setExposureContext(ctx) {
         ctx = EXPOSURE_CTX_KEYS[ctx] ? ctx : 'battle';
         if (ctx === _expCtx) return;
@@ -120,7 +123,7 @@ const ThreePost = (function () {
     var _ae = { gain: 1, target: 1, last: 0, tick: 0, rt: null, scene: null, cam: null, mat: null, buf: null, lum: 0 };
     function _aeEnabled() { return AE_ON && _expCtx === 'hq' && !(typeof window !== 'undefined' && (window.EW_NO_AUTO_EXPOSURE || window.EW_PERF_LOW)) && _polishGet('autoExposure', true) !== false; }
     function _aeMeasure(now) {
-        if (!_aeEnabled() || !_composer || !_renderer) return;
+        if (!(_aeEnabled() || _rayLive) || !_composer || !_renderer) return;   // (THE LIGHT RAYS read the same measurement: _raysAim)
         if (now - _ae.last < AE_INTERVAL_MS) return; _ae.last = now;
         if (_ng) { _ngAeMeasure(); return; }   // WEBGPU_PLAN W3: the node renderer reads back asynchronously
         var src = _pp ? (_pp.lastIn && _pp.lastIn.texture) : (_composer.readBuffer && _composer.readBuffer.texture); if (!src) return;
@@ -165,7 +168,12 @@ const ThreePost = (function () {
     // day/night exposure is multiplied by FILMIC_EXPOSURE_COMP to match the
     // scene's authored brightness. Toggling requires a material recompile
     // (tone mapping is baked into every program), handled in setFilmicTone.
-    var _filmic = true;
+    /* THE ROOM SETTINGS (2026-10-20, mondo: "can we not just make those settings work"): with Post FX on, the frame is drawn into
+       the chain's target, where three never tone-maps — so ACES never reached the screen and the box did nothing. The frame pass
+       now draws the curve itself (_CinematicShader ewFilmic, uFilmic). The default is the picture every player already sees:
+       OFF where the chain runs (it never showed there), ON in low performance mode (no chain: the materials tone-map, as they
+       always did there). A saved choice wins. */
+    var _filmic = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
     var FILMIC_EXPOSURE_COMP = 1.22;
     try {
         var _fmSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_filmicTone') : null;
@@ -755,6 +763,12 @@ const ThreePost = (function () {
             'uCurvature':     { value: 0.0 },
             'uNightGrade':    { value: 0.0 },
             'uGain':          { value: 1.0 },   // THE BRIGHTNESS (2026-10-18): the slider as a plain gain — see _brightGain
+            // THE ROOM SETTINGS (2026-10-20): Filmic Tone as a grade, the Light Rays as screen-space shafts — see _frameFx
+            'uFilmic':        { value: 0.0 },
+            'uRays':          { value: 0.0 },
+            'uRayPos':        { value: new THREE.Vector2(0.5, 1.5) },
+            'uRayCol':        { value: new THREE.Vector3(1.0, 0.94, 0.82) },
+            'uRayThr':        { value: new THREE.Vector2(0.3, 1.0) },   // x: the luminance a pixel must pass to throw a shaft (the frame's own), y: the shaft's gain
             'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) },
             // ── spell grade (see spellGrade() above) ──
             'uSpotDim':       { value: 0.0 },
@@ -806,6 +820,11 @@ const ThreePost = (function () {
             'uniform float uCurvature;',
             'uniform float uNightGrade;',
             'uniform float uGain;',
+            'uniform float uFilmic;',
+            'uniform float uRays;',
+            'uniform vec2 uRayPos;',
+            'uniform vec3 uRayCol;',
+            'uniform vec2 uRayThr;',
             'uniform vec3 uNightTint;',
             'uniform float uSpotDim;',
             'uniform vec3 uSpotA;',
@@ -862,6 +881,32 @@ const ThreePost = (function () {
             '  const vec3 k = vec3(0.57735027);',
             '  float ca = cos(a), sa = sin(a);',
             '  return c * ca + cross(k, c) * sa + k * dot(k, c) * (1.0 - ca);',
+            '}',
+            '',
+            '// THE LIGHT RAYS: the frame\'s bright pixels (sky, windows, sunlit ground, lamps) smeared away from the key light — each',
+            '// pixel gathers what lies between it and the light, fading with the distance. No geometry, so no box on the board.',
+            'vec3 lightRays(vec2 p) {',
+            '  vec2 d = uRayPos - p;',
+            '  float len = length(d);',
+            '  d *= min(len, 0.6) / max(len, 0.0001) / 24.0;',
+            '  float j = fract(sin(dot(p * uResolution, vec2(12.9898, 78.233))) * 43758.5453);',
+            '  vec3 acc = vec3(0.0);',
+            '  float w = 1.0;',
+            '  for (int i = 0; i < 24; i++) {',
+            '    vec3 s = texture2D(tDiffuse, clamp(p + d * (float(i) + j), vec2(0.001), vec2(0.999))).rgb;',
+            '    acc += s * smoothstep(uRayThr.x, uRayThr.x * 1.8 + 0.04, dot(s, vec3(0.299, 0.587, 0.114))) * w;',
+            '    w *= 0.93;',
+            '  }',
+            '  return acc * (uRayThr.y / 9.0);',
+            '}',
+            '',
+            '// FILMIC TONE: the ACES curve on the frame (decoded, graded, re-encoded) — deeper shadows, brighter mids, soft highlights',
+            'vec3 ewFilmic(vec3 c) {',
+            '  vec3 v = pow(max(c, 0.0), vec3(2.2)) * (1.3 / 0.6);',
+            '  v = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777)) * v;',
+            '  v = (v * (v + 0.0245786) - 0.000090537) / (v * (0.983729 * v + 0.4329510) + 0.238081);',
+            '  v = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602)) * v;',
+            '  return pow(clamp(v, 0.0, 1.0), vec3(1.0 / 2.2));',
             '}',
             '',
             'vec2 curveUV(vec2 uv) {',
@@ -961,7 +1006,9 @@ const ThreePost = (function () {
             '  float spot = 0.0;',
             '  if (uSpotDim > 0.001) spot = max(spotMask(uv, uSpotA, asp), spotMask(uv, uSpotB, asp));',
             '',
+            '  if (uRays > 0.001) col.rgb += lightRays(uv) * uRayCol * uRays;   // the Light Rays slider (0 = untouched)',
             '  col.rgb *= uGain;                         // the Brightness slider (1 = untouched)',
+            '  if (uFilmic > 0.5) col.rgb = ewFilmic(col.rgb);   // Filmic Tone (off = untouched)',
             '  float scanY = uv.y * uResolution.y * uScanlineScale;',
             '  float scanline = sin(scanY * 3.14159) * 0.5 + 0.5;',
             '  scanline = pow(scanline, 1.2);',
@@ -1442,10 +1489,16 @@ const ThreePost = (function () {
     function _applySceneFog() {
         /* THE FIELD LIGHT (2026-10-18): a fight on a room wears the ROOM's fog (three-renderer.js _fieldGroundDress) — the toggle
            turns that fog on and off; the mood's colour and the density slider are the voxel board's haze and never repaint it */
+        /* THE ROOM SETTINGS (2026-10-20): the density slider scales the ROOM's fog (getRetroFogScale: 1 at the factory density), its
+           height fog too (ThreeRenderer.setFieldFogScale); the colour stays the room's */
         var _ff = _fieldLight && _fieldLight.fog;
         if (_scene && _ff) {
             if (!_retro.fogEnabled) _scene.fog = null;
-            else if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_ff.color, _ff.density);
+            else {
+                if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_ff.color, _ff.density);
+                _scene.fog.density = _ff.density * getRetroFogScale();
+            }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setFieldFogScale) ThreeRenderer.setFieldFogScale(_retro.fogEnabled ? getRetroFogScale() : 0, getRetroFogLift()); } catch (e) {}
         } else if (_scene) {
             if (_retro.fogEnabled) {
                 var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
@@ -3205,7 +3258,8 @@ const ThreePost = (function () {
             uNG = f(cu.uNightGrade), uGn = f(cu.uGain), uNT = _ngR(P, cu.uNightTint, 'vec3'), uSD = f(cu.uSpotDim), uSA = _ngR(P, cu.uSpotA, 'vec3'), uSB = _ngR(P, cu.uSpotB, 'vec3'),
             uSSo = f(cu.uSpotSoft), uSL = f(cu.uSpotLift), uTrip = f(cu.uTrip), uHue = f(cu.uHue), uWarp = f(cu.uWarp), uChR = f(cu.uChromaRadial),
             uGT = _ngR(P, cu.uGradeTint, 'vec3'), uGTA = f(cu.uGradeTintAmt), uMo = f(cu.uMotion), uMoC = _ngR(P, cu.uMotionCenter, 'vec2'), uRip = _ngR(P, cu.uRipple, 'vec4'),
-            uCA = _ngR(P, cu.uCssA, 'vec4'), uCB = _ngR(P, cu.uCssB, 'vec4'), uCT1 = _ngR(P, cu.uCssT1, 'vec4'), uCT2 = _ngR(P, cu.uCssT2, 'vec4'), uCM = _ngR(P, cu.uCssM, 'vec2');
+            uCA = _ngR(P, cu.uCssA, 'vec4'), uCB = _ngR(P, cu.uCssB, 'vec4'), uCT1 = _ngR(P, cu.uCssT1, 'vec4'), uCT2 = _ngR(P, cu.uCssT2, 'vec4'), uCM = _ngR(P, cu.uCssM, 'vec2'),
+            uFm = f(cu.uFilmic), uRy = f(cu.uRays), uRP = _ngR(P, cu.uRayPos, 'vec2'), uRC = _ngR(P, cu.uRayCol, 'vec3'), uRT = _ngR(P, cu.uRayThr, 'vec2');
         var uPx = f(ru.uPixelSize), uLv = f(ru.uLevels), uDS = f(ru.uDitherStrength), uDSc = f(ru.uDitherScale), uTi = _ngR(P, ru.uTint, 'vec3'),
             uTA = f(ru.uTintAmount), uSat = f(ru.uSaturation), uLIO = _ngR(P, ru.uLevelsInOut, 'vec2'), uGr = f(ru.uGrain), uMM = f(ru.uMaskMode), uGO = f(ru.uGradeOn);
         var LUM = V3(0.299, 0.587, 0.114);
@@ -3278,7 +3332,28 @@ const ThreePost = (function () {
             });
             var asp = V2(uRes.x.div(T.max(uRes.y, 1)), 1);
             var spot = T.select(uSD.greaterThan(0.001), T.max(spotMask(uv, uSA, asp), spotMask(uv, uSB, asp)), F(0)).toVar();
+            // THE LIGHT RAYS (_CinematicShader lightRays): the bright pixels between this one and the key light, fading with the distance
+            T.If(uRy.greaterThan(0.001), function () {
+                var dd = uRP.sub(uv), ln = T.length(dd);
+                var st = dd.mul(T.min(ln, 0.6).div(T.max(ln, 0.0001)).div(24)).toVar();
+                var jt = T.fract(T.sin(T.dot(uv.mul(uRes), V2(12.9898, 78.233))).mul(43758.5453)).toVar();
+                var acc = V3(0).toVar(), w = 1;
+                for (var i = 0; i < 24; i++) {
+                    var sr = S(T.clamp(uv.add(st.mul(jt.add(i))), V2(0.001), V2(0.999))).rgb;
+                    acc.addAssign(sr.mul(T.smoothstep(uRT.x, uRT.x.mul(1.8).add(0.04), T.dot(sr, LUM))).mul(w));
+                    w *= 0.93;
+                }
+                col.addAssign(acc.mul(uRT.y.div(9)).mul(uRC).mul(uRy));
+            });
             col.mulAssign(uGn);   // the Brightness slider (1 = untouched)
+            T.If(uFm.greaterThan(0.5), function () {   // Filmic Tone (_CinematicShader ewFilmic: decode · ACES · encode)
+                var m3 = function (a, b, d, v) { return a.mul(v.x).add(b.mul(v.y)).add(d.mul(v.z)); };
+                var lv = T.pow(T.max(col, V3(0)), V3(2.2)).mul(1.3 / 0.6);
+                var a = m3(V3(0.59719, 0.07600, 0.02840), V3(0.35458, 0.90834, 0.13383), V3(0.04823, 0.01566, 0.83777), lv);
+                var ra = a.mul(a.add(0.0245786)).sub(0.000090537), rb = a.mul(a.mul(0.983729).add(0.4329510)).add(0.238081);
+                var o = m3(V3(1.60475, -0.10208, -0.00327), V3(-0.53108, 1.10813, -0.07276), V3(-0.07367, -0.00605, 1.07602), ra.div(rb));
+                col.assign(T.pow(T.clamp(o, 0, 1), V3(1 / 2.2)));
+            });
             var sl = T.pow(T.sin(uv.y.mul(uRes.y).mul(uScS).mul(3.14159)).mul(0.5).add(0.5), 1.2);
             col.mulAssign(F(1).sub(uScA.mul(uCrt).mul(F(1).sub(sl))));
             col.mulAssign(F(1).sub(uCrt.mul(0.006).mul(T.sin(uTime.mul(8.3)))));
@@ -3668,6 +3743,77 @@ const ThreePost = (function () {
         console.log('[ThreePost] initialized — bloom + tilt-shift DoF + FXAA + cinematic filter + retro filter + sun shadows (' + _shadowQuality + ') + filmic tone (' + (_filmic ? 'on' : 'off') + ')');
     }
 
+    /* ══ THE ROOM SETTINGS (2026-10-20, mondo: "can we not just make those settings work with the current non voxel maps?? why do we
+       have to get rid of them??") — the frame pass's own share of Light Rays, Filmic Tone and Night Mood, the same on a voxel board,
+       a fight on a room and the walk (render / renderScene feed it):
+       - LIGHT RAYS: the god-ray boxes are gone for good (NO LIGHT BOX, 2026-10-04), so the slider (ThreeRenderer's, ew_lightRays)
+         drives screen-space shafts: the frame's bright pixels smeared away from the key light (the battle's sun, the room's key).
+         The light on screen = real god rays from it; off screen (the battle camera looks down, the sun sits behind it) = shafts
+         slanting along the light's direction across the screen. The Polish sheet's Light Shafts row turns them off in the
+         building. Strength 0 (the default) = the pass skips the taps.
+       - FILMIC TONE: see _filmic.
+       - NIGHT MOOD in a room: a room keeps its own night light (the world clock's night row), so the slider grades FROM it — the
+         default (NIGHT_FACTORY) is the room as it was, higher deepens the night grade, lower lifts the night. The room's night
+         amount: the walk's sky (opts.night), the fight's day / night half (setFieldLight's `night`). Day = untouched. */
+    var _rayV = null, _rayLive = false;
+    function _raysStrength(ctx) {
+        var s = 0;
+        try { s = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getLightRayStrength) ? +ThreeRenderer.getLightRayStrength() : 0; } catch (e) { s = 0; }
+        if (!(s > 0.001)) return 0;
+        if (ctx === 'hq' && _polishGet('shafts', true) === false) return 0;
+        return Math.min(1.5, s);
+    }
+    /* the rays' source on screen + colour; returns the strength written (0 = off) */
+    function _raysAim(U, cam, dir, light, s) {
+        if (!U || !U.uRays) return 0;
+        if (!(s > 0.001) || !cam || !dir || !(dir.lengthSq() > 1e-8)) { U.uRays.value = 0; _rayLive = false; return 0; }
+        if (!_rayV) _rayV = { c: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), f: new THREE.Vector3(), d: new THREE.Vector3(), k: new THREE.Color() };
+        var R = _rayV, x = 0.5, y = 1.5, on = false;
+        R.d.copy(dir).normalize();
+        cam.updateMatrixWorld();
+        R.c.setFromMatrixPosition(cam.matrixWorld); cam.getWorldDirection(R.f);
+        if (!cam.isOrthographicCamera && R.d.dot(R.f) > 0.15) {   // in front of the eye: the light's own point on screen
+            R.a.copy(R.c).addScaledVector(R.d, 1000).project(cam);
+            x = R.a.x * 0.5 + 0.5; y = R.a.y * 0.5 + 0.5;
+            on = isFinite(x) && isFinite(y) && Math.abs(x - 0.5) < 1.6 && Math.abs(y - 0.5) < 1.6;
+        }
+        if (!on) {   // behind / beside the eye: the light's direction across the screen, the source parked past the edge
+            R.a.copy(R.c).addScaledVector(R.f, 10); R.b.copy(R.a).addScaledVector(R.d, 1);
+            R.a.project(cam); R.b.project(cam);
+            var dx = R.b.x - R.a.x, dy = R.b.y - R.a.y, l = Math.hypot(dx, dy);
+            if (!(l > 1e-6)) { dx = 0; dy = 1; l = 1; }
+            x = 0.5 + dx / l * 1.4; y = 0.5 + dy / l * 1.4;
+        }
+        U.uRayPos.value.set(x, y);
+        var k = R.k.setRGB(1, 0.94, 0.82), inten = 1;
+        if (light && light.color) { k.copy(light.color); inten = (light.intensity != null) ? +light.intensity : 1; }
+        var mx = Math.max(k.r, k.g, k.b, 0.0001);
+        var lv = 0.6 + 0.4 * Math.max(0, Math.min(1, inten));   // a moon / a dim key still throws a shaft, a weaker one
+        U.uRayCol.value.set(k.r / mx * lv, k.g / mx * lv, k.b / mx * lv);
+        /* the bar a pixel must pass is the FRAME's: the auto exposure's 16 × 16 read of it (_aeMeasure runs while the rays are
+           on) — a dark forest at night still throws shafts off its moonlit gaps, a bright day map only off its brightest */
+        var thr = Math.max(0.06, Math.min(0.5, (_ae.lum > 0 ? _ae.lum : 0.25)));
+        if (U.uRayThr) U.uRayThr.value.set(thr, Math.max(1, Math.min(3.5, 0.35 / thr)));
+        U.uRays.value = s;
+        _rayLive = true;
+        return s;
+    }
+    var _raySunDir = null;
+    function _sunRayDir() {
+        if (!_sunLight) return null;
+        if (!_raySunDir) _raySunDir = new THREE.Vector3();
+        _raySunDir.copy(_sunLight.position);
+        if (_sunLight.target) _raySunDir.sub(_sunLight.target.position);
+        return _raySunDir;
+    }
+    /* Night Mood over a room's own night: { grade, lift } (grade feeds uNightGrade, lift multiplies the gain) */
+    function _roomNight(night) {
+        var n = Math.max(0, Math.min(1, +night || 0)), m = _lkNum('nightMood', _nightMood), F = NIGHT_FACTORY;
+        if (n <= 0.001) return { grade: 0, lift: 1 };
+        if (m >= F) return { grade: n * ((m - F) / Math.max(0.001, 1 - F)) * 0.85, lift: 1 };
+        return { grade: 0, lift: 1 + n * ((F - m) / Math.max(0.001, F)) * 0.35 };
+    }
+
     function render(cam) {
 
         syncLighting();
@@ -3725,7 +3871,8 @@ const ThreePost = (function () {
         var _rip = _rippleTick(_pcam, _nowMs);
         if (_cinematicPass) {
             var _nGr = _nightF * _lkNum('nightMood', _nightMood) * 0.85;   // (not _ng: a var here would shadow the node chain in all of render())
-            if (_fieldLight) _nGr = 0;   // THE FIELD LIGHT: the room wears no night grade
+            var _rn = _fieldLight ? _roomNight(_fieldLight.night) : null;
+            if (_fieldLight) _nGr = _rn.grade;   // THE FIELD LIGHT: the room wears its own night; Night Mood grades from it (_roomNight)
             if (_dim > 0) _nGr = Math.max(_nGr, _dim * 0.92);
             // A spotlit beat carries its own darkness in the grade (the pools
             // lift out of it), so it feeds the night grade too — that's what
@@ -3734,9 +3881,12 @@ const ThreePost = (function () {
             _cinematicPass.material.uniforms['uNightGrade'].value = _nGr;
             var _lc = _lkCin();
             var _sgOn = _cinematicPass.material.uniforms.uCssB ? _sgTick(_cinematicPass.material.uniforms, _nowMs) : false;   // THE SCREEN GRADE
-            var _bg = _brightGain(); _cinematicPass.material.uniforms['uGain'].value = _bg;
+            if (_fieldLight && _expCtx === 'hq') _aeTick(_nowMs);   // THE AUTO EXPOSURE: a fight on a room keeps the building's eye
+            var _bg = _brightGain() * (_rn ? _rn.lift : 1); _cinematicPass.material.uniforms['uGain'].value = _bg;
+            var _ry = _raysAim(_cinematicPass.material.uniforms, _pcam, _sunRayDir(), _sunLight, _raysStrength(_fieldLight ? 'hq' : 'battle'));
+            _cinematicPass.material.uniforms['uFilmic'].value = _filmic ? 1 : 0;
             _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _nGr > 0.001 || Math.abs(_bg - 1) > 0.002
-                || _gk > 0.001 || _kick > 0.01 || _mb > 0.001 || _sgOn);
+                || _gk > 0.001 || _kick > 0.01 || _mb > 0.001 || _sgOn || _ry > 0.001 || _filmic);
             if (_rip > 0.00001) _cinematicPass.enabled = true;   // a live impact ripple needs the pass too
         }
         // Exposure is pulled down for a plain dramaDim, but NOT while a
@@ -3799,6 +3949,7 @@ const ThreePost = (function () {
             _tmSync();
             if (_side) _renderer._ew_sideRender = true;
             if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
+            if (((_fieldLight && _expCtx === 'hq') || _rayLive) && !_side) _aeMeasure(performance.now());   // THE AUTO EXPOSURE: the room's fight reads its frame too (and THE LIGHT RAYS' bar)
         } finally {
             if (_side) _renderer._ew_sideRender = false;
             if (_bandWas !== null) { _dofPassH.material.uniforms['uBand'].value = _bandWas; if (_dofPassV) _dofPassV.material.uniforms['uBand'].value = _bandWas; }
@@ -3842,8 +3993,15 @@ const ThreePost = (function () {
                 if (_cinematicPass.material.uniforms.uCssB) _cinematicPass.material.uniforms.uCssB.value.w = 0;   // THE SCREEN GRADE is the board's
                 _cinematicPass.material.uniforms['uNightGrade'].value = 0;
                 _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
-                var _bg2 = _brightGain(); _cinematicPass.material.uniforms['uGain'].value = _bg2;
-                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001 || Math.abs(_bg2 - 1) > 0.002);
+                /* THE ROOM SETTINGS: the walk's night (opts.night) under Night Mood, its key light's rays, Filmic Tone */
+                var _rn2 = _roomNight(opts && opts.night);
+                _cinematicPass.material.uniforms['uNightGrade'].value = _rn2.grade;
+                var _bg2 = _brightGain() * _rn2.lift; _cinematicPass.material.uniforms['uGain'].value = _bg2;
+                var _kl = opts && opts.keyLight, _kd = (opts && opts.keyDir) || (_kl && _kl.position) || null;
+                var _ry2 = _raysAim(_cinematicPass.material.uniforms, cam, _kd, _kl, (opts && opts.keyDir !== undefined || _kl) ? _raysStrength('hq') : 0);
+                _cinematicPass.material.uniforms['uFilmic'].value = _filmic ? 1 : 0;
+                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001 || Math.abs(_bg2 - 1) > 0.002
+                    || _rn2.grade > 0.001 || _ry2 > 0.001 || _filmic);
             }
             if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('hq'); }
             if (_retroPass && _retroPass.enabled) {
@@ -4200,6 +4358,12 @@ const ThreePost = (function () {
         _saveRetro();
     }
     function getRetroFogHorizon() { return _retro.fogHorizon; }
+    /* THE ROOM SETTINGS (2026-10-20): a room / a zone part / a fight on a room carries its OWN fog (colour, density, the dome's horizon
+       band), so the two sliders work RELATIVE to their factory spots there: Fog Density scales it (0 = none, the factory 55% = the
+       room as authored, 100% ≈ 1.8×), Fog Horizon raises (or lowers) the dome's band top by how far the slider sits off its
+       factory 15% and lifts the ground mist (the height fog) up to ≈ 3.5× as high. three-renderer.js _hqFogHold applies both to the walk's frame; _applySceneFog to a fight on a room. */
+    function getRetroFogScale() { return Math.max(0, _retro.fogDensity / (_RETRO_FACTORY.fogDensity || 0.00044)); }
+    function getRetroFogLift() { return _retro.fogHorizon - (_RETRO_FACTORY.fogHorizon || 0); }
 
     return {
         init: init,
@@ -4283,6 +4447,7 @@ const ThreePost = (function () {
         getRetroFogDensity: getRetroFogDensity,
         setRetroFogHorizon: setRetroFogHorizon,
         getRetroFogHorizon: getRetroFogHorizon,
+        getRetroFogScale: getRetroFogScale, getRetroFogLift: getRetroFogLift,   // THE ROOM SETTINGS (2026-10-20)
         setSceneLook: setSceneLook,
         getAutoExposure: getAutoExposure, setAutoExposure: setAutoExposure,   // THE POST PASS 7.4
         setSsaoScale: setSsaoScale, getSsao: getSsao, setMotion: setMotion, getMotion: getMotion, polishApply: polishApply,   // THE THIRD PASS (3.4 · 6.4 · the settings)

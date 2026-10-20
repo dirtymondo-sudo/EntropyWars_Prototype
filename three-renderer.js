@@ -26819,7 +26819,10 @@ const ThreeRenderer = (function () {
     // User strength (pause-menu slider, persisted). 0 hides the shafts.
     // Default dropped 1.0 → 0.10 (2026-07-26 PS1 grade): full-strength shafts
     // were a big contributor to the washed-out daytime look.
-    var _rayStrength = 0.10;
+    /* THE ROOM SETTINGS (2026-10-20): the boxes are gone (NO LIGHT BOX, 2026-10-04); the slider now drives ThreePost's screen-space
+       Light Rays on every map (three-post.js _raysAim). Default 0 = the picture every player already sees (the 0.10 default drew
+       nothing since the boxes went); a saved value wins. */
+    var _rayStrength = 0;
     try {
         var _raySaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_lightRays') : null;
         if (_raySaved !== null) {
@@ -65365,7 +65368,7 @@ const ThreeRenderer = (function () {
         try {
             if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, { focus: _hqDofFocus(H) });
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fogHold); }
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
@@ -66124,6 +66127,7 @@ const ThreeRenderer = (function () {
                 /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the round's half of the cycle — the rig starts on round 1's half */
                 var FCy = null; try { FCy = _fieldCycleArm(room, R.roomId, M); } catch (e) { FCy = null; }
                 if (FCy) { var r0 = _fieldCycleRigAt(FCy); field.hemi = r0.hemi; field.sun = r0.sun; nightO = FCy.k < 0.5 ? 1 : 0; }
+                field.night = FCy ? 1 - _fieldCycleRigAt(FCy).t : nightO;   // THE ROOM SETTINGS: Night Mood grades from the room's own night
                 var ofill = new THREE.DirectionalLight(LR.fillColor, LR.fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(ofill);
                 var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
                 (S.lights || []).slice(0, lampMax).forEach(function (Lt) {
@@ -66157,7 +66161,7 @@ const ThreeRenderer = (function () {
                 try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {}   // THE WORLD CLOCK: the hour's fog
                 if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
-            if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD) : null;   // THE FOG SETTING: Scene Fog off = none
+            if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD * _ewFogShape().m) : null;   // THE FOG SETTING: Scene Fog off = none; THE ROOM SETTINGS: Fog Density scales it
             if (field) field.fog = { color: fogC, density: fogD };   // the Scene Fog toggle mid-fight puts THIS fog back (ThreePost._applySceneFog)
         } catch (e) {}
         try {
@@ -66167,7 +66171,10 @@ const ThreeRenderer = (function () {
                 if (S.sky && S.sky.fog && S.sky.fog.height > 0) row.h = S.sky.fog.height;
                 if (S.heightFog && typeof S.heightFog === 'object') Object.assign(row, S.heightFog);
                 var hfFloor = floorY + ((row.floor != null) ? +row.floor : 0) * s;
-                _ewHeightFogSet(hfFloor, (row.h > 0 ? row.h : 1.7) * s, Math.max(0, Math.min(1, (row.amount != null) ? +row.amount : 0.34)), Math.max(fogD * 4, 0.012 / s));
+                _fieldHFogBase = Math.max(0, Math.min(1, (row.amount != null) ? +row.amount : 0.34));
+                var shF = _ewFogShape();
+                _ewHeightFogSet(hfFloor, (row.h > 0 ? row.h : 1.7) * s * _ewFogClimb(shF.lift), Math.min(1, _fieldHFogBase * shF.m), Math.max(fogD * 4, 0.012 / s));
+                _fieldHFogY = 1 / ((row.h > 0 ? row.h : 1.7) * s);
                 _fieldGroundFog = true;
             }
         } catch (e) {}
@@ -66181,7 +66188,13 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         if (st.ceil) st.ceil.y = floorY + (S.h || 3) * s;
     }
-    var _fieldGroundFog = false;
+    var _fieldGroundFog = false, _fieldHFogBase = 0, _fieldHFogY = 1;
+    /* THE ROOM SETTINGS (2026-10-20): Fog Density / Scene Fog mid-fight on a room — the height fog follows (ThreePost._applySceneFog) */
+    function setFieldFogScale(m, lift) {
+        if (!_fieldGroundFog) return;
+        _EW_HFOG.z = Math.min(1, _fieldHFogBase * Math.max(0, +m || 0));
+        _EW_HFOG.y = _fieldHFogY / _ewFogClimb(lift);
+    }
     /* ══ THE BATTLE'S DAY AND NIGHT (2026-10-17, mondo: "wood like the fairy forest and bohemian grove etc to still have day and night
        cycles, for battle and exploration. any outdoor area should have visible day and night. indoor areas should still have it
        mechanically") ══
@@ -66245,7 +66258,7 @@ const ThreeRenderer = (function () {
         var r = _fieldCycleRigAt(FC);
         try {
             var F = (typeof ThreePost !== 'undefined' && ThreePost.getFieldLight) ? ThreePost.getFieldLight() : null;
-            if (F) { F.hemi = r.hemi; F.sun = r.sun; ThreePost.setFieldLight(F); }
+            if (F) { F.hemi = r.hemi; F.sun = r.sun; F.night = 1 - r.t; ThreePost.setFieldLight(F); }
         } catch (e) {}
         for (var i = 0; i < FC.lamps.length; i++) { var Lm = FC.lamps[i]; if (Lm.l) Lm.l.intensity = Lm.n + (Lm.d - Lm.n) * r.t; }
         try { if (typeof scene !== 'undefined' && scene && scene.fog && scene.fog.color) scene.fog.color.copy(r.fogC); } catch (e) {}
@@ -69308,11 +69321,16 @@ const ThreeRenderer = (function () {
         var y = isFinite(pl.visY) ? pl.visY : (+pl.y || 0);
         return { x: pl.x * U, y: (y + (pl.heightM || 1.75) * 0.5) * U, z: pl.z * U };
     }
+    /* the walk's post options: the tilt-shift focus + THE ROOM SETTINGS (2026-10-20) — the room's night for Night Mood, its key light
+       for the Light Rays */
+    function _hqPostOpts(H) {
+        return { focus: _hqDofFocus(H), night: (H && H.sky) ? (+H.sky.night || 0) : 0, keyDir: (H && (H.keyDir || (H.keyLight && H.keyLight.position))) || null, keyLight: (H && H.keyLight) || null };
+    }
     function _hqRenderOnce(H) {
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
         var fh = _hqFogHold(H);
         try {
-            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, { focus: _hqDofFocus(H) });
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fh); }
     }
@@ -69327,25 +69345,55 @@ const ThreeRenderer = (function () {
     function _ewSceneFogOn() {
         try { return !(typeof ThreePost !== 'undefined' && ThreePost && ThreePost.isRetroFogEnabled) || !!ThreePost.isRetroFogEnabled(); } catch (e) { return true; }
     }
+    /* THE ROOM SETTINGS (2026-10-20, mondo: "can we not just make those settings work with the current non voxel maps??"): with
+       Scene Fog ON the same hold SHAPES the room's fog by the two sliders instead of clearing it — Fog Density scales the fog
+       (scene.fog, the height fog, the dome's band; ThreePost.getRetroFogScale, 1 = the room as authored), Fog Horizon lifts the
+       dome's band top (ThreePost.getRetroFogLift, 0 = as authored). Factory sliders = no hold at all. */
+    function _ewFogShape() {
+        var T = (typeof ThreePost !== 'undefined') ? ThreePost : null, m = 1, lift = 0;
+        try { if (T && T.getRetroFogScale) m = +T.getRetroFogScale(); if (T && T.getRetroFogLift) lift = +T.getRetroFogLift(); } catch (e) {}
+        return { m: isFinite(m) ? Math.max(0, m) : 1, lift: isFinite(lift) ? lift : 0 };
+    }
+    /* Fog Horizon in a room: how many times higher the height fog reaches (the factory spot = 1; the slider's top ≈ 3.5×, its bottom ≈ ½) */
+    function _ewFogClimb(lift) { return Math.max(0.25, 1 + (+lift || 0) * 6); }
     function _hqFogHold(H) {
-        if (!H || !H.scene || _ewSceneFogOn()) return null;
+        if (!H || !H.scene) return null;
+        var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 };
+        if (on && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4) return null;
+        var m = sh.m;
         var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
-        var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null };
+        var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
+                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y };
         if (f && !wet) {
             s.f = f;
-            if (f.isFogExp2) { s.d = f.density; f.density = 0; }
-            else { s.n = f.near; s.fa = f.far; f.near = 1e9; f.far = 2e9; }
+            if (f.isFogExp2) { s.d = f.density; f.density = f.density * m; }
+            else { s.n = f.near; s.fa = f.far; if (m > 0.001) { f.near = f.near / m; f.far = f.far / m; } else { f.near = 1e9; f.far = 2e9; } }
         }
-        if (!wet) _EW_HFOG.z = 0;
-        if (_envUni) _envUni.uFogAmount.value = 0;
+        if (!wet) _EW_HFOG.z = Math.min(1, _EW_HFOG.z * m);
+        if (!wet && on && sh.lift) _EW_HFOG.y = _EW_HFOG.y / _ewFogClimb(sh.lift);   // Fog Horizon: the ground mist climbs (or settles)
+        if (_envUni) {
+            _envUni.uFogAmount.value = Math.min(1, _envUni.uFogAmount.value * m);
+            if (on && sh.lift) _envUni.uFogTop.value = Math.max(-0.5, _envUni.uFogTop.value + sh.lift);
+            /* a room with no dome band of its own: a Horizon raised past its factory spot banks the room's fog colour up the sky */
+            if (on && sh.lift > 0.001 && f && !wet && f.color) {
+                var want = Math.min(1, sh.lift * 2.2) * Math.min(1, m);
+                if (want > _envUni.uFogAmount.value) {
+                    if (s.amt < 0.001) { _envUni.uFogColor.value.set(f.color.r, f.color.g, f.color.b); _envUni.uFogBand.value = 0.45; _envUni.uFogTop.value = sh.lift; }
+                    _envUni.uFogAmount.value = want;
+                }
+            }
+        }
         return s;
     }
     function _hqFogBack(s) {
         if (!s) return;
         var f = s.f;
         if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } }
-        _EW_HFOG.z = s.hz;
+        _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy;
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
+        if (_envUni && s.top != null) _envUni.uFogTop.value = s.top;
+        if (_envUni && s.col) _envUni.uFogColor.value.copy(s.col);
+        if (_envUni && s.band != null) _envUni.uFogBand.value = s.band;
     }
     function _hqDissolveStart(H, o) {
         if (typeof document === 'undefined' || !canvas || !H || !H.scene || !H.camera) return null;
@@ -71242,6 +71290,7 @@ const ThreeRenderer = (function () {
         sedan: function (o) { return _spellSedan(o); },
 
         setLightRayStrength, getLightRayStrength,
+        setFieldFogScale,   // THE ROOM SETTINGS (2026-10-20): Fog Density on a fight's room height fog
 
         getSkyShot, playZodiacReveal, playSkyEventReveal,
 
