@@ -36859,7 +36859,12 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'cave_stone', n: 5, seed: 4 },
                 ],
             },
-            doors: [],
+            doors: [
+                /* THE WALKWAYS (2026-10-20): the alcove's dead end opens on Hell's battle map — a tunnel out onto the south shelf */
+                { id: 'walkways', wall: 'e', z: 13.4, y: 1.75, way: 'tunnel',
+                  label: 'THE WALKWAYS', sub: 'HIGH PLATFORMS · THE LAVA BELOW',
+                  action: { room: 'site_prebuilt_hell_walkways', at: 'pit' } },
+            ],
             counters: [],
             props: [
                 { key: 'cave_torch',     x: -4.0, z: 16.6 },                                     // the torches: the rim, the foot of the descent, the warm ledge, the south-east
@@ -36870,10 +36875,10 @@ const DOOR_HQ = {
                 { key: 'wall_torch',     wall: 's', x: 5.0, mount: 6.0 },                        // over the rim (5 m of tier under the wall's foot)
                 { key: 'wall_chains',    wall: 'n', x: -12.0 },                                    // the colossus's chains run to the wall
                 { key: 'wall_chains',    wall: 'n', x: -8.5 },
-                { key: 'wall_chains',    wall: 'e', z: 14.5, mount: 1.75 },
+                { key: 'wall_chains',    wall: 'e', z: 15.6, mount: 1.75 },
                 { key: 'stocks',         x: 14.0, z: 12.5, face: 270 },
                 { key: 'stone_altar',    x: 11.0, z: 9.5, face: 180 },                            // the obsidian altar on the gallery ledge
-                { key: 'fire_extinguisher', wall: 'e', z: 12.0, mount: 1.75 },                                 // inspected monthly
+                { key: 'fire_extinguisher', wall: 'e', z: 11.0, mount: 1.75 },                                 // inspected monthly
                 { key: 'floor_stain',    x: -6.5, z: 5.5 },
                 { key: 'paper_sheet',    x: 3.2, z: 17.0, y: 0.01, face: 300 },                   // FORM 666 on the rim, filled in by hand
                 /* THE VATICAN BATCH (2026-09-17): the colossus, chained beside its plinth; the bones; the braziers */
@@ -36897,6 +36902,128 @@ const DOOR_HQ = {
                 '“Three flights down from the mouth.” “And then?” “And then the bowl. And then the lava. And then it is not our department.”',
             ],
             spawn: { x: 0, z: 16.2, face: 0 },
+        },
+        /* ── THE WALKWAYS (2026-10-20, mondo: "i imagine hell being more like high platforms and walkways with pits of lava deep below
+           that you can actually fall into") — Hell's battle map, the room its arena is cut from (HQ_ARENA_RULES.picks.prebuilt_hell).
+           Built from the editor's own pieces, on the 1.75 m squares: the cavern floor is a LAKE OF LAVA (one pool, 7.2 m under the
+           walkways), the walkways are rock PLATEAUS 7.5 m up standing out of it, every plateau edge on a square's edge; the BRIDGES
+           between them (the two in the middle railed, the side planks open); the ROCK PILLARS are the plan's solid (gen.solid), cover
+           to the fight and columns to the eye; the four raised DAISES round the middle are one square up. The battle window is the
+           middle 12 × 12 squares (x, z −10.5…10.5), drawn as the grid below ('.' walkway, h dais, L lava, b bridge, # pillar):
+               LLL......LLL      the north base (P2's spawn row 0)
+               LL........LL
+               L..#....#..L
+               LbLLLbbLLLbL      the middle bridge (railed) + the two side planks
+               #..Lh..hL...      the west ledge · the middle (the nexus at 5..6) · the east ledge
+               ..b......b..
+               ..b......b..
+               ...Lh..hL..#
+               LbLLLbbLLLbL
+               L..#....#..L
+               LL........LL
+               LLL......LLL      the south base (P1's spawn row 11)
+           `terrain.pits` = THE LAVA PITS: the window's lava cells stand at their TRUE depth on the battle board (4 levels under the
+           walkways, hqFieldRasterTerrain) and are PITS — a body pushed, knocked, flung or thrown into one falls into the lava and is
+           gone (battle.js _fallIntoLavaPit); a walker never steps in (unitCanTraverse), a flyer crosses. The door comes in on the
+           south shelf from THE PIT's alcove; the north shelf is its twin. ── */
+        site_prebuilt_hell_walkways: {
+            label: 'THE DIVINE STAIR · THE WALKWAYS',
+            sub: 'HIGH PLATFORMS · WALKWAYS · THE LAVA BELOW',
+            kind: 'box', site: 'prebuilt_hell', part: 'walkways',
+            shell: {
+                w: 42, d: 42, h: 26,
+                wallH: 26, dadoH: 1.05,
+                floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: 'obsidian',
+                floorColor: 0xc07050, wallColor: 0x4a2c38, dadoColor: 0x4a3038, ceilColor: 0x1e1016,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xff7a40, ambient: 0.34 },
+                plate: { x: 0, z: 19.6, y: 10.6 },
+                fog: { color: 0x1a0604, density: 0.018 },
+                look: HQ_ROOM_LOOKS.hell,
+            },
+            terrain: {
+                floor: 'scorched', cliff: 'rocks_5', path: 'rocks_3',
+                noise: { amp: 0.1, scale: 4.5 }, crag: false,
+                pits: { levels: 4 },
+                res: 0.25,   // the field sampled every quarter metre: the walkways' and daises' edges stay on their squares' edges (0.5 m smeared a 1.75 m dais into a slope)
+                gen: { kind: 'plan', look: 'rock', wallH: 13, rim: 0, edge: 0.12, minIsland: 1.2,   // a pillar is one square's column (2.3 m²), never opened as a bump
+                       solid: [
+                           { x: -4.375, z: -6.125, r: 0.86 }, { x: 4.375, z: -6.125, r: 0.86 },     // the pillars on the bases (squares 3,2 / 8,2 · 3,9 / 8,9)
+                           { x: -4.375, z: 6.125, r: 0.86 }, { x: 4.375, z: 6.125, r: 0.86 },
+                           { x: -9.625, z: -2.625, r: 0.86 }, { x: 9.625, z: 2.625, r: 0.86 },      // the pillars on the ledges' outer corners (0,4 / 11,7)
+                           { x: -15.5, z: -9, r: 2.4 }, { x: 15.5, z: 9, r: 2.4 },                // the spires out in the lake
+                           { x: -16, z: 7.5, r: 1.8 }, { x: 16, z: -7.5, r: 1.8 },
+                           { x: -13.5, z: 15, r: 1.6 }, { x: 13.5, z: -15, r: 1.6 },
+                           { x: 14.5, z: 15.5, r: 2.0 }, { x: -14.5, z: -15.5, r: 2.0 },
+                       ] },
+                features: [
+                    { k: 'space', x: 0, z: 0, w: 39, d: 39, round: true },                                                  // the cavern
+                    { k: 'pool', x: 0, z: 0, r: 27, y: 0.3, depth: 0.8, bank: 0.4, key: 'lava' },                          // THE LAKE OF LAVA (the pits)
+                    /* the walkways — every edge on a square's edge (window square k's west edge at x = −10.5 + 1.75 k), each tier 0.15 m proud of it all round
+                       (the edge blend falls inside the lava square, so a corner square of a walkway stands whole) */
+                    { k: 'plateau', x: 0, z: -7.875, w: 10.8, d: 5.55, h: 7.5, edge: 0.12 },                                // the north base
+                    { k: 'plateau', x: 0, z: -7, w: 14.3, d: 3.8, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: -6.125, w: 17.8, d: 2.05, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: -7.875, z: -2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },                           // the west ledge
+                    { k: 'plateau', x: -8.75, z: 0, w: 3.8, d: 7.3, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: -7.875, z: 2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 0, w: 7.3, d: 7.3, h: 7.5, edge: 0.12 },                                           // the middle
+                    { k: 'plateau', x: 0, z: 0, w: 10.8, d: 3.8, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 7.875, z: -2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },                            // the east ledge
+                    { k: 'plateau', x: 8.75, z: 0, w: 3.8, d: 7.3, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 7.875, z: 2.625, w: 5.55, d: 2.05, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 6.125, w: 17.8, d: 2.05, h: 7.5, edge: 0.12 },                                 // the south base
+                    { k: 'plateau', x: 0, z: 7, w: 14.3, d: 3.8, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 7.875, w: 10.8, d: 5.55, h: 7.5, edge: 0.12 },
+                    { k: 'plateau', x: -2.625, z: -2.625, w: 2.05, d: 2.05, h: 9.25, edge: 0.12 },                          // the four daises, one square up
+                    { k: 'plateau', x: 2.625, z: -2.625, w: 2.05, d: 2.05, h: 9.25, edge: 0.12 },
+                    { k: 'plateau', x: -2.625, z: 2.625, w: 2.05, d: 2.05, h: 9.25, edge: 0.12 },
+                    { k: 'plateau', x: 2.625, z: 2.625, w: 2.05, d: 2.05, h: 9.25, edge: 0.12 },
+                    { k: 'plateau', x: 0, z: 18.5, w: 14, d: 5, h: 7.5, edge: 0.15 },                                       // the south shelf (the door)
+                    { k: 'plateau', x: 0, z: -18.5, w: 14, d: 5, h: 7.5, edge: 0.15 },                                      // the north shelf
+                    /* the bridges */
+                    { k: 'bridge', x0: 0, z0: -5.45, x1: 0, z1: -3.3, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },         // the middle bridges (railed)
+                    { k: 'bridge', x0: 0, z0: 5.45, x1: 0, z1: 3.3, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },
+                    { k: 'bridge', x0: -7.875, z0: -5.45, x1: -7.875, z1: -3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },   // the side planks (open)
+                    { k: 'bridge', x0: 7.875, z0: -5.45, x1: 7.875, z1: -3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: -7.875, z0: 5.45, x1: -7.875, z1: 3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: 7.875, z0: 5.45, x1: 7.875, z1: 3.3, w: 1.75, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: -7.2, z0: 0, x1: -5.05, z1: 0, w: 3.5, y: 7.5, rails: false, key: 'rocks_3' },        // the ledges to the middle (open)
+                    { k: 'bridge', x0: 7.2, z0: 0, x1: 5.05, z1: 0, w: 3.5, y: 7.5, rails: false, key: 'rocks_3' },
+                    { k: 'bridge', x0: 0, z0: 16.2, x1: 0, z1: 10.4, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },          // the shelves to the bases
+                    { k: 'bridge', x0: 0, z0: -16.2, x1: 0, z1: -10.4, w: 3.5, y: 7.5, rails: true, key: 'rocks_3' },
+                ],
+            },
+            doors: [
+                { id: 'pit', wall: 's', x: 0, y: 7.5, way: 'tunnel',
+                  label: 'THE PIT', sub: 'BACK TO THE ALCOVE',
+                  action: { room: 'site_prebuilt_hell_pit', at: 'walkways' } },
+            ],
+            counters: [
+                { id: 'battle', proc: 'battle_marker', x: 0, z: 0, radius: 1.2 },
+            ],
+            props: [
+                { key: 'brazier',        x: -5.5, z: 19.5 },                                    // the shelves' braziers
+                { key: 'brazier',        x: 5.5, z: 19.5 },
+                { key: 'brazier',        x: -5.5, z: -19.5 },
+                { key: 'brazier',        x: 5.5, z: -19.5 },
+                { key: 'demon_statue',   x: 0, z: -20.0, face: 180 },                          // on the north shelf, looking down the walkways
+                { key: 'skull_pile',     x: -4.2, z: -17.6 },
+                { key: 'skull_pile',     x: 4.0, z: 17.4 },
+                { key: 'cave_torch',     x: -3.2, z: 16.4 },                                    // at the bridges' heads
+                { key: 'cave_torch',     x: 3.2, z: 16.4 },
+                { key: 'cave_torch',     x: -3.2, z: -16.4 },
+                { key: 'cave_torch',     x: 3.2, z: -16.4 },
+                { key: 'wall_chains',    wall: 'n', x: -8.0, mount: 9.0 },
+                { key: 'wall_chains',    wall: 'n', x: 8.0, mount: 9.0 },
+                { key: 'wall_chains',    wall: 's', x: -8.0, mount: 9.0 },
+                { key: 'wall_chains',    wall: 's', x: 8.0, mount: 9.0 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 18.2, face: 0 },
         },
         /* ── THE STAIRWAY TO HEAVEN — four flights of cloud stairs from the foot (the telescope's far end) to the gate at 12 m, and THE FALL ── */
         site_prebuilt_heaven_stair: {
