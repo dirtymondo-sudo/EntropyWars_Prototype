@@ -1751,20 +1751,6 @@
             };
         }
 
-        /* Lava-pit fall (battle.js playLavaPitFallFx, the Hell walkways): the
-           shake fires from the HOST engine's pit resolution, so relay it; the
-           guest replays it fog-gated (the death + floating text relay already). */
-        if (typeof window.playLavaPitFallFx === 'function') {
-            const _origPlayLavaPitFallFx = window.playLavaPitFallFx;
-            window.playLavaPitFallFx = function(x, y) {
-                _origPlayLavaPitFallFx(x, y);
-                var _netOn = window._NET && window._NET.online;
-                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
-                    _emit('relay', { type: 'lava-pit-fall-fx', x: x, y: y });
-                }
-            };
-        }
-
         _postRenderHook = function() {
             _injectTurnBanner();
             _fixPerspectiveLabels();
@@ -3320,6 +3306,7 @@
                 var compat = mpMode ? mpMode.compatibleMaps : [];
                 /* THE ONLINE PVP POOL (2026-10-06): an online room only ever deals the 12×12 arenas (data.js hqArenaPvpPool) — never
                    a full launch map, an area part's Δ, a facility or a site still on its old voxel Δ. Clash keeps its own stage. */
+                if (mode === 'clash') compat = ['clash_stage'];   // THE CLASH TEMPLE (2026-10-20): online plays the stage, never the voxel Temple kept for VS CPU
                 if (mode !== 'clash' && typeof window.hqArenaPvpPool === 'function') {
                     var pool = window.hqArenaPvpPool();
                     if (pool && pool.length) {
@@ -4940,14 +4927,6 @@
                         if (_slVis && typeof window.playStormLightningFx === 'function') {
                             window.playStormLightningFx(data.x, data.y);
                         }
-                    }
-
-                    /* Lava-pit fall: the impact shake, fog-gated so a fall in the fog
-                       doesn't give the tile away. */
-                    if (data.type === 'lava-pit-fall-fx' && _ewMirrorView()) {
-                        var _lpVis = !st || !st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
-                            || window._isTileVisibleToViewer(data.x, data.y);
-                        if (_lpVis && typeof window.shakeBoard === 'function') window.shakeBoard('normal');
                     }
 
                     /* Vortex fling: replay the tornado/hurricane lift-spin-hurl
