@@ -1417,6 +1417,35 @@ row the cursor lands on reframes the caster + that target, one continuous camera
   midpoint pan; switching it off mid-shot returns home (_ewMenuCamHome(true)).
 - Local only (menu browsing is never relayed). Only syntax-checked plus a node check of the fit maths.
 
+## THE CLEAR FRAME (2026-10-20, the camera frames beside the menus)
+mondo: "a lot of times the action menu is open with another sub menu, which takes up like 1 third of the left side of
+the screen. so how the camera moves with the menu, make sure it is framed to include what is meant to be seen in the
+right half to two thirds of the screen".
+- battle.js `_menuFreeArea()` measures what the command menus cover RIGHT NOW (`.hrlg-rig` side card, every
+  `.hrlg-panel` of the cascade and its children/rows, the turn-icon peek; whichever side the UI Maker puts them on; a
+  panel wider than 60% of the screen counts as a top/bottom band) plus the HUD strips (scoreboard/match line on top,
+  the prompt bar + description bar below) → `{ cx, cy, hw, hh, menu }` in NDC (cached 120 ms). Never narrower than
+  42% of the screen (CLEAR_FRAME_MIN_HW).
+- `window._ewMenuSlide()` (read by ThreeCamera.sync every frame) = that frame while a menu is up; held through an action
+  a pick started while the board rig keeps the camera (and for 450 ms of menu hand-over), else 0. three-camera.js
+  sync eases it (MENU_SLIDE_EASE 0.16 s) and TRANSLATES the board rig's eye + aim sideways/up by cx·D·tanH, cy·D·tanV
+  (D = eye→aim distance): the view direction never changes, the focal lands in the middle of the free part. Board rig
+  only (TPS/cine rigs untouched). So every move that centres something with a menu up (turn start, cancel, Move/spell
+  range fit, two-shot) lands it beside the menu; orbit still turns round it; picking uses the real camera, unchanged.
+- Fits solve for it: `_menuCamSolve(…, fa)` projects with the slide (+ fa.cx·dist/depth) and centres the pair on
+  (fa.cx, fa.cy) with margins MENU_CAM_MARGIN_H 0.74 × hw / _V 0.70 × hh (old SHIFT_H/SHIFT_V consts gone);
+  `_tilePickFrame(unit, tiles, fa)` uses the exact |r·right − cx·along·tanH| ≤ mH·hw·depth·tanH bound (margins 0.86 /
+  0.90 of the free frame).
+- `camera._clearFit = { area, fit() }`: set after the two-shot / range fit moves; any other moveTo or snap drops it.
+  When the cover under it changes (the quick list / armed-spell panel renders AFTER the click that framed it) and holds
+  140 ms, `_clearFrameRefit` solves the same frame again (`_menuTargetShot(u, t, true)` / `_tilePickArmRefit`).
+- THE BODY FOOTPRINT: three-renderer.js `getUnitFootprint(uid, out)` = the drawn model box's 4 corners (fit scale, facing)
+  as world offsets from the feet (`inner._ew_fitHalf`, set at model attach, rides the cached rig). `_menuCamBody` adds
+  them (`fp`) so a long body (the Sedan) is fitted whole instead of a ±0.38-tile column.
+- Checked on screen (1440×900, Football Stadium, Sedan vs CPU): menu alone, Abilities open, Attack target list, a far
+  target with Abilities open, Move range, enemy quick menu with its info card. The sandbox renders ~1 fps: let the
+  camera settle ~30 s before reading a frame.
+
 ## THE CLICK FACE + THE ATTACK HOLD (2026-10-18)
 mondo: "whenever i click on an enemy or a unit, my unit should turn to face them. if all i do is basic attack them ...
 the camera should sort of stay the way it already is ... and just show that view of the unit attacking the target,
