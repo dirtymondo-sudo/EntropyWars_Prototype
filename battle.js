@@ -69489,6 +69489,8 @@
                             _beamFx.tx = unit.x + dx * _beamPlan.line.aimStep;
                             _beamFx.ty = unit.y + dy * _beamPlan.line.aimStep;
                             _beamFx.tz = _beamPlan.line.aimZ;
+                            // the aimed body's own tile (a side lane of a wide beam): the VFX takes its height from it
+                            _beamFx.ax = x; _beamFx.ay = y;
                         }
                         if (spell.beamZigzag && _beamPlan.cells.length) {
                             const _stepOf = (u) => ((u.x - unit.x) * dx + (u.y - unit.y) * dy) / (dx * dx + dy * dy);
