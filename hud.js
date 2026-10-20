@@ -12134,11 +12134,42 @@ const MATERIALS = [
   ['wood', 'Wood'], ['wood_planks', 'Planks'], ['rock', 'Rock'], ['rocks_1', 'Stone'], ['rocks_5', 'Cliff stone'],
   ['ice', 'Ice'], ['desert', 'Sand'], ['leaves', 'Leaves'], ['water', 'Water'], ['scorched', 'Scorched'],
 ];
+/* MORE FONTS (2026-10-20, mondo: "can we possibly add more fonts to the game"): the list comes in groups ([null, name]
+   opens one; fSelect draws them as headings). The groups after the game's own are Google fonts index.html lists in its
+   MORE FONTS link, in the same order: add a font in both places. */
 const FONTS = [
-  ['', 'Game default'], ["'IBM Plex Mono', monospace", 'IBM Plex Mono'], ["'JetBrains Mono', monospace", 'JetBrains Mono'],
+  ['', 'Game default'],
+  [null, "The game's own"],
+  ["'IBM Plex Mono', monospace", 'IBM Plex Mono'], ["'JetBrains Mono', monospace", 'JetBrains Mono'],
   ["'DotGothic16', monospace", 'DotGothic16 (pixel)'], ["'Cinzel', serif", 'Cinzel'], ["'Cinzel Decorative', serif", 'Cinzel Decorative'],
   ["'Cormorant SC', serif", 'Cormorant SC'], ["'Cormorant Garamond', serif", 'Cormorant Garamond'], ["'Bangers', cursive", 'Bangers'],
-  ["'Caveat', cursive", 'Caveat'], ['Georgia, serif', 'Georgia'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier New'],
+  ["'Caveat', cursive", 'Caveat'],
+  [null, 'Pixel + retro'],
+  ["'Press Start 2P', monospace", 'Press Start 2P'], ["'VT323', monospace", 'VT323'], ["'Silkscreen', monospace", 'Silkscreen'], ["'Pixelify Sans', sans-serif", 'Pixelify Sans'],
+  ["'Jersey 10', sans-serif", 'Jersey 10'], ["'Tiny5', sans-serif", 'Tiny5'], ["'Micro 5', sans-serif", 'Micro 5'], ["'Jacquard 12', serif", 'Jacquard 12'],
+  ["'Bytesized', sans-serif", 'Bytesized'], ["'Share Tech Mono', monospace", 'Share Tech Mono'], ["'Kode Mono', monospace", 'Kode Mono'],
+  [null, 'Fantasy + medieval'],
+  ["'MedievalSharp', serif", 'MedievalSharp'], ["'Uncial Antiqua', serif", 'Uncial Antiqua'], ["'Pirata One', serif", 'Pirata One'], ["'UnifrakturMaguntia', serif", 'UnifrakturMaguntia'],
+  ["'Almendra', serif", 'Almendra'], ["'Almendra SC', serif", 'Almendra SC'], ["'Metamorphous', serif", 'Metamorphous'], ["'Marcellus SC', serif", 'Marcellus SC'],
+  ["'IM Fell English SC', serif", 'IM Fell English SC'], ["'New Rocker', serif", 'New Rocker'], ["'Grenze Gotisch', serif", 'Grenze Gotisch'], ["'Macondo', cursive", 'Macondo'],
+  ["'Eagle Lake', cursive", 'Eagle Lake'], ["'Germania One', sans-serif", 'Germania One'], ["'Alegreya SC', serif", 'Alegreya SC'],
+  [null, 'Sci-fi + tech'],
+  ["'Orbitron', sans-serif", 'Orbitron'], ["'Audiowide', sans-serif", 'Audiowide'], ["'Michroma', sans-serif", 'Michroma'], ["'Oxanium', sans-serif", 'Oxanium'],
+  ["'Chakra Petch', sans-serif", 'Chakra Petch'], ["'Rajdhani', sans-serif", 'Rajdhani'], ["'Exo 2', sans-serif", 'Exo 2'], ["'Russo One', sans-serif", 'Russo One'],
+  ["'Major Mono Display', monospace", 'Major Mono Display'], ["'Syncopate', sans-serif", 'Syncopate'], ["'Zen Dots', sans-serif", 'Zen Dots'], ["'Quantico', sans-serif", 'Quantico'],
+  ["'Electrolize', sans-serif", 'Electrolize'],
+  [null, 'Bold + display'],
+  ["'Anton', sans-serif", 'Anton'], ["'Bebas Neue', sans-serif", 'Bebas Neue'], ["'Oswald', sans-serif", 'Oswald'], ["'Archivo Black', sans-serif", 'Archivo Black'],
+  ["'Bungee', sans-serif", 'Bungee'], ["'Black Ops One', sans-serif", 'Black Ops One'], ["'Staatliches', sans-serif", 'Staatliches'], ["'Bowlby One SC', sans-serif", 'Bowlby One SC'],
+  ["'Rubik Mono One', sans-serif", 'Rubik Mono One'], ["'Teko', sans-serif", 'Teko'], ["'Righteous', sans-serif", 'Righteous'], ["'Monoton', sans-serif", 'Monoton'],
+  ["'Luckiest Guy', cursive", 'Luckiest Guy'],
+  [null, 'Horror'],
+  ["'Creepster', cursive", 'Creepster'], ["'Nosifer', cursive", 'Nosifer'], ["'Butcherman', cursive", 'Butcherman'], ["'Eater', cursive", 'Eater'],
+  ["'Metal Mania', cursive", 'Metal Mania'], ["'Rubik Glitch', sans-serif", 'Rubik Glitch'],
+  [null, 'Hand-drawn + typewriter'],
+  ["'Special Elite', monospace", 'Special Elite'], ["'Permanent Marker', cursive", 'Permanent Marker'], ["'Rock Salt', cursive", 'Rock Salt'],
+  [null, 'On your computer'],
+  ['Georgia, serif', 'Georgia'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier New'],
   /* the computer's own fonts (nothing downloaded): where one is missing the next in its line stands in */
   ["Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", 'Impact'], ["'Arial Black', 'Arial Bold', Gadget, sans-serif", 'Arial Black'],
   ["'Arial Narrow', 'Helvetica Neue Condensed', 'Roboto Condensed', sans-serif", 'Arial Narrow'], ["'Helvetica Neue', Helvetica, Arial, sans-serif", 'Helvetica'],
@@ -14651,11 +14682,11 @@ function floatPrevMount() {
 }
 function floatDetail() {
   const X = uxOf();
-  const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0]));
+  const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0] !== ''));
   const WT = [['', 'As the game'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']];
   let h = `<div class="uim-h">Floating text</div><div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${FLOAT_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="floatlook" data-val="${v}">${esc(l)}</button>`).join('')}</div></div>`;
-  h += sec('ffont', 'Font', xp(fSelect('Numbers', 'fNumFont', FF, X.fNumFont) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
-    + fSelect('Words', 'fWordFont', FF, X.fWordFont) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
+  h += sec('ffont', 'Font', xp(fFont('Numbers', 'fNumFont', X.fNumFont, FF) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
+    + fFont('Words', 'fWordFont', X.fWordFont, FF) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
     + fSeg('Word case', 'fCase', [['', 'As written'], ['upper', 'UPPER'], ['title', 'Title'], ['lower', 'lower']], X.fCase)
     + fRange('Letter spacing in words', 'fTrack', 0, 4, 0.05, +X.fTrack, '1 = as the game; 0 = the letters touch'))
     + xCheck('Icons in words (🔥 ❄️ ⛰)', 'fEmoji', X.fEmoji));
@@ -14698,7 +14729,7 @@ function platesDetail() {
   let h = `<div class="uim-note">The name plates over the units. Their bar colours, ends and frame come from the bar look below.</div>`;
   h += sec('pshow', 'What a plate shows', xCheck('Name', 'pName', X.pName) + xCheck('Level', 'pLvl', X.pLvl) + xCheck('HP / MP numbers', 'pNums', X.pNums) + xCheck('MP bar', 'pMp', X.pMp) + xCheck('Status badges', 'pStatus', X.pStatus));
   h += sec('psize', 'Size', xp(fRange('Size', 'pSize', 0.5, 2.5, 0.05, +X.pSize) + fRange('Width', 'pW', 100, 320, 2, +X.pW) + fRange('HP bar thickness', 'pBarH', 2, 16, 1, +X.pBarH) + fRange('MP bar thickness', 'pMpH', 2, 14, 1, +X.pMpH)));
-  h += sec('ptext', 'Name text', xp(fSelect('Font', 'pFont', FONTS, X.pFont) + fRange('Size', 'pNameSize', 8, 28, 1, +X.pNameSize)
+  h += sec('ptext', 'Name text', xp(fFont('Font', 'pFont', X.pFont) + fRange('Size', 'pNameSize', 8, 28, 1, +X.pNameSize)
     + fSeg('Case', 'pCase', [['upper', 'UPPER'], ['none', 'As written'], ['title', 'Title'], ['lower', 'lower']], X.pCase)
     + fColorOpt('Your units', 'pAllyCol', X.pAllyCol, '#8fd0e8') + fColorOpt('Enemies', 'pFoeCol', X.pFoeCol, '#e88fb8') + fColorOpt('Current unit', 'pActiveCol', X.pActiveCol, '#f0d060')));
   h += sec('pnums', 'Level + numbers', xp(fRange('Level size', 'pLvlSize', 0, 28, 1, +X.pLvlSize) + fRange('HP / MP number size', 'pNumSize', 0, 24, 1, +X.pNumSize)
@@ -14882,7 +14913,7 @@ function scoreForm() {
     + fSeg('Nexus pips', 'sPipsPos', [['bottom', 'At the bottom'], ['top', 'At the top'], ['off', 'Hidden']], X.sPipsPos))
     + xCheck('Mode name (Arena …)', 'sModeShow', X.sModeShow) + xCheck('"Score" word', 'sCapShow', X.sCapShow)
     + '<div class="uim-note">Sudden death still shows over the score with the mode name hidden.</div>');
-  h += sec('stext', 'Text', xp(fSelect('Font', 'sFont', FONTS, X.sFont) + fSelect('Score font', 'sScoreFont', FONTS, X.sScoreFont)
+  h += sec('stext', 'Text', xp(fFont('Font', 'sFont', X.sFont) + fFont('Score font', 'sScoreFont', X.sScoreFont)
     + fRange('Score size', 'sScoreSize', 12, 56, 1, +X.sScoreSize) + fColorOpt('Score colour', 'sScoreCol', X.sScoreCol, '#ffffff')
     + fColorOpt('P1 score colour', 'sScoreP1Col', X.sScoreP1Col, '#8fd0ff') + fColorOpt('P2 score colour', 'sScoreP2Col', X.sScoreP2Col, '#ff8fb0')
     + fRange('Mode name size', 'sModeSize', 6, 20, 1, +X.sModeSize) + fColorOpt('Mode name colour', 'sModeCol', X.sModeCol, '#9a93b5')
@@ -15510,6 +15541,7 @@ const UIM_CSS = `
 .uim-shape:hover { border-color: #4b6f9e; }
 .uim-shape.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
 .uim-note { color: #7d8699; font-size: 10.5px; margin: 6px 0; }
+.uim-fsample { grid-column: 2; min-width: 0; margin-top: -1px; color: #dfe3ea; font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .uim-ro { padding: 7px 9px; border: 1px dashed #4b8fe0; border-radius: 6px; color: #b9c9e8; margin-bottom: 8px; font-size: 11px; }
 .uim-warn { color: #ffc56b; }
 .uim-sl { display: flex; align-items: center; gap: 8px; padding: 5px; border: 1px solid #2c313d; border-radius: 6px; margin-bottom: 4px; cursor: pointer; }
@@ -15811,8 +15843,16 @@ function fColorOpt(label, path, val, def, withA, tip) {
   const a = alphaOf(val);
   return `<div class="uim-f"${tip ? ` title="${esc(tip)}"` : ''}><label>${label}</label><div><input type="checkbox" data-path="${path}" data-optc="${esc(def)}" data-re="1"${val ? ' checked' : ''} title="Its own colour">${val ? `<input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb" title="Pick a colour"><input class="uim-hex" value="${toHex(val)}" data-path="${path}" data-kind="hex" maxlength="7" spellcheck="false" title="Type a hex colour">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity">` : ''}` : '<span class="uim-note" style="margin:0">Off</span>'}</div></div>`;
 }
-function fSelect(label, path, opts, val) {
-  return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>`;
+/* an entry [null, name] opens a group heading in the list; after = more of the field under the box (a font sample) */
+function fSelect(label, path, opts, val, after) {
+  let grp = 0;
+  const o = opts.map(([v, l]) => v === null ? `${grp++ ? '</optgroup>' : ''}<optgroup label="${esc(l)}">`
+    : `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('') + (grp ? '</optgroup>' : '');
+  return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${o}</select></div>${after || ''}</div>`;
+}
+/* a font list with a line of sample text in the picked font under it (the game's own face: no line) */
+function fFont(label, path, val, opts) {
+  return fSelect(label, path, opts || FONTS, val || '', val ? `<div class="uim-fsample" style="font-family:${esc(val)}">Entropy Wars 0123456789</div>` : '');
 }
 function fSeg(label, path, opts, val) {
   return `<div class="uim-f"><label>${label}</label><div style="flex-wrap:wrap">${opts.map(([v, l, tip]) => `<button class="uim-btn${String(v) === String(val) ? ' on' : ''}" data-set="${path}" data-val="${esc(v)}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div></div>`;
@@ -16011,10 +16051,10 @@ function colorsForm(t) {
 const WEIGHTS = [['', 'As the font'], ['400', 'Normal'], ['600', 'Semi-bold'], ['700', 'Bold'], ['900', 'Black']];
 function textForm(t) {
   const tx = textOf(t), ef = tx.effect || 'drop', cs = caseOf(tx);
-  const fonts = sec('tf', 'Fonts', `${fSelect('Body font', 'text.font', FONTS, tx.font)}${fSeg('Body weight', 'text.weight', WEIGHTS, tx.weight)}${fCheck('Body italic', 'text.italic', tx.italic)}
-    ${fSelect('Title font', 'text.titleFont', FONTS, tx.titleFont)}${fSeg('Title weight', 'text.titleWeight', WEIGHTS, tx.titleWeight)}${fCheck('Title italic', 'text.titleItalic', tx.titleItalic)}
+  const fonts = sec('tf', 'Fonts', `${fFont('Body font', 'text.font', tx.font)}${fSeg('Body weight', 'text.weight', WEIGHTS, tx.weight)}${fCheck('Body italic', 'text.italic', tx.italic)}
+    ${fFont('Title font', 'text.titleFont', tx.titleFont)}${fSeg('Title weight', 'text.titleWeight', WEIGHTS, tx.titleWeight)}${fCheck('Title italic', 'text.titleItalic', tx.titleItalic)}
     ${fRange('Title size', 'text.titleSize', 0.6, 2.5, 0.05, tx.titleSize)}${fRange('Button text size', 'text.rowSize', 0.6, 2, 0.05, tx.rowSize)}
-    <div class="uim-note">The body font goes on every text in a menu wearing this theme; titles are window names and headers. Fonts from Impact down are the computer's own: where one is missing, the next font in its line stands in.</div>`,
+    <div class="uim-note">The body font goes on every text in a menu wearing this theme; titles are window names and headers. Fonts under On your computer are the computer's own: where one is missing, the next font in its line stands in.</div>`,
     (FONTS.find(f => f[0] === (tx.titleFont || tx.font)) || ['', ''])[1]);
   const kase = sec('tc', 'Case + spacing', `${fSeg('Case', 'text.tcase', [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed', 'Takes off the caps the game puts on']], cs)}
     ${fRange('Letter spacing', 'text.track', 0, 0.4, 0.01, tx.track || 0)}
@@ -16739,7 +16779,7 @@ function lookForm(P, L) {
   const kk = k => (tp ? txKey(tp, k) : k), tv = k => { const x = L[kk(k)]; return x == null ? (k === 'hide' ? false : LOOK_DEF[k]) : x; };
   const pick = T.length ? `<div class="uim-f" title="Every bit of text in this piece has its own look: pick one, or All text for every word at once"><label>Which text</label><div style="flex-wrap:wrap">`
     + [['', 'All text']].concat(T).map(([id, lbl]) => `<button class="uim-btn${tp === id ? ' on' : ''}" data-dk="txpart" data-val="${P.id}:${id}">${esc(lbl)}${id && txOn(L, id) ? ' •' : ''}</button>`).join('') + '</div></div>' : '';
-  const tx = pick + lp(P.id, `${tp ? fCheck('Hide it', kk('hide'), tv('hide')) : ''}${fColorOpt('Colour', kk('ink'), tv('ink'), '#ffffff', false)}${fSelect('Font', kk('font'), FONTS, tv('font'))}${fSeg('Weight', kk('fw'), WEIGHTS, tv('fw'))}
+  const tx = pick + lp(P.id, `${tp ? fCheck('Hide it', kk('hide'), tv('hide')) : ''}${fColorOpt('Colour', kk('ink'), tv('ink'), '#ffffff', false)}${fFont('Font', kk('font'), tv('font'))}${fSeg('Weight', kk('fw'), WEIGHTS, tv('fw'))}
     ${fRange('Size', kk('fsz'), 0, 72, 1, +tv('fsz'))}
     ${fSeg('Case', kk('tcase'), [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed']], tv('tcase'))}
     ${fRange('Letter spacing', kk('track'), -0.1, 0.5, 0.01, +tv('track') || 0)}
