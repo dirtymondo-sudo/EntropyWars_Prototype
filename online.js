@@ -5204,6 +5204,9 @@
                     /* two-click casts (wave B): the first pick is per-viewer
                        aiming UI — the guest's own pick must survive the sync */
                     _spellPick1: 1,
+                    /* an AoE armed from a quick menu places with no target
+                       list (hud.js _hrlgArmAoePlacement) — per-viewer UI */
+                    _quickAoePlace: 1,
                     /* per-viewer: which one-shot achievements THIS client
                        already toasted this match — the host's list must not
                        block or reset the guest's */
@@ -5600,6 +5603,8 @@
                 '_skyThrowDestKey',
                 // two-click casts (wave B): the first pick is per-viewer aiming UI
                 '_spellPick1',
+                // quick-menu AoE placement: no target list (per-viewer aiming UI)
+                '_quickAoePlace',
                 // per-viewer one-shot achievement guard (see skip list)
                 '_matchAchievements',
                 '_matchAchievementsKey',
