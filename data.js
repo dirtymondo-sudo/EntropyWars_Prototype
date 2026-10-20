@@ -55840,7 +55840,8 @@ function hqArenaUpgrade(mapId, opts) {
     const zoneTiles = a.formation ? a.formation[1].concat(a.formation[2])   // THE CLASH TEMPLE: Clash's two lines are the tiles that must stand clear
         : HT.zones[1].concat(HT.zones[2], HT.nexus.map(p => ({ x: p[0], y: p[1] })), HT.cubes ? [HT.cubes[1], HT.cubes[2]] : []);
     const fits = !!(R && built && out <= Math.max(cap.obstacles, cap.wallMax)   // the walled cut's cap (the bake judged the window)
-        && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
+        && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0
+            && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
     const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : null);
