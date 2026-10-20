@@ -50257,6 +50257,380 @@ const ThreeRenderer = (function () {
         });
         G.add(hull);
     }
+    /* THE GALLEON (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... dont delete these voxel maps though, some
+       of them still look good like the dutchman, but they can still be made to look better and more realistic"): a FLOATING room whose
+       `terrain.float.hull.kind` is 'galleon' (THE FLYING DUTCHMAN's main deck, data.js HQ_AREA_SPECS.prebuilt_revenge) hangs a sailing
+       ship round its field in place of the starship — THE HULL lofted under the plate (bow east): its sides up to the deck's own rim
+       (the sheer steps up at every castle), a little tumblehome down to the waterline, the dark bottom rounding through the bilge to the
+       keel, the bow drawn out past the forecastle into THE BEAKHEAD (its own low deck and rail), the flat TRANSOM at the stern with THE
+       STERN GALLERY (the great cabin's lit windows, the balcony, her name) and THE STERN LANTERNS on the taffrail (one real light); the
+       WALES, the CHANNELS at every mast, the GUN DECK's row of ports down each side (some lit from inside), the RUDDER; THE BOWSPRIT and
+       its jib boom with the spritsail; THE MASTS where the room's terrain trees of kind 'mast' stand (lower mast, fighting top, topmast,
+       topgallant, crosstrees), their YARDS and TATTERED SAILS bellied forward by the wind astern (the main course furled over the waist,
+       where the fights are; the mizzen a lateen), the Jolly Roger and the pennants, a lantern on each mast (the mainmast's a real
+       light over the waist); THE RIGGING (shrouds with their ratlines, stays, backstays, lifts) as ONE line batch; THE CAPSTAN and THE
+       HELM (the wheel GLB) where their trees stand; THE MAIN HATCH's grating at the plaza (the nexus) and the fore hatch's; THE WAKE
+       down both sides and astern, scrolling with the voyage. Room metres in the field's frame (U px each); the hull's pieces are one
+       merged mesh per material and never fade (_ew_occSkip), each mast's rig is its own piece that fades when it stands between the eye
+       and a unit. `hull` keys: draft (m of hull under the sea's sheet; 3.8), bow (m the beakhead runs past the deck's east edge; 9.5),
+       stern (m the transom stands past its west edge; 0.05). */
+    var _HQ_SHIP_TREES = { mast: 1, capstan: 1, helm: 1 };   // terrain trees the ship draws itself (three-renderer.js treeOne plants no foliage for them)
+    var _hqSailTexCache = {};
+    function _hqSailTex(seed) {
+        if (_hqSailTexCache[seed]) return _hqSailTexCache[seed];
+        if (typeof document === 'undefined') return null;
+        var r = _mulberry32(0x5a11 + seed * 131), W = 128, Hh = 128, c = document.createElement('canvas'); c.width = W; c.height = Hh;
+        var g = c.getContext('2d');
+        g.fillStyle = '#e4dccb'; g.fillRect(0, 0, W, Hh);
+        /* the cloths (vertical seams), the weather's grime toward the foot, a reef band */
+        g.strokeStyle = 'rgba(90,76,58,0.45)'; g.lineWidth = 1;
+        for (var x = 8; x < W; x += 12) { g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, Hh); g.stroke(); }
+        var gr = g.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, 'rgba(60,50,36,0)'); gr.addColorStop(1, 'rgba(60,50,36,0.38)');
+        g.fillStyle = gr; g.fillRect(0, 0, W, Hh);
+        g.fillStyle = 'rgba(80,66,48,0.35)'; g.fillRect(0, 18, W, 2);
+        for (var s = 0; s < 14; s++) { g.fillStyle = 'rgba(70,58,42,' + (0.06 + r() * 0.12) + ')'; g.beginPath(); g.ellipse(r() * W, r() * Hh, 4 + r() * 14, 3 + r() * 10, r() * 3, 0, Math.PI * 2); g.fill(); }
+        /* TATTERED: the foot torn ragged, rents and holes through the cloth (cut to clear: the material's alphaTest drops them) */
+        g.globalCompositeOperation = 'destination-out';
+        g.beginPath(); g.moveTo(0, Hh);
+        for (var fx = 0; fx <= W; fx += 6) g.lineTo(fx, Hh - 4 - r() * (r() < 0.25 ? 34 : 12));
+        g.lineTo(W, Hh); g.closePath(); g.fill();
+        for (var h = 0; h < 5 + (seed % 3); h++) {
+            var hx = 14 + r() * (W - 28), hy = 24 + r() * (Hh - 50), hw = 3 + r() * 9, hh = 6 + r() * 22;
+            g.beginPath(); g.moveTo(hx, hy - hh / 2);
+            for (var k = 1; k <= 9; k++) { var a = k / 9 * Math.PI * 2; g.lineTo(hx + Math.sin(a) * hw * (0.6 + r() * 0.6), hy - Math.cos(a) * hh / 2 * (0.7 + r() * 0.5)); }
+            g.closePath(); g.fill();
+        }
+        for (var t = 0; t < 2; t++) {   // a rent up from the foot
+            var tx = 20 + r() * (W - 40); g.beginPath(); g.moveTo(tx - 3, Hh); g.lineTo(tx + (r() - 0.5) * 8, Hh - 30 - r() * 40); g.lineTo(tx + 4, Hh); g.closePath(); g.fill();
+        }
+        g.globalCompositeOperation = 'source-over';
+        var tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter;
+        _hqSailTexCache[seed] = tex;
+        return tex;
+    }
+    function _hqBuildGalleon(room, info, G, TM, rng, hl) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
+        var Y = function (m) { return m * U + 0.3; };
+        var V3 = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1))); return g; };
+        var xMin = x0, xMax = x0 + (nx - 1) * res, zMax = z0 + (nz - 1) * res, zc = (z0 + zMax) / 2, hd = (zMax - z0) / 2;
+        var hAt = function (x, z) { var i = Math.max(0, Math.min(nx - 1, Math.round((x - x0) / res))), j = Math.max(0, Math.min(nz - 1, Math.round((z - z0) / res))); return H[j * nx + i]; };
+        var rimH = function (x) { return Math.max(hAt(x, z0), hAt(x, zMax)); };
+        var sea = room.terrain && room.terrain.sea, seaY = (sea && typeof sea.y === 'number') ? sea.y : -4.2, wl = seaY + 0.25;
+        var draft = Math.max(1.5, +hl.draft || 3.8), yKeel = seaY - draft;
+        var bowL = Math.max(2, (hl.bow != null) ? +hl.bow : 9.5), sternX = xMin - ((hl.stern != null) ? +hl.stern : 0.05), stemX = xMax + bowL;
+        var hb0 = hd + 0.08, TUM = 1.07, beakY = 0.75, beakRail = 1.6;
+        /* THE MATERIALS: Phong with a self-lit lift (the ship sails at night: a plain side face reads black), one mesh per material */
+        var phong = function (map, col, emi, shin, o) { var m = new THREE.MeshPhongMaterial({ map: map || null, color: col, shininess: shin || 8, side: THREE.DoubleSide }); m.emissive = new THREE.Color(emi); if (o) Object.assign(m, o); return m; };
+        var hullMat = phong(_hzTex('wood'), 0xa07850, 0x2a1c10, 6), bottomMat = phong(_hzTex('wood'), 0x3c3430, 0x0e0c0a, 4);
+        var darkMat = phong(_hzTex('wood'), 0x5a3e28, 0x1c120a, 6), deckMat = phong(_hzTex('wood_planks'), 0xb9885a, 0x2a1e12, 4);
+        var mastMat = phong(_hzTex('wood'), 0x7a5a3c, 0x22180e, 8), ironMat = phong(null, 0x3a3a3e, 0x121214, 30);
+        var glowMat = function (col, op, amp, spd, map) {
+            var m = new THREE.MeshBasicMaterial({ map: map || null, color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+            if (amp) _hq.fxPulse.push({ mat: m, baseOp: op, opAmp: amp, spd: spd || 1, phase: rng() * Math.PI * 2 });
+            return m;
+        };
+        var hull = new THREE.Group(); hull.name = 'hqGalleon'; hull._ew_hqPart = 'underside';
+        var add = function (grp, geo, mat, occ) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; if (!occ) m._ew_occSkip = true; m._ew_hqPart = 'underside'; grp.add(m); return m; };
+        var kitTs0 = _hzKitTs; _hzKitTs = 1.75 * U;   // the misc kit sizes itself in this room's squares
+        try {
+        /* ── THE HULL'S LINES: the sheer (the deck's rim; the beakhead's rail past the bow), the half-beam at the sheer, the keel ── */
+        var topY = function (x) {
+            if (x <= xMax) return rimH(Math.max(xMin, x)) - 0.02;
+            var v = (x - xMax) / bowL; return beakRail + 0.9 * Math.pow(v, 2.5);
+        };
+        var hbT = function (x) {
+            if (x <= xMax) return hb0;
+            var v = Math.min(1, (x - xMax) / bowL); return hb0 * Math.pow(Math.max(0, Math.cos(v * Math.PI / 2)), 0.72);
+        };
+        var keelY = function (x) {
+            var xf = xMax - 6;
+            if (x <= xf) return yKeel;
+            var v = Math.min(1, (x - xf) / (stemX - xf)); return yKeel + (wl + 0.8 - yKeel) * Math.pow(v, 1.7);
+        };
+        var fine = function (x) {   // the bottom's fullness: a full midship section, a fine entry and run
+            if (x > xMax - 4) return 0.5 + 0.9 * Math.min(1, (x - (xMax - 4)) / (bowL + 4));
+            if (x < xMin + 8) return 0.5 + 0.5 * Math.min(1, (xMin + 8 - x) / 8);
+            return 0.5;
+        };
+        var NA = 4, NB = 6;
+        var sideAt = function (x) {   // starboard: the sheer → the waterline (NA steps) → the keel (NB steps)
+            var yt = topY(x), b = hbT(x), yk = keelY(x), p = fine(x), out = [];
+            for (var a = 0; a <= NA; a++) { var f = a / NA; out.push({ y: yt + (wl - yt) * f, z: b * (1 + (TUM - 1) * Math.sin(f * Math.PI / 2)) }); }
+            for (var k = 1; k <= NB; k++) { var an = k / NB * Math.PI / 2; out.push({ y: wl - (wl - yk) * Math.sin(an), z: b * TUM * Math.pow(Math.cos(an), p) }); }
+            return out;
+        };
+        var halfAt = function (x, y) {   // the hull's half-beam at height y (the wales, the ports, the channels sit on it)
+            var yt = topY(x), b = hbT(x);
+            if (y >= wl) { var f = Math.max(0, Math.min(1, (yt - y) / Math.max(0.01, yt - wl))); return b * (1 + (TUM - 1) * Math.sin(f * Math.PI / 2)); }
+            var yk = keelY(x), s = Math.max(0, Math.min(1, (wl - y) / Math.max(0.01, wl - yk))); return b * TUM * Math.pow(Math.cos(Math.asin(s)), fine(x));
+        };
+        /* the stations: every grid node along the plate (the sheer follows the castles' steps exactly), the bow drawn out on a cosine */
+        var xs = [sternX], st = Math.max(1, Math.round(0.5 / res));
+        for (var ii = 0; ii < nx; ii += st) xs.push(x0 + ii * res);
+        if (xs[xs.length - 1] < xMax - 1e-6) xs.push(xMax);
+        for (var bi = 1; bi <= 14; bi++) xs.push(xMax + bowL * (0.5 - 0.5 * Math.cos(bi / 14 * Math.PI)) * (bi === 14 ? 0.999 : 1));
+        var secs = xs.map(sideAt);
+        var ring = function (s, x, from, to, port) {   // world points of a section, starboard from → to (port mirrored, reversed)
+            var pts = [], k;
+            for (k = from; k <= to; k++) pts.push({ x: x * U, y: Y(s[k].y), z: (zc + s[k].z) * U });
+            if (port) for (k = to - 1; k >= from; k--) pts.push({ x: x * U, y: Y(s[k].y), z: (zc - s[k].z) * U });
+            return pts;
+        };
+        var hullSkin = [], bottom = [], trim = [], dark = [], deck = [], iron = [];
+        /* the topsides (two strips, starboard and port: the deck between them is the field), the bottom (one ring through the keel) */
+        hullSkin.push(_nrLoft(secs.map(function (s, i) { return ring(s, xs[i], 0, NA, false); }), TM, { open: true }));
+        hullSkin.push(_nrLoft(secs.map(function (s, i) { return ring(s, xs[i], 0, NA, false).map(function (p) { return { x: p.x, y: p.y, z: 2 * zc * U - p.z }; }); }), TM, { open: true }));
+        bottom.push(_nrLoft(secs.map(function (s, i) { return ring(s, xs[i], NA, NA + NB, true); }), TM, { open: true }));
+        /* THE TRANSOM: the stern section filled flat */
+        var s0 = secs[0], sh = new THREE.Shape(), k0;
+        sh.moveTo(s0[0].z, s0[0].y);
+        for (k0 = 1; k0 < s0.length; k0++) sh.lineTo(s0[k0].z, s0[k0].y);
+        for (k0 = s0.length - 2; k0 >= 0; k0--) sh.lineTo(-s0[k0].z, s0[k0].y);
+        var tg = new THREE.ShapeGeometry(sh), tp = tg.getAttribute('position'), tuv = tg.getAttribute('uv');
+        for (k0 = 0; k0 < tp.count; k0++) { var tz = tp.getX(k0), ty = tp.getY(k0); tp.setXYZ(k0, sternX * U, Y(ty), (zc + tz) * U); tuv.setXY(k0, tz * U / TM, ty * U / TM); }
+        tg.computeVertexNormals(); hullSkin.push(tg);
+        /* THE WALES: two dark strakes the length of her, proud of the planking; the boot-top at the waterline */
+        [-0.6, -2.3, wl + 0.12].forEach(function (yw, wi) {
+            [-1, 1].forEach(function (sd) {
+                var pts = [];
+                for (var x = sternX + 0.05; x <= stemX - 1.2; x += 1.25) { if (topY(x) - yw < 0.25) continue; pts.push(V3(x * U, Y(yw), (zc + sd * (halfAt(x, yw) + 0.04)) * U)); }
+                if (pts.length > 3) (wi === 2 ? dark : trim).push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, (wi === 2 ? 0.07 : 0.14) * U, 5, false));
+            });
+        });
+        /* THE RUDDER on the sternpost */
+        var rg = new THREE.BoxGeometry(0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U); _hzBoxUV(rg, 0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U, TM);
+        dark.push(place(rg, (sternX - 0.45) * U, Y((wl + 1.5 + yKeel) / 2), zc * U));
+        /* THE GUN DECK's ports down each side (between the wales): a dark lid frame each, some lit from inside */
+        var portLit = [], portY = -1.45;
+        for (var px = xMin + 3.5; px <= xMax - 3; px += 3.5) {
+            [-1, 1].forEach(function (sd) {
+                var z = zc + sd * (halfAt(px, portY) + 0.05);
+                var fg = new THREE.BoxGeometry(0.9 * U, 0.9 * U, 0.08 * U); dark.push(place(fg, px * U, Y(portY), z * U));
+                if (rng() < 0.55) portLit.push(place(new THREE.PlaneGeometry(0.62 * U, 0.62 * U), px * U, Y(portY), (z + sd * 0.05) * U));
+                else trim.push(place(new THREE.BoxGeometry(0.7 * U, 0.7 * U, 0.1 * U), px * U, Y(portY), (z + sd * 0.04) * U));
+            });
+        }
+        /* THE STERN GALLERY: the great cabin's windows across the transom, the balcony under them, her name below */
+        var tW = s0[0].z, galY = 0.35, win = [];
+        for (var wz = -tW * 0.72; wz <= tW * 0.72 + 0.01; wz += tW * 0.72 / 2.5) {
+            win.push(place(new THREE.PlaneGeometry(1.3 * U, 1.25 * U), (sternX - 0.04) * U, Y(galY + 0.75), (zc + wz) * U, 0, -Math.PI / 2, 0));
+            dark.push(place(new THREE.BoxGeometry(0.1 * U, 1.5 * U, 0.12 * U), (sternX - 0.06) * U, Y(galY + 0.75), (zc + wz - 0.72) * U));
+        }
+        dark.push(place(new THREE.BoxGeometry(0.12 * U, 0.14 * U, tW * 1.6 * U), (sternX - 0.06) * U, Y(galY + 1.48), zc * U));
+        var balc = new THREE.BoxGeometry(1.1 * U, 0.16 * U, tW * 1.7 * U); _hzBoxUV(balc, 1.1 * U, 0.16 * U, tW * 1.7 * U, TM); deck.push(place(balc, (sternX - 0.55) * U, Y(galY - 0.08), zc * U));
+        trim.push(place(new THREE.BoxGeometry(0.08 * U, 0.08 * U, tW * 1.7 * U), (sternX - 1.05) * U, Y(galY + 0.95), zc * U));
+        for (var bz = -tW * 0.85; bz <= tW * 0.85 + 0.01; bz += tW * 0.85 / 7) trim.push(place(new THREE.BoxGeometry(0.07 * U, 0.95 * U, 0.07 * U), (sternX - 1.05) * U, Y(galY + 0.47), (zc + bz) * U));
+        var nameTex = _hzTextTex('fd_name_hull', ['THE FLYING DUTCHMAN'], { w: 512, h: 64, bg: '#2a1a10', border: '#d8a860', color: '#f4e4c8', pad: 0.12 });
+        if (nameTex) { var nm = new THREE.MeshPhongMaterial({ map: nameTex, color: 0xffffff, side: THREE.DoubleSide }); nm.emissive = new THREE.Color(0x3a2a14); add(hull, place(new THREE.PlaneGeometry(Math.min(10, tW * 1.4) * U, 1.25 * U), (sternX - 0.05) * U, Y(galY - 0.95), zc * U, 0, -Math.PI / 2, 0), nm); }
+        /* THE BEAKHEAD: its low deck and grating past the forecastle, the forecastle's bulkhead down to it */
+        var bs = new THREE.Shape(), bk = [];
+        for (var bx = xMax; bx <= stemX - 0.3; bx += bowL / 12) bk.push([bx, hbT(bx) * 0.97]);
+        bs.moveTo(bk[0][0], -bk[0][1]); bk.forEach(function (p) { bs.lineTo(p[0], -p[1]); }); for (var bj = bk.length - 1; bj >= 0; bj--) bs.lineTo(bk[bj][0], bk[bj][1]);
+        var bg2 = new THREE.ShapeGeometry(bs), bp = bg2.getAttribute('position'), buv = bg2.getAttribute('uv');
+        for (k0 = 0; k0 < bp.count; k0++) { var bxx = bp.getX(k0), bzz = bp.getY(k0); bp.setXYZ(k0, bxx * U, Y(beakY), (zc + bzz) * U); buv.setXY(k0, bxx * U / TM, bzz * U / TM); }
+        bg2.computeVertexNormals(); deck.push(bg2);
+        var fcTop = rimH(xMax);
+        if (fcTop > beakY + 0.1) { var bh = new THREE.BoxGeometry(0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U); _hzBoxUV(bh, 0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U, TM); hullSkin.push(place(bh, (xMax + 0.07) * U, Y((fcTop + beakY) / 2), zc * U)); }
+        /* ── THE MAIN HATCH (the plaza: the nexus) and the castles' hatches: a grating of slats over the dark hold ── */
+        var grate = function (cx, cz, w) {
+            var y = hAt(cx, cz) + 0.03, n = Math.round(w / 0.42);
+            var hole = new THREE.PlaneGeometry(w * U, w * U); hole.rotateX(-Math.PI / 2); iron.push(place(hole, cx * U, Y(y - 0.02), cz * U));
+            for (var q = 0; q <= n; q++) {
+                var o = -w / 2 + q * (w / n);
+                trim.push(place(new THREE.BoxGeometry(w * U, 0.05 * U, 0.08 * U), cx * U, Y(y), (cz + o) * U));
+                trim.push(place(new THREE.BoxGeometry(0.08 * U, 0.05 * U, w * U), (cx + o) * U, Y(y + 0.01), cz * U));
+            }
+        };
+        var plaza = (room.counters || []).find(function (c) { return c && c.id === 'battle'; });
+        grate(plaza ? plaza.x : 0, plaza ? plaza.z : 0, 3.2);
+        /* ── THE BOWSPRIT and the jib boom, rising off the forecastle over the beakhead; the spritsail under it ── */
+        var spA = 0.42, spBase = V3(xMax - 1.2, fcTop + 0.5, zc), spL = bowL + 9, spDir = V3(Math.cos(spA), Math.sin(spA), 0);
+        var spTip = spBase.clone().addScaledVector(spDir, spL);
+        var spar = function (a, b, r0, r1, list) {
+            var d = b.clone().sub(a), L = d.length(), g = new THREE.CylinderGeometry(r1 * U, r0 * U, L * U, 8);
+            g.applyMatrix4(new THREE.Matrix4().compose(V3((a.x + b.x) / 2 * U, Y((a.y + b.y) / 2), (a.z + b.z) / 2 * U), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d.normalize()), V3(1, 1, 1)));
+            (list || dark).push(g); return g;
+        };
+        spar(spBase, spTip, 0.42, 0.2);
+        var jibTip = spTip.clone().addScaledVector(spDir, 7);
+        spar(spTip.clone().addScaledVector(spDir, -2), jibTip, 0.16, 0.08);
+        /* ── THE RIG: one group per mast (it fades in front of the eye) ── */
+        var lines = [];
+        var L2 = function (a, b) { lines.push(a.x * U, Y(a.y), a.z * U, b.x * U, Y(b.y), b.z * U); };
+        var lanternDone = 0;
+        var trees = (info.trees || []).filter(function (t) { return t && _HQ_SHIP_TREES[t.kind]; });
+        var masts = trees.filter(function (t) { return t.kind === 'mast'; }).sort(function (a, b) { return a.x - b.x; });
+        var mainM = masts.slice().sort(function (a, b) { return (b.h || 0) - (a.h || 0); })[0];
+        var chOut = hb0 + 0.38;
+        var sailGeo = function (mx, yTop, yBot, wTop, wBot, depth, foot) {   // a square sail across the beam, bellied forward (+x)
+            var g = new THREE.PlaneGeometry(1, 1, 8, 6), p = g.getAttribute('position'), uvA = g.getAttribute('uv');
+            for (var i = 0; i < p.count; i++) {
+                var u = uvA.getX(i), v = 1 - uvA.getY(i), w = wTop + (wBot - wTop) * v;
+                var bel = depth * Math.sin(Math.PI * u) * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, v * 0.9 + 0.1))) + (foot || 0) * v;
+                p.setXYZ(i, (mx + bel) * U, Y(yTop - (yTop - yBot) * v), (zc + (u - 0.5) * w) * U);
+            }
+            g.computeVertexNormals(); return g;
+        };
+        masts.forEach(function (t) {
+            var mx = t.x, mz = zc + (t.z - zc), y0 = hAt(t.x, t.z), h = Math.max(8, t.h || 24), s = Math.max(0.5, (t.r || 0.9) / 0.9), r0 = Math.max(0.24, (t.r || 0.9) * 0.48);
+            var isMain = t === mainM, isMizzen = masts.length > 2 && t === masts[0];
+            var rgp = new THREE.Group(); rgp.name = 'hqGalleonMast'; rgp._ew_hqPart = 'underside';
+            var mWood = [], mDark = [], mSail = [], mFurl = [];
+            var yT = y0 + h * 0.5, yHead = y0 + h * 0.84, yC = y0 + h * 0.46, yTs = y0 + h * 0.76, yTg = y0 + h * 0.95;
+            var cyl = function (ra, rb, ya, yb, list) { var g = new THREE.CylinderGeometry(rb * U, ra * U, (yb - ya) * U, 10); list.push(place(g, mx * U, Y((ya + yb) / 2), mz * U)); };
+            cyl(r0, r0 * 0.82, y0 - 0.4, yT + 0.6, mWood);                 // the lower mast
+            cyl(r0 * 0.6, r0 * 0.45, yT - 1.0, yHead + 0.4, mWood);        // the topmast (doubled at the top)
+            cyl(r0 * 0.33, r0 * 0.18, yHead - 0.8, y0 + h, mWood);         // the topgallant
+            /* the fighting top: its platform, a rail round it; the crosstrees at the topmast head */
+            var topR = 2.2 * s;
+            mDark.push(place(new THREE.CylinderGeometry(topR * U, topR * 0.9 * U, 0.24 * U, 16), mx * U, Y(yT), mz * U));
+            var tor = new THREE.TorusGeometry(topR * 0.96 * U, 0.06 * U, 4, 20); tor.rotateX(Math.PI / 2); mDark.push(place(tor, mx * U, Y(yT + 0.75), mz * U));
+            for (var pq = 0; pq < 8; pq++) { var pa = pq / 8 * Math.PI * 2; mDark.push(place(new THREE.BoxGeometry(0.07 * U, 0.75 * U, 0.07 * U), (mx + Math.cos(pa) * topR * 0.96) * U, Y(yT + 0.37), (mz + Math.sin(pa) * topR * 0.96) * U)); }
+            mDark.push(place(new THREE.BoxGeometry(0.14 * U, 0.14 * U, 3.0 * s * U), mx * U, Y(yHead), mz * U));
+            mDark.push(place(new THREE.BoxGeometry(2.0 * s * U, 0.14 * U, 0.14 * U), mx * U, Y(yHead), mz * U));
+            /* the yards and their sails */
+            var Lc = Math.min(2 * hd * 1.02, 26) * s;
+            var yard = function (y, L) { var g = new THREE.CylinderGeometry(0.1 * U, 0.1 * U, L * U, 6); g.rotateX(Math.PI / 2); mWood.push(place(g, (mx + 0.45) * U, Y(y), mz * U)); var g2 = new THREE.CylinderGeometry(0.2 * U, 0.2 * U, L * 0.45 * U, 8); g2.rotateX(Math.PI / 2); mWood.push(place(g2, (mx + 0.45) * U, Y(y), mz * U)); };
+            var sail = function (yA, yB, wA, wB) { mSail.push(sailGeo(mx + 0.55, yA - 0.1, yB, wA * 0.96, wB * 0.98, Math.max(0.6, wA * 0.09), 0.6)); };
+            if (isMizzen) {
+                /* the MIZZEN wears a LATEEN: the long yard slung slantwise fore and aft, the triangle under it; a small topsail over it */
+                var la = V3(mx - 7.5 * s, y0 + h * 0.2, mz), lb = V3(mx + 6.0 * s, y0 + h * 0.62, mz);
+                var lg = new THREE.CylinderGeometry(0.1 * U, 0.14 * U, la.distanceTo(lb) * U, 6), ld = lb.clone().sub(la).normalize();
+                lg.applyMatrix4(new THREE.Matrix4().compose(V3((la.x + lb.x) / 2 * U, Y((la.y + lb.y) / 2), (mz + 0.4) * U), new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), ld), V3(1, 1, 1))); mWood.push(lg);
+                var lt = new THREE.BufferGeometry(), foot = V3(mx - 5.5 * s, y0 + 2.6, mz), N = 6, lpos = [], luv = [], lidx = [];
+                for (var a2 = 0; a2 <= N; a2++) for (var b2 = 0; b2 <= N - a2; b2++) {
+                    var fa = a2 / N, fb = b2 / N, fc = 1 - fa - fb, P = V3(la.x * fc + lb.x * fa + foot.x * fb, la.y * fc + lb.y * fa + foot.y * fb, mz);
+                    var bell = Math.max(0, fa * fb * fc) * 6 * 1.4;
+                    lpos.push(P.x * U, Y(P.y), (P.z + 0.45 + bell) * U); luv.push(fa + fb * 0.5, fb);
+                }
+                var idxOf = function (a3, b3) { var o = 0; for (var q2 = 0; q2 < a3; q2++) o += N + 1 - q2; return o + b3; };
+                for (a2 = 0; a2 < N; a2++) for (b2 = 0; b2 < N - a2; b2++) { lidx.push(idxOf(a2, b2), idxOf(a2 + 1, b2), idxOf(a2, b2 + 1)); if (b2 < N - a2 - 1) lidx.push(idxOf(a2 + 1, b2), idxOf(a2 + 1, b2 + 1), idxOf(a2, b2 + 1)); }
+                lt.setAttribute('position', new THREE.Float32BufferAttribute(lpos, 3)); lt.setAttribute('uv', new THREE.Float32BufferAttribute(luv, 2)); lt.setIndex(lidx); lt.computeVertexNormals(); mSail.push(lt);
+                L2(la, foot); L2(foot, V3(mx - 9, rimH(mx - 9) + 0.2, mz));
+                yard(yTs, Lc * 0.5); sail(yTs, yT + 0.9, Lc * 0.5, Lc * 0.62);
+            } else {
+                yard(yC, Lc); yard(yTs, Lc * 0.68); yard(yTg, Lc * 0.42);
+                if (isMain) { var fu = new THREE.CylinderGeometry(0.42 * U, 0.42 * U, Lc * 0.86 * U, 8); fu.rotateX(Math.PI / 2); mFurl.push(place(fu, (mx + 0.5) * U, Y(yC - 0.42), mz * U)); }   // the main course FURLED over the waist (the fights are under it)
+                else sail(yC, y0 + h * 0.15, Lc, Lc * 1.04);
+                sail(yTs, yC + 0.35, Lc * 0.68, Lc * 0.94);
+                sail(yTg, yTs + 0.3, Lc * 0.42, Lc * 0.66);
+                /* the lifts, from the heads to the yards' arms */
+                [-1, 1].forEach(function (sd) { L2(V3(mx, yHead + 0.3, mz), V3(mx + 0.45, yTs, mz + sd * Lc * 0.34)); L2(V3(mx, yT + 1.0, mz), V3(mx + 0.45, yC, mz + sd * Lc * 0.5)); L2(V3(mx, y0 + h * 0.97, mz), V3(mx + 0.45, yTg, mz + sd * Lc * 0.21)); });
+            }
+            /* THE CHANNELS (the shrouds' ledges outside the hull) and THE SHROUDS with their ratlines; the topmast shrouds to the top's rim */
+            var chY = rimH(mx) - 0.35;
+            [-1, 1].forEach(function (sd) {
+                var cz = zc + sd * chOut, chG = new THREE.BoxGeometry(5.0 * s * U, 0.14 * U, 0.6 * U);
+                _hzBoxUV(chG, 5.0 * s * U, 0.14 * U, 0.6 * U, TM); mDark.push(place(chG, (mx - 0.9) * U, Y(chY), (cz - sd * 0.1) * U));
+                var tops = [], feet = [];
+                for (var q3 = 0; q3 < 6; q3++) { var dx = -2.6 * s + q3 * 0.85 * s; tops.push(V3(mx + dx * 0.12, yT - 0.2, mz + sd * r0 * 1.2)); feet.push(V3(mx + dx, chY + 0.1, cz)); L2(tops[q3], feet[q3]); }
+                for (var ry = chY + 0.7; ry < yT - 0.6; ry += 0.6) {
+                    var f = (ry - chY - 0.1) / (yT - 0.2 - chY - 0.1);
+                    for (var q4 = 0; q4 < 5; q4++) L2(feet[q4].clone().lerp(tops[q4], f), feet[q4 + 1].clone().lerp(tops[q4 + 1], f));
+                }
+                for (var q5 = 0; q5 < 3; q5++) L2(V3(mx, yHead - 0.3, mz + sd * 0.2), V3(mx - topR * 0.6 + q5 * topR * 0.5, yT + 0.1, mz + sd * topR * 0.85));
+                L2(V3(mx, yHead, mz), V3(mx - 7 * s, rimH(mx - 7 * s) + 0.1, zc + sd * chOut));   // the backstay
+            });
+            /* the flags: the Jolly Roger on the main truck, a long pennant on the others */
+            if (isMain) {
+                var flagTex = _hzTextTex('qar_flag', ['☠'], { w: 128, h: 96, bg: '#111111', color: '#eeeeee', pad: 0.1, sizes: [70] });
+                if (flagTex) { var fmat = new THREE.MeshLambertMaterial({ map: flagTex, side: THREE.DoubleSide }); fmat.emissive = new THREE.Color(0x202020); add(rgp, place(new THREE.PlaneGeometry(2.8 * U, 1.9 * U), (mx - 1.45) * U, Y(y0 + h + 0.4), mz * U), fmat, true); }
+            } else {
+                var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute([mx * U, Y(y0 + h + 0.2), mz * U, mx * U, Y(y0 + h - 0.4), mz * U, (mx - 5.5) * U, Y(y0 + h - 0.35), mz * U], 3)); pg.computeVertexNormals();
+                var pmat = new THREE.MeshLambertMaterial({ color: 0x7a1a14, side: THREE.DoubleSide }); pmat.emissive = new THREE.Color(0x2a0806); add(rgp, pg, pmat, true);
+            }
+            /* a lantern on the mast's fore side over its deck (the mainmast's a real light over the waist) */
+            var ly = y0 + 4.6, lx = mx + r0 + 0.28;
+            var lan = _hzMiscKit('lantern', { metres: 0.9, fit: 'height', hang: true, lift: 0.75, rng: rng, low: 'skip' }); lan.position.set(lx * U, Y(ly), mz * U); rgp.add(lan);
+            var lgs = _hzGlowSprite(2.2 * U, 0xffb060, 0.7, 0, 0, 0); lgs.position.set(lx * U, Y(ly - 0.5), mz * U); lgs._ew_occSkip = true; rgp.add(lgs);
+            _hq.fxPulse.push({ mat: lgs.material, baseOp: 0.7, opAmp: 0.12, spd: 2.2 + rng(), phase: rng() * 6 });
+            if (isMain && !lanternDone && (_hq.propLights || 0) < HQ_PROP_LIGHT_MAX) { var pl = new THREE.PointLight(0xffb070, 1.0, 16 * U, 2); pl.position.set(lx * U, Y(ly - 0.5), mz * U); rgp.add(pl); _hq.propLights = (_hq.propLights || 0) + 1; lanternDone = 1; }
+            /* one mesh per material in the rig */
+            if (mWood.length) add(rgp, _hqHullMerge(mWood), mastMat, true);
+            if (mDark.length) add(rgp, _hqHullMerge(mDark), darkMat, true);
+            if (mFurl.length) add(rgp, _hqHullMerge(mFurl), phong(null, 0xc8bea6, 0x26221a, 4), true);
+            if (mSail.length) {
+                var sm = new THREE.MeshLambertMaterial({ map: _hqSailTex(Math.round(mx * 7) & 7), color: 0xd6ccb4, side: THREE.DoubleSide, alphaTest: 0.45 });
+                sm.emissive = new THREE.Color(0x24221c); sm.emissiveMap = sm.map;
+                add(rgp, _hqHullMerge(mSail), sm, true);
+            }
+            G.add(rgp);
+        });
+        /* the stays: the mainstay to the foremast's foot, the forestay to the bowsprit, the topmast stays one mast forward / to the jib boom */
+        var byX = masts.slice().sort(function (a, b) { return a.x - b.x; });
+        byX.forEach(function (t, i) {
+            var h = Math.max(8, t.h || 24), y0 = hAt(t.x, t.z), yT = y0 + h * 0.5, yHead = y0 + h * 0.84, nxt = byX[i + 1];
+            if (nxt) { L2(V3(t.x, yT + 0.4, t.z), V3(nxt.x - 1.2, hAt(nxt.x, nxt.z) + 0.8, nxt.z)); L2(V3(t.x, yHead, t.z), V3(nxt.x, hAt(nxt.x, nxt.z) + Math.max(8, nxt.h || 24) * 0.5, nxt.z)); }
+            else { L2(V3(t.x, yT + 0.4, t.z), spBase.clone().addScaledVector(spDir, spL * 0.55)); L2(V3(t.x, yHead, t.z), spTip); L2(V3(t.x, y0 + h * 0.97, t.z), jibTip); }
+        });
+        /* the spritsail under the bowsprit */
+        var sy = spBase.clone().addScaledVector(spDir, spL * 0.62), syL = 0.42 * Math.min(2 * hd, 26);
+        var syG = new THREE.CylinderGeometry(0.09 * U, 0.09 * U, syL * U, 6); syG.rotateX(Math.PI / 2); dark.push(place(syG, sy.x * U, Y(sy.y - 0.3), sy.z * U));
+        var spSail = sailGeo(sy.x, sy.y - 0.35, sy.y - 4.2, syL * 0.95, syL, 0.9, 0.4);
+        var spm = new THREE.MeshLambertMaterial({ map: _hqSailTex(9), color: 0xd6ccb4, side: THREE.DoubleSide, alphaTest: 0.45 }); spm.emissive = new THREE.Color(0x24221c); spm.emissiveMap = spm.map;
+        add(hull, spSail, spm);
+        if (lines.length) {
+            var lgeo = new THREE.BufferGeometry(); lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+            var lseg = new THREE.LineSegments(lgeo, new THREE.LineBasicMaterial({ color: 0x2a2118 })); lseg._ew_hqPart = 'underside'; lseg.renderOrder = 1; G.add(lseg);
+        }
+        /* ── THE CAPSTAN and THE HELM where their trees stand ── */
+        trees.forEach(function (t) {
+            var y0 = hAt(t.x, t.z);
+            if (t.kind === 'capstan') {
+                var cg = new THREE.CylinderGeometry(0.5 * U, 0.62 * U, 0.95 * U, 12); trim.push(place(cg, t.x * U, Y(y0 + 0.47), t.z * U));
+                hullSkin.push(place(new THREE.CylinderGeometry(0.74 * U, 0.74 * U, 0.2 * U, 12), t.x * U, Y(y0 + 1.02), t.z * U));
+                for (var cb = 0; cb < 8; cb++) { var ca = cb / 8 * Math.PI * 2, bar = new THREE.BoxGeometry(1.25 * U, 0.08 * U, 0.08 * U); bar.rotateY(-ca); trim.push(place(bar, (t.x + Math.cos(ca) * 1.25) * U, Y(y0 + 0.98), (t.z + Math.sin(ca) * 1.25) * U)); }
+            } else if (t.kind === 'helm') {
+                var wh = _hzMiscKit('wheel', { metres: t.h || 1.7, fit: 'height', lift: 0.45, cast: true, foot: 0.3, rng: rng });
+                wh.position.set(t.x * U, Y(y0), t.z * U); wh.rotation.y = Math.PI / 2; wh._ew_hqPart = 'underside'; G.add(wh);
+                iron.push(place(new THREE.CylinderGeometry(0.22 * U, 0.3 * U, 1.1 * U, 8), (t.x + 1.3) * U, Y(y0 + 0.55), t.z * U));   // the binnacle
+            }
+        });
+        /* ── THE STERN LANTERNS on the taffrail (the middle one a real light) ── */
+        var tafY = 0; for (var tq = 0; tq < (room.terrain.features || []).length; tq++) { var wf = room.terrain.features[tq]; if (wf && wf.k === 'wall' && Math.abs(wf.x0 - wf.x1) < 0.01 && wf.x0 < xMin + 1 && typeof wf.y === 'number') tafY = Math.max(tafY, wf.y); }
+        if (!tafY) tafY = rimH(xMin) + 1.1;
+        [-0.62, 0, 0.62].forEach(function (f, li) {
+            var lz = zc + f * tW, lx = xMin - 0.35, big = li === 1;
+            iron.push(place(new THREE.BoxGeometry(0.6 * U, 0.08 * U, 0.08 * U), (lx + 0.2) * U, Y(tafY + 0.02), lz * U));
+            var sl = _hzMiscKit('lantern', { metres: big ? 1.5 : 1.1, fit: 'height', lift: 0.8, rng: rng, low: 'skip' }); sl.position.set(lx * U, Y(tafY + 0.05), lz * U); sl._ew_hqPart = 'underside'; G.add(sl);
+            var gs = _hzGlowSprite((big ? 3.4 : 2.4) * U, 0xffb060, 0.75, 0, 0, 0); gs.position.set(lx * U, Y(tafY + (big ? 0.8 : 0.6)), lz * U); gs._ew_occSkip = true; hull.add(gs);
+            _hq.fxPulse.push({ mat: gs.material, baseOp: 0.75, opAmp: 0.12, spd: 1.8 + rng(), phase: rng() * 6 });
+            if (big && (_hq.propLights || 0) < HQ_PROP_LIGHT_MAX) { var sll = new THREE.PointLight(0xffb060, 1.0, 18 * U, 2); sll.position.set(lx * U, Y(tafY + 0.9), lz * U); hull.add(sll); _hq.propLights = (_hq.propLights || 0) + 1; }
+        });
+        /* the anchors catted at the bow, a side each */
+        [-1, 1].forEach(function (sd) {
+            var an = _hzMiscKit('anchor', { metres: 2.6, fit: 'height', lift: 0.4, rng: rng, low: 'skip' });
+            var ax = xMax - 1.5; an.position.set(ax * U, Y(-1.8), (zc + sd * (halfAt(ax, -0.8) + 0.45)) * U); an.rotation.y = sd > 0 ? 0 : Math.PI; an._ew_hqPart = 'underside'; G.add(an);
+        });
+        /* ── THE WAKE: foam down both sides from the bow, and the long wake astern — they scroll with the voyage ── */
+        var wakeTex = [];
+        var foam = function (cx, cz, len, wid, op, seed) {
+            var base = _nrStreakTex(seed); if (!base) return;
+            var tx = base.clone(); tx.needsUpdate = true; tx.wrapS = THREE.RepeatWrapping;
+            var g = new THREE.PlaneGeometry(len * U, wid * U); var uvw = g.getAttribute('uv'); for (var i = 0; i < uvw.count; i++) uvw.setX(i, uvw.getX(i) * len / 3.5);
+            g.rotateX(-Math.PI / 2);
+            var m = new THREE.Mesh(g, glowMat(0xeaf6ff, op, op * 0.25, 0.7, tx)); m.position.set(cx * U, Y(seaY + 0.06), cz * U); m.renderOrder = 2; m._ew_occSkip = true; m._ew_hqPart = 'underside'; hull.add(m);
+            wakeTex.push({ tex: tx, per: 3.5 * U });
+        };
+        var hbW = hb0 * TUM, wakeL = stemX - sternX + 14;
+        foam((stemX + sternX) / 2 - 7, zc - hbW - 1.3, wakeL, 2.8, 0.55, 1); foam((stemX + sternX) / 2 - 7, zc + hbW + 1.3, wakeL, 2.8, 0.55, 2);
+        foam(sternX - 16, zc, 34, hbW * 1.7, 0.32, 3);
+        for (var sp = 0; sp < 6; sp++) { var sps = _hzGlowSprite((1.6 + rng() * 1.6) * U, 0xe8f6ff, 0.5, 0.3, 0.2, 3 + rng() * 4); sps.position.set((stemX - 0.6 - rng() * 2.4) * U, Y(seaY + 0.3 + rng() * 0.9), (zc + (rng() - 0.5) * 3.2) * U); sps._ew_occSkip = true; hull.add(sps); }
+        _hq.galleonWake = wakeTex;
+        if (typeof _motionScroll !== 'undefined') wakeTex.forEach(function (w) { _motionScroll.push({ tex: w.tex, per: w.per, sign: 1 }); });
+        /* ── one mesh per material ── */
+        add(hull, _hqHullMerge(hullSkin), hullMat);
+        add(hull, _hqHullMerge(bottom), bottomMat);
+        if (trim.length) add(hull, _hqHullMerge(trim), mastMat);
+        if (dark.length) add(hull, _hqHullMerge(dark), darkMat);
+        if (deck.length) add(hull, _hqHullMerge(deck), deckMat);
+        if (iron.length) add(hull, _hqHullMerge(iron), ironMat);
+        if (portLit.length) add(hull, _hqHullMerge(portLit), glowMat(0xffb060, 0.8, 0.12, 0.9));
+        if (win.length) add(hull, _hqHullMerge(win), glowMat(0xffc070, 0.85, 0.08, 0.6));
+        G.add(hull);
+        } finally { _hzKitTs = kitTs0; }
+    }
     /* THE ROOF OVER THE CITY (2026-10-05, mondo: "why is the vatican observatory a landscape? it should be like the top of the
        vatican building looking out over vatican/italian city"): the observatory's field ran on past its parapet as open ground
        to the fog. Now it is a FLOATING room (no outer ground) whose `terrain.float` carries `roof`: the field is the top of a
@@ -51055,7 +51429,8 @@ const ThreeRenderer = (function () {
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
-        if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
+        if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
+        else if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
         else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
         else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
@@ -51207,7 +51582,7 @@ const ThreeRenderer = (function () {
         var treeOne = function (t) {
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
-            plantTree(t.kind, h, t.x, t.z, t.y * U, t.face);
+            if (!_HQ_SHIP_TREES[t.kind]) plantTree(t.kind, h, t.x, t.z, t.y * U, t.face);   // THE GALLEON: a mast / the capstan / the helm is the ship's own (_hqBuildGalleon), still a blocker
             var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
             _hq.blockers.push({ obj: blk, y: t.y, top: null, rad: t.r || 0.38, tree: true });
         };
@@ -64578,7 +64953,11 @@ const ThreeRenderer = (function () {
         var t = _fluidTimeSec;
         _fluidTimeUniform.value = t;
         _fluidTileUniform.value = mt.tile;
-        if (_fluidFlowUniform.value) _fluidFlowUniform.value.set(0, 0);   // the building's water holds still (MOVING MAPS)
+        /* the building's water holds still (MOVING MAPS) — but a VOYAGE room's own sea (THE GALLEON, 2026-10-20: the Flying Dutchman's deck) runs
+           past her on the walk as it does in a fight on her deck, by the distance the sky's voyage has run; her wake scrolls with it */
+        var VYm = _hq.sky && _hq.sky.voyage, seaRun = !!(VYm && _hq.room && _hq.room.terrain && _hq.room.terrain.sea);
+        if (_fluidFlowUniform.value) { if (seaRun) _fluidFlowUniform.value.set(VYm.axis === 'z' ? 0 : VYm.dist, VYm.axis === 'z' ? VYm.dist : 0); else _fluidFlowUniform.value.set(0, 0); }
+        if (seaRun && _hq.galleonWake) _hq.galleonWake.forEach(function (w) { w.tex.offset.x = (VYm.dist / w.per) % 1; });
         (mt.keys || [mt.key]).forEach(function (key) {   // THE CAVE (rev 11): water AND lava in one room
             var drift = _FLUID_DRIFT_3D[key];
             var o1 = _fluidTextures[key + '_off1'], o2 = _fluidTextures[key + '_off2'];
