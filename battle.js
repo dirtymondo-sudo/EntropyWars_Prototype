@@ -22906,6 +22906,7 @@
             _savedState: null,
             _preCineView: null,
             _menuShot: null,      // THE MENU CAMERA: { home: {tilt, yaw, zoom}, key, side } while a menu two-shot is up
+            _clearFit: null,      // THE CLEAR FRAME: { area, fit() } — the last fitted frame, solved again when the menus move
             _cineShotId: null,
             _seqId: 0,
             _isP2: null,
@@ -23416,6 +23417,7 @@
             snap(opts) {
                 if (state.cameraDisabled && !opts._force) return;
                 this._stop();
+                this._clearFit = null;   // THE CLEAR FRAME: a hand pan / zoom / orbit owns the framing now
 
                 // A snap is the user's (or a reset's) own reframe — a pending
                 // auto-settle firing after it would yank the view again.
@@ -23479,6 +23481,9 @@
                 if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
 
                 this._stop();
+                // THE CLEAR FRAME: a fitted frame is solved again when the menus' cover changes — only while it is
+                // still the camera's last move (the fit itself re-arms it after its own move)
+                this._clearFit = null;
                 /* THE MENU CAMERA: the first camera move after a menu two-shot that
                    is not itself a menu shot leaves it — whatever it doesn't name
                    (tilt, yaw, zoom) comes back from the tactical view the shot left,
@@ -24314,11 +24319,12 @@
            the target yaw, the real lens and aspect), the focal centred on the set (a unit at the board edge no longer
            frames half a screen of void), and the eye distance solved exactly so the outermost tile sits inside the
            margin. Returns { x, y, zoom } in camera units, or null when there is no 3D lens to solve on. */
-        const TILE_PICK_MARGIN_H = 0.80;   // fraction of the half-frame the range may fill sideways (turn column, menus)
-        const TILE_PICK_MARGIN_V = 0.86;   // and up/down (HUD strips top and bottom)
+        const TILE_PICK_MARGIN_H = 0.86;   // fraction of the FREE frame's half-width the range may fill (THE CLEAR FRAME)
+        const TILE_PICK_MARGIN_V = 0.90;   // and of its half-height (the HUD strips are already cut off it)
         const TILE_PICK_MIN_HALF = 3;      // never frame tighter than ±3 tiles round the centre
-        function _tilePickFrame(unit, tiles) {
+        function _tilePickFrame(unit, tiles, fa) {
             if (!unit) return null;
+            fa = fa || _menuFreeArea(true);
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
                     || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
@@ -24373,19 +24379,39 @@
                 // minimum frame: ±TILE_PICK_MIN_HALF tiles round the focal
                 const mh = TILE_PICK_MIN_HALF * ts;
                 pts.push([fx - mh, fy, fz], [fx + mh, fy, fz], [fx, fy, fz - mh], [fx, fy, fz + mh]);
-                // eye = focal − dist·gaze; a point at r = P − F sits at depth dist + r·gaze and must keep
-                // |r·right| ≤ depth·tanH·mH and |r·up| ≤ depth·tanV·mV
+                // eye = focal − dist·gaze; a point at r = P − F sits at depth dist + r·gaze. THE CLEAR FRAME's slide
+                // moves the eye by (cx·dist·tanH, cy·dist·tanV) sideways / up, so the point lands at
+                // (r·right + cx·dist·tanH) / (depth·tanH) and must stay within mH·hw of cx:
+                // |r·right − cx·along·tanH| ≤ mH·hw·depth·tanH (and the same up/down)
+                const mH = TILE_PICK_MARGIN_H * fa.hw, mV = TILE_PICK_MARGIN_V * fa.hh;
                 let dist = 0;
                 for (const p of pts) {
                     const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
                     const along = ax * dX + ay * dY + az * dZ;
-                    const sx = Math.abs(ax * rX + az * rZ);
-                    const sy = Math.abs(ax * uX + ay * uY + az * uZ);
-                    dist = Math.max(dist, sx / (tanH * TILE_PICK_MARGIN_H) - along, sy / (tanV * TILE_PICK_MARGIN_V) - along);
+                    const sx = Math.abs(ax * rX + az * rZ - fa.cx * along * tanH);
+                    const sy = Math.abs(ax * uX + ay * uY + az * uZ - fa.cy * along * tanV);
+                    dist = Math.max(dist, sx / (tanH * mH) - along, sy / (tanV * mV) - along);
                 }
                 if (!(dist > 0)) return null;
-                return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)) };
+                return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa };
             } catch (e) { return null; }
+        }
+        /* THE CLEAR FRAME: a range fit just moved the camera — when the menus' cover moves under it (the armed spell's
+           panel arriving after the click), fit the same tiles again for the new cover */
+        function _tilePickArmRefit(unit, tiles, fr) {
+            if (!fr || !unit) return;
+            const uid = unit.id;
+            camera._clearFit = {
+                area: fr.fa,
+                fit() {
+                    const u = (state.units || []).find(v => v.id === uid && !v.dead);
+                    const f2 = u ? _tilePickFrame(u, tiles) : null;
+                    if (!f2) return;
+                    camera.moveTo({ x: f2.x, y: f2.y, zoom: f2.zoom, tilt: TILE_PICK_TILT, duration: 360, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+                    _tilePickArmRefit(u, tiles, f2);
+                }
+            };
         }
         /* the reach of a tile-pick mode as tiles (what the board lights) */
         function _tilePickTiles(unit, mode, spell) {
@@ -28107,11 +28133,116 @@
         const MENU_CAM_SWING_CLOSE = 56;    // adjacent pair: more side-on
         const MENU_CAM_TILT = 66;           // pitch at melee range (90 = level, lower = more top-down)
         const MENU_CAM_TILT_FAR = 50;       // floor as the gap grows
-        const MENU_CAM_MARGIN_H = 0.58;     // half-frame share the pair may fill sideways
-        const MENU_CAM_MARGIN_V = 0.56;     // and up/down
-        const MENU_CAM_SHIFT_H = 0.14;      // pair rides right of centre (menu bottom-left)
-        const MENU_CAM_SHIFT_V = 0.08;      // and a touch high (description bar at the bottom)
+        const MENU_CAM_MARGIN_H = 0.74;     // share of the FREE frame's half-width the pair may fill (THE CLEAR FRAME)
+        const MENU_CAM_MARGIN_V = 0.70;     // and of its half-height
         const MENU_CAM_MIN_DIST = 3.0;      // tiles — never closer than this to the frame centre
+        /* ══ THE CLEAR FRAME (2026-10-20) ══
+           mondo: "for framing the battle with the camera, a lot of times the action menu is open with another sub menu,
+           which takes up like 1 third of the left side of the screen. so how the camera moves with the menu, make sure
+           it is framed to include what is meant to be seen in the right half to two thirds of the screen".
+           _menuFreeArea measures what the command menus cover on screen RIGHT NOW (the cascade and every sub menu /
+           quick list / confirm in it, the unit card, the turn-icon peek — on whichever side the UI Maker puts them —
+           plus the HUD strips top and bottom) and returns the rest as a frame in NDC: centre (cx, cy), half sizes
+           (hw, hh), menu = a command menu is up. Then:
+             · window._ewMenuSlide (read by ThreeCamera.sync every frame) slides the board rig sideways / up so the
+               camera's focal sits in the middle of that free part, not the middle of the screen: every move that
+               centres something while a menu is up (the turn start pan, a cancel back to the unit, Move / spell
+               range fit, the menu two-shot) lands it beside the menu, and an orbit still turns round it;
+             · the fits (_menuCamSolve, _tilePickFrame) size their frame to the free part, not the whole screen;
+             · when the cover changes under a fitted frame (a sub menu opening after the click that framed it, the
+               quick list arriving after a board click), _clearFrameRefit solves that same frame again.
+           The slide holds through an action a pick started (the menu hides for its animation) while the board rig
+           keeps the camera, and eases back to 0 once no menu is up (CPU turns, cinematics). Viewer-local. */
+        const CLEAR_FRAME_MIN_HW = 0.42;    // the free part never counts as narrower than 42% of the screen
+        const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
+        const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
+        const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
+        let _cfArea = null, _cfAt = 0, _cfHeld = null, _cfSeenAt = 0, _cfPend = null;
+        function _menuFreeArea(fresh) {
+            const now = performance.now();
+            if (!fresh && _cfArea && now - _cfAt < 120) return _cfArea;
+            _cfAt = now;
+            _cfArea = _CLEAR_FULL;
+            try {
+                if (state.phase !== 'battle' || typeof document === 'undefined') return _cfArea;
+                const cvEl = document.getElementById('threeCanvas');
+                const cv = cvEl ? cvEl.getBoundingClientRect() : null;
+                if (!cv || !(cv.width > 80 && cv.height > 80)) return _cfArea;
+                const midX = (cv.left + cv.right) / 2, midY = (cv.top + cv.bottom) / 2;
+                let x0 = cv.left, x1 = cv.right, y0 = cv.top, y1 = cv.bottom, menu = false;
+                const boxOf = el => {
+                    const r = el.getBoundingClientRect();
+                    if (r.width < 2 || r.height < 2 || r.right <= cv.left || r.left >= cv.right
+                        || r.bottom <= cv.top || r.top >= cv.bottom) return null;
+                    return r;
+                };
+                // the command menus: a side band (left or right of the screen's middle); one spanning the
+                // screen (a phone layout) is a bottom / top band instead
+                document.querySelectorAll('.hrlg-rig > .hrlg-side, .hrlg-rig > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
+                    + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => {
+                    const r = boxOf(el);
+                    if (!r) return;
+                    menu = true;
+                    if (r.width > cv.width * 0.6) {
+                        if ((r.top + r.bottom) / 2 > midY) y1 = Math.min(y1, r.top); else y0 = Math.max(y0, r.bottom);
+                    } else if ((r.left + r.right) / 2 < midX) x0 = Math.max(x0, r.right);
+                    else x1 = Math.min(x1, r.left);
+                });
+                if (!menu) return _cfArea;
+                // the HUD strips: scoreboard / match line on top, the prompt + description bars below
+                document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
+                    const r = boxOf(el);
+                    if (r && r.top < cv.top + cv.height * 0.2) y0 = Math.max(y0, r.bottom);
+                });
+                document.querySelectorAll('#battleSubtitleBar.visible > *, .ew-descbar-inner').forEach(el => {
+                    const r = boxOf(el);
+                    if (r && r.bottom > cv.bottom - cv.height * 0.25) y1 = Math.min(y1, r.top);
+                });
+                const minW = cv.width * CLEAR_FRAME_MIN_HW;
+                if (x1 - x0 < minW) {   // menus over most of the screen: keep a workable frame on the open side
+                    if (x0 - cv.left > cv.right - x1) x0 = Math.max(cv.left, x1 - minW);
+                    else x1 = Math.min(cv.right, x0 + minW);
+                }
+                if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
+                _cfArea = {
+                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2),
+                    cy: Math.max(-0.2, Math.min(0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
+                    hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true
+                };
+            } catch (e) { _cfArea = _CLEAR_FULL; }
+            return _cfArea;
+        }
+        /* the slide ThreeCamera.sync puts the board rig through this frame ({ cx, cy } NDC) */
+        window._ewMenuSlide = function () {
+            if (state.phase !== 'battle' || state.cameraDisabled || state._fullMapOverview) { _cfHeld = null; return _CLEAR_FULL; }
+            const fa = _menuFreeArea();
+            const now = performance.now();
+            if (fa.menu) {
+                _cfHeld = fa; _cfSeenAt = now;
+                _clearFrameRefit(fa, now);
+                return fa;
+            }
+            // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → keep the frame;
+            // a brief gap (one unit's menu handing over to the next) too; else back to the middle
+            if (_cfHeld && camera._cineShotId == null && !camera._cineTps
+                && (state._actionExecuting || now - _cfSeenAt < CLEAR_FRAME_HOLD_MS)) return _cfHeld;
+            _cfHeld = null;
+            return _CLEAR_FULL;
+        };
+        /* camera._clearFit = { area, fit() } — the frame a fit last solved (the menu two-shot, the range fit). Any other
+           camera move drops it (camera.moveTo). When the menus' cover moves under it, solve it again for the new one. */
+        function _clearFrameRefit(fa, now) {
+            const cf = camera._clearFit;
+            if (!cf) { _cfPend = null; return; }
+            const a = cf.area || _CLEAR_FULL;
+            if (Math.abs(fa.cx - a.cx) < 0.04 && Math.abs(fa.hw - a.hw) < 0.04 && Math.abs(fa.hh - a.hh) < 0.06) { _cfPend = null; return; }
+            if (!_cfPend || Math.abs(_cfPend.cx - fa.cx) > 0.01 || Math.abs(_cfPend.hw - fa.hw) > 0.01) { _cfPend = { cx: fa.cx, hw: fa.hw, t: now }; return; }
+            if (now - _cfPend.t < CLEAR_FRAME_REFIT_MS) return;
+            _cfPend = null;
+            if (state._actionExecuting || state._userPanning || state._userOrbiting || camera._cineShotId != null) { camera._clearFit = null; return; }
+            cf.area = fa;
+            try { cf.fit(); } catch (e) { camera._clearFit = null; }
+        }
         function _menuCamBody(o) {
             const ts = CONFIG.tileSize || BASE_TILE;
             const isUnit = o && o.id != null && o.player != null;
@@ -28127,11 +28258,21 @@
                 } catch (e) {}
                 hgt += ts * 0.4;   // the floating HP bar / nameplate
             }
-            return { x: o.x * ts + ts / 2, z: o.y * ts + ts / 2, foot, top: foot + hgt };
+            // THE CLEAR FRAME: the model's real footprint (a car runs two tiles long), as world offsets from its feet
+            let fp = null;
+            if (isUnit) {
+                try {
+                    const c = [0, 0, 0, 0, 0, 0, 0, 0];
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitFootprint
+                        && ThreeRenderer.getUnitFootprint(o.id, c)) fp = c;
+                } catch (e) { fp = null; }
+            }
+            return { x: o.x * ts + ts / 2, z: o.y * ts + ts / 2, foot, top: foot + hgt, fp };
         }
         /* Solve one candidate pose: focal + eye distance that fit both bodies at
            this yaw/pitch. Returns world focal, distance and the occlusion count. */
-        function _menuCamSolve(A, B, yawDeg, tiltDeg) {
+        function _menuCamSolve(A, B, yawDeg, tiltDeg, fa) {
+            fa = fa || _CLEAR_FULL;
             const ts = CONFIG.tileSize || BASE_TILE;
             const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
             const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
@@ -28149,14 +28290,21 @@
                     const px = b.x + rt[0] * half * s, pz = b.z + rt[2] * half * s;
                     pts.push([px, b.foot, pz], [px, b.top, pz]);
                 }
+                // a drawn footprint bigger than that (a car, a beast) counts whole: its corners at the feet and at
+                // the top of the model (the HP bar rides over the middle, above)
+                if (b.fp) for (let i = 0; i < 8; i += 2) {
+                    const px = b.x + b.fp[i], pz = b.z + b.fp[i + 1];
+                    if (Math.hypot(b.fp[i], b.fp[i + 1]) > half * 1.2) pts.push([px, b.foot, pz], [px, b.foot + (b.top - b.foot) * 0.7, pz]);
+                }
             }
             const F = [0, 0, 0];
             for (const p of pts) { F[0] += p[0]; F[1] += p[1]; F[2] += p[2]; }
             F[0] /= pts.length; F[1] /= pts.length; F[2] /= pts.length;
             const gap = Math.hypot(A.x - B.x, A.z - B.z, A.foot - B.foot);
             let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
-            // fixed-point: centre the projected box on the offset point, then
-            // scale the boom so the box fills the margins (perspective-true)
+            // fixed-point: centre the projected box on the middle of the free frame (THE CLEAR FRAME), then scale the
+            // boom so the box fills its margins (perspective-true). The board rig's slide (ThreeCamera.sync) shifts the
+            // eye by (fa.cx, fa.cy) at the focal's depth, so a point at depth d lands fa.cx·dist/d over.
             for (let it = 0; it < 8; it++) {
                 const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
                 let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, tooNear = false;
@@ -28164,16 +28312,16 @@
                     const rx = p[0] - E[0], ry = p[1] - E[1], rz = p[2] - E[2];
                     const depth = rx * g[0] + ry * g[1] + rz * g[2];
                     if (depth < ts * 0.6) { tooNear = true; break; }
-                    const sx = (rx * rt[0] + rz * rt[2]) / (depth * tanH);
-                    const sy = (rx * up[0] + ry * up[1] + rz * up[2]) / (depth * tanV);
+                    const sx = (rx * rt[0] + rz * rt[2]) / (depth * tanH) + fa.cx * dist / depth;
+                    const sy = (rx * up[0] + ry * up[1] + rz * up[2]) / (depth * tanV) + fa.cy * dist / depth;
                     if (sx < xMin) xMin = sx; if (sx > xMax) xMax = sx;
                     if (sy < yMin) yMin = sy; if (sy > yMax) yMax = sy;
                 }
                 if (tooNear) { dist *= 1.35; continue; }
                 const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
-                const k = Math.max((xMax - xMin) / 2 / MENU_CAM_MARGIN_H, (yMax - yMin) / 2 / MENU_CAM_MARGIN_V);
-                // slide the focal so the box centre lands on (SHIFT_H, SHIFT_V)
-                const ox = (cx - MENU_CAM_SHIFT_H) * dist * tanH, oy = (cy - MENU_CAM_SHIFT_V) * dist * tanV;
+                const k = Math.max((xMax - xMin) / 2 / (MENU_CAM_MARGIN_H * fa.hw), (yMax - yMin) / 2 / (MENU_CAM_MARGIN_V * fa.hh));
+                // slide the focal so the box centre lands on the free frame's middle
+                const ox = (cx - fa.cx) * dist * tanH, oy = (cy - fa.cy) * dist * tanV;
                 F[0] += rt[0] * ox + up[0] * oy; F[1] += up[1] * oy; F[2] += rt[2] * ox + up[2] * oy;
                 dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
             }
@@ -28202,7 +28350,7 @@
             }
             return { F, dist, occl, yaw: yawDeg, tilt: tiltDeg };
         }
-        function _menuShotPose(unit, tgt) {
+        function _menuShotPose(unit, tgt, fa) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
                     || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
@@ -28221,11 +28369,12 @@
                 const swing = L <= 0.01 ? 0 : (L <= 1.5 ? MENU_CAM_SWING_CLOSE : MENU_CAM_SWING);
                 const tilt0 = Math.max(MENU_CAM_TILT_FAR, Math.min(MENU_CAM_TILT, MENU_CAM_TILT - Math.max(0, L - 1) * 2.4));
                 const sides = swing ? [1, -1] : [0];
+                if (!fa) fa = _menuFreeArea(true);
                 const yawGap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
                 let best = null;
                 for (const side of sides) {
                     for (const drop of [0, 8, 16]) {
-                        const c = _menuCamSolve(A, B, lineYaw + side * swing, Math.max(36, tilt0 - drop));
+                        const c = _menuCamSolve(A, B, lineYaw + side * swing, Math.max(36, tilt0 - drop), fa);
                         c.side = side;
                         c.score = c.occl * 4 + drop / 8 * 0.6
                             + yawGap(c.yaw, curYaw) / 180
@@ -28251,15 +28400,17 @@
         window._ewMenuCamOn = function () {
             try { return localStorage.getItem('ew_menu_cam') !== 'off'; } catch (e) { return true; }
         };
-        function _menuTargetShot(unit, tgt) {
+        function _menuTargetShot(unit, tgt, refit) {
             if (!unit || !tgt || !window._ewMenuCamOn()) return false;
-            const pose = _menuShotPose(unit, tgt);
+            const fa = _menuFreeArea(true);
+            const pose = _menuShotPose(unit, tgt, fa);
             if (!pose) return false;
             const key = unit.id + '@' + unit.x + ',' + unit.y + '>' + (tgt.id != null ? tgt.id : '') + '@' + tgt.x + ',' + tgt.y;
             const ms = camera._menuShot;
             // the same pair re-picked (the row's confirm click, the drum's default
             // row) keeps the shot running instead of restarting the tween
-            if (ms && ms.key === key) return true;
+            // (THE CLEAR FRAME's refit, the menus having moved, solves it again)
+            if (ms && ms.key === key && !refit) return true;
             if (!ms) {
                 // the TACTICAL view this shot leaves: resting orientation, and the
                 // zoom the player was on (a held action shot's remembered one wins)
@@ -28287,9 +28438,18 @@
             if (typeof _cineGuardEnd === 'function') _cineGuardEnd();
             camera.moveTo({
                 x: pose.x, y: pose.y, zoom: pose.zoom, tilt: pose.tilt, yaw: pose.yaw, elevZ: pose.elevZ,
-                duration: MENU_CAM_MS, easing: 'easeInOut',
+                duration: refit ? 380 : MENU_CAM_MS, easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true
             });
+            const uid = unit.id, tid = tgt.id != null && tgt.player != null ? tgt.id : null, tx = tgt.x, ty = tgt.y;
+            camera._clearFit = {
+                area: fa,
+                fit() {
+                    const u = (state.units || []).find(v => v.id === uid && !v.dead);
+                    const t = tid != null ? (state.units || []).find(v => v.id === tid && !v.dead) : { x: tx, y: ty };
+                    if (u && t && camera._menuShot) _menuTargetShot(u, t, true);
+                }
+            };
             return true;
         }
         /* hud.js: the target-list cursor moved onto a row (hover, ↑/↓, wheel) */
@@ -56210,7 +56370,8 @@
                         // range, zoomed in OR out to it, computed for the
                         // DESTINATION pitch (this same move pitches to
                         // TILE_PICK_TILT). No 3D lens → the old square fit.
-                        const _fr = _tilePickFrame(unit, _tilePickTiles(unit, 'spell', spell));
+                        const _frTiles = _tilePickTiles(unit, 'spell', spell);
+                        const _fr = _tilePickFrame(unit, _frTiles);
                         const _fitZ = _fr ? _fr.zoom : _tilePickFitZoom(range + 1.5);
                         const zoom = _fr ? _fitZ : Math.min(camera.zoom || _fitZ, _fitZ);
                         camera.moveTo({
@@ -56220,6 +56381,7 @@
                             duration: 380, easing: 'easeInOut',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                         });
+                        _tilePickArmRefit(unit, _frTiles, _fr);
                     }
                     /* unit-target spells: the caster→target TPS shot fires
                        below, once the first valid target is known */
@@ -57333,7 +57495,8 @@
                 // tiles themselves (_tilePickFrame), centred on them, and
                 // zooms in OR out to that — keeping a wider current view
                 // left the whole map on screen.
-                const _mvFr = _tilePickFrame(unit, _tilePickTiles(unit, mode));
+                const _mvTiles = _tilePickTiles(unit, mode);
+                const _mvFr = _tilePickFrame(unit, _mvTiles);
                 const _mvFitZ = _mvFr ? _mvFr.zoom : _tilePickFitZoom(_mvRange + 1.5);
                 const _mvZoom = _mvFr ? _mvFitZ : Math.min(camera.zoom || _mvFitZ, _mvFitZ);
                 camera.moveTo({
@@ -57347,6 +57510,7 @@
                     duration: 420, easing: 'easeInOut', _fogAllowed: true,
                     _allowZoomChange: true, _bypassCap: true
                 });
+                _tilePickArmRefit(unit, _mvTiles, _mvFr);
             }
 
             if (mode === 'attack') {

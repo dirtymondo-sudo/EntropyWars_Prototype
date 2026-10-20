@@ -53,6 +53,10 @@ const ThreeCamera = (function () {
     function seedHold(on) { _seedHoldOn = !!on; }
     /* Focal height latched while the user hand-pans the board — see sync(). */
     let _panFocalY = null;
+    /* THE CLEAR FRAME (battle.js _menuFreeArea): the board rig's live slide toward the middle of the screen the menus
+       leave free, in NDC (eased here so a sub menu opening or the menu leaving glides the picture over). */
+    let _mslX = 0, _mslY = 0, _mslT = 0;
+    const MENU_SLIDE_EASE = 0.16;   // s
 
     function create(width, height) {
         threeCamera = new THREE.PerspectiveCamera(FOV, width / height, NEAR, FAR);
@@ -707,6 +711,37 @@ const ThreeCamera = (function () {
             targetLookX = focalX;
             targetLookY = focalY;
             targetLookZ = focalZ;
+        }
+        /* ══ THE CLEAR FRAME (2026-10-20, battle.js _menuFreeArea) ══
+           mondo: the action menu and its sub menu cover about the left third of the screen, so what the camera frames
+           belongs in the right half to two thirds. While a command menu is up, battle.js names the middle of the
+           screen it leaves free (window._ewMenuSlide → { cx, cy } NDC) and the board rig's eye AND aim slide sideways /
+           up by that much at the focal's depth: a pure translation (the view direction never changes), so the focal —
+           whatever a move centred: the unit, the range, the two-shot — sits in the middle of the free part instead of
+           the middle of the screen, and an orbit still turns round it. Board rig only (third-person shots pivot on their
+           subject and own their composition); eased, so a sub menu opening or the menu leaving glides it over. */
+        {
+            let want = null;
+            if (!isTps && typeof window !== 'undefined' && typeof window._ewMenuSlide === 'function') {
+                try { want = window._ewMenuSlide(); } catch (e) { want = null; }
+            }
+            const nowS = performance.now() / 1000;
+            const dtS = _mslT > 0 ? Math.min(nowS - _mslT, 0.05) : 0.016;
+            _mslT = nowS;
+            const wx = want && isFinite(want.cx) ? want.cx : 0, wy = want && isFinite(want.cy) ? want.cy : 0;
+            _mslX = Math.abs(wx - _mslX) < 1e-4 ? wx : _damp(_mslX, wx, MENU_SLIDE_EASE, dtS);
+            _mslY = Math.abs(wy - _mslY) < 1e-4 ? wy : _damp(_mslY, wy, MENU_SLIDE_EASE, dtS);
+            if (!isTps && (_mslX !== 0 || _mslY !== 0)) {
+                const tv = Math.tan((threeCamera.fov || FOV) * DEG2RAD / 2), th = tv * (threeCamera.aspect || (16 / 9));
+                /* the focal's depth: the eye → aim distance (the aim IS the focal on a level / downward board view) */
+                const D = Math.max(ts, Math.hypot(targetLookX - targetPosX, targetLookY - targetPosY, targetLookZ - targetPosZ));
+                const a = _mslX * D * th, b = _mslY * D * tv;
+                const ux = threeCamera.up.x, uy = threeCamera.up.y, uz = threeCamera.up.z;
+                const sx = -(Math.cos(yawRad) * a + ux * b), sy = -(uy * b), sz = -(-Math.sin(yawRad) * a + uz * b);
+                targetPosX += sx; targetPosY += sy; targetPosZ += sz;
+                targetLookX += sx; targetLookY += sy; targetLookZ += sz;
+                if (targetPosY < floorY) { const lift = floorY - targetPosY; targetPosY += lift; targetLookY += lift; }
+            }
         }
         /* ══ THE FRAME GUARD (2026-10-05) ══
            While a spell's action shot is live, battle.js publishes

@@ -13468,6 +13468,8 @@ const ThreeRenderer = (function () {
             var s = target / h;
             var inner = new THREE.Group();
             inner.rotation.y = def.yawOffset || 0;
+            // the drawn footprint's half sizes (getUnitFootprint: the menu camera fits a long body — a car — whole)
+            inner._ew_fitHalf = [(bb.max.x - bb.min.x) * 0.5 * s, (bb.max.z - bb.min.z) * 0.5 * s];
             m.scale.setScalar(s);
             m.position.set(
                 -((bb.min.x + bb.max.x) * 0.5) * s,
@@ -71901,6 +71903,26 @@ const ThreeRenderer = (function () {
            knockback, at its flight height) — the action camera's frame guard
            (battle.js _cineGuardPoints) keeps these bodies on screen. Fills
            `out` ([x, y, z]); false when the unit has no live model. */
+        /* THE CLEAR FRAME (2026-10-20, battle.js _menuCamBody): the four corners of a unit's DRAWN footprint (its
+           model's box at the scale it is drawn, turned as it faces) as world offsets from its feet — `out` gets
+           [dx0, dz0, … dx3, dz3]. A car is two tiles long; a frame that only counted a tile round its feet cut it off.
+           False with no live model (sprites keep the old estimate). */
+        getUnitFootprint: function (uid, out) {
+            var e = _getUnitEntry(uid);
+            if (!e || !e.model || !e.group || e.group.visible === false) return false;
+            var inner = null, ch = e.model.children;
+            for (var i = 0; i < ch.length; i++) if (ch[i]._ew_fitHalf) { inner = ch[i]; break; }
+            if (!inner) return false;
+            var hx = inner._ew_fitHalf[0], hz = inner._ew_fitHalf[1];
+            if (!(hx > 0 && hz > 0)) return false;
+            var th = (e.model.rotation.y || 0) + (inner.rotation.y || 0), c = Math.cos(th), sn = Math.sin(th), k = 0;
+            for (var sx = -1; sx <= 1; sx += 2) for (var sz = -1; sz <= 1; sz += 2) {
+                var lx = sx * hx, lz = sz * hz;
+                out[k++] = lx * c + lz * sn;
+                out[k++] = -lx * sn + lz * c;
+            }
+            return true;
+        },
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
             if (!e || !e.group || e.group.visible === false) return false;
