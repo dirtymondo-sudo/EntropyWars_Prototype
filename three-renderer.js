@@ -2897,7 +2897,11 @@ const ThreeRenderer = (function () {
        height), chip (small hits draw smaller), line (outline ×), lineCol, shadow ×, sheen ×, grad ('flat' = no
        gradient), glow (a soft halo, 0 = none) + glowCol, cols { kind: '#hex' }, rise ×, life ×, pop ×, fadeAt (share
        of the life the fade starts), start (chest | head | above), spread ×, wordWait (ms), gap (px), show { group: false }
-       (_floatGroup). battle.js's hit read reads elem / stamp / glyph / killGlow / swell from the same object. */
+       (_floatGroup). battle.js's hit read reads elem / stamp / glyph / killGlow / swell from the same object.
+       2026-10-20 THE GRADIENT: gradWords (words wear one too), gradType (linear | radial | conic), gradAng (°, 180 = top
+       to bottom), gradLen (%), gradOff (linear slide, %), gradX / gradY (radial + conic centre, %), stops [{ at, sh, col }],
+       bands, rep, gradRev (_floatStops / _floatGradient). THE LAYOUT + motion: lay (stack | side | rows | scatter), row,
+       gapX (px), scat (% of the screen height), path (rise | steady | hop | bounce), drift ×, tilt (°). */
     var _FLOAT_LOOK0 = {};
     function _floatLook() { return (typeof window !== 'undefined' && window._ewFloatLook) || _FLOAT_LOOK0; }
     function _floatNum(v, d, lo, hi) { v = +v; if (!isFinite(v)) return d; return Math.max(lo, Math.min(hi, v)); }
@@ -2913,6 +2917,103 @@ const ThreeRenderer = (function () {
         var b = Math.round((n & 255) + (t - (n & 255)) * a);
         return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
     }
+    /* THE GRADIENT (2026-10-20, mondo: "for the floating text, add more options for the gradient like the angle and all
+       that"): a pop's fill as stops [{ at 0..1, c '#hex' }]: the game's own colours spread evenly, or the look's own stops
+       (L.stops [{ at %, sh -100..100 = darker..lighter, col '' = the pop's own colour }]), then turned round (gradRev),
+       cut into hard bands (bands) and repeated (rep). */
+    function _floatMix(a, b, t) {
+        var ma = /^#?([0-9a-f]{6})$/i.exec(String(a || '')), mb = /^#?([0-9a-f]{6})$/i.exec(String(b || ''));
+        if (!ma || !mb) return t < 0.5 ? a : b;
+        var na = parseInt(ma[1], 16), nb = parseInt(mb[1], 16), o = 0;
+        for (var s = 16; s >= 0; s -= 8) {
+            var ca = (na >> s) & 255, cb = (nb >> s) & 255;
+            o |= Math.round(ca + (cb - ca) * t) << s;
+        }
+        return '#' + ((1 << 24) | o).toString(16).slice(1);
+    }
+    function _floatStops(grad, fillCol, L) {
+        var st = [], i;
+        if (L.stops && L.stops.length > 1) {
+            for (i = 0; i < L.stops.length; i++) {
+                var s = L.stops[i] || {};
+                st.push({ at: _floatNum(s.at, i / (L.stops.length - 1) * 100, 0, 100) / 100, c: _floatShade(s.col || fillCol, _floatNum(s.sh, 0, -100, 100) / 100) });
+            }
+        } else {
+            for (i = 0; i < grad.length; i++) st.push({ at: grad.length === 1 ? 0 : i / (grad.length - 1), c: grad[i] });
+        }
+        if (L.gradRev) st.forEach(function (s) { s.at = 1 - s.at; });
+        st.sort(function (a, b) { return a.at - b.at; });
+        var bands = Math.round(_floatNum(L.bands, 0, 0, 12));
+        if (bands >= 2 && st.length) {
+            var smooth = function (p) {
+                if (p <= st[0].at) return st[0].c;
+                for (var j = 1; j < st.length; j++) {
+                    if (p <= st[j].at) { var a = st[j - 1], b = st[j]; return _floatMix(a.c, b.c, b.at > a.at ? (p - a.at) / (b.at - a.at) : 1); }
+                }
+                return st[st.length - 1].c;
+            };
+            var hard = [];
+            for (i = 0; i < bands; i++) { var c = smooth(i / (bands - 1)); hard.push({ at: i / bands, c: c }, { at: (i + 1) / bands, c: c }); }
+            st = hard;
+        }
+        var rep = Math.round(_floatNum(L.rep, 1, 1, 8));
+        if (rep > 1) {
+            var many = [];
+            for (var k = 0; k < rep; k++) st.forEach(function (s) { many.push({ at: (k + s.at) / rep, c: s.c }); });
+            st = many;
+        }
+        return st;
+    }
+    /* the fill over a pop's ink box (w × h round gx, gy): linear along gradAng (CSS degrees: 180 = top to bottom, the
+       game's; gradLen stretches it, gradOff slides it along), conic (a sweep starting at gradAng round gradX / gradY), or
+       null for radial (an ellipse: a canvas's radial gradient is a circle, so _floatPaintRadial paints that one) */
+    function _floatGradient(ctx, stops, L, gx, gy, w, h) {
+        var ang = _floatNum(L.gradAng, 180, -360, 720) * Math.PI / 180, g;
+        if (L.gradType === 'radial') return null;
+        if (L.gradType === 'conic' && ctx.createConicGradient) {
+            g = ctx.createConicGradient(ang - Math.PI / 2, gx + _floatNum(L.gradX, 0, -100, 100) / 100 * w / 2, gy + _floatNum(L.gradY, 0, -100, 100) / 100 * h / 2);
+        } else {
+            var dx = Math.sin(ang), dy = -Math.cos(ang);
+            var hl = (Math.abs(w * dx) + Math.abs(h * dy)) / 2 * _floatNum(L.gradLen, 100, 10, 400) / 100;
+            var off = _floatNum(L.gradOff, 0, -100, 100) / 100 * hl, mx = gx + dx * off, my = gy + dy * off;
+            g = ctx.createLinearGradient(mx - dx * hl, my - dy * hl, mx + dx * hl, my + dy * hl);
+        }
+        for (var i = 0; i < stops.length; i++) g.addColorStop(Math.max(0, Math.min(1, stops[i].at)), stops[i].c);
+        return g;
+    }
+    function _floatPaintRadial(ctx, raw, stops, L, cx, cy, gx, gy, w, h) {
+        var cw = ctx.canvas.width, ch = ctx.canvas.height;
+        var t = document.createElement('canvas'); t.width = cw; t.height = ch;
+        var tx = t.getContext('2d');
+        tx.font = ctx.font;
+        if ('letterSpacing' in tx) tx.letterSpacing = ctx.letterSpacing;
+        tx.textAlign = 'center'; tx.textBaseline = 'middle';
+        tx.fillStyle = '#ffffff';
+        tx.fillText(raw, cx, cy);
+        tx.globalCompositeOperation = 'source-in';
+        // an ellipse through the box's corners at Size 100 (CSS's farthest-corner)
+        var lenK = _floatNum(L.gradLen, 100, 10, 400) / 100;
+        var rx = Math.max(1, w / 2 * Math.SQRT2 * lenK), ry = Math.max(1, h / 2 * Math.SQRT2 * lenK);
+        var ox = gx + _floatNum(L.gradX, 0, -100, 100) / 100 * w / 2, oy = gy + _floatNum(L.gradY, 0, -100, 100) / 100 * h / 2;
+        tx.setTransform(rx, 0, 0, ry, ox, oy);
+        var g = tx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        for (var i = 0; i < stops.length; i++) g.addColorStop(Math.max(0, Math.min(1, stops[i].at)), stops[i].c);
+        tx.fillStyle = g;
+        tx.fillRect(-ox / rx, -oy / ry, cw / rx, ch / ry);
+        ctx.drawImage(t, 0, 0);
+    }
+    /* THE PATH a pop takes from its spot, as a share of its rise: rise = eases out (the game's), steady = an even climb,
+       hop = up and back down onto its spot, bounce = a hop and two smaller ones */
+    function _floatRiseT(path, t) {
+        if (path === 'steady') return t;
+        if (path === 'hop') return t < 0.5 ? Math.sin(Math.PI * t / 0.5) : 0;
+        if (path === 'bounce') {
+            return t < 0.3 ? Math.sin(Math.PI * t / 0.3) : t < 0.45 ? 0.35 * Math.sin(Math.PI * (t - 0.3) / 0.15)
+                : t < 0.55 ? 0.12 * Math.sin(Math.PI * (t - 0.45) / 0.1) : 0;
+        }
+        return 1 - Math.pow(1 - t, 3);
+    }
+    var _FLOAT_RND0 = [0.75, 0.5, 0.25, 0.5, 0.5];
     /* which "Show" box a pop answers to: dmg / heal / mp / total (numbers), hit / status / misc (words) */
     var _FLOAT_HIT_WORDS = { crit: 1, mult: 1, dodge: 1, counter: 1, streak: 1, overkill: 1, 'protect-block': 1 };
     var _FLOAT_STATUS_WORDS = { buff: 1, debuff: 1, status: 1, neutral: 1, heal: 1, mp: 1, damage: 1, critdmg: 1, combo: 1, record: 1, 'record-near': 1 };
@@ -23545,6 +23646,8 @@ const ThreeRenderer = (function () {
             strokeCol = _floatShade(own, -0.86);
         }
         if (L.lineCol) strokeCol = L.lineCol;
+        // THE GRADIENT on words too: the kind's own, else one made from its colour
+        if (!isNumber && L.gradWords && !grad) grad = [_floatShade(fillCol, 0.62), fillCol, _floatShade(fillCol, -0.42)];
         if (L.grad === 'flat') grad = null;
         var lineK = _floatNum(L.line, 1, 0, 4), shK = _floatNum(L.shadow, 1, 0, 3), sheenK = _floatNum(L.sheen, 1, 0, 2.5);
         var glowK = _floatNum(L.glow, 0, 0, 3);
@@ -23629,18 +23732,18 @@ const ThreeRenderer = (function () {
         }
 
         // Fill: vertical gradient for numbers, flat color for word callouts.
+        // THE GRADIENT: the look's type, angle, size, centre, stops, bands and repeat (words too with gradWords). The
+        // game's own is linear at 180° over the ink box (cy - 0.62 → cy + 0.55 of the font size).
         ctx.save();
-        if (isNumber && grad && grad.length) {
-            var g = ctx.createLinearGradient(0, cy - fontSize * 0.62, 0, cy + fontSize * 0.55);
-            var stops = grad;
-            for (var si = 0; si < stops.length; si++) {
-                g.addColorStop(stops.length === 1 ? 0 : si / (stops.length - 1), stops[si]);
-            }
-            ctx.fillStyle = g;
+        if ((isNumber || L.gradWords) && grad && grad.length) {
+            var gStops = _floatStops(grad, fillCol, L), gx = cx, gy = cy - fontSize * 0.035, gw = Math.max(1, metrics.width), gh = fontSize * 1.17;
+            var g = _floatGradient(ctx, gStops, L, gx, gy, gw, gh);
+            if (g) { ctx.fillStyle = g; ctx.fillText(raw, cx, cy); }
+            else _floatPaintRadial(ctx, raw, gStops, L, cx, cy, gx, gy, gw, gh);
         } else {
             ctx.fillStyle = fillCol;
+            ctx.fillText(raw, cx, cy);
         }
-        ctx.fillText(raw, cx, cy);
         ctx.restore();
 
         // Top sheen — a bright highlight on the upper third sells the metallic pop.
@@ -23779,7 +23882,9 @@ const ThreeRenderer = (function () {
             hero: hero,
             // on-screen size × (the hierarchy: the number reads first)
             sizeK: hero ? FLOAT_HERO_SCALE : (_FLOAT_SOLO_KINDS[kind] ? 1 : FLOAT_TAG_SCALE),
-            layDy: 0, laid: false
+            layDy: 0, layDx: 0, laid: false,
+            // its own dice for the look's motion: drift side + amount, scatter heading + distance, tilt
+            rnd: [Math.random(), Math.random(), Math.random(), Math.random(), Math.random()]
         };
         ctx.tweens.push(tw);
         return tw;
@@ -23801,8 +23906,11 @@ const ThreeRenderer = (function () {
        so a tag rising behind its number can't climb through it. Lifts snap
        up at once (a number is never covered, even for a frame) and ease back
        down when the pop that held them fades away. Screen-space only: works
-       the same for pops over two different units that project close. */
-    function _layoutFloatTexts(list, dtMs, gapPx) {
+       the same for pops over two different units that project close.
+       THE LAYOUT (2026-10-20, mondo: "they like stack on top of each other but i want them to do more of a scatter and
+       be side by side or and on top of each other"): mode = the look's lay. 'stack' (or none) = the above; the others
+       go through _floatPlaceFree. gapX = px kept beside a pop, rowN = pops in a row (rows). */
+    function _layoutFloatTexts(list, dtMs, gapPx, mode, gapX, rowN) {
         list.sort(function (a, b) {
             if (a.hero !== b.hero) return a.hero ? -1 : 1;
             var ta = a.startTime + (a.delayMs || 0), tb = b.startTime + (b.delayMs || 0);
@@ -23822,6 +23930,8 @@ const ThreeRenderer = (function () {
             var halfW = Math.max(0, tw.boxW * k / 2 - (el._ewMarginX || 0) * k);
             var top0 = tw._sy - tw.boxH * k / 2 + (el._ewMarginTop || 0) * k;
             var bot0 = tw._sy + tw.boxH * k / 2 - (el._ewMarginBot || 0) * k;
+            if (mode && mode !== 'stack') { _floatPlaceFree(tw, halfW, top0, bot0, placed, gap, gapX || 0, mode, rowN, relax); continue; }
+            tw.layDx = 0;
             var dy = 0;
             for (var pass = 0; pass < 16; pass++) {
                 var moved = false;
@@ -23841,6 +23951,70 @@ const ThreeRenderer = (function () {
             tw.laid = true;
             placed.push({ cx: tw._sx, halfW: halfW, top: top0 + tw.layDy, bot: bot0 + tw.layDy });
         }
+    }
+
+    /* true = a pop's ink box (round cx, top → bot) keeps gap px above / below and gapX beside every placed one */
+    function _floatClear(cx, halfW, top, bot, placed, gap, gapX) {
+        for (var j = 0; j < placed.length; j++) {
+            var p = placed[j];
+            if (Math.abs(cx - p.cx) >= halfW + p.halfW + gapX || bot <= p.top - gap || top >= p.bot + gap) continue;
+            return false;
+        }
+        return true;
+    }
+    /* THE LAYOUT, the other modes: side = moved beside whatever is in its way, left or right (whichever is nearer; each
+       pop has a side it leans to, so a run of numbers fans out both ways), rows = beside up to rowN pops wide, then a row
+       up, scatter = moved on along its own random heading until it is clear. As in the stack, the newest number keeps
+       its spot and a pop never draws over one placed before it: it jumps clear at once and eases back when room opens. */
+    function _floatPlaceFree(tw, halfW, top0, bot0, placed, gap, gapX, mode, rowN, relax) {
+        var sx = tw._sx, R = tw.rnd || _FLOAT_RND0, pref = R[0] < 0.5 ? -1 : 1, tx = 0, ty = 0, found = false, j;
+        if (mode === 'scatter') {
+            var a = R[2] * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a), step = Math.max(3, (bot0 - top0) * 0.2);
+            for (var s = 0; s <= 160 && !found; s++) {
+                var ex = ux * step * s, ey = uy * step * s;
+                if (_floatClear(sx + ex, halfW, top0 + ey, bot0 + ey, placed, gap, gapX)) { tx = ex; ty = ey; found = true; }
+            }
+        } else {
+            var dys = [0], dxs = [0], lo = -Infinity, hi = Infinity;
+            for (j = 0; j < placed.length; j++) {
+                var p = placed[j];
+                if (mode === 'rows') { var up = p.top - gap - bot0; if (up < 0) dys.push(up); }
+                dxs.push(p.cx + p.halfW + gapX + halfW - sx, p.cx - p.halfW - gapX - halfW - sx);
+            }
+            dys.sort(function (a, b) { return b - a; });
+            var lean = function (d) { return Math.abs(d) - (d * pref > 0 ? 0.5 : 0); };
+            dxs.sort(function (a, b) { return lean(a) - lean(b); });
+            if (mode === 'rows') {   // the row: this pop's width × the others beside it, more of them on its own side
+                var w = halfW * 2 + gapX, n = Math.max(1, Math.round(rowN || 3)) - 1, mine = Math.ceil(n / 2), other = n - mine;
+                hi = (pref > 0 ? mine : other) * w + w * 0.3;
+                lo = -((pref > 0 ? other : mine) * w + w * 0.3);
+            }
+            for (var yi = 0; yi < dys.length && !found; yi++) {
+                for (var xi = 0; xi < dxs.length; xi++) {
+                    var dx = dxs[xi];
+                    if (dx < lo || dx > hi) continue;
+                    if (_floatClear(sx + dx, halfW, top0 + dys[yi], bot0 + dys[yi], placed, gap, gapX)) { tx = dx; ty = dys[yi]; found = true; break; }
+                }
+            }
+        }
+        if (!found) {   // above everything
+            var top = Infinity;
+            for (j = 0; j < placed.length; j++) top = Math.min(top, placed[j].top);
+            tx = 0; ty = isFinite(top) ? Math.min(0, top - gap - bot0) : 0;
+        }
+        // keep the spot it had while that is still clear and not much further out (no flip-flopping side to side)
+        if (tw.laid && tw.tgtOk && (tw.tgtDx !== tx || tw.tgtDy !== ty)
+            && Math.abs(tw.tgtDx) + Math.abs(tw.tgtDy) <= Math.abs(tx) + Math.abs(ty) + 14
+            && _floatClear(sx + tw.tgtDx, halfW, top0 + tw.tgtDy, bot0 + tw.tgtDy, placed, gap, gapX)) { tx = tw.tgtDx; ty = tw.tgtDy; }
+        tw.tgtDx = tx; tw.tgtDy = ty; tw.tgtOk = 1;
+        if (!tw.laid) { tw.layDx = tx; tw.layDy = ty; }
+        else {
+            var nx = tw.layDx + (tx - tw.layDx) * relax, ny = tw.layDy + (ty - tw.layDy) * relax;
+            if (!_floatClear(sx + nx, halfW, top0 + ny, bot0 + ny, placed, 0, 0)) { nx = tx; ny = ty; }
+            tw.layDx = nx; tw.layDy = ny;
+        }
+        tw.laid = true;
+        placed.push({ cx: sx + tw.layDx, halfW: halfW, top: top0 + tw.layDy, bot: bot0 + tw.layDy });
     }
 
     function _updateFloatTextTweens() {
@@ -23870,6 +24044,10 @@ const ThreeRenderer = (function () {
         var maxHero = Math.max(minHero, _floatNum(L.maxNum, FLOAT_MAX_HERO_H * 100, 1, 60) / 100);
         var popK = _floatNum(L.pop, 1, 0, 3);
         var fadeAt = _floatNum(L.fadeAt, 0.75, 0.2, 0.97);
+        // THE LAYOUT + the motion: drift (sideways as it goes, × 5% of the screen height), scatter (the scatter layout's
+        // throw from its spot, % of the screen height), tilt (degrees either way)
+        var lay = L.lay || 'stack', driftK = _floatNum(L.drift, 0, 0, 4), tiltK = _floatNum(L.tilt, 0, 0, 45);
+        var scatK = lay === 'scatter' ? _floatNum(L.scat, 4, 0, 30) / 100 : 0;
         var live = ctx.live;
         live.length = 0;
         var tweens = ctx.tweens;
@@ -23889,7 +24067,7 @@ const ThreeRenderer = (function () {
                 continue;
             }
 
-            var riseT = 1 - Math.pow(1 - t, 3);
+            var riseT = _floatRiseT(L.path, t);
             var worldY = tw.startY + tw.riseY * riseT;
 
             var opacity;
@@ -23934,6 +24112,13 @@ const ThreeRenderer = (function () {
                     var worldToPx = fullH / (2 * dist * halfTanFov);
                     tw._sx = (_floatProjVec.x * 0.5 + 0.5) * viewW;
                     tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * viewH;
+                    var R = tw.rnd || _FLOAT_RND0;
+                    if (driftK > 0) tw._sx += (R[0] < 0.5 ? -1 : 1) * (0.6 + 0.4 * R[1]) * driftK * 0.05 * fullH * (1 - (1 - t) * (1 - t));
+                    if (scatK > 0) {
+                        var sa = R[2] * Math.PI * 2, sr = scatK * fullH * (0.35 + 0.65 * R[3]);
+                        tw._sx += Math.cos(sa) * sr; tw._sy += Math.sin(sa) * sr;
+                    }
+                    tw._rot = tiltK > 0 ? (R[4] * 2 - 1) * tiltK : 0;
                     var settledK = pxScale * worldToPx * (tw.sizeK || 1);
                     var ink0 = tw.el._ewInkH0 || 0;
                     if (ink0 > 0) {
@@ -23948,12 +24133,12 @@ const ThreeRenderer = (function () {
                 }
             }
         }
-        if (live.length) _layoutFloatTexts(live, realDt, _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60));
+        if (live.length) _layoutFloatTexts(live, realDt, _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60), lay, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8));
         for (var li = 0; li < live.length; li++) {
             var lw = live[li];
-            lw.el.style.left = lw._sx + 'px';
+            lw.el.style.left = (lw._sx + (lw.layDx || 0)) + 'px';
             lw.el.style.top = (lw._sy + lw.layDy) + 'px';
-            lw.el.style.transform = 'translate(-50%,-50%) scale(' + lw._k.toFixed(4) + ')';
+            lw.el.style.transform = 'translate(-50%,-50%) ' + (lw._rot ? 'rotate(' + lw._rot.toFixed(2) + 'deg) ' : '') + 'scale(' + lw._k.toFixed(4) + ')';
             lw.el.style.opacity = lw._op.toFixed(3);
         }
     }

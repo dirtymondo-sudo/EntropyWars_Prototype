@@ -13702,7 +13702,27 @@ const UX_DEF = {
   fElem: true, fStamp: true, fGlyph: true, fKill: true,
   fRise: 1, fLife: 1, fPop: 1, fFade: 75, fStart: 'chest', fSpread: 1, fWait: 110, fGap: 4,
   fShowDmg: true, fShowHeal: true, fShowMp: true, fShowTotal: true, fShowHit: true, fShowStatus: true, fShowMisc: true,
+  /* 2026-10-20 (mondo: "for the floating text, add more options for the gradient like the angle and all that"): THE
+     GRADIENT. fGradType linear | radial | conic, fGradAng ° (180 = top to bottom, the game's), fGradLen % (its size),
+     fGradOff % (linear: slid along its line), fGradX / fGradY % (radial + conic: the centre), fGradStops 'game' or a
+     count 2-5 of fGs<n>At (%) / fGs<n>Sh (-100 darker .. 100 lighter) / fGs<n>Col ('' = the pop's own colour),
+     fGradBands (0 = smooth), fGradRep, fGradRev, fGradWords (words wear one too). And (mondo: "they like stack on top of
+     each other but i want them to do more of a scatter and be side by side or and on top of each other") THE LAYOUT:
+     fLay stack | side | rows | scatter, fRow (pops in a row), fGapX (px beside), fScat (% of the screen height), and the
+     motion's fPath rise | steady | hop | bounce, fDrift ×, fTilt ° */
+  fGradWords: false, fGradType: 'linear', fGradAng: 180, fGradLen: 100, fGradOff: 0, fGradX: 0, fGradY: 0, fGradStops: 'game',
+  fGradBands: 0, fGradRep: 1, fGradRev: false,
+  fLay: 'stack', fRow: 3, fGapX: 12, fScat: 4, fPath: 'rise', fDrift: 0, fTilt: 0,
 };
+/* the custom gradient stops (fGs<n>*): spread evenly from the game's light → dark, made again when the count changes */
+const FLOAT_STOP_MAX = 5;
+const fgsSeed = (i, n) => { const f = i / Math.max(1, n - 1); return { at: Math.round(100 * f), sh: Math.round(f < 0.5 ? 62 - 124 * f : -84 * (f - 0.5)) }; };
+for (let i = 1; i <= FLOAT_STOP_MAX; i++) { const d = fgsSeed(i - 1, 3); UX_DEF['fGs' + i + 'At'] = i > 3 ? 100 : d.at; UX_DEF['fGs' + i + 'Sh'] = i > 3 ? -42 : d.sh; UX_DEF['fGs' + i + 'Col'] = ''; }
+function fgsSpread(n) {
+  if (!(n >= 2)) return;
+  const X = db.ux || (db.ux = {});
+  for (let i = 1; i <= n; i++) { const d = fgsSeed(i - 1, n); X['fGs' + i + 'At'] = d.at; X['fGs' + i + 'Sh'] = d.sh; }
+}
 /* the actions an arrow shows (three-renderer _ARROW_HEX_KIND) and the situations a tile shows (_HL_HEX_KIND /
    _hlKindOfType): [kind, label, the game's colour, tip] */
 const AIM_ARROW_KINDS = [['move', 'Move', '#3399ff', 'Your unit walking, dashing, jumping or flying there'], ['hit', 'Damage', '#ff3333', 'A strike or a damage spell'],
@@ -14109,6 +14129,23 @@ function floatSignal() {
   if (ch('fShadow')) L.shadow = num('fShadow', 0, 3);
   if (ch('fSheen')) L.sheen = num('fSheen', 0, 2.5);
   if (X.fGrad === 'flat') L.grad = 'flat';
+  else {
+    if (X.fGradWords) L.gradWords = true;
+    if (X.fGradType === 'radial' || X.fGradType === 'conic') L.gradType = X.fGradType;
+    if (ch('fGradAng')) L.gradAng = num('fGradAng', 0, 360);
+    if (ch('fGradLen')) L.gradLen = num('fGradLen', 10, 400);
+    if (ch('fGradOff')) L.gradOff = num('fGradOff', -100, 100);
+    if (ch('fGradX')) L.gradX = num('fGradX', -100, 100);
+    if (ch('fGradY')) L.gradY = num('fGradY', -100, 100);
+    const n = +X.fGradStops;
+    if (n >= 2) {
+      L.stops = [];
+      for (let i = 1; i <= Math.min(FLOAT_STOP_MAX, n); i++) L.stops.push({ at: num('fGs' + i + 'At', 0, 100), sh: Math.max(-100, Math.min(100, +X['fGs' + i + 'Sh'] || 0)), col: X['fGs' + i + 'Col'] || '' });
+    }
+    if (ch('fGradBands')) L.bands = Math.round(num('fGradBands', 0, 12));
+    if (ch('fGradRep')) L.rep = Math.round(num('fGradRep', 1, 8));
+    if (X.fGradRev) L.gradRev = true;
+  }
   if (ch('fGlow')) L.glow = num('fGlow', 0, 3);
   if (X.fGlowCol) L.glowCol = X.fGlowCol;
   if (!X.fElem) L.elem = false;
@@ -14123,6 +14160,15 @@ function floatSignal() {
   if (ch('fSpread')) L.spread = num('fSpread', 0, 12);
   if (ch('fWait')) L.wordWait = num('fWait', 0, 2000);
   if (ch('fGap')) L.gap = num('fGap', -20, 60);
+  if (X.fLay === 'side' || X.fLay === 'rows' || X.fLay === 'scatter') {
+    L.lay = X.fLay;
+    if (ch('fGapX')) L.gapX = num('fGapX', -20, 80);
+    if (X.fLay === 'rows' && ch('fRow')) L.row = Math.round(num('fRow', 1, 8));
+    if (X.fLay === 'scatter' && ch('fScat')) L.scat = num('fScat', 0, 30);
+  }
+  if (X.fPath === 'steady' || X.fPath === 'hop' || X.fPath === 'bounce') L.path = X.fPath;
+  if (ch('fDrift')) L.drift = num('fDrift', 0, 4);
+  if (ch('fTilt')) L.tilt = num('fTilt', 0, 45);
   const show = {};
   [['dmg', 'fShowDmg'], ['heal', 'fShowHeal'], ['mp', 'fShowMp'], ['total', 'fShowTotal'], ['hit', 'fShowHit'], ['status', 'fShowStatus'], ['misc', 'fShowMisc']]
     .forEach(([g, k]) => { if (!X[k]) show[g] = false; });
@@ -14668,9 +14714,33 @@ function floatDetail() {
   h += sec('fink', 'Outline + light', xp(fRange('Outline', 'fLine', 0, 3, 0.05, +X.fLine, '0 = no outline')
     + fColorOpt('Outline colour', 'fLineCol', X.fLineCol, '#000000', false, 'Unticked = a dark shade of each pop\'s own colour')
     + fRange('Shadow', 'fShadow', 0, 3, 0.05, +X.fShadow, '0 = none') + fRange('Shine', 'fSheen', 0, 2.5, 0.05, +X.fSheen, 'The bright top half of each letter (0 = none)')
-    + fSeg('Number fill', 'fGrad', [['grad', 'Gradient'], ['flat', 'Flat colour']], X.fGrad)
     + fRange('Glow', 'fGlow', 0, 3, 0.05, +X.fGlow, 'A soft halo in the pop\'s colour (0 = none)')
     + fColorOpt('Glow colour', 'fGlowCol', X.fGlowCol, '#ffffff', false, 'Unticked = each pop\'s own colour')));
+  /* THE GRADIENT: only the controls the picked type uses show */
+  const gt = X.fGradType, nStops = Math.min(FLOAT_STOP_MAX, +X.fGradStops || 0);
+  let g = fSeg('Number fill', 'fGrad', [['grad', 'Gradient'], ['flat', 'Flat colour']], X.fGrad);
+  if (X.fGrad !== 'flat') {
+    g += fSeg('Type', 'fGradType', [['linear', 'Linear', 'Straight bands of colour across the letters'], ['radial', 'Radial', 'Rings of colour out from a centre'],
+      ['conic', 'Sweep', 'The colours sweep round a centre like a clock hand']], gt)
+      + (gt !== 'radial' ? fRange(gt === 'conic' ? 'Start angle (°)' : 'Angle (°)', 'fGradAng', 0, 360, 1, +X.fGradAng,
+        gt === 'conic' ? 'Where the sweep starts: 0 = straight up, 90 = right, 180 = down' : '180 = top to bottom (as the game), 90 = left to right, 0 = bottom to top, 270 = right to left') : '')
+      + (gt !== 'conic' ? fRange('Size (%)', 'fGradLen', 10, 300, 1, +X.fGradLen,
+        gt === 'radial' ? 'How far the rings reach (100 = the corners of the text)' : 'How long the gradient is (100 = across the whole text); smaller = a sharper change in the middle') : '')
+      + (gt === 'linear' ? fRange('Shift (%)', 'fGradOff', -100, 100, 1, +X.fGradOff, 'Slides the gradient along its angle')
+        : fRange('Centre left / right (%)', 'fGradX', -100, 100, 1, +X.fGradX, '0 = the middle of the text') + fRange('Centre up / down (%)', 'fGradY', -100, 100, 1, +X.fGradY, '0 = the middle of the text; below 0 = higher'))
+      + fSeg('Colour stops', 'fGradStops', [['game', 'As the game', 'Each kind of pop\'s own colours (fire orange to red for damage, and so on)'],
+        ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']], X.fGradStops);
+    for (let i = 1; i <= nStops; i++) {
+      g += `<div class="uim-note" style="margin:8px 0 0">Stop ${i}</div>` + fRange('At (%)', 'fGs' + i + 'At', 0, 100, 1, +X['fGs' + i + 'At'], 'Where along the gradient this colour sits')
+        + fRange('Darker / lighter', 'fGs' + i + 'Sh', -100, 100, 1, +X['fGs' + i + 'Sh'], 'Below 0 = darker, above 0 = lighter (100 = white, -100 = black)')
+        + fColorOpt('Own colour', 'fGs' + i + 'Col', X['fGs' + i + 'Col'], '#ffffff', false, 'Unticked = the pop\'s own colour (Damage red, Heal green, ...), so each kind keeps its colour');
+    }
+    if (nStops) g += '<div class="uim-note">Picking a count spreads the stops out evenly again.</div>';
+    g += fRange('Bands', 'fGradBands', 0, 10, 1, +X.fGradBands, '0 = smooth; 2 or more = that many hard bands of colour')
+      + fRange('Repeat', 'fGradRep', 1, 6, 1, +X.fGradRep, 'The gradient over and over across the text')
+      + xCheck('Reverse', 'fGradRev', X.fGradRev) + xCheck('Words get it too', 'fGradWords', X.fGradWords);
+  }
+  h += sec('fgrad', 'Gradient', xp(g));
   h += sec('fhit', 'Hits', xCheck('Element colours on hits', 'fElem', X.fElem) + xCheck('CRIT stamp', 'fStamp', X.fStamp)
     + xCheck('Weakness icon', 'fGlyph', X.fGlyph) + xCheck('Killing blow glow', 'fKill', X.fKill)
     + '<div class="uim-note">Element colours on: a fire hit\'s number wears the fire colour, and the Damage colour below shows on hits with no element. Off: every hit wears the Damage colour (Critical hit for a crit).</div>');
@@ -14679,9 +14749,21 @@ function floatDetail() {
     + fRange('Pop', 'fPop', 0, 2.5, 0.05, +X.fPop, 'How hard a pop slams in (0 = it just appears)')
     + fRange('Fade starts at (%)', 'fFade', 20, 95, 1, +X.fFade, 'The share of its life a pop stays solid before it fades out')
     + fSeg('Starts at', 'fStart', [['chest', 'Chest'], ['head', 'Head'], ['above', 'Above the head']], X.fStart)
-    + fRange('Scatter', 'fSpread', 0, 12, 0.1, +X.fSpread, 'How far apart pops land at random (1 = as the game, 0 = always the same spot, 12 = about a third of a tile)')
-    + fRange('Words wait (ms)', 'fWait', 0, 800, 10, +X.fWait, 'How long a word waits so its number lands first')
-    + fRange('Gap between pops (px)', 'fGap', -10, 40, 1, +X.fGap, 'The space kept between pops stacked over each other')));
+    + fSeg('Path', 'fPath', [['rise', 'Rise', 'Floats up and slows down (as the game)'], ['steady', 'Steady', 'Floats up at an even speed'],
+      ['hop', 'Hop', 'Hops up and lands back on its spot'], ['bounce', 'Bounce', 'Hops up and bounces twice']], X.fPath)
+    + fRange('Drift sideways', 'fDrift', 0, 3, 0.05, +X.fDrift, 'Each pop drifts left or right as it goes (0 = straight)')
+    + fRange('Tilt (°)', 'fTilt', 0, 30, 1, +X.fTilt, 'Each pop leans a random way, up to this much (0 = upright)')
+    + fRange('Random spot', 'fSpread', 0, 12, 0.1, +X.fSpread, 'How far from the middle of the unit a pop lands at random (1 = as the game, 0 = always the same spot, 12 = about a third of a tile)')
+    + fRange('Words wait (ms)', 'fWait', 0, 800, 10, +X.fWait, 'How long a word waits so its number lands first')));
+  /* THE LAYOUT: where a pop goes when another is already there (a number is never covered in any of them) */
+  const lay = X.fLay;
+  h += sec('flay', 'Layout', xp(fSeg('When pops meet', 'fLay', [['stack', 'Stack', 'On top of each other (as the game)'], ['side', 'Side by side', 'Next to each other, left and right'],
+    ['rows', 'Side + stack', 'Side by side, then a new row on top'], ['scatter', 'Scatter', 'Thrown apart at random']], lay)
+    + (lay === 'rows' ? fRange('Pops in a row', 'fRow', 2, 8, 1, +X.fRow, 'How many sit side by side before a new row starts on top') : '')
+    + (lay === 'scatter' ? fRange('Scatter distance (% of screen)', 'fScat', 0, 15, 0.5, +X.fScat, 'How far each pop is thrown from its spot at random (0 = only as far as it takes to clear the others)') : '')
+    + fRange(lay === 'stack' ? 'Gap between pops (px)' : 'Gap above / below (px)', 'fGap', -10, 40, 1, +X.fGap, 'The space kept between pops over each other')
+    + (lay !== 'stack' ? fRange('Gap beside (px)', 'fGapX', -10, 60, 1, +X.fGapX, 'The space kept between pops next to each other') : ''))
+    + '<div class="uim-note">In every layout a word never covers a number: it moves out of the way.</div>');
   h += sec('fshow', 'Which pops show', xCheck('Damage numbers', 'fShowDmg', X.fShowDmg) + xCheck('Heal numbers', 'fShowHeal', X.fShowHeal)
     + xCheck('MP numbers', 'fShowMp', X.fShowMp) + xCheck('TOTAL after a flurry', 'fShowTotal', X.fShowTotal)
     + xCheck('Hit words (WEAK!, CRIT, DODGE!, SUPER EFFECTIVE!)', 'fShowHit', X.fShowHit)
@@ -17665,6 +17747,7 @@ function dockClick(e) {
     try { xs.blur(); } catch (er) {}
     snapLayout(true); db.ux = db.ux || {}; db.ux[xs.dataset.xset] = xs.dataset.val;
     const tw = zoneTwin(xs.dataset.xset); if (tw) db.ux[tw] = xs.dataset.val;
+    if (xs.dataset.xset === 'fGradStops') fgsSpread(+xs.dataset.val);   // a new count of gradient stops: spread evenly again
     uxTidy(); touchLayout(); dockDetail(); return;
   }
   const qs = e.target.closest('button[data-qpset]');
