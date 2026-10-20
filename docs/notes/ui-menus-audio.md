@@ -1706,3 +1706,8 @@ SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follow
   (spell card `.pb-sc-disc`, loadout slot `.pb-ls-disc`, the info panel's `.pb-technique-disc`) drew TREE_CAT_GLYPH's ⚔ for
   every damage spell. party-builder.js `pbCatGlyph(sp, cat)` gives them the kind (⚔ / three diamonds); the `.ew-dmgkind` chip
   after the name (info panel, SpellBlade rows) is gone. Checked: all 353 damage spells, 177 magic, none draws ⚔.
+
+## THE A–Z DEFAULT (2026-10-20, mondo: "sort the characters alphabetically in the party builder and make that the default")
+party-builder.js: the Codex of Vessels wall now opens on NAME A–Z (`sortKey 'label'`, `sortDir 'asc'`; was HP ↓).
+NAME A–Z / Z–A moved to the top of the SORT THE WALL menu; every stat sort (HP ↓ included) is unchanged below them.
+Owned-first and favourites-first still group ahead of the sort, as before. Sort is still per-visit React state (not saved).
