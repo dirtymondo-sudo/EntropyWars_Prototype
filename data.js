@@ -45486,18 +45486,38 @@ const HQ_AREA_SPECS = {
        THE HEDGE WALK (a level span, the bridge layer); THE RED KING'S TOWER (a ramp off the croquet ground, two vines) with the throne;
        THE RABBIT HOLE; THE CHESHIRE MOON's perch (the tape — the door gun's, seen from the bishop's landing under it); the barbershop's
        mirror stands under the tea lawn and the ritual ground's dead tree under the croquet ground (both seen from above — the tease).
-       Every tier is reached two ways. */
+       Every tier is reached two ways.
+       THE CHESS COURT (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... built with the tools in the map editor ...
+       designed with square tiles in mind ... make them look good"): the Looking-Glass's PvP map is no longer its voxel Δ — it is THE
+       BOARD here, grown to 12 × 12 squares (21 m, x −10.5..10.5, z −1.75..19.25 on THE FIELD's lattice), the arena window exactly
+       (HQ_ARENA_RULES.picks: bake-arenas.js). The marble pieces stand ON it as cover, one square each (HQ_TREE_KINDS chess_*: the walker
+       bumps them, the fight's LOS stops at them): the black set on the north half (P2's), the white set its 180° twin on the south
+       (P1's). A marble walk a square wide runs round the board, braziers at its corners light it, the black king and queen stand over
+       the fountain at the north end, the white pair at the gate in the south hedge. The garden is a lawn (grass_2) with marble walks. */
     prebuilt_lookingglass: { part: 'garden', label: 'THE GARDEN', sub: 'THE HEDGES · THE CHESSBOARD · THE TEA TABLE · THE MOON', w: 62, d: 54, night: 1, look: 'skycastle', fogD: 0.024,
         parti: 'A chessboard between hedges; the pieces are the towers, and the moon perches over the whole game with its grin on.', typology: 'grid',
-        floor: 'marble_light', cliff: 'leaves_3', path: 'marble', floorColor: 0xf2eee6, cliffColor: 0x3a5a34,
+        floor: 'grass_2', cliff: 'leaves_3', path: 'marble', floorColor: 0x86a468, cliffColor: 0x3a5a34,   // THE CHESS COURT: a lawn with marble walks (was marble everywhere)
         gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0], open: [{ x: 16, z: -14.5, r: 6 }, { x: 25, z: -12, r: 5 }, { x: 9, z: 22, r: 5 }, { x: -4, z: -24, r: 4 }, { x: -6.8, z: -18, r: 1.5 }] }, noise: { amp: 0.04, scale: 9 },   // the open circles: the strip north of the croquet ground under the red tower's ramp, its east end, behind the south hedge, and between the bishop's landing and the moon's perch were pockets (rescue ramps)
-        plaza: { x: 0, z: 8 }, plazaR: 7,
+        plaza: { x: 0, z: 21.6 }, plazaR: 3.2, marker: { x: 0, z: 8.75 },   // THE CHESS COURT: the way in ends at the gate; the BATTLE marker on the board's middle (the bake's nearest window)
         features: [
-            /* THE CHESSBOARD (2026-09-30, mondo: "there needs to be a chessboard in the looking glass explorable area"): 8 × 8 squares of a
-               battle tile each, the light marble and the dark (the Δ's two sheets and tints), on THE FIELD's lattice (x −7..7 = ±4 tiles,
-               z 1.75..15.75 = tiles 1..9), the marble rim round it */
-            { k: 'board', x: 0, z: 8.75, n: 8, cell: 1.75, keys: ['marble_light', 'marble'], colors: [0xf2eee6, 0x2c2a38] },
-            { k: 'path', pts: [[-7.5, 16.25], [7.5, 16.25], [7.5, 1.25], [-7.5, 1.25], [-7.5, 16.25]], w: 1.0 },          // THE CHESSBOARD's rim
+            /* THE CHESSBOARD (2026-09-30, mondo: "there needs to be a chessboard in the looking glass explorable area"; 12 × 12 since
+               2026-10-20, THE CHESS COURT): squares of a battle tile each, the light marble and the dark (the Δ's two sheets and tints),
+               on THE FIELD's lattice (x −10.5..10.5 = ±6 tiles, z −1.75..19.25 = tiles −1..11), the marble walk a square wide round it */
+            { k: 'board', x: 0, z: 8.75, n: 12, cell: 1.75, keys: ['marble_light', 'marble'], colors: [0xf2eee6, 0x2c2a38] },
+            { k: 'path', pts: [[-11.375, -2.625], [11.375, -2.625], [11.375, 20.125], [-11.375, 20.125], [-11.375, -2.625]], w: 1.75 },   // THE WALK round the board
+            /* THE PIECES (cover, one square each, on the squares' middles): the black set (P2, the north half) — a rook, a bishop, a knight,
+               two pawns, the queen — and the white set, each the 180° twin of a black one (square (i, j) ⇄ (11 − i, 11 − j), (0, 0) the NW
+               square). All in columns 0..3 / 8..11, so every arena size's house (the 4v4 and 5v5 zones, the egress rows, the nexus — the
+               middle four columns) stays clear: the 9, 10 and 11 cuts are on the board too */
+            { k: 'tree', kind: 'chess_rook_dark', x: -7.875, z: 0.875, r: 0.72 }, { k: 'tree', kind: 'chess_rook', x: 7.875, z: 16.625, r: 0.72 },   // (1, 1) ⇄ (10, 10)
+            { k: 'tree', kind: 'chess_bishop_dark', x: 6.125, z: 2.625, r: 0.72 }, { k: 'tree', kind: 'chess_bishop', x: -6.125, z: 14.875, r: 0.72 },   // (9, 2) ⇄ (2, 9)
+            { k: 'tree', kind: 'chess_knight_dark', x: -6.125, z: 6.125, r: 0.72, face: 0 }, { k: 'tree', kind: 'chess_knight', x: 6.125, z: 11.375, r: 0.72, face: 180 },   // (2, 4) ⇄ (9, 7)
+            { k: 'tree', kind: 'chess_pawn_dark', x: 4.375, z: 6.125, r: 0.72 }, { k: 'tree', kind: 'chess_pawn', x: -4.375, z: 11.375, r: 0.72 },   // (8, 4) ⇄ (3, 7)
+            { k: 'tree', kind: 'chess_pawn_dark', x: -4.375, z: 7.875, r: 0.72 }, { k: 'tree', kind: 'chess_pawn', x: 4.375, z: 9.625, r: 0.72 },   // (3, 5) ⇄ (8, 6)
+            { k: 'tree', kind: 'chess_queen_dark', x: -9.625, z: 7.875, r: 0.72 }, { k: 'tree', kind: 'chess_queen', x: 9.625, z: 9.625, r: 0.72 },   // (0, 5) ⇄ (11, 6)
+            /* THE GIANTS off the board: the black king and queen over the fountain at the north end, the white pair at the gate */
+            { k: 'tree', kind: 'chess_king_dark', x: 7.5, z: -6.2, r: 0.8, h: 3.4 }, { k: 'tree', kind: 'chess_queen_dark', x: -7.5, z: -6.2, r: 0.8, h: 3.1 },
+            { k: 'tree', kind: 'chess_king', x: -4.6, z: 24.0, r: 0.8, h: 3.4 }, { k: 'tree', kind: 'chess_queen', x: 4.6, z: 24.0, r: 0.8, h: 3.1 },
             /* THE TEA LAWN (1.6): the ramp up its south side, a vine on its east face — the table is set on it */
             { k: 'plateau', x: -19, z: -2, r: 6.5, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: -19, z0: 9, x1: -19, z1: 3.8, w: 2.6, h0: 0, h1: 1.6 },
             { k: 'climb', x: -12.8, z: -2, face: 270, look: 'vine' },
@@ -45517,16 +45537,16 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: 0, z: -22, r: 2.6, h: 6.4, edge: 0.4, dome: true },
             /* THE RABBIT HOLE: a bowl the walker drops into and climbs out of */
             { k: 'dip', x: -24, z: 14, r: 5, h: 2.0, open: true }, { k: 'ramp', x0: -24, z0: 21, x1: -24, z1: 15.5, w: 2.4, h0: 0, h1: -1.6 },
-            /* THE HEDGES the rider grinds, the rail on the chessboard's north rim */
-            { k: 'wall', x0: 4, z0: 18, x1: 14, z1: 18, h: 1.0, t: 0.5, key: 'leaves_3' }, { k: 'wall', x0: -14, z0: 20, x1: -4, z1: 20, h: 1.0, t: 0.5, key: 'leaves_3' },
-            { k: 'rail', x0: -8, z0: -2, x1: 8, z1: -2 },
-            /* THE GARDEN PATHS: the plaza to every foot, the two seams, the frame at the back */
-            { k: 'path', pts: [[0, 8], [-12, 8], [-19, 10]], w: 2.4 }, { k: 'path', pts: [[0, 8], [10, 4], [16, 2]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-6, -2], [-4, -4]], w: 2.4 },
-            { k: 'path', pts: [[-12, 8], [-12, -6], [-12, -12]], w: 2.2 }, { k: 'path', pts: [[10, 4], [6, -10], [8, -13]], w: 2.2 }, { k: 'path', pts: [[6, -10], [10, -20], [14, -24.5]], w: 2.4 },
-            { k: 'path', pts: [[-12, 8], [-20, 16], [-24, 22]], w: 2.2 },
+            /* THE HEDGES the rider grinds (the court's south hedge, the gate in it at x ±3.2), the rail off the walk's north side */
+            { k: 'wall', x0: 3.2, z0: 22.6, x1: 12.6, z1: 22.6, h: 1.0, t: 0.5, key: 'leaves_3' }, { k: 'wall', x0: -12.6, z0: 22.6, x1: -3.2, z1: 22.6, h: 1.0, t: 0.5, key: 'leaves_3' },
+            { k: 'rail', x0: -10.6, z0: -4.4, x1: -5.8, z1: -4.4 },
+            /* THE GARDEN PATHS: the walk to every foot, the two seams, the frame at the back */
+            { k: 'path', pts: [[-12.25, 8.75], [-19, 10]], w: 2.4 }, { k: 'path', pts: [[12.25, 3.5], [16, 2]], w: 2.4 }, { k: 'path', pts: [[-4, -3.5], [-4, -4.8]], w: 2.4 },
+            { k: 'path', pts: [[-11.375, -3.5], [-12, -12]], w: 2.2 }, { k: 'path', pts: [[8, -3.5], [6, -10], [8, -13]], w: 2.2 }, { k: 'path', pts: [[6, -10], [10, -20], [14, -24.5]], w: 2.4 },
+            { k: 'path', pts: [[-12.25, 12], [-20, 16], [-24, 22]], w: 2.2 }, { k: 'path', pts: [[0, -3.5], [0, -5.4]], w: 2.4 },
             { k: 'scatter', key: 'garden_tree', n: 7, seed: 4 }, { k: 'scatter', key: 'potted_plant', n: 6, seed: 6 }, { k: 'scatter', key: 'park_bench', n: 3, seed: 9 },
         ],
-        props: [{ key: 'railing_1m', x: -19, z: -14.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: 24, z: -15.8, face: 0, y: 3.4 }, { key: 'riser_1', x: -9.5, z: 13.5 }, { key: 'riser_2', x: 10, z: 22 },
+        props: [{ key: 'railing_1m', x: -19, z: -14.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: 24, z: -15.8, face: 0, y: 3.4 }, { key: 'riser_1', x: 17, z: 15 }, { key: 'riser_2', x: 17, z: 18.6 },
                 /* THE TEA TABLE on the lawn — set for four, the cups fill in the wrong order */
                 { key: 'round_table', x: -19, z: -2, y: 1.6 }, { key: 'teal_chair', x: -16.8, z: 0, y: 1.6, face: 220 }, { key: 'teal_chair', x: -21.2, z: 0, y: 1.6, face: 140 }, { key: 'teal_chair', x: -21.2, z: -4, y: 1.6, face: 40 }, { key: 'teal_chair', x: -16.8, z: -4, y: 1.6, face: 320 },
                 { key: 'coffee_mug', x: -18.3, z: -1.2, y: 2.36 }, { key: 'coffee_mug', x: -19.7, z: -2.6, y: 2.36 }, { key: 'pocket_watch', x: -18.6, z: -3, y: 2.36 }, { key: 'pool_umbrella', x: -23, z: 1, y: 1.6 }, { key: 'candle_ring', x: -15, z: -6, y: 1.6 },
@@ -45538,13 +45558,14 @@ const HQ_AREA_SPECS = {
                 { key: 'royal_throne', x: 24, z: -21.5, y: 3.4, face: 180 }, { key: 'brazier', x: 21.5, z: -18, y: 3.4 }, { key: 'brazier', x: 26.5, z: -18, y: 3.4 }, { key: 'signpost', x: 20, z: -14, y: 1.6 },
                 /* THE MOON's court */
                 { key: 'white_cloud', x: 3, z: -25, y: 7.6 }, { key: 'white_cloud', x: -3, z: -26, y: 8.2 }, { key: 'white_cloud', x: 5, z: -19, y: 6.9 },
-                /* THE CHESSBOARD: the knights at its gate, the fountain, the benches */
-                { key: 'armour_stand', x: -8.5, z: 17, face: 90 }, { key: 'armour_stand', x: 8.5, z: 17, face: 270 }, { key: 'fountain', x: 0, z: -4.5 }, { key: 'park_bench', x: -9.5, z: 8, face: 90 }, { key: 'park_bench', x: 9.5, z: 8, face: 270 },
-                { key: 'garden_ring', x: -6, z: 22 }, { key: 'garden_ring', x: 6, z: 22 }, { key: 'lesson_sign', x: 9.5, z: 12.5, face: 200, lesson: 'climb' }, { key: 'signpost', x: -3, z: 0.2 }, { key: 'signpost', x: 12, z: -20 },
+                /* THE CHESS COURT: the knights at its gate, the fountain at the north end, the benches facing the board, the braziers at the walk's corners */
+                { key: 'armour_stand', x: -2.6, z: 23.0, face: 0 }, { key: 'armour_stand', x: 2.6, z: 23.0, face: 0 }, { key: 'fountain', x: 0, z: -7.2 }, { key: 'park_bench', x: -13.4, z: 8.75, face: 90 }, { key: 'park_bench', x: 13.4, z: 8.75, face: 270 },
+                { key: 'brazier', x: -12.7, z: -4.0 }, { key: 'brazier', x: 12.7, z: -4.0 }, { key: 'brazier', x: -12.7, z: 21.5 }, { key: 'brazier', x: 12.7, z: 21.5 },
+                { key: 'garden_ring', x: -8, z: 25.2 }, { key: 'garden_ring', x: 8, z: 25.2 }, { key: 'lesson_sign', x: 13.4, z: 13, face: 270, lesson: 'climb' }, { key: 'signpost', x: -3, z: -5.6 }, { key: 'signpost', x: 12, z: -20 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
                 { key: 'pocket_watch', x: -24, z: 13, y: -2.0 }, { key: 'cardboard_boxes', x: -27, z: 22 }, { key: 'garden_tree', x: -22, z: -8 }, { key: 'garden_tree', x: 4, z: -12 }, { key: 'garden_tree', x: 24, z: 12 }, { key: 'garden_tree', x: -26, z: 6 },
                 { key: 'potted_plant', x: -10, z: -16 }, { key: 'potted_plant', x: 12, z: -16 }, { key: 'park_bench', x: 16, z: -24, face: 0 }],
-        npcSpots: [{ x: -3, z: 12, face: 30, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 24, z: -19, y: 3.4, face: 180, race: 'ice queen', say: '“Off with the heading.”' },
+        npcSpots: [{ x: -13.6, z: 4, face: 90, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 24, z: -19, y: 3.4, face: 180, race: 'ice queen', say: '“Off with the heading.”' },
                    { x: -17, z: -1, y: 1.6, face: 200, race: 'fairy', say: '“Sit. No, not there. That one is tomorrow’s.”' }, { x: 14, z: -7, y: 1.6, face: 90, race: 'gnome', say: '“Through the hoop, then the mirror, then the hoop again. Nobody has finished a game.”' }],
         doors: [   // THE ASTRAL REALM (2026-09-19): the garden's own frame with nothing in it (the site's threshold leaf) opens on THE WAITING ROOM — a door PAIR, the same site
             { id: 'astral', wall: 'n', x: 14, leaf: 'leaf_frame_only', label: 'THE ASTRAL REALM', sub: 'THE FRAME WITH NOTHING IN IT · TAKE A NUMBER',
@@ -46813,6 +46834,16 @@ const HQ_TREE_KINDS = {
     tree_13: { model: 'DeadTree_1', dead: true },  tree_14: { model: 'DeadTree_3', dead: true },  tree_15: { model: 'DeadTree_4', dead: true },
     tree_16: { model: 'DeadTree_6', dead: true },  tree_17: { model: 'DeadTree_7', dead: true },  tree_18: { model: 'DeadTree_8', dead: true },
     tree_19: { model: 'DeadTree_9', dead: true },  tree_20: { model: 'DeadTree_10', dead: true },
+    /* THE LOOKING-GLASS ARENA (2026-10-20, mondo: the voxel maps remade as new maps built with the editor's tools): the board's marble
+       chess pieces as ROOM pieces — planted like a tree (the walker bumps it; THE FIELD's raster makes its square solid cover, the
+       fight's LOS blocker), drawn by three-renderer.js _hqChessStatue (the Δ's own lathe at room scale on a square plinth, no file).
+       `h` = tiles tall (1.75 m each, the plinth included); the `_dark` row is the black set. Plant one on a square's middle (TILE snap). */
+    chess_pawn:   { chess: 'pawn',   h: 1.8, name: 'white pawn' },   chess_pawn_dark:   { chess: 'pawn',   h: 1.8, dark: true, name: 'black pawn' },
+    chess_rook:   { chess: 'rook',   h: 2.2, name: 'white rook' },   chess_rook_dark:   { chess: 'rook',   h: 2.2, dark: true, name: 'black rook' },
+    chess_knight: { chess: 'knight', h: 2.2, name: 'white knight' }, chess_knight_dark: { chess: 'knight', h: 2.2, dark: true, name: 'black knight' },
+    chess_bishop: { chess: 'bishop', h: 2.5, name: 'white bishop' }, chess_bishop_dark: { chess: 'bishop', h: 2.5, dark: true, name: 'black bishop' },
+    chess_queen:  { chess: 'queen',  h: 2.8, name: 'white queen' },  chess_queen_dark:  { chess: 'queen',  h: 2.8, dark: true, name: 'black queen' },
+    chess_king:   { chess: 'king',   h: 3.1, name: 'white king' },   chess_king_dark:   { chess: 'king',   h: 3.1, dark: true, name: 'black king' },
 };
 function hqTreeDead(kind) { const t = HQ_TREE_KINDS[kind]; return !!(t && t.dead); }
 /* THE MISC MODELS WITH NO ROW (§5.2: "E2 adds a catalogue row for each key that has none"): the renderer's _MISC_GLB files the
@@ -47086,6 +47117,7 @@ function hqPalette(o) {
     Object.keys(HQ_TREE_KINDS).forEach(k => {
         const T = HQ_TREE_KINDS[k];
         const rt = String(T.model).slice(0, 3) === 'rt:';   // THE RETRO TREE PACK (2026-10-04): mondo's pack first, the old OBJs after
+        if (T.chess) { out.trees.push({ id: 'tree:' + k, label: T.name, sub: 'marble · solid cover on its square', group: 'Chess pieces', list: 'terrain.features', row: { k: 'tree', kind: k, r: 0.72 }, thumb: { kind: 'tree', key: k } }); return; }   // THE LOOKING-GLASS ARENA
         out.trees.push({ id: 'tree:' + k, label: k.replace('_', ' '), sub: (rt ? T.name : T.model) + (T.dead ? ' · bare' : ''), group: rt ? 'Retro tree pack' : (T.dead ? 'Bare trees (old)' : 'Trees (old)'), list: 'terrain.features', row: { k: 'tree', kind: k }, thumb: { kind: 'tree', key: k } });
     });
     out.trees.push({ id: 'grove', label: 'grove', sub: 'trees in a disc · kinds, n, seed', group: 'Groups', list: 'terrain.features', row: { k: 'grove', r: 8, n: 10, kinds: ['tree', 'tree_2', 'tree_3'], seed: 1 }, thumb: null });
@@ -48282,6 +48314,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 const shrink = span <= 5.0 ? -0.5 : Math.min(2.2, 0.3 * span / 2);
                 if (f.r) discs.push({ x: f.x, z: f.z, r: Math.max(0.8, Math.max(f.r, f.rz || f.r) - shrink) }); else rects.push({ x: f.x, z: f.z, w: Math.max(1.6, f.w - 2 * shrink), d: Math.max(1.6, f.d - 2 * shrink), rot: f.rot || 0 });
                 break; }
+            case 'board': { const b = hqTerrainBoard(f), side = b.n * b.C + 2 * b.C + 1.0; rects.push({ x: b.x0 + b.n * b.C / 2, z: b.z0 + b.n * b.C / 2, w: side, d: side, rot: 0 }); break; }   // THE CHESS COURT (2026-10-20): the WHOLE board and a square round it (a big tier keeps only its core — the plan stood a hedge on the board's first row)
             case 'hill': case 'dip': if (f.open) discs.push({ x: f.x, z: f.z, r: Math.max(f.r || 0, f.rz || 0, (f.w || 0) / 2) * 0.8 }); break;   // relief is never forced (rock stands on a hill's flank) unless the row says open: true
             case 'ramp': case 'deck': {
                 /* the run and 3 m PAST each end (a ramp's mouth opens onto the tier it climbs; a deck's onto both banks) */
@@ -55321,7 +55354,11 @@ const HQ_ARENA_RULES = {
     label: 'Arena',
     /* the sites that keep their Δ board whatever fits (mondo 2026-09-30: "keep the looking glass delta map, for that one there needs
        to be a chessboard in the looking glass explorable area" — the garden's own chessboard, THE BOARD below) */
-    keep: ['prebuilt_lookingglass', 'prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines
+    /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
+       the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
+       online pool (not an arena, not kept) */
+    voxelKeep: ['prebuilt_lookingglass'],
+    keep: ['prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines. THE CHESS COURT (2026-10-20): the Looking-Glass left the list — its arena is the garden's 12 × 12 board
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
@@ -55350,6 +55387,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313130511111111111111111313130511111111111111111313130511111111111111111113131111111111111111111113131111111111111111111112121111111111111111111111111111111111111111111111111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515150101010101010101010101030302020101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101011515010101150115151515151501010101150115151515150101010101150115151515150101011515150101010101010101010115150101010101010101010115"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101011111010101010101010101010111010101010101110202020111020202020101111212020111010202020101010111110111010101011111010101111111110111111101010101011111111111010102010101111111110101010102011111110111110102020202010101010111110102020202010101010111111102020202010101010111111101010101"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":1,"oz":18,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy","water"],"cells":"050511111111111111111111050511111111111111111111050511111111111111111111050511111111112121212111050511111111111111111101050511111111112121212101050511111111112121212111050511051305111111111111050511051305111111131313050511110511111111131313050511111111111111111101050511111111111111111111"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212121010114212121212121211414010101010121212121212121212101010101010101212121212121212121210101010101212121212121210101010101212121212121210101212101212121212121210101212121212121212121210101212114212121212121210101211414211414212121210101211414"},
@@ -55387,6 +55425,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101030202010101010101030202010101011501010101010101011501010101010101011501010101010101151501"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101020202010101010101020101010101010101"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111121212010104111111121212010101011111121212010101011111121212010104111111121212010104111111121212010104111111111111"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212121012121212121210101010101010121212121"},
@@ -55421,6 +55460,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010301010101010101010103010101010101010101020101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101151515010101010101010115150101010101010101151501010101010101011515150101010101010101010303020201010101010103030202010101011501030101010101010115010101010101010101150101010101010101151501"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101010101010101010101011111110101010202020202021201010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101140202020101010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":20,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011421212121212121010101010121212121212121010101010101012121212121212121010101212121212121210101012121212121212101012121212121212121010121212121212121210101212121212121212101012121141421212121010121"},
@@ -55452,6 +55492,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05051111111111111111110505111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105051111111111111111110505121211111105111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"05121212111111050505051111121111111105050505111111111111110505050505050505051105050505051111111111111105050505111111111111111105050511111111111111110505051111111111111111050505051111111111111111111113131212111111111111111313121211111111051111"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101020202011102020202010112120201110102020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101142121212121212114010101010121212121212121210101010101010121212121212121212101010101212121212121210101010121212121212121010121212121212121212101012121212121212121210101212121212121212121010121142114142121212101012114"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111111212041121111111111111121212042121111111111112121204212111111111111212120411211111111111121212041121111111110412120411112121111111041204111111212121212111121111212121112121212111212121111111111111112121111111111111111111"},
@@ -55657,6 +55698,15 @@ function hqArenaCaps(S) {
                 const L = Object.assign({}, MAP_LAYOUT_PRESETS[did]);
                 L.sections = Object.assign({}, L.sections, { earth: Object.assign({}, (L.sections || {}).earth || { startRow: 0, label: 'Earth' }, { endRow: S - 1, baseTerrain: entry.base }) });
                 MAP_LAYOUT_PRESETS[did] = L;
+            }
+            if ((HQ_ARENA_RULES.voxelKeep || []).includes(site)) {   // THE VOXEL BOARDS STAY: the old Δ under its own id, before the arena takes `did`
+                const VW = old.w | 0, vid = site + '_' + VW + 'x' + VW + '_delta';
+                if (!PREBUILT_MAPS[vid]) {
+                    PREBUILT_MAPS[vid] = old;
+                    if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && _HQ_ARENA_SITE_LAYOUTS[site]) MAP_LAYOUT_PRESETS[vid] = _HQ_ARENA_SITE_LAYOUTS[site];
+                    const siteRow = EW_MAP_META.find(m => m.id === site);
+                    EW_MAP_META.push(Object.assign({}, row, { id: vid, label: ((siteRow && siteRow.label) || site) + ' Δ · voxel', voxel: true }));
+                }
             }
             PREBUILT_MAPS[did] = entry;
             const room = DOOR_HQ.rooms[pick.room];
