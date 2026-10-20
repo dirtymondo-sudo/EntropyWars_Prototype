@@ -8053,6 +8053,8 @@
                height gap, no team sight — the same tiles the board lights (ui.js) and the forecast plays. The 3D
                reach + vision gate below threw out lit tiles up a slope or round a corner. */
             if (unit && spell && _teleportLandingPhase(spell)) return getTeleportLandingReach(unit, spell);
+            /* THE LANDING PICK (2026-10-20): a sky throw holding a body reaches the lit landing ring, not the grab's range */
+            if (unit && spell && spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) return getSkyThrowLandingTiles(unit);
             if (!unit || !spell || !spell.range) return [];
             const tiles = [];
             const effRange = getEffectiveSpellRange(unit, spell);
@@ -55876,9 +55878,7 @@
             state.selectedTool = null;
             state.pendingTarget = null;
             state._teleportingUnit = null;
-            if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
-            const _prevSel = state.units && state.units.find(u => u._skyThrowGrab);
-            if (_prevSel) { _prevSel._skyThrowGrab = null; }
+            _releaseSkyThrowGrab();   // a held body drops back down, the grab's MP comes back
             _clearSkyThrowDestPreview();
             clearSpellRangePreview();
             clearAttackRangePreview();
@@ -56033,12 +56033,16 @@
         /* Drop a held sky-throw victim: clears the grab so the renderer's carry-
            hold watchdog lowers the body back onto its own tile (and the saucer
            leaves). Plain state change, so the guest's state-sync drops it too.
-           With no unit given, every live grab is released. */
+           With no unit given, every live grab is released.
+           THE LANDING PICK (2026-10-20, mondo: backing out left the target in the air): a released grab never threw,
+           so the spell stays uncast and the MP the grab paid comes back. */
         function _releaseSkyThrowGrab(unit) {
             const holders = unit ? [unit] : (state.units || []).filter(u => u && u._skyThrowGrab);
             let any = false;
             for (const u of holders) {
                 if (!u || !u._skyThrowGrab) continue;
+                const _paid = u._skyThrowGrab.mpPaid || 0;
+                if (_paid > 0) u.mp = (u.mp || 0) + _paid;
                 u._skyThrowGrab = null;
                 any = true;
             }
@@ -56046,6 +56050,36 @@
                 state._skyThrowHighlight = null;
                 _clearSkyThrowDestPreview();
             }
+        }
+
+        /* THE LANDING PICK: backing out of a sky throw's landing pick (right-click / BACK / ESC) puts the held body
+           back down on its own tile and leaves the spell uncast. A player action: online.js sends the guest's call
+           to the host. */
+        function cancelSkyThrowGrab(unit) {
+            if (!unit || !unit._skyThrowGrab) return false;
+            _releaseSkyThrowGrab(unit);
+            state.pendingTarget = null;
+            markDirty('board', 'hud', 'selectedUnit');
+            scheduleBoardRender();
+            return true;
+        }
+
+        /* True while `unit` holds a sky-throw victim and its next click names where the body lands. */
+        function skyThrowLandingPhase(unit) {
+            const hl = state._skyThrowHighlight;
+            return !!(unit && unit._skyThrowGrab && hl && (hl.casterId == null || hl.casterId === unit.id));
+        }
+        /* every tile the held body may be thrown to: the ring ui.js lights and doSpell's throw gate measures (flat
+           Manhattan 1..throwRange from the body, no sight or height test) */
+        function getSkyThrowLandingTiles(unit) {
+            if (!skyThrowLandingPhase(unit)) return [];
+            const hl = state._skyThrowHighlight, out = [];
+            for (let dy = -hl.range; dy <= hl.range; dy++) for (let dx = -hl.range; dx <= hl.range; dx++) {
+                const d = Math.abs(dx) + Math.abs(dy);
+                if (d < 1 || d > hl.range || !isInside(hl.cx + dx, hl.cy + dy)) continue;
+                out.push({ x: hl.cx + dx, y: hl.cy + dy });
+            }
+            return out;
         }
 
         function setTool(mode, toolName) {
@@ -56121,13 +56155,22 @@
             if (mode === 'spell' && unit) {
                 const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
 
-                if (spell && spell.orientable && !state._spellOrientation) {
+                /* THE LANDING PICK: re-arming the sky throw that holds a body goes straight back to picking where it
+                   lands (the board is the drum), never to an enemy list */
+                const _landingPick = !!spell && skyThrowLandingPhase(unit) && unit._skyThrowGrab.spellId === spell.id;
+                if (_landingPick) {
+                    state.actionMenuView = 'spells';
+                    state._spellCycleTargets = [];
+                    state._spellCycleIndex = 0;
+                } else if (spell && spell.orientable && !state._spellOrientation) {
                     state.actionMenuView = 'spellOrientation';
                     renderBattleSelectionUI({ includeBoard: false });
                     scheduleBoardRender();
                     return;
                 }
-                if (spell && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)) {
+                if (_landingPick) {
+                    /* the board is the drum (above) */
+                } else if (spell && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)) {
 
                     let targets = _getSpellValidTargets(unit, spell);
                     // Quick-menu parity: fold in MOVE→CAST targets (reachable
@@ -56252,6 +56295,19 @@
             if (!unit || !spell) return [];
             if (spell.kind === 'passive') return [];   // THE PASSIVES (Phase 4): a passive row is never cast
             const targets = [];
+            /* THE LANDING PICK: while a sky throw holds a body, the only units worth listing are enemies standing on a
+               lit landing tile (the body is hurled into them) — never every enemy on the board */
+            if (spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) {
+                const _held = unit._skyThrowGrab.id, _ltFog = visionGatesTargeting(unit);
+                for (const t of getSkyThrowLandingTiles(unit)) {
+                    const u = unitAt(t.x, t.y);
+                    if (!u || u.dead || u.id === _held || u.player === unit.player) continue;
+                    if (_ltFog && !isInVision(unit, u.x, u.y)) continue;   // the list never leaks a hidden enemy
+                    targets.push({ x: u.x, y: u.y, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y), unit: u });
+                }
+                _orderTargetsByNeed(spell, targets);
+                return targets;
+            }
             // Direction beams: valid targets are the enemies sitting ON one of
             // the 8 capped rays (getLineSpellRayTiles = _applyLineDamage's
             // walk). The generic Manhattan-disc branch below both accepted
@@ -56386,6 +56442,7 @@
         function _getSpellApproachTargets(unit, spell, haveSet) {
             if (!unit || !spell) return [];
             if (isSpellSelfCast(spell)) return [];
+            if (spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) return [];   // THE LANDING PICK: the body is already held
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
             if (unitSpellsBlocked(unit)) return [];
             if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(unit, spell)) return [];
@@ -57153,8 +57210,8 @@
             state._enemyActionTargetId = null;
             state._tileActionTarget = null;
 
-            if (unit._skyThrowGrab) { unit._skyThrowGrab = null; }
-            if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
+            _releaseSkyThrowGrab(unit);
+            state._skyThrowHighlight = null;
             _clearSkyThrowDestPreview();
             clearAoePreview();
             clearSpellRangePreview();
@@ -57962,7 +58019,10 @@
                        to but its not letting me move there ... its not even telling me an error"): a teleport's landing
                        click (a self blink's only click included) passes the fogged tile on to the cast — the board lights
                        those tiles and the landing never needed sight. Any other aimed click on a fogged tile says why. */
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell))) {
+                    /* THE LANDING PICK (2026-10-20, mondo: a lit To the Moon landing tile was refused): a sky throw's
+                       landing ring is lit fog or no fog, and the throw never needed sight — same pass as the blink. */
+                    const _skyLanding = !!spell && spell.kind === 'skyThrow' && skyThrowLandingPhase(_actUnit);
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell)) && !_skyLanding) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                             addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
@@ -73027,8 +73087,7 @@
                     const throwTarget = state.units.find(u => u.id === grabbed.id && !u.dead) || null;
                     if (!throwTarget) {
                         addLog('Grabbed target is no longer valid.');
-                        unit._skyThrowGrab = null;
-                        state._skyThrowHighlight = null;
+                        _releaseSkyThrowGrab(unit);
                         playErrorSfx();
                         return 0;
                     }
@@ -73206,7 +73265,7 @@
 
                     unit.mp -= effectiveSpellCost;
 
-                    unit._skyThrowGrab = { id: target.id, spellId: spell.id };
+                    unit._skyThrowGrab = { id: target.id, spellId: spell.id, mpPaid: effectiveSpellCost };   // mpPaid: a back-out refunds it
                     playSfx(spellLaunchSfx(spell));
                     addLog(`${_ctName(unit)} grabs ${_ctName(target)}! Choose where to throw them.`);
                     showFloatingTextForUnit(target, 'GRABBED!', 'streak', { durationMs: 1000 });
@@ -73228,9 +73287,13 @@
                         };
                         /* Lock the aim state for phase 2: whatever view/tool churn
                            happened around the grab (repeat-queue re-arms, menu
-                           renders), the next click must read as the throw pick. */
+                           renders), the next click must read as the throw pick.
+                           THE LANDING PICK: the board is the drum ('spells', like a
+                           tile aim), never an enemy list whose rows throw out of reach. */
                         state.actionMode = 'spell';
-                        state.actionMenuView = 'spellTargets';
+                        state.actionMenuView = 'spells';
+                        state._spellCycleTargets = [];
+                        state._spellCycleIndex = 0;
                         state.selectedTool = spell.name;
                         state.pendingTarget = null;
                         state._actionExecuting = false;

@@ -845,6 +845,22 @@
             window.doGuard = doGuard;
         }
 
+        /* THE LANDING PICK (battle.js cancelSkyThrowGrab): backing out of a sky throw's landing pick drops the held
+           body and refunds the grab's MP — engine state, so the guest drops its own copy at once (the back-out must
+           answer now) and the host does the same and syncs it. */
+        const _origCancelSkyThrowGrab = (typeof cancelSkyThrowGrab === 'function') ? cancelSkyThrowGrab : null;
+        if (_origCancelSkyThrowGrab) {
+            cancelSkyThrowGrab = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origCancelSkyThrowGrab(unit);
+                if (_isHost()) return _hostRunAndSync(_origCancelSkyThrowGrab, [unit]);
+                if (!_guestOwnsAction(unit)) return false;
+                _origCancelSkyThrowGrab(unit);
+                _emit('game-action', { type: 'engine', fn: 'cancelSkyThrowGrab', unitId: unit.id });
+                return true;
+            };
+            window.cancelSkyThrowGrab = cancelSkyThrowGrab;
+        }
+
         /* THE CLICK FACE (battle.js doFaceUnit): picking a unit turns the
            acting unit to it. The guest turns its own copy at once (the click
            must answer now) and the host applies the same facing and syncs it. */
@@ -1999,6 +2015,9 @@
                                 break;
                             case 'doGuard':
                                 if (typeof doGuard === 'function') doGuard(engUnit);
+                                break;
+                            case 'cancelSkyThrowGrab':
+                                if (typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(engUnit);
                                 break;
                             case 'doFaceUnit':
                                 if (typeof doFaceUnit === 'function') doFaceUnit(engUnit, data.targetId);
