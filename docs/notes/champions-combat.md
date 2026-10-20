@@ -1733,6 +1733,15 @@ them to the arrows and highlights section so i can change their settings and app
 - Checked in a real battle (Arena + TDM, classic WebGL and ?ew_gpu=webgl2): every zs* / zn* control and colour changes
   the board. ?ew_gpu=webgpu in the sandbox Chromium draws black (three's createView `swizzle` is not supported there).
 
+## THE ZONE ON THE GROUND (2026-10-20)
+mondo: "on some arena maps there is a bridge spanning a gap and it crosses over the middle nexus zone, which paints the nexus
+zone halfway on the bridge and half on the ground. It needs to be all on the ground".
+- Cause: a zone tile under a field's deck (THE TWO FLOORS: `field.lows`) was placed and draped at tileTopY = the DECK.
+- three-renderer.js `_zoneGroundY` / `_zoneTileY`: such a tile drapes the ground (`_buildDrapeGeo` refY = `G.lowAt`) and sits
+  there + HL_FIELD_LIFT; every zone (nexus, Arena spawn nexus, TDM spawn strips) and its light walls. Capture rules unchanged.
+- Affected at the time (bake picks): nexus under a deck on Giza 12, Area 51 9, Antarctica 9, Downtown 9/10/11; spawn
+  zones under one on Antarctica 12/9/11, CERN 9/10/11, Area 51 11.
+
 ## THE SLIDE FORECAST (2026-10-18)
 mondo: "the spell preview/move forecast should account for sliding on ice. i dont want to move+cast and then move and be out
 of cast range bc i slid, that should already be accounted for/the arrow or preview should communicate that i will slide on ice".
