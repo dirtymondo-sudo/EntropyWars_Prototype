@@ -55765,8 +55765,9 @@ function hqArenaCells(pick, S) {
 /* the map entry: the Δ's frame (the bed, the base height, 4v4 on the Δ's spawn rows, the centre nexus) over the room's cells.
    S = the board's side (THE ARENA SIZES: the cells' own count; 12 when not given). A 5v5 board carries `house` — its zones, its
    Cubes and its 3×3 nexus — which map.js reads at the launch (autoGenerateSpawnZones, _autoPlaceTowersIfNeeded, _initNexusFromObjects). */
-function hqArenaEntry(site, pick, cells, tints, S) {
+function hqArenaEntry(site, pick, cells, tints, S, opts) {
     if (!cells || typeof _mfNew !== 'function') return null;
+    const formation = (opts && opts.formation) || null;   // THE CLASH TEMPLE (2026-10-20): Clash's own two lines in place of the arena house (no nexus)
     S = (S | 0) || cells.length || HQ_ARENA_RULES.size;
     const B = HQ_FIELD_RULES.base;
     const room = (DOOR_HQ.rooms || {})[pick.room] || {};
@@ -55779,16 +55780,17 @@ function hqArenaEntry(site, pick, cells, tints, S) {
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
     hqFieldStampDecks(M, cells, B);   // THE TWO FLOORS: the live raster's decks (the baked cells carry none)
     const _pits = cells.some(row => row.some(c => c.pit)) ? cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('') : null;   // 🌋 THE LAVA PITS
-    const HT = hqArenaHouseTiles(S), sp = hqArenaSpawns(S);
+    const HT = hqArenaHouseTiles(S), sp = formation || hqArenaSpawns(S);
     M.spawns(sp[1], sp[2]);
-    M.obj(HT.HX.n, HT.HX.n, 'nexus');   // the centre nexus: Arena stamps the 2×2 (5v5: 3×3) zone from it (map.js _initNexusFromObjects), every other mode strips it
+    if (!formation) M.obj(HT.HX.n, HT.HX.n, 'nexus');   // the centre nexus: Arena stamps the 2×2 (5v5: 3×3) zone from it (map.js _initNexusFromObjects), every other mode strips it
     const entry = M.finish();
     entry.isDelta = true;
-    if (HT.HX.block) entry.house = { team: 5, nexusSize: HT.HX.nz, zones: hqArenaSpawns(S), cubes: { 1: Object.assign({}, HT.cubes[1]), 2: Object.assign({}, HT.cubes[2]) },
+    if (HT.HX.block && !formation) entry.house = { team: 5, nexusSize: HT.HX.nz, zones: hqArenaSpawns(S), cubes: { 1: Object.assign({}, HT.cubes[1]), 2: Object.assign({}, HT.cubes[2]) },
                                      cols: [HT.HX.x0, HT.HX.x1], egressRows: { 1: S - 3, 2: 2 } };
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
     entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
     entry.arena = { site, room: pick.room, ox: pick.ox | 0, oz: pick.oz | 0, open: !!pick.open };
+    if (formation) entry.arena.formation = { 1: formation[1].map(p => ({ x: p.x, y: p.y })), 2: formation[2].map(p => ({ x: p.x, y: p.y })) };
     if (_pits) entry.pits = _pits;
     return entry;
 }
@@ -55836,12 +55838,14 @@ function hqArenaUpgrade(mapId, opts) {
     const open = (c) => !!(c && c.in && !c.rock && !c.hazard), cap = HQ_ARENA_RULES;   // the 12×12 caps at every size: the bake judged the window (a small board's last pass takes them)
     let out = 0;
     if (R) R.cells.forEach(row => row.forEach(c => { if (c.pit) return; if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));   // 🌋 a lava pit is the map's own design, never an obstacle
-    const zoneTiles = HT.zones[1].concat(HT.zones[2], HT.nexus.map(p => ({ x: p[0], y: p[1] })), HT.cubes ? [HT.cubes[1], HT.cubes[2]] : []);
+    const zoneTiles = a.formation ? a.formation[1].concat(a.formation[2])   // THE CLASH TEMPLE: Clash's two lines are the tiles that must stand clear
+        : HT.zones[1].concat(HT.zones[2], HT.nexus.map(p => ({ x: p[0], y: p[1] })), HT.cubes ? [HT.cubes[1], HT.cubes[2]] : []);
     const fits = !!(R && built && out <= Math.max(cap.obstacles, cap.wallMax)   // the walled cut's cap (the bake judged the window)
-        && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
+        && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0
+            && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
-    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null, AS);
+    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : null);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
     next.field = Object.assign({}, built.field, { id, arena: true });
@@ -55936,6 +55940,155 @@ function hqArenaCaps(S) {
             } catch (err) { console.error('[ARENA] the ' + S + '×' + S + ' pick failed', site, err); }
         });
     });
+})();
+/* ══ THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... They should be able to be built with
+   the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete these
+   voxel maps though") ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   Clash's fixed stage (`clash_stage`, every Clash match, ranked included) is no longer the voxel Temple: it is a 10×10 cut of its own
+   editor room, THE TEMPLE (DOOR_HQ.rooms.clash_temple — ROOM → THE LIBRARY opens it in the map editor; every piece below is an editor
+   row: plateaus, built stairs, walls, slabs, the board, groves, props). A sanctuary on a mountain top: the court is a 10 × 10 board of
+   flagstones laid square on the battle lattice (one stone = one tile), sunk a step inside a stylobate that carries a colonnade with its
+   entablature; north a flight up to the shrine (the altar under a trilithon, the obelisks, the back wall), south the gate and the
+   processional stair down the cliff to the pines in the valley, the range on every side. The cut is baked like the arenas
+   (`node bake-arenas.js clash_stage` writes HQ_CLASH_STAGE.pick) and played with Clash's own formation (P1 on x 3, P2 on x 6, rows
+   3..6, no nexus) — hqArenaEntry / hqArenaUpgrade take the formation in place of the arena house. The old voxel board stays in the
+   game as `clash_stage_voxel` ("Temple · voxel", VS CPU match select under Clash); online (ranked + friendly rooms) plays the new one. */
+DOOR_HQ.rooms.clash_temple = {
+    label: 'THE TEMPLE',
+    sub: 'THE COURT · THE COLONNADE · THE SHRINE · THE GATE · THE PROCESSIONAL STAIR',
+    kind: 'box', site: 'clash_stage', part: 'temple',
+    shell: hqAncientShell({ w: 96, d: 96, floor: 'grass_2', apron: 'grass_2', skirt: 'rocks_5', apronColor: 0xb8c0a4, floorColor: 0xb8c0a4, plate: { x: 0, z: -46, y: 4.4 },
+                            mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0dc, ambient: 0.5 },
+                            sky: { night: 0, tint: 0x8fb4dc, tintAmt: 0.34, stars: 0.9, nebula: 0.5, day: 1, clouds: 0.35,
+                                   fog: { color: 0xc6cfd8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none',
+                                   landmarks: [{ kind: 'peak', deg: 330, dist: 1.0, s: 1.2 }, { kind: 'peak', deg: 95, dist: 1.0, s: 0.9 },
+                                               { kind: 'peak', deg: 215, dist: 1.0, s: 1.05 }] },
+                            look: HQ_ROOM_LOOKS.mountain }),
+    /* THE GROUND: the valley floor is the room's 0; the summit a mesa 10 m up (rocks_5 cliffs); everything built stands on it. The board's
+       squares sit on the battle lattice (edges at k · 1.75 from the room's centre): the court is x / z −8.75 .. 8.75. */
+    terrain: {
+        floor: 'grass_2', cliff: 'rocks_5', path: 'dirt_2', stairs: 'stone',
+        noise: { amp: 0.35, scale: 9 }, crag: false,
+        features: [
+            /* THE RANGE: the valley is a bowl in the mountains — ridges along the rim, 16-26 m, their flanks the cliff's rock */
+            { k: 'ridge', pts: [[-46, -30], [-40, -42], [-22, -46], [0, -44], [20, -47], [38, -42]], w: 22, h: 24 },
+            { k: 'ridge', pts: [[46, -34], [44, -14], [47, 6], [43, 26]], w: 20, h: 18 },
+            { k: 'ridge', pts: [[40, 44], [22, 46], [8, 47]], w: 18, h: 14 },
+            { k: 'ridge', pts: [[-10, 47], [-28, 44], [-44, 40], [-47, 20], [-44, 0], [-47, -16]], w: 22, h: 20 },
+            { k: 'hill', x: -40, z: -40, r: 12, h: 8 }, { k: 'hill', x: 44, z: -42, r: 11, h: 6 }, { k: 'hill', x: -44, z: 32, r: 10, h: 6 },
+            /* THE VALLEY: a few swells so the floor below the cliffs is never a table */
+            { k: 'hill', x: -34, z: 30, r: 12, h: 2.2 }, { k: 'hill', x: 32, z: -34, r: 13, h: 2.6 }, { k: 'hill', x: 36, z: 22, r: 9, h: 1.6 },
+            { k: 'hill', x: -36, z: -30, r: 11, h: 2.0 }, { k: 'dip', x: 18, z: 38, r: 8, h: 1.0 },
+            /* THE SUMMIT: the mesa the temple stands on, an irregular top (a core and its shoulders), 10 m of cliff all round, a ledge
+               half way down here and there */
+            { k: 'plateau', x: 0, z: -4, w: 31, d: 50, h: 10, edge: 1.6 },
+            { k: 'plateau', x: -16, z: -23, r: 9, h: 10, edge: 1.6 }, { k: 'plateau', x: 17, z: 4, r: 9.5, h: 10, edge: 1.6 },
+            { k: 'plateau', x: 1, z: -30, r: 8, h: 10, edge: 1.6 }, { k: 'plateau', x: 8, z: 21, w: 9, d: 6, rot: 25, h: 10, edge: 1.6 },
+            { k: 'plateau', x: -24, z: -4, r: 11, h: 6, edge: 1.4 }, { k: 'plateau', x: 23, z: -14, w: 12, d: 16, rot: -18, h: 5.5, edge: 1.4 },
+            { k: 'plateau', x: -10, z: 25, r: 8, h: 4.5, edge: 1.4 }, { k: 'plateau', x: 14, z: -36, r: 7, h: 6.5, edge: 1.4 },
+            { k: 'plateau', x: -15, z: 15, r: 8.5, h: 10, edge: 1.6 },
+            { k: 'plateau', x: 15, z: -22, r: 9, h: 10, edge: 1.6 },
+            { k: 'plateau', x: -19, z: -9, w: 8, d: 18, rot: 8, h: 10, edge: 1.6 },
+            { k: 'plateau', x: 14, z: 17, w: 10, d: 7, rot: -10, h: 10, edge: 1.6 },
+            /* THE COURT: ten by ten flagstones, one battle tile each */
+            { k: 'board', x: 0, z: 0, n: 10, cell: 1.75, keys: ['sanctuary', 'bricks_1'], colors: [0xe8e0d0, 0xcac2b2], h: 10.06 },
+            /* THE STYLOBATE: the colonnade's platform round the court, a step (0.74 m) over the flagstones */
+            { k: 'plateau', x: 0, z: -11.375, w: 28.5, d: 5.25, h: 10.8, edge: 0.12 },
+            { k: 'plateau', x: 0, z: 11.375, w: 28.5, d: 5.25, h: 10.8, edge: 0.12 },
+            { k: 'plateau', x: -11.375, z: 0, w: 5.25, d: 17.5, h: 10.8, edge: 0.12 },
+            { k: 'plateau', x: 11.375, z: 0, w: 5.25, d: 17.5, h: 10.8, edge: 0.12 },
+            /* THE SHRINE: a terrace 2.8 m over the stylobate, a broad built flight up to it */
+            { k: 'plateau', x: 0, z: -20.5, w: 24, d: 11, h: 13.6, edge: 0.12 },
+            { k: 'ramp', x0: 0, z0: -11.2, x1: 0, z1: -15.1, w: 6.4, h0: 10.8, h1: 13.6, stairs: true, built: true, edge: 0.12, key: 'bricks_1', side: 'cobblestone_2' },
+            { k: 'wall', x0: -12, z0: -26.2, x1: 12, z1: -26.2, h: 4.2, t: 1.0, key: 'cobblestone_2' },
+            { k: 'wall', x0: -12, z0: -26.2, x1: -12, z1: -17.5, h: 2.2, t: 0.8, key: 'cobblestone_2' },
+            { k: 'wall', x0: 12, z0: -26.2, x1: 12, z1: -17.5, h: 2.2, t: 0.8, key: 'cobblestone_2' },
+            /* THE ENTABLATURE: stone beams over the colonnade's capitals (slabs nobody walks) */
+            { k: 'bridge', x0: -11.375, z0: -12.2, x1: -11.375, z1: 12.2, w: 1.4, y: 16.5, thick: 0.75, plain: true, rails: false, key: 'marble_light' },
+            { k: 'bridge', x0: 11.375, z0: -12.2, x1: 11.375, z1: 12.2, w: 1.4, y: 16.5, thick: 0.75, plain: true, rails: false, key: 'marble_light' },
+            { k: 'bridge', x0: -12.1, z0: -11.375, x1: 12.1, z1: -11.375, w: 1.4, y: 16.5, thick: 0.75, plain: true, rails: false, key: 'marble_light' },
+            { k: 'bridge', x0: -12.1, z0: 11.375, x1: 12.1, z1: 11.375, w: 1.4, y: 16.5, thick: 0.75, plain: true, rails: false, key: 'marble_light' },
+            /* THE GATE TERRACE + THE PROCESSIONAL STAIR: from the gate down the south cliff to the valley */
+            { k: 'ramp', x0: 0, z0: 19.6, x1: 0, z1: 40, w: 5, h0: 10, h1: 0, stairs: true, built: true, edge: 0.12, key: 'bricks_1', side: 'cobblestone_2' },
+            { k: 'plateau', x: 0, z: 18.4, w: 8, d: 3.2, h: 10, edge: 0.12 },
+            { k: 'path', pts: [[0, 40], [2, 46]], w: 3 },
+            /* THE PINES in the valley under the cliffs */
+            { k: 'grove', x: -32, z: 26, r: 11, n: 12, kinds: ['tree', 'tree_2', 'tree_3'], seed: 21 },
+            { k: 'grove', x: 30, z: -30, r: 12, n: 12, kinds: ['tree', 'tree_2', 'tree_3'], seed: 22 },
+            { k: 'grove', x: -33, z: -28, r: 10, n: 10, kinds: ['tree', 'tree_2', 'tree_3'], seed: 23 },
+            { k: 'grove', x: 32, z: 24, r: 10, n: 10, kinds: ['tree', 'tree_2', 'tree_3'], seed: 24 },
+            { k: 'grove', x: 0, z: -40, r: 10, n: 9, kinds: ['tree', 'tree_2', 'tree_3'], seed: 25 },
+            { k: 'scatter', key: 'cave_stone', n: 12, x: 0, z: 0, r: 44, seed: 26 },
+        ],
+    },
+    doors: [],
+    counters: [],
+    props: [
+        /* THE FIRES first (the battle lights the room's first ten): the court's four corners, the colonnade's east and west sides,
+           the head of the shrine's flight, the gate */
+        { key: 'brazier', x: -7.875, z: -7.875, h: 1.5 }, { key: 'brazier', x: 7.875, z: -7.875, h: 1.5 },
+        { key: 'brazier', x: -7.875, z: 7.875, h: 1.5 }, { key: 'brazier', x: 7.875, z: 7.875, h: 1.5 },
+        { key: 'brazier', x: -11.375, z: -1.75, h: 1.5 }, { key: 'brazier', x: 11.375, z: 1.75, h: 1.5 },
+        { key: 'brazier', x: -4.2, z: -16.2, h: 1.6 }, { key: 'brazier', x: 4.2, z: -16.2, h: 1.6 },
+        { key: 'brazier', x: -3.4, z: 17.6, h: 1.5 }, { key: 'brazier', x: 3.4, z: 17.6, h: 1.5 },
+        /* THE SHRINE: the altar under the trilithon, the candles, the obelisks, the two statues */
+        { key: 'candle_ring', x: 0, z: -21 },
+        { key: 'stone_altar', x: 0, z: -21, face: 0 },
+        { key: 'trilithon', x: 0, z: -24.4, face: 0 },
+        { key: 'obelisk', x: -9.6, z: -23.2, h: 8 }, { key: 'obelisk', x: 9.6, z: -23.2, h: 8 },
+        { key: 'demon_statue', x: -6, z: -22.6, face: 20 }, { key: 'angel_statue', x: 6, z: -22.6, face: 340 },
+        /* THE GATE: the trilithon over the head of the stair */
+        { key: 'trilithon', x: 0, z: 17.2, face: 180 },
+        /* THE COLONNADE: eighteen columns on the stylobate, the corners shared */
+        { key: 'greek_column', x: -11.375, z: -11.375, h: 5.7 }, { key: 'greek_column', x: 11.375, z: -11.375, h: 5.7 },
+        { key: 'greek_column', x: -11.375, z: 11.375, h: 5.7 }, { key: 'greek_column', x: 11.375, z: 11.375, h: 5.7 },
+        { key: 'greek_column', x: -11.375, z: -7, h: 5.7 }, { key: 'greek_column', x: -11.375, z: -3.5, h: 5.7 }, { key: 'greek_column', x: -11.375, z: 0, h: 5.7 },
+        { key: 'greek_column', x: -11.375, z: 3.5, h: 5.7 }, { key: 'greek_column', x: -11.375, z: 7, h: 5.7 },
+        { key: 'greek_column', x: 11.375, z: -7, h: 5.7 }, { key: 'greek_column', x: 11.375, z: -3.5, h: 5.7 }, { key: 'greek_column', x: 11.375, z: 0, h: 5.7 },
+        { key: 'greek_column', x: 11.375, z: 3.5, h: 5.7 }, { key: 'greek_column', x: 11.375, z: 7, h: 5.7 },
+        { key: 'greek_column', x: -7, z: -11.375, h: 5.7 }, { key: 'greek_column', x: 7, z: -11.375, h: 5.7 },
+        { key: 'greek_column', x: -7, z: 11.375, h: 5.7 }, { key: 'greek_column', x: 7, z: 11.375, h: 5.7 },
+        /* the summit's edge: standing stones, a fallen one, the dead pine on the shoulder */
+        { key: 'menhir', x: -16.5, z: 13, face: 30 }, { key: 'menhir', x: 16.5, z: -19, face: 200 }, { key: 'sarsen', x: -17.5, z: -14, face: 80 },
+        { key: 'dead_snag', x: 14.5, z: 17.5, face: 140 },
+    ],
+    agents: [],
+    npcSpots: [],
+    onlineSpots: [],
+    lines: [],
+    spawn: { x: 0, z: 15.5, face: 0 },
+};
+/* the stage: the room, the board's side, Clash's formation (the unit order of GAME_MODES.clash_stage.spawns) and the baked cut */
+const HQ_CLASH_STAGE = {
+    id: 'clash_stage', voxel: 'clash_stage_voxel', room: 'clash_temple', S: 10, name: 'Temple',
+    formation: { 1: [{ x: 3, y: 6 }, { x: 3, y: 5 }, { x: 3, y: 4 }, { x: 3, y: 3 }], 2: [{ x: 6, y: 6 }, { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }] },
+    /* <CLASH PICK> — written by `node bake-arenas.js clash_stage`; the arenas' pick record (room, ox, oz, base, open, keys, cells) */
+    pick: {"room":"clash_temple","ox":22,"oz":22,"base":"grass_2","open":1,"keys":["sanctuary","bricks_1"],"cells":"01110111011101110111110111011101110111010111011101110111011111011101110111011101011101110111011101111101110111011101110101110111011101110111110111011101110111010111011101110111011111011101110111011101"},
+    /* </CLASH PICK> */
+};
+(function hqClashStageRegister() {
+    if (typeof PREBUILT_MAPS === 'undefined' || typeof MAP_LAYOUT_PRESETS === 'undefined') return;
+    const C = HQ_CLASH_STAGE, old = PREBUILT_MAPS[C.id];
+    /* the voxel Temple stays: its own id, its own layout (the purple dusk, the crystals) */
+    if (old && !old.arena && !PREBUILT_MAPS[C.voxel]) {
+        PREBUILT_MAPS[C.voxel] = old; old.name = 'Temple · voxel';
+        if (MAP_LAYOUT_PRESETS[C.id]) MAP_LAYOUT_PRESETS[C.voxel] = MAP_LAYOUT_PRESETS[C.id];
+    }
+    const room = (DOOR_HQ.rooms || {})[C.room];
+    if (!C.pick || !room) return;
+    try {
+        const entry = hqArenaEntry(C.id, Object.assign({}, C.pick, { room: C.room }), hqArenaCells(C.pick, C.S), null, C.S, { formation: C.formation });
+        if (!entry) return;
+        entry.name = C.name;
+        PREBUILT_MAPS[C.id] = entry;
+        /* the stage's sky is the room's own (hqFieldLayout reads it as the site layout at the launch) */
+        const sk = room.shell.sky || {};
+        const L = { sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: C.S - 1, label: 'Earth', baseTerrain: entry.base }, buffer2: null, below: null },
+                    barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: false,
+                    env: { tint: sk.tint, tintAmt: sk.tintAmt, stars: sk.stars, nebula: sk.nebula, day: sk.day, clouds: sk.clouds, fog: Object.assign({}, sk.fog), scenery: 'none', world: { kind: 'room' } } };
+        _HQ_ARENA_SITE_LAYOUTS[C.id] = L;
+        MAP_LAYOUT_PRESETS[C.id] = L;
+    } catch (err) { console.error('[CLASH] the Temple room cut failed — the voxel stage stands', err); }
 })();
 /* ══ THE OWN ARENAS (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim.
    They should be able to be built with the tools in the map editor, and remember to design them with square tiles in mind") ══
