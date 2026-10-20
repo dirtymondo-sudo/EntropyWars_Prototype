@@ -3725,9 +3725,13 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     // right-click ANYWHERE on the menu = BACK one level (same as the crown/
     // ESC — never END TURN). The board's own right-click back doesn't fire
     // over the HUD, which is why back "randomly didn't work" over the menu.
+    // A right press that drags or holds orbits the camera instead (state.js
+    // starts the orbit from the menu too): see _hrlgRightPress.
+    onMouseDown: (e) => { if (e.button === 2) _hrlgRightPress(e, () => { if (backable) pressBack(); }); },
     onContextMenu: (e) => {
       e.preventDefault(); e.stopPropagation();
-      if (backable) pressBack();
+      if (_hrlgRc || performance.now() - _hrlgRcEndT < 600) return;   // the press/release decides
+      if (backable) pressBack();   // no mouse press behind it (menu key, Mac ctrl-click)
     },
   },
     /* ── the IDENTITY COLUMN: end turn/back, the watch, name, vitals,
@@ -7670,6 +7674,37 @@ function _chainMoveTowards(actingUnit, targetUnit) {
     const delay = typeof mr === 'number' ? mr : 450;
     setTimeout(() => _chainMoveTowards(actingUnit, targetUnit), delay + 60);
   }
+}
+
+/* THE RIGHT-DRAG OVER THE MENU (mondo 2026-10-20: "after i click an aoe spell from the quick action menu, if i want
+   to move the aoe spell around to a different spot i will rotate the camera around to get a better view, but the right
+   click goes back in the menu even though i am right clicking and dragging/holding"): the menu took BACK on the
+   contextmenu event, which Mac and Linux fire on the PRESS, so any right press over the menu (the Abilities list + the
+   target list cover the lower-left of the board) backed out before it could drag. Now the release decides, with the
+   board's own rule (state.js mouseup): BACK only for a plain right-click, no travel past 3 px and let go inside 450 ms.
+   A drag or a hold only orbits the camera. */
+let _hrlgRc = null, _hrlgRcEndT = 0;
+function _hrlgRightPress(e, onClick) {
+  if (_hrlgRc && _hrlgRc.done) _hrlgRc.done();   // a release that never came (let go off the window)
+  const g = { x: e.clientX, y: e.clientY, t: e.timeStamp || performance.now(), moved: false };   // input times: a busy frame can't stretch the click
+  _hrlgRc = g;
+  const done = g.done = () => {
+    document.removeEventListener('mousemove', move, true);
+    document.removeEventListener('mouseup', up, true);
+    window.removeEventListener('blur', drop, true);
+    if (_hrlgRc === g) _hrlgRc = null;
+    _hrlgRcEndT = performance.now();
+  };
+  const move = (ev) => { if (Math.abs(ev.clientX - g.x) > 3 || Math.abs(ev.clientY - g.y) > 3) g.moved = true; };
+  const up = (ev) => {
+    if (ev.button !== 2) return;
+    done();
+    if (!g.moved && (ev.timeStamp || performance.now()) - g.t < 450) onClick();
+  };
+  const drop = () => done();
+  document.addEventListener('mousemove', move, true);
+  document.addEventListener('mouseup', up, true);
+  window.addEventListener('blur', drop, true);
 }
 
 /* THE AOE PLACEMENT on the quick menus (mondo 2026-10-19: "when i choose a placeable aoe spell from a unit's quick

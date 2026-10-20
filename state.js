@@ -5678,7 +5678,8 @@
 
             let _tiltMoved = false;
             let _tiltStartT = 0;
-            _boardWheelParent.addEventListener('mousedown', (e) => {
+            let _tiltFromHud = false;   // the orbit began on the action menu, which decides its own right-click BACK
+            function _orbitDown(e, fromHud) {
                 if (state.thirdPersonCamera) return;
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;
                 if (e.button !== _panOrbitButton()) return;
@@ -5686,6 +5687,7 @@
                 e.preventDefault();
                 _tiltActive = true;
                 _tiltMoved = false;
+                _tiltFromHud = !!fromHud;
                 _tiltStartT = performance.now();
                 _tiltBtn = e.button;
 
@@ -5702,6 +5704,16 @@
                 _tiltStartDeg = state.dioramaTiltDeg ?? 50;
                 _yawStartDeg = state.dioramaYawDeg ?? 0;
                 if (typeof camera !== 'undefined') camera._stop();
+            }
+            _boardWheelParent.addEventListener('mousedown', (e) => _orbitDown(e, false));
+            /* THE RIGHT-DRAG OVER THE MENU (mondo 2026-10-20: "the right click goes back in the menu even though i am
+               right clicking and dragging/holding"): the action menu covers the lower-left of the board (the Abilities
+               list + the target list while an AoE is placed), so a right press there orbits the camera too, the same
+               as on the board. The menu's own handler (hud.js `_hrlgRightPress`) keeps BACK for a plain right-click. */
+            document.addEventListener('mousedown', (e) => {
+                if (e.button !== 2 || state.phase !== 'battle') return;
+                if (!e.target || !e.target.closest || !e.target.closest('.hrlg-rig')) return;
+                _orbitDown(e, true);
             });
 
             document.addEventListener('mousemove', (e) => {
@@ -5738,7 +5750,7 @@
                 // crown, which doubles as END TURN at the root menu) — and only
                 // when there is actually something to back out of, so a stray
                 // right-click at the root menu does nothing at all.
-                if (e.button === 2 && !_tiltMoved && state.phase === 'battle'
+                if (e.button === 2 && !_tiltMoved && !_tiltFromHud && state.phase === 'battle'
                     && (performance.now() - _tiltStartT) < 450
                     && typeof handleBackAction === 'function') {
                     const backable = (state.actionMenuView && state.actionMenuView !== 'root')
