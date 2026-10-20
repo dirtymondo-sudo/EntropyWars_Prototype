@@ -16592,7 +16592,15 @@
                 const p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(L.map, true) : null;
                 if (p) {
                     _tut.arenaWait = true;
-                    const go = () => { _tut.arenaWait = false; window._tutorialLaunch(lessonId, Object.assign({}, opts, { _arenaWarm: true })); };
+                    /* the player can walk away during the survey (the shelf's BACK, the building): the lesson then never starts */
+                    const pageNow = () => { const a = document.querySelector('#startOverlay .title-page.active'); return a ? a.id : ''; };
+                    const tok = _tut.arenaTok = (_tut.arenaTok | 0) + 1, gs0 = state.gameState, pg0 = pageNow();   // _tutorialLeave bumps the token too
+                    const go = () => {
+                        if (_tut.arenaTok !== tok) return;   // called off (or superseded)
+                        _tut.arenaWait = false;
+                        if (state.gameState !== gs0 || pageNow() !== pg0) return;   // the player went elsewhere meanwhile
+                        window._tutorialLaunch(lessonId, Object.assign({}, opts, { _arenaWarm: true }));
+                    };
                     p.then(go, go);
                     return true;
                 }
@@ -17065,6 +17073,7 @@
         /* ✕ / THE SHELF: leave the lesson. `quiet` = no confirm (a finished
            lesson, a failed boot) */
         window._tutorialLeave = function (quiet) {
+            if (_tut.arenaWait) { _tut.arenaWait = false; _tut.arenaTok = (_tut.arenaTok | 0) + 1; }   // a launch still waiting on its room's survey is called off
             if (!_tut.active) return;
             const go = () => _tutTeardown((from) => {
                 if (from !== 'hq' && typeof _showTitlePage === 'function') {
