@@ -583,3 +583,12 @@ the rain im just talking about grass tiles being on fire".
 - state.js `rainOnTheBoard`: a soaks weather (Thunderstorm, Hurricane, Blood Rain) puts out every burning tile under its rain as
   it forms (fires lit later still burn), and hardens the fight's lava (state.paintedFrom says it wasn't lava) on forming and
   every round end. The map's own lava stays. Root cause of the fire bug: tickBurningTiles never asked about rain.
+
+## THE LOOKING-GLASS CHESS COURT (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... built with the tools in the map editor ... designed with square tiles in mind ... make them look good")
+- The Looking-Glass's online map is no longer its voxel Δ: it is THE BOARD in `site_prebuilt_lookingglass_garden` (HQ_AREA_SPECS.prebuilt_lookingglass), grown to 12 × 12 battle squares (x −10.5..10.5, z −1.75..19.25, centre (0, 8.75)). Picks 12/11/10/9 are all windows on that board (HQ_ARENA_RULES.picks*), so `prebuilt_lookingglass_delta` + 9/10/11 cuts fight on it with the garden drawn round it.
+- Pieces = HQ_TREE_KINDS `chess_<piece>[_dark]` (h in squares): terrain `tree` features, so they block their cell on THE FIELD lattice (walker bumps, battle LOS/height) and the editor lists them under "Chess pieces". three-renderer.js `_hqChessStatue` turns the old `_hzChessPiece` lathe profiles into marble statues on a plinth (shared materials). Black set north half (P2), white set the 180° twin south (P1), kept to columns 0..3 / 8..11 so the 5v5 middle houses fit every size.
+- The garden: lawn grass_2 + marble walks, a walk ring a square wide round the board, braziers on its corners, giant king/queen pairs at the fountain (north) and the south gate.
+- Terrain compile forces a `board` feature's whole square (plus a square margin) open in the hedge maze (was only the plateau core, which put a hedge on row 0).
+- bake-arenas.js THE BOARD IS THE ARENA: a terrain room with a `board` feature of n ≥ S only cuts windows inside that board.
+- The voxel board stays: HQ_ARENA_RULES.voxelKeep lists sites whose old voxel Δ is re-registered as `<site>_<W>x<W>_delta` ("<Site> Δ · voxel", VS CPU pickable, not in the PvP pool). Looking-Glass left HQ_ARENA_RULES.keep.
+- Screens: /mnt/project-files/new-maps/lookingglass/ (before_* = voxel board + old garden, after_* = new arena + garden).
