@@ -25,6 +25,8 @@
 // area (hqArenaCaps). Only the sites with a 12×12 cut get the extra sizes. `--json <file>` writes the picks to a file instead of data.js
 // (bake several sizes at once), `--apply <file>` files such a bake into data.js:
 //   node bake-arenas.js --size 9 --json /tmp/a9.json   then   node bake-arenas.js --size 9 --apply /tmp/a9.json
+// THE ARENA'S PLACE (2026-10-20, the voxel maps remade as rooms): HQ_ARENA_RULES.within[site] = { room, x, z, r } — a site whose map was
+// built for its board (Göbekli Tepe's ENCLOSURE E) is cut only from that room, from windows whose centre lies within r metres of (x, z).
 'use strict';
 
 const fs = require('fs');
@@ -52,6 +54,7 @@ const FEAT = ev('HQ_ARENA_RULES.featureMax');
 const WALLS = CAPS.wallMax, TOP = ev('HQ_ARENA_RULES.topMax');
 
 const KEEP = new Set(ev('HQ_ARENA_RULES.keep') || []);   // the sites that keep their Δ board (no pick written)
+const WITHIN = ev('HQ_ARENA_RULES.within') || {};   // THE ARENA'S PLACE (2026-10-20): site → { room, x, z, r } — every size of its arena is cut there (a map built for its board)
 const ONLY = process.argv.filter(a => /^prebuilt_/.test(a));   // name sites to bake only them (the rest of the picks stand)
 const HAS12 = ev('HQ_ARENA_RULES.picks') || {};   // the extra sizes: only the sites with a 12×12 cut
 const sites = META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id) && (!ONLY.length || ONLY.includes(m.id)) && (S === S12 || HAS12[m.id])).map(m => m.id);
@@ -149,7 +152,7 @@ function boardWindows(roomId, Lt) {
     return { x0: bx, z0: bz, x1: bx + b.n - S, z1: bz + b.n - S };
 }
 
-function scanRoom(roomId, strict) {
+function scanRoom(roomId, strict, place) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
     const Lt = sb.hqFieldLattice(roomId);
     if (!Lt || Lt.w < S || Lt.h < S) return null;
@@ -157,6 +160,7 @@ function scanRoom(roomId, strict) {
     const off1 = (gx, gy) => !Lt.walk(gx, gy) && !pitCell(Lt, roomId, gx, gy);
     let best = null, clear = 0;
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
+        if (place && Math.hypot(Lt.x0 + (ox + S / 2) * Lt.C - place.x, Lt.z0 + (oz + S / 2) * Lt.C - place.z) > place.r) continue;   // THE ARENA'S PLACE: only windows centred there
         if (BW && (ox < BW.x0 || ox > BW.x1 || oz < BW.z0 || oz > BW.z1)) continue;
         let off = 0;
         if (strict) {
@@ -205,12 +209,14 @@ for (const site of (APPLY ? [] : sites)) {
     const size = (id) => { const sh = (ROOMS[id] || {}).shell || {}; return (+sh.w || 0) * (+sh.d || 0); };
     /* a room built as the site's battle map (`arenaRoom: true` — Hell's walkways) is scanned first, then the entry part, then the rest by size */
     const built = rooms.filter(r => (ROOMS[r] || {}).arenaRoom);
-    const order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
+    let order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
+    const place = WITHIN[site] || null;
+    if (place) order = order.filter(r => r === place.room);
     let got = null;
     for (const strict of [true, false]) {   // an open-ground window in any room first, then the walled cut
         for (const roomId of order) {
             const t = Date.now();
-            const best = scanRoom(roomId, strict);
+            const best = scanRoom(roomId, strict, place);
             process.stderr.write('  ' + site + ' · ' + roomId + (strict ? '' : ' (walled)') + ': ' + (best ? best.clear + ' fit, pick ' + best.ox + ',' + best.oz + ' cover ' + best.cover + ' solid ' + best.out + ' ' + best.dist.toFixed(1) + ' m from the marker' : 'no ' + S + 'x' + S + ' fits') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)\n');
             if (best) { got = { roomId, best }; break; }
         }
