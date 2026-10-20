@@ -573,6 +573,7 @@ const ThreeRenderer = (function () {
         'move':            0x4da6ff,
         'move-jump':       0x35d0c0,
         'move-takeoff':    0x35d0c0,
+        'move-climb':      0xd9a066,   /* sandstone — a face this unit can CLIMB (battle.js getClimbTiles) */
         'move-edge':       0xcc2222,
         /* Tactical move-tile overlays (appended as tokens by ui.js): */
         'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
@@ -653,6 +654,7 @@ const ThreeRenderer = (function () {
         'move':         1.0,
         'move-jump':    1.05,
         'move-takeoff': 1.0,
+        'move-climb':   1.05,
         'move-edge':    0.55,
         'attack':       1.1,
         'attack enemy': 1.3,
@@ -844,7 +846,7 @@ const ThreeRenderer = (function () {
             if (t.indexOf(' strike') !== -1) return 'strike';
             if (t.indexOf(' hazard') !== -1) return 'hazard';
             if (t.indexOf(' benefit') !== -1) return 'benefit';
-            return (base === 'move-jump' || base === 'move-takeoff') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
+            return (base === 'move-jump' || base === 'move-takeoff' || base === 'move-climb') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
         }
         if (t.indexOf('attack enemy') === 0) return 'target';
         return { 'move-edge': 'blocked', 'attack': 'atkReach', 'spell-damage': 'hit', 'spell-range-dmg': 'reach', 'heal-range': 'healReach',
@@ -14063,6 +14065,7 @@ const ThreeRenderer = (function () {
                 // walk timescale the Meshy clip sets keep using).
                 want = (entry._ew_sprinting && entry.actions && entry.actions.run)
                     ? ((entry._ew_charging && entry.actions.runCharge) ? 'runCharge' : 'run') : 'walk';
+            else if (entry._ew_climbWant && entry.actions && entry.actions[entry._ew_climbWant]) want = entry._ew_climbWant;   // 🧗 the hang (_updateBattleClimbers)
             else want = 'idle';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
@@ -16132,6 +16135,9 @@ const ThreeRenderer = (function () {
                     highlightGroup.add(_makeHlTile(jbt.x, jbt.y, _getSharedHlMat('move-edge'), 0.92, 0.3, jbt.z));
                 }
             }
+        } else if (state.actionMode === 'climb' && typeof G.getClimbTiles === 'function') {
+            tiles = G.getClimbTiles(sel);
+            for (var ci = 0; tiles && ci < tiles.length; ci++) highlightGroup.add(_makeHlTile(tiles[ci].x, tiles[ci].y, _getSharedHlMat('move-climb'), 0.92, 0.3, tiles[ci].z));
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
             tiles = G.getAttackTiles(sel);
             if (tiles) {
@@ -21016,6 +21022,97 @@ const ThreeRenderer = (function () {
             g._ew_spriteTopY = baseY + bob + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
             g._ew_bobActive = true;
             _shadowMotion = true;   // the unit's shadow proxy bobs with it (§4.2)
+        }
+    }
+
+    /* ── 🧗 THE BATTLE CLIMB (2026-10-20, battle.js doClimb) ───────────────
+       The engine keeps a climber in the column at the FOOT of the face (unit.x/y/z) and marks the hang in
+       unit._climb (plain data — state-sync carries it, so host and guest draw the same thing from it). This pass
+       puts the body ON the wall: pushed against the face, its feet ~40% of the way up, climbing there over
+       CLIMB_VIS.climbMs with climbWall (Fast_Ladder_Climb) and then FROZEN on that frame (timeScale 0) — the hang
+       pose holds until the unit's next turn. When _climb goes: moved = the arrival (the engine's jump arc carries
+       the body; climbMantle plays ClimbUp_1m over the top), else a short drop to the foot (a knock-off flails with
+       the fall clip). Sprite units get the same placement, no clip. */
+    var CLIMB_VIS = { climbMs: 1000, hangFrac: 0.42, faceInset: 0.30, dropMs: 220 };
+    var _climbVis = new Map();   // uid → { key, t0, fromY, frozenAt, ts0, footX, footY, knock, drop }
+    function _climbEntryAct(uid) {
+        var e = _getUnitEntry(uid);
+        return (e && e.actions && e.actions.climbWall) ? { e: e, act: e.actions.climbWall } : null;
+    }
+    function _climbRestoreClip(uid, cv) {
+        var ea = _climbEntryAct(uid);
+        if (ea && cv.ts0 != null) ea.act.timeScale = cv.ts0;
+        var e = _getUnitEntry(uid);
+        if (e) e._ew_climbWant = null;
+    }
+    function _updateBattleClimbers() {
+        if (!unitGroup) return;
+        var inBattle = (typeof state !== 'undefined' && state && state.phase === 'battle');
+        if (!inBattle && !_climbVis.size) return;
+        var now = performance.now();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var lvl = ts * ELEV_STEP_RATIO;
+        for (var j = 0; j < unitGroup.children.length; j++) {
+            var g = unitGroup.children[j];
+            var uid = g._ew_unitId;
+            if (!uid) continue;
+            var unit = inBattle ? _findUnit(uid) : null;
+            var c = (unit && !unit.dead && !unit._dying && unit._climb && unit.x === unit._climb.footX && unit.y === unit._climb.footY) ? unit._climb : null;
+            var cv = _climbVis.get(uid);
+            var busy = _walkTweens.has(uid) || _displaceTweens.has(uid) || _jumpTweens.has(uid)
+                || _strikeTweens.has(uid) || _deathTweens.has(uid);
+            if (!c) {
+                if (!cv) continue;
+                if (!cv.drop) {
+                    _climbRestoreClip(uid, cv);
+                    if (!unit || unit.dead) { _climbVis.delete(uid); continue; }
+                    if (unit.x !== cv.footX || unit.y !== cv.footY) {
+                        _maybeStartModelAnim(uid, ['climbMantle', 'jump'], 1000);   // the pull-up over the top
+                        _climbVis.delete(uid);
+                        continue;
+                    }
+                    if ((unit._climbKnockSeq || 0) !== cv.knock) _maybeStartModelAnim(uid, ['fall', 'hit'], 900);
+                    cv.drop = { t0: now, fromY: g.position.y, fromX: g.position.x, fromZ: g.position.z };
+                }
+                if (busy) { _climbVis.delete(uid); continue; }
+                var dk = Math.min(1, (now - cv.drop.t0) / CLIMB_VIS.dropMs);
+                var dE = dk * dk;
+                g.position.y = cv.drop.fromY + (unitSurfaceY(unit) - cv.drop.fromY) * dE;
+                g.position.x = cv.drop.fromX + (unit.x * ts + ts / 2 - cv.drop.fromX) * dE;
+                g.position.z = cv.drop.fromZ + (unit.y * ts + ts / 2 - cv.drop.fromZ) * dE;
+                _shadowMotion = true;
+                if (dk >= 1) _climbVis.delete(uid);
+                continue;
+            }
+            if (busy) continue;
+            var key = c.dir + '|' + c.wallX + ',' + c.wallY + '|' + c.footX + ',' + c.footY + '|' + c.round;
+            var footY = unitSurfaceY(unit);
+            var hangY = footY + c.rise * lvl * CLIMB_VIS.hangFrac;
+            if (!cv || cv.key !== key) {
+                if (cv) _climbRestoreClip(uid, cv);
+                cv = { key: key, t0: now, fromY: (c.dir === 'down') ? footY + c.rise * lvl : footY, frozenAt: null, ts0: null,
+                       footX: c.footX, footY: c.footY, knock: unit._climbKnockSeq || 0, drop: null };
+                _climbVis.set(uid, cv);
+            }
+            var k = Math.min(1, (now - cv.t0) / CLIMB_VIS.climbMs);
+            var kE = 1 - (1 - k) * (1 - k);
+            var dxW = Math.sign(c.wallX - c.footX), dyW = Math.sign(c.wallY - c.footY);
+            g.position.x = unit.x * ts + ts / 2 + dxW * ts * CLIMB_VIS.faceInset;
+            g.position.z = unit.y * ts + ts / 2 + dyW * ts * CLIMB_VIS.faceInset;
+            g.position.y = cv.fromY + (hangY - cv.fromY) * kE;
+            _shadowMotion = true;
+            var ea = _climbEntryAct(uid);
+            if (ea) {
+                ea.e._ew_climbWant = 'climbWall';
+                if (cv.ts0 == null) cv.ts0 = (ea.act.timeScale > 0) ? ea.act.timeScale : 1;
+                if (k < 1) {
+                    ea.act.timeScale = (c.dir === 'down') ? -cv.ts0 : cv.ts0;   // down: the same climb played backwards
+                } else if (ea.e._ew_curAnim === 'climbWall') {
+                    if (cv.frozenAt == null) cv.frozenAt = ea.act.time;
+                    ea.act.timeScale = 0;
+                    if (Math.abs(ea.act.time - cv.frozenAt) > 1e-3) ea.act.time = cv.frozenAt;   // a flinch one-shot reset it
+                }
+            }
         }
     }
 
@@ -39855,6 +39952,7 @@ const ThreeRenderer = (function () {
         _updateBatSwarms();
         _updateFlyingBob();
         _riseTick();   // THE RISE
+        _updateBattleClimbers();   // 🧗 the hang on the wall
         _updateTowerCubes();
         _updateTrafficLights();
         _updateTorchFlames();
@@ -40139,7 +40237,7 @@ const ThreeRenderer = (function () {
     function _fieldFloorLit(x, y, z) {
         if (typeof state === 'undefined' || !state || !state.actionMode || !state.selectedUnitId) return null;
         var mode = state.actionMode;
-        if (mode === 'move' || mode === 'jump') {
+        if (mode === 'move' || mode === 'jump' || mode === 'climb') {
             var cache = window._ewHlCache, pk = x + ',' + y;
             if (!cache || !cache.map || !cache.key || String(cache.key).indexOf(state.selectedUnitId + '|' + mode) !== 0) return null;
             var cls = cache.map.get(pk);
