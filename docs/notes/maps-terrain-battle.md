@@ -592,3 +592,10 @@ the rain im just talking about grass tiles being on fire".
 - bake-arenas.js THE BOARD IS THE ARENA: a terrain room with a `board` feature of n ≥ S only cuts windows inside that board.
 - The voxel board stays: HQ_ARENA_RULES.voxelKeep lists sites whose old voxel Δ is re-registered as `<site>_<W>x<W>_delta` ("<Site> Δ · voxel", VS CPU pickable, not in the PvP pool). Looking-Glass left HQ_ARENA_RULES.keep.
 - Screens: /mnt/project-files/new-maps/lookingglass/ (before_* = voxel board + old garden, after_* = new arena + garden).
+
+## THE BERMUDA ISLAND (2026-10-20, mondo: "Literally just an island in the ocean ... that y2k beach aesthetic")
+- New room `site_prebuilt_bermuda_island` (data.js, its own block before THE HARBOUR): an 84 m sea room (hqSeaShell, look HQ_ROOM_LOOKS.island) with a lagoon plateau, a sand island (plateau r 14 × rz 21, floor `desert`), two granite shelves one level up (rocks_5 paint), boulder hills drawn by asteroid props, palms, a wooden pier with tiki torches, beach umbrellas/loungers/lifeguard chair, rowboat, buoys, coral + fish scatters in the sea.
+- bake-arenas.js picks: 12×12 @ 18,18 (symmetric under 180°), 9 @ 19,18, 10 @ 20,18, 11 @ 19,17. The arena takes `prebuilt_bermuda_delta` ("The Bermuda Triangle Arena"), so Bermuda joins the online pool and its crystal fights this island. The old voxel board stays via HQ_ARENA_RULES.voxelKeep as `prebuilt_bermuda_8x8_delta`.
+- `terrain.sea.field: true` (hqFieldRoomOk / hqFieldTerrainInfo): a sea room may host THE FIELD; ground deeper than wadeMax under the sea is not standable, shallows are wade cells, deep sea is a `deep_water` hazard. Without the flag a sea room is still refused.
+- Palms: HQ_TREE_KINDS `palm` = `kit:Meshy_AI_palm_tree_0910054114_texture.glb` (three-renderer foliage `kit:` prefix → DOOR_HQ.assets.models; the manifest's .opt.glb loads in its place). The old sea room's three bare trees are now palms.
+- Screens: /mnt/project-files/new-maps/bermuda/ (before_* = the voxel board, after_* = the island).
