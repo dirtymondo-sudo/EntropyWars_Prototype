@@ -2798,6 +2798,49 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
    TargetQuery.apUse). An attack, a combo, Guard, Escape or a damaging / Protect cast costs its own AP and ends the turn;
    the turn's second step ends it too; a support cast costs its AP (plus the step of a MOVE→CAST). Same on host + guest. */
 const _HRLG_ENDS_IDS = { attack: 1, combo: 1, guard: 1, escape: 1 };
+/* THE BUTTON ROWS (2026-10-20, mondo: "For the spell buttons it should let me choose what goes on the top row and what goes
+   on the bottom row of the button. And this should go for the spell menu as well as the quick action menu, those two need
+   to display consistent information, i dont want to have edit them individually"): ONE layout for every `rows` blade (the
+   spells, the attack and the combos of the Abilities list and of every quick action menu). Each part sits on the top row,
+   the bottom row or nowhere (the icon may also sit beside both), in the order listed. The UI Maker's db.ux bRows / bFold
+   (Unit info panel > Spell buttons, the same form on the Command panels and Quick action list pieces) reach the HUD as
+   window._ewBtnRows {rows, fold}; viewer-local, nothing relayed. EW_BTN_ROWS_DEF = the look the rows had before. */
+const EW_BTN_PARTS = [
+  ['icon', 'Icon', 'The coloured chip: ⚔ physical damage, three diamonds magic damage, ♥ heal, ▲ buff, ▼ debuff, ◎ utility'],
+  ['name', 'Name', 'The action\'s name (always shown)'],
+  ['type', 'Type badge', 'HUMAN, TECH, UNHOLY …: drives type advantage'],
+  ['elem', 'Element', 'The element icon (🔥, ❄ …)'],
+  ['status', 'Status badges', 'The statuses it applies (BRN, DIS …)'],
+  ['riders', 'Extra targets', 'Random targets, ricochet, forked, splash'],
+  ['ups', 'Upgrades', 'The ⚙ upgrade count'],
+  ['press', 'Super effective !', 'The green ! (and the red ! / ▼) against the unit you clicked, in the quick action menus'],
+  ['power', 'Power', 'The damage, heal or effect; against a clicked unit, what it would do to them'],
+  ['mp', 'MP cost', 'The MP it costs'],
+  ['ap', 'AP cost', 'The gold diamonds: the AP it costs'],
+  ['ends', 'ENDS TURN', 'The red tag on an action that ends the turn'],
+  ['note', 'Move first', 'The MOVE→CAST / ↳ MOVE tag'],
+  ['reason', 'Why it is greyed', 'No MP, Out of range …'],
+  ['shape', 'Area shape', 'The little tiles of its area'],
+];
+const EW_BTN_ROWS_DEF = 'icon:side,name:top,type:top,elem:top,status:top,riders:top,ups:top,press:bot,power:bot,mp:bot,ap:bot,ends:bot,note:bot,reason:bot,shape:bot';
+/* a part's allowed rows: the icon may sit beside both rows; the name is always shown */
+function ewBtnRowsOk(id, row) {
+  return id === 'icon' ? ['side', 'top', 'bot', 'off'].includes(row) : id === 'name' ? ['top', 'bot'].includes(row) : ['top', 'bot', 'off'].includes(row);
+}
+/* 'part:row,…' → [[part, row], …]: every part once, in order; unknown or bad entries dropped, missing parts at their default */
+function ewBtnRowsParse(str) {
+  const seen = {}, list = [];
+  const add = (t) => { const [id, row] = String(t).split(':'); if (seen[id] || !EW_BTN_PARTS.some(p => p[0] === id) || !ewBtnRowsOk(id, row)) return; seen[id] = 1; list.push([id, row]); };
+  String(str || '').split(',').forEach(add);
+  EW_BTN_ROWS_DEF.split(',').forEach(add);
+  return list;
+}
+let _ewBtnRowsMemo = { k: null, v: null };
+function _ewBtnRowsNow() {
+  const L = window._ewBtnRows || {}, k = (L.rows || '') + '|' + (L.fold === false ? 0 : 1);
+  if (_ewBtnRowsMemo.k !== k) _ewBtnRowsMemo = { k, v: { list: ewBtnRowsParse(L.rows), fold: L.fold !== false } };
+  return _ewBtnRowsMemo.v;
+}
 function _hrlgApUseOf(unit, b) {
   if (!unit || !b || typeof b.cost !== 'number' || b.cost <= 0) return null;
   const q = _TQ();
@@ -2830,21 +2873,42 @@ function _hrlgArmedApUse(unit, st, selBlade) {
   return none;
 }
 
+/* one badge of a row (the TYPE / element / status … chips): also drawn by the description bar (_ewStaticHtml). An image
+   icon on a styled badge (element chips) hides itself and reveals the emoji fallback span when the R2 file is missing. */
+function _hrlgBadgeIcon(bd) {
+  return bd.icon && bd.icon.src
+    ? h(React.Fragment, null,
+        h('img', {
+          className: 'ew-elicon', src: bd.icon.src, alt: '', draggable: false,
+          onError: (e) => { const im = e.currentTarget; im.style.display = 'none'; if (im.nextSibling) im.nextSibling.style.display = ''; },
+        }),
+        h('span', { style: { display: 'none' } }, (bd.icon.fallback ? bd.icon.fallback + ' ' : '')),
+      )
+    : null;
+}
+function _hrlgBadgeEl(bd, k) {
+  return bd.plain
+    ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
+    : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
+}
 function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
   const port = (b.portrait && b.portrait.url) ? b.portrait : null;   // JRPG target row
-  const right = [];
-  if (b.check && !confirmBtn) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
-  if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
-  if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));   // plain blue text (the pill is gone — 2026-09-21)
+  /* every piece lands in `right` (the one-line / under-the-name order) AND under its part in P, which THE BUTTON ROWS
+     lay out on a `rows` blade; x0 / x1 = the row's other chips (lead / trail) */
+  const right = [], P = {};
+  const put = (part, el, first) => { if (first) right.unshift(el); else right.push(el); (P[part] = P[part] || []).push(el); };
+  if (b.check && !confirmBtn) put('x0', h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
+  if (!dead && b.power) put('power', h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
+  if (!dead && b.mp) put('mp', h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));   // plain blue text (the pill is gone — 2026-09-21)
   // Mystery Dungeon lockstep: AP is gone from the player's vocabulary — no
   // cost pips on any blade (one beat = one action, whatever it "costs").
   if (!dead && typeof b.cost === 'number' && !b.sub
       && !(typeof window._mdLockstepActive === 'function' && window._mdLockstepActive())) {
     const _n = (b.apUse && b.available) ? b.apUse.n : b.cost;   // what it costs (_hrlgApUseOf)
     const pips = []; for (let i = 0; i < _n; i++) pips.push(h('span', { key: i, className: 'hrlg-cpip' }));
-    right.push(h('span', { key: 'ap', className: 'hrlg-cost' }, pips));
+    put('ap', h('span', { key: 'ap', className: 'hrlg-cost' }, pips));
   }
   /* ENDS TURN (mondo 2026-10-18): an action that ends the turn says so right after its cost, a red tag the rows that
      leave the turn going never wear (UI Maker text part "ENDS TURN tags"). A press refund (the green !) still hands AP
@@ -2854,18 +2918,18 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       && !(typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()))
     ? h('span', { key: 'et', className: 'hrlg-endsturn', title: 'Ends your turn' + (b.superEff ? ' (the super-effective hit refunds AP, so you act again)' : ' — a super-effective hit refunds AP') }, 'ENDS TURN')
     : null;
-  if (endsTag && !b.subBelow) right.push(endsTag);
-  if (b.count) right.push(h('span', { key: 'ct', className: 'hrlg-cfree' }, b.count));
-  if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', title: b.meta.title || undefined, style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
-  if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
-  if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note', style: b.noteColor ? { color: b.noteColor } : undefined }, b.note));
-  if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  if (endsTag && !b.subBelow) put('ends', endsTag);
+  if (b.count) put('x1', h('span', { key: 'ct', className: 'hrlg-cfree' }, b.count));
+  if (b.meta) put(b.meta.press ? 'press' : 'x1', h('span', { key: 'mt', className: 'hrlg-meta', title: b.meta.title || undefined, style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
+  if (!dead && !b.sub && b.hint) put('x1', h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
+  if (!dead && b.note) put('note', h('span', { key: 'nt', className: 'hrlg-note', style: b.noteColor ? { color: b.noteColor } : undefined }, b.note));
+  if (b.sub && !b.subBelow) put('reason', h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
   // THE SHAPE TILES (2026-09-21): an AOE / cross / line spell shows its
   // footprint as little square tiles at the right end of the blade.
-  if (!dead && b.shape) right.push(_hrlgShapeTiles(b.shape));
+  if (!dead && b.shape) put('shape', _hrlgShapeTiles(b.shape));
   // ⤵ DROP chip (Mystery Dungeon item rows): its own click target — the row
   // click still USES the item; stopPropagation keeps the two apart.
-  if (b.drop) right.push(h('span', {
+  if (b.drop) put('x1', h('span', {
     key: 'dr',
     title: b.drop.title || 'Drop on the floor',
     style: {
@@ -2879,18 +2943,18 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   }, b.drop.label || '⤵ DROP'));
   // Green !-circle: this action is SUPER EFFECTIVE against its target. Leads
   // the right-hand chips so it reads first on quick-menu and target rows.
-  if (b.superEff) right.unshift(h('span', {
+  if (b.superEff) put('press', h('span', {
     key: 'se', className: 'hrlg-supereff', title: 'Super effective against this target!',
-  }, '!'));
+  }, '!'), true);
   // Red !-circle: the target is IMMUNE to (or ABSORBS) this action's element — the warning twin of the green one.
-  if (b.immWarn) right.unshift(h('span', {
+  if (b.immWarn) put('press', h('span', {
     key: 'iw', className: 'hrlg-immwarn', title: b.immWarn === 'absorb' ? 'This target ABSORBS the element — that part of the hit heals it, no AP refund' : 'This target is IMMUNE to the element — that part of the hit does nothing, no AP refund',
-  }, '!'));
+  }, '!'), true);
   // THE CONFIRM BUTTON rides the END of the pending (✓) row itself — a green
   // seal right where the player's eye already is, instead of floating on top
   // of the panel. stopPropagation: the row's own click ALSO confirms, and
   // both firing would double-execute the action.
-  if (confirmBtn) right.push(h('span', {
+  if (confirmBtn) put('x1', h('span', {
     key: 'cf', className: 'hrlg-confirm-inline',
     onClick: (e) => { e.stopPropagation(); confirmBtn.fire(); },
   },
@@ -2898,22 +2962,32 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     'CONFIRM',
   ));
   // TYPE badge rides inline next to the name — it's the matchup intel.
-  // Optional image icon on a styled badge (element chips): the <img> hides
-  // itself and reveals the emoji fallback span when the R2 file is missing.
-  const _badgeIcon = (bd) => bd.icon && bd.icon.src
-    ? h(React.Fragment, null,
-        h('img', {
-          className: 'ew-elicon', src: bd.icon.src, alt: '', draggable: false,
-          onError: (e) => { const im = e.currentTarget; im.style.display = 'none'; if (im.nextSibling) im.nextSibling.style.display = ''; },
-        }),
-        h('span', { style: { display: 'none' } }, (bd.icon.fallback ? bd.icon.fallback + ' ' : '')),
-      )
-    : null;
-  const badgeRow = (b.badges && b.badges.length) ? h('span', { className: 'hrlg-badges' },
-    b.badges.map((bd, k) => bd.plain
-      ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
-      : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _badgeIcon(bd), bd.label)),
-  ) : null;
+  const _badgeEl = _hrlgBadgeEl;
+  const badgeRow = (b.badges && b.badges.length) ? h('span', { className: 'hrlg-badges' }, b.badges.map(_badgeEl)) : null;
+  // the row's icon: a spell's job glyph (a damage icon says physical ⚔ or magic, its title says which)
+  const glyph = h('span', { key: 'gl', className: 'hrlg-glyph', title: b.iconTitle || undefined, style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon);
+  /* THE BUTTON ROWS: a `rows` blade (a spell, the attack, a combo: the Abilities list and every quick action menu) puts
+     its parts on a top and a bottom row in the order the UI Maker set (window._ewBtnRows, read by _ewBtnRowsNow). The
+     icon may sit beside both rows. Folded (the default): a button whose top row holds only its name keeps one line, the
+     bottom row's parts at its right end, the look these rows always had. */
+  let rowsLay = null;
+  if (b.rows && !port) {
+    const L = _ewBtnRowsNow();
+    const grp = part => { const l = (b.badges || []).filter(bd => (bd.part || 'type') === part); return l.length ? [h('span', { key: 'bg-' + part, className: 'hrlg-badges' }, l.map(_badgeEl))] : null; };
+    const at = { icon: [glyph], name: [h('span', { key: 'nm', className: 'hrlg-blabel', style: { flex: '0 1 auto' } }, b.label)],
+      type: grp('type'), elem: grp('elem'), status: grp('status'), riders: grp('riders'), ups: grp('ups'),
+      press: P.press ? P.press.slice().reverse() : null, power: P.power, mp: P.mp, ap: P.ap, ends: P.ends, note: P.note, reason: P.reason, shape: P.shape };
+    let side = false; const top = [], bot = [];
+    L.list.forEach(([id, row]) => {
+      if (id === 'icon' && row === 'side') { side = true; return; }
+      if (row === 'off' || !at[id]) return;
+      (row === 'top' ? top : bot).push(...at[id]);
+    });
+    if (P.x0) { if (bot.length) bot.unshift(...P.x0); else top.push(...P.x0); }
+    if (P.x1) (bot.length ? bot : top).push(...P.x1);
+    const nameOnly = top.every(el => el.key === 'nm' || el.key === 'gl');
+    rowsLay = { side, top, bot, one: !top.length || !bot.length || (L.fold && nameOnly) };
+  }
   // portrait target rows: face chip + name over a real HP (and optional MP)
   // bar — the classic JRPG "who am I hitting / healing" readout.
   let portCol = null;
@@ -2991,7 +3065,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       + (dead ? ' dead' : '')
       + (ghost && !dead ? ' ghost' : '')
       + (port ? ' trow' + (port.showMp && port.maxMp > 0 ? ' has-mp' : '') : '')
-      + (badgeRow && !port ? ' two' : '')
+      + ((rowsLay ? !rowsLay.one : (badgeRow && !port)) ? ' two' : '')
       + (sel ? ' sel' : '')
       + (muted ? ' muted' : '')
       + (catVars ? ' catc' : '')
@@ -3014,8 +3088,14 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
       // the classic yellow JRPG hand-cursor leading the selected row
       sel && h('span', { className: 'hrlg-cursor' }, '▶'),
-      h('span', { className: 'hrlg-glyph', style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon),
-      port
+      (!rowsLay || rowsLay.side) && glyph,
+      rowsLay
+        ? (rowsLay.one
+          ? h(React.Fragment, null, ...rowsLay.top, rowsLay.top.length && rowsLay.bot.length ? h('span', { key: 'sp', className: 'hrlg-spacer' }) : null, ...rowsLay.bot)
+          : h('span', { className: 'hrlg-lblcol', style: { gap: 4 } },
+              h('span', { className: 'hrlg-brow1' }, rowsLay.top),
+              h('span', { className: 'hrlg-brow2' }, rowsLay.bot)))
+      : port
         ? h(React.Fragment, null,
             h('span', {
               className: 'hrlg-tport'
@@ -4030,6 +4110,48 @@ const _HRLG_CAT = {
   utility:{ icon: '◎', color: '#f0d060' },
 };
 
+/* THE DAMAGE-KIND ICONS (2026-10-20, mondo: "there are these 2 symbols for physical or magic attack, but i want to get rid
+   of those. Instead, there is the red crossed sword symbol for a damaging ability on the buttons, it should be the crossed
+   sword for physical attacks and a magic wand or like 3 diamond looking things for magic damage. Also the spell
+   description at the bottom needs to use the same symbols"): a damage row's icon says its damage kind. Physical = ⚔ (the
+   sword the rows always wore), magic = three diamonds, an inline SVG in currentColor sized in em, so it takes the chip's
+   ink and size the way the ⚔ glyph does. The orange burst / purple orb marks are gone; the description bar and the party
+   builder wear these same icons (ewDmgKindIcon / ewDmgKindHtml). Physical = damageType 'physical', anything else hits as
+   magic (the engine's default). */
+const EW_MAGIC_PATH = 'M8 0L11.2 4.2L8 8.4L4.8 4.2ZM4 7.6L7.2 11.8L4 16L0.8 11.8ZM12 7.6L15.2 11.8L12 16L8.8 11.8Z';
+const EW_DMG_KIND_TITLE = { phys: 'Physical damage — scales with ATK, blocked by DEF', magic: 'Magic damage — scales with M ATK, blocked by M DEF' };
+function spellDamageKind(sp) {
+  return sp ? (sp.damageType === 'physical' ? 'phys' : 'magic') : null;
+}
+function ewMagicIcon() {
+  return h('svg', { className: 'ew-magic-ico', viewBox: '0 0 16 16', 'aria-hidden': 'true' }, h('path', { d: EW_MAGIC_PATH }));
+}
+/* the icon alone: ⚔ (text) or the three diamonds; kind = 'phys' | 'magic' */
+function ewDmgKindIcon(kind) { return kind === 'phys' ? '⚔' : ewMagicIcon(); }
+function ewDmgKindHtml(kind) {
+  return kind === 'phys' ? '⚔' : '<svg class="ew-magic-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="' + EW_MAGIC_PATH + '"/></svg>';
+}
+/* a spell row's icon: damage = its damage kind, the rest their job's glyph (♥ ▲ ▼ ◎) */
+function _hrlgSpellIcon(sp, cat) {
+  if (cat === 'damage') return ewDmgKindIcon(spellDamageKind(sp));
+  return (_HRLG_CAT[cat] || _HRLG_CAT.damage).icon;
+}
+/* ONE LOOK FOR EVERY SPELL BUTTON (2026-10-20, mondo: "the spell menu as well as the quick action menu, those two need to
+   display consistent information"): the Abilities list and the enemy / ally / tile quick menus all take a spell row's
+   icon, colour, badges, shape and power from here. A quick menu swaps `power` for its forecast on the clicked unit when it
+   has one. `rows` = the row is laid out by THE BUTTON ROWS (HorologeBlade). */
+function _hrlgSpellLook(sp, cat) {
+  cat = cat || (typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage'));
+  const cc = _HRLG_CAT[cat] || _HRLG_CAT.damage;
+  const ps = spellPowerStat(sp);
+  return {
+    icon: _hrlgSpellIcon(sp, cat), iconColor: cc.color, catColor: cc.color,
+    iconTitle: cat === 'damage' ? EW_DMG_KIND_TITLE[spellDamageKind(sp)] : null,
+    badges: _hrlgSpellBadges(sp, cat), shape: _hrlgSpellShape(sp),
+    power: ps ? { v: ps.value, color: ps.color } : null, rows: true,
+  };
+}
+
 // The TYPE badge (HUMAN/TECH/…) rides the name row — it's the matchup
 // intel. Delivery (PHYSICAL/MAGIC/UTILITY), range class (MELEE/RANGED) and
 // the target chip moved DOWN into the bottom description bar
@@ -4226,8 +4348,10 @@ function spellTypeShown(sp) {
 }
 
 function _hrlgSpellBadges(sp, cat, quick) {
+  /* each badge names its part (THE BUTTON ROWS place them): type · elem · status · riders · ups */
   const badges = [];
   if (spellTypeShown(sp)) badges.push({
+    part: 'type',
     label: sp.spellType.toUpperCase(),
     style: typeBadgeStyleFor(sp.spellType, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Spell type — drives type advantage',
@@ -4243,7 +4367,7 @@ function _hrlgSpellBadges(sp, cat, quick) {
     // Image icon from R2 (data.js ELEMENT_ICON_FILES); the badge renderer
     // falls back to the emoji glyph if the file 404s (art not uploaded yet).
     badges.push({
-      icon: null,
+      part: 'elem', icon: null,
       label: _ELEM_BLADE_GLYPH[_el] || _elIcon || _el.slice(0, 2).toUpperCase(),
       style: Object.assign(typeBadgeStyle(_elCol, { fontSize: 14, padding: '0 5px' }), { lineHeight: '18px', letterSpacing: 0 }),
       title: _el.toUpperCase() + ' · ' + (_elCombat
@@ -4252,13 +4376,14 @@ function _hrlgSpellBadges(sp, cat, quick) {
     });
   }
   // the statuses it applies + the status it punishes
-  for (const bd of _hrlgStatusBadges(sp)) badges.push(bd);
+  for (const bd of _hrlgStatusBadges(sp)) badges.push(Object.assign(bd, { part: 'status' }));
   // THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): random victims · a splash round the target
-  for (const bd of _hrlgRiderBadges(sp)) badges.push(bd);
+  for (const bd of _hrlgRiderBadges(sp)) badges.push(Object.assign(bd, { part: 'riders' }));
   // ⚙ THE UPGRADES (Phase 5): a derived def (unit.spells holds it) wears its upgrades as one badge — ⚙n, the names on hover
   if (sp && Array.isArray(sp._ups) && sp._ups.length) {
     const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
     badges.push({
+      part: 'ups',
       label: '⚙' + sp._ups.length,
       style: Object.assign(typeBadgeStyle('#ffcd6b', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
       title: 'Upgraded — ' + sp._ups.map(u => (reg[u] && (reg[u].name + (reg[u].desc ? ': ' + reg[u].desc : ''))) || u).join(' · '),
@@ -4304,6 +4429,7 @@ function _hrlgRiderBadges(sp) {
 function _hrlgComboTypeBadges(combo, fs) {
   if (!combo) return [];
   return [combo.typeA, combo.typeB].filter(Boolean).map(t => ({
+    part: 'type',
     label: t.toUpperCase(),
     style: typeBadgeStyleFor(t, { fontSize: fs || _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Combo component type — ' + (combo.name || 'combo'),
@@ -4387,27 +4513,16 @@ function _hrlgSpellBlades(unit, st) {
       else if (!hasTarget) reason = (typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)) ? 'No valid target' : 'No target';
     }
 
-    const cat = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
-    const cc = _HRLG_CAT[cat] || _HRLG_CAT.damage;
-    const powerStat = spellPowerStat(sp);
-
-    // ── badge row: the spell's TYPE (anomaly/tech/…) is critical intel —
-    // it drives strong/weak matchups — so it rides ON the blade next to the
-    // name at name size, with small delivery/range chips after it. Exact
-    // range + tier live in the bottom description bar, not on the blade.
-    const badges = _hrlgSpellBadges(sp, cat);
-
+    // ── the icon, colour, badges (TYPE, element, statuses …), shape and power: the same look every quick menu's spell
+    // row wears (_hrlgSpellLook); the catColor tints the whole blade — red damage, green heal… Exact range + tier live
+    // in the bottom description bar, not on the blade.
     return {
       id: 'sp:' + (sp.name || i),
-      icon: cc.icon, iconColor: cc.color,
-      catColor: cc.color,   // tints the whole blade — red damage, green heal…
+      ..._hrlgSpellLook(sp),
       label: sp.name,
-      badges: badges,
-      shape: _hrlgSpellShape(sp),
       spell: sp,
       available: canCast,
       selected: am === 'spell' && st.selectedTool === sp.name,
-      power: powerStat ? { v: powerStat.value, color: powerStat.color } : null,
       mp: cost, cost: apCost,
       note: needsMove ? 'MOVE→CAST' : null,
       sub: reason || null,
@@ -6021,21 +6136,6 @@ function hudSpellCanPress(sp) {
   if (!sp) return false;
   if (hudSpellShowsDamage(sp)) return true;
   return typeof window.spellArmsPress === 'function' && !!window.spellArmsPress(sp);
-}
-
-// Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
-// `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
-// burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
-function spellDeliveryBadge(sp, cat) {
-  if (!hudSpellShowsDamage(sp)) return { label: 'UTILITY', color: '#d8b24a', icon: null, title: null };
-  if (sp.damageType === 'physical') return {
-    label: 'PHYSICAL', color: '#e0944a', icon: 'phys',
-    title: 'Physical damage — scales with ATK, blocked by DEF',
-  };
-  return {
-    label: 'MAGIC', color: '#b56ce0', icon: 'magic',
-    title: 'Magic damage — scales with M ATK, blocked by M DEF',
-  };
 }
 
 // Long-range (gravity-assisted) vs close-range delivery class. A RANGED ability
@@ -8084,21 +8184,26 @@ function _hrlgEnemyBlades(actingUnit, st) {
       else if (_eaAff === 'weak' && !typeAdv) typeAdv = '▲';
     }
 
+    // a spell row wears the Abilities list's own look (_hrlgSpellLook); its power is the forecast on THIS enemy when
+    // there is one, else the same power the Abilities list shows
+    const look = a.spell ? _hrlgSpellLook(a.spell) : null;
+    if (look && !(a.preview && ((a.preview.min != null && a.preview.max != null) || a.preview.amount))) power = look.power;
     return {
+      ...(look || {}),
       id: 'ea:' + a.id + ':' + i,
-      icon: a.icon, label: a.label,
+      icon: look ? look.icon : a.icon, label: a.label,
       available: a.available,
       spell: a.spell || null,
-      catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
-      badges: a.badges || (a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined),
-      shape: a.spell ? _hrlgSpellShape(a.spell) : undefined,
+      badges: a.badges || (look ? look.badges : undefined),
+      // the attack + combo rows lay out like the spell rows (THE BUTTON ROWS)
+      rows: !!(look || a.id === 'attack' || a.id === 'combo'),
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
       superEff: (a.press != null) ? !!a.press : (typeAdv === '▲' && !_eaImm),
       immWarn: _eaImm,
-      meta: typeAdv === '▼' ? { text: '▼', color: EW.bad } : null,
+      meta: typeAdv === '▼' ? { text: '▼', color: EW.bad, press: true, title: 'Weak against this target' } : null,
       note: isMove
         ? (a.id === 'moveTowards'
           // "Move Towards" chains the whole approach — name the tile the
@@ -8348,21 +8453,22 @@ function _hrlgAllyBlades(actingUnit, st) {
 
   const blades = actions.map((a, i) => {
     const isMove = !!a.moveTile;
-    const cls = a.spell ? (typeof classifySpell === 'function' ? classifySpell(a.spell) : 'heal') : null;
-    const cc = cls ? (_HRLG_CAT[cls] || _HRLG_CAT.heal) : null;
+    // a spell row wears the Abilities list's own look (_hrlgSpellLook); its power is the heal on THIS ally when there is
+    // one, else the same power the Abilities list shows
+    const look = a.spell ? _hrlgSpellLook(a.spell) : null;
     let power = null;
     if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount, color: '#57d97e' };
+    else if (look) power = look.power;
     else if (a.powerLabel) power = { v: a.powerLabel, color: '#57d97e' };
     return {
+      ...(look || {}),
       id: 'aa:' + a.id + ':' + i,
-      icon: a.icon,
-      iconColor: a.id.startsWith('item:') ? '#57d97e' : undefined,
+      icon: look ? look.icon : a.icon,
+      iconColor: look ? look.iconColor : a.id.startsWith('item:') ? '#57d97e' : undefined,
       label: a.label,
       available: a.available,
       spell: a.spell || null,
-      catColor: cc ? cc.color : (a.id === 'item:healPotion' ? '#57d97e' : undefined),
-      badges: a.spell ? _hrlgSpellBadges(a.spell, cls, true) : undefined,
-      shape: a.spell ? _hrlgSpellShape(a.spell) : undefined,
+      catColor: look ? look.catColor : (a.id === 'item:healPotion' ? '#57d97e' : undefined),
       power: power,
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
@@ -8649,9 +8755,8 @@ function _hrlgTileBlades(actingUnit, st) {
       label: a.label,
       available: a.available,
       spell: a.spell || (isObjAtk ? objCard : null),
-      catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
-      badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
-      shape: a.spell ? _hrlgSpellShape(a.spell) : undefined,
+      // a spell row wears the Abilities list's own look (_hrlgSpellLook): icon, colour, badges, shape, power
+      ...(a.spell ? _hrlgSpellLook(a.spell) : (a.category === 'attack' ? { rows: true } : {})),
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
@@ -9383,6 +9488,39 @@ function _ensureDescBarEl() {
   return _descBarEl;
 }
 
+/* a React element → static HTML, for the description bar (plain innerHTML, rebuilt only when its spell changes), so it
+   draws the very badges / tiles / chips the buttons draw: host elements, fragments, arrays and text; a style object as
+   CSS (px on plain numbers, as React does), event props dropped */
+const _EW_UNITLESS = /^(fontWeight|lineHeight|opacity|zIndex|flex|flexGrow|flexShrink|order|zoom)$/;
+const _EW_VOID = { img: 1, br: 1, hr: 1, input: 1 };
+const _ewEsc = v => String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+function _ewStaticHtml(el) {
+  if (el == null || el === false || el === true) return '';
+  if (Array.isArray(el)) return el.map(_ewStaticHtml).join('');
+  if (typeof el !== 'object') return _ewEsc(el);
+  if (el.type === React.Fragment) return _ewStaticHtml(el.props.children);
+  if (typeof el.type === 'function') return _ewStaticHtml(el.type(el.props));
+  const pr = el.props || {};
+  let a = '';
+  Object.keys(pr).forEach(k => {
+    const v = pr[k];
+    if (k === 'children' || /^on[A-Z]/.test(k) || v == null || v === false) return;
+    if (k === 'style') {
+      const css = Object.keys(v).filter(x => v[x] != null && v[x] !== '')
+        .map(x => (x.indexOf('--') === 0 ? x : x.replace(/[A-Z]/g, m => '-' + m.toLowerCase())) + ':' + (typeof v[x] === 'number' && !_EW_UNITLESS.test(x) ? v[x] + 'px' : v[x])).join(';');
+      if (css) a += ' style="' + _ewEsc(css) + '"';
+      return;
+    }
+    a += ' ' + (k === 'className' ? 'class' : k) + '="' + _ewEsc(v) + '"';
+  });
+  return '<' + el.type + a + '>' + (_EW_VOID[el.type] ? '' : _ewStaticHtml(pr.children) + '</' + el.type + '>');
+}
+/* the AP cost as the buttons' gold diamonds */
+function _dbPips(n) {
+  const p = []; for (let i = 0; i < n; i++) p.push(h('span', { key: i, className: 'hrlg-cpip' }));
+  return h('span', { key: 'ap', className: 'hrlg-cost', title: n + ' AP' }, p);
+}
+
 function _renderSpellDescBar() {
   if (_descBarHover && ((_descBarHoverEl && !_descBarHoverEl.isConnected)
       || _descBarHoverUnit !== _descBarActiveUnitId())) {
@@ -9416,9 +9554,6 @@ function _renderSpellDescBar() {
     return;
   }
 
-  const tc = TYPE_COLORS[(sp.spellType || '').toLowerCase()] || EW.inkMute;
-  const tcText = TYPE_TEXT_COLORS[(sp.spellType || '').toLowerCase()] || tc;
-
   // The bar describes the acting (blitz-active) unit's blade. Damage/heal/
   // shield numbers are level-compressed at the engine chokepoints, so the
   // bar scales them by the same curve — what it shows is what actually
@@ -9448,18 +9583,21 @@ function _renderSpellDescBar() {
   details.push(rng > 0 ? 'Range ' + rng : 'Self-cast');
   if (sp.aoeRadius) details.push('AOE ' + sp.aoeRadius);
   if (sp.teleportDistance) details.push('Leap ' + sp.teleportDistance);
+  if (sp.tier) details.push('T·' + (typeof spellTierNumeral === 'function' ? spellTierNumeral(sp) : sp.tier));   // Phase 0: the tier is a number (1–4)
+  // the costs wear the buttons' own chips: blue MP, gold AP diamonds, the red ENDS TURN tag
+  let costs;
   if (sp._isCombo) {
     // Combos cost AP from BOTH dancers, never MP.
     const _cbIni = (typeof COMBO_AP_COST_INITIATOR !== 'undefined') ? COMBO_AP_COST_INITIATOR : 2;
     const _cbPar = (typeof COMBO_AP_COST_PARTNER !== 'undefined') ? COMBO_AP_COST_PARTNER : 1;
-    details.push(_cbIni + ' AP + ' + _cbPar + ' partner AP · ENDS TURN');
+    costs = [_dbPips(_cbIni), h('span', { key: 'pa', className: 'hrlg-cfree' }, '+ ' + _cbPar + ' PARTNER AP'), h('span', { key: 'et', className: 'hrlg-endsturn' }, 'ENDS TURN')];
   } else {
     const cost = (_dbUnit && typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(_dbUnit, sp) : (sp.cost || 0);
     const apCost = _tqApCost(sp);
     const _dbEnds = _TQ() && typeof _TQ().spellEndsTurn === 'function' && _TQ().spellEndsTurn(sp);
-    details.push(cost + ' MP · ' + apCost + ' AP' + (_dbEnds ? ' · ENDS TURN' : ''));
+    costs = [cost ? h('span', { key: 'mp', className: 'hrlg-chip' }, cost + ' MP') : null, _dbPips(apCost),
+      _dbEnds ? h('span', { key: 'et', className: 'hrlg-endsturn' }, 'ENDS TURN') : null];
   }
-  if (sp.tier) details.push('T·' + (typeof spellTierNumeral === 'function' ? spellTierNumeral(sp) : sp.tier));   // Phase 0: the tier is a number (1–4)
 
   let statusLine = '';
   const _fxParts = [];
@@ -9480,17 +9618,23 @@ function _renderSpellDescBar() {
   }
   statusLine = _fxParts.join(', ');
 
-  const badge = spellTypeShown(sp)
-    ? '<span style="display:inline-flex;align-items:center;flex:none;' +
-      "font-family:'IBM Plex Mono',monospace;" + 'font-size:10px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;' +
-      'color:' + badgeInk(tc) + ';background:' + tc + ';font-weight:700;border-radius:999px;' +
-      'border:1px solid rgba(0,0,0,0.55);padding:1px 7px;">' +
-      sp.spellType.toUpperCase() + '</span>'
-    : '';
+  /* THE SAME SYMBOLS AS THE BUTTONS (2026-10-20, mondo: "the spell description at the bottom needs to use the same symbols
+     and stuff as the spell buttons"): the bar leads with the row's icon chip (⚔ physical / three diamonds magic / ♥ ▲ ▼ ◎)
+     and wears the row's own TYPE, element, status, rider and upgrade badges and area tiles (_hrlgSpellLook, drawn to HTML
+     by _ewStaticHtml); its costs are the row's chips. The old PHYSICAL / MAGIC chip and its burst / orb marks are gone: the
+     icon says it, the stats line says it in words. */
+  let look;
+  try { look = _hrlgSpellLook(sp); } catch (e) { look = { icon: '✦', catColor: '#9a94ab', iconTitle: null, badges: [], shape: null }; }
+  const _kind = hudSpellShowsDamage(sp) ? spellDamageKind(sp) : null;
+  if (_kind) details.unshift(_kind === 'phys' ? 'Physical damage' : 'Magic damage');
+  const head = _ewStaticHtml([
+    h('span', { key: 'ic', className: 'ew-descbar-ico', style: { background: look.catColor }, title: look.iconTitle || undefined }, sp._isCombo ? '◆' : look.icon),
+  ]);
+  const badges = look.badges.length ? _ewStaticHtml(h('span', { className: 'hrlg-badges' }, look.badges.map(_hrlgBadgeEl))) : '';
+  const shape = look.shape ? _ewStaticHtml(_hrlgShapeTiles(look.shape)) : '';
+  const costHtml = _ewStaticHtml(h('span', { className: 'ew-descbar-costs' }, costs));
 
-  // Targeting / delivery / range chips (⬚ TILE · PHYSICAL · ⚔ MELEE …) —
-  // moved here OFF the ability rows, so the buttons stay one clean line and
-  // the bar is the single place to read a spell's fine print.
+  // Targeting + range chips (⬚ TILE · ⤢ RANGED …) — the bar is the place to read a spell's fine print.
   const _chip = (label, color, title) =>
     '<span style="display:inline-flex;align-items:center;flex:none;' +
     "font-family:'IBM Plex Mono',monospace;" + 'font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;' +
@@ -9501,10 +9645,6 @@ function _renderSpellDescBar() {
   try {
     const _tc2 = spellTargetChip(sp);
     chips += _chip(_tc2.label, _tc2.color, _tc2.title);
-    const _db = spellDeliveryBadge(sp);
-    chips += _chip(
-      (_db.icon ? '<span class="ew-dmgicon ' + _db.icon + '" style="margin-right:5px;"></span>' : '') + _db.label,
-      _db.color, _db.title);
     if (hudSpellShowsDamage(sp)) {
       const _rb = spellRangeBadge(sp);
       chips += _chip(_rb.glyph + ' ' + _rb.label, _rb.color, _rb.title);
@@ -9512,11 +9652,11 @@ function _renderSpellDescBar() {
   } catch (_) {}
 
   el.innerHTML =
-    '<div class="ew-descbar-inner">' +
-      '<span class="ew-descbar-name">' + (sp.name || '') + '</span>' +
-      badge + chips +
+    '<div class="ew-descbar-inner" style="--bc:' + look.catColor + '">' +
+      head + '<span class="ew-descbar-name">' + (sp.name || '') + '</span>' +
+      badges + shape + chips +
       (sp.desc ? '<span class="ew-descbar-desc">' + sp.desc + '</span>' : '') +
-      '<span class="ew-descbar-stats">' + details.join(' · ') + '</span>' +
+      '<span class="ew-descbar-stats">' + details.join(' · ') + costHtml + '</span>' +
       (statusLine ? '<span class="ew-descbar-status">⤷ ' + statusLine + '</span>' : '') +
     '</div>';
   el.classList.add('show');
@@ -11382,6 +11522,13 @@ function _hudHideCss() {
       font-size: 10px; letter-spacing: 0.08em; color: #7a7490; white-space: nowrap;
     }
     .ew-descbar-status { font-size: 10px; color: #c89ee0; white-space: nowrap; }
+    /* the buttons' own symbols on the bar (2026-10-20): the icon chip, the cost chips */
+    .ew-descbar-ico {
+      flex: none; display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 6px; font-size: 14px; line-height: 1; color: #0b0810;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.5), 0 0 8px rgba(0,0,0,0.4);
+    }
+    .ew-descbar-costs { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; vertical-align: middle; }
     @media (max-width: 760px) {
       .ew-descbar-inner { padding: 6px 26px; gap: 8px; }
       .ew-descbar-desc { max-width: 100%; }
@@ -13511,8 +13658,9 @@ const TEXT_PARTS = {
     ['zsign', 'Zodiac sign', '.ew-zodiac-blessed']],
   turns: [['loop', 'Round loop mark', '.ew-tc-loop']],
   press: [['ends', 'ENDS TURN words', '.ew-ap-ends']],
-  desc: [['name', 'Name', '.ew-descbar-name'], ['tags', 'Tags', '.ew-descbar-inner > span:not([class])'], ['desc', 'Description', '.ew-descbar-desc'],
-    ['stats', 'Range + costs', '.ew-descbar-stats']],
+  desc: [['name', 'Name', '.ew-descbar-name'], ['icon', 'Icon', '.ew-descbar-ico'], ['badges', 'Badges', '.hrlg-badges > span'],
+    ['tags', 'Tags', '.ew-descbar-inner > span:not([class])'], ['desc', 'Description', '.ew-descbar-desc'],
+    ['stats', 'Range + costs', '.ew-descbar-stats'], ['costs', 'Cost chips', '.ew-descbar-costs > span']],
   subtitle: [['who', 'Unit name', '.dlg-prompt strong, strong'], ['line', 'The line', '.dlg-prompt'], ['hint', 'Key hint', '.dlg-prompt-hint'], ['cursor', 'Cursor', '.dlg-prompt-cursor'],
     ['ally', 'Ally names', '.ct-ally'], ['enemy', 'Enemy names', '.ct-enemy'], ['spell', 'Spell names', '.ct-spell'], ['status', 'Status effects', '.ct-status'],
     ['dmg', 'Damage numbers', '.ct-dmg'], ['heal', 'Heal numbers', '.ct-heal'], ['ko', 'Knock-out words', '.ct-ko']],
@@ -13822,6 +13970,12 @@ const UX_DEF = {
      numbers"): the stat words / numbers / grade sizes (px; the defaults are the game's), the numbers on or off; qBuffAt
      = where a buff / debuff with a stat on the card shows (stat | part | both); qChipSize = the status + buff badges */
   qStatLblSize: 9, qStatNumSize: 12, qGradeSize: 16, qStatNum: true, qBuffAt: 'stat', qChipSize: 9,
+  /* b* = THE BUTTON ROWS (2026-10-20, mondo: "For the spell buttons it should let me choose what goes on the top row and
+     what goes on the bottom row of the button. And this should go for the spell menu as well as the quick action menu"):
+     bRows = 'part:row,…' in order (EW_BTN_PARTS; row top | bot | off, the icon also side = beside both rows); bFold = a
+     button whose top row holds only its name keeps one line. One setting for the Abilities list and every quick action
+     menu: btnSignal → window._ewBtnRows → HorologeBlade */
+  bRows: EW_BTN_ROWS_DEF, bFold: true,
   /* THE ARROWS + TILES (2026-10-18, mondo: "i dont really like how the arrows look for spell/move previews ... add a
      section for them and the tile highlights to the ui maker"): w* = the preview arrows (three-renderer.js reads
      window._ewArrowLook, bumped _ewArrowLookV: _arrowLook), t* = the tile highlights (window._ewTileLook, _ewTileLookV:
@@ -14209,6 +14363,14 @@ function sbSignal() {
   const X = uxOf(), L = { mode: !!X.sModeShow, cap: !!X.sCapShow, time: X.sTimePos, round: X.sRoundPos, pips: X.sPipsPos };
   const k = JSON.stringify(L); if (k === _sbSent) return;
   _sbSent = k; window._ewSbLook = L;
+  try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}   // repaint the HUD with it
+}
+/* THE BUTTON ROWS, re-published only when they change (HorologeBlade reads window._ewBtnRows each render) */
+let _btnSent = '';
+function btnSignal() {
+  const X = uxOf(), L = { rows: ewBtnRowsParse(X.bRows).map(r => r.join(':')).join(','), fold: !!X.bFold };
+  const k = JSON.stringify(L); if (k === _btnSent) return;
+  _btnSent = k; window._ewBtnRows = L;
   try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}   // repaint the HUD with it
 }
 function uxTidy() {
@@ -15036,6 +15198,30 @@ function qlistFit(X) {
     + fRange('Tallest', 'qListMax', 0, 1000, 10, +X.qListMax || 0, 'The quick action list is never taller than this; more rows scroll (0 = down to the bottom of the command menu)')
     + '<div class="uim-note">Shortest or Tallest set: the quick action list fits its rows between them. It hangs right under the unit info panel and grows down, so a long list only moves its bottom end; the panel never moves. Neither one runs past the bottom of the command menu. Both at 0 = a set Height decides (none set, the list fits its rows down to the bottom of the command menu).</div>';
 }
+/* THE BUTTON ROWS' form: one list per row (beside both rows, top, bottom, hidden); a part moves to another row with its
+   buttons, or earlier / later on its own row with ▲▼. The same form (the same db.ux keys) sits in Unit info panel,
+   Command panels and Quick action list, so the Abilities list and every quick action menu always change together */
+function btnRowsForm(X) {
+  const list = ewBtnRowsParse(X.bRows), lbl = { side: 'Beside', top: 'Top', bot: 'Bottom', off: 'Hide' };
+  let h = '';
+  [['side', 'Beside both rows'], ['top', 'Top row'], ['bot', 'Bottom row'], ['off', 'Hidden']].forEach(([g, title]) => {
+    const mine = list.filter(r => r[1] === g);
+    if (!mine.length && (g === 'side' || g === 'off')) return;
+    h += `<div class="uim-h">${title}</div>`;
+    if (!mine.length) h += '<div class="uim-note">Nothing on this row: the buttons keep one line.</div>';
+    mine.forEach(([id], i) => {
+      const P = EW_BTN_PARTS.find(p => p[0] === id) || [id, id, ''];
+      const to = ['side', 'top', 'bot', 'off'].filter(r => r !== g && ewBtnRowsOk(id, r));
+      h += `<div class="uim-dk-brow" title="${esc(P[2])}"><span>${esc(P[1])}</span>`
+        + to.map(r => `<button class="uim-btn" data-dk="brow" data-val="${id}:${r}" title="${r === 'off' ? 'Hide it' : 'Move it to ' + (r === 'side' ? 'beside both rows' : r === 'top' ? 'the top row' : 'the bottom row')}">${lbl[r]}</button>`).join('')
+        + `<button class="uim-btn" data-dk="bmove" data-val="${id}:-1"${i ? '' : ' disabled'} title="Earlier on its row">▲</button><button class="uim-btn" data-dk="bmove" data-val="${id}:1"${i < mine.length - 1 ? '' : ' disabled'} title="Later on its row">▼</button></div>`;
+    });
+  });
+  h += xCheck('One line when the top row is only the name', 'bFold', X.bFold)
+    + '<div class="uim-note">Every spell button in the Abilities list and in every quick action menu (with the attack and the combos) follows this one setting. A part a button does not have just leaves its space. Unticking One line puts every button on two rows.</div>'
+    + xReset('b', 'Reset the spell buttons');
+  return sec('brows', 'Spell buttons: top + bottom row', h, (X.bRows !== UX_DEF.bRows || !X.bFold) ? 'changed' : '');
+}
 function qpStatSizes(X) {
   return fRange('Stat name size (ATK, DEF …)', 'qStatLblSize', 6, 32, 1, +X.qStatLblSize)
     + fRange('Stat number size', 'qStatNumSize', 6, 40, 1, +X.qStatNumSize)
@@ -15115,6 +15301,7 @@ function qpForm() {
   h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 60, 1000, 10, +X.qListH, 'The quick action list takes this height (it hangs under the unit info panel, so only its bottom end moves; the panel stays where it is, and the list never runs past the room below the panel); other lists scroll past it. A Shortest or Tallest below wins over it.')
     + qlistFit(X) + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
     + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names. Untouched, the quick actions stop under the card and a long list scrolls. The Quick action list piece moves, sizes and dresses the quick list on its own.</div>');
+  h += btnRowsForm(X);
   return h + xReset('q', 'Reset the unit info panel');
 }
 function scoreForm() {
@@ -15609,7 +15796,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -15840,6 +16027,9 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-dk-row.qprow.on { border-color: #66ff8a; background: #12301c; }
 .uim-dk-qstat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 5px; margin: 2px 0; }
 .uim-dk-qstat > .uim-btn { padding: 1px 6px; }
+.uim-dk-brow { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+.uim-dk-brow > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uim-dk-brow > .uim-btn { padding: 1px 6px; }
 .uim-guide { position: fixed; z-index: 20006; background: #3dfff0; box-shadow: 0 0 3px #3dfff0; pointer-events: none; }
 .uim-guide.v { top: 0; bottom: 0; width: 1px; }
 .uim-guide.h { left: 0; right: 0; height: 1px; }
@@ -16971,6 +17161,7 @@ function pieceDetail() {
   if (P.clog) h += clogForm();
   if (P.qp) h += qpForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
+  if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS)
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   h += lookForm(P, L) + wordsForm(P);
   return h + '</div>';
@@ -17987,6 +18178,17 @@ function dockClick(e) {
       const X = uxOf(); let r = 0, bt = 0;
       qpParts(X).forEach(p => { const q = qpPartsOf(X)[p.id]; if (q && q.hide) return; if (p.id === 'panel' && !(q && +q.w > 0)) return; const sp = qpLiveSpot(X, p); r = Math.max(r, +sp.x + +sp.w); bt = Math.max(bt, +sp.y + +sp.h); });
       if (r > 0 && bt > 0) { snapLayout(true); db.ux.qFreeW = Math.round(r); db.ux.qFreeH = Math.round(bt); uxTidy(); touchLayout(); dockDetail(); }
+    }
+    else if (k === 'brow' || k === 'bmove') {   // THE BUTTON ROWS: a part to another row, or earlier / later on its own
+      const [id, w] = v.split(':'), L = ewBtnRowsParse(uxOf().bRows), i = L.findIndex(r => r[0] === id);
+      if (i >= 0) {
+        if (k === 'brow') { if (ewBtnRowsOk(id, w)) { L.splice(i, 1); L.push([id, w]); } }
+        else {
+          const row = L[i][1], same = L.map((r, j) => r[1] === row ? j : -1).filter(j => j >= 0), at = same.indexOf(i), j = same[at + (+w)];
+          if (j != null) { const t = L[i]; L[i] = L[j]; L[j] = t; }
+        }
+        snapLayout(true); db.ux = db.ux || {}; db.ux.bRows = L.map(r => r.join(':')).join(','); uxTidy(); touchLayout(); dockDetail();
+      }
     }
     else if (k === 'qsmove') {
       const [sk, dir] = v.split(':'), o = qpStatOrder(uxOf()), i = o.indexOf(sk), j = i + (+dir);

@@ -1140,10 +1140,10 @@ function classifySpellLocal(sp) { if (!sp) return 'utility'; if (typeof window.c
 function spellCategoryColor(cat) { return {passive:'rgba(176,84,148,0.7)',damage:'rgba(152,80,80,0.7)',heal:'rgba(90,148,86,0.7)',buff:'rgba(80,126,160,0.7)',debuff:'rgba(200,170,70,0.7)',utility:'rgba(140,100,180,0.65)'}[cat]||'rgba(140,100,180,0.65)'; }
 function spellCategoryLabel(cat) { return {passive:'PASSIVE',damage:'DAMAGE',heal:'HEAL',buff:'BUFF',debuff:'DEBUFF',utility:'UTILITY'}[cat]||'UTILITY'; }
 
-// Pokémon-style damage-kind mark (.ew-dmgicon in styles-hud.css): orange
-// spiked burst = physical (scales with ATK), purple ringed orb = magic
-// (scales with M ATK). Only rendered on spells that actually roll damage —
-// a bare mark on a pure buff/debuff would be the confusion it exists to fix.
+// Damage-kind mark (2026-10-20, mondo: the burst / orb marks went for the battle rows' icons): ⚔ = physical (scales
+// with ATK), three diamonds = magic (scales with M ATK), on the battle rows' red damage chip (.ew-dmgkind,
+// styles-hud.css; the icons are hud.js ewDmgKindIcon). Only rendered on spells that actually roll damage — a bare mark on
+// a pure buff/debuff would be the confusion it exists to fix.
 function pbDmgIcon(sp, size) {
   if (!sp) return null;
   // hudSpellShowsDamage = the UI "shows damage numbers" judgment (hud.js).
@@ -1155,12 +1155,13 @@ function pbDmgIcon(sp, size) {
     : !!(sp.dmg || (sp.hitDamages && sp.hitDamages.length) || sp.dotDamage || sp.turretDmg || sp.blastDmg);
   if (!dealsDmg) return null;
   const phys = sp.damageType === 'physical';
+  const box = Math.round(size * 1.4);
   return h('span', {
-    className: 'ew-dmgicon ' + (phys ? 'phys' : 'magic'),
-    style: { width: size, height: size, flexShrink: 0 },
+    className: 'ew-dmgkind ' + (phys ? 'phys' : 'magic'),
+    style: { width: box, height: box, fontSize: Math.max(7, size - 1) },
     title: phys ? 'Physical damage — scales with ATK, blocked by DEF'
                 : 'Magic damage — scales with M ATK, blocked by M DEF',
-  });
+  }, typeof ewDmgKindIcon === 'function' ? ewDmgKindIcon(phys ? 'phys' : 'magic') : (phys ? '⚔' : '✦'));
 }
 
 // Human-readable area-of-effect footprint from whatever shape fields a spell uses.
@@ -1178,7 +1179,7 @@ function pbAoeLabel(sp) {
 // The borrow window (Adaptable) is ~500 rows in one window. The picker
 // wears the five category TABS (the same buckets the blade colours by —
 // classifySpellLocal) and a filter row: PHYS / MAGIC (the damage kind the
-// ew-dmgicon shows, damage-dealers only), the six TYPE discs
+// ⚔ / three-diamond mark shows, damage-dealers only), the six TYPE discs
 // (sp.spellType — the type wheel's read), the cast SHAPE (self / single /
 // multi / aoe / line — derived from the row's kind + fields, one shape
 // per spell), the socket's TIERS (only when it spans more than one) and
@@ -1412,12 +1413,14 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
     slotNoNode(slotNums, slotLabel),
     h('span', { className:'pbx-cursor' }, '▶'),
     pool ? h('span', { className:'pbx-checkbox', style:{ borderColor: equipped ? cc.color : 'rgba(255,255,255,0.35)' } }, equipped ? h('span', { style:{ width:6, height:6, background:cc.color, display:'block' } }) : null) : null,
-    h('span', { className:'pbx-glyph' }, cc.icon),
+    // a damage row's glyph says its damage kind, as in battle: ⚔ physical, three diamonds magic (hud.js ewDmgKindIcon)
+    h('span', { className:'pbx-glyph', title: cat === 'damage' ? (sp.damageType === 'physical' ? 'Physical damage — scales with ATK, blocked by DEF' : 'Magic damage — scales with M ATK, blocked by M DEF') : undefined },
+      (cat === 'damage' && typeof ewDmgKindIcon === 'function') ? ewDmgKindIcon(sp.damageType === 'physical' ? 'phys' : 'magic') : cc.icon),
     h('div', { className:'pbx-main' },
       // row 1: name + TYPE badge own the line (matchup intel never clips)
       h('div', { className:'pbx-row1' },
         h('span', { className:'pbx-name' }, sp.name),
-        pbDmgIcon(sp, 10),
+        cat === 'damage' ? null : pbDmgIcon(sp, 10),   // a damage row's glyph already says physical / magic
         pbTypeShown(sp) ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 9) }, sp.spellType) : null,
         raceAbility ? h('span', { style:{ flexShrink:0, fontSize:8, letterSpacing:'0.14em', color:'#f2c468', border:'1px solid rgba(242,196,104,0.45)', background:'rgba(8,7,12,0.7)', padding:'1px 5px', whiteSpace:'nowrap' }, title:'Race ability — this vessel’s birthright' }, 'RACE') : null,
         (!pool && onClick) ? h('span', { className:'pbx-x', style:{ marginLeft:'auto' } }, '✕') : null),
