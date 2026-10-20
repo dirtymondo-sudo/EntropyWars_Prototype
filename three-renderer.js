@@ -47010,6 +47010,7 @@ const ThreeRenderer = (function () {
         });
         if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
         if (name) _evBaseTint(m, name);   // THE BASE TINT (2026-09-16): a borrowed sheet keeps its identity in the building too
+        if (name && m.map && _EMISSIVE_TERRAIN[name] && !opts.emissive) _emissiveTerrainMat(m, name, m.map);   // THE HOLO SIM (2026-10-20): a self-lit sheet (the holo plates) glows on a room's walls and ceiling as on the board
         if (!opts.noAo) m.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: the room-box AO (strength 0 outside a box room)
         return m;
     }
@@ -48200,13 +48201,13 @@ const ThreeRenderer = (function () {
                     wRuns = nx.filter(function (rn) { return rn[1] - rn[0] > 0.01; });
                 });
                 var cutRun = cuts.length ? wRuns : [null];
-                cutRun.forEach(function (rn) {
+                cutRun.forEach(function (rn) {   // `wallTile` (2026-10-20, the Holo Sim): metres per wall tile in a closed room (its plates are one battle square)
                     var L = rn ? rn[1] - rn[0] : len;
-                    G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, L / (TR || 3.2), H / (TR || 3.2), wallOpts), rn));
+                    G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, L / (S.wallTile || TR || 3.2), H / (S.wallTile || TR || 3.2), wallOpts), rn));
                     G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, L / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), rn));
                 });
-                cuts.forEach(function (c) { if (H - c.top > 0.02) G.add(slab(c.top, H, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), (H - c.top) / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); });
-                cuts.forEach(function (c) { if (c.bot > 0.02) { var bt = Math.min(c.bot, H); G.add(slab(0, bt, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), bt / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); if (bt > S.dadoH) G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, 2 * c.half / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), [c.at - c.half, c.at + c.half])); } });   // THE PASSAGES: the wall under a raised opening
+                cuts.forEach(function (c) { if (H - c.top > 0.02) G.add(slab(c.top, H, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (S.wallTile || TR || 3.2), (H - c.top) / (S.wallTile || TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); });
+                cuts.forEach(function (c) { if (c.bot > 0.02) { var bt = Math.min(c.bot, H); G.add(slab(0, bt, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (S.wallTile || TR || 3.2), bt / (S.wallTile || TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); if (bt > S.dadoH) G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, 2 * c.half / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), [c.at - c.half, c.at + c.half])); } });   // THE PASSAGES: the wall under a raised opening
                 var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
                 cutRun.forEach(function (rn) { G.add(slab(0, 0.08, 0.03, 0.05, trim, rn)); G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim, rn)); });
                 G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
@@ -48231,7 +48232,7 @@ const ThreeRenderer = (function () {
             }
             /* 'low': the field wall, a cap on it */
             var lowH = HQ_EDGE_LOW_H;
-            var lowMat = _hqMat(texWall, len / (TR || 3.2), lowH / (TR || 3.2), { shininess: 4, specular: 0x101010 });
+            var lowMat = _hqMat(texWall, len / (S.wallTile || TR || 3.2), lowH / (S.wallTile || TR || 3.2), { shininess: 4, specular: 0x101010 });
             runs.forEach(function (rn) {
                 G.add(slab(0, lowH, 0.0, 0.42, lowMat, rn));
                 G.add(slab(lowH, lowH + 0.07, 0.0, 0.5, edgeTrim, rn));
@@ -49127,6 +49128,9 @@ const ThreeRenderer = (function () {
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
+        /* THE HOLO SIM (2026-10-20): a self-lit floor sheet (the holo plates, _EMISSIVE_TERRAIN) — the emissive is multiplied by the
+           sheet's own texel below, so only the plates' rims glow and the dark fill stays dark, as on the old board */
+        if (_EMISSIVE_TERRAIN[info.floor]) m.emissive = new THREE.Color(_EMISSIVE_TERRAIN[info.floor].color).multiplyScalar(_EMISSIVE_TERRAIN[info.floor].intensity);
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
@@ -51167,7 +51171,7 @@ const ThreeRenderer = (function () {
         /* THE HALLS (D.U.M.B., 2026-09-17): a keyed wall material is made ONCE per sheet — a floor plan's traced walls (info.planWalls) are hundreds of rows in one sheet */
         var keyedMats = {};
         var keyedMat = function (key) {
-            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); keyedMats[key] = km; }
+            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); if (km.map) _emissiveTerrainMat(km, key, km.map); keyedMats[key] = km; }   // THE HOLO SIM (2026-10-20): a self-lit sheet's rims glow on a wall row (the projected blocks)
             return keyedMats[key];
         };
         var glassMat = null;

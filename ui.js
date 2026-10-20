@@ -16583,8 +16583,21 @@
             opts = opts || {};
             const L = (typeof tutorialLesson === 'function') ? tutorialLesson(lessonId) : null;
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
-            if (_tut.booting) return false;
+            if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
+               _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
+            const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
+            if (_ta && !_ta.ready && !_ta.failed && !opts._arenaWarm) {
+                const p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(L.map, true) : null;
+                if (p) {
+                    _tut.arenaWait = true;
+                    const go = () => { _tut.arenaWait = false; window._tutorialLaunch(lessonId, Object.assign({}, opts, { _arenaWarm: true })); };
+                    p.then(go, go);
+                    return true;
+                }
+                try { if (!_ta.ready) window.hqArenaUpgrade(L.map, { compile: true }); } catch (e) { console.warn('[Tutorial] arena upgrade failed', L.map, e); }
+            }
             if (_tut.active) _tutStopMatchSide();
             const n1 = L.board.p1.length, n2 = L.board.p2.length;
             _tut.saved = _tut.saved || { introCine: window.EW_DISABLE_INTRO_CINE, fog: state.fogOfWar };
