@@ -34605,9 +34605,17 @@
                     : (!_hitPhys ? 'hit' : (_hitRange > 1 ? 'hitShot' : (finalDamage < 30 ? 'hitSlap' : 'hit')));
                 flashUnit(target.id, opts.flashColor || (_guardBroke ? 'guardBreak' : (_heavyFlinch ? 'hitHeavy' : _lightKind)));
                 if (target.hp <= 0) {
+                    /* THE GORE (2026-10-20): every other death picks one of the three
+                       clips that end on the floor — a shot or blast from range mostly
+                       throws the body flat (knock), the rest fall at random. Visual
+                       only; the pick rides state-sync like the launch. */
                     state._deathStyleById = state._deathStyleById || {};
                     if (_hitPhys && _hitRange <= 1 && (_heavyFlinch || finalDamage >= 40)) state._deathStyleById[target.id] = 'launch';
-                    else delete state._deathStyleById[target.id];
+                    else {
+                        const _dr = Math.random();
+                        const _dStyles = (_hitPhys && _hitRange > 1) ? ['knock', 'knock', 'collapse', 'dead'] : ['knock', 'collapse', 'dead'];
+                        state._deathStyleById[target.id] = _dStyles[Math.floor(_dr * _dStyles.length)];
+                    }
                 }
 
                 // Damage number style: crit hits pop gold, counter/follow-up
@@ -34737,10 +34745,19 @@
                         : _bloodIsCrit ? 'critical'
                         : _bloodIsResist ? 'resist'
                         : 'normal';
+                    /* THE GORE: the spray flies away from the attacker; a kill pumps
+                       from the dying body's own neck (primitives only: the relay) */
+                    const _bloodSrc = (sourceUnit && sourceUnit.id !== target.id) ? sourceUnit : null;
                     _vfxBlood(target.x, target.y, _bloodTier, {
                         damage: finalDamage,
-                        hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0
+                        hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0,
+                        fromX: _bloodSrc ? _bloodSrc.x : null,
+                        fromY: _bloodSrc ? _bloodSrc.y : null,
+                        unitId: target.id
                     });
+                } else if (target.hp <= 0) {
+                    /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
+                    _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
                 addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 

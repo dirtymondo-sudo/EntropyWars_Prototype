@@ -5,6 +5,10 @@ const ThreeVFX = (function () {
     var MAX_WORLD_QUADS = 256;
     var MAX_QUAD_BILLBOARDS = 256;
     var MAX_BLOOD_GLOBS = 64;
+    /* THE GORE (2026-10-20): batched globs draw through four InstancedMeshes
+       (one per lumpy variant), so the pool can be big without a draw call per
+       drop — a kill puts a couple of hundred wet globs in the air. */
+    var MAX_BLOOD_GLOBS_BATCHED = 256;
 
     var _scene = null;
     /* THE STAGE (PARTY_BUILDER_PLAN §5.3, 2026-09-09): the pools can be
@@ -178,6 +182,7 @@ const ThreeVFX = (function () {
         'blood-drop':        { r: 0.78, g: 0.05, b: 0.05, blend: 'nrm' },
         'blood-streak':      { r: 0.78, g: 0.05, b: 0.05, blend: 'nrm' },
         'blood-pool':        { r: 0.40, g: 0.02, b: 0.02, blend: 'nrm' },
+        'blood-spatter':     { r: 1.0,  g: 1.0,  b: 1.0,  blend: 'nrm' },   // THE GORE: the shaped decal carries its own colour
         'bubble':            { r: 0.55, g: 0.78, b: 1.00, blend: 'nrm' },
         'shadow-wisp':       { r: 0.24, g: 0.16, b: 0.31, blend: 'nrm' },
         'snowflake':         { r: 0.90, g: 0.96, b: 1.00, blend: 'nrm' },
@@ -1267,6 +1272,41 @@ const ThreeVFX = (function () {
                       [[0, 'rgba(140,14,14,0.9)'], [1, 'rgba(90,8,8,0)']]);
             }
         }},
+        /* THE GORE (2026-10-20): a directional impact spatter pointing +x —
+           the wet body where the spray hit, spines thrown forward with a bead
+           on each tip, satellite drops stretched along the throw. Crisp
+           edges: dried blood on a floor has hard rims, not a soft glow. */
+        'blood-spatter': { sz: 192, draw: function (ctx, S) {
+            var rnd = _sRand(0x5BA7), cy = S / 2, x0 = S * 0.14, i;
+            var body = 'rgba(118,8,8,0.96)', rim = 'rgba(70,3,3,0.95)';
+            function drop(x, y, rx, ry, col) {
+                ctx.fillStyle = col;
+                ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 6.2832); ctx.fill();
+            }
+            /* spines: tapered streaks fanning forward, a bead at each tip */
+            for (i = 0; i < 9; i++) {
+                var a = (rnd() - 0.5) * 0.9, len = S * (0.30 + rnd() * 0.42), w = S * (0.012 + rnd() * 0.018);
+                var sx = x0 + S * 0.16, ex = sx + Math.cos(a) * len, ey = cy + Math.sin(a) * len;
+                ctx.fillStyle = body;
+                ctx.beginPath();
+                ctx.moveTo(sx, cy - w * 2.2); ctx.lineTo(ex, ey); ctx.lineTo(sx, cy + w * 2.2); ctx.closePath(); ctx.fill();
+                drop(ex, ey, w * 2.2, w * 1.7, body);
+            }
+            /* satellite drops thrown along the axis, smaller the further they flew */
+            for (i = 0; i < 22; i++) {
+                var f = rnd(), dx = x0 + S * (0.3 + f * 0.62), dy = cy + (rnd() - 0.5) * S * (0.12 + f * 0.5);
+                var r = S * (0.026 - f * 0.018 + rnd() * 0.008);
+                drop(dx, dy, r * 1.6, r, body);
+            }
+            /* the wet body: an egg pointing the way it was thrown, darker rim */
+            drop(x0 + S * 0.17, cy, S * 0.19, S * 0.135, rim);
+            drop(x0 + S * 0.17, cy, S * 0.175, S * 0.12, body);
+            for (i = 0; i < 6; i++) {
+                var la = rnd() * 6.2832;
+                drop(x0 + S * 0.17 + Math.cos(la) * S * 0.15, cy + Math.sin(la) * S * 0.1, S * (0.04 + rnd() * 0.03), S * (0.03 + rnd() * 0.025), body);
+            }
+            _blob(ctx, x0 + S * 0.12, cy - S * 0.04, S * 0.07, [[0, 'rgba(215,70,60,0.45)'], [1, 'rgba(150,20,20,0)']]);
+        }},
         'blood-pool': { sz: 160, draw: function (ctx, S) {
             var c = S / 2, rnd = _sRand(0x9001);
             ctx.fillStyle = 'rgba(90,6,6,0.94)';
@@ -1835,8 +1875,8 @@ const ThreeVFX = (function () {
             if (cx !== 0.5) { var k = -(cx - 0.5); e[12] += e[0] * k; e[13] += e[1] * k; e[14] += e[2] * k; }
         } else if (p.poolType === 'world') {
             var sw, sh;
-            if (p.w0 || p.h0) { sw = _lerp(p.w0, p.w1, t); sh = _lerp(p.h0, p.h1, t); }
-            else { sw = _lerp(p.size0, p.size1, t); sh = sw; }
+            if (p.w0 || p.h0) { var tz = _szT(p, t); sw = _lerp(p.w0, p.w1, tz); sh = _lerp(p.h0, p.h1, tz); }
+            else { sw = _lerp(p.size0, p.size1, _szT(p, t)); sh = sw; }
             var rz = (p._spriteRot || p._spriteSpin) ? (p._spriteRot + p._spriteSpin * (p.life / 1000)) * Math.PI / 180 : 0;
             _tmpEuler.set(-Math.PI / 2, 0, rz, 'XYZ');
             _bQ.setFromEuler(_tmpEuler);
@@ -1896,7 +1936,7 @@ const ThreeVFX = (function () {
                 var p = _particles[i];
                 if (!p.alive || p.poolType === 'glob' || !p.poolType) continue;
                 var t = Math.min(1, p.life / p.ml);
-                var op = _lerp(p.opacity0, p.opacity1, t);
+                var op = _opAt(p, t);
                 if (!(op > 0.001)) continue;
                 var type = p.poolType === 'sprite' ? 's' : (p.poolType === 'world' ? 'w' : 'q');
                 g = _batchGroup(type, p._blend === 'add', _getSpriteTexture(p.sprite));
@@ -1937,6 +1977,7 @@ const ThreeVFX = (function () {
             shown++;
             g.list.length = 0;
         }
+        shown += _globFlush();
         _batchShown = shown;
         _batchStat.live = live; _batchStat.draws = shown;
     }
@@ -2113,8 +2154,104 @@ const ThreeVFX = (function () {
        Four shared lumpy icosahedron variants keep the pool cheap. */
     var _globGeos = [];
     var _GLOB_COLOR_DEFAULT = 0xb00d0d;
+    var _gCol = null;
+    /* THE GORE (2026-10-20): batched, the globs are four InstancedMeshes (one
+       per lumpy variant) on the same glossy material, each instance carrying
+       its colour (instanceColor) and opacity (aEwOp, the particles' hook) —
+       a few hundred drops cost four draws. Built on the first flush. */
+    var _globBatch = null;
+    var _gQ = null, _gE = null, _gS = null, _gP = null, _gM = null, _gV = null, _gUp = null;
+
+    function _globBatchBuild() {
+        _globBatch = [];
+        var cap = MAX_BLOOD_GLOBS_BATCHED;
+        for (var v = 0; v < _globGeos.length; v++) {
+            var src = _globGeos[v];
+            var geo = new THREE.BufferGeometry();
+            if (src.index) geo.setIndex(src.index);
+            geo.setAttribute('position', src.attributes.position);
+            geo.setAttribute('normal', src.attributes.normal);
+            var op = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
+            op.setUsage(THREE.DynamicDrawUsage);
+            geo.setAttribute('aEwOp', op);
+            var mat = new THREE.MeshStandardMaterial({
+                color: 0xffffff, roughness: 0.22, metalness: 0.0,
+                emissive: 0x300303, transparent: true, opacity: 1,
+            });
+            mat.onBeforeCompile = _batchHook;
+            mat._ewNode = { k: 'fxop' };
+            var mesh = new THREE.InstancedMesh(geo, mat, cap);
+            mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+            mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+            mesh.count = 0;
+            mesh.visible = false;
+            mesh.frustumCulled = false;
+            mesh.renderOrder = 99;
+            mesh.raycast = function () {};
+            mesh.name = 'fxGlobs:' + v;
+            mesh._ew_fxPool = true;
+            if (_scene) _scene.add(mesh);
+            _globBatch.push({ mesh: mesh, op: op, n: 0 });
+        }
+        _gQ = new THREE.Quaternion(); _gE = new THREE.Euler(); _gS = new THREE.Vector3();
+        _gP = new THREE.Vector3(); _gM = new THREE.Matrix4(); _gV = new THREE.Vector3(); _gUp = new THREE.Vector3(0, 1, 0);
+    }
+
+    /* every live glob → its variant's next instance (the pose _writeGlobMesh
+       gave the plain mesh: tumbling, or stretched along a fast velocity) */
+    function _globFlush() {
+        if (!_globBatch) { if (!_aliveCount) return 0; _globBatchBuild(); }
+        var i, b;
+        for (i = 0; i < _globBatch.length; i++) _globBatch[i].n = 0;
+        for (i = 0; i < _particles.length; i++) {
+            var p = _particles[i];
+            if (!p.alive || p.poolType !== 'glob') continue;
+            var t = Math.min(1, p.life / p.ml);
+            var op = _opAt(p, t);
+            if (!(op > 0.001)) continue;
+            b = _globBatch[p._gv | 0] || _globBatch[0];
+            var k = b.n;
+            if (k >= MAX_BLOOD_GLOBS_BATCHED) continue;
+            var w = _vfxToWorld(p.x, p.y, p.z);
+            _gP.set(w.x, w.y, w.z);
+            var sz = _lerp(p.size0, p.size1, t);
+            var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
+            if (p._stretch && speed > 50) {
+                var st = Math.min(2.6, 1 + speed / 280);
+                _gV.set(p.vx / speed, p.vz / speed, p.vy / speed);
+                _gQ.setFromUnitVectors(_gUp, _gV);
+                var sq = 1 / Math.sqrt(st);
+                _gS.set(sz * p._gsx * sq, sz * p._gsy * st, sz * p._gsz * sq);
+            } else {
+                var lt = p.life / 1000;
+                _gQ.setFromEuler(_gE.set(p._rot0x + p._spinx * lt, p._rot0y + p._spiny * lt, p._rot0z + p._spinz * lt));
+                _gS.set(sz * p._gsx, sz * p._gsy, sz * p._gsz);
+            }
+            _gM.compose(_gP, _gQ, _gS);
+            _gM.toArray(b.mesh.instanceMatrix.array, k * 16);
+            var c = b.mesh.instanceColor.array;
+            c[k * 3] = p._gr; c[k * 3 + 1] = p._gg; c[k * 3 + 2] = p._gb;
+            b.op.array[k] = op;
+            b.n = k + 1;
+        }
+        var shown = 0;
+        for (i = 0; i < _globBatch.length; i++) {
+            b = _globBatch[i];
+            var m = b.mesh, n = b.n;
+            if (!n) { if (m.visible) { m.visible = false; m.count = 0; } continue; }
+            m.count = n;
+            m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0, n * 16); m.instanceMatrix.needsUpdate = true;
+            m.instanceColor.clearUpdateRanges(); m.instanceColor.addUpdateRange(0, n * 3); m.instanceColor.needsUpdate = true;
+            b.op.clearUpdateRanges(); b.op.addUpdateRange(0, n); b.op.needsUpdate = true;
+            m.visible = true;
+            shown++;
+        }
+        return shown;
+    }
 
     function _buildGlobGeos() {
+        _globGeos = [];
         for (var v = 0; v < 4; v++) {
             var geo = new THREE.IcosahedronGeometry(0.5, 1);
             var pos = geo.attributes.position;
@@ -2130,6 +2267,19 @@ const ThreeVFX = (function () {
             geo.computeVertexNormals();
             _globGeos.push(geo);
         }
+    }
+
+    /* a world-space point (THREE.Vector3) → the effects' board coordinates
+       (the inverse of _vfxToWorld, through the pools' parent) — THE GORE reads
+       a dying body's bones with it. null before init. */
+    function worldToVfx(v) {
+        if (!_scene || !v) return null;
+        var cfg = (typeof CONFIG !== 'undefined') ? CONFIG : { boardPadding: 2 };
+        var pad = cfg.boardPadding || 2;
+        var l = v.clone();
+        _scene.updateWorldMatrix(true, false);
+        _scene.worldToLocal(l);
+        return { x: l.x + pad, y: l.z + pad, z: l.y - _SLAB_SURFACE_OFFSET };
     }
 
     function _createGlobPool(count) {
@@ -2170,7 +2320,7 @@ const ThreeVFX = (function () {
             var q = _particles[j];
             if (!q.alive || (type && q.poolType !== type)) continue;
             if (q._keep || q._zone || q.onComplete || q.descent) continue;
-            var f = q.life / q.ml;
+            var f = q.life / q.ml + (q._decor ? 1 : 0);   // THE GORE: a lingering stain goes before any live spray
             if (f > bestF) { bestF = f; best = q; }
         }
         return best;
@@ -2240,10 +2390,12 @@ const ThreeVFX = (function () {
             _quadMeshPool  = _createMeshPool(MAX_QUAD_BILLBOARDS, 102);
         }
         _buildGlobGeos();
-        _globPool = _createGlobPool(MAX_BLOOD_GLOBS);
+        _globPool = _batched ? _createBatchSlots(MAX_BLOOD_GLOBS_BATCHED) : _createGlobPool(MAX_BLOOD_GLOBS);
         _buildFxLights();
 
-        for (var i = 0; i < MAX_PARTICLES; i++) {
+        /* + the world quads: the long blood stains (THE GORE) live in the world
+           pool and must not starve the spray of particle records */
+        for (var i = 0; i < MAX_PARTICLES + MAX_WORLD_QUADS; i++) {
             _particles.push({
                 alive: false,
                 poolType: null,
@@ -2319,6 +2471,7 @@ const ThreeVFX = (function () {
         p._tint = null;
         p._seek = null; p._orbit = null; p._wander = null; p._stretchVel = 0;
         p._velSpark = false; p._keep = false;
+        p._floorAt = null; p._onLand = null; p._opHold = 0; p._decor = false; p._szPow = 0;
         p._spriteRot = 0; p._spriteSpin = 0;
         p.poolType = null; p.slotIdx = -1;
         _aliveCount = Math.max(0, _aliveCount - 1);
@@ -2453,8 +2606,16 @@ const ThreeVFX = (function () {
         else if (poolType === 'glob') {
             var gEntry = _globPool[slotIdx];
             gEntry.inUse = true;
-            gEntry.mesh.geometry = _globGeos[Math.floor(Math.random() * _globGeos.length)];
-            gEntry.material.color.setHex(opts.globColor != null ? opts.globColor : _GLOB_COLOR_DEFAULT);
+            var gHex = opts.globColor != null ? opts.globColor : _GLOB_COLOR_DEFAULT;
+            if (_batched) {
+                p._gv = Math.floor(Math.random() * _globGeos.length);
+                if (!_gCol) _gCol = new THREE.Color();
+                _gCol.setHex(gHex);
+                p._gr = _gCol.r; p._gg = _gCol.g; p._gb = _gCol.b;
+            } else {
+                gEntry.mesh.geometry = _globGeos[Math.floor(Math.random() * _globGeos.length)];
+                gEntry.material.color.setHex(gHex);
+            }
             p._gsx = _rn(0.7, 1.35); p._gsy = _rn(0.7, 1.35); p._gsz = _rn(0.7, 1.35);
             p._rot0x = _rn(0, Math.PI * 2); p._rot0y = _rn(0, Math.PI * 2); p._rot0z = _rn(0, Math.PI * 2);
             p._spinx = _rn(-8, 8); p._spiny = _rn(-8, 8); p._spinz = _rn(-8, 8);
@@ -2594,6 +2755,15 @@ const ThreeVFX = (function () {
                       !opts.stretchVel && opts.spriteRot == null && opts.spriteSpin == null &&
                       !opts.seek && !opts.orbit && !opts.descent;
         p._keep = !!opts.keep;
+        /* THE GORE: floorAt(x, y) → the floor height under a falling particle
+           (null off the board); when it reaches it, onLand(x, y, z, p) runs
+           and the particle ends — a drop that hits the ground leaves its mark
+           where it fell. decor: recycled first when a pool is full. */
+        p._floorAt = (typeof opts.floorAt === 'function') ? opts.floorAt : null;
+        p._onLand = (typeof opts.onLand === 'function') ? opts.onLand : null;
+        p._opHold = opts.opHold > 0 && opts.opHold < 1 ? opts.opHold : 0;
+        p._decor = !!opts.decor;
+        p._szPow = opts.sizeEaseOut > 0 ? opts.sizeEaseOut : 0;
 
         p.onComplete = opts.onComplete || null;
         p._trackHeading = !!opts.trackHeading;
@@ -2627,7 +2797,7 @@ const ThreeVFX = (function () {
     }
 
     function _setupMaterial(p) {
-        if (_batched && p.poolType !== 'glob') return;   // the batch reads the sprite's texture + blend at flush
+        if (_batched) return;   // the batch reads the sprite's texture + blend at flush (globs: their colour rides the instance)
         var tex = _getSpriteTexture(p.sprite);
         var isAdd = (p._blend === 'add');
         var blending = isAdd ? THREE.AdditiveBlending : THREE.NormalBlending;
@@ -2657,9 +2827,20 @@ const ThreeVFX = (function () {
     }
 
     function _lerp(a, b, t) { return a + (b - a) * t; }
+    /* THE GORE: opts.opHold (0..1 of the life) holds opacity0 and fades only
+       after it, so a blood stain lies on the floor at full strength and goes
+       at the end instead of thinning from the first frame. */
+    function _opAt(p, t) {
+        var h = p._opHold;
+        if (h > 0) return t <= h ? p.opacity0 : _lerp(p.opacity0, p.opacity1, (t - h) / (1 - h));
+        return _lerp(p.opacity0, p.opacity1, t);
+    }
+    /* opts.sizeEaseOut (an exponent): a world decal grows fast then slows —
+       a pool of blood spreading out under a body */
+    function _szT(p, t) { return p._szPow > 0 ? 1 - Math.pow(1 - t, p._szPow) : t; }
 
     function _writeParticle(p) {
-        if (_batched && p.poolType !== 'glob') return;   // posed by _batchFlush
+        if (_batched) return;   // posed by _batchFlush (the globs too, THE GORE)
         if (p.poolType === 'sprite') _writeSprite(p);
         else if (p.poolType === 'world') _writeWorldMesh(p);
         else if (p.poolType === 'quad') _writeQuadMesh(p);
@@ -2694,7 +2875,7 @@ const ThreeVFX = (function () {
             mesh.scale.set(sz * p._gsx, sz * p._gsy, sz * p._gsz);
         }
 
-        var op = _lerp(p.opacity0, p.opacity1, t);
+        var op = _opAt(p, t);
         entry.material.opacity = op;
         mesh.visible = (op > 0.001);
     }
@@ -2719,7 +2900,7 @@ const ThreeVFX = (function () {
             }
         }
 
-        var op = _lerp(p.opacity0, p.opacity1, t);
+        var op = _opAt(p, t);
         entry.material.opacity = op;
 
         var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
@@ -2766,10 +2947,10 @@ const ThreeVFX = (function () {
 
         var sw, sh;
         if (p.w0 || p.h0) {
-            sw = _lerp(p.w0, p.w1, t);
-            sh = _lerp(p.h0, p.h1, t);
+            sw = _lerp(p.w0, p.w1, _szT(p, t));
+            sh = _lerp(p.h0, p.h1, _szT(p, t));
         } else {
-            sw = _lerp(p.size0, p.size1, t);
+            sw = _lerp(p.size0, p.size1, _szT(p, t));
             sh = sw;
         }
 
@@ -2784,7 +2965,7 @@ const ThreeVFX = (function () {
 
         mesh.scale.set(sw, sh, 1);
 
-        var op = _lerp(p.opacity0, p.opacity1, t);
+        var op = _opAt(p, t);
         entry.material.opacity = op;
 
         var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
@@ -2849,7 +3030,7 @@ const ThreeVFX = (function () {
 
         mesh.scale.set(cw, ch, 1);
 
-        var op = _lerp(p.opacity0, p.opacity1, t);
+        var op = _opAt(p, t);
         entry.material.opacity = op;
 
         var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
@@ -2956,6 +3137,15 @@ const ThreeVFX = (function () {
                 p.vx *= dm; p.vy *= dm; p.vz *= dm;
                 p.vz -= p.gravity * dt;
                 p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+                if (p._floorAt && p.vz < 0) {
+                    var fz = p._floorAt(p.x, p.y);
+                    if (fz != null && p.z <= fz) {
+                        var lcb = p._onLand, lx = p.x, ly = p.y, lsz = _lerp(p.size0, p.size1, t);
+                        _release(p);
+                        if (lcb) try { lcb(lx, ly, fz, lsz); } catch (e) {}
+                        continue;
+                    }
+                }
             }
 
             if (p._trackHeading && (p.vx !== 0 || p.vy !== 0 || p.vz !== 0)) {
@@ -3647,7 +3837,8 @@ const ThreeVFX = (function () {
         for (i = 0; i < _quadMeshPool.length; i++) if (_quadMeshPool[i].mesh) out.push(_quadMeshPool[i].mesh);
         for (i = 0; i < _batchList.length; i++) out.push(_batchList[i].mesh);
         if (_qk.root) out.push(_qk.root);
-        for (i = 0; i < _globPool.length; i++) out.push(_globPool[i].mesh);
+        for (i = 0; i < _globPool.length; i++) if (_globPool[i].mesh) out.push(_globPool[i].mesh);
+        if (_globBatch) for (i = 0; i < _globBatch.length; i++) out.push(_globBatch[i].mesh);
         for (i = 0; i < _rainDropMeshes.length; i++) out.push(_rainDropMeshes[i].mesh);
         for (i = 0; i < _rainSplashMeshes.length; i++) out.push(_rainSplashMeshes[i].mesh);
         if (_ambMotes && _ambMotes.points) out.push(_ambMotes.points);
@@ -3743,6 +3934,16 @@ const ThreeVFX = (function () {
             if (bm.dispose) bm.dispose();
         }
         _batchList = []; _batchGroups = {}; _batchShown = 0; _batched = false;
+        if (_globBatch) {
+            for (var gb = 0; gb < _globBatch.length; gb++) {
+                var gm = _globBatch[gb].mesh;
+                if (gm.parent) gm.parent.remove(gm);
+                gm.material.dispose();
+                gm.geometry.dispose();
+                if (gm.dispose) gm.dispose();
+            }
+            _globBatch = null;
+        }
         _qkStopAll();
         if (_qk.root && _qk.root.parent) _qk.root.parent.remove(_qk.root);
         _qk.root = null; _qk.br = null;
@@ -3843,7 +4044,8 @@ const ThreeVFX = (function () {
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, flashLight: flashLight,
-             fxStats: fxStats, quarksBurst: quarksBurst, _diag: _diag, _getScene: _getScene };
+             fxStats: fxStats, quarksBurst: quarksBurst, _diag: _diag, _getScene: _getScene,
+             worldToVfx: worldToVfx };
 })();
 
 window.ThreeVFX = ThreeVFX;

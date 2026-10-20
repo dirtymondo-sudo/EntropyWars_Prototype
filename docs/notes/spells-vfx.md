@@ -1569,3 +1569,31 @@ flyer 2 over the ground one tile out: 45° up (browser probe), now 19° = caster
 Fix: battle.js passes `ax/ay` (the aimed body's tile; online.js relays them) and `_fireBeamMapped` takes the aim
 height from that body; `_worldTorsoAtLevel`'s no-body fallback applies the same hover sink (1.35 floor, −0.65) to a
 level in the air. Covers every 3D-line beam (spine aims were already body-to-body) and Fractal Stitch's air end point.
+
+## THE GORE — blood + four ways to die (2026-10-20)
+mondo: "make it more realistic and brutal and over the top like a mortal kombat finisher. and when a character dies
+there should be lots of blood. Is there more than one death animation that can be used to spice things up?"
+- DEATH CLIPS: the five library GLBs hold four clips that end on the floor: MAL1 `Dead` (the old `death` slot),
+  MAL3 `BeHit_FlyUp` (`hitLaunch`, already the heavy close-up kill), UAL2 `Hit_Knockback` (new slot `deathKnock`,
+  flung flat on the back, ts 0.75) and UAL1 `Death01` (new slot `deathCollapse`, knees go, ts 1.3). Both new slots
+  are `defer` (baked after load); an unbaked slot falls back to Dead. MAL3 `Gunshot_Reaction` / `Slap_Reaction` and
+  MAL1 `Fall3` do not end down (or start in the air) — not deaths. The per-character Meshy `Knock_Down` spares only
+  play on their own rig, so they stay unwired.
+- The pick: battle.js lethal hit → `state._deathStyleById[id]` = 'launch' (physical, adjacent, heavy, as before),
+  else random 'knock' / 'collapse' / 'dead' (ranged physical weights knock ×2). Rides state-sync + the death-cam
+  relay. three-renderer.js `_deathSlotFor(entry, style)` maps it (the 'death' state, startDeathTween's land time).
+  `_wireSlot` treats every slot starting with 'death' as one-shot.
+- BLOOD (three-vfx-effects.js `fireBlood`, rewritten): battle.js passes `fromX/fromY` (attacker tile) + `unitId`.
+  Exit spray thrown AWAY from the attacker (±43°), gouts, a little back-spatter at the attacker, mist, chunks on
+  crits, a splat (+ directional `blood-spatter` marks on big hits) under the body. Every glob carries
+  `floorAt/onLand` (three-vfx.js): it ends where it hits the floor (tileZ per tile, cached per effect; off-board
+  never lands) and leaves a splat there sized by the drop — the floor keeps the spray pattern 9 s (kills 15 s),
+  `opHold` keeps it full strength till the last quarter. Kill = the finisher: burst + gouts + dark gibs, a 4-wave
+  geyser from the head, an ARTERIAL PUMP (16 beats × 150 ms, weakening) read off the dying rig's own neck bone
+  (`ThreeRenderer.unitBoneWorld` → `ThreeVFX.worldToVfx`; no rig = the tile, the wound sinking), spatter thrown
+  along the blow, and a pool spreading under the hips (`sizeEaseOut`) once the body is down. A lethal DoT tick
+  gets the kill blood too (no aim). EW_PERF_LOW thins counts ×0.55.
+- PERF: batched mode draws the globs through 4 InstancedMeshes (one per lumpy variant, `_globFlush` in
+  `_batchFlush`, instanceColor + the aEwOp opacity hook, `_ewNode fxop` for WebGPU) — pool 256 (was 64 plain
+  meshes = 64 draws). EW_NO_FX_BATCH keeps the old 64 meshes. Particle records = 512 + 256 (the stains live in the
+  world pool); stains are `decor`: a full pool recycles them first.
