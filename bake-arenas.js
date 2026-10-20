@@ -129,13 +129,27 @@ function judge(R, strict) {
     return { cover, out, imbalance: Math.abs(top - bottom), strict };
 }
 
+/* THE BOARD IS THE ARENA (2026-10-20, THE CHESS COURT): a terrain room with a `board` feature at least S squares a side on the
+   lattice fights ON it — only the windows inside the board are scanned (the Looking-Glass garden's 12 × 12 chessboard; a cover-rich
+   window half on the tea lawn outscored it). Null = no such board: every window. */
+function boardWindows(roomId, Lt) {
+    const r = ROOMS[roomId];
+    if (!r || !r.terrain || Lt.kind !== 'terrain') return null;
+    const b = (r.terrain.features || []).filter(f => f && f.k === 'board').map(f => sb.hqTerrainBoard(f)).find(b => b.n >= S && Math.abs(b.C - Lt.C) < 1e-6);
+    if (!b) return null;
+    const bx = Math.round((b.x0 - Lt.x0) / Lt.C), bz = Math.round((b.z0 - Lt.z0) / Lt.C);
+    if (Math.abs(bx * Lt.C + Lt.x0 - b.x0) > 0.01 || Math.abs(bz * Lt.C + Lt.z0 - b.z0) > 0.01) return null;   // a board off the lattice: no rule
+    return { x0: bx, z0: bz, x1: bx + b.n - S, z1: bz + b.n - S };
+}
+
 function scanRoom(roomId, strict) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
     const Lt = sb.hqFieldLattice(roomId);
     if (!Lt || Lt.w < S || Lt.h < S) return null;
-    const mk = marker(roomId), feat = features(Lt);
+    const mk = marker(roomId), feat = features(Lt), BW = boardWindows(roomId, Lt);
     let best = null, clear = 0;
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
+        if (BW && (ox < BW.x0 || ox > BW.x1 || oz < BW.z0 || oz > BW.z1)) continue;
         let off = 0;
         if (strict) {
             for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }

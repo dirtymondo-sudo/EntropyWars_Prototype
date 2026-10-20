@@ -33212,6 +33212,25 @@ const ThreeRenderer = (function () {
             return g;
         };
     }
+    /* THE LOOKING-GLASS ARENA (2026-10-20): a chess piece standing in a ROOM (data.js HQ_TREE_KINDS chess_* — the terrain room plants
+       it as a tree: the walker bumps it, THE FIELD's raster makes its square solid cover). The board's own lathe (_hzChessPiece) at
+       room scale on a square marble plinth one square wide, white or black marble (the plinth the other colour, as on the Δ). hM =
+       metres tall, the plinth included; the base on y 0, the knight's head toward +Z. Materials shared per colour (one draw state). */
+    var _hqChessMats = {};
+    function _hqChessStatue(kind, dark, hM, U) {
+        var piece = _CHESS_PROFILES[kind] ? kind : 'pawn';
+        var mat = function (k, col, shine) {
+            var m = _hqChessMats[k];
+            if (!m) { m = _hqMat('marble_light', 1, 1, { color: col, shininess: shine, specular: dark ? 0x3a3a44 : 0x5a5a5a }); m._ew_shared = true; _hqChessMats[k] = m; }
+            return m;
+        };
+        var body = mat(dark ? 'b' : 'w', dark ? 0x3a3348 : 0xf4f0e8, 70), foot = mat(dark ? 'bp' : 'wp', dark ? 0xe8e2d6 : 0x2e2a38, 30);
+        var g = new THREE.Group(), side = 1.56, plinthH = 0.16, rMul = { pawn: 0.66, knight: 0.72, rook: 0.56, bishop: 0.56, queen: 0.58, king: 0.58 }[piece] || 0.6;
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(side * U, plinthH * U, side * U), foot); plinth.position.y = plinthH / 2 * U; g.add(plinth);
+        var pc = _hzChessPiece(piece, (hM - plinthH) * U, body, 1.75 * U, rMul); pc.position.y = plinthH * U; g.add(pc);
+        g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        return g;
+    }
     function _hzChessPieceFar(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var kind = _CHESS_KINDS[(rng() * _CHESS_KINDS.length) | 0], dark = rng() < 0.5, h = ts * (5 + rng() * 7);
@@ -51209,6 +51228,13 @@ const ThreeRenderer = (function () {
             return tg;
         };
         var treeOne = function (t) {
+            var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[t.kind] && HQ_TREE_KINDS[t.kind].chess) ? HQ_TREE_KINDS[t.kind] : null;
+            if (CK) {   // THE LOOKING-GLASS ARENA: a marble chess piece, solid cover on its square (never the foliage kit)
+                var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U);
+                cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; G.add(cg);
+                _hq.blockers.push({ obj: cg, y: t.y, top: null, rad: t.r || 0.72, tree: true });
+                return;
+            }
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
             plantTree(t.kind, h, t.x, t.z, t.y * U, t.face);
@@ -70052,6 +70078,8 @@ const ThreeRenderer = (function () {
             } catch (e) { cb(null); }
         },
         treePreview: function (kind, cb) {
+            var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].chess) ? HQ_TREE_KINDS[kind] : null;
+            if (CK) { try { cb(_hqChessStatue(CK.chess, !!CK.dark, (CK.h || 2) * 1.75, _hqUnits())); } catch (e) { cb(null); } return; }   // THE LOOKING-GLASS ARENA
             var name = _FOLIAGE_MODEL_FOR_KEY[kind] || (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] ? HQ_TREE_KINDS[kind].model : null);
             if (!name) { cb(null); return; }
             var t0 = Date.now();
