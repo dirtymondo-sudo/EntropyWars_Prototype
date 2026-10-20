@@ -2797,7 +2797,7 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
    ENDS the turn (ends: the row's ENDS TURN tag + the AP icons' lost look), from the engine (battle.js
    TargetQuery.apUse). An attack, a combo, Guard, Escape or a damaging / Protect cast costs its own AP and ends the turn;
    the turn's second step ends it too; a support cast costs its AP (plus the step of a MOVE→CAST). Same on host + guest. */
-const _HRLG_ENDS_IDS = { attack: 1, combo: 1, guard: 1, escape: 1 };
+const _HRLG_ENDS_IDS = { attack: 1, combo: 1, guard: 1, escape: 1, climb: 1 };
 /* THE BUTTON ROWS (2026-10-20, mondo: "For the spell buttons it should let me choose what goes on the top row and what goes
    on the bottom row of the button. And this should go for the spell menu as well as the quick action menu, those two need
    to display consistent information, i dont want to have edit them individually"): ONE layout for every `rows` blade (the
@@ -2862,6 +2862,7 @@ function _hrlgArmedApUse(unit, st, selBlade) {
   const stepFirst = !!(selBlade && selBlade.note && /MOVE|JUMP/.test(selBlade.note));
   if (am === 'move') return q.apUse(unit, 'move');
   if (am === 'jump') return q.apUse(unit, 'flat', { cost: 1 });
+  if (am === 'climb') return q.apUse(unit, 'all');
   if (am === 'combo') return q.apUse(unit, 'all', { cost: (window.GAME && window.GAME.COMBO_AP_COST_INITIATOR) || 2 });
   if (am === 'attack' || mv === 'attackTargets' || mv === 'finisherTargets') return q.apUse(unit, 'all');
   if (am === 'spell' && st.selectedTool) {
@@ -5372,6 +5373,14 @@ function ActionMenu({ st, hidden }) {
     moveAction = { id: 'move', label: 'Move', icon: '↑', cost: 1, available: false, sub: mvReason };
   }
 
+  // 🧗 CLIMB (2026-10-20): its own verb, shown only while there is a face this unit can climb this turn — from where
+  // it stands, or after one walk to the foot (battle.js getClimbTiles). The climb ends the turn.
+  const climbTiles = (!isStunned && typeof getClimbTiles === 'function') ? getClimbTiles(unit) : [];
+  const climbAction = climbTiles.length ? {
+    id: 'climb', label: 'Climb', icon: '🧗', cost: 1, endsTurn: true, available: true,
+    note: climbTiles.some(c => !c.viaMove) ? null : 'MOVE→CLIMB', sub: null,
+  } : null;
+
   // Attack stays live if the unit can STEP into range and still swing this
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
@@ -5528,7 +5537,7 @@ function ActionMenu({ st, hidden }) {
   if (_mdLock) guardAction.sub = _guardOk ? 'Hold & brace' : guardAction.sub;
   const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
     ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
-    : [moveAction, attackAction, abilAction, comboAction, itemsAction, guardAction];
+    : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
 
   // ⇄ SWITCH — Gauntlet + reserves matches (battle.js _benchOn): swap in a
   // benched reserve. A reserves match caps voluntary switches per round.
@@ -5660,7 +5669,7 @@ function ActionMenu({ st, hidden }) {
   // full verb ladder used to stay up and cover the reachable tiles on the left
   // half of the board. Aim view = lone CANCEL blade + "MOVING — CLICK A TILE".
   // (WASD walking keeps the ladder — the keyboard IS the picker there.)
-  const tileTargetModes = ['move', 'jump', 'combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone', 'build'];
+  const tileTargetModes = ['move', 'jump', 'climb', 'combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone', 'build'];
   const isWasdWalking = am === 'move' && typeof _wasdOrigin !== 'undefined' && _wasdOrigin && !_wasdCommitted;
   const inTileTarget = am && tileTargetModes.includes(am) && menuView === 'root' && !isWasdWalking;
 
@@ -5675,6 +5684,10 @@ function ActionMenu({ st, hidden }) {
       case 'jump':
         if (am === 'jump') { if (typeof handleBackAction === 'function') handleBackAction(); }
         else if (typeof setActionMode === 'function') setActionMode('jump');
+        break;
+      case 'climb':
+        if (am === 'climb') { if (typeof handleBackAction === 'function') handleBackAction(); }
+        else if (typeof setActionMode === 'function') setActionMode('climb');
         break;
       case 'attack': if (typeof setActionMode === 'function') setActionMode('attack'); break;
       case 'abil': if (typeof chooseActionMenu === 'function') chooseActionMenu('spells'); break;
@@ -5750,7 +5763,7 @@ function ActionMenu({ st, hidden }) {
       modeLabel = _stage === 'partner'
         ? 'COMBO — PICK AN ALLY PARTNER'
         : 'COMBO — PICK A TARGET';
-    } else if (am === 'move' || am === 'jump') {
+    } else if (am === 'move' || am === 'jump' || am === 'climb') {
       // Move/jump picking shows NO panel at all — the lists sat right over
       // the reachable tiles, and the crown (◀ BACK) already cancels.
       panels = [];
@@ -8981,6 +8994,28 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('jump');
           if (typeof doJump === 'function') doJump(actingUnit, tx, ty, jumpTile.z);
+        },
+      });
+    }
+  }
+
+  // 🧗 A face this unit can climb (from here, or one walk to its foot first): the price on the button is what a
+  // knock-off would cost (battle.js predictClimbFallDamage — the same fall the engine deals).
+  if (!onSelf && typeof getClimbTiles === 'function' && typeof doClimb === 'function') {
+    const _clAll = getClimbTiles(actingUnit).filter(c => c.x === tx && c.y === ty);
+    const _clZRef = (tz !== undefined && tz !== null) ? tz : (actingUnit.z ?? 0);
+    const climbTile = _clAll.find(c => c.z === _clZRef) || _clAll.slice().sort((a, b) => Math.abs(a.z - _clZRef) - Math.abs(b.z - _clZRef))[0];
+    if (climbTile) {
+      const _clFall = (typeof G.predictClimbFallDamage === 'function') ? G.predictClimbFallDamage(actingUnit, climbTile) : 0;
+      const _clVerb = climbTile.dir === 'down' ? 'Climb down' : 'Climb up';
+      actions.push({
+        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb + ' here') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
+        icon: '🧗', category: 'movement', endsTurn: true,
+        apCost: climbTile.viaMove ? 2 : 1, available: true,
+        handler: () => {
+          state._tileActionTarget = null;
+          if (typeof setActionMode === 'function') setActionMode('climb');
+          doClimb(actingUnit, tx, ty, climbTile.z);
         },
       });
     }

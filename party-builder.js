@@ -402,6 +402,15 @@ if (!document.getElementById('pb-hover-css')) {
     }
     .pb-team-act:hover { color: #fff; border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.07); }
     .pb-team-act.danger:hover { color: #ff8a8a; border-color: #ff5c5c; background: rgba(255,92,92,0.1); }
+    /* ONE OF EACH (2026-10-20): a race already on the team, and a sheet that fields one twice */
+    .pb-rtile.taken { opacity: 0.8; cursor: not-allowed; }
+    .pb-rtile.taken .pb-rtile-art { filter: grayscale(0.9) brightness(0.75); }
+    .pb-rtile-taken { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); white-space: nowrap; font-family: 'DotGothic16', monospace;
+      font-size: 9px; letter-spacing: 0.14em; color: #ffd27a; background: rgba(0,0,0,0.85); padding: 1px 6px; pointer-events: none; }
+    .pb-party-slot.dup .pb-party-ring { box-shadow: 0 0 0 2px #ff5c5c, 0 0 14px rgba(255,92,92,0.45); }
+    .pb-party-dup { position: absolute; left: 50%; top: -7px; transform: translateX(-50%); white-space: nowrap; font-family: 'DotGothic16', monospace;
+      font-size: 8px; letter-spacing: 0.12em; color: #fff; background: #c8352f; padding: 1px 5px; pointer-events: none; z-index: 2; }
+    .pb-dup-note { font-size: 9px; letter-spacing: 0.1em; color: #ff8a8a; }
   `;
   document.head.appendChild(_css);
 }
@@ -2392,6 +2401,15 @@ function PartyBuilder(props) {
   const friendlyHostCanStart = isWaitingOnline && !isRankedNet && netRole === 'host' && opponentLockedToo;
   const player = isOnline ? (typeof window._myPlayer === 'function' ? window._myPlayer() : 1) : (st.builderSelectedPlayer || 1);
   const teamSize = window.CONFIG?.teamSize || 4;
+  /* ONE OF EACH (mondo, 2026-10-20: "disallow more than one of the same unit on a single team"): a unit is its race, so a
+     team fields each race once. The wall greys out a race another slot already holds (a click is refused), a sheet that
+     still carries one twice (a team saved before the rule) is flagged on its slots and cannot start until one is swapped. */
+  const pbSlotRace = (i) => { const mt = st.partyMeta?.[player]?.[i]; return String((mt && mt.race) || window.getDefaultIdentity?.()?.race || 'homosapien').toLowerCase(); };
+  const pbTeamRaces = () => Array.from({ length: teamSize }, (_, i) => pbSlotRace(i));
+  const pbRaceTakenElsewhere = (race, at) => pbTeamRaces().some((r, i) => i !== at && r === race);
+  const pbDupRaces = (races) => (typeof window.teamDuplicateRaces === 'function') ? window.teamDuplicateRaces(races) : [];
+  const pbRaceName = (race) => (window.RACE_PROFILES?.[race]?.label) || String(race || '').replace(/\b\w/g, c => c.toUpperCase());
+  const pbOneOfEachToast = (race) => { try { sfx('uiError'); } catch (e) {} if (typeof window.ewToast === 'function') window.ewToast(pbRaceName(race) + ' is already on this team. A team fields one of each unit.'); };
   /* 2026-09-09 (found by playtest_builder.js): the flag is per INSTANCE
      now — the pre-match forge sleeping in #builderOverlay re-renders while
      the archive is open and used to flip the shared module flag, so the
@@ -2560,7 +2578,9 @@ function PartyBuilder(props) {
     // More vessels on file than the mode fields → the player picks which
     // cross (never a silent truncation to the first N).
     if (!standalone && !opts?.picked && preset.slots.length > sizeNow) {
-      setTeamPick({ preset, chosen: preset.slots.map((_, i) => i).slice(0, sizeNow) });
+      const _seen = new Set(), _first = [];   // ONE OF EACH: the pick opens on the first vessels of DIFFERENT races
+      preset.slots.forEach((s, i) => { const r = String(s?.race || '').toLowerCase(); if (_first.length < sizeNow && !_seen.has(r)) { _seen.add(r); _first.push(i); } });
+      setTeamPick({ preset, chosen: _first });
       sfx('uiCursorMove');
       return;
     }
@@ -2605,6 +2625,7 @@ function PartyBuilder(props) {
     const sizeNow = window.CONFIG?.teamSize || teamSize;
     const chosen = teamPick.chosen.slice().sort((a, b) => a - b);
     if (chosen.length !== sizeNow) { sfx('uiError'); return; }
+    if (pbDupRaces(chosen.map(i => teamPick.preset.slots[i]?.race)).length) { sfx('uiError'); return; }   // ONE OF EACH
     loadTeamPreset({ ...teamPick.preset, slots: chosen.map(i => teamPick.preset.slots[i]) }, { picked: true });
   };
   const toggleTeamPick = (i) => {
@@ -2612,6 +2633,8 @@ function PartyBuilder(props) {
     const sizeNow = window.CONFIG?.teamSize || teamSize;
     const has = teamPick.chosen.includes(i);
     if (!has && teamPick.chosen.length >= sizeNow) { sfx('uiError'); return; }
+    const _r = String(teamPick.preset.slots[i]?.race || '').toLowerCase();
+    if (!has && teamPick.chosen.some(j => String(teamPick.preset.slots[j]?.race || '').toLowerCase() === _r)) { pbOneOfEachToast(_r); return; }   // ONE OF EACH
     setTeamPick({ ...teamPick, chosen: has ? teamPick.chosen.filter(x => x !== i) : teamPick.chosen.concat(i) });
     sfx('uiCursorMove');
   };
@@ -2682,7 +2705,7 @@ function PartyBuilder(props) {
     for (let i = st.partyBuilds[player].length; i < size; i++) {
       const cls = window.DEFAULT_BUILDS?.[player]?.[i] || st.partyBuilds[player][i % Math.max(1, st.partyBuilds[player].length)] || 'Warrior';
       st.partyBuilds[player][i] = cls;
-      st.partyMeta[player][i] = {};
+      st.partyMeta[player][i] = null;   // ONE OF EACH (2026-10-20): ensurePartyMeta below seats a race the sheet lacks (an empty {} read as a second Homosapien)
       st.partyNames[player][i] = '';   // THE NAMES: a new slot is its race
       st.loadouts[player][i] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
     }
@@ -2690,6 +2713,7 @@ function PartyBuilder(props) {
     st.partyMeta[player].length = size;
     st.partyNames[player].length = size;
     st.loadouts[player].length = size;
+    if (typeof window.ensurePartyMeta === 'function') window.ensurePartyMeta();
     if (st.builderConfirmedSlots?.[player]) Object.keys(st.builderConfirmedSlots[player]).forEach(k => { if (+k >= size) delete st.builderConfirmedSlots[player][k]; });
     if (slot >= size) selectSlot(size - 1);
     st.teamLockedIn = false;
@@ -2812,6 +2836,7 @@ function PartyBuilder(props) {
   }, [rosterEntries, typeFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
 
   function pickRace(raceKey, gender) {
+    if (pbRaceTakenElsewhere(raceKey, slot)) { pbOneOfEachToast(raceKey); return; }   // ONE OF EACH
     if (!st.partyMeta[player]) st.partyMeta[player] = []; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
     const prevRace = st.partyMeta[player][slot].race; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
     st.partyBuilds[player][slot] = window.UNIT_CLASS || 'Vessel';   // THE JOBS REMOVAL (2026-09-27): one neutral class
@@ -2853,6 +2878,13 @@ function PartyBuilder(props) {
         alert('Your team includes locked vessels: ' + lockedNames.join(', ') + '.\nUnlock them in the Shop or swap them out before starting.');
         return;
       }
+    }
+    /* ONE OF EACH: a sheet loaded from before the rule may still field a race twice */
+    const _dups = pbDupRaces(pbTeamRaces());
+    if (_dups.length) {
+      try { sfx('uiError'); } catch (e) {}
+      alert('Your team has the same unit more than once: ' + _dups.map(pbRaceName).join(', ') + '.\nA team fields one of each unit. Swap one out before starting.');
+      return;
     }
     if (typeof window.applyPartyBuild==='function') window.applyPartyBuild();
     if (st.teamLockedIn && typeof window.startMatch==='function') window.startMatch();
@@ -3365,17 +3397,19 @@ function PartyBuilder(props) {
         const starred = isFav(entry.race, entry.gender);
         // Account-unlock gate: only the local human's roster (player 1) is restricted.
         const locked = isLockedEntry(entry.race);
+        const taken = !locked && pbRaceTakenElsewhere(entry.race, slot);   // ONE OF EACH: another slot already fields this race
         const onCardClick = locked
           ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
           : ()=>{ rosterHoverOut(); pickRace(entry.race,entry.gender); };
         const pUrl = (typeof window.getUnitPortraitUrl === 'function') ? window.getUnitPortraitUrl({ race: entry.race, gender: entry.gender }) : null;
         const hovered = !!(rosterHover && rosterHover.race === entry.race && rosterHover.gender === entry.gender && rosterHover.cls === entry.cls);
-        return h('div', { key:ei, onClick:onCardClick, onMouseEnter: () => rosterHoverIn(entry), title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${pbRoleLabel(entry.race)}`,
-            className:'pb-rtile'+(locked?' locked':'')+(isActive?' on':'')+(hovered?' hover':''), style:{ '--fc': entryFc } },
+        return h('div', { key:ei, onClick:onCardClick, onMouseEnter: () => rosterHoverIn(entry), title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':taken?`${entry.label} is already on this team — one of each unit`:`${entry.label} · ${pbRoleLabel(entry.race)}`,
+            className:'pb-rtile'+(locked?' locked':'')+(taken?' taken':'')+(isActive?' on':'')+(hovered?' hover':''), style:{ '--fc': entryFc } },
           h('div', { className: 'pb-rtile-art' + (pUrl ? ' portrait' : '') },
             pUrl ? h('div', { className: 'pb-rtile-portrait', style: { backgroundImage: `url('${pUrl}')` } })
                  : h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'88%', style:{ width:'88%', height:'88%' } }),
             locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
+            taken ? h('div', { className: 'pb-rtile-taken' }, 'ON TEAM') : null,
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
             h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() })))),
           h('div', { className: 'pb-rtile-name' }, entry.label),
@@ -3757,7 +3791,7 @@ function PartyBuilder(props) {
         h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
         h('button', { className: 'pb-pill' + (player === 2 ? ' on' : ''), onClick: () => selectPlayer(2) }, 'P2 · CPU')) : null),
     h('div', { className: 'pb-party-slots' },
-      Array.from({length: teamSize}).map((_, i) => {
+      (() => { const _dupNow = pbDupRaces(pbTeamRaces()); return Array.from({length: teamSize}).map((_, i) => {
         const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
         const mt = st.partyMeta?.[player]?.[i] || (typeof window.getDefaultIdentity==='function' ? window.getDefaultIdentity() : {});
         const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',types:['human'],gender:'male'};
@@ -3765,8 +3799,10 @@ function PartyBuilder(props) {
         const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
         const nm = resolveUnitName(player, i, cn);
         const rl = (_grl(id.race,id.gender)||id.race||'?');
-        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) },
+        const dupe = _dupNow.includes(String(id.race || '').toLowerCase());   // ONE OF EACH: this race stands on the sheet twice
+        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : '') + (dupe ? ' dup' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) + (dupe ? ' — on this team twice: swap one out (one of each unit)' : '') },
           h('div', { className:'pb-party-ring' },
+            dupe ? h('span', { className:'pb-party-dup' }, 'TWICE') : null,
             h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive })),
             h('span', { className:'pb-party-no' }, numerals[i]),
             confirmed && (DOOR
@@ -3774,7 +3810,7 @@ function PartyBuilder(props) {
               : h('span', { className:'pb-party-filed pb-party-tick' }, '✓'))),
           h('div', { className:'pb-party-name' }, nm),
           h('div', { className:'pb-party-sub' }, rl, ' · ', pbRoleLabel(id.race)));
-      })),
+      }); })()),
     h('div', { className: 'pb-party-right ms-tty-foot pb-foot' },
       h('div', { className: 'pb-tools' },
         h('button', { className: 'ms-tty-btn sm', onClick: doRandomize, title: 'Randomize this vessel' }, '🎲 ONE'),
@@ -3931,7 +3967,8 @@ function PartyBuilder(props) {
                   h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
               h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
                 h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
-                  (preset.gameMode || '').toUpperCase(), preset.lastUsed ? ' · ' + new Date(preset.lastUsed).toLocaleDateString() : ''),
+                  (preset.gameMode || '').toUpperCase(), preset.lastUsed ? ' · ' + new Date(preset.lastUsed).toLocaleDateString() : '',
+                  pbDupRaces(slots.map(s => s.race)).length ? h('span', { className:'pb-dup-note' }, ' · TWICE: ', pbDupRaces(slots.map(s => s.race)).map(pbRaceName).join(', ')) : null),
                 h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbEditTeam(preset); } }, '⚒ FORGE'),
                 h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbDuplicateTeam(preset); } }, 'COPY'),
                 h('button', { className:'pb-team-act danger', onClick:e=>{ e.stopPropagation(); deleteTeamPreset(preset.id); } }, 'DEL')));
@@ -3966,7 +4003,8 @@ function PartyBuilder(props) {
                   return h('span', { key:si, style:{ fontSize:9, color:EW.inkMute, background:'rgba(255,255,255,0.04)', padding:'1px 6px', borderRadius:999, border:`1px solid rgba(255,255,255,0.06)` }}, rl);
                 })),
               h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' · ', new Date(preset.createdAt).toLocaleDateString(),
-                (preset.slots||[]).length > teamSize ? h('span', { style:{ color:EW.warn, marginLeft:6 }}, '· ', (preset.slots||[]).length, ' ON FILE — PICK ', teamSize) : null)),
+                (preset.slots||[]).length > teamSize ? h('span', { style:{ color:EW.warn, marginLeft:6 }}, '· ', (preset.slots||[]).length, ' ON FILE — PICK ', teamSize) : null,
+                pbDupRaces((preset.slots||[]).map(s => s.race)).length ? h('span', { className:'pb-dup-note', style:{ marginLeft:6 }}, '· TWICE: ', pbDupRaces((preset.slots||[]).map(s => s.race)).map(pbRaceName).join(', ')) : null)),
             h('button', { className:'pb-team-act danger', onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);} }, 'DEL')))));
 
   /* THE DEPLOY PICK window: the sheet's vessels as toggles, DEPLOY when

@@ -573,6 +573,7 @@ const ThreeRenderer = (function () {
         'move':            0x4da6ff,
         'move-jump':       0x35d0c0,
         'move-takeoff':    0x35d0c0,
+        'move-climb':      0xd9a066,   /* sandstone — a face this unit can CLIMB (battle.js getClimbTiles) */
         'move-edge':       0xcc2222,
         /* Tactical move-tile overlays (appended as tokens by ui.js): */
         'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
@@ -653,6 +654,7 @@ const ThreeRenderer = (function () {
         'move':         1.0,
         'move-jump':    1.05,
         'move-takeoff': 1.0,
+        'move-climb':   1.05,
         'move-edge':    0.55,
         'attack':       1.1,
         'attack enemy': 1.3,
@@ -844,7 +846,7 @@ const ThreeRenderer = (function () {
             if (t.indexOf(' strike') !== -1) return 'strike';
             if (t.indexOf(' hazard') !== -1) return 'hazard';
             if (t.indexOf(' benefit') !== -1) return 'benefit';
-            return (base === 'move-jump' || base === 'move-takeoff') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
+            return (base === 'move-jump' || base === 'move-takeoff' || base === 'move-climb') ? 'jump' : (t === 'move ally' ? 'ally' : 'move');
         }
         if (t.indexOf('attack enemy') === 0) return 'target';
         return { 'move-edge': 'blocked', 'attack': 'atkReach', 'spell-damage': 'hit', 'spell-range-dmg': 'reach', 'heal-range': 'healReach',
@@ -2607,6 +2609,10 @@ const ThreeRenderer = (function () {
        real units (HP/MP/name bars). Tracked separately for per-frame scale + fog
        visibility, and cleared whenever deployables rebuild. */
     var _decoyPlates = [];
+    /* THE REAL-LOOKING COPY (2026-10-20): every live decoy's unit-style entry, keyed by its rig id (battle.js
+       decoyId). Built by _buildUnitEntry exactly like a real unit (model, ring, outline), driven per frame by
+       _updateDecoyEntries; its rig lives in _unitModelRigs under the same id. */
+    var _decoyEntries = new Map();
     /* Opacity applied to the VIEWER'S OWN sprite while it carries the Invisible
        status — the player needs a clear "you are cloaked" cue. */
     var INVIS_OWN_OPACITY = 0.45;
@@ -8472,6 +8478,7 @@ const ThreeRenderer = (function () {
                 if (d.hp > 0) {
                     h = _hashInt(h, 5); h = _hashInt(h, d.x); h = _hashInt(h, d.y);
                     h = _hashVal(h, d.ownerPlayer); h = _hashStr(h, d.spellName || ''); h = _hashInt(h, d.hp);
+                    if (d.isDecoy) h = _decoyOwnerSerial(h, d);   // THE REAL-LOOKING COPY: its plate mirrors the caster
                 }
             }
         }
@@ -9694,6 +9701,9 @@ const ThreeRenderer = (function () {
             if (_dpe.css2d && _dpe.css2d.parent) _dpe.css2d.parent.remove(_dpe.css2d);
         }
         _decoyPlates.length = 0;
+        var _prevDecoyIds = Array.from(_decoyEntries.keys());
+        if (_hoveredUnitId != null && _decoyEntries.has(_hoveredUnitId)) { _hoverGlowMesh = null; _hoveredUnitId = null; }   // the glow goes with the group
+        _decoyEntries.clear();
 
         for (var entry of deployableMeshes) {
             objectGroup.remove(entry[1]);
@@ -9865,6 +9875,16 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* a decoy that is gone takes its rig with it */
+        for (var _pdi = 0; _pdi < _prevDecoyIds.length; _pdi++) {
+            var _pdId = _prevDecoyIds[_pdi];
+            if (_decoyEntries.has(_pdId)) continue;
+            var _pdRig = _unitModelRigs.get(_pdId);
+            if (_pdRig) { _disposeModelRig(_pdRig); _unitModelRigs.delete(_pdId); }
+            _modelAnimState.delete(_pdId);
+            _lastHpPctById.delete(_pdId); _lastMpPctById.delete(_pdId);
+        }
+
         _lastDeployableSerial = _computeDeployableSerial();
 
         /* ── Render state._deployedObjects (traps, decoys, walls, totems) ── */
@@ -9877,10 +9897,23 @@ const ThreeRenderer = (function () {
                 var dx = dObj.x, dy = dObj.y;
                 var topY = tileTopY(dx, dy);
 
-                /* Decoys/clones wear the caster's sprite. Render them to look EXACTLY
-                   like a live unit — full opacity, native sprite dimensions, matching
-                   facing, plus a fake nameplate — so the opponent can't pick the real
-                   unit out from its decoy. */
+                /* THE REAL-LOOKING COPY (2026-10-20, mondo: "scarecrow's stuffed double needs to be its actual 3d
+                   model, not its pixel sprite. this goes for all copy/clone moves"): a decoy is built by the SAME
+                   _buildUnitEntry as the caster — the rigged model idling (or the sprite slab for a sprite race),
+                   the team ring, the outline, the x-ray ghost — plus a plate built like a real one from the
+                   caster's live HP / MP / buffs. The flat sprite card below is only the fallback if that throws. */
+                if (dObj.isDecoy && dObj.spriteUnit) {
+                    var _dBuilt = null;
+                    try { _dBuilt = _buildDecoyEntry(dObj); } catch (_dErr) { console.warn('[ThreeRenderer] decoy build failed', _dErr); _dBuilt = null; }
+                    if (_dBuilt) {
+                        _dBuilt._ew_deployable = true;
+                        _dBuilt._ew_depX = dx; _dBuilt._ew_depY = dy;
+                        _dBuilt._ew_depOwner = dObj.ownerPlayer;
+                        objectGroup.add(_dBuilt);
+                        deployableMeshes.set(dKey, _dBuilt);
+                        continue;
+                    }
+                }
                 if (dObj.isDecoy && dObj.spriteUnit) {
                     var sprUrl = (typeof getBattleMapSpriteUrl === 'function') ? getBattleMapSpriteUrl(dObj.spriteUnit) : null;
                     if (sprUrl) {
@@ -10629,9 +10662,24 @@ const ThreeRenderer = (function () {
         }
         return { x0: x0, y0: y0, W: x1 - x0 + 1, H: y1 - y0 + 1, cells: tiles.map(function (t) { return [t.x - x0, t.y - y0]; }) };
     }
+    /* THE ZONE ON THE GROUND (2026-10-20, mondo: "on some arena maps there is a bridge spanning a gap and it crosses over the
+       middle nexus zone, which paints the nexus zone halfway on the bridge and half on the ground. It needs to be all on the
+       ground"): a zone tile under a field's deck (THE TWO FLOORS) paints the GROUND under it, never the deck over it — every
+       zone (the nexuses, the Arena spawn nexuses, TDM's spawn strips) and its light walls. The battle-frame Y of that ground,
+       or null (one floor: the tile's top, as ever). The capture rules are the engine's and stay as they are. */
+    function _zoneGroundY(x, y) {
+        if (!_fieldTwoFloorAt(x, y)) return null;
+        var G = _fieldGround(), ly = G ? G.lowAt(x, y) : null;
+        return (ly === null || ly === undefined || !isFinite(ly)) ? null : ly;
+    }
+    /* where a zone tile's drape sits: the move tiles' own placement (_drapedTileY), or the ground under a deck + the field lift */
+    function _zoneTileY(x, y, yOff, ts) {
+        var ly = _zoneGroundY(x, y);
+        return (ly === null) ? _drapedTileY(x, y, yOff) : ly + (yOff || 0) + HL_FIELD_LIFT * ts;
+    }
     /* a zone tile's full-size drape with its UVs on its own patch of the zone map (x0/y0 = the zone's top-left tile) */
     function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts) {
-        var g = _buildDrapeGeo(hx, hy, ts, 1.0), p = g.attributes.position.array, uv = g.attributes.uv;
+        var g = _buildDrapeGeo(hx, hy, ts, 1.0, _zoneGroundY(hx, hy)), p = g.attributes.position.array, uv = g.attributes.uv;
         var ry = g._ew_rotY || 0, c = Math.cos(ry), sn = Math.sin(ry);
         for (var i = 0; i < uv.count; i++) {
             var lx = p[i * 3], lz = p[i * 3 + 2];
@@ -10680,7 +10728,7 @@ const ThreeRenderer = (function () {
                     var piece = _nxPiece(geo, mats[li]);
                     piece.renderOrder = li;   // the light over the paint
                     piece.rotation.y = geo._ew_rotY || 0;
-                    piece.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
+                    piece.position.set(ft.x * ts + ts / 2, _zoneTileY(ft.x, ft.y, ts * 0.012, ts), ft.y * ts + ts / 2);
                     _nexusWallGroup.add(piece);
                 }
             }
@@ -10741,7 +10789,7 @@ const ThreeRenderer = (function () {
                     var mesh = new THREE.Mesh(geo, mats[li]);
                     mesh.renderOrder = li;
                     if (geo._ew_rotY !== undefined) mesh.rotation.y = geo._ew_rotY;
-                    mesh.position.set(tile.x * ts + ts / 2, _drapedTileY(tile.x, tile.y, ts * 0.012), tile.y * ts + ts / 2);
+                    mesh.position.set(tile.x * ts + ts / 2, _zoneTileY(tile.x, tile.y, ts * 0.012, ts), tile.y * ts + ts / 2);
                     _spawnZoneGroup.add(mesh);
                 }
             }
@@ -10809,9 +10857,9 @@ const ThreeRenderer = (function () {
         m._ewZone = { type: type, own: own, layer: 'wall' };
         return m;
     }
-    /* one standing wall per exposed edge, `h` tall, on that tile's top */
+    /* one standing wall per exposed edge, `h` tall, on that tile's top (the ground under a deck: THE ZONE ON THE GROUND) */
     function _zoneWallMesh(e, ts, h, mat) {
-        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = tileTopY(e.x, e.y);
+        var gy = _zoneGroundY(e.x, e.y), mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = (gy === null) ? tileTopY(e.x, e.y) : gy;
         var cx = e.x * ts + ts / 2, cz = e.y * ts + ts / 2, half = ts / 2;
         if (e.dir === 'n') mesh.position.set(cx, tileY + h / 2, cz - half);
         else if (e.dir === 's') { mesh.position.set(cx, tileY + h / 2, cz + half); mesh.rotation.y = Math.PI; }
@@ -13331,6 +13379,7 @@ const ThreeRenderer = (function () {
         );
         pick.position.y = _pickH * 0.5;
         pick._ew_shadowFlagged = true;
+        pick._ew_pickPillar = true;   // a decoy keeps only this pickable (_updateDecoyEntries)
         wrap.add(pick);
 
         var apSpent = unit.ap <= 0;
@@ -14016,6 +14065,7 @@ const ThreeRenderer = (function () {
                 // walk timescale the Meshy clip sets keep using).
                 want = (entry._ew_sprinting && entry.actions && entry.actions.run)
                     ? ((entry._ew_charging && entry.actions.runCharge) ? 'runCharge' : 'run') : 'walk';
+            else if (entry._ew_climbWant && entry.actions && entry.actions[entry._ew_climbWant]) want = entry._ew_climbWant;   // 🧗 the hang (_updateBattleClimbers)
             else want = 'idle';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
@@ -14464,6 +14514,7 @@ const ThreeRenderer = (function () {
     function rebuildUnits() {
         if (!unitGroup) return;
 
+        if (_hoveredUnitId != null && _decoyEntries.has(_hoveredUnitId)) _clearUnitHover();   // a hovered copy outlives the unit rebuild
         _hoverGlowMesh = null; _hoveredUnitId = null;
 
         _selChevronMesh = null; _selChevronUnitId = null; _selChevronColor = null;
@@ -14498,7 +14549,7 @@ const ThreeRenderer = (function () {
         // Evict cached model rigs whose unit left the board (died, despawned)
         // — live units just had theirs re-parented by _attachUnitModel.
         _unitModelRigs.forEach(function (rig, uid) {
-            if (!unitEntries.has(uid)) {
+            if (!unitEntries.has(uid) && !_decoyEntries.has(uid)) {   // a decoy's rig is evicted by rebuildDeployables
                 _disposeModelRig(rig);
                 _unitModelRigs.delete(uid);
                 _modelAnimState.delete(uid);
@@ -14985,7 +15036,9 @@ const ThreeRenderer = (function () {
             + ' style="background-image:url(&quot;' + url + '&quot;)"></div>';
     }
 
-    function _createPlate(unit) {
+    /* The plate's DOM, shared by every real unit (_createPlate) and every decoy (_buildClonePlate) so a copy's
+       plate is the same markup to the last class. `active` marks the acting unit (tp-active). */
+    function _buildPlateDom(unit, hpStartPct, mpStartPct, active) {
         _ensurePlateStyles();
 
         /* Outer container: 0×0 point, CSS2DRenderer positions this */
@@ -14998,8 +15051,7 @@ const ThreeRenderer = (function () {
            the visual-hierarchy dimming keys off this, not the raw p1/p2 side. */
         pCls += _isAllyPlayer(unit.player) ? ' tp-ally' : ' tp-enemy';
 
-        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
-        if (blitzUnit && blitzUnit.id === unit.id) pCls += ' tp-active';
+        if (active) pCls += ' tp-active';
         wrap.className = 'tp-wrap ' + pCls + _plateStyleClass();
 
         var lvl = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 1;
@@ -15009,13 +15061,6 @@ const ThreeRenderer = (function () {
         if (mode === 'race' || mode === 'job') label = _plateRaceLabel(unit);
         else if (mode !== 'none') label = unit.name || _plateRaceLabel(unit);
 
-        var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
-        var mpPct = Math.max(0, Math.round(100 * unit.mp / (unit.maxMp || 1)));
-        /* If this unit already had a plate (it's being rebuilt mid-combat), start the
-           fill at the previously rendered width so the CSS width-transition can drain
-           it down to the new value instead of snapping. */
-        var hpStartPct = _lastHpPctById.has(unit.id) ? _lastHpPctById.get(unit.id) : hpPct;
-        var mpStartPct = _lastMpPctById.has(unit.id) ? _lastMpPctById.get(unit.id) : mpPct;
         var allyCls = _isAllyPlayer(unit.player) ? 'tp-hp-ally' : 'tp-hp-enemy';
 
         var shieldAmt = unit.shield || 0;
@@ -15087,8 +15132,21 @@ const ThreeRenderer = (function () {
         effEl.className = 'tp-eff-badge';
         effEl.setAttribute('data-eff', '');
         wrap.appendChild(effEl);
-
         outer.appendChild(wrap);
+        return { outer: outer, wrap: wrap, statusBadgesHtml: _sbInner };
+    }
+
+    function _createPlate(unit) {
+        var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
+        var mpPct = Math.max(0, Math.round(100 * unit.mp / (unit.maxMp || 1)));
+        /* If this unit already had a plate (it's being rebuilt mid-combat), start the
+           fill at the previously rendered width so the CSS width-transition can drain
+           it down to the new value instead of snapping. */
+        var hpStartPct = _lastHpPctById.has(unit.id) ? _lastHpPctById.get(unit.id) : hpPct;
+        var mpStartPct = _lastMpPctById.has(unit.id) ? _lastMpPctById.get(unit.id) : mpPct;
+        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
+        var _pd = _buildPlateDom(unit, hpStartPct, mpStartPct, !!(blitzUnit && blitzUnit.id === unit.id));
+        var outer = _pd.outer, wrap = _pd.wrap, _sbInner = _pd.statusBadgesHtml;
 
         var css2d = new THREE.CSS2DObject(outer);
         var ue = unitEntries.get(unit.id);
@@ -15190,6 +15248,195 @@ const ThreeRenderer = (function () {
         outer.appendChild(wrap);
 
         return { css2d: new THREE.CSS2DObject(outer), el: wrap };
+    }
+
+    /* ── THE REAL-LOOKING COPY (2026-10-20) ─────────────────────────────
+       mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all
+       copy/clone moves. From the enemy perspective they need to look indistinguishable from the actual unit".
+       A decoy (Shed Skin, Mimicry, Stuffed Double, Cloning Machine — battle.js _decoyLookOf) is a fake unit built
+       by _buildUnitEntry: the body is the caster's look at cast time standing on the decoy's tile; the plate, the
+       ring vitals, the AP grey and the acting-unit glow mirror the caster LIVE, so nothing on the board reads
+       differently between the two. The copy idles on its own rig (keyed by decoyId in _unitModelRigs). */
+    function _decoyRigId(dObj) {
+        return dObj.decoyId || ('decoy_' + (dObj.ownerUnitId != null ? dObj.ownerUnitId : 'p' + dObj.ownerPlayer) + '_' + dObj.x + '_' + dObj.y);
+    }
+    function _decoyOwnerOf(dObj) {
+        var o = (dObj && dObj.ownerUnitId != null) ? _findUnit(dObj.ownerUnitId) : null;
+        return (o && !o.dead) ? o : null;
+    }
+    /* What the copy's plate shows of its caster — folded into the deployable serial so a hit, a buff or a spent AP
+       on the caster re-plates the copy the same frame the real plate changes. */
+    function _decoyOwnerSerial(h, dObj) {
+        var o = _decoyOwnerOf(dObj);
+        if (!o) return _hashInt(h, 77);
+        h = _hashInt(h, o.hp | 0); h = _hashInt(h, o.maxHp | 0); h = _hashInt(h, o.mp | 0); h = _hashInt(h, o.maxMp | 0);
+        h = _hashInt(h, o.ap | 0); h = _hashInt(h, o.shield || 0); h = _hashInt(h, o._xp || 0);
+        h = _hashInt(h, o.hourglassBuff || 0); h = _hashInt(h, o._killStreak || 0); h = _hashStr(h, o.skyBuff || '');
+        if (typeof getActiveStatusKeys === 'function' && o.status) {
+            var sk = getActiveStatusKeys(o);
+            for (var i = 0; i < sk.length; i++) h = _hashStr(h, sk[i]);
+        }
+        if (typeof getStatStageCount === 'function') {
+            var st = ['atk', 'def', 'mdef', 'spd', 'int'];
+            for (var j = 0; j < st.length; j++) h = _hashInt(h, getStatStageCount(o, st[j]) || 0);
+        }
+        h = _hashStr(h, state.nametagMode || '');
+        return h;
+    }
+    function _decoyBodyUnit(dObj, rigId, owner) {
+        var su = dObj.spriteUnit, u = {};
+        for (var k in su) if (Object.prototype.hasOwnProperty.call(su, k)) u[k] = su[k];
+        u.id = rigId;
+        u.player = (dObj.ownerPlayer != null) ? dObj.ownerPlayer : su.player;
+        u.x = dObj.x; u.y = dObj.y;
+        u.z = ((dObj.z != null) ? dObj.z : (owner ? (owner.z || 0) : 0)) + (su.airDz || 0);   // a flyer's copy hovers like it
+        u.facing = su.facing ? { dx: su.facing.dx, dy: su.facing.dy } : undefined;
+        u.maxHp = owner ? owner.maxHp : (su.maxHp || 1);
+        u.hp = owner ? owner.hp : u.maxHp;
+        u.maxMp = owner ? owner.maxMp : (su.maxMp || 0);
+        u.mp = owner ? owner.mp : u.maxMp;
+        u.shield = owner ? (owner.shield || 0) : 0;
+        u.ap = owner ? owner.ap : 1;
+        return u;
+    }
+    /* The plate reads the caster's live badges (statuses, stat stages, sky buff, streak) on the copy's tile. */
+    function _decoyPlateUnit(body, owner) {
+        if (!owner) return body;
+        var p = {};
+        for (var k in body) if (Object.prototype.hasOwnProperty.call(body, k)) p[k] = body[k];
+        p.status = owner.status; p.statStageMods = owner.statStageMods;
+        p.hourglassBuff = owner.hourglassBuff; p._killStreak = owner._killStreak;
+        p.skyBuff = owner.skyBuff; p.zodiac = owner.zodiac; p._xp = owner._xp;
+        if (owner.level != null) p.level = owner.level;
+        return p;
+    }
+    function _buildDecoyEntry(dObj) {
+        var rigId = _decoyRigId(dObj);
+        var owner = _decoyOwnerOf(dObj);
+        var body = _decoyBodyUnit(dObj, rigId, owner);
+        var entry = _buildUnitEntry(body);
+        var g = entry.group;
+        entry._ew_decoy = { rigId: rigId, ownerId: dObj.ownerUnitId, body: body };
+
+        var pu = _decoyPlateUnit(body, owner);
+        var hpPct = Math.max(0, Math.round(100 * pu.hp / (pu.maxHp || 1)));
+        var mpPct = Math.max(0, Math.round(100 * pu.mp / (pu.maxMp || 1)));
+        var hpStart = _lastHpPctById.has(rigId) ? _lastHpPctById.get(rigId) : hpPct;
+        var mpStart = _lastMpPctById.has(rigId) ? _lastMpPctById.get(rigId) : mpPct;
+        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
+        var pd = _buildPlateDom(pu, hpStart, mpStart, !!(owner && blitzUnit && blitzUnit.id === owner.id));
+        var css2d = new THREE.CSS2DObject(pd.outer);
+        var headY = g._ew_spriteTopY - g.position.y + 12;
+        css2d.position.set(0, headY, 0);
+        g.add(css2d);
+        var dpo = { css2d: css2d, el: pd.wrap, mesh: g, x: dObj.x, y: dObj.y, ownerId: dObj.ownerUnitId,
+                    _headY: headY, _footY: SELECTED_RING_OFFSET + 2 };
+        _decoyPlates.push(dpo);
+        _anchorPlateForStyle(dpo);
+        entry._ew_decoyPlate = dpo;
+        if (hpStart !== hpPct || mpStart !== mpPct) {
+            requestAnimationFrame(function () {
+                var hf = pd.wrap.querySelector('.tp-hp-fill'); if (hf) hf.style.width = hpPct + '%';
+                var mf = pd.wrap.querySelector('.tp-mp-fill'); if (mf) mf.style.width = mpPct + '%';
+            });
+        }
+        _lastHpPctById.set(rigId, hpPct); _lastMpPctById.set(rigId, mpPct);
+
+        _decoyEntries.set(rigId, entry);
+        return g;
+    }
+    /* Per frame, what _updateUnitModels / _updateUnitSelfGlow / _updateUnitFacing do for a real unit: the idle
+       clip, the self-glow (with the caster's acting-unit breath), the ring look + vitals, the sprite x-ray ghost
+       kept camera-side, and the acting plate class. */
+    function _decoyGroups() {
+        var out = [];
+        _decoyEntries.forEach(function (e) { if (e.group && e.group.parent) out.push(e.group); });
+        return out;
+    }
+    var _decoyClockPrev = 0;
+    function _updateDecoyEntries() {
+        if (!_decoyEntries.size) { _decoyClockPrev = 0; return; }
+        var now = _animNow();
+        var dt = _decoyClockPrev ? Math.min((now - _decoyClockPrev) / 1000, 0.1) : 0.016;
+        _decoyClockPrev = now;
+        var animsOff = _ewAnimsOff();
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var silDepth = UNIT_SPRITE_DEPTH_PX * (ts / 128);
+        var pulseUid = (state && state.phase === 'battle') ? state._blitzActiveUnitId : null;
+        var pulse = 0.24 + 0.18 * Math.sin(performance.now() * 0.005);   // the same breath as _updateUnitSelfGlow
+        var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
+        var rLook = _ringLookSync(), rScale = _retLookU.uSpan.value / RETICLE_SPAN;
+        _decoyEntries.forEach(function (entry, rid) {
+            var d = entry._ew_decoy, g = entry.group;
+            if (!d || !g) return;
+            var owner = (d.ownerId != null) ? _findUnit(d.ownerId) : null;
+            if (owner && owner.dead) owner = null;
+            var body = d.body;
+            if (owner) { body.hp = owner.hp; body.maxHp = owner.maxHp; body.mp = owner.mp; body.maxMp = owner.maxMp; body.shield = owner.shield || 0; body.ap = owner.ap; }
+
+            /* only the pick pillar (or the sprite card) answers the pointer — a bind-pose arm in the next tile must not */
+            if (!entry._ew_decoyRayFixed && (entry._ew_modelAttached || !entry.modelDef)) {
+                entry._ew_decoyRayFixed = true;
+                g.traverse(function (n) {
+                    if (n.isMesh && !n._ew_pickPillar && n !== entry.sprite) n.raycast = function () {};
+                });
+            }
+
+            var inten = _unitSelfGlowIntensity(body);
+            if (owner && owner.id === pulseUid && !_deathTweens.has(owner.id)) inten += pulse;
+            if (entry.sprite && entry.sprite.material && entry.sprite.material.emissiveMap) entry.sprite.material.emissiveIntensity = inten;
+            if (entry.modelMats && entry.modelMats.length) {
+                var grey = ((body.ap <= 0) ? 0.5 : 1) * _modelDiffuseScale();
+                for (var mi = 0; mi < entry.modelMats.length; mi++) {
+                    var mm = entry.modelMats[mi];
+                    if (mm.color.r !== grey) mm.color.setRGB(grey, grey, grey);
+                    if (mm.emissiveMap) mm.emissiveIntensity = inten;
+                }
+            }
+
+            for (var ci = 0; ci < g.children.length; ci++) {
+                var ch = g.children[ci];
+                if (ch._ew_facingIndicator) {
+                    if (_plateLook.rings && cam) {
+                        var rv = ch.children[0];
+                        if (rv && rv._ew_reticle) _updateRingVitals(rv, body, g, cam, ch.rotation.y, dt);
+                    }
+                } else if (ch._ew_silhouette && cam) {
+                    var syaw = Math.atan2(cam.position.x - g.position.x, cam.position.z - g.position.z);
+                    var silOff = (g._ew_spriteW || ts) * 0.5 + silDepth + ts * 0.02;
+                    ch.rotation.y = syaw;
+                    ch.position.x = Math.sin(syaw) * silOff;
+                    ch.position.z = Math.cos(syaw) * silOff;
+                }
+            }
+            _ringLookApply(g, owner || body, rLook, rScale);   // a ring shown only on the acting unit shows on its copy too
+            _fieldRingsTick(g);
+
+            /* a flyer's copy bobs in the air like it (_updateFlyingBob) */
+            if (typeof canFly === 'function' && typeof isUnitAirborne === 'function' && canFly(body) && isUnitAirborne(body)) {
+                var bh = 0, bid = String(rid);
+                for (var bc = 0; bc < bid.length; bc++) bh = (bh * 31 + bid.charCodeAt(bc)) | 0;
+                var bob = Math.sin(performance.now() / 1000 * FLY_BOB_SPEED * Math.PI * 2 + (Math.abs(bh) % 1000) * 0.00637) * FLY_BOB_AMP;
+                g.position.y = unitSurfaceY(body) + bob;
+            }
+
+            var dpo = entry._ew_decoyPlate;
+            if (dpo && dpo.el) {
+                var act = !!(owner && blitzUnit && blitzUnit.id === owner.id);
+                if (dpo.el.classList.contains('tp-active') !== act) dpo.el.classList.toggle('tp-active', act);
+                /* aimed at (the armed confirm target on its tile) = full strength, like _syncTargetedPlateClass */
+                var pt = state.pendingTarget;
+                var tgt = !!(pt && pt.x === body.x && pt.y === body.y);
+                if (dpo.el.classList.contains('tp-targeted') !== tgt) dpo.el.classList.toggle('tp-targeted', tgt);
+            }
+
+            if (animsOff || !entry.mixer) return;
+            if (!entry._ew_curAnim || entry._ew_curAnim !== 'idle') _playUnitModelAnim(entry, 'idle');
+            entry.mixer.update(dt);
+            var cur = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
+            if (cur) _modelAnimState.set(rid, { name: entry._ew_curAnim, time: cur.time });
+        });
     }
 
     /* ── Per-frame plate scaling: match plate width to projected sprite width ── */
@@ -15384,9 +15631,20 @@ const ThreeRenderer = (function () {
            plate filter hides them too: a decoy can never be in the focus set,
            so a plate that ignored the filter while every uninvolved real
            unit's plate hid would instantly betray it as fake. */
+        /* THE REAL-LOOKING COPY: while aiming (the ui.js tile set, not an action's focus) a copy keeps its plate by the
+           same rule ui.js gives a real unit — an action-relevant highlight on its tile — so an enemy in reach and its
+           copy in reach both keep theirs. */
+        var _dvAim = targetSet && !(_af && _af.set === targetSet);
+        var _dvHl = (_dvAim && window._ewHlCache) ? window._ewHlCache.map : null;
         for (var _dvi = 0; _dvi < _decoyPlates.length; _dvi++) {
             var _dve = _decoyPlates[_dvi];
-            _dve.css2d.visible = targetSet ? false : (_dve.mesh ? !!_dve.mesh.visible : true);
+            var _dvVis = _dve.mesh ? !!_dve.mesh.visible : true;
+            if (targetSet) {
+                var _dvT = (_dvHl && _dve.x != null) ? (_dvHl.get(_dve.x + ',' + _dve.y) || '') : '';
+                _dvVis = _dvVis && !!_dvT && _dvT !== 'move' && _dvT !== 'move-jump' && _dvT !== 'move-takeoff'
+                    && _dvT !== 'move-edge' && _dvT !== 'selected' && _dvT !== 'spell-range-bg';
+            }
+            _dve.css2d.visible = _dvVis;
         }
     }
 
@@ -15877,6 +16135,9 @@ const ThreeRenderer = (function () {
                     highlightGroup.add(_makeHlTile(jbt.x, jbt.y, _getSharedHlMat('move-edge'), 0.92, 0.3, jbt.z));
                 }
             }
+        } else if (state.actionMode === 'climb' && typeof G.getClimbTiles === 'function') {
+            tiles = G.getClimbTiles(sel);
+            for (var ci = 0; tiles && ci < tiles.length; ci++) highlightGroup.add(_makeHlTile(tiles[ci].x, tiles[ci].y, _getSharedHlMat('move-climb'), 0.92, 0.3, tiles[ci].z));
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
             tiles = G.getAttackTiles(sel);
             if (tiles) {
@@ -18232,17 +18493,18 @@ const ThreeRenderer = (function () {
             if (canvas) canvas.style.cursor = '';
             return;
         }
+        var _hDecoy = _decoyEntries.get(unitId) || null;   // THE REAL-LOOKING COPY
         if (canvas) {
-            var hUnit = _findUnit(unitId);
+            var hUnit = _hDecoy ? _hDecoy._ew_decoy.body : _findUnit(unitId);
             var hCol = (hUnit && hUnit.player === _viewerPlayerNum()) ? TURN_COLOR_OWN : TURN_COLOR_ENEMY;
             canvas.style.cursor = _unitHoverCursor(hCol);
         }
 
         /* Bring the hovered unit's nameplate to full strength (visual hierarchy). */
-        var hpo = _plateObjs.get(unitId);
+        var hpo = _hDecoy ? _hDecoy._ew_decoyPlate : _plateObjs.get(unitId);
         if (hpo && hpo.el) hpo.el.classList.add('tp-hovered');
 
-        var entry = unitEntries.get(unitId);
+        var entry = _hDecoy || unitEntries.get(unitId);
         if (!entry || !entry.group) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         _hoverGlowMesh = new THREE.Mesh(
@@ -18257,7 +18519,8 @@ const ThreeRenderer = (function () {
     }
     function _clearUnitHover() {
         if (_hoveredUnitId != null) {
-            var cpo = _plateObjs.get(_hoveredUnitId);
+            var _cDecoy = _decoyEntries.get(_hoveredUnitId);
+            var cpo = _cDecoy ? _cDecoy._ew_decoyPlate : _plateObjs.get(_hoveredUnitId);
             if (cpo && cpo.el) cpo.el.classList.remove('tp-hovered');
         }
         if (_hoverGlowMesh) {
@@ -20759,6 +21022,97 @@ const ThreeRenderer = (function () {
             g._ew_spriteTopY = baseY + bob + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
             g._ew_bobActive = true;
             _shadowMotion = true;   // the unit's shadow proxy bobs with it (§4.2)
+        }
+    }
+
+    /* ── 🧗 THE BATTLE CLIMB (2026-10-20, battle.js doClimb) ───────────────
+       The engine keeps a climber in the column at the FOOT of the face (unit.x/y/z) and marks the hang in
+       unit._climb (plain data — state-sync carries it, so host and guest draw the same thing from it). This pass
+       puts the body ON the wall: pushed against the face, its feet ~40% of the way up, climbing there over
+       CLIMB_VIS.climbMs with climbWall (Fast_Ladder_Climb) and then FROZEN on that frame (timeScale 0) — the hang
+       pose holds until the unit's next turn. When _climb goes: moved = the arrival (the engine's jump arc carries
+       the body; climbMantle plays ClimbUp_1m over the top), else a short drop to the foot (a knock-off flails with
+       the fall clip). Sprite units get the same placement, no clip. */
+    var CLIMB_VIS = { climbMs: 1000, hangFrac: 0.42, faceInset: 0.30, dropMs: 220 };
+    var _climbVis = new Map();   // uid → { key, t0, fromY, frozenAt, ts0, footX, footY, knock, drop }
+    function _climbEntryAct(uid) {
+        var e = _getUnitEntry(uid);
+        return (e && e.actions && e.actions.climbWall) ? { e: e, act: e.actions.climbWall } : null;
+    }
+    function _climbRestoreClip(uid, cv) {
+        var ea = _climbEntryAct(uid);
+        if (ea && cv.ts0 != null) ea.act.timeScale = cv.ts0;
+        var e = _getUnitEntry(uid);
+        if (e) e._ew_climbWant = null;
+    }
+    function _updateBattleClimbers() {
+        if (!unitGroup) return;
+        var inBattle = (typeof state !== 'undefined' && state && state.phase === 'battle');
+        if (!inBattle && !_climbVis.size) return;
+        var now = performance.now();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var lvl = ts * ELEV_STEP_RATIO;
+        for (var j = 0; j < unitGroup.children.length; j++) {
+            var g = unitGroup.children[j];
+            var uid = g._ew_unitId;
+            if (!uid) continue;
+            var unit = inBattle ? _findUnit(uid) : null;
+            var c = (unit && !unit.dead && !unit._dying && unit._climb && unit.x === unit._climb.footX && unit.y === unit._climb.footY) ? unit._climb : null;
+            var cv = _climbVis.get(uid);
+            var busy = _walkTweens.has(uid) || _displaceTweens.has(uid) || _jumpTweens.has(uid)
+                || _strikeTweens.has(uid) || _deathTweens.has(uid);
+            if (!c) {
+                if (!cv) continue;
+                if (!cv.drop) {
+                    _climbRestoreClip(uid, cv);
+                    if (!unit || unit.dead) { _climbVis.delete(uid); continue; }
+                    if (unit.x !== cv.footX || unit.y !== cv.footY) {
+                        _maybeStartModelAnim(uid, ['climbMantle', 'jump'], 1000);   // the pull-up over the top
+                        _climbVis.delete(uid);
+                        continue;
+                    }
+                    if ((unit._climbKnockSeq || 0) !== cv.knock) _maybeStartModelAnim(uid, ['fall', 'hit'], 900);
+                    cv.drop = { t0: now, fromY: g.position.y, fromX: g.position.x, fromZ: g.position.z };
+                }
+                if (busy) { _climbVis.delete(uid); continue; }
+                var dk = Math.min(1, (now - cv.drop.t0) / CLIMB_VIS.dropMs);
+                var dE = dk * dk;
+                g.position.y = cv.drop.fromY + (unitSurfaceY(unit) - cv.drop.fromY) * dE;
+                g.position.x = cv.drop.fromX + (unit.x * ts + ts / 2 - cv.drop.fromX) * dE;
+                g.position.z = cv.drop.fromZ + (unit.y * ts + ts / 2 - cv.drop.fromZ) * dE;
+                _shadowMotion = true;
+                if (dk >= 1) _climbVis.delete(uid);
+                continue;
+            }
+            if (busy) continue;
+            var key = c.dir + '|' + c.wallX + ',' + c.wallY + '|' + c.footX + ',' + c.footY + '|' + c.round;
+            var footY = unitSurfaceY(unit);
+            var hangY = footY + c.rise * lvl * CLIMB_VIS.hangFrac;
+            if (!cv || cv.key !== key) {
+                if (cv) _climbRestoreClip(uid, cv);
+                cv = { key: key, t0: now, fromY: (c.dir === 'down') ? footY + c.rise * lvl : footY, frozenAt: null, ts0: null,
+                       footX: c.footX, footY: c.footY, knock: unit._climbKnockSeq || 0, drop: null };
+                _climbVis.set(uid, cv);
+            }
+            var k = Math.min(1, (now - cv.t0) / CLIMB_VIS.climbMs);
+            var kE = 1 - (1 - k) * (1 - k);
+            var dxW = Math.sign(c.wallX - c.footX), dyW = Math.sign(c.wallY - c.footY);
+            g.position.x = unit.x * ts + ts / 2 + dxW * ts * CLIMB_VIS.faceInset;
+            g.position.z = unit.y * ts + ts / 2 + dyW * ts * CLIMB_VIS.faceInset;
+            g.position.y = cv.fromY + (hangY - cv.fromY) * kE;
+            _shadowMotion = true;
+            var ea = _climbEntryAct(uid);
+            if (ea) {
+                ea.e._ew_climbWant = 'climbWall';
+                if (cv.ts0 == null) cv.ts0 = (ea.act.timeScale > 0) ? ea.act.timeScale : 1;
+                if (k < 1) {
+                    ea.act.timeScale = (c.dir === 'down') ? -cv.ts0 : cv.ts0;   // down: the same climb played backwards
+                } else if (ea.e._ew_curAnim === 'climbWall') {
+                    if (cv.frozenAt == null) cv.frozenAt = ea.act.time;
+                    ea.act.timeScale = 0;
+                    if (Math.abs(ea.act.time - cv.frozenAt) > 1e-3) ea.act.time = cv.frozenAt;   // a flinch one-shot reset it
+                }
+            }
         }
     }
 
@@ -25135,6 +25489,7 @@ const ThreeRenderer = (function () {
         _updateSpriteAnimTweens();
         _updateUnitModels();
         _updateUnitSelfGlow();
+        _updateDecoyEntries();
     }
 
     function _clearAnimations() {
@@ -39578,6 +39933,7 @@ const ThreeRenderer = (function () {
         _updateBatSwarms();
         _updateFlyingBob();
         _riseTick();   // THE RISE
+        _updateBattleClimbers();   // 🧗 the hang on the wall
         _updateTowerCubes();
         _updateTrafficLights();
         _updateTorchFlames();
@@ -39862,7 +40218,7 @@ const ThreeRenderer = (function () {
     function _fieldFloorLit(x, y, z) {
         if (typeof state === 'undefined' || !state || !state.actionMode || !state.selectedUnitId) return null;
         var mode = state.actionMode;
-        if (mode === 'move' || mode === 'jump') {
+        if (mode === 'move' || mode === 'jump' || mode === 'climb') {
             var cache = window._ewHlCache, pk = x + ',' + y;
             if (!cache || !cache.map || !cache.key || String(cache.key).indexOf(state.selectedUnitId + '|' + mode) !== 0) return null;
             var cls = cache.map.get(pk);
@@ -39913,7 +40269,9 @@ const ThreeRenderer = (function () {
        changes under a stationary mouse. */
     function _resolveHoverAt(clientX, clientY) {
         var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
-        _updateUnitHover(unitHit ? unitHit.unitId : null);
+        /* THE REAL-LOOKING COPY: a decoy under the pointer lights up like a unit (hover ring, full-strength plate) */
+        var _decoyHit = (!unitHit && _decoyEntries.size) ? ThreeCamera.screenToUnit(clientX, clientY, canvas, { children: _decoyGroups() }) : null;
+        _updateUnitHover(unitHit ? unitHit.unitId : (_decoyHit ? _decoyHit.unitId : null));
 
         var hit = _editorResolveTile(clientX, clientY);
         var _ffpH = _fieldFloorPick(clientX, clientY);   // THE TWO FLOORS: the lit floor under the pointer
@@ -40210,6 +40568,7 @@ const ThreeRenderer = (function () {
         _nexusBarGroup = null;
         textureCache.clear(); tileMeshes.clear(); objectMeshes.clear();
         turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear();
+        _decoyEntries.clear(); _decoyPlates.length = 0;
         _disposeAllModelRigs();
         _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();

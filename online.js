@@ -308,7 +308,7 @@
                                 var _fbKind = sentActionMode === 'attack' ? 'attack'
                                     : sentActionMode === 'spell' ? 'spell'
                                     : sentActionMode === 'item' ? 'item'
-                                    : sentActionMode === 'jump' ? 'jump'
+                                    : (sentActionMode === 'jump' || sentActionMode === 'climb') ? 'jump'
                                     : null;
                                 if (_fbKind) _guestActionFeedback(_fbKind, actingUnit, x, y);
                                 if (_fbKind === 'attack' && typeof window._ewMenuAtkPending === 'function') window._ewMenuAtkPending(actingUnit, x, y, sentPendingTarget.z);
@@ -646,6 +646,21 @@
             _guestMenuToRoot();
             return true;
         };
+
+        /* 🧗 Climb (battle.js doClimb): the guest emits the whole call; the host runs it — the walk to the foot too, when
+           the pick needs one — and the hang (unit._climb + the climbing status) rides state-sync back. */
+        const _origDoClimb = (typeof doClimb === 'function') ? doClimb : null;
+        if (_origDoClimb) {
+            doClimb = function(unit, x, y, z) {
+                if (!_isOnline() || state._remoteAction) return _origDoClimb(unit, x, y, z);
+                if (_isHost()) return _hostRunAndSync(_origDoClimb, [unit, x, y, z]);
+                if (!_guestOwnsAction(unit)) return false;
+                _guestActionFeedback('jump', unit, x, y);
+                _emit('game-action', { type: 'engine', fn: 'doClimb', unitId: unit.id, x: x, y: y, z: z });
+                _guestMenuToRoot();
+                return true;
+            };
+        }
 
         /* Take Off / Land (More menu + Move-Towards unblock). Never relayed
            before: a guest's takeoff ran on its own non-authoritative copy,
@@ -1987,6 +2002,7 @@
                             }
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
                             case 'doJump': doJump(engUnit, data.x, data.y, data.z); break;
+                            case 'doClimb': if (typeof doClimb === 'function') doClimb(engUnit, data.x, data.y, data.z); break;
                             case 'doItem': doItem(engUnit, data.x, data.y, data.z); break;
                             case 'usePanacea': if (typeof usePanacea === 'function') usePanacea(engUnit); break;
                             case 'doComboAttack': {
@@ -2770,6 +2786,8 @@
                         ['tx', 'ty', 'tz', 'sx', 'sy', 'fromX', 'fromY', 'dx', 'dy', 'range',
                          'spellType', 'casterX', 'casterY', 'aoeRadius', 'cx', 'cy',
                          'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
+                         /* the aimed body's tile (a wide beam's side lane) */
+                         'ax', 'ay',
                          'staggerMs', 'includePrimary',
                          /* staging (cinematic grammar) beat params */
                          'weight', 'archetype', 'dimMs', 'holdMs',
