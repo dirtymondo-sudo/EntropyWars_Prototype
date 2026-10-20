@@ -25,6 +25,10 @@
 // area (hqArenaCaps). Only the sites with a 12×12 cut get the extra sizes. `--json <file>` writes the picks to a file instead of data.js
 // (bake several sizes at once), `--apply <file>` files such a bake into data.js:
 //   node bake-arenas.js --size 9 --json /tmp/a9.json   then   node bake-arenas.js --size 9 --apply /tmp/a9.json
+// THE CLASH TEMPLE (2026-10-20): `node bake-arenas.js clash_stage` bakes Clash's stage — the 10×10 cut of its room (data.js
+// HQ_CLASH_STAGE.room) whose formation tiles (P1 x 3, P2 x 6, rows 3..6) and the two columns between them stand flat, open and
+// seated, the walled cut's caps on the rest, the window nearest the room's centre — into HQ_CLASH_STAGE.pick (<CLASH PICK> markers).
+// Rerun it after the Temple room changes (`--dry-run` prints the pick).
 'use strict';
 
 const fs = require('fs');
@@ -43,7 +47,8 @@ const META = ev('EW_MAP_META');
 const ROOMS = ev('DOOR_HQ.rooms');
 const ENTRY = ev('(DOOR_HQ.siteRooms || {}).entry || {}');
 const S12 = ev('HQ_ARENA_RULES.size');
-const S = argAfter('--size') ? (parseInt(argAfter('--size'), 10) | 0) : S12;
+const CLASH = process.argv.includes('clash_stage') ? ev('HQ_CLASH_STAGE') : null;
+const S = CLASH ? CLASH.S : argAfter('--size') ? (parseInt(argAfter('--size'), 10) | 0) : S12;
 if (S !== S12 && ev('HQ_ARENA_EXTRA_SIZES').indexOf(S) < 0) { console.error('--size ' + S + ' is not one of data.js HQ_ARENA_EXTRA_SIZES'); process.exit(1); }
 const PKEY = S === S12 ? 'picks' : 'picks' + S, MARK = S === S12 ? 'ARENA PICKS' : 'ARENA PICKS ' + S;
 const CAPS = sb.hqArenaCaps(S);
@@ -162,6 +167,39 @@ function encode(R) {
         cells.push(k.toString(36) + String(Math.max(0, Math.min(9, (c.tile | 0) + 1))));   // the level + 1 (a pool sits at -1)
     }
     return { keys, cells: cells.join('') };
+}
+
+/* THE CLASH TEMPLE: one room, one window — the formation lines and the gap between them clear, the rest the walled cut's caps */
+if (CLASH) {
+    const roomId = CLASH.room, Lt = sb.hqFieldLattice(roomId);
+    if (!sb.hqFieldRoomOk(roomId) || !Lt || Lt.w < S || Lt.h < S) { console.error('clash_stage: the room ' + roomId + ' cannot hold a ' + S + 'x' + S); process.exit(1); }
+    const lines = CLASH.formation[1].concat(CLASH.formation[2]);
+    const clear = [];
+    lines.forEach(p => { for (let x = Math.min(CLASH.formation[1][0].x, CLASH.formation[2][0].x); x <= Math.max(CLASH.formation[1][0].x, CLASH.formation[2][0].x); x++) if (!clear.some(q => q[0] === x && q[1] === p.y)) clear.push([x, p.y]); });
+    let best = null, n = 0;
+    for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
+        if (!clear.every(q => Lt.walk(ox + q[0], oz + q[1]))) continue;
+        const R = sb.hqFieldRaster(roomId, ox, oz, S, S); if (!R) continue;
+        let out = 0, bad = false;
+        for (let y = 0; y < S && !bad; y++) for (let x = 0; x < S; x++) { const c = R.cells[y][x]; if (!(c.in && !c.rock && !c.hazard)) out++; else if ((c.tile | 0) > TOP) { bad = true; break; } }
+        if (bad || out > WALLS) continue;
+        if (!clear.every(q => { const c = R.cells[q[1]][q[0]]; return c.in && !c.rock && !c.hazard && (c.tile | 0) === 0 && c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge; })) continue;
+        n++;
+        const mk = marker(roomId), cx = R.x0 + S * R.C / 2, cz = R.z0 + S * R.C / 2, dist = Math.hypot(cx - mk.x, cz - mk.z);
+        if (!best || dist < best.dist - 1e-9) best = { ox, oz, dist, out, R };
+    }
+    if (!best) { console.error('clash_stage: no ' + S + 'x' + S + ' window of ' + roomId + ' holds the formation'); process.exit(1); }
+    const enc = encode(best.R);
+    const pick = { room: roomId, ox: best.ox, oz: best.oz, base: best.R.floorKey || 'grass_2', open: best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
+    console.log('clash_stage: ' + roomId + ' @ ' + best.ox + ',' + best.oz + ' (' + n + ' fit, solid ' + best.out + ', ' + best.dist.toFixed(2) + ' m from the centre)');
+    for (let y = 0; y < S; y++) console.log('  ' + best.R.cells[y].map(c => (c.in && !c.rock && !c.hazard) ? String(c.tile | 0) : '#').join(' '));
+    if (DRY) process.exit(0);
+    const src = fs.readFileSync(DATA, 'utf8');
+    const re = /(\/\* <CLASH PICK>[\s\S]*?\*\/\n)([\s\S]*?)(\n[ \t]*\/\* <\/CLASH PICK> \*\/)/;
+    if (!re.test(src)) { console.error('data.js has no <CLASH PICK> markers'); process.exit(1); }
+    fs.writeFileSync(DATA, src.replace(re, (m, a, b, c) => a + '    pick: ' + JSON.stringify(pick) + ',' + c));
+    console.log('wrote HQ_CLASH_STAGE.pick into data.js');
+    process.exit(0);
 }
 
 let picks = {};

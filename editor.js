@@ -2213,7 +2213,7 @@
         Object.keys(P).forEach(function (k) {
             var e = P[k]; if (!e || !e.arena || e.arena.room !== id) return;
             var m = (W.EW_MAP_META || (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []) || []).filter(function (x) { return x.id === e.arena.site; })[0];
-            var n = (m && m.label) || e.arena.site; if (out.indexOf(n) < 0) out.push(n);
+            var n = (m && m.label) || (e.arena.formation ? 'Clash ' + (e.name || 'stage') : e.arena.site); if (out.indexOf(n) < 0) out.push(n);   // THE CLASH TEMPLE: Clash's stage has no roster row
         });
         return out;
     }
