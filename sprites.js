@@ -950,7 +950,12 @@ const UAL_SLOTS = {
   // (0 net hips travel). The chargeToTarget sprint plays it instead of the
   // jog (three-renderer.js startDisplaceTween `charge`); falls back to run.
   runCharge:   { clip: 'RunFast',                lib: 4, ts: 1.0 },
-  hit:         { clip: 'Hit_Reaction_1',         lib: 2, ts: 2.1  },
+  // THE BATTLE CLIMB (2026-10-20): the exploration ladder clips (HQ_CLIMB_CLIPS) on every battle rig. climbWall
+  // plays up the face, then freezes as the hang until the unit's next turn (three-renderer.js
+  // _updateBattleClimbers); climbMantle pulls it over the top. Baked after load (defer).
+  climbWall:   { clip: 'Fast_Ladder_Climb',      lib: 4, ts: 1.0, pinHips: true, defer: true },
+  climbMantle: { clip: 'ClimbUp_1m',             lib: 1, ts: 1.3, defer: true },
+  hit:       { clip: 'Hit_Reaction_1',         lib: 2, ts: 2.1  },
   death:       { clip: 'Dead',                   lib: 2, ts: 1.9  },
   cast:        { clip: 'Spell_Simple_Shoot',     lib: 0, ts: 0.5, strikeAt: 0.05 },
   // castMagic: arm thrusts forward at 0.7s then HOLDS the push to 2.5s (a

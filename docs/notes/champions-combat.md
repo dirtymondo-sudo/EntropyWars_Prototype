@@ -1806,6 +1806,37 @@ Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, I
   (`_releaseSkyThrowGrab`: another action, reselect, turn change) refunds it too. online.js routes the guest's
   cancel to the host (`fn: 'cancelSkyThrowGrab'`). A pick-a-unit teleport forgets its picked unit on back-out.
 
+## THE BATTLE CLIMB (2026-10-20, mondo: "Did climbing ever get added to the game? ... in battle" → yes to design/CLIMB_MECHANIC_DESIGN.md's recommended answers)
+battle.js (after doJump) `getClimbTilesFrom` / `getClimbTiles` / `doClimb` / `_startClimb` / `knockOffClimber` /
+`processClimbArrival`; data.js STATUS_DEFS `climbing`.
+- A face TALLER than the unit's jump (`getUnitJumpClimb`) and at most jump + `CLIMB_RULES.capOverJump` (2) high, from
+  one of the 4 straight neighbours (Low Gravity +2, Gravity Crush none). Down: the same cap, only where the drop would
+  hurt (predictFallDamage > 0). Never: an edge-wall panel on that edge, arena rock (`fieldCellRock`), roofWalkable
+  roofs, a roof over the lane (`columnLaneClear`), Clash, Mystery Dungeon, Simul, a flyer that can still fly.
+- Climb ENDS THE TURN (spendAllAP). Move + Climb = one walk to the foot (needs 2 AP, no move spent), then the climb
+  (doClimb chains doMove → `_startClimb`; online the guest emits the whole doClimb, the host runs both legs).
+- The climber STAYS IN THE FOOT COLUMN: unit.x/y/z = the bottom of the face (up: its own tile; down: it moves into the
+  lower column at the start). `unit._climb = { dir, rise, wallX, wallY, wallZ, footX, footY, footZ, round }` is plain
+  data → state-sync. Reach, occupancy and hits all read the foot tile (the design's "half-way up" reach was not built:
+  too many separate range paths to keep the previews honest).
+- The `climbing` status (marker, 99 rounds, only `_endClimb` removes it): blockMove = 0 dodge; stageMod −2 DEF / −2 M.DEF.
+  getCounterChance → 0 and checkOpportunityAttack skips a climber.
+- Knock-off: any damage with a sourceUnit that isn't a DoT tick (applyDamageToUnit hook before the death check), any
+  resolveForcedSlide, any blockAction status (stun / frozen / sleep, applyStatusPayload). Fall damage = the whole rise
+  with forced threshold 1, 300 ms later; `predictClimbFallDamage` (rise + 2 into predictFallDamage) is the same number
+  on the quick-menu button and in the log. `unit._climbKnockSeq` tells the renderer it was a fall.
+- Arrival: the activation (beside processBuildingEmerge) calls `processClimbArrival` first. Up: re-checks the ledge
+  (free, surface still there, within the cap, no Gravity Crush, lane clear) → jump arc onto it (relayed), Overwatch,
+  Nexus, resolveTileArrival; else drops back to the foot unhurt. Either way the unit keeps its full turn.
+- UI: root verb CLIMB (only when a climb exists this turn; MOVE→CLIMB note when only via a walk), action mode 'climb'
+  (sandstone `move-climb` tiles), the Move overlay paints the same ledges and a click there climbs, tile quick menu
+  "Climb up here / Move + climb up (fall −N HP)".
+- Look (three-renderer `_updateBattleClimbers`, UAL_SLOTS `climbWall` = MAL3 Fast_Ladder_Climb, `climbMantle` =
+  UAL2 ClimbUp_1m, both defer): body pushed 0.30 tile against the face, feet rising to 42% of the rise over 1 s with
+  the climb clip (down: played backwards), then the clip FREEZES (timeScale 0) as the hang. Release: moved = mantle
+  one-shot under the jump arc; not moved = a 220 ms drop to the foot (+ the fall clip on a knock-off).
+- Not built: AI climbing / AI pathing over climbable faces; Nexus ignoring climbers.
+
 ## THE REAL-LOOKING COPY (2026-10-20) — battle.js, three-renderer.js
 mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all copy/clone
 moves. From the enemy perspective they need to look indistinguishable from the actual unit."
