@@ -16712,6 +16712,9 @@ const HQ_ROOM_LOOKS = {
        THE FACILITY's grade — the Kodachrome print: the dream preset barely dithered, low grain, warm, no night, the bloom on the lava
        lamps and the saucers; THE SPACESHIP's — 2001's white interior under cool light, the teal preset, faded, no vignette to speak of */
     retro:      { name: 'D.O.O.R. HEADQUARTERS', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.26, grain: 0.018, tintAmount: 0.3, levels: 30 }, cin: { vignette: true, vigAmount: 0.2, vigSize: 0.64 }, nightMood: 0.0, bloom: 0.3 },
+    /* THE ISLAND (2026-10-20, mondo: "that y2k beach aesthetic"): the brochure print — the dream preset barely tinted, the most colour
+       levels, a whisper of grain, no night mood, a wide soft vignette: white sand, turquoise water, a blue sky */
+    island:     { name: 'THE ISLAND', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.24, grain: 0.012, tintAmount: 0.12, levels: 32 }, cin: { vignette: true, vigAmount: 0.18, vigSize: 0.66 }, nightMood: 0.0, bloom: 0.24 },
     spaceship:  { name: 'THE SPACESHIP', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.3, grain: 0.024, tintAmount: 0.3, levels: 28 }, cin: { vignette: true, vigAmount: 0.24, vigSize: 0.6 }, nightMood: 0.15, bloom: 0.3 },
 };
 // THE DAY SKY (2026-09-21): `day: 1` on a row (or a shell's `sky`) = a real daylight atmosphere on the dome — a blue
@@ -40453,8 +40456,8 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 14, z0: 56.6, x1: 14, z1: 50.3, w: 2.2, h0: 0.5, h1: 2.6, stairs: true, edge: 0.2 },        // its stair (ends 0.7 m inside — THE RAMP RULE)
                     { k: 'rail', x0: 11.2, z0: 45.4, x1: 16.8, z1: 45.4 },                                                       // the lookout's rail (the grind)
                     { k: 'deck', x0: -2, z0: 44.6, x1: -2, z1: 28, w: 2.4, y: 0.6 },                                             // THE JETTY (one bank on purpose: its end is the sea)
-                    /* AREA CONTENT D4 (2026-09-20): three palms on the beach — the bay door sees the weir's pool, not the maelstrom across the whole sea (R3) */
-                    { k: 'tree', x: -5, z: 49.8, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: 2.0, z: 50, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: -7.4, z: 46, kind: 'tree_5', h: 7, r: 0.6 },   // 2026-09-20: up the beach (z 40 stood in the sea)
+                    /* AREA CONTENT D4 (2026-09-20): three palms on the beach — the bay door sees the weir's pool, not the maelstrom across the whole sea (R3); real palms since 2026-10-20 (they were bare trees) */
+                    { k: 'tree', x: -5, z: 49.8, kind: 'palm', h: 4, r: 0.6 }, { k: 'tree', x: 2.0, z: 50, kind: 'palm', h: 3.6, r: 0.6 }, { k: 'tree', x: -7.4, z: 46, kind: 'palm', h: 4.2, r: 0.6 },   // 2026-09-20: up the beach (z 40 stood in the sea)
                     { k: 'rail', x0: -3.3, z0: 44.2, x1: -3.3, z1: 28.4 },                                                       // its rail
                     { k: 'hill', x: -34, z: 6, r: 11, h: 3.8 },                                                                  // THE SANDBAR (+0.3: waded)
                     { k: 'hill', x: 44, z: -22, r: 14, h: 5.6 },                                                                 // THE WRECK ISLET (+2.1)
@@ -40502,6 +40505,86 @@ const DOOR_HQ = {
                 '“The skiff comes back on its own.” “From where?” “From wherever you left it. The tide has a form too.”',
             ],
             spawn: { x: 0, z: 56, face: 0 },
+        },
+        /* ══ THE ISLAND (2026-10-20 — mondo: "the bermuda triangle looks terrible ... It needs to have that y2k beach aesthetic. Literally
+           just an island in the ocean"; "built with the tools in the map editor, and remember to design them with square tiles in mind") ══
+           THE BERMUDA TRIANGLE's battle map, the new one in the old voxel Δ's slot (prebuilt_bermuda_delta = the 12×12 arena cut from here;
+           the voxel board stays in match select as prebuilt_bermuda_8x8_delta, HQ_ARENA_RULES.voxelKeep). Every piece is an editor row: the
+           room 48 × 48 squares (84 m), the sea (`terrain.sea`, the room inspector's), the plateaus and hills (BUILD / GROUND), the palms (the
+           TREES tab's `palm`), the pier (DECK), the props (MODELS / LIGHTS). THE SQUARES: the field's lattice edges sit at k · 1.75 m from the
+           centre, so the 12 × 12 cut is x / z −10.5…10.5 and every palm and boulder on it stands on a square's centre (−9.625 + 1.75 · n).
+           THE ISLAND (an oval of sand, flat at +0.3 so the whole fight is one level), THE LAGOON (a shelf of shallows at −0.8 round it — a wade:
+           the corners of the board stand knee deep), the drop to the deep (−4: a hazard in a fight, a swim on the walk). On the board, 180°
+           mirrored: four palms, two pairs of granite boulders (hills steep enough that no one stands on them — the Seychelles look). Off it:
+           the lifeguard chair on the north beach, the umbrellas, loungers, radio and bonfire on the south beach, tiki torches, the pier east
+           with the rowboat, the red buoys, a palm islet out to the north-west, the waterspout on the horizon. `sea.field` = the arena may
+           be cut from a sea (data.js hqFieldRoomOk / hqFieldTerrainInfo). */
+        site_prebuilt_bermuda_island: {
+            label: 'THE BERMUDA TRIANGLE · THE ISLAND',
+            sub: 'THE BEACH · THE LAGOON · THE PIER · NO FIXED POSITION',
+            kind: 'box', site: 'prebuilt_bermuda', part: 'island',
+            shell: hqSeaShell({ w: 84, d: 84, plate: { x: 0, z: 17, y: 3.2 }, look: HQ_ROOM_LOOKS.island,
+                mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff6e0, ambient: 0.7, night: 0 },
+                sky: { night: 0, tint: 0x8fd4f0, tintAmt: 0.16, stars: 0.2, nebula: 0, day: 1, clouds: 0.22, fog: { color: 0xc4ecf8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'sea', density: 0.55,
+                       landmarks: [{ kind: 'waterspout', id: 'prebuilt_bermuda', deg: 32, dist: 0.8, y: -0.02, s: 0.8, label: 'THE WATERSPOUT' }] } }),
+            terrain: {
+                floor: 'desert', cliff: 'rocks_5', path: 'wood_planks',
+                base: -4.0, noise: { amp: 0.5, scale: 9 }, crag: false,
+                sea: { y: 0, key: 'water', field: true },
+                outer: { m: 120 },
+                features: [
+                    { k: 'plateau', x: 0, z: 0, r: 25, rz: 28, h: -0.8, edge: 11, blend: 'ground' },                     // THE LAGOON (the shelf: a wade, 0.8 deep)
+                    { k: 'plateau', x: 0, z: 0, r: 14, rz: 21, h: 0.3, edge: 5, blend: 'ground' },                          // THE ISLAND (flat sand, the beach its 5 m blend into the lagoon)
+                    { k: 'hill', x: -5, z: -14, r: 4.5, h: 0.3 }, { k: 'hill', x: 5, z: 14, r: 4.5, h: 0.3 },             // the dunes at either end (under the tier rule: the floor)
+                    /* the granite boulders (two pairs, 180° about the centre): too steep to stand on — cover, a blocked square each */
+                    { k: 'hill', x: -4.375, z: 0.875, r: 1.6, h: 2.6 }, { k: 'hill', x: -4.1, z: -0.8, r: 1.1, h: 1.7 },
+                    { k: 'hill', x: 4.375, z: -0.875, r: 1.6, h: 2.6 }, { k: 'hill', x: 4.1, z: 0.8, r: 1.1, h: 1.7 },
+                    { k: 'hill', x: 7.875, z: 7.875, r: 1.4, h: 2.2 }, { k: 'hill', x: -7.875, z: -7.875, r: 1.4, h: 2.2 },
+                    { k: 'hill', x: -9.625, z: -1.75, r: 1.3, h: 2.0 }, { k: 'hill', x: 9.625, z: 1.75, r: 1.3, h: 2.0 },          // at the water's edge
+                    /* the granite shelves (2 × 2 squares each, one level up: the high ground, climbed onto; the rock painted on) */
+                    { k: 'plateau', x: 7.0, z: -3.5, r: 3.0, rz: 2.9, h: 1.5, edge: 0.3, dome: 0.12 }, { k: 'plateau', x: -7.0, z: 3.5, r: 3.0, rz: 2.9, h: 1.5, edge: 0.3, dome: 0.12 },
+                    /* the palms (each on a square's centre; a blocker on the walk, a blocked square in a fight) */
+                    { k: 'tree', x: -7.875, z: -2.625, kind: 'palm', h: 3.6, r: 0.45 }, { k: 'tree', x: 7.875, z: 2.625, kind: 'palm', h: 3.4, r: 0.45 },
+                    { k: 'tree', x: 2.625, z: -6.125, kind: 'palm', h: 3.2, r: 0.45 }, { k: 'tree', x: -2.625, z: 6.125, kind: 'palm', h: 3.5, r: 0.45 },
+                    /* off the board: the palms on the beaches */
+                    { k: 'tree', x: -4.6, z: -12.4, kind: 'palm', h: 3.9, r: 0.45 }, { k: 'tree', x: 5.0, z: -11.8, kind: 'palm', h: 3.3, r: 0.45 },
+                    { k: 'tree', x: 5.2, z: 12.0, kind: 'palm', h: 3.7, r: 0.45 }, { k: 'tree', x: -5.4, z: 11.8, kind: 'palm', h: 3.2, r: 0.45 },
+                    { k: 'deck', x0: 10.6, z0: 0, x1: 27, z1: 0, w: 2.6, y: 0.55 },                                       // THE PIER (east, out over the lagoon to the drop)
+                    { k: 'scatter', key: 'coral_brain', n: 8, x: 0, z: 0, r: 26, seed: 21, sea: true },                 // the lagoon's coral
+                    { k: 'scatter', key: 'coral_fan', n: 10, x: 0, z: 0, r: 27, seed: 22, sea: true },
+                    { k: 'scatter', key: 'fish_school', n: 3, x: 0, z: 0, r: 30, seed: 23, sea: true },
+                ],
+                paint: {"pal":["rocks_5"],"t":"u8","res":0.5,"x0":-11.5,"z0":-9.5,"nx":47,"nz":39,"d":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQAAAAAAAAABAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAQEBAAAAAAAAAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQEAAAAAAAEBAQEBAQAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAQEBAQEBAQEBAQEBAQAAAAAAAQEBAQEBAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEBAQEBAQEBAQEAAAAAAAAAAQEBAQEAAAAAAAABAQEBAQAAAAAAAAAAAAAAAQEBAQEBAQEBAQEBAAAAAAAAAAAAAQEBAAAAAAAAAAEBAQEBAAAAAAAAAAAAAAABAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEAAAAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAQAAAAAAAAAAAAAAAQEBAQEAAAAAAAAAAQEBAAAAAAAAAAAAAQEBAQEBAQEBAQEBAAAAAAAAAAAAAAABAQEBAQAAAAAAAAEBAQEBAAAAAAAAAAEBAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAQEBAQEBAAAAAAABAQEBAQEBAQEBAQEBAAAAAAAAAAAAAAAAAAABAAAAAAAAAAABAQEBAQEAAAAAAAEBAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAAAAAAAAAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQAAAAAAAAABAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},   // the editor's PAINT brush: rocks_5 on the shelves and the boulders
+            },
+            doors: [],
+            counters: [],
+            props: [
+                { key: 'lifeguard_chair', x: 0, z: -14.4, face: 0 },                                                  // the north beach: the chair looks out to sea
+                { key: 'pool_umbrella', x: -2.8, z: 13.0 }, { key: 'pool_lounger', x: -2.8, z: 12.0, face: 180 },     // the south beach
+                { key: 'pool_umbrella', x: 1.8, z: 14.2 }, { key: 'pool_lounger', x: 1.8, z: 13.2, face: 160 },
+                { key: 'retro_radio', x: -0.6, z: 12.4, face: 200 },
+                { key: 'campfire', x: 3.6, z: 16.0 },                                                                 // the bonfire (a light at night)
+                { key: 'sea_chest', x: -2.2, z: 15.4, face: 30 },
+                { key: 'cave_torch', x: 12.4, z: -1.0, y: 0.55 }, { key: 'cave_torch', x: 12.4, z: 1.0, y: 0.55 },     // the tiki torches: the pier's foot
+                { key: 'cave_torch', x: -2.6, z: -13.8 }, { key: 'cave_torch', x: 2.6, z: -13.8 },                    // the north beach
+                { key: 'cave_torch', x: -3.4, z: 16.6 },
+                /* the boulders' rock (each over its hill: the hill is the ground the walker meets, the rock is what is drawn) */
+                { key: 'asteroid_a', x: -4.375, z: 0.875, y: -0.1, span: 3.0, face: 20 }, { key: 'asteroid_b', x: -4.1, z: -0.8, y: -0.1, span: 2.0, face: 110 },
+                { key: 'asteroid_a', x: 4.375, z: -0.875, y: -0.1, span: 3.0, face: 200 }, { key: 'asteroid_b', x: 4.1, z: 0.8, y: -0.1, span: 2.0, face: 290 },
+                { key: 'asteroid_a', x: -7.875, z: -7.875, y: -0.1, span: 2.6, face: 70 }, { key: 'asteroid_a', x: 7.875, z: 7.875, y: -0.1, span: 2.6, face: 250 },
+                { key: 'asteroid_b', x: -9.625, z: -1.75, y: -0.3, span: 2.4, face: 140 }, { key: 'asteroid_b', x: 9.625, z: 1.75, y: -0.3, span: 2.4, face: 320 },
+                { key: 'rowboat', x: 25.6, z: 2.4, y: -0.2, face: 90 },                                              // moored at the pier's end
+                { key: 'sea_buoy', x: 31, z: -12, y: 0.32 }, { key: 'sea_buoy', x: -30, z: 14, y: 0.32 }, { key: 'sea_buoy', x: 8, z: 33, y: 0.32 },
+                { key: 'palmisle', x: -30, z: -30, y: -0.5, face: 40 },                                               // a palm islet out to the north-west
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Room 345.” “It is an island.” “It was a sea last time.” “The sea moved.”',
+                '“The lifeguard chair is empty.” “Whose is it?” “Whoever was watching when the compass stopped.”',
+            ],
+            spawn: { x: 0, z: 12.2, face: 0 },
         },
         /* ══ THE HARBOUR (OPEN WORLD Phase 7, 2026-09-27 — OPEN_WORLD_PLAN §4.5 THE COAST) ══
            THE COAST's hub: the open sea off Disaster City's docks, one 300 × 300 part at res 1.0 (the sea floor is cheap) under
@@ -46686,6 +46769,9 @@ const HQ_TREE_KINDS = {
     tree_13: { model: 'DeadTree_1', dead: true },  tree_14: { model: 'DeadTree_3', dead: true },  tree_15: { model: 'DeadTree_4', dead: true },
     tree_16: { model: 'DeadTree_6', dead: true },  tree_17: { model: 'DeadTree_7', dead: true },  tree_18: { model: 'DeadTree_8', dead: true },
     tree_19: { model: 'DeadTree_9', dead: true },  tree_20: { model: 'DeadTree_10', dead: true },
+    /* THE ISLAND (2026-10-20): the palm — the `palm_tree` GLB in the D.O.O.R. kit folder (the renderer's `kit:` foliage), a tree like the rest:
+       a blocker on the walk, a blocked cell in a fight, the editor's TREES tab */
+    palm:    { model: 'kit:Meshy_AI_palm_tree_0910054114_texture.glb', name: 'palm' },
 };
 function hqTreeDead(kind) { const t = HQ_TREE_KINDS[kind]; return !!(t && t.dead); }
 /* THE MISC MODELS WITH NO ROW (§5.2: "E2 adds a catalogue row for each key that has none"): the renderer's _MISC_GLB files the
@@ -54294,8 +54380,9 @@ function hqFieldRoomOk(roomId) {
     if (!r || r.kind !== 'box' || !hqRoomSite(roomId)) return false;
     /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room (every generated AREA, the cave, the woods) rasterises its own
        window on the walker's feet rule (hqFieldTerrainInfo) — the user's rule: an encounter fights where you stand, on the ground you
-       stand on, never a voxel board. A room with a SEA (a swim has no tile) keeps the site's Δ. */
-    if (r.terrain) return !(r.terrain.sea) && !!r.shell;
+       stand on, never a voxel board. A room with a SEA (a swim has no tile) keeps the site's Δ — unless its sea says `field: true`
+       (THE ISLAND, 2026-10-20: the sea round a battle island is a hazard past the wade, a wade in the shallows; hqFieldTerrainInfo) */
+    if (r.terrain) return (!(r.terrain.sea) || !!(r.terrain.sea.field && !r.terrain.sea.under)) && !!r.shell;
     if (r.cave) return true;
     return r.fx !== 'site' && !!r.shell;
 }
@@ -54539,11 +54626,16 @@ function hqFieldTerrainInfo(roomId) {
     const onBoard = (x, z) => { const sq = (info.boards && info.boards.length) ? hqTerrainBoardAt(info.boards, x, z) : null; return (sq && known(sq.key)) ? sq.key : null; };
     const sub = Math.max(1, TR.sub | 0), cover = Math.min(sub * sub, TR.cover | 0);
     const ti_void = (x, z) => !!(info.void && hqTerrainVoidAt(info, x, z));
+    /* THE ISLAND (2026-10-20): a sea that says `field: true` is read like a pool — deeper than the wade is a hazard (the walker's swim
+       has no tile), the shallows a wade cell (no seat) */
+    const seaField = !!(room.terrain.sea && room.terrain.sea.field && info.sea && !info.sea.under);
+    const seaDeep = (x, z) => { if (!seaField) return false; const g = hqTerrainHeight(info, x, z); return info.sea.y - g > R.wadeMax; };
     /* a sample STANDS when the walker's free query gives it feet AND it is not the plan's solid (a `rooms` plan's thicket bank is a
        RISE the free query climbs — the walker never does: it is refused by the slope, which the free query does not read) AND it is
        not a face steeper than the walker climbs (a tier's edge blend, a cliff) — a wall's top and a bridge's deck are flat by rule */
     const stands = (sx, sz) => {
         if (treeAt(sx, sz)) return null;
+        if (seaDeep(sx, sz)) return null;
         if (info.maskD && hqTerrainMaskAt(info, sx, sz) < ((info.gen && info.gen.solidPad) || 0)) return null;
         const y = hqTerrainFeet(info, sx, sz, null);
         if (y == null) return null;
@@ -54641,7 +54733,7 @@ function hqFieldTerrainInfo(roomId) {
             if (feet == null && !centreTree && walk >= cover) { ys.sort((a, b) => a - b); feet = ys[Math.floor(ys.length / 2)]; }
             const fl = hqTerrainFluidAt(info, cx, cz);
             const g = hqTerrainHeight(info, cx, cz);
-            const wet = !!(fl && !fl.sea && g < fl.y - 0.05);
+            const wet = !!(fl && (!fl.sea || seaField) && g < fl.y - 0.05);
             const cell = { gx, gy, x: cx, z: cz, in: false, top: null, key: floorKey, hazard: false, fluid: null, sheet: null, tree: centreTree || walk < cover, bridge: 0, wall: false, seat: true };
             if (feet != null && walk >= cover) {
                 cell.in = true; cell.top = feet;
@@ -54656,7 +54748,7 @@ function hqFieldTerrainInfo(roomId) {
                 cell.hazard = true; cell.fluid = 'cloud_gap'; cell.key = known('cloud_gap') ? 'cloud_gap' : 'deep_water'; cell.sheet = null; cell.seat = false; cell.tree = false;
             } else if (wet && !centreTree) {
                 /* a liquid the walker never enters (deep water, lava, a pool too deep to wade): a HAZARD cell in its own sheet */
-                cell.hazard = true; cell.fluid = fl.key || 'water'; cell.key = known(cell.fluid) ? cell.fluid : 'deep_water'; cell.sheet = fl.y; cell.seat = false;
+                cell.hazard = true; cell.fluid = fl.sea ? 'deep_water' : (fl.key || 'water'); cell.key = known(cell.fluid) ? cell.fluid : 'deep_water'; cell.sheet = fl.y; cell.seat = false;
             }
             /* THE TWO FLOORS: the deck over the cell — a second floor over walked ground, the only floor over a gap */
             const dk = centreTree ? null : deckAt(cx, cz, cell.in ? cell.top : null);
@@ -55229,6 +55321,7 @@ const HQ_ARENA_RULES = {
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":19,"oz":19,"base":"mars_2","open":1,"keys":["moon_3","storm","mars_2"],"cells":"010114212121212121212121010121212121212121212121010121212121212121212121010101010121212121212101010101010101010101010101010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":32,"oz":21,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010114141401010101010101010114141401010101010101010114141401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":65,"oz":30,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515151501010101010101151515151501150303010101010101010101150303010101010101010115030303010101010101010102020303"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101012411111111111111111101111111111111112411111111111111111111111111121224242411111111111112121211241111241111111124121111111112241111111124111111111212121111111111112424241212111111111111111111111111112411111111111111011111111111111111112401011111111111111111111101"},
     },
     /* </ARENA PICKS> */
     /* THE ARENA SIZES (mondo 2026-10-17): the 9×9 / 10×10 / 11×11 cuts of the same sites — written by `node bake-arenas.js --size N`,
@@ -55266,6 +55359,7 @@ const HQ_ARENA_RULES = {
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121042111212121212121042111212121210404212111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101141414010101010101141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515010101010101151515010101010101010101010101010101010101010101010101010101"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140101010101010101010102140101010101010202010114010101011402010214010101011401020202010101010101020201010101010101"},
     },
     /* </ARENA PICKS 9> */
     /* <ARENA PICKS 10> */
@@ -55300,6 +55394,7 @@ const HQ_ARENA_RULES = {
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111121204112111111111111212120421211111111112121204212111111111121212041121111111111212120411211111111112120411112121111111120411111121212121211211112121211121212111212121111111111111"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114141401010101010101141414010101010101011414140101010101010101010101010101010101010101010101010101010101010101010101010101010101010101012121"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515150101010101011515151501010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101110101010101240101010101010101010101020224010101010101020202010124010101012402010102240101010124010101020201010101010124240201010101010101010101012401010101010101"},
     },
     /* </ARENA PICKS 10> */
     /* <ARENA PICKS 11> */
@@ -55330,6 +55425,7 @@ const HQ_ARENA_RULES = {
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111111212041121111111111111121212042121111111111112121204212111111111111212120411211111111111121212041121111111110412120411112121111111041204111111212121212111121111212121112121212111212121111111111111112121111111111111111111"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":33,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010114141401010101010101011414140101010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":61,"oz":32,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011515151501010101010101151515150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"01111111111111111101011111111111111111111101241111111111111111110111111111111124111111111111111111111111121224241111111111111212121111112411111111241211111112241111111124111111121212111111111111242412121111111111111111111111112411111111111111"},
     },
     /* </ARENA PICKS 11> */
 };
