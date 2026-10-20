@@ -56110,6 +56110,7 @@
             state.hoverUnitId = null;
             state.selectedTool = toolName;
             state.pendingTarget = null;
+            state._quickAoePlace = null;   // hud.js _hrlgArmAoePlacement re-sets it for a quick-menu AoE
             clearAoePreview();
 
             /* Strike Mode's TPS rig owns the camera per-frame — a competing

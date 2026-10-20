@@ -5657,7 +5657,9 @@ function ActionMenu({ st, hidden }) {
       'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison'];
     // THE SELF-CAST CONFIRM: a self-cast's only target is the caster — no list, just the green CONFIRM
     const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
-    const _listUnits = _aimSp && !_aimSelf && !_tileOnlyKinds.includes(_aimSp.kind || '')
+    // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
+    const _quickPlace = st._quickAoePlace === st.selectedTool;
+    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && !_tileOnlyKinds.includes(_aimSp.kind || '')
       && ((typeof _getSpellValidTargets === 'function'
           && _getSpellValidTargets(unit, _aimSp).length > 0)
         // MOVE→CAST-only situations still get the unit list — the drum shows
@@ -7733,6 +7735,9 @@ function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
   if (typeof getSelectedUnit === 'function' && getSelectedUnit() !== actingUnit) return false;
   setTool('spell', spell.name);
   if (state.actionMode !== 'spell' || state.selectedTool !== spell.name) return true;   // refused: setTool said why
+  /* NO TARGET LIST while placing (mondo 2026-10-20: "it should NOT bring up a target list menu while i am trying to
+     select where to place the aoe"): the aim view drops its unit list for this arm; setTool clears the mark */
+  state._quickAoePlace = spell.name;
   if (state.actionMenuView === 'spells') {
     state.pendingTarget = { x: x, y: y, mode: 'spell', tool: spell.name, viaHover: false };
     if (typeof updateAoePreview === 'function') {
