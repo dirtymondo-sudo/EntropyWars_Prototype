@@ -464,7 +464,7 @@ function MatchSelect(props) {
   const isFFA = !!mpMode.isFFA;
   /* A mode pinned to a single map (Clash) always shows that map — the Δ /
      size filters would otherwise hide it and empty the map grid. */
-  const pinnedMap = !!(mpMode.compatibleMaps && mpMode.compatibleMaps.length === 1);
+  const pinnedMap = !!(mpMode.compatibleMaps && (mpMode.compatibleMaps.length === 1 || mpMode.isClash));   // Clash: its stage + the voxel Temple, never filtered away
 
   const maxTeamForMap = useCallback((mi) => {
     const mp = mapList[mi];

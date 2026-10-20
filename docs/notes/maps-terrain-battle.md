@@ -605,3 +605,19 @@ the rain im just talking about grass tiles being on fire".
 - The 12 × 12 window (ox 6, oz 6) is drawn in the room's comment; pick in HQ_ARENA_RULES.picks.prebuilt_hell (`pits` + `pitTile` -4 ride the pick: the cell digit stops at -1). `prebuilt_hell_delta` keeps every old slot (match select, crystal fight, the training rotation) and is in the online pool like every arena; the voxel board is `prebuilt_hell_8x8_delta` "Hell Δ · voxel" (voxelKeep).
 - THE LAVA PITS: `terrain.pits: { levels }` → hqFieldRasterTerrain stands each lava hazard cell under the floor `levels` deep (≤ base−1) with `c.pit`; hqFieldBuild / hqArenaEntry write `entry.pits` ('0'/'1' row-major); map.js initMap → `state.lavaPits` (rides state-sync); map.js `isLavaPitTile(x, y)` = mask && still lava (cooled lava is a floor). unitCanTraverse refuses a pit to walkers (lava-adapted too), flyers cross. battle.js `_slideStepInfo` kind 'pit' → resolveForcedSlide steps INTO it and stops (`res.pit`); resolveTileArrival's ground step calls `_fallIntoLavaPit` first (every forced move: pushes, knockbacks, bombs, storms' flings, throws, groundings, teleports), timed to the slide's touchdown; applyDamageToUnit `pitFall` = lethal past Protect / realm / guard / indomitable / talisman, credit to the pusher (`byUnitId`), death style 'pit' (three-renderer sinks the body). state.js applyFallDamage skips a pit landing. Forecast: simulateArrivalChain notes kind 'pit' + a whole-HP simHit (tag 'pit', ui.js "🌋 INTO THE LAVA" + LETHAL). Railed bridges hold (hidden low rails); the open planks do not.
 - Screens: /mnt/project-files/new-maps/hell/ (before_* = voxel Δ, after_* = the walkways).
+
+## THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... Even the training room and holo sim ... built with the tools in the map editor ... square tiles in mind ... Dont delete these voxel maps")
+- Clash's stage (`clash_stage`, every Clash match, ranked and friendly rooms included) is a 10×10 cut of its OWN editor room
+  `DOOR_HQ.rooms.clash_temple` (THE TEMPLE), not a widened Göbekli space: a sanctuary on a 10 m mesa (rocks_5 cliffs, ledges) in a
+  meadow bowl ringed by terrain ridges (16-26 m) with three distant peaks. The court = a `board` row of sanctuary / bricks_1 flagstones,
+  one per tile, sunk a 0.74 m step inside the stylobate; 18 greek_column props + four plain `bridge` slabs (the entablature); north a
+  built stone flight (`terrain.stairs: 'stone'`, side cobblestone_2) to the shrine terrace (altar, candle ring, trilithon, obelisks,
+  statues, back wall); south the gate trilithon and the processional stair down the cliff. Ten braziers are the room's first ten props
+  (the battle lights only the first 10: court corners, colonnade sides, shrine, gate).
+- `HQ_CLASH_STAGE` (data.js, after hqArenaRegisterAll) holds the room, the formation (P1 x 3, P2 x 6, rows 3..6) and the baked
+  `pick` (`node bake-arenas.js clash_stage`, between `<CLASH PICK>` markers; rerun after the room changes). hqArenaEntry/hqArenaUpgrade
+  take `opts.formation` in place of the arena house (no nexus, no Cube). The layout's env is the room's own sky.
+- The old voxel board stays as `clash_stage_voxel` ("Temple · voxel"): PREBUILT_MAPS + its layout, GAME_MODES, MS_MAP_LIST, and
+  MULTIPLAYER_MODES.clash.compatibleMaps (VS CPU match select under Clash). Online (online.js `_friendlyGetCompatibleMaps`, server
+  ranked) deals only `clash_stage`. Not done via HQ_ARENA_RULES.voxelKeep: that list re-registers `<site>_delta` boards, and the Clash
+  stage is not a site Δ.

@@ -3320,6 +3320,7 @@
                 var compat = mpMode ? mpMode.compatibleMaps : [];
                 /* THE ONLINE PVP POOL (2026-10-06): an online room only ever deals the 12×12 arenas (data.js hqArenaPvpPool) — never
                    a full launch map, an area part's Δ, a facility or a site still on its old voxel Δ. Clash keeps its own stage. */
+                if (mode === 'clash') compat = ['clash_stage'];   // THE CLASH TEMPLE (2026-10-20): online plays the stage, never the voxel Temple kept for VS CPU
                 if (mode !== 'clash' && typeof window.hqArenaPvpPool === 'function') {
                     var pool = window.hqArenaPvpPool();
                     if (pool && pool.length) {
