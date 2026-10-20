@@ -6012,6 +6012,33 @@
         /* THE SPELL AUDIT Batch D: spawnDecoy outside the escape kind (Mimicry) — the same Shed Skin decoy (a clone of
            the caster, hp 1, blocks, draws attacks) on the free tile beside the caster farthest from the nearest enemy.
            Cap 3 owned decoys, like escape. Plain data on state._deployedObjects (rides the snapshot). */
+        /* THE REAL-LOOKING COPY (2026-10-20, mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its
+           pixel sprite. this goes for all copy/clone moves"). Every decoy (Shed Skin, Mimicry, Stuffed Double, Cloning
+           Machine) carries this snapshot of the caster's look, and three-renderer builds it through the SAME unit
+           pipeline as the real body: the rigged model (or the sprite slab for a sprite race), the team ring, outline and
+           plate. Plain data (rides the snapshot to the guest). `decoyId` keys the copy's own rig in the renderer. */
+        function _decoyIdFor(unit) {
+            state._decoySeq = (state._decoySeq || 0) + 1;
+            return 'decoy_' + unit.id + '_' + state._decoySeq;
+        }
+        function _decoyLookOf(unit) {
+            const f = getUnitFacing(unit);
+            let airDz = 0;
+            try {
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit) && typeof getFloorBelowZ === 'function')
+                    airDz = Math.max(0, (unit.z || 0) - getFloorBelowZ(unit.x, unit.y, unit.z || 0));
+            } catch (e) { airDz = 0; }
+            return {
+                cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment,
+                name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0,
+                _spriteFlipX: unit._spriteFlipX, zodiac: unit.zodiac,
+                appearance: unit.appearance ? JSON.parse(JSON.stringify(unit.appearance)) : undefined,
+                _spriteOverride: unit._spriteOverride || undefined,
+                facing: f ? { dx: f.dx || 0, dy: f.dy || 0 } : undefined,
+                airDz: airDz || undefined
+            };
+        }
+
         function _spawnCasterDecoy(unit, spell) {
             if (!unit || unit.dead) return null;
             const _foes = getHostileUnits(unit.player, unit);
@@ -6040,7 +6067,7 @@
                 hp: 1, maxHp: 1, blastRadius: 0, blastDmg: 0,
                 blocksMovement: true, drawsRangedAttack: true, drawsMeleeAttack: true, detonateOnAttack: false,
                 spellName: 'Decoy', isDecoy: true,
-                spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
+                decoyId: _decoyIdFor(unit), spriteUnit: _decoyLookOf(unit)
             };
             state._deployedObjects.push(decoy);
             addLog(`${_ctName(unit)} leaves a double at ${coordLabel(at.x, at.y)}.`, unit.player);
@@ -70262,7 +70289,7 @@
                         detonateOnAttack: false,
                         spellName: 'Decoy',
                         isDecoy: true,
-                        spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
+                        decoyId: _decoyIdFor(unit), spriteUnit: _decoyLookOf(unit)
                     });
                     if (!_stealthDecoy) {
                         addLog(`${_ctName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`, unit.player);
@@ -70566,7 +70593,8 @@
 
                 if (spell.drawsRangedAttack || spell.drawsMeleeAttack) {
                     _deployedEntry.isDecoy = true;
-                    _deployedEntry.spriteUnit = { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX };
+                    _deployedEntry.decoyId = _decoyIdFor(unit);
+                    _deployedEntry.spriteUnit = _decoyLookOf(unit);
                 }
                 state._deployedObjects.push(_deployedEntry);
                 /* THE SPELL AUDIT Batch D: decoyTaunt { radius, duration } (Stuffed Double) — every enemy within radius of

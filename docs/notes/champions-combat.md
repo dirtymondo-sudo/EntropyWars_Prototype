@@ -1797,3 +1797,17 @@ Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, I
   its tile, the spell stays uncast, the grab's MP (`_skyThrowGrab.mpPaid`) comes back. Every release
   (`_releaseSkyThrowGrab`: another action, reselect, turn change) refunds it too. online.js routes the guest's
   cancel to the host (`fn: 'cancelSkyThrowGrab'`). A pick-a-unit teleport forgets its picked unit on back-out.
+
+## THE REAL-LOOKING COPY (2026-10-20) — battle.js, three-renderer.js
+mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all copy/clone
+moves. From the enemy perspective they need to look indistinguishable from the actual unit."
+- Every decoy (Shed Skin, Mimicry, Stuffed Double, Cloning Machine) stores `decoyId` + `spriteUnit = _decoyLookOf(unit)`
+  (battle.js): race, gender, appearance, sprite override, zodiac, facing, flyer lift — plain data, rides the snapshot.
+- three-renderer.js `rebuildDeployables` builds it with `_buildDecoyEntry` → the SAME `_buildUnitEntry` as a real
+  unit (rigged model idling on its own rig keyed by decoyId, or the sprite slab for a sprite race; team ring, outline,
+  x-ray ghost). Its plate is `_buildPlateDom` (shared with `_createPlate`) fed the caster's LIVE HP / MP / shield /
+  statuses / stages; `_decoyOwnerSerial` re-plates it when those change. `_updateDecoyEntries` (per frame) runs the
+  idle clip, self-glow (incl. the acting-unit breath), ring look + vitals, flyer bob, tp-active / tp-targeted.
+  Hover lights it like a unit (`_resolveHoverAt` → `_decoyGroups`). The old flat sprite card is only the fallback.
+- Not mirrored: the hover info card (enemy decoys still show the tile card, hud.js), and a hit on the copy (it just
+  breaks, no death clip).
