@@ -11605,6 +11605,22 @@ const STATUS_DEFS = {
         stageMod: { def: 2, mdef: 2 },
         iconSrc: createStatusIconDataUri('🛡', '#1a2a3a', '#c8e8ff', '#5a9ad4')
     },
+    /* 🧗 Climbing (2026-10-20, design/CLIMB_MECHANIC_DESIGN.md): hanging on a wall face until the unit's next turn
+       (battle.js doClimb / processClimbArrival). blockMove = no dodge and no walking; −2 DEF / −2 M.DEF stages (Guard's
+       mirror). A marker: no resist roll, no purge — battle.js _endClimb is the only way it comes off. */
+    climbing: {
+        icon: '🧗',
+        glyph: '🧗',
+        short: 'CLB',
+        label: 'Climbing',
+        colorText: 'climbing',
+        kind: 'marker',
+        category: 'status',
+        stack: 'max',
+        blockMove: true,
+        stageMod: { def: -2, mdef: -2 },
+        iconSrc: createStatusIconDataUri('🧗', '#2a2216', '#f4e6c8', '#c89a4a')
+    },
     /* 🩹 Recovering (2026-10-06, mondo): the Guard stance's breather. Guard
        restores GUARD_RESTORE.hpPct / mpPct of max HP / MP on the spot (ui.js
        doGuard) and puts this on the unit for the round: at that round's end
@@ -11950,6 +11966,7 @@ const STATUS_LIBRARY_DESCS = {
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
     guarding:  'Braced for impact — bonus defense until the next turn.',
+    climbing:  'Hanging on a wall face until its next turn: no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage.',
     guardRegen: 'Catching a breath from Guard: an extra 5% max HP and 3% max MP recover at the end of this round.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
