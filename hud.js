@@ -12119,14 +12119,17 @@ const ROLES = [
 const SHAPES = [
   ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
   ['tab', 'Tab'], ['scoop', 'Scoop'], ['pixel', 'Pixel'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
-  ['shard', 'Shard'], ['jagged', 'Jagged'], ['trap', 'Trapezoid'],
+  ['shard', 'Shard'], ['jagged', 'Jagged'], ['trap', 'Trapezoid'], ['para', 'Parallelogram'],
 ];
-const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1, trap: 1 };   // drawn whole and scaled to the box
-const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes', trap: 'Slant' };                // whole shapes the size slider still shapes
+const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1, trap: 1, para: 1 };   // drawn whole and scaled to the box
+const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes', trap: 'Slant', para: 'Slant' };          // whole shapes the size slider still shapes
 /* THE TRAPEZOID (mondo 2026-10-19: "i would like a trapezoid shape for the panels please, the closest right now is shard
    but i want a trapezoid with straight top and bottom edges"): the size slants both sides, 0..40 = 0..20% of the width
    in at the top; below 0 the top is the wide edge; lean = both sides slant the same way (straight top + bottom still).
-   The key shapePath draws: 'trapl' is the leaning one. */
+   The key shapePath draws: 'trapl' is the leaning one.
+   THE PARALLELOGRAM (mondo 2026-10-20: "on the thread where i asked for a trapezoid, i meant a parallelogram, please add a
+   parallelagram too"): its own shape 'para', the leaning trapezoid's outline: straight top + bottom, both sides slanted
+   the same way by the Slant (-40..40 = 0..20% of the width; above 0 the top sits to the right, / /, below 0 to the left). */
 function shapeKey(s) { return s && s.shape === 'trap' && s.lean ? 'trapl' : (s && s.shape) || 'round'; }
 const MATERIALS = [
   ['aluminium', 'Aluminium'], ['gunmetal', 'Gunmetal'], ['metal', 'Steel'], ['copper', 'Copper'], ['gold', 'Gold'],
@@ -12745,7 +12748,7 @@ function shapePath(ctx, shape, x, y, w, h, s) {
   s = Math.max(0, Math.min(s, w / 2, h / 2));
   ctx.beginPath();
   switch (shape) {
-    case 'trap': case 'trapl': {
+    case 'trap': case 'trapl': case 'para': {
       const a = Math.min(0.2, Math.abs(s0) / 200) * w, up = s0 >= 0;
       if (shape === 'trap') {
         if (up) { ctx.moveTo(x + a, y); ctx.lineTo(x + w - a, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); }
@@ -12809,7 +12812,7 @@ function shapePath(ctx, shape, x, y, w, h, s) {
   }
   ctx.closePath();
 }
-function insetSize(shape, s, d) { if (shape === 'trap' || shape === 'trapl') return s; return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
+function insetSize(shape, s, d) { if (shape === 'trap' || shape === 'trapl' || shape === 'para') return s; return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
 function skinGeom(s) {
   const full = !!FULL_SHAPES[s.shape];
   const N0 = Math.max(1, Math.min(4, Math.round(+s.pixel || 1))), px = v => (N0 > 1 && v > 0 ? Math.max(N0, Math.round(v / N0) * N0) : v);
@@ -13007,7 +13010,7 @@ function edgeChain(s) {
     case 'diamond': return [P(50, 0, 0, 0), P(0, 0, 50, 0), P(50, 0, 100, 0)];
     case 'circle': for (let d = 240; d >= 120; d -= 10) { const a = d * Math.PI / 180; out.push(P(50 + 50 * Math.cos(a), 0, 50 + 50 * Math.sin(a), 0)); } return out;
     case 'shard': { const k = Math.min(1, z / 20); return [P(8 * k, 0, 16 * k, 0), P(0, 0, 100, 0)]; }
-    case 'trap': { const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2); return s0 >= 0 ? [P(a, 0, 0, 0), P(0, 0, 100, 0)] : [P(0, 0, 0, 0), P(a, 0, 100, 0)]; }
+    case 'trap': case 'para': { const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2); return s0 >= 0 ? [P(a, 0, 0, 0), P(0, 0, 100, 0)] : [P(0, 0, 0, 0), P(a, 0, 100, 0)]; }   // leaning or not, the left side is the same
     case 'jagged': { const d = Math.min(Math.max(z, 2), 50, 30); return [P(d / 2, 0, d / 1.2, 0), P(d / 2, 0, 100 - d / 1.2, 0)]; }   // the spikes' base line
     default: return [P(0, 0, 0, 0), P(0, 0, 100, 0)];
   }
@@ -14110,9 +14113,9 @@ function qpShapeClip(s, w, h) {
     case 'diamond': return 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
     case 'hex': { const d = Math.max(1, Math.round(Math.min(h / 2, w / 4))); return `polygon(${d}px 0, calc(100% - ${d}px) 0, 100% 50%, calc(100% - ${d}px) 100%, ${d}px 100%, 0 50%)`; }
     case 'shard': return `polygon(${pc(8 * k)} ${pc(16 * k)}, 100% 0, ${pc(100 - 5 * k)} ${pc(100 - 10 * k)}, 0 100%)`;
-    case 'trap': {
+    case 'trap': case 'para': {
       const s0 = +s.size || 0, a = Math.min(20, Math.abs(s0) / 2), up = s0 >= 0;
-      if (s.lean) return up ? `polygon(${pc(a)} 0, 100% 0, ${pc(100 - a)} 100%, 0 100%)` : `polygon(0 0, ${pc(100 - a)} 0, 100% 100%, ${pc(a)} 100%)`;
+      if (s.lean || s.shape === 'para') return up ? `polygon(${pc(a)} 0, 100% 0, ${pc(100 - a)} 100%, 0 100%)` : `polygon(0 0, ${pc(100 - a)} 0, 100% 100%, ${pc(a)} 100%)`;
       return up ? `polygon(${pc(a)} 0, ${pc(100 - a)} 0, 100% 100%, 0 100%)` : `polygon(0 0, 100% 0, ${pc(100 - a)} 100%, ${pc(a)} 100%)`;
     }
     case 'bevel': return `polygon(${z}px 0, calc(100% - ${z}px) 0, 100% ${z}px, 100% calc(100% - ${z}px), calc(100% - ${z}px) 100%, ${z}px 100%, 0 calc(100% - ${z}px), 0 ${z}px)`;
@@ -15961,7 +15964,7 @@ function shapeIcon(shape) {
   const cv = document.createElement('canvas'); cv.width = 80; cv.height = 48;
   const ctx = cv.getContext('2d'); ctx.scale(2, 2);
   ctx.fillStyle = '#2a4f86'; ctx.strokeStyle = '#cfe2ff'; ctx.lineWidth = 1.5;
-  shapePath(ctx, shape, 3, 3, 34, 18, shape === 'trap' ? 30 : 7); ctx.fill(); ctx.stroke();
+  shapePath(ctx, shape, 3, 3, 34, 18, shape === 'trap' || shape === 'para' ? 30 : 7); ctx.fill(); ctx.stroke();
   return cv;
 }
 /* ── undo / redo (whole-theme snapshots; a slider drag is one step) ── */
@@ -16142,6 +16145,7 @@ function skinForm(t, role, inDock, o) {
   const sized = s.shape === 'trap'
     ? fRange('Slant', `${P}.size`, -40, 40, 1, s.size, 'Above 0 the top edge is the short one, below 0 the bottom edge')
       + `<div class="uim-f"><label>Lean one way</label><div><input type="checkbox" data-path="${P}.lean" data-bool="1"${s.lean ? ' checked' : ''}><span class="uim-note" style="margin:0">Both sides slant the same way; the top and bottom stay straight.</span></div></div>`
+    : s.shape === 'para' ? fRange('Slant', `${P}.size`, -40, 40, 1, s.size, 'Above 0 both sides lean right ( / / ), below 0 they lean left ( \\ \\ ); the top and bottom stay straight')
     : SIZED_FULL[s.shape] ? fRange(SIZED_FULL[s.shape], `${P}.size`, 0, 40, 1, s.size) : '';
   h += sec('shape', 'Shape', `<div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`
     + (full ? sized + '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
@@ -16472,7 +16476,7 @@ function onClick(e, root) {
     if (path.endsWith('.fill.kind') && v === 'corners') { s.fill.c2 = s.fill.c2 || shade(s.fill.c1 || '#223', -0.3); s.fill.c4 = s.fill.c4 || shade(s.fill.c3 || '#000', -0.3); }
     if (path.endsWith('.shape') && v === 'pill' && (+s.size || 0) < 10) s.size = 14;
     if (path.endsWith('.shape') && v === 'pixel' && (+s.size || 0) < 6) s.size = 8;
-    if (path.endsWith('.shape') && v === 'trap' && !(Math.abs(+s.size || 0) >= 4 && Math.abs(+s.size || 0) <= 24)) s.size = 12;
+    if (path.endsWith('.shape') && (v === 'trap' || v === 'para') && !(Math.abs(+s.size || 0) >= 4 && Math.abs(+s.size || 0) <= 24)) s.size = 12;
     touch('insp'); return;
   }
   const act = b.dataset.act; if (!act) return;
