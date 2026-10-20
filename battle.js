@@ -4096,6 +4096,13 @@
                     u.x = out.x; u.y = out.y; u.z = out.z;
                     // A · an airborne body glides over everything below
                     if (typeof canFly === 'function' && canFly(u) && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) break;
+                    // B · 🌋 a lava pit: the body falls in, and that is the end of it
+                    if (typeof isLavaPitTile === 'function' && isLavaPitTile(out.x, out.y)) {
+                        out.simNotes.push({ unitId: u.id, kind: 'pit', x: out.x, y: out.y });
+                        out.simHits.push(_pitSimHit(u, sopts.byUnit || null));
+                        out.pit = true;
+                        break;
+                    }
                     // B′ · ice: the glide goes on the way the body was travelling
                     if (glide && (dx || dy) && _isIceTile(out.x, out.y) && _unitSlidesOnIce(u)) {
                         const ice = _iceSlideSteps(u, out.x, out.y, dx, dy);
@@ -4175,7 +4182,7 @@
                 }
                 // the hostile Nexus the body ends in burns it at the round's end
                 u.x = out.x; u.y = out.y; u.z = out.z;
-                const nx = (typeof getNexusAtUnit === 'function') ? getNexusAtUnit(u) : null;
+                const nx = (!out.pit && typeof getNexusAtUnit === 'function') ? getNexusAtUnit(u) : null;
                 if (nx && nx.nexus && nx.nexus.owner && nx.nexus.owner !== u.player
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
                     const pct = (typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : 0.25;
@@ -4282,6 +4289,13 @@
                 }
 
                 // ── B · THE GROUND ──────────────────────────────────────────
+                /* 🌋 THE LAVA PITS: a grounded body that lands in a pit — shoved, knocked, flung, thrown, blown, grounded out
+                   of the sky or teleported in — falls into the lava; nothing else on the tile reaches it */
+                if (typeof isLavaPitTile === 'function' && isLavaPitTile(unit.x, unit.y)) {
+                    _fallIntoLavaPit(unit, { delayMs: opts.fxDelayMs || 0, byUnitId: opts.byUnitId });
+                    fired++;
+                    return fired;
+                }
                 fired += _chainGround(unit, via);
                 if (moved()) return fired;
                 // THE ICE RULE (DOOR_GUN_PLAN §3.4, the door wheel Phase 2): a body DISPLACED onto ice (a shove, a gust,
@@ -4360,6 +4374,45 @@
             }
         }
         window.resolveTileArrival = resolveTileArrival;
+
+        /* 🌋 THE LAVA PITS (2026-10-20, mondo: "pits of lava deep below that you can actually fall into"): the body is gone —
+           a fall of four levels into the lava, lethal whatever guards it (Protect, a shield, a talisman, lava-adapted), the
+           kill credited to the unit that drove it in (o.byUnitId), else the last enemy that hurt it (applyDamageToUnit's own
+           rule). Timed to the slide's touchdown (o.delayMs) like the fall damage; the death plays as a sink into the lava
+           (state._deathStyleById 'pit', three-renderer.js). The log, the pop and the death ride the usual sync / relays. */
+        function _fallIntoLavaPit(unit, o = {}) {
+            if (!unit || unit.dead || unit._dying) return false;
+            const run = () => {
+                if (unit.dead || unit._dying || state.phase !== 'battle') return;
+                if (typeof isLavaPitTile === 'function' && !isLavaPitTile(unit.x, unit.y)) return;   // moved off it in the meantime
+                if (typeof isUnitAirborne === 'function' && typeof canFly === 'function' && canFly(unit) && isUnitAirborne(unit)) return;
+                const by = (o.byUnitId != null) ? unitFromId(o.byUnitId) : null;
+                addLog(`🌋 ${_ctName(unit)} falls into the lava!`);
+                showFloatingTextForUnit(unit, '🌋 INTO THE LAVA!', 'damage', { durationMs: 1400 });
+                if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard('normal');
+                applyDamageToUnit(unit, Math.max(1, unit.hp | 0), `${unitDisplayName(unit)} falls into the lava: `, {
+                    pitFall: true, ignoreArmor: true, damageType: 'dot', consumeMarked: false, noPress: true, flashColor: 'burn',
+                    sourceUnit: (by && !by.dead && by.id !== unit.id && isEnemyUnit(by, unit)) ? by : undefined
+                });
+                if (typeof checkWin === 'function') checkWin();
+                scheduleBoardRender();
+            };
+            if (o.delayMs > 0 && !_skipVisuals() && !_bufferingRoundEvents) {
+                window.setTimeout(() => {
+                    run();
+                    if (typeof window._broadcastState === 'function') { try { window._broadcastState(); } catch (e) {} }   // the fall lands after the push's own sync
+                }, o.delayMs);
+            } else run();
+            return true;
+        }
+        window._fallIntoLavaPit = _fallIntoLavaPit;
+
+        /* the forecast's row for a body that would land in a pit (simHits): its whole HP, the pit's own hit */
+        function _pitSimHit(u, byUnit) {
+            const hp = Math.max(1, u.hp | 0);
+            return { unitId: u.id, mid: hp, lo: hp, hi: hp, tag: 'pit',
+                opts: { pitFall: true, ignoreArmor: true, damageType: 'dot', sourceUnit: (byUnit && !byUnit.dead) ? byUnit : undefined } };
+        }
 
         // B · the terrain under the body (the old knockback-hazard rule, walk-aware)
         function _chainGround(unit, via) {
@@ -4859,7 +4912,7 @@
         /* Classify ONE slide step from (x,y,z) along (dx,dy) for `mover`.
            Pure — never mutates. kinds: 'open' (nz = landing surface), 'unit'
            (occ), 'thinwall', 'wall' (voxel/terrain/object), 'edge' (map
-           border), 'hole'. */
+           border), 'hole', 'pit' (a lava pit: nz = its floor). */
         function _slideStepInfo(mover, x, y, z, dx, dy) {
             const nx = x + dx, ny = y + dy;
             if (!isInside(nx, ny)) return { kind: 'edge', nx, ny };
@@ -4876,6 +4929,8 @@
                 if (getBaseHeightAt(nx, ny) > z) return { kind: 'wall', nx, ny };
                 return { kind: 'open', nx, ny, nz: z };
             }
+            /* 🌋 THE LAVA PITS (map.js isLavaPitTile): over the edge — the body goes down into the pit (the landing's chain takes it) */
+            if (typeof isLavaPitTile === 'function' && isLavaPitTile(nx, ny)) return { kind: 'pit', nx, ny, nz: getHeightAt(nx, ny) };
             if (!isTerrainPassable(nx, ny)) return { kind: 'wall', nx, ny };
             const nz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, z) : 0;
             const climbCap = (typeof MAX_CLIMB_HEIGHT !== 'undefined') ? MAX_CLIMB_HEIGHT : 1;
@@ -5087,6 +5142,9 @@
                     continue;
                 }
                 if (info.kind === 'hole') break;   // fall short of the pit lip — nothing to slam
+                /* 🌋 a LAVA PIT is no lip: the body goes over the edge and down into it, and the slide ends there (the
+                   landing's chain — resolveTileArrival → _fallIntoLavaPit — takes it; the forecast notes it) */
+                if (info.kind === 'pit') { stepTo(info.nx, info.ny, info.nz); res.pit = true; break; }
 
                 if (info.kind === 'unit') {
                     // 🎳 Bowling pin: crash damage both ways, momentum transfers.
@@ -5261,7 +5319,7 @@
                     }
                     if (res.moved > 0) {
                         /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
-                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent });
+                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent, byUnitId: opts.byUnit ? opts.byUnit.id : null });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
                     }
                 }
@@ -34189,7 +34247,7 @@
             if (!target || target.dead || target._dying) return false;
 
             // ── Chivalry: a pledged knight dashes in and intercepts the next attack on their ward ──
-            if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
+            if (target._guardedBy && !opts._chivalryRedirected && !opts.pitFall && damage > 0) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
                 const attacker = opts.sourceUnit || null;
                 if (guardian && guardian.id !== target.id && attacker && isEnemyUnit(attacker, target)) {
@@ -34238,7 +34296,7 @@
                 }
             }
 
-            let invulnStatus = getActiveStatusKeys(target).find(key => STATUS_DEFS[key]?.invulnerable);
+            let invulnStatus = opts.pitFall ? null : getActiveStatusKeys(target).find(key => STATUS_DEFS[key]?.invulnerable);   // 🌋 nothing holds a body out of a lava pit
             /* 🛡 PROTECT BLOCKS ATTACKS, NOT ROUNDS (the user 2026-10-07): a status with `blocks` (Protect: 1, the
                Bulwark upgrades +1 each) turns away that many attacks, then drops. One attack = one action of one
                unit: every hit of a multi-hit swing or cast rides the charge its first hit spent (_protectAttackKey).
@@ -34285,7 +34343,7 @@
             /* 🌑 Shadow Realm (plan §5.5): inside the realm only the partner
                can hurt you — zone ticks, weather, DoTs and every other unit
                no-op. Link echoes are the partner's own damage, so they pass. */
-            if (!opts._linkEcho && isUnitRealmShieldedFrom(target, opts.sourceUnit || null)) {
+            if (!opts._linkEcho && !opts.pitFall && isUnitRealmShieldedFrom(target, opts.sourceUnit || null)) {
                 if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
                     && opts.sourceUnit.id === _pressDamageCollector.casterId
                     && opts.sourceUnit.player !== target.player) {
@@ -34422,7 +34480,8 @@
             /* Indomitable Will (homosapien capstone): the first blow that
                would kill leaves the unit at 1 HP and consumes the status.
                HP + statuses ride state-sync, so guests see the survival. */
-            if (finalDamage >= target.hp && unitHasStatus(target, 'indomitable')) {
+            if (opts.pitFall) finalDamage = Math.max(1, target.hp | 0);   // 🌋 THE LAVA PITS: the whole body, whatever the math left of the blow
+            if (finalDamage >= target.hp && !opts.pitFall && unitHasStatus(target, 'indomitable')) {
                 finalDamage = Math.max(0, target.hp - 1);
                 clearStatus(target, 'indomitable');
                 addLog(`💢 ${_ctName(target)} refuses to die — Indomitable Will holds them at 1 HP!`);
@@ -34605,7 +34664,8 @@
                 flashUnit(target.id, opts.flashColor || (_guardBroke ? 'guardBreak' : (_heavyFlinch ? 'hitHeavy' : _lightKind)));
                 if (target.hp <= 0) {
                     state._deathStyleById = state._deathStyleById || {};
-                    if (_hitPhys && _hitRange <= 1 && (_heavyFlinch || finalDamage >= 40)) state._deathStyleById[target.id] = 'launch';
+                    if (opts.pitFall) state._deathStyleById[target.id] = 'pit';   // 🌋 the body sinks into the lava (three-renderer.js)
+                    else if (_hitPhys && _hitRange <= 1 && (_heavyFlinch || finalDamage >= 40)) state._deathStyleById[target.id] = 'launch';
                     else delete state._deathStyleById[target.id];
                 }
 
@@ -34844,7 +34904,7 @@
             // Fires on ANY lethal damage (hits, DoT, environment) — one save
             // per life, recharged when the unit eventually dies and respawns.
             // (THE PASSIVES, Phase 4: the `surviveLethalOnce` hook — the Talisman's gear row carries it)
-            if (target.hp <= 0 && !target._talismanSpent && typeof unitPassiveValue === 'function'
+            if (target.hp <= 0 && !target._talismanSpent && !opts.pitFall && typeof unitPassiveValue === 'function'
                 && unitPassiveValue(target, 'surviveLethalOnce')) {
                 const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
                 target._talismanSpent = true;
@@ -35001,6 +35061,12 @@
                before it returns. Viewer-local, no RNG draws, no logs, no state writes survive. */
         function forecastHitOnUnit(target, damage, opts = {}) {
             if (!target || target.dead || target._dying) return null;
+            /* 🌋 THE LAVA PITS: the fall takes the whole body (applyDamageToUnit's pitFall) */
+            if (opts.pitFall) {
+                const hp = Math.max(0, target.hp | 0);
+                return { dmg: hp, raw: hp, absorbed: 0, shieldLeft: target.shield, blocked: null, indomitable: false, affinity: null, element: null,
+                         typeNote: null, markedBonus: false, elemShare: 0, heal: 0, pit: true };
+            }
             const src = opts.sourceUnit || null;
             if (target._guardedBy && damage > 0 && src && isEnemyUnit(src, target) && !opts._chivalryRedirected) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
@@ -35447,6 +35513,7 @@
                     if (!v) continue;
                     if (n.kind === 'nexus') { entry(v).nexusBurn = n.dmg; tag(v, 'nexus'); }
                     else if (n.kind === 'trap') tag(v, 'trap');
+                    else if (n.kind === 'pit') tag(v, 'pit');
                     else if (n.kind === 'fling') { const h = entry(v); (h.flingDirs || (h.flingDirs = [])).push(n.dir); }
                 }
             };
