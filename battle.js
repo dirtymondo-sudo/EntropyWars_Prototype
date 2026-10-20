@@ -58072,7 +58072,11 @@
                 const vis = computeVisibleTiles(state.activePlayer);
                 if (!vis.has(posKey(x, y))) {
 
-                    const isMoving = state.actionMode === 'move';
+                    /* THE BLIND LEAP (2026-10-20, mondo: "its showing the jump tiles and the jump preview but when i click
+                       on the tile nothing happens ... i am blind"): Jump and Climb pass the fog like Move. Their lit
+                       landings never needed sight (a Blind unit sees 1 tile, its leap reaches 2+), and doJump/doClimb
+                       still refuse any tile that isn't a legal landing — this gate only swallowed the click silently. */
+                    const isMoving = state.actionMode === 'move' || state.actionMode === 'jump' || state.actionMode === 'climb';
 
                     const _actUnit = getSelectedUnit();
                     /* race abilities too (Mirror Blink lives in _raceAbilities, not spells) */
