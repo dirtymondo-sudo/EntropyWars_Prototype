@@ -2786,6 +2786,8 @@
                         ['tx', 'ty', 'tz', 'sx', 'sy', 'fromX', 'fromY', 'dx', 'dy', 'range',
                          'spellType', 'casterX', 'casterY', 'aoeRadius', 'cx', 'cy',
                          'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
+                         /* the aimed body's tile (a wide beam's side lane) */
+                         'ax', 'ay',
                          'staggerMs', 'includePrimary',
                          /* staging (cinematic grammar) beat params */
                          'weight', 'archetype', 'dimMs', 'holdMs',
