@@ -55642,7 +55642,7 @@ DOOR_HQ.rooms.facility_holosim = {
         floorColor: 0xffffff, wallColor: 0xd8f4ff, dadoColor: 0xffffff, ceilColor: 0x9ab8c8, ceilTile: 1.75, wallTile: 1.75,
         pipes: false, strips: false,
         lights: [{ x: -7, z: -7 }, { x: 7, z: -7 }, { x: -7, z: 7 }, { x: 7, z: 7 }],
-        mood: { light: 0x9fe8ff, strip: 0x7fe8ff, ambient: 0.5, night: 0 },
+        mood: { light: 0x9fe8ff, strip: 0x7fe8ff, ambient: 1.4, night: 0 },
         look: { name: 'THE HOLO SIM', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.22, levels: 28 },
                 cin: { vignette: true, vigAmount: 0.34, vigSize: 0.56 }, nightMood: 0.15 },
         fog: { color: 0x050912, density: 0.012 },
