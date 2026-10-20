@@ -4662,7 +4662,10 @@
         /* _msConfirm's gate: the arena's room surveyed before the launch. A small card over the screen says so; no worker = the
            sync compile under that card (the old HQ fallback). true = go on now. */
         let _msArenaGateBusy = false;
-        function _msArenaGate(mapId) {
+        function _msArenaGate(mapId) { return _hqArenaGateThen(mapId, () => window._msConfirm()); }
+        /* the same gate for any launch (THE FACILITY MAPS, 2026-10-20: a tutorial lesson on the Training Room's mats): true = go on
+           now; false = the card is up and `then` runs once the room is surveyed (or the survey gave up — the baked board plays) */
+        function _hqArenaGateThen(mapId, then) {
             if (typeof window.hqArenaOf !== 'function') return true;
             const a = window.hqArenaOf(mapId);
             const RE = window.HQ_ROOM_EDITS, editsWait = !!(a && RE && RE.ready && !RE.settled);   // THE GAME ROOM EDITS: his saved edits land first
@@ -4678,13 +4681,14 @@
                 document.body.appendChild(card);
             } catch (e) { card = null; }
             _msArenaGateBusy = true;
-            const done = () => { _msArenaGateBusy = false; try { if (card && card.parentNode) card.parentNode.removeChild(card); } catch (e) {} window._msConfirm(); };
+            const done = () => { _msArenaGateBusy = false; try { if (card && card.parentNode) card.parentNode.removeChild(card); } catch (e) {} then(); };
             const p = _hqArenaWarm(mapId, true);
             if (p) { p.then(done, done); return false; }
             /* no worker (or the record is already here): compile after the card paints */
             _hqDeferBuild(() => { try { window.hqArenaUpgrade(mapId, { compile: true }); } catch (e) { console.warn('[ARENA] upgrade failed', mapId, e); } done(); });
             return false;
         }
+        window._hqArenaGateThen = _hqArenaGateThen;
         /* the strip pill / the panel button: draw or holster */
         window._hqPortalDraw = function (on) {
             if (_hqSuspended || state.gameState !== GS.HQ) return false;
@@ -15148,9 +15152,12 @@
                 SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
 
-            /* Relocate existing units into their spawn zone tiles (units are created before map init) */
+            /* Relocate existing units into their spawn zone tiles (units are created before map init).
+               A tutorial lesson pins every unit on its own tile (ui.js _tutorialLaunch writes them into SPAWNS before the
+               units are made) — those stay where the lesson put them (2026-10-20: the lessons had been starting on the rows) */
+            const _tutPins = typeof window !== 'undefined' && !!window._tutActive;
             for (const unit of state.units) {
-                if (unit.dead) continue;
+                if (unit.dead || _tutPins) continue;
                 const zoneArr = state.spawnZones[unit.player];
                 if (!zoneArr || zoneArr.length === 0) continue;
                 const idx = unit._spawnIndex || 0;

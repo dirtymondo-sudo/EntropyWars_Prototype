@@ -25,6 +25,10 @@
 // area (hqArenaCaps). Only the sites with a 12×12 cut get the extra sizes. `--json <file>` writes the picks to a file instead of data.js
 // (bake several sizes at once), `--apply <file>` files such a bake into data.js:
 //   node bake-arenas.js --size 9 --json /tmp/a9.json   then   node bake-arenas.js --size 9 --apply /tmp/a9.json
+// THE FACILITY MAPS (2026-10-20): `--facility` bakes the facility boards instead (data.js HQ_ARENA_RULES.facilities → facilityPicks,
+// between its <ARENA PICKS FACILITY> markers): each from its rule's room at its rule's size, judging only the window `at` when given
+// (the house of that size; the caps scaled by area). Rerun after the facility room changes:
+//   node bake-arenas.js --facility
 'use strict';
 
 const fs = require('fs');
@@ -43,9 +47,14 @@ const META = ev('EW_MAP_META');
 const ROOMS = ev('DOOR_HQ.rooms');
 const ENTRY = ev('(DOOR_HQ.siteRooms || {}).entry || {}');
 const S12 = ev('HQ_ARENA_RULES.size');
-const S = argAfter('--size') ? (parseInt(argAfter('--size'), 10) | 0) : S12;
-if (S !== S12 && ev('HQ_ARENA_EXTRA_SIZES').indexOf(S) < 0) { console.error('--size ' + S + ' is not one of data.js HQ_ARENA_EXTRA_SIZES'); process.exit(1); }
-const PKEY = S === S12 ? 'picks' : 'picks' + S, MARK = S === S12 ? 'ARENA PICKS' : 'ARENA PICKS ' + S;
+const FACILITY = process.argv.includes('--facility');
+const FAC = FACILITY ? (ev('HQ_ARENA_RULES.facilities') || {}) : {};
+const facSize = (id) => (FAC[id].size | 0) || 8;
+const facIds0 = Object.keys(FAC).filter(id => !process.argv.some(a => /^prebuilt_/.test(a)) || process.argv.includes(id));
+const S = FACILITY ? (facIds0.length ? facSize(facIds0[0]) : 8) : argAfter('--size') ? (parseInt(argAfter('--size'), 10) | 0) : S12;
+if (!FACILITY && S !== S12 && ev('HQ_ARENA_EXTRA_SIZES').indexOf(S) < 0) { console.error('--size ' + S + ' is not one of data.js HQ_ARENA_EXTRA_SIZES'); process.exit(1); }
+if (FACILITY && facIds0.some(id => facSize(id) !== S)) { console.error('--facility: bake one board size per run (name the sites)'); process.exit(1); }
+const PKEY = FACILITY ? 'facilityPicks' : S === S12 ? 'picks' : 'picks' + S, MARK = FACILITY ? 'ARENA PICKS FACILITY' : S === S12 ? 'ARENA PICKS' : 'ARENA PICKS ' + S;
 const CAPS = sb.hqArenaCaps(S);
 const OBST = CAPS.obstacles;
 const FEAT = ev('HQ_ARENA_RULES.featureMax');
@@ -54,7 +63,8 @@ const WALLS = CAPS.wallMax, TOP = ev('HQ_ARENA_RULES.topMax');
 const KEEP = new Set(ev('HQ_ARENA_RULES.keep') || []);   // the sites that keep their Δ board (no pick written)
 const ONLY = process.argv.filter(a => /^prebuilt_/.test(a));   // name sites to bake only them (the rest of the picks stand)
 const HAS12 = ev('HQ_ARENA_RULES.picks') || {};   // the extra sizes: only the sites with a 12×12 cut
-const sites = META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id) && (!ONLY.length || ONLY.includes(m.id)) && (S === S12 || HAS12[m.id])).map(m => m.id);
+const sites = FACILITY ? facIds0
+    : META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id) && (!ONLY.length || ONLY.includes(m.id)) && (S === S12 || HAS12[m.id])).map(m => m.id);
 const bySite = {};
 for (const id of Object.keys(ROOMS)) {
     const r = ROOMS[id];
@@ -125,13 +135,14 @@ function judge(R, strict) {
     return { cover, out, imbalance: Math.abs(top - bottom), strict };
 }
 
-function scanRoom(roomId, strict) {
+function scanRoom(roomId, strict, at) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
     const Lt = sb.hqFieldLattice(roomId);
     if (!Lt || Lt.w < S || Lt.h < S) return null;
     const mk = marker(roomId), feat = features(Lt);
     let best = null, clear = 0;
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
+        if (at && (ox !== (at[0] | 0) || oz !== (at[1] | 0))) continue;   // a facility's fixed window
         let off = 0;
         if (strict) {
             for (let y = 0; y < S && off <= OBST; y++) for (let x = 0; x < S; x++) if (!Lt.walk(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y) || !feat.has((ox + x) + ',' + (oz + y))) ? OBST + 1 : 1; if (off > OBST) break; }
@@ -168,7 +179,7 @@ let picks = {};
 const t0 = Date.now();
 if (APPLY) picks = JSON.parse(fs.readFileSync(APPLY, 'utf8'));
 for (const site of (APPLY ? [] : sites)) {
-    const rooms = (bySite[site] || []).slice();
+    const rooms = FACILITY ? [FAC[site].room] : (bySite[site] || []).slice();
     const ent = ENTRY[site] && ENTRY[site].room;
     const size = (id) => { const sh = (ROOMS[id] || {}).shell || {}; return (+sh.w || 0) * (+sh.d || 0); };
     const order = (ent && rooms.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent).sort((a, b) => size(b) - size(a)));
@@ -176,13 +187,13 @@ for (const site of (APPLY ? [] : sites)) {
     for (const strict of [true, false]) {   // an open-ground window in any room first, then the walled cut
         for (const roomId of order) {
             const t = Date.now();
-            const best = scanRoom(roomId, strict);
+            const best = scanRoom(roomId, strict, FACILITY ? FAC[site].at : null);
             process.stderr.write('  ' + site + ' · ' + roomId + (strict ? '' : ' (walled)') + ': ' + (best ? best.clear + ' fit, pick ' + best.ox + ',' + best.oz + ' cover ' + best.cover + ' solid ' + best.out + ' ' + best.dist.toFixed(1) + ' m from the marker' : 'no ' + S + 'x' + S + ' fits') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)\n');
             if (best) { got = { roomId, best }; break; }
         }
         if (got) break;
     }
-    if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
+    if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (FACILITY ? 'keeps its voxel board' : S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
     const enc = encode(got.best.R);
     picks[site] = { room: got.roomId, ox: got.best.ox, oz: got.best.oz, base: got.best.R.floorKey || 'grass_2', open: got.best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
     console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
@@ -202,6 +213,7 @@ if (ONLY.length) {   // keep every other site's pick, in its place
     Object.keys(picks).forEach(k => { merged[k] = picks[k]; });
     Object.keys(picks).forEach(k => delete picks[k]);
     META.forEach(m => { if (merged[m.id]) picks[m.id] = merged[m.id]; });
+    Object.keys(merged).forEach(k => { if (!picks[k]) picks[k] = merged[k]; });   // a facility's id may sit outside the roster order
 }
 const rows = Object.keys(picks).map(site => '        ' + site + ': ' + JSON.stringify(picks[site]) + ',');
 const body = '    ' + PKEY + ': {\n' + rows.join('\n') + '\n    },';

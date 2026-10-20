@@ -29498,6 +29498,97 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: -8.4, face: 180 },
         },
+        /* ══ THE TRAINING ROOM MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room
+           and holo sim. They should be able to be built with the tools in the map editor ... design them with square tiles in mind")
+           — the `prebuilt_training` board is no longer the voxel Δ: it is the 8×8 cut of THIS room (HQ_ARENA_RULES.facilities,
+           baked by `node bake-arenas.js --facility`). Every number is in battle squares (C = 1.75 m): the room is 18 × 18 squares,
+           4 high; THE MATS are the 8 × 8 in the middle (x, z −7..7 = squares 5..12), the lessons' own tiles (TUTORIAL_LESSONS pins
+           them on the 8×8: keep it flat and open). West: the bleachers (six rows facing the mats). East: the mezzanine 2 squares
+           up (the steel stair along the north wall, the desk over the mats). North: the wall pads, the dummies. South (the camera's
+           side): low things only. Not linked into the building (Room 64 is still the walk's training room). ══ */
+        training_hall: {
+            label: 'TRAINING ROOM',
+            sub: 'THE MATS · 8 × 8',
+            kind: 'box',
+            site: 'prebuilt_training',
+            shell: {
+                w: 31.5, d: 31.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.75,
+                floor: 'training_floor', wall: 'concrete', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: true,
+                lights: [{ x: -5.25, z: -5.25 }, { x: 5.25, z: -5.25 }, { x: -5.25, z: 5.25 }, { x: 5.25, z: 5.25 },
+                         { x: -12.25, z: -5.25 }, { x: -12.25, z: 5.25 }, { x: 14.0, z: -7.0 }, { x: 14.0, z: 7.0 }],
+                mood: { light: 0xf2f4ff, ambient: 2.0 },
+                fog: { color: 0x16181d, density: 0.0 },
+                look: { name: 'TRAINING ROOM', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.22, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.0, bloom: 0 },
+            },
+            terrain: {
+                floor: 'training_floor', cliff: 'concrete', path: 'urban:ConcreteStriped2a',
+                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false, stairs: 'steel',
+                marks: [
+                    /* the red line round the mats' apron, the yellow line along the bleachers' foot */
+                    { k: 'line', x0: -8.05, z0: -8.05, x1: 8.05, z1: -8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: -8.05, z0: 8.05, x1: 8.05, z1: 8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: -8.05, z0: -8.05, x1: -8.05, z1: 8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: 8.05, z0: -8.05, x1: 8.05, z1: 8.05, w: 0.14, color: 0xc0302a },
+                    { k: 'line', x0: -8.6, z0: -8.75, x1: -8.6, z1: 8.75, w: 0.1, color: 0xffd34a },
+                ],
+                features: [
+                    /* THE MATS: 8 × 8 foam squares, one battle square each, blue and black (the plateau under them is the mats' 4 cm) */
+                    { k: 'board', x: 0, z: 0, n: 8, cell: 1.75, keys: ['urban:RubberNonSlip5a', 'urban:RubberNonSlip1a'], colors: [0xffffff, 0xe0e0e0], h: 0.06 },
+                    /* THE BLEACHERS (west, facing the mats): six rows, 0.44 up and 0.875 deep each, the walk behind the top row; the two end walls */
+                    { k: 'wall', x0: -9.1875, z0: -8.75, x1: -9.1875, z1: 8.75, y: 0.44, t: 0.875, key: 'concrete', tier: true, seat: 0x2a4f8c, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -10.0625, z0: -8.75, x1: -10.0625, z1: 8.75, y: 0.88, t: 0.875, key: 'concrete', tier: true, seat: 0x8c2a28, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -10.9375, z0: -8.75, x1: -10.9375, z1: 8.75, y: 1.32, t: 0.875, key: 'concrete', tier: true, seat: 0x2a4f8c, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -11.8125, z0: -8.75, x1: -11.8125, z1: 8.75, y: 1.76, t: 0.875, key: 'concrete', tier: true, seat: 0x8c2a28, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -12.6875, z0: -8.75, x1: -12.6875, z1: 8.75, y: 2.2, t: 0.875, key: 'concrete', tier: true, seat: 0x2a4f8c, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -13.5625, z0: -8.75, x1: -13.5625, z1: 8.75, y: 2.64, t: 0.875, key: 'concrete', tier: true, seat: 0x8c2a28, front: [1, 0], rail: false },
+                    { k: 'wall', x0: -14.875, z0: -8.75, x1: -14.875, z1: 8.75, y: 2.64, t: 1.75, key: 'concrete', tier: true, rail: false },
+                    { k: 'wall', x0: -8.75, z0: -8.95, x1: -11.4, z1: -8.95, h: 1.6, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -11.4, z0: -8.95, x1: -15.75, z1: -8.95, h: 3.3, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -8.75, z0: 8.95, x1: -11.4, z1: 8.95, h: 1.6, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -11.4, z0: 8.95, x1: -15.75, z1: 8.95, h: 3.3, t: 0.4, key: 'concrete', rail: false },
+                    { k: 'rail', x0: -14.0, z0: -8.6, x1: -14.0, z1: 8.6, y: 2.64, model: 'pipe', block: false },
+                    /* THE MEZZANINE (east): a steel grate 2 squares up along the east wall, its rail on the mats' side; the steel stair up the north wall */
+                    { k: 'bridge', x0: 13.875, z0: -15.5, x1: 13.875, z1: 15.5, w: 3.25, y: 3.5, thick: 0.3, rails: false, key: 'urban:MetalSubwayGrill1a', id: 'mezzanine' },
+                    { k: 'ramp', x0: 2.75, z0: -14.5, x1: 12.25, z1: -14.5, w: 2.0, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.01 },
+                    { k: 'rail', x0: 12.35, z0: -13.35, x1: 12.35, z1: 15.4, y: 3.5, model: 'pipe' },
+                    { k: 'wall', x0: 12.6, z0: -10.5, x1: 12.62, z1: -10.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                    { k: 'wall', x0: 12.6, z0: -3.5, x1: 12.62, z1: -3.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                    { k: 'wall', x0: 12.6, z0: 3.5, x1: 12.62, z1: 3.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                    { k: 'wall', x0: 12.6, z0: 10.5, x1: 12.62, z1: 10.5, y: 3.2, t: 0.35, key: 'metal', rail: false, column: true },
+                ],
+            },
+            props: [
+                /* ── NORTH: the wall pads behind the mats, the clock over them, the banners; the dummies on the floor ── */
+                { key: 'wall_padding',   wall: 'n', x: -1.75 }, { key: 'wall_padding', wall: 'n', x: 1.75 },
+                { key: 'wall_clock',     wall: 'n', x: 0, mount: 4.4 },
+                { key: 'banner',         wall: 'n', x: -7.5, mount: 6.2 }, { key: 'banner', wall: 'n', x: 7.5, mount: 6.2 },
+                { key: 'armour_stand',   x: -6.0, z: -13.2, face: 180 }, { key: 'armour_stand', x: -8.2, z: -13.2, face: 160 },
+                { key: 'metal_shelving', wall: 'n', x: -12.6 },
+                { key: 'cardboard_boxes', x: -14.4, z: -12.0, face: 20 },
+                /* ── WEST over the bleachers: the round windows, the vent ── */
+                { key: 'observation_window', wall: 'w', z: -4.5, mount: 5.0 }, { key: 'observation_window', wall: 'w', z: 4.5, mount: 5.0 },
+                { key: 'vent_grille',    wall: 'w', z: 0, mount: 5.4 },
+                /* ── EAST under the mezzanine: the lockers, the bench; on it: the desk over the mats, the monitors ── */
+                { key: 'locker',         wall: 'e', z: -7.0 }, { key: 'locker', wall: 'e', z: -6.1 }, { key: 'locker', wall: 'e', z: -5.2 }, { key: 'locker', wall: 'e', z: -4.3 },
+                { key: 'locker_bench',   x: 14.2, z: -5.6, face: 270 },
+                { key: 'locker',         wall: 'e', z: 4.3 }, { key: 'locker', wall: 'e', z: 5.2 }, { key: 'locker', wall: 'e', z: 6.1 }, { key: 'locker', wall: 'e', z: 7.0 },
+                { key: 'locker_bench',   x: 14.2, z: 5.6, face: 270 },
+                { key: 'steel_table',    x: 14.4, z: 0, y: 3.5, face: 270 },
+                { key: 'crt_terminal',   x: 14.3, z: 0.3, y: 4.26, face: 270 },
+                { key: 'folding_chair',  x: 15.1, z: 0, y: 3.5, face: 270 },
+                { key: 'monitor_stack',  x: 15.4, z: -3.0, y: 3.5, face: 270 },
+                /* ── SOUTH (the camera's side, kept low): the shutter, the exit, the cooler, the board, the extinguisher ── */
+                { key: 'roller_shutter', wall: 's', x: 0 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.1 },
+                { key: 'water_cooler',   wall: 's', x: -5.0 },
+                { key: 'notice_board',   wall: 's', x: 5.0 },
+                { key: 'fire_extinguisher', wall: 's', x: 7.4, mount: 1.0 },
+                { key: 'security_camera', x: 15.2, z: 15.2, face: 315, mount: 5.6 },
+            ],
+            spawn: { x: 0, z: 12.0, face: 0 },
+        },
         /* ══════════════════════════════════════════════════════════════════
            THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
            building grows DOWN and UP through THE CAR. The elevator on the
@@ -55332,6 +55423,19 @@ const HQ_ARENA_RULES = {
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":61,"oz":32,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011515151501010101010101151515150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
     },
     /* </ARENA PICKS 11> */
+    /* THE FACILITY MAPS (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim"):
+       a facility board (EW_FACILITY_META, not a crossing) cut from its OWN room at its own size — the same entry, survey and launch as
+       an arena (hqArenaEntry / hqArenaUpgrade / hqArenaRun), the map id unchanged (every lesson, the RANGE console and the earned door
+       keep reading `prebuilt_training`). `at` = the window [ox, oz] on the room's lattice (the bake judges only it); the old voxel board
+       stays as `<id>_8x8_delta` ("… Δ · voxel", VS CPU match select only — never the online pool). `node bake-arenas.js --facility` */
+    facilities: {
+        prebuilt_training: { room: 'training_hall', size: 8, at: [5, 5] },
+    },
+    /* <ARENA PICKS FACILITY> */
+    facilityPicks: {
+        prebuilt_training: {"room":"training_hall","ox":5,"oz":5,"base":"training_floor","open":0,"keys":["training_floor"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+    },
+    /* </ARENA PICKS FACILITY> */
 };
 /* the Δ's own layout of each site with an arena (the field layout of every other room of that site reads it — hqFieldLayout) */
 const _HQ_ARENA_SITE_LAYOUTS = {};
@@ -55563,6 +55667,44 @@ function hqArenaCaps(S) {
                                    desc: S + '×' + S + ' arena, ' + team + 'v' + team + ' — cut from ' + (room.label || pick.room) });
             } catch (err) { console.error('[ARENA] the ' + S + '×' + S + ' pick failed', site, err); }
         });
+    });
+})();
+/* THE FACILITY MAPS (2026-10-20) — AT LOAD each baked facility pick (HQ_ARENA_RULES.facilityPicks) becomes its board under the SAME
+   id: the entry cut from its room (hqArenaEntry at the rule's size — the launch rebuilds it from the live raster like any arena),
+   the room's own layout (no voxel scenery, no fog: the room stands round the board — hqFieldLayout's closed-room dome), the roster
+   row relabelled. The old voxel board is kept as `<id>_<S>x<S>_delta` ("<label> Δ · voxel": its own entry, layout and scenery, a
+   facility row, so VS CPU match select lists it and the online pool never deals it). */
+(function hqArenaRegisterFacilities() {
+    if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
+    const F = HQ_ARENA_RULES.facilities || {}, P = HQ_ARENA_RULES.facilityPicks || {};
+    Object.keys(F).forEach(id => {
+        try {
+            const rule = F[id], pick = P[id], S = (rule.size | 0) || 8;
+            const old = PREBUILT_MAPS[id], row = EW_MAP_META.find(m => m.id === id);
+            const room = (DOOR_HQ.rooms || {})[rule.room];
+            if (!old || !row || !pick || pick.room !== rule.room || !room) return;
+            const entry = hqArenaEntry(id, pick, hqArenaCells(pick, S), null, S);
+            if (!entry) return;
+            const vS = (old.w | 0) || S, vid = id + '_' + vS + 'x' + vS + '_delta';
+            const oldLayout = (typeof MAP_LAYOUT_PRESETS !== 'undefined') ? MAP_LAYOUT_PRESETS[id] : null;
+            PREBUILT_MAPS[vid] = old;
+            if (oldLayout) MAP_LAYOUT_PRESETS[vid] = oldLayout;
+            EW_MAP_META.push(Object.assign({}, row, { id: vid, label: row.label + ' Δ · voxel', isDelta: true, facility: true, desc: row.desc }));
+            const sh = room.shell || {};
+            const env = Object.assign({}, (oldLayout && oldLayout.env) || {});
+            delete env.fog; delete env.scenery;
+            _HQ_ARENA_SITE_LAYOUTS[id] = { env };
+            entry.name = row.label;
+            entry.deltaDesc = (room.label || rule.room).toLowerCase() + ' — the mats, cut from the room';
+            PREBUILT_MAPS[id] = entry;
+            if (typeof MAP_LAYOUT_PRESETS !== 'undefined') {
+                MAP_LAYOUT_PRESETS[id] = hqFieldLayout(id, entry.base, { H: S, terrain: !!room.terrain, box: !room.terrain, open: !!sh.open,
+                                                                         look: (sh.look && typeof sh.look === 'object') ? sh.look : null,
+                                                                         dome: (sh.fog && sh.fog.color != null) ? sh.fog.color : 0x0d0e12 });
+            }
+            row.room = rule.room; row.arenaSize = S; row.env = MAP_LAYOUT_PRESETS[id] ? MAP_LAYOUT_PRESETS[id].env : row.env;
+            row.desc = S + '×' + S + ' facility board, 4v4 — cut from ' + (room.label || rule.room);
+        } catch (err) { console.error('[ARENA] the facility pick failed — the voxel board stands', id, err); }
     });
 })();
 /* THE ONLINE PVP POOL (mondo 2026-10-06: "why is online pvp using the old voxel maps and not the new arena maps? why are they

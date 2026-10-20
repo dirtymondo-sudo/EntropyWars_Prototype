@@ -446,6 +446,31 @@ same way as the current 12x12s like a cutout of the exploration map".
   selects (online.js `_friendlyRefreshMaps`); Quick Play queues the squad's size (server.js `queue-join` 4 | 5, `pickRandomMap`
   by team). A guest whose squad is short of the room's size cannot lock in (online.js `_ewSquadAutoLock`).
 
+### E8 follow-up 3 — THE FACILITY MAPS: the Training Room is a room now (2026-10-20, thread "New map: Training Room")
+mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim. They should be able to be built
+with the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete
+these voxel maps though".
+- THE ROOM: data.js `DOOR_HQ.rooms.training_hall` (after Room 64's `training`; `site: 'prebuilt_training'`, not linked into the
+  building — Room 64 stays the walk's training room). 18 × 18 squares (31.5 m), 4 high; terrain features + marks + props only, so
+  the map editor opens and edits it like any terrain room. THE MATS = a `board` feature (8 × 8, urban:RubberNonSlip5a / 1a, the
+  plateau 0.06 under it) at the centre, x / z −7..7 = lattice squares 5..12; the red apron line; the west BLEACHERS (six `tier`
+  wall rows, 0.44 up / 0.875 deep, seats instanced, a walk behind, two end walls); the east MEZZANINE (a grate bridge 2 squares up,
+  the `steel` stair up the north wall, a pipe rail, four columns, the desk + CRT + monitors on it, lockers + benches under it);
+  north: two wall pads, the clock, two banners, two armour-stand dummies; south (the camera side) kept low. 8 shell lights,
+  mood ambient 2.0, an inline `look` with bloom 0, fog density 0.
+- THE CUT: `HQ_ARENA_RULES.facilities = { prebuilt_training: { room, size: 8, at: [5, 5] } }` → `facilityPicks` (own
+  `<ARENA PICKS FACILITY>` markers) by `node bake-arenas.js --facility` (judges only the `at` window; rerun after the room changes).
+  `hqArenaRegisterFacilities` (after hqArenaRegisterAll) builds the entry with hqArenaEntry at S = 8 under the SAME id, so every
+  tutorial lesson, the RANGE console's sparring, the earned door, the dossier and the level band keep reading `prebuilt_training`;
+  the launch rebuilds it from the live raster like any arena (hqArenaUpgrade / hqArenaRun); `_HQ_ARENA_SITE_LAYOUTS` gets the old
+  env minus fog + scenery (hqFieldLayout's closed dome). The house tiles are the old Δ's (spawns x 2..5 rows 0 / 7, nexus 3..4).
+- THE VOXEL BOARD KEPT: `prebuilt_training_8x8_delta`, "Training Room Δ · voxel" — the old entry + layout (training_room scenery),
+  a facility row (VS CPU match select lists it, hqArenaPvpPool never deals it). Same naming as the Dutchman thread's `voxelKeep`.
+- THE LESSONS: ui.js `_tutorialLaunch` waits on map.js `_hqArenaGateThen` (the SURVEYING card, the room surveyed, then the launch
+  runs again with `_surveyed`); `_msArenaGate` is that gate with `_msConfirm` as its continuation.
+- Draw calls (perf lens, battle, 1280×800): the room ~210–320 a frame over all passes depending on the pose; the old voxel board's
+  scenery read 3312 in the same probe. The heavy props are the wall pads (37 meshes each) and the armour stands.
+
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
 R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls

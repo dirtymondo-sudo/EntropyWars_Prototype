@@ -583,3 +583,8 @@ the rain im just talking about grass tiles being on fire".
 - state.js `rainOnTheBoard`: a soaks weather (Thunderstorm, Hurricane, Blood Rain) puts out every burning tile under its rain as
   it forms (fires lit later still burn), and hardens the fight's lava (state.paintedFrom says it wasn't lava) on forming and
   every round end. The map's own lava stays. Root cause of the fire bug: tickBurningTiles never asked about rain.
+
+## THE TRAINING ROOM MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps. Even the training room and holo sim")
+`prebuilt_training` is no longer the voxel Δ: it is the 8×8 cut of the editor room `training_hall` (the mats in a gym hall with
+bleachers and a mezzanine). The old voxel board stays as `prebuilt_training_8x8_delta` ("Training Room Δ · voxel"). Full note:
+docs/notes/editor.md "E8 follow-up 3 — THE FACILITY MAPS".

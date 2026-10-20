@@ -16585,6 +16585,10 @@
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
             if (_tut.booting) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            /* THE FACILITY MAPS (2026-10-20): the lesson's board is cut from its room — the room surveyed first (map.js
+               _hqArenaGateThen's card), then the launch runs again with the room's own board */
+            if (typeof window._hqArenaGateThen === 'function' && !opts._surveyed
+                && !window._hqArenaGateThen(L.map, () => window._tutorialLaunch(lessonId, Object.assign({}, opts, { _surveyed: true })))) return true;
             if (_tut.active) _tutStopMatchSide();
             const n1 = L.board.p1.length, n2 = L.board.p2.length;
             _tut.saved = _tut.saved || { introCine: window.EW_DISABLE_INTRO_CINE, fog: state.fogOfWar };
@@ -16782,6 +16786,7 @@
             if (!_tut.active) return true;
             if (unit && unit.player !== 1) return true;                       // the dummies follow the script, not the gate
             if (_tut.finished || _tut.booting) return false;
+            if (_tut.passing && kind === 'end') return true;                  // the script passing a vessel's turn (_tutPoll)
             const allow = _tutAllowList();
             if (allow === null) return true;
             let ok = allow.includes(kind);
@@ -16909,6 +16914,19 @@
             if (state.phase !== 'battle') return;
             const st = _tut.step;
             if (!st || !st.goal || st.goal.type === 'ack') return;
+            /* THEIR TURN with one of yours still up (a Press refunded the AP after the step's strike — the step allows nothing,
+               so the lesson stood still): the vessel passes, as the coach says it has (2026-10-20) */
+            if (st.goal.type === 'cpuDone' && !state._actionExecuting && !state.aiThinking) {
+                const au = (state.units || []).find(u => u.id === state._blitzActiveUnitId);
+                if (au && au.player === 1 && !au.dead) {
+                    if (!_tut.passAt) _tut.passAt = Date.now();
+                    else if (Date.now() - _tut.passAt > 1200 && typeof triggerEndTurn === 'function') {
+                        _tut.passAt = 0; _tut.passing = true; state.selectedUnitId = au.id;
+                        try { triggerEndTurn(); } catch (e) { console.warn('[Tutorial] pass', e); }
+                        _tut.passing = false;
+                    }
+                } else _tut.passAt = 0;
+            }
             if (_tut.metAt) { if (Date.now() - _tut.metAt > 650) { _tut.metAt = 0; _tutAdvance(); } return; }
             let met = false;
             try { met = _tutGoalMet(st.goal); } catch (e) { console.warn('[Tutorial] goal', e); }
