@@ -20068,6 +20068,16 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+        /* THE RIG AT THE EYE (2026-10-20, the Flying Dutchman): a mast's rig (`_ew_occEye` on the piece) stands over the board, so a
+           camera swung up among the yards sat inside a sail that hid nothing it could ray-test — a rig the eye is within 2 squares of fades */
+        if (fieldSet) {
+            for (var ei = 0; ei < fieldSet.roots.length; ei++) {
+                var er = fieldSet.roots[ei], ec = er.o.children[0];
+                if (!ec || !ec._ew_occEye || roots.has(er.o)) continue;
+                if (!er.eyeBox) { er.eyeBox = new THREE.Box3(); try { er.o.updateMatrixWorld(true); er.eyeBox.setFromObject(er.o); } catch (e) { er.eyeBox.makeEmpty(); } }
+                if (!er.eyeBox.isEmpty() && er.eyeBox.distanceToPoint(eye) < ts * 2) roots.add(er.o);
+            }
+        }
         /* Unit blockers — cinematic action shots only. The opening
            cinematic frames whole rosters (units deliberately overlap in its
            beats), so it keeps every unit solid. */
@@ -50494,7 +50504,7 @@ const ThreeRenderer = (function () {
         masts.forEach(function (t) {
             var mx = t.x, mz = zc + (t.z - zc), y0 = hAt(t.x, t.z), h = Math.max(8, t.h || 24), s = Math.max(0.5, (t.r || 0.9) / 0.9), r0 = Math.max(0.24, (t.r || 0.9) * 0.48);
             var isMain = t === mainM, isMizzen = masts.length > 2 && t === masts[0];
-            var rgp = new THREE.Group(); rgp.name = 'hqGalleonMast'; rgp._ew_hqPart = 'underside';
+            var rgp = new THREE.Group(); rgp.name = 'hqGalleonMast'; rgp._ew_hqPart = 'underside'; rgp._ew_occEye = true;
             var mWood = [], mDark = [], mSail = [], mFurl = [];
             var yT = y0 + h * 0.5, yHead = y0 + h * 0.84, yC = y0 + h * 0.46, yTs = y0 + h * 0.76, yTg = y0 + h * 0.95;
             var cyl = function (ra, rb, ya, yb, list) { var g = new THREE.CylinderGeometry(rb * U, ra * U, (yb - ya) * U, 10); list.push(place(g, mx * U, Y((ya + yb) / 2), mz * U)); };
@@ -65427,6 +65437,7 @@ const ThreeRenderer = (function () {
                 var r = g.parameters.radiusTop || g.parameters.radius || g.parameters.outerRadius || 0; big = r > 4 * U;
             }
             if ((o._ew_hqPart && _HQ_NO_CAST_PART[o._ew_hqPart]) || big || o._ew_hqGround || o._ew_hqOuter) o.castShadow = false;
+            if (o._ew_hqSea) o.receiveShadow = false;   // (2026-10-20) the sea's sheet runs far past the shadow map: its edge drew a pale box round the Dutchman
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
     }

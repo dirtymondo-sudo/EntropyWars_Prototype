@@ -592,3 +592,21 @@ the rain im just talking about grass tiles being on fire".
 - bake-arenas.js THE BOARD IS THE ARENA: a terrain room with a `board` feature of n ≥ S only cuts windows inside that board.
 - The voxel board stays: HQ_ARENA_RULES.voxelKeep lists sites whose old voxel Δ is re-registered as `<site>_<W>x<W>_delta` ("<Site> Δ · voxel", VS CPU pickable, not in the PvP pool). Looking-Glass left HQ_ARENA_RULES.keep.
 - Screens: /mnt/project-files/new-maps/lookingglass/ (before_* = voxel board + old garden, after_* = new arena + garden).
+
+## THE GALLEON — the new Flying Dutchman (2026-10-20, mondo: remake the voxel maps as editor rooms)
+- The deck is an editor room: data.js `HQ_AREA_SPECS.prebuilt_revenge` (59.5 × 24.5 m, every edge on the 1.75 m square
+  lines). Waist at 0, quarterdeck + forecastle plateaus at +1.5, poop at +3.0, built wood stairs (`model 'wood'`), bulwarks
+  as room walls with gun ports (sill + lintel), a starboard gangway gap for the bay door, masts/capstan/helm as `trees`
+  (they block their squares; the renderer skips the tree model for `_HQ_SHIP_TREES` and draws them itself).
+- `float.hull.kind: 'galleon'` → three-renderer.js `_hqBuildGalleon`: the lofted hull (sheer from the plate's rim
+  heights), wales, gun-deck ports (some lit), stern gallery + name plate, beakhead, bowsprit, three rigs (`hqGalleonMast`,
+  each its own occlusion piece, `_ew_occEye`: fades when the camera is within 2 squares of it), sails from `_hqSailTex`,
+  ratlines/stays as one LineSegments, wake foam scrolled by the voyage (`_hq.galleonWake`). One mesh per material.
+- `voyage: true` + `sea.field: true`: the room keeps the site's motion + far roster in battle; the sea sheet runs
+  `outer.m` 320 m (a float plate builds no outer ground, so `outer.m` only sizes the sea). The sea sheet never receives
+  shadows (`_hqShadowFlags`): its edge past the shadow map drew a pale box round the ship.
+- Look: `HQ_ROOM_LOOKS.galleon` (dream, light tint — the faded print greyed it), fogD 0.007, the day row in
+  HQ_WORLD_CLOCK.dayLook is a clear sea day. It rides the world clock (day + night both checked).
+- Arenas (bake-arenas.js): 12 = the waist, teams at the port/starboard bulwarks; 9 = quarterdeck + poop; 10 and 11 cut too.
+  The old voxel Δ stays in VS CPU as "The Flying Dutchman Δ · voxel" (`HQ_ARENA_RULES.voxelKeep`).
+- Screenshots: /mnt/project-files/new-maps/dutchman/ (before_* = the voxel board, after_* = the new room).

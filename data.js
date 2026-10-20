@@ -16689,6 +16689,8 @@ const HQ_ROOM_LOOKS = {
     /* THE DEEP (2026-09-18 — complex candidate #8, the user's pick): the open sea bleached and sun-struck, a wide vignette (the horizon is the
        picture); the abyss a soft, bloomed teal (the water is the filter — the god rays want the bloom); the temple's air pocket the same teal, tighter */
     sea:        { name: 'THE OPEN SEA', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.36, grain: 0.03, tintAmount: 0.3, levels: 24 }, cin: { vignette: true, vigAmount: 0.32, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22 },
+    /* THE GALLEON (2026-10-20, the new Flying Dutchman): full colour (the faded print greyed the wood and the sea), a light tint, the dither kept */
+    galleon:    { name: 'THE FLYING DUTCHMAN', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.34, grain: 0.025, tintAmount: 0.2, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.45, bloom: 0.2 },
     abyss:      { name: 'THE ABYSS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.55, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.5 }, nightMood: 0.55, bloom: 0.42 },
     temple:     { name: 'THE TEMPLE OF THE DEEP', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.44, grain: 0.035, tintAmount: 0.45, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.5, bloom: 0.26 },
     /* THE LEY LINES (2026-09-18 — complex candidate #9, the user: "amber tone"): the tunnels the deepest amber in the building, hard dither, a tight vignette
@@ -43352,7 +43354,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_mars_cydonia: { fog: 0xc8a07a, tint: 0xd0a878, clouds: 0.05 },
                              site_prebuilt_northpole_village: { fog: 0xdce4ee, tint: 0xb8d0ec, clouds: 0.6 },
                              site_prebuilt_haunted_grounds: { fog: 0x9aa4a0, tint: 0x98a8b8, clouds: 0.7 },
-                             site_prebuilt_revenge_deck: { fog: 0x9fb4c0, tint: 0x8fb0cc, clouds: 0.55 },
+                             site_prebuilt_revenge_deck: { fog: 0xa6c2d6, tint: 0x8cb4dc, clouds: 0.45 },   // THE NEW MAP (2026-10-20): a clear sea day (the old grey haze washed the ship out)
                          },
                          /* 2026-09-27 (mondo: "Grove and skinwalker dont need to have fixed night"): the Grove and the skinwalker fields ride the clock with the woods.
                             2026-10-17 (mondo: "any outdoor area should have visible day and night"): no room keeps a fixed hour any more (the Strip, the
@@ -45912,12 +45914,13 @@ const HQ_AREA_SPECS = {
        walk and in every fight on her deck, faster every round. The masts, the capstan and the helm are terrain TREES (each holds its
        squares; the hull draws them, not the foliage kit). The arena (bake-arenas.js) is the 12 × 12 across the waist, the teams at the
        port and starboard bulwarks; the old voxel Δ stays pickable in VS CPU (HQ_ARENA_RULES.voxelKeep). */
-    prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE QUARTERDECK · THE POOP', w: 59.5, d: 24.5, night: 1, look: 'sea', fogD: 0.022,
+    prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE QUARTERDECK · THE POOP', w: 59.5, d: 24.5, night: 1, look: 'galleon', fogD: 0.007,
         sea: { y: -4.2, key: 'water', field: true },
+        outer: { m: 320 },   // the sea's sheet runs 320 m past the rails, to the horizon the far roster sails on (a float plate builds no outer ground)
         float: { hull: { kind: 'galleon', draft: 3.8, bow: 9.5, stern: 0.5 } },
         voyage: true,
         parti: 'A galleon\'s weather deck is a stage between two castles: the waist is the floor of every fight, the quarterdeck and the poop climb aft to the helm, the forecastle stands over the bow, and the sea past the bulwarks is not a floor.', typology: 'corridor',
-        floor: 'wood_planks', cliff: 'wood', path: 'wood_planks', floorColor: 0xb9885a, cliffColor: 0x7a5636,
+        floor: 'wood_planks', cliff: 'wood', path: 'wood_planks', floorColor: 0xe8b47c, cliffColor: 0x9a6a40,
         noise: { amp: 0, scale: 9 }, crag: false,
         plaza: { x: 0, z: 0 },
         spawn: { x: 22.75, z: 10.6, face: 0 },
@@ -45936,9 +45939,9 @@ const HQ_AREA_SPECS = {
             /* THE MASTS, THE CAPSTAN, THE HELM (terrain trees: each holds its squares — the mainmast and the capstan two squares each on the waist) */
             { k: 'tree', x: -4.375, z: 0, kind: 'mast', r: 0.9, h: 31 },     // THE MAINMAST
             { k: 'tree', x: 4.375, z: 0, kind: 'capstan', r: 0.8, h: 1.1 },   // THE CAPSTAN
-            { k: 'tree', x: 17.5, z: 0, kind: 'mast', r: 0.75, h: 27 },      // THE FOREMAST
-            { k: 'tree', x: -17.5, z: 0, kind: 'mast', r: 0.6, h: 22 },      // THE MIZZEN
-            { k: 'tree', x: -25.375, z: 0, kind: 'helm', r: 0.6, h: 1.7 },   // THE HELM (the wheel, facing the bow)
+            { k: 'tree', x: 16.625, z: 0, kind: 'mast', r: 0.8, h: 27 },     // THE FOREMAST
+            { k: 'tree', x: -16.625, z: 0, kind: 'mast', r: 0.8, h: 22 },    // THE MIZZEN
+            { k: 'tree', x: -25.375, z: 0, kind: 'helm', r: 0.8, h: 1.7 },   // THE HELM (the wheel, facing the bow)
             /* THE CARGO on the waist: four lashed crates (one level, cover), a square each */
             { k: 'wall', x0: -3.25, z0: -4.375, x1: -2.0, z1: -4.375, h: 1.25, t: 1.25, key: 'wood', rail: false },
             { k: 'wall', x0: -3.25, z0: 4.375, x1: -2.0, z1: 4.375, h: 1.25, t: 1.25, key: 'wood', rail: false },
@@ -45982,11 +45985,11 @@ const HQ_AREA_SPECS = {
                 { key: 'ship_cannon', x: -2.625, z: -12.3, face: 90 }, { key: 'ship_cannon', x: 2.625, z: -12.3, face: 90 }, { key: 'ship_cannon', x: -2.625, z: 12.3, face: 270 }, { key: 'ship_cannon', x: 2.625, z: 12.3, face: 270 },
                 { key: 'ship_cannon', x: -17.5, z: -12.3, y: 1.5, face: 90 }, { key: 'ship_cannon', x: -12.25, z: -12.3, y: 1.5, face: 90 }, { key: 'ship_cannon', x: -17.5, z: 12.3, y: 1.5, face: 270 }, { key: 'ship_cannon', x: -12.25, z: 12.3, y: 1.5, face: 270 },
                 { key: 'ship_cannon', x: 12.25, z: -12.3, y: 1.5, face: 90 }, { key: 'ship_cannon', x: 17.5, z: -12.3, y: 1.5, face: 90 }, { key: 'ship_cannon', x: 12.25, z: 12.3, y: 1.5, face: 270 }, { key: 'ship_cannon', x: 17.5, z: 12.3, y: 1.5, face: 270 },
-                /* THE QUARTERDECK: the log at the lectern, the glass, the chest, the braziers, the lesson at the rope */
-                { key: 'lectern', x: -20.125, z: -2.625, y: 1.5, face: 90 }, { key: 'brass_telescope', x: -14.875, z: 8.75, y: 1.5, face: 60 }, { key: 'sea_chest', x: -20.125, z: 7, y: 1.5 }, { key: 'lone_gun', x: -20.125, z: -2.625, y: 2.65 },
-                { key: 'brazier', x: -12.25, z: -8.75, y: 1.5 }, { key: 'brazier', x: -12.25, z: 8.75, y: 1.5 }, { key: 'lesson_sign', x: -20.125, z: -7, y: 1.5, face: 270, lesson: 'climb' },
-                /* THE POOP: the chest, the skulls, the glass astern (the stern lanterns are the hull's) */
-                { key: 'sea_chest', x: -29.25, z: 7, y: 3.0 }, { key: 'skull_pile', x: -29.25, z: -7.875, y: 3.0 }, { key: 'brass_telescope', x: -28.875, z: -4.375, y: 3.0, face: 270 },
+                /* THE QUARTERDECK: the glass, the chest, the braziers, the lesson by the rope */
+                { key: 'lectern', x: -28.875, z: -2.625, y: 3.0, face: 90 }, { key: 'brass_telescope', x: -14.875, z: 8.75, y: 1.5, face: 60 }, { key: 'sea_chest', x: -20.125, z: 7, y: 1.5 }, { key: 'lone_gun', x: -28.875, z: -2.625, y: 4.15 },
+                { key: 'brazier', x: -12.25, z: -8.75, y: 1.5 }, { key: 'brazier', x: -12.25, z: 8.75, y: 1.5 }, { key: 'lesson_sign', x: -20.125, z: -11.375, y: 1.5, face: 0, lesson: 'climb' },
+                /* THE POOP: the log at the lectern by the helm, the chest, the skulls, the glass astern (the stern lanterns are the hull's) */
+                { key: 'sea_chest', x: -29.25, z: 7, y: 3.0 }, { key: 'skull_pile', x: -29.25, z: -7.875, y: 3.0 }, { key: 'brass_telescope', x: -28.875, z: -6.125, y: 3.0, face: 270 },
                 /* THE FORECASTLE: the anchor, the chest, the braziers, the lookout's glass */
                 { key: 'ship_anchor', x: 27.125, z: -8.75, y: 1.5 }, { key: 'sea_chest', x: 27.125, z: 7, y: 1.5 }, { key: 'brazier', x: 12.25, z: -8.75, y: 1.5 }, { key: 'brazier', x: 12.25, z: 8.75, y: 1.5 },
                 { key: 'brass_telescope', x: 28.875, z: 1.75, y: 1.5, face: 90 }, { key: 'stocks', x: 22.75, z: -8.75, y: 1.5, face: 180 }],
@@ -55211,7 +55214,7 @@ const HQ_ARENA_RULES = {
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
        online pool (not an arena, not kept) */
-    voxelKeep: ['prebuilt_lookingglass'],
+    voxelKeep: ['prebuilt_lookingglass', 'prebuilt_revenge'],
     keep: ['prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines. THE CHESS COURT (2026-10-20): the Looking-Glass left the list — its arena is the garden's 12 × 12 board
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
@@ -55240,6 +55243,7 @@ const HQ_ARENA_RULES = {
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141401141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313130511111111111111111313130511111111111111111313130511111111111111111113131111111111111111111113131111111111111111111112121111111111111111111111111111111111111111111111111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515150101010101010101010101030302020101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101011515010101150115151515151501010101150115151515150101010101150115151515150101011515150101010101010101010115150101010101010101010115"},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201140101010114010202020201140101010114010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101011111010101010101010101010111010101010101110202020111020202020101111212020111010202020101010111110111010101011111010101111111110111111101010101011111111111010102010101111111110101010102011111110111110102020202010101010111110102020202010101010111111102020202010101010111111101010101"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":1,"oz":18,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy","water"],"cells":"050511111111111111111111050511111111111111111111050511111111111111111111050511111111112121212111050511111111111111111101050511111111112121212101050511111111112121212111050511051305111111111111050511051305111111131313050511110511111111131313050511111111111111111101050511111111111111111111"},
@@ -55278,6 +55282,7 @@ const HQ_ARENA_RULES = {
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101141401010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101030202010101010101030202010101011501010101010101011501010101010101011501010101010101151501"},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":1,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101021402010101140101021402010101140101020202010101010101020202010101010101"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101020202010101010101020101010101010101"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111121212010104111111121212010101011111121212010101011111121212010104111111121212010104111111121212010104111111111111"},
@@ -55313,6 +55318,7 @@ const HQ_ARENA_RULES = {
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010301010101010101010103010101010101010101020101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101151515010101010101010115150101010101010101151501010101010101011515150101010101010101010303020201010101010103030202010101011501030101010101010115010101010101010101150101010101010101151501"},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020114010101011401020201140101010114010202010101010101010102020101020101020101020201010101010101010202010101010101010102"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101010101010101010101011111110101010202020202021201010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101140202020101010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
@@ -55345,6 +55351,7 @@ const HQ_ARENA_RULES = {
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111111111111111110404111111111111111111040411110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05051111111111111111110505111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105051111111111111111110505121211111105111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"05121212111111050505051111121111111105050505111111111111110505050505050505051105050505051111111111111105050505111111111111111105050511111111111111110505051111111111111111050505051111111111111111111113131212111111111111111313121211111111051111"},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201140101010114010202020114010101011401020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101020202011102020202010112120201110102020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
