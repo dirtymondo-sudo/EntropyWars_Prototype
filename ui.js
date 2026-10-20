@@ -15640,7 +15640,7 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1', pit: '🌋 INTO THE LAVA' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
@@ -16583,8 +16583,29 @@
             opts = opts || {};
             const L = (typeof tutorialLesson === 'function') ? tutorialLesson(lessonId) : null;
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
-            if (_tut.booting) return false;
+            if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
+               _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
+            const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
+            if (_ta && !_ta.ready && !_ta.failed && !opts._arenaWarm) {
+                const p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(L.map, true) : null;
+                if (p) {
+                    _tut.arenaWait = true;
+                    /* the player can walk away during the survey (the shelf's BACK, the building): the lesson then never starts */
+                    const pageNow = () => { const a = document.querySelector('#startOverlay .title-page.active'); return a ? a.id : ''; };
+                    const tok = _tut.arenaTok = (_tut.arenaTok | 0) + 1, gs0 = state.gameState, pg0 = pageNow();   // _tutorialLeave bumps the token too
+                    const go = () => {
+                        if (_tut.arenaTok !== tok) return;   // called off (or superseded)
+                        _tut.arenaWait = false;
+                        if (state.gameState !== gs0 || pageNow() !== pg0) return;   // the player went elsewhere meanwhile
+                        window._tutorialLaunch(lessonId, Object.assign({}, opts, { _arenaWarm: true }));
+                    };
+                    p.then(go, go);
+                    return true;
+                }
+                try { if (!_ta.ready) window.hqArenaUpgrade(L.map, { compile: true }); } catch (e) { console.warn('[Tutorial] arena upgrade failed', L.map, e); }
+            }
             if (_tut.active) _tutStopMatchSide();
             const n1 = L.board.p1.length, n2 = L.board.p2.length;
             _tut.saved = _tut.saved || { introCine: window.EW_DISABLE_INTRO_CINE, fog: state.fogOfWar };
@@ -17052,6 +17073,7 @@
         /* ✕ / THE SHELF: leave the lesson. `quiet` = no confirm (a finished
            lesson, a failed boot) */
         window._tutorialLeave = function (quiet) {
+            if (_tut.arenaWait) { _tut.arenaWait = false; _tut.arenaTok = (_tut.arenaTok | 0) + 1; }   // a launch still waiting on its room's survey is called off
             if (!_tut.active) return;
             const go = () => _tutTeardown((from) => {
                 if (from !== 'hq' && typeof _showTitlePage === 'function') {

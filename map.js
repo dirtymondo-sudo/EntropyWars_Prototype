@@ -11718,6 +11718,23 @@
             return TERRAIN_RULES[terrain] || TERRAIN_RULES.grass;
         }
 
+        /* 🌋 THE LAVA PITS (2026-10-20, mondo: "high platforms and walkways with pits of lava deep below that you can actually
+           fall into"): a board cut from a room whose terrain says `pits` (data.js hqFieldRasterTerrain — Hell's walkways) carries
+           `state.lavaPits`, one '0' / '1' a cell row-major; a '1' cell that is still lava is a PIT — a walker never steps in
+           (unitCanTraverse), a flyer crosses, and a grounded body that lands in one falls into the lava (battle.js
+           _fallIntoLavaPit, on the shared forced-move chain). Lava cooled to stone is a pit no more. */
+        function isLavaPitTile(x, y) {
+            const m = state.lavaPits;
+            if (!m || typeof m !== 'string') return false;
+            const w = bw();
+            if (x < 0 || y < 0 || x >= w || y >= bh()) return false;
+            if (m.charCodeAt(y * w + x) !== 49) return false;
+            if (getTerrainAt(x, y) === 'lava') return true;
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'lava');
+        }
+        window.isLavaPitTile = isLavaPitTile;
+
         function isTerrainPassable(x, y, board = state) {
             const groundPassable = getTerrainRule(getTerrainAt(x, y, board)).passable !== false;
 
@@ -12344,6 +12361,7 @@
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
             state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
+            state.lavaPits = null;   // 🌋 THE LAVA PITS: only a board cut from a pit room carries them (below)
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so
                a previous custom match's walls never leak into the next map. */
@@ -12853,6 +12871,8 @@
                 }
                 /* On-board monuments (reused esoteric 3D geometry). */
                 state.monuments = Array.isArray(_pb.monuments) ? _pb.monuments : null;
+                /* 🌋 THE LAVA PITS (data.js hqArenaEntry / hqFieldBuild `pits`): the board's pit cells */
+                if (typeof _pb.pits === 'string' && _pb.pits.length === w * h && _pb.pits.indexOf('1') >= 0) state.lavaPits = _pb.pits;
                 if (_pb.heightMap) {
 
                     for (let _hy = 0; _hy < h; _hy++) {
@@ -13667,6 +13687,7 @@
             if (terrain === 'chasm' || terrain === 'void' || terrain === 'cloud_gap') {
                 return canFly(unit);
             }
+            if (isLavaPitTile(x, y)) return canFly(unit);   // 🌋 THE LAVA PITS: nobody walks into one (lava-adapted or not); a flyer crosses
 
             // Mountains are passable (moveCost: 2 in TERRAIN_RULES).
             // Climbing boots / mountain traverser / flying reduce the cost in getTerrainMoveCost.

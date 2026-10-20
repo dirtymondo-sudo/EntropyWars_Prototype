@@ -2044,6 +2044,8 @@
             // counts, where a voluntary hop-down forgives the first 2.
             const _forced = !!(opts && opts.forced);
             if (!_forced && typeof canFly === 'function' && canFly(unit)) return 0;
+            /* 🌋 THE LAVA PITS: a body that lands in a pit is not hurt by the drop — the lava takes it (battle.js _fallIntoLavaPit) */
+            if (typeof isLavaPitTile === 'function' && isLavaPitTile(unit.x, unit.y)) return 0;
             const FALL_THRESHOLD = _forced ? 1
                 : ((typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3);
             const drop = (fromZ ?? 0) - (toZ ?? 0);
