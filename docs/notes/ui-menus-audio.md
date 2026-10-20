@@ -1614,3 +1614,52 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
 - **THE TRAPEZOID** (`trap`, a whole shape like shard): straight top + bottom, the Slant slider (-40..40 = 0..20% of the width; above 0 the top is the short edge, below 0 the bottom) + "Lean one way" (`lean`, both sides slant the same way; shapePath key `trapl` via `shapeKey(s)`). Also in card-part skins (`qpShapeClip`). Like every whole shape it is stretched to the box, so its outline is thinner along the top and bottom of a wide row (as shard).
 - Browser-checked in a VS-CPU battle (local files swapped in for the CDN): the default theme's stripes now sit inside the shard's slanted side; all 14 shapes (trapezoid +/- slant, leaning, hex, round, pill, bevel, notch, scoop, diamond, circle, square, jagged, tab, pixel) keep the band inside; the spell list's type colours follow it; Width / Gap / One colour / Opacity / Greyed-out rows / Selected-only / no skin all changed the rows; the UI Maker's Trapezoid button, Slant -14 and Lean drew \‾\ rows live.
 - **End gap clamp** (after review, 2026-10-19): `edgeClip` wraps every y in `clamp(min(top, mid), y, max(bottom, mid))`, so a Gap at the ends past half the row closes the band in the middle and keeps it shut. Before, a 21-24 px end gap on a 42 px battle row crossed the ends and brought the band back as a growing block in the middle. Measured on the ABILITIES row: 10 px = 18 coloured rows, 16 px = 6, 19 / 20 / 21 / 24 px = 0; trapezoid and shard at 24 px = none.
+
+### MORE FONTS: 61 Google fonts in every UI Maker font list (2026-10-20, mondo: "can we possibly add more fonts to the game")
+- **Where they load**: index.html, a second Google Fonts link under the game's own (comment MORE FONTS). Only the @font-face
+  rules load there (about 6 KB compressed); a font file downloads once text on screen uses it, so an unpicked font costs
+  nothing. Same host as the game's nine web fonts, so nothing new goes to R2. Japanese display faces (Dela Gothic One,
+  Reggae One, RocknRoll One) were left out: each one's rules alone are ~115 KB.
+- **The list**: hud.js `FONTS` is now in groups; an entry `[null, name]` opens one, and `fSelect` draws them as `<optgroup>`
+  headings: The game's own, Pixel + retro, Fantasy + medieval, Sci-fi + tech, Bold + display, Horror, Hand-drawn +
+  typewriter, On your computer. The groups after the game's own list the families in the index.html link's order: add a
+  font in BOTH places. The floating text list (`FF`) keeps the groups (`f[0] !== ''`).
+- **The picker**: `fFont(label, path, val, opts)` = the list plus a line of sample text in the picked font under it (no line
+  for the game's own face). Every font list uses it: Text tab body + title, Layout part text, Name plates, scoreboard text +
+  score, Floating text numbers + words. The canvas pops already load a picked face first (floatSignal `document.fonts.load`).
+- Browser-checked (scratchpad probe, VS-CPU arena): all 61 load a face and measure differently from their fallback on a
+  canvas; the Text tab's stand-ins, the battle menus + HUD, the name plates and a real pop (showFloatingTextAtTile) all drew
+  the picked fonts.
+
+## THE FULL STORAGE (2026-10-20, mondo: "UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image." ... "getting this error but i dont even have any 9 slices saved")
+- **Cause**: a site gets ~5,120 K characters of localStorage in all (Firefox and Chrome alike; measured 5,242,240 in the
+  sandbox Chromium), shared by every key. The bulk was the game's own data, written by code that swallowed a refused write,
+  so it grew until the storage was at the brim: the Balance Lab stats (battle.js `ew-balance-stats-v4`: `builds[race].loadouts`
+  gains a row for nearly every random loadout, ~3.7 MB after a lab run; `-v3` and older stayed behind), the AI weights /
+  training / imitation / A/B / strength stats, the Shot Recorder pictures (`ew_shot_rec_v1`, a ~25-40 KB JPEG data URL per
+  shot) and the room file list (`ew_hqFileBook_v1`, up to 48 rooms x 900 urls). The UI Maker was just the first writer to
+  say so, and its message guessed at 9-slices. Reproduced in the browser with main's code: the exact message, his change lost.
+- **The stats** (battle.js `_aiStorageGet` / `_aiStorageSet`, the only way to them): IndexedDB `ew_stats` (store `kv`, same
+  key, same JSON string). A key in localStorage is MOVED, never dropped: on its first read and by the boot sweep (every key
+  matching `AI_IDB_KEY_RE`, old versions too; `window._ewStatsMoved` is its promise). A localStorage copy is always the
+  newest (a write that reaches IndexedDB removes it), so a read prefers it. No IndexedDB = localStorage as before.
+- **The pictures** (three-camera.js EWShots): IndexedDB `ew_shot_rec` (store `thumbs`, key = shot n). `S.inIdb` = the pictures
+  IndexedDB confirmed; only those leave the localStorage copy. Moved on load and 6 s after boot (`window._ewShotsThumbsOut`).
+  EXPORT ALL waits for them to come back.
+- **The room file list** (three-renderer.js): kept under `HQ_BOOK_CHARS` (400 K) by dropping the oldest rooms; a refused write
+  removes it; `window._ewHqBookDrop()` empties it. **The download store**: best-effort cap = min(1.5 GB, half the quota)
+  (Firefox counts it and localStorage against one site limit); `_ewAssetStore.trim(frac)` evicts LRU to that share and
+  deletes stored files the index lost.
+- **The UI Maker save** (hud.js THE FULL STORAGE): refused → drop the room file list, retry; wait (≤ 4 s) for the stats and
+  pictures to move, retry; localStorage not the full one (`lsFull`) → trim the download store by half, retry; only then one
+  alert naming the real holders, biggest first (`lsLedger`, `LS_NAMES` plain names). A new 9-slice is taken back out only if
+  that last step fails (`save(undo)`). Console: `UIMaker.storage()` = the ledger.
+- Checked in the sandbox browser: main's storage state (5,118 KB, 1,873 chars free) → main shows the old message and loses the
+  edit; the fix saves it with no message, localStorage 695 KB, every stats value byte-identical in IndexedDB, 14/14 pictures
+  there and shown again in the SHOTS panel; custom maps filling it → the message names "custom maps: 5,119 KB".
+
+### UI Maker pass 25: the combat pop-ups follow the theme (2026-10-20, mondo: "the opportunity attack and nexus capture still show a pop up box that is an old ui and doesnt follow the theme of everything else. are they in the ui maker and if not can you add them")
+- **The box**: both are map.js `showCombatBanner` → `.combat-banner` (title `.combat-banner-title`, line `.combat-banner-sub`), the same box ~33 callers use (opportunity attack, Nexus captured / neutralized, spawn lockout / restored, flag, key, sudden death, strike mode, protected, spotted, tier 2+ achievements, records, dungeon floors). It was in no UIM_SURFACES scope, so it kept styles-cinematic.css's old dark rounded box.
+- **Now**: the `battlePop` surface (Battle pop-ups) lists it in scope + panel (window), ink (title), mute (line) and titles, so it wears the screen's theme (Settings theme by default, his p_entropy), skins and text. noAnim stays: the box keeps its own pop/fade. The kind's inline border tint (friendly gold / enemy red) loses to the theme's frame (PAINT panel border is !important), like the centre banner's kind colours.
+- **Layout**: piece `ppcombat` "Combat pop-up" on the Battle pop-ups screen (move / size / look / text / words) + TEXT_PARTS title / second line. The Battle pop-ups stand-in holds one opportunity attack box on screen (inline `animation:none`).
+- Still on the old look (not themed, listed for mondo 2026-10-20): round banner `#roundBannerOverlay`, player turn sweep `#playerTurnAnnounce`, match intro `.ewi-overlay`, Entropy Strike / finisher cards `.ews-overlay`, split-screen chrome `.ssq-overlay`, spell name + TOTAL DMG `.acam-chrome`, insert cards `.cine-insert`, void captions, achievement toasts `.achieve-toast`, end-of-round chip `#eorPhaseChip`, input toast `#ewInputToast`, VS splash (fallback only). `.death-banner` has no callers.
