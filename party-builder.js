@@ -512,7 +512,7 @@ const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','VIS','RNG','MOV','C
    JOB_MODIFIERS whenever the MP economy moves again. */
 // 2026-08-29 stat rework: the six core stats share the 0-100 ruler (a bit
 // of headroom for gear/natures that push past it); MOV caps at 5 (+1 jetpack).
-const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:105, MDEF:105, INT:110, SPD:105, VIS:6, RNG:6, MOV:6, CRT:30, EVA:25 };
+const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:105, MDEF:105, INT:110, SPD:105, VIS:6, RNG:6, MOV:6, JUMP:5, CRT:30, EVA:25 };
 /* Canonical vital-bar palette — MUST stay in sync with hud.js
    (HP_ALLY_FILL / MP_FILL / *_GLOW; party-builder.js loads BEFORE hud.js so
    the constants can't be referenced directly). The builder always shows YOUR
@@ -532,6 +532,8 @@ const statLabel = k => STAT_LABELS[k] || k;
 // so no bars for them.
 const VITAL_KEYS = ['HP','MP'];
 const BAR_KEYS  = ['ATK','INT','DEF','MDEF','SPD','VIS','CRT','EVA'];
+// the ROSTER tab's quick card under the hero: every main stat, the race editor's names, two columns (row-major pairs)
+const QUICK_STAT_KEYS = [['HP','HP'],['MP','MP'],['ATK','ATK'],['INT','M ATK'],['DEF','DEF'],['MDEF','M DEF'],['SPD','SPD'],['VIS','VISION'],['CRT','CRT'],['EVA','EVA'],['MOV','MOV'],['JUMP','JUMP'],['RNG','RNG']];
 function _withCritEva(s) {
   if (!s) return s;
   if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.crt || 0) * 100);   // CRT is its own stat (a percent) since 2026-10-09
@@ -3758,10 +3760,15 @@ function PartyBuilder(props) {
       h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, stageEntry ? stageLabel : unitName),
       h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, pbRoleLabel(stageEntry ? stageEntry.race : unitRace))),
     h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' } }, ...qTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9}))),
-    h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
-      ['HP','ATK','DEF','SPD'].map(k => {
-        const mapped = STAT_MAP[k], val = qStats[mapped]??0;
-        return h(StatBar, { key:k, label:k, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:stageEntry ? null : zMod(mapped), delta:stageEntry ? 0 : (statDeltas[mapped]??0), gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
+    /* ALL THE MAIN STATS (mondo 2026-10-20: "it needs all the main stats, 2 columns to fit them"): the race editor's set
+       and names, paired row by row (HP|MP, ATK|M ATK, DEF|M DEF, SPD|VISION, CRT|EVA, MOV|JUMP, RNG) */
+    h('div', { className: 'pb-stage-stats' },
+      QUICK_STAT_KEYS.map(([k, label]) => {
+        const mapped = STAT_MAP[k] || k.toLowerCase();
+        const val = k === 'JUMP' ? (typeof window.raceJumpStat === 'function' ? window.raceJumpStat(stageEntry ? stageEntry.race : unitRace, qStats.spd) : 1) : (qStats[mapped]??0);
+        const d = (stageEntry || k === 'JUMP') ? 0 : (statDeltas[mapped]??0);
+        return h(StatBar, { key:k, label, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:stageEntry ? null : zMod(mapped), delta:d,
+          suffix: STAT_PCT[k] ? '%' : '', gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
       })),
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 
