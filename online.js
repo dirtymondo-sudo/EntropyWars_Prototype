@@ -1751,6 +1751,20 @@
             };
         }
 
+        /* Lava-pit fall (battle.js playLavaPitFallFx, the Hell walkways): the
+           shake fires from the HOST engine's pit resolution, so relay it; the
+           guest replays it fog-gated (the death + floating text relay already). */
+        if (typeof window.playLavaPitFallFx === 'function') {
+            const _origPlayLavaPitFallFx = window.playLavaPitFallFx;
+            window.playLavaPitFallFx = function(x, y) {
+                _origPlayLavaPitFallFx(x, y);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                    _emit('relay', { type: 'lava-pit-fall-fx', x: x, y: y });
+                }
+            };
+        }
+
         _postRenderHook = function() {
             _injectTurnBanner();
             _fixPerspectiveLabels();
@@ -4926,6 +4940,14 @@
                         if (_slVis && typeof window.playStormLightningFx === 'function') {
                             window.playStormLightningFx(data.x, data.y);
                         }
+                    }
+
+                    /* Lava-pit fall: the impact shake, fog-gated so a fall in the fog
+                       doesn't give the tile away. */
+                    if (data.type === 'lava-pit-fall-fx' && _ewMirrorView()) {
+                        var _lpVis = !st || !st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(data.x, data.y);
+                        if (_lpVis && typeof window.shakeBoard === 'function') window.shakeBoard('normal');
                     }
 
                     /* Vortex fling: replay the tornado/hurricane lift-spin-hurl
