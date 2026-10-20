@@ -4838,6 +4838,8 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-stage .pb-hero3d-fallback { left: calc(var(--pb-cx, 50%) - 22vh); width: 44vh; right: auto; }
 .pb-stage .pb-hero3d-hint, .pb-stage .pb-hero3d.ew-cv-loading::after, .pb-stage .pb-hero3d.ew-cv-loading::before { left: var(--pb-cx, 50%); }
 .pb-stage-card { flex-shrink: 0; border-top: 1px solid var(--ph-line); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 5px; background: rgba(0,0,0,0.3); }
+.pb-stage-stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 2px; }
+.pb-stage-stats .pb-stat-label { width: 46px; }
 /* the STATS column's identity block: the name, race · job (+ sub), the types */
 .pb-ident { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; min-width: 0; padding-bottom: 6px; border-bottom: 1px solid var(--ph-line); }
 .pb-ident b { font-family: 'Cormorant SC', serif; font-size: clamp(20px, 1.9vw, 28px); font-weight: 600; line-height: 1; color: #f1e9cf; text-shadow: 0 0 30px var(--pb-fc, var(--ph-gold)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

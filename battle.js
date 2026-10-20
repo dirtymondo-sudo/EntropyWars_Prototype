@@ -38347,7 +38347,8 @@
             }
             syncPartyBuildsFromInputs();
             ensurePartyMeta();
-            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player));
+            const _others = (state.partyMeta[player] || []).filter((m, j) => j !== idx && m && m.race).map(m => m.race);   // ONE OF EACH (2026-10-20): never a race the team already fields
+            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player), null, _others);
             const slotRace = state.partyMeta[player][idx]?.race || '';
             const cls = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job
             state.partyBuilds[player][idx] = cls;
@@ -52307,6 +52308,26 @@
             return now - _decorTailSince < actionMs(DECOR_TAIL_MS);
         }
 
+        /* THE PLAY-OUT HOLD (mondo 2026-10-20: "i used a healing potion and the action menu disappears and then
+           reappears and then disappears again during the animation ... The horologe/action menu must only show when it
+           is actually to be used"). The HUD drops the Horologe while something moves (walks, anims, VFX, projectiles),
+           but an action's timeline has quiet frames between its beats (the potion's throw, catch, swig and +HP are
+           timers), and the menu popped back up in every gap. So it stays down for the WHOLE play-out: while an
+           action-cam shot is on screen (every spell, attack, combo and item shot: _acChromeState), and for the full
+           timeline an action without one announces through window._ewHoldPlayout(ms) (online.js relays it to the
+           guest). Read by boardBusy (the HUD's menu gate) only, never by the turn loop. */
+        const PLAYOUT_HOLD_MAX_MS = 6000;
+        let _playoutUntil = 0;
+        function _holdPlayout(ms) {
+            const until = performance.now() + Math.min(PLAYOUT_HOLD_MAX_MS, Math.max(0, +ms || 0));
+            if (until > _playoutUntil) _playoutUntil = until;
+            try { window.dispatchEvent(new Event('ew-state-change')); } catch (_) {}
+        }
+        window._ewHoldPlayout = _holdPlayout;
+        function _playoutLive() {
+            return !!_acChromeState || performance.now() < _playoutUntil;
+        }
+
         function _waitForAnimationsThen(callback) {
             // Turbo fast path: in a no-anims auto-sim (AI Training / Balance
             // Lab / Strength Test) every visual this function polls for is
@@ -55645,7 +55666,8 @@
                         || _deathCamLive() || _keyCamLive()
                         || state.units.some(u => u._dying)
                         || (projectileLayerEl && projectileLayerEl.childElementCount > 0)
-                        || _blockingAnimsLive();
+                        || _blockingAnimsLive()
+                        || _playoutLive();
                     /* ignoreCamera: while the player browses a TARGET LIST the
                        caster→target preview shot glides the camera — hiding the
                        menu for a camera-only glide made the whole Horologe
@@ -61484,7 +61506,26 @@
             if (unit._isBoss || unit.isBoss || unit._isCube) return false;
             if ((unit._captureGraceUntil | 0) >= (state.round || 0)) return false;
             if (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'exited')) return false;
+            if (captureRaceOwned(unit)) return false;   // ONE OF EACH: a unit you already own walks over the door
             return true;
+        }
+        /* ONE OF EACH (mondo, 2026-10-20: "make it to where you cant capture a unit you already own"): a race the account
+           owns (a starter, a Quartermaster buy, an earlier capture — data.js hqCaptureOwned), or one a door already holds or
+           sealed in this fight, is not taken: the door stays open floor for it (no stop, no hold; the AI reads the same rule
+           through captureDoorCanTake). A unit is its race, the same rule the teams follow. */
+        function captureRaceOwned(unit) {
+            const race = String((unit && (unit.race || (unit.meta && unit.meta.race))) || '').toLowerCase();
+            if (!race) return false;
+            try {
+                const prof = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
+                if (typeof hqCaptureOwned === 'function' && hqCaptureOwned(prof, race)) return true;
+            } catch (e) {}
+            if ((state.captures || []).some(c => c && String(c.race || '').toLowerCase() === race)) return true;
+            return _doors().some(d => {
+                if (d.kind !== 'capture' || !d.held || d.held.unitId === unit.id) return false;
+                const h = unitFromId(d.held.unitId);
+                return !!h && String(h.race || (h.meta && h.meta.race) || '').toLowerCase() === race;
+            });
         }
         /* the encounter's LEAD (the named native — it holds out a round longer) */
         function _captureIsLead(unit) {
@@ -61497,7 +61538,18 @@
         }
         /* TAKE: the door swallows the body — HELD under the seal time */
         function captureDoorTake(door, unit, via) {
-            if (!captureDoorCanTake(door, unit)) return false;
+            if (!captureDoorCanTake(door, unit)) {
+                /* ONE OF EACH: say why the door let an enemy through (once per body per door) */
+                if (door && door.kind === 'capture' && door.hp > 0 && !door.held && unit && !unit.dead && door.owner !== unit.player && captureRaceOwned(unit)) {
+                    if (!door._ownedSaid) door._ownedSaid = [];
+                    if (door._ownedSaid.indexOf(unit.id) < 0) {
+                        door._ownedSaid.push(unit.id);
+                        if (!_skipVisuals()) showFloatingTextForUnit(unit, '🚪 ALREADY OWNED', 'buff');
+                        addLog(`🚪 The door at ${coordLabel(door.x, door.y)} lets ${_ctName(unit)} through — you already own that unit.`);
+                    }
+                }
+                return false;
+            }
             const seal = (typeof captureSealFor === 'function') ? captureSealFor(door, unit, { lead: _captureIsLead(unit) }) : 3;
             door.held = { unitId: unit.id, seal, total: seal, tookRound: state.round || 0, via: via || 'move' };
             if (!unit.status) unit.status = {};
@@ -66103,6 +66155,9 @@
                 // Self-swig on the hero shot's push-in peak, so the +HP and
                 // the corner readout land while the close-up is live.
                 const _hpArrive = _hpSelf ? actionMs(_hpHero ? 680 : 250) : _hpLaunch + _hpTravel;
+                // THE PLAY-OUT HOLD: the Horologe stays down through the throw, the swig and the +HP, until the
+                // shot hands the camera back (the same clocks as the camera restores below)
+                window._ewHoldPlayout(_hpCine ? _hpCine.totalMs : _hpHero ? actionMs(2500) : _hpArrive + actionMs(450));
                 if (_hpSelf) {
                     // Rigged models swig the potion (classifySpellAnimKind
                     // 'consume' → castConsume, the UAL2 Consume clip).
@@ -66207,6 +66262,7 @@
                 const _mpLaunch = _mpCine ? _mpCine.sourceHold : actionMs(150);
                 const _mpTravel = _mpCine ? _mpCine.travelMs : actionMs(380);
                 const _mpArrive = _mpSelf ? actionMs(_mpHero ? 680 : 250) : _mpLaunch + _mpTravel;
+                window._ewHoldPlayout(_mpCine ? _mpCine.totalMs : _mpHero ? actionMs(2500) : _mpArrive + actionMs(450));   // THE PLAY-OUT HOLD
                 if (_mpSelf) {
                     triggerCastAnim(unit, { id: 'consumeManaPotion', name: 'Mana Potion' });
                 } else {
@@ -66495,6 +66551,7 @@
                     (_baneCam?.totalMs ?? 0) + actionMs(120));
                 /* THE BANE FORECAST: the throw keeps the item armed until it settles — no hover re-arms its preview mid-throw */
                 window._ewBaneThrowUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + _baneSettleMs + 50;
+                window._ewHoldPlayout(_baneSettleMs);   // THE PLAY-OUT HOLD: no menu between the wind-up, the flight and the burst
                 window.setTimeout(() => {
                     spendAP(unit, AP_COST_ACTION);
                     // Press Turn: a super-effective bane grants a free action,
@@ -69490,6 +69547,8 @@
                             _beamFx.tx = unit.x + dx * _beamPlan.line.aimStep;
                             _beamFx.ty = unit.y + dy * _beamPlan.line.aimStep;
                             _beamFx.tz = _beamPlan.line.aimZ;
+                            // the aimed body's own tile (a side lane of a wide beam): the VFX takes its height from it
+                            _beamFx.ax = x; _beamFx.ay = y;
                         }
                         if (spell.beamZigzag && _beamPlan.cells.length) {
                             const _stepOf = (u) => ((u.x - unit.x) * dx + (u.y - unit.y) * dy) / (dx * dx + dy * dy);

@@ -1559,3 +1559,13 @@ animation ... lump of coal doesnt even need one, its just supposed to be santa c
   `--cine-hole-x/-y/-rx/-ry` on #game-viewport (CSS radial gradient, clear core). `_sigScreenFlash` (three-vfx-effects)
   reads `window._cineFocusScreen()` the same way. Focus = the unit on the cast's aimed tile (`_cineCastCtx.tx/ty`), then
   the forecast hits, then the unit under `camera._tpsSubject` (the guest path); none → the frame centre.
+
+## THE SIDE LANE + THE HOVER SINK — beam height (2026-10-20, token 20261020-beamh-01-cors)
+mondo: Plasma Cannon from a caster on a raised block at a flyer about the same height fired "at like a high angle
+pointed up ... it needs to take the heights of both the caster and the target into account". Cause: Plasma Cannon is
+2 wide; a flyer in its SIDE lane left the spine tile empty, so `_worldTorsoAtLevel(tx, ty, tz)` fell back to the raw
+level — the flyer's logic z, 0.65 of a tile over where the renderer draws it (`_flyVisualY` hover sink). Block 1 high,
+flyer 2 over the ground one tile out: 45° up (browser probe), now 19° = caster torso → the flyer's drawn torso.
+Fix: battle.js passes `ax/ay` (the aimed body's tile; online.js relays them) and `_fireBeamMapped` takes the aim
+height from that body; `_worldTorsoAtLevel`'s no-body fallback applies the same hover sink (1.35 floor, −0.65) to a
+level in the air. Covers every 3D-line beam (spine aims were already body-to-body) and Fractal Stitch's air end point.

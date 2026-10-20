@@ -248,6 +248,25 @@
             return list.slice().sort((a, b) => String(b.lastUsed || b.createdAt || '').localeCompare(String(a.lastUsed || a.createdAt || '')));
         }
         function _sqNeed() { return (_sqMode === 'online' || SQ_DEPLOY === 5) ? SQ_DEPLOY : 1; }
+        /* ONE OF EACH (mondo, 2026-10-20: "disallow more than one of the same unit on a single team"): a unit is its race. A
+           team saved before the rule is never touched — the desk flags it and will not deploy the same race twice (THE PICK
+           refuses a second one); the forge (Edit) is where it gets fixed. */
+        const _sqRaceKey = s => String((s && s.race) || '').toLowerCase();
+        function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(_sqRaceKey)) : []; }
+        /* the team cannot cross as it stands: the deployed members repeat a race (or a bigger sheet has too few different races to pick from) */
+        function _sqTwice(t) {
+            const n = t.slots.length;
+            if (n <= SQ_DEPLOY) return _sqDups(t.slots);
+            const distinct = new Set(t.slots.map(_sqRaceKey)).size;
+            return distinct < Math.min(SQ_DEPLOY, n) ? _sqDups(t.slots) : [];
+        }
+        function _sqTwiceText(d) { return 'Same unit twice: ' + d.map(r => _sqRaceLabel({ race: r })).join(', '); }
+        /* the first `k` slots of DIFFERENT races (THE PICK's opening choice when the remembered one repeats a race) */
+        function _sqFirstUnique(t, k) {
+            const seen = new Set(), out = [];
+            t.slots.forEach((s, i) => { const r = _sqRaceKey(s); if (out.length < k && !seen.has(r)) { seen.add(r); out.push(i); } });
+            return out;
+        }
         function _sqRaceLabel(s) {
             try { if (typeof getRaceLabel === 'function') { const l = getRaceLabel(s.race || '', s.gender); if (l) return l; } } catch (e) {}
             try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[s.race] && RACE_PROFILES[s.race].label) return RACE_PROFILES[s.race].label; } catch (e) {}
@@ -308,6 +327,7 @@
             const n = t.slots.length;
             if (n <= SQ_DEPLOY) return t.slots.map((_, i) => i);
             let pick = Array.isArray(t.lastPick) ? Array.from(new Set(t.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n))) : [];
+            if (pick.length !== SQ_DEPLOY || _sqDups(pick.map(i => t.slots[i])).length) pick = _sqFirstUnique(t, SQ_DEPLOY);   // ONE OF EACH
             if (pick.length !== SQ_DEPLOY) pick = t.slots.map((_, i) => i).slice(0, SQ_DEPLOY);
             return pick.sort((a, b) => a - b);
         }
@@ -392,7 +412,8 @@
             const plate = document.getElementById('sqPlate'), acts = document.getElementById('sqActions');
             if (!t || !plate) return;
             const presets = _sqPresets(), max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
-            const n = t.slots.length, locked = n < _sqNeed(), over = n > SQ_DEPLOY, shown = _sqShownIdx(t);
+            const n = t.slots.length, short = n < _sqNeed(), over = n > SQ_DEPLOY, shown = _sqShownIdx(t);
+            const twice = short ? [] : _sqTwice(t), locked = short || twice.length > 0;   // ONE OF EACH
             const when = t.lastUsed ? new Date(t.lastUsed) : null;
             const at = presets.findIndex(p => p.id === t.id);
             plate.className = ['sq-plate', locked ? 'is-locked' : '', t.id === _sqNewId ? 'is-new' : ''].filter(Boolean).join(' ');
@@ -405,7 +426,8 @@
                 + `<div class="sq-plate-faces">${t.slots.slice(0, 8).map((s, i) => `<span class="sq-plate-slot${over && shown.indexOf(i) < 0 ? ' is-bench' : ''}" style="--j:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">`
                     + `${_sqFace(s)}<em>${_sqEsc(s.unitName || _sqRaceLabel(s))}</em></span>`).join('')}</div>`
                 + `<div class="sq-plate-foot">`
-                + (locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play ${SQ_DEPLOY === 5 ? '5v5' : 'online'}</span>`
+                + (twice.length ? `<span class="sq-card-warn">${_sqEsc(_sqTwiceText(twice))} · Edit the team</span>`
+                    : locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play ${SQ_DEPLOY === 5 ? '5v5' : 'online'}</span>`
                     : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
                     : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
                 + `</div>`;
@@ -438,11 +460,11 @@
             if (!drop) return;
             const need = _sqNeed();
             drop.innerHTML = _sqPresets().map((t, k) => {
-                const n = t.slots.length, locked = n < need;
+                const n = t.slots.length, twice = n < need ? [] : _sqTwice(t), locked = n < need || twice.length > 0;   // ONE OF EACH
                 return `<div class="sq-drop-row${t.id === _sqFocusId ? ' is-focus' : ''}${locked ? ' is-locked' : ''}" role="button" tabindex="0" data-sq-sel="${_sqEsc(t.id)}" style="--i:${k}">`
                     + `<span class="sq-drop-faces">${t.slots.slice(0, 8).map(s => _sqFace(s)).join('')}</span>`
                     + `<span class="sq-drop-name">${_sqEsc(t.name || 'Team')}</span>`
-                    + `<span class="sq-drop-n">${locked ? `Needs ${SQ_DEPLOY}` : `${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}`}</span></div>`;
+                    + `<span class="sq-drop-n">${twice.length ? 'Same unit twice' : locked ? `Needs ${SQ_DEPLOY}` : `${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}`}</span></div>`;
             }).join('');
         }
         function _sqDropSet(open) {
@@ -463,7 +485,7 @@
             if (!preset) return;
             const el = _sqCardEl(id);
             _sqFocusCard(id);
-            if (preset.slots.length < _sqNeed()) { try { playSfx('uiError'); } catch (e) {} _sqBump(el, 'sq-shake'); return; }
+            if (preset.slots.length < _sqNeed() || _sqTwice(preset).length) { try { playSfx('uiError'); } catch (e) {} _sqBump(el, 'sq-shake'); return; }   // ONE OF EACH: a team fielding a race twice does not cross
             if (preset.slots.length > SQ_DEPLOY) { _sqPickOpen(preset); return; }
             _sqDeploy(preset, preset.slots.map((_, i) => i));
         }
@@ -473,7 +495,7 @@
             const n = preset.slots.length;
             let chosen = Array.isArray(preset.lastPick) ? preset.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n) : [];
             chosen = Array.from(new Set(chosen)).slice(0, SQ_DEPLOY);
-            if (chosen.length !== SQ_DEPLOY) chosen = preset.slots.map((_, i) => i).slice(0, SQ_DEPLOY);
+            if (chosen.length !== SQ_DEPLOY || _sqDups(chosen.map(i => preset.slots[i])).length) chosen = _sqFirstUnique(preset, SQ_DEPLOY);   // ONE OF EACH
             _sqPick = { preset, chosen };
             try { playSfx('uiCursorMove'); } catch (e) {}
             const host = document.getElementById('sqPick');
@@ -515,7 +537,15 @@
         function _sqPickToggle(i) {
             if (!_sqPick || !_sqPick.preset.slots[i]) return;
             const at = _sqPick.chosen.indexOf(i);
+            const _r = _sqRaceKey(_sqPick.preset.slots[i]);
             if (at >= 0) _sqPick.chosen.splice(at, 1);
+            else if (_sqPick.chosen.some(j => _sqRaceKey(_sqPick.preset.slots[j]) === _r)) {   // ONE OF EACH: that race already crosses
+                try { playSfx('uiError'); } catch (e) {}
+                _sqBump(document.querySelector(`#sqPick .sq-tile[data-sq-tile="${i}"]`), 'sq-shake');
+                const hint = document.querySelector('#sqPick .sq-pick-hint');
+                if (hint) hint.textContent = _sqRaceLabel({ race: _r }) + ' is already crossing. One of each unit.';
+                return;
+            }
             else if (_sqPick.chosen.length >= SQ_DEPLOY) {
                 try { playSfx('uiError'); } catch (e) {}
                 const t = document.querySelector(`#sqPick .sq-tile[data-sq-tile="${i}"]`);
@@ -534,7 +564,7 @@
         }
         function _sqPickGo() {
             if (!_sqPick) return;
-            if (_sqPick.chosen.length !== SQ_DEPLOY) { try { playSfx('uiError'); } catch (e) {} _sqBump(document.getElementById('sqPickN'), 'sq-shake'); return; }
+            if (_sqPick.chosen.length !== SQ_DEPLOY || _sqDups(_sqPick.chosen.map(i => _sqPick.preset.slots[i])).length) { try { playSfx('uiError'); } catch (e) {} _sqBump(document.getElementById('sqPickN'), 'sq-shake'); return; }
             const preset = _sqPick.preset, idx = _sqPick.chosen.slice().sort((a, b) => a - b);
             _sqPickClose(false);
             _sqDeploy(preset, idx);
