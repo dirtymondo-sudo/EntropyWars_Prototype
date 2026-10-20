@@ -12134,11 +12134,42 @@ const MATERIALS = [
   ['wood', 'Wood'], ['wood_planks', 'Planks'], ['rock', 'Rock'], ['rocks_1', 'Stone'], ['rocks_5', 'Cliff stone'],
   ['ice', 'Ice'], ['desert', 'Sand'], ['leaves', 'Leaves'], ['water', 'Water'], ['scorched', 'Scorched'],
 ];
+/* MORE FONTS (2026-10-20, mondo: "can we possibly add more fonts to the game"): the list comes in groups ([null, name]
+   opens one; fSelect draws them as headings). The groups after the game's own are Google fonts index.html lists in its
+   MORE FONTS link, in the same order: add a font in both places. */
 const FONTS = [
-  ['', 'Game default'], ["'IBM Plex Mono', monospace", 'IBM Plex Mono'], ["'JetBrains Mono', monospace", 'JetBrains Mono'],
+  ['', 'Game default'],
+  [null, "The game's own"],
+  ["'IBM Plex Mono', monospace", 'IBM Plex Mono'], ["'JetBrains Mono', monospace", 'JetBrains Mono'],
   ["'DotGothic16', monospace", 'DotGothic16 (pixel)'], ["'Cinzel', serif", 'Cinzel'], ["'Cinzel Decorative', serif", 'Cinzel Decorative'],
   ["'Cormorant SC', serif", 'Cormorant SC'], ["'Cormorant Garamond', serif", 'Cormorant Garamond'], ["'Bangers', cursive", 'Bangers'],
-  ["'Caveat', cursive", 'Caveat'], ['Georgia, serif', 'Georgia'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier New'],
+  ["'Caveat', cursive", 'Caveat'],
+  [null, 'Pixel + retro'],
+  ["'Press Start 2P', monospace", 'Press Start 2P'], ["'VT323', monospace", 'VT323'], ["'Silkscreen', monospace", 'Silkscreen'], ["'Pixelify Sans', sans-serif", 'Pixelify Sans'],
+  ["'Jersey 10', sans-serif", 'Jersey 10'], ["'Tiny5', sans-serif", 'Tiny5'], ["'Micro 5', sans-serif", 'Micro 5'], ["'Jacquard 12', serif", 'Jacquard 12'],
+  ["'Bytesized', sans-serif", 'Bytesized'], ["'Share Tech Mono', monospace", 'Share Tech Mono'], ["'Kode Mono', monospace", 'Kode Mono'],
+  [null, 'Fantasy + medieval'],
+  ["'MedievalSharp', serif", 'MedievalSharp'], ["'Uncial Antiqua', serif", 'Uncial Antiqua'], ["'Pirata One', serif", 'Pirata One'], ["'UnifrakturMaguntia', serif", 'UnifrakturMaguntia'],
+  ["'Almendra', serif", 'Almendra'], ["'Almendra SC', serif", 'Almendra SC'], ["'Metamorphous', serif", 'Metamorphous'], ["'Marcellus SC', serif", 'Marcellus SC'],
+  ["'IM Fell English SC', serif", 'IM Fell English SC'], ["'New Rocker', serif", 'New Rocker'], ["'Grenze Gotisch', serif", 'Grenze Gotisch'], ["'Macondo', cursive", 'Macondo'],
+  ["'Eagle Lake', cursive", 'Eagle Lake'], ["'Germania One', sans-serif", 'Germania One'], ["'Alegreya SC', serif", 'Alegreya SC'],
+  [null, 'Sci-fi + tech'],
+  ["'Orbitron', sans-serif", 'Orbitron'], ["'Audiowide', sans-serif", 'Audiowide'], ["'Michroma', sans-serif", 'Michroma'], ["'Oxanium', sans-serif", 'Oxanium'],
+  ["'Chakra Petch', sans-serif", 'Chakra Petch'], ["'Rajdhani', sans-serif", 'Rajdhani'], ["'Exo 2', sans-serif", 'Exo 2'], ["'Russo One', sans-serif", 'Russo One'],
+  ["'Major Mono Display', monospace", 'Major Mono Display'], ["'Syncopate', sans-serif", 'Syncopate'], ["'Zen Dots', sans-serif", 'Zen Dots'], ["'Quantico', sans-serif", 'Quantico'],
+  ["'Electrolize', sans-serif", 'Electrolize'],
+  [null, 'Bold + display'],
+  ["'Anton', sans-serif", 'Anton'], ["'Bebas Neue', sans-serif", 'Bebas Neue'], ["'Oswald', sans-serif", 'Oswald'], ["'Archivo Black', sans-serif", 'Archivo Black'],
+  ["'Bungee', sans-serif", 'Bungee'], ["'Black Ops One', sans-serif", 'Black Ops One'], ["'Staatliches', sans-serif", 'Staatliches'], ["'Bowlby One SC', sans-serif", 'Bowlby One SC'],
+  ["'Rubik Mono One', sans-serif", 'Rubik Mono One'], ["'Teko', sans-serif", 'Teko'], ["'Righteous', sans-serif", 'Righteous'], ["'Monoton', sans-serif", 'Monoton'],
+  ["'Luckiest Guy', cursive", 'Luckiest Guy'],
+  [null, 'Horror'],
+  ["'Creepster', cursive", 'Creepster'], ["'Nosifer', cursive", 'Nosifer'], ["'Butcherman', cursive", 'Butcherman'], ["'Eater', cursive", 'Eater'],
+  ["'Metal Mania', cursive", 'Metal Mania'], ["'Rubik Glitch', sans-serif", 'Rubik Glitch'],
+  [null, 'Hand-drawn + typewriter'],
+  ["'Special Elite', monospace", 'Special Elite'], ["'Permanent Marker', cursive", 'Permanent Marker'], ["'Rock Salt', cursive", 'Rock Salt'],
+  [null, 'On your computer'],
+  ['Georgia, serif', 'Georgia'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier New'],
   /* the computer's own fonts (nothing downloaded): where one is missing the next in its line stands in */
   ["Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", 'Impact'], ["'Arial Black', 'Arial Bold', Gadget, sans-serif", 'Arial Black'],
   ["'Arial Narrow', 'Helvetica Neue Condensed', 'Roboto Condensed', sans-serif", 'Arial Narrow'], ["'Helvetica Neue', Helvetica, Arial, sans-serif", 'Helvetica'],
@@ -12248,10 +12279,88 @@ function fixTheme(t) {
 let seen = {};
 try { const j = JSON.parse(localStorage.getItem(KEY + '_seen') || 'null'); if (j && typeof j === 'object') seen = j; } catch (e) {}
 function saveSeen() { try { localStorage.setItem(KEY + '_seen', JSON.stringify(seen)); } catch (e) {} }
-let _saveWarned = false;
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
-  catch (e) { if (!_saveWarned) { _saveWarned = true; try { alert('UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image.'); } catch (_) {} } return false; }
+/* THE FULL STORAGE (2026-10-20, mondo: "UI Maker: the browser storage is full, the last change was not saved. Delete an
+   unused 9-slice image." ... "getting this error but i dont even have any 9 slices saved"). The UI Maker shares the
+   ~5 MB of localStorage a site gets with every other part of the game, and the old message guessed at 9-slices. What
+   filled it was the game's own bulk data, which now lives in IndexedDB (the AI + Balance Lab stats, battle.js; the Shot
+   Recorder pictures, three-camera.js) or keeps small (the room file list, three-renderer.js). A refused save now:
+   (1) empties the room file list (a cache the game rebuilds as you walk) and tries again at once; (2) waits for the
+   stats and the pictures to finish moving out, tries again; (3) when localStorage itself is not what is full (Firefox
+   counts the game files downloaded to disk against the same site limit), shrinks that download store and tries again;
+   (4) only then says so, naming what really holds the space, biggest first. Nothing he made is deleted to make room. */
+const LS_LIMIT = 5120 * 1024;   // what Firefox and Chrome give a site, counted in characters
+const LS_NAMES = [
+  [/^ew_ui_maker/, 'UI Maker settings'], [/^ew-balance-stats-v/, 'Balance Lab stats'],
+  [/^ai-(weights|training-stats|ab-experiments|imitation-stats)-v/, 'AI training data'], [/^ew-strength-stats-v/, 'AI strength test stats'],
+  [/^ew_shot_rec/, 'Shot Recorder shots'], [/^ew_hqFileBook/, 'room file list'], [/^ew_asset_index$/, 'downloaded files list'],
+  [/^ew_custom_maps$/, 'custom maps'], [/^ew_spell_mods/, 'Spell Library changes'], [/^ew_race_mods/, 'race editor changes'],
+  [/^ew_data_mods/, 'data editor changes'], [/^ew_saved_teams|^ew-profile-teams-/, 'saved teams'], [/^ew-profile-|^ew-active-profile$/, 'profiles'],
+  [/^ew-campaign|campaign/i, 'campaign saves'], [/^ew-md-save/, 'story save'], [/^ew_saved_looks$/, 'saved character looks'],
+  [/^ew_cine_path:/, 'camera paths'], [/achievements|career/, 'achievements + career'],
+];
+function lsLedger() {
+  const by = {}; let total = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (k == null) continue;
+      const n = k.length + (localStorage.getItem(k) || '').length; total += n;
+      const nm = (LS_NAMES.find(r => r[0].test(k)) || [0, k])[1];
+      by[nm] = (by[nm] || 0) + n;
+    }
+  } catch (e) {}
+  return { total, rows: Object.keys(by).map(k => [k, by[k]]).sort((a, b) => b[1] - a[1]) };
+}
+function kb(n) { return Math.max(1, Math.round(n / 1024)).toLocaleString('en-US') + ' KB'; }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+/* would this save go past localStorage's own limit? (else what refused it is the site's storage as a whole) */
+function lsFull() { let old = 0; try { old = (localStorage.getItem(KEY) || '').length; } catch (e) {} return lsLedger().total - old + JSON.stringify(db).length > LS_LIMIT * 0.97; }
+let _saveWarned = false, _saveFixing = false, _saveUndo = [];
+/* undo: what to take back if this save is still refused once saveFix has tried everything (a new 9-slice) */
+function save(undo) {
+  if (lsSet(KEY, JSON.stringify(db))) { _saveWarned = false; return true; }
+  let freed = 0;
+  try { if (typeof window._ewHqBookDrop === 'function') freed = window._ewHqBookDrop() || 0; } catch (e) {}
+  if (freed && lsSet(KEY, JSON.stringify(db))) { _saveWarned = false; console.info('[UI Maker] storage was full: emptied the room file list (' + kb(freed) + ') and saved'); return true; }
+  if (typeof undo === 'function') _saveUndo.push(undo);
+  if (!_saveFixing) saveFix();
+  return false;
+}
+function saveFix() {
+  _saveFixing = true;
+  const again = () => lsSet(KEY, JSON.stringify(db));
+  const moved = [window._ewStatsMoved, typeof window._ewShotsThumbsOut === 'function' ? window._ewShotsThumbsOut() : null];
+  let quota = null, trimmed = false, gameBytes = 0;
+  Promise.race([Promise.all(moved.map(p => Promise.resolve(p).catch(() => null))), new Promise(r => setTimeout(r, 4000))]).then(() => {
+    if (again()) return true;
+    const est = navigator.storage && navigator.storage.estimate ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null);
+    return est.then(q => {
+      quota = q;
+      const S = window._ewAssetStore;
+      if (lsFull() || !S || typeof S.trim !== 'function') return false;
+      try { gameBytes = +S.stats().bytes || 0; } catch (e) {}
+      return S.trim(0.5).then(() => { trimmed = true; return again(); });
+    });
+  }).then(ok => ok, () => false).then(ok => {
+    _saveFixing = false;
+    const undo = _saveUndo; _saveUndo = [];
+    if (ok) { _saveWarned = false; console.info('[UI Maker] storage was full: made room and saved'); return; }
+    undo.forEach(f => { try { f(); } catch (e) {} });
+    const L = lsLedger();
+    console.warn('[UI Maker] save refused. localStorage ' + kb(L.total) + ' of about ' + kb(LS_LIMIT), L.rows.map(r => r[0] + ' ' + kb(r[1])), quota);
+    if (_saveWarned) return;
+    _saveWarned = true;
+    let msg;
+    if (lsFull()) {
+      msg = 'UI Maker: the last change was not saved. This site\'s browser storage is full (' + kb(L.total) + ' of about ' + kb(LS_LIMIT) + ').\n\nWhat fills it:\n'
+        + L.rows.filter((r, i) => !i || r[1] >= 16384).slice(0, 5).map(r => '  ' + r[0] + ': ' + kb(r[1])).join('\n');
+    } else {
+      const mb = n => Math.round(n / 1048576).toLocaleString('en-US') + ' MB';
+      msg = 'UI Maker: the last change was not saved. The browser refused it: this site\'s storage on disk is full'
+        + (quota && quota.quota ? ' (' + mb(quota.usage || 0) + ' of ' + mb(quota.quota) + (gameBytes > (quota.usage || 0) * 0.5 ? ', most of it game files kept on disk' : '') + ')' : '')
+        + '.' + (trimmed ? ' Half of the game files kept on disk were cleared and it still did not fit, so the disk itself may be nearly full.' : '');
+    }
+    try { alert(msg + '\n\nEverything saved before this change is kept.'); } catch (_) {}
+  });
 }
 
 /* ── THE FACES (pass 19, 2026-10-18, mondo: "for units that dont have a portrait and just a sprite, add a section in the
@@ -14658,11 +14767,11 @@ function floatPrevMount() {
 }
 function floatDetail() {
   const X = uxOf();
-  const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0]));
+  const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0] !== ''));
   const WT = [['', 'As the game'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']];
   let h = `<div class="uim-h">Floating text</div><div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${FLOAT_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="floatlook" data-val="${v}">${esc(l)}</button>`).join('')}</div></div>`;
-  h += sec('ffont', 'Font', xp(fSelect('Numbers', 'fNumFont', FF, X.fNumFont) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
-    + fSelect('Words', 'fWordFont', FF, X.fWordFont) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
+  h += sec('ffont', 'Font', xp(fFont('Numbers', 'fNumFont', X.fNumFont, FF) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
+    + fFont('Words', 'fWordFont', X.fWordFont, FF) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
     + fSeg('Word case', 'fCase', [['', 'As written'], ['upper', 'UPPER'], ['title', 'Title'], ['lower', 'lower']], X.fCase)
     + fRange('Letter spacing in words', 'fTrack', 0, 4, 0.05, +X.fTrack, '1 = as the game; 0 = the letters touch'))
     + xCheck('Icons in words (🔥 ❄️ ⛰)', 'fEmoji', X.fEmoji));
@@ -14705,7 +14814,7 @@ function platesDetail() {
   let h = `<div class="uim-note">The name plates over the units. Their bar colours, ends and frame come from the bar look below.</div>`;
   h += sec('pshow', 'What a plate shows', xCheck('Name', 'pName', X.pName) + xCheck('Level', 'pLvl', X.pLvl) + xCheck('HP / MP numbers', 'pNums', X.pNums) + xCheck('MP bar', 'pMp', X.pMp) + xCheck('Status badges', 'pStatus', X.pStatus));
   h += sec('psize', 'Size', xp(fRange('Size', 'pSize', 0.5, 2.5, 0.05, +X.pSize) + fRange('Width', 'pW', 100, 320, 2, +X.pW) + fRange('HP bar thickness', 'pBarH', 2, 16, 1, +X.pBarH) + fRange('MP bar thickness', 'pMpH', 2, 14, 1, +X.pMpH)));
-  h += sec('ptext', 'Name text', xp(fSelect('Font', 'pFont', FONTS, X.pFont) + fRange('Size', 'pNameSize', 8, 28, 1, +X.pNameSize)
+  h += sec('ptext', 'Name text', xp(fFont('Font', 'pFont', X.pFont) + fRange('Size', 'pNameSize', 8, 28, 1, +X.pNameSize)
     + fSeg('Case', 'pCase', [['upper', 'UPPER'], ['none', 'As written'], ['title', 'Title'], ['lower', 'lower']], X.pCase)
     + fColorOpt('Your units', 'pAllyCol', X.pAllyCol, '#8fd0e8') + fColorOpt('Enemies', 'pFoeCol', X.pFoeCol, '#e88fb8') + fColorOpt('Current unit', 'pActiveCol', X.pActiveCol, '#f0d060')));
   h += sec('pnums', 'Level + numbers', xp(fRange('Level size', 'pLvlSize', 0, 28, 1, +X.pLvlSize) + fRange('HP / MP number size', 'pNumSize', 0, 24, 1, +X.pNumSize)
@@ -14889,7 +14998,7 @@ function scoreForm() {
     + fSeg('Nexus pips', 'sPipsPos', [['bottom', 'At the bottom'], ['top', 'At the top'], ['off', 'Hidden']], X.sPipsPos))
     + xCheck('Mode name (Arena …)', 'sModeShow', X.sModeShow) + xCheck('"Score" word', 'sCapShow', X.sCapShow)
     + '<div class="uim-note">Sudden death still shows over the score with the mode name hidden.</div>');
-  h += sec('stext', 'Text', xp(fSelect('Font', 'sFont', FONTS, X.sFont) + fSelect('Score font', 'sScoreFont', FONTS, X.sScoreFont)
+  h += sec('stext', 'Text', xp(fFont('Font', 'sFont', X.sFont) + fFont('Score font', 'sScoreFont', X.sScoreFont)
     + fRange('Score size', 'sScoreSize', 12, 56, 1, +X.sScoreSize) + fColorOpt('Score colour', 'sScoreCol', X.sScoreCol, '#ffffff')
     + fColorOpt('P1 score colour', 'sScoreP1Col', X.sScoreP1Col, '#8fd0ff') + fColorOpt('P2 score colour', 'sScoreP2Col', X.sScoreP2Col, '#ff8fb0')
     + fRange('Mode name size', 'sModeSize', 6, 20, 1, +X.sModeSize) + fColorOpt('Mode name colour', 'sModeCol', X.sModeCol, '#9a93b5')
@@ -15517,6 +15626,7 @@ const UIM_CSS = `
 .uim-shape:hover { border-color: #4b6f9e; }
 .uim-shape.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
 .uim-note { color: #7d8699; font-size: 10.5px; margin: 6px 0; }
+.uim-fsample { grid-column: 2; min-width: 0; margin-top: -1px; color: #dfe3ea; font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .uim-ro { padding: 7px 9px; border: 1px dashed #4b8fe0; border-radius: 6px; color: #b9c9e8; margin-bottom: 8px; font-size: 11px; }
 .uim-warn { color: #ffc56b; }
 .uim-sl { display: flex; align-items: center; gap: 8px; padding: 5px; border: 1px solid #2c313d; border-radius: 6px; margin-bottom: 4px; cursor: pointer; }
@@ -15818,8 +15928,16 @@ function fColorOpt(label, path, val, def, withA, tip) {
   const a = alphaOf(val);
   return `<div class="uim-f"${tip ? ` title="${esc(tip)}"` : ''}><label>${label}</label><div><input type="checkbox" data-path="${path}" data-optc="${esc(def)}" data-re="1"${val ? ' checked' : ''} title="Its own colour">${val ? `<input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb" title="Pick a colour"><input class="uim-hex" value="${toHex(val)}" data-path="${path}" data-kind="hex" maxlength="7" spellcheck="false" title="Type a hex colour">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity">` : ''}` : '<span class="uim-note" style="margin:0">Off</span>'}</div></div>`;
 }
-function fSelect(label, path, opts, val) {
-  return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>`;
+/* an entry [null, name] opens a group heading in the list; after = more of the field under the box (a font sample) */
+function fSelect(label, path, opts, val, after) {
+  let grp = 0;
+  const o = opts.map(([v, l]) => v === null ? `${grp++ ? '</optgroup>' : ''}<optgroup label="${esc(l)}">`
+    : `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('') + (grp ? '</optgroup>' : '');
+  return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${o}</select></div>${after || ''}</div>`;
+}
+/* a font list with a line of sample text in the picked font under it (the game's own face: no line) */
+function fFont(label, path, val, opts) {
+  return fSelect(label, path, opts || FONTS, val || '', val ? `<div class="uim-fsample" style="font-family:${esc(val)}">Entropy Wars 0123456789</div>` : '');
 }
 function fSeg(label, path, opts, val) {
   return `<div class="uim-f"><label>${label}</label><div style="flex-wrap:wrap">${opts.map(([v, l, tip]) => `<button class="uim-btn${String(v) === String(val) ? ' on' : ''}" data-set="${path}" data-val="${esc(v)}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div></div>`;
@@ -16018,10 +16136,10 @@ function colorsForm(t) {
 const WEIGHTS = [['', 'As the font'], ['400', 'Normal'], ['600', 'Semi-bold'], ['700', 'Bold'], ['900', 'Black']];
 function textForm(t) {
   const tx = textOf(t), ef = tx.effect || 'drop', cs = caseOf(tx);
-  const fonts = sec('tf', 'Fonts', `${fSelect('Body font', 'text.font', FONTS, tx.font)}${fSeg('Body weight', 'text.weight', WEIGHTS, tx.weight)}${fCheck('Body italic', 'text.italic', tx.italic)}
-    ${fSelect('Title font', 'text.titleFont', FONTS, tx.titleFont)}${fSeg('Title weight', 'text.titleWeight', WEIGHTS, tx.titleWeight)}${fCheck('Title italic', 'text.titleItalic', tx.titleItalic)}
+  const fonts = sec('tf', 'Fonts', `${fFont('Body font', 'text.font', tx.font)}${fSeg('Body weight', 'text.weight', WEIGHTS, tx.weight)}${fCheck('Body italic', 'text.italic', tx.italic)}
+    ${fFont('Title font', 'text.titleFont', tx.titleFont)}${fSeg('Title weight', 'text.titleWeight', WEIGHTS, tx.titleWeight)}${fCheck('Title italic', 'text.titleItalic', tx.titleItalic)}
     ${fRange('Title size', 'text.titleSize', 0.6, 2.5, 0.05, tx.titleSize)}${fRange('Button text size', 'text.rowSize', 0.6, 2, 0.05, tx.rowSize)}
-    <div class="uim-note">The body font goes on every text in a menu wearing this theme; titles are window names and headers. Fonts from Impact down are the computer's own: where one is missing, the next font in its line stands in.</div>`,
+    <div class="uim-note">The body font goes on every text in a menu wearing this theme; titles are window names and headers. Fonts under On your computer are the computer's own: where one is missing, the next font in its line stands in.</div>`,
     (FONTS.find(f => f[0] === (tx.titleFont || tx.font)) || ['', ''])[1]);
   const kase = sec('tc', 'Case + spacing', `${fSeg('Case', 'text.tcase', [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed', 'Takes off the caps the game puts on']], cs)}
     ${fRange('Letter spacing', 'text.track', 0, 0.4, 0.01, tx.track || 0)}
@@ -16222,7 +16340,7 @@ function drawSliceViewSoon() { clearTimeout(_svT); _svT = setTimeout(drawSliceVi
 function addSlice(name, src, w, h, t, r, b, l) {
   const sl = { id: uid('s_'), name, src, w, h, t, r, b, l, scale: 1, outset: 0, repeat: 'stretch', fill: true };
   db.slices.push(sl); UI.sliceId = sl.id; UI.tab = 'slices';
-  if (!save()) { db.slices.pop(); UI.sliceId = ''; }
+  save(() => { const i = db.slices.indexOf(sl); if (i >= 0) db.slices.splice(i, 1); if (UI.sliceId === sl.id) UI.sliceId = ''; if (UI.el) render('insp'); });   // a save the full storage still refuses takes it back out
   render('insp');
 }
 function sliceFromTex(name) {
@@ -16746,7 +16864,7 @@ function lookForm(P, L) {
   const kk = k => (tp ? txKey(tp, k) : k), tv = k => { const x = L[kk(k)]; return x == null ? (k === 'hide' ? false : LOOK_DEF[k]) : x; };
   const pick = T.length ? `<div class="uim-f" title="Every bit of text in this piece has its own look: pick one, or All text for every word at once"><label>Which text</label><div style="flex-wrap:wrap">`
     + [['', 'All text']].concat(T).map(([id, lbl]) => `<button class="uim-btn${tp === id ? ' on' : ''}" data-dk="txpart" data-val="${P.id}:${id}">${esc(lbl)}${id && txOn(L, id) ? ' •' : ''}</button>`).join('') + '</div></div>' : '';
-  const tx = pick + lp(P.id, `${tp ? fCheck('Hide it', kk('hide'), tv('hide')) : ''}${fColorOpt('Colour', kk('ink'), tv('ink'), '#ffffff', false)}${fSelect('Font', kk('font'), FONTS, tv('font'))}${fSeg('Weight', kk('fw'), WEIGHTS, tv('fw'))}
+  const tx = pick + lp(P.id, `${tp ? fCheck('Hide it', kk('hide'), tv('hide')) : ''}${fColorOpt('Colour', kk('ink'), tv('ink'), '#ffffff', false)}${fFont('Font', kk('font'), tv('font'))}${fSeg('Weight', kk('fw'), WEIGHTS, tv('fw'))}
     ${fRange('Size', kk('fsz'), 0, 72, 1, +tv('fsz'))}
     ${fSeg('Case', kk('tcase'), [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed']], tv('tcase'))}
     ${fRange('Letter spacing', kk('track'), -0.1, 0.5, 0.01, +tv('track') || 0)}
@@ -18159,6 +18277,7 @@ window.UIMaker = {
   hero: () => heroOf(),
   bars: () => barsOf(),
   get db() { return db; },
+  storage: () => { const L = lsLedger(); return { total: kb(L.total), limit: kb(LS_LIMIT), rows: L.rows.map(r => r[0] + ': ' + kb(r[1])) }; },
 };
 syncPickerRows();
 window.applyHudTheme(window.getHudTheme());

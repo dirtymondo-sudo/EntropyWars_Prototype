@@ -1751,15 +1751,85 @@ var EWShots = (function () {
         return d;
     }
 
-    /* ── the store ── */
-    function load() { try { var j = JSON.parse(localStorage.getItem(STORE) || 'null'); if (j && Array.isArray(j.shots)) { S.shots = j.shots; S.seq = j.seq || S.shots.length; } } catch (e) {} }
+    /* ── the store ──
+       THE PICTURES IN INDEXEDDB (2026-10-20, mondo's UI Maker said "the browser storage is full"): each shot's picture (a
+       400 px JPEG data URL, tens of KB) sat inside `ew_shot_rec_v1`, so a few dozen shots took a big share of the ~5 MB of
+       localStorage the whole site shares. The pictures now live in IndexedDB `ew_shot_rec` (store `thumbs`, key = the
+       shot's n); localStorage keeps the rest of each shot. A picture still in the localStorage copy MOVES (on load, and a
+       few seconds after the page opens): IndexedDB first, and the copy drops a picture only once IndexedDB holds it
+       (S.inIdb). No IndexedDB = the pictures stay in localStorage, as before. */
+    var _tdb = null;
+    S.inIdb = {};
+    function thumbDb() {
+        if (_tdb) return _tdb;
+        _tdb = new Promise(function (ok, no) {
+            if (typeof indexedDB === 'undefined' || !indexedDB) { no(new Error('no IndexedDB')); return; }
+            var q = indexedDB.open('ew_shot_rec', 1);
+            q.onupgradeneeded = function () { if (!q.result.objectStoreNames.contains('thumbs')) q.result.createObjectStore('thumbs'); };
+            q.onsuccess = function () { ok(q.result); };
+            q.onerror = function () { no(q.error); };
+        });
+        _tdb.catch(function () {});
+        return _tdb;
+    }
+    function thumbsPut(list) {   // [[n, picture]...] in one transaction → true once IndexedDB holds them all
+        return thumbDb().then(function (db) {
+            return new Promise(function (ok) {
+                var t = db.transaction('thumbs', 'readwrite'), st = t.objectStore('thumbs');
+                list.forEach(function (p) { st.put(p[1], p[0]); });
+                t.oncomplete = function () { list.forEach(function (p) { S.inIdb[p[0]] = 1; }); ok(true); };
+                t.onerror = t.onabort = function () { ok(false); };
+            });
+        }).catch(function () { return false; });
+    }
+    function thumbsGet(ns) {   // → { n: picture } for the ones IndexedDB has
+        return thumbDb().then(function (db) {
+            return new Promise(function (ok) {
+                var t = db.transaction('thumbs', 'readonly'), st = t.objectStore('thumbs'), out = {};
+                ns.forEach(function (n) { var q = st.get(n); q.onsuccess = function () { if (typeof q.result === 'string') { out[n] = q.result; S.inIdb[n] = 1; } }; });
+                t.oncomplete = function () { ok(out); };
+                t.onerror = t.onabort = function () { ok(out); };
+            });
+        }).catch(function () { return {}; });
+    }
+    function thumbsDel(ns) {
+        ns.forEach(function (n) { delete S.inIdb[n]; });
+        if (ns.length) thumbDb().then(function (db) { var st = db.transaction('thumbs', 'readwrite').objectStore('thumbs'); ns.forEach(function (n) { st.delete(n); }); }).catch(function () {});
+    }
+    /* the pictures in the localStorage copy move to IndexedDB, the rest come back from it */
+    function thumbsSync() {
+        var inl = [], want = [];
+        S.shots.forEach(function (s) { if (s.n == null) return; if (s.thumb) inl.push([s.n, s.thumb]); else want.push(s.n); });
+        return (inl.length ? thumbsPut(inl) : Promise.resolve(false)).then(function (moved) {
+            if (moved) save();   // the copy without them, now that IndexedDB holds them
+            return want.length ? thumbsGet(want) : {};
+        }).then(function (got) {
+            var n = 0;
+            S.shots.forEach(function (s) { if (!s.thumb && got[s.n]) { s.thumb = got[s.n]; n++; } });
+            if (n && S.open) listRender();
+        });
+    }
+    function load() {
+        try { var j = JSON.parse(localStorage.getItem(STORE) || 'null'); if (j && Array.isArray(j.shots)) { S.shots = j.shots; S.seq = j.seq || S.shots.length; } } catch (e) {}
+        S.thumbsDone = false;
+        S.thumbsP = thumbsSync().then(function () { S.thumbsDone = true; }, function () { S.thumbsDone = true; });
+    }
     function save() {
-        try { localStorage.setItem(STORE, JSON.stringify({ seq: S.seq, shots: S.shots })); return; } catch (e) {}
+        var rows = S.shots.map(function (s) { if (!s.thumb || !S.inIdb[s.n]) return s; var c = {}; for (var k in s) if (k !== 'thumb') c[k] = s[k]; return c; });
+        try { localStorage.setItem(STORE, JSON.stringify({ seq: S.seq, shots: rows })); return; } catch (e) {}
         try {
             localStorage.setItem(STORE, JSON.stringify({ seq: S.seq, shots: S.shots.map(function (s) { var c = {}; for (var k in s) if (k !== 'thumb') c[k] = s[k]; return c; }) }));
             toast('BROWSER STORAGE FULL · PICTURES KEPT UNTIL RELOAD · EXPORT SOON');
         } catch (e2) { toast('BROWSER STORAGE FULL · EXPORT NOW'); }
     }
+    /* pictures still in the localStorage copy move out even when the panel never opens (a few seconds in, or at once when
+       the UI Maker finds the storage full: window._ewShotsThumbsOut, a promise) */
+    function thumbsOut() {
+        try { var raw = localStorage.getItem(STORE); if (!S.shots.length && raw && raw.indexOf('"thumb":"data:') >= 0) load(); } catch (e) {}
+        return S.thumbsP || Promise.resolve();
+    }
+    window._ewShotsThumbsOut = thumbsOut;
+    setTimeout(thumbsOut, 6000);
 
     /* ── FRAME IT: the pose (pivot world px, yaw, tilt, distance px, lens) ── */
     function poseFromCam(c) {
@@ -1878,6 +1948,7 @@ var EWShots = (function () {
                 var m = document.createElement('canvas'); m.width = w; m.height = h;
                 m.getContext('2d').drawImage(cv, 0, 0, w, h);
                 shot.thumb = m.toDataURL('image/jpeg', 0.78);
+                if (shot.n != null) thumbsPut([[shot.n, shot.thumb]]).then(function (ok) { if (ok) save(); });
                 save(); listRender();
             } catch (e) {}
         };
@@ -1890,6 +1961,7 @@ var EWShots = (function () {
     }
     function exportAll() {
         if (!S.shots.length) { toast('NO SHOTS YET'); return; }
+        if (S.thumbsP && !S.thumbsDone) { S.thumbsP.then(exportAll); return; }   // the pictures are still coming back from IndexedDB
         var out = {
             kind: 'entropy-wars-camera-shots', version: 1, exportedAt: new Date().toISOString(),
             build: window._EW_BUILD_TOKEN || '', count: S.shots.length,
@@ -2031,7 +2103,7 @@ var EWShots = (function () {
         btn(r3w, 'CLEAR ALL', function () {
             if (!S.shots.length) return;
             if (performance.now() - S.clearArm > 2500) { S.clearArm = performance.now(); toast('PRESS CLEAR ALL AGAIN TO DELETE ' + S.shots.length + ' SHOTS'); return; }
-            S.clearArm = 0; S.shots = []; save(); listRender(); toast('ALL SHOTS DELETED');
+            S.clearArm = 0; thumbsDel(S.shots.map(function (s) { return s.n; })); S.shots = []; save(); listRender(); toast('ALL SHOTS DELETED');
         });
         p.appendChild(r3w);
         var r4w = el('div', 'ew-cine-row'); r4w.id = 'ewShotsStage';
@@ -2092,7 +2164,7 @@ var EWShots = (function () {
             row.appendChild(mid);
             var bs = el('div', 'ew-shots-acts');
             var tb = el('button', 'ew-cine-btn', 'TRY'); tb.addEventListener('click', function () { tryShot(shot); tb.blur(); }); bs.appendChild(tb);
-            var db = el('button', 'ew-cine-btn', '✕'); db.addEventListener('click', function () { S.shots.splice(S.shots.indexOf(shot), 1); save(); listRender(); }); bs.appendChild(db);
+            var db = el('button', 'ew-cine-btn', '✕'); db.addEventListener('click', function () { S.shots.splice(S.shots.indexOf(shot), 1); thumbsDel([shot.n]); save(); listRender(); }); bs.appendChild(db);
             row.appendChild(bs);
             L.appendChild(row);
         })(S.shots[i], i);
