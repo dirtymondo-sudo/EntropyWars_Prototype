@@ -10629,9 +10629,24 @@ const ThreeRenderer = (function () {
         }
         return { x0: x0, y0: y0, W: x1 - x0 + 1, H: y1 - y0 + 1, cells: tiles.map(function (t) { return [t.x - x0, t.y - y0]; }) };
     }
+    /* THE ZONE ON THE GROUND (2026-10-20, mondo: "on some arena maps there is a bridge spanning a gap and it crosses over the
+       middle nexus zone, which paints the nexus zone halfway on the bridge and half on the ground. It needs to be all on the
+       ground"): a zone tile under a field's deck (THE TWO FLOORS) paints the GROUND under it, never the deck over it — every
+       zone (the nexuses, the Arena spawn nexuses, TDM's spawn strips) and its light walls. The battle-frame Y of that ground,
+       or null (one floor: the tile's top, as ever). The capture rules are the engine's and stay as they are. */
+    function _zoneGroundY(x, y) {
+        if (!_fieldTwoFloorAt(x, y)) return null;
+        var G = _fieldGround(), ly = G ? G.lowAt(x, y) : null;
+        return (ly === null || ly === undefined || !isFinite(ly)) ? null : ly;
+    }
+    /* where a zone tile's drape sits: the move tiles' own placement (_drapedTileY), or the ground under a deck + the field lift */
+    function _zoneTileY(x, y, yOff, ts) {
+        var ly = _zoneGroundY(x, y);
+        return (ly === null) ? _drapedTileY(x, y, yOff) : ly + (yOff || 0) + HL_FIELD_LIFT * ts;
+    }
     /* a zone tile's full-size drape with its UVs on its own patch of the zone map (x0/y0 = the zone's top-left tile) */
     function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts) {
-        var g = _buildDrapeGeo(hx, hy, ts, 1.0), p = g.attributes.position.array, uv = g.attributes.uv;
+        var g = _buildDrapeGeo(hx, hy, ts, 1.0, _zoneGroundY(hx, hy)), p = g.attributes.position.array, uv = g.attributes.uv;
         var ry = g._ew_rotY || 0, c = Math.cos(ry), sn = Math.sin(ry);
         for (var i = 0; i < uv.count; i++) {
             var lx = p[i * 3], lz = p[i * 3 + 2];
@@ -10680,7 +10695,7 @@ const ThreeRenderer = (function () {
                     var piece = _nxPiece(geo, mats[li]);
                     piece.renderOrder = li;   // the light over the paint
                     piece.rotation.y = geo._ew_rotY || 0;
-                    piece.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
+                    piece.position.set(ft.x * ts + ts / 2, _zoneTileY(ft.x, ft.y, ts * 0.012, ts), ft.y * ts + ts / 2);
                     _nexusWallGroup.add(piece);
                 }
             }
@@ -10741,7 +10756,7 @@ const ThreeRenderer = (function () {
                     var mesh = new THREE.Mesh(geo, mats[li]);
                     mesh.renderOrder = li;
                     if (geo._ew_rotY !== undefined) mesh.rotation.y = geo._ew_rotY;
-                    mesh.position.set(tile.x * ts + ts / 2, _drapedTileY(tile.x, tile.y, ts * 0.012), tile.y * ts + ts / 2);
+                    mesh.position.set(tile.x * ts + ts / 2, _zoneTileY(tile.x, tile.y, ts * 0.012, ts), tile.y * ts + ts / 2);
                     _spawnZoneGroup.add(mesh);
                 }
             }
@@ -10809,9 +10824,9 @@ const ThreeRenderer = (function () {
         m._ewZone = { type: type, own: own, layer: 'wall' };
         return m;
     }
-    /* one standing wall per exposed edge, `h` tall, on that tile's top */
+    /* one standing wall per exposed edge, `h` tall, on that tile's top (the ground under a deck: THE ZONE ON THE GROUND) */
     function _zoneWallMesh(e, ts, h, mat) {
-        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = tileTopY(e.x, e.y);
+        var gy = _zoneGroundY(e.x, e.y), mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = (gy === null) ? tileTopY(e.x, e.y) : gy;
         var cx = e.x * ts + ts / 2, cz = e.y * ts + ts / 2, half = ts / 2;
         if (e.dir === 'n') mesh.position.set(cx, tileY + h / 2, cz - half);
         else if (e.dir === 's') { mesh.position.set(cx, tileY + h / 2, cz + half); mesh.rotation.y = Math.PI; }
