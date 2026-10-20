@@ -463,9 +463,10 @@ with square tiles in mind ... Dont delete these voxel maps". Thread "New Göbekl
   (its edge samples fail the slope), so those corner squares stay terrace.
 - **The cut:** `HQ_ARENA_RULES.within[site] = { room, x, z, r }` (bake-arenas.js: that room only, windows centred within r) —
   Göbekli Tepe left `keep`; picks at 12 (58,20), 11 (59,20), 10 (59,21), 9 (60,21). Online pool: 12 + 10 (4v4), 11 + 9 (5v5).
-- **The old board:** `HQ_ARENA_RULES.voxelKeep` (the Dutchman thread's list): hqArenaRegisterAll files the old voxel Δ as
-  `<site>_<w>x<h>_delta` ("Göbekli Tepe Δ · voxel", `voxel: true`, its own layout) — a plain Δ row, so VS CPU lists it and the
-  online pool never deals it.
+- **The old board:** `HQ_ARENA_RULES.voxelKeep` (shared with the Looking-Glass / Dutchman threads; Göbekli Tepe added to it,
+  `keep` is now empty): hqArenaRegisterAll files the old voxel Δ as `prebuilt_gobekli_12x12_delta` ("Göbekli Tepe Δ · voxel",
+  `voxel: true`) — a plain Δ row, so VS CPU lists it and the online pool never deals it.
+- **Night:** even rounds are night (map.js getCurrentCyclePhase), so the pit reads by its four braziers on the bastions.
 
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
