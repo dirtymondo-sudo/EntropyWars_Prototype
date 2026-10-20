@@ -71822,6 +71822,11 @@
 
                     const convertedTiles = [];
                     const affectedTiles = [];
+                    /* THE TILE COUNT (2026-10-20, mondo: "the combat text box and combat log say i converted 0 tiles to ice
+                       when i used flash freeze, but i definitely did convert 3 tiles to ice"): the cast line reports the
+                       footprint tiles that ARE the spell's terrain once it lands, read off the board, so a tile that already
+                       was ice still counts as ice and lava that hardened into stone is not counted as ice. */
+                    const _tcFoot = [];
                     const _tcPrev = {};   // THE SPELL AUDIT Batch D: each tile's terrain before a melting paint
                     const _seenAffected = new Set();
                     const _pushAffected = (tx, ty) => {
@@ -71890,6 +71895,7 @@
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
                         if (spell.monument) return;
+                        _tcFoot.push({ x: tx, y: ty, z: pz });
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
                     if (spell.elevationFlood) {
@@ -71905,6 +71911,7 @@
                         for (const tile of fill.tiles) {
                             const current = getTerrainAt(tile.x, tile.y);
                             _pushAffected(tile.x, tile.y);
+                            _tcFoot.push({ x: tile.x, y: tile.y });
                             const isHole = current === 'chasm';
                             const _floor = getBaseHeightAt(tile.x, tile.y);
                             const wet = (isHole || fill.waterline - _floor >= 2) ? 'deep_water' : 'water';
@@ -72093,7 +72100,10 @@
                         if (_wtWithered || _wtCleared) markDirty('board');
                     }
 
-                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${convertedTiles.length} tile${convertedTiles.length !== 1 ? 's' : ''} to ${terrainType}.`);
+                    const _tcNow = (t) => t === terrainType || (_isWaterPaint && (t === 'water' || t === 'deep_water'));
+                    const _tcN = spell.monument ? convertedTiles.length : _tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
+                        ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length;
+                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${_tcN} tile${_tcN !== 1 ? 's' : ''} to ${terrainType}.`);
 
                     // 🔥 Fire terrain-walls IGNITE what they touch: the wall
                     // keeps burning on the board for several rounds (biting
