@@ -15640,7 +15640,7 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1', pit: '🌋 INTO THE LAVA' };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,

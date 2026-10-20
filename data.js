@@ -36943,8 +36943,8 @@ const DOOR_HQ = {
                LL........LL
                LLL......LLL      the south base (P1's spawn row 11)
            `terrain.pits` = THE LAVA PITS: the window's lava cells stand at their TRUE depth on the battle board (4 levels under the
-           walkways, hqFieldRasterTerrain) and are PITS — a body pushed, knocked, flung or thrown into one falls into the lava and is
-           gone (battle.js _fallIntoLavaPit); a walker never steps in (unitCanTraverse), a flyer crosses. The door comes in on the
+           walkways, hqFieldRasterTerrain). That depth is all they are: a body pushed or knocked off a walkway drops down and takes
+           the game's own fall damage and lava rules, as on any board (no pit rule of their own, mondo 10-20). The door comes in on the
            south shelf from THE PIT's alcove; the north shelf is its twin. ── */
         site_prebuilt_hell_walkways: {
             label: 'THE DIVINE STAIR · THE WALKWAYS',
@@ -55029,7 +55029,8 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
             c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref) : HQ_FIELD_RULES.fluidMin;
             /* 🌋 THE LAVA PITS (2026-10-20, Hell's walkways): in a room whose terrain says `pits`, a lava cell under the floor stands at
                its TRUE depth (`pits.levels` under the window's floor, else the sheet's own drop in squares; at most base − 1 — the
-               bed's floor) and is a PIT on the board (`c.pit` → the entry's `pits` → state.lavaPits, map.js isLavaPitTile) */
+               bed's floor), marked `c.pit` (the arena bake's own bookkeeping). Only the depth reaches the fight: a fall into one is the
+               game's usual fall damage + lava, nothing else (mondo 10-20: "we already have rules for lava and fall damage") */
             if (pits && c.fluid === 'lava' && c.sheet != null && c.sheet < ref) {
                 const drop = (pits.levels > 0) ? (pits.levels | 0) : Math.round((ref - c.sheet) / C);
                 c.tile = -Math.max(1, Math.min(HQ_FIELD_RULES.base - 1, drop));
@@ -55417,7 +55418,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     M.spawns(sp[1], sp[2]);
     const entry = M.finish();
     entry.isDelta = true;
-    if (R.cells.some(row => row.some(c => c.pit))) entry.pits = R.cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('');   // 🌋 THE LAVA PITS (map.js → state.lavaPits)
+    if (R.cells.some(row => row.some(c => c.pit))) entry.pits = R.cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('');   // 🌋 THE LAVA PITS (which cells stand at pit depth)
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = baseKey;
     entry.deltaDesc = HQ_FIELD_RULES.label + ' — ' + (room.label || roomId) + ' (' + R.ox + ',' + R.oz + ')';
     entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, W: RW, H: RH, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave, terrain: !!R.terrain, open: !!R.open, ref: (R.ref != null) ? R.ref : 0,

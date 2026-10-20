@@ -23345,8 +23345,6 @@ const ThreeRenderer = (function () {
                 // ('death' state, clamped on its final frame). No spin/shrink —
                 // the body just settles, then the whole entry dissolves.
                 var _fadeT = tw.fadeAtMs / tw.durationMs;   // THE BODY ON THE FLOOR: it lies still, then dissolves
-                /* 🌋 THE LAVA PITS (battle.js _fallIntoLavaPit, style 'pit'): the body goes under the lava's surface as it falls */
-                if (g && tw.style === 'pit') { var _pk = Math.min(1, t / Math.max(0.05, _fadeT)); g.position.y = tw.startY - (CONFIG.tileSize || BASE_TILE) * 1.4 * _pk * _pk; }
                 if (g && t > _fadeT) {
                     var mFade = (t - _fadeT) / Math.max(0.05, 1 - _fadeT);
                     g.traverse(function (o) {
