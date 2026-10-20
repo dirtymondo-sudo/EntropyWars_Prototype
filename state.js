@@ -3089,13 +3089,16 @@
         // Start. If that default isn't unlocked, fall back to any owned race.
         // Returns undefined to keep the default when no unlock list applies
         // (dev unlock, etc.).
-        function ownedRaceForSlot(defaultRace) {
+        function ownedRaceForSlot(defaultRace, taken) {
             if (typeof isUnitUnlocked !== 'function') return undefined;
+            const free = r => !(Array.isArray(taken) && taken.includes(r));   // ONE OF EACH: never a race the team already fields
             // Keep the default when the player already owns it.
-            if (defaultRace && isUnitUnlocked(defaultRace)) return defaultRace;
+            if (defaultRace && isUnitUnlocked(defaultRace) && free(defaultRace)) return defaultRace;
             if (typeof AVAILABLE_RACES === 'undefined') return undefined;
             // Otherwise any owned vessel keeps the team legal.
             const anyOwned = AVAILABLE_RACES.filter(r => isUnitUnlocked(r));
+            const anyFree = anyOwned.filter(free);
+            if (anyFree.length) return anyFree[0];
             if (anyOwned.length) return anyOwned[0];
             return undefined;
         }
@@ -3104,13 +3107,31 @@
         // unlocks but must still obey the 3D-only roster rule — if a slot's
         // default race has no rigged 3D model, swap in a 3D-ready race, so
         // matches stay 3D vs 3D.
-        function cpu3DRaceForSlot(defaultRace) {
+        function cpu3DRaceForSlot(defaultRace, taken) {
             if (typeof isRace3DReady !== 'function') return undefined;
-            if (defaultRace && isRace3DReady(defaultRace)) return defaultRace;
+            const free = r => !(Array.isArray(taken) && taken.includes(r));   // ONE OF EACH
+            if (defaultRace && isRace3DReady(defaultRace) && free(defaultRace)) return defaultRace;
             if (typeof AVAILABLE_RACES === 'undefined') return undefined;
             const any3D = AVAILABLE_RACES.filter(r => isRace3DReady(r));
+            const anyFree = any3D.filter(free);
+            if (anyFree.length) return anyFree[0];
             if (any3D.length) return any3D[0];
             return undefined;
+        }
+
+        /* ONE OF EACH (mondo, 2026-10-20: "disallow more than one of the same unit on a single team"). A unit is its race
+           (units are named after their race; a gender or a creator look is the same unit), so a team never fields one race
+           twice. teamDuplicateRaces(races) → the races that appear more than once (in first-seen order); the forge, the
+           squad desk and the random rolls all read it. */
+        function teamDuplicateRaces(races) {
+            const seen = new Set(), dup = [];
+            (races || []).forEach(r => {
+                const k = normalizeRaceKey(r && typeof r === 'object' ? r.race : r);
+                if (!k) return;
+                if (seen.has(k)) { if (!dup.includes(k)) dup.push(k); }
+                else seen.add(k);
+            });
+            return dup;
         }
 
         function makeDefaultPartyMeta() {
@@ -3124,9 +3145,10 @@
                 for (let i = 0; i < size; i++) {
                     const cls = builds[i] || UNIT_CLASS;
                     const dRace = _defaultPartyRace(player, i);
+                    const taken = out[player].map(m => m.race);   // ONE OF EACH
                     // Only the local human (player 1) is gated on unlocks; the
                     // CPU is gated on 3D-model availability instead.
-                    const identity = { race: (player === 1 ? ownedRaceForSlot(dRace) : cpu3DRaceForSlot(dRace)) || dRace };
+                    const identity = { race: (player === 1 ? ownedRaceForSlot(dRace, taken) : cpu3DRaceForSlot(dRace, taken)) || dRace };
                     out[player].push(resolveIdentityForBuild(cls, identity));
                 }
             });
@@ -3142,7 +3164,8 @@
                     if (!state.partyMeta[player][i]) {
                         const cls = (state.partyBuilds?.[player]?.[i]) || UNIT_CLASS;
                         const dRace = _defaultPartyRace(player, i);
-                        const identity = { race: (player === 1 ? ownedRaceForSlot(dRace) : cpu3DRaceForSlot(dRace)) || dRace };
+                        const taken = state.partyMeta[player].filter((m, j) => j !== i && m && m.race).map(m => m.race);   // ONE OF EACH: a new slot takes a race the team lacks
+                        const identity = { race: (player === 1 ? ownedRaceForSlot(dRace, taken) : cpu3DRaceForSlot(dRace, taken)) || dRace };
                         state.partyMeta[player][i] = resolveIdentityForBuild(cls, identity);
                     }
                 }
@@ -3213,7 +3236,7 @@
             };
         }
 
-        function randomizeIdentity(ownedOnly, forceRace) {
+        function randomizeIdentity(ownedOnly, forceRace, exclude) {
             let pool = AVAILABLE_RACES;
             // 3D-only roster rule: random picks (both the player's and the
             // CPU's) never land on a race without a rigged 3D model.
@@ -3224,6 +3247,12 @@
             if (ownedOnly && typeof isUnitUnlocked === 'function') {
                 const owned = pool.filter(r => isUnitUnlocked(r));
                 if (owned.length) pool = owned;
+            }
+            /* ONE OF EACH (2026-10-20): `exclude` = the races the team already fields — a roll never lands on one of them
+               (only when nothing else is left does the roll repeat, so a slot is never empty) */
+            if (Array.isArray(exclude) && exclude.length) {
+                const fresh = pool.filter(r => !exclude.includes(r));
+                if (fresh.length) pool = fresh;
             }
             /* A pinned race (D.O.O.R. crossings: the CPU fields the site's
                native entities) — honoured when it is a real, 3D-ready race;
@@ -3262,7 +3291,10 @@
                 for (let i = nat.length - 1; i > 0; i--) { const j = randInt(i + 1); [nat[i], nat[j]] = [nat[j], nat[i]]; }
                 picks = nat.concat(pool.slice(nat.length));
             }
-            const metas = Array.from({ length: count }, (_, i) => randomizeIdentity(ownedOnly, picks ? picks[i % picks.length] : null));
+            /* ONE OF EACH (2026-10-20): every roll skips the races already rolled for this team. A pinned pool (a D.O.O.R.
+               crossing's natives, the story's enemies) keeps its own order as before. */
+            const metas = [];
+            for (let i = 0; i < count; i++) metas.push(randomizeIdentity(ownedOnly, picks ? picks[i % picks.length] : null, metas.map(m => m.race)));
 
             const bothIdxs = [];
             for (let i = 0; i < metas.length; i++) {

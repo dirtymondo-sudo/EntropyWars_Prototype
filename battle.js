@@ -38320,7 +38320,8 @@
             }
             syncPartyBuildsFromInputs();
             ensurePartyMeta();
-            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player));
+            const _others = (state.partyMeta[player] || []).filter((m, j) => j !== idx && m && m.race).map(m => m.race);   // ONE OF EACH (2026-10-20): never a race the team already fields
+            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player), null, _others);
             const slotRace = state.partyMeta[player][idx]?.race || '';
             const cls = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job
             state.partyBuilds[player][idx] = cls;
@@ -61478,7 +61479,26 @@
             if (unit._isBoss || unit.isBoss || unit._isCube) return false;
             if ((unit._captureGraceUntil | 0) >= (state.round || 0)) return false;
             if (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'exited')) return false;
+            if (captureRaceOwned(unit)) return false;   // ONE OF EACH: a unit you already own walks over the door
             return true;
+        }
+        /* ONE OF EACH (mondo, 2026-10-20: "make it to where you cant capture a unit you already own"): a race the account
+           owns (a starter, a Quartermaster buy, an earlier capture — data.js hqCaptureOwned), or one a door already holds or
+           sealed in this fight, is not taken: the door stays open floor for it (no stop, no hold; the AI reads the same rule
+           through captureDoorCanTake). A unit is its race, the same rule the teams follow. */
+        function captureRaceOwned(unit) {
+            const race = String((unit && (unit.race || (unit.meta && unit.meta.race))) || '').toLowerCase();
+            if (!race) return false;
+            try {
+                const prof = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
+                if (typeof hqCaptureOwned === 'function' && hqCaptureOwned(prof, race)) return true;
+            } catch (e) {}
+            if ((state.captures || []).some(c => c && String(c.race || '').toLowerCase() === race)) return true;
+            return _doors().some(d => {
+                if (d.kind !== 'capture' || !d.held || d.held.unitId === unit.id) return false;
+                const h = unitFromId(d.held.unitId);
+                return !!h && String(h.race || (h.meta && h.meta.race) || '').toLowerCase() === race;
+            });
         }
         /* the encounter's LEAD (the named native — it holds out a round longer) */
         function _captureIsLead(unit) {
@@ -61491,7 +61511,18 @@
         }
         /* TAKE: the door swallows the body — HELD under the seal time */
         function captureDoorTake(door, unit, via) {
-            if (!captureDoorCanTake(door, unit)) return false;
+            if (!captureDoorCanTake(door, unit)) {
+                /* ONE OF EACH: say why the door let an enemy through (once per body per door) */
+                if (door && door.kind === 'capture' && door.hp > 0 && !door.held && unit && !unit.dead && door.owner !== unit.player && captureRaceOwned(unit)) {
+                    if (!door._ownedSaid) door._ownedSaid = [];
+                    if (door._ownedSaid.indexOf(unit.id) < 0) {
+                        door._ownedSaid.push(unit.id);
+                        if (!_skipVisuals()) showFloatingTextForUnit(unit, '🚪 ALREADY OWNED', 'buff');
+                        addLog(`🚪 The door at ${coordLabel(door.x, door.y)} lets ${_ctName(unit)} through — you already own that unit.`);
+                    }
+                }
+                return false;
+            }
             const seal = (typeof captureSealFor === 'function') ? captureSealFor(door, unit, { lead: _captureIsLead(unit) }) : 3;
             door.held = { unitId: unit.id, seal, total: seal, tookRound: state.round || 0, via: via || 'move' };
             if (!unit.status) unit.status = {};
