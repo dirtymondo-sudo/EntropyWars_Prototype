@@ -446,7 +446,29 @@ same way as the current 12x12s like a cutout of the exploration map".
   selects (online.js `_friendlyRefreshMaps`); Quick Play queues the squad's size (server.js `queue-join` 4 | 5, `pickRandomMap`
   by team). A guest whose squad is short of the room's size cannot lock in (online.js `_ewSquadAutoLock`).
 
-### E8 follow-up 3 — THE OWN ARENAS: voxel maps remade as rooms (2026-10-20, thread "New Holo Sim map")
+### E8 follow-up 3 — Göbekli Tepe's voxel Δ remade as a room map: ENCLOSURE E (2026-10-20)
+mondo: "i want all of those voxel maps remade as new maps ... built with the tools in the map editor, and remember to design them
+with square tiles in mind ... Dont delete these voxel maps". Thread "New Göbekli Tepe map" (one of eight, one per voxel map).
+- **The room:** THE TELL (`site_prebuilt_gobekli_tell`) shell w 110 → 136 so the mound reaches east; a new round space
+  (x 43.75, z 0, 37 m) east of D, a hall west to hall C and one south to the east flank. Inside it the pit, cut one battle level
+  (1.75 m), laid out on THE FIELD's squares: the 12×12 board is x 33.25..54.25, z −10.5..10.5 and every piece is on whole squares,
+  half-turn symmetric: corner BASTIONS (3 stone blocks each, 2 levels, a brazier on each), a bedrock TERRACE each flank (1 level,
+  a built stair at its end), the two great T-pillars either side of the nexus (3 levels), two lesser pillars (2), two stone
+  benches (1); the middle four columns stay open so the 9/10/11 cuts fit. Ring wall 1.8 m on a ledge round the pit, ten lesser
+  pillars set in it facing in, the walk round it. All rows the editor writes (space, hall, plateau sink, ramp built, wall, path, props).
+- **Gotchas found:** a terrain room's props are NOT obstacles to THE FIELD (only trees, walls, the plan's mass) — each battle pillar
+  carries a hidden wall row inside its shaft (Stonehenge's sarsens are walls the same way). A wall row is a CAPSULE to the raster
+  (t/2 + bodyR 0.34) but draws as a box L + t long, so a long block bleeds a square past its end: a one-square block is a
+  ZERO-LENGTH row with t 1.75 (a box exactly its square, read on that square only). A one-square sink between two blocks goes OUT
+  (its edge samples fail the slope), so those corner squares stay terrace.
+- **The cut:** `HQ_ARENA_RULES.within[site] = { room, x, z, r }` (bake-arenas.js: that room only, windows centred within r) —
+  Göbekli Tepe left `keep`; picks at 12 (58,20), 11 (59,20), 10 (59,21), 9 (60,21). Online pool: 12 + 10 (4v4), 11 + 9 (5v5).
+- **The old board:** `HQ_ARENA_RULES.voxelKeep` (shared with the Looking-Glass / Dutchman threads; Göbekli Tepe added to it,
+  `keep` is now empty): hqArenaRegisterAll files the old voxel Δ as `prebuilt_gobekli_12x12_delta` ("Göbekli Tepe Δ · voxel",
+  `voxel: true`) — a plain Δ row, so VS CPU lists it and the online pool never deals it.
+- **Night:** even rounds are night (map.js getCurrentCyclePhase), so the pit reads by its four braziers on the bastions.
+
+### E8 follow-up 4 — THE OWN ARENAS: voxel maps remade as rooms (2026-10-20, thread "New Holo Sim map")
 mondo 10-20: "i want all of those voxel maps remade as new maps. Even the training room and holo sim. They should be able to be
 built with the tools in the map editor ... design them with square tiles in mind". One thread per map.
 - `HQ_ARENA_RULES.own.<mapId>` (data.js, after hqArenaRegisterAll) = a board CUT FROM A ROOM BUILT FOR IT: `{room, ox, oz, base,

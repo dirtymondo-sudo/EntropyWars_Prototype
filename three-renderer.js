@@ -6050,8 +6050,13 @@ const ThreeRenderer = (function () {
         tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
-    function _foliageIsGlb(name) { return typeof name === 'string' && name.slice(0, 3) === 'rt:'; }
-    function _foliageUrl(name) { return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj'; }
+    /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
+    function _foliageIsKit(name) { return typeof name === 'string' && name.slice(0, 4) === 'kit:'; }
+    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name)); }
+    function _foliageUrl(name) {
+        if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/door/models/'; return KB + encodeURIComponent(name.slice(4)); }
+        return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
+    }
     /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): data.js HQ_TREE_KINDS names the other fourteen OBJs in the folder (tree_7 …
        tree_20) for the editor's TREES tab; a key the board already maps keeps its model */
     if (typeof HQ_TREE_KINDS !== 'undefined') Object.keys(HQ_TREE_KINDS).forEach(function (k) { if (HQ_TREE_KINDS[k].model) _FOLIAGE_MODEL_FOR_KEY[k] = HQ_TREE_KINDS[k].model; });
