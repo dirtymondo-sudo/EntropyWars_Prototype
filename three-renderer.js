@@ -13642,7 +13642,7 @@ const ThreeRenderer = (function () {
                 // One-shot slots: death, hit flinches (hit / hitHeavy), the
                 // shield block, the fall flail, and every cast variant
                 // (cast / castMagic / … — sprites.js role guide).
-                if (name === 'death' || name.indexOf('hit') === 0 || name === 'block'
+                if (name.indexOf('death') === 0 || name.indexOf('hit') === 0 || name === 'block'
                     || name === 'fall' || name.indexOf('cast') === 0 || name.indexOf('clip:') === 0) {   // THE LOOK: a raw clip pick plays once too
                     act.setLoop(THREE.LoopOnce, 0);
                     act.clampWhenFinished = true;
@@ -14050,7 +14050,7 @@ const ThreeRenderer = (function () {
             }
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
             var want;
-            if (_deathTweens.has(uid)) want = (_deathTweens.get(uid).style === 'launch' && entry.actions && entry.actions.hitLaunch) ? 'hitLaunch' : 'death';   // THE NEW CLIPS: a heavy killing blow blows the body up
+            if (_deathTweens.has(uid)) want = _deathSlotFor(entry, _deathTweens.get(uid).style);   // THE NEW CLIPS / THE GORE: the death style picks the clip
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
             /* THE DEBRIEF (2026-09-21): a HELD pose — the result stage's victory dance / the
                defeat's kneel — plays under every one-shot and outranks the locomotion reads
@@ -23306,6 +23306,37 @@ const ThreeRenderer = (function () {
         for (var r = 0; r < toRemove.length; r++) _throwTweens.delete(toRemove[r]);
     }
 
+    /* THE GORE (2026-10-20): four ways to die, picked by battle.js into
+       state._deathStyleById (rides state-sync and the death-cam relay):
+       'launch' MAL3 BeHit_FlyUp (a heavy blow up close blows the body up and
+       over), 'knock' UAL2 Hit_Knockback (flung flat on the back), 'collapse'
+       UAL1 Death01 (the knees go, a fall to the side), anything else MAL1
+       Dead. A slot the rig has not baked yet falls back to Dead. */
+    var _DEATH_STYLE_SLOT = { launch: 'hitLaunch', knock: 'deathKnock', collapse: 'deathCollapse' };
+    function _deathSlotFor(entry, style) {
+        var slot = style && _DEATH_STYLE_SLOT[style];
+        return (slot && entry && entry.actions && entry.actions[slot]) ? slot : 'death';
+    }
+    /* the world position of a unit's first named bone that exists (rigged
+       units only) — THE GORE pumps the blood from the neck as the body falls */
+    function unitBoneWorld(unitId, names) {
+        var entry = _getUnitEntry(unitId);
+        if (!entry || !entry.model || !entry.group || entry.group.visible === false) return null;
+        var cache = entry._ew_boneCache;
+        if (!cache || cache._model !== entry.model) cache = entry._ew_boneCache = { _model: entry.model };
+        var list = Array.isArray(names) ? names : [names];
+        for (var i = 0; i < list.length; i++) {
+            var nm = list[i], b = cache[nm];
+            if (b === undefined) { b = entry.model.getObjectByName(nm) || null; cache[nm] = b; }
+            if (b && b.isObject3D) {
+                var v = new THREE.Vector3();
+                b.getWorldPosition(v);
+                return v;
+            }
+        }
+        return null;
+    }
+
     function startDeathTween(unitId) {
         if (_deathTweens.has(unitId)) return;   // already falling (the online guest starts it off the relay too)
         var entry = _getUnitEntry(unitId);
@@ -23321,7 +23352,7 @@ const ThreeRenderer = (function () {
            hitLaunch instead), else the old 55% mark of MODEL_DEATH_MS. */
         var _landMs = MODEL_DEATH_MS * 0.55;
         if (_isModelDeath && entry.actions) {
-            var _dAct = (_dStyle === 'launch' && entry.actions.hitLaunch) ? entry.actions.hitLaunch : entry.actions.death;
+            var _dAct = entry.actions[_deathSlotFor(entry, _dStyle)];
             try {
                 var _dClip = _dAct && _dAct.getClip && _dAct.getClip();
                 var _dTs = Math.abs((_dAct && (_dAct._ew_ts0 || _dAct.timeScale)) || 1) || 1;
@@ -72110,6 +72141,7 @@ const ThreeRenderer = (function () {
 
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
+        unitBoneWorld: unitBoneWorld,
         deathTweenProgress: deathTweenProgress,
         deathShotDone: deathShotDone,
 

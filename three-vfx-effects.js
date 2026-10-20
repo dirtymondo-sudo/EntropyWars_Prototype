@@ -3977,174 +3977,269 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         resist:          '_blood_resist',
     };
 
-    /* Procedural blood. `tier` picks the flavour (normal/critical/super_
-       effective/killing_blow/resist); `opts.damage` + `opts.hpFrac` (0..1
-       remaining health) scale the VOLUME — bigger hits and more-wounded
-       targets bleed harder, and a kill erupts. Everything sprays from
-       chest/neck/head height instead of the feet. */
+    /* THE GORE (2026-10-20, mondo: "more realistic and brutal and over the
+       top like a mortal kombat finisher, and when a character dies there
+       should be lots of blood"). Procedural blood: `tier` picks the flavour
+       (normal / critical / super_effective / killing_blow / resist);
+       opts.damage + opts.hpFrac (0..1 health left) scale the VOLUME;
+       opts.fromX / fromY (the attacker's tile) aim it — the exit spray flies
+       AWAY from the blow, a little spatter kicks back at the attacker;
+       opts.unitId lets a kill pump from the falling body's own neck.
+       Every drop is a lit 3D glob (three-vfx.js, batched: four draws for the
+       lot) that lands where it falls and leaves its mark there — the floor
+       keeps a spray pattern for a while, the stains fading at the end.
+       A kill is the finisher: a burst of spray, gouts and gibs, a geyser out
+       of the neck, an arterial pump that keeps spurting while the body falls,
+       spatter thrown across the floor and a pool spreading under the corpse. */
+    var _BLOOD_NECK = ['neck', 'Neck', 'neck_01', 'mixamorig:Neck', 'Head', 'head'];
+    var _BLOOD_HIPS = ['Hips', 'hips', 'pelvis', 'mixamorig:Hips'];
+    var _BLOOD_DARK = 0x6a0606;
+
+    /* the floor under a board point (cached per tile for one effect) and what
+       a drop leaves when it gets there: a splat sized by the drop, lying
+       still at full strength, fading at the end. maxMarks caps one effect. */
+    function _bloodStainer(maxMarks, lifeMs) {
+        var fz = {}, marks = 0;
+        var cfg = _cfg(), ts = cfg.tileSize || 128, gap = cfg.tileGap || 0, pad = cfg.boardPadding || 2;
+        var bh = (typeof state !== 'undefined' && state) ? state.boardHeights : null;
+        return {
+            floorAt: function (x, y) {
+                var ix = Math.floor((x - pad) / (ts + gap)), iy = Math.floor((y - pad) / (ts + gap));
+                var k = ix + ',' + iy;
+                if (k in fz) return fz[k];
+                var z = null;
+                if (!bh || (bh[iy] && bh[iy][ix] != null)) {
+                    try { z = tileZ(ix, iy); } catch (e) { z = null; }
+                    if (typeof z !== 'number' || !isFinite(z)) z = null;
+                }
+                fz[k] = z;
+                return z;
+            },
+            onLand: function (x, y, z, sz) {
+                if (marks >= maxMarks || !_canSpawn()) return;
+                marks++;
+                var d = Math.max(10, Math.min(44, (sz || 4) * rn(3.0, 4.6)));
+                _spawn({ x: x, y: y, z: z + 1 + Math.random() * 0.6, mode: 'world', sprite: 'blood-splat',
+                         size0: d * 0.7, size1: d, sizeEaseOut: 8, ml: lifeMs * rn(0.8, 1.1), opHold: 0.75,
+                         opacity0: rn(0.6, 0.85), opacity1: 0, spriteRot: rn(0, 360), decor: true });
+            }
+        };
+    }
+
     function fireBlood(tx, ty, tier, opts) {
-        if (_suppressed()) return;
+        if (_suppressed() || !_canSpawn()) return;
         opts = opts || {};
 
         var ts = (_cfg().tileSize) || 128;
-        /* the torso anchor already sits at floor + 0.45·ts; these lift the
-           wound the rest of the way up the body so blood reads as coming
-           from the chest / neck / head, not the ground. */
-        var Z_CHEST = ts * 0.14;
-        var Z_NECK  = ts * 0.26;
-        var Z_HEAD  = ts * 0.36;
+        var dens = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 0.55 : 1;
+        var c0 = tilePx(tx, ty);
+        var zFloor = unitSurfaceZ(tx, ty);
+        var zTorso = zFloor + unitZBoost();
+        /* the wound: chest / neck / head height on a standing body */
+        var Z_CHEST = zTorso + ts * 0.14;
+        var Z_NECK  = zTorso + ts * 0.26;
+        var Z_HEAD  = zTorso + ts * 0.36;
 
         var dmg    = +opts.damage || 0;
         var hpFrac = (opts.hpFrac != null) ? Math.max(0, Math.min(1, opts.hpFrac)) : 1;
-
         /* damage → volume: light tap ≈0.55, a 60-dmg hit ≈1.0, big blow caps ≈2.2 */
         var dmgScale = dmg > 0 ? Math.max(0.55, Math.min(2.2, 0.45 + dmg / 55)) : 0.85;
         /* the more wounded, the more they bleed (full hp ×1 → near-death ×1.75) */
         var woundScale = 1 + (1 - hpFrac) * 0.75;
-        var intensity  = dmgScale * woundScale;
+        var I = dmgScale * woundScale;
 
         var isKill   = (tier === 'killing_blow');
         var isSuper  = (tier === 'super_effective');
         var isCrit   = (tier === 'critical');
         var isResist = (tier === 'resist');
-        if (isKill)   intensity = Math.max(intensity, 2.4);
-        if (isResist) intensity *= 0.6;
-
-        var L = [];
-        var ci = function(base, min, max) {
-            return Math.max(min, Math.min(max, Math.round(base * intensity)));
+        if (isKill)   I = Math.max(I, 2.4);
+        if (isResist) I *= 0.6;
+        var ci = function (base, min, max) {
+            return Math.max(1, Math.round(Math.max(min, Math.min(max, base * I)) * dens));
         };
 
-        /* Everything airborne is a 3D 'blood-glob' mesh (lit, glossy, lumpy,
-           tumbling — see three-vfx.js glob pool). `stretch: true` elongates
-           fast globs along their velocity into whipping arterial jets.
-           Sprites remain only for the volumetric mist haze and the flat
-           floor decals (splat / pool), which SHOULD be flat. */
-
-        /* ── arterial jets: fast stretched globs whipping out of the chest ── */
-        L.push({
-            count: ci(9, 6, 20), sprite: 'blood-glob', stretch: true,
-            anchor: 'torso', z: Z_CHEST,
-            ml: [340, 640], offsetXY: 5,
-            vxRange: 110 + 85 * intensity, vyRange: 110 + 85 * intensity,
-            vzRange: [50 + 50 * intensity, 130 + 140 * intensity],
-            gravity: 680, drag: 0.25,
-            size0: [3.5, 6.5], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
-        });
-
-        /* ── heavy tumbling gouts that arc out and rain down ─────────────── */
-        L.push({
-            count: ci(5, 3, 12), sprite: 'blood-glob',
-            anchor: 'torso', z: Z_CHEST,
-            ml: [420, 800], offsetXY: 5,
-            vxRange: 75 + 60 * intensity, vyRange: 75 + 60 * intensity,
-            vzRange: [40 + 35 * intensity, 100 + 80 * intensity],
-            gravity: 800, drag: 0.12,
-            size0: [5, 10], size1: [3, 6], opacity0: 1, opacity1: 0.9
-        });
-
-        /* ── fine mist haze (skip on weak / resisted hits) ───────────────── */
-        if (intensity > 0.9 && !isResist) {
-            L.push({
-                count: ci(2, 1, 6), sprite: 'blood-mist', anchor: 'torso', z: Z_NECK,
-                ml: [400, 760], offsetXY: 8,
-                vxRange: 24, vyRange: 24, vzRange: [8, 30], drag: 0.9,
-                size0: [18, 30], size1: [40, 56], opacity0: 0.5
-            });
+        /* the throw: away from the attacker (a hit with no source sprays all round) */
+        var dx = 0, dy = 0, aimed = false;
+        if (opts.fromX != null && opts.fromY != null) {
+            var fx = tx - opts.fromX, fy = ty - opts.fromY, fl = Math.sqrt(fx * fx + fy * fy);
+            if (fl > 0.01) { dx = fx / fl; dy = fy / fl; aimed = true; }
         }
+        var aim = aimed ? Math.atan2(dy, dx) : rn(0, 6.2832);
+        var stain = _bloodStainer(isKill ? Math.round(70 * dens) : Math.round((10 + 8 * I) * dens), isKill ? 15000 : 9000);
 
-        /* ── meaty chunks on crits / super-effective / kills ─────────────── */
-        if ((isCrit || isSuper || isKill) && !isResist) {
-            L.push({
-                count: isKill ? 8 : ci(3, 2, 6), sprite: 'blood-glob',
-                globColor: 0x7a0a0a, anchor: 'torso', z: Z_NECK,
-                ml: [500, 900], offsetXY: 6,
-                vxRange: 90, vyRange: 90, vzRange: [80, 210],
-                gravity: 880, drag: 0.08,
-                size0: [6, 11], size1: [5, 9], opacity0: 1, opacity1: 0.9
-            });
-        }
-
-        /* ── directional spurt streaks for solid & better hits ───────────── */
-        if ((isCrit || isSuper || isKill || intensity > 1.35) && !isResist) {
-            var streakN = isKill ? 6 : Math.max(2, Math.round(3 * dmgScale));
-            for (var si = 0; si < streakN; si++) {
-                L.push({
-                    count: 1, sprite: 'blood-streak', anchor: 'torso',
-                    z: (isKill ? Z_NECK : Z_CHEST) + rn(0, ts * 0.12),
-                    ml: [220, 420], offsetXY: 4,
-                    vxRange: 55, vyRange: 55, vzRange: [120, 230], gravity: 560, drag: 0.2,
-                    w0: rn(4, 7), w1: 2, h0: rn(26, 44), h1: 10,
-                    spriteRot: rn(-38, 38), opacity0: 0.9
+        /* n globs from (x, y, z), thrown at `ang` ± spread (radians; Math.PI = all round) */
+        function spray(n, o) {
+            for (var i = 0; i < n; i++) {
+                var a = o.ang + rn(-o.spread, o.spread), sp = rn(o.sp[0], o.sp[1]);
+                _spawn({
+                    x: o.x + rn(-4, 4), y: o.y + rn(-4, 4), z: o.z + rn(-3, 3),
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(o.vz[0], o.vz[1]),
+                    ml: rn(1300, 1800), gravity: o.g || 760, drag: o.drag != null ? o.drag : 0.15,
+                    mode: 'billboard', sprite: 'blood-glob', stretch: !!o.stretch,
+                    globColor: o.color, size0: rn(o.s0[0], o.s0[1]), size1: rn(o.s1[0], o.s1[1]),
+                    opacity0: 1, opacity1: 0.9,
+                    floorAt: stain.floorAt, onLand: stain.onLand
                 });
             }
         }
+        function decal(sprite, x, y, o) {
+            _spawn({ x: x, y: y, z: zFloor + 1 + Math.random() * 0.6, mode: 'world', sprite: sprite,
+                     size0: o.size0, size1: o.size1, w0: o.w0, w1: o.w1, h0: o.h0, h1: o.h1,
+                     sizeEaseOut: o.ease || 0, ml: o.ml, opHold: o.hold || 0.75,
+                     opacity0: o.op || 0.85, opacity1: 0, spriteRot: o.rot != null ? o.rot : rn(0, 360), decor: true });
+        }
+        /* a decal's long axis along the floor direction `ang` (board x/y → the quad's rotation) */
+        function floorRot(ang) { return Math.atan2(-Math.sin(ang), Math.cos(ang)) * 180 / Math.PI; }
 
-        /* ── ground splatter — any solid hit leaves a mark now ───────────── */
-        if (isSuper || isKill || intensity > 1.0) {
-            var splatSize = isKill ? rn(70, 110) : isSuper ? rn(48, 72) : rn(34, 54);
-            L.push({
-                delayMs: 70, sprite: 'blood-splat', anchor: 'floor', mode: 'world',
-                z: 1, ml: isKill ? 2600 : 1500,
-                size0: splatSize, size1: splatSize * 1.3, opacity0: isKill ? 0.75 : 0.6
-            });
-            L.push({
-                count: ci(4, 3, 12), delayMs: 60, sprite: 'blood-splat', anchor: 'floor',
-                mode: 'world', z: 1, offsetXY: splatSize * 0.55, ml: 1400,
-                size0: [8, 18], size1: [12, 26], opacity0: 0.5
-            });
+        var cx = c0.x, cy = c0.y;
+        var big = isCrit || isSuper || isKill;
+
+        /* ── the exit spray: fast stretched jets thrown away from the blow ── */
+        spray(ci(10, 6, 26), { x: cx, y: cy, z: Z_CHEST, ang: aim, spread: aimed ? 0.75 : Math.PI,
+            sp: [110 + 70 * I, 190 + 110 * I], vz: [50 + 40 * I, 130 + 110 * I],
+            stretch: true, s0: [3.5, 6.5], s1: [1.6, 3.2], g: 720, drag: 0.22 });
+        /* ── heavy gouts that arc out and rain down ── */
+        spray(ci(6, 3, 14), { x: cx, y: cy, z: Z_CHEST, ang: aim, spread: aimed ? 1.1 : Math.PI,
+            sp: [60 + 40 * I, 120 + 60 * I], vz: [60 + 30 * I, 120 + 70 * I],
+            s0: [5, 10], s1: [3, 6], g: 820, drag: 0.1 });
+        /* ── back-spatter: a little kicks out of the entry wound at the attacker ── */
+        if (aimed && !isResist) {
+            spray(ci(3, 2, 7), { x: cx, y: cy, z: Z_CHEST, ang: aim + Math.PI, spread: 0.6,
+                sp: [70, 150], vz: [40, 110], stretch: true, s0: [2.5, 4.5], s1: [1.2, 2.2], g: 760 });
+        }
+        /* ── fine mist haze at the wound ── */
+        if (I > 0.8 && !isResist) {
+            for (var mi = 0; mi < ci(2, 1, 5); mi++) {
+                _spawn({ x: cx + dx * 10 + rn(-6, 6), y: cy + dy * 10 + rn(-6, 6), z: Z_NECK + rn(-6, 6),
+                         vx: dx * rn(20, 50) + rn(-12, 12), vy: dy * rn(20, 50) + rn(-12, 12), vz: rn(6, 26), drag: 0.9,
+                         ml: rn(420, 760), mode: 'billboard', sprite: 'blood-mist',
+                         size0: rn(18, 28), size1: rn(40, 58), opacity0: 0.5, opacity1: 0 });
+            }
+        }
+        /* ── meaty chunks on crits / super-effective hits ── */
+        if (big && !isKill && !isResist) {
+            spray(ci(3, 2, 6), { x: cx, y: cy, z: Z_NECK, ang: aim, spread: aimed ? 0.9 : Math.PI,
+                sp: [60, 140], vz: [90, 210], color: _BLOOD_DARK, s0: [6, 11], s1: [5, 9], g: 880, drag: 0.08 });
+        }
+        /* ── directional spurt streaks for solid and better hits ── */
+        if ((big || I > 1.35) && !isResist) {
+            var streakN = isKill ? 8 : Math.max(2, Math.round(3 * dmgScale));
+            for (var si = 0; si < streakN; si++) {
+                _spawn({ x: cx + rn(-4, 4), y: cy + rn(-4, 4), z: (isKill ? Z_NECK : Z_CHEST) + rn(0, ts * 0.12),
+                         vx: dx * rn(30, 80) + rn(-40, 40), vy: dy * rn(30, 80) + rn(-40, 40), vz: rn(120, 240),
+                         gravity: 560, drag: 0.2, ml: rn(220, 420), sprite: 'blood-streak',
+                         w0: rn(4, 7), w1: 2, h0: rn(26, 44), h1: 10, spriteRot: rn(-38, 38), opacity0: 0.9, opacity1: 0 });
+            }
+        }
+        /* ── the mark under the body: every solid hit leaves one now ── */
+        if (I > 0.75 || big) {
+            var sz0 = isKill ? rn(80, 110) : isSuper ? rn(54, 76) : rn(34, 56);
+            _fxDelay(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                decal('blood-splat', cx + dx * ts * 0.18, cy + dy * ts * 0.18,
+                      { size0: sz0 * 0.6, size1: sz0, ease: 8, ml: isKill ? 15000 : 9000, op: isKill ? 0.8 : 0.65 });
+                if (aimed && (big || I > 1.2)) {
+                    var n = isKill ? 0 : (isSuper ? 2 : 1);
+                    for (var k = 0; k < n; k++) {
+                        var a2 = aim + rn(-0.35, 0.35), dd = ts * rn(0.45, 0.9), L = rn(46, 74);
+                        decal('blood-spatter', cx + Math.cos(a2) * dd, cy + Math.sin(a2) * dd,
+                              { w0: L * 0.8, w1: L, h0: L * 0.42, h1: L * 0.5, ease: 10, ml: 9000, op: 0.8, rot: floorRot(a2) });
+                    }
+                }
+            }, 90);
         }
 
         if (isKill) {
-            /* dark pool spreading under the body */
-            L.push({
-                delayMs: 260, sprite: 'blood-pool', anchor: 'floor', mode: 'world',
-                z: 1, ml: 3600, size0: 30, size1: rn(100, 150), opacity0: 0.85
-            });
-            /* GEYSER: three waves of stretched jets + gouts erupting from the
-               neck like a Mortal Kombat fountain */
-            for (var w = 0; w < 3; w++) {
-                var d = w * 130;
-                L.push({
-                    count: 8, delayMs: d, sprite: 'blood-glob', stretch: true,
-                    anchor: 'torso', z: Z_HEAD,
-                    ml: [300, 620], offsetXY: 5,
-                    vxRange: 75, vyRange: 75, vzRange: [170, 340 - w * 35],
-                    gravity: 700, drag: 0.2,
-                    size0: [3.5, 7], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
-                });
-                L.push({
-                    count: 5, delayMs: d, sprite: 'blood-glob',
-                    anchor: 'torso', z: Z_NECK,
-                    ml: [500, 900], offsetXY: 6,
-                    vxRange: 60, vyRange: 60, vzRange: [100, 220 - w * 25],
-                    gravity: 820, drag: 0.1,
-                    size0: [6, 12], size1: [4, 7], opacity0: 1, opacity1: 0.9
-                });
+            /* ── THE FINISHER ── */
+            /* the burst: a wall of spray, gouts all round and gibs */
+            spray(ci(14, 14, 34), { x: cx, y: cy, z: Z_NECK, ang: aim, spread: aimed ? 0.95 : Math.PI,
+                sp: [200, 380], vz: [130, 340], stretch: true, s0: [3.5, 7], s1: [1.6, 3.5], g: 760, drag: 0.2 });
+            spray(ci(7, 8, 16), { x: cx, y: cy, z: Z_NECK, ang: aim, spread: Math.PI,
+                sp: [90, 220], vz: [100, 260], s0: [6, 11], s1: [4, 7], g: 840, drag: 0.1 });
+            spray(ci(4, 6, 10), { x: cx, y: cy, z: Z_CHEST, ang: aim, spread: aimed ? 1.4 : Math.PI,
+                sp: [80, 210], vz: [160, 320], color: _BLOOD_DARK, s0: [7, 13], s1: [6, 11], g: 900, drag: 0.06 });
+            for (var bm = 0; bm < Math.round(5 * dens); bm++) {
+                _spawn({ x: cx + rn(-8, 8), y: cy + rn(-8, 8), z: Z_NECK + rn(-8, 10),
+                         vx: dx * rn(30, 70) + rn(-25, 25), vy: dy * rn(30, 70) + rn(-25, 25), vz: rn(10, 40), drag: 0.9,
+                         ml: rn(600, 900), mode: 'billboard', sprite: 'blood-mist',
+                         size0: rn(24, 34), size1: rn(56, 78), opacity0: 0.5, opacity1: 0 });
             }
-            /* lingering drips that keep falling from the wound */
-            L.push({
-                count: 7, delayMs: 420, sprite: 'blood-glob',
-                anchor: 'torso', z: Z_CHEST,
-                ml: [600, 1100], offsetXY: 10,
-                vxRange: 22, vyRange: 22, vzRange: [-10, 20],
-                gravity: 680, drag: 0.1,
-                size0: [3, 6], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
-            });
+            /* the geyser: four waves straight up out of the neck */
+            for (var w = 0; w < 4; w++) {
+                (function (wave) {
+                    _fxDelay(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        spray(Math.round(9 * dens), { x: cx, y: cy, z: Z_HEAD, ang: aim, spread: Math.PI,
+                            sp: [15, 75], vz: [320 - wave * 30, 520 - wave * 45], stretch: true,
+                            s0: [3.5, 7], s1: [1.6, 3.2], g: 760, drag: 0.15 });
+                    }, wave * 110);
+                })(w);
+            }
+            /* the pump: the heart keeps going — spurts out of the neck as the body
+               falls, weaker each beat. Reads the dying rig's own neck bone; a body
+               with no rig falls back to the tile, the wound sinking to the floor. */
+            var uid = opts.unitId, beats = Math.round(16 * (dens < 1 ? 0.7 : 1)), beatMs = 150, hadBone = false;
+            var landMs = 1300;
+            for (var b = 0; b < beats; b++) {
+                (function (i) {
+                    _fxDelay(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        var k = 1 - (i / beats) * 0.75;
+                        var px = cx, py = cy, pz = null;
+                        if (uid != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBoneWorld
+                            && window.ThreeVFX && window.ThreeVFX.worldToVfx) {
+                            var bw = ThreeRenderer.unitBoneWorld(uid, _BLOOD_NECK);
+                            var bv = bw ? window.ThreeVFX.worldToVfx(bw) : null;
+                            if (bv) { px = bv.x; py = bv.y; pz = bv.z; hadBone = true; }
+                            else if (hadBone) return;   // the body has gone
+                        }
+                        if (pz == null) {
+                            var f = Math.min(1, (i * beatMs) / landMs);
+                            pz = Z_NECK + (zFloor + ts * 0.12 - Z_NECK) * f;
+                        }
+                        spray(Math.max(2, Math.round(4 * k * dens)), { x: px, y: py, z: pz, ang: aim, spread: aimed ? 1.0 : Math.PI,
+                            sp: [50 * k, 160 * k], vz: [110 * k, 270 * k], stretch: true,
+                            s0: [3, 6], s1: [1.5, 3], g: 760, drag: 0.2 });
+                        if (i % 2 === 0) spray(1, { x: px, y: py, z: pz, ang: aim, spread: Math.PI,
+                            sp: [20, 70], vz: [40, 120], s0: [5, 9], s1: [3, 6], g: 820, drag: 0.1 });
+                    }, 140 + i * beatMs);
+                })(b);
+            }
+            /* spatter thrown across the floor along the blow */
+            var spN = Math.round((aimed ? 6 : 4) * dens);
+            for (var sp2 = 0; sp2 < spN; sp2++) {
+                (function (j) {
+                    var a3 = aim + (aimed ? rn(-0.45, 0.45) : rn(0, 6.2832)), d3 = ts * rn(0.35, 1.45), L3 = rn(70, 120);
+                    _fxDelay(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        decal('blood-spatter', cx + Math.cos(a3) * d3, cy + Math.sin(a3) * d3,
+                              { w0: L3 * 0.7, w1: L3, h0: L3 * 0.4, h1: L3 * 0.5, ease: 10, ml: 15000, op: 0.85, rot: floorRot(a3) });
+                    }, 160 + j * 60 + d3 * 0.8);
+                })(sp2);
+            }
+            /* the pool: spreads out under the body once it is down */
+            _fxDelay(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                var qx = cx + dx * ts * 0.25, qy = cy + dy * ts * 0.25;
+                if (uid != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBoneWorld
+                    && window.ThreeVFX && window.ThreeVFX.worldToVfx) {
+                    var hw = ThreeRenderer.unitBoneWorld(uid, _BLOOD_HIPS);
+                    var hv = hw ? window.ThreeVFX.worldToVfx(hw) : null;
+                    if (hv && Math.abs(hv.x - cx) < ts * 1.5 && Math.abs(hv.y - cy) < ts * 1.5) { qx = hv.x; qy = hv.y; }
+                }
+                decal('blood-pool', qx, qy, { size0: 30, size1: rn(170, 210), ease: 6, ml: 16000, hold: 0.8, op: 0.92 });
+                decal('blood-splat', qx + rn(-12, 12), qy + rn(-12, 12), { size0: 40, size1: rn(110, 140), ease: 7, ml: 16000, hold: 0.8, op: 0.7 });
+            }, 650);
         } else if (woundScale > 1.4 && !isResist) {
             /* badly wounded but still standing → a few delayed drips */
-            L.push({
-                count: ci(3, 2, 6), sprite: 'blood-glob', delayMs: 300,
-                anchor: 'torso', z: Z_CHEST,
-                ml: [500, 950], offsetXY: 9,
-                vxRange: 18, vyRange: 18, vzRange: [-8, 18],
-                gravity: 680, drag: 0.12,
-                size0: [3, 5.5], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
-            });
+            _fxDelay(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                spray(ci(3, 2, 6), { x: cx, y: cy, z: Z_CHEST, ang: aim, spread: Math.PI,
+                    sp: [5, 25], vz: [-8, 18], s0: [3, 5.5], s1: [1.5, 3], g: 680, drag: 0.12 });
+            }, 300);
         }
 
-        _spawnEffect({ layers: L, shake: isKill ? 'normal' : undefined },
-                      { tx: tx, ty: ty });
+        if (isKill) _shake('normal');
     }
 
     function fireDash(fromTx, fromTy, toTx, toTy) {
