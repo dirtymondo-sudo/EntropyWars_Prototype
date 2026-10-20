@@ -1676,3 +1676,8 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
 - **Now**: battle.js `_playoutLive()` is part of boardBusy: the menu stays down while an action-cam shot is on screen (`_acChromeState`: every spell, attack, combo and item shot) and while a play-out hold runs. `window._ewHoldPlayout(ms)` (max 6 s) is announced by doItem for the heal / mana potion (shot length, or the drink + 450 ms with no shot) and the bane throw (`_baneSettleMs`). The menu comes back once, when the shot hands the camera back; the camera glide home still never hides it.
 - **Online**: online.js wraps `_ewHoldPlayout` host-side to relay `playout-hold`; the guest applies it, and its own item click holds 700 ms until the host's hold lands.
 - Browser-checked (probe sampling the DOM every frame): self potion, potion on an ally, a self-cast buff (Iron Dome): one hide, one return each.
+
+## THE ROSTER CARD STATS (2026-10-20, mondo: "it needs all the main stats, 2 columns to fit them")
+The ROSTER tab's quick card under the hero (party-builder.js `quickCard`, `QUICK_STAT_KEYS`) shows every main stat with the
+race editor's names in a two-column grid (`.pb-stage-stats`, styles-base.css), paired row by row: HP|MP, ATK|M ATK, DEF|M DEF,
+SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follows the hovered wall tile like before.
