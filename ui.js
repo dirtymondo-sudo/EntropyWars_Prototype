@@ -4742,9 +4742,19 @@
             if (state.phase === 'battle') renderFloatCombatLog();
         }
 
+        /* THE LANDING PICK (2026-10-20, mondo: "i right click to go back, but the target is still in the air"):
+           stepping out of a sky throw's landing pick puts the held body back down and leaves the spell uncast (the
+           grab's MP comes back); a pick-a-unit teleport forgets the unit it picked. */
+        function _dropHeldSpellPick() {
+            const u = getSelectedUnit();
+            if (u && u._skyThrowGrab && typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(u);
+            state._teleportingUnit = null;
+        }
+
         function cancelActionSelection() {
             if (state.phase !== 'battle') return;
             playSfx('uiBack');
+            _dropHeldSpellPick();
             state.actionMenuView = 'root';
             state.actionMode = null;
             state.actionMenuView = 'root';
@@ -4849,6 +4859,7 @@
                it "didn't work" half the time). */
             if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation') {
                 playSfx('uiBack');
+                _dropHeldSpellPick();
                 state.actionMenuView = 'spells';
                 state.actionMode = null;
                 state.selectedTool = null;
@@ -4878,6 +4889,7 @@
                     renderBattleSelectionUI();
                     return;
                 }
+                _dropHeldSpellPick();
                 state.actionMode = null;
                 state.selectedTool = null;
                 state.pendingTarget = null;

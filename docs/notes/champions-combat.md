@@ -1781,3 +1781,19 @@ Stagger payoff, Bad Trip keeps Voodoo. Checked and left: Boo (applies Discord, p
 GROUND only ticks damage, never the Poison status), Star Decree (no status). Forecasts / AI read `spell.bonusVsStatus`
 generically, so nothing else changed. A new row must not pair a `statusEffects` id with the same (or a countsAs) id in
 `bonusVsStatus`.
+
+## THE LANDING PICK (2026-10-20, mondo: To the Moon lifted the target, a lit landing tile said it was out of range, and a right-click left the target in the air; "there are other similar spells")
+Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl). battle.js:
+- `skyThrowLandingPhase(unit)` / `getSkyThrowLandingTiles(unit)` = the lit ring (flat Manhattan 1..throwRange from
+  the held body, no sight or height test), the same ring ui.js paints and doSpell's throw gate measures.
+  getSpellRangeTiles returns that ring during the landing pick (like THE BLINK LANDING), so every confirm path agrees.
+- clickTile's fog gate passes a landing click (the ring is lit fog or no fog). This was the refusal mondo hit: lit
+  landing tiles in team fog answered "Out of sight".
+- three-renderer `_screenClick`: during the landing pick the click names the TILE under the pointer (what the hover
+  lights and holograms), never a body hanging or standing in front of it.
+- The grab arms the 'spells' aim view (the board is the drum, label "CLICK A LIT TILE TO THROW"), not the old enemy
+  list whose rows threw out of reach. `_getSpellValidTargets` lists only enemies on a lit tile; no MOVE→CAST rows.
+- Back-out (right-click / BACK / ESC, ui.js `_dropHeldSpellPick`) calls `cancelSkyThrowGrab`: the body drops back on
+  its tile, the spell stays uncast, the grab's MP (`_skyThrowGrab.mpPaid`) comes back. Every release
+  (`_releaseSkyThrowGrab`: another action, reselect, turn change) refunds it too. online.js routes the guest's
+  cancel to the host (`fn: 'cancelSkyThrowGrab'`). A pick-a-unit teleport forgets its picked unit on back-out.
