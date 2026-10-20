@@ -21723,6 +21723,40 @@ const ThreeRenderer = (function () {
             ml: 520, size0: ts * 0.35, size1: ts * 1.9, opacity0: 0.85, opacity1: 0,
         });
     }
+    /* THE GOLD KEY (2026-10-19, mondo: "the key itself is really dark (its night time in the battle), it needs to be
+       bright/glowing gold"): the kit GLB is a grey metal key (PBR metal, no environment to reflect), so a dim night battle
+       drew it near-black. The celebration wears its own gold instead: the kit's texture + normal map for the detail, a
+       gold body and a strong gold self-glow so it reads bright whatever the scene light (bloom is off by default, so the
+       glow is the material's own), plus a soft additive gold halo behind it. The glow leans orange on purpose: the
+       filmic tone map and the night grade pull a hot yellow to lemon, an orange one lands on gold (browser-checked at
+       night, round 2). One material per source material, shared
+       by every celebration; the kit key in the rooms keeps its own look. */
+    var _keyFxGoldCache = new Map();
+    function _keyFxGoldMat(n, mm) {
+        if (!mm) return null;
+        var hit = _keyFxGoldCache.get(mm);
+        if (hit) return hit;
+        var gm = new THREE.MeshStandardMaterial({
+            color: 0xe0a020, map: mm.map || null, normalMap: mm.normalMap || null,
+            metalness: 0.5, roughness: 0.3,
+            emissive: 0xff7a00, emissiveIntensity: 1.3,
+            side: THREE.DoubleSide, fog: false
+        });
+        if (mm.normalScale && gm.normalScale) gm.normalScale.copy(mm.normalScale);
+        _keyFxGoldCache.set(mm, gm);
+        return gm;
+    }
+    function _keyFxHalo(ts) {
+        var mat = new THREE.SpriteMaterial({
+            map: _hzGlowTexture(), color: new THREE.Color(0xffa020),
+            blending: THREE.AdditiveBlending, transparent: true, opacity: 0,
+            depthWrite: false, fog: false
+        });
+        var sp = new THREE.Sprite(mat);
+        sp.scale.set(ts * 1.15, ts * 1.15, 1);
+        sp.renderOrder = -1;
+        return sp;
+    }
     function keyPickupFx(tx, ty, opts) {
         if (!scene) return;
         opts = opts || {};
@@ -21741,7 +21775,7 @@ const ThreeRenderer = (function () {
                usually lie flat: if the fitted instance is much wider than
                tall, stand it up so it spins upright like an item pickup. */
             holder.add(_miscModelInstance(url, true, ts * 0.5, {
-                fit: 'span',
+                fit: 'span', matPick: _keyFxGoldMat,
                 onDone: function (inst, scale, bb) {
                     /* cached root → this runs synchronously, before the group
                        joins the scene, so the measured box is in local space */
@@ -21761,10 +21795,12 @@ const ThreeRenderer = (function () {
         var light = new THREE.PointLight(0xffd070, 0, ts * 3.4);
         light.position.set(0, ts * 0.25, 0);
         g.add(light);
+        var halo = _keyFxHalo(ts);
+        g.add(halo);
         g.scale.setScalar(0.01);
         scene.add(g);
         _keyFxList.push({
-            g: g, holder: holder, light: light,
+            g: g, holder: holder, light: light, halo: halo,
             t0: _animNow(), ts: ts, baseY: baseY, tx: tx, ty: ty,
             burst: false, nextSpark: 500,
         });
@@ -21781,6 +21817,7 @@ const ThreeRenderer = (function () {
             var total = _KEYFX_RISE + _KEYFX_HOLD + _KEYFX_OUT;
             if (t >= total || !f.g.parent) {
                 scene.remove(f.g);
+                if (f.halo) f.halo.material.dispose();
                 _keyFxList.splice(i, 1);
                 continue;
             }
@@ -21794,12 +21831,14 @@ const ThreeRenderer = (function () {
                 f.g.position.y = f.baseY + ts * 0.30 + (topY - f.baseY - ts * 0.30) * e;
                 f.holder.rotation.y = k * Math.PI * 3.2;
                 f.light.intensity = e * 1.8;
+                f.halo.material.opacity = e * 0.55;
             } else if (t < _KEYFX_RISE + _KEYFX_HOLD) {
                 var h = t - _KEYFX_RISE;
                 f.g.scale.setScalar(1);
                 f.g.position.y = topY + Math.sin(h * 0.004) * ts * 0.05;
                 f.holder.rotation.y = Math.PI * 3.2 + h * 0.0038;
                 f.light.intensity = 1.6 + Math.sin(h * 0.008) * 0.35;
+                f.halo.material.opacity = 0.5 + Math.sin(h * 0.008) * 0.08;
                 if (t >= f.nextSpark) {           // slow sparkle drip while hovering
                     f.nextSpark = t + 240;
                     _keyFxSparkBurst(f.tx, f.ty, 2, f.g.position.y, false);
@@ -21814,6 +21853,7 @@ const ThreeRenderer = (function () {
                 f.g.position.y = topY + o * ts * 0.35;
                 f.holder.rotation.y += 0.02 + o * 0.05;
                 f.light.intensity = Math.max(0, 1.6 * (1 - o));
+                f.halo.material.opacity = Math.max(0, 0.5 * (1 - o));
             }
         }
     }
