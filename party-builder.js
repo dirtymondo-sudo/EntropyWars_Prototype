@@ -2425,8 +2425,10 @@ function PartyBuilder(props) {
   const [editingTeamId, setEditingTeamId] = React.useState(null);
   const [teamNameDraft, setTeamNameDraft] = React.useState('');
   const [slot, setSlot] = React.useState(() => st.builderSelectedSlot || 0);
-  const [sortKey, setSortKey] = React.useState('HP');
-  const [sortDir, setSortDir] = React.useState('desc');
+  /* THE A–Z DEFAULT (2026-10-20, mondo): the wall opens sorted by name
+     A–Z; every stat sort (HP ↓ was the old default) stays in the SORT menu. */
+  const [sortKey, setSortKey] = React.useState('label');
+  const [sortDir, setSortDir] = React.useState('asc');
   const [typeFilter, setTypeFilter] = React.useState(null);
   const [rosterSearch, setRosterSearch] = React.useState('');
   const [showTeamModal, setShowTeamModal] = React.useState(false);
@@ -3371,11 +3373,11 @@ function PartyBuilder(props) {
   const rosterMenu = pbMenu === 'sort'
     ? h(PbWindow, { title: 'SORT THE WALL', sub: sortLabelTxt, onClose: () => setPbMenu(null), zone: true, width: 300 },
         h('div', { className: 'pb-menu-list' },
+          h('button', { key: 'la', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'asc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('asc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'A'), 'NAME', h('small', null, 'A – Z')),
+          h('button', { key: 'ld', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'desc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('desc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'Z'), 'NAME', h('small', null, 'Z – A')),
           ...STAT_KEYS.map(k => [['desc', '↓'], ['asc', '↑']].map(([d, arrow]) =>
             h('button', { key: k + d, className: 'pb-menu-row' + (sortKey === k && sortDir === d ? ' on' : ''), onClick: () => { setSortKey(k); setSortDir(d); setPbMenu(null); sfx('uiCursorMove'); } },
-              h('i', null, arrow), statLabel(k), h('small', null, d === 'desc' ? 'HIGHEST FIRST' : 'LOWEST FIRST')))).flat(),
-          h('button', { key: 'la', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'asc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('asc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'A'), 'NAME', h('small', null, 'A – Z')),
-          h('button', { key: 'ld', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'desc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('desc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'Z'), 'NAME', h('small', null, 'Z – A'))))
+              h('i', null, arrow), statLabel(k), h('small', null, d === 'desc' ? 'HIGHEST FIRST' : 'LOWEST FIRST')))).flat()))
     : null;
   const rosterPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head pb-wall-head' },
