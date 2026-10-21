@@ -8737,6 +8737,7 @@ function _hrlgTileBlades(actingUnit, st) {
   const tRule = typeof getTerrainRule === 'function' ? getTerrainRule(terrain) : { label: terrain };
   const height = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
   const posLabel = typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty;
+  const _tTimer = typeof terrainTimerAt === 'function' ? terrainTimerAt(tx, ty) : null;
 
   const objInfo = _tileQuickObjectInfo(actingUnit, tx, ty);
   const objCard = objInfo ? _objCardSpell(objInfo, tx, ty) : null;
@@ -8845,7 +8846,9 @@ function _hrlgTileBlades(actingUnit, st) {
     : { node: h(React.Fragment, null,
         h('span', { className: 'hrlg-view-tab-icon' }, '⬚'),
         h('span', { className: 'hrlg-view-tab-text' }, tRule.label || terrain),
-        h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'),
+        h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'
+          // ⏳ a changed tile: the rounds left before the map's own ground comes back (map.js state.terrainTimers)
+          + (_tTimer ? ' · ⏳' + _tTimer.n : '')),
       ) };
   return { title, blades };
 }

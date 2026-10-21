@@ -1535,6 +1535,39 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   full-strength red. Drop budget unchanged (90 map-wide, 50 on EW_PERF_LOW). Rain is renderer-local: the guest builds it
   from the synced `state.activeWeather`, nothing to relay.
 
+## THE ELEMENT TERRAINS + THE BLOOD POOL + 3-ROUND TERRAIN (2026-10-21, mondo: Divinity OS2-style "correlate at least one terrain to each element ... casting the spell on to a tile that has the terrain should do bonus damage" + "make all terrain changes last 3 rounds, similar to status effects" + "Tornado leaving grass tiles doesnt sound right")
+- Proposal doc https://claude.ai/artifact/1d1VuhoZ1wWNgtqc7brW1x; mondo said "go" on the recommended options.
+- THE BONUS: data.js `ELEMENT_TERRAINS` (element → terrains, + `flow` liquid family, fire `burning`, wind `air`) and
+  `ELEMENT_TERRAIN_MULT` 1.25. battle.js `elementTerrainBonus(el, caster, target, o)` → {mult, who, label}: caster's tile
+  first, else the hit tile (opts.struckAt). One bonus even when both stand on it. Applied in `_hitDamageMath` right after
+  the ZODIAC SURGE (so it rides `_offMult` under the ×3 cap; live hit + every forecast share it). Spells only:
+  `opts.spellElement` set, not `basicAttack`, not `dot`, not `noTerrainBonus` (the terrain reactions' follow-up hits pass
+  it). Airborne units are off the ground; wind counts them as on its terrain ('Air'). Live pop "🜃 ON <LABEL> ×1.25"
+  + one log line per cast (keyed by `_protectActionSeq`). ai.js estDamage mirrors it from `opts.fromX/fromY`.
+- NO SELF-COMBO: doSpell opens map.js `beginCastTerrainWatch()` (after canUnitAct) and finishAction closes it; state.js
+  `_detonateDelayedSpell` wraps each detonation. While open, `_noteTerrainChange` records each cell's pre-cast terrain
+  (`castPreTerrainAt`) and igniteTile records whether it burned before (`castPreBurningAt`); a LIVE hit reads those, so
+  terrain/fire the resolving cast made never counts. Forecasts read the current board.
+- THE BLOOD POOL: TERRAIN_RULES.blood (move 1, no other effect), its own liquid family in map.js `liquidFamilyOf` /
+  `_LIQUID_SPREADS` (flows like water), three-renderer `_LIQUID_STYLES.blood` (water textures tinted 0x8a0c14) + the flow
+  / runoff / drift / entropy-palette tables, sprites.js uses water.png. Blood Rain's `seedTerrain` is 'blood'. Only source.
+- THE TIMERS: map.js `state.terrainTimers[k] = {n, t, z, o, oz, p, d, m}` written by `_noteTerrainChange` from
+  setTerrainAt (the one paint path) once battle.js startMatch sets `state._terrainClock` (and resets `paintedFrom`, so the
+  board as the fight starts = the map's own ground, permanent). n = TERRAIN_CHANGE_ROUNDS (3). battle.js
+  `tickTerrainTimers()` runs in processEndOfRoundZonesAndSeeds after `_tickTimedTerrain`: n-1 per round end, at 0
+  `revertTerrainTimer` puts back `o` (the map's own terrain; lifts stacked liquid, drops the spring, undoes a terrainCreate
+  deform `d`, a Snow Fort's `m` melts into its puddle which then gets its own 3). Same terrain painted again on a clocked
+  cell → `refreshTerrainTimer` (n back to 3): terrainCreate `_paintTile`, `_paintTimedTerrain`, every leaveTerrain site,
+  the dash trail, weather seeding. A change of a clocked cell into something else (lava+water=stone) restarts the 3 with
+  the new terrain, and the end still goes to the map's own ground. Craters (aoe deforms) stay. Burning keeps its own fire
+  countdown; the scorched ground it leaves then gets 3. hud.js tile menu shows "⏳n". Plain state: syncs to the guest.
+- THE WEATHER RULES (state.js, calls flagged to mondo): Tornado leaves nothing; Earthquake rocky ground (rocks_1, was
+  mountain; quarter-board cap kept); Solar Flare scorched (was desert); Sandstorm desert (new); Blood Rain blood (never on
+  water); the rain storms' water washes a blood pool away; Drought dries the fight's water, blood AND ice
+  (`_evaporateTile`); Thunderstorm/Hurricane water, Blizzard ice, Drought desert unchanged. All of it on the 3-round clock.
+- Probe: VS CPU Mount Shasta, painted 15 blood tiles round a unit → red pools, bonus 1.25 (caster), 3 ticks → grass_2.
+  Screens /mnt/project-files/element-terrain/.
+
 ## THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate all that water")
 - History: the old build (index.html era) had `seedTerrain` on WEATHER_REGISTRY rows + `seedTerrainAt` / `seedWeatherTerrain`;
   cut 2026-04-01 (commit ce37c0a vs 78b5c97). Restored in state.js: tornado grass, earthquake mountain, hurricane / blood

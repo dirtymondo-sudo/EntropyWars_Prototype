@@ -3821,6 +3821,7 @@ const TERRAIN_SPRITES = {
        _LIQUID_STYLES). 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. */
     swamp:            [`${_T}/water.png`],
     oil:              [`${_T}/water.png`],
+    blood:            [`${_T}/water.png`],   // 🩸 the Blood Pool (2026-10-21): water sheet, tinted red in 3D
     /* THE STREET (2026-09-16): the old urban_street.png carried lane markings
        running one way, so every street laid across it (and every tile beside
        another) read as chaos. Streets wear the concrete sheet now, darkened

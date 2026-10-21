@@ -844,6 +844,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
        matches the tinted-water fluid rendering in three-renderer.js) */
     crystal:'rgba(160,120,220,0.46)', poison:'rgba(150,70,205,0.52)', poison_bog:'rgba(130,58,190,0.54)',
     purple_bog:'rgba(112,50,175,0.54)', swamp:'rgba(30,28,38,0.64)', oil:'rgba(22,22,28,0.64)',
+    blood:'rgba(150,12,22,0.62)',
     // ── Cave ──
     cave_floor:'rgba(80,70,60,0.46)', cave_wall:'rgba(60,50,45,0.56)', cave_entrance:'rgba(70,60,50,0.5)',
     // ── Built / urban ──
@@ -1743,6 +1744,19 @@ const TERRAIN_RULES = {
     stone: {
         label: 'Stone',
         short: 'STN',
+        passable: true,
+        moveCost: 1,
+        blocksRanged: false,
+        healMultiplier: 1,
+        endTurn(unit) { return null; }
+    },
+    /* 🩸 THE BLOOD POOL (2026-10-21, mondo: "add blood as terrain/liquid"): what Blood Rain leaves where it used to leave
+       water (state.js WEATHER_REGISTRY.bloodRain seedTerrain). A liquid of its own family (map.js liquidFamilyOf 'blood'):
+       it runs downhill and pools like the others and wears the water surface tinted red (three-renderer.js _LIQUID_STYLES,
+       no new art). Nothing else: it doesn't soak, conduct or freeze. Blood spells hit harder on it (ELEMENT_TERRAINS). */
+    blood: {
+        label: 'Blood Pool',
+        short: 'BLD',
         passable: true,
         moveCost: 1,
         blocksRanged: false,
@@ -3788,6 +3802,42 @@ const ZODIAC_SURGE_ELEMENT = {
     taurus: 'earth', virgo: 'metal', capricorn: 'nature'
 };
 const ZODIAC_SURGE_MULT = 1.25;
+
+/* ⏳ THE TERRAIN TIMERS (2026-10-21, mondo: "make all terrain changes last 3 rounds, similar to status effects"): every
+   mid-fight change of a cell's terrain (spells, weather, reactions) lasts this many round ends, then the cell goes back to
+   the map's own terrain; the same terrain cast on it again restarts the count (map.js _noteTerrainChange). */
+const TERRAIN_CHANGE_ROUNDS = 3;
+
+/* 🜃 THE ELEMENT TERRAINS (2026-10-21, mondo: "correlate at least one terrain to each element. Casting a spell with the
+   corresponding element while on the terrain or casting the spell on to a tile that has the terrain should do bonus
+   damage"; his go on the proposal). A spell's hit of that element lands ×ELEMENT_TERRAIN_MULT when the caster OR the unit
+   hit stands on one of its terrains (both at once is still one bonus). battle.js elementTerrainBonus reads this:
+     terrains — the terrain keys that count
+     flow     — the runoff of that liquid family counts too (map.js getLiquidFlowAt)
+     burning  — a tile on fire counts (fire)
+     air      — an airborne caster or target counts (wind: "stronger in the air")
+   A flyer is not on the ground terrain under it (wind excepted). Spells only: never a basic attack, a burn / poison
+   tick, a weather or hazard hit, or the follow-up hits of the terrain reactions (conduction, an oil blast, crystal
+   shards). Terrain the resolving cast made itself never counts (NO SELF-COMBO; map.js castPreTerrainAt). */
+const ELEMENT_TERRAIN_MULT = 1.25;
+const ELEMENT_TERRAINS = {
+    fire:      { terrains: ['lava'], flow: 'lava', burning: true },
+    water:     { terrains: ['water', 'deep_water'], flow: 'water' },
+    ice:       { terrains: ['ice', 'ice_1', 'snow_wall', 'igloo'] },
+    earth:     { terrains: ['desert', 'dirt', 'dirt_2', 'dirt_3', 'dirt_4', 'dirt_slope', 'mountain', 'mountain_2', 'mountain_top',
+                            'rocks_1', 'rocks_2', 'rocks_3', 'rocks_4', 'rocks_5', 'rocks_dark_fantasy', 'stone', 'cliff', 'wasteland',
+                            'rubble_1', 'rubble_2', 'rubble_3', 'rubble_4', 'obsidian', 'moon', 'moon_2', 'moon_3', 'mars', 'mars_2'] },
+    nature:    { terrains: ['grass', 'grass_2', 'grass_3', 'grass_4', 'grass_rocky', 'grass_dark_fantasy', 'purple_grass', 'tree',
+                            'tree_top', 'forest', 'forest_2', 'dark_woods', 'leaves', 'leaves_2', 'leaves_3', 'leaves_4', 'leaves_5',
+                            'mushroom', 'beanstalk', 'beanstalk_top'] },
+    lightning: { terrains: ['storm', 'cloud_thick', 'metal', 'metal_2', 'metal_3', 'aluminium', 'gunmetal', 'gunmetal_2', 'copper', 'diamond'] },
+    metal:     { terrains: ['metal', 'metal_2', 'metal_3', 'aluminium', 'gunmetal', 'gunmetal_2', 'copper', 'diamond'] },
+    sonic:     { terrains: ['cave_floor', 'cave_wall', 'cave_entrance', 'dungeon', 'dungeon_2', 'dungeon_3', 'dungeon_4'] },
+    wind:      { terrains: ['cloud', 'cloud_2', 'cloud_thick', 'sky_ruin', 'sky_open', 'mountain_top'], air: true },
+    poison:    { terrains: ['poison', 'poison_bog', 'purple_bog', 'swamp', 'plague_flesh'], flow: 'poison' },
+    blood:     { terrains: ['blood', 'flesh', 'flesh_2', 'flesh_3'], flow: 'blood' },
+    psychic:   { terrains: ['crystal', 'holo', 'holo_red', 'void'] },
+};
 
 /* THE ZODIAC EFFECTS (race editor ZODIAC tab, 2026-10-06, mondo: "let me also change what buffs/stat changes the zodiacs
    give"). One row per sign, two parts:
