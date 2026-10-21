@@ -6224,6 +6224,10 @@
             applyDamageToUnit(enemy, dmg, label, {
                 sourceUnit: (caster && !caster.dead) ? caster : undefined,
                 allowMarkBonus: false, noRangeMult: true,   // a zone tick is no ranged shot: no falloff, no flank / ambush riders
+                /* 2026-10-21 PvP audit #5: a round-end tick reads nothing off where the caster stands NOW (the element
+                   ground under it, its height) — the zone deals the same wherever the caster went. The cast hit
+                   (Outbreak's zoneCastDamage) is the spell itself and keeps both. */
+                noTerrainBonus: !!o.tick, noHeightBonus: !!o.tick,
                 damageType: o.damageType || 'magic',
                 spellType: o.spellType || null,
                 spellElement: o.element || null
@@ -9669,7 +9673,7 @@
                                 let _ztDealt = 0;
                                 if (zone.tickDamage > 0) {
                                     _ztDealt = _zoneStrikeUnit(enemy, zone.tickDamage, `${zone.spellName}: `, {
-                                        casterUnitId: zone.casterUnitId, damageType: zone.tickDamageType,
+                                        tick: true, casterUnitId: zone.casterUnitId, damageType: zone.tickDamageType,
                                         spellType: zone.tickSpellType, element: zone.tickElement });
                                     _zoneDamagedAny = true;
                                     // Balance Lab (2026-10-06): the tick is the spell's damage (Heat Death / War of the
@@ -34288,7 +34292,7 @@
                     { const _zp = Math.round((getZodiacBonus(sourceUnit).m('atk') - 1) * 100); _multCallout(sourceUnit, '★ ZODIAC ' + (_zp >= 0 ? '+' : '') + _zp + '%', 900); }
                 }
 
-                if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
+                if (!opts.ignoreArmor && !opts.noHeightBonus && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
                     // opts.struckAt: a hit landed on a tile the target already left (opportunity attack)
                     const tgtH = (opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target);
@@ -35461,7 +35465,9 @@
                 }
             }
             if (!candidates.length) return null;
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            // THE FOG (2026-10-21 audit #1): run from the enemies your side can SEE — the preview shows this landing,
+            // so a hidden enemy must not bend it (the cast reads the same rule, so preview = cast)
+            const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => _isUnitVisibleToViewer(e, unit.player));
             candidates.sort((a, b) => {
                 const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
                 const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
@@ -35612,6 +35618,7 @@
                 for (let i = undo.length - 1; i >= 0; i--) { const r = undo[i]; r[0].x = r[1]; r[0].y = r[2]; r[0].z = r[3]; }
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
             }
+            _forecastHideFogged(plan, caster, spell, x, y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
@@ -35643,8 +35650,40 @@
                 if (gc) { plan.pressHits.push(gc); const gh = entry(g); (gh._pressCtx || (gh._pressCtx = [])).push(gc); }
             }
         }
+        /* THE FOG (2026-10-21 PvP audit #1, mondo: "those all seem like bugs"): a preview never speaks about a body its
+           viewer (the caster's side) can't see. Hidden enemies leave the plan — no badge, no strike arrow, no landing, no
+           press vote — and the real cast still hits them. So the green ! can't go missing BECAUSE a hidden resister stands
+           in the blast (that would point at it), the ! is dropped whenever the cast reaches a fogged tile at all: it only
+           shows when it is guaranteed, and it says nothing about who stands in the fog. */
+        function _forecastHideFogged(plan, caster, spell, x, y) {
+            if (!caster || !plan) return;
+            const viewer = caster.player;
+            const hidden = (u) => !!u && u.id !== caster.id && isEnemyUnit(caster, u) && !_isUnitVisibleToViewer(u, viewer);
+            const gone = plan.hits.filter(h => hidden(h.unit));
+            if (gone.length) {
+                plan.hits = plan.hits.filter(h => !hidden(h.unit));
+                for (const h of gone) delete plan.byId[h.unit.id];
+                plan.moves = plan.moves.filter(m => !hidden(m.unit));
+                plan.pressHits = [];
+                for (const h of plan.hits) {
+                    if (h._pressCtx) plan.pressHits.push(...h._pressCtx);
+                    if (h._pressMiss) plan.pressHits.push({ evaded: true });
+                }
+            }
+            if (!plan.pressArmed || !state.fogOfWar || typeof computeVisibleTilesCached !== 'function') return;
+            const vis = computeVisibleTilesCached(viewer);
+            const fogged = (t) => t && isInside(t.x, t.y) && !vis.has(posKey(t.x, t.y));
+            let veto = (plan.tiles || []).some(fogged);
+            /* a hop rider (ricochet / chain / fork / split / splash) can jump into the fog off the body it hits */
+            if (!veto && spell && (spell.ricochet || spell.chain || spell.fork || spell.split || spell.splash || spell.kind === 'ricochet')) {
+                const r = 3;
+                for (let dy = -r; dy <= r && !veto; dy++) for (let dx = -r; dx <= r && !veto; dx++) veto = fogged({ x: x + dx, y: y + dy });
+            }
+            if (veto) plan._fogVeto = true;
+        }
+
         function _forecastPressResolve(plan) {
-            plan.press = (plan.pressArmed && plan.pressHits.length) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
+            plan.press = (plan.pressArmed && plan.pressHits.length && !plan._fogVeto) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
             const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT;
             for (const h of plan.hits) {
                 h.press = false; h.pressBy = null;
@@ -35664,6 +35703,7 @@
         function forecastPressOn(caster, target, spell, opts = {}) {
             const no = { press: false, by: null };
             if (!caster || !target || target.dead || !isEnemyUnit(caster, target)) return no;
+            if (!_isUnitVisibleToViewer(target, caster.player)) return no;   // THE FOG: nothing said about a body the caster's side can't see
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return no;   // Mystery Dungeon floors: no press turns
             const byOf = (pc) => { const e = pc.effSummary || {}; return (e.hasStrong && !e.hasWeak) ? 'type' : 'element'; };
             if (opts.combo) {
@@ -35770,6 +35810,7 @@
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 thrower.x = ox; thrower.y = oy; thrower.z = oz;
             }
+            _forecastHideFogged(plan, thrower, null, target.x, target.y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             return plan;
         }
@@ -39062,8 +39103,6 @@
         }
 
         const _coordPattern = /\b([A-Z])(\d{1,2})\b/g;
-        let _fogVisCache = null;
-        let _fogVisCacheFrame = -1;
         function _logFogVisible(entry) {
             if (!state.fogOfWar) return true;
             const viewer = getViewerPlayer();
@@ -39072,12 +39111,21 @@
             if (!msg) return true;
 
             const enemyUnits = (state.units || []).filter(u => u.player !== viewer);
-            let mentionsEnemy = false;
+            let mentionsEnemy = false, mentionsHidden = false;
             for (const u of enemyUnits) {
                 const name = unitDisplayName(u);
-                if (name && msg.includes(name)) { mentionsEnemy = true; break; }
+                if (name && msg.includes(name)) {
+                    mentionsEnemy = true;
+                    if (!u.dead && !_isUnitVisibleToViewer(u, viewer)) mentionsHidden = true;
+                }
             }
             if (!mentionsEnemy) return true;
+            /* 2026-10-21 PvP audit #12: a line about an enemy the viewer can't see, with none of the viewer's own units in
+               it, says nothing the screen shows (no coordinate needed to leak: "… breaks camouflage", "… is poisoned") */
+            if (mentionsHidden) {
+                const ownNamed = (state.units || []).some(u => u.player === viewer && (n => n && msg.includes(n))(unitDisplayName(u)));
+                if (!ownNamed) return false;
+            }
 
             const coords = [];
             let m;
@@ -39091,13 +39139,11 @@
             }
             if (coords.length === 0) return true;
 
-            const frame = state.round * 1000 + (state.activePlayer || 0);
-            if (_fogVisCacheFrame !== frame || !_fogVisCache) {
-                _fogVisCache = computeVisibleTiles(viewer);
-                _fogVisCacheFrame = frame;
-            }
+            /* the fog renderer's own cached set (it invalidates on every move / sight change); the old round + active-player
+               key went stale inside a round (2026-10-21 PvP audit #12) */
+            const _vis = (typeof computeVisibleTilesCached === 'function') ? computeVisibleTilesCached(viewer) : computeVisibleTiles(viewer);
             for (const c of coords) {
-                if (!_fogVisCache.has(posKey(c.x, c.y))) return false;
+                if (!_vis.has(posKey(c.x, c.y))) return false;
             }
             return true;
         }
@@ -39491,14 +39537,15 @@
            only ONE spell/ability per turn (the '1 spell/turn' gate in
            getSpellBlockReason). The ONLY way to keep acting after damage —
            or to cast a second spell — is a press: the turn's FIRST weakness
-           hit or crit hands back +2 AP at once (a full fresh action); every
+           hit hands back +2 AP at once (a full fresh action), a crit +1; every
            press AFTER that vents into the team's Entropy Gauge instead — so
            a unit can attack at most TWICE in one turn.
            Only unit.ap mutates → online-safe (host authoritative) and
            undo-safe (ap is in every pushUndoSnapshot). See PRESS_OUTCOME /
            applyPressTurn below; turn termination stays owned by
            unitFinished/endUnitIfDone. */
-        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press (weak/crit)
+        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press on a weakness
+        const PRESS_CRIT_REFUND_AP  = 1;   // AP a critical hit grants (mondo 2026-10-21, PvP audit #8: a crit is a dice roll, so +1, not +2)
         const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge (post-press swings)
         const PRESS_MAX_BONUS_AP    = 2;   // total press AP per unit per turn → ONE +2 press; extras vent to entropy
 
@@ -39508,7 +39555,7 @@
             NORMAL:    'normal',   // neutral → normal cost
             WEAK:      'weak',     // hit a weakness → refund
             CRIT:      'crit',     // landed a crit → refund
-            WEAK_CRIT: 'weakCrit', // weakness AND crit → double refund
+            WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (+1 more vents to entropy past the cap)
             NULL:      'null',     // the element was immune / absorbed → no press (vetoes the cast's), no drain
         };
 
@@ -39530,6 +39577,9 @@
                place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
                the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
             if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
+            /* …and a heal that sears the enemies beside the ally (Divine Light's healAdjacentDamage, 2026-10-21 PvP audit
+               #2): the sear judges the press; a heal with nobody beside the ally records no hit and stays a plain heal. */
+            if (spell.healAdjacentDamage > 0) return true;
             return _PRESS_SPELL_KINDS.has(spell.kind)
                 || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
                 || (spell.kind !== 'delayed' && spellDealsDamage(spell));
@@ -39919,6 +39969,9 @@
             // placement branches flag that at runtime: see _placementStruck.)
             if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
             if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
+            /* THE ZONE'S CAST HIT IS DAMAGE (2026-10-21 PvP audit #2): Outbreak's zoneCastDamage strikes every enemy in the
+               footprint inside the cast — it ends the turn and presses like any nuke (data.js spellHasDamage counts it too). */
+            if (spell.zoneCastDamage > 0) return true;
             return _PRESS_SPELL_KINDS.has(spell.kind);
         }
 
@@ -40429,8 +40482,9 @@
             }
 
             let want = 0;
-            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP * 2;
-            else if (outcome === PRESS_OUTCOME.WEAK || outcome === PRESS_OUTCOME.CRIT) want = PRESS_REFUND_AP;
+            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP + PRESS_CRIT_REFUND_AP;
+            else if (outcome === PRESS_OUTCOME.WEAK) want = PRESS_REFUND_AP;
+            else if (outcome === PRESS_OUTCOME.CRIT) want = PRESS_CRIT_REFUND_AP;
             if (want <= 0) return result; // NORMAL / RESIST → unchanged
 
             const gained = unit._pressGainedThisTurn || 0;
@@ -68885,6 +68939,9 @@
                             });
                         }
                         if (_hadFoes.length) { addLog(`✨ ${_ctSp(spell.name)} sears ${_hadFoes.length} ${_hadFoes.length === 1 ? 'enemy' : 'enemies'} beside ${_ctName(_ht)}.`); checkWin(); }
+                        /* 2026-10-21 PvP audit #2: a sear that burned somebody is a damaging cast — it ends the turn
+                           (finishAction's spendAllAP, like a contact placement); a heal with nobody beside the ally doesn't */
+                        if (_hadFoes.length) _placementStruck = true;
                     }
                     markDirty('hud');
                     renderIfDirty();
@@ -74605,6 +74662,7 @@
                 }
                 return;
             }
+            if (state._winCondition === 'draw') return;   // a draw already ended the match (winner 0 is falsy)
 
             const mpMode = getActiveMultiplayerMode();
             const wcs = mpMode.winConditions || [];
@@ -74622,9 +74680,13 @@
                         state._winCondition = 'wipeout';
                         state._ffaWinnerUnitId = alive[0].id;
                     } else if (alive.length === 0) {
-
-                        state.winner = 1;
-                        state._winCondition = 'wipeout';
+                        /* 2026-10-21 PvP audit #14: nobody left standing is a draw, not a P1 win */
+                        state.winner = 0;
+                        state._winCondition = 'draw';
+                        state._winLogged = true;
+                        addLog('Nobody is left standing — the match ends in a draw.');
+                        setTimeout(() => finalizeMatch(), 0);
+                        return;
                     }
                 } else {
                     // 🎭 A possessed body still counts for its HOME team (wave B):
@@ -74703,35 +74765,39 @@
                 return;
             }
 
+            let _ffaTie = false;
             if (mpMode.isFFA) {
                 let bestUnit = null;
                 let bestKills = -1;
+                let tied = false;
                 for (const u of state.units) {
                     const kills = u._matchKills || 0;
                     if (kills > bestKills) {
                         bestKills = kills;
                         bestUnit = u;
-                    }
+                        tied = false;
+                    } else if (kills === bestKills) tied = true;
                 }
-                if (bestUnit) {
+                /* 2026-10-21 PvP audit #14: a tie on kills no longer goes to whoever sits first in state.units (P1's
+                   units) — it takes the mode's own tie rule below (Sudden Death, else a draw) like a team tie */
+                if (bestUnit && tied) bestUnit = null;
+                if (!bestUnit) _ffaTie = true;   // straight to the tie rule (the team scores below mean nothing in FFA)
+                else {
                     state.winner = bestUnit.player;
                     state._winCondition = 'most_kills';
                     state._ffaWinnerUnitId = bestUnit.id;
                     addLog(`${_ctName(bestUnit)} wins with ${bestKills} kills!`);
-                } else {
-                    state.winner = 1;
-                    state._winCondition = 'most_kills';
+                    return;
                 }
-                return;
             }
 
             const scores1 = _getModeScore(1, mpMode);
             const scores2 = _getModeScore(2, mpMode);
 
-            if (scores1 > scores2) {
+            if (!_ffaTie && scores1 > scores2) {
                 state.winner = 1;
                 state._winCondition = mpMode.scoringType === 'kills' ? 'most_kills' : mpMode.scoringType === 'ctf' ? 'most_captures' : 'most_points';
-            } else if (scores2 > scores1) {
+            } else if (!_ffaTie && scores2 > scores1) {
                 state.winner = 2;
                 state._winCondition = mpMode.scoringType === 'kills' ? 'most_kills' : mpMode.scoringType === 'ctf' ? 'most_captures' : 'most_points';
             } else if (mpMode.suddenDeath) {
@@ -74748,6 +74814,9 @@
                 state._winCondition = 'draw';
                 state._winLogged = true;
                 addLog('⏱ Time\'s up! The match ends in a draw.');
+                /* 2026-10-21 PvP audit #11: winner 0 is falsy, so checkWin / tickMatchClock never finalized a draw and the
+                   match played on, re-logging it every round — the draw ends the match itself */
+                setTimeout(() => finalizeMatch(), 0);
             }
         }
 
@@ -74848,6 +74917,7 @@
         // Keep this outside synchronized state: each viewer owns its connection.
         const _shotClockPauseReasons = new Set();
         let _shotClockActivation = 0, _shotClockExpiredActivation = null;
+        const SHOT_CLOCK_HOST_GRACE_SEC = 8;   // the host's backstop on a remote turn (_shotClockExpired)
         function _applyShotClockPause() {
             if (_shotClockPauseReasons.size && state.shotClock && state.shotClock.active && state.shotClock.pausedAt == null) {
                 state.shotClock.pausedAt = Date.now();
@@ -74905,8 +74975,18 @@
                turns. (The old check compared against CTRL.HUMAN, a constant
                that doesn't exist, so the clock could never fire at all.) */
             const ctrl = state.controllers[unit.player];
-            if (ctrl !== CTRL.LOCAL || !isOnlineMatch()) {
+            /* THE HOST'S BACKSTOP (2026-10-21 PvP audit #6): the guest's own browser ends the guest's turn, but a tab the
+               browser has throttled in the background (or a tampered client) never does. The host — whose clock is the
+               authority — ends a REMOTE unit's turn itself once the clock is SHOT_CLOCK_HOST_GRACE_SEC past the limit,
+               so the guest's own end-turn always gets there first when it is alive. */
+            const _net = (typeof window !== 'undefined') ? window._NET : null;
+            const _hostBackstop = ctrl === CTRL.REMOTE && isOnlineMatch() && !!_net && _net.role === 'host';
+            if ((ctrl !== CTRL.LOCAL && !_hostBackstop) || !isOnlineMatch()) {
                 return; // A mirror/remote turn must not disarm the host's clock.
+            }
+            if (_hostBackstop) {
+                const _over = (Date.now() - state.shotClock.startedAt) / 1000 - state.shotClock.limitSec;
+                if (_over < SHOT_CLOCK_HOST_GRACE_SEC || state._actionExecuting) return;   // the guest's action in flight finishes first
             }
             if (state.shotClock.activationId != null && _shotClockExpiredActivation === state.shotClock.activationId) return;
             _shotClockExpiredActivation = state.shotClock.activationId;
@@ -74924,6 +75004,19 @@
             state.actionMode = null;
             state.actionMenuView = 'root';
             state.pendingTarget = null;
+            if (_hostBackstop) {
+                // run it the way a relayed guest END TURN runs (online.js _executeRemoteAction), then sync the guest
+                const _savedRA = state._remoteAction;
+                state._remoteAction = true;
+                state.controllers[unit.player] = CTRL.LOCAL;
+                try { triggerEndTurn(); }
+                finally {
+                    state.controllers[unit.player] = ctrl;
+                    state._remoteAction = _savedRA;
+                }
+                if (typeof window._broadcastState === 'function') window._broadcastState();
+                return;
+            }
             triggerEndTurn();
         }
 
@@ -75015,7 +75108,7 @@
         window._ewShotClockCinematicPaused = () => _shotClockPauseReasons.has('cinematic');
 
         function tickMatchClock() {
-            if (!state.matchClock || state.matchClock.paused || state.winner) return;
+            if (!state.matchClock || state.matchClock.paused || state.winner || state._winCondition === 'draw') return;
 
             const mpMode = getActiveMultiplayerMode();
             const roundLimit = state.matchClock.roundLimit || mpMode.roundLimit || 0;

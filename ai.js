@@ -651,8 +651,8 @@
     }
 
     // ── Press Turn expectation ───────────────────────────────────────────
-    // The turn's FIRST weakness-hit or crit refunds +2 AP (one full free
-    // action); a resisted hit / whiff drains an extra AP. Detected off the
+    // The turn's FIRST weakness-hit refunds +2 AP (one full free
+    // action), a crit +1; a resisted hit / whiff drains an extra AP. Detected off the
     // type TIER (strong && !weak), matching the engine.
     function _pressTier(unit, tg, spellType) {
         const chart = (typeof TYPE_CHART !== 'undefined') ? TYPE_CHART : null;
@@ -696,7 +696,8 @@
             ? (g.getCritChance(unit) || 0) : 0;
         const landP = opts.landP != null ? opts.landP : 1;
         const refund = Math.max(tuneW(g, 'pressActionValue'), (wght(g, 'pressRefundValue_v1', 113) || 0) * 1.5);
-        const pressP = Math.min(1, landP * (tier > 0 ? 1 : critP));
+        // a crit refunds +1 AP, half a weakness's +2 (mondo 2026-10-21) — its chance counts half
+        const pressP = Math.min(1, landP * (tier > 0 ? 1 : critP * 0.5));
         let v = 0;
         if (pressP > 0) v += pressP * (alreadyPressed ? refund * 0.15 : refund);
         if (tier < 0) v -= refund * 0.55;          // resist drains an extra AP
@@ -5348,7 +5349,19 @@
         return tiles;
     }
 
+    /* THE ONE AIM RULE (2026-10-21 PvP audit #16; spellAimProblem, PR #224): a single-target pick the engine's own
+       gate would refuse (range, line of sight, sight, hidden, above) is no pick — the CPU never plans a cast doSpell
+       turns down. The kinds below re-derive range with _effRange, so the shared check closes the gap. */
+    const _AIM_CHECKED_KINDS = new Set(['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain', 'tackle']);
     function findSpellTarget(unit, spell, v) {
+        const t = _findSpellTargetRaw(unit, spell, v);
+        if (t && t !== unit && t.id != null && spell && _AIM_CHECKED_KINDS.has(spell.kind)
+            && typeof window.spellAimProblem === 'function') {
+            try { if (window.spellAimProblem(unit, spell, t.x, t.y, t.z) !== null) return null; } catch (e) {}
+        }
+        return t;
+    }
+    function _findSpellTargetRaw(unit, spell, v) {
         const g = G();
         const kind = spell.kind;
 

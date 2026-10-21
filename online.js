@@ -2377,6 +2377,16 @@
                         }
                     }
                 }
+                /* ONE OF EACH (2026-10-21 PvP audit #13): the builder blocks a team that fields a unit twice; the host
+                   re-checks the guest's sheet so a modified client can't get round it */
+                if (typeof teamDuplicateRaces === 'function') {
+                    var _dupR = teamDuplicateRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
+                    if (_dupR.length) {
+                        addLog('⚠️ Rejected opponent party config: the same unit twice (' + _dupR.join(', ') + ').');
+                        console.warn('[NET GUARD] party-config rejected — duplicate race:', _dupR);
+                        return;
+                    }
+                }
             }
             /* THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral class — whatever the guest sent */
             if (Array.isArray(data.builds)) state.partyBuilds[2] = data.builds.map(function () { return UNIT_CLASS; });
@@ -3772,6 +3782,7 @@
                         } else if (!st._actionExecuting && !st._walkAnimActive && !st.aiThinking &&
                             (typeof window._ewRecoverySnapshotReady !== 'function' || window._ewRecoverySnapshotReady())) {
                             var snapshot = _serializeState();
+                            _guestTrapFilter(snapshot);
                             _packClock(snapshot);
                             NET._recoverySnapshot = { id: id, matchId: NET.matchId,
                                 state: JSON.parse(_ewSafeStringify(snapshot)), checksum: _ewStateChecksum(st) };
@@ -3880,6 +3891,9 @@
 
                 NET.socket.on('room-full', function(data) {
                     NET.matchId = data.matchId;
+                    /* a FAILED recovery left _recovering latched (state-sync is ignored while it is set); a fresh room
+                       clears it (2026-10-21 PvP audit #15). A live recovery (_recoveryFailed false) is untouched. */
+                    if (NET._recoveryFailed) NET._recovering = false;
                     NET._recoveryFailed = false;
                     window._ewResetOnlineMatchFlags(false);   // THE NEXT ROOM: a fresh room starts from clean match flags
 
@@ -5540,6 +5554,14 @@
                The full state goes out again on a new phase, round, match or result, every LEAN_FULL_MS (a lost packet heals
                itself), and after a match generation / recovery (NET._leanSent = null). Nothing changes on the guest side. */
             var LEAN_MIN = 1024, LEAN_FULL_MS = 3000;
+            function _guestTrapFilter(s) {
+                if (!s || !Array.isArray(s.traps) || !s.traps.length) return;
+                var gp = NET.myPlayer === 1 ? 2 : 1;
+                s.traps = s.traps.filter(function(t) {
+                    return t && (t.owner === gp || (t._revealedTo && t._revealedTo[gp]));
+                });
+            }
+
             function _leanTrim(s) {
                 var st = window._gameState;
                 var gen = [NET.matchId, st && st.phase, st && st.matchNumber, st && st.round, st && st.winner].join('|');
@@ -5594,6 +5616,12 @@
                     var s = _serializeState();
                     if (!s) return;
                     _leanTrim(s);
+                    /* HIDDEN TRAPS STAY ON THE HOST (2026-10-21, PvP audit #3): the host's own unrevealed traps
+                       were sent to the guest, where only the renderer hid them (devtools showed them, and the
+                       guest's move preview stopped on them). The host alone springs traps, so the guest only
+                       gets its own traps plus the ones a Dowsing Rod revealed to it. A fresh array: s.traps
+                       is the host's live list by reference. */
+                    _guestTrapFilter(s);
                     var json = _ewSafeStringify(s);
                     if (json === NET.lastSyncJson) return;
                     NET.lastSyncJson = json;
