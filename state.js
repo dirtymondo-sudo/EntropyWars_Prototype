@@ -770,6 +770,10 @@
                     case 'hitEffect':
                         _realPlayHitEffect(evt.x, evt.y, evt.opts);
                         break;
+                    case 'forceField':
+                        // THE FORCE FIELD: a buffered slam into the board's outer edge
+                        if (typeof playForceFieldFx === 'function') playForceFieldFx(evt.x, evt.y, evt.dx, evt.dy, evt.z);
+                        break;
                     case 'hitstop':
                         _realTriggerHitstop(evt.durationMs);
                         break;
@@ -793,7 +797,7 @@
         // fire. First event with a usable position wins.
         function _reGroupFocal(group) {
             for (const evt of group.events) {
-                if ((evt.type === 'floatingText' || evt.type === 'hitEffect')
+                if ((evt.type === 'floatingText' || evt.type === 'hitEffect' || evt.type === 'forceField')
                     && Number.isFinite(evt.x) && Number.isFinite(evt.y)) {
                     return { x: evt.x, y: evt.y };
                 }

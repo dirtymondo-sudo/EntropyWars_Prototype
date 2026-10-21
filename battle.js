@@ -4952,9 +4952,12 @@
         // into a 'collision-fx' relay so the guest sees the hit land.
         // opts: { delayMs, muteSfx, muteText } (guest replays pass the mutes —
         // the sfx/floating-text relays already carry those channels).
+        // kind 'edge' = the board's outer edge: (x, y) is the body's own tile and
+        // opts { dx, dy, z } the face(s) it met — THE FORCE FIELD lights there.
         function playCollisionImpactFx(x, y, kind, opts = {}) {
             const run = () => {
                 if (state.phase !== 'battle' || _skipVisuals()) return;
+                if (kind === 'edge') playForceFieldFx(x, y, opts.dx || 0, opts.dy || 0, opts.z);
                 if (!opts.muteSfx && typeof playSfx === 'function') {
                     playSfx(kind === 'unit' ? 'basicAttack' : 'physicalAbility');
                 }
@@ -4966,6 +4969,20 @@
             };
             const d = opts.delayMs || 0;
             if (d > 0) window.setTimeout(run, d); else run();
+        }
+
+        // THE FORCE FIELD (2026-10-21): the barrier on the board's outer edge, 3D only.
+        // Buffered round-end slides replay it with their group, like the hit spark.
+        function playForceFieldFx(x, y, dx, dy, z) {
+            if (!dx && !dy) return;
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'forceField', x, y, dx, dy, z });
+                return;
+            }
+            if (state.animationsDisabled || _skipVisuals()) return;
+            if (window.ThreeAnim && window.ThreeAnim.isActive() && typeof window.ThreeAnim.forceField === 'function') {
+                window.ThreeAnim.forceField(x, y, dx, dy, z);
+            }
         }
 
         function _slideSlamDamage(mover, dmg, info, opts) {
@@ -5175,7 +5192,12 @@
                 const slamDmg = cfg.wallSlamDmg + cfg.wallSlamPerTile * Math.max(0, m - 1);
                 const atMs = baseDelay + res.steps.length * perStepMs;
                 if (!simulate) {
-                    impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
+                    /* THE FORCE FIELD: the board's outer edge is a barrier — its beat plays on the body's own tile with
+                       the face(s) it met (only the axes that leave the board), so the 3D draws the field there */
+                    if (info.kind === 'edge') {
+                        impacts.push({ x: cx, y: cy, atMs, kind: 'edge', z: cz,
+                            dx: isInside(cx + vx, cy) ? 0 : vx, dy: isInside(cx, cy + vy) ? 0 : vy });
+                    } else impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
                     _slideSlamDamage(target, slamDmg, info, opts);
                     res.slamDamage += slamDmg;
                 } else {
@@ -5266,7 +5288,8 @@
                     }
                 }
                 for (const imp of impacts) {
-                    playCollisionImpactFx(imp.x, imp.y, imp.kind, { delayMs: imp.atMs });
+                    playCollisionImpactFx(imp.x, imp.y, imp.kind, imp.kind === 'edge'
+                        ? { delayMs: imp.atMs, dx: imp.dx, dy: imp.dy, z: imp.z } : { delayMs: imp.atMs });
                 }
             }
             return res;
