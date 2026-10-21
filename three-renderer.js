@@ -2590,6 +2590,7 @@ const ThreeRenderer = (function () {
 
     var deployableMeshes = new Map();
     var _lastDeployableSerial = '';
+    var _graveSeen = new Set();   // THE GRAVES HOLD STILL (2026-10-21): enemy remains this viewer has seen ('<viewer>|<id>|<x>,<y>')
 
     var _nexusWallGroup = null;
     var _lastNexusSerial = '';
@@ -8512,6 +8513,7 @@ const ThreeRenderer = (function () {
            Hashing them here makes graves appear on death and disappear on
            revive/respawn with zero extra plumbing. */
         if (state.units) {
+            var _gsVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (var gi = 0; gi < state.units.length; gi++) {
                 var gu = state.units[gi];
                 /* THE DEATH CLOSE-UP (2026-10-17): a rigged body's knock-down outlives `_dying` (800 ms vs the 1600 ms clip),
@@ -8519,6 +8521,9 @@ const ThreeRenderer = (function () {
                 if (gu && gu.dead && !gu._dying && !gu._corpseConsumed && !_deathTweens.has(gu.id)) {
                     h = _hashInt(h, 6); h = _hashInt(h, gu.x); h = _hashInt(h, gu.y);
                     h = _hashVal(h, gu.player); h = _hashStr(h, String(gu.id));
+                    /* THE GRAVES HOLD STILL (2026-10-21): the tile it is built on (_dyingX) and the look (a hot-seat
+                       viewer swap turns a grave into bones) */
+                    h = _hashVal(h, gu._dyingX); h = _hashVal(h, gu._dyingY); h = _hashVal(h, gu.player === _gsVp);
                 }
             }
         }
@@ -8785,7 +8790,9 @@ const ThreeRenderer = (function () {
         var url = _BONE_GLB_URLS[key];
         var e = _miscModelCache[url];
         if (!e || !e.root || !e.root._ew_bbox) {
-            try { _loadMiscModel(url, true, function () {}); } catch (e2) {}
+            /* THE GRAVES HOLD STILL (2026-10-21): the landing rebuilds the piles — _objectsDirty alone never rebuilt the
+               deployables, so a pile built before its bones streamed in stayed an empty marker until something else changed */
+            try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; }); } catch (e2) {}
             return null;
         }
         var root = e.root, bb = root._ew_bbox;
@@ -8828,6 +8835,9 @@ const ThreeRenderer = (function () {
     function _buildBonePile3D(x, y, seed) {
         var tsG = CONFIG.tileSize || BASE_TILE;
         var rngG = _graveRng(seed);
+        /* ask for every bone file up front — a skull already cached (the unholy wastes' horizon skull) used to skip the
+           femur / ulna requests, and the pile never filled */
+        for (var bk in _BONE_GLB_URLS) { if (!(_miscModelCache[_BONE_GLB_URLS[bk]] || {}).root) _boneGlbClone(bk, 1); }
         var skullG = _boneGlbClone('skull', tsG * 0.30);
         var femurOk = !!(_miscModelCache[_BONE_GLB_URLS.femur] || {}).root;
         var ulnaOk = !!(_miscModelCache[_BONE_GLB_URLS.ulna] || {}).root;
@@ -10077,6 +10087,7 @@ const ThreeRenderer = (function () {
            dead — placed on each corpse's death tile. Suppressed while the death
            animation is still playing so the grave doesn't pop in under the
            collapsing sprite. */
+        var _graveLive = new Set();
         if (state.units && !window.EW_DISABLE_GRAVESTONES) {
             var _gvViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (var ug = 0; ug < state.units.length; ug++) {
@@ -10092,12 +10103,20 @@ const ThreeRenderer = (function () {
                     : _buildBonePile3D(gx, gy, gseed);
                 if (gmesh) {
                     gmesh._ew_depX = gx; gmesh._ew_depY = gy;
+                    /* THE GRAVES HOLD STILL (2026-10-21): your own fallen are always shown (like your own deployables);
+                       enemy remains stay once you have seen them (_graveSeen) — gated by the live vision they blinked out
+                       and back every time a unit moved or the turn passed */
+                    if (du.player === _gvViewer) gmesh._ew_depOwner = du.player;
+                    else { gmesh._ew_graveKey = _gvViewer + '|' + du.id + '|' + gx + ',' + gy; _graveLive.add(gmesh._ew_graveKey); }
                     var gkey = 'grave_' + du.id;
                     objectGroup.add(gmesh);
                     deployableMeshes.set(gkey, gmesh);
                 }
             }
         }
+
+        /* a grave that is gone (respawn, raised, a new match) is forgotten */
+        _graveSeen.forEach(function (k) { if (!_graveLive.has(k)) _graveSeen.delete(k); });
 
         if (ThreePost && ThreePost.rebuildWardLights) {
             ThreePost.rebuildWardLights(state.wards || [], tileTopY, CONFIG.tileSize || BASE_TILE);
@@ -20768,6 +20787,11 @@ const ThreeRenderer = (function () {
                 return;
             }
             var dx = mesh._ew_depX, dy = mesh._ew_depY;
+            if (mesh._ew_graveKey) {
+                if (visible.has(dx + ',' + dy)) _graveSeen.add(mesh._ew_graveKey);
+                mesh.visible = _graveSeen.has(mesh._ew_graveKey);
+                return;
+            }
             if (dx !== undefined && dy !== undefined) {
                 mesh.visible = visible.has(dx + ',' + dy);
             }
