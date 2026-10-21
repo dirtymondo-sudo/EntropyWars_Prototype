@@ -5763,6 +5763,15 @@
                     at.push(x == null ? [u.id, u.x, u.y, u.z ?? 0] : [u.id, x, y, z ?? 0]);
                 };
                 var copy = function() { if (out === data) out = Object.assign({}, data); return out; };
+                /* a two-ended move (jump, throw, fling, clip dash) with one end in the guest's fog: the hidden end
+                   becomes the seen one, so its tile never rides along (the move plays in place there) */
+                var pinEnds = function(fx, fy, fz, tx2, ty2, tz) {
+                    var src = out === data ? data : out, fv = tv(src[fx], src[fy]), tvv = tv(src[tx2], src[ty2]);
+                    if (fv === tvv) return;
+                    var o = copy();
+                    if (fv) { o[tx2] = o[fx]; o[ty2] = o[fy]; if (tz) o[tz] = o[fz]; }
+                    else { o[fx] = o[tx2]; o[fy] = o[ty2]; if (fz) o[fz] = o[tz]; }
+                };
                 var u, t, i;
                 try {
                     switch (data.type) {
@@ -5785,15 +5794,21 @@
                             u = _gvUnit(data.unitId);
                             if (!enemy(u)) break;
                             if (concealed(u) || !(tv(data.fromX, data.fromY) || tv(data.toX, data.toY))) return null;
-                            if (tv(data.fromX, data.fromY)) addAt(u, data.fromX, data.fromY, data.fromZ);
-                            else addAt(u, data.toX, data.toY, data.toZ);
+                            pinEnds('fromX', 'fromY', 'fromZ', 'toX', 'toY', 'toZ');
+                            addAt(u, out.fromX, out.fromY, out.fromZ);
                             break;
                         case 'displace-anim': {
+                            /* trimmed to the seen stretch like a walk: a hidden start or end tile never rides along */
                             u = _gvUnit(data.unitId);
                             if (!enemy(u)) break;
-                            var dShow = tv(data.fromX, data.fromY);
-                            for (i = 0; !dShow && data.steps && i < data.steps.length; i++) dShow = tv(data.steps[i].x, data.steps[i].y);
-                            if (!dShow) return null;
+                            var dFull = [{ x: data.fromX, y: data.fromY }].concat(data.steps || []);
+                            var dFirst = -1, dLast = -1;
+                            for (i = 0; i < dFull.length; i++) if (tv(dFull[i].x, dFull[i].y)) { if (dFirst < 0) dFirst = i; dLast = i; }
+                            if (dLast < 1) return null;
+                            if (dFirst > 0 || dLast < dFull.length - 1) {
+                                copy(); out.fromX = Math.round(dFull[dFirst].x); out.fromY = Math.round(dFull[dFirst].y);
+                                out.steps = dFull.slice(dFirst + 1, dLast + 1);
+                            }
                             break;
                         }
                         case 'forced-fall-anim':
@@ -5810,6 +5825,10 @@
                             u = _gvUnit(data.unitId);
                             if (!enemy(u) || !data.opts) break;
                             if (!(tv(data.opts.fromX, data.opts.fromY) || tv(data.tx, data.ty))) return null;
+                            if (!tv(data.opts.fromX, data.opts.fromY)) {
+                                copy(); out.opts = Object.assign({}, data.opts, { fromX: Math.round(data.tx), fromY: Math.round(data.ty) });
+                                addAt(u, out.opts.fromX, out.opts.fromY, data.opts.toZ);
+                            } else if (!tv(data.tx, data.ty)) { copy(); out.tx = data.opts.fromX; out.ty = data.opts.fromY; }
                             addAt(u); addAt(_gvUnit(data.opts.targetId));
                             break;
                         case 'basic-shot':
@@ -5832,7 +5851,9 @@
                         case 'sky-throw-fx':
                         case 'vortex-fling-fx':
                             if (!(tv(data.fromX, data.fromY) || tv(data.toX, data.toY))) return null;
-                            addAt(_gvUnit(data.targetId));
+                            t = _gvUnit(data.targetId);
+                            if (enemy(t)) pinEnds('fromX', 'fromY', null, 'toX', 'toY', null);
+                            addAt(t);
                             break;
                         case 'dash-cam-follow':
                             u = _gvUnit(data.casterId);
