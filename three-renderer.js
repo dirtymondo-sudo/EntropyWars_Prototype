@@ -242,7 +242,7 @@ const ThreeRenderer = (function () {
         crystal:'ent_violet', purple_bog:'ent_amethyst', obsidian:'ent_voidviolet',
         nexus:'ent_violet', nexus_cave:'ent_amethyst', nexus_sky:'ent_orchid',
         /* hazard / burnt → ember ramp */
-        scorched:'ent_maroon', lava:'ent_ember', poison_seed:'ent_blood',
+        scorched:'ent_maroon', lava:'ent_ember', poison_seed:'ent_blood', blood:'ent_blood',
         /* earth / wood / sand / sacred → gilded ramp */
         dirt:'ent_clay', desert:'ent_sand', wasteland:'ent_clay', sanctuary:'ent_sand',
         wood:'ent_bark', wood_planks:'ent_bark', bridge:'ent_bark', road:'ent_ash',
@@ -2502,7 +2502,9 @@ const ThreeRenderer = (function () {
         /* 2026-07-14: the poison bogs render as PURPLE WATER and the black
            ooze / oil family as BLACK WATER — full animated fluid pipeline
            (waves, caustics, glints, shoreline inset), tinted per key below. */
-        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true
+        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true,
+        /* 🩸 2026-10-21: the Blood Pool (Blood Rain) — dark red water */
+        blood: true
     };
 
     /* Tinted-water styles: these liquids reuse the WATER textures (base map +
@@ -2525,7 +2527,11 @@ const ThreeRenderer = (function () {
                       glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
         oil:        { base: 'water', tint: 0x121216,
                       caustDiff: 'vec3(0.09, 0.10, 0.12)', caustEmis: 'vec3(0.05, 0.06, 0.08)',
-                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' }
+                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
+        /* 🩸 the Blood Pool: deep red water, dark red caustics, a wet red glint */
+        blood:      { base: 'water', tint: 0x8a0c14,
+                      caustDiff: 'vec3(0.62, 0.08, 0.10)', caustEmis: 'vec3(0.34, 0.03, 0.05)',
+                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' }
     };
 
     /* Water surfaces sit slightly below the top of their block so every
@@ -2555,7 +2561,8 @@ const ThreeRenderer = (function () {
         poison_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
-        oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 }
+        oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
+        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 }
     };
 
     var objectMeshes = new Map();
@@ -4639,12 +4646,12 @@ const ThreeRenderer = (function () {
         _waterfallTexList = [];
         if (typeof getLiquidFlowAt === 'function') {
             var _flowGroup = new THREE.Group();
-            var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
             /* mirrors of map.js liquidFamilyOf / _LIQUID_SPREADS — keep in sync */
             var _FLOW_FAM_OF = { water: 'water', deep_water: 'water', poison: 'poison',
                                  poison_bog: 'poison', purple_bog: 'poison',
-                                 swamp: 'oil', oil: 'oil', lava: 'lava' };
-            var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2 };
+                                 swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
+            var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2, blood: 3 };
             var _noRaycast = function() {};
             /* THE FILM FLOOR (2026-10-15, mondo: "there is flickering with the water tiles from spells now"): a level overflow is
                a thin film, and the bevelled tile top under it is not flat — its organic swell (BEVEL.amp × tile, ~7 px) poked
@@ -68539,7 +68546,7 @@ const ThreeRenderer = (function () {
            and burned the tiles it ran onto (map.js getLiquidFlowAt). The cells a SPELL's liquid (a spring) spreads onto
            now wear the same liquid sheet; a room's own settled pools add nothing. Off: window.EW_NO_FIELD_RUNOFF. */
         if (typeof getLiquidFlowAt === 'function' && !(typeof window !== 'undefined' && window.EW_NO_FIELD_RUNOFF)) {
-            var _rfKey = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            var _rfKey = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
             for (var ry = 0; ry < G.H; ry++) for (var rx = 0; rx < G.W; rx++) {
                 var rfl = getLiquidFlowAt(rx, ry); if (!rfl || !rfl.sp) continue;
                 var rk = _rfKey[rfl.t]; if (!rk) continue;
