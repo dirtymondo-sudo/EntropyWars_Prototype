@@ -2861,6 +2861,9 @@ const ThreeRenderer = (function () {
     var FLOAT_MIN_HERO_H = 0.065;
     var FLOAT_MIN_TAG_H = 0.027;
     var FLOAT_MAX_HERO_H = 0.15;
+    // a stock damage number's ink height at scale 1 (_buildFloatTextCanvas: 47 px × 0.95 + its outline both sides):
+    // THE BUNCH measures its spots and the drift in number heights, so they keep their size next to the pops at any zoom
+    var FLOAT_HERO_INK = 47 * 0.95 + 8;
     // Word pops that are the whole moment on their own (no number to serve)
     // keep their full size.
     var _FLOAT_SOLO_KINDS = { levelup: 1, laststd: 1, nexus: 1, achieve: 1 };
@@ -2925,8 +2928,9 @@ const ThreeRenderer = (function () {
        (_floatGroup). battle.js's hit read reads elem / stamp / glyph / killGlow / swell from the same object.
        2026-10-20 THE GRADIENT: gradWords (words wear one too), gradType (linear | radial | conic), gradAng (°, 180 = top
        to bottom), gradLen (%), gradOff (linear slide, %), gradX / gradY (radial + conic centre, %), stops [{ at, sh, col }],
-       bands, rep, gradRev (_floatStops / _floatGradient). THE LAYOUT + motion: lay (stack | side | rows | scatter), row,
-       gapX (px), scat (% of the screen height), path (rise | steady | hop | bounce), drift ×, tilt (°). */
+       bands, rep, gradRev (_floatStops / _floatGradient). THE LAYOUT + motion: lay (stack | side | scatter; an old
+       'rows' = side), row, gapX (px), bunch ×, path (rise | steady | hop | bounce), drift × (number heights), tilt (°).
+       2026-10-21 EACH KIND: kinds { kind: { font, weight, size × } } (a word or number of that kind in its own font). */
     var _FLOAT_LOOK0 = {};
     function _floatLook() { return (typeof window !== 'undefined' && window._ewFloatLook) || _FLOAT_LOOK0; }
     function _floatNum(v, d, lo, hi) { v = +v; if (!isFinite(v)) return d; return Math.max(lo, Math.min(hi, v)); }
@@ -17865,7 +17869,11 @@ const ThreeRenderer = (function () {
        a CROP of a whole screen the size of the game here (setViewOffset), shrunk to fit, so the number, the plate and
        the body keep the sizes they have to each other in a battle on this screen. A look change redraws the pops on
        screen at once (or fires the last beat again). One preview at a time; it stops itself when its host leaves the
-       page. opts: { zoom, unit: { race, gender, name, types, level, appearance }, loop } (api.set takes the same). */
+       page. opts: { zoom, unit: { race, gender, name, types, level, appearance }, loop, beat } (api.set takes the same).
+       2026-10-21 (mondo: "the animation loop at the top just cycles through all of those options when i want to be able
+       to click on one of the options and have it loop that one"): beat = the one the loop plays over and over ('all' or
+       none = each in turn, FLOAT_PREV_ORDER); a click (api.fire) picks it and plays it at once; with Loop off it plays
+       once. 'k:<kind>' = that kind's own line (_floatPrevBeat). */
     var _floatPrev = null;
     var FLOAT_PREV_BEATS = {
         hit: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1000]],
@@ -17876,9 +17884,26 @@ const ThreeRenderer = (function () {
         mp: [['+20 MP', 'mp', null, 0, 1000], ['+35 XP', 'xp', null, 120, 1000]],
         combo: [['-46', 'damage', { _hitPct: 6, _hitType: 'lightning', _hitW: 0 }], ['-52', 'combo', null, 280], ['-61', 'damage', { _hitPct: 8, _hitType: 'lightning', _hitW: 0 }, 560],
             ['159 TOTAL!', 'total', null, 1760, 1500]],
-        ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]]
+        ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]],
+        /* a crowd: one hit with every word at once, then two more hits on top (how a layout handles a pile-up) */
+        busy: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1100],
+            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB!', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
+            ['-52', 'combo', null, 320], ['-61', 'damage', { _hitPct: 8, _hitType: 'fire', _hitW: 0 }, 640]]
     };
-    var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko'];
+    var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko', 'busy'];
+    /* EACH KIND (UI Maker > Floating text > Each kind of pop): a line the game really pops for each kind, shown on its own
+       (a word after a number, so it is seen next to one) when that kind is picked: beat 'k:<kind>' */
+    var FLOAT_KIND_SAMPLE = { damage: '-128', critdmg: '-246', combo: '-52', total: '159 TOTAL!', heal: '+64', mp: '+20 MP', revive: '+1 AP!',
+        crit: 'BACKSTAB!', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED!', overkill: 'OVERKILL!', dodge: 'DODGE!',
+        'protect-block': '🛡 PROTECTED!', buff: '⏪ ENCORE', debuff: 'GROUNDED!', status: 'Blocked!', neutral: '⬇ LAND', xp: '+35 XP',
+        levelup: '⬆ LEVEL 12!', pickup: '+1 KEY', nexus: '⬡ CAPTURED!' };
+    function _floatPrevBeat(name) {
+        if (String(name).indexOf('k:') !== 0) return FLOAT_PREV_BEATS[name] || null;
+        var kind = name.slice(2), txt = FLOAT_KIND_SAMPLE[kind];
+        if (!txt) return null;
+        var solo = _floatIsNumber(txt, kind) || _FLOAT_SOLO_KINDS[kind];
+        return solo ? [[txt, kind, null, 0, 1200]] : [['-128', 'damage'], [txt, kind, null, 0, 1200]];
+    }
     function floatPreview(host, opts) {
         if (_floatPrev) { if (_floatPrev.host === host) { _floatPrev.set(opts || {}); return _floatPrev; } _floatPrev.stop(); }
         if (!host || typeof THREE === 'undefined' || !THREE.WebGLRenderer) return null;
@@ -17914,9 +17939,9 @@ const ThreeRenderer = (function () {
         var U = { race: 'fortune teller', gender: 'male', name: '', types: ['human'], level: 100 };
         var zoomMode = 'turn', looping = opts.loop !== false;
         var modelH = 1, mixer = null, rig = null, rigRoot = null, ownMats = [], ownTex = [], spr = null, utok = 0;
-        var plate = null, ctx = { tweens: [], stagger: {}, now: function () { return performance.now(); }, live: [], lastReal: 0 };
+        var plate = null, ctx = { tweens: [], stagger: {}, now: function () { return performance.now(); }, live: [], lastReal: 0, keepIn: true };
         var raf = 0, dead = false, lastKey = '', lastT = 0, crop = { w: 1, h: 1, x: 0, y: 0, fullH: 1 };
-        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, refireAt = 0;
+        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, refireAt = 0, beatSel = opts.beat || 'all';
         var _pv = new THREE.Vector3();
 
         function clearUnit() {
@@ -18067,10 +18092,22 @@ const ThreeRenderer = (function () {
             tw.src = p; tw.jx = jx; tw.jz = jz;
         }
         function fireBeat(name) {
-            var B = FLOAT_PREV_BEATS[name]; if (!B) return;
+            var B = _floatPrevBeat(name); if (!B) return;
             lastBeat = name;
             var t0 = performance.now();
             B.forEach(function (b) { queue.push({ at: t0 + (b[3] || 0), text: b[0], kind: b[1], opts: b[2] || null, ms: b[4] || 0 }); });
+        }
+        /* the wait before the next beat: the beat's last pop has run its whole life (the look's Life ×, a number's hold),
+           so a beat never plays over the one before it */
+        function beatGap(name) {
+            var B = _floatPrevBeat(name) || [], L = _floatLook(), life = _floatNum(L.life, 1, 0.3, 5), end = 0;
+            B.forEach(function (b) { end = Math.max(end, (b[3] || 0) + popMs({ ms: b[4], opts: b[2] }, L) * FLOAT_HERO_HOLD * life); });
+            return Math.max(2300, end + 400);
+        }
+        /* the pops on screen gone at once (a beat picked plays on its own) */
+        function clearPops() {
+            queue.length = 0;
+            ctx.tweens.forEach(_removeFloatTween); ctx.tweens.length = 0;
         }
         /* a look change: every pop on screen is made again in the new look, keeping its place in its life */
         function relook() {
@@ -18082,7 +18119,7 @@ const ThreeRenderer = (function () {
                 var el = makePop(p, L);
                 el.style.left = tw.el.style.left; el.style.top = tw.el.style.top; el.style.transform = tw.el.style.transform; el.style.opacity = tw.el.style.opacity;
                 stage.replaceChild(el, tw.el);
-                tw.el = el; tw.boxW = 0; tw.boxH = 0;
+                tw.el = el; tw.boxW = 0; tw.boxH = 0; tw.slot = null;   // the bunch lays it out again in the new look
                 tw.hero = !!el._ewHero;
                 tw.riseY = FLOAT_RISE_PX * _floatNum(L.rise, 1, -1, 5);
                 tw.durationMs = popMs(p, L) * (tw.hero && p.kind !== 'pickup' ? FLOAT_HERO_HOLD : 1) * _floatNum(L.life, 1, 0.3, 5);
@@ -18098,10 +18135,19 @@ const ThreeRenderer = (function () {
                 o = o || {};
                 if (o.zoom && o.zoom !== zoomMode) { zoomMode = o.zoom; lastKey = ''; }
                 if (o.loop != null) looping = !!o.loop;
+                if (o.beat) beatSel = o.beat;
                 if (o.unit && (o.unit.race !== U.race || o.unit.gender !== U.gender || o.unit.name !== U.name)) setUnit(o.unit);
             },
-            fire: function (name) { fireBeat(name); beatAt = performance.now() + 2600; beatIdx = Math.max(0, FLOAT_PREV_ORDER.indexOf(name)) + 1; },
-            loop: function (on) { looping = on !== false; },
+            /* a beat picked: it plays now, then the loop plays it over and over ('all' = each in turn, from the top) */
+            fire: function (name) {
+                beatSel = name || 'all';
+                var now = performance.now();
+                clearPops();
+                if (beatSel === 'all') { beatIdx = 0; if (looping) beatAt = now; else fireBeat(FLOAT_PREV_ORDER[beatIdx++]); return; }
+                fireBeat(beatSel);
+                beatAt = now + beatGap(beatSel);
+            },
+            loop: function (on) { looping = on !== false; if (looping) beatAt = Math.min(beatAt, performance.now() + 300); },
             unit: function () { return U; }
         };
         var loop = function () {
@@ -18123,12 +18169,12 @@ const ThreeRenderer = (function () {
             if (v !== seenV) {
                 var first = seenV < 0;
                 seenV = v;
-                if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; }
+                if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; beatAt = Math.max(beatAt, now + beatGap(lastBeat)); }
             }
             if (looping && now >= beatAt) {
-                fireBeat(FLOAT_PREV_ORDER[beatIdx % FLOAT_PREV_ORDER.length]);
-                beatIdx++;
-                beatAt = now + (lastBeat === 'combo' ? 3400 : 2300);
+                var nb = beatSel && beatSel !== 'all' ? beatSel : FLOAT_PREV_ORDER[beatIdx++ % FLOAT_PREV_ORDER.length];
+                fireBeat(nb);
+                beatAt = now + beatGap(nb);
             }
             for (var qi = queue.length - 1; qi >= 0; qi--) if (queue[qi].at <= now) { var q = queue.splice(qi, 1)[0]; spawn(q); }
             placePlate(FH);
@@ -24125,8 +24171,10 @@ const ThreeRenderer = (function () {
         /* Cinzel is BANNED for words everywhere else in the game (2026-08-10)
            but this is the damage-number face — numbers are exactly where its
            carved-capital look works. Keep it HERE and nowhere word-shaped. */
-        var fontFamily = (isNumber ? L.numFont : L.wordFont) || "'Cinzel', Georgia, 'Times New Roman', serif";
-        var fontWeight = String((isNumber ? L.numWeight : L.wordWeight) || (isNumber ? '900' : '700'));
+        // EACH KIND: this kind's own font / weight (a word or number of that kind), else the numbers' or the words'
+        var KL = (L.kinds && L.kinds[kind]) || null;
+        var fontFamily = (KL && KL.font) || (isNumber ? L.numFont : L.wordFont) || "'Cinzel', Georgia, 'Times New Roman', serif";
+        var fontWeight = String((KL && KL.weight) || (isNumber ? L.numWeight : L.wordWeight) || (isNumber ? '900' : '700'));
         var letterSpacing = isNumber ? 0 : (L.track != null ? Math.max(0, Math.round(fontSize * 0.06 * _floatNum(L.track, 1, 0, 5)))
             : Math.max(1, Math.round(fontSize * 0.06)));
         var fontStr = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
@@ -24230,6 +24278,7 @@ const ThreeRenderer = (function () {
         c._ewMarginX = Math.max(0, padX - lineInk);
         c._ewMarginTop = c._ewMarginBot = Math.max(0, (th - inkH) / 2 - (lineInk - outlineW * 1.2));
         c._ewInkH0 = inkH;   // the stock ink height, before any hit-read swell
+        c._ewKindK = KL && KL.size ? _floatNum(KL.size, 1, 0.2, 4) : 1;   // EACH KIND: its own size × on screen
         return c;
     }
 
@@ -24270,7 +24319,7 @@ const ThreeRenderer = (function () {
 
     /* The board's pops and the UI Maker preview's (floatPreview) each run a CONTEXT through the same spawn + step, so
        the preview moves, sizes and stacks its pops exactly as a battle does: { tweens, stagger (per-tile tag queue),
-       now() (the clock), live (scratch), lastReal }. */
+       now() (the clock), live (scratch), lastReal, keepIn (the preview: pops kept whole inside its view) }. */
     var _floatGameCtx = { tweens: _floatTweens, stagger: _floatTileStagger, now: function () { return _animNow(); }, live: [], lastReal: 0 };
 
     function startFloatingText(tileX, tileY, text, kind, durationMs, opts) {
@@ -24344,7 +24393,9 @@ const ThreeRenderer = (function () {
             // on-screen size × (the hierarchy: the number reads first)
             sizeK: hero ? FLOAT_HERO_SCALE : (_FLOAT_SOLO_KINDS[kind] ? 1 : FLOAT_TAG_SCALE),
             layDy: 0, layDx: 0, laid: false,
-            // its own dice for the look's motion: drift side + amount, scatter heading + distance, tilt
+            // THE BUNCH: its spot on the unit, in number heights (picked on its first frame, then kept)
+            slot: null,
+            // its own dice for the look's motion: drift side + amount, the bunch's spot pick, tilt
             rnd: [Math.random(), Math.random(), Math.random(), Math.random(), Math.random()]
         };
         ctx.tweens.push(tw);
@@ -24368,10 +24419,8 @@ const ThreeRenderer = (function () {
        up at once (a number is never covered, even for a frame) and ease back
        down when the pop that held them fades away. Screen-space only: works
        the same for pops over two different units that project close.
-       THE LAYOUT (2026-10-20, mondo: "they like stack on top of each other but i want them to do more of a scatter and
-       be side by side or and on top of each other"): mode = the look's lay. 'stack' (or none) = the above; the others
-       go through _floatPlaceFree. gapX = px kept beside a pop, rowN = pops in a row (rows). */
-    function _layoutFloatTexts(list, dtMs, gapPx, mode, gapX, rowN) {
+       This is the look's Stack layout (as the game); Side by side and Scatter are THE BUNCH (_floatBunch). */
+    function _layoutFloatTexts(list, dtMs, gapPx) {
         list.sort(function (a, b) {
             if (a.hero !== b.hero) return a.hero ? -1 : 1;
             var ta = a.startTime + (a.delayMs || 0), tb = b.startTime + (b.delayMs || 0);
@@ -24391,7 +24440,6 @@ const ThreeRenderer = (function () {
             var halfW = Math.max(0, tw.boxW * k / 2 - (el._ewMarginX || 0) * k);
             var top0 = tw._sy - tw.boxH * k / 2 + (el._ewMarginTop || 0) * k;
             var bot0 = tw._sy + tw.boxH * k / 2 - (el._ewMarginBot || 0) * k;
-            if (mode && mode !== 'stack') { _floatPlaceFree(tw, halfW, top0, bot0, placed, gap, gapX || 0, mode, rowN, relax); continue; }
             tw.layDx = 0;
             var dy = 0;
             for (var pass = 0; pass < 16; pass++) {
@@ -24414,68 +24462,180 @@ const ThreeRenderer = (function () {
         }
     }
 
-    /* true = a pop's ink box (round cx, top → bot) keeps gap px above / below and gapX beside every placed one */
-    function _floatClear(cx, halfW, top, bot, placed, gap, gapX) {
-        for (var j = 0; j < placed.length; j++) {
-            var p = placed[j];
-            if (Math.abs(cx - p.cx) >= halfW + p.halfW + gapX || bot <= p.top - gap || top >= p.bot + gap) continue;
-            return false;
+    /* THE BUNCH (2026-10-21, mondo: "All i want is an option that makes the floating text not just appear one after
+       another on top of each other in a stack. They should be bunched up/scattered but still clearly on that enemy.
+       Thats what i meant by side by side. Not literally side by side going across the entire screen for one person"):
+       the look's Side by side and Scatter layouts. A pop picks its spot ONCE, on its first frame on screen, from spots
+       close round its own unit, and keeps it for its whole life: nothing is laid out again frame to frame, so a pop
+       never jumps, flips side or flickers. (The 2026-10-20 layouts moved every pop every frame, out along a line until
+       it was clear, and threw one hit's pops ~730 px across a 1280 px screen.) Spots are in number heights (U = a stock
+       damage number's height on screen at that depth), so the bunch keeps its shape next to the pops at every zoom.
+       The pick: the spot whose shape (the pop at its resting size, turned by its tilt, plus the gaps) lies over the least
+       of the pops already up, now and where each will be in a moment (risen, hopped, drifted), nearer the middle winning.
+       side = rows: the unit's own first, then level with / just over / just under the pops up, beside what is in that
+       row (row = the most pops a row holds); scatter = spots spread over an oval on the unit (and out past it, dearer),
+       turned by the pop's own dice, a little dice in the score so a burst lands loose. bunch × = the oval: how far from
+       the middle a pop lands. Only a crowd too big for that overlaps (rather than leave the unit); numbers draw over
+       words and the newest over the older (z-index). */
+    var _floatBoxes = [];
+    var _FLOAT_GOLD = Math.PI * (3 - Math.sqrt(5));
+    /* the look-aheads, as shares of a word's life (1100 ms × the look's Life ×): a pop that has faded out by then is
+       left out of that one */
+    var FLOAT_BUNCH_AHEAD = [0.1, 0.22, 0.36, 0.52, 0.72, 0.95];
+    var _FLOAT_FUT0 = [0, 0, 0, 0, 0, 0];
+    /* a pop's resting ink box: half width, its centre's offset right of the pop's centre (a dressed number's glyph is
+       ink at the left edge only, battle.js _ewMarginL / R), above, below (px) */
+    function _floatBox(tw) {
+        var el = tw.el, k = tw._kr || tw._k || 1;
+        if (!tw.boxW) {
+            tw.boxW = parseFloat(el.style.width) || el.width || 0;
+            tw.boxH = parseFloat(el.style.height) || el.height || 0;
         }
-        return true;
+        var mL = el._ewMarginL != null ? el._ewMarginL : (el._ewMarginX || 0), mR = el._ewMarginR != null ? el._ewMarginR : (el._ewMarginX || 0);
+        return {
+            hw: Math.max(1, (tw.boxW - mL - mR) * k / 2),
+            cx: (mL - mR) * k / 2,
+            up: Math.max(1, tw.boxH * k / 2 - (el._ewMarginTop || 0) * k),
+            dn: Math.max(1, tw.boxH * k / 2 - (el._ewMarginBot || 0) * k)
+        };
     }
-    /* THE LAYOUT, the other modes: side = moved beside whatever is in its way, left or right (whichever is nearer; each
-       pop has a side it leans to, so a run of numbers fans out both ways), rows = beside up to rowN pops wide, then a row
-       up, scatter = moved on along its own random heading until it is clear. As in the stack, the newest number keeps
-       its spot and a pop never draws over one placed before it: it jumps clear at once and eases back when room opens. */
-    function _floatPlaceFree(tw, halfW, top0, bot0, placed, gap, gapX, mode, rowN, relax) {
-        var sx = tw._sx, R = tw.rnd || _FLOAT_RND0, pref = R[0] < 0.5 ? -1 : 1, tx = 0, ty = 0, found = false, j;
-        if (mode === 'scatter') {
-            var a = R[2] * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a), step = Math.max(3, (bot0 - top0) * 0.2);
-            for (var s = 0; s <= 160 && !found; s++) {
-                var ex = ux * step * s, ey = uy * step * s;
-                if (_floatClear(sx + ex, halfW, top0 + ey, bot0 + ey, placed, gap, gapX)) { tx = ex; ty = ey; found = true; }
+    /* the pop's shape for the pick: its ink box cut into squarish pieces along the line of text, turned by its tilt
+       (a tilted word lies along a slant, not over the whole box round it), each piece grown by the gaps; hl / hr / up /
+       dn = the box round the lot from the pop's centre (hw = the wider side), area = what the pieces cover */
+    function _floatShape(tw, me, gx, gy) {
+        var hh = (me.up + me.dn) / 2, cy0 = (me.dn - me.up) / 2;
+        var th = (tw._rot || 0) * Math.PI / 180, c = Math.cos(th), s = Math.sin(th);
+        var n = Math.abs(th) < 0.02 ? 1 : Math.max(1, Math.min(4, Math.round(me.hw / Math.max(1, hh) * 0.6)));   // upright = the box itself
+        var w2 = me.hw / n, shw = w2 * Math.abs(c) + hh * Math.abs(s) + gx, shh = w2 * Math.abs(s) + hh * Math.abs(c) + gy;
+        var segs = [], el = 0, er = 0, eu = 0, ed = 0;
+        for (var i = 0; i < n; i++) {
+            var lx = me.cx - me.hw + (2 * i + 1) * w2, dx = lx * c - cy0 * s, dy = lx * s + cy0 * c;
+            segs.push({ dx: dx, dy: dy });
+            el = Math.max(el, shw - dx); er = Math.max(er, dx + shw); eu = Math.max(eu, shh - dy); ed = Math.max(ed, dy + shh);
+        }
+        return { segs: segs, shw: shw, shh: shh, hl: el, hr: er, hw: Math.max(el, er), up: eu, dn: ed, area: Math.max(1, n * 4 * shw * shh) };
+    }
+    /* px² of shape a (centred ax, ay) over shape b (centred bx, by) */
+    function _floatOverlap(ax, ay, a, bx, by, b) {
+        if (Math.abs(ax - bx) >= a.hw + b.hw || ay + a.dn <= by - b.up || by + b.dn <= ay - a.up) return 0;
+        var o = 0, ww = a.shw + b.shw, hh = a.shh + b.shh;
+        var wMax = 2 * Math.min(a.shw, b.shw), hMax = 2 * Math.min(a.shh, b.shh);
+        for (var i = 0; i < a.segs.length; i++) {
+            var p = a.segs[i], px = ax + p.dx - bx, py = ay + p.dy - by;
+            for (var j = 0; j < b.segs.length; j++) {
+                var q = b.segs[j];
+                var w = Math.min(wMax, ww - Math.abs(px - q.dx));
+                if (w <= 0) continue;
+                var h = Math.min(hMax, hh - Math.abs(py - q.dy));
+                if (h > 0) o += w * h;
             }
-        } else {
-            var dys = [0], dxs = [0], lo = -Infinity, hi = Infinity;
-            for (j = 0; j < placed.length; j++) {
-                var p = placed[j];
-                if (mode === 'rows') { var up = p.top - gap - bot0; if (up < 0) dys.push(up); }
-                dxs.push(p.cx + p.halfW + gapX + halfW - sx, p.cx - p.halfW - gapX - halfW - sx);
+        }
+        return o;
+    }
+    function _floatBunch(list, mode, gapPx, gapX, rowN, bunchK, viewW) {
+        var i, tw, picking = false;
+        for (i = 0; i < list.length; i++) if (!list[i].slot) { picking = true; break; }
+        if (!picking) {
+            // nobody new: every pop keeps its spot (no shapes to measure this frame)
+            for (i = 0; i < list.length; i++) {
+                tw = list[i];
+                tw.layDx = tw.slot.x * (tw._U || 1);
+                tw.layDy = tw.slot.y * (tw._U || 1);
+                tw.laid = true;
             }
-            dys.sort(function (a, b) { return b - a; });
-            var lean = function (d) { return Math.abs(d) - (d * pref > 0 ? 0.5 : 0); };
-            dxs.sort(function (a, b) { return lean(a) - lean(b); });
-            if (mode === 'rows') {   // the row: this pop's width × the others beside it, more of them on its own side
-                var w = halfW * 2 + gapX, n = Math.max(1, Math.round(rowN || 3)) - 1, mine = Math.ceil(n / 2), other = n - mine;
-                hi = (pref > 0 ? mine : other) * w + w * 0.3;
-                lo = -((pref > 0 ? other : mine) * w + w * 0.3);
+            return;
+        }
+        // the pops already placed first, at their spots now; then the new ones (numbers first, then the oldest)
+        list.sort(function (a, b) {
+            if (!a.slot !== !b.slot) return a.slot ? -1 : 1;
+            if (a.hero !== b.hero) return a.hero ? -1 : 1;
+            return (a.startTime + (a.delayMs || 0)) - (b.startTime + (b.delayMs || 0));
+        });
+        var boxes = _floatBoxes;
+        boxes.length = 0;
+        var gy = Math.max(0, gapPx) / 2, gx = Math.max(0, gapX) / 2;
+        for (i = 0; i < list.length; i++) {
+            tw = list[i];
+            var U = tw._U || 1, sh = _floatShape(tw, _floatBox(tw), gx, gy);
+            if (!tw.slot) tw.slot = _floatBunchPick(tw, sh, boxes, mode, U, rowN, bunchK, viewW);
+            tw.layDx = tw.slot.x * U;
+            tw.layDy = tw.slot.y * U;
+            tw.laid = true;
+            // where it is now (its hop too) and where it will be at the look-aheads
+            var bx = tw._sx + tw.layDx, by = tw._sy + tw.layDy + (tw._pathDy || 0);
+            var tf = tw._fut || _FLOAT_FUT0, tx = tw._futX || _FLOAT_FUT0;
+            sh.x = bx; sh.y = by; sh.hero = tw.hero; sh.futX = []; sh.fut = [];
+            for (var h = 0; h < FLOAT_BUNCH_AHEAD.length; h++) { sh.futX.push(bx + tx[h]); sh.fut.push(by + tf[h]); }
+            boxes.push(sh);
+        }
+    }
+    function _floatBunchPick(tw, mine, boxes, mode, U, rowN, bunchK, viewW) {
+        var R = tw.rnd || _FLOAT_RND0, sx = tw._sx, sy = tw._sy + (tw._pathDy || 0);
+        var fut = tw._fut || _FLOAT_FUT0, futX = tw._futX || _FLOAT_FUT0;
+        var rx = Math.max(0.3, 2.8 * bunchK) * U, ry = Math.max(0.2, 1.8 * bunchK) * U;
+        var best = null, bestCost = Infinity;
+        /* the cost of a spot: how much it covers of the pops up (as a share of the smaller of the two, a number either
+           side counting 1.5×: now and at the look-aheads, as each rises / hops / drifts at its own pace; NaN = faded out
+           by then), then how far out */
+        var tryAt = function (x, y, extra) {
+            var cx = sx + x, cy = sy + y;
+            var cost = Math.sqrt((x / rx) * (x / rx) + (y / ry) * (y / ry)) * 0.6 + (extra || 0);
+            if (viewW > 0) {   // off the side / top of the view: dear (a unit at the screen's edge keeps its pops on screen)
+                var off = Math.max(0, 4 - (cx - mine.hl)) + Math.max(0, cx + mine.hr - viewW + 4) + Math.max(0, 4 - (cy - mine.up));
+                if (off > 0) cost += 2 + off / U;
             }
-            for (var yi = 0; yi < dys.length && !found; yi++) {
-                for (var xi = 0; xi < dxs.length; xi++) {
-                    var dx = dxs[xi];
-                    if (dx < lo || dx > hi) continue;
-                    if (_floatClear(sx + dx, halfW, top0 + dys[yi], bot0 + dys[yi], placed, gap, gapX)) { tx = dx; ty = dys[yi]; found = true; break; }
+            for (var j = 0; j < boxes.length && cost < bestCost; j++) {   // (a spot already dearer than the best stops here)
+                var b = boxes[j];
+                var o = _floatOverlap(cx, cy, mine, b.x, b.y, b) * 0.2;
+                for (var h = 0; h < fut.length; h++) {
+                    if (fut[h] !== fut[h] || b.fut[h] !== b.fut[h]) continue;
+                    o += _floatOverlap(cx + futX[h], cy + fut[h], mine, b.futX[h], b.fut[h], b) * 0.2;
+                }
+                if (o > 0) cost += o / Math.min(mine.area, b.area) * (b.hero || tw.hero ? 1.5 : 1) * 10;
+            }
+            if (cost < bestCost) { bestCost = cost; best = { x: x / U, y: y / U }; }
+        };
+        var j, x;
+        if (mode === 'side') {
+            /* rows: the unit's own first, then level with / just over / just under each pop already up, beside what is
+               in that row; a row holds rowN pops at most (then the next row up); a pop's near edge stays within the
+               bunch (the oval's width from the middle); under the unit's middle costs a little */
+            var side = R[0] < 0.5 ? -1 : 1, n = Math.max(1, Math.round(rowN || 3)), reach = rx;
+            var ys = [0];
+            for (j = 0; j < boxes.length; j++) {
+                var bj = boxes[j];
+                ys.push(bj.y - sy, bj.y - bj.up - mine.dn - sy, bj.y + bj.dn + mine.up - sy);
+            }
+            for (var yi = 0; yi < ys.length; yi++) {
+                var y = ys[yi], dup = false;
+                for (j = 0; j < yi; j++) if (Math.abs(ys[j] - y) < 1) { dup = true; break; }
+                if (dup) continue;
+                var xs = [0], inRow = 0;
+                for (j = 0; j < boxes.length; j++) {
+                    var b2 = boxes[j];
+                    if (sy + y + mine.dn <= b2.y - b2.up || sy + y - mine.up >= b2.y + b2.dn) continue;
+                    inRow++;
+                    xs.push(b2.x - sx + b2.hr + mine.hl, b2.x - sx - b2.hl - mine.hr);
+                }
+                if (inRow >= n) continue;
+                for (x = 0.5 * U; x <= reach; x += 0.5 * U) xs.push(x, -x);
+                for (var xi = 0; xi < xs.length; xi++) {
+                    x = xs[xi];
+                    if ((x > 0 ? x - mine.hl : -x - mine.hr) > reach) continue;
+                    tryAt(x, y, (y > 0 ? 0.3 : 0) + (x * side < 0 ? 0.04 : 0));
                 }
             }
+        } else {
+            // spots over the oval and out past it (taken only when the oval is crowded: they cost their distance)
+            var N = 112, turn = R[2] * Math.PI * 2;
+            tryAt(0, 0, R[3] * 0.3);
+            for (var k = 0; k < N; k++) {
+                var a = turn + k * _FLOAT_GOLD, f = 1.8 * Math.sqrt((k + 0.5) / N);
+                var dice = Math.abs((Math.sin((k + 1) * 12.9898 + R[3] * 78.233) * 43758.5453) % 1);
+                tryAt(Math.cos(a) * rx * f, Math.sin(a) * ry * f, dice * 0.3);
+            }
         }
-        if (!found) {   // above everything
-            var top = Infinity;
-            for (j = 0; j < placed.length; j++) top = Math.min(top, placed[j].top);
-            tx = 0; ty = isFinite(top) ? Math.min(0, top - gap - bot0) : 0;
-        }
-        // keep the spot it had while that is still clear and not much further out (no flip-flopping side to side)
-        if (tw.laid && tw.tgtOk && (tw.tgtDx !== tx || tw.tgtDy !== ty)
-            && Math.abs(tw.tgtDx) + Math.abs(tw.tgtDy) <= Math.abs(tx) + Math.abs(ty) + 14
-            && _floatClear(sx + tw.tgtDx, halfW, top0 + tw.tgtDy, bot0 + tw.tgtDy, placed, gap, gapX)) { tx = tw.tgtDx; ty = tw.tgtDy; }
-        tw.tgtDx = tx; tw.tgtDy = ty; tw.tgtOk = 1;
-        if (!tw.laid) { tw.layDx = tx; tw.layDy = ty; }
-        else {
-            var nx = tw.layDx + (tx - tw.layDx) * relax, ny = tw.layDy + (ty - tw.layDy) * relax;
-            if (!_floatClear(sx + nx, halfW, top0 + ny, bot0 + ny, placed, 0, 0)) { nx = tx; ny = ty; }
-            tw.layDx = nx; tw.layDy = ny;
-        }
-        tw.laid = true;
-        placed.push({ cx: sx + tw.layDx, halfW: halfW, top: top0 + tw.layDy, bot: bot0 + tw.layDy });
+        return best || { x: 0, y: 0 };
     }
 
     function _updateFloatTextTweens() {
@@ -24490,6 +24650,7 @@ const ThreeRenderer = (function () {
     /* One frame of a context's pops: cam = its lens; viewW × viewH = the px its overlay spans (the lens's view, or the
        crop of it a setViewOffset lens draws); fullH = the height of the WHOLE screen that lens stands for (the size
        maths: world → px and the smallest / biggest on-screen size are shares of it); pane = the death close-up lens. */
+    var _floatProjVec2 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
     function _floatStep(ctx, cam, viewW, viewH, fullH, pane) {
         var L = _floatLook();
         var now = ctx.now();
@@ -24505,13 +24666,18 @@ const ThreeRenderer = (function () {
         var maxHero = Math.max(minHero, _floatNum(L.maxNum, FLOAT_MAX_HERO_H * 100, 1, 60) / 100);
         var popK = _floatNum(L.pop, 1, 0, 3);
         var fadeAt = _floatNum(L.fadeAt, 0.75, 0.2, 0.97);
-        // THE LAYOUT + the motion: drift (sideways as it goes, × 5% of the screen height), scatter (the scatter layout's
-        // throw from its spot, % of the screen height), tilt (degrees either way)
-        var lay = L.lay || 'stack', driftK = _floatNum(L.drift, 0, 0, 4), tiltK = _floatNum(L.tilt, 0, 0, 45);
-        var scatK = lay === 'scatter' ? _floatNum(L.scat, 4, 0, 30) / 100 : 0;
+        // THE LAYOUT + the motion: the stack, or THE BUNCH (side | scatter; a look saved with 'rows' = side); drift =
+        // sideways as it goes, in number heights; tilt = degrees either way. A hop / bounce path is added AFTER the
+        // layout (the layout reads the pop's spot), so a hopping pop never shoves the stack about.
+        var lay = L.lay === 'rows' ? 'side' : (L.lay === 'side' || L.lay === 'scatter') ? L.lay : 'stack';
+        var bunch = lay !== 'stack';
+        var driftK = _floatNum(L.drift, 0, 0, 4), tiltK = _floatNum(L.tilt, 0, 0, 45), lifeK = _floatNum(L.life, 1, 0.3, 5);
+        var hopPath = L.path === 'hop' || L.path === 'bounce';
         var live = ctx.live;
         live.length = 0;
         var tweens = ctx.tweens;
+        var picking = false;
+        if (bunch) for (var pi = 0; pi < tweens.length; pi++) if (!tweens[pi].slot) { picking = true; break; }
         var i = tweens.length;
         while (i--) {
             var tw = tweens[i];
@@ -24529,7 +24695,7 @@ const ThreeRenderer = (function () {
             }
 
             var riseT = _floatRiseT(L.path, t);
-            var worldY = tw.startY + tw.riseY * riseT;
+            var worldY = tw.startY + tw.riseY * (hopPath ? 0 : riseT);
 
             var opacity;
             if (t < 0.06) {
@@ -24573,11 +24739,28 @@ const ThreeRenderer = (function () {
                     var worldToPx = fullH / (2 * dist * halfTanFov);
                     tw._sx = (_floatProjVec.x * 0.5 + 0.5) * viewW;
                     tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * viewH;
+                    // a number's height on screen at this depth: the yardstick of the bunch and the drift
+                    var U = Math.max(fullH * minHero, Math.min(fullH * maxHero, pxScale * worldToPx * FLOAT_HERO_SCALE * FLOAT_HERO_INK)) * numK;
+                    tw._U = U;
                     var R = tw.rnd || _FLOAT_RND0;
-                    if (driftK > 0) tw._sx += (R[0] < 0.5 ? -1 : 1) * (0.6 + 0.4 * R[1]) * driftK * 0.05 * fullH * (1 - (1 - t) * (1 - t));
-                    if (scatK > 0) {
-                        var sa = R[2] * Math.PI * 2, sr = scatK * fullH * (0.35 + 0.65 * R[3]);
-                        tw._sx += Math.cos(sa) * sr; tw._sy += Math.sin(sa) * sr;
+                    var driftD = driftK > 0 ? (R[0] < 0.5 ? -1 : 1) * (0.6 + 0.4 * R[1]) * driftK * U : 0;
+                    if (driftD) tw._sx += driftD * (1 - (1 - t) * (1 - t));
+                    // the hop, added after the layout
+                    tw._pathDy = 0;
+                    if (hopPath && riseT) {
+                        _floatProjVec2.set(tw.wx, tw.startY + tw.riseY * riseT, tw.wz).project(cam);
+                        tw._pathDy = (-_floatProjVec2.y * 0.5 + 0.5) * viewH - tw._sy;
+                    }
+                    // the bunch's pick: where each pop will be in a moment (risen or hopped, drifted) from where it is drawn now
+                    if (picking) {
+                        var fu = tw._fut || (tw._fut = _FLOAT_FUT0.slice()), fx = tw._futX || (tw._futX = _FLOAT_FUT0.slice());
+                        for (var ah = 0; ah < FLOAT_BUNCH_AHEAD.length; ah++) {
+                            var ta = t + FLOAT_BUNCH_AHEAD[ah] * 1100 * lifeK / tw.durationMs;
+                            if (ta > fadeAt + (1 - fadeAt) * 0.5) { fu[ah] = NaN; fx[ah] = 0; continue; }
+                            _floatProjVec2.set(tw.wx, tw.startY + tw.riseY * _floatRiseT(L.path, ta), tw.wz).project(cam);
+                            fu[ah] = (-_floatProjVec2.y * 0.5 + 0.5) * viewH - tw._sy - tw._pathDy;
+                            fx[ah] = driftD ? driftD * ((1 - t) * (1 - t) - (1 - ta) * (1 - ta)) : 0;
+                        }
                     }
                     tw._rot = tiltK > 0 ? (R[4] * 2 - 1) * tiltK : 0;
                     var settledK = pxScale * worldToPx * (tw.sizeK || 1);
@@ -24587,20 +24770,33 @@ const ThreeRenderer = (function () {
                         if (ink0 * settledK < minH) settledK = minH / ink0;
                         else if (tw.hero && ink0 * settledK > fullH * maxHero) settledK = fullH * maxHero / ink0;
                     }
-                    // the look's size rides on top of the clamps, so it shows at every zoom
-                    tw._k = sc * settledK * (tw.hero ? numK : wordK);
+                    // the look's size (and the kind's own) rides on top of the clamps, so it shows at every zoom;
+                    // _kr = the resting size the bunch lays out by (the pop-in swell never moves a spot)
+                    tw._kr = settledK * (tw.hero ? numK : wordK) * (tw.el._ewKindK || 1);
+                    tw._k = sc * tw._kr;
                     tw._op = Math.max(0, opacity);
                     live.push(tw);
                 }
             }
         }
-        if (live.length) _layoutFloatTexts(live, realDt, _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60), lay, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8));
+        if (live.length) {
+            var gapPx = _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60);
+            if (bunch) _floatBunch(live, lay, gapPx, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8), _floatNum(L.bunch, 1, 0.2, 4), viewW);
+            else _layoutFloatTexts(live, realDt, gapPx);
+        }
         for (var li = 0; li < live.length; li++) {
-            var lw = live[li];
-            lw.el.style.left = (lw._sx + (lw.layDx || 0)) + 'px';
-            lw.el.style.top = (lw._sy + lw.layDy) + 'px';
+            var lw = live[li], lx = lw._sx + (lw.layDx || 0);
+            if (ctx.keepIn) {   // the preview's small view: a pop near its edge is moved in, whole, rather than cut off
+                var kb = _floatBox(lw), lo = kb.hw - kb.cx + 4, hi = viewW - kb.hw - kb.cx - 4;
+                lx = lo > hi ? viewW / 2 - kb.cx : Math.max(lo, Math.min(hi, lx));
+            }
+            lw.el.style.left = lx + 'px';
+            lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0)) + 'px';
             lw.el.style.transform = 'translate(-50%,-50%) ' + (lw._rot ? 'rotate(' + lw._rot.toFixed(2) + 'deg) ' : '') + 'scale(' + lw._k.toFixed(4) + ')';
             lw.el.style.opacity = lw._op.toFixed(3);
+            // THE BUNCH: numbers over words, the newest over the older
+            var zi = bunch ? String((lw.hero ? 100000 : 0) + (lw.id % 100000)) : '';
+            if (lw.el.style.zIndex !== zi) lw.el.style.zIndex = zi;
         }
     }
 
