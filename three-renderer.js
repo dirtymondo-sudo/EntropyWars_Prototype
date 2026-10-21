@@ -24532,7 +24532,7 @@ const ThreeRenderer = (function () {
         }
         return o;
     }
-    function _floatBunch(list, mode, gapPx, gapX, rowN, bunchK, viewW) {
+    function _floatBunch(list, mode, gapPx, gapX, rowN, bunchK, viewW, viewH) {
         var i, tw, picking = false;
         for (i = 0; i < list.length; i++) if (!list[i].slot) { picking = true; break; }
         if (!picking) {
@@ -24557,7 +24557,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < list.length; i++) {
             tw = list[i];
             var U = tw._U || 1, sh = _floatShape(tw, _floatBox(tw), gx, gy);
-            if (!tw.slot) tw.slot = _floatBunchPick(tw, sh, boxes, mode, U, rowN, bunchK, viewW);
+            if (!tw.slot) tw.slot = _floatBunchPick(tw, sh, boxes, mode, U, rowN, bunchK, viewW, viewH);
             tw.layDx = tw.slot.x * U;
             tw.layDy = tw.slot.y * U;
             tw.laid = true;
@@ -24569,7 +24569,7 @@ const ThreeRenderer = (function () {
             boxes.push(sh);
         }
     }
-    function _floatBunchPick(tw, mine, boxes, mode, U, rowN, bunchK, viewW) {
+    function _floatBunchPick(tw, mine, boxes, mode, U, rowN, bunchK, viewW, viewH) {
         var R = tw.rnd || _FLOAT_RND0, sx = tw._sx, sy = tw._sy + (tw._pathDy || 0);
         var fut = tw._fut || _FLOAT_FUT0, futX = tw._futX || _FLOAT_FUT0;
         var rx = Math.max(0.3, 2.8 * bunchK) * U, ry = Math.max(0.2, 1.8 * bunchK) * U;
@@ -24580,8 +24580,9 @@ const ThreeRenderer = (function () {
         var tryAt = function (x, y, extra) {
             var cx = sx + x, cy = sy + y;
             var cost = Math.sqrt((x / rx) * (x / rx) + (y / ry) * (y / ry)) * 0.6 + (extra || 0);
-            if (viewW > 0) {   // off the side / top of the view: dear (a unit at the screen's edge keeps its pops on screen)
-                var off = Math.max(0, 4 - (cx - mine.hl)) + Math.max(0, cx + mine.hr - viewW + 4) + Math.max(0, 4 - (cy - mine.up));
+            if (viewW > 0 && viewH > 0) {   // off any edge of the view: dear (a unit at the screen's edge keeps its pops on screen)
+                var off = Math.max(0, 4 - (cx - mine.hl)) + Math.max(0, cx + mine.hr - viewW + 4)
+                    + Math.max(0, 4 - (cy - mine.up)) + Math.max(0, cy + mine.dn - viewH + 4);
                 if (off > 0) cost += 2 + off / U;
             }
             for (var j = 0; j < boxes.length && cost < bestCost; j++) {   // (a spot already dearer than the best stops here)
@@ -24614,6 +24615,7 @@ const ThreeRenderer = (function () {
                 for (j = 0; j < boxes.length; j++) {
                     var b2 = boxes[j];
                     if (sy + y + mine.dn <= b2.y - b2.up || sy + y - mine.up >= b2.y + b2.dn) continue;
+                    if (Math.max(b2.x - b2.hl - sx, sx - b2.x - b2.hr) > reach) continue;   // another unit's pop: not this row's
                     inRow++;
                     xs.push(b2.x - sx + b2.hr + mine.hl, b2.x - sx - b2.hl - mine.hr);
                 }
@@ -24781,7 +24783,7 @@ const ThreeRenderer = (function () {
         }
         if (live.length) {
             var gapPx = _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60);
-            if (bunch) _floatBunch(live, lay, gapPx, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8), _floatNum(L.bunch, 1, 0.2, 4), viewW);
+            if (bunch) _floatBunch(live, lay, gapPx, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8), _floatNum(L.bunch, 1, 0.2, 4), viewW, viewH);
             else _layoutFloatTexts(live, realDt, gapPx);
         }
         for (var li = 0; li < live.length; li++) {

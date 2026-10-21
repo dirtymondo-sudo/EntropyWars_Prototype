@@ -1657,8 +1657,9 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
   it blocks the slant and not the whole box round it. A dressed number's box starts at its glyph and ends at its digits /
   stamp (battle.js `_ewMarginL` / `_ewMarginR`; `_ewMarginX` stays for the stack). Side by side = rows: the unit's own,
   then level with / just over / just under each pop up, beside what is in that row; "Pops in a row" = the most a row
-  holds; a pop's near edge stays within the oval's width. Scatter = 112 golden-angle spots over the oval and out to 1.8×
-  (dearer), turned by the pop's own dice. A spot off the side / top of the view costs 2 + how far out (a unit at the
+  holds (only this unit's pops count: another unit's pops at the same height are kept clear of, not counted); a pop's
+  near edge stays within the oval's width. Scatter = 112 golden-angle spots over the oval and out to 1.8×
+  (dearer), turned by the pop's own dice. A spot off any edge of the view costs 2 + how far out (a unit at the
   screen's edge keeps its pops on screen); the preview's small view also moves a pop at its edge in whole (ctx.keepIn). Offline check with the real pop sizes (40 random bursts of 3 numbers + 4 words
   per setting, Life 1 and 3, with and without Drift 1 + Tilt 20): the worst pair over 320 bursts had 5% of the smaller pop covered. New setting `fBunch` (Bunch size 0.4-2.5, the oval);
   `fScat` is gone; a look saved with Side + stack ('rows') reads as Side by side. Numbers draw over words, newest over older
