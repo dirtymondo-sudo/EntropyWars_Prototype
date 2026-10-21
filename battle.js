@@ -22832,7 +22832,12 @@
             const dmgNum = el.querySelector('.acam-dmg-num');
             if (dmgRow) dmgRow.classList.remove('show');
             if (dmgNum) { dmgNum.textContent = '0'; dmgNum.classList.remove('crit', 'tick', 'land'); }
-            requestAnimationFrame(() => el.classList.add('active'));
+            /* THE BARS NEVER OUTLIVE THEIR SHOT (playtest 2026-10-21: the letterbox stayed down over the
+               scoreboard for whole turns): the bars slide in on the next frame, and a frame that comes late
+               (a shader compile on the first cast, a slow PC) used to land AFTER the shot had already hidden
+               — the bars went in with no shot left to take them out. Only the shot that asked brings them in. */
+            const _shotSt = _acChromeState;
+            requestAnimationFrame(() => { if (_acChromeState === _shotSt) el.classList.add('active'); });
             _acChromeState.hideTimer = setTimeout(() => hideActionCamChrome(), totalMs);
             /* the turn clock (hud.js TurnColumn) steps aside for the shot and comes back when the chrome leaves
                (mondo 2026-10-17: "let's hide the turn clock during spell animations") */
@@ -27842,6 +27847,7 @@
         // the round banner and again once the buffered round-start events have
         // finished playing.
         let _eorChipEl = null;
+        let _eorChipGen = 0;   // bumped by every show/hide — a late fade-in frame only applies to the newest show
         // The chip used to sit at a fixed top:64px, which landed it straight
         // ON the scoreboard (score plate + turn-order flanks, top:8px,
         // centered). Measure the scoreboard live instead — it scales with
@@ -27876,9 +27882,13 @@
             }
             _eorChipEl.style.top = _eorChipTop() + 'px';
             _eorChipEl.textContent = text;
-            requestAnimationFrame(() => { if (_eorChipEl) _eorChipEl.style.opacity = '1'; });
+            /* a hide that lands before this fade-in's frame wins (playtest 2026-10-21: "END OF ROUND —
+               RECOVERY" stayed up through whole turns and behind the result screen) */
+            const g = ++_eorChipGen;
+            requestAnimationFrame(() => { if (_eorChipEl && g === _eorChipGen) _eorChipEl.style.opacity = '1'; });
         }
         function _eorPhaseLabelHide() {
+            _eorChipGen++;
             if (_eorChipEl) _eorChipEl.style.opacity = '0';
         }
         // state.js beats (detonations, storms, buffered round events) reach
@@ -44766,6 +44776,7 @@
             const key = String(state.matchNumber || 0) + ':' + String(state.startTime || 0);
             if (_vicShownKey === key && resultOverlay && !resultOverlay.classList.contains('hidden')) { console.warn('[Debrief] a second fill of the showing result screen was dropped'); return; }
             _vicShownKey = key;
+            try { _eorPhaseLabelHide(); } catch (e) {}   // the last round's phase chip never sits behind the result
             try { _showResultOverlayBody(); }
             catch (e) { _vicFail('the result screen', e); }
             try {
@@ -44945,7 +44956,19 @@
             facts.push(_vicRoundStr);
             facts.push(durationStr);
             facts.push(`<span class="p1">${(state.units||[]).filter(u=>u.player===1&&!u.dead).length}</span> v <span class="p2">${(state.units||[]).filter(u=>u.player===2&&!u.dead).length}</span> STANDING`);
-            if (state._winCondition && _winCondLabels[state._winCondition]) facts.push(_winCondLabels[state._winCondition]);
+            /* THE SCORE ON THE FRONT (playtest 2026-10-21: "⏱ ARENA SCORE" with no number — the 404–447 was
+               two tabs away): a match decided on points carries its final score right in the fact line,
+               the same numbers the PERFORMANCE tally adds up */
+            if (state._winCondition && _winCondLabels[state._winCondition]) {
+                let _sc = null;
+                try {
+                    const _wc = state._winCondition;
+                    if (_wc === 'arena_composite' || _wc === 'arena_keys_tiebreak' || (_wc === 'sudden_death' && _mpMode && _mpMode.id === 'arena')) _sc = [_vicArenaScore(1).pts, _vicArenaScore(2).pts];
+                    else if (_wc === 'most_kills') _sc = [state.matchKills?.[1] || 0, state.matchKills?.[2] || 0];
+                    else if (_wc === 'most_points' || _wc === 'most_captures' || _wc === 'flag_captures') _sc = [state.matchScores?.[1] || 0, state.matchScores?.[2] || 0];
+                } catch (e) { _sc = null; }
+                facts.push(_winCondLabels[state._winCondition] + (_sc ? ` <b class="vic-fact-score"><span class="p1">${_sc[0]}</span> – <span class="p2">${_sc[1]}</span></b>` : ''));
+            }
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
@@ -45241,46 +45264,48 @@
 
         /* THE MODE'S TALLY (the PERFORMANCE sheet): Arena's composite score as two
            columns of points, the kill / point / capture modes as one score line. */
+        /* the Arena composite score of one side — the PERFORMANCE tally and the head's fact line read the same */
+        function _vicArenaScore(p) {
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const enemy = p === 1 ? 2 : 1;
+            let pts = 0, details = [];
+            const kills = state.matchKills?.[p] || 0;
+            const killPts = kills * ARENA_PTS.kill;
+            pts += killPts;
+            details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡', unit: ['KILL', 'KILLS'] });
+            const eTw = state.towers?.[enemy];
+            let tDmg = 0;
+            if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
+            let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
+            if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
+            pts += tDmgPts;
+            details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
+            let hgCount = 0;
+            if (state.hourglasses) {
+                hgCount = state.hourglasses.filter(h => {
+                    if (!h.carriedBy) return false;
+                    const c = state.units.find(u => u.id === h.carriedBy);
+                    return c && !c.dead && c.player === p;
+                }).length;
+            }
+            const hgPts = hgCount * ARENA_PTS.hourglass;
+            pts += hgPts;
+            details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '🗝' });
+            const nexRounds = state._arenaNexusControl?.[p] || 0;
+            const nexPts = nexRounds * ARENA_PTS.nexusRound;
+            pts += nexPts;
+            details.push({ label: 'Nexus Rounds', raw: nexRounds, pts: nexPts, icon: '⬡' });
+            const bountyPts = state._arenaBountyPts?.[p] || 0;
+            if (bountyPts > 0) {
+                pts += bountyPts;
+                details.push({ label: 'Bounties', raw: state._arenaBountyCount?.[p] || Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
+            }
+            return { pts, details };
+        }
+
         function _vicBuildModeTally(_mpMode) {
             if (!_mpMode) return '';
             if (_mpMode.id === 'arena') {
-                const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
-                function _vicArenaScore(p) {
-                    const enemy = p === 1 ? 2 : 1;
-                    let pts = 0, details = [];
-                    const kills = state.matchKills?.[p] || 0;
-                    const killPts = kills * ARENA_PTS.kill;
-                    pts += killPts;
-                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡', unit: ['KILL', 'KILLS'] });
-                    const eTw = state.towers?.[enemy];
-                    let tDmg = 0;
-                    if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-                    let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-                    if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
-                    pts += tDmgPts;
-                    details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
-                    let hgCount = 0;
-                    if (state.hourglasses) {
-                        hgCount = state.hourglasses.filter(h => {
-                            if (!h.carriedBy) return false;
-                            const c = state.units.find(u => u.id === h.carriedBy);
-                            return c && !c.dead && c.player === p;
-                        }).length;
-                    }
-                    const hgPts = hgCount * ARENA_PTS.hourglass;
-                    pts += hgPts;
-                    details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '🗝' });
-                    const nexRounds = state._arenaNexusControl?.[p] || 0;
-                    const nexPts = nexRounds * ARENA_PTS.nexusRound;
-                    pts += nexPts;
-                    details.push({ label: 'Nexus Rounds', raw: nexRounds, pts: nexPts, icon: '⬡' });
-                    const bountyPts = state._arenaBountyPts?.[p] || 0;
-                    if (bountyPts > 0) {
-                        pts += bountyPts;
-                        details.push({ label: 'Bounties', raw: state._arenaBountyCount?.[p] || Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
-                    }
-                    return { pts, details };
-                }
                 const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
                 /* rows matched by LABEL, never index — the Bounties row is only pushed
                    for a side that earned some */
@@ -53276,6 +53301,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
 
                 // Training match: turbo ON for a CPU unit, OFF for the human's.
