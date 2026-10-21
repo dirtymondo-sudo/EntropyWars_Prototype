@@ -2854,6 +2854,53 @@
         }
         window.getZodiacResonanceElement = getZodiacResonanceElement;
 
+        // ── 🜃 THE ELEMENT TERRAINS (2026-10-21, mondo) ─────────────────────
+        // A spell's hit of an element lands ×ELEMENT_TERRAIN_MULT when the caster OR the unit hit stands on one of that
+        // element's terrains (data.js ELEMENT_TERRAINS; both at once is still one bonus). Pure + shared: _hitDamageMath
+        // (the live hit and every forecast) and ai.js estDamage read it. `o.live` = a hit landing now: a cell the
+        // resolving cast changed counts as what it was before the cast (map.js castPreTerrainAt — NO SELF-COMBO).
+        // o.srcX/srcY (the AI's "as if from that tile"), o.tgtX/tgtY (the tile the hit lands on). Returns
+        // { mult, who: 'caster'|'target', label } or null.
+        function _elemTerrainLabelOf(row, x, y, live) {
+            if (!isInside(x, y)) return null;
+            const pre = live && typeof castPreTerrainAt === 'function' ? castPreTerrainAt(x, y) : null;
+            const t = pre !== null ? pre : getTerrainAt(x, y);
+            if (row.terrains && row.terrains.indexOf(t) >= 0) {
+                return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
+            }
+            if (row.flow && pre === null && typeof getLiquidFlowAt === 'function') {
+                const fl = getLiquidFlowAt(x, y);
+                if (fl && fl.t === row.flow) {
+                    const fk = ({ water: 'water', lava: 'lava', poison: 'poison', blood: 'blood' })[row.flow];
+                    return (fk && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[fk] && TERRAIN_RULES[fk].label) || row.flow;
+                }
+            }
+            if (row.burning && _tileIsBurning(x, y)) {
+                const wasB = live && typeof castPreBurningAt === 'function' ? castPreBurningAt(x, y) : null;
+                if (wasB !== false) return 'Fire';
+            }
+            return null;
+        }
+        function elementTerrainBonus(el, caster, target, o) {
+            o = o || {};
+            const row = (el && typeof ELEMENT_TERRAINS !== 'undefined') ? ELEMENT_TERRAINS[el] : null;
+            if (!row) return null;
+            const mult = (typeof ELEMENT_TERRAIN_MULT === 'number') ? ELEMENT_TERRAIN_MULT : 1.25;
+            const on = (u, x, y) => {
+                if (!u || x == null || y == null) return null;
+                const air = typeof isUnitAirborne === 'function' && isUnitAirborne(u);
+                if (air) return row.air ? 'Air' : null;   // a flyer isn't on the ground under it; wind wants the air
+                return _elemTerrainLabelOf(row, x, y, !!o.live);
+            };
+            const c = on(caster, o.srcX != null ? o.srcX : (caster && caster.x), o.srcY != null ? o.srcY : (caster && caster.y));
+            if (c) return { mult, who: 'caster', label: c };
+            const t = on(target, o.tgtX != null ? o.tgtX : (target && target.x), o.tgtY != null ? o.tgtY : (target && target.y));
+            if (t) return { mult, who: 'target', label: t };
+            return null;
+        }
+        window.elementTerrainBonus = elementTerrainBonus;
+        let _etbSaid = '';
+
         // ── ⛰ EARTH TRINE RESONANCE (the reserved slot, filled 2026-07-13) ──
         // While an earth sign reigns (Taurus / Virgo / Capricorn) the ground
         // itself cooperates: terraforming/building spells cost 25% less MP and
@@ -3161,6 +3208,7 @@
             let zapped = 0;
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The water conducts ${spell.name}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster,
                     noRangeMult: true,
                     allowMarkBonus: false,
@@ -3261,6 +3309,7 @@
             }
             for (const { u } of victims) {
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster,
                     noRangeMult: true,
                     allowMarkBonus: false,
@@ -3307,6 +3356,7 @@
             let zapped = 0;
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The metal conducts ${spell.name}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster,
                     noRangeMult: true,
                     allowMarkBonus: false,
@@ -3337,6 +3387,7 @@
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
                     applyDamageToUnit(u, _shardDmg, `💎 ${spell.name} shatters the crystal under ${unitDisplayName(u)}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                         sourceUnit: caster,
                         noRangeMult: true,
                         allowMarkBonus: false,
@@ -3493,6 +3544,7 @@
             const b = _ensureBurningState();
             const k = x + ',' + y;
             const prev = b[k];
+            if (typeof noteCastPreBurn === 'function') noteCastPreBurn(x, y, !!prev);   // 🜃 the cast's own fire never powers it
             b[k] = {
                 x, y,
                 t: Math.max(rounds || 2, prev ? prev.t : 0),
@@ -6568,7 +6620,7 @@
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                    }
+                    } else if (current === spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tile.x, tile.y, current);   // ⏳ back to 3 rounds
                 }
             }
 
@@ -7115,7 +7167,7 @@
                 }
                 if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
                     if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                }
+                } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(cx, cy, spell.leaveTerrain);   // ⏳ back to 3 rounds
                 cx += dx; cy += dy;
             }
             /* Phase 5 wave A (2026-09-08): beams wider than one tile (Plasma
@@ -7140,7 +7192,7 @@
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             if (setTerrainSpringAt(lx, ly, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                        }
+                        } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(lx, ly, spell.leaveTerrain);   // ⏳ back to 3 rounds
                     }
                 }
             }
@@ -9547,6 +9599,7 @@
             let _zoneDamagedAny = false;   // THE SPELL AUDIT Batch D: a damage zone struck someone (checkWin below)
 
             _tickTimedTerrain();   // wave C: timed goo reverts on the round tick
+            tickTerrainTimers();   // ⏳ every changed tile counts down 3 rounds, then goes back to the map's own ground
 
             if (state._activeZones?.length) {
                 state._activeZones = state._activeZones.filter(zone => {
@@ -34350,6 +34403,29 @@
                     addLog(`★ The ${state.activeZodiac} sky surges the ${_zsName} — its power swells!`);
                 }
             }
+            // 🜃 THE ELEMENT TERRAINS (2026-10-21): the caster or the unit hit stands on the spell element's own ground.
+            // A spell's hit only — a basic attack (even an elemental rider), a tick, a hazard, a weather and the terrain
+            // reactions' follow-up hits (opts.noTerrainBonus) never ride it.
+            if (_affEl && finalDamage > 0 && sourceUnit && damageType !== 'dot' && opts.spellElement
+                && !opts.basicAttack && !opts.noTerrainBonus) {
+                const _sa = opts.struckAt || null;
+                const _etb = elementTerrainBonus(_affEl, sourceUnit, target, { live, tgtX: _sa ? _sa.x : undefined, tgtY: _sa ? _sa.y : undefined });
+                if (_etb) {
+                    _offMult *= _etb.mult;
+                    if (live) {
+                        const _who = _etb.who === 'caster' ? sourceUnit : target;
+                        const _key = sourceUnit.id + ':' + _protectActionSeq + ':' + _who.id;
+                        if (_etbSaid.indexOf('|' + _key + '|') < 0) {
+                            _etbSaid = (_etbSaid.length > 400 ? '' : _etbSaid) + '|' + _key + '|';
+                            const _elN = _affEl === 'earth' ? 'ground' : _affEl;
+                            _multCallout(_who, `🜃 ON ${String(_etb.label).toUpperCase()} ×${_etb.mult}`, 1000);
+                            addLog(_etb.who === 'caster'
+                                ? `🜃 ${_ctName(sourceUnit)} draws on the ${String(_etb.label).toLowerCase()} underfoot — the ${_elN} hits ×${_etb.mult}.`
+                                : `🜃 ${_ctName(target)} stands on ${String(_etb.label).toLowerCase()} — the ${_elN} hits ×${_etb.mult}.`);
+                        }
+                    }
+                }
+            }
             let _comboSupercharge = false;
             if (_comboEl && finalDamage > 0) {
                 // The interaction table itself is pure (calcElementComboMult,
@@ -37308,10 +37384,11 @@
                 if (ex) {
                     ex.expiresRound = Math.max(ex.expiresRound, expires);
                     if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainSpringAt(t.x, t.y, cfg.terrain); }
+                    else if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(t.x, t.y, cur);   // ⏳ back to 3 rounds
                     n++;
                     continue;
                 }
-                if (cur === cfg.terrain) continue;
+                if (cur === cfg.terrain) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(t.x, t.y, cur); continue; }   // ⏳ back to 3 rounds
                 if (setTerrainSpringAt(t.x, t.y, cfg.terrain) === false) continue;   // a liquid never goes into a solid monument
                 state._timedTerrain.push({ x: t.x, y: t.y, prev: cur, terrain: cfg.terrain, expiresRound: expires, owner: unit ? unit.player : 0 });
                 if (unit && typeof trackTilesChanged === 'function') trackTilesChanged(unit, 1);
@@ -37335,7 +37412,11 @@
                 /* THE SPELL AUDIT Batch D: a melt entry (Snow Fort) goes to `meltTo` and sinks back by `deform` */
                 const _to = e.meltTo || e.prev;
                 if (getTerrainAt(e.x, e.y) === e.terrain && _to && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[_to]) {
-                    if (e.deform) { applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid(); }
+                    if (e.deform) {
+                        applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid();
+                        const _tt = state.terrainTimers && state.terrainTimers[e.x + ',' + e.y];
+                        if (_tt) _tt.d = 0;   // ⏳ the height is already home
+                    }
                     if (e.meltTo) setTerrainSpringAt(e.x, e.y, _to);   // the snow wall's puddle is fresh water: it spreads
                     else setTerrainAt(e.x, e.y, _to);
                     if (e.meltTo) { melted++; continue; }
@@ -37356,6 +37437,34 @@
             }
         }
         if (typeof window !== 'undefined') { window._paintTimedTerrain = _paintTimedTerrain; window._tickTimedTerrain = _tickTimedTerrain; }
+
+        /* ⏳ THE TERRAIN TIMERS (2026-10-21, mondo: "make all terrain changes last 3 rounds, similar to status effects"):
+           every cell a battle changes holds state.terrainTimers[k] (map.js _noteTerrainChange; n = TERRAIN_CHANGE_ROUNDS
+           at the paint, painting the same terrain again resets it). Each round end counts it down; at 0 the cell goes
+           back to the map's own terrain (map.js revertTerrainTimer). Plain state: it syncs to the guest (RULE #2). */
+        function tickTerrainTimers() {
+            const tt = state.terrainTimers;
+            if (!tt) return;
+            const due = [];
+            for (const k in tt) {
+                const e = tt[k];
+                if (!e) { delete tt[k]; continue; }
+                e.n = (e.n | 0) - 1;
+                if (e.n <= 0) due.push(k);
+            }
+            if (!due.length) return;
+            let n = 0;
+            for (const k of due) {
+                const i = k.indexOf(',');
+                if (typeof revertTerrainTimer === 'function' && revertTerrainTimer(+k.slice(0, i), +k.slice(i + 1))) n++;
+            }
+            if (!n) return;
+            _invalidateBoardGrid();
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            addLog(`⏳ ${n} tile${n !== 1 ? 's' : ''} return${n === 1 ? 's' : ''} to the map's own ground.`);
+            scheduleBoardRender();
+        }
+        if (typeof window !== 'undefined') window.tickTerrainTimers = tickTerrainTimers;
 
         function getSquareArea(cx, cy, radius = 1) {
             const out = [];
@@ -50742,6 +50851,11 @@
             state.logDialogue = [];
             _logRenderedCount = 0;
             addLog('A fight breaks out!');
+            /* ⏳ THE TERRAIN TIMERS: the board as the fight begins is the map's own ground (permanent); from here every
+               change is clocked (map.js _noteTerrainChange) and goes back to it */
+            state.terrainTimers = {};
+            state.paintedFrom = {};
+            state._terrainClock = true;
 
             /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
                (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
@@ -67874,6 +67988,8 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
+            /* 🜃 THE ELEMENT TERRAINS: from here to finishAction, a cell this cast changes counts as what it was (no self-combo) */
+            if (typeof beginCastTerrainWatch === 'function') beginCastTerrainWatch();
             {
                 const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
                 if (_actBlock) {
@@ -68529,6 +68645,7 @@
             let _pendingSpellHits = 0, _finishWaits = 0;
             const finishAction = () => {
                 if (_pendingSpellHits > 0 && _finishWaits++ < 40) { window.setTimeout(finishAction, 100); return; }
+                if (typeof endCastTerrainWatch === 'function') endCastTerrainWatch();   // 🜃 the cast is done
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
                 if (_focusCamSpellCtx && _focusCamSpellCtx.spellId === spell.id) {
                     _focusCamSpellCtx = null;
@@ -71109,7 +71226,7 @@
                             const current = getTerrainAt(tile.x, tile.y);
                             if (current !== 'wall' && current !== spell.leaveTerrain) {
                                 if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                            }
+                            } else if (current === spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tile.x, tile.y, current);   // ⏳ back to 3 rounds
                         }
                     }
                     if (spell.terrainDeform) {
@@ -72006,7 +72123,7 @@
                             t = 'stone';
                             addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into stone!`);
                         }
-                        if (current === t) return false;
+                        if (current === t) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tx, ty, t); return false; }   // ⏳ back to 3 rounds
                         if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
                         /* 🌊 Spell-conjured liquid is a SPRING (map.js liquid
                            spread): overfull, so it overflows one tile onto
@@ -72273,6 +72390,9 @@
                     if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
+                            /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out */
+                            const _tt = state.terrainTimers && state.terrainTimers[at.x + ',' + at.y];
+                            if (_tt && spell.terrainDeform.centerDelta) _tt.d = (_tt.d || 0) - spell.terrainDeform.centerDelta;
                         }
                         _invalidateBoardGrid();
                         scheduleBoardRender();
@@ -72286,6 +72406,8 @@
                         const _mLift = (spell.terrainDeform && !spell.monument) ? (spell.terrainDeform.centerDelta || 0) : 0;
                         for (const at of affectedTiles) {
                             if (getTerrainAt(at.x, at.y) !== terrainType) continue;
+                            const _tt = state.terrainTimers && state.terrainTimers[at.x + ',' + at.y];
+                            if (_tt && spell.meltTo) _tt.m = spell.meltTo;   // ⏳ the wall's timer melts it into its puddle
                             const ex = state._timedTerrain.find(e => e.x === at.x && e.y === at.y);
                             if (ex) { ex.expiresRound = Math.max(ex.expiresRound, _mExp); ex.deform = (ex.deform || 0) - _mLift; continue; }
                             state._timedTerrain.push({ x: at.x, y: at.y, prev: _tcPrev[at.x + ',' + at.y] || 'grass', terrain: terrainType,
@@ -73642,6 +73764,7 @@
                             if (dp.x === x && dp.y === y) continue;
                             if (!isInside(dp.x, dp.y) || !isTerrainPassable(dp.x, dp.y)) continue;
                             const _dlCur = getTerrainAt(dp.x, dp.y);
+                            if (_dlCur === spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(dp.x, dp.y, _dlCur);   // ⏳ back to 3 rounds
                             if (_dlCur === 'wall' || _dlCur === spell.leaveTerrain) continue;
                             if (setTerrainSpringAt(dp.x, dp.y, spell.leaveTerrain) === false) continue;
                             _dlPainted++;

@@ -490,10 +490,17 @@
         // splits — the main part rides the type matchup, the element part (spellElemShare) the target's affinity
         // (weak ×1.5 / resist ×0.5 / immune 0 / absorb heals). Thermal Regen (healedByElement) drinks like absorb.
         // Mirrors battle.js _hitDamageMath, so the AI hunts weaknesses and still uses a resisted element's main part.
-        let _elAff = null, _elShare = 0, _elSurge = false;
+        let _elAff = null, _elShare = 0, _elSurge = false, _elTerrain = 1;
         if (sp && !opts.noElement) {
             try {
                 const _el = (typeof getSpellElement === 'function') ? getSpellElement(sp) : null;
+                // 🜃 THE ELEMENT TERRAINS (2026-10-21): caster (at the tile it would cast from) or target on the element's
+                // own ground → ×1.25 (battle.js elementTerrainBonus, shared with the live hit + the forecast).
+                if (_el && sp.kind !== 'basicAttack' && typeof window.elementTerrainBonus === 'function') {
+                    const _etb = window.elementTerrainBonus(_el, unit, tg, {
+                        srcX: opts.fromX != null ? opts.fromX : unit.x, srcY: opts.fromY != null ? opts.fromY : unit.y });
+                    if (_etb) _elTerrain = _etb.mult;
+                }
                 // THE ZODIAC SPELL SURGE (2026-10-18): the reigning sign's element lands ×1.25 (battle.js _hitDamageMath)
                 _elSurge = !!(_el && typeof window.getZodiacResonanceElement === 'function' && window.getZodiacResonanceElement() === _el);
                 if (_el && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_el)) {
@@ -555,6 +562,7 @@
             offMult *= (sp.bonusVsStatus.mult || 1.5);                        // status combo
         }
         if (_elSurge) offMult *= (typeof ZODIAC_SURGE_MULT === 'number') ? ZODIAC_SURGE_MULT : 1.25;   // zodiac spell surge
+        if (_elTerrain !== 1) offMult *= _elTerrain;   // 🜃 the element's own ground
         // THE SPELL AUDIT Batch D — the family passives' strike multipliers (battle.js passiveStrikeMult: high ground,
         // flank, finisher, ambush out of Invisible), so the CPU walks its Pack Tactics bruiser next to an ally.
         if (typeof passiveStrikeMult === 'function') {
