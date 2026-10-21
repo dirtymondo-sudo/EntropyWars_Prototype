@@ -72539,9 +72539,18 @@
                     }
 
                     const _tcNow = (t) => t === terrainType || (_isWaterPaint && (t === 'water' || t === 'deep_water'));
-                    const _tcN = spell.monument ? convertedTiles.length : _tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
-                        ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length;
-                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${_tcN} tile${_tcN !== 1 ? 's' : ''} to ${terrainType}.`);
+                    /* A WALL SPELL'S COUNT (2026-10-21, mondo: "the combat log reading 0 tiles converted ... it is clearly a bug"):
+                       a monument row (Pyramid Protocol, Walls of Camelot) never paints the ground, so convertedTiles stayed empty
+                       and the line always said "Converted 0 tiles" while the walls went up. Its line now waits for the placer
+                       below and counts the footprint tiles a piece of this wall stands on once it is done (a recast on a
+                       standing wall still says 3, like an ice tile recast to ice). */
+                    const _tcLine = (n) => addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${terrainType}.`);
+                    let _tcLogged = false;
+                    if (!spell.monument) {
+                        _tcLine(_tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
+                            ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length);
+                        _tcLogged = true;
+                    }
 
                     // 🔥 Fire terrain-walls IGNITE what they touch: the wall
                     // keeps burning on the board for several rounds (biting
@@ -72611,6 +72620,8 @@
                             }, { liftUnits: true });   // a unit on the tile rides up onto the piece (mondo 2026-10-07), never skips it
                             if (ok) _monPlaced++;
                         });
+                        _tcLine(affectedTiles.filter(at => (state.monuments || []).some(m => m.kind === _monKind && m.x === at.x && m.y === at.y)).length);
+                        _tcLogged = true;
                         if (_monPlaced > 0) {
                             _invalidateBoardGrid();
                             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
@@ -72620,6 +72631,7 @@
                         }
                         scheduleBoardRender();
                     }
+                    if (!_tcLogged) _tcLine(0);
                 }, impactDelay);
 
                 state._spellOrientation = null;

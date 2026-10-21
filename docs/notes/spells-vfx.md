@@ -1617,3 +1617,16 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
 - The deployable serial also hashes `_dyingX/_dyingY` (the tile the grave is built on) and the grave/bones look per
   viewer (a hot-seat viewer swap now rebuilds it).
 - Online: the guest runs its own fog pass, so its memory is its own; no relay or state field needed.
+
+## THE WALL SPELLS' TILE COUNT (2026-10-21, mondo: "The combat log reading 0 tiles converted is a bug i already brought up about the ice queen ... find it, it is clearly a bug that exists")
+- The hands-on playtest logged `Homosapien uses Pyramid Protocol! Converted 0 tiles to mountain.` while the blocks went
+  up. Cause: battle.js terrainCreate, a `monument` row (Pyramid Protocol, Walls of Camelot) returns from
+  `_paintSpellTile` before painting, so `convertedTiles` is always empty and the cast line (which still read
+  `convertedTiles.length` for monuments after PR #385) always said 0. Reproduced in a browser on Mount Shasta Arena.
+- Fix: for a monument row the cast line is written by the placer block, after `placeSpellMonument`, and counts the
+  footprint tiles a piece of this wall's kind stands on (a recast on a standing wall still says 3, like ice recast to
+  ice since PR #385). Ground spells (Flash Freeze, Permafrost, floods) keep the PR #385 count. Log order: the cast line
+  now comes after the fire / reaction lines for a wall spell, right before the "🪨 N pieces of wall stand" line.
+- Flash Freeze swept again in the browser (Mount Shasta, Haunted, North Pole arenas: fresh tiles, recasts, water,
+  cliffs, three ways of passing the aim height): every count matched the board. Its 10-20 zero was the already-ice
+  case PR #385 fixed.
