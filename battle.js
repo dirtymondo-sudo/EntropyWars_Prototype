@@ -5125,6 +5125,10 @@
             let vx = dx, vy = dy;
             let m = dist;                     // unspent momentum, in tiles
             let guard = 24;
+            /* THE THROW'S BOUNCES (playtest 2026-10-21, Big Kick: Homosapien and Cyborg traded crashes 7 times): maxBounces
+               is per THROW (COLLISION_CONFIG), so every body the momentum passes to shares one count — each chained slide
+               used to start its own, and a pocket of bodies ping-ponged up to maxBounces × (maxChain + 1) times. */
+            const thr = opts._throw || { bounces: 0 };
             const impacts = [];               // {x, y, atMs, kind} FX beats
 
             const stepTo = (nx, ny, nz) => {
@@ -5185,7 +5189,7 @@
                     if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
-                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1,
+                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr,
                                 toward, stopWithin: opts.stopWithin, viewer: opts.viewer
                             });
                             res.chain.push({ unit: occ, res: sub });
@@ -5200,7 +5204,7 @@
                                 perStepMs, delayMs: atMs + Math.floor(perStepMs / 2),
                                 stopBefore: opts.stopBefore || null,
                                 toward, stopWithin: opts.stopWithin,
-                                _depth: depth + 1
+                                _depth: depth + 1, _throw: thr
                             });
                             res.chain.push({ unit: occ, res: sub });
                             if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
@@ -5210,12 +5214,12 @@
                         break;
                     }
                     // The pin would not budge — a cushion. Bounce off it (a pull into a point just stops against it).
-                    if (toward || res.bounces >= cfg.maxBounces || m <= 0) break;
+                    if (toward || thr.bounces >= cfg.maxBounces || m <= 0) break;
                     res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                     res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
                     const uref = _slideReflect(target, cx, cy, cz, vx, vy);
                     vx = uref.dx; vy = uref.dy;
-                    res.bounces++;
+                    res.bounces++; thr.bounces++;
                     if (!simulate && (target.dead || target._dying)) break;
                     continue;
                 }
@@ -5258,10 +5262,10 @@
                 // Half-tile lunge INTO the wall face and back — sells the hit.
                 res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                 res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
-                if (toward || res.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
+                if (toward || thr.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
                 const refl = _slideReflect(target, cx, cy, cz, vx, vy);
                 vx = refl.dx; vy = refl.dy;
-                res.bounces++;
+                res.bounces++; thr.bounces++;
                 if (!simulate && (target.dead || target._dying)) break;   // the wall won
             }
 
@@ -6053,15 +6057,19 @@
             if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
             const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
             const nm = (spell && spell.name) || 'Execute';
-            addLog(`💀 ${nm}: ${_ctName(target)} was at ${Math.max(1, Math.round(100 * target.hp / target.maxHp))}% — EXECUTED!`);
-            showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
-            applyDamageToUnit(target, lethal, `${nm} executes `, {
+            const pct = Math.max(1, Math.round(100 * target.hp / target.maxHp));
+            applyDamageToUnit(target, lethal, `${nm}: `, {
                 sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
                 damageType: (spell && spell.damageType) || 'physical', spellType: (spell && spell.spellType) || null,
                 spellElement: (spell && spell.id) ? getSpellElement(spell) : ((spell && spell.spellElement) || null),
                 element: (spell && spell.id) ? classifySpellElement(spell) : null
             });
-            return !!target.dead;
+            /* EXECUTED only when the follow-up really killed (Protect / Indomitable Will / the realm can still save it) */
+            if (target.dead || target._dying) {
+                addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
+                showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
+            }
+            return !!(target.dead || target._dying);
         }
         window._applyExecuteRider = _applyExecuteRider;
 
@@ -14882,8 +14890,19 @@
             const chart = out.stab ? m / stabMult : m;
             out.weak = chart > 1.001; out.resist = chart < 0.999;
             out.mult = m;
-            out.dmg = Math.max(1, Math.round(getFinisherDamage(unit) * m));
-            out.kill = (target.hp || 0) <= out.dmg;
+            /* THE REAL HIT (playtest 2026-10-21: the list said −798, the blow took 1270): the number is the engine's own
+               hit math on this victim (forecastHitOnUnit — level, armour soak, shield, every multiplier), mid roll, with the
+               variance window; KILL only when even the low roll empties the bar. */
+            const raw = getFinisherDamage(unit), V = _finRules().variance || 0;
+            const hitOpts = { sourceUnit: unit, damageType: 'magic', spellType: def.type, keepFacing: true };
+            const fh = (n) => { try { const f = forecastHitOnUnit(target, n, hitOpts); return f ? f.dmg : null; } catch (err) { return null; } };
+            const mid = fh(raw);
+            if (mid == null) {
+                out.dmg = Math.max(1, Math.round(raw * m)); out.min = out.dmg; out.max = out.dmg;
+            } else {
+                out.dmg = mid; out.min = fh(Math.max(0, raw - V)) ?? mid; out.max = fh(raw + V) ?? mid;
+            }
+            out.kill = out.min > 0 && (target.hp || 0) <= out.min;
             return out;
         }
         function getFinisherBestTarget(unit) {
@@ -14942,7 +14961,9 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
 
-            addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)} — ${String(def.name || '').toUpperCase()}! (${String(def.type).toUpperCase()}-type finisher)`);
+            /* the opening line names the finisher, never the outcome: "executes" is written only when the blow kills (the
+               2026-10-21 playtest read "Anubis executes Cowboy" while Cowboy stood on 610 HP) */
+            addLog(`☠ ${_ctName(unit)} unleashes ${String(def.name || '').toUpperCase()} on ${_ctName(target)}! (${String(def.type).toUpperCase()}-type finisher)`);
             if (unitHasStatus(unit, 'invisible')) { clearStatus(unit, 'invisible'); addLog(`${_ctName(unit)} breaks camouflage!`); }
             try { setUnitFacing(unit, target.x, target.y); } catch (err) {}
 
@@ -14955,6 +14976,8 @@
                     spellType: def.type,
                     keepFacing: true
                 });
+                if (target.dead || target._dying) addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)}!`);
+                else addLog(`☠ ${_ctName(target)} survives ${_ctSp(def.name)}.`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
             };
             const finish = (delayMs) => {
                 window.setTimeout(() => {
@@ -34602,6 +34625,33 @@
             return src.id + '|' + _protectActionSeq;
         }
 
+        /* THE HIT LINE (playtest 2026-10-21: "Anubis drains life from Cowboy takes 360 HP damage."): a caller's lead is a
+           label ("Big Kick: ", "Anubis attacks: "), a verb phrase that names the victim next ("Anubis drains life from ") or a
+           sentence waiting for its number ("Bigfoot is struck by lightning for"). Each reads as one sentence:
+             label  → "Big Kick: Cowboy takes 360 HP damage." / "Big Kick: Cowboy blocks the hit."
+             verb   → "Anubis drains life from Cowboy for 360 HP damage." / "…from Cowboy, but Cowboy blocks the hit."
+             for    → "Bigfoot is struck by lightning for 39 HP damage." / "Bigfoot is struck by lightning, but Bigfoot …"
+           dmg = the HP number (the hit line); otherwise `what` finishes the sentence. The lead's own first name (callers
+           write it with unitDisplayName) is tagged with its side like the victim's, so a mirror match ("Bigfoot attacks:
+           Bigfoot takes 229 HP damage.") still colours the attacker and the victim apart. */
+        function _dmgLogLine(sourceText, target, what, dmg, srcUnit) {
+            let src = String(sourceText || '');
+            const c0 = src.charCodeAt(0);
+            if (!(c0 >= 0xE000 && c0 <= 0xE00F)) {
+                for (const u of [srcUnit, target]) {
+                    const nm = u ? unitDisplayName(u) : '';
+                    if (nm && src.startsWith(nm) && !/\w/.test(src.charAt(nm.length))) { src = _ctName(u) + src.slice(nm.length); break; }
+                }
+            }
+            const who = _ctName(target), plain = _ctPlain(src);
+            if (/\bfor\s*$/i.test(plain)) {
+                const lead = src.replace(/\s*\bfor\s*$/i, '');
+                return dmg != null ? `${lead} for ${dmg} HP damage.` : `${lead}, but ${who} ${what}`;
+            }
+            if (/[A-Za-z]\s$/.test(plain)) return dmg != null ? `${src}${who} for ${dmg} HP damage.` : `${src}${who}, but ${who} ${what}`;
+            return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
+        }
+
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
@@ -34689,7 +34739,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`${sourceText}${_ctName(target)} is protected and takes no damage!`);
+                addLog(_dmgLogLine(sourceText, target, 'is protected and takes no damage!', null, opts.sourceUnit || null));
                 flashUnit(target.id, 'heal');
                 showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
 
@@ -34708,7 +34758,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`🌑 ${sourceText}${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
                 return false;
             }
 
@@ -34800,7 +34850,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`👻 ${sourceText}${_ctName(target)} has no body to strike — the ${_immDT} blow passes straight through!`);
+                addLog('👻 ' + _dmgLogLine(sourceText, target, `has no body to strike — the ${_immDT} blow passes straight through!`, null, opts.sourceUnit || null));
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, '👻 PASSES THROUGH', 'protect-block', { durationMs: 1200 });
                     flashUnit(target.id, 'block');
@@ -35175,7 +35225,7 @@
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
                     _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
-                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
+                addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
                 if (sourceUnit && typeNote) {
                     const dlg = [];
@@ -35185,7 +35235,7 @@
                 }
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
-                addLog(`${sourceText}${_ctName(target)} blocks the hit.`);
+                addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
@@ -50892,9 +50942,16 @@
                id no longer parks it in its "active unit" branch — see THE CLEAN BOOT). */
             try {
                 const _bootN = state.matchNumber;
-                setTimeout(() => {
+                let _bootTries = 0;
+                const _bootCheck = () => {
                     try {
                         if (state.phase !== 'battle' || state.winner || state.matchNumber !== _bootN || state._blitzActiveUnitId) return;
+                        /* the round-1 arrival still playing (the crane, the round card, a death close-up) is the boot running
+                           slowly, not a stall: look again in 5 s rather than kick the loop under it (a slow machine took
+                           longer than 10 s on the 2026-10-21 playtest); after a minute the kick runs regardless */
+                        const _busy = (camera && camera.isBusy && camera.isBusy())
+                            || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) || _walkAnimActive;
+                        if (_busy && ++_bootTries < 12) { setTimeout(_bootCheck, 5000); return; }
                         const gates = {
                             phase: state.phase, gameState: state.gameState, round: state.round, activePlayer: state.activePlayer,
                             actionExecuting: !!state._actionExecuting, roundAdvanceInProgress: !!_roundAdvanceInProgress,
@@ -50909,7 +50966,8 @@
                         console.warn('[BOOT] no unit has activated 10 s after the match booted — the gates:', JSON.stringify(gates));
                         if (!state.uiDialog && !gates.cinematic && !gates.pendingReplace) { console.warn('[BOOT] kicking the turn loop once'); maybeAdvanceTurn(); }
                     } catch (e) {}
-                }, 10000);
+                };
+                setTimeout(_bootCheck, 10000);
             } catch (e) {}
 
             if (mpMode.hasFlags) {
@@ -53038,8 +53096,12 @@
                    always settles within LS_MAX_WAIT_MS; 60s is catastrophe
                    insurance only. */
                 if (_matchBootPendingSince) {
-                    if (Date.now() - _matchBootPendingSince < 60000) return reset();
-                    console.warn('[WATCHDOG] Match boot pending for 60s+ — forcing the turn loop.');
+                    /* past the loading gate's own cap (LS_MAX_WAIT_MS, 90 s since it grew from 45 s) plus the VS splash:
+                       a 60 s line fired INSIDE a slow first load and started the half-booted match described above
+                       (seen on the 2026-10-21 software-renderer playtest) */
+                    const _bootCap = (typeof LS_MAX_WAIT_MS === 'number' ? LS_MAX_WAIT_MS : 90000) + 45000;
+                    if (Date.now() - _matchBootPendingSince < _bootCap) return reset();
+                    console.warn('[WATCHDOG] Match boot pending past the loading cap — forcing the turn loop.');
                     _matchBootPendingSince = 0;
                 }
                 /* Visible activity = the engine is mid-sequence, not stuck. */
