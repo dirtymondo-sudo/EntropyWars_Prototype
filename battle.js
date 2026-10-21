@@ -10015,6 +10015,7 @@
         // are a resource you can deplete. Refuel fast by recalling to your spawn
         // zone (15%/round, SPAWN_ZONE_HEAL_PCT) or by spending a Mana Potion.
         const MP_REGEN_PERCENT = 0.03;
+        const EOR_MP_BEAT_MS = 550;   // the end-of-round +MP pops land this long after the +HP pops (never on top of them)
 
         function processEndOfRoundRegen(onDone) {
             const viewer = getViewerPlayer();
@@ -10165,20 +10166,28 @@
                 }
             }
 
-            for (const m of manaRestored) {
-                const isVisible = _isUnitVisibleToViewer(m.unit, viewer);
-                if (isVisible) {
+            /* THE MP BEAT (mondo 2026-10-21, the playtest's end-of-round pile-up: "yes" to the MP regen popping a beat
+               after the HP regen): the +MP pops land EOR_MP_BEAT_MS after the +HP ones instead of on top of them. */
+            const _mpBeat = (healed.length && manaRestored.length) ? actionMs(EOR_MP_BEAT_MS) : 0;
+            const _popMana = () => {
+                if (state.phase !== 'battle' || state.winner) return;
+                for (const m of manaRestored) {
+                    if (!m.unit || m.unit.dead) continue;
+                    const isVisible = _isUnitVisibleToViewer(m.unit, viewer);
+                    if (isVisible) {
 
-                    const hasHpRegen = healed.some(h => h.unit === m.unit);
-                    showFloatingTextForUnit(m.unit, `+${m.amount} MP`, 'mp', { durationMs: 1200, jitterY: hasHpRegen ? -18 : undefined });
+                        const hasHpRegen = healed.some(h => h.unit === m.unit);
+                        showFloatingTextForUnit(m.unit, `+${m.amount} MP`, 'mp', { durationMs: 1200, jitterY: hasHpRegen ? -18 : undefined });
 
-                    // Soft blue rising-light signature — the heal's cool sibling.
-                    _vfxMana(m.unit.x, m.unit.y, { soft: true });
+                        // Soft blue rising-light signature — the heal's cool sibling.
+                        _vfxMana(m.unit.x, m.unit.y, { soft: true });
+                    }
                 }
-            }
-            if (manaRestored.length > 0) {
-                playSfx('manaRegen');
-            }
+                if (manaRestored.length > 0) {
+                    playSfx('manaRegen');
+                }
+            };
+            if (_mpBeat > 0) window.setTimeout(_popMana, _mpBeat); else _popMana();
 
             const unitCount = healed.filter(h => h.unit).length;
             const mpCount = manaRestored.length;
@@ -10192,7 +10201,7 @@
 
             window.setTimeout(() => {
                 if (onDone) onDone();
-            }, 900);
+            }, 900 + _mpBeat);
         }
 
         function processPendingEarthquake(onDone) {
