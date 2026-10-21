@@ -6406,7 +6406,13 @@
         window._ewRequestEndTurn = function () {
             if (state.phase !== 'battle' || state.winner) return;
             if (state.autoPlayers?.[state.activePlayer]) return;
-            if (state._actionExecuting) return;
+            /* an action still playing blocks it — a latch left up with the board at rest does not (the END TURN button
+               never asked; SPACE went dead while the button worked, playtest 2026-10-21) */
+            if (state._actionExecuting) {
+                let busy = true;
+                try { busy = !(window.GAME && typeof window.GAME.boardBusy === 'function') || !!window.GAME.boardBusy({ ignoreCamera: true }); } catch (e) {}
+                if (busy) return;
+            }
             if (typeof getViewerPlayer === 'function' && state.activePlayer !== getViewerPlayer()) return;
             const now = performance.now();
             if (now < _ewEndTurnArmT) {

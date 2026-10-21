@@ -1797,3 +1797,25 @@ SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follow
 party-builder.js: the Codex of Vessels wall now opens on NAME A–Z (`sortKey 'label'`, `sortDir 'asc'`; was HP ↓).
 NAME A–Z / Z–A moved to the top of the SORT THE WALL menu; every stat sort (HP ↓ included) is unchanged below them.
 Owned-first and favourites-first still group ahead of the sort, as before. Sort is still per-visit React state (not saved).
+
+## PLAYTEST FIXES: MENUS AND TARGETING (2026-10-21, mondo: "investigate and fix the issues found in the browser playtest")
+From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Existing rules only.
+- **Shared column (a flyer over a ground unit).** A pick carries the body's z: setTool's pre-pick, cycleSpellTarget and
+  selectTargetFromMenu's confirm (z from the row, else the pick's own z, else the body standing there, never the last
+  BOARD click's stale `_clickedZ`). The ✓ / CONFIRM goes on the row of the picked body (hud.js `_hrlgPickIs`), the bottom
+  bar names that body (ptLabel resolves by z), and the row hover forecasts that body (`_ewSpellAimHover(x, y, z)`).
+- **A row names ONE body.** `spellAimProblemOn(unit, spell, u)` (battle.js) = spellAimProblem plus "the column rule would hand
+  this pick to the OTHER body" → 'range'. The drum, spellCastableOnUnit and the quick-menu reach checks use it, so a flyer
+  out of melee reach above an enemy reads MOVE→CAST instead of confirming and smashing the unit below. findSpellApproachTile
+  and selectTargetFromMenu (`_mtcReachesPick`) judge that body itself, so the approach (walk / jump / raise) really reaches it.
+  A board click keeps the old column rule (the in-reach body takes the hit).
+- **MOVE→CAST lighting** (TargetQuery.hasReachableTarget) judges sight from where the caster stands (`_reachProbe`), like the
+  drum's approach list — enemies hidden in fog no longer light a spell that then says "no targets".
+- **Sprint / dashes / teleports**: no pre-pick on the caster ("CONFIRM — Homosapien" then a tile); straight to the tile.
+- **Finisher victim list**: pick, then CONFIRM (or a second click), like every other target list (`_hrlgSelfArmKey` 'fin|…').
+- **CHANNEL** fires channelNexus on the menu's own unit.
+- **Bottom bar** (`_subDodge`) also dodges the dimmed root verbs and each row (it sat on END TURN).
+- **SPACE** answers to the END TURN button's gates: the keydown handles it before the board-step guards, and
+  `_ewRequestEndTurn` only refuses an `_actionExecuting` latch while the board is really busy (GAME.boardBusy).
+- **Console**: `_hqSeatTabletops` (a room built into a battle has no HQ camera) gives its ray the battle camera / a stand-in,
+  ending the boot-time "Raycaster.camera needs to be set" errors.

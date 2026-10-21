@@ -14538,12 +14538,14 @@
             _drawAttackAimArrow(x, y, z);
         };
 
-        /* the spell target list's rows (hud.js): (x, y) = the hovered row's target; no x = back to the picked one */
-        window._ewSpellAimHover = function (x, y) {
+        /* the spell target list's rows (hud.js): (x, y, z) = the hovered row's target; no x = back to the picked one */
+        var _aimHoverZ;   // the hovered row's body height, read by updateIntentPreview (a column can hold two bodies)
+        window._ewSpellAimHover = function (x, y, z) {
             if (state.actionMode !== 'spell') return;
             const pt = state.pendingTarget;
             if (x == null) { if (pt && pt.x != null) updateAoePreview(pt.x, pt.y); return; }
-            updateAoePreview(x, y);
+            _aimHoverZ = (z !== undefined && z !== null) ? z : undefined;
+            try { updateAoePreview(x, y); } finally { _aimHoverZ = undefined; }
         };
 
         /* ov = { unit, spell }: paint a spell that is NOT armed (the tile quick menu's hovered row, hud.js) with the
@@ -15719,8 +15721,12 @@
             const spell = ov ? ov.spell : ((caster.spells || []).find(s => s.name === state.selectedTool) || (caster._raceAbilities || []).find(s => s.name === state.selectedTool));
             if (!spell) return;
 
-            /* THE FORECAST: the engine's own read of this cast — numbers, victims and landings in one */
-            const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y) : null;
+            /* THE FORECAST: the engine's own read of this cast — numbers, victims and landings in one. The height picks the
+               body when a flyer hangs over a ground unit (the hovered row's, else the pick's) */
+            const _ipt = state.pendingTarget;
+            const _fz = ov ? undefined : (_aimHoverZ !== undefined ? _aimHoverZ
+                : ((_ipt && _ipt.x === x && _ipt.y === y && _ipt.z !== null) ? _ipt.z : undefined));
+            const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y, _fz) : null;
             if (_plan && _plan.handled) {
                 _fcRenderBadges(caster, spell, _plan);
                 drawForecastStrikes(_plan, caster);   // THE STRIKE ARROWS: caster → every body it hits from this aim
@@ -17550,6 +17556,13 @@
         document.addEventListener('keydown', (event) => {
             if (_battleMoveInputBlocked(event.target)) return;
             if (state.autoPlayers?.[state.activePlayer]) return;
+            /* SPACE answers to the END TURN button's own gates (_ewRequestEndTurn), not the board-step guards below: a
+               busy flag left behind after a cinematic ate SPACE while the button still worked (playtest 2026-10-21) */
+            if (event.key === ' ' && state.phase === 'battle') {
+                event.preventDefault();
+                if (typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
+                return;
+            }
             if (_wasdAnimating) return;
             if (state._actionExecuting) return;
 
