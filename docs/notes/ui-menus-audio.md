@@ -1638,6 +1638,31 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
   canvas; the Text tab's stand-ins, the battle menus + HUD, the name plates and a real pop (showFloatingTextAtTile) all drew
   the picked fonts.
 
+### UI Maker pass 27: THE CRIT LOOK (2026-10-21, mondo: "and let me change how the critical hit stamp looks or choose to just make it normal text")
+- Pops > new section **Critical hit** (hud.js `floatCritForm`, after Hits; the Hits section's old "CRIT stamp" box moved
+  here as the third choice). **Show a crit as**: Stamp (as the game) / Text / Nothing (`fCrit`; a look saved with the old
+  box off reads as Nothing, uxMigrate drops `fStamp`). **Word** (`fCritWord`, '' = CRIT on a stamp, CRIT! as text).
+- **Stamp** look (`fCrit*`, floatSignal -> `L.crit` = only the keys that differ): Shape Burst + plate (the game's) / Plate /
+  Burst (the word on the burst) / Round / Just the word (`fCritShape`), Burst points (`fCritPoints`, 8), Where Top right
+  (the game's shoulder) / Top left / Above / Beside / Under (`fCritWhere`), Size × (`fCritSize`), Tilt ° (`fCritTilt`,
+  -14 = the game's -0.24 rad), Font + Weight, Plate / Letters / Outline / Burst colours ('' = the game's; Just the word
+  fills the letters with the plate gold), Glow. battle.js `_hitReadStampGeo(fs, S)` measures the shape (its outline in
+  its own frame, the turned box bx / by the canvas grows to on every side, the solid part's turned box ix / iy that
+  `_ewMarginL/R/Top/Bot` report to the bunch, the solid half size sw / sh for the shoulder); `_hitReadStamp(ctx, cx, cy,
+  fs, S, G)` draws it. With no look it draws the game's stamp at the game's spot (centre 0.7425 × the word size in from
+  the corner, 0.835 above; the old 0.837). Above / Beside / Under keep the WHOLE stamp clear of the digits.
+- **Text**: `_hitReadStyle` returns `critWord` (no stamp) and the display impl pops it at the number's tile as a
+  'crit' kind word (`_hitReadCritPop`, 1100 ms like the old CRIT! pop), so it waits for its number and goes where the
+  Layout puts words, in the CRIT / BACKSTAB kind's colour / font / weight / size (the section shows those same keys,
+  fcCrit / fkCrit*). Hiding Hit words hides it. Each end pops its own from the relayed crit fact (RULE #2: nothing new
+  relayed; the guest's look decides on the guest).
+- The preview: `makePop` keeps the dress's `critWord` on the pop and `spawn` pops the word beside it; a change between
+  stamp and text (or a new word) clears and replays the beat (`critWordNow`). Changing anything in the section switches
+  the unit to the Crit beat (`floatCritBeat`). "Reset the critical hit" (`critreset`) clears fCrit* only; the one-click
+  Looks keep them. The 2D board's `.hr-crit` span takes the word, font and colours.
+- Browser-checked (scratchpad probe, VS-CPU arena, CRT 100 basic attacks so a real crit lands): before/after shots of the
+  game's stamp, Text, a red Round CRITICAL! above the number and a glowing Just the word.
+
 ### UI Maker pass 26: YOUR FONTS + THE BUNCH + each kind of pop + the preview loops one beat (2026-10-21, mondo: "can you add these fonts to the game, specically as options for the floating text, but also anywhere else that has text options ... the motion and side by side settings are completely broken and make the numbers all over the screen and in weird spots and move and flicker etc ... All i want is an option that makes the floating text not just appear one after another on top of each other in a stack. They should be bunched up/scattered but still clearly on that enemy ... ideally i could choose different fonts for different words ... i want to be able to click on one of the options and have it loop that one")
 - **YOUR FONTS**: his seven R2 files in `Assets/fonts/` load through @font-face rules in index.html (comment YOUR FONTS, before
   styles-base.css): Aida Serif Oblique (AidaSerifObliqueMedium.ttf, weight 500), Aida Serifa Condensed, Contra (CONTRA__.ttf),

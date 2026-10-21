@@ -12448,11 +12448,18 @@
                 punch = HIT_READ.punch[opts._hitW | 0] || 1;
                 if (opts._hitKill) punch *= HIT_READ.killPunch;
             }
+            /* THE CRIT LOOK (UI Maker > Pops > Critical hit, hud.js floatSignal FL.crit): the stamp on the number (the
+               game's, in the look's shape / colours / font / size / tilt / spot) or, as 'text', a plain word pop of the
+               CRIT / BACKSTAB kind that lands with the number like every other word (_hitReadCritPop) */
+            const FC = FL.crit || {};
+            const critOn = !!opts._hitCrit && FL.stamp !== false, critText = critOn && FC.as === 'text';
             return {
                 color: (tintable && !own && FL.elem !== false) ? col : null,
                 glowColor: col || '#ff5a3a',
                 scale: own ? 1 : Math.min(maxScale * 1.35, (1 + f * (maxScale - 1)) * punch),
-                crit: !!opts._hitCrit && FL.stamp !== false,
+                crit: critOn && !critText,
+                critWord: critText ? String(FC.word || 'CRIT!') : '',
+                stampLook: FC,
                 weak, resist, glyph,
                 kill: !!opts._hitKill,
                 killGlow: !!opts._hitKill && FL.killGlow !== false,
@@ -12505,15 +12512,31 @@
                 const mX = c._ewMarginX || 0, mT = c._ewMarginTop || 0, mB = c._ewMarginBot || 0;
                 /* THE NUMBER IS THE HERO (mondo 2026-10-17): the CRIT stamp
                    sits on the number's top-right SHOULDER, clear of the
-                   digits — it used to be stamped across the last digit. */
-                const sFs = Math.max(10, Math.round(h * 0.22));
-                const sR = sFs * 1.35;                                  // the starburst's half-height
-                const sCx = w - mX - sR * 0.55, sCy = mT - sR * 0.62;   // in the stock pop's coords
-                const padL = gs ? Math.round(gs * 1.05) : 0;
-                const padR = hr.crit ? Math.max(gs ? padL : 0, Math.ceil(sCx + sR * 1.55 - w)) : padL;
-                const padT = hr.crit ? Math.max(0, Math.ceil(sR - sCy) + 2) : 0;
+                   digits — it used to be stamped across the last digit.
+                   THE CRIT LOOK (2026-10-21): or top left / above / beside /
+                   under it (S.where), and the canvas grows to hold it. */
+                const S = hr.stampLook || {};
+                const sFs = Math.max(10, Math.round(h * 0.22 * _hitReadNum(S.size, 1, 0.4, 3)));
+                const G = hr.crit ? _hitReadStampGeo(sFs, S) : null;
+                let sCx = 0, sCy = 0;                                   // in the stock pop's coords
+                if (G) {
+                    /* the number's ink box; a shoulder spot keeps the solid part (the plate) just over the digits, its
+                       centre 0.74 of the word size in from the corner (the game's 0.55 × the burst's 1.35); above,
+                       beside and under keep the whole stamp clear of the number */
+                    const iL = mX, iR = w - mX, iT = mT, iB = h - mB, gap = sFs * 0.12;
+                    if (S.where === 'tl') { sCx = iL + sFs * 0.7425; sCy = iT - G.sh - sFs * 0.19; }
+                    else if (S.where === 'top') { sCx = (iL + iR) / 2; sCy = iT - G.by - gap; }
+                    else if (S.where === 'right') { sCx = iR + G.bx + gap; sCy = (iT + iB) / 2; }
+                    else if (S.where === 'below') { sCx = (iL + iR) / 2; sCy = iB + G.by + gap; }
+                    else { sCx = iR - sFs * 0.7425; sCy = iT - G.sh - sFs * 0.19; }
+                }
+                const gPad = gs ? Math.round(gs * 1.05) : 0;
+                const padL = G ? Math.max(gPad, Math.ceil(G.bx - sCx) + 2) : gPad;
+                const padR = G ? Math.max(gPad, Math.ceil(sCx + G.bx - w) + 2) : gPad;
+                const padT = G ? Math.max(0, Math.ceil(G.by - sCy) + 2) : 0;
+                const padB = G ? Math.max(0, Math.ceil(sCy + G.by - h) + 2) : 0;
                 const padX = padL, padY = padT;
-                const W = w + padL + padR, H = h + padT;
+                const W = w + padL + padR, H = h + padT + padB;
                 c.width = W; c.height = H;                              // (clears it)
                 const ctx = c.getContext('2d');
                 if (hr.killGlow) {
@@ -12528,16 +12551,18 @@
                 }
                 ctx.drawImage(snap, padX, padY);
                 if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, padY + h / 2, gs);
-                if (hr.crit) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs);
+                if (G) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs, S, G);
                 c.style.width = Math.round(W * hr.scale) + 'px';
                 c.style.height = Math.round(H * hr.scale) + 'px';
-                c._ewMarginX = (gs || hr.crit ? 0 : mX) * hr.scale;   // glyph / stamp are ink at the edges
+                c._ewMarginX = (gs || G ? 0 : mX) * hr.scale;   // glyph / stamp are ink at the edges
                 /* each side's own margin (the floating text's bunch, three-renderer _floatBox): the glyph sits at the
-                   left edge; the right ends at the digits or the stamp, so the glyph's matching pad is not ink */
-                c._ewMarginL = (gs ? 0 : padX + mX) * hr.scale;
-                c._ewMarginR = Math.max(0, W - Math.max(padX + w - mX, hr.crit ? padX + sCx + sR * 1.1 : 0)) * hr.scale;
-                c._ewMarginTop = (hr.crit ? Math.max(0, padY + sCy - sR) : mT) * hr.scale;
-                c._ewMarginBot = mB * hr.scale;
+                   left edge; the rest ends at the digits or the stamp's solid part (G.ix / G.iy: a burst's thin tips
+                   are not counted), so the glyph's matching pad is not ink */
+                const nL = gs ? 0 : padX + mX, nR = padX + w - mX, nT = padY + mT, nB = padY + h - mB;
+                c._ewMarginL = Math.max(0, G ? Math.min(nL, padX + sCx - G.ix) : nL) * hr.scale;
+                c._ewMarginR = Math.max(0, W - (G ? Math.max(nR, padX + sCx + G.ix) : nR)) * hr.scale;
+                c._ewMarginTop = Math.max(0, G ? Math.min(nT, padY + sCy - G.iy) : nT) * hr.scale;
+                c._ewMarginBot = Math.max(0, H - (G ? Math.max(nB, padY + sCy + G.iy) : nB)) * hr.scale;
                 // The afterglow breathes while the killing blow lingers.
                 if (hr.killGlow && typeof c.animate === 'function') {
                     const gc = hr.glowColor;
@@ -12578,34 +12603,115 @@
         }
         // The crit stamp: a tilted gold plate on a white starburst, "CRIT"
         // punched out in near-black — reads at a glance, even at chip size.
-        function _hitReadStamp(ctx, cx, cy, fs) {
+        /* THE CRIT LOOK (2026-10-21, mondo: "let me change how the critical hit stamp looks or choose to just make it
+           normal text"): S = the look's crit (hud.js floatSignal FL.crit), every key optional, a missing one the game's:
+           word, shape (burst = the plate on a starburst | plate | star = the word on the burst | round | none = the
+           word alone), points (the burst's), plate / ink (the letters) / line (outline) / burst colours, font, weight,
+           size ×, tilt (°), where (tr | tl | top | right | below), glow. _hitReadStampGeo measures it once per pop: the
+           outline in its own frame, its turned box (bx / by, what the canvas must hold), the solid part's turned box
+           (ix / iy, what the pop layout counts as ink: a burst's thin tips are not) and the solid part's own half
+           size (sw / sh, the shoulder spot). */
+        const _hitReadMeasure = (typeof document !== 'undefined') ? document.createElement('canvas').getContext('2d') : null;
+        function _hitReadNum(v, d, lo, hi) {
+            if (v == null || v === '' || !isFinite(+v)) return d;
+            return Math.max(lo, Math.min(hi, +v));
+        }
+        function _hitReadStampGeo(fs, S) {
+            const shape = ['plate', 'star', 'round', 'none'].indexOf(S.shape) >= 0 ? S.shape : 'burst';
+            const word = String(S.word || 'CRIT').slice(0, 24);
+            const font = (S.weight || '900') + ' ' + fs + 'px ' + (S.font || "'Cinzel', Georgia, serif");
+            let ww = fs * 2.5;
+            if (_hitReadMeasure) { _hitReadMeasure.font = font; ww = _hitReadMeasure.measureText(word).width; }
+            const lw = Math.max(2, fs * 0.14);
+            const tw = ww + fs * 0.6, th = fs * 1.15;                 // the plate
+            const pts = Math.round(_hitReadNum(S.points, 8, 4, 16));
+            const tilt = _hitReadNum(S.tilt, -0.24 * 180 / Math.PI, -60, 60) * Math.PI / 180;
+            const G = { shape, word, font, lw, tw, th, pts, tilt, R: 0, r: 0, kx: 1.5, rx: 0, ry: 0 };
+            const out = [], solid = [];
+            const box = (list, hw, hh) => { list.push([-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]); };
+            if (shape === 'burst' || shape === 'star') {
+                // star: the word sits on the burst itself, so the burst is bigger and holds it
+                G.R = fs * (shape === 'star' ? 1.6 : 1.35); G.r = G.R * (0.75 / 1.35);
+                G.kx = shape === 'star' ? Math.max(1.5, ww * 0.53 / G.r) : Math.max(1.5, tw / 2 / (G.R * 0.85));   // the plate stays inside it
+                for (let i = 0; i < pts * 2; i++) {
+                    const a = i * Math.PI / pts, rr = (i % 2) ? G.r : G.R;
+                    out.push([Math.cos(a) * rr * G.kx, Math.sin(a) * rr]);
+                }
+            }
+            if (shape === 'burst' || shape === 'plate') { box(out, tw / 2 + lw / 2, th / 2 + lw / 2); box(solid, tw / 2 + lw / 2, th / 2 + lw / 2); G.sw = tw / 2 + lw / 2; G.sh = th / 2 + lw / 2; }
+            else if (shape === 'star') { G.sw = G.r * G.kx; G.sh = G.r; }
+            else if (shape === 'round') {
+                G.rx = Math.max(tw * 0.56, th * 0.8); G.ry = th * 0.8;
+                for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12; out.push([Math.cos(a) * (G.rx + lw / 2), Math.sin(a) * (G.ry + lw / 2)]); }
+                G.sw = G.rx + lw / 2; G.sh = G.ry + lw / 2;
+            } else if (shape === 'none') { G.sw = ww / 2 + lw * 1.4; G.sh = fs * 0.55 + lw * 1.4; box(out, G.sw, G.sh); }
+            const cs = Math.cos(tilt), sn = Math.sin(tilt);
+            const ext = list => list.reduce((m, p) => [Math.max(m[0], Math.abs(p[0] * cs - p[1] * sn)), Math.max(m[1], Math.abs(p[0] * sn + p[1] * cs))], [0, 0]);
+            const e = ext(out);
+            G.bx = e[0]; G.by = e[1];
+            const so = ext(solid.length ? solid : [[-G.sw, -G.sh], [G.sw, -G.sh], [G.sw, G.sh], [-G.sw, G.sh]]);
+            G.ix = so[0]; G.iy = so[1];
+            if (shape === 'burst') { G.ix = Math.max(G.ix, G.bx * 0.75); G.iy = Math.max(G.iy, G.by); }
+            else if (shape === 'star') { G.ix = Math.max(G.ix, G.bx * 0.75); G.iy = Math.max(G.iy, G.by * 0.9); }
+            return G;
+        }
+        function _hitReadStamp(ctx, cx, cy, fs, S, G) {
+            S = S || {};
+            G = G || _hitReadStampGeo(fs, S);
+            const plate = S.plate || '#ffc21a', line = S.line || '#3a1a00';
+            const ink = S.ink || (G.shape === 'none' ? plate : '#1c0c00');
+            const glow = _hitReadNum(S.glow, 0, 0, 3);
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(-0.24);
-            const R = fs * 1.35, r = fs * 0.75;
-            ctx.beginPath();
-            for (let i = 0; i < 16; i++) {
-                const a = i * Math.PI / 8, rr = (i % 2) ? r : R;
-                ctx.lineTo(Math.cos(a) * rr * 1.5, Math.sin(a) * rr);
+            ctx.rotate(G.tilt);
+            ctx.lineJoin = 'round';
+            // the halo: the backing (or the word alone) drawn through a soft shadow in its own colour
+            const halo = col => { if (glow > 0) { ctx.shadowColor = col; ctx.shadowBlur = Math.round(fs * 0.55 * glow); } };
+            const noHalo = () => { ctx.shadowColor = 'rgba(0,0,0,0)'; ctx.shadowBlur = 0; };
+            if (G.shape === 'burst' || G.shape === 'star') {
+                ctx.beginPath();
+                for (let i = 0; i < G.pts * 2; i++) {
+                    const a = i * Math.PI / G.pts, rr = (i % 2) ? G.r : G.R;
+                    ctx.lineTo(Math.cos(a) * rr * G.kx, Math.sin(a) * rr);
+                }
+                ctx.closePath();
+                ctx.fillStyle = S.burst || 'rgba(255,248,214,0.92)';
+                halo(S.burst || '#fff8d6');
+                ctx.fill();
+                noHalo();
+                if (G.shape === 'star') { ctx.strokeStyle = line; ctx.lineWidth = G.lw; ctx.stroke(); }
             }
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(255,248,214,0.92)';
-            ctx.fill();
-            ctx.font = "900 " + fs + "px 'Cinzel', Georgia, serif";
+            ctx.font = G.font;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            const tw = ctx.measureText('CRIT').width + fs * 0.6, th = fs * 1.15;
-            ctx.fillStyle = '#ffc21a';
-            ctx.strokeStyle = '#3a1a00';
-            ctx.lineWidth = Math.max(2, fs * 0.14);
-            ctx.beginPath();
-            if (typeof ctx.roundRect === 'function') ctx.roundRect(-tw / 2, -th / 2, tw, th, fs * 0.2);
-            else ctx.rect(-tw / 2, -th / 2, tw, th);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#1c0c00';
-            ctx.fillText('CRIT', 0, fs * 0.04);
+            if (G.shape === 'burst' || G.shape === 'plate' || G.shape === 'round') {
+                ctx.fillStyle = plate;
+                ctx.strokeStyle = line;
+                ctx.lineWidth = G.lw;
+                ctx.beginPath();
+                if (G.shape === 'round') ctx.ellipse(0, 0, G.rx, G.ry, 0, 0, Math.PI * 2);
+                else if (typeof ctx.roundRect === 'function') ctx.roundRect(-G.tw / 2, -G.th / 2, G.tw, G.th, fs * 0.2);
+                else ctx.rect(-G.tw / 2, -G.th / 2, G.tw, G.th);
+                if (G.shape !== 'burst') halo(plate);
+                ctx.fill();
+                noHalo();
+                ctx.stroke();
+            }
+            if (G.shape === 'none') {
+                ctx.strokeStyle = line;
+                ctx.lineWidth = G.lw * 2;
+                ctx.strokeText(G.word, 0, fs * 0.04);
+                halo(ink);
+            }
+            ctx.fillStyle = ink;
+            ctx.fillText(G.word, 0, fs * 0.04);
             ctx.restore();
+        }
+        /* THE CRIT LOOK as text: the crit's word pops as a word of the CRIT / BACKSTAB kind (its colour, font and size
+           under Each kind of pop) at the number's tile, laid out with the other words. Each end pops its own from the
+           relayed crit fact, like the stamp (RULE #2: a look needs no relay). */
+        function _hitReadCritPop(x, y, word) {
+            try { _realShowFloatingTextAtTile_impl(x, y, word, 'crit', { durationMs: 1100, jitterY: -20 }); } catch (_e) {}
         }
 
         /* 2D-board fallback: the same read as classes + CSS vars on the
@@ -12626,7 +12732,17 @@
             if (hr.crit) {
                 const s = document.createElement('span');
                 s.className = 'hr-crit';
-                s.textContent = 'CRIT';
+                // THE CRIT LOOK: its word, font and colours (its shape and spot are the 3D board's)
+                const S = hr.stampLook || {};
+                s.textContent = String(S.word || 'CRIT').slice(0, 24);
+                if (S.font) s.style.fontFamily = S.font;
+                if (S.weight) s.style.fontWeight = S.weight;
+                if (S.ink || S.shape === 'none') s.style.color = S.ink || S.plate || '#ffc21a';
+                if (S.shape === 'none') { s.style.background = 'none'; s.style.border = '0'; s.style.boxShadow = 'none'; }
+                else {
+                    if (S.plate) s.style.background = S.plate;
+                    if (S.line) s.style.borderColor = S.line;
+                }
                 el.appendChild(s);
             }
         }
@@ -12694,8 +12810,10 @@
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 const _fel = window.ThreeAnim.floatingText(x, y, String(textValue ?? ''), kind, durationMs, { jitterX, jitterY });
                 if (_hr && _fel) _hitReadDress3D(_hr, _fel);
+                if (_hr && _hr.critWord) _hitReadCritPop(x, y, _hr.critWord);   // THE CRIT LOOK as text
                 return;
             }
+            if (_hr && _hr.critWord) _hitReadCritPop(x, y, _hr.critWord);
 
             // the 2D board keeps this viewer's Which pops show too
             if (window.ThreeAnim && window.ThreeAnim.floatShows && !window.ThreeAnim.floatShows(String(textValue ?? ''), kind)) return;
