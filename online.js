@@ -2677,7 +2677,10 @@
                     _emit('relay', {
                         type: 'collision-fx',
                         x: x, y: y, kind: kind,
-                        delayMs: (opts && opts.delayMs) || 0
+                        delayMs: (opts && opts.delayMs) || 0,
+                        // THE FORCE FIELD: an 'edge' slam carries the face(s) it met
+                        dx: (opts && opts.dx) || 0, dy: (opts && opts.dy) || 0,
+                        z: (opts && opts.z != null) ? opts.z : null
                     });
                 }
                 return _origPlayCollisionImpactFx(x, y, kind, opts);
@@ -4779,7 +4782,8 @@
                             // sfx + floating text arrive on their own relays —
                             // replay only the shake + impact spark here.
                             window.playCollisionImpactFx(data.x, data.y, data.kind, {
-                                delayMs: data.delayMs || 0, muteSfx: true, muteText: true, remote: true
+                                delayMs: data.delayMs || 0, muteSfx: true, muteText: true, remote: true,
+                                dx: data.dx || 0, dy: data.dy || 0, z: data.z != null ? data.z : undefined
                             });
                         }
                     }
