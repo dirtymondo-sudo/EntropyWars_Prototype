@@ -39336,7 +39336,8 @@
                 const pt = state.pendingTarget;
                 let ptLabel = null;
                 if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
-                    const tu = unitAt(pt.x, pt.y);
+                    // the pick's own body when it carries a height (a flyer over a ground unit is a different target)
+                    const tu = ((pt.z !== undefined && pt.z !== null) ? unitAt(pt.x, pt.y, pt.z) : null) || unitAt(pt.x, pt.y);
                     ptLabel = '<strong>' + (tu ? esc(_ctName(tu)) : coordLabel(pt.x, pt.y)) + '</strong>';
                 }
 
@@ -40075,6 +40076,8 @@
            (getMoveTiles, getAttackTiles, getSpellRangeTiles,
            getEntropyStrikeTargets) are wrapped as-is. Exposed on
            window.GAME as GAME.TargetQuery. */
+        /* TargetQuery.hasReachableTarget's probe: { id, seen } = the caster and the bodies it sees from where it stands */
+        var _reachProbe = null;   // var: spellAimProblem may run before this line does
         const TargetQuery = {
 
             /* ── enumeration (wraps the engine's tile/target walkers) ── */
@@ -40269,6 +40272,14 @@
                    two beats' worth of action — never light a blade for it. */
                 if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
                 const sx = unit.x, sy = unit.y, sz = unit.z;
+                /* SIGHT FROM WHERE IT STANDS (playtest 2026-10-21: Sasquatch Smash wore MOVE→CAST, its list said "No
+                   targets in range"): the probe below moves the caster, and the sight gate then judged fog from the
+                   probe tile — an enemy hidden in fog lit the button while the target list (_getSpellApproachTargets,
+                   "never promise a walk toward a unit the caster can't see") rightly left it out. The bodies seen
+                   NOW are the only ones the probe may count (spellAimProblem reads _reachProbe). */
+                _reachProbe = spellVisionGate(unit, spell)
+                    ? { id: unit.id, seen: new Set(state.units.filter(u => !u.dead && isInVision(unit, u.x, u.y, u.z)).map(u => u.id)) }
+                    : null;
                 try {
                     // Jump approach first: leap to a tile (often high ground) from which the
                     // spell becomes castable. Independent of the walk move budget — this is
@@ -40308,6 +40319,7 @@
                     }
                 } finally {
                     unit.x = sx; unit.y = sy; unit.z = sz;
+                    _reachProbe = null;
                 }
                 return false;
             },
@@ -41502,8 +41514,10 @@
                 if (!r.inRange) return 'range';
                 if (r.losBlocked()) return 'los';
             }
+            // a reach probe (TargetQuery.hasReachableTarget) judges sight from where the caster stands now
+            const _probeSeen = (_reachProbe && _reachProbe.id === unit.id && tgt) ? _reachProbe.seen.has(tgt.id) : null;
             if (spellVisionGate(unit, spell) && r.d > 0 && !km.fogExempt
-                && !isInVision(unit, x, y, (tgt && tgt.z != null) ? tgt.z : undefined)
+                && !(_probeSeen != null ? _probeSeen : isInVision(unit, x, y, (tgt && tgt.z != null) ? tgt.z : undefined))
                 && !_spellSkyTelescopeTarget(unit, x, y)) return 'sight';
             if (r.d > 0 && km.offensive && !km.tileTargeted) {
                 const c = unitAt(x, y);
@@ -41521,6 +41535,18 @@
             }
             return null;
         }
+        /* spellAimProblem for one BODY (a menu row, a quick-menu card): a column holding two bodies (a flyer over a
+           ground unit) hands an out-of-reach pick to the other body — right for a board click, wrong for a row that
+           names this one (playtest 2026-10-21: the Cyborg row confirmed, the Cowboy beneath took the smash) */
+        function spellAimProblemOn(unit, spell, u) {
+            if (!u) return 'range';
+            const why = spellAimProblem(unit, spell, u.x, u.y, u.z);
+            if (why) return why;
+            const aimT = (!isSpellSelfCast(spell) && spell.kind !== 'line' && spell.kind !== 'linePush')
+                ? _spellAimTarget(unit, spell, u.x, u.y, u.z) : null;
+            return (aimT && aimT.column && aimT.unit && aimT.unit.id !== u.id) ? 'range' : null;
+        }
+        window.spellAimProblemOn = spellAimProblemOn;
         /* the menus' word for an aim problem */
         function spellAimProblemLabel(why) {
             return why === 'los' ? 'No line of sight' : why === 'sight' ? 'Out of sight'
@@ -41530,7 +41556,7 @@
            target not cloaked from the caster's side, and the spell actually doing something to it */
         function spellCastableOnUnit(unit, spell, u) {
             if (!unit || !spell || !u) return false;
-            if (spellAimProblem(unit, spell, u.x, u.y, u.z)) return false;
+            if (spellAimProblemOn(unit, spell, u)) return false;
             if (!u.dead && isEnemyUnit(u, unit) && isUnitConcealedFrom(u, unit.player)) return false;
             return spellTargetUsableOn(unit, spell, u);
         }
@@ -41799,7 +41825,12 @@
                the lit tiles. */
             const _aimBody = ((tz !== undefined && tz !== null) ? unitAt(tx, ty, tz) : null) || unitAt(tx, ty);
             const _aimZ = (tz !== undefined && tz !== null) ? tz : (_aimBody ? _aimBody.z : undefined);
-            const _hitsTarget = _aimBody
+            /* a body of a shared column must be hit ITSELF from the probe tile — the column rule would hand an
+               out-of-reach pick to the body beneath it (playtest 2026-10-21) */
+            const _aimShared = !!(_aimBody && typeof unitsAtColumn === 'function' && unitsAtColumn(tx, ty).length > 1);
+            const _hitsTarget = _aimShared
+                ? () => !spellAimProblemOn(unit, spell, _aimBody)
+                : _aimBody
                 ? () => !spellAimProblem(unit, spell, tx, ty, _aimZ)
                 : () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
             let best = null, bestScore = -1;
@@ -56788,7 +56819,10 @@
                         state._spellCycleTargets = targets;
                         state._spellCycleIndex = 0;
                         if (targets.length > 0) {
-                            state.pendingTarget = { x: targets[0].x, y: targets[0].y, mode: 'spell', tool: toolName, viaHover: false };
+                            /* the pick carries its BODY's height: two units share a column (a flyer over a ground
+                               unit), and without z the CONFIRM row named the first while the bar and the cast took
+                               the other — or a stale board-click z sent the cast "out of range" (playtest 2026-10-21) */
+                            state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'spell', tool: toolName, viaHover: false };
                             updateAoePreview(targets[0].x, targets[0].y);
                             // enemy targeting → third person from the caster
                             _tpsTargetShot(unit, targets[0].unit || targets[0]);
@@ -56818,8 +56852,10 @@
                         }
                         state._spellCycleTargets = targets;
                         state._spellCycleIndex = 0;
-                        if (targets.length > 0) {
-                            state.pendingTarget = { x: targets[0].x, y: targets[0].y };
+                        /* a dash / teleport aims at the tile it goes TO — pre-picking a body there armed "CONFIRM —
+                           <the caster>" and the cast then failed "Destination out of dash range" (playtest 2026-10-21) */
+                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport') {
+                            state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
                         }
                     }
@@ -57010,7 +57046,7 @@
                    cast on it from here — 3D reach (2×2 bosses by their nearest corner, sky grabs flat), the
                    sight line, team sight (the telescope's sky shots included), the doors, Cryptid / Shadow
                    Realm. The drum's own copy of those numbers is what drifted from the cast. */
-                if (spellAimProblem(unit, spell, u.x, u.y, u.z)) continue;
+                if (spellAimProblemOn(unit, spell, u)) continue;
                 targets.push({ x: u.x, y: u.y, dist: spellReachToTarget(unit, spell, u), unit: u });
             }
             _orderTargetsByNeed(spell, targets);
@@ -57624,6 +57660,15 @@
             scheduleBoardRender();
         }
 
+        /* is the menu's pick in reach from where the caster stands? A pick that names a body of a shared column (a
+           flyer over a ground unit) asks about THAT body: the lit tile is the column's, and casting from here would
+           hand the hit to the other body (playtest 2026-10-21: a MOVE→CAST Cyborg row smashed the Cowboy below) */
+        function _mtcReachesPick(unit, spell, x, y, z) {
+            const body = (z !== undefined && z !== null) ? unitAt(x, y, z) : null;
+            if (body && body.x === x && body.y === y && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1)
+                return !spellAimProblemOn(unit, spell, body);
+            return typeof getSpellRangeTiles === 'function' && getSpellRangeTiles(unit, spell).some(t => t.x === x && t.y === y);
+        }
         function selectTargetFromMenu(x, y, z) {
             const unit = getSelectedUnit();
             if (!unit) return;
@@ -57655,9 +57700,15 @@
                 clearAoePreview();
                 clearHoveredTarget();
                 const _repeatN = (state.pendingTarget && state.pendingTarget._repeatN) || 1;
+                const _ptZ = state.pendingTarget ? state.pendingTarget.z : undefined;
                 state.pendingTarget = null;
 
-                const execZ = (z !== undefined && z !== null) ? z : state._clickedZ;
+                /* no z from the row: the pick's own height, then the body standing there — the last BOARD click's z
+                   belongs to some other tile and sent casts "out of range" */
+                const _bodyZ = (() => { const b = unitAt(x, y); return b ? b.z : undefined; })();
+                const execZ = (z !== undefined && z !== null) ? z
+                    : (_ptZ !== undefined && _ptZ !== null) ? _ptZ
+                    : (_bodyZ !== undefined && _bodyZ !== null) ? _bodyZ : state._clickedZ;
                 if (execZ !== undefined && execZ !== null) state._clickedZ = execZ;
                 // Arm the repeat queue: further clicks on this target while the
                 // action animates stack repetitions (see _tryQueueRepeat).
@@ -57687,8 +57738,7 @@
                         && !unitSpellsBlocked(unit)
                         && (typeof unitMeetsSpellTierReq !== 'function' || unitMeetsSpellTierReq(unit, _mtcSp))
                         && (unit.mp || 0) >= getSpellMpCostFor(unit, _mtcSp)
-                        && !(typeof getSpellRangeTiles === 'function'
-                            && getSpellRangeTiles(unit, _mtcSp).some(t => t.x === x && t.y === y))) {
+                        && !_mtcReachesPick(unit, _mtcSp, x, y, execZ)) {
                         _mtcApproach = findSpellApproachTile(unit, _mtcSp, x, y, execZ);
                     }
                     if (_mtcApproach) { _moveThenCast(unit, _mtcApproach, _mtcSp.name, x, y, execZ); }
@@ -57734,7 +57784,7 @@
             state._spellCycleIndex = ((state._spellCycleIndex || 0) + direction + len) % len;
             const t = state._spellCycleTargets[state._spellCycleIndex];
             if (t) {
-                state.pendingTarget = { x: t.x, y: t.y };
+                state.pendingTarget = { x: t.x, y: t.y, z: t.unit ? t.unit.z : undefined };
                 updateAoePreview(t.x, t.y);
                 // the camera swings with each cycled target — still the
                 // caster's over-the-shoulder view, now looking at THIS enemy

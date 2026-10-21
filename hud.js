@@ -2011,11 +2011,14 @@ function _subDodge() {
     let now = 0;   // where the slide is this frame (mid-ease too), so the box's home spot stays put
     try { const tf = getComputedStyle(bar).transform; now = tf && tf !== 'none' ? new DOMMatrixReadOnly(tf).m41 : 0; } catch (e) { now = cur; }
     const L0 = r.left - now, R0 = r.right - now, obs = [];
-    document.querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)').forEach(p => {
+    /* the root verbs count too, once a sub menu has dimmed them (playtest 2026-10-21: the bar sat on END TURN beside
+       an attack list), and every row on its own — a grown / slanted row reaches past its list's box */
+    const _push = (o) => { if (o.width > 1 && o.height > 1 && o.top < r.bottom + 4 && o.bottom > r.top - 4) obs.push(o); };
+    document.querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root), .hrlg-panels > .hrlg-panel.root.bg').forEach(p => {
       for (const c of p.children) {
         if (c.classList.contains('qp')) continue;   // the unit info card is not a menu
-        const o = c.getBoundingClientRect();
-        if (o.width > 1 && o.height > 1 && o.top < r.bottom + 4 && o.bottom > r.top - 4) obs.push(o);
+        _push(c.getBoundingClientRect());
+        if (c.classList.contains('hrlg-list')) for (const row of c.children) _push(row.getBoundingClientRect());
       }
     });
     for (let n = 0; n < 6; n++) {   // clear one, check the next one along
@@ -4772,6 +4775,8 @@ function _hrlgFinisherTargetBlades(unit, st) {
     try { if (typeof window.getFinisherForecast === 'function') fc = window.getFinisherForecast(unit, t); } catch (e) { fc = null; }
     const portrait = _hrlgPortraitData(t, unit);
     const dist = Math.max(Math.abs(t.x - unit.x), Math.abs(t.y - unit.y));
+    const _finKey = 'fin|' + unit.id + '|' + t.id + '|' + (unit.ap || 0);
+    const _finArmed = ready && _hrlgSelfArmKey === _finKey;
     return {
       id: 'fin:' + i + ':' + t.id,
       icon: fc && fc.resist ? '▼' : '☠',
@@ -4785,10 +4790,24 @@ function _hrlgFinisherTargetBlades(unit, st) {
       portrait: portrait,
       camTarget: { x: t.x, y: t.y, z: t.z, uid: t.id },
       meta: { text: dist + 't' },
+      check: _finArmed,
+      _selfArmed: _finArmed,   // the green CONFIRM rides this row (ActionMenu)
       fire: () => {
         hideSpellTooltip();
+        if (!ready || typeof window.doFinisher !== 'function') return;
+        /* PICK, THEN CONFIRM (playtest 2026-10-21: one click on a victim row executed at once, where every other
+           target list picks first): the first click arms the row (✓ + CONFIRM), CONFIRM or a second click fires */
+        if (!_finArmed) {
+          _hrlgSelfArmKey = _finKey;
+          if (typeof playSfx === 'function') playSfx('uiCursorFocus');
+          if (typeof markDirty === 'function') markDirty('hud');
+          if (typeof renderIfDirty === 'function') renderIfDirty();
+          try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}
+          return;
+        }
+        _hrlgSelfArmKey = null;
         if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
-        if (ready && typeof window.doFinisher === 'function') window.doFinisher(unit, t.id);
+        window.doFinisher(unit, t.id);
       },
     };
   });
@@ -4909,6 +4928,15 @@ function _hrlgPortraitData(u, actingUnit) {
   };
 }
 
+/* is the pending pick `pt` this row (tile x,y; body `u` when the row is a unit)? A pick with a height names one body of
+   its column; a pick without one names the body unitAt reads there (the one the CONFIRM bar names). */
+function _hrlgPickIs(pt, x, y, u) {
+  if (!pt || pt.x !== x || pt.y !== y) return false;
+  if (!u || typeof unitAt !== 'function') return true;
+  const body = ((pt.z !== undefined && pt.z !== null) ? unitAt(x, y, pt.z) : null) || unitAt(x, y);
+  return !body || body === u;
+}
+
 function _hrlgTargetBlades(unit, st, mode) {
   let targets = [], titleText = 'Targets', titleIcon = '⌖';
   let spell = null;
@@ -4936,8 +4964,10 @@ function _hrlgTargetBlades(unit, st, mode) {
   const isOffensive = mode === 'attack' || (spell && !['heal', 'shield', 'buff', 'scan'].includes(spell.kind));
 
   const blades = targets.map((t, i) => {
-    const isPending = st.pendingTarget && st.pendingTarget.x === t.x && st.pendingTarget.y === t.y;
     let label = '', hpVal = 0, hpMax = 0, tUnit = t.unit || null;
+    /* two bodies can share a column (a flyer over a ground unit): the ✓ goes on the row of the body the pick is
+       for — x,y alone marked BOTH rows and put CONFIRM on the wrong one (playtest 2026-10-21) */
+    const isPending = _hrlgPickIs(st.pendingTarget, t.x, t.y, tUnit);
     if (tUnit) {
       label = typeof unitDisplayName === 'function' ? unitDisplayName(tUnit) : (tUnit.name || tUnit.cls);
       hpVal = tUnit.hp; hpMax = tUnit.maxHp;
@@ -5040,7 +5070,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       // THE STRIKE ARROWS (ui.js): a hovered spell row in reach paints its cast (footprint, numbers, an arrow onto
       // every body it hits, the ricochet hop); leaving goes back to the pick
       hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); }
-        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y); } : undefined,
+        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y, tz); } : undefined,
       hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); }
         : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(null); } : undefined,
     };
@@ -5099,7 +5129,7 @@ function _hrlgItemTargetBlades(unit, st) {
 
   const blades = targets.map((t, i) => {
     const u = t.unit;
-    const isPending = st.pendingTarget && st.pendingTarget.x === u.x && st.pendingTarget.y === u.y;
+    const isPending = _hrlgPickIs(st.pendingTarget, u.x, u.y, u);
     let available = true, sub = null;
     if (isHeal && u.hp >= u.maxHp) { available = false; sub = 'Full HP'; }
     else if (isMana && !(u.maxMp > 0)) { available = false; sub = 'No MP pool'; }
@@ -5618,7 +5648,8 @@ function ActionMenu({ st, hidden }) {
          : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
-      fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
+      // the unit this menu is drawn for — the row's grey-out was judged on it (playtest 2026-10-21: lit, then "Must be standing in a Nexus zone")
+      fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
     });
   }
   // ⬆/⬇ flyers get a permanent LAND / TAKE OFF tool row the same way.
@@ -5911,11 +5942,12 @@ function ActionMenu({ st, hidden }) {
   }
 
   // THE SELF-CAST CONFIRM on the quick menus: an armed self-cast row (✓) gets the same green CONFIRM
-  if (view !== 'quick') _hrlgSelfArmKey = null;
-  if (!confirmObj && view === 'quick' && !st._actionExecuting) {
+  const _finView = menuView === 'finisherTargets';
+  if (view !== 'quick' && !_finView) _hrlgSelfArmKey = null;
+  if (!confirmObj && (view === 'quick' || _finView) && !st._actionExecuting) {
     const _qp = panels[panels.length - 1];
     const _qb = _qp && (_qp.blades || []).find(b => b && b._selfArmed);
-    if (_qb) confirmObj = { label: 'SELF', fire: _qb.fire };
+    if (_qb) confirmObj = { label: _finView ? _qb.label : 'SELF', fire: _qb.fire };
   }
 
   // ── clock-HUD item slots: the unit's held items ride under the watch
@@ -6701,7 +6733,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         && (typeof isTerrainPassable !== 'function' || isTerrainPassable(tx, ty));
       // THE ONE AIM RULE: the shared cast gate runs before the dash branch in doSpell too.
       if (inSpellRange && typeof spellAimProblem === 'function') {
-        _aimWhy = spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z);
+        _aimWhy = ((typeof spellAimProblemOn === 'function') ? spellAimProblemOn(actingUnit, sp, targetUnit) : spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z));
         inSpellRange = !_aimWhy;
       }
     } else if (isLeap) {
@@ -6719,7 +6751,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       inSpellRange = !!targetUnit && dist >= 1 && dist <= spRange && !spLos && _csh > _tsh;
       // THE ONE AIM RULE: the leap's own cast gate (reach, sight, fog, above-the-target) has the last word.
       if (typeof spellAimProblem === 'function' && targetUnit) {
-        _aimWhy = spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z);
+        _aimWhy = ((typeof spellAimProblemOn === 'function') ? spellAimProblemOn(actingUnit, sp, targetUnit) : spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z));
         inSpellRange = !_aimWhy;
       }
     } else if ((sp.aoeShape === 'ring' || _hudMaskIsHollow(sp)) && typeof findAoeCastCenterForTarget === 'function') {
@@ -6737,7 +6769,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
          old copy here measured the body, then fell back to the lit tiles (which read the column's lowest body)
          and said yes where the cast said no. */
       if (typeof spellAimProblem === 'function') {
-        _aimWhy = spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z)
+        _aimWhy = ((typeof spellAimProblemOn === 'function') ? spellAimProblemOn(actingUnit, sp, targetUnit) : spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z))
           || ((typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(targetUnit, actingUnit.player)) ? 'sight' : null);
         inSpellRange = !_aimWhy;
       } else {

@@ -58262,7 +58262,14 @@ const ThreeRenderer = (function () {
        mesh is the truth (where). Re-run after every GLB that lands
        (_hqSeatLater, debounced). Nothing under a prop = it stays where it
        was typed (and says so under EW_HQ_DEBUG). */
-    var _hqSeatRay = null, _hqSeatTimer = 0;
+    var _hqSeatRay = null, _hqSeatTimer = 0, _hqSeatCam = null;
+    /* a room built into a BATTLE has no HQ camera — the battle's camera, else a stand-in (the playtest's boot-time
+       "Raycaster.camera needs to be set" errors, 2026-10-21) */
+    function _hqSeatCamera(H) {
+        var c = H && H.camera;
+        if (!c) { try { c = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; } catch (e) { c = null; } }
+        return c || _hqSeatCam || (_hqSeatCam = new THREE.PerspectiveCamera());
+    }
     function _hqSeatTabletops() {
         var H = _hq; if (!H || !H.tabletops || !H.tabletops.length) return;
         var U = _hqUnits(), rc = _hqSeatRay || (_hqSeatRay = new THREE.Raycaster());
@@ -58272,7 +58279,7 @@ const ThreeRenderer = (function () {
             if (!t.grp.parent) return;
             t.grp.getWorldPosition(wp);
             var yA = t.y * U;                                    // the authored height in world units (the group's y before any seat)
-            rc.set(new THREE.Vector3(wp.x, yA + 0.45 * U, wp.z), down); rc.near = 0; rc.far = 0.95 * U; rc.camera = H.camera || null;   // sprites need a camera or three.js logs an error per sprite (they are skipped below anyway)
+            rc.set(new THREE.Vector3(wp.x, yA + 0.45 * U, wp.z), down); rc.near = 0; rc.far = 0.95 * U; rc.camera = _hqSeatCamera(H);   // sprites need a camera or three.js logs an error per sprite (they are skipped below anyway)
             var best = null, hits = [];
             for (var r = 0; r < roots.length; r++) { try { rc.intersectObject(roots[r], true, hits); } catch (e) { } }
             for (var i = 0; i < hits.length; i++) {
