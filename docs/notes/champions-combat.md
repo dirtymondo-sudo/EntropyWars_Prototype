@@ -1445,6 +1445,16 @@ right half to two thirds of the screen".
 - Checked on screen (1440×900, Football Stadium, Sedan vs CPU): menu alone, Abilities open, Attack target list, a far
   target with Abilities open, Move range, enemy quick menu with its info card. The sandbox renders ~1 fps: let the
   camera settle ~30 s before reading a frame.
+- THE SUB MENU RULE (2026-10-21, mondo: "i asked you to frame the camera a little more to the right, but i think you
+  overdid it too much. Please fix. And remember it only needs this different framing if a sub menu is open from the
+  action menu"). `_menuFreeArea` returns the shifted frame only while a panel past the root is up in the real rig
+  (`.hrlg-rig:not(.hrlg-peek) .hrlg-panels > .hrlg-panel:not(.root)`: Abilities, Attack's target list, a board click's
+  quick list, ...). The action menu alone returns `_CLEAR_ROOT` (cx 0, hw 1, menu false, cmd true): no slide, and the fits
+  use the plain pre-CLEAR-FRAME numbers again (two-shot MENU_CAM_SHIFT_H/V 0.14/0.08 + MENU_CAM_PLAIN_H/V 0.58/0.56; range
+  fit TILE_PICK_PLAIN_H/V 0.80/0.86). `_ewMenuSlide` drops the slide at once when a sub menu closes back to the action
+  menu (not mid-action) and refits a fitted frame for it. With a sub menu up the frame slides only CLEAR_FRAME_SHIFT
+  (0.55) of the way to the free part's middle, keeping its size (Football Stadium 1440x900, Abilities open: cx 0.42 →
+  0.23 NDC, the unit ~62% across instead of ~71%). Too far / not far enough: tune CLEAR_FRAME_SHIFT.
 
 ## THE CLICK FACE + THE ATTACK HOLD (2026-10-18)
 mondo: "whenever i click on an enemy or a unit, my unit should turn to face them. if all i do is basic attack them ...

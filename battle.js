@@ -24523,6 +24523,8 @@
            margin. Returns { x, y, zoom } in camera units, or null when there is no 3D lens to solve on. */
         const TILE_PICK_MARGIN_H = 0.86;   // fraction of the FREE frame's half-width the range may fill (THE CLEAR FRAME)
         const TILE_PICK_MARGIN_V = 0.90;   // and of its half-height (the HUD strips are already cut off it)
+        const TILE_PICK_PLAIN_H = 0.80;    // no sub menu up (THE SUB MENU RULE): fraction of the half-frame sideways
+        const TILE_PICK_PLAIN_V = 0.86;    // and up/down (HUD strips top and bottom)
         const TILE_PICK_MIN_HALF = 3;      // never frame tighter than ±3 tiles round the centre
         function _tilePickFrame(unit, tiles, fa) {
             if (!unit) return null;
@@ -24585,7 +24587,8 @@
                 // moves the eye by (cx·dist·tanH, cy·dist·tanV) sideways / up, so the point lands at
                 // (r·right + cx·dist·tanH) / (depth·tanH) and must stay within mH·hw of cx:
                 // |r·right − cx·along·tanH| ≤ mH·hw·depth·tanH (and the same up/down)
-                const mH = TILE_PICK_MARGIN_H * fa.hw, mV = TILE_PICK_MARGIN_V * fa.hh;
+                const mH = fa.menu ? TILE_PICK_MARGIN_H * fa.hw : TILE_PICK_PLAIN_H;
+                const mV = fa.menu ? TILE_PICK_MARGIN_V * fa.hh : TILE_PICK_PLAIN_V;
                 let dist = 0;
                 for (const p of pts) {
                     const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
@@ -28337,6 +28340,11 @@
         const MENU_CAM_TILT_FAR = 50;       // floor as the gap grows
         const MENU_CAM_MARGIN_H = 0.74;     // share of the FREE frame's half-width the pair may fill (THE CLEAR FRAME)
         const MENU_CAM_MARGIN_V = 0.70;     // and of its half-height
+        // the action menu alone (no sub menu open): the plain framing from before THE CLEAR FRAME
+        const MENU_CAM_PLAIN_H = 0.58;      // half-frame share the pair may fill sideways
+        const MENU_CAM_PLAIN_V = 0.56;      // and up/down
+        const MENU_CAM_SHIFT_H = 0.14;      // pair rides right of centre (menu bottom-left)
+        const MENU_CAM_SHIFT_V = 0.08;      // and a touch high (description bar at the bottom)
         const MENU_CAM_MIN_DIST = 3.0;      // tiles — never closer than this to the frame centre
         /* ══ THE CLEAR FRAME (2026-10-20) ══
            mondo: "for framing the battle with the camera, a lot of times the action menu is open with another sub menu,
@@ -28354,11 +28362,19 @@
              · when the cover changes under a fitted frame (a sub menu opening after the click that framed it, the
                quick list arriving after a board click), _clearFrameRefit solves that same frame again.
            The slide holds through an action a pick started (the menu hides for its animation) while the board rig
-           keeps the camera, and eases back to 0 once no menu is up (CPU turns, cinematics). Viewer-local. */
+           keeps the camera, and eases back to 0 once no menu is up (CPU turns, cinematics). Viewer-local.
+           THE SUB MENU RULE (2026-10-21, mondo: "i asked you to frame the camera a little more to the right, but i think
+           you overdid it too much ... it only needs this different framing if a sub menu is open from the action
+           menu"): the frame only shifts while a sub menu of the action menu is up (any panel of the cascade past the
+           root: Abilities, Attack's target list, a board click's quick list ...). The action menu alone frames the
+           plain way (no slide, the old two-shot shift + margins, the old range-fit margins). And the shift is a share
+           of the way to the free part's middle (CLEAR_FRAME_SHIFT), the frame keeping its size. */
         const CLEAR_FRAME_MIN_HW = 0.42;    // the free part never counts as narrower than 42% of the screen
+        const CLEAR_FRAME_SHIFT = 0.55;     // share of the way to the free part's middle the frame slides (sub menu up)
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
+        const _CLEAR_ROOT = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true });   // the action menu alone
         let _cfArea = null, _cfAt = 0, _cfHeld = null, _cfSeenAt = 0, _cfPend = null;
         function _menuFreeArea(fresh) {
             const now = performance.now();
@@ -28391,6 +28407,10 @@
                     else x1 = Math.min(x1, r.left);
                 });
                 if (!menu) return _cfArea;
+                // THE SUB MENU RULE: the action menu alone keeps the plain framing
+                const sub = [...document.querySelectorAll('.hrlg-rig:not(.hrlg-peek) .hrlg-panels > .hrlg-panel:not(.root)')]
+                    .some(el => boxOf(el));
+                if (!sub) return (_cfArea = _CLEAR_ROOT);
                 // the HUD strips: scoreboard / match line on top, the prompt + description bars below
                 document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
                     const r = boxOf(el);
@@ -28407,7 +28427,7 @@
                 }
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
-                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2),
+                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * CLEAR_FRAME_SHIFT,
                     cy: Math.max(-0.2, Math.min(0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
                     hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true
                 };
@@ -28423,6 +28443,13 @@
                 _cfHeld = fa; _cfSeenAt = now;
                 _clearFrameRefit(fa, now);
                 return fa;
+            }
+            // the action menu alone (a sub menu closed back to it): the plain framing, a frame fitted beside the sub
+            // menu solved again for it
+            if (fa.cmd && !state._actionExecuting) {
+                _cfHeld = null;
+                _clearFrameRefit(fa, now);
+                return _CLEAR_FULL;
             }
             // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → keep the frame;
             // a brief gap (one unit's menu handing over to the next) too; else back to the middle
@@ -28504,6 +28531,10 @@
             F[0] /= pts.length; F[1] /= pts.length; F[2] /= pts.length;
             const gap = Math.hypot(A.x - B.x, A.z - B.z, A.foot - B.foot);
             let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
+            // THE SUB MENU RULE: no sub menu up → the plain framing (centre right of the middle, the old margins)
+            const plain = !fa.menu;
+            const aimX = plain ? MENU_CAM_SHIFT_H : fa.cx, aimY = plain ? MENU_CAM_SHIFT_V : fa.cy;
+            const mH = plain ? MENU_CAM_PLAIN_H : MENU_CAM_MARGIN_H * fa.hw, mV = plain ? MENU_CAM_PLAIN_V : MENU_CAM_MARGIN_V * fa.hh;
             // fixed-point: centre the projected box on the middle of the free frame (THE CLEAR FRAME), then scale the
             // boom so the box fills its margins (perspective-true). The board rig's slide (ThreeCamera.sync) shifts the
             // eye by (fa.cx, fa.cy) at the focal's depth, so a point at depth d lands fa.cx·dist/d over.
@@ -28521,9 +28552,9 @@
                 }
                 if (tooNear) { dist *= 1.35; continue; }
                 const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
-                const k = Math.max((xMax - xMin) / 2 / (MENU_CAM_MARGIN_H * fa.hw), (yMax - yMin) / 2 / (MENU_CAM_MARGIN_V * fa.hh));
-                // slide the focal so the box centre lands on the free frame's middle
-                const ox = (cx - fa.cx) * dist * tanH, oy = (cy - fa.cy) * dist * tanV;
+                const k = Math.max((xMax - xMin) / 2 / mH, (yMax - yMin) / 2 / mV);
+                // slide the focal so the box centre lands on the free frame's middle (the plain shift with no sub menu)
+                const ox = (cx - aimX) * dist * tanH, oy = (cy - aimY) * dist * tanV;
                 F[0] += rt[0] * ox + up[0] * oy; F[1] += up[1] * oy; F[2] += rt[2] * ox + up[2] * oy;
                 dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
             }
