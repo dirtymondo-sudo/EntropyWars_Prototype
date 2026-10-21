@@ -34339,7 +34339,8 @@
                     // so it stays exact if the type-chart values ever change.
                     const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
                     _hrTypeEff = _effMult; // THE HIT READ's weak / resisted verdict
-                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
+                    // one word for a type-weak hit everywhere: the pop says what the preview, the green ! and the log say (mondo 2026-10-21)
+                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} SUPER EFFECTIVE!`);
                     else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
                 }
                 // 🩸 Bloodcraze (werewolf passive, plan §5.2): ×dmgMult vs a

@@ -4668,11 +4668,12 @@ function _hrlgEntropyBlades(unit, st) {
     const good = fc && fc.weak > 0 && fc.resist === 0;
     const bad = fc && fc.resist > 0 && fc.weak === 0;
     const powerColor = good ? '#7dff9a' : (bad ? '#ff7a7a' : '#f0e6c8');
-    // the intel chip: "▲2 WEAK" / "▼1 RESIST" / "▲2 ▼1" / "NEUTRAL"
+    // the intel chip: "▲2" / "▼1 RESIST" / "▲2 ▼1" / "NEUTRAL" — ▲ = enemies it hits SUPER EFFECTIVE (the words never fit the
+    // chip; the title spells them out, mondo 2026-10-21: one word for a type-weak hit)
     let metaText = 'NEUTRAL', metaColor = '#9a94ad';
     if (fc && (fc.weak || fc.resist)) {
       const bits = [];
-      if (fc.weak) bits.push('▲' + fc.weak + (fc.resist ? '' : ' WEAK'));
+      if (fc.weak) bits.push('▲' + fc.weak);
       if (fc.resist) bits.push('▼' + fc.resist + (fc.weak ? '' : ' RESIST'));
       metaText = bits.join(' ');
       metaColor = good ? '#7dff9a' : (bad ? '#ff7a7a' : '#f2c468');
@@ -4700,7 +4701,7 @@ function _hrlgEntropyBlades(unit, st) {
       badges,
       available: ready,
       power: { v: '~' + proj, color: powerColor },
-      meta: { text: metaText, color: metaColor, title: 'Visible enemies weak (▲) / resistant (▼) to this type' },
+      meta: { text: metaText, color: metaColor, title: 'Visible enemies this type hits SUPER EFFECTIVE (▲) / that resist it (▼)' },
       note: (best && best.type === id) ? 'BEST' : null,
       superEff: !!good,
       sub: ready ? null : 'Not ready',
@@ -4746,7 +4747,7 @@ function _hrlgEntropyBlades(unit, st) {
         ],
         available: finReady,
         power: fc ? { v: '~' + fc.dmg, color: fc.kill ? '#7dff9a' : (fc.resist ? '#ff7a7a' : '#f0e6c8') } : undefined,
-        meta: fc ? { text: fc.kill ? '☠ KILL' : (fc.weak ? '▲ WEAK' : (fc.resist ? '▼ RESIST' : 'ONE TARGET')), color: fc.kill ? '#7dff9a' : (fc.resist ? '#ff7a7a' : '#9a94ad'), title: 'Projected against the best visible victim' } : undefined,
+        meta: fc ? { text: fc.kill ? '☠ KILL' : (fc.weak ? '▲ ×' + (+((fc.stab ? fc.mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : fc.mult).toFixed(2))) : (fc.resist ? '▼ RESIST' : 'ONE TARGET')), color: fc.kill ? '#7dff9a' : (fc.resist ? '#ff7a7a' : '#9a94ad'), title: 'Projected against the best visible victim' } : undefined,
         note: 'EXECUTION',
         superEff: !!(fc && fc.kill),
         sub: finReady ? null : 'Not ready',
@@ -4843,7 +4844,7 @@ function _hrlgReserveMatchup(r, st) {
   }
   if (!seen) return { text: 'NO ENEMY IN SIGHT', color: '#7a7490', up, dn, seen };
   const parts = [];
-  if (up) parts.push('▲' + up + ' WEAK');
+  if (up) parts.push('▲' + up);   // ▲ = enemies it hits SUPER EFFECTIVE
   if (dn) parts.push('▼' + dn + ' EXPOSED');
   const color = up && !dn ? '#7dff9a' : (dn && !up ? '#ff7a7a' : '#f0e6c8');
   return { text: parts.length ? parts.join(' · ') : 'NEUTRAL', color, up, dn, seen };
@@ -14161,7 +14162,7 @@ const FLOAT_KINDS = [
   ['damage', 'Damage', '#ff5a4a', 'nums', 'Damage numbers, and damage words like BURNING! or CRASH!'], ['critdmg', 'Critical hit', '#ffcc00', 'nums', 'The number of a critical hit'],
   ['combo', 'Chain hit', '#5fd4ff', 'nums', 'Counter and follow-up hits in a chain'], ['total', 'TOTAL', '#ffe27a', 'nums', 'The N TOTAL! after a flurry of hits'],
   ['heal', 'Heal', '#5cf07e', 'nums', 'Heal numbers, and heal words like Doused'], ['mp', 'MP', '#6ec8ff', 'nums'], ['revive', 'Revive + AP', '#ffd700', 'nums'],
-  ['crit', 'CRIT / BACKSTAB', '#ffcc00', 'words'], ['mult', '×N WEAK / RESIST', '#ffd86b', 'words', 'The multiplier words: WEAK!, RESIST, HIGH GROUND!, POINT BLANK'],
+  ['crit', 'CRIT / BACKSTAB', '#ffcc00', 'words'], ['mult', '×N SUPER EFFECTIVE / RESIST', '#ffd86b', 'words', 'The multiplier words: SUPER EFFECTIVE!, FIRE WEAK!, RESIST, HIGH GROUND!, POINT BLANK'],
   ['streak', 'SUPER EFFECTIVE / PUSHED', '#ff6a4a', 'words', 'SUPER EFFECTIVE!, PUSHED!, COLLISION!, SWAP!, a spell name'], ['counter', 'FLANKED / counter', '#ff9a55', 'words'],
   ['overkill', 'OVERKILL', '#ff3a2a', 'words'], ['dodge', 'DODGE / MISS', '#d6d9e6', 'words'], ['protect-block', 'PROTECTED / IMMUNE', '#5cb8ff', 'words'],
   ['buff', 'Buffs', '#9fe6ff', 'words'], ['debuff', 'Debuffs', '#d68cff', 'words'], ['status', 'Statuses', '#ffd86b', 'words', 'GRAPPLED!, HOOKED!, Blocked!'],
@@ -15183,7 +15184,7 @@ function floatKindForm(X, FF) {
 function floatCritForm(X, FF, WT) {
   const as = X.fCrit, sh = X.fCritShape, burst = sh === 'burst' || sh === 'star';
   let h = fSeg('Show a crit as', 'fCrit', [['stamp', 'Stamp', 'A badge on the number (as the game)'],
-    ['text', 'Text', 'A word that pops with the number like the other words (WEAK!, DODGE!), in the Layout above'],
+    ['text', 'Text', 'A word that pops with the number like the other words (SUPER EFFECTIVE!, DODGE!), in the Layout above'],
     ['off', 'Nothing', 'Just the number, in the Critical hit colour']], as);
   if (as === 'stamp') {
     h += fSeg('Shape', 'fCritShape', [['burst', 'Burst + plate', 'A gold plate on a white starburst (as the game)'], ['plate', 'Plate', 'The plate alone'],
@@ -15286,7 +15287,7 @@ function floatDetail() {
     + fRange('Words wait (ms)', 'fWait', 0, 800, 10, +X.fWait, 'How long a word waits so its number lands first')));
   h += sec('fshow', 'Which pops show', xCheck('Damage numbers', 'fShowDmg', X.fShowDmg) + xCheck('Heal numbers', 'fShowHeal', X.fShowHeal)
     + xCheck('MP numbers', 'fShowMp', X.fShowMp) + xCheck('TOTAL after a flurry', 'fShowTotal', X.fShowTotal)
-    + xCheck('Hit words (WEAK!, CRIT, DODGE!, SUPER EFFECTIVE!)', 'fShowHit', X.fShowHit)
+    + xCheck('Hit words (SUPER EFFECTIVE!, CRIT, DODGE!, FIRE WEAK!)', 'fShowHit', X.fShowHit)
     + xCheck('Status + effect words (BURNING!, FROZEN!, LAND)', 'fShowStatus', X.fShowStatus)
     + xCheck('XP, level ups, pickups, Nexus', 'fShowMisc', X.fShowMisc));
   h += '<div class="uim-note">A new setting shows on the next pop in a battle; the unit above redraws its pops at once.</div>'

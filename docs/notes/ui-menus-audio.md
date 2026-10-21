@@ -1819,3 +1819,8 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   `_ewRequestEndTurn` only refuses an `_actionExecuting` latch while the board is really busy (GAME.boardBusy).
 - **Console**: `_hqSeatTabletops` (a room built into a battle has no HQ camera) gives its ray the battle camera / a stand-in,
   ending the boot-time "Raycaster.camera needs to be set" errors.
+- **ONE WORD FOR A TYPE-WEAK HIT** (mondo 2026-10-21 picked "SUPER EFFECTIVE everywhere"): the type-matchup pop over the
+  target reads "×1.3 SUPER EFFECTIVE!" (was "×1.3 WEAK!"), matching the preview, the green ! and the log. The ELEMENT pop
+  ("🔥 ×1.5 FIRE WEAK!", the target race's element weakness on the element part) keeps its words. The Entropy picker /
+  reserve chips that counted "▲2 WEAK" now read "▲2" (the words never fit; the title says SUPER EFFECTIVE); the finisher
+  pick row reads "▲ ×1.3".
