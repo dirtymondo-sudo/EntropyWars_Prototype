@@ -72,6 +72,12 @@
                 try { window._ewRecRelay(data); } catch (e) {}
             }
             if (evt === 'game-action' && _recoveryBlocked()) return;
+            /* THE GUEST'S VIEW (online.js _ewGuestRelayFilter): the host sends the guest no beat that only happens
+               inside its fog — the recorder above keeps the whole one */
+            if (evt === 'relay' && _isHost() && typeof window._ewGuestRelayFilter === 'function') {
+                data = window._ewGuestRelayFilter(data);
+                if (!data) return;
+            }
             if (evt === 'game-action' && data && window._gameState && window._gameState.shotClock) data.activationId = window._gameState.shotClock.activationId;
             if (data && window._NET) data.matchId = window._NET.matchId;
             if (window._NET && window._NET.socket && window._NET.socket.connected) window._NET.socket.emit(evt, data);
@@ -2377,6 +2383,16 @@
                         }
                     }
                 }
+                /* ONE OF EACH (2026-10-21 PvP audit #13): the builder blocks a team that fields a unit twice; the host
+                   re-checks the guest's sheet so a modified client can't get round it */
+                if (typeof teamDuplicateRaces === 'function') {
+                    var _dupR = teamDuplicateRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
+                    if (_dupR.length) {
+                        addLog('⚠️ Rejected opponent party config: the same unit twice (' + _dupR.join(', ') + ').');
+                        console.warn('[NET GUARD] party-config rejected — duplicate race:', _dupR);
+                        return;
+                    }
+                }
             }
             /* THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral class — whatever the guest sent */
             if (Array.isArray(data.builds)) state.partyBuilds[2] = data.builds.map(function () { return UNIT_CLASS; });
@@ -2677,7 +2693,10 @@
                     _emit('relay', {
                         type: 'collision-fx',
                         x: x, y: y, kind: kind,
-                        delayMs: (opts && opts.delayMs) || 0
+                        delayMs: (opts && opts.delayMs) || 0,
+                        // THE FORCE FIELD: an 'edge' slam carries the face(s) it met
+                        dx: (opts && opts.dx) || 0, dy: (opts && opts.dy) || 0,
+                        z: (opts && opts.z != null) ? opts.z : null
                     });
                 }
                 return _origPlayCollisionImpactFx(x, y, kind, opts);
@@ -3769,9 +3788,11 @@
                         } else if (!st._actionExecuting && !st._walkAnimActive && !st.aiThinking &&
                             (typeof window._ewRecoverySnapshotReady !== 'function' || window._ewRecoverySnapshotReady())) {
                             var snapshot = _serializeState();
+                            var _rcUnits = _guestViewFilter(snapshot);   // THE GUEST'S VIEW: fogged enemies masked
+                            _guestTrapFilter(snapshot);
                             _packClock(snapshot);
                             NET._recoverySnapshot = { id: id, matchId: NET.matchId,
-                                state: JSON.parse(_ewSafeStringify(snapshot)), checksum: _ewStateChecksum(st) };
+                                state: JSON.parse(_ewSafeStringify(snapshot)), checksum: _ewStateChecksum(st, _rcUnits) };
                             NET.socket.emit('recovery-snapshot', NET._recoverySnapshot);
                             sent = true;
                         }
@@ -3877,6 +3898,9 @@
 
                 NET.socket.on('room-full', function(data) {
                     NET.matchId = data.matchId;
+                    /* a FAILED recovery left _recovering latched (state-sync is ignored while it is set); a fresh room
+                       clears it (2026-10-21 PvP audit #15). A live recovery (_recoveryFailed false) is untouched. */
+                    if (NET._recoveryFailed) NET._recovering = false;
                     NET._recoveryFailed = false;
                     window._ewResetOnlineMatchFlags(false);   // THE NEXT ROOM: a fresh room starts from clean match flags
 
@@ -4059,7 +4083,7 @@
                     if (!NET.online || NET.role !== 'host' || !data || data.id !== NET._recoveryId ||
                         data.matchId !== NET.matchId || NET._recoveryFailed) return;
                     NET.socket.emit('recovery-confirmed', { id: data.id, matchId: NET.matchId,
-                        checksum: _ewStateChecksum(window._gameState) });
+                        checksum: _ewStateChecksum(window._gameState, _guestViewFilter(null)) });
                 });
                 NET.socket.on('recovery-complete', function(data) {
                     if (!NET.online || !data || data.id !== NET._recoveryId || data.matchId !== NET.matchId || NET._recoveryFailed) return;
@@ -4194,6 +4218,18 @@
                        server forwards every relay verbatim, so drop them
                        here instead of falling through the dispatcher. */
                     if (data.type === 'state-checksum') return;
+                    /* THE GUEST'S VIEW: a beat the guest sees that involves a unit masked in its snapshot carries that
+                       unit's tile — put the body there so the beat plays from where it really is (the renderer's fog
+                       gate still hides it; the next snapshot that carries units masks it again) */
+                    if (Array.isArray(data._at) && NET.role === 'guest' && st && Array.isArray(st.units)) {
+                        data._at.forEach(function(a) {
+                            if (!Array.isArray(a)) return;
+                            var au = st.units.find(function(u) { return u && u.id === a[0]; });
+                            if (!au || !au._netHidden || !isFinite(a[1]) || !isFinite(a[2])) return;
+                            au.x = a[1]; au.y = a[2]; au.z = isFinite(a[3]) ? a[3] : 0;
+                            au._netAt = 1;   // the checksum still hashes it as sent (masked)
+                        });
+                    }
                     if (data.type === 'intro-skip') {
                         /* Opponent voted to skip the opening cinematic. Latch the
                            vote (it may arrive before OUR cinematic mounts) and
@@ -4779,7 +4815,8 @@
                             // sfx + floating text arrive on their own relays —
                             // replay only the shake + impact spark here.
                             window.playCollisionImpactFx(data.x, data.y, data.kind, {
-                                delayMs: data.delayMs || 0, muteSfx: true, muteText: true, remote: true
+                                delayMs: data.delayMs || 0, muteSfx: true, muteText: true, remote: true,
+                                dx: data.dx || 0, dy: data.dy || 0, z: data.z != null ? data.z : undefined
                             });
                         }
                     }
@@ -5163,13 +5200,17 @@
                host and guest by design. Every field read here rides
                state-sync verbatim (units wholesale, round/activePlayer/
                matchKills scalars), so host and guest hash identical values. */
-            function _ewStateChecksum(st) {
+            function _ewStateChecksum(st, units) {
                 if (!st || !st.units) return null;
+                /* units: the list to hash — the HOST passes the units AS SENT (THE GUEST'S VIEW masks fogged enemies),
+                   so both ends hash the same values */
+                if (!Array.isArray(units)) units = st.units;
                 var parts = [];
-                for (var i = 0; i < st.units.length; i++) {
-                    var u = st.units[i];
+                for (var i = 0; i < units.length; i++) {
+                    var u = units[i];
                     if (!u) continue;
-                    parts.push(u.id, u.player, u.x, u.y, u.z, u.hp, u.mp, u.ap, u.dead ? 1 : 0);
+                    if (u._netAt) parts.push(u.id, u.player, GV_HIDDEN_XY, GV_HIDDEN_XY, 0, u.hp, u.mp, u.ap, u.dead ? 1 : 0);   // THE GUEST'S VIEW: placed by a beat, sent masked
+                    else parts.push(u.id, u.player, u.x, u.y, u.z, u.hp, u.mp, u.ap, u.dead ? 1 : 0);
                 }
                 parts.push('R', st.round, 'A', st.activePlayer);
                 var mk = st.matchKills;
@@ -5536,6 +5577,379 @@
                The full state goes out again on a new phase, round, match or result, every LEAN_FULL_MS (a lost packet heals
                itself), and after a match generation / recovery (NET._leanSent = null). Nothing changes on the guest side. */
             var LEAN_MIN = 1024, LEAN_FULL_MS = 3000;
+            function _guestTrapFilter(s) {
+                if (!s || !Array.isArray(s.traps) || !s.traps.length) return;
+                var gp = NET.myPlayer === 1 ? 2 : 1;
+                s.traps = s.traps.filter(function(t) {
+                    return t && (t.owner === gp || (t._revealedTo && t._revealedTo[gp]));
+                });
+            }
+
+            /* ── THE GUEST'S VIEW (2026-10-21, PvP audit #3, the rest: mondo "start a new thread to work on the online
+               sync") ──
+               Every snapshot carried every unit's real tile, so an enemy hidden in the fog was one console line away on the
+               guest. Now the HOST works out what the guest can see — the guest's own fog set (computeVisibleTiles for its
+               player: team sight, wards, towers, doors, flares, smoke; a Blind / Jammed unit acting = its own sight only),
+               the renderer's z-exact line of sight, and the rules' own sight test (isInVision, what every attack and spell
+               checks) — and a living enemy the guest can neither see nor target goes out MASKED: every stat it had, but
+               no tile (x = y = GV_HIDDEN_XY, off the board, never inside any fog set) and none of its remembered
+               positions; `_netHidden` marks it. Off the board it can never draw, block a tile, be targeted or be framed
+               on the guest, so the guest's screen is what it was. Fog OFF (Clash) or a decided match masks nothing.
+               The dead are not masked (their grave already marks the spot). The checksum is taken over the units AS
+               SENT, so the anti-desync check and the recovery handshake still agree. Enemy decoys in the fog go the
+               same way (a copy reads as a unit). The relays that place a body (walks, jumps, shots, pushes, numbers)
+               are trimmed host-side to what the guest's own fog gates would show — _ewGuestRelayFilter below. */
+            var GV_HIDDEN_XY = -999;
+            var _gvCache = { key: '', v: null };
+            function _gvTileVis(v, x, y) {
+                if (v.tiles.has(x + ',' + y)) return true;
+                /* _isTileVisibleToViewer's vision-ward radius fallback, as the guest runs it */
+                var st = window._gameState, W = st && st._visionWards;
+                if (W && W.length) {
+                    for (var i = 0; i < W.length; i++) {
+                        var w = W[i];
+                        if (w && w.player === v.gp && (Math.abs(w.x - x) + Math.abs(w.y - y)) <= (w.radius || 3)) return true;
+                    }
+                }
+                return false;
+            }
+            function _gvKey(st, gp) {
+                var k = [gp, st.round, st.activePlayer, st._blitzActiveUnitId || '', st.selectedUnitId || '', st._terrainVersion || 0,
+                    st.edgeWalls ? Object.keys(st.edgeWalls).length : 0, Math.floor(Date.now() / 1000)];
+                var us = st.units || [];
+                for (var i = 0; i < us.length; i++) {
+                    var u = us[i];
+                    if (!u) continue;
+                    k.push(u.id + ':' + u.x + ',' + u.y + ',' + u.z + (u.dead ? 'd' : '') + (u._dying ? 'y' : '') + (u._insideBuildingId ? 'b' : '')
+                        + (u.status ? JSON.stringify(u.status) : '') + (u.wallVision ? 'w' : ''));
+                }
+                var z = st._activeZones || [];
+                for (var j = 0; j < z.length; j++) if (z[j] && z[j].smokeConcealment) k.push('z' + z[j].x + ',' + z[j].y + ',' + (z[j].radius ?? 1) + ',' + z[j].ownerPlayer);
+                if (st.wards) for (var a = 0; a < st.wards.length; a++) k.push('w' + st.wards[a].x + ',' + st.wards[a].y + ',' + st.wards[a].owner);
+                if (st._visionWards) k.push('vw' + st._visionWards.length);
+                if (st.doors) for (var b = 0; b < st.doors.length; b++) k.push('d' + st.doors[b].id + (st.doors[b].open ? 'o' : 's') + (st.doors[b].hp > 0 ? '' : 'x'));
+                if (st.towers) k.push('t' + JSON.stringify(st.towers));
+                var fr = st._flairRevealTiles && st._flairRevealTiles[gp];
+                if (fr) k.push('f' + (fr.size != null ? fr.size : fr.length));
+                return k.join('|');
+            }
+            /* The rules' sight (isInVision): what the guest may aim at. A Blind / Jammed unit acting = its own eyes. */
+            function _gvRulesSee(st, gp, u) {
+                if (typeof isInVision !== 'function') return false;
+                var solo = (typeof fogSoloUnit === 'function') ? fogSoloUnit(gp) : null;
+                var mine = solo ? [solo] : st.units.filter(function(m) { return m && !m.dead && !m._dying && m.player === gp; });
+                for (var i = 0; i < mine.length; i++) {
+                    if (isInVision(mine[i], u.x, u.y, u.z ?? null)) return true;
+                }
+                return false;
+            }
+            /* three-renderer _unitLosSeen for the guest's player (the fog set is 2D; this is the z-exact eye line) */
+            function _gvLosSeen(st, gp, u) {
+                if (typeof isVisionBlockedByTerrain !== 'function') return true;
+                for (var i = 0; i < st.units.length; i++) {
+                    var f = st.units[i];
+                    if (!f || f.dead || f._dying || f.player !== gp) continue;
+                    if (f.wallVision) return true;
+                    if (!isVisionBlockedByTerrain(f.x, f.y, u.x, u.y, f.z ?? null, u.z ?? null)) return true;
+                }
+                var W = st._visionWards, pk = u.x + ',' + u.y;
+                if (W) for (var j = 0; j < W.length; j++) {
+                    var w = W[j];
+                    if (w && w.player === gp && w.tiles && (w.tiles.has ? w.tiles.has(pk) : (w.tiles.indexOf && w.tiles.indexOf(pk) >= 0))) return true;
+                }
+                return false;
+            }
+            /* null = mask nothing (not the host, no fog, no fight, a result) */
+            function _guestView() {
+                var st = window._gameState;
+                if (!NET.online || NET.role !== 'host' || !st || st.phase !== 'battle' || st.winner || !st.fogOfWar
+                    || !Array.isArray(st.units) || typeof computeVisibleTiles !== 'function') return null;
+                var gp = NET.myPlayer === 1 ? 2 : 1;
+                var key = _gvKey(st, gp);
+                if (_gvCache.v && _gvCache.key === key) return _gvCache.v;
+                /* the guest's screen with its whole team's eyes (a superset of any one selection), without the host's own
+                   viewer-only reveal flashes (_fogRevealTiles never syncs) */
+                var tv = st.teamVision, fr = st._fogRevealTiles, tiles;
+                st.teamVision = true; st._fogRevealTiles = null;
+                try { tiles = computeVisibleTiles(gp); }
+                catch (e) { console.warn('[NETMASK] fog set failed — masking every enemy this beat', e); tiles = new Set(); }
+                finally { st.teamVision = tv; st._fogRevealTiles = fr; }
+                var v = { gp: gp, tiles: tiles, hidden: {}, n: 0 };
+                for (var i = 0; i < st.units.length; i++) {
+                    var u = st.units[i];
+                    if (!u || u.player === gp || u.dead) continue;
+                    var seen = false;
+                    try {
+                        if (!(typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(u, gp))) {
+                            seen = (tiles.has(u.x + ',' + u.y) && _gvLosSeen(st, gp, u)) || _gvRulesSee(st, gp, u);
+                        }
+                    } catch (e) { seen = false; }
+                    if (!seen) { v.hidden[u.id] = 1; v.n++; }
+                }
+                _gvCache.key = key; _gvCache.v = v;
+                return v;
+            }
+            /* a hidden unit as the guest gets it: everything but where it is (a remembered tile or path is a position too) */
+            var _GV_DROP = { x: 1, y: 1, z: 1, _dyingX: 1, _dyingY: 1, _deathTile: 1, _aiLastPos: 1, _aiRecentTiles: 1, _doorAttackOrigin: 1 };
+            function _gvHasPos(v) {
+                if (Array.isArray(v)) return v.length > 0 && !!v[0] && typeof v[0] === 'object' && ('x' in v[0] || 'tx' in v[0]);
+                return ('x' in v && 'y' in v) || ('tx' in v && 'ty' in v);
+            }
+            function _gvMaskUnit(u) {
+                var m = {};
+                for (var k in u) {
+                    if (!u.hasOwnProperty(k) || _GV_DROP[k]) continue;
+                    var val = u[k];
+                    if (typeof val === 'function') continue;
+                    if (typeof val === 'number' && /[a-z_][XYZ]$/.test(k)) continue;          // fromX, _prevY …
+                    if (val && typeof val === 'object' && _gvHasPos(val)) continue;            // a path, a tile, an origin
+                    m[k] = val;
+                }
+                m.x = GV_HIDDEN_XY; m.y = GV_HIDDEN_XY; m.z = 0;
+                m._netHidden = 1;
+                return m;
+            }
+            /* the unit list as the guest gets it (the host's own array when nothing is hidden) */
+            function _guestUnits(units, v) {
+                if (!Array.isArray(units)) return units;
+                if (!v || !v.n) return units;
+                return units.map(function(u) { return (u && v.hidden[u.id]) ? _gvMaskUnit(u) : u; });
+            }
+            /* applies the view to a snapshot; returns the units list the checksum is taken over */
+            function _guestViewFilter(s) {
+                var st = window._gameState;
+                var v = _guestView();
+                var gu = _guestUnits(st && st.units, v);
+                if (!s) return gu;
+                if (Array.isArray(s.units)) s.units = gu;
+                if (v && Array.isArray(s._deployedObjects) && s._deployedObjects.length) {
+                    s._deployedObjects = s._deployedObjects.filter(function(o) {
+                        if (!o || !o.isDecoy || o.ownerPlayer === v.gp || !(o.hp > 0)) return true;
+                        return _gvTileVis(v, o.x, o.y);
+                    });
+                }
+                return gu;
+            }
+            window._ewGuestView = _guestView;
+
+            /* THE GUEST'S VIEW for relays: the host sends what the guest's own fog gates (the _ewApplyRelay handlers
+               below) would show, and no more. A relay those gates would show nothing of is DROPPED; a walk
+               is trimmed to its visible stretch; a hit number in the fog keeps its value (the action shot's TOTAL DMG
+               counts it) but loses its tile. When a shown beat involves a masked unit (a shot out of the fog at a unit
+               the guest can see) the relay carries that unit's tile in `_at`, which the guest applies before playing it
+               (the screen shows where it came from, as it always has). Recorder copies stay whole (_emit taps first). */
+            function _gvUnit(id) {
+                var st = window._gameState;
+                if (id == null || !st || !st.units) return null;
+                for (var i = 0; i < st.units.length; i++) if (st.units[i] && st.units[i].id === id) return st.units[i];
+                return null;
+            }
+            window._ewGuestRelayFilter = function(data) {
+                if (!data || typeof data !== 'object' || !data.type) return data;
+                var v = null;
+                try { v = _guestView(); } catch (e) { v = null; }
+                if (!v) return data;
+                var gp = v.gp, out = data, at = [];
+                var tv = function(x, y) { return x != null && y != null && isFinite(x) && isFinite(y) && _gvTileVis(v, Math.round(x), Math.round(y)); };
+                var uv = function(u) { return !!u && tv(u.x, u.y); };
+                var enemy = function(u) { return !!u && u.player !== gp; };
+                var masked = function(u) { return !!(u && v.hidden[u.id]); };
+                var concealed = function(u) { return enemy(u) && typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(u, gp); };
+                /* (x, y, z) given: the tile the guest should put the body on — a walk out of the fog starts on its first
+                   SEEN tile, never on the hidden one it left */
+                var addAt = function(u, x, y, z) {
+                    if (!masked(u)) return;
+                    for (var i = 0; i < at.length; i++) if (at[i][0] === u.id) return;
+                    at.push(x == null ? [u.id, u.x, u.y, u.z ?? 0] : [u.id, x, y, z ?? 0]);
+                };
+                var copy = function() { if (out === data) out = Object.assign({}, data); return out; };
+                /* a two-ended move (jump, throw, fling, clip dash) with one end in the guest's fog: the hidden end
+                   becomes the seen one, so its tile never rides along (the move plays in place there) */
+                var pinEnds = function(fx, fy, fz, tx2, ty2, tz) {
+                    var src = out === data ? data : out, fv = tv(src[fx], src[fy]), tvv = tv(src[tx2], src[ty2]);
+                    if (fv === tvv) return;
+                    var o = copy();
+                    if (fv) { o[tx2] = o[fx]; o[ty2] = o[fy]; if (tz) o[tz] = o[fz]; }
+                    else { o[fx] = o[tx2]; o[fy] = o[ty2]; if (fz) o[fz] = o[tz]; }
+                };
+                var u, t, i;
+                try {
+                    switch (data.type) {
+                        case 'walk-anim': {
+                            u = _gvUnit(data.unitId);
+                            if (!enemy(u)) break;
+                            if (concealed(u)) return null;
+                            var full = [{ x: data.fromX, y: data.fromY, z: data.fromZ }].concat(data.path || []);
+                            var first = -1, last = -1;
+                            for (i = 0; i < full.length; i++) if (tv(full[i].x, full[i].y)) { if (first < 0) first = i; last = i; }
+                            if (last < 0) return null;
+                            var from = full[first];
+                            var path = full.slice(first + 1, last + 1);
+                            if (!path.length) return null;
+                            copy(); out.fromX = from.x; out.fromY = from.y; out.fromZ = from.z ?? 0; out.path = path;
+                            addAt(u, from.x, from.y, from.z);
+                            break;
+                        }
+                        case 'jump-anim':
+                            u = _gvUnit(data.unitId);
+                            if (!enemy(u)) break;
+                            if (concealed(u) || !(tv(data.fromX, data.fromY) || tv(data.toX, data.toY))) return null;
+                            pinEnds('fromX', 'fromY', 'fromZ', 'toX', 'toY', 'toZ');
+                            addAt(u, out.fromX, out.fromY, out.fromZ);
+                            break;
+                        case 'displace-anim': {
+                            /* trimmed to the seen stretch like a walk: a hidden start or end tile never rides along */
+                            u = _gvUnit(data.unitId);
+                            if (!enemy(u)) break;
+                            var dFull = [{ x: data.fromX, y: data.fromY }].concat(data.steps || []);
+                            var dFirst = -1, dLast = -1;
+                            for (i = 0; i < dFull.length; i++) if (tv(dFull[i].x, dFull[i].y)) { if (dFirst < 0) dFirst = i; dLast = i; }
+                            if (dLast < 1) return null;
+                            if (dFirst > 0 || dLast < dFull.length - 1) {
+                                copy(); out.fromX = Math.round(dFull[dFirst].x); out.fromY = Math.round(dFull[dFirst].y);
+                                out.steps = dFull.slice(dFirst + 1, dLast + 1);
+                            }
+                            break;
+                        }
+                        case 'forced-fall-anim':
+                            u = _gvUnit(data.unitId);
+                            if (enemy(u) && !tv(data.x, data.y)) return null;
+                            break;
+                        case 'strike-leap':
+                            u = _gvUnit(data.unitId);
+                            if (!enemy(u)) break;
+                            if (!(uv(u) || tv(data.tx, data.ty))) return null;
+                            addAt(u); addAt(_gvUnit(data.opts && data.opts.targetId));
+                            break;
+                        case 'clip-travel':
+                            u = _gvUnit(data.unitId);
+                            if (!enemy(u) || !data.opts) break;
+                            if (!(tv(data.opts.fromX, data.opts.fromY) || tv(data.tx, data.ty))) return null;
+                            if (!tv(data.opts.fromX, data.opts.fromY)) {
+                                copy(); out.opts = Object.assign({}, data.opts, { fromX: Math.round(data.tx), fromY: Math.round(data.ty) });
+                                addAt(u, out.opts.fromX, out.opts.fromY, data.opts.toZ);
+                            } else if (!tv(data.tx, data.ty)) { copy(); out.tx = data.opts.fromX; out.ty = data.opts.fromY; }
+                            addAt(u); addAt(_gvUnit(data.opts.targetId));
+                            break;
+                        case 'basic-shot':
+                            u = _gvUnit(data.unitId); t = _gvUnit(data.targetId);
+                            if (!(uv(u) || (t ? uv(t) : tv(data.toX, data.toY)))) return null;
+                            addAt(u); addAt(t);
+                            break;
+                        case 'rider-fx':
+                            if (data.kind === 'shot' || data.kind === 'bounce') {
+                                u = _gvUnit(data.kind === 'bounce' ? data.fromId : data.casterId); t = _gvUnit(data.targetId);
+                                if (!(uv(u) || uv(t))) return null;
+                                addAt(u); addAt(t); addAt(_gvUnit(data.casterId));
+                            } else if (data.x != null && !tv(data.x, data.y)) return null;
+                            break;
+                        case 'sky-grab-fx':
+                            t = _gvUnit(data.targetId);
+                            if (!uv(t)) return null;
+                            addAt(_gvUnit(data.casterId));
+                            break;
+                        case 'sky-throw-fx':
+                        case 'vortex-fling-fx':
+                            if (!(tv(data.fromX, data.fromY) || tv(data.toX, data.toY))) return null;
+                            t = _gvUnit(data.targetId);
+                            if (enemy(t)) pinEnds('fromX', 'fromY', null, 'toX', 'toY', null);
+                            addAt(t, out.fromX, out.fromY, 0);
+                            break;
+                        case 'dash-cam-follow':
+                            u = _gvUnit(data.casterId);
+                            if (!(tv(data.fromX, data.fromY) && tv(data.toX, data.toY)) || concealed(u)) return null;
+                            addAt(u);
+                            break;
+                        case 'floating-text':
+                            /* the number still counts toward the action shot's TOTAL DMG on the guest; only the tile goes */
+                            if (!tv(data.x, data.y)) { copy(); out.x = GV_HIDDEN_XY; out.y = GV_HIDDEN_XY; }
+                            break;
+                        case 'collision-fx':
+                        case 'storm-lightning-fx':
+                        case 'key-fx':
+                            if (!tv(data.x, data.y)) return null;
+                            break;
+                        case 'det-cine':
+                            if (data.ds && !tv(data.ds.x, data.ds.y)) return null;
+                            break;
+                        case 'vfx3d': {
+                            var p = data.params || {}, pts = [];
+                            if (p.tx !== undefined) pts.push([p.tx, p.ty]);
+                            if (p.fromX !== undefined) pts.push([p.fromX, p.fromY]);
+                            if (p.toX !== undefined) pts.push([p.toX, p.toY]);
+                            if (p.casterX !== undefined) pts.push([p.casterX, p.casterY]);
+                            if (p.hitTiles) for (i = 0; i < p.hitTiles.length; i++) pts.push([p.hitTiles[i].x, p.hitTiles[i].y]);
+                            if (!pts.length) break;
+                            var vShow = false;
+                            for (i = 0; i < pts.length && !vShow; i++) vShow = tv(pts[i][0], pts[i][1]);
+                            if (!vShow) return null;
+                            break;
+                        }
+                        case 'vfx3d-x': {
+                            var anc = (window._VFXX_ANCHORS || {})[data.fn], xa = data.args || [];
+                            if (!anc) break;
+                            var xShow = false;
+                            for (i = 0; i < anc.length && !xShow; i++) {
+                                var ax = xa[anc[i][0]], ay = xa[anc[i][1]];
+                                xShow = typeof ax === 'number' && typeof ay === 'number' && tv(ax, ay);
+                            }
+                            if (!xShow) return null;
+                            break;
+                        }
+                        case 'spell-focus-cam':
+                        case 'support-cine':
+                            u = _gvUnit(data.casterId);
+                            if (masked(u)) {
+                                if (tv(data.tx, data.ty)) addAt(u);
+                                else { copy(); out.cx = GV_HIDDEN_XY; out.cy = GV_HIDDEN_XY; out.tx = GV_HIDDEN_XY; out.ty = GV_HIDDEN_XY; }   // a self-cast aims at its own tile
+                            }
+                            t = _gvUnit(data.tgtId);
+                            if (masked(t)) { if (uv(u) && !masked(u)) addAt(t); else { copy(); out.tx = GV_HIDDEN_XY; out.ty = GV_HIDDEN_XY; } }
+                            break;
+                        case 'cam-action-settle':
+                            u = _gvUnit(data.unitId);
+                            if (masked(u) && data.x != null && !tv(data.x, data.y)) { copy(); out.x = null; out.y = null; }
+                            break;
+                        case 'camera-events': {
+                            var evs = data.events || [], nev = null;
+                            for (i = 0; i < evs.length; i++) {
+                                var e = evs[i];
+                                if (!e || e.type !== 'offensive') continue;
+                                var es = _gvUnit(e.srcId), et = _gvUnit(e.tgtId);
+                                if (!masked(es) && !masked(et)) continue;
+                                if (!nev) nev = evs.slice();
+                                var ne = nev[i] = Object.assign({}, e);
+                                if (masked(es)) { if (uv(et) && !masked(et)) addAt(es); else { ne.srcX = GV_HIDDEN_XY; ne.srcY = GV_HIDDEN_XY; } }
+                                if (masked(et)) { if (uv(es) && !masked(es)) addAt(et); else { ne.tgtX = GV_HIDDEN_XY; ne.tgtY = GV_HIDDEN_XY; } }
+                            }
+                            if (nev) { copy(); out.events = nev; }
+                            break;
+                        }
+                        default: {
+                            /* id-only beats (cinematics, banners, death / fall cams): a masked unit's tile rides along only
+                               when the beat also involves a unit the guest can see — the cinematic is on screen then */
+                            var ids = [data.unitId, data.casterId, data.targetId, data.initiatorId, data.partnerId, data.blitzUnitId]
+                                .concat(Array.isArray(data.targetIds) ? data.targetIds : [], Array.isArray(data.allyIds) ? data.allyIds : []);
+                            var refs = [], anyMasked = false, anyShown = false;
+                            for (i = 0; i < ids.length; i++) {
+                                if (ids[i] == null) continue;
+                                var r = _gvUnit(ids[i]);
+                                if (!r) continue;
+                                refs.push(r);
+                                if (masked(r)) anyMasked = true;
+                                else if (r.player === gp || uv(r)) anyShown = true;
+                            }
+                            if (anyMasked && anyShown) refs.forEach(function(r) { addAt(r); });
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[NETMASK] relay filter failed (' + data.type + ') — sent as is', err);
+                    return data;
+                }
+                if (at.length) copy()._at = at;
+                return out;
+            };
+
             function _leanTrim(s) {
                 var st = window._gameState;
                 var gen = [NET.matchId, st && st.phase, st && st.matchNumber, st && st.round, st && st.winner].join('|');
@@ -5589,7 +6003,15 @@
                 try {
                     var s = _serializeState();
                     if (!s) return;
+                    /* THE GUEST'S VIEW: fogged enemies masked BEFORE the lean dedup (it compares what is really sent) */
+                    var _gvUnits = _guestViewFilter(s);
                     _leanTrim(s);
+                    /* HIDDEN TRAPS STAY ON THE HOST (2026-10-21, PvP audit #3): the host's own unrevealed traps
+                       were sent to the guest, where only the renderer hid them (devtools showed them, and the
+                       guest's move preview stopped on them). The host alone springs traps, so the guest only
+                       gets its own traps plus the ones a Dowsing Rod revealed to it. A fresh array: s.traps
+                       is the host's live list by reference. */
+                    _guestTrapFilter(s);
                     var json = _ewSafeStringify(s);
                     if (json === NET.lastSyncJson) return;
                     NET.lastSyncJson = json;
@@ -5601,7 +6023,7 @@
                        make every snapshot look "changed" and kill the dedup). */
                     NET._csumSeq = (NET._csumSeq || 0) + 1;
                     s._csumSeq = NET._csumSeq;
-                    s._csum = _ewStateChecksum(window._gameState);
+                    s._csum = _ewStateChecksum(window._gameState, _gvUnits);
                     _packClock(s);
                     s._matchId = NET.matchId;
                     NET.socket.emit('state-sync', s);

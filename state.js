@@ -637,7 +637,11 @@
                     for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
                     for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
 
-                    let first = (state.round % 2 === 1) ? p1 : p2;
+                    /* THE COIN FLIP LEADS (2026-10-21 PvP audit #4): state.startingPlayer (startMatch's flip) takes the
+                       tie on round 1 and every odd round, the other side on the even ones — it used to be P1 always,
+                       so online the host won every round-1 speed tie. */
+                    const _lead = state.startingPlayer === 2 ? 2 : 1;
+                    let first = ((state.round % 2 === 1) === (_lead === 1)) ? p1 : p2;
                     let second = (first === p1) ? p2 : p1;
                     let fi = 0, si = 0;
                     while (fi < first.length || si < second.length) {
@@ -770,6 +774,10 @@
                     case 'hitEffect':
                         _realPlayHitEffect(evt.x, evt.y, evt.opts);
                         break;
+                    case 'forceField':
+                        // THE FORCE FIELD: a buffered slam into the board's outer edge
+                        if (typeof playForceFieldFx === 'function') playForceFieldFx(evt.x, evt.y, evt.dx, evt.dy, evt.z);
+                        break;
                     case 'hitstop':
                         _realTriggerHitstop(evt.durationMs);
                         break;
@@ -793,7 +801,7 @@
         // fire. First event with a usable position wins.
         function _reGroupFocal(group) {
             for (const evt of group.events) {
-                if ((evt.type === 'floatingText' || evt.type === 'hitEffect')
+                if ((evt.type === 'floatingText' || evt.type === 'hitEffect' || evt.type === 'forceField')
                     && Number.isFinite(evt.x) && Number.isFinite(evt.y)) {
                     return { x: evt.x, y: evt.y };
                 }
@@ -1058,7 +1066,13 @@
             detonateNext();
         }
 
+        /* 🜃 THE ELEMENT TERRAINS: a detonation is its own cast — a cell it changes counts as what it was before */
         function _detonateDelayedSpell(ds) {
+            if (typeof beginCastTerrainWatch === 'function') beginCastTerrainWatch();
+            try { return _detonateDelayedSpellNow(ds); }
+            finally { if (typeof endCastTerrainWatch === 'function') endCastTerrainWatch(); }
+        }
+        function _detonateDelayedSpellNow(ds) {
             const sourceUnit = state.units.find(u => u.id === ds.sourceUnitId);
 
             // ── Unit-tracking laser mark (Headshot) ──────────────────────────
@@ -1687,8 +1701,8 @@
                 displaceTiles: 2,
                 duration: [3, 5],
                 ignoresTerrain: true,
-                seedTerrain: 'grass',
-                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches north the round it forms, then east, south, west, turning each round. Leaves grass in its wake.',
+                // ⏳ THE WEATHER'S TERRAIN (2026-10-21, mondo: "Tornado leaving grass tiles doesnt sound right"): wind leaves no ground behind
+                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches north the round it forms, then east, south, west, turning each round.',
                 dmgRange: [32, 71],   // homingDamage's roll, for the forecast (never rolls the engine's dice)
                 homingDamage(unit) {
                     return {
@@ -1704,8 +1718,8 @@
                 roaming: false,
                 duration: [1, 1],
                 instant: true,
-                seedTerrain: 'mountain',
-                desc: 'Hits immediately with seismic force, cracks the ground into mountains, then ends.',
+                seedTerrain: 'rocks_1',   // ⏳ 2026-10-21: the quake cracks the ground into rocky ground (was mountains)
+                desc: 'Hits immediately with seismic force, cracks the ground into rocky ground, then ends.',
                 onSpawnEffect(unit) {
                     return {
                         type: 'damage',
@@ -1745,9 +1759,9 @@
                 roaming: true,
                 global: true,
                 duration: [3, 5],
-                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Soaks everyone in the downpour. Leaves pools of water.',
+                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Soaks everyone in the downpour. Leaves pools of blood.',
                 soaks: true,
-                seedTerrain: 'water',
+                seedTerrain: 'blood',   // 🩸 2026-10-21: the Blood Pool (was water)
                 onTurnEffect(unit) {
                     const isDivine = (unit.types || []).includes('divine');
                     const isUnholy = (unit.types || []).includes('unholy');
@@ -1772,7 +1786,7 @@
                 roaming: true,
                 global: true,
                 duration: [4, 6],
-                desc: 'Bakes the whole map: dries up the water spells and storms left behind and bakes the land into desert. Healing 50% effective. Scorches planted seeds.',
+                desc: 'Bakes the whole map: dries up the water, blood and ice spells and storms left behind and bakes the land into desert. Healing 50% effective. Scorches planted seeds.',
                 healMult: 0.5,
                 seedTerrain: 'desert',
                 evaporates: true
@@ -1784,7 +1798,7 @@
                 tiles: [4, 7],
                 roaming: false,
                 duration: [3, 5],
-                seedTerrain: 'desert',
+                seedTerrain: 'scorched',   // ⏳ 2026-10-21: "Scorches the earth" now leaves Scorched ground (was desert)
                 desc: 'Damages Tech, +8 ATK to Divine. Scorches the earth.',
                 onTurnEffect(unit) {
                     const isTech = (unit.types || []).includes('tech');
@@ -1897,7 +1911,8 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 VISION in the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 VISION in the eye. Drifts sand into desert.',
+                seedTerrain: 'desert',   // ⏳ 2026-10-21: the sand it carries piles up where it passes
                 dmgRange: [20, 29],
                 dmgSparesType: 'human',
                 statMod: {
@@ -2346,8 +2361,8 @@
            it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate
            all that water") ══
            Restored from the old build (cut 2026-04-01): every weather with a `seedTerrain` reshapes the ground it covers —
-           the rain storms (Hurricane, Blood Rain, Thunderstorm) leave water, Drought and Solar Flare desert, the Tornado grass,
-           the Earthquake mountains. Same moments as before: a static weather on forming (~30% of its tiles), a moving one on
+           the rain storms (Hurricane, Thunderstorm) leave water, Drought and Solar Flare desert, the Tornado grass,
+           the Earthquake mountains (2026-10-21: see WEATHER_SEED_PRIORITY below for today's rules). Same moments as before: a static weather on forming (~30% of its tiles), a moving one on
            the tiles it leaves (~60%), every one as it dissipates (~75%). A map-wide weather has no tiles to leave, so it drops
            a patch's worth on random tiles instead (a quarter of its patch each round, half on dissipating).
            Adapted to the liquids (maps-terrain-battle.md "THE LIQUIDS LIKE MINECRAFT"): weather water is a spring like any
@@ -2357,7 +2372,12 @@
            stack — the moment it forms and again every round it lasts; each tile goes back to what it was before
            (map.js notePaintOrigin), the flood's stacked blocks come off and whoever stood on them settles to the ground.
            The map's own lakes and rivers stay. Host-side engine work; the terrain rides the state-sync to the guest. */
-        const WEATHER_SEED_PRIORITY = { grass: 0, desert: 1, water: 2, deep_water: 3, mountain: 4 };
+        /* ⏳ 2026-10-21 (mondo: "see how weather affects terrain too and make logically consistent rules for them"):
+           Tornado leaves nothing, Earthquake rocky ground, Solar Flare scorched ground, Sandstorm desert, Blood Rain blood;
+           the rain storms' water washes a blood pool away, Blood Rain never turns water red; a Drought dries the
+           fight's water, blood AND ice. Every weather's ground is a terrain change like a spell's: 3 rounds, then the map's
+           own ground comes back (map.js state.terrainTimers); a storm passing over its own terrain again resets the 3. */
+        const WEATHER_SEED_PRIORITY = { grass: 0, scorched: 0, desert: 1, water: 2, blood: 2, deep_water: 3, rocks_1: 4, mountain: 4 };
         const WEATHER_SEED_KEEP = new Set(['lava', 'chasm', 'ice', 'snow_wall', 'castle_wall', 'bridge', 'home_base',
             'tower_base', 'well', 'cave_entrance', 'cave_wall', 'descent_point', 'fog_wall', 'storm', 'sky_open',
             'healing_spring', 'cloud_gap']);
@@ -2367,8 +2387,10 @@
             const cur = getTerrainAt(x, y);
             if (!cur || cur === newTerrain || cur.indexOf('void') === 0) return false;
             if (WEATHER_SEED_KEEP.has(cur) || /^(barrier|cloud|nexus|sanctuary|beanstalk|mountain|tree)/.test(cur)) return false;
-            const fam = liquidFamilyOf(cur);
-            if (fam && fam !== 'water') return false;   // lava, the bogs and oil keep their own rules
+            const fam = liquidFamilyOf(cur), nfam = liquidFamilyOf(newTerrain);
+            // lava, the bogs and oil keep their own rules; rain washes a blood pool away, blood never reddens water
+            if (fam && fam !== 'water' && !(fam === 'blood' && nfam === 'water')) return false;
+            if (fam === 'water' && nfam === 'blood') return false;
             const rule = getTerrainRule(cur);
             if (rule && rule.passable === false) return false;
             if ((WEATHER_SEED_PRIORITY[newTerrain] ?? 0) < (WEATHER_SEED_PRIORITY[cur] ?? 0)) return false;
@@ -2382,18 +2404,20 @@
             if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) return false;   // a room's doorway, water, deck, wall row
             return true;
         }
-        function _weatherSeedMountainRoom() {
+        function _weatherSeedMountainRoom(terrain) {
             const W = bw(), H = bh();
             let n = 0;
-            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (getTerrainAt(x, y) === 'mountain') n++;
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (getTerrainAt(x, y) === terrain) n++;
             return n < Math.floor(W * H * 0.25);
         }
         function _weatherSeedTile(x, y, terrain) {
+            // ⏳ a storm over its own ground again: that tile's 3 rounds start over
+            if (_weatherInBoard(x, y) && getTerrainAt(x, y) === terrain && typeof refreshTerrainTimer === 'function') refreshTerrainTimer(x, y, terrain);
             if (!_weatherSeedOk(x, y, terrain)) return false;
-            if (terrain === 'mountain' && !_weatherSeedMountainRoom()) return false;
+            if ((terrain === 'mountain' || terrain === 'rocks_1') && !_weatherSeedMountainRoom(terrain)) return false;
             const ok = liquidFamilyOf(terrain) ? setTerrainSpringAt(x, y, terrain) : setTerrainAt(x, y, terrain);
             if (ok === false) return false;
-            if (liquidFamilyOf(terrain) === 'water' && typeof extinguishTile === 'function') extinguishTile(x, y);
+            if ((liquidFamilyOf(terrain) === 'water' || liquidFamilyOf(terrain) === 'blood') && typeof extinguishTile === 'function') extinguishTile(x, y);
             return true;
         }
         // Each tile at `chance`; returns how many changed.
@@ -2435,20 +2459,26 @@
         // One tile of water the fight put down goes back to what it was; false for the map's own water.
         function _evaporateTile(x, y) {
             const top = getTerrainAt(x, y);
-            if (liquidFamilyOf(top) !== 'water') return false;
             const rec = state.paintedFrom && state.paintedFrom[x + ',' + y];
-            if (!rec || liquidFamilyOf(rec.t) === 'water') return false;
+            /* ⏳ 2026-10-21: the fight's ice thaws and dries in the same heat — straight back to the map's own ground */
+            if ((top === 'ice' || top === 'ice_1') && rec && rec.t !== top
+                && state.terrainTimers && state.terrainTimers[x + ',' + y] && typeof revertTerrainTimer === 'function') {
+                return revertTerrainTimer(x, y);
+            }
+            const fam = liquidFamilyOf(top);
+            if (fam !== 'water' && fam !== 'blood') return false;   // 🩸 a Blood Pool dries up like water
+            if (!rec || liquidFamilyOf(rec.t) === fam) return false;
             const col = state.boardColumns?.[y]?.[x];
             const h0 = getBaseHeightAt(x, y);
             // Great Flood's stack: the water blocks above where the ground stood come off
             if (col && col.length && rec.z !== null && rec.z !== undefined) {
                 while (col.length > 1) {
                     const b = col[col.length - 1];
-                    if (liquidFamilyOf(b.terrain) !== 'water' || !(b.z > rec.z)) break;
+                    if (liquidFamilyOf(b.terrain) !== fam || !(b.z > rec.z)) break;
                     removeBlockAt(x, y, b.z);
                 }
             }
-            if (liquidFamilyOf(getTerrainAt(x, y)) === 'water') {
+            if (liquidFamilyOf(getTerrainAt(x, y)) === fam) {
                 const zNow = getBaseHeightAt(x, y);
                 const back = (zNow === rec.z && !liquidFamilyOf(rec.t) && rec.t !== 'ice') ? rec.t : liquidBedTerrainAt(x, y);
                 setTerrainAt(x, y, back);
@@ -2480,7 +2510,7 @@
                     if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
                     if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                 }
-                if (def) addLog(`${def.icon} The ${def.label} evaporates ${n} water tile${n !== 1 ? 's' : ''}.`);
+                if (def) addLog(`${def.icon} The ${def.label} dries up ${n} tile${n !== 1 ? 's' : ''} of water, blood and ice.`);
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             }
             return n;

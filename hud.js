@@ -8737,6 +8737,7 @@ function _hrlgTileBlades(actingUnit, st) {
   const tRule = typeof getTerrainRule === 'function' ? getTerrainRule(terrain) : { label: terrain };
   const height = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
   const posLabel = typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty;
+  const _tTimer = typeof terrainTimerAt === 'function' ? terrainTimerAt(tx, ty) : null;
 
   const objInfo = _tileQuickObjectInfo(actingUnit, tx, ty);
   const objCard = objInfo ? _objCardSpell(objInfo, tx, ty) : null;
@@ -8845,7 +8846,9 @@ function _hrlgTileBlades(actingUnit, st) {
     : { node: h(React.Fragment, null,
         h('span', { className: 'hrlg-view-tab-icon' }, '⬚'),
         h('span', { className: 'hrlg-view-tab-text' }, tRule.label || terrain),
-        h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'),
+        h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'
+          // ⏳ a changed tile: the rounds left before the map's own ground comes back (map.js state.terrainTimers)
+          + (_tTimer ? ' · ⏳' + _tTimer.n : '')),
       ) };
   return { title, blades };
 }
@@ -12366,9 +12369,18 @@ const MATERIALS = [
 ];
 /* MORE FONTS (2026-10-20, mondo: "can we possibly add more fonts to the game"): the list comes in groups ([null, name]
    opens one; fSelect draws them as headings). The groups after the game's own are Google fonts index.html lists in its
-   MORE FONTS link, in the same order: add a font in both places. */
+   MORE FONTS link, in the same order: add a font in both places.
+   YOUR FONTS (2026-10-21, mondo: "can you add these fonts to the game, specically as options for the floating text, but
+   also anywhere else that has text options"): the fonts he put on R2 (Assets/fonts/), each an @font-face in index.html
+   (YOUR FONTS, same names); a file downloads once text on screen uses it. Ghiya Strokes has letters + digits only: its
+   + - ! come from the next font in its line. */
 const FONTS = [
   ['', 'Game default'],
+  [null, 'Your fonts'],
+  ["'Aida Serif Oblique', Georgia, serif", 'Aida Serif Oblique'], ["'Aida Serifa Condensed', Georgia, serif", 'Aida Serifa Condensed'],
+  ["'Contra', 'Arial Black', sans-serif", 'Contra'], ["'Contra Italic', 'Arial Black', sans-serif", 'Contra Italic'],
+  ["'Ghiya Strokes', Georgia, serif", 'Ghiya Strokes'], ["'Ghiya Strokes Italic', Georgia, serif", 'Ghiya Strokes Italic'],
+  ["'Indira K', Georgia, serif", 'Indira K'],
   [null, "The game's own"],
   ["'IBM Plex Mono', monospace", 'IBM Plex Mono'], ["'JetBrains Mono', monospace", 'JetBrains Mono'],
   ["'DotGothic16', monospace", 'DotGothic16 (pixel)'], ["'Cinzel', serif", 'Cinzel'], ["'Cinzel Decorative', serif", 'Cinzel Decorative'],
@@ -14045,14 +14057,14 @@ const UX_DEF = {
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
      like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
      these into window._ewFloatLook (+ _ewFloatLookV), read by three-renderer.js (_buildFloatTextCanvas, _floatStep) and
-     battle.js's hit read (fElem / fStamp / fGlyph / fKill / fSwell). Numbers are multipliers on the game's own look
+     battle.js's hit read (fElem / fCrit* / fGlyph / fKill / fSwell). Numbers are multipliers on the game's own look
      (1 = as the game); fMinNum / fMinWord / fMaxNum = % of the screen height; fFade = % of a pop's life the fade starts;
      fWait = ms a word waits for its number; fGap = px between stacked pops; fShow* = which pops show; fc<Kind> = a colour
      per kind of pop ('' = the game's, FLOAT_KINDS) */
   fNumFont: '', fWordFont: '', fNumWeight: '', fWordWeight: '', fCase: '', fEmoji: true, fTrack: 1,
   fNumSize: 1, fWordSize: 1, fMinNum: 6.5, fMinWord: 2.7, fMaxNum: 15, fChip: true, fSwell: 1.6,
   fLine: 1, fLineCol: '', fShadow: 1, fSheen: 1, fGrad: 'grad', fGlow: 0, fGlowCol: '',
-  fElem: true, fStamp: true, fGlyph: true, fKill: true,
+  fElem: true, fGlyph: true, fKill: true,
   fRise: 1, fLife: 1, fPop: 1, fFade: 75, fStart: 'chest', fSpread: 1, fWait: 110, fGap: 4,
   fShowDmg: true, fShowHeal: true, fShowMp: true, fShowTotal: true, fShowHit: true, fShowStatus: true, fShowMisc: true,
   /* 2026-10-20 (mondo: "for the floating text, add more options for the gradient like the angle and all that"): THE
@@ -14065,7 +14077,20 @@ const UX_DEF = {
      motion's fPath rise | steady | hop | bounce, fDrift ×, fTilt ° */
   fGradWords: false, fGradType: 'linear', fGradAng: 180, fGradLen: 100, fGradOff: 0, fGradX: 0, fGradY: 0, fGradStops: 'game',
   fGradBands: 0, fGradRep: 1, fGradRev: false,
-  fLay: 'stack', fRow: 3, fGapX: 12, fScat: 4, fPath: 'rise', fDrift: 0, fTilt: 0,
+  fLay: 'stack', fRow: 3, fGapX: 12, fPath: 'rise', fDrift: 0, fTilt: 0,
+  /* 2026-10-21 (mondo: "They should be bunched up/scattered but still clearly on that enemy. Thats what i meant by side by
+     side"): fLay side | scatter = THE BUNCH (three-renderer _floatBunch: each pop picks a spot on its unit once and keeps
+     it), fBunch = how far from the unit's middle a pop may land (×; the old fScat, % of the screen, is gone); fDrift is
+     now in number heights. EACH KIND: fk<Kind>Font / Weight / Size (fkKey) = one kind of pop's own font, weight, size ×. */
+  fBunch: 1,
+  /* 2026-10-21 (mondo: "let me change how the critical hit stamp looks or choose to just make it normal text"): THE CRIT
+     LOOK. fCrit stamp | text | off (the old fStamp box: off = 'off'); fCritWord ('' = CRIT, as text CRIT!); the stamp's
+     fCritShape burst | plate | star | round | none, fCritPoints (the burst's), fCritWhere tr | tl | top | right | below,
+     fCritSize ×, fCritTilt ° (-14 = the game's), fCritFont / fCritWeight, fCritPlate / fCritInk / fCritLine /
+     fCritBurst ('' = the game's), fCritGlow. As text the word is a CRIT / BACKSTAB pop (fcCrit / fkCrit*). floatSignal
+     -> L.crit, read by battle.js's hit read (_hitReadStyle / _hitReadStamp / _hitReadCritPop) */
+  fCrit: 'stamp', fCritWord: '', fCritShape: 'burst', fCritPoints: 8, fCritWhere: 'tr', fCritSize: 1, fCritTilt: -14,
+  fCritFont: '', fCritWeight: '', fCritPlate: '', fCritInk: '', fCritLine: '', fCritBurst: '', fCritGlow: 0,
 };
 /* the custom gradient stops (fGs<n>*): spread evenly from the game's light → dark, made again when the count changes */
 const FLOAT_STOP_MAX = 5;
@@ -14111,7 +14136,8 @@ const FLOAT_KINDS = [
   ['neutral', 'Moves (LAND, DROP)', '#f0f0f0', 'words'], ['xp', 'XP', '#dda0ff', 'words'], ['levelup', 'Level up', '#ffe27a', 'words'],
   ['pickup', 'Pickups + gold', '#ffd86b', 'words'], ['nexus', 'Nexus', '#ffd86b', 'words']];
 const fcKey = k => 'fc' + k.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
-FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; });
+const fkKey = (k, part) => 'fk' + fcKey(k).slice(2) + part;
+FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; UX_DEF[fkKey(k, 'Font')] = ''; UX_DEF[fkKey(k, 'Weight')] = ''; UX_DEF[fkKey(k, 'Size')] = 1; });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -14127,6 +14153,10 @@ function uxMigrate() {
     if (isFinite(w) && w > 0 && w !== 316 && X.qShape !== 'tall' && X.qAlign !== 'left') { const L = db.layout.quick || (db.layout.quick = {}); L.x = (+L.x || 0) + Math.round(w - 316); }
   }
   Object.keys(UX_SPLIT).forEach(o => { if (!(o in X)) return; UX_SPLIT[o].forEach(k => { if (!(k in X)) X[k] = X[o]; }); delete X[o]; });
+  /* 2026-10-21: the floating text's Side + stack became Side by side (it bunches into rows on the unit) */
+  if (X.fLay === 'rows') X.fLay = 'side';
+  /* 2026-10-21: the CRIT stamp box became "Show a crit as" (Stamp / Text / Nothing): a box left off = Nothing */
+  if ('fStamp' in X) { if (X.fStamp === false && !('fCrit' in X)) X.fCrit = 'off'; delete X.fStamp; }
 }
 /* the zoom cone's look (QuickCone reads window._ewQpCone every frame) */
 function qpSignal() {
@@ -14510,7 +14540,25 @@ function floatSignal() {
   if (ch('fGlow')) L.glow = num('fGlow', 0, 3);
   if (X.fGlowCol) L.glowCol = X.fGlowCol;
   if (!X.fElem) L.elem = false;
-  if (!X.fStamp) L.stamp = false;
+  /* THE CRIT LOOK: Nothing = the old stamp box off; Text = the word as a pop; else the stamp's keys that differ */
+  if (X.fCrit === 'off') L.stamp = false;
+  else {
+    const C = {}, word = String(X.fCritWord || '').trim().slice(0, 20);
+    if (X.fCrit === 'text') { C.as = 'text'; C.word = word || 'CRIT!'; }
+    else {
+      if (word) C.word = word;
+      if (X.fCritShape !== 'burst') C.shape = X.fCritShape;
+      if (ch('fCritPoints')) C.points = Math.round(num('fCritPoints', 4, 16));
+      if (X.fCritWhere !== 'tr') C.where = X.fCritWhere;
+      if (ch('fCritSize')) C.size = num('fCritSize', 0.4, 3);
+      if (ch('fCritTilt')) C.tilt = Math.max(-60, Math.min(60, +X.fCritTilt || 0));
+      if (X.fCritFont) C.font = X.fCritFont;
+      if (X.fCritWeight) C.weight = X.fCritWeight;
+      [['fCritPlate', 'plate'], ['fCritInk', 'ink'], ['fCritLine', 'line'], ['fCritBurst', 'burst']].forEach(([k, o]) => { if (X[k]) C[o] = X[k]; });
+      if (ch('fCritGlow')) C.glow = num('fCritGlow', 0, 3);
+    }
+    if (Object.keys(C).length) L.crit = C;
+  }
   if (!X.fGlyph) L.glyph = false;
   if (!X.fKill) L.killGlow = false;
   if (ch('fRise')) L.rise = num('fRise', -1, 5);
@@ -14522,10 +14570,10 @@ function floatSignal() {
   if (ch('fWait')) L.wordWait = num('fWait', 0, 2000);
   if (ch('fGap')) L.gap = num('fGap', -20, 60);
   if (X.fLay === 'side' || X.fLay === 'rows' || X.fLay === 'scatter') {
-    L.lay = X.fLay;
+    L.lay = X.fLay === 'rows' ? 'side' : X.fLay;
     if (ch('fGapX')) L.gapX = num('fGapX', -20, 80);
-    if (X.fLay === 'rows' && ch('fRow')) L.row = Math.round(num('fRow', 1, 8));
-    if (X.fLay === 'scatter' && ch('fScat')) L.scat = num('fScat', 0, 30);
+    if (L.lay === 'side' && ch('fRow')) L.row = Math.round(num('fRow', 1, 8));
+    if (ch('fBunch')) L.bunch = num('fBunch', 0.2, 4);
   }
   if (X.fPath === 'steady' || X.fPath === 'hop' || X.fPath === 'bounce') L.path = X.fPath;
   if (ch('fDrift')) L.drift = num('fDrift', 0, 4);
@@ -14537,17 +14585,27 @@ function floatSignal() {
   const cols = {};
   FLOAT_KINDS.forEach(([k]) => { const v = X[fcKey(k)]; if (v) cols[k] = v; });
   if (Object.keys(cols).length) L.cols = cols;
+  /* EACH KIND: a kind's own font / weight / size */
+  const kinds = {};
+  FLOAT_KINDS.forEach(([k]) => {
+    const o = {}, f = X[fkKey(k, 'Font')], w = X[fkKey(k, 'Weight')], z = +X[fkKey(k, 'Size')];
+    if (f) o.font = f;
+    if (w) o.weight = w;
+    if (isFinite(z) && z > 0 && z !== 1) o.size = Math.max(0.2, Math.min(4, z));
+    if (Object.keys(o).length) kinds[k] = o;
+  });
+  if (Object.keys(kinds).length) L.kinds = kinds;
   const k = JSON.stringify(L); if (k === _floatSent) return;
   _floatSent = k;
   window._ewFloatLook = Object.keys(L).length ? L : null;
   window._ewFloatLookV = (window._ewFloatLookV || 0) + 1;
   /* a weight on the game's own face asks for that Cinzel weight (index.html lists 400 / 700 / 900) */
-  [[L.numFont, L.numWeight], [L.wordFont, L.wordWeight]].forEach(([f, w]) => {
+  [[L.numFont, L.numWeight], [L.wordFont, L.wordWeight]].concat(Object.keys(kinds).map(x => [kinds[x].font, kinds[x].weight]), L.crit ? [[L.crit.font, L.crit.weight]] : []).forEach(([f, w]) => {
     if ((!f && !w) || !document.fonts || !document.fonts.load) return;
     const fam = f || "'Cinzel', serif", key = fam + '|' + (w || '');
     if (_floatFontsAsked[key]) return;
     _floatFontsAsked[key] = 1;
-    Promise.all((w ? [w] : ['400', '700', '900']).map(x => document.fonts.load(x + ' 48px ' + fam, '-0123456789+ABC').catch(() => null)))
+    Promise.all((w ? [w] : ['400', '700', '900']).map(x => document.fonts.load(x + ' 48px ' + fam, '-0123456789+ABCIRT!').catch(() => null)))
       .then(() => { window._ewFloatLookV = (window._ewFloatLookV || 0) + 1; });
   });
 }
@@ -15005,11 +15063,14 @@ const FLOAT_LOOKS = [['game', 'As the game', {}],
   ['comic', 'Comic', { fNumFont: "'Bangers', cursive", fWordFont: "'Bangers', cursive", fNumWeight: '400', fWordWeight: '400', fLine: 1.5, fPop: 1.5, fTrack: 1.6, fNumSize: 1.1 }],
   ['impact', 'Impact', { fNumFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", fWordFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", fNumWeight: '400', fWordWeight: '400', fLine: 1.2, fGlow: 0.6 }],
   ['glow', 'Glow', { fGlow: 1.4, fLine: 0.6, fShadow: 0.3, fSheen: 0.5 }]];
-const FLOAT_BEATS = [['hit', 'Hit', 'A fire hit that is super effective'], ['crit', 'Crit', 'A critical hit from behind'], ['heal', 'Heal'], ['status', 'Status', 'BURNING!, FROZEN!, PROTECTED!'],
-  ['miss', 'Miss'], ['mp', 'MP + XP'], ['combo', 'Combo', 'Three quick hits, then the TOTAL'], ['ko', 'KO', 'The killing blow']];
+/* the preview's beats: a click loops that one (2026-10-21, mondo: "the animation loop at the top just cycles through all
+   of those options when i want to be able to click on one of the options and have it loop that one"); All = each in turn */
+const FLOAT_BEATS = [['all', 'All', 'Each one in turn'], ['hit', 'Hit', 'A fire hit that is super effective'], ['crit', 'Crit', 'A critical hit from behind'], ['heal', 'Heal'],
+  ['status', 'Status', 'BURNING!, FROZEN!, PROTECTED!'], ['miss', 'Miss'], ['mp', 'MP + XP'], ['combo', 'Combo', 'Three quick hits, then the TOTAL'], ['ko', 'KO', 'The killing blow'],
+  ['busy', 'Busy hit', 'A hit with lots of words at once, then two more hits: how the layout handles a crowd']];
 /* the preview's own choices (this session only): the battle zoom it shows, the model ('' = the unit whose turn it is in a
-   battle, else the fortune teller), and whether the pops loop */
-function fpState() { return UI.fp || (UI.fp = { zoom: 'turn', race: '', loop: true }); }
+   battle, else the fortune teller), whether the pops loop, and the beat it plays ('all', a beat, or 'k:<kind>') */
+function fpState() { return UI.fp || (UI.fp = { zoom: 'turn', race: '', loop: true, beat: 'all' }); }
 function fpBattleUnit() {
   try {
     if (typeof state === 'undefined' || !state || state.phase !== 'battle' || !Array.isArray(state.units)) return null;
@@ -15042,30 +15103,104 @@ function dockFloatBody() {
     + races.map(([r, l]) => `<option value="${esc(r)}"${F.race === r ? ' selected' : ''}>${esc(l)}</option>`).join('') + `</select>`;
   return dockTop() + `<div class="uim-note">The numbers and words that pop over the units. The unit below shows them as you drag, as big next to a body and its name plate as a battle on this screen draws them; in a battle the real ones change too.</div>
   <div class="uim-fprev"><div class="uim-fphost" data-fphost="1"></div>
-  <div class="uim-fpbar">${FLOAT_BEATS.map(([v, l, tip]) => `<button class="uim-btn" data-dk="fpbeat" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div>
+  <div class="uim-fpbar">${FLOAT_BEATS.map(([v, l, tip]) => `<button class="uim-btn${F.beat === v ? ' on' : ''}" data-dk="fpbeat" data-val="${v}" title="${esc((tip ? tip + '. ' : '') + (v === 'all' ? 'The unit plays every one in turn' : 'Click to play this one over and over'))}">${esc(l)}</button>`).join('')}</div>
   <div class="uim-fpbar">${[['board', 'Board', 'The whole-board zoom'], ['turn', 'Turn', 'The zoom your turn opens on'], ['close', 'Close-up', 'An action close-up']].map(([v, l, tip]) =>
     `<button class="uim-btn${F.zoom === v ? ' on' : ''}" data-dk="fpzoom" data-val="${v}" title="${esc(tip)}">${l}</button>`).join('')}
-    <button class="uim-btn${F.loop ? ' on' : ''}" data-dk="fploop" title="Keep the pops coming, one after another">Loop</button>${model}</div></div>
+    <button class="uim-btn${F.loop ? ' on' : ''}" data-dk="fploop" title="On: the picked one plays over and over. Off: a click plays it once">Loop</button>${model}</div></div>
   <div class="uim-dk-detail"></div>`;
 }
 function floatPrevMount() {
   const A = UI.live, host = A && A.dock.querySelector('[data-fphost]'); if (!host) return;
   const F = fpState();
   let ok = null;
-  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.floatPreview ? ThreeRenderer.floatPreview(host, { zoom: F.zoom, unit: fpUnit(), loop: F.loop }) : null; } catch (e) { console.warn('UI Maker floating text preview', e); ok = null; }
+  try { ok = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.floatPreview ? ThreeRenderer.floatPreview(host, { zoom: F.zoom, unit: fpUnit(), loop: F.loop, beat: F.beat }) : null; } catch (e) { console.warn('UI Maker floating text preview', e); ok = null; }
   if (!ok) host.insertAdjacentHTML('afterbegin', '<div class="uim-note">The preview could not start here; the real pops in a battle still show every change.</div>');
   UI.fpApi = ok;
+}
+/* a Critical hit setting changed: the unit above plays the crit over and over, so the change shows at once */
+function floatCritBeat() {
+  const A = UI.live, F = fpState(); if (!A || F.beat === 'crit') return;
+  F.beat = 'crit';
+  A.dock.querySelectorAll('[data-dk="fpbeat"]').forEach(x => x.classList.toggle('on', x.dataset.val === 'crit'));
+  if (UI.fpApi) UI.fpApi.fire('crit');
+}
+/* EACH KIND (2026-10-21, mondo: "ideally i could choose different fonts for different words"): every kind of pop as a
+   chip in its own colour + font; the picked one gets its colour, font, weight and size (fc<Kind>, fk<Kind>*) and the
+   unit above loops a line of that kind */
+function floatKindForm(X, FF) {
+  const fk = FLOAT_KINDS.some(x => x[0] === UI.fk) ? UI.fk : 'damage';
+  const own = k => !!(X[fcKey(k)] || X[fkKey(k, 'Font')] || X[fkKey(k, 'Weight')] || +X[fkKey(k, 'Size')] !== 1);
+  const chips = grp => FLOAT_KINDS.filter(x => x[3] === grp).map(([k, l, d, , tip]) => {
+    const font = X[fkKey(k, 'Font')] || (grp === 'nums' ? X.fNumFont : X.fWordFont) || "'Cinzel', serif";
+    return `<button class="uim-fk${k === fk ? ' on' : ''}${own(k) ? ' own' : ''}" data-dk="fkpick" data-val="${k}" style="--fkc:${esc(X[fcKey(k)] || d)};font-family:${esc(font)}" title="${esc((tip ? tip + '. ' : '') + (own(k) ? 'Has its own look. ' : '') + 'Click to edit it and see it on the unit')}">${esc(l)}</button>`;
+  }).join('');
+  const [k, l, d, grp, tip] = FLOAT_KINDS.find(x => x[0] === fk);
+  const FFk = [['', grp === 'nums' ? 'Same as the numbers' : 'Same as the words']].concat(FF.slice(1));
+  return `<div class="uim-note" style="margin:0 0 4px">Numbers</div><div class="uim-fks">${chips('nums')}</div>`
+    + `<div class="uim-note" style="margin:6px 0 4px">Words</div><div class="uim-fks">${chips('words')}</div>`
+    + `<div class="uim-fkx"><div class="uim-fkh">${esc(l)}${tip ? `<small>${esc(tip)}</small>` : ''}</div>`
+    + xp(fColorOpt('Colour', fcKey(k), X[fcKey(k)], d, false, 'Ticked = its own colour (a number gets a gradient made from it); unticked = the game\'s')
+      + fFont('Font', fkKey(k, 'Font'), X[fkKey(k, 'Font')], FFk)
+      + fSeg('Weight', fkKey(k, 'Weight'), [['', 'Same'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']], X[fkKey(k, 'Weight')])
+      + fRange('Size', fkKey(k, 'Size'), 0.4, 2.5, 0.05, +X[fkKey(k, 'Size')], '1 = as big as the other ' + (grp === 'nums' ? 'numbers' : 'words')))
+    + `<div class="uim-btns"><button class="uim-btn bad" data-dk="fkreset" data-val="${k}"${own(k) ? '' : ' disabled'}>Reset ${esc(l)}</button></div></div>`;
+}
+/* THE CRIT LOOK (2026-10-21, mondo: "let me change how the critical hit stamp looks or choose to just make it normal
+   text"): how a critical hit shows on its number (fCrit) and the stamp's own look (fCrit*); as text the word is a pop
+   of the CRIT / BACKSTAB kind, so its colour, font and size are that kind's (the same keys as Each kind of pop) */
+function floatCritForm(X, FF, WT) {
+  const as = X.fCrit, sh = X.fCritShape, burst = sh === 'burst' || sh === 'star';
+  let h = fSeg('Show a crit as', 'fCrit', [['stamp', 'Stamp', 'A badge on the number (as the game)'],
+    ['text', 'Text', 'A word that pops with the number like the other words (WEAK!, DODGE!), in the Layout above'],
+    ['off', 'Nothing', 'Just the number, in the Critical hit colour']], as);
+  if (as === 'stamp') {
+    h += fSeg('Shape', 'fCritShape', [['burst', 'Burst + plate', 'A gold plate on a white starburst (as the game)'], ['plate', 'Plate', 'The plate alone'],
+      ['star', 'Burst', 'The word on the starburst'], ['round', 'Round', 'An oval badge'], ['none', 'Just the word', 'The word alone with an outline']], sh)
+      + (burst ? fRange('Burst points', 'fCritPoints', 4, 16, 1, +X.fCritPoints, '8 = as the game') : '')
+      + fSeg('Where', 'fCritWhere', [['tr', 'Top right', 'On the number\'s top right shoulder (as the game)'], ['tl', 'Top left'], ['top', 'Above'],
+        ['right', 'Beside', 'To the right of the number'], ['below', 'Under']], X.fCritWhere)
+      + fRange('Size', 'fCritSize', 0.5, 2.5, 0.05, +X.fCritSize, '1 = as the game') + fRange('Tilt (°)', 'fCritTilt', -45, 45, 1, +X.fCritTilt, '-14 = as the game, 0 = level')
+      + fFont('Font', 'fCritFont', X.fCritFont, FF) + fSeg('Weight', 'fCritWeight', WT, X.fCritWeight)
+      + (sh !== 'star' && sh !== 'none' ? fColorOpt('Plate colour', 'fCritPlate', X.fCritPlate, '#ffc21a', false, 'Unticked = gold (as the game)') : '')
+      + fColorOpt('Letters', 'fCritInk', X.fCritInk, sh === 'none' ? '#ffc21a' : '#1c0c00', false, sh === 'none' ? 'Unticked = the plate colour (gold)' : 'Unticked = near black (as the game)')
+      + fColorOpt('Outline', 'fCritLine', X.fCritLine, '#3a1a00', false, 'Unticked = dark brown (as the game)')
+      + (burst ? fColorOpt('Burst colour', 'fCritBurst', X.fCritBurst, 'rgba(255,248,214,0.92)', true, 'Unticked = cream white (as the game)') : '')
+      + fRange('Glow', 'fCritGlow', 0, 3, 0.05, +X.fCritGlow, 'A soft halo round the stamp in its own colour (0 = none, as the game)');
+  } else if (as === 'text') {
+    h += fColorOpt('Colour', fcKey('crit'), X[fcKey('crit')], '#ffcc00', false, 'Unticked = gold (as the game)')
+      + fFont('Font', fkKey('crit', 'Font'), X[fkKey('crit', 'Font')], [['', 'Same as the words']].concat(FF.slice(1)))
+      + fSeg('Weight', fkKey('crit', 'Weight'), [['', 'Same'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']], X[fkKey('crit', 'Weight')])
+      + fRange('Size', fkKey('crit', 'Size'), 0.4, 2.5, 0.05, +X[fkKey('crit', 'Size')], '1 = as big as the other words');
+  }
+  let out = xp(h);
+  if (as !== 'off') out += `<div class="uim-f" title="The word on a critical hit"><label>Word</label><div><input class="uim-in" data-xpath="fCritWord" maxlength="20" value="${esc(X.fCritWord)}" placeholder="${as === 'text' ? 'CRIT!' : 'CRIT'}" spellcheck="false"></div></div>`;
+  out += `<div class="uim-note">${as === 'text' ? 'The word pops on the unit with the number and goes where the Layout puts words. Its colour, font and size are the CRIT / BACKSTAB words\' own (Each kind of pop), so BACKSTAB! wears them too.'
+    : as === 'off' ? 'A crit shows as its number alone, in the Critical hit colour (Each kind of pop).' : 'The stamp is drawn on the number, so it rises and fades with it.'} The unit above plays a crit while you change these.</div>`;
+  const own = Object.keys(db.ux || {}).some(k => k.indexOf('fCrit') === 0);
+  return out + `<div class="uim-btns"><button class="uim-btn bad" data-dk="critreset"${own ? '' : ' disabled'}>Reset the critical hit</button></div>`;
 }
 function floatDetail() {
   const X = uxOf();
   const FF = [['', 'As the game (Cinzel)']].concat(FONTS.filter(f => f[0] !== ''));
   const WT = [['', 'As the game'], ['400', 'Regular'], ['700', 'Bold'], ['900', 'Black']];
   let h = `<div class="uim-h">Floating text</div><div class="uim-f"><label>Looks</label><div style="flex-wrap:wrap">${FLOAT_LOOKS.map(([v, l]) => `<button class="uim-btn" data-dk="floatlook" data-val="${v}">${esc(l)}</button>`).join('')}</div></div>`;
+  /* THE LAYOUT: where a pop goes when another is already there. Side by side + Scatter = THE BUNCH (three-renderer
+     _floatBunch): a spot on the unit picked once and kept */
+  const lay = X.fLay === 'rows' ? 'side' : X.fLay;
+  h += sec('flay', 'Layout', xp(fSeg('When pops meet', 'fLay', [['stack', 'Stack', 'One above the other in a column over the unit (as the game)'],
+    ['side', 'Side by side', 'Next to each other in a tight bunch on the unit, a row at a time'], ['scatter', 'Scatter', 'Bunched up at loose spots all over the unit']], lay)
+    + (lay !== 'stack' ? fRange('Bunch size', 'fBunch', 0.4, 2.5, 0.05, +X.fBunch, 'How far from the middle of the unit a pop may land (1 = a tight bunch on the unit; smaller = closer together, so they overlap more)') : '')
+    + (lay === 'side' ? fRange('Pops in a row', 'fRow', 2, 6, 1, +X.fRow, 'How many sit side by side before a new row starts above') : '')
+    + fRange(lay === 'stack' ? 'Gap between pops (px)' : 'Gap above / below (px)', 'fGap', -10, 40, 1, +X.fGap, 'The space kept between pops over each other')
+    + (lay !== 'stack' ? fRange('Gap beside (px)', 'fGapX', -10, 60, 1, +X.fGapX, 'The space kept between pops next to each other') : ''))
+    + `<div class="uim-note">${lay === 'stack' ? 'A word never covers a number: it moves up out of the way.'
+      : 'Each pop picks its spot on the unit the moment it appears and keeps it, so nothing jumps around. When the bunch gets crowded they overlap a little rather than leave the unit; numbers always draw over words, the newest on top.'} The Busy hit above shows a crowd.</div>`);
   h += sec('ffont', 'Font', xp(fFont('Numbers', 'fNumFont', X.fNumFont, FF) + fSeg('Number weight', 'fNumWeight', WT, X.fNumWeight)
     + fFont('Words', 'fWordFont', X.fWordFont, FF) + fSeg('Word weight', 'fWordWeight', WT, X.fWordWeight)
     + fSeg('Word case', 'fCase', [['', 'As written'], ['upper', 'UPPER'], ['title', 'Title'], ['lower', 'lower']], X.fCase)
     + fRange('Letter spacing in words', 'fTrack', 0, 4, 0.05, +X.fTrack, '1 = as the game; 0 = the letters touch'))
     + xCheck('Icons in words (🔥 ❄️ ⛰)', 'fEmoji', X.fEmoji));
+  h += sec('fkind', 'Each kind of pop', floatKindForm(X, FF), 'colour, font, size');
   h += sec('fsize', 'Size', xp(fRange('Numbers', 'fNumSize', 0.3, 3, 0.05, +X.fNumSize, '1 = as the game') + fRange('Words', 'fWordSize', 0.3, 3, 0.05, +X.fWordSize, '1 = as the game')
     + fRange('Smallest number (% of screen)', 'fMinNum', 0, 20, 0.5, +X.fMinNum, 'Zoomed out, a number stops shrinking at this share of the screen height (then Size scales it)')
     + fRange('Biggest number (% of screen)', 'fMaxNum', 3, 40, 0.5, +X.fMaxNum, 'Up close, a number stops growing at this share of the screen height (then Size scales it)')
@@ -15102,9 +15237,10 @@ function floatDetail() {
       + xCheck('Reverse', 'fGradRev', X.fGradRev) + xCheck('Words get it too', 'fGradWords', X.fGradWords);
   }
   h += sec('fgrad', 'Gradient', xp(g));
-  h += sec('fhit', 'Hits', xCheck('Element colours on hits', 'fElem', X.fElem) + xCheck('CRIT stamp', 'fStamp', X.fStamp)
+  h += sec('fhit', 'Hits', xCheck('Element colours on hits', 'fElem', X.fElem)
     + xCheck('Weakness icon', 'fGlyph', X.fGlyph) + xCheck('Killing blow glow', 'fKill', X.fKill)
     + '<div class="uim-note">Element colours on: a fire hit\'s number wears the fire colour, and the Damage colour below shows on hits with no element. Off: every hit wears the Damage colour (Critical hit for a crit).</div>');
+  h += sec('fcrit', 'Critical hit', floatCritForm(X, FF, WT), X.fCrit === 'text' ? 'text' : X.fCrit === 'off' ? 'off' : 'stamp');
   h += sec('fmove', 'Motion', xp(fRange('Rise', 'fRise', 0, 3, 0.05, +X.fRise, 'How far a pop floats up (0 = it stays put)')
     + fRange('How long they stay', 'fLife', 0.4, 3, 0.05, +X.fLife, '1 = as the game')
     + fRange('Pop', 'fPop', 0, 2.5, 0.05, +X.fPop, 'How hard a pop slams in (0 = it just appears)')
@@ -15112,27 +15248,16 @@ function floatDetail() {
     + fSeg('Starts at', 'fStart', [['chest', 'Chest'], ['head', 'Head'], ['above', 'Above the head']], X.fStart)
     + fSeg('Path', 'fPath', [['rise', 'Rise', 'Floats up and slows down (as the game)'], ['steady', 'Steady', 'Floats up at an even speed'],
       ['hop', 'Hop', 'Hops up and lands back on its spot'], ['bounce', 'Bounce', 'Hops up and bounces twice']], X.fPath)
-    + fRange('Drift sideways', 'fDrift', 0, 3, 0.05, +X.fDrift, 'Each pop drifts left or right as it goes (0 = straight)')
+    + fRange('Drift sideways', 'fDrift', 0, 2, 0.05, +X.fDrift, 'Each pop drifts left or right as it goes, up to this many number heights (0 = straight)')
     + fRange('Tilt (°)', 'fTilt', 0, 30, 1, +X.fTilt, 'Each pop leans a random way, up to this much (0 = upright)')
     + fRange('Random spot', 'fSpread', 0, 12, 0.1, +X.fSpread, 'How far from the middle of the unit a pop lands at random (1 = as the game, 0 = always the same spot, 12 = about a third of a tile)')
     + fRange('Words wait (ms)', 'fWait', 0, 800, 10, +X.fWait, 'How long a word waits so its number lands first')));
-  /* THE LAYOUT: where a pop goes when another is already there (a number is never covered in any of them) */
-  const lay = X.fLay;
-  h += sec('flay', 'Layout', xp(fSeg('When pops meet', 'fLay', [['stack', 'Stack', 'On top of each other (as the game)'], ['side', 'Side by side', 'Next to each other, left and right'],
-    ['rows', 'Side + stack', 'Side by side, then a new row on top'], ['scatter', 'Scatter', 'Thrown apart at random']], lay)
-    + (lay === 'rows' ? fRange('Pops in a row', 'fRow', 2, 8, 1, +X.fRow, 'How many sit side by side before a new row starts on top') : '')
-    + (lay === 'scatter' ? fRange('Scatter distance (% of screen)', 'fScat', 0, 15, 0.5, +X.fScat, 'How far each pop is thrown from its spot at random (0 = only as far as it takes to clear the others)') : '')
-    + fRange(lay === 'stack' ? 'Gap between pops (px)' : 'Gap above / below (px)', 'fGap', -10, 40, 1, +X.fGap, 'The space kept between pops over each other')
-    + (lay !== 'stack' ? fRange('Gap beside (px)', 'fGapX', -10, 60, 1, +X.fGapX, 'The space kept between pops next to each other') : ''))
-    + '<div class="uim-note">In every layout a word never covers a number: it moves out of the way.</div>');
   h += sec('fshow', 'Which pops show', xCheck('Damage numbers', 'fShowDmg', X.fShowDmg) + xCheck('Heal numbers', 'fShowHeal', X.fShowHeal)
     + xCheck('MP numbers', 'fShowMp', X.fShowMp) + xCheck('TOTAL after a flurry', 'fShowTotal', X.fShowTotal)
     + xCheck('Hit words (WEAK!, CRIT, DODGE!, SUPER EFFECTIVE!)', 'fShowHit', X.fShowHit)
     + xCheck('Status + effect words (BURNING!, FROZEN!, LAND)', 'fShowStatus', X.fShowStatus)
     + xCheck('XP, level ups, pickups, Nexus', 'fShowMisc', X.fShowMisc));
-  h += sec('fcnum', 'Colours: numbers', xp(FLOAT_KINDS.filter(x => x[3] === 'nums').map(([k, l, d, , tip]) => fColorOpt(l, fcKey(k), X[fcKey(k)], d, false, tip)).join('')));
-  h += sec('fcword', 'Colours: words', xp(FLOAT_KINDS.filter(x => x[3] === 'words').map(([k, l, d, , tip]) => fColorOpt(l, fcKey(k), X[fcKey(k)], d, false, tip)).join('')));
-  h += '<div class="uim-note">Ticked = its own colour for that kind of pop (a number gets a gradient made from it); unticked = the game\'s. A new setting shows on the next pop; the unit above redraws its pops at once.</div>'
+  h += '<div class="uim-note">A new setting shows on the next pop in a battle; the unit above redraws its pops at once.</div>'
     + xReset('f', 'Reset the floating text');
   return h;
 }
@@ -16102,6 +16227,14 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-fpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 5px; }
 .uim-fpbar .uim-btn { padding: 2px 6px; font-size: 10px; }
 .uim-fpbar select { margin-left: auto; max-width: 128px; font-size: 10px; }
+.uim-fks { display: flex; flex-wrap: wrap; gap: 4px; }
+.uim-fk { position: relative; padding: 3px 7px 2px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.14); background: #0b0e14; color: var(--fkc); font-size: 13px; line-height: 1.15; cursor: pointer; text-shadow: 0 1px 0 #000, 0 0 2px #000; }
+.uim-fk:hover { border-color: rgba(111,180,255,0.6); }
+.uim-fk.on { border-color: #6fb4ff; box-shadow: 0 0 0 1px #6fb4ff inset; background: #121a29; }
+.uim-fk.own::after { content: ''; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: #6fb4ff; }
+.uim-fkx { margin-top: 8px; padding: 6px 8px; border: 1px solid rgba(111,180,255,0.25); border-radius: 6px; background: rgba(111,180,255,0.04); }
+.uim-fkh { font-weight: 700; color: #dfe3ea; margin-bottom: 4px; }
+.uim-fkh small { display: block; font-weight: 400; color: #8a93a3; font-size: 10px; margin-top: 1px; }
 .uim-dock { position: fixed; z-index: 10061; width: 364px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
@@ -18148,7 +18281,9 @@ function dockClick(e) {
     snapLayout(true); db.ux = db.ux || {}; db.ux[xs.dataset.xset] = xs.dataset.val;
     const tw = zoneTwin(xs.dataset.xset); if (tw) db.ux[tw] = xs.dataset.val;
     if (xs.dataset.xset === 'fGradStops') fgsSpread(+xs.dataset.val);   // a new count of gradient stops: spread evenly again
-    uxTidy(); touchLayout(); dockDetail(); return;
+    uxTidy(); touchLayout(); dockDetail();
+    if (xs.closest('[data-sec="fcrit"]')) floatCritBeat();
+    return;
   }
   const qs = e.target.closest('button[data-qpset]');
   if (qs) {
@@ -18291,11 +18426,30 @@ function dockClick(e) {
       uxTidy(); touchLayout(); dockDetail();
       if (k === 'zonecopy') toast(from === 'zs' ? 'The nexus zones now look like the spawn zones.' : 'The spawn zones now look like the nexus zones.');
     }
-    else if (k === 'floatlook') {   // a one-click look: the font, ink and motion keys go back first; the colours and the Show boxes stay
+    else if (k === 'floatlook') {   // a one-click look: the font, ink and motion keys go back first; the colours, each kind's own look and the Show boxes stay
       const L = FLOAT_LOOKS.find(x => x[0] === v);
-      if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === 'f' && x[1] !== 'c' && x.indexOf('fShow') !== 0) delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
+      if (L) { snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x[0] === 'f' && x[1] !== 'c' && x[1] !== 'k' && x.indexOf('fShow') !== 0 && x.indexOf('fCrit') !== 0) delete db.ux[x]; }); db.ux = Object.assign(db.ux || {}, L[2]); uxTidy(); touchLayout(); dockDetail(); }
     }
-    else if (k === 'fpbeat') { if (UI.fpApi) UI.fpApi.fire(v); }
+    else if (k === 'fpbeat') {   // that beat over and over (All = each in turn)
+      fpState().beat = v;
+      A.dock.querySelectorAll('[data-dk="fpbeat"]').forEach(x => x.classList.toggle('on', x.dataset.val === v));
+      if (UI.fpApi) UI.fpApi.fire(v);
+    }
+    else if (k === 'fkpick') {   // EACH KIND: edit that kind, and the unit loops a line of it
+      UI.fk = v; fpState().beat = 'k:' + v;
+      A.dock.querySelectorAll('[data-dk="fpbeat"]').forEach(x => x.classList.remove('on'));
+      if (UI.fpApi) UI.fpApi.fire('k:' + v);
+      dockDetail();
+    }
+    else if (k === 'fkreset') {
+      snapLayout(true); db.ux = db.ux || {};
+      [fcKey(v), fkKey(v, 'Font'), fkKey(v, 'Weight'), fkKey(v, 'Size')].forEach(x => { delete db.ux[x]; });
+      uxTidy(); touchLayout(); dockDetail();
+    }
+    else if (k === 'critreset') {   // THE CRIT LOOK back to the game's stamp (the CRIT / BACKSTAB words' own look stays)
+      snapLayout(true); Object.keys(db.ux || {}).forEach(x => { if (x.indexOf('fCrit') === 0) delete db.ux[x]; });
+      touchLayout(); dockDetail(); floatCritBeat();
+    }
     else if (k === 'fpzoom') {
       fpState().zoom = v; if (UI.fpApi) UI.fpApi.set({ zoom: v });
       A.dock.querySelectorAll('[data-dk="fpzoom"]').forEach(x => x.classList.toggle('on', x.dataset.val === v));
@@ -18477,8 +18631,13 @@ function dockInput(e) {
     if (k === 'qStatEach' && v) qpFreeze(true);
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
+    const crit = !!el.closest('[data-sec="fcrit"]');
     if (el.dataset.re && e.type === 'change') dockDetail();
-    else { const pre = uxGroupOf(k), rs = A.dock.querySelector(`[data-dk="uxreset"][data-val="${pre}"]`); if (rs) rs.disabled = !uxGroupOn(pre); }
+    else {
+      const pre = uxGroupOf(k), rs = A.dock.querySelector(`[data-dk="uxreset"][data-val="${pre}"]`); if (rs) rs.disabled = !uxGroupOn(pre);
+      const cr = crit && A.dock.querySelector('[data-dk="critreset"]'); if (cr) cr.disabled = !Object.keys(db.ux || {}).some(x => x.indexOf('fCrit') === 0);
+    }
+    if (crit) floatCritBeat();
     return;
   }
   if (el.dataset.ipath) {

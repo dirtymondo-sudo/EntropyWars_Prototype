@@ -242,7 +242,7 @@ const ThreeRenderer = (function () {
         crystal:'ent_violet', purple_bog:'ent_amethyst', obsidian:'ent_voidviolet',
         nexus:'ent_violet', nexus_cave:'ent_amethyst', nexus_sky:'ent_orchid',
         /* hazard / burnt → ember ramp */
-        scorched:'ent_maroon', lava:'ent_ember', poison_seed:'ent_blood',
+        scorched:'ent_maroon', lava:'ent_ember', poison_seed:'ent_blood', blood:'ent_blood',
         /* earth / wood / sand / sacred → gilded ramp */
         dirt:'ent_clay', desert:'ent_sand', wasteland:'ent_clay', sanctuary:'ent_sand',
         wood:'ent_bark', wood_planks:'ent_bark', bridge:'ent_bark', road:'ent_ash',
@@ -2502,7 +2502,9 @@ const ThreeRenderer = (function () {
         /* 2026-07-14: the poison bogs render as PURPLE WATER and the black
            ooze / oil family as BLACK WATER — full animated fluid pipeline
            (waves, caustics, glints, shoreline inset), tinted per key below. */
-        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true
+        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true,
+        /* 🩸 2026-10-21: the Blood Pool (Blood Rain) — dark red water */
+        blood: true
     };
 
     /* Tinted-water styles: these liquids reuse the WATER textures (base map +
@@ -2525,7 +2527,11 @@ const ThreeRenderer = (function () {
                       glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
         oil:        { base: 'water', tint: 0x121216,
                       caustDiff: 'vec3(0.09, 0.10, 0.12)', caustEmis: 'vec3(0.05, 0.06, 0.08)',
-                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' }
+                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
+        /* 🩸 the Blood Pool: deep red water, dark red caustics, a wet red glint */
+        blood:      { base: 'water', tint: 0x8a0c14,
+                      caustDiff: 'vec3(0.62, 0.08, 0.10)', caustEmis: 'vec3(0.34, 0.03, 0.05)',
+                      glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' }
     };
 
     /* Water surfaces sit slightly below the top of their block so every
@@ -2555,7 +2561,8 @@ const ThreeRenderer = (function () {
         poison_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
         swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
-        oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 }
+        oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
+        blood:      { l1dx: 0.08, l1dy: 0.08, l2dx: -0.06, l2dy: 0.06 }
     };
 
     var objectMeshes = new Map();
@@ -2583,6 +2590,7 @@ const ThreeRenderer = (function () {
 
     var deployableMeshes = new Map();
     var _lastDeployableSerial = '';
+    var _graveSeen = new Set();   // THE GRAVES HOLD STILL (2026-10-21): enemy remains this viewer has seen ('<viewer>|<id>|<x>,<y>')
 
     var _nexusWallGroup = null;
     var _lastNexusSerial = '';
@@ -2861,6 +2869,9 @@ const ThreeRenderer = (function () {
     var FLOAT_MIN_HERO_H = 0.065;
     var FLOAT_MIN_TAG_H = 0.027;
     var FLOAT_MAX_HERO_H = 0.15;
+    // a stock damage number's ink height at scale 1 (_buildFloatTextCanvas: 47 px × 0.95 + its outline both sides):
+    // THE BUNCH measures its spots and the drift in number heights, so they keep their size next to the pops at any zoom
+    var FLOAT_HERO_INK = 47 * 0.95 + 8;
     // Word pops that are the whole moment on their own (no number to serve)
     // keep their full size.
     var _FLOAT_SOLO_KINDS = { levelup: 1, laststd: 1, nexus: 1, achieve: 1 };
@@ -2925,8 +2936,11 @@ const ThreeRenderer = (function () {
        (_floatGroup). battle.js's hit read reads elem / stamp / glyph / killGlow / swell from the same object.
        2026-10-20 THE GRADIENT: gradWords (words wear one too), gradType (linear | radial | conic), gradAng (°, 180 = top
        to bottom), gradLen (%), gradOff (linear slide, %), gradX / gradY (radial + conic centre, %), stops [{ at, sh, col }],
-       bands, rep, gradRev (_floatStops / _floatGradient). THE LAYOUT + motion: lay (stack | side | rows | scatter), row,
-       gapX (px), scat (% of the screen height), path (rise | steady | hop | bounce), drift ×, tilt (°). */
+       bands, rep, gradRev (_floatStops / _floatGradient). THE LAYOUT + motion: lay (stack | side | scatter; an old
+       'rows' = side), row, gapX (px), bunch ×, path (rise | steady | hop | bounce), drift × (number heights), tilt (°).
+       2026-10-21 EACH KIND: kinds { kind: { font, weight, size × } } (a word or number of that kind in its own font).
+       2026-10-21 THE CRIT LOOK: crit { as ('text' = the crit's word pops as a CRIT / BACKSTAB word, else the stamp),
+       word, shape, points, plate, ink, line, burst, font, weight, size, tilt, where, glow } (battle.js's hit read). */
     var _FLOAT_LOOK0 = {};
     function _floatLook() { return (typeof window !== 'undefined' && window._ewFloatLook) || _FLOAT_LOOK0; }
     function _floatNum(v, d, lo, hi) { v = +v; if (!isFinite(v)) return d; return Math.max(lo, Math.min(hi, v)); }
@@ -4632,12 +4646,12 @@ const ThreeRenderer = (function () {
         _waterfallTexList = [];
         if (typeof getLiquidFlowAt === 'function') {
             var _flowGroup = new THREE.Group();
-            var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
             /* mirrors of map.js liquidFamilyOf / _LIQUID_SPREADS — keep in sync */
             var _FLOW_FAM_OF = { water: 'water', deep_water: 'water', poison: 'poison',
                                  poison_bog: 'poison', purple_bog: 'poison',
-                                 swamp: 'oil', oil: 'oil', lava: 'lava' };
-            var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2 };
+                                 swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
+            var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2, blood: 3 };
             var _noRaycast = function() {};
             /* THE FILM FLOOR (2026-10-15, mondo: "there is flickering with the water tiles from spells now"): a level overflow is
                a thin film, and the bevelled tile top under it is not flat — its organic swell (BEVEL.amp × tile, ~7 px) poked
@@ -8499,6 +8513,7 @@ const ThreeRenderer = (function () {
            Hashing them here makes graves appear on death and disappear on
            revive/respawn with zero extra plumbing. */
         if (state.units) {
+            var _gsVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (var gi = 0; gi < state.units.length; gi++) {
                 var gu = state.units[gi];
                 /* THE DEATH CLOSE-UP (2026-10-17): a rigged body's knock-down outlives `_dying` (800 ms vs the 1600 ms clip),
@@ -8506,6 +8521,9 @@ const ThreeRenderer = (function () {
                 if (gu && gu.dead && !gu._dying && !gu._corpseConsumed && !_deathTweens.has(gu.id)) {
                     h = _hashInt(h, 6); h = _hashInt(h, gu.x); h = _hashInt(h, gu.y);
                     h = _hashVal(h, gu.player); h = _hashStr(h, String(gu.id));
+                    /* THE GRAVES HOLD STILL (2026-10-21): the tile it is built on (_dyingX) and the look (a hot-seat
+                       viewer swap turns a grave into bones) */
+                    h = _hashVal(h, gu._dyingX); h = _hashVal(h, gu._dyingY); h = _hashVal(h, gu.player === _gsVp);
                 }
             }
         }
@@ -8772,7 +8790,9 @@ const ThreeRenderer = (function () {
         var url = _BONE_GLB_URLS[key];
         var e = _miscModelCache[url];
         if (!e || !e.root || !e.root._ew_bbox) {
-            try { _loadMiscModel(url, true, function () {}); } catch (e2) {}
+            /* THE GRAVES HOLD STILL (2026-10-21): the landing rebuilds the piles — _objectsDirty alone never rebuilt the
+               deployables, so a pile built before its bones streamed in stayed an empty marker until something else changed */
+            try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; }); } catch (e2) {}
             return null;
         }
         var root = e.root, bb = root._ew_bbox;
@@ -8815,6 +8835,9 @@ const ThreeRenderer = (function () {
     function _buildBonePile3D(x, y, seed) {
         var tsG = CONFIG.tileSize || BASE_TILE;
         var rngG = _graveRng(seed);
+        /* ask for every bone file up front — a skull already cached (the unholy wastes' horizon skull) used to skip the
+           femur / ulna requests, and the pile never filled */
+        for (var bk in _BONE_GLB_URLS) { if (!(_miscModelCache[_BONE_GLB_URLS[bk]] || {}).root) _boneGlbClone(bk, 1); }
         var skullG = _boneGlbClone('skull', tsG * 0.30);
         var femurOk = !!(_miscModelCache[_BONE_GLB_URLS.femur] || {}).root;
         var ulnaOk = !!(_miscModelCache[_BONE_GLB_URLS.ulna] || {}).root;
@@ -10064,6 +10087,7 @@ const ThreeRenderer = (function () {
            dead — placed on each corpse's death tile. Suppressed while the death
            animation is still playing so the grave doesn't pop in under the
            collapsing sprite. */
+        var _graveLive = new Set();
         if (state.units && !window.EW_DISABLE_GRAVESTONES) {
             var _gvViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (var ug = 0; ug < state.units.length; ug++) {
@@ -10079,12 +10103,20 @@ const ThreeRenderer = (function () {
                     : _buildBonePile3D(gx, gy, gseed);
                 if (gmesh) {
                     gmesh._ew_depX = gx; gmesh._ew_depY = gy;
+                    /* THE GRAVES HOLD STILL (2026-10-21): your own fallen are always shown (like your own deployables);
+                       enemy remains stay once you have seen them (_graveSeen) — gated by the live vision they blinked out
+                       and back every time a unit moved or the turn passed */
+                    if (du.player === _gvViewer) gmesh._ew_depOwner = du.player;
+                    else { gmesh._ew_graveKey = _gvViewer + '|' + du.id + '|' + gx + ',' + gy; _graveLive.add(gmesh._ew_graveKey); }
                     var gkey = 'grave_' + du.id;
                     objectGroup.add(gmesh);
                     deployableMeshes.set(gkey, gmesh);
                 }
             }
         }
+
+        /* a grave that is gone (respawn, raised, a new match) is forgotten */
+        _graveSeen.forEach(function (k) { if (!_graveLive.has(k)) _graveSeen.delete(k); });
 
         if (ThreePost && ThreePost.rebuildWardLights) {
             ThreePost.rebuildWardLights(state.wards || [], tileTopY, CONFIG.tileSize || BASE_TILE);
@@ -17865,7 +17897,11 @@ const ThreeRenderer = (function () {
        a CROP of a whole screen the size of the game here (setViewOffset), shrunk to fit, so the number, the plate and
        the body keep the sizes they have to each other in a battle on this screen. A look change redraws the pops on
        screen at once (or fires the last beat again). One preview at a time; it stops itself when its host leaves the
-       page. opts: { zoom, unit: { race, gender, name, types, level, appearance }, loop } (api.set takes the same). */
+       page. opts: { zoom, unit: { race, gender, name, types, level, appearance }, loop, beat } (api.set takes the same).
+       2026-10-21 (mondo: "the animation loop at the top just cycles through all of those options when i want to be able
+       to click on one of the options and have it loop that one"): beat = the one the loop plays over and over ('all' or
+       none = each in turn, FLOAT_PREV_ORDER); a click (api.fire) picks it and plays it at once; with Loop off it plays
+       once. 'k:<kind>' = that kind's own line (_floatPrevBeat). */
     var _floatPrev = null;
     var FLOAT_PREV_BEATS = {
         hit: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1000]],
@@ -17876,9 +17912,26 @@ const ThreeRenderer = (function () {
         mp: [['+20 MP', 'mp', null, 0, 1000], ['+35 XP', 'xp', null, 120, 1000]],
         combo: [['-46', 'damage', { _hitPct: 6, _hitType: 'lightning', _hitW: 0 }], ['-52', 'combo', null, 280], ['-61', 'damage', { _hitPct: 8, _hitType: 'lightning', _hitW: 0 }, 560],
             ['159 TOTAL!', 'total', null, 1760, 1500]],
-        ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]]
+        ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]],
+        /* a crowd: one hit with every word at once, then two more hits on top (how a layout handles a pile-up) */
+        busy: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1100],
+            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB!', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
+            ['-52', 'combo', null, 320], ['-61', 'damage', { _hitPct: 8, _hitType: 'fire', _hitW: 0 }, 640]]
     };
-    var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko'];
+    var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko', 'busy'];
+    /* EACH KIND (UI Maker > Floating text > Each kind of pop): a line the game really pops for each kind, shown on its own
+       (a word after a number, so it is seen next to one) when that kind is picked: beat 'k:<kind>' */
+    var FLOAT_KIND_SAMPLE = { damage: '-128', critdmg: '-246', combo: '-52', total: '159 TOTAL!', heal: '+64', mp: '+20 MP', revive: '+1 AP!',
+        crit: 'BACKSTAB!', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED!', overkill: 'OVERKILL!', dodge: 'DODGE!',
+        'protect-block': '🛡 PROTECTED!', buff: '⏪ ENCORE', debuff: 'GROUNDED!', status: 'Blocked!', neutral: '⬇ LAND', xp: '+35 XP',
+        levelup: '⬆ LEVEL 12!', pickup: '+1 KEY', nexus: '⬡ CAPTURED!' };
+    function _floatPrevBeat(name) {
+        if (String(name).indexOf('k:') !== 0) return FLOAT_PREV_BEATS[name] || null;
+        var kind = name.slice(2), txt = FLOAT_KIND_SAMPLE[kind];
+        if (!txt) return null;
+        var solo = _floatIsNumber(txt, kind) || _FLOAT_SOLO_KINDS[kind];
+        return solo ? [[txt, kind, null, 0, 1200]] : [['-128', 'damage'], [txt, kind, null, 0, 1200]];
+    }
     function floatPreview(host, opts) {
         if (_floatPrev) { if (_floatPrev.host === host) { _floatPrev.set(opts || {}); return _floatPrev; } _floatPrev.stop(); }
         if (!host || typeof THREE === 'undefined' || !THREE.WebGLRenderer) return null;
@@ -17914,9 +17967,9 @@ const ThreeRenderer = (function () {
         var U = { race: 'fortune teller', gender: 'male', name: '', types: ['human'], level: 100 };
         var zoomMode = 'turn', looping = opts.loop !== false;
         var modelH = 1, mixer = null, rig = null, rigRoot = null, ownMats = [], ownTex = [], spr = null, utok = 0;
-        var plate = null, ctx = { tweens: [], stagger: {}, now: function () { return performance.now(); }, live: [], lastReal: 0 };
+        var plate = null, ctx = { tweens: [], stagger: {}, now: function () { return performance.now(); }, live: [], lastReal: 0, keepIn: true };
         var raf = 0, dead = false, lastKey = '', lastT = 0, crop = { w: 1, h: 1, x: 0, y: 0, fullH: 1 };
-        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, refireAt = 0;
+        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, seenCw = '', refireAt = 0, beatSel = opts.beat || 'all';
         var _pv = new THREE.Vector3();
 
         function clearUnit() {
@@ -18046,10 +18099,13 @@ const ThreeRenderer = (function () {
             plate.outer.style.left = ((_pv.x * 0.5 + 0.5) * crop.w).toFixed(1) + 'px';
             plate.outer.style.top = ((-_pv.y * 0.5 + 0.5) * crop.h).toFixed(1) + 'px';
         }
-        /* one pop, made the way the board makes it (the look, the hit read) */
+        /* one pop, made the way the board makes it (the look, the hit read; a crit shown as text names its word in
+           el._ewCritWord, and spawn pops it beside the number as the board does) */
         function makePop(p, L) {
             var el = _floatMakeEl(p.text, p.kind, L);
-            if (p.opts && typeof window._ewHitReadDress === 'function') { try { window._ewHitReadDress(el, p.kind, p.opts); } catch (e) {} }
+            if (p.opts && typeof window._ewHitReadDress === 'function') {
+                try { var hr = window._ewHitReadDress(el, p.kind, p.opts); el._ewCritWord = (hr && hr.critWord) || ''; } catch (e) {}
+            }
             return el;
         }
         function popMs(p, L) {
@@ -18065,12 +18121,31 @@ const ThreeRenderer = (function () {
             var jx = (Math.random() * 18 - 9) * 0.4, jz = (Math.random() * 10 - 5) * 0.4;   // the board's own scatter (battle.js jitter × 0.4)
             var tw = _floatSpawn(ctx, el, p.kind, popMs(p, L), jx * spread, jz * spread, ts * UNIT_SPRITE_SIZE_RATIO * (_FLOAT_START[L.start] || _FLOAT_START.chest), 'u', L);
             tw.src = p; tw.jx = jx; tw.jz = jz;
+            if (el._ewCritWord) spawn({ text: el._ewCritWord, kind: 'crit', ms: 1100 });   // battle.js _hitReadCritPop
+        }
+        /* the crit's word when the look shows a crit as text ('' = the stamp or nothing): a change re-plays the beat,
+           since the pops on screen were made with or without that word */
+        function critWordNow() {
+            var L = _floatLook(), C = L.crit;
+            return L.stamp !== false && C && C.as === 'text' ? String(C.word || 'CRIT!') : '';
         }
         function fireBeat(name) {
-            var B = FLOAT_PREV_BEATS[name]; if (!B) return;
+            var B = _floatPrevBeat(name); if (!B) return;
             lastBeat = name;
             var t0 = performance.now();
             B.forEach(function (b) { queue.push({ at: t0 + (b[3] || 0), text: b[0], kind: b[1], opts: b[2] || null, ms: b[4] || 0 }); });
+        }
+        /* the wait before the next beat: the beat's last pop has run its whole life (the look's Life ×, a number's hold),
+           so a beat never plays over the one before it */
+        function beatGap(name) {
+            var B = _floatPrevBeat(name) || [], L = _floatLook(), life = _floatNum(L.life, 1, 0.3, 5), end = 0;
+            B.forEach(function (b) { end = Math.max(end, (b[3] || 0) + popMs({ ms: b[4], opts: b[2] }, L) * FLOAT_HERO_HOLD * life); });
+            return Math.max(2300, end + 400);
+        }
+        /* the pops on screen gone at once (a beat picked plays on its own) */
+        function clearPops() {
+            queue.length = 0;
+            ctx.tweens.forEach(_removeFloatTween); ctx.tweens.length = 0;
         }
         /* a look change: every pop on screen is made again in the new look, keeping its place in its life */
         function relook() {
@@ -18082,7 +18157,7 @@ const ThreeRenderer = (function () {
                 var el = makePop(p, L);
                 el.style.left = tw.el.style.left; el.style.top = tw.el.style.top; el.style.transform = tw.el.style.transform; el.style.opacity = tw.el.style.opacity;
                 stage.replaceChild(el, tw.el);
-                tw.el = el; tw.boxW = 0; tw.boxH = 0;
+                tw.el = el; tw.boxW = 0; tw.boxH = 0; tw.slot = null;   // the bunch lays it out again in the new look
                 tw.hero = !!el._ewHero;
                 tw.riseY = FLOAT_RISE_PX * _floatNum(L.rise, 1, -1, 5);
                 tw.durationMs = popMs(p, L) * (tw.hero && p.kind !== 'pickup' ? FLOAT_HERO_HOLD : 1) * _floatNum(L.life, 1, 0.3, 5);
@@ -18098,10 +18173,19 @@ const ThreeRenderer = (function () {
                 o = o || {};
                 if (o.zoom && o.zoom !== zoomMode) { zoomMode = o.zoom; lastKey = ''; }
                 if (o.loop != null) looping = !!o.loop;
+                if (o.beat) beatSel = o.beat;
                 if (o.unit && (o.unit.race !== U.race || o.unit.gender !== U.gender || o.unit.name !== U.name)) setUnit(o.unit);
             },
-            fire: function (name) { fireBeat(name); beatAt = performance.now() + 2600; beatIdx = Math.max(0, FLOAT_PREV_ORDER.indexOf(name)) + 1; },
-            loop: function (on) { looping = on !== false; },
+            /* a beat picked: it plays now, then the loop plays it over and over ('all' = each in turn, from the top) */
+            fire: function (name) {
+                beatSel = name || 'all';
+                var now = performance.now();
+                clearPops();
+                if (beatSel === 'all') { beatIdx = 0; if (looping) beatAt = now; else fireBeat(FLOAT_PREV_ORDER[beatIdx++]); return; }
+                fireBeat(beatSel);
+                beatAt = now + beatGap(beatSel);
+            },
+            loop: function (on) { looping = on !== false; if (looping) beatAt = Math.min(beatAt, performance.now() + 300); },
             unit: function () { return U; }
         };
         var loop = function () {
@@ -18121,14 +18205,15 @@ const ThreeRenderer = (function () {
             if (rig && rigRoot) { try { rigRoot.updateMatrixWorld(true); rig.tick(); } catch (e) {} }
             var v = window._ewFloatLookV || 0;
             if (v !== seenV) {
-                var first = seenV < 0;
-                seenV = v;
-                if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; }
+                var first = seenV < 0, cw = critWordNow(), cwFlip = !first && cw !== seenCw;
+                seenV = v; seenCw = cw;
+                if (cwFlip) { clearPops(); fireBeat(lastBeat); refireAt = now + 450; beatAt = Math.max(beatAt, now + beatGap(lastBeat)); }
+                else if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; beatAt = Math.max(beatAt, now + beatGap(lastBeat)); }
             }
             if (looping && now >= beatAt) {
-                fireBeat(FLOAT_PREV_ORDER[beatIdx % FLOAT_PREV_ORDER.length]);
-                beatIdx++;
-                beatAt = now + (lastBeat === 'combo' ? 3400 : 2300);
+                var nb = beatSel && beatSel !== 'all' ? beatSel : FLOAT_PREV_ORDER[beatIdx++ % FLOAT_PREV_ORDER.length];
+                fireBeat(nb);
+                beatAt = now + beatGap(nb);
             }
             for (var qi = queue.length - 1; qi >= 0; qi--) if (queue[qi].at <= now) { var q = queue.splice(qi, 1)[0]; spawn(q); }
             placePlate(FH);
@@ -20710,6 +20795,11 @@ const ThreeRenderer = (function () {
                 return;
             }
             var dx = mesh._ew_depX, dy = mesh._ew_depY;
+            if (mesh._ew_graveKey) {
+                if (visible.has(dx + ',' + dy)) _graveSeen.add(mesh._ew_graveKey);
+                mesh.visible = _graveSeen.has(mesh._ew_graveKey);
+                return;
+            }
             if (dx !== undefined && dy !== undefined) {
                 mesh.visible = visible.has(dx + ',' + dy);
             }
@@ -22354,6 +22444,140 @@ const ThreeRenderer = (function () {
                 f.light.intensity = Math.max(0, 1.6 * (1 - o));
                 f.halo.material.opacity = Math.max(0, 0.5 * (1 - o));
             }
+        }
+    }
+
+    /* THE FORCE FIELD (2026-10-21, mondo: "when a unit is slammed into a wall that is the outer edge of the map, can we make
+       like a force field effect when they bounce off of it"): a body a forced slide slams into the board's OUTER edge
+       (battle.js resolveForcedSlide, info.kind 'edge') lights a hex-grid barrier on that face of its tile — a flash, a
+       ripple ring out from the contact point, the grid fading off. Look only: the slam, its damage and the rebound are
+       the existing rules. Inner walls keep their look. Two planes per face (the grid + the ripple), shared geometry and
+       textures, materials freed when it ends; it reads without bloom (bright unlit cyan, tone mapping off, no fog).
+       (tx, ty) = the tile the body bounced on, (dx, dy) = the way it was going, tz = its level. */
+    var _ffList = [];
+    var _ffGeo = null, _ffHexTex = null, _ffMaskTex = null, _ffRingTex = null;
+    var _FF_MS = 820;
+    function _ffTextures() {
+        if (_ffHexTex || typeof document === 'undefined') return !!_ffHexTex;
+        /* the grid: pointy hexes on a 256² tile that wraps both ways (4 columns, 4 rows, every other row shifted) */
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var g = c.getContext('2d');
+        g.strokeStyle = '#ffffff'; g.lineWidth = 7; g.lineJoin = 'round';
+        g.shadowColor = '#ffffff'; g.shadowBlur = 10;
+        var sx = 64, sy = 64, rx = sx / Math.sqrt(3), ry = sy / 1.5;
+        for (var row = -1; row <= 4; row++) {
+            for (var col = -1; col <= 4; col++) {
+                var cx = col * sx + ((row & 1) ? sx / 2 : 0), cy = row * sy;
+                g.beginPath();
+                for (var k = 0; k < 6; k++) {
+                    var a = Math.PI / 6 + k * Math.PI / 3;
+                    var px = cx + Math.cos(a) * rx, py = cy + Math.sin(a) * ry * 0.98;
+                    if (k) g.lineTo(px, py); else g.moveTo(px, py);
+                }
+                g.closePath(); g.stroke();
+            }
+        }
+        _ffHexTex = new THREE.CanvasTexture(c);
+        _ffHexTex.wrapS = _ffHexTex.wrapT = THREE.RepeatWrapping;
+        _ffHexTex.repeat.set(2.2, 2);
+        /* the mask: the grid is strongest round the contact point and dies off before the panel's edge */
+        var m = document.createElement('canvas'); m.width = m.height = 128;
+        var mg = m.getContext('2d');
+        mg.fillStyle = '#000'; mg.fillRect(0, 0, 128, 128);
+        var gr = mg.createRadialGradient(64, 64, 0, 64, 64, 64);
+        gr.addColorStop(0.00, '#ffffff'); gr.addColorStop(0.40, '#d8d8d8');
+        gr.addColorStop(0.75, '#585858'); gr.addColorStop(1.00, '#000000');
+        mg.fillStyle = gr; mg.fillRect(0, 0, 128, 128);
+        _ffMaskTex = new THREE.CanvasTexture(m);
+        /* the ripple: a soft bright ring */
+        var r = document.createElement('canvas'); r.width = r.height = 128;
+        var rg = r.getContext('2d');
+        var rr = rg.createRadialGradient(64, 64, 0, 64, 64, 64);
+        rr.addColorStop(0.00, 'rgba(255,255,255,0.0)'); rr.addColorStop(0.62, 'rgba(255,255,255,0.0)');
+        rr.addColorStop(0.80, 'rgba(255,255,255,1.0)'); rr.addColorStop(0.90, 'rgba(255,255,255,0.35)');
+        rr.addColorStop(1.00, 'rgba(255,255,255,0.0)');
+        rg.fillStyle = rr; rg.fillRect(0, 0, 128, 128);
+        _ffRingTex = new THREE.CanvasTexture(r);
+        _ffGeo = new THREE.PlaneGeometry(1, 1);
+        return true;
+    }
+    function forceFieldFx(tx, ty, dx, dy, tz) {
+        if (!scene || !_ffTextures()) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var baseY = _tileSurfaceY(tx, ty, tz);
+        /* (dx, dy) carry only the axes that leave the board (battle.js reads them off isInside): a diagonal into a
+           corner lights both faces */
+        var faces = [];
+        if (dx) faces.push({ ax: 'x', s: dx > 0 ? 1 : -1 });
+        if (dy) faces.push({ ax: 'z', s: dy > 0 ? 1 : -1 });
+        for (var i = 0; i < faces.length; i++) {
+            var f = faces[i];
+            var grp = new THREE.Group();
+            var wx = tx * ts + ts / 2, wz = ty * ts + ts / 2;
+            if (f.ax === 'x') { wx += f.s * ts * 0.5; grp.rotation.y = Math.PI / 2; }
+            else wz += f.s * ts * 0.5;
+            grp.position.set(wx, baseY + ts * 0.55, wz);
+            var hexTex = _ffHexTex.clone();          // its own scroll; the canvas is shared
+            hexTex.needsUpdate = true;
+            hexTex.offset.set(Math.random(), Math.random());
+            var gridMat = new THREE.MeshBasicMaterial({
+                map: hexTex, alphaMap: _ffMaskTex, color: new THREE.Color(0x6ff4ff),
+                transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+                depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            });
+            var grid = new THREE.Mesh(_ffGeo, gridMat);
+            grid.scale.set(ts * 2.6, ts * 1.9, 1);
+            grid.renderOrder = 5;
+            grp.add(grid);
+            /* a faint sheet under the grid so it still reads over a bright floor or a white sky */
+            var sheetMat = new THREE.MeshBasicMaterial({
+                alphaMap: _ffMaskTex, color: new THREE.Color(0x1aa8d8),
+                transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            });
+            var sheet = new THREE.Mesh(_ffGeo, sheetMat);
+            sheet.scale.set(ts * 2.6, ts * 1.9, 1);
+            sheet.renderOrder = 4;
+            grp.add(sheet);
+            var ringMat = new THREE.MeshBasicMaterial({
+                map: _ffRingTex, color: new THREE.Color(0xc8ffff),
+                transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+                depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            });
+            var ring = new THREE.Mesh(_ffGeo, ringMat);
+            ring.position.z = 0.5;
+            ring.renderOrder = 6;
+            grp.add(ring);
+            scene.add(grp);
+            _ffList.push({ g: grp, grid: grid, sheet: sheet, ring: ring, hexTex: hexTex, t0: _animNow(), ts: ts });
+        }
+    }
+    function _updateForceFieldFx() {
+        if (!_ffList.length) return;
+        var now = _animNow();
+        for (var i = _ffList.length - 1; i >= 0; i--) {
+            var f = _ffList[i];
+            var t = now - f.t0;
+            if (t >= _FF_MS || !f.g.parent) {
+                scene.remove(f.g);
+                f.grid.material.dispose(); f.sheet.material.dispose(); f.ring.material.dispose(); f.hexTex.dispose();
+                _ffList.splice(i, 1);
+                continue;
+            }
+            var k = t / _FF_MS;
+            /* snap on in 60 ms, a quick flicker, then fade off */
+            var on = t < 60 ? t / 60 : Math.pow(1 - (t - 60) / (_FF_MS - 60), 1.6);
+            var flick = t < 260 ? (0.85 + 0.15 * Math.sin(t * 0.09)) : 1;
+            f.grid.material.opacity = Math.max(0, on * flick);
+            f.sheet.material.opacity = Math.max(0, on * 0.38);
+            /* the barrier gives a little where it was hit, then springs back */
+            var give = Math.sin(Math.min(1, t / 300) * Math.PI) * 0.08;
+            f.grid.scale.set(f.ts * 2.6 * (1 + give), f.ts * 1.9 * (1 + give), 1);
+            f.hexTex.offset.y += 0.004;
+            /* the ripple runs out from the contact point */
+            var rk = Math.min(1, t / 520);
+            var rs = f.ts * (0.25 + 2.3 * (1 - Math.pow(1 - rk, 2)));
+            f.ring.scale.set(rs, rs, 1);
+            f.ring.material.opacity = Math.max(0, (1 - rk) * 0.95);
         }
     }
 
@@ -24133,8 +24357,10 @@ const ThreeRenderer = (function () {
         /* Cinzel is BANNED for words everywhere else in the game (2026-08-10)
            but this is the damage-number face — numbers are exactly where its
            carved-capital look works. Keep it HERE and nowhere word-shaped. */
-        var fontFamily = (isNumber ? L.numFont : L.wordFont) || "'Cinzel', Georgia, 'Times New Roman', serif";
-        var fontWeight = String((isNumber ? L.numWeight : L.wordWeight) || (isNumber ? '900' : '700'));
+        // EACH KIND: this kind's own font / weight (a word or number of that kind), else the numbers' or the words'
+        var KL = (L.kinds && L.kinds[kind]) || null;
+        var fontFamily = (KL && KL.font) || (isNumber ? L.numFont : L.wordFont) || "'Cinzel', Georgia, 'Times New Roman', serif";
+        var fontWeight = String((KL && KL.weight) || (isNumber ? L.numWeight : L.wordWeight) || (isNumber ? '900' : '700'));
         var letterSpacing = isNumber ? 0 : (L.track != null ? Math.max(0, Math.round(fontSize * 0.06 * _floatNum(L.track, 1, 0, 5)))
             : Math.max(1, Math.round(fontSize * 0.06)));
         var fontStr = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
@@ -24238,6 +24464,7 @@ const ThreeRenderer = (function () {
         c._ewMarginX = Math.max(0, padX - lineInk);
         c._ewMarginTop = c._ewMarginBot = Math.max(0, (th - inkH) / 2 - (lineInk - outlineW * 1.2));
         c._ewInkH0 = inkH;   // the stock ink height, before any hit-read swell
+        c._ewKindK = KL && KL.size ? _floatNum(KL.size, 1, 0.2, 4) : 1;   // EACH KIND: its own size × on screen
         return c;
     }
 
@@ -24278,7 +24505,7 @@ const ThreeRenderer = (function () {
 
     /* The board's pops and the UI Maker preview's (floatPreview) each run a CONTEXT through the same spawn + step, so
        the preview moves, sizes and stacks its pops exactly as a battle does: { tweens, stagger (per-tile tag queue),
-       now() (the clock), live (scratch), lastReal }. */
+       now() (the clock), live (scratch), lastReal, keepIn (the preview: pops kept whole inside its view) }. */
     var _floatGameCtx = { tweens: _floatTweens, stagger: _floatTileStagger, now: function () { return _animNow(); }, live: [], lastReal: 0 };
 
     function startFloatingText(tileX, tileY, text, kind, durationMs, opts) {
@@ -24352,7 +24579,9 @@ const ThreeRenderer = (function () {
             // on-screen size × (the hierarchy: the number reads first)
             sizeK: hero ? FLOAT_HERO_SCALE : (_FLOAT_SOLO_KINDS[kind] ? 1 : FLOAT_TAG_SCALE),
             layDy: 0, layDx: 0, laid: false,
-            // its own dice for the look's motion: drift side + amount, scatter heading + distance, tilt
+            // THE BUNCH: its spot on the unit, in number heights (picked on its first frame, then kept)
+            slot: null,
+            // its own dice for the look's motion: drift side + amount, the bunch's spot pick, tilt
             rnd: [Math.random(), Math.random(), Math.random(), Math.random(), Math.random()]
         };
         ctx.tweens.push(tw);
@@ -24376,10 +24605,8 @@ const ThreeRenderer = (function () {
        up at once (a number is never covered, even for a frame) and ease back
        down when the pop that held them fades away. Screen-space only: works
        the same for pops over two different units that project close.
-       THE LAYOUT (2026-10-20, mondo: "they like stack on top of each other but i want them to do more of a scatter and
-       be side by side or and on top of each other"): mode = the look's lay. 'stack' (or none) = the above; the others
-       go through _floatPlaceFree. gapX = px kept beside a pop, rowN = pops in a row (rows). */
-    function _layoutFloatTexts(list, dtMs, gapPx, mode, gapX, rowN) {
+       This is the look's Stack layout (as the game); Side by side and Scatter are THE BUNCH (_floatBunch). */
+    function _layoutFloatTexts(list, dtMs, gapPx) {
         list.sort(function (a, b) {
             if (a.hero !== b.hero) return a.hero ? -1 : 1;
             var ta = a.startTime + (a.delayMs || 0), tb = b.startTime + (b.delayMs || 0);
@@ -24399,7 +24626,6 @@ const ThreeRenderer = (function () {
             var halfW = Math.max(0, tw.boxW * k / 2 - (el._ewMarginX || 0) * k);
             var top0 = tw._sy - tw.boxH * k / 2 + (el._ewMarginTop || 0) * k;
             var bot0 = tw._sy + tw.boxH * k / 2 - (el._ewMarginBot || 0) * k;
-            if (mode && mode !== 'stack') { _floatPlaceFree(tw, halfW, top0, bot0, placed, gap, gapX || 0, mode, rowN, relax); continue; }
             tw.layDx = 0;
             var dy = 0;
             for (var pass = 0; pass < 16; pass++) {
@@ -24422,68 +24648,182 @@ const ThreeRenderer = (function () {
         }
     }
 
-    /* true = a pop's ink box (round cx, top → bot) keeps gap px above / below and gapX beside every placed one */
-    function _floatClear(cx, halfW, top, bot, placed, gap, gapX) {
-        for (var j = 0; j < placed.length; j++) {
-            var p = placed[j];
-            if (Math.abs(cx - p.cx) >= halfW + p.halfW + gapX || bot <= p.top - gap || top >= p.bot + gap) continue;
-            return false;
+    /* THE BUNCH (2026-10-21, mondo: "All i want is an option that makes the floating text not just appear one after
+       another on top of each other in a stack. They should be bunched up/scattered but still clearly on that enemy.
+       Thats what i meant by side by side. Not literally side by side going across the entire screen for one person"):
+       the look's Side by side and Scatter layouts. A pop picks its spot ONCE, on its first frame on screen, from spots
+       close round its own unit, and keeps it for its whole life: nothing is laid out again frame to frame, so a pop
+       never jumps, flips side or flickers. (The 2026-10-20 layouts moved every pop every frame, out along a line until
+       it was clear, and threw one hit's pops ~730 px across a 1280 px screen.) Spots are in number heights (U = a stock
+       damage number's height on screen at that depth), so the bunch keeps its shape next to the pops at every zoom.
+       The pick: the spot whose shape (the pop at its resting size, turned by its tilt, plus the gaps) lies over the least
+       of the pops already up, now and where each will be in a moment (risen, hopped, drifted), nearer the middle winning.
+       side = rows: the unit's own first, then level with / just over / just under the pops up, beside what is in that
+       row (row = the most pops a row holds); scatter = spots spread over an oval on the unit (and out past it, dearer),
+       turned by the pop's own dice, a little dice in the score so a burst lands loose. bunch × = the oval: how far from
+       the middle a pop lands. Only a crowd too big for that overlaps (rather than leave the unit); numbers draw over
+       words and the newest over the older (z-index). */
+    var _floatBoxes = [];
+    var _FLOAT_GOLD = Math.PI * (3 - Math.sqrt(5));
+    /* the look-aheads, as shares of a word's life (1100 ms × the look's Life ×): a pop that has faded out by then is
+       left out of that one */
+    var FLOAT_BUNCH_AHEAD = [0.1, 0.22, 0.36, 0.52, 0.72, 0.95];
+    var _FLOAT_FUT0 = [0, 0, 0, 0, 0, 0];
+    /* a pop's resting ink box: half width, its centre's offset right of the pop's centre (a dressed number's glyph is
+       ink at the left edge only, battle.js _ewMarginL / R), above, below (px) */
+    function _floatBox(tw) {
+        var el = tw.el, k = tw._kr || tw._k || 1;
+        if (!tw.boxW) {
+            tw.boxW = parseFloat(el.style.width) || el.width || 0;
+            tw.boxH = parseFloat(el.style.height) || el.height || 0;
         }
-        return true;
+        var mL = el._ewMarginL != null ? el._ewMarginL : (el._ewMarginX || 0), mR = el._ewMarginR != null ? el._ewMarginR : (el._ewMarginX || 0);
+        return {
+            hw: Math.max(1, (tw.boxW - mL - mR) * k / 2),
+            cx: (mL - mR) * k / 2,
+            up: Math.max(1, tw.boxH * k / 2 - (el._ewMarginTop || 0) * k),
+            dn: Math.max(1, tw.boxH * k / 2 - (el._ewMarginBot || 0) * k)
+        };
     }
-    /* THE LAYOUT, the other modes: side = moved beside whatever is in its way, left or right (whichever is nearer; each
-       pop has a side it leans to, so a run of numbers fans out both ways), rows = beside up to rowN pops wide, then a row
-       up, scatter = moved on along its own random heading until it is clear. As in the stack, the newest number keeps
-       its spot and a pop never draws over one placed before it: it jumps clear at once and eases back when room opens. */
-    function _floatPlaceFree(tw, halfW, top0, bot0, placed, gap, gapX, mode, rowN, relax) {
-        var sx = tw._sx, R = tw.rnd || _FLOAT_RND0, pref = R[0] < 0.5 ? -1 : 1, tx = 0, ty = 0, found = false, j;
-        if (mode === 'scatter') {
-            var a = R[2] * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a), step = Math.max(3, (bot0 - top0) * 0.2);
-            for (var s = 0; s <= 160 && !found; s++) {
-                var ex = ux * step * s, ey = uy * step * s;
-                if (_floatClear(sx + ex, halfW, top0 + ey, bot0 + ey, placed, gap, gapX)) { tx = ex; ty = ey; found = true; }
+    /* the pop's shape for the pick: its ink box cut into squarish pieces along the line of text, turned by its tilt
+       (a tilted word lies along a slant, not over the whole box round it), each piece grown by the gaps; hl / hr / up /
+       dn = the box round the lot from the pop's centre (hw = the wider side), area = what the pieces cover */
+    function _floatShape(tw, me, gx, gy) {
+        var hh = (me.up + me.dn) / 2, cy0 = (me.dn - me.up) / 2;
+        var th = (tw._rot || 0) * Math.PI / 180, c = Math.cos(th), s = Math.sin(th);
+        var n = Math.abs(th) < 0.02 ? 1 : Math.max(1, Math.min(4, Math.round(me.hw / Math.max(1, hh) * 0.6)));   // upright = the box itself
+        var w2 = me.hw / n, shw = w2 * Math.abs(c) + hh * Math.abs(s) + gx, shh = w2 * Math.abs(s) + hh * Math.abs(c) + gy;
+        var segs = [], el = 0, er = 0, eu = 0, ed = 0;
+        for (var i = 0; i < n; i++) {
+            var lx = me.cx - me.hw + (2 * i + 1) * w2, dx = lx * c - cy0 * s, dy = lx * s + cy0 * c;
+            segs.push({ dx: dx, dy: dy });
+            el = Math.max(el, shw - dx); er = Math.max(er, dx + shw); eu = Math.max(eu, shh - dy); ed = Math.max(ed, dy + shh);
+        }
+        return { segs: segs, shw: shw, shh: shh, hl: el, hr: er, hw: Math.max(el, er), up: eu, dn: ed, area: Math.max(1, n * 4 * shw * shh) };
+    }
+    /* px² of shape a (centred ax, ay) over shape b (centred bx, by) */
+    function _floatOverlap(ax, ay, a, bx, by, b) {
+        if (Math.abs(ax - bx) >= a.hw + b.hw || ay + a.dn <= by - b.up || by + b.dn <= ay - a.up) return 0;
+        var o = 0, ww = a.shw + b.shw, hh = a.shh + b.shh;
+        var wMax = 2 * Math.min(a.shw, b.shw), hMax = 2 * Math.min(a.shh, b.shh);
+        for (var i = 0; i < a.segs.length; i++) {
+            var p = a.segs[i], px = ax + p.dx - bx, py = ay + p.dy - by;
+            for (var j = 0; j < b.segs.length; j++) {
+                var q = b.segs[j];
+                var w = Math.min(wMax, ww - Math.abs(px - q.dx));
+                if (w <= 0) continue;
+                var h = Math.min(hMax, hh - Math.abs(py - q.dy));
+                if (h > 0) o += w * h;
             }
-        } else {
-            var dys = [0], dxs = [0], lo = -Infinity, hi = Infinity;
-            for (j = 0; j < placed.length; j++) {
-                var p = placed[j];
-                if (mode === 'rows') { var up = p.top - gap - bot0; if (up < 0) dys.push(up); }
-                dxs.push(p.cx + p.halfW + gapX + halfW - sx, p.cx - p.halfW - gapX - halfW - sx);
+        }
+        return o;
+    }
+    function _floatBunch(list, mode, gapPx, gapX, rowN, bunchK, viewW, viewH) {
+        var i, tw, picking = false;
+        for (i = 0; i < list.length; i++) if (!list[i].slot) { picking = true; break; }
+        if (!picking) {
+            // nobody new: every pop keeps its spot (no shapes to measure this frame)
+            for (i = 0; i < list.length; i++) {
+                tw = list[i];
+                tw.layDx = tw.slot.x * (tw._U || 1);
+                tw.layDy = tw.slot.y * (tw._U || 1);
+                tw.laid = true;
             }
-            dys.sort(function (a, b) { return b - a; });
-            var lean = function (d) { return Math.abs(d) - (d * pref > 0 ? 0.5 : 0); };
-            dxs.sort(function (a, b) { return lean(a) - lean(b); });
-            if (mode === 'rows') {   // the row: this pop's width × the others beside it, more of them on its own side
-                var w = halfW * 2 + gapX, n = Math.max(1, Math.round(rowN || 3)) - 1, mine = Math.ceil(n / 2), other = n - mine;
-                hi = (pref > 0 ? mine : other) * w + w * 0.3;
-                lo = -((pref > 0 ? other : mine) * w + w * 0.3);
+            return;
+        }
+        // the pops already placed first, at their spots now; then the new ones (numbers first, then the oldest)
+        list.sort(function (a, b) {
+            if (!a.slot !== !b.slot) return a.slot ? -1 : 1;
+            if (a.hero !== b.hero) return a.hero ? -1 : 1;
+            return (a.startTime + (a.delayMs || 0)) - (b.startTime + (b.delayMs || 0));
+        });
+        var boxes = _floatBoxes;
+        boxes.length = 0;
+        var gy = Math.max(0, gapPx) / 2, gx = Math.max(0, gapX) / 2;
+        for (i = 0; i < list.length; i++) {
+            tw = list[i];
+            var U = tw._U || 1, sh = _floatShape(tw, _floatBox(tw), gx, gy);
+            if (!tw.slot) tw.slot = _floatBunchPick(tw, sh, boxes, mode, U, rowN, bunchK, viewW, viewH);
+            tw.layDx = tw.slot.x * U;
+            tw.layDy = tw.slot.y * U;
+            tw.laid = true;
+            // where it is now (its hop too) and where it will be at the look-aheads
+            var bx = tw._sx + tw.layDx, by = tw._sy + tw.layDy + (tw._pathDy || 0);
+            var tf = tw._fut || _FLOAT_FUT0, tx = tw._futX || _FLOAT_FUT0;
+            sh.x = bx; sh.y = by; sh.hero = tw.hero; sh.futX = []; sh.fut = [];
+            for (var h = 0; h < FLOAT_BUNCH_AHEAD.length; h++) { sh.futX.push(bx + tx[h]); sh.fut.push(by + tf[h]); }
+            boxes.push(sh);
+        }
+    }
+    function _floatBunchPick(tw, mine, boxes, mode, U, rowN, bunchK, viewW, viewH) {
+        var R = tw.rnd || _FLOAT_RND0, sx = tw._sx, sy = tw._sy + (tw._pathDy || 0);
+        var fut = tw._fut || _FLOAT_FUT0, futX = tw._futX || _FLOAT_FUT0;
+        var rx = Math.max(0.3, 2.8 * bunchK) * U, ry = Math.max(0.2, 1.8 * bunchK) * U;
+        var best = null, bestCost = Infinity;
+        /* the cost of a spot: how much it covers of the pops up (as a share of the smaller of the two, a number either
+           side counting 1.5×: now and at the look-aheads, as each rises / hops / drifts at its own pace; NaN = faded out
+           by then), then how far out */
+        var tryAt = function (x, y, extra) {
+            var cx = sx + x, cy = sy + y;
+            var cost = Math.sqrt((x / rx) * (x / rx) + (y / ry) * (y / ry)) * 0.6 + (extra || 0);
+            if (viewW > 0 && viewH > 0) {   // off any edge of the view: dear (a unit at the screen's edge keeps its pops on screen)
+                var off = Math.max(0, 4 - (cx - mine.hl)) + Math.max(0, cx + mine.hr - viewW + 4)
+                    + Math.max(0, 4 - (cy - mine.up)) + Math.max(0, cy + mine.dn - viewH + 4);
+                if (off > 0) cost += 2 + off / U;
             }
-            for (var yi = 0; yi < dys.length && !found; yi++) {
-                for (var xi = 0; xi < dxs.length; xi++) {
-                    var dx = dxs[xi];
-                    if (dx < lo || dx > hi) continue;
-                    if (_floatClear(sx + dx, halfW, top0 + dys[yi], bot0 + dys[yi], placed, gap, gapX)) { tx = dx; ty = dys[yi]; found = true; break; }
+            for (var j = 0; j < boxes.length && cost < bestCost; j++) {   // (a spot already dearer than the best stops here)
+                var b = boxes[j];
+                var o = _floatOverlap(cx, cy, mine, b.x, b.y, b) * 0.2;
+                for (var h = 0; h < fut.length; h++) {
+                    if (fut[h] !== fut[h] || b.fut[h] !== b.fut[h]) continue;
+                    o += _floatOverlap(cx + futX[h], cy + fut[h], mine, b.futX[h], b.fut[h], b) * 0.2;
+                }
+                if (o > 0) cost += o / Math.min(mine.area, b.area) * (b.hero || tw.hero ? 1.5 : 1) * 10;
+            }
+            if (cost < bestCost) { bestCost = cost; best = { x: x / U, y: y / U }; }
+        };
+        var j, x;
+        if (mode === 'side') {
+            /* rows: the unit's own first, then level with / just over / just under each pop already up, beside what is
+               in that row; a row holds rowN pops at most (then the next row up); a pop's near edge stays within the
+               bunch (the oval's width from the middle); under the unit's middle costs a little */
+            var side = R[0] < 0.5 ? -1 : 1, n = Math.max(1, Math.round(rowN || 3)), reach = rx;
+            var ys = [0];
+            for (j = 0; j < boxes.length; j++) {
+                var bj = boxes[j];
+                ys.push(bj.y - sy, bj.y - bj.up - mine.dn - sy, bj.y + bj.dn + mine.up - sy);
+            }
+            for (var yi = 0; yi < ys.length; yi++) {
+                var y = ys[yi], dup = false;
+                for (j = 0; j < yi; j++) if (Math.abs(ys[j] - y) < 1) { dup = true; break; }
+                if (dup) continue;
+                var xs = [0], inRow = 0;
+                for (j = 0; j < boxes.length; j++) {
+                    var b2 = boxes[j];
+                    if (sy + y + mine.dn <= b2.y - b2.up || sy + y - mine.up >= b2.y + b2.dn) continue;
+                    if (Math.max(b2.x - b2.hl - sx, sx - b2.x - b2.hr) > reach) continue;   // another unit's pop: not this row's
+                    inRow++;
+                    xs.push(b2.x - sx + b2.hr + mine.hl, b2.x - sx - b2.hl - mine.hr);
+                }
+                if (inRow >= n) continue;
+                for (x = 0.5 * U; x <= reach; x += 0.5 * U) xs.push(x, -x);
+                for (var xi = 0; xi < xs.length; xi++) {
+                    x = xs[xi];
+                    if ((x > 0 ? x - mine.hl : -x - mine.hr) > reach) continue;
+                    tryAt(x, y, (y > 0 ? 0.3 : 0) + (x * side < 0 ? 0.04 : 0));
                 }
             }
+        } else {
+            // spots over the oval and out past it (taken only when the oval is crowded: they cost their distance)
+            var N = 112, turn = R[2] * Math.PI * 2;
+            tryAt(0, 0, R[3] * 0.3);
+            for (var k = 0; k < N; k++) {
+                var a = turn + k * _FLOAT_GOLD, f = 1.8 * Math.sqrt((k + 0.5) / N);
+                var dice = Math.abs((Math.sin((k + 1) * 12.9898 + R[3] * 78.233) * 43758.5453) % 1);
+                tryAt(Math.cos(a) * rx * f, Math.sin(a) * ry * f, dice * 0.3);
+            }
         }
-        if (!found) {   // above everything
-            var top = Infinity;
-            for (j = 0; j < placed.length; j++) top = Math.min(top, placed[j].top);
-            tx = 0; ty = isFinite(top) ? Math.min(0, top - gap - bot0) : 0;
-        }
-        // keep the spot it had while that is still clear and not much further out (no flip-flopping side to side)
-        if (tw.laid && tw.tgtOk && (tw.tgtDx !== tx || tw.tgtDy !== ty)
-            && Math.abs(tw.tgtDx) + Math.abs(tw.tgtDy) <= Math.abs(tx) + Math.abs(ty) + 14
-            && _floatClear(sx + tw.tgtDx, halfW, top0 + tw.tgtDy, bot0 + tw.tgtDy, placed, gap, gapX)) { tx = tw.tgtDx; ty = tw.tgtDy; }
-        tw.tgtDx = tx; tw.tgtDy = ty; tw.tgtOk = 1;
-        if (!tw.laid) { tw.layDx = tx; tw.layDy = ty; }
-        else {
-            var nx = tw.layDx + (tx - tw.layDx) * relax, ny = tw.layDy + (ty - tw.layDy) * relax;
-            if (!_floatClear(sx + nx, halfW, top0 + ny, bot0 + ny, placed, 0, 0)) { nx = tx; ny = ty; }
-            tw.layDx = nx; tw.layDy = ny;
-        }
-        tw.laid = true;
-        placed.push({ cx: sx + tw.layDx, halfW: halfW, top: top0 + tw.layDy, bot: bot0 + tw.layDy });
+        return best || { x: 0, y: 0 };
     }
 
     function _updateFloatTextTweens() {
@@ -24498,6 +24838,7 @@ const ThreeRenderer = (function () {
     /* One frame of a context's pops: cam = its lens; viewW × viewH = the px its overlay spans (the lens's view, or the
        crop of it a setViewOffset lens draws); fullH = the height of the WHOLE screen that lens stands for (the size
        maths: world → px and the smallest / biggest on-screen size are shares of it); pane = the death close-up lens. */
+    var _floatProjVec2 = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
     function _floatStep(ctx, cam, viewW, viewH, fullH, pane) {
         var L = _floatLook();
         var now = ctx.now();
@@ -24513,13 +24854,18 @@ const ThreeRenderer = (function () {
         var maxHero = Math.max(minHero, _floatNum(L.maxNum, FLOAT_MAX_HERO_H * 100, 1, 60) / 100);
         var popK = _floatNum(L.pop, 1, 0, 3);
         var fadeAt = _floatNum(L.fadeAt, 0.75, 0.2, 0.97);
-        // THE LAYOUT + the motion: drift (sideways as it goes, × 5% of the screen height), scatter (the scatter layout's
-        // throw from its spot, % of the screen height), tilt (degrees either way)
-        var lay = L.lay || 'stack', driftK = _floatNum(L.drift, 0, 0, 4), tiltK = _floatNum(L.tilt, 0, 0, 45);
-        var scatK = lay === 'scatter' ? _floatNum(L.scat, 4, 0, 30) / 100 : 0;
+        // THE LAYOUT + the motion: the stack, or THE BUNCH (side | scatter; a look saved with 'rows' = side); drift =
+        // sideways as it goes, in number heights; tilt = degrees either way. A hop / bounce path is added AFTER the
+        // layout (the layout reads the pop's spot), so a hopping pop never shoves the stack about.
+        var lay = L.lay === 'rows' ? 'side' : (L.lay === 'side' || L.lay === 'scatter') ? L.lay : 'stack';
+        var bunch = lay !== 'stack';
+        var driftK = _floatNum(L.drift, 0, 0, 4), tiltK = _floatNum(L.tilt, 0, 0, 45), lifeK = _floatNum(L.life, 1, 0.3, 5);
+        var hopPath = L.path === 'hop' || L.path === 'bounce';
         var live = ctx.live;
         live.length = 0;
         var tweens = ctx.tweens;
+        var picking = false;
+        if (bunch) for (var pi = 0; pi < tweens.length; pi++) if (!tweens[pi].slot) { picking = true; break; }
         var i = tweens.length;
         while (i--) {
             var tw = tweens[i];
@@ -24537,7 +24883,7 @@ const ThreeRenderer = (function () {
             }
 
             var riseT = _floatRiseT(L.path, t);
-            var worldY = tw.startY + tw.riseY * riseT;
+            var worldY = tw.startY + tw.riseY * (hopPath ? 0 : riseT);
 
             var opacity;
             if (t < 0.06) {
@@ -24581,11 +24927,28 @@ const ThreeRenderer = (function () {
                     var worldToPx = fullH / (2 * dist * halfTanFov);
                     tw._sx = (_floatProjVec.x * 0.5 + 0.5) * viewW;
                     tw._sy = (-_floatProjVec.y * 0.5 + 0.5) * viewH;
+                    // a number's height on screen at this depth: the yardstick of the bunch and the drift
+                    var U = Math.max(fullH * minHero, Math.min(fullH * maxHero, pxScale * worldToPx * FLOAT_HERO_SCALE * FLOAT_HERO_INK)) * numK;
+                    tw._U = U;
                     var R = tw.rnd || _FLOAT_RND0;
-                    if (driftK > 0) tw._sx += (R[0] < 0.5 ? -1 : 1) * (0.6 + 0.4 * R[1]) * driftK * 0.05 * fullH * (1 - (1 - t) * (1 - t));
-                    if (scatK > 0) {
-                        var sa = R[2] * Math.PI * 2, sr = scatK * fullH * (0.35 + 0.65 * R[3]);
-                        tw._sx += Math.cos(sa) * sr; tw._sy += Math.sin(sa) * sr;
+                    var driftD = driftK > 0 ? (R[0] < 0.5 ? -1 : 1) * (0.6 + 0.4 * R[1]) * driftK * U : 0;
+                    if (driftD) tw._sx += driftD * (1 - (1 - t) * (1 - t));
+                    // the hop, added after the layout
+                    tw._pathDy = 0;
+                    if (hopPath && riseT) {
+                        _floatProjVec2.set(tw.wx, tw.startY + tw.riseY * riseT, tw.wz).project(cam);
+                        tw._pathDy = (-_floatProjVec2.y * 0.5 + 0.5) * viewH - tw._sy;
+                    }
+                    // the bunch's pick: where each pop will be in a moment (risen or hopped, drifted) from where it is drawn now
+                    if (picking) {
+                        var fu = tw._fut || (tw._fut = _FLOAT_FUT0.slice()), fx = tw._futX || (tw._futX = _FLOAT_FUT0.slice());
+                        for (var ah = 0; ah < FLOAT_BUNCH_AHEAD.length; ah++) {
+                            var ta = t + FLOAT_BUNCH_AHEAD[ah] * 1100 * lifeK / tw.durationMs;
+                            if (ta > fadeAt + (1 - fadeAt) * 0.5) { fu[ah] = NaN; fx[ah] = 0; continue; }
+                            _floatProjVec2.set(tw.wx, tw.startY + tw.riseY * _floatRiseT(L.path, ta), tw.wz).project(cam);
+                            fu[ah] = (-_floatProjVec2.y * 0.5 + 0.5) * viewH - tw._sy - tw._pathDy;
+                            fx[ah] = driftD ? driftD * ((1 - t) * (1 - t) - (1 - ta) * (1 - ta)) : 0;
+                        }
                     }
                     tw._rot = tiltK > 0 ? (R[4] * 2 - 1) * tiltK : 0;
                     var settledK = pxScale * worldToPx * (tw.sizeK || 1);
@@ -24595,20 +24958,33 @@ const ThreeRenderer = (function () {
                         if (ink0 * settledK < minH) settledK = minH / ink0;
                         else if (tw.hero && ink0 * settledK > fullH * maxHero) settledK = fullH * maxHero / ink0;
                     }
-                    // the look's size rides on top of the clamps, so it shows at every zoom
-                    tw._k = sc * settledK * (tw.hero ? numK : wordK);
+                    // the look's size (and the kind's own) rides on top of the clamps, so it shows at every zoom;
+                    // _kr = the resting size the bunch lays out by (the pop-in swell never moves a spot)
+                    tw._kr = settledK * (tw.hero ? numK : wordK) * (tw.el._ewKindK || 1);
+                    tw._k = sc * tw._kr;
                     tw._op = Math.max(0, opacity);
                     live.push(tw);
                 }
             }
         }
-        if (live.length) _layoutFloatTexts(live, realDt, _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60), lay, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8));
+        if (live.length) {
+            var gapPx = _floatNum(L.gap, FLOAT_LAYOUT_GAP, -20, 60);
+            if (bunch) _floatBunch(live, lay, gapPx, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8), _floatNum(L.bunch, 1, 0.2, 4), viewW, viewH);
+            else _layoutFloatTexts(live, realDt, gapPx);
+        }
         for (var li = 0; li < live.length; li++) {
-            var lw = live[li];
-            lw.el.style.left = (lw._sx + (lw.layDx || 0)) + 'px';
-            lw.el.style.top = (lw._sy + lw.layDy) + 'px';
+            var lw = live[li], lx = lw._sx + (lw.layDx || 0);
+            if (ctx.keepIn) {   // the preview's small view: a pop near its edge is moved in, whole, rather than cut off
+                var kb = _floatBox(lw), lo = kb.hw - kb.cx + 4, hi = viewW - kb.hw - kb.cx - 4;
+                lx = lo > hi ? viewW / 2 - kb.cx : Math.max(lo, Math.min(hi, lx));
+            }
+            lw.el.style.left = lx + 'px';
+            lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0)) + 'px';
             lw.el.style.transform = 'translate(-50%,-50%) ' + (lw._rot ? 'rotate(' + lw._rot.toFixed(2) + 'deg) ' : '') + 'scale(' + lw._k.toFixed(4) + ')';
             lw.el.style.opacity = lw._op.toFixed(3);
+            // THE BUNCH: numbers over words, the newest over the older
+            var zi = bunch ? String((lw.hero ? 100000 : 0) + (lw.id % 100000)) : '';
+            if (lw.el.style.zIndex !== zi) lw.el.style.zIndex = zi;
         }
     }
 
@@ -25532,6 +25908,7 @@ const ThreeRenderer = (function () {
         _updateClipTravelTweens();
         _updateDeathTweens();
         _updateKeyFx();
+        _updateForceFieldFx();
         _updateProjectileTweens();
         _updateTetherTweens();
         _updateFloatTextTweens();
@@ -68178,7 +68555,7 @@ const ThreeRenderer = (function () {
            and burned the tiles it ran onto (map.js getLiquidFlowAt). The cells a SPELL's liquid (a spring) spreads onto
            now wear the same liquid sheet; a room's own settled pools add nothing. Off: window.EW_NO_FIELD_RUNOFF. */
         if (typeof getLiquidFlowAt === 'function' && !(typeof window !== 'undefined' && window.EW_NO_FIELD_RUNOFF)) {
-            var _rfKey = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            var _rfKey = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
             for (var ry = 0; ry < G.H; ry++) for (var rx = 0; rx < G.W; rx++) {
                 var rfl = getLiquidFlowAt(rx, ry); if (!rfl || !rfl.sp) continue;
                 var rk = _rfKey[rfl.t]; if (!rk) continue;
@@ -71862,6 +72239,7 @@ const ThreeRenderer = (function () {
 
         /* DOOR 6.3: the Key pickup celebration (battle.js playKeySecuredFx) */
         keyPickupFx, keyFxWarm,
+        forceFieldFx,   // THE FORCE FIELD (2026-10-21): a slam into the board's outer edge
         warmProjectileModels: _warmProjectileModels,   // THE MATCH WARM (2026-09-20)
 
         hasActiveAnims, hasBlockingAnims, hasDecorAnims,
@@ -72308,6 +72686,11 @@ window.ThreeAnim = {
 
     hitEffect: function(tileX, tileY, variant, isCrit, durationMs) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startHitEffect(tileX, tileY, variant, isCrit, durationMs);
+    },
+
+    // THE FORCE FIELD: the barrier lights on the board's outer edge where a slid body slams it
+    forceField: function(tileX, tileY, dx, dy, tz) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.forceFieldFx(tileX, tileY, dx, dy, tz);
     },
 
     // Impact frame: near-freeze all combat animation for a real-time beat.

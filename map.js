@@ -9422,7 +9422,7 @@
                 urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(58,58,64,0.5)',
                 wasteland:'rgba(140,120,80,0.35)', cave_entrance:'rgba(70,60,50,0.45)',
                 barrier_passage:'rgba(140,140,200,0.2)', cloud:'rgba(200,210,230,0.3)',
-                purple_grass:'rgba(120,60,140,0.4)', purple_bog:'rgba(100,50,120,0.45)',
+                purple_grass:'rgba(120,60,140,0.4)', purple_bog:'rgba(100,50,120,0.45)', blood:'rgba(150,12,22,0.62)',
                 scorched:'rgba(60,50,40,0.45)', poison:'rgba(80,160,60,0.45)',
                 mushroom:'rgba(160,80,120,0.4)', obsidian:'rgba(40,35,50,0.5)',
                 well:'rgba(70,130,180,0.4)', road:'rgba(150,140,120,0.35)',
@@ -10774,6 +10774,8 @@
                 if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
             }
             notePaintOrigin(x, y);
+            const _priorTop = getTerrainAt(x, y);
+            const _priorAt = (z !== undefined && z !== null && typeof getTerrainAt3D === 'function') ? getTerrainAt3D(x, y, z) : _priorTop;
             const col = state.boardColumns?.[y]?.[x];
             if (col && col.length) {
                 let blk = null;
@@ -10821,9 +10823,131 @@
                 delete state.liquidSprings[x + ',' + y];
             }
 
+            _noteTerrainChange(x, y, z, _priorTop, _priorAt);
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             return true;
         }
+
+        /* ⏳ THE TERRAIN TIMERS (2026-10-21, mondo: "make all terrain changes last 3 rounds, similar to status effects. If a
+           water tile has 1 round left and i cast another spell on it that makes it water, then that tile would reset for
+           another 3 rounds"). Every mid-fight change of a cell's terrain — a spell's, a weather's, a reaction's (water +
+           lava = stone, a flash-freeze, a burn-out to scorched) — puts the cell on ONE clock of TERRAIN_CHANGE_ROUNDS
+           (data.js, 3) in state.terrainTimers['x,y'] = { n: rounds left, t: the terrain it wears, z: the block (null = the
+           top), o / oz: the map's own terrain + level it goes back to, p: what it was before this clock started, d: the
+           height to put back (a raised wall / a cut fissure), m: what it melts into (Snow Fort's puddle) }. Each round end
+           (battle.js tickTerrainTimers) takes one off; at 0 the cell goes back to the map's own terrain. A new change on a
+           clocked cell restarts its clock at 3 and keeps its way home; the same terrain cast on it again restarts it too
+           (refreshTerrainTimer). A cell painted back to the map's own terrain drops its clock. The map's own terrain never
+           runs out. Plain state: the state-sync carries it to the guest; initMap clears it. */
+        let _terrainRevertHold = false;
+        function _terrainChangeRounds() { return (typeof TERRAIN_CHANGE_ROUNDS === 'number' && TERRAIN_CHANGE_ROUNDS > 0) ? TERRAIN_CHANGE_ROUNDS : 3; }
+        function _noteTerrainChange(x, y, z, priorTop, priorAt) {
+            const k = x + ',' + y;
+            /* ⚗ THE CAST'S OWN GROUND: what this cell was before the cast that is resolving now changed it (a spell never
+               earns the element-terrain bonus off the terrain it made itself — the NO SELF-COMBO rule) */
+            if (_castWatchOn && !(k in _castPre)) _castPre[k] = priorTop;
+            if (state.phase !== 'battle' || !state._terrainClock || _terrainRevertHold) return;
+            let lower = false;   // a paint on a floor under the top block (inside a building / a cave)
+            if (z !== undefined && z !== null) {
+                const col = state.boardColumns?.[y]?.[x];
+                let topZ = null;
+                if (col) for (let i = col.length - 1; i >= 0; i--) { const bt = col[i].terrain; if (!bt || bt.indexOf('void') !== 0) { topZ = col[i].z; break; } }
+                lower = topZ !== null && topZ !== z;
+            }
+            const now = lower && typeof getTerrainAt3D === 'function' ? getTerrainAt3D(x, y, z) : getTerrainAt(x, y);
+            const T = state.terrainTimers || (state.terrainTimers = {});
+            const ex = T[k];
+            if (ex) {
+                if (now === ex.o && (lower || (state.boardHeights?.[y]?.[x] ?? 0) === ex.oz) && !ex.d) { delete T[k]; return; }
+                if (ex.t !== now) ex.m = null;   // the snow wall turned into something else: no puddle when it ends
+                ex.t = now; ex.n = _terrainChangeRounds();
+                return;
+            }
+            const pf = state.paintedFrom && state.paintedFrom[k];
+            const o = lower ? priorAt : (pf ? pf.t : priorTop);
+            const oz = lower ? z : (pf ? pf.z : null);
+            if (now === o) return;   // painted with what the map already had there
+            T[k] = { n: _terrainChangeRounds(), t: now, z: lower ? z : null, o, oz, p: lower ? priorAt : priorTop, d: 0, m: null };
+        }
+        /* The same terrain cast again on a clocked cell: its clock starts over (a cell the map owns has none to restart). */
+        function refreshTerrainTimer(x, y, terrain) {
+            const e = state.terrainTimers && state.terrainTimers[x + ',' + y];
+            if (!e || (terrain && e.t !== terrain)) return false;
+            e.n = _terrainChangeRounds();
+            return true;
+        }
+        function terrainTimerAt(x, y) { return (state.terrainTimers && state.terrainTimers[x + ',' + y]) || null; }
+        /* Ends one cell's clock: the cell goes back to the map's own terrain (the liquid a flood stacked comes off, whoever
+           stood on it settles), a raised wall sinks / a cut fissure fills by `d`, a snow wall melts into its puddle. */
+        function revertTerrainTimer(x, y) {
+            const k = x + ',' + y;
+            const T = state.terrainTimers;
+            const e = T && T[k];
+            if (!e) return false;
+            delete T[k];
+            const h0 = getBaseHeightAt(x, y);
+            _terrainRevertHold = true;
+            try {
+                if (e.z !== null && e.z !== undefined) {
+                    if (getTerrainAt3D(x, y, e.z) === e.t) setTerrainAt(x, y, e.o, e.z);
+                } else if (!e.m) {
+                    const col = state.boardColumns?.[y]?.[x];
+                    if (col && col.length && e.oz !== null && e.oz !== undefined) {
+                        while (col.length > 1) {
+                            const b = col[col.length - 1];
+                            if (!liquidFamilyOf(b.terrain) || !(b.z > e.oz)) break;
+                            removeBlockAt(x, y, b.z);
+                        }
+                    }
+                    const top = getTerrainAt(x, y);
+                    const atHome = (e.oz === null || e.oz === undefined) || getBaseHeightAt(x, y) === e.oz;
+                    let back = atHome ? e.o : e.p;
+                    if (!atHome && liquidFamilyOf(back)) back = liquidBedTerrainAt(x, y);
+                    if (back && top !== back) setTerrainAt(x, y, back);
+                    if (state.liquidSprings && !liquidFamilyOf(getTerrainAt(x, y))) delete state.liquidSprings[k];
+                }
+                if (e.d && typeof applyTerrainDeform === 'function') applyTerrainDeform(x, y, 0, { centerDelta: e.d, edgeDelta: 0 });
+            } finally { _terrainRevertHold = false; }
+            if (e.m) setTerrainSpringAt(x, y, e.m);   // the puddle is a fresh change: its own clock
+            const h1 = getBaseHeightAt(x, y);
+            if (h1 !== h0) {
+                for (const u of state.units) {
+                    if (!u || u.dead || u.x !== x || u.y !== y) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    if (h1 < h0 ? (u.z ?? h0) > h1 : (u.z ?? h0) < h1) {
+                        u.z = h1;
+                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: x, fromY: y });
+                    }
+                }
+            }
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            return true;
+        }
+        let _castWatchOn = false, _castPre = {}, _castPreBurn = {};
+        /* doSpell (and a delayed spell's detonation) opens a watch: every cell the cast changes notes what it was before */
+        function beginCastTerrainWatch() { _castWatchOn = true; _castPre = {}; _castPreBurn = {}; }
+        function endCastTerrainWatch() { _castWatchOn = false; _castPre = {}; _castPreBurn = {}; }
+        /* battle.js igniteTile: a tile the resolving cast set alight notes it was not burning before */
+        function noteCastPreBurn(x, y, was) { if (_castWatchOn && !((x + ',' + y) in _castPreBurn)) _castPreBurn[x + ',' + y] = !!was; }
+        function castPreBurningAt(x, y) {
+            if (!_castWatchOn) return null;
+            const k = x + ',' + y;
+            return (k in _castPreBurn) ? _castPreBurn[k] : null;
+        }
+        window.noteCastPreBurn = noteCastPreBurn;
+        window.castPreBurningAt = castPreBurningAt;
+        /* The cell's terrain as it stood before the cast now resolving touched it (the live hit's view; null = untouched). */
+        function castPreTerrainAt(x, y) {
+            if (!_castWatchOn) return null;
+            const k = x + ',' + y;
+            return (k in _castPre) ? _castPre[k] : null;
+        }
+        window.refreshTerrainTimer = refreshTerrainTimer;
+        window.terrainTimerAt = terrainTimerAt;
+        window.revertTerrainTimer = revertTerrainTimer;
+        window.beginCastTerrainWatch = beginCastTerrainWatch;
+        window.endCastTerrainWatch = endCastTerrainWatch;
+        window.castPreTerrainAt = castPreTerrainAt;
 
         /* 🌊 LIQUID PAINTED MID-FIGHT = A SPRING (2026-10-15, mondo: "ITs supposed to be similar to minecraft with how it
            can fall and spread. How is there a cube of poison and its not spreading"). Every spell / passive that leaves a
@@ -10967,10 +11091,11 @@
             if (t === 'poison' || t === 'poison_bog' || t === 'purple_bog') return 'poison';
             if (t === 'swamp' || t === 'oil') return 'oil';
             if (t === 'lava') return 'lava';
+            if (t === 'blood') return 'blood';   // 🩸 THE BLOOD POOL (2026-10-21): Blood Rain's puddles
             return null;
         }
         // per-family spread range (tiles from source)
-        const _LIQUID_SPREADS = { water: LIQUID_SPREAD_RANGE, poison: LIQUID_SPREAD_RANGE, oil: LIQUID_SPREAD_RANGE, lava: 2 };
+        const _LIQUID_SPREADS = { water: LIQUID_SPREAD_RANGE, poison: LIQUID_SPREAD_RANGE, oil: LIQUID_SPREAD_RANGE, lava: 2, blood: LIQUID_SPREAD_RANGE };
 
         let _liquidFlowMap = {};
         let _liquidFlowKey = '';
@@ -12341,6 +12466,7 @@
             const board = fullBoard;
             state.paintedTiles = {};   // THE SKINS: a fresh board has no painted surfaces (setTerrainAt notes them)
             state.paintedFrom = {};   // THE WEATHER'S TERRAIN: nor what a painted cell was before (notePaintOrigin)
+            state.terrainTimers = {}; state._terrainClock = false;   // ⏳ battle.js startMatch starts the clock   // ⏳ THE TERRAIN TIMERS: nor a changed cell's clock (setTerrainAt)
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
             state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
@@ -15570,10 +15696,10 @@
                     /* RESERVES rule 2: the ladder still runs; a reserve may take
                        the seat when it opens (battle.js _reserveQueueSeat). */
                     const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
-                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
+                    addLog(_defeatRespawnLine(unit, freeLeft > 0 ? ' — a reserve may take the seat.' : '.'));
                     shakeBoard('normal');
                 } else {
-                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
+                    addLog(_defeatRespawnLine(unit, '.'));
                     shakeBoard('normal');
                 }
 
@@ -15664,6 +15790,21 @@
             if (t === 'lava' || t === 'deep_water' || t === 'chasm' || t === 'void' || t === 'tower_base') return false;
             if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
             return true;
+        }
+
+        /* The defeat line's respawn count (playtest 2026-10-21: "Respawns in 3 rounds" on round 20 of 20). The unit comes
+           back at the start of round (now + _respawnIn) — processRespawns ticks at each new round — and a round-limited
+           match ends after its last round (sudden death plays on), so a return past the limit is never promised. */
+        function _respawnPastLimit(n) {
+            const rl = (state.matchClock && state.matchClock.roundLimit) || 0;
+            return typeof n === 'number' && rl > 0 && !state.suddenDeathActive && (state.round || 0) + n > rl;
+        }
+        function _defeatRespawnLine(unit, tail) {
+            const n = unit._respawnIn || 0;
+            if (_respawnPastLimit(unit._respawnIn)) {
+                return `${_ctName(unit)} is defeated. No respawn before the round limit${tail}`;
+            }
+            return `${_ctName(unit)} is defeated. Respawns in ${n} round${n > 1 ? 's' : ''}${tail}`;
         }
 
         function processRespawns() {
@@ -15947,7 +16088,7 @@
             <div class="death-banner-icon">${isEnemy ? '⚔' : '💀'}</div>
             <div class="death-banner-text">
               <div class="death-banner-name">${escapeHtml(deadUnit.name || deadUnit.cls)}</div>
-              <div class="death-banner-sub">${isEnemy ? 'DEFEATED' : 'FALLEN'} ${killerText} · Respawn in ${deadUnit._respawnIn || '?'} rnd</div>
+              <div class="death-banner-sub">${isEnemy ? 'DEFEATED' : 'FALLEN'} ${killerText} · ${_respawnPastLimit(deadUnit._respawnIn) ? 'No respawn' : `Respawn in ${deadUnit._respawnIn || '?'} rnd`}</div>
             </div>
           `;
                 banner.style.borderColor = isEnemy ? 'rgba(85,211,138,0.6)' : 'rgba(255,80,80,0.6)';

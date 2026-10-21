@@ -1597,3 +1597,23 @@ there should be lots of blood. Is there more than one death animation that can b
   `_batchFlush`, instanceColor + the aEwOp opacity hook, `_ewNode fxop` for WebGPU) — pool 256 (was 64 plain
   meshes = 64 draws). EW_NO_FX_BATCH keeps the old 64 meshes. Particle records = 512 + 256 (the stains live in the
   world pool); stains are `decor`: a full pool recycles them first.
+
+## THE GRAVES HOLD STILL (2026-10-21, token 20261021-graves-01-cors)
+mondo: "gravestones and the bone stack dont show consistently or will disappear and then reappear within the same turn".
+Display only; who gets a grave, where, and what raises/loots it are unchanged.
+- Cause 1, the fog gate: graves were deployables keyed to their tile with no owner, so `_applyFogVisibility` showed them
+  only while the tile sat in live vision. Vision is LOS over the whole board and is recomputed every time a unit moves,
+  the blitz turn passes (a Blind/Jammed unit's solo vision), or the intro's all-tiles view ends, so graves blinked in and
+  out. With the fog grid hidden (Video setting) there is no fog box to explain it. Repro (SwiftShader, Proving Grounds
+  VS CPU, fog on): an enemy bone pile went shown -> hidden -> shown inside round 1; after the fix it shows once and stays.
+  Now: your OWN fallen carry `_ew_depOwner` (always shown, like your own deployables); enemy remains carry
+  `_ew_graveKey` ('<viewer>|<id>|<x>,<y>') and stay shown once that viewer's fog pass has seen the tile (`_graveSeen`,
+  renderer-local, nothing synced; pruned in `rebuildDeployables` when the grave is gone: respawn, raised, new match).
+  An enemy that dies out of sight still leaves no visible pile until you see the tile.
+- Cause 2, the bone GLBs: a pile built before femur/ulna/skull streamed in is an empty marker (NO STAND-INS), and the
+  load only flipped `_objectsDirty`, which rebuilds objects, never deployables, so the pile stayed empty until some other
+  deployable changed. The load callback now clears `_lastDeployableSerial`, and `_buildBonePile3D` asks for all three
+  files up front (a skull already cached by the unholy-wastes horizon skull used to skip the femur/ulna requests).
+- The deployable serial also hashes `_dyingX/_dyingY` (the tile the grave is built on) and the grave/bones look per
+  viewer (a hot-seat viewer swap now rebuilds it).
+- Online: the guest runs its own fog pass, so its memory is its own; no relay or state field needed.

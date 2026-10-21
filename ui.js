@@ -4363,7 +4363,7 @@
               ${renderUnitSprite(u.cls, u.player, 'builder-sprite', u.race || '', u.equipment, u.gender || '')}
               <div class="roster-main">
                 <div class="roster-name">${u.name || u.race || '?'} ${sectionBadge}</div>
-                <div class="roster-sub">${u.race || '?'} · ${coordLabel(u.x, u.y)}</div>
+                <div class="roster-sub">${u.race || '?'} · ${u._netHidden ? '—' : coordLabel(u.x, u.y)}</div>
                 <div class="type-badges-block">${renderTypeBadges(u.types || [])}</div>
                 ${renderAccessoryBadges(u)}
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
@@ -15740,6 +15740,8 @@
             for (const at of affectedTiles) {
                 const target = unitAt(at.x, at.y);
                 if (!target || target.dead) continue;
+                // THE FOG (2026-10-21 PvP audit #1): no badge on an enemy the caster's side can't see
+                if (isEnemyUnit(caster, target) && typeof _isUnitVisibleToViewer === 'function' && !_isUnitVisibleToViewer(target, caster.player)) continue;
 
                 const badgeStack = [];
                 let yOff = 0;

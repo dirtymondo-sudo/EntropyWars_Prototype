@@ -1445,6 +1445,16 @@ right half to two thirds of the screen".
 - Checked on screen (1440×900, Football Stadium, Sedan vs CPU): menu alone, Abilities open, Attack target list, a far
   target with Abilities open, Move range, enemy quick menu with its info card. The sandbox renders ~1 fps: let the
   camera settle ~30 s before reading a frame.
+- THE SUB MENU RULE (2026-10-21, mondo: "i asked you to frame the camera a little more to the right, but i think you
+  overdid it too much. Please fix. And remember it only needs this different framing if a sub menu is open from the
+  action menu"). `_menuFreeArea` returns the shifted frame only while a panel past the root is up in the real rig
+  (`.hrlg-rig:not(.hrlg-peek) .hrlg-panels > .hrlg-panel:not(.root)`: Abilities, Attack's target list, a board click's
+  quick list, ...). The action menu alone returns `_CLEAR_ROOT` (cx 0, hw 1, menu false, cmd true): no slide, and the fits
+  use the plain pre-CLEAR-FRAME numbers again (two-shot MENU_CAM_SHIFT_H/V 0.14/0.08 + MENU_CAM_PLAIN_H/V 0.58/0.56; range
+  fit TILE_PICK_PLAIN_H/V 0.80/0.86). `_ewMenuSlide` drops the slide at once when a sub menu closes back to the action
+  menu (not mid-action) and refits a fitted frame for it. With a sub menu up the frame slides only CLEAR_FRAME_SHIFT
+  (0.55) of the way to the free part's middle, keeping its size (Football Stadium 1440x900, Abilities open: cx 0.42 →
+  0.23 NDC, the unit ~62% across instead of ~71%). Too far / not far enough: tune CLEAR_FRAME_SHIFT.
 
 ## THE CLICK FACE + THE ATTACK HOLD (2026-10-18)
 mondo: "whenever i click on an enemy or a unit, my unit should turn to face them. if all i do is basic attack them ...
@@ -1527,6 +1537,46 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   (50 on EW_PERF_LOW; three-vfx `_rainDropCap`). Global thunderstorm idle bolts land anywhere on the board. Drought
   turns the existing ambient dust motes amber and thick (three-vfx `_ambDrought`). Sky grade already map-wide.
 - Summon targeting preview for a global weather is just the picked tile (ui.js summonWeather area).
+
+## BLOOD RAIN IS RED (2026-10-21, mondo: "can we make blood rain red")
+- The drops were 1.2 units wide (under a pixel at the battle zoom) in a dark 200,40,50 at 0.45-0.9 alpha, so the rain read
+  as no colour. three-vfx.js `_RAIN_CFG.bloodRain` now 4.5 wide x 40-70 tall, `dropOpacity: 0.95` (new per-config key,
+  default 0.7 for the other rains), splash chance 0.7 and 6-30 size; `rain-drop-blood` / `rain-splash-blood` gradients are
+  full-strength red. Drop budget unchanged (90 map-wide, 50 on EW_PERF_LOW). Rain is renderer-local: the guest builds it
+  from the synced `state.activeWeather`, nothing to relay.
+
+## THE ELEMENT TERRAINS + THE BLOOD POOL + 3-ROUND TERRAIN (2026-10-21, mondo: Divinity OS2-style "correlate at least one terrain to each element ... casting the spell on to a tile that has the terrain should do bonus damage" + "make all terrain changes last 3 rounds, similar to status effects" + "Tornado leaving grass tiles doesnt sound right")
+- Proposal doc https://claude.ai/artifact/1d1VuhoZ1wWNgtqc7brW1x; mondo said "go" on the recommended options.
+- THE BONUS: data.js `ELEMENT_TERRAINS` (element → terrains, + `flow` liquid family, fire `burning`, wind `air`) and
+  `ELEMENT_TERRAIN_MULT` 1.25. battle.js `elementTerrainBonus(el, caster, target, o)` → {mult, who, label}: caster's tile
+  first, else the hit tile (opts.struckAt). One bonus even when both stand on it. Applied in `_hitDamageMath` right after
+  the ZODIAC SURGE (so it rides `_offMult` under the ×3 cap; live hit + every forecast share it). Spells only:
+  `opts.spellElement` set, not `basicAttack`, not `dot`, not `noTerrainBonus` (the terrain reactions' follow-up hits pass
+  it). Airborne units are off the ground; wind counts them as on its terrain ('Air'). Live pop "🜃 ON <LABEL> ×1.25"
+  + one log line per cast (keyed by `_protectActionSeq`). ai.js estDamage mirrors it from `opts.fromX/fromY`.
+- NO SELF-COMBO: doSpell opens map.js `beginCastTerrainWatch()` (after canUnitAct) and finishAction closes it; state.js
+  `_detonateDelayedSpell` wraps each detonation. While open, `_noteTerrainChange` records each cell's pre-cast terrain
+  (`castPreTerrainAt`) and igniteTile records whether it burned before (`castPreBurningAt`); a LIVE hit reads those, so
+  terrain/fire the resolving cast made never counts. Forecasts read the current board.
+- THE BLOOD POOL: TERRAIN_RULES.blood (move 1, no other effect), its own liquid family in map.js `liquidFamilyOf` /
+  `_LIQUID_SPREADS` (flows like water), three-renderer `_LIQUID_STYLES.blood` (water textures tinted 0x8a0c14) + the flow
+  / runoff / drift / entropy-palette tables, sprites.js uses water.png. Blood Rain's `seedTerrain` is 'blood'. Only source.
+- THE TIMERS: map.js `state.terrainTimers[k] = {n, t, z, o, oz, p, d, m}` written by `_noteTerrainChange` from
+  setTerrainAt (the one paint path) once battle.js startMatch sets `state._terrainClock` (and resets `paintedFrom`, so the
+  board as the fight starts = the map's own ground, permanent). n = TERRAIN_CHANGE_ROUNDS (3). battle.js
+  `tickTerrainTimers()` runs in processEndOfRoundZonesAndSeeds after `_tickTimedTerrain`: n-1 per round end, at 0
+  `revertTerrainTimer` puts back `o` (the map's own terrain; lifts stacked liquid, drops the spring, undoes a terrainCreate
+  deform `d`, a Snow Fort's `m` melts into its puddle which then gets its own 3). Same terrain painted again on a clocked
+  cell → `refreshTerrainTimer` (n back to 3): terrainCreate `_paintTile`, `_paintTimedTerrain`, every leaveTerrain site,
+  the dash trail, weather seeding. A change of a clocked cell into something else (lava+water=stone) restarts the 3 with
+  the new terrain, and the end still goes to the map's own ground. Craters (aoe deforms) stay. Burning keeps its own fire
+  countdown; the scorched ground it leaves then gets 3. hud.js tile menu shows "⏳n". Plain state: syncs to the guest.
+- THE WEATHER RULES (state.js, calls flagged to mondo): Tornado leaves nothing; Earthquake rocky ground (rocks_1, was
+  mountain; quarter-board cap kept); Solar Flare scorched (was desert); Sandstorm desert (new); Blood Rain blood (never on
+  water); the rain storms' water washes a blood pool away; Drought dries the fight's water, blood AND ice
+  (`_evaporateTile`); Thunderstorm/Hurricane water, Blizzard ice, Drought desert unchanged. All of it on the 3-round clock.
+- Probe: VS CPU Mount Shasta, painted 15 blood tiles round a unit → red pools, bonus 1.25 (caster), 3 ticks → grass_2.
+  Screens /mnt/project-files/element-terrain/.
 
 ## THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate all that water")
 - History: the old build (index.html era) had `seedTerrain` on WEATHER_REGISTRY rows + `seedTerrainAt` / `seedWeatherTerrain`;
@@ -1879,3 +1929,26 @@ moves. From the enemy perspective they need to look indistinguishable from the a
   Hover lights it like a unit (`_resolveHoverAt` → `_decoyGroups`). The old flat sprite card is only the fallback.
 - Not mirrored: the hover info card (enemy decoys still show the tile card, hud.js), and a hit on the copy (it just
   breaks, no death clip).
+
+## THE PLAYTEST LOG + RULE FIXES (2026-10-21) — battle.js, map.js
+From the hands-on Mount Shasta playtest (https://claude.ai/artifact/FMcV14kczkjTPVRDNoWeFq), each reproduced in a
+browser match with the same squads before the fix.
+- Finisher forecast: `getFinisherForecast` reads `forecastHitOnUnit` (the real hit math: level, soaks, shield, every
+  multiplier) mid roll + `min`/`max` over FINISHER_RULES.variance. It used raw × chart only (list −858, blow 1372).
+  `kill` = the LOW roll empties the bar. The opening log line is "☠ X unleashes <FINISHER> on Y!"; "X executes Y!"
+  is written only after a killing blow, else "☠ Y survives <finisher>." `_applyExecuteRider` logs EXECUTED! only on a
+  real kill (Protect / Indomitable can still save the unit).
+- Hit lines: `_dmgLogLine` builds every applyDamageToUnit sentence. Lead kinds: label ("Big Kick: " → "takes N HP
+  damage"), verb phrase ending in a word + space ("Anubis drains life from " → "…from Cowboy for N HP damage"), or a
+  lead ending in "for" (weather / terrain texts → "…struck by lightning for N HP damage"). It also tags the lead's
+  first name (source unit, else the victim) with `_ctName`, so mirror matches colour the attacker by side (the old
+  untagged name fell back to "the unit on turn first").
+- Forced slides: `resolveForcedSlide` shares one bounce count per THROW (`opts._throw`, passed down every chained
+  slide), as COLLISION_CONFIG.maxBounces says. Each chained body used to get its own 2 (7 impacts in one Big Kick).
+- Defeat line: map.js `_defeatRespawnLine` / `_respawnPastLimit` — a respawn that would land after the round limit
+  (round + _respawnIn > roundLimit, no sudden death) reads "No respawn before the round limit"; the death banner too.
+- Boot watchdog: the "boot pending" stall now waits LS_MAX_WAIT_MS + 45 s (the loading gate grew to 90 s, the
+  watchdog stayed at 60 s and fired inside a slow first load). The [BOOT] 10 s kick re-checks every 5 s while the
+  camera / a centre banner / a walk is still running (up to a minute) instead of kicking under the round-1 arrival.
+- Not reproduced: "Anubis absorbs 38 HP." twice. One Life Drain writes one heal line; the same spell can't be cast
+  twice in a turn ("Used this turn").

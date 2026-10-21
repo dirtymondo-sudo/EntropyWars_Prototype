@@ -1638,6 +1638,72 @@ mondo: "what is the point of the retro filter toggle that says dither + grade if
   canvas; the Text tab's stand-ins, the battle menus + HUD, the name plates and a real pop (showFloatingTextAtTile) all drew
   the picked fonts.
 
+### UI Maker pass 27: THE CRIT LOOK (2026-10-21, mondo: "and let me change how the critical hit stamp looks or choose to just make it normal text")
+- Pops > new section **Critical hit** (hud.js `floatCritForm`, after Hits; the Hits section's old "CRIT stamp" box moved
+  here as the third choice). **Show a crit as**: Stamp (as the game) / Text / Nothing (`fCrit`; a look saved with the old
+  box off reads as Nothing, uxMigrate drops `fStamp`). **Word** (`fCritWord`, '' = CRIT on a stamp, CRIT! as text).
+- **Stamp** look (`fCrit*`, floatSignal -> `L.crit` = only the keys that differ): Shape Burst + plate (the game's) / Plate /
+  Burst (the word on the burst) / Round / Just the word (`fCritShape`), Burst points (`fCritPoints`, 8), Where Top right
+  (the game's shoulder) / Top left / Above / Beside / Under (`fCritWhere`), Size × (`fCritSize`), Tilt ° (`fCritTilt`,
+  -14 = the game's -0.24 rad), Font + Weight, Plate / Letters / Outline / Burst colours ('' = the game's; Just the word
+  fills the letters with the plate gold), Glow. battle.js `_hitReadStampGeo(fs, S)` measures the shape (its outline in
+  its own frame, the turned box bx / by the canvas grows to on every side, the solid part's turned box ix / iy that
+  `_ewMarginL/R/Top/Bot` report to the bunch, the solid half size sw / sh for the shoulder); `_hitReadStamp(ctx, cx, cy,
+  fs, S, G)` draws it. With no look it draws the game's stamp at the game's spot (centre 0.7425 × the word size in from
+  the corner, 0.835 above; the old 0.837). Above / Beside / Under keep the WHOLE stamp clear of the digits.
+- **Text**: `_hitReadStyle` returns `critWord` (no stamp) and the display impl pops it at the number's tile as a
+  'crit' kind word (`_hitReadCritPop`, 1100 ms like the old CRIT! pop), so it waits for its number and goes where the
+  Layout puts words, in the CRIT / BACKSTAB kind's colour / font / weight / size (the section shows those same keys,
+  fcCrit / fkCrit*). Hiding Hit words hides it. Each end pops its own from the relayed crit fact (RULE #2: nothing new
+  relayed; the guest's look decides on the guest).
+- The preview: `makePop` keeps the dress's `critWord` on the pop and `spawn` pops the word beside it; a change between
+  stamp and text (or a new word) clears and replays the beat (`critWordNow`). Changing anything in the section switches
+  the unit to the Crit beat (`floatCritBeat`). "Reset the critical hit" (`critreset`) clears fCrit* only; the one-click
+  Looks keep them. The 2D board's `.hr-crit` span takes the word, font and colours.
+- Browser-checked (scratchpad probe, VS-CPU arena, CRT 100 basic attacks so a real crit lands): before/after shots of the
+  game's stamp, Text, a red Round CRITICAL! above the number and a glowing Just the word.
+
+### UI Maker pass 26: YOUR FONTS + THE BUNCH + each kind of pop + the preview loops one beat (2026-10-21, mondo: "can you add these fonts to the game, specically as options for the floating text, but also anywhere else that has text options ... the motion and side by side settings are completely broken and make the numbers all over the screen and in weird spots and move and flicker etc ... All i want is an option that makes the floating text not just appear one after another on top of each other in a stack. They should be bunched up/scattered but still clearly on that enemy ... ideally i could choose different fonts for different words ... i want to be able to click on one of the options and have it loop that one")
+- **YOUR FONTS**: his seven R2 files in `Assets/fonts/` load through @font-face rules in index.html (comment YOUR FONTS, before
+  styles-base.css): Aida Serif Oblique (AidaSerifObliqueMedium.ttf, weight 500), Aida Serifa Condensed, Contra (CONTRA__.ttf),
+  Contra Italic (CONTRAI_.ttf), Ghiya Strokes (Ghiya Strokes Reg.ttf), Ghiya Strokes Italic, Indira K. font-display swap; a
+  file downloads only once text on screen (or a pop's `document.fonts.load`) uses it. hud.js `FONTS` opens with the group
+  "Your fonts" right after "Game default", so every UI Maker font list has them (Text tab, Layout parts, Name plates,
+  scoreboard, Pops numbers / words / each kind). Ghiya Strokes has no + - ! glyphs: those characters fall back to Georgia.
+- **THE BUNCH** (three-renderer.js, replaces pass 25's `_floatPlaceFree` / `_floatClear`): Side by side and Scatter. Measured
+  before on main in a VS-CPU arena: one burst of 3 numbers + 4 words spread 1210 px of pop centres across the screen (Side by
+  side) and pops jumped up to 1047 px between frames, because every pop was laid out again every frame, out along a line
+  until clear. Now a pop picks its spot ONCE, on its first frame, and keeps it: `_floatBunch(list, mode, gapPx, gapX, rowN,
+  bunchK)` / `_floatBunchPick`. Spots are in U = a stock damage number's height on screen at that depth (FLOAT_HERO_INK), so
+  the bunch keeps its shape at every zoom. The cost of a spot = how much its shape lies over the pops already up (now and at
+  six look-aheads, FLOAT_BUNCH_AHEAD = shares of 1100 ms × Life ×, as each rises / hops / drifts, a pop past mid-fade left
+  out; as a share of the smaller pop, a number either side ×1.5) × 10 + its distance from the middle; a spot already dearer
+  than the best stops early. `_floatShape`: an upright pop = its ink box; a tilted one = up to 4 pieces along its slant, so
+  it blocks the slant and not the whole box round it. A dressed number's box starts at its glyph and ends at its digits /
+  stamp (battle.js `_ewMarginL` / `_ewMarginR`; `_ewMarginX` stays for the stack). Side by side = rows: the unit's own,
+  then level with / just over / just under each pop up, beside what is in that row; "Pops in a row" = the most a row
+  holds (only this unit's pops count: another unit's pops at the same height are kept clear of, not counted); a pop's
+  near edge stays within the oval's width. Scatter = 112 golden-angle spots over the oval and out to 1.8×
+  (dearer), turned by the pop's own dice. A spot off any edge of the view costs 2 + how far out (a unit at the
+  screen's edge keeps its pops on screen); the preview's small view also moves a pop at its edge in whole (ctx.keepIn). Offline check with the real pop sizes (40 random bursts of 3 numbers + 4 words
+  per setting, Life 1 and 3, with and without Drift 1 + Tilt 20): the worst pair over 320 bursts had 5% of the smaller pop covered. New setting `fBunch` (Bunch size 0.4-2.5, the oval);
+  `fScat` is gone; a look saved with Side + stack ('rows') reads as Side by side. Numbers draw over words, newest over older
+  (z-index, bunch only). Nothing is laid out frame to frame once every pop has its spot (no shapes measured those frames).
+  Stack is the old `_layoutFloatTexts`, untouched.
+- **Motion**: Drift sideways is now in number heights (`driftK × U`, was 5% of the screen height); Hop / Bounce are added
+  after the layout (`tw._pathDy`), so a hopping pop never moves the others; the bunch looks ahead along both.
+- **Each kind of pop** (Pops > section "Each kind of pop", `floatKindForm`): chips for every kind (Numbers / Words, in its
+  colour and font; a dot = has its own settings); clicking one opens its Colour (the old `fc<Kind>` keys, the old Colours
+  sections are folded in here), Font (`fk<Kind>Font`, "Same as the numbers/words" = ''), Weight (`fk<Kind>Weight`), Size ×
+  (`fk<Kind>Size` 0.4-2.5) and Reset, and the preview plays that kind's own line on loop (`FLOAT_KIND_SAMPLE`, beat
+  'k:<kind>'). floatSignal publishes `L.kinds = {kind: {font, weight, size}}`; `_buildFloatTextCanvas` reads it
+  (`c._ewKindK` = the size, applied in `_floatStep` with the Size sliders).
+- **The preview loops ONE beat**: the beat buttons (All, Hit, Crit, Heal, Status, Miss, MP + XP, Combo, KO, Busy hit) pick
+  what the loop plays over and over (All = each in turn); a click clears the pops on screen and plays it at once
+  (`api.fire`). Busy hit = one hit with every word + two more numbers (a pile-up). The wait between beats counts the look's
+  Life × and a number's hold, so a beat never plays over the one before; a look change re-lays the pops on screen.
+- All viewer-local like the rest of the look (nothing relayed, RULE #2).
+
 ## THE FULL STORAGE (2026-10-20, mondo: "UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image." ... "getting this error but i dont even have any 9 slices saved")
 - **Cause**: a site gets ~5,120 K characters of localStorage in all (Firefox and Chrome alike; measured 5,242,240 in the
   sandbox Chromium), shared by every key. The bulk was the game's own data, written by code that swallowed a refused write,
@@ -1726,3 +1792,8 @@ SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follow
 - Not code bugs: the "camera drift" while picking a tile and the target "off screen" mid-pick were the sandbox's frame rate
   (SwiftShader drew one frame per ~2.5 s, and the camera damping advances at most 0.05 s per frame, so a 12-frame, 0.2 s glide
   took ~30 s). Settled frames frame caster + target.
+
+## THE A–Z DEFAULT (2026-10-20, mondo: "sort the characters alphabetically in the party builder and make that the default")
+party-builder.js: the Codex of Vessels wall now opens on NAME A–Z (`sortKey 'label'`, `sortDir 'asc'`; was HP ↓).
+NAME A–Z / Z–A moved to the top of the SORT THE WALL menu; every stat sort (HP ↓ included) is unchanged below them.
+Owned-first and favourites-first still group ahead of the sort, as before. Sort is still per-visit React state (not saved).

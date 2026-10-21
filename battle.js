@@ -2854,6 +2854,53 @@
         }
         window.getZodiacResonanceElement = getZodiacResonanceElement;
 
+        // ── 🜃 THE ELEMENT TERRAINS (2026-10-21, mondo) ─────────────────────
+        // A spell's hit of an element lands ×ELEMENT_TERRAIN_MULT when the caster OR the unit hit stands on one of that
+        // element's terrains (data.js ELEMENT_TERRAINS; both at once is still one bonus). Pure + shared: _hitDamageMath
+        // (the live hit and every forecast) and ai.js estDamage read it. `o.live` = a hit landing now: a cell the
+        // resolving cast changed counts as what it was before the cast (map.js castPreTerrainAt — NO SELF-COMBO).
+        // o.srcX/srcY (the AI's "as if from that tile"), o.tgtX/tgtY (the tile the hit lands on). Returns
+        // { mult, who: 'caster'|'target', label } or null.
+        function _elemTerrainLabelOf(row, x, y, live) {
+            if (!isInside(x, y)) return null;
+            const pre = live && typeof castPreTerrainAt === 'function' ? castPreTerrainAt(x, y) : null;
+            const t = pre !== null ? pre : getTerrainAt(x, y);
+            if (row.terrains && row.terrains.indexOf(t) >= 0) {
+                return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
+            }
+            if (row.flow && pre === null && typeof getLiquidFlowAt === 'function') {
+                const fl = getLiquidFlowAt(x, y);
+                if (fl && fl.t === row.flow) {
+                    const fk = ({ water: 'water', lava: 'lava', poison: 'poison', blood: 'blood' })[row.flow];
+                    return (fk && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[fk] && TERRAIN_RULES[fk].label) || row.flow;
+                }
+            }
+            if (row.burning && _tileIsBurning(x, y)) {
+                const wasB = live && typeof castPreBurningAt === 'function' ? castPreBurningAt(x, y) : null;
+                if (wasB !== false) return 'Fire';
+            }
+            return null;
+        }
+        function elementTerrainBonus(el, caster, target, o) {
+            o = o || {};
+            const row = (el && typeof ELEMENT_TERRAINS !== 'undefined') ? ELEMENT_TERRAINS[el] : null;
+            if (!row) return null;
+            const mult = (typeof ELEMENT_TERRAIN_MULT === 'number') ? ELEMENT_TERRAIN_MULT : 1.25;
+            const on = (u, x, y) => {
+                if (!u || x == null || y == null) return null;
+                const air = typeof isUnitAirborne === 'function' && isUnitAirborne(u);
+                if (air) return row.air ? 'Air' : null;   // a flyer isn't on the ground under it; wind wants the air
+                return _elemTerrainLabelOf(row, x, y, !!o.live);
+            };
+            const c = on(caster, o.srcX != null ? o.srcX : (caster && caster.x), o.srcY != null ? o.srcY : (caster && caster.y));
+            if (c) return { mult, who: 'caster', label: c };
+            const t = on(target, o.tgtX != null ? o.tgtX : (target && target.x), o.tgtY != null ? o.tgtY : (target && target.y));
+            if (t) return { mult, who: 'target', label: t };
+            return null;
+        }
+        window.elementTerrainBonus = elementTerrainBonus;
+        let _etbSaid = '';
+
         // ── ⛰ EARTH TRINE RESONANCE (the reserved slot, filled 2026-07-13) ──
         // While an earth sign reigns (Taurus / Virgo / Capricorn) the ground
         // itself cooperates: terraforming/building spells cost 25% less MP and
@@ -3161,6 +3208,7 @@
             let zapped = 0;
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The water conducts ${spell.name}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster,
                     noRangeMult: true,
                     allowMarkBonus: false,
@@ -3261,6 +3309,7 @@
             }
             for (const { u } of victims) {
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster,
                     noRangeMult: true,
                     allowMarkBonus: false,
@@ -3307,6 +3356,7 @@
             let zapped = 0;
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The metal conducts ${spell.name}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster,
                     noRangeMult: true,
                     allowMarkBonus: false,
@@ -3337,6 +3387,7 @@
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
                     applyDamageToUnit(u, _shardDmg, `💎 ${spell.name} shatters the crystal under ${unitDisplayName(u)}: `, {
+                    noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                         sourceUnit: caster,
                         noRangeMult: true,
                         allowMarkBonus: false,
@@ -3493,6 +3544,7 @@
             const b = _ensureBurningState();
             const k = x + ',' + y;
             const prev = b[k];
+            if (typeof noteCastPreBurn === 'function') noteCastPreBurn(x, y, !!prev);   // 🜃 the cast's own fire never powers it
             b[k] = {
                 x, y,
                 t: Math.max(rounds || 2, prev ? prev.t : 0),
@@ -4952,9 +5004,12 @@
         // into a 'collision-fx' relay so the guest sees the hit land.
         // opts: { delayMs, muteSfx, muteText } (guest replays pass the mutes —
         // the sfx/floating-text relays already carry those channels).
+        // kind 'edge' = the board's outer edge: (x, y) is the body's own tile and
+        // opts { dx, dy, z } the face(s) it met — THE FORCE FIELD lights there.
         function playCollisionImpactFx(x, y, kind, opts = {}) {
             const run = () => {
                 if (state.phase !== 'battle' || _skipVisuals()) return;
+                if (kind === 'edge') playForceFieldFx(x, y, opts.dx || 0, opts.dy || 0, opts.z);
                 if (!opts.muteSfx && typeof playSfx === 'function') {
                     playSfx(kind === 'unit' ? 'basicAttack' : 'physicalAbility');
                 }
@@ -4966,6 +5021,20 @@
             };
             const d = opts.delayMs || 0;
             if (d > 0) window.setTimeout(run, d); else run();
+        }
+
+        // THE FORCE FIELD (2026-10-21): the barrier on the board's outer edge, 3D only.
+        // Buffered round-end slides replay it with their group, like the hit spark.
+        function playForceFieldFx(x, y, dx, dy, z) {
+            if (!dx && !dy) return;
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'forceField', x, y, dx, dy, z });
+                return;
+            }
+            if (state.animationsDisabled || _skipVisuals()) return;
+            if (window.ThreeAnim && window.ThreeAnim.isActive() && typeof window.ThreeAnim.forceField === 'function') {
+                window.ThreeAnim.forceField(x, y, dx, dy, z);
+            }
         }
 
         function _slideSlamDamage(mover, dmg, info, opts) {
@@ -5056,6 +5125,10 @@
             let vx = dx, vy = dy;
             let m = dist;                     // unspent momentum, in tiles
             let guard = 24;
+            /* THE THROW'S BOUNCES (playtest 2026-10-21, Big Kick: Homosapien and Cyborg traded crashes 7 times): maxBounces
+               is per THROW (COLLISION_CONFIG), so every body the momentum passes to shares one count — each chained slide
+               used to start its own, and a pocket of bodies ping-ponged up to maxBounces × (maxChain + 1) times. */
+            const thr = opts._throw || { bounces: 0 };
             const impacts = [];               // {x, y, atMs, kind} FX beats
 
             const stepTo = (nx, ny, nz) => {
@@ -5116,7 +5189,7 @@
                     if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
-                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1,
+                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr,
                                 toward, stopWithin: opts.stopWithin, viewer: opts.viewer
                             });
                             res.chain.push({ unit: occ, res: sub });
@@ -5131,7 +5204,7 @@
                                 perStepMs, delayMs: atMs + Math.floor(perStepMs / 2),
                                 stopBefore: opts.stopBefore || null,
                                 toward, stopWithin: opts.stopWithin,
-                                _depth: depth + 1
+                                _depth: depth + 1, _throw: thr
                             });
                             res.chain.push({ unit: occ, res: sub });
                             if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
@@ -5141,12 +5214,12 @@
                         break;
                     }
                     // The pin would not budge — a cushion. Bounce off it (a pull into a point just stops against it).
-                    if (toward || res.bounces >= cfg.maxBounces || m <= 0) break;
+                    if (toward || thr.bounces >= cfg.maxBounces || m <= 0) break;
                     res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                     res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
                     const uref = _slideReflect(target, cx, cy, cz, vx, vy);
                     vx = uref.dx; vy = uref.dy;
-                    res.bounces++;
+                    res.bounces++; thr.bounces++;
                     if (!simulate && (target.dead || target._dying)) break;
                     continue;
                 }
@@ -5175,7 +5248,12 @@
                 const slamDmg = cfg.wallSlamDmg + cfg.wallSlamPerTile * Math.max(0, m - 1);
                 const atMs = baseDelay + res.steps.length * perStepMs;
                 if (!simulate) {
-                    impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
+                    /* THE FORCE FIELD: the board's outer edge is a barrier — its beat plays on the body's own tile with
+                       the face(s) it met (only the axes that leave the board), so the 3D draws the field there */
+                    if (info.kind === 'edge') {
+                        impacts.push({ x: cx, y: cy, atMs, kind: 'edge', z: cz,
+                            dx: isInside(cx + vx, cy) ? 0 : vx, dy: isInside(cx, cy + vy) ? 0 : vy });
+                    } else impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
                     _slideSlamDamage(target, slamDmg, info, opts);
                     res.slamDamage += slamDmg;
                 } else {
@@ -5184,10 +5262,10 @@
                 // Half-tile lunge INTO the wall face and back — sells the hit.
                 res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                 res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
-                if (toward || res.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
+                if (toward || thr.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
                 const refl = _slideReflect(target, cx, cy, cz, vx, vy);
                 vx = refl.dx; vy = refl.dy;
-                res.bounces++;
+                res.bounces++; thr.bounces++;
                 if (!simulate && (target.dead || target._dying)) break;   // the wall won
             }
 
@@ -5266,7 +5344,8 @@
                     }
                 }
                 for (const imp of impacts) {
-                    playCollisionImpactFx(imp.x, imp.y, imp.kind, { delayMs: imp.atMs });
+                    playCollisionImpactFx(imp.x, imp.y, imp.kind, imp.kind === 'edge'
+                        ? { delayMs: imp.atMs, dx: imp.dx, dy: imp.dy, z: imp.z } : { delayMs: imp.atMs });
                 }
             }
             return res;
@@ -5978,15 +6057,19 @@
             if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
             const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
             const nm = (spell && spell.name) || 'Execute';
-            addLog(`💀 ${nm}: ${_ctName(target)} was at ${Math.max(1, Math.round(100 * target.hp / target.maxHp))}% — EXECUTED!`);
-            showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
-            applyDamageToUnit(target, lethal, `${nm} executes `, {
+            const pct = Math.max(1, Math.round(100 * target.hp / target.maxHp));
+            applyDamageToUnit(target, lethal, `${nm}: `, {
                 sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
                 damageType: (spell && spell.damageType) || 'physical', spellType: (spell && spell.spellType) || null,
                 spellElement: (spell && spell.id) ? getSpellElement(spell) : ((spell && spell.spellElement) || null),
                 element: (spell && spell.id) ? classifySpellElement(spell) : null
             });
-            return !!target.dead;
+            /* EXECUTED only when the follow-up really killed (Protect / Indomitable Will / the realm can still save it) */
+            if (target.dead || target._dying) {
+                addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
+                showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
+            }
+            return !!(target.dead || target._dying);
         }
         window._applyExecuteRider = _applyExecuteRider;
 
@@ -6149,6 +6232,10 @@
             applyDamageToUnit(enemy, dmg, label, {
                 sourceUnit: (caster && !caster.dead) ? caster : undefined,
                 allowMarkBonus: false, noRangeMult: true,   // a zone tick is no ranged shot: no falloff, no flank / ambush riders
+                /* 2026-10-21 PvP audit #5: a round-end tick reads nothing off where the caster stands NOW (the element
+                   ground under it, its height) — the zone deals the same wherever the caster went. The cast hit
+                   (Outbreak's zoneCastDamage) is the spell itself and keeps both. */
+                noTerrainBonus: !!o.tick, noHeightBonus: !!o.tick,
                 damageType: o.damageType || 'magic',
                 spellType: o.spellType || null,
                 spellElement: o.element || null
@@ -6545,7 +6632,7 @@
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                    }
+                    } else if (current === spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tile.x, tile.y, current);   // ⏳ back to 3 rounds
                 }
             }
 
@@ -7092,7 +7179,7 @@
                 }
                 if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
                     if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                }
+                } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(cx, cy, spell.leaveTerrain);   // ⏳ back to 3 rounds
                 cx += dx; cy += dy;
             }
             /* Phase 5 wave A (2026-09-08): beams wider than one tile (Plasma
@@ -7117,7 +7204,7 @@
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             if (setTerrainSpringAt(lx, ly, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                        }
+                        } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(lx, ly, spell.leaveTerrain);   // ⏳ back to 3 rounds
                     }
                 }
             }
@@ -9524,6 +9611,7 @@
             let _zoneDamagedAny = false;   // THE SPELL AUDIT Batch D: a damage zone struck someone (checkWin below)
 
             _tickTimedTerrain();   // wave C: timed goo reverts on the round tick
+            tickTerrainTimers();   // ⏳ every changed tile counts down 3 rounds, then goes back to the map's own ground
 
             if (state._activeZones?.length) {
                 state._activeZones = state._activeZones.filter(zone => {
@@ -9593,7 +9681,7 @@
                                 let _ztDealt = 0;
                                 if (zone.tickDamage > 0) {
                                     _ztDealt = _zoneStrikeUnit(enemy, zone.tickDamage, `${zone.spellName}: `, {
-                                        casterUnitId: zone.casterUnitId, damageType: zone.tickDamageType,
+                                        tick: true, casterUnitId: zone.casterUnitId, damageType: zone.tickDamageType,
                                         spellType: zone.tickSpellType, element: zone.tickElement });
                                     _zoneDamagedAny = true;
                                     // Balance Lab (2026-10-06): the tick is the spell's damage (Heat Death / War of the
@@ -12425,11 +12513,18 @@
                 punch = HIT_READ.punch[opts._hitW | 0] || 1;
                 if (opts._hitKill) punch *= HIT_READ.killPunch;
             }
+            /* THE CRIT LOOK (UI Maker > Pops > Critical hit, hud.js floatSignal FL.crit): the stamp on the number (the
+               game's, in the look's shape / colours / font / size / tilt / spot) or, as 'text', a plain word pop of the
+               CRIT / BACKSTAB kind that lands with the number like every other word (_hitReadCritPop) */
+            const FC = FL.crit || {};
+            const critOn = !!opts._hitCrit && FL.stamp !== false, critText = critOn && FC.as === 'text';
             return {
                 color: (tintable && !own && FL.elem !== false) ? col : null,
                 glowColor: col || '#ff5a3a',
                 scale: own ? 1 : Math.min(maxScale * 1.35, (1 + f * (maxScale - 1)) * punch),
-                crit: !!opts._hitCrit && FL.stamp !== false,
+                crit: critOn && !critText,
+                critWord: critText ? String(FC.word || 'CRIT!') : '',
+                stampLook: FC,
                 weak, resist, glyph,
                 kill: !!opts._hitKill,
                 killGlow: !!opts._hitKill && FL.killGlow !== false,
@@ -12482,15 +12577,31 @@
                 const mX = c._ewMarginX || 0, mT = c._ewMarginTop || 0, mB = c._ewMarginBot || 0;
                 /* THE NUMBER IS THE HERO (mondo 2026-10-17): the CRIT stamp
                    sits on the number's top-right SHOULDER, clear of the
-                   digits — it used to be stamped across the last digit. */
-                const sFs = Math.max(10, Math.round(h * 0.22));
-                const sR = sFs * 1.35;                                  // the starburst's half-height
-                const sCx = w - mX - sR * 0.55, sCy = mT - sR * 0.62;   // in the stock pop's coords
-                const padL = gs ? Math.round(gs * 1.05) : 0;
-                const padR = hr.crit ? Math.max(gs ? padL : 0, Math.ceil(sCx + sR * 1.55 - w)) : padL;
-                const padT = hr.crit ? Math.max(0, Math.ceil(sR - sCy) + 2) : 0;
+                   digits — it used to be stamped across the last digit.
+                   THE CRIT LOOK (2026-10-21): or top left / above / beside /
+                   under it (S.where), and the canvas grows to hold it. */
+                const S = hr.stampLook || {};
+                const sFs = Math.max(10, Math.round(h * 0.22 * _hitReadNum(S.size, 1, 0.4, 3)));
+                const G = hr.crit ? _hitReadStampGeo(sFs, S) : null;
+                let sCx = 0, sCy = 0;                                   // in the stock pop's coords
+                if (G) {
+                    /* the number's ink box; a shoulder spot keeps the solid part (the plate) just over the digits, its
+                       centre 0.74 of the word size in from the corner (the game's 0.55 × the burst's 1.35); above,
+                       beside and under keep the whole stamp clear of the number */
+                    const iL = mX, iR = w - mX, iT = mT, iB = h - mB, gap = sFs * 0.12;
+                    if (S.where === 'tl') { sCx = iL + sFs * 0.7425; sCy = iT - G.sh - sFs * 0.19; }
+                    else if (S.where === 'top') { sCx = (iL + iR) / 2; sCy = iT - G.by - gap; }
+                    else if (S.where === 'right') { sCx = iR + G.bx + gap; sCy = (iT + iB) / 2; }
+                    else if (S.where === 'below') { sCx = (iL + iR) / 2; sCy = iB + G.by + gap; }
+                    else { sCx = iR - sFs * 0.7425; sCy = iT - G.sh - sFs * 0.19; }
+                }
+                const gPad = gs ? Math.round(gs * 1.05) : 0;
+                const padL = G ? Math.max(gPad, Math.ceil(G.bx - sCx) + 2) : gPad;
+                const padR = G ? Math.max(gPad, Math.ceil(sCx + G.bx - w) + 2) : gPad;
+                const padT = G ? Math.max(0, Math.ceil(G.by - sCy) + 2) : 0;
+                const padB = G ? Math.max(0, Math.ceil(sCy + G.by - h) + 2) : 0;
                 const padX = padL, padY = padT;
-                const W = w + padL + padR, H = h + padT;
+                const W = w + padL + padR, H = h + padT + padB;
                 c.width = W; c.height = H;                              // (clears it)
                 const ctx = c.getContext('2d');
                 if (hr.killGlow) {
@@ -12505,12 +12616,18 @@
                 }
                 ctx.drawImage(snap, padX, padY);
                 if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, padY + h / 2, gs);
-                if (hr.crit) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs);
+                if (G) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs, S, G);
                 c.style.width = Math.round(W * hr.scale) + 'px';
                 c.style.height = Math.round(H * hr.scale) + 'px';
-                c._ewMarginX = (gs || hr.crit ? 0 : mX) * hr.scale;   // glyph / stamp are ink at the edges
-                c._ewMarginTop = (hr.crit ? Math.max(0, padY + sCy - sR) : mT) * hr.scale;
-                c._ewMarginBot = mB * hr.scale;
+                c._ewMarginX = (gs || G ? 0 : mX) * hr.scale;   // glyph / stamp are ink at the edges
+                /* each side's own margin (the floating text's bunch, three-renderer _floatBox): the glyph sits at the
+                   left edge; the rest ends at the digits or the stamp's solid part (G.ix / G.iy: a burst's thin tips
+                   are not counted), so the glyph's matching pad is not ink */
+                const nL = gs ? 0 : padX + mX, nR = padX + w - mX, nT = padY + mT, nB = padY + h - mB;
+                c._ewMarginL = Math.max(0, G ? Math.min(nL, padX + sCx - G.ix) : nL) * hr.scale;
+                c._ewMarginR = Math.max(0, W - (G ? Math.max(nR, padX + sCx + G.ix) : nR)) * hr.scale;
+                c._ewMarginTop = Math.max(0, G ? Math.min(nT, padY + sCy - G.iy) : nT) * hr.scale;
+                c._ewMarginBot = Math.max(0, H - (G ? Math.max(nB, padY + sCy + G.iy) : nB)) * hr.scale;
                 // The afterglow breathes while the killing blow lingers.
                 if (hr.killGlow && typeof c.animate === 'function') {
                     const gc = hr.glowColor;
@@ -12551,34 +12668,115 @@
         }
         // The crit stamp: a tilted gold plate on a white starburst, "CRIT"
         // punched out in near-black — reads at a glance, even at chip size.
-        function _hitReadStamp(ctx, cx, cy, fs) {
+        /* THE CRIT LOOK (2026-10-21, mondo: "let me change how the critical hit stamp looks or choose to just make it
+           normal text"): S = the look's crit (hud.js floatSignal FL.crit), every key optional, a missing one the game's:
+           word, shape (burst = the plate on a starburst | plate | star = the word on the burst | round | none = the
+           word alone), points (the burst's), plate / ink (the letters) / line (outline) / burst colours, font, weight,
+           size ×, tilt (°), where (tr | tl | top | right | below), glow. _hitReadStampGeo measures it once per pop: the
+           outline in its own frame, its turned box (bx / by, what the canvas must hold), the solid part's turned box
+           (ix / iy, what the pop layout counts as ink: a burst's thin tips are not) and the solid part's own half
+           size (sw / sh, the shoulder spot). */
+        const _hitReadMeasure = (typeof document !== 'undefined') ? document.createElement('canvas').getContext('2d') : null;
+        function _hitReadNum(v, d, lo, hi) {
+            if (v == null || v === '' || !isFinite(+v)) return d;
+            return Math.max(lo, Math.min(hi, +v));
+        }
+        function _hitReadStampGeo(fs, S) {
+            const shape = ['plate', 'star', 'round', 'none'].indexOf(S.shape) >= 0 ? S.shape : 'burst';
+            const word = String(S.word || 'CRIT').slice(0, 24);
+            const font = (S.weight || '900') + ' ' + fs + 'px ' + (S.font || "'Cinzel', Georgia, serif");
+            let ww = fs * 2.5;
+            if (_hitReadMeasure) { _hitReadMeasure.font = font; ww = _hitReadMeasure.measureText(word).width; }
+            const lw = Math.max(2, fs * 0.14);
+            const tw = ww + fs * 0.6, th = fs * 1.15;                 // the plate
+            const pts = Math.round(_hitReadNum(S.points, 8, 4, 16));
+            const tilt = _hitReadNum(S.tilt, -0.24 * 180 / Math.PI, -60, 60) * Math.PI / 180;
+            const G = { shape, word, font, lw, tw, th, pts, tilt, R: 0, r: 0, kx: 1.5, rx: 0, ry: 0 };
+            const out = [], solid = [];
+            const box = (list, hw, hh) => { list.push([-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]); };
+            if (shape === 'burst' || shape === 'star') {
+                // star: the word sits on the burst itself, so the burst is bigger and holds it
+                G.R = fs * (shape === 'star' ? 1.6 : 1.35); G.r = G.R * (0.75 / 1.35);
+                G.kx = shape === 'star' ? Math.max(1.5, ww * 0.53 / G.r) : Math.max(1.5, tw / 2 / (G.R * 0.85));   // the plate stays inside it
+                for (let i = 0; i < pts * 2; i++) {
+                    const a = i * Math.PI / pts, rr = (i % 2) ? G.r : G.R;
+                    out.push([Math.cos(a) * rr * G.kx, Math.sin(a) * rr]);
+                }
+            }
+            if (shape === 'burst' || shape === 'plate') { box(out, tw / 2 + lw / 2, th / 2 + lw / 2); box(solid, tw / 2 + lw / 2, th / 2 + lw / 2); G.sw = tw / 2 + lw / 2; G.sh = th / 2 + lw / 2; }
+            else if (shape === 'star') { G.sw = G.r * G.kx; G.sh = G.r; }
+            else if (shape === 'round') {
+                G.rx = Math.max(tw * 0.56, th * 0.8); G.ry = th * 0.8;
+                for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12; out.push([Math.cos(a) * (G.rx + lw / 2), Math.sin(a) * (G.ry + lw / 2)]); }
+                G.sw = G.rx + lw / 2; G.sh = G.ry + lw / 2;
+            } else if (shape === 'none') { G.sw = ww / 2 + lw * 1.4; G.sh = fs * 0.55 + lw * 1.4; box(out, G.sw, G.sh); }
+            const cs = Math.cos(tilt), sn = Math.sin(tilt);
+            const ext = list => list.reduce((m, p) => [Math.max(m[0], Math.abs(p[0] * cs - p[1] * sn)), Math.max(m[1], Math.abs(p[0] * sn + p[1] * cs))], [0, 0]);
+            const e = ext(out);
+            G.bx = e[0]; G.by = e[1];
+            const so = ext(solid.length ? solid : [[-G.sw, -G.sh], [G.sw, -G.sh], [G.sw, G.sh], [-G.sw, G.sh]]);
+            G.ix = so[0]; G.iy = so[1];
+            if (shape === 'burst') { G.ix = Math.max(G.ix, G.bx * 0.75); G.iy = Math.max(G.iy, G.by); }
+            else if (shape === 'star') { G.ix = Math.max(G.ix, G.bx * 0.75); G.iy = Math.max(G.iy, G.by * 0.9); }
+            return G;
+        }
+        function _hitReadStamp(ctx, cx, cy, fs, S, G) {
+            S = S || {};
+            G = G || _hitReadStampGeo(fs, S);
+            const plate = S.plate || '#ffc21a', line = S.line || '#3a1a00';
+            const ink = S.ink || (G.shape === 'none' ? plate : '#1c0c00');
+            const glow = _hitReadNum(S.glow, 0, 0, 3);
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(-0.24);
-            const R = fs * 1.35, r = fs * 0.75;
-            ctx.beginPath();
-            for (let i = 0; i < 16; i++) {
-                const a = i * Math.PI / 8, rr = (i % 2) ? r : R;
-                ctx.lineTo(Math.cos(a) * rr * 1.5, Math.sin(a) * rr);
+            ctx.rotate(G.tilt);
+            ctx.lineJoin = 'round';
+            // the halo: the backing (or the word alone) drawn through a soft shadow in its own colour
+            const halo = col => { if (glow > 0) { ctx.shadowColor = col; ctx.shadowBlur = Math.round(fs * 0.55 * glow); } };
+            const noHalo = () => { ctx.shadowColor = 'rgba(0,0,0,0)'; ctx.shadowBlur = 0; };
+            if (G.shape === 'burst' || G.shape === 'star') {
+                ctx.beginPath();
+                for (let i = 0; i < G.pts * 2; i++) {
+                    const a = i * Math.PI / G.pts, rr = (i % 2) ? G.r : G.R;
+                    ctx.lineTo(Math.cos(a) * rr * G.kx, Math.sin(a) * rr);
+                }
+                ctx.closePath();
+                ctx.fillStyle = S.burst || 'rgba(255,248,214,0.92)';
+                halo(S.burst || '#fff8d6');
+                ctx.fill();
+                noHalo();
+                if (G.shape === 'star') { ctx.strokeStyle = line; ctx.lineWidth = G.lw; ctx.stroke(); }
             }
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(255,248,214,0.92)';
-            ctx.fill();
-            ctx.font = "900 " + fs + "px 'Cinzel', Georgia, serif";
+            ctx.font = G.font;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            const tw = ctx.measureText('CRIT').width + fs * 0.6, th = fs * 1.15;
-            ctx.fillStyle = '#ffc21a';
-            ctx.strokeStyle = '#3a1a00';
-            ctx.lineWidth = Math.max(2, fs * 0.14);
-            ctx.beginPath();
-            if (typeof ctx.roundRect === 'function') ctx.roundRect(-tw / 2, -th / 2, tw, th, fs * 0.2);
-            else ctx.rect(-tw / 2, -th / 2, tw, th);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#1c0c00';
-            ctx.fillText('CRIT', 0, fs * 0.04);
+            if (G.shape === 'burst' || G.shape === 'plate' || G.shape === 'round') {
+                ctx.fillStyle = plate;
+                ctx.strokeStyle = line;
+                ctx.lineWidth = G.lw;
+                ctx.beginPath();
+                if (G.shape === 'round') ctx.ellipse(0, 0, G.rx, G.ry, 0, 0, Math.PI * 2);
+                else if (typeof ctx.roundRect === 'function') ctx.roundRect(-G.tw / 2, -G.th / 2, G.tw, G.th, fs * 0.2);
+                else ctx.rect(-G.tw / 2, -G.th / 2, G.tw, G.th);
+                if (G.shape !== 'burst') halo(plate);
+                ctx.fill();
+                noHalo();
+                ctx.stroke();
+            }
+            if (G.shape === 'none') {
+                ctx.strokeStyle = line;
+                ctx.lineWidth = G.lw * 2;
+                ctx.strokeText(G.word, 0, fs * 0.04);
+                halo(ink);
+            }
+            ctx.fillStyle = ink;
+            ctx.fillText(G.word, 0, fs * 0.04);
             ctx.restore();
+        }
+        /* THE CRIT LOOK as text: the crit's word pops as a word of the CRIT / BACKSTAB kind (its colour, font and size
+           under Each kind of pop) at the number's tile, laid out with the other words. Each end pops its own from the
+           relayed crit fact, like the stamp (RULE #2: a look needs no relay). */
+        function _hitReadCritPop(x, y, word) {
+            try { _realShowFloatingTextAtTile_impl(x, y, word, 'crit', { durationMs: 1100, jitterY: -20 }); } catch (_e) {}
         }
 
         /* 2D-board fallback: the same read as classes + CSS vars on the
@@ -12599,7 +12797,17 @@
             if (hr.crit) {
                 const s = document.createElement('span');
                 s.className = 'hr-crit';
-                s.textContent = 'CRIT';
+                // THE CRIT LOOK: its word, font and colours (its shape and spot are the 3D board's)
+                const S = hr.stampLook || {};
+                s.textContent = String(S.word || 'CRIT').slice(0, 24);
+                if (S.font) s.style.fontFamily = S.font;
+                if (S.weight) s.style.fontWeight = S.weight;
+                if (S.ink || S.shape === 'none') s.style.color = S.ink || S.plate || '#ffc21a';
+                if (S.shape === 'none') { s.style.background = 'none'; s.style.border = '0'; s.style.boxShadow = 'none'; }
+                else {
+                    if (S.plate) s.style.background = S.plate;
+                    if (S.line) s.style.borderColor = S.line;
+                }
                 el.appendChild(s);
             }
         }
@@ -12667,8 +12875,10 @@
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 const _fel = window.ThreeAnim.floatingText(x, y, String(textValue ?? ''), kind, durationMs, { jitterX, jitterY });
                 if (_hr && _fel) _hitReadDress3D(_hr, _fel);
+                if (_hr && _hr.critWord) _hitReadCritPop(x, y, _hr.critWord);   // THE CRIT LOOK as text
                 return;
             }
+            if (_hr && _hr.critWord) _hitReadCritPop(x, y, _hr.critWord);
 
             // the 2D board keeps this viewer's Which pops show too
             if (window.ThreeAnim && window.ThreeAnim.floatShows && !window.ThreeAnim.floatShows(String(textValue ?? ''), kind)) return;
@@ -14680,8 +14890,19 @@
             const chart = out.stab ? m / stabMult : m;
             out.weak = chart > 1.001; out.resist = chart < 0.999;
             out.mult = m;
-            out.dmg = Math.max(1, Math.round(getFinisherDamage(unit) * m));
-            out.kill = (target.hp || 0) <= out.dmg;
+            /* THE REAL HIT (playtest 2026-10-21: the list said −798, the blow took 1270): the number is the engine's own
+               hit math on this victim (forecastHitOnUnit — level, armour soak, shield, every multiplier), mid roll, with the
+               variance window; KILL only when even the low roll empties the bar. */
+            const raw = getFinisherDamage(unit), V = _finRules().variance || 0;
+            const hitOpts = { sourceUnit: unit, damageType: 'magic', spellType: def.type, keepFacing: true };
+            const fh = (n) => { try { const f = forecastHitOnUnit(target, n, hitOpts); return f ? f.dmg : null; } catch (err) { return null; } };
+            const mid = fh(raw);
+            if (mid == null) {
+                out.dmg = Math.max(1, Math.round(raw * m)); out.min = out.dmg; out.max = out.dmg;
+            } else {
+                out.dmg = mid; out.min = fh(Math.max(0, raw - V)) ?? mid; out.max = fh(raw + V) ?? mid;
+            }
+            out.kill = out.min > 0 && (target.hp || 0) <= out.min;
             return out;
         }
         function getFinisherBestTarget(unit) {
@@ -14740,7 +14961,9 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
 
-            addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)} — ${String(def.name || '').toUpperCase()}! (${String(def.type).toUpperCase()}-type finisher)`);
+            /* the opening line names the finisher, never the outcome: "executes" is written only when the blow kills (the
+               2026-10-21 playtest read "Anubis executes Cowboy" while Cowboy stood on 610 HP) */
+            addLog(`☠ ${_ctName(unit)} unleashes ${String(def.name || '').toUpperCase()} on ${_ctName(target)}! (${String(def.type).toUpperCase()}-type finisher)`);
             if (unitHasStatus(unit, 'invisible')) { clearStatus(unit, 'invisible'); addLog(`${_ctName(unit)} breaks camouflage!`); }
             try { setUnitFacing(unit, target.x, target.y); } catch (err) {}
 
@@ -14753,6 +14976,8 @@
                     spellType: def.type,
                     keepFacing: true
                 });
+                if (target.dead || target._dying) addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)}!`);
+                else addLog(`☠ ${_ctName(target)} survives ${_ctSp(def.name)}.`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
             };
             const finish = (delayMs) => {
                 window.setTimeout(() => {
@@ -24326,6 +24551,8 @@
            margin. Returns { x, y, zoom } in camera units, or null when there is no 3D lens to solve on. */
         const TILE_PICK_MARGIN_H = 0.86;   // fraction of the FREE frame's half-width the range may fill (THE CLEAR FRAME)
         const TILE_PICK_MARGIN_V = 0.90;   // and of its half-height (the HUD strips are already cut off it)
+        const TILE_PICK_PLAIN_H = 0.80;    // no sub menu up (THE SUB MENU RULE): fraction of the half-frame sideways
+        const TILE_PICK_PLAIN_V = 0.86;    // and up/down (HUD strips top and bottom)
         const TILE_PICK_MIN_HALF = 3;      // never frame tighter than ±3 tiles round the centre
         function _tilePickFrame(unit, tiles, fa) {
             if (!unit) return null;
@@ -24388,7 +24615,8 @@
                 // moves the eye by (cx·dist·tanH, cy·dist·tanV) sideways / up, so the point lands at
                 // (r·right + cx·dist·tanH) / (depth·tanH) and must stay within mH·hw of cx:
                 // |r·right − cx·along·tanH| ≤ mH·hw·depth·tanH (and the same up/down)
-                const mH = TILE_PICK_MARGIN_H * fa.hw, mV = TILE_PICK_MARGIN_V * fa.hh;
+                const mH = fa.menu ? TILE_PICK_MARGIN_H * fa.hw : TILE_PICK_PLAIN_H;
+                const mV = fa.menu ? TILE_PICK_MARGIN_V * fa.hh : TILE_PICK_PLAIN_V;
                 let dist = 0;
                 for (const p of pts) {
                     const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
@@ -28145,6 +28373,11 @@
         const MENU_CAM_TILT_FAR = 50;       // floor as the gap grows
         const MENU_CAM_MARGIN_H = 0.74;     // share of the FREE frame's half-width the pair may fill (THE CLEAR FRAME)
         const MENU_CAM_MARGIN_V = 0.70;     // and of its half-height
+        // the action menu alone (no sub menu open): the plain framing from before THE CLEAR FRAME
+        const MENU_CAM_PLAIN_H = 0.58;      // half-frame share the pair may fill sideways
+        const MENU_CAM_PLAIN_V = 0.56;      // and up/down
+        const MENU_CAM_SHIFT_H = 0.14;      // pair rides right of centre (menu bottom-left)
+        const MENU_CAM_SHIFT_V = 0.08;      // and a touch high (description bar at the bottom)
         const MENU_CAM_MIN_DIST = 3.0;      // tiles — never closer than this to the frame centre
         /* ══ THE CLEAR FRAME (2026-10-20) ══
            mondo: "for framing the battle with the camera, a lot of times the action menu is open with another sub menu,
@@ -28162,11 +28395,19 @@
              · when the cover changes under a fitted frame (a sub menu opening after the click that framed it, the
                quick list arriving after a board click), _clearFrameRefit solves that same frame again.
            The slide holds through an action a pick started (the menu hides for its animation) while the board rig
-           keeps the camera, and eases back to 0 once no menu is up (CPU turns, cinematics). Viewer-local. */
+           keeps the camera, and eases back to 0 once no menu is up (CPU turns, cinematics). Viewer-local.
+           THE SUB MENU RULE (2026-10-21, mondo: "i asked you to frame the camera a little more to the right, but i think
+           you overdid it too much ... it only needs this different framing if a sub menu is open from the action
+           menu"): the frame only shifts while a sub menu of the action menu is up (any panel of the cascade past the
+           root: Abilities, Attack's target list, a board click's quick list ...). The action menu alone frames the
+           plain way (no slide, the old two-shot shift + margins, the old range-fit margins). And the shift is a share
+           of the way to the free part's middle (CLEAR_FRAME_SHIFT), the frame keeping its size. */
         const CLEAR_FRAME_MIN_HW = 0.42;    // the free part never counts as narrower than 42% of the screen
+        const CLEAR_FRAME_SHIFT = 0.55;     // share of the way to the free part's middle the frame slides (sub menu up)
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
+        const _CLEAR_ROOT = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true });   // the action menu alone
         let _cfArea = null, _cfAt = 0, _cfHeld = null, _cfSeenAt = 0, _cfPend = null;
         function _menuFreeArea(fresh) {
             const now = performance.now();
@@ -28199,6 +28440,10 @@
                     else x1 = Math.min(x1, r.left);
                 });
                 if (!menu) return _cfArea;
+                // THE SUB MENU RULE: the action menu alone keeps the plain framing
+                const sub = [...document.querySelectorAll('.hrlg-rig:not(.hrlg-peek) .hrlg-panels > .hrlg-panel:not(.root)')]
+                    .some(el => boxOf(el));
+                if (!sub) return (_cfArea = _CLEAR_ROOT);
                 // the HUD strips: scoreboard / match line on top, the prompt + description bars below
                 document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
                     const r = boxOf(el);
@@ -28215,7 +28460,7 @@
                 }
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
-                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2),
+                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * CLEAR_FRAME_SHIFT,
                     cy: Math.max(-0.2, Math.min(0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
                     hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true
                 };
@@ -28231,6 +28476,13 @@
                 _cfHeld = fa; _cfSeenAt = now;
                 _clearFrameRefit(fa, now);
                 return fa;
+            }
+            // the action menu alone (a sub menu closed back to it): the plain framing, a frame fitted beside the sub
+            // menu solved again for it
+            if (fa.cmd && !state._actionExecuting) {
+                _cfHeld = null;
+                _clearFrameRefit(fa, now);
+                return _CLEAR_FULL;
             }
             // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → keep the frame;
             // a brief gap (one unit's menu handing over to the next) too; else back to the middle
@@ -28312,6 +28564,10 @@
             F[0] /= pts.length; F[1] /= pts.length; F[2] /= pts.length;
             const gap = Math.hypot(A.x - B.x, A.z - B.z, A.foot - B.foot);
             let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
+            // THE SUB MENU RULE: no sub menu up → the plain framing (centre right of the middle, the old margins)
+            const plain = !fa.menu;
+            const aimX = plain ? MENU_CAM_SHIFT_H : fa.cx, aimY = plain ? MENU_CAM_SHIFT_V : fa.cy;
+            const mH = plain ? MENU_CAM_PLAIN_H : MENU_CAM_MARGIN_H * fa.hw, mV = plain ? MENU_CAM_PLAIN_V : MENU_CAM_MARGIN_V * fa.hh;
             // fixed-point: centre the projected box on the middle of the free frame (THE CLEAR FRAME), then scale the
             // boom so the box fills its margins (perspective-true). The board rig's slide (ThreeCamera.sync) shifts the
             // eye by (fa.cx, fa.cy) at the focal's depth, so a point at depth d lands fa.cx·dist/d over.
@@ -28329,9 +28585,9 @@
                 }
                 if (tooNear) { dist *= 1.35; continue; }
                 const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
-                const k = Math.max((xMax - xMin) / 2 / (MENU_CAM_MARGIN_H * fa.hw), (yMax - yMin) / 2 / (MENU_CAM_MARGIN_V * fa.hh));
-                // slide the focal so the box centre lands on the free frame's middle
-                const ox = (cx - fa.cx) * dist * tanH, oy = (cy - fa.cy) * dist * tanV;
+                const k = Math.max((xMax - xMin) / 2 / mH, (yMax - yMin) / 2 / mV);
+                // slide the focal so the box centre lands on the free frame's middle (the plain shift with no sub menu)
+                const ox = (cx - aimX) * dist * tanH, oy = (cy - aimY) * dist * tanV;
                 F[0] += rt[0] * ox + up[0] * oy; F[1] += up[1] * oy; F[2] += rt[2] * ox + up[2] * oy;
                 dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
             }
@@ -34100,7 +34356,7 @@
                     { const _zp = Math.round((getZodiacBonus(sourceUnit).m('atk') - 1) * 100); _multCallout(sourceUnit, '★ ZODIAC ' + (_zp >= 0 ? '+' : '') + _zp + '%', 900); }
                 }
 
-                if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
+                if (!opts.ignoreArmor && !opts.noHeightBonus && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
                     // opts.struckAt: a hit landed on a tile the target already left (opportunity attack)
                     const tgtH = (opts.struckAt && opts.struckAt.standH != null) ? opts.struckAt.standH : getUnitStandingHeight(target);
@@ -34213,6 +34469,29 @@
                     const _zsName = _affEl === 'earth' ? 'ground' : _affEl;
                     showFloatingTextForUnit(sourceUnit, `★ ${_zsName.toUpperCase()} SURGE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
                     addLog(`★ The ${state.activeZodiac} sky surges the ${_zsName} — its power swells!`);
+                }
+            }
+            // 🜃 THE ELEMENT TERRAINS (2026-10-21): the caster or the unit hit stands on the spell element's own ground.
+            // A spell's hit only — a basic attack (even an elemental rider), a tick, a hazard, a weather and the terrain
+            // reactions' follow-up hits (opts.noTerrainBonus) never ride it.
+            if (_affEl && finalDamage > 0 && sourceUnit && damageType !== 'dot' && opts.spellElement
+                && !opts.basicAttack && !opts.noTerrainBonus) {
+                const _sa = opts.struckAt || null;
+                const _etb = elementTerrainBonus(_affEl, sourceUnit, target, { live, tgtX: _sa ? _sa.x : undefined, tgtY: _sa ? _sa.y : undefined });
+                if (_etb) {
+                    _offMult *= _etb.mult;
+                    if (live) {
+                        const _who = _etb.who === 'caster' ? sourceUnit : target;
+                        const _key = sourceUnit.id + ':' + _protectActionSeq + ':' + _who.id;
+                        if (_etbSaid.indexOf('|' + _key + '|') < 0) {
+                            _etbSaid = (_etbSaid.length > 400 ? '' : _etbSaid) + '|' + _key + '|';
+                            const _elN = _affEl === 'earth' ? 'ground' : _affEl;
+                            _multCallout(_who, `🜃 ON ${String(_etb.label).toUpperCase()} ×${_etb.mult}`, 1000);
+                            addLog(_etb.who === 'caster'
+                                ? `🜃 ${_ctName(sourceUnit)} draws on the ${String(_etb.label).toLowerCase()} underfoot — the ${_elN} hits ×${_etb.mult}.`
+                                : `🜃 ${_ctName(target)} stands on ${String(_etb.label).toLowerCase()} — the ${_elN} hits ×${_etb.mult}.`);
+                        }
+                    }
                 }
             }
             let _comboSupercharge = false;
@@ -34356,6 +34635,33 @@
             return src.id + '|' + _protectActionSeq;
         }
 
+        /* THE HIT LINE (playtest 2026-10-21: "Anubis drains life from Cowboy takes 360 HP damage."): a caller's lead is a
+           label ("Big Kick: ", "Anubis attacks: "), a verb phrase that names the victim next ("Anubis drains life from ") or a
+           sentence waiting for its number ("Bigfoot is struck by lightning for"). Each reads as one sentence:
+             label  → "Big Kick: Cowboy takes 360 HP damage." / "Big Kick: Cowboy blocks the hit."
+             verb   → "Anubis drains life from Cowboy for 360 HP damage." / "…from Cowboy, but Cowboy blocks the hit."
+             for    → "Bigfoot is struck by lightning for 39 HP damage." / "Bigfoot is struck by lightning, but Bigfoot …"
+           dmg = the HP number (the hit line); otherwise `what` finishes the sentence. The lead's own first name (callers
+           write it with unitDisplayName) is tagged with its side like the victim's, so a mirror match ("Bigfoot attacks:
+           Bigfoot takes 229 HP damage.") still colours the attacker and the victim apart. */
+        function _dmgLogLine(sourceText, target, what, dmg, srcUnit) {
+            let src = String(sourceText || '');
+            const c0 = src.charCodeAt(0);
+            if (!(c0 >= 0xE000 && c0 <= 0xE00F)) {
+                for (const u of [srcUnit, target]) {
+                    const nm = u ? unitDisplayName(u) : '';
+                    if (nm && src.startsWith(nm) && !/\w/.test(src.charAt(nm.length))) { src = _ctName(u) + src.slice(nm.length); break; }
+                }
+            }
+            const who = _ctName(target), plain = _ctPlain(src);
+            if (/\bfor\s*$/i.test(plain)) {
+                const lead = src.replace(/\s*\bfor\s*$/i, '');
+                return dmg != null ? `${lead} for ${dmg} HP damage.` : `${lead}, but ${who} ${what}`;
+            }
+            if (/[A-Za-z]\s$/.test(plain)) return dmg != null ? `${src}${who} for ${dmg} HP damage.` : `${src}${who}, but ${who} ${what}`;
+            return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
+        }
+
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
@@ -34443,7 +34749,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`${sourceText}${_ctName(target)} is protected and takes no damage!`);
+                addLog(_dmgLogLine(sourceText, target, 'is protected and takes no damage!', null, opts.sourceUnit || null));
                 flashUnit(target.id, 'heal');
                 showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
 
@@ -34462,7 +34768,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`🌑 ${sourceText}${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
                 return false;
             }
 
@@ -34554,7 +34860,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`👻 ${sourceText}${_ctName(target)} has no body to strike — the ${_immDT} blow passes straight through!`);
+                addLog('👻 ' + _dmgLogLine(sourceText, target, `has no body to strike — the ${_immDT} blow passes straight through!`, null, opts.sourceUnit || null));
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, '👻 PASSES THROUGH', 'protect-block', { durationMs: 1200 });
                     flashUnit(target.id, 'block');
@@ -34929,7 +35235,7 @@
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
                     _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
-                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
+                addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
                 if (sourceUnit && typeNote) {
                     const dlg = [];
@@ -34939,7 +35245,7 @@
                 }
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
-                addLog(`${sourceText}${_ctName(target)} blocks the hit.`);
+                addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
@@ -35250,7 +35556,9 @@
                 }
             }
             if (!candidates.length) return null;
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            // THE FOG (2026-10-21 audit #1): run from the enemies your side can SEE — the preview shows this landing,
+            // so a hidden enemy must not bend it (the cast reads the same rule, so preview = cast)
+            const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => _isUnitVisibleToViewer(e, unit.player));
             candidates.sort((a, b) => {
                 const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
                 const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
@@ -35401,6 +35709,7 @@
                 for (let i = undo.length - 1; i >= 0; i--) { const r = undo[i]; r[0].x = r[1]; r[0].y = r[2]; r[0].z = r[3]; }
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
             }
+            _forecastHideFogged(plan, caster, spell, x, y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
@@ -35432,8 +35741,40 @@
                 if (gc) { plan.pressHits.push(gc); const gh = entry(g); (gh._pressCtx || (gh._pressCtx = [])).push(gc); }
             }
         }
+        /* THE FOG (2026-10-21 PvP audit #1, mondo: "those all seem like bugs"): a preview never speaks about a body its
+           viewer (the caster's side) can't see. Hidden enemies leave the plan — no badge, no strike arrow, no landing, no
+           press vote — and the real cast still hits them. So the green ! can't go missing BECAUSE a hidden resister stands
+           in the blast (that would point at it), the ! is dropped whenever the cast reaches a fogged tile at all: it only
+           shows when it is guaranteed, and it says nothing about who stands in the fog. */
+        function _forecastHideFogged(plan, caster, spell, x, y) {
+            if (!caster || !plan) return;
+            const viewer = caster.player;
+            const hidden = (u) => !!u && u.id !== caster.id && isEnemyUnit(caster, u) && !_isUnitVisibleToViewer(u, viewer);
+            const gone = plan.hits.filter(h => hidden(h.unit));
+            if (gone.length) {
+                plan.hits = plan.hits.filter(h => !hidden(h.unit));
+                for (const h of gone) delete plan.byId[h.unit.id];
+                plan.moves = plan.moves.filter(m => !hidden(m.unit));
+                plan.pressHits = [];
+                for (const h of plan.hits) {
+                    if (h._pressCtx) plan.pressHits.push(...h._pressCtx);
+                    if (h._pressMiss) plan.pressHits.push({ evaded: true });
+                }
+            }
+            if (!plan.pressArmed || !state.fogOfWar || typeof computeVisibleTilesCached !== 'function') return;
+            const vis = computeVisibleTilesCached(viewer);
+            const fogged = (t) => t && isInside(t.x, t.y) && !vis.has(posKey(t.x, t.y));
+            let veto = (plan.tiles || []).some(fogged);
+            /* a hop rider (ricochet / chain / fork / split / splash) can jump into the fog off the body it hits */
+            if (!veto && spell && (spell.ricochet || spell.chain || spell.fork || spell.split || spell.splash || spell.kind === 'ricochet')) {
+                const r = 3;
+                for (let dy = -r; dy <= r && !veto; dy++) for (let dx = -r; dx <= r && !veto; dx++) veto = fogged({ x: x + dx, y: y + dy });
+            }
+            if (veto) plan._fogVeto = true;
+        }
+
         function _forecastPressResolve(plan) {
-            plan.press = (plan.pressArmed && plan.pressHits.length) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
+            plan.press = (plan.pressArmed && plan.pressHits.length && !plan._fogVeto) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
             const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT;
             for (const h of plan.hits) {
                 h.press = false; h.pressBy = null;
@@ -35453,6 +35794,7 @@
         function forecastPressOn(caster, target, spell, opts = {}) {
             const no = { press: false, by: null };
             if (!caster || !target || target.dead || !isEnemyUnit(caster, target)) return no;
+            if (!_isUnitVisibleToViewer(target, caster.player)) return no;   // THE FOG: nothing said about a body the caster's side can't see
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return no;   // Mystery Dungeon floors: no press turns
             const byOf = (pc) => { const e = pc.effSummary || {}; return (e.hasStrong && !e.hasWeak) ? 'type' : 'element'; };
             if (opts.combo) {
@@ -35559,6 +35901,7 @@
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 thrower.x = ox; thrower.y = oy; thrower.z = oz;
             }
+            _forecastHideFogged(plan, thrower, null, target.x, target.y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             return plan;
         }
@@ -37173,10 +37516,11 @@
                 if (ex) {
                     ex.expiresRound = Math.max(ex.expiresRound, expires);
                     if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainSpringAt(t.x, t.y, cfg.terrain); }
+                    else if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(t.x, t.y, cur);   // ⏳ back to 3 rounds
                     n++;
                     continue;
                 }
-                if (cur === cfg.terrain) continue;
+                if (cur === cfg.terrain) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(t.x, t.y, cur); continue; }   // ⏳ back to 3 rounds
                 if (setTerrainSpringAt(t.x, t.y, cfg.terrain) === false) continue;   // a liquid never goes into a solid monument
                 state._timedTerrain.push({ x: t.x, y: t.y, prev: cur, terrain: cfg.terrain, expiresRound: expires, owner: unit ? unit.player : 0 });
                 if (unit && typeof trackTilesChanged === 'function') trackTilesChanged(unit, 1);
@@ -37200,7 +37544,11 @@
                 /* THE SPELL AUDIT Batch D: a melt entry (Snow Fort) goes to `meltTo` and sinks back by `deform` */
                 const _to = e.meltTo || e.prev;
                 if (getTerrainAt(e.x, e.y) === e.terrain && _to && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[_to]) {
-                    if (e.deform) { applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid(); }
+                    if (e.deform) {
+                        applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid();
+                        const _tt = state.terrainTimers && state.terrainTimers[e.x + ',' + e.y];
+                        if (_tt) _tt.d = 0;   // ⏳ the height is already home
+                    }
                     if (e.meltTo) setTerrainSpringAt(e.x, e.y, _to);   // the snow wall's puddle is fresh water: it spreads
                     else setTerrainAt(e.x, e.y, _to);
                     if (e.meltTo) { melted++; continue; }
@@ -37221,6 +37569,34 @@
             }
         }
         if (typeof window !== 'undefined') { window._paintTimedTerrain = _paintTimedTerrain; window._tickTimedTerrain = _tickTimedTerrain; }
+
+        /* ⏳ THE TERRAIN TIMERS (2026-10-21, mondo: "make all terrain changes last 3 rounds, similar to status effects"):
+           every cell a battle changes holds state.terrainTimers[k] (map.js _noteTerrainChange; n = TERRAIN_CHANGE_ROUNDS
+           at the paint, painting the same terrain again resets it). Each round end counts it down; at 0 the cell goes
+           back to the map's own terrain (map.js revertTerrainTimer). Plain state: it syncs to the guest (RULE #2). */
+        function tickTerrainTimers() {
+            const tt = state.terrainTimers;
+            if (!tt) return;
+            const due = [];
+            for (const k in tt) {
+                const e = tt[k];
+                if (!e) { delete tt[k]; continue; }
+                e.n = (e.n | 0) - 1;
+                if (e.n <= 0) due.push(k);
+            }
+            if (!due.length) return;
+            let n = 0;
+            for (const k of due) {
+                const i = k.indexOf(',');
+                if (typeof revertTerrainTimer === 'function' && revertTerrainTimer(+k.slice(0, i), +k.slice(i + 1))) n++;
+            }
+            if (!n) return;
+            _invalidateBoardGrid();
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            addLog(`⏳ ${n} tile${n !== 1 ? 's' : ''} return${n === 1 ? 's' : ''} to the map's own ground.`);
+            scheduleBoardRender();
+        }
+        if (typeof window !== 'undefined') window.tickTerrainTimers = tickTerrainTimers;
 
         function getSquareArea(cx, cy, radius = 1) {
             const out = [];
@@ -38818,8 +39194,6 @@
         }
 
         const _coordPattern = /\b([A-Z])(\d{1,2})\b/g;
-        let _fogVisCache = null;
-        let _fogVisCacheFrame = -1;
         function _logFogVisible(entry) {
             if (!state.fogOfWar) return true;
             const viewer = getViewerPlayer();
@@ -38828,12 +39202,21 @@
             if (!msg) return true;
 
             const enemyUnits = (state.units || []).filter(u => u.player !== viewer);
-            let mentionsEnemy = false;
+            let mentionsEnemy = false, mentionsHidden = false;
             for (const u of enemyUnits) {
                 const name = unitDisplayName(u);
-                if (name && msg.includes(name)) { mentionsEnemy = true; break; }
+                if (name && msg.includes(name)) {
+                    mentionsEnemy = true;
+                    if (!u.dead && !_isUnitVisibleToViewer(u, viewer)) mentionsHidden = true;
+                }
             }
             if (!mentionsEnemy) return true;
+            /* 2026-10-21 PvP audit #12: a line about an enemy the viewer can't see, with none of the viewer's own units in
+               it, says nothing the screen shows (no coordinate needed to leak: "… breaks camouflage", "… is poisoned") */
+            if (mentionsHidden) {
+                const ownNamed = (state.units || []).some(u => u.player === viewer && (n => n && msg.includes(n))(unitDisplayName(u)));
+                if (!ownNamed) return false;
+            }
 
             const coords = [];
             let m;
@@ -38847,13 +39230,11 @@
             }
             if (coords.length === 0) return true;
 
-            const frame = state.round * 1000 + (state.activePlayer || 0);
-            if (_fogVisCacheFrame !== frame || !_fogVisCache) {
-                _fogVisCache = computeVisibleTiles(viewer);
-                _fogVisCacheFrame = frame;
-            }
+            /* the fog renderer's own cached set (it invalidates on every move / sight change); the old round + active-player
+               key went stale inside a round (2026-10-21 PvP audit #12) */
+            const _vis = (typeof computeVisibleTilesCached === 'function') ? computeVisibleTilesCached(viewer) : computeVisibleTiles(viewer);
             for (const c of coords) {
-                if (!_fogVisCache.has(posKey(c.x, c.y))) return false;
+                if (!_vis.has(posKey(c.x, c.y))) return false;
             }
             return true;
         }
@@ -39247,14 +39628,15 @@
            only ONE spell/ability per turn (the '1 spell/turn' gate in
            getSpellBlockReason). The ONLY way to keep acting after damage —
            or to cast a second spell — is a press: the turn's FIRST weakness
-           hit or crit hands back +2 AP at once (a full fresh action); every
+           hit hands back +2 AP at once (a full fresh action), a crit +1; every
            press AFTER that vents into the team's Entropy Gauge instead — so
            a unit can attack at most TWICE in one turn.
            Only unit.ap mutates → online-safe (host authoritative) and
            undo-safe (ap is in every pushUndoSnapshot). See PRESS_OUTCOME /
            applyPressTurn below; turn termination stays owned by
            unitFinished/endUnitIfDone. */
-        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press (weak/crit)
+        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press on a weakness
+        const PRESS_CRIT_REFUND_AP  = 1;   // AP a critical hit grants (mondo 2026-10-21, PvP audit #8: a crit is a dice roll, so +1, not +2)
         const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge (post-press swings)
         const PRESS_MAX_BONUS_AP    = 2;   // total press AP per unit per turn → ONE +2 press; extras vent to entropy
 
@@ -39264,7 +39646,7 @@
             NORMAL:    'normal',   // neutral → normal cost
             WEAK:      'weak',     // hit a weakness → refund
             CRIT:      'crit',     // landed a crit → refund
-            WEAK_CRIT: 'weakCrit', // weakness AND crit → double refund
+            WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (+1 more vents to entropy past the cap)
             NULL:      'null',     // the element was immune / absorbed → no press (vetoes the cast's), no drain
         };
 
@@ -39286,6 +39668,9 @@
                place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
                the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
             if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
+            /* …and a heal that sears the enemies beside the ally (Divine Light's healAdjacentDamage, 2026-10-21 PvP audit
+               #2): the sear judges the press; a heal with nobody beside the ally records no hit and stays a plain heal. */
+            if (spell.healAdjacentDamage > 0) return true;
             return _PRESS_SPELL_KINDS.has(spell.kind)
                 || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)
                 || (spell.kind !== 'delayed' && spellDealsDamage(spell));
@@ -39675,6 +40060,9 @@
             // placement branches flag that at runtime: see _placementStruck.)
             if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
             if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
+            /* THE ZONE'S CAST HIT IS DAMAGE (2026-10-21 PvP audit #2): Outbreak's zoneCastDamage strikes every enemy in the
+               footprint inside the cast — it ends the turn and presses like any nuke (data.js spellHasDamage counts it too). */
+            if (spell.zoneCastDamage > 0) return true;
             return _PRESS_SPELL_KINDS.has(spell.kind);
         }
 
@@ -40185,8 +40573,9 @@
             }
 
             let want = 0;
-            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP * 2;
-            else if (outcome === PRESS_OUTCOME.WEAK || outcome === PRESS_OUTCOME.CRIT) want = PRESS_REFUND_AP;
+            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP + PRESS_CRIT_REFUND_AP;
+            else if (outcome === PRESS_OUTCOME.WEAK) want = PRESS_REFUND_AP;
+            else if (outcome === PRESS_OUTCOME.CRIT) want = PRESS_CRIT_REFUND_AP;
             if (want <= 0) return result; // NORMAL / RESIST → unchanged
 
             const gained = unit._pressGainedThisTurn || 0;
@@ -50578,9 +50967,16 @@
                id no longer parks it in its "active unit" branch — see THE CLEAN BOOT). */
             try {
                 const _bootN = state.matchNumber;
-                setTimeout(() => {
+                let _bootTries = 0;
+                const _bootCheck = () => {
                     try {
                         if (state.phase !== 'battle' || state.winner || state.matchNumber !== _bootN || state._blitzActiveUnitId) return;
+                        /* the round-1 arrival still playing (the crane, the round card, a death close-up) is the boot running
+                           slowly, not a stall: look again in 5 s rather than kick the loop under it (a slow machine took
+                           longer than 10 s on the 2026-10-21 playtest); after a minute the kick runs regardless */
+                        const _busy = (camera && camera.isBusy && camera.isBusy())
+                            || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) || _walkAnimActive;
+                        if (_busy && ++_bootTries < 12) { setTimeout(_bootCheck, 5000); return; }
                         const gates = {
                             phase: state.phase, gameState: state.gameState, round: state.round, activePlayer: state.activePlayer,
                             actionExecuting: !!state._actionExecuting, roundAdvanceInProgress: !!_roundAdvanceInProgress,
@@ -50595,7 +50991,8 @@
                         console.warn('[BOOT] no unit has activated 10 s after the match booted — the gates:', JSON.stringify(gates));
                         if (!state.uiDialog && !gates.cinematic && !gates.pendingReplace) { console.warn('[BOOT] kicking the turn loop once'); maybeAdvanceTurn(); }
                     } catch (e) {}
-                }, 10000);
+                };
+                setTimeout(_bootCheck, 10000);
             } catch (e) {}
 
             if (mpMode.hasFlags) {
@@ -50622,6 +51019,11 @@
             state.logDialogue = [];
             _logRenderedCount = 0;
             addLog('A fight breaks out!');
+            /* ⏳ THE TERRAIN TIMERS: the board as the fight begins is the map's own ground (permanent); from here every
+               change is clocked (map.js _noteTerrainChange) and goes back to it */
+            state.terrainTimers = {};
+            state.paintedFrom = {};
+            state._terrainClock = true;
 
             /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
                (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
@@ -52719,8 +53121,12 @@
                    always settles within LS_MAX_WAIT_MS; 60s is catastrophe
                    insurance only. */
                 if (_matchBootPendingSince) {
-                    if (Date.now() - _matchBootPendingSince < 60000) return reset();
-                    console.warn('[WATCHDOG] Match boot pending for 60s+ — forcing the turn loop.');
+                    /* past the loading gate's own cap (LS_MAX_WAIT_MS, 90 s since it grew from 45 s) plus the VS splash:
+                       a 60 s line fired INSIDE a slow first load and started the half-booted match described above
+                       (seen on the 2026-10-21 software-renderer playtest) */
+                    const _bootCap = (typeof LS_MAX_WAIT_MS === 'number' ? LS_MAX_WAIT_MS : 90000) + 45000;
+                    if (Date.now() - _matchBootPendingSince < _bootCap) return reset();
+                    console.warn('[WATCHDOG] Match boot pending past the loading cap — forcing the turn loop.');
                     _matchBootPendingSince = 0;
                 }
                 /* Visible activity = the engine is mid-sequence, not stuck. */
@@ -67755,6 +68161,8 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
+            /* 🜃 THE ELEMENT TERRAINS: from here to finishAction, a cell this cast changes counts as what it was (no self-combo) */
+            if (typeof beginCastTerrainWatch === 'function') beginCastTerrainWatch();
             {
                 const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
                 if (_actBlock) {
@@ -68410,6 +68818,7 @@
             let _pendingSpellHits = 0, _finishWaits = 0;
             const finishAction = () => {
                 if (_pendingSpellHits > 0 && _finishWaits++ < 40) { window.setTimeout(finishAction, 100); return; }
+                if (typeof endCastTerrainWatch === 'function') endCastTerrainWatch();   // 🜃 the cast is done
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
                 if (_focusCamSpellCtx && _focusCamSpellCtx.spellId === spell.id) {
                     _focusCamSpellCtx = null;
@@ -68649,6 +69058,9 @@
                             });
                         }
                         if (_hadFoes.length) { addLog(`✨ ${_ctSp(spell.name)} sears ${_hadFoes.length} ${_hadFoes.length === 1 ? 'enemy' : 'enemies'} beside ${_ctName(_ht)}.`); checkWin(); }
+                        /* 2026-10-21 PvP audit #2: a sear that burned somebody is a damaging cast — it ends the turn
+                           (finishAction's spendAllAP, like a contact placement); a heal with nobody beside the ally doesn't */
+                        if (_hadFoes.length) _placementStruck = true;
                     }
                     markDirty('hud');
                     renderIfDirty();
@@ -70990,7 +71402,7 @@
                             const current = getTerrainAt(tile.x, tile.y);
                             if (current !== 'wall' && current !== spell.leaveTerrain) {
                                 if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
-                            }
+                            } else if (current === spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tile.x, tile.y, current);   // ⏳ back to 3 rounds
                         }
                     }
                     if (spell.terrainDeform) {
@@ -71887,7 +72299,7 @@
                             t = 'stone';
                             addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into stone!`);
                         }
-                        if (current === t) return false;
+                        if (current === t) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tx, ty, t); return false; }   // ⏳ back to 3 rounds
                         if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
                         /* 🌊 Spell-conjured liquid is a SPRING (map.js liquid
                            spread): overfull, so it overflows one tile onto
@@ -72154,6 +72566,9 @@
                     if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
+                            /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out */
+                            const _tt = state.terrainTimers && state.terrainTimers[at.x + ',' + at.y];
+                            if (_tt && spell.terrainDeform.centerDelta) _tt.d = (_tt.d || 0) - spell.terrainDeform.centerDelta;
                         }
                         _invalidateBoardGrid();
                         scheduleBoardRender();
@@ -72167,6 +72582,8 @@
                         const _mLift = (spell.terrainDeform && !spell.monument) ? (spell.terrainDeform.centerDelta || 0) : 0;
                         for (const at of affectedTiles) {
                             if (getTerrainAt(at.x, at.y) !== terrainType) continue;
+                            const _tt = state.terrainTimers && state.terrainTimers[at.x + ',' + at.y];
+                            if (_tt && spell.meltTo) _tt.m = spell.meltTo;   // ⏳ the wall's timer melts it into its puddle
                             const ex = state._timedTerrain.find(e => e.x === at.x && e.y === at.y);
                             if (ex) { ex.expiresRound = Math.max(ex.expiresRound, _mExp); ex.deform = (ex.deform || 0) - _mLift; continue; }
                             state._timedTerrain.push({ x: at.x, y: at.y, prev: _tcPrev[at.x + ',' + at.y] || 'grass', terrain: terrainType,
@@ -73523,6 +73940,7 @@
                             if (dp.x === x && dp.y === y) continue;
                             if (!isInside(dp.x, dp.y) || !isTerrainPassable(dp.x, dp.y)) continue;
                             const _dlCur = getTerrainAt(dp.x, dp.y);
+                            if (_dlCur === spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(dp.x, dp.y, _dlCur);   // ⏳ back to 3 rounds
                             if (_dlCur === 'wall' || _dlCur === spell.leaveTerrain) continue;
                             if (setTerrainSpringAt(dp.x, dp.y, spell.leaveTerrain) === false) continue;
                             _dlPainted++;
@@ -74363,6 +74781,7 @@
                 }
                 return;
             }
+            if (state._winCondition === 'draw') return;   // a draw already ended the match (winner 0 is falsy)
 
             const mpMode = getActiveMultiplayerMode();
             const wcs = mpMode.winConditions || [];
@@ -74380,9 +74799,13 @@
                         state._winCondition = 'wipeout';
                         state._ffaWinnerUnitId = alive[0].id;
                     } else if (alive.length === 0) {
-
-                        state.winner = 1;
-                        state._winCondition = 'wipeout';
+                        /* 2026-10-21 PvP audit #14: nobody left standing is a draw, not a P1 win */
+                        state.winner = 0;
+                        state._winCondition = 'draw';
+                        state._winLogged = true;
+                        addLog('Nobody is left standing — the match ends in a draw.');
+                        setTimeout(() => finalizeMatch(), 0);
+                        return;
                     }
                 } else {
                     // 🎭 A possessed body still counts for its HOME team (wave B):
@@ -74461,35 +74884,39 @@
                 return;
             }
 
+            let _ffaTie = false;
             if (mpMode.isFFA) {
                 let bestUnit = null;
                 let bestKills = -1;
+                let tied = false;
                 for (const u of state.units) {
                     const kills = u._matchKills || 0;
                     if (kills > bestKills) {
                         bestKills = kills;
                         bestUnit = u;
-                    }
+                        tied = false;
+                    } else if (kills === bestKills) tied = true;
                 }
-                if (bestUnit) {
+                /* 2026-10-21 PvP audit #14: a tie on kills no longer goes to whoever sits first in state.units (P1's
+                   units) — it takes the mode's own tie rule below (Sudden Death, else a draw) like a team tie */
+                if (bestUnit && tied) bestUnit = null;
+                if (!bestUnit) _ffaTie = true;   // straight to the tie rule (the team scores below mean nothing in FFA)
+                else {
                     state.winner = bestUnit.player;
                     state._winCondition = 'most_kills';
                     state._ffaWinnerUnitId = bestUnit.id;
                     addLog(`${_ctName(bestUnit)} wins with ${bestKills} kills!`);
-                } else {
-                    state.winner = 1;
-                    state._winCondition = 'most_kills';
+                    return;
                 }
-                return;
             }
 
             const scores1 = _getModeScore(1, mpMode);
             const scores2 = _getModeScore(2, mpMode);
 
-            if (scores1 > scores2) {
+            if (!_ffaTie && scores1 > scores2) {
                 state.winner = 1;
                 state._winCondition = mpMode.scoringType === 'kills' ? 'most_kills' : mpMode.scoringType === 'ctf' ? 'most_captures' : 'most_points';
-            } else if (scores2 > scores1) {
+            } else if (!_ffaTie && scores2 > scores1) {
                 state.winner = 2;
                 state._winCondition = mpMode.scoringType === 'kills' ? 'most_kills' : mpMode.scoringType === 'ctf' ? 'most_captures' : 'most_points';
             } else if (mpMode.suddenDeath) {
@@ -74506,6 +74933,9 @@
                 state._winCondition = 'draw';
                 state._winLogged = true;
                 addLog('⏱ Time\'s up! The match ends in a draw.');
+                /* 2026-10-21 PvP audit #11: winner 0 is falsy, so checkWin / tickMatchClock never finalized a draw and the
+                   match played on, re-logging it every round — the draw ends the match itself */
+                setTimeout(() => finalizeMatch(), 0);
             }
         }
 
@@ -74606,6 +75036,7 @@
         // Keep this outside synchronized state: each viewer owns its connection.
         const _shotClockPauseReasons = new Set();
         let _shotClockActivation = 0, _shotClockExpiredActivation = null;
+        const SHOT_CLOCK_HOST_GRACE_SEC = 8;   // the host's backstop on a remote turn (_shotClockExpired)
         function _applyShotClockPause() {
             if (_shotClockPauseReasons.size && state.shotClock && state.shotClock.active && state.shotClock.pausedAt == null) {
                 state.shotClock.pausedAt = Date.now();
@@ -74663,8 +75094,18 @@
                turns. (The old check compared against CTRL.HUMAN, a constant
                that doesn't exist, so the clock could never fire at all.) */
             const ctrl = state.controllers[unit.player];
-            if (ctrl !== CTRL.LOCAL || !isOnlineMatch()) {
+            /* THE HOST'S BACKSTOP (2026-10-21 PvP audit #6): the guest's own browser ends the guest's turn, but a tab the
+               browser has throttled in the background (or a tampered client) never does. The host — whose clock is the
+               authority — ends a REMOTE unit's turn itself once the clock is SHOT_CLOCK_HOST_GRACE_SEC past the limit,
+               so the guest's own end-turn always gets there first when it is alive. */
+            const _net = (typeof window !== 'undefined') ? window._NET : null;
+            const _hostBackstop = ctrl === CTRL.REMOTE && isOnlineMatch() && !!_net && _net.role === 'host';
+            if ((ctrl !== CTRL.LOCAL && !_hostBackstop) || !isOnlineMatch()) {
                 return; // A mirror/remote turn must not disarm the host's clock.
+            }
+            if (_hostBackstop) {
+                const _over = (Date.now() - state.shotClock.startedAt) / 1000 - state.shotClock.limitSec;
+                if (_over < SHOT_CLOCK_HOST_GRACE_SEC || state._actionExecuting) return;   // the guest's action in flight finishes first
             }
             if (state.shotClock.activationId != null && _shotClockExpiredActivation === state.shotClock.activationId) return;
             _shotClockExpiredActivation = state.shotClock.activationId;
@@ -74682,6 +75123,19 @@
             state.actionMode = null;
             state.actionMenuView = 'root';
             state.pendingTarget = null;
+            if (_hostBackstop) {
+                // run it the way a relayed guest END TURN runs (online.js _executeRemoteAction), then sync the guest
+                const _savedRA = state._remoteAction;
+                state._remoteAction = true;
+                state.controllers[unit.player] = CTRL.LOCAL;
+                try { triggerEndTurn(); }
+                finally {
+                    state.controllers[unit.player] = ctrl;
+                    state._remoteAction = _savedRA;
+                }
+                if (typeof window._broadcastState === 'function') window._broadcastState();
+                return;
+            }
             triggerEndTurn();
         }
 
@@ -74773,7 +75227,7 @@
         window._ewShotClockCinematicPaused = () => _shotClockPauseReasons.has('cinematic');
 
         function tickMatchClock() {
-            if (!state.matchClock || state.matchClock.paused || state.winner) return;
+            if (!state.matchClock || state.matchClock.paused || state.winner || state._winCondition === 'draw') return;
 
             const mpMode = getActiveMultiplayerMode();
             const roundLimit = state.matchClock.roundLimit || mpMode.roundLimit || 0;
