@@ -12509,6 +12509,10 @@
                 c.style.width = Math.round(W * hr.scale) + 'px';
                 c.style.height = Math.round(H * hr.scale) + 'px';
                 c._ewMarginX = (gs || hr.crit ? 0 : mX) * hr.scale;   // glyph / stamp are ink at the edges
+                /* each side's own margin (the floating text's bunch, three-renderer _floatBox): the glyph sits at the
+                   left edge; the right ends at the digits or the stamp, so the glyph's matching pad is not ink */
+                c._ewMarginL = (gs ? 0 : padX + mX) * hr.scale;
+                c._ewMarginR = Math.max(0, W - Math.max(padX + w - mX, hr.crit ? padX + sCx + sR * 1.1 : 0)) * hr.scale;
                 c._ewMarginTop = (hr.crit ? Math.max(0, padY + sCy - sR) : mT) * hr.scale;
                 c._ewMarginBot = mB * hr.scale;
                 // The afterglow breathes while the killing blow lingers.
