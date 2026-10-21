@@ -8327,7 +8327,7 @@ const ThreeRenderer = (function () {
                     if (_spE && _spE.rot) m.rotation.y = -_spE.rot * Math.PI / 180;
                 }
             }
-            else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
+            else if (_isTreeKey(ok))            { m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y); if (m) m._ew_occTree = true; }   // THE TREE FADE
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the
                    prism. The other three tiles carry a footprint-shadow entry
@@ -19874,6 +19874,22 @@ const ThreeRenderer = (function () {
         }
         return null;
     }
+    /* THE TREE FADE (mondo 2026-10-21, after the playtest's "trees and darkness hide the units": "you can make them fade
+       more"): a TREE (a board tree object, a room's planted tree) fades whenever a sight line to a unit the viewer sees, the
+       hovered tile or the panned tile crosses it above the subject's shins — standing in front of the unit, not only hanging
+       over it as THE OVERHEAD FADE asks. Other on-grid pieces keep the overhead rule (walls, trunks of buildings stay solid).
+       Same switch: window.EW_NO_OVERHEAD_FADE = true. */
+    function _occIsTreeRoot(root) {
+        if (!root) return false;
+        if (root._ew_occTree || (root._ew_hqTree && !root._ew_occNoTree)) return true;   // a chess statue is cover, not a tree
+        var c = root.children && root.children.length === 1 ? root.children[0] : null;
+        return !!(c && c._ew_hqTree && !c._ew_occNoTree);
+    }
+    function _occTreeHit(root, hit, sub) {
+        if (!hit || !hit.object || !hit.object.isMesh || hit.object._ew_occSkip || !_occIsTreeRoot(root)) return false;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return hit.point.y > sub.feetY + ts * 0.25;
+    }
     function _occOverheadHit(root, hit, sub, dir) {
         if (!root || !hit || !hit.object || !hit.object.isMesh || hit.object._ew_occSkip) return false;
         if (root._ew_occWall || root._ew_wallKey != null || root.name === 'hq_ceil' || root.name === 'hq_sky') return false;
@@ -20117,7 +20133,7 @@ const ThreeRenderer = (function () {
                     var vu = state.units[ui];
                     if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
                     var vq = _occUnitPoint(vu);
-                    if (vq) { vq.one = true; vq.ov = ovOn && !vu._insideBuildingId; subs.push(vq); }
+                    if (vq) { vq.one = true; vq.ov = ovOn && !vu._insideBuildingId; vq.head = vq.ov; subs.push(vq); }
                 }
             }
         }
@@ -20139,10 +20155,11 @@ const ThreeRenderer = (function () {
         for (var s = 0; s < subs.length; s++) {
             var sub = subs[s];
             var P = sub.P;
-            for (var q = 0, nq = sub.one ? 1 : 5; q < nq; q++) {
-                // centre ray + four spread around the subject in screen space
+            for (var q = 0, nq = sub.one ? (sub.head ? 2 : 1) : 5; q < nq; q++) {
+                // centre ray + four spread around the subject in screen space (a one-ray unit adds its head: THE TREE FADE)
                 _occVecA.copy(P);
-                if (q === 1) _occVecA.addScaledVector(_occRight, jit);
+                if (sub.one && q === 1) _occVecA.addScaledVector(_occUp, jit);
+                else if (q === 1) _occVecA.addScaledVector(_occRight, jit);
                 else if (q === 2) _occVecA.addScaledVector(_occRight, -jit);
                 else if (q === 3) _occVecA.addScaledVector(_occUp, jit);
                 else if (q === 4) _occVecA.addScaledVector(_occUp, -jit);
@@ -20164,7 +20181,7 @@ const ThreeRenderer = (function () {
                     if (!r || roots.has(r)) continue;
                     /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
                     if (_occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
-                    else if (sub.ov && _occOverheadHit(r, hits[hi], sub, _occDir)) roots.add(r);   // THE OVERHEAD FADE
+                    else if (sub.ov && (_occTreeHit(r, hits[hi], sub) || _occOverheadHit(r, hits[hi], sub, _occDir))) roots.add(r);   // THE TREE FADE / THE OVERHEAD FADE
                 }
             }
         }
@@ -52049,7 +52066,7 @@ const ThreeRenderer = (function () {
             var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[t.kind] && HQ_TREE_KINDS[t.kind].chess) ? HQ_TREE_KINDS[t.kind] : null;
             if (CK) {   // THE LOOKING-GLASS ARENA: a marble chess piece, solid cover on its square (never the foliage kit)
                 var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U);
-                cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; G.add(cg);
+                cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; cg._ew_occNoTree = true; G.add(cg);
                 _hq.blockers.push({ obj: cg, y: t.y, top: null, rad: t.r || 0.72, tree: true });
                 return;
             }
