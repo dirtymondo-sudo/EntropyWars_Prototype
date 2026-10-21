@@ -804,6 +804,40 @@ Root causes found and fixed (token 20261007-spellfreeze-01-cors):
   (steady light count = no WebGL recompile on a kill) and re-resolve their unit by id when the guest's units array is replaced.
   THE FOG BATCH: settled fog boxes draw in one merged LineSegments per kind (`_fogBatch`), only boxes mid-fade keep their own.
 
+## THE GUEST'S VIEW (2026-10-21, PvP audit #3 the rest; mondo: "start a new thread to work on the online sync")
+The guest got every unit's real tile in each state-sync (and every enemy walk path in its relays), so a unit hidden in
+the fog was one console line away. PR #394 already kept the host's unrevealed traps off the wire. online.js now:
+- **Masks fogged enemies in the snapshot.** `_guestView()` (host only, fog ON, battle, no winner) works out the guest's
+  sight: `computeVisibleTiles(guest)` with team vision forced on and the host's own `_fogRevealTiles` left out (they
+  never sync), the renderer's z-exact eye line (`_gvLosSeen`, mirrors three-renderer `_unitLosSeen`) and the rules'
+  `isInVision` (what attacks / spells check; a Blind / Jammed unit acting = `fogSoloUnit`, its own eyes). A living
+  enemy that is concealed (`isUnitConcealedFrom`: Invisible, smoke, Cryptid, Shadow Realm) or neither seen nor
+  aimable goes out masked (`_gvMaskUnit`): every stat, but `x = y = GV_HIDDEN_XY` (-999, off the board), `z = 0`, no
+  remembered positions (`_dyingX/Y`, `_deathTile`, `_aiLastPos`, `_aiRecentTiles`, `_doorAttackOrigin`, any numeric
+  `…X/Y/Z`, any object/array holding x,y) and `_netHidden: 1`. Off the board it never draws, blocks, gets targeted or
+  framed, so no guest code path needed changing; the roster card shows "—" for its tile (ui.js). Dead units are not
+  masked (the grave marks the spot). Fog OFF (Clash) or a decided match masks nothing. Cached on a vision key (units,
+  statuses, zones, wards, doors, towers, terrain version, round, a 1 s tick).
+- **Enemy decoys in the fog** are left out of `_deployedObjects` (a copy reads as a unit).
+- **Checksum over the units as sent.** `_ewStateChecksum(st, units)`: the state-sync stamp, the recovery snapshot and
+  recovery-confirmed hash the masked list, the guest hashes what it got, so the server's checks still agree.
+- **Relays** (`window._ewGuestRelayFilter`, called by `_emit` on the host, after the recorder tap): the host sends what
+  the guest's own `_ewApplyRelay` fog gates would show. Fully hidden walks / jumps / pushes / falls / shots / leaps /
+  rider shots / sky throws / dashes / storm bolts / collision sparks / key fx / det-cine / vfx3d(-x) are dropped; a walk
+  is trimmed to its seen stretch; a hit number in the fog keeps its value (the action shot's TOTAL DMG counts it) but
+  its tile becomes -999; a hidden caster's `cx/cy` (spell-focus-cam, support-cine) and an offensive camera event's hidden
+  side go to -999. When a shown beat involves a masked unit (a shot out of the fog at the guest's unit, a walk out of the
+  fog) the relay carries `_at: [[id, x, y, z]]` and the guest puts the body there first (a walk's first SEEN tile, never
+  the hidden one it left); `_netAt` makes the guest's checksum still hash it as sent until the next snapshot.
+- **Not covered:** a decoy on screen is still flagged `isDecoy` in the guest's data; `cine-fx` payloads and the host's own
+  view (the host runs the engine and holds everything). Browser check: two-tab host + guest match (scratchpad probe),
+  85 steps over 7 rounds: the masks matched the guest's own fog every step (the only "visible tile but masked" hits were
+  a Cryptid Bigfoot), 0 checksum mismatches, 0 page errors. Targeted: a guest socket drop + rejoin restores with the
+  masks kept (the three recovery checksums agree); a fogged enemy decoy never reaches the guest, one in view does; a
+  Blind guest unit acting = 4 tiles vs the team's 27; the filtered relays (walk out of the fog, shot from the fog,
+  finisher on the guest's unit, spell cams, numbers in the fog) replay on the guest with no errors. Host cost: ~1 ms
+  per vision change (cached otherwise), a whole masked snapshot ~1.3-2.5 ms on the sandbox CPU.
+
 ## THE WEBGPU HITCHES PASS (2026-10-12, mondo: "freeze or dip in FPS at heavy moments like combo spell animations ... transitioning from the explorable area to the battle and then from the end screen")
 Full log: WEBGPU_PLAN.md §10 "THE HITCHES PASS". Node renderer only (`?ew_gpu=webgpu`); WebGL is still the default.
 One shared light rig + one shared fog (scene swaps no longer rebuild every shader), InstancedMesh shaders shared across

@@ -1773,6 +1773,26 @@ SPD|VISION, CRT|EVA, MOV|JUMP, RNG. JUMP reads data.js `raceJumpStat`. It follow
   every damage spell. party-builder.js `pbCatGlyph(sp, cat)` gives them the kind (⚔ / three diamonds); the `.ew-dmgkind` chip
   after the name (info panel, SpellBlade rows) is gone. Checked: all 353 damage spells, 177 magic, none draws ⚔.
 
+## PLAYTEST FIXES: LETTERBOX, ROUND CHIP, FORECAST, RESULT SCREEN (2026-10-21, the hands-on playtest https://claude.ai/artifact/FMcV14kczkjTPVRDNoWeFq)
+- **The letterbox stuck over the scoreboard**: battle.js `showActionCamChrome` slid the bars in on the NEXT frame. A late
+  frame (a shader compile on a first cast, a slow PC) landed after the shot's own hide timer had run, so `.acam-chrome.active`
+  went on with no shot left to take it off: black bars over the score and Cube HP for whole turns. The frame now only adds
+  `active` if `_acChromeState` is still the shot that asked. Reproduced in a browser by blocking the main thread 900 ms after
+  a 600 ms shot; fixed run leaves the bars out, a normal shot still brings them in.
+- **"END OF ROUND — RECOVERY" stuck up**: the same race in `_eorPhaseLabel` (the fade-in frame beat the hide);
+  `_eorChipGen` makes a hide win. The chip also hides when a unit's activation starts (`_continueBlitzWithUnit_impl`) and
+  when the result screen fills (it used to sit behind DEFEAT after the last round's regen).
+- **The damage forecast in a corner / over empty ground**: three-renderer.js `showIntentBadges` placed the badges once, at
+  the target's screen spot when it was picked, and the menu camera's two-shot glided away under them. Each badge keeps its
+  tile + unit (`el._tiAnchor`) and `_updateIntentBadges` re-projects it every frame next to `_updatePressMarks`.
+- **The result screen**: the head's fact line carries the final score for a points decision (`⏱ ARENA SCORE 404 – 447`,
+  most kills / points / captures too) from `_vicArenaScore`, now a sibling of `_vicBuildModeTally` so both read the same
+  numbers. `body.vic-podium` also hides `#css2dOverlay` (plates showing the staged party's posed full HP, the Nexus counters),
+  `#eorPhaseChip` and `.acam-chrome`. "Player is exited." is the existing DOOR line, kept.
+- Not code bugs: the "camera drift" while picking a tile and the target "off screen" mid-pick were the sandbox's frame rate
+  (SwiftShader drew one frame per ~2.5 s, and the camera damping advances at most 0.05 s per frame, so a 12-frame, 0.2 s glide
+  took ~30 s). Settled frames frame caster + target.
+
 ## THE A–Z DEFAULT (2026-10-20, mondo: "sort the characters alphabetically in the party builder and make that the default")
 party-builder.js: the Codex of Vessels wall now opens on NAME A–Z (`sortKey 'label'`, `sortDir 'asc'`; was HP ↓).
 NAME A–Z / Z–A moved to the top of the SORT THE WALL menu; every stat sort (HP ↓ included) is unchanged below them.

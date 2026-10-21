@@ -18296,37 +18296,45 @@ const ThreeRenderer = (function () {
         };
     }
 
+    /* THE FORECAST RIDES THE TARGET (playtest 2026-10-21: the damage forecast sat in a screen corner or over empty
+       ground): the badges were placed once, where the target stood on screen when it was picked, and the menu camera's
+       two-shot then glided away under them. Each badge keeps its tile and is re-projected every frame (like the press
+       marks), so it stays over the target's head through the glide. */
+    function _placeIntentBadge(el, cam, cw, ch) {
+        var a = el._tiAnchor;
+        if (!a) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var ue = a.unitId != null ? unitEntries.get(a.unitId) : null;
+        var topY = (ue && ue.group && ue.group._ew_spriteTopY) ? ue.group._ew_spriteTopY : tileTopY(a.x, a.y) + ts * 0.6;
+        _projVec2.set(a.x * ts + ts / 2, topY, a.y * ts + ts / 2);
+        _projVec2.project(cam);
+        if (_projVec2.z > 1) { el.style.visibility = 'hidden'; return; }
+        el.style.visibility = '';
+        el.style.left = (((_projVec2.x + 1) / 2) * cw) + 'px';
+        el.style.top = (((1 - _projVec2.y) / 2) * ch - 4 - a.yOff * 1.2) + 'px';
+    }
+    function _updateIntentBadges() {
+        if (!_intentBadgeEls.length) return;
+        var cam = ThreeCamera.getCamera();
+        if (!cam || !canvas) return;
+        var cw = canvas.clientWidth, ch = canvas.clientHeight;
+        for (var i = 0; i < _intentBadgeEls.length; i++) _placeIntentBadge(_intentBadgeEls[i], cam, cw, ch);
+    }
+
     function showIntentBadges(tileX, tileY, badges) {
         if (!badges || !badges.length) return;
         _ensureIntentBadgeContainer();
         var cam = ThreeCamera.getCamera();
         if (!cam || !canvas) return;
-        var ts = CONFIG.tileSize || BASE_TILE;
-
-        var ue = null;
         var unitOnTile = state.units ? state.units.find(function(u) { return !u.dead && u.x === tileX && u.y === tileY; }) : null;
-        if (unitOnTile) ue = unitEntries.get(unitOnTile.id);
-        var spriteTopY;
-        if (ue && ue.group._ew_spriteTopY) {
-            spriteTopY = ue.group._ew_spriteTopY;
-        } else {
-            spriteTopY = tileTopY(tileX, tileY) + ts * 0.6;
-        }
-
-        _projVec2.set(tileX * ts + ts / 2, spriteTopY, tileY * ts + ts / 2);
-        _projVec2.project(cam);
-        if (_projVec2.z > 1) return;
         var cw = canvas.clientWidth, ch = canvas.clientHeight;
-        var sx = ((_projVec2.x + 1) / 2) * cw;
-        var sy = ((1 - _projVec2.y) / 2) * ch;
-
         for (var i = 0; i < badges.length; i++) {
             var b = badges[i];
             var el = document.createElement('div');
             el.className = 'ti-badge ' + b.cls;
             el.innerHTML = b.html;
-            el.style.left = sx + 'px';
-            el.style.top = (sy - 4 - b.yOff * 1.2) + 'px';
+            el._tiAnchor = { x: tileX, y: tileY, unitId: unitOnTile ? unitOnTile.id : null, yOff: b.yOff || 0 };
+            _placeIntentBadge(el, cam, cw, ch);
             _intentBadgeContainer.appendChild(el);
             _intentBadgeEls.push(el);
         }
@@ -25905,6 +25913,7 @@ const ThreeRenderer = (function () {
         _updateTetherTweens();
         _updateFloatTextTweens();
         _updatePressMarks();
+        _updateIntentBadges();
         _updateHitFxTweens();
         _updateLungeTweens();
         _updateDodgeTweens();

@@ -15696,10 +15696,10 @@
                     /* RESERVES rule 2: the ladder still runs; a reserve may take
                        the seat when it opens (battle.js _reserveQueueSeat). */
                     const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
-                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
+                    addLog(_defeatRespawnLine(unit, freeLeft > 0 ? ' — a reserve may take the seat.' : '.'));
                     shakeBoard('normal');
                 } else {
-                    addLog(`${_ctName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
+                    addLog(_defeatRespawnLine(unit, '.'));
                     shakeBoard('normal');
                 }
 
@@ -15790,6 +15790,21 @@
             if (t === 'lava' || t === 'deep_water' || t === 'chasm' || t === 'void' || t === 'tower_base') return false;
             if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
             return true;
+        }
+
+        /* The defeat line's respawn count (playtest 2026-10-21: "Respawns in 3 rounds" on round 20 of 20). The unit comes
+           back at the start of round (now + _respawnIn) — processRespawns ticks at each new round — and a round-limited
+           match ends after its last round (sudden death plays on), so a return past the limit is never promised. */
+        function _respawnPastLimit(n) {
+            const rl = (state.matchClock && state.matchClock.roundLimit) || 0;
+            return typeof n === 'number' && rl > 0 && !state.suddenDeathActive && (state.round || 0) + n > rl;
+        }
+        function _defeatRespawnLine(unit, tail) {
+            const n = unit._respawnIn || 0;
+            if (_respawnPastLimit(unit._respawnIn)) {
+                return `${_ctName(unit)} is defeated. No respawn before the round limit${tail}`;
+            }
+            return `${_ctName(unit)} is defeated. Respawns in ${n} round${n > 1 ? 's' : ''}${tail}`;
         }
 
         function processRespawns() {
@@ -16073,7 +16088,7 @@
             <div class="death-banner-icon">${isEnemy ? '⚔' : '💀'}</div>
             <div class="death-banner-text">
               <div class="death-banner-name">${escapeHtml(deadUnit.name || deadUnit.cls)}</div>
-              <div class="death-banner-sub">${isEnemy ? 'DEFEATED' : 'FALLEN'} ${killerText} · Respawn in ${deadUnit._respawnIn || '?'} rnd</div>
+              <div class="death-banner-sub">${isEnemy ? 'DEFEATED' : 'FALLEN'} ${killerText} · ${_respawnPastLimit(deadUnit._respawnIn) ? 'No respawn' : `Respawn in ${deadUnit._respawnIn || '?'} rnd`}</div>
             </div>
           `;
                 banner.style.borderColor = isEnemy ? 'rgba(85,211,138,0.6)' : 'rgba(255,80,80,0.6)';

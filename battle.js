@@ -5125,6 +5125,10 @@
             let vx = dx, vy = dy;
             let m = dist;                     // unspent momentum, in tiles
             let guard = 24;
+            /* THE THROW'S BOUNCES (playtest 2026-10-21, Big Kick: Homosapien and Cyborg traded crashes 7 times): maxBounces
+               is per THROW (COLLISION_CONFIG), so every body the momentum passes to shares one count — each chained slide
+               used to start its own, and a pocket of bodies ping-ponged up to maxBounces × (maxChain + 1) times. */
+            const thr = opts._throw || { bounces: 0 };
             const impacts = [];               // {x, y, atMs, kind} FX beats
 
             const stepTo = (nx, ny, nz) => {
@@ -5185,7 +5189,7 @@
                     if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
-                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1,
+                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr,
                                 toward, stopWithin: opts.stopWithin, viewer: opts.viewer
                             });
                             res.chain.push({ unit: occ, res: sub });
@@ -5200,7 +5204,7 @@
                                 perStepMs, delayMs: atMs + Math.floor(perStepMs / 2),
                                 stopBefore: opts.stopBefore || null,
                                 toward, stopWithin: opts.stopWithin,
-                                _depth: depth + 1
+                                _depth: depth + 1, _throw: thr
                             });
                             res.chain.push({ unit: occ, res: sub });
                             if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
@@ -5210,12 +5214,12 @@
                         break;
                     }
                     // The pin would not budge — a cushion. Bounce off it (a pull into a point just stops against it).
-                    if (toward || res.bounces >= cfg.maxBounces || m <= 0) break;
+                    if (toward || thr.bounces >= cfg.maxBounces || m <= 0) break;
                     res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                     res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
                     const uref = _slideReflect(target, cx, cy, cz, vx, vy);
                     vx = uref.dx; vy = uref.dy;
-                    res.bounces++;
+                    res.bounces++; thr.bounces++;
                     if (!simulate && (target.dead || target._dying)) break;
                     continue;
                 }
@@ -5258,10 +5262,10 @@
                 // Half-tile lunge INTO the wall face and back — sells the hit.
                 res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
                 res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
-                if (toward || res.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
+                if (toward || thr.bounces >= cfg.maxBounces) break;   // a pull into a point is pinned against the wall
                 const refl = _slideReflect(target, cx, cy, cz, vx, vy);
                 vx = refl.dx; vy = refl.dy;
-                res.bounces++;
+                res.bounces++; thr.bounces++;
                 if (!simulate && (target.dead || target._dying)) break;   // the wall won
             }
 
@@ -6053,15 +6057,19 @@
             if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
             const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
             const nm = (spell && spell.name) || 'Execute';
-            addLog(`💀 ${nm}: ${_ctName(target)} was at ${Math.max(1, Math.round(100 * target.hp / target.maxHp))}% — EXECUTED!`);
-            showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
-            applyDamageToUnit(target, lethal, `${nm} executes `, {
+            const pct = Math.max(1, Math.round(100 * target.hp / target.maxHp));
+            applyDamageToUnit(target, lethal, `${nm}: `, {
                 sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
                 damageType: (spell && spell.damageType) || 'physical', spellType: (spell && spell.spellType) || null,
                 spellElement: (spell && spell.id) ? getSpellElement(spell) : ((spell && spell.spellElement) || null),
                 element: (spell && spell.id) ? classifySpellElement(spell) : null
             });
-            return !!target.dead;
+            /* EXECUTED only when the follow-up really killed (Protect / Indomitable Will / the realm can still save it) */
+            if (target.dead || target._dying) {
+                addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
+                showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
+            }
+            return !!(target.dead || target._dying);
         }
         window._applyExecuteRider = _applyExecuteRider;
 
@@ -14882,8 +14890,19 @@
             const chart = out.stab ? m / stabMult : m;
             out.weak = chart > 1.001; out.resist = chart < 0.999;
             out.mult = m;
-            out.dmg = Math.max(1, Math.round(getFinisherDamage(unit) * m));
-            out.kill = (target.hp || 0) <= out.dmg;
+            /* THE REAL HIT (playtest 2026-10-21: the list said −798, the blow took 1270): the number is the engine's own
+               hit math on this victim (forecastHitOnUnit — level, armour soak, shield, every multiplier), mid roll, with the
+               variance window; KILL only when even the low roll empties the bar. */
+            const raw = getFinisherDamage(unit), V = _finRules().variance || 0;
+            const hitOpts = { sourceUnit: unit, damageType: 'magic', spellType: def.type, keepFacing: true };
+            const fh = (n) => { try { const f = forecastHitOnUnit(target, n, hitOpts); return f ? f.dmg : null; } catch (err) { return null; } };
+            const mid = fh(raw);
+            if (mid == null) {
+                out.dmg = Math.max(1, Math.round(raw * m)); out.min = out.dmg; out.max = out.dmg;
+            } else {
+                out.dmg = mid; out.min = fh(Math.max(0, raw - V)) ?? mid; out.max = fh(raw + V) ?? mid;
+            }
+            out.kill = out.min > 0 && (target.hp || 0) <= out.min;
             return out;
         }
         function getFinisherBestTarget(unit) {
@@ -14942,7 +14961,9 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
 
-            addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)} — ${String(def.name || '').toUpperCase()}! (${String(def.type).toUpperCase()}-type finisher)`);
+            /* the opening line names the finisher, never the outcome: "executes" is written only when the blow kills (the
+               2026-10-21 playtest read "Anubis executes Cowboy" while Cowboy stood on 610 HP) */
+            addLog(`☠ ${_ctName(unit)} unleashes ${String(def.name || '').toUpperCase()} on ${_ctName(target)}! (${String(def.type).toUpperCase()}-type finisher)`);
             if (unitHasStatus(unit, 'invisible')) { clearStatus(unit, 'invisible'); addLog(`${_ctName(unit)} breaks camouflage!`); }
             try { setUnitFacing(unit, target.x, target.y); } catch (err) {}
 
@@ -14955,6 +14976,8 @@
                     spellType: def.type,
                     keepFacing: true
                 });
+                if (target.dead || target._dying) addLog(`☠ ${_ctName(unit)} executes ${_ctName(target)}!`);
+                else addLog(`☠ ${_ctName(target)} survives ${_ctSp(def.name)}.`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
             };
             const finish = (delayMs) => {
                 window.setTimeout(() => {
@@ -22809,7 +22832,12 @@
             const dmgNum = el.querySelector('.acam-dmg-num');
             if (dmgRow) dmgRow.classList.remove('show');
             if (dmgNum) { dmgNum.textContent = '0'; dmgNum.classList.remove('crit', 'tick', 'land'); }
-            requestAnimationFrame(() => el.classList.add('active'));
+            /* THE BARS NEVER OUTLIVE THEIR SHOT (playtest 2026-10-21: the letterbox stayed down over the
+               scoreboard for whole turns): the bars slide in on the next frame, and a frame that comes late
+               (a shader compile on the first cast, a slow PC) used to land AFTER the shot had already hidden
+               — the bars went in with no shot left to take them out. Only the shot that asked brings them in. */
+            const _shotSt = _acChromeState;
+            requestAnimationFrame(() => { if (_acChromeState === _shotSt) el.classList.add('active'); });
             _acChromeState.hideTimer = setTimeout(() => hideActionCamChrome(), totalMs);
             /* the turn clock (hud.js TurnColumn) steps aside for the shot and comes back when the chrome leaves
                (mondo 2026-10-17: "let's hide the turn clock during spell animations") */
@@ -27819,6 +27847,7 @@
         // the round banner and again once the buffered round-start events have
         // finished playing.
         let _eorChipEl = null;
+        let _eorChipGen = 0;   // bumped by every show/hide — a late fade-in frame only applies to the newest show
         // The chip used to sit at a fixed top:64px, which landed it straight
         // ON the scoreboard (score plate + turn-order flanks, top:8px,
         // centered). Measure the scoreboard live instead — it scales with
@@ -27853,9 +27882,13 @@
             }
             _eorChipEl.style.top = _eorChipTop() + 'px';
             _eorChipEl.textContent = text;
-            requestAnimationFrame(() => { if (_eorChipEl) _eorChipEl.style.opacity = '1'; });
+            /* a hide that lands before this fade-in's frame wins (playtest 2026-10-21: "END OF ROUND —
+               RECOVERY" stayed up through whole turns and behind the result screen) */
+            const g = ++_eorChipGen;
+            requestAnimationFrame(() => { if (_eorChipEl && g === _eorChipGen) _eorChipEl.style.opacity = '1'; });
         }
         function _eorPhaseLabelHide() {
+            _eorChipGen++;
             if (_eorChipEl) _eorChipEl.style.opacity = '0';
         }
         // state.js beats (detonations, storms, buffered round events) reach
@@ -34602,6 +34635,33 @@
             return src.id + '|' + _protectActionSeq;
         }
 
+        /* THE HIT LINE (playtest 2026-10-21: "Anubis drains life from Cowboy takes 360 HP damage."): a caller's lead is a
+           label ("Big Kick: ", "Anubis attacks: "), a verb phrase that names the victim next ("Anubis drains life from ") or a
+           sentence waiting for its number ("Bigfoot is struck by lightning for"). Each reads as one sentence:
+             label  → "Big Kick: Cowboy takes 360 HP damage." / "Big Kick: Cowboy blocks the hit."
+             verb   → "Anubis drains life from Cowboy for 360 HP damage." / "…from Cowboy, but Cowboy blocks the hit."
+             for    → "Bigfoot is struck by lightning for 39 HP damage." / "Bigfoot is struck by lightning, but Bigfoot …"
+           dmg = the HP number (the hit line); otherwise `what` finishes the sentence. The lead's own first name (callers
+           write it with unitDisplayName) is tagged with its side like the victim's, so a mirror match ("Bigfoot attacks:
+           Bigfoot takes 229 HP damage.") still colours the attacker and the victim apart. */
+        function _dmgLogLine(sourceText, target, what, dmg, srcUnit) {
+            let src = String(sourceText || '');
+            const c0 = src.charCodeAt(0);
+            if (!(c0 >= 0xE000 && c0 <= 0xE00F)) {
+                for (const u of [srcUnit, target]) {
+                    const nm = u ? unitDisplayName(u) : '';
+                    if (nm && src.startsWith(nm) && !/\w/.test(src.charAt(nm.length))) { src = _ctName(u) + src.slice(nm.length); break; }
+                }
+            }
+            const who = _ctName(target), plain = _ctPlain(src);
+            if (/\bfor\s*$/i.test(plain)) {
+                const lead = src.replace(/\s*\bfor\s*$/i, '');
+                return dmg != null ? `${lead} for ${dmg} HP damage.` : `${lead}, but ${who} ${what}`;
+            }
+            if (/[A-Za-z]\s$/.test(plain)) return dmg != null ? `${src}${who} for ${dmg} HP damage.` : `${src}${who}, but ${who} ${what}`;
+            return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
+        }
+
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
@@ -34689,7 +34749,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`${sourceText}${_ctName(target)} is protected and takes no damage!`);
+                addLog(_dmgLogLine(sourceText, target, 'is protected and takes no damage!', null, opts.sourceUnit || null));
                 flashUnit(target.id, 'heal');
                 showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
 
@@ -34708,7 +34768,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`🌑 ${sourceText}${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
                 return false;
             }
 
@@ -34800,7 +34860,7 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog(`👻 ${sourceText}${_ctName(target)} has no body to strike — the ${_immDT} blow passes straight through!`);
+                addLog('👻 ' + _dmgLogLine(sourceText, target, `has no body to strike — the ${_immDT} blow passes straight through!`, null, opts.sourceUnit || null));
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, '👻 PASSES THROUGH', 'protect-block', { durationMs: 1200 });
                     flashUnit(target.id, 'block');
@@ -35175,7 +35235,7 @@
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
                     _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
-                addLog(`${sourceText}${_ctName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
+                addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
                 if (sourceUnit && typeNote) {
                     const dlg = [];
@@ -35185,7 +35245,7 @@
                 }
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
-                addLog(`${sourceText}${_ctName(target)} blocks the hit.`);
+                addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
@@ -44747,6 +44807,7 @@
             const key = String(state.matchNumber || 0) + ':' + String(state.startTime || 0);
             if (_vicShownKey === key && resultOverlay && !resultOverlay.classList.contains('hidden')) { console.warn('[Debrief] a second fill of the showing result screen was dropped'); return; }
             _vicShownKey = key;
+            try { _eorPhaseLabelHide(); } catch (e) {}   // the last round's phase chip never sits behind the result
             try { _showResultOverlayBody(); }
             catch (e) { _vicFail('the result screen', e); }
             try {
@@ -44926,7 +44987,19 @@
             facts.push(_vicRoundStr);
             facts.push(durationStr);
             facts.push(`<span class="p1">${(state.units||[]).filter(u=>u.player===1&&!u.dead).length}</span> v <span class="p2">${(state.units||[]).filter(u=>u.player===2&&!u.dead).length}</span> STANDING`);
-            if (state._winCondition && _winCondLabels[state._winCondition]) facts.push(_winCondLabels[state._winCondition]);
+            /* THE SCORE ON THE FRONT (playtest 2026-10-21: "⏱ ARENA SCORE" with no number — the 404–447 was
+               two tabs away): a match decided on points carries its final score right in the fact line,
+               the same numbers the PERFORMANCE tally adds up */
+            if (state._winCondition && _winCondLabels[state._winCondition]) {
+                let _sc = null;
+                try {
+                    const _wc = state._winCondition;
+                    if (_wc === 'arena_composite' || _wc === 'arena_keys_tiebreak' || (_wc === 'sudden_death' && _mpMode && _mpMode.id === 'arena')) _sc = [_vicArenaScore(1).pts, _vicArenaScore(2).pts];
+                    else if (_wc === 'most_kills') _sc = [state.matchKills?.[1] || 0, state.matchKills?.[2] || 0];
+                    else if (_wc === 'most_points' || _wc === 'most_captures' || _wc === 'flag_captures') _sc = [state.matchScores?.[1] || 0, state.matchScores?.[2] || 0];
+                } catch (e) { _sc = null; }
+                facts.push(_winCondLabels[state._winCondition] + (_sc ? ` <b class="vic-fact-score"><span class="p1">${_sc[0]}</span> – <span class="p2">${_sc[1]}</span></b>` : ''));
+            }
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
@@ -45222,46 +45295,48 @@
 
         /* THE MODE'S TALLY (the PERFORMANCE sheet): Arena's composite score as two
            columns of points, the kill / point / capture modes as one score line. */
+        /* the Arena composite score of one side — the PERFORMANCE tally and the head's fact line read the same */
+        function _vicArenaScore(p) {
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const enemy = p === 1 ? 2 : 1;
+            let pts = 0, details = [];
+            const kills = state.matchKills?.[p] || 0;
+            const killPts = kills * ARENA_PTS.kill;
+            pts += killPts;
+            details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡', unit: ['KILL', 'KILLS'] });
+            const eTw = state.towers?.[enemy];
+            let tDmg = 0;
+            if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
+            let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
+            if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
+            pts += tDmgPts;
+            details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
+            let hgCount = 0;
+            if (state.hourglasses) {
+                hgCount = state.hourglasses.filter(h => {
+                    if (!h.carriedBy) return false;
+                    const c = state.units.find(u => u.id === h.carriedBy);
+                    return c && !c.dead && c.player === p;
+                }).length;
+            }
+            const hgPts = hgCount * ARENA_PTS.hourglass;
+            pts += hgPts;
+            details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '🗝' });
+            const nexRounds = state._arenaNexusControl?.[p] || 0;
+            const nexPts = nexRounds * ARENA_PTS.nexusRound;
+            pts += nexPts;
+            details.push({ label: 'Nexus Rounds', raw: nexRounds, pts: nexPts, icon: '⬡' });
+            const bountyPts = state._arenaBountyPts?.[p] || 0;
+            if (bountyPts > 0) {
+                pts += bountyPts;
+                details.push({ label: 'Bounties', raw: state._arenaBountyCount?.[p] || Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
+            }
+            return { pts, details };
+        }
+
         function _vicBuildModeTally(_mpMode) {
             if (!_mpMode) return '';
             if (_mpMode.id === 'arena') {
-                const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
-                function _vicArenaScore(p) {
-                    const enemy = p === 1 ? 2 : 1;
-                    let pts = 0, details = [];
-                    const kills = state.matchKills?.[p] || 0;
-                    const killPts = kills * ARENA_PTS.kill;
-                    pts += killPts;
-                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡', unit: ['KILL', 'KILLS'] });
-                    const eTw = state.towers?.[enemy];
-                    let tDmg = 0;
-                    if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-                    let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-                    if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
-                    pts += tDmgPts;
-                    details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
-                    let hgCount = 0;
-                    if (state.hourglasses) {
-                        hgCount = state.hourglasses.filter(h => {
-                            if (!h.carriedBy) return false;
-                            const c = state.units.find(u => u.id === h.carriedBy);
-                            return c && !c.dead && c.player === p;
-                        }).length;
-                    }
-                    const hgPts = hgCount * ARENA_PTS.hourglass;
-                    pts += hgPts;
-                    details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '🗝' });
-                    const nexRounds = state._arenaNexusControl?.[p] || 0;
-                    const nexPts = nexRounds * ARENA_PTS.nexusRound;
-                    pts += nexPts;
-                    details.push({ label: 'Nexus Rounds', raw: nexRounds, pts: nexPts, icon: '⬡' });
-                    const bountyPts = state._arenaBountyPts?.[p] || 0;
-                    if (bountyPts > 0) {
-                        pts += bountyPts;
-                        details.push({ label: 'Bounties', raw: state._arenaBountyCount?.[p] || Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
-                    }
-                    return { pts, details };
-                }
                 const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
                 /* rows matched by LABEL, never index — the Bounties row is only pushed
                    for a side that earned some */
@@ -50923,9 +50998,16 @@
                id no longer parks it in its "active unit" branch — see THE CLEAN BOOT). */
             try {
                 const _bootN = state.matchNumber;
-                setTimeout(() => {
+                let _bootTries = 0;
+                const _bootCheck = () => {
                     try {
                         if (state.phase !== 'battle' || state.winner || state.matchNumber !== _bootN || state._blitzActiveUnitId) return;
+                        /* the round-1 arrival still playing (the crane, the round card, a death close-up) is the boot running
+                           slowly, not a stall: look again in 5 s rather than kick the loop under it (a slow machine took
+                           longer than 10 s on the 2026-10-21 playtest); after a minute the kick runs regardless */
+                        const _busy = (camera && camera.isBusy && camera.isBusy())
+                            || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) || _walkAnimActive;
+                        if (_busy && ++_bootTries < 12) { setTimeout(_bootCheck, 5000); return; }
                         const gates = {
                             phase: state.phase, gameState: state.gameState, round: state.round, activePlayer: state.activePlayer,
                             actionExecuting: !!state._actionExecuting, roundAdvanceInProgress: !!_roundAdvanceInProgress,
@@ -50940,7 +51022,8 @@
                         console.warn('[BOOT] no unit has activated 10 s after the match booted — the gates:', JSON.stringify(gates));
                         if (!state.uiDialog && !gates.cinematic && !gates.pendingReplace) { console.warn('[BOOT] kicking the turn loop once'); maybeAdvanceTurn(); }
                     } catch (e) {}
-                }, 10000);
+                };
+                setTimeout(_bootCheck, 10000);
             } catch (e) {}
 
             if (mpMode.hasFlags) {
@@ -53069,8 +53152,12 @@
                    always settles within LS_MAX_WAIT_MS; 60s is catastrophe
                    insurance only. */
                 if (_matchBootPendingSince) {
-                    if (Date.now() - _matchBootPendingSince < 60000) return reset();
-                    console.warn('[WATCHDOG] Match boot pending for 60s+ — forcing the turn loop.');
+                    /* past the loading gate's own cap (LS_MAX_WAIT_MS, 90 s since it grew from 45 s) plus the VS splash:
+                       a 60 s line fired INSIDE a slow first load and started the half-booted match described above
+                       (seen on the 2026-10-21 software-renderer playtest) */
+                    const _bootCap = (typeof LS_MAX_WAIT_MS === 'number' ? LS_MAX_WAIT_MS : 90000) + 45000;
+                    if (Date.now() - _matchBootPendingSince < _bootCap) return reset();
+                    console.warn('[WATCHDOG] Match boot pending past the loading cap — forcing the turn loop.');
                     _matchBootPendingSince = 0;
                 }
                 /* Visible activity = the engine is mid-sequence, not stuck. */
@@ -53245,6 +53332,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
 
                 // Training match: turbo ON for a CPU unit, OFF for the human's.
@@ -72501,9 +72589,18 @@
                     }
 
                     const _tcNow = (t) => t === terrainType || (_isWaterPaint && (t === 'water' || t === 'deep_water'));
-                    const _tcN = spell.monument ? convertedTiles.length : _tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
-                        ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length;
-                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${_tcN} tile${_tcN !== 1 ? 's' : ''} to ${terrainType}.`);
+                    /* A WALL SPELL'S COUNT (2026-10-21, mondo: "the combat log reading 0 tiles converted ... it is clearly a bug"):
+                       a monument row (Pyramid Protocol, Walls of Camelot) never paints the ground, so convertedTiles stayed empty
+                       and the line always said "Converted 0 tiles" while the walls went up. Its line now waits for the placer
+                       below and counts the footprint tiles a piece of this wall stands on once it is done (a recast on a
+                       standing wall still says 3, like an ice tile recast to ice). */
+                    const _tcLine = (n) => addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${terrainType}.`);
+                    let _tcLogged = false;
+                    if (!spell.monument) {
+                        _tcLine(_tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
+                            ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length);
+                        _tcLogged = true;
+                    }
 
                     // 🔥 Fire terrain-walls IGNITE what they touch: the wall
                     // keeps burning on the board for several rounds (biting
@@ -72573,6 +72670,8 @@
                             }, { liftUnits: true });   // a unit on the tile rides up onto the piece (mondo 2026-10-07), never skips it
                             if (ok) _monPlaced++;
                         });
+                        _tcLine(affectedTiles.filter(at => (state.monuments || []).some(m => m.kind === _monKind && m.x === at.x && m.y === at.y)).length);
+                        _tcLogged = true;
                         if (_monPlaced > 0) {
                             _invalidateBoardGrid();
                             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
@@ -72582,6 +72681,7 @@
                         }
                         scheduleBoardRender();
                     }
+                    if (!_tcLogged) _tcLine(0);
                 }, impactDelay);
 
                 state._spellOrientation = null;

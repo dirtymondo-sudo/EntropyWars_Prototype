@@ -206,6 +206,7 @@
         .vic-fact .p1 { color: var(--vic-p1); font-weight: 700; }
         .vic-fact .p2 { color: var(--vic-p2); font-weight: 700; }
         .vic-fact-dot { color: var(--vic-dim); }
+        .vic-fact-score { font-size: 15px; letter-spacing: 0.06em; margin-left: 4px; white-space: nowrap; }
         /* the campaign / dungeon cards write their gold section into the fact line */
         .vic-match-info .camp-gold-section { text-align: left; font-family: inherit; letter-spacing: 0; }
         /* the field report: what this crossing filed (a condition, a stabilized
@@ -806,6 +807,10 @@
         .result-overlay .door-result-stamp .drs-site.on { display: none; }
         body.vic-podium #mapRow > *:not(.map-center) { visibility: hidden !important; }
         body.vic-podium .map-center > *:not(#threeCanvas):not(#css2dOverlay) { visibility: hidden !important; }
+        /* the board's own chrome stays off the stage too (playtest 2026-10-21: name plates with the staged
+           party's posed full HP, the Nexus counter, the end-of-round chip and the shot letterbox all showed
+           through the DEFEAT title) */
+        body.vic-podium #css2dOverlay, body.vic-podium #eorPhaseChip, body.vic-podium .acam-chrome { visibility: hidden !important; }
 
         /* ── narrow: the panel becomes the lower half, the stage the upper ── */
         @media (max-width: 900px), (max-height: 520px) {
