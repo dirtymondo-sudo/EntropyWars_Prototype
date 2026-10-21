@@ -22408,6 +22408,140 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* THE FORCE FIELD (2026-10-21, mondo: "when a unit is slammed into a wall that is the outer edge of the map, can we make
+       like a force field effect when they bounce off of it"): a body a forced slide slams into the board's OUTER edge
+       (battle.js resolveForcedSlide, info.kind 'edge') lights a hex-grid barrier on that face of its tile — a flash, a
+       ripple ring out from the contact point, the grid fading off. Look only: the slam, its damage and the rebound are
+       the existing rules. Inner walls keep their look. Two planes per face (the grid + the ripple), shared geometry and
+       textures, materials freed when it ends; it reads without bloom (bright unlit cyan, tone mapping off, no fog).
+       (tx, ty) = the tile the body bounced on, (dx, dy) = the way it was going, tz = its level. */
+    var _ffList = [];
+    var _ffGeo = null, _ffHexTex = null, _ffMaskTex = null, _ffRingTex = null;
+    var _FF_MS = 820;
+    function _ffTextures() {
+        if (_ffHexTex || typeof document === 'undefined') return !!_ffHexTex;
+        /* the grid: pointy hexes on a 256² tile that wraps both ways (4 columns, 4 rows, every other row shifted) */
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var g = c.getContext('2d');
+        g.strokeStyle = '#ffffff'; g.lineWidth = 7; g.lineJoin = 'round';
+        g.shadowColor = '#ffffff'; g.shadowBlur = 10;
+        var sx = 64, sy = 64, rx = sx / Math.sqrt(3), ry = sy / 1.5;
+        for (var row = -1; row <= 4; row++) {
+            for (var col = -1; col <= 4; col++) {
+                var cx = col * sx + ((row & 1) ? sx / 2 : 0), cy = row * sy;
+                g.beginPath();
+                for (var k = 0; k < 6; k++) {
+                    var a = Math.PI / 6 + k * Math.PI / 3;
+                    var px = cx + Math.cos(a) * rx, py = cy + Math.sin(a) * ry * 0.98;
+                    if (k) g.lineTo(px, py); else g.moveTo(px, py);
+                }
+                g.closePath(); g.stroke();
+            }
+        }
+        _ffHexTex = new THREE.CanvasTexture(c);
+        _ffHexTex.wrapS = _ffHexTex.wrapT = THREE.RepeatWrapping;
+        _ffHexTex.repeat.set(2.2, 2);
+        /* the mask: the grid is strongest round the contact point and dies off before the panel's edge */
+        var m = document.createElement('canvas'); m.width = m.height = 128;
+        var mg = m.getContext('2d');
+        mg.fillStyle = '#000'; mg.fillRect(0, 0, 128, 128);
+        var gr = mg.createRadialGradient(64, 64, 0, 64, 64, 64);
+        gr.addColorStop(0.00, '#ffffff'); gr.addColorStop(0.40, '#d8d8d8');
+        gr.addColorStop(0.75, '#585858'); gr.addColorStop(1.00, '#000000');
+        mg.fillStyle = gr; mg.fillRect(0, 0, 128, 128);
+        _ffMaskTex = new THREE.CanvasTexture(m);
+        /* the ripple: a soft bright ring */
+        var r = document.createElement('canvas'); r.width = r.height = 128;
+        var rg = r.getContext('2d');
+        var rr = rg.createRadialGradient(64, 64, 0, 64, 64, 64);
+        rr.addColorStop(0.00, 'rgba(255,255,255,0.0)'); rr.addColorStop(0.62, 'rgba(255,255,255,0.0)');
+        rr.addColorStop(0.80, 'rgba(255,255,255,1.0)'); rr.addColorStop(0.90, 'rgba(255,255,255,0.35)');
+        rr.addColorStop(1.00, 'rgba(255,255,255,0.0)');
+        rg.fillStyle = rr; rg.fillRect(0, 0, 128, 128);
+        _ffRingTex = new THREE.CanvasTexture(r);
+        _ffGeo = new THREE.PlaneGeometry(1, 1);
+        return true;
+    }
+    function forceFieldFx(tx, ty, dx, dy, tz) {
+        if (!scene || !_ffTextures()) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var baseY = _tileSurfaceY(tx, ty, tz);
+        /* (dx, dy) carry only the axes that leave the board (battle.js reads them off isInside): a diagonal into a
+           corner lights both faces */
+        var faces = [];
+        if (dx) faces.push({ ax: 'x', s: dx > 0 ? 1 : -1 });
+        if (dy) faces.push({ ax: 'z', s: dy > 0 ? 1 : -1 });
+        for (var i = 0; i < faces.length; i++) {
+            var f = faces[i];
+            var grp = new THREE.Group();
+            var wx = tx * ts + ts / 2, wz = ty * ts + ts / 2;
+            if (f.ax === 'x') { wx += f.s * ts * 0.5; grp.rotation.y = Math.PI / 2; }
+            else wz += f.s * ts * 0.5;
+            grp.position.set(wx, baseY + ts * 0.55, wz);
+            var hexTex = _ffHexTex.clone();          // its own scroll; the canvas is shared
+            hexTex.needsUpdate = true;
+            hexTex.offset.set(Math.random(), Math.random());
+            var gridMat = new THREE.MeshBasicMaterial({
+                map: hexTex, alphaMap: _ffMaskTex, color: new THREE.Color(0x6ff4ff),
+                transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+                depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            });
+            var grid = new THREE.Mesh(_ffGeo, gridMat);
+            grid.scale.set(ts * 2.6, ts * 1.9, 1);
+            grid.renderOrder = 5;
+            grp.add(grid);
+            /* a faint sheet under the grid so it still reads over a bright floor or a white sky */
+            var sheetMat = new THREE.MeshBasicMaterial({
+                alphaMap: _ffMaskTex, color: new THREE.Color(0x1aa8d8),
+                transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            });
+            var sheet = new THREE.Mesh(_ffGeo, sheetMat);
+            sheet.scale.set(ts * 2.6, ts * 1.9, 1);
+            sheet.renderOrder = 4;
+            grp.add(sheet);
+            var ringMat = new THREE.MeshBasicMaterial({
+                map: _ffRingTex, color: new THREE.Color(0xc8ffff),
+                transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+                depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            });
+            var ring = new THREE.Mesh(_ffGeo, ringMat);
+            ring.position.z = 0.5;
+            ring.renderOrder = 6;
+            grp.add(ring);
+            scene.add(grp);
+            _ffList.push({ g: grp, grid: grid, sheet: sheet, ring: ring, hexTex: hexTex, t0: _animNow(), ts: ts });
+        }
+    }
+    function _updateForceFieldFx() {
+        if (!_ffList.length) return;
+        var now = _animNow();
+        for (var i = _ffList.length - 1; i >= 0; i--) {
+            var f = _ffList[i];
+            var t = now - f.t0;
+            if (t >= _FF_MS || !f.g.parent) {
+                scene.remove(f.g);
+                f.grid.material.dispose(); f.sheet.material.dispose(); f.ring.material.dispose(); f.hexTex.dispose();
+                _ffList.splice(i, 1);
+                continue;
+            }
+            var k = t / _FF_MS;
+            /* snap on in 60 ms, a quick flicker, then fade off */
+            var on = t < 60 ? t / 60 : Math.pow(1 - (t - 60) / (_FF_MS - 60), 1.6);
+            var flick = t < 260 ? (0.85 + 0.15 * Math.sin(t * 0.09)) : 1;
+            f.grid.material.opacity = Math.max(0, on * flick);
+            f.sheet.material.opacity = Math.max(0, on * 0.38);
+            /* the barrier gives a little where it was hit, then springs back */
+            var give = Math.sin(Math.min(1, t / 300) * Math.PI) * 0.08;
+            f.grid.scale.set(f.ts * 2.6 * (1 + give), f.ts * 1.9 * (1 + give), 1);
+            f.hexTex.offset.y += 0.004;
+            /* the ripple runs out from the contact point */
+            var rk = Math.min(1, t / 520);
+            var rs = f.ts * (0.25 + 2.3 * (1 - Math.pow(1 - rk, 2)));
+            f.ring.scale.set(rs, rs, 1);
+            f.ring.material.opacity = Math.max(0, (1 - rk) * 0.95);
+        }
+    }
+
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
         /* THE LEAP (2026-09-14): the engine has ALREADY moved the unit to the
            landing tile when this is called (charge, hop, knockback), so
@@ -25735,6 +25869,7 @@ const ThreeRenderer = (function () {
         _updateClipTravelTweens();
         _updateDeathTweens();
         _updateKeyFx();
+        _updateForceFieldFx();
         _updateProjectileTweens();
         _updateTetherTweens();
         _updateFloatTextTweens();
@@ -72064,6 +72199,7 @@ const ThreeRenderer = (function () {
 
         /* DOOR 6.3: the Key pickup celebration (battle.js playKeySecuredFx) */
         keyPickupFx, keyFxWarm,
+        forceFieldFx,   // THE FORCE FIELD (2026-10-21): a slam into the board's outer edge
         warmProjectileModels: _warmProjectileModels,   // THE MATCH WARM (2026-09-20)
 
         hasActiveAnims, hasBlockingAnims, hasDecorAnims,
@@ -72510,6 +72646,11 @@ window.ThreeAnim = {
 
     hitEffect: function(tileX, tileY, variant, isCrit, durationMs) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startHitEffect(tileX, tileY, variant, isCrit, durationMs);
+    },
+
+    // THE FORCE FIELD: the barrier lights on the board's outer edge where a slid body slams it
+    forceField: function(tileX, tileY, dx, dy, tz) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.forceFieldFx(tileX, tileY, dx, dy, tz);
     },
 
     // Impact frame: near-freeze all combat animation for a real-time beat.

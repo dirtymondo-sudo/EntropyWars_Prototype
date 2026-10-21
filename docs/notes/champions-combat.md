@@ -1528,6 +1528,13 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   turns the existing ambient dust motes amber and thick (three-vfx `_ambDrought`). Sky grade already map-wide.
 - Summon targeting preview for a global weather is just the picked tile (ui.js summonWeather area).
 
+## BLOOD RAIN IS RED (2026-10-21, mondo: "can we make blood rain red")
+- The drops were 1.2 units wide (under a pixel at the battle zoom) in a dark 200,40,50 at 0.45-0.9 alpha, so the rain read
+  as no colour. three-vfx.js `_RAIN_CFG.bloodRain` now 4.5 wide x 40-70 tall, `dropOpacity: 0.95` (new per-config key,
+  default 0.7 for the other rains), splash chance 0.7 and 6-30 size; `rain-drop-blood` / `rain-splash-blood` gradients are
+  full-strength red. Drop budget unchanged (90 map-wide, 50 on EW_PERF_LOW). Rain is renderer-local: the guest builds it
+  from the synced `state.activeWeather`, nothing to relay.
+
 ## THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate all that water")
 - History: the old build (index.html era) had `seedTerrain` on WEATHER_REGISTRY rows + `seedTerrainAt` / `seedWeatherTerrain`;
   cut 2026-04-01 (commit ce37c0a vs 78b5c97). Restored in state.js: tornado grass, earthquake mountain, hurricane / blood
