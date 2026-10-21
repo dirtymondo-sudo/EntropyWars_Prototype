@@ -400,12 +400,14 @@ const ThreeVFX = (function () {
             [0,220,255,180,1],[0.25,120,230,80,1],[0.55,60,170,50,0.9],[0.75,30,110,40,0.55],[0.95,10,50,20,0]]},
         'rain-drop': { type: 'linear', dir: 'down', stops: [
             [0,180,210,255,0],[0.15,200,225,255,0.4],[0.50,220,240,255,0.75],[0.80,240,250,255,0.85],[1,255,255,255,0.5]]},
+        /* BLOOD RED (2026-10-21, mondo: "can we make blood rain red"): full-strength red, no pale tail — the old
+           dark 200,40,50 at 0.45-0.9 alpha on a hair-thin drop read as no colour at all */
         'rain-drop-blood': { type: 'linear', dir: 'down', stops: [
-            [0,160,20,20,0],[0.15,180,30,40,0.45],[0.50,200,40,50,0.8],[0.80,220,50,60,0.9],[1,180,30,30,0.5]]},
+            [0,200,0,0,0],[0.12,225,10,15,0.75],[0.50,240,20,25,1],[0.85,255,35,35,1],[1,200,0,5,0.85]]},
         'rain-splash': { type: 'radial', stops: [
             [0,200,225,255,0],[0.40,200,225,255,0],[0.55,220,240,255,0.65],[0.72,240,250,255,0.45],[0.85,255,255,255,0.15],[1,255,255,255,0]]},
         'rain-splash-blood': { type: 'radial', stops: [
-            [0,160,20,30,0],[0.40,160,20,30,0],[0.55,200,40,50,0.7],[0.72,180,30,40,0.5],[0.85,140,20,25,0.2],[1,120,15,20,0]]},
+            [0,220,10,15,0],[0.36,220,10,15,0],[0.50,245,25,30,0.95],[0.68,215,10,15,0.75],[0.85,170,0,5,0.3],[1,140,0,0,0]]},
         'tess-splash': { type: 'radial', stops: [
             [0,0,255,200,0],[0.35,0,255,200,0],[0.48,0,255,220,0.55],[0.60,180,100,255,0.5],[0.72,255,200,80,0.4],[0.85,255,255,255,0.15],[1,255,255,255,0]]},
     };
@@ -1628,12 +1630,14 @@ const ThreeVFX = (function () {
             splashSize0: 5, splashSize1: 28, splashMs: [150, 280],
             skyHeight: 400, shapeMode: false,
         },
+        /* BLOOD RED (2026-10-21): thick enough to show its colour at the battle zoom (a 1.2-unit drop is under a pixel
+           there), fully opaque, bigger splashes */
         bloodRain: {
-            dropCount: 30, dropW: 1.2, dropH0: 12, dropH1: 24,
-            fallSpeed: [300, 550], driftVx: [-8, 8], driftVz: [-5, 5],
+            dropCount: 30, dropW: 4.5, dropH0: 40, dropH1: 70, dropOpacity: 0.95,
+            fallSpeed: [320, 560], driftVx: [-8, 8], driftVz: [-5, 5],
             dropSprite: 'rain-drop-blood',
-            splashChance: 0.55, splashSprite: 'rain-splash-blood',
-            splashSize0: 3, splashSize1: 18, splashMs: [200, 360],
+            splashChance: 0.7, splashSprite: 'rain-splash-blood',
+            splashSize0: 6, splashSize1: 30, splashMs: [240, 420],
             skyHeight: 300, shapeMode: false,
         },
         tesseractStorm: {
@@ -3756,7 +3760,7 @@ const ThreeVFX = (function () {
                     }
                 }
                 dEntry.mesh.scale.set(d.w, d.h, 1);
-                dEntry.material.opacity = _TESS_SPRITES[d.spriteKey] ? 0.95 : 0.7;
+                dEntry.material.opacity = _TESS_SPRITES[d.spriteKey] ? 0.95 : (rcfg.dropOpacity || 0.7);
                 dEntry.mesh.visible = true;
             }
         }
