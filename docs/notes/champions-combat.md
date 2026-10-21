@@ -1929,3 +1929,26 @@ moves. From the enemy perspective they need to look indistinguishable from the a
   Hover lights it like a unit (`_resolveHoverAt` → `_decoyGroups`). The old flat sprite card is only the fallback.
 - Not mirrored: the hover info card (enemy decoys still show the tile card, hud.js), and a hit on the copy (it just
   breaks, no death clip).
+
+## THE PLAYTEST LOG + RULE FIXES (2026-10-21) — battle.js, map.js
+From the hands-on Mount Shasta playtest (https://claude.ai/artifact/FMcV14kczkjTPVRDNoWeFq), each reproduced in a
+browser match with the same squads before the fix.
+- Finisher forecast: `getFinisherForecast` reads `forecastHitOnUnit` (the real hit math: level, soaks, shield, every
+  multiplier) mid roll + `min`/`max` over FINISHER_RULES.variance. It used raw × chart only (list −858, blow 1372).
+  `kill` = the LOW roll empties the bar. The opening log line is "☠ X unleashes <FINISHER> on Y!"; "X executes Y!"
+  is written only after a killing blow, else "☠ Y survives <finisher>." `_applyExecuteRider` logs EXECUTED! only on a
+  real kill (Protect / Indomitable can still save the unit).
+- Hit lines: `_dmgLogLine` builds every applyDamageToUnit sentence. Lead kinds: label ("Big Kick: " → "takes N HP
+  damage"), verb phrase ending in a word + space ("Anubis drains life from " → "…from Cowboy for N HP damage"), or a
+  lead ending in "for" (weather / terrain texts → "…struck by lightning for N HP damage"). It also tags the lead's
+  first name (source unit, else the victim) with `_ctName`, so mirror matches colour the attacker by side (the old
+  untagged name fell back to "the unit on turn first").
+- Forced slides: `resolveForcedSlide` shares one bounce count per THROW (`opts._throw`, passed down every chained
+  slide), as COLLISION_CONFIG.maxBounces says. Each chained body used to get its own 2 (7 impacts in one Big Kick).
+- Defeat line: map.js `_defeatRespawnLine` / `_respawnPastLimit` — a respawn that would land after the round limit
+  (round + _respawnIn > roundLimit, no sudden death) reads "No respawn before the round limit"; the death banner too.
+- Boot watchdog: the "boot pending" stall now waits LS_MAX_WAIT_MS + 45 s (the loading gate grew to 90 s, the
+  watchdog stayed at 60 s and fired inside a slow first load). The [BOOT] 10 s kick re-checks every 5 s while the
+  camera / a centre banner / a walk is still running (up to a minute) instead of kicking under the round-1 arrival.
+- Not reproduced: "Anubis absorbs 38 HP." twice. One Life Drain writes one heal line; the same spell can't be cast
+  twice in a turn ("Used this turn").
