@@ -2930,7 +2930,9 @@ const ThreeRenderer = (function () {
        to bottom), gradLen (%), gradOff (linear slide, %), gradX / gradY (radial + conic centre, %), stops [{ at, sh, col }],
        bands, rep, gradRev (_floatStops / _floatGradient). THE LAYOUT + motion: lay (stack | side | scatter; an old
        'rows' = side), row, gapX (px), bunch ×, path (rise | steady | hop | bounce), drift × (number heights), tilt (°).
-       2026-10-21 EACH KIND: kinds { kind: { font, weight, size × } } (a word or number of that kind in its own font). */
+       2026-10-21 EACH KIND: kinds { kind: { font, weight, size × } } (a word or number of that kind in its own font).
+       2026-10-21 THE CRIT LOOK: crit { as ('text' = the crit's word pops as a CRIT / BACKSTAB word, else the stamp),
+       word, shape, points, plate, ink, line, burst, font, weight, size, tilt, where, glow } (battle.js's hit read). */
     var _FLOAT_LOOK0 = {};
     function _floatLook() { return (typeof window !== 'undefined' && window._ewFloatLook) || _FLOAT_LOOK0; }
     function _floatNum(v, d, lo, hi) { v = +v; if (!isFinite(v)) return d; return Math.max(lo, Math.min(hi, v)); }
@@ -17941,7 +17943,7 @@ const ThreeRenderer = (function () {
         var modelH = 1, mixer = null, rig = null, rigRoot = null, ownMats = [], ownTex = [], spr = null, utok = 0;
         var plate = null, ctx = { tweens: [], stagger: {}, now: function () { return performance.now(); }, live: [], lastReal: 0, keepIn: true };
         var raf = 0, dead = false, lastKey = '', lastT = 0, crop = { w: 1, h: 1, x: 0, y: 0, fullH: 1 };
-        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, refireAt = 0, beatSel = opts.beat || 'all';
+        var beatAt = 0, beatIdx = 0, lastBeat = 'hit', queue = [], seenV = -1, seenCw = '', refireAt = 0, beatSel = opts.beat || 'all';
         var _pv = new THREE.Vector3();
 
         function clearUnit() {
@@ -18071,10 +18073,13 @@ const ThreeRenderer = (function () {
             plate.outer.style.left = ((_pv.x * 0.5 + 0.5) * crop.w).toFixed(1) + 'px';
             plate.outer.style.top = ((-_pv.y * 0.5 + 0.5) * crop.h).toFixed(1) + 'px';
         }
-        /* one pop, made the way the board makes it (the look, the hit read) */
+        /* one pop, made the way the board makes it (the look, the hit read; a crit shown as text names its word in
+           el._ewCritWord, and spawn pops it beside the number as the board does) */
         function makePop(p, L) {
             var el = _floatMakeEl(p.text, p.kind, L);
-            if (p.opts && typeof window._ewHitReadDress === 'function') { try { window._ewHitReadDress(el, p.kind, p.opts); } catch (e) {} }
+            if (p.opts && typeof window._ewHitReadDress === 'function') {
+                try { var hr = window._ewHitReadDress(el, p.kind, p.opts); el._ewCritWord = (hr && hr.critWord) || ''; } catch (e) {}
+            }
             return el;
         }
         function popMs(p, L) {
@@ -18090,6 +18095,13 @@ const ThreeRenderer = (function () {
             var jx = (Math.random() * 18 - 9) * 0.4, jz = (Math.random() * 10 - 5) * 0.4;   // the board's own scatter (battle.js jitter × 0.4)
             var tw = _floatSpawn(ctx, el, p.kind, popMs(p, L), jx * spread, jz * spread, ts * UNIT_SPRITE_SIZE_RATIO * (_FLOAT_START[L.start] || _FLOAT_START.chest), 'u', L);
             tw.src = p; tw.jx = jx; tw.jz = jz;
+            if (el._ewCritWord) spawn({ text: el._ewCritWord, kind: 'crit', ms: 1100 });   // battle.js _hitReadCritPop
+        }
+        /* the crit's word when the look shows a crit as text ('' = the stamp or nothing): a change re-plays the beat,
+           since the pops on screen were made with or without that word */
+        function critWordNow() {
+            var L = _floatLook(), C = L.crit;
+            return L.stamp !== false && C && C.as === 'text' ? String(C.word || 'CRIT!') : '';
         }
         function fireBeat(name) {
             var B = _floatPrevBeat(name); if (!B) return;
@@ -18167,9 +18179,10 @@ const ThreeRenderer = (function () {
             if (rig && rigRoot) { try { rigRoot.updateMatrixWorld(true); rig.tick(); } catch (e) {} }
             var v = window._ewFloatLookV || 0;
             if (v !== seenV) {
-                var first = seenV < 0;
-                seenV = v;
-                if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; beatAt = Math.max(beatAt, now + beatGap(lastBeat)); }
+                var first = seenV < 0, cw = critWordNow(), cwFlip = !first && cw !== seenCw;
+                seenV = v; seenCw = cw;
+                if (cwFlip) { clearPops(); fireBeat(lastBeat); refireAt = now + 450; beatAt = Math.max(beatAt, now + beatGap(lastBeat)); }
+                else if (!first && !relook() && now > refireAt) { fireBeat(lastBeat); refireAt = now + 450; beatAt = Math.max(beatAt, now + beatGap(lastBeat)); }
             }
             if (looping && now >= beatAt) {
                 var nb = beatSel && beatSel !== 'all' ? beatSel : FLOAT_PREV_ORDER[beatIdx++ % FLOAT_PREV_ORDER.length];
