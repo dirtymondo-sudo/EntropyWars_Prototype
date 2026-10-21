@@ -1824,3 +1824,10 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   ("🔥 ×1.5 FIRE WEAK!", the target race's element weakness on the element part) keeps its words. The Entropy picker /
   reserve chips that counted "▲2 WEAK" now read "▲2" (the words never fit; the title says SUPER EFFECTIVE); the finisher
   pick row reads "▲ ×1.3".
+- **Follow-ups (mondo 2026-10-21 23:29)**: (1) "yes" to the MP beat: battle.js `processEndOfRoundRegen` pops the +MP
+  floats `EOR_MP_BEAT_MS` (550 ms, actionMs-scaled) after the +HP floats when both happen; the phase waits that much longer.
+  (2) Nexus zone edges: he adjusts them himself in UI Maker. (3) "they already fade ... you can make them fade more":
+  three-renderer.js THE TREE FADE (`_occTreeHit`, `_occIsTreeRoot`): a tree (board tree objects tagged `_ew_occTree`, room
+  trees `_ew_hqTree`, chess statues excluded via `_ew_occNoTree`) fades whenever a sight line to a seen unit / the hovered or
+  panned tile crosses it above the subject's shins, in front of the unit, not only overhead. Seen units get a second (head)
+  ray. Same switch EW_NO_OVERHEAD_FADE. Browser-checked on Mount Shasta Arena: a pine hiding a unit faded, the rest stayed.
