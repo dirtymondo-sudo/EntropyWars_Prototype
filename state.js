@@ -637,7 +637,11 @@
                     for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
                     for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
 
-                    let first = (state.round % 2 === 1) ? p1 : p2;
+                    /* THE COIN FLIP LEADS (2026-10-21 PvP audit #4): state.startingPlayer (startMatch's flip) takes the
+                       tie on round 1 and every odd round, the other side on the even ones — it used to be P1 always,
+                       so online the host won every round-1 speed tie. */
+                    const _lead = state.startingPlayer === 2 ? 2 : 1;
+                    let first = ((state.round % 2 === 1) === (_lead === 1)) ? p1 : p2;
                     let second = (first === p1) ? p2 : p1;
                     let fi = 0, si = 0;
                     while (fi < first.length || si < second.length) {

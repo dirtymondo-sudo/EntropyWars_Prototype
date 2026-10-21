@@ -15740,6 +15740,8 @@
             for (const at of affectedTiles) {
                 const target = unitAt(at.x, at.y);
                 if (!target || target.dead) continue;
+                // THE FOG (2026-10-21 PvP audit #1): no badge on an enemy the caster's side can't see
+                if (isEnemyUnit(caster, target) && typeof _isUnitVisibleToViewer === 'function' && !_isUnitVisibleToViewer(target, caster.player)) continue;
 
                 const badgeStack = [];
                 let yOff = 0;
