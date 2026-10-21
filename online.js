@@ -5853,7 +5853,7 @@
                             if (!(tv(data.fromX, data.fromY) || tv(data.toX, data.toY))) return null;
                             t = _gvUnit(data.targetId);
                             if (enemy(t)) pinEnds('fromX', 'fromY', null, 'toX', 'toY', null);
-                            addAt(t);
+                            addAt(t, out.fromX, out.fromY, 0);
                             break;
                         case 'dash-cam-follow':
                             u = _gvUnit(data.casterId);
