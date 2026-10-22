@@ -1953,6 +1953,27 @@ browser match with the same squads before the fix.
 - Not reproduced: "Anubis absorbs 38 HP." twice. One Life Drain writes one heal line; the same spell can't be cast
   twice in a turn ("Used this turn").
 
+## THE CLEAR CAMERA (2026-10-22, mondo's second playtest, Camera items 1, 2, 3, 5) — battle.js, three-camera.js, three-renderer.js
+- **1, the lens inside walls / the x-ray.** On the board nothing on the grid fades, so a lens behind a wall shows the units as their
+  x-ray holograms and a lens inside a wall turns the board black. ThreeCamera.sync's board rig now has THE CLEAR BOARD guard
+  (`_boardSightFloor`): the focal→eye sight line must clear every solid column by ~½ tile and the eye must sit above any unit's
+  drawn body (`window._camBodyTopPx`, battle.js, the model's real footprint), else the eye cranes up (max 6 tiles). Kill switch
+  `window.EW_NO_CLEAR_BOARD = true`.
+- **2, the pick-a-target two-shot (Rocket Fist into the Sedan).** `_menuCamOccl` (battle.js) scores a pose: each body is sighted at
+  chest, head and (a car) its four footprint corners, every line walks the solid columns every ¼ tile and must clear a column top by
+  0.45 tile (a room's wall piece stands proud of its column: Pyramids of Giza's hq_piece walls sat ~70 px over the grid height and
+  the old centre-of-tile test said clear); the eye inside a column or a model counts 3. `_menuShotPose` also tries drops 24/34
+  (tilt floor 26) and a swing 28° wider, only while every old candidate is blocked, so open ground frames exactly as before.
+  Seen in a real browser: Sedan (5,8) → enemy (7,8) on Pyramids went from the Sedan as a hologram behind the wall to both in clear.
+- **3, the low camera after an action.** softResetToUnit's press-turn HOLD (keep the action shot while the unit has AP left) no
+  longer applies to the local player's own unit (`_cameraActingSideIsAuto()` false): it takes the full return to the view it had
+  before the action. CPU / remote chains keep the hold. Old behaviour: `window.EW_PRESS_TURN_HOLD_LOCAL = true`.
+- **5, the black blob in the death close-up** (mondo: "hide all models during the death animation except the one that died"). The
+  death pane (ThreeSplitscreen, `p.death`) hides every other unit group while that pane draws (`_ssSoloUnit` / `_ssSoloRestore`
+  in three-renderer.js `_ssRenderFrame`, restored in a finally after the panes); the main view is untouched. Viewer-local, so
+  the guest's own death pane does the same. Kill switch `window.EW_DEATH_CAM_ALL_UNITS = true`.
+- Move zoom (item 4) untouched, as mondo asked.
+
 ## THE STACKED FLOORS — clicks under a bridge (2026-10-22, playtest 2 "Unsure what to press" 6)
 mondo: "If there is no route on to the bridge then the game should automatically be registering mouse clicks on the
 bridge to the tiles underneath it ... if you can reach the top of the bridge and underneath it in the same turn, how

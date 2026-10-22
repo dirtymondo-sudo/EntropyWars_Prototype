@@ -22579,6 +22579,30 @@ const ThreeRenderer = (function () {
 
     function _ssEase(t) { return 1 - Math.pow(1 - t, 3); }   // easeOutCubic
 
+    /* THE CLEAR DEATH SHOT (2026-10-22, mondo after the second playtest: "That black blob is your own unit who is standing in
+       front of the enemy that died ... just hide all models during the death animation except the one that died, since a unit
+       could always be standing right in front of where the unit died and cover up the camera"): while a death pane draws, every
+       other unit's model is hidden, so nothing stands between the lens and the body. Each pane hides for its own draw only
+       (a double kill's two bodies each get a clear pane) and every group gets its own visibility back right after (the fog
+       sweep's hidden enemies stay hidden). Kill switch: window.EW_DEATH_CAM_ALL_UNITS = true. */
+    var _ssSoloHid = [];
+    function _ssSoloUnit(uid) {
+        _ssSoloRestore();
+        if (uid == null || !unitGroup || (typeof window !== 'undefined' && window.EW_DEATH_CAM_ALL_UNITS)) return;
+        for (var i = 0; i < unitGroup.children.length; i++) {
+            var g = unitGroup.children[i];
+            if (g._ew_unitId == null || g._ew_unitId === uid || g.visible === false) continue;
+            g.visible = false;
+            _ssSoloHid.push(g);
+        }
+    }
+    function _ssSoloRestore() {
+        if (!_ssSoloHid.length) return;
+        for (var i = 0; i < _ssSoloHid.length; i++) _ssSoloHid[i].visible = true;
+        _ssSoloHid.length = 0;
+        _shadowsDirty = true;   // a shadow pass drawn inside the pane lacked the hidden bodies: the next board frame redraws it
+    }
+
     function _ssRenderFrame() {
         var ts = CONFIG.tileSize || BASE_TILE;
         var w = (_parentEl && _parentEl.clientWidth) || canvas.clientWidth || 960;
@@ -22646,11 +22670,13 @@ const ThreeRenderer = (function () {
             p.cam.up.set(0, 1, 0);
             p.cam.lookAt(p.lastAim.x, p.lastAim.y, p.lastAim.z);
 
-            _posed.push({ cam: p.cam, x: r.x, y: r.y, w: r.w, h: r.h, eye: p.lastEye });
+            _posed.push({ cam: p.cam, x: r.x, y: r.y, w: r.w, h: r.h, eye: p.lastEye, solo: p.death ? p.unitId : null });
         }
         var mainCam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
         if (mainCam && mainCam.isPerspectiveCamera && typeof ThreePost !== 'undefined' && ThreePost.renderPanes && ThreePost.isReady() && !(_lens && !_lens.post)) {
-            if (_posed.length) ThreePost.renderPanes(_posed, function (pi) { _aimBillboardsAt(_posed[pi].eye.x, _posed[pi].eye.z); }, mainCam);
+            try {
+                if (_posed.length) ThreePost.renderPanes(_posed, function (pi) { _aimBillboardsAt(_posed[pi].eye.x, _posed[pi].eye.z); _ssSoloUnit(_posed[pi].solo); }, mainCam);
+            } finally { _ssSoloRestore(); }   // THE CLEAR DEATH SHOT
             _bbLastCamX = NaN;   // poison the main-cam billboard cache
             return;
         }
@@ -22681,6 +22707,7 @@ const ThreeRenderer = (function () {
             if (!p.lastEye) continue;
             /* Sprites must face THIS pane's camera while it draws. */
             _aimBillboardsAt(p.lastEye.x, p.lastEye.z);
+            _ssSoloUnit(p.death ? p.unitId : null);   // THE CLEAR DEATH SHOT
 
             var glY = node ? r.y : h - r.y - r.h;   // GL viewport origin is bottom-left; the node renderer's is top-left
             renderer.setViewport(r.x, glY, r.w, r.h);
@@ -22690,6 +22717,7 @@ const ThreeRenderer = (function () {
             else renderer.render(scene, p.cam);
         }
         } finally {
+            _ssSoloRestore();
             renderer._ew_paneRender = false;
             if (node) { renderer.autoClear = prevAuto; if (prevBg) scene.background = prevBg; }
         }
