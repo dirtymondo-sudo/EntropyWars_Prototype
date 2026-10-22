@@ -7110,7 +7110,18 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     let towardZGap = _zGap(actingUnit.z);
     let towardLabel = 'Move Towards';
     let towardIcon = '➜';
-    if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+    /* THE CLOSEST STEP (2026-10-22): the first leg is the chase chain's own pick (_bestTowardStep — the landing with
+       the shortest walk left to the target, round walls through doors), so the blade, its preview and the chain agree.
+       The flat scan below stays for what that pick can't place (a 2×2 boss's far corners). */
+    {
+      const _bs = _bestTowardStep(actingUnit, targetUnit);
+      if (_bs) {
+        towardTile = { moveCost: 1, x: _bs.x, y: _bs.y, z: _bs.z, ...(_bs._jump ? { _jump: true } : {}) };
+        towardDist = _flatD(_bs.x, _bs.y); towardZGap = _zGap(_bs.z);
+        if (_bs._jump) { towardLabel = 'Jump Towards'; towardIcon = '↷'; }
+      }
+    }
+    if (!towardTile && typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
         && canUnitMove(actingUnit) && mtMovesLeft > 0) {
       for (const t of getMoveTiles(actingUnit)) {
         if (t._takeoff) continue;   // altitude changes cost extra AP — plain steps only
@@ -7125,7 +7136,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // A leap that lands strictly closer than the best walk step wins (same
     // 1 AP) — this is what carries the approach across gaps and up ledges
     // that stopped the plain step after one tile.
-    if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+    if (!towardTile && typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
       for (const t of getJumpTiles(actingUnit)) {
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
         const d = _flatD(t.x, t.y);
@@ -7689,34 +7700,41 @@ function _bestTowardStep(actingUnit, targetUnit) {
     }
   }
 
-  /* WALL-AWARE (2026-07-27): follow the REAL route to the target (findRouteTo,
-     battle.js — full wall/stairs/climb rules, budget uncapped) and step to the
-     furthest route point reachable this move. This is what routes the chase
-     out of a building through its door instead of pressing the unit against
-     the wall nearest the enemy. Falls back to the old greedy pick when the
-     target is genuinely unreachable (sealed room / plugged door). */
+  /* WALL-AWARE (2026-07-27): the pick follows the REAL route to the target (full wall/stairs/climb rules, budget
+     uncapped), so the chase leaves a building through its door instead of pressing the unit against the wall nearest
+     the enemy. THE CLOSEST STEP (2026-10-22, mondo: "of course i want the move towards fixed too", after the same fix
+     to a Move-mode click past the range, battle.js findMoveTowardsTile): the walk or leap landing with the SHORTEST
+     WALK LEFT to the target wins — one route search seeded from every landing at once. The old pick (the furthest
+     point of the single cheapest route from the unit's own tile) stopped short wherever that route climbed or waded
+     early while other lit tiles stood nearer. A leap wins only when it leaves at least one move point less to walk
+     than the best walk; ties go to the landing nearest the target. Falls back to the old greedy pick when the target
+     is genuinely unreachable (sealed room / plugged door). */
   try {
-    if (moveTiles.length && typeof findRouteTo === 'function') {
-      const route = findRouteTo(actingUnit, targetUnit.x, targetUnit.y, targetUnit.z);
-      // Jump-action landings can splice onto the route too — a leap that
-      // lands FURTHER along the route than any walk beats the walk.
-      const jumpByKey = new Map();
+    if (typeof findMovePath === 'function') {
+      const crow = (px, py) => Math.hypot(px - targetUnit.x, py - targetUnit.y) * 1e-3;   // tie-break only
+      const seeds = [], byKey = new Map();
+      const add = (t, jump) => {
+        if (t.x === targetUnit.x && t.y === targetUnit.y) return;   // never end the leg ON the target's tile
+        const k3 = t.x + ',' + t.y + ',' + (t.z ?? 0), k2 = t.x + ',' + t.y;
+        if (byKey.has(k3)) return;   // a tile a walk reaches is walked, not leapt
+        const pick = jump ? { x: t.x, y: t.y, z: t.z, _jump: true } : { x: t.x, y: t.y, z: t.z };
+        byKey.set(k3, pick);
+        if (!byKey.has(k2)) byKey.set(k2, pick);   // 2D boards key the route without z
+        seeds.push({ x: t.x, y: t.y, z: t.z, cost: crow(t.x, t.y) + (jump ? 0.5 : 0) });
+      };
+      for (const t of moveTiles) add(t, false);
       if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
         for (const t of getJumpTiles(actingUnit)) {
           if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-          jumpByKey.set(t.x + ',' + t.y + ',' + (t.z ?? 0), t);
-          jumpByKey.set(t.x + ',' + t.y, t);
+          add(t, true);
         }
       }
-      for (let i = route.length - 1; i >= 0; i--) {
-        const n = route[i];
-        // Never end the leg ON the target's tile (route's last node).
-        if (n.x === targetUnit.x && n.y === targetUnit.y) continue;
-        const k3 = n.x + ',' + n.y + ',' + (n.z ?? 0), k2 = n.x + ',' + n.y;
-        const t = moveByKey.get(k3) || moveByKey.get(k2);
-        if (t) return { x: t.x, y: t.y, z: t.z };
-        const j = jumpByKey.get(k3) || jumpByKey.get(k2);
-        if (j) return { x: j.x, y: j.y, z: j.z, _jump: true };
+      if (seeds.length) {
+        const route = findMovePath(actingUnit, targetUnit.x, targetUnit.y, targetUnit.z,
+          { maxMove: 9999, seeds, startCost: crow(actingUnit.x, actingUnit.y) });
+        const n = route[0];
+        const hit = n && (byKey.get(n.x + ',' + n.y + ',' + (n.z ?? 0)) || byKey.get(n.x + ',' + n.y));
+        if (hit) return hit;
       }
     }
   } catch (e) { /* preview/chase must never crash on a pathing hiccup */ }
@@ -8438,29 +8456,16 @@ function _computeAllyActions(actingUnit, targetUnit) {
 
   // Move Towards — close the distance to regroup / carry the healer in.
   if (unitAP >= 1 && dist > 1) {
-    const movesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);
     const _flatD = (fx, fy) => Math.abs(fx - tx) + Math.abs(fy - ty);
     let towardTile = null;
     let towardDist = _flatD(actingUnit.x, actingUnit.y);
     let towardLabel = 'Move Towards', towardIcon = '➜';
-    if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
-        && canUnitMove(actingUnit) && movesLeft > 0) {
-      for (const t of getMoveTiles(actingUnit)) {
-        if (t._takeoff) continue;   // altitude changes cost extra AP — plain steps only
-        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-        const d = _flatD(t.x, t.y);
-        if (d < towardDist) { towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z }; towardDist = d; }
-      }
-    }
-    if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
-      for (const t of getJumpTiles(actingUnit)) {
-        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-        const d = _flatD(t.x, t.y);
-        if (d < towardDist) {
-          towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
-          towardDist = d; towardLabel = 'Jump Towards'; towardIcon = '↷';
-        }
-      }
+    // THE CLOSEST STEP (2026-10-22): the chase chain's own pick — the landing with the shortest walk left to the target
+    const _bs = _bestTowardStep(actingUnit, targetUnit);
+    if (_bs) {
+      towardTile = { moveCost: 1, x: _bs.x, y: _bs.y, z: _bs.z, ...(_bs._jump ? { _jump: true } : {}) };
+      towardDist = _flatD(_bs.x, _bs.y);
+      if (_bs._jump) { towardLabel = 'Jump Towards'; towardIcon = '↷'; }
     }
     if (towardTile) {
       const towardPath = _predictMoveTowardsPath(actingUnit, targetUnit, towardTile);
