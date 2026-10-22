@@ -1598,6 +1598,33 @@ there should be lots of blood. Is there more than one death animation that can b
   meshes = 64 draws). EW_NO_FX_BATCH keeps the old 64 meshes. Particle records = 512 + 256 (the stains live in the
   world pool); stains are `decor`: a full pool recycles them first.
 
+## THE FALL FROM THE AIR — midair deaths (2026-10-22)
+mondo: "if a unit dies in the air their blood splat stays floating in the air, please fix. Consider a separate death
+animation and blood for units that die in the air since they would have to fall to the ground too". Display only: no
+fall damage, no rule, no sound.
+- The floating splat: three-vfx-effects.js fireBlood put every floor mark (the splat under the body, the spatter, the
+  kill's pool) at `unitSurfaceZ`, the BODY's height: a flyer's / Levitating unit's hover, a climber on the face. That
+  also floated the marks of every plain hit on a flyer. Now the wound stays at the body and the floor marks go on the
+  floor: `unitGroundZ` (ThreeRenderer.unitGroundY = the surface the unit would stand on if set down, the floor of its
+  own air pocket); a mark that lands on another tile uses that tile's floor (the stainer's floorAt). The no-rig pump
+  sinks to the floor, not the hover.
+- The fall: three-renderer.js `_deathFallArm` (from startDeathTween, or the first frame no walk / jump / throw / strike
+  / clip-travel tween carries the body) compares the body's drawn height with the floor under it; more than 0.15 tile
+  up = an AIR DEATH (`tw.fall`): the `fall` slot (MAL1 Fall3, the flail the knock-offs play) while gravity drops it
+  (ease-in, AIR_DEATH.g 8.5 tiles/s², 320-1100 ms; a climber slides off the face to its tile centre), then on the floor
+  the crumple `deathCollapse` (UAL1 Death01, the knees go; Dead while that slot is unbaked) whatever style battle.js
+  picked, then the usual lie + dissolve. The tween's fadeAtMs / durationMs move by the drop, so the death close-up
+  (which follows the group) rides the fall down and holds until the body has lain on the floor. Sprite units drop the
+  same way, then flash and shrink where they landed.
+- The blood where it lands: on touchdown the renderer calls ThreeVFXEffects.fireBloodLand(uid, x, groundY, z): a
+  splash thrown low all round (heavier along the blow), the impact splat, spatter flung out from it, and the kill's
+  pool spreading under the hips 450 ms later. fireBlood's own pool skips an air death (`ThreeRenderer.deathFallOf`).
+  The landing splash only follows real kill blood (`_bloodKillAt`, set by the killing_blow fireBlood), so whatever
+  gates the gore gates it too.
+- Online: nothing new is relayed. The guest's own renderer runs the death tween (death-cam relay / state-sync), sees
+  the same body height over the same floor and drops it the same way; its landing splash follows its fog-gated
+  fireBlood replay. Kill switch: window.EW_NO_AIR_DEATH (the old in-place death; the floor-mark fix stays).
+
 ## THE GRAVES HOLD STILL (2026-10-21, token 20261021-graves-01-cors)
 mondo: "gravestones and the bone stack dont show consistently or will disappear and then reappear within the same turn".
 Display only; who gets a grave, where, and what raises/loots it are unchanged.
