@@ -1844,4 +1844,25 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   and a hot-seat turn change repaint it. Fog gating unchanged. Hidden with the CSS2D layer (podium, intro cinema, encounter
   arrival, void stage: `_nexusChromeHidden`).
 - Kill switch: `ew_text = 'css'` / `window.EW_NO_GPU_TEXT` (the plates' `_hqTextCss`) brings back the CSS2D bar.
-- Unit name plates are a separate thread's job (still CSS2D here).
+- Unit name plates: "THE PLATES IN THE WORLD" above.
+
+## THE PLATES IN THE WORLD (2026-10-21, mondo: "can we not make the nexus counter like not part of the HUD, but part of the world like the exploration door text? same with the name plates maybe?" + plates piling on each other when units bunch)
+- Unit name plates (real units, the real-looking copies, the sprite decoys) are SPRITES in the battle scene now, not CSS2D: three-renderer.js
+  "THE PLATES IN THE WORLD" block (`_pm*`). Depth-tested (walls, trees, bodies in front hide them), drawn on WebGL and the node renderer.
+- THE MIRROR: the plate DOM is unchanged and still patched by the same code; it lives in `#ewPlateMirror` (fixed, opacity 0) instead of
+  `#css2dOverlay`. `_pmPaint` walks that live DOM (getBoundingClientRect + getComputedStyle) and paints it into a CanvasTexture: fills,
+  (repeating-)linear/radial gradients, url() images (portraits, the key icon), borders, radii, outer + inset box-shadows, text-shadows,
+  ellipsis, rotate/scale/transform, opacity, filter. Repaints on a mutation (MutationObserver, `title` ignored), a running CSS
+  animation/transition (getAnimations, ~25 fps) or a zoom-resolution tier. So UI Maker plate sheets, bar looks, far portrait card,
+  compact/side styles all carry over with no extra code. Pseudo-elements can't be read: the eye's slash and the side style's HP/MP words
+  are real `<i class="tp-eye-slash">` / `<i class="tp-bar-lbl">` now (number writes go through `_plateNumSet`, which keeps the word).
+- The anchor (`po.css2d`) is an empty Object3D where the CSS2DObject was, so every visible/position/parent rule is untouched; `_pmBind`
+  ties the holder (`_s`, `_off`, `_farMode` from `_scalePlates` / `_writePlateTransform`) to its sprite. `_scalePlates` + `_pmTick` run
+  BEFORE the draw now. The sprite covers the same screen px the CSS plate did (scale floor/cap kept).
+- `_pmGate`: whatever hides/fades `#css2dOverlay` (display none, splitscreen, podium, ewi-cinema, void stage, enc-arrival fade) hides/fades
+  the plates too.
+- NO PILE-UP (`_pmStack`): overlapping screen boxes stack upward; the acting plate, then the aimed one, keep their place, then the lowest
+  on screen; lifts ease in. `window.EW_PLATE_PILE = true` = old pile; `window.EW_CSS_PLATES = true` (or the shared `ew_text = 'css'` / `EW_NO_GPU_TEXT`) + a unit rebuild = old CSS2D plates.
+- In the world means the post stack applies: the tilt-shift band softens plates near the top/bottom of the screen like the ground there.
+- The UI Maker's plate preview still shows the DOM (`_buildClonePlate(su, p, true)`); tower/door plates are still CSS2D (the Nexus counter has its own in-world sprite, next section).
+- Offsets (anchor point, stack lift, side offset) move `sprite.position` along the camera right/up vectors; `Sprite.center` stays (0.5, 0.5) because the node renderer's SpriteNodeMaterial keeps the first center it saw.

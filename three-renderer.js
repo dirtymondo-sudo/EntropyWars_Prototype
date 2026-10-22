@@ -9987,6 +9987,7 @@ const ThreeRenderer = (function () {
                                          _headY: dSprH / 2 - dTop + 14,
                                          _footY: -(dSprH / 2) + dBottom + SELECTED_RING_OFFSET + 2 };
                             _decoyPlates.push(_dpo);
+                            _pmBind(_dpo);
                             _anchorPlateForStyle(_dpo);
                         }
                         continue;
@@ -11954,6 +11955,13 @@ const ThreeRenderer = (function () {
         return true;
     }
 
+    /* the nnn/nnn after the bar's HP / MP word (the trailing text node), written only when it changed */
+    function _plateNumSet(el, txt) {
+        var t = el.lastChild;
+        if (t && t.nodeType === 3) { if (t.nodeValue !== txt) t.nodeValue = txt; }
+        else el.appendChild(document.createTextNode(txt));
+    }
+
     function _patchPlateStats() {
         if (!state.units) return;
         for (var i = 0; i < state.units.length; i++) {
@@ -11968,7 +11976,7 @@ const ThreeRenderer = (function () {
 
             // Update HP bar fill width (transition animates it)
             var hpFill = refs.hpFill;
-            if (hpFill) hpFill.style.width = hpPct + '%';
+            if (hpFill && hpFill.style.width !== hpPct + '%') hpFill.style.width = hpPct + '%';
             _lastHpPctById.set(u.id, hpPct);
             _lastMpPctById.set(u.id, mpPct);
 
@@ -11977,7 +11985,7 @@ const ThreeRenderer = (function () {
 
             // Update MP bar fill width
             var mpFill = refs.mpFill;
-            if (mpFill) mpFill.style.width = mpPct + '%';
+            if (mpFill && mpFill.style.width !== mpPct + '%') mpFill.style.width = mpPct + '%';
 
             // Update shield overlay (created/removed dynamically — not cached)
             var shieldEl = po.el.querySelector('.tp-shield');
@@ -11989,16 +11997,16 @@ const ThreeRenderer = (function () {
                     shieldEl.className = 'tp-shield';
                     if (hpBar) hpBar.appendChild(shieldEl);
                 }
-                shieldEl.style.width = shieldPct + '%';
+                if (shieldEl.style.width !== shieldPct + '%') shieldEl.style.width = shieldPct + '%';
             } else if (shieldEl) {
                 shieldEl.remove();
             }
 
             // Update numeric text
             var hpNum = refs.hpNum;
-            if (hpNum) hpNum.textContent = u.hp + '/' + u.maxHp;
+            if (hpNum) _plateNumSet(hpNum, u.hp + '/' + u.maxHp);
             var mpNum = refs.mpNum;
-            if (mpNum) mpNum.textContent = u.mp + '/' + u.maxMp;
+            if (mpNum) _plateNumSet(mpNum, u.mp + '/' + u.maxMp);
 
             // Status / stat-stage badges — rebuilt in place the moment a hit
             // applies (or removes) a status, buff or debuff, instead of
@@ -12027,7 +12035,8 @@ const ThreeRenderer = (function () {
             if (eyeEl) {
                 var eyeSeen = (typeof isUnitSeenByAnyEnemy === 'function') ? isUnitSeenByAnyEnemy(u) : true;
                 eyeEl.classList.toggle('tp-eye-hidden', !eyeSeen);
-                eyeEl.title = eyeSeen ? 'Spotted — an enemy can see this unit' : 'Hidden — out of all enemy vision';
+                var eyeTitle = eyeSeen ? 'Spotted — an enemy can see this unit' : 'Hidden — out of all enemy vision';
+                if (eyeEl.title !== eyeTitle) eyeEl.title = eyeTitle;
             }
         }
         _lastUnitSerial = _computeUnitSerial();
@@ -14849,9 +14858,11 @@ const ThreeRenderer = (function () {
                 '  color: #7fd8a0; opacity: 0.85;',
                 '  text-shadow: 0 0 4px rgba(60,160,100,0.6), 0 1px 2px #000;',
                 '}',
-                /* Diagonal slash across the eye when hidden. */
-                '.tp-wrap .tp-eye.tp-eye-hidden::after {',
-                '  content: ""; position: absolute; left: -2px; right: -2px; top: 50%;',
+                /* Diagonal slash across the eye when hidden (a real <i>, not ::after: THE PLATES IN THE WORLD paint
+                   the plate's own boxes, and a pseudo-element has none to read). */
+                '.tp-wrap .tp-eye .tp-eye-slash { display: none; }',
+                '.tp-wrap .tp-eye.tp-eye-hidden .tp-eye-slash {',
+                '  display: block; position: absolute; left: -2px; right: -2px; top: 50%;',
                 '  height: 2px; background: currentColor; border-radius: 1px;',
                 '  transform: rotate(-30deg); box-shadow: 0 0 3px rgba(0,0,0,0.9);',
                 '}',
@@ -15147,11 +15158,11 @@ const ThreeRenderer = (function () {
                 '}',
                 '.tp-wrap.tp-side:not(.tp-far) .tp-hp-ally .tp-bar-num { color: #7df0a5; }',
                 '.tp-wrap.tp-side:not(.tp-far) .tp-hp-enemy .tp-bar-num { color: #ff96a0; }',
-                '.tp-wrap.tp-side:not(.tp-far) .tp-bar-num::before {',
-                '  font-size: 8px; letter-spacing: 0.1em; color: #9a94b0; margin-right: 3px;',
+                /* the HP / MP words: a real <i> leading the number (was ::before — see the eye's slash) */
+                '.tp-wrap .tp-bar-lbl { display: none; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bar-lbl {',
+                '  display: inline; font-style: normal; font-size: 8px; letter-spacing: 0.1em; color: #9a94b0; margin-right: 3px;',
                 '}',
-                '.tp-wrap.tp-side:not(.tp-far) .tp-bar:not(.tp-bar-mp) .tp-bar-num::before { content: "HP"; }',
-                '.tp-wrap.tp-side:not(.tp-far) .tp-bar-mp .tp-bar-num::before { content: "MP"; }',
                 '.tp-wrap.tp-side:not(.tp-far) .tp-status-row { justify-content: flex-start; }',
                 '.tp-wrap.tp-side:not(.tp-far) .tp-eff-badge { right: auto; left: -8px; }'
             ].join('\n');
@@ -15319,7 +15330,7 @@ const ThreeRenderer = (function () {
             var _seen = (typeof isUnitSeenByAnyEnemy === 'function') ? isUnitSeenByAnyEnemy(unit) : true;
             eyeHtml = '<span class="tp-eye' + (_seen ? '' : ' tp-eye-hidden') + '" data-eye title="'
                 + (_seen ? 'Spotted — an enemy can see this unit' : 'Hidden — out of all enemy vision')
-                + '">👁</span>';
+                + '">👁<i class="tp-eye-slash"></i></span>';
         }
 
         /* Portrait rides OUTSIDE tp-main so the far-zoom layout can sit face +
@@ -15345,11 +15356,11 @@ const ThreeRenderer = (function () {
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:' + hpStartPct + '%"></div>' +
                         shieldHtml +
-                        '<span class="tp-bar-num">' + unit.hp + '/' + unit.maxHp + '</span>' +
+                        '<span class="tp-bar-num"><i class="tp-bar-lbl">HP</i>' + unit.hp + '/' + unit.maxHp + '</span>' +
                     '</div>' +
                     '<div class="tp-bar tp-bar-mp">' +
                         '<div class="tp-mp-fill" style="width:' + mpStartPct + '%"></div>' +
-                        '<span class="tp-bar-num">' + unit.mp + '/' + unit.maxMp + '</span>' +
+                        '<span class="tp-bar-num"><i class="tp-bar-lbl">MP</i>' + unit.mp + '/' + unit.maxMp + '</span>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -15376,7 +15387,7 @@ const ThreeRenderer = (function () {
         var _pd = _buildPlateDom(unit, hpStartPct, mpStartPct, !!(blitzUnit && blitzUnit.id === unit.id));
         var outer = _pd.outer, wrap = _pd.wrap, _sbInner = _pd.statusBadgesHtml;
 
-        var css2d = new THREE.CSS2DObject(outer);
+        var css2d = _pmOn() ? _pmMake(outer, wrap) : new THREE.CSS2DObject(outer);   // THE PLATES IN THE WORLD
         var ue = unitEntries.get(unit.id);
         var _headY = 0;
         if (ue && ue.group) {
@@ -15390,6 +15401,7 @@ const ThreeRenderer = (function () {
         var _po = { css2d: css2d, el: wrap, statusBadgesHtml: _sbInner,
                     _headY: _headY, _footY: SELECTED_RING_OFFSET + 2 };
         _plateObjs.set(unit.id, _po);
+        _pmBind(_po);
         _anchorPlateForStyle(_po);
 
         /* The fill was rendered at its previous width (hpStartPct/mpStartPct). On the
@@ -15410,7 +15422,7 @@ const ThreeRenderer = (function () {
     /* Build a nameplate for a decoy/clone that visually matches a real unit plate.
        Uses the cloned spriteUnit's stats and shows full HP/MP so the decoy reads as
        a healthy, ordinary unit. Returns {css2d, el} (not registered in _plateObjs). */
-    function _buildClonePlate(su, ownerPlayer) {
+    function _buildClonePlate(su, ownerPlayer, domOnly) {
         if (!su) return null;
         _ensurePlateStyles();
 
@@ -15460,11 +15472,11 @@ const ThreeRenderer = (function () {
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:100%"></div>' +
-                        '<span class="tp-bar-num">' + maxHp + '/' + maxHp + '</span>' +
+                        '<span class="tp-bar-num"><i class="tp-bar-lbl">HP</i>' + maxHp + '/' + maxHp + '</span>' +
                     '</div>' +
                     '<div class="tp-bar tp-bar-mp">' +
                         '<div class="tp-mp-fill" style="width:100%"></div>' +
-                        '<span class="tp-bar-num">' + maxMp + '/' + maxMp + '</span>' +
+                        '<span class="tp-bar-num"><i class="tp-bar-lbl">MP</i>' + maxMp + '/' + maxMp + '</span>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -15475,7 +15487,8 @@ const ThreeRenderer = (function () {
         wrap.appendChild(effEl);
         outer.appendChild(wrap);
 
-        return { css2d: new THREE.CSS2DObject(outer), el: wrap };
+        /* domOnly: a caller that shows the DOM itself (the UI Maker's plate preview) */
+        return { css2d: (!domOnly && _pmOn()) ? _pmMake(outer, wrap) : new THREE.CSS2DObject(outer), el: wrap };
     }
 
     /* ── THE REAL-LOOKING COPY (2026-10-20) ─────────────────────────────
@@ -15553,13 +15566,14 @@ const ThreeRenderer = (function () {
         var mpStart = _lastMpPctById.has(rigId) ? _lastMpPctById.get(rigId) : mpPct;
         var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
         var pd = _buildPlateDom(pu, hpStart, mpStart, !!(owner && blitzUnit && blitzUnit.id === owner.id));
-        var css2d = new THREE.CSS2DObject(pd.outer);
+        var css2d = _pmOn() ? _pmMake(pd.outer, pd.wrap) : new THREE.CSS2DObject(pd.outer);   // THE PLATES IN THE WORLD
         var headY = g._ew_spriteTopY - g.position.y + 12;
         css2d.position.set(0, headY, 0);
         g.add(css2d);
         var dpo = { css2d: css2d, el: pd.wrap, mesh: g, x: dObj.x, y: dObj.y, ownerId: dObj.ownerUnitId,
                     _headY: headY, _footY: SELECTED_RING_OFFSET + 2 };
         _decoyPlates.push(dpo);
+        _pmBind(dpo);
         _anchorPlateForStyle(dpo);
         entry._ew_decoyPlate = dpo;
         if (hpStart !== hpPct || mpStart !== mpPct) {
@@ -15667,6 +15681,572 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* ══ THE PLATES IN THE WORLD (2026-10-21, mondo: "can we not make the nexus counter like not part of the HUD, but part
+       of the world like the exploration door text? same with the name plates maybe?") ══════════════════════════════════
+       A unit's name plate (and every decoy's) is no longer a CSS2D overlay over the canvas: it is a sprite in the battle
+       scene, painted into a CanvasTexture the way the HQ door text's canvas plates are (_hqCvPaint), depth-tested, so a
+       wall, a tree or a body in front of it hides it — on WebGL and on the node renderer alike.
+       · THE MIRROR: the plate's DOM is still built by the same code (_buildPlateDom, _buildClonePlate) and still patched by
+         the same code (_patchPlateStats, the eye, the badges, the forecast slice, the hover / target / active / far / side
+         classes, the UI Maker's sheets), but it lives in a hidden host (#ewPlateMirror, opacity 0) instead of the overlay.
+         _pmPaint walks that live DOM — the browser's own layout and computed styles — and paints it box by box (fills,
+         gradients, borders, radii, shadows, images, text, transforms) into the plate's canvas, so every piece and every
+         theme reads as the CSS made it. A DOM change (the MutationObserver), a running CSS animation or transition (the HP
+         drain, the pulses, the blink of the forecast slice) or a new zoom tier repaints it.
+       · THE SPRITE: sized every frame to the screen px the CSS plate covered (_scalePlates' scale: the legibility floor +
+         the cap), anchored where the CSS2D point was (over the head, or on the ring for the 'side' style).
+       · THE OVERLAY'S WORD: whatever hid the CSS2D overlay (a cinematic, the podium, the void stage, splitscreen, the
+         encounter's arrival fade) hides or fades the plates the same way (_pmGate).
+       · NO PILE-UP (mondo: plates piled on each other when units bunch): plates whose screen boxes overlap stack upward,
+         the acting / aimed plate keeping its place, then the lowest on screen (_pmStack). Nothing is added to a plate.
+       window.EW_CSS_PLATES = true (then a plate rebuild) → the old CSS2D plates. */
+    var PLATE_RENDER_ORDER = 950;
+    var PM_MARGIN = 14;            // css px kept round the plate's boxes for the glows and shadows
+    var PM_FAR = 30000;            // the shadow-only draw sits this far off the canvas (device px)
+    var PM_ANIM_MS = 40;           // a plate with a running CSS animation repaints at ~25 fps
+    var PM_STACK_GAP = 2;          // screen px between stacked plates
+    var _pmList = [], _pmHostEl = null, _pmObs = null, _pmImgs = {}, _pmFontHook = false, _pmGroup = null, _pmRange = null;
+    var _PM_I = [1, 0, 0, 1];
+    function _pmOn() { return !window.EW_CSS_PLATES && !_hqTextCss() && typeof document !== 'undefined' && !!document.body; }
+    function _pmHost() {
+        if (_pmHostEl && _pmHostEl.isConnected) return _pmHostEl;
+        var h = document.getElementById('ewPlateMirror');
+        if (!h) {
+            h = document.createElement('div');
+            h.id = 'ewPlateMirror';
+            h.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(h);
+        }
+        h.style.cssText = 'position:fixed;left:320px;top:320px;width:0;height:0;overflow:visible;opacity:0;pointer-events:none;z-index:-1;';
+        _pmHostEl = h;
+        if (!_pmObs && typeof MutationObserver !== 'undefined') _pmObs = new MutationObserver(_pmOnMut);
+        if (!_pmFontHook && document.fonts && document.fonts.addEventListener) {
+            _pmFontHook = true;
+            document.fonts.addEventListener('loadingdone', _pmDirtyAll);
+        }
+        return h;
+    }
+    /* a plate's record: the anchor (an empty Object3D where the CSS2DObject went, so every visible / position / parent rule
+       keeps working on it), the DOM in the mirror, the sprite. → the anchor (the caller's `css2d`) */
+    function _pmMake(outer, wrap) {
+        _pmHost().appendChild(outer);
+        outer.style.position = 'absolute'; outer.style.left = '0px'; outer.style.top = '0px';
+        var anchor = new THREE.Object3D();
+        anchor.name = 'ew_plate_anchor';
+        var mat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: true, fog: false, toneMapped: false });
+        var spr = new THREE.Sprite(mat);
+        spr.name = 'ew_plate'; spr._ew_plate = true;
+        spr.raycast = function () {};
+        spr.castShadow = false; spr.receiveShadow = false; spr.frustumCulled = false;
+        spr.renderOrder = PLATE_RENDER_ORDER;
+        spr.visible = false;
+        var pm = { anchor: anchor, outer: outer, el: wrap, spr: spr, mat: mat, tex: null, cvs: null, holder: null, wp: new THREE.Vector3(),
+                   dirty: true, anim: false, at: 0, res: 0, ok: false, op: 1, tf: '', lift: 0, shown: false, dead: false,
+                   cw: 1, ch: 1, ax: 0, ay: 0, box: [0, 0, 0, 0] };
+        anchor._ewPm = pm; outer._ewPm = pm; wrap._ewPmWrap = true;
+        anchor.addEventListener('removed', function () { _pmDrop(pm); });
+        if (_pmObs) _pmObs.observe(outer, { subtree: true, childList: true, attributes: true, characterData: true });
+        _pmList.push(pm);
+        return anchor;
+    }
+    /* the holder _scalePlates writes (_s, _off, _farMode) is the plate object built round the anchor */
+    function _pmBind(holder) {
+        var pm = holder && holder.css2d && holder.css2d._ewPm;
+        if (pm) { pm.holder = holder; holder.pm = pm; }
+    }
+    function _pmDrop(pm) {
+        if (!pm || pm.dead) return;
+        pm.dead = true;
+        if (pm.outer && pm.outer.parentNode) pm.outer.parentNode.removeChild(pm.outer);
+        if (pm.spr.parent) pm.spr.parent.remove(pm.spr);
+        if (pm.tex) { pm.tex.dispose(); pm.tex = null; }
+        pm.mat.dispose();
+        var i = _pmList.indexOf(pm);
+        if (i >= 0) _pmList.splice(i, 1);
+    }
+    function _pmDropAll() {
+        while (_pmList.length) _pmDrop(_pmList[_pmList.length - 1]);
+        if (_pmGroup && _pmGroup.parent) _pmGroup.parent.remove(_pmGroup);
+        _pmGroup = null;
+    }
+    function _pmDirtyAll() { for (var i = 0; i < _pmList.length; i++) _pmList[i].dirty = true; }
+    function _pmOnMut(recs) {
+        for (var i = 0; i < recs.length; i++) {
+            var r = recs[i];
+            if (r.type === 'attributes' && (r.attributeName === 'title' || (r.attributeName === 'style' && r.target._ewPmWrap))) continue;   // a tooltip, the mirror's own anchor transform
+            var n = r.target;
+            while (n && !n._ewPm) n = n.parentNode;
+            if (n) n._ewPm.dirty = true;
+        }
+    }
+    /* the CSS2D overlay's own state: hidden → no plates, faded → the plates fade with it */
+    function _pmGate() {
+        var d = css2dRenderer && css2dRenderer.domElement;
+        if (!d || !d.isConnected || d.style.display === 'none' || !d.getClientRects().length) return 0;
+        var cs = getComputedStyle(d);
+        if (cs.visibility === 'hidden') return 0;
+        var op = parseFloat(cs.opacity);
+        return isFinite(op) ? op : 1;
+    }
+    function _pmInScene(o) {
+        if (!o.visible) return false;
+        while (o.parent) { o = o.parent; if (!o.visible) return false; }
+        return o === scene;
+    }
+    /* world units per screen px at p (the depth the sprite sits at) */
+    function _pmWpp(cam, p, sh) {
+        if (cam.isOrthographicCamera) return (cam.top - cam.bottom) / (cam.zoom || 1) / sh;
+        var e = cam.matrixWorldInverse.elements;
+        var z = -(e[2] * p.x + e[6] * p.y + e[10] * p.z + e[14]);
+        return 2 * Math.max(1e-3, z) * Math.tan(cam.fov * Math.PI / 360) / (cam.zoom || 1) / sh;
+    }
+    function _pmPri(el) { var cl = el.classList; return cl.contains('tp-active') ? 2 : cl.contains('tp-targeted') ? 1 : 0; }
+
+    /* ── per frame (renderFrame, before the draw): the mirror's records, the repaints, the sizes, the stack ── */
+    var _pmV = null, _pmR = null, _pmU = null;
+    function _pmTick(cam) {
+        if (!_pmList.length) return;
+        if (_pmObs) { var recs = _pmObs.takeRecords(); if (recs.length) _pmOnMut(recs); }
+        var gate = (scene && cam && _parentEl) ? _pmGate() : 0;
+        var sw = _parentEl ? _parentEl.clientWidth : 0, sh = _parentEl ? _parentEl.clientHeight : 0;
+        if (sw <= 0 || sh <= 0) gate = 0;
+        if (gate > 0.001) {
+            if (!_pmGroup) { _pmGroup = new THREE.Group(); _pmGroup.name = 'ew_plates'; }
+            if (_pmGroup.parent !== scene) scene.add(_pmGroup);
+            cam.updateMatrixWorld();
+        }
+        var pr = (renderer && renderer.getPixelRatio) ? renderer.getPixelRatio() : (window.devicePixelRatio || 1);
+        var now = performance.now();
+        var V = _pmV || (_pmV = new THREE.Vector3());
+        var items = [];
+        for (var i = 0; i < _pmList.length; i++) {
+            var pm = _pmList[i], h = pm.holder, spr = pm.spr;
+            var on = gate > 0.001 && !!h && h._s > 0 && _pmInScene(pm.anchor);
+            if (!on) { if (spr.visible) spr.visible = false; pm.shown = false; continue; }
+            if (spr.parent !== _pmGroup) _pmGroup.add(spr);
+            /* the 'side' style hangs off the mirror's left middle (the CSS2D transform's translate, without the scale) */
+            var side = _plateIsSide(h), tf = side ? 'translate(0px, -50%)' : 'translateX(-50%)';
+            if (pm.tf !== tf) { pm.tf = tf; pm.el.style.transform = tf; pm.dirty = true; }
+            var res = Math.max(2, Math.min(4, Math.ceil(h._s * pr * 2) / 2));   // never under 2× the CSS px: the sprite's own sampling stays crisp
+            if (res !== pm.res) { pm.res = res; pm.dirty = true; }
+            if (!pm.dirty && pm.anim && now - pm.at >= PM_ANIM_MS) pm.dirty = true;
+            if (pm.dirty) { try { _pmPaint(pm, now); } catch (e) { pm.ok = false; console.warn('[plates] paint failed', e); } }
+            if (!pm.ok) { spr.visible = false; pm.shown = false; continue; }
+            pm.anchor.getWorldPosition(pm.wp);
+            V.copy(pm.wp).project(cam);
+            if (V.z < -1 || V.z > 1) { spr.visible = false; pm.shown = false; continue; }
+            var sx = (V.x * 0.5 + 0.5) * sw, sy = (-V.y * 0.5 + 0.5) * sh, s = h._s, off = side ? (h._off || 0) : 0;
+            items.push({ pm: pm, s: s, off: off, sx: sx, sy: sy, lift: 0, pri: _pmPri(pm.el),
+                l: sx + off + pm.box[0] * s, r: sx + off + pm.box[2] * s, t: sy + pm.box[1] * s, b: sy + pm.box[3] * s });
+        }
+        _pmStack(items);
+        var ease = 1 - Math.exp(-Math.min(0.25, Math.max(0, (now - (_pmTick.at || now)) / 1000)) * 14);
+        _pmTick.at = now;
+        var R = _pmR || (_pmR = new THREE.Vector3()), Up = _pmU || (_pmU = new THREE.Vector3());
+        if (items.length) { R.setFromMatrixColumn(cam.matrixWorld, 0).normalize(); Up.setFromMatrixColumn(cam.matrixWorld, 1).normalize(); }
+        for (var k = 0; k < items.length; k++) {
+            var it = items[k], p2 = it.pm, sp = p2.spr;
+            p2.lift = p2.shown ? p2.lift + (it.lift - p2.lift) * ease : it.lift;   // the lift glides (~0.15 s), a new plate starts in place
+            if (Math.abs(p2.lift - it.lift) < 0.3) p2.lift = it.lift;
+            var wpp = _pmWpp(cam, p2.wp, sh);
+            /* the canvas centre sits off the anchor (its spot on the canvas, css px from the top left) by the plate's own
+               layout, the side push and the lift: moved in the camera's own right / up (the sprite's plane, so the depth
+               stays the anchor's). The centre is never moved through Sprite.center — the node renderer keeps its first one. */
+            var dx = ((p2.cw / 2 - p2.ax) * it.s + it.off) * wpp, dy = ((p2.ay - p2.ch / 2) * it.s + p2.lift) * wpp;
+            sp.position.copy(p2.wp).addScaledVector(R, dx).addScaledVector(Up, dy);
+            sp.scale.set(p2.cw * it.s * wpp, p2.ch * it.s * wpp, 1);
+            var op = Math.max(0, Math.min(1, p2.op * gate));
+            if (sp.material.opacity !== op) sp.material.opacity = op;
+            sp.visible = op > 0.003;
+            p2.shown = true;
+        }
+    }
+    /* overlapping plates stack upward: the acting / aimed plate first, then the lowest on screen; each later plate rises
+       just above whatever it overlaps (window.EW_PLATE_PILE = true → the old pile) */
+    function _pmStack(items) {
+        items.sort(function (a, b) { return (b.pri - a.pri) || (b.sy - a.sy) || (a.sx - b.sx); });
+        if (window.EW_PLATE_PILE) return;
+        var placed = [];
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i], lift = 0;
+            for (var pass = 0; pass < 32; pass++) {
+                var hit = null;
+                for (var j = 0; j < placed.length; j++) {
+                    var p = placed[j];
+                    if (it.l < p.r - 1 && it.r > p.l + 1 && it.t - lift < p.b && it.b - lift > p.t) { hit = p; break; }
+                }
+                if (!hit) break;
+                lift = it.b - hit.t + PM_STACK_GAP;
+            }
+            it.lift = lift;
+            placed.push({ l: it.l, r: it.r, t: it.t - lift, b: it.b - lift });
+        }
+    }
+
+    /* ── the painter: the mirror's live DOM → the plate's canvas ── */
+    function _pmNum(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+    function _pmSplitTop(s) {   // a CSS list split on its top-level commas
+        var out = [], depth = 0, cur = '';
+        for (var i = 0; i < s.length; i++) {
+            var ch = s[i];
+            if (ch === '(') depth++; else if (ch === ')') depth--;
+            if (ch === ',' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += ch;
+        }
+        if (cur.trim()) out.push(cur.trim());
+        return out;
+    }
+    var PM_COLOR_RE = /([a-z-]+\([^)]*\)|#[0-9a-f]{3,8}\b|\btransparent\b)/i;
+    function _pmClear(col) { return !col || col === 'transparent' || /^rgba\([^)]*,\s*0\s*\)$/.test(col); }
+    /* box-shadow / text-shadow, computed form ("rgba(0, 0, 0, 0.5) 0px 1px 3px 0px inset, …") */
+    function _pmShadows(s) {
+        if (!s || s === 'none') return [];
+        return _pmSplitTop(s).map(function (one) {
+            var inset = /\binset\b/.test(one); one = one.replace(/\binset\b/, '');
+            var col = 'rgb(0, 0, 0)', m = PM_COLOR_RE.exec(one);
+            if (m) { col = m[1]; one = one.replace(m[1], ' '); }
+            var nums = (one.match(/-?\d*\.?\d+(?:e-?\d+)?/g) || []).map(_pmNum);
+            return { col: col, x: nums[0] || 0, y: nums[1] || 0, blur: nums[2] || 0, spread: nums[3] || 0, inset: inset };
+        });
+    }
+    function _pmPick(list, i) { var a = _pmSplitTop(String(list || '')); return a.length ? (a[i] !== undefined ? a[i] : a[a.length - 1]) : ''; }
+    function _pmMul(A, B) { return [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3]]; }
+    /* an element's own 2D linear part: rotate · scale · transform (the individual properties, then `transform`) */
+    function _pmOwnLin(cs) {
+        var M = _PM_I, rm, v;
+        if (cs.rotate && cs.rotate !== 'none' && (rm = /^(-?\d*\.?\d+)deg$/.exec(cs.rotate.trim()))) {
+            var a = _pmNum(rm[1]) * Math.PI / 180;
+            M = _pmMul(M, [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a)]);
+        }
+        if (cs.scale && cs.scale !== 'none') {
+            v = cs.scale.trim().split(/\s+/).map(_pmNum);
+            M = _pmMul(M, [v[0], 0, 0, v.length > 1 ? v[1] : v[0]]);
+        }
+        var tf = cs.transform;
+        if (tf && tf !== 'none') {
+            if ((rm = /^matrix\(([^)]*)\)/.exec(tf))) { v = rm[1].split(',').map(_pmNum); M = _pmMul(M, [v[0], v[1], v[2], v[3]]); }
+            else if ((rm = /^matrix3d\(([^)]*)\)/.exec(tf))) { v = rm[1].split(',').map(_pmNum); M = _pmMul(M, [v[0], v[1], v[4], v[5]]); }
+        }
+        return M;
+    }
+    function _pmRad(cs, w, h) {
+        var k = ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius'], r = [];
+        for (var i = 0; i < 4; i++) {
+            var v = String(cs[k[i]] || '0').split(/\s+/)[0];
+            r.push(Math.max(0, /%$/.test(v) ? _pmNum(v) / 100 * Math.min(w, h) : _pmNum(v)));
+        }
+        if (!(r[0] || r[1] || r[2] || r[3])) return null;
+        var f = Math.min(1, w / Math.max(1e-6, r[0] + r[1]), w / Math.max(1e-6, r[3] + r[2]), h / Math.max(1e-6, r[0] + r[3]), h / Math.max(1e-6, r[1] + r[2]));
+        if (f < 1) for (var j = 0; j < 4; j++) r[j] *= f;
+        return r;
+    }
+    function _pmRadAdd(r, d) { return r ? r.map(function (x) { return x > 0 ? Math.max(0, x + d) : 0; }) : null; }
+    function _pmPathAdd(c, x, y, w, h, r) {
+        if (w <= 0 || h <= 0) return;
+        if (!r) { c.rect(x, y, w, h); return; }
+        c.moveTo(x + r[0], y);
+        c.arcTo(x + w, y, x + w, y + h, r[1]);
+        c.arcTo(x + w, y + h, x, y + h, r[2]);
+        c.arcTo(x, y + h, x, y, r[3]);
+        c.arcTo(x, y, x + w, y, r[0]);
+        c.closePath();
+    }
+    function _pmPath(c, x, y, w, h, r) { c.beginPath(); _pmPathAdd(c, x, y, w, h, r); }
+    /* draw only a shape's shadow: the shape itself goes PM_FAR px off the canvas, its shadow is offset back */
+    function _pmShadowOnly(c, s, k, draw) {
+        var T = c.getTransform();
+        c.save();
+        c.setTransform(T.a, T.b, T.c, T.d, T.e + PM_FAR, T.f);
+        c.shadowColor = s.col; c.shadowBlur = s.blur * k;
+        c.shadowOffsetX = -PM_FAR + s.x * k; c.shadowOffsetY = s.y * k;
+        draw();
+        c.restore();
+    }
+    function _pmImage(url) {
+        var e = _pmImgs[url];
+        if (e) return e.ok ? e.img : null;
+        e = _pmImgs[url] = { img: new Image(), ok: false, tries: 0 };
+        var load = function (u) {
+            if (!/^data:/i.test(u)) e.img.crossOrigin = 'anonymous';
+            e.img.src = u;
+        };
+        e.img.onload = function () { e.ok = true; _pmDirtyAll(); };
+        /* a copy cached without CORS headers fails a CORS read: ask once more past that cache entry */
+        e.img.onerror = function () { if (!e.tries++ && !/^data:/i.test(url)) load(url + (url.indexOf('?') < 0 ? '?' : '&') + 'ewcors=1'); };
+        load(url);
+        return null;
+    }
+    /* a (repeating-)linear / radial gradient over the box centred on 0 (w × h) → a canvas gradient */
+    function _pmGradient(c, img, w, h) {
+        var m = /^(repeating-)?(linear|radial)-gradient\((.*)\)$/i.exec(img.trim());
+        if (!m) return null;
+        var rep = !!m[1], kind = m[2].toLowerCase(), args = _pmSplitTop(m[3]), ang = Math.PI, L, dm;
+        var isStop = function (a) { return PM_COLOR_RE.test(a) || /^[a-z]+(\s|$)/i.test(a) && !/^(to|at|circle|ellipse|closest|farthest)\b/i.test(a); };
+        if (kind === 'linear' && args.length) {
+            var a0 = args[0].trim();
+            if ((dm = /^(-?\d*\.?\d+)(deg|turn|rad|grad)$/.exec(a0))) {
+                var v = _pmNum(dm[1]);
+                ang = dm[2] === 'deg' ? v * Math.PI / 180 : dm[2] === 'turn' ? v * 2 * Math.PI : dm[2] === 'grad' ? v * Math.PI / 200 : v;
+                args.shift();
+            } else if (/^to\s/.test(a0)) {
+                var dx = (/right/.test(a0) ? 1 : 0) - (/left/.test(a0) ? 1 : 0), dy = (/bottom/.test(a0) ? 1 : 0) - (/top/.test(a0) ? 1 : 0);
+                ang = Math.atan2(dx * h, -(dy * w));
+                args.shift();
+            }
+        } else if (kind === 'radial' && args.length && !isStop(args[0].trim())) args.shift();
+        var dir = [Math.sin(ang), -Math.cos(ang)];
+        L = kind === 'linear' ? Math.abs(w * dir[0]) + Math.abs(h * dir[1]) : Math.sqrt(w * w + h * h) / 2;
+        if (!(L > 0)) return null;
+        var stops = [];
+        args.forEach(function (a) {
+            a = a.trim();
+            var cm = /^([a-z-]+\([^)]*\)|#[0-9a-f]{3,8}|[a-z]+)/i.exec(a);
+            if (!cm) return;   // an interpolation hint
+            var pos = a.slice(cm[0].length).trim().split(/\s+/).filter(Boolean).map(function (p) { return /%$/.test(p) ? _pmNum(p) / 100 * L : _pmNum(p); });
+            if (!pos.length) stops.push({ c: cm[1], p: null });
+            else pos.forEach(function (p) { stops.push({ c: cm[1], p: p }); });
+        });
+        if (!stops.length) return null;
+        if (stops[0].p == null) stops[0].p = 0;
+        if (stops[stops.length - 1].p == null) stops[stops.length - 1].p = L;
+        for (var i = 1; i < stops.length; i++) {   // the CSS fill-ins: unplaced stops share the gap evenly, nothing runs backwards
+            if (stops[i].p == null) {
+                var j = i; while (stops[j].p == null) j++;
+                for (var q = i; q < j; q++) stops[q].p = stops[i - 1].p + (stops[j].p - stops[i - 1].p) * (q - i + 1) / (j - i + 1);
+            }
+            if (stops[i].p < stops[i - 1].p) stops[i].p = stops[i - 1].p;
+        }
+        var list = stops;
+        if (rep) {
+            var p0 = stops[0].p, per = stops[stops.length - 1].p - p0;
+            if (!(per > 0.01)) return null;
+            list = [];
+            for (var n = Math.floor(-p0 / per) - 1, guard = 0; guard < 800; n++) {
+                if (p0 + n * per > L) break;
+                for (var t = 0; t < stops.length; t++) { list.push({ c: stops[t].c, p: stops[t].p + n * per }); guard++; }
+            }
+        }
+        var g = kind === 'linear' ? c.createLinearGradient(-dir[0] * L / 2, -dir[1] * L / 2, dir[0] * L / 2, dir[1] * L / 2)
+            : c.createRadialGradient(0, 0, 0, 0, 0, L);
+        for (var z = 0; z < list.length; z++) {
+            try { g.addColorStop(Math.max(0, Math.min(1, list[z].p / L)), list[z].c); } catch (e) {}
+        }
+        return g;
+    }
+    function _pmBgLayer(c, n, layer, idx, x, y, w, h) {
+        if (/gradient\(/i.test(layer)) {
+            var g = _pmGradient(c, layer, w, h);
+            if (g) { c.fillStyle = g; c.fillRect(x, y, w, h); }
+            return;
+        }
+        var um = /^url\(\s*["']?(.*?)["']?\s*\)$/.exec(layer.trim());
+        var im = um ? _pmImage(um[1]) : null;
+        if (!im) return;
+        var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+        if (!iw || !ih) return;
+        var size = _pmPick(n.cs.backgroundSize, idx) || 'auto', pos = _pmPick(n.cs.backgroundPosition, idx) || '0% 0%', dw, dh;
+        if (size === 'cover' || size === 'contain') {
+            var f = size === 'cover' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih);
+            dw = iw * f; dh = ih * f;
+        } else {
+            var sp = size.split(/\s+/), len = function (v, full) { return (!v || v === 'auto') ? null : /%$/.test(v) ? _pmNum(v) / 100 * full : _pmNum(v); };
+            dw = len(sp[0], w); dh = len(sp[1], h);
+            if (dw == null && dh == null) { dw = iw; dh = ih; }
+            else if (dw == null) dw = iw * dh / ih;
+            else if (dh == null) dh = ih * dw / iw;
+        }
+        var pp = pos.split(/\s+/), off = function (v, room) { return /%$/.test(v || '') ? room * _pmNum(v) / 100 : _pmNum(v); };
+        c.imageSmoothingEnabled = !/pixelated|crisp-edges/.test(n.cs.imageRendering || '');
+        try { c.drawImage(im, x + off(pp[0] || '50%', w - dw), y + off(pp[1] || '50%', h - dh), dw, dh); } catch (e) {}
+        c.imageSmoothingEnabled = true;
+    }
+    /* one element's box, drawn in its own frame (centred on 0, the transform already set) */
+    function _pmBox(c, n) {
+        var cs = n.cs, w = n.w, h = n.h, x = -w / 2, y = -h / 2, r = _pmRad(cs, w, h), sh = _pmShadows(cs.boxShadow), i;
+        for (i = sh.length - 1; i >= 0; i--) {   // outer shadows: only outside the border box, the first listed on top
+            var s = sh[i];
+            if (s.inset || _pmClear(s.col)) continue;
+            c.save();
+            c.beginPath(); c.rect(x - 4000, y - 4000, w + 8000, h + 8000); _pmPathAdd(c, x, y, w, h, r); c.clip('evenodd');
+            _pmShadowOnly(c, s, n.dev, function () {
+                c.fillStyle = '#000';
+                _pmPath(c, x - s.spread, y - s.spread, w + 2 * s.spread, h + 2 * s.spread, _pmRadAdd(r, s.spread));
+                c.fill();
+            });
+            c.restore();
+        }
+        c.save();
+        _pmPath(c, x, y, w, h, r); c.clip();
+        if (!_pmClear(cs.backgroundColor)) { c.fillStyle = cs.backgroundColor; c.fillRect(x, y, w, h); }
+        if (cs.backgroundImage && cs.backgroundImage !== 'none') {
+            var layers = _pmSplitTop(cs.backgroundImage);
+            for (i = layers.length - 1; i >= 0; i--) _pmBgLayer(c, n, layers[i], i, x, y, w, h);
+        }
+        if (n.img) {
+            c.imageSmoothingEnabled = !/pixelated|crisp-edges/.test(cs.imageRendering || '');
+            try { c.drawImage(n.img, x, y, w, h); } catch (e) {}
+            c.imageSmoothingEnabled = true;
+        }
+        for (i = sh.length - 1; i >= 0; i--) {   // inset shadows, inside the box
+            var si = sh[i];
+            if (!si.inset || _pmClear(si.col)) continue;
+            _pmShadowOnly(c, si, n.dev, function () {
+                c.fillStyle = '#000';
+                c.beginPath(); c.rect(x - 4000, y - 4000, w + 8000, h + 8000);
+                _pmPathAdd(c, x + si.spread, y + si.spread, w - 2 * si.spread, h - 2 * si.spread, _pmRadAdd(r, -si.spread));
+                c.fill('evenodd');
+            });
+        }
+        c.restore();
+        var bw = [_pmNum(cs.borderTopWidth), _pmNum(cs.borderRightWidth), _pmNum(cs.borderBottomWidth), _pmNum(cs.borderLeftWidth)];
+        var bst = [cs.borderTopStyle, cs.borderRightStyle, cs.borderBottomStyle, cs.borderLeftStyle];
+        var bc = [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor];
+        for (i = 0; i < 4; i++) if (bst[i] === 'none' || bst[i] === 'hidden' || _pmClear(bc[i])) bw[i] = 0;
+        if (bw[0] || bw[1] || bw[2] || bw[3]) {
+            if (bw[0] === bw[1] && bw[1] === bw[2] && bw[2] === bw[3] && bc[0] === bc[1] && bc[1] === bc[2] && bc[2] === bc[3]) {
+                var b = bw[0];
+                c.beginPath(); _pmPathAdd(c, x, y, w, h, r); _pmPathAdd(c, x + b, y + b, w - 2 * b, h - 2 * b, _pmRadAdd(r, -b));
+                c.fillStyle = bc[0]; c.fill('evenodd');
+            } else {
+                c.save(); _pmPath(c, x, y, w, h, r); c.clip();
+                if (bw[0]) { c.fillStyle = bc[0]; c.fillRect(x, y, w, bw[0]); }
+                if (bw[2]) { c.fillStyle = bc[2]; c.fillRect(x, y + h - bw[2], w, bw[2]); }
+                if (bw[3]) { c.fillStyle = bc[3]; c.fillRect(x, y, bw[3], h); }
+                if (bw[1]) { c.fillStyle = bc[1]; c.fillRect(x + w - bw[1], y, bw[1], h); }
+                c.restore();
+            }
+        }
+        if (cs.outlineStyle && cs.outlineStyle !== 'none' && !_pmClear(cs.outlineColor)) {
+            var ow = _pmNum(cs.outlineWidth), oo = _pmNum(cs.outlineOffset) + ow / 2;
+            if (ow > 0) { c.strokeStyle = cs.outlineColor; c.lineWidth = ow; c.strokeRect(x - oo, y - oo, w + 2 * oo, h + 2 * oo); }
+        }
+    }
+    function _pmTextXform(s, tt) {
+        if (tt === 'uppercase') return s.toUpperCase();
+        if (tt === 'lowercase') return s.toLowerCase();
+        if (tt === 'capitalize') return s.replace(/(^|\s)(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
+        return s;
+    }
+    function _pmText(c, n, t, P) {
+        var cs = n.cs;
+        c.save();
+        c.setTransform(P.res, 0, 0, P.res, (t.cx - P.ox) * P.res, (t.cy - P.oy) * P.res);
+        c.transform(n.L[0], n.L[1], n.L[2], n.L[3], 0, 0);
+        c.font = n.font;
+        if ('letterSpacing' in c) c.letterSpacing = n.ls;
+        var s = t.s, x = 0;
+        if (t.ell) {   // text-overflow: ellipsis, laid out by the box: left in the content box, cut to fit
+            var avail = n.w - _pmNum(cs.paddingLeft) - _pmNum(cs.paddingRight);
+            if (c.measureText(s).width > avail + 0.5) {
+                var cut = s;
+                while (cut.length && c.measureText(cut + '…').width > avail) cut = cut.slice(0, -1);
+                s = cut.replace(/\s+$/, '') + '…';
+            }
+            c.textAlign = 'left'; x = -n.w / 2 + _pmNum(cs.paddingLeft);
+        } else c.textAlign = 'center';
+        c.textBaseline = 'alphabetic';
+        var mt = c.measureText(s), A = mt.fontBoundingBoxAscent, D = mt.fontBoundingBoxDescent;
+        var fs = _pmNum(cs.fontSize), by = (A > 0 || D > 0) ? (A - D) / 2 : fs * 0.35;   // the content box sits centred in the line
+        var sh = _pmShadows(cs.textShadow);
+        for (var i = sh.length - 1; i >= 0; i--) {
+            var so = sh[i];
+            if (_pmClear(so.col)) continue;
+            _pmShadowOnly(c, so, n.dev, function () { c.fillStyle = '#000'; c.fillText(s, x, by); });
+        }
+        c.fillStyle = cs.color;
+        c.fillText(s, x, by);
+        c.restore();
+    }
+    function _pmDraw(c, n, P) {
+        c.save();
+        c.globalAlpha = Math.max(0, Math.min(1, n.alpha));
+        if (n.filter && 'filter' in c) c.filter = n.filter;
+        c.setTransform(P.res, 0, 0, P.res, (n.cx - P.ox) * P.res, (n.cy - P.oy) * P.res);
+        c.transform(n.L[0], n.L[1], n.L[2], n.L[3], 0, 0);
+        if (n.paint && n.w > 0 && n.h > 0) _pmBox(c, n);
+        if (n.clip) { _pmPath(c, -n.w / 2, -n.h / 2, n.w, n.h, _pmRad(n.cs, n.w, n.h)); c.clip(); }
+        if (n.paint) for (var i = 0; i < n.texts.length; i++) _pmText(c, n, n.texts[i], P);
+        for (var j = 0; j < n.kids.length; j++) _pmDraw(c, n.kids[j], P);
+        c.restore();
+    }
+    /* the read pass: every shown element's frame (centre, untransformed size, the linear part of its transforms and its
+       ancestors'), opacity, filter, text runs; the union of their boxes */
+    function _pmFilterPx(f, k) { return f.replace(/(-?\d*\.?\d+)px/g, function (m, v) { return (_pmNum(v) * k).toFixed(2) + 'px'; }); }
+    function _pmCollect(el, cs, Lp, alphaP, filterP, P, root) {
+        var L = _pmMul(Lp, _pmOwnLin(cs)), r = el.getBoundingClientRect();
+        var diag = Math.abs(L[1]) < 1e-6 && Math.abs(L[2]) < 1e-6, w, h;
+        if (diag) { w = r.width / (Math.abs(L[0]) || 1); h = r.height / (Math.abs(L[3]) || 1); }
+        else { w = el.offsetWidth || 0; h = el.offsetHeight || 0; }
+        var dev = P.res * (Math.sqrt(Math.abs(L[0] * L[3] - L[1] * L[2])) || 1);
+        var op = root ? 1 : parseFloat(cs.opacity);
+        var filt = filterP;
+        if (cs.filter && cs.filter !== 'none') filt = (filt ? filt + ' ' : '') + _pmFilterPx(cs.filter, dev);
+        var n = { el: el, cs: cs, L: L, alpha: alphaP * (isFinite(op) ? op : 1), filter: filt, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+                  w: w, h: h, dev: dev, paint: cs.visibility !== 'hidden', clip: !root && (cs.overflowX !== 'visible' || cs.overflowY !== 'visible'),
+                  font: cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily,
+                  ls: (cs.letterSpacing && cs.letterSpacing !== 'normal') ? cs.letterSpacing : '0px', texts: [], kids: [],
+                  img: (el.tagName === 'IMG' && el.complete && el.naturalWidth) ? el : null };
+        if (r.width > 0 && r.height > 0) {
+            if (r.left < P.b[0]) P.b[0] = r.left; if (r.top < P.b[1]) P.b[1] = r.top;
+            if (r.right > P.b[2]) P.b[2] = r.right; if (r.bottom > P.b[3]) P.b[3] = r.bottom;
+        }
+        var ell = cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 0.5;
+        var kids = [];
+        for (var ch = el.firstChild; ch; ch = ch.nextSibling) {
+            if (ch.nodeType === 3) {
+                var s = ch.nodeValue;
+                if (!s || !/\S/.test(s)) continue;
+                s = _pmTextXform(s.replace(/\s+/g, ' ').trim(), cs.textTransform);
+                if (ell) { n.texts.push({ s: s, ell: true, cx: n.cx, cy: n.cy }); continue; }
+                var rg = _pmRange || (_pmRange = document.createRange());
+                rg.selectNodeContents(ch);
+                var tr = rg.getBoundingClientRect();
+                if (!(tr.width > 0)) continue;
+                n.texts.push({ s: s, cx: tr.left + tr.width / 2, cy: tr.top + tr.height / 2 });
+            } else if (ch.nodeType === 1) {
+                var ccs = getComputedStyle(ch);
+                if (ccs.display === 'none') continue;
+                var pos = ccs.position !== 'static', zi = parseInt(ccs.zIndex, 10) || 0;
+                kids.push({ el: ch, cs: ccs, key: pos ? (zi > 0 ? 2 + zi : zi < 0 ? -1 : 1) : 0, i: kids.length });
+            }
+        }
+        kids.sort(function (a, b) { return (a.key - b.key) || (a.i - b.i); });   // the CSS paint order: the flow, then the positioned, then z-index
+        for (var k = 0; k < kids.length; k++) n.kids.push(_pmCollect(kids[k].el, kids[k].cs, L, n.alpha, filt, P, false));
+        return n;
+    }
+    function _pmPaint(pm, now) {
+        pm.dirty = false; pm.at = now;
+        var wrap = pm.el, ws = wrap.isConnected ? getComputedStyle(wrap) : null;
+        if (!ws || ws.display === 'none' || ws.visibility === 'hidden') { pm.ok = false; pm.anim = false; return; }
+        var o = pm.outer.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+        var P = { res: pm.res || 2, b: [wr.left, wr.top, wr.right, wr.bottom], ox: 0, oy: 0 };
+        var root = _pmCollect(wrap, ws, _PM_I, 1, '', P, true);
+        var M = PM_MARGIN, ox = P.b[0] - M, oy = P.b[1] - M, cw = (P.b[2] - P.b[0]) + 2 * M, ch = (P.b[3] - P.b[1]) + 2 * M;
+        var pw = Math.min(2048, Math.max(2, Math.ceil(cw * P.res))), ph = Math.min(1024, Math.max(2, Math.ceil(ch * P.res)));
+        P.res = Math.min(P.res, pw / cw, ph / ch);
+        P.ox = ox; P.oy = oy;
+        var cv = pm.cvs, fresh = !cv || cv.width !== pw || cv.height !== ph;
+        if (fresh) { cv = document.createElement('canvas'); cv.width = pw; cv.height = ph; }
+        var c = cv.getContext('2d');
+        if (!c) { pm.ok = false; return; }
+        c.setTransform(1, 0, 0, 1, 0, 0);
+        c.clearRect(0, 0, pw, ph);
+        _pmDraw(c, root, P);
+        if (fresh) {
+            var old = pm.tex, tex = new THREE.CanvasTexture(cv);
+            tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+            pm.cvs = cv; pm.tex = tex; pm.mat.map = tex; pm.mat.needsUpdate = true;
+            if (old) old.dispose();
+        } else pm.tex.needsUpdate = true;
+        pm.cw = cw; pm.ch = ch; pm.ax = o.left - ox; pm.ay = o.top - oy;
+        pm.box = [wr.left - o.left, wr.top - o.top, wr.right - o.left, wr.bottom - o.top];
+        var op = parseFloat(ws.opacity);
+        pm.op = isFinite(op) ? op : 1;
+        pm.ok = true;
+        var an = null;
+        try { an = pm.outer.getAnimations ? pm.outer.getAnimations({ subtree: true }) : null; } catch (e) {}
+        pm.anim = an ? an.some(function (a) { return a.playState === 'running'; }) : true;
+    }
+
     /* ── Per-frame plate scaling: match plate width to projected sprite width ── */
     var _scalePlateVec = new THREE.Vector3();
     var PLATE_BASE_W = 172;
@@ -15765,6 +16345,7 @@ const ThreeRenderer = (function () {
         var side = _plateIsSide(holder);
         _anchorPlateForStyle(holder);
         var off = side ? Math.round(projW * SIDE_PLATE_OFFSET_TILES + SIDE_PLATE_GAP_PX) : 0;
+        if (holder.pm) { holder._s = s; holder._off = off; return; }   // THE PLATES IN THE WORLD: the sprite takes them (_pmTick)
         /* §4.8: skip the style write (and the style recalc it triggers)
            when the camera hasn't meaningfully changed this plate's scale. */
         if (holder._lastScale !== undefined && Math.abs(holder._lastScale - s) < 0.004
@@ -18243,7 +18824,7 @@ const ThreeRenderer = (function () {
             var su = { id: 'ew-fp', race: U.race, gender: U.gender, name: U.name, types: U.types || [], level: U.level,
                 maxHp: U.maxHp || 1240, maxMp: U.maxMp || 180, player: 1, zodiac: U.zodiac };
             var pl = null;
-            try { pl = _buildClonePlate(su, 1); } catch (e) { pl = null; }
+            try { pl = _buildClonePlate(su, 1, true); } catch (e) { pl = null; }
             if (!pl || !pl.el || !pl.el.parentNode) return;
             pl.el.classList.add('tp-ally', 'tp-active');
             var outer = pl.el.parentNode;
@@ -40730,6 +41311,9 @@ const ThreeRenderer = (function () {
             }
             _shadowMotion = false;
 
+            /* THE PLATES IN THE WORLD: the plates are in the scene now, so their size, paint and stack come before the draw */
+            if (!_simNoDraw && cam) { _scalePlates(cam); _pmTick(cam); }
+
             if (_simNoDraw) {
                 /* headless lab tick: bookkeeping only, no draw */
             } else if (_ss.active) {
@@ -40745,7 +41329,6 @@ const ThreeRenderer = (function () {
                 }
 
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
-                _scalePlates(cam);
                 _scaleNexusPlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
@@ -41236,7 +41819,7 @@ const ThreeRenderer = (function () {
         terrainGroup = highlightGroup = objectGroup = unitGroup = projectileGroup = floatTextGroup = hitFxGroup = fogGroup = null;
         _nexusBarGroup = null;
         textureCache.clear(); tileMeshes.clear(); objectMeshes.clear();
-        turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear();
+        turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear(); _pmDropAll();
         _decoyEntries.clear(); _decoyPlates.length = 0;
         _disposeAllModelRigs();
         _lastHpPctById.clear(); _lastMpPctById.clear();
