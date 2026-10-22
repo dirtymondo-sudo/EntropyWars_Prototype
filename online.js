@@ -1533,6 +1533,7 @@
                     kind: kind || 'damage',
                     dmgAmt: (opts && opts._dmgAmt > 0) ? opts._dmgAmt : undefined,
                     dmgBy: (opts && opts._dmgAmt > 0) ? opts._dmgBy : undefined,
+                    nt: (opts && opts._noTally) ? 1 : undefined,   // THE TOTAL MATCHES THE LOG: not the shot caster's hit
                     /* THE HIT READ (SPELL_DIRECTOR_PLAN §5 Phase 2): the
                        host's verdict on this hit — type key, % of max HP,
                        crit, weak (1) / resisted (-1), kill — so the guest's
@@ -4533,7 +4534,7 @@
                         var _ftNum = /^([+\-])(\d+)$/.exec(String(data.text || ''));
                         if (_ftNum) {
                             var _ftAmt = parseInt(_ftNum[2], 10);
-                            if (_ftNum[1] === '-' && (data.hit || data.dmgAmt > 0)
+                            if (_ftNum[1] === '-' && (data.hit || data.dmgAmt > 0) && !data.nt
                                 && (data.kind === 'damage' || data.kind === 'critdmg' || data.kind === 'combo')
                                 && typeof _actionCamTallyDamage === 'function') {
                                 _actionCamTallyDamage(_ftAmt, data.kind === 'critdmg');
