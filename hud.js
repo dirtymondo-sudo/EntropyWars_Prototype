@@ -4024,7 +4024,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
               ? h('span', { className: 'ew-padbtn ew-padbtn-face' }, _hintKey('cancel', ''))
               : h(_HrlgRmbIcon),
           ),
-          isOn && modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
+          /* no mode line on a panel (mondo 2026-10-22: "Sprint - click a target" over the Sprint header was redundant — the
+             header names the pick and the combat text box says what to click); only the panel-less move / jump aim keeps it */
           /* panel header: ONE cohesive blade — the menu name, and for a
              clicked unit its live HP/MP bars + full stat readout, all in
              the same parallelogram of blade material. Vitals/stats are
