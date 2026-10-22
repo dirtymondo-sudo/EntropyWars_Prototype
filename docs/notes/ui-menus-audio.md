@@ -1866,3 +1866,25 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - In the world means the post stack applies: the tilt-shift band softens plates near the top/bottom of the screen like the ground there.
 - The UI Maker's plate preview still shows the DOM (`_buildClonePlate(su, p, true)`); tower/door plates are still CSS2D (the Nexus counter has its own in-world sprite, next section).
 - Offsets (anchor point, stack lift, side offset) move `sprite.position` along the camera right/up vectors; `Sprite.center` stays (0.5, 0.5) because the node renderer's SpriteNodeMaterial keeps the first center it saw.
+
+### The enemy HP bar on the unit info card stays red (2026-10-22, mondo: "in the unit info panel enemy health bar should still show up as red, not green")
+- Cause: hud.js `barsCss` (UI Maker > Health bars). Once ANY bar look setting is changed (fill, segments, glow, colours), its rules reach every bar. The HP rule `.hrlg-thp:not(.mp) > .hrlg-thp-fill` (3 classes) outranked the foe rule `.hrlg-thp-fill.foe` (2 classes), both `!important`, so the enemy's card bar (and the turn-icon target rows) took the ally green. A fresh profile (no bar setting touched) was always red.
+- Fix: the foe selector is now `.hrlg-thp:not(.mp) > .hrlg-thp-fill.foe`, one class more than the HP rule. Colour only; the card's size and place are untouched.
+- Online guest: the card's `enemy` / `foe` class is picked relative to the guest's own unit (`isEnemyUnit`; the turn-icon peek uses `getViewerPlayer`), so the same CSS covers it. Checked in a two-browser friendly room: guest's enemy card red, guest's ally card green.
+- Not changed: the ally low-HP colour rule (`.hrlg-thp-fill.low`) loses to the HP rule the same way on this card.
+
+## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
+mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
+damage in red, but it wont show that coming from the outside".
+- Cause (reproduced in a browser, Football Stadium, Entangling Roots): battle.js `updateHoveredTarget` keeps the hover pick
+  (`state.pendingTarget`, viaHover) when the pointer moves onto an out-of-range / wrong-team tile, but that branch wipes the
+  red AoE / aim preview (`clearAoePreview`). Coming back onto the SAME tile compared equal to the kept pick, so `changed`
+  was false and `updateAoePreview` never ran: no red until the pointer crossed into another tile and back.
+- Fix: module-local `_hoverPickLeft` is set when the pointer is on a tile other than the hover pick; the next valid hover
+  counts as changed and repaints. The pick itself, CONFIRM and every targeting rule are untouched.
+- Same family: the wrong-team branches (spell + item) wiped the MOVE→CAST approach arrow + ghost via clearAoePreview but
+  kept `state._spellApproachKey`, so the way back onto that enemy skipped the redraw; they now `_clearSpellApproachPreview()`.
+- Move: the walk preview (`_updateMoveHoverPreview`, key = tile + hover z) came back on every path tried (slow/fast, off the
+  board, out to the sky). The one dead zone found: the combat log box (`#ewCombatLog`, 340x340, pointer-events auto) catches
+  the mouse over its see-through top, so board tiles behind it never hover. Not changed (flagged to mondo).
+- Shots: /mnt/project-files/edge-hover/.

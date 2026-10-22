@@ -3722,6 +3722,15 @@ const ThreeRenderer = (function () {
         return h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y) + _stairStandLift(x, y);
     }
 
+    /* THE FALL FROM THE AIR (2026-10-22): the floor under a body that is off the ground — a flyer / Levitating unit
+       over its own air pocket's floor, a climber's foot. The same surface it would stand on if it were set down. */
+    function unitGroundY(unit) {
+        if (!unit) return 0;
+        var sh = Object.create(unit);
+        if (unit.z != null && typeof getFloorBelowZ === 'function') sh.z = getFloorBelowZ(unit.x, unit.y, unit.z);
+        return unitSurfaceY(sh);
+    }
+
     /* THE RISE: a body standing on a cell that is still climbing stands on the climbing ground */
     function unitSurfaceY(unit) {
         var y = _unitSurfaceY0(unit);
@@ -14280,7 +14289,7 @@ const ThreeRenderer = (function () {
             }
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
             var want;
-            if (_deathTweens.has(uid)) want = _deathSlotFor(entry, _deathTweens.get(uid).style);   // THE NEW CLIPS / THE GORE: the death style picks the clip
+            if (_deathTweens.has(uid)) want = _deathWant(entry, _deathTweens.get(uid));   // THE NEW CLIPS / THE GORE: the death style picks the clip (THE FALL FROM THE AIR: the drop, then the crumple)
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
             /* THE DEBRIEF (2026-09-21): a HELD pose — the result stage's victory dance / the
                defeat's kneel — plays under every one-shot and outranks the locomotion reads
@@ -24336,6 +24345,110 @@ const ThreeRenderer = (function () {
         var slot = style && _DEATH_STYLE_SLOT[style];
         return (slot && entry && entry.actions && entry.actions[slot]) ? slot : 'death';
     }
+
+    /* THE FALL FROM THE AIR (2026-10-22, mondo: "if a unit dies in the air their blood splat stays floating in the
+       air ... consider a separate death animation and blood for units that die in the air since they would have to
+       fall to the ground too"). A body that dies off the ground (a flyer or a Levitating unit hovering, a climber
+       hanging on a face, a body still up when its carrying tween lets go) used to play its knock-down where it was
+       and lie on the air. Now it DROPS first: the fall clip (Fall3, the flail the knock-offs play) while gravity takes
+       it to the floor under it, a thud, then the crumple on the ground (UAL1 Death01, the knees go; else Dead) and
+       the usual lie + dissolve. Blood splashes where it lands (ThreeVFXEffects.fireBloodLand) and the kill's pool
+       spreads there. Display only: decided per screen from the body's own height over its floor, so the online guest
+       drops it the same way from the same state. Kill switch: window.EW_NO_AIR_DEATH. */
+    var AIR_DEATH = { minDropTiles: 0.15, g: 8.5, minMs: 320, maxMs: 1100, landSlots: ['deathCollapse', 'death'] };
+    function _airDeathLandSlot(entry) {
+        var a = (entry && entry.actions) || {};
+        for (var i = 0; i < AIR_DEATH.landSlots.length; i++) if (a[AIR_DEATH.landSlots[i]]) return AIR_DEATH.landSlots[i];
+        return 'death';
+    }
+    /* the clip a dying body plays this frame */
+    function _deathWant(entry, tw) {
+        if (tw && tw.fall) {
+            if (!tw.fall.landed && entry.actions && entry.actions.fall) return 'fall';
+            return _airDeathLandSlot(entry);
+        }
+        return _deathSlotFor(entry, tw && tw.style);
+    }
+    /* ms from a death clip's start until the body is on the floor (its own length at its wired speed) */
+    function _deathClipLandMs(entry, slot) {
+        var ms = MODEL_DEATH_MS * 0.55;
+        var act = entry && entry.actions && entry.actions[slot];
+        try {
+            var clip = act && act.getClip && act.getClip();
+            var ts = Math.abs((act && (act._ew_ts0 || act.timeScale)) || 1) || 1;
+            if (clip && clip.duration > 0) ms = Math.max(450, Math.min(2200, clip.duration * 1000 / ts));
+        } catch (e) {}
+        return ms;
+    }
+    /* decide once the body is free (no walk / jump / throw / strike tween still carrying it): off the floor → the drop */
+    function _deathFallArm(uid, tw) {
+        if (tw.fall !== undefined) return;
+        if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _jumpTweens.has(uid) || _strikeTweens.has(uid)
+            || _clipTravelTweens.has(uid) || _throwTweens.has(uid)) return;
+        tw.fall = null;
+        if (window.EW_NO_AIR_DEATH) return;
+        var unit = _findUnit(uid), g = tw.group;
+        if (!unit || !g) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var spriteH = ts * UNIT_SPRITE_SIZE_RATIO;
+        var y1 = unitGroundY(unit);
+        try {
+            var sh = Object.create(unit);
+            if (unit.z != null && typeof getFloorBelowZ === 'function') sh.z = getFloorBelowZ(unit.x, unit.y, unit.z);
+            y1 -= _getSubmersionDepth(sh) * spriteH;   // into the water / lava like a body standing there
+        } catch (e) {}
+        var drop = g.position.y - y1;
+        if (!(drop > ts * AIR_DEATH.minDropTiles)) return;
+        var ms = Math.sqrt(2 * drop / (ts * AIR_DEATH.g)) * 1000;
+        ms = Math.max(AIR_DEATH.minMs, Math.min(AIR_DEATH.maxMs, ms));
+        /* a climber hangs against the face: it slides off it to the middle of its own tile (a 2×2 boss keeps its spot) */
+        var dx = 0, dz = 0;
+        if (!unit._isBoss) {
+            dx = unit.x * ts + ts / 2 - g.position.x; dz = unit.y * ts + ts / 2 - g.position.z;
+            if (Math.sqrt(dx * dx + dz * dz) > ts * 0.6) { dx = 0; dz = 0; }
+        }
+        var now = _animNow();
+        tw.fall = { t0: now, ms: ms, y0: g.position.y, y1: y1, x0: g.position.x, z0: g.position.z, dx: dx, dz: dz, landed: false };
+        /* the death proper starts on the floor: the crumple, the lie, the dissolve */
+        var before = (now - tw.startTime) + ms;
+        if (tw.isModel) {
+            var entry = _getUnitEntry(uid);
+            var landMs = _deathClipLandMs(entry, _airDeathLandSlot(entry));
+            tw.fadeAtMs = before + landMs + MODEL_DEATH_LIE_MS;
+            tw.durationMs = tw.fadeAtMs + MODEL_DEATH_FADE_MS;
+        } else {
+            tw.spriteDelayMs = before;
+            tw.durationMs = before + DEATH_MS;
+            tw.fadeAtMs = before + DEATH_MS * 0.3;
+        }
+    }
+    /* the drop: gravity from rest (it hangs a beat as the blow lands, then plunges), the slide off a face eases out */
+    function _deathFallStep(uid, tw, now) {
+        var f = tw.fall, g = tw.group;
+        if (!f || f.landed || !g) return;
+        var k = Math.min(1, Math.max(0, (now - f.t0) / f.ms));
+        var kO = 1 - (1 - k) * (1 - k);
+        g.position.y = f.y0 + (f.y1 - f.y0) * k * k;
+        g.position.x = f.x0 + f.dx * kO;
+        g.position.z = f.z0 + f.dz * kO;
+        g._ew_spriteTopY = g.position.y + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
+        _shadowMotion = true;
+        if (k < 1) return;
+        f.landed = true;
+        /* the thud: blood spills where the body hits the floor (and the kill's pool spreads there) */
+        try {
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBloodLand) {
+                var hw = unitBoneWorld(uid, ['Hips', 'hips', 'pelvis', 'mixamorig:Hips']);
+                ThreeVFXEffects.fireBloodLand(uid, hw ? hw.x : g.position.x, f.y1, hw ? hw.z : g.position.z);
+            }
+        } catch (e) {}
+    }
+    /* is a body dropping out of the air (THE GORE's pool waits for it): null = not an air death, else { landed, landInMs } */
+    function deathFallOf(uid) {
+        var tw = _deathTweens.get(uid);
+        if (!tw || !tw.fall) return null;
+        return { landed: !!tw.fall.landed, landInMs: Math.max(0, tw.fall.t0 + tw.fall.ms - _animNow()) };
+    }
     /* the world position of a unit's first named bone that exists (rigged
        units only) — THE GORE pumps the blood from the neck as the body falls */
     function unitBoneWorld(unitId, names) {
@@ -24393,6 +24506,7 @@ const ThreeRenderer = (function () {
             startX: entry.group.position.x,
             startY: entry.group.position.y
         });
+        _deathFallArm(unitId, _deathTweens.get(unitId));   // THE FALL FROM THE AIR
     }
 
     function _updateDeathTweens() {
@@ -24400,6 +24514,8 @@ const ThreeRenderer = (function () {
         var toRemove = [];
         for (var entry of _deathTweens) {
             var uid = entry[0], tw = entry[1];
+            if (tw.fall === undefined) _deathFallArm(uid, tw);   // THE FALL FROM THE AIR: once the body is free
+            if (tw.fall && !tw.fall.landed) _deathFallStep(uid, tw, now);
             var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
             var g = tw.group;
             if (tw.isModel) {
@@ -24429,6 +24545,13 @@ const ThreeRenderer = (function () {
                 }
                 continue;
             }
+            /* THE FALL FROM THE AIR: a sprite drops first, then flashes and shrinks where it landed */
+            var _sx0 = tw.startX, _sy0 = tw.startY;
+            if (tw.fall) {
+                if (!tw.fall.landed) continue;
+                _sx0 = tw.fall.x0 + tw.fall.dx; _sy0 = tw.fall.y1;
+                t = Math.min(Math.max(0, now - tw.startTime - (tw.spriteDelayMs || 0)) / DEATH_MS, 1);
+            }
             if (g) {
 
                 if (t < 0.3) {
@@ -24436,7 +24559,7 @@ const ThreeRenderer = (function () {
 
                     var shakeAmp = (1 - flashT) * 6;
                     var shakeX = Math.sin(flashT * Math.PI * 8) * shakeAmp;
-                    g.position.x = tw.startX + shakeX;
+                    g.position.x = _sx0 + shakeX;
 
                     var flashI = Math.sin(flashT * Math.PI * 3);
                     for (var i = 0; i < g.children.length; i++) {
@@ -24449,12 +24572,12 @@ const ThreeRenderer = (function () {
                     var fadeT = (t - 0.3) / 0.7;
                     var easedFade = fadeT * fadeT;
 
-                    g.position.x = tw.startX;
+                    g.position.x = _sx0;
 
                     var s = 1 - easedFade * 0.7;
                     g.scale.set(s, s, s);
 
-                    g.position.y = tw.startY - easedFade * 30;
+                    g.position.y = _sy0 - easedFade * 30;
 
                     g.rotation.y = easedFade * Math.PI * 3;
 
@@ -73328,6 +73451,8 @@ const ThreeRenderer = (function () {
         unitBoneWorld: unitBoneWorld,
         deathTweenProgress: deathTweenProgress,
         deathShotDone: deathShotDone,
+        deathFallOf: deathFallOf,       // THE FALL FROM THE AIR
+        unitGroundY: unitGroundY,
 
         get _scene() { return scene; },
         /* Debug/profiling handle: renderer.info has live draw-call/triangle/

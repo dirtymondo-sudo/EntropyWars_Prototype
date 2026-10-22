@@ -4026,6 +4026,40 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         };
     }
 
+    /* THE FALL FROM THE AIR (2026-10-22, mondo: "if a unit dies in the air their blood splat stays floating in the
+       air"): the marks under a body went down at the body's own height (unitSurfaceZ: a flyer's hover, a climber on
+       the face), so every splat / spatter / pool under a flyer floated in the air. The wound stays where the body is;
+       the floor marks go on the floor under it (ThreeRenderer.unitGroundY: the same surface it would stand on). */
+    function unitGroundZ(tx, ty, uid) {
+        var ix = Math.round(tx), iy = Math.round(ty), u = null;
+        if (typeof state !== 'undefined' && state && Array.isArray(state.units)) {
+            for (var i = 0; i < state.units.length; i++) {
+                var c = state.units[i];
+                if (!c) continue;
+                if (uid != null ? c.id === uid : (!c.dead && !c._dying && c.x === ix && c.y === iy)) { u = c; break; }
+            }
+        }
+        if (u && u.x === ix && u.y === iy) {
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()
+                    && typeof ThreeRenderer.unitGroundY === 'function') {
+                    var gy = ThreeRenderer.unitGroundY(u);
+                    if (typeof gy === 'number' && isFinite(gy)) return gy;
+                }
+            } catch (e) {}
+        }
+        return tileZ(tx, ty);
+    }
+    /* unit id → when its kill blood fired: the landing splash of a body falling out of the air follows real kill
+       blood only (whatever gates the gore gates it too) */
+    var _bloodKillAt = {};
+    function _airDeathFall(uid) {
+        try {
+            if (uid != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.deathFallOf) return ThreeRenderer.deathFallOf(uid);
+        } catch (e) {}
+        return null;
+    }
+
     function fireBlood(tx, ty, tier, opts) {
         if (_suppressed() || !_canSpawn()) return;
         opts = opts || {};
@@ -4034,6 +4068,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dens = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 0.55 : 1;
         var c0 = tilePx(tx, ty);
         var zFloor = unitSurfaceZ(tx, ty);
+        var zGround = unitGroundZ(tx, ty, opts.unitId);   // THE FALL FROM THE AIR: the floor under the body
+        if (zGround > zFloor) zGround = zFloor;
         var zTorso = zFloor + unitZBoost();
         /* the wound: chest / neck / head height on a standing body */
         var Z_CHEST = zTorso + ts * 0.14;
@@ -4083,7 +4119,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
         function decal(sprite, x, y, o) {
-            _spawn({ x: x, y: y, z: zFloor + 1 + Math.random() * 0.6, mode: 'world', sprite: sprite,
+            /* on the floor where it lands: the body's own tile = the floor under the body, another tile = that tile's floor */
+            var dz = zGround, pad = _cfg().boardPadding || 2, step = ts + (_cfg().tileGap || 0);
+            if (Math.floor((x - pad) / step) !== Math.round(tx) || Math.floor((y - pad) / step) !== Math.round(ty)) {
+                var oz = stain.floorAt(x, y);
+                if (oz != null) dz = oz;
+            }
+            _spawn({ x: x, y: y, z: dz + 1 + Math.random() * 0.6, mode: 'world', sprite: sprite,
                      size0: o.size0, size1: o.size1, w0: o.w0, w1: o.w1, h0: o.h0, h1: o.h1,
                      sizeEaseOut: o.ease || 0, ml: o.ml, opHold: o.hold || 0.75,
                      opacity0: o.op || 0.85, opacity1: 0, spriteRot: o.rot != null ? o.rot : rn(0, 360), decor: true });
@@ -4195,7 +4237,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         }
                         if (pz == null) {
                             var f = Math.min(1, (i * beatMs) / landMs);
-                            pz = Z_NECK + (zFloor + ts * 0.12 - Z_NECK) * f;
+                            pz = Z_NECK + (zGround + ts * 0.12 - Z_NECK) * f;
                         }
                         spray(Math.max(2, Math.round(4 * k * dens)), { x: px, y: py, z: pz, ang: aim, spread: aimed ? 1.0 : Math.PI,
                             sp: [50 * k, 160 * k], vz: [110 * k, 270 * k], stretch: true,
@@ -4217,9 +4259,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     }, 160 + j * 60 + d3 * 0.8);
                 })(sp2);
             }
-            /* the pool: spreads out under the body once it is down */
+            /* the pool: spreads out under the body once it is down (a body falling out of the air gets its pool
+               where it lands: fireBloodLand) */
+            if (uid != null) _bloodKillAt[uid] = { at: Date.now(), dx: dx, dy: dy, aimed: aimed, aim: aim };
             _fxDelay(function () {
                 if (_suppressed() || !_canSpawn()) return;
+                if (_airDeathFall(uid)) return;
                 var qx = cx + dx * ts * 0.25, qy = cy + dy * ts * 0.25;
                 if (uid != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBoneWorld
                     && window.ThreeVFX && window.ThreeVFX.worldToVfx) {
@@ -4240,6 +4285,75 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         if (isKill) _shake('normal');
+    }
+
+    /* THE FALL FROM THE AIR (2026-10-22): a body that died in the air hits the floor (ThreeRenderer's death drop
+       calls this on touchdown, on every screen — the guest's own renderer drops its own copy of the body). The blood
+       spills there: a splash thrown low all round, the impact splat, spatter out along the blow, and the kill's pool
+       spreading under the hips once the body has crumpled. Only after real kill blood (fireBlood). */
+    function fireBloodLand(uid, wx, wy, wz) {
+        var rec = _bloodKillAt[uid];
+        if (!rec || Date.now() - rec.at > 10000) return;
+        delete _bloodKillAt[uid];
+        if (_suppressed() || !_canSpawn() || !window.ThreeVFX || !window.ThreeVFX.worldToVfx) return;
+        var v = window.ThreeVFX.worldToVfx(new THREE.Vector3(wx, wy, wz));
+        if (!v) return;
+        var ts = (_cfg().tileSize) || 128;
+        var dens = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 0.55 : 1;
+        var cx = v.x, cy = v.y, zG = wy;
+        var stain = _bloodStainer(Math.round(40 * dens), 15000);
+        function splash(n, o) {
+            for (var i = 0; i < n; i++) {
+                var a = o.ang + rn(-o.spread, o.spread), sp = rn(o.sp[0], o.sp[1]);
+                _spawn({
+                    x: cx + rn(-6, 6), y: cy + rn(-6, 6), z: zG + o.z + rn(-2, 2),
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(o.vz[0], o.vz[1]),
+                    ml: rn(1100, 1500), gravity: o.g || 820, drag: o.drag != null ? o.drag : 0.15,
+                    mode: 'billboard', sprite: 'blood-glob', stretch: !!o.stretch,
+                    globColor: o.color, size0: rn(o.s0[0], o.s0[1]), size1: rn(o.s1[0], o.s1[1]),
+                    opacity0: 1, opacity1: 0.9,
+                    floorAt: stain.floorAt, onLand: stain.onLand
+                });
+            }
+        }
+        function decal(sprite, x, y, o) {
+            var dz = stain.floorAt(x, y);
+            if (dz == null || Math.abs(dz - zG) > ts * 0.6) dz = zG;
+            _spawn({ x: x, y: y, z: dz + 1 + Math.random() * 0.6, mode: 'world', sprite: sprite,
+                     size0: o.size0, size1: o.size1, w0: o.w0, w1: o.w1, h0: o.h0, h1: o.h1,
+                     sizeEaseOut: o.ease || 0, ml: o.ml, opHold: o.hold || 0.8,
+                     opacity0: o.op || 0.85, opacity1: 0, spriteRot: o.rot != null ? o.rot : rn(0, 360), decor: true });
+        }
+        function floorRot(ang) { return Math.atan2(-Math.sin(ang), Math.cos(ang)) * 180 / Math.PI; }
+        var aim = rec.aimed ? rec.aim : rn(0, 6.2832);
+
+        /* the splash: the body slaps the floor and the blood in it flies out low, all round, heavier along the blow */
+        splash(Math.round(16 * dens), { ang: aim, spread: Math.PI, z: ts * 0.1, sp: [70, 190], vz: [70, 170],
+            stretch: true, s0: [3.5, 6.5], s1: [1.6, 3.2], g: 760, drag: 0.2 });
+        splash(Math.round(8 * dens), { ang: aim, spread: rec.aimed ? 0.9 : Math.PI, z: ts * 0.08, sp: [50, 130], vz: [50, 120],
+            s0: [5, 10], s1: [3, 6], g: 840, drag: 0.1 });
+        splash(Math.round(3 * dens), { ang: aim, spread: Math.PI, z: ts * 0.1, sp: [40, 110], vz: [90, 170],
+            color: _BLOOD_DARK, s0: [6, 11], s1: [5, 9], g: 900, drag: 0.06 });
+        /* the impact splat right where it hit, and spatter flung out from it */
+        decal('blood-splat', cx, cy, { size0: 50, size1: rn(110, 140), ease: 9, ml: 15000, op: 0.82 });
+        var spN = Math.round(4 * dens);
+        for (var j = 0; j < spN; j++) {
+            var a3 = aim + (rec.aimed ? rn(-0.8, 0.8) : rn(0, 6.2832)), d3 = ts * rn(0.3, 0.9), L3 = rn(60, 100);
+            decal('blood-spatter', cx + Math.cos(a3) * d3, cy + Math.sin(a3) * d3,
+                  { w0: L3 * 0.7, w1: L3, h0: L3 * 0.4, h1: L3 * 0.5, ease: 10, ml: 15000, op: 0.85, rot: floorRot(a3) });
+        }
+        /* the pool: spreads under the hips once the crumple is done */
+        _fxDelay(function () {
+            if (_suppressed() || !_canSpawn()) return;
+            var qx = cx, qy = cy;
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.unitBoneWorld) {
+                var hw = ThreeRenderer.unitBoneWorld(uid, _BLOOD_HIPS);
+                var hv = hw ? window.ThreeVFX.worldToVfx(hw) : null;
+                if (hv && Math.abs(hv.x - cx) < ts * 1.5 && Math.abs(hv.y - cy) < ts * 1.5) { qx = hv.x; qy = hv.y; }
+            }
+            decal('blood-pool', qx, qy, { size0: 30, size1: rn(170, 210), ease: 6, ml: 16000, hold: 0.8, op: 0.92 });
+            decal('blood-splat', qx + rn(-12, 12), qy + rn(-12, 12), { size0: 40, size1: rn(110, 140), ease: 7, ml: 16000, hold: 0.8, op: 0.7 });
+        }, 450);
     }
 
     function fireDash(fromTx, fromTy, toTx, toTy) {
@@ -39509,6 +39623,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireLevelUp: fireLevelUp,
         fireDeath: fireDeath,
         fireBlood: fireBlood,
+        fireBloodLand: fireBloodLand,
         fireDash: fireDash,
         fireTeleportLegacy: fireTeleportLegacy,
         fireZone: fireZone,
