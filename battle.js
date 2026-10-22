@@ -3808,6 +3808,18 @@
                 if (!isTerrainPassable(nx, ny)) break;
                 const occ = unitAt(nx, ny);
                 if (occ && occ !== unit) break;
+                /* THE ICE COLLISION (mondo 2026-10-22: "ice terrain can make me slide into the cube ... It needs colission
+                   rules like any other unit or object or wall"): the glide meets the same blockers a forced slide does
+                   (_slideStepInfo) — a thin wall across the step, and canOccupy's Cube / turret / decoy / shut door /
+                   blocking object — and stops on the tile before them. */
+                if (typeof wallBlocksStep === 'function' && wallBlocksStep(cx, cy, nx, ny, null, null)) break;
+                let _free;
+                if (occ === unit) {
+                    const _ox = unit.x, _oy = unit.y;
+                    unit.x = -999; unit.y = -999;
+                    try { _free = canOccupy(nx, ny); } finally { unit.x = _ox; unit.y = _oy; }
+                } else _free = canOccupy(nx, ny);
+                if (!_free) break;
                 // No sliding uphill, no launching off cliffs — the surface has
                 // to stay level (or dip at most one step) to keep the glide.
                 const dh = getHeightAt(nx, ny) - getHeightAt(cx, cy);
@@ -4926,6 +4938,8 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) {
                 // A flyer sails over anything below its altitude.
                 if (getBaseHeightAt(nx, ny) > z) return { kind: 'wall', nx, ny };
+                /* ⬡ but never onto the Cube: its column is solid for flyers too (canOccupy3D, isTerrainPassable's note) */
+                if (typeof isTowerTile === 'function' && isTowerTile(nx, ny)) return { kind: 'wall', nx, ny };
                 return { kind: 'open', nx, ny, nz: z };
             }
             if (!isTerrainPassable(nx, ny)) return { kind: 'wall', nx, ny };
