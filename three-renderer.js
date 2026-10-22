@@ -2426,11 +2426,32 @@ const ThreeRenderer = (function () {
            read the same objects every render. A unit's material carries the string property ewPop = 'unit', so three's
            node cache key gives it its own build.
        Live-tune from the console: EW_POP.unit / EW_POP.world = { x: saturation, y: brightness, w: 1 on / 0 off }.
-       Off at load: ?ew_pop=0 or window.EW_NO_UNIT_POP = true. */
+       Off at load: ?ew_pop=0 or window.EW_NO_UNIT_POP = true.
+       THE UNIT RIM LIGHT (2026-10-22, mondo: "add a rim light to the units to make them easier to see even at night"):
+       on the same unit-only materials, a fresnel rim — the edges of the body that turn away from the camera catch a
+       light, so the silhouette reads against a dark ground. It is added after the grade (so the pop never washes its
+       colour) and before fog / tone mapping, the upper edges a little brighter than the lower ones (light from above).
+       Day = a soft warm white, night = a stronger cool moonlight; _ewRimTick eases between them with the battle's
+       night (the sky's own S.night). The world, the VFX and the ShaderMaterials never get it.
+       Live-tune: EW_RIM = { on, day: [r, g, b, strength], night: [r, g, b, strength], edge (band start, 0..0.95), low }.
+       Off at load: ?ew_rim=0 or window.EW_NO_UNIT_RIM = true. */
     var _EW_POP_ON = (function () { try { return !window.EW_NO_UNIT_POP && !/[?&]ew_pop=0\b/.test(location.search); } catch (e) { return true; } })();
     var _EW_POP_W = { x: 0.86, y: 0.95, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the ground + objects: a little faded
     var _EW_POP_U = { x: 1.22, y: 1.10, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the units: richer, a touch brighter
     try { window.EW_POP = { world: _EW_POP_W, unit: _EW_POP_U }; } catch (e) {}
+    var _EW_RIM_ON = (function () { try { return !window.EW_NO_UNIT_RIM && !/[?&]ew_rim=0\b/.test(location.search); } catch (e) { return true; } })();
+    var _EW_RIM_CFG = { on: _EW_RIM_ON, day: [1.0, 0.94, 0.84, 0.9], night: [0.62, 0.78, 1.0, 2.0], edge: 0.2, low: 0.6 };
+    var _EW_RIM = { x: 1, y: 1, z: 1, w: 0 };       // the rim's colour + strength (0 = off), the shaders read it live
+    var _EW_RIM2 = { x: 0.2, y: 0.6, z: 0, w: 0 };   // where the band starts (1 - N·V), the lower edges' share
+    try { window.EW_RIM = _EW_RIM_CFG; } catch (e) {}
+    /* the rim's colour + strength for a night share n (0 day .. 1 night); runs every battle frame with the sky's ease */
+    function _ewRimTick(n) {
+        var C = _EW_RIM_CFG, d = C.day, k = C.night, t = Math.max(0, Math.min(1, n || 0));
+        _EW_RIM.x = d[0] + (k[0] - d[0]) * t; _EW_RIM.y = d[1] + (k[1] - d[1]) * t; _EW_RIM.z = d[2] + (k[2] - d[2]) * t;
+        _EW_RIM.w = C.on ? Math.max(0, d[3] + (k[3] - d[3]) * t) : 0;
+        _EW_RIM2.x = Math.max(0, Math.min(0.95, C.edge == null ? 0.2 : C.edge)); _EW_RIM2.y = (C.low == null) ? 0.6 : C.low;
+    }
+    _ewRimTick(0);
     var _ewPopPatched = false;
     function _ewPopPatch() {
         if (_ewPopPatched || typeof THREE === 'undefined' || !THREE.ShaderLib) return false;
@@ -2439,12 +2460,17 @@ const ThreeRenderer = (function () {
             var lib = THREE.ShaderLib, keys = ['lambert', 'phong', 'standard', 'physical'], n = 0;
             var code = '#include <opaque_fragment>\n\t{\n\t#ifdef EW_UNIT_POP\n\t\tvec4 ewPop = uEwPopU;\n\t#else\n\t\tvec4 ewPop = uEwPop;\n\t#endif\n' +
                 '\t\tif ( ewPop.w > 0.5 ) {\n\t\t\tfloat ewPopL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
-                '\t\t\tgl_FragColor.rgb = max( mix( vec3( ewPopL ), gl_FragColor.rgb, ewPop.x ), 0.0 ) * ewPop.y;\n\t\t}\n\t}';
+                '\t\t\tgl_FragColor.rgb = max( mix( vec3( ewPopL ), gl_FragColor.rgb, ewPop.x ), 0.0 ) * ewPop.y;\n\t\t}\n' +
+                '\t#ifdef EW_UNIT_POP\n\t\tif ( uEwRim.w > 0.0 ) {\n' +
+                '\t\t\tfloat ewRim = smoothstep( uEwRim2.x, 1.0, 1.0 - clamp( abs( dot( geometryNormal, geometryViewDir ) ), 0.0, 1.0 ) );\n' +
+                '\t\t\tewRim *= mix( uEwRim2.y, 1.0, clamp( geometryNormal.y * 0.5 + 0.5, 0.0, 1.0 ) );\n' +
+                '\t\t\tgl_FragColor.rgb += uEwRim.rgb * ( ewRim * uEwRim.w );\n\t\t}\n\t#endif\n\t}';
             for (var i = 0; i < keys.length; i++) {
                 var S = lib[keys[i]];
                 if (!S || !S.fragmentShader || S.fragmentShader.indexOf('uEwPop') >= 0 || S.fragmentShader.indexOf('#include <opaque_fragment>') < 0) continue;
-                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
+                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\nuniform vec4 uEwRim;\nuniform vec4 uEwRim2;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
                 S.uniforms.uEwPop = { value: _EW_POP_W }; S.uniforms.uEwPopU = { value: _EW_POP_U };
+                S.uniforms.uEwRim = { value: _EW_RIM }; S.uniforms.uEwRim2 = { value: _EW_RIM2 };   // THE UNIT RIM LIGHT
                 n++;
             }
             if (!n) console.warn('[ThreeRenderer] the unit pop patch found no anchor in three.js ' + THREE.REVISION);
@@ -27624,6 +27650,7 @@ const ThreeRenderer = (function () {
         _motionTick(performance.now() / 1000);
 
         _envUni.uDayNight.value = S.night;
+        _ewRimTick(S.night);   // THE UNIT RIM LIGHT: warm by day, cool moonlight by night
         _envUni.uSkyEvent.value = S.skyEvent;
         _envUni.uSkyAmt.value = S.skyAmt;
         _envUni.uEvAge.value = _skyEvShownAt ? Math.min(99, (performance.now() - _skyEvShownAt) / 1000) : 99;
@@ -37174,7 +37201,12 @@ const ThreeRenderer = (function () {
             var v = new THREE.Vector4(o.x, o.y, o.z, o.w);
             U[key] = T.uniform(v).setGroup(T.renderGroup).onRenderUpdate(function () { return v.set(o.x, o.y, o.z, o.w); });
         })(unit ? _EW_POP_U : _EW_POP_W);
-        var P = U[key], base = nm.setupOutput;
+        if (unit && !U.rim) {
+            var rv = new THREE.Vector4(), rv2 = new THREE.Vector4();
+            U.rim = T.uniform(rv).setGroup(T.renderGroup).onRenderUpdate(function () { return rv.set(_EW_RIM.x, _EW_RIM.y, _EW_RIM.z, _EW_RIM.w); });
+            U.rim2 = T.uniform(rv2).setGroup(T.renderGroup).onRenderUpdate(function () { return rv2.set(_EW_RIM2.x, _EW_RIM2.y, _EW_RIM2.z, _EW_RIM2.w); });
+        }
+        var P = U[key], base = nm.setupOutput, Rm = U.rim, Rm2 = U.rim2;
         U.dressed[key] = (U.dressed[key] || 0) + 1;
         nm.setupOutput = function (builder, out) {
             if (!out || out.isOutputStructNode) return base.call(this, builder, out);
@@ -37183,6 +37215,12 @@ const ThreeRenderer = (function () {
                 T.If(P.w.greaterThan(0.5), function () {
                     var l = T.dot(c.rgb, T.vec3(0.2126, 0.7152, 0.0722));
                     c.rgb.assign(T.max(T.mix(T.vec3(l), c.rgb, P.x), 0).mul(P.y));
+                });
+                if (unit) T.If(Rm.w.greaterThan(0), function () {   // THE UNIT RIM LIGHT (see _ewPopPatch)
+                    var nv = T.normalize(T.normalViewGeometry), vd = T.positionViewDirection;
+                    var r = T.smoothstep(Rm2.x, 1, T.clamp(T.abs(T.dot(nv, vd)), 0, 1).oneMinus()).toVar();
+                    r.mulAssign(T.mix(Rm2.y, 1, T.clamp(nv.y.mul(0.5).add(0.5), 0, 1)));
+                    c.rgb.addAssign(Rm.rgb.mul(r.mul(Rm.w)));
                 });
                 return c;
             })();
