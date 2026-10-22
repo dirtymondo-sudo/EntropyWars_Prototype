@@ -2993,6 +2993,10 @@
                   }
                 }
               }
+            } else if (spell.kind === 'escape' && typeof escapeLandingTiles === 'function') {
+              /* THE ESCAPE PICK (2026-10-22): the escape's landing tiles, painted like a self blink's destinations */
+              _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'selected');
+              for (const t of escapeLandingTiles(_selectedForHl, spell)) _hlCache.set(posKey(t.x, t.y), 'move');
             } else if (spell.kind === 'healAll') {
               _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'heal');
             } else if (spell.kind === 'teleport' && spell.teleportAnyUnit && !state._teleportingUnit) {
@@ -4770,7 +4774,28 @@
             const u = getSelectedUnit();
             if (u && u._skyThrowGrab && typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(u);
             state._teleportingUnit = null;
+            clearSpellAimPreviews();
         }
+
+        /* THE CLEAN BACK OUT (playtest 2, mondo 2026-10-22: "sometimes a spell's preview like the highlights and the
+           arrow will stay on screen too after i back out of using the spell"): every preview an aim or a hovered row
+           drew — the footprint, the reach wash, the forecast badges, the strike arrows, the move-then-cast route and
+           ghost, the quick menu's plan — comes off the board when the player steps out of it. The row hover that
+           drew it (window._ewSpellAimHover) is a no-op once nothing is armed, so nothing else would take it down. */
+        function clearSpellAimPreviews() {
+            try { clearAoePreview(); } catch (e) {}
+            try { clearIntentPreview(); } catch (e) {}
+            try { if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); } catch (e) {}
+            try { if (typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview(); } catch (e) {}
+            try { if (typeof _clearMoveArrowPreview === 'function') _clearMoveArrowPreview(); } catch (e) {}
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    ThreeRenderer.clearOverlay('spellApproachShove');
+                    ThreeRenderer.clearOverlay('spellApproachChain');
+                }
+            } catch (e) {}
+        }
+        window.clearSpellAimPreviews = clearSpellAimPreviews;
 
         function cancelActionSelection() {
             if (state.phase !== 'battle') return;
@@ -4849,6 +4874,7 @@
             if (state._enemyActionTargetId) {
                 playSfx('uiBack');
                 state._enemyActionTargetId = null;
+                clearSpellAimPreviews();
                 markDirty('hud');
                 renderIfDirty();
                 return;
@@ -4857,6 +4883,7 @@
             if (state._tileActionTarget) {
                 playSfx('uiBack');
                 state._tileActionTarget = null;
+                clearSpellAimPreviews();
                 markDirty('hud');
                 renderIfDirty();
                 return;
@@ -4892,6 +4919,7 @@
 
             if (state.actionMenuView === 'attackTargets') {
                 playSfx('uiBack');
+                clearSpellAimPreviews();
                 state.actionMenuView = 'root';
                 state.actionMode = null;
                 state.selectedTool = null;
@@ -4924,6 +4952,7 @@
             // Armed item targeting → back to the ITEMS list.
             if (state.actionMode === 'item' && state.actionMenuView === 'items' && state.selectedTool) {
                 playSfx('uiBack');
+                clearSpellAimPreviews();
                 state.actionMode = null;
                 state.selectedTool = null;
                 state.pendingTarget = null;
@@ -4935,6 +4964,7 @@
             if (state.pendingTarget) {
                 playSfx('uiBack');
                 state.pendingTarget = null;
+                clearSpellAimPreviews();
                 renderBattleSelectionUI();
                 return;
             }
@@ -5524,7 +5554,10 @@
             nex.owner = 0;
             nex.progress = 0;
             const c = _nexusZoneCenter(nex);
-            addLog(`⬡ The ${_nexusLabel(section)} Nexus resets — nobody holds it.`);
+            /* playtest 2 (mondo 2026-10-22: "could be worded better"): the line said "nobody holds it" and the very next
+               one gave 5/8 to the unit still standing in the zone — the reset is to NEUTRAL, the standing unit then ticks */
+            const _ro = nexusTeamReadout(nex, 1);
+            addLog(`⬡ The new celestial event resets the ${_nexusLabel(section)} Nexus to neutral (${_ro.thr}/${_ro.total}). Anyone still standing in it starts capturing again from there.`);
             _nexusFx({ kind: 'reset', section, player: lostOwner, x: c.x, y: c.y });
             if (lostOwner && state.nexusPoints['spawn' + lostOwner] && nexusZonesOwnedBy(lostOwner).length === 0) {
                 addLog(`⛔ SPAWN LOCKOUT — Player ${lostOwner} holds NO Nexus. Their fallen cannot respawn until they reclaim one!`);
@@ -14543,9 +14576,10 @@
         /* the spell target list's rows (hud.js): (x, y, z) = the hovered row's target; no x = back to the picked one */
         var _aimHoverZ;   // the hovered row's body height, read by updateIntentPreview (a column can hold two bodies)
         window._ewSpellAimHover = function (x, y, z) {
-            if (state.actionMode !== 'spell') return;
+            /* leaving a row takes its paint down (THE CLEAN BACK OUT), or puts the picked target's back */
+            if (state.actionMode !== 'spell') { if (x == null) clearAoePreview(); return; }
             const pt = state.pendingTarget;
-            if (x == null) { if (pt && pt.x != null) updateAoePreview(pt.x, pt.y); return; }
+            if (x == null) { if (pt && pt.x != null) updateAoePreview(pt.x, pt.y); else clearAoePreview(); return; }
             _aimHoverZ = (z !== undefined && z !== null) ? z : undefined;
             try { updateAoePreview(x, y); } finally { _aimHoverZ = undefined; }
         };
@@ -14573,6 +14607,23 @@
             const spell = ov ? ov.spell : ((unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool));
             if (!spell) { clearAoePreview(); clearIntentPreview(); return; }
 
+            /* THE ESCAPE PICK (2026-10-22): an armed escape aims its LANDING — the hovered / picked lit tile wears the blue
+               move plate and the forecast draws the landing there; a hovered escape row (ov) shows nothing yet, the
+               landing is picked on the board */
+            if (spell.kind === 'escape') {
+                clearAoePreview();
+                clearIntentPreview();
+                if (ov) return;
+                window._ewAimKeepsReach = true;
+                const _escOk = typeof escapeLandingTiles === 'function' && escapeLandingTiles(unit, spell).some(t => t.x === x && t.y === y);
+                if (!_escOk) return;
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    ThreeRenderer.setOverlay('aoe', [{ x, y, color: EW_PREVIEW.self, opacity: 0.5, cursor: true }], EW_PREVIEW.self, 0.45);
+                    _aoePreview3dActive = true;
+                }
+                updateIntentPreview(x, y, ov);
+                return;
+            }
             if (isSpellSelfCast(spell)) {
                 if (ov || (_aoePreviewTiles.length === 0 && !_aoePreview3dActive)) showSelfCastAoePreview(unit, spell);
                 updateIntentPreview(unit.x, unit.y, ov);
@@ -15647,8 +15698,8 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
-        const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
+        const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1, crash: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
            why it takes nothing, what the movement does to it, the matchup and the statuses it will carry. */
@@ -15703,7 +15754,13 @@
                         if (sl.isDebuff) push(sl.text, 'intent-status intent-status-debuff', 14);
                     }
                 }
-                _renderIntentBadges(target.x, target.y, badgeStack);
+                /* the caster's own hurt (a dash's wall crash) reads where the run leaves it */
+                let bx = target.x, by = target.y;
+                if (caster && target.id === caster.id) {
+                    const mv = (plan.moves || []).filter(m => m.unit && m.unit.id === caster.id).pop();
+                    if (mv) { bx = mv.landX ?? mv.x; by = mv.landY ?? mv.y; }
+                }
+                _renderIntentBadges(bx, by, badgeStack);
             }
             /* the caster's own riders (Nimble Dodge's Invisible, Eject!'s cleanse) read where it stands now */
             if (caster && !shown.has(caster.id) && (spell.kind === 'escape' || isSpellSelfCast(spell))) {
