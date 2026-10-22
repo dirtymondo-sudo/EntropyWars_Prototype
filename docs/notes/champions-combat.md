@@ -1952,3 +1952,25 @@ browser match with the same squads before the fix.
   camera / a centre banner / a walk is still running (up to a minute) instead of kicking under the round-1 arrival.
 - Not reproduced: "Anubis absorbs 38 HP." twice. One Life Drain writes one heal line; the same spell can't be cast
   twice in a turn ("Used this turn").
+
+## THE STACKED FLOORS — clicks under a bridge (2026-10-22, playtest 2 "Unsure what to press" 6)
+mondo: "If there is no route on to the bridge then the game should automatically be registering mouse clicks on the
+bridge to the tiles underneath it ... if you can reach the top of the bridge and underneath it in the same turn, how
+would the game distinguish the clicks? ... please fix and come up with elegant solution".
+- Cause (reproduced on Pyramids of Giza Arena, a field board: deck z7 over ground z5 on row 6): the field pointer
+  (THE TWO FLOORS, `_fieldFloorPick`) walks the floors along the ray, but where the ground BEHIND the deck pixel was
+  an unlit cell (range edge) it fell back to the deck → "No route onto that surface this turn." On non-field boards
+  the deck took the click unless THE OVERHEAD FADE had already opened it (timing dependent).
+- Rule now (three-renderer `_boardFloorPick`, hover + click, every map): a floor NOT lit for the action in hand never
+  swallows the pointer. (1) the first LIT floor further along the ray wins (the lit tile whose highlight ghost shows
+  through the deck; ThreeCamera.screenToTileAll walks the hits); (2) else the lit floor straight under the deck in its
+  own column. Lit front floor, or nothing lit, = the old WYSIWYG pick. Only columns with a floor UNDER the hit can
+  take (2); a wall or hill has none.
+- Both floors lit: the floor in front wins (pointing at the deck = the deck). F flips the hovered column to its next
+  lit floor (down, then wraps to the top); the cursor drops onto it, the deck over it opens (the overhead fade follows
+  the hovered floor) and the click takes it. The flip holds while the pointer stays on that column or within 40 px.
+  The prompt bar adds "F floor below / F floor above" only while the hovered column has 2+ lit floors
+  (`window._ewStackPick`, battle.js `_withStackFloorHint`; ui.js key handler). Move / jump / climb / spell aim.
+- Browser-checked on Giza Arena (Sedan): deck over lit ground with no route on top → moves to the ground; standing
+  where both are reachable → click = deck, F + click = ground; prompt hint shown and flips.
+- Not covered: touch/gamepad have no F (keyboard Enter cursor keeps its own z).

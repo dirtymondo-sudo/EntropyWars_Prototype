@@ -17679,6 +17679,14 @@
                 if (typeof cycleCameraMode === 'function') cycleCameraMode();
                 return;
             }
+            // F flips the hovered stacked column to its next lit floor (a bridge deck and the
+            // ground under it both reachable) — three-renderer THE STACKED FLOORS.
+            if (key === 'f' && !event.ctrlKey && !event.metaKey && !event.altKey && state.actionMode
+                && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.flipStackFloor && window._ewStackPick) {
+                event.preventDefault();
+                if (ThreeRenderer.flipStackFloor()) playSfx('uiCursorMove');
+                return;
+            }
             // I toggles the unit INFO stat card — stats + attack range for the
             // focused (clicked) unit, falling back to the selected unit.
             if (key === 'i' && !event.ctrlKey && !event.metaKey && !event.altKey) {

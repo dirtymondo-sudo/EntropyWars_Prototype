@@ -39413,6 +39413,17 @@
             return 'Select a target for ' + nm + '.';
         }
 
+        /* THE STACKED FLOORS (2026-10-22): the hovered column holds two lit floors (a bridge deck and the ground under it)
+           — the bar says which way F flips (three-renderer publishes window._ewStackPick) */
+        function _withStackFloorHint(html) {
+            const sp = window._ewStackPick;
+            const am = state.actionMode;
+            if (!html || !sp || !sp.zs || sp.zs.length < 2 || !(am === 'move' || am === 'jump' || am === 'climb' || am === 'spell')) return html;
+            const i = sp.zs.indexOf(sp.z);
+            const way = i > 0 ? 'floor below' : 'floor above';
+            return html + ' <span class="dlg-prompt-hint">F ' + way + '</span>';
+        }
+
         function _computePlayerPrompt() {
             try {
                 if (state.phase !== 'battle' || state.winner) return null;
@@ -39570,7 +39581,7 @@
             // A prompt that changes while no new log line arrived is a direct
             // answer to player input (opened a menu, picked a spell, cycled a
             // target) and takes the bar immediately.
-            const promptHtml = _computePlayerPrompt();
+            const promptHtml = _withStackFloorHint(_computePlayerPrompt());
             const promptChanged = promptHtml !== _dlgLastPromptHtml;
             if (promptHtml && _dlgLastPromptHtml && promptChanged && !logIsFresh) {
                 _dlgLogConsumed = true;
