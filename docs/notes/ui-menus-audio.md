@@ -1866,3 +1866,9 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - In the world means the post stack applies: the tilt-shift band softens plates near the top/bottom of the screen like the ground there.
 - The UI Maker's plate preview still shows the DOM (`_buildClonePlate(su, p, true)`); tower/door plates are still CSS2D (the Nexus counter has its own in-world sprite, next section).
 - Offsets (anchor point, stack lift, side offset) move `sprite.position` along the camera right/up vectors; `Sprite.center` stays (0.5, 0.5) because the node renderer's SpriteNodeMaterial keeps the first center it saw.
+
+### The enemy HP bar on the unit info card stays red (2026-10-22, mondo: "in the unit info panel enemy health bar should still show up as red, not green")
+- Cause: hud.js `barsCss` (UI Maker > Health bars). Once ANY bar look setting is changed (fill, segments, glow, colours), its rules reach every bar. The HP rule `.hrlg-thp:not(.mp) > .hrlg-thp-fill` (3 classes) outranked the foe rule `.hrlg-thp-fill.foe` (2 classes), both `!important`, so the enemy's card bar (and the turn-icon target rows) took the ally green. A fresh profile (no bar setting touched) was always red.
+- Fix: the foe selector is now `.hrlg-thp:not(.mp) > .hrlg-thp-fill.foe`, one class more than the HP rule. Colour only; the card's size and place are untouched.
+- Online guest: the card's `enemy` / `foe` class is picked relative to the guest's own unit (`isEnemyUnit`; the turn-icon peek uses `getViewerPlayer`), so the same CSS covers it. Checked in a two-browser friendly room: guest's enemy card red, guest's ally card green.
+- Not changed: the ally low-HP colour rule (`.hrlg-thp-fill.low`) loses to the HP rule the same way on this card.
