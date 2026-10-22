@@ -8327,7 +8327,7 @@ const ThreeRenderer = (function () {
                     if (_spE && _spE.rot) m.rotation.y = -_spE.rot * Math.PI / 180;
                 }
             }
-            else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
+            else if (_isTreeKey(ok))            { m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y); if (m) m._ew_occTree = true; }   // THE TREE FADE
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the
                    prism. The other three tiles carry a footprint-shadow entry
@@ -11330,6 +11330,7 @@ const ThreeRenderer = (function () {
         for (var entry of _nexusBarObjs) {
             var no = entry[1];
             if (no.css2d && no.css2d.parent) no.css2d.parent.remove(no.css2d);
+            if (no.world) _nexusPlateFree(no.world);
         }
         _nexusBarObjs.clear();
         if (_nexusBarGroup) { while (_nexusBarGroup.children.length > 0) _nexusBarGroup.remove(_nexusBarGroup.children[0]); }
@@ -11337,6 +11338,7 @@ const ThreeRenderer = (function () {
 
     function _computeNexusBarSerial() {
         var h = 41;
+        h = _hashInt(h, (typeof getViewerPlayer === 'function') ? (getViewerPlayer() | 0) : 1);   // the colours are the viewer's (yours blue)
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
@@ -11350,8 +11352,163 @@ const ThreeRenderer = (function () {
         return h;
     }
 
+    /* THE NEXUS COUNTER IN THE WORLD (mondo 2026-10-21: "can we not make the nexus counter like not part of the HUD,
+       but part of the world like the exploration door text?"). The counter's rows (owner line, the 8 pips + n/8, the
+       NEXUS / HOTSPOT / SPAWN NEXUS label, the lockout line) are painted into a CanvasTexture on a sprite that hangs over
+       the zone, like the HQ's canvas door plates (_hqCvPlate): it is part of the scene, so walls and units in front of
+       it hide it, it shrinks with distance, and it never draws over the menus, the scoreboard or the combat log any
+       more. Same rows, same colours, same pop when the count moves, same CONTESTED pulse; the viewer's own colour is
+       blue (what body.is-p2-viewer did for the DOM bar). ew_text = 'css' / EW_NO_GPU_TEXT (the plates' kill switch,
+       _hqTextCss) brings back the CSS2D bar. */
+    var NEXUS_PLATE_W = 2.6;      // the plate's width in tiles (the zone is 2 tiles across)
+    var NEXUS_PLATE_MIN_PX = 170; // a legibility floor (the unit plates have one too): never narrower on screen than the old bar
+    var NEXUS_PLATE_PX = 3;       // canvas px per CSS px of the old bar (crisp at close zoom)
+    var NEXUS_PLATE_FONT = '"DotGothic16", monospace';
+    var _nexusFontWait = false;
+    function _nexusCssRGBA(hex, a) { return 'rgba(' + ((hex >> 16) & 255) + ',' + ((hex >> 8) & 255) + ',' + (hex & 255) + ',' + a + ')'; }
+    /* spaced text (the CSS letter-spacing), drawn glyph by glyph; returns the width */
+    function _nexusSpacedW(g, t, sp) { var w = 0; for (var i = 0; i < t.length; i++) w += g.measureText(t[i]).width + (i ? sp : 0); return w; }
+    function _nexusSpaced(g, t, x0, y, sp, stroke) { var x = x0; for (var i = 0; i < t.length; i++) { if (stroke) g.strokeText(t[i], x, y); else g.fillText(t[i], x, y); x += g.measureText(t[i]).width + sp; } }
+    function _nexusRoundRect(g, x, y, w, h, r) {
+        g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r); g.lineTo(x + w, y + h - r);
+        g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r);
+        g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+    }
+    /* d: { owner, ownerCol, n, total, label, lock, capCol (null = not captured), pulse (true = the CONTESTED gold
+       border only, for the pulse layer) } → { cv, w, h } (w/h in the old bar's CSS px) */
+    function _paintNexusPlate(d) {
+        var S = NEXUS_PLATE_PX, mg = 10;
+        var cv = document.createElement('canvas'), g = cv.getContext('2d');
+        if (!g) return null;
+        var fOwner = '800 10px ' + NEXUS_PLATE_FONT, fCount = '800 11px ' + NEXUS_PLATE_FONT, fLabel = '800 7px ' + NEXUS_PLATE_FONT, fLock = '800 8px ' + NEXUS_PLATE_FONT;
+        /* the pips box: 3px/6px padding, 11×10 pips 3px apart, the count 4px after them */
+        g.font = fCount; var countW = g.measureText(d.n + '/' + d.total).width;
+        var pipsW = d.total * 11 + Math.max(0, d.total - 1) * 3, boxW = 6 + pipsW + 4 + countW + 6, boxH = 3 + 12 + 3;
+        var W = Math.max(160, boxW) + mg * 2;
+        var rows = 10 + 3 + boxH + 2 + 7 + (d.lock ? 2 + 8 : 0);
+        var H = rows + mg * 2;
+        cv.width = Math.ceil(W * S); cv.height = Math.ceil(H * S);
+        g.scale(S, S);
+        g.textAlign = 'left'; g.textBaseline = 'top'; g.lineJoin = 'round';
+        var cx = W / 2, y = mg;
+        var shadowText = function (font, text, sp, col, yy) {
+            g.font = font;
+            var tw = _nexusSpacedW(g, text, sp), x0 = cx - tw / 2;
+            g.save(); g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = 4; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.lineWidth = 2;
+            _nexusSpaced(g, text, x0, yy, sp, true); g.restore();
+            g.fillStyle = col; _nexusSpaced(g, text, x0, yy, sp, false);
+        };
+        if (!d.pulse) shadowText(fOwner, d.owner, 1, d.ownerCol, y);
+        y += 10 + 3;
+        var bx = cx - boxW / 2, by = y;
+        if (d.pulse) {
+            g.strokeStyle = 'rgba(255,200,60,0.85)'; g.lineWidth = 1.5;
+            _nexusRoundRect(g, bx + 0.5, by + 0.5, boxW - 1, boxH - 1, 4); g.stroke();
+        } else {
+            g.save(); g.shadowColor = d.capCol != null ? _nexusCssRGBA(d.capCol, 0.5) : 'rgba(0,0,0,0.9)'; g.shadowBlur = d.capCol != null ? 12 : 10; g.shadowOffsetY = d.capCol != null ? 0 : 2;
+            g.fillStyle = 'rgba(0,0,0,0.78)'; _nexusRoundRect(g, bx, by, boxW, boxH, 4); g.fill(); g.restore();
+            g.strokeStyle = d.capCol != null ? _nexusCssRGBA(d.capCol, 0.6) : 'rgba(255,255,255,0.18)'; g.lineWidth = 1;
+            _nexusRoundRect(g, bx + 0.5, by + 0.5, boxW - 1, boxH - 1, 4); g.stroke();
+            var px = bx + 6, py = by + 3 + 1;
+            for (var i = 0; i < d.total; i++) {
+                var on = i < d.n;
+                if (on) {
+                    var gr = g.createLinearGradient(0, py, 0, py + 10);
+                    gr.addColorStop(0, '#7ab4ff'); gr.addColorStop(0.6, '#2266cc'); gr.addColorStop(1, '#1a4488');
+                    g.save(); g.shadowColor = 'rgba(80,150,255,0.8)'; g.shadowBlur = 8; g.fillStyle = gr;
+                    _nexusRoundRect(g, px, py, 11, 10, 2); g.fill(); g.restore();
+                    g.strokeStyle = 'rgba(150,200,255,0.8)';
+                } else {
+                    g.fillStyle = 'rgba(255,255,255,0.12)'; _nexusRoundRect(g, px, py, 11, 10, 2); g.fill();
+                    g.strokeStyle = 'rgba(255,255,255,0.22)';
+                }
+                g.lineWidth = 1; _nexusRoundRect(g, px + 0.5, py + 0.5, 10, 9, 2); g.stroke();
+                px += 11 + 3;
+            }
+            g.font = fCount;
+            var ctx0 = bx + 6 + pipsW + 4, cty = by + 3 + 0.5;
+            g.save(); g.shadowColor = '#000'; g.shadowBlur = 4; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.lineWidth = 2;
+            _nexusSpaced(g, d.n + '/' + d.total, ctx0, cty, 0.66, true); g.restore();
+            g.fillStyle = '#ffffff'; _nexusSpaced(g, d.n + '/' + d.total, ctx0, cty, 0.66, false);
+        }
+        y += boxH + 2;
+        if (!d.pulse) shadowText(fLabel, d.label, 0.84, 'rgba(255,255,255,0.72)', y);
+        y += 7;
+        if (d.lock && !d.pulse) { y += 2; shadowText(fLock, d.lock, 0.96, '#ff8a7a', y); }
+        return { cv: cv, w: W, h: H };
+    }
+    function _nexusPlateMat(paint) {
+        var tex = new THREE.CanvasTexture(paint.cv);
+        tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = true;
+        try { tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy() || 1); } catch (e) {}
+        return new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false, fog: false, toneMapped: false });
+    }
+    function _nexusPlateFree(W) {
+        [W.base, W.pulse].forEach(function (sp) {
+            if (!sp) return;
+            if (sp.parent) sp.parent.remove(sp);
+            if (sp.material) { if (sp.material.map) sp.material.map.dispose(); sp.material.dispose(); }
+        });
+    }
+    /* → { g (the Group to place), base, pulse (the CONTESTED border layer or null), w, h (world units) } */
+    function _buildNexusPlate(d, ts) {
+        var paint = _paintNexusPlate(d);
+        if (!paint) return null;
+        var g = new THREE.Group();
+        g.name = 'nexus_plate';
+        var w = NEXUS_PLATE_W * ts, h = w * (paint.h / paint.w);
+        var mk = function (pt, order) {
+            var sp = new THREE.Sprite(_nexusPlateMat(pt));
+            sp.center.set(0.5, 0);
+            sp.scale.set(w, h, 1);
+            sp.renderOrder = order;
+            sp.raycast = function () {};   // never a click target (the old bar was pointer-events: none)
+            g.add(sp);
+            return sp;
+        };
+        var W = { g: g, base: mk(paint, 20), pulse: null, w: w, h: h, popAt: 0 };
+        if (d.contested) {
+            var pp = _paintNexusPlate(Object.assign({}, d, { pulse: true }));
+            if (pp) { W.pulse = mk(pp, 21); W.pulse.material.opacity = 0; }
+        }
+        /* DotGothic16 still loading: the first paint used the fallback face — rebuild once it is here */
+        if (!_nexusFontWait && typeof document !== 'undefined' && document.fonts && document.fonts.check && !document.fonts.check('10px ' + NEXUS_PLATE_FONT)) {
+            _nexusFontWait = true;
+            document.fonts.load('10px ' + NEXUS_PLATE_FONT).then(function () { _lastNexusBarSerial = ''; }, function () {});
+        }
+        return W;
+    }
+    /* after each render (beside _scalePlates): the plate's world size, raised to the legibility floor when the camera is far */
+    function _scaleNexusPlates(cam) {
+        if (!cam || !_parentEl || !_nexusBarObjs.size) return;
+        var screenH = _parentEl.clientHeight, ts = CONFIG.tileSize || BASE_TILE;
+        if (screenH <= 0 || !cam.fov) return;
+        var halfTan = Math.tan(cam.fov * Math.PI / 360);
+        for (var e of _nexusBarObjs) {
+            var W = e[1].world;
+            if (!W || !W.g.visible) continue;
+            W.g.getWorldPosition(_batWorldVec);
+            var dist = Math.max(1, _batWorldVec.distanceTo(cam.position));
+            var projW = (ts * screenH) / (2 * dist * halfTan);   // one tile's width on screen, px
+            var fit = Math.min(4, Math.max(1, NEXUS_PLATE_MIN_PX / (NEXUS_PLATE_W * projW)));
+            if (W.fit !== fit) { W.fit = fit; W.k = -1; }
+        }
+    }
+    /* per frame: the pop (scale 1 → 1.35 → 1 over 0.55 s, the old nb-pop keyframes) and the CONTESTED pulse (1.2 s) */
+    function _tickNexusPlate(W, now) {
+        var k = 1;
+        if (W.popAt) {
+            var t = (now - W.popAt) / 550;
+            if (t >= 1 || t < 0) W.popAt = 0;
+            else k = t < 0.35 ? 1 + 0.35 * Math.sin((t / 0.35) * Math.PI / 2) : 1 + 0.35 * Math.cos(((t - 0.35) / 0.65) * Math.PI / 2);
+        }
+        if (W.k !== k) { W.k = k; W.g.scale.setScalar(k * (W.fit || 1)); }
+        if (W.pulse) W.pulse.material.opacity = 0.5 - 0.5 * Math.cos((now / 1200) * Math.PI * 2);
+    }
+
     function _buildNexusBar(key, nex) {
-        _ensureNexusBarStyles();
+        var _cssBar = _hqTextCss();
+        if (_cssBar) _ensureNexusBarStyles();
         var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
 
@@ -11415,16 +11572,33 @@ const ThreeRenderer = (function () {
         }
 
         /* Pop when the count moved since the last build of this bar. */
-        if (_nexusBarLastProg[key] !== undefined && _nexusBarLastProg[key] !== prog) cls += ' nb-pop';
+        var _popNow = _nexusBarLastProg[key] !== undefined && _nexusBarLastProg[key] !== prog;
+        if (_popNow) cls += ' nb-pop';
         _nexusBarLastProg[key] = prog;
         wrap.className = cls;
 
-        wrap.innerHTML =
-            '<div class="' + ownerCls + '">' + ownerText + '</div>' +
-            '<div class="nb-pips">' + pipsHtml + '<div class="nb-count">' + progText + '</div></div>' +
-            '<div class="nb-label">' + modeLabel + '</div>' + lockHtml;
-
-        var css2d = new THREE.CSS2DObject(wrap);
+        var css2d = null, world = null;
+        if (_cssBar) {
+            wrap.innerHTML =
+                '<div class="' + ownerCls + '">' + ownerText + '</div>' +
+                '<div class="nb-pips">' + pipsHtml + '<div class="nb-count">' + progText + '</div></div>' +
+                '<div class="nb-label">' + modeLabel + '</div>' + lockHtml;
+            css2d = new THREE.CSS2DObject(wrap);
+        } else {
+            /* the DOM bar's colours, read from the viewer's side (body.is-p2-viewer swapped them): yours blue, theirs red */
+            var _mine = nex.owner === _vp, _capd = isCapturedP1 || isCapturedP2;
+            world = _buildNexusPlate({
+                owner: ownerText,
+                ownerCol: !nex.owner ? '#ffc23d' : (_mine ? '#8cc6ff' : '#ff8a8a'),   // a shade lighter than the DOM bar's: the scene's grade dims what is in it
+                n: _ro.n, total: _ro.total, label: modeLabel,
+                lock: lockHtml ? ('⛔ P' + ((key === 'spawn1') ? 1 : 2) + ' LOCKED OUT') : '',
+                capCol: _capd ? (_mine ? 0x5aaaff : 0xff5a5a) : null,
+                contested: isContested
+            }, ts);
+            if (!world) return;
+            if (_popNow) world.popAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        }
+        var _obj = css2d || world.g;
         var zs = nex.zoneSize || 2;
 
         var maxH = 0, cx, cz;
@@ -11452,10 +11626,10 @@ const ThreeRenderer = (function () {
         }
         var cy = maxH * elevStep + 2.5 * elevStep;
 
-        css2d.position.set(cx, cy, cz);
-        if (_nexusBarGroup) _nexusBarGroup.add(css2d);
+        _obj.position.set(cx, cy, cz);
+        if (_nexusBarGroup) _nexusBarGroup.add(_obj);
 
-        _nexusBarObjs.set(key, { css2d: css2d, el: wrap });
+        _nexusBarObjs.set(key, { css2d: css2d, el: css2d ? wrap : null, world: world, obj: _obj });
     }
 
     function _rebuildNexusBars() {
@@ -11477,6 +11651,8 @@ const ThreeRenderer = (function () {
 
         var barSer = _computeNexusBarSerial();
         if (barSer !== _lastNexusBarSerial) _rebuildNexusBars();
+        var _nbNow = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        for (var _nbe of _nexusBarObjs) { if (_nbe[1].world) _tickNexusPlate(_nbe[1].world, _nbNow); }
 
         if (state.fogOfWar && _fogVisibleSet) {
             for (var entry of _nexusBarObjs) {
@@ -11484,7 +11660,7 @@ const ThreeRenderer = (function () {
                 var nex = null;
                 if (key === 'roaming') nex = state.roamingNexus;
                 else if (state.nexusPoints) nex = state.nexusPoints[key];
-                if (!nex) { no.css2d.visible = false; continue; }
+                if (!nex) { no.obj.visible = false; continue; }
                 var anyVisible = false;
                 if (Array.isArray(nex.tiles) && nex.tiles.length) {
                     for (var fti = 0; fti < nex.tiles.length && !anyVisible; fti++) {
@@ -11498,14 +11674,27 @@ const ThreeRenderer = (function () {
                         }
                     }
                 }
-                no.css2d.visible = anyVisible;
+                no.obj.visible = anyVisible;
             }
         } else {
 
             for (var entry2 of _nexusBarObjs) {
-                entry2[1].css2d.visible = true;
+                entry2[1].obj.visible = true;
             }
         }
+        /* the moments that hide #css2dOverlay (styles-cinematic.css) hide the world counter too: the result podium, the
+           intro cinema, the encounter arrival, the void stage */
+        if (_nexusChromeHidden()) {
+            for (var entry3 of _nexusBarObjs) { if (entry3[1].world) entry3[1].obj.visible = false; }
+        }
+    }
+    var _nexusVpEl = null;
+    function _nexusChromeHidden() {
+        if (typeof document === 'undefined' || !document.body) return false;
+        var bc = document.body.classList;
+        if (bc.contains('vic-podium') || bc.contains('ewi-cinema') || bc.contains('enc-arrival')) return true;
+        if (!_nexusVpEl || !_nexusVpEl.isConnected) _nexusVpEl = document.getElementById('game-viewport');
+        return !!(_nexusVpEl && _nexusVpEl.classList.contains('void-stage'));
     }
 
     /* the appearance's JSON, once per appearance object (this serial runs EVERY frame; an appearance never changes in place mid-fight) */
@@ -15518,7 +15707,7 @@ const ThreeRenderer = (function () {
     var PM_STACK_GAP = 2;          // screen px between stacked plates
     var _pmList = [], _pmHostEl = null, _pmObs = null, _pmImgs = {}, _pmFontHook = false, _pmGroup = null, _pmRange = null;
     var _PM_I = [1, 0, 0, 1];
-    function _pmOn() { return !window.EW_CSS_PLATES && typeof document !== 'undefined' && !!document.body; }
+    function _pmOn() { return !window.EW_CSS_PLATES && !_hqTextCss() && typeof document !== 'undefined' && !!document.body; }
     function _pmHost() {
         if (_pmHostEl && _pmHostEl.isConnected) return _pmHostEl;
         var h = document.getElementById('ewPlateMirror');
@@ -20455,6 +20644,22 @@ const ThreeRenderer = (function () {
         }
         return null;
     }
+    /* THE TREE FADE (mondo 2026-10-21, after the playtest's "trees and darkness hide the units": "you can make them fade
+       more"): a TREE (a board tree object, a room's planted tree) fades whenever a sight line to a unit the viewer sees, the
+       hovered tile or the panned tile crosses it above the subject's shins — standing in front of the unit, not only hanging
+       over it as THE OVERHEAD FADE asks. Other on-grid pieces keep the overhead rule (walls, trunks of buildings stay solid).
+       Same switch: window.EW_NO_OVERHEAD_FADE = true. */
+    function _occIsTreeRoot(root) {
+        if (!root) return false;
+        if (root._ew_occTree || (root._ew_hqTree && !root._ew_occNoTree)) return true;   // a chess statue is cover, not a tree
+        var c = root.children && root.children.length === 1 ? root.children[0] : null;
+        return !!(c && c._ew_hqTree && !c._ew_occNoTree);
+    }
+    function _occTreeHit(root, hit, sub) {
+        if (!hit || !hit.object || !hit.object.isMesh || hit.object._ew_occSkip || !_occIsTreeRoot(root)) return false;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return hit.point.y > sub.feetY + ts * 0.25;
+    }
     function _occOverheadHit(root, hit, sub, dir) {
         if (!root || !hit || !hit.object || !hit.object.isMesh || hit.object._ew_occSkip) return false;
         if (root._ew_occWall || root._ew_wallKey != null || root.name === 'hq_ceil' || root.name === 'hq_sky') return false;
@@ -20698,7 +20903,7 @@ const ThreeRenderer = (function () {
                     var vu = state.units[ui];
                     if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
                     var vq = _occUnitPoint(vu);
-                    if (vq) { vq.one = true; vq.ov = ovOn && !vu._insideBuildingId; subs.push(vq); }
+                    if (vq) { vq.one = true; vq.ov = ovOn && !vu._insideBuildingId; vq.head = vq.ov; subs.push(vq); }
                 }
             }
         }
@@ -20720,10 +20925,11 @@ const ThreeRenderer = (function () {
         for (var s = 0; s < subs.length; s++) {
             var sub = subs[s];
             var P = sub.P;
-            for (var q = 0, nq = sub.one ? 1 : 5; q < nq; q++) {
-                // centre ray + four spread around the subject in screen space
+            for (var q = 0, nq = sub.one ? (sub.head ? 2 : 1) : 5; q < nq; q++) {
+                // centre ray + four spread around the subject in screen space (a one-ray unit adds its head: THE TREE FADE)
                 _occVecA.copy(P);
-                if (q === 1) _occVecA.addScaledVector(_occRight, jit);
+                if (sub.one && q === 1) _occVecA.addScaledVector(_occUp, jit);
+                else if (q === 1) _occVecA.addScaledVector(_occRight, jit);
                 else if (q === 2) _occVecA.addScaledVector(_occRight, -jit);
                 else if (q === 3) _occVecA.addScaledVector(_occUp, jit);
                 else if (q === 4) _occVecA.addScaledVector(_occUp, -jit);
@@ -20745,7 +20951,7 @@ const ThreeRenderer = (function () {
                     if (!r || roots.has(r)) continue;
                     /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
                     if (_occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
-                    else if (sub.ov && _occOverheadHit(r, hits[hi], sub, _occDir)) roots.add(r);   // THE OVERHEAD FADE
+                    else if (sub.ov && (_occTreeHit(r, hits[hi], sub) || _occOverheadHit(r, hits[hi], sub, _occDir))) roots.add(r);   // THE TREE FADE / THE OVERHEAD FADE
                 }
             }
         }
@@ -41123,6 +41329,7 @@ const ThreeRenderer = (function () {
                 }
 
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
+                _scaleNexusPlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
                 if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first (rev 3: once the party's rigs stand, or the hold's cap — _fieldDissolveReady)
@@ -52632,7 +52839,7 @@ const ThreeRenderer = (function () {
             var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[t.kind] && HQ_TREE_KINDS[t.kind].chess) ? HQ_TREE_KINDS[t.kind] : null;
             if (CK) {   // THE LOOKING-GLASS ARENA: a marble chess piece, solid cover on its square (never the foliage kit)
                 var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U);
-                cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; G.add(cg);
+                cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; cg._ew_occNoTree = true; G.add(cg);
                 _hq.blockers.push({ obj: cg, y: t.y, top: null, rad: t.r || 0.72, tree: true });
                 return;
             }
