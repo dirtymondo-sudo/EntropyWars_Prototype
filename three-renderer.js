@@ -11516,7 +11516,7 @@ const ThreeRenderer = (function () {
     /* after each render (beside _scalePlates): the plate's world size, raised to the legibility floor when the camera is far */
     function _scaleNexusPlates(cam) {
         if (!cam || !_parentEl || !_nexusBarObjs.size) return;
-        var screenH = _parentEl.clientHeight, ts = CONFIG.tileSize || BASE_TILE;
+        var screenH = _parentEl.clientHeight, ts = CONFIG.tileSize || BASE_TILE, now = performance.now();
         if (screenH <= 0 || !cam.fov) return;
         var halfTan = Math.tan(cam.fov * Math.PI / 360);
         for (var e of _nexusBarObjs) {
@@ -11527,8 +11527,22 @@ const ThreeRenderer = (function () {
             var projW = (ts * screenH) / (2 * dist * halfTan);   // one tile's width on screen, px
             var fit = Math.min(4, Math.max(1, NEXUS_PLATE_MIN_PX / (NEXUS_PLATE_W * projW)));
             if (W.fit !== fit) { W.fit = fit; W.k = -1; }
+            /* THE WORLD TEXT STEPS ASIDE: over an open menu the counter fades (_wmOverMenu). The sprite stands on its
+               bottom centre, so its box on screen is the projected anchor, up by its height, out by half its width. */
+            _nexusVec.copy(_batWorldVec).project(cam);
+            var over = false;
+            if (_nexusVec.z >= -1 && _nexusVec.z <= 1) {
+                var sw = _parentEl.clientWidth, wpp = _pmWpp(cam, _batWorldVec, screenH), sc = W.g.scale.x || 1;
+                var nx = (_nexusVec.x * 0.5 + 0.5) * sw, ny = (-_nexusVec.y * 0.5 + 0.5) * screenH;
+                var hw = W.w * sc / wpp / 2, hh = W.h * sc / wpp;
+                over = _wmOverMenu(nx - hw, nx + hw, ny - hh, ny, now);
+            }
+            W.mf = _wmEase(W.mf, over, now - (W.mfAt || now));
+            W.mfAt = now;
+            if (W.base.material.opacity !== W.mf) W.base.material.opacity = W.mf;
         }
     }
+    var _nexusVec = new THREE.Vector3();
     /* per frame: the pop (scale 1 → 1.35 → 1 over 0.55 s, the old nb-pop keyframes) and the CONTESTED pulse (1.2 s) */
     function _tickNexusPlate(W, now) {
         var k = 1;
@@ -11538,7 +11552,7 @@ const ThreeRenderer = (function () {
             else k = t < 0.35 ? 1 + 0.35 * Math.sin((t / 0.35) * Math.PI / 2) : 1 + 0.35 * Math.cos(((t - 0.35) / 0.65) * Math.PI / 2);
         }
         if (W.k !== k) { W.k = k; W.g.scale.setScalar(k * (W.fit || 1)); }
-        if (W.pulse) W.pulse.material.opacity = 0.5 - 0.5 * Math.cos((now / 1200) * Math.PI * 2);
+        if (W.pulse) W.pulse.material.opacity = (0.5 - 0.5 * Math.cos((now / 1200) * Math.PI * 2)) * (W.mf == null ? 1 : W.mf);
     }
 
     function _buildNexusBar(key, nex) {
@@ -15837,6 +15851,60 @@ const ThreeRenderer = (function () {
     }
     function _pmPri(el) { var cl = el.classList; return cl.contains('tp-active') ? 2 : cl.contains('tp-targeted') ? 1 : 0; }
 
+    /* THE WORLD TEXT STEPS ASIDE (mondo 2026-10-22: "fade the nexus counter and name plates when they overlap with menus"):
+       the open menu's boxes in the canvas's own px, measured once per frame: the clock column, every command panel's
+       pieces (the root verbs, the sub menus, the target lists, the quick list and its unit card; a list counts by its
+       rows, cut to the list's scroll box) and the spell description bar. A plate or Nexus counter over one of them fades
+       to MENU_FADE_OP and comes back when the menu goes. window.EW_NO_MENU_FADE = true → never fades. Viewer-local. */
+    var MENU_FADE_OP = 0.22;
+    var _wmRects = [], _wmAt = -1;
+    function _wmMenuRects(now) {
+        if (now >= _wmAt && now - _wmAt < 3) return _wmRects;   // the plates and the Nexus counter share one measure a frame
+        _wmAt = now; _wmRects = [];
+        if (window.EW_NO_MENU_FADE || !_parentEl || typeof document === 'undefined') return _wmRects;
+        var P = _parentEl.getBoundingClientRect(), out = _wmRects;
+        var add = function (r, clip) {
+            var l = r.left, rr = r.right, t = r.top, b = r.bottom;
+            if (clip) { l = Math.max(l, clip.left); rr = Math.min(rr, clip.right); t = Math.max(t, clip.top); b = Math.min(b, clip.bottom); }
+            if (rr - l > 1 && b - t > 1) out.push({ l: l - P.left, r: rr - P.left, t: t - P.top, b: b - P.top });
+        };
+        var shown = function (el) {
+            if (!el.getClientRects().length) return false;
+            var cs = getComputedStyle(el);
+            return cs.visibility !== 'hidden' && !(parseFloat(cs.opacity) < 0.05);
+        };
+        var rigs = document.querySelectorAll('.hrlg-rig');
+        for (var i = 0; i < rigs.length; i++) {
+            var rig = rigs[i];
+            if (!shown(rig)) continue;
+            var side = rig.querySelector(':scope > .hrlg-side:not(.hrlg-ghost)');
+            if (side) for (var sc = 0; sc < side.children.length; sc++) add(side.children[sc].getBoundingClientRect());
+            var parts = rig.querySelectorAll('.hrlg-panels > .hrlg-panel > *');
+            for (var j = 0; j < parts.length; j++) {
+                var c = parts[j];
+                if (!c.classList.contains('hrlg-list')) { add(c.getBoundingClientRect()); continue; }
+                var box = c.getBoundingClientRect();
+                for (var k = 0; k < c.children.length; k++) add(c.children[k].getBoundingClientRect(), box);
+            }
+        }
+        var bars = document.querySelectorAll('.ew-descbar-inner');
+        for (var d = 0; d < bars.length; d++) if (shown(bars[d])) add(bars[d].getBoundingClientRect());
+        return out;
+    }
+    function _wmOverMenu(l, r, t, b, now) {
+        var R = _wmMenuRects(now);
+        for (var i = 0; i < R.length; i++) { var m = R[i]; if (l < m.r && r > m.l && t < m.b && b > m.t) return true; }
+        return false;
+    }
+    /* the fade glides (~0.15 s) toward MENU_FADE_OP or back to 1 */
+    function _wmEase(cur, over, dtMs) {
+        var want = over ? MENU_FADE_OP : 1;
+        if (cur == null) return want;
+        var k = 1 - Math.exp(-Math.min(250, Math.max(0, dtMs)) / 1000 * 14);
+        cur += (want - cur) * k;
+        return Math.abs(cur - want) < 0.01 ? want : cur;
+    }
+
     /* ── per frame (renderFrame, before the draw): the mirror's records, the repaints, the sizes, the stack ── */
     var _pmV = null, _pmR = null, _pmU = null;
     function _pmTick(cam) {
@@ -15875,7 +15943,8 @@ const ThreeRenderer = (function () {
                 l: sx + off + pm.box[0] * s, r: sx + off + pm.box[2] * s, t: sy + pm.box[1] * s, b: sy + pm.box[3] * s });
         }
         _pmStack(items);
-        var ease = 1 - Math.exp(-Math.min(0.25, Math.max(0, (now - (_pmTick.at || now)) / 1000)) * 14);
+        var _dtMs = now - (_pmTick.at || now);
+        var ease = 1 - Math.exp(-Math.min(0.25, Math.max(0, _dtMs / 1000)) * 14);
         _pmTick.at = now;
         var R = _pmR || (_pmR = new THREE.Vector3()), Up = _pmU || (_pmU = new THREE.Vector3());
         if (items.length) { R.setFromMatrixColumn(cam.matrixWorld, 0).normalize(); Up.setFromMatrixColumn(cam.matrixWorld, 1).normalize(); }
@@ -15890,7 +15959,9 @@ const ThreeRenderer = (function () {
             var dx = ((p2.cw / 2 - p2.ax) * it.s + it.off) * wpp, dy = ((p2.ay - p2.ch / 2) * it.s + p2.lift) * wpp;
             sp.position.copy(p2.wp).addScaledVector(R, dx).addScaledVector(Up, dy);
             sp.scale.set(p2.cw * it.s * wpp, p2.ch * it.s * wpp, 1);
-            var op = Math.max(0, Math.min(1, p2.op * gate));
+            /* over an open menu: the plate fades (its box as drawn, the stack's lift included) */
+            p2.mf = _wmEase(p2.shown ? p2.mf : null, _wmOverMenu(it.l, it.r, it.t - p2.lift, it.b - p2.lift, now), _dtMs);
+            var op = Math.max(0, Math.min(1, p2.op * gate * p2.mf));
             if (sp.material.opacity !== op) sp.material.opacity = op;
             sp.visible = op > 0.003;
             p2.shown = true;

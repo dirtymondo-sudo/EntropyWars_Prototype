@@ -43838,8 +43838,49 @@
                 }
             }
         }
-        function _syncTrainingTurbo(unit) { _setAiTurbo(_trainingTurboWanted(unit)); }
+        function _syncTrainingTurbo(unit) {
+            const want = _trainingTurboWanted(unit);
+            if (want && !_trainRecapSnap) _trainRecapSnap = _trainRecapTake();
+            _setAiTurbo(want);
+            if (!want && _trainRecapSnap && unit && !unit.dead && state.trainingMatch
+                && state.controllers?.[unit.player] !== CTRL.AI && !state.autoPlayers?.[unit.player]) {
+                const snap = _trainRecapSnap;
+                _trainRecapSnap = null;
+                _trainRecapShow(snap);
+            }
+        }
         window._setAiTurbo = _setAiTurbo;
+
+        /* THE CPU TURN RECAP (mondo 2026-10-22, "sure" to the playtest's idea; he also asked "is the log not enough?", so
+           it stays light): the CPU's turbo turns resolve instantly, so when the human's next unit comes up after one or
+           more of them, every unit whose HP changed since then pops its NET change once (one number per unit, not per
+           hit), and the tiles the CPU's units walked to light up for a moment. Fog rules hold: an enemy the viewer can't
+           see pops nothing and lights nothing. Viewer-local, offline only (training is never online), nothing on state. */
+        const TRAIN_RECAP_MS = 1700;
+        let _trainRecapSnap = null, _trainRecapTimer = null;
+        function _trainRecapTake() {
+            const map = {};
+            for (const u of (state.units || [])) if (!u.dead) map[u.id] = { hp: u.hp || 0, x: u.x, y: u.y };
+            return { units: state.units, map };
+        }
+        function _trainRecapShow(snap) {
+            if (!snap || snap.units !== state.units || state.phase !== 'battle' || state.winner) return;
+            const viewer = getViewerPlayer();
+            const moved = [];
+            for (const u of state.units) {
+                const was = snap.map[u.id];
+                if (!was || u.dead || u._dying) continue;
+                if (u.player !== viewer && !_isUnitVisibleToViewer(u, viewer)) continue;
+                const d = (u.hp || 0) - was.hp;
+                if (d) showFloatingTextForUnit(u, (d > 0 ? '+' : '-') + Math.abs(d), d > 0 ? 'heal' : 'damage', { durationMs: TRAIN_RECAP_MS });
+                if (u.player !== viewer && (u.x !== was.x || u.y !== was.y)) moved.push({ x: u.x, y: u.y });
+            }
+            const R = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()) ? ThreeRenderer : null;
+            if (!R || !moved.length) return;
+            R.setOverlay('trainRecap', moved, 0xff5544, 0.35);
+            if (_trainRecapTimer) clearTimeout(_trainRecapTimer);
+            _trainRecapTimer = setTimeout(() => { _trainRecapTimer = null; R.clearOverlay('trainRecap'); }, TRAIN_RECAP_MS);
+        }
 
         /* ═══════════ IMITATION — the CPU learns from the human's decisions ═══════════
            (2026-09-07) Runs in a TRAINING MATCH only (state.trainingMatch,
@@ -44074,7 +44115,8 @@
             el = document.createElement('div');
             el.id = 'imitReportPanel';
             el.className = 'training-panel';
-            el.style.cssText = 'display:none;position:fixed;top:12px;right:12px;left:auto;width:380px;z-index:1200;';
+            /* left side by default and draggable by its title bar (mondo 2026-10-22: it covered the debrief tabs on the right) */
+            el.style.cssText = 'display:none;position:fixed;top:12px;left:12px;right:auto;width:380px;z-index:1200;';
             document.body.appendChild(el);
             return el;
         }
@@ -44106,7 +44148,7 @@
                 return `<tr><td style="padding:1px 4px">${esc(w.label)}</td><td style="padding:1px 4px;text-align:right;color:var(--muted)">${_imitFmt(w.default)}</td><td style="padding:1px 4px;font-weight:700">${_imitFmt(w.current)}</td></tr>`; }).join('');
             const h = (txt) => `<div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin:12px 0 4px">${txt}</div>`;
             el.innerHTML = `
-                <div class="train-drag-handle"><span class="train-title">🧠 Imitation Report</span>
+                <div class="train-drag-handle" id="imitDragHandle"><span class="train-title">🧠 Imitation Report</span>
                     <button class="train-btn" style="flex:0;padding:2px 8px" onclick="window._ewImitationReportClose()">✕</button></div>
                 <div class="train-subtitle" style="margin-bottom:8px">Training match · ${esc(r.mode || '')} · ${esc(new Date(r.when).toLocaleString())}</div>
                 <div style="display:flex;gap:6px">${chip(st.observed || 0, 'SCORED', 'var(--text)')}${chip(st.agree || 0, 'AGREED', '#7fd9dd')}${chip(st.disagree || 0, 'LEARNED', '#7fd97f')}${chip(st.unmatched || 0, 'UNSCORED', 'var(--muted)')}</div>
@@ -44125,6 +44167,7 @@
                     <button class="train-btn danger" onclick="window._ewImitationReportClose()">Close</button>
                 </div>`;
             el.style.display = 'block';
+            _initTrainPanelDrag(el, document.getElementById('imitDragHandle'));
         }
         window._ewImitationReport = () => { if (_imitLastReport) _imitShowReport(_imitLastReport); else addLog('No imitation report yet — finish a training match first.'); };
         /* ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13): the table's panel asks before it offers the last report */
@@ -45060,8 +45103,8 @@
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
                 : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
-                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is exited · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is exited.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is defeated · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? 'holds the field.' : 'is defeated.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -49390,8 +49433,6 @@
             { t: 'FIELD MANUAL', q: 'Deep water drowns the unwary. Winged vessels are untroubled by such things.' },
             { t: 'FIELD MANUAL', q: 'Team Deathmatch is decided by total kills when the rounds run out. A full wipeout ends it on the spot.' },
             { t: 'FIELD MANUAL', q: 'In Domination, held Nexus points pay out every round. Map control is a bank account.' },
-            { t: 'FIELD MANUAL', q: 'In Capture the Flag, the enemy standard scores only when it is carried all the way home to your spawn zone.' },
-            { t: 'FIELD MANUAL', q: 'The Hotspot Nexus never stays put. Capture it, take the point, and start running toward the next one.' },
             { t: 'FIELD MANUAL', q: 'Spells cost MP. Moving and acting cost AP. Bankruptcy on either is how vessels die.' },
             { t: 'FIELD MANUAL', q: 'Werewolves walk the field as ordinary humans by day. Keep one eye on the sky’s cycle.' },
             { t: 'FIELD MANUAL', q: 'The zodiac wheel turns as rounds pass. When the sky changes, the battlefield changes with it.' },
@@ -54867,11 +54908,12 @@
             _initTrainPanelDrag(panel);
         }
 
-        function _initTrainPanelDrag(panel) {
-            const handle = document.getElementById('trainDragHandle');
+        function _initTrainPanelDrag(panel, handleEl) {
+            const handle = handleEl || document.getElementById('trainDragHandle');
             if (!handle) return;
             handle.onmousedown = (e) => {
                 if (e.button !== 0) return;
+                if (e.target && e.target.closest && e.target.closest('button')) return;   // the ✕ in the title bar
                 e.preventDefault();
                 const rect = panel.getBoundingClientRect();
                 const offX = e.clientX - rect.left;
@@ -54895,6 +54937,7 @@
             };
 
             handle.ontouchstart = (e) => {
+                if (e.target && e.target.closest && e.target.closest('button')) return;
                 const t = e.touches[0];
                 const rect = panel.getBoundingClientRect();
                 const offX = t.clientX - rect.left;
