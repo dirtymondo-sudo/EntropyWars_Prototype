@@ -8263,6 +8263,7 @@
                     if (d > R) continue;
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (!isInside(tx, ty)) continue;
+                    if (typeof isTowerTile === 'function' && isTowerTile(tx, ty)) continue;   // ⬡ the Cube is never a landing
                     if (spell.needsLoS && d >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
                     out.push({ x: tx, y: ty });
                 }
@@ -27624,6 +27625,7 @@
                                 for (const c of cand) {
                                     if (!isInside(c.x, c.y)) continue;
                                     if (typeof isTerrainPassable === 'function' && !isTerrainPassable(c.x, c.y)) continue;
+                                    if (typeof isTowerTile === 'function' && isTowerTile(c.x, c.y)) continue;
                                     if (_units().some(uu => _alive(uu) && Math.round(uu.x) === c.x && Math.round(uu.y) === c.y)) continue;
                                     if ((state.turrets || []).some(t2 => t2 !== t && t2.hp > 0 && t2.x === c.x && t2.y === c.y)) continue;
                                     t.x = c.x; t.y = c.y;
@@ -35623,6 +35625,7 @@
                     queue.push({ x: nx, y: ny });
                     if (taken.has(nk)) continue;
                     if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) continue;
+                    if (typeof isTowerTile === 'function' && isTowerTile(nx, ny)) continue;   // ⬡ the Cube's tile is never free
                     if (state.turrets && state.turrets.some(tt => tt.x === nx && tt.y === ny && tt.hp > 0)) continue;
                     free.push({ x: nx, y: ny });
                 }
@@ -36342,6 +36345,7 @@
                             if (unitAt(p.x, p.y)) break;
                             if (!isTerrainPassable(p.x, p.y)) break;
                             if (typeof doorBlocksMove === 'function' && doorBlocksMove(p.x, p.y)) break;
+                            if (typeof isTowerTile === 'function' && isTowerTile(p.x, p.y)) break;
                             cx = p.x; cy = p.y;
                             if (p.x === x && p.y === y) break;
                         }
@@ -36382,7 +36386,7 @@
             if (kind === 'teleport') {
                 const mover = state._teleportingUnit ? state._teleportingUnit : (spell.teleportAnyUnit ? null : unit);
                 if (!mover) { const pick = unitAt(x, y); if (pick) tag(pick, 'picked'); return; }
-                if ((x === mover.x && y === mover.y) || unitAt(x, y) || !isInside(x, y) || !isTerrainPassable(x, y)) return;
+                if ((x === mover.x && y === mover.y) || unitAt(x, y) || !isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return;
                 if (Math.abs(unit.x - x) + Math.abs(unit.y - y) > getEffectiveSpellRange(unit, spell)) return;
                 addMove(mover, x, y, mover === unit ? 'self' : 'teleport', { blink: true });
@@ -36402,7 +36406,7 @@
 
             if (kind === 'dash') {
                 const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
-                if (dist < 1 || dist > getEffectiveSpellRange(unit, spell) || !isInside(x, y) || !isTerrainPassable(x, y)) return;
+                if (dist < 1 || dist > getEffectiveSpellRange(unit, spell) || !isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 const path = getLinePoints(unit.x, unit.y, x, y);
                 const pm = unitPassiveMult(unit, 'dashDamageMult') || 1;
                 const pathDmg = Math.round((spell.dashDamage || spell.dmg || 0) * pm);
@@ -36476,7 +36480,7 @@
                 const tt = state.units.find(u => u.id === unit._skyThrowGrab.id && !u.dead);
                 if (!tt) return;
                 const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
-                if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y)) return;
+                if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 const total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) * (spell.dmgPerLevel || 25));
                 const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
                 const col = (unitAt(x, y, z) || unitAt(x, y));
@@ -36641,6 +36645,7 @@
                         const _zBlocked = (nx, ny) => {
                             if (!isInside(nx, ny)) return true;
                             if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) return true;
+                            if (typeof isTowerTile === 'function' && isTowerTile(nx, ny)) return true;   // ⬡ the Cube blocks a walking summon like a unit
                             if (state.units.some(u => !u.dead && u.x === nx && u.y === ny)) return true;
                             if (state.turrets.some(t2 => t2 !== turret && t2.hp > 0 && t2.x === nx && t2.y === ny)) return true;
                             return false;
@@ -56835,6 +56840,7 @@
             for (let dy = -hl.range; dy <= hl.range; dy++) for (let dx = -hl.range; dx <= hl.range; dx++) {
                 const d = Math.abs(dx) + Math.abs(dy);
                 if (d < 1 || d > hl.range || !isInside(hl.cx + dx, hl.cy + dy)) continue;
+                if (typeof isTowerTile === 'function' && isTowerTile(hl.cx + dx, hl.cy + dy)) continue;   // ⬡ the Cube is a solid body: nobody lands in it
                 out.push({ x: hl.cx + dx, y: hl.cy + dy });
             }
             return out;
@@ -69505,7 +69511,7 @@
                    armored, counts physical blows as half a hit. One per caster
                    per spell (maxActivePerCaster) — a new call dismisses the old. */
                 const _sd = spell.summonDef || {};
-                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y)
+                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))
                     || (state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y)) {
                     addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`);
                     playErrorSfx();
@@ -69629,7 +69635,7 @@
                     }, _placeMs);
                 }
             } else if (spell.kind === 'placeMirror') {
-                if (unitAt(x, y, z) || unitAt(x, y)) {
+                if (unitAt(x, y, z) || unitAt(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ the Cube fills its tile
                     addLog('Cannot fold a prism onto an occupied tile.');
                     playErrorSfx();
                     return 0;
@@ -71656,7 +71662,7 @@
                 const _dContact = !!(_dOcc && spell.detonateOnStep && !_dOcc.dead
                     && _dOcc.player !== unit.player
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_dOcc)));
-                if (_dOcc && !_dContact) {
+                if ((_dOcc && !_dContact) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ the Cube fills its tile
                     addLog('Cannot deploy on an occupied tile.');
                     playErrorSfx();
                     return 0;
@@ -72875,6 +72881,7 @@
                             if (unitAt(_p.x, _p.y)) break;
                             if (!isTerrainPassable(_p.x, _p.y)) break;
                             if (typeof doorBlocksMove === 'function' && doorBlocksMove(_p.x, _p.y)) break;
+                            if (typeof isTowerTile === 'function' && isTowerTile(_p.x, _p.y)) break;   // ⬡ the rope stops short of the Cube, like a wall
                             cx = _p.x;
                             cy = _p.y;
                             moved++;
@@ -73103,7 +73110,7 @@
                         playErrorSfx();
                         return 0;
                     }
-                    if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                    if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
                         addLog('Cannot teleport there.');
                         playErrorSfx();
                         return 0;
@@ -73548,7 +73555,7 @@
                     playErrorSfx();
                     return 0;
                 }
-                if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ not inside the Cube
                     addLog('Cannot place a turret there.');
                     playErrorSfx();
                     return 0;
@@ -73864,7 +73871,7 @@
                     playErrorSfx();
                     return 0;
                 }
-                if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
                     addLog('Cannot dash to impassable terrain.');
                     playErrorSfx();
                     return 0;
@@ -74289,7 +74296,7 @@
                         playErrorSfx();
                         return 0;
                     }
-                    if (!isInside(x, y)) {
+                    if (!isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
                         addLog('Invalid throw destination.');
                         playErrorSfx();
                         return 0;
