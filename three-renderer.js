@@ -40451,7 +40451,8 @@ const ThreeRenderer = (function () {
         }
         var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
         _takeoverBodyClasses(inBattle && busy, inBattle && !state.winner && _takeoverCamBusy(),
-            typeof window.isEndOfRoundLive === 'function' && window.isEndOfRoundLive());
+            typeof window.isEndOfRoundLive === 'function' && window.isEndOfRoundLive(),
+            inBattle && !state.winner && _playerAiming());
         if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
         var hoverOff = inBattle && (busy || !!_hoverWaitMove);
         var ch = highlightGroup.children;
@@ -40471,7 +40472,21 @@ const ThreeRenderer = (function () {
        the board (all of the above), body.ew-board-cam while the camera is the game's (a flight, a cinematic, a death
        close-up, a centre banner), body.ew-eor through the whole end of round (the log stays up for it: battle.js
        isEndOfRoundLive); written only when it flips */
-    var _tkBusyWas = false, _tkCamWas = false, _tkEorWas = false;
+    var _tkBusyWas = false, _tkCamWas = false, _tkEorWas = false, _tkAimWas = false;
+    /* body.ew-aiming (playtest 2, mondo 2026-10-22: "the combat log is already supposed to collapse while aiming like it
+       does for selecting a move tile. If its not doing that for spells too then fix it"): the player is picking a tile or
+       a target on the board — a move / jump tile, a spell's aim or target, an attack's or an item's target, a combo
+       partner — so the log steps off the board the same way it does while the game has it (styles-hud.css) */
+    function _playerAiming() {
+        try {
+            if (typeof state === 'undefined' || !state || state.phase !== 'battle') return false;
+            if (state.autoPlayers && state.autoPlayers[state.activePlayer]) return false;
+            if (window._NET && window._NET.online && window._NET.myPlayer && state.activePlayer !== window._NET.myPlayer) return false;
+            if (state.actionMode) return true;
+            var mv = state.actionMenuView;
+            return mv === 'spellTargets' || mv === 'attackTargets' || mv === 'finisherTargets' || mv === 'spellOrientation';
+        } catch (e) { return false; }
+    }
     function _takeoverCamBusy() {
         try {
             if (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving()) return true;
@@ -40482,14 +40497,15 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         return false;
     }
-    function _takeoverBodyClasses(busy, cam, eor) {
-        busy = !!busy; cam = !!cam; eor = !!eor;
-        if (busy === _tkBusyWas && cam === _tkCamWas && eor === _tkEorWas) return;
-        _tkBusyWas = busy; _tkCamWas = cam; _tkEorWas = eor;
+    function _takeoverBodyClasses(busy, cam, eor, aim) {
+        busy = !!busy; cam = !!cam; eor = !!eor; aim = !!aim;
+        if (busy === _tkBusyWas && cam === _tkCamWas && eor === _tkEorWas && aim === _tkAimWas) return;
+        _tkBusyWas = busy; _tkCamWas = cam; _tkEorWas = eor; _tkAimWas = aim;
         var b = document.body; if (!b) return;
         b.classList.toggle('ew-board-busy', busy);
         b.classList.toggle('ew-board-cam', cam);
         b.classList.toggle('ew-eor', eor);
+        b.classList.toggle('ew-aiming', aim);
     }
     function _hoverPointerMoved(x, y) {
         if (!_hoverWaitMove) return;

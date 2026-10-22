@@ -666,13 +666,14 @@
                 const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5 * _shankMult));
                 const armor = getEffectiveArmor(unit);
                 const dmg = Math.max(1, baseDmg - armor);
-                applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
+                /* ONE HIT, ONE NUMBER (playtest 2): the hit's own line carries the real (after defence) number —
+                   no second "for N" line with the number before defence. */
+                applyDamageToUnit(unit, dmg, `⚔️ ${unitDisplayName(enemy)} lands an opportunity attack as ${unitDisplayName(unit)} retreats! `, {
                     sourceUnit: enemy,
                     damageType: 'physical',
                     // high ground / height soak / range falloff read the tile it left
                     struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
-                addLog(`⚔️ ${_ctName(enemy)} lands an opportunity attack on ${_ctName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
                 if (!_skipVisuals()) {
                     showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
@@ -4834,6 +4835,35 @@
         // debris cubes. Returns true when the obstacle broke.
         const CRASH_THROUGH_DMG = 12;
 
+        /* The pure read of _tryCrashThrough: would this body break (nx, ny) and take CRASH_THROUGH_DMG? Previews only
+           (THE CRASH FORECAST, playtest 2: Sprint went through a wall for 12 with nothing on the preview). */
+        function crashThroughWouldBreak(unit, nx, ny, opts = {}) {
+            if (!unit || unit.dead || !isInside(nx, ny)) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (unitAt(nx, ny)) return false;
+            const power = opts.power ?? unitBreachPower(unit, opts);
+            if (power <= 0) return false;
+            if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) return power >= getTerrainHardness('tree');
+            const unitZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+            return !!_breachWindowCheck(nx, ny, unitZ, power);
+        }
+        /* the walls a dash from where the unit stands to (x, y) rams through — the same blocked test as doSpell's
+           CHARGE breach */
+        function dashCrashTiles(unit, x, y, path) {
+            const out = [];
+            if (!unit) return out;
+            const sx = unit.x, sy = unit.y;
+            const chargeZ = unit.z ?? getBaseHeightAt(sx, sy);
+            for (const cp of (path || getLinePoints(sx, sy, x, y))) {
+                if ((cp.x === x && cp.y === y) || (cp.x === sx && cp.y === sy)) continue;
+                const blocked = !isTerrainPassable(cp.x, cp.y)
+                    || getBaseHeightAt(cp.x, cp.y) > chargeZ + (typeof MAX_CLIMB_HEIGHT !== 'undefined' ? MAX_CLIMB_HEIGHT : 1);
+                if (blocked && crashThroughWouldBreak(unit, cp.x, cp.y, { byUnit: unit, charging: true })) out.push({ x: cp.x, y: cp.y });
+            }
+            return out;
+        }
+        window.dashCrashTiles = dashCrashTiles;
+
         function _tryCrashThrough(unit, nx, ny, opts = {}) {
             if (!unit || unit.dead) return false;
             if (!isInside(nx, ny)) return false;
@@ -6344,6 +6374,7 @@
             const _useVfx3dImpact = window.ThreeVFXEffects
                 && window.ThreeVFXEffects.hasMapping(spell.id, 'impact');
 
+            const _logSink = _multiHitLogSink();   // ONE CAST, ONE LINE
             hits.forEach((base, idx) => {
                 const hitTime = idx * hitGap; // relative to impactDelay
 
@@ -6377,16 +6408,16 @@
                         spellPower, hitCount: hits.length,
                     }), target);   // THE SPELL AUDIT Batch D: Loaded Dice rolls every card
                     const dmg = _mhCrit.dmg;
-                    applyDamageToUnit(target, dmg,
-                        idx === 0
-                            ? `${unitDisplayName(unit)} casts ${spell.name}: `
-                            : `${spell.name} hit ${idx + 1}: `,
+                    _logSink.last = (idx === hits.length - 1);
+                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `,
                         {
                             sourceUnit: unit,
                             damageType: spell.damageType || 'physical',
                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
-                            element: classifySpellElement(spell), isCrit: _mhCrit.isCrit
+                            element: classifySpellElement(spell), isCrit: _mhCrit.isCrit,
+                            logSink: _logSink
                         });
+                    if (_logSink.last || target.dead || target._dying) _multiHitLogFlush(_logSink);
                     if (idx === 0 && _activeCinematic?.showDamage) {
                         _activeCinematic.showDamage(`-${dmg}`, _mhCrit.isCrit);
                     }
@@ -22830,6 +22861,7 @@
             if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
             const totalMs = Math.max(600, opts.totalMs ?? actionMs(2600));
             _acChromeState = { heavy: !!opts.heavy, total: 0, shown: 0,
+                casterId: opts.casterId ?? null,
                 tallyKind: opts.tallyKind === 'heal' ? 'heal' : 'damage',
                 until: performance.now() + totalMs + 400, holdUntil: 0,
                 hideTimer: null, rollRaf: null };
@@ -22984,6 +23016,16 @@
            the running scoreboard on top, not a replacement. Only heavy
            (damaging-cast) chrome tallies; buffs/utility never do. Every hit
            extends the readout's life so multi-hit spells never outlive it. */
+        /* THE TOTAL MATCHES THE LOG (playtest 2, mondo 2026-10-22: "the total number in the top left of the
+           screen and the number in the combat log have to match up"): the corner adds up what the shot's CASTER
+           deals, so a riposte or a hit on the caster (a counter, a wall crash) never rolls into its total. */
+        function _actionCamTallyBlocked(sourceUnit, target) {
+            const st = _acChromeState;
+            if (!st || st.casterId == null) return false;
+            if (target && target.id === st.casterId) return true;
+            const caster = unitFromId(st.casterId);
+            return !!(sourceUnit && caster && sourceUnit.id !== caster.id && isEnemyUnit(sourceUnit, caster));
+        }
         function _actionCamTallyDamage(dmg, isCrit) {
             const st = _acChromeState;
             if (!st || !st.heavy) return false;
@@ -33894,7 +33936,7 @@
             // lane reads in depth instead of dead-flat.
             const yawChase = Math.atan2(-dirx, -diry) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET * 0.6;
 
-            showActionCamChrome({ name: opts.attackName || '', heavy: true, totalMs });
+            showActionCamChrome({ name: opts.attackName || '', heavy: true, totalMs, casterId: unit ? unit.id : null });
             /* THE FRAME GUARD: the charger the whole run, and whoever the
                charge hits from the moment their number pops. */
             if (unit) _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit, victimIds: [],
@@ -34120,7 +34162,7 @@
             if (_cineEligible) {
                 // Cinematic chrome: letterbox + spell name + TOTAL DMG readout.
                 showActionCamChrome({ name: opts.attackName || '',
-                    heavy: true, totalMs: timings.totalMs });
+                    heavy: true, totalMs: timings.totalMs, casterId: sourceUnit ? sourceUnit.id : null });
                 const _shotOpts = { impactMs: _impactMs, frameTiles: opts.frameTiles,
                       shotKind: opts.shotKind, spellId: _cineSpellIdForShot,
                       holdAfterLaunchMs: opts.holdAfterLaunchMs,
@@ -34494,7 +34536,8 @@
                     sourceUnit._zResCalloutRound = state.round;
                     const _zsName = _affEl === 'earth' ? 'ground' : _affEl;
                     showFloatingTextForUnit(sourceUnit, `★ ${_zsName.toUpperCase()} SURGE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
-                    addLog(`★ The ${state.activeZodiac} sky surges the ${_zsName} — its power swells!`);
+                    const _zsSign = String(state.activeZodiac || '');
+                    addLog(`★ The ${_zsSign.charAt(0).toUpperCase() + _zsSign.slice(1)} sky surges the ${_zsName} — its power swells!`);
                 }
             }
             // 🜃 THE ELEMENT TERRAINS (2026-10-21): the caster or the unit hit stands on the spell element's own ground.
@@ -34687,6 +34730,31 @@
             if (/[A-Za-z]\s$/.test(plain)) return dmg != null ? `${src}${who} for ${dmg} HP damage.` : `${src}${who}, but ${who} ${what}`;
             return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
         }
+
+        /* ONE CAST, ONE LINE: the log sink a multi-hit cast hands every hit (opts.logSink). Each landed hit adds
+           its number; the line is written once, on the last hit (sink.last) or the hit that drops the target,
+           so a kill line never lands before the damage that caused it. _multiHitLogFlush covers a cast whose
+           last hit was swallowed (protected / immune) or that ended early. */
+        function _multiHitLogAdd(sink, target, sourceText, sourceUnit, dmg, typeNote) {
+            if (!sink) return;
+            if (sink.done) Object.assign(sink, { hits: 0, total: 0, note: '', done: false });   // a defy-death save: the rest is a new line
+            if (sink.hits === 0) { sink.src = sourceText; sink.srcUnit = sourceUnit || null; sink.target = target; }
+            sink.hits++;
+            sink.total += Math.max(0, dmg | 0);
+            if (!sink.note && typeNote) sink.note = typeNote;
+            if (sink.last || (target.hp | 0) <= 0 || target.dead || target._dying) _multiHitLogFlush(sink);
+        }
+        function _multiHitLogFlush(sink) {
+            if (!sink || sink.done || !sink.hits || !sink.target) return;
+            sink.done = true;
+            const t = sink.target;
+            const n = sink.hits > 1 ? ` (${sink.hits} hits)` : '';
+            const line = sink.total > 0
+                ? `${_dmgLogLine(sink.src, t, '', sink.total, sink.srcUnit)}${n}${sink.note ? ` ${sink.note}` : ''}`
+                : _dmgLogLine(sink.src, t, 'blocks the hit.', null, sink.srcUnit);
+            addLog(line, 0, [Math.max(0, Math.round(t.hp)), Math.round(t.maxHp || 0)]);
+        }
+        function _multiHitLogSink() { return { hits: 0, total: 0, note: '', last: false, done: false, src: '', srcUnit: null, target: null }; }
 
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
@@ -35153,7 +35221,8 @@
                     // Cinematic action shot live → the number ALSO rolls into
                     // the corner TOTAL DMG counter; the floating "-N" over the
                     // unit still pops either way (both layers, classic JRPG).
-                    _actionCamTallyDamage(finalDamage, _floatKind === 'critdmg');
+                    const _tallyOff = _actionCamTallyBlocked(sourceUnit, target);
+                    if (!_tallyOff) _actionCamTallyDamage(finalDamage, _floatKind === 'critdmg');
                     /* Attribution opts for the record-juice display check
                        (plan §5.2): enemy hits only, DoT excluded — mirrors
                        the Biggest Hit burst rules. */
@@ -35177,7 +35246,7 @@
                         kill: _lethalHit,
                         weight: _juiceW,
                     });
-                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, { ..._recOpts, ..._hitOpts });
+                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, { ..._recOpts, ..._hitOpts, ...(_tallyOff ? { _noTally: 1 } : {}) });
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         const _isMagicSpellHit = damageType !== 'physical' && !!opts.spellType;
@@ -35261,9 +35330,14 @@
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
                     _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
-                addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
+                /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
+                   multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
+                   the last hit or the kill (_multiHitLogFlush) — the same total the corner TOTAL DMG shows. */
+                const _sink = opts.logSink || null;
+                if (_sink) _multiHitLogAdd(_sink, target, sourceText, sourceUnit, finalDamage, typeNote);
+                else addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
-                if (sourceUnit && typeNote) {
+                if (sourceUnit && typeNote && !(_sink && _sink.hits > 1)) {
                     const dlg = [];
                     if (typeNote.includes('super effective')) dlg.push(`<span class="dlg-effective">⚡ It's super effective!</span>`);
                     else if (typeNote.includes('not very effective')) dlg.push(`<span class="dlg-resist">🛡 Not very effective...</span>`);
@@ -35271,7 +35345,8 @@
                 }
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
-                addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
+                if (opts.logSink) _multiHitLogAdd(opts.logSink, target, sourceText, opts.sourceUnit || null, 0, '');
+                else addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
@@ -36428,6 +36503,11 @@
                     const d = (split && pt.x === x && pt.y === y) ? primDmg : pathDmg;
                     if (d > 0) hit(v, d, d, d, hopts);
                 }
+                /* THE CRASH FORECAST (playtest 2, mondo 2026-10-22: "it needs a damage preview number just like fall
+                   damage or moving into lava"): each wall the run smashes through costs the runner CRASH_THROUGH_DMG */
+                for (const c of dashCrashTiles(unit, x, y, path)) {
+                    hit(unit, CRASH_THROUGH_DMG, CRASH_THROUGH_DMG, CRASH_THROUGH_DMG, { ignoreArmor: true, consumeMarked: false, noPress: true }, { tag: 'crash' });
+                }
                 for (const s of dashShovePlan(unit, x, y, z)) chainMove(s.unit, s.x, s.y, Math.sign(s.x - s.unit.x), Math.sign(s.y - s.unit.y), 'push');
                 addMove(unit, x, y, 'self');
                 if (spell.afterShot) {
@@ -36702,7 +36782,7 @@
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
                 if (s.summon) {
-                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${_ctName(s.target)} for ${s.dmg} damage!`);
+                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${_ctName(s.target)}!`);
                     const _sHpBefore = s.target.hp;
                     applyDamageToUnit(s.target, s.dmg, `${s.turret.spellName}: `, {
                         ignoreArmor: false,
@@ -36722,7 +36802,7 @@
                     return;
                 }
                 if (s.zombie) {
-                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${_ctName(s.target)} for ${s.dmg} damage!`);
+                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${_ctName(s.target)}!`);
                     applyDamageToUnit(s.target, s.dmg, `🧟 Zombie maul: `, {
                         ignoreArmor: false,
                         damageType: 'physical',
@@ -36733,7 +36813,7 @@
                     });
                     return;
                 }
-                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${_ctName(s.target)} for ${s.dmg} damage!`);
+                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${_ctName(s.target)}!`);
                 const _hpBefore = s.target.hp;
                 applyDamageToUnit(s.target, s.dmg, `🔧 Turret blast: `, {
                     ignoreArmor: false,
@@ -64670,7 +64750,7 @@
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
                     grantXP(target, XP_COUNTER, 'counter');
-                    addLog(`⚔️ ${_ctName(target)} counter-attacks for ${counterDmg} damage!`);
+                    addLog(`⚔️ ${_ctName(target)} counter-attacks!`);   // the number lands on the riposte's own line
                     // Press Turn: getting countered wastes your momentum — the
                     // same extra AP drain as a whiff, on top of the swing's own
                     // press result (a weak-hit refund gets eaten by the riposte).
@@ -67023,15 +67103,19 @@
                 // moved into _comboPlayPresentation on this same clock —
                 // only the damage lives here.
                 const comboHitGap = actionMs(420);
+                const _comboLogSink = _multiHitLogSink();   // ONE CAST, ONE LINE
                 hits.forEach((hitDmg, idx) => {
                     window.setTimeout(() => {
                         if (target.dead) return;
                         const totalHit = Math.max(1, Math.round((hitDmg + Math.floor(combinedPower / hits.length)) * synergyMult));
-                        applyDamageToUnit(target, totalHit, `${combo.name} hit ${idx + 1}: `, {
+                        _comboLogSink.last = (idx === hits.length - 1);
+                        applyDamageToUnit(target, totalHit, `${combo.name}: `, {
                             sourceUnit: initiator,
                             damageType: combo.damageType,
-                            spellType: combo.spellType || null
+                            spellType: combo.spellType || null,
+                            logSink: _comboLogSink
                         });
+                        if (_comboLogSink.last || target.dead || target._dying) _multiHitLogFlush(_comboLogSink);
                         checkWin();
                     }, _hitAt + idx * comboHitGap);
                 });
@@ -67586,8 +67670,8 @@
                     });
                     if (isBaneEffective) {
                         unit._matchSuperBanes = (unit._matchSuperBanes || 0) + 1;
-                        const _bSprite = baneRule.baneType ? `<div class="bane-sprite bane-${baneRule.baneType}" style="width:16px;height:16px;background-size:16px 16px;display:inline-block;vertical-align:middle"></div>` : '';
-                        addLog(`${_bSprite} It's super effective against ${target.types.join('/')} type!`, unit.player);
+                        /* plain text (playtest 2): the stored log line carried raw bane-sprite markup into every plain read */
+                        addLog(`⚡ It's super effective against ${target.types.join('/')} type!`, unit.player);
 
                         window.setTimeout(() => {
                             showFloatingTextForUnit(target, 'SUPER EFFECTIVE!', 'streak');
@@ -67934,7 +68018,7 @@
             const _selfDmg = !_selfHeal && !!_selfDef && (spellDealsDamage(_selfDef) || _selfDef.kind === 'pulseLattice');
             if (opts.spellName) {
                 showActionCamChrome({ name: opts.spellName, heavy: _selfHeal || _selfDmg,
-                    tallyKind: _selfHeal ? 'heal' : undefined,
+                    tallyKind: _selfHeal ? 'heal' : undefined, casterId: _selfDmg && unit ? unit.id : null,
                     totalMs: _selfHold + actionMs(600) });
             }
             /* THE SPELL DIRECTOR (2026-09-23): the self rig runs the cast's
@@ -72837,7 +72921,7 @@
                             const grappleDmg = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + spellPower);
                             applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
-                            addLog(`${_ctName(unit)} grapples ${_ctName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
+                            addLog(`${_ctName(unit)} grapples ${_ctName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
 
                             if (_grSteps.length > 0) {
@@ -73207,8 +73291,6 @@
                                 if (hit && !hit.dead && isEnemyUnit(hit, unit)) {
                                     const dmg = Math.max(1, spell.dmg + spellPwr);
                                     applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
-                                    showFloatingTextForUnit(hit, `-${dmg}`, 'damage', { durationMs: 900 });
-                                    addLog(`${_ctName(hit)} takes ${dmg} damage from ${_ctSp(spell.name)}!`);
                                     if (spell.statusEffects && spell.statusEffects.length > 0) {
                                         applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
                                     }
@@ -73993,8 +74075,7 @@
                             }
                             // THE SPELL AUDIT Batch D (Overdrive): the first kill on the dash runs the on-kill riders (1 AP back)
                             if ((victim.dead || victim._dying) && !_dashKillFed) { _dashKillFed = true; _applyOnKillRiders(unit, victim, spell); }
-                            dashHitCount++;
-                            addLog(`${_ctName(victim)} is hit for ${hitDmg} as ${_ctName(unit)} dashes through!`);
+                            dashHitCount++;   // the hit's own line above carries its real number (ONE HIT, ONE NUMBER)
                         }
                     }
 
@@ -74145,7 +74226,7 @@
                                         damageType: spell.afterShot.damageType || spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    addLog(`${_ctName(unit)} fires from the window — ${_ctName(_asT)} takes ${_asDmg}!`);
+                                    addLog(`${_ctName(unit)} fires from the window!`);
                                     scheduleBoardRender();
                                 }, _skipVisuals() ? 0 : _asTravel);
                             }, _skipVisuals() ? 0 : dashAnimMs);
@@ -74230,7 +74311,7 @@
                         showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 800 });
                     }
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
-                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
                     /* applyDamageToUnit already floats the real post-mitigation
                        number — no second (pre-armor) float. */
 
@@ -74559,7 +74640,6 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
 
                     if (spell.aoeRadius && spell.aoeDmgPct) {
                         const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
@@ -74577,7 +74657,6 @@
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
                             }
                         }
@@ -74722,7 +74801,6 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
 
                     if (spell.aoeRadius && spell.aoeDmgPct) {
                         const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
@@ -74740,7 +74818,6 @@
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
                             }
                         }
@@ -74759,7 +74836,7 @@
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
-                    addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, spell.aoeRadius || 0, spell.terrainDeform);
