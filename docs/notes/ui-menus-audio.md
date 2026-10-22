@@ -1819,6 +1819,7 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   `_ewRequestEndTurn` only refuses an `_actionExecuting` latch while the board is really busy (GAME.boardBusy).
 - **Console**: `_hqSeatTabletops` (a room built into a battle has no HQ camera) gives its ray the battle camera / a stand-in,
   ending the boot-time "Raycaster.camera needs to be set" errors.
+
 - **ONE WORD FOR A TYPE-WEAK HIT** (mondo 2026-10-21 picked "SUPER EFFECTIVE everywhere"): the type-matchup pop over the
   target reads "×1.3 SUPER EFFECTIVE!" (was "×1.3 WEAK!"), matching the preview, the green ! and the log. The ELEMENT pop
   ("🔥 ×1.5 FIRE WEAK!", the target race's element weakness on the element part) keeps its words. The Entropy picker /
@@ -1831,3 +1832,16 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   trees `_ew_hqTree`, chess statues excluded via `_ew_occNoTree`) fades whenever a sight line to a seen unit / the hovered or
   panned tile crosses it above the subject's shins, in front of the unit, not only overhead. Seen units get a second (head)
   ray. Same switch EW_NO_OVERHEAD_FADE. Browser-checked on Mount Shasta Arena: a pine hiding a unit faded, the rest stayed.
+
+### The Nexus counter in the world (2026-10-21, mondo: "can we not make the nexus counter like not part of the HUD, but part of the world like the exploration door text?")
+- three-renderer.js `_buildNexusBar` now paints the counter (owner line, the 8 pips + n/8, NEXUS / HOTSPOT / SPAWN NEXUS,
+  the lockout line) into a CanvasTexture on a `THREE.Sprite` in `_nexusBarGroup` (`_paintNexusPlate` / `_buildNexusPlate`),
+  the way the HQ canvas door plates (`_hqCvPlate`) are drawn. Depth-tested, so walls / units / the board hide it, and it is
+  under every DOM menu, the scoreboard and the combat log (it used to be a CSS2D overlay drawn over them).
+- Size: `NEXUS_PLATE_W` tiles wide in the world, raised to a `NEXUS_PLATE_MIN_PX` legibility floor when the camera is far
+  (`_scaleNexusPlates`, run beside `_scalePlates` after each render). Pop on a count change and the CONTESTED pulse run in
+  `_tickNexusPlate`. Colours are the viewer's (yours blue, theirs red, neutral gold); the viewer is in the serial, so a guest
+  and a hot-seat turn change repaint it. Fog gating unchanged. Hidden with the CSS2D layer (podium, intro cinema, encounter
+  arrival, void stage: `_nexusChromeHidden`).
+- Kill switch: `ew_text = 'css'` / `window.EW_NO_GPU_TEXT` (the plates' `_hqTextCss`) brings back the CSS2D bar.
+- Unit name plates are a separate thread's job (still CSS2D here).
