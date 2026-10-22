@@ -2426,11 +2426,32 @@ const ThreeRenderer = (function () {
            read the same objects every render. A unit's material carries the string property ewPop = 'unit', so three's
            node cache key gives it its own build.
        Live-tune from the console: EW_POP.unit / EW_POP.world = { x: saturation, y: brightness, w: 1 on / 0 off }.
-       Off at load: ?ew_pop=0 or window.EW_NO_UNIT_POP = true. */
+       Off at load: ?ew_pop=0 or window.EW_NO_UNIT_POP = true.
+       THE UNIT RIM LIGHT (2026-10-22, mondo: "add a rim light to the units to make them easier to see even at night"):
+       on the same unit-only materials, a fresnel rim — the edges of the body that turn away from the camera catch a
+       light, so the silhouette reads against a dark ground. It is added after the grade (so the pop never washes its
+       colour) and before fog / tone mapping, the upper edges a little brighter than the lower ones (light from above).
+       Day = a soft warm white, night = a stronger cool moonlight; _ewRimTick eases between them with the battle's
+       night (the sky's own S.night). The world, the VFX and the ShaderMaterials never get it.
+       Live-tune: EW_RIM = { on, day: [r, g, b, strength], night: [r, g, b, strength], edge (band start, 0..0.95), low }.
+       Off at load: ?ew_rim=0 or window.EW_NO_UNIT_RIM = true. */
     var _EW_POP_ON = (function () { try { return !window.EW_NO_UNIT_POP && !/[?&]ew_pop=0\b/.test(location.search); } catch (e) { return true; } })();
     var _EW_POP_W = { x: 0.86, y: 0.95, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the ground + objects: a little faded
     var _EW_POP_U = { x: 1.22, y: 1.10, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the units: richer, a touch brighter
     try { window.EW_POP = { world: _EW_POP_W, unit: _EW_POP_U }; } catch (e) {}
+    var _EW_RIM_ON = (function () { try { return !window.EW_NO_UNIT_RIM && !/[?&]ew_rim=0\b/.test(location.search); } catch (e) { return true; } })();
+    var _EW_RIM_CFG = { on: _EW_RIM_ON, day: [1.0, 0.94, 0.84, 0.9], night: [0.62, 0.78, 1.0, 2.0], edge: 0.2, low: 0.6 };
+    var _EW_RIM = { x: 1, y: 1, z: 1, w: 0 };       // the rim's colour + strength (0 = off), the shaders read it live
+    var _EW_RIM2 = { x: 0.2, y: 0.6, z: 0, w: 0 };   // where the band starts (1 - N·V), the lower edges' share
+    try { window.EW_RIM = _EW_RIM_CFG; } catch (e) {}
+    /* the rim's colour + strength for a night share n (0 day .. 1 night); runs every battle frame with the sky's ease */
+    function _ewRimTick(n) {
+        var C = _EW_RIM_CFG, d = C.day, k = C.night, t = Math.max(0, Math.min(1, n || 0));
+        _EW_RIM.x = d[0] + (k[0] - d[0]) * t; _EW_RIM.y = d[1] + (k[1] - d[1]) * t; _EW_RIM.z = d[2] + (k[2] - d[2]) * t;
+        _EW_RIM.w = C.on ? Math.max(0, d[3] + (k[3] - d[3]) * t) : 0;
+        _EW_RIM2.x = Math.max(0, Math.min(0.95, C.edge == null ? 0.2 : C.edge)); _EW_RIM2.y = (C.low == null) ? 0.6 : C.low;
+    }
+    _ewRimTick(0);
     var _ewPopPatched = false;
     function _ewPopPatch() {
         if (_ewPopPatched || typeof THREE === 'undefined' || !THREE.ShaderLib) return false;
@@ -2439,12 +2460,17 @@ const ThreeRenderer = (function () {
             var lib = THREE.ShaderLib, keys = ['lambert', 'phong', 'standard', 'physical'], n = 0;
             var code = '#include <opaque_fragment>\n\t{\n\t#ifdef EW_UNIT_POP\n\t\tvec4 ewPop = uEwPopU;\n\t#else\n\t\tvec4 ewPop = uEwPop;\n\t#endif\n' +
                 '\t\tif ( ewPop.w > 0.5 ) {\n\t\t\tfloat ewPopL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
-                '\t\t\tgl_FragColor.rgb = max( mix( vec3( ewPopL ), gl_FragColor.rgb, ewPop.x ), 0.0 ) * ewPop.y;\n\t\t}\n\t}';
+                '\t\t\tgl_FragColor.rgb = max( mix( vec3( ewPopL ), gl_FragColor.rgb, ewPop.x ), 0.0 ) * ewPop.y;\n\t\t}\n' +
+                '\t#ifdef EW_UNIT_POP\n\t\tif ( uEwRim.w > 0.0 ) {\n' +
+                '\t\t\tfloat ewRim = smoothstep( uEwRim2.x, 1.0, 1.0 - clamp( abs( dot( geometryNormal, geometryViewDir ) ), 0.0, 1.0 ) );\n' +
+                '\t\t\tewRim *= mix( uEwRim2.y, 1.0, clamp( geometryNormal.y * 0.5 + 0.5, 0.0, 1.0 ) );\n' +
+                '\t\t\tgl_FragColor.rgb += uEwRim.rgb * ( ewRim * uEwRim.w );\n\t\t}\n\t#endif\n\t}';
             for (var i = 0; i < keys.length; i++) {
                 var S = lib[keys[i]];
                 if (!S || !S.fragmentShader || S.fragmentShader.indexOf('uEwPop') >= 0 || S.fragmentShader.indexOf('#include <opaque_fragment>') < 0) continue;
-                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
+                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\nuniform vec4 uEwRim;\nuniform vec4 uEwRim2;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
                 S.uniforms.uEwPop = { value: _EW_POP_W }; S.uniforms.uEwPopU = { value: _EW_POP_U };
+                S.uniforms.uEwRim = { value: _EW_RIM }; S.uniforms.uEwRim2 = { value: _EW_RIM2 };   // THE UNIT RIM LIGHT
                 n++;
             }
             if (!n) console.warn('[ThreeRenderer] the unit pop patch found no anchor in three.js ' + THREE.REVISION);
@@ -11490,7 +11516,7 @@ const ThreeRenderer = (function () {
     /* after each render (beside _scalePlates): the plate's world size, raised to the legibility floor when the camera is far */
     function _scaleNexusPlates(cam) {
         if (!cam || !_parentEl || !_nexusBarObjs.size) return;
-        var screenH = _parentEl.clientHeight, ts = CONFIG.tileSize || BASE_TILE;
+        var screenH = _parentEl.clientHeight, ts = CONFIG.tileSize || BASE_TILE, now = performance.now();
         if (screenH <= 0 || !cam.fov) return;
         var halfTan = Math.tan(cam.fov * Math.PI / 360);
         for (var e of _nexusBarObjs) {
@@ -11501,8 +11527,22 @@ const ThreeRenderer = (function () {
             var projW = (ts * screenH) / (2 * dist * halfTan);   // one tile's width on screen, px
             var fit = Math.min(4, Math.max(1, NEXUS_PLATE_MIN_PX / (NEXUS_PLATE_W * projW)));
             if (W.fit !== fit) { W.fit = fit; W.k = -1; }
+            /* THE WORLD TEXT STEPS ASIDE: over an open menu the counter fades (_wmOverMenu). The sprite stands on its
+               bottom centre, so its box on screen is the projected anchor, up by its height, out by half its width. */
+            _nexusVec.copy(_batWorldVec).project(cam);
+            var over = false;
+            if (_nexusVec.z >= -1 && _nexusVec.z <= 1) {
+                var sw = _parentEl.clientWidth, wpp = _pmWpp(cam, _batWorldVec, screenH), sc = W.g.scale.x || 1;
+                var nx = (_nexusVec.x * 0.5 + 0.5) * sw, ny = (-_nexusVec.y * 0.5 + 0.5) * screenH;
+                var hw = W.w * sc / wpp / 2, hh = W.h * sc / wpp;
+                over = _wmOverMenu(nx - hw, nx + hw, ny - hh, ny, now);
+            }
+            W.mf = _wmEase(W.mf, over, now - (W.mfAt || now));
+            W.mfAt = now;
+            if (W.base.material.opacity !== W.mf) W.base.material.opacity = W.mf;
         }
     }
+    var _nexusVec = new THREE.Vector3();
     /* per frame: the pop (scale 1 → 1.35 → 1 over 0.55 s, the old nb-pop keyframes) and the CONTESTED pulse (1.2 s) */
     function _tickNexusPlate(W, now) {
         var k = 1;
@@ -11512,7 +11552,7 @@ const ThreeRenderer = (function () {
             else k = t < 0.35 ? 1 + 0.35 * Math.sin((t / 0.35) * Math.PI / 2) : 1 + 0.35 * Math.cos(((t - 0.35) / 0.65) * Math.PI / 2);
         }
         if (W.k !== k) { W.k = k; W.g.scale.setScalar(k * (W.fit || 1)); }
-        if (W.pulse) W.pulse.material.opacity = 0.5 - 0.5 * Math.cos((now / 1200) * Math.PI * 2);
+        if (W.pulse) W.pulse.material.opacity = (0.5 - 0.5 * Math.cos((now / 1200) * Math.PI * 2)) * (W.mf == null ? 1 : W.mf);
     }
 
     function _buildNexusBar(key, nex) {
@@ -15811,6 +15851,60 @@ const ThreeRenderer = (function () {
     }
     function _pmPri(el) { var cl = el.classList; return cl.contains('tp-active') ? 2 : cl.contains('tp-targeted') ? 1 : 0; }
 
+    /* THE WORLD TEXT STEPS ASIDE (mondo 2026-10-22: "fade the nexus counter and name plates when they overlap with menus"):
+       the open menu's boxes in the canvas's own px, measured once per frame: the clock column, every command panel's
+       pieces (the root verbs, the sub menus, the target lists, the quick list and its unit card; a list counts by its
+       rows, cut to the list's scroll box) and the spell description bar. A plate or Nexus counter over one of them fades
+       to MENU_FADE_OP and comes back when the menu goes. window.EW_NO_MENU_FADE = true → never fades. Viewer-local. */
+    var MENU_FADE_OP = 0.22;
+    var _wmRects = [], _wmAt = -1;
+    function _wmMenuRects(now) {
+        if (now >= _wmAt && now - _wmAt < 3) return _wmRects;   // the plates and the Nexus counter share one measure a frame
+        _wmAt = now; _wmRects = [];
+        if (window.EW_NO_MENU_FADE || !_parentEl || typeof document === 'undefined') return _wmRects;
+        var P = _parentEl.getBoundingClientRect(), out = _wmRects;
+        var add = function (r, clip) {
+            var l = r.left, rr = r.right, t = r.top, b = r.bottom;
+            if (clip) { l = Math.max(l, clip.left); rr = Math.min(rr, clip.right); t = Math.max(t, clip.top); b = Math.min(b, clip.bottom); }
+            if (rr - l > 1 && b - t > 1) out.push({ l: l - P.left, r: rr - P.left, t: t - P.top, b: b - P.top });
+        };
+        var shown = function (el) {
+            if (!el.getClientRects().length) return false;
+            var cs = getComputedStyle(el);
+            return cs.visibility !== 'hidden' && !(parseFloat(cs.opacity) < 0.05);
+        };
+        var rigs = document.querySelectorAll('.hrlg-rig');
+        for (var i = 0; i < rigs.length; i++) {
+            var rig = rigs[i];
+            if (!shown(rig)) continue;
+            var side = rig.querySelector(':scope > .hrlg-side:not(.hrlg-ghost)');
+            if (side) for (var sc = 0; sc < side.children.length; sc++) add(side.children[sc].getBoundingClientRect());
+            var parts = rig.querySelectorAll('.hrlg-panels > .hrlg-panel > *');
+            for (var j = 0; j < parts.length; j++) {
+                var c = parts[j];
+                if (!c.classList.contains('hrlg-list')) { add(c.getBoundingClientRect()); continue; }
+                var box = c.getBoundingClientRect();
+                for (var k = 0; k < c.children.length; k++) add(c.children[k].getBoundingClientRect(), box);
+            }
+        }
+        var bars = document.querySelectorAll('.ew-descbar-inner');
+        for (var d = 0; d < bars.length; d++) if (shown(bars[d])) add(bars[d].getBoundingClientRect());
+        return out;
+    }
+    function _wmOverMenu(l, r, t, b, now) {
+        var R = _wmMenuRects(now);
+        for (var i = 0; i < R.length; i++) { var m = R[i]; if (l < m.r && r > m.l && t < m.b && b > m.t) return true; }
+        return false;
+    }
+    /* the fade glides (~0.15 s) toward MENU_FADE_OP or back to 1 */
+    function _wmEase(cur, over, dtMs) {
+        var want = over ? MENU_FADE_OP : 1;
+        if (cur == null) return want;
+        var k = 1 - Math.exp(-Math.min(250, Math.max(0, dtMs)) / 1000 * 14);
+        cur += (want - cur) * k;
+        return Math.abs(cur - want) < 0.01 ? want : cur;
+    }
+
     /* ── per frame (renderFrame, before the draw): the mirror's records, the repaints, the sizes, the stack ── */
     var _pmV = null, _pmR = null, _pmU = null;
     function _pmTick(cam) {
@@ -15849,7 +15943,8 @@ const ThreeRenderer = (function () {
                 l: sx + off + pm.box[0] * s, r: sx + off + pm.box[2] * s, t: sy + pm.box[1] * s, b: sy + pm.box[3] * s });
         }
         _pmStack(items);
-        var ease = 1 - Math.exp(-Math.min(0.25, Math.max(0, (now - (_pmTick.at || now)) / 1000)) * 14);
+        var _dtMs = now - (_pmTick.at || now);
+        var ease = 1 - Math.exp(-Math.min(0.25, Math.max(0, _dtMs / 1000)) * 14);
         _pmTick.at = now;
         var R = _pmR || (_pmR = new THREE.Vector3()), Up = _pmU || (_pmU = new THREE.Vector3());
         if (items.length) { R.setFromMatrixColumn(cam.matrixWorld, 0).normalize(); Up.setFromMatrixColumn(cam.matrixWorld, 1).normalize(); }
@@ -15864,7 +15959,9 @@ const ThreeRenderer = (function () {
             var dx = ((p2.cw / 2 - p2.ax) * it.s + it.off) * wpp, dy = ((p2.ay - p2.ch / 2) * it.s + p2.lift) * wpp;
             sp.position.copy(p2.wp).addScaledVector(R, dx).addScaledVector(Up, dy);
             sp.scale.set(p2.cw * it.s * wpp, p2.ch * it.s * wpp, 1);
-            var op = Math.max(0, Math.min(1, p2.op * gate));
+            /* over an open menu: the plate fades (its box as drawn, the stack's lift included) */
+            p2.mf = _wmEase(p2.shown ? p2.mf : null, _wmOverMenu(it.l, it.r, it.t - p2.lift, it.b - p2.lift, now), _dtMs);
+            var op = Math.max(0, Math.min(1, p2.op * gate * p2.mf));
             if (sp.material.opacity !== op) sp.material.opacity = op;
             sp.visible = op > 0.003;
             p2.shown = true;
@@ -27553,6 +27650,7 @@ const ThreeRenderer = (function () {
         _motionTick(performance.now() / 1000);
 
         _envUni.uDayNight.value = S.night;
+        _ewRimTick(S.night);   // THE UNIT RIM LIGHT: warm by day, cool moonlight by night
         _envUni.uSkyEvent.value = S.skyEvent;
         _envUni.uSkyAmt.value = S.skyAmt;
         _envUni.uEvAge.value = _skyEvShownAt ? Math.min(99, (performance.now() - _skyEvShownAt) / 1000) : 99;
@@ -37103,7 +37201,12 @@ const ThreeRenderer = (function () {
             var v = new THREE.Vector4(o.x, o.y, o.z, o.w);
             U[key] = T.uniform(v).setGroup(T.renderGroup).onRenderUpdate(function () { return v.set(o.x, o.y, o.z, o.w); });
         })(unit ? _EW_POP_U : _EW_POP_W);
-        var P = U[key], base = nm.setupOutput;
+        if (unit && !U.rim) {
+            var rv = new THREE.Vector4(), rv2 = new THREE.Vector4();
+            U.rim = T.uniform(rv).setGroup(T.renderGroup).onRenderUpdate(function () { return rv.set(_EW_RIM.x, _EW_RIM.y, _EW_RIM.z, _EW_RIM.w); });
+            U.rim2 = T.uniform(rv2).setGroup(T.renderGroup).onRenderUpdate(function () { return rv2.set(_EW_RIM2.x, _EW_RIM2.y, _EW_RIM2.z, _EW_RIM2.w); });
+        }
+        var P = U[key], base = nm.setupOutput, Rm = U.rim, Rm2 = U.rim2;
         U.dressed[key] = (U.dressed[key] || 0) + 1;
         nm.setupOutput = function (builder, out) {
             if (!out || out.isOutputStructNode) return base.call(this, builder, out);
@@ -37112,6 +37215,12 @@ const ThreeRenderer = (function () {
                 T.If(P.w.greaterThan(0.5), function () {
                     var l = T.dot(c.rgb, T.vec3(0.2126, 0.7152, 0.0722));
                     c.rgb.assign(T.max(T.mix(T.vec3(l), c.rgb, P.x), 0).mul(P.y));
+                });
+                if (unit) T.If(Rm.w.greaterThan(0), function () {   // THE UNIT RIM LIGHT (see _ewPopPatch)
+                    var nv = T.normalize(T.normalViewGeometry), vd = T.positionViewDirection;
+                    var r = T.smoothstep(Rm2.x, 1, T.clamp(T.abs(T.dot(nv, vd)), 0, 1).oneMinus()).toVar();
+                    r.mulAssign(T.mix(Rm2.y, 1, T.clamp(nv.y.mul(0.5).add(0.5), 0, 1)));
+                    c.rgb.addAssign(Rm.rgb.mul(r.mul(Rm.w)));
                 });
                 return c;
             })();
@@ -40451,7 +40560,8 @@ const ThreeRenderer = (function () {
         }
         var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
         _takeoverBodyClasses(inBattle && busy, inBattle && !state.winner && _takeoverCamBusy(),
-            typeof window.isEndOfRoundLive === 'function' && window.isEndOfRoundLive());
+            typeof window.isEndOfRoundLive === 'function' && window.isEndOfRoundLive(),
+            inBattle && !state.winner && _playerAiming());
         if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
         var hoverOff = inBattle && (busy || !!_hoverWaitMove);
         var ch = highlightGroup.children;
@@ -40471,7 +40581,21 @@ const ThreeRenderer = (function () {
        the board (all of the above), body.ew-board-cam while the camera is the game's (a flight, a cinematic, a death
        close-up, a centre banner), body.ew-eor through the whole end of round (the log stays up for it: battle.js
        isEndOfRoundLive); written only when it flips */
-    var _tkBusyWas = false, _tkCamWas = false, _tkEorWas = false;
+    var _tkBusyWas = false, _tkCamWas = false, _tkEorWas = false, _tkAimWas = false;
+    /* body.ew-aiming (playtest 2, mondo 2026-10-22: "the combat log is already supposed to collapse while aiming like it
+       does for selecting a move tile. If its not doing that for spells too then fix it"): the player is picking a tile or
+       a target on the board — a move / jump tile, a spell's aim or target, an attack's or an item's target, a combo
+       partner — so the log steps off the board the same way it does while the game has it (styles-hud.css) */
+    function _playerAiming() {
+        try {
+            if (typeof state === 'undefined' || !state || state.phase !== 'battle') return false;
+            if (state.autoPlayers && state.autoPlayers[state.activePlayer]) return false;
+            if (window._NET && window._NET.online && window._NET.myPlayer && state.activePlayer !== window._NET.myPlayer) return false;
+            if (state.actionMode) return true;
+            var mv = state.actionMenuView;
+            return mv === 'spellTargets' || mv === 'attackTargets' || mv === 'finisherTargets' || mv === 'spellOrientation';
+        } catch (e) { return false; }
+    }
     function _takeoverCamBusy() {
         try {
             if (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving()) return true;
@@ -40482,14 +40606,15 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         return false;
     }
-    function _takeoverBodyClasses(busy, cam, eor) {
-        busy = !!busy; cam = !!cam; eor = !!eor;
-        if (busy === _tkBusyWas && cam === _tkCamWas && eor === _tkEorWas) return;
-        _tkBusyWas = busy; _tkCamWas = cam; _tkEorWas = eor;
+    function _takeoverBodyClasses(busy, cam, eor, aim) {
+        busy = !!busy; cam = !!cam; eor = !!eor; aim = !!aim;
+        if (busy === _tkBusyWas && cam === _tkCamWas && eor === _tkEorWas && aim === _tkAimWas) return;
+        _tkBusyWas = busy; _tkCamWas = cam; _tkEorWas = eor; _tkAimWas = aim;
         var b = document.body; if (!b) return;
         b.classList.toggle('ew-board-busy', busy);
         b.classList.toggle('ew-board-cam', cam);
         b.classList.toggle('ew-eor', eor);
+        b.classList.toggle('ew-aiming', aim);
     }
     function _hoverPointerMoved(x, y) {
         if (!_hoverWaitMove) return;

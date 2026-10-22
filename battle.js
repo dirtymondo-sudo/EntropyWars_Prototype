@@ -666,13 +666,14 @@
                 const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5 * _shankMult));
                 const armor = getEffectiveArmor(unit);
                 const dmg = Math.max(1, baseDmg - armor);
-                applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
+                /* ONE HIT, ONE NUMBER (playtest 2): the hit's own line carries the real (after defence) number —
+                   no second "for N" line with the number before defence. */
+                applyDamageToUnit(unit, dmg, `⚔️ ${unitDisplayName(enemy)} lands an opportunity attack as ${unitDisplayName(unit)} retreats! `, {
                     sourceUnit: enemy,
                     damageType: 'physical',
                     // high ground / height soak / range falloff read the tile it left
                     struckAt: { x: fromX, y: fromY, standH: fromStandH }
                 });
-                addLog(`⚔️ ${_ctName(enemy)} lands an opportunity attack on ${_ctName(unit)} for ${dmg} damage!`, enemy.player);
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
                 if (!_skipVisuals()) {
                     showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
@@ -4834,6 +4835,35 @@
         // debris cubes. Returns true when the obstacle broke.
         const CRASH_THROUGH_DMG = 12;
 
+        /* The pure read of _tryCrashThrough: would this body break (nx, ny) and take CRASH_THROUGH_DMG? Previews only
+           (THE CRASH FORECAST, playtest 2: Sprint went through a wall for 12 with nothing on the preview). */
+        function crashThroughWouldBreak(unit, nx, ny, opts = {}) {
+            if (!unit || unit.dead || !isInside(nx, ny)) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (unitAt(nx, ny)) return false;
+            const power = opts.power ?? unitBreachPower(unit, opts);
+            if (power <= 0) return false;
+            if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) return power >= getTerrainHardness('tree');
+            const unitZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+            return !!_breachWindowCheck(nx, ny, unitZ, power);
+        }
+        /* the walls a dash from where the unit stands to (x, y) rams through — the same blocked test as doSpell's
+           CHARGE breach */
+        function dashCrashTiles(unit, x, y, path) {
+            const out = [];
+            if (!unit) return out;
+            const sx = unit.x, sy = unit.y;
+            const chargeZ = unit.z ?? getBaseHeightAt(sx, sy);
+            for (const cp of (path || getLinePoints(sx, sy, x, y))) {
+                if ((cp.x === x && cp.y === y) || (cp.x === sx && cp.y === sy)) continue;
+                const blocked = !isTerrainPassable(cp.x, cp.y)
+                    || getBaseHeightAt(cp.x, cp.y) > chargeZ + (typeof MAX_CLIMB_HEIGHT !== 'undefined' ? MAX_CLIMB_HEIGHT : 1);
+                if (blocked && crashThroughWouldBreak(unit, cp.x, cp.y, { byUnit: unit, charging: true })) out.push({ x: cp.x, y: cp.y });
+            }
+            return out;
+        }
+        window.dashCrashTiles = dashCrashTiles;
+
         function _tryCrashThrough(unit, nx, ny, opts = {}) {
             if (!unit || unit.dead) return false;
             if (!isInside(nx, ny)) return false;
@@ -6344,6 +6374,7 @@
             const _useVfx3dImpact = window.ThreeVFXEffects
                 && window.ThreeVFXEffects.hasMapping(spell.id, 'impact');
 
+            const _logSink = _multiHitLogSink();   // ONE CAST, ONE LINE
             hits.forEach((base, idx) => {
                 const hitTime = idx * hitGap; // relative to impactDelay
 
@@ -6377,16 +6408,16 @@
                         spellPower, hitCount: hits.length,
                     }), target);   // THE SPELL AUDIT Batch D: Loaded Dice rolls every card
                     const dmg = _mhCrit.dmg;
-                    applyDamageToUnit(target, dmg,
-                        idx === 0
-                            ? `${unitDisplayName(unit)} casts ${spell.name}: `
-                            : `${spell.name} hit ${idx + 1}: `,
+                    _logSink.last = (idx === hits.length - 1);
+                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `,
                         {
                             sourceUnit: unit,
                             damageType: spell.damageType || 'physical',
                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
-                            element: classifySpellElement(spell), isCrit: _mhCrit.isCrit
+                            element: classifySpellElement(spell), isCrit: _mhCrit.isCrit,
+                            logSink: _logSink
                         });
+                    if (_logSink.last || target.dead || target._dying) _multiHitLogFlush(_logSink);
                     if (idx === 0 && _activeCinematic?.showDamage) {
                         _activeCinematic.showDamage(`-${dmg}`, _mhCrit.isCrit);
                     }
@@ -8175,6 +8206,9 @@
                 const _rd = getSpellRangeTiles(unit, _riderBaseDef(spell)).filter(t => t.x !== unit.x || t.y !== unit.y);
                 return [{ x: unit.x, y: unit.y }, ..._rd];
             }
+            /* THE ESCAPE PICK: an escape's reach is the tiles it may land on (the caster's own tile stays its self-cast
+               click for the CPU's safest landing — doSpell) */
+            if (unit && spell && spell.kind === 'escape') return escapeLandingTiles(unit, spell);
             if (unit && spell && isSpellSelfCast(spell)) return [{ x: unit.x, y: unit.y }];
             // Beams use the capped 8-ray footprint, not the Manhattan disc.
             // (Before the range guard: a rangeless line def still beams 4 tiles.)
@@ -22830,6 +22864,7 @@
             if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
             const totalMs = Math.max(600, opts.totalMs ?? actionMs(2600));
             _acChromeState = { heavy: !!opts.heavy, total: 0, shown: 0,
+                casterId: opts.casterId ?? null,
                 tallyKind: opts.tallyKind === 'heal' ? 'heal' : 'damage',
                 until: performance.now() + totalMs + 400, holdUntil: 0,
                 hideTimer: null, rollRaf: null };
@@ -22984,6 +23019,16 @@
            the running scoreboard on top, not a replacement. Only heavy
            (damaging-cast) chrome tallies; buffs/utility never do. Every hit
            extends the readout's life so multi-hit spells never outlive it. */
+        /* THE TOTAL MATCHES THE LOG (playtest 2, mondo 2026-10-22: "the total number in the top left of the
+           screen and the number in the combat log have to match up"): the corner adds up what the shot's CASTER
+           deals, so a riposte or a hit on the caster (a counter, a wall crash) never rolls into its total. */
+        function _actionCamTallyBlocked(sourceUnit, target) {
+            const st = _acChromeState;
+            if (!st || st.casterId == null) return false;
+            if (target && target.id === st.casterId) return true;
+            const caster = unitFromId(st.casterId);
+            return !!(sourceUnit && caster && sourceUnit.id !== caster.id && isEnemyUnit(sourceUnit, caster));
+        }
         function _actionCamTallyDamage(dmg, isCrit) {
             const st = _acChromeState;
             if (!st || !st.heavy) return false;
@@ -33894,7 +33939,7 @@
             // lane reads in depth instead of dead-flat.
             const yawChase = Math.atan2(-dirx, -diry) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET * 0.6;
 
-            showActionCamChrome({ name: opts.attackName || '', heavy: true, totalMs });
+            showActionCamChrome({ name: opts.attackName || '', heavy: true, totalMs, casterId: unit ? unit.id : null });
             /* THE FRAME GUARD: the charger the whole run, and whoever the
                charge hits from the moment their number pops. */
             if (unit) _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit, victimIds: [],
@@ -34120,7 +34165,7 @@
             if (_cineEligible) {
                 // Cinematic chrome: letterbox + spell name + TOTAL DMG readout.
                 showActionCamChrome({ name: opts.attackName || '',
-                    heavy: true, totalMs: timings.totalMs });
+                    heavy: true, totalMs: timings.totalMs, casterId: sourceUnit ? sourceUnit.id : null });
                 const _shotOpts = { impactMs: _impactMs, frameTiles: opts.frameTiles,
                       shotKind: opts.shotKind, spellId: _cineSpellIdForShot,
                       holdAfterLaunchMs: opts.holdAfterLaunchMs,
@@ -34494,7 +34539,8 @@
                     sourceUnit._zResCalloutRound = state.round;
                     const _zsName = _affEl === 'earth' ? 'ground' : _affEl;
                     showFloatingTextForUnit(sourceUnit, `★ ${_zsName.toUpperCase()} SURGE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
-                    addLog(`★ The ${state.activeZodiac} sky surges the ${_zsName} — its power swells!`);
+                    const _zsSign = String(state.activeZodiac || '');
+                    addLog(`★ The ${_zsSign.charAt(0).toUpperCase() + _zsSign.slice(1)} sky surges the ${_zsName} — its power swells!`);
                 }
             }
             // 🜃 THE ELEMENT TERRAINS (2026-10-21): the caster or the unit hit stands on the spell element's own ground.
@@ -34687,6 +34733,31 @@
             if (/[A-Za-z]\s$/.test(plain)) return dmg != null ? `${src}${who} for ${dmg} HP damage.` : `${src}${who}, but ${who} ${what}`;
             return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
         }
+
+        /* ONE CAST, ONE LINE: the log sink a multi-hit cast hands every hit (opts.logSink). Each landed hit adds
+           its number; the line is written once, on the last hit (sink.last) or the hit that drops the target,
+           so a kill line never lands before the damage that caused it. _multiHitLogFlush covers a cast whose
+           last hit was swallowed (protected / immune) or that ended early. */
+        function _multiHitLogAdd(sink, target, sourceText, sourceUnit, dmg, typeNote) {
+            if (!sink) return;
+            if (sink.done) Object.assign(sink, { hits: 0, total: 0, note: '', done: false });   // a defy-death save: the rest is a new line
+            if (sink.hits === 0) { sink.src = sourceText; sink.srcUnit = sourceUnit || null; sink.target = target; }
+            sink.hits++;
+            sink.total += Math.max(0, dmg | 0);
+            if (!sink.note && typeNote) sink.note = typeNote;
+            if (sink.last || (target.hp | 0) <= 0 || target.dead || target._dying) _multiHitLogFlush(sink);
+        }
+        function _multiHitLogFlush(sink) {
+            if (!sink || sink.done || !sink.hits || !sink.target) return;
+            sink.done = true;
+            const t = sink.target;
+            const n = sink.hits > 1 ? ` (${sink.hits} hits)` : '';
+            const line = sink.total > 0
+                ? `${_dmgLogLine(sink.src, t, '', sink.total, sink.srcUnit)}${n}${sink.note ? ` ${sink.note}` : ''}`
+                : _dmgLogLine(sink.src, t, 'blocks the hit.', null, sink.srcUnit);
+            addLog(line, 0, [Math.max(0, Math.round(t.hp)), Math.round(t.maxHp || 0)]);
+        }
+        function _multiHitLogSink() { return { hits: 0, total: 0, note: '', last: false, done: false, src: '', srcUnit: null, target: null }; }
 
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
@@ -35153,7 +35224,8 @@
                     // Cinematic action shot live → the number ALSO rolls into
                     // the corner TOTAL DMG counter; the floating "-N" over the
                     // unit still pops either way (both layers, classic JRPG).
-                    _actionCamTallyDamage(finalDamage, _floatKind === 'critdmg');
+                    const _tallyOff = _actionCamTallyBlocked(sourceUnit, target);
+                    if (!_tallyOff) _actionCamTallyDamage(finalDamage, _floatKind === 'critdmg');
                     /* Attribution opts for the record-juice display check
                        (plan §5.2): enemy hits only, DoT excluded — mirrors
                        the Biggest Hit burst rules. */
@@ -35177,7 +35249,7 @@
                         kill: _lethalHit,
                         weight: _juiceW,
                     });
-                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, { ..._recOpts, ..._hitOpts });
+                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, { ..._recOpts, ..._hitOpts, ...(_tallyOff ? { _noTally: 1 } : {}) });
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         const _isMagicSpellHit = damageType !== 'physical' && !!opts.spellType;
@@ -35261,9 +35333,14 @@
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
                     _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
-                addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
+                /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
+                   multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
+                   the last hit or the kill (_multiHitLogFlush) — the same total the corner TOTAL DMG shows. */
+                const _sink = opts.logSink || null;
+                if (_sink) _multiHitLogAdd(_sink, target, sourceText, sourceUnit, finalDamage, typeNote);
+                else addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
 
-                if (sourceUnit && typeNote) {
+                if (sourceUnit && typeNote && !(_sink && _sink.hits > 1)) {
                     const dlg = [];
                     if (typeNote.includes('super effective')) dlg.push(`<span class="dlg-effective">⚡ It's super effective!</span>`);
                     else if (typeNote.includes('not very effective')) dlg.push(`<span class="dlg-resist">🛡 Not very effective...</span>`);
@@ -35271,7 +35348,8 @@
                 }
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
-                addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
+                if (opts.logSink) _multiHitLogAdd(opts.logSink, target, sourceText, opts.sourceUnit || null, 0, '');
+                else addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
@@ -35593,6 +35671,50 @@
             return candidates[0];
         }
         window.escapeLandingTile = escapeLandingTile;
+
+        /* THE ESCAPE PICK (mondo 2026-10-22, playtest 2: "all of those useless dash spells that go in a random direction
+           need to let the player choose where to go"): a PLAYER's escape (Nimble Dodge, Mist Form, Shed Skin…) lands on
+           the tile they pick — any tile within teleportDistance the escape could land on, the same reach escapeLandingTile
+           searches. The CPU (and a cast aimed at the caster's own tile) keeps escapeLandingTile's safest tile.
+           A body the caster's side can't see does not unlight its tile (the lit set never leaks it); landing there is
+           refused like a blink onto an occupied tile. */
+        function _escapeOpenIgnoringBody(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
+            if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
+            return true;
+        }
+        function escapeLandingTiles(unit, spell) {
+            if (!unit || !spell) return [];
+            const dist = spell.teleportDistance || 2;
+            const out = [];
+            for (let dy = -dist; dy <= dist; dy++) {
+                for (let dx = -dist; dx <= dist; dx++) {
+                    if ((dx === 0 && dy === 0) || Math.abs(dx) + Math.abs(dy) > dist) continue;
+                    const nx = unit.x + dx, ny = unit.y + dy;
+                    if (!isInside(nx, ny)) continue;
+                    if (canOccupy(nx, ny)) { out.push({ x: nx, y: ny }); continue; }
+                    const occ = unitAt(nx, ny);
+                    if (occ && !occ.dead && !_isUnitVisibleToViewer(occ, unit.player) && _escapeOpenIgnoringBody(nx, ny)) out.push({ x: nx, y: ny });
+                }
+            }
+            return out;
+        }
+        window.escapeLandingTiles = escapeLandingTiles;
+        /* where an escape aimed at (x, y) lands: { x, y } — the picked tile, the safest tile for a cast on the caster's own
+           tile (the CPU, old callers), or { blocked: true } when the picked tile is lit but a hidden body stands there;
+           null when there is nowhere to go */
+        function escapeLandingFor(unit, spell, x, y) {
+            if (!unit || !spell) return null;
+            if (!Number.isFinite(x) || !Number.isFinite(y) || (x === unit.x && y === unit.y)) return escapeLandingTile(unit, spell);
+            if (!escapeLandingTiles(unit, spell).some(t => t.x === x && t.y === y)) return escapeLandingTile(unit, spell);
+            if (!canOccupy(x, y)) return { x, y, blocked: true };
+            return { x, y };
+        }
+        window.escapeLandingFor = escapeLandingFor;
 
         /* A charge (chargeToTarget rows, Brave Charge…): the open tile beside the target nearest the caster. */
         function chargeLandingTile(unit, target) {
@@ -36378,8 +36500,8 @@
             }
 
             if (kind === 'escape') {
-                const lt = escapeLandingTile(unit, spell);
-                if (lt) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                const lt = escapeLandingFor(unit, spell, x, y);   // THE ESCAPE PICK: the picked tile (the cast's own rule)
+                if (lt && !lt.blocked) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
                 return;
             }
 
@@ -36427,6 +36549,11 @@
                     if (!v || v.dead || !isEnemyUnit(v, unit)) continue;
                     const d = (split && pt.x === x && pt.y === y) ? primDmg : pathDmg;
                     if (d > 0) hit(v, d, d, d, hopts);
+                }
+                /* THE CRASH FORECAST (playtest 2, mondo 2026-10-22: "it needs a damage preview number just like fall
+                   damage or moving into lava"): each wall the run smashes through costs the runner CRASH_THROUGH_DMG */
+                for (const c of dashCrashTiles(unit, x, y, path)) {
+                    hit(unit, CRASH_THROUGH_DMG, CRASH_THROUGH_DMG, CRASH_THROUGH_DMG, { ignoreArmor: true, consumeMarked: false, noPress: true }, { tag: 'crash' });
                 }
                 for (const s of dashShovePlan(unit, x, y, z)) chainMove(s.unit, s.x, s.y, Math.sign(s.x - s.unit.x), Math.sign(s.y - s.unit.y), 'push');
                 addMove(unit, x, y, 'self');
@@ -36702,7 +36829,7 @@
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
                 if (s.summon) {
-                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${_ctName(s.target)} for ${s.dmg} damage!`);
+                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${_ctName(s.target)}!`);
                     const _sHpBefore = s.target.hp;
                     applyDamageToUnit(s.target, s.dmg, `${s.turret.spellName}: `, {
                         ignoreArmor: false,
@@ -36722,7 +36849,7 @@
                     return;
                 }
                 if (s.zombie) {
-                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${_ctName(s.target)} for ${s.dmg} damage!`);
+                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${_ctName(s.target)}!`);
                     applyDamageToUnit(s.target, s.dmg, `🧟 Zombie maul: `, {
                         ignoreArmor: false,
                         damageType: 'physical',
@@ -36733,7 +36860,7 @@
                     });
                     return;
                 }
-                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${_ctName(s.target)} for ${s.dmg} damage!`);
+                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${_ctName(s.target)}!`);
                 const _hpBefore = s.target.hp;
                 applyDamageToUnit(s.target, s.dmg, `🔧 Turret blast: `, {
                     ignoreArmor: false,
@@ -39452,7 +39579,7 @@
                 if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
                     // the pick's own body when it carries a height (a flyer over a ground unit is a different target)
                     const tu = ((pt.z !== undefined && pt.z !== null) ? unitAt(pt.x, pt.y, pt.z) : null) || unitAt(pt.x, pt.y);
-                    ptLabel = '<strong>' + (tu ? esc(_ctName(tu)) : coordLabel(pt.x, pt.y)) + '</strong>';
+                    ptLabel = '<strong>' + (tu ? esc(_ctName(tu)) : esc(pickTargetName(pt.x, pt.y, pt.z))) + '</strong>';   // THE PICK'S NAME
                 }
 
                 if (am === 'move') {
@@ -39470,7 +39597,9 @@
                 if (am === 'combo') {
                     if (!state.comboPartner) return _promptBarHtml('Combo: select an adjacent ally to team up with.', 'ESC cancel');
                     const combo = (typeof getComboForUnits === 'function') ? getComboForUnits(unit, state.comboPartner) : null;
-                    return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong> ready — select an enemy target.', 'ESC cancel');
+                    const _cbWith = ' with ' + esc(_ctName(state.comboPartner));
+                    if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong>' + _cbWith + ' → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                    return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong>' + _cbWith + ' ready — select a target.', 'ESC cancel');
                 }
                 if (am === 'spell') {
                     if (menuView === 'spellOrientation') {
@@ -39484,6 +39613,11 @@
                         || (unit._raceAbilities || []).find(s => s && s.name === state.selectedTool);
                     if (!spell) return _promptBarHtml('Select an ability to cast.', 'ESC back');
                     // THE SELF-CAST CONFIRM: the caster is the only target, so there is nothing else to pick
+                    // THE ESCAPE PICK: the player picks where the escape lands
+                    if (spell.kind === 'escape') {
+                        if (ptLabel && pt && (pt.x !== unit.x || pt.y !== unit.y)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> lands on ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
+                        return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
+                    }
                     if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
@@ -43715,8 +43849,49 @@
                 }
             }
         }
-        function _syncTrainingTurbo(unit) { _setAiTurbo(_trainingTurboWanted(unit)); }
+        function _syncTrainingTurbo(unit) {
+            const want = _trainingTurboWanted(unit);
+            if (want && !_trainRecapSnap) _trainRecapSnap = _trainRecapTake();
+            _setAiTurbo(want);
+            if (!want && _trainRecapSnap && unit && !unit.dead && state.trainingMatch
+                && state.controllers?.[unit.player] !== CTRL.AI && !state.autoPlayers?.[unit.player]) {
+                const snap = _trainRecapSnap;
+                _trainRecapSnap = null;
+                _trainRecapShow(snap);
+            }
+        }
         window._setAiTurbo = _setAiTurbo;
+
+        /* THE CPU TURN RECAP (mondo 2026-10-22, "sure" to the playtest's idea; he also asked "is the log not enough?", so
+           it stays light): the CPU's turbo turns resolve instantly, so when the human's next unit comes up after one or
+           more of them, every unit whose HP changed since then pops its NET change once (one number per unit, not per
+           hit), and the tiles the CPU's units walked to light up for a moment. Fog rules hold: an enemy the viewer can't
+           see pops nothing and lights nothing. Viewer-local, offline only (training is never online), nothing on state. */
+        const TRAIN_RECAP_MS = 1700;
+        let _trainRecapSnap = null, _trainRecapTimer = null;
+        function _trainRecapTake() {
+            const map = {};
+            for (const u of (state.units || [])) if (!u.dead) map[u.id] = { hp: u.hp || 0, x: u.x, y: u.y };
+            return { units: state.units, map };
+        }
+        function _trainRecapShow(snap) {
+            if (!snap || snap.units !== state.units || state.phase !== 'battle' || state.winner) return;
+            const viewer = getViewerPlayer();
+            const moved = [];
+            for (const u of state.units) {
+                const was = snap.map[u.id];
+                if (!was || u.dead || u._dying) continue;
+                if (u.player !== viewer && !_isUnitVisibleToViewer(u, viewer)) continue;
+                const d = (u.hp || 0) - was.hp;
+                if (d) showFloatingTextForUnit(u, (d > 0 ? '+' : '-') + Math.abs(d), d > 0 ? 'heal' : 'damage', { durationMs: TRAIN_RECAP_MS });
+                if (u.player !== viewer && (u.x !== was.x || u.y !== was.y)) moved.push({ x: u.x, y: u.y });
+            }
+            const R = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()) ? ThreeRenderer : null;
+            if (!R || !moved.length) return;
+            R.setOverlay('trainRecap', moved, 0xff5544, 0.35);
+            if (_trainRecapTimer) clearTimeout(_trainRecapTimer);
+            _trainRecapTimer = setTimeout(() => { _trainRecapTimer = null; R.clearOverlay('trainRecap'); }, TRAIN_RECAP_MS);
+        }
 
         /* ═══════════ IMITATION — the CPU learns from the human's decisions ═══════════
            (2026-09-07) Runs in a TRAINING MATCH only (state.trainingMatch,
@@ -43951,7 +44126,8 @@
             el = document.createElement('div');
             el.id = 'imitReportPanel';
             el.className = 'training-panel';
-            el.style.cssText = 'display:none;position:fixed;top:12px;right:12px;left:auto;width:380px;z-index:1200;';
+            /* left side by default and draggable by its title bar (mondo 2026-10-22: it covered the debrief tabs on the right) */
+            el.style.cssText = 'display:none;position:fixed;top:12px;left:12px;right:auto;width:380px;z-index:1200;';
             document.body.appendChild(el);
             return el;
         }
@@ -43983,7 +44159,7 @@
                 return `<tr><td style="padding:1px 4px">${esc(w.label)}</td><td style="padding:1px 4px;text-align:right;color:var(--muted)">${_imitFmt(w.default)}</td><td style="padding:1px 4px;font-weight:700">${_imitFmt(w.current)}</td></tr>`; }).join('');
             const h = (txt) => `<div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin:12px 0 4px">${txt}</div>`;
             el.innerHTML = `
-                <div class="train-drag-handle"><span class="train-title">🧠 Imitation Report</span>
+                <div class="train-drag-handle" id="imitDragHandle"><span class="train-title">🧠 Imitation Report</span>
                     <button class="train-btn" style="flex:0;padding:2px 8px" onclick="window._ewImitationReportClose()">✕</button></div>
                 <div class="train-subtitle" style="margin-bottom:8px">Training match · ${esc(r.mode || '')} · ${esc(new Date(r.when).toLocaleString())}</div>
                 <div style="display:flex;gap:6px">${chip(st.observed || 0, 'SCORED', 'var(--text)')}${chip(st.agree || 0, 'AGREED', '#7fd9dd')}${chip(st.disagree || 0, 'LEARNED', '#7fd97f')}${chip(st.unmatched || 0, 'UNSCORED', 'var(--muted)')}</div>
@@ -44002,6 +44178,7 @@
                     <button class="train-btn danger" onclick="window._ewImitationReportClose()">Close</button>
                 </div>`;
             el.style.display = 'block';
+            _initTrainPanelDrag(el, document.getElementById('imitDragHandle'));
         }
         window._ewImitationReport = () => { if (_imitLastReport) _imitShowReport(_imitLastReport); else addLog('No imitation report yet — finish a training match first.'); };
         /* ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13): the table's panel asks before it offers the last report */
@@ -44937,8 +45114,8 @@
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
                 : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
-                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is exited · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is exited.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is defeated · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? 'holds the field.' : 'is defeated.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -49267,8 +49444,6 @@
             { t: 'FIELD MANUAL', q: 'Deep water drowns the unwary. Winged vessels are untroubled by such things.' },
             { t: 'FIELD MANUAL', q: 'Team Deathmatch is decided by total kills when the rounds run out. A full wipeout ends it on the spot.' },
             { t: 'FIELD MANUAL', q: 'In Domination, held Nexus points pay out every round. Map control is a bank account.' },
-            { t: 'FIELD MANUAL', q: 'In Capture the Flag, the enemy standard scores only when it is carried all the way home to your spawn zone.' },
-            { t: 'FIELD MANUAL', q: 'The Hotspot Nexus never stays put. Capture it, take the point, and start running toward the next one.' },
             { t: 'FIELD MANUAL', q: 'Spells cost MP. Moving and acting cost AP. Bankruptcy on either is how vessels die.' },
             { t: 'FIELD MANUAL', q: 'Werewolves walk the field as ordinary humans by day. Keep one eye on the sky’s cycle.' },
             { t: 'FIELD MANUAL', q: 'The zodiac wheel turns as rounds pass. When the sky changes, the battlefield changes with it.' },
@@ -54744,11 +54919,12 @@
             _initTrainPanelDrag(panel);
         }
 
-        function _initTrainPanelDrag(panel) {
-            const handle = document.getElementById('trainDragHandle');
+        function _initTrainPanelDrag(panel, handleEl) {
+            const handle = handleEl || document.getElementById('trainDragHandle');
             if (!handle) return;
             handle.onmousedown = (e) => {
                 if (e.button !== 0) return;
+                if (e.target && e.target.closest && e.target.closest('button')) return;   // the ✕ in the title bar
                 e.preventDefault();
                 const rect = panel.getBoundingClientRect();
                 const offX = e.clientX - rect.left;
@@ -54772,6 +54948,7 @@
             };
 
             handle.ontouchstart = (e) => {
+                if (e.target && e.target.closest && e.target.closest('button')) return;
                 const t = e.touches[0];
                 const rect = panel.getBoundingClientRect();
                 const offX = t.clientX - rect.left;
@@ -56895,8 +57072,8 @@
             if (mode === 'spell' && unit) {
                 if (!_scOwns) {
                     const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
-                    const _tileAim = spell && !isSpellSelfCast(spell)
-                        && (isSpellTileTargeted(spell) || spell.orientable);
+                    const _tileAim = spell && ((!isSpellSelfCast(spell)
+                        && (isSpellTileTargeted(spell) || spell.orientable)) || spell.kind === 'escape');   // THE ESCAPE PICK: a board read
                     if (_tileAim && _fogCamAllSeen(unit)) {
                         // Free-aim tile picking is a BOARD read → tactical
                         // overhead, zoomed to fit the spell's range rings.
@@ -56976,6 +57153,14 @@
                             _tpsTargetShot(unit, targets[0].unit || targets[0]);
                         }
                     }
+                } else if (spell && spell.kind === 'escape') {
+
+                    /* THE ESCAPE PICK (mondo 2026-10-22): an escape arms on the board like a blink — the tiles it may
+                       land on light up, the hover shows the landing, a click picks it (✓ + CONFIRM), the second click
+                       or CONFIRM casts. Nothing is pre-picked: where to go is the player's call. */
+                    state.actionMenuView = 'spells';
+                    state._spellCycleTargets = [];
+                    state._spellCycleIndex = 0;
                 } else if (spell && isSpellSelfCast(spell)) {
 
                     /* THE SELF-CAST CONFIRM (mondo 2026-10-18: "im tired of clicking on an aoe not realizing its a
@@ -57010,6 +57195,19 @@
                 }
             } else {
                 state.actionMenuView = mode === 'item' ? 'items' : mode === 'ping' ? 'pings' : (state.actionMenuView || 'root');
+                /* THE ITEM PICK (playtest 2 2026-10-22: the potion list picked nothing and followed the mouse): a
+                   unit-targeted item (potions, banes) opens with its top row picked (✓ + CONFIRM), like the attack and
+                   spell lists — the neediest ally / the closest-to-death enemy, from the drum's own order */
+                const _itRule = (mode === 'item' && typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[toolName] : null;
+                const _itLike = (k) => (typeof window._ewItemLike === 'function' ? window._ewItemLike(toolName, k) : toolName === k);
+                if (_itRule && (_itLike('healPotion') || _itLike('manaPotion') || _itRule.baneType)
+                    && typeof window._hrlgItemTargetList === 'function') {
+                    const _it0 = window._hrlgItemTargetList(unit, toolName).find(t => t.usable);
+                    if (_it0) {
+                        state.pendingTarget = { x: _it0.unit.x, y: _it0.unit.y, z: _it0.unit.z, mode: 'item', tool: toolName, viaHover: false };
+                        updateAoePreview(_it0.unit.x, _it0.unit.y);
+                    }
+                }
             }
 
             renderBattleSelectionUI({
@@ -57454,7 +57652,7 @@
         }
 
         /* ── Right-click-hold demolition ─────────────────────────────────────
-           Hold right-click on a destroyable tile (exposed raised cube or tree)
+           Hold right-click on a tree (raised terrain is Dig's since 2026-10-22)
            for TILE_DEMOLISH_HOLD_MS to destroy it through the normal
            basic-attack path (1 AP, same range/LOS rules as before). While the
            button is held a translucent radial dial fills at the cursor;
@@ -57467,8 +57665,7 @@
 
         function _demolishKindAt(x, y) {
             if (typeof _tileHasTree === 'function' && _tileHasTree(x, y) && !unitAt(x, y)) return 'tree';
-            if (typeof _tileIsSmashable === 'function' && _tileIsSmashable(x, y)) return 'terrain';
-            return null;
+            return null;   // raised terrain is Dig's (NO ATTACKING TILES, 2026-10-22) — the hold fells trees only
         }
 
         /* Returns { unit, kind } when the hold may start, a string reason for
@@ -57484,8 +57681,7 @@
             const kind = _demolishKindAt(x, y);
             if (!kind) return null;
             if (!canUnitAct(unit)) return 'NO AP';
-            const reachable = _getAttackValidTargets(unit).some(t =>
-                (t.kind === 'tree' || t.kind === 'terrain') && t.x === x && t.y === y);
+            const reachable = _getAttackValidTargets(unit).some(t => t.kind === 'tree' && t.x === x && t.y === y);
             if (!reachable) return 'OUT OF RANGE';
             return { unit, kind };
         }
@@ -57618,6 +57814,41 @@
             }
         }
 
+        /* THE PICK'S NAME (mondo 2026-10-22, playtest 2: "CONFIRM · G7" — "name it, even if its just a dirt block"): what a
+           target pick is called on the CONFIRM button, the prompt bar and the target rows — the body, else the thing on the
+           tile (Cube, turret, object, seed, tree, door, prism), else the ground itself. An enemy decoy is named as the unit
+           it copies (decoys stay indistinguishable). */
+        function pickTargetName(x, y, z, viewer) {
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return '';
+            const body = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
+            if (body) return unitDisplayName(body);
+            const tw = (typeof towerAt === 'function') ? towerAt(x, y) : null;
+            if (tw && tw.hp > 0) return 'Cube';
+            const tr = (state.turrets || []).find(t => t.x === x && t.y === y && t.hp > 0);
+            if (tr) {
+                const sp = (typeof SPELL_BY_ID !== 'undefined' && tr.spellId) ? SPELL_BY_ID[tr.spellId] : null;
+                return String(tr.spellName || (sp && sp.name) || 'Turret').replace(/^Deploy\s+/i, '');
+            }
+            const ob = (state._deployedObjects || []).find(o => o.x === x && o.y === y && o.hp > 0);
+            if (ob) {
+                const _vw = viewer != null ? viewer : getViewerPlayer();
+                if (ob.isDecoy && ob.ownerPlayer !== _vw && ob.spriteUnit) {
+                    try { return unitDisplayName(ob.spriteUnit); } catch (e) { /* the look has no name: fall through */ }
+                }
+                return ob.spellName || 'Object';
+            }
+            const sd = (state.plantedSeeds || []).find(s => s.x === x && s.y === y);
+            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+            if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) return 'Tree';
+            if (doorAt(x, y)) return 'Door';
+            if ((state.mirrors || []).some(m => m.x === x && m.y === y && m.hp > 0)) return 'Prism';
+            const terr = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y) : null;
+            const terrLbl = (terr && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[terr] && TERRAIN_RULES[terr].label)
+                || (terr ? String(terr).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Tile');
+            return terrLbl + ' ' + coordLabel(x, y);
+        }
+        window.pickTargetName = pickTargetName;
+
         function _getAttackValidTargets(unit, opts) {
             if (!unit) return [];
             /* combatOnly: skip pure scenery (trees / smashable terrain). Used by
@@ -57722,22 +57953,10 @@
             // damage from area effects (AOE / bombs / beams / earthquakes) —
             // see buildingHitsForSpell. They never appear in this list.
 
-            // 🔨 Raised terrain: an exposed raised column (a cardinal neighbor
-            // sits lower) can be smashed down one level with a basic attack —
-            // the counterplay to reshape pillars and tower camping.
-            if (!_combatOnly)
-            for (let ty = 0; ty < bh(); ty++) {
-                for (let tx = 0; tx < bw(); tx++) {
-                    if (!_tileIsSmashable(tx, ty)) continue;
-                    // Range is measured to the column's exposed FACE at the
-                    // attacker's height (see doAttack), not its top.
-                    const d = combatDist(unit.x, unit.y, unitZ, tx, ty, Math.min(getBaseHeightAt(tx, ty), unitZ));
-                    if (d < 1 || d > effRange) continue;
-                    if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
-                    if (visionGatesTargeting(unit) && !isInVision(unit, tx, ty)) continue;
-                    targets.push({ x: tx, y: ty, dist: d, kind: 'terrain' });
-                }
-            }
+            /* 🔨 NO ATTACKING TILES (mondo 2026-10-22, playtest 2: ATTACK pre-picked a raised column called "G7"):
+               smashing a raised column with a basic attack was DIG with worse rules (it ended the turn, dropped the
+               salvage on the floor instead of banking it, and skipped Dig's wall / objective / fixed-ground checks) —
+               "would rather just keep dig and not be able to attack a tile". Lowering ground is Dig's job (Build). */
 
             // Trees/buildings/terrain sort AFTER real targets so the auto-picked
             // pending target (and target-cycling) always prefers enemies over scenery.
@@ -57890,7 +58109,7 @@
                         _mtcApproach = findSpellApproachTile(unit, _mtcSp, x, y, execZ);
                     }
                     if (_mtcApproach) { _moveThenCast(unit, _mtcApproach, _mtcSp.name, x, y, execZ); }
-                    else if (_mtcSp && isSpellSelfCast(_mtcSp)) { _fireSelfCast(unit, _mtcSp); }
+                    else if (_mtcSp && isSpellSelfCast(_mtcSp) && _mtcSp.kind !== 'escape') { _fireSelfCast(unit, _mtcSp); }   // an escape casts at its picked landing (below)
                     else { _execAction(() => doSpell(unit, x, y, execZ)); }
                 }
                 else if (state.actionMode === 'item') {
@@ -57899,6 +58118,11 @@
                     state._actionExecuting = false;
                     doItem(unit, x, y, execZ);
                 }
+                else if (state.actionMode === 'combo' && state.comboPartner) {
+                    /* THE COMBO PICK: the confirmed combo target (the board click's own doComboAttack) */
+                    _execAction(() => doComboAttack(unit, state.comboPartner, x, y, execZ));
+                }
+                else state._actionExecuting = false;
                 scheduleBoardRender();
                 return;
             }
@@ -57914,7 +58138,7 @@
             // resolve to whoever stood beneath it and the camera never
             // looked up.
             if (state.actionMode === 'attack' || state.actionMode === 'spell'
-                || state.actionMode === 'item') {
+                || state.actionMode === 'item' || state.actionMode === 'combo') {
                 const _mu = getSelectedUnit();
                 const _mtgt = (typeof unitAt === 'function')
                     ? (((z !== undefined && z !== null) && unitAt(x, y, z)) || unitAt(x, y))
@@ -57962,6 +58186,19 @@
             }
         }
         window.cycleAttackTarget = cycleAttackTarget;
+
+        /* THE ATTACK PICK: the attack list opens with its first row picked (✓ + CONFIRM + the strike arrow) — opened from
+           the ATTACK verb AND re-armed after a press refund (playtest 2 2026-10-22: the second swing after a crit refund
+           opened with nothing picked and no CONFIRM). Returns the picked target or null. */
+        function _armAttackPick(unit) {
+            const targets = _getAttackValidTargets(unit);
+            state._attackCycleTargets = targets;
+            state._attackCycleIndex = 0;
+            if (!targets.length) return null;
+            state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
+            updateAoePreview(targets[0].x, targets[0].y);   // THE STRIKE ARROW onto the first pick (ui.js)
+            return targets[0];
+        }
 
         function setActionMode(mode) {
             if (state.activePlayer === state.aiPlayer) return;
@@ -58075,15 +58312,9 @@
             if (mode === 'attack') {
                 state.actionMenuView = 'attackTargets';
 
-                const targets = _getAttackValidTargets(unit);
-                state._attackCycleTargets = targets;
-                state._attackCycleIndex = 0;
-                if (targets.length > 0) {
-                    state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
-                    updateAoePreview(targets[0].x, targets[0].y);   // THE STRIKE ARROW onto the first pick (ui.js)
-                    // enemy targeting → third person: caster looking at the target
-                    _tpsTargetShot(unit, targets[0].unit || targets[0]);
-                }
+                const _t0 = _armAttackPick(unit);
+                // enemy targeting → third person: caster looking at the target
+                if (_t0) _tpsTargetShot(unit, _t0.unit || _t0);
             } else {
                 state.actionMenuView = 'root';
             }
@@ -58502,6 +58733,13 @@
                 }
             }
 
+            /* THE COMBO PICK: with the partner in, only a row of the combo's target list takes the hover pick (an empty
+               tile under the pointer must not arm "CONFIRM — Grass E5") */
+            if (state.actionMode === 'combo' && state.comboPartner && !_stHoverGrab && typeof window._hrlgComboTargetList === 'function') {
+                const _cbU = getSelectedUnit();
+                if (_cbU && !window._hrlgComboTargetList(_cbU, state.comboPartner).some(t => t.u.x === x && t.u.y === y)) return false;
+            }
+
             if (state.actionMode === 'inspect' && !_stHoverGrab) {
                 const unit = getSelectedUnit();
                 if (unit) {
@@ -58517,7 +58755,7 @@
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                     // THE SELF-CAST CONFIRM: the armed self-cast's pick is the caster and never moves — hovering
                     // the board must not re-aim it, clear its footprint or drop the green CONFIRM.
-                    if (spell && isSpellSelfCast(spell)) return false;
+                    if (spell && isSpellSelfCast(spell) && spell.kind !== 'escape') return false;   // THE ESCAPE PICK: the hover aims the landing
                     if (spell) {
 
                         // Line beams included: getSpellRangeTiles returns their
@@ -58598,7 +58836,7 @@
                 const unit = getSelectedUnit();
                 if (unit) {
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                    _isSelfCast = spell && isSpellSelfCast(spell);
+                    _isSelfCast = spell && isSpellSelfCast(spell) && spell.kind !== 'escape';
                 }
             }
             if (!_isSelfCast) clearAoePreview();
@@ -58837,7 +59075,7 @@
                     /* THE LANDING PICK (2026-10-20, mondo: a lit To the Moon landing tile was refused): a sky throw's
                        landing ring is lit fog or no fog, and the throw never needed sight — same pass as the blink. */
                     const _skyLanding = !!spell && spell.kind === 'skyThrow' && skyThrowLandingPhase(_actUnit);
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell)) && !_skyLanding) {
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                             addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
@@ -59075,7 +59313,7 @@
                     // a cast that stops short and hits zero targets.
                     // THE SELF-CAST CONFIRM: an armed self-cast fires on the caster only — a click anywhere else
                     // says so and keeps it armed (the caster's tile or the green CONFIRM casts it).
-                    if (isSpellSelfCast(spell) && (x !== actingUnit.x || y !== actingUnit.y)) {
+                    if (isSpellSelfCast(spell) && spell.kind !== 'escape' && (x !== actingUnit.x || y !== actingUnit.y)) {   // THE ESCAPE PICK: an escape clicks its landing
                         addLog(`${_ctSp(spell.name)} is cast on ${_ctName(actingUnit)}: press CONFIRM.`, actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
@@ -59430,6 +59668,7 @@
                             const syn = getComboTypeSynergy(actingUnit, clickedUnit);
                             addLog(`Partner selected: ${_ctName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
                             state.pendingTarget = null;
+                            if (typeof window._hrlgComboPrePick === 'function') window._hrlgComboPrePick(actingUnit, clickedUnit);   // THE COMBO PICK
                             renderBattleSelectionUI();
                         } else {
                             addLog('That ally cannot combo with this unit.');
@@ -63869,12 +64108,6 @@
                 if (!_clickedTarget && z == null && _structureAt(x, y, unit)) {
                     _tz = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
                 }
-                // 🔨 Attacking a raised terrain column strikes its exposed FACE
-                // at the attacker's own height (or its top when striking down),
-                // so melee can smash a tall pillar it stands beside.
-                if (!_clickedTarget && _tileIsSmashable(x, y)) {
-                    _tz = Math.min(getBaseHeightAt(x, y), unit.z ?? 0);
-                }
                 d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
             }
 
@@ -64288,29 +64521,7 @@
             // 🏢 Buildings can't be basic-attacked: structures only take area
             // damage (AOE / bombs / beams / earthquakes). An attack click on an
             // empty building tile falls through to the "choose an enemy" nag.
-            // 🔨 Smash terrain: attacking an exposed raised column knocks it
-            // down one level — the counter to reshape pillars / tower camping.
-            if ((!target || target.id === unit.id) && _tileIsSmashable(x, y)) {
-                pushUndoSnapshot(true);
-                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
-                const _oldH = getBaseHeightAt(x, y);
-                animateStrikeLeap(unit, x, y);
-                smashTerrainAt(x, y, unit);
-                addLog(`🔨 ${_ctName(unit)} smashes the terrain at ${coordLabel(x, y)}! (Height ${_oldH} → ${_oldH - 1})`);
-                showFloatingTextAtTile(x, y, '🔨 CRUMBLE!', 'damage', { durationMs: 1100 });
-                playSfx('basicAttack');
-                if (typeof shakeBoard === 'function') shakeBoard('normal');
-                grantXP(unit, 4, 'smash');
-                spendAllAP(unit);   // attacking ends the turn
-                state.actionMode = null;
-                state._actionExecuting = false;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                endUnitIfDone(unit);
-                renderAfterCombat();
-                return 1;
-            }
+            // 🔨 NO ATTACKING TILES (2026-10-22): a raised column is lowered with Dig (Build), never a basic attack.
             if (!target || isAllyUnit(target, unit)) {
                 addLog('Choose an enemy on an attack-highlighted tile.');
                 playErrorSfx();
@@ -64660,9 +64871,11 @@
                 // an empty target list / all-grey spellbook is a dead menu.
                 const _atkCanSwingAgain = typeof attackHasReachableTarget === 'function'
                     ? attackHasReachableTarget(unit, { combatOnly: true }) : true;
+                let _atkRepick = false;
                 if (!unitFinished(unit) && !unit.dead && _atkPrevView === 'attackTargets' && _atkCanSwingAgain) {
                     state.actionMode = 'attack';
                     state.actionMenuView = 'attackTargets';
+                    _atkRepick = true;
                 } else if (!unitFinished(unit) && !unit.dead && (_atkPrevView === 'spells' || _atkPrevView === 'spellTargets')
                     && anyCastableSpellNow(unit)) {
                     state.actionMode = null;
@@ -64681,7 +64894,7 @@
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
                     grantXP(target, XP_COUNTER, 'counter');
-                    addLog(`⚔️ ${_ctName(target)} counter-attacks for ${counterDmg} damage!`);
+                    addLog(`⚔️ ${_ctName(target)} counter-attacks!`);   // the number lands on the riposte's own line
                     // Press Turn: getting countered wastes your momentum — the
                     // same extra AP drain as a whiff, on top of the swing's own
                     // press result (a weak-hit refund gets eaten by the riposte).
@@ -64759,6 +64972,11 @@
 
                 /* Unit animation override: revert race-specific attack sprite */
                 _revertSpriteOverride(unit);
+
+                /* THE ATTACK PICK: a press refund re-opens the attack list with its first row picked (✓ + CONFIRM), the
+                   same list the ATTACK verb opens — after the counter, so a riposte that drained the AP leaves no pick */
+                if (_atkRepick && state.actionMode === 'attack' && state.actionMenuView === 'attackTargets'
+                    && !unit.dead && !unitFinished(unit) && !state.pendingTarget) _armAttackPick(unit);
 
                 endUnitIfDone(unit);
                 renderBattleUpdate();
@@ -67034,15 +67252,19 @@
                 // moved into _comboPlayPresentation on this same clock —
                 // only the damage lives here.
                 const comboHitGap = actionMs(420);
+                const _comboLogSink = _multiHitLogSink();   // ONE CAST, ONE LINE
                 hits.forEach((hitDmg, idx) => {
                     window.setTimeout(() => {
                         if (target.dead) return;
                         const totalHit = Math.max(1, Math.round((hitDmg + Math.floor(combinedPower / hits.length)) * synergyMult));
-                        applyDamageToUnit(target, totalHit, `${combo.name} hit ${idx + 1}: `, {
+                        _comboLogSink.last = (idx === hits.length - 1);
+                        applyDamageToUnit(target, totalHit, `${combo.name}: `, {
                             sourceUnit: initiator,
                             damageType: combo.damageType,
-                            spellType: combo.spellType || null
+                            spellType: combo.spellType || null,
+                            logSink: _comboLogSink
                         });
+                        if (_comboLogSink.last || target.dead || target._dying) _multiHitLogFlush(_comboLogSink);
                         checkWin();
                     }, _hitAt + idx * comboHitGap);
                 });
@@ -67597,8 +67819,8 @@
                     });
                     if (isBaneEffective) {
                         unit._matchSuperBanes = (unit._matchSuperBanes || 0) + 1;
-                        const _bSprite = baneRule.baneType ? `<div class="bane-sprite bane-${baneRule.baneType}" style="width:16px;height:16px;background-size:16px 16px;display:inline-block;vertical-align:middle"></div>` : '';
-                        addLog(`${_bSprite} It's super effective against ${target.types.join('/')} type!`, unit.player);
+                        /* plain text (playtest 2): the stored log line carried raw bane-sprite markup into every plain read */
+                        addLog(`⚡ It's super effective against ${target.types.join('/')} type!`, unit.player);
 
                         window.setTimeout(() => {
                             showFloatingTextForUnit(target, 'SUPER EFFECTIVE!', 'streak');
@@ -67945,7 +68167,7 @@
             const _selfDmg = !_selfHeal && !!_selfDef && (spellDealsDamage(_selfDef) || _selfDef.kind === 'pulseLattice');
             if (opts.spellName) {
                 showActionCamChrome({ name: opts.spellName, heavy: _selfHeal || _selfDmg,
-                    tallyKind: _selfHeal ? 'heal' : undefined,
+                    tallyKind: _selfHeal ? 'heal' : undefined, casterId: _selfDmg && unit ? unit.id : null,
                     totalMs: _selfHold + actionMs(600) });
             }
             /* THE SPELL DIRECTOR (2026-09-23): the self rig runs the cast's
@@ -68390,6 +68612,13 @@
             // range gate below then rejects the (far) target with "Spell target is out
             // of range." Force the target back onto the caster here so the gate always
             // passes and the AoE centers correctly, regardless of who called us.
+            /* THE ESCAPE PICK: the clicked landing rides past the self-cast snap to the escape branch */
+            const _escPick = (spell.kind === 'escape' && Number.isFinite(x) && Number.isFinite(y)) ? { x, y, z } : null;
+            if (_escPick && (escapeLandingFor(unit, spell, x, y) || {}).blocked) {
+                addLog('Destination tile must be unoccupied.');   // the blink's own refusal (a hidden body stands there)
+                playErrorSfx();
+                return 0;
+            }
             if (isSpellSelfCast(spell)) {
                 x = unit.x; y = unit.y; z = unit.z;
             }
@@ -71368,15 +71597,22 @@
 
                 const decoyX = unit.x, decoyY = unit.y;
 
-                /* the landing comes from escapeLandingTile — the preview shows the same tile */
-                const _escLand = escapeLandingTile(unit, spell);
-                const candidates = _escLand ? [_escLand] : [];
+                /* the landing is the player's pick (THE ESCAPE PICK) or, for a cast on the caster's own tile (the CPU),
+                   escapeLandingTile's safest tile — the preview shows the same tile */
+                const _escLand = _escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell);
+                const candidates = (_escLand && !_escLand.blocked) ? [_escLand] : [];
+                /* THE TWO FLOORS: on a spot with two floors the landing is the floor that was clicked */
+                const _escSurfs = (candidates.length && _escPick && _escPick.x === candidates[0].x && _escPick.y === candidates[0].y
+                    && _escPick.z != null && typeof getWalkableSurfaces === 'function' && state.boardColumns?.length)
+                    ? getWalkableSurfaces(candidates[0].x, candidates[0].y) : [];
+                const _escLandZ = (_escSurfs.length > 1 && _escSurfs.indexOf(_escPick.z) >= 0) ? _escPick.z : null;
                 if (candidates.length) {
                     const _escFromX = unit.x, _escFromY = unit.y;
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
+                    if (_escLandZ !== null) unit.z = _escLandZ;
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the escape's landing
-                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
+                    if (_escLandZ === null && typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
                     if (_stealthDecoy) {
                         /* Snap with no visible slide so the move can't be traced from
                            the decoy back to the real unit. */
@@ -72848,7 +73084,7 @@
                             const grappleDmg = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + spellPower);
                             applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
-                            addLog(`${_ctName(unit)} grapples ${_ctName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
+                            addLog(`${_ctName(unit)} grapples ${_ctName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
 
                             if (_grSteps.length > 0) {
@@ -73218,8 +73454,6 @@
                                 if (hit && !hit.dead && isEnemyUnit(hit, unit)) {
                                     const dmg = Math.max(1, spell.dmg + spellPwr);
                                     applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
-                                    showFloatingTextForUnit(hit, `-${dmg}`, 'damage', { durationMs: 900 });
-                                    addLog(`${_ctName(hit)} takes ${dmg} damage from ${_ctSp(spell.name)}!`);
                                     if (spell.statusEffects && spell.statusEffects.length > 0) {
                                         applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
                                     }
@@ -74004,8 +74238,7 @@
                             }
                             // THE SPELL AUDIT Batch D (Overdrive): the first kill on the dash runs the on-kill riders (1 AP back)
                             if ((victim.dead || victim._dying) && !_dashKillFed) { _dashKillFed = true; _applyOnKillRiders(unit, victim, spell); }
-                            dashHitCount++;
-                            addLog(`${_ctName(victim)} is hit for ${hitDmg} as ${_ctName(unit)} dashes through!`);
+                            dashHitCount++;   // the hit's own line above carries its real number (ONE HIT, ONE NUMBER)
                         }
                     }
 
@@ -74156,7 +74389,7 @@
                                         damageType: spell.afterShot.damageType || spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    addLog(`${_ctName(unit)} fires from the window — ${_ctName(_asT)} takes ${_asDmg}!`);
+                                    addLog(`${_ctName(unit)} fires from the window!`);
                                     scheduleBoardRender();
                                 }, _skipVisuals() ? 0 : _asTravel);
                             }, _skipVisuals() ? 0 : dashAnimMs);
@@ -74241,7 +74474,7 @@
                         showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 800 });
                     }
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
-                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
                     /* applyDamageToUnit already floats the real post-mitigation
                        number — no second (pre-armor) float. */
 
@@ -74570,7 +74803,6 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
 
                     if (spell.aoeRadius && spell.aoeDmgPct) {
                         const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
@@ -74588,7 +74820,6 @@
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
                             }
                         }
@@ -74733,7 +74964,6 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
 
                     if (spell.aoeRadius && spell.aoeDmgPct) {
                         const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
@@ -74751,7 +74981,6 @@
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
                                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                     });
-                                    showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
                             }
                         }
@@ -74770,7 +74999,7 @@
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
-                    addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, spell.aoeRadius || 0, spell.terrainDeform);

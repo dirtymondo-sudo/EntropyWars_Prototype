@@ -3722,7 +3722,7 @@
         .ew-clog.off, .ew-clog.empty { display: none; }
         /* away: the game has the board (Hide while = Whenever the game has the board), or only its camera (= Spell shots +
            camera), never while the mouse is on it */
-        body.ew-board-busy .ew-clog.auto-board:not(.hold),
+        body.ew-board-busy .ew-clog.auto-board:not(.hold), body.ew-aiming .ew-clog.auto-board:not(.hold),
         body.ew-board-cam .ew-clog.auto-board:not(.hold), body.ew-board-cam .ew-clog.auto-shots:not(.hold),
         body.ew-spell-shot .ew-clog.auto-board:not(.hold), body.ew-spell-shot .ew-clog.auto-shots:not(.hold) {
             opacity: 0; visibility: hidden;
