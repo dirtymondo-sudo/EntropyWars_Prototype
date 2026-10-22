@@ -3610,7 +3610,15 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   };
 
   const fireBlade = (b) => {
-    if (!b.available && !b.forceLive) return;
+    if (!b.available && !b.forceLive) {
+      /* a dead row says why when it is clicked (playtest 2: ABILITIES after Sprint "did nothing without saying why") */
+      const why = b.sub || b.reason || null;
+      if (why && b.label) {
+        if (typeof playErrorSfx === 'function') playErrorSfx();
+        if (typeof showBattleDialogue === 'function') showBattleDialogue([String(b.label).toUpperCase() + ' — ' + why], 1400);
+      }
+      return;
+    }
     // firing a row also moves the cursor there, so ENTER / the desc bar
     // keep tracking the row the player actually used
     if (b.id !== 'end' && b.id !== 'cancel') { camSrc.current = 'click'; setSelId(b.id); }
@@ -6311,6 +6319,13 @@ function spellPowerStat(sp) {
   if (sp.hitDamages && sp.hitDamages.length) return { value: sp.hitDamages.reduce((s, v) => s + v, 0), unit: 'PWR', color: '#ee6655' };
   if (sp.dotDamage) return { value: sp.dotDamage, unit: 'DOT', color: '#ee6655' };
   if (sp.heal) return { value: sp.heal, unit: 'HP', color: '#55cc66' };
+  if (sp.healAmt) return { value: sp.healAmt, unit: 'HP', color: '#55cc66' };
+  /* a self heal by share of max HP (Adrenaline Rush, Self-Repair Protocol) shows its heal first, then its other effects
+     (playtest 2, mondo 2026-10-22: the row only said +1 SPD) */
+  if (sp.selfHealPct) {
+    const fx = spellEffectLabel(sp);
+    return { value: '+' + Math.round(sp.selfHealPct * 100) + '% HP' + (fx ? ' · ' + fx.text : ''), unit: 'HP', color: '#55cc66' };
+  }
   if (sp.shield) return { value: sp.shield, unit: 'SHLD', color: '#5fd6ff' };
   // No number to show — say what the spell does instead ("+1 ATK", "🔥 Burn").
   const fx = spellEffectLabel(sp);
@@ -9736,6 +9751,8 @@ function _renderSpellDescBar() {
   if (sp.dmg) details.push('DMG ' + _dbNum(sp.dmg));
   if (sp.dashDamage) details.push('Path DMG ' + _dbNum(sp.dashDamage));
   if (sp.heal) details.push('Heal ' + _dbNumS(sp.heal));
+  if (sp.selfHealPct) details.push('Heal ' + Math.round(sp.selfHealPct * 100) + '% max HP');
+  if (sp.cleanse) details.push(sp.cleanse >= 99 ? 'Cleanse all' : 'Cleanse ' + sp.cleanse);
   if (sp.shield) details.push('Shield ' + _dbNumS(sp.shield));
   const rng = sp.range || 0;
   details.push(rng > 0 ? 'Range ' + rng : 'Self-cast');
