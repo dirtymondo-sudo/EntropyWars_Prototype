@@ -41763,6 +41763,88 @@ const ThreeRenderer = (function () {
         return { tileX: pick.x, tileY: pick.y, fracX: 0.5, fracY: 0.5, faceNX: 0, faceNY: 1, faceNZ: 0, hitY: pick.hitY, isTerrainHit: true, isSideFace: false, _floorZ: pick.z };
     }
 
+    /* ══ THE STACKED FLOORS — THE POINTER ON EVERY MAP (2026-10-22) ══
+       mondo (playtest 2): "If there is no route on to the bridge then the game should automatically be registering mouse
+       clicks on the bridge to the tiles underneath it ... if you can reach the top of the bridge and underneath it in the
+       same turn, how would the game distinguish the clicks?" THE TWO FLOORS' rule, on every board: the pointer's ray is
+       walked front to back and a floor that is NOT lit for the action in hand (a deck with no route onto it, a roof, a
+       crown) never swallows it when a lit floor lies behind it on the same ray (the lit tile whose ghost shows through the
+       deck); with no lit floor behind, the top of an unlit deck hands the click to the lit floor straight under it in its
+       own column. A lit front floor, or no lit floor anywhere, keeps the old WYSIWYG pick.
+       Both floors lit (the deck AND the ground under it reachable this turn): the floor in front wins, and F flips the
+       hovered column to its next lit floor (down, then wraps to the top) — the cursor drops onto that floor, the deck over
+       it opens (THE OVERHEAD FADE follows the hovered floor) and the click takes that floor. The flip holds while the
+       pointer stays on that column or within SF_HOLD_PX of where F was pressed. The prompt bar shows "F floor below /
+       above" only while the hovered column has two lit floors. window._ewStackPick = { x, y, zs, z } for that prompt. */
+    var SF_HOLD_PX = 40;
+    var _sfFlip = null, _sfHintKey = '';
+    function _stackLitFloors(x, y) {
+        if (typeof getWalkableSurfaces !== 'function' || !state.boardColumns || !state.boardColumns.length) return [];
+        var surf = getWalkableSurfaces(x, y);
+        if (!surf || surf.length < 2) return [];
+        var lit = [];
+        for (var i = 0; i < surf.length; i++) if (_fieldFloorLit(x, y, surf[i]) === true) lit.push(surf[i]);
+        return lit;
+    }
+    function _sfPickAt(x, y, z) {
+        return { tileX: x, tileY: y, fracX: 0.5, fracY: 0.5, faceNX: 0, faceNY: 1, faceNZ: 0, hitY: surfaceYAt(x, y, z),
+                 isTerrainHit: true, isSideFace: false, _floorZ: z };
+    }
+    function _boardFloorPick(clientX, clientY, hit) {
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || !state.actionMode || !state.selectedUnitId) { _sfFlip = null; return hit; }
+        if (_sfFlip) {
+            var F = _sfFlip;
+            var held = F.mode === state.actionMode && F.uid === state.selectedUnitId && F.tool === state.selectedTool
+                && ((Math.abs(clientX - F.cx) <= SF_HOLD_PX && Math.abs(clientY - F.cy) <= SF_HOLD_PX)
+                    || (hit && hit.tileX === F.x && hit.tileY === F.y))
+                && _stackLitFloors(F.x, F.y).indexOf(F.z) >= 0;
+            if (held) return _sfPickAt(F.x, F.y, F.z);
+            _sfFlip = null;
+        }
+        if (!hit || !state.boardColumns || !state.boardColumns.length) return hit;
+        /* a field board's pick (THE TWO FLOORS) has already walked its own floor quads along the ray */
+        var fieldPick = hit._floorZ !== undefined && hit._floorZ !== null;
+        var z0 = fieldPick ? hit._floorZ : _surfaceZFromHitY(hit.tileX, hit.tileY, hit.hitY, hit.faceNY);
+        if (z0 === undefined || _fieldFloorLit(hit.tileX, hit.tileY, z0) !== false) return hit;   // the front floor is lit (or no rule): WYSIWYG
+        if (!fieldPick) {
+            var all = (ThreeCamera.screenToTileAll && canvas) ? ThreeCamera.screenToTileAll(clientX, clientY, canvas, terrainGroup, objectGroup, 6) : [];
+            for (var i = 1; i < all.length; i++) {
+                var h = all[i], z = _surfaceZFromHitY(h.tileX, h.tileY, h.hitY, h.faceNY);
+                if (z !== undefined && _fieldFloorLit(h.tileX, h.tileY, z) === true) { h._floorZ = z; return h; }
+            }
+        }
+        /* nothing lit behind on the ray: the unlit deck hands the click to the lit floor straight under it, in its own column
+           (only a stacked column has one — a wall or a hill has no floor under its top) */
+        var lit = _stackLitFloors(hit.tileX, hit.tileY), below = null;
+        for (var j = 0; j < lit.length; j++) if (lit[j] < z0 && (below === null || lit[j] > below)) below = lit[j];
+        if (below !== null) return _sfPickAt(hit.tileX, hit.tileY, below);
+        return hit;
+    }
+    /* the prompt's F hint: published only while the hovered column holds two or more lit floors */
+    function _sfPublishHint(tx, ty, hz) {
+        var sp = null;
+        if (tx >= 0 && hz !== undefined && hz !== null && typeof state !== 'undefined' && state && state.actionMode) {
+            var lit = _stackLitFloors(tx, ty);
+            if (lit.length > 1 && lit.indexOf(hz) >= 0) sp = { x: tx, y: ty, zs: lit, z: hz };
+        }
+        var key = sp ? (tx + ',' + ty + ',' + hz + ',' + sp.zs.join('/')) : '';
+        if (key === _sfHintKey) return;
+        _sfHintKey = key;
+        window._ewStackPick = sp;
+        if (typeof _renderDialogueBox === 'function') { try { _renderDialogueBox(null); } catch (e) {} }
+    }
+    /* F: the hovered stacked column's next lit floor (the one below; from the lowest, back to the top) */
+    function flipStackFloor() {
+        var sp = window._ewStackPick;
+        if (!sp || !sp.zs || sp.zs.length < 2 || _lastMouseClientX === null) return false;
+        var i = sp.zs.indexOf(sp.z);
+        var nz = sp.zs[i > 0 ? i - 1 : sp.zs.length - 1];
+        _sfFlip = { x: sp.x, y: sp.y, z: nz, cx: _lastMouseClientX, cy: _lastMouseClientY,
+                    mode: state.actionMode, uid: state.selectedUnitId, tool: state.selectedTool };
+        _resolveHoverAt(_lastMouseClientX, _lastMouseClientY);
+        return true;
+    }
+
     /* Resolve what the pointer at (clientX, clientY) is over and update all
        hover state (highlight, unit hover, pending target). Called from the
        canvas mousemove handler AND from renderFrame whenever the camera pose
@@ -41776,6 +41858,7 @@ const ThreeRenderer = (function () {
         var hit = _editorResolveTile(clientX, clientY);
         var _ffpH = _fieldFloorPick(clientX, clientY);   // THE TWO FLOORS: the lit floor under the pointer
         if (_ffpH) hit = _ffpH;
+        hit = _boardFloorPick(clientX, clientY, hit);   // THE STACKED FLOORS: an unlit deck hands the pointer to the lit floor under it; F flips
         /* Hovering the floating cube resolves to the tower's own tile. */
         var tcHover = _pickTowerCube(clientX, clientY);
         if (tcHover) {
@@ -41789,6 +41872,7 @@ const ThreeRenderer = (function () {
                preview / click resolution in battle.js target the same surface
                the highlight shows (multi-floor maps: cave floor vs the roof). */
             if (typeof state !== 'undefined') state._hoverZ = hz;
+            _sfPublishHint(tx, ty, hz);
             updateHoverHighlight(tx, ty, hz);
 
             if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ) {
@@ -41814,6 +41898,7 @@ const ThreeRenderer = (function () {
         } else {
             updateHoverHighlight(-1, -1);
             if (typeof state !== 'undefined') state._hoverZ = undefined;
+            _sfPublishHint(-1, -1);
 
             if (_lastHitX >= 0 || _lastHitY >= 0) {
                 var prevX = _lastHitX, prevY = _lastHitY;
@@ -41882,6 +41967,7 @@ const ThreeRenderer = (function () {
             var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
             var _ffpC = _fieldFloorPick(clientX, clientY);   // THE TWO FLOORS: the lit floor under the pointer (the hover's own rule)
             if (_ffpC) hit = _ffpC;
+            hit = _boardFloorPick(clientX, clientY, hit);   // THE STACKED FLOORS (the hover's own rule, the F flip included)
             if (!hit) return;
             _stashPick(hit);
             tx = hit.tileX; ty = hit.tileY;
@@ -73339,6 +73425,7 @@ const ThreeRenderer = (function () {
         /* Third-person shooter controls (battle.js ShooterControls layer) */
         pickAtScreen,
         hoverAtScreen,
+        flipStackFloor,
         clickAtScreen: _screenClick,
         setUnderfootTile,
         getCanvas: function () { return canvas; },
