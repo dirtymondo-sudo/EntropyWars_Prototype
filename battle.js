@@ -37987,15 +37987,29 @@
             const startKey = _has3D ? posKey3(unit.x, unit.y, unitZ) : posKey(unit.x, unit.y);
             let goalKey = _has3D ? posKey3(destX, destY, destZ) : posKey(destX, destY);
             const parents = new Map();
+            const _startCost = (_routeOpts && _routeOpts.startCost) || 0;
             const costs = new Map([
-                [startKey, 0]
+                [startKey, _startCost]
             ]);
             const open = [{
                 x: unit.x,
                 y: unit.y,
                 z: unitZ,
-                cost: 0
+                cost: _startCost
             }];
+            /* Seeded route (findMoveTowardsTile): extra start nodes, each with its own head-start cost, so ONE search
+               finds which of them has the shortest walk left to the destination. A seed has no parent, so the
+               returned path starts ON the winning seed (a path from the unit's own tile starts one step out). */
+            if (_routeOpts && _routeOpts.seeds) {
+                for (const s of _routeOpts.seeds) {
+                    const sz = s.z ?? unitZ;
+                    const sKey = _has3D ? posKey3(s.x, s.y, sz) : posKey(s.x, s.y);
+                    const sc = s.cost || 0;
+                    if (sc >= (costs.get(sKey) ?? Infinity)) continue;
+                    costs.set(sKey, sc);
+                    open.push({ x: s.x, y: s.y, z: sz, cost: sc });
+                }
+            }
             const _pathFlies = canFly(unit);
             /* 👻 Spectral Passage (Ghost passive) — mirrors getMoveTiles. */
             const _pathPhasing = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
@@ -42512,22 +42526,27 @@
             }
             if (!walkable.length) return null;
 
-            /* WALL-AWARE (2026-07-27): route first. Compute the REAL path to
-               the target (budget uncapped, same walls/stairs/climb rules as
-               movement) and take the furthest point along it we can walk to
-               this move. An enemy across a wall no longer means "hug the
-               wall" — the route leaves through the door, even when the door
-               is on the opposite side and the first leg walks AWAY from the
-               target. */
+            /* WALL-AWARE (2026-07-27): route first, same walls/stairs/climb
+               rules as movement, budget uncapped — an enemy across a wall no
+               longer means "hug the wall", the route leaves through the door.
+               THE CLOSEST STEP (2026-10-22, mondo: "it only moves me one tile
+               at a time, even if there is a tile closer to what i picked that
+               is in my move range"): the pick is the reachable tile with the
+               SHORTEST WALK LEFT to the clicked tile — one search seeded from
+               every reachable tile at once. The old pick (the furthest point
+               of the single cheapest route from the unit's own tile) stalled a
+               tile or two out wherever that route climbed or waded early,
+               while other lit tiles stood nearer. Ties go to the tile nearest
+               the click as the crow flies. */
             try {
-                const route = (typeof findRouteTo === 'function')
-                    ? findRouteTo(unit, tx, ty, _tzKnown ? tz : undefined) : [];
-                for (let i = route.length - 1; i >= 0; i--) {
-                    const n = route[i];
-                    const cand = walkByKey.get(n.x + ',' + n.y + ',' + (n.z ?? 0))
-                        || walkByKey.get(n.x + ',' + n.y);
-                    if (cand) return cand;
-                }
+                const _crow = (px, py) => Math.hypot(px - tx, py - ty) * 1e-3;   // tie-break only: well under one move point
+                const seeds = walkable.map(c => ({ x: c.x, y: c.y, z: c.z, cost: _crow(c.x, c.y) }));
+                const route = findMovePath(unit, tx, ty, _tzKnown ? tz : undefined,
+                    { maxMove: 9999, seeds, startCost: _crow(sx, sy) });
+                const n = route[0];
+                const cand = n && (walkByKey.get(n.x + ',' + n.y + ',' + (n.z ?? 0))
+                    || walkByKey.get(n.x + ',' + n.y));
+                if (cand) return cand;
             } catch (e) { /* fall through to the greedy pick */ }
 
             /* No route (sealed room / door plugged): fall back to the old
