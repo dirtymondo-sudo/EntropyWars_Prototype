@@ -15737,7 +15737,9 @@ function barsCss() {
   const FILL = '.hrlg-vfill, .hrlg-thp-fill, .ew-pp-bar > i, .hq-dock-bar > i, .tp-wrap .tp-hp-fill, .tp-wrap .tp-mp-fill';
   const fillSel = {
     hp: '.hrlg-vrow.hp .hrlg-vfill, .hrlg-thp:not(.mp) > .hrlg-thp-fill, .ew-pp-bar.hp > i, .hq-dock-bar.hp > i, .tp-wrap .tp-hp-ally .tp-hp-fill',
-    foe: '.hrlg-thp-fill.foe, .ew-pp.foe .ew-pp-bar.hp > i, .tp-wrap .tp-hp-enemy .tp-hp-fill',
+    /* the foe bar names its track too: the hp rule's `.hrlg-thp:not(.mp) >` outranked a bare `.hrlg-thp-fill.foe`, so
+       a touched bar look painted the enemy's HP green on the unit info card (mondo 2026-10-22) */
+    foe: '.hrlg-thp:not(.mp) > .hrlg-thp-fill.foe, .ew-pp.foe .ew-pp-bar.hp > i, .tp-wrap .tp-hp-enemy .tp-hp-fill',
     low: '.hrlg-vrow.hp.low .hrlg-vfill, .hrlg-thp-fill.low, .ew-pp.low:not(.foe) .ew-pp-bar.hp > i, .hq-dock-pp.low .hq-dock-bar.hp > i',
     mp: '.hrlg-vrow.mp:not(.xp) .hrlg-vfill, .hrlg-thp.mp > .hrlg-thp-fill, .ew-pp-bar.mp > i, .hq-dock-bar.mp > i, .tp-wrap .tp-mp-fill',
   };
