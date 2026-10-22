@@ -174,6 +174,51 @@ const ThreeCamera = (function () {
         return Math.min(need, ey + tileSize * SIGHT_MAX_LIFT_TILES);
     }
 
+    /* ══ THE CLEAR BOARD (2026-10-22) — see sync() ══
+       The board rig's eye may not sit inside a wall or a model, and the line from
+       it to the focal may not pass through a wall. Every on-grid wall, step and
+       column stays SOLID outside a spell shot (THE FADE RULES), so a lens behind
+       one drew the board as a black void with every unit as its x-ray hologram.
+       This is the floor the eye must be raised to: the solid ground (and any
+       unit's drawn body) under the eye plus `clear`, and the height at which the
+       line to the subject clears every solid column on the way, sampled every ¼
+       tile from just past the subject's own tile (nothing on the grid fades for
+       it, unlike a spell shot's sight line). Capped, so a cliff at a unit's back
+       can't throw the lens into the sky. */
+    const BOARD_MAX_LIFT_TILES = 6;
+    function _bodyTopYWorld(wx, wz) {
+        if (typeof window !== 'undefined' && typeof window._camBodyTopPx === 'function') {
+            try {
+                const g = window._camBodyTopPx(wx, wz, tileSize * 0.3);
+                if (Number.isFinite(g)) return g;
+            } catch (e) {}
+        }
+        return -Infinity;
+    }
+    function _boardSightFloor(sx, sy, sz, ex, ey, ez, clear) {
+        let need = Math.max(_solidGroundYWorld(ex, ez), _bodyTopYWorld(ex, ez)) + clear;
+        const hx = ex - sx, hz = ez - sz;
+        const horiz = Math.hypot(hx, hz);
+        const skip = tileSize * 0.7;
+        if (horiz > skip) {
+            const n = Math.min(64, Math.max(4, Math.ceil(horiz / (tileSize / 4))));
+            const m = tileSize * 0.45;   // a room wall piece stands a little proud of its column
+            const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+            for (let i = 1; i < n; i++) {
+                const t = i / n;
+                if (t * horiz < skip) continue;
+                const px = sx + hx * t, pz = sz + hz * t;
+                // off the board there is no column (the lookup would stretch the edge tile outward)
+                if (W > 0 && H > 0 && (px < 0 || pz < 0 || px >= W * tileSize || pz >= H * tileSize)) continue;
+                const g = _solidGroundYWorld(px, pz) + m;
+                if (g <= sy) continue;
+                const req = sy + (g - sy) / t;
+                if (req > need) need = req;
+            }
+        }
+        return Math.min(need, ey + tileSize * BOARD_MAX_LIFT_TILES);
+    }
+
     /* ══ THE FRAME GUARD (2026-10-05) — see sync() ══
        cam._frameGuard.points() → [[x, y, z], …] in world units: the bodies
        that must be on screen this frame (null = nothing to guard). The
@@ -615,6 +660,16 @@ const ThreeCamera = (function () {
             }
             if (need > eyeY + 0.5) { eyeY = need; sightRaised = true; }
             if (need > floorY) floorY = Math.min(need, eyeY);
+        }
+        /* THE CLEAR BOARD (2026-10-22, mondo after the second playtest: "fix the camera being inside walls"): on the board
+           rig — the tactical view, the menu two-shot, a held action frame, a hand orbit — a lens that would sit inside a
+           wall or a model, or look at its subject through a wall, cranes UP until it clears (_boardSightFloor). The gaze
+           stays on the focal, so the shot only grows steeper; it never dollies in. Spell shots keep their own sight line
+           (above) and the occlusion fade; a look past the horizon keeps its head turn. Kill switch: EW_NO_CLEAR_BOARD. */
+        if (!isTps && !headTurn && dirY < -0.02 && cam._cineShotId == null
+            && !(typeof window !== 'undefined' && window.EW_NO_CLEAR_BOARD)) {
+            const need = _boardSightFloor(focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear);
+            if (need > eyeY + 0.5) eyeY = need;
         }
         /* ── SKY-GAZE LIFT (cinematic board shots only) ──
            The flat floor parks a sky-gazing eye a mere ⅓ tile over the

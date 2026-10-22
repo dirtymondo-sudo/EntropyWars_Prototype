@@ -12456,6 +12456,38 @@
             } catch (e) { return 0; }
         };
 
+        /* THE CLEAR BOARD (2026-10-22) — the top (px) of the tallest unit model whose DRAWN footprint (a car runs two
+           tiles long), grown by `pad`, covers world point (wx, wz); -Infinity over open ground. ThreeCamera keeps the
+           board rig's eye above it, so a close shot never sits inside a body (the playtest's "camera inside the
+           Sedan"). Hidden models (fog, a cloak) never count: their place must not shape the camera. */
+        const _cbtFp = [0, 0, 0, 0, 0, 0, 0, 0], _cbtPos = [0, 0, 0];
+        window._camBodyTopPx = function (wx, wz, pad) {
+            let top = -Infinity;
+            try {
+                if (state.phase !== 'battle' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.getUnitWorldPos) return top;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                pad = pad || 0;
+                for (const u of (state.units || [])) {
+                    if (!u || u.dead) continue;
+                    if (!ThreeRenderer.getUnitWorldPos(u.id, _cbtPos)) continue;
+                    const dx = wx - _cbtPos[0], dz = wz - _cbtPos[2];
+                    if (Math.abs(dx) > ts * 2.5 || Math.abs(dz) > ts * 2.5) continue;
+                    let inside;
+                    if (ThreeRenderer.getUnitFootprint && ThreeRenderer.getUnitFootprint(u.id, _cbtFp)) {
+                        // corners (-,-) (-,+) (+,-) (+,+): half axes a = ((+,+) − (-,+)) / 2, b = ((+,+) − (+,-)) / 2
+                        const ax = (_cbtFp[6] - _cbtFp[2]) / 2, az = (_cbtFp[7] - _cbtFp[3]) / 2;
+                        const bx = (_cbtFp[6] - _cbtFp[4]) / 2, bz = (_cbtFp[7] - _cbtFp[5]) / 2;
+                        const la = Math.hypot(ax, az) || 1, lb = Math.hypot(bx, bz) || 1;
+                        inside = Math.abs((dx * ax + dz * az) / la) <= la + pad && Math.abs((dx * bx + dz * bz) / lb) <= lb + pad;
+                    } else inside = Math.hypot(dx, dz) <= ts * 0.38 + pad;
+                    if (!inside) continue;
+                    const h = (ThreeRenderer.getUnitVisualHeight ? ThreeRenderer.getUnitVisualHeight(u.id) : 0) || ts * 0.95;
+                    if (_cbtPos[1] + h > top) top = _cbtPos[1] + h;
+                }
+            } catch (e) {}
+            return top;
+        };
+
         function dioramaUnitZBoost() {
             const tiltDeg = state.dioramaTiltDeg ?? 50;
 
@@ -24047,10 +24079,16 @@
                 const _shotVictim = (this._cineShotTarget && this._cineShotTarget.id != null)
                     ? (state.units || []).find(u => u.id === this._cineShotTarget.id) : null;
                 const _shotVictimGone = !!(_shotVictim && (_shotVictim.dead || _shotVictim._dying));
+                // …and NOT for the local player's own unit (mondo, second playtest 2026-10-22: "fix the low camera
+                // after an action" — after Sprint, after Rocket Fist with a free action, the lens stayed down in the
+                // action shot while the menu came back). The player's unit gets the full return to the view they had
+                // before the action; the hold stays for CPU / remote sides, whose chains run on their own.
+                const _holdLocalOwn = !(typeof _cameraActingSideIsAuto === 'function' && _cameraActingSideIsAuto())
+                    && !(typeof window !== 'undefined' && window.EW_PRESS_TURN_HOLD_LOCAL);
                 if (!opts.focusTarget && targetUnit && !targetUnit.dead
                     && this._cineShotId != null && this._preCineView
                     && (targetUnit.ap || 0) > 0 && !unitFinished(targetUnit)
-                    && !_shotVictimGone) {
+                    && !_shotVictimGone && !_holdLocalOwn) {
                     this._savedState = null;
                     this._cineShotId = null;
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
@@ -28618,28 +28656,54 @@
             }
             if (F[1] < 0) F[1] = 0;
             const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
-            // lines of sight: the eye to each body's chest must clear the terrain
-            let occl = 0;
+            return { F, dist, occl: _menuCamOccl(E, A, B), yaw: yawDeg, tilt: tiltDeg };
+        }
+        /* THE CLEAR TWO-SHOT (2026-10-22, mondo after the second playtest: "fix the camera being inside walls" / "fix the
+           targeting camera"): how badly a lens at E is blocked from the pair. On the board nothing on the grid fades, so a
+           wall between the lens and a body leaves that body as its x-ray hologram and the eye inside a wall turns the
+           board black. Each body is sighted at its chest, its head and (a long body: a car) the four corners of its drawn
+           footprint, and every sight line walks the solid columns every ¼ tile up to the body's own tile; the eye inside a
+           column or another unit's model counts 3, each blocked line 1, a line through another unit's model ½. */
+        function _menuCamOccl(E, A, B) {
+            const ts = CONFIG.tileSize || BASE_TILE;
             const W = bw(), H = bh();
-            const groundAt = (wx, wz) => {
+            const solidAt = (wx, wz) => {
                 const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts);
                 if (tx < 0 || ty < 0 || tx >= W || ty >= H) return null;
-                return (typeof window._camGroundPx === 'function') ? (window._camGroundPx(tx, ty) || 0) : 0;
+                const f = (typeof window._camSolidGroundPx === 'function') ? window._camSolidGroundPx : window._camGroundPx;
+                return (typeof f === 'function') ? (f(tx, ty) || 0) : 0;
             };
-            const eg = groundAt(E[0], E[2]);
+            // a room's wall piece stands a little proud of its column (a parapet, a lip, a capstone) and the x-ray shows
+            // through any part of a body it hides: a sight line must clear a column's top by under half a tile
+            const lip = ts * 0.45;
+            let occl = 0;
+            const eg = solidAt(E[0], E[2]);
             if (eg != null && E[1] < eg + ts * 0.5) occl += 3;   // the eye itself inside a hill / wall
+            const bodyTop = (wx, wz) => (typeof window._camBodyTopPx === 'function') ? window._camBodyTopPx(wx, wz, 0) : -Infinity;
+            if (E[1] < bodyTop(E[0], E[2]) + ts * 0.3) occl += 3;   // the eye inside a model
             for (const b of [A, B]) {
-                const chest = b.foot + (b.top - b.foot) * 0.5;
-                for (let i = 1; i <= 12; i++) {
-                    const u = i / 13;
-                    const sx = E[0] + (b.x - E[0]) * u, sy = E[1] + (chest - E[1]) * u, sz = E[2] + (b.z - E[2]) * u;
-                    // the subject's own tile and its neighbour stand under it — skip the last stretch
-                    if (Math.hypot(sx - b.x, sz - b.z) < ts * 0.9) break;
-                    const gy = groundAt(sx, sz);
-                    if (gy != null && gy > sy) occl++;
+                const sights = [[b.x, b.foot + (b.top - b.foot) * 0.5, b.z], [b.x, b.foot + (b.top - b.foot) * 0.85, b.z]];
+                if (b.fp) for (let i = 0; i < 8; i += 2) {
+                    if (Math.hypot(b.fp[i], b.fp[i + 1]) > ts * 0.6) sights.push([b.x + b.fp[i] * 0.85, b.foot + (b.top - b.foot) * 0.4, b.z + b.fp[i + 1] * 0.85]);
+                }
+                for (const P of sights) {
+                    const hx = P[0] - E[0], hz = P[2] - E[2], horiz = Math.hypot(hx, hz);
+                    const n = Math.min(64, Math.max(4, Math.ceil(horiz / (ts / 4))));
+                    let blocked = false, unitHit = false;
+                    for (let i = 1; i < n; i++) {
+                        const u = i / n;
+                        // the body's own tile stands under it — stop just short of it
+                        if ((1 - u) * horiz < ts * 0.45) break;
+                        const sx = E[0] + hx * u, sy = E[1] + (P[1] - E[1]) * u, sz = E[2] + hz * u;
+                        const gy = solidAt(sx, sz);
+                        if (gy != null && gy + lip > sy) { blocked = true; break; }
+                        if (!unitHit && (1 - u) * horiz > ts * 0.9 && bodyTop(sx, sz) > sy) unitHit = true;
+                    }
+                    if (blocked) occl += 1;
+                    else if (unitHit) occl += 0.5;
                 }
             }
-            return { F, dist, occl, yaw: yawDeg, tilt: tiltDeg };
+            return occl;
         }
         function _menuShotPose(unit, tgt, fa) {
             try {
@@ -28662,15 +28726,23 @@
                 const sides = swing ? [1, -1] : [0];
                 if (!fa) fa = _menuFreeArea(true);
                 const yawGap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+                // THE CLEAR TWO-SHOT: a blocked pose may also swing wider off the line and look further down
+                // (to 26°) before it settles for a wall between the lens and a body; a clear pose still wins
+                // on the old small drops, so open ground frames exactly as before
+                const swings = swing ? [swing, swing + 28] : [0, 40, -40, 80, -80];
                 let best = null;
                 for (const side of sides) {
-                    for (const drop of [0, 8, 16]) {
-                        const c = _menuCamSolve(A, B, lineYaw + side * swing, Math.max(36, tilt0 - drop), fa);
-                        c.side = side;
-                        c.score = c.occl * 4 + drop / 8 * 0.6
-                            + yawGap(c.yaw, curYaw) / 180
-                            + (ms && ms.side && side && side !== ms.side ? 0.4 : 0);
-                        if (!best || c.score < best.score) best = c;
+                    for (const sw of swings) {
+                        for (const drop of [0, 8, 16, 24, 34]) {
+                            const wide = Math.abs(sw) !== swing;
+                            if ((wide || drop > 16) && best && best.occl === 0) continue;
+                            const c = _menuCamSolve(A, B, lineYaw + (side || 1) * sw, Math.max(drop > 16 ? 26 : 36, tilt0 - drop), fa);
+                            c.side = side;
+                            c.score = c.occl * 4 + drop / 8 * 0.6 + (wide ? 0.5 : 0)
+                                + yawGap(c.yaw, curYaw) / 180
+                                + (ms && ms.side && side && side !== ms.side ? 0.4 : 0);
+                            if (!best || c.score < best.score) best = c;
+                        }
                     }
                 }
                 if (!best) return null;
