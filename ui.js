@@ -2983,7 +2983,9 @@
                   const d = Math.abs(cx - _stHl.cx) + Math.abs(cy - _stHl.cy);
                   if (d >= 1 && d <= _stHl.range && isInside(cx, cy)) {
                     const occ = _liveUnitMap.get(posKey(cx, cy));
-                    if (occ && !occ.dead && occ.id !== _grabId) {
+                    if (typeof isTowerTile === 'function' && isTowerTile(cx, cy)) {
+                      // ⬡ the Cube is solid: not a landing
+                    } else if (occ && !occ.dead && occ.id !== _grabId) {
                       _hlCache.set(posKey(cx, cy), 'attack enemy');
                     } else {
                       _hlCache.set(posKey(cx, cy), 'move');
@@ -3025,7 +3027,7 @@
                     const occupant = _liveUnitMap.get(pk2);
                     if (cx === _tpMover.x && cy === _tpMover.y) {
                       _hlCache.set(pk2, 'selected');
-                    } else if (!occupant && isTerrainPassable(cx, cy)
+                    } else if (!occupant && isTerrainPassable(cx, cy) && !(typeof isTowerTile === 'function' && isTowerTile(cx, cy))
                                && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)) {   // wave C: Icky Surprise → goo only
                       _hlCache.set(pk2, 'move');
                     }
@@ -15944,6 +15946,7 @@
                         if (!isInside(p.x, p.y)) break;
                         if (typeof unitAt === 'function' && unitAt(p.x, p.y)) break;
                         if (typeof isTerrainPassable === 'function' && !isTerrainPassable(p.x, p.y)) break;
+                        if (typeof isTowerTile === 'function' && isTowerTile(p.x, p.y)) break;
                         endX = p.x; endY = p.y;
                         if (p.x === tx && p.y === ty) break;
                     }
@@ -16046,7 +16049,7 @@
                 }
             }
 
-            if (kind === 'teleport') {
+            if (kind === 'teleport' && !(typeof isTowerTile === 'function' && isTowerTile(tx, ty))) {   // ⬡ no landing in the Cube
                 // Teleport is instantaneous — a dotted straight line + a hologram
                 // of the caster at the destination reads better than an arc.
                 _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, TELE, false, true, { arc: 0, flow: false });
