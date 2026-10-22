@@ -1872,3 +1872,19 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - Fix: the foe selector is now `.hrlg-thp:not(.mp) > .hrlg-thp-fill.foe`, one class more than the HP rule. Colour only; the card's size and place are untouched.
 - Online guest: the card's `enemy` / `foe` class is picked relative to the guest's own unit (`isEnemyUnit`; the turn-icon peek uses `getViewerPlayer`), so the same CSS covers it. Checked in a two-browser friendly room: guest's enemy card red, guest's ally card green.
 - Not changed: the ally low-HP colour rule (`.hrlg-thp-fill.low`) loses to the HP rule the same way on this card.
+
+## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
+mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
+damage in red, but it wont show that coming from the outside".
+- Cause (reproduced in a browser, Football Stadium, Entangling Roots): battle.js `updateHoveredTarget` keeps the hover pick
+  (`state.pendingTarget`, viaHover) when the pointer moves onto an out-of-range / wrong-team tile, but that branch wipes the
+  red AoE / aim preview (`clearAoePreview`). Coming back onto the SAME tile compared equal to the kept pick, so `changed`
+  was false and `updateAoePreview` never ran: no red until the pointer crossed into another tile and back.
+- Fix: module-local `_hoverPickLeft` is set when the pointer is on a tile other than the hover pick; the next valid hover
+  counts as changed and repaints. The pick itself, CONFIRM and every targeting rule are untouched.
+- Same family: the wrong-team branches (spell + item) wiped the MOVE→CAST approach arrow + ghost via clearAoePreview but
+  kept `state._spellApproachKey`, so the way back onto that enemy skipped the redraw; they now `_clearSpellApproachPreview()`.
+- Move: the walk preview (`_updateMoveHoverPreview`, key = tile + hover z) came back on every path tried (slow/fast, off the
+  board, out to the sky). The one dead zone found: the combat log box (`#ewCombatLog`, 340x340, pointer-events auto) catches
+  the mouse over its see-through top, so board tiles behind it never hover. Not changed (flagged to mondo).
+- Shots: /mnt/project-files/edge-hover/.

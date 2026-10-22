@@ -58391,6 +58391,7 @@
                 (state.actionMode === 'item' && (_ewItemLike(state.selectedTool, 'healPotion') || _ewItemLike(state.selectedTool, 'manaPotion') || ITEM_RULES[state.selectedTool]?.baneType));
         }
 
+        var _hoverPickLeft = false;   // the pointer left the hover pick for a no-confirm tile (THE WAY BACK IN)
         function updateHoveredTarget(x, y) {
             if (state._actionExecuting) return false;
 
@@ -58408,6 +58409,13 @@
                 return false;
             }
             if (!actionModeNeedsTargetConfirm()) return false;
+
+            /* THE WAY BACK IN (2026-10-22, mondo: "coming from outside the tile highlights to hover on a tile doesnt
+               work"): the pointer left the hovered pick for a tile with no confirm (out of range, wrong team) and that
+               branch wiped the red AoE / aim preview but kept the pick, so coming back onto the SAME tile read as "no
+               change" and painted nothing. Remember the pointer left; the way back in repaints like a fresh hover. */
+            const _hpPick = state.pendingTarget;
+            if (_hpPick && _hpPick.viaHover && (_hpPick.x !== x || _hpPick.y !== y)) _hoverPickLeft = true;
 
             /* Sky-throw phase 2 hover is view-INDEPENDENT (matches clickTile):
                while a grab is held, hovering validates against the throw ring
@@ -58479,6 +58487,7 @@
                         // Wrong-team occupant → no confirm target on hover.
                         if (!_spellTargetTeamOk(unit, spell, x, y, state._hoverZ)) {
                             clearAoePreview();
+                            _clearSpellApproachPreview();   // the wipe took its arrow + ghost: forget it so the way back redraws (THE WAY BACK IN)
                             return false;
                         }
                     }
@@ -58491,6 +58500,7 @@
                 const _itmUnit = getSelectedUnit();
                 if (_itmUnit && !_itemTargetTeamOk(_itmUnit, state.selectedTool, x, y, state._hoverZ)) {
                     clearAoePreview();
+                    _clearSpellApproachPreview();
                     return false;
                 }
             }
@@ -58506,8 +58516,10 @@
                 viaHover: true
             };
             const current = state.pendingTarget;
-            const changed = !current || current.x !== next.x || current.y !== next.y || current.mode !== next.mode || current.tool !== next.tool || !current.viaHover;
+            const changed = !current || current.x !== next.x || current.y !== next.y || current.mode !== next.mode || current.tool !== next.tool || !current.viaHover
+                || _hoverPickLeft;
             if (changed) {
+                _hoverPickLeft = false;
                 state.pendingTarget = next;
                 updateAoePreview(x, y);
             }
