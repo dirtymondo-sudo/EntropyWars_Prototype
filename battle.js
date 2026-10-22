@@ -8206,6 +8206,9 @@
                 const _rd = getSpellRangeTiles(unit, _riderBaseDef(spell)).filter(t => t.x !== unit.x || t.y !== unit.y);
                 return [{ x: unit.x, y: unit.y }, ..._rd];
             }
+            /* THE ESCAPE PICK: an escape's reach is the tiles it may land on (the caster's own tile stays its self-cast
+               click for the CPU's safest landing — doSpell) */
+            if (unit && spell && spell.kind === 'escape') return escapeLandingTiles(unit, spell);
             if (unit && spell && isSpellSelfCast(spell)) return [{ x: unit.x, y: unit.y }];
             // Beams use the capped 8-ray footprint, not the Manhattan disc.
             // (Before the range guard: a rangeless line def still beams 4 tiles.)
@@ -35669,6 +35672,50 @@
         }
         window.escapeLandingTile = escapeLandingTile;
 
+        /* THE ESCAPE PICK (mondo 2026-10-22, playtest 2: "all of those useless dash spells that go in a random direction
+           need to let the player choose where to go"): a PLAYER's escape (Nimble Dodge, Mist Form, Shed Skin…) lands on
+           the tile they pick — any tile within teleportDistance the escape could land on, the same reach escapeLandingTile
+           searches. The CPU (and a cast aimed at the caster's own tile) keeps escapeLandingTile's safest tile.
+           A body the caster's side can't see does not unlight its tile (the lit set never leaks it); landing there is
+           refused like a blink onto an occupied tile. */
+        function _escapeOpenIgnoringBody(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
+            if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
+            return true;
+        }
+        function escapeLandingTiles(unit, spell) {
+            if (!unit || !spell) return [];
+            const dist = spell.teleportDistance || 2;
+            const out = [];
+            for (let dy = -dist; dy <= dist; dy++) {
+                for (let dx = -dist; dx <= dist; dx++) {
+                    if ((dx === 0 && dy === 0) || Math.abs(dx) + Math.abs(dy) > dist) continue;
+                    const nx = unit.x + dx, ny = unit.y + dy;
+                    if (!isInside(nx, ny)) continue;
+                    if (canOccupy(nx, ny)) { out.push({ x: nx, y: ny }); continue; }
+                    const occ = unitAt(nx, ny);
+                    if (occ && !occ.dead && !_isUnitVisibleToViewer(occ, unit.player) && _escapeOpenIgnoringBody(nx, ny)) out.push({ x: nx, y: ny });
+                }
+            }
+            return out;
+        }
+        window.escapeLandingTiles = escapeLandingTiles;
+        /* where an escape aimed at (x, y) lands: { x, y } — the picked tile, the safest tile for a cast on the caster's own
+           tile (the CPU, old callers), or { blocked: true } when the picked tile is lit but a hidden body stands there;
+           null when there is nowhere to go */
+        function escapeLandingFor(unit, spell, x, y) {
+            if (!unit || !spell) return null;
+            if (!Number.isFinite(x) || !Number.isFinite(y) || (x === unit.x && y === unit.y)) return escapeLandingTile(unit, spell);
+            if (!escapeLandingTiles(unit, spell).some(t => t.x === x && t.y === y)) return escapeLandingTile(unit, spell);
+            if (!canOccupy(x, y)) return { x, y, blocked: true };
+            return { x, y };
+        }
+        window.escapeLandingFor = escapeLandingFor;
+
         /* A charge (chargeToTarget rows, Brave Charge…): the open tile beside the target nearest the caster. */
         function chargeLandingTile(unit, target) {
             const adj = [
@@ -36453,8 +36500,8 @@
             }
 
             if (kind === 'escape') {
-                const lt = escapeLandingTile(unit, spell);
-                if (lt) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                const lt = escapeLandingFor(unit, spell, x, y);   // THE ESCAPE PICK: the picked tile (the cast's own rule)
+                if (lt && !lt.blocked) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
                 return;
             }
 
@@ -39521,7 +39568,7 @@
                 if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
                     // the pick's own body when it carries a height (a flyer over a ground unit is a different target)
                     const tu = ((pt.z !== undefined && pt.z !== null) ? unitAt(pt.x, pt.y, pt.z) : null) || unitAt(pt.x, pt.y);
-                    ptLabel = '<strong>' + (tu ? esc(_ctName(tu)) : coordLabel(pt.x, pt.y)) + '</strong>';
+                    ptLabel = '<strong>' + (tu ? esc(_ctName(tu)) : esc(pickTargetName(pt.x, pt.y, pt.z))) + '</strong>';   // THE PICK'S NAME
                 }
 
                 if (am === 'move') {
@@ -39539,7 +39586,9 @@
                 if (am === 'combo') {
                     if (!state.comboPartner) return _promptBarHtml('Combo: select an adjacent ally to team up with.', 'ESC cancel');
                     const combo = (typeof getComboForUnits === 'function') ? getComboForUnits(unit, state.comboPartner) : null;
-                    return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong> ready — select an enemy target.', 'ESC cancel');
+                    const _cbWith = ' with ' + esc(_ctName(state.comboPartner));
+                    if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong>' + _cbWith + ' → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                    return _promptBarHtml('<strong>' + esc(_ctSp(combo?.name || 'Combo')) + '</strong>' + _cbWith + ' ready — select a target.', 'ESC cancel');
                 }
                 if (am === 'spell') {
                     if (menuView === 'spellOrientation') {
@@ -39553,6 +39602,11 @@
                         || (unit._raceAbilities || []).find(s => s && s.name === state.selectedTool);
                     if (!spell) return _promptBarHtml('Select an ability to cast.', 'ESC back');
                     // THE SELF-CAST CONFIRM: the caster is the only target, so there is nothing else to pick
+                    // THE ESCAPE PICK: the player picks where the escape lands
+                    if (spell.kind === 'escape') {
+                        if (ptLabel && pt && (pt.x !== unit.x || pt.y !== unit.y)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> lands on ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
+                        return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
+                    }
                     if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
@@ -56964,8 +57018,8 @@
             if (mode === 'spell' && unit) {
                 if (!_scOwns) {
                     const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
-                    const _tileAim = spell && !isSpellSelfCast(spell)
-                        && (isSpellTileTargeted(spell) || spell.orientable);
+                    const _tileAim = spell && ((!isSpellSelfCast(spell)
+                        && (isSpellTileTargeted(spell) || spell.orientable)) || spell.kind === 'escape');   // THE ESCAPE PICK: a board read
                     if (_tileAim && _fogCamAllSeen(unit)) {
                         // Free-aim tile picking is a BOARD read → tactical
                         // overhead, zoomed to fit the spell's range rings.
@@ -57045,6 +57099,14 @@
                             _tpsTargetShot(unit, targets[0].unit || targets[0]);
                         }
                     }
+                } else if (spell && spell.kind === 'escape') {
+
+                    /* THE ESCAPE PICK (mondo 2026-10-22): an escape arms on the board like a blink — the tiles it may
+                       land on light up, the hover shows the landing, a click picks it (✓ + CONFIRM), the second click
+                       or CONFIRM casts. Nothing is pre-picked: where to go is the player's call. */
+                    state.actionMenuView = 'spells';
+                    state._spellCycleTargets = [];
+                    state._spellCycleIndex = 0;
                 } else if (spell && isSpellSelfCast(spell)) {
 
                     /* THE SELF-CAST CONFIRM (mondo 2026-10-18: "im tired of clicking on an aoe not realizing its a
@@ -57079,6 +57141,19 @@
                 }
             } else {
                 state.actionMenuView = mode === 'item' ? 'items' : mode === 'ping' ? 'pings' : (state.actionMenuView || 'root');
+                /* THE ITEM PICK (playtest 2 2026-10-22: the potion list picked nothing and followed the mouse): a
+                   unit-targeted item (potions, banes) opens with its top row picked (✓ + CONFIRM), like the attack and
+                   spell lists — the neediest ally / the closest-to-death enemy, from the drum's own order */
+                const _itRule = (mode === 'item' && typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[toolName] : null;
+                const _itLike = (k) => (typeof window._ewItemLike === 'function' ? window._ewItemLike(toolName, k) : toolName === k);
+                if (_itRule && (_itLike('healPotion') || _itLike('manaPotion') || _itRule.baneType)
+                    && typeof window._hrlgItemTargetList === 'function') {
+                    const _it0 = window._hrlgItemTargetList(unit, toolName).find(t => t.usable);
+                    if (_it0) {
+                        state.pendingTarget = { x: _it0.unit.x, y: _it0.unit.y, z: _it0.unit.z, mode: 'item', tool: toolName, viaHover: false };
+                        updateAoePreview(_it0.unit.x, _it0.unit.y);
+                    }
+                }
             }
 
             renderBattleSelectionUI({
@@ -57523,7 +57598,7 @@
         }
 
         /* ── Right-click-hold demolition ─────────────────────────────────────
-           Hold right-click on a destroyable tile (exposed raised cube or tree)
+           Hold right-click on a tree (raised terrain is Dig's since 2026-10-22)
            for TILE_DEMOLISH_HOLD_MS to destroy it through the normal
            basic-attack path (1 AP, same range/LOS rules as before). While the
            button is held a translucent radial dial fills at the cursor;
@@ -57536,8 +57611,7 @@
 
         function _demolishKindAt(x, y) {
             if (typeof _tileHasTree === 'function' && _tileHasTree(x, y) && !unitAt(x, y)) return 'tree';
-            if (typeof _tileIsSmashable === 'function' && _tileIsSmashable(x, y)) return 'terrain';
-            return null;
+            return null;   // raised terrain is Dig's (NO ATTACKING TILES, 2026-10-22) — the hold fells trees only
         }
 
         /* Returns { unit, kind } when the hold may start, a string reason for
@@ -57553,8 +57627,7 @@
             const kind = _demolishKindAt(x, y);
             if (!kind) return null;
             if (!canUnitAct(unit)) return 'NO AP';
-            const reachable = _getAttackValidTargets(unit).some(t =>
-                (t.kind === 'tree' || t.kind === 'terrain') && t.x === x && t.y === y);
+            const reachable = _getAttackValidTargets(unit).some(t => t.kind === 'tree' && t.x === x && t.y === y);
             if (!reachable) return 'OUT OF RANGE';
             return { unit, kind };
         }
@@ -57687,6 +57760,41 @@
             }
         }
 
+        /* THE PICK'S NAME (mondo 2026-10-22, playtest 2: "CONFIRM · G7" — "name it, even if its just a dirt block"): what a
+           target pick is called on the CONFIRM button, the prompt bar and the target rows — the body, else the thing on the
+           tile (Cube, turret, object, seed, tree, door, prism), else the ground itself. An enemy decoy is named as the unit
+           it copies (decoys stay indistinguishable). */
+        function pickTargetName(x, y, z, viewer) {
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return '';
+            const body = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
+            if (body) return unitDisplayName(body);
+            const tw = (typeof towerAt === 'function') ? towerAt(x, y) : null;
+            if (tw && tw.hp > 0) return 'Cube';
+            const tr = (state.turrets || []).find(t => t.x === x && t.y === y && t.hp > 0);
+            if (tr) {
+                const sp = (typeof SPELL_BY_ID !== 'undefined' && tr.spellId) ? SPELL_BY_ID[tr.spellId] : null;
+                return String(tr.spellName || (sp && sp.name) || 'Turret').replace(/^Deploy\s+/i, '');
+            }
+            const ob = (state._deployedObjects || []).find(o => o.x === x && o.y === y && o.hp > 0);
+            if (ob) {
+                const _vw = viewer != null ? viewer : getViewerPlayer();
+                if (ob.isDecoy && ob.ownerPlayer !== _vw && ob.spriteUnit) {
+                    try { return unitDisplayName(ob.spriteUnit); } catch (e) { /* the look has no name: fall through */ }
+                }
+                return ob.spellName || 'Object';
+            }
+            const sd = (state.plantedSeeds || []).find(s => s.x === x && s.y === y);
+            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+            if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) return 'Tree';
+            if (doorAt(x, y)) return 'Door';
+            if ((state.mirrors || []).some(m => m.x === x && m.y === y && m.hp > 0)) return 'Prism';
+            const terr = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y) : null;
+            const terrLbl = (terr && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[terr] && TERRAIN_RULES[terr].label)
+                || (terr ? String(terr).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Tile');
+            return terrLbl + ' ' + coordLabel(x, y);
+        }
+        window.pickTargetName = pickTargetName;
+
         function _getAttackValidTargets(unit, opts) {
             if (!unit) return [];
             /* combatOnly: skip pure scenery (trees / smashable terrain). Used by
@@ -57791,22 +57899,10 @@
             // damage from area effects (AOE / bombs / beams / earthquakes) —
             // see buildingHitsForSpell. They never appear in this list.
 
-            // 🔨 Raised terrain: an exposed raised column (a cardinal neighbor
-            // sits lower) can be smashed down one level with a basic attack —
-            // the counterplay to reshape pillars and tower camping.
-            if (!_combatOnly)
-            for (let ty = 0; ty < bh(); ty++) {
-                for (let tx = 0; tx < bw(); tx++) {
-                    if (!_tileIsSmashable(tx, ty)) continue;
-                    // Range is measured to the column's exposed FACE at the
-                    // attacker's height (see doAttack), not its top.
-                    const d = combatDist(unit.x, unit.y, unitZ, tx, ty, Math.min(getBaseHeightAt(tx, ty), unitZ));
-                    if (d < 1 || d > effRange) continue;
-                    if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
-                    if (visionGatesTargeting(unit) && !isInVision(unit, tx, ty)) continue;
-                    targets.push({ x: tx, y: ty, dist: d, kind: 'terrain' });
-                }
-            }
+            /* 🔨 NO ATTACKING TILES (mondo 2026-10-22, playtest 2: ATTACK pre-picked a raised column called "G7"):
+               smashing a raised column with a basic attack was DIG with worse rules (it ended the turn, dropped the
+               salvage on the floor instead of banking it, and skipped Dig's wall / objective / fixed-ground checks) —
+               "would rather just keep dig and not be able to attack a tile". Lowering ground is Dig's job (Build). */
 
             // Trees/buildings/terrain sort AFTER real targets so the auto-picked
             // pending target (and target-cycling) always prefers enemies over scenery.
@@ -57959,7 +58055,7 @@
                         _mtcApproach = findSpellApproachTile(unit, _mtcSp, x, y, execZ);
                     }
                     if (_mtcApproach) { _moveThenCast(unit, _mtcApproach, _mtcSp.name, x, y, execZ); }
-                    else if (_mtcSp && isSpellSelfCast(_mtcSp)) { _fireSelfCast(unit, _mtcSp); }
+                    else if (_mtcSp && isSpellSelfCast(_mtcSp) && _mtcSp.kind !== 'escape') { _fireSelfCast(unit, _mtcSp); }   // an escape casts at its picked landing (below)
                     else { _execAction(() => doSpell(unit, x, y, execZ)); }
                 }
                 else if (state.actionMode === 'item') {
@@ -57968,6 +58064,11 @@
                     state._actionExecuting = false;
                     doItem(unit, x, y, execZ);
                 }
+                else if (state.actionMode === 'combo' && state.comboPartner) {
+                    /* THE COMBO PICK: the confirmed combo target (the board click's own doComboAttack) */
+                    _execAction(() => doComboAttack(unit, state.comboPartner, x, y, execZ));
+                }
+                else state._actionExecuting = false;
                 scheduleBoardRender();
                 return;
             }
@@ -57983,7 +58084,7 @@
             // resolve to whoever stood beneath it and the camera never
             // looked up.
             if (state.actionMode === 'attack' || state.actionMode === 'spell'
-                || state.actionMode === 'item') {
+                || state.actionMode === 'item' || state.actionMode === 'combo') {
                 const _mu = getSelectedUnit();
                 const _mtgt = (typeof unitAt === 'function')
                     ? (((z !== undefined && z !== null) && unitAt(x, y, z)) || unitAt(x, y))
@@ -58031,6 +58132,19 @@
             }
         }
         window.cycleAttackTarget = cycleAttackTarget;
+
+        /* THE ATTACK PICK: the attack list opens with its first row picked (✓ + CONFIRM + the strike arrow) — opened from
+           the ATTACK verb AND re-armed after a press refund (playtest 2 2026-10-22: the second swing after a crit refund
+           opened with nothing picked and no CONFIRM). Returns the picked target or null. */
+        function _armAttackPick(unit) {
+            const targets = _getAttackValidTargets(unit);
+            state._attackCycleTargets = targets;
+            state._attackCycleIndex = 0;
+            if (!targets.length) return null;
+            state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
+            updateAoePreview(targets[0].x, targets[0].y);   // THE STRIKE ARROW onto the first pick (ui.js)
+            return targets[0];
+        }
 
         function setActionMode(mode) {
             if (state.activePlayer === state.aiPlayer) return;
@@ -58144,15 +58258,9 @@
             if (mode === 'attack') {
                 state.actionMenuView = 'attackTargets';
 
-                const targets = _getAttackValidTargets(unit);
-                state._attackCycleTargets = targets;
-                state._attackCycleIndex = 0;
-                if (targets.length > 0) {
-                    state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
-                    updateAoePreview(targets[0].x, targets[0].y);   // THE STRIKE ARROW onto the first pick (ui.js)
-                    // enemy targeting → third person: caster looking at the target
-                    _tpsTargetShot(unit, targets[0].unit || targets[0]);
-                }
+                const _t0 = _armAttackPick(unit);
+                // enemy targeting → third person: caster looking at the target
+                if (_t0) _tpsTargetShot(unit, _t0.unit || _t0);
             } else {
                 state.actionMenuView = 'root';
             }
@@ -58571,6 +58679,13 @@
                 }
             }
 
+            /* THE COMBO PICK: with the partner in, only a row of the combo's target list takes the hover pick (an empty
+               tile under the pointer must not arm "CONFIRM — Grass E5") */
+            if (state.actionMode === 'combo' && state.comboPartner && !_stHoverGrab && typeof window._hrlgComboTargetList === 'function') {
+                const _cbU = getSelectedUnit();
+                if (_cbU && !window._hrlgComboTargetList(_cbU, state.comboPartner).some(t => t.u.x === x && t.u.y === y)) return false;
+            }
+
             if (state.actionMode === 'inspect' && !_stHoverGrab) {
                 const unit = getSelectedUnit();
                 if (unit) {
@@ -58586,7 +58701,7 @@
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                     // THE SELF-CAST CONFIRM: the armed self-cast's pick is the caster and never moves — hovering
                     // the board must not re-aim it, clear its footprint or drop the green CONFIRM.
-                    if (spell && isSpellSelfCast(spell)) return false;
+                    if (spell && isSpellSelfCast(spell) && spell.kind !== 'escape') return false;   // THE ESCAPE PICK: the hover aims the landing
                     if (spell) {
 
                         // Line beams included: getSpellRangeTiles returns their
@@ -58667,7 +58782,7 @@
                 const unit = getSelectedUnit();
                 if (unit) {
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                    _isSelfCast = spell && isSpellSelfCast(spell);
+                    _isSelfCast = spell && isSpellSelfCast(spell) && spell.kind !== 'escape';
                 }
             }
             if (!_isSelfCast) clearAoePreview();
@@ -58906,7 +59021,7 @@
                     /* THE LANDING PICK (2026-10-20, mondo: a lit To the Moon landing tile was refused): a sky throw's
                        landing ring is lit fog or no fog, and the throw never needed sight — same pass as the blink. */
                     const _skyLanding = !!spell && spell.kind === 'skyThrow' && skyThrowLandingPhase(_actUnit);
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell)) && !_skyLanding) {
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                             addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
@@ -59144,7 +59259,7 @@
                     // a cast that stops short and hits zero targets.
                     // THE SELF-CAST CONFIRM: an armed self-cast fires on the caster only — a click anywhere else
                     // says so and keeps it armed (the caster's tile or the green CONFIRM casts it).
-                    if (isSpellSelfCast(spell) && (x !== actingUnit.x || y !== actingUnit.y)) {
+                    if (isSpellSelfCast(spell) && spell.kind !== 'escape' && (x !== actingUnit.x || y !== actingUnit.y)) {   // THE ESCAPE PICK: an escape clicks its landing
                         addLog(`${_ctSp(spell.name)} is cast on ${_ctName(actingUnit)}: press CONFIRM.`, actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
@@ -59499,6 +59614,7 @@
                             const syn = getComboTypeSynergy(actingUnit, clickedUnit);
                             addLog(`Partner selected: ${_ctName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
                             state.pendingTarget = null;
+                            if (typeof window._hrlgComboPrePick === 'function') window._hrlgComboPrePick(actingUnit, clickedUnit);   // THE COMBO PICK
                             renderBattleSelectionUI();
                         } else {
                             addLog('That ally cannot combo with this unit.');
@@ -63938,12 +64054,6 @@
                 if (!_clickedTarget && z == null && _structureAt(x, y, unit)) {
                     _tz = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
                 }
-                // 🔨 Attacking a raised terrain column strikes its exposed FACE
-                // at the attacker's own height (or its top when striking down),
-                // so melee can smash a tall pillar it stands beside.
-                if (!_clickedTarget && _tileIsSmashable(x, y)) {
-                    _tz = Math.min(getBaseHeightAt(x, y), unit.z ?? 0);
-                }
                 d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
             }
 
@@ -64357,29 +64467,7 @@
             // 🏢 Buildings can't be basic-attacked: structures only take area
             // damage (AOE / bombs / beams / earthquakes). An attack click on an
             // empty building tile falls through to the "choose an enemy" nag.
-            // 🔨 Smash terrain: attacking an exposed raised column knocks it
-            // down one level — the counter to reshape pillars / tower camping.
-            if ((!target || target.id === unit.id) && _tileIsSmashable(x, y)) {
-                pushUndoSnapshot(true);
-                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
-                const _oldH = getBaseHeightAt(x, y);
-                animateStrikeLeap(unit, x, y);
-                smashTerrainAt(x, y, unit);
-                addLog(`🔨 ${_ctName(unit)} smashes the terrain at ${coordLabel(x, y)}! (Height ${_oldH} → ${_oldH - 1})`);
-                showFloatingTextAtTile(x, y, '🔨 CRUMBLE!', 'damage', { durationMs: 1100 });
-                playSfx('basicAttack');
-                if (typeof shakeBoard === 'function') shakeBoard('normal');
-                grantXP(unit, 4, 'smash');
-                spendAllAP(unit);   // attacking ends the turn
-                state.actionMode = null;
-                state._actionExecuting = false;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                endUnitIfDone(unit);
-                renderAfterCombat();
-                return 1;
-            }
+            // 🔨 NO ATTACKING TILES (2026-10-22): a raised column is lowered with Dig (Build), never a basic attack.
             if (!target || isAllyUnit(target, unit)) {
                 addLog('Choose an enemy on an attack-highlighted tile.');
                 playErrorSfx();
@@ -64729,9 +64817,11 @@
                 // an empty target list / all-grey spellbook is a dead menu.
                 const _atkCanSwingAgain = typeof attackHasReachableTarget === 'function'
                     ? attackHasReachableTarget(unit, { combatOnly: true }) : true;
+                let _atkRepick = false;
                 if (!unitFinished(unit) && !unit.dead && _atkPrevView === 'attackTargets' && _atkCanSwingAgain) {
                     state.actionMode = 'attack';
                     state.actionMenuView = 'attackTargets';
+                    _atkRepick = true;
                 } else if (!unitFinished(unit) && !unit.dead && (_atkPrevView === 'spells' || _atkPrevView === 'spellTargets')
                     && anyCastableSpellNow(unit)) {
                     state.actionMode = null;
@@ -64828,6 +64918,11 @@
 
                 /* Unit animation override: revert race-specific attack sprite */
                 _revertSpriteOverride(unit);
+
+                /* THE ATTACK PICK: a press refund re-opens the attack list with its first row picked (✓ + CONFIRM), the
+                   same list the ATTACK verb opens — after the counter, so a riposte that drained the AP leaves no pick */
+                if (_atkRepick && state.actionMode === 'attack' && state.actionMenuView === 'attackTargets'
+                    && !unit.dead && !unitFinished(unit) && !state.pendingTarget) _armAttackPick(unit);
 
                 endUnitIfDone(unit);
                 renderBattleUpdate();
@@ -68463,6 +68558,13 @@
             // range gate below then rejects the (far) target with "Spell target is out
             // of range." Force the target back onto the caster here so the gate always
             // passes and the AoE centers correctly, regardless of who called us.
+            /* THE ESCAPE PICK: the clicked landing rides past the self-cast snap to the escape branch */
+            const _escPick = (spell.kind === 'escape' && Number.isFinite(x) && Number.isFinite(y)) ? { x, y, z } : null;
+            if (_escPick && (escapeLandingFor(unit, spell, x, y) || {}).blocked) {
+                addLog('Destination tile must be unoccupied.');   // the blink's own refusal (a hidden body stands there)
+                playErrorSfx();
+                return 0;
+            }
             if (isSpellSelfCast(spell)) {
                 x = unit.x; y = unit.y; z = unit.z;
             }
@@ -71441,15 +71543,22 @@
 
                 const decoyX = unit.x, decoyY = unit.y;
 
-                /* the landing comes from escapeLandingTile — the preview shows the same tile */
-                const _escLand = escapeLandingTile(unit, spell);
-                const candidates = _escLand ? [_escLand] : [];
+                /* the landing is the player's pick (THE ESCAPE PICK) or, for a cast on the caster's own tile (the CPU),
+                   escapeLandingTile's safest tile — the preview shows the same tile */
+                const _escLand = _escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell);
+                const candidates = (_escLand && !_escLand.blocked) ? [_escLand] : [];
+                /* THE TWO FLOORS: on a spot with two floors the landing is the floor that was clicked */
+                const _escSurfs = (candidates.length && _escPick && _escPick.x === candidates[0].x && _escPick.y === candidates[0].y
+                    && _escPick.z != null && typeof getWalkableSurfaces === 'function' && state.boardColumns?.length)
+                    ? getWalkableSurfaces(candidates[0].x, candidates[0].y) : [];
+                const _escLandZ = (_escSurfs.length > 1 && _escSurfs.indexOf(_escPick.z) >= 0) ? _escPick.z : null;
                 if (candidates.length) {
                     const _escFromX = unit.x, _escFromY = unit.y;
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
+                    if (_escLandZ !== null) unit.z = _escLandZ;
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the escape's landing
-                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
+                    if (_escLandZ === null && typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
                     if (_stealthDecoy) {
                         /* Snap with no visible slide so the move can't be traced from
                            the decoy back to the real unit. */

@@ -4982,13 +4982,13 @@ function _hrlgTargetBlades(unit, st, mode) {
       hpVal = tUnit.hp; hpMax = tUnit.maxHp;
     } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
     else if (t.kind === 'turret') { label = '🔧 ' + _turretDisplayName(t.turret); hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
-    else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
+    else if (t.kind === 'deployedObj') { label = '📦 ' + (typeof pickTargetName === 'function' ? pickTargetName(t.x, t.y) : (t.deployedObj.spellName || 'Object')); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
     else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
     else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
     else if (t.kind === 'building') {
       label = '🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(t.building) : 'Building');
       hpVal = t.building.hp; hpMax = t.building.maxHp || t.building.hp;
-    } else { label = typeof coordLabel === 'function' ? coordLabel(t.x, t.y) : (t.x + ',' + t.y); }
+    } else { label = typeof pickTargetName === 'function' ? pickTargetName(t.x, t.y, t.z) : (t.x + ',' + t.y); }   // THE PICK'S NAME
 
     // Type matchup vs THIS target — judged by the spell's own type when a
     // spell is being aimed (not the caster's types), STAB factored out so
@@ -5104,8 +5104,10 @@ function _hrlgTargetBlades(unit, st, mode) {
    same portrait + HP-bar target drum as attacks and spells — no more blind
    board-click aiming. Validity mirrors doItem: potions reach ANY living
    ally, banes need a living enemy within effective range + 2 (chebyshev). */
-function _hrlgItemTargetBlades(unit, st) {
-  const key = st.selectedTool;
+/* the item drum's rows in list order, each { unit, dist, usable } — the drum below and the pre-pick the engine arms when
+   a targeted item opens (battle.js setTool, THE ITEM PICK) read the same list, so the ✓ lands on the top row */
+function _hrlgItemTargetList(unit, key) {
+  const st = (typeof state !== 'undefined') ? state : {};
   const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[key] : null;
   const isBane = !!(rule && rule.baneType);
   const isHeal = (typeof window._ewItemLike === 'function' ? window._ewItemLike(key, 'healPotion') : key === 'healPotion');
@@ -5135,6 +5137,18 @@ function _hrlgItemTargetBlades(unit, st) {
     : isBane ? (u.hp || 0) : 0;
   targets.sort((a, b) => ((_usableT(a.unit) ? 0 : 1) - (_usableT(b.unit) ? 0 : 1))
     || (_needT(a.unit) - _needT(b.unit)) || (a.dist - b.dist));
+  targets.forEach(t => { t.usable = _usableT(t.unit); });
+  return targets;
+}
+window._hrlgItemTargetList = _hrlgItemTargetList;
+
+function _hrlgItemTargetBlades(unit, st) {
+  const key = st.selectedTool;
+  const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[key] : null;
+  const isBane = !!(rule && rule.baneType);
+  const isHeal = (typeof window._ewItemLike === 'function' ? window._ewItemLike(key, 'healPotion') : key === 'healPotion');
+  const isMana = (typeof window._ewItemLike === 'function' ? window._ewItemLike(key, 'manaPotion') : key === 'manaPotion');
+  const targets = _hrlgItemTargetList(unit, key);
 
   const blades = targets.map((t, i) => {
     const u = t.unit;
@@ -5196,6 +5210,50 @@ function _hrlgItemTargetBlades(unit, st) {
    the adjacent ALLY partners (portrait rows + the combo each pair unlocks);
    step 2 lists the units in the combo's range. Board clicks still work in
    parallel — this is the same state machine the click path drives. */
+/* the combo's target rows in list order, each { u, d } — the drum below and THE COMBO PICK read the same list. Order is the
+   attack / spell drums' rule (playtest 2 2026-10-22, "make the target lists consistent"): the closest-to-death enemy (or the
+   most-wounded ally for a support combo) on top, distance the tiebreak. */
+function _hrlgComboTargetList(unit, partner) {
+  const st = (typeof state !== 'undefined') ? state : {};
+  const combo = typeof getComboForUnits === 'function' ? getComboForUnits(unit, partner) : null;
+  const comboRange = (combo && combo.range) || 3;
+  const isOffensive = !combo || ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
+  const G = window.GAME;
+
+  const _dist = (u) => (G && typeof G.combatDist === 'function')
+    ? G.combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0)
+    : Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y);
+  const targets = (st.units || [])
+    .filter(u => !u.dead && u.id !== unit.id
+      && (isOffensive ? u.player !== unit.player : u.player === unit.player))
+    .map(u => ({ u, d: _dist(u) }))
+    .filter(t => t.d >= 1 && t.d <= comboRange)
+    .filter(t => !(typeof isRangeBlockedByTerrain === 'function'
+      && (Math.abs(unit.x - t.u.x) + Math.abs(unit.y - t.u.y)) >= 1
+      && isRangeBlockedByTerrain(unit.x, unit.y, t.u.x, t.u.y, unit.z)))
+    // Fog parity with getComboPartners / the engine's vision gates: an enemy
+    // the initiator can't see must not be listed (it would leak positions and
+    // the board-click path could never have picked it anyway).
+    .filter(t => !isOffensive || typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(unit)
+      || typeof isInVision !== 'function' || isInVision(unit, t.u.x, t.u.y, t.u.z))
+    .sort((a, b) => (isOffensive ? (a.u.hp || 0) - (b.u.hp || 0)
+      : ((a.u.maxHp > 0 ? a.u.hp / a.u.maxHp : 1) - (b.u.maxHp > 0 ? b.u.hp / b.u.maxHp : 1))) || (a.d - b.d));
+
+  return targets;
+}
+/* THE COMBO PICK (mondo 2026-10-22, "add name and confirm button to combos"): once the partner is in, the target list opens
+   with its top row picked (✓ + CONFIRM), like the attack / spell / item lists; a row click picks, the second click or
+   CONFIRM fires (selectTargetFromMenu's combo branch). */
+function _hrlgComboPrePick(unit, partner) {
+  const t0 = (unit && partner) ? _hrlgComboTargetList(unit, partner)[0] : null;
+  if (!t0) return null;
+  state.pendingTarget = { x: t0.u.x, y: t0.u.y, z: t0.u.z, mode: 'combo', tool: state.selectedTool, viaHover: false };
+  if (typeof updateAoePreview === 'function') updateAoePreview(t0.u.x, t0.u.y);
+  return t0.u;
+}
+window._hrlgComboPrePick = _hrlgComboPrePick;
+window._hrlgComboTargetList = _hrlgComboTargetList;
+
 function _hrlgComboBlades(unit, st) {
   const partner = st.comboPartner || null;
   const _refresh = () => {
@@ -5227,6 +5285,7 @@ function _hrlgComboBlades(unit, st) {
         fire: () => {
           state.comboPartner = p;
           state.pendingTarget = null;
+          _hrlgComboPrePick(unit, p);   // THE COMBO PICK: the target list opens with its top row picked
           if (typeof playSfx === 'function') playSfx('uiConfirm');
           if (typeof addLog === 'function' && combo) {
             addLog('Partner selected: ' + (typeof unitDisplayName === 'function' ? unitDisplayName(p) : p.cls)
@@ -5242,26 +5301,8 @@ function _hrlgComboBlades(unit, st) {
 
   // partner locked in → list everything the combo can actually reach
   const combo = typeof getComboForUnits === 'function' ? getComboForUnits(unit, partner) : null;
-  const comboRange = (combo && combo.range) || 3;
   const isOffensive = !combo || ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
-  const G = window.GAME;
-  const _dist = (u) => (G && typeof G.combatDist === 'function')
-    ? G.combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0)
-    : Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y);
-  const targets = (st.units || [])
-    .filter(u => !u.dead && u.id !== unit.id
-      && (isOffensive ? u.player !== unit.player : u.player === unit.player))
-    .map(u => ({ u, d: _dist(u) }))
-    .filter(t => t.d >= 1 && t.d <= comboRange)
-    .filter(t => !(typeof isRangeBlockedByTerrain === 'function'
-      && (Math.abs(unit.x - t.u.x) + Math.abs(unit.y - t.u.y)) >= 1
-      && isRangeBlockedByTerrain(unit.x, unit.y, t.u.x, t.u.y, unit.z)))
-    // Fog parity with getComboPartners / the engine's vision gates: an enemy
-    // the initiator can't see must not be listed (it would leak positions and
-    // the board-click path could never have picked it anyway).
-    .filter(t => !isOffensive || typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(unit)
-      || typeof isInVision !== 'function' || isInVision(unit, t.u.x, t.u.y, t.u.z))
-    .sort((a, b) => a.d - b.d);
+  const targets = _hrlgComboTargetList(unit, partner);
 
   const blades = targets.map(t => {
     // Type matchup vs THIS target — SAME rule as the attack/spell target
@@ -5284,6 +5325,7 @@ function _hrlgComboBlades(unit, st) {
     // attack/spell target row gets (predictComboDamageToUnit, ui.js).
     const previewDmg = (isOffensive && combo && typeof predictComboDamageToUnit === 'function')
       ? predictComboDamageToUnit(unit, partner, combo, t.u) : 0;
+    const isPending = _hrlgPickIs(st.pendingTarget, t.u.x, t.u.y, t.u);
     return {
       id: 'ct:' + t.u.id,
       icon: typeAdv || '◆',
@@ -5296,11 +5338,14 @@ function _hrlgComboBlades(unit, st) {
       portrait: _hrlgPortraitData(t.u, unit),
       spell: combo || undefined,   // desc bar keeps describing the combo while aiming
       meta: { text: t.d + 't' },
+      check: !!isPending,
+      camTarget: { x: t.u.x, y: t.u.y, z: t.u.z, uid: t.u.id },
+      /* THE COMBO PICK: the first click picks (✓ + CONFIRM), the second click (or CONFIRM) fires — the attack /
+         spell / item lists' two clicks (selectTargetFromMenu's combo branch runs doComboAttack) */
       fire: () => {
         if (st._actionExecuting) return;
-        if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
-        state.pendingTarget = null;
-        if (typeof doComboAttack === 'function') doComboAttack(unit, partner, t.u.x, t.u.y, t.u.z);
+        if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
+        if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.u.x, t.u.y, t.u.z);
         _refresh();
       },
     };
@@ -5311,12 +5356,33 @@ function _hrlgComboBlades(unit, st) {
       label: isOffensive ? 'No enemy in combo range' : 'No ally in combo range',
     });
   }
+  /* THE PARTNER ROW (mondo 2026-10-22, "add name ... to combos"): the ally this combo is made with leads the list, named
+     with its face — clicking it goes back to the partner pick */
+  const _pName = typeof unitDisplayName === 'function' ? unitDisplayName(partner) : (partner.name || partner.cls);
+  blades.unshift({
+    id: 'cpart:' + partner.id,
+    icon: '◆', iconColor: '#f0d060',
+    label: 'With ' + _pName,
+    available: true,
+    portrait: _hrlgPortraitData(partner, unit),
+    spell: combo || undefined,
+    meta: { text: 'CHANGE', title: 'Pick another partner' },
+    fire: () => {
+      if (st._actionExecuting) return;
+      state.comboPartner = null;
+      state.pendingTarget = null;
+      if (typeof clearAoePreview === 'function') clearAoePreview();
+      if (typeof playSfx === 'function') playSfx('uiCursorFocus');
+      _refresh();
+    },
+  });
   // Title carries the combo's DUAL type badges next to its name — the pair
   // recipe stays visible while aiming, same intel the partner rows showed.
   // Long combo names shrink to FIT the tab (size + tracking) instead of
   // ellipsizing — a combo's name is its identity, never cut it off.
-  const _cbNameStyle = (combo && combo.name && combo.name.length > 12)
-    ? { fontSize: combo.name.length > 18 ? 13 : 15, letterSpacing: '0.08em' }
+  /* the type badges share the tab: names over 8 letters shrink (PRIMAL SURGE was cut to "PRIMAL ···", playtest 2) */
+  const _cbNameStyle = (combo && combo.name && combo.name.length > 8)
+    ? { fontSize: combo.name.length > 18 ? 11 : combo.name.length > 12 ? 12 : 14, letterSpacing: '0.04em' }
     : undefined;
   const _cbTitle = combo
     ? { node: h(React.Fragment, null,
@@ -5840,7 +5906,11 @@ function ActionMenu({ st, hidden }) {
     // Orientable spells keep the H/V picker ALIVE while aiming — the current
     // pick highlights, clicking the other (or pressing R) flips in place.
     const _aimOrientable = !!(_aimSp && _aimSp.orientable);
-    if (_aimSelf) {
+    if (_aimSp && _aimSp.kind === 'escape') {
+      // THE ESCAPE PICK: the board is the drum — the lit tiles are where it may land
+      modeLabel = (st.selectedTool + ' — CLICK A LIT TILE TO LAND ON').toUpperCase();
+      panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
+    } else if (_aimSelf) {
       modeLabel = (st.selectedTool + ' — SELF CAST · CONFIRM TO CAST').toUpperCase();
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '⟳', text: st.selectedTool }, blades: [cancelBlade] });
     } else if (_aimSp && _aimSp.kind === 'skyThrow' && typeof skyThrowLandingPhase === 'function' && skyThrowLandingPhase(unit)) {
@@ -5932,6 +6002,7 @@ function ActionMenu({ st, hidden }) {
   const _pt = st.pendingTarget;
   const _inTargetingView = menuView === 'attackTargets' || menuView === 'spellTargets'
     || inItemTargets
+    || (am === 'combo' && !!st.comboPartner)   // THE COMBO PICK
     || (view === 'aim' && (am === 'attack' || am === 'spell' || am === 'item'));
   if (_pt && _inTargetingView && !st._actionExecuting) {
     const _ptUnit = (typeof unitAt === 'function')
@@ -5942,7 +6013,7 @@ function ActionMenu({ st, hidden }) {
     confirmObj = {
       label: _pt.selfCast ? 'SELF' : ((_ptUnit
         ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
-        : (typeof coordLabel === 'function' ? coordLabel(_pt.x, _pt.y) : (_pt.x + ',' + _pt.y))) + _repSuffix),
+        : (typeof pickTargetName === 'function' ? pickTargetName(_pt.x, _pt.y, _pt.z) : (_pt.x + ',' + _pt.y))) + _repSuffix),   // THE PICK'S NAME
       fire: () => {
         if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
         if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(_pt.x, _pt.y, _pt.z);
@@ -6046,7 +6117,7 @@ function spellTagline(sp) {
   if (['selfHeal', 'escape'].includes(k)) {
     if (k === 'escape') {
       const dist = sp.teleportDistance || 2;
-      parts.push('Self · leaps ' + dist + ' tiles');
+      parts.push('Pick a tile · up to ' + dist + ' tiles');   // THE ESCAPE PICK
     } else {
       parts.push('Self');
     }
@@ -6135,7 +6206,8 @@ function spellTagline(sp) {
 // Concise targeting mode shown under the description (Single Target / AOE / Line …).
 function spellTargetMode(sp) {
   const k = sp.kind || '';
-  if (['selfHeal', 'escape'].includes(k)) return 'Self Target';
+  if (k === 'escape') return 'Landing Tile';   // THE ESCAPE PICK: the player picks where it lands
+  if (k === 'selfHeal') return 'Self Target';
   if (['warCry', 'encore'].includes(k)) return 'Self Target';
   if (k === 'link' || k === 'transfer') return 'Two Targets';
   if (k === 'cannibalize') return 'Remains';
@@ -7044,6 +7116,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           ? !!window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner }).press : false,
         badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
         _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
+        // THE PARTNER ROW: the quick combo row names the ally it is made with
+        _comboPartnerName: _cbBest ? (typeof unitDisplayName === 'function' ? unitDisplayName(_cbBest.partner) : (_cbBest.partner.name || _cbBest.partner.cls)) : null,
         available: true,
       });
     }
@@ -8202,7 +8276,15 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
 let _hrlgSelfArmKey = null;
 function _hrlgSelfCastRow(blade, actingUnit, spell, key) {
   if (!blade || !blade.available || !spell || typeof isSpellSelfCast !== 'function' || !isSpellSelfCast(spell)) return blade;
-  const k = key + '|' + actingUnit.id + '|' + actingUnit.x + ',' + actingUnit.y + '|' + (actingUnit.ap || 0);
+  /* THE ESCAPE PICK (2026-10-22): an escape row arms the spell on the board — the player picks where it lands */
+  if (spell.kind === 'escape') {
+    blade.fire = () => {
+      state._enemyActionTargetId = null;
+      if (typeof setTool === 'function') setTool('spell', spell.name);
+    };
+    return blade;
+  }
+  const k =key + '|' + actingUnit.id + '|' + actingUnit.x + ',' + actingUnit.y + '|' + (actingUnit.ap || 0);
   const armed = _hrlgSelfArmKey === k;
   const run = blade.fire;
   blade.check = armed;
@@ -8293,7 +8375,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
                 : a._towardPath[a._towardPath.length - 1].x + ',' + a._towardPath[a._towardPath.length - 1].y)
             : null)
           : '↳ ' + _mvVerb)
-        : null,
+        : (a.id === 'combo' && a._comboPartnerName ? 'WITH ' + String(a._comboPartnerName).toUpperCase() : null),
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => _fireEnemyAction(actingUnit, targetUnit, a),
       hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },

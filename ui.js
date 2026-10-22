@@ -2993,6 +2993,10 @@
                   }
                 }
               }
+            } else if (spell.kind === 'escape' && typeof escapeLandingTiles === 'function') {
+              /* THE ESCAPE PICK (2026-10-22): the escape's landing tiles, painted like a self blink's destinations */
+              _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'selected');
+              for (const t of escapeLandingTiles(_selectedForHl, spell)) _hlCache.set(posKey(t.x, t.y), 'move');
             } else if (spell.kind === 'healAll') {
               _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'heal');
             } else if (spell.kind === 'teleport' && spell.teleportAnyUnit && !state._teleportingUnit) {
@@ -14603,6 +14607,23 @@
             const spell = ov ? ov.spell : ((unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool));
             if (!spell) { clearAoePreview(); clearIntentPreview(); return; }
 
+            /* THE ESCAPE PICK (2026-10-22): an armed escape aims its LANDING — the hovered / picked lit tile wears the blue
+               move plate and the forecast draws the landing there; a hovered escape row (ov) shows nothing yet, the
+               landing is picked on the board */
+            if (spell.kind === 'escape') {
+                clearAoePreview();
+                clearIntentPreview();
+                if (ov) return;
+                window._ewAimKeepsReach = true;
+                const _escOk = typeof escapeLandingTiles === 'function' && escapeLandingTiles(unit, spell).some(t => t.x === x && t.y === y);
+                if (!_escOk) return;
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    ThreeRenderer.setOverlay('aoe', [{ x, y, color: EW_PREVIEW.self, opacity: 0.5, cursor: true }], EW_PREVIEW.self, 0.45);
+                    _aoePreview3dActive = true;
+                }
+                updateIntentPreview(x, y, ov);
+                return;
+            }
             if (isSpellSelfCast(spell)) {
                 if (ov || (_aoePreviewTiles.length === 0 && !_aoePreview3dActive)) showSelfCastAoePreview(unit, spell);
                 updateIntentPreview(unit.x, unit.y, ov);
