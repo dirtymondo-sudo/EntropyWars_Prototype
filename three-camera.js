@@ -925,6 +925,18 @@ const ThreeCamera = (function () {
     }
 
     function screenToTile(screenX, screenY, canvas, terrainGroup, objectGroup) {
+        const all = _screenToTileHits(screenX, screenY, canvas, terrainGroup, objectGroup, 1);
+        return all && all.length ? all[0] : null;
+    }
+
+    /* THE STACKED FLOORS (2026-10-22): every pickable surface along the pointer's ray, front to back (up to `max`), each
+       resolved exactly like screenToTile's single pick — the renderer walks them to let a floor the unit cannot use (a
+       bridge deck with no route onto it) hand the pointer to the lit floor under it. */
+    function screenToTileAll(screenX, screenY, canvas, terrainGroup, objectGroup, max) {
+        return _screenToTileHits(screenX, screenY, canvas, terrainGroup, objectGroup, Math.max(1, max || 6)) || [];
+    }
+
+    function _screenToTileHits(screenX, screenY, canvas, terrainGroup, objectGroup, max) {
         if (!threeCamera || !terrainGroup) return null;
 
         const rect = canvas.getBoundingClientRect();
@@ -955,8 +967,8 @@ const ThreeCamera = (function () {
            around the active unit) must not swallow the pick — skip them so the
            ray lands on the floor visible through the hole. (Merged-terrain
            pick proxies hide the ROOT, not the run mesh, so they still hit.) */
-        let hit = null;
-        for (let hi = 0; hi < hits.length; hi++) {
+        const out = [];
+        for (let hi = 0; hi < hits.length && out.length < max; hi++) {
             const ho = hits[hi].object;
             if (ho && ho._ew_canopy && !ho.visible) continue;
             /* Occlusion-ghosted blocks (the action-cam / selected-unit fade in
@@ -979,10 +991,12 @@ const ThreeCamera = (function () {
                 anc = anc.parent;
             }
             if (cutHidden) continue;
-            hit = hits[hi];
-            break;
+            out.push(_tileHitResult(hits[hi]));
         }
-        if (!hit) return null;
+        return out;
+    }
+
+    function _tileHitResult(hit) {
         const p = hit.point;
         const ts = tileSize;
         let nx = 0, ny = 1, nz = 0;
@@ -1191,6 +1205,7 @@ const ThreeCamera = (function () {
         resize,
         sync,
         screenToTile,
+        screenToTileAll,
         seedHold,
         screenToTilePlane,
         screenToUnit,

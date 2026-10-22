@@ -1888,3 +1888,40 @@ damage in red, but it wont show that coming from the outside".
   board, out to the sky). The one dead zone found: the combat log box (`#ewCombatLog`, 340x340, pointer-events auto) catches
   the mouse over its see-through top, so board tiles behind it never hover. Not changed (flagged to mondo).
 - Shots: /mnt/project-files/edge-hover/.
+
+## PLAYTEST 2: HUD, MENUS AND TRAINING TEMPO (2026-10-22, mondo's answers to the Pyramids of Giza playtest report)
+- **The mode line is gone from the panels** (hud.js HorologeMenu): "SPRINT — CLICK A TARGET" over the "✦ Sprint" header was
+  redundant (mondo: the header names the pick, the combat text box says what to click). Only the panel-less move / jump aim
+  keeps its `.hrlg-mode.lone` line (it carries the BACK chip there).
+- **The combat text box slide** (`_subDodge`, 2026-10-18) was already right: in a browser the bar clears the aim panel's
+  CANCEL row. The playtest shot caught it before the next frame (the sandbox drew under 1 frame a second).
+- **THE WORLD TEXT STEPS ASIDE** (three-renderer.js `_wmMenuRects` / `_wmOverMenu` / `_wmEase`, mondo "fade the nexus counter
+  and name plates when they overlap with menus"): once a frame the open menu's boxes are measured (the clock column's pieces,
+  every command panel's pieces with lists counted by their rows cut to the list box, the quick list and its unit card, the
+  spell description bar `.ew-descbar-inner`). A world plate (`_pmTick`, its drawn box with the stack lift) or a Nexus counter
+  (`_scaleNexusPlates`, the sprite stands on its bottom centre) over one fades to `MENU_FADE_OP` (0.22) in ~0.15 s and comes
+  back when the menu goes. A rig at opacity 0 (the peek during a spell shot) counts as closed. `window.EW_NO_MENU_FADE = true`
+  turns it off. Viewer-local. The combat log is not a menu here (it collapses on its own).
+- **THE CPU TURN RECAP** (battle.js `_syncTrainingTurbo` / `_trainRecapTake` / `_trainRecapShow`, AAA polish idea 2, mondo
+  "sure", he also asked "is the log not enough?" so it stays light): on Training, the first CPU turbo turn after a human turn
+  snapshots every unit's HP + tile (a closure, nothing on state); when the next human unit comes up, every unit whose HP
+  changed pops its NET change once (`TRAIN_RECAP_MS` 1.7 s) and the tiles the CPU's units walked to light red
+  (`ThreeRenderer` overlay `trainRecap`) for the same time. Fog: an enemy the viewer can't see pops and lights nothing.
+- **Training combo cinematic**: a CPU combo under turbo was staged in a browser (Blood Pact on the Sedan, `_setAiTurbo(true)`):
+  no split screen, no shot, no chrome, camera untouched (doComboAttack / `_comboPlayPresentation` / `_playSelfCastHeroShot`
+  are all gated on `_skipVisuals()` + `cameraDisabled`). The playtest's close-up was not reproduced; no code change.
+- **Imitation Report** (battle.js `_imitReportEl` / `_imitShowReport`): opens top LEFT and drags by its title bar
+  (`#imitDragHandle` through `_initTrainPanelDrag(panel, handle)`; a press on a title-bar button never starts a drag).
+- **Menus**: the loading screen's Capture the Flag and Hotspot Nexus FIELD MANUAL lines are deleted (LS_HINTS); the match
+  setup head line no longer shows the random canon year (match-select.js `canonDate` removed); the result line under DEFEAT
+  says "is defeated." (was "is exited.").
+
+### PLAYTEST 2 LOG + PREVIEW FIXES (2026-10-22, mondo's answers to the second playtest report, Bugs 1/3-8, Polish 3 + 6b)
+- **One hit, one number** (battle.js): the extra "for N" flavour lines that printed the number before defence after the hit's own line are gone or number-free: dash ("is hit for N as X dashes through"), counter ("counter-attacks!" now, the number is on the riposte's line), opportunity attack (folded into the hit's own line), sky drop / leap strike, arrival blast, grapple, window shot, turret / summon / zombie. skySlam / leapStrike also floated a second pre-defence "-N" (and on every shockwave victim): removed.
+- **One cast, one line**: `_applyMultiHitDamage` and combo `multiHit` pass `opts.logSink` (`_multiHitLogSink`); applyDamageToUnit rolls each hit into it (`_multiHitLogAdd`) and writes ONE "X casts NINEFOLD SCRATCH: Y takes 171 HP damage. (9 hits)" on the last hit or the kill (`_multiHitLogFlush`). Floating numbers per hit stay.
+- **Corner TOTAL = the log**: `showActionCamChrome({ casterId })`; `_actionCamTallyBlocked` keeps a hit on the caster (counter, wall crash) or by the caster's enemy out of the corner total. Online: the float relay carries `nt: 1` for those hits and the guest skips its tally.
+- **Adrenaline Rush** (data.js): type 'heal'; desc fixed to its real 40 % + cleanse 2. hud.js `spellPowerStat` shows `+40% HP · +1 SPD` for any `selfHealPct` row (and `healAmt`); the description bar adds "Heal 40% max HP", "Cleanse N".
+- **Wall-crash forecast**: battle.js `crashThroughWouldBreak` / `dashCrashTiles` (pure reads of `_tryCrashThrough` + the CHARGE breach test); forecastSpellPlan's dash adds a CRASH_THROUGH_DMG hit on the caster tagged 'crash' per wall; ui.js badges it "−12 💥 WALL CRASH" on the caster's landing tile.
+- **Clean back out**: ui.js `clearSpellAimPreviews` (footprint, reach wash, forecast badges, strike arrows, move-then-cast route/ghost, quick-menu plan) runs from `_dropHeldSpellPick` and every handleBackAction branch; `_ewSpellAimHover(null)` takes a row's paint down when nothing is picked. The AP icons' ENDS TURN words (mondo 10-18) follow the row under the cursor and were left as they are.
+- **Log hides while aiming**: three-renderer `_playerAiming` → `body.ew-aiming` (any actionMode, or a target-list view, on the local player's turn); styles-hud.css hides `.ew-clog.auto-board` under it like `ew-board-busy`.
+- Text: Nexus celestial reset says "resets … to neutral (4/8). Anyone still standing in it starts capturing again"; storm line "moves to D6, closing in on X"; zodiac surge capitalises the sign; bane super-effective line is plain text (no bane-sprite markup in stored log); a dead root row (ABILITIES "No target") says why in the combat text box when clicked.

@@ -73,9 +73,6 @@ function officerInfo() {
   const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
   return { name: p.username || 'OFFICER', clearance: cl };
 }
-function canonDate() {
-  try { return (typeof window.doorCanonDate === 'function') ? window.doorCanonDate() : ''; } catch (_e) { return ''; }
-}
 function playUi() { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); }
 function doorSfx(key, opts) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx(key, opts || {}); } catch (_e) {} }
 
@@ -580,7 +577,6 @@ function MatchSelect(props) {
     mpMode.hasTowers ? 'Tower/Elim' :
     mpMode.scoringType === 'kills' ? 'Most Kills' : 'Composite';
   const officer = officerInfo();
-  const canon = useMemo(() => canonDate(), []);   // the canon date is rolled once per visit (it is "subject to revision", not per click)
   const consoleLabel = isSite ? 'CROSSING CONSOLE' : ((pre && pre.practice) ? 'PRACTICE TERMINAL' : 'FIELD ASSIGNMENT TERMINAL');
   let whereLabel = (pre && pre.doorLabel) ? pre.doorLabel : (frame === 'room' ? 'HEADQUARTERS' : 'CUSTOMS & ADMISSIONS');
   if (String(whereLabel).toUpperCase() === consoleLabel) { const rn = siteRoomNo(mp); whereLabel = 'ON SITE' + (rn ? ' · ROOM ' + rn : ''); }
@@ -677,7 +673,7 @@ function MatchSelect(props) {
     h('b', null, consoleLabel),
     h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, whereLabel),
     h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, 'TTY-1'),
-    canon && h('span', { className: 'ms-tty-sep' }, '·'), canon && h('span', null, canon),
+    /* no canon year on the head line (mondo 2026-10-22: the loading screen rolls its own random year, so this one only disagreed) */
     h('span', { className: 'ms-tty-officer' }, officer ? (officer.name) : 'UNFILED', officer && h('i', null, 'CLEARANCE L' + officer.clearance.level + ' · ' + officer.clearance.title)),
     h('span', { className: 'ms-tty-sep' }, '·'), h('span', { className: 'ms-tty-esc' }, 'ESC · STEP AWAY')
   );

@@ -2935,7 +2935,7 @@
                 // Only units the vortex actually touches (lands on / sweeps over) get hit.
                 const struck = candidates.filter(u => sweptKeys.has(posKey(u.x, u.y)));
                 if (!struck.length) {
-                    addLog(`${def.icon} The ${def.label} closes in on ${unitDisplayName(lead)} at ${coordLabel(nx, ny)}.`);
+                    addLog(`${def.icon} The ${def.label} moves to ${coordLabel(nx, ny)}, closing in on ${unitDisplayName(lead)}.`);
                     continue;
                 }
 
