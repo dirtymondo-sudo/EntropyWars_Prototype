@@ -39688,7 +39688,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afWall3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty), bricks = [];
-        var tex = _finBrickTex(), cols = 4, rows = 3, bw = ts * 0.26, bh = ts * 0.2;
+        var tex = _finBrickTex(), cols = 4, rows = 2, bw = ts * 0.26, bh = ts * 0.2;   /* knee-high: the target stays readable behind it */
         var hold = new THREE.Group(); hold.position.set(ln.ux * ts * 0.5, 0, ln.uz * ts * 0.5); hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
         for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
             var m = _afSolid(new THREE.BoxGeometry(bw * 0.96, bh * 0.94, ts * 0.12), 0xffffff, { map: tex }); m.position.set((c - (cols - 1) / 2) * bw, bh * (r + 0.5), 0); hold.add(m);
