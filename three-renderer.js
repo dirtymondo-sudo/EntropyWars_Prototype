@@ -11913,7 +11913,8 @@ const ThreeRenderer = (function () {
             }
         }
         var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-        var hgBuff = unit.hourglassBuff || 0;
+        /* THE HIDDEN KEYS: an enemy's Key Charge never shows on its plate here (map.js keysHiddenFor) */
+        var hgBuff = (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) ? 0 : (unit.hourglassBuff || 0);
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
@@ -18889,7 +18890,7 @@ const ThreeRenderer = (function () {
     var _floatPrev = null;
     var FLOAT_PREV_BEATS = {
         hit: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1000]],
-        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB!', 'crit', null, 0, 1100]],
+        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB ×1.25', 'crit', null, 0, 1100]],
         heal: [['+64', 'heal'], ['✨ CLEANSED', 'buff', null, 0, 1000]],
         status: [['🔥 BURNING!', 'damage', null, 0, 1100], ['❄️ FROZEN!', 'debuff', null, 0, 1100], ['🛡 PROTECTED!', 'protect-block', null, 0, 1000]],
         miss: [['DODGE!', 'dodge', null, 0, 1000], ['⬇ LAND', 'neutral', null, 260, 900]],
@@ -18899,14 +18900,14 @@ const ThreeRenderer = (function () {
         ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]],
         /* a crowd: one hit with every word at once, then two more hits on top (how a layout handles a pile-up) */
         busy: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1100],
-            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB!', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
+            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB ×1.25', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
             ['-52', 'combo', null, 320], ['-61', 'damage', { _hitPct: 8, _hitType: 'fire', _hitW: 0 }, 640]]
     };
     var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko', 'busy'];
     /* EACH KIND (UI Maker > Floating text > Each kind of pop): a line the game really pops for each kind, shown on its own
        (a word after a number, so it is seen next to one) when that kind is picked: beat 'k:<kind>' */
     var FLOAT_KIND_SAMPLE = { damage: '-128', critdmg: '-246', combo: '-52', total: '159 TOTAL!', heal: '+64', mp: '+20 MP', revive: '+1 AP!',
-        crit: 'BACKSTAB!', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED!', overkill: 'OVERKILL!', dodge: 'DODGE!',
+        crit: 'BACKSTAB ×1.25', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED ×1.1', overkill: 'OVERKILL!', dodge: 'DODGE!',
         'protect-block': '🛡 PROTECTED!', buff: '⏪ ENCORE', debuff: 'GROUNDED!', status: 'Blocked!', neutral: '⬇ LAND', xp: '+35 XP',
         levelup: '⬆ LEVEL 12!', pickup: '+1 KEY', nexus: '⬡ CAPTURED!' };
     function _floatPrevBeat(name) {
