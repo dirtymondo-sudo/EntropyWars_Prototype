@@ -6091,6 +6091,9 @@
                         chain: chain.map(c => ({ x: c.x, y: c.y })),
                         staggerMs,
                     });
+                } else if (chain.length === 1 && chain[0] && state.phase === 'battle') {
+                    /* a chain with nobody to jump to draws no hop: an A-F row registers '<id>:solo' for its lone hit */
+                    _sigVfxGeom(spell.id + ':solo', chain[0].x, chain[0].y, 0, { fromX: unit.x, fromY: unit.y });
                 }
 
                 chain.forEach((hopTarget, idx) => {
@@ -13743,6 +13746,7 @@
             playSfx('explosion');
             const _omask = (obj.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(obj.aoeMask)) ? obj.aoeMask : null;
             playAoeRing(bx, by, _omask ? Math.max(1, aoeMaskBound(_omask)) : radius, 'tech', actionMs(450));
+            if (obj.spellId) _sigVfxGeom(obj.spellId + ':detonate', bx, by, radius);
 
             const blastArea = _omask ? aoeMaskTiles(_omask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius);
             for (const tile of blastArea) {
@@ -22012,10 +22016,19 @@
 
         // Which pull/tether spells throw a spinning ROPE LOOP that cinches
         // around the target (the cowboy's Lasso) instead of a bare rope end.
+        /* THE A-F SIGNATURE VFX PASS (2026-10-23): the visual-only geometry doors for the kinds that fire no VFX intent
+           of their own ('<id>:swap' / ':throw' / ':deploy' / ':detonate' / ':mark' / ':view', three-vfx-effects.js
+           registry). fireGeometry is relayed by online.js (fog-gated on the tile); `onlyPlayer` keeps a trap, a decoy
+           or a delayed mark off the enemy's screen. false = nothing registered (the caller keeps its old look). */
+        function _sigVfxGeom(key, x, y, r, extra) {
+            if (_skipVisuals() || typeof window === 'undefined' || !window.ThreeVFXEffects
+                || typeof window.ThreeVFXEffects.fireGeometry !== 'function') return false;
+            try { return window.ThreeVFXEffects.fireGeometry(key, x, y, r, extra) === true; } catch (e) { return false; }
+        }
         function _tetherLassoForSpell(spell) {
             if (!spell) return false;
             const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
-            return /lasso|wrangle/.test(idn);
+            return /lasso|wrangle|rustle/.test(idn);
         }
 
         // Bresenham line of tiles from (x0,y0) to (x1,y1), EXCLUDING the origin and
@@ -71699,6 +71712,7 @@
                     // Horn Toss author it) — displaceDistance still wins.
                     const dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2);
                     const _displaceFromX = target.x, _displaceFromY = target.y;
+                    _sigVfxGeom(spell.id + ':throw', target.x, target.y, 0, { fromX: unit.x, fromY: unit.y });
                     if (dist === 0) {
                         addLog(`${_ctName(target)} is far too heavy to budge!`);
                         showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
@@ -71979,7 +71993,7 @@
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
                         if (!_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y });
+                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y, fromX: unit.x, fromY: unit.y });
                         }
                     }
                 }, _pullCamHold);
@@ -72231,6 +72245,7 @@
 
                 window.setTimeout(() => {
                     if (unit.dead || target.dead) return;
+                    _sigVfxGeom(spell.id + ':swap', tx, ty, 0, { fromX: ux, fromY: uy });
                     unit.x = tx; unit.y = ty;
                     target.x = ux; target.y = uy;
                     if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
@@ -72869,6 +72884,7 @@
                     terrainDeform: spell.terrainDeform || null,
                     demolishesBuildings: !!spell.demolishesBuildings
                 });
+                _sigVfxGeom(spell.id + ':mark', x, y, 0, { onlyPlayer: unit.player, fromX: unit.x, fromY: unit.y });
                 addLog(`${_ctName(unit)} marks ${coordLabel(x, y)} with ${_ctSp(spell.name)}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(unit, `${spell.name}!`, 'streak', { durationMs: 1000 });
                 scheduleBoardRender();
@@ -72981,6 +72997,7 @@
                     _deployedEntry.spriteUnit = _decoyLookOf(unit);
                 }
                 state._deployedObjects.push(_deployedEntry);
+                _sigVfxGeom(spell.id + ':deploy', x, y, 0, { onlyPlayer: unit.player, fromX: unit.x, fromY: unit.y });
                 /* THE SPELL AUDIT Batch D: decoyTaunt { radius, duration } (Stuffed Double) — every enemy within radius of
                    the decoy is Provoked toward IT: the taunt status, keyed to the object's tile (_tauntObjKey) instead of
                    a unit, so getTauntDecoy binds their basic attacks to the straw while it stands. */
@@ -74285,7 +74302,7 @@
                 unit.mp -= effectiveSpellCost;
                 if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
                     && typeof ThreeVFXEffects.fireGeometry === 'function') {
-                    try { ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
+                    try { _sigVfxGeom(spell.id + ':view', x, y, 1) || ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
                 }
                 addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} on ${coordLabel(x, y)}.`, unit.player);
                 _inspectFootprintAt(unit, x, y);

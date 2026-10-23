@@ -1702,3 +1702,35 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   `createView` swizzle strip it drew the whole battle with no device loss. Ten of the reshot spells have before/after
   stills on it in /mnt/project-files/g-o-vfx/webgpu-real/; that run is what showed Giant's Hand's wrist as a log end,
   so the forearm now runs up and back out of shot.
+
+## THE A-F SIGNATURE VFX PASS (2026-10-23, mondo: "are we good to go ahead and start on the vfx pass?")
+- Scope: the 66 A-F race signature spells (`sig*`, PR #432) and the 11 PR #423 spells (`race*`: Open Vein, Arterial
+  Spray, Conduction, Thornlash, Overgrowth, Crosswind, Eye of the Storm, Mudslide, Tailwind, Far Sight, Rustle).
+  Visuals only, no data.js row changed. G-O (`go*`) and P-Z (`pz*`) had their own threads on the same file.
+- Where: three-vfx-effects.js, one block after `_crTagShards();` (search "THE A-F SIGNATURE VFX PASS"): the `_AF`
+  palette, `_af*` helpers + canvas textures, an EFFECTS recipe for every row (tile / center / bolt / burst), the
+  SPELL_MAP rows, a `_af*3D` piece per spell and one `Object.assign(_spell3DGeometry, …)` registry at the end.
+- Which hook each kind fires (read off a browser probe of all 77 casts): damage → bolt + impact; physical r≤2,
+  chargeToTarget, tackle, debuff → impact; aoe/cross → aoe (_fireAoeMapped already runs the piece with (tx, ty, aoeRadius): do NOT also set `geom3D: true`, fire() would build it twice);
+  warCry/buff/self barrage/zoneDebuff → aura (its look = impactCenterEffect, piece gets (tx, ty, aoeRadius));
+  line/linePush → beam; damage via a bolt def → the piece runs on arrival only with `boltGeometry: true` (no impact intent follows a bolt; the six-gun has its own `_bolt_af_bullet`); a chain hop def with `sigChainGeom` runs it on the first body (Twisted Wish), and a chain with nobody to jump to calls `<id>:solo` from battle.js; lifeDrain → drainHop + impact; terrainCreate → bolt + impact (do NOT map `wall`); pull → pull.
+- Two new doors in three-vfx-effects.js: fire('pull') runs the registry like impact; a beam def with `sigLine` runs
+  the piece with (fromX, fromY, hitTiles, params) before the laser, and `sigLineOwns` makes it the whole travel (the
+  piece lands the per-tile recipe itself — Forged Thunderbolt, Crosswind, Mudslide).
+- Kinds that fired nothing get visual-only doors in battle.js through `_sigVfxGeom(key, x, y, r, extra)` →
+  fireGeometry (relayed by online.js, fog-gated on the guest): `<id>:swap` (Fireman's Carry, Infernal Waltz),
+  `<id>:throw` (Fifty Times), `<id>:deploy` OWNER ONLY (Jack-in-the-Box, Hologram: a trap / decoy must not give itself
+  away), `<id>:detonate` (detonateDeployedObject), `<id>:mark` OWNER ONLY (Orbital Strike, Extinction Event at cast)
+  and `<id>:view` (Far Sight, falls back to the tarot card). A delayed row's end-of-round blast runs its plain id
+  (state.js gives 1100 ms of arming before it lands). Pull now passes fromX/fromY; Rustle joins the lasso tether regex.
+- Multi-hit rows (Six-Shooter, Thousand Stings, Piledriver, Organ, Engulf, Last Dance, Devour, Interrogation,
+  Overrun) build their big piece once per cast (`_afOnce`), the small recipe on every hit.
+- Fog: `_afFogHides` (same test as the G-O block): a caster the viewer can't see is never drawn at or from — `_afCaster`
+  aims from the west of the target instead, caster-side pieces (six-gun, lure stalk, grapple steam, Last Light, the
+  circlet, the tether radio rings, the love-ray laser) skip, owned lines land only their visible tile recipes, a swap
+  skips a fogged spot, Soul Harvest's souls just rise.
+- Nothing full-screen; big sprites stay additive and modest so the caster, target, hit and number read.
+- Checked: all 77 cast in a browser sweep (no errors); 35 pieces shot close-up on WebGL, the WebGPU renderer's WebGL2
+  backend and (12) real WebGPU; sheets in /mnt/project-files/signature-vfx-af/. The sandbox draws ~1 frame a second, so
+  a `_sigRun` piece (opacity ramps from 0) gets one or two ticks before it ends: shoot with the clock slowed (a probe-only
+  copy dividing `performance.now() - t0` by 10-20) and frame it with `playOffensiveActionCamera(caster, target)`.
