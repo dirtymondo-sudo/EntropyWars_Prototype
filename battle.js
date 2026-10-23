@@ -46240,7 +46240,7 @@
            columns of points, the kill / point / capture modes as one score line. */
         /* the Arena composite score of one side — the PERFORMANCE tally and the head's fact line read the same */
         function _vicArenaScore(p) {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
             const enemy = p === 1 ? 2 : 1;
             let pts = 0, details = [];
             const kills = state.matchKills?.[p] || 0;
@@ -46251,7 +46251,6 @@
             let tDmg = 0;
             if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
             let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-            if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
             pts += tDmgPts;
             details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
             let hgCount = 0;
@@ -76371,7 +76370,7 @@
         }
 
         function _resolveArenaTimerExpiry() {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
 
             function _arenaComposite(p) {
                 const enemy = p === 1 ? 2 : 1;
@@ -76388,7 +76387,6 @@
                 if (eTower) tDmg = Math.max(0, (eTower.maxHp || 1500) - eTower.hp);
                 // Percent-of-tower form (see _arenaScoreDetails above).
                 let tDmgPts = Math.floor(tDmg / ((eTower && eTower.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-                if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                 pts += tDmgPts;
                 breakdown.push(`${tDmg} tower dmg (${tDmgPts})`);
 

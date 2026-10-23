@@ -809,7 +809,7 @@
        = 100 since 2026-10-07; it was 15 = the 60 the kill-scoring modes add). */
     const ARENA_PT_VALUE = 4;
     function _arenaPts() {
-        return (typeof window !== 'undefined' && window.ARENA_PTS) || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6, surgeLastRounds: 5, bounty: 15, bountyPerStreak: 5, bountyCap: 35 };
+        return (typeof window !== 'undefined' && window.ARENA_PTS) || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6, surgeLastRounds: 5, bounty: 15, bountyPerStreak: 5, bountyCap: 35 };
     }
     function _isArenaMode() {
         try { const m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null; return !!(m && m.id === 'arena'); } catch (e) { return false; }
@@ -832,7 +832,6 @@
         if (eT) {
             const max = eT.maxHp || 1500;
             let td = Math.floor(Math.max(0, max - eT.hp) / max * 250) * (P.towerDmgPer10 || 1);
-            if (P.towerDmgCap) td = Math.min(td, P.towerDmgCap);
             pts += td;
         }
         pts += (st.hourglasses || []).filter(h => {
