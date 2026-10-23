@@ -39971,7 +39971,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigPieInTheFace: _afPie3D, 'sigJackInTheBox:deploy': _afJackSet3D, 'sigJackInTheBox:detonate': _afJackPop3D,
         sigGlint: _afGlint3D, sigCrystalCoffin: _afCoffin3D, sigShardstorm: _afShards3D,
         sigTheSwarm: _afBees3D, sigThousandStings: _afStings3D, sigLure: _afLure3D, sigAbyssJaws: _afJaws3D,
-        sigKneel: _afKneel3D, sigEnlilsDeluge: _afDeluge3D, sigLampSmoke: _afLamp3D, sigTwistedWish: _afWish3D,
+        sigKneel: _afKneel3D, sigEnlilsDeluge: _afDeluge3D, sigLampSmoke: _afLamp3D, sigTwistedWish: _afWish3D, 'sigTwistedWish:solo': _afWish3D,
         sigBellow: _afBellow3D, sigForgedThunderbolt: _afThunderbolt3D, sigGrappleArm: _afGrapple3D, sigPiledriver: _afPiston3D,
         sigUsurp: _afUsurp3D, sigThroneOfAshes: _afThrone3D, 'sigInfernalWaltz:swap': _afWaltz3D, sigLastDance: _afLastDance3D,
         sigCountingSheep: _afSheep3D, sigDevourTheDream: _afDevour3D, sigForsaken: _afForsaken3D, sigMorningStar: _afMorningStar3D,
