@@ -46384,7 +46384,7 @@
                     state.partyBuilds[1][i] = UNIT_CLASS;
                     state.partyNames[1][i] = '';
                     state.loadouts[1][i] = emptyLoadout();
-                    state.partyMeta[1][i] = { race: 'homosapien', gender: 'male' };
+                    state.partyMeta[1][i] = { race: 'door agent', gender: 'male' };
                 }
             }
 
@@ -47889,7 +47889,7 @@
             try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { unlockedRaces: [] };
             const leadMeta = (state.partyMeta[1] && state.partyMeta[1][0]) || {};
-            const leadRace = leadMeta.race || 'homosapien';
+            const leadRace = leadMeta.race || 'door agent';
             /* THE JOBS REMOVAL (the user 2026-09-27): a delver is its race — no per-member job, no job pickers
                (_mdPartyJob / _mdPartyLeaderJob deleted); every member builds as the neutral UNIT_CLASS. */
             const pool = ((typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [])

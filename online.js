@@ -2424,6 +2424,15 @@
                         return;
                     }
                 }
+                /* HOMOSAPIEN OUT (2026-10-23): a race that left the roster is refused like an unknown one */
+                if (typeof teamRemovedRaces === 'function') {
+                    var _goneR = teamRemovedRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
+                    if (_goneR.length) {
+                        addLog('⚠️ Rejected opponent party config: a unit that is out of the game (' + _goneR.join(', ') + ').');
+                        console.warn('[NET GUARD] party-config rejected — removed race:', _goneR);
+                        return;
+                    }
+                }
             }
             /* THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral class — whatever the guest sent */
             if (Array.isArray(data.builds)) state.partyBuilds[2] = data.builds.map(function () { return UNIT_CLASS; });
