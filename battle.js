@@ -34596,7 +34596,7 @@
             if (sourceUnit && state._doorRearCast && state._doorRearCast.unitId === sourceUnit.id
                 && damageType !== 'dot' && finalDamage > 0 && isEnemyUnit(sourceUnit, target)) {
                 finalDamage = Math.round(finalDamage * getFacingDamageMult('back'));
-                if (live && !_skipVisuals()) showFloatingTextForUnit(target, '🚪 REAR', 'debuff', { durationMs: 800 });
+                if (live && !_skipVisuals()) showFloatingTextForUnit(target, `🚪 REAR ×${+getFacingDamageMult('back').toFixed(2)}`, 'debuff', { durationMs: 800 });
             }
 
             /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
@@ -65530,10 +65530,11 @@
                     if (_atkArc === 'back') {
                         unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
                         addLog(`🗡️ BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
-                        showFloatingTextForUnit(target, 'BACKSTAB!', 'crit', { durationMs: 1100, jitterY: -14 });
+                        // the word carries the real multiplier (mondo 2026-10-23: "Flanked X1.25")
+                        showFloatingTextForUnit(target, `BACKSTAB ×${+_facingMult.toFixed(2)}`, 'crit', { durationMs: 1100, jitterY: -14 });
                     } else if (_atkArc === 'side') {
                         addLog(`🗡️ ${_ctName(unit)} flanks ${_ctName(target)} (+10% damage)!`);
-                        showFloatingTextForUnit(target, 'FLANKED!', 'counter', { durationMs: 900 });
+                        showFloatingTextForUnit(target, `FLANKED ×${+_facingMult.toFixed(2)}`, 'counter', { durationMs: 900 });
                     }
                     if (isCrit) {
                         addLog(`⚡ CRITICAL HIT!`);

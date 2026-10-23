@@ -2223,3 +2223,11 @@ and create a character should be accessed through door agent as well instead of 
   dropped) flags them — REMOVED on the forge slot, a note on the archive card, "Out of the game" on the squad desk — and they
   cannot start / deploy until the unit is swapped out. The host refuses a guest sheet with one (online.js).
 - Left as is (flagged to mondo): the Disaster City harbour angler NPC still stands as a plain human (it can't be fought).
+
+## FLANKED / BACKSTAB SHOW THEIR MULTIPLIER (2026-10-23, mondo: "flanked and backstab do bonus damage right? they should have the amount next to their floating number like "Flanked X1.25"") — battle.js, three-renderer.js
+- They do: basic attacks only, battle.js `FACING_BACK_DMG_MULT` 1.25 (back arc, also can't be dodged) and `FACING_SIDE_DMG_MULT` 1.10
+  (side arc), via `getFacingDamageMult`. Spells get no facing bonus, except the door rear rider (`state._doorRearCast`, priced as a back hit).
+- doAttack's pops now read `BACKSTAB ×1.25` (kind `crit`) and `FLANKED ×1.1` (kind `counter`), built from `_facingMult`, so a retune shows the
+  new number. The door rear rider's pop reads `🚪 REAR ×1.25`. Kinds, colours and the UI Maker look are unchanged; the UI Maker float preview
+  samples (FLOAT_PREV_BEATS / FLOAT_KIND_SAMPLE) match. Online: the pops ride the existing floating-text relay.
+- Browser-checked in a VS-CPU Arena match: /mnt/project-files/flank-backstab/flanked_backstab_multiplier.jpg.
