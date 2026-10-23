@@ -1657,3 +1657,34 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
 - Flash Freeze swept again in the browser (Mount Shasta, Haunted, North Pole arenas: fresh tiles, recasts, water,
   cliffs, three ways of passing the aim height): every count matched the board. Its 10-20 zero was the already-ice
   case PR #385 fixed.
+
+## THE G-O SIGNATURES (2026-10-23, mondo: "think of each race as its own JRPG or Dark Souls boss" — the VFX pass on PR #433's families)
+- Every race spell from Gargoyle to Overlord (ids `go*`) plus the four moved into race families (Fee Fi Fo Fum
+  `raceTitanStep`, Atomic Breath, Labyrinth Roar, Excalibur Strike) has its own look: one block in three-vfx-effects.js,
+  "THE G-O SIGNATURES", above THE SHEET WARM. All procedural (MeshBasic / Sprite / Line materials, the canvas glow + text
+  sheets, the particle sheet), so both renderers draw it; no new art, no sound, no full-screen layer (the only flashes are
+  `_sigScreenFlash`, which leaves the hole round the target). Spell rules untouched: the SPELL_MAP rows only pick tracers.
+- How each look is reached (read off a real cast per kind):
+  - `_GO_SIG[id]` — drawn on the staging `burst` beat (`_fireStage` → `_goStage`), which every kind fires at the real
+    impact. The caster tile comes from the windup beat (`_goCast`), so a teleport / charge still aims from where it began.
+  - `_GO_LAND[id]` — ranged spells with a bolt row (`_go_bolt_<id>`, `goBolt: true`, `boltGeometry`): the look draws where
+    the bolt lands (`_goLandFn` in `_spell3DGeometry`), so random-target extra shots (Things That Go Bump, The Whole House
+    Shakes, Stack Overflow, Every Eye at Once) each get one. A spell in both tables draws once per tile: `_goClaim` lets the
+    first of burst / bolt own the tile for 3 s.
+  - `_GO_THROWN[id]` — the bolt carries a real object (hatchet, atlatl spear, devil's coal, the gauntlet, the Noisy
+    Cricket's gun + blast, the gem spray, the ghost's flying furniture, the eye-stalk eyes): `_goBolt`, hooked in
+    `_fireBoltMapped` after High Noon. Skipped on `hideGunRig` and when the caster's tile is fogged.
+  - `_GO_BEAM[id]` — line spells, hooked in `_fireBeamMapped` before the boomerang/breath branches: Rainspout, Tripod Sweep
+    and Antimagic Gaze return 'own' (the look replaces the laser); Atomic Breath's hook charges the kaiju's dorsal plates
+    and falls through to its breath cone.
+  - aoe kinds get a `_go_aoe_<id>` row (a faint themed tile wash) in place of the generic aoe() burst; One Shot, One Kill
+    keeps its bullet sprite and draws on its impact; Labyrinth Roar's aura geometry is now the maze floor + nostril steam
+    + its old sonic rings. Excalibur Strike keeps `_sigExcalibur3D` (already Arthur's own sword).
+- Fog (RULE #2): online.js relays fire(), and the guest's own fire() draws every look. A caster the viewer can't see is
+  never drawn from: `_goCasterFor` falls back to the target's own tile (no direction or position leaks); thrown objects
+  don't fly out of a fogged tile. online.js now relays `hideGunRig` too, so the guest also skips the gun / bow /
+  thrown prop on a shot the host fog-clamped (Codex review on PR #445).
+- Probe: `node --check`, then all 85 spells cast back to back in Chromium (SwiftShader) with no `[VFX] G-O` / `[SIG3D]`
+  errors; before/after stills on WebGL in /mnt/project-files/g-o-vfx/. Real WebGPU (`?ew_gpu=webgpu`) booted and cast
+  12 of them with no VFX errors, but headless SwiftShader WebGPU draws a black canvas (same on main), so the WebGPU
+  renderer's stills were taken on its WebGL2 backend (`?ew_gpu=webgl2`, same node materials).

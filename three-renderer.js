@@ -18828,7 +18828,7 @@ const ThreeRenderer = (function () {
     var _floatPrev = null;
     var FLOAT_PREV_BEATS = {
         hit: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1000]],
-        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB!', 'crit', null, 0, 1100]],
+        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB ×1.25', 'crit', null, 0, 1100]],
         heal: [['+64', 'heal'], ['✨ CLEANSED', 'buff', null, 0, 1000]],
         status: [['🔥 BURNING!', 'damage', null, 0, 1100], ['❄️ FROZEN!', 'debuff', null, 0, 1100], ['🛡 PROTECTED!', 'protect-block', null, 0, 1000]],
         miss: [['DODGE!', 'dodge', null, 0, 1000], ['⬇ LAND', 'neutral', null, 260, 900]],
@@ -18838,14 +18838,14 @@ const ThreeRenderer = (function () {
         ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]],
         /* a crowd: one hit with every word at once, then two more hits on top (how a layout handles a pile-up) */
         busy: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1100],
-            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB!', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
+            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB ×1.25', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
             ['-52', 'combo', null, 320], ['-61', 'damage', { _hitPct: 8, _hitType: 'fire', _hitW: 0 }, 640]]
     };
     var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko', 'busy'];
     /* EACH KIND (UI Maker > Floating text > Each kind of pop): a line the game really pops for each kind, shown on its own
        (a word after a number, so it is seen next to one) when that kind is picked: beat 'k:<kind>' */
     var FLOAT_KIND_SAMPLE = { damage: '-128', critdmg: '-246', combo: '-52', total: '159 TOTAL!', heal: '+64', mp: '+20 MP', revive: '+1 AP!',
-        crit: 'BACKSTAB!', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED!', overkill: 'OVERKILL!', dodge: 'DODGE!',
+        crit: 'BACKSTAB ×1.25', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED ×1.1', overkill: 'OVERKILL!', dodge: 'DODGE!',
         'protect-block': '🛡 PROTECTED!', buff: '⏪ ENCORE', debuff: 'GROUNDED!', status: 'Blocked!', neutral: '⬇ LAND', xp: '+35 XP',
         levelup: '⬆ LEVEL 12!', pickup: '+1 KEY', nexus: '⬡ CAPTURED!' };
     function _floatPrevBeat(name) {
@@ -42008,6 +42008,11 @@ const ThreeRenderer = (function () {
             if (state._actionExecuting || state._walkAnimActive) return;
             if (state._suppressHoverPreviewUntil
                 && performance.now() < state._suppressHoverPreviewUntil) return;
+            /* A pick made from the target list (or a board click) stays the pick while only the CAMERA moves: the
+               swing onto that target used to slide a new tile under the still pointer and re-aim the cast there
+               (Cube vs Keys matchup 2026-10-23: Psychic Beam on Superhero armed "CONFIRM — Dirt IV B4"). A real
+               mouse move still re-aims. */
+            if (state.pendingTarget && !state.pendingTarget.viaHover) return;
         }
         cam.updateMatrixWorld();
         var e = cam.matrixWorld.elements;

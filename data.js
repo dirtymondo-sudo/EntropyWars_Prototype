@@ -3975,7 +3975,7 @@ const RACE_BASE_STATS = {
     'nordic':             { hp: 1337, mp: 200, atk:  49, def:  76, mdef:  163, int:  179, vision: 3, crt: 18, spd: 97 },
     'fairy':              { hp: 654, mp: 220, atk:   3, def:  38, mdef:  151, int:  124, vision: 2, crt: 26, spd: 149 },
     'scarecrow':          { hp: 1568, mp: 150, atk:  72, def:  166, mdef:  106, int:  63, vision: 2, crt: 12, spd: 71 },
-    'grey':               { hp: 495, mp: 220, atk:   28, def:  25, mdef:  195, int:  197, vision: 3, crt: 26, spd: 48 },
+    'grey':               { hp: 495, mp: 220, atk:   28, def:  25, mdef:  195, int:  197, vision: 3, crt: 26, spd: 60 },   // spd 48 -> 60 (walks 2): mondo 2026-10-23, weak races II
     'succubus':           { hp: 824, mp: 220, atk:  60, def:  46, mdef:  172, int:  174, vision: 3, crt: 21, spd: 102 },
     'orb of light':       { hp: 520, mp: 225, atk:   33, def:  16, mdef:  200, int: 200, vision: 5, crt: 26, spd: 91 },   // BALANCE PASS 2026-10-06: HP 415→455 (lab WR 39%, among the lowest HP)
     'mothman':            { hp: 800, mp: 215, atk:   88, def:  52, mdef:  161, int:  166, vision: 5, crt: 26, spd: 169 },
@@ -3987,7 +3987,7 @@ const RACE_BASE_STATS = {
     'mantid':             { hp: 434, mp: 190, atk:  164, def:  21, mdef:  92, int:  192, vision: 3, crt: 26, spd: 146 },
     'skinwalker':         { hp: 398, mp: 160, atk:  151, def:  29, mdef:  112, int:  176, vision: 3, crt: 26, spd: 125 },
     'seraphim':           { hp: 300, mp: 260, atk:   24, def:  13, mdef:  194, int:  182, vision: 4, crt: 21, spd: 49 },
-    'djinn':              { hp: 324, mp: 240, atk:   94, def:  39, mdef:  183, int:  158, vision: 3, crt: 19, spd: 115 },
+    'djinn':              { hp: 480, mp: 240, atk:   94, def:  39, mdef:  183, int:  158, vision: 3, crt: 19, spd: 115 },  // hp 324 -> 480: mondo 2026-10-23, weak races II
     'anubis':             { hp: 337, mp: 245, atk:   98, def:  44, mdef:  191, int:  171, vision: 3, crt: 25, spd: 96 },
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
     'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
@@ -8706,9 +8706,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'You were driving. Now it is three hours later. A Single Enemy within 4 is Stunned for a round. Cooldown: 2 rounds.' },
         { id: 'goTissueSample', name: 'Tissue Sample', tier: 3, families: ['grey'], cost: 75, apCost: 1, spellType: 'alien',
-          element: 'psychic', type: 'damage', kind: 'lifeDrain', range: 2, dmg: 125, damageType: 'magic', drainPct: 0.5,
+          element: 'psychic', type: 'damage', kind: 'lifeDrain', range: 4, dmg: 125, damageType: 'magic', drainPct: 0.5,   // range 2 -> 4 (weak races II, mondo 2026-10-23)
           bonusVsStatus: { status: 'stun', mult: 1.5 },
-          desc: 'Taken while you are out. Deals MEDIUM magic damage to a Single Enemy within 2 and heals the grey for half of it. Deals bonus damage to Stunned targets.' },
+          desc: 'Taken while you are out. Deals MEDIUM magic damage to a Single Enemy within 4 and heals the grey for half of it. Deals bonus damage to Stunned targets.' },
         { id: 'raceProbe', tier: 1, families: ['ufo'], spellType: 'alien', element: 'psychic', name: 'Probe',
           type: 'damage', cost: 20, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic', dmg: 100,
@@ -9616,18 +9616,19 @@ const RACE_ABILITIES = {
     ],
     'gnome': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Garden Gnome. */
-        { id: 'goAnkleBiter', name: 'Ankle Biter', tier: 1, families: ['gnome'], cost: 25, apCost: 1, spellType: 'human',
-          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+        /* WEAK RACES II (mondo 2026-10-23): Ankle Biter 80 -> 110 and Garden Shears 130 -> 170, both anomaly (the gnome's own type) */
+        { id: 'goAnkleBiter', name: 'Ankle Biter', tier: 1, families: ['gnome'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 110, damageType: 'physical',
           statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Straight for the tendon. Deals WEAK physical damage to a Single Enemy beside you and Slows them for 2 rounds.' },
+          desc: 'Straight for the tendon. Deals MEDIUM physical damage to a Single Enemy beside you and Slows them for 2 rounds.' },
         { id: 'goLawnOrnament', name: 'Lawn Ornament', tier: 2, families: ['gnome'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'anomaly', element: 'earth', type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'stoneform', duration: 1 }],
           desc: 'Freeze. Smile. Be ceramic. The gnome turns to Stoneform for a round: it cannot move or act, takes no damage and regenerates. Cooldown: 3 rounds.' },
-        { id: 'goGardenShears', name: 'Garden Shears', tier: 3, families: ['gnome'], cost: 75, apCost: 1, spellType: 'human',
-          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
+        { id: 'goGardenShears', name: 'Garden Shears', tier: 3, families: ['gnome'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 170, damageType: 'physical',
           bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Snip. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
+          desc: 'Snip. Deals HEAVY physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
 
 
 
@@ -9639,9 +9640,9 @@ const RACE_ABILITIES = {
           desc: 'One more adjustment. One MORE. Grants a heavy damage-absorbing shield to All Allies (and contraptions) around the caster.' },
         { id: 'raceScrapMine', name: 'Scrap Mine', tier: 2, families: ['trapmaking'], cost: 50, apCost: 1, spellType: 'tech',
           element: 'fire', type: 'utility', kind: 'deployObject', damageType: 'physical', range: 3, objectHp: 20,
-          blastRadius: 1, blastDmg: 100, detonateOnStep: true, maxActivePerCaster: 2,
+          blastRadius: 1, blastDmg: 140, detonateOnStep: true, maxActivePerCaster: 2,   // blast 100 -> 140 (weak races II, mondo 2026-10-23)
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a MEDIUM blast in a 3×3 that Staggers. Two per caster.' },
+          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a HEAVY blast in a 3×3 that Staggers. Two per caster.' },
 
     ],
     'kaiju': [

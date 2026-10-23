@@ -773,6 +773,9 @@
             heal:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
             shield:       { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
             buff:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
+            // encore (Cube vs Keys matchup 2026-10-23): aimed AT an ally that has acted — it was filed as a self-cast,
+            // so the menu armed "CONFIRM — SELF" and the engine refused it ("cannot Encore themselves"); never castable.
+            encore:       { minRange: 1, offensive: false, allyOnly: true, fogExempt: true },
             cleanse:      { minRange: 0, offensive: false, allyOnly: true },
             revive:       { minRange: 1, offensive: false, allyOnly: true },
             aoeShield:    { minRange: 0, offensive: false, tileTargeted: true },
@@ -782,7 +785,6 @@
             manaRestoreAll:{ minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             warCry:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             scan:         { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
-            encore:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             selfHeal:     { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             escape:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 5 wave A, 2026-09-08):
@@ -8845,6 +8847,7 @@
                 // buff purge; only death (the respawn ledger reset) clears it.
                 // 999, not Infinity: the ledger rides JSON state-sync.
                 if (opts && opts.perm) target.statStageMods.push({ stat, n: applied, left: 999, perm: true });
+                else if (_statusLandsAfterTurn(target)) target.statStageMods.push({ stat, n: applied, left, fr: state.round });   // ONE ROUND = ONE TURN
                 else target.statStageMods.push({ stat, n: applied, left });
                 if (applied > 0) anyPos = true; else anyNeg = true;
                 const atBound = (base + getStatStageCount(target, stat) * step) >= hi
@@ -9552,6 +9555,11 @@
                 && typeof forceGroundUnit === 'function') {
                 forceGroundUnit(target, { byLabel: 'by the roots', byUnit: sourceUnit });
             }
+
+            /* ONE ROUND = ONE TURN (mondo 2026-10-23): a status that lands on a unit that has already had its turn this
+               round (or on the unit whose turn it is) must still be on it for its NEXT turn — mark it fresh so this
+               round's end-of-round tick skips it once (_tickAllStatusDurations). */
+            if (unitHasStatus(target, payload.id)) _markStatusFresh(target, payload.id);
 
             // 💫 Stagger takes its AP the moment it lands. If the target already
             // spent everything this round, the loss carries over as a debt the
@@ -11466,9 +11474,29 @@
             return true;
         }
 
+        /* ONE ROUND = ONE TURN (mondo 2026-10-23: "a 1 round status means the unit has to actually have at least 1
+           turn with that status effect"). Durations still tick at the end of the round, but a status that landed
+           after the unit's turn started this round (it already acted, or it is the one acting) skips that one tick,
+           so it lasts through the unit's next turn: a Root from a slower enemy no longer wears off before the rooted
+           unit moves again. Only during a blitz round's action phase (an activation is live); end-of-round effects,
+           real-time Strike and the dungeon clock keep their old timing. Take Aim is a delayed shot, not a status, so
+           it still lands at the end of the round. */
+        function _statusLandsAfterTurn(u) {
+            if (!u || state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            return state._blitzActiveUnitId === u.id || unitFinished(u) || !!u._skippedTurn || u._turnRound === state.round;
+        }
+        function _markStatusFresh(u, key) {
+            if (!_statusLandsAfterTurn(u)) return;
+            if (!u._stFresh || typeof u._stFresh !== 'object') u._stFresh = {};
+            u._stFresh[key] = state.round;
+        }
+
         function _tickAllStatusDurations() {
             for (const u of state.units) {
                 if (u.dead) continue;
+                const _fresh = (u._stFresh && typeof u._stFresh === 'object') ? u._stFresh : null;
+                u._stFresh = null;
                 // The decrement/expiry split is pure (calcStatusDurationTick,
                 // see PURE DAMAGE MATH in battle.js top); this wrapper picks
                 // the tickable keys (unknown STATUS_DEFS stay untouched) and
@@ -11478,6 +11506,8 @@
                         .filter(key => STATUS_DEFS[key])
                         // 💫 a stagger still owed (landed after the unit acted) stays up until its short turn
                         .filter(key => !(key === 'stagger' && (u._staggerApDebt || 0) > 0))
+                        // ONE ROUND = ONE TURN: landed after this unit's turn this round → skip this tick once
+                        .filter(key => !(_fresh && _fresh[key] === state.round))
                         .map(key => ({ key, value: getStatusValue(u, key) })));
                 for (const e of tick.next) u.status[e.key] = e.value;
                 for (const key of tick.expired) {
@@ -11495,6 +11525,7 @@
                     let expired = false;
                     for (const m of u.statStageMods) {
                         if (m.perm) continue;   // permanent entries never tick
+                        if (m.fr != null) { const _skip = m.fr === state.round; delete m.fr; if (_skip) continue; }   // ONE ROUND = ONE TURN
                         m.left = (m.left || 0) - 1;
                         if (m.left <= 0) expired = true;
                     }
@@ -34600,7 +34631,7 @@
             if (sourceUnit && state._doorRearCast && state._doorRearCast.unitId === sourceUnit.id
                 && damageType !== 'dot' && finalDamage > 0 && isEnemyUnit(sourceUnit, target)) {
                 finalDamage = Math.round(finalDamage * getFacingDamageMult('back'));
-                if (live && !_skipVisuals()) showFloatingTextForUnit(target, '🚪 REAR', 'debuff', { durationMs: 800 });
+                if (live && !_skipVisuals()) showFloatingTextForUnit(target, `🚪 REAR ×${+getFacingDamageMult('back').toFixed(2)}`, 'debuff', { durationMs: 800 });
             }
 
             /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
@@ -39988,6 +40019,16 @@
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
                     }
                     if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
+                    // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE, aimed at the unit it was picked for
+                    if (state._quickAoePlace === spell.name && state.actionMenuView === 'spells') {
+                        const _qaU = state._quickAoeFrom != null ? (state.units || []).find(u => u.id === state._quickAoeFrom && !u.dead) : null;
+                        if (state._quickAoeStage === 'confirm' && ptLabel) {
+                            return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + (_qaU ? '<strong>' + esc(_ctName(_qaU)) + '</strong>' : ptLabel) + ' — press CONFIRM to cast.', 'right-click to place it yourself');
+                        }
+                        const _qaBack = _qaU ? 'right-click: back to ' + esc(_ctName(_qaU)) + '\'s menu' : 'ESC cancel';
+                        if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click again or CONFIRM to cast.', _qaBack);
+                        return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: click a tile to place it.', _qaBack);
+                    }
                     if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
@@ -41037,6 +41078,9 @@
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
+            if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
+                && (unitFinished(u) || u.ap === 0);
             if (k === 'cleanse') {
                 return typeof getActiveStatusKeys === 'function'
                     && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff');
@@ -42313,7 +42357,7 @@
 
             if (kind === 'encore') {
                 return aliveUnitsOnFloor(unit.player).some(a => {
-                    if (a.id === unit.id) return false;
+                    if (a.id === unit.id || !spellTargetUsableOn(unit, spell, a)) return false;
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
                     return d >= 1 && d <= range;
                 });
@@ -53640,6 +53684,7 @@
                     const _ctlUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
                     if (_ctlUnit && !_ctlUnit.dead) _possessSpendActivation(_ctlUnit);
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
+                    if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
                 }
                 clearSpellPick();
 
@@ -57886,6 +57931,8 @@
             state.selectedTool = toolName;
             state.pendingTarget = null;
             state._quickAoePlace = null;   // hud.js _hrlgArmAoePlacement re-sets it for a quick-menu AoE
+            state._quickAoeStage = null;   // (and its CONFIRM / placement step + the quick menu it came from)
+            state._quickAoeFrom = null;
             clearAoePreview();
 
             /* Strike Mode's TPS rig owns the camera per-frame — a competing
@@ -58987,7 +59034,9 @@
             // stack, so an airborne target picked from the menu used to
             // resolve to whoever stood beneath it and the camera never
             // looked up.
-            if (state.actionMode === 'attack' || state.actionMode === 'spell'
+            if (state.actionMode === 'spell' && state._quickAoePlace === state.selectedTool) {
+                state._quickAoeStage = 'place';   // THE CONFIRM FIRST: a quick-menu AoE stays on the tactical view
+            } else if (state.actionMode === 'attack' || state.actionMode === 'spell'
                 || state.actionMode === 'item' || state.actionMode === 'combo') {
                 const _mu = getSelectedUnit();
                 const _mtgt = (typeof unitAt === 'function')
@@ -59606,6 +59655,9 @@
                     // THE SELF-CAST CONFIRM: the armed self-cast's pick is the caster and never moves — hovering
                     // the board must not re-aim it, clear its footprint or drop the green CONFIRM.
                     if (spell && isSpellSelfCast(spell) && spell.kind !== 'escape') return false;   // THE ESCAPE PICK: the hover aims the landing
+                    // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE waits on its CONFIRM; the hover
+                    // moves it only once back (right-click) has freed it for placement
+                    if (state._quickAoeStage === 'confirm' && state._quickAoePlace === state.selectedTool) return false;
                     if (spell) {
 
                         // Line beams included: getSpellRangeTiles returns their
@@ -59929,7 +59981,11 @@
                        is castable into fog by its own kind row and doSpell lets it through; this gate refused the click
                        first ("Out of sight") so Far Sight could never search a tile nobody could see. */
                     const _fogExemptPick = !!spell && _kindMeta(spell).fogExempt && _kindMeta(spell).tileTargeted;
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding && !_fogExemptPick) {
+                    /* THE SCRY (Cube vs Keys matchup 2026-10-23): Far Sight / Remote View aim INTO the fog by design — the
+                       board lights fogged tiles in their reach and doSpell takes them; this gate refused the click
+                       ("Out of sight — no one on your team can see that tile"). */
+                    const _scry = !!spell && spell.kind === 'remoteView';
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding && !_scry && !_fogExemptPick) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                             addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
@@ -60262,10 +60318,15 @@
                         viaHover: false
                     };
                     playSfx('uiCursorFocus');
+                    // THE CONFIRM FIRST: a quick-menu AoE placed on another tile is in placement now (the hover moves it)
+                    const _qaArm = state.actionMode === 'spell' && state._quickAoePlace === state.selectedTool;
+                    if (_qaArm) state._quickAoeStage = 'place';
                     // Picking a UNIT on the map swings the caster's over-the-
                     // shoulder view onto it — exactly like picking it from the
-                    // target drum (tile picks keep the tactical view).
-                    if (clickedUnit && !clickedUnit.dead
+                    // target drum (tile picks keep the tactical view; so does a
+                    // quick-menu AoE's placement: mondo 2026-10-23, the CONFIRM
+                    // step must stay the tactical view over the board).
+                    if (clickedUnit && !clickedUnit.dead && !_qaArm
                         && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                         _tpsTargetShot(actingUnit, clickedUnit);
                     }
@@ -65603,10 +65664,11 @@
                     if (_atkArc === 'back') {
                         unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
                         addLog(`🗡️ BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
-                        showFloatingTextForUnit(target, 'BACKSTAB!', 'crit', { durationMs: 1100, jitterY: -14 });
+                        // the word carries the real multiplier (mondo 2026-10-23: "Flanked X1.25")
+                        showFloatingTextForUnit(target, `BACKSTAB ×${+_facingMult.toFixed(2)}`, 'crit', { durationMs: 1100, jitterY: -14 });
                     } else if (_atkArc === 'side') {
                         addLog(`🗡️ ${_ctName(unit)} flanks ${_ctName(target)} (+10% damage)!`);
-                        showFloatingTextForUnit(target, 'FLANKED!', 'counter', { durationMs: 900 });
+                        showFloatingTextForUnit(target, `FLANKED ×${+_facingMult.toFixed(2)}`, 'counter', { durationMs: 900 });
                     }
                     if (isCrit) {
                         addLog(`⚡ CRITICAL HIT!`);
