@@ -15780,6 +15780,9 @@
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'immune') push(_immBadgeHtml(`${_iEl.toUpperCase()} IMMUNE`), 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'absorb') push(_immBadgeHtml(`${_iEl.toUpperCase()} ABSORBED`), 'intent-type-eff not-effective', 14);
+                    /* THE STATUS COMBO PRESS (mondo 2026-10-23): the hit lands its ×combo on the target's status — the
+                       green !-circle when the combo is what presses */
+                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _SE_CIRCLE_HTML : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
                     for (const sl of _getStatusPreviewLabels(spell)) {
@@ -15901,6 +15904,10 @@
                         yOff += 14;
                     } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
                         badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });
+                        yOff += 14;
+                    }
+                    if (_iPr.press && _iPr.by === 'combo') {
+                        badgeStack.push({ html: _SE_CIRCLE_HTML + '⚗ COMBO', cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     }
                 }

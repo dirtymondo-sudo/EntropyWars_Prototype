@@ -13303,6 +13303,20 @@
             return engineRng() < getEvasionChance(target);
         }
 
+        /* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): the odds a basic
+           attack lands, read off the same rolls doAttack makes — a back-arc swing can't be dodged, any other loses the
+           target's EVA; Blind halves it; a Protected body is never hit. `from` = the tile the swing leaves from (a
+           MOVE→ATK row), else where the attacker stands. 0..1, no state writes. */
+        function getAttackHitChance(attacker, target, from) {
+            if (!attacker || !target) return 0;
+            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
+            const src = (from && from.x != null) ? { x: from.x, y: from.y } : attacker;
+            const arc = attacker._doorAttackOrigin ? 'back' : getAttackArc(src, target);
+            let p = arc === 'back' ? 1 : 1 - getEvasionChance(target);
+            if (unitHasStatus(attacker, 'blind')) p *= 0.5;
+            return Math.max(0, Math.min(1, p));
+        }
+
         function getCounterChance(unit) {
             if (!unit || unit.dead) return 0;
             if (unit._climb) return 0;   // 🧗 both hands on the wall: no counter
@@ -36111,6 +36125,13 @@
             if (veto) plan._fogVeto = true;
         }
 
+        /* which part of a pressing hit earns it: the TYPE, the ELEMENT (neutral type only) or the STATUS COMBO */
+        function _pressByOf(pc) {
+            const e = (pc && pc.effSummary) || {};
+            if (e.hasStrong && !e.hasWeak) return 'type';
+            if (pc && pc.elemAff === 'weak' && !(e.hasWeak && !e.hasStrong)) return 'element';
+            return (pc && pc.combo) ? 'combo' : 'element';
+        }
         function _forecastPressResolve(plan) {
             plan.press = (plan.pressArmed && plan.pressHits.length && !plan._fogVeto) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
             const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT;
@@ -36119,22 +36140,21 @@
                 if (!presses || h._pressMiss || !h._pressCtx) continue;
                 const pc = h._pressCtx.find(c => _pressOutcomeForHit(c) === PRESS_OUTCOME.WEAK);
                 if (!pc) continue;
-                const eff = pc.effSummary || {};
                 h.press = true;
-                h.pressBy = (eff.hasStrong && !eff.hasWeak) ? 'type' : 'element';
+                h.pressBy = _pressByOf(pc);
             }
         }
 
         /* One answer for every green !: does this action on this target hand the +2 AP press back? Spells read the
            forecast plan aimed at the target (so one resisting / protected body in the blast vetoes it everywhere, as
            in the real refund); a basic attack reads its type (crit / dodge stay a gamble); a combo its own type and
-           element. Returns { press, by: 'type' | 'element' | null }. Viewer-local, no state writes. */
+           element. Returns { press, by: 'type' | 'element' | 'combo' | null }. Viewer-local, no state writes. */
         function forecastPressOn(caster, target, spell, opts = {}) {
             const no = { press: false, by: null };
             if (!caster || !target || target.dead || !isEnemyUnit(caster, target)) return no;
             if (!_isUnitVisibleToViewer(target, caster.player)) return no;   // THE FOG: nothing said about a body the caster's side can't see
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return no;   // Mystery Dungeon floors: no press turns
-            const byOf = (pc) => { const e = pc.effSummary || {}; return (e.hasStrong && !e.hasWeak) ? 'type' : 'element'; };
+            const byOf = _pressByOf;
             if (opts.combo) {
                 const combo = opts.combo, partner = opts.partner || null;
                 const atk = combo.spellType ? [combo.spellType] : [...(caster.types || []), ...((partner && partner.types) || [])];
@@ -36157,7 +36177,7 @@
             if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
-                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), bonusVsStatus: spell.bonusVsStatus || null });
             return (pc && _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK) ? { press: true, by: byOf(pc) } : no;
         }
         window.forecastPressOn = forecastPressOn;
@@ -40012,16 +40032,18 @@
            everything left (moving twice is a full turn). A unit may cast
            only ONE spell/ability per turn (the '1 spell/turn' gate in
            getSpellBlockReason). The ONLY way to keep acting after damage —
-           or to cast a second spell — is a press: the turn's FIRST weakness
-           hit hands back +2 AP at once (a full fresh action), a crit +1; every
-           press AFTER that vents into the team's Entropy Gauge instead — so
-           a unit can attack at most TWICE in one turn.
+           or to cast a second spell — is a press: a weakness hit, a status
+           combo hit or a crit hands back +2 AP at once (a full fresh action,
+           mondo 2026-10-23); the turn's FIRST press refunds, every press
+           AFTER that vents into the team's Entropy Gauge instead — so a unit
+           can attack at most TWICE in one turn. One hit presses once: a weak
+           crit pays +2 and its second +2 vents to the gauge.
            Only unit.ap mutates → online-safe (host authoritative) and
            undo-safe (ap is in every pushUndoSnapshot). See PRESS_OUTCOME /
            applyPressTurn below; turn termination stays owned by
            unitFinished/endUnitIfDone. */
-        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press on a weakness
-        const PRESS_CRIT_REFUND_AP  = 1;   // AP a critical hit grants (mondo 2026-10-21, PvP audit #8: a crit is a dice roll, so +1, not +2)
+        const PRESS_REFUND_AP       = 2;   // AP one press grants (a weakness, a status combo — mondo 2026-10-23)
+        const PRESS_CRIT_REFUND_AP  = 2;   // AP a critical hit grants (mondo 2026-10-23: "lets make crits allow 2 ap instead of 1"; was +1 since 2026-10-21)
         const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge (post-press swings)
         const PRESS_MAX_BONUS_AP    = 2;   // total press AP per unit per turn → ONE +2 press; extras vent to entropy
 
@@ -40029,9 +40051,9 @@
             MISS:      'miss',     // dodged/evaded → extra AP drain
             RESIST:    'resist',   // not very effective → extra AP drain
             NORMAL:    'normal',   // neutral → normal cost
-            WEAK:      'weak',     // hit a weakness → refund
+            WEAK:      'weak',     // hit a weakness (or a status combo) → refund
             CRIT:      'crit',     // landed a crit → refund
-            WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (+1 more vents to entropy past the cap)
+            WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (the second +2 vents to entropy: one hit presses once)
             NULL:      'null',     // the element was immune / absorbed → no press (vetoes the cast's), no drain
         };
 
@@ -40900,7 +40922,13 @@
             const typeTier = (!!eff.hasStrong && !eff.hasWeak) ? 1 : (!!eff.hasWeak && !eff.hasStrong) ? -1 : 0;
             const verdict = (typeof elemPressVerdict === 'function') ? elemPressVerdict(typeTier, hit.elemAff || null)
                 : (typeTier > 0 ? 'weak' : typeTier < 0 ? 'resist' : 'normal');
-            const weakness = verdict === 'weak';     // the target's weakness (type, or element on a neutral type)
+            /* THE STATUS COMBO PRESS (mondo 2026-10-23: "lets make status combos (the multipliers) also reward +2 ap, but
+               not if the type spell is resisted by the target, similar to elemental weaknesses"): a hit that lands its
+               bonusVsStatus multiplier (hit.combo, _pressCtxForHit) presses like a weakness — unless the spell's type is
+               resisted or its element part is resisted / immune / absorbed. */
+            const _aff = hit.elemAff || null;
+            const combo = !!hit.combo && typeTier >= 0 && _aff !== 'resist' && _aff !== 'immune' && _aff !== 'absorb';
+            const weakness = verdict === 'weak' || combo;   // the target's weakness (type, or element on a neutral type) or a status combo
             const resisted = verdict === 'resist';   // resisted type → no press, the AP drain
             if (verdict === 'null') return PRESS_OUTCOME.NULL;
             if (hit.isCrit && weakness) return PRESS_OUTCOME.WEAK_CRIT;
@@ -40988,7 +41016,9 @@
             const capRoom = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained - penalties);
             const capRoomIfPerfect = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained);
             const apRoom = Math.max(0, getUnitMaxAP(unit) - (unit.ap || 0));
-            const refund = Math.min(want, capRoom, apRoom);
+            // one hit presses ONCE (+2): a weak crit's second +2 vents into the gauge below, as its extra +1 always did
+            const hitRoom = PRESS_REFUND_AP;
+            const refund = Math.min(want, hitRoom, capRoom, apRoom);
             if (refund > 0) {
                 unit.ap = (unit.ap || 0) + refund;
                 unit._pressGainedThisTurn = gained + refund;
@@ -41009,7 +41039,7 @@
             }
             // The hit WOULD have pressed but an earlier fumble locked it out —
             // flag it so the feedback layer can tell the player why.
-            const _refundIfPerfect = Math.min(want, capRoomIfPerfect, apRoom);
+            const _refundIfPerfect = Math.min(want, hitRoom, capRoomIfPerfect, apRoom);
             if (refund < _refundIfPerfect) result.pressDenied = true;
 
             /* ENTROPY: a press the AP pool can't hold — the unit already got
@@ -41100,7 +41130,10 @@
             const _el = opts && opts.spellElement;
             // only an element PART can press (THE ELEMENT SHARE — a tag no race resists, or a 0 share, has none)
             const elemAff = (_el && _hitElemShare(opts, _el) > 0 && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _el) : null;
-            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff };
+            // THE STATUS COMBO PRESS: the hit lands its bonusVsStatus multiplier (the same matcher the damage uses)
+            const _bvs = opts && opts.bonusVsStatus;
+            const combo = !!(_bvs && _bvs.status && bonusStatusMatches(target, _bvs.status));
+            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff, combo };
         }
 
         function _consumePressCollector(casterUnit, cost) {
@@ -69188,7 +69221,7 @@
                 if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
                     addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
                 } else if (getSpellBlockReason(unit, spell) === '1 spell/turn') {
-                    addLog('Only one spell or ability per turn — a press refund (weakness/crit) earns another.');
+                    addLog('Only one spell or ability per turn — a press refund (weakness/status combo/crit) earns another.');
                 } else {
                     const needed = getSpellApCost(spell);
                     addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
