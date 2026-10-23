@@ -43298,15 +43298,22 @@
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const startDist = Math.abs(sx - tx) + Math.abs(sy - ty);
             const _tzKnown = (tz !== undefined && tz !== null);
-            // Reachable-this-move plain walks, keyed for the route splice below.
-            // (No jump/takeoff legs — those are their own deliberate verbs —
+            // Reachable-this-move walks, keyed for the route splice below.
+            // (No takeoff legs — flying up is its own verb with its own AP —
             // and never step onto an occupied tile.)
+            /* THE HOP TILES COUNT (2026-10-23, mondo: "clicking move towards on a tile outside of my spell range still
+               only moves me one tile at a time ... It needs to move me to the edge of my range closest to the tile i
+               clicked"): getMoveTiles flags every tile whose walk includes a hop (a step up or down more than one level,
+               off a wall top, down a pyramid's side) `_jump`, and every tile past that hop too. They are lit in the Move
+               range and a Move click walks to them with the same doMove, but this pick skipped them all — a unit on a
+               ledge could only shuffle along the ledge (or got no Move towards at all). Only the standalone leap
+               (getJumpTiles / doJump) stays its own verb. */
             const walkable = [];
             const walkByKey = new Map();
             try {
                 const ring1 = getMoveTiles(unit);
                 for (const t of ring1) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     /* WYSIWYG (2026-07-21): "towards" must never LAND on the
                        clicked COLUMN at a floor the pointer wasn't on. A click
