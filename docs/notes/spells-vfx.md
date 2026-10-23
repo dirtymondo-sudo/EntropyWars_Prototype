@@ -1666,9 +1666,9 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   palette, `_af*` helpers + canvas textures, an EFFECTS recipe for every row (tile / center / bolt / burst), the
   SPELL_MAP rows, a `_af*3D` piece per spell and one `Object.assign(_spell3DGeometry, …)` registry at the end.
 - Which hook each kind fires (read off a browser probe of all 77 casts): damage → bolt + impact; physical r≤2,
-  chargeToTarget, tackle, debuff → impact; aoe/cross → aoe (the 3D piece needs `geom3D: true` on the aoe def);
+  chargeToTarget, tackle, debuff → impact; aoe/cross → aoe (_fireAoeMapped already runs the piece with (tx, ty, aoeRadius): do NOT also set `geom3D: true`, fire() would build it twice);
   warCry/buff/self barrage/zoneDebuff → aura (its look = impactCenterEffect, piece gets (tx, ty, aoeRadius));
-  line/linePush → beam; lifeDrain → drainHop + impact; terrainCreate → bolt + impact (do NOT map `wall`); pull → pull.
+  line/linePush → beam; damage via a bolt def → the piece runs on arrival only with `boltGeometry: true` (no impact intent follows a bolt; the six-gun has its own `_bolt_af_bullet`); a chain hop def with `sigChainGeom` runs it on the first body (Twisted Wish); lifeDrain → drainHop + impact; terrainCreate → bolt + impact (do NOT map `wall`); pull → pull.
 - Two new doors in three-vfx-effects.js: fire('pull') runs the registry like impact; a beam def with `sigLine` runs
   the piece with (fromX, fromY, hitTiles, params) before the laser, and `sigLineOwns` makes it the whole travel (the
   piece lands the per-tile recipe itself — Forged Thunderbolt, Crosswind, Mudslide).

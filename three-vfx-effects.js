@@ -3787,6 +3787,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _geom3D(spellId)(params.tx, params.ty, _gr, params);
             } catch (e) { console.warn('[VFX] aoe geometry failed', spellId, e); }
         }
+        /* an A-F chain hop def with `sigChainGeom` (Twisted Wish) runs the registry on the first body */
+        if (intent === 'chain' && effectDef.sigChainGeom && _geom3D(spellId) && params && params.chain && params.chain[0]) {
+            try { _geom3D(spellId)(params.chain[0].x, params.chain[0].y, undefined, params); } catch (e) {}
+        }
         if (intent === 'wall')     { _fireWall(spellId, params); return; }
         if (intent === 'chain')    { _fireChain(spellId, params); return; }
         if (intent === 'beam')     { _fireBeamMapped(spellId, params); return; }
@@ -37960,7 +37964,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         EFFECTS[id] = Object.assign({ aoeRadius: r, shape: shape || 'square', impactTileEffect: tile, impactCenterEffect: center, layers: [] }, extra || {});
     }
     function _afBoltDef(id, core, trail, burst, ring, coreSize, trailSize, n) {
-        EFFECTS[id] = { boltCore: core, boltTrail: trail, boltBurst: burst, boltRing: ring, boltCoreSize: coreSize, boltTrailSize: trailSize, boltBurstCount: n };
+        EFFECTS[id] = { boltCore: core, boltTrail: trail, boltBurst: burst, boltRing: ring, boltCoreSize: coreSize, boltTrailSize: trailSize, boltBurstCount: n, boltGeometry: true };
     }
 
     /* ANGEL — gold and feather-white: a shelter, then the trumpet */
@@ -37983,7 +37987,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { sprite: 'flash', ml: 200, size0: 60, size1: 140, tint: _AF.gold, opacity0: 0.7, z: 120 },
         { count: 6, sprite: 'wave-anim', ml: [400, 640], offsetXY: 8, z: [90, 130], tint: _AF.gold, vxRange: 200, vyRange: 200, drag: 1.1, size0: [14, 20], size1: [40, 60], opacity0: 0.75 },
     ] };
-    _afAoeDef('sigLastTrumpet_aoe', 3, 'cross', 'sigLastTrumpet_tile', 'sigLastTrumpet_center', { geom3D: true });
+    _afAoeDef('sigLastTrumpet_aoe', 3, 'cross', 'sigLastTrumpet_tile', 'sigLastTrumpet_center');
 
     /* DEMON — a branding iron and a ledger of souls */
     EFFECTS['sigMarkOfTheBeast_impact'] = { layers: [
@@ -38001,7 +38005,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { sprite: 'flash', ml: 180, size0: 80, size1: 24, tint: _AF.hell, opacity0: 0.8, z: 40 },
         { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: _AF.blood, size0: 30, size1: 230, opacity0: 0.7 },
     ] };
-    _afAoeDef('sigSoulHarvest_aoe', 1, 'square', 'sigSoulHarvest_tile', 'sigSoulHarvest_center', { geom3D: true });
+    _afAoeDef('sigSoulHarvest_aoe', 1, 'square', 'sigSoulHarvest_tile', 'sigSoulHarvest_center');
 
     /* ANUBIS — linen, lapis and the gold of the scale */
     EFFECTS['sigMummify_impact'] = { layers: [
@@ -38111,7 +38115,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { sprite: 'flash', ml: 260, size0: 120, size1: 40, tint: _AF.pale, opacity0: 0.75, z: 60 },
         { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.gold, size0: 40, size1: 260, opacity0: 0.7 },
     ] };
-    _afAoeDef('sigAscensionDay_aoe', 1, 'square', 'sigAscensionDay_tile', 'sigAscensionDay_center', { geom3D: true });
+    _afAoeDef('sigAscensionDay_aoe', 1, 'square', 'sigAscensionDay_tile', 'sigAscensionDay_center');
 
     /* ASTRONAUT — suit white, radio static, the orbital lance */
     EFFECTS['sigTetherLine_pull'] = { layers: [
@@ -38196,7 +38200,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['sigKneel_center'] = { shake: 'normal', layers: [
         { sprite: 'flash', ml: 220, size0: 60, size1: 140, tint: _AF.sun, opacity0: 0.6, z: 160 },
     ] };
-    _afAoeDef('sigKneel_aoe', 1, 'square', 'sigKneel_tile', 'sigKneel_center', { geom3D: true });
+    _afAoeDef('sigKneel_aoe', 1, 'square', 'sigKneel_tile', 'sigKneel_center');
     _afBoltDef('_bolt_af_deluge', 'water-splash', 'frost-mist', 'water-splash', 'target-ring-blue', 0.24, 0.1, 20);
     EFFECTS['sigEnlilsDeluge_impact'] = { shake: 'hard', layers: [
         { anchor: 'floor', mode: 'world', sprite: 'wave-2', ml: 900, z: 2, tint: _AF.sea, size0: 60, size1: 300, opacity0: 0.7, delayMs: 300 },
@@ -38218,7 +38222,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 6, sprite: 'smoke-soft', ml: [600, 900], offsetXY: 12, z: [30, 70], tint: _AF.smoke, vxRange: 80, vyRange: 80, vzRange: [20, 50], drag: 0.6, size0: [14, 20], size1: [34, 48], opacity0: 0.55 },
         { count: 8, sprite: 'void-mist', ml: [500, 800], offsetXY: 10, z: [30, 70], tint: 0x6a3aaa, seekIn: [300, 500], seekInZ: [40, 60], seekSpiral: 160, size0: [10, 14], size1: 3, opacity0: 0.7, delayMs: 300 },
     ] };
-    EFFECTS['sigTwistedWish_hop'] = { layers: [
+    EFFECTS['sigTwistedWish_hop'] = { sigChainGeom: true, layers: [
         { sprite: 'flash', ml: 120, size0: 44, size1: 12, tint: _AF.gold, opacity0: 0.8, z: 50 },
         { count: 4, sprite: 'smoke-soft', ml: [500, 800], offsetXY: 10, z: [30, 70], tint: _AF.smoke, vzRange: [20, 50], drag: 0.6, size0: [12, 18], size1: [30, 40], opacity0: 0.5 },
     ] };
@@ -38268,7 +38272,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 6, sprite: 'smoke', ml: [900, 1400], offsetXY: 20, z: [10, 40], tint: _AF.ash, vzRange: [30, 60], drag: 0.5, size0: [26, 36], size1: [70, 100], opacity0: 0.55 },
         { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 600, z: 2, tint: _AF.hell, size0: 40, size1: 330, opacity0: 0.7, delayMs: 300 },
     ] };
-    _afAoeDef('sigThroneOfAshes_aoe', 2, 'square', 'sigThroneOfAshes_tile', 'sigThroneOfAshes_center', { geom3D: true });
+    _afAoeDef('sigThroneOfAshes_aoe', 2, 'square', 'sigThroneOfAshes_tile', 'sigThroneOfAshes_center');
 
     /* DEMON PRINCESS — a gown of embers, the last dance */
     EFFECTS['sigInfernalWaltz_swap'] = { layers: [
@@ -38293,7 +38297,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['sigCountingSheep_center'] = { layers: [
         { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1200, z: 3, tint: _AF.dream, size0: 60, size1: 260, opacity0: 0.5 },
     ] };
-    _afAoeDef('sigCountingSheep_aoe', 1, 'square', 'sigCountingSheep_tile', 'sigCountingSheep_center', { geom3D: true });
+    _afAoeDef('sigCountingSheep_aoe', 1, 'square', 'sigCountingSheep_tile', 'sigCountingSheep_center');
     EFFECTS['sigDevourTheDream_impact'] = { layers: [
         { count: 10, sprite: 'bubble', ml: [600, 900], offsetXY: 16, z: [40, 80], tint: _AF.dream, vzRange: [30, 70], drag: 0.4, size0: [6, 10], size1: 3, opacity0: 0.9 },
         { sprite: 'flash', ml: 160, size0: 56, size1: 16, tint: _AF.dream, opacity0: 0.8, z: 60 },
@@ -38318,7 +38322,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { sprite: 'flash', ml: 200, size0: 140, size1: 40, tint: 0xfff6d2, opacity0: 0.95, z: 30, delayMs: 270 },
         { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: _AF.sun, size0: 40, size1: 280, opacity0: 0.8, delayMs: 280 },
     ] };
-    _afAoeDef('sigMorningStar_aoe', 1, 'square', 'sigMorningStar_tile', 'sigMorningStar_center', { geom3D: true });
+    _afAoeDef('sigMorningStar_aoe', 1, 'square', 'sigMorningStar_tile', 'sigMorningStar_center');
 
     /* COSMIC WRAITH — dead starlight, cold */
     EFFECTS['sigWitherStarlight_impact'] = { layers: [
@@ -38381,7 +38385,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['sigCrystalResonator_center'] = { shake: 'normal', layers: [
         { sprite: 'flash', ml: 180, size0: 90, size1: 24, tint: 0xd8fff8, opacity0: 0.85, z: 60, delayMs: 340 },
     ] };
-    _afAoeDef('sigCrystalResonator_aoe', 1, 'square', 'sigCrystalResonator_tile', 'sigCrystalResonator_center', { geom3D: true });
+    _afAoeDef('sigCrystalResonator_aoe', 1, 'square', 'sigCrystalResonator_tile', 'sigCrystalResonator_center');
 
     /* DINOSAUR — the tail, the meteor */
     EFFECTS['sigTailSweep_tile'] = { layers: [
@@ -38468,7 +38472,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['raceEyeOfTheStorm_center'] = { shake: 'hard', layers: [
         { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 700, z: 2, tint: 0xd8e0e8, size0: 280, size1: 40, opacity0: 0.6 },
     ] };
-    _afAoeDef('raceEyeOfTheStorm_aoe', 1, 'square', 'raceEyeOfTheStorm_tile', 'raceEyeOfTheStorm_center', { geom3D: true });
+    _afAoeDef('raceEyeOfTheStorm_aoe', 1, 'square', 'raceEyeOfTheStorm_tile', 'raceEyeOfTheStorm_center');
     EFFECTS['raceMudslide_tile'] = { layers: [
         { count: 8, sprite: 'mud-chunk', ml: [400, 700], offsetXY: 16, z: [4, 20], vxRange: 160, vyRange: 160, vzRange: [80, 220], gravity: 520, size0: [6, 10], size1: 3 },
         { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 20, z: [2, 10], tint: 0x7a5a3a, vxRange: 100, vyRange: 100, size0: [14, 20], size1: [34, 50], opacity0: 0.55 },
@@ -38488,6 +38492,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 6, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 10, z: [30, 60], tint: _AF.gold, vzRange: [20, 60], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 300 },
     ] };
 
+    /* the six-gun's own copy of the bullet, so its cylinder piece runs on arrival (boltGeometry) */
+    EFFECTS['_bolt_af_bullet'] = Object.assign({}, EFFECTS['_bolt_bullet'], { boltGeometry: true });
+
     Object.assign(SPELL_MAP, {
         sigShelteringWings:     { aura: 'sigShelteringWings_aura' },
         sigLastTrumpet:         { aoe: 'sigLastTrumpet_aoe' },
@@ -38505,7 +38512,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigUncannySmile:        { aura: 'sigUncannySmile_aura' },
         sigTerminationProtocol: { impact: 'sigTerminationProtocol_impact' },
         sigShowdown:            { impact: 'sigShowdown_impact' },
-        sigSixShooter:          { bolt: '_bolt_bullet', impact: 'sigSixShooter_impact' },
+        sigSixShooter:          { bolt: '_bolt_af_bullet', impact: 'sigSixShooter_impact' },
         sigSermon:              { aura: 'sigSermon_aura' },
         sigAscensionDay:        { aoe: 'sigAscensionDay_aoe' },
         sigTetherLine:          { pull: 'sigTetherLine_pull' },
@@ -39165,7 +39172,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, total, function (el) {
             for (var i = 0; i < prisms.length; i++) {
                 var P = prisms[i], g = _sigEaseOutBack(_sigClamp01((el - P.at) / 260));
-                P.m.scale.set(1, Math.max(0.01, g), 1); P.m.material.opacity = (el > P.at ? 0.55 : 0) * (1 - _sigClamp01((el - 1450) / 450));
+                P.m.scale.set(1, Math.max(0.01, g), 1); P.m.material.opacity = (el > P.at ? 0.4 : 0) * (1 - _sigClamp01((el - 1450) / 450));
             }
             shine.material.opacity = 0.9 * _afEnv(el, 650, 720, 820, 1000); shine.material.rotation = el * 0.004;
         });
