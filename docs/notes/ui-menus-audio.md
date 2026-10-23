@@ -1941,3 +1941,16 @@ fire on the menu's unit. Real cause: off every zone `getNexusAtUnit` is null, so
 was `null`, and the tool-row renderer lights anything that isn't `=== false`. hud.js now builds `_chOk` as a
 strict boolean; the row reads CHANNEL · NOT ON A NEXUS greyed. Pushers that can be unavailable must pass a
 real `false`.
+
+### Wipeout vs Keys matchup fixes (2026-10-23)
+- **Charge forecast = the cast** (battle.js `chargeStrikesFirst`): doSpell and forecastSpellPlan ask one function whether a
+  `chargeToTarget` row rushes in before its strike or strikes from where the caster stands and hops after. The fog term reads
+  the screen that RUNS the cast; online that is the host's, so a guest's preview of its own charge reads the host's answer.
+  The guest's airborne Superhero Heroic Leap showed -476 from the grounded landing tile while the host struck from the air
+  (wind ×1.25 "on Air") for 597. Rule untouched: which path a charge takes (and so where it strikes from) is what it was.
+- **CHANNEL greys "Land first" while airborne** (hud.js tool row; the tile menu drops its Channel row), like BUILD.
+- **🔍 INSPECT tool row** on the root column in modes with Keys (`hasHourglasses !== false`, story too): arms the existing
+  `actionMode 'inspect'` board pick (lit reach, "INSPECT — CLICK A TILE", walk-then-inspect past the reach). Tool rows now
+  show up to 5 (was 4) so DETONATE still fits beside ENTROPY / CHANNEL / LAND / INSPECT.
+- Self Phase Walk log reads "X teleports from A to B" (named the caster twice).
+- Far Sight's unit list / caster pre-pick was already fixed by the Keys vs Keys thread (`_tileOnlyKinds` remoteView).

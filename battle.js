@@ -36084,6 +36084,23 @@
             return adj.find(t => canOccupy(t.x, t.y)) || null;
         }
         window.chargeLandingTile = chargeLandingTile;
+        /* Does this charge rush in BEFORE its strike (doSpell's third-person charge, _runChargeToTargetSpell) or strike
+           from where the caster stands and hop in after (_runPostEffects)? doSpell and the forecast both ask HERE, so the
+           preview hits from the same tile the cast does. The fog term reads the screen that RUNS the cast: online that is
+           the host's, so a guest's preview of its own charge reads the host's answer (Wipeout vs Keys matchup 2026-10-23:
+           an airborne Superhero's Heroic Leap showed -476 from the landing tile, the host struck from the air for 597). */
+        function chargeStrikesFirst(unit, spell, target) {
+            if (!unit || !spell || !spell.chargeToTarget || !target || target.id === unit.id) return false;
+            if (!state.cinematicActionCam || _skipVisuals() || _isClashMode()) return false;
+            if (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) <= 1) return false;
+            if (state.fogOfWar && typeof getViewerPlayer === 'function') {
+                const _netGuest = !!(window._NET && window._NET.online && window._NET.role === 'guest');
+                const engineViewer = _netGuest ? enemyOf(getViewerPlayer()) : getViewerPlayer();
+                if (state.activePlayer !== engineViewer) return false;
+            }
+            return true;
+        }
+        window.chargeStrikesFirst = chargeStrikesFirst;
 
         /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
            allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
@@ -36605,10 +36622,7 @@
                 const dt = spell.damageType || 'magic';
                 const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor });
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
-                const chargeFirst = spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
-                    && target.id !== unit.id && !_isClashMode()
-                    && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
-                    && !(state.fogOfWar && typeof getViewerPlayer === 'function' && state.activePlayer !== getViewerPlayer());
+                const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
                 if (chargeFirst) {
                     const lt = chargeLandingTile(unit, target);
@@ -70357,12 +70371,7 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
-                } else if (spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
-                        && target && target.id !== unit.id
-                        && !(typeof _isClashMode === 'function' && _isClashMode())
-                        && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
-                        && !(state.fogOfWar && typeof getViewerPlayer === 'function'
-                             && state.activePlayer !== getViewerPlayer())) {
+                } else if (chargeStrikesFirst(unit, spell, target)) {
                     // Charge-to-target melee (Brave Charge, …): rush the gap in
                     // third-person and strike on arrival, following the caster.
                     completionDelay = _runChargeToTargetSpell(
@@ -74489,7 +74498,9 @@
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
-                        : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+                        : tUnit === unit
+                            ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
+                            : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
                     /* THE SPELL AUDIT Batch D: `arrivalStageBoost` (+ `arrivalStageRounds`) — the mover's stat stages on
                        landing (Land on Your Feet: +1 DEF for 1 round) */
