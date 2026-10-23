@@ -17273,7 +17273,7 @@ const ThreeRenderer = (function () {
     }
     function _hlGhostNoPick() {}
     function _hlGhostOne(o, off, depth) {
-        if (o._ew_hlGhostTwin) return;
+        if (o._ew_hlGhostTwin || o._ew_hlBack) return;   // THE PLATES ON THE ICE: a backing has no twin
         if (o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh) {
             var m = o.material;
             if (m && !Array.isArray(m) && m.fragmentShader === _hlFragmentShader && m.uniforms && m.uniforms.uOpacity
@@ -17299,8 +17299,70 @@ const ThreeRenderer = (function () {
     function _syncHlGhosts() {
         if (!highlightGroup) return;
         var off = typeof window !== 'undefined' && !!window.EW_NO_HL_GHOST;
+        var backOff = typeof window !== 'undefined' && !!window.EW_NO_HL_BACKING;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var ch = highlightGroup.children;
-        for (var i = 0; i < ch.length; i++) _hlGhostOne(ch[i], off, 0);
+        for (var i = 0; i < ch.length; i++) { _hlBackOne(ch[i], ts, backOff); _hlGhostOne(ch[i], off, 0); }
+    }
+
+    /* ── THE PLATES ON THE ICE (2026-10-23, mondo: "frozen/ice tiles are covering up tile highlights or making them hard
+       to see") ──
+       The draw order was already right (THE PLATES OVER THE ICE: every ground sheet draws before the plates), but a plate
+       is a see-through wash with a white-hot outline, and on a white-blue ice / snow top that is pale on pale: the move
+       tiles' blue, the cursor's yellow and the outline's white core all vanished into the ice. Every plate (move / jump /
+       attack / spell reach, the AoE, the cursor) on a cell whose ground is ice or snow now wears a BACKING: the same
+       geometry and shader, its own colour = the plate's colour × HL_BACK_SHADE, no outline, full fill, drawn just before
+       the plate — so the ice under a lit tile is shaded toward the plate's hue and the plate and its outline read on top.
+       It follows the plate's opacity (the focus dim, the range pulse) and colour (the UI Maker's tile look) each frame,
+       never takes a pick, and has no x-ray twin. The ice looks exactly as before where nothing is lit. WebGL + WebGPU
+       (the node build reads the same shader). Switch: window.EW_NO_HL_BACKING = true. */
+    var HL_BACK_K = 0.55, HL_BACK_SHADE = 0.3;
+    var _HL_BACK_TERRAIN = /^(ice|snow|frost|frozen|igloo|glacier)/;
+    function _hlBackAt(x, y) {
+        if (typeof getTerrainAt !== 'function') return false;
+        var t; try { t = getTerrainAt(x, y); } catch (e) { return false; }
+        return typeof t === 'string' && _HL_BACK_TERRAIN.test(t);
+    }
+    function _hlBackMatFor(src) {
+        var b = src._ew_hlBackMat;
+        if (b) return b;
+        var u = {};
+        for (var k in src.uniforms) u[k] = src.uniforms[k];
+        u.uColor = { value: new THREE.Color(0) }; u.uOpacity = { value: 0 };
+        u.uEdgeGlow = { value: 0 }; u.uFill = { value: 1 }; u.uBrackets = { value: 0 }; u.uHatch = { value: 0 };
+        u.uInset = { value: 0 }; u.uDots = { value: 0 }; u.uLkLineOwn = { value: 0 };
+        b = new THREE.ShaderMaterial({
+            uniforms: u, vertexShader: src.vertexShader, fragmentShader: src.fragmentShader,
+            transparent: true, depthWrite: false, depthTest: src.depthTest, side: src.side
+        });
+        b.name = 'ew_hl_back'; b._ew_hlBack = true;
+        src._ew_hlBackMat = b;
+        src.addEventListener('dispose', function () { try { b.dispose(); } catch (e) {} src._ew_hlBackMat = null; });
+        return b;
+    }
+    function _hlBackOne(o, ts, off) {
+        if (!o || !o.isMesh || o._ew_hlBack || o._ew_hlGhostTwin || o._ew_overlay === 'weather') return;   // a storm's tint is not a lit tile
+        var m = o.material;
+        if (!m || Array.isArray(m) || m.fragmentShader !== _hlFragmentShader || !m.uniforms || !m.uniforms.uOpacity) return;
+        if (o._ew_hlBackCell === undefined) {
+            var tx = Math.floor(o.position.x / ts), ty = Math.floor(o.position.z / ts);
+            o._ew_hlBackCell = _hlBackAt(tx, ty);
+        }
+        var bk = o._ew_hlBackMesh;
+        if (off || !o._ew_hlBackCell) { if (bk) bk.visible = false; return; }
+        var bm = _hlBackMatFor(m);
+        if (!bk || bk.parent !== o) {
+            bk = new THREE.Mesh(o.geometry, bm);
+            bk.name = 'hl_back'; bk._ew_hlBack = true; bk.raycast = _hlGhostNoPick;
+            o.add(bk); o._ew_hlBackMesh = bk;
+        }
+        if (bk.material !== bm) bk.material = bm;
+        if (bk.geometry !== o.geometry) bk.geometry = o.geometry;
+        bk.renderOrder = o.renderOrder - 0.5; bk.frustumCulled = o.frustumCulled; bk.visible = true;
+        var base = m._ew_baseOpacity, cur = m.uniforms.uOpacity.value;
+        var k = (base > 0) ? Math.max(0, Math.min(1, cur / base)) : 1;
+        bm.uniforms.uOpacity.value = HL_BACK_K * k;
+        if (m.uniforms.uColor && m.uniforms.uColor.value) bm.uniforms.uColor.value.copy(m.uniforms.uColor.value).multiplyScalar(HL_BACK_SHADE);
     }
 
     function _updatePreviewOverlayPulse() {
