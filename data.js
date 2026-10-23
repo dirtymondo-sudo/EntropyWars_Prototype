@@ -19110,12 +19110,17 @@ function flBorrowFamilyIds(race) {
 }
 function flRacePool(race) {
     const own = new Set(raceFamilyPoolIds(race).concat(raceExcludedSpellIds(race)));   // an excluded spell is never borrowed back
+    const owned = flOwnedRaces();
     const out = [];
     const seen = new Set();
     for (const f of flBorrowFamilyIds(race)) {
+        /* a family spell is borrowed only from a race that learns it (RACE_SPELL_EXCLUDES, 2026-10-23): borrowing COSMIC from
+           the Watcher gives Cosmic Sight, never the orb's Supernova */
+        const lent = new Set();
+        for (const r of owned) if (r !== race && raceFamilyIds(r).includes(f)) for (const id of raceFamilyMemberIds(r, f)) lent.add(id);
         for (const id of familyMemberIds(f)) {
             const sp = SPELL_BY_ID[id];
-            if (!sp || seen.has(id) || own.has(id)) continue;
+            if (!sp || seen.has(id) || own.has(id) || !lent.has(id)) continue;
             seen.add(id);
             out.push(sp);
         }
@@ -22065,7 +22070,109 @@ const RACE_FAMILIES = {
    family keeps the row for every other race; the race's pool, its kits, the AI's picks, the borrow window and the codex all
    skip it (raceFamilyPoolIds / flRacePool). The library's POOLS tab toggles it, written through the doc's raceExcludes
    registry (export → bake-spell-mods.js). */
-const RACE_SPELL_EXCLUDES = {};
+const RACE_SPELL_EXCLUDES = {
+    /* THE SHARED FAMILY PASS (the user, 2026-10-23: "exclude certain spells from a race's spell families, to make them more
+       accurate ... not every one of those needs to be available to everyone with the cosmic spell family"): a shared family's
+       spell that names or fits only some of its races is excluded for the rest — no spell deleted, no family tag changed. The
+       per-family reasons are on the delivery page (shared-families/ in the project files). Every race keeps 12+ spells. */
+    ai: ['raceOvertinker'],
+    android: ['raceBorrowedClaw', 'raceShedSkin'],
+    angel: ['raceMerkaba'],
+    annunaki: ['raceGravityBoots', 'racePlasmaWhip', 'sharedShrinkRay', 'raceWeighTheHeart', 'raceEntropicBeam', 'racePhaseWalk', 'raceCosmicSight', 'raceHeatDeath', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
+    antihero: ['raceAgentVanish', 'raceFreezeBreath'],
+    antperson: ['raceVenomFang', 'raceSplash'],
+    anubis: ['raceSacredGeometry', 'racePlaguefield'],
+    astronaut: ['raceDeneuralizer', 'raceTeslaTrap', 'raceBlueBeam', 'raceEntropicBeam', 'raceCosmicSight', 'raceHeatDeath', 'sharedNebula', 'raceStarDecree', 'raceSupernova', 'sharedBlackHole'],
+    atlantean: ['raceZigguratProtocol', 'raceSandstoneTomb', 'raceWeighTheHeart', 'raceWishGranted', 'raceJudgmentBeam'],
+    barbarella: ['raceDisintegrator', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceAgentVanish'],
+    'bee queen': ['raceTunnelNetwork', 'raceInfectiousBite', 'raceSplash'],
+    bigfoot: ['raceNimbleDodge', 'raceVault'],
+    'black goo': ['raceFormicAcid', 'raceInfectiousBite', 'raceSymbioteArmor', 'raceWebSwing'],
+    'bunny girl': ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceBorrowedClaw', 'raceShedSkin'],
+    catgirl: ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace'],
+    'chosen one': ['raceMerkaba', 'raceShadowRealm'],
+    clown: ['raceShadowRealm', 'raceBorrowedClaw', 'raceShedSkin'],
+    'conspiracy theorist': ['raceDeneuralizer', 'railgun', 'raceBlackBudget', 'raceBrainwash'],
+    'cosmic wraith': ['raceCosmicSight', 'raceCosmicSlam', 'sharedGravityCrush', 'raceStarDecree', 'raceSupernova', 'raceShadowRealm'],
+    'crystal guardian': ['raceBoulderHurl', 'raceTremorStomp', 'sharedFissure', 'raceMudslide', 'raceStoneDrop', 'raceValkyrieSpear', 'raceDivineSwoop', 'raceChooserOfSlain', 'raceStoneform'],
+    cyclops: ['raceStonefall', 'raceEarthenGrasp', 'rampart'],
+    'deep sea fish': ['passiveKeenNose', 'racePounce', 'racePoseidonsWrath'],
+    'demon prince': ['raceKissOfDecay'],
+    'demon princess': ['raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
+    dinosaur: ['raceBoulderHurl', 'raceStonefall', 'raceEarthenGrasp', 'rampart', 'raceStoneDrop'],
+    djinn: ['raceBorrowedClaw', 'raceShedSkin'],
+    dreameater: ['raceShadowRealm'],
+    droid: ['raceOvertinker'],
+    fairy: ['trunkThrow', 'raceBorrowedClaw', 'raceShedSkin'],
+    'fallen angel': ['raceDivineLight', 'passiveChoir', 'raceWingsOfMercy', 'raceRapture', 'raceDivineSmite'],
+    firefighter: ['raceNimbleDodge', 'passiveGills', 'raceCallOfTheDeep', 'raceFlood'],
+    gargoyle: ['raceTremorStomp', 'raceEarthenGrasp', 'sharedFissure', 'groundSlam', 'raceMudslide'],
+    ghost: ['raceShadowRealm'],
+    ghoul: ['raceFormicAcid', 'raceSplash', 'raceShadowRealm'],
+    giant: ['raceDarkJustice', 'raceStonefall'],
+    glitch: ['raceJudgmentBeam'],
+    gnome: ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon', 'railgun'],
+    goblin: ['raceBodyCheck', 'raceDarkJustice', 'raceBrutalSlam', 'raceFormicAcid', 'raceSplash'],
+    golem: ['raceWeighTheHeart', 'raceStoneform'],
+    halfdemon: ['raceAgentVanish'],
+    hippie: ['poisonSeed', 'trunkThrow'],
+    homosapien: ['raceLasso', 'raceRoundUp'],
+    'honda civic': ['raceRocketFist'],
+    'ice queen': ['raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'passiveEventHorizon', 'raceCosmicSlam', 'sharedGravityCrush', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
+    'jack o lantern': ['racePossession'],
+    jellyfish: ['raceSpout', 'racePoseidonsWrath'],
+    juggernaut: ['raceNimbleDodge', 'raceVault'],
+    kaiju: ['passiveMountainborn', 'raceStonefall', 'raceEarthenGrasp', 'rampart'],
+    knight: ['raceKnightsOfRound'],
+    kraken: ['raceOutOfTheDark'],
+    krampus: ['raceVoodoo', 'raceNeedleWork', 'passiveSpiritOfGiving', 'raceSleighDash', 'raceMilkAndCookies', 'raceBlizzardPresent'],
+    'loch ness monster': ['passiveKeenNose', 'racePounce', 'raceFeralDive'],
+    luchador: ['racePressurePoint', 'racePopMicDrop'],
+    'machine elves': ['raceBorrowedClaw', 'raceShedSkin'],
+    'mad scientist': ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon'],
+    mantid: ['raceBrood', 'raceTunnelNetwork', 'raceSwarmSignal'],
+    marksman: ['raceWhistle'],
+    martian: ['raceGravityBoots', 'racePlasmaWhip'],
+    'men in black': ['raceTeslaTrap', 'freeEnergy', 'raceGravityBoots', 'racePlasmaWhip'],
+    minotaur: ['raceBite', 'raceDarkJustice'],
+    'mushroom girl': ['trunkThrow', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
+    necromancer: ['raceBaphometsRite', 'raceReassemble', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
+    nephilim: ['raceStonefall', 'raceEarthenGrasp', 'rampart'],
+    nun: ['raceMerkaba'],
+    occulus: ['raceZigguratProtocol', 'raceSandstoneTomb', 'raceWeighTheHeart'],
+    'orb of light': ['raceEntropicBeam', 'raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'raceCosmicSlam', 'sharedGravityCrush', 'raceHeatDeath', 'raceStarDecree'],
+    overlord: ['raceDarkJustice', 'raceKissOfDecay'],
+    pirate: ['raceLasso', 'raceRoundUp'],
+    politician: ['raceCultKoolAid', 'raceCultGathering', 'passiveIronDiscipline', 'raceSuppressiveFire', 'raceRangefinder'],
+    popstar: ['raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceSirenSong'],
+    priest: ['raceMerkaba'],
+    professor: ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon'],
+    rabbit: ['raceJudgmentBeam', 'raceBorrowedClaw', 'raceShedSkin'],
+    reptilian: ['raceTinFoilHat', 'raceTruthBomb', 'raceFormicAcid', 'raceSplash', 'raceBorrowedClaw'],
+    ringmaster: ['raceLasso', 'raceBorrowedClaw', 'raceShedSkin'],
+    robinhood: ['raceWhistle', 'raceQuickDraw', 'raceHitALick'],
+    'santa clause': ['fiveGTower'],
+    scarecrow: ['trunkThrow'],
+    'shadow entity': ['raceBoo', 'raceJudgmentBeam'],
+    shaman: ['trunkThrow'],
+    sheriff: ['raceDynamite', 'raceRustle', 'raceLance', 'racePoliceSpray', 'racePoliceTaser', 'racePoliceLockdown'],
+    sidekick: ['raceFreezeBreath'],
+    siren: ['raceDrainingEmbrace'],
+    skinwalker: ['raceBaphometsRite'],
+    starfish: ['raceSpout', 'raceDepthCharge', 'racePoseidonsWrath'],
+    succubus: ['raceHellmouth'],
+    superhero: ['raceWingGust'],
+    swordfighter: ['raceDarkFeather'],
+    symbiote: ['raceMitosisSplit'],
+    telepath: ['raceBlackBudget'],
+    'tree person': ['raceBoulderHurl', 'passiveMountainborn', 'raceStonefall', 'sharedFissure', 'groundSlam', 'raceStoneDrop'],
+    voidweaver: ['raceTunnelNetwork', 'raceSwarmSignal', 'raceShadowRealm'],
+    watcher: ['raceGravityWell', 'passiveEventHorizon', 'raceCosmicSlam', 'sharedGravityCrush', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
+    werewolf: ['raceDeathRoll', 'raceJurassicJaw'],
+    wizard: ['raceWishGranted'],
+    yeti: ['raceAbsoluteZero'],
+    zombie: ['raceTerrorPounce', 'raceFormicAcid', 'raceSplash'],
+};
 /* A row's families (§4.2): the explicit tags, else its element's family, plus the wheel's for a door-wheel row. */
 function spellFamiliesOf(d) {
     if (!d) return [];
