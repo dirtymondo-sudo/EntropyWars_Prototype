@@ -1730,3 +1730,7 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   circlet, the tether radio rings, the love-ray laser) skip, owned lines land only their visible tile recipes, a swap
   skips a fogged spot, Soul Harvest's souls just rise.
 - Nothing full-screen; big sprites stay additive and modest so the caster, target, hit and number read.
+- Checked: all 77 cast in a browser sweep (no errors); 35 pieces shot close-up on WebGL, the WebGPU renderer's WebGL2
+  backend and (12) real WebGPU; sheets in /mnt/project-files/signature-vfx-af/. The sandbox draws ~1 frame a second, so
+  a `_sigRun` piece (opacity ramps from 0) gets one or two ticks before it ends: shoot with the clock slowed (a probe-only
+  copy dividing `performance.now() - t0` by 10-20) and frame it with `playOffensiveActionCamera(caster, target)`.
