@@ -3989,7 +3989,9 @@
             const _defMult = (_sky && _sky.defMult) || 1;
             const effDef = Math.round(_defRaw * _defMult);
             const effMDef = Math.round(_mdefRaw * _defMult);
-            const effMov = getEffectiveMove(unit);
+            /* THE HIDDEN KEYS: an enemy's Key Charge move bonus is its secret on this screen */
+            const _hgMovHid = (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player) && typeof getHourglassMoveBonus === 'function') ? getHourglassMoveBonus(unit) : 0;
+            const effMov = getEffectiveMove(unit) - _hgMovHid;
             const effRng = getEffectiveRange(unit);
             const effInt = getEffectiveInt(unit) + _skyInt;
             const _bAtk = (typeof getStatusAtkDelta === 'function' ? getStatusAtkDelta(unit) : 0) + _skyAtk;
@@ -3997,7 +3999,7 @@
             const _bDef = (typeof getStatusArmorDelta === 'function' ? getStatusArmorDelta(unit) : 0) + (effDef - _defRaw);
             const _bMdef = (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0) + (effMDef - _mdefRaw);
             let _bMov = (typeof getStatusMoveDelta === 'function' ? getStatusMoveDelta(unit) : 0)
-                + (typeof getHourglassMoveBonus === 'function' ? getHourglassMoveBonus(unit) : 0);
+                + (typeof getHourglassMoveBonus === 'function' ? getHourglassMoveBonus(unit) : 0) - _hgMovHid;
             if (typeof moveFromSpd === 'function' && typeof getEffectiveSpd === 'function' && typeof getStatStageDelta === 'function') {
                 const _spdNow = getEffectiveSpd(unit), _spdStg = getStatStageDelta(unit, 'spd');
                 if (_spdStg) _bMov += moveFromSpd(_spdNow) - moveFromSpd(Math.max(1, _spdNow - _spdStg));
@@ -4270,7 +4272,7 @@
             for (let i = _clogN; i < lines.length; i++) {
                 beatsUpTo(i);
                 const e = lines[i];
-                if (fog && !_logVisible(e)) continue;
+                if (fog ? !_logVisible(e) : _logKeyHidden(e)) continue;
                 if (!all && !_isDialogueWorthy(e)) continue;
                 const msg = _logMsg(e);
                 if (_clogDupHit(msg)) continue;
@@ -4374,7 +4376,7 @@
                 ${renderAccessoryBadges(u)}
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
                 <div class="mini-vital"><span class="mini-lbl mp">MP</span><div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div><span class="mini-num">${u.mp}/${u.maxMp}</span></div>
-                ${u.hourglasses ? `<div class="roster-stats"><span>${(typeof keyIconHtml === 'function') ? keyIconHtml(10) : ''}${u.hourglasses}</span></div>` : ''}
+                ${u.hourglasses && !keysHiddenFor(u.player) ? `<div class="roster-stats"><span>${(typeof keyIconHtml === 'function') ? keyIconHtml(10) : ''}${u.hourglasses}</span></div>` : ''}
                 ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; const c = (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[k]) || '#8fa3b5'; return (m && !m.statChange) ? `<span style="font-size:8px;background:${c}33;border:1px solid ${c}88;padding:1px 4px;border-radius:3px;color:${c}">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
                 ${rosterItemsHtml(u)}
               </div>
@@ -4520,8 +4522,9 @@
             }
 
             const perspectivePlayer = getViewerPlayer();
-            const p1Held = state.phase === 'battle' ? carriedHourglassCount(1) : 0;
-            const p2Held = state.phase === 'battle' ? carriedHourglassCount(2) : 0;
+            /* THE HIDDEN KEYS: the other team's held count reads '?' */
+            const p1Held = state.phase === 'battle' ? (shownCarriedKeys(1) ?? '?') : 0;
+            const p2Held = state.phase === 'battle' ? (shownCarriedKeys(2) ?? '?') : 0;
             /* DOOR 6.3: the sidebar's held-count icons show the drawn pixel
                key, not an emoji glyph (index.html ships the divs empty). */
             if (typeof KEY_ICON_URI !== 'undefined') {
@@ -4600,7 +4603,7 @@
                         pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                         const eTw = state.towers?.[enemy];
                         if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
-                        if (state.hourglasses) {
+                        if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
                             pts += state.hourglasses.filter(h => {
                                 if (!h.carriedBy) return false;
                                 const c = state.units.find(u => u.id === h.carriedBy);
@@ -4660,7 +4663,7 @@
                 for (const u of state.units) { if (u.skyBuff && !u.dead && SKY_EVENTS[u.skyBuff]) { _skyBuffP = u.player; _skyBuffEv = SKY_EVENTS[u.skyBuff]; break; } }
                 secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd` : 'Sky —'}${_skyBuffEv ? ` · ${_skyBuffEv.icon} P${_skyBuffP}` : ''}`);
                 if (showHourglasses) {
-                    secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${carriedHourglassCount(1)}</span>–<span class="sb-sec-val">${carriedHourglassCount(2)}</span>`);
+                    secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${shownCarriedKeys(1) ?? '?'}</span>–<span class="sb-sec-val">${shownCarriedKeys(2) ?? '?'}</span>`);
                 }
                 if (isArena || showTowers) {
                     secItems.push(`⬡<span class="sb-sec-val">${p1Nex}</span>–<span class="sb-sec-val">${p2Nex}</span>`);
@@ -6332,7 +6335,7 @@
 
             const filtered = (ONLINE_RULES.active || state.fogOfWar) ?
                 lines.filter(e => _logVisible(e)) :
-                lines;
+                lines.filter(e => !_logKeyHidden(e));
             const recent = filtered;
 
             const alreadyRendered = _logRenderedCount;
@@ -7429,7 +7432,7 @@
                     pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                     const eTw = state.towers?.[enemy];
                     if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
-                    if (state.hourglasses) {
+                    if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
                         pts += state.hourglasses.filter(h => {
                             if (!h.carriedBy) return false;
                             const c = state.units.find(u => u.id === h.carriedBy);
@@ -15756,8 +15759,8 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
-        const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1, crash: 1 };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
+        const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1, crash: 1, conduct: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
            why it takes nothing, what the movement does to it, the matchup and the statuses it will carry. */

@@ -8930,11 +8930,13 @@
                 key: 'shield',
                 text: `Shield ${unit.shield}`
             });
-            if (unit.hourglasses > 0) entries.push({
+            /* THE HIDDEN KEYS: an enemy's Keys and Key Charge never list on this screen (map.js keysHiddenFor) */
+            const _keysHid = typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player);
+            if (unit.hourglasses > 0 && !_keysHid) entries.push({
                 key: 'hourglass',
                 text: `Carrying ×${unit.hourglasses}`
             });
-            const unitBuff = unit.hourglassBuff || 0;
+            const unitBuff = _keysHid ? 0 : (unit.hourglassBuff || 0);
             if (unitBuff > 0) entries.push({
                 key: 'hourglass',
                 text: `Key Charge Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
@@ -13562,7 +13564,9 @@
             // Glowing orbs stream from the source into the HUD gauge (hud.js
             // _entropyOrbsFly) — quieter than floating text, which was drowning
             // out the damage numbers.
-            if (!_skipVisuals() && typeof window._entropyOrbsFly === 'function') {
+            /* THE HIDDEN KEYS: a Key find's orbs would point at the finder — the other side gets none */
+            const _orbsHidden = reason === 'hourglass' && typeof keysHiddenFor === 'function' && keysHiddenFor(player);
+            if (!_skipVisuals() && !_orbsHidden && typeof window._entropyOrbsFly === 'function') {
                 try { window._entropyOrbsFly(player, after - before, (sourceUnit && !sourceUnit.dead) ? sourceUnit : null); } catch (e) {}
             }
 
@@ -36361,6 +36365,44 @@
         window.forecastBanePlan = forecastBanePlan;
 
         const _FC_DIRECT_TAGS = { random: 1, return: 1, shockwave: 1, delayed: 1 };   // tagged hits the cast still lands itself
+        /* ⚡💧 THE CONDUCTION FORECAST (Keys vs Keys playtest 2026-10-23: Chain Lightning ran through soaked bodies into
+           King Arthur and Robin, -220 and -232, and the forecast said nothing): the lightning-water reaction the cast sets
+           off after its hit (triggerTerrainSpellReaction -> _reactLightningWater: every grounded body of the connected
+           wet body, friend or foe, but the caster and the struck tile, with the same tick and opts) rides the plan, so
+           an ally in the charge's path wears its number and a "WATER CONDUCTS" badge before the cast. */
+        function _forecastConduction(unit, spell, tiles, hit) {
+            if (!unit || !spell || !tiles || !tiles.length || classifySpellElement(spell) !== 'lightning') return;
+            const tick = Math.max(60, Math.round((spell.dmg || 90) * 0.75));
+            const opts = {
+                noTerrainBonus: true, sourceUnit: unit, noRangeMult: true, allowMarkBonus: false, damageType: 'magic',
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), element: 'lightning'
+            };
+            const zap = (ox, oy, body) => {
+                for (const t of body) {
+                    const u = unitAt(t.x, t.y);
+                    if (!u || u.dead || u._dying || u.id === unit.id || (t.x === ox && t.y === oy)) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    hit(u, tick, tick, tick, opts, { tag: 'conduct' });
+                }
+            };
+            const handled = new Set();
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y) || handled.has(t.x + ',' + t.y) || !_isWetTile(t.x, t.y)) continue;
+                const body = _floodConnectedTiles(t.x, t.y, _isConductiveWetTile, 80);
+                body.forEach(b => handled.add(b.x + ',' + b.y));
+                zap(t.x, t.y, body);
+            }
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y)) continue;
+                if (handled.has(t.x + ',' + t.y) && _isWetTile(t.x, t.y)) continue;
+                if (!_isSoakedBodyAt(t.x, t.y)) continue;
+                const body = _floodConnectedTiles(t.x, t.y,
+                    (bx, by) => (bx === t.x && by === t.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
+                body.forEach(b => handled.add(b.x + ',' + b.y));
+                if (body.length > 1) zap(t.x, t.y, body);
+            }
+        }
         function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
             const sp = spellPowerOf(unit, spell);
             const kind = spell.kind;
@@ -36575,6 +36617,8 @@
                         }
                     }
                 }
+                /* the struck tile's lightning reaction, after the knock-on like the cast (_applyDamageSpellHit) */
+                _forecastConduction(unit, spell, [{ x: target.x, y: target.y }], hit);
                 return;
             }
 
@@ -39663,10 +39707,19 @@
             return (typeof entry === 'object' && entry && entry.v) ? entry.v : 0;
         }
 
+        /* THE HIDDEN KEYS: true = this line is the other team's own Key line and this screen never prints it (every
+           log view checks it, fog or not; _logVisible covers the fog ones) */
+        function _logKeyHidden(entry) {
+            return !!(entry && typeof entry === 'object' && entry.kp && (entry.v === 1 || entry.v === 2)
+                && typeof keysHiddenFor === 'function' && keysHiddenFor(entry.v));
+        }
+        window._logKeyHidden = _logKeyHidden;
+
         function _logVisible(entry) {
             const v = _logVis(entry);
             const viewer = getViewerPlayer();
 
+            if (_logKeyHidden(entry)) return false;
             if (v !== 0) {
                 if (ONLINE_RULES.active) return v === viewer;
                 if (state.fogOfWar) return v === viewer;
@@ -42896,7 +42949,21 @@
             if (mode === 'spell') {
                 const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                if (!spell || isSpellSelfCast(spell) || isSpellTileTargeted(spell) || _kindMeta(spell).directional) return false;
+                if (!spell || isSpellSelfCast(spell) || _kindMeta(spell).directional) return false;
+                /* THE GUEST TILE PICK (Keys vs Keys playtest 2026-10-23: the guest's Gravity Well took G9, out of reach
+                   after the Wraith had walked, showed "CONFIRM — Tall Grass G9", then the host said "Spell target is out
+                   of range"): a tile cast aimed outside its lit reach, with no step that brings it in, is refused here
+                   with the solo click's line and the mode holds; a tile in reach (or one step away) goes on to online.js */
+                if (isSpellTileTargeted(spell)) {
+                    /* the solo click's fog gate first: a fogged tile is out of sight unless the kind casts into fog */
+                    const _gFog = state.fogOfWar && !_kindMeta(spell).fogExempt && !computeVisibleTiles(state.activePlayer).has(posKey(x, y));
+                    if (!_gFog && (_mtcReachesPick(actingUnit, spell, x, y, z) || findSpellApproachTile(actingUnit, spell, x, y, z))) return false;
+                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : 'Target is no longer in range or line of sight.', actingUnit.player);
+                    playErrorSfx();
+                    markDirty('board', 'hud');
+                    renderIfDirty();
+                    return true;   // THE MODE HOLDS
+                }
                 const cu = (clickedUnit && !clickedUnit.dead) ? clickedUnit : null;
                 const _hit = t => cu ? (t.unit ? t.unit.id === cu.id : (t.x === x && t.y === y)) : (t.x === x && t.y === y);
                 const row = _getSpellValidTargets(actingUnit, spell).find(_hit) || _getSpellApproachTargets(actingUnit, spell).find(_hit);
@@ -57942,8 +58009,10 @@
                         state._spellCycleTargets = targets;
                         state._spellCycleIndex = 0;
                         /* a dash / teleport aims at the tile it goes TO — pre-picking a body there armed "CONFIRM —
-                           <the caster>" and the cast then failed "Destination out of dash range" (playtest 2026-10-21) */
-                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport') {
+                           <the caster>" and the cast then failed "Destination out of dash range" (playtest 2026-10-21).
+                           Far Sight / scrying aim at a TILE too: it pre-picked the caster ("FAR SIGHT → Mothman", Keys vs
+                           Keys matchup) — nothing is pre-picked, the player clicks the tile to search */
+                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport' && spell.kind !== 'remoteView') {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
                             /* THE PICK IN FRAME (wipeout playtest 2026-10-23): the range fit above frames only the
@@ -59856,7 +59925,11 @@
                     /* THE LANDING PICK (2026-10-20, mondo: a lit To the Moon landing tile was refused): a sky throw's
                        landing ring is lit fog or no fog, and the throw never needed sight — same pass as the blink. */
                     const _skyLanding = !!spell && spell.kind === 'skyThrow' && skyThrowLandingPhase(_actUnit);
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding) {
+                    /* THE FAR SIGHT PICK (2026-10-23, Keys vs Keys playtest): a fogExempt tile cast (Far Sight, cleanse)
+                       is castable into fog by its own kind row and doSpell lets it through; this gate refused the click
+                       first ("Out of sight") so Far Sight could never search a tile nobody could see. */
+                    const _fogExemptPick = !!spell && _kindMeta(spell).fogExempt && _kindMeta(spell).tileTargeted;
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding && !_fogExemptPick) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                             addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
@@ -65832,6 +65905,31 @@
         /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
            logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
            very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
+        /* THE HIDDEN KEYS (mondo 2026-10-23): the Key find celebration (+N KEY, the close-up, KEY SECURED, the
+           chime, the shake) plays on the finder's team's screen only. Online the host plays it for its own finds
+           and sends the guest's privately ('key-private'); the wrappers never relay it (_ewNoRelay), so nothing of
+           it reaches the other screen. */
+        function _presentKeyFind(unit, n, sub) {
+            if (!unit) return;
+            if (typeof window._ewKeyPrivateRelay === 'function') {
+                try { window._ewKeyPrivateRelay(unit, n, sub); } catch (e) {}
+            }
+            if (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) return;
+            _playKeyFindLocal(unit, n, sub);
+        }
+        function _playKeyFindLocal(unit, n, sub) {
+            if (!unit) return;
+            window._ewNoRelay = (window._ewNoRelay || 0) + 1;
+            try {
+                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'streak');
+                playKeySecuredFx(unit.x, unit.y, n);
+                showCombatBanner(`KEY SECURED!`, sub || '', 'pickup-friendly');
+                playSfx('playerHourglass');
+                shakeBoard('normal');
+            } finally { window._ewNoRelay = Math.max(0, (window._ewNoRelay || 1) - 1); }
+        }
+        window._playKeyFindLocal = _playKeyFindLocal;
+
         function _inspectFootprintAt(unit, x, y) {
             const toReveal = getInspectFootprint(unit, x, y);
 
@@ -65889,23 +65987,21 @@
                 const buffDesc = `+${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG, -${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(newLevel/2)} MOV`;
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
                 unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
-                showFloatingTextForUnit(unit, `+${totalHourglasses} KEY${totalHourglasses > 1 ? 'S' : ''}`, 'streak');
                 addEntropy(unit.player, ENTROPY_PTS.hourglass * totalHourglasses, 'hourglass', unit);
-                playKeySecuredFx(unit.x, unit.y, totalHourglasses);
-                showCombatBanner(`KEY SECURED!`, `Key Charge Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
-                playSfx(unit.player === getViewerPlayer() ? 'playerHourglass' : 'enemyHourglass');
-                shakeBoard('normal');
+                _presentKeyFind(unit, totalHourglasses, `Key Charge Lv.${newLevel}: ${buffDesc}`);
             }
 
-            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`, unit.player);
+            /* THE HIDDEN KEYS: the Inspect line is everyone's; what it found (or that it found nothing) is the
+               searcher's team's alone, so from the other side a find and an empty search read the same */
+            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
-                addLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
+                addKeyLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
             }
 
             if (totalHourglasses === 0) {
-                addLog(`Nothing found here.`, unit.player);
+                addKeyLog(`Nothing found here.`, unit.player);
             }
 
             if (lootedNow > 0) {
