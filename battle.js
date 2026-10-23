@@ -2827,7 +2827,24 @@
             if (!u) return false;
             if (unitHasStatus(u, 'wet')) return true;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            // 🌧️ under rain-type weather right now counts too (the round-end tick stamps the status later)
+            if (_unitInRain(u)) return true;
             return _isWetTile(u.x, u.y);
+        }
+
+        /* 💧⚡ WET CONDUCTS (THE SPELL POWER REVIEW, 2026-10-23, mondo: "There is already an established water and
+           lightning interaction in the game, it needs to work for wet too"): a grounded Soaked unit is part of the
+           conductive body exactly like a water tile, so lightning that strikes a Soaked unit (or a pool it touches) arcs on
+           through every touching wet tile and every touching Soaked body (triggerTerrainSpellReaction). Drowning is its
+           own rule and is untouched. */
+        function _isSoakedBodyAt(x, y) {
+            const u = unitAt(x, y);
+            if (!u || u.dead || u._dying) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            return _unitIsSoaked(u);
+        }
+        function _isConductiveWetTile(x, y) {
+            return _isWetTile(x, y) || _isSoakedBodyAt(x, y);
         }
 
         // Round-end tick (runs beside tickBurningTiles): everyone still standing
@@ -3222,7 +3239,10 @@
                 zapped++;
             }
             if (body.length > 1 || zapped > 0) {
-                addLog(`⚡ ${_ctSp(spell.name)} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                const _anyWater = body.some(t => _isWetTile(t.x, t.y));
+                addLog(_anyWater
+                    ? `⚡ ${_ctSp(spell.name)} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`
+                    : `⚡ ${_ctSp(spell.name)} arcs through the soaked bodies${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
         }
@@ -3433,7 +3453,8 @@
                 if (el === 'lightning' && _isWetTile(tile.x, tile.y)) {
                     // wet is wet: the charge also races through the shallow
                     // spread-flow at a pool's edge (Minecraft-style flow tiles)
-                    const body = _floodConnectedTiles(tile.x, tile.y, _isWetTile, 80);
+                    // and through any Soaked body touching it (WET CONDUCTS)
+                    const body = _floodConnectedTiles(tile.x, tile.y, _isConductiveWetTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactLightningWater(caster, spell, tile.x, tile.y, body);
                 } else if (el === 'cold' && _isWaterTile(tile.x, tile.y)) {
@@ -3474,6 +3495,20 @@
                     // ❄️ frost smothers ground fire.
                     handled.add(tile.x + ',' + tile.y);
                     if (extinguishTile(tile.x, tile.y)) _doused++;
+                }
+            }
+            /* 💧⚡ WET CONDUCTS: a Soaked unit struck on dry ground carries the charge to every Soaked body (and wet tile)
+               touching it. Runs after the terrain loop so the ground under it still reacts (a struck tree still burns);
+               tiles a pool already electrified this cast are skipped so nobody is zapped twice. */
+            if (el === 'lightning') {
+                for (const tile of tiles) {
+                    if (!tile || !isInside(tile.x, tile.y)) continue;
+                    if (handled.has(tile.x + ',' + tile.y) && _isWetTile(tile.x, tile.y)) continue;
+                    if (!_isSoakedBodyAt(tile.x, tile.y)) continue;
+                    const body = _floodConnectedTiles(tile.x, tile.y,
+                        (bx, by) => (bx === tile.x && by === tile.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
+                    body.forEach(b => handled.add(b.x + ',' + b.y));
+                    if (body.length > 1) _reactLightningWater(caster, spell, tile.x, tile.y, body);
                 }
             }
             if (_lit) {
@@ -12541,26 +12576,36 @@
            board rig's eye above it, so a close shot never sits inside a body (the playtest's "camera inside the
            Sedan"). Hidden models (fog, a cloak) never count: their place must not shape the camera. */
         const _cbtFp = [0, 0, 0, 0, 0, 0, 0, 0], _cbtPos = [0, 0, 0];
-        window._camBodyTopPx = function (wx, wz, pad) {
+        /* notX / notZ (optional): a body whose footprint covers that point is the subject itself and never counts (the
+           sight line to a big model must not be "blocked" by its own wings — wipeout playtest 2026-10-23) */
+        window._camBodyTopPx = function (wx, wz, pad, notX, notZ) {
             let top = -Infinity;
             try {
                 if (state.phase !== 'battle' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.getUnitWorldPos) return top;
                 const ts = CONFIG.tileSize || BASE_TILE;
                 pad = pad || 0;
+                const skipSubject = Number.isFinite(notX) && Number.isFinite(notZ);
                 for (const u of (state.units || [])) {
                     if (!u || u.dead) continue;
                     if (!ThreeRenderer.getUnitWorldPos(u.id, _cbtPos)) continue;
                     const dx = wx - _cbtPos[0], dz = wz - _cbtPos[2];
                     if (Math.abs(dx) > ts * 2.5 || Math.abs(dz) > ts * 2.5) continue;
-                    let inside;
+                    let inside, isSubject = false;
                     if (ThreeRenderer.getUnitFootprint && ThreeRenderer.getUnitFootprint(u.id, _cbtFp)) {
                         // corners (-,-) (-,+) (+,-) (+,+): half axes a = ((+,+) − (-,+)) / 2, b = ((+,+) − (+,-)) / 2
                         const ax = (_cbtFp[6] - _cbtFp[2]) / 2, az = (_cbtFp[7] - _cbtFp[3]) / 2;
                         const bx = (_cbtFp[6] - _cbtFp[4]) / 2, bz = (_cbtFp[7] - _cbtFp[5]) / 2;
                         const la = Math.hypot(ax, az) || 1, lb = Math.hypot(bx, bz) || 1;
                         inside = Math.abs((dx * ax + dz * az) / la) <= la + pad && Math.abs((dx * bx + dz * bz) / lb) <= lb + pad;
-                    } else inside = Math.hypot(dx, dz) <= ts * 0.38 + pad;
-                    if (!inside) continue;
+                        if (inside && skipSubject) {
+                            const nx = notX - _cbtPos[0], nz = notZ - _cbtPos[2];
+                            isSubject = Math.abs((nx * ax + nz * az) / la) <= la && Math.abs((nx * bx + nz * bz) / lb) <= lb;
+                        }
+                    } else {
+                        inside = Math.hypot(dx, dz) <= ts * 0.38 + pad;
+                        if (inside && skipSubject) isSubject = Math.hypot(notX - _cbtPos[0], notZ - _cbtPos[2]) <= ts * 0.38;
+                    }
+                    if (!inside || isSubject) continue;
                     const h = (ThreeRenderer.getUnitVisualHeight ? ThreeRenderer.getUnitVisualHeight(u.id) : 0) || ts * 0.95;
                     if (_cbtPos[1] + h > top) top = _cbtPos[1] + h;
                 }
@@ -13798,6 +13843,22 @@
                 else { out.neutral++; sum += 1; }
             }
             out.mult = targets.length ? sum / targets.length : 1;
+            /* THE REAL HIT (wipeout playtest 2026-10-23: the picker said ~972, the strike hit the Yeti for 2011 and the
+               Demon for 1507): the chart average × STAB left out the level magnitude, M.DEF, status taken-mults and the
+               rest of the hit math. Each victim now gets the engine's own read (forecastHitOnUnit, the same opts
+               doEntropyStrike's applyHit passes, mid roll) — the finisher's forecast does the same. */
+            out.hits = [];
+            const raw = getEntropyStrikeDamage(unit);
+            const hitOpts = { sourceUnit: unit, damageType: 'magic', spellType: def.id };
+            for (const t of targets) {
+                let f = null;
+                try { f = forecastHitOnUnit(t, raw, hitOpts); } catch (err) { f = null; }
+                if (f) out.hits.push({ id: t.id, dmg: f.dmg });
+            }
+            if (out.hits.length) {
+                out.dmgLo = Math.min(...out.hits.map(h => h.dmg));
+                out.dmgHi = Math.max(...out.hits.map(h => h.dmg));
+            }
             return out;
         }
         /* The type that squeezes the most damage out of the current targets
@@ -28755,7 +28816,9 @@
            wall between the lens and a body leaves that body as its x-ray hologram and the eye inside a wall turns the
            board black. Each body is sighted at its chest, its head and (a long body: a car) the four corners of its drawn
            footprint, and every sight line walks the solid columns every ¼ tile up to the body's own tile; the eye inside a
-           column or another unit's model counts 3, each blocked line 1, a line through another unit's model ½. */
+           column or another unit's model counts 3, each blocked line 1, a line through another unit's model ½ — or 2 when
+           that model stands within NEAR_LENS tiles of the eye (wipeout playtest 2026-10-23: an ally Dragon / Nephilim just in
+           front of the lens filled the screen with its x-ray, and ½ a line never outweighed the pose's other costs). */
         function _menuCamOccl(E, A, B) {
             const ts = CONFIG.tileSize || BASE_TILE;
             const W = bw(), H = bh();
@@ -28771,8 +28834,11 @@
             let occl = 0;
             const eg = solidAt(E[0], E[2]);
             if (eg != null && E[1] < eg + ts * 0.5) occl += 3;   // the eye itself inside a hill / wall
-            const bodyTop = (wx, wz) => (typeof window._camBodyTopPx === 'function') ? window._camBodyTopPx(wx, wz, 0) : -Infinity;
-            if (E[1] < bodyTop(E[0], E[2]) + ts * 0.3) occl += 3;   // the eye inside a model
+            const bodyTop = (wx, wz, pad, b) => (typeof window._camBodyTopPx === 'function')
+                ? window._camBodyTopPx(wx, wz, pad || 0, b ? b.x : undefined, b ? b.z : undefined) : -Infinity;
+            // the eye inside a model, or so close that the near plane cuts it (the board rig's own pad)
+            if (E[1] < bodyTop(E[0], E[2], ts * 0.3) + ts * 0.3) occl += 3;
+            const NEAR_LENS = ts * 2.5;
             for (const b of [A, B]) {
                 const sights = [[b.x, b.foot + (b.top - b.foot) * 0.5, b.z], [b.x, b.foot + (b.top - b.foot) * 0.85, b.z]];
                 if (b.fp) for (let i = 0; i < 8; i += 2) {
@@ -28781,7 +28847,7 @@
                 for (const P of sights) {
                     const hx = P[0] - E[0], hz = P[2] - E[2], horiz = Math.hypot(hx, hz);
                     const n = Math.min(64, Math.max(4, Math.ceil(horiz / (ts / 4))));
-                    let blocked = false, unitHit = false;
+                    let blocked = false, unitHit = false, unitNear = false;
                     for (let i = 1; i < n; i++) {
                         const u = i / n;
                         // the body's own tile stands under it — stop just short of it
@@ -28789,9 +28855,13 @@
                         const sx = E[0] + hx * u, sy = E[1] + (P[1] - E[1]) * u, sz = E[2] + hz * u;
                         const gy = solidAt(sx, sz);
                         if (gy != null && gy + lip > sy) { blocked = true; break; }
-                        if (!unitHit && (1 - u) * horiz > ts * 0.9 && bodyTop(sx, sz) > sy) unitHit = true;
+                        if (!unitNear && (1 - u) * horiz > ts * 0.9 && bodyTop(sx, sz, 0, b) > sy) {
+                            unitHit = true;
+                            if (u * horiz < NEAR_LENS) unitNear = true;
+                        }
                     }
                     if (blocked) occl += 1;
+                    else if (unitNear) occl += 2;
                     else if (unitHit) occl += 0.5;
                 }
             }
@@ -39643,7 +39713,7 @@
                 case 'skySlam':       return nm + ': select an enemy to dive onto.';
                 case 'leapStrike':    return nm + ': select an enemy to leap at.';
                 case 'summonWeather': return nm + ': select a tile to call the weather down on.';
-                case 'remoteView':    return nm + ': select any tile to scry — the fog there is revealed.';
+                case 'remoteView':    return spell.inspectAt ? nm + ': select a tile to search — it is Inspected as if you stood beside it.' : nm + ': select any tile to scry — the fog there is revealed.';
                 case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
                 case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
                 case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' empty tiles to hide the trapdoor on.' : ': select an empty tile to hide the trap on.');
@@ -44213,7 +44283,20 @@
                 weightsChanged: weights, trainedWeights: _aiTrainedWeights ? JSON.parse(JSON.stringify(_aiTrainedWeights)) : {},
                 schema: AI_WEIGHT_SCHEMA_VERSION,
             };
-            _imitShowReport(_imitLastReport);
+            /* the report waits for the result screen (wipeout playtest 2026-10-23: it opened over the finishing Entropy
+               Strike cinematic and then sat on the VICTORY title) — showResultOverlay opens it, folded to its title bar */
+            _imitReportPending = true;
+        }
+        let _imitReportPending = false;
+        function _imitShowPendingReport() {
+            if (!_imitReportPending) return;
+            _imitReportPending = false;
+            const r = _imitLastReport;
+            if (!r) return;
+            setTimeout(() => {
+                if (_imitLastReport !== r || !resultOverlay || resultOverlay.classList.contains('hidden')) return;
+                _imitShowReport(r, { folded: true });
+            }, 1200);   // after the title slam
         }
 
         /* ── The report panel: stays up until closed (or the match screen is
@@ -44257,9 +44340,10 @@
             document.body.appendChild(el);
             return el;
         }
-        function _imitShowReport(r) {
+        function _imitShowReport(r, opts) {
             if (!r) return;
             const el = _imitReportEl();
+            const folded = !!(opts && opts.folded);
             const st = r.match || {};
             const esc = (s) => escapeHtml(String(s == null ? '' : s));
             const chip = (n, label, color) => `<div style="flex:1;text-align:center;padding:6px 4px;border:1px solid rgba(140,140,200,0.1);border-radius:4px">
@@ -44286,7 +44370,9 @@
             const h = (txt) => `<div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin:12px 0 4px">${txt}</div>`;
             el.innerHTML = `
                 <div class="train-drag-handle" id="imitDragHandle"><span class="train-title">🧠 Imitation Report</span>
+                    <button class="train-btn" id="imitFoldBtn" style="flex:0;padding:2px 8px" title="Open / fold the report" onclick="window._ewImitationReportFold()">${folded ? '▸' : '▾'}</button>
                     <button class="train-btn" style="flex:0;padding:2px 8px" onclick="window._ewImitationReportClose()">✕</button></div>
+                <div id="imitReportBody" style="${folded ? 'display:none' : ''}">
                 <div class="train-subtitle" style="margin-bottom:8px">Training match · ${esc(r.mode || '')} · ${esc(new Date(r.when).toLocaleString())}</div>
                 <div style="display:flex;gap:6px">${chip(st.observed || 0, 'SCORED', 'var(--text)')}${chip(st.agree || 0, 'AGREED', '#7fd9dd')}${chip(st.disagree || 0, 'LEARNED', '#7fd97f')}${chip(st.unmatched || 0, 'UNSCORED', 'var(--muted)')}</div>
                 <div style="margin-top:8px;padding:5px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${kept ? 'rgba(127,217,127,0.12)' : 'rgba(224,160,96,0.14)'};color:${kept ? '#7fd97f' : '#e0a060'}">
@@ -44302,7 +44388,9 @@
                     <button class="train-btn" onclick="window._ewImitationReportExport()">⬇ Export JSON</button>
                     <button class="train-btn" onclick="window._ewImitationReportCopy(this)">📋 Copy</button>
                     <button class="train-btn danger" onclick="window._ewImitationReportClose()">Close</button>
-                </div>`;
+                </div></div>`;
+            /* folded = the title bar only, at its natural width (the result screen's VICTORY title stays clear) */
+            _imitFoldLook(el, folded);
             el.style.display = 'block';
             _initTrainPanelDrag(el, document.getElementById('imitDragHandle'));
         }
@@ -44310,6 +44398,20 @@
         /* ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13): the table's panel asks before it offers the last report */
         window._ewImitationHasReport = () => !!_imitLastReport;
         window._ewImitationLastReport = () => _imitLastReport;
+        function _imitFoldLook(el, folded) {
+            el.style.width = folded ? 'auto' : '380px';
+            el.style.paddingBottom = folded ? '0' : '';
+            const hd = document.getElementById('imitDragHandle');
+            if (hd) { hd.style.marginBottom = folded ? '0' : ''; hd.style.borderBottom = folded ? 'none' : ''; }
+        }
+        window._ewImitationReportFold = () => {
+            const el = document.getElementById('imitReportPanel'), body = document.getElementById('imitReportBody'), btn = document.getElementById('imitFoldBtn');
+            if (!el || !body) return;
+            const open = body.style.display === 'none';
+            body.style.display = open ? '' : 'none';
+            _imitFoldLook(el, !open);
+            if (btn) btn.textContent = open ? '▾' : '▸';
+        };
         window._ewImitationReportClose = () => { const el = document.getElementById('imitReportPanel'); if (el) el.style.display = 'none'; };
         window._ewImitationReportExport = () => {
             if (!_imitLastReport) return;
@@ -45180,6 +45282,7 @@
                 }
                 if (typeof _vicLayoutSync === 'function') _vicLayoutSync({ tab: 'rewards' });
             } catch (e) { _vicFail('the way out', e); }
+            try { _imitShowPendingReport(); } catch (e) {}   // a training match's Imitation Report, now the result is up
         }
         function _showResultOverlayBody() {
             const viewer = getViewerPlayer();
@@ -54235,7 +54338,30 @@
             // ── NEW 2026-10-09 (no schema bump, every trained value carries over): VISION + BROKEN ──
             lastSeenHunt_v1:         { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
             breakValue_v1:           { value: 1,     prev: 1,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
+            // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
+            raceRoundValue_v1:       { value: 200,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
+            searchKeyValue_v1:       { value: 180,   prev: 180,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
+            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: '× odds of a hidden Key on the centre columns, where Keys are placed first (1 = every tile equal)' },
+            keyCarrierDenial_v1:     { value: 800,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
+            anchorCaution_v1:        { value: 1,     prev: 1,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
+            tacticCommitment_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
+            hardReplyFactor_v1:      { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hard', label: 'Hard: Reply Check', desc: 'Hard CPU only: × the worst enemy reply (an ally kill, or half the damage) charged to its top five options' },
         };
+        /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
+           in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
+           values are untouched and still play; imitation may still nudge them. A headless shard that names keys
+           explicitly (window.EW_TRAIN_KEYS) can still test any of them. */
+        const _AB_RETIRED_KEYS = new Set([
+            'comboKillBonus_v1', 'comboSynergyBonus_v1', 'pressRefundValue_v1', 'pressActionValue_v4', 'focusCommitBonus_v4',
+            'killBase_v4', 'supportKillPremium_v4', 'reviveBase_v4', 'mpValuePerPoint_v4', 'buffStageFactor_v4',
+            'healSafetyDiscount_v4', 'woundedPileOn_v4', 'engageAdvantage_v1', 'antiOscillationPen_v1', 'moveHighGroundMelee_v4',
+            'nexusCapBonus_v1', 'towerDefendBonus_v1', 'hgSeekPriority_v1', 'killBonusScore_v1', 'cubeWindowBonus_v1',
+        ]);
+        function _abKeyRetired(key) {
+            const f = window.EW_TRAIN_KEYS;
+            if (Array.isArray(f) && f.length) return false;
+            return _AB_RETIRED_KEYS.has(key);
+        }
 
         // Human-readable labels for state._winCondition — shared by the three
         // lab dashboards' "How Matches End" breakdown and the exports.
@@ -54305,6 +54431,23 @@
         // gauntlet is champion ≡ baseline the moment the defaults move.
         let _strengthBaselineSource = 'default';
         try { const _sb = localStorage.getItem('ew-strength-baseline-src'); if (_sb === 'prev' || _sb === 'default') _strengthBaselineSource = _sb; } catch (e) {}
+        /* SPARRING STYLES (2026-10-23, AI plan Phase 5): the baseline side can play one forced Tactic on every unit —
+           Key Rusher (Search), Cube Rusher (Siege), Turtle (Anchor) — so a trained champion is measured against
+           opponents other than its own mirror. Results are kept per style (bySparring). ai.js reads it through
+           window._ewSparringPersonaFor. */
+        const _SPARRING_STYLES = { search: 'Key Rusher', siege: 'Cube Rusher', anchor: 'Turtle' };
+        let _strengthSparring = null;
+        try { const _ss = localStorage.getItem('ew-strength-sparring'); if (_SPARRING_STYLES[_ss]) _strengthSparring = _ss; } catch (e) {}
+        window._ewSetStrengthSparring = function (id) {
+            _strengthSparring = _SPARRING_STYLES[id] ? id : null;
+            try { localStorage.setItem('ew-strength-sparring', _strengthSparring || ''); } catch (e) {}
+            if (typeof renderStrengthDashboard === 'function' && _strengthTestMode) renderStrengthDashboard();
+            return _strengthSparring;
+        };
+        window._ewSparringPersonaFor = function (player) {
+            if (!_strengthTestMode || !_strengthSparring || typeof _strengthBaselinePlayer !== 'function') return null;
+            return player === _strengthBaselinePlayer() ? _strengthSparring : null;
+        };
         window._ewSetStrengthBaseline = function (src) {
             _strengthBaselineSource = (src === 'prev') ? 'prev' : 'default';
             try { localStorage.setItem('ew-strength-baseline-src', _strengthBaselineSource); } catch (e) {}
@@ -54336,6 +54479,7 @@
                 if (def.probe === 'nexus') return !!(state.nexusPoints && Object.keys(state.nexusPoints).length);
                 if (def.probe === 'tower') return !!(state.towers && state.towers[1] && state.towers[2]);
                 if (def.probe === 'height') return _boardHasHeight();
+                if (def.probe === 'hard') return false;   // the labs pin the CPU to Normal (ai.js _aiDifficultyKey)
                 const _m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
                 if (def.probe === 'arena') return !!(_m && _m.id === 'arena');
                 if (def.probe === 'arenaClock') return !!(_m && _m.id === 'arena' && ((state.matchClock && state.matchClock.roundLimit) || _m.roundLimit || 0) > 0);
@@ -54404,7 +54548,7 @@
         }
 
         function _startNextExperiment() {
-            const keys = Object.keys(AI_WEIGHT_DEFAULTS).filter(_trainKeyAllowed);
+            const keys = Object.keys(AI_WEIGHT_DEFAULTS).filter(k => _trainKeyAllowed(k) && !_abKeyRetired(k));
 
             if (!_abWeightQueue || _abWeightQueue.length === 0) {
                 _abPassNumber = (_abPassNumber || 0) + 1;
@@ -54422,7 +54566,7 @@
             let nextKey = _abWeightQueue.shift();
             // Skip weights the current board can't exercise (see _weightRelevantNow).
             let _skipGuard = 0;
-            while (nextKey && (!_weightRelevantNow(nextKey) || !_trainKeyAllowed(nextKey) || !AI_WEIGHT_DEFAULTS[nextKey]) && _skipGuard++ < 100) {
+            while (nextKey && (!_weightRelevantNow(nextKey) || !_trainKeyAllowed(nextKey) || _abKeyRetired(nextKey) || !AI_WEIGHT_DEFAULTS[nextKey]) && _skipGuard++ < 100) {
                 if (AI_WEIGHT_DEFAULTS[nextKey] && _trainKeyAllowed(nextKey)) {
                     addLog(`🧪 Skipping ${AI_WEIGHT_DEFAULTS[nextKey]?.label || nextKey} — this board/mode never exercises it.`);
                 }
@@ -54697,6 +54841,9 @@
             // How the match ended (tower / wipeout / keys / nexus / clock) —
             // the "which win condition is carrying the game" signal.
             _tallyWinCond(_aiTrainingStats, _wc, _rounds);
+            // …split by the side that won (2026-10-23): a seat bias or a one-sided win condition shows up as a number
+            if (!_aiTrainingStats.winCondsBySide) _aiTrainingStats.winCondsBySide = { 1: {}, 2: {} };
+            _tallyWinCond({ winConds: _aiTrainingStats.winCondsBySide[winnerPlayer === 1 ? 1 : 2] }, _wc, _rounds);
             if (winnerPlayer === 1) { _aiTrainingStats.p1Wins++; _aiTrainingStats.batchP1Wins++; }
             else { _aiTrainingStats.p2Wins++; }
 
@@ -55041,6 +55188,7 @@
                 </div>` : ''}
 
                 ${_winCondSummaryHtml(stats.winConds, 'How Matches End')}
+                ${_winCondSummaryHtml((stats.winCondsBySide || {})[1], 'P1 wins by')}${_winCondSummaryHtml((stats.winCondsBySide || {})[2], 'P2 wins by')}
 
                 <div class="train-group">
                     <div class="train-group-title">Trained Weights <span style="font-weight:400;text-transform:none;letter-spacing:0">(${changedWeights.length} / ${totalWeights} changed)</span></div>
@@ -55332,6 +55480,10 @@
             // stronger) AI, and worth knowing before shipping it.
             if (!_strengthStats.winConds) _strengthStats.winConds = { champ: {}, base: {} };
             _tallyWinCond({ winConds: _strengthStats.winConds[champWon ? 'champ' : 'base'] }, state._winCondition || 'unknown', state.round || 0);
+            const _spk = _strengthSparring || 'mirror';
+            if (!_strengthStats.bySparring) _strengthStats.bySparring = {};
+            const _spb = _strengthStats.bySparring[_spk] || (_strengthStats.bySparring[_spk] = { matches: 0, champWins: 0 });
+            _spb.matches++; if (champWon) _spb.champWins++;
             if (_strengthStats.byMatch.length > 500) {
                 _strengthStats.byMatch.splice(0, _strengthStats.byMatch.length - 500);
             }
@@ -55373,6 +55525,15 @@
                 <button class="train-btn${_strengthBaselineSource !== 'prev' ? ' active' : ''}" onclick="_ewSetStrengthBaseline('default')">Baseline: defaults</button>
                 <button class="train-btn${_strengthBaselineSource === 'prev' ? ' active' : ''}" onclick="_ewSetStrengthBaseline('prev')">Baseline: previous champion</button>
             </div>`;
+            const sparBtns = `<div class="train-btns" style="margin:0 0 6px">
+                <button class="train-btn${!_strengthSparring ? ' active' : ''}" onclick="_ewSetStrengthSparring(null)">Opponent: mirror</button>
+                ${Object.keys(_SPARRING_STYLES).map(k => `<button class="train-btn${_strengthSparring === k ? ' active' : ''}" onclick="_ewSetStrengthSparring('${k}')">${_SPARRING_STYLES[k]}</button>`).join('')}
+            </div>`;
+            const sparRows = Object.entries(s.bySparring || {}).filter(([, b]) => b && b.matches > 0).map(([k, b]) =>
+                `<div class="train-wt-row"><span class="train-wt-name">${k === 'mirror' ? 'Mirror' : (_SPARRING_STYLES[k] || k)}</span>
+                    <span class="train-wt-val" style="color:var(--gold)">${Math.round(b.champWins / b.matches * 100)}%</span>
+                    <span class="train-wt-val" style="color:var(--muted);font-size:9px">${b.champWins}/${b.matches}</span></div>`).join('');
+            const sparHtml = sparRows ? `<div class="train-group"><div class="train-group-title">Champion win rate by opponent style</div><div class="train-wt-list">${sparRows}</div></div>` : '';
             const wcChamp = _winCondSummaryHtml((s.winConds || {}).champ, 'Champion wins by');
             const wcBase = _winCondSummaryHtml((s.winConds || {}).base, 'Baseline wins by');
 
@@ -55388,7 +55549,7 @@
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
                 <div class="train-subtitle">Champion (trained weights) vs Baseline (${baselineLabel}) · same v4 brain · mirror teams · sides alternate</div>
-                ${baselineBtns}
+                ${baselineBtns}${sparBtns}
 
                 <div class="train-cards">
                     <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${n}</span></div>
@@ -55404,7 +55565,7 @@
                     <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
                     <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${Math.min(60, (s.byMatch || []).length)} matches · green = champion won</div>
                 </div>
-                ${wcChamp}${wcBase}
+                ${sparHtml}${wcChamp}${wcBase}
 
                 <div class="train-btns">
                     <button class="train-btn danger" onclick="if(confirm('Reset strength-test results?')){resetStrengthStats().then(()=>{renderStrengthDashboard();addLog('Strength test reset.');});}">Reset</button>
@@ -57329,6 +57490,21 @@
                         if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport') {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
+                            /* THE PICK IN FRAME (wipeout playtest 2026-10-23): the range fit above frames only the
+                               lit tiles, so a MOVE→CAST pre-pick outside them was armed (CONFIRM) off screen. Refit
+                               the same board read to take in the picked target too. */
+                            const _pk = targets[0];
+                            const _pkTiles = _tilePickTiles(unit, 'spell', spell);
+                            if (!_scOwns && !state.cameraDisabled && _fogCamAllSeen(unit, _pk.unit || _pk)
+                                && !_pkTiles.some(t => t.x === _pk.x && t.y === _pk.y)) {
+                                const _pkAll = _pkTiles.concat([{ x: _pk.x, y: _pk.y }]);
+                                const _pkFr = _tilePickFrame(unit, _pkAll);
+                                if (_pkFr) {
+                                    camera.moveTo({ x: _pkFr.x, y: _pkFr.y, zoom: _pkFr.zoom, tilt: TILE_PICK_TILT, duration: 380, easing: 'easeInOut',
+                                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+                                    _tilePickArmRefit(unit, _pkAll, _pkFr);
+                                }
+                            }
                         }
                     }
                 }
@@ -64152,6 +64328,8 @@
             return { damage, siege: _nxSiege };
         }
 
+        window.getCubeAttackDamage = getCubeAttackDamage;   // ai.js: the race clocks' Cube hit for units not yet in range
+
         // Conservative direct Cube attack contract. Reject occupied columns
         // and use surface-height range; remote-door/telescope interception and
         // the raised-terrain face-range exception are not promised here.
@@ -65176,38 +65354,10 @@
 
         }
 
-        function doInspect(unit, x, y) {
-            /* SIMUL: inspect executes instantly — not plannable yet. */
-            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
-                && state._simulPhase === 'plan' && !state._simulResolving) {
-                addLog('🔍 Inspect is not available in Simul mode (yet).');
-                playErrorSfx();
-                return 0;
-            }
-            if (!canUnitAct(unit)) {
-                _actedLog(unit, 'That unit already acted this round.');
-                return;
-            }
-            const inspectReach = getEffectiveInspect(unit);
-            if (inspectReach <= 0) {
-                addLog(`${_ctName(unit)} cannot inspect right now.`);
-                return;
-            }
-            const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
-            if (d > inspectReach) {
-                addLog('That inspect target is out of reach.');
-                return;
-            }
-            if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
-                addLog('Terrain blocks that scan line.');
-                return;
-            }
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('inspect', unit)) return;
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('inspect', { uid: unit.id, x, y });
-            _imitObserve(unit, { type: 'inspect', x, y });
-
-            pushUndoSnapshot(true);
-
+        /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
+           logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
+           very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
+        function _inspectFootprintAt(unit, x, y) {
             const toReveal = getInspectFootprint(unit, x, y);
 
             let totalHourglasses = 0;
@@ -65295,23 +65445,6 @@
                 holdMs: 800
             });
 
-            spendAP(unit, AP_COST_ACTION);
-            state._actionExecuting = false;
-            state._tileActionTarget = null;
-            state._enemyActionTargetId = null;
-            if (!unitFinished(unit) && !unit.dead) {
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-            } else {
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-            }
-            state.selectedTool = null;
-            state.pendingTarget = null;
-            checkWin();
-            renderBattleUpdate();
-            const _inspectDelay = 700;
-            const _inspectUnit = unit;
             const _inspectPlayer = unit.player;
             const _inspectKeys = toReveal.map(t => scanKey(t.x, t.y));
             window.setTimeout(() => {
@@ -65331,6 +65464,64 @@
                         renderBattleUpdate();
                     }, 600);
                 }
+                renderBattleUpdate();
+            }, 700);
+            return toReveal;
+        }
+        window._inspectFootprintAt = _inspectFootprintAt;
+
+        function doInspect(unit, x, y) {
+            /* SIMUL: inspect executes instantly — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🔍 Inspect is not available in Simul mode (yet).');
+                playErrorSfx();
+                return 0;
+            }
+            if (!canUnitAct(unit)) {
+                _actedLog(unit, 'That unit already acted this round.');
+                return;
+            }
+            const inspectReach = getEffectiveInspect(unit);
+            if (inspectReach <= 0) {
+                addLog(`${_ctName(unit)} cannot inspect right now.`);
+                return;
+            }
+            const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
+            if (d > inspectReach) {
+                addLog('That inspect target is out of reach.');
+                return;
+            }
+            if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
+                addLog('Terrain blocks that scan line.');
+                return;
+            }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('inspect', unit)) return;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('inspect', { uid: unit.id, x, y });
+            _imitObserve(unit, { type: 'inspect', x, y });
+
+            pushUndoSnapshot(true);
+
+            _inspectFootprintAt(unit, x, y);
+
+            spendAP(unit, AP_COST_ACTION);
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            checkWin();
+            renderBattleUpdate();
+            const _inspectDelay = 700;
+            const _inspectUnit = unit;
+            window.setTimeout(() => {
                 endUnitIfDone(_inspectUnit);
                 renderBattleUpdate();
             }, _inspectDelay);
@@ -71245,6 +71436,16 @@
                         applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     }, Math.max(0, _yankDelayMs || 0));
                 }
+                /* THE SPELL POWER REVIEW (2026-10-23): a pull row with `stealKeys` / `stealItems` (Rustle) robs the hooked
+                   enemy the way the `steal` kind does (Stick-Up) — host state now, so the Key moves with the snapshot. */
+                if (!_plAlly && (spell.stealKeys || spell.stealItems) && !target.dead && typeof _stealFromUnit === 'function') {
+                    const _plTook = _stealFromUnit(unit, target, {
+                        keys: spell.stealKeys || 0,
+                        items: spell.stealItems || 0,
+                        verb: spell.name,
+                    });
+                    if (!_plTook.keys && !_plTook.items) addLog(`${_ctName(target)} had nothing worth taking.`);
+                }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */
                     const _plDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
@@ -72290,7 +72491,7 @@
                     triggerAttackAnim(unit, target.x, target.y);
                     const VFX = window.ThreeVFXEffects;
                     if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType, bonusVsStatus: spell.bonusVsStatus || null });
                     if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     if (_fromAbove && spell.splashDmg) {
                         /* the slam: every OTHER enemy beside the landing takes the weak hit */
@@ -73411,6 +73612,27 @@
                     unit.mp -= effectiveSpellCost;
                     completionDelay = actionMs(300);
                 }
+            }
+
+            else if (spell.kind === 'remoteView' && spell.inspectAt) {
+                /* 🔍 FAR SIGHT (THE SPELL POWER REVIEW, 2026-10-23): a normal Inspect at a tile within the spell's range,
+                   whatever the caster's own Inspect reach — same footprint (getInspectFootprint), same Keys / loot / bombs. */
+                const _fsDist = Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y));
+                if (!isInside(x, y) || _fsDist > getEffectiveSpellRange(unit, spell)) {
+                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('manaRegen');
+                unit.mp -= effectiveSpellCost;
+                if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
+                    && typeof ThreeVFXEffects.fireGeometry === 'function') {
+                    try { ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
+                }
+                addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} on ${coordLabel(x, y)}.`, unit.player);
+                _inspectFootprintAt(unit, x, y);
+                checkWin();
+                completionDelay = actionMs(700);
             }
 
             else if (spell.kind === 'remoteView') {

@@ -4674,6 +4674,9 @@ function _hrlgEntropyBlades(unit, st) {
     const tc = TYPE_TEXT_COLORS[id] || def.color || '#c9a5ff';
     const mult = fc ? fc.mult * (fc.stab ? stabMult : 1) : 1;
     const proj = Math.max(1, Math.round(dmg * mult));
+    // the engine's own hit on each visible enemy (getEntropyStrikeForecast hits, wipeout playtest 2026-10-23: ~972 shown,
+    // 2011 / 1507 landed) — one number when every victim takes the same, else the low–high spread like a spell row
+    const projV = (fc && fc.dmgLo != null) ? (fc.dmgLo === fc.dmgHi ? '~' + fc.dmgLo : fc.dmgLo + '–' + fc.dmgHi) : '~' + proj;
     const good = fc && fc.weak > 0 && fc.resist === 0;
     const bad = fc && fc.resist > 0 && fc.weak === 0;
     const powerColor = good ? '#7dff9a' : (bad ? '#ff7a7a' : '#f0e6c8');
@@ -4709,7 +4712,7 @@ function _hrlgEntropyBlades(unit, st) {
       label: def.name || id,
       badges,
       available: ready,
-      power: { v: '~' + proj, color: powerColor },
+      power: { v: projV, color: powerColor },
       meta: { text: metaText, color: metaColor, title: 'Visible enemies this type hits SUPER EFFECTIVE (▲) / that resist it (▼)' },
       note: (best && best.type === id) ? 'BEST' : null,
       superEff: !!good,
@@ -5729,7 +5732,9 @@ function ActionMenu({ st, hidden }) {
     const _chCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
     const _chThr = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
-    const _chOk = _capturable && (unit.ap || 0) >= _chCost;
+    /* a strict boolean: off a zone _nex is null, and the row reads `available !== false` as lit
+       (playtest 2026-10-21: CHANNEL lit with "1 AP" off the Nexus, then "Must be standing in a Nexus zone") */
+    const _chOk = !!_capturable && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
     /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
     const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
@@ -5741,7 +5746,7 @@ function ActionMenu({ st, hidden }) {
          : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
-      // the unit this menu is drawn for — the row's grey-out was judged on it (playtest 2026-10-21: lit, then "Must be standing in a Nexus zone")
+      // the unit this menu is drawn for — the row's grey-out was judged on it
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
     });
   }

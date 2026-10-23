@@ -2433,25 +2433,65 @@ const ThreeRenderer = (function () {
        colour) and before fog / tone mapping, the upper edges a little brighter than the lower ones (light from above).
        Day = a soft warm white, night = a stronger cool moonlight; _ewRimTick eases between them with the battle's
        night (the sky's own S.night). The world, the VFX and the ShaderMaterials never get it.
-       Live-tune: EW_RIM = { on, day: [r, g, b, strength], night: [r, g, b, strength], edge (band start, 0..0.95), low }.
-       Off at load: ?ew_rim=0 or window.EW_NO_UNIT_RIM = true. */
+       Off at load: ?ew_rim=0 or window.EW_NO_UNIT_RIM = true.
+       REV 2 (2026-10-23, mondo: "it looks really aggressive and it seems like its just adding a white outline rather than
+       making them not appear as black blobs at night" + "add some settings"): the rim is toned down to a soft, broad
+       moonlight that takes the surface's own colour (the light × the albedo, not a white band), and THE UNIT NIGHT FILL
+       does the real work at night: the unit's own albedo × a soft moonlight colour, added on the unit only, eased in with
+       the night — the same as a dim ambient light that lights units and nothing else, so a unit shows its colours instead
+       of a black shape. Settings (Pause / Settings > Graphics, saved as ew_unitLight): Rim Light on/off, Rim Strength,
+       Rim Colour, Night Fill. setUnitLight / getUnitLight; EW_RIM in the console is the same live object. */
     var _EW_POP_ON = (function () { try { return !window.EW_NO_UNIT_POP && !/[?&]ew_pop=0\b/.test(location.search); } catch (e) { return true; } })();
     var _EW_POP_W = { x: 0.86, y: 0.95, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the ground + objects: a little faded
     var _EW_POP_U = { x: 1.22, y: 1.10, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the units: richer, a touch brighter
     try { window.EW_POP = { world: _EW_POP_W, unit: _EW_POP_U }; } catch (e) {}
     var _EW_RIM_ON = (function () { try { return !window.EW_NO_UNIT_RIM && !/[?&]ew_rim=0\b/.test(location.search); } catch (e) { return true; } })();
-    var _EW_RIM_CFG = { on: _EW_RIM_ON, day: [1.0, 0.94, 0.84, 0.9], night: [0.62, 0.78, 1.0, 2.0], edge: 0.2, low: 0.6 };
-    var _EW_RIM = { x: 1, y: 1, z: 1, w: 0 };       // the rim's colour + strength (0 = off), the shaders read it live
-    var _EW_RIM2 = { x: 0.2, y: 0.6, z: 0, w: 0 };   // where the band starts (1 - N·V), the lower edges' share
+    /* the player's settings (strength / fill: 1 = the default, 0..2) + the fixed shape of the light */
+    var _EW_RIM_DEF = { on: true, strength: 1, color: '#a8c4ff', fill: 1 };
+    var _EW_RIM_CFG = { on: _EW_RIM_DEF.on, strength: _EW_RIM_DEF.strength, color: _EW_RIM_DEF.color, fill: _EW_RIM_DEF.fill,
+                        rimDay: 0.22, rimNight: 0.45, fillDay: 0.0, fillNight: 0.85, edge: 0.15, low: 0.35, tint: 0.65 };
+    try {
+        var _rimSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_unitLight') || 'null') : null;
+        if (_rimSaved && typeof _rimSaved === 'object') {
+            if (typeof _rimSaved.on === 'boolean') _EW_RIM_CFG.on = _rimSaved.on;
+            if (isFinite(_rimSaved.strength)) _EW_RIM_CFG.strength = Math.max(0, Math.min(2, +_rimSaved.strength));
+            if (/^#[0-9a-f]{6}$/i.test(_rimSaved.color || '')) _EW_RIM_CFG.color = _rimSaved.color;
+            if (isFinite(_rimSaved.fill)) _EW_RIM_CFG.fill = Math.max(0, Math.min(2, +_rimSaved.fill));
+        }
+    } catch (e) {}
+    if (!_EW_RIM_ON) _EW_RIM_CFG.on = false;
+    var _EW_RIM = { x: 1, y: 1, z: 1, w: 0 };        // the rim's colour + strength (0 = off), the shaders read it live
+    var _EW_RIM2 = { x: 0.15, y: 0.35, z: 0, w: 0.65 }; // where the band starts (1 - N·V), the lower edges' share, how much the surface colours it
+    var _EW_FILL = { x: 1, y: 1, z: 1, w: 0 };       // THE UNIT NIGHT FILL: its colour + amount (× the unit's albedo)
+    var _ewRimNight = 0;
     try { window.EW_RIM = _EW_RIM_CFG; } catch (e) {}
-    /* the rim's colour + strength for a night share n (0 day .. 1 night); runs every battle frame with the sky's ease */
+    /* the rim + fill for a night share n (0 day .. 1 night); runs every battle frame with the sky's ease */
     function _ewRimTick(n) {
-        var C = _EW_RIM_CFG, d = C.day, k = C.night, t = Math.max(0, Math.min(1, n || 0));
-        _EW_RIM.x = d[0] + (k[0] - d[0]) * t; _EW_RIM.y = d[1] + (k[1] - d[1]) * t; _EW_RIM.z = d[2] + (k[2] - d[2]) * t;
-        _EW_RIM.w = C.on ? Math.max(0, d[3] + (k[3] - d[3]) * t) : 0;
-        _EW_RIM2.x = Math.max(0, Math.min(0.95, C.edge == null ? 0.2 : C.edge)); _EW_RIM2.y = (C.low == null) ? 0.6 : C.low;
+        if (n != null) _ewRimNight = Math.max(0, Math.min(1, n || 0));
+        var C = _EW_RIM_CFG, t = _ewRimNight, h = parseInt(String(C.color || '#ffffff').slice(1), 16);
+        var r = isFinite(h) ? ((h >> 16) & 255) / 255 : 1, g = isFinite(h) ? ((h >> 8) & 255) / 255 : 1, b = isFinite(h) ? (h & 255) / 255 : 1;
+        _EW_RIM.x = r; _EW_RIM.y = g; _EW_RIM.z = b;
+        _EW_RIM.w = C.on ? Math.max(0, (C.rimDay + (C.rimNight - C.rimDay) * t) * C.strength) : 0;
+        _EW_RIM2.x = Math.max(0, Math.min(0.95, C.edge)); _EW_RIM2.y = C.low; _EW_RIM2.w = Math.max(0, Math.min(1, C.tint));
+        // the fill is moonlight: the chosen colour, half-way to white, so a unit keeps its own hues
+        _EW_FILL.x = 0.5 + 0.5 * r; _EW_FILL.y = 0.5 + 0.5 * g; _EW_FILL.z = 0.5 + 0.5 * b;
+        _EW_FILL.w = Math.max(0, (C.fillDay + (C.fillNight - C.fillDay) * t) * C.fill);
     }
     _ewRimTick(0);
+    /* the Graphics settings: { on, strength 0..2, color '#rrggbb', fill 0..2 } (any subset), saved per device */
+    function setUnitLight(o) {
+        var C = _EW_RIM_CFG;
+        if (o && typeof o === 'object') {
+            if (typeof o.on === 'boolean') C.on = o.on;
+            if (o.strength != null && isFinite(o.strength)) C.strength = Math.max(0, Math.min(2, +o.strength));
+            if (/^#[0-9a-f]{6}$/i.test(o.color || '')) C.color = o.color.toLowerCase();
+            if (o.fill != null && isFinite(o.fill)) C.fill = Math.max(0, Math.min(2, +o.fill));
+        }
+        _ewRimTick();
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_unitLight', JSON.stringify({ on: C.on, strength: C.strength, color: C.color, fill: C.fill })); } catch (e) {}
+        return getUnitLight();
+    }
+    function getUnitLight() { var C = _EW_RIM_CFG; return { on: C.on, strength: C.strength, color: C.color, fill: C.fill, defaults: _EW_RIM_DEF }; }
     var _ewPopPatched = false;
     function _ewPopPatch() {
         if (_ewPopPatched || typeof THREE === 'undefined' || !THREE.ShaderLib) return false;
@@ -2461,16 +2501,19 @@ const ThreeRenderer = (function () {
             var code = '#include <opaque_fragment>\n\t{\n\t#ifdef EW_UNIT_POP\n\t\tvec4 ewPop = uEwPopU;\n\t#else\n\t\tvec4 ewPop = uEwPop;\n\t#endif\n' +
                 '\t\tif ( ewPop.w > 0.5 ) {\n\t\t\tfloat ewPopL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
                 '\t\t\tgl_FragColor.rgb = max( mix( vec3( ewPopL ), gl_FragColor.rgb, ewPop.x ), 0.0 ) * ewPop.y;\n\t\t}\n' +
-                '\t#ifdef EW_UNIT_POP\n\t\tif ( uEwRim.w > 0.0 ) {\n' +
+                '\t#ifdef EW_UNIT_POP\n' +
+                '\t\tif ( uEwFill.w > 0.0 ) gl_FragColor.rgb += diffuseColor.rgb * uEwFill.rgb * uEwFill.w;\n' +
+                '\t\tif ( uEwRim.w > 0.0 ) {\n' +
                 '\t\t\tfloat ewRim = smoothstep( uEwRim2.x, 1.0, 1.0 - clamp( abs( dot( geometryNormal, geometryViewDir ) ), 0.0, 1.0 ) );\n' +
                 '\t\t\tewRim *= mix( uEwRim2.y, 1.0, clamp( geometryNormal.y * 0.5 + 0.5, 0.0, 1.0 ) );\n' +
-                '\t\t\tgl_FragColor.rgb += uEwRim.rgb * ( ewRim * uEwRim.w );\n\t\t}\n\t#endif\n\t}';
+                '\t\t\tgl_FragColor.rgb += uEwRim.rgb * mix( vec3( 1.0 ), min( diffuseColor.rgb * 2.5, vec3( 1.0 ) ), uEwRim2.w ) * ( ewRim * uEwRim.w );\n' +
+                '\t\t}\n\t#endif\n\t}';
             for (var i = 0; i < keys.length; i++) {
                 var S = lib[keys[i]];
                 if (!S || !S.fragmentShader || S.fragmentShader.indexOf('uEwPop') >= 0 || S.fragmentShader.indexOf('#include <opaque_fragment>') < 0) continue;
-                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\nuniform vec4 uEwRim;\nuniform vec4 uEwRim2;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
+                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\nuniform vec4 uEwRim;\nuniform vec4 uEwRim2;\nuniform vec4 uEwFill;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
                 S.uniforms.uEwPop = { value: _EW_POP_W }; S.uniforms.uEwPopU = { value: _EW_POP_U };
-                S.uniforms.uEwRim = { value: _EW_RIM }; S.uniforms.uEwRim2 = { value: _EW_RIM2 };   // THE UNIT RIM LIGHT
+                S.uniforms.uEwRim = { value: _EW_RIM }; S.uniforms.uEwRim2 = { value: _EW_RIM2 }; S.uniforms.uEwFill = { value: _EW_FILL };   // THE UNIT RIM LIGHT + NIGHT FILL
                 n++;
             }
             if (!n) console.warn('[ThreeRenderer] the unit pop patch found no anchor in three.js ' + THREE.REVISION);
@@ -11397,6 +11440,7 @@ const ThreeRenderer = (function () {
        _hqTextCss) brings back the CSS2D bar. */
     var NEXUS_PLATE_W = 2.6;      // the plate's width in tiles (the zone is 2 tiles across)
     var NEXUS_PLATE_MIN_PX = 170; // a legibility floor (the unit plates have one too): never narrower on screen than the old bar
+    var NEXUS_PLATE_MAX_PX = 260; // and a ceiling (wipeout playtest 2026-10-23: up close the 2.6-tile plate filled a third of the screen)
     var NEXUS_PLATE_PX = 3;       // canvas px per CSS px of the old bar (crisp at close zoom)
     var NEXUS_PLATE_FONT = '"DotGothic16", monospace';
     var _nexusFontWait = false;
@@ -11525,7 +11569,9 @@ const ThreeRenderer = (function () {
             W.g.getWorldPosition(_batWorldVec);
             var dist = Math.max(1, _batWorldVec.distanceTo(cam.position));
             var projW = (ts * screenH) / (2 * dist * halfTan);   // one tile's width on screen, px
-            var fit = Math.min(4, Math.max(1, NEXUS_PLATE_MIN_PX / (NEXUS_PLATE_W * projW)));
+            var plateW = NEXUS_PLATE_W * projW;   // the plate's natural width on screen, px
+            var fit = plateW < NEXUS_PLATE_MIN_PX ? Math.min(4, NEXUS_PLATE_MIN_PX / plateW)
+                : (plateW > NEXUS_PLATE_MAX_PX ? Math.max(0.05, NEXUS_PLATE_MAX_PX / plateW) : 1);
             if (W.fit !== fit) { W.fit = fit; W.k = -1; }
             /* THE WORLD TEXT STEPS ASIDE: over an open menu the counter fades (_wmOverMenu). The sprite stands on its
                bottom centre, so its box on screen is the projected anchor, up by its height, out by half its width. */
@@ -37233,8 +37279,10 @@ const ThreeRenderer = (function () {
             var rv = new THREE.Vector4(), rv2 = new THREE.Vector4();
             U.rim = T.uniform(rv).setGroup(T.renderGroup).onRenderUpdate(function () { return rv.set(_EW_RIM.x, _EW_RIM.y, _EW_RIM.z, _EW_RIM.w); });
             U.rim2 = T.uniform(rv2).setGroup(T.renderGroup).onRenderUpdate(function () { return rv2.set(_EW_RIM2.x, _EW_RIM2.y, _EW_RIM2.z, _EW_RIM2.w); });
+            var fv = new THREE.Vector4();
+            U.fill = T.uniform(fv).setGroup(T.renderGroup).onRenderUpdate(function () { return fv.set(_EW_FILL.x, _EW_FILL.y, _EW_FILL.z, _EW_FILL.w); });
         }
-        var P = U[key], base = nm.setupOutput, Rm = U.rim, Rm2 = U.rim2;
+        var P = U[key], base = nm.setupOutput, Rm = U.rim, Rm2 = U.rim2, Fl = U.fill;
         U.dressed[key] = (U.dressed[key] || 0) + 1;
         nm.setupOutput = function (builder, out) {
             if (!out || out.isOutputStructNode) return base.call(this, builder, out);
@@ -37244,11 +37292,15 @@ const ThreeRenderer = (function () {
                     var l = T.dot(c.rgb, T.vec3(0.2126, 0.7152, 0.0722));
                     c.rgb.assign(T.max(T.mix(T.vec3(l), c.rgb, P.x), 0).mul(P.y));
                 });
+                if (unit) T.If(Fl.w.greaterThan(0), function () {   // THE UNIT NIGHT FILL (see _ewPopPatch)
+                    c.rgb.addAssign(T.diffuseColor.rgb.mul(Fl.rgb).mul(Fl.w));
+                });
                 if (unit) T.If(Rm.w.greaterThan(0), function () {   // THE UNIT RIM LIGHT (see _ewPopPatch)
                     var nv = T.normalize(T.normalViewGeometry), vd = T.positionViewDirection;
                     var r = T.smoothstep(Rm2.x, 1, T.clamp(T.abs(T.dot(nv, vd)), 0, 1).oneMinus()).toVar();
                     r.mulAssign(T.mix(Rm2.y, 1, T.clamp(nv.y.mul(0.5).add(0.5), 0, 1)));
-                    c.rgb.addAssign(Rm.rgb.mul(r.mul(Rm.w)));
+                    var tint = T.mix(T.vec3(1), T.min(T.diffuseColor.rgb.mul(2.5), T.vec3(1)), Rm2.w);
+                    c.rgb.addAssign(Rm.rgb.mul(tint).mul(r.mul(Rm.w)));
                 });
                 return c;
             })();
@@ -73685,6 +73737,7 @@ const ThreeRenderer = (function () {
         sedan: function (o) { return _spellSedan(o); },
 
         setLightRayStrength, getLightRayStrength,
+        setUnitLight, getUnitLight,   // THE UNIT RIM LIGHT rev 2: the Graphics settings
         setFieldFogScale,   // THE ROOM SETTINGS (2026-10-20): Fog Density on a fight's room height fog
 
         getSkyShot, playZodiacReveal, playSkyEventReveal,

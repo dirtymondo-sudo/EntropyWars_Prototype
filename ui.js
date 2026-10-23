@@ -7904,6 +7904,9 @@
             const expMaxPct = Math.round(expRange.max*100);
             const nightMood = (typeof ThreePost!=='undefined'&&ThreePost.getNightMood)?ThreePost.getNightMood():0.65;
             const nightMoodPct = Math.round(nightMood*100);
+            // THE UNIT RIM LIGHT rev 2 (three-renderer.js setUnitLight): rim on/off, strength, colour + the night fill
+            const unitLight = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getUnitLight)?ThreeRenderer.getUnitLight():{on:true,strength:1,color:'#a8c4ff',fill:1};
+            const rimPct = Math.round(unitLight.strength*100), fillPct = Math.round(unitLight.fill*100);
             const impactFx = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFx)?ThreePost.getImpactFx():0.7;
             const impactFxMax = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFxMax)?ThreePost.getImpactFxMax():1.5;
             const impactFxPct = Math.round(impactFx*100);
@@ -8031,6 +8034,27 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light. In a room or zone it grades from the room's own night</span>
+                    </div>
+                    <div class="pm-set-toggles" style="margin-top:8px">
+                        <label class="pm-toggle"><input type="checkbox" ${unitLight.on ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({on:this.checked});"><span class="pm-toggle-label">Unit Rim Light</span><span class="pm-toggle-hint">a soft moonlit edge on every unit, stronger at night</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Rim Strength</span>
+                        <input type="range" min="0" max="200" step="5" value="${rimPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({strength:this.value/100});this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${rimPct===0?'off':unitLight.strength.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Rim Colour</span>
+                        <input type="color" value="${unitLight.color}" style="width:44px;height:22px;padding:0;border:1px solid rgba(255,255,255,0.25);background:none;cursor:pointer" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({color:this.value});this.nextElementSibling.textContent=this.value;">
+                        <span class="pm-vol-val">${unitLight.color}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Unit Night Fill</span>
+                        <input type="range" min="0" max="200" step="5" value="${fillPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({fill:this.value/100});this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${fillPct===0?'off':unitLight.fill.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">a soft light on the units only at night, in the rim colour, so they show their own colours instead of dark shapes</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Impact Flash</span>

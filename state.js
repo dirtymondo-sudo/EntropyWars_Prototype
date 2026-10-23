@@ -4247,13 +4247,54 @@
             meta.spellUpgrades = (typeof buildRandomUpgrades === 'function') ? buildRandomUpgrades(meta.race || '', c, meta.customSpells) : {};
         }
 
+        /* THE PLAN DRAFT (2026-10-23, AI plan Phase 4): a HARD CPU in VS CPU picks its races for a plan instead of at
+           random — brawl, siege (the mode has a Cube win) or Key hunt (the mode has a Keys win) — scored from data.js
+           RACE_BASE_STATS / raceKit and drawn from each role's top ten so teams still vary. Easy / Normal, D.O.O.R.
+           crossings and story encounters (a pinned pool / lead), online and the labs keep the random roll. One of each
+           unit stays (a race is never picked twice). The plan is readable at window._ewCpuDraftPlan. */
+        function _cpuPlanDraft(size) {
+            try {
+                if ((window.EW_AI_DIFFICULTY || 'normal') !== 'hard') return null;
+                if (state.devAutoSim || (typeof isOnlineMatch === 'function' && isOnlineMatch())) return null;
+                if (typeof RACE_BASE_STATS === 'undefined' || typeof raceKit !== 'function') return null;
+                const mode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                const wcs = (mode && Array.isArray(mode.winConditions)) ? mode.winConditions : [];
+                const plans = ['brawl'];
+                if (wcs.includes('tower_destroyed')) plans.push('siege');
+                if (wcs.includes('hourglasses_collected') && mode.hasHourglasses !== false) plans.push('keys');
+                const plan = plans[randInt(plans.length)];
+                let pool = AVAILABLE_RACES.filter(r => RACE_BASE_STATS[r]);
+                if (typeof isRace3DReady === 'function') { const r3 = pool.filter(r => isRace3DReady(r)); if (r3.length) pool = r3; }
+                if (pool.length < size) return null;
+                const mv = st => (typeof moveFromSpd === 'function') ? moveFromSpd(st.spd || 0) : 3;
+                const score = {
+                    brawl: r => { const st = RACE_BASE_STATS[r]; return Math.max(st.atk || 0, st.int || 0) + ((st.def || 0) + (st.mdef || 0)) * 0.4 + (st.hp || 0) * 0.08; },
+                    siege: r => { const st = RACE_BASE_STATS[r]; return Math.max(st.atk || 0, st.int || 0) * 1.4 + (st.hp || 0) * 0.05 + raceKit(r).range * 20; },
+                    keys: r => { const st = RACE_BASE_STATS[r]; return (st.vision || 0) * 60 + raceKit(r).inspect * 90 + mv(st) * 40 + (st.hp || 0) * 0.03; },
+                };
+                // a plan team: two specialists for siege / keys, the rest brawlers
+                const roles = Array.from({ length: size }, (_, i) => (plan !== 'brawl' && i < Math.min(2, size - 1)) ? plan : 'brawl');
+                const picks = [];
+                for (const role of roles) {
+                    const top = pool.filter(r => !picks.includes(r)).sort((a, b) => score[role](b) - score[role](a)).slice(0, 10);
+                    if (!top.length) return null;
+                    picks.push(top[randInt(top.length)]);
+                }
+                window._ewCpuDraftPlan = plan;
+                return picks;
+            } catch (e) { return null; }
+        }
+
         function optimizeRandomizeParty(player) {
             const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[player]?.length || 0);
 
             if (!state.partyMeta) state.partyMeta = {};
             /* CPU side of a D.O.O.R. crossing: draw from the pinned native pool. */
             const pinned = (player === 2 && typeof window !== 'undefined' && Array.isArray(window._hqCpuPool)) ? window._hqCpuPool : null;
-            state.partyMeta[player] = randomizePartyIdentities(size, false, pinned);
+            // Hard VS CPU drafts for a plan (never over a crossing's pool or an encounter's lead)
+            const _drafted = (player === 2 && !pinned && !(window._hqEncounterLead || (window._hqPreselect && window._hqPreselect.encounter)))
+                ? _cpuPlanDraft(size) : null;
+            state.partyMeta[player] = randomizePartyIdentities(size, false, pinned || _drafted);
             /* THE ENCOUNTER · D2 (PHASE9_QUALITY_PLAN §6, 2026-09-16): the native the officer
                hit IS the enemy's lead — seat 1 of P2 wears its race, its gender and the
                room's name for it (data.js hqEncounterLead off _hqPreselect.encounter; the
@@ -4995,12 +5036,19 @@
             const canMove = (unit.movesThisTurn || 0) < UNIT_MAX_MOVES && canUnitAct(unit) && getMoveTiles(unit).length > 0;
             const enemies = getHostileUnits(unit.player);
             const effRange = getEffectiveRange(unit);
-            let hasAttack = enemies.some(e => {
-                if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y, e.z)) return false;
-                const d = distToTarget(unit.x, unit.y, e);
-                return d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
-            });
-            if (!hasAttack && state.towers) {
+            /* the enemy units + the Cube ask the ATTACK list's own question (battle.js _getAttackValidTargets: the unit's
+               height in the reach and the sight line). The old copy measured from height 0 and sighted from the ground, so
+               the verb lit for an enemy on a ledge the list then refused (wipeout playtest 2026-10-23: ATTACK lit, the
+               click said "No target"). */
+            const _apcList = (typeof _getAttackValidTargets === 'function');
+            let hasAttack = _apcList
+                ? _getAttackValidTargets(unit, { combatOnly: true }).some(t => t.kind === 'unit' || t.kind === 'tower')
+                : enemies.some(e => {
+                    if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y, e.z)) return false;
+                    const d = distToTarget(unit.x, unit.y, e);
+                    return d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+                });
+            if (!hasAttack && !_apcList && state.towers) {
                 const enemyPlayer = enemyOf(unit.player);
                 const tw = state.towers[enemyPlayer];
                 if (tw && tw.hp > 0) {
@@ -5443,7 +5491,7 @@
 
             if (!state.partyMeta) state.partyMeta = {};
             const pinned = (typeof window !== 'undefined' && Array.isArray(window._hqCpuPool)) ? window._hqCpuPool : null;
-            state.partyMeta[2] = randomizePartyIdentities(size, false, pinned);
+            state.partyMeta[2] = randomizePartyIdentities(size, false, pinned || _cpuPlanDraft(size));   // Hard: the plan draft
             state.partyBuilds[2] = state.partyMeta[2].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27)
             state.partyNames[2] = state.partyBuilds[2].map(cls => getDefaultUnitName(cls));
             state.loadouts[2] = state.partyBuilds[2].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[2][idx]?.race || ''));
