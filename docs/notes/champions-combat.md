@@ -2101,3 +2101,31 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - Moved (agreed with the "Shared spell family exclusions" thread): Excalibur Strike → excalibur (king arthur), Atomic Breath → kaijuatomic (kaiju), Fee Fi Fo Fum (raceTitanStep) → giant, Labyrinth Roar → minotaur. RACE_TREE rung swaps: goatman Labyrinth Roar → Treeline Scream, krampus → Krampus Chains.
 - data.js fix: `spellRandomTargetsOf` / `spellSplashOf` read `_spellRiderKindOk` / `_spellRandomMax` (function declarations) instead of the consts, because the boot mana pass prices RACE_ABILITIES rows before those consts exist (a random-target row there threw "Cannot access 'SPELL_RIDER_KINDS' before initialization" and took the whole data.js down).
 - Full list per race: the artifact "Unique families G-O" (project-files unique-families/).
+
+## THE SHARED FAMILY PASS (2026-10-23, thread "Shared spell family exclusions")
+- mondo: "exclude certain spells from a race's spell families, to make them more accurate ... not every one of those needs to be available to everyone with the cosmic spell family". Filled data.js `RACE_SPELL_EXCLUDES` (the 2026-10-17 per-race toggle, was empty): 292 exclusions on 97 races across the shared families. No spell deleted, no families tag changed by this pass, no new rules or statuses.
+- Rule of thumb used: a shared spell whose text names one race (Supernova "the orb", Cosmic Sight "The Watcher", Stoneform "the gargoyle", Plaguefield "except the necromancer") or that only fits some races (Lasso cowboy only per mondo, Pepper Spray / Taser / Lockdown off the Old-West sheriff, Gills off the firefighter) is off for the rest. Floor: every race keeps 12+ spells in its pool (door agent was already 12).
+- Moves out of shared families were made by the unique-family sibling threads, each changing only that spell's families tag: Excalibur Strike → King Arthur, Atomic Breath → Kaiju, Fee Fi Fo Fum → Giant, Labyrinth Roar → Minotaur (G to O); Heat Vision → Superhero (P to Z). Siren Song and Shadow Realm stayed shared (rungs of the mermaid / demon) and got exclusions instead.
+- data.js `flRacePool` (the Adaptable borrow window): a family spell is borrowed only from an owned race that learns it (raceFamilyMemberIds), so borrowing COSMIC from the Watcher never yields the orb's Supernova.
+- Everything else already read the excludes: raceFamilyPoolIds → unitSpellPool (builder, forge, isTreeLegal), treeLegalSubset (old saves, the host's online kit check, map.js spawns), buildTreeLegalLoadout (CPU / random), raceDefaultKit, the codex dossier, the POOLS tab ✓ boxes. The per-family list with reasons is the delivery page in /mnt/project-files/shared-families/.
+
+## THE P-Z SIGNATURE FAMILIES (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself … think of each race as its own JRPG or Dark Souls boss … dont add any new status effects")
+Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family exclusions"). data.js only.
+- Every race whose id starts P-Z has a family with `unique: '<race>'`. 26 NEW rows in SPELL_FAMILIES (inserted after the
+  scarecrow row, `kind: 'signature'`, an `identity: {who, adj, look, vibe}` kit for the Spell Library IDENTITY tab), listed
+  FIRST in that race's RACE_FAMILIES. The 11 families one P-Z race already carried alone (piracy, politics, football,
+  mirrormagic, animalhandling, archery, sentai, vampiricabilties, arachnid, werewolf, zombie) just got `unique: '<race>'`
+  (scarecrow already had it) — same convention as the A-F thread.
+- 53 new rows, ids `pz*`, in each race's RACE_ABILITIES array (top of the array, under a SIGNATURE comment). Shape: a tier
+  I-II SETUP that applies one existing status + a tier III-IV FINISHER with `bonusVsStatus` (×1.5) on it and no status of
+  its own (NO SELF-COMBO). apCost 1; tier IV finishers carry cooldownRounds 2. Only existing kinds and riders (debuff,
+  damage+chargeToTarget, aoe, line, pull, barrage, cross diamond, multiHit, lifeDrain, leapStrike (+aoeDmgPct splash),
+  tackle, dash, summonUnit with summonDef.hitStatus, buff; unholyBonus, sneakBonus, onKillHealPct, ignoresLineOfSight,
+  ignoreArmor, bonusHitsPerAdjacentAlly). Bleed got its first real appliers (sharkman, swordfighter).
+- Moved: Heat Vision (raceLaserBeam) superheropowers → the superhero's `solarpowered` (antihero/sidekick lose it). NOT moved:
+  Siren Song (mermaid's tier I rung) and Shadow Realm (the demon's capstone) — they stay shared.
+- Shaman's Spirit Animal reuses summonDef key 'wolf' (no new art).
+- The three leapStrike finishers (Down the Chimney, From the Ceiling, Abominable Ambush) keep the existing leap rule: the
+  caster must stand higher than the target. Their descs say "From higher ground".
+- Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
+  cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).
