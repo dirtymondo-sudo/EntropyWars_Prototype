@@ -14680,10 +14680,28 @@
                 const isHeal = ['heal', 'healAll'].includes(spell.kind);
 
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    /* SPARED ALLIES (Keys vs Keys matchup: Spike the Ball painted the Quarterback's own team red): a footprint
+                       tile holding one of the caster's team the cast does NOT hurt (the engine's forecast leaves them out)
+                       wears a dim grey plate, not the crimson "will be hit" one. Friendly fire / a soaked ally the chain
+                       reaches stays crimson. */
+                    let _spared = null;
+                    if (!isHeal && typeof isAllyUnit === 'function') {
+                        const _allyTiles = footprint.filter(t => (state.units || []).some(u => !u.dead && u !== unit
+                            && u.x === t.x && u.y === t.y && isAllyUnit(u, unit)));
+                        const _plan = (_allyTiles.length && typeof forecastSpellPlan === 'function')
+                            ? forecastSpellPlan(unit, spell, x, y, ov ? undefined : (state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y ? state.pendingTarget.z : undefined))
+                            : null;
+                        if (_plan && _plan.handled) {
+                            const _hitIds = new Set(_plan.hits.map(hh => hh.unit && hh.unit.id));
+                            _spared = new Set(_allyTiles.filter(t => !(state.units || []).some(u => !u.dead && u.x === t.x && u.y === t.y
+                                && _hitIds.has(u.id))).map(t => t.x + ',' + t.y));
+                        }
+                    }
                     /* THE CLARITY PASS: every tile the cast WILL hit is the same loud crimson plate (the renderer's
                        'aoe' style adds the inner frame); the aim tile carries the cursor brackets. */
                     const overlayTiles = footprint.map(t => {
                         const isCenter = (t.x === x && t.y === y);
+                        if (_spared && _spared.has(t.x + ',' + t.y)) return { x: t.x, y: t.y, color: 0x9aa0b4, opacity: 0.32, cursor: isCenter };
                         return {
                             x: t.x, y: t.y,
                             color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
