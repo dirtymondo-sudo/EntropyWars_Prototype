@@ -1193,6 +1193,13 @@
             }
             addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
 
+            /* 💥 the blast's tiles react like any spell hit (a nuke on an oil slick blows the whole slick), BEFORE the
+               crater's scorch paints the oil away (battle.js triggerTerrainSpellReaction) */
+            {
+                const _dsSpell = ds.spellId && typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[ds.spellId] : null;
+                if (_dsSpell && sourceUnit && typeof triggerTerrainSpellReaction === 'function') triggerTerrainSpellReaction(sourceUnit, _dsSpell, area);
+            }
+
             if (ds.leaveTerrain) {
                 for (const tile of area) {
                     const current = getTerrainAt(tile.x, tile.y);

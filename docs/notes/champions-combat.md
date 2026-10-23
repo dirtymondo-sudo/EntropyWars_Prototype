@@ -2145,3 +2145,17 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
   caster must stand higher than the target. Their descs say "From higher ground".
 - Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
   cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).
+
+## FIRE ON OIL / GOO, EVERY SPELL KIND (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of liquid explode? If not it should.")
+- Single-target spells (Fireball, Dragon Breath) already blew the whole connected slick (battle.js `_reactFireOil` via
+  `triggerTerrainSpellReaction`). Nine fire / lightning spells did not, because their resolvers never called the dispatcher
+  or painted the slick away first. Checked in a VS CPU match on the old code: Hellmouth, Solar Flare, Place Bomb, Fire for
+  Effect, Nuclear Option, Extinction Event, Infernal Hurl, Wall of Fire and Firefly Swarm left the oil standing (or
+  scorched it silently).
+- Fix: the dispatcher now also runs off a barrage hit (per struck tile), a splitBeam's primary + split hits, a skyThrow's
+  landing tile, a bomb blast (`detonateBomb`, the placer must be alive), and a delayed detonation (state.js, before the
+  crater's leaveTerrain). `igniteOilBeforePaint(caster, spell, x, y)` runs at every leaveTerrain / terrainCreate paint
+  site, so a slick under a scorch / lava paint goes up before it is covered. No new rules: these resolvers now get ALL the
+  existing reactions (conduction, flash-freeze, forest fire, crystal) like every other damage resolver.
+- "Goo" = the Black Goo's ooze terrain `swamp` (oil family, liquidFamilyOf 'oil'); the charred slick takes the normal
+  3-round terrain timer back to the map's own ground.
