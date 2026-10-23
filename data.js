@@ -784,8 +784,8 @@ function elemSplitFactor(typeEff, aff, share) {
     const r = Math.max(0, Math.min(1, share || 0));
     return (1 - r) * (typeEff == null ? 1 : typeEff) + r * elemShareMult(aff);
 }
-/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17; battle.js _pressOutcomeForHit
-   and the AI's press read it). typeTier = the SPELL's type vs the target
+/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17). HISTORY since 2026-10-23: battle.js THE PRESS SUM
+   (_pressHitInfo) and ai.js pressEV replaced it — kept for anything still reading it. typeTier = the SPELL's type vs the target
    (+1 super effective, −1 resisted, 0 neutral); aff = the target's affinity
    for the spell's element. Returns 'weak' (a press, +2 AP), 'resist' (no
    press and the AP drain), 'null' (no press, no drain — vetoes the press of
@@ -26113,7 +26113,7 @@ const TUTORIAL_LESSONS = [
               cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
               goal: { type: 'entropy', player: 1 } },
             { id: 'done', title: 'THE PRESS',
-              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel. Resist or miss: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
+              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel; each resistance on that hit takes 1 off, an absorb takes it all. Resist or miss with nothing else: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
               goal: { type: 'ack', finish: true } },
         ],
     },
