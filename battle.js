@@ -40989,11 +40989,13 @@
                     if (steps > 0) {
                         const ring1 = getMoveTiles(unit);
                         for (const t of ring1) {
-                            // Parity with findSpellApproachTile: jump/takeoff legs are
-                            // probed by their own approaches above/below — counting
+                            // Parity with findSpellApproachTile: takeoff legs are
+                            // probed by their own height approach below — counting
                             // them here as 1-AP walks lit the button for plans the
-                            // finder (and the AP budget) would then refuse.
-                            if (t._jump || t._takeoff) continue;
+                            // finder (and the AP budget) would then refuse. Hop tiles
+                            // (`_jump`: a walk with a step of more than one level) ARE
+                            // plain doMove walks — THE HOP TILES COUNT (2026-10-23).
+                            if (t._takeoff) continue;
                             if (unitAt(t.x, t.y, t.z)) continue;
                             unit.x = sx; unit.y = sy; unit.z = sz;
                             const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST
@@ -42551,13 +42553,17 @@
                 : () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
             let best = null, bestScore = -1;
             try {
-                // Walk approach (ONE step). Jump / take-off tiles that getMoveTiles folds
-                // into the walk set are SKIPPED here — they aren't reachable by a plain
-                // doMove; the dedicated jump / height approaches below execute them with
-                // the right verb (doJump / doAltitudeChange).
+                // Walk approach (ONE step). Take-off tiles that getMoveTiles folds into the
+                // walk set are SKIPPED here — the height approach below runs them with their
+                // own verb (doAltitudeChange) and AP.
+                /* THE HOP TILES COUNT (2026-10-23, after the same fix to Move towards): getMoveTiles flags `_jump` on
+                   every tile whose walk includes a hop (a step of more than one level: off a wall top, down a pyramid
+                   side) and on every tile past it. Those are lit Move tiles a plain doMove walks to (the Move click
+                   does), so a caster on a ledge may step off it into range and cast. The standalone leap (getJumpTiles,
+                   doJump) stays the jump approach below. */
                 const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     // THE SLIDE FORECAST: a walk onto ice casts from where the slide stops, not the tile walked to.
                     unit.x = sx; unit.y = sy; unit.z = sz;
@@ -42622,7 +42628,7 @@
                 const steps = _spellMoveBudget(unit, spell);
                 const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;   // hop tiles (`_jump`) are plain doMove walks — THE HOP TILES COUNT
                     if (unitAt(t.x, t.y, t.z)) continue;
                     const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST
                     unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
@@ -43167,7 +43173,7 @@
             let best = null, bestScore = -1;
             try {
                 for (const t of getMoveTiles(unit)) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;   // hop tiles (`_jump`) are plain doMove walks — THE HOP TILES COUNT
                     if (unitAt(t.x, t.y, t.z)) continue;
                     const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST: scan from where the slide stops
                     const lx = land ? land.x : t.x, ly = land ? land.y : t.y;
@@ -63954,7 +63960,7 @@
             let best = null, bestScore = -1;
             try {
                 for (const t of getMoveTiles(unit)) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;   // hop tiles (`_jump`) are plain doMove walks — THE HOP TILES COUNT
                     if (t.x === tx && t.y === ty) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST: fire from where the slide stops
