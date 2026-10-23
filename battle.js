@@ -39146,9 +39146,8 @@
                          (mode.keySpawnCount, else the map's CONFIG.winHourglasses)
              toWin     — how many one team must CARRY for THRESHOLD STABILIZED
                          (mode.keysToWin, else "every Key on the board")
-             fixedPool — true when the mode pins both numbers: the pool never
-                         restocks (the old round-10 spawnPeriodicHourglasses top-up
-                         would hand out extra Keys against a fixed 3-of-5 target).
+             fixedPool — true when the mode pins both numbers. (No mode restocks
+                         Keys any more: the round-10 top-up was removed 2026-10-23.)
            Arena: 5 spawned / all 5 to win. Every other mode is unchanged. */
         function getArenaKeyRules(mpModeArg) {
             const mp = mpModeArg || (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
@@ -39267,53 +39266,6 @@
             if (MAP_HAS_FLOORS) {
                 spawnHourglassesOnFloor('above', state.boardTerrain, hgPerSection);
                 spawnHourglassesOnFloor('below', state.boardTerrain, hgPerSection);
-            }
-        }
-
-        function spawnPeriodicHourglasses() {
-            const RESPAWN_COUNT = 3;
-            const MAX_UNCOLLECTED_GROUND = 6;
-
-            const uncollectedGround = state.hourglasses.filter(
-                h => h.carriedBy === null
-            ).length;
-            const canSpawn = Math.min(RESPAWN_COUNT, MAX_UNCOLLECTED_GROUND - uncollectedGround);
-            if (canSpawn <= 0) return;
-
-            /* RANDOM KEYS (mondo 2026-10-23): the top-up lands anywhere on the board too, not in the centre columns */
-            const w = bw(), h = bh();
-            const pool = [];
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    if (!unitAt(x, y) && isTerrainPassable(x, y) && canPlaceHourglassAt(x, y)
-                        && !(typeof isTowerTile === 'function' && isTowerTile(x, y))) {
-                        pool.push({ x, y });
-                    }
-                }
-            }
-            _shuffleKeySpots(pool);
-
-            let placed = 0;
-            for (const spot of pool) {
-                if (placed >= canSpawn) break;
-
-                if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
-                if (unitAt(spot.x, spot.y)) continue;
-                state.hourglasses.push({
-                    id: `hg-${state.hourglasses.length + 1}`,
-                    x: spot.x,
-                    y: spot.y,
-                    floor: 'ground',
-                    visibleTo: { 1: false, 2: false },
-                    carriedBy: null
-                });
-                placed++;
-            }
-
-            if (placed > 0) {
-                addLog(`${placed} new Key${placed > 1 ? 's' : ''} materialized on the battlefield!`);
-                /* THE SEARCH MAP: a new Key can lie on any searched tile now — both sides' searched tiles are cleared */
-                state.searchedByPlayer = { 1: new Set(), 2: new Set() };
             }
         }
 
@@ -53984,18 +53936,7 @@
                         if (u._recallCooldown > 0) u._recallCooldown--;
                     }
 
-                    // Hourglasses restock ONCE, at round 10 — never again. (The old
-                    // `round % 10` schedule re-fired at round 20+ when sudden death
-                    // pushed a match past the round limit, dropping fresh hourglasses
-                    // into an instant-win-on-pickup situation.)
-                    // A FIXED Key pool (Arena: 5 spawned / 3 to win) never restocks —
-                    // a top-up would hand out extra Keys against a fixed target.
-                    if (state.round === 10 && !state.suddenDeathActive) {
-                        const _hgMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-                        if ((!_hgMode || _hgMode.hasHourglasses) && !getArenaKeyRules(_hgMode).fixedPool) {
-                            spawnPeriodicHourglasses();
-                        }
-                    }
+                    // No Key top-up: the round-10 restock (spawnPeriodicHourglasses) is gone (mondo 2026-10-23).
 
                     checkBossSpawns();
 
