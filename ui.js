@@ -8884,8 +8884,8 @@
                 const wc = phys.w < 30 ? 'FEATHER' : phys.w < 80 ? 'LIGHT' : phys.w < 250 ? 'MEDIUM' : phys.w < 1000 ? 'HEAVY' : 'COLOSSAL';
                 const hLabel = phys.h < 1 ? `${Math.round(phys.h * 100)} cm` : `${phys.h >= 10 ? Math.round(phys.h) : phys.h} m`;
                 const wLabel = phys.w < 1 ? `${Math.round(phys.w * 1000)} g` : phys.w >= 1000 ? `${(phys.w / 1000).toFixed(1)} t` : `${phys.w} kg`;
-                const wcNote = wc === 'COLOSSAL' ? 'immune to knockback; falls hit ×1.5'
-                    : wc === 'HEAVY' ? 'pushed 1 tile less; smashes through stone; falls ×1.25'
+                const wcNote = wc === 'COLOSSAL' ? 'immune to knockback (not in Low Gravity); falls hit ×1.5'
+                    : wc === 'HEAVY' ? 'pushed 1 tile less (not in Low Gravity); smashes through stone; falls ×1.25'
                     : wc === 'FEATHER' ? 'pushed 1 tile further; falls ×0.5; too light to crash through blocks'
                     : wc === 'LIGHT' ? 'falls ×0.75'
                     : 'standard displacement physics';

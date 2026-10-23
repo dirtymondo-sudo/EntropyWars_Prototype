@@ -6200,7 +6200,8 @@ const SPELL_LIBRARY = [
         { id: 'raceTelekineticSlam', name: 'Telekinetic Slam', tier: 3, families: ['psychic'], cost: 75, apCost: 1,
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'pull', range: 4, dmg: 145,
           damageType: 'magic', pullDistance: 3, groundsFlyers: true,
-          desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
+          weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): the mind weighs nothing — heavy and colossal bodies come like any other
+          desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
         { id: 'raceHogtie', name: 'Hogtie', tier: 2, families: ['ropework'], cost: 50, apCost: 1, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 1,
           statusEffects: [{ id: 'root', duration: 2 }],
@@ -6484,7 +6485,7 @@ const SHARED_LOW_GRAVITY = {
     type: 'utility', cost: 20, range: 4, apCost: 1,
     kind: 'zoneDebuff', gravityField: 'weak', aoeRadius: 1, zoneDuration: 3,
     statusEffects: [],
-    desc: 'Loosen gravity over a 3×3 area for 3 rounds. EVERYONE inside (both teams) jumps +2 tiles further and higher, and takes zero fall damage. Moon-bounce your bruisers up a cliff — just remember the enemy can bounce too.'
+    desc: 'Loosen gravity over a 3×3 area for 3 rounds. EVERYONE inside (both teams) jumps +2 tiles further and higher, takes zero fall damage, and weighs nothing: even the biggest, normally immovable bodies are pushed, pulled and flung like anyone else. Moon-bounce your bruisers up a cliff — just remember the enemy can bounce too.'
 };
 
 /* One wall spell, one name. The knight's old "Castle Fortress" and King
@@ -6634,8 +6635,9 @@ const SHARED_BLACK_HOLE = {
     type: 'damage', tier: 4, families: ['cosmic'], cost: 100, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
     kind: 'aoePull', damageType: 'magic', aoeRadius: 2, pullToCenter: true,
     groundsFlyers: true,
+    weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): nothing is too heavy for a singularity — heavy and colossal bodies are dragged too
     statusEffects: [{ id: 'slow', duration: 1 }],
-    desc: 'Collapse a singularity: everything in a 5×5 event horizon is dragged screaming toward the center and crushed for HEAVY magic damage. Applies Slow. Knocks flying enemies out of the sky. Cooldown: 2 rounds.'
+    desc: 'Collapse a singularity: everything in a 5×5 event horizon, however heavy, is dragged screaming toward the center and crushed for HEAVY magic damage. Applies Slow. Knocks flying enemies out of the sky. Cooldown: 2 rounds.'
 };
 
 const SHARED_NEBULA = {

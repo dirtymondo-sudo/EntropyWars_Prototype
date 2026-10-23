@@ -4890,11 +4890,28 @@
             return WEIGHT_FALL_DMG_MULT[getUnitWeightClass(unit)] ?? 1.0;
         }
 
+        /* 🪶 ANTI-GRAVITY (2026-10-23, mondo: "usually immovable enemies (the big ones) are able to be displaced like any
+           other enemy"): a body standing in a Low Gravity field (gravityField 'weak'), or moved by a spell row flagged
+           `weightless` (Telekinetic Slam, Black Hole), has no weight to plant — a heavy or colossal body is pushed,
+           pulled and flung like a medium one. Displacement only: fall damage, crash-through power and the codex class
+           keep the real weight. Anchoring passives (Windborne, Mountainborn) and Clash still hold. */
+        function isUnitWeightless(unit, spell) {
+            if (!unit) return false;
+            if (spell && spell.weightless) return true;
+            return typeof getGravityFieldAt === 'function' && getGravityFieldAt(unit.x, unit.y) === 'weak';
+        }
+        function getUnitDisplaceWeightClass(unit, spell) {
+            const wc = getUnitWeightClass(unit);
+            if ((wc === 'heavy' || wc === 'colossal') && isUnitWeightless(unit, spell)) return 'medium';
+            return wc;
+        }
+
         // ⚖️ Weight-adjusted push distance (2026-07-07 physique pass): feather
         // units sail one tile further, heavy units give one tile less (min 1),
         // colossal units simply do not budge. Every push path funnels through
-        // this so spells, previews and the AI agree.
-        function getUnitPushDistance(unit, baseDist, kind) {
+        // this so spells, previews and the AI agree. `spell` (optional): the
+        // row doing the moving, read for its `weightless` flag (ANTI-GRAVITY).
+        function getUnitPushDistance(unit, baseDist, kind, spell) {
             /* Clash: knockback never budges anyone — damage lands, formation
                holds. Every push path funnels through here, so one gate no-ops
                push/displacement/linePush across the whole engine. */
@@ -4904,7 +4921,7 @@
             // THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne: push and pull cannot move it). `kind` defaults to
             // 'push'; the pull rows pass 'pull'. Pure read: previews and the AI see the same 0.
             if (unitResistsDisplace(unit, kind || 'push')) return 0;
-            const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
+            const wc = getUnitDisplaceWeightClass(unit, spell);
             if (wc === 'colossal') return 0;
             if (wc === 'heavy') return Math.max(1, d - 1);
             if (wc === 'feather') return d + 1;
@@ -6836,7 +6853,7 @@
             bodies.sort((a, b) => cheb(a) - cheb(b));
             for (const t of bodies) {
                 if (t.dead || t._dying) continue;
-                const n = getUnitPushDistance(t, jopts.dist || spell.pullDistance, 'pull');
+                const n = getUnitPushDistance(t, jopts.dist || spell.pullDistance, 'pull', spell);
                 if (!(n > 0) || cheb(t) <= within) continue;
                 const r = resolveForcedSlide(t, Math.sign(center.x - t.x), Math.sign(center.y - t.y), n, {
                     byUnit: unit, label: `${spell.name}: `, toward: center, stopWithin: within,
@@ -36629,7 +36646,7 @@
                     list.sort((a, b) => cheb(a) - cheb(b));
                     for (const t of list) {
                         if (t.hp <= 0 || cheb(t) <= within) continue;
-                        const n = getUnitPushDistance(t, dist, 'pull');
+                        const n = getUnitPushDistance(t, dist, 'pull', spell);
                         if (n > 0) slide(t, Math.sign(c.x - t.x), Math.sign(c.y - t.y), n, { toward: c, stopWithin: within }, 'pull');
                     }
                 };
@@ -36781,7 +36798,7 @@
                 }
                 const ally = !!spell.allyOnly;
                 if (!target || (ally ? (target.id === unit.id || !isAllyUnit(target, unit)) : isAllyUnit(target, unit))) return;
-                const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull');
+                const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull', spell);
                 const anchor = ally ? null : unitResistsDisplace(target, 'pull');
                 if (anchor) tag(target, 'anchored');
                 slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), n, { stopBefore: { x: unit.x, y: unit.y }, noFall: ally,
@@ -43322,7 +43339,7 @@
             let dx, dy, dist, mode;
             if (isPull) {
                 dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
-                dist = getUnitPushDistance(target, spell.pullDistance || 3); mode = 'pull';
+                dist = getUnitPushDistance(target, spell.pullDistance || 3, null, spell); mode = 'pull';
             } else {
                 dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
                 dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2); mode = 'push';
@@ -57247,7 +57264,7 @@
             igniteTile, extinguishTile, tickBurningTiles,
             _isFlammableTile, _isWaterTile, _isWetTile, _isOilTile, _isLavaTile, _floodConnectedTiles,
             // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
-            getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult,
+            getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult, isUnitWeightless, getUnitDisplaceWeightClass,
             settleWaterAround, checkTrapTrigger,
             // 🔨 right-click-hold demolition (see beginTileDemolishHold)
             beginTileDemolishHold, cancelTileDemolishHold,
@@ -60536,7 +60553,7 @@
                 if (!victim || victim.dead || victim._dying) continue;
                 const dist = getUnitPushDistance(victim, BOMB_KNOCK_TILES);
                 if (!(dist > 0)) {
-                    if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(victim) === 'colossal') addLog(`💥 ${_ctName(victim)} is far too massive to be blown back!`);
+                    if (getUnitDisplaceWeightClass(victim) === 'colossal') addLog(`💥 ${_ctName(victim)} is far too massive to be blown back!`);
                     continue;
                 }
                 const d = _bkDirs[victim.id] || bombKnockDir(bomb, victim, _bkCtx);
@@ -67114,7 +67131,7 @@
             const occ = unitAt(x, y);
             const occAirborne = occ && typeof isUnitAirborne === 'function' && isUnitAirborne(occ);
             if (occ && !occ.dead && !occAirborne && isEnemyUnit(occ, unit) && !out.isWater) {
-                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(occ) === 'colossal') {
+                if (getUnitDisplaceWeightClass(occ) === 'colossal') {   // 🪶 in Low Gravity the rising ground shoves even a colossus
                     return 'Too heavy to shove';
                 }
                 // THE SPELL AUDIT Batch D — Mountainborn (`immuneDisplace: ['terrain']`): raised ground cannot shove it aside.
@@ -71811,13 +71828,13 @@
                 unit.mp -= effectiveSpellCost;
                 // Weight + Clash gate in one place now (getUnitPushDistance:
                 // feather +1, heavy -1, colossal 0, Clash freezes everyone).
-                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal'
+                if (getUnitDisplaceWeightClass(target, spell) === 'colossal'
                     && !(typeof _isClashMode === 'function' && _isClashMode())) {
                     addLog(`${_ctName(target)} is far too heavy to drag!`);
                     showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                 }
                 // an ally haul (Rescue Line) is a rescue, not a pull: Windborne's anchor and Event Horizon's rider skip it
-                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, _plAlly ? 'rescue' : 'pull');
+                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, _plAlly ? 'rescue' : 'pull', spell);
                 // THE SPELL AUDIT Batch D — Windborne (`immuneDisplace: ['pull']`) holds; Event Horizon's `pullRider` lands.
                 const _pullAnchor = _plAlly ? null : unitResistsDisplace(target, 'pull');
                 if (_pullAnchor && (spell.pullDistance || 3) > 0) {
