@@ -2031,3 +2031,32 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - Browser-checked on Stonehenge (Sedan as a flyer): old code, 11 teal tiles and a click flew it to the lintel (z 8,
   AP 0); new code, 0 teal tiles for the player (CPU still 11), the same click does not take off, Take Off then Move
   lists the flying tiles.
+
+## THE SPELL POWER REVIEW (2026-10-23, mondo: "lets go ahead and add those spells. Balance the status effects better like reduce the number of stagger spells ... it needs to work for wet too ... even out the elemental spread. Definitely too much metal too.")
+Review page: https://claude.ai/artifact/5v2kAZFtLm1yCam99A89kw (built from the wipeout / Cube / Keys playtests).
+- **Eleven new rows** (data.js, end of SPELL_LIBRARY, each in one existing family): Open Vein (blood I, Bleed 2 — the first
+  spell that applies Bleed), Arterial Spray (blood III, ×1.5 vs Bleed), Conduction (lightning III, ×1.5 vs Wet, stacks with
+  the Soaked shock), Thornlash (nature I, Root 1), Overgrowth (nature III, ×1.5 vs Root), Crosswind (wind II linePush, Blind 1),
+  Eye of the Storm (wind IV aoePull, ×1.5 vs Blind, cd 2), Mudslide (earth III line, ×1.5 vs Slow), Tailwind (teamwork II
+  warCry, Quickened 2 to allies within 2, cd 2), Far Sight (psychic II, `remoteView` + `inspectAt`), Rustle (cowboyskills II,
+  `pull` + `stealKeys: 1`).
+- **Far Sight**: battle.js `_inspectFootprintAt(unit, x, y)` is the Inspect itself (footprint, Keys, corpse loot, hidden bombs,
+  logs, camera, scan fade) lifted out of doInspect; doInspect keeps its checks + AP + turn bookkeeping. doSpell's
+  `remoteView && inspectAt` branch range-checks (Chebyshev ≤ spell range), pays MP and calls it. ai.js `_aiFarSightPick`.
+- **Rustle**: the `pull` branch robs after the yank when a row carries `stealKeys` / `stealItems` (`_stealFromUnit`).
+- **Stagger 41 → 20 appliers**: tier III/IV rows stop applying it and became finishers (Stampede/Divine Swoop/Rampage ×1.5 vs
+  Root; Kill Mode/Cosmic Slam/Quake vs Slow; Shockwave Clap/Slap Leather/Drop In/Jackpot vs Stagger; Crowd Surge vs Charm;
+  Cuffed keeps only its Root). Tier I/II moved to under-used statuses: Static Shock + Yellow Thunder → Jammed, Mic Drop →
+  Silence, Cluster Rockets + Dynamite → Burn 2, Demonic Roar + Infernal Conscription → Feared; Hogtie and Fee Fi Fo Fum
+  dropped the extra Stagger. Drop In's hit now passes `bonusVsStatus` (the doorBreach branch never did).
+- **WET CONDUCTS** (battle.js `_isSoakedBodyAt` / `_isConductiveWetTile`): a grounded Soaked unit is part of the conductive
+  body like a water tile. Lightning on a pool floods through touching Soaked bodies; lightning striking a Soaked unit on dry
+  ground arcs (`_reactLightningWater`, same 75% tick) to every touching Soaked body / wet tile, after the terrain loop and
+  skipping tiles a pool already zapped. `_unitIsSoaked` also counts a unit under rain-type weather right now. Water and rain
+  already stamped Wet (tickWetUnits, weather soaks); Drowning untouched.
+- **Elements** (damage rows, before → after): metal 34 → 27, blood 10 → 22, wind 8 → 22, nature 8 → 18, lightning 11 → 13,
+  sonic 11 → 13; no-element 152 → 122. Spells with the cut light/shadow/arcane look were left alone. Hacking/AI spells were
+  NOT made lightning (lightning on tech = the overclock half-damage rule).
+- Open (asked mondo, not built): Eternal Slumber 5×5 stun, no-cooldown 5×5+ nukes, Meteor/Requiem/Tidal Slam say
+  "Cooldown: 2" but `_applyBaselineCooldowns` runs before `applyTreeRingCosts` so it never sees their tier MP,
+  Cataclysm Stomp 5×5 at tier II, Spirit Bomb.
