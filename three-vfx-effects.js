@@ -39450,16 +39450,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), to = _afTo(F, from.x, from.y);
         var crown = new THREE.Group(); F.g.add(crown);
-        var band = _afGlowMesh(new THREE.TorusGeometry(ts * 0.16, ts * 0.025, 6, 20), _AF.hell); band.rotation.x = Math.PI / 2; crown.add(band);
+        var band = _afSolid(new THREE.TorusGeometry(ts * 0.16, ts * 0.025, 6, 20), _AF.blood); band.rotation.x = Math.PI / 2; crown.add(band);
         var spikes = [];
-        for (var i = 0; i < 6; i++) { var sp = _afGlowMesh(new THREE.ConeGeometry(ts * 0.035, ts * 0.14, 5), _AF.ember); var a = i * Math.PI / 3; sp.position.set(Math.cos(a) * ts * 0.16, ts * 0.07, Math.sin(a) * ts * 0.16); crown.add(sp); spikes.push(sp); }
+        for (var i = 0; i < 6; i++) { var sp = _afSolid(new THREE.ConeGeometry(ts * 0.035, ts * 0.14, 5), _AF.hell); var a = i * Math.PI / 3; sp.position.set(Math.cos(a) * ts * 0.16, ts * 0.07, Math.sin(a) * ts * 0.16); crown.add(sp); spikes.push(sp); }
+        var halo = _finSprite(_AF.ember, _sigGlowTex(), ts * 0.6, 160); crown.add(halo);
         var a0 = new THREE.Vector3(0, ts * 1.15, 0), a1 = new THREE.Vector3(to.x, to.y + ts * 1.15, to.z), total = 1300;
         return _sigRunOwned(F.g, total, function (el) {
             var lift = _sigClamp01(el / 300), fly = _afEaseIO(_sigClamp01((el - 350) / 600));
             var p = el < 350 ? new THREE.Vector3(0, ts * (1.0 + 0.3 * lift), 0) : _afArc(new THREE.Vector3(0, ts * 1.3, 0), a1, ts * 0.8, fly);
             crown.position.copy(p); crown.rotation.y = el * 0.006;
             var k = _afEnv(el, 0, 120, 1050, total) * (0.8 + 0.2 * Math.sin(el * 0.05));
-            band.material.opacity = k; for (var i = 0; i < spikes.length; i++) spikes[i].material.opacity = k;
+            band.material.opacity = k; for (var i = 0; i < spikes.length; i++) spikes[i].material.opacity = k; halo.material.opacity = 0.6 * k;
         });
     }
     /* THRONE OF ASHES: the black throne rises out of a ring of hellfire */
