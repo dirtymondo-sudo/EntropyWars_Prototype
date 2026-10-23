@@ -5732,7 +5732,9 @@ function ActionMenu({ st, hidden }) {
     const _chCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
     const _chThr = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
-    const _chOk = _capturable && (unit.ap || 0) >= _chCost;
+    /* a strict boolean: off a zone _nex is null, and the row reads `available !== false` as lit
+       (playtest 2026-10-21: CHANNEL lit with "1 AP" off the Nexus, then "Must be standing in a Nexus zone") */
+    const _chOk = !!_capturable && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
     /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
     const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
@@ -5744,7 +5746,7 @@ function ActionMenu({ st, hidden }) {
          : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
-      // the unit this menu is drawn for — the row's grey-out was judged on it (playtest 2026-10-21: lit, then "Must be standing in a Nexus zone")
+      // the unit this menu is drawn for — the row's grey-out was judged on it
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
     });
   }
