@@ -2118,5 +2118,7 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
 - Moved: Heat Vision (raceLaserBeam) superheropowers → the superhero's `solarpowered` (antihero/sidekick lose it). NOT moved:
   Siren Song (mermaid's tier I rung) and Shadow Realm (the demon's capstone) — they stay shared.
 - Shaman's Spirit Animal reuses summonDef key 'wolf' (no new art).
+- The three leapStrike finishers (Down the Chimney, From the Ceiling, Abominable Ambush) keep the existing leap rule: the
+  caster must stand higher than the target. Their descs say "From higher ground".
 - Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
   cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).

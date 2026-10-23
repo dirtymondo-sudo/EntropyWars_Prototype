@@ -9159,7 +9159,7 @@ const RACE_ABILITIES = {
         { id: 'pzAbominableAmbush', name: 'Abominable Ambush', tier: 4, families: ['abominable'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 160, range: 4, dmgPerLevel: 20,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Out of the snow. Leaps onto a Single Enemy within 4 for HEAVY physical damage. Deals bonus damage to Slowed targets. Cooldown: 2 rounds.' },
+          desc: 'Out of the snow. From higher ground, leaps down onto a Single Enemy below you within 4 for HEAVY physical damage. Deals bonus damage to Slowed targets. Cooldown: 2 rounds.' },
         /* 2026-08-16 balance (stats18): 1 cast in 362 matches — the AI's
            terrainCreate scorer only values raw dmg (40 read as worthless next
            to the ring-3 75 MP + 2 AP price). Damage raised to MEDIUM so the
@@ -9608,7 +9608,7 @@ const RACE_ABILITIES = {
           spellType: 'divine', type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 150, range: 4, dmgPerLevel: 20,
           aoeRadius: 1, aoeDmgPct: 0.4,
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
-          desc: 'Ho ho ho. Leaps onto a Single Enemy within 4 for HEAVY physical damage, and everyone beside it takes some of the landing. Deals bonus damage to Frozen targets. Cooldown: 2 rounds.' },
+          desc: 'Ho ho ho. From higher ground, leaps down onto a Single Enemy below you within 4 for HEAVY physical damage, and everyone beside it takes some of the landing. Deals bonus damage to Frozen targets. Cooldown: 2 rounds.' },
         { id: 'raceSleighDash', tier: 2, element: 'ice', families: ['christmasspirit'], spellType: 'divine', name: 'Sleigh Dash',
           type: 'damage', cost: 25, dmg: 130, range: 4, apCost: 1,
           kind: 'dash', damageType: 'physical', dashDamage: 90,
@@ -9701,7 +9701,7 @@ const RACE_ABILITIES = {
         { id: 'pzFromTheCeiling', name: 'From the Ceiling', tier: 4, families: ['thebond'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 160, range: 3, dmgPerLevel: 20,
           bonusVsStatus: { status: 'goo', mult: 1.5 },
-          desc: 'It was up there the whole time. Leaps onto a Single Enemy within 3 for HEAVY physical damage. Deals bonus damage to Gooed targets. Cooldown: 2 rounds.' },
+          desc: 'It was up there the whole time. From higher ground, drops onto a Single Enemy below you within 3 for HEAVY physical damage. Deals bonus damage to Gooed targets. Cooldown: 2 rounds.' },
         { id: 'raceTendrilStrike', element: 'poison', spellType: 'unholy', name: 'Tendril Strike',
           type: 'damage', tier: 4, families: ['symbiosis'], cost: 45, dmg: 180, range: 2,
           kind: 'damage', damageType: 'physical',
