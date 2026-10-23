@@ -49808,7 +49808,19 @@
         /* Timeline stamp for the card — every battle happens somewhen between
            12500 BC and 3333 AD. */
         function _lsRandomYear() {
-            const yr = Math.floor(Math.random() * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
+            /* online both seats draw the SAME year (the match id + number seed it): the two loading cards and the two
+               result stamps of one case read different years (online playtest 2026-10-23) */
+            let r = Math.random();
+            try {
+                const _n = window._NET;
+                if (_n && _n.online && _n.matchId) {
+                    const k = String(_n.matchId) + ':' + (state.matchNumber || 1);
+                    let h = 2166136261;
+                    for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 16777619); }
+                    r = (h >>> 0) / 4294967296;
+                }
+            } catch (e) {}
+            const yr = Math.floor(r * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
             const label = yr < 0 ? 'YEAR ' + (-yr) + ' BC' : (yr === 0 ? 'YEAR 1 AD' : 'YEAR ' + yr + ' AD');
             /* the D.O.O.R. result stamp quotes the same canon date (§3.5) */
             window._lsCanonYear = label;
@@ -53646,6 +53658,11 @@
                 if (typeof document !== 'undefined' && document.hidden) return reset();
                 /* Guests mirror the host's engine — never self-drive. */
                 if (window._NET && window._NET.online && window._NET.role !== 'host') return reset();
+                /* the opponent dropped or the match is being restored: the engine's next activation waits for the
+                   recovery (online.js _ewDeferRecovery), so the quiet board is the outage, not a stall (online playtest
+                   2026-10-23: a 7 s guest drop and the host forced a turn advance in the middle of it) */
+                if (window._NET && window._NET.online && (window._NET._recovering || window._NET._recoveryFailed
+                    || window._NET.connected === false)) return reset();
                 const mode = getActiveGameMode();
                 if (!mode || !mode.blitzMode) return reset();
                 if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return reset();
@@ -54067,7 +54084,11 @@
                     }, delay);
                 } else if (state.controllers?.[nextUnit.player] === CTRL.REMOTE) {
 
-                    _stopShotClock();
+                    /* THE GUEST'S CLOCK (online playtest 2026-10-23: one guest turn sat open 33 minutes): the remote turn
+                       stopped the clock here and nothing started it again, so the guest's own browser never timed its
+                       turn out and the host's backstop (_shotClockExpired, SHOT_CLOCK_HOST_GRACE_SEC) never had a running
+                       clock to fire on. The host's clock is the authority: it runs for the guest's unit too and syncs. */
+                    _startShotClock();
                     // Mirror the remote player's acting unit into the local
                     // selection/focus so the top-left ActiveUnitPanel (and the
                     // roster highlight) shows the SAME unit on both screens.
@@ -64873,24 +64894,26 @@
             // empty building tile falls through to the "choose an enemy" nag.
             // 🔨 NO ATTACKING TILES (2026-10-22): a raised column is lowered with Dig (Build), never a basic attack.
             if (!target || isAllyUnit(target, unit)) {
-                addLog('Choose an enemy on an attack-highlighted tile.');
+                addLog('Choose an enemy on an attack-highlighted tile.', unit.player);
                 playErrorSfx();
                 return 0;
             }
 
+            /* a refused attack is the attacking seat's own line: online it told the camouflaged unit's player that the
+               host had found its square (online playtest 2026-10-23) */
             if (unitHasStatus(target, 'invisible') && !unitHasStatus(target, 'marked')) {
-                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`);
+                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
             if (unitCryptidHiddenFrom(target, unit.player)) {
-                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
+                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
             // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
             if (isUnitRealmShieldedFrom(target, unit)) {
-                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
@@ -75839,6 +75862,9 @@
                 clearInterval(_matchClockInterval);
                 _matchClockInterval = null;
             }
+            /* the pill is only ever redrawn by this interval: a countdown on screen when the match ended stayed over the
+               result screen ("⏱ 4s" over VICTORY, online test 2026-10-23) */
+            _renderShotClockPill(null, false);
         }
 
         function _shotClockExpired() {
