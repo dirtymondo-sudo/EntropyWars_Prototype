@@ -5240,14 +5240,20 @@ function _hrlgTargetBlades(unit, st, mode) {
         const _tz = typeof getHeightAt === 'function' ? getHeightAt(_tw.x, _tw.y) : 0;
         const _d = combatDist(unit.x, unit.y, _uz, _tw.x, _tw.y, _tz);
         let why = null;
-        if (_d >= 1 && _d <= getEffectiveRange(unit)) {
+        const _rng = getEffectiveRange(unit);
+        if (_d >= 1 && _d <= _rng) {
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, _tw.x, _tw.y, _uz)) why = 'BLOCKED';
           else if (typeof visionGatesTargeting === 'function' && visionGatesTargeting(unit)
             && typeof isInVision === 'function' && !isInVision(unit, _tw.x, _tw.y)) why = 'NO SIGHT';
+        } else if (_d > _rng && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
+          && combatDist(unit.x, unit.y, _tz, _tw.x, _tw.y, _tz) <= _rng) {
+          /* THE FLYER'S REACH (Cube vs Cube matchup 2026-10-23): a flyer beside the Cube but more levels above it than
+             its range lost the row with no word, while the flat range tiles still covered the Cube */
+          why = 'TOO HIGH';
         }
         if (why) blades.push({
           id: 'tg:cube-' + why, icon: '⬡', available: false, label: 'Cube',
-          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : 'OUT OF SIGHT',
+          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : why === 'TOO HIGH' ? 'TOO HIGH · LAND TO REACH IT' : 'OUT OF SIGHT',
           meta: { text: Math.round(_d) + 't' },
         });
       }
@@ -9329,8 +9335,11 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           } : null,
         });
       } else {
+        /* a walk down a drop pays the fall on arrival (battle.js finishMoveAt) — the price goes on the button like Jump's */
+        const _mvDropDmg = (typeof predictFallDamage === 'function' && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)))
+          ? predictFallDamage(actingUnit, actingUnit.z ?? 0, moveTile.z ?? 0, tx, ty) : 0;
         actions.push({
-          id: 'move', label: 'Move here', icon: '⬆', category: 'movement',
+          id: 'move', label: _mvDropDmg > 0 ? `Move here (−${_mvDropDmg} HP)` : 'Move here', icon: '⬆', category: 'movement',
           apCost: 1, available: true,
           // THE SLIDE FORECAST: an ice tile's row previews the slide on hover
           _slideZ: (_mtLand(actingUnit, moveTile) ? (moveTile.z ?? null) : undefined),
