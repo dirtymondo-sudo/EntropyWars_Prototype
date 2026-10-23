@@ -669,7 +669,7 @@ function _getModeInfo(st) {
     };
   }
 
-  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
   /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
      its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
   const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
@@ -680,7 +680,7 @@ function _getModeInfo(st) {
     const eTw = st.towers && st.towers[enemy];
     let tDmg = 0;
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-    pts += Math.min(Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    pts += Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     let hgCount = 0;
     if (st.hourglasses && !_keysHid(p)) {
       hgCount = st.hourglasses.filter(hg => {
@@ -702,7 +702,7 @@ function _getModeInfo(st) {
     const kills = (st.matchKills ? (st.matchKills[p] || 0) : 0);
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
-    if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     if (st.hourglasses && !_keysHid(p)) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
