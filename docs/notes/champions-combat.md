@@ -2306,3 +2306,15 @@ or maybe its a status effect already".
   weight, so nothing changed there.
 - Not done (flagged): Levitating (Fairy Dust etc.) does NOT make a body weightless, since it is only ever an ally buff and it
   would have made your own big units easier for the enemy to shove. Gravity Well (tier 1) stays weight-bound.
+
+### MOVE TOWARDS counts the hop tiles (2026-10-23)
+mondo: "clicking move towards on a tile outside of my spell range still only moves me one tile at a time ... It needs
+to move me to the edge of my range closest to the tile i clicked". battle.js `findMoveTowardsTile` (tile quick menu's
+Move towards, Move-mode click past the range, its hover ghost) skipped every getMoveTiles tile flagged `_jump`, and
+getMoveTiles flags every tile whose walk includes a hop (a step of more than one level: off a wall top, down a pyramid
+side) plus every tile past it. Those tiles are lit and a Move click walks to them with the same doMove, so a unit on a
+ledge could only shuffle along it (Pyramids of Giza wall top: G3 clicked from F7 → G7, one tile, while G5 below was
+lit), or got no Move towards at all. Now only `_takeoff` tiles are skipped; the standalone leap (getJumpTiles/doJump)
+stays its own verb. Browser-proved on Pyramids of Giza: same click now lands on G5. Screenshot
+/mnt/project-files/move-towards-ledge/. The unit-target chase (hud.js `_bestTowardStep`) already counted them.
+findSpellApproachTile / _findSelfNovaApproachTile (MOVE→CAST) still skip hop tiles — left as they were.
