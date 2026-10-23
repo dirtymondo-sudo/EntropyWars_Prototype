@@ -1997,11 +1997,12 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - Not covered: touch/gamepad have no F (keyboard Enter cursor keeps its own z).
 
 ## THE CUBE PLAYTEST FIXES (2026-10-23, report https://claude.ai/artifact/BqLpotev1HFttbkZGZoiEW)
-- STAT STAGE RULER: battle.js `_statStageCeil` = max(STAT_STAGE_RULER_TOP 200 + the unit's earned level growth
-  (`_lvlStatGains`, not SPD), base). The old max(100, base) sat below every level-100 statline (race bake 2026-10-06 put
-  bases on 0-200, growth +58 ATK on top), so every ATK buff read "ATK maxed". `statStageRoom(unit, stat, n)` (GAME) is
-  the one room count; ai.js stageRoom and Bloodcraze's SPD clamp read it. STAT_STAGE_STEP is still 20 (half a letter on
-  the new bands) — flagged to mondo with the cap question (S-rank ATK races still gain only a few points).
+- STAT STAGE CAP (mondo's rule 10-23: "the max attack stat at level 100 plus 5 stages", for every main stat, following
+  his stat edits): battle.js `_statStageCeil` = max(roster top + 5 × STAT_STAGE_STEP, the unit's own value). Roster top
+  (`_statStageRosterTop`, cached 1 s) = highest RACE_BASE_STATS value + LEVEL_TOTAL_STAT_GAINS + biggest ZODIAC_EFFECTS
+  natal for ATK / M ATK / DEF / M DEF / SPD, so the race editor moves it. Shipped: ATK 358, M ATK 343, DEF 362, M DEF 369, SPD 300.
+  The old max(100, base) sat below every level-100 statline, so every ATK buff read "ATK maxed". `statStageRoom(unit, stat,
+  n)` (GAME) is the one room count; ai.js stageRoom and Bloodcraze's SPD clamp read it. STAT_STAGE_STEP stays 20.
 - Respawn clears `_staggerApDebt` beside the statStageMods reset (map.js x3, battle.js realtime).
 - ui.js `_estimateHealPotionHeal(target, item, user)` applies Devout healMult + healTakenMult (Grievous / Gooed).
 - hud.js Abilities sub: a spell blocked by its own guard (cooldown, one cast, Brand lock) names that reason
