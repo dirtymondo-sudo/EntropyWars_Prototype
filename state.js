@@ -4484,6 +4484,7 @@
                 1: new Set(),
                 2: new Set()
             },
+            searchedByPlayer: { 1: new Set(), 2: new Set() },   // THE SEARCH MAP (battle.js syncSearchMap)
             placed: false,
             winner: null,
             isRankedMatch: false,

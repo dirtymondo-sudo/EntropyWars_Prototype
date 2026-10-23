@@ -17164,7 +17164,11 @@ const ThreeRenderer = (function () {
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
         'spellApproachMove':   { fill: 0.30, edgeGlow: 0.9 },
         'spellApproachShove':  { fill: 0.50, edgeGlow: 1.3, dots: 1 },
-        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 }
+        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 },
+        /* THE SEARCH MAP (battle.js syncSearchMap): the hovered Inspect's real footprint, a solid plate; the tiles the
+           team already searched, a grey wash */
+        'searchFoot':          { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
+        'searchMap':           { fill: 0.55, edgeGlow: 0.5 }
     };
 
     /* Shared yellow-corner cursor material — stamped on top of whichever tile
@@ -17211,7 +17215,7 @@ const ThreeRenderer = (function () {
        consequence owns the board. Eases in/out so it never pops. */
     var _hlFocusDim = 1.0;
     var _HL_DIM_FOCUS = 0.28;   // THE CLARITY PASS (2026-10-01): was 0.4 — the reach must clearly step back
-    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget'];
+    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget', 'searchFoot'];
     /* reach layers drawn by setOverlay that do not pulse (the pulse loop dims spellRange / attackRange itself) */
     var _DIM_OVERLAYS = { actionPlanRange: true, spellRangeElem: true, infoRange: true };
     function _updateHlFocusDim() {
@@ -73474,6 +73478,7 @@ const ThreeRenderer = (function () {
         scanSpriteOffset,
 
         setOverlay, clearOverlay, clearAllOverlays, flashTelegraph,
+        hasOverlay: function (name) { var m = _overlayMeshes[name]; return !!(m && m.length); },
 
         /* Action tile glow (2026-09-02): actor + footprint tiles light up for
            the duration of an attack / spell — see the ACTION TILE GLOW block. */

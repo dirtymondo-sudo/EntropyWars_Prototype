@@ -24335,7 +24335,11 @@
                     // spells). ownerUnitId drops the settle outright once the
                     // blitz turn has moved on, so the pull-back can never yank
                     // the view back off the newly-activated unit.
-                    armActionCamSettle(
+                    // window._armActionCamSettle, not the bare function: online.js wraps the window copy to relay
+                    // the settle, and this (the host's REMOTE-side branch) is the one the guest's own actions take.
+                    // Called bare, the relay never fired and the guest sat in the close-up after a press refund
+                    // (Cube vs Keys report 2026-10-23).
+                    (window._armActionCamSettle || armActionCamSettle)(
                         targetUnit ? targetUnit.id : null,
                         targetUnit && !targetUnit.dead ? targetUnit.x : undefined,
                         targetUnit && !targetUnit.dead ? targetUnit.y : undefined,
@@ -24429,7 +24433,7 @@
                     // (a chained cast/attack re-arms it, so fast chains still
                     // stay in the shot). _preCineView remains pending so the
                     // real return still lands on the player's own framing.
-                    armActionCamSettle(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
+                    (window._armActionCamSettle || armActionCamSettle)(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -24442,6 +24446,9 @@
                 // status ticks on OTHER units — keep the tactical path.)
                 if (this._tpsHold && !opts.focusTarget && focusUnit
                     && typeof _tpsUnitShot === 'function') {
+                    if ((this._cineShotId != null || this._preCineView != null) && typeof window._ewRelayCamSettle === 'function') {
+                        window._ewRelayCamSettle(focusUnit.id, focusUnit.x, focusUnit.y, actionMs(700));
+                    }
                     this._savedState = null;
                     this._preCineView = null;
                     this._cineShotId = null;
@@ -24456,6 +24463,10 @@
                 // can still tell it is returning from a cinematic shot.
                 const cineWasActive = this._cineShotId != null || this._preCineView != null;
                 this._cineShotId = null;
+                // The guest watching this unit act replayed the shot but gets none of this return: send it the settle.
+                if (cineWasActive && focusUnit && typeof window._ewRelayCamSettle === 'function') {
+                    window._ewRelayCamSettle(focusUnit.id, focusUnit.x, focusUnit.y, actionMs(700));
+                }
                 // Keep the rig's keep-subject floor response alive through the
                 // return tween (see _releaseCineSubject) — covers both branch
                 // durations below (800/650ms).
@@ -39462,6 +39473,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
@@ -49281,6 +49293,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.winner = null;
             state.currentBattleTrackKey = null;
@@ -49876,6 +49889,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.winner = null;
             state.currentBattleTrackKey = null;
@@ -50086,6 +50100,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.setupStep = 'builder';
             state.bombs = [];
@@ -50152,6 +50167,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
 
             randomizeSharedObjectives();
@@ -59620,6 +59636,7 @@
 
         var _hoverPickLeft = false;   // the pointer left the hover pick for a no-confirm tile (THE WAY BACK IN)
         function updateHoveredTarget(x, y) {
+            syncSearchMap(x, y);   // THE SEARCH MAP: the hovered tile's Inspect / Far Sight footprint
             if (state._actionExecuting) return false;
 
             // Move/Jump mode: hovering a reachable tile previews the route
@@ -63851,6 +63868,7 @@
             unit._captureDoorId = door.id;
             unit.ap = 0;                 // a body taken on its own walk ends its turn in the void
             if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
+            else forgetSearchedTile(unit.x, unit.y);   // THE SEARCH MAP: Keys or not, so the mark tells nobody
             if (!_skipVisuals()) {
                 showFloatingTextForUnit(unit, `🚪 HELD · ${seal}`, 'debuff');
                 window._doorGeom('raceCaptureDoor:take', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, seal });   // Phase 2: the void opens, the body is pulled in
@@ -66011,6 +66029,81 @@
 
         }
 
+        /* THE SEARCH MAP (Cube vs Keys report, 2026-10-23: "My B11 search missed the A12 Key in the corner, and a player
+           can't tell that A12 was never checked"). state.searchedByPlayer[p] = every tile p's Inspects and Far Sights
+           covered (the footprint above, by VISION). scannedByPlayer can't be the record: the scan fade wipes it 0.7 s
+           later and the Scanner / Scan Pulse write it without searching for Keys. A tile someone dies on is forgotten
+           for both sides (a carrier's Keys can lie there now; forgotten on every death, so it tells nobody a carrier
+           fell). While the viewer's own unit aims an Inspect or Far Sight, its team's searched tiles show dim and the
+           hovered tile's real footprint shows bright. Viewer-local overlay; online.js sends the guest only its own set. */
+        const SEARCH_FOOT_COLOR = 0x22eebb, SEARCHED_COLOR = 0x6c7078;   // the footprint a solid Inspect-teal plate; searched grey
+        let _searchMapHover = null;
+        const _searchMapKey = { searchFoot: '', searchMap: '' };
+        function _searchedSet(player) {
+            if (!state.searchedByPlayer) state.searchedByPlayer = { 1: new Set(), 2: new Set() };
+            if (!(state.searchedByPlayer[player] instanceof Set)) state.searchedByPlayer[player] = new Set();
+            return state.searchedByPlayer[player];
+        }
+        function forgetSearchedTile(x, y) {
+            const sb = state.searchedByPlayer;
+            if (!sb) return;
+            const k = scanKey(x, y);
+            for (const p in sb) if (sb[p] instanceof Set) sb[p].delete(k);
+        }
+        window.forgetSearchedTile = forgetSearchedTile;
+        /* hx/hy: the hovered tile (null = the pointer left); called with no args it repaints for the current mode */
+        function syncSearchMap(hx, hy) {
+            if (hx !== undefined) _searchMapHover = (hx == null || hy == null) ? null : { x: hx, y: hy };
+            const R = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            if (!R || !R.setOverlay || !(R.isActive && R.isActive())) return;
+            const foot = [], marks = [];
+            try {
+                const unit = state.phase === 'battle' && !state.winner && !state._actionExecuting ? getSelectedUnit() : null;
+                if (unit && !unit.dead && unit.player === getViewerPlayer() && state.controllers?.[unit.player] === CTRL.LOCAL
+                    && !state.autoPlayers?.[unit.player]) {
+                    let inReach = null;
+                    if (state.actionMode === 'inspect') {
+                        const reach = getInspectTiles(unit);
+                        inReach = (x, y) => reach.some(t => t.x === x && t.y === y);
+                    } else if (state.actionMode === 'spell') {
+                        const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                            || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        if (sp && sp.kind === 'remoteView' && sp.inspectAt) {
+                            const r = getEffectiveSpellRange(unit, sp);
+                            inReach = (x, y) => isInside(x, y) && Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y)) <= r;
+                        }
+                    }
+                    if (inReach) {
+                        const h = _searchMapHover;
+                        const inFoot = new Set();
+                        if (h && inReach(h.x, h.y)) {
+                            for (const t of getInspectFootprint(unit, h.x, h.y)) {
+                                inFoot.add(scanKey(t.x, t.y));
+                                foot.push({ x: t.x, y: t.y, color: SEARCH_FOOT_COLOR, opacity: 0.7, cursor: t.x === h.x && t.y === h.y });
+                            }
+                        }
+                        const searched = state.searchedByPlayer && state.searchedByPlayer[unit.player];
+                        if (searched) for (const k of searched) {
+                            if (inFoot.has(k)) continue;
+                            const c = String(k).split(',');
+                            const sx = +c[0], sy = +c[1];
+                            if (isInside(sx, sy)) marks.push({ x: sx, y: sy, color: SEARCHED_COLOR, opacity: 0.6 });
+                        }
+                    }
+                }
+            } catch (e) { foot.length = 0; marks.length = 0; }
+            const paint = (name, tiles) => {
+                const key = tiles.map(t => t.x + ',' + t.y).join('|');
+                if (key === _searchMapKey[name] && (!key || (R.hasOverlay && R.hasOverlay(name)))) return;
+                _searchMapKey[name] = key;
+                if (tiles.length) R.setOverlay(name, tiles, tiles[0].color, tiles[0].opacity);
+                else R.clearOverlay(name);
+            };
+            paint('searchFoot', foot);
+            paint('searchMap', marks);
+        }
+        window.syncSearchMap = syncSearchMap;
+
         /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
            logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
            very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
@@ -66030,7 +66123,7 @@
             if (!unit) return;
             window._ewNoRelay = (window._ewNoRelay || 0) + 1;
             try {
-                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'streak');
+                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'pickup');   // gold, not the hit-word red (Cube vs Keys report)
                 playKeySecuredFx(unit.x, unit.y, n);
                 showCombatBanner(`KEY SECURED!`, sub || '', 'pickup-friendly');
                 playSfx('playerHourglass');
@@ -66044,10 +66137,12 @@
 
             let totalHourglasses = 0;
             let lootedNow = 0;
+            const _searched = _searchedSet(unit.player);
             for (const tile of toReveal) {
                 const key = scanKey(tile.x, tile.y);
                 if (!state.scannedByPlayer[unit.player].has(key)) unit._matchScans = (unit._matchScans || 0) + 1;
                 state.scannedByPlayer[unit.player].add(key);
+                _searched.add(key);
 
                 const tileHG = state.hourglasses.filter(h => h.carriedBy === null && h.x === tile.x && h.y === tile.y);
                 for (const h of tileHG) {
@@ -73294,6 +73389,7 @@
                     target._exitDoorId = _doorOrg ? _doorOrg.doorId : null;
                     target._exited = true;
                     if ((target.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(target);
+                    else forgetSearchedTile(target.x, target.y);   // THE SEARCH MAP: Keys or not, so the mark tells nobody
                     if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
                     /* the door stands up in front of the victim, takes them, shuts, and the EXIT stamp lands on the leaf (shot there from the gun) */
                     window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
