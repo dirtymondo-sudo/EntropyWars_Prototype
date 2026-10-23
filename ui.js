@@ -15501,7 +15501,9 @@
            / -lw (outline px) / -glow / -rad (shape) / -menu (size of the small ones) / -big (size over a unit) / -lift /
            -anim. The var() fallbacks ARE the game's own look: green, a dark !, a white outline. big = the mark over a
            unit (it bobs); px = the small one's size before -menu scales it. */
-        function _seBangHtml(px, big) {
+        /* THE +1 LOOK (mondo 2026-10-23: "yeah give +1 its own look"): a press with a resistance on it hands back +1 AP,
+           not +2 (battle.js THE PRESS SUM) — its ! is HOLLOW: a dark disc, the green as the ring and the mark. `half`. */
+        function _seBangHtml(px, big, half) {
             const sz = big ? 'var(--ew-se-big, 26px)' : `calc(${px || 14}px * var(--ew-se-menu, 1))`;
             const lw = big ? 'var(--ew-se-lw, 2px)' : 'calc(var(--ew-se-lw, 2px) * 0.6)';
             if (!document.getElementById('ew-se-keys')) {
@@ -15509,15 +15511,19 @@
                 st.textContent = '@keyframes ewSeBob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.08); } }';
                 document.head.appendChild(st);
             }
-            return '<span class="ew-se-bang" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;'
-                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:var(--ew-se-fill, #2ecc71);color:var(--ew-se-mark, #06130a);`
-                + `border:${lw} solid var(--ew-se-line, #ffffff);font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
+            const fill = half ? 'rgba(6,19,10,0.88)' : 'var(--ew-se-fill, #2ecc71)';
+            const mark = half ? 'var(--ew-se-fill, #2ecc71)' : 'var(--ew-se-mark, #06130a)';
+            const ring = half ? `calc(${lw} + 1px) solid var(--ew-se-fill, #2ecc71)` : `${lw} solid var(--ew-se-line, #ffffff)`;
+            return `<span class="ew-se-bang${half ? ' ew-se-half' : ''}" title="${half ? '+1 AP back (a resistance takes 1 off the press)' : '+2 AP back (the press)'}" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;`
+                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:${fill};color:${mark};`
+                + `border:${ring};font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
                 + 'vertical-align:middle;flex:none;text-shadow:none;'
                 + (big ? 'animation:var(--ew-se-anim, ewSeBob) 1.2s ease-in-out infinite;' : 'margin-right:4px;')
                 + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
         }
         window._ewSeBangHtml = _seBangHtml;
         const _SE_CIRCLE_HTML = _seBangHtml(14);
+        const _SE_HALF_HTML = _seBangHtml(14, false, true);   // the +1 press
         // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
         const _IMM_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
             + 'width:14px;height:14px;border-radius:50%;background:#e8333f;color:#fff;'
@@ -15535,14 +15541,14 @@
         }
         window._pressOf = _pressOf;
 
-        function _getTypeEffLabel(caster, target, spell, pressBy) {
+        function _getTypeEffLabel(caster, target, spell, pressBy, half) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
             // STAB is a silent bonus — the label only speaks about the actual
             // weak/resist matchup, so back the STAB factor out first.
             const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
             const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
             const effMult = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
-            if (effMult > 1.001) return { text: (pressBy === 'type' ? _SE_CIRCLE_HTML : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
+            if (effMult > 1.001) return { text: (pressBy === 'type' ? (half ? _SE_HALF_HTML : _SE_CIRCLE_HTML) : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
             if (effMult < 0.999) return { text: 'RESISTED', cls: 'not-effective' };
             return null;
         }
@@ -15769,20 +15775,21 @@
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
                     const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
-                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null);
+                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null, plan.pressAp === 1);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     /* THE ELEMENT SHARE (2026-10-17): the element badge speaks for the element PART; the green !-circle
                        only when the plan presses and that part is what presses (h.pressBy, battle.js THE PRESS
                        FORECAST); immune / absorb wear the red one (the main part still lands, no press). */
                     const _iPress = !!(h.press && h.pressBy === 'element');
-                    if (_iAff === 'weak') push((_iPress ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
+                    const _iSe = plan.pressAp === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
+                    if (_iAff === 'weak') push((_iPress ? _iSe : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'immune') push(_immBadgeHtml(`${_iEl.toUpperCase()} IMMUNE`), 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'absorb') push(_immBadgeHtml(`${_iEl.toUpperCase()} ABSORBED`), 'intent-type-eff not-effective', 14);
                     /* THE STATUS COMBO PRESS (mondo 2026-10-23): the hit lands its ×combo on the target's status — the
                        green !-circle when the combo is what presses */
-                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _SE_CIRCLE_HTML : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
+                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _iSe : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
                     for (const sl of _getStatusPreviewLabels(spell)) {
@@ -15892,7 +15899,8 @@
 
                 if (spell.dmg || (spell.hitDamages && spell.hitDamages.length)) {
                     const _iPr = isEnemyUnit(caster, target) ? _pressOf(caster, target, spell, { aim: { x, y } }) : { press: false, by: null };
-                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null);
+                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null, _iPr.ap === 1);
+                    const _iPrSe = _iPr.ap === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
                     if (typeEff) {
                         badgeStack.push({ html: typeEff.text, cls: `intent-type-eff ${typeEff.cls}`, yOff });
                         yOff += 14;
@@ -15900,14 +15908,14 @@
                     // Element weak/resist reads beside the type matchup, named
                     // by its element (immune/absorb already spoke above).
                     if (_iAff === 'weak' && isEnemyUnit(caster, target)) {
-                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _iPrSe : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
                         badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });
                         yOff += 14;
                     }
                     if (_iPr.press && _iPr.by === 'combo') {
-                        badgeStack.push({ html: _SE_CIRCLE_HTML + '⚗ COMBO', cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: _iPrSe + '⚗ COMBO', cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     }
                 }

@@ -58854,15 +58854,15 @@
             if (!unit || state.phase !== 'battle') return;
             const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
             if (!spell || !spellArmsPress(spell)) return;
-            const ids = [];
+            const ids = [], halfIds = [];
             for (const u of state.units) {
                 if (!u || u.dead || u._dying || !isEnemyUnit(unit, u)) continue;
                 try { if (!_shouldCameraFollowUnit(u)) continue; } catch (e) { continue; }
                 let pr = null;
                 try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
-                if (pr && pr.press) ids.push(u.id);
+                if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); }   // THE +1 LOOK: a +1 press wears the hollow !
             }
-            if (ids.length) ThreeRenderer.showPressMarks(ids);
+            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds);
         }
         window.previewSpellPressMarks = previewSpellPressMarks;
         function clearSpellPressMarks() {
