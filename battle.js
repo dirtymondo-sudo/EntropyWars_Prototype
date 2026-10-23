@@ -773,6 +773,9 @@
             heal:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
             shield:       { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
             buff:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
+            // encore (Cube vs Keys matchup 2026-10-23): aimed AT an ally that has acted — it was filed as a self-cast,
+            // so the menu armed "CONFIRM — SELF" and the engine refused it ("cannot Encore themselves"); never castable.
+            encore:       { minRange: 1, offensive: false, allyOnly: true, fogExempt: true },
             cleanse:      { minRange: 0, offensive: false, allyOnly: true },
             revive:       { minRange: 1, offensive: false, allyOnly: true },
             aoeShield:    { minRange: 0, offensive: false, tileTargeted: true },
@@ -782,7 +785,6 @@
             manaRestoreAll:{ minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             warCry:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             scan:         { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
-            encore:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             selfHeal:     { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             escape:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 5 wave A, 2026-09-08):
@@ -4890,11 +4892,28 @@
             return WEIGHT_FALL_DMG_MULT[getUnitWeightClass(unit)] ?? 1.0;
         }
 
+        /* 🪶 ANTI-GRAVITY (2026-10-23, mondo: "usually immovable enemies (the big ones) are able to be displaced like any
+           other enemy"): a body standing in a Low Gravity field (gravityField 'weak'), or moved by a spell row flagged
+           `weightless` (Telekinetic Slam, Black Hole), has no weight to plant — a heavy or colossal body is pushed,
+           pulled and flung like a medium one. Displacement only: fall damage, crash-through power and the codex class
+           keep the real weight. Anchoring passives (Windborne, Mountainborn) and Clash still hold. */
+        function isUnitWeightless(unit, spell) {
+            if (!unit) return false;
+            if (spell && spell.weightless) return true;
+            return typeof getGravityFieldAt === 'function' && getGravityFieldAt(unit.x, unit.y) === 'weak';
+        }
+        function getUnitDisplaceWeightClass(unit, spell) {
+            const wc = getUnitWeightClass(unit);
+            if ((wc === 'heavy' || wc === 'colossal') && isUnitWeightless(unit, spell)) return 'medium';
+            return wc;
+        }
+
         // ⚖️ Weight-adjusted push distance (2026-07-07 physique pass): feather
         // units sail one tile further, heavy units give one tile less (min 1),
         // colossal units simply do not budge. Every push path funnels through
-        // this so spells, previews and the AI agree.
-        function getUnitPushDistance(unit, baseDist, kind) {
+        // this so spells, previews and the AI agree. `spell` (optional): the
+        // row doing the moving, read for its `weightless` flag (ANTI-GRAVITY).
+        function getUnitPushDistance(unit, baseDist, kind, spell) {
             /* Clash: knockback never budges anyone — damage lands, formation
                holds. Every push path funnels through here, so one gate no-ops
                push/displacement/linePush across the whole engine. */
@@ -4904,7 +4923,7 @@
             // THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne: push and pull cannot move it). `kind` defaults to
             // 'push'; the pull rows pass 'pull'. Pure read: previews and the AI see the same 0.
             if (unitResistsDisplace(unit, kind || 'push')) return 0;
-            const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
+            const wc = getUnitDisplaceWeightClass(unit, spell);
             if (wc === 'colossal') return 0;
             if (wc === 'heavy') return Math.max(1, d - 1);
             if (wc === 'feather') return d + 1;
@@ -6072,6 +6091,9 @@
                         chain: chain.map(c => ({ x: c.x, y: c.y })),
                         staggerMs,
                     });
+                } else if (chain.length === 1 && chain[0] && state.phase === 'battle') {
+                    /* a chain with nobody to jump to draws no hop: an A-F row registers '<id>:solo' for its lone hit */
+                    _sigVfxGeom(spell.id + ':solo', chain[0].x, chain[0].y, 0, { fromX: unit.x, fromY: unit.y });
                 }
 
                 chain.forEach((hopTarget, idx) => {
@@ -6836,7 +6858,7 @@
             bodies.sort((a, b) => cheb(a) - cheb(b));
             for (const t of bodies) {
                 if (t.dead || t._dying) continue;
-                const n = getUnitPushDistance(t, jopts.dist || spell.pullDistance, 'pull');
+                const n = getUnitPushDistance(t, jopts.dist || spell.pullDistance, 'pull', spell);
                 if (!(n > 0) || cheb(t) <= within) continue;
                 const r = resolveForcedSlide(t, Math.sign(center.x - t.x), Math.sign(center.y - t.y), n, {
                     byUnit: unit, label: `${spell.name}: `, toward: center, stopWithin: within,
@@ -8845,6 +8867,7 @@
                 // buff purge; only death (the respawn ledger reset) clears it.
                 // 999, not Infinity: the ledger rides JSON state-sync.
                 if (opts && opts.perm) target.statStageMods.push({ stat, n: applied, left: 999, perm: true });
+                else if (_statusLandsAfterTurn(target)) target.statStageMods.push({ stat, n: applied, left, fr: state.round });   // ONE ROUND = ONE TURN
                 else target.statStageMods.push({ stat, n: applied, left });
                 if (applied > 0) anyPos = true; else anyNeg = true;
                 const atBound = (base + getStatStageCount(target, stat) * step) >= hi
@@ -8930,11 +8953,13 @@
                 key: 'shield',
                 text: `Shield ${unit.shield}`
             });
-            if (unit.hourglasses > 0) entries.push({
+            /* THE HIDDEN KEYS: an enemy's Keys and Key Charge never list on this screen (map.js keysHiddenFor) */
+            const _keysHid = typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player);
+            if (unit.hourglasses > 0 && !_keysHid) entries.push({
                 key: 'hourglass',
                 text: `Carrying ×${unit.hourglasses}`
             });
-            const unitBuff = unit.hourglassBuff || 0;
+            const unitBuff = _keysHid ? 0 : (unit.hourglassBuff || 0);
             if (unitBuff > 0) entries.push({
                 key: 'hourglass',
                 text: `Key Charge Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
@@ -9294,6 +9319,10 @@
             /* THE SPELL AUDIT Batch D (Hush): a payload with `ifTargetHas` lands only on a unit already wearing that status
                (silence the Discorded) — a quiet skip, no "resists" line. */
             if (payload.ifTargetHas && !bonusStatusMatches(target, payload.ifTargetHas)) return false;
+            /* 🌊 Drowning needs deep water (2026-10-23, mondo): a spell's Drowning (Long Neck) lands only on a unit that is
+               in deep water when it arrives (after the pull) — on dry ground there is nothing to drown in. map.js
+               unitCanDrownHere. */
+            if (payload.id === 'drowning' && typeof unitCanDrownHere === 'function' && !unitCanDrownHere(target)) return false;
             // A flag carrier can't cloak — the flag stays visible no matter what.
             if (payload.id === 'invisible' && state.flags &&
                 [1, 2].some(p => state.flags[p] && state.flags[p].carriedBy === target.id)) {
@@ -9550,6 +9579,11 @@
                 && typeof forceGroundUnit === 'function') {
                 forceGroundUnit(target, { byLabel: 'by the roots', byUnit: sourceUnit });
             }
+
+            /* ONE ROUND = ONE TURN (mondo 2026-10-23): a status that lands on a unit that has already had its turn this
+               round (or on the unit whose turn it is) must still be on it for its NEXT turn — mark it fresh so this
+               round's end-of-round tick skips it once (_tickAllStatusDurations). */
+            if (unitHasStatus(target, payload.id)) _markStatusFresh(target, payload.id);
 
             // 💫 Stagger takes its AP the moment it lands. If the target already
             // spent everything this round, the loss carries over as a debt the
@@ -11464,9 +11498,29 @@
             return true;
         }
 
+        /* ONE ROUND = ONE TURN (mondo 2026-10-23: "a 1 round status means the unit has to actually have at least 1
+           turn with that status effect"). Durations still tick at the end of the round, but a status that landed
+           after the unit's turn started this round (it already acted, or it is the one acting) skips that one tick,
+           so it lasts through the unit's next turn: a Root from a slower enemy no longer wears off before the rooted
+           unit moves again. Only during a blitz round's action phase (an activation is live); end-of-round effects,
+           real-time Strike and the dungeon clock keep their old timing. Take Aim is a delayed shot, not a status, so
+           it still lands at the end of the round. */
+        function _statusLandsAfterTurn(u) {
+            if (!u || state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            return state._blitzActiveUnitId === u.id || unitFinished(u) || !!u._skippedTurn || u._turnRound === state.round;
+        }
+        function _markStatusFresh(u, key) {
+            if (!_statusLandsAfterTurn(u)) return;
+            if (!u._stFresh || typeof u._stFresh !== 'object') u._stFresh = {};
+            u._stFresh[key] = state.round;
+        }
+
         function _tickAllStatusDurations() {
             for (const u of state.units) {
                 if (u.dead) continue;
+                const _fresh = (u._stFresh && typeof u._stFresh === 'object') ? u._stFresh : null;
+                u._stFresh = null;
                 // The decrement/expiry split is pure (calcStatusDurationTick,
                 // see PURE DAMAGE MATH in battle.js top); this wrapper picks
                 // the tickable keys (unknown STATUS_DEFS stay untouched) and
@@ -11476,6 +11530,8 @@
                         .filter(key => STATUS_DEFS[key])
                         // 💫 a stagger still owed (landed after the unit acted) stays up until its short turn
                         .filter(key => !(key === 'stagger' && (u._staggerApDebt || 0) > 0))
+                        // ONE ROUND = ONE TURN: landed after this unit's turn this round → skip this tick once
+                        .filter(key => !(_fresh && _fresh[key] === state.round))
                         .map(key => ({ key, value: getStatusValue(u, key) })));
                 for (const e of tick.next) u.status[e.key] = e.value;
                 for (const key of tick.expired) {
@@ -11493,6 +11549,7 @@
                     let expired = false;
                     for (const m of u.statStageMods) {
                         if (m.perm) continue;   // permanent entries never tick
+                        if (m.fr != null) { const _skip = m.fr === state.round; delete m.fr; if (_skip) continue; }   // ONE ROUND = ONE TURN
                         m.left = (m.left || 0) - 1;
                         if (m.left <= 0) expired = true;
                     }
@@ -13562,7 +13619,9 @@
             // Glowing orbs stream from the source into the HUD gauge (hud.js
             // _entropyOrbsFly) — quieter than floating text, which was drowning
             // out the damage numbers.
-            if (!_skipVisuals() && typeof window._entropyOrbsFly === 'function') {
+            /* THE HIDDEN KEYS: a Key find's orbs would point at the finder — the other side gets none */
+            const _orbsHidden = reason === 'hourglass' && typeof keysHiddenFor === 'function' && keysHiddenFor(player);
+            if (!_skipVisuals() && !_orbsHidden && typeof window._entropyOrbsFly === 'function') {
                 try { window._entropyOrbsFly(player, after - before, (sourceUnit && !sourceUnit.dead) ? sourceUnit : null); } catch (e) {}
             }
 
@@ -13691,6 +13750,7 @@
             playSfx('explosion');
             const _omask = (obj.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(obj.aoeMask)) ? obj.aoeMask : null;
             playAoeRing(bx, by, _omask ? Math.max(1, aoeMaskBound(_omask)) : radius, 'tech', actionMs(450));
+            if (obj.spellId) _sigVfxGeom(obj.spellId + ':detonate', bx, by, radius);
 
             const blastArea = _omask ? aoeMaskTiles(_omask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius);
             for (const tile of blastArea) {
@@ -21960,10 +22020,19 @@
 
         // Which pull/tether spells throw a spinning ROPE LOOP that cinches
         // around the target (the cowboy's Lasso) instead of a bare rope end.
+        /* THE A-F SIGNATURE VFX PASS (2026-10-23): the visual-only geometry doors for the kinds that fire no VFX intent
+           of their own ('<id>:swap' / ':throw' / ':deploy' / ':detonate' / ':mark' / ':view', three-vfx-effects.js
+           registry). fireGeometry is relayed by online.js (fog-gated on the tile); `onlyPlayer` keeps a trap, a decoy
+           or a delayed mark off the enemy's screen. false = nothing registered (the caller keeps its old look). */
+        function _sigVfxGeom(key, x, y, r, extra) {
+            if (_skipVisuals() || typeof window === 'undefined' || !window.ThreeVFXEffects
+                || typeof window.ThreeVFXEffects.fireGeometry !== 'function') return false;
+            try { return window.ThreeVFXEffects.fireGeometry(key, x, y, r, extra) === true; } catch (e) { return false; }
+        }
         function _tetherLassoForSpell(spell) {
             if (!spell) return false;
             const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
-            return /lasso|wrangle/.test(idn);
+            return /lasso|wrangle|rustle/.test(idn);
         }
 
         // Bresenham line of tiles from (x0,y0) to (x1,y1), EXCLUDING the origin and
@@ -34596,7 +34665,7 @@
             if (sourceUnit && state._doorRearCast && state._doorRearCast.unitId === sourceUnit.id
                 && damageType !== 'dot' && finalDamage > 0 && isEnemyUnit(sourceUnit, target)) {
                 finalDamage = Math.round(finalDamage * getFacingDamageMult('back'));
-                if (live && !_skipVisuals()) showFloatingTextForUnit(target, '🚪 REAR', 'debuff', { durationMs: 800 });
+                if (live && !_skipVisuals()) showFloatingTextForUnit(target, `🚪 REAR ×${+getFacingDamageMult('back').toFixed(2)}`, 'debuff', { durationMs: 800 });
             }
 
             /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
@@ -36361,6 +36430,44 @@
         window.forecastBanePlan = forecastBanePlan;
 
         const _FC_DIRECT_TAGS = { random: 1, return: 1, shockwave: 1, delayed: 1 };   // tagged hits the cast still lands itself
+        /* ⚡💧 THE CONDUCTION FORECAST (Keys vs Keys playtest 2026-10-23: Chain Lightning ran through soaked bodies into
+           King Arthur and Robin, -220 and -232, and the forecast said nothing): the lightning-water reaction the cast sets
+           off after its hit (triggerTerrainSpellReaction -> _reactLightningWater: every grounded body of the connected
+           wet body, friend or foe, but the caster and the struck tile, with the same tick and opts) rides the plan, so
+           an ally in the charge's path wears its number and a "WATER CONDUCTS" badge before the cast. */
+        function _forecastConduction(unit, spell, tiles, hit) {
+            if (!unit || !spell || !tiles || !tiles.length || classifySpellElement(spell) !== 'lightning') return;
+            const tick = Math.max(60, Math.round((spell.dmg || 90) * 0.75));
+            const opts = {
+                noTerrainBonus: true, sourceUnit: unit, noRangeMult: true, allowMarkBonus: false, damageType: 'magic',
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), element: 'lightning'
+            };
+            const zap = (ox, oy, body) => {
+                for (const t of body) {
+                    const u = unitAt(t.x, t.y);
+                    if (!u || u.dead || u._dying || u.id === unit.id || (t.x === ox && t.y === oy)) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    hit(u, tick, tick, tick, opts, { tag: 'conduct' });
+                }
+            };
+            const handled = new Set();
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y) || handled.has(t.x + ',' + t.y) || !_isWetTile(t.x, t.y)) continue;
+                const body = _floodConnectedTiles(t.x, t.y, _isConductiveWetTile, 80);
+                body.forEach(b => handled.add(b.x + ',' + b.y));
+                zap(t.x, t.y, body);
+            }
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y)) continue;
+                if (handled.has(t.x + ',' + t.y) && _isWetTile(t.x, t.y)) continue;
+                if (!_isSoakedBodyAt(t.x, t.y)) continue;
+                const body = _floodConnectedTiles(t.x, t.y,
+                    (bx, by) => (bx === t.x && by === t.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
+                body.forEach(b => handled.add(b.x + ',' + b.y));
+                if (body.length > 1) zap(t.x, t.y, body);
+            }
+        }
         function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
             const sp = spellPowerOf(unit, spell);
             const kind = spell.kind;
@@ -36575,6 +36682,8 @@
                         }
                     }
                 }
+                /* the struck tile's lightning reaction, after the knock-on like the cast (_applyDamageSpellHit) */
+                _forecastConduction(unit, spell, [{ x: target.x, y: target.y }], hit);
                 return;
             }
 
@@ -36629,7 +36738,7 @@
                     list.sort((a, b) => cheb(a) - cheb(b));
                     for (const t of list) {
                         if (t.hp <= 0 || cheb(t) <= within) continue;
-                        const n = getUnitPushDistance(t, dist, 'pull');
+                        const n = getUnitPushDistance(t, dist, 'pull', spell);
                         if (n > 0) slide(t, Math.sign(c.x - t.x), Math.sign(c.y - t.y), n, { toward: c, stopWithin: within }, 'pull');
                     }
                 };
@@ -36781,7 +36890,7 @@
                 }
                 const ally = !!spell.allyOnly;
                 if (!target || (ally ? (target.id === unit.id || !isAllyUnit(target, unit)) : isAllyUnit(target, unit))) return;
-                const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull');
+                const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull', spell);
                 const anchor = ally ? null : unitResistsDisplace(target, 'pull');
                 if (anchor) tag(target, 'anchored');
                 slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), n, { stopBefore: { x: unit.x, y: unit.y }, noFall: ally,
@@ -39663,10 +39772,19 @@
             return (typeof entry === 'object' && entry && entry.v) ? entry.v : 0;
         }
 
+        /* THE HIDDEN KEYS: true = this line is the other team's own Key line and this screen never prints it (every
+           log view checks it, fog or not; _logVisible covers the fog ones) */
+        function _logKeyHidden(entry) {
+            return !!(entry && typeof entry === 'object' && entry.kp && (entry.v === 1 || entry.v === 2)
+                && typeof keysHiddenFor === 'function' && keysHiddenFor(entry.v));
+        }
+        window._logKeyHidden = _logKeyHidden;
+
         function _logVisible(entry) {
             const v = _logVis(entry);
             const viewer = getViewerPlayer();
 
+            if (_logKeyHidden(entry)) return false;
             if (v !== 0) {
                 if (ONLINE_RULES.active) return v === viewer;
                 if (state.fogOfWar) return v === viewer;
@@ -39935,6 +40053,16 @@
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
                     }
                     if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
+                    // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE, aimed at the unit it was picked for
+                    if (state._quickAoePlace === spell.name && state.actionMenuView === 'spells') {
+                        const _qaU = state._quickAoeFrom != null ? (state.units || []).find(u => u.id === state._quickAoeFrom && !u.dead) : null;
+                        if (state._quickAoeStage === 'confirm' && ptLabel) {
+                            return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + (_qaU ? '<strong>' + esc(_ctName(_qaU)) + '</strong>' : ptLabel) + ' — press CONFIRM to cast.', 'right-click to place it yourself');
+                        }
+                        const _qaBack = _qaU ? 'right-click: back to ' + esc(_ctName(_qaU)) + '\'s menu' : 'ESC cancel';
+                        if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click again or CONFIRM to cast.', _qaBack);
+                        return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: click a tile to place it.', _qaBack);
+                    }
                     if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
@@ -40865,11 +40993,13 @@
                     if (steps > 0) {
                         const ring1 = getMoveTiles(unit);
                         for (const t of ring1) {
-                            // Parity with findSpellApproachTile: jump/takeoff legs are
-                            // probed by their own approaches above/below — counting
+                            // Parity with findSpellApproachTile: takeoff legs are
+                            // probed by their own height approach below — counting
                             // them here as 1-AP walks lit the button for plans the
-                            // finder (and the AP budget) would then refuse.
-                            if (t._jump || t._takeoff) continue;
+                            // finder (and the AP budget) would then refuse. Hop tiles
+                            // (`_jump`: a walk with a step of more than one level) ARE
+                            // plain doMove walks — THE HOP TILES COUNT (2026-10-23).
+                            if (t._takeoff) continue;
                             if (unitAt(t.x, t.y, t.z)) continue;
                             unit.x = sx; unit.y = sy; unit.z = sz;
                             const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST
@@ -40984,6 +41114,9 @@
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
+            if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
+                && (unitFinished(u) || u.ap === 0);
             if (k === 'cleanse') {
                 return typeof getActiveStatusKeys === 'function'
                     && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff');
@@ -42260,7 +42393,7 @@
 
             if (kind === 'encore') {
                 return aliveUnitsOnFloor(unit.player).some(a => {
-                    if (a.id === unit.id) return false;
+                    if (a.id === unit.id || !spellTargetUsableOn(unit, spell, a)) return false;
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
                     return d >= 1 && d <= range;
                 });
@@ -42424,13 +42557,17 @@
                 : () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
             let best = null, bestScore = -1;
             try {
-                // Walk approach (ONE step). Jump / take-off tiles that getMoveTiles folds
-                // into the walk set are SKIPPED here — they aren't reachable by a plain
-                // doMove; the dedicated jump / height approaches below execute them with
-                // the right verb (doJump / doAltitudeChange).
+                // Walk approach (ONE step). Take-off tiles that getMoveTiles folds into the
+                // walk set are SKIPPED here — the height approach below runs them with their
+                // own verb (doAltitudeChange) and AP.
+                /* THE HOP TILES COUNT (2026-10-23, after the same fix to Move towards): getMoveTiles flags `_jump` on
+                   every tile whose walk includes a hop (a step of more than one level: off a wall top, down a pyramid
+                   side) and on every tile past it. Those are lit Move tiles a plain doMove walks to (the Move click
+                   does), so a caster on a ledge may step off it into range and cast. The standalone leap (getJumpTiles,
+                   doJump) stays the jump approach below. */
                 const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     // THE SLIDE FORECAST: a walk onto ice casts from where the slide stops, not the tile walked to.
                     unit.x = sx; unit.y = sy; unit.z = sz;
@@ -42495,7 +42632,7 @@
                 const steps = _spellMoveBudget(unit, spell);
                 const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;   // hop tiles (`_jump`) are plain doMove walks — THE HOP TILES COUNT
                     if (unitAt(t.x, t.y, t.z)) continue;
                     const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST
                     unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
@@ -42896,7 +43033,21 @@
             if (mode === 'spell') {
                 const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                if (!spell || isSpellSelfCast(spell) || isSpellTileTargeted(spell) || _kindMeta(spell).directional) return false;
+                if (!spell || isSpellSelfCast(spell) || _kindMeta(spell).directional) return false;
+                /* THE GUEST TILE PICK (Keys vs Keys playtest 2026-10-23: the guest's Gravity Well took G9, out of reach
+                   after the Wraith had walked, showed "CONFIRM — Tall Grass G9", then the host said "Spell target is out
+                   of range"): a tile cast aimed outside its lit reach, with no step that brings it in, is refused here
+                   with the solo click's line and the mode holds; a tile in reach (or one step away) goes on to online.js */
+                if (isSpellTileTargeted(spell)) {
+                    /* the solo click's fog gate first: a fogged tile is out of sight unless the kind casts into fog */
+                    const _gFog = state.fogOfWar && !_kindMeta(spell).fogExempt && !computeVisibleTiles(state.activePlayer).has(posKey(x, y));
+                    if (!_gFog && (_mtcReachesPick(actingUnit, spell, x, y, z) || findSpellApproachTile(actingUnit, spell, x, y, z))) return false;
+                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : 'Target is no longer in range or line of sight.', actingUnit.player);
+                    playErrorSfx();
+                    markDirty('board', 'hud');
+                    renderIfDirty();
+                    return true;   // THE MODE HOLDS
+                }
                 const cu = (clickedUnit && !clickedUnit.dead) ? clickedUnit : null;
                 const _hit = t => cu ? (t.unit ? t.unit.id === cu.id : (t.x === x && t.y === y)) : (t.x === x && t.y === y);
                 const row = _getSpellValidTargets(actingUnit, spell).find(_hit) || _getSpellApproachTargets(actingUnit, spell).find(_hit);
@@ -43026,7 +43177,7 @@
             let best = null, bestScore = -1;
             try {
                 for (const t of getMoveTiles(unit)) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;   // hop tiles (`_jump`) are plain doMove walks — THE HOP TILES COUNT
                     if (unitAt(t.x, t.y, t.z)) continue;
                     const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST: scan from where the slide stops
                     const lx = land ? land.x : t.x, ly = land ? land.y : t.y;
@@ -43157,15 +43308,22 @@
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const startDist = Math.abs(sx - tx) + Math.abs(sy - ty);
             const _tzKnown = (tz !== undefined && tz !== null);
-            // Reachable-this-move plain walks, keyed for the route splice below.
-            // (No jump/takeoff legs — those are their own deliberate verbs —
+            // Reachable-this-move walks, keyed for the route splice below.
+            // (No takeoff legs — flying up is its own verb with its own AP —
             // and never step onto an occupied tile.)
+            /* THE HOP TILES COUNT (2026-10-23, mondo: "clicking move towards on a tile outside of my spell range still
+               only moves me one tile at a time ... It needs to move me to the edge of my range closest to the tile i
+               clicked"): getMoveTiles flags every tile whose walk includes a hop (a step up or down more than one level,
+               off a wall top, down a pyramid's side) `_jump`, and every tile past that hop too. They are lit in the Move
+               range and a Move click walks to them with the same doMove, but this pick skipped them all — a unit on a
+               ledge could only shuffle along the ledge (or got no Move towards at all). Only the standalone leap
+               (getJumpTiles / doJump) stays its own verb. */
             const walkable = [];
             const walkByKey = new Map();
             try {
                 const ring1 = getMoveTiles(unit);
                 for (const t of ring1) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     /* WYSIWYG (2026-07-21): "towards" must never LAND on the
                        clicked COLUMN at a floor the pointer wasn't on. A click
@@ -43322,7 +43480,7 @@
             let dx, dy, dist, mode;
             if (isPull) {
                 dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
-                dist = getUnitPushDistance(target, spell.pullDistance || 3); mode = 'pull';
+                dist = getUnitPushDistance(target, spell.pullDistance || 3, null, spell); mode = 'pull';
             } else {
                 dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
                 dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2); mode = 'push';
@@ -46384,7 +46542,7 @@
                     state.partyBuilds[1][i] = UNIT_CLASS;
                     state.partyNames[1][i] = '';
                     state.loadouts[1][i] = emptyLoadout();
-                    state.partyMeta[1][i] = { race: 'homosapien', gender: 'male' };
+                    state.partyMeta[1][i] = { race: 'door agent', gender: 'male' };
                 }
             }
 
@@ -47889,7 +48047,7 @@
             try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { unlockedRaces: [] };
             const leadMeta = (state.partyMeta[1] && state.partyMeta[1][0]) || {};
-            const leadRace = leadMeta.race || 'homosapien';
+            const leadRace = leadMeta.race || 'door agent';
             /* THE JOBS REMOVAL (the user 2026-09-27): a delver is its race — no per-member job, no job pickers
                (_mdPartyJob / _mdPartyLeaderJob deleted); every member builds as the neutral UNIT_CLASS. */
             const pool = ((typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [])
@@ -53573,6 +53731,7 @@
                     const _ctlUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
                     if (_ctlUnit && !_ctlUnit.dead) _possessSpendActivation(_ctlUnit);
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
+                    if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
                 }
                 clearSpellPick();
 
@@ -57247,7 +57406,7 @@
             igniteTile, extinguishTile, tickBurningTiles,
             _isFlammableTile, _isWaterTile, _isWetTile, _isOilTile, _isLavaTile, _floodConnectedTiles,
             // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
-            getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult,
+            getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult, isUnitWeightless, getUnitDisplaceWeightClass,
             settleWaterAround, checkTrapTrigger,
             // 🔨 right-click-hold demolition (see beginTileDemolishHold)
             beginTileDemolishHold, cancelTileDemolishHold,
@@ -57819,6 +57978,8 @@
             state.selectedTool = toolName;
             state.pendingTarget = null;
             state._quickAoePlace = null;   // hud.js _hrlgArmAoePlacement re-sets it for a quick-menu AoE
+            state._quickAoeStage = null;   // (and its CONFIRM / placement step + the quick menu it came from)
+            state._quickAoeFrom = null;
             clearAoePreview();
 
             /* Strike Mode's TPS rig owns the camera per-frame — a competing
@@ -57942,8 +58103,10 @@
                         state._spellCycleTargets = targets;
                         state._spellCycleIndex = 0;
                         /* a dash / teleport aims at the tile it goes TO — pre-picking a body there armed "CONFIRM —
-                           <the caster>" and the cast then failed "Destination out of dash range" (playtest 2026-10-21) */
-                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport') {
+                           <the caster>" and the cast then failed "Destination out of dash range" (playtest 2026-10-21).
+                           Far Sight / scrying aim at a TILE too: it pre-picked the caster ("FAR SIGHT → Mothman", Keys vs
+                           Keys matchup) — nothing is pre-picked, the player clicks the tile to search */
+                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport' && spell.kind !== 'remoteView') {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
                             /* THE PICK IN FRAME (wipeout playtest 2026-10-23): the range fit above frames only the
@@ -58918,7 +59081,9 @@
             // stack, so an airborne target picked from the menu used to
             // resolve to whoever stood beneath it and the camera never
             // looked up.
-            if (state.actionMode === 'attack' || state.actionMode === 'spell'
+            if (state.actionMode === 'spell' && state._quickAoePlace === state.selectedTool) {
+                state._quickAoeStage = 'place';   // THE CONFIRM FIRST: a quick-menu AoE stays on the tactical view
+            } else if (state.actionMode === 'attack' || state.actionMode === 'spell'
                 || state.actionMode === 'item' || state.actionMode === 'combo') {
                 const _mu = getSelectedUnit();
                 const _mtgt = (typeof unitAt === 'function')
@@ -59537,6 +59702,9 @@
                     // THE SELF-CAST CONFIRM: the armed self-cast's pick is the caster and never moves — hovering
                     // the board must not re-aim it, clear its footprint or drop the green CONFIRM.
                     if (spell && isSpellSelfCast(spell) && spell.kind !== 'escape') return false;   // THE ESCAPE PICK: the hover aims the landing
+                    // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE waits on its CONFIRM; the hover
+                    // moves it only once back (right-click) has freed it for placement
+                    if (state._quickAoeStage === 'confirm' && state._quickAoePlace === state.selectedTool) return false;
                     if (spell) {
 
                         // Line beams included: getSpellRangeTiles returns their
@@ -59856,7 +60024,15 @@
                     /* THE LANDING PICK (2026-10-20, mondo: a lit To the Moon landing tile was refused): a sky throw's
                        landing ring is lit fog or no fog, and the throw never needed sight — same pass as the blink. */
                     const _skyLanding = !!spell && spell.kind === 'skyThrow' && skyThrowLandingPhase(_actUnit);
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding) {
+                    /* THE FAR SIGHT PICK (2026-10-23, Keys vs Keys playtest): a fogExempt tile cast (Far Sight, cleanse)
+                       is castable into fog by its own kind row and doSpell lets it through; this gate refused the click
+                       first ("Out of sight") so Far Sight could never search a tile nobody could see. */
+                    const _fogExemptPick = !!spell && _kindMeta(spell).fogExempt && _kindMeta(spell).tileTargeted;
+                    /* THE SCRY (Cube vs Keys matchup 2026-10-23): Far Sight / Remote View aim INTO the fog by design — the
+                       board lights fogged tiles in their reach and doSpell takes them; this gate refused the click
+                       ("Out of sight — no one on your team can see that tile"). */
+                    const _scry = !!spell && spell.kind === 'remoteView';
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && (_teleportLandingPhase(spell) || spell.kind === 'escape')) && !_skyLanding && !_scry && !_fogExemptPick) {
                         if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                             addLog(outOfSightMessage(_actUnit, x, y), _actUnit.player);
                             playErrorSfx();
@@ -60189,10 +60365,15 @@
                         viaHover: false
                     };
                     playSfx('uiCursorFocus');
+                    // THE CONFIRM FIRST: a quick-menu AoE placed on another tile is in placement now (the hover moves it)
+                    const _qaArm = state.actionMode === 'spell' && state._quickAoePlace === state.selectedTool;
+                    if (_qaArm) state._quickAoeStage = 'place';
                     // Picking a UNIT on the map swings the caster's over-the-
                     // shoulder view onto it — exactly like picking it from the
-                    // target drum (tile picks keep the tactical view).
-                    if (clickedUnit && !clickedUnit.dead
+                    // target drum (tile picks keep the tactical view; so does a
+                    // quick-menu AoE's placement: mondo 2026-10-23, the CONFIRM
+                    // step must stay the tactical view over the board).
+                    if (clickedUnit && !clickedUnit.dead && !_qaArm
                         && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                         _tpsTargetShot(actingUnit, clickedUnit);
                     }
@@ -60536,7 +60717,7 @@
                 if (!victim || victim.dead || victim._dying) continue;
                 const dist = getUnitPushDistance(victim, BOMB_KNOCK_TILES);
                 if (!(dist > 0)) {
-                    if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(victim) === 'colossal') addLog(`💥 ${_ctName(victim)} is far too massive to be blown back!`);
+                    if (getUnitDisplaceWeightClass(victim) === 'colossal') addLog(`💥 ${_ctName(victim)} is far too massive to be blown back!`);
                     continue;
                 }
                 const d = _bkDirs[victim.id] || bombKnockDir(bomb, victim, _bkCtx);
@@ -63783,7 +63964,7 @@
             let best = null, bestScore = -1;
             try {
                 for (const t of getMoveTiles(unit)) {
-                    if (t._jump || t._takeoff) continue;
+                    if (t._takeoff) continue;   // hop tiles (`_jump`) are plain doMove walks — THE HOP TILES COUNT
                     if (t.x === tx && t.y === ty) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     const land = predictWalkLanding(unit, t.x, t.y, t.z);   // THE SLIDE FORECAST: fire from where the slide stops
@@ -65530,10 +65711,11 @@
                     if (_atkArc === 'back') {
                         unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
                         addLog(`🗡️ BACKSTAB! ${_ctName(unit)} strikes ${_ctName(target)} from behind (+25% damage)!`);
-                        showFloatingTextForUnit(target, 'BACKSTAB!', 'crit', { durationMs: 1100, jitterY: -14 });
+                        // the word carries the real multiplier (mondo 2026-10-23: "Flanked X1.25")
+                        showFloatingTextForUnit(target, `BACKSTAB ×${+_facingMult.toFixed(2)}`, 'crit', { durationMs: 1100, jitterY: -14 });
                     } else if (_atkArc === 'side') {
                         addLog(`🗡️ ${_ctName(unit)} flanks ${_ctName(target)} (+10% damage)!`);
-                        showFloatingTextForUnit(target, 'FLANKED!', 'counter', { durationMs: 900 });
+                        showFloatingTextForUnit(target, `FLANKED ×${+_facingMult.toFixed(2)}`, 'counter', { durationMs: 900 });
                     }
                     if (isCrit) {
                         addLog(`⚡ CRITICAL HIT!`);
@@ -65832,6 +66014,31 @@
         /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
            logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
            very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
+        /* THE HIDDEN KEYS (mondo 2026-10-23): the Key find celebration (+N KEY, the close-up, KEY SECURED, the
+           chime, the shake) plays on the finder's team's screen only. Online the host plays it for its own finds
+           and sends the guest's privately ('key-private'); the wrappers never relay it (_ewNoRelay), so nothing of
+           it reaches the other screen. */
+        function _presentKeyFind(unit, n, sub) {
+            if (!unit) return;
+            if (typeof window._ewKeyPrivateRelay === 'function') {
+                try { window._ewKeyPrivateRelay(unit, n, sub); } catch (e) {}
+            }
+            if (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) return;
+            _playKeyFindLocal(unit, n, sub);
+        }
+        function _playKeyFindLocal(unit, n, sub) {
+            if (!unit) return;
+            window._ewNoRelay = (window._ewNoRelay || 0) + 1;
+            try {
+                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'streak');
+                playKeySecuredFx(unit.x, unit.y, n);
+                showCombatBanner(`KEY SECURED!`, sub || '', 'pickup-friendly');
+                playSfx('playerHourglass');
+                shakeBoard('normal');
+            } finally { window._ewNoRelay = Math.max(0, (window._ewNoRelay || 1) - 1); }
+        }
+        window._playKeyFindLocal = _playKeyFindLocal;
+
         function _inspectFootprintAt(unit, x, y) {
             const toReveal = getInspectFootprint(unit, x, y);
 
@@ -65889,23 +66096,21 @@
                 const buffDesc = `+${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG, -${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(newLevel/2)} MOV`;
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
                 unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
-                showFloatingTextForUnit(unit, `+${totalHourglasses} KEY${totalHourglasses > 1 ? 'S' : ''}`, 'streak');
                 addEntropy(unit.player, ENTROPY_PTS.hourglass * totalHourglasses, 'hourglass', unit);
-                playKeySecuredFx(unit.x, unit.y, totalHourglasses);
-                showCombatBanner(`KEY SECURED!`, `Key Charge Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
-                playSfx(unit.player === getViewerPlayer() ? 'playerHourglass' : 'enemyHourglass');
-                shakeBoard('normal');
+                _presentKeyFind(unit, totalHourglasses, `Key Charge Lv.${newLevel}: ${buffDesc}`);
             }
 
-            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`, unit.player);
+            /* THE HIDDEN KEYS: the Inspect line is everyone's; what it found (or that it found nothing) is the
+               searcher's team's alone, so from the other side a find and an empty search read the same */
+            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
-                addLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
+                addKeyLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
             }
 
             if (totalHourglasses === 0) {
-                addLog(`Nothing found here.`, unit.player);
+                addKeyLog(`Nothing found here.`, unit.player);
             }
 
             if (lootedNow > 0) {
@@ -67114,7 +67319,7 @@
             const occ = unitAt(x, y);
             const occAirborne = occ && typeof isUnitAirborne === 'function' && isUnitAirborne(occ);
             if (occ && !occ.dead && !occAirborne && isEnemyUnit(occ, unit) && !out.isWater) {
-                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(occ) === 'colossal') {
+                if (getUnitDisplaceWeightClass(occ) === 'colossal') {   // 🪶 in Low Gravity the rising ground shoves even a colossus
                     return 'Too heavy to shove';
                 }
                 // THE SPELL AUDIT Batch D — Mountainborn (`immuneDisplace: ['terrain']`): raised ground cannot shove it aside.
@@ -71524,6 +71729,7 @@
                     // Horn Toss author it) — displaceDistance still wins.
                     const dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2);
                     const _displaceFromX = target.x, _displaceFromY = target.y;
+                    _sigVfxGeom(spell.id + ':throw', target.x, target.y, 0, { fromX: unit.x, fromY: unit.y });
                     if (dist === 0) {
                         addLog(`${_ctName(target)} is far too heavy to budge!`);
                         showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
@@ -71807,20 +72013,20 @@
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
                         if (!_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y, uid: target && target.id });
+                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y, fromX: unit.x, fromY: unit.y, uid: target && target.id });
                         }
                     }
                 }, _pullCamHold);
                 unit.mp -= effectiveSpellCost;
                 // Weight + Clash gate in one place now (getUnitPushDistance:
                 // feather +1, heavy -1, colossal 0, Clash freezes everyone).
-                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal'
+                if (getUnitDisplaceWeightClass(target, spell) === 'colossal'
                     && !(typeof _isClashMode === 'function' && _isClashMode())) {
                     addLog(`${_ctName(target)} is far too heavy to drag!`);
                     showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                 }
                 // an ally haul (Rescue Line) is a rescue, not a pull: Windborne's anchor and Event Horizon's rider skip it
-                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, _plAlly ? 'rescue' : 'pull');
+                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, _plAlly ? 'rescue' : 'pull', spell);
                 // THE SPELL AUDIT Batch D — Windborne (`immuneDisplace: ['pull']`) holds; Event Horizon's `pullRider` lands.
                 const _pullAnchor = _plAlly ? null : unitResistsDisplace(target, 'pull');
                 if (_pullAnchor && (spell.pullDistance || 3) > 0) {
@@ -72059,6 +72265,7 @@
 
                 window.setTimeout(() => {
                     if (unit.dead || target.dead) return;
+                    _sigVfxGeom(spell.id + ':swap', tx, ty, 0, { fromX: ux, fromY: uy });
                     unit.x = tx; unit.y = ty;
                     target.x = ux; target.y = uy;
                     if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
@@ -72697,6 +72904,7 @@
                     terrainDeform: spell.terrainDeform || null,
                     demolishesBuildings: !!spell.demolishesBuildings
                 });
+                _sigVfxGeom(spell.id + ':mark', x, y, 0, { onlyPlayer: unit.player, fromX: unit.x, fromY: unit.y });
                 addLog(`${_ctName(unit)} marks ${coordLabel(x, y)} with ${_ctSp(spell.name)}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(unit, `${spell.name}!`, 'streak', { durationMs: 1000 });
                 scheduleBoardRender();
@@ -72809,6 +73017,7 @@
                     _deployedEntry.spriteUnit = _decoyLookOf(unit);
                 }
                 state._deployedObjects.push(_deployedEntry);
+                _sigVfxGeom(spell.id + ':deploy', x, y, 0, { onlyPlayer: unit.player, fromX: unit.x, fromY: unit.y });
                 /* THE SPELL AUDIT Batch D: decoyTaunt { radius, duration } (Stuffed Double) — every enemy within radius of
                    the decoy is Provoked toward IT: the taunt status, keyed to the object's tile (_tauntObjKey) instead of
                    a unit, so getTauntDecoy binds their basic attacks to the straw while it stands. */
@@ -74113,7 +74322,7 @@
                 unit.mp -= effectiveSpellCost;
                 if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
                     && typeof ThreeVFXEffects.fireGeometry === 'function') {
-                    try { ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
+                    try { _sigVfxGeom(spell.id + ':view', x, y, 1) || ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
                 }
                 addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} on ${coordLabel(x, y)}.`, unit.player);
                 _inspectFootprintAt(unit, x, y);

@@ -142,6 +142,7 @@
         reviveBase: 320,            // reviving a unit ≈ a kill in reverse
         ccOutputFactor: 0.37,        // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
         statusSetupFactor: 0.115,     // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
+        statusSetupSure: 0.6,       // WEAK RACES II 2026-10-23: same, when the payoff is all but certain (mate still to act this round / own zone that lasts) — not trained
         buffStageFactor: 0.14,      // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
@@ -968,10 +969,22 @@
         return val;
     }
 
+    // A passive that blocks the status outright (unitPassiveBlocksStatus / immuneKind, as _mirrorStatusValue checks).
+    function _aiStatusBlocked(g, tg, id) {
+        try {
+            if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(tg, id)) return true;
+            const defs = g.STATUS_DEFS || (typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS : {});
+            if (typeof unitPassiveValue === 'function' && defs[id]?.kind
+                && unitPassiveValue(tg, 'immuneKind') === defs[id].kind) return true;
+        } catch (e) {}
+        return false;
+    }
+
     // Value of denying tg's actions with status `id` for `dur` rounds.
     function ccDenialValue(g, unit, tg, id, dur, v) {
         if (!tg || tg.dead) return 0;
         try { if (g.unitHasStatus(tg, id)) return 0; } catch (e) {}
+        if (_aiStatusBlocked(g, tg, id)) return 0;   // WEAK RACES II: Ghoul shrugs off Stun, Rabbit Slow — no denial
         const output = unitThreatOutput(g, tg, unit);
         const turns = Math.min(dur || 1, 2);
         const notYetActed = (tg.ap || 0) > 0 ? 1 : 0.45;   // denying a spent unit is worth less
@@ -1043,9 +1056,9 @@
 
     // Setup credit: applying status `id` to tg unlocks every teammate
     // spell carrying bonusVsStatus[id] (×1.5 payoff next turn).
-    function statusSetupValue(g, unit, tg, id, v) {
-        if (!tg || tg.dead) return 0;
-        let total = 0;
+    function statusSetupValue(g, unit, tg, id, v, persists) {
+        if (!tg || tg.dead || _aiStatusBlocked(g, tg, id)) return 0;
+        let total = 0, sure = 0;
         const team = g.state.units.filter(u => u.player === unit.player && !u.dead && u.hp > 0);
         for (const mate of team) {
             for (const sp of (mate.spells || [])) {
@@ -1060,10 +1073,49 @@
                 if (_dist(g, mate.x, mate.y, mate.z, tg) > em + er + 1) continue;
                 const payoff = estDamage(g, mate, tg, sp);
                 total += tuneW(g, 'statusSetupFactor') * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
+                /* WEAK RACES II (2026-10-23, mondo): a payoff that is all but certain — a teammate still to act this
+                   round (ap left), or the caster's own next turn when the status keeps landing (a zone that lasts
+                   into next round: Lamp Smoke → Twisted Wish) — is credited at AI_TUNE.statusSetupSure instead of
+                   the trained average, so Missing Time / Misdirection / Lamp Smoke get cast before their payoff. */
+                if ((mate.id !== unit.id && (mate.ap || 0) > 0) || (mate.id === unit.id && persists)) {
+                    sure += AI_TUNE.statusSetupSure * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
+                }
                 break;   // one payoff per teammate is enough credit
             }
         }
-        return Math.min(220, total);
+        return Math.max(Math.min(220, total), Math.min(400, sure));
+    }
+
+    /* WEAK RACES II (2026-10-23, mondo): expected value of a hidden trap / step mine on `tile` — the chance an enemy
+       walks onto it before it is found (closer + a bigger footprint = likelier) × the hit it lands (estDamage + the
+       status it leaves), discounted as future damage; a blast that catches neighbours adds half a hit each. */
+    function _trapHitValue(g, unit, spell, tile, v, size, blastSide) {
+        if (!tile) return 0;
+        const foot = Math.min(2.5, Math.max(1, size || 1));
+        let miss = 1, best = null, bestP = 0;
+        for (const e of v.visibleEnemies) {
+            if (isProtected(g, e)) continue;
+            const d = Math.max(0, Math.abs(e.x - tile.x) + Math.abs(e.y - tile.y) - ((size || 1) - 1));
+            let em = 2;
+            try { em = g.getEffectiveMove(e) || (e.move || 2); } catch (q) {}
+            const p = Math.min(0.85, foot * (d <= 1 ? 0.3 : d <= em ? 0.18 : d <= em * 2 ? 0.08 : 0));
+            if (p <= 0) continue;
+            miss *= (1 - p);
+            if (p > bestP) { bestP = p; best = e; }
+        }
+        if (!best) return 0;
+        let hit = estDamage(g, unit, best, spell);
+        for (const eff of (spell.statusEffects || [])) {
+            if (eff && eff.id) hit += ccDenialValue(g, unit, best, eff.id, eff.duration || 1, v);
+        }
+        const reach = Math.floor(((spell.trapHitsAll ? size : blastSide) || 1) / 2);
+        if (reach > 0) {
+            for (const e of v.visibleEnemies) {
+                if (e.id === best.id || isProtected(g, e)) continue;
+                if (Math.max(Math.abs(e.x - best.x), Math.abs(e.y - best.y)) <= reach) hit += estDamage(g, unit, e, spell) * 0.5;
+            }
+        }
+        return (1 - miss) * hit * 0.75;
     }
 
     // Value of the status riders on an offensive/utility cast.
@@ -3649,6 +3701,8 @@
 
     function _mirrorStatusValue(g, source, target, effect, v) {
         if (!effect || g.unitHasStatus(target, effect.id)) return 0;
+        // Drowning lands only in deep water (battle.js applyStatusPayload → map.js unitCanDrownHere)
+        if (effect.id === 'drowning' && typeof unitCanDrownHere === 'function' && !unitCanDrownHere(target)) return 0;
         const defs = g.STATUS_DEFS || (typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS : {});
         if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(target, effect.id)) return 0;
         if (typeof unitPassiveValue === 'function' && defs[effect.id]?.kind
@@ -4278,7 +4332,26 @@
             if (_smActive >= (spell.maxActivePerCaster || 1)) return 0;
             if (!v.visibleEnemies.length) return 0;
             const _smNear = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
-            return _smNear ? 150 : 70;
+            const _smFlat = _smNear ? 150 : 70;
+            /* WEAK RACES II (2026-10-23, mondo): a summon is worth what it will deal over its life, not a flat 150 —
+               the flat score lost to every damage spell, so the Elephant (110 + half spell power a round, six hits)
+               was cast once in ~2,200 lab turns. Bite as battle.js builds it (summonDef.dmg + ½ spell power) vs the
+               nearest enemy, × the rounds it should last (1 + hits/2, max 4) × the share of rounds it reaches someone,
+               discounted for being future damage; its body soaks hits too. Never below the old flat score. */
+            const _sd = spell.summonDef || {};
+            let _smPrey = null, _smPd = Infinity;
+            for (const e of v.visibleEnemies) {
+                const d = Math.abs(e.x - target.x) + Math.abs(e.y - target.y);
+                if (d < _smPd) { _smPd = d; _smPrey = e; }
+            }
+            if (!_smPrey) return _smFlat;
+            const _smBite = estDamage(g, unit, _smPrey, { kind: 'damage', dmg: _sd.dmg || 60, damageType: 'physical', spellType: spell.spellType || null },
+                { rawBase: (_sd.dmg || 60) + Math.floor(_spellPowerOf(g, unit, spell) * 0.5), noElement: true });
+            const _smHits = _sd.hits || 3;
+            const _smRounds = Math.min(4, 1 + _smHits / 2);
+            const _smReach = _smPd <= (_sd.move || 3) + 1 ? 0.8 : (_smPd <= (_sd.move || 3) * 2 + 1 ? 0.55 : 0.3);
+            const _smLife = _smBite * _smRounds * _smReach * 0.7 + _smHits * 20 + ((_sd.reveals || 0) > 0 ? 25 : 0);
+            return Math.max(_smFlat, _smLife);
         }
 
         if (kind === 'shield' && target) {
@@ -4409,7 +4482,7 @@
                 for (const eff of (spell.statusEffects || [])) {
                     if (!eff || !eff.id) continue;
                     s += 0.8 * ccDenialValue(g, unit, e, eff.id, eff.duration || 1, v);
-                    s += 0.8 * statusSetupValue(g, unit, e, eff.id, v);
+                    s += 0.8 * statusSetupValue(g, unit, e, eff.id, v, (spell.zoneDuration || 1) >= 2);
                 }
                 if (!spell.statusEffects || !spell.statusEffects.length) s += 45;
             }
@@ -4561,6 +4634,11 @@
             if (_contactE) return s + 40 + (spell.blastDmg || 0) * 0.5;
             const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
+            // WEAK RACES II (2026-10-23): a mine is worth the blast it will likely set off (see _trapHitValue)
+            if (spell.detonateOnStep && spell.blastDmg) {
+                return Math.max(s, _trapHitValue(g, unit, Object.assign({}, spell, { dmg: spell.blastDmg }), target, v, 1,
+                    (spell.blastRadius || 0) * 2 + 1));
+            }
             return s;
         }
 
@@ -4584,7 +4662,12 @@
             const active = (g.state.traps || []).filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType).length;
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
             const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
-            return nearE > 0 ? 45 + nearE * 30 + (spell.dmg || 0) * 0.2 : 0;
+            const _tpFlat = nearE > 0 ? 45 + nearE * 30 + (spell.dmg || 0) * 0.2 : 0;
+            if (!_tpFlat) return 0;
+            /* WEAK RACES II (2026-10-23, mondo): a trap is worth the hit it will likely land — P(an enemy walks onto it)
+               × (its damage + its status) — not a flat 45 + 30 a head, which lost to every damage spell (Trapdoor /
+               Deathtrap were cast ~once in ~1,300 Gnome lab turns). Bigger traps catch more steps. */
+            return Math.max(_tpFlat, _trapHitValue(g, unit, spell, target, v, spell.trapSize || 1));
         }
 
         if (kind === 'placeMirror' && target) {

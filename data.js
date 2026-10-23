@@ -2553,7 +2553,7 @@ const OBJECT_RULES = {
    (state.js resolveIdentityForBuild) and DEFAULT_PARTY_RACES seats the default party (the races the old default
    jobs carried). */
 const DEFAULT_IDENTITY = {
-    race: 'homosapien',
+    race: 'door agent',   // HOMOSAPIEN OUT (mondo 2026-10-23): the neutral fallback is the DOOR Agent
     types: ['human'],
     gender: 'other',
     zodiac: 'sagittarius',
@@ -3552,7 +3552,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3975,7 +3975,7 @@ const RACE_BASE_STATS = {
     'nordic':             { hp: 1337, mp: 200, atk:  49, def:  76, mdef:  163, int:  179, vision: 3, crt: 18, spd: 97 },
     'fairy':              { hp: 654, mp: 220, atk:   3, def:  38, mdef:  151, int:  124, vision: 2, crt: 26, spd: 149 },
     'scarecrow':          { hp: 1568, mp: 150, atk:  72, def:  166, mdef:  106, int:  63, vision: 2, crt: 12, spd: 71 },
-    'grey':               { hp: 495, mp: 220, atk:   28, def:  25, mdef:  195, int:  197, vision: 3, crt: 26, spd: 48 },
+    'grey':               { hp: 495, mp: 220, atk:   28, def:  25, mdef:  195, int:  197, vision: 3, crt: 26, spd: 60 },   // spd 48 -> 60 (walks 2): mondo 2026-10-23, weak races II
     'succubus':           { hp: 824, mp: 220, atk:  60, def:  46, mdef:  172, int:  174, vision: 3, crt: 21, spd: 102 },
     'orb of light':       { hp: 520, mp: 225, atk:   33, def:  16, mdef:  200, int: 200, vision: 5, crt: 26, spd: 91 },   // BALANCE PASS 2026-10-06: HP 415→455 (lab WR 39%, among the lowest HP)
     'mothman':            { hp: 800, mp: 215, atk:   88, def:  52, mdef:  161, int:  166, vision: 5, crt: 26, spd: 169 },
@@ -3987,7 +3987,7 @@ const RACE_BASE_STATS = {
     'mantid':             { hp: 434, mp: 190, atk:  164, def:  21, mdef:  92, int:  192, vision: 3, crt: 26, spd: 146 },
     'skinwalker':         { hp: 398, mp: 160, atk:  151, def:  29, mdef:  112, int:  176, vision: 3, crt: 26, spd: 125 },
     'seraphim':           { hp: 300, mp: 260, atk:   24, def:  13, mdef:  194, int:  182, vision: 4, crt: 21, spd: 49 },
-    'djinn':              { hp: 324, mp: 240, atk:   94, def:  39, mdef:  183, int:  158, vision: 3, crt: 19, spd: 115 },
+    'djinn':              { hp: 480, mp: 240, atk:   94, def:  39, mdef:  183, int:  158, vision: 3, crt: 19, spd: 115 },  // hp 324 -> 480: mondo 2026-10-23, weak races II
     'anubis':             { hp: 337, mp: 245, atk:   98, def:  44, mdef:  191, int:  171, vision: 3, crt: 25, spd: 96 },
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
     'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
@@ -4289,7 +4289,7 @@ function raceJumpStat(race, spd) {
 }
 
 function computeUnitStats(race, cls, zodiac) {
-    const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
+    const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['door agent'];
     /* the birth sign's natal changes (ZODIAC_EFFECTS[sign].natal) ride on the base, so the level formula scales them too */
     const base = zodiac && ZODIAC_EFFECTS[zodiac] ? Object.assign({}, base0) : base0;
     if (base !== base0) ZODIAC_NATAL_KEYS.forEach(k => { const d = zodiacNatalDelta(zodiac, k); if (d) base[k] = Math.max(k === 'hp' ? 1 : 0, (base[k] || 0) + d); });
@@ -6200,7 +6200,8 @@ const SPELL_LIBRARY = [
         { id: 'raceTelekineticSlam', name: 'Telekinetic Slam', tier: 3, families: ['psychic'], cost: 75, apCost: 1,
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'pull', range: 4, dmg: 145,
           damageType: 'magic', pullDistance: 3, groundsFlyers: true,
-          desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
+          weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): the mind weighs nothing — heavy and colossal bodies come like any other
+          desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
         { id: 'raceHogtie', name: 'Hogtie', tier: 2, families: ['ropework'], cost: 50, apCost: 1, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 1,
           statusEffects: [{ id: 'root', duration: 2 }],
@@ -6367,7 +6368,7 @@ const SPELL_LIBRARY = [
           desc: 'The whole squad moves with the wind. Every ally within 2 tiles is Quickened (+1 move) for 2 rounds. Does not end the turn. Cooldown: 2 rounds.' },
         { id: 'raceFarSight', name: 'Far Sight', tier: 2, families: ['psychic'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'psychic', type: 'utility', kind: 'remoteView', range: 4, inspectAt: true,
-          desc: 'Search a place without walking to it. Inspects a tile up to 4 away as if you stood next to it: the same footprint and the same finds (Keys, items on the fallen, hidden bombs). Does not end the turn.' },
+          desc: 'Search a place without walking to it. Inspects a tile up to 4 steps away as if you stood next to it: the same footprint and the same finds (Keys, items on the fallen, hidden bombs). Does not end the turn, but it is the turn\'s one cast.' },
         { id: 'raceRustle', name: 'Rustle', tier: 2, families: ['cowboyskills'], cost: 50, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'pull', damageType: 'physical', dmg: 60, range: 3, pullDistance: 2, lineOfSight: true,
           stealKeys: 1, stealItems: 0,
@@ -6484,7 +6485,7 @@ const SHARED_LOW_GRAVITY = {
     type: 'utility', cost: 20, range: 4, apCost: 1,
     kind: 'zoneDebuff', gravityField: 'weak', aoeRadius: 1, zoneDuration: 3,
     statusEffects: [],
-    desc: 'Loosen gravity over a 3×3 area for 3 rounds. EVERYONE inside (both teams) jumps +2 tiles further and higher, and takes zero fall damage. Moon-bounce your bruisers up a cliff — just remember the enemy can bounce too.'
+    desc: 'Loosen gravity over a 3×3 area for 3 rounds. EVERYONE inside (both teams) jumps +2 tiles further and higher, takes zero fall damage, and weighs nothing: even the biggest, normally immovable bodies are pushed, pulled and flung like anyone else. Moon-bounce your bruisers up a cliff — just remember the enemy can bounce too.'
 };
 
 /* One wall spell, one name. The knight's old "Castle Fortress" and King
@@ -6634,8 +6635,9 @@ const SHARED_BLACK_HOLE = {
     type: 'damage', tier: 4, families: ['cosmic'], cost: 100, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
     kind: 'aoePull', damageType: 'magic', aoeRadius: 2, pullToCenter: true,
     groundsFlyers: true,
+    weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): nothing is too heavy for a singularity — heavy and colossal bodies are dragged too
     statusEffects: [{ id: 'slow', duration: 1 }],
-    desc: 'Collapse a singularity: everything in a 5×5 event horizon is dragged screaming toward the center and crushed for HEAVY magic damage. Applies Slow. Knocks flying enemies out of the sky. Cooldown: 2 rounds.'
+    desc: 'Collapse a singularity: everything in a 5×5 event horizon, however heavy, is dragged screaming toward the center and crushed for HEAVY magic damage. Applies Slow. Knocks flying enemies out of the sky. Cooldown: 2 rounds.'
 };
 
 const SHARED_NEBULA = {
@@ -8706,9 +8708,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'You were driving. Now it is three hours later. A Single Enemy within 4 is Stunned for a round. Cooldown: 2 rounds.' },
         { id: 'goTissueSample', name: 'Tissue Sample', tier: 3, families: ['grey'], cost: 75, apCost: 1, spellType: 'alien',
-          element: 'psychic', type: 'damage', kind: 'lifeDrain', range: 2, dmg: 125, damageType: 'magic', drainPct: 0.5,
+          element: 'psychic', type: 'damage', kind: 'lifeDrain', range: 4, dmg: 125, damageType: 'magic', drainPct: 0.5,   // range 2 -> 4 (weak races II, mondo 2026-10-23)
           bonusVsStatus: { status: 'stun', mult: 1.5 },
-          desc: 'Taken while you are out. Deals MEDIUM magic damage to a Single Enemy within 2 and heals the grey for half of it. Deals bonus damage to Stunned targets.' },
+          desc: 'Taken while you are out. Deals MEDIUM magic damage to a Single Enemy within 4 and heals the grey for half of it. Deals bonus damage to Stunned targets.' },
         { id: 'raceProbe', tier: 1, families: ['ufo'], spellType: 'alien', element: 'psychic', name: 'Probe',
           type: 'damage', cost: 20, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic', dmg: 100,
@@ -9616,18 +9618,19 @@ const RACE_ABILITIES = {
     ],
     'gnome': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Garden Gnome. */
-        { id: 'goAnkleBiter', name: 'Ankle Biter', tier: 1, families: ['gnome'], cost: 25, apCost: 1, spellType: 'human',
-          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+        /* WEAK RACES II (mondo 2026-10-23): Ankle Biter 80 -> 110 and Garden Shears 130 -> 170, both anomaly (the gnome's own type) */
+        { id: 'goAnkleBiter', name: 'Ankle Biter', tier: 1, families: ['gnome'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 110, damageType: 'physical',
           statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Straight for the tendon. Deals WEAK physical damage to a Single Enemy beside you and Slows them for 2 rounds.' },
+          desc: 'Straight for the tendon. Deals MEDIUM physical damage to a Single Enemy beside you and Slows them for 2 rounds.' },
         { id: 'goLawnOrnament', name: 'Lawn Ornament', tier: 2, families: ['gnome'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'anomaly', element: 'earth', type: 'buff', kind: 'buff', range: 0,
           statusEffects: [{ id: 'stoneform', duration: 1 }],
           desc: 'Freeze. Smile. Be ceramic. The gnome turns to Stoneform for a round: it cannot move or act, takes no damage and regenerates. Cooldown: 3 rounds.' },
-        { id: 'goGardenShears', name: 'Garden Shears', tier: 3, families: ['gnome'], cost: 75, apCost: 1, spellType: 'human',
-          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
+        { id: 'goGardenShears', name: 'Garden Shears', tier: 3, families: ['gnome'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 170, damageType: 'physical',
           bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Snip. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
+          desc: 'Snip. Deals HEAVY physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
 
 
 
@@ -9639,9 +9642,9 @@ const RACE_ABILITIES = {
           desc: 'One more adjustment. One MORE. Grants a heavy damage-absorbing shield to All Allies (and contraptions) around the caster.' },
         { id: 'raceScrapMine', name: 'Scrap Mine', tier: 2, families: ['trapmaking'], cost: 50, apCost: 1, spellType: 'tech',
           element: 'fire', type: 'utility', kind: 'deployObject', damageType: 'physical', range: 3, objectHp: 20,
-          blastRadius: 1, blastDmg: 100, detonateOnStep: true, maxActivePerCaster: 2,
+          blastRadius: 1, blastDmg: 140, detonateOnStep: true, maxActivePerCaster: 2,   // blast 100 -> 140 (weak races II, mondo 2026-10-23)
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a MEDIUM blast in a 3×3 that Staggers. Two per caster.' },
+          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a HEAVY blast in a 3×3 that Staggers. Two per caster.' },
 
     ],
     'kaiju': [
@@ -9706,7 +9709,7 @@ const RACE_ABILITIES = {
         { id: 'goLongNeck', name: 'Long Neck', tier: 1, families: ['lochness'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'pull', range: 3, pullDistance: 2, dmg: 70, damageType: 'physical',
           statusEffects: [{ id: 'drowning', duration: 2 }],
-          desc: 'The neck reaches further out of the loch than it should. Deals WEAK physical damage to a Single Enemy within 3, drags them 2 tiles toward you and leaves them Drowning for 2 rounds.' },
+          desc: 'The neck reaches further out of the loch than it should. Deals WEAK physical damage to a Single Enemy within 3, drags them 2 tiles toward you. A target that ends up in deep water is left Drowning for 2 rounds.' },
         { id: 'goOutOfTheLoch', name: 'Out of the Loch', tier: 3, families: ['lochness'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'water', type: 'damage', kind: 'leapStrike', range: 3, dmg: 125,
           damageType: 'physical', dmgPerLevel: 15, bonusVsStatus: { status: 'drowning', mult: 1.5 },
@@ -13099,8 +13102,7 @@ const ACCT_MATCH_GOLD_CAP    = 5000;  // server-side sanity cap on banked gold p
 // Keep server.js ACCT_STARTER_UNITS in sync (npm run test:parity) — the server
 // unions this list into an existing account on login (it never removes).
 const ACCT_STARTER_UNITS = [
-  'door agent',     // Agent — the officer
-  'homosapien',     // Freelancer — the recruit
+  'door agent',     // Agent — the officer (HOMOSAPIEN OUT 2026-10-23: the Homosapien recruit is gone)
   'catgirl',        // Gunslinger — the user's three free hires (2026-09-20)
   'bigfoot',        // Harvester
   'honda civic',    // the Sedan
@@ -37072,12 +37074,12 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: -4.2, z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
-                { x: -2.1, z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
-                { x: 0,    z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
-                { x: 2.1,  z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
-                { x: 4.2,  z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
-                { x: 5.0,  z: -3.6, face: 200, clone: true, race: 'homosapien', say: ['“I stepped out of the line.” “Why?” “To see what you looked like from behind. It is the same.”'] },   // the sixth, in the corner, half-turned
+                { x: -4.2, z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
+                { x: -2.1, z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
+                { x: 0,    z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
+                { x: 2.1,  z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
+                { x: 4.2,  z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
+                { x: 5.0,  z: -3.6, face: 200, clone: true, race: 'door agent', say: ['“I stepped out of the line.” “Why?” “To see what you looked like from behind. It is the same.”'] },   // the sixth, in the corner, half-turned
                 { x: 3.6,  z: -3.4, face: 220, race: 'politician', stay: true, say: ['“Everything must go.” “Where?” “That is not on the banner.”', '“Six floor models.” “They look like me.” “They are the display. You are the stock.”'] },   // THE FLOOR MANAGER, at the till
             ],
             onlineSpots: [],
@@ -54311,7 +54313,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'homosapien', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...
@@ -55781,7 +55783,7 @@ function hqPartyNormMember(m, r) {
     m.name = typeof m.name === 'string' ? m.name.trim().slice(0, 24) : '';
     if (m.name && !m.you && hqNameIsRace(m.name, m.meta && m.meta.race)) m.name = '';   // THE NAMES: the race's own label is never filed as a name
     if (!m.meta || typeof m.meta !== 'object') m.meta = {};
-    if (!m.meta.race) m.meta.race = 'homosapien';
+    if (!m.meta.race) m.meta.race = 'door agent';
     if (m.meta.customSpells && !Array.isArray(m.meta.customSpells)) delete m.meta.customSpells;
     if (!m.loadout || typeof m.loadout !== 'object') m.loadout = { spells: [], items: {}, equipment: {} };
     if (!Array.isArray(m.loadout.spells)) m.loadout.spells = [];
@@ -55885,7 +55887,7 @@ function hqOfficerEnlist(profile, look) {
     return H.officer;
 }
 /* THE OFFICER: the walker as a member — the enlisted agent (a D.O.O.R. Agent in the intake's look, Adaptable in his kit), else the
-   mirror's look (Homosapien in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
+   mirror's look (the DOOR Agent in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
 function hqPartyOfficer(profile) {
     let pref = null, look = null;
     try { pref = (typeof hqAvatarPref === 'function') ? hqAvatarPref(profile) : null; } catch (e) { pref = null; }
@@ -55896,9 +55898,9 @@ function hqPartyOfficer(profile) {
         race = HQ_OFFICER_RULES.race; cls = HQ_OFFICER_RULES.cls; name = off.name || '';
         if (look) { gender = look.gender; appearance = look.appearance; if (look.name) name = look.name; }
     }
-    else if (pref && pref.mode === 'look' && look) { race = 'homosapien'; gender = look.gender; appearance = look.appearance; name = look.name || ''; }
+    else if (pref && pref.mode === 'look' && look) { race = HQ_OFFICER_RULES.race; gender = look.gender; appearance = look.appearance; name = look.name || ''; }   // HOMOSAPIEN OUT (2026-10-23): a look dresses the DOOR Agent
     else if (pref && pref.mode === 'race' && pref.race) { race = pref.race; gender = pref.gender || 'male'; }
-    if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) race = 'homosapien';
+    if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) race = HQ_OFFICER_RULES.race;
     const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
     if (!name) name = String((profile && profile.username) || 'THE OFFICER').slice(0, 24);
     const meta = { race, gender };
@@ -56048,7 +56050,7 @@ function hqPartySpellIds(m) {
 function hqPartySpellCap() { return (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7; }
 function hqPartySpellTree(m) {
     if (!m) return null;
-    const race = (m.meta && m.meta.race) || 'homosapien', cls = UNIT_CLASS;
+    const race = (m.meta && m.meta.race) || 'door agent', cls = UNIT_CLASS;
     const equipped = hqPartySpellIds(m);
     const parts = unitSpellPoolParts(race, cls, equipped);   // the Adaptable row in the kit opens the borrow part
     const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
@@ -56114,7 +56116,7 @@ function hqPartyTreeCircuit(m) {
 function hqPartySetSpells(profile, memberId, ids) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien', cls = UNIT_CLASS;
+    const race = m.meta.race || 'door agent', cls = UNIT_CLASS;
     let out = (ids || []).filter(Boolean);
     out = out.filter((id, i) => out.indexOf(id) === i);
     let trimmed = false;
@@ -56184,17 +56186,17 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
 function hqPartySpellsDefault(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien';
+    const race = m.meta.race || 'door agent';
     const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race));
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
 function hqPartySpellsRandom(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const ids = buildTreeLegalLoadout(m.meta.race || 'homosapien', m.cls, '', hqPartySpellCap(), rng);
+    const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng);
     delete m.meta.spellUpgrades;
     const w = hqPartySetSpells(profile, memberId, ids);
-    const ups = buildRandomUpgrades(m.meta.race || 'homosapien', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
+    const ups = buildRandomUpgrades(m.meta.race || 'door agent', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
     if (Object.keys(ups).length) m.meta.spellUpgrades = ups;
     return Object.assign({ kind: 'random', note: 'A RANDOM LEGAL KIT' }, w);
 }
@@ -56286,7 +56288,7 @@ function hqPartyLead(profile) { const r = hqPartyRecord(profile); return (r && r
 function hqPartyLeadAvatar(profile) {
     if (!HQ_PARTY_RULES.leadWalks) return null;
     const m = hqPartyLead(profile); if (!m) return null;
-    const race = (m.meta && m.meta.race) || 'homosapien';
+    const race = (m.meta && m.meta.race) || 'door agent';
     const genders = hqPartyGenders(race);
     let gender = (m.meta && m.meta.gender) || genders[0]; if (genders.indexOf(gender) < 0) gender = genders[0];
     const out = { race, gender, name: m.name || '', you: !!m.you, id: m.id };
@@ -60081,7 +60083,7 @@ const HQ_AVATAR_MODES = ['player', 'vessel', 'agent', 'race', 'look'];
    portrait (a JPEG data URL bust the mirror photographed, for the ID card),
    at }. hqLook(profile) reads it (null when none / unreadable); hqSetLook
    files it (null clears) and counts a cut. The chair's fifth mode, 'look',
-   walks the building as it (map.js _hqAvatar → { race: 'homosapien', gender,
+   walks the building as it (map.js _hqAvatar → { race: 'door agent', gender,
    appearance }) and is only on offer while a look is on file. */
 function hqLook(profile) {
     let rec = null;

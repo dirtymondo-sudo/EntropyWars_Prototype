@@ -11913,7 +11913,8 @@ const ThreeRenderer = (function () {
             }
         }
         var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-        var hgBuff = unit.hourglassBuff || 0;
+        /* THE HIDDEN KEYS: an enemy's Key Charge never shows on its plate here (map.js keysHiddenFor) */
+        var hgBuff = (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) ? 0 : (unit.hourglassBuff || 0);
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
@@ -12915,7 +12916,7 @@ const ThreeRenderer = (function () {
         // board build is never a bald unit in plain cloth.
         var fabricUrls = [];
         (units || []).forEach(function (u) {
-            if (!u || u.dead || !u.appearance || u.race !== 'homosapien' || typeof getCharacterAppearanceAssets !== 'function') return;
+            if (!u || u.dead || !u.appearance || !(typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(u.race) || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
             var as = getCharacterAppearanceAssets(u.appearance);
             if (as.hair && !seen[as.hair] && !(_unitGlbCache[as.hair] && (_unitGlbCache[as.hair].root || _unitGlbCache[as.hair].failed))) { seen[as.hair] = true; urls.push(as.hair); }
             (as.fabrics || []).forEach(function (fu) {
@@ -16933,7 +16934,8 @@ const ThreeRenderer = (function () {
         g.setIndex(idx);
         return g;
     }
-    /* the drape's rim as a closed line (the paint ghost's crisp edge), same local frame as the drape mesh */
+    /* the drape's rim as a closed line (the paint ghost's crisp edge), same local frame as the drape mesh.
+       Closed by hand (first point repeated) for a THREE.Line: WebGPURenderer draws no LineLoop. */
     function _drapeRimGeo(geo) {
         var p = geo.attributes.position.array, n = Math.round(Math.sqrt(geo.attributes.position.count)) - 1, out = [], i;
         function at(gi, gj) { var k = (gj * (n + 1) + gi) * 3; out.push(p[k], p[k + 1], p[k + 2]); }
@@ -16941,6 +16943,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < n; i++) at(n, i);
         for (i = n; i > 0; i--) at(i, n);
         for (i = n; i > 0; i--) at(0, i);
+        at(0, 0);
         var g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
         return g;
@@ -17273,7 +17276,7 @@ const ThreeRenderer = (function () {
     }
     function _hlGhostNoPick() {}
     function _hlGhostOne(o, off, depth) {
-        if (o._ew_hlGhostTwin) return;
+        if (o._ew_hlGhostTwin || o._ew_hlBack) return;   // THE PLATES ON THE ICE: a backing has no twin
         if (o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh) {
             var m = o.material;
             if (m && !Array.isArray(m) && m.fragmentShader === _hlFragmentShader && m.uniforms && m.uniforms.uOpacity
@@ -17299,8 +17302,70 @@ const ThreeRenderer = (function () {
     function _syncHlGhosts() {
         if (!highlightGroup) return;
         var off = typeof window !== 'undefined' && !!window.EW_NO_HL_GHOST;
+        var backOff = typeof window !== 'undefined' && !!window.EW_NO_HL_BACKING;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var ch = highlightGroup.children;
-        for (var i = 0; i < ch.length; i++) _hlGhostOne(ch[i], off, 0);
+        for (var i = 0; i < ch.length; i++) { _hlBackOne(ch[i], ts, backOff); _hlGhostOne(ch[i], off, 0); }
+    }
+
+    /* ── THE PLATES ON THE ICE (2026-10-23, mondo: "frozen/ice tiles are covering up tile highlights or making them hard
+       to see") ──
+       The draw order was already right (THE PLATES OVER THE ICE: every ground sheet draws before the plates), but a plate
+       is a see-through wash with a white-hot outline, and on a white-blue ice / snow top that is pale on pale: the move
+       tiles' blue, the cursor's yellow and the outline's white core all vanished into the ice. Every plate (move / jump /
+       attack / spell reach, the AoE, the cursor) on a cell whose ground is ice or snow now wears a BACKING: the same
+       geometry and shader, its own colour = the plate's colour × HL_BACK_SHADE, no outline, full fill, drawn just before
+       the plate — so the ice under a lit tile is shaded toward the plate's hue and the plate and its outline read on top.
+       It follows the plate's opacity (the focus dim, the range pulse) and colour (the UI Maker's tile look) each frame,
+       never takes a pick, and has no x-ray twin. The ice looks exactly as before where nothing is lit. WebGL + WebGPU
+       (the node build reads the same shader). Switch: window.EW_NO_HL_BACKING = true. */
+    var HL_BACK_K = 0.55, HL_BACK_SHADE = 0.3;
+    var _HL_BACK_TERRAIN = /^(ice|snow|frost|frozen|igloo|glacier)/;
+    function _hlBackAt(x, y) {
+        if (typeof getTerrainAt !== 'function') return false;
+        var t; try { t = getTerrainAt(x, y); } catch (e) { return false; }
+        return typeof t === 'string' && _HL_BACK_TERRAIN.test(t);
+    }
+    function _hlBackMatFor(src) {
+        var b = src._ew_hlBackMat;
+        if (b) return b;
+        var u = {};
+        for (var k in src.uniforms) u[k] = src.uniforms[k];
+        u.uColor = { value: new THREE.Color(0) }; u.uOpacity = { value: 0 };
+        u.uEdgeGlow = { value: 0 }; u.uFill = { value: 1 }; u.uBrackets = { value: 0 }; u.uHatch = { value: 0 };
+        u.uInset = { value: 0 }; u.uDots = { value: 0 }; u.uLkLineOwn = { value: 0 };
+        b = new THREE.ShaderMaterial({
+            uniforms: u, vertexShader: src.vertexShader, fragmentShader: src.fragmentShader,
+            transparent: true, depthWrite: false, depthTest: src.depthTest, side: src.side
+        });
+        b.name = 'ew_hl_back'; b._ew_hlBack = true;
+        src._ew_hlBackMat = b;
+        src.addEventListener('dispose', function () { try { b.dispose(); } catch (e) {} src._ew_hlBackMat = null; });
+        return b;
+    }
+    function _hlBackOne(o, ts, off) {
+        if (!o || !o.isMesh || o._ew_hlBack || o._ew_hlGhostTwin || o._ew_overlay === 'weather') return;   // a storm's tint is not a lit tile
+        var m = o.material;
+        if (!m || Array.isArray(m) || m.fragmentShader !== _hlFragmentShader || !m.uniforms || !m.uniforms.uOpacity) return;
+        if (o._ew_hlBackCell === undefined) {
+            var tx = Math.floor(o.position.x / ts), ty = Math.floor(o.position.z / ts);
+            o._ew_hlBackCell = _hlBackAt(tx, ty);
+        }
+        var bk = o._ew_hlBackMesh;
+        if (off || !o._ew_hlBackCell) { if (bk) bk.visible = false; return; }
+        var bm = _hlBackMatFor(m);
+        if (!bk || bk.parent !== o) {
+            bk = new THREE.Mesh(o.geometry, bm);
+            bk.name = 'hl_back'; bk._ew_hlBack = true; bk.raycast = _hlGhostNoPick;
+            o.add(bk); o._ew_hlBackMesh = bk;
+        }
+        if (bk.material !== bm) bk.material = bm;
+        if (bk.geometry !== o.geometry) bk.geometry = o.geometry;
+        bk.renderOrder = o.renderOrder - 0.5; bk.frustumCulled = o.frustumCulled; bk.visible = true;
+        var base = m._ew_baseOpacity, cur = m.uniforms.uOpacity.value;
+        var k = (base > 0) ? Math.max(0, Math.min(1, cur / base)) : 1;
+        bm.uniforms.uOpacity.value = HL_BACK_K * k;
+        if (m.uniforms.uColor && m.uniforms.uColor.value) bm.uniforms.uColor.value.copy(m.uniforms.uColor.value).multiplyScalar(HL_BACK_SHADE);
     }
 
     function _updatePreviewOverlayPulse() {
@@ -17665,7 +17730,7 @@ const ThreeRenderer = (function () {
                 var pEdgeMat = new THREE.LineBasicMaterial({
                     color: color, transparent: true, opacity: 0.8, depthWrite: false
                 });
-                var pEdges = new THREE.LineLoop(_drapeRimGeo(plane.geometry), pEdgeMat);
+                var pEdges = new THREE.Line(_drapeRimGeo(plane.geometry), pEdgeMat);
                 pEdges.rotation.y = plane.rotation.y;
                 pEdges.position.copy(plane.position); pEdges.position.y += 0.1;
                 pEdges.renderOrder = 6;
@@ -18827,7 +18892,7 @@ const ThreeRenderer = (function () {
     var _floatPrev = null;
     var FLOAT_PREV_BEATS = {
         hit: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1000]],
-        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB!', 'crit', null, 0, 1100]],
+        crit: [['-246', 'critdmg', { _hitPct: 36, _hitCrit: 1, _hitW: 2 }], ['BACKSTAB ×1.25', 'crit', null, 0, 1100]],
         heal: [['+64', 'heal'], ['✨ CLEANSED', 'buff', null, 0, 1000]],
         status: [['🔥 BURNING!', 'damage', null, 0, 1100], ['❄️ FROZEN!', 'debuff', null, 0, 1100], ['🛡 PROTECTED!', 'protect-block', null, 0, 1000]],
         miss: [['DODGE!', 'dodge', null, 0, 1000], ['⬇ LAND', 'neutral', null, 260, 900]],
@@ -18837,14 +18902,14 @@ const ThreeRenderer = (function () {
         ko: [['-412', 'damage', { _hitPct: 70, _hitKill: 1, _hitType: 'blood', _hitW: 3 }], ['OVERKILL!', 'overkill', null, 0, 1000]],
         /* a crowd: one hit with every word at once, then two more hits on top (how a layout handles a pile-up) */
         busy: [['-128', 'damage', { _hitPct: 22, _hitType: 'fire', _hitWeak: 1, _hitW: 1 }], ['🔥 ×1.5 FIRE WEAK!', 'mult', null, 0, 1100],
-            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB!', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
+            ['SUPER EFFECTIVE!', 'streak', null, 0, 1100], ['BACKSTAB ×1.25', 'crit', null, 0, 1100], ['🔥 BURNING!', 'damage', null, 0, 1100],
             ['-52', 'combo', null, 320], ['-61', 'damage', { _hitPct: 8, _hitType: 'fire', _hitW: 0 }, 640]]
     };
     var FLOAT_PREV_ORDER = ['hit', 'crit', 'heal', 'status', 'miss', 'mp', 'combo', 'ko', 'busy'];
     /* EACH KIND (UI Maker > Floating text > Each kind of pop): a line the game really pops for each kind, shown on its own
        (a word after a number, so it is seen next to one) when that kind is picked: beat 'k:<kind>' */
     var FLOAT_KIND_SAMPLE = { damage: '-128', critdmg: '-246', combo: '-52', total: '159 TOTAL!', heal: '+64', mp: '+20 MP', revive: '+1 AP!',
-        crit: 'BACKSTAB!', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED!', overkill: 'OVERKILL!', dodge: 'DODGE!',
+        crit: 'BACKSTAB ×1.25', mult: '🔥 ×1.5 FIRE WEAK!', streak: 'SUPER EFFECTIVE!', counter: 'FLANKED ×1.1', overkill: 'OVERKILL!', dodge: 'DODGE!',
         'protect-block': '🛡 PROTECTED!', buff: '⏪ ENCORE', debuff: 'GROUNDED!', status: 'Blocked!', neutral: '⬇ LAND', xp: '+35 XP',
         levelup: '⬆ LEVEL 12!', pickup: '+1 KEY', nexus: '⬡ CAPTURED!' };
     function _floatPrevBeat(name) {
@@ -42007,6 +42072,11 @@ const ThreeRenderer = (function () {
             if (state._actionExecuting || state._walkAnimActive) return;
             if (state._suppressHoverPreviewUntil
                 && performance.now() < state._suppressHoverPreviewUntil) return;
+            /* A pick made from the target list (or a board click) stays the pick while only the CAMERA moves: the
+               swing onto that target used to slide a new tile under the still pointer and re-aim the cast there
+               (Cube vs Keys matchup 2026-10-23: Psychic Beam on Superhero armed "CONFIRM — Dirt IV B4"). A real
+               mouse move still re-aims. */
+            if (state.pendingTarget && !state.pendingTarget.viaHover) return;
         }
         cam.updateMatrixWorld();
         var e = cam.matrixWorld.elements;
@@ -73129,7 +73199,7 @@ const ThreeRenderer = (function () {
         T.members = [];
     }
     function _trAddMember(T, slot, spot, tok) {
-        var res = _cvResolveDef(slot.race || 'homosapien', slot.gender || 'male', slot.appearance);
+        var res = _cvResolveDef(slot.race || 'door agent', slot.gender || 'male', slot.appearance);
         if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
         var def = res.def, U = T.U;
         var mem = { def: def, wrap: new THREE.Group(), mixer: null, idle: null, clips: null, pose: null, rig: null, mats: [], blob: null,
@@ -73225,7 +73295,7 @@ const ThreeRenderer = (function () {
         var spots = TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4], tok = T.tok;
         /* big vessels stand further apart */
         var hMax = 0;
-        slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'homosapien', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });
+        slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'door agent', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });
         var spread = Math.max(1, hMax / 1.9);
         slots.forEach(function (s, i) {
             var sp = spots[i]; if (!sp) return;

@@ -253,6 +253,18 @@
            refuses a second one); the forge (Edit) is where it gets fixed. */
         const _sqRaceKey = s => String((s && s.race) || '').toLowerCase();
         function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(_sqRaceKey)) : []; }
+        /* HOMOSAPIEN OUT (mondo, 2026-10-23): a race that left the roster (state.js teamRemovedRaces). The team is kept, flagged,
+           and does not cross until the forge swaps it out; a bigger sheet still crosses when THE PICK can leave it on file. */
+        function _sqGone(slots) { return (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : []; }
+        function _sqGoneBlock(t) {
+            const gone = _sqGone(t.slots);
+            if (!gone.length) return [];
+            const n = t.slots.length;
+            if (n <= SQ_DEPLOY) return gone;
+            const left = new Set(t.slots.map(_sqRaceKey).filter(r => gone.indexOf(r) < 0)).size;
+            return left < SQ_DEPLOY ? gone : [];
+        }
+        function _sqGoneText(d) { return 'Out of the game: ' + d.map(r => _sqRaceLabel({ race: r })).join(', '); }
         /* the team cannot cross as it stands: the deployed members repeat a race (or a bigger sheet has too few different races to pick from) */
         function _sqTwice(t) {
             const n = t.slots.length;
@@ -264,7 +276,8 @@
         /* the first `k` slots of DIFFERENT races (THE PICK's opening choice when the remembered one repeats a race) */
         function _sqFirstUnique(t, k) {
             const seen = new Set(), out = [];
-            t.slots.forEach((s, i) => { const r = _sqRaceKey(s); if (out.length < k && !seen.has(r)) { seen.add(r); out.push(i); } });
+            const gone = _sqGone(t.slots);   // HOMOSAPIEN OUT: never a removed unit
+            t.slots.forEach((s, i) => { const r = _sqRaceKey(s); if (out.length < k && !seen.has(r) && gone.indexOf(r) < 0) { seen.add(r); out.push(i); } });
             return out;
         }
         function _sqRaceLabel(s) {
@@ -276,7 +289,7 @@
         function _sqFace(s, extra) {
             let url = '', portrait = false;
             try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male' }) || ''; portrait = !!url; } } catch (e) {}
-            if (!url) { try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl(s.race || 'homosapien', s.gender || 'male', UNIT_CLASS) || ''; } catch (e) {} }
+            if (!url) { try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl(s.race || 'door agent', s.gender || 'male', UNIT_CLASS) || ''; } catch (e) {} }
             return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i></span>`;
         }
         window._sqFaceHtml = s => _sqFace(s || {});   // the ready room (online.js) draws the same faces
@@ -327,7 +340,7 @@
             const n = t.slots.length;
             if (n <= SQ_DEPLOY) return t.slots.map((_, i) => i);
             let pick = Array.isArray(t.lastPick) ? Array.from(new Set(t.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n))) : [];
-            if (pick.length !== SQ_DEPLOY || _sqDups(pick.map(i => t.slots[i])).length) pick = _sqFirstUnique(t, SQ_DEPLOY);   // ONE OF EACH
+            if (pick.length !== SQ_DEPLOY || _sqDups(pick.map(i => t.slots[i])).length || _sqGone(pick.map(i => t.slots[i])).length) pick = _sqFirstUnique(t, SQ_DEPLOY);   // ONE OF EACH (+ HOMOSAPIEN OUT)
             if (pick.length !== SQ_DEPLOY) pick = t.slots.map((_, i) => i).slice(0, SQ_DEPLOY);
             return pick.sort((a, b) => a - b);
         }
@@ -413,7 +426,7 @@
             if (!t || !plate) return;
             const presets = _sqPresets(), max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             const n = t.slots.length, short = n < _sqNeed(), over = n > SQ_DEPLOY, shown = _sqShownIdx(t);
-            const twice = short ? [] : _sqTwice(t), locked = short || twice.length > 0;   // ONE OF EACH
+            const twice = short ? [] : _sqTwice(t), gone = short ? [] : _sqGoneBlock(t), locked = short || twice.length > 0 || gone.length > 0;   // ONE OF EACH (+ HOMOSAPIEN OUT)
             const when = t.lastUsed ? new Date(t.lastUsed) : null;
             const at = presets.findIndex(p => p.id === t.id);
             plate.className = ['sq-plate', locked ? 'is-locked' : '', t.id === _sqNewId ? 'is-new' : ''].filter(Boolean).join(' ');
@@ -426,7 +439,8 @@
                 + `<div class="sq-plate-faces">${t.slots.slice(0, 8).map((s, i) => `<span class="sq-plate-slot${over && shown.indexOf(i) < 0 ? ' is-bench' : ''}" style="--j:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">`
                     + `${_sqFace(s)}<em>${_sqEsc(s.unitName || _sqRaceLabel(s))}</em></span>`).join('')}</div>`
                 + `<div class="sq-plate-foot">`
-                + (twice.length ? `<span class="sq-card-warn">${_sqEsc(_sqTwiceText(twice))} · Edit the team</span>`
+                + (gone.length ? `<span class="sq-card-warn">${_sqEsc(_sqGoneText(gone))} · Edit the team</span>`
+                    : twice.length ? `<span class="sq-card-warn">${_sqEsc(_sqTwiceText(twice))} · Edit the team</span>`
                     : locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play ${SQ_DEPLOY === 5 ? '5v5' : 'online'}</span>`
                     : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
                     : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
@@ -460,11 +474,11 @@
             if (!drop) return;
             const need = _sqNeed();
             drop.innerHTML = _sqPresets().map((t, k) => {
-                const n = t.slots.length, twice = n < need ? [] : _sqTwice(t), locked = n < need || twice.length > 0;   // ONE OF EACH
+                const n = t.slots.length, twice = n < need ? [] : _sqTwice(t), gone = n < need ? [] : _sqGoneBlock(t), locked = n < need || twice.length > 0 || gone.length > 0;   // ONE OF EACH (+ HOMOSAPIEN OUT)
                 return `<div class="sq-drop-row${t.id === _sqFocusId ? ' is-focus' : ''}${locked ? ' is-locked' : ''}" role="button" tabindex="0" data-sq-sel="${_sqEsc(t.id)}" style="--i:${k}">`
                     + `<span class="sq-drop-faces">${t.slots.slice(0, 8).map(s => _sqFace(s)).join('')}</span>`
                     + `<span class="sq-drop-name">${_sqEsc(t.name || 'Team')}</span>`
-                    + `<span class="sq-drop-n">${twice.length ? 'Same unit twice' : locked ? `Needs ${SQ_DEPLOY}` : `${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}`}</span></div>`;
+                    + `<span class="sq-drop-n">${gone.length ? 'Out of the game' : twice.length ? 'Same unit twice' : locked ? `Needs ${SQ_DEPLOY}` : `${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}`}</span></div>`;
             }).join('');
         }
         function _sqDropSet(open) {
@@ -485,7 +499,7 @@
             if (!preset) return;
             const el = _sqCardEl(id);
             _sqFocusCard(id);
-            if (preset.slots.length < _sqNeed() || _sqTwice(preset).length) { try { playSfx('uiError'); } catch (e) {} _sqBump(el, 'sq-shake'); return; }   // ONE OF EACH: a team fielding a race twice does not cross
+            if (preset.slots.length < _sqNeed() || _sqTwice(preset).length || _sqGoneBlock(preset).length) { try { playSfx('uiError'); } catch (e) {} _sqBump(el, 'sq-shake'); return; }   // ONE OF EACH: a team fielding a race twice does not cross
             if (preset.slots.length > SQ_DEPLOY) { _sqPickOpen(preset); return; }
             _sqDeploy(preset, preset.slots.map((_, i) => i));
         }
@@ -495,7 +509,7 @@
             const n = preset.slots.length;
             let chosen = Array.isArray(preset.lastPick) ? preset.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n) : [];
             chosen = Array.from(new Set(chosen)).slice(0, SQ_DEPLOY);
-            if (chosen.length !== SQ_DEPLOY || _sqDups(chosen.map(i => preset.slots[i])).length) chosen = _sqFirstUnique(preset, SQ_DEPLOY);   // ONE OF EACH
+            if (chosen.length !== SQ_DEPLOY || _sqDups(chosen.map(i => preset.slots[i])).length || _sqGone(chosen.map(i => preset.slots[i])).length) chosen = _sqFirstUnique(preset, SQ_DEPLOY);   // ONE OF EACH (+ HOMOSAPIEN OUT)
             _sqPick = { preset, chosen };
             try { playSfx('uiCursorMove'); } catch (e) {}
             const host = document.getElementById('sqPick');
@@ -539,6 +553,13 @@
             const at = _sqPick.chosen.indexOf(i);
             const _r = _sqRaceKey(_sqPick.preset.slots[i]);
             if (at >= 0) _sqPick.chosen.splice(at, 1);
+            else if (_sqGone([_sqPick.preset.slots[i]]).length) {   // HOMOSAPIEN OUT: a removed unit stays on file
+                try { playSfx('uiError'); } catch (e) {}
+                _sqBump(document.querySelector(`#sqPick .sq-tile[data-sq-tile="${i}"]`), 'sq-shake');
+                const hint = document.querySelector('#sqPick .sq-pick-hint');
+                if (hint) hint.textContent = _sqRaceLabel({ race: _r }) + ' is out of the game. Pick another unit.';
+                return;
+            }
             else if (_sqPick.chosen.some(j => _sqRaceKey(_sqPick.preset.slots[j]) === _r)) {   // ONE OF EACH: that race already crosses
                 try { playSfx('uiError'); } catch (e) {}
                 _sqBump(document.querySelector(`#sqPick .sq-tile[data-sq-tile="${i}"]`), 'sq-shake');
@@ -564,7 +585,7 @@
         }
         function _sqPickGo() {
             if (!_sqPick) return;
-            if (_sqPick.chosen.length !== SQ_DEPLOY || _sqDups(_sqPick.chosen.map(i => _sqPick.preset.slots[i])).length) { try { playSfx('uiError'); } catch (e) {} _sqBump(document.getElementById('sqPickN'), 'sq-shake'); return; }
+            if (_sqPick.chosen.length !== SQ_DEPLOY || _sqDups(_sqPick.chosen.map(i => _sqPick.preset.slots[i])).length || _sqGone(_sqPick.chosen.map(i => _sqPick.preset.slots[i])).length) { try { playSfx('uiError'); } catch (e) {} _sqBump(document.getElementById('sqPickN'), 'sq-shake'); return; }
             const preset = _sqPick.preset, idx = _sqPick.chosen.slice().sort((a, b) => a - b);
             _sqPickClose(false);
             _sqDeploy(preset, idx);
@@ -651,7 +672,7 @@
                 const s = sq.slots[i] || {};
                 builds.push(UNIT_CLASS);   // THE JOBS REMOVAL: every member is the one neutral class
                 names.push((typeof sanitizeUnitName === 'function') ? sanitizeUnitName(s.unitName, getDefaultUnitName(UNIT_CLASS)) : (s.unitName || getDefaultUnitName(UNIT_CLASS)));
-                const meta = { race: s.race || 'homosapien', gender: s.gender || 'male', zodiac: s.zodiac || 'aries' };
+                const meta = { race: s.race || 'door agent', gender: s.gender || 'male', zodiac: s.zodiac || 'aries' };
                 try { meta.appearance = (typeof normalizeCharacterAppearance === 'function') ? (normalizeCharacterAppearance(s.appearance) || null) : (s.appearance || null); } catch (e) { meta.appearance = null; }
                 if (Array.isArray(s.customSpells) && s.customSpells.length) meta.customSpells = s.customSpells.slice();
                 if (s.spellUpgrades && typeof s.spellUpgrades === 'object' && Object.keys(s.spellUpgrades).length) meta.spellUpgrades = JSON.parse(JSON.stringify(s.spellUpgrades));
@@ -1383,10 +1404,9 @@
             if (mode === 'look' && typeof window.hqLook === 'function') {
                 const lk = window.hqLook(profile);
                 /* THE INTAKE (2026-09-21): an enlisted officer walks as the D.O.O.R. Agent in the look (the same creator rig, the door gun in hand) */
-                const offRace = (typeof window.hqOfficerOnFile === 'function' && window.hqOfficerOnFile(profile) && window.HQ_OFFICER_RULES) ? window.HQ_OFFICER_RULES.race : 'homosapien';
-                if (lk && typeof getCharacterAppearanceModel === 'function') {
-                    for (const r of [offRace, 'homosapien']) if (getCharacterAppearanceModel(r, lk.gender, lk.appearance)) return { race: r, gender: lk.gender, appearance: lk.appearance };
-                }
+                /* HOMOSAPIEN OUT (mondo 2026-10-23): a look always dresses the DOOR Agent — enlisted or not */
+                const offRace = (window.HQ_OFFICER_RULES && window.HQ_OFFICER_RULES.race) || 'door agent';
+                if (lk && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel(offRace, lk.gender, lk.appearance)) return { race: offRace, gender: lk.gender, appearance: lk.appearance };
             }
             if (mode === 'race' && typeof getRace3DModel === 'function') {
                 if (getRace3DModel(pref.race, pref.gender)) return { race: pref.race, gender: pref.gender };
@@ -2375,7 +2395,7 @@
             try { if (m && m.you && typeof window.hqLook === 'function') { const lk = window.hqLook(_hqProfile()); if (lk && lk.portrait && m.meta && m.meta.appearance) return { url: lk.portrait, kind: 'portrait' }; } } catch (e) {}
             try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
             if (url) return { url, kind: 'portrait' };
-            try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'homosapien', (m.meta && m.meta.gender) || 'male', UNIT_CLASS); } catch (e) {}
+            try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'door agent', (m.meta && m.meta.gender) || 'male', UNIT_CLASS); } catch (e) {}
             return url ? { url, kind: 'sprite' } : null;
         }
         function _hqPauseRaceLabel(m, u) {
@@ -6902,7 +6922,7 @@
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
                 if (!members.length) html += '<div class="hq-row hq-row-tray"><b>FLOOR MODEL</b><span>YOU · AS WORN IN</span><i class="hq-lamp-chip st-codered">SOLD</i></div>';
                 members.forEach((m, i) => {
-                    const race = (m.meta && m.meta.race) || 'homosapien';
+                    const race = (m.meta && m.meta.race) || 'door agent';
                     const label = (typeof window.getRaceLabel === 'function') ? String(window.getRaceLabel(race, m.meta && m.meta.gender) || race).toUpperCase() : String(race).toUpperCase();
                     const price = (typeof prices[race] === 'number') ? prices[race] : 0; total += price;
                     html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(String(m.name || label))}</b><span>${_hqEsc(label)}${m.you ? ' · THE FLOOR MODEL' : ''}</span><i class="hq-lamp-chip ${m.you ? 'st-codered' : 'st-open'}">${price ? price + ' G' : 'NO CHARGE'}</i></div>`;
@@ -7418,7 +7438,7 @@
         function _mdUnlockedRoster() {
             const races = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : null;
-            const owned = new Set((sv && sv.unlockedRaces) || ['homosapien']);
+            const owned = new Set((sv && sv.unlockedRaces) || ['door agent']);
             return races.filter(rk => owned.has(rk));
         }
 
@@ -7966,7 +7986,7 @@
         };
 
         let _cccGender = 'male';
-        let _cccRace = 'homosapien';
+        let _cccRace = 'door agent';
         /* THE JOBS REMOVAL (the user 2026-09-27): the creator picks a race + gender + name — no job (the default
            name is the race label, the sprite the neutral UNIT_CLASS) */
         const _cccRaceLabel = rk => (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[rk] && RACE_PROFILES[rk].label)
@@ -7992,7 +8012,7 @@
 
                 state.gameState = GS.CAMPAIGN_CHAR_CREATE;
                 _cccGender = 'male';
-                _cccRace = 'homosapien';
+                _cccRace = 'door agent';
                 _cccRenderForm();
                 _showTitlePage('campaignCharCreatePage');
             } else {
@@ -8020,7 +8040,7 @@
             window._activeChallengeType = cType;
             state.gameState = GS.CAMPAIGN_CHAR_CREATE;
             _cccGender = 'male';
-            _cccRace = 'homosapien';
+            _cccRace = 'door agent';
             _cccRenderForm();
             _showTitlePage('campaignCharCreatePage');
         };
@@ -13649,6 +13669,17 @@
             return !!unit && (unit?.terrainPreference === 'deep_water' || unitHasSnorkel(unit) || (typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'swim')) /* passiveBruteForce (was the Raider job; the jobs removal 2026-09-27) */ || unit?.race === 'siren' || unit?.race === 'reptilian' || unit?.race === 'ghost' || unit?.race === 'atlantean' || unit?.race === 'kraken' || unit?.race === 'loch ness monster');
         }
 
+        /* 🌊 DROWNING NEEDS DEEP WATER (2026-10-23, mondo: "Make it to where drowning can only take place in deep
+           water"): the one test for "can this unit drown where it stands" — on a deep_water tile, grounded, and not a
+           deep-water swimmer. The same tile read and exemptions the drowning tick (STATUS_DEFS.drowning.onRoundEnd)
+           and the deep-water rule use. applyStatusPayload bounces a Drowning status (Long Neck's) that fails it. */
+        function unitCanDrownHere(unit) {
+            if (!unit || unit.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (unitIsDeepWaterAdapted(unit)) return false;
+            return getTerrainAt(unit.x, unit.y) === 'deep_water';
+        }
+
         function unitIsLavaAdapted(unit) {
             if (!unit) return false;
             const r = unit.race;
@@ -14874,6 +14905,35 @@
             return state.hourglasses.filter(h => h.carriedBy && unitFromId(h.carriedBy)?.player === player).length;
         }
 
+        /* THE HIDDEN KEYS (mondo 2026-10-23, after the Keys vs Keys matchup): a team never sees the OTHER team's
+           Keys. A find, a pickup, a drop, how many it carries, its Key Charge: none of it shows on the other side's
+           screen (log, floats, banner, close-up, scoreboard, cards, plates). The Inspect itself still shows ("…
+           inspects 8 tiles around G7."), so a find reads exactly like an empty search. Display only: the win at 5,
+           Key Charge and the Arena score still count every Key, and the match end reveals all.
+           keysHiddenFor(p) = this screen must not show team p's Keys. A screen with no human seat (dev auto-sim,
+           CPU vs CPU) watches both teams and sees everything. */
+        function keysHiddenFor(player) {
+            if (player !== 1 && player !== 2) return false;
+            if (state.phase !== 'battle' || state.winner || state.devAutoSim) return false;
+            const viewer = getViewerPlayer();
+            if (!viewer || viewer === player) return false;
+            if (window._NET && window._NET.online) return true;
+            return state.controllers?.[viewer] === CTRL.LOCAL;
+        }
+        window.keysHiddenFor = keysHiddenFor;
+        /* the Keys team p carries as THIS screen may show them: the count, or null when they are hidden */
+        function shownCarriedKeys(player) {
+            return keysHiddenFor(player) ? null : carriedHourglassCount(player);
+        }
+        window.shownCarriedKeys = shownCarriedKeys;
+        /* a log line about a team's own Keys (a find, a drop): only that team's screen prints it */
+        function addKeyLog(msg, player) {
+            addLog(msg, player);
+            const L = state.logEntries, e = L && L[L.length - 1];
+            if (e && typeof e === 'object' && e.m === msg) e.kp = 1;
+        }
+        window.addKeyLog = addKeyLog;
+
         function revealHourglassesAt(x, y, player) {
             let found = 0;
             for (const h of groundHourglassesAt(x, y)) {
@@ -14992,10 +15052,12 @@
                 h.carriedBy = null;
                 h.x = unit.x;
                 h.y = unit.y;
-                h.visibleTo[1] = true;
-                h.visibleTo[2] = true;
+                /* THE HIDDEN KEYS: only the dropper's team knows the Keys are lying there; to everyone else the
+                   tile is just another one to Inspect */
+                h.visibleTo[unit.player] = true;
+                h.visibleTo[unit.player === 1 ? 2 : 1] = false;
             }
-            if (carried.length) addLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            if (carried.length) addKeyLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;

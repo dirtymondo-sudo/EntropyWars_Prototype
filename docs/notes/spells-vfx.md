@@ -1658,6 +1658,83 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   cliffs, three ways of passing the aim height): every count matched the board. Its 10-20 zero was the already-ice
   case PR #385 fixed.
 
+## THE G-O SIGNATURES (2026-10-23, mondo: "think of each race as its own JRPG or Dark Souls boss" — the VFX pass on PR #433's families)
+- Every race spell from Gargoyle to Overlord (ids `go*`) plus the four moved into race families (Fee Fi Fo Fum
+  `raceTitanStep`, Atomic Breath, Labyrinth Roar, Excalibur Strike) has its own look: one block in three-vfx-effects.js,
+  "THE G-O SIGNATURES", above THE SHEET WARM. All procedural (MeshBasic / Sprite / Line materials, the canvas glow + text
+  sheets, the particle sheet), so both renderers draw it; no new art, no sound, no full-screen layer (the only flashes are
+  `_sigScreenFlash`, which leaves the hole round the target). Spell rules untouched: the SPELL_MAP rows only pick tracers.
+- How each look is reached (read off a real cast per kind):
+  - `_GO_SIG[id]` — drawn on the staging `burst` beat (`_fireStage` → `_goStage`), which every kind fires at the real
+    impact. The caster tile comes from the windup beat (`_goCast`), so a teleport / charge still aims from where it began.
+  - `_GO_LAND[id]` — ranged spells with a bolt row (`_go_bolt_<id>`, `goBolt: true`, `boltGeometry`): the look draws where
+    the bolt lands (`_goLandFn` in `_spell3DGeometry`), so random-target extra shots (Things That Go Bump, The Whole House
+    Shakes, Stack Overflow, Every Eye at Once) each get one. A spell in both tables draws once per tile: `_goClaim` lets the
+    first of burst / bolt own the tile for 3 s.
+  - `_GO_THROWN[id]` — the bolt carries a real object (hatchet, atlatl spear, devil's coal, the gauntlet, the Noisy
+    Cricket's gun + blast, the gem spray, the ghost's flying furniture, the eye-stalk eyes): `_goBolt`, hooked in
+    `_fireBoltMapped` after High Noon. Skipped on `hideGunRig` and when the caster's tile is fogged.
+  - `_GO_BEAM[id]` — line spells, hooked in `_fireBeamMapped` before the boomerang/breath branches: Rainspout, Tripod Sweep
+    and Antimagic Gaze return 'own' (the look replaces the laser); Atomic Breath's hook charges the kaiju's dorsal plates
+    and falls through to its breath cone.
+  - aoe kinds get a `_go_aoe_<id>` row (a faint themed tile wash) in place of the generic aoe() burst; One Shot, One Kill
+    keeps its bullet sprite and draws on its impact; Labyrinth Roar's aura geometry is now the maze floor + nostril steam
+    + its old sonic rings. Excalibur Strike keeps `_sigExcalibur3D` (already Arthur's own sword).
+- Fog (RULE #2): online.js relays fire(), and the guest's own fire() draws every look. A caster the viewer can't see is
+  never drawn from: `_goCasterFor` falls back to the target's own tile (no direction or position leaks); thrown objects
+  don't fly out of a fogged tile. online.js now relays `hideGunRig` too, so the guest also skips the gun / bow /
+  thrown prop on a shot the host fog-clamped (Codex review on PR #445).
+- Probe: `node --check`, then all 85 spells cast back to back in Chromium (SwiftShader) with no `[VFX] G-O` / `[SIG3D]`
+  errors; before/after stills on WebGL in /mnt/project-files/g-o-vfx/. Real WebGPU (`?ew_gpu=webgpu`) booted and cast
+  12 of them with no VFX errors, but headless SwiftShader WebGPU draws a black canvas (same on main), so the WebGPU
+  renderer's stills were taken on its WebGL2 backend (`?ew_gpu=webgl2`, same node materials).
+- Follow-up (same day, coordinator: redo the spells that went off camera): 27 spells had only had their beats fired in
+  the first stills run. Seven were the probe's fault (the range-2 spells were aimed 3 tiles out; Grotesque Dive and Out
+  of the Loch need the caster above the target, the existing leap rule), and 20 came after the gnome's Lawn Ornament
+  left the caster in Stoneform. Reshot with the units staged on screen (leaps from the stadium's raised 0-1 columns).
+- Solid props are no longer flat cut-outs: `_goM` marks its material `goSolid`, and `_goAdd` bakes a fixed light into
+  vertex colours (`_goBake`: top lit, sides and underside darker). Still MeshBasic, so both renderers draw it the same.
+- Underfoot's sole is now a hairy foot (an extruded footprint, five toes, a furred shin) and it fades to see-through
+  160 ms after it lands, so the hit and the numbers under it show. Giant's Hand has a rounded palm, capsule fingers and
+  a wrist; Clay Crush's slabs are rounded clay; Emet's plates are clay coils; Tissue Sample's probe and vial and the
+  Cordyceps stalks are bigger so they read at board zoom.
+- Real WebGPU does run here (team memory sandbox-webgpu): with the Vulkan / SwiftShader adapter flags and the
+  `createView` swizzle strip it drew the whole battle with no device loss. Ten of the reshot spells have before/after
+  stills on it in /mnt/project-files/g-o-vfx/webgpu-real/; that run is what showed Giant's Hand's wrist as a log end,
+  so the forearm now runs up and back out of shot.
+
+## THE A-F SIGNATURE VFX PASS (2026-10-23, mondo: "are we good to go ahead and start on the vfx pass?")
+- Scope: the 66 A-F race signature spells (`sig*`, PR #432) and the 11 PR #423 spells (`race*`: Open Vein, Arterial
+  Spray, Conduction, Thornlash, Overgrowth, Crosswind, Eye of the Storm, Mudslide, Tailwind, Far Sight, Rustle).
+  Visuals only, no data.js row changed. G-O (`go*`) and P-Z (`pz*`) had their own threads on the same file.
+- Where: three-vfx-effects.js, one block after `_crTagShards();` (search "THE A-F SIGNATURE VFX PASS"): the `_AF`
+  palette, `_af*` helpers + canvas textures, an EFFECTS recipe for every row (tile / center / bolt / burst), the
+  SPELL_MAP rows, a `_af*3D` piece per spell and one `Object.assign(_spell3DGeometry, …)` registry at the end.
+- Which hook each kind fires (read off a browser probe of all 77 casts): damage → bolt + impact; physical r≤2,
+  chargeToTarget, tackle, debuff → impact; aoe/cross → aoe (_fireAoeMapped already runs the piece with (tx, ty, aoeRadius): do NOT also set `geom3D: true`, fire() would build it twice);
+  warCry/buff/self barrage/zoneDebuff → aura (its look = impactCenterEffect, piece gets (tx, ty, aoeRadius));
+  line/linePush → beam; damage via a bolt def → the piece runs on arrival only with `boltGeometry: true` (no impact intent follows a bolt; the six-gun has its own `_bolt_af_bullet`); a chain hop def with `sigChainGeom` runs it on the first body (Twisted Wish), and a chain with nobody to jump to calls `<id>:solo` from battle.js; lifeDrain → drainHop + impact; terrainCreate → bolt + impact (do NOT map `wall`); pull → pull.
+- Two new doors in three-vfx-effects.js: fire('pull') runs the registry like impact; a beam def with `sigLine` runs
+  the piece with (fromX, fromY, hitTiles, params) before the laser, and `sigLineOwns` makes it the whole travel (the
+  piece lands the per-tile recipe itself — Forged Thunderbolt, Crosswind, Mudslide).
+- Kinds that fired nothing get visual-only doors in battle.js through `_sigVfxGeom(key, x, y, r, extra)` →
+  fireGeometry (relayed by online.js, fog-gated on the guest): `<id>:swap` (Fireman's Carry, Infernal Waltz),
+  `<id>:throw` (Fifty Times), `<id>:deploy` OWNER ONLY (Jack-in-the-Box, Hologram: a trap / decoy must not give itself
+  away), `<id>:detonate` (detonateDeployedObject), `<id>:mark` OWNER ONLY (Orbital Strike, Extinction Event at cast)
+  and `<id>:view` (Far Sight, falls back to the tarot card). A delayed row's end-of-round blast runs its plain id
+  (state.js gives 1100 ms of arming before it lands). Pull now passes fromX/fromY; Rustle joins the lasso tether regex.
+- Multi-hit rows (Six-Shooter, Thousand Stings, Piledriver, Organ, Engulf, Last Dance, Devour, Interrogation,
+  Overrun) build their big piece once per cast (`_afOnce`), the small recipe on every hit.
+- Fog: `_afFogHides` (same test as the G-O block): a caster the viewer can't see is never drawn at or from — `_afCaster`
+  aims from the west of the target instead, caster-side pieces (six-gun, lure stalk, grapple steam, Last Light, the
+  circlet, the tether radio rings, the love-ray laser) skip, owned lines land only their visible tile recipes, a swap
+  skips a fogged spot, Soul Harvest's souls just rise.
+- Nothing full-screen; big sprites stay additive and modest so the caster, target, hit and number read.
+- Checked: all 77 cast in a browser sweep (no errors); 35 pieces shot close-up on WebGL, the WebGPU renderer's WebGL2
+  backend and (12) real WebGPU; sheets in /mnt/project-files/signature-vfx-af/. The sandbox draws ~1 frame a second, so
+  a `_sigRun` piece (opacity ramps from 0) gets one or two ticks before it ends: shoot with the clock slowed (a probe-only
+  copy dividing `performance.now() - t0` by 10-20) and frame it with `playOffensiveActionCamera(caster, target)`.
+
 ## THE P-Z SIGNATURE VFX — each P-Z race's own spells get their own look (2026-10-23, mondo: "are we good to go ahead and start on the vfx pass?" after PR #429's families)
 - three-vfx-effects.js, block after END THE CAPSTONES ("THE P-Z SIGNATURE VFX"). Every `pz*` row plus Heat Vision
   (raceLaserBeam, the superhero's since PR #429) has its own EFFECTS recipe and a 3D signature in `_PZ_SIGS`.

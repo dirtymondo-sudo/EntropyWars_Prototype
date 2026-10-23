@@ -3792,6 +3792,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _geom3D(spellId)(params.tx, params.ty, _gr, params);
             } catch (e) { console.warn('[VFX] aoe geometry failed', spellId, e); }
         }
+        /* an A-F chain hop def with `sigChainGeom` (Twisted Wish) runs the registry on the first body */
+        if (intent === 'chain' && effectDef.sigChainGeom && _geom3D(spellId) && params && params.chain && params.chain[0]) {
+            try { _geom3D(spellId)(params.chain[0].x, params.chain[0].y, undefined, params); } catch (e) {}
+        }
         if (intent === 'wall')     { _fireWall(spellId, params); return; }
         if (intent === 'chain')    { _fireChain(spellId, params); return; }
         if (intent === 'beam')     { _fireBeamMapped(spellId, params); return; }
@@ -3811,6 +3815,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                punches) can aim from the caster (params.fromX/fromY) when the
                call site provides it. arg 3 stays the aoeRadius slot. */
             _geom3D(spellId)(params.tx, params.ty, undefined, params);
+        }
+        /* the A-F signature pulls (Tether Line, Lure, Grapple Arm): the 3D piece rides the pull intent */
+        if (_geom3D(spellId) && intent === 'pull') {
+            try { _geom3D(spellId)(params.tx, params.ty, undefined, params); } catch (e) {}
         }
 
         if (_LT() && intent === 'impact' &&
@@ -4948,6 +4956,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         if (hitTiles.length === 0) return;
 
+        /* the A-F signature lines: a def with `sigLine` hands (caster, route)
+           to its 3D piece; `sigLineOwns` means the piece is the whole travel
+           (it lands the per-tile recipe itself), so no laser cylinder */
+        if (beamDef.sigLine && _geom3D(spellId)) {
+            try { _geom3D(spellId)(fromX, fromY, hitTiles, params); } catch (e) {}
+            if (beamDef.sigLineOwns) return;
+        }
         /* the Swordmaster's crescent wave rides the beam intent (it knows
            both the caster and the carved route) */
         if (spellId === 'swordBeam') {
@@ -4968,6 +4983,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            to the end of the line and come back (battle.js lands the second
            damage pass on the return). No laser cylinder wanted — bail after
            the bespoke show. */
+        /* THE G-O SIGNATURES: a race line spell's own look ('own' = it replaces the laser) */
+        if (_GO_BEAM[spellId]) {
+            var _gob = null;
+            try { _gob = _GO_BEAM[spellId](fromX, fromY, hitTiles, beamDef, params); } catch (e) { console.warn('[VFX] G-O beam failed', spellId, e); }
+            if (_gob === 'own') return;
+        }
+
         if (beamDef.beamBoomerang) {
             try { _sigSonicBoomerang3D(fromX, fromY, hitTiles, beamDef); } catch (e) {}
             return;
@@ -5233,6 +5255,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (_sigTrickShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs, fromZ: params.fromZ, toZ: params.toZ })) return;
             } catch (e) {}
         }
+        /* THE G-O SIGNATURES: the thrown object (hatchet, spear, coal …) flies with its tracer */
+        if (boltDef.goBolt) _goBolt(spellId, fromTx, fromTy, toTx, toTy, params);
 
         var from = tilePx(fromTx, fromTy);
         var to = tilePx(toTx, toTy);
@@ -21954,6 +21978,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CAPSTONES (Phase 6): an ultimate's own charge / hit rides the
            same relayed beat, so the guest draws it too */
         try { _capStage(phase, spellId, params); } catch (e) {}
+        /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
+        try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
         if (phase === 'burst')  { _stageBurst(spellId, params);  return; }
         if (phase === 'finish') { _stageFinish(spellId, params); return; }
@@ -37751,6 +37777,2247 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     _crTagShards();
 
+
+    /* ═══════════════════════════════════════════════════════════════════
+       THE A-F SIGNATURE VFX PASS (2026-10-23, mondo: "are we good to go
+       ahead and start on the vfx pass?") — the 66 race signature spells
+       of the A-F races (ids sig*, PR #432) and the 11 spells of THE SPELL
+       POWER REVIEW (PR #423) stop borrowing the generic element look.
+       Every race reads as its own boss: the angel's wings close over a
+       friend, the trumpet sounds down the cross, the demon brands 666,
+       Ammit's jaws close under the scale, the clown's box springs...
+       ════════════════════════════════════════════════════════════════════
+       Visuals only: no row in data.js changed. The intents are the ones
+       each row's kind already fires (read off a browser probe of all 77
+       casts): impact / bolt / aoe / aura / beam / pull / drainHop / chain.
+       Kinds that fired nothing of their own get a geometry door in
+       battle.js, all through fireGeometry (online.js relays it, fog-gated
+       on the tile): '<id>:swap' (swap), '<id>:throw' (displacement),
+       '<id>:deploy' (a deploy, OWNER ONLY: a hologram or a trap must not
+       give itself away), '<id>:detonate' (a deploy going off), '<id>:mark'
+       (a delayed cast, owner only) and '<id>:view' (Far Sight). The
+       end-of-round detonation of a delayed row runs its plain id (state.js
+       gives the arming beat 1100 ms before the blast lands).
+       Two geometry doors in this file: fire('pull') runs the registry like
+       fire('impact'), and a beam def with `sigLine` runs it with
+       (fromX, fromY, hitTiles) before the laser (`sigLineOwns` = the
+       signature IS the travel, no laser). A multi-hit row's big piece
+       builds once per cast (_afOnce), the per-hit recipe on every hit.
+       No full-screen layers: nothing here can cover the caster, the
+       target, the hit or the number. */
+
+    var _AF = {
+        gold: 0xffd76a, pale: 0xfff4d6, white: 0xffffff, feather: 0xfff8ec, brass: 0xd8a040,
+        hell: 0xff3a1a, ember: 0xff7a2a, blood: 0xc0101a, ash: 0x2a2226,
+        linen: 0xe8dcc0, lapis: 0x2a4aa8, croc: 0x23301e, bone: 0xf4eedc,
+        pink: 0xff6ad5, fairy: 0x9dff7a, firefly: 0xe8ff6a,
+        ant: 0x2a1a10, dirt: 0x6a4a2a, fur: 0x3a2a1e, leaf: 0x4a8a3a,
+        cyan: 0x3af0ff, data: 0x7affd8, chrome: 0xc8d0dc, eyeRed: 0xff2030,
+        dust: 0xc8a070, steel: 0x8a8e98, cream: 0xfff6e8,
+        robe: 0xf4f0e6, candle: 0xffb060, heart: 0xff4f8a,
+        orbit: 0x9ad8ff, laser: 0xff2a2a, hivis: 0xe8ff3a,
+        crystal: 0xb8f0ff, prism: 0xe0c8ff, honey: 0xffb020, bee: 0xffd020,
+        abyss: 0x0a1a2a, lure: 0x9affee, sun: 0xffc84a,
+        smoke: 0x4a7aff, oil: 0x07070c, goo: 0x1a1426,
+        storm: 0x5a6a80, sea: 0x2f8fe0, ori: 0xd89a4a, teal: 0x3ae0c8,
+        star: 0xe8f0ff, void: 0x3a2a6a, dream: 0xc8a0ff, wool: 0xf6f2ea,
+        tail: 0x4a6a2a, meteor: 0xff8a2a, vixen: 0xff3e8f, organ: 0xd8dce4,
+    };
+    /* the multi-hit gate: the big piece of a signature builds once per cast */
+    var _afLast = {};
+    function _afOnce(key, ms) {
+        var now = performance.now();
+        if (_afLast[key] && now - _afLast[key] < ms) return false;
+        _afLast[key] = now;
+        return true;
+    }
+    /* envelope: 0 → 1 over [a, b], holds to c, 1 → 0 over [c, d] */
+    function _afEnv(el, a, b, c, d) {
+        if (el <= a || el >= d) return 0;
+        if (el < b) return (el - a) / Math.max(1, b - a);
+        if (el <= c) return 1;
+        return 1 - (el - c) / Math.max(1, d - c);
+    }
+    /* a glow mesh (additive, starts invisible) / a solid one (normal blend) */
+    function _afGlowMesh(geo, color, o) { o = o || {}; return new THREE.Mesh(geo, _sigMat(color, { map: o.map || null })); }
+    function _afSolid(geo, color, o) { o = o || {}; var m = _finBasic(color, { opacity: 0, side: o.side || THREE.FrontSide, map: o.map || null }); m.transparent = true; return new THREE.Mesh(geo, m); }
+    /* a normal-blend sprite (a dark thing additive blending cannot draw) */
+    function _afDarkSprite(color, tex, size) {
+        var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false }));
+        sp.scale.set(size, size, 1); sp.renderOrder = 158;
+        return sp;
+    }
+    function _afSetO(list, k) { for (var i = 0; i < list.length; i++) { var it = list[i]; it[0].opacity = it[1] * k; } }
+    /* the vector from the frame's tile to another tile, in the frame's group space */
+    function _afTo(F, x, y) {
+        var w = _worldPos(x, y);
+        return new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z);
+    }
+    /* fog: a caster the viewer can't see is never drawn from or at (no position or direction leaks) */
+    function _afFogHides(x, y) {
+        try {
+            return typeof state !== 'undefined' && state && state.fogOfWar && typeof window !== 'undefined'
+                && typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(x, y);
+        } catch (e) { return false; }
+    }
+    function _afCaster(tx, ty, o) { var f = _nrvFrom(tx, ty, o || {}); return _afFogHides(f.x, f.y) ? { x: tx - 1, y: ty, fogged: true } : f; }
+    function _afRecipe(id, tx, ty) { var d = EFFECTS[id]; if (d) _spawnEffect(d, { tx: tx, ty: ty }); }
+    function _afArc(a, b, h, k) {   /* a point on a lifted arc a → b at k (0..1) */
+        var p = new THREE.Vector3().lerpVectors(a, b, k);
+        p.y += Math.sin(k * Math.PI) * h;
+        return p;
+    }
+
+    /* ── the A-F canvas textures (cached by _sigTex) ── */
+    function _afHeartTex() {
+        return _sigTex('af-heart', 128, function (g, S) {
+            g.fillStyle = '#ffffff'; g.beginPath();
+            g.moveTo(S / 2, S * 0.86);
+            g.bezierCurveTo(S * 0.06, S * 0.55, S * 0.1, S * 0.12, S / 2, S * 0.32);
+            g.bezierCurveTo(S * 0.9, S * 0.12, S * 0.94, S * 0.55, S / 2, S * 0.86);
+            g.fill();
+        });
+    }
+    function _afStarTex(points) {
+        return _sigTex('af-star' + points, 128, function (g, S) {
+            var c = S / 2, rO = S * 0.48, rI = points === 4 ? S * 0.07 : S * 0.2;
+            var rg = g.createRadialGradient(c, c, 0, c, c, rO); rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.5, 'rgba(255,255,255,0.9)'); rg.addColorStop(1, 'rgba(255,255,255,0.15)');
+            g.fillStyle = rg; g.beginPath();
+            for (var i = 0; i < points * 2; i++) { var a = -Math.PI / 2 + i * Math.PI / points, r = i % 2 ? rI : rO; g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); }
+            g.closePath(); g.fill();
+        });
+    }
+    function _afSigilTex(key, draw) { return _sigTex('af-sigil-' + key, 256, draw); }
+    function _afBeastTex() {       /* the brand: a ring of thorns round 666 */
+        return _afSigilTex('beast', function (g, S) {
+            var c = S / 2; g.strokeStyle = '#ffffff'; g.lineWidth = 10;
+            g.beginPath(); g.arc(c, c, S * 0.4, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 4; g.beginPath(); g.arc(c, c, S * 0.31, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#ffffff';
+            for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; g.beginPath(); g.moveTo(c + Math.cos(a - 0.08) * S * 0.4, c + Math.sin(a - 0.08) * S * 0.4); g.lineTo(c + Math.cos(a) * S * 0.49, c + Math.sin(a) * S * 0.49); g.lineTo(c + Math.cos(a + 0.08) * S * 0.4, c + Math.sin(a + 0.08) * S * 0.4); g.fill(); }
+            g.font = 'bold 74px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('666', c, c + 4);
+        });
+    }
+    function _afDestinySigilTex() { /* the chosen one's birthmark: an eight-point star in a double ring */
+        return _afSigilTex('destiny', function (g, S) {
+            var c = S / 2; g.strokeStyle = '#ffffff'; g.lineWidth = 6;
+            g.beginPath(); g.arc(c, c, S * 0.46, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3; g.beginPath(); g.arc(c, c, S * 0.4, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#ffffff'; g.beginPath();
+            for (var i = 0; i < 16; i++) { var a = i * Math.PI / 8, r = i % 2 ? S * 0.12 : S * 0.36; g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); }
+            g.closePath(); g.fill();
+        });
+    }
+    function _afHoneyTex() {        /* honeycomb */
+        return _afSigilTex('honey', function (g, S) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 5;
+            var r = S / 9, h = Math.sqrt(3) * r;
+            for (var row = -1; row < 7; row++) for (var col = -1; col < 7; col++) {
+                var x = col * r * 3 + (row % 2 ? r * 1.5 : 0), y = row * h / 2;
+                g.beginPath(); for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.stroke();
+            }
+            var m = g.createRadialGradient(S / 2, S / 2, S * 0.2, S / 2, S / 2, S * 0.5); m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(1, 'rgba(0,0,0,1)');
+            g.globalCompositeOperation = 'destination-out'; g.fillStyle = m; g.fillRect(0, 0, S, S);
+        });
+    }
+    function _afGridTex() {         /* the model's scan grid */
+        return _afSigilTex('grid', function (g, S) {
+            g.strokeStyle = '#ffffff'; g.lineWidth = 3;
+            for (var i = 0; i <= 8; i++) { var p = i * S / 8; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, S); g.stroke(); g.beginPath(); g.moveTo(0, p); g.lineTo(S, p); g.stroke(); }
+            g.lineWidth = 8; g.strokeRect(4, 4, S - 8, S - 8);
+        });
+    }
+    function _afReticleTex() {      /* a targeting reticle: ring, ticks, a centre dot */
+        return _afSigilTex('reticle', function (g, S) {
+            var c = S / 2; g.strokeStyle = '#ffffff'; g.lineWidth = 8;
+            g.beginPath(); g.arc(c, c, S * 0.36, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 6;
+            for (var i = 0; i < 4; i++) { var a = i * Math.PI / 2; g.beginPath(); g.moveTo(c + Math.cos(a) * S * 0.24, c + Math.sin(a) * S * 0.24); g.lineTo(c + Math.cos(a) * S * 0.48, c + Math.sin(a) * S * 0.48); g.stroke(); }
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(c, c, S * 0.04, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _afSmileTex() {        /* the android's smile: almost right */
+        return _afSigilTex('smile', function (g, S) {
+            g.strokeStyle = '#ffffff'; g.lineCap = 'round'; g.lineWidth = 14;
+            g.beginPath(); g.arc(S / 2, S * 0.42, S * 0.3, Math.PI * 0.18, Math.PI * 0.82); g.stroke();
+            g.lineWidth = 5;
+            for (var i = 0; i < 7; i++) { var a = Math.PI * (0.25 + i * 0.083); g.beginPath(); g.moveTo(S / 2 + Math.cos(a) * S * 0.25, S * 0.42 + Math.sin(a) * S * 0.25); g.lineTo(S / 2 + Math.cos(a) * S * 0.33, S * 0.42 + Math.sin(a) * S * 0.33); g.stroke(); }
+        });
+    }
+    function _afEyeTex(key, iris, slit) {   /* an eye: the sclera, the iris, the pupil (a slit for the beasts) */
+        return _afSigilTex('eye-' + key, function (g, S) {
+            var c = S / 2;
+            g.fillStyle = '#f4f0e8'; g.beginPath(); g.ellipse(c, c, S * 0.46, S * 0.3, 0, 0, Math.PI * 2); g.fill();
+            g.fillStyle = iris; g.beginPath(); g.arc(c, c, S * 0.22, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#0a0606'; g.beginPath();
+            if (slit) g.ellipse(c, c, S * 0.04, S * 0.19, 0, 0, Math.PI * 2); else g.arc(c, c, S * 0.1, 0, Math.PI * 2);
+            g.fill();
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(c - S * 0.07, c - S * 0.07, S * 0.035, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = '#3a1a10'; g.lineWidth = 8; g.beginPath(); g.ellipse(c, c, S * 0.46, S * 0.3, 0, 0, Math.PI * 2); g.stroke();
+        });
+    }
+    function _afWingDiskTex() {     /* the Annunaki's winged disk */
+        return _sigTex('af-wingdisk', 256, function (g, S) {
+            g.fillStyle = '#ffffff';
+            for (var s = -1; s <= 1; s += 2) for (var i = 0; i < 6; i++) {
+                g.beginPath(); var y = S * 0.42 + i * S * 0.035, x0 = S / 2 + s * S * 0.12, x1 = S / 2 + s * S * (0.48 - i * 0.045);
+                g.moveTo(x0, y); g.lineTo(x1, y - S * 0.02); g.lineTo(x1 - s * S * 0.03, y + S * 0.03); g.lineTo(x0, y + S * 0.03); g.fill();
+            }
+            g.beginPath(); g.arc(S / 2, S * 0.45, S * 0.11, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _afFootTex() {         /* a giant footprint */
+        return _sigTex('af-foot', 128, function (g, S) {
+            g.fillStyle = '#ffffff';
+            g.beginPath(); g.ellipse(S / 2, S * 0.62, S * 0.2, S * 0.3, 0, 0, Math.PI * 2); g.fill();
+            for (var i = 0; i < 5; i++) { g.beginPath(); g.ellipse(S * (0.3 + i * 0.1), S * (0.24 - Math.abs(i - 1.5) * 0.02), S * 0.05, S * 0.07, 0, 0, Math.PI * 2); g.fill(); }
+        });
+    }
+    function _afBoxTex() {          /* the jack-in-the-box's painted side */
+        return _sigTex('af-jackbox', 128, function (g, S) {
+            g.fillStyle = '#d8202a'; g.fillRect(0, 0, S, S);
+            g.fillStyle = '#ffd020'; for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) if ((i + j) % 2) g.fillRect(i * S / 4, j * S / 4, S / 4, S / 4);
+            g.strokeStyle = '#1a40c0'; g.lineWidth = 10; g.strokeRect(5, 5, S - 10, S - 10);
+            g.fillStyle = '#ffffff'; g.font = 'bold 54px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', S / 2, S / 2 + 3);
+        });
+    }
+
+    /* ── the A-F recipes: every effect id below is its spell's own ── */
+    function _afAoeDef(id, r, shape, tile, center, extra) {
+        EFFECTS[id] = Object.assign({ aoeRadius: r, shape: shape || 'square', impactTileEffect: tile, impactCenterEffect: center, layers: [] }, extra || {});
+    }
+    function _afBoltDef(id, core, trail, burst, ring, coreSize, trailSize, n) {
+        EFFECTS[id] = { boltCore: core, boltTrail: trail, boltBurst: burst, boltRing: ring, boltCoreSize: coreSize, boltTrailSize: trailSize, boltBurstCount: n, boltGeometry: true };
+    }
+
+    /* ANGEL — gold and feather-white: a shelter, then the trumpet */
+    EFFECTS['sigShelteringWings_tile'] = { layers: [
+        { count: 4, sprite: 'petal', ml: [900, 1400], offsetXY: 34, z: [110, 160], tint: _AF.feather,
+          vxRange: 30, vyRange: 30, vzRange: [-35, -15], gravity: 20, drag: 0.6, spriteSpin: 3, size0: [7, 10], size1: [6, 9], opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.gold, size0: 60, size1: 110, opacity0: 0.55 },
+    ] };
+    EFFECTS['sigShelteringWings_center'] = { layers: [
+        { sprite: 'holy-light', ml: 700, z: 60, size0: 60, size1: 130, tint: _AF.pale, opacity0: 0.6 },
+        { count: 10, sprite: 'divine-sparkle', ml: [700, 1100], offsetXY: 30, z: [40, 120], tint: _AF.gold, vzRange: [10, 40], size0: [5, 8], size1: 2, opacity0: 0.9 },
+    ] };
+    _afAoeDef('sigShelteringWings_aura', 1, 'square', 'sigShelteringWings_tile', 'sigShelteringWings_center');
+    EFFECTS['sigLastTrumpet_tile'] = { layers: [
+        { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 520, z: 2, tint: _AF.gold, w0: 30, w1: 14, h0: 60, h1: 170, opacity0: 0.85 },
+        { count: 5, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 20, z: [10, 60], tint: _AF.pale, vzRange: [40, 110], size0: [5, 8], size1: 2, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2, tint: _AF.gold, size0: 30, size1: 110, opacity0: 0.6 },
+    ] };
+    EFFECTS['sigLastTrumpet_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 200, size0: 60, size1: 140, tint: _AF.gold, opacity0: 0.7, z: 120 },
+        { count: 6, sprite: 'wave-anim', ml: [400, 640], offsetXY: 8, z: [90, 130], tint: _AF.gold, vxRange: 200, vyRange: 200, drag: 1.1, size0: [14, 20], size1: [40, 60], opacity0: 0.75 },
+    ] };
+    _afAoeDef('sigLastTrumpet_aoe', 3, 'cross', 'sigLastTrumpet_tile', 'sigLastTrumpet_center');
+
+    /* DEMON — a branding iron and a ledger of souls */
+    EFFECTS['sigMarkOfTheBeast_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 60, size1: 16, tint: _AF.hell, opacity0: 0.9, z: 50 },
+        { count: 10, sprite: 'ember', ml: [500, 900], offsetXY: 10, z: [40, 70], tint: _AF.ember, vzRange: [30, 90], drag: 0.6, size0: [4, 7], size1: 1 },
+        { count: 4, sprite: 'smoke-soft', ml: [700, 1100], offsetXY: 8, z: [50, 80], delayMs: 180, tint: _AF.ash, vzRange: [20, 50], drag: 0.5, size0: [12, 18], size1: [30, 44], opacity0: 0.5 },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1400, z: 1, size0: 60, size1: 74, opacity0: 0.6 },
+    ] };
+    EFFECTS['sigSoulHarvest_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'dark-flame', ml: 700, z: 2, tint: _AF.blood, size0: 40, size1: 110, opacity0: 0.75 },
+        { count: 3, sprite: 'blood-mist', ml: [500, 800], offsetXY: 20, z: [10, 40], vzRange: [30, 70], drag: 0.5, size0: [16, 24], size1: [34, 50], opacity0: 0.5 },
+        { count: 2, sprite: 'shadow-wisp', ml: [600, 900], offsetXY: 16, z: [20, 60], tint: 0x6a0a1a, vzRange: [40, 90], size0: [12, 18], size1: [24, 34], opacity0: 0.55 },
+    ] };
+    EFFECTS['sigSoulHarvest_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 180, size0: 80, size1: 24, tint: _AF.hell, opacity0: 0.8, z: 40 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: _AF.blood, size0: 30, size1: 230, opacity0: 0.7 },
+    ] };
+    _afAoeDef('sigSoulHarvest_aoe', 1, 'square', 'sigSoulHarvest_tile', 'sigSoulHarvest_center');
+
+    /* ANUBIS — linen, lapis and the gold of the scale */
+    EFFECTS['sigMummify_impact'] = { layers: [
+        { count: 8, sprite: 'sand-particle', ml: [600, 1000], offsetXY: 24, z: [4, 40], tint: 0xe8c890, vxRange: 50, vyRange: 50, vzRange: [20, 60], gravity: 40, size0: [4, 7], size1: 2, opacity0: 0.9 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.gold, size0: 120, size1: 40, opacity0: 0.6 },
+        { sprite: 'flash', ml: 150, size0: 50, size1: 16, tint: _AF.gold, opacity0: 0.7, z: 70, delayMs: 600 },
+    ] };
+    _afBoltDef('_bolt_af_ammit', 'divine-sparkle', 'sand-particle', 'ember', 'target-ring-gold', 0.2, 0.08, 14);
+    EFFECTS['sigAmmit_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 160, size0: 80, size1: 20, tint: _AF.gold, opacity0: 0.85, z: 40, delayMs: 680 },
+        { count: 10, sprite: 'blood-glob', ml: [400, 700], offsetXY: 8, z: [30, 60], delayMs: 700, vxRange: 160, vyRange: 160, vzRange: [60, 200], gravity: 520, size0: [5, 9], size1: 3, opacity0: 0.95 },
+        { count: 6, sprite: 'sand-particle', ml: [500, 800], offsetXY: 30, z: [2, 20], tint: 0xe8c890, vxRange: 120, vyRange: 120, vzRange: [40, 120], gravity: 200, size0: [4, 7], size1: 2 },
+    ] };
+
+    /* FAIRY — pink wand dust, green firefly light */
+    EFFECTS['sigPixiePrank_impact'] = { layers: [
+        { count: 14, sprite: 'sparkle', ml: [500, 900], offsetXY: 40, z: [20, 110], tint: _AF.pink, seekIn: [400, 600], seekInZ: [20, 40], seekSpiral: 220, size0: [6, 9], size1: 2, opacity0: 0.95 },
+        { sprite: 'flash', ml: 200, size0: 30, size1: 80, tint: _AF.pink, opacity0: 0.8, z: 30, delayMs: 520 },
+        { count: 8, sprite: 'petal', ml: [600, 900], offsetXY: 10, z: [20, 40], delayMs: 540, tint: _AF.fairy, vxRange: 120, vyRange: 120, vzRange: [60, 140], gravity: 160, spriteSpin: 7, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
+    ] };
+    EFFECTS['sigFireflySwarm_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 50, size1: 14, tint: _AF.firefly, opacity0: 0.85, z: 50, delayMs: 380 },
+        { count: 12, sprite: 'spark', ml: [300, 600], offsetXY: 10, z: [30, 70], delayMs: 380, tint: _AF.firefly, vxRange: 180, vyRange: 180, vzRange: [20, 120], drag: 1.2, size0: [4, 7], size1: 1 },
+        { count: 3, sprite: 'emp-arc', ml: [200, 320], offsetXY: 12, z: [30, 70], delayMs: 400, tint: 0xd8ff8a, size0: [20, 30], size1: [30, 40], opacity0: 0.8 },
+    ] };
+
+    /* ANT PERSON — dirt, chitin, the colony */
+    EFFECTS['sigFiftyTimes_throw'] = { shake: 'normal', layers: [
+        { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [400, 700], offsetXY: 16, z: [2, 10], tint: _AF.dust, vxRange: 120, vyRange: 120, vzRange: [20, 70], gravity: 80, size0: [14, 20], size1: [34, 50], opacity0: 0.55 },
+        { count: 8, sprite: 'debris', ml: [400, 700], offsetXY: 10, z: [4, 20], vxRange: 160, vyRange: 160, vzRange: [80, 220], gravity: 500, size0: [4, 8], size1: 3 },
+    ] };
+    EFFECTS['sigOverrun_impact'] = { layers: [
+        { count: 6, sprite: 'debris', ml: [260, 420], offsetXY: 12, z: [10, 40], tint: _AF.ant, vxRange: 140, vyRange: 140, vzRange: [40, 140], gravity: 420, size0: [3, 6], size1: 2 },
+        { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [300, 500], offsetXY: 14, z: [2, 8], tint: _AF.dust, size0: [10, 16], size1: [24, 34], opacity0: 0.45 },
+        { sprite: 'flash', ml: 90, size0: 34, size1: 10, tint: 0xffe8c0, opacity0: 0.7, z: 40 },
+    ] };
+
+    /* BIGFOOT — the flash bulb, the treeline */
+    EFFECTS['sigBlurryPhoto_center'] = { layers: [
+        { sprite: 'flash', ml: 160, size0: 140, size1: 40, tint: _AF.white, opacity0: 0.95, z: 70 },
+        { count: 6, sprite: 'leaf', ml: [800, 1200], offsetXY: 30, z: [40, 100], tint: _AF.leaf, vxRange: 60, vyRange: 60, vzRange: [-20, 20], gravity: 30, spriteSpin: 4, size0: [6, 9], size1: [6, 9], opacity0: 0.9 },
+        { count: 3, sprite: 'smoke-soft', ml: [600, 900], offsetXY: 14, z: [30, 70], tint: 0x8a9a8a, vxRange: 80, vyRange: 80, drag: 0.6, size0: [20, 28], size1: [44, 60], opacity0: 0.35 },
+    ] };
+    _afAoeDef('sigBlurryPhoto_aura', 0, 'square', null, 'sigBlurryPhoto_center');
+    EFFECTS['sigFromTheTreeline_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 140, size0: 70, size1: 18, tint: 0xfff0d0, opacity0: 0.85, z: 40 },
+        { count: 16, sprite: 'leaf', ml: [700, 1100], offsetXY: 12, z: [20, 60], tint: _AF.leaf, vxRange: 220, vyRange: 220, vzRange: [80, 220], gravity: 180, spriteSpin: 6, size0: [6, 10], size1: [6, 10], opacity0: 0.95 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [400, 700], offsetXY: 16, z: [2, 10], tint: _AF.dust, vxRange: 100, vyRange: 100, vzRange: [20, 60], gravity: 80, size0: [14, 20], size1: [36, 52], opacity0: 0.5 },
+        { count: 6, sprite: 'debris', ml: [400, 700], offsetXY: 10, z: [4, 30], tint: _AF.fur, vxRange: 160, vyRange: 160, vzRange: [60, 180], gravity: 460, size0: [4, 7], size1: 2 },
+    ] };
+
+    /* AI — the server light, scrolling weights */
+    EFFECTS['sigScrape_impact'] = { layers: [
+        { count: 12, sprite: 'spark-blue', ml: [400, 700], offsetXY: 30, z: [20, 90], tint: _AF.data, seekIn: [300, 500], seekInZ: [40, 60], seekSpiral: 90, size0: [4, 7], size1: 1, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 800, z: 3, size0: 110, size1: 60, opacity0: 0.7 },
+    ] };
+    _afBoltDef('_bolt_af_data', 'spark-blue', 'plasma', 'spark-blue', 'target-ring-blue', 0.16, 0.07, 16);
+    EFFECTS['sigOverfit_impact'] = { layers: [
+        { sprite: 'flash', ml: 120, size0: 50, size1: 14, tint: _AF.cyan, opacity0: 0.9, z: 50 },
+        { sprite: 'flash', ml: 120, size0: 44, size1: 12, tint: _AF.cyan, opacity0: 0.6, z: 50, delayMs: 170 },
+        { sprite: 'flash', ml: 120, size0: 38, size1: 10, tint: _AF.cyan, opacity0: 0.4, z: 50, delayMs: 340 },
+        { count: 10, sprite: 'spark-blue', ml: [300, 500], offsetXY: 8, z: [30, 70], vxRange: 160, vyRange: 160, vzRange: [20, 100], drag: 1.2, size0: [4, 7], size1: 1 },
+    ] };
+
+    /* ANDROID — skin-white, a red eye, a smile almost right */
+    EFFECTS['sigUncannySmile_tile'] = { layers: [
+        { count: 2, sprite: 'laser-red', ml: [220, 360], offsetXY: 20, z: [40, 70], size0: [10, 16], size1: [20, 28], opacity0: 0.6, delayMs: 320 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 600, z: 3, tint: _AF.eyeRed, size0: 40, size1: 100, opacity0: 0.5, delayMs: 300 },
+    ] };
+    EFFECTS['sigUncannySmile_center'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 600, z: 2, tint: 0xf0e8e0, size0: 30, size1: 200, opacity0: 0.5, delayMs: 300 },
+    ] };
+    _afAoeDef('sigUncannySmile_aura', 1, 'square', 'sigUncannySmile_tile', 'sigUncannySmile_center');
+    EFFECTS['sigTerminationProtocol_impact'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 120, size0: 60, size1: 16, tint: _AF.eyeRed, opacity0: 0.9, z: 50 },
+        { count: 10, sprite: 'steel-spark', ml: [200, 400], offsetXY: 8, z: [20, 60], vxRange: 220, vyRange: 220, vzRange: [30, 150], gravity: 420, drag: 1.3, size0: [4, 8], size1: 1 },
+        { count: 2, sprite: 'smoke-soft', ml: [500, 800], offsetXY: 8, z: [30, 50], delayMs: 120, vzRange: [20, 40], drag: 0.6, size0: [12, 18], size1: [28, 40], opacity0: 0.35 },
+    ] };
+
+    /* COWBOY — dust, brass and high noon */
+    EFFECTS['sigShowdown_impact'] = { layers: [
+        { count: 6, anchor: 'floor', sprite: 'sand-particle', ml: [900, 1300], offsetXY: 40, z: [2, 30], tint: _AF.dust, vxRange: 160, vyRange: 40, vzRange: [10, 40], drag: 0.4, size0: [4, 7], size1: 2, opacity0: 0.8 },
+        { sprite: 'crosshair', ml: 900, size0: 80, size1: 44, tint: _AF.brass, opacity0: 0.85, z: 56, delayMs: 300 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [700, 1000], offsetXY: 30, z: [2, 10], tint: _AF.dust, vxRange: 80, vyRange: 30, size0: [14, 20], size1: [34, 50], opacity0: 0.4 },
+    ] };
+    EFFECTS['sigSixShooter_impact'] = { layers: [
+        { sprite: 'flash', ml: 80, size0: 36, size1: 10, tint: 0xfff0c0, opacity0: 0.9, z: 50 },
+        { count: 6, sprite: 'steel-spark', ml: [160, 300], offsetXY: 6, z: [30, 60], vxRange: 180, vyRange: 180, vzRange: [30, 120], gravity: 420, drag: 1.3, size0: [3, 6], size1: 1 },
+        { count: 1, anchor: 'floor', sprite: 'dust-puff', ml: [280, 420], offsetXY: 10, z: [2, 8], tint: _AF.dust, size0: [10, 14], size1: [22, 30], opacity0: 0.4 },
+    ] };
+
+    /* CULT LEADER — white robes, candles, a smile for everyone */
+    EFFECTS['sigSermon_tile'] = { layers: [
+        { anchor: 'floor', sprite: 'fire-glow', ml: [900, 1200], z: [10, 16], offsetXY: 30, tint: _AF.candle, vzRange: [4, 10], size0: [8, 12], size1: [14, 22], opacity0: 0.9 },
+        { count: 2, sprite: 'heal-glow', ml: [800, 1100], offsetXY: 20, z: [50, 80], tint: _AF.heart, vzRange: [20, 40], size0: [8, 12], size1: [14, 20], opacity0: 0.6, delayMs: 300 },
+    ] };
+    EFFECTS['sigSermon_center'] = { layers: [
+        { sprite: 'holy-light', ml: 800, z: 60, size0: 70, size1: 150, tint: _AF.robe, opacity0: 0.55 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 800, z: 3, tint: _AF.candle, size0: 40, size1: 320, opacity0: 0.55 },
+    ] };
+    _afAoeDef('sigSermon_aura', 2, 'square', 'sigSermon_tile', 'sigSermon_center');
+    EFFECTS['sigAscensionDay_tile'] = { layers: [
+        { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 900, z: 2, tint: _AF.pale, w0: 40, w1: 20, h0: 120, h1: 260, opacity0: 0.75 },
+        { count: 6, sprite: 'divine-sparkle', ml: [700, 1100], offsetXY: 24, z: [10, 60], tint: _AF.white, vzRange: [80, 180], size0: [5, 8], size1: 2, opacity0: 0.95 },
+    ] };
+    EFFECTS['sigAscensionDay_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 260, size0: 120, size1: 40, tint: _AF.pale, opacity0: 0.75, z: 60 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.gold, size0: 40, size1: 260, opacity0: 0.7 },
+    ] };
+    _afAoeDef('sigAscensionDay_aoe', 1, 'square', 'sigAscensionDay_tile', 'sigAscensionDay_center');
+
+    /* ASTRONAUT — suit white, radio static, the orbital lance */
+    EFFECTS['sigTetherLine_pull'] = { layers: [
+        { sprite: 'flash', ml: 110, size0: 40, size1: 12, tint: _AF.orbit, opacity0: 0.85, z: 50 },
+        { count: 6, sprite: 'steel-spark', ml: [180, 320], offsetXY: 6, z: [40, 60], vxRange: 160, vyRange: 160, vzRange: [20, 100], gravity: 380, size0: [3, 6], size1: 1 },
+    ] };
+
+    /* FIREFIGHTER — the hose, the hi-vis, the bar */
+    EFFECTS['sigFireHose_tile'] = { layers: [
+        { count: 8, sprite: 'water-splash', ml: [320, 600], z: 6, offsetXY: 16, vxRange: 140, vyRange: 140, vzRange: [80, 240], gravity: 420, drag: 1.2, size0: [7, 12], size1: 2, opacity0: 0.95 },
+        { count: 2, sprite: 'frost-mist', ml: [500, 800], z: 12, offsetXY: 14, tint: 0xd0efff, vzRange: [20, 50], drag: 0.5, size0: [20, 28], size1: [44, 60], opacity0: 0.4 },
+        { anchor: 'floor', mode: 'world', sprite: 'wave-2', ml: 700, z: 2, tint: _AF.sea, size0: 40, size1: 120, opacity0: 0.5 },
+    ] };
+    EFFECTS['sigFireHose_beam'] = { beamBreath: true, breathTheme: 'water', breathScale: 0.85, chargeMs: 160, beamMs: 820, impactTileEffect: 'sigFireHose_tile', shake: 'soft' };
+    EFFECTS['sigFiremansCarry_swap'] = { layers: [
+        { count: 4, sprite: 'smoke', ml: [700, 1100], offsetXY: 14, z: [10, 40], tint: 0x4a4a4e, vzRange: [30, 60], drag: 0.5, size0: [20, 30], size1: [50, 70], opacity0: 0.5 },
+        { count: 6, sprite: 'ember', ml: [400, 700], offsetXY: 16, z: [10, 40], tint: _AF.ember, vxRange: 90, vyRange: 90, vzRange: [60, 140], gravity: 200, size0: [4, 7], size1: 1 },
+    ] };
+    EFFECTS['sigHalligan_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 110, size0: 56, size1: 14, tint: 0xfff4dc, opacity0: 0.95, z: 46, delayMs: 140 },
+        { count: 10, sprite: 'steel-spark', ml: [200, 380], offsetXY: 6, z: [30, 56], delayMs: 140, vxRange: 220, vyRange: 220, vzRange: [40, 170], gravity: 420, drag: 1.3, size0: [4, 8], size1: 1 },
+        { count: 8, sprite: 'debris', ml: [400, 700], offsetXY: 10, z: [20, 50], delayMs: 160, tint: 0x8a5a3a, vxRange: 180, vyRange: 180, vzRange: [60, 200], gravity: 480, size0: [4, 8], size1: 3 },
+    ] };
+
+    /* CLOWN — custard white, circus red and yellow */
+    _afBoltDef('_bolt_af_pie', 'sparkle', 'smoke-soft', 'bubble', 'target-ring', 0.22, 0.06, 10);
+    EFFECTS['sigPieInTheFace_impact'] = { layers: [
+        { sprite: 'flash', ml: 100, size0: 50, size1: 16, tint: _AF.cream, opacity0: 0.8, z: 56 },
+        { count: 14, sprite: 'bubble', ml: [500, 900], offsetXY: 6, z: [50, 66], tint: _AF.cream, vxRange: 160, vyRange: 160, vzRange: [20, 120], gravity: 380, size0: [5, 9], size1: 3, opacity0: 0.95 },
+        { count: 6, sprite: 'petal', ml: [600, 900], offsetXY: 8, z: [50, 66], tint: 0xffd020, vxRange: 140, vyRange: 140, vzRange: [40, 140], gravity: 260, spriteSpin: 8, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
+    ] };
+
+    /* CRYSTAL GUARDIAN — quartz, prism light */
+    _afBoltDef('_bolt_af_prism', 'divine-sparkle', 'plasma', 'sparkle', 'halo-ring', 0.18, 0.06, 18);
+    EFFECTS['sigGlint_impact'] = { layers: [
+        { sprite: 'flash', ml: 160, size0: 90, size1: 20, tint: _AF.white, opacity0: 0.95, z: 70 },
+        { count: 12, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 10, z: [50, 90], tint: _AF.prism, vxRange: 160, vyRange: 160, vzRange: [20, 100], drag: 1.2, size0: [5, 8], size1: 2, opacity0: 0.95 },
+    ] };
+    EFFECTS['sigCrystalCoffin_center'] = { layers: [
+        { count: 12, sprite: 'frost-crystal', ml: [600, 1000], offsetXY: 30, z: [4, 70], tint: _AF.crystal, seekIn: [400, 600], seekInZ: [10, 40], seekSpiral: 60, size0: [6, 10], size1: 3, opacity0: 0.9 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1200, z: 3, tint: _AF.prism, size0: 120, size1: 70, opacity0: 0.6 },
+    ] };
+    _afAoeDef('sigCrystalCoffin_aura', 0, 'square', null, 'sigCrystalCoffin_center');
+    _afBoltDef('_bolt_af_shard', 'ice-shard', 'divine-sparkle', 'frost-crystal', 'halo-ring', 0.2, 0.06, 14);
+    EFFECTS['sigShardstorm_impact'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 120, size0: 60, size1: 16, tint: _AF.crystal, opacity0: 0.9, z: 50 },
+        { count: 12, sprite: 'ice-shard', ml: [400, 700], offsetXY: 8, z: [30, 70], tint: _AF.prism, vxRange: 240, vyRange: 240, vzRange: [40, 200], gravity: 480, size0: [6, 10], size1: 3 },
+        { count: 8, sprite: 'divine-sparkle', ml: [300, 500], offsetXY: 12, z: [30, 70], tint: _AF.crystal, size0: [5, 8], size1: 2, opacity0: 0.95 },
+    ] };
+
+    /* BEE QUEEN — honey gold, the swarm */
+    EFFECTS['sigTheSwarm_tile'] = { layers: [
+        { count: 3, sprite: 'spark', ml: [500, 800], offsetXY: 30, z: [30, 70], tint: _AF.bee, vxRange: 160, vyRange: 160, vzRange: [-40, 40], drag: 0.4, size0: [4, 6], size1: 2, opacity0: 0.9, delayMs: 300 },
+        { count: 2, sprite: 'poison-bubble', ml: [600, 900], offsetXY: 20, z: [30, 60], tint: 0xb8e040, vzRange: [10, 30], size0: [5, 8], size1: 2, opacity0: 0.7, delayMs: 420 },
+    ] };
+    EFFECTS['sigTheSwarm_center'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 700, z: 2, tint: _AF.honey, size0: 30, size1: 260, opacity0: 0.45 },
+    ] };
+    _afAoeDef('sigTheSwarm_aura', 2, 'square', 'sigTheSwarm_tile', 'sigTheSwarm_center');
+    EFFECTS['sigThousandStings_impact'] = { layers: [
+        { count: 4, sprite: 'spark', ml: [160, 280], offsetXY: 8, z: [30, 60], tint: _AF.bee, vxRange: 160, vyRange: 160, vzRange: [20, 90], drag: 1.2, size0: [3, 6], size1: 1 },
+        { count: 2, sprite: 'poison-bubble', ml: [300, 500], offsetXY: 8, z: [30, 60], tint: 0xb8e040, vzRange: [10, 40], size0: [4, 6], size1: 2, opacity0: 0.8 },
+    ] };
+
+    /* DEEP SEA FISH — abyss blue, one light in the dark */
+    EFFECTS['sigLure_pull'] = { layers: [
+        { count: 10, sprite: 'sparkle', ml: [500, 800], offsetXY: 20, z: [40, 80], tint: _AF.lure, vzRange: [10, 40], size0: [5, 8], size1: 2, opacity0: 0.95 },
+        { count: 4, sprite: 'bubble', ml: [600, 900], offsetXY: 16, z: [20, 60], tint: 0x9ff4ff, vzRange: [30, 70], drag: 0.4, size0: [4, 7], size1: 2, opacity0: 0.8 },
+    ] };
+    EFFECTS['sigAbyssJaws_impact'] = { shake: 'hard', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'wave-2', ml: 800, z: 2, tint: _AF.abyss, size0: 60, size1: 180, opacity0: 0.75 },
+        { sprite: 'flash', ml: 120, size0: 60, size1: 16, tint: _AF.lure, opacity0: 0.8, z: 40, delayMs: 320 },
+        { count: 10, sprite: 'blood-glob', ml: [400, 700], offsetXY: 8, z: [30, 60], delayMs: 340, vxRange: 160, vyRange: 160, vzRange: [60, 200], gravity: 520, size0: [5, 9], size1: 3, opacity0: 0.95 },
+        { count: 10, sprite: 'bubble', ml: [700, 1100], offsetXY: 24, z: [4, 40], tint: 0x9ff4ff, vzRange: [40, 100], drag: 0.4, size0: [4, 8], size1: 2, opacity0: 0.85 },
+    ] };
+
+    /* ANNUNAKI — sky-god gold, the flood */
+    EFFECTS['sigKneel_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-gold', ml: 900, z: 3, size0: 130, size1: 60, opacity0: 0.8, delayMs: 200 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [400, 700], offsetXY: 20, z: [2, 8], tint: 0xd8c090, vxRange: 90, vyRange: 90, size0: [10, 16], size1: [26, 38], opacity0: 0.45, delayMs: 520 },
+    ] };
+    EFFECTS['sigKneel_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 220, size0: 60, size1: 140, tint: _AF.sun, opacity0: 0.6, z: 160 },
+    ] };
+    _afAoeDef('sigKneel_aoe', 1, 'square', 'sigKneel_tile', 'sigKneel_center');
+    _afBoltDef('_bolt_af_deluge', 'water-splash', 'frost-mist', 'water-splash', 'target-ring-blue', 0.24, 0.1, 20);
+    EFFECTS['sigEnlilsDeluge_impact'] = { shake: 'hard', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'wave-2', ml: 900, z: 2, tint: _AF.sea, size0: 60, size1: 300, opacity0: 0.7, delayMs: 300 },
+        { count: 16, sprite: 'water-splash', ml: [400, 700], offsetXY: 60, z: [4, 20], delayMs: 300, vxRange: 160, vyRange: 160, vzRange: [80, 260], gravity: 420, drag: 1.2, size0: [7, 13], size1: 2, opacity0: 0.95 },
+    ] };
+
+    /* DJINN — lamp brass, wish-smoke blue */
+    EFFECTS['sigLampSmoke_tile'] = { layers: [
+        { count: 3, sprite: 'smoke-soft', ml: [1100, 1600], offsetXY: 30, z: [10, 50], tint: _AF.smoke, vxRange: 40, vyRange: 40, vzRange: [10, 30], drag: 0.4, size0: [24, 34], size1: [60, 84], opacity0: 0.5, delayMs: 300 },
+        { count: 4, sprite: 'sparkle', ml: [700, 1000], offsetXY: 30, z: [20, 60], tint: 0xa8c8ff, vzRange: [10, 30], size0: [4, 7], size1: 2, opacity0: 0.8, delayMs: 400 },
+    ] };
+    EFFECTS['sigLampSmoke_center'] = { layers: [
+        { sprite: 'flash', ml: 200, size0: 40, size1: 100, tint: _AF.smoke, opacity0: 0.5, z: 30 },
+    ] };
+    _afAoeDef('sigLampSmoke_aura', 1, 'square', 'sigLampSmoke_tile', 'sigLampSmoke_center');
+    _afBoltDef('_bolt_af_wish', 'divine-sparkle', 'smoke-soft', 'sparkle', 'target-ring-gold', 0.2, 0.09, 16);
+    EFFECTS['sigTwistedWish_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 60, size1: 16, tint: _AF.gold, opacity0: 0.85, z: 50 },
+        { count: 6, sprite: 'smoke-soft', ml: [600, 900], offsetXY: 12, z: [30, 70], tint: _AF.smoke, vxRange: 80, vyRange: 80, vzRange: [20, 50], drag: 0.6, size0: [14, 20], size1: [34, 48], opacity0: 0.55 },
+        { count: 8, sprite: 'void-mist', ml: [500, 800], offsetXY: 10, z: [30, 70], tint: 0x6a3aaa, seekIn: [300, 500], seekInZ: [40, 60], seekSpiral: 160, size0: [10, 14], size1: 3, opacity0: 0.7, delayMs: 300 },
+    ] };
+    EFFECTS['sigTwistedWish_hop'] = { sigChainGeom: true, layers: [
+        { sprite: 'flash', ml: 120, size0: 44, size1: 12, tint: _AF.gold, opacity0: 0.8, z: 50 },
+        { count: 4, sprite: 'smoke-soft', ml: [500, 800], offsetXY: 10, z: [30, 70], tint: _AF.smoke, vzRange: [20, 50], drag: 0.6, size0: [12, 18], size1: [30, 40], opacity0: 0.5 },
+    ] };
+
+    /* CYCLOPS — the forge's orange, the thunderbolt's white */
+    EFFECTS['sigBellow_tile'] = { layers: [
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 24, z: [2, 10], tint: 0xb0a090, vxRange: 120, vyRange: 120, vzRange: [20, 60], gravity: 80, size0: [12, 18], size1: [30, 44], opacity0: 0.5, delayMs: 260 },
+        { count: 3, sprite: 'rock-debris', ml: [400, 700], offsetXY: 20, z: [4, 20], vxRange: 120, vyRange: 120, vzRange: [80, 200], gravity: 520, size0: [5, 9], size1: 3, delayMs: 280 },
+    ] };
+    EFFECTS['sigBellow_center'] = { shake: 'hard', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: 0xffe8c0, size0: 40, size1: 300, opacity0: 0.7, delayMs: 240 },
+    ] };
+    _afAoeDef('sigBellow_aura', 2, 'square', 'sigBellow_tile', 'sigBellow_center');
+    EFFECTS['sigForgedThunderbolt_tile'] = { layers: [
+        { sprite: 'flash', ml: 120, size0: 60, size1: 16, tint: 0xeaf6ff, opacity0: 0.9, z: 40 },
+        { count: 8, sprite: 'spark-elec', ml: [200, 400], offsetXY: 16, z: [10, 60], vxRange: 140, vyRange: 140, vzRange: [20, 120], drag: 1.2, size0: [5, 9], size1: 2 },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 60, size1: 80, opacity0: 0.7 },
+        { count: 4, sprite: 'ember', ml: [300, 600], offsetXY: 10, z: [10, 40], tint: _AF.meteor, vxRange: 120, vyRange: 120, vzRange: [60, 160], gravity: 300, size0: [4, 7], size1: 1 },
+    ] };
+    EFFECTS['sigForgedThunderbolt_beam'] = { sigLine: true, sigLineOwns: true, chargeMs: 0, impactTileEffect: 'sigForgedThunderbolt_tile', shake: 'hard' };
+
+    /* CYBORG — chrome, hydraulics, steam */
+    EFFECTS['sigGrappleArm_pull'] = { layers: [
+        { sprite: 'flash', ml: 100, size0: 40, size1: 12, tint: 0xd8f0ff, opacity0: 0.9, z: 50 },
+        { count: 8, sprite: 'steel-spark', ml: [180, 340], offsetXY: 6, z: [40, 60], vxRange: 180, vyRange: 180, vzRange: [20, 120], gravity: 400, size0: [3, 6], size1: 1 },
+    ] };
+    EFFECTS['sigPiledriver_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 120, size0: 70, size1: 18, tint: 0xf4f8ff, opacity0: 0.95, z: 30, delayMs: 110 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2, tint: _AF.chrome, size0: 30, size1: 190, opacity0: 0.7, delayMs: 110 },
+        { count: 10, sprite: 'rock-debris', ml: [400, 700], offsetXY: 10, z: [4, 20], delayMs: 120, vxRange: 200, vyRange: 200, vzRange: [80, 220], gravity: 520, size0: [5, 9], size1: 3 },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 70, size1: 80, opacity0: 0.55, delayMs: 120 },
+    ] };
+
+    /* DEMON PRINCE — hellfire crown, the scorched throne */
+    _afBoltDef('_bolt_af_hellfire', 'dark-flame', 'ember', 'ember', 'target-ring', 0.22, 0.09, 18);
+    EFFECTS['sigUsurp_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 60, size1: 16, tint: _AF.ember, opacity0: 0.85, z: 50 },
+        { count: 10, sprite: 'ember', ml: [400, 700], offsetXY: 10, z: [40, 80], tint: _AF.ember, vxRange: 120, vyRange: 120, vzRange: [60, 160], gravity: 200, size0: [4, 7], size1: 1 },
+        { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [400, 700], offsetXY: 16, w0: [14, 20], w1: [6, 10], h0: [30, 50], h1: [70, 110], tint: _AF.hell, opacity0: 0.85 },
+    ] };
+    EFFECTS['sigThroneOfAshes_tile'] = { layers: [
+        { anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [500, 800], z: 2, tint: _AF.hell, w0: 26, w1: 12, h0: 40, h1: 130, opacity0: 0.9, delayMs: 300 },
+        { count: 4, sprite: 'ember', ml: [500, 800], offsetXY: 20, z: [10, 40], tint: _AF.ember, vxRange: 60, vyRange: 60, vzRange: [80, 200], gravity: 120, size0: [4, 7], size1: 1, delayMs: 300 },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 70, size1: 90, opacity0: 0.65, delayMs: 300 },
+    ] };
+    EFFECTS['sigThroneOfAshes_center'] = { shake: 'hard', layers: [
+        { count: 6, sprite: 'smoke', ml: [900, 1400], offsetXY: 20, z: [10, 40], tint: _AF.ash, vzRange: [30, 60], drag: 0.5, size0: [26, 36], size1: [70, 100], opacity0: 0.55 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 600, z: 2, tint: _AF.hell, size0: 40, size1: 330, opacity0: 0.7, delayMs: 300 },
+    ] };
+    _afAoeDef('sigThroneOfAshes_aoe', 2, 'square', 'sigThroneOfAshes_tile', 'sigThroneOfAshes_center');
+
+    /* DEMON PRINCESS — a gown of embers, the last dance */
+    EFFECTS['sigInfernalWaltz_swap'] = { layers: [
+        { count: 12, sprite: 'ember', ml: [500, 800], offsetXY: 20, z: [10, 60], tint: _AF.ember, seekIn: [300, 500], seekInZ: [20, 50], seekSpiral: -260, size0: [4, 7], size1: 1, opacity0: 0.95 },
+        { count: 6, sprite: 'petal', ml: [700, 1000], offsetXY: 16, z: [30, 70], tint: _AF.blood, vxRange: 90, vyRange: 90, vzRange: [20, 60], gravity: 60, spriteSpin: 6, size0: [6, 9], size1: [6, 9], opacity0: 0.9 },
+    ] };
+    EFFECTS['sigLastDance_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 56, size1: 16, tint: _AF.hell, opacity0: 0.8, z: 50 },
+        { count: 10, sprite: 'petal', ml: [700, 1000], offsetXY: 10, z: [30, 70], tint: _AF.blood, vxRange: 140, vyRange: 140, vzRange: [40, 120], gravity: 100, spriteSpin: 7, size0: [6, 9], size1: [6, 9], opacity0: 0.95 },
+        { count: 6, sprite: 'blood-glob', ml: [400, 700], offsetXY: 8, z: [40, 60], vxRange: 120, vyRange: 120, vzRange: [40, 140], gravity: 520, size0: [4, 8], size1: 3, opacity0: 0.95 },
+    ] };
+    EFFECTS['sigLastDance_drainHop'] = { layers: [
+        { count: 3, sprite: 'petal', ml: [300, 460], z: 30, offsetXY: 8, tint: _AF.blood, vzRange: [20, 60], spriteSpin: 6, size0: [5, 8], size1: [5, 8], opacity0: 0.95 },
+        { count: 2, sprite: 'ember', ml: [240, 380], z: 30, offsetXY: 6, tint: _AF.ember, vzRange: [30, 70], size0: [5, 8], size1: 2, opacity0: 0.9 },
+    ] };
+
+    /* DREAMEATER — nightcap stars, dream bubbles */
+    EFFECTS['sigCountingSheep_tile'] = { layers: [
+        { count: 3, sprite: 'sparkle', ml: [900, 1300], offsetXY: 30, z: [40, 100], tint: _AF.dream, vzRange: [10, 30], size0: [4, 7], size1: 2, opacity0: 0.8, delayMs: 300 },
+        { count: 2, sprite: 'smoke-soft', ml: [900, 1300], offsetXY: 24, z: [6, 20], tint: 0xb8a8e8, vxRange: 30, vyRange: 30, vzRange: [4, 12], drag: 0.4, size0: [20, 28], size1: [44, 60], opacity0: 0.35, delayMs: 200 },
+    ] };
+    EFFECTS['sigCountingSheep_center'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1200, z: 3, tint: _AF.dream, size0: 60, size1: 260, opacity0: 0.5 },
+    ] };
+    _afAoeDef('sigCountingSheep_aoe', 1, 'square', 'sigCountingSheep_tile', 'sigCountingSheep_center');
+    EFFECTS['sigDevourTheDream_impact'] = { layers: [
+        { count: 10, sprite: 'bubble', ml: [600, 900], offsetXY: 16, z: [40, 80], tint: _AF.dream, vzRange: [30, 70], drag: 0.4, size0: [6, 10], size1: 3, opacity0: 0.9 },
+        { sprite: 'flash', ml: 160, size0: 56, size1: 16, tint: _AF.dream, opacity0: 0.8, z: 60 },
+    ] };
+    EFFECTS['sigDevourTheDream_drainHop'] = { layers: [
+        { count: 2, sprite: 'bubble', ml: [300, 460], z: 40, offsetXY: 8, tint: _AF.dream, vzRange: [10, 40], size0: [6, 9], size1: 3, opacity0: 0.9 },
+        { count: 2, sprite: 'sparkle', ml: [240, 380], z: 40, offsetXY: 6, tint: 0xfff0ff, vzRange: [20, 50], size0: [4, 7], size1: 2, opacity0: 0.9 },
+    ] };
+
+    /* FALLEN ANGEL — one wing of light, one of ash */
+    EFFECTS['sigForsaken_impact'] = { layers: [
+        { count: 8, sprite: 'petal', ml: [1000, 1400], offsetXY: 30, z: [100, 140], tint: _AF.ash, vxRange: 30, vyRange: 30, vzRange: [-35, -15], gravity: 20, spriteSpin: 3, size0: [7, 10], size1: [6, 9], opacity0: 0.95 },
+        { sprite: 'flash', ml: 140, size0: 50, size1: 14, tint: _AF.gold, opacity0: 0.7, z: 110 },
+        { count: 4, sprite: 'dark-flame', ml: [500, 800], offsetXY: 10, z: [30, 60], tint: 0x8a2a1a, vzRange: [20, 50], size0: [10, 14], size1: [20, 28], opacity0: 0.6, delayMs: 300 },
+    ] };
+    EFFECTS['sigMorningStar_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 80, size1: 100, opacity0: 0.8, delayMs: 280 },
+        { anchor: 'floor', mode: 'y-locked', sprite: 'flame-hot', ml: 500, z: 2, tint: 0xffe6b0, w0: 20, w1: 10, h0: 50, h1: 150, opacity0: 0.9, delayMs: 280 },
+        { count: 6, sprite: 'ember', ml: [400, 700], offsetXY: 14, z: [6, 30], tint: _AF.sun, vxRange: 140, vyRange: 140, vzRange: [100, 260], gravity: 320, size0: [5, 8], size1: 2, delayMs: 280 },
+    ] };
+    EFFECTS['sigMorningStar_center'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 200, size0: 140, size1: 40, tint: 0xfff6d2, opacity0: 0.95, z: 30, delayMs: 270 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: _AF.sun, size0: 40, size1: 280, opacity0: 0.8, delayMs: 280 },
+    ] };
+    _afAoeDef('sigMorningStar_aoe', 1, 'square', 'sigMorningStar_tile', 'sigMorningStar_center');
+
+    /* COSMIC WRAITH — dead starlight, cold */
+    EFFECTS['sigWitherStarlight_impact'] = { layers: [
+        { count: 14, sprite: 'star', ml: [900, 1300], offsetXY: 30, z: [90, 130], tint: _AF.star, vxRange: 20, vyRange: 20, vzRange: [-60, -30], gravity: 30, size0: [4, 7], size1: 1, opacity0: 0.9, delayMs: 400 },
+        { count: 6, sprite: 'void-mist', ml: [700, 1000], offsetXY: 12, z: [30, 80], tint: _AF.void, vzRange: [-10, 20], drag: 0.6, size0: [14, 20], size1: [30, 44], opacity0: 0.55 },
+    ] };
+    EFFECTS['sigLastLight_tile'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 50, size1: 14, tint: _AF.star, opacity0: 0.9, z: 50 },
+        { count: 8, sprite: 'star', ml: [700, 1100], offsetXY: 20, z: [30, 80], tint: _AF.star, vzRange: [-30, 10], drag: 0.5, size0: [4, 7], size1: 1, opacity0: 0.9 },
+        { count: 3, sprite: 'void-mist', ml: [600, 900], offsetXY: 12, z: [30, 60], tint: _AF.void, size0: [12, 18], size1: [26, 38], opacity0: 0.5 },
+    ] };
+    EFFECTS['sigLastLight_beam'] = { beamZigzag: true, beamElement: 'light', stitchHopMs: 110, stitchThickness: 0.5, sigLine: true, impactTileEffect: 'sigLastLight_tile', shake: 'normal' };
+
+    /* DROID — astromech blue, the holo-projector */
+    EFFECTS['sigShockProd_impact'] = { layers: [
+        { sprite: 'flash', ml: 120, size0: 46, size1: 12, tint: 0xaaddff, opacity0: 0.9, z: 30 },
+        { count: 8, sprite: 'spark-elec', ml: [200, 400], offsetXY: 14, z: [10, 50], seekIn: [160, 300], seekInZ: [20, 40], seekSpiral: 120, size0: [5, 9], size1: 2, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 420, z: 2, size0: 30, size1: 100, opacity0: 0.65 },
+    ] };
+
+    /* ANTIHERO — grim red, brick dust */
+    EFFECTS['sigInterrogation_impact'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 90, size0: 46, size1: 12, tint: 0xfff0e0, opacity0: 0.95, z: 50 },
+        { sprite: 'flash', ml: 90, size0: 40, size1: 12, tint: _AF.blood, opacity0: 0.8, z: 50, delayMs: 140 },
+        { sprite: 'flash', ml: 90, size0: 50, size1: 14, tint: 0xfff0e0, opacity0: 0.9, z: 50, delayMs: 280 },
+        { count: 8, sprite: 'blood-fleck', ml: [300, 500], offsetXY: 6, z: [40, 60], vxRange: 160, vyRange: 160, vzRange: [20, 120], gravity: 480, size0: [4, 7], size1: 2 },
+    ] };
+    EFFECTS['sigThroughTheWall_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 120, size0: 70, size1: 18, tint: 0xfff0e0, opacity0: 0.9, z: 40 },
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 20, z: [2, 16], tint: 0xb89a8a, vxRange: 140, vyRange: 140, vzRange: [20, 80], gravity: 80, size0: [16, 24], size1: [40, 60], opacity0: 0.55 },
+    ] };
+
+    /* CHOSEN ONE — the birthmark, the humming blade */
+    EFFECTS['sigCalledByName_tile'] = { layers: [
+        { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 700, z: 2, tint: _AF.gold, w0: 26, w1: 12, h0: 60, h1: 160, opacity0: 0.7, delayMs: 250 },
+        { count: 4, sprite: 'divine-sparkle', ml: [600, 900], offsetXY: 20, z: [20, 60], tint: _AF.pale, vzRange: [40, 100], size0: [5, 8], size1: 2, opacity0: 0.9, delayMs: 250 },
+    ] };
+    EFFECTS['sigCalledByName_center'] = { layers: [
+        { sprite: 'holy-light', ml: 800, z: 70, size0: 60, size1: 140, tint: _AF.gold, opacity0: 0.6 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.gold, size0: 40, size1: 330, opacity0: 0.6 },
+    ] };
+    _afAoeDef('sigCalledByName_aura', 2, 'square', 'sigCalledByName_tile', 'sigCalledByName_center');
+    EFFECTS['sigDestinyFulfilled_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 160, size0: 90, size1: 24, tint: _AF.pale, opacity0: 0.95, z: 50, delayMs: 320 },
+        { count: 12, sprite: 'divine-sparkle', ml: [500, 800], offsetXY: 10, z: [30, 70], tint: _AF.gold, delayMs: 330, vxRange: 200, vyRange: 200, vzRange: [40, 160], drag: 1.1, size0: [5, 9], size1: 2, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: _AF.gold, size0: 30, size1: 170, opacity0: 0.7, delayMs: 330 },
+    ] };
+
+    /* ATLANTEAN — orichalcum copper-gold, sunken teal */
+    EFFECTS['sigOrichalcumRay_tile'] = { layers: [
+        { count: 6, sprite: 'water-splash', ml: [320, 560], z: 6, offsetXY: 14, tint: 0xa8fff0, vxRange: 120, vyRange: 120, vzRange: [60, 200], gravity: 420, drag: 1.2, size0: [6, 11], size1: 2, opacity0: 0.9 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 600, z: 3, tint: _AF.ori, size0: 30, size1: 110, opacity0: 0.65 },
+        { count: 4, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 14, z: [20, 60], tint: _AF.ori, vzRange: [20, 60], size0: [4, 7], size1: 2, opacity0: 0.9 },
+    ] };
+    EFFECTS['sigOrichalcumRay_beam'] = { sigLine: true, beamElement: 'water', chargeMs: 260, beamMs: 420, beamThickness: 12, impactTileEffect: 'sigOrichalcumRay_tile', shake: 'soft' };
+    EFFECTS['sigCrystalResonator_tile'] = { layers: [
+        { count: 6, sprite: 'spark-elec', ml: [200, 400], offsetXY: 20, z: [10, 60], delayMs: 360, vxRange: 120, vyRange: 120, vzRange: [20, 100], drag: 1.2, size0: [5, 9], size1: 2 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 600, z: 3, tint: _AF.teal, size0: 40, size1: 120, opacity0: 0.6, delayMs: 340 },
+    ] };
+    EFFECTS['sigCrystalResonator_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 180, size0: 90, size1: 24, tint: 0xd8fff8, opacity0: 0.85, z: 60, delayMs: 340 },
+    ] };
+    _afAoeDef('sigCrystalResonator_aoe', 1, 'square', 'sigCrystalResonator_tile', 'sigCrystalResonator_center');
+
+    /* DINOSAUR — the tail, the meteor */
+    EFFECTS['sigTailSweep_tile'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 24, z: [2, 10], tint: _AF.dust, vxRange: 140, vyRange: 140, vzRange: [20, 60], gravity: 80, size0: [14, 20], size1: [34, 50], opacity0: 0.55, delayMs: 200 },
+        { count: 4, sprite: 'rock-debris', ml: [400, 700], offsetXY: 20, z: [4, 20], vxRange: 160, vyRange: 160, vzRange: [80, 200], gravity: 520, size0: [5, 9], size1: 3, delayMs: 220 },
+    ] };
+    EFFECTS['sigTailSweep_center'] = { shake: 'hard', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 480, z: 2, tint: _AF.dust, size0: 40, size1: 220, opacity0: 0.6, delayMs: 200 },
+    ] };
+    _afAoeDef('sigTailSweep_aura', 1, 'square', 'sigTailSweep_tile', 'sigTailSweep_center');
+
+    /* BARBARELLA — groovy pink, organ silver */
+    EFFECTS['sigLoveRay_impact'] = { layers: [
+        { sprite: 'flash', ml: 160, size0: 60, size1: 18, tint: _AF.vixen, opacity0: 0.85, z: 56, delayMs: 260 },
+        { count: 10, sprite: 'spark-pink', ml: [400, 700], offsetXY: 10, z: [40, 70], delayMs: 260, vxRange: 140, vyRange: 140, vzRange: [20, 100], drag: 1.1, size0: [4, 7], size1: 1 },
+    ] };
+    _afBoltDef('_bolt_af_organ', 'spark-pink', 'wave-anim', 'spark-pink', 'target-ring', 0.16, 0.09, 12);
+    EFFECTS['sigExcessiveMachine_impact'] = { layers: [
+        { sprite: 'flash', ml: 110, size0: 44, size1: 12, tint: _AF.vixen, opacity0: 0.8, z: 50 },
+        { count: 4, sprite: 'wave-anim', ml: [300, 500], offsetXY: 8, z: [30, 60], tint: 0xff9ad8, vxRange: 140, vyRange: 140, drag: 1.2, size0: [12, 18], size1: [30, 44], opacity0: 0.7 },
+    ] };
+
+    /* BLACK GOO — oil, black eyes */
+    EFFECTS['sigEyesGoBlack_impact'] = { layers: [
+        { count: 8, sprite: 'inkblot', ml: [700, 1100], offsetXY: 16, z: [4, 60], tint: _AF.oil, vzRange: [10, 40], drag: 0.6, size0: [10, 16], size1: [20, 30], opacity0: 0.85 },
+        { anchor: 'floor', mode: 'world', sprite: 'inkblot', ml: 1400, z: 1, tint: _AF.oil, size0: 60, size1: 110, opacity0: 0.8 },
+    ] };
+    EFFECTS['sigEngulf_impact'] = { shake: 'normal', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'inkblot', ml: 1600, z: 1, tint: _AF.oil, size0: 80, size1: 150, opacity0: 0.85 },
+        { count: 8, sprite: 'inkblot', ml: [500, 900], offsetXY: 10, z: [20, 60], tint: _AF.oil, vxRange: 140, vyRange: 140, vzRange: [40, 140], gravity: 420, size0: [8, 12], size1: [4, 8], opacity0: 0.9, delayMs: 900 },
+    ] };
+    EFFECTS['sigEngulf_drainHop'] = { layers: [
+        { count: 3, sprite: 'inkblot', ml: [280, 420], z: 30, offsetXY: 8, tint: _AF.oil, vzRange: [10, 40], size0: [7, 11], size1: 3, opacity0: 0.9 },
+        { count: 1, sprite: 'void-mist', ml: [300, 460], z: 30, offsetXY: 6, tint: _AF.goo, size0: [10, 14], size1: 4, opacity0: 0.6 },
+    ] };
+
+    /* THE SPELL POWER REVIEW's eleven (shared families: each wears its element) */
+    _afBoltDef('_bolt_af_vein', 'blood-drop', 'blood-streak', 'blood-fleck', 'target-ring', 0.16, 0.07, 12);
+    EFFECTS['raceOpenVein_impact'] = { layers: [
+        { sprite: 'flash', ml: 100, size0: 44, size1: 12, tint: 0xffe0e0, opacity0: 0.9, z: 50 },
+        { count: 10, sprite: 'blood-glob', ml: [400, 700], offsetXY: 6, z: [40, 60], vxRange: 140, vyRange: 140, vzRange: [20, 140], gravity: 520, size0: [4, 8], size1: 3, opacity0: 0.95 },
+        { count: 2, sprite: 'blood-mist', ml: [400, 600], offsetXY: 6, z: [40, 60], size0: [12, 18], size1: [26, 36], opacity0: 0.5 },
+    ] };
+    EFFECTS['raceArterialSpray_tile'] = { layers: [
+        { anchor: 'floor', mode: 'y-locked', sprite: 'blood-mist', ml: [500, 800], z: 2, w0: 20, w1: 30, h0: 30, h1: 120, opacity0: 0.75 },
+        { count: 8, sprite: 'blood-glob', ml: [500, 800], offsetXY: 10, z: [10, 30], vxRange: 80, vyRange: 80, vzRange: [160, 320], gravity: 560, size0: [4, 8], size1: 3, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'blood-splat', ml: 1600, z: 1, size0: 50, size1: 70, opacity0: 0.7 },
+    ] };
+    EFFECTS['raceArterialSpray_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 160, size0: 70, size1: 20, tint: 0xff4a4a, opacity0: 0.75, z: 40 },
+    ] };
+    _afAoeDef('raceArterialSpray_aoe', 1, 'square', 'raceArterialSpray_tile', 'raceArterialSpray_center');
+    _afBoltDef('_bolt_af_conduct', 'spark-elec', 'lightning', 'water-splash', 'stun-ring', 0.16, 0.07, 18);
+    EFFECTS['raceConduction_impact'] = { layers: [
+        { sprite: 'flash', ml: 120, size0: 54, size1: 14, tint: 0xd8f0ff, opacity0: 0.9, z: 40 },
+        { count: 8, sprite: 'water-splash', ml: [300, 520], offsetXY: 10, z: [10, 40], tint: 0xa8d8ff, vxRange: 140, vyRange: 140, vzRange: [60, 180], gravity: 420, size0: [6, 10], size1: 2, opacity0: 0.9 },
+        { count: 8, sprite: 'spark-elec', ml: [200, 400], offsetXY: 18, z: [10, 60], seekIn: [160, 300], seekInZ: [20, 40], seekSpiral: 140, size0: [5, 9], size1: 2, opacity0: 0.95 },
+        { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 460, z: 2, size0: 30, size1: 120, opacity0: 0.65 },
+    ] };
+    _afBoltDef('_bolt_af_thorn', 'vine-green', 'leaf', 'leaf', 'target-ring-green', 0.18, 0.07, 12);
+    EFFECTS['raceThornlash_impact'] = { layers: [
+        { sprite: 'flash', ml: 100, size0: 40, size1: 12, tint: 0xd8ffc0, opacity0: 0.8, z: 30 },
+        { count: 8, sprite: 'leaf', ml: [500, 800], offsetXY: 10, z: [10, 40], tint: _AF.leaf, vxRange: 140, vyRange: 140, vzRange: [40, 140], gravity: 200, spriteSpin: 6, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
+        { count: 4, sprite: 'blood-fleck', ml: [300, 500], offsetXY: 6, z: [10, 30], vxRange: 120, vyRange: 120, vzRange: [20, 90], gravity: 480, size0: [3, 6], size1: 2 },
+    ] };
+    EFFECTS['raceOvergrowth_tile'] = { layers: [
+        { anchor: 'floor', mode: 'y-locked', sprite: 'vine-green', ml: [700, 1000], z: 2, offsetXY: 14, w0: 16, w1: 22, h0: 20, h1: 110, opacity0: 0.95 },
+        { count: 6, sprite: 'leaf', ml: [700, 1100], offsetXY: 24, z: [10, 60], tint: _AF.leaf, vzRange: [40, 110], gravity: 40, spriteSpin: 5, size0: [5, 9], size1: [5, 9], opacity0: 0.9 },
+        { count: 2, anchor: 'floor', sprite: 'mud-chunk', ml: [400, 700], offsetXY: 20, z: [2, 10], vxRange: 90, vyRange: 90, vzRange: [60, 160], gravity: 480, size0: [5, 8], size1: 3 },
+    ] };
+    EFFECTS['raceOvergrowth_center'] = { shake: 'normal', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: 0x88dd33, size0: 30, size1: 230, opacity0: 0.6 },
+    ] };
+    _afAoeDef('raceOvergrowth_aoe', 1, 'square', 'raceOvergrowth_tile', 'raceOvergrowth_center');
+    EFFECTS['raceCrosswind_tile'] = { layers: [
+        { count: 8, sprite: 'sand-particle', ml: [400, 700], offsetXY: 30, z: [10, 60], tint: 0xd8c8a0, vxRange: 220, vyRange: 220, vzRange: [10, 60], drag: 0.6, size0: [4, 7], size1: 2, opacity0: 0.85 },
+        { count: 2, sprite: 'smoke-soft', ml: [500, 800], offsetXY: 20, z: [20, 50], tint: 0xe8e8e8, vxRange: 160, vyRange: 160, drag: 0.5, size0: [16, 22], size1: [36, 50], opacity0: 0.35 },
+    ] };
+    EFFECTS['raceCrosswind_beam'] = { sigLine: true, sigLineOwns: true, chargeMs: 0, impactTileEffect: 'raceCrosswind_tile' };
+    EFFECTS['raceEyeOfTheStorm_tile'] = { layers: [
+        { count: 6, sprite: 'sand-particle', ml: [500, 800], offsetXY: 40, z: [10, 70], tint: 0xd8d0c0, seekIn: [400, 600], seekInZ: [20, 60], seekSpiral: 260, size0: [4, 7], size1: 2, opacity0: 0.85 },
+        { count: 2, sprite: 'leaf', ml: [600, 900], offsetXY: 30, z: [20, 60], tint: _AF.leaf, seekIn: [400, 600], seekInZ: [40, 80], seekSpiral: 300, spriteSpin: 8, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
+    ] };
+    EFFECTS['raceEyeOfTheStorm_center'] = { shake: 'hard', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 700, z: 2, tint: 0xd8e0e8, size0: 280, size1: 40, opacity0: 0.6 },
+    ] };
+    _afAoeDef('raceEyeOfTheStorm_aoe', 1, 'square', 'raceEyeOfTheStorm_tile', 'raceEyeOfTheStorm_center');
+    EFFECTS['raceMudslide_tile'] = { layers: [
+        { count: 8, sprite: 'mud-chunk', ml: [400, 700], offsetXY: 16, z: [4, 20], vxRange: 160, vyRange: 160, vzRange: [80, 220], gravity: 520, size0: [6, 10], size1: 3 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 20, z: [2, 10], tint: 0x7a5a3a, vxRange: 100, vyRange: 100, size0: [14, 20], size1: [34, 50], opacity0: 0.55 },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, tint: 0x5a3a1a, size0: 70, size1: 90, opacity0: 0.55 },
+    ] };
+    EFFECTS['raceMudslide_beam'] = { sigLine: true, sigLineOwns: true, chargeMs: 0, impactTileEffect: 'raceMudslide_tile', shake: 'normal' };
+    EFFECTS['raceTailwind_tile'] = { layers: [
+        { count: 3, sprite: 'smoke-soft', ml: [500, 800], offsetXY: 30, z: [10, 40], tint: 0xe8f4ff, vxRange: 220, vyRange: 220, drag: 0.6, size0: [10, 14], size1: [26, 36], opacity0: 0.4 },
+        { count: 3, sprite: 'leaf', ml: [600, 900], offsetXY: 30, z: [10, 50], tint: _AF.leaf, vxRange: 200, vyRange: 200, vzRange: [20, 60], drag: 0.6, spriteSpin: 8, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
+    ] };
+    EFFECTS['raceTailwind_center'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: 0xd8f0ff, size0: 40, size1: 300, opacity0: 0.5 },
+    ] };
+    _afAoeDef('raceTailwind_aura', 2, 'square', 'raceTailwind_tile', 'raceTailwind_center');
+    EFFECTS['raceRustle_pull'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 16, z: [2, 10], tint: _AF.dust, vxRange: 90, vyRange: 90, size0: [12, 18], size1: [30, 44], opacity0: 0.5 },
+        { count: 6, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 10, z: [30, 60], tint: _AF.gold, vzRange: [20, 60], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 300 },
+    ] };
+
+    /* the six-gun's own copy of the bullet, so its cylinder piece runs on arrival (boltGeometry) */
+    EFFECTS['_bolt_af_bullet'] = Object.assign({}, EFFECTS['_bolt_bullet'], { boltGeometry: true });
+
+    Object.assign(SPELL_MAP, {
+        sigShelteringWings:     { aura: 'sigShelteringWings_aura' },
+        sigLastTrumpet:         { aoe: 'sigLastTrumpet_aoe' },
+        sigMarkOfTheBeast:      { impact: 'sigMarkOfTheBeast_impact' },
+        sigSoulHarvest:         { aoe: 'sigSoulHarvest_aoe' },
+        sigMummify:             { impact: 'sigMummify_impact' },
+        sigAmmit:               { bolt: '_bolt_af_ammit', impact: 'sigAmmit_impact' },
+        sigPixiePrank:          { impact: 'sigPixiePrank_impact' },
+        sigFireflySwarm:        { impact: 'sigFireflySwarm_impact' },
+        sigOverrun:             { impact: 'sigOverrun_impact' },
+        sigBlurryPhoto:         { aura: 'sigBlurryPhoto_aura' },
+        sigFromTheTreeline:     { impact: 'sigFromTheTreeline_impact' },
+        sigScrape:              { impact: 'sigScrape_impact' },
+        sigOverfit:             { bolt: '_bolt_af_data', impact: 'sigOverfit_impact' },
+        sigUncannySmile:        { aura: 'sigUncannySmile_aura' },
+        sigTerminationProtocol: { impact: 'sigTerminationProtocol_impact' },
+        sigShowdown:            { impact: 'sigShowdown_impact' },
+        sigSixShooter:          { bolt: '_bolt_af_bullet', impact: 'sigSixShooter_impact' },
+        sigSermon:              { aura: 'sigSermon_aura' },
+        sigAscensionDay:        { aoe: 'sigAscensionDay_aoe' },
+        sigTetherLine:          { pull: 'sigTetherLine_pull' },
+        sigFireHose:            { beam: 'sigFireHose_beam' },
+        sigHalligan:            { impact: 'sigHalligan_impact' },
+        sigPieInTheFace:        { bolt: '_bolt_af_pie', impact: 'sigPieInTheFace_impact' },
+        sigGlint:               { bolt: '_bolt_af_prism', impact: 'sigGlint_impact' },
+        sigCrystalCoffin:       { aura: 'sigCrystalCoffin_aura' },
+        sigShardstorm:          { bolt: '_bolt_af_shard', impact: 'sigShardstorm_impact' },
+        sigTheSwarm:            { aura: 'sigTheSwarm_aura' },
+        sigThousandStings:      { impact: 'sigThousandStings_impact' },
+        sigLure:                { pull: 'sigLure_pull' },
+        sigAbyssJaws:           { impact: 'sigAbyssJaws_impact' },
+        sigKneel:               { aoe: 'sigKneel_aoe' },
+        sigEnlilsDeluge:        { bolt: '_bolt_af_deluge', impact: 'sigEnlilsDeluge_impact' },
+        sigLampSmoke:           { aura: 'sigLampSmoke_aura' },
+        sigTwistedWish:         { bolt: '_bolt_af_wish', chain: 'sigTwistedWish_hop', impact: 'sigTwistedWish_impact' },
+        sigBellow:              { aura: 'sigBellow_aura' },
+        sigForgedThunderbolt:   { beam: 'sigForgedThunderbolt_beam' },
+        sigGrappleArm:          { pull: 'sigGrappleArm_pull' },
+        sigPiledriver:          { impact: 'sigPiledriver_impact' },
+        sigUsurp:               { bolt: '_bolt_af_hellfire', impact: 'sigUsurp_impact' },
+        sigThroneOfAshes:       { aoe: 'sigThroneOfAshes_aoe' },
+        sigLastDance:           { impact: 'sigLastDance_impact', drainHop: 'sigLastDance_drainHop' },
+        sigCountingSheep:       { aoe: 'sigCountingSheep_aoe' },
+        sigDevourTheDream:      { impact: 'sigDevourTheDream_impact', drainHop: 'sigDevourTheDream_drainHop' },
+        sigForsaken:            { impact: 'sigForsaken_impact' },
+        sigMorningStar:         { aoe: 'sigMorningStar_aoe' },
+        sigWitherStarlight:     { impact: 'sigWitherStarlight_impact' },
+        sigLastLight:           { beam: 'sigLastLight_beam' },
+        sigShockProd:           { impact: 'sigShockProd_impact' },
+        sigInterrogation:       { impact: 'sigInterrogation_impact' },
+        sigThroughTheWall:      { impact: 'sigThroughTheWall_impact' },
+        sigCalledByName:        { aura: 'sigCalledByName_aura' },
+        sigDestinyFulfilled:    { impact: 'sigDestinyFulfilled_impact' },
+        sigOrichalcumRay:       { beam: 'sigOrichalcumRay_beam' },
+        sigCrystalResonator:    { aoe: 'sigCrystalResonator_aoe' },
+        sigTailSweep:           { aura: 'sigTailSweep_aura' },
+        sigLoveRay:             { impact: 'sigLoveRay_impact' },
+        sigExcessiveMachine:    { bolt: '_bolt_af_organ', impact: 'sigExcessiveMachine_impact' },
+        sigEyesGoBlack:         { impact: 'sigEyesGoBlack_impact' },
+        sigEngulf:              { impact: 'sigEngulf_impact', drainHop: 'sigEngulf_drainHop' },
+        raceOpenVein:           { bolt: '_bolt_af_vein', impact: 'raceOpenVein_impact' },
+        raceArterialSpray:      { aoe: 'raceArterialSpray_aoe' },
+        raceConduction:         { bolt: '_bolt_af_conduct', impact: 'raceConduction_impact' },
+        raceThornlash:          { bolt: '_bolt_af_thorn', impact: 'raceThornlash_impact' },
+        raceOvergrowth:         { aoe: 'raceOvergrowth_aoe' },
+        raceCrosswind:          { beam: 'raceCrosswind_beam' },
+        raceEyeOfTheStorm:      { aoe: 'raceEyeOfTheStorm_aoe' },
+        raceMudslide:           { beam: 'raceMudslide_beam' },
+        raceTailwind:           { aura: 'raceTailwind_aura' },
+        raceRustle:             { pull: 'raceRustle_pull' },
+    });
+
+    /* ── ANGEL ── */
+    /* SHELTERING WINGS: two great wings open behind the angel and fold forward over the square; a halo turns above */
+    function _afWings3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mats = [], wings = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var pivot = new THREE.Group(); pivot.position.set(s * ts * 0.12, ts * 0.95, -ts * 0.1); F.g.add(pivot);
+            for (var i = 0; i < 8; i++) {
+                var len = ts * (0.55 + i * 0.07), f = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.17, len), i % 2 ? _AF.feather : _AF.gold, { map: _sigGlowTex() });
+                var hold = new THREE.Group(); hold.rotation.z = s * (0.35 + i * 0.16); f.position.y = len / 2; hold.add(f); pivot.add(hold);
+                mats.push([f.material, i % 2 ? 0.7 : 0.55]);
+            }
+            wings.push({ g: pivot, s: s });
+        }
+        var halo = _afGlowMesh(new THREE.TorusGeometry(ts * 0.22, ts * 0.025, 6, 32), _AF.gold); halo.rotation.x = Math.PI / 2; halo.position.y = ts * 1.32; F.g.add(halo); mats.push([halo.material, 0.9]);
+        var total = 1800;
+        try { _sigLightPillar3D(tx, ty, { height: 360, radius: ts * 0.3, ms: 900, color: _AF.gold, coreColor: 0xffffff }); } catch (e) {}
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 380)), fold = _sigClamp01((el - 520) / 520);
+            for (var w = 0; w < wings.length; w++) {
+                var W = wings[w];
+                W.g.scale.setScalar(Math.max(0.01, open));
+                W.g.rotation.y = W.s * (fold * 1.15);              /* the wings close forward round the friends */
+                W.g.rotation.x = -0.15 * fold;
+            }
+            halo.rotation.z = el * 0.002;
+            _afSetO(mats, _afEnv(el, 0, 200, 1300, total));
+        });
+    }
+    /* THE LAST TRUMPET: a gold trumpet lifts over the angel and sounds; a wall of gold sound runs down each arm of the cross */
+    function _afTrumpet3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, reach = Math.max(1, r || 3), mats = [];
+        var horn = new THREE.Group(); horn.position.set(0, ts * 1.5, 0); F.g.add(horn);
+        var brass = _finBasic(_AF.brass, { opacity: 0 }); brass.transparent = true;
+        var tube = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, ts * 0.7, 8), brass); tube.rotation.z = Math.PI / 2; horn.add(tube);
+        var bell = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.03, ts * 0.32, 18, 1, true), brass); bell.rotation.z = Math.PI / 2; bell.position.x = ts * 0.48; horn.add(bell);
+        var mouth = _finSprite(_AF.gold, _sigGlowTex(), ts * 0.7, 162); mouth.position.x = ts * 0.66; horn.add(mouth);
+        mats.push([brass, 1], [mouth.material, 0.9]);
+        var walls = [];
+        for (var d = 0; d < 4; d++) {
+            var a = d * Math.PI / 2, wv = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _AF.gold, { map: _sigRingTex() });
+            wv.position.y = ts * 0.5; wv.rotation.y = -a + Math.PI / 2; F.g.add(wv); walls.push({ m: wv, a: a });
+        }
+        var blowAt = 320, runMs = 520, total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 260));
+            horn.position.y = ts * (0.9 + 0.6 * up); horn.rotation.y = el * 0.0015; horn.rotation.z = 0.5 + 0.1 * Math.sin(el * 0.03);
+            var k = _afEnv(el, 0, 160, 1100, total); _afSetO(mats, k);
+            mouth.scale.setScalar(ts * (0.5 + (el > blowAt ? 0.5 * Math.abs(Math.sin(el * 0.04)) : 0)));
+            for (var i = 0; i < walls.length; i++) {
+                var W = walls[i], p = _sigClamp01((el - blowAt) / runMs), dist = ts * (0.3 + p * reach);
+                W.m.position.x = Math.cos(W.a) * dist; W.m.position.z = Math.sin(W.a) * dist;
+                W.m.scale.setScalar(0.6 + p * 0.8);
+                W.m.material.opacity = el > blowAt ? 0.8 * (1 - p * 0.7) * k : 0;
+            }
+        });
+    }
+
+    /* ── DEMON ── */
+    /* MARK OF THE BEAST: a burning 666 sigil stamps onto the target, then smoulders */
+    function _afBrand3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var brand = _finSprite(_AF.hell, _afBeastTex(), ts * 0.9, 163); brand.position.y = ts * 0.62; F.g.add(brand);
+        var glow = _finSprite(_AF.ember, _sigGlowTex(), ts * 1.1, 161); glow.position.y = ts * 0.62; F.g.add(glow);
+        var ring = _afGlowMesh(new THREE.RingGeometry(ts * 0.42, ts * 0.5, 40), _AF.hell, { map: _sigGlowTex() }); ring.rotation.x = -Math.PI / 2; ring.position.y = ts * 0.04; F.g.add(ring);
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var stamp = _sigClamp01(el / 150);
+            brand.scale.setScalar(ts * (1.9 - 1.0 * _sigEaseOutCubic(stamp)));
+            brand.material.opacity = 0.95 * _afEnv(el, 0, 120, 900, total) * (0.85 + 0.15 * Math.sin(el * 0.05));
+            glow.material.opacity = (el < 220 ? 0.8 : 0.35 * (1 + Math.sin(el * 0.02))) * _afEnv(el, 0, 80, 900, total);
+            ring.material.opacity = 0.6 * _afEnv(el, 100, 260, 900, total); ring.scale.setScalar(1 + el * 0.0002);
+        });
+    }
+    /* SOUL HARVEST: a pale soul tears out of every tile and streams into the demon */
+    function _afSouls3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = r != null ? r : 1, from = _sigCasterPos(tx, ty) || { x: tx - 1, y: ty };
+        var hid = _afFogHides(from.x, from.y), dest = hid ? new THREE.Vector3(0, ts * 2.4, 0) : _afTo(F, from.x, from.y); if (!hid) dest.y += ts * 0.7;   /* fogged demon: the souls just rise */
+        var souls = [];
+        for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad; dx <= rad; dx++) {
+            var s = _finSprite(0xd8ffe8, _sigGlowTex(), ts * 0.42, 162), core = _finSprite(0xffffff, _sigGlowTex(), ts * 0.16, 163);
+            var start = new THREE.Vector3(dx * ts, ts * 0.4, dy * ts); s.position.copy(start); core.position.copy(start);
+            F.g.add(s); F.g.add(core); souls.push({ s: s, c: core, p0: start, t0: 120 + (Math.abs(dx) + Math.abs(dy)) * 60 + rn(0, 80) });
+        }
+        var demonFlare = _finSprite(_AF.hell, _sigGlowTex(), ts * 1.2, 161); demonFlare.position.copy(dest); demonFlare.visible = !hid; F.g.add(demonFlare);
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < souls.length; i++) {
+                var S = souls[i], rise = _sigClamp01((el - S.t0) / 260), fly = _sigClamp01((el - S.t0 - 260) / 620);
+                var p = new THREE.Vector3(S.p0.x, S.p0.y + rise * ts * 0.6, S.p0.z), q = fly > 0 ? _afArc(p, dest, ts * 0.8, _sigEaseInCubic(fly)) : p;
+                S.s.position.copy(q); S.c.position.copy(q);
+                var o = (el < S.t0 ? 0 : 1) * (1 - _sigClamp01((fly - 0.85) / 0.15));
+                S.s.material.opacity = 0.6 * o; S.c.material.opacity = 0.9 * o;
+                S.s.scale.setScalar(ts * (0.42 - 0.2 * fly));
+            }
+            demonFlare.material.opacity = 0.7 * _afEnv(el, 700, 1000, 1200, total);
+        });
+    }
+
+    /* ── ANUBIS ── */
+    /* MUMMIFY: linen wraps wind up the body from the feet, a gold band locks at the top */
+    function _afWraps3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, strips = [], n = 42;
+        for (var i = 0; i < n; i++) {
+            var k = i / (n - 1), a = k * Math.PI * 7, rr = ts * (0.3 - 0.06 * Math.sin(k * Math.PI));
+            var m = _afSolid(new THREE.PlaneGeometry(ts * 0.17, ts * 0.06), i % 5 === 0 ? 0xd0c4a4 : _AF.linen, { side: THREE.DoubleSide });
+            m.position.set(Math.cos(a) * rr, ts * (0.04 + k * 1.0), Math.sin(a) * rr); m.rotation.y = -a; m.rotation.z = 0.35;
+            F.g.add(m); strips.push({ m: m, at: k * 650 });
+        }
+        var band = _afGlowMesh(new THREE.TorusGeometry(ts * 0.28, ts * 0.025, 6, 28), _AF.gold); band.rotation.x = Math.PI / 2; band.position.y = ts * 0.95; F.g.add(band);
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var fade = 1 - _sigClamp01((el - 1350) / 350);
+            for (var i = 0; i < strips.length; i++) { var S = strips[i]; S.m.material.opacity = (el >= S.at ? 0.95 : 0) * fade; S.m.scale.x = _sigClamp01((el - S.at) / 90); }
+            band.material.opacity = 0.9 * _afEnv(el, 620, 700, 1200, 1600); band.scale.setScalar(1 + 0.3 * (1 - _sigClamp01((el - 620) / 120)));
+        });
+    }
+    /* AMMIT DEVOURS: the scale of Ma'at appears over the victim and tips; the jaws of Ammit close from the floor */
+    function _afAmmit3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, gold = _finBasic(_AF.gold, { opacity: 0 }); gold.transparent = true;
+        var scale = new THREE.Group(); scale.position.y = ts * 1.55; F.g.add(scale);
+        var post = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.5, 6), gold); post.position.y = ts * 0.05; scale.add(post);
+        var beam = new THREE.Group(); beam.position.y = ts * 0.3; scale.add(beam);
+        beam.add(new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, ts * 0.025, ts * 0.025), gold));
+        var pans = [];
+        for (var s = -1; s <= 1; s += 2) { var pan = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.11, ts * 0.06, ts * 0.04, 12), gold); pan.position.set(s * ts * 0.38, -ts * 0.18, 0); beam.add(pan); pans.push(pan); }
+        var feather = _finSprite(0xf8f4e8, _sigGlowTex(), ts * 0.14, 163); feather.position.set(-ts * 0.38, -ts * 0.08, 0); beam.add(feather);
+        var heart = _finSprite(_AF.blood, _afHeartTex(), ts * 0.16, 163); heart.position.set(ts * 0.38, -ts * 0.08, 0); beam.add(heart);
+        var hide = _finBasic(_AF.croc, { opacity: 0 }); hide.transparent = true;
+        var toothM = _finBasic(_AF.bone, { opacity: 0 }); toothM.transparent = true;
+        var jaws = [];
+        for (var j = 0; j < 2; j++) {
+            var jaw = new THREE.Group(), side = j ? 1 : -1; F.g.add(jaw);
+            var jm = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.95, ts * 0.14, ts * 0.32), hide); jm.position.z = side * ts * 0.16; jaw.add(jm);
+            for (var t = 0; t < 7; t++) { var th = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.035, ts * 0.16, 5), toothM); th.position.set(-ts * 0.42 + t * ts * 0.14, ts * 0.1, side * ts * 0.02); jaw.add(th); }
+            jaw.position.set(0, -ts * 0.3, 0); jaws.push({ g: jaw, side: side });
+        }
+        var total = 1600, chompAt = 680;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 160, 1200, total);
+            gold.opacity = k; feather.material.opacity = heart.material.opacity = 0.95 * k;
+            beam.rotation.z = -0.38 * _sigEaseOutBack(_sigClamp01((el - 200) / 360));   /* the heart is heavier than the feather */
+            var rise = _sigEaseOutCubic(_sigClamp01((el - 420) / 220)), shut = _sigClamp01((el - chompAt) / 110);
+            hide.opacity = toothM.opacity = _afEnv(el, 420, 520, 1250, total);
+            for (var i = 0; i < jaws.length; i++) {
+                var J = jaws[i]; J.g.position.y = -ts * 0.3 + rise * ts * 0.75;
+                J.g.rotation.x = J.side * (0.9 - 0.9 * shut);
+            }
+        });
+    }
+
+    /* ── FAIRY ── */
+    /* PIXIE PRANK: the wand's star loops the target and a shrinking ring cinches down to toy size */
+    function _afPrank3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var star = _finSprite(_AF.pink, _afStarTex(5), ts * 0.34, 163); F.g.add(star);
+        var glow = _finSprite(_AF.fairy, _sigGlowTex(), ts * 0.5, 161); F.g.add(glow);
+        var ring = _afGlowMesh(new THREE.TorusGeometry(ts * 0.6, ts * 0.025, 6, 40), _AF.pink); ring.rotation.x = Math.PI / 2; F.g.add(ring);
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / 560), a = k * Math.PI * 5, rr = ts * (0.6 - 0.35 * k);
+            star.position.set(Math.cos(a) * rr, ts * (1.3 - 0.8 * k), Math.sin(a) * rr); glow.position.copy(star.position);
+            star.material.rotation = el * 0.01; star.material.opacity = 0.95 * _afEnv(el, 0, 80, 600, 760); glow.material.opacity = 0.6 * star.material.opacity;
+            var c = _sigClamp01((el - 520) / 320);
+            ring.scale.setScalar(1.4 - 1.1 * _sigEaseOutCubic(c)); ring.position.y = ts * (0.5 - 0.3 * c);
+            ring.material.opacity = 0.85 * _afEnv(el, 500, 560, 950, total);
+        });
+    }
+    /* FIREFLY SWARM: a jarful of fireflies spills from the fairy and swarms the target */
+    function _afFireflies3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), a = _afTo(F, from.x, from.y), b = new THREE.Vector3(0, ts * 0.6, 0);
+        a.y += ts * 0.8;
+        var flies = [];
+        for (var i = 0; i < 20; i++) {
+            var s = _finSprite(_AF.firefly, _sigGlowTex(), ts * rn(0.12, 0.2), 162); F.g.add(s);
+            flies.push({ s: s, t0: rn(0, 220), ph: rn(0, 6.28), w: rn(0.6, 1.4), h: rn(0.2, 0.9) });
+        }
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < flies.length; i++) {
+                var Fl = flies[i], k = _sigClamp01((el - Fl.t0) / 380), p = _afArc(a, b, ts * Fl.h, _sigEaseOutCubic(k));
+                var orbit = el > Fl.t0 + 380 ? (el - Fl.t0 - 380) * 0.008 * Fl.w : 0;
+                p.x += Math.cos(Fl.ph + el * 0.012 + orbit) * ts * 0.2 * (0.4 + k); p.z += Math.sin(Fl.ph + el * 0.014 + orbit) * ts * 0.2 * (0.4 + k); p.y += Math.sin(Fl.ph + el * 0.02) * ts * 0.08;
+                Fl.s.position.copy(p);
+                Fl.s.material.opacity = (el > Fl.t0 ? 0.9 : 0) * (0.6 + 0.4 * Math.sin(el * 0.03 + Fl.ph)) * (1 - _sigClamp01((el - 950) / 350));
+            }
+        });
+    }
+
+    /* ── ANT PERSON ── */
+    /* FIFTY TIMES ITS WEIGHT: the mandibles clamp, the colony's strength heaves the body away */
+    function _afMandibles3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var hold = new THREE.Group(); hold.position.set(ln.ux * ts * 0.3, ts * 0.55, ln.uz * ts * 0.3); hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
+        var chitin = _finBasic(0x3a2416, { opacity: 0 }); chitin.transparent = true; var mands = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var m = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.28, ts * 0.04, 6, 14, Math.PI * 0.75), chitin);
+            m.rotation.x = Math.PI / 2; var p = new THREE.Group(); p.position.x = s * ts * 0.18; p.add(m); hold.add(p); mands.push({ g: p, s: s, m: m });
+            m.rotation.z = s > 0 ? Math.PI * 0.25 : Math.PI * 0.75 + Math.PI * 0.25;
+        }
+        var total = 900;
+        try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 1.4, ms: 420, color: _AF.dust }); } catch (e) {}
+        return _sigRunOwned(F.g, total, function (el) {
+            var shut = _sigEaseInCubic(_sigClamp01(el / 160));
+            for (var i = 0; i < mands.length; i++) mands[i].g.rotation.y = mands[i].s * (0.7 - 0.7 * shut);
+            chitin.opacity = _afEnv(el, 0, 60, 500, total);
+        });
+    }
+    /* OVERRUN: the colony pours over the target from every side */
+    function _afAnts3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigOverrun:' + tx + ',' + ty, 1600)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ants = [], body = _finBasic(_AF.ant, { opacity: 0 }); body.transparent = true;
+        for (var i = 0; i < 40; i++) {
+            var a = rn(0, Math.PI * 2), m = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 6, 4), body);
+            m.scale.set(1, 0.6, 1.8); F.g.add(m); ants.push({ m: m, a: a, r0: ts * rn(1.0, 1.6), t0: rn(0, 300), spin: rn(2.5, 4) * (i % 2 ? 1 : -1) });
+        }
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            body.opacity = _afEnv(el, 0, 120, 1050, total);
+            for (var i = 0; i < ants.length; i++) {
+                var A = ants[i], k = _sigClamp01((el - A.t0) / 800), rr = A.r0 * (1 - k) + ts * 0.22, ang = A.a + k * A.spin;
+                A.m.position.set(Math.cos(ang) * rr, ts * 0.02 + Math.max(0, k - 0.6) * ts * 1.6, Math.sin(ang) * rr);
+                A.m.rotation.y = -ang + (A.spin > 0 ? 0 : Math.PI);
+            }
+        });
+    }
+
+    /* ── BIGFOOT ── */
+    /* BLURRY PHOTO: the flash goes off, the photo develops in the air, the shape in it is already gone */
+    function _afPhoto3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var card = _afSolid(new THREE.PlaneGeometry(ts * 0.6, ts * 0.75), 0xffffff, { side: THREE.DoubleSide, map: _finPhotoTex('SIGHTING') });
+        card.position.set(0, ts * 1.6, 0); F.g.add(card);
+        var ghosts = [];
+        for (var i = 0; i < 3; i++) { var gh = _finSprite(0x8a7a6a, _sigGlowTex(), ts * 0.9, 160); gh.position.y = ts * 0.6; F.g.add(gh); ghosts.push(gh); }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var pop = _sigEaseOutBack(_sigClamp01((el - 120) / 300));
+            card.scale.setScalar(Math.max(0.01, pop)); card.rotation.y = Math.sin(el * 0.003) * 0.5; card.rotation.z = 0.12;
+            card.material.opacity = _afEnv(el, 120, 220, 1400, total);
+            card.material.color.setScalar(0.4 + 0.6 * _sigClamp01((el - 200) / 700));   /* it develops */
+            for (var i = 0; i < ghosts.length; i++) { ghosts[i].position.x = (i - 1) * ts * 0.2 * _sigClamp01(el / 500) + Math.sin(el * 0.01 + i) * ts * 0.05; ghosts[i].material.opacity = 0.28 * _afEnv(el, 60, 200, 700, 1100); }
+        });
+    }
+    /* FROM THE TREELINE: giant footprints stamp the ground from the caster to the target, then the leaves come down */
+    function _afTreeline3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), a = _afTo(F, from.x, from.y), yaw = Math.atan2(-a.x, -a.z);
+        var prints = [], n = Math.max(3, Math.min(8, Math.round(a.length() / (ts * 0.55))));
+        for (var i = 0; i < n; i++) {
+            var k = i / n, side = i % 2 ? 1 : -1, p = new THREE.Vector3(a.x * (1 - k), ts * 0.03 + a.y * (1 - k), a.z * (1 - k));
+            var m = _afSolid(new THREE.PlaneGeometry(ts * 0.3, ts * 0.45), 0x1a120a, { side: THREE.DoubleSide, map: _afFootTex() });
+            m.material.depthWrite = false; m.rotation.x = -Math.PI / 2; m.rotation.z = yaw; m.position.copy(p);
+            m.position.x += Math.cos(yaw) * side * ts * 0.14; m.position.z -= Math.sin(yaw) * side * ts * 0.14;
+            F.g.add(m); prints.push({ m: m, at: i * 70 });
+        }
+        var total = 1800;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < prints.length; i++) prints[i].m.material.opacity = (el >= prints[i].at ? 0.75 : 0) * (1 - _sigClamp01((el - 1300) / 500));
+        });
+    }
+
+    /* ── AI ── */
+    /* SCRAPE: the scan grid drops on the target and its spells stream to the model as data */
+    function _afScrape3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), dest = _afTo(F, from.x, from.y); dest.y += ts * 0.8;
+        var grid = _afGlowMesh(new THREE.PlaneGeometry(ts * 1.1, ts * 1.1), _AF.cyan, { map: _afGridTex() }); grid.rotation.x = -Math.PI / 2; F.g.add(grid);
+        var glyphs = [], words = ['01', '10', '{ }', '</>', '0x', '11'];
+        for (var i = 0; i < 14; i++) {
+            var g = _finTextSprite(words[i % words.length], { ink: '#7affd8', w: 256, h: 128, fontPx: 84, spriteW: ts * 0.3, font: 'monospace', depthTest: false, opacity: 0 });
+            F.g.add(g); glyphs.push({ s: g, t0: 200 + i * 45, h: rn(0.4, 1.0), off: rn(-0.25, 0.25) });
+        }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var drop = _sigClamp01(el / 240); grid.position.y = ts * (1.2 - 1.15 * drop); grid.material.opacity = 0.65 * _afEnv(el, 0, 120, 900, 1200);
+            for (var i = 0; i < glyphs.length; i++) {
+                var G = glyphs[i], k = _sigClamp01((el - G.t0) / 700), p = _afArc(new THREE.Vector3(G.off * ts, ts * 0.6, 0), dest, ts * G.h, k);
+                G.s.position.copy(p); G.s.material.opacity = (el > G.t0 ? 0.95 : 0) * (1 - _sigClamp01((k - 0.85) / 0.15));
+            }
+        });
+    }
+    /* OVERFIT: a wireframe of the model locks round the target and replays the hit three times */
+    function _afOverfit3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var mat = new THREE.LineBasicMaterial({ color: new THREE.Color(_AF.cyan), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var cage = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(ts * 0.5, 1)), mat); cage.position.y = ts * 0.6; F.g.add(cage);
+        for (var e = 0; e < 3; e++) (function (e) { _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * (1.2 + e * 0.3), ms: 380, color: _AF.cyan, height: ts * 0.5 }); } catch (x) {} }, e * 170); })(e);
+        var total = 1100;
+        return _sigRunOwned(F.g, total, function (el) {
+            cage.rotation.y = el * 0.004; cage.rotation.x = el * 0.0025;
+            cage.scale.setScalar(1.3 - 0.3 * _sigEaseOutCubic(_sigClamp01(el / 200)) + 0.1 * Math.sin(el * 0.03));
+            mat.opacity = 0.9 * _afEnv(el, 0, 80, 700, total);
+        });
+    }
+
+    /* ── ANDROID ── */
+    /* UNCANNY SMILE: the smile, enormous, over the android; the eyes glint red; the picture slips */
+    function _afSmile3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, faces = [], tints = [0xf4ece4, _AF.eyeRed, 0x7ae8ff];
+        for (var i = 0; i < 3; i++) { var f = _finSprite(tints[i], _afSmileTex(), ts * 1.5, 162 + i); f.position.y = ts * 1.9; F.g.add(f); faces.push(f); }
+        var eyes = [];
+        for (var s = -1; s <= 1; s += 2) { var e = _finSprite(_AF.eyeRed, _sigGlowTex(), ts * 0.28, 165); e.position.set(s * ts * 0.28, ts * 2.15, 0); F.g.add(e); eyes.push(e); }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 260, 1200, total), glitch = (Math.floor(el / 70) % 5 === 0) ? 1 : 0;
+            faces[0].material.opacity = 0.85 * k;
+            faces[1].material.opacity = 0.5 * k * glitch; faces[1].position.x = ts * 0.06 * glitch;
+            faces[2].material.opacity = 0.5 * k * glitch; faces[2].position.x = -ts * 0.06 * glitch;
+            for (var i = 0; i < eyes.length; i++) eyes[i].material.opacity = (el > 300 ? 0.95 : 0) * k * (0.7 + 0.3 * Math.sin(el * 0.05));
+        });
+    }
+    /* TERMINATION PROTOCOL: the red reticle locks, a scan line reads the body top to bottom */
+    function _afTerminate3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var ret = _finSprite(_AF.eyeRed, _afReticleTex(), ts * 1.4, 163); ret.position.y = ts * 0.6; F.g.add(ret);
+        var scan = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.05), _AF.laser, { map: _sigGlowTex() }); F.g.add(scan);
+        var scan2 = scan.clone(); scan2.material = scan.material; scan2.rotation.y = Math.PI / 2; F.g.add(scan2);
+        var total = 1000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var lock = _sigEaseOutCubic(_sigClamp01(el / 260));
+            ret.scale.setScalar(ts * (1.4 - 0.75 * lock)); ret.material.rotation = (1 - lock) * 1.6;
+            ret.material.opacity = 0.95 * _afEnv(el, 0, 60, 700, total) * (lock >= 1 ? (Math.floor(el / 60) % 2 ? 1 : 0.5) : 1);
+            var s = _sigClamp01((el - 200) / 320); scan.position.y = scan2.position.y = ts * (1.1 - 1.05 * s);
+            scan.material.opacity = 0.9 * _afEnv(el, 200, 240, 520, 600);
+        });
+    }
+
+    /* ── COWBOY ── */
+    /* SHOWDOWN: high noon — the sun flares behind the target, a tumbleweed rolls through, the brass crosshair settles */
+    function _afShowdown3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var sun = _finSprite(_AF.sun, _afStarTex(4), ts * 1.0, 160); sun.position.set(-ln.ux * ts * 0.8, ts * 2.2, -ln.uz * ts * 0.8); F.g.add(sun);
+        var weedMat = new THREE.LineBasicMaterial({ color: new THREE.Color(0x8a6a3a), transparent: true, opacity: 0, depthWrite: false });
+        var weed = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(ts * 0.2, 1)), weedMat); F.g.add(weed);
+        var px = -ln.uz, pz = ln.ux, total = 1500;     /* the roll runs across the line between the duellists */
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / 1300);
+            sun.material.opacity = 0.55 * _afEnv(el, 0, 300, 1000, total); sun.material.rotation = el * 0.0008;
+            weed.position.set(ln.dx * 0.5 + px * ts * (1.6 - 3.2 * k), ts * (0.2 + 0.12 * Math.abs(Math.sin(k * Math.PI * 4))), ln.dz * 0.5 + pz * ts * (1.6 - 3.2 * k));
+            weed.rotation.x += 0.08; weed.rotation.z += 0.05;
+            weedMat.opacity = 0.9 * _afEnv(el, 0, 150, 1150, total);
+        });
+    }
+    /* SIX-SHOOTER: the cylinder turns over the gun hand, a chamber lights per shot, the brass flips out */
+    function _afRevolver3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var from = _afCaster(tx, ty, o);
+        if (from.fogged || !_afOnce('sigSixShooter:' + from.x + ',' + from.y, 2200)) return null;
+        var F = _nrvFrame(from.x, from.y), ts = F.ts, ln = _nrvLine(F, { x: tx, y: ty }, from.x, from.y);
+        var hold = new THREE.Group(); hold.position.set(-ln.ux * ts * 0.35, ts * 1.25, -ln.uz * ts * 0.35); hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
+        var steel = _finBasic(0x9a9ea8, { opacity: 0 }); steel.transparent = true;
+        var cyl = new THREE.Group(); cyl.rotation.x = Math.PI / 2; hold.add(cyl);
+        cyl.add(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.18, ts * 0.18, ts * 0.16, 18), steel));
+        var chambers = [], casings = [], brass = _finBasic(_AF.brass, { opacity: 0 }); brass.transparent = true;
+        for (var i = 0; i < 6; i++) {
+            var a = i * Math.PI / 3, ch = _finSprite(0xfff0c0, _sigGlowTex(), ts * 0.12, 164); ch.position.set(Math.cos(a) * ts * 0.11, ts * 0.09, Math.sin(a) * ts * 0.11); cyl.add(ch); chambers.push(ch);
+            var c = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, ts * 0.06, 6), brass); c.visible = false; F.g.add(c); casings.push({ m: c, v: null, p: null });
+        }
+        var shotMs = 180, total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 120, 1500, total); steel.opacity = k; brass.opacity = k;
+            var shot = Math.floor(el / shotMs);
+            cyl.rotation.y = Math.min(6, shot) * Math.PI / 3 + _sigEaseOutCubic(_sigClamp01((el % shotMs) / 80)) * Math.PI / 3 * (shot < 6 ? 1 : 0);
+            for (var i = 0; i < 6; i++) {
+                chambers[i].material.opacity = (i === shot % 6 && shot < 6 ? 0.95 : (i < shot ? 0.15 : 0)) * k;
+                var C = casings[i];
+                if (i < shot && !C.v) { C.v = new THREE.Vector3(rn(-1, 1) * ts * 0.004, ts * 0.006, rn(-1, 1) * ts * 0.004); C.p = hold.position.clone(); C.m.visible = true; }
+                if (C.v) { C.p.add(C.v); C.v.y -= ts * 0.0006; if (C.p.y < ts * 0.03) { C.p.y = ts * 0.03; C.v.multiplyScalar(0.3); } C.m.position.copy(C.p); C.m.rotation.x += 0.3; }
+            }
+        });
+    }
+
+    /* ── CULT LEADER ── */
+    /* THE SERMON: candles rise round the congregation, a heart rises from each flame */
+    function _afSermon3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rr = ts * (Math.max(1, r || 2) + 0.35), candles = [], hearts = [];
+        for (var i = 0; i < 10; i++) {
+            var a = i * Math.PI / 5, cn = _nrvCandle(ts); cn.position.set(Math.cos(a) * rr, -ts * 0.4, Math.sin(a) * rr); F.g.add(cn); candles.push(cn);
+            var h = _finSprite(_AF.heart, _afHeartTex(), ts * 0.22, 163); h.position.set(Math.cos(a) * rr, ts * 0.4, Math.sin(a) * rr); F.g.add(h); hearts.push({ s: h, t0: 400 + i * 60 });
+        }
+        var robe = _finSprite(_AF.robe, _sigGlowTex(), ts * 1.3, 160); robe.position.y = ts * 0.8; F.g.add(robe);
+        var total = 2000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 420)), fade = 1 - _sigClamp01((el - 1600) / 400);
+            for (var i = 0; i < candles.length; i++) {
+                candles[i].position.y = -ts * 0.4 + up * ts * 0.4;
+                candles[i].traverse(function (n) { if (n.material) { n.material.transparent = true; n.material.opacity = (n.isSprite ? 0.9 : 1) * fade; } });
+            }
+            for (var j = 0; j < hearts.length; j++) { var H = hearts[j], k = _sigClamp01((el - H.t0) / 900); H.s.position.y = ts * (0.4 + k * 1.1); H.s.material.opacity = (el > H.t0 ? 0.9 : 0) * (1 - k); }
+            robe.material.opacity = 0.45 * _afEnv(el, 0, 300, 1100, 1700);
+        });
+    }
+    /* ASCENSION DAY: the light comes down and the faithful in white rise up into it */
+    function _afAscension3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = r != null ? r : 1, robes = [];
+        try { _sigLightPillar3D(tx, ty, { height: 900, radius: ts * (0.6 + rad * 0.35), ms: 1500, color: _AF.pale, coreColor: 0xffffff }); } catch (e) {}
+        var spots = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]];
+        for (var i = 0; i < spots.length; i++) {
+            var rb = _nrvRobe(ts); rb.position.set(spots[i][0] * ts * rad * 0.7, 0, spots[i][1] * ts * rad * 0.7); rb.scale.setScalar(0.7);
+            rb.userData.parts[0].material.color.set(_AF.robe); rb.userData.parts[1].material.color.set(0xe8e0d0);
+            F.g.add(rb); robes.push({ r: rb, t0: 250 + i * 90 });
+        }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < robes.length; i++) {
+                var R = robes[i], k = _sigClamp01((el - R.t0) / 1200);
+                R.r.position.y = _sigEaseInCubic(k) * ts * 3.2; R.r.rotation.y = k * 2;
+                _nrvFadeRobe(R.r, (el > R.t0 ? 1 : 0) * _afEnv(el, R.t0, R.t0 + 120, R.t0 + 800, R.t0 + 1300));
+            }
+        });
+    }
+
+    /* ── ASTRONAUT ── */
+    /* TETHER LINE: Houston on the radio — the rings go out from the helmet; the carabiner snaps on */
+    function _afTether3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var from = _afCaster(tx, ty, o), F = _nrvFrame(tx, ty), ts = F.ts;
+        for (var i = 0; i < 3 && !from.fogged; i++) _fxDelay(function () { try { _sigShockRing3D(from.x, from.y, { r0: ts * 0.15, r1: ts * 0.8, ms: 360, color: _AF.orbit, height: ts * 1.0 }); } catch (e) {} }, i * 140);
+        var clip = _afGlowMesh(new THREE.TorusGeometry(ts * 0.1, ts * 0.02, 6, 18), 0xf0f4ff); clip.position.y = ts * 0.6; F.g.add(clip);
+        var total = 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var snap = _sigEaseOutBack(_sigClamp01((el - 250) / 160)); clip.scale.set(1, Math.max(0.05, snap), 1); clip.rotation.y = el * 0.01;
+            clip.material.opacity = 0.95 * _afEnv(el, 250, 300, 650, total);
+        });
+    }
+    /* ORBITAL STRIKE (the mark, owner only): a thin red designator drops from orbit onto the tile */
+    function _afOrbitalMark3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var beam = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.015, ts * 0.015, ts * 8, 6, 1, true), _AF.laser); beam.position.y = ts * 4; F.g.add(beam);
+        var dot = _afGlowMesh(new THREE.RingGeometry(ts * 0.14, ts * 0.22, 24), _AF.laser, { map: _sigGlowTex() }); dot.rotation.x = -Math.PI / 2; dot.position.y = ts * 0.04; F.g.add(dot);
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 200, 1200, total); beam.material.opacity = 0.75 * k * (0.7 + 0.3 * Math.sin(el * 0.05)); dot.material.opacity = 0.9 * k; dot.scale.setScalar(1 + 0.2 * Math.sin(el * 0.02));
+        });
+    }
+    /* ORBITAL STRIKE (the detonation): four designators converge, the satellite glints, the lance comes down */
+    function _afOrbital3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = r || 1, lasers = [];
+        for (var i = 0; i < 4; i++) {
+            var a = i * Math.PI / 2 + Math.PI / 4, l = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.015, ts * 0.015, ts * 9, 6, 1, true), _AF.laser);
+            var hold = new THREE.Group(); hold.position.set(Math.cos(a) * ts * rad * 1.2, 0, Math.sin(a) * ts * rad * 1.2); l.position.y = ts * 4.5; hold.add(l); F.g.add(hold); lasers.push({ h: hold, a: a, l: l });
+        }
+        var sat = _finSprite(0xffffff, _afStarTex(4), ts * 0.6, 165); sat.position.y = ts * 6; F.g.add(sat);
+        var lanced = false, total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var c = _sigEaseInCubic(_sigClamp01(el / 850));
+            for (var i = 0; i < lasers.length; i++) { var L = lasers[i]; L.h.position.set(Math.cos(L.a) * ts * rad * 1.2 * (1 - c), 0, Math.sin(L.a) * ts * rad * 1.2 * (1 - c)); L.l.material.opacity = 0.8 * _afEnv(el, 0, 150, 950, 1100); }
+            sat.material.opacity = 0.95 * _afEnv(el, 700, 850, 950, 1100); sat.material.rotation = el * 0.004;
+            if (el >= 1000 && !lanced) {
+                lanced = true;
+                try { _sigLightPillar3D(tx, ty, { height: 1100, radius: ts * (0.5 + rad * 0.35), ms: 800, color: 0x9ad8ff, coreColor: 0xffffff }); } catch (e) {}
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * (rad + 1.4), ms: 520, color: 0xbfe8ff }); } catch (e) {}
+                _shake('hard');
+            }
+        });
+    }
+
+    /* ── FIREFIGHTER ── */
+    /* FIREMAN'S CARRY: hi-vis bands flash round both bodies as they trade places through the smoke */
+    function _afCarry3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var other = (o && o.fromX != null) ? { x: o.fromX, y: o.fromY } : null;
+        var spots = other ? [{ x: tx, y: ty }, other] : [{ x: tx, y: ty }], groups = [];
+        for (var s = 0; s < spots.length; s++) {
+            if (_afFogHides(spots[s].x, spots[s].y)) continue;
+            _afRecipe('sigFiremansCarry_swap', spots[s].x, spots[s].y);
+            var F = _nrvFrame(spots[s].x, spots[s].y), ts = F.ts, bands = [];
+            for (var b = 0; b < 2; b++) { var m = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.3, ts * 0.05, 24, 1, true), b ? 0xd8dce4 : _AF.hivis); m.position.y = ts * (0.45 + b * 0.22); F.g.add(m); bands.push(m); }
+            groups.push(_sigRunOwned(F.g, 1100, (function (bands) { return function (el) { for (var i = 0; i < bands.length; i++) { bands[i].material.opacity = 0.8 * _afEnv(el, i * 80, i * 80 + 120, 600, 1100) * (Math.floor(el / 90) % 2 ? 1 : 0.4); bands[i].rotation.y = el * 0.004; } }; })(bands)));
+        }
+        return groups[0];
+    }
+    /* HALLIGAN BREACH: the bar's fork drives in and pries — the splinters fly */
+    function _afHalligan3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var pivot = new THREE.Group(); pivot.position.set(ln.ux * ts * 0.45, ts * 0.6, ln.uz * ts * 0.45); pivot.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(pivot);
+        var steel = _finBasic(0x9aa0aa, { opacity: 0 }); steel.transparent = true;
+        var bar = new THREE.Group(); pivot.add(bar);
+        var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, ts * 0.8, 8), steel); shaft.rotation.x = Math.PI / 2; bar.add(shaft);
+        for (var s = -1; s <= 1; s += 2) { var prong = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.12, 5), steel); prong.rotation.x = -Math.PI / 2; prong.position.set(s * ts * 0.03, 0, -ts * 0.45); bar.add(prong); }
+        var adze = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.14, ts * 0.04), steel); adze.position.set(0, ts * 0.06, ts * 0.4); bar.add(adze);
+        var total = 1000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var drive = _sigEaseInCubic(_sigClamp01(el / 140)), pry = _sigClamp01((el - 200) / 260);
+            bar.position.z = ts * (0.5 - 0.5 * drive); bar.rotation.x = -0.6 * _sigEaseOutBack(pry);
+            steel.opacity = _afEnv(el, 0, 60, 650, total);
+        });
+    }
+
+    /* ── CLOWN ── */
+    /* PIE IN THE FACE: the pie, spinning, flat into the face; the custard runs */
+    function _afPie3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var pie = new THREE.Group(); F.g.add(pie);
+        var tin = _afSolid(new THREE.CylinderGeometry(ts * 0.2, ts * 0.16, ts * 0.06, 18), 0xd8a050); pie.add(tin);
+        var cream = _afSolid(new THREE.SphereGeometry(ts * 0.19, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), _AF.cream); cream.position.y = ts * 0.03; pie.add(cream);
+        var face = new THREE.Vector3(ln.ux * ts * 0.18, ts * 0.85, ln.uz * ts * 0.18), start = new THREE.Vector3(ln.ux * ts * 0.9, ts * 0.95, ln.uz * ts * 0.9);
+        var drips = [];
+        for (var i = 0; i < 7; i++) { var d = _afSolid(new THREE.SphereGeometry(ts * rn(0.03, 0.05), 8, 6), _AF.cream); F.g.add(d); drips.push({ m: d, x: face.x + rn(-0.15, 0.15) * ts, z: face.z + rn(-0.12, 0.12) * ts, y0: face.y + rn(-0.1, 0.1) * ts, sp: rn(0.6, 1.3) }); }
+        var hitMs = 130, total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / hitMs);
+            pie.position.lerpVectors(start, face, k); pie.rotation.set(Math.PI / 2 * k, Math.atan2(ln.ux, ln.uz), el * 0.02 * (1 - k));
+            var splat = _sigClamp01((el - hitMs) / 120); pie.scale.set(1 + splat * 0.6, 1 - splat * 0.6, 1 + splat * 0.6);
+            tin.material.opacity = cream.material.opacity = _afEnv(el, 0, 40, 700, 1000);
+            for (var i = 0; i < drips.length; i++) {
+                var D = drips[i], t = Math.max(0, el - hitMs);
+                D.m.position.set(D.x, Math.max(ts * 0.05, D.y0 - t * t * 0.0000012 * ts * D.sp), D.z);
+                D.m.material.opacity = (el > hitMs ? 0.95 : 0) * (1 - _sigClamp01((el - 1300) / 400));
+            }
+        });
+    }
+    /* JACK-IN-THE-BOX (the set, owner only): the painted box rises, the crank turns, the lid shuts */
+    function _afJackSet3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var box = _afSolid(new THREE.BoxGeometry(ts * 0.36, ts * 0.36, ts * 0.36), 0xffffff, { map: _afBoxTex() }); F.g.add(box);
+        var crank = _afSolid(new THREE.BoxGeometry(ts * 0.03, ts * 0.16, ts * 0.03), 0xffd020); crank.position.set(ts * 0.2, ts * 0.18, 0); F.g.add(crank);
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            box.position.y = ts * (0.18 * _sigEaseOutBack(_sigClamp01(el / 300)) - 0.2 * (1 - _sigClamp01(el / 300)));
+            crank.rotation.x = el * 0.02; crank.position.y = box.position.y + ts * 0.02;
+            box.material.opacity = crank.material.opacity = _afEnv(el, 0, 120, 900, total) * 0.95;
+        });
+    }
+    /* JACK-IN-THE-BOX (it goes off): the lid bursts, the clown head springs out on its coil, confetti */
+    function _afJackPop3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var box = _afSolid(new THREE.BoxGeometry(ts * 0.36, ts * 0.36, ts * 0.36), 0xffffff, { map: _afBoxTex() }); box.position.y = ts * 0.18; F.g.add(box);
+        var lid = _afSolid(new THREE.BoxGeometry(ts * 0.38, ts * 0.03, ts * 0.38), 0xd8202a); lid.position.y = ts * 0.37; F.g.add(lid);
+        var coil = [], steel = _finBasic(0xc8ccd8, { opacity: 0 }); steel.transparent = true;
+        for (var i = 0; i < 14; i++) { var c = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.025, 6, 4), steel); F.g.add(c); coil.push(c); }
+        var head = new THREE.Group(); F.g.add(head);
+        var skin = _afSolid(new THREE.SphereGeometry(ts * 0.17, 14, 10), 0xfff4ee); head.add(skin);
+        var nose = _afSolid(new THREE.SphereGeometry(ts * 0.05, 10, 8), 0xff1a2a); nose.position.z = ts * 0.17; head.add(nose);
+        var hair = [];
+        for (var h = 0; h < 2; h++) { var hm = _afSolid(new THREE.SphereGeometry(ts * 0.09, 10, 8), 0xff6a1a); hm.position.set((h ? 1 : -1) * ts * 0.16, ts * 0.06, 0); head.add(hm); hair.push(hm); }
+        var pieces = _nrvConfetti(F, 50, ts * 1.6, ts * 1.2, 1200, [0xd8202a, 0xffd020, 0x1a40c0, 0xffffff]);
+        try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * ((r || 1) + 1.2), ms: 480, color: 0xffd020 }); } catch (e) {}
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 30, 1250, total), spring = _sigClamp01(el / 220), bob = Math.sin(el * 0.025) * Math.exp(-el * 0.002);
+            box.material.opacity = lid.material.opacity = k; steel.opacity = k;
+            lid.position.set(ts * 0.3 * spring, ts * (0.37 + 1.0 * spring - 1.6 * spring * spring * 0.5), 0); lid.rotation.z = -spring * 2;
+            var top = ts * (0.36 + 0.9 * _sigEaseOutBack(spring) + 0.18 * bob);
+            for (var i = 0; i < coil.length; i++) { var f = i / (coil.length - 1); coil[i].position.set(Math.cos(f * Math.PI * 8) * ts * 0.07, ts * 0.36 + (top - ts * 0.36) * f, Math.sin(f * Math.PI * 8) * ts * 0.07); }
+            head.position.y = top + ts * 0.14; head.rotation.z = bob * 0.5;
+            skin.material.opacity = nose.material.opacity = k; for (var j = 0; j < hair.length; j++) hair[j].material.opacity = k;
+            _nrvConfettiTick(pieces, el, 1200, ts);
+        });
+    }
+
+    /* ── CRYSTAL GUARDIAN ── */
+    /* GLINT: light bends through the guardian's chest and comes out a four-point star with a rainbow on it */
+    function _afGlint3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rays = [], cols = [0xff4a4a, 0xffa030, 0xffe040, 0x5aff6a, 0x4aa8ff, 0xb05aff];
+        var star = _finSprite(0xffffff, _afStarTex(4), ts * 1.6, 164); star.position.y = ts * 0.85; F.g.add(star);
+        for (var i = 0; i < cols.length; i++) {
+            var m = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.04), cols[i], { map: _sigGlowTex() });
+            var hold = new THREE.Group(); hold.position.y = ts * 0.85; hold.rotation.y = i * 0.5; m.position.x = ts * 0.5; m.rotation.z = (i - 2.5) * 0.08; hold.add(m); F.g.add(hold); rays.push(m);
+        }
+        var total = 700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 60, 260, total);
+            star.material.opacity = 0.95 * k; star.material.rotation = el * 0.003; star.scale.setScalar(ts * (1.0 + 0.8 * _sigEaseOutCubic(_sigClamp01(el / 200))));
+            for (var i = 0; i < rays.length; i++) rays[i].material.opacity = 0.7 * _afEnv(el, 40, 120, 360, total);
+        });
+    }
+    /* CRYSTAL COFFIN: hexagonal quartz grows up round the friend and closes over them */
+    function _afCoffin3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, prisms = [];
+        for (var i = 0; i < 7; i++) {
+            var top = i === 6, a = i * Math.PI / 3, h = top ? ts * 0.4 : ts * rn(0.9, 1.25);
+            var m = new THREE.Mesh(new THREE.CylinderGeometry(ts * (top ? 0.3 : 0.12), ts * (top ? 0.3 : 0.14), h, 6), _finBasic(i % 2 ? _AF.crystal : _AF.prism, { opacity: 0 }));
+            m.material.transparent = true; m.material.depthWrite = false;
+            if (top) m.position.set(0, ts * 1.2, 0); else { m.position.set(Math.cos(a) * ts * 0.3, h / 2, Math.sin(a) * ts * 0.3); m.rotation.z = Math.cos(a) * 0.12; m.rotation.x = -Math.sin(a) * 0.12; }
+            F.g.add(m); prisms.push({ m: m, at: top ? 420 : i * 50, top: top });
+        }
+        var shine = _finSprite(0xffffff, _afStarTex(4), ts * 0.7, 164); shine.position.y = ts * 0.9; F.g.add(shine);
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < prisms.length; i++) {
+                var P = prisms[i], g = _sigEaseOutBack(_sigClamp01((el - P.at) / 260));
+                P.m.scale.set(1, Math.max(0.01, g), 1); P.m.material.opacity = (el > P.at ? 0.4 : 0) * (1 - _sigClamp01((el - 1450) / 450));
+            }
+            shine.material.opacity = 0.9 * _afEnv(el, 650, 720, 820, 1000); shine.material.rotation = el * 0.004;
+        });
+    }
+    /* SHARDSTORM: the shot shatters into spinning quartz that rings off every body near it */
+    function _afShards3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, shards = [];
+        for (var i = 0; i < 14; i++) {
+            var m = new THREE.Mesh(new THREE.OctahedronGeometry(ts * rn(0.05, 0.09), 0), _finBasic(i % 2 ? _AF.crystal : _AF.prism, { opacity: 0 })); m.material.transparent = true;
+            m.scale.y = 2.2; m.position.y = ts * 0.6; F.g.add(m);
+            shards.push({ m: m, v: new THREE.Vector3(rn(-1, 1), rn(0.3, 1.2), rn(-1, 1)).normalize().multiplyScalar(ts * rn(0.012, 0.022)), s: rn(0.1, 0.3) });
+        }
+        var total = 1000;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < shards.length; i++) {
+                var S = shards[i]; S.m.position.add(S.v); S.v.y -= ts * 0.0007; if (S.m.position.y < ts * 0.04) { S.m.position.y = ts * 0.04; S.v.multiplyScalar(0.4); S.v.y = Math.abs(S.v.y); }
+                S.m.rotation.x += S.s; S.m.rotation.y += S.s; S.m.material.opacity = 0.85 * _afEnv(el, 0, 40, 650, total);
+            }
+        });
+    }
+
+    /* ── BEE QUEEN ── */
+    function _afBee(ts, mat, wingMat) {
+        var b = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 6, 4), mat); body.scale.set(1, 0.85, 1.5); b.add(body);
+        for (var s = -1; s <= 1; s += 2) { var w = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.03), wingMat); w.position.set(s * ts * 0.035, ts * 0.03, 0); w.rotation.x = -Math.PI / 2; b.add(w); }
+        return b;
+    }
+    /* THE SWARM: the hive pours out of the queen in a spiral and covers everyone near her */
+    function _afBees3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rr = ts * (Math.max(1, r || 2) + 0.3), bees = [];
+        var mat = _finBasic(_AF.bee, { opacity: 0 }); mat.transparent = true;
+        var wingMat = _sigMat(0xffffff);
+        for (var i = 0; i < 44; i++) { var b = _afBee(ts, mat, wingMat); F.g.add(b); bees.push({ b: b, a: rn(0, Math.PI * 2), r: rn(0.15, 1) * rr, h: rn(0.3, 1.1) * ts, sp: rn(2, 4) * (i % 2 ? 1 : -1), t0: rn(0, 300) }); }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 200, 1500, total); mat.opacity = k; wingMat.opacity = 0.6 * k * (Math.floor(el / 30) % 2 ? 1 : 0.3);
+            for (var i = 0; i < bees.length; i++) {
+                var B = bees[i], out = _sigEaseOutCubic(_sigClamp01((el - B.t0) / 700)), ang = B.a + el * 0.001 * B.sp;
+                B.b.position.set(Math.cos(ang) * B.r * out + rn(-1, 1) * ts * 0.02, ts * 0.6 + (B.h - ts * 0.6) * out + Math.sin(el * 0.02 + i) * ts * 0.05, Math.sin(ang) * B.r * out + rn(-1, 1) * ts * 0.02);
+                B.b.rotation.y = -ang - Math.PI / 2 * Math.sign(B.sp);
+            }
+        });
+    }
+    /* A THOUSAND STINGS: the honeycomb lights under the target and the stingers come in from all sides */
+    function _afStings3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigThousandStings:' + tx + ',' + ty, 2200)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var comb = _afGlowMesh(new THREE.PlaneGeometry(ts * 1.4, ts * 1.4), _AF.honey, { map: _afHoneyTex() }); comb.rotation.x = -Math.PI / 2; comb.position.y = ts * 0.04; F.g.add(comb);
+        var stings = [], mat = _finBasic(0x2a1a0a, { opacity: 0 }); mat.transparent = true;
+        for (var i = 0; i < 12; i++) {
+            var a = i * 2.4, dir = new THREE.Vector3(Math.cos(a), rn(-0.2, 0.5), Math.sin(a)).normalize();
+            var m = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.015, ts * 0.14, 5), mat); F.g.add(m);
+            var tip = _finSprite(_AF.bee, _sigGlowTex(), ts * 0.12, 163); F.g.add(tip);
+            m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().negate());
+            stings.push({ m: m, tip: tip, dir: dir, at: i * 90 });
+        }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            comb.material.opacity = 0.6 * _afEnv(el, 0, 200, 1300, total); comb.rotation.z = el * 0.0004;
+            mat.opacity = _afEnv(el, 0, 60, 1300, total);
+            for (var i = 0; i < stings.length; i++) {
+                var S = stings[i], k = _sigClamp01((el - S.at) / 130), d = ts * (1.3 - 1.1 * k);
+                S.m.position.set(S.dir.x * d, ts * 0.6 + S.dir.y * d, S.dir.z * d); S.tip.position.copy(S.m.position);
+                S.tip.material.opacity = (el > S.at && k < 1 ? 0.9 : 0);
+                S.m.visible = el > S.at && el < S.at + 400;
+            }
+        });
+    }
+
+    /* ── DEEP SEA FISH ── */
+    /* LURE: the glowing bulb on its stalk sways over the angler; a light line reaches the prey */
+    function _afLure3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var from = _afCaster(tx, ty, o); if (from.fogged) return null;
+        var F = _nrvFrame(from.x, from.y), ts = F.ts, to = _afTo(F, tx, ty);
+        var dir = new THREE.Vector3(to.x, 0, to.z).normalize();
+        var curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-dir.x * ts * 0.1, ts * 0.9, -dir.z * ts * 0.1), new THREE.Vector3(-dir.x * ts * 0.1, ts * 1.6, -dir.z * ts * 0.1), new THREE.Vector3(dir.x * ts * 0.45, ts * 1.45, dir.z * ts * 0.45));
+        var stalk = _afSolid(new THREE.TubeGeometry(curve, 12, ts * 0.018, 5, false), 0x1a3a4a); F.g.add(stalk);
+        var bulb = _finSprite(_AF.lure, _sigGlowTex(), ts * 0.5, 164), core = _finSprite(0xffffff, _sigGlowTex(), ts * 0.16, 165);
+        F.g.add(bulb); F.g.add(core);
+        var line = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 5, 1, true), _AF.lure); F.g.add(line);
+        var tip = curve.getPoint(1), tgt = new THREE.Vector3(to.x, to.y + ts * 0.7, to.z), total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 200, 1300, total), sway = Math.sin(el * 0.006) * ts * 0.06;
+            stalk.material.opacity = k; bulb.position.set(tip.x + sway, tip.y + Math.sin(el * 0.004) * ts * 0.03, tip.z); core.position.copy(bulb.position);
+            bulb.material.opacity = 0.9 * k * (0.75 + 0.25 * Math.sin(el * 0.012)); core.material.opacity = 0.95 * k;
+            var reach = _sigClamp01((el - 150) / 300), mid = new THREE.Vector3().lerpVectors(bulb.position, tgt, 0.5 * reach), len = bulb.position.distanceTo(tgt) * reach;
+            line.position.copy(mid); line.scale.set(1, Math.max(1, len), 1); line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(tgt, bulb.position).normalize());
+            line.material.opacity = 0.6 * _afEnv(el, 150, 260, 900, 1200);
+        });
+    }
+    /* ABYSS JAWS: the needle-toothed jaws come up out of the black water and shut */
+    function _afJaws3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, toothM = _finBasic(0xe8f0f4, { opacity: 0 }); toothM.transparent = true;
+        var gumM = _finBasic(0x0a1620, { opacity: 0 }); gumM.transparent = true;
+        var jaws = [];
+        for (var j = 0; j < 2; j++) {
+            var g = new THREE.Group(), up = j === 1; F.g.add(g);
+            var gum = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.06, 6, 20, Math.PI), gumM); gum.rotation.x = Math.PI / 2; g.add(gum);
+            for (var t = 0; t < 11; t++) {
+                var a = t / 10 * Math.PI, th = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.025, ts * rn(0.18, 0.32), 4), toothM);
+                th.position.set(Math.cos(a) * ts * 0.42, 0, Math.sin(a) * ts * 0.42); th.rotation.x = up ? Math.PI : 0; th.position.y = up ? -ts * 0.1 : ts * 0.1; g.add(th);
+            }
+            jaws.push({ g: g, up: up });
+        }
+        var shut = 330, total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 80, 900, total); toothM.opacity = gumM.opacity = k;
+            var rise = _sigEaseOutCubic(_sigClamp01(el / 200)), close = _sigEaseInCubic(_sigClamp01((el - 180) / (shut - 180)));
+            for (var i = 0; i < jaws.length; i++) {
+                var J = jaws[i]; J.g.position.y = J.up ? ts * (1.4 - 0.75 * close) : ts * (-0.4 + 0.5 * rise);
+                J.g.rotation.y = J.up ? Math.PI : 0; J.g.position.z = J.up ? ts * 0.0 : 0;
+            }
+        });
+    }
+
+    function _afEaseIO(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+    /* ── ANUNNAKI ── */
+    /* KNEEL: the winged disk opens overhead and gold rings press down on everyone under it */
+    function _afKneel3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1);
+        var disk = _afGlowMesh(new THREE.PlaneGeometry(ts * 2.4, ts * 1.2), _AF.gold, { map: _afWingDiskTex() }); disk.position.y = ts * 2.6; F.g.add(disk);
+        var rings = [];
+        for (var i = 0; i < 3; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * (rad * 2 + 1.2), ts * (rad * 2 + 1.2)), _AF.gold, { map: _sigRingTex() }); m.rotation.x = -Math.PI / 2; F.g.add(m); rings.push({ m: m, at: 250 + i * 220 }); }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            disk.material.opacity = 0.85 * _afEnv(el, 0, 250, 1200, total); disk.scale.x = 0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(el / 350));
+            disk.position.y = ts * (2.6 + Math.sin(el * 0.004) * 0.06);
+            for (var i = 0; i < rings.length; i++) {
+                var R = rings[i], k = _sigClamp01((el - R.at) / 420);
+                R.m.position.y = ts * (2.3 - 2.25 * _sigEaseInCubic(k)); R.m.scale.setScalar(1 - 0.15 * k);
+                R.m.material.opacity = (el > R.at && k < 1 ? 0.7 : 0) * (1 - 0.4 * k);
+            }
+            if (el > 1000 && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
+        });
+    }
+    /* ENLIL'S DELUGE: a storm cloud gathers over the target and the rain comes down in sheets */
+    function _afDeluge3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, puffs = [], drops = [];
+        for (var i = 0; i < 9; i++) { var p = _afDarkSprite(_AF.storm, _sigGlowTex(), ts * rn(0.7, 1.1)); p.position.set(rn(-1, 1) * ts * 0.9, ts * rn(2.3, 2.6), rn(-1, 1) * ts * 0.9); F.g.add(p); puffs.push(p); }
+        var dropMat = _sigMat(0xa8d8ff);
+        for (var j = 0; j < 40; j++) { var d = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.015, ts * 0.22), dropMat); d.position.set(rn(-1.4, 1.4) * ts, rn(0, 2.3) * ts, rn(-1.4, 1.4) * ts); d.rotation.y = rn(0, Math.PI); F.g.add(d); drops.push({ m: d, sp: rn(0.05, 0.08) }); }
+        var flash = _finSprite(0xdfeaff, _sigGlowTex(), ts * 1.6, 160); flash.position.y = ts * 2.4; F.g.add(flash);
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 250, 1450, total);
+            for (var i = 0; i < puffs.length; i++) { puffs[i].material.opacity = 0.75 * k; puffs[i].position.x += Math.sin(el * 0.002 + i) * ts * 0.002; }
+            dropMat.opacity = 0.55 * _afEnv(el, 200, 350, 1450, total);
+            for (var j = 0; j < drops.length; j++) { var D = drops[j]; D.m.position.y -= ts * D.sp; if (D.m.position.y < 0) D.m.position.y += ts * 2.3; }
+            flash.material.opacity = (el > 300 && el < 380) || (el > 900 && el < 960) ? 0.6 : 0;
+        });
+    }
+
+    /* ── DJINN ── */
+    /* LAMP SMOKE: the brass lamp tips and blue smoke spirals out over the area */
+    function _afLamp3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1), lamp = new THREE.Group(); F.g.add(lamp);
+        var bowl = _afSolid(new THREE.SphereGeometry(ts * 0.16, 14, 8), _AF.brass); bowl.scale.set(1.4, 0.6, 1); lamp.add(bowl);
+        var spout = _afSolid(new THREE.ConeGeometry(ts * 0.04, ts * 0.26, 8), _AF.brass); spout.rotation.z = -Math.PI / 2.4; spout.position.set(ts * 0.24, ts * 0.05, 0); lamp.add(spout);
+        var lid = _afSolid(new THREE.ConeGeometry(ts * 0.06, ts * 0.1, 8), _AF.brass); lid.position.y = ts * 0.12; lamp.add(lid);
+        lamp.position.y = ts * 1.5;
+        var puffs = [];
+        for (var i = 0; i < 26; i++) { var p = _finSprite(_AF.smoke, _sigGlowTex(), ts * rn(0.3, 0.55), 158); F.g.add(p); puffs.push({ s: p, t0: i * 40, a: i * 0.7 }); }
+        var total = 2000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 200, 1500, total); bowl.material.opacity = spout.material.opacity = lid.material.opacity = k;
+            lamp.rotation.z = -0.5 * _sigEaseOutCubic(_sigClamp01(el / 400)); lamp.rotation.y = el * 0.0015;
+            for (var i = 0; i < puffs.length; i++) {
+                var P = puffs[i], t = _sigClamp01((el - P.t0) / 1100), rr = ts * (0.3 + rad * t), a = P.a + t * 4;
+                P.s.position.set(Math.cos(a) * rr, ts * (1.5 - 1.1 * t), Math.sin(a) * rr);
+                P.s.material.opacity = (el > P.t0 ? 0.5 : 0) * (1 - t) * k;
+            }
+        });
+    }
+    /* TWISTED WISH: the wish is granted in gold stars — and then every star cracks */
+    function _afWish3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, stars = [];
+        for (var i = 0; i < 7; i++) { var s = _finSprite(_AF.gold, _afStarTex(5), ts * 0.3, 163); F.g.add(s); stars.push({ s: s, a: i * Math.PI * 2 / 7, v: null }); }
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var crack = el > 650;
+            for (var i = 0; i < stars.length; i++) {
+                var S = stars[i], a = S.a + el * 0.003;
+                if (!crack) { S.s.position.set(Math.cos(a) * ts * 0.55, ts * (0.9 + Math.sin(el * 0.006 + i) * 0.1), Math.sin(a) * ts * 0.55); S.s.material.color.set(_AF.gold); }
+                else { if (!S.v) S.v = new THREE.Vector3(Math.cos(a), -0.3, Math.sin(a)).multiplyScalar(ts * 0.01); S.s.position.add(S.v); S.v.y -= ts * 0.001; S.s.material.color.set(0x6a3ac0); }
+                S.s.material.opacity = 0.9 * _afEnv(el, 0, 150, 900, total) * (crack && Math.floor(el / 50) % 2 ? 0.4 : 1);
+                S.s.material.rotation = crack ? el * 0.02 : 0;
+            }
+        });
+    }
+
+    /* ── CYCLOPS ── */
+    /* BELLOW: the great eye opens over the cyclops and the roar goes out in rings */
+    function _afBellow3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1);
+        var eye = _afDarkSprite(0xffffff, _afEyeTex('cyclops', '#d8a020', false), ts * 0.9); eye.position.y = ts * 2.0; F.g.add(eye);
+        for (var i = 0; i < 4; i++) _fxDelay(function () { try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * (rad + 1.2), ms: 420, color: 0xffe0a0, height: ts * 0.9 }); } catch (e) {} }, 200 + i * 150);
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 220));
+            eye.scale.set(ts * 0.9, ts * 0.9 * Math.max(0.05, open), 1); eye.material.opacity = 0.95 * _afEnv(el, 0, 80, 950, total);
+            if (el > 200 && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
+        });
+    }
+    /* FORGED THUNDERBOLT (owns the line): the javelin, orange from the forge, white by the end, lightning off it */
+    function _afLineFogged(tiles, recipe) {
+        for (var i = 0; i < tiles.length; i++) if (!_afFogHides(tiles[i].x, tiles[i].y)) _afRecipe(recipe, tiles[i].x, tiles[i].y);
+    }
+    function _afThunderbolt3D(fromX, fromY, tiles, params) {
+        if (_catOff('spells') || !tiles || !tiles.length) return null;
+        if (_afFogHides(fromX, fromY)) { _afLineFogged(tiles, 'sigForgedThunderbolt_tile'); return null; }
+        var end = tiles[tiles.length - 1], F = _nrvFrame(fromX, fromY), ts = F.ts, to = _afTo(F, end.x, end.y);
+        var start = new THREE.Vector3(0, ts * 1.2, 0), stop = new THREE.Vector3(to.x, to.y + ts * 0.7, to.z), dir = new THREE.Vector3().subVectors(stop, start).normalize();
+        var jav = new THREE.Group(); jav.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); F.g.add(jav);
+        var shaft = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.9, 6), _AF.meteor); jav.add(shaft);
+        var tip = _afGlowMesh(new THREE.ConeGeometry(ts * 0.06, ts * 0.22, 6), 0xffffff); tip.position.y = ts * 0.55; jav.add(tip);
+        var glow = _finSprite(0xffc060, _sigGlowTex(), ts * 0.6, 162); F.g.add(glow);
+        var flyMs = Math.max(160, Math.min(360, 60 + tiles.length * 45)), total = flyMs + 500;
+        for (var i = 0; i < tiles.length; i++) (function (t, at) { _fxDelay(function () { _afRecipe('sigForgedThunderbolt_tile', t.x, t.y); }, at); })(tiles[i], flyMs * (i + 1) / tiles.length);
+        var lt = _LT(), sparked = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / flyMs); jav.position.lerpVectors(start, stop, k); glow.position.copy(jav.position);
+            var c = new THREE.Color(_AF.meteor).lerp(new THREE.Color(0xffffff), k); shaft.material.color.copy(c);
+            shaft.material.opacity = tip.material.opacity = k < 1 ? 0.95 : 0; glow.material.opacity = 0.8 * _afEnv(el, 0, 40, flyMs, flyMs + 300);
+            if (lt && sparked < 3 && el > sparked * flyMs / 3) {
+                sparked++;
+                var p = jav.position.clone().add(F.g.position);
+                try { lt.bolt({ x: p.x, y: p.y, z: p.z }, { x: p.x + rn(-1, 1) * ts * 0.6, y: F.g.position.y + ts * 0.05, z: p.z + rn(-1, 1) * ts * 0.6 }, { segments: 5, jitter: 0.4, coreWidth: 2, glowWidth: 6, durationMs: 140, color: 0xffd890 }); } catch (e) {}
+            }
+        });
+    }
+
+    /* ── CYBORG ── */
+    /* GRAPPLE ARM: the forearm vents steam as the claw goes out */
+    function _afGrapple3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var from = _afCaster(tx, ty, o); if (from.fogged) return null;
+        var F = _nrvFrame(from.x, from.y), ts = F.ts, puffs = [];
+        for (var i = 0; i < 10; i++) { var p = _finSprite(0xe8eef4, _sigGlowTex(), ts * rn(0.15, 0.28), 158); p.position.set(rn(-0.2, 0.2) * ts, ts * 0.9, rn(-0.2, 0.2) * ts); F.g.add(p); puffs.push({ s: p, v: new THREE.Vector3(rn(-1, 1), rn(0.5, 1.5), rn(-1, 1)).multiplyScalar(ts * 0.006) }); }
+        var total = 1000;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < puffs.length; i++) { puffs[i].s.position.add(puffs[i].v); puffs[i].s.scale.multiplyScalar(1.01); puffs[i].s.material.opacity = 0.45 * _afEnv(el, 0, 60, 300, total); }
+        });
+    }
+    /* PILEDRIVER: the piston fist comes down twice, steam blowing off the cylinder */
+    function _afPiston3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigPiledriver:' + tx + ',' + ty, 1500)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, steel = _finBasic(_AF.chrome, { opacity: 0 }); steel.transparent = true;
+        var ram = new THREE.Group(); F.g.add(ram);
+        var cyl = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.16, ts * 0.5, 14), steel); cyl.position.y = ts * 0.45; ram.add(cyl);
+        var head = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.24, ts * 0.24, ts * 0.12, 14), steel); ram.add(head);
+        var steam = [];
+        for (var i = 0; i < 8; i++) { var s = _finSprite(0xffffff, _sigGlowTex(), ts * 0.25, 158); F.g.add(s); steam.push({ s: s, a: i * Math.PI / 4 }); }
+        var hits = [200, 520], total = 1200;
+        return _sigRunOwned(F.g, total, function (el) {
+            steel.opacity = _afEnv(el, 0, 80, 900, total);
+            var y = ts * 1.6;
+            for (var h = 0; h < hits.length; h++) { var t = el - hits[h]; if (t > -170 && t < 140) y = t < 0 ? ts * (0.12 + 1.5 * (-t / 170) * (-t / 170)) : ts * (0.12 + 0.7 * (t / 140)); }
+            ram.position.y = y;
+            for (var j = 0; j < steam.length; j++) {
+                var S = steam[j], since = el - hits[0], k = _sigClamp01(since / 500);
+                S.s.position.set(Math.cos(S.a) * ts * (0.25 + k * 0.8), ts * (0.1 + k * 0.3), Math.sin(S.a) * ts * (0.25 + k * 0.8));
+                S.s.material.opacity = since > 0 ? 0.5 * (1 - k) + (el > hits[1] && el < hits[1] + 200 ? 0.3 : 0) : 0;
+            }
+            for (var q = 0; q < hits.length; q++) if (el >= hits[q] && !F.g.userData['h' + q]) { F.g.userData['h' + q] = true; _shake(q ? 'hard' : 'normal'); try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 1.1, ms: 300, color: 0xd8e0ea }); } catch (e) {} }
+        });
+    }
+
+    /* ── DEMON PRINCE ── */
+    /* USURP: a crown of hellfire lifts off the victim's head and flies to the prince */
+    function _afUsurp3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), to = _afTo(F, from.x, from.y);
+        var crown = new THREE.Group(); F.g.add(crown);
+        var band = _afSolid(new THREE.TorusGeometry(ts * 0.16, ts * 0.025, 6, 20), _AF.blood); band.rotation.x = Math.PI / 2; crown.add(band);
+        var spikes = [];
+        for (var i = 0; i < 6; i++) { var sp = _afSolid(new THREE.ConeGeometry(ts * 0.035, ts * 0.14, 5), _AF.hell); var a = i * Math.PI / 3; sp.position.set(Math.cos(a) * ts * 0.16, ts * 0.07, Math.sin(a) * ts * 0.16); crown.add(sp); spikes.push(sp); }
+        var halo = _finSprite(_AF.ember, _sigGlowTex(), ts * 0.6, 160); crown.add(halo);
+        var a0 = new THREE.Vector3(0, ts * 1.15, 0), a1 = new THREE.Vector3(to.x, to.y + ts * 1.15, to.z), total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var lift = _sigClamp01(el / 300), fly = _afEaseIO(_sigClamp01((el - 350) / 600));
+            var p = el < 350 ? new THREE.Vector3(0, ts * (1.0 + 0.3 * lift), 0) : _afArc(new THREE.Vector3(0, ts * 1.3, 0), a1, ts * 0.8, fly);
+            crown.position.copy(p); crown.rotation.y = el * 0.006;
+            var k = _afEnv(el, 0, 120, 1050, total) * (0.8 + 0.2 * Math.sin(el * 0.05));
+            band.material.opacity = k; for (var i = 0; i < spikes.length; i++) spikes[i].material.opacity = k; halo.material.opacity = 0.6 * k;
+        });
+    }
+    /* THRONE OF ASHES: the black throne rises out of a ring of hellfire */
+    function _afThrone3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 2), th = new THREE.Group(); F.g.add(th);
+        var parts = [[ts * 0.7, ts * 0.12, ts * 0.6, 0, ts * 0.35, 0], [ts * 0.7, ts * 1.0, ts * 0.1, 0, ts * 0.8, -ts * 0.28], [ts * 0.1, ts * 0.3, ts * 0.6, -ts * 0.32, ts * 0.5, 0], [ts * 0.1, ts * 0.3, ts * 0.6, ts * 0.32, ts * 0.5, 0]];
+        var mats = [];
+        for (var i = 0; i < parts.length; i++) { var P = parts[i], m = _afSolid(new THREE.BoxGeometry(P[0], P[1], P[2]), _AF.ash); m.position.set(P[3], P[4], P[5]); th.add(m); mats.push(m.material); }
+        for (var s = 0; s < 3; s++) { var sp = _afSolid(new THREE.ConeGeometry(ts * 0.05, ts * 0.25, 5), _AF.ash); sp.position.set((s - 1) * ts * 0.25, ts * 1.4, -ts * 0.28); th.add(sp); mats.push(sp.material); }
+        var flames = [];
+        for (var f = 0; f < 18; f++) { var fl = _finSprite(_AF.hell, _sigGlowTex(), ts * 0.4, 160); var a = f * Math.PI / 9; fl.position.set(Math.cos(a) * ts * rad, ts * 0.25, Math.sin(a) * ts * rad); F.g.add(fl); flames.push(fl); }
+        var total = 2000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01((el - 200) / 600)), k = _afEnv(el, 0, 250, 1500, total);
+            th.position.y = -ts * 1.5 * (1 - up); th.position.z = ts * 1.1;
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = k;
+            for (var j = 0; j < flames.length; j++) { flames[j].material.opacity = 0.7 * k * (0.7 + 0.3 * Math.sin(el * 0.02 + j)); flames[j].scale.y = ts * (0.4 + 0.25 * Math.sin(el * 0.015 + j * 2)); }
+        });
+    }
+
+    /* ── DEMON PRINCESS ── */
+    /* INFERNAL WALTZ: the two of them turn in a skirt of embers and change places */
+    function _afWaltz3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var other = (o && o.fromX != null) ? { x: o.fromX, y: o.fromY } : null, spots = other ? [{ x: tx, y: ty }, other] : [{ x: tx, y: ty }], first = null;
+        for (var s = 0; s < spots.length; s++) {
+            if (_afFogHides(spots[s].x, spots[s].y)) continue;
+            _afRecipe('sigInfernalWaltz_swap', spots[s].x, spots[s].y);
+            var F = _nrvFrame(spots[s].x, spots[s].y), ts = F.ts, embers = [];
+            for (var i = 0; i < 16; i++) { var e = _finSprite(i % 2 ? _AF.ember : _AF.vixen, _sigGlowTex(), ts * 0.12, 161); F.g.add(e); embers.push({ s: e, a: i * Math.PI / 8 }); }
+            var run = _sigRunOwned(F.g, 1200, (function (embers, ts) { return function (el) {
+                for (var i = 0; i < embers.length; i++) { var E = embers[i], a = E.a + el * 0.008, rr = ts * (0.35 + 0.12 * Math.sin(el * 0.01)); E.s.position.set(Math.cos(a) * rr, ts * (0.15 + 0.1 * Math.sin(a * 2)), Math.sin(a) * rr); E.s.material.opacity = 0.85 * _afEnv(el, 0, 150, 800, 1200); }
+            }; })(embers, ts));
+            if (!first) first = run;
+        }
+        return first;
+    }
+    /* LAST DANCE: a spiral of rose petals round the partner, a red ribbon tightening */
+    function _afLastDance3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigLastDance:' + tx + ',' + ty, 1500)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, petals = [];
+        for (var i = 0; i < 22; i++) { var p = _afSolid(new THREE.CircleGeometry(ts * 0.05, 6), i % 3 ? _AF.blood : _AF.vixen, { side: THREE.DoubleSide }); p.scale.y = 0.55; F.g.add(p); petals.push({ m: p, a: i * 0.6, h: i / 22 }); }
+        var ribbon = _afGlowMesh(new THREE.TorusGeometry(ts * 0.5, ts * 0.02, 6, 30), _AF.blood); ribbon.rotation.x = Math.PI / 2; F.g.add(ribbon);
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 150, 1100, total), t = _sigClamp01(el / 1200);
+            for (var i = 0; i < petals.length; i++) { var P = petals[i], a = P.a + el * 0.006, rr = ts * (0.7 - 0.35 * t); P.m.position.set(Math.cos(a) * rr, ts * (0.2 + P.h * 1.2), Math.sin(a) * rr); P.m.rotation.set(el * 0.01 + i, a, 0); P.m.material.opacity = k; }
+            ribbon.scale.setScalar(1 - 0.5 * t); ribbon.position.y = ts * 0.7; ribbon.material.opacity = 0.8 * k;
+        });
+    }
+
+    /* ── DREAM EATER ── */
+    /* COUNTING SHEEP: a fence stands up and the sheep hop it, one, two, three — Z's drift off the sleepers */
+    function _afSheep3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, wood = _finBasic(0xb08a5a, { opacity: 0 }); wood.transparent = true;
+        var fence = new THREE.Group(); F.g.add(fence);
+        for (var p = -1; p <= 1; p += 2) { var post = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.4, ts * 0.05), wood); post.position.set(p * ts * 0.3, ts * 0.2, 0); fence.add(post); }
+        for (var b = 0; b < 2; b++) { var rail = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.7, ts * 0.04, ts * 0.03), wood); rail.position.y = ts * (0.15 + b * 0.17); fence.add(rail); }
+        var sheep = [];
+        for (var i = 0; i < 3; i++) {
+            var sh = new THREE.Group(), wool = _afSolid(new THREE.SphereGeometry(ts * 0.13, 10, 8), _AF.wool); wool.scale.set(1, 0.85, 1.3); sh.add(wool);
+            var face = _afSolid(new THREE.SphereGeometry(ts * 0.06, 8, 6), 0x2a2a2a); face.position.set(0, ts * 0.05, ts * 0.15); sh.add(face);
+            F.g.add(sh); sheep.push({ g: sh, at: 250 + i * 330, mats: [wool.material, face.material] });
+        }
+        var zs = [];
+        for (var z = 0; z < 4; z++) { var zt = _finTextSprite('Z', { ink: '#d8c8ff', fontPx: 120, w: 128, h: 128, spriteW: ts * 0.3, opacity: 0 }); F.g.add(zt); zs.push({ s: zt, at: 600 + z * 220, x: rn(-1, 1) * ts * (r || 1) * 0.6 }); }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            wood.opacity = _afEnv(el, 0, 150, 1500, total);
+            for (var i = 0; i < sheep.length; i++) {
+                var S = sheep[i], k = _sigClamp01((el - S.at) / 420);
+                S.g.position.set(0, ts * (0.13 + 0.45 * Math.sin(k * Math.PI)), ts * (-0.6 + 1.2 * k)); S.g.rotation.x = -0.4 * Math.cos(k * Math.PI);
+                var o = el > S.at && k < 1 ? 1 : 0; S.mats[0].opacity = S.mats[1].opacity = o;
+            }
+            for (var j = 0; j < zs.length; j++) { var Z = zs[j], t = _sigClamp01((el - Z.at) / 900); Z.s.position.set(Z.x + Math.sin(t * 6) * ts * 0.1, ts * (1.0 + t * 0.9), 0); Z.s.material.opacity = el > Z.at ? 0.9 * (1 - t) : 0; }
+        });
+    }
+    /* DEVOUR THE DREAM: the dream comes out of the sleeper in bubbles and is swallowed into a dark swirl */
+    function _afDevour3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigDevourTheDream:' + tx + ',' + ty, 1500)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, bubbles = [];
+        for (var i = 0; i < 14; i++) { var b = _finSprite(i % 2 ? _AF.dream : _AF.pink, _sigRingTex(), ts * rn(0.12, 0.22), 162); F.g.add(b); bubbles.push({ s: b, a: rn(0, Math.PI * 2), at: i * 50 }); }
+        var vortex = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _AF.void, { map: _sigRingTex() }); vortex.rotation.x = -Math.PI / 2; vortex.position.y = ts * 1.7; F.g.add(vortex);
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            vortex.material.opacity = 0.75 * _afEnv(el, 0, 200, 1100, total); vortex.rotation.z = el * 0.01;
+            for (var i = 0; i < bubbles.length; i++) {
+                var B = bubbles[i], t = _sigClamp01((el - B.at) / 900), a = B.a + t * 6, rr = ts * 0.3 * (1 - t);
+                B.s.position.set(Math.cos(a) * rr, ts * (0.8 + 0.9 * t), Math.sin(a) * rr); B.s.material.opacity = el > B.at ? 0.8 * (1 - t * t) : 0;
+            }
+        });
+    }
+
+    /* ── FALLEN ANGEL ── */
+    /* FORSAKEN: a cracked halo drops onto the target and breaks */
+    function _afForsaken3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, halves = [];
+        for (var h = 0; h < 2; h++) { var m = _afGlowMesh(new THREE.TorusGeometry(ts * 0.22, ts * 0.025, 6, 16, Math.PI * 0.95), _AF.gold); m.rotation.x = Math.PI / 2; m.rotation.z = h * Math.PI; F.g.add(m); halves.push(m); }
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var drop = _sigEaseInCubic(_sigClamp01(el / 450)), split = _sigClamp01((el - 450) / 500);
+            for (var i = 0; i < halves.length; i++) {
+                var s = i ? 1 : -1; halves[i].position.set(s * ts * 0.3 * split, ts * (1.9 - 0.75 * drop - 0.9 * split * split), 0); halves[i].rotation.y = s * split * 0.8;
+                halves[i].material.color.set(split > 0 ? 0x8a7a6a : _AF.gold); halves[i].material.opacity = 0.9 * _afEnv(el, 0, 120, 900, total);
+            }
+        });
+    }
+    /* MORNING STAR: a burning star falls out of the sky in a quarter-second and bursts on the area */
+    function _afMorningStar3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, fallMs = 280;
+        var star = _finSprite(0xffffff, _afStarTex(4), ts * 0.8, 165), halo = _finSprite(_AF.ember, _sigGlowTex(), ts * 1.0, 164);
+        F.g.add(star); F.g.add(halo);
+        var trail = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.12, 1, 8, 1, true), _AF.ember); F.g.add(trail);
+        var top = new THREE.Vector3(-ts * 1.5, ts * 6, -ts * 1.5), done = false, total = fallMs + 700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigEaseInCubic(_sigClamp01(el / fallMs)), p = new THREE.Vector3().lerpVectors(top, new THREE.Vector3(0, ts * 0.3, 0), k);
+            star.position.copy(p); halo.position.copy(p); star.material.rotation = el * 0.02;
+            star.material.opacity = halo.material.opacity = el < fallMs ? 0.95 : 0;
+            var mid = new THREE.Vector3().lerpVectors(top, p, 0.5); trail.position.copy(mid); trail.scale.set(1, Math.max(1, top.distanceTo(p)), 1);
+            trail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(top, p).normalize());
+            trail.material.opacity = el < fallMs ? 0.6 : 0.6 * (1 - _sigClamp01((el - fallMs) / 200));
+            if (el >= fallMs && !done) {
+                done = true; _shake('hard');
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * ((r || 1) + 1.3), ms: 480, color: 0xffd08a }); } catch (e) {}
+                try { _sigLightPillar3D(tx, ty, { height: 500, radius: ts * 0.6, ms: 500, color: _AF.ember, coreColor: 0xffffff }); } catch (e) {}
+            }
+        });
+    }
+
+    /* ── WRAITH ── */
+    /* WITHER STARLIGHT: a ring of little stars round the target, going out one by one */
+    function _afWither3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, stars = [];
+        for (var i = 0; i < 9; i++) { var s = _finSprite(_AF.star, _afStarTex(4), ts * 0.22, 163); var a = i * Math.PI * 2 / 9; s.position.set(Math.cos(a) * ts * 0.5, ts * (0.9 + 0.15 * Math.sin(a * 3)), Math.sin(a) * ts * 0.5); F.g.add(s); stars.push({ s: s, out: 300 + i * 100 }); }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < stars.length; i++) {
+                var S = stars[i], k = _sigClamp01((el - S.out) / 180);
+                S.s.material.opacity = 0.9 * _afEnv(el, 0, 150, S.out, S.out + 180); S.s.scale.setScalar(ts * 0.22 * (1 - 0.7 * k)); S.s.material.color.set(k > 0 ? 0x6a6a90 : _AF.star);
+            }
+        });
+    }
+    /* LAST LIGHT (beside the stitched line): the dying star at the wraith's hand, flaring white then gone */
+    function _afLastLight3D(fromX, fromY) {
+        if (_catOff('spells') || _afFogHides(fromX, fromY)) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts, star = _finSprite(0xffffff, _afStarTex(4), ts * 0.6, 164), halo = _finSprite(_AF.void, _sigGlowTex(), ts * 1.0, 163);
+        star.position.y = halo.position.y = ts * 1.1; F.g.add(halo); F.g.add(star);
+        var total = 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var flare = el < 220 ? el / 220 : 1 - _sigClamp01((el - 220) / 600);
+            star.scale.setScalar(ts * (0.4 + 0.6 * flare)); star.material.opacity = 0.95 * flare; star.material.rotation = el * 0.006;
+            halo.material.opacity = 0.6 * _afEnv(el, 0, 200, 400, total);
+        });
+    }
+
+    /* ── DROID ── */
+    /* SHOCK PROD: the prod tip lights blue and the arcs crawl over the target */
+    function _afProd3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, lt = _LT(), spark = _finSprite(0x8ad8ff, _sigGlowTex(), ts * 0.7, 163); spark.position.y = ts * 0.8; F.g.add(spark);
+        var arcs = 0, total = 800;
+        return _sigRunOwned(F.g, total, function (el) {
+            spark.material.opacity = (Math.floor(el / 40) % 2 ? 0.9 : 0.4) * _afEnv(el, 0, 40, 450, total);
+            if (lt && arcs < 4 && el > arcs * 110) {
+                arcs++; var c = F.g.position;
+                try { lt.bolt({ x: c.x + rn(-1, 1) * ts * 0.35, y: c.y + ts * rn(0.2, 1.3), z: c.z + rn(-1, 1) * ts * 0.35 }, { x: c.x + rn(-1, 1) * ts * 0.35, y: c.y + ts * rn(0.2, 1.3), z: c.z + rn(-1, 1) * ts * 0.35 }, { segments: 5, jitter: 0.5, coreWidth: 2, glowWidth: 6, durationMs: 120, color: 0x8ad8ff }); } catch (e) {}
+            }
+        });
+    }
+    /* HOLOGRAM (the set, owner only — the decoy itself must look real to the enemy): a projector cone flickers onto the tile */
+    function _afHolo3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var cone = _afGlowMesh(new THREE.ConeGeometry(ts * 0.45, ts * 1.4, 18, 1, true), _AF.cyan); cone.position.y = ts * 0.7; cone.rotation.x = Math.PI; F.g.add(cone);
+        var grid = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _AF.cyan, { map: _afGridTex() }); grid.rotation.x = -Math.PI / 2; grid.position.y = ts * 0.04; F.g.add(grid);
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 150, 900, total) * (Math.random() < 0.15 ? 0.3 : 1);
+            cone.material.opacity = 0.25 * k; grid.material.opacity = 0.6 * k; cone.rotation.y = el * 0.003;
+        });
+    }
+
+    /* ── ANTIHERO ── */
+    /* INTERROGATION: three hard red rings close on the target, one after another */
+    function _afInterrogate3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigInterrogation:' + tx + ',' + ty, 1500)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rings = [];
+        for (var i = 0; i < 3; i++) { var m = _afGlowMesh(new THREE.TorusGeometry(ts * 0.6, ts * 0.025, 6, 28), _AF.blood); m.rotation.x = Math.PI / 2; m.position.y = ts * (0.4 + i * 0.35); F.g.add(m); rings.push({ m: m, at: i * 160 }); }
+        var total = 1200;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < rings.length; i++) { var R = rings[i], k = _sigEaseOutCubic(_sigClamp01((el - R.at) / 220)); R.m.scale.setScalar(1.6 - 0.9 * k); R.m.material.opacity = (el > R.at ? 0.85 : 0) * _afEnv(el, R.at, R.at + 60, 700, total); }
+        });
+    }
+    /* THROUGH THE WALL: a brick wall stands between them for a breath and the antihero comes through it */
+    function _afWall3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty), bricks = [];
+        var tex = _finBrickTex(), cols = 4, rows = 2, bw = ts * 0.26, bh = ts * 0.2;   /* knee-high: the target stays readable behind it */
+        var hold = new THREE.Group(); hold.position.set(ln.ux * ts * 0.5, 0, ln.uz * ts * 0.5); hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
+        for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+            var m = _afSolid(new THREE.BoxGeometry(bw * 0.96, bh * 0.94, ts * 0.12), 0xffffff, { map: tex }); m.position.set((c - (cols - 1) / 2) * bw, bh * (r + 0.5), 0); hold.add(m);
+            bricks.push({ m: m, v: new THREE.Vector3(rn(-0.5, 0.5), rn(0.2, 0.9), -rn(0.8, 1.4)).multiplyScalar(ts * 0.014), s: rn(-0.15, 0.15) });
+        }
+        var breakMs = 260, total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 180));
+            for (var i = 0; i < bricks.length; i++) {
+                var B = bricks[i];
+                if (el < breakMs) B.m.scale.set(1, Math.max(0.01, up), 1);
+                else { B.m.position.add(B.v); B.v.y -= ts * 0.0012; if (B.m.position.y < bh * 0.4) { B.m.position.y = bh * 0.4; B.v.multiplyScalar(0.4); } B.m.rotation.x += B.s; B.m.rotation.z += B.s; }
+                B.m.material.opacity = _afEnv(el, 0, 60, 950, total);
+            }
+            if (el >= breakMs && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
+        });
+    }
+
+    /* ── CHOSEN ONE ── */
+    /* CALLED BY NAME: the birthmark sigil lights under the chosen one and a sword of light comes down into their hand */
+    function _afCalled3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var sig = _afGlowMesh(new THREE.PlaneGeometry(ts * 1.6, ts * 1.6), _AF.gold, { map: _afDestinySigilTex() }); sig.rotation.x = -Math.PI / 2; sig.position.y = ts * 0.04; F.g.add(sig);
+        var sword = new THREE.Group(); F.g.add(sword);
+        var blade = _afGlowMesh(new THREE.BoxGeometry(ts * 0.06, ts * 0.8, ts * 0.015), _AF.pale); blade.position.y = ts * 0.4; sword.add(blade);
+        var guard = _afGlowMesh(new THREE.BoxGeometry(ts * 0.26, ts * 0.04, ts * 0.04), _AF.gold); sword.add(guard);
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            sig.material.opacity = 0.8 * _afEnv(el, 0, 250, 1200, total); sig.rotation.z = el * 0.0012;
+            var down = _sigEaseOutCubic(_sigClamp01((el - 250) / 450)); sword.position.set(ts * 0.3, ts * (3.0 - 2.1 * down), 0); sword.rotation.y = el * 0.002;
+            blade.material.opacity = guard.material.opacity = 0.95 * _afEnv(el, 250, 330, 1250, total);
+        });
+    }
+    /* DESTINY FULFILLED: the prophecy unrolls over the target, then one crescent cut of light */
+    function _afDestiny3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var sc = _finScroll(ts, 'IT IS WRITTEN', { w: ts * 1.6, h: ts * 0.7, fontPx: 56 }); sc.group.position.set(0, ts * 2.0, 0); sc.group.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(sc.group);
+        var slash = _afGlowMesh(new THREE.TorusGeometry(ts * 0.6, ts * 0.04, 4, 24, Math.PI * 0.9), _AF.pale); slash.position.y = ts * 0.8; slash.rotation.set(0, Math.atan2(ln.ux, ln.uz) + Math.PI / 2, 0.6); F.g.add(slash);
+        var mats = []; sc.group.traverse(function (n) { if (n.material) { n.material.transparent = true; mats.push(n.material); } });
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            sc.unroll(_sigEaseOutCubic(_sigClamp01(el / 400)));
+            var so = _afEnv(el, 0, 100, 800, 1100); for (var i = 0; i < mats.length; i++) mats[i].opacity = so;
+            var cut = _sigClamp01((el - 850) / 160); slash.scale.setScalar(0.5 + cut * 0.7); slash.material.opacity = el > 850 ? 0.95 * (1 - _sigClamp01((el - 1050) / 450)) : 0;
+            if (el > 850 && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
+        });
+    }
+
+    /* ── ATLANTEAN ── */
+    /* ORICHALCUM RAY (beside the ray): the circlet on the brow glows copper-gold as the ray charges */
+    function _afOriRay3D(fromX, fromY) {
+        if (_catOff('spells') || _afFogHides(fromX, fromY)) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts;
+        var band = _afGlowMesh(new THREE.TorusGeometry(ts * 0.13, ts * 0.02, 6, 20), _AF.ori); band.rotation.x = Math.PI / 2; band.position.y = ts * 1.2; F.g.add(band);
+        var gem = _finSprite(_AF.teal, _sigGlowTex(), ts * 0.35, 164); gem.position.y = ts * 1.2; F.g.add(gem);
+        var total = 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 220, 600, total); band.material.opacity = 0.9 * k; gem.material.opacity = 0.95 * k; gem.scale.setScalar(ts * (0.25 + 0.15 * Math.sin(el * 0.03)));
+        });
+    }
+    /* CRYSTAL RESONATOR: the singing crystal rises over the area and throws arcs to the ground round it */
+    function _afResonator3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1);
+        var cry = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.25, 0), _finBasic(_AF.teal, { opacity: 0 })); cry.material.transparent = true; cry.scale.y = 1.8; F.g.add(cry);
+        var glow = _finSprite(_AF.teal, _sigGlowTex(), ts * 0.9, 162); F.g.add(glow);
+        var lt = _LT(), arcs = 0, total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 400)); cry.position.y = glow.position.y = ts * (0.4 + 1.2 * up); cry.rotation.y = el * 0.004;
+            cry.material.opacity = 0.75 * _afEnv(el, 0, 150, 1200, total); glow.material.opacity = 0.6 * _afEnv(el, 0, 150, 1200, total) * (0.7 + 0.3 * Math.sin(el * 0.03));
+            if (lt && arcs < 6 && el > 400 + arcs * 120) {
+                arcs++; var c = F.g.position, a = arcs * 1.05;
+                try { lt.bolt({ x: c.x, y: c.y + cry.position.y, z: c.z }, { x: c.x + Math.cos(a) * ts * rad, y: c.y + ts * 0.05, z: c.z + Math.sin(a) * ts * rad }, { segments: 6, jitter: 0.35, coreWidth: 2, glowWidth: 7, durationMs: 160, color: 0x7affea }); } catch (e) {}
+            }
+        });
+    }
+
+    /* ── DINOSAUR ── */
+    /* TAIL SWEEP: the great tail comes all the way round, dust off the ground behind it */
+    function _afTail3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1), segs = [], hold = new THREE.Group(); F.g.add(hold);
+        for (var i = 0; i < 7; i++) { var s = _afSolid(new THREE.SphereGeometry(ts * (0.16 - i * 0.017), 8, 6), _AF.tail); s.position.set(ts * (0.25 + i * rad * 0.16), ts * 0.35, 0); hold.add(s); segs.push(s); }
+        var arc = _afGlowMesh(new THREE.RingGeometry(ts * rad * 0.6, ts * (rad + 0.4), 32, 1, 0, Math.PI * 2), _AF.dust, { map: _sigRingTex() }); arc.rotation.x = -Math.PI / 2; arc.position.y = ts * 0.06; F.g.add(arc);
+        var total = 1000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEaseIO(_sigClamp01(el / 520)); hold.rotation.y = -k * Math.PI * 2;
+            for (var i = 0; i < segs.length; i++) segs[i].material.opacity = _afEnv(el, 0, 60, 600, 800);
+            arc.material.opacity = 0.5 * _afEnv(el, 100, 300, 600, total); arc.scale.setScalar(0.8 + 0.3 * k);
+            if (el > 250 && !F.g.userData.shook) { F.g.userData.shook = true; _shake('normal'); }
+        });
+    }
+    /* EXTINCTION EVENT (the mark, owner only): a red speck high in the sky over the tile, burning brighter */
+    function _afMeteorMark3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, speck = _finSprite(_AF.meteor, _sigGlowTex(), ts * 0.5, 164), ring = _afGlowMesh(new THREE.PlaneGeometry(ts * 2.4, ts * 2.4), _AF.meteor, { map: _sigRingTex() });
+        speck.position.set(-ts * 1.5, ts * 6, -ts * 1.5); ring.rotation.x = -Math.PI / 2; ring.position.y = ts * 0.05; F.g.add(speck); F.g.add(ring);
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 250, 1200, total); speck.material.opacity = 0.9 * k * (0.7 + 0.3 * Math.sin(el * 0.03)); ring.material.opacity = 0.45 * k; ring.rotation.z = el * 0.001;
+        });
+    }
+    /* EXTINCTION EVENT (it lands): the rock streaks down out of the sky and the fireball goes up */
+    function _afMeteor3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1), rock = _finRockBody(ts * 0.6), fallMs = 1000;
+        F.g.add(rock.group);
+        var head = _finSprite(_AF.meteor, _sigGlowTex(), ts * 1.4, 163); F.g.add(head);
+        var trail = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.3, 1, 10, 1, true), _AF.meteor); F.g.add(trail);
+        var top = new THREE.Vector3(-ts * 3, ts * 9, -ts * 3), hit = false, total = fallMs + 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigEaseInCubic(_sigClamp01(el / fallMs)), p = new THREE.Vector3().lerpVectors(top, new THREE.Vector3(0, ts * 0.3, 0), k), live = el < fallMs;
+            rock.group.position.copy(p); rock.group.rotation.x += 0.05; head.position.copy(p);
+            rock.group.visible = live;
+            head.material.opacity = live ? 0.9 : 0;
+            trail.position.lerpVectors(top, p, 0.5); trail.scale.set(1, Math.max(1, top.distanceTo(p)), 1); trail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(top, p).normalize());
+            trail.material.opacity = live ? 0.55 * _sigClamp01(el / 200) : 0.55 * (1 - _sigClamp01((el - fallMs) / 250));
+            if (!live && !hit) {
+                hit = true; _shake('hard');
+                var c = F.c; try { _finFireball(c.x, c.y, F.bz + 10, 40, { r: ts * rad * 0.8, tint: 0xff8a2a, smoke: true }); } catch (e) {}
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * (rad + 2), ms: 650, color: 0xffa040 }); } catch (e) {}
+                try { _sigLightPillar3D(tx, ty, { height: 700, radius: ts * (0.5 + rad * 0.4), ms: 700, color: 0xff7a1a, coreColor: 0xfff0c0 }); } catch (e) {}
+            }
+        });
+    }
+
+    /* ── BARBARELLA ── */
+    /* LOVE RAY: the pink ray from the hip pistol, hearts riding it */
+    function _afLoveRay3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var from = _afCaster(tx, ty, o);
+        if (!from.fogged) try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
+        var F = _nrvFrame(tx, ty), ts = F.ts, to = _afTo(F, from.x, from.y), hearts = [];
+        for (var i = 0; i < 6; i++) { var h = _finSprite(_AF.vixen, _afHeartTex(), ts * 0.22, 164); F.g.add(h); hearts.push({ s: h, at: i * 60 }); }
+        var a = new THREE.Vector3(to.x, to.y + ts * 0.8, to.z), b = new THREE.Vector3(0, ts * 0.8, 0), total = 1100;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < hearts.length; i++) {
+                var H = hearts[i], k = _sigClamp01((el - H.at) / 380);
+                if (k < 1) H.s.position.lerpVectors(a, b, k); else H.s.position.y += ts * 0.006;
+                H.s.material.opacity = el > H.at ? 0.9 * (1 - _sigClamp01((el - H.at - 380) / 400)) : 0;
+            }
+        });
+    }
+    /* EXCESSIVE MACHINE: the organ's pipes rise round the victim and light key by key */
+    function _afOrgan3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigExcessiveMachine:' + tx + ',' + ty, 2200)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, pipes = [];
+        for (var i = 0; i < 9; i++) {
+            var a = Math.PI * 0.75 + i * Math.PI * 1.5 / 8, h = ts * (0.6 + 0.6 * Math.sin(i / 8 * Math.PI));
+            var m = _afSolid(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, h, 10), _AF.organ); m.position.set(Math.cos(a) * ts * 0.6, h / 2, Math.sin(a) * ts * 0.6); F.g.add(m);
+            var g = _finSprite(_AF.vixen, _sigGlowTex(), ts * 0.2, 163); g.position.set(m.position.x, h, m.position.z); F.g.add(g);
+            pipes.push({ m: m, g: g, at: i * 70 });
+        }
+        var total = 1800;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < pipes.length; i++) {
+                var P = pipes[i], up = _sigEaseOutBack(_sigClamp01((el - P.at) / 260)); P.m.scale.y = Math.max(0.01, up);
+                P.m.material.opacity = (el > P.at ? 1 : 0) * _afEnv(el, 0, 40, 1350, total);
+                P.g.material.opacity = 0.9 * (Math.floor((el - 400) / 90) % pipes.length === i && el > 400 ? 1 : 0.2) * _afEnv(el, 300, 400, 1350, total);
+            }
+        });
+    }
+
+    /* ── BLACK GOO ── */
+    /* EYES GO BLACK: oil reaches up out of the ground round the target and two black eyes open over it */
+    function _afBlackEyes3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, tendrils = [];
+        for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3, m = _afSolid(new THREE.ConeGeometry(ts * 0.06, ts * 0.8, 6), _AF.oil); m.position.set(Math.cos(a) * ts * 0.45, 0, Math.sin(a) * ts * 0.45); m.rotation.set(-Math.sin(a) * 0.4, 0, Math.cos(a) * 0.4); F.g.add(m); tendrils.push(m); }
+        var eyes = [];
+        for (var e = 0; e < 2; e++) { var sp = _afDarkSprite(0xffffff, _afEyeTex('goo', '#07070c', false), ts * 0.32); sp.position.set((e ? 1 : -1) * ts * 0.2, ts * 1.75, 0); F.g.add(sp); eyes.push(sp); }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 350)), k = _afEnv(el, 0, 100, 1100, total);
+            for (var i = 0; i < tendrils.length; i++) { tendrils[i].scale.y = Math.max(0.01, up * (1 + 0.1 * Math.sin(el * 0.01 + i))); tendrils[i].position.y = ts * 0.4 * up; tendrils[i].material.opacity = 0.95 * k; }
+            var open = _sigClamp01((el - 350) / 200); for (var j = 0; j < eyes.length; j++) { eyes[j].scale.set(ts * 0.32, ts * 0.32 * Math.max(0.05, open), 1); eyes[j].material.opacity = 0.95 * k; }
+        });
+    }
+    /* ENGULF: a black blob swells over the victim and swallows them, then lets go */
+    function _afEngulf3D(tx, ty) {
+        if (_catOff('spells') || !_afOnce('sigEngulf:' + tx + ',' + ty, 1500)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var blob = _afSolid(new THREE.SphereGeometry(ts * 0.5, 18, 12), _AF.goo); F.g.add(blob);
+        var shine = _finSprite(0x8a7aa8, _sigGlowTex(), ts * 0.25, 163); F.g.add(shine);
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigEaseOutBack(_sigClamp01(el / 300)), wob = Math.sin(el * 0.02) * 0.06;
+            blob.scale.set(k * (1 + wob), k * (1.2 - wob), k * (1 + wob)); blob.position.y = ts * 0.55 * k;
+            /* half see-through so the victim and the number stay readable */
+            blob.material.opacity = 0.55 * _afEnv(el, 0, 120, 850, total);
+            shine.position.set(-ts * 0.18, ts * (0.55 + 0.4 * k), ts * 0.25); shine.material.opacity = 0.6 * _afEnv(el, 0, 120, 850, total);
+        });
+    }
+
+    /* ── THE PR #423 RACE SPELLS ── */
+    /* OPEN VEIN: one red slash across the target */
+    function _afOpenVein3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _afCaster(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var slash = _afGlowMesh(new THREE.TorusGeometry(ts * 0.45, ts * 0.03, 4, 20, Math.PI * 0.7), _AF.blood); slash.position.y = ts * 0.8; slash.rotation.set(0, Math.atan2(ln.ux, ln.uz) + Math.PI / 2, -0.8); F.g.add(slash);
+        var total = 600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / 120); slash.scale.setScalar(0.6 + 0.5 * k); slash.rotation.z = -0.8 + k * 1.2; slash.material.opacity = 0.95 * _afEnv(el, 0, 40, 250, total);
+        });
+    }
+    /* CONDUCTION: the current runs out of the target into the ground round it */
+    function _afConduct3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, lt = _LT(), arcs = 0, total = 700;
+        var glow = _finSprite(0xbfe0ff, _sigGlowTex(), ts * 0.8, 162); glow.position.y = ts * 0.8; F.g.add(glow);
+        return _sigRunOwned(F.g, total, function (el) {
+            glow.material.opacity = 0.6 * _afEnv(el, 0, 40, 300, total);
+            if (lt && arcs < 4 && el > arcs * 90) {
+                arcs++; var c = F.g.position, a = arcs * 1.6;
+                try { lt.bolt({ x: c.x, y: c.y + ts * 0.8, z: c.z }, { x: c.x + Math.cos(a) * ts * 0.9, y: c.y + ts * 0.05, z: c.z + Math.sin(a) * ts * 0.9 }, { segments: 6, jitter: 0.4, coreWidth: 2, glowWidth: 6, durationMs: 150, color: 0xbfe0ff }); } catch (e) {}
+            }
+        });
+    }
+    /* THORNLASH: brambles whip up round the target's legs */
+    function _afThornlash3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, vines = [];
+        for (var i = 0; i < 8; i++) {
+            var a = i * Math.PI / 4, curve = new THREE.CatmullRomCurve3([new THREE.Vector3(Math.cos(a) * ts * 0.5, 0, Math.sin(a) * ts * 0.5), new THREE.Vector3(Math.cos(a + 0.6) * ts * 0.35, ts * 0.3, Math.sin(a + 0.6) * ts * 0.35), new THREE.Vector3(Math.cos(a + 1.2) * ts * 0.2, ts * 0.55, Math.sin(a + 1.2) * ts * 0.2)]);
+            var m = _afSolid(new THREE.TubeGeometry(curve, 10, ts * 0.018, 4, false), _AF.leaf); F.g.add(m); vines.push(m);
+        }
+        var total = 1100;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 220));
+            for (var i = 0; i < vines.length; i++) { vines[i].scale.set(1, Math.max(0.01, up), 1); vines[i].material.opacity = _afEnv(el, 0, 40, 750, total); }
+        });
+    }
+    /* CROSSWIND (owns the line): ribbons of wind race down the lane */
+    function _afCrosswind3D(fromX, fromY, tiles) {
+        if (_catOff('spells') || !tiles || !tiles.length) return null;
+        if (_afFogHides(fromX, fromY)) { _afLineFogged(tiles, 'raceCrosswind_tile'); return null; }
+        var end = tiles[tiles.length - 1], F = _nrvFrame(fromX, fromY), ts = F.ts, to = _afTo(F, end.x, end.y), ribbons = [];
+        var dir = new THREE.Vector3(to.x, 0, to.z).normalize(), side = new THREE.Vector3(-dir.z, 0, dir.x), flyMs = Math.max(200, 80 + tiles.length * 60);
+        for (var i = 0; i < 5; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.7, ts * 0.05), 0xe8f4ff, { map: _sigGlowTex() }); m.rotation.y = -Math.atan2(dir.z, dir.x); F.g.add(m); ribbons.push({ m: m, off: (i - 2) * ts * 0.18, h: ts * (0.3 + 0.2 * i), at: i * 40 }); }
+        for (var t = 0; t < tiles.length; t++) (function (tl, at) { _fxDelay(function () { _afRecipe('raceCrosswind_tile', tl.x, tl.y); }, at); })(tiles[t], flyMs * (t + 1) / tiles.length);
+        var total = flyMs + 400;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < ribbons.length; i++) {
+                var R = ribbons[i], k = _sigClamp01((el - R.at) / flyMs);
+                R.m.position.set(to.x * k + side.x * (R.off + Math.sin(el * 0.02 + i) * ts * 0.05), R.h + Math.sin(k * Math.PI * 3 + i) * ts * 0.05, to.z * k + side.z * (R.off + Math.sin(el * 0.02 + i) * ts * 0.05));
+                R.m.material.opacity = (el > R.at ? 0.6 : 0) * (1 - _sigClamp01((el - R.at - flyMs) / 300));
+            }
+        });
+    }
+    /* EYE OF THE STORM: a funnel of turning rings stands over the area */
+    function _afStorm3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 1), rings = [];
+        for (var i = 0; i < 6; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(1, 1), _AF.storm, { map: _sigRingTex() }); m.rotation.x = -Math.PI / 2; var s = ts * (rad + 0.5) * (0.5 + i * 0.2) * 2; m.scale.set(s, s, 1); m.position.y = ts * (0.2 + i * 0.4); F.g.add(m); rings.push(m); }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < rings.length; i++) { rings[i].rotation.z = el * 0.004 * (i % 2 ? 1 : -1); rings[i].material.opacity = 0.5 * _afEnv(el, i * 40, i * 40 + 250, 1250, total); rings[i].material.color.set(i % 2 ? 0xd8e4f0 : _AF.storm); }
+        });
+    }
+    /* MUDSLIDE (owns the line): a wave of mud rolls down the lane */
+    function _afMudslide3D(fromX, fromY, tiles) {
+        if (_catOff('spells') || !tiles || !tiles.length) return null;
+        if (_afFogHides(fromX, fromY)) { _afLineFogged(tiles, 'raceMudslide_tile'); return null; }
+        var end = tiles[tiles.length - 1], F = _nrvFrame(fromX, fromY), ts = F.ts, to = _afTo(F, end.x, end.y), lumps = [];
+        var dir = new THREE.Vector3(to.x, 0, to.z).normalize(), side = new THREE.Vector3(-dir.z, 0, dir.x), flyMs = Math.max(260, 100 + tiles.length * 80);
+        for (var i = 0; i < 9; i++) { var m = _afSolid(new THREE.SphereGeometry(ts * rn(0.12, 0.2), 8, 6), _AF.dirt); F.g.add(m); lumps.push({ m: m, off: rn(-0.4, 0.4) * ts, lag: rn(0, 0.12) }); }
+        for (var t = 0; t < tiles.length; t++) (function (tl, at) { _fxDelay(function () { _afRecipe('raceMudslide_tile', tl.x, tl.y); }, at); })(tiles[t], flyMs * (t + 1) / tiles.length);
+        var total = flyMs + 500;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < lumps.length; i++) {
+                var L = lumps[i], k = _sigClamp01(el / flyMs - L.lag);
+                L.m.position.set(to.x * k + side.x * L.off, ts * (0.1 + 0.15 * Math.abs(Math.sin(k * 9 + i))), to.z * k + side.z * L.off); L.m.rotation.x += 0.2;
+                L.m.material.opacity = _afEnv(el, 0, 60, flyMs, total);
+            }
+        });
+    }
+    /* FAR SIGHT: a third eye opens over the far tile it looks at */
+    function _afFarSight3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, eye = _afDarkSprite(0xffffff, _afEyeTex('farsight', '#7a5aff', false), ts * 0.7); eye.position.y = ts * 1.8; F.g.add(eye);
+        var ring = _afGlowMesh(new THREE.PlaneGeometry(ts * 3.2, ts * 3.2), _AF.dream, { map: _sigRingTex() }); ring.rotation.x = -Math.PI / 2; ring.position.y = ts * 0.05; F.g.add(ring);
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 260)); eye.scale.set(ts * 0.7, ts * 0.7 * Math.max(0.05, open), 1); eye.material.opacity = 0.95 * _afEnv(el, 0, 80, 1100, total);
+            ring.material.opacity = 0.5 * _afEnv(el, 100, 300, 1100, total); ring.scale.setScalar(0.5 + 0.5 * _sigEaseOutCubic(_sigClamp01(el / 500)));
+        });
+    }
+    /* FIFTY TIMES (the throw): dust where the body leaves the ground and where it comes down */
+    function _afFiftyThrow3D(tx, ty, r, o) {
+        if (_catOff('spells')) return null;
+        if (o && o.fromX != null) _afRecipe('sigFiftyTimes_throw', o.fromX, o.fromY);
+        _afRecipe('sigFiftyTimes_throw', tx, ty);
+        try { return _sigShockRing3D(tx, ty, { r0: 8, r1: _worldPos(tx, ty).ts * 1.4, ms: 380, color: _AF.dust }); } catch (e) { return null; }
+    }
+
+    /* ── the registry: plain id = the hook the spell already fires (impact / aura / aoe geom3D / pull / the
+       delayed detonation); ':swap' ':throw' ':deploy' ':detonate' ':mark' ':view' are battle.js's visual-only
+       fireGeometry calls; sigLine beams call through _fireBeamMapped with (fromX, fromY, tiles, params) ── */
+    Object.assign(_spell3DGeometry, {
+        sigShelteringWings: _afWings3D, sigLastTrumpet: _afTrumpet3D, sigMarkOfTheBeast: _afBrand3D, sigSoulHarvest: _afSouls3D,
+        sigMummify: _afWraps3D, sigAmmit: _afAmmit3D, sigPixiePrank: _afPrank3D, sigFireflySwarm: _afFireflies3D,
+        sigOverrun: _afAnts3D, sigBlurryPhoto: _afPhoto3D, sigFromTheTreeline: _afTreeline3D, 'sigFiftyTimes:throw': _afFiftyThrow3D,
+        sigScrape: _afScrape3D, sigOverfit: _afOverfit3D, sigUncannySmile: _afSmile3D, sigTerminationProtocol: _afTerminate3D,
+        sigShowdown: _afShowdown3D, sigSixShooter: _afRevolver3D, sigSermon: _afSermon3D, sigAscensionDay: _afAscension3D,
+        sigTetherLine: _afTether3D, 'sigOrbitalStrike:mark': _afOrbitalMark3D, sigOrbitalStrike: _afOrbital3D,
+        'sigFiremansCarry:swap': _afCarry3D, sigHalligan: _afHalligan3D,
+        sigPieInTheFace: _afPie3D, 'sigJackInTheBox:deploy': _afJackSet3D, 'sigJackInTheBox:detonate': _afJackPop3D,
+        sigGlint: _afGlint3D, sigCrystalCoffin: _afCoffin3D, sigShardstorm: _afShards3D,
+        sigTheSwarm: _afBees3D, sigThousandStings: _afStings3D, sigLure: _afLure3D, sigAbyssJaws: _afJaws3D,
+        sigKneel: _afKneel3D, sigEnlilsDeluge: _afDeluge3D, sigLampSmoke: _afLamp3D, sigTwistedWish: _afWish3D, 'sigTwistedWish:solo': _afWish3D,
+        sigBellow: _afBellow3D, sigForgedThunderbolt: _afThunderbolt3D, sigGrappleArm: _afGrapple3D, sigPiledriver: _afPiston3D,
+        sigUsurp: _afUsurp3D, sigThroneOfAshes: _afThrone3D, 'sigInfernalWaltz:swap': _afWaltz3D, sigLastDance: _afLastDance3D,
+        sigCountingSheep: _afSheep3D, sigDevourTheDream: _afDevour3D, sigForsaken: _afForsaken3D, sigMorningStar: _afMorningStar3D,
+        sigWitherStarlight: _afWither3D, sigLastLight: _afLastLight3D, sigShockProd: _afProd3D, 'sigHologram:deploy': _afHolo3D,
+        sigInterrogation: _afInterrogate3D, sigThroughTheWall: _afWall3D, sigCalledByName: _afCalled3D, sigDestinyFulfilled: _afDestiny3D,
+        sigOrichalcumRay: _afOriRay3D, sigCrystalResonator: _afResonator3D, sigTailSweep: _afTail3D,
+        'sigExtinctionEvent:mark': _afMeteorMark3D, sigExtinctionEvent: _afMeteor3D,
+        sigLoveRay: _afLoveRay3D, sigExcessiveMachine: _afOrgan3D, sigEyesGoBlack: _afBlackEyes3D, sigEngulf: _afEngulf3D,
+        raceOpenVein: _afOpenVein3D, raceConduction: _afConduct3D, raceThornlash: _afThornlash3D, raceCrosswind: _afCrosswind3D,
+        raceEyeOfTheStorm: _afStorm3D, raceMudslide: _afMudslide3D, 'raceFarSight:view': _afFarSight3D,
+    });
+
     /* ── RIBBON TRAILS: a bolt draws a real 3D ribbon ────────────────────
        A bolt's trail was a string of sprite dots. Now it pulls a ribbon: the
        head's last ~14 positions as two crossed strips (one flat, one upright,
@@ -41312,6 +43579,2198 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         finisher: function (def, o) { return _finStagePlay(def, o); },
         finisherTiming: function (def, o) { return _finStageTiming(def, o); },
     };
+
+    /* ═════════ THE G-O SIGNATURES (2026-10-23) ═════════
+       mondo: "think of each race as its own JRPG or Dark Souls boss" — PR
+       #433 gave every race from Gargoyle to Overlord its own family (ids
+       go*) on borrowed looks; this block gives each spell its own. Every
+       look is procedural (three.js meshes, the canvas glow / text textures,
+       the particle sheet) and draws in the board's VFX scene, so both
+       renderers show it and it rides fire() — online.js relays fire(), the
+       guest's own fire() draws it (RULE #2). Nothing here goes full-screen:
+       the only screen flashes are _sigScreenFlash, which leaves a hole
+       around the target. Spell rules are untouched; a SPELL_MAP row only
+       picks which hook (impact / aoe / aura / beam / bolt / teleport) draws.
+       Hooks by kind (read off the real board): melee + debuff + pull +
+       charge + leap → impact (the caster rides params.fromX / fromY);
+       aoe + barrage → aoe (tx, ty, radius); buff + warCry → aura on the
+       caster; line → beam; thrown things ride the bolt (the _GO_THROWN
+       hook in _fireBoltMapped flies the object, the bolt is its tracer). */
+    var _GOC = {
+        stone: 0x8c8a92, stoneD: 0x4c4a54, rain: 0x7cc4ff, red: 0xff2a2a, olive: 0x59683a, khaki: 0xc8b47a,
+        ecto: 0x9ff0ff, wraith: 0xbfe8ff, grave: 0x3a2a1a, rot: 0x6f8a3c, cyan: 0x00f0ff, mag: 0xff2bd6,
+        gnome: 0xd42a20, ceramic: 0xf4efe6, steel: 0xc8ccd8, headl: 0xfff2c4, goblin: 0x7aa82e, sand: 0xe2c286,
+        clay: 0xb0704a, clayD: 0x7a4a30, emet: 0xffd27a, grey: 0xb8ffcf, demon: 0xff3a14, ember: 0xffa040,
+        daisy: 0xfff6c8, peace: 0xff9ad8, ochre: 0xc8662a, ice: 0xbfe8ff, mirror: 0xe8f6ff, pump: 0xff8a1a,
+        bark: 0x5a3a22, apple: 0xd42424, iron: 0x5c6068, atomic: 0x4ab8ff, gold: 0xffd76a, lake: 0x6ac8ff,
+        birch: 0xe8e0d0, sack: 0x8a6a3c, loch: 0x2f6a58, lPink: 0xff2a9a, lGold: 0xffd23a, lGreen: 0x2ad06a,
+        mantis: 0x7ad04a, orchid: 0xff9ad8, scope: 0xff3020, mars: 0xd0381e, heat: 0xff6a20, mib: 0xeaf8ff,
+        cricket: 0x5ac8ff, siren: 0x5fe0d0, spore: 0xe8d070, cordy: 0xe07a2a, necro: 0x7aff9a, soul: 0xc8ffe0,
+        blood: 0x9a0c10, forge: 0xff7a20, wood: 0xa87444, wax: 0xa8121e, bead: 0xf0e8d8, holy: 0xfff0b0,
+        iris: 0xc040ff, anti: 0x9aa0ff, plasma: 0xfff0a0, solar: 0xffb030, will: 0x8a30ff, bronze: 0xcd7f32,
+    };
+    /* ── the kit ── */
+    function _goA(c, op) { return _finBasic(c, { additive: true, opacity: op != null ? op : 0, side: THREE.DoubleSide, depthWrite: false }); }
+    function _goM(c, op) { var m = _finBasic(c, { opacity: op != null ? op : 0, side: THREE.DoubleSide }); m.userData.goSolid = true; return m; }
+    /* a solid prop is MeshBasic (both renderers, no lights needed), so it gets its light baked into vertex colours:
+       lit from above and a little from the side, so a hand, a foot or a slab reads as a form and not a flat cut-out */
+    function _goBake(o) {
+        var geo = o.geometry, n = geo && geo.attributes && geo.attributes.normal;
+        if (!n || geo.attributes.color) return;
+        var cols = new Float32Array(n.count * 3);
+        for (var i = 0; i < n.count; i++) { var f = 0.6 + 0.3 * (n.getY(i) * 0.5 + 0.5) + 0.1 * (n.getX(i) * 0.5 + 0.5) - 0.06 * Math.max(0, -n.getZ(i)); cols[i * 3] = cols[i * 3 + 1] = cols[i * 3 + 2] = f; }
+        geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); o.material.vertexColors = true; o.material.needsUpdate = true;
+    }
+    /* add a mesh / sprite that fades with _goShow; `op` is its full opacity */
+    function _goAdd(parent, o, op) { o.userData.op = op != null ? op : 1; if (o.material) { o.material.transparent = true; o.material.opacity = 0; if (o.isMesh && o.material.userData && o.material.userData.goSolid) _goBake(o); } parent.add(o); return o; }
+    function _goShow(list, k) { for (var i = 0; i < list.length; i++) { var o = list[i]; if (o && o.material) o.material.opacity = (o.userData.op != null ? o.userData.op : 1) * Math.max(0, k); } }
+    function _goGlow(parent, c, size, x, y, z, op) { var s = _finSprite(c, _sigGlowTex(), size, 161); s.position.set(x || 0, y || 0, z || 0); s.userData.op = op != null ? op : 0.9; parent.add(s); return s; }
+    function _goRing(parent, c, ri, ro, y, op, seg) {
+        var m = new THREE.Mesh(new THREE.RingGeometry(ri, ro, seg || 40), _goA(c, 0)); m.rotation.x = -Math.PI / 2; m.position.y = y || 2;
+        m.userData.op = op != null ? op : 0.7; parent.add(m); return m;
+    }
+    function _goWord(parent, text, ink, y, w, font) {
+        var s = _finTextSprite(text, { ink: ink, spriteW: w, opacity: 0, font: font || 'Georgia, serif', depthTest: false, order: 163 });
+        s.position.y = y; s.userData.op = 1; parent.add(s); return s;
+    }
+    /* a fade envelope: in over `a` ms, out over the last `b` ms of `t` */
+    function _goEnv(el, a, t, b) { return Math.min(1, el / Math.max(1, a)) * (1 - _sigClamp01((el - (t - b)) / Math.max(1, b))); }
+    /* particles around the frame's tile (lx / lz = board px offsets, ly = height over the tile) */
+    function _goSpray(F, n, o) {
+        for (var i = 0; i < n; i++) {
+            if (!_canSpawn()) return;
+            var r = o.r != null ? o.r : 14, ly = o.ly != null ? o.ly : F.ts * 0.5;
+            _spawn({ x: F.c.x + (o.lx || 0) + rn(-r, r), y: F.c.y + (o.lz || 0) + rn(-r, r), z: F.bz + ly + rn(-(o.rz || 0), o.rz || 0),
+                mode: o.mode || 'billboard', sprite: o.sprite, ml: rn(o.ml0 || 300, o.ml1 || 600), size0: rn(o.s0 || 6, o.s0b || (o.s0 || 6) * 1.6),
+                size1: o.s1 != null ? o.s1 : 2, vx: rn(-(o.v || 120), o.v || 120) + (o.vx || 0), vy: rn(-(o.v || 120), o.v || 120) + (o.vy || 0),
+                vz: rn(o.vz0 != null ? o.vz0 : 20, o.vz1 != null ? o.vz1 : 160), gravity: o.g != null ? o.g : 260, drag: o.drag != null ? o.drag : 1.2,
+                opacity0: o.op != null ? o.op : 0.95, opacity1: 0, tint: o.tint });
+        }
+    }
+    /* the caster's tile for a signature: the site's fromX / fromY, else the acting unit */
+    function _goFrom(tx, ty, x) { return _nrvFrom(tx, ty, x && x.fromX != null ? x : null); }
+    /* a thing flies from one tile to another: the pivot faces the travel, `spin` turns the body end over end */
+    function _goFlight(fromX, fromY, toX, toY, body, o) {
+        o = o || {};
+        var F = _nrvFrame(fromX, fromY), wpT = _worldPos(toX, toY), ts = F.ts;
+        var dx = wpT.x - F.wp.x, dy = wpT.y - F.wp.y, dz = wpT.z - F.wp.z;
+        var ms = o.ms > 0 ? o.ms : 420, h0 = o.h0 != null ? o.h0 : ts * 0.62, h1 = o.h1 != null ? o.h1 : ts * 0.55, arc = o.arc != null ? o.arc : ts * 0.4;
+        var pivot = new THREE.Group(); pivot.rotation.y = Math.atan2(dx, dz); F.g.add(pivot); pivot.add(body);
+        var trailAt = 0;
+        return _sigRunOwned(F.g, ms + 40, function (el) {
+            var k = _sigClamp01(el / ms);
+            pivot.position.set(dx * k, h0 + (dy + h1 - h0) * k + arc * 4 * k * (1 - k), dz * k);
+            if (o.spin) body.rotation.x = -el * o.spin;
+            if (o.roll) body.rotation.z = el * o.roll;
+            body.traverse(function (m) { if (m.material) m.material.opacity = (m.userData.op != null ? m.userData.op : 1) * (k < 1 ? Math.min(1, el / 60) : 0); });
+            if (o.trail && el - trailAt > (o.trailMs || 40) && k < 1 && _canSpawn()) {
+                trailAt = el;
+                _spawn({ x: F.c.x + dx * k, y: F.c.y + dz * k, z: F.bz + pivot.position.y, mode: 'billboard', sprite: o.trail, ml: rn(220, 420),
+                    size0: rn(5, 10), size1: 1, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-10, 20), drag: 1, opacity0: 0.8, opacity1: 0, tint: o.trailTint });
+            }
+        });
+    }
+    /* simple parts the kit builds bodies from */
+    function _goMesh(geo, c, op, additive) { var m = new THREE.Mesh(geo, additive ? _goA(c) : _goM(c)); m.userData.op = op != null ? op : 1; m.material.transparent = true; m.material.opacity = 0; return m; }
+    /* every opacity-carrying object in a group, for _goShow */
+    function _goAll(g) { var out = []; g.traverse(function (o) { if (o.material && o.userData.op != null) out.push(o); }); return out; }
+
+    /* ── GARGOYLE · Cathedral Watch — wet grey stone, gutter water, a ton dropping off the roof ── */
+    /* RAINSPOUT: a carved grotesque juts out over the caster and vomits the gutter down the lane */
+    function _goRainspout3D(fromX, fromY, tiles) {
+        if (_catOff('spells') || !tiles || !tiles.length) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts, end = tiles[tiles.length - 1], wpE = _worldPos(end.x, end.y);
+        var ex = wpE.x - F.wp.x, ez = wpE.z - F.wp.z, L = Math.max(1, Math.hypot(ex, ez)), ux = ex / L, uz = ez / L;
+        var head = new THREE.Group(); head.position.set(ux * ts * 0.25, ts * 1.25, uz * ts * 0.25); head.rotation.y = Math.atan2(ux, uz); F.g.add(head);
+        var stone = [];
+        stone.push(_goAdd(head, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.3, ts * 0.24, ts * 0.34), _goM(_GOC.stone)), 1));
+        var jaw = _goAdd(head, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.26, ts * 0.06, ts * 0.3), _goM(_GOC.stoneD)), 1); jaw.position.set(0, -ts * 0.15, ts * 0.04); stone.push(jaw);
+        for (var h = -1; h <= 1; h += 2) { var horn = _goAdd(head, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.035, ts * 0.16, 6), _goM(_GOC.stoneD)), 1); horn.position.set(h * ts * 0.11, ts * 0.18, -ts * 0.06); horn.rotation.z = -h * 0.5; stone.push(horn); }
+        var eyes = [_goGlow(head, _GOC.rain, ts * 0.12, -ts * 0.07, ts * 0.04, ts * 0.17, 0.8), _goGlow(head, _GOC.rain, ts * 0.12, ts * 0.07, ts * 0.04, ts * 0.17, 0.8)];
+        /* the stream: a falling sheet of water out of the mouth, then along the lane at shin height */
+        var drop = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.07, ts * 0.11, ts * 1.0, 10, 1, true), _goA(_GOC.rain)), 0.45);
+        drop.position.set(ux * ts * 0.45, ts * 0.7, uz * ts * 0.45);
+        var lane = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.1, ts * 0.13, 1, 12, 1, true), _goA(_GOC.rain)), 0.38);
+        lane.rotation.order = 'YXZ'; lane.rotation.y = Math.atan2(ux, uz); lane.rotation.x = Math.PI / 2;
+        var total = 1500, lastSplash = 0, all = stone.concat(eyes);
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 160, total, 320);
+            _goShow(all, k);
+            jaw.position.y = -ts * 0.15 - (el > 180 ? ts * 0.05 : 0);
+            var flow = _sigClamp01((el - 220) / 380), len = (L + ts * 0.3) * flow;
+            drop.material.opacity = 0.45 * k * (el > 200 ? 1 : 0); drop.scale.x = drop.scale.z = 0.9 + 0.15 * Math.sin(el * 0.05);
+            lane.scale.set(1 + 0.1 * Math.sin(el * 0.04), Math.max(0.01, len), 1);
+            lane.position.set(ux * (ts * 0.45 + len / 2), ts * 0.28, uz * (ts * 0.45 + len / 2));
+            lane.material.opacity = 0.38 * k * (len > 1 ? 1 : 0);
+            if (el - lastSplash > 70 && el > 260 && el < total - 300 && _canSpawn()) {
+                lastSplash = el; var t = rn(0.05, 1) * flow;
+                _spawn({ x: F.c.x + ex * t, y: F.c.y + ez * t, z: F.bz + ts * 0.25, mode: 'billboard', sprite: 'water-splash', ml: rn(300, 520),
+                    size0: rn(8, 14), size1: 3, vx: rn(-90, 90), vy: rn(-90, 90), vz: rn(60, 180), gravity: 420, drag: 1.1, opacity0: 0.9, opacity1: 0 });
+            }
+        });
+    }
+    /* CATHEDRAL PERCH: stone wings spread on take-off; a lancet window glows behind the perch it lands on */
+    function _goPerch3D(fromX, fromY, toX, toY) {
+        if (_catOff('spells')) return null;
+        var A = _nrvFrame(fromX, fromY), ts = A.ts, wings = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var w = new THREE.Group(); w.position.set(0, ts * 0.85, 0); A.g.add(w);
+            for (var f = 0; f < 5; f++) {
+                var fe = _goAdd(w, new THREE.Mesh(new THREE.BoxGeometry(ts * (0.5 - f * 0.06), ts * 0.05, ts * 0.12), _goM(f % 2 ? _GOC.stoneD : _GOC.stone)), 1);
+                fe.position.set(s * ts * (0.26 - f * 0.02), ts * (0.12 - f * 0.07), -ts * 0.1); fe.rotation.z = s * (0.35 - f * 0.18);
+            }
+            w.userData.side = s; wings.push(w);
+        }
+        var B = _nrvFrame(toX, toY), arch = new THREE.Group(); arch.position.set(0, 0, 0); B.g.add(arch);
+        var pts = [new THREE.Vector3(-ts * 0.42, 0, -ts * 0.45)], N = 12;
+        for (var i = 0; i <= N; i++) { var a = i / N * Math.PI / 2; pts.push(new THREE.Vector3(-ts * 0.42 * Math.pow(Math.cos(a), 0.7), ts * 0.9 + ts * 0.75 * Math.sin(a), -ts * 0.45)); }
+        for (var i2 = N; i2 >= 0; i2--) { var a2 = i2 / N * Math.PI / 2; pts.push(new THREE.Vector3(ts * 0.42 * Math.pow(Math.cos(a2), 0.7), ts * 0.9 + ts * 0.75 * Math.sin(a2), -ts * 0.45)); }
+        pts.push(new THREE.Vector3(ts * 0.42, 0, -ts * 0.45));
+        var archLine = _goAdd(arch, new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+            new THREE.LineBasicMaterial({ color: new THREE.Color(_GOC.holy), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })), 0.9);
+        var panes = [0xff3a3a, 0x3a6aff, 0xffd23a, 0x3aff8a];
+        for (var p = 0; p < 4; p++) { var pg = _goGlow(arch, panes[p], ts * 0.5, (p % 2 ? 1 : -1) * ts * 0.17, ts * (0.45 + Math.floor(p / 2) * 0.5), -ts * 0.47, 0.35); pg.renderOrder = 158; }
+        var total = 1400, landAt = 420, landed = false, archParts = _goAll(arch);
+        _sigRunOwned(B.g, total, function (el) {
+            var k = el < landAt ? 0 : _goEnv(el - landAt, 160, total - landAt, 420);
+            _goShow(archParts, k);
+            if (el >= landAt && !landed) { landed = true; _goSpray(B, 8, { sprite: 'rock-debris', ly: 4, r: 18, v: 110, vz0: 40, vz1: 160, g: 500, s0: 4, ml0: 300, ml1: 560 }); _goSpray(B, 4, { sprite: 'dust-puff', ly: 4, r: 20, v: 50, vz0: 5, vz1: 30, g: 0, s0: 12, s1: 34, op: 0.45, ml0: 500, ml1: 800 }); }
+        });
+        return _sigRunOwned(A.g, 700, function (el) {
+            var o = _sigEaseOutBack(_sigClamp01(el / 260)), k = 1 - _sigClamp01((el - 380) / 320);
+            for (var j = 0; j < wings.length; j++) { wings[j].rotation.z = wings[j].userData.side * (0.9 - 0.9 * o); wings[j].scale.setScalar(0.4 + 0.6 * o); _goShow(_goAll(wings[j]), k); }
+            if (el < 60) _goSpray(A, 2, { sprite: 'dust-puff', ly: 4, r: 20, v: 60, vz0: 5, vz1: 40, g: 0, s0: 12, s1: 30, op: 0.4, ml0: 400, ml1: 700 });
+        });
+    }
+    /* GROTESQUE DIVE: a ton of carved stone off the roof — the shadow, the drop, the flagstones crack */
+    function _goGrotesqueDive3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var shade = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.5, 24), _goM(0x000000)), 0.45); shade.rotation.x = -Math.PI / 2; shade.position.y = 2;
+        var rockG = new THREE.Group(); F.g.add(rockG);
+        var rock = _goAdd(rockG, new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.3, 0), _goM(_GOC.stone)), 1); rock.scale.set(1, 1.5, 0.8);
+        var cracks = [];
+        for (var c = 0; c < 7; c++) {
+            var a = c / 7 * Math.PI * 2 + rn(-0.2, 0.2), len = ts * rn(0.45, 0.8);
+            var cr = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, len), _goM(0x111114)), 0.9);
+            cr.rotation.x = -Math.PI / 2; cr.rotation.z = a; cr.position.set(Math.sin(a) * len * -0.5, 3, Math.cos(a) * len * -0.5); cr.scale.y = 0.01; cracks.push(cr);
+        }
+        var ring = _goRing(F.g, _GOC.stone, ts * 0.3, ts * 0.36, 3, 0.6);
+        var dropMs = 230, total = 1300, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / dropMs), fall = _sigEaseInCubic(k);
+            rockG.position.y = ts * 3.2 * (1 - fall) + ts * 0.3; rockG.rotation.y = el * 0.01;
+            rock.material.opacity = el < dropMs ? Math.min(1, el / 60) : Math.max(0, 1 - (el - dropMs) / 120);
+            shade.material.opacity = 0.45 * Math.min(1, el / dropMs) * (1 - _sigClamp01((el - 700) / 500));
+            shade.scale.setScalar(0.4 + 0.6 * k);
+            if (k >= 1 && !hit) {
+                hit = true;
+                _goSpray(F, 14, { sprite: 'rock-debris', ly: 6, r: 14, v: 200, vz0: 80, vz1: 260, g: 600, s0: 5, s0b: 10, ml0: 400, ml1: 700 });
+                _goSpray(F, 6, { sprite: 'dust-puff', ly: 4, r: 26, v: 80, vz0: 5, vz1: 40, g: 0, s0: 16, s1: 46, op: 0.5, ml0: 600, ml1: 1000 });
+                _goSpray(F, 6, { sprite: 'water-splash', ly: 6, r: 16, v: 120, vz0: 60, vz1: 160, g: 420, s0: 6, ml0: 300, ml1: 500 });
+                _shake('hard');
+            }
+            var c2 = _sigClamp01((el - dropMs) / 160);
+            for (var i = 0; i < cracks.length; i++) { cracks[i].scale.y = Math.max(0.01, c2); cracks[i].material.opacity = 0.9 * (el > dropMs ? 1 : 0) * (1 - _sigClamp01((el - 900) / 400)); }
+            ring.scale.setScalar(1 + 3 * _sigEaseOutCubic(c2)); ring.material.opacity = el > dropMs ? 0.6 * (1 - c2) : 0;
+        });
+    }
+
+    /* ── GENERAL · High Command — the laser, the march, the airstrike ── */
+    /* DESIGNATE TARGET: the binoculars' laser off the general's eye-line, the reticle closes, the marker hangs over them */
+    function _goDesignate3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var pos = new Float32Array(6), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        pos[0] = ln.dx; pos[1] = ts * 1.0 + ln.dy; pos[2] = ln.dz; pos[3] = 0; pos[4] = ts * 0.6; pos[5] = 0;
+        var laser = _goAdd(F.g, new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(_GOC.red), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })), 0.9);
+        var dot = _goGlow(F.g, _GOC.red, ts * 0.22, 0, ts * 0.6, 0, 1);
+        var ret = new THREE.Group(); ret.position.y = ts * 0.55; F.g.add(ret);
+        var rr = _goAdd(ret, new THREE.Mesh(new THREE.RingGeometry(ts * 0.36, ts * 0.4, 32), _goA(_GOC.red)), 0.9);
+        for (var t = 0; t < 4; t++) { var tk = _goAdd(ret, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, ts * 0.16), _goA(_GOC.red)), 0.9); var a = t * Math.PI / 2; tk.position.set(Math.cos(a) * ts * 0.47, Math.sin(a) * ts * 0.47, 0); tk.rotation.z = a + Math.PI / 2; }
+        var marker = _goAdd(F.g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.1, ts * 0.2, 3), _goA(_GOC.red)), 0.85); marker.rotation.x = Math.PI; marker.position.y = ts * 1.55;
+        var total = 1500, parts = _goAll(ret);
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 380);
+            laser.material.opacity = 0.9 * k * (el < 900 ? 1 : 0.4);
+            dot.material.opacity = k * (0.6 + 0.4 * Math.abs(Math.sin(el * 0.03)));
+            var c = _sigEaseOutCubic(_sigClamp01((el - 120) / 380));
+            ret.scale.setScalar(2.2 - 1.2 * c); ret.rotation.z = (1 - c) * 1.2;
+            ret.quaternion.copy(_goCamQuat(ret.quaternion));
+            _goShow(parts, k);
+            marker.material.opacity = 0.85 * (el > 480 ? k : 0); marker.position.y = ts * (1.55 + 0.06 * Math.sin(el * 0.01)); marker.rotation.y = el * 0.004;
+        });
+    }
+    /* the active camera's facing (so a reticle reads flat on the screen); identity when there is none */
+    function _goCamQuat(q) {
+        try { var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (cam && cam.quaternion) return cam.quaternion; } catch (e) {}
+        return q;
+    }
+    /* FORWARD MARCH: the banner goes up and the chevrons roll out to every ally in reach */
+    function _goForwardMarch3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 3);
+        var pole = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.015, ts * 0.015, ts * 1.6, 6), _goM(0x2a2a2a)), 1); pole.position.set(-ts * 0.3, ts * 0.8, -ts * 0.2);
+        var flagGeo = new THREE.PlaneGeometry(ts * 0.55, ts * 0.32, 8, 1), flag = _goAdd(F.g, new THREE.Mesh(flagGeo, _goM(_GOC.olive)), 1);
+        flag.position.set(-ts * 0.3 + ts * 0.28, ts * 1.42, -ts * 0.2);
+        var trim = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.55, ts * 0.04), _goM(_GOC.gold)), 1); trim.position.set(flag.position.x, ts * 1.27, -ts * 0.199);
+        var chev = [];
+        for (var d = 0; d < 4; d++) {
+            for (var n = 0; n < 3; n++) {
+                var cg = new THREE.Group(), a = d * Math.PI / 2;
+                for (var s = -1; s <= 1; s += 2) { var bar = _goAdd(cg, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.22), _goA(_GOC.khaki)), 0.75); bar.position.x = s * ts * 0.07; bar.rotation.z = s * 0.8; }
+                cg.rotation.x = -Math.PI / 2; var wrap = new THREE.Group(); wrap.rotation.y = a; wrap.add(cg); cg.position.y = 3; F.g.add(wrap);
+                cg.userData.n = n; chev.push(cg);
+            }
+        }
+        var total = 1500, pos = flagGeo.attributes.position, base = Float32Array.from(pos.array);
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 380), rise = _sigEaseOutBack(_sigClamp01(el / 300));
+            pole.scale.y = Math.max(0.01, rise); pole.position.y = ts * 0.8 * rise; pole.material.opacity = k;
+            flag.material.opacity = trim.material.opacity = k * (el > 200 ? 1 : 0);
+            for (var i = 0; i < pos.count; i++) { var bx = base[i * 3]; pos.array[i * 3 + 2] = Math.sin(el * 0.012 + bx / ts * 9) * ts * 0.03 * (bx / ts + 0.28); }
+            pos.needsUpdate = true;
+            for (var j = 0; j < chev.length; j++) {
+                var cg = chev[j], t = _sigClamp01((el - 200 - cg.userData.n * 120) / 700);
+                cg.position.z = ts * (0.5 + t * (R - 0.3)); _goShow(_goAll(cg), (t > 0 && t < 1 ? Math.sin(t * Math.PI) : 0) * k);
+            }
+            if (el % 300 < 20) _goSpray(F, 2, { sprite: 'dust-puff', ly: 3, r: ts * 0.6, v: 30, vz0: 5, vz1: 25, g: 0, s0: 10, s1: 26, op: 0.35, ml0: 400, ml1: 700 });
+        });
+    }
+    /* DECAPITATION STRIKE: the red smoke goes up on the 3×3, a flight crosses overhead and walks the bombs in */
+    function _goDecapitation3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, jets = [], bombs = [];
+        var hdg = rn(0, Math.PI * 2), hx = Math.sin(hdg), hz = Math.cos(hdg);
+        for (var j = 0; j < 2; j++) {
+            var jet = new THREE.Group();
+            _goAdd(jet, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.6, 6), _goM(0x3a3e46)), 1).rotation.x = Math.PI / 2;
+            _goAdd(jet, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.6, ts * 0.02, ts * 0.16), _goM(0x2c3038)), 1).position.z = -ts * 0.05;
+            _goAdd(jet, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.2, ts * 0.12, ts * 0.06), _goM(0x2c3038)), 1).position.set(0, ts * 0.05, -ts * 0.25);
+            _goGlow(jet, 0xffa040, ts * 0.18, 0, 0, -ts * 0.32, 0.8);
+            jet.rotation.y = hdg; jet.userData.off = (j ? 1 : -1) * ts * 0.6; F.g.add(jet); jets.push(jet);
+        }
+        var smokeT = 0, total = 2300, flyAt = 400, flyMs = 900, dropped = 0;
+        var tilesN = (2 * R + 1) * (2 * R + 1);
+        return _sigRunOwned(F.g, total, function (el) {
+            if (el < 1300 && el - smokeT > 70) { smokeT = el; _goSpray(F, 1, { sprite: 'smoke-soft', ly: ts * 0.1, r: 8, v: 14, vz0: 60, vz1: 110, g: 0, drag: 0.5, s0: 10, s1: 46, op: 0.55, tint: 0xd02a20, ml0: 900, ml1: 1300 }); }
+            var t = _sigClamp01((el - flyAt) / flyMs);
+            for (var i = 0; i < jets.length; i++) {
+                var J = jets[i], along = (t - 0.5) * ts * 14;
+                J.position.set(hx * along - hz * J.userData.off, ts * 4.2, hz * along + hx * J.userData.off);
+                _goShow(_goAll(J), t > 0 && t < 1 ? 1 : 0);
+            }
+            while (dropped < tilesN && t >= 0.42 + dropped * 0.018) {   /* the stick of bombs, one per tile, released over the target */
+                var ox = (dropped % (2 * R + 1)) - R, oy = Math.floor(dropped / (2 * R + 1)) - R;
+                var b = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.035, ts * 0.035, ts * 0.18, 6), _goM(0x22252a)), 1);
+                b.position.set(ox * ts, ts * 4.0, oy * ts); b.userData.t0 = el; b.userData.hit = false; b.userData.ox = ox; b.userData.oy = oy; bombs.push(b); dropped++;
+            }
+            for (var bI = 0; bI < bombs.length; bI++) {
+                var B = bombs[bI], ft = (el - B.userData.t0) / 420;
+                if (B.userData.hit) continue;
+                B.material.opacity = 1; B.position.y = ts * 4.0 * (1 - ft * ft);
+                if (ft >= 1) {
+                    B.userData.hit = true; B.material.opacity = 0;
+                    _finFireball(F.c.x + B.userData.ox * ts, F.c.y + B.userData.oy * ts, F.bz + 4, 7, { r: 18 });
+                    if (bI % 3 === 0) _shake('normal');
+                }
+            }
+        });
+    }
+
+    /* ── GHOST · Poltergeist — nothing in the house stays on the shelf ── */
+    /* a household thing for the poltergeist to throw: a chair, a plate, a book, a picture frame */
+    function _goHouseThing(ts, which) {
+        var g = new THREE.Group(), wood = 0x6a4428, k = which % 4;
+        if (k === 0) {        /* chair */
+            _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.26, ts * 0.03, ts * 0.26), _goM(wood)), 1);
+            var back = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.26, ts * 0.28, ts * 0.03), _goM(wood)), 1); back.position.set(0, ts * 0.15, -ts * 0.12);
+            for (var l = 0; l < 4; l++) { var leg = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.22, ts * 0.025), _goM(wood)), 1); leg.position.set((l % 2 ? 1 : -1) * ts * 0.11, -ts * 0.12, (l < 2 ? 1 : -1) * ts * 0.11); }
+        } else if (k === 1) { /* dinner plate */
+            _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.12, ts * 0.02, 18), _goM(0xf2f0ea)), 1);
+            var rim = _goAdd(g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.13, ts * 0.006, 4, 24), _goM(0x3a6ac0)), 1); rim.rotation.x = Math.PI / 2; rim.position.y = ts * 0.012;
+        } else if (k === 2) { /* book */
+            _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.2, ts * 0.05, ts * 0.27), _goM(0x7a1a1a)), 1);
+            var pages = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.18, ts * 0.04, ts * 0.25), _goM(0xefe6cc)), 1); pages.position.x = ts * 0.012;
+        } else {              /* picture frame */
+            _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.3, ts * 0.24, ts * 0.025), _goM(0xb08a3a)), 1);
+            var pic = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.24, ts * 0.18), _goM(0x2a3a4a)), 1); pic.position.z = ts * 0.014;
+        }
+        return g;
+    }
+    var _goBumpN = 0;
+    /* the thrown thing (rides the bolt): it lifts off a shelf beside the ghost, glowing, and flies at the victim tumbling */
+    function _goBumpThrow(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128, body = _goHouseThing(ts, _goBumpN++);
+        _goGlow(body, _GOC.ecto, ts * 0.5, 0, 0, 0, 0.35);
+        return _goFlight(fromX, fromY, toX, toY, body, { ms: (o && o.flyMs) || 360, h0: ts * 1.1, arc: ts * 0.35, spin: 0.018, roll: 0.011, trail: 'shadow-wisp', trailTint: _GOC.ecto });
+    }
+    /* the landing: the thing breaks on them, ectoplasm splashes, a cold ring of it hangs on the air for a beat */
+    function _goBumpLand3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var hand = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.025, 6, 28), _goA(_GOC.ecto)), 0.75); hand.position.y = ts * 0.6;
+        _goSpray(F, 8, { sprite: 'debris', ly: ts * 0.55, r: 10, v: 150, vz0: 40, vz1: 150, g: 420, s0: 4, s0b: 8, ml0: 300, ml1: 560 });
+        _goSpray(F, 6, { sprite: 'shadow-wisp', ly: ts * 0.6, r: 16, v: 40, vz0: 20, vz1: 70, g: 0, drag: 0.6, s0: 12, s1: 30, op: 0.6, tint: _GOC.ecto, ml0: 500, ml1: 900 });
+        return _sigRunOwned(F.g, 800, function (el) { hand.material.opacity = 0.75 * _goEnv(el, 80, 800, 400); hand.scale.setScalar(0.6 + el * 0.0012); hand.rotation.x = Math.PI / 2 + Math.sin(el * 0.01) * 0.3; });
+    }
+    /* THE WHOLE HOUSE SHAKES: a door rises out of the floor beside the victim and SLAMS on them; the frame rattles */
+    function _goDoorSlam3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = Math.random() < 0.5 ? -1 : 1, yaw = rn(0, Math.PI * 2);
+        var rig = new THREE.Group(); rig.rotation.y = yaw; F.g.add(rig);
+        var frameParts = [];
+        var jambs = [[-0.32, 0.55], [0.32, 0.55]];
+        for (var j = 0; j < 2; j++) { var jb = _goAdd(rig, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 1.1, ts * 0.06), _goM(0x4a3020)), 1); jb.position.set(ts * jambs[j][0], ts * jambs[j][1], -ts * 0.38); frameParts.push(jb); }
+        var lintel = _goAdd(rig, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.7, ts * 0.06, ts * 0.06), _goM(0x4a3020)), 1); lintel.position.set(0, ts * 1.1, -ts * 0.38); frameParts.push(lintel);
+        var hinge = new THREE.Group(); hinge.position.set(side * ts * 0.3, 0, -ts * 0.38); rig.add(hinge);
+        var door = _goAdd(hinge, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.58, ts * 1.04, ts * 0.04), _goM(0x6a4428)), 1); door.position.set(-side * ts * 0.29, ts * 0.53, 0);
+        var knob = _goAdd(hinge, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.025, 8, 6), _goM(0xd0b060)), 1); knob.position.set(-side * ts * 0.52, ts * 0.5, ts * 0.03);
+        var glow = _goGlow(F.g, _GOC.ecto, ts * 1.0, 0, ts * 0.6, 0, 0.3);
+        var total = 1000, slamMs = 300, slammed = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 90, total, 300), o = _sigEaseInCubic(_sigClamp01((el - 80) / (slamMs - 80)));
+            hinge.rotation.y = side * (1.7 - 1.7 * o) + (o >= 1 ? side * 0.06 * Math.sin((el - slamMs) * 0.06) * Math.max(0, 1 - (el - slamMs) / 300) : 0);
+            _goShow(frameParts.concat([door, knob]), k); glow.material.opacity = 0.3 * k;
+            rig.position.x = o >= 1 ? ts * 0.01 * Math.sin(el * 0.5) * Math.max(0, 1 - (el - slamMs) / 260) : 0;
+            if (o >= 1 && !slammed) { slammed = true; _goSpray(F, 6, { sprite: 'dust-puff', ly: ts * 0.3, r: 18, v: 60, vz0: 10, vz1: 50, g: 0, s0: 12, s1: 32, op: 0.5, ml0: 400, ml1: 700 }); _shake('normal'); }
+        });
+    }
+
+    /* ── GHOUL · Graveyard Hunger — black grave dirt, the wound that will not close, the supper ── */
+    function _goCadaverClaws3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var rig = new THREE.Group(); rig.position.set(ln.ux * ts * 0.15, ts * 0.6, ln.uz * ts * 0.15); rig.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(rig);
+        var rakes = [];
+        for (var c = 0; c < 3; c++) {
+            var rk = _goAdd(rig, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.035, ts * 0.7), _finBasic(0x14100a, { opacity: 0, side: THREE.DoubleSide })), 1);
+            rk.position.x = (c - 1) * ts * 0.1; rk.rotation.z = 0.7; rk.scale.y = 0.01; rakes.push(rk);
+            var gl = _goAdd(rig, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.07, ts * 0.72), _goA(_GOC.rot)), 0.45); gl.position.copy(rk.position); gl.position.z = -1; gl.rotation.z = 0.7; gl.scale.y = 0.01; rakes.push(gl);
+        }
+        var total = 900, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / 140), e = _sigEaseOutCubic(k), f = 1 - _sigClamp01((el - 380) / 420);
+            for (var i = 0; i < rakes.length; i++) { rakes[i].scale.y = Math.max(0.01, e); rakes[i].position.y = ts * 0.2 * (1 - e) - ts * 0.1; rakes[i].material.opacity = rakes[i].userData.op * f; }
+            if (k >= 1 && !hit) {
+                hit = true;
+                _goSpray(F, 8, { sprite: 'mud-chunk', ly: ts * 0.55, r: 10, v: 140, vz0: 40, vz1: 140, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 560 });
+                _goSpray(F, 5, { sprite: 'poison-mist', ly: ts * 0.5, r: 14, v: 30, vz0: 10, vz1: 40, g: 0, drag: 0.6, s0: 12, s1: 34, op: 0.5, tint: _GOC.rot, ml0: 600, ml1: 1000 });
+            }
+        });
+    }
+    /* GHOUL'S SUPPER: the jaw unhinges over them and shuts */
+    function _goJaws(ts, upper, lower, toothCol) {
+        var g = new THREE.Group(), rows = [];
+        for (var rI = 0; rI < 2; rI++) {
+            var row = new THREE.Group(); row.position.y = rI ? -ts * 0.02 : ts * 0.02; g.add(row);
+            var gum = _goAdd(row, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.04, 6, 18, Math.PI), _goM(rI ? lower : upper)), 1); gum.rotation.x = rI ? Math.PI / 2 : -Math.PI / 2;
+            for (var t = 0; t < 9; t++) {
+                var a = (t + 0.5) / 9 * Math.PI, tooth = _goAdd(row, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.12, 5), _goM(toothCol)), 1);
+                tooth.position.set(Math.cos(a) * ts * 0.3, rI ? ts * 0.05 : -ts * 0.05, Math.sin(a) * ts * 0.3 * (rI ? -1 : 1) * -1);
+                tooth.rotation.x = rI ? 0 : Math.PI;
+            }
+            rows.push(row);
+        }
+        g.userData.rows = rows;
+        return g;
+    }
+    function _goGhoulSupper3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var jaws = _goJaws(ts, 0x3a1a1a, 0x2a1414, 0xd8d0b0); jaws.position.set(ln.ux * ts * 0.05, ts * 0.65, ln.uz * ts * 0.05); jaws.rotation.y = Math.atan2(ln.ux, ln.uz) + Math.PI / 2; F.g.add(jaws);
+        var parts = _goAll(jaws), total = 1000, bit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 100, total, 300), open = el < 260 ? _sigEaseOutCubic(el / 260) : 1 - _sigEaseInCubic(_sigClamp01((el - 260) / 110));
+            jaws.userData.rows[0].position.y = ts * 0.02 + ts * 0.32 * open; jaws.userData.rows[1].position.y = -ts * 0.02 - ts * 0.26 * open;
+            _goShow(parts, k);
+            if (el >= 370 && !bit) {
+                bit = true; _shake('normal');
+                _goSpray(F, 12, { sprite: 'blood-fleck', ly: ts * 0.6, r: 10, v: 170, vz0: 30, vz1: 160, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 600 });
+                _goSpray(F, 4, { sprite: 'mud-chunk', ly: ts * 0.5, r: 10, v: 90, vz0: 30, vz1: 100, g: 520, s0: 4, ml0: 300, ml1: 500 });
+            }
+        });
+    }
+
+    /* ── GIANT · Beanstalk — the bellow, the foot coming down ── */
+    /* FEE FI FO FUM: four words, four footfalls; each quake ring reaches a little further, FUM marks them */
+    function _goFeeFiFoFum3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 2), words = ['FEE.', 'FI.', 'FO.', 'FUM!'], sprites = [], rings = [];
+        for (var i = 0; i < 4; i++) {
+            var w = _goWord(F.g, words[i], i === 3 ? '#ffd76a' : '#f2e6c8', ts * (1.7 + i * 0.12), ts * (i === 3 ? 1.6 : 1.1), 'Georgia, serif'); w.userData.t0 = 120 + i * 330; sprites.push(w);
+            var rg = _goRing(F.g, i === 3 ? _GOC.gold : 0xc8b49a, ts * 0.42, ts * 0.52, 3, 0.65, 48); rg.userData.t0 = w.userData.t0; rg.userData.R = (i + 1) / 4 * (R + 0.5); rings.push(rg);
+        }
+        var total = 1900, fired = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < 4; i++) {
+                var W = sprites[i], t = (el - W.userData.t0) / 420;
+                W.material.opacity = t > 0 && t < 1 ? Math.sin(Math.min(1, t * 2.2) * Math.PI / 2) * (1 - _sigClamp01((t - 0.65) / 0.35)) : 0;
+                W.scale.set(W.scale.x, W.scale.y, 1); var sc = 1 + 0.25 * (1 - _sigClamp01(t * 4)); W.scale.x = ts * (i === 3 ? 1.6 : 1.1) * sc; W.scale.y = W.scale.x * 0.5;
+                var Rg = rings[i], rt = _sigClamp01((el - Rg.userData.t0) / 520);
+                Rg.scale.setScalar(0.5 + Rg.userData.R * 1.9 * _sigEaseOutCubic(rt)); Rg.material.opacity = el > Rg.userData.t0 ? 0.65 * (1 - rt) : 0;
+                if (el >= Rg.userData.t0 && fired <= i) {
+                    fired = i + 1; _shake(i === 3 ? 'hard' : 'soft');
+                    _goSpray(F, i === 3 ? 10 : 5, { sprite: 'dust-puff', ly: 4, r: ts * 0.5, v: 90, vz0: 5, vz1: 40, g: 0, s0: 14, s1: 40, op: 0.45, ml0: 500, ml1: 900 });
+                }
+            }
+        });
+    }
+    /* UNDERFOOT: the shadow spreads over the 3×3, then the sole — tread and heel — comes down on it */
+    function _goUnderfoot3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, W = ts * (2 * R + 1);
+        var shade = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(W * 0.62, 32), _goM(0x000000)), 0.5); shade.rotation.x = -Math.PI / 2; shade.position.y = 2; shade.scale.set(0.7, 1, 1);
+        var foot = new THREE.Group(); foot.rotation.y = rn(0, Math.PI * 2); F.g.add(foot);
+        /* the sole: a footprint outline (narrow heel, wide ball) pushed up into a slab with a rounded edge */
+        var L = W * 1.0, out = [], N = 14, fw = function (t) { return W * (0.17 + 0.17 * Math.sin(Math.PI * Math.min(1, t * 1.15)) + 0.06 * t); };
+        for (var a = 0; a <= N; a++) { var t = a / N; out.push(new THREE.Vector2(fw(t), -L / 2 + t * L)); }
+        for (var b = N; b >= 0; b--) { var t2 = b / N; out.push(new THREE.Vector2(-fw(t2) * 0.92, -L / 2 + t2 * L)); }
+        var soleGeo = new THREE.ExtrudeGeometry(new THREE.Shape(new THREE.SplineCurve(out).getPoints(48)), { depth: ts * 0.22, bevelEnabled: true, bevelThickness: ts * 0.08, bevelSize: ts * 0.1, bevelSegments: 3, curveSegments: 6 });
+        soleGeo.rotateX(Math.PI / 2); soleGeo.computeVertexNormals();
+        var sole = _goAdd(foot, new THREE.Mesh(soleGeo, _goM(0x3a2a1e)), 1); sole.position.y = ts * 0.22;
+        /* five toes along the front, big toe on the inside */
+        for (var k = 0; k < 5; k++) {
+            var tr = 1 - k * 0.14, toe = _goAdd(foot, new THREE.Mesh(new THREE.SphereGeometry(W * 0.085 * tr, 14, 10), _goM(0x4a3526)), 1);
+            toe.scale.set(1, 0.75, 1.3); toe.position.set(W * (0.2 - k * 0.1), ts * 0.12, L * (0.5 + 0.02 - Math.abs(k - 1.2) * 0.025));
+        }
+        /* the shin, thick with fur, over the heel */
+        var shin = _goAdd(foot, new THREE.Mesh(new THREE.CylinderGeometry(W * 0.2, W * 0.27, ts * 2.4, 18, 3), _goM(0x5a4030)), 1); shin.position.set(0, ts * 1.4, -L * 0.22);
+        for (var q = 0; q < 14; q++) {
+            var qa = q / 14 * Math.PI * 2, tuft = _goAdd(foot, new THREE.Mesh(new THREE.ConeGeometry(W * 0.06, ts * 0.5, 6), _goM(q % 2 ? 0x4a3424 : 0x6a4c36)), 1);
+            tuft.position.set(Math.cos(qa) * W * 0.27, ts * (0.55 + (q % 3) * 0.12), -L * 0.22 + Math.sin(qa) * W * 0.27); tuft.rotation.set(Math.sin(qa) * 0.6, 0, -Math.cos(qa) * 0.6);
+            tuft.rotation.x += Math.PI;
+        }
+        var total = 1900, downAt = 700, hit = false, parts = _goAll(foot);
+        return _sigRunOwned(F.g, total, function (el) {
+            var d = _sigClamp01((el - 250) / (downAt - 250)), e = _sigEaseInCubic(d);
+            foot.position.y = ts * 6 * (1 - e) + ts * 0.11;
+            var k = el < downAt ? Math.min(1, (el - 200) / 150) : 1 - 0.75 * _sigClamp01((el - downAt - 60) / 160) - 0.25 * _sigClamp01((el - downAt - 350) / 500);
+            _goShow(parts, el > 200 ? k : 0);
+            shade.material.opacity = 0.5 * Math.min(1, el / 400) * (1 - _sigClamp01((el - 1200) / 500)); shade.scale.set(0.7 * (0.5 + 0.5 * Math.min(1, el / downAt)), 1, 0.5 + 0.5 * Math.min(1, el / downAt));
+            if (el >= downAt + 350) foot.position.y = ts * 0.11 + ts * 3 * _sigEaseInCubic(_sigClamp01((el - downAt - 350) / 500));
+            if (d >= 1 && !hit) {
+                hit = true; _shake('hard');
+                _goSpray(F, 16, { sprite: 'dust-puff', ly: 6, r: W * 0.5, v: 160, vz0: 5, vz1: 50, g: 0, s0: 18, s1: 50, op: 0.55, ml0: 600, ml1: 1100 });
+                _goSpray(F, 12, { sprite: 'rock-debris', ly: 6, r: W * 0.4, v: 200, vz0: 80, vz1: 240, g: 600, s0: 5, s0b: 10, ml0: 400, ml1: 700 });
+            }
+        });
+    }
+
+    /* ── GLITCH · Corrupted Data — dropped packets, the call that never returns ── */
+    /* LAG SPIKE: the victim tears into scanlines, a ping graph climbs red, the frame drops */
+    function _goLagSpike3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, bars = [], blocks = [];
+        for (var b = 0; b < 7; b++) {
+            var bar = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.05), _goA(b % 2 ? _GOC.cyan : _GOC.mag)), 0.55);
+            bar.position.y = ts * (0.15 + b * 0.14); bar.userData.ph = rn(0, 6); bars.push(bar);
+        }
+        for (var q = 0; q < 10; q++) { var bl = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.08, ts * 0.08), _goA(q % 3 ? _GOC.cyan : _GOC.mag)), 0.8); bl.position.set(rn(-0.4, 0.4) * ts, rn(0.2, 1.1) * ts, rn(-0.4, 0.4) * ts); blocks.push(bl); }
+        var ping = _goWord(F.g, '999ms', '#ff3a5a', ts * 1.45, ts * 0.9, 'monospace');
+        var total = 1100;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 60, total, 300), cam = _goCamQuat(null);
+            for (var i = 0; i < bars.length; i++) {
+                var B = bars[i]; if (cam) B.quaternion.copy(cam);
+                B.position.x = ts * 0.12 * Math.sin(el * 0.09 + B.userData.ph); B.material.opacity = 0.55 * k * (Math.sin(el * 0.07 + B.userData.ph * 3) > -0.2 ? 1 : 0);
+            }
+            for (var j = 0; j < blocks.length; j++) { var Q = blocks[j]; Q.material.opacity = 0.8 * k * ((Math.floor(el / 60) + j) % 3 ? 1 : 0); if ((Math.floor(el / 90) + j) % 4 === 0) Q.position.x = rn(-0.4, 0.4) * ts; }
+            ping.material.opacity = k * ((Math.floor(el / 110)) % 2 ? 1 : 0.35);
+        });
+    }
+    /* STACK OVERFLOW: frames pile on the victim faster than they can return, then the whole stack crashes down on them */
+    function _goStackOverflow3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cubes = [];
+        for (var c = 0; c < 9; c++) {
+            var cb = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.34, ts * 0.12, ts * 0.34), _goA(c % 2 ? _GOC.cyan : _GOC.mag)), 0.6);
+            cb.userData.t0 = c * 45; cb.userData.y = ts * (1.2 + c * 0.14); cb.userData.sx = rn(-1, 1); cubes.push(cb);
+            var edge = new THREE.LineSegments(new THREE.EdgesGeometry(cb.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+            edge.userData.op = 0.8; cb.add(edge);
+        }
+        var hex = _goWord(F.g, '0xC0FFFFEE', '#7ff8ff', ts * 2.6, ts * 1.2, 'monospace');
+        var total = 1200, crashAt = 520, crashed = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 40, total, 260);
+            for (var i = 0; i < cubes.length; i++) {
+                var C = cubes[i], t = el - C.userData.t0, on = t > 0 ? 1 : 0;
+                var y = el < crashAt ? C.userData.y : C.userData.y * (1 - _sigEaseInCubic(_sigClamp01((el - crashAt) / 180))) + ts * 0.1;
+                C.position.set(el > crashAt ? C.userData.sx * ts * 0.25 * _sigClamp01((el - crashAt) / 180) : 0, y, 0); C.rotation.y = el * 0.004 + i;
+                C.material.opacity = 0.6 * k * on; C.children[0].material.opacity = 0.8 * k * on;
+            }
+            hex.material.opacity = k * (el < crashAt ? 1 : 0.4);
+            if (el >= crashAt + 180 && !crashed) { crashed = true; _shake('soft'); _goSpray(F, 10, { sprite: 'tess-square', ly: ts * 0.3, r: 12, v: 160, vz0: 40, vz1: 160, g: 400, s0: 5, s0b: 9, tint: _GOC.cyan, ml0: 300, ml1: 600 }); }
+        });
+    }
+
+    /* ── GNOME · Garden Gnome — small, underfoot, very still ── */
+    /* ANKLE BITER: the red hat darts in at shin height, two little bites */
+    function _goAnkleBiter3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var hat = _goAdd(F.g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.08, ts * 0.26, 10), _goM(_GOC.gnome)), 1);
+        var bites = [];
+        for (var b = 0; b < 2; b++) { var bt = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.07, ts * 0.012, 4, 12, Math.PI), _goA(0xffffff)), 0.9); bt.position.set((b ? 1 : -1) * ts * 0.1, ts * 0.16, 0); bt.rotation.z = Math.PI; bt.userData.t0 = 160 + b * 120; bites.push(bt); }
+        var total = 800;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / 160), e = _sigEaseOutCubic(k), cam = _goCamQuat(null);
+            hat.position.set(ln.ux * ts * 0.7 * (1 - e) + Math.sin(el * 0.06) * ts * 0.05, ts * 0.16 + Math.abs(Math.sin(el * 0.05)) * ts * 0.05, ln.uz * ts * 0.7 * (1 - e));
+            hat.material.opacity = 1 - _sigClamp01((el - 500) / 250);
+            for (var i = 0; i < bites.length; i++) { var B = bites[i], t = (el - B.userData.t0) / 300; if (cam) B.quaternion.copy(cam); B.scale.setScalar(0.6 + 0.6 * _sigClamp01(t * 3)); B.material.opacity = t > 0 && t < 1 ? 0.9 * (1 - t) : 0; }
+            if (el > 160 && el < 190) _goSpray(F, 4, { sprite: 'blood-fleck', ly: ts * 0.16, r: 6, v: 100, vz0: 20, vz1: 90, g: 500, s0: 3, ml0: 260, ml1: 460 });
+        });
+    }
+    /* LAWN ORNAMENT: a glossy ceramic glaze runs down over the gnome, the light glints off it, a ring of garden flowers */
+    function _goLawnOrnament3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var shell = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.36, 20, 14, 0, Math.PI * 2, 0, Math.PI), _finBasic(_GOC.ceramic, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.32);
+        shell.scale.set(1, 1.5, 1); shell.position.y = ts * 0.5;
+        var glint = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.08, ts * 0.9), _goA(0xffffff)), 0.9);
+        var flowers = [], cols = [0xff5a8a, 0xffe04a, 0xffffff, 0xb07aff];
+        for (var f = 0; f < 8; f++) { var a = f / 8 * Math.PI * 2, fl = _goGlow(F.g, cols[f % 4], ts * 0.16, Math.cos(a) * ts * 0.46, ts * 0.05, Math.sin(a) * ts * 0.46, 0.9); fl.userData.t0 = 200 + f * 50; flowers.push(fl); }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 300, total, 400), cam = _goCamQuat(null);
+            shell.scale.y = 1.5 * Math.min(1, el / 300); shell.material.opacity = 0.32 * k;
+            if (cam) glint.quaternion.copy(cam);
+            var g = _sigClamp01((el - 350) / 450); glint.position.set((g - 0.5) * ts * 0.7, ts * 0.55, 0); glint.material.opacity = g > 0 && g < 1 ? 0.9 * Math.sin(g * Math.PI) : 0;
+            for (var i = 0; i < flowers.length; i++) { var Fl = flowers[i], t = _sigClamp01((el - Fl.userData.t0) / 200); Fl.scale.setScalar(ts * 0.16 * t); Fl.material.opacity = 0.9 * t * k; }
+            if (el > 300 && el < 330) _goSpray(F, 6, { sprite: 'petal', ly: ts * 0.1, r: ts * 0.4, v: 30, vz0: 30, vz1: 80, g: 60, s0: 5, ml0: 600, ml1: 1000 });
+        });
+    }
+    /* GARDEN SHEARS: two long blades scissor shut through them; clippings fly */
+    function _goShears3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var rig = new THREE.Group(); rig.position.set(ln.ux * ts * 0.35, ts * 0.55, ln.uz * ts * 0.35); rig.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(rig);
+        var halves = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var h = new THREE.Group(); rig.add(h);
+            var blade = _goAdd(h, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.012, ts * 0.75), _goM(_GOC.steel)), 1); blade.position.z = ts * 0.37;
+            var edge = _goAdd(h, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.012, ts * 0.014, ts * 0.75), _goA(0xffffff)), 0.6); edge.position.set(s * ts * 0.025, 0, ts * 0.37);
+            var handle = _goAdd(h, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.06, ts * 0.04, ts * 0.32), _goM(0x2a7a3a)), 1); handle.position.z = -ts * 0.16;
+            h.userData.s = s; halves.push(h);
+        }
+        var total = 900, snipped = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 80, total, 320), c = _sigEaseInCubic(_sigClamp01((el - 120) / 160));
+            for (var i = 0; i < halves.length; i++) { halves[i].rotation.y = halves[i].userData.s * 0.55 * (1 - c); _goShow(_goAll(halves[i]), k); }
+            if (c >= 1 && !snipped) {
+                snipped = true; _shake('soft');
+                _goSpray(F, 8, { sprite: 'leaf', ly: ts * 0.55, r: 10, v: 140, vz0: 40, vz1: 140, g: 260, s0: 5, s0b: 9, ml0: 500, ml1: 900 });
+                _goSpray(F, 6, { sprite: 'steel-spark', ly: ts * 0.55, r: 6, v: 200, vz0: 30, vz1: 160, g: 400, s0: 3, ml0: 200, ml1: 380 });
+            }
+        });
+    }
+
+    /* ── GOATMAN · Lovers' Lane — a back road at night: the hatchet, the scream in the trees, the headlights ── */
+    function _goHatchet(ts) {
+        var g = new THREE.Group();
+        var haft = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.02, ts * 0.42, 6), _goM(0x6a4428)), 1); haft.rotation.x = Math.PI / 2;
+        var head = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.02, ts * 0.12, ts * 0.1), _goM(0x9aa0a8)), 1); head.position.set(0, ts * 0.06, ts * 0.17);
+        var edge = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.022, ts * 0.02, ts * 0.11), _goM(0xdfe6ee)), 1); edge.position.set(0, ts * 0.125, ts * 0.17);
+        return g;
+    }
+    function _goHatchetThrow(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128;
+        return _goFlight(fromX, fromY, toX, toY, _goHatchet(ts), { ms: (o && o.flyMs) || 380, arc: ts * 0.3, spin: 0.035 });
+    }
+    /* the thunk: the hatchet buried in them for a beat, blood off the blade */
+    function _goHatchetLand3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), h = _goHatchet(ts);
+        h.position.set(ln.ux * ts * 0.16, ts * 0.62, ln.uz * ts * 0.16); h.rotation.y = Math.atan2(-ln.ux, -ln.uz); h.rotation.x = -0.6; F.g.add(h);
+        var parts = _goAll(h);
+        _goSpray(F, 10, { sprite: 'blood-fleck', ly: ts * 0.6, r: 8, v: 150, vz0: 30, vz1: 150, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 600 });
+        return _sigRunOwned(F.g, 900, function (el) { _goShow(parts, 1 - _sigClamp01((el - 500) / 400)); h.rotation.z = Math.sin(el * 0.06) * 0.08 * Math.max(0, 1 - el / 400); });
+    }
+    /* TREELINE SCREAM: the trees come up dark around the goatman, two eyes open in them, the scream ripples out */
+    function _goTreeline3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1) + 0.6, trees = [];
+        for (var i = 0; i < 9; i++) {
+            var a = i / 9 * Math.PI * 2 + rn(-0.15, 0.15), t = new THREE.Group(), hgt = ts * rn(1.3, 1.9);
+            _goAdd(t, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.22, hgt, 7), _goM(0x0c120c)), 0.92).position.y = hgt / 2;
+            _goAdd(t, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.17, hgt * 0.6, 7), _goM(0x101a10)), 0.92).position.y = hgt * 0.75;
+            t.position.set(Math.cos(a) * ts * R, -hgt, Math.sin(a) * ts * R); t.userData.h = hgt; F.g.add(t); trees.push(t);
+        }
+        var ea = rn(0, Math.PI * 2), eyes = [];
+        for (var e = -1; e <= 1; e += 2) eyes.push(_goGlow(F.g, 0xffd23a, ts * 0.12, Math.cos(ea) * ts * (R - 0.15) - Math.sin(ea) * e * ts * 0.06, ts * 1.05, Math.sin(ea) * ts * (R - 0.15) + Math.cos(ea) * e * ts * 0.06, 1));
+        var rings = [];
+        for (var q = 0; q < 3; q++) { var rg = _goRing(F.g, 0x9a8aa0, ts * 0.4, ts * 0.46, ts * 0.9, 0.5); rg.rotation.x = -Math.PI / 2; rg.userData.t0 = 300 + q * 130; rings.push(rg); }
+        var total = 1800;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 200, total, 450);
+            for (var i = 0; i < trees.length; i++) { var T = trees[i], up = _sigEaseOutCubic(_sigClamp01((el - i * 20) / 320)); T.position.y = -T.userData.h * (1 - up) * (el < total - 450 ? 1 : 0) - T.userData.h * _sigClamp01((el - (total - 450)) / 450); _goShow(_goAll(T), k); }
+            for (var j = 0; j < eyes.length; j++) eyes[j].material.opacity = el > 380 ? k * (Math.floor(el / 600) % 4 === 3 ? 0.1 : 1) : 0;
+            for (var m = 0; m < rings.length; m++) { var Rg = rings[m], t2 = _sigClamp01((el - Rg.userData.t0) / 600); Rg.scale.setScalar(1 + t2 * R * 2.4); Rg.material.opacity = el > Rg.userData.t0 ? 0.5 * (1 - t2) : 0; }
+            if (el > 300 && el < 330) _goSpray(F, 8, { sprite: 'shadow-wisp', ly: ts * 0.8, r: ts * 0.3, v: 160, vz0: -10, vz1: 30, g: 0, drag: 0.8, s0: 14, s1: 36, op: 0.55, tint: 0x30203a, ml0: 600, ml1: 1000 });
+        });
+    }
+    /* LOVERS' LANE: high beams flare out of the dark behind them, then the hatchet comes down */
+    function _goLoversLane3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var lamps = new THREE.Group(); lamps.position.set(-ln.ux * ts * 1.4, ts * 0.35, -ln.uz * ts * 1.4); lamps.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(lamps);
+        var cones = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var cone = _goAdd(lamps, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.42, ts * 1.6, 16, 1, true), _finBasic(_GOC.headl, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.32);
+            cone.rotation.x = -Math.PI / 2; cone.position.set(s * ts * 0.25, 0, ts * 0.8); cones.push(cone);
+            cones.push(_goGlow(lamps, _GOC.headl, ts * 0.35, s * ts * 0.25, 0, 0, 1));
+        }
+        var h = _goHatchet(ts); var piv = new THREE.Group(); piv.position.set(ln.ux * ts * 0.3, ts * 1.2, ln.uz * ts * 0.3); piv.rotation.y = Math.atan2(-ln.ux, -ln.uz); piv.add(h); F.g.add(piv);
+        var hp = _goAll(h), total = 1300, chop = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 90, total, 420);
+            _goShow(cones, k * (Math.floor(el / 90) === 2 ? 0.2 : 1));
+            var c = _sigEaseInCubic(_sigClamp01((el - 380) / 160)); piv.rotation.x = -1.6 + 2.6 * c;
+            _goShow(hp, el > 300 ? 1 - _sigClamp01((el - 800) / 300) : 0);
+            if (c >= 1 && !chop) { chop = true; _shake('normal'); _goSpray(F, 12, { sprite: 'blood-fleck', ly: ts * 0.6, r: 8, v: 170, vz0: 30, vz1: 160, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 600 }); }
+        });
+    }
+
+    /* ── GOBLIN · Goblin Mob — dirty tricks and numbers ── */
+    function _goPocketSand3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var cloud = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 12, 8), _finBasic(_GOC.sand, { opacity: 0, depthWrite: false })), 0.35); cloud.position.y = ts * 0.95;
+        var total = 1100, last = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            cloud.scale.setScalar(0.4 + 1.1 * _sigEaseOutCubic(_sigClamp01(el / 300))); cloud.material.opacity = 0.35 * _goEnv(el, 60, total, 600);
+            if (el < 260 && el - last > 30 && _canSpawn()) {   /* the fistful, flung from the goblin's side at their face */
+                last = el;
+                for (var i = 0; i < 4; i++) _spawn({ x: F.c.x + ln.ux * ts * 0.6, y: F.c.y + ln.uz * ts * 0.6, z: F.bz + ts * 0.7, mode: 'billboard', sprite: 'sand-particle',
+                    ml: rn(300, 520), size0: rn(3, 6), size1: 2, vx: -ln.ux * rn(220, 360) + rn(-60, 60), vy: -ln.uz * rn(220, 360) + rn(-60, 60), vz: rn(20, 90), gravity: 160, drag: 1.4, opacity0: 0.95, opacity1: 0, tint: _GOC.sand });
+            }
+        });
+    }
+    /* DOGPILE: the mob jumps on — little green bodies leap in from every side and pile on top */
+    function _goDogpile3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, gobs = [];
+        for (var i = 0; i < 5; i++) {
+            var g = new THREE.Group(), a = i / 5 * Math.PI * 2 + rn(-0.3, 0.3);
+            _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.1, ts * 0.24, 7), _goM(_GOC.goblin)), 1).position.y = ts * 0.12;
+            _goAdd(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.07, 8, 6), _goM(0x8ac03a)), 1).position.y = ts * 0.28;
+            for (var s = -1; s <= 1; s += 2) { var ear = _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.1, 4), _goM(0x8ac03a)), 1); ear.position.set(s * ts * 0.08, ts * 0.3, 0); ear.rotation.z = -s * 1.2; }
+            var knife = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.012, ts * 0.12, ts * 0.02), _goM(_GOC.steel)), 1); knife.position.set(ts * 0.1, ts * 0.22, 0);
+            g.userData.a = a; g.userData.t0 = i * 70; g.userData.top = ts * (0.55 + i * 0.12); F.g.add(g); gobs.push(g);
+        }
+        var total = 1500, stabT = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < gobs.length; i++) {
+                var G = gobs[i], t = _sigClamp01((el - G.userData.t0) / 280), d = ts * 0.9 * (1 - t);
+                G.position.set(Math.cos(G.userData.a) * (d + ts * 0.18), G.userData.top * t + Math.sin(t * Math.PI) * ts * 0.5, Math.sin(G.userData.a) * (d + ts * 0.18));
+                G.rotation.y = -G.userData.a + Math.PI / 2; G.rotation.z = t >= 1 ? Math.sin(el * 0.04 + i) * 0.25 : 0;
+                _goShow(_goAll(G), (el > G.userData.t0 ? 1 : 0) * (1 - _sigClamp01((el - 1100) / 400)));
+            }
+            if (el > 350 && el < 1100 && el - stabT > 110) { stabT = el; _goSpray(F, 3, { sprite: 'steel-spark', ly: ts * 0.6, r: 12, v: 160, vz0: 30, vz1: 140, g: 400, s0: 3, ml0: 160, ml1: 300 }); }
+        });
+    }
+
+    /* ── GOLEM · Emet — clay that will not let go ── */
+    /* EMET: the word on the brow lights; clay plates fly in and set over the body */
+    function _goEmet3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var word = _goWord(F.g, 'אמת', '#ffd27a', ts * 1.25, ts * 0.8, 'serif');
+        var plates = [];
+        for (var i = 0; i < 6; i++) {
+            /* a coil of wet clay, like a coil pot, wraps round the body */
+            var a = i / 6 * Math.PI * 2, cg = new THREE.TorusGeometry(ts * 0.42, ts * 0.065, 8, 28, Math.PI * 1.3); cg.rotateX(Math.PI / 2); cg.rotateY(a);
+            var p = _goAdd(F.g, new THREE.Mesh(cg, _goM(i % 2 ? _GOC.clay : _GOC.clayD)), 1);
+            p.userData.y = ts * (0.2 + (i % 3) * 0.28); p.userData.t0 = i * 60; plates.push(p);
+        }
+        var glow = _goGlow(F.g, _GOC.emet, ts * 0.5, 0, ts * 1.2, 0, 0.7);
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 420);
+            word.material.opacity = k; glow.material.opacity = 0.7 * k * (0.7 + 0.3 * Math.sin(el * 0.02));
+            for (var i = 0; i < plates.length; i++) {
+                var P = plates[i], t = _sigEaseOutBack(_sigClamp01((el - 200 - P.userData.t0) / 300));
+                P.scale.set(1.8 - 0.8 * t, 1, 1.8 - 0.8 * t); P.position.y = P.userData.y + ts * 0.8 * (1 - t); P.rotation.y = (1 - t) * 1.5;
+                P.material.opacity = (el > 200 + P.userData.t0 ? 1 : 0) * k;
+            }
+            if (el > 520 && el < 550) _goSpray(F, 8, { sprite: 'mud-chunk', ly: ts * 0.5, r: ts * 0.3, v: 80, vz0: 10, vz1: 60, g: 400, s0: 4, tint: _GOC.clay, ml0: 300, ml1: 600 });
+        });
+    }
+    /* CLAY GRIP: a clay hand comes up out of the floor and closes on their ankles */
+    function _goClayHand(ts, scale, col) {
+        var g = new THREE.Group(), fingers = [];
+        var palm = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.26, ts * 0.12, 10), _goM(col)), 1); palm.position.y = ts * 0.04;
+        for (var f = 0; f < 5; f++) {
+            var a = f / 5 * Math.PI * 2, fg = new THREE.Group(); fg.position.set(Math.cos(a) * ts * 0.2, ts * 0.08, Math.sin(a) * ts * 0.2); fg.rotation.y = -a; g.add(fg);
+            var seg = _goAdd(fg, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.055, ts * 0.34, 6), _goM(col)), 1); seg.position.y = ts * 0.17;
+            fingers.push(fg);
+        }
+        g.scale.setScalar(scale || 1); g.userData.fingers = fingers;
+        return g;
+    }
+    function _goClayGrip3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hand = _goClayHand(ts, 1.15, _GOC.clay); F.g.add(hand);
+        var parts = _goAll(hand), total = 1300, gripped = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 260)), shut = _sigEaseInCubic(_sigClamp01((el - 240) / 180));
+            hand.position.y = -ts * 0.35 * (1 - up);
+            for (var i = 0; i < hand.userData.fingers.length; i++) hand.userData.fingers[i].rotation.z = 0.5 - 0.95 * shut;
+            _goShow(parts, Math.min(1, el / 80) * (1 - _sigClamp01((el - 900) / 400)));
+            if (shut >= 1 && !gripped) { gripped = true; _goSpray(F, 10, { sprite: 'mud-chunk', ly: 6, r: 18, v: 120, vz0: 30, vz1: 120, g: 500, s0: 4, s0b: 8, tint: _GOC.clay, ml0: 300, ml1: 600 }); }
+        });
+    }
+    /* CLAY CRUSH: two slabs of wet clay come in from both sides and squeeze */
+    function _goClayCrush3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), px = -ln.uz, pz = ln.ux, slabs = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var sl = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.45, 18, 14), _goM(s < 0 ? _GOC.clay : _GOC.clayD)), 1); sl.geometry.scale(0.2, 1, 0.8);
+            sl.rotation.y = Math.atan2(px, pz) + Math.PI / 2; sl.userData.s = s; slabs.push(sl);
+        }
+        var total = 1100, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var c = _sigEaseInCubic(_sigClamp01((el - 60) / 220)), back = _sigClamp01((el - 620) / 380);
+            for (var i = 0; i < slabs.length; i++) {
+                var S = slabs[i], d = ts * (1.1 - 0.82 * c + 0.5 * back);
+                S.position.set(px * S.userData.s * d, ts * 0.5, pz * S.userData.s * d); S.scale.y = c >= 1 ? 1 - 0.12 * Math.sin(Math.min(1, (el - 280) / 160) * Math.PI) : 1;
+                S.material.opacity = Math.min(1, el / 60) * (1 - back);
+            }
+            if (c >= 1 && !hit) { hit = true; _shake('normal'); _goSpray(F, 12, { sprite: 'mud-chunk', ly: ts * 0.5, r: 10, v: 160, vz0: 40, vz1: 180, g: 520, s0: 4, s0b: 9, tint: _GOC.clay, ml0: 300, ml1: 650 }); }
+        });
+    }
+
+    /* ── GREY · Missing Time — the hour you lose, the table you wake up on ── */
+    /* MISSING TIME: a clock face over them; the hands race three hours on; the white light from above blinks */
+    function _goMissingTime3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, face = new THREE.Group(); face.position.y = ts * 1.5; F.g.add(face);
+        var parts = [_goAdd(face, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.34, 32), _goA(0x1a2a24)), 0.6), _goAdd(face, new THREE.Mesh(new THREE.RingGeometry(ts * 0.33, ts * 0.37, 40), _goA(_GOC.grey)), 0.9)];
+        for (var t = 0; t < 12; t++) { var a = t / 12 * Math.PI * 2, tk = _goAdd(face, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, ts * (t % 3 ? 0.04 : 0.08)), _goA(_GOC.grey)), 0.9); tk.position.set(Math.sin(a) * ts * 0.29, Math.cos(a) * ts * 0.29, 0.5); tk.rotation.z = -a; parts.push(tk); }
+        var hands = [];
+        for (var h = 0; h < 2; h++) { var hp = new THREE.Group(); hp.position.z = 1; face.add(hp); var hm = _goAdd(hp, new THREE.Mesh(new THREE.PlaneGeometry(ts * (h ? 0.02 : 0.035), ts * (h ? 0.27 : 0.18)), _goA(0xffffff)), 1); hm.position.y = ts * (h ? 0.135 : 0.09); hands.push(hp); parts.push(hm); }
+        var beam = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.55, ts * 3.2, 20, 1, true), _finBasic(0xe8fff4, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.35);
+        beam.position.y = ts * 1.6;
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 400);
+            var cam = _goCamQuat(null); if (cam) face.quaternion.copy(cam);
+            _goShow(parts, k);
+            var spin = _sigEaseInCubic(_sigClamp01(el / 900)) * Math.PI * 2 * 3;   /* three hours */
+            hands[0].rotation.z = -spin / 12; hands[1].rotation.z = -spin;
+            beam.material.opacity = 0.35 * (el > 900 && el < 1350 ? (Math.floor(el / 70) % 2 ? 1 : 0.3) : 0);
+            if (el > 900 && el < 930) _sigScreenFlash('#e8fff4', 180, 0.25);
+        });
+    }
+    /* TISSUE SAMPLE: the probe comes down, the vial fills green and floats back to the grey */
+    function _goTissueSample3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _goFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var probe = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.022, ts * 0.004, ts * 0.9, 8), _goM(0xdfe6ee)), 1);
+        var vial = new THREE.Group(); F.g.add(vial);
+        var glass = _goAdd(vial, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.09, ts * 0.09, ts * 0.32, 12, 1, true), _goA(0xd8f0ff)), 0.4);
+        var fill = _goAdd(vial, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.078, ts * 0.078, ts * 0.3, 12), _goA(0x7aff9a)), 0.85); fill.scale.y = 0.01;
+        var glow = _goGlow(vial, 0x7aff9a, ts * 0.5, 0, 0, 0, 0.6);
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var d = _sigEaseOutCubic(_sigClamp01(el / 220));
+            probe.position.set(0, ts * (1.6 - 0.75 * d), 0); probe.material.opacity = 1 - _sigClamp01((el - 600) / 200);
+            var f = _sigClamp01((el - 250) / 400); fill.scale.y = Math.max(0.01, f); fill.position.y = -ts * 0.15 * (1 - f);
+            var fly = _sigEaseInCubic(_sigClamp01((el - 750) / 500));
+            vial.position.set(ln.dx * fly, ts * (0.95 + 0.4 * Math.sin(fly * Math.PI)) + ln.dy * fly, ln.dz * fly);
+            var k = Math.min(1, el / 150) * (1 - _sigClamp01((el - 1250) / 250));
+            glass.material.opacity = 0.4 * k; fill.material.opacity = 0.85 * k; glow.material.opacity = 0.6 * k * f;
+        });
+    }
+
+    /* ── HALFDEMON · Half-Blood — half the body lets the fiend out ── */
+    function _goLetItOut3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, yaw = rn(0, Math.PI * 2);
+        var fiend = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.36, ts * 0.42, ts * 1.6, 16, 1, true, yaw, Math.PI), _finBasic(_GOC.demon, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.5);
+        var human = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.34, ts * 0.38, ts * 1.2, 16, 1, true, yaw + Math.PI, Math.PI), _finBasic(0xffe6c8, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.22);
+        fiend.position.y = ts * 0.8; human.position.y = ts * 0.6;
+        var horns = [];
+        for (var s = -1; s <= 1; s += 2) { var hn = _goAdd(F.g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.035, ts * 0.22, 6), _goM(0x1a0806)), 1); hn.position.set(s * ts * 0.1, ts * 1.22, 0); hn.rotation.z = -s * 0.45; horns.push(hn); }
+        var total = 1600, lastF = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 180, total, 420);
+            fiend.material.opacity = 0.5 * k * (0.8 + 0.2 * Math.sin(el * 0.03)); human.material.opacity = 0.22 * k;
+            fiend.scale.y = 0.6 + 0.4 * _sigEaseOutCubic(_sigClamp01(el / 400));
+            for (var i = 0; i < horns.length; i++) { horns[i].scale.setScalar(_sigEaseOutBack(_sigClamp01((el - 250) / 300))); horns[i].material.opacity = k; }
+            if (el - lastF > 60 && el < total - 400 && _canSpawn()) {
+                lastF = el; var a = yaw + rn(0, Math.PI);
+                _spawn({ x: F.c.x + Math.cos(a) * ts * 0.36, y: F.c.y - Math.sin(a) * ts * 0.36, z: F.bz + rn(0, ts * 0.6), mode: 'billboard', sprite: 'dark-flame', ml: rn(400, 700), size0: rn(10, 16), size1: 3, vx: 0, vy: 0, vz: rn(60, 120), drag: 0.6, opacity0: 0.85, opacity1: 0, tint: _GOC.demon });
+            }
+            if (el > 200 && el < 230) _goSpray(F, 6, { sprite: 'blood-fleck', ly: ts * 0.7, r: 10, v: 60, vz0: -20, vz1: 30, g: 520, s0: 3, ml0: 400, ml1: 700 });
+        });
+    }
+    /* DEVIL'S DUE: the contract slaps onto them and burns up from the bottom; the sigil under them */
+    function _goDevilsDue3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var paper = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.42, ts * 0.56), _finBasic(0xf0e2c0, { opacity: 0, side: THREE.DoubleSide, map: _finTextTex('CONTRACT\n\n~~~~~~\n~~~~~~\n\nX ______', { ink: '#3a1a10', bg: '#f0e2c0', w: 256, h: 340, fontPx: 34 }) })), 1);
+        paper.position.set(ln.ux * ts * 0.22, ts * 0.65, ln.uz * ts * 0.22); paper.rotation.y = Math.atan2(ln.ux, ln.uz);
+        var sig = _goRing(F.g, _GOC.demon, ts * 0.4, ts * 0.46, 3, 0.8, 5); var sig2 = _goRing(F.g, _GOC.demon, ts * 0.2, ts * 0.24, 3, 0.8, 5);
+        var total = 1400, lastE = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var slap = _sigEaseOutBack(_sigClamp01(el / 160)), burn = _sigClamp01((el - 350) / 700);
+            paper.scale.set(slap, Math.max(0.01, slap * (1 - burn)), 1); paper.position.y = ts * 0.65 + ts * 0.28 * burn; paper.material.opacity = el < 1050 ? 1 : 0;
+            sig.rotation.z = el * 0.002; sig2.rotation.z = -el * 0.003;
+            var k = _goEnv(el, 200, total, 400); sig.material.opacity = 0.8 * k; sig2.material.opacity = 0.8 * k;
+            if (burn > 0 && burn < 1 && el - lastE > 35 && _canSpawn()) {
+                lastE = el;
+                _spawn({ x: F.c.x + ln.ux * ts * 0.22 + rn(-1, 1) * ts * 0.2, y: F.c.y + ln.uz * ts * 0.22, z: F.bz + ts * 0.37 + ts * 0.56 * burn, mode: 'billboard', sprite: 'ember', ml: rn(300, 600), size0: rn(5, 9), size1: 1, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(50, 120), drag: 0.8, opacity0: 1, opacity1: 0 });
+            }
+        });
+    }
+
+    /* ── HIPPIE · Flower Power — peace and love as a weapon ── */
+    function _goDaisy(parent, ts, size, centre) {
+        var g = new THREE.Group(); parent.add(g);
+        for (var p = 0; p < 10; p++) { var a = p / 10 * Math.PI * 2, pt = _goAdd(g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.05 * size, 8), _goM(_GOC.daisy)), 1); pt.scale.set(0.6, 1.6, 1); pt.position.set(Math.sin(a) * ts * 0.08 * size, Math.cos(a) * ts * 0.08 * size, 0); pt.rotation.z = -a; }
+        _goAdd(g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.045 * size, 12), _goM(centre || 0xffc020)), 1).position.z = 0.5;
+        return g;
+    }
+    function _goPeaceSign(parent, ts, R, col, op) {
+        var g = new THREE.Group(); parent.add(g);
+        _goAdd(g, new THREE.Mesh(new THREE.RingGeometry(R * 0.86, R, 40), _goA(col)), op);
+        var v = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(R * 0.12, R * 1.8), _goA(col)), op);
+        for (var s = -1; s <= 1; s += 2) { var leg = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(R * 0.12, R * 0.95), _goA(col)), op); leg.position.set(s * R * 0.33, -R * 0.33, 0); leg.rotation.z = s * 0.785; }
+        return g;
+    }
+    /* FLOWER IN THE BARREL: a daisy blooms where their weapon is; the peace sign hangs over them */
+    function _goFlowerBarrel3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var holder = new THREE.Group(); holder.position.set(ln.ux * ts * 0.3, ts * 0.62, ln.uz * ts * 0.3); F.g.add(holder);
+        var daisy = _goDaisy(holder, ts, 1.4), peace = new THREE.Group(); peace.position.y = ts * 1.45; F.g.add(peace); _goPeaceSign(peace, ts, ts * 0.22, _GOC.peace, 0.85);
+        var dp = _goAll(daisy), pp = _goAll(peace), total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 100, total, 400), cam = _goCamQuat(null);
+            if (cam) { holder.quaternion.copy(cam); peace.quaternion.copy(cam); }
+            daisy.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 280))); daisy.rotation.z = el * 0.001;
+            _goShow(dp, k); _goShow(pp, el > 250 ? k : 0); peace.position.y = ts * (1.45 + 0.05 * Math.sin(el * 0.006));
+            if (el > 260 && el < 290) _goSpray(F, 8, { sprite: 'petal', ly: ts * 0.7, r: 8, v: 70, vz0: 20, vz1: 80, g: 80, s0: 5, tint: 0xffffff, ml0: 700, ml1: 1100 });
+        });
+    }
+    /* MAKE LOVE NOT WAR: petals and hearts fall over the 3×3, a peace sign glows on the ground, the colours run */
+    function _goLoveNotWar3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, W = ts * (R + 0.5);
+        var floor = new THREE.Group(); floor.rotation.x = -Math.PI / 2; floor.position.y = 3; F.g.add(floor); _goPeaceSign(floor, ts, W * 0.9, _GOC.peace, 0.55);
+        var rings = [], cols = [0xff4a4a, 0xffa030, 0xfff04a, 0x5aff6a, 0x4ab0ff, 0xb05aff];
+        for (var c = 0; c < cols.length; c++) { var rg = _goRing(F.g, cols[c], W * (1.0 + c * 0.06), W * (1.05 + c * 0.06), 2.5, 0.45, 48); rings.push(rg); }
+        var fp = _goAll(floor), total = 2000, lastP = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 300, total, 500);
+            _goShow(fp, k); floor.rotation.z = el * 0.0006;
+            for (var i = 0; i < rings.length; i++) rings[i].material.opacity = 0.45 * k * (0.6 + 0.4 * Math.sin(el * 0.008 + i));
+            if (el - lastP > 40 && el < total - 500 && _canSpawn()) {
+                lastP = el;
+                _spawn({ x: F.c.x + rn(-W, W), y: F.c.y + rn(-W, W), z: F.bz + ts * rn(1.4, 2.0), mode: 'billboard', sprite: Math.random() < 0.6 ? 'petal' : 'sparkle', ml: rn(900, 1400),
+                    size0: rn(5, 9), size1: 4, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-90, -50), drag: 0.3, opacity0: 0.95, opacity1: 0, tint: cols[(Math.random() * cols.length) | 0] });
+            }
+        });
+    }
+
+    /* ── HOMOSAPIEN · Persistence Hunter — the animal that throws and never stops walking ── */
+    function _goSpear(ts) {
+        var g = new THREE.Group();
+        var shaft = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.95, 5), _goM(0x8a6438)), 1); shaft.rotation.x = Math.PI / 2;
+        var tip = _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.12, 4), _goM(0x4a4440)), 1); tip.rotation.x = Math.PI / 2; tip.position.z = ts * 0.52;
+        for (var f = 0; f < 2; f++) { var fl = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.06, ts * 0.12), _goM(0xd8c8a8)), 1); fl.position.z = -ts * 0.42; fl.rotation.set(Math.PI / 2, f * Math.PI / 2, 0); }
+        return g;
+    }
+    function _goAtlatlThrow(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128;
+        return _goFlight(fromX, fromY, toX, toY, _goSpear(ts), { ms: (o && o.flyMs) || 420, h0: ts * 0.9, arc: ts * 0.6, trail: 'dust-puff', trailMs: 60 });
+    }
+    function _goAtlatlLand3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), sp = _goSpear(ts);
+        sp.position.set(-ln.ux * ts * 0.25, ts * 0.32, -ln.uz * ts * 0.25); sp.rotation.y = Math.atan2(-ln.ux, -ln.uz); sp.rotation.x = 0.45; F.g.add(sp);
+        var parts = _goAll(sp);
+        _goSpray(F, 6, { sprite: 'dust-puff', ly: 4, r: 14, v: 60, vz0: 5, vz1: 40, g: 0, s0: 10, s1: 28, op: 0.45, ml0: 400, ml1: 700 });
+        _goSpray(F, 6, { sprite: 'blood-fleck', ly: ts * 0.55, r: 8, v: 120, vz0: 20, vz1: 120, g: 520, s0: 3, ml0: 300, ml1: 500 });
+        return _sigRunOwned(F.g, 1100, function (el) { _goShow(parts, 1 - _sigClamp01((el - 600) / 500)); sp.rotation.z = Math.sin(el * 0.08) * 0.05 * Math.max(0, 1 - el / 300); });
+    }
+    /* RUN THEM DOWN: the tracks of the whole chase print across the ground up to them, then the spear goes in */
+    function _goRunThemDown3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), prints = [], n = Math.max(4, Math.round(ln.L / ts * 2.2));
+        for (var i = 0; i < n; i++) {
+            var t = i / n, side = i % 2 ? 1 : -1, fp = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.06, 10), _goM(0x2a1a10)), 0.7);
+            fp.scale.set(0.6, 1.4, 1); fp.rotation.x = -Math.PI / 2; fp.rotation.z = Math.atan2(ln.ux, ln.uz);
+            fp.position.set(ln.dx * (1 - t) - ln.uz * side * ts * 0.08, 3, ln.dz * (1 - t) + ln.ux * side * ts * 0.08); fp.userData.t0 = i * 40; prints.push(fp);
+        }
+        var total = 1500;
+        _goSpray(F, 8, { sprite: 'dust-puff', ly: 4, r: 18, v: 80, vz0: 5, vz1: 40, g: 0, s0: 12, s1: 34, op: 0.45, ml0: 500, ml1: 800 });
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < prints.length; i++) { var P = prints[i]; P.material.opacity = el > P.userData.t0 ? 0.7 * (1 - _sigClamp01((el - 900) / 600)) : 0; }
+        });
+    }
+
+    /* ── ICE QUEEN · Snow Queen — the devil's mirror, the kiss that is the last ── */
+    /* MIRROR SPLINTER: a pane of the devil's mirror stands before them, cracks, and its splinters fly into the eye and the heart */
+    function _goMirrorSplinter3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var pane = new THREE.Group(); pane.position.set(ln.ux * ts * 0.45, ts * 0.75, ln.uz * ts * 0.45); pane.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(pane);
+        var glass = _goAdd(pane, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.7), _goA(_GOC.mirror)), 0.45);
+        var frame = _goAdd(pane, new THREE.Mesh(new THREE.RingGeometry(ts * 0.36, ts * 0.4, 4, 1, Math.PI / 4), _goA(0xaad8ff)), 0.8); frame.scale.set(0.9, 1.25, 1);
+        var cracks = [];
+        for (var c = 0; c < 6; c++) { var cr = _goAdd(pane, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.012, ts * 0.32), _goA(0xffffff)), 1); cr.rotation.z = c / 6 * Math.PI * 2 + rn(-0.2, 0.2); cr.position.set(Math.sin(cr.rotation.z) * -ts * 0.13, Math.cos(cr.rotation.z) * ts * 0.13, 1); cr.scale.y = 0.01; cracks.push(cr); }
+        var shards = [];
+        for (var s = 0; s < 7; s++) {
+            var sh = _goAdd(F.g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.1, 3).rotateX(Math.PI / 2), _goA(0xe8f6ff)), 0.95);
+            sh.userData.from = new THREE.Vector3(pane.position.x + rn(-0.2, 0.2) * ts, ts * rn(0.5, 1.0), pane.position.z + rn(-0.2, 0.2) * ts);
+            sh.userData.to = new THREE.Vector3(rn(-0.05, 0.05) * ts, s % 2 ? ts * 1.0 : ts * 0.7, rn(-0.05, 0.05) * ts); shards.push(sh);   /* the eye, the heart */
+        }
+        var total = 1300, shatterAt = 420, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = el < shatterAt ? Math.min(1, el / 150) : 0;
+            glass.material.opacity = 0.45 * k * (0.7 + 0.3 * Math.sin(el * 0.03)); frame.material.opacity = 0.8 * k;
+            for (var i = 0; i < cracks.length; i++) { cracks[i].scale.y = Math.max(0.01, _sigClamp01((el - 200 - i * 25) / 120)); cracks[i].material.opacity = k; }
+            var f = _sigEaseInCubic(_sigClamp01((el - shatterAt) / 220));
+            for (var j = 0; j < shards.length; j++) {
+                var S = shards[j]; S.position.lerpVectors(S.userData.from, S.userData.to, f); S.lookAt(S.userData.to.x + F.g.position.x, S.userData.to.y + F.g.position.y, S.userData.to.z + F.g.position.z);
+                S.material.opacity = el > shatterAt ? 0.95 * (1 - _sigClamp01((el - shatterAt - 220) / 200)) : 0;
+            }
+            if (f >= 1 && !hit) { hit = true; _goSpray(F, 8, { sprite: 'ice-shard', ly: ts * 0.85, r: 8, v: 120, vz0: 20, vz1: 120, g: 300, s0: 4, ml0: 300, ml1: 500 }); var hg = _goGlow(F.g, 0xff9ad8, ts * 0.35, 0, ts * 0.72, 0, 0.8); hg.material.opacity = 0.8; }
+        });
+    }
+    /* SNOW QUEEN'S KISS: her breath frosts over them, then the frost flowers bloom up the body from the floor */
+    function _goSnowKiss3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), crystals = [];
+        for (var c = 0; c < 12; c++) {
+            var a = c / 12 * Math.PI * 2, cr = _goAdd(F.g, new THREE.Mesh(new THREE.OctahedronGeometry(ts * rn(0.05, 0.09), 0), _goA(_GOC.ice)), 0.85);
+            cr.scale.set(0.5, 2.2, 0.5); cr.position.set(Math.cos(a) * ts * 0.28, ts * (0.1 + (c % 4) * 0.22), Math.sin(a) * ts * 0.28); cr.rotation.set(rn(-0.4, 0.4), a, rn(-0.4, 0.4)); cr.userData.t0 = 300 + (c % 4) * 120; crystals.push(cr);
+        }
+        var ring = _goRing(F.g, _GOC.ice, ts * 0.35, ts * 0.5, 3, 0.7);
+        var lips = _goGlow(F.g, 0xbfe8ff, ts * 0.4, ln.ux * ts * 0.12, ts * 0.98, ln.uz * ts * 0.12, 1);
+        var total = 1700, lastB = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 450);
+            lips.material.opacity = el < 500 ? k * (1 - el / 500) : 0;
+            if (el - lastB > 30 && el < 320 && _canSpawn()) { lastB = el; _spawn({ x: F.c.x + ln.ux * ts * 0.7, y: F.c.y + ln.uz * ts * 0.7, z: F.bz + ts * 0.95, mode: 'billboard', sprite: 'frost-mist', ml: rn(400, 700), size0: rn(8, 14), size1: rn(26, 40), vx: -ln.ux * 160, vy: -ln.uz * 160, vz: rn(-10, 10), drag: 1.2, opacity0: 0.6, opacity1: 0 }); }
+            for (var i = 0; i < crystals.length; i++) { var C = crystals[i], t = _sigEaseOutBack(_sigClamp01((el - C.userData.t0) / 260)); C.scale.set(0.5 * t, 2.2 * t, 0.5 * t); C.material.opacity = 0.85 * k * (t > 0 ? 1 : 0); }
+            ring.scale.setScalar(1 + _sigClamp01((el - 300) / 500)); ring.material.opacity = el > 300 ? 0.7 * k : 0;
+            if (el > 300 && el < 330) _goSpray(F, 10, { sprite: 'snowflake', ly: ts * 1.2, r: ts * 0.35, v: 30, vz0: -40, vz1: 10, g: 20, drag: 0.4, s0: 5, ml0: 900, ml1: 1300 });
+        });
+    }
+
+    /* ── JACK O LANTERN · Stingy Jack — the apple tree, the bag, the coal from hell ── */
+    /* UP THE APPLE TREE: the tree shoots up behind them with the cross cut in its bark; the roots take their feet */
+    function _goAppleTree3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var tree = new THREE.Group(); tree.position.set(-ln.ux * ts * 0.48, 0, -ln.uz * ts * 0.48); F.g.add(tree);
+        var trunk = _goAdd(tree, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.08, ts * 0.13, ts * 1.4, 8), _goM(_GOC.bark)), 1); trunk.position.y = ts * 0.7;
+        var crown = [];
+        for (var c = 0; c < 5; c++) { var cl = _goAdd(tree, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 10, 8), _finBasic(0x2a6a2a, { opacity: 0, depthWrite: false })), 0.7); cl.position.set(Math.cos(c * 1.3) * ts * 0.22, ts * (1.45 + (c % 2) * 0.15), Math.sin(c * 1.3) * ts * 0.22); crown.push(cl); }
+        var apples = [];
+        for (var a = 0; a < 5; a++) { var ap = _goAdd(tree, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.045, 8, 6), _goM(_GOC.apple)), 1); ap.position.set(Math.cos(a * 2.1) * ts * 0.3, ts * 1.3, Math.sin(a * 2.1) * ts * 0.3); ap.userData.y0 = ap.position.y; ap.userData.t0 = 700 + a * 90; apples.push(ap); }
+        var cross = new THREE.Group(); cross.position.set(ln.ux * ts * 0.12, ts * 0.8, ln.uz * ts * 0.12); cross.rotation.y = Math.atan2(ln.ux, ln.uz); tree.add(cross);
+        _goAdd(cross, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, ts * 0.24), _goA(_GOC.pump)), 1); _goAdd(cross, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.15, ts * 0.03), _goA(_GOC.pump)), 1).position.y = ts * 0.04;
+        var roots = [];
+        for (var rI = 0; rI < 4; rI++) { var rt = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.022, 5, 14, Math.PI * 1.2), _goM(_GOC.bark)), 1); rt.rotation.set(Math.PI / 2, 0, rI * Math.PI / 2); rt.position.y = ts * (0.06 + rI * 0.05); roots.push(rt); }
+        var tp = _goAll(tree), total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 380)), k = 1 - _sigClamp01((el - 1400) / 500);
+            tree.scale.set(1, Math.max(0.01, up), 1); _goShow(tp, Math.min(1, el / 120) * k);
+            for (var i = 0; i < roots.length; i++) { roots[i].scale.setScalar(Math.max(0.01, _sigClamp01((el - 250 - i * 50) / 200))); roots[i].material.opacity = (el > 250 ? 1 : 0) * k; }
+            for (var j = 0; j < apples.length; j++) { var A = apples[j], ft = _sigClamp01((el - A.userData.t0) / 380); A.position.y = A.userData.y0 - (A.userData.y0 - ts * 0.05) * ft * ft; }
+        });
+    }
+    /* TRICK OR TREAT: the grin lights over Jack and the bag bursts — wrapped sweets fly to everyone in reach */
+    function _goTrickOrTreat3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 3), grin = new THREE.Group(); grin.position.y = ts * 1.5; F.g.add(grin);
+        _goAdd(grin, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 14, 10), _goM(_GOC.pump)), 0.95).scale.set(1.2, 0.95, 1);
+        for (var e = -1; e <= 1; e += 2) _goAdd(grin, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.07, 3), _goM(0xfff07a)), 1).position.set(e * ts * 0.1, ts * 0.06, ts * 0.24);
+        var mouth = _goAdd(grin, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.11, ts * 0.025, 4, 12, Math.PI), _goM(0xfff07a)), 1); mouth.rotation.z = Math.PI; mouth.position.set(0, -ts * 0.04, ts * 0.24);
+        var candyCols = [0xff3a8a, 0x8a3aff, 0x3aff8a, 0xffd23a, 0x3ab0ff], candies = [];
+        for (var c = 0; c < 14; c++) {
+            var cg = new THREE.Group(), col = candyCols[c % 5];
+            _goAdd(cg, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 8, 6), _goM(col)), 1).scale.set(1.5, 1, 1);
+            for (var w = -1; w <= 1; w += 2) { var wr = _goAdd(cg, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.04, 6), _goM(col)), 1); wr.rotation.z = w * Math.PI / 2; wr.position.x = w * ts * 0.065; }
+            var a = c / 14 * Math.PI * 2, d = ts * rn(0.6, R);
+            cg.userData.tx = Math.cos(a) * d; cg.userData.tz = Math.sin(a) * d; cg.userData.t0 = 260 + rn(0, 120); F.g.add(cg); candies.push(cg);
+        }
+        var gp = _goAll(grin), total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 420), cam = _goCamQuat(null);
+            if (cam) grin.quaternion.copy(cam);
+            grin.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 260))); _goShow(gp, k);
+            for (var i = 0; i < candies.length; i++) {
+                var C = candies[i], t = _sigClamp01((el - C.userData.t0) / 650);
+                C.position.set(C.userData.tx * t, ts * 1.4 * (1 - t) + ts * 1.2 * Math.sin(t * Math.PI) + ts * 0.05, C.userData.tz * t);
+                C.rotation.set(el * 0.01, el * 0.013, 0); _goShow(_goAll(C), (el > C.userData.t0 ? 1 : 0) * (1 - _sigClamp01((el - 1200) / 400)));
+            }
+        });
+    }
+    function _goCoal(ts) {
+        var g = new THREE.Group();
+        _goAdd(g, new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.07, 0), _goM(0x2a0a04)), 1);
+        _goGlow(g, 0xff5a10, ts * 0.32, 0, 0, 0, 0.9);
+        return g;
+    }
+    function _goCoalThrow(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128;
+        return _goFlight(fromX, fromY, toX, toY, _goCoal(ts), { ms: (o && o.flyMs) || 400, h0: ts * 1.0, arc: ts * 0.45, spin: 0.02, trail: 'flame', trailMs: 30, trailTint: 0xff7a20 });
+    }
+    /* DEVIL'S COAL: the coal from hell bursts on them in a green-cored hellfire */
+    function _goDevilsCoalLand3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var core = _goGlow(F.g, 0x9aff3a, ts * 0.9, 0, ts * 0.55, 0, 0.7), outer = _goGlow(F.g, 0xff6a10, ts * 1.4, 0, ts * 0.55, 0, 0.6);
+        _finFireball(F.c.x, F.c.y, F.bz + ts * 0.3, 10, { r: 16, tint: 0xff8a20 });
+        _goSpray(F, 8, { sprite: 'dark-flame', ly: ts * 0.4, r: 10, v: 80, vz0: 60, vz1: 160, g: 0, drag: 0.6, s0: 10, s1: 3, tint: 0x8aff3a, ml0: 400, ml1: 700 });
+        return _sigRunOwned(F.g, 800, function (el) { var k = 1 - el / 800; core.material.opacity = 0.7 * k; outer.material.opacity = 0.6 * k * k; core.scale.setScalar(ts * 0.9 * (0.6 + 0.6 * el / 800)); });
+    }
+
+    /* ── JUGGERNAUT · Unstoppable — not around, through ── */
+    /* SHOULDER THROUGH: the pauldron's wedge drives through them; the ground tears behind */
+    function _goShoulder3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), fx = -ln.ux, fz = -ln.uz;
+        var wedge = _goAdd(F.g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.42, ts * 0.9, 4, 1, true), _finBasic(_GOC.steel, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.45);
+        wedge.rotation.order = 'YXZ'; wedge.rotation.y = Math.atan2(fx, fz); wedge.rotation.x = Math.PI / 2;
+        var total = 900, last = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 300));
+            wedge.position.set(fx * ts * (-0.2 + 1.4 * t), ts * 0.55, fz * ts * (-0.2 + 1.4 * t)); wedge.material.opacity = 0.45 * (1 - _sigClamp01((el - 200) / 400));
+            if (el - last > 40 && el < 420 && _canSpawn()) {
+                last = el;
+                _spawn({ x: F.c.x + fx * ts * 1.6 * t, y: F.c.y + fz * ts * 1.6 * t, z: F.bz + 4, mode: 'billboard', sprite: 'rock-debris', ml: rn(300, 520), size0: rn(4, 8), size1: 2, vx: rn(-80, 80), vy: rn(-80, 80), vz: rn(80, 200), gravity: 600, drag: 1, opacity0: 1, opacity1: 0 });
+                _spawn({ x: F.c.x + fx * ts * 1.6 * t, y: F.c.y + fz * ts * 1.6 * t, z: F.bz + 4, mode: 'billboard', sprite: 'dust-puff', ml: rn(500, 800), size0: 12, size1: 32, vx: 0, vy: 0, vz: rn(5, 25), drag: 0.6, opacity0: 0.45, opacity1: 0 });
+            }
+        });
+    }
+    /* CAN'T STOP ME: chains wrap the juggernaut and burst off it, link by link */
+    function _goCantStopMe3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, links = [];
+        for (var i = 0; i < 22; i++) {
+            var a = i / 22 * Math.PI * 6, lk = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.045, ts * 0.013, 5, 10), _goM(_GOC.iron)), 1);
+            lk.position.set(Math.cos(a) * ts * 0.36, ts * (0.15 + i * 0.045), Math.sin(a) * ts * 0.36); lk.rotation.set(i % 2 ? Math.PI / 2 : 0, -a, 0);
+            lk.userData.p0 = lk.position.clone(); lk.userData.v = new THREE.Vector3(Math.cos(a) * rn(2, 4), rn(1, 3), Math.sin(a) * rn(2, 4)).multiplyScalar(ts * 0.0012); links.push(lk);
+        }
+        var core = _goGlow(F.g, 0xff4a20, ts * 0.9, 0, ts * 0.6, 0, 0.5);
+        var total = 1300, breakAt = 420, broke = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var wrap = _sigClamp01(el / 300);
+            for (var i = 0; i < links.length; i++) {
+                var L = links[i], on = i / links.length < wrap ? 1 : 0, dt = Math.max(0, el - breakAt);
+                L.position.set(L.userData.p0.x + L.userData.v.x * dt, L.userData.p0.y + L.userData.v.y * dt - ts * 1.5e-6 * dt * dt, L.userData.p0.z + L.userData.v.z * dt);
+                if (dt > 0) { L.rotation.x += 0.2; L.rotation.y += 0.13; }
+                L.material.opacity = on * (1 - _sigClamp01((el - breakAt - 300) / 400));
+            }
+            core.material.opacity = el > breakAt ? 0.5 * (1 - _sigClamp01((el - breakAt) / 600)) : 0.2 * wrap;
+            if (el >= breakAt && !broke) { broke = true; _shake('normal'); _goSpray(F, 10, { sprite: 'steel-spark', ly: ts * 0.6, r: ts * 0.3, v: 220, vz0: 30, vz1: 160, g: 400, s0: 3, ml0: 200, ml1: 400 }); }
+        });
+    }
+    /* RUNAWAY TRAIN: the rails lay down along the run, the engine's light, the cowcatcher and the steam come through */
+    function _goRunawayTrain3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var from = _goFrom(tx, ty, x), F = _nrvFrame(from.x, from.y), ts = F.ts, wpT = _worldPos(tx, ty);
+        var dx = wpT.x - F.wp.x, dz = wpT.z - F.wp.z, L = Math.max(ts, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L, yaw = Math.atan2(ux, uz);
+        var rails = [];
+        for (var s = -1; s <= 1; s += 2) { var rl = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.025, L + ts), _goM(0x8a8a90)), 1); rl.rotation.y = yaw; rl.position.set(ux * L / 2 - uz * s * ts * 0.2, 4, uz * L / 2 + ux * s * ts * 0.2); rails.push(rl); }
+        var ties = Math.round((L + ts) / (ts * 0.3));
+        for (var t = 0; t < ties; t++) { var tie = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.55, ts * 0.02, ts * 0.07), _goM(0x3a2414)), 1); tie.rotation.y = yaw; var d = -ts * 0.5 + t * ts * 0.3; tie.position.set(ux * d, 3, uz * d); tie.userData.d = d; rails.push(tie); }
+        var eng = new THREE.Group(); eng.rotation.y = yaw; F.g.add(eng);
+        var catcher = _goAdd(eng, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.38, ts * 0.4, 4, 1, true), _finBasic(0x2a2a30, { opacity: 0, side: THREE.DoubleSide })), 0.85); catcher.rotation.x = Math.PI / 2; catcher.rotation.y = Math.PI / 4; catcher.position.set(0, ts * 0.22, ts * 0.2);
+        var boiler = _goAdd(eng, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.3, ts * 0.8, 14), _finBasic(0x1a1a20, { opacity: 0 })), 0.55); boiler.rotation.x = Math.PI / 2; boiler.position.set(0, ts * 0.62, -ts * 0.3);
+        var stack = _goAdd(eng, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.08, ts * 0.06, ts * 0.3, 8), _finBasic(0x1a1a20, { opacity: 0 })), 0.55); stack.position.set(0, ts * 1.0, -ts * 0.05);
+        var lamp = _goGlow(eng, _GOC.headl, ts * 0.6, 0, ts * 0.65, ts * 0.12, 1);
+        var total = 1500, runMs = 520, lastS = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var lay = _sigClamp01(el / 260), k = 1 - _sigClamp01((el - 1000) / 500);
+            for (var i = 0; i < rails.length; i++) { var R = rails[i]; R.material.opacity = (R.userData.d == null ? lay : (R.userData.d < L * lay ? 1 : 0)) * k * 0.9; }
+            var run = _sigEaseInCubic(_sigClamp01((el - 120) / runMs)), d = -ts * 0.6 + (L + ts * 0.4) * run;
+            eng.position.set(ux * d, 0, uz * d); _goShow(_goAll(eng), el > 120 ? (1 - _sigClamp01((el - 120 - runMs) / 260)) : 0);
+            if (el - lastS > 50 && el > 120 && el < 120 + runMs && _canSpawn()) { lastS = el; _spawn({ x: F.c.x + ux * d, y: F.c.y + uz * d, z: F.bz + ts * 1.15, mode: 'billboard', sprite: 'smoke-soft', ml: rn(500, 800), size0: 12, size1: rn(36, 50), vx: -ux * 60, vy: -uz * 60, vz: rn(40, 80), drag: 0.6, opacity0: 0.55, opacity1: 0, tint: 0xe8e8e8 }); }
+        });
+    }
+
+    /* ── KAIJU · Atomic Monster — the plates glow, then everything goes ── */
+    /* the dorsal plates: a row of jagged plates up the back that light blue from the tail up */
+    function _goDorsal(F, ts, yaw) {
+        var spine = new THREE.Group(); spine.rotation.y = yaw; F.g.add(spine); var plates = [];
+        for (var i = 0; i < 6; i++) { var p = _goAdd(spine, new THREE.Mesh(new THREE.ConeGeometry(ts * (0.1 - i * 0.008), ts * (0.3 - i * 0.02), 3), _goA(_GOC.atomic)), 0.85); p.scale.z = 0.25; p.position.set(0, ts * (0.6 + i * 0.12), -ts * (0.32 - i * 0.04)); p.userData.i = i; plates.push(p); }
+        return plates;
+    }
+    function _goNuclearPulse3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 1), plates = _goDorsal(F, ts, rn(0, Math.PI * 2));
+        var blast = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.5, 18, 12), _goA(_GOC.atomic)), 0.5); blast.position.y = ts * 0.5;
+        var ring = _goRing(F.g, _GOC.atomic, ts * 0.42, ts * 0.52, 3, 0.8, 48);
+        var total = 1500, popAt = 560, popped = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < plates.length; i++) { var on = _sigClamp01((el - i * 70) / 120); plates[i].material.opacity = 0.85 * on * (1 - _sigClamp01((el - popAt - 200) / 400)); plates[i].scale.y = 1 + 0.25 * on * Math.abs(Math.sin(el * 0.03)); }
+            var b = _sigClamp01((el - popAt) / 420);
+            blast.scale.setScalar(0.3 + (R + 0.6) * 2 * _sigEaseOutCubic(b)); blast.material.opacity = el > popAt ? 0.5 * (1 - b) : 0;
+            ring.scale.setScalar(1 + (R + 0.5) * 2 * _sigEaseOutCubic(b)); ring.material.opacity = el > popAt ? 0.8 * (1 - b) : 0;
+            if (el >= popAt && !popped) { popped = true; _shake('hard'); _sigScreenFlash('#4ab8ff', 200, 0.22); _goSpray(F, 14, { sprite: 'spark-blue', ly: ts * 0.5, r: ts * 0.3, v: 260, vz0: 20, vz1: 160, g: 120, s0: 4, ml0: 300, ml1: 600 }); }
+        });
+    }
+    /* ATOMIC BREATH's charge: the same plates light up the kaiju's back before the breath comes */
+    function _goAtomicPlates3D(fromX, fromY) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts, plates = _goDorsal(F, ts, rn(0, Math.PI * 2)), glow = _goGlow(F.g, _GOC.atomic, ts * 1.4, 0, ts * 0.8, 0, 0.35);
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < plates.length; i++) { var on = _sigClamp01((el - i * 45) / 100); plates[i].material.opacity = 0.85 * on * (1 - _sigClamp01((el - 1000) / 400)) * (0.75 + 0.25 * Math.sin(el * 0.05 + i)); }
+            glow.material.opacity = 0.35 * _goEnv(el, 300, total, 400);
+        });
+    }
+
+    /* ── KING ARTHUR · Excalibur — the scabbard that stops the king bleeding ── */
+    function _goScabbard3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, sc = new THREE.Group(); sc.position.set(ts * 0.22, ts * 0.45, 0); sc.rotation.z = 0.35; F.g.add(sc);
+        _goAdd(sc, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.07, ts * 0.62, ts * 0.04), _goM(0x2a3a8a)), 1);
+        var gems = [0xff3a3a, 0x3affd2, 0xffd23a];
+        for (var g = 0; g < 3; g++) { _goAdd(sc, new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.022, 0), _goM(gems[g])), 1).position.set(0, ts * (0.18 - g * 0.18), ts * 0.025); }
+        _goAdd(sc, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.09, ts * 0.04, ts * 0.05), _goM(_GOC.gold)), 1).position.y = ts * 0.31;
+        _goAdd(sc, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.05, ts * 0.05), _goM(_GOC.gold)), 1).position.y = -ts * 0.31;
+        var halo = _goGlow(sc, _GOC.gold, ts * 0.8, 0, 0, 0, 0.4);
+        var thread = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.4, ts * 0.01, 4, 40), _goA(_GOC.gold)), 0.8); thread.rotation.x = Math.PI / 2;
+        var sp = _goAll(sc), total = 1800, lastD = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 250, total, 450);
+            _goShow(sp, k); halo.material.opacity = 0.4 * k * (0.7 + 0.3 * Math.sin(el * 0.01));
+            thread.position.y = ts * (0.1 + 0.9 * ((el / 900) % 1)); thread.material.opacity = 0.8 * k;
+            if (el - lastD > 60 && el < total - 450 && _canSpawn()) {   /* the blood runs back into the king and turns to gold */
+                lastD = el; var a = rn(0, Math.PI * 2);
+                _spawn({ x: F.c.x + Math.cos(a) * ts * 0.6, y: F.c.y + Math.sin(a) * ts * 0.6, z: F.bz + 4, mode: 'billboard', sprite: 'blood-fleck', ml: 500, size0: 5, size1: 3,
+                    vx: -Math.cos(a) * ts * 1.15, vy: -Math.sin(a) * ts * 1.15, vz: ts * 1.0, opacity0: 1, opacity1: 0 });
+                _spawn({ x: F.c.x + rn(-12, 12), y: F.c.y + rn(-12, 12), z: F.bz + ts * 0.55, mode: 'billboard', sprite: 'divine-sparkle', ml: rn(400, 700), size0: 6, size1: 1, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(30, 70), drag: 0.6, opacity0: 0.9, opacity1: 0 });
+            }
+        });
+    }
+
+    /* ── KNIGHT · Knight Errant — the challenge, and the answer ── */
+    function _goGauntlet(ts) {
+        var g = new THREE.Group();
+        _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.13, ts * 0.04, ts * 0.14), _goM(_GOC.steel)), 1);
+        for (var f = 0; f < 4; f++) _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.03, ts * 0.09), _goM(0xaab0bc)), 1).position.set(-ts * 0.045 + f * ts * 0.03, 0, ts * 0.11);
+        var cuff = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.075, ts * 0.12, 8, 1, true), _finBasic(_GOC.steel, { opacity: 0, side: THREE.DoubleSide })), 1); cuff.rotation.x = Math.PI / 2; cuff.position.z = -ts * 0.12;
+        return g;
+    }
+    /* THROW DOWN THE GAUNTLET: the glove flies at their feet, rings on the stone, the duelling ring closes round them */
+    /* the thrown glove (the bolt's _GO_THROWN hook), then where it lies (its landing) */
+    function _goGauntletFly(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128;
+        return _goFlight(fromX, fromY, toX, toY, _goGauntlet(ts), { ms: (o && o.flyMs) || 340, h0: ts * 0.9, h1: ts * 0.06, arc: ts * 0.5, spin: 0.02 });
+    }
+    function _goGauntletLand3D(tx, ty) { return _goGauntletThrow3D(tx, ty, null, { landed: true }); }
+    function _goGauntletThrow3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var from = _goFrom(tx, ty, x), ts = _cfg().tileSize || 128, T0 = x && x.landed ? 0 : 340;
+        if (T0) _goGauntletFly(from.x, from.y, tx, ty, { flyMs: T0 });
+        var F = _nrvFrame(tx, ty), lie = _goGauntlet(ts); lie.position.set(0, ts * 0.04, 0); lie.rotation.y = rn(0, 6); F.g.add(lie);
+        var ring = _goRing(F.g, _GOC.gold, ts * 0.46, ts * 0.52, 3, 0.85, 48), ring2 = _goRing(F.g, _GOC.gold, ts * 0.56, ts * 0.58, 3, 0.6, 48);
+        var lp = _goAll(lie), total = 1700, landed = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var on = el > T0 ? 1 : 0, k = _goEnv(el - T0, 60, total - T0, 420);
+            _goShow(lp, on * k);
+            var c = _sigEaseOutCubic(_sigClamp01((el - T0) / 400)); ring.scale.setScalar(2.2 - 1.2 * c); ring2.scale.setScalar(2.4 - 1.4 * c);
+            ring.material.opacity = 0.85 * on * k; ring2.material.opacity = 0.6 * on * k;
+            if (el >= T0 && !landed) { landed = true; _goSpray(F, 8, { sprite: 'steel-spark', ly: 6, r: 8, v: 160, vz0: 40, vz1: 140, g: 400, s0: 3, ml0: 200, ml1: 380 }); }
+        });
+    }
+    /* HONOUR BLOW: the salute — the blade up before the face — and the stroke straight down */
+    function _goHonourBlow3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var piv = new THREE.Group(); piv.position.set(ln.ux * ts * 0.45, ts * 0.6, ln.uz * ts * 0.45); piv.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(piv);
+        var blade = _goAdd(piv, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.85, ts * 0.012), _goM(0xe6eaf2)), 1); blade.position.y = ts * 0.5;
+        var guard = _goAdd(piv, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.24, ts * 0.03, ts * 0.03), _goM(_GOC.gold)), 1); guard.position.y = ts * 0.06;
+        var glint = _goGlow(piv, 0xffffff, ts * 0.4, 0, ts * 0.9, 0, 1);
+        var smear = _goAdd(piv, new THREE.Mesh(new THREE.RingGeometry(ts * 0.45, ts * 0.92, 24, 1, 0, 1.9), _goA(_GOC.gold)), 0.4); smear.rotation.y = Math.PI / 2;
+        var total = 1100, struck = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 80, total, 300), s = _sigEaseInCubic(_sigClamp01((el - 300) / 140));
+            piv.rotation.x = s * 1.9; _goShow([blade, guard], k);
+            glint.material.opacity = el < 300 ? Math.sin(el / 300 * Math.PI) : 0;
+            smear.material.opacity = s > 0 && s < 1 ? 0.4 : (s >= 1 ? 0.4 * (1 - _sigClamp01((el - 440) / 200)) : 0);
+            if (s >= 1 && !struck) { struck = true; _shake('normal'); _goSpray(F, 10, { sprite: 'divine-sparkle', ly: ts * 0.6, r: 10, v: 180, vz0: 30, vz1: 160, g: 200, s0: 5, ml0: 300, ml1: 600 }); }
+        });
+    }
+
+    /* ── KRAMPUS · Krampusnacht — birch, bells, chains, the sack ── */
+    function _goBirchSwitch3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var piv = new THREE.Group(); piv.position.set(ln.ux * ts * 0.4, ts * 0.9, ln.uz * ts * 0.4); piv.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(piv);
+        for (var t = 0; t < 7; t++) { var tw = _goAdd(piv, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.004, ts * 0.01, ts * 0.7, 4), _goM(t % 2 ? _GOC.birch : 0x8a7a6a)), 1); tw.position.y = -ts * 0.35; tw.rotation.z = (t - 3) * 0.06; tw.rotation.x = (t % 3 - 1) * 0.05; }
+        var tie = _goAdd(piv, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.025, ts * 0.01, 4, 10), _goM(0xa01818)), 1); tie.rotation.x = Math.PI / 2; tie.position.y = -ts * 0.08;
+        var bp = _goAll(piv), total = 900, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var s = _sigEaseInCubic(_sigClamp01(el / 170)); piv.rotation.x = -1.2 + 2.2 * s;
+            _goShow(bp, 1 - _sigClamp01((el - 500) / 300));
+            if (s >= 1 && !hit) {
+                hit = true;
+                _goSpray(F, 8, { sprite: 'sparkle', ly: ts * 0.8, r: 10, v: 120, vz0: 30, vz1: 120, g: 200, s0: 4, tint: _GOC.gold, ml0: 300, ml1: 600 });   /* the bells */
+                _goSpray(F, 8, { sprite: 'blood-fleck', ly: ts * 0.6, r: 8, v: 140, vz0: 20, vz1: 130, g: 520, s0: 3, ml0: 300, ml1: 520 });
+                _goSpray(F, 5, { sprite: 'leaf', ly: ts * 0.7, r: 8, v: 90, vz0: 10, vz1: 70, g: 160, s0: 4, tint: 0xc8b88a, ml0: 500, ml1: 900 });
+            }
+        });
+    }
+    /* KRAMPUS CHAINS: the chain lashes out from Krampus to them, bells on it, and goes taut */
+    function _goKrampusChains3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), n = Math.max(6, Math.round(ln.L / (ts * 0.09))), links = [];
+        for (var i = 0; i < n; i++) { var lk = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.04, ts * 0.012, 5, 10), _goM(_GOC.iron)), 1); lk.rotation.y = Math.atan2(ln.ux, ln.uz) + (i % 2 ? Math.PI / 2 : 0); lk.userData.t = i / (n - 1); links.push(lk); }
+        var bells = [];
+        for (var b = 0; b < 3; b++) { var bl = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 8, 6), _goM(_GOC.gold)), 1); bl.userData.t = 0.25 + b * 0.25; bells.push(bl); }
+        var cuff = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.03, 6, 20), _goM(_GOC.iron)), 1); cuff.rotation.x = Math.PI / 2; cuff.position.y = ts * 0.55;
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var reach = _sigEaseOutCubic(_sigClamp01(el / 260)), taut = _sigClamp01((el - 260) / 200), k = 1 - _sigClamp01((el - 1000) / 400);
+            var place = function (o, u) {   /* u: 0 at Krampus, 1 at the victim */
+                var sag = Math.sin(u * Math.PI) * ts * 0.25 * (1 - taut);
+                o.position.set(ln.dx * (1 - u), ts * 0.7 + ln.dy * (1 - u) - sag + Math.sin(el * 0.03 + u * 9) * ts * 0.02 * (1 - taut), ln.dz * (1 - u));
+            };
+            for (var i = 0; i < links.length; i++) { var L = links[i]; place(L, L.userData.t); L.material.opacity = (L.userData.t <= reach ? 1 : 0) * k; }
+            for (var j = 0; j < bells.length; j++) { var B = bells[j]; place(B, B.userData.t); B.position.y -= ts * 0.05; B.material.opacity = (B.userData.t <= reach ? 1 : 0) * k; }
+            cuff.scale.setScalar(1.6 - 0.6 * taut); cuff.material.opacity = el > 240 ? k : 0;
+        });
+    }
+    /* INTO THE SACK: the sack comes down over them, the drawstring cinches, and it sinks into the dark */
+    function _goIntoTheSack3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var sack = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.42, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.82), _finBasic(_GOC.sack, { opacity: 0, side: THREE.DoubleSide })), 1);
+        sack.scale.set(1, 1.35, 1);   /* mouth down: it comes down over them */
+        var string = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.22, ts * 0.02, 5, 16), _goM(0x5a3a1a)), 1); string.rotation.x = Math.PI / 2;
+        var pit = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.6, 32), _goM(0x050208)), 0.85); pit.rotation.x = -Math.PI / 2; pit.position.y = 2;
+        var total = 2000, sinkAt = 900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var drop = _sigEaseInCubic(_sigClamp01(el / 280)), sink = _sigEaseInCubic(_sigClamp01((el - sinkAt) / 700));
+            var y = ts * 2.6 * (1 - drop) + ts * 0.6 - ts * 1.4 * sink;
+            sack.position.y = y; sack.material.opacity = Math.min(1, el / 80) * (1 - _sigClamp01((el - sinkAt - 500) / 200));
+            var cinch = _sigClamp01((el - 380) / 260); string.position.y = y + ts * 0.42 * 1.35 * Math.cos(Math.PI * 0.82); string.scale.setScalar(1 - 0.7 * cinch); string.material.opacity = el > 300 ? sack.material.opacity : 0;
+            pit.scale.setScalar(0.3 + 0.7 * _sigClamp01((el - 600) / 300)); pit.material.opacity = el > 600 ? 0.85 * (1 - _sigClamp01((el - 1600) / 400)) : 0;
+            if (el > 900 && el < 930) _goSpray(F, 10, { sprite: 'void-mist', ly: 6, r: ts * 0.3, v: 40, vz0: 20, vz1: 70, g: 0, drag: 0.6, s0: 14, s1: 36, op: 0.6, ml0: 700, ml1: 1100 });
+        });
+    }
+
+    /* ── LOCH NESS MONSTER · Nessie — the long neck, the humps that go under ── */
+    function _goLochRing(F, ts, R) {
+        var rg = _goRing(F.g, 0x9adfff, ts * R * 0.8, ts * R, 3, 0.6, 40), dark = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * R * 0.8, 32), _goM(_GOC.loch)), 0.55);
+        dark.rotation.x = -Math.PI / 2; dark.position.y = 2.5;
+        return [rg, dark];
+    }
+    /* LONG NECK: the neck rises out of a ring of loch water at Nessie's side and arcs over onto them */
+    function _goLongNeck3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var from = _goFrom(tx, ty, x), F = _nrvFrame(from.x, from.y), ts = F.ts, wpT = _worldPos(tx, ty);
+        var dx = wpT.x - F.wp.x, dy = wpT.y - F.wp.y, dz = wpT.z - F.wp.z;
+        var water = _goLochRing(F, ts, 0.45), segs = [], N = 16;
+        for (var i = 0; i < N; i++) { var sg = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * (0.13 - i * 0.004), 10, 8), _goM(0x2c5a46)), 1); segs.push(sg); }
+        var head = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.1, 10, 8), _goM(0x3a6a52)), 1); head.scale.set(0.8, 0.7, 1.4);
+        var total = 1500, lastD = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 380)), back = _sigEaseInCubic(_sigClamp01((el - 700) / 450)), reach = out * (1 - back);
+            var k = Math.min(1, el / 100) * (1 - _sigClamp01((el - 1150) / 300));
+            for (var i = 0; i < N; i++) {
+                var u = (i + 1) / N * reach, S = segs[i];
+                S.position.set(dx * u * 0.85, ts * 0.1 + Math.sin(u / Math.max(0.01, reach) * Math.PI * 0.85) * ts * 1.5 * reach + dy * u, dz * u * 0.85);
+                S.material.opacity = k;
+            }
+            var last = segs[N - 1].position; head.position.copy(last); head.rotation.y = Math.atan2(dx, dz); head.material.opacity = k;
+            _goShow(water, _goEnv(el, 120, total, 400));
+            if (el - lastD > 50 && el > 200 && el < 1100 && _canSpawn()) { lastD = el; _spawn({ x: F.c.x + last.x, y: F.c.y + last.z, z: F.bz + last.y, mode: 'billboard', sprite: 'water-splash', ml: 420, size0: 6, size1: 2, vx: rn(-20, 20), vy: rn(-20, 20), vz: -30, gravity: 420, opacity0: 0.85, opacity1: 0 }); }
+            if (el > 380 && el < 410) { var T = _nrvFrame(tx, ty); _goSpray(T, 8, { sprite: 'bubble', ly: ts * 0.5, r: 14, v: 30, vz0: 30, vz1: 90, g: 0, drag: 0.4, s0: 4, ml0: 600, ml1: 1000 }); }
+        });
+    }
+    /* OUT OF THE LOCH: the humps show in a dark ring of water round them and go under — then the whole body comes up */
+    function _goOutOfLoch3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, water = _goLochRing(F, ts, 0.9), humps = [], yaw = rn(0, Math.PI * 2);
+        for (var h = 0; h < 3; h++) { var hp = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.14, ts * 0.07, 6, 14, Math.PI), _goM(0x2c5a46)), 1); hp.rotation.y = yaw; hp.position.set(Math.sin(yaw) * ts * (h - 1) * 0.32, 0, Math.cos(yaw) * ts * (h - 1) * 0.32); humps.push(hp); }
+        var spout = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.35, ts * 0.55, ts * 2.0, 16, 1, true), _finBasic(0x9adfff, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.45);
+        var total = 1600, upAt = 520, up = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            _goShow(water, _goEnv(el, 120, total, 400));
+            for (var i = 0; i < humps.length; i++) { var dive = _sigClamp01((el - 120 - i * 80) / 260); humps[i].position.y = ts * 0.05 - ts * 0.2 * dive; humps[i].material.opacity = 1 - dive; }
+            var g = _sigClamp01((el - upAt) / 300); spout.scale.set(1, Math.max(0.01, _sigEaseOutCubic(g)), 1); spout.position.y = ts * 1.0 * _sigEaseOutCubic(g);
+            spout.material.opacity = el > upAt ? 0.45 * (1 - _sigClamp01((el - upAt - 300) / 500)) : 0;
+            if (el >= upAt && !up) { up = true; _shake('hard'); _goSpray(F, 22, { sprite: 'water-splash', ly: ts * 0.3, r: ts * 0.3, v: 200, vz0: 160, vz1: 420, g: 520, s0: 7, s0b: 14, ml0: 500, ml1: 900 }); }
+        });
+    }
+
+    /* ── LUCHADOR · Lucha Libre — the ring, the throw, the drop ── */
+    function _goRingRopes(F, ts, R) {
+        var parts = [], cols = [_GOC.lPink, _GOC.lGold, _GOC.lGreen];
+        for (var c = 0; c < 4; c++) { var post = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.8, 6), _goM(0xd8d8e0)), 1); post.position.set((c % 2 ? 1 : -1) * ts * R, ts * 0.4, (c < 2 ? 1 : -1) * ts * R); parts.push(post); }
+        for (var rI = 0; rI < 3; rI++) {
+            for (var s = 0; s < 4; s++) {
+                var rope = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 2 * R, ts * 0.018, ts * 0.018), _goM(cols[rI])), 1), a = s * Math.PI / 2;
+                rope.rotation.y = a; rope.position.set(Math.sin(a) * ts * R, ts * (0.3 + rI * 0.2), Math.cos(a) * ts * R); parts.push(rope);
+            }
+        }
+        return parts;
+    }
+    /* SUPLEX: the ropes go up round them, the throw draws its arc, the stars fly when they land */
+    function _goSuplex3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), ropes = _goRingRopes(F, ts, 0.62);
+        var arc = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.5, ts * 0.05, 6, 24, Math.PI), _goA(_GOC.lPink)), 0.6); arc.rotation.y = Math.atan2(ln.ux, ln.uz) + Math.PI / 2; arc.position.y = ts * 0.3;
+        var total = 1400, slam = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 380), sweep = _sigClamp01((el - 150) / 300);
+            _goShow(ropes, k); arc.scale.set(1, 1, 1); arc.material.opacity = sweep > 0 && sweep < 1 ? 0.6 : (sweep >= 1 ? 0.6 * (1 - _sigClamp01((el - 450) / 250)) : 0);
+            arc.geometry.setDrawRange(0, Math.floor(arc.geometry.index.count * sweep / 3) * 3);
+            if (sweep >= 1 && !slam) { slam = true; _shake('hard'); _goSpray(F, 12, { sprite: 'sparkle', ly: ts * 0.8, r: 10, v: 180, vz0: 40, vz1: 160, g: 160, s0: 6, tint: _GOC.lGold, ml0: 400, ml1: 700 }); _goSpray(F, 6, { sprite: 'dust-puff', ly: 4, r: 20, v: 70, vz0: 5, vz1: 30, g: 0, s0: 12, s1: 34, op: 0.45, ml0: 500, ml1: 800 }); }
+        });
+    }
+    /* PILEDRIVER: straight down into the canvas — the mat ripples out, the stars go round their head */
+    function _goPiledriver3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ropes = _goRingRopes(F, ts, 0.62);
+        var mat = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.24, ts * 1.24), _goM(0xe8e2d4)), 0.5); mat.rotation.x = -Math.PI / 2; mat.position.y = 2;
+        var ripples = [];
+        for (var q = 0; q < 3; q++) { var rp = _goRing(F.g, 0xffffff, ts * 0.2, ts * 0.26, 3, 0.7, 4); rp.rotation.z = Math.PI / 4; rp.userData.t0 = 250 + q * 90; ripples.push(rp); }
+        var stars = [];
+        for (var s = 0; s < 5; s++) { var st = _goGlow(F.g, _GOC.lGold, ts * 0.12, 0, ts * 1.1, 0, 1); stars.push(st); }
+        var total = 1700, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 100, total, 400);
+            _goShow(ropes, k); mat.material.opacity = 0.5 * k;
+            for (var i = 0; i < ripples.length; i++) { var R = ripples[i], t = _sigClamp01((el - R.userData.t0) / 450); R.scale.setScalar(1 + 3.5 * t); R.material.opacity = el > R.userData.t0 ? 0.7 * (1 - t) : 0; }
+            for (var j = 0; j < stars.length; j++) { var a = el * 0.008 + j / 5 * Math.PI * 2; stars[j].position.set(Math.cos(a) * ts * 0.25, ts * (1.05 + 0.04 * Math.sin(a * 2)), Math.sin(a) * ts * 0.25); stars[j].material.opacity = el > 300 ? k : 0; }
+            if (el > 250 && !hit) { hit = true; _shake('hard'); _goSpray(F, 8, { sprite: 'dust-puff', ly: 4, r: 24, v: 90, vz0: 5, vz1: 30, g: 0, s0: 12, s1: 36, op: 0.45, ml0: 500, ml1: 800 }); }
+        });
+    }
+
+    /* ── MACHINE ELVES · Hyperspace — a language you can see, toys made of jewels ── */
+    var _GO_ELF = [0xff4ad8, 0x4affe8, 0xffe84a, 0x8a4aff, 0x4aff7a, 0xff8a3a];
+    function _goGem(ts, i, size) {
+        var geos = [new THREE.OctahedronGeometry(ts * size, 0), new THREE.IcosahedronGeometry(ts * size, 0), new THREE.TetrahedronGeometry(ts * size * 1.2, 0), new THREE.TorusGeometry(ts * size * 0.8, ts * size * 0.3, 4, 6)];
+        var g = new THREE.Group(), col = _GO_ELF[i % _GO_ELF.length];
+        var m = _goAdd(g, new THREE.Mesh(geos[i % geos.length], _goA(col)), 0.8);
+        var e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); e.userData.op = 0.9; m.add(e);
+        for (var gi = 0; gi < geos.length; gi++) if (gi !== i % geos.length) geos[gi].dispose();
+        return g;
+    }
+    /* VISIBLE LANGUAGE: the song comes out as solid shapes, a stream of them from the elves into the victim's head */
+    function _goVisibleLanguageThrow(fromX, fromY, toX, toY, o) {
+        var ms = (o && o.flyMs) || 420, ts = _cfg().tileSize || 128;
+        for (var i = 0; i < 6; i++) (function (i) { _fxDelay(function () { _goFlight(fromX, fromY, toX, toY, _goGem(ts, i, 0.06), { ms: ms, h0: ts * (0.8 + 0.1 * Math.sin(i)), h1: ts * 0.9, arc: ts * (0.25 + 0.1 * i), spin: 0.01 * (i + 1), roll: 0.007 }); }, i * 45); })(i);
+        return true;
+    }
+    function _goVisibleLanguageLand3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, gems = [];
+        for (var i = 0; i < 6; i++) { var g = _goGem(ts, i, 0.05); F.g.add(g); gems.push(g); }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 80, total, 400);
+            for (var i = 0; i < gems.length; i++) { var a = el * 0.006 + i / 6 * Math.PI * 2; gems[i].position.set(Math.cos(a) * ts * 0.3, ts * (1.05 + 0.08 * Math.sin(a * 3)), Math.sin(a) * ts * 0.3); gems[i].rotation.set(el * 0.004 * (i + 1), el * 0.003, 0); _goShow(_goAll(gems[i]), k); }
+        });
+    }
+    /* JEWELLED TOYS: self-dribbling jewels bounce all over the 3×3, too many to count, and burst */
+    function _goJewelledToys3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, toys = [];
+        for (var i = 0; i < 14; i++) { var g = _goGem(ts, i, rn(0.07, 0.11)); g.userData.x = rn(-R - 0.3, R + 0.3) * ts; g.userData.z = rn(-R - 0.3, R + 0.3) * ts; g.userData.vx = rn(-1, 1) * ts * 0.0012; g.userData.vz = rn(-1, 1) * ts * 0.0012; g.userData.ph = rn(0, 6); F.g.add(g); toys.push(g); }
+        var total = 1800, burst = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 300);
+            for (var i = 0; i < toys.length; i++) {
+                var T = toys[i], hop = Math.abs(Math.sin(el * 0.008 + T.userData.ph));
+                T.position.set(T.userData.x + T.userData.vx * el, ts * 0.12 + hop * ts * 0.7, T.userData.z + T.userData.vz * el);
+                T.rotation.set(el * 0.006, el * 0.004 + i, 0); T.scale.setScalar(1 + 0.2 * (1 - hop)); _goShow(_goAll(T), k);
+            }
+            if (el > total - 320 && !burst) { burst = true; for (var j = 0; j < 4; j++) _goSpray(F, 5, { sprite: 'sparkle', ly: ts * 0.5, r: ts * R, v: 120, vz0: 20, vz1: 140, g: 100, s0: 6, tint: _GO_ELF[j], ml0: 400, ml1: 700 }); }
+        });
+    }
+
+    /* ── MANTID · Praying Mantis — the orchid, and the strike faster than the eye ── */
+    function _goOrchid3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, petals = [];
+        for (var p = 0; p < 5; p++) {
+            var hinge = new THREE.Group(); hinge.rotation.y = p / 5 * Math.PI * 2; F.g.add(hinge);
+            var pt = _goAdd(hinge, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.3, 14), _finBasic(p % 2 ? _GOC.orchid : 0xffc8ec, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })), 0.8);
+            pt.scale.set(0.55, 1, 1); pt.position.set(0, ts * 0.3, ts * 0.05); hinge.userData.pt = pt; petals.push(hinge);
+        }
+        var total = 1600;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 450)), shut = _sigEaseInCubic(_sigClamp01((el - 900) / 500));
+            for (var i = 0; i < petals.length; i++) { petals[i].rotation.x = -(0.2 + 1.0 * open) + 1.2 * shut; petals[i].userData.pt.material.opacity = 0.8 * Math.min(1, el / 150) * (1 - shut); }
+            if (el > 900 && el < 930) _goSpray(F, 10, { sprite: 'petal', ly: ts * 0.6, r: ts * 0.3, v: 50, vz0: 20, vz1: 70, g: 40, s0: 5, tint: _GOC.orchid, ml0: 700, ml1: 1100 });
+        });
+    }
+    /* RAPTORIAL STRIKE: the two spiked forelegs flick out and snap shut on them */
+    function _goRaptorial3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), arms = [];
+        var rig = new THREE.Group(); rig.position.set(ln.ux * ts * 0.55, ts * 0.75, ln.uz * ts * 0.55); rig.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(rig);
+        for (var s = -1; s <= 1; s += 2) {
+            var sh = new THREE.Group(); sh.position.x = s * ts * 0.12; rig.add(sh);
+            var femur = _goAdd(sh, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.05, ts * 0.45), _goM(_GOC.mantis)), 1); femur.position.z = ts * 0.22;
+            var elbow = new THREE.Group(); elbow.position.z = ts * 0.45; sh.add(elbow);
+            var tibia = _goAdd(elbow, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.035, ts * 0.035, ts * 0.32), _goM(0x9ae05a)), 1); tibia.position.z = -ts * 0.16;
+            for (var sp = 0; sp < 4; sp++) { var spike = _goAdd(elbow, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.01, ts * 0.05, 4), _goM(0x3a6a20)), 1); spike.position.set(0, -ts * 0.03, -ts * (0.05 + sp * 0.07)); spike.rotation.x = Math.PI; }
+            sh.userData.elbow = elbow; arms.push(sh);
+        }
+        var parts = _goAll(rig), total = 800, snap = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 70)), shut = _sigEaseInCubic(_sigClamp01((el - 70) / 60));
+            for (var i = 0; i < arms.length; i++) { arms[i].rotation.x = -0.6 + 0.9 * out; arms[i].userData.elbow.rotation.x = 1.9 - 1.6 * out + 1.7 * shut; }
+            _goShow(parts, 1 - _sigClamp01((el - 450) / 300));
+            if (shut >= 1 && !snap) { snap = true; _shake('normal'); _goSpray(F, 10, { sprite: 'blood-fleck', ly: ts * 0.65, r: 8, v: 160, vz0: 30, vz1: 150, g: 520, s0: 4, ml0: 300, ml1: 560 }); _goSpray(F, 5, { sprite: 'leaf', ly: ts * 0.65, r: 8, v: 90, vz0: 10, vz1: 80, g: 140, s0: 4, tint: _GOC.mantis, ml0: 400, ml1: 700 }); }
+        });
+    }
+
+    /* ── MARKSMAN · Sniper's Nest — legs down, belly down, one shot ── */
+    function _goBipod3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, yaw = _sigYawToward(tx + 1, ty), rig = new THREE.Group(); rig.rotation.y = yaw; F.g.add(rig);
+        var legs = [];
+        for (var s = -1; s <= 1; s += 2) { var lg = new THREE.Group(); lg.position.set(0, ts * 0.32, ts * 0.42); rig.add(lg); var leg = _goAdd(lg, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.32, 5), _goM(0x2a2c30)), 1); leg.position.y = -ts * 0.16; lg.userData.s = s; legs.push(lg); }
+        var bags = [];
+        for (var b = 0; b < 5; b++) { var a = (b - 2) * 0.42, bag = _goAdd(rig, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.09, ts * 0.1, ts * 0.26, 8), _goM(0x8a7a52)), 1); bag.rotation.z = Math.PI / 2; bag.rotation.y = a; bag.position.set(Math.sin(a) * ts * 0.62, ts * 0.08, Math.cos(a) * ts * 0.62); bags.push(bag); }
+        var glint = _goGlow(rig, 0xffffff, ts * 0.35, 0, ts * 0.45, ts * 0.3, 1);
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 400), d = _sigEaseOutBack(_sigClamp01((el - 100) / 260));
+            for (var i = 0; i < legs.length; i++) legs[i].rotation.z = legs[i].userData.s * 0.5 * d;
+            _goShow(_goAll(rig), k);
+            for (var j = 0; j < bags.length; j++) bags[j].position.y = ts * (0.08 + 0.6 * (1 - _sigEaseOutCubic(_sigClamp01((el - j * 60) / 240))));
+            glint.material.opacity = el > 500 && el < 800 ? Math.sin((el - 500) / 300 * Math.PI) : 0;
+        });
+    }
+    /* ONE SHOT, ONE KILL: the reticle settles on them, the round's hot line back to the rifle, the casing spins away */
+    function _goOneShot3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var pos = new Float32Array([ln.dx, ts * 0.75 + ln.dy, ln.dz, 0, ts * 0.65, 0]), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var tracer = _goAdd(F.g, new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(0xffe0a0), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })), 1);
+        var ret = new THREE.Group(); ret.position.y = ts * 0.65; F.g.add(ret);
+        _goAdd(ret, new THREE.Mesh(new THREE.RingGeometry(ts * 0.22, ts * 0.24, 32), _goA(_GOC.scope)), 0.9);
+        for (var t = 0; t < 4; t++) { var a = t * Math.PI / 2, tk = _goAdd(ret, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.012, ts * 0.2), _goA(_GOC.scope)), 0.9); tk.position.set(Math.cos(a) * ts * 0.33, Math.sin(a) * ts * 0.33, 0); tk.rotation.z = a + Math.PI / 2; }
+        var casing = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.05, 6), _goM(0xd8a83a)), 1);
+        var rp = _goAll(ret), total = 1200;
+        _goSpray(F, 10, { sprite: 'blood-fleck', ly: ts * 0.65, r: 6, v: 150, vz0: 20, vz1: 140, g: 520, s0: 4, ml0: 300, ml1: 600, vx: -ln.ux * 160, vy: -ln.uz * 160 });
+        return _sigRunOwned(F.g, total, function (el) {
+            var cam = _goCamQuat(null); if (cam) ret.quaternion.copy(cam);
+            tracer.material.opacity = 1 - _sigClamp01(el / 500);
+            ret.scale.setScalar(1 - 0.35 * _sigEaseOutCubic(_sigClamp01(el / 300))); _goShow(rp, 1 - _sigClamp01((el - 500) / 400));
+            var ct = el / 700; casing.position.set(ln.dx + (-ln.uz) * ts * 0.4 * ct, ts * 0.8 + ln.dy + ts * 0.6 * ct - ts * 1.2 * ct * ct, ln.dz + ln.ux * ts * 0.4 * ct); casing.rotation.set(el * 0.03, el * 0.02, 0); casing.material.opacity = ct < 1 ? 1 : 0;
+        });
+    }
+
+    /* ── MARTIAN · The Red Planet — the red weed, the black smoke, the tripod's heat-ray ── */
+    function _goRedWeed3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, weeds = [];
+        for (var i = 0; i < 26; i++) {
+            var w = new THREE.Group(), h = ts * rn(0.35, 0.8); w.position.set(rn(-R - 0.4, R + 0.4) * ts, 0, rn(-R - 0.4, R + 0.4) * ts); w.rotation.y = rn(0, 6); F.g.add(w);
+            var stalk = _goAdd(w, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, h, 5), _goM(i % 3 ? _GOC.mars : 0x8a1a10)), 1); stalk.position.y = h / 2; stalk.rotation.z = rn(-0.5, 0.5);
+            var curl = _goAdd(w, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.06, ts * 0.012, 4, 10, Math.PI * 1.4), _goM(_GOC.mars)), 1); curl.position.y = h * 0.9; curl.rotation.y = rn(0, 6);
+            w.userData.t0 = rn(0, 400); weeds.push(w);
+        }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = 1 - _sigClamp01((el - 1400) / 500);
+            for (var i = 0; i < weeds.length; i++) { var W = weeds[i], g = _sigEaseOutBack(_sigClamp01((el - W.userData.t0) / 380)); W.scale.set(1, Math.max(0.01, g), 1); _goShow(_goAll(W), (el > W.userData.t0 ? 1 : 0) * k); }
+            if (el > 300 && el < 330) _goSpray(F, 12, { sprite: 'poison-mist', ly: ts * 0.3, r: ts * R, v: 30, vz0: 10, vz1: 40, g: 0, drag: 0.5, s0: 12, s1: 30, op: 0.4, tint: _GOC.mars, ml0: 800, ml1: 1200 });
+        });
+    }
+    /* BLACK SMOKE: the canisters come down on the 3×3 and burst; the heavy black stuff rolls along the ground */
+    function _goBlackSmoke3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, cans = [];
+        for (var c = 0; c < 4; c++) { var cn = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.06, ts * 0.22, 8), _goM(0x3a3a3e)), 1); cn.userData.x = rn(-R, R) * ts * 0.8; cn.userData.z = rn(-R, R) * ts * 0.8; cn.userData.t0 = c * 90; cn.userData.hit = false; cans.push(cn); }
+        var total = 2200, lastS = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < cans.length; i++) {
+                var C = cans[i], t = _sigClamp01((el - C.userData.t0) / 380);
+                C.position.set(C.userData.x, ts * 0.11 + ts * 3 * (1 - t * t), C.userData.z); C.rotation.x = el * 0.01; C.material.opacity = el > C.userData.t0 ? (1 - _sigClamp01((el - 1500) / 400)) : 0;
+                if (t >= 1 && !C.userData.hit) { C.userData.hit = true; _goSpray(F, 6, { lx: C.userData.x, lz: C.userData.z, sprite: 'smoke', ly: 8, r: 10, v: 70, vz0: 5, vz1: 40, g: 0, drag: 0.5, s0: 16, s1: 60, op: 0.85, tint: 0x0a0a0c, ml0: 1200, ml1: 1800 }); }
+            }
+            if (el > 450 && el < 1700 && el - lastS > 50 && _canSpawn()) { lastS = el; _goSpray(F, 1, { sprite: 'smoke', ly: 6, r: ts * R, v: 40, vz0: 0, vz1: 20, g: 0, drag: 0.5, s0: 20, s1: 70, op: 0.75, tint: 0x0a0a0c, ml0: 1000, ml1: 1500 }); }
+        });
+    }
+    /* TRIPOD SWEEP: the fighting-machine stands over the martian and the heat-ray walks the lane */
+    function _goTripodSweep3D(fromX, fromY, tiles) {
+        if (_catOff('spells') || !tiles || !tiles.length) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts, end = tiles[tiles.length - 1], wpE = _worldPos(end.x, end.y);
+        var ex = wpE.x - F.wp.x, ez = wpE.z - F.wp.z, L = Math.max(1, Math.hypot(ex, ez)), ux = ex / L, uz = ez / L;
+        var tri = new THREE.Group(); tri.position.set(-ux * ts * 0.7, 0, -uz * ts * 0.7); tri.rotation.y = Math.atan2(ux, uz); F.g.add(tri);
+        var H = ts * 2.6;
+        for (var l = 0; l < 3; l++) { var a = l / 3 * Math.PI * 2, leg = _goAdd(tri, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.03, H * 1.08, 5), _goM(0x5a5e66)), 0.9); leg.position.set(Math.cos(a) * ts * 0.4, H / 2, Math.sin(a) * ts * 0.4); leg.rotation.set(Math.sin(a) * 0.16, 0, -Math.cos(a) * 0.16); }
+        var hood = _goAdd(tri, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.32, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), _finBasic(0x6a6e78, { opacity: 0, side: THREE.DoubleSide })), 0.95); hood.position.y = H; hood.scale.set(1.2, 0.6, 1);
+        var eye = _goGlow(tri, _GOC.heat, ts * 0.4, 0, H - ts * 0.05, ts * 0.3, 1);
+        var pos = new Float32Array(6), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var ray = _goAdd(F.g, new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(_GOC.heat), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })), 1);
+        var dot = _goGlow(F.g, _GOC.heat, ts * 0.5, 0, 0, 0, 1);
+        var tp = _goAll(tri), total = 1800, sweepA = 350, sweepB = 1100, lastB = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 200, total, 400); _goShow(tp, k);
+            var s = _sigClamp01((el - sweepA) / (sweepB - sweepA)), d = ts * 0.6 + (L + ts * 0.3 - ts * 0.6) * s;
+            var hx = -ux * ts * 0.7 + uz * 0, hy = H - ts * 0.05, hz = -uz * ts * 0.7;
+            pos[0] = hx + ux * ts * 0.3; pos[1] = hy; pos[2] = hz + uz * ts * 0.3; pos[3] = ux * d; pos[4] = ts * 0.15; pos[5] = uz * d; geo.attributes.position.needsUpdate = true;
+            var on = el > sweepA && el < sweepB + 120 ? 1 : 0;
+            ray.material.opacity = on * (0.7 + 0.3 * Math.sin(el * 0.08)); dot.position.set(ux * d, ts * 0.15, uz * d); dot.material.opacity = on;
+            if (on && el - lastB > 40 && _canSpawn()) { lastB = el; _spawn({ x: F.c.x + ux * d, y: F.c.y + uz * d, z: F.bz + 6, mode: 'billboard', sprite: 'flame', ml: rn(300, 500), size0: rn(14, 22), size1: 4, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(60, 120), drag: 0.8, opacity0: 0.9, opacity1: 0, tint: 0xff7a2a }); }
+        });
+    }
+
+    /* ── MEN IN BLACK · the flash and the very small gun ── */
+    /* NEURALYZER: the silver pen comes up, the red tip blinks, then the white flash over the 3×3 */
+    function _goNeuralyzer3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var from = _goFrom(tx, ty, x), A = _nrvFrame(from.x, from.y), F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1;
+        var pen = _goAdd(A.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.022, ts * 0.022, ts * 0.22, 8), _goM(0xd8dce4)), 1); pen.position.set(ts * 0.18, ts * 1.15, 0);
+        var tip = _goGlow(A.g, 0xff3030, ts * 0.12, ts * 0.18, ts * 1.27, 0, 1);
+        var dome = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * (R + 0.6), 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), _goA(_GOC.mib)), 0.55);
+        var total = 1300, flashAt = 420, flashed = false;
+        _sigRunOwned(A.g, 900, function (el) { var k = _goEnv(el, 80, 900, 300); pen.material.opacity = k; tip.material.opacity = k * (Math.floor(el / 90) % 2 ? 1 : 0.2); });
+        return _sigRunOwned(F.g, total, function (el) {
+            var f = _sigClamp01((el - flashAt) / 500);
+            dome.scale.setScalar(0.6 + 0.4 * _sigEaseOutCubic(f)); dome.material.opacity = el > flashAt ? 0.55 * (1 - f) : 0;
+            if (el >= flashAt && !flashed) { flashed = true; _sigScreenFlash('#ffffff', 220, 0.35); _goSpray(F, 12, { sprite: 'flash', ly: ts * 0.8, r: ts * R, v: 30, vz0: 0, vz1: 20, g: 0, s0: 20, s1: 40, op: 0.6, ml0: 200, ml1: 340 }); }
+        });
+    }
+    function _goCricketGun(ts) {
+        var g = new THREE.Group();
+        _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.04, ts * 0.05, ts * 0.12), _goM(0xc8d0dc)), 1);
+        var bar = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.06, 6), _goM(0x8a94a4)), 1); bar.rotation.x = Math.PI / 2; bar.position.set(0, ts * 0.01, ts * 0.08);
+        return g;
+    }
+    /* NOISY CRICKET: the gun no bigger than a cricket, a blue ball as big as a man, and the recoil that blows the agent back */
+    function _goCricketShot(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128, A = _nrvFrame(fromX, fromY), wpT = _worldPos(toX, toY), yaw = Math.atan2(wpT.x - A.wp.x, wpT.z - A.wp.z);
+        var gun = _goCricketGun(ts); gun.position.set(Math.sin(yaw) * ts * 0.3, ts * 0.65, Math.cos(yaw) * ts * 0.3); gun.rotation.y = yaw; A.g.add(gun);
+        var muzzle = _goGlow(A.g, _GOC.cricket, ts * 0.7, Math.sin(yaw) * ts * 0.42, ts * 0.66, Math.cos(yaw) * ts * 0.42, 1);
+        var back = _goRing(A.g, 0xc8e8ff, ts * 0.3, ts * 0.38, 3, 0.7);
+        var ball = new THREE.Group(); _goAdd(ball, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.28, 16, 12), _goA(_GOC.cricket)), 0.75); _goGlow(ball, 0xe8f8ff, ts * 0.9, 0, 0, 0, 0.8);
+        _goFlight(fromX, fromY, toX, toY, ball, { ms: (o && o.flyMs) || 360, h0: ts * 0.66, h1: ts * 0.6, arc: 0, trail: 'spark-blue', trailMs: 25 });
+        return _sigRunOwned(A.g, 700, function (el) {
+            _goShow(_goAll(gun), 1 - _sigClamp01((el - 400) / 300)); muzzle.material.opacity = 1 - _sigClamp01(el / 220);
+            gun.position.set(Math.sin(yaw) * ts * (0.3 - 0.2 * Math.sin(Math.min(1, el / 120) * Math.PI)), ts * 0.65, Math.cos(yaw) * ts * (0.3 - 0.2 * Math.sin(Math.min(1, el / 120) * Math.PI)));
+            back.scale.setScalar(1 + 2.5 * _sigClamp01(el / 400)); back.material.opacity = 0.7 * (1 - _sigClamp01(el / 400));
+            if (el < 30) _goSpray(A, 6, { sprite: 'dust-puff', ly: 4, r: 10, v: 30, vx: -Math.sin(yaw) * 160, vy: -Math.cos(yaw) * 160, vz0: 5, vz1: 30, g: 0, s0: 12, s1: 34, op: 0.5, ml0: 400, ml1: 700 });
+        });
+    }
+    function _goCricketLand3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ball = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.5, 18, 12), _goA(_GOC.cricket)), 0.6); ball.position.y = ts * 0.55;
+        var ring = _goRing(F.g, _GOC.cricket, ts * 0.4, ts * 0.5, 3, 0.8);
+        _shake('hard');
+        _goSpray(F, 16, { sprite: 'spark-blue', ly: ts * 0.55, r: 10, v: 280, vz0: 40, vz1: 220, g: 200, s0: 5, ml0: 300, ml1: 600 });
+        return _sigRunOwned(F.g, 800, function (el) { var t = el / 800; ball.scale.setScalar(0.5 + 1.6 * _sigEaseOutCubic(t)); ball.material.opacity = 0.6 * (1 - t); ring.scale.setScalar(1 + 3 * t); ring.material.opacity = 0.8 * (1 - t); });
+    }
+
+    /* ── MERMAID · the song from the rocks, and the pull under ── */
+    /* SAILOR'S LURE: a pearl on a line of sea-foam, a pink glow at their heart, and the line reels in */
+    function _goSailorsLure3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), N = 24;
+        var pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var line = _goAdd(F.g, new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(_GOC.siren), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })), 0.9);
+        var pearl = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 12, 10), _goM(0xfff8f0)), 1), pglow = _goGlow(F.g, 0xffe8f4, ts * 0.35, 0, 0, 0, 0.8);
+        var heart = _goGlow(F.g, 0xff6aaa, ts * 0.45, 0, ts * 0.72, 0, 0.8);
+        var total = 1500, lastN = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 400), reel = _sigEaseInCubic(_sigClamp01((el - 600) / 600));
+            for (var i = 0; i < N; i++) { var u = i / (N - 1); pos[i * 3] = ln.dx * u; pos[i * 3 + 1] = ts * 0.75 + ln.dy * u + Math.sin(u * 9 + el * 0.01) * ts * 0.06 * (1 - reel); pos[i * 3 + 2] = ln.dz * u; }
+            geo.attributes.position.needsUpdate = true; line.material.opacity = 0.9 * k;
+            var pu = 0.12 + 0.8 * reel; pearl.position.set(ln.dx * pu, ts * 0.78 + ln.dy * pu, ln.dz * pu); pglow.position.copy(pearl.position); pearl.material.opacity = k; pglow.material.opacity = 0.8 * k;
+            heart.material.opacity = 0.8 * k * (0.6 + 0.4 * Math.sin(el * 0.015)); heart.scale.setScalar(ts * 0.45 * (1 + 0.15 * Math.sin(el * 0.015)));
+            if (el - lastN > 120 && el < total - 400 && _canSpawn()) { lastN = el; var u2 = rn(0, 1); _spawn({ x: F.c.x + ln.dx * u2, y: F.c.y + ln.dz * u2, z: F.bz + ts * 0.8, mode: 'billboard', sprite: 'bubble', ml: rn(500, 800), size0: 5, size1: 2, vx: 0, vy: 0, vz: rn(20, 50), drag: 0.4, opacity0: 0.8, opacity1: 0 }); }
+        });
+    }
+    /* PULL THEM UNDER: the whirlpool opens under them, the tail slaps the water, and down they go */
+    function _goPullUnder3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, swirl = [];
+        for (var q = 0; q < 4; q++) { var rg = _goRing(F.g, q % 2 ? _GOC.siren : 0x3a8aaa, ts * (0.15 + q * 0.13), ts * (0.2 + q * 0.13), 3 + q * 0.2, 0.7, 32); rg.geometry = new THREE.RingGeometry(ts * (0.15 + q * 0.13), ts * (0.2 + q * 0.13), 32, 1, 0, Math.PI * 1.5); swirl.push(rg); }
+        var fin = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.22, 3), _finBasic(_GOC.siren, { opacity: 0, side: THREE.DoubleSide })), 0.85); fin.scale.set(1.6, 0.7, 1);
+        var total = 1600, slap = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 400);
+            for (var i = 0; i < swirl.length; i++) { swirl[i].rotation.z = el * 0.006 * (i + 1); swirl[i].material.opacity = 0.7 * k; }
+            var f = _sigClamp01((el - 150) / 300); fin.position.set(ts * 0.4, ts * (0.1 + 0.5 * Math.sin(f * Math.PI)), 0); fin.rotation.set(0, Math.PI / 2, -0.6 + 1.6 * f); fin.material.opacity = 0.85 * (f > 0 && f < 1 ? 1 : 0);
+            if (f >= 1 && !slap) { slap = true; _shake('normal'); _goSpray(F, 16, { sprite: 'water-splash', ly: ts * 0.2, r: ts * 0.3, v: 160, vz0: 100, vz1: 260, g: 520, s0: 6, s0b: 12, ml0: 400, ml1: 800 }); }
+            if (el > 400 && el % 100 < 20) _goSpray(F, 2, { sprite: 'bubble', ly: ts * 0.1, r: ts * 0.3, v: 20, vz0: 20, vz1: 60, g: 0, s0: 4, ml0: 500, ml1: 800 });
+        });
+    }
+
+    /* ── MUSHROOM GIRL · the spores, and the fungus that drives the body ── */
+    function _goMushroom(ts, s) {
+        var g = new THREE.Group();
+        _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03 * s, ts * 0.04 * s, ts * 0.16 * s, 7), _goM(0xf0e6d0)), 1).position.y = ts * 0.08 * s;
+        var cap = _goAdd(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09 * s, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), _goM(0xd02a2a)), 1); cap.position.y = ts * 0.15 * s;
+        for (var d = 0; d < 3; d++) _goAdd(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.015 * s, 5, 4), _goM(0xffffff)), 1).position.set(Math.cos(d * 2.1) * ts * 0.05 * s, ts * 0.21 * s, Math.sin(d * 2.1) * ts * 0.05 * s);
+        return g;
+    }
+    /* SPORE CLOUD: little red caps push up across the 3×3 and puff gold */
+    function _goSporeCloud3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, caps = [];
+        for (var ox = -R; ox <= R; ox++) for (var oy = -R; oy <= R; oy++) {
+            var m = _goMushroom(ts, rn(0.9, 1.4)); m.position.set(ox * ts + rn(-0.2, 0.2) * ts, 0, oy * ts + rn(-0.2, 0.2) * ts); m.userData.t0 = rn(0, 300); m.userData.puffed = false; F.g.add(m); caps.push(m);
+        }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = 1 - _sigClamp01((el - 1400) / 500);
+            for (var i = 0; i < caps.length; i++) {
+                var C = caps[i], g = _sigEaseOutBack(_sigClamp01((el - C.userData.t0) / 260)); C.scale.set(1, Math.max(0.01, g), 1); _goShow(_goAll(C), (el > C.userData.t0 ? 1 : 0) * k);
+                if (g >= 1 && !C.userData.puffed) { C.userData.puffed = true; _goSpray(F, 4, { lx: C.position.x, lz: C.position.z, sprite: 'sparkle', ly: ts * 0.22, r: 6, v: 40, vz0: 40, vz1: 100, g: -10, drag: 0.6, s0: 4, tint: _GOC.spore, ml0: 700, ml1: 1100 }); _goSpray(F, 2, { lx: C.position.x, lz: C.position.z, sprite: 'smoke-soft', ly: ts * 0.25, r: 6, v: 20, vz0: 20, vz1: 50, g: 0, drag: 0.5, s0: 10, s1: 34, op: 0.5, tint: _GOC.spore, ml0: 800, ml1: 1200 }); }
+            }
+        });
+    }
+    /* CORDYCEPS: the stalks burst out of their back and the mycelium threads run back to her hands */
+    function _goCordyceps3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), stalks = [], threads = [];
+        for (var s = 0; s < 6; s++) {
+            var a = s / 6 * Math.PI * 2, st = new THREE.Group(); st.position.set(Math.cos(a) * ts * 0.12, ts * (0.85 + (s % 2) * 0.12), Math.sin(a) * ts * 0.12); st.rotation.set(Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6); F.g.add(st);
+            var stem = _goAdd(st, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.034, ts * 0.6, 7), _goM(_GOC.cordy)), 1); stem.position.y = ts * 0.3;
+            var club = _goAdd(st, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 10, 8), _goM(0xb0501a)), 1); club.scale.y = 2; club.position.y = ts * 0.64;
+            st.userData.t0 = 120 + s * 50; stalks.push(st);
+        }
+        for (var t = 0; t < 3; t++) {
+            var N = 14, pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            var ln2 = _goAdd(F.g, new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(0xf0e0c0), transparent: true, opacity: 0, depthWrite: false })), 0.7); ln2.userData.pos = pos; ln2.userData.ph = t * 2; threads.push(ln2);
+        }
+        var total = 1800;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = 1 - _sigClamp01((el - 1300) / 500);
+            for (var i = 0; i < stalks.length; i++) { var S = stalks[i], g = _sigEaseOutBack(_sigClamp01((el - S.userData.t0) / 300)); S.scale.set(1, Math.max(0.01, g), 1); _goShow(_goAll(S), (el > S.userData.t0 ? 1 : 0) * k); }
+            for (var j = 0; j < threads.length; j++) {
+                var T = threads[j], P = T.userData.pos, reach = _sigClamp01(el / 500);
+                for (var n = 0; n < 14; n++) { var u = n / 13 * reach; P[n * 3] = ln.dx * u + Math.sin(u * 7 + el * 0.004 + T.userData.ph) * ts * 0.08; P[n * 3 + 1] = ts * 0.8 + ln.dy * u - Math.sin(u * Math.PI) * ts * 0.2; P[n * 3 + 2] = ln.dz * u + Math.cos(u * 6 + T.userData.ph) * ts * 0.08; }
+                T.geometry.attributes.position.needsUpdate = true; T.material.opacity = 0.7 * k * (0.6 + 0.4 * Math.sin(el * 0.01 + j));
+            }
+            if (el > 300 && el < 330) _goSpray(F, 8, { sprite: 'sparkle', ly: ts * 1.2, r: 10, v: 50, vz0: 20, vz1: 60, g: 0, drag: 0.5, s0: 4, tint: _GOC.spore, ml0: 700, ml1: 1100 });
+        });
+    }
+
+    /* ── NECROMANCER · the whisper from the grave, and the reaping ── */
+    /* GRAVE WHISPER: a headstone rises behind them; the green breath of it curls into their ear */
+    function _goGraveWhisper3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var stone = new THREE.Group(); stone.position.set(-ln.ux * ts * 0.42, 0, -ln.uz * ts * 0.42); stone.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(stone);
+        _goAdd(stone, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.34, ts * 0.42, ts * 0.08), _goM(0x5a5a62)), 1).position.y = ts * 0.21;
+        _goAdd(stone, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.17, ts * 0.17, ts * 0.08, 14, 1, false, 0, Math.PI), _goM(0x5a5a62)), 1).rotation.set(Math.PI / 2, Math.PI / 2, 0);
+        stone.children[1].position.y = ts * 0.42;
+        _goAdd(stone, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, ts * 0.18), _goA(_GOC.necro)), 0.9).position.set(0, ts * 0.32, ts * 0.045);
+        _goAdd(stone, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.12, ts * 0.03), _goA(_GOC.necro)), 0.9).position.set(0, ts * 0.36, ts * 0.045);
+        var sp = _goAll(stone), total = 1600, lastW = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 300)), k = 1 - _sigClamp01((el - 1200) / 400);
+            stone.position.y = -ts * 0.5 * (1 - up); _goShow(sp, Math.min(1, el / 100) * k);
+            if (el - lastW > 45 && el > 200 && el < 1100 && _canSpawn()) {
+                lastW = el; var a = el * 0.012;
+                _spawn({ x: F.c.x + Math.cos(a) * ts * 0.25 * (1 - (el - 200) / 900), y: F.c.y + Math.sin(a) * ts * 0.25 * (1 - (el - 200) / 900), z: F.bz + ts * (0.4 + 0.6 * (el - 200) / 900), mode: 'billboard', sprite: 'shadow-wisp', ml: rn(400, 700), size0: rn(8, 12), size1: 2, vx: 0, vy: 0, vz: 10, drag: 0.5, opacity0: 0.8, opacity1: 0, tint: _GOC.necro });
+            }
+        });
+    }
+    /* THE REAPING: the scythe goes round the 3×3 once; the souls come up off it and drift back to the necromancer */
+    function _goReaping3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, from = _goFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
+        var sc = new THREE.Group(); sc.position.y = ts * 0.55; F.g.add(sc);
+        var haft = _goAdd(sc, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * (R + 0.6), 6), _goM(0x2a1a14)), 1); haft.rotation.z = Math.PI / 2; haft.position.x = ts * (R + 0.6) / 2;
+        var blade = _goAdd(sc, new THREE.Mesh(new THREE.RingGeometry(ts * (R + 0.1), ts * (R + 0.55), 24, 1, 0, 1.1), _goA(_GOC.necro)), 0.75); blade.rotation.x = -Math.PI / 2;
+        var trail = _goAdd(F.g, new THREE.Mesh(new THREE.RingGeometry(ts * 0.2, ts * (R + 0.55), 40, 1, 0, 0.01), _goA(_GOC.necro)), 0.28); trail.rotation.x = -Math.PI / 2; trail.position.y = ts * 0.5;
+        var souls = [], total = 2000, sweepMs = 520;
+        for (var s = 0; s < 6; s++) { var sl = _goGlow(F.g, _GOC.soul, ts * 0.28, 0, 0, 0, 0.85); sl.userData.a = s / 6 * Math.PI * 2; sl.userData.d = ts * rn(0.4, R + 0.3); souls.push(sl); }
+        return _sigRunOwned(F.g, total, function (el) {
+            var sw = _sigEaseOutCubic(_sigClamp01((el - 100) / sweepMs)), a = sw * Math.PI * 2;
+            sc.rotation.y = -a; _goShow(_goAll(sc), el > 100 ? 1 - _sigClamp01((el - 100 - sweepMs) / 250) : 0);
+            if (sw > 0.02) { trail.geometry.dispose(); trail.geometry = new THREE.RingGeometry(ts * 0.2, ts * (R + 0.55), 40, 1, 0, Math.max(0.01, a)); }
+            trail.material.opacity = 0.28 * (1 - _sigClamp01((el - 600) / 400));
+            for (var i = 0; i < souls.length; i++) {
+                var S = souls[i], rise = _sigClamp01((el - 600 - i * 40) / 300), fly = _sigEaseInCubic(_sigClamp01((el - 1000 - i * 50) / 700));
+                var px = Math.cos(S.userData.a) * S.userData.d, pz = Math.sin(S.userData.a) * S.userData.d;
+                S.position.set(px + (ln.dx - px) * fly, ts * (0.3 + 0.7 * rise) + (ln.dy + ts * 0.3) * fly, pz + (ln.dz - pz) * fly);
+                S.material.opacity = el > 600 + i * 40 ? 0.85 * (1 - _sigClamp01((fly - 0.85) / 0.15)) : 0;
+            }
+        });
+    }
+
+    /* ── NEPHILIM · the giants of old, and the forge of Azazel ── */
+    /* GIANT'S HAND: the palm the size of a door comes down flat on them */
+    function _goGiantsHand3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var hand = new THREE.Group(); hand.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(hand);
+        var palm = _goAdd(hand, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.36, 20, 12), _goM(0xb07a5a)), 1); palm.scale.set(1, 0.24, 0.9);
+        /* the forearm runs up and back out of the heel of the palm, out of the shot, so it never shows a cut end */
+        var armGeo = new THREE.CylinderGeometry(ts * 0.3, ts * 0.21, ts * 3.2, 16, 4, true); armGeo.translate(0, ts * 1.6, 0);
+        var wrist = _goAdd(hand, new THREE.Mesh(armGeo, _goM(0xa06a4a)), 1); wrist.rotation.x = -0.4; wrist.position.set(0, ts * 0.02, -ts * 0.26);
+        for (var f = 0; f < 4; f++) {
+            var fl = ts * (0.36 - Math.abs(f - 1.5) * 0.05), fg = _goAdd(hand, new THREE.Mesh(new THREE.CapsuleGeometry(ts * 0.065, fl, 4, 10), _goM(0xa06a4a)), 1);
+            fg.rotation.x = Math.PI / 2; fg.position.set(-ts * 0.24 + f * ts * 0.16, 0, ts * 0.3 + fl / 2);
+        }
+        var thumb = _goAdd(hand, new THREE.Mesh(new THREE.CapsuleGeometry(ts * 0.075, ts * 0.24, 4, 10), _goM(0xa06a4a)), 1); thumb.rotation.set(Math.PI / 2, 0, -0.8); thumb.position.set(ts * 0.4, 0, ts * 0.05);
+        var hp = _goAll(hand), total = 1200, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var d = _sigEaseInCubic(_sigClamp01(el / 220));
+            hand.position.y = ts * 2.8 * (1 - d) + ts * 1.0 - ts * 0.35 * d; _goShow(hp, Math.min(1, el / 60) * (1 - _sigClamp01((el - 700) / 400)));
+            if (el >= 700) hand.position.y += ts * 1.5 * _sigClamp01((el - 700) / 400);
+            if (d >= 1 && !hit) { hit = true; _shake('hard'); _goSpray(F, 12, { sprite: 'blood-fleck', ly: ts * 0.6, r: 12, v: 180, vz0: 20, vz1: 140, g: 520, s0: 4, ml0: 300, ml1: 600 }); _goSpray(F, 8, { sprite: 'dust-puff', ly: 4, r: 24, v: 100, vz0: 5, vz1: 30, g: 0, s0: 14, s1: 40, op: 0.5, ml0: 500, ml1: 900 }); }
+        });
+    }
+    /* AZAZEL'S FORGE: the anvil comes up out of the floor, three strokes of the hammer, sparks out to every ally in reach */
+    function _goAzazelForge3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 2), anvil = new THREE.Group(); anvil.position.set(ts * 0.35, 0, ts * 0.2); F.g.add(anvil);
+        _goAdd(anvil, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.2, ts * 0.18, ts * 0.16), _goM(0x2a2a30)), 1).position.y = ts * 0.09;
+        _goAdd(anvil, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.36, ts * 0.08, ts * 0.18), _goM(0x3a3a42)), 1).position.y = ts * 0.22;
+        var horn = _goAdd(anvil, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.16, 6), _goM(0x3a3a42)), 1); horn.rotation.z = Math.PI / 2; horn.position.set(ts * 0.25, ts * 0.22, 0);
+        var heat = _goGlow(anvil, _GOC.forge, ts * 0.45, 0, ts * 0.28, 0, 0.7);
+        var hp = new THREE.Group(); hp.position.set(-ts * 0.15, ts * 0.3, 0); anvil.add(hp);
+        var haft = _goAdd(hp, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.015, ts * 0.015, ts * 0.32, 6), _goM(0x5a3a22)), 1); haft.rotation.z = Math.PI / 2; haft.position.x = ts * 0.16;
+        var head = _goAdd(hp, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.12, ts * 0.08), _goM(0x5a5e66)), 1); head.position.x = ts * 0.32;
+        var ring = _goRing(F.g, _GOC.forge, ts * 0.4, ts * 0.46, 3, 0.7, 40);
+        var ap = _goAll(anvil), total = 1900, strokes = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 400), up = _sigEaseOutBack(_sigClamp01(el / 260));
+            anvil.position.y = -ts * 0.3 * (1 - up); _goShow(ap, k);
+            var ph = ((el - 300) % 330) / 330; hp.rotation.z = el > 300 && el < 1290 ? (ph < 0.6 ? 1.3 * (ph / 0.6) : 1.3 * (1 - (ph - 0.6) / 0.4)) * -1 + 0.2 : 0.2;
+            while (strokes < 3 && el >= 300 + strokes * 330 + 330 * 0.99) {
+                strokes++; _goSpray(F, 12, { lx: ts * 0.35, lz: ts * 0.2, sprite: 'ember', ly: ts * 0.28, r: 4, v: 220, vz0: 60, vz1: 200, g: 400, s0: 4, ml0: 300, ml1: 600 });
+                ring.userData.t0 = el;
+            }
+            var rt = ring.userData.t0 != null ? _sigClamp01((el - ring.userData.t0) / 450) : 1; ring.scale.setScalar(1 + rt * R * 2.2); ring.material.opacity = 0.7 * (1 - rt) * k;
+            heat.material.opacity = 0.7 * k * (0.7 + 0.3 * Math.sin(el * 0.02));
+        });
+    }
+    /* DEVOUR MANKIND: the jaws of the giants close over them; their blood runs back to the nephilim */
+    function _goDevour3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var jaws = _goJaws(ts, 0x5a1010, 0x4a0c0c, 0xf0e8d0); jaws.scale.setScalar(1.5); jaws.position.set(ln.ux * ts * 0.05, ts * 0.7, ln.uz * ts * 0.05); jaws.rotation.y = Math.atan2(ln.ux, ln.uz) + Math.PI / 2; F.g.add(jaws);
+        var parts = _goAll(jaws), total = 1500, bit = false, lastB = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 100, total, 400), open = el < 300 ? _sigEaseOutCubic(el / 300) : 1 - _sigEaseInCubic(_sigClamp01((el - 300) / 120));
+            jaws.userData.rows[0].position.y = ts * 0.02 + ts * 0.3 * open; jaws.userData.rows[1].position.y = -ts * 0.02 - ts * 0.24 * open; _goShow(parts, k);
+            if (el >= 420 && !bit) { bit = true; _shake('hard'); _goSpray(F, 16, { sprite: 'blood-fleck', ly: ts * 0.7, r: 12, v: 190, vz0: 30, vz1: 170, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 650 }); }
+            if (el > 480 && el < 1200 && el - lastB > 35 && _canSpawn()) {   /* the drain: blood back to the giant */
+                lastB = el; _spawn({ x: F.c.x, y: F.c.y, z: F.bz + ts * 0.7, mode: 'billboard', sprite: 'blood-fleck', ml: 480, size0: rn(5, 8), size1: 3,
+                    vx: ln.dx / 0.48 + rn(-20, 20), vy: ln.dz / 0.48 + rn(-20, 20), vz: (ln.dy) / 0.48 + rn(-10, 30), gravity: 0, drag: 0, opacity0: 0.95, opacity1: 0 });
+            }
+        });
+    }
+
+    /* ── NUN · the ruler, the vow, the penance ── */
+    function _goRulerSmack3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var piv = new THREE.Group(); piv.position.set(ln.ux * ts * 0.45, ts * 0.9, ln.uz * ts * 0.45); piv.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(piv);
+        var ruler = _goAdd(piv, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.012, ts * 0.62), _finBasic(0xffffff, { opacity: 0, map: _finTextTex('| | | | | | | | | | | |', { ink: '#3a2410', bg: '#c89a5a', w: 256, h: 32, fontPx: 22 }) })), 1); ruler.position.z = ts * 0.32;
+        var crack = _goGlow(F.g, 0xffffff, ts * 0.5, 0, ts * 0.85, 0, 1);
+        var total = 800, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var s = _sigEaseInCubic(_sigClamp01(el / 140)); piv.rotation.x = -1.0 + 1.5 * s; ruler.material.opacity = 1 - _sigClamp01((el - 450) / 300);
+            crack.material.opacity = el > 140 ? 1 - _sigClamp01((el - 140) / 200) : 0; crack.scale.setScalar(ts * 0.5 * (0.6 + _sigClamp01((el - 140) / 200)));
+            if (s >= 1 && !hit) { hit = true; _shake('soft'); _goSpray(F, 6, { sprite: 'sparkle', ly: ts * 0.85, r: 8, v: 140, vz0: 20, vz1: 120, g: 200, s0: 5, ml0: 300, ml1: 500 }); }
+        });
+    }
+    /* VOW OF SILENCE: a red wax seal stamps over their mouth; a candle beside them goes out */
+    function _goVowOfSilence3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
+        var seal = new THREE.Group(); seal.position.set(ln.ux * ts * 0.2, ts * 0.95, ln.uz * ts * 0.2); seal.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(seal);
+        _goAdd(seal, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.13, 10), _goM(_GOC.wax)), 1);
+        _goAdd(seal, new THREE.Mesh(new THREE.RingGeometry(ts * 0.08, ts * 0.1, 20), _goM(0x7a0a14)), 1).position.z = 0.4;
+        _goAdd(seal, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.025, ts * 0.12), _goM(0x7a0a14)), 1).position.z = 0.5;
+        _goAdd(seal, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.08, ts * 0.025), _goM(0x7a0a14)), 1).position.set(0, ts * 0.02, 0.5);
+        var candle = _nrvCandle(ts); candle.position.set(-ln.uz * ts * 0.4, 0, ln.ux * ts * 0.4); F.g.add(candle);
+        var sp = _goAll(seal), total = 1700, puffed = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var st = _sigEaseOutBack(_sigClamp01(el / 200)); seal.scale.setScalar(2 - st); _goShow(sp, Math.min(1, el / 100) * (1 - _sigClamp01((el - 1300) / 400)));
+            var lit = el < 600 ? 1 : 0; candle.userData.flame.material.opacity = 0.9 * lit * (0.8 + 0.2 * Math.sin(el * 0.05));
+            candle.children[0].material.transparent = true; candle.children[0].material.opacity = 1 - _sigClamp01((el - 1300) / 400);
+            if (!lit && !puffed) { puffed = true; _goSpray(F, 3, { lx: -ln.uz * ts * 0.4, lz: ln.ux * ts * 0.4, sprite: 'smoke-soft', ly: ts * 0.32, r: 3, v: 6, vz0: 20, vz1: 40, g: 0, drag: 0.3, s0: 5, s1: 22, op: 0.5, tint: 0xd8d8d8, ml0: 900, ml1: 1300 }); }
+        });
+    }
+    /* PENANCE: the rosary circles them and draws tight; a cross of light comes down on them */
+    function _goPenance3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, beads = [];
+        for (var b = 0; b < 18; b++) { var bd = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * (b % 6 ? 0.022 : 0.032), 8, 6), _goM(_GOC.bead)), 1); bd.userData.a = b / 18 * Math.PI * 2; beads.push(bd); }
+        var cross = new THREE.Group(); F.g.add(cross);
+        _goAdd(cross, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.1, ts * 0.9, ts * 0.06), _goA(_GOC.holy)), 0.85).position.y = 0;
+        _goAdd(cross, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.55, ts * 0.1, ts * 0.06), _goA(_GOC.holy)), 0.85).position.y = ts * 0.2;
+        var col = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.38, ts * 3, 16, 1, true), _finBasic(_GOC.holy, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.35); col.position.y = ts * 1.5;
+        var cp = _goAll(cross), total = 1700, hit = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var tight = _sigEaseInCubic(_sigClamp01((el - 100) / 500)), k = 1 - _sigClamp01((el - 1250) / 450);
+            for (var i = 0; i < beads.length; i++) { var a = beads[i].userData.a + el * 0.004, rr = ts * (0.7 - 0.4 * tight); beads[i].position.set(Math.cos(a) * rr, ts * (0.55 + 0.05 * Math.sin(a * 3)), Math.sin(a) * rr); beads[i].material.opacity = Math.min(1, el / 120) * k; }
+            var d = _sigEaseInCubic(_sigClamp01((el - 500) / 260)); cross.position.y = ts * (3.2 - 2.0 * d); _goShow(cp, el > 500 ? k : 0);
+            var cam = _goCamQuat(null); if (cam) { cross.quaternion.copy(cam); }
+            col.material.opacity = el > 700 ? 0.35 * k : 0;
+            if (d >= 1 && !hit) { hit = true; _shake('normal'); _goSpray(F, 12, { sprite: 'divine-sparkle', ly: ts * 0.8, r: 12, v: 150, vz0: 30, vz1: 150, g: 160, s0: 5, ml0: 400, ml1: 700 }); }
+        });
+    }
+
+    /* ── OCCULUS · the eye that unmakes magic, and every eye at once ── */
+    function _goEye(ts, s, iris) {
+        var g = new THREE.Group();
+        _goAdd(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.14 * s, 14, 10), _goM(0xf4ece8)), 1);
+        var ir = _goAdd(g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.07 * s, 16), _goM(iris)), 1); ir.position.z = ts * 0.141 * s;
+        var pu = _goAdd(g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.03 * s, 12), _goM(0x050505)), 1); pu.position.z = ts * 0.142 * s;
+        var lid = _goAdd(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.146 * s, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), _goM(0x5a2a4a)), 1); g.userData.lid = lid;
+        return g;
+    }
+    /* ANTIMAGIC GAZE: the great eye opens over the occulus and its cone of dead grey light runs down the lane; the sigils break in it */
+    function _goAntimagicGaze3D(fromX, fromY, tiles) {
+        if (_catOff('spells') || !tiles || !tiles.length) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts, end = tiles[tiles.length - 1], wpE = _worldPos(end.x, end.y);
+        var ex = wpE.x - F.wp.x, ez = wpE.z - F.wp.z, L = Math.max(1, Math.hypot(ex, ez)), ux = ex / L, uz = ez / L, yaw = Math.atan2(ux, uz);
+        var eye = _goEye(ts, 1.8, _GOC.iris); eye.position.set(0, ts * 1.55, 0); eye.rotation.y = yaw; F.g.add(eye);
+        var cone = _goAdd(F.g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.6, L + ts * 0.4, 18, 1, true), _finBasic(_GOC.anti, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() })), 0.3);
+        cone.rotation.order = 'YXZ'; cone.rotation.y = yaw; cone.rotation.x = -Math.PI / 2 - Math.atan2(ts * 1.2, L); cone.position.set(ux * (L / 2), ts * 0.95, uz * (L / 2));
+        var ep = _goAll(eye), total = 1600, lastR = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 400), open = _sigEaseOutCubic(_sigClamp01((el - 100) / 250));
+            eye.userData.lid.rotation.x = -open * 1.9; _goShow(ep, k);
+            cone.material.opacity = el > 350 ? 0.3 * k * (0.8 + 0.2 * Math.sin(el * 0.03)) : 0;
+            if (el > 350 && el - lastR > 60 && el < total - 400 && _canSpawn()) {
+                lastR = el; var t = rn(0.15, 1);
+                _spawn({ x: F.c.x + ex * t, y: F.c.y + ez * t, z: F.bz + ts * rn(0.3, 0.9), mode: 'billboard', sprite: Math.random() < 0.5 ? 'tess-tri' : 'tess-circle', ml: rn(400, 700), size0: rn(8, 14), size1: 2, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(-60, 20), gravity: 200, drag: 1, opacity0: 0.9, opacity1: 0, tint: _GOC.iris });
+            }
+        });
+    }
+    /* EVERY EYE AT ONCE: an eye opens in the air over the occulus for every shot, and its ray goes where it looks */
+    function _goEyeStalkShot(fromX, fromY, toX, toY, o) {
+        var A = _nrvFrame(fromX, fromY), ts = A.ts, wpT = _worldPos(toX, toY);
+        var dx = wpT.x - A.wp.x, dz = wpT.z - A.wp.z, a = rn(0, Math.PI * 2), ex = Math.cos(a) * ts * 0.5, ez = Math.sin(a) * ts * 0.5, ey = ts * rn(1.3, 1.8);
+        var eye = _goEye(ts, 0.9, _GOC.iris); eye.position.set(ex, ey, ez); A.g.add(eye); eye.lookAt(A.wp.x + dx, A.wp.y + ts * 0.6, A.wp.z + dz);
+        var pos = new Float32Array([ex, ey, ez, dx, wpT.y - A.wp.y + ts * 0.6, dz]), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var ray = _goAdd(A.g, new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(_GOC.iris), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })), 1);
+        var ms = (o && o.flyMs) || 360, ep = _goAll(eye);
+        return _sigRunOwned(A.g, ms + 500, function (el) {
+            var open = _sigEaseOutCubic(_sigClamp01(el / 140)); eye.userData.lid.rotation.x = -open * 1.9; _goShow(ep, Math.min(1, el / 80) * (1 - _sigClamp01((el - ms - 100) / 300)));
+            ray.material.opacity = el > ms * 0.6 && el < ms + 200 ? 1 - _sigClamp01((el - ms) / 200) : 0;
+        });
+    }
+    function _goEyeStalkLand3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, g = _goGlow(F.g, _GOC.iris, ts * 0.7, 0, ts * 0.6, 0, 0.8);
+        _goSpray(F, 8, { sprite: 'psi-pulse', ly: ts * 0.6, r: 8, v: 120, vz0: 20, vz1: 100, g: 0, drag: 1, s0: 6, tint: _GOC.iris, ml0: 300, ml1: 500 });
+        return _sigRunOwned(F.g, 500, function (el) { g.material.opacity = 0.8 * (1 - el / 500); });
+    }
+
+    /* ── ORB OF LIGHT · the plasma loops, and burning itself down ── */
+    /* PLASMA LOOP: loops of plasma arc off the orb's surface and come down on the ground all round it */
+    function _goPlasmaLoop3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 2), loops = [];
+        var core = _goGlow(F.g, _GOC.plasma, ts * 1.2, 0, ts * 0.7, 0, 0.7);
+        for (var l = 0; l < 8; l++) {
+            var a = l / 8 * Math.PI * 2 + rn(-0.2, 0.2), d = ts * rn(0.9, R + 0.2), loop = new THREE.Group(); loop.position.set(Math.cos(a) * d / 2, ts * 0.05, Math.sin(a) * d / 2); loop.rotation.y = -a; F.g.add(loop);
+            var arc = _goAdd(loop, new THREE.Mesh(new THREE.TorusGeometry(d / 2, ts * 0.04, 6, 24, Math.PI), _goA(l % 2 ? _GOC.solar : _GOC.plasma)), 0.85);
+            arc.userData.full = arc.geometry.index.count; loop.userData.t0 = l * 60; loop.userData.a = a; loop.userData.d = d; loop.userData.hit = false; loops.push(loop);
+        }
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = 1 - _sigClamp01((el - 1200) / 500); core.material.opacity = 0.7 * _goEnv(el, 150, total, 500);
+            for (var i = 0; i < loops.length; i++) {
+                var Lp = loops[i], arc = Lp.children[0], g = _sigClamp01((el - Lp.userData.t0) / 380);
+                arc.geometry.setDrawRange(0, Math.floor(arc.userData.full * g / 3) * 3); arc.material.opacity = 0.85 * k * (0.75 + 0.25 * Math.sin(el * 0.04 + i));
+                if (g >= 1 && !Lp.userData.hit) { Lp.userData.hit = true; _goSpray(F, 5, { lx: Math.cos(Lp.userData.a) * Lp.userData.d, lz: Math.sin(Lp.userData.a) * Lp.userData.d, sprite: 'ember', ly: 6, r: 6, v: 120, vz0: 40, vz1: 160, g: 300, s0: 5, ml0: 300, ml1: 600 }); }
+            }
+        });
+    }
+    /* BURNOUT: the core swells white-hot past its own skin, then collapses — the ring blasts out and it is left a dim coal */
+    function _goBurnout3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 2);
+        var swell = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.4, 20, 14), _goA(0xfff6d8)), 0.7); swell.position.y = ts * 0.7;
+        var coal = _goGlow(F.g, 0xff6a20, ts * 0.6, 0, ts * 0.7, 0, 0.8);
+        var ring = _goRing(F.g, _GOC.solar, ts * 0.42, ts * 0.55, 3, 0.85, 48), ring2 = _goRing(F.g, 0xffffff, ts * 0.44, ts * 0.48, ts * 0.7, 0.6, 48);
+        var total = 1900, popAt = 700, popped = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var sw = _sigEaseInCubic(_sigClamp01(el / popAt)), col = _sigClamp01((el - popAt) / 160);
+            swell.scale.setScalar(0.8 + 1.6 * sw - 2.2 * col); swell.material.opacity = el < popAt + 160 ? 0.7 * (0.4 + 0.6 * sw) * (1 - col) : 0;
+            coal.material.opacity = el > popAt ? 0.8 * (1 - _sigClamp01((el - popAt - 600) / 600)) : 0;
+            var b = _sigClamp01((el - popAt) / 520);
+            ring.scale.setScalar(1 + (R + 0.5) * 2 * _sigEaseOutCubic(b)); ring.material.opacity = el > popAt ? 0.85 * (1 - b) : 0;
+            ring2.scale.setScalar(1 + (R + 0.3) * 2 * _sigEaseOutCubic(b)); ring2.material.opacity = el > popAt ? 0.6 * (1 - b) : 0;
+            if (el >= popAt && !popped) { popped = true; _shake('hard'); _sigScreenFlash('#fff2c0', 200, 0.25); _goSpray(F, 18, { sprite: 'ember', ly: ts * 0.7, r: 10, v: 300, vz0: 40, vz1: 200, g: 260, s0: 5, ml0: 400, ml1: 800 }); }
+        });
+    }
+
+    /* ── OVERLORD · KNEEL — the crown comes down on everyone near; the will crushes ── */
+    function _goKneel3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 1), crown = new THREE.Group(); F.g.add(crown);
+        _goAdd(crown, new THREE.Mesh(new THREE.TorusGeometry(ts * (R + 0.35), ts * 0.06, 6, 40), _goA(_GOC.will)), 0.85).rotation.x = Math.PI / 2;
+        for (var s = 0; s < 8; s++) { var a = s / 8 * Math.PI * 2, sp = _goAdd(crown, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.1, ts * 0.42, 4), _goA(_GOC.will)), 0.85); sp.position.set(Math.cos(a) * ts * (R + 0.35), ts * 0.21, Math.sin(a) * ts * (R + 0.35)); }
+        var word = _goWord(F.g, 'KNEEL', '#c08aff', ts * 1.9, ts * 1.8, 'Georgia, serif');
+        var rings = [];
+        for (var q = 0; q < 3; q++) { var rg = _goRing(F.g, _GOC.will, ts * (R + 0.2), ts * (R + 0.32), ts * 1.6, 0.5, 40); rg.userData.t0 = 450 + q * 140; rings.push(rg); }
+        var cp = _goAll(crown), total = 1900, slam = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var d = _sigEaseInCubic(_sigClamp01((el - 150) / 300)), k = 1 - _sigClamp01((el - 1450) / 450);
+            crown.position.y = ts * 3 * (1 - d) + 3; _goShow(cp, el > 150 ? k : 0);
+            word.material.opacity = el > 400 ? k : 0; word.scale.x = ts * 1.8 * (1 + 0.3 * (1 - _sigClamp01((el - 400) / 200))); word.scale.y = word.scale.x * 0.5;
+            for (var i = 0; i < rings.length; i++) { var Rg = rings[i], t = _sigClamp01((el - Rg.userData.t0) / 500); Rg.position.y = ts * 1.6 * (1 - t) + 3; Rg.material.opacity = el > Rg.userData.t0 ? 0.5 * (1 - t) : 0; }
+            if (d >= 1 && !slam) { slam = true; _shake('hard'); _goSpray(F, 12, { sprite: 'dust-puff', ly: 4, r: ts * R, v: 90, vz0: -5, vz1: 15, g: 0, s0: 14, s1: 40, op: 0.5, ml0: 500, ml1: 900 }); }
+        });
+    }
+    /* CRUSHING WILL: a hand of violet force presses them into the floor; the floor cracks out from under them */
+    function _goCrushingWill3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hand = new THREE.Group(); hand.rotation.y = rn(0, Math.PI * 2); F.g.add(hand);
+        _goAdd(hand, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.6, ts * 0.12, ts * 0.5), _goA(_GOC.will)), 0.55);
+        for (var f = 0; f < 4; f++) _goAdd(hand, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.11, ts * 0.1, ts * 0.36), _goA(_GOC.will)), 0.55).position.set(-ts * 0.21 + f * ts * 0.14, 0, ts * 0.42);
+        var cracks = [];
+        for (var c = 0; c < 8; c++) { var a = c / 8 * Math.PI * 2 + rn(-0.2, 0.2), len = ts * rn(0.5, 0.9), cr = _goAdd(F.g, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, len), _goA(_GOC.iris)), 0.9); cr.rotation.x = -Math.PI / 2; cr.rotation.z = a; cr.position.set(Math.sin(a) * len * -0.5, 3, Math.cos(a) * len * -0.5); cr.scale.y = 0.01; cracks.push(cr); }
+        var hp = _goAll(hand), total = 1500, pressAt = 380, pressed = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var d = _sigEaseInCubic(_sigClamp01(el / pressAt)), k = 1 - _sigClamp01((el - 1000) / 500);
+            hand.position.y = ts * (2.6 - 1.4 * d) - (el > pressAt ? ts * 0.1 * Math.sin(Math.min(1, (el - pressAt) / 300) * Math.PI) : 0); _goShow(hp, Math.min(1, el / 120) * k);
+            for (var i = 0; i < cracks.length; i++) { cracks[i].scale.y = Math.max(0.01, _sigClamp01((el - pressAt) / 200)); cracks[i].material.opacity = el > pressAt ? 0.9 * k : 0; }
+            if (d >= 1 && !pressed) { pressed = true; _shake('hard'); _goSpray(F, 10, { sprite: 'psi-pulse', ly: ts * 0.3, r: ts * 0.3, v: 160, vz0: -10, vz1: 40, g: 0, drag: 1, s0: 8, tint: _GOC.will, ml0: 400, ml1: 700 }); _goSpray(F, 8, { sprite: 'rock-debris', ly: 6, r: 14, v: 140, vz0: 60, vz1: 180, g: 600, s0: 4, ml0: 400, ml1: 700 }); }
+        });
+    }
+
+    /* ── MINOTAUR · the tribute to the labyrinth, and its roar ── */
+    /* the labyrinth on the floor: square rings, each broken by a gate, in bronze */
+    function _goLabyrinthFloor(F, ts, R) {
+        var g = new THREE.Group(); g.position.y = 3; F.g.add(g);
+        for (var i = 1; i <= 4; i++) {
+            var s = ts * R * i / 4, gate = i % 4;
+            for (var side = 0; side < 4; side++) {
+                if (side === gate) continue;
+                var wall = _goAdd(g, new THREE.Mesh(new THREE.PlaneGeometry(s * 2, ts * 0.04), _goA(_GOC.bronze)), 0.75), a = side * Math.PI / 2;
+                wall.rotation.x = -Math.PI / 2; wall.rotation.z = a; wall.position.set(Math.sin(a) * s, 0, Math.cos(a) * s);
+            }
+        }
+        return g;
+    }
+    /* THE TRIBUTE: the maze lights under them and the horns come up through them */
+    function _goTribute3D(tx, ty, r, x) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), maze = _goLabyrinthFloor(F, ts, 0.62);
+        var horns = new THREE.Group(); horns.position.set(ln.ux * ts * 0.25, 0, ln.uz * ts * 0.25); horns.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(horns);
+        for (var s = -1; s <= 1; s += 2) { var hn = _goAdd(horns, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.06, ts * 0.55, 8), _goM(0xe8dcc0)), 1); hn.position.set(s * ts * 0.16, ts * 0.3, 0); hn.rotation.set(0.5, 0, -s * 0.5); }
+        var mp = _goAll(maze), hp = _goAll(horns), total = 1500, gored = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 150, total, 400); _goShow(mp, k);
+            var up = _sigEaseOutBack(_sigClamp01((el - 200) / 220)); horns.position.y = ts * (-0.5 + 0.9 * up); _goShow(hp, el > 200 ? k : 0);
+            if (up >= 0.95 && !gored) { gored = true; _shake('hard'); _goSpray(F, 14, { sprite: 'blood-fleck', ly: ts * 0.7, r: 10, v: 170, vz0: 80, vz1: 240, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 650 }); }
+        });
+    }
+    /* LABYRINTH ROAR: the maze rings out on the floor round him, steam from the nostrils, and the roar's rings */
+    function _goLabyrinthRoar3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 2), maze = _goLabyrinthFloor(F, ts, R + 0.4);
+        try { _sigSonicBoom3D(tx, ty, { color: _GOC.bronze, rings: 3, radiusTiles: R + 0.6, shake: 'hard', flashPeak: 0.16 }); } catch (e) {}
+        var yaw = rn(0, Math.PI * 2), mp = _goAll(maze), total = 1800, lastS = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 300, total, 500); _goShow(mp, k); maze.rotation.y = el * 0.0004;
+            if (el < 700 && el - lastS > 40 && _canSpawn()) {
+                lastS = el;
+                for (var s = -1; s <= 1; s += 2) _spawn({ x: F.c.x + Math.sin(yaw) * ts * 0.25 + Math.cos(yaw) * s * ts * 0.05, y: F.c.y + Math.cos(yaw) * ts * 0.25 - Math.sin(yaw) * s * ts * 0.05, z: F.bz + ts * 0.95,
+                    mode: 'billboard', sprite: 'smoke-soft', ml: rn(400, 700), size0: 6, size1: rn(22, 34), vx: Math.sin(yaw) * 120 + s * 30, vy: Math.cos(yaw) * 120, vz: rn(-20, 10), drag: 1, opacity0: 0.55, opacity1: 0, tint: 0xf0f0f0 });
+            }
+        });
+    }
+
+    /* ── the wiring: which beat draws which look ──
+       _GO_SIG   — drawn on the relayed staging 'burst' beat (every kind
+                   fires it, at the real impact), at the burst tile, with the
+                   caster's tile from the windup beat.
+       _GO_LAND  — a bolt-mapped spell (its own tracer replaces the generic
+                   DOM orb): the look draws where the bolt lands (boltGeometry,
+                   so random-target extra shots get it too). A spell in both
+                   tables draws once per tile: whichever beat claims it first.
+       _GO_THROWN— the bolt carries a real object (the hatchet, the spear …).
+       _GO_BEAM  — line spells: 'own' = the look replaces the laser.
+       Fog: a caster the viewer can't see is never drawn from — the look
+       aims from the target's own tile instead (no direction leaks). */
+    var _GO_SIG = {}, _GO_LAND = {}, _GO_THROWN = {}, _GO_BEAM = {}, _goCast = {}, _goSeen = {};
+    function _goFogHides(x, y) {
+        try {
+            return typeof state !== 'undefined' && state && state.fogOfWar && typeof window !== 'undefined'
+                && typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(x, y);
+        } catch (e) { return false; }
+    }
+    /* the caster tile a look may aim from: the windup's, else the acting unit's; the target's own tile when fogged */
+    function _goCasterFor(id, tx, ty, sx, sy) {
+        var c = _goCast[id], f = null;
+        if (c && Date.now() - c.t < 8000) f = { x: c.x, y: c.y };
+        else if (sx != null && sy != null) f = { x: sx, y: sy };
+        else f = _sigCasterPos(tx, ty);
+        if (!f || _goFogHides(f.x, f.y)) return { fromX: tx, fromY: ty };
+        return { fromX: f.x, fromY: f.y };
+    }
+    function _goClaim(id, tx, ty, by) {
+        var k = id + '@' + tx + ',' + ty, s = _goSeen[k], now = Date.now();
+        if (s && now - s.t < 3000 && s.by !== by) return false;
+        _goSeen[k] = { t: now, by: by };
+        return true;
+    }
+    function _goRadius(id) { var d = _spellDefFor(id) || {}; return d.aoeRadius != null ? d.aoeRadius : d.auraRadius; }
+    function _goStage(phase, spellId, p) {
+        if (phase === 'windup') {
+            if ((_GO_SIG[spellId] || _GO_LAND[spellId] || _GO_BEAM[spellId]) && p.sx != null) _goCast[spellId] = { x: p.sx, y: p.sy, t: Date.now() };
+            return;
+        }
+        if (phase !== 'burst') return;
+        var fn = _GO_SIG[spellId];
+        if (!fn || p.tx == null || p.ty == null) return;
+        if (_GO_LAND[spellId] && !_goClaim(spellId, p.tx, p.ty, 'burst')) return;   /* its bolt already owns this tile */
+        fn(p.tx, p.ty, _goRadius(spellId), _goCasterFor(spellId, p.tx, p.ty, p.sx, p.sy));
+    }
+    /* the bolt hook (_fireBoltMapped): claim the landing tile, fly the object */
+    function _goBolt(spellId, fromTx, fromTy, toTx, toTy, params) {
+        if (_GO_LAND[spellId]) _goClaim(spellId, toTx, toTy, 'bolt');
+        if (_GO_THROWN[spellId] && !params.hideGunRig && !_goFogHides(fromTx, fromTy)) {
+            try { _GO_THROWN[spellId](fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) { console.warn('[VFX] G-O throw failed', spellId, e); }
+        }
+    }
+    function _goLandFn(id, fn) {
+        return function (tx, ty) {
+            if (!_goClaim(id, tx, ty, 'bolt')) return null;   /* the burst beat drew it already */
+            return fn(tx, ty, _goRadius(id), _goCasterFor(id, tx, ty));
+        };
+    }
+
+    /* the tracers + tile washes the looks ride on (data only, like every SPELL_MAP row) */
+    function _goBoltDef(core, trail, burst, o) {
+        o = o || {};
+        return { boltCore: core, boltTrail: trail, boltBurst: burst, boltRing: o.ring || 'target-ring', boltCoreSize: o.core || 0.12,
+            boltTrailSize: o.trail || 0.05, boltTrailRate: o.rate || 6, boltBurstCount: o.n || 14, boltHeadGlow: o.glow !== false,
+            boltGeometry: !!o.land, goBolt: true };
+    }
+    function _goTileDef(sprite, tint, o) {
+        o = o || {};
+        return { layers: [
+            { anchor: 'floor', mode: 'world', sprite: o.floor || 'target-ring', ml: 700, z: 2, size0: 40, size1: 120, opacity0: 0.45, opacity1: 0, tint: tint },
+            { count: o.n || 4, sprite: sprite, ml: [500, 900], offsetXY: 40, vxRange: 30, vyRange: 30, vzRange: [10, 50], gravity: o.g != null ? o.g : -10, drag: 0.6,
+              size0: [10, 18], size1: [20, 34], opacity0: o.op || 0.45, tint: tint },
+        ] };
+    }
+    var _GO_BOLTS = {
+        goThingsThatGoBump:   _goBoltDef('shadow-wisp', 'frost-mist', 'void-mist', { core: 0.06, glow: false, land: true }),
+        goWholeHouseShakes:   _goBoltDef('shadow-wisp', 'frost-mist', 'void-mist', { core: 0.1, land: true }),
+        goLagSpike:           _goBoltDef('tess-square', 'tess-square', 'spark-elec', { core: 0.1, trail: 0.06, rate: 10, land: true }),
+        goStackOverflow:      _goBoltDef('tess-square', 'tess-tri', 'spark-elec', { core: 0.1, trail: 0.06, rate: 10, land: true }),
+        goAtlatl:             _goBoltDef('dust-puff', 'dust-puff', 'dust-puff', { core: 0.04, trail: 0.03, rate: 3, glow: false, land: true }),
+        goThrowDownTheGauntlet: _goBoltDef('steel-spark', 'steel-spark', 'steel-spark', { core: 0.04, trail: 0.03, rate: 3, glow: false, land: true }),
+        goNoisyCricket:       _goBoltDef('plasma', 'spark-blue', 'spark-blue', { core: 0.2, trail: 0.08, rate: 12, land: true }),
+        goKrampusChains:      _goBoltDef('steel-spark', 'steel-spark', 'steel-spark', { core: 0.05, trail: 0.03, rate: 4, glow: false, land: true }),
+        goFlowerInTheBarrel:  _goBoltDef('petal', 'petal', 'petal', { core: 0.08, trail: 0.05, rate: 5, land: true }),
+        goUpTheAppleTree:     _goBoltDef('leaf', 'leaf', 'vine-green', { core: 0.1, trail: 0.05, rate: 6, land: true }),
+        goDevilsCoal:         _goBoltDef('flame', 'ember', 'flame', { core: 0.05, trail: 0.04, rate: 4, glow: false, land: true }),
+        goCordyceps:          _goBoltDef('sparkle', 'sparkle', 'sparkle', { core: 0.06, trail: 0.04, rate: 6, land: true }),
+        goVowOfSilence:       _goBoltDef('holy-light', 'divine-sparkle', 'divine-sparkle', { core: 0.1, trail: 0.04, land: true }),
+        goPenance:            _goBoltDef('holy-light', 'divine-sparkle', 'holy-light', { core: 0.12, trail: 0.05, land: true }),
+        goMissingTime:        _goBoltDef('spark-blue', 'frost-mist', 'flash', { core: 0.12, trail: 0.05, land: true }),
+        goTissueSample:       _goBoltDef('acid-green', 'spark-blue', 'acid-green', { core: 0.1, trail: 0.04, land: true }),
+        goVisibleLanguage:    _goBoltDef('sparkle', 'spark-pink', 'sparkle', { core: 0.05, trail: 0.04, rate: 8, glow: false, land: true }),
+        goHatchetThrow:       _goBoltDef('steel-spark', 'steel-spark', 'blood-fleck', { core: 0.03, trail: 0.02, rate: 2, glow: false, land: true }),
+        goSailorsLure:        _goBoltDef('bubble', 'bubble', 'water-splash', { core: 0.08, trail: 0.05, rate: 6, land: true }),
+        goPullThemUnder:      _goBoltDef('bubble', 'bubble', 'water-splash', { core: 0.08, trail: 0.05, land: true }),
+        goDesignateTarget:    _goBoltDef('laser-red', 'laser-red', 'flash', { core: 0.06, trail: 0.03, rate: 10, land: true }),
+        goCrushingWill:       _goBoltDef('psi-pulse', 'void-mist', 'psi-pulse', { core: 0.14, trail: 0.06, land: true }),
+        goLongNeck:           _goBoltDef('water-splash', 'bubble', 'water-splash', { core: 0.08, trail: 0.05, land: true }),
+        goMirrorSplinter:     _goBoltDef('ice-shard', 'frost-crystal', 'frost-mist', { core: 0.1, trail: 0.05, rate: 8, land: true }),
+        goSnowQueensKiss:     _goBoltDef('snowflake', 'snowflake', 'frost-mist', { core: 0.08, trail: 0.05, land: true }),
+        goGraveWhisper:       _goBoltDef('shadow-wisp', 'shadow-wisp', 'void-mist', { core: 0.12, trail: 0.06, rate: 8, land: true }),
+        goEyeStalks:          _goBoltDef('psi-pulse', 'spark-pink', 'psi-pulse', { core: 0.05, trail: 0.03, rate: 6, glow: false, land: true }),
+        /* barrage shots: a plain themed tracer per target, the burst draws the show */
+        goSolarFlare:         _goBoltDef('flame-hot', 'ember', 'fire-glow', { core: 0.1, trail: 0.05 }),
+        goNuclearPulse:       _goBoltDef('spark-blue', 'spark-blue', 'spark-blue', { core: 0.1, trail: 0.05 }),
+    };
+    var _GO_TILES = {
+        goBurnout: _goTileDef('ember', _GOC.solar, { g: 120 }), goUnderfoot: _goTileDef('dust-puff', 0xc8b48a),
+        goNeuralyzer: _goTileDef('flash', 0xffffff, { n: 2 }), goMakeLoveNotWar: _goTileDef('petal', _GOC.peace, { g: 30 }),
+        goSporeCloud: _goTileDef('smoke-soft', _GOC.spore), goRedWeed: _goTileDef('vine-green', _GOC.mars, { g: 30 }),
+        goBlackSmoke: _goTileDef('smoke', 0x1a1a1a, { op: 0.55 }), goJewelledToys: _goTileDef('sparkle', _GOC.lPink),
+        goDecapitationStrike: _goTileDef('ember', _GOC.heat, { g: 120 }), goSoulHarvest: _goTileDef('shadow-wisp', _GOC.necro),
+    };
+    var _GO_BEAMS = {
+        goRainspout:     { beamSprite: 'water-splash', beamMs: 500, goBeam: true },
+        goTripodSweep:   { beamSprite: 'heat-ray', beamMs: 500, goBeam: true },
+        goAntimagicGaze: { beamSprite: 'psi-pulse', beamMs: 500, goBeam: true },
+    };
+    (function () {
+        var id;
+        for (id in _GO_BOLTS) { EFFECTS['_go_bolt_' + id] = _GO_BOLTS[id]; SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { bolt: '_go_bolt_' + id }); }
+        for (id in _GO_TILES) {
+            EFFECTS['_go_tile_' + id] = _GO_TILES[id];
+            EFFECTS['_go_aoe_' + id] = { aoeRadius: 1, impactTileEffect: '_go_tile_' + id };
+            SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { aoe: '_go_aoe_' + id });
+        }
+        for (id in _GO_BEAMS) { EFFECTS['_go_beam_' + id] = _GO_BEAMS[id]; SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { beam: '_go_beam_' + id }); }
+    })();
+    /* One Shot, One Kill keeps its bullet sprite (projectileOverride); the impact intent draws the look */
+    EFFECTS['_go_impact_goOneShotOneKill'] = { layers: [{ sprite: 'flash', ml: 160, size0: 70, size1: 20, opacity0: 0.9, opacity1: 0 }] };
+    SPELL_MAP['goOneShotOneKill'] = Object.assign({}, SPELL_MAP['goOneShotOneKill'], { impact: '_go_impact_goOneShotOneKill' });
+    _spell3DGeometry.goOneShotOneKill = function (tx, ty, r, p) { return _goOneShot3D(tx, ty, r, p && p.fromX != null && !_goFogHides(p.fromX, p.fromY) ? p : { fromX: tx, fromY: ty }); };
+    /* Labyrinth Roar (moved into the minotaur family) keeps its roar rings, now on the maze floor */
+    _spell3DGeometry.raceLabyrinthRoar = _goLabyrinthRoar3D;
+
+    Object.assign(_GO_SIG, {
+        goSolarFlare: _goPlasmaLoop3D, goBurnout: _goBurnout3D,
+        goCathedralPerch: function (tx, ty, r, x) { return _goPerch3D(x.fromX, x.fromY, tx, ty); }, goGrotesqueDive: _goGrotesqueDive3D,
+        goLagSpike: _goLagSpike3D, goUnderfoot: _goUnderfoot3D, raceTitanStep: _goFeeFiFoFum3D,
+        goAtlatl: _goAtlatlLand3D, goRunThemDown: _goRunThemDown3D,
+        goThrowDownTheGauntlet: _goGauntletThrow3D, goHonourBlow: _goHonourBlow3D,
+        goNeuralyzer: _goNeuralyzer3D, goNoisyCricket: _goCricketLand3D, goBipod: _goBipod3D,
+        goBirchSwitch: _goBirchSwitch3D, goKrampusChains: _goKrampusChains3D, goIntoTheSack: _goIntoTheSack3D,
+        goSuplex: _goSuplex3D, goPiledriver: _goPiledriver3D, goPocketSand: _goPocketSand3D, goDogpile: _goDogpile3D,
+        goFlowerInTheBarrel: _goFlowerBarrel3D, goMakeLoveNotWar: _goLoveNotWar3D,
+        goUpTheAppleTree: _goAppleTree3D, goTrickOrTreat: _goTrickOrTreat3D, goDevilsCoal: _goDevilsCoalLand3D,
+        goSporeCloud: _goSporeCloud3D, goCordyceps: _goCordyceps3D,
+        goRulerSmack: _goRulerSmack3D, goVowOfSilence: _goVowOfSilence3D, goPenance: _goPenance3D,
+        goRedWeed: _goRedWeed3D, goBlackSmoke: _goBlackSmoke3D,
+        goMissingTime: _goMissingTime3D, goTissueSample: _goTissueSample3D,
+        goOrchidDisguise: _goOrchid3D, goRaptorialStrike: _goRaptorial3D,
+        goVisibleLanguage: _goVisibleLanguageLand3D, goJewelledToys: _goJewelledToys3D,
+        goHatchetThrow: _goHatchetLand3D, goTreelineScream: _goTreeline3D, goLoversLane: _goLoversLane3D,
+        goLetItOut: _goLetItOut3D, goDevilsDue: _goDevilsDue3D,
+        goSailorsLure: _goSailorsLure3D, goPullThemUnder: _goPullUnder3D,
+        goGiantsHand: _goGiantsHand3D, goAzazelsForge: _goAzazelForge3D, goDevourMankind: _goDevour3D,
+        goDesignateTarget: _goDesignate3D, goForwardMarch: _goForwardMarch3D, goDecapitationStrike: _goDecapitation3D,
+        goKneel: _goKneel3D, goCrushingWill: _goCrushingWill3D,
+        goCadaverClaws: _goCadaverClaws3D, goGhoulsSupper: _goGhoulSupper3D,
+        goAnkleBiter: _goAnkleBiter3D, goLawnOrnament: _goLawnOrnament3D, goGardenShears: _goShears3D,
+        goNuclearPulse: _goNuclearPulse3D, goLongNeck: _goLongNeck3D, goOutOfTheLoch: _goOutOfLoch3D,
+        goEmet: _goEmet3D, goClayGrip: _goClayGrip3D, goClayCrush: _goClayCrush3D,
+        goMirrorSplinter: _goMirrorSplinter3D, goSnowQueensKiss: _goSnowKiss3D,
+        goShoulderThrough: _goShoulder3D, goCantStopMe: _goCantStopMe3D, goRunaway: _goRunawayTrain3D,
+        goScabbard: _goScabbard3D, goTribute: _goTribute3D,
+        goGraveWhisper: _goGraveWhisper3D, goSoulHarvest: _goReaping3D,
+    });
+    /* the landings: every bolt-mapped spell (the random-target ones draw ONLY here — their burst tile isn't a victim's) */
+    Object.assign(_GO_LAND, {
+        goThingsThatGoBump: _goBumpLand3D, goWholeHouseShakes: _goDoorSlam3D, goStackOverflow: _goStackOverflow3D, goEyeStalks: _goEyeStalkLand3D,
+    });
+    for (var _goId in _GO_BOLTS) { if (_GO_BOLTS[_goId].boltGeometry && !_GO_LAND[_goId]) _GO_LAND[_goId] = _GO_SIG[_goId]; }
+    for (var _goL in _GO_LAND) { if (_GO_LAND[_goL]) _spell3DGeometry[_goL] = _goLandFn(_goL, _GO_LAND[_goL]); }
+    Object.assign(_GO_THROWN, {
+        goThingsThatGoBump: _goBumpThrow, goHatchetThrow: _goHatchetThrow, goAtlatl: _goAtlatlThrow, goDevilsCoal: _goCoalThrow,
+        goVisibleLanguage: _goVisibleLanguageThrow, goNoisyCricket: _goCricketShot, goEyeStalks: _goEyeStalkShot,
+        goThrowDownTheGauntlet: _goGauntletFly,
+    });
+    Object.assign(_GO_BEAM, {
+        goRainspout: function (fx, fy, tiles) { return _goRainspout3D(fx, fy, tiles) ? 'own' : null; },
+        goTripodSweep: function (fx, fy, tiles) { return _goTripodSweep3D(fx, fy, tiles) ? 'own' : null; },
+        goAntimagicGaze: function (fx, fy, tiles) { return _goAntimagicGaze3D(fx, fy, tiles) ? 'own' : null; },
+        /* Atomic Breath keeps its breath cone; the dorsal plates charge blue down the kaiju's back first */
+        raceAtomicBreath: function (fx, fy) { _goAtomicPlates3D(fx, fy); return null; },
+    });
 
     /* THE SHEET WARM (2026-10-12, mondo: "it will still freeze or dip in FPS at heavy moments like combo spell animations"):
        the spells' canvas sheets were drawn and uploaded in the very frame a spell first used them (sandbox, real WebGPU: ~20
