@@ -7858,11 +7858,10 @@
                         <button class="hq-btn" data-tut-tape="only">REWATCH</button>
                     </div>
                 </div>
-                <div class="tut-shelf-sec">THE CORE · three tapes, in order</div>
+                <div class="tut-shelf-sec">THE CORE · ${esc(core.length)} tapes, in order</div>
                 <div class="tut-shelf-list">${core.map(card).join('')}</div>
                 <div class="tut-shelf-sec">OPTIONAL READING · any order</div>
-                <div class="tut-shelf-list">${opt.map(card).join('')}</div>
-                <div class="tut-shelf-foot">A rule that changes flags its tape: <code>npm test</code> (tutorial.test.js) fails on a drifted number or rule until the lesson is re-read. Dev: <code>Tutorial.start('the_press')</code> · <code>Tutorial.skipStep()</code> · <code>doorTapePlay()</code>.</div>`;
+                <div class="tut-shelf-list">${opt.map(card).join('')}</div>`;
         };
         window._tutorialPlayTape = function (opts) {
             opts = opts || {};

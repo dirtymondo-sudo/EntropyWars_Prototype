@@ -7904,6 +7904,9 @@
             const expMaxPct = Math.round(expRange.max*100);
             const nightMood = (typeof ThreePost!=='undefined'&&ThreePost.getNightMood)?ThreePost.getNightMood():0.65;
             const nightMoodPct = Math.round(nightMood*100);
+            // THE UNIT RIM LIGHT rev 2 (three-renderer.js setUnitLight): rim on/off, strength, colour + the night fill
+            const unitLight = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getUnitLight)?ThreeRenderer.getUnitLight():{on:true,strength:1,color:'#a8c4ff',fill:1};
+            const rimPct = Math.round(unitLight.strength*100), fillPct = Math.round(unitLight.fill*100);
             const impactFx = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFx)?ThreePost.getImpactFx():0.7;
             const impactFxMax = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFxMax)?ThreePost.getImpactFxMax():1.5;
             const impactFxPct = Math.round(impactFx*100);
@@ -8031,6 +8034,27 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light. In a room or zone it grades from the room's own night</span>
+                    </div>
+                    <div class="pm-set-toggles" style="margin-top:8px">
+                        <label class="pm-toggle"><input type="checkbox" ${unitLight.on ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({on:this.checked});"><span class="pm-toggle-label">Unit Rim Light</span><span class="pm-toggle-hint">a soft moonlit edge on every unit, stronger at night</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Rim Strength</span>
+                        <input type="range" min="0" max="200" step="5" value="${rimPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({strength:this.value/100});this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${rimPct===0?'off':unitLight.strength.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Rim Colour</span>
+                        <input type="color" value="${unitLight.color}" style="width:44px;height:22px;padding:0;border:1px solid rgba(255,255,255,0.25);background:none;cursor:pointer" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({color:this.value});this.nextElementSibling.textContent=this.value;">
+                        <span class="pm-vol-val">${unitLight.color}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Unit Night Fill</span>
+                        <input type="range" min="0" max="200" step="5" value="${fillPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({fill:this.value/100});this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${fillPct===0?'off':unitLight.fill.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">a soft light on the units only at night, in the rim colour, so they show their own colours instead of dark shapes</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Impact Flash</span>
@@ -16723,6 +16747,7 @@
                 if (window._NET && !window._NET.online) window._NET.myPlayer = 1;
                 window._hqCpuPool = null; window._hqPreselect = null; window._hqCodeRedRun = null; window._msCpuOnly = true;
                 _tut.lesson = L; _tut.active = true; window._tutActive = true;
+                window._tutWeatherOff = !L.weather;   // state.js spawnWeather / rollSkyEvent: calm boards unless the lesson teaches the weather
                 _tut.stepIdx = -1; _tut.step = null; _tut.events = []; _tut.finished = false; _tut.booting = true; _tut.metAt = 0;
                 const ov = document.getElementById('startOverlay');
                 if (ov) { ov.classList.add('hidden'); ov.style.display = 'none'; ov.style.pointerEvents = 'none'; ov.setAttribute('aria-hidden', 'true'); }
@@ -16731,7 +16756,7 @@
                 startMatch();
             } catch (e) {
                 console.error('[Tutorial] launch failed', e);
-                _tut.active = false; window._tutActive = false; _tut.booting = false; window._tutReturnPage = null;
+                _tut.active = false; window._tutActive = false; window._tutWeatherOff = false; _tut.booting = false; window._tutReturnPage = null;
                 if (_tut.saved) { window.EW_DISABLE_INTRO_CINE = _tut.saved.introCine; state.fogOfWar = _tut.saved.fog; _tut.saved = null; }
                 return false;
             }
@@ -16886,7 +16911,9 @@
             const allow = _tutAllowList();
             if (allow === null) return true;
             let ok = allow.includes(kind);
-            if (!ok && kind === 'spell') ok = allow.some(a => a === 'spell' || (detail && a === 'spell:' + detail));
+            /* no spell id = opening the ABILITIES list (chooseActionMenu): a step that allows one named spell opens it,
+               the cast itself is checked again with its id (2026-10-23: Tapes 2 + 7 had stood still on a list that never opened) */
+            if (!ok && kind === 'spell') ok = allow.some(a => a === 'spell' || (detail ? a === 'spell:' + detail : a.startsWith('spell:')));
             if (ok && kind === 'spell' && detail && allow.some(a => a.startsWith('spell:')) && !allow.includes('spell') && !allow.includes('spell:' + detail)) ok = false;
             if (!ok) _tutNudge();
             return ok;
@@ -17007,6 +17034,9 @@
         function _tutPoll() {
             if (!_tut.active || _tut.finished || _tut.booting) return;
             _tutApplyGlow();
+            /* the coach fades while a target or tile is being picked (styles-base.css .tut-coach.aiming) */
+            const _ce = document.getElementById('tutCoach');
+            if (_ce) _ce.classList.toggle('aiming', !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
             const st = _tut.step;
             if (!st || !st.goal || st.goal.type === 'ack') return;
@@ -17152,7 +17182,7 @@
             document.querySelectorAll('.tut-glow').forEach(el => el.classList.remove('tut-glow'));
             const el = document.getElementById('tutCoach');
             if (el) el.remove();
-            _tut.active = false; window._tutActive = false; _tut.finished = false; _tut.booting = false; _tut.step = null;
+            _tut.active = false; window._tutActive = false; window._tutWeatherOff = false; _tut.finished = false; _tut.booting = false; _tut.step = null;
         }
         function _tutTeardown(then) {
             const from = _tut.from;
@@ -17206,11 +17236,11 @@
             corner: () => '<svg viewBox="0 0 400 300" class="tape-svg"><line x1="40" y1="80" x2="360" y2="80" class="tp-line dim draw d1"/><line x1="40" y1="120" x2="360" y2="120" class="tp-line dim draw d1"/><text x="200" y="60" class="tp-lbl dim fade d2">PARALLEL · NEVER MEET</text><line x1="120" y1="270" x2="120" y2="160" class="tp-line draw d3"/><line x1="120" y1="270" x2="300" y2="270" class="tp-line draw d3"/><path d="M120 250 h20 v20" class="tp-line draw d4"/><rect x="123" y="205" width="36" height="65" class="tp-door fade d5"/><text x="200" y="185" class="tp-lbl fade d5">ORTHOGONAL · A CORNER · A DOOR</text></svg>',
             round: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="180" cy="150" r="110" class="tp-line draw d1"/><circle cx="180" cy="150" r="34" class="tp-line dim draw d2"/><g class="fade d3"><rect x="292" y="118" width="64" height="64" class="tp-line warn"/><line x1="292" y1="150" x2="356" y2="150" class="tp-line warn thin"/><line x1="324" y1="118" x2="324" y2="182" class="tp-line warn thin"/><text x="324" y="206" class="tp-lbl warn">ROOM 64</text></g><text x="180" y="290" class="tp-lbl fade d2">THE DEPARTMENT · ROUND · NO CORNERS</text></svg>',
             globe: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="200" cy="150" r="100" class="tp-line draw d1"/><ellipse cx="200" cy="150" rx="46" ry="100" class="tp-line dim draw d1"/><line x1="100" y1="150" x2="300" y2="150" class="tp-line dim draw d1"/><ellipse cx="200" cy="110" rx="90" ry="24" class="tp-line dim draw d2"/><ellipse cx="200" cy="190" rx="90" ry="24" class="tp-line dim draw d2"/><g class="tp-doors"><rect x="140" y="98" width="12" height="20" class="tp-door pop p1"/><rect x="236" y="130" width="12" height="20" class="tp-door pop p2"/><rect x="176" y="176" width="12" height="20" class="tp-door pop p3"/><rect x="262" y="88" width="12" height="20" class="tp-door pop p4"/><rect x="118" y="160" width="12" height="20" class="tp-door pop p5"/></g><text x="200" y="290" class="tp-lbl warn fade d4">THRESHOLD EVENTS · CANON REALITY</text></svg>',
-            grid: () => { let c = ''; for (let i = 0; i <= 8; i++) { c += '<line x1="' + (60 + i * 30) + '" y1="30" x2="' + (60 + i * 30) + '" y2="270" class="tp-line dim thin draw d1"/><line x1="60" y1="' + (30 + i * 30) + '" x2="300" y2="' + (30 + i * 30) + '" class="tp-line dim thin draw d1"/>'; }
-                for (let i = 0; i < 4; i++) { c += '<circle cx="' + (135 + i * 30) + '" cy="255" r="9" class="tp-unit us fade d2"/><circle cx="' + (135 + i * 30) + '" cy="45" r="9" class="tp-unit them fade d3"/>'; }
-                return '<svg viewBox="0 0 400 300" class="tape-svg">' + c + '<text x="180" y="290" class="tp-lbl fade d3">FOUR · AGAINST · FOUR</text><text x="340" y="150" class="tp-lbl fade d2" transform="rotate(90 340 150)">EIGHT BY EIGHT</text></svg>'; },
-            turn: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="110" cy="130" r="70" class="tp-line draw d1"/><line x1="110" y1="130" x2="110" y2="75" class="tp-line draw d2"/><line x1="110" y1="130" x2="150" y2="150" class="tp-line thin draw d2"/><text x="110" y="222" class="tp-lbl fade d2">FASTEST FIRST</text><g class="fade d3"><rect x="220" y="90" width="50" height="22" class="tp-pip on"/><rect x="280" y="90" width="50" height="22" class="tp-pip on"/><text x="275" y="80" class="tp-lbl">ACTION POINTS</text><text x="275" y="140" class="tp-lbl dim">MOVE · 1</text><text x="275" y="162" class="tp-lbl dim">STRIKE · ALL</text></g><g class="fade d5"><rect x="220" y="190" width="50" height="22" class="tp-pip on blink"/><rect x="280" y="190" width="50" height="22" class="tp-pip on blink"/><text x="275" y="240" class="tp-lbl warn">WEAKNESS · STRIKE AGAIN</text></g></svg>',
-            three: () => '<svg viewBox="0 0 400 300" class="tape-svg"><g class="fade d1"><rect x="50" y="90" width="70" height="70" class="tp-cube"/><rect x="60" y="80" width="70" height="70" class="tp-line"/><text x="95" y="196" class="tp-lbl">THE CUBE</text></g><g class="fade d2"><path d="M180 100 h24 a12 12 0 1 1 0 24 h-24 z M180 112 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 140 h24 a12 12 0 1 1 0 24 h-24 z M180 152 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 180 h24 a12 12 0 1 1 0 24 h-24 z M180 192 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><text x="190" y="236" class="tp-lbl">THREE KEYS</text></g><g class="fade d3"><circle cx="320" cy="125" r="34" class="tp-line"/><line x1="296" y1="101" x2="344" y2="149" class="tp-line warn"/><line x1="344" y1="101" x2="296" y2="149" class="tp-line warn"/><text x="320" y="196" class="tp-lbl">EVERY HOSTILE</text></g><text x="200" y="278" class="tp-lbl dim fade d4">ANY ONE WILL DO</text></svg>',
+            grid: () => { let c = ''; for (let i = 0; i <= 10; i++) { c += '<line x1="' + (60 + i * 24) + '" y1="30" x2="' + (60 + i * 24) + '" y2="270" class="tp-line dim thin draw d1"/><line x1="60" y1="' + (30 + i * 24) + '" x2="300" y2="' + (30 + i * 24) + '" class="tp-line dim thin draw d1"/>'; }
+                for (let i = 0; i < 4; i++) { c += '<circle cx="' + (144 + i * 24) + '" cy="258" r="8" class="tp-unit us fade d2"/><circle cx="' + (144 + i * 24) + '" cy="42" r="8" class="tp-unit them fade d3"/>'; }
+                return '<svg viewBox="0 0 400 300" class="tape-svg">' + c + '<text x="180" y="290" class="tp-lbl fade d3">FOUR · AGAINST · FOUR</text><text x="340" y="150" class="tp-lbl fade d2" transform="rotate(90 340 150)">TEN BY TEN</text></svg>'; },
+            turn: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="110" cy="130" r="70" class="tp-line draw d1"/><line x1="110" y1="130" x2="110" y2="75" class="tp-line draw d2"/><line x1="110" y1="130" x2="150" y2="150" class="tp-line thin draw d2"/><text x="110" y="222" class="tp-lbl fade d2">FASTEST FIRST</text><g class="fade d3"><rect x="220" y="90" width="50" height="22" class="tp-pip on"/><rect x="280" y="90" width="50" height="22" class="tp-pip on"/><text x="275" y="80" class="tp-lbl">ACTION POINTS</text><text x="275" y="140" class="tp-lbl dim">MOVE · 1</text><text x="275" y="162" class="tp-lbl dim">STRIKE · 1 · ENDS TURN</text></g><g class="fade d5"><rect x="220" y="190" width="50" height="22" class="tp-pip on blink"/><rect x="280" y="190" width="50" height="22" class="tp-pip on blink"/><text x="275" y="240" class="tp-lbl warn">WEAKNESS · STRIKE AGAIN</text></g></svg>',
+            three: () => '<svg viewBox="0 0 400 300" class="tape-svg"><g class="fade d1"><rect x="50" y="90" width="70" height="70" class="tp-cube"/><rect x="60" y="80" width="70" height="70" class="tp-line"/><text x="95" y="196" class="tp-lbl">THE CUBE</text></g><g class="fade d2"><path d="M180 100 h24 a12 12 0 1 1 0 24 h-24 z M180 112 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 140 h24 a12 12 0 1 1 0 24 h-24 z M180 152 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 180 h24 a12 12 0 1 1 0 24 h-24 z M180 192 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><text x="190" y="236" class="tp-lbl">THE KEYS</text></g><g class="fade d3"><circle cx="320" cy="125" r="34" class="tp-line"/><line x1="296" y1="101" x2="344" y2="149" class="tp-line warn"/><line x1="344" y1="101" x2="296" y2="149" class="tp-line warn"/><text x="320" y="196" class="tp-lbl">EVERY HOSTILE</text></g><text x="200" y="278" class="tp-lbl dim fade d4">ANY ONE WILL DO</text></svg>',
             room64: () => '<div class="tape-card"><div class="tape-card-no">ROOM 64</div><div class="tape-card-l1">ORTHOGONAL GEOMETRY EXPOSURE AREA</div><div class="tape-card-l2">MAX OCCUPANCY 45 MINUTES · DO NOT STAND IN CORNERS</div><div class="tape-card-arrow">▶</div></div>',
             dark: () => '<svg viewBox="0 0 400 300" class="tape-svg"><rect x="0" y="0" width="400" height="300" class="tp-black"/><g class="tp-knock k1"><line x1="330" y1="60" x2="380" y2="60" class="tp-line dim thin"/></g><g class="tp-knock k2"><line x1="330" y1="70" x2="380" y2="70" class="tp-line dim thin"/></g><g class="tp-knock k3"><line x1="330" y1="80" x2="380" y2="80" class="tp-line dim thin"/></g></svg>',
         };
