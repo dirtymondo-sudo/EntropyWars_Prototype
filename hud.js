@@ -1690,8 +1690,8 @@ function CombatLog({ st }) {
    acting unit is not repeated; on any other turn the bottom icon is the acting unit, bigger, glowing, with the
    turning halo. The fallen are small skull pips at the very top; Gauntlet reserves / the escaped ride pill strips.
    Icons shrink 46→26px to fit the height above the Horologe, then the latest-acting fold into a "+N" pip.
-   Hover = name + HP/MP tooltip. CLICK = the unit's full stat card (#unitHoverHud, the ⓘ / I card — the same toggle
-   the Horologe's ⓘ uses); click again to close. The card docks right of the Horologe column. Viewer-local, nothing
+   Hover = name + HP/MP tooltip. CLICK = the unit's quick menu, or the unit info panel alone (QuickPeek, the same card
+   the Horologe's ⓘ / I key shows); click again to close. Viewer-local, nothing
    relayed (RULE #2): both online seats read their own synced state, and the card's range overlay is fog-gated
    (battle.js previewUnitInfoRange). Off on Mystery Dungeon floors (the scoreboard's tactic chips own the party). */
 const PP_HP = HP_ALLY;
@@ -1851,6 +1851,11 @@ function _tcPeek(unitId) {
     if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
     if (typeof renderIfDirty === 'function') renderIfDirty();
     _tcPeekId = null;
+  }
+  /* one unit info panel at a time: a peek takes over from the Horologe's ⓘ / I card */
+  if (typeof state !== 'undefined' && state && state.showUnitInfo && _tcPeekId !== unitId) {
+    state.showUnitInfo = false;
+    if (typeof renderSelectedUnitPanel === 'function') renderSelectedUnitPanel();
   }
   _tcPeekSet(_tcPeekId === unitId ? null : unitId);
 }
@@ -10310,11 +10315,15 @@ function ControlHints({ st }) {
    column, the command panels, the root menu: all invisible, laid out by the same CSS + the UI Maker's moves), so the
    card lands in exactly the spot the quick menu's card takes and wears every UI Maker setting of it */
 function QuickPeek({ st }) {
-  const id = _tcPeekId;
+  /* the Horologe's ⓘ and the I key show this same card (mondo 2026-10-23: "the i info icon next to the unit name on the
+     horologe still opens the old unit info panel, it needs to instead look like the unit info panel of the quick
+     action menu"): state.showUnitInfo on the focused unit, falling back to the selected one (ui.js toggleUnitInfo) */
+  const peek = _tcPeekId != null;
+  const id = peek ? _tcPeekId : (st && st.showUnitInfo ? (st.focusedUnitId || st.selectedUnitId) : null);
   if (id == null || !st || st.phase !== 'battle') return null;
   const u = (st.units || []).find(x => x.id === id && !x.dead && !x._dying);
   /* a quick menu opening (a board click, a turn icon on your turn) takes over: that card IS this one */
-  if (!u || st._enemyActionTargetId != null) { _tcPeekId = null; return null; }
+  if (!u || st._enemyActionTargetId != null || (!peek && st._tileActionTarget)) { if (peek) _tcPeekId = null; return null; }
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
   const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
   const key = (home === viewer ? 'ally|' : 'enemy|') + u.id;
