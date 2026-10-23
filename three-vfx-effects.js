@@ -37848,7 +37848,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var w = _worldPos(x, y);
         return new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z);
     }
-    function _afCaster(tx, ty, o) { return _nrvFrom(tx, ty, o || {}); }
+    /* fog: a caster the viewer can't see is never drawn from or at (no position or direction leaks) */
+    function _afFogHides(x, y) {
+        try {
+            return typeof state !== 'undefined' && state && state.fogOfWar && typeof window !== 'undefined'
+                && typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(x, y);
+        } catch (e) { return false; }
+    }
+    function _afCaster(tx, ty, o) { var f = _nrvFrom(tx, ty, o || {}); return _afFogHides(f.x, f.y) ? { x: tx - 1, y: ty, fogged: true } : f; }
     function _afRecipe(id, tx, ty) { var d = EFFECTS[id]; if (d) _spawnEffect(d, { tx: tx, ty: ty }); }
     function _afArc(a, b, h, k) {   /* a point on a lifted arc a → b at k (0..1) */
         var p = new THREE.Vector3().lerpVectors(a, b, k);
@@ -38658,14 +38665,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afSouls3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = r != null ? r : 1, from = _sigCasterPos(tx, ty) || { x: tx - 1, y: ty };
-        var dest = _afTo(F, from.x, from.y); dest.y += ts * 0.7;
+        var hid = _afFogHides(from.x, from.y), dest = hid ? new THREE.Vector3(0, ts * 2.4, 0) : _afTo(F, from.x, from.y); if (!hid) dest.y += ts * 0.7;   /* fogged demon: the souls just rise */
         var souls = [];
         for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad; dx <= rad; dx++) {
             var s = _finSprite(0xd8ffe8, _sigGlowTex(), ts * 0.42, 162), core = _finSprite(0xffffff, _sigGlowTex(), ts * 0.16, 163);
             var start = new THREE.Vector3(dx * ts, ts * 0.4, dy * ts); s.position.copy(start); core.position.copy(start);
             F.g.add(s); F.g.add(core); souls.push({ s: s, c: core, p0: start, t0: 120 + (Math.abs(dx) + Math.abs(dy)) * 60 + rn(0, 80) });
         }
-        var demonFlare = _finSprite(_AF.hell, _sigGlowTex(), ts * 1.2, 161); demonFlare.position.copy(dest); F.g.add(demonFlare);
+        var demonFlare = _finSprite(_AF.hell, _sigGlowTex(), ts * 1.2, 161); demonFlare.position.copy(dest); demonFlare.visible = !hid; F.g.add(demonFlare);
         var total = 1700;
         return _sigRunOwned(F.g, total, function (el) {
             for (var i = 0; i < souls.length; i++) {
@@ -38939,7 +38946,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afRevolver3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
         var from = _afCaster(tx, ty, o);
-        if (!_afOnce('sigSixShooter:' + from.x + ',' + from.y, 2200)) return null;
+        if (from.fogged || !_afOnce('sigSixShooter:' + from.x + ',' + from.y, 2200)) return null;
         var F = _nrvFrame(from.x, from.y), ts = F.ts, ln = _nrvLine(F, { x: tx, y: ty }, from.x, from.y);
         var hold = new THREE.Group(); hold.position.set(-ln.ux * ts * 0.35, ts * 1.25, -ln.uz * ts * 0.35); hold.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(hold);
         var steel = _finBasic(0x9a9ea8, { opacity: 0 }); steel.transparent = true;
@@ -39011,7 +39018,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afTether3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
         var from = _afCaster(tx, ty, o), F = _nrvFrame(tx, ty), ts = F.ts;
-        for (var i = 0; i < 3; i++) _fxDelay(function () { try { _sigShockRing3D(from.x, from.y, { r0: ts * 0.15, r1: ts * 0.8, ms: 360, color: _AF.orbit, height: ts * 1.0 }); } catch (e) {} }, i * 140);
+        for (var i = 0; i < 3 && !from.fogged; i++) _fxDelay(function () { try { _sigShockRing3D(from.x, from.y, { r0: ts * 0.15, r1: ts * 0.8, ms: 360, color: _AF.orbit, height: ts * 1.0 }); } catch (e) {} }, i * 140);
         var clip = _afGlowMesh(new THREE.TorusGeometry(ts * 0.1, ts * 0.02, 6, 18), 0xf0f4ff); clip.position.y = ts * 0.6; F.g.add(clip);
         var total = 900;
         return _sigRunOwned(F.g, total, function (el) {
@@ -39060,6 +39067,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var other = (o && o.fromX != null) ? { x: o.fromX, y: o.fromY } : null;
         var spots = other ? [{ x: tx, y: ty }, other] : [{ x: tx, y: ty }], groups = [];
         for (var s = 0; s < spots.length; s++) {
+            if (_afFogHides(spots[s].x, spots[s].y)) continue;
             _afRecipe('sigFiremansCarry_swap', spots[s].x, spots[s].y);
             var F = _nrvFrame(spots[s].x, spots[s].y), ts = F.ts, bands = [];
             for (var b = 0; b < 2; b++) { var m = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.3, ts * 0.05, 24, 1, true), b ? 0xd8dce4 : _AF.hivis); m.position.y = ts * (0.45 + b * 0.22); F.g.add(m); bands.push(m); }
@@ -39259,7 +39267,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* LURE: the glowing bulb on its stalk sways over the angler; a light line reaches the prey */
     function _afLure3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
-        var from = _afCaster(tx, ty, o), F = _nrvFrame(from.x, from.y), ts = F.ts, to = _afTo(F, tx, ty);
+        var from = _afCaster(tx, ty, o); if (from.fogged) return null;
+        var F = _nrvFrame(from.x, from.y), ts = F.ts, to = _afTo(F, tx, ty);
         var dir = new THREE.Vector3(to.x, 0, to.z).normalize();
         var curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-dir.x * ts * 0.1, ts * 0.9, -dir.z * ts * 0.1), new THREE.Vector3(-dir.x * ts * 0.1, ts * 1.6, -dir.z * ts * 0.1), new THREE.Vector3(dir.x * ts * 0.45, ts * 1.45, dir.z * ts * 0.45));
         var stalk = _afSolid(new THREE.TubeGeometry(curve, 12, ts * 0.018, 5, false), 0x1a3a4a); F.g.add(stalk);
@@ -39397,8 +39406,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* FORGED THUNDERBOLT (owns the line): the javelin, orange from the forge, white by the end, lightning off it */
+    function _afLineFogged(tiles, recipe) {
+        for (var i = 0; i < tiles.length; i++) if (!_afFogHides(tiles[i].x, tiles[i].y)) _afRecipe(recipe, tiles[i].x, tiles[i].y);
+    }
     function _afThunderbolt3D(fromX, fromY, tiles, params) {
         if (_catOff('spells') || !tiles || !tiles.length) return null;
+        if (_afFogHides(fromX, fromY)) { _afLineFogged(tiles, 'sigForgedThunderbolt_tile'); return null; }
         var end = tiles[tiles.length - 1], F = _nrvFrame(fromX, fromY), ts = F.ts, to = _afTo(F, end.x, end.y);
         var start = new THREE.Vector3(0, ts * 1.2, 0), stop = new THREE.Vector3(to.x, to.y + ts * 0.7, to.z), dir = new THREE.Vector3().subVectors(stop, start).normalize();
         var jav = new THREE.Group(); jav.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); F.g.add(jav);
@@ -39424,7 +39437,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* GRAPPLE ARM: the forearm vents steam as the claw goes out */
     function _afGrapple3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
-        var from = _afCaster(tx, ty, o), F = _nrvFrame(from.x, from.y), ts = F.ts, puffs = [];
+        var from = _afCaster(tx, ty, o); if (from.fogged) return null;
+        var F = _nrvFrame(from.x, from.y), ts = F.ts, puffs = [];
         for (var i = 0; i < 10; i++) { var p = _finSprite(0xe8eef4, _sigGlowTex(), ts * rn(0.15, 0.28), 158); p.position.set(rn(-0.2, 0.2) * ts, ts * 0.9, rn(-0.2, 0.2) * ts); F.g.add(p); puffs.push({ s: p, v: new THREE.Vector3(rn(-1, 1), rn(0.5, 1.5), rn(-1, 1)).multiplyScalar(ts * 0.006) }); }
         var total = 1000;
         return _sigRunOwned(F.g, total, function (el) {
@@ -39499,6 +39513,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var other = (o && o.fromX != null) ? { x: o.fromX, y: o.fromY } : null, spots = other ? [{ x: tx, y: ty }, other] : [{ x: tx, y: ty }], first = null;
         for (var s = 0; s < spots.length; s++) {
+            if (_afFogHides(spots[s].x, spots[s].y)) continue;
             _afRecipe('sigInfernalWaltz_swap', spots[s].x, spots[s].y);
             var F = _nrvFrame(spots[s].x, spots[s].y), ts = F.ts, embers = [];
             for (var i = 0; i < 16; i++) { var e = _finSprite(i % 2 ? _AF.ember : _AF.vixen, _sigGlowTex(), ts * 0.12, 161); F.g.add(e); embers.push({ s: e, a: i * Math.PI / 8 }); }
@@ -39620,7 +39635,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* LAST LIGHT (beside the stitched line): the dying star at the wraith's hand, flaring white then gone */
     function _afLastLight3D(fromX, fromY) {
-        if (_catOff('spells')) return null;
+        if (_catOff('spells') || _afFogHides(fromX, fromY)) return null;
         var F = _nrvFrame(fromX, fromY), ts = F.ts, star = _finSprite(0xffffff, _afStarTex(4), ts * 0.6, 164), halo = _finSprite(_AF.void, _sigGlowTex(), ts * 1.0, 163);
         star.position.y = halo.position.y = ts * 1.1; F.g.add(halo); F.g.add(star);
         var total = 900;
@@ -39727,7 +39742,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── ATLANTEAN ── */
     /* ORICHALCUM RAY (beside the ray): the circlet on the brow glows copper-gold as the ray charges */
     function _afOriRay3D(fromX, fromY) {
-        if (_catOff('spells')) return null;
+        if (_catOff('spells') || _afFogHides(fromX, fromY)) return null;
         var F = _nrvFrame(fromX, fromY), ts = F.ts;
         var band = _afGlowMesh(new THREE.TorusGeometry(ts * 0.13, ts * 0.02, 6, 20), _AF.ori); band.rotation.x = Math.PI / 2; band.position.y = ts * 1.2; F.g.add(band);
         var gem = _finSprite(_AF.teal, _sigGlowTex(), ts * 0.35, 164); gem.position.y = ts * 1.2; F.g.add(gem);
@@ -39807,7 +39822,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afLoveRay3D(tx, ty, r, o) {
         if (_catOff('spells')) return null;
         var from = _afCaster(tx, ty, o);
-        try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
+        if (!from.fogged) try { _spawnLaserBeam3D(from.x, from.y, tx, ty, { core: 0xffffff, glow: _AF.vixen, beamMs: 420, thickness: 6 }); } catch (e) {}
         var F = _nrvFrame(tx, ty), ts = F.ts, to = _afTo(F, from.x, from.y), hearts = [];
         for (var i = 0; i < 6; i++) { var h = _finSprite(_AF.vixen, _afHeartTex(), ts * 0.22, 164); F.g.add(h); hearts.push({ s: h, at: i * 60 }); }
         var a = new THREE.Vector3(to.x, to.y + ts * 0.8, to.z), b = new THREE.Vector3(0, ts * 0.8, 0), total = 1100;
@@ -39911,6 +39926,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* CROSSWIND (owns the line): ribbons of wind race down the lane */
     function _afCrosswind3D(fromX, fromY, tiles) {
         if (_catOff('spells') || !tiles || !tiles.length) return null;
+        if (_afFogHides(fromX, fromY)) { _afLineFogged(tiles, 'raceCrosswind_tile'); return null; }
         var end = tiles[tiles.length - 1], F = _nrvFrame(fromX, fromY), ts = F.ts, to = _afTo(F, end.x, end.y), ribbons = [];
         var dir = new THREE.Vector3(to.x, 0, to.z).normalize(), side = new THREE.Vector3(-dir.z, 0, dir.x), flyMs = Math.max(200, 80 + tiles.length * 60);
         for (var i = 0; i < 5; i++) { var m = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.7, ts * 0.05), 0xe8f4ff, { map: _sigGlowTex() }); m.rotation.y = -Math.atan2(dir.z, dir.x); F.g.add(m); ribbons.push({ m: m, off: (i - 2) * ts * 0.18, h: ts * (0.3 + 0.2 * i), at: i * 40 }); }
@@ -39937,6 +39953,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* MUDSLIDE (owns the line): a wave of mud rolls down the lane */
     function _afMudslide3D(fromX, fromY, tiles) {
         if (_catOff('spells') || !tiles || !tiles.length) return null;
+        if (_afFogHides(fromX, fromY)) { _afLineFogged(tiles, 'raceMudslide_tile'); return null; }
         var end = tiles[tiles.length - 1], F = _nrvFrame(fromX, fromY), ts = F.ts, to = _afTo(F, end.x, end.y), lumps = [];
         var dir = new THREE.Vector3(to.x, 0, to.z).normalize(), side = new THREE.Vector3(-dir.z, 0, dir.x), flyMs = Math.max(260, 100 + tiles.length * 80);
         for (var i = 0; i < 9; i++) { var m = _afSolid(new THREE.SphereGeometry(ts * rn(0.12, 0.2), 8, 6), _AF.dirt); F.g.add(m); lumps.push({ m: m, off: rn(-0.4, 0.4) * ts, lag: rn(0, 0.12) }); }

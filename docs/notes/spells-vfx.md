@@ -1725,4 +1725,8 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   (state.js gives 1100 ms of arming before it lands). Pull now passes fromX/fromY; Rustle joins the lasso tether regex.
 - Multi-hit rows (Six-Shooter, Thousand Stings, Piledriver, Organ, Engulf, Last Dance, Devour, Interrogation,
   Overrun) build their big piece once per cast (`_afOnce`), the small recipe on every hit.
+- Fog: `_afFogHides` (same test as the G-O block): a caster the viewer can't see is never drawn at or from — `_afCaster`
+  aims from the west of the target instead, caster-side pieces (six-gun, lure stalk, grapple steam, Last Light, the
+  circlet, the tether radio rings, the love-ray laser) skip, owned lines land only their visible tile recipes, a swap
+  skips a fogged spot, Soul Harvest's souls just rise.
 - Nothing full-screen; big sprites stay additive and modest so the caster, target, hit and number read.
