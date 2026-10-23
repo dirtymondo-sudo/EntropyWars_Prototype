@@ -1995,3 +1995,18 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - Browser-checked on Giza Arena (Sedan): deck over lit ground with no route on top → moves to the ground; standing
   where both are reachable → click = deck, F + click = ground; prompt hint shown and flips.
 - Not covered: touch/gamepad have no F (keyboard Enter cursor keeps its own z).
+
+## TAKE OFF FIRST — Move never takes off for the player (2026-10-23, Cube + wipeout playtests) — battle.js
+- mondo: "dont show tiles that you can take off+move to, it should require you to take off first. Same with land+move,
+  the player should have the choice to spend the ap to take off or land". The playtests had a grounded flyer click a
+  Stonehenge tile, take off onto the lintel and spend both AP (turn over).
+- battle.js `getMoveTiles`: the grounded-flyer TAKE OFF + MOVE fan-out (the teal `_takeoff` tiles) now runs only for
+  `state.autoPlayers[unit.player]` (the CPU). A player's grounded flyer sees walk/jump tiles only; Take Off (1 AP) is
+  its own action, then Move shows the flying tiles. Everything downstream of `_takeoff` (ghost route, "Take Off + Move"
+  tile card, move-then-cast) simply never sees one for a player unit. The CPU keeps the combined take-off + move.
+- Land + move: an airborne flyer's Move tiles were already all airborne (getFlightZChoices never returns the ground),
+  so nothing landed on its own; Land stays its own action.
+- Not changed: spell approaches that take off / land in place and then cast (`_spellHeightApproaches`).
+- Browser-checked on Stonehenge (Sedan as a flyer): old code, 11 teal tiles and a click flew it to the lintel (z 8,
+  AP 0); new code, 0 teal tiles for the player (CPU still 11), the same click does not take off, Take Off then Move
+  lists the flying tiles.
