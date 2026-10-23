@@ -2096,6 +2096,28 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
 - BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Seen, not changed: a ranged Siege unit (Sheriff) steps toward the Cube, shoots, then the old retreat logic walks it back, so it never reaches the Cube; Search loses its unit when Anchor + Intercept + Siege fill the budget.
 
+## THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself ... think of each race as its own JRPG or Dark Souls boss") — data.js
+- Every race id A–F has a family of its own. 32 new SPELL_FAMILIES rows (kind 'signature', `unique: '<race>'`, an
+  `identity` {who, adj, look, vibe} block for the library's IDENTITY tab, so no SLB_IDENTITY_KITS entry in ui.js), placed
+  right after the `doors` row, each appended to its race's RACE_FAMILIES list. 66 new spell rows (ids `sig*`) live in
+  RACE_ABILITIES['<race>'] under a "THE SIGNATURE FAMILY" comment. The six families only one A–F race already carried
+  (gambling, feline, internetaddiction, door, dragonabilities, fortunetelling) are now flagged `unique` too (no new rows).
+  Sibling threads G–O and P–Z follow the same shape.
+- Rules kept: no new statuses, no new engine keys (every row copies the key set of a shipped spell), apCost 1, tier I–II
+  apply a status, tier III–IV are finishers (bonusVsStatus, no status). MP is the mana formula's, not the literal `cost`.
+- TRAP: `randomTargets` and `splash` CANNOT sit on a literal SPELL_LIBRARY / RACE_ABILITIES row: the boot-time mana pass
+  (`_applyManaCostFormula`, ~line 10630) calls spellRandomTargetsOf / spellSplashOf before `SPELL_RIDER_KINDS` is declared
+  (TDZ) and data.js dies at load, taking the whole game with it. The riders stay upgrade-only (Blast / Extra Target) and
+  the rider example row lives after the pass. The three rows that wanted them use chainProfile / splitBeam / barrage.
+- The per-race list (names, kinds, statuses, finishers) is the HTML page delivered in the thread; the VFX pass is next.
+
+## THE UNIQUE FAMILIES, G to O (2026-10-23, mondo: "each race to have at least one spell family that is unique to itself")
+- One `kind: 'signature'` SPELL_FAMILIES row per race, `unique: '<race>'` (never borrowable, ★ in the codex), with an `identity` {who, adj, look, vibe} block for the library's IDENTITY tab. It sits FIRST in the race's RACE_FAMILIES list. 37 new families; the 9 single-race families that still said `unique: null` (streetsmarts, drivingskills, jellyfish, apeintelligence, tentacleappendages, unethicalscience, mecha, mothman, galacticfederation) now name their race (ki already did).
+- The rows live in RACE_ABILITIES['<race>'] under a "UNIQUE FAMILY (2026-10-23)" comment, ids `go*` (A-F uses `sig*`). 81 new spells. Rules kept: existing statuses and engine keys only; T1/T2 apply the status, T3/T4 are finishers (bonusVsStatus, no status of their own), apCost 1, T4 cooldown 2. Each family is a setup + payoff pair (e.g. Rainspout Soaks → Grotesque Dive bonus vs Soaked, +dmgPerLevel from the perch).
+- Moved (agreed with the "Shared spell family exclusions" thread): Excalibur Strike → excalibur (king arthur), Atomic Breath → kaijuatomic (kaiju), Fee Fi Fo Fum (raceTitanStep) → giant, Labyrinth Roar → minotaur. RACE_TREE rung swaps: goatman Labyrinth Roar → Treeline Scream, krampus → Krampus Chains.
+- data.js fix: `spellRandomTargetsOf` / `spellSplashOf` read `_spellRiderKindOk` / `_spellRandomMax` (function declarations) instead of the consts, because the boot mana pass prices RACE_ABILITIES rows before those consts exist (a random-target row there threw "Cannot access 'SPELL_RIDER_KINDS' before initialization" and took the whole data.js down).
+- Full list per race: the artifact "Unique families G-O" https://claude.ai/artifact/Nvu6Ua8Et28KfQfWzu9mgw (project-files unique-families/). All 85 rows cast on the real board (playwright probe, 2026-10-23). Orb of Light's T2 is "Plasma Loop" (P-Z owns "Solar Flare"); Necromancer's T3 goSoulHarvest is named "The Reaping" (A-F owns the spell name "Soul Harvest").
+
 ## THE SHARED FAMILY PASS (2026-10-23, thread "Shared spell family exclusions")
 - mondo: "exclude certain spells from a race's spell families, to make them more accurate ... not every one of those needs to be available to everyone with the cosmic spell family". Filled data.js `RACE_SPELL_EXCLUDES` (the 2026-10-17 per-race toggle, was empty): 292 exclusions on 97 races across the shared families. No spell deleted, no families tag changed by this pass, no new rules or statuses.
 - Rule of thumb used: a shared spell whose text names one race (Supernova "the orb", Cosmic Sight "The Watcher", Stoneform "the gargoyle", Plaguefield "except the necromancer") or that only fits some races (Lasso cowboy only per mondo, Pepper Spray / Taser / Lockdown off the Old-West sheriff, Gills off the firefighter) is off for the rest. Floor: every race keeps 12+ spells in its pool (door agent was already 12).
