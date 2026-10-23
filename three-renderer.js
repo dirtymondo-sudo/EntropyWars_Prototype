@@ -20496,6 +20496,13 @@ const ThreeRenderer = (function () {
                 if (wd && wd.player === vp && wd.tiles && wd.tiles.indexOf && wd.tiles.indexOf(pk) >= 0) { seen = true; break; }
             }
         }
+        /* THE TEAM'S OTHER EYES (Wipeout vs Wipeout playtest 2026-10-23: the guest's Eternal Slumber listed Superhero and
+           Mech with their HP and tagged their tiles while their models stayed hidden): the Cube, wards, open doors, flares
+           see for the team too. They light the tile (computeVisibleTiles) and the rules let the team aim there (map.js
+           isInVision), but the body stayed undrawn on its lit tile because no unit had eyes on it. */
+        if (!seen && typeof _teamStructureSeesTile === 'function') {
+            try { seen = !!_teamStructureSeesTile(vp, unit.x, unit.y); } catch (e) {}
+        }
         _uFogCache.set(key, seen);
         return seen;
     }
@@ -42102,6 +42109,15 @@ const ThreeRenderer = (function () {
             && typeof getSelectedUnit === 'function') {
             var _lpU = getSelectedUnit();
             if (_lpU && _lpU._skyThrowGrab) unitHit = null;
+        }
+        /* THE CASTER IS NO TARGET (battle.js _ewPickSkipsUnitId): an armed attack / offensive unit spell looks past the
+           acting unit's own model to the body behind it */
+        if (unitHit && typeof window._ewPickSkipsUnitId === 'function') {
+            var _skipId = window._ewPickSkipsUnitId();
+            if (_skipId != null && unitHit.unitId === _skipId) {
+                unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas,
+                    { children: unitGroup.children.filter(function (c) { return c._ew_unitId !== _skipId; }) });
+            }
         }
         if (unitHit) {
 
