@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.17-2026-10-23-tactics-steady'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.18-2026-10-23-tactics-search'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -2301,12 +2301,20 @@
             if (want[f] > 0) want[f]--;
             jobs.set(u.id, { job: f, forced: true, reason: why[f] || null });
         }
-        let budget = Math.max(0, free.size - (n >= 3 ? 1 : 0));   // keep a fighter when there are three or more
+        // The Keys race matters when it is our nearest win or close behind it: then Search always gets a unit,
+        // even if Anchor + Intercept + Siege would fill every slot (the kept fighter becomes the searcher).
+        const keysMatter = !!(hasKeys && sm && sm.hidden > 0 && our && want.search > 0
+            && (our.bestKind === 'keys' || our.keys <= our.best * 1.5 + 1));
+        let budget = Math.max(0, free.size - (n >= 3 && !keysMatter ? 1 : 0));   // keep a fighter when there are three or more
         const ctx = { ownTw, enTw, threats, sm };
         // last plan's holder keeps its job unless another unit fits it clearly better (no swapping every round)
         const prevJob = id => { const j = _tacticJobs.get(id); return j && !j.forced ? j.job : null; };
-        for (const job of ['anchor', 'intercept', 'siege', 'search', 'heal']) {
-            for (let k = 0; k < want[job] && budget > 0; k++) {
+        // first pass: one unit per wanted job (the nearest win's job before the other race), second pass: the rest
+        const order = ['anchor', 'intercept'].concat(our && our.bestKind === 'keys' ? ['search', 'siege'] : ['siege', 'search'], ['heal']);
+        const firstPass = keysMatter ? order.map(j => [j, Math.min(1, want[j])]) : [];
+        const taken0 = {};
+        for (const [job, cnt] of firstPass.concat(order.map(j => [j, want[j]]))) {
+            for (let k = taken0[job] || 0; k < cnt && budget > 0; k++) {
                 let best = null, bestF = -Infinity;
                 for (const u of team) {
                     if (!free.has(u.id)) continue;
@@ -2315,7 +2323,7 @@
                     if (f > bestF) { bestF = f; best = u; }
                 }
                 if (!best || bestF <= -1e8) break;
-                free.delete(best.id); budget--;
+                free.delete(best.id); budget--; taken0[job] = k + 1;
                 jobs.set(best.id, { job, forced: false, reason: why[job] || null });
             }
         }
