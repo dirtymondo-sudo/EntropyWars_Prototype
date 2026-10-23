@@ -1685,4 +1685,6 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   don't fly out of a fogged tile. online.js now relays `hideGunRig` too, so the guest also skips the gun / bow /
   thrown prop on a shot the host fog-clamped (Codex review on PR #445).
 - Probe: `node --check`, then all 85 spells cast back to back in Chromium (SwiftShader) with no `[VFX] G-O` / `[SIG3D]`
-  errors; before/after stills on WebGL and `?ew_gpu=webgpu` in /mnt/project-files/g-o-vfx/.
+  errors; before/after stills on WebGL in /mnt/project-files/g-o-vfx/. Real WebGPU (`?ew_gpu=webgpu`) booted and cast
+  12 of them with no VFX errors, but headless SwiftShader WebGPU draws a black canvas (same on main), so the WebGPU
+  renderer's stills were taken on its WebGL2 backend (`?ew_gpu=webgl2`, same node materials).
