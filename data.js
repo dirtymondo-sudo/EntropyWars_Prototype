@@ -4019,12 +4019,12 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'starfish': { hp: 1178, mp: 220, atk: 63, def: 130, mdef: 132, int: 119, vision: 3, crt: 17, spd: 11 },
     'ringmaster': { hp: 946, mp: 180, atk: 59, def: 118, mdef: 107, int: 114, vision: 2, crt: 26, spd: 57 },
-    'bee queen': { hp: 867, mp: 146, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146
+    'bee queen': { hp: 1000, mp: 220, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146 // WEAK RACES 2 (mondo 10-23): HP 867->1000, MP 146->220
     'professor': { hp: 873, mp: 240, atk: 44, def: 79, mdef: 143, int: 163, vision: 3, crt: 26, spd: 31 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%) // race editor 2026-10-17: DEF 79
     'deep sea fish': { hp: 849, mp: 140, atk: 153, def: 103, mdef: 53, int: 94, vision: 2, crt: 25, spd: 77 },
     // 2026-09-30 — the new-race batch
     'clown': { hp: 812, mp: 130, atk: 93, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },
-    'bunny girl': { hp: 666, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },
+    'bunny girl': { hp: 900, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900
     'sharkman': { hp: 1507, mp: 90, atk: 174, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 188 },
     'crystal guardian': { hp: 1727, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
@@ -4040,7 +4040,7 @@ const RACE_BASE_STATS = {
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
     'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },   // race editor 2026-10-17: DEF 62
-    'wizard':             { hp: 349, mp: 255, atk:   5, def:  15, mdef:  198, int:  184, vision: 4, crt: 16, spd: 23 },
+    'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 50 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
@@ -4087,7 +4087,7 @@ const RACE_BASE_STATS = {
     'robinhood':          { hp: 837, mp: 110, atk:  154, def:  32, mdef:  24, int:  20, vision: 6, crt: 26, spd: 160 },
     'santa clause':       { hp: 1324, mp: 200, atk:  99, def:  140, mdef:  134, int:  140, vision: 3, crt: 17, spd: 51 },
     'super sentai':       { hp: 1617, mp: 120, atk:  122, def:  175, mdef:  75, int:  37, vision: 2, crt: 26, spd: 165 },
-    'symbiote':           { hp: 690, mp: 125, atk:  73, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 79 },
+    'symbiote':           { hp: 900, mp: 125, atk:  73, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 90 },   // WEAK RACES 2 (mondo 10-23): HP 690->900, SPD 79->90 (move 2->3)
     'valkraye':           { hp: 1385, mp:  80, atk:  107, def:  151, mdef:  73, int:  47, vision: 4, crt: 16, spd: 182 },
     'watcher':            { hp: 885, mp: 210, atk:   67, def:  70, mdef:  166, int:  159, vision: 6, crt: 26, spd: 178 },
 };
@@ -6126,8 +6126,8 @@ const SPELL_LIBRARY = [
           desc: 'Edge of the shield, under the chin. Deals MEDIUM physical damage to an adjacent enemy and Staggers them: they lose 1 AP.' },
         { id: 'raceStaticShock', name: 'Static Shock', tier: 1, families: ['lightning'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 100,
-          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 1 }],
-          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for a round).' },
+          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds (a 1-round status ran out before a faster target acted)
+          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 2 rounds).' },
         { id: 'raceChainLightning', name: 'Chain Lightning', tier: 3, families: ['lightning'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 130,
           damageType: 'magic', chainProfile: [130, 85, 50], chainRadius: 2,
@@ -6235,8 +6235,8 @@ const SPELL_LIBRARY = [
           desc: 'They drop a frame. Staggers a Single Enemy for 1 round and Slows it for 1 round.' },
         { id: 'raceMisdirection', name: 'Misdirection', tier: 1, families: ['trickery'], cost: 25, apCost: 1,
           spellType: 'anomaly', type: 'debuff', kind: 'debuff', range: 3,
-          statusEffects: [{ id: 'blind', duration: 1 }],
-          desc: 'Look — over there. Blinds a Single Enemy within 3 for 1 round: its attacks miss half the time.' },
+          statusEffects: [{ id: 'blind', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds
+          desc: 'Look — over there. Blinds a Single Enemy within 3 for 2 rounds: its attacks miss half the time.' },
         { id: 'raceSuckerPunch', name: 'Sucker Punch', tier: 1, families: ['trickery'], cost: 25, apCost: 1,
           spellType: 'anomaly', type: 'damage', kind: 'damage', range: 1, dmg: 100, damageType: 'physical',
           bonusVsStatus: { status: 'blind', mult: 1.5 },
@@ -8274,7 +8274,7 @@ const RACE_ABILITIES = {
     'bunny girl': [
         { id: 'raceDeadMansHand', name: 'Dead Man\'s Hand', tier: 1, families: ['gambling'], cost: 25, apCost: 1,
           spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3,
-          hitDamages: [34, 34, 34, 34],
+          hitDamages: [50, 50, 50, 50],   // WEAK RACES 2 (mondo 10-23): 4x34 -> 4x50, armour comes off every card
           desc: 'Aces and eights, thrown edge-first. Four cards at a Single Enemy for WEAK magic damage each.' },
 
         { id: 'raceDoubleDown', upgradesBlock: ['upReach', 'upLinger'], name: 'Double Down', tier: 3, families: ['gambling'], cost: 75, apCost: 1,
@@ -8408,7 +8408,7 @@ const RACE_ABILITIES = {
           desc: 'The hive boils out around its queen. Deals WEAK physical damage to All Enemies within 2 tiles and Poisons them for 2 rounds.' },
         { id: 'sigThousandStings', name: 'A Thousand Stings', tier: 4, families: ['royalhive'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 2,
-          hitDamages: [17, 17, 17, 17, 17, 17, 17, 17, 17, 17], bonusVsStatus: { status: 'poison', mult: 1.5 },
+          hitDamages: [30, 30, 30, 30, 30, 30, 30, 30, 30, 30], bonusVsStatus: { status: 'poison', mult: 1.5 },   // WEAK RACES 2 (mondo 10-23): 10x17 -> 10x30, armour comes off every sting
           desc: 'Every bee in the hive, one after another. Deals HEAVY physical damage to a Single Enemy within 2 tiles across 10 stings. Poisoned targets take it worse. Cooldown: 2 rounds.' },
     ],
     'professor': [
@@ -8532,7 +8532,7 @@ const RACE_ABILITIES = {
           desc: 'Not today. A Single Enemy within 5 is Silenced for a round. Cooldown: 2 rounds.' },
         { id: 'pzMagicMissile', name: 'Magic Missile', tier: 3, families: ['highwizardry'], cost: 75, apCost: 1,
           spellType: 'human', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 5,
-          hitDamages: [27, 27, 27, 27, 27],
+          hitDamages: [40, 40, 40, 40, 40],   // WEAK RACES 2 (mondo 10-23): 5x27 -> 5x40, armour comes off every dart
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Five darts that never miss. Deals MEDIUM magic damage to a Single Enemy within 5 across 5 hits. Deals bonus damage to Silenced targets.' },
         /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
