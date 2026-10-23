@@ -3521,6 +3521,20 @@
                 addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
             }
         }
+        window.triggerTerrainSpellReaction = triggerTerrainSpellReaction;
+
+        /* 💥🛢️ FIRE ON OIL / GOO (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of
+           liquid explode? If not it should."): a fire / lightning spell that leaves terrain (Meteor's scorch, Hellmouth's
+           lava, the nukes) used to paint the slick away BEFORE the reaction looked at it, so the oil never went up. Each
+           paint site calls this first: an oil / ooze cell under the paint detonates its whole connected slick (the
+           existing _reactFireOil, through the dispatcher), then the paint lands on the charred ground. */
+        function igniteOilBeforePaint(caster, spell, x, y) {
+            if (!caster || !spell || !isInside(x, y) || !_isOilTile(x, y)) return;
+            const el = classifySpellElement(spell);
+            if (el !== 'fire' && el !== 'lightning') return;
+            triggerTerrainSpellReaction(caster, spell, [{ x, y }]);
+        }
+        window.igniteOilBeforePaint = igniteOilBeforePaint;
 
         // ═══════════════════════════════════════════════════════════════════
         // 🔥 BURNING TILES — persistent ground fire (2026-07-08).
@@ -6709,6 +6723,7 @@
                 // Leave terrain — THE SPELL AUDIT Batch D: `leaveTerrainRadius` keeps it to the middle (Miasma's 3x3)
                 if (spell.leaveTerrain && !(spell.leaveTerrainRadius != null && opts.deformCenter
                     && Math.max(Math.abs(tile.x - opts.deformCenter.x), Math.abs(tile.y - opts.deformCenter.y)) > spell.leaveTerrainRadius)) {
+                    igniteOilBeforePaint(unit, spell, tile.x, tile.y);   // 💥 the slick goes up before the scorch covers it
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
@@ -7257,6 +7272,7 @@
                         }
                     }
                 }
+                if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, cx, cy);   // 💥 the slick goes up before the paint covers it
                 if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
                     if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                 } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(cx, cy, spell.leaveTerrain);   // ⏳ back to 3 rounds
@@ -7282,6 +7298,7 @@
                         if (!_zig && !_beamAtGround(lx, ly, c.z)) continue;
                         _groundCells.push({ x: lx, y: ly });
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
+                        if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, lx, ly);
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             if (setTerrainSpringAt(lx, ly, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                         } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(lx, ly, spell.leaveTerrain);   // ⏳ back to 3 rounds
@@ -60104,6 +60121,13 @@
                     }
                 }
             }
+            /* 💥 the blast's tiles react like a fire spell's (a bomb going off in an oil slick blows the whole slick);
+               read before the knockback so the bodies standing in it are the ones caught */
+            {
+                const _bSpell = bomb.spellId ? ((typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[bomb.spellId])
+                    || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[bomb.spellId]) || null) : null;
+                if (_bSpell && _bombCaster) triggerTerrainSpellReaction(_bombCaster, _bSpell, area);
+            }
 
             /* 🧭 THE FORCED MOVE: every body the blast caught is thrown by the bomb's rule (bombKnockDir — the one that
                set it off back the way it came, the rest straight away from it; set off by its owner, the way each body
@@ -70929,6 +70953,7 @@
                                 window.setTimeout(() => {
                                     try {
                                         if (enemy.dead) return;
+                                        const _brX = enemy.x, _brY = enemy.y;
                                         applyDamageToUnit(enemy, dmg, `${unitDisplayName(unit)}'s ${spell.name} hits `, {
                                             sourceUnit: unit,
                                             allowMarkBonus: false,
@@ -70936,6 +70961,8 @@
                                             damageType: spell.damageType || 'physical',
                                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                         });
+                                        // 💥 the struck tile reacts like any spell hit (Solar Flare on a target in oil blows the slick)
+                                        triggerTerrainSpellReaction(unit, spell, [{ x: _brX, y: _brY }]);
                                     } finally { _pendingSpellHits--; }
                                 }, actionMs(400));
                             }, idx * barrageGap);
@@ -72190,11 +72217,13 @@
                 const primaryDmg = Math.max(32, (spell.dmg || 0) + spellPower);
 
                 window.setTimeout(() => {
+                    const _sbX = target.x, _sbY = target.y;
                     applyDamageToUnit(target, primaryDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
+                    triggerTerrainSpellReaction(unit, spell, [{ x: _sbX, y: _sbY }]);   // 💥 the struck tile reacts (oil, water, trees)
 
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
@@ -72223,11 +72252,13 @@
                             playSfx(spellLaunchSfx(spell));
                             window.setTimeout(() => {
                                 if (hit.dead) return;
+                                const _spX = hit.x, _spY = hit.y;
                                 applyDamageToUnit(hit, splitDmg + spellPower, `${spell.name} splits to `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                 });
+                                triggerTerrainSpellReaction(unit, spell, [{ x: _spX, y: _spY }]);
                             }, splitProjectileMs + actionMs(60));
                         }, hitDelay);
                     });
@@ -73081,6 +73112,7 @@
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
                         if (spell.monument) return;
+                        igniteOilBeforePaint(unit, spell, tx, ty);   // 💥 Wall of Fire on a slick: it goes up before the scorch covers it
                         _tcFoot.push({ x: tx, y: ty, z: pz });
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
@@ -75040,6 +75072,8 @@
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
                             resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2 });   // ⛓ the throw's landing
                         }
+                        // 💥 the landing tile reacts like any spell hit (Infernal Hurl into an oil slick blows it)
+                        triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
                         scheduleBoardRender();
