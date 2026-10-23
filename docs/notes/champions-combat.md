@@ -655,7 +655,6 @@ basic attacks (`damageDoorAt`, `attack:door` on the tile card); its owner's side
 by spell id (`gunGustDoor:open/act/hit/break/fold`). A basic CPU placer is `window.doorGunAiPick`. Test:
 `door-gun-board.test.js` (the door block + the chain in one vm).
 
-
 ## THE DOOR AGENT rev 6 — THE GUST STREAM + THE DESTINATIONS (door wheel Phase 2) — 2026-09-25, local delivery
 DOOR_GUN_PLAN.md Phase 2 (full log in its §11). **THE GUST STREAM** (the user: "a persistent hazard on the field,
 not just blasting in between rounds … immovable units like the kaiju and giant should be able to stand in it"):
@@ -2095,8 +2094,74 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - **Phase 5.** battle.js `_AB_RETIRED_KEYS`: the 18 gen-40 flat weights + killBonusScore + cubeWindowBonus are no longer A/B-tested (values kept and still played; imitation still nudges; EW_TRAIN_KEYS overrides). Training dashboard: "P1 wins by" / "P2 wins by". Strength Test: Opponent mirror / Key Rusher / Cube Rusher / Turtle (`_ewSetStrengthSparring`, results per style). Imitation matches Inspect at the tile (synthetic score `_inspectScoreAt` when the CPU didn't propose it). New weights (no schema bump): raceRoundValue_v1, searchKeyValue_v1, searchCenterPrior_v1, keyCarrierDenial_v1, anchorCaution_v1, tacticCommitment_v1, hardReplyFactor_v1 (probe 'hard' = never in the labs). `window.getCubeAttackDamage` exported for the clocks.
 - Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
 
+- BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Seen, not changed: a ranged Siege unit (Sheriff) steps toward the Cube, shoots, then the old retreat logic walks it back, so it never reaches the Cube; Search loses its unit when Anchor + Intercept + Siege fill the budget.
+
 ## THE PLAYER'S TACTICS (auto battle) (2026-10-23, mondo: "for the player to be able to apply them to their units so they dont have to manually fight for them, like they can be on auto battle") — battle.js, hud.js, online.js
 - **Set it.** Root verb ♟ TACTICS (hud.js `_hrlgTacticPartyBlades` + `_hrlgTacticBlades`): the party list (acting unit first, each with its Tactic) and beside it MANUAL + the six AI_TACTICS rows for the picked unit. Picking for the acting unit hands the turn to the AI at once; for a teammate it applies on its next turn. Not on Mystery Dungeon (own chips) or in the tutorial.
 - **Engine.** battle.js `setUnitTactic(id, tactic|null)` writes `unit.tactic`; `unitOnTactic(u)` is the gate (battle phase, controller ≠ AI, not possessed, not MD/tutorial) and is folded into `_mdUnitAuto`, so every AI-routing path (activation, `_shouldAIRun`, runComputerTurn, stall watchdog, safety timer, selectUnit, imitation skip, ActionMenu/turn column) covers it. `unitTacticProblem` greys Siege (no enemy Cube), Search (mode has no Keys), Intercept (neither), Heal (no heal/healAll/selfHeal/revive/zoneHeal/seedHeal kind and no Healing Potion — the Heal job's own list). MANUAL mid-turn: `_tacticWhenIdle` waits for the AI's step to finish, then restarts the shot clock + selects the unit. The tactic survives death/respawn (same unit object).
 - **During its turn.** hud.js `TacticWatch`: the command menu's spot shows "<name> · <TACTIC>", `aiTacticReason`, and the Tactic list (MANUAL = take control). The prompt bar is silent for a Tactic unit.
 - **Online.** The host owns unit.tactic (plain unit data → state-sync). Guest picks emit `game-action {type:'setTactic'}`; host handler checks the unit is the sender's (any time, not only its turn). The guest's units on a Tactic are played by the host's AI like the whole-side Auto mode.
+
+## THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself ... think of each race as its own JRPG or Dark Souls boss") — data.js
+- Every race id A–F has a family of its own. 32 new SPELL_FAMILIES rows (kind 'signature', `unique: '<race>'`, an
+  `identity` {who, adj, look, vibe} block for the library's IDENTITY tab, so no SLB_IDENTITY_KITS entry in ui.js), placed
+  right after the `doors` row, each appended to its race's RACE_FAMILIES list. 66 new spell rows (ids `sig*`) live in
+  RACE_ABILITIES['<race>'] under a "THE SIGNATURE FAMILY" comment. The six families only one A–F race already carried
+  (gambling, feline, internetaddiction, door, dragonabilities, fortunetelling) are now flagged `unique` too (no new rows).
+  Sibling threads G–O and P–Z follow the same shape.
+- Rules kept: no new statuses, no new engine keys (every row copies the key set of a shipped spell), apCost 1, tier I–II
+  apply a status, tier III–IV are finishers (bonusVsStatus, no status). MP is the mana formula's, not the literal `cost`.
+- TRAP: `randomTargets` and `splash` CANNOT sit on a literal SPELL_LIBRARY / RACE_ABILITIES row: the boot-time mana pass
+  (`_applyManaCostFormula`, ~line 10630) calls spellRandomTargetsOf / spellSplashOf before `SPELL_RIDER_KINDS` is declared
+  (TDZ) and data.js dies at load, taking the whole game with it. The riders stay upgrade-only (Blast / Extra Target) and
+  the rider example row lives after the pass. The three rows that wanted them use chainProfile / splitBeam / barrage.
+- The per-race list (names, kinds, statuses, finishers) is the HTML page delivered in the thread; the VFX pass is next.
+
+## THE UNIQUE FAMILIES, G to O (2026-10-23, mondo: "each race to have at least one spell family that is unique to itself")
+- One `kind: 'signature'` SPELL_FAMILIES row per race, `unique: '<race>'` (never borrowable, ★ in the codex), with an `identity` {who, adj, look, vibe} block for the library's IDENTITY tab. It sits FIRST in the race's RACE_FAMILIES list. 37 new families; the 9 single-race families that still said `unique: null` (streetsmarts, drivingskills, jellyfish, apeintelligence, tentacleappendages, unethicalscience, mecha, mothman, galacticfederation) now name their race (ki already did).
+- The rows live in RACE_ABILITIES['<race>'] under a "UNIQUE FAMILY (2026-10-23)" comment, ids `go*` (A-F uses `sig*`). 81 new spells. Rules kept: existing statuses and engine keys only; T1/T2 apply the status, T3/T4 are finishers (bonusVsStatus, no status of their own), apCost 1, T4 cooldown 2. Each family is a setup + payoff pair (e.g. Rainspout Soaks → Grotesque Dive bonus vs Soaked, +dmgPerLevel from the perch).
+- Moved (agreed with the "Shared spell family exclusions" thread): Excalibur Strike → excalibur (king arthur), Atomic Breath → kaijuatomic (kaiju), Fee Fi Fo Fum (raceTitanStep) → giant, Labyrinth Roar → minotaur. RACE_TREE rung swaps: goatman Labyrinth Roar → Treeline Scream, krampus → Krampus Chains.
+- data.js fix: `spellRandomTargetsOf` / `spellSplashOf` read `_spellRiderKindOk` / `_spellRandomMax` (function declarations) instead of the consts, because the boot mana pass prices RACE_ABILITIES rows before those consts exist (a random-target row there threw "Cannot access 'SPELL_RIDER_KINDS' before initialization" and took the whole data.js down).
+- Full list per race: the artifact "Unique families G-O" https://claude.ai/artifact/Nvu6Ua8Et28KfQfWzu9mgw (project-files unique-families/). All 85 rows cast on the real board (playwright probe, 2026-10-23). Orb of Light's T2 is "Plasma Loop" (P-Z owns "Solar Flare"); Necromancer's T3 goSoulHarvest is named "The Reaping" (A-F owns the spell name "Soul Harvest").
+
+## THE SHARED FAMILY PASS (2026-10-23, thread "Shared spell family exclusions")
+- mondo: "exclude certain spells from a race's spell families, to make them more accurate ... not every one of those needs to be available to everyone with the cosmic spell family". Filled data.js `RACE_SPELL_EXCLUDES` (the 2026-10-17 per-race toggle, was empty): 292 exclusions on 97 races across the shared families. No spell deleted, no families tag changed by this pass, no new rules or statuses.
+- Rule of thumb used: a shared spell whose text names one race (Supernova "the orb", Cosmic Sight "The Watcher", Stoneform "the gargoyle", Plaguefield "except the necromancer") or that only fits some races (Lasso cowboy only per mondo, Pepper Spray / Taser / Lockdown off the Old-West sheriff, Gills off the firefighter) is off for the rest. Floor: every race keeps 12+ spells in its pool (door agent was already 12).
+- Moves out of shared families were made by the unique-family sibling threads, each changing only that spell's families tag: Excalibur Strike → King Arthur, Atomic Breath → Kaiju, Fee Fi Fo Fum → Giant, Labyrinth Roar → Minotaur (G to O); Heat Vision → Superhero (P to Z). Siren Song and Shadow Realm stayed shared (rungs of the mermaid / demon) and got exclusions instead.
+- data.js `flRacePool` (the Adaptable borrow window): a family spell is borrowed only from an owned race that learns it (raceFamilyMemberIds), so borrowing COSMIC from the Watcher never yields the orb's Supernova.
+- Everything else already read the excludes: raceFamilyPoolIds → unitSpellPool (builder, forge, isTreeLegal), treeLegalSubset (old saves, the host's online kit check, map.js spawns), buildTreeLegalLoadout (CPU / random), raceDefaultKit, the codex dossier, the POOLS tab ✓ boxes. The per-family list with reasons is the delivery page in /mnt/project-files/shared-families/.
+
+## THE P-Z SIGNATURE FAMILIES (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself … think of each race as its own JRPG or Dark Souls boss … dont add any new status effects")
+Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family exclusions"). data.js only.
+- Every race whose id starts P-Z has a family with `unique: '<race>'`. 26 NEW rows in SPELL_FAMILIES (inserted after the
+  scarecrow row, `kind: 'signature'`, an `identity: {who, adj, look, vibe}` kit for the Spell Library IDENTITY tab), listed
+  FIRST in that race's RACE_FAMILIES. The 11 families one P-Z race already carried alone (piracy, politics, football,
+  mirrormagic, animalhandling, archery, sentai, vampiricabilties, arachnid, werewolf, zombie) just got `unique: '<race>'`
+  (scarecrow already had it) — same convention as the A-F thread.
+- 53 new rows, ids `pz*`, in each race's RACE_ABILITIES array (top of the array, under a SIGNATURE comment). Shape: a tier
+  I-II SETUP that applies one existing status + a tier III-IV FINISHER with `bonusVsStatus` (×1.5) on it and no status of
+  its own (NO SELF-COMBO). apCost 1; tier IV finishers carry cooldownRounds 2. Only existing kinds and riders (debuff,
+  damage+chargeToTarget, aoe, line, pull, barrage, cross diamond, multiHit, lifeDrain, leapStrike (+aoeDmgPct splash),
+  tackle, dash, summonUnit with summonDef.hitStatus, buff; unholyBonus, sneakBonus, onKillHealPct, ignoresLineOfSight,
+  ignoreArmor, bonusHitsPerAdjacentAlly). Bleed got its first real appliers (sharkman, swordfighter).
+- Moved: Heat Vision (raceLaserBeam) superheropowers → the superhero's `solarpowered` (antihero/sidekick lose it). NOT moved:
+  Siren Song (mermaid's tier I rung) and Shadow Realm (the demon's capstone) — they stay shared.
+- Shaman's Spirit Animal reuses summonDef key 'wolf' (no new art).
+- The three leapStrike finishers (Down the Chimney, From the Ceiling, Abominable Ambush) keep the existing leap rule: the
+  caster must stand higher than the target. Their descs say "From higher ground".
+- Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
+  cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).
+
+## FIRE ON OIL / GOO, EVERY SPELL KIND (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of liquid explode? If not it should.")
+- Single-target spells (Fireball, Dragon Breath) already blew the whole connected slick (battle.js `_reactFireOil` via
+  `triggerTerrainSpellReaction`). Nine fire / lightning spells did not, because their resolvers never called the dispatcher
+  or painted the slick away first. Checked in a VS CPU match on the old code: Hellmouth, Solar Flare, Place Bomb, Fire for
+  Effect, Nuclear Option, Extinction Event, Infernal Hurl, Wall of Fire and Firefly Swarm left the oil standing (or
+  scorched it silently).
+- Fix: the dispatcher now also runs off a barrage hit (per struck tile), a splitBeam's primary + split hits, a skyThrow's
+  landing tile, a bomb blast (`detonateBomb`, the placer must be alive), and a delayed detonation (state.js, before the
+  crater's leaveTerrain). `igniteOilBeforePaint(caster, spell, x, y)` runs at every leaveTerrain / terrainCreate paint
+  site, so a slick under a scorch / lava paint goes up before it is covered. No new rules: these resolvers now get ALL the
+  existing reactions (conduction, flash-freeze, forest fire, crystal) like every other damage resolver.
+- "Goo" = the Black Goo's ooze terrain `swamp` (oil family, liquidFamilyOf 'oil'); the charred slick takes the normal
+  3-round terrain timer back to the map's own ground.

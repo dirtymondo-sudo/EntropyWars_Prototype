@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.16-2026-10-23-tactics-clocks'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.17-2026-10-23-tactics-steady'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -662,8 +662,8 @@
     }
 
     // ── Press Turn expectation ───────────────────────────────────────────
-    // The turn's FIRST weakness-hit refunds +2 AP (one full free
-    // action), a crit +1; a resisted hit / whiff drains an extra AP. Detected off the
+    // A weakness hit, a status combo hit or a crit refunds +2 AP (one full
+    // free action), once a turn, 1 less per resistance (mondo 2026-10-23); a whiff drains an extra AP. Detected off the
     // type TIER (strong && !weak), matching the engine.
     function _pressTier(unit, tg, spellType) {
         const chart = (typeof TYPE_CHART !== 'undefined') ? TYPE_CHART : null;
@@ -687,31 +687,37 @@
     function pressEV(g, unit, tg, opts) {
         opts = opts || {};
         if (!_aiDiff().press) return 0;
-        // Only the turn's FIRST press refunds — after that it vents to the
-        // entropy gauge (still nice, worth a sliver, not a whole action).
+        // ONE press a turn (battle.js applyPressTurn) — after that it vents to the entropy gauge (still nice, worth a
+        // sliver, not a whole action).
         const alreadyPressed = (unit._pressGainedThisTurn || 0) > 0;
-        /* THE ELEMENT SHARE PRESS (data.js elemPressVerdict): the type decides, the element presses on a neutral type,
-           an immune / absorbed element never does. opts.spell = the spell being weighed (its element). */
-        let tier = _pressTier(unit, tg, opts.spellType || null);
-        if (opts.spell && typeof elemPressVerdict === 'function') {
+        /* THE PRESS SUM (battle.js _pressHitInfo, mondo 2026-10-23): a super effective type, an element weakness, a
+           status combo or a crit is worth +2; each resistance (type, element part) takes 1 off; an immune / absorbed
+           element blocks it. opts.spell = the spell being weighed (its element, its combo). */
+        const tier = _pressTier(unit, tg, opts.spellType || null);
+        let aff = null, combo = false;
+        if (opts.spell) {
             try {
                 const _el = (typeof getSpellElement === 'function') ? getSpellElement(opts.spell) : null;
                 const _ok = _el && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_el)
                     && !(typeof spellElemShare === 'function' && spellElemShare(opts.spell) <= 0);
-                const _aff = (_ok && typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
-                const v = elemPressVerdict(tier, _aff);
-                tier = v === 'weak' ? 1 : v === 'resist' ? -1 : 0;
+                aff = (_ok && typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
+                const _bvs = opts.spell.bonusVsStatus;
+                combo = !!(_bvs && _bvs.status && typeof bonusStatusMatches === 'function' && bonusStatusMatches(tg, _bvs.status));
             } catch (e) {}
         }
+        const block = aff === 'immune' || aff === 'absorb';
+        const resists = (tier < 0 ? 1 : 0) + (aff === 'resist' ? 1 : 0);
+        const hasSrc = tier > 0 || aff === 'weak' || combo;
+        const size = Math.max(0, 2 - resists) / 2;   // share of a full +2 press
         const critP = (opts.canCrit && typeof g.getCritChance === 'function')
             ? (g.getCritChance(unit) || 0) : 0;
         const landP = opts.landP != null ? opts.landP : 1;
         const refund = Math.max(tuneW(g, 'pressActionValue'), (wght(g, 'pressRefundValue_v1', 113) || 0) * 1.5);
-        // a crit refunds +1 AP, half a weakness's +2 (mondo 2026-10-21) — its chance counts half
-        const pressP = Math.min(1, landP * (tier > 0 ? 1 : critP * 0.5));
+        // a crit refunds +2 AP like a weakness (mondo 2026-10-23) — its chance counts in full
+        const pressP = block ? 0 : Math.min(1, landP * (hasSrc ? 1 : critP));
         let v = 0;
-        if (pressP > 0) v += pressP * (alreadyPressed ? refund * 0.15 : refund);
-        if (tier < 0) v -= refund * 0.55;          // resist drains an extra AP
+        if (pressP > 0 && size > 0) v += pressP * size * (alreadyPressed ? refund * 0.15 : refund);
+        if (tier < 0 && (!hasSrc || block)) v -= refund * 0.55 * (block ? 1 : (1 - critP));   // resist with nothing pressing drains an extra AP
         if (landP < 1) v -= (1 - landP) * refund * 0.4;   // whiff drains too
         return v;
     }
@@ -2254,8 +2260,12 @@
         const enemies = st.units.filter(u => u.player === q && !u.dead && !u._dying);
         const carriers = enemies.filter(e => (e.hourglasses || 0) > 0).map(e => ({ e, pos: _knownPos(g, p, e) })).filter(c => c.pos)
             .sort((a, b) => (b.e.hourglasses || 0) - (a.e.hourglasses || 0));
+        // an enemy seen this round or last close to our Cube (3 squares, 2 on a board 8-11 wide; older sightings
+        // keep the chase going, not the alarm)
+        const cubeR = Math.max(2, Math.min(3, Math.floor(Math.min(g.bw(), g.bh()) / 4)));
         const siegers = hasOwnCube ? enemies.map(e => ({ e, pos: _knownPos(g, p, e) }))
-            .filter(c => c.pos && Math.abs(c.pos.x - ownTw.x) + Math.abs(c.pos.y - ownTw.y) <= 4) : [];
+            .filter(c => c.pos && (c.pos.round == null || (st.round || 0) - c.pos.round <= 1)
+                && Math.abs(c.pos.x - ownTw.x) + Math.abs(c.pos.y - ownTw.y) <= cubeR) : [];
         const theirHeld = hasKeys ? (st.hourglasses || []).filter(h => h.carriedBy != null
             && st.units.find(u => u.id === h.carriedBy)?.player === q).length : 0;
         const keyThreat = hasKeys && carriers.length && their && our && their.keys <= our.best + 2;
@@ -2272,7 +2282,7 @@
                 want.anchor = Math.max(want.anchor, 1); why.anchor = why.anchor || ('only ' + n + ' of us standing');
             }
             if (keyThreat) { want.intercept = theirHeld >= need - 1 ? 2 : 1; why.intercept = 'their Keys win is ' + R(their.keys) + ' rounds away'; }
-            if (siegers.length) { want.intercept = Math.max(want.intercept, 1); why.intercept = why.intercept || 'an enemy is on our Cube'; }
+            if (siegers.length) { want.intercept = Math.max(want.intercept, 1); why.intercept = why.intercept || 'an enemy is near our Cube'; }
             if (hasCube) {
                 if (our.bestKind === 'cube') { want.siege = Math.max(1, Math.ceil(n / 2)); why.siege = 'the Cube is our nearest win (' + R(our.cube) + ' rounds)'; }
                 else if (our.cube <= our.best * 1.5 + 1) { want.siege = 1; why.siege = 'Cube ' + R(our.cube) + ' rounds, ' + KIND[our.bestKind] + ' ' + R(our.best); }
@@ -2299,12 +2309,15 @@
         }
         let budget = Math.max(0, free.size - (n >= 3 ? 1 : 0));   // keep a fighter when there are three or more
         const ctx = { ownTw, enTw, threats, sm };
+        // last plan's holder keeps its job unless another unit fits it clearly better (no swapping every round)
+        const prevJob = id => { const j = _tacticJobs.get(id); return j && !j.forced ? j.job : null; };
         for (const job of ['anchor', 'intercept', 'siege', 'search', 'heal']) {
             for (let k = 0; k < want[job] && budget > 0; k++) {
                 let best = null, bestF = -Infinity;
                 for (const u of team) {
                     if (!free.has(u.id)) continue;
-                    const f = _tacticFitness(g, u, job, ctx);
+                    let f = _tacticFitness(g, u, job, ctx);
+                    if (f > -1e8 && prevJob(u.id) === job) f += 60;
                     if (f > bestF) { bestF = f; best = u; }
                 }
                 if (!best || bestF <= -1e8) break;

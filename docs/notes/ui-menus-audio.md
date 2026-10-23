@@ -1925,3 +1925,10 @@ damage in red, but it wont show that coming from the outside".
 - **Clean back out**: ui.js `clearSpellAimPreviews` (footprint, reach wash, forecast badges, strike arrows, move-then-cast route/ghost, quick-menu plan) runs from `_dropHeldSpellPick` and every handleBackAction branch; `_ewSpellAimHover(null)` takes a row's paint down when nothing is picked. The AP icons' ENDS TURN words (mondo 10-18) follow the row under the cursor and were left as they are.
 - **Log hides while aiming**: three-renderer `_playerAiming` → `body.ew-aiming` (any actionMode, or a target-list view, on the local player's turn); styles-hud.css hides `.ew-clog.auto-board` under it like `ew-board-busy`.
 - Text: Nexus celestial reset says "resets … to neutral (4/8). Anyone still standing in it starts capturing again"; storm line "moves to D6, closing in on X"; zodiac surge capitalises the sign; bane super-effective line is plain text (no bane-sprite markup in stored log); a dead root row (ABILITIES "No target") says why in the combat text box when clicked.
+
+### CHANNEL greys out off the Nexus (2026-10-23)
+The 10-21 playtest note "CHANNEL lit with 1 AP off the Nexus" was taken by PR #400, which only made the row
+fire on the menu's unit. Real cause: off every zone `getNexusAtUnit` is null, so the pusher's `available`
+was `null`, and the tool-row renderer lights anything that isn't `=== false`. hud.js now builds `_chOk` as a
+strict boolean; the row reads CHANNEL · NOT ON A NEXUS greyed. Pushers that can be unavailable must pass a
+real `false`.

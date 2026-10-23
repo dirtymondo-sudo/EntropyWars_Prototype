@@ -2895,6 +2895,18 @@ function _hrlgBadgeEl(bd, k) {
     ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
     : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
 }
+/* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): a basic attack's odds to
+   land on `target` in whole percent — battle.js getAttackHitChance, the same rolls the swing makes. `from` = the tile a
+   MOVE→ATK swing leaves from. null when it can't be read. */
+/* THE +1 LOOK (mondo 2026-10-23): a row's green ! from a forecastPressOn answer — true (+2, the solid !), 'half' (+1, a
+   resistance took 1 off: the hollow !) or false */
+function _hrlgPressMark(r) {
+  return (r && r.press) ? (r.ap === 1 ? 'half' : true) : false;
+}
+function _hrlgHitPct(attacker, target, from) {
+  if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
+  try { return Math.round(getAttackHitChance(attacker, target, from || null) * 100); } catch (e) { return null; }
+}
 function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
@@ -2905,6 +2917,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   const put = (part, el, first) => { if (first) right.unshift(el); else right.push(el); (P[part] = P[part] || []).push(el); };
   if (b.check && !confirmBtn) put('x0', h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) put('power', h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
+  // THE HIT CHANCE (mondo 2026-10-23): the attack's accuracy rides beside its damage (_hrlgHitPct)
+  if (!dead && b.acc) put('power', h('span', { key: 'ac', className: 'hrlg-acc', title: b.accTitle || 'Chance to hit' }, b.acc));
   if (!dead && b.mp) put('mp', h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));   // plain blue text (the pill is gone — 2026-09-21)
   // Mystery Dungeon lockstep: AP is gone from the player's vocabulary — no
   // cost pips on any blade (one beat = one action, whatever it "costs").
@@ -2948,7 +2962,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   // Green !-circle: this action is SUPER EFFECTIVE against its target. Leads
   // the right-hand chips so it reads first on quick-menu and target rows.
   if (b.superEff) put('press', h('span', {
-    key: 'se', className: 'hrlg-supereff', title: 'Super effective against this target!',
+    key: 'se', className: 'hrlg-supereff' + (b.superEff === 'half' ? ' half' : ''),
+    title: b.superEff === 'half' ? '+1 AP back: it presses, but a resistance takes 1 off' : 'Super effective against this target! +2 AP back',
   }, '!'), true);
   // Red !-circle: the target is IMMUNE to (or ABSORBS) this action's element — the warning twin of the green one.
   if (b.immWarn) put('press', h('span', {
@@ -5087,7 +5102,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       }
       /* THE GREEN ! IS THE PRESS (mondo 2026-10-18): only when the real refund would pay (battle.js forecastPressOn —
          type first, the element on a neutral type only, absorb / immune never, the whole blast worst case). */
-      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, tUnit, spell || null).press : false;
+      superEff = (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(unit, tUnit, spell || null)) : false;
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -5140,6 +5155,9 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
+      // THE HIT CHANCE: an attack row on an enemy says its odds to land
+      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit) && !t._approach)
+        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit)) : null,
       portrait: portrait,
       // THE MENU CAMERA: the cursor landing on this row frames caster + target
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
@@ -5396,7 +5414,7 @@ function _hrlgComboBlades(unit, st) {
       const _eff = getTypeDamageMultiplier(unit, t.u, _cType) / _stab;
       if (_eff < 0.999) typeAdv = '▼';
       // the green ! is the PRESS doComboAttack would pay (the combo's type, then its element on a neutral type)
-      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, t.u, null, { combo, partner }).press : false;
+      superEff = (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(unit, t.u, null, { combo, partner })) : false;
     }
     // Damage forecast: the projected combo damage blinks white on the row's
     // HP bar + reads as the ≈−N chip — the exact same treatment every
@@ -5568,11 +5586,25 @@ function ActionMenu({ st, hidden }) {
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
   const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit, { combatOnly: true }));
+  /* THE HIT CHANCE on the Attack verb: the odds on every enemy it can swing at from here (one number, or lowest–highest) */
+  let atkAcc = null;
+  if (atkNow && typeof _getAttackValidTargets === 'function') {
+    try {
+      const pcts = _getAttackValidTargets(unit)
+        .filter(t => t.unit && !t.unit.dead && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, t.unit)))
+        .map(t => _hrlgHitPct(unit, t.unit)).filter(v => v != null);
+      if (pcts.length) {
+        const lo = Math.min(...pcts), hi = Math.max(...pcts);
+        atkAcc = (lo === hi ? hi : lo + '–' + hi) + '%';
+      }
+    } catch (e) { atkAcc = null; }
+  }
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
     available: atkReach,
     note: !atkNow && atkReach ? 'MOVE→ATK' : null,
     sub: atkReach ? null : 'No target',
+    acc: atkAcc, accTitle: 'Chance to hit the enemies in reach',
   };
 
   // anyCastableSpellNow (battle.js) is the SAME probe chooseActionMenu gates
@@ -5812,7 +5844,9 @@ function ActionMenu({ st, hidden }) {
     const _chCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
     const _chThr = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
-    const _chOk = _capturable && (unit.ap || 0) >= _chCost;
+    /* a strict boolean: off a zone _nex is null, and the row reads `available !== false` as lit
+       (playtest 2026-10-21: CHANNEL lit with "1 AP" off the Nexus, then "Must be standing in a Nexus zone") */
+    const _chOk = !!_capturable && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
     /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
     const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
@@ -5824,7 +5858,7 @@ function ActionMenu({ st, hidden }) {
          : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
-      // the unit this menu is drawn for — the row's grey-out was judged on it (playtest 2026-10-21: lit, then "Must be standing in a Nexus zone")
+      // the unit this menu is drawn for — the row's grey-out was judged on it
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
     });
   }
@@ -6689,7 +6723,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       moveTile: canAttack ? null : atkMoveTile,
       preview: canAttack ? atkPreview : moveAtkPreview,
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
-      press: (typeof window._pressOf === 'function') ? !!window._pressOf(actingUnit, targetUnit, null).press : false,
+      press: (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, null)) : false,
+      acc: _hrlgHitPct(actingUnit, targetUnit, canAttack ? null : _mtCastTile(atkMoveTile)),
       available: true,
     });
     // (No "Attack ×N" rows anymore: an attack ENDS the turn, so a second
@@ -7147,10 +7182,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
         press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
-          ? !!window._pressOf(actingUnit, targetUnit, sp, {
+          ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
-            }).press : false,
+            })) : false,
         available: true,
         spell: sp,
       });
@@ -7218,7 +7253,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (_cbBest && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, _cbBest.combo.spellType || null) : '',
         press: (_cbBest && typeof window._pressOf === 'function')
-          ? !!window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner }).press : false,
+          ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner })) : false,
         badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
         _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
         // THE PARTNER ROW: the quick combo row names the ally it is made with
@@ -8464,10 +8499,11 @@ function _hrlgEnemyBlades(actingUnit, st) {
       // the attack + combo rows lay out like the spell rows (THE BUTTON ROWS)
       rows: !!(look || a.id === 'attack' || a.id === 'combo'),
       power: power,
+      acc: (a.available && a.acc != null) ? a.acc + '%' : null,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
-      superEff: (a.press != null) ? !!a.press : (typeAdv === '▲' && !_eaImm),
+      superEff: (a.press != null) ? (a.press || false) : (typeAdv === '▲' && !_eaImm),
       immWarn: _eaImm,
       meta: typeAdv === '▼' ? { text: '▼', color: EW.bad, press: true, title: 'Weak against this target' } : null,
       note: isMove
@@ -11561,6 +11597,12 @@ function _hudHideCss() {
       font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: calc(12px * var(--ew-se-menu, 1)); line-height: 1;
       box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 8px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
     }
+    /* THE +1 LOOK: a press with a resistance on it (+1 AP) — the same ! hollow: dark disc, green ring and mark */
+    .hrlg-supereff.half {
+      background: rgba(6,19,10,0.88); color: var(--ew-se-fill, #2ecc71);
+      border: calc(var(--ew-se-lw, 2px) * 0.6 + 1px) solid var(--ew-se-fill, #2ecc71);
+      box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 5px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
+    }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     /* AP cost diamonds — always gold, matching the big AP row */
@@ -11573,6 +11615,7 @@ function _hudHideCss() {
     }
     /* right-side detail chips shared by every row */
     .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    .hrlg-acc  { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; color: #e8e4d0; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-chip {
       flex: none; font-size: 9px; letter-spacing: 0.08em; color: #8fd0e8;
       border: 1px solid rgba(79,216,255,0.45); background: #10141d;
@@ -15325,9 +15368,9 @@ function zoneForm(X, pre, title, note, both) {
 }
 /* the green ! (Arrows + tiles > Super effective !): a specimen of each place it shows, in the look now */
 function seForm(X) {
-  const bang = (px, big) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big) : '!';
+  const bang = (px, big, half) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big, half) : '!';
   const spec = `<div class="uim-se-spec"><span class="uim-se-unit">${bang(0, true)}<i></i></span>`
-    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span></div>`;
+    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span><span class="uim-se-row">+1 AP <span class="hrlg-supereff half">!</span></span></div>`;
   let h = `<div class="uim-h">Super effective !</div>` + spec;
   h += sec('ehover', 'Over the enemies', xCheck('While a spell is hovered', 'eHover', X.eHover)
     + xp(fRange('Size', 'eBig', 12, 64, 1, +X.eBig) + fRange('Height above the head', 'eLift', -40, 80, 1, +X.eLift))
