@@ -2290,3 +2290,19 @@ and create a character should be accessed through door agent as well instead of 
   tile its kind can't cast into, is refused with the solo click's line (was armed, then the host said out of range).
 - `_forecastConduction`: the damage kind's forecast adds the lightning-water reaction (`_reactLightningWater` math,
   allies included) with a "⚡ WATER CONDUCTS" badge. Checked: forecast 476 / 220 = the cast.
+
+## ANTI-GRAVITY: big bodies move in Low Gravity (2026-10-23)
+mondo: "i think there's like an antigravity zone spell ... that should make it to where usually immovable enemies (the big
+ones) are able to be displaced like any other enemy. see if there are maybe a couple other spells that could be applied to,
+or maybe its a status effect already".
+- The spell is Low Gravity (`sharedLowGravity`, a 3×3 `gravityField: 'weak'` zone, 3 rounds; martian / grey / annunaki
+  pools). No status made a body weightless before; no new status was added.
+- battle.js `isUnitWeightless(unit, spell)` / `getUnitDisplaceWeightClass(unit, spell)`: a body standing in a weak gravity
+  field, or moved by a spell row flagged `weightless: true`, counts as MEDIUM for displacement (heavy loses the -1, colossal
+  is no longer 0). `getUnitPushDistance(unit, dist, kind, spell)` reads it, so every push / pull / fling / bomb knock /
+  bowling pin / storm fling / gust lane / rising-ground shove and every forecast agree. Fall damage, crash-through power and
+  the codex class keep the real weight. Anchoring passives (Windborne, Mountainborn) and Clash still hold.
+- `weightless: true` rows: Telekinetic Slam (pull) and Black Hole (aoePull). Lift-and-throw (skyThrow) already grabbed any
+  weight, so nothing changed there.
+- Not done (flagged): Levitating (Fairy Dust etc.) does NOT make a body weightless, since it is only ever an ally buff and it
+  would have made your own big units easier for the enemy to shove. Gravity Well (tier 1) stays weight-bound.

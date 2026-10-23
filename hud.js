@@ -7598,7 +7598,7 @@ function _predictTargetShove(spell, target, castX, castY) {
   // scaling, crash-through, wall rebounds, bowling pins) so the ghost
   // hologram sits on the tile the body will TRULY land on.
   if (typeof resolveForcedSlide === 'function' && typeof getUnitPushDistance === 'function') {
-    const sim = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, dist), {
+    const sim = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, dist, null, spell), {   // spell: its `weightless` flag (Telekinetic Slam)
       simulate: true,
       stopBefore: isPull ? { x: castX, y: castY } : null
     });
