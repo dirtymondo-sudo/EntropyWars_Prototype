@@ -9319,6 +9319,10 @@
             /* THE SPELL AUDIT Batch D (Hush): a payload with `ifTargetHas` lands only on a unit already wearing that status
                (silence the Discorded) — a quiet skip, no "resists" line. */
             if (payload.ifTargetHas && !bonusStatusMatches(target, payload.ifTargetHas)) return false;
+            /* 🌊 Drowning needs deep water (2026-10-23, mondo): a spell's Drowning (Long Neck) lands only on a unit that is
+               in deep water when it arrives (after the pull) — on dry ground there is nothing to drown in. map.js
+               unitCanDrownHere. */
+            if (payload.id === 'drowning' && typeof unitCanDrownHere === 'function' && !unitCanDrownHere(target)) return false;
             // A flag carrier can't cloak — the flag stays visible no matter what.
             if (payload.id === 'invisible' && state.flags &&
                 [1, 2].some(p => state.flags[p] && state.flags[p].carriedBy === target.id)) {

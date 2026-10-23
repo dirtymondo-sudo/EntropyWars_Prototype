@@ -13669,6 +13669,17 @@
             return !!unit && (unit?.terrainPreference === 'deep_water' || unitHasSnorkel(unit) || (typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'swim')) /* passiveBruteForce (was the Raider job; the jobs removal 2026-09-27) */ || unit?.race === 'siren' || unit?.race === 'reptilian' || unit?.race === 'ghost' || unit?.race === 'atlantean' || unit?.race === 'kraken' || unit?.race === 'loch ness monster');
         }
 
+        /* 🌊 DROWNING NEEDS DEEP WATER (2026-10-23, mondo: "Make it to where drowning can only take place in deep
+           water"): the one test for "can this unit drown where it stands" — on a deep_water tile, grounded, and not a
+           deep-water swimmer. The same tile read and exemptions the drowning tick (STATUS_DEFS.drowning.onRoundEnd)
+           and the deep-water rule use. applyStatusPayload bounces a Drowning status (Long Neck's) that fails it. */
+        function unitCanDrownHere(unit) {
+            if (!unit || unit.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (unitIsDeepWaterAdapted(unit)) return false;
+            return getTerrainAt(unit.x, unit.y) === 'deep_water';
+        }
+
         function unitIsLavaAdapted(unit) {
             if (!unit) return false;
             const r = unit.race;

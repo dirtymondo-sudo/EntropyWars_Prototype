@@ -2318,3 +2318,14 @@ lit), or got no Move towards at all. Now only `_takeoff` tiles are skipped; the 
 stays its own verb. Browser-proved on Pyramids of Giza: same click now lands on G5. Screenshot
 /mnt/project-files/move-towards-ledge/. The unit-target chase (hud.js `_bestTowardStep`) already counted them.
 findSpellApproachTile / _findSelfNovaApproachTile (MOVE→CAST) still skip hop tiles — left as they were.
+
+## DROWNING NEEDS DEEP WATER (2026-10-23, mondo: "loch ness used long neck and it caused drowning on one of my units, but my unit wasnt in deep water ... Make it to where drowning can only take place in deep water")
+Cause: Long Neck (`goLongNeck`, Loch Ness signature) carried `statusEffects: [{ id: 'drowning' }]`, and the pull branch
+applied it wherever the victim landed. The tick already cleared it off dry land at round end, but until then the unit
+wore DRW (-1 MOV, Out of the Loch's bonus). Fix: map.js `unitCanDrownHere(unit)` (deep_water tile, grounded, not
+`unitIsDeepWaterAdapted`) gates every Drowning status in battle.js `applyStatusPayload` (a quiet skip); ai.js
+`_mirrorStatusValue` mirrors it. Long Neck keeps its damage + 2-tile pull; it drowns only a victim that ends up in deep
+water. Audit: Long Neck is the only spell row that applies Drowning; Walk the Plank / Great Flood / Enlil's Deluge drown
+through the deep-water terrain (resolveTileArrival / TERRAIN_RULES.deep_water), which already checked the tile.
+Swimmers (siren, kraken, Loch Ness, snorkel...) no longer take a spell's Drowning in deep water either, matching the
+terrain rule. Browser before/after: /mnt/project-files/drowning/.
