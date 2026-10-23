@@ -40551,10 +40551,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var B = _pzBeamTiles(p), F = _nrvFrame(B.fx, B.fy), ts = F.ts, E = _worldPos(B.ex, B.ey), dx = E.x - F.wp.x, dz = E.z - F.wp.z, L = Math.hypot(dx, dz);
         var yaw = Math.atan2(dx, dz), ms = 220 + B.n * 110, R = ts * 0.34;
         var rec = new THREE.Group(), spinG = new THREE.Group(); rec.add(spinG); rec.rotation.y = yaw; F.g.add(rec);
-        var gold = _pzSolid(0xffd27a, _sigTerrainTex('gold.png', 1, 1)), label = _pzSolid(_PZ.pink), shine = _pzGlow(_PZ.gold, _sigSonicRingTex());
+        var gold = _pzSolid(0xffcf5a, _sigTerrainTex('gold.png', 1, 1)), label = _pzSolid(_PZ.pink), groove = _pzSolid(0x8a6420), shine = _pzGlow(_PZ.gold);
         var disc = _pzMesh(new THREE.CylinderGeometry(R, R, ts * 0.04, 32), gold, spinG); disc.rotation.z = Math.PI / 2;
         var lab = _pzMesh(new THREE.CylinderGeometry(R * 0.36, R * 0.36, ts * 0.045, 20), label, spinG); lab.rotation.z = Math.PI / 2;
-        var gl = _pzMesh(new THREE.PlaneGeometry(R * 2.4, R * 2.4), shine, spinG); gl.rotation.y = Math.PI / 2;
+        for (var gi = 0; gi < 4; gi++) { var gr = _pzMesh(new THREE.TorusGeometry(R * (0.55 + (gi % 2) * 0.22), ts * 0.006, 4, 32), groove, spinG, (gi < 2 ? 1 : -1) * ts * 0.021, 0, 0); gr.rotation.y = Math.PI / 2; }
+        var gl = _pzMesh(new THREE.TorusGeometry(R * 1.02, ts * 0.03, 6, 32), shine, spinG); gl.rotation.y = Math.PI / 2;
         var bars = [];
         B.tiles.forEach(function (t) {
             var w = _worldPos(t.x, t.y), step = Math.max(Math.abs(t.x - B.fx), Math.abs(t.y - B.fy));
@@ -40568,7 +40569,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, ms + 700, function (el) {
             var t = _sigClamp01(el / ms), vis = _pzEnv(el, 0, 80, ms + 150, ms + 400);
             rec.position.set(dx * t, R + (E.y - F.wp.y) * t, dz * t); spinG.rotation.x = (L * t) / R;
-            gold.opacity = label.opacity = vis; shine.opacity = 0.5 * vis;
+            gold.opacity = label.opacity = groove.opacity = vis; shine.opacity = 0.6 * vis;
             for (var i = 0; i < bars.length; i++) {
                 var b = bars[i], k = _pzEnv(el, b.at - 40, b.at + 40, b.at + 360, b.at + 640), hgt = ts * (0.15 + 0.55 * Math.abs(Math.sin(el * 0.025 + b.ph))) * k;
                 b.m.scale.y = Math.max(0.001, hgt); b.m.position.y = b.base + hgt / 2; b.m.material.opacity = 0.85 * k;
@@ -40689,12 +40690,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tip = new THREE.Group(); pivot.add(tip);
         var bark = _pzSolid(0x8a6440, _sigTerrainTex('wood.png', 1, 4)), leaves = _pzSolid(0x4a9a3a, _sigTerrainTex('leaves.png', 2, 2));
         _pzMesh(new THREE.CylinderGeometry(ts * 0.12, ts * 0.2, H, 10), bark, tip, 0, H / 2, 0);
-        for (var i = 0; i < 4; i++) _pzMesh(new THREE.SphereGeometry(ts * rn(0.38, 0.5), 10, 8), leaves, tip, rn(-0.2, 0.2) * ts, H + rn(-0.05, 0.25) * ts, rn(-0.2, 0.2) * ts);
+        for (var i = 0; i < 4; i++) _pzMesh(new THREE.SphereGeometry(ts * rn(0.26, 0.34), 10, 8), leaves, tip, rn(-0.15, 0.15) * ts, H + rn(-0.05, 0.2) * ts, rn(-0.15, 0.15) * ts);
         var landed = false;
         return _sigRunOwned(F.g, rise + fall + 900, function (el) {
             var up = _sigEaseOutBack(_sigClamp01(el / rise)), f = _sigEaseInCubic(_sigClamp01((el - rise) / fall));
             tip.scale.set(1, Math.max(0.01, up), 1); tip.rotation.x = f * Math.PI / 2;
-            bark.opacity = leaves.opacity = _pzEnv(el, 0, 60, rise + fall + 400, rise + fall + 900);
+            bark.opacity = _pzEnv(el, 0, 60, rise + fall + 400, rise + fall + 900); leaves.opacity = _pzEnv(el, 0, 60, rise + fall + 60, rise + fall + 360);
             if (!landed && el >= rise + fall) { landed = true; _pzLaneWave(B, 'pzTimber_tile', 0, 25); _sigShake('hard'); }
         });
     };
@@ -40713,11 +40714,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ring = _pzMesh(new THREE.RingGeometry(ts * 0.4, ts * 0.45, 40), _pzGlow(_PZ.gold), F.g, 0, ts * 0.03, 0); ring.rotation.x = -Math.PI / 2;
         var ticks = [];
         for (var i = 0; i < 4; i++) { var t = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.22), _pzGlow(_PZ.gold), F.g, 0, ts * 0.03, 0); t.rotation.set(-Math.PI / 2, 0, i * Math.PI / 2); ticks.push({ m: t, a: i * Math.PI / 2 }); }
-        var px = ln.ux * ts * 0.15, pz = ln.uz * ts * 0.15, yaw = Math.atan2(ln.ux, ln.uz);
+        /* it hangs at the outlaw's SIDE as the viewer sees it (the lens's right, else across the caster's line), never over them */
+        var sx = -ln.uz, sz = ln.ux, cam = _pzCam();
+        if (cam) { var rv = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion); var rl = Math.hypot(rv.x, rv.z); if (rl > 0.01) { sx = rv.x / rl; sz = rv.z / rl; } }
+        var px = sx * ts * 0.7, pz = sz * ts * 0.7;
         return _sigRunOwned(F.g, 1800, function (el) {
             var fall = _sigClamp01(el / 700), vis = _pzEnv(el, 0, 80, 1400, 1800);
-            poster.position.set(px + Math.sin(el * 0.012) * ts * 0.15 * (1 - fall), ts * (2.6 - 0.95 * _sigEaseOutCubic(fall)), pz);
-            poster.rotation.set(0, yaw, el < 700 ? Math.sin(el * 0.015) * 0.5 * (1 - fall) : 0); paper.opacity = vis;
+            poster.position.set(px, ts * (2.4 - 1.05 * _sigEaseOutCubic(fall)), pz);
+            _pzFace(poster); poster.rotateZ(el < 700 ? Math.sin(el * 0.015) * 0.5 * (1 - fall) : 0); paper.opacity = vis;
             var c = _sigEaseOutCubic(_sigClamp01(el / 500)), rot = (1 - c) * 1.5;
             ring.scale.setScalar(2 - c); ring.rotation.z = rot; ring.material.opacity = 0.85 * vis;
             for (var j = 0; j < ticks.length; j++) { var r = ts * 0.5 * (2 - c), a = ticks[j].a + rot; ticks[j].m.position.set(Math.cos(a) * r, ts * 0.03, Math.sin(a) * r); ticks[j].m.rotation.z = -a + Math.PI / 2; ticks[j].m.material.opacity = 0.85 * vis; }
