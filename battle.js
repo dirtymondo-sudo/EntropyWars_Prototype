@@ -21093,6 +21093,7 @@
             try {
                 if (!state || state.phase !== 'battle' || state.winner) return;
                 if (state.devAutoSim) return;
+                if (window._tutActive) return;   // THE TUTORIAL commits nothing, so it pops nothing (a lesson's Inspect had popped Cartographer +100)
                 if (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) return;
                 if (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) return;
                 if (typeof _strengthTestMode !== 'undefined' && _strengthTestMode) return;
