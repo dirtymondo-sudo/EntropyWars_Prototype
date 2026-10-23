@@ -6231,6 +6231,7 @@
 
         /* Phase 5 wave A (2026-09-08): onKillHealPct / onKillRefundAp
            (Jurassic Jaw) — a kill feeds the caster and hands back AP. */
+        let _onKillCastSeq = 0;   // doSpell's cast counter: a kill refund belongs to the cast that was running when it landed
         function _applyOnKillRiders(unit, target, spell) {
             // THE SPELL AUDIT Batch D: a fresh kill is _dying (defeatUnit flips .dead ~800 ms later) — count it as dead
             if (!spell || !target || !(target.dead || target._dying) || !unit || unit.dead) return;
@@ -6243,6 +6244,10 @@
                 const before = unit.ap || 0;
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
+                    /* THE KILL'S AP OUTLIVES THE CAST (Wipeout vs Wipeout playtest 2026-10-23: "Jurassic Jaw: Dinosaur regains
+                       1 AP." and the turn passed at 0 AP): the hit lands before the cast's finishAction, whose spendAllAP (a
+                       damaging cast ends the turn) wiped the refund. finishAction pays it back after the spend, like a press. */
+                    unit._onKillApRefund = { n: unit.ap - before, seq: _onKillCastSeq };
                     unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
                     unit._jumpedThisTurn = false;   // a refund hands the jump back too (applyPressTurn)
                     addLog(`⚡ ${_ctSp(spell.name)}: ${_ctName(unit)} regains ${unit.ap - before} AP.`);
@@ -43007,6 +43012,20 @@
             return true;
         }
         window._boardApproachPick = _boardApproachPick;
+        /* THE CASTER IS NO TARGET (Wipeout vs Wipeout playtest 2026-10-23: with Tail Whip armed, a click on the Mech behind
+           the Dinosaur hit the Dinosaur's own big model and the pick read "TAIL WHIP → Dinosaur"): while the armed verb can
+           never take the acting unit (an attack, an offensive unit-target spell), the renderer's click looks past its model
+           to the body behind it (three-renderer _screenClick). Returns the acting unit's id, else null. */
+        window._ewPickSkipsUnitId = function () {
+            const u = getSelectedUnit();
+            if (!u || u.dead || state.phase !== 'battle') return null;
+            if (state.actionMode === 'attack') return u.id;
+            if (state.actionMode !== 'spell') return null;
+            const sp = (u.spells || []).find(s => s.name === state.selectedTool)
+                || (u._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!sp || isSpellSelfCast(sp) || isSpellTileTargeted(sp) || _kindMeta(sp).directional) return null;
+            return _kindMeta(sp).offensive ? u.id : null;
+        };
         /* THE GUEST PICK (PvP playtest 2026-10-23: the guest saw "CONFIRM — Dark Grass H10" with Catgirl highlighted,
            and pressing it did nothing): an online guest's armed board click never ran the engine's pick — online.js
            armed ITS OWN pick on whatever tile was clicked (an empty square, the enemy beside the one aimed at, one out
@@ -57653,7 +57672,10 @@
                 }
             }
 
-            if (!unitFinished(unit) && !unit.dead) return;
+            /* a body that just fell is done too (Wipeout vs Wipeout playtest 2026-10-23: Nordic died to an opportunity
+               attack on its own move with AP left — .dead flips ~800 ms after the killing blow, so the move's call
+               returned here and nothing called again: the turn sat on the dead unit for good) */
+            if (!unitFinished(unit) && !unit.dead && !unit._dying) return;
             state._repeatQueue = null;
             _stopShotClock();
             state.actionMode = null;
@@ -69506,6 +69528,7 @@
 
         function doSpell(unit, x, y, z) {
             _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
+            const _castSeq = ++_onKillCastSeq;
             /* SIMUL plan phase: queue the cast instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -70211,11 +70234,20 @@
                 // their AP cost and leave the turn alive. A contact placement
                 // (deployable activated instantly on an enemy) is attack-grade:
                 // it ends the turn too.
+                /* a kill refund this cast already paid (_applyOnKillRiders) comes off before the spend and goes back on after */
+                const _okRef = unit._onKillApRefund;
+                const _okAp = (_okRef && _okRef.seq === _castSeq) ? _okRef.n : 0;
+                delete unit._onKillApRefund;
+                if (_okAp) unit.ap = Math.max(0, (unit.ap || 0) - _okAp);
                 if (spellEndsTurn(spell) || _placementStruck) spendAllAP(unit);
                 else if (!_doorFreeAction) spendAP(unit, spellApCost);   // 🚪 Keyholder's free toggle costs no AP
                 state._doorRearCast = null;
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
+                if (_okAp && !unit.dead && !unit._dying) {
+                    unit.ap = Math.min((unit.ap || 0) + _okAp, (typeof UNIT_MAX_AP !== 'undefined' ? UNIT_MAX_AP : 2) + (unit._xpBonusAP || 0));
+                    unit._jumpedThisTurn = false;
+                }
                 /* ── Recoil / HP cost ──────────────────────────────────────
                    selfDamagePct (Blood Ritual, Inner Demon) and recoilPct
                    (Twilight Reckoning, Blood Pact combos) both promise "costs
