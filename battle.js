@@ -39694,6 +39694,7 @@
                 if (unit.player !== state.activePlayer) return null;
                 if (unit.player !== getViewerPlayer()) return null;
                 if (!canUnitAct(unit)) return null;
+                if (unitOnTactic(unit)) return null;   // ♟ its Tactic plays this turn (hud.js TacticWatch says so)
 
                 const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s));
                 const am = state.actionMode;
@@ -39770,6 +39771,7 @@
                 if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
                 if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
                 if (menuView === 'switch') return _promptBarHtml('Select a reserve to switch in.', 'ESC back');
+                if (menuView === 'tactics') return _promptBarHtml('Pick a Tactic: that unit then plays its own turns. MANUAL gives you the orders back.', 'ESC back');
                 return _promptBarHtml('<strong>' + esc(_ctName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
             } catch (err) {
                 return null; // a broken prompt must never take the game down
@@ -46247,8 +46249,11 @@
         }
         window._mdUnitTactic = _mdUnitTactic;
 
-        /* True when the stock AI should play this player-1 unit's turn. */
+        /* True when the stock AI should play this player-1 unit's turn.
+           (Also true for any player's unit on a battle TACTIC — unitOnTactic
+           below — so every AI-routing gate that reads this covers both.) */
         function _mdUnitAuto(u) {
+            if (unitOnTactic(u)) return true;
             if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
             if (state._mdPhase !== 'floor' || !state._mdRun) return false;
             if (!u || u.player !== 1 || u._mdNpc || u.dead) return false;
@@ -46261,6 +46266,121 @@
             const t = _mdUnitTactic(u);
             return t === 'auto' || t === 'guard';
         }
+        /* ── UNIT TACTICS (2026-10-23, mondo: "those jobs - fight, siege, search, intercept, and anchor - to be called
+           tactics in the game and for the player to be able to apply them to their units so they dont have to manually
+           fight for them, like they can be on auto battle. Perhaps add heal to the list as well?"): a player's unit can
+           carry a Tactic (unit.tactic, one of UNIT_TACTIC_IDS; null = MANUAL). A unit on a Tactic plays its own turns
+           through the CPU's own brain (ai.js aiTakeTurn), which reads unit.tactic as that unit's forced job
+           (window.AI_TACTICS / aiTacticFor). The id is plain unit data, so it rides state-sync to the guest; a guest's
+           pick travels to the host as a 'setTactic' game-action (online.js). The CPU never sets one on its own units —
+           its planner keeps their jobs inside ai.js. The HUD's TACTICS menu (hud.js _hrlgTacticBlades) sets it. */
+        const UNIT_TACTIC_IDS = ['fight', 'siege', 'search', 'intercept', 'anchor', 'heal'];
+        const _TACTIC_HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive', 'zoneHeal', 'seedHeal']);
+        const _UNIT_TACTIC_FALLBACK = {
+            fight:     { label: 'Fight',     desc: 'Kill and stagger enemies' },
+            siege:     { label: 'Siege',     desc: 'Hit the enemy Cube' },
+            search:    { label: 'Search',    desc: 'Inspect tiles for Keys' },
+            intercept: { label: 'Intercept', desc: 'Chase Key carriers and Cube siegers' },
+            anchor:    { label: 'Anchor',    desc: 'Stay alive so the team is never wiped' },
+            heal:      { label: 'Heal',      desc: 'Heal and support allies' },
+        };
+        /* label + one-line description: ai.js's AI_TACTICS table when it is loaded, else the fallback above */
+        function unitTacticInfo(id) {
+            const row = Array.isArray(window.AI_TACTICS) ? window.AI_TACTICS.find(r => r && r.id === id) : null;
+            const fb = _UNIT_TACTIC_FALLBACK[id];
+            if (!row && !fb) return null;
+            return { id, label: (row && row.label) || fb.label, desc: (row && row.desc) || (fb && fb.desc) || '' };
+        }
+        function unitOnTactic(u) {
+            if (!u || u.dead || !u.tactic || UNIT_TACTIC_IDS.indexOf(u.tactic) < 0) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            if (state.controllers?.[u.player] === CTRL.AI) return false;   // the CPU's planner owns its own units
+            if (unitIsControlled(u)) return false;                          // a possessed body plays for its captor
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;   // MD keeps its own tactic chips
+            if (window._tutActive) return false;
+            return true;
+        }
+        /* Why a Tactic can't be picked for this unit right now (null = it can): the board has nothing for it to do. */
+        function unitTacticProblem(u, id) {
+            const mpm = typeof getActiveMultiplayerMode === 'function' ? (getActiveMultiplayerMode() || {}) : {};
+            const foeCube = state.towers ? state.towers[enemyOf(u.player)] : null;
+            const hasCube = !!(foeCube && foeCube.hp > 0);
+            const hasKeys = !!mpm.hasHourglasses;
+            if (id === 'siege' && !hasCube) return 'No Cube';
+            if (id === 'search' && !hasKeys) return 'No Keys';
+            if (id === 'intercept' && !hasCube && !hasKeys) return 'No Cube or Keys';
+            if (id === 'heal') {
+                /* the kinds ai.js's Heal job plays (it falls back to Fight play on a turn with nothing to heal) */
+                const _heals = [...(u.spells || []), ...(u._raceAbilities || [])].filter(Boolean)
+                    .some(sp => _TACTIC_HEAL_KINDS.has(sp.kind));
+                const _pots = Object.keys(u.items || {}).some(k => (u.items[k] || 0) > 0
+                    && (typeof window._ewItemLike === 'function' ? window._ewItemLike(k, 'healPotion') : k === 'healPotion'));
+                if (!_heals && !_pots) return 'No heals';
+            }
+            return null;
+        }
+        /* Run fn once the board is idle for this unit's activation (no AI step / action animation in flight). */
+        function _tacticWhenIdle(u, fn) {
+            const gen = _blitzTurnGen;
+            const tryNow = (n) => {
+                if (gen !== _blitzTurnGen || state.winner || state.phase !== 'battle') return;
+                if (state._blitzActiveUnitId !== u.id || u.dead || unitFinished(u)) return;
+                if (state.aiThinking || state._actionExecuting || state._runComputerTurnTimer) {
+                    if (n < 80) window.setTimeout(() => tryNow(n + 1), 250);
+                    return;
+                }
+                fn();
+            };
+            tryNow(0);
+        }
+        function setUnitTactic(unitId, tactic) {
+            const u = state.units.find(x => x.id === unitId && !x.dead);
+            if (!u || state.phase !== 'battle' || state.winner) return false;
+            if (state.controllers?.[u.player] === CTRL.AI) return false;
+            const t = UNIT_TACTIC_IDS.indexOf(tactic) >= 0 ? tactic : null;
+            if (t && unitTacticProblem(u, t)) return false;
+            if ((u.tactic || null) === t) return true;
+            const wasAuto = unitOnTactic(u);
+            u.tactic = t;
+            const nowAuto = unitOnTactic(u);
+            addLog(`♟ ${_ctName(u)} tactic → ${t ? unitTacticInfo(t).label.toUpperCase() : 'MANUAL'}`);
+            if (state._blitzActiveUnitId === u.id && nowAuto !== wasAuto) {
+                if (nowAuto) {
+                    /* the ACTIVE unit put on a Tactic: its turn goes to the AI now */
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state.comboPartner = null;
+                    _tacticWhenIdle(u, () => {
+                        if (!unitOnTactic(u)) return;
+                        _stopShotClock();
+                        maybeTriggerComputerTurn();
+                    });
+                } else {
+                    /* TAKE CONTROL mid-turn: the AI finishes the step it is on, then the rest of the turn is yours */
+                    _tacticWhenIdle(u, () => {
+                        if (unitOnTactic(u)) return;
+                        _startShotClock();
+                        if (state.controllers?.[u.player] === CTRL.LOCAL) selectUnit(u.id, { _auto: true });
+                        else { state.selectedUnitId = u.id; state.focusedUnitId = u.id; }
+                        markDirty('hud', 'selectedUnit');
+                        renderIfDirty();
+                        if (window._broadcastState) window._broadcastState();
+                    });
+                }
+            }
+            markDirty('hud', 'selectedUnit');
+            renderIfDirty();
+            if (window._broadcastState) window._broadcastState();
+            return true;
+        }
+        window.UNIT_TACTIC_IDS = UNIT_TACTIC_IDS;
+        window.unitTacticInfo = unitTacticInfo;
+        window.unitOnTactic = unitOnTactic;
+        window.unitTacticProblem = unitTacticProblem;
+        window.setUnitTactic = setUnitTactic;
+
         function _mdAutoTurnActive() {
             if (!state._blitzActiveUnitId) return false;
             const u = state.units.find(x => x.id === state._blitzActiveUnitId);

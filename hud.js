@@ -4887,6 +4887,73 @@ function _hrlgSwitchBlades(unit, st) {
   return { title: { icon: '🔄', text: 'Switch', count }, blades };
 }
 
+/* ♟ THE TACTICS MENU (battle.js setUnitTactic, mondo 2026-10-23): the root verb TACTICS opens two panels, Persona
+   style — the party (every living unit of this side, the acting one first, each with its Tactic) and, beside it, the
+   Tactic list for the picked one: MANUAL plus the six jobs the CPU plays (ai.js AI_TACTICS). Picking a Tactic for the
+   acting unit hands its turn to the AI at once; picking one for a teammate takes effect on its next turn. Which party
+   row is picked is viewer-local UI (kept here, never on state). */
+let _hrlgTacticPickId = null;
+const _HRLG_TACTIC_ICON = { manual: '🎮', fight: '⚔', siege: '⬢', search: '🗝', intercept: '➹', anchor: '⚓', heal: '♥' };
+function _hrlgTacticLabel(id) {
+  if (!id) return 'Manual';
+  const inf = typeof unitTacticInfo === 'function' ? unitTacticInfo(id) : null;
+  return inf ? inf.label : id;
+}
+function _hrlgTacticParty(unit, st) {
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  const party = (st.units || []).filter(u => u && !u.dead && !u._dying && u.player === unit.player && home(u) === unit.player);
+  party.sort((a, b) => (a.id === unit.id ? -1 : b.id === unit.id ? 1 : 0));
+  return party;
+}
+function _hrlgTacticPartyBlades(unit, st) {
+  const party = _hrlgTacticParty(unit, st);
+  if (!party.some(u => u.id === _hrlgTacticPickId)) _hrlgTacticPickId = unit.id;
+  const blades = party.map(u => {
+    const t = u.tactic || null;
+    return {
+      id: 'tp:' + u.id,
+      label: typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls),
+      available: true,
+      selected: u.id === _hrlgTacticPickId,
+      portrait: _hrlgPortraitData(u, unit),
+      meta: { text: (_HRLG_TACTIC_ICON[t || 'manual'] || '') + ' ' + _hrlgTacticLabel(t).toUpperCase(), color: t ? '#f2c468' : undefined },
+      fire: () => {
+        _hrlgTacticPickId = u.id;
+        if (typeof markDirty === 'function') markDirty('hud');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      },
+    };
+  });
+  return { title: { icon: '♟', text: 'Tactics', count: party.length + '' }, blades };
+}
+function _hrlgTacticBlades(unit, st, forUnit) {
+  const pick = forUnit || (st.units || []).find(u => u.id === _hrlgTacticPickId && !u.dead) || unit;
+  const cur = pick.tactic || null;
+  const ids = [null].concat(typeof UNIT_TACTIC_IDS !== 'undefined' ? UNIT_TACTIC_IDS : []);
+  const blades = ids.map(id => {
+    const inf = id && typeof unitTacticInfo === 'function' ? unitTacticInfo(id) : null;
+    const why = id && typeof unitTacticProblem === 'function' ? unitTacticProblem(pick, id) : null;
+    return {
+      id: 'tac:' + (id || 'manual'),
+      icon: _HRLG_TACTIC_ICON[id || 'manual'],
+      label: _hrlgTacticLabel(id),
+      available: !why,
+      selected: cur === id,
+      subBelow: true,
+      sub: why || (id ? (inf && inf.desc) || '' : 'You give the orders'),
+      meta: cur === id ? { text: '✓', color: '#f2c468' } : null,
+      fire: () => {
+        if (why) return;
+        if (typeof setUnitTactic === 'function') setUnitTactic(pick.id, id);
+        if (typeof markDirty === 'function') markDirty('hud');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      },
+    };
+  });
+  const nm = typeof unitDisplayName === 'function' ? unitDisplayName(pick) : (pick.name || pick.cls);
+  return { title: { icon: _HRLG_TACTIC_ICON[cur || 'manual'], text: nm }, blades };
+}
+
 function _hrlgPingBlades() {
   const pingKeys = typeof PING_TYPES !== 'undefined' ? Object.keys(PING_TYPES) : [];
   const blades = pingKeys.map(pk => {
@@ -5662,6 +5729,19 @@ function ActionMenu({ st, hidden }) {
     ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
     : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
 
+  // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
+  // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
+  if (typeof setUnitTactic === 'function' && !(typeof window._isDungeonMode === 'function' && window._isDungeonMode())
+      && !window._tutActive) {
+    const _onTac = (st.units || []).filter(u => u && !u.dead && u.player === unit.player && u.tactic).length;
+    actions.push({
+      id: 'tactics', label: 'Tactics', icon: '♟', cost: null,
+      available: true,
+      selected: menuView === 'tactics',
+      note: _onTac ? _onTac + ' AUTO' : null,
+    });
+  }
+
   // ⇄ SWITCH — Gauntlet + reserves matches (battle.js _benchOn): swap in a
   // benched reserve. A reserves match caps voluntary switches per round.
   if (typeof _benchOn === 'function' && _benchOn()) {
@@ -5819,6 +5899,7 @@ function ActionMenu({ st, hidden }) {
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
+      case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
       case 'teamEscape': if (typeof window.doTeamEscape === 'function' && typeof getSelectedUnit === 'function') window.doTeamEscape(getSelectedUnit()); break;
     }
@@ -5974,6 +6055,9 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st))); view = 'sub';
   } else if (menuView === 'switch') {
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
+  } else if (menuView === 'tactics') {
+    panels.push(_mkPanel('tacParty', _hrlgTacticPartyBlades(unit, st)));
+    panels.push(_mkPanel('tactics|' + (_hrlgTacticPickId || unit.id), _hrlgTacticBlades(unit, st))); view = 'sub';
   } else if (menuView === 'entropy') {
     panels.push(_mkPanel('entropy', _hrlgEntropyBlades(unit, st), cancelBlade)); view = 'sub';
   } else if (menuView === 'finisherTargets') {
@@ -10098,6 +10182,48 @@ function QuickPeek({ st }) {
       h('div', { className: 'hrlg-panel quick on' }, card)));
 }
 
+/* ♟ THE TACTIC WATCH: while one of YOUR units plays its turn on a Tactic (battle.js unitOnTactic), the command menu's
+   spot shows a small window instead — whose turn it is, its Tactic and why (ai.js aiTacticReason), and the Tactic list
+   so you can switch it, or pick MANUAL to take control (the AI finishes the step it is on, then the turn is yours).
+   Hidden through every action's animation, like the command menu. */
+function TacticWatch({ st, hidden }) {
+  if (hidden || !st || st.phase !== 'battle' || st.winner) return null;
+  const u = (st.units || []).find(x => x.id === st._blitzActiveUnitId && !x.dead && !x._dying);
+  if (!u || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return null;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
+  if (u.player !== viewer || home !== viewer) return null;
+  if (st.autoPlayers && st.autoPlayers[u.player]) return null;
+  const built = _hrlgTacticBlades(u, st, u);
+  let why = null;
+  try { why = typeof window.aiTacticReason === 'function' ? window.aiTacticReason(u) : null; } catch (e) { why = null; }
+  const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
+  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  return h('div', { className: 'hrlg-rig hrlg-tacwatch', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
+    h('div', { className: 'hrlg-side hrlg-ghost' }),
+    h('div', { className: 'hrlg-panels' },
+      h('div', { className: 'hrlg-panel on' },
+        h('div', { className: 'hrlg-thead' },
+          h('div', { className: 'hrlg-view-tab' },
+            h('span', { className: 'hrlg-view-tab-icon' }, '♟'),
+            h('span', { className: 'hrlg-view-tab-text' }, name + ' · ' + _hrlgTacticLabel(u.tactic).toUpperCase()),
+          ),
+        ),
+        why ? h('div', { className: 'hrlg-mode' }, String(why)) : null,
+        h('div', { className: 'hrlg-list' },
+          built.blades.map((b, i) => h(HorologeBlade, {
+            key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
+            onFire: (b2) => {
+              if (!b2.available) return;
+              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+              b2.fire();
+            },
+            onHover: () => {},
+          })),
+        ),
+      )));
+}
+
 function ReactHUD() {
   const [st, tick] = useGameState();
   const menusHidden = useMenusHidden(st);
@@ -10128,6 +10254,9 @@ function ReactHUD() {
       h(ActionMenu, { st, hidden: menusHidden }),
     ),
     h(QuickPeek, { st }),
+    h('div', { style: { pointerEvents: 'auto' }},
+      h(TacticWatch, { st, hidden: menusHidden }),
+    ),
     h('div', { style: { pointerEvents: 'auto' }},
       h(TurnColumn, { st }),
     ),
@@ -11244,6 +11373,9 @@ function _hudHideCss() {
     .hrlg-peek .hrlg-panels, .hrlg-peek .hrlg-panel { pointer-events: none !important; }
     .hrlg-peek .hrlg-panel.quick > .hrlg-thead.qp { pointer-events: auto; }
     body.ew-spell-shot .hrlg-peek { opacity: 0; }
+    /* ♟ the Tactic watch (TacticWatch): the same stand-in Horologe, its one panel live */
+    .hrlg-tacwatch .hrlg-ghost { visibility: hidden !important; pointer-events: none !important; }
+    body.ew-spell-shot .hrlg-tacwatch { opacity: 0; pointer-events: none; }
     /* the card itself draws nothing: its panel is its own layer (.hrlg-qp-bg, classed .hrlg-thead so the header blade's
        look and every theme skin land on it), which the UI Maker can size, move, restyle or take away without the parts */
     :root:root:not(#qp-c):not(#qp-c):not(#qp-c):not(#qp-c) .hrlg-panel.quick > .hrlg-thead.qp { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; }
