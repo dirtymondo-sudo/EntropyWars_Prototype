@@ -1734,3 +1734,38 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   backend and (12) real WebGPU; sheets in /mnt/project-files/signature-vfx-af/. The sandbox draws ~1 frame a second, so
   a `_sigRun` piece (opacity ramps from 0) gets one or two ticks before it ends: shoot with the clock slowed (a probe-only
   copy dividing `performance.now() - t0` by 10-20) and frame it with `playOffensiveActionCamera(caster, target)`.
+
+## THE P-Z SIGNATURE VFX — each P-Z race's own spells get their own look (2026-10-23, mondo: "are we good to go ahead and start on the vfx pass?" after PR #429's families)
+- three-vfx-effects.js, block after END THE CAPSTONES ("THE P-Z SIGNATURE VFX"). Every `pz*` row plus Heat Vision
+  (raceLaserBeam, the superhero's since PR #429) has its own EFFECTS recipe and a 3D signature in `_PZ_SIGS`.
+  Visuals only: no data.js row, rule, range, status or timing changed.
+- THE HOOK, in fire() right after the def lookup: a def with `pzSig` runs `_PZ_SIGS[pzSig](params, spellId, intent,
+  def)`; `pzOwn: true` returns after it (the signature owns the bolt / line travel: the coal, the vial, the pencil, the
+  darts, the record, the trunk, the tendrils, the eye beams). `pzOwnTether` on a pull def: battle.js asks
+  `ThreeVFXEffects.ownsPullTether(id)` and skips the rope / vine tether (the tongue, the field lines, the voice draw the
+  line and follow the dragged body via ThreeRenderer.getUnitWorldPos). Quickdraw = geometry key `pzQuickdraw:dash`.
+  Justice Is Served keeps the bullet bolt + revolver rig (`_SIG_GUN_FOR`) and adds the gavel (not owned).
+- Per race: seraphim (live coal + tongs, six-winged seraph over three fire pillars), succubus (rose drain tube, the
+  heart that breaks), skeleton (vertebra spines, the clock that strikes twelve + waltzing skulls), shadow entity (the
+  hat man behind the victim, shadow people in the corner), reptilian (forked tongue, the mask peels off), skinwalker
+  (whisper line + hex sigil, antlered skull + the peeled-off outline), siren (drowned ship's wheel, breaker on a reef),
+  robot (horseshoe magnet + field lines, hydraulic hazard plates), swordfighter (hairline cut that opens red, 26 cuts
+  in the air), shaman (hide drum + smoke spiral, robed elders that sweep in), telepath (TV-snow head, rings + vein
+  sphere that bursts), priest (vial + gold cross, sign of the cross + light shaft + feathers), police (searchlights,
+  light bar, laser dots, chalk ring; slam + cuffs + crack), popstar (ring of press cameras, gold record + equalizer),
+  sharkman (jaws in a blood cloud, fin circling then two bites), sidekick (comic "!" burst + floor chevrons, comic
+  hit bursts), tree person (roots into the soil, a whole tree falling down the lane), sheriff (WANTED poster nailed in
+  the air + gold crosshair, gavel), starfish (tube feet, a five-armed starfish that curls and squeezes), professor
+  (paper with a red X torn in two, a spear-size pencil + flying exam sheets), wizard (counter-sigil shatters the rune
+  disc, curving arcane darts), superhero (a small sun that flares, twin heat-vision beams + scorch), yeti (blizzard
+  rings + ice crystals, snow drift burst + icicles), santa (snow globe dome that frosts and breaks, chimney that
+  blows apart in soot), symbiote (three writhing tendrils, goo strands + white eyes), valkraye (golden chain ring,
+  Bifröst road + sweeping wings), watcher (the eye that opens + gold rays to seen enemies, the eye + light lance).
+- Fog / RULE #2: everything rides fire() / fireGeometry() (relayed). Caster-side props (tongs, magnet, drum, mask,
+  slit eyes, the Watcher's eye, the hero's sun, the sidekick's burst, the roots, the yeti's rings) draw only when the
+  viewer sees the caster's tile (`_pzSeen` → window._isTileVisibleToViewer); the Watcher's rays only reach enemies the
+  viewer can see. Basic materials only (MeshBasic / Sprite / LineBasic) so WebGPU draws the same.
+- Big multi-hit signatures run once per cast (`_pzOnce`); per-hit pieces count hits (`_pzCount`).
+- Screenshots: the cloud browser renders about 1 frame a second, so real-time shots miss every effect; the shots were
+  taken on Playwright's fake clock (page.clock.install + fastForward per frame). Before/after on WebGL and WebGPU in
+  /mnt/project-files/pz-vfx/.

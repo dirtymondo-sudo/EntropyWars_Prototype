@@ -72006,11 +72006,14 @@
                 let _pullTether = null;
                 window.setTimeout(() => {
                     if (state.phase !== 'battle') return;
-                    _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell), lasso: _pullIsLasso });
+                    // a P-Z signature pull draws its own line (the tongue, the field lines, the voice) — no rope under it
+                    const _pullOwnLine = typeof window !== 'undefined' && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.ownsPullTether === 'function'
+                        && window.ThreeVFXEffects.ownsPullTether(spell.id) && !_skipVisuals();
+                    if (!_pullOwnLine) _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell), lasso: _pullIsLasso });
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
                         if (!_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y, fromX: unit.x, fromY: unit.y });
+                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y, fromX: unit.x, fromY: unit.y, uid: target && target.id });
                         }
                     }
                 }, _pullCamHold);

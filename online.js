@@ -2870,7 +2870,9 @@
                          /* action tile glow (2026-09-02) — key / colour /
                             per-tile stagger ride the staging beats so the
                             guest lights the same ground on the same clock */
-                         'glowKey', 'glowHostile', 'glowStagger', 'mark'].forEach(function(k) {
+                         'glowKey', 'glowHostile', 'glowStagger', 'mark',
+                         /* the pulled body's id (a P-Z pull's own line follows it) */
+                         'uid'].forEach(function(k) {
                             if (params[k] !== undefined) safeParams[k] = params[k];
                         });
                         if (params.hitTiles) {
