@@ -1550,6 +1550,7 @@
     function renderBoard() {
 
       const _threeActive = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive());
+      if (_threeActive && typeof syncSearchMap === 'function') syncSearchMap();   // THE SEARCH MAP follows the mode
 
       let _bfp = 0x811c9dc5 | 0;
       const _bfpI = (v) => { v = v | 0; _bfp = Math.imul(_bfp ^ (v & 0xffff), 16777619); _bfp = Math.imul(_bfp ^ (v >>> 16), 16777619); };

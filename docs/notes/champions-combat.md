@@ -2355,3 +2355,24 @@ be 2 tiles apart."
   prior; `searchCenterPrior_v1` stays in the registry but has no effect), and the expected find of one Inspect is one tile.
 - Tutorial: the Arena lesson's KEY step and WIN BY KEYS' INSPECT step re-worded; the last Key is now "on a tile next to
   the marked tile".
+
+## CUBE VS KEYS FIXES, PART 2 (2026-10-23)
+- Report: https://claude.ai/artifact/S3RPjrYtgW8wQvSPFEweZX. PR #449 took the first batch; this is the rest that was not
+  owned by the shared-bugs thread.
+- **Refund camera (online).** battle.js softResetToUnit called the bare `armActionCamSettle`, so online.js's
+  `window._armActionCamSettle` wrapper (the `cam-action-settle` relay) never ran: the guest replayed every action shot
+  and then sat in the target close-up, which a press refund made last the whole turn. Both hold branches now call the
+  window copy; the full return and the TPS return (the host's own unit) send the guest the settle alone
+  (`window._ewRelayCamSettle`). Checked offline (the settle + relay fire on CPU actions, no errors), not in a two-seat match.
+- **THE SEARCH MAP.** `state.scannedByPlayer` was wiped 0.7 s after every Inspect (the scan fade), so nothing remembered
+  which tiles a team searched (ai.js's "own scanned tiles" reads it too and has always seen it empty; left alone, flagged).
+  New `state.searchedByPlayer[p]`: every tile p's Inspect / Far Sight footprint covered (`_inspectFootprintAt`). A tile
+  a unit dies on (or a capture door / EXIT takes it) is forgotten for both sides (`forgetSearchedTile`, every time, Keys or
+  not, so it tells nobody a carrier fell). While the viewer's own unit aims Inspect or Far Sight: the hovered tile's real
+  footprint (getInspectFootprint; one tile since PR #467) is a solid teal plate (`searchFoot`, dims the reach),
+  the team's searched tiles a grey wash (`searchMap`). battle.js `syncSearchMap` (hover: updateHoveredTarget; mode:
+  ui.js renderBoard). Online: the host sends the guest only the guest's own set (online.js `_guestTrapFilter`).
+- "+N KEY" floats as `pickup` (gold) instead of `streak` (hit-word red).
+- Already fixed on main before this pass: the two seats' load-screen / CASE CLOSED year (seeded by the match id).
+- The round-10 Key top-up (`spawnPeriodicHourglasses`, whole-board since PR #467) clears both sides' searched tiles:
+  a new Key can land on any tile, and clearing everything tells nobody where.

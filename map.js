@@ -15051,6 +15051,8 @@
 
         function dropHourglassesFromUnit(unit) {
             if (!unit) return;
+            /* THE SEARCH MAP (battle.js): the tile is unsearched again for both sides, Keys or not */
+            if (typeof forgetSearchedTile === 'function') forgetSearchedTile(unit.x, unit.y);
             const carried = state.hourglasses.filter(h => h.carriedBy === unit.id);
             for (const h of carried) {
                 h.carriedBy = null;
