@@ -6017,6 +6017,9 @@
                         chain: chain.map(c => ({ x: c.x, y: c.y })),
                         staggerMs,
                     });
+                } else if (chain.length === 1 && chain[0] && state.phase === 'battle') {
+                    /* a chain with nobody to jump to draws no hop: an A-F row registers '<id>:solo' for its lone hit */
+                    _sigVfxGeom(spell.id + ':solo', chain[0].x, chain[0].y, 0, { fromX: unit.x, fromY: unit.y });
                 }
 
                 chain.forEach((hopTarget, idx) => {
