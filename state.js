@@ -556,7 +556,7 @@
         /* Mystery Dungeon keeps its OWN character roster, separate from the
            account unlocks: you start ALONE with one delver; clearing the
            dungeon recruits new allies who then hang out at the Guild Hub. */
-        const MD_STARTER_RACES = ['homosapien'];
+        const MD_STARTER_RACES = ['door agent'];   // HOMOSAPIEN OUT (2026-10-23): the delver starts as the DOOR Agent
         function loadMdSave() {
             let s = null;
             try {
@@ -3186,6 +3186,20 @@
             return dup;
         }
 
+        /* HOMOSAPIEN OUT (mondo, 2026-10-23: "take homosapien out of the game"): a race that left the roster (data.js
+           RACE_PROFILES still knows it, AVAILABLE_RACES no longer lists it). A saved team that still fields one is never
+           touched or deleted — the forge and the squad desk flag it and will not start it until that unit is swapped out.
+           teamRemovedRaces(races) → those races (first-seen order). */
+        function teamRemovedRaces(races) {
+            if (typeof AVAILABLE_RACES === 'undefined' || typeof RACE_PROFILES === 'undefined') return [];
+            const out = [];
+            (races || []).forEach(r => {
+                const k = normalizeRaceKey(r && typeof r === 'object' ? r.race : r);
+                if (k && !out.includes(k) && RACE_PROFILES[k] && AVAILABLE_RACES.indexOf(k) < 0) out.push(k);
+            });
+            return out;
+        }
+
         function makeDefaultPartyMeta() {
             const out = {
                 1: [],
@@ -3232,7 +3246,7 @@
 
         /* THE JOBS REMOVAL (2026-09-27): the neutral identity (data.js DEFAULT_IDENTITY) replaces the per-job archetypes */
         function getDefaultIdentity() {
-            const base = (typeof DEFAULT_IDENTITY !== 'undefined') ? DEFAULT_IDENTITY : { race: 'homosapien' };
+            const base = (typeof DEFAULT_IDENTITY !== 'undefined') ? DEFAULT_IDENTITY : { race: 'door agent' };
             return JSON.parse(JSON.stringify(base));
         }
 
@@ -3243,8 +3257,8 @@
         function getRaceProfile(race) {
             const key = normalizeRaceKey(race);
             if (RACE_PROFILES[key]) return JSON.parse(JSON.stringify(RACE_PROFILES[key]));
-            const fallbackKey = normalizeRaceKey(getDefaultIdentity().race || 'homosapien');
-            return JSON.parse(JSON.stringify(RACE_PROFILES[fallbackKey] || RACE_PROFILES.homosapien));
+            const fallbackKey = normalizeRaceKey(getDefaultIdentity().race || 'door agent');
+            return JSON.parse(JSON.stringify(RACE_PROFILES[fallbackKey] || RACE_PROFILES['door agent']));
         }
 
         /* THE RACE EDITOR (2026-10-06): the table lives in data.js RACE_TERRAIN_PREFERENCE (one row per race, editable) */
@@ -3257,7 +3271,7 @@
             /* THE JOBS REMOVAL (the user 2026-09-27): cls is the one neutral class — the fallback identity is data.js
                DEFAULT_IDENTITY, no longer a per-job archetype */
             const archetype = (typeof DEFAULT_IDENTITY !== 'undefined') ? DEFAULT_IDENTITY : {};
-            const race = normalizeRaceKey(identity.race || archetype.race || 'homosapien') || 'homosapien';
+            const race = normalizeRaceKey(identity.race || archetype.race || 'door agent') || 'door agent';
             const raceProfile = getRaceProfile(race);
 
             const defaultHand = 'right';
@@ -3269,7 +3283,7 @@
             // Homosapien bases, so a slot that carries a creator look may wear
             // either gender even though the roster's stock human model is male-only.
             /* THE INTAKE (2026-09-21): the officer is a D.O.O.R. Agent in the creator's clothes — sprites.js EW_CREATOR_LOOK_RACES names the races a look dresses */
-            const lookRace = (typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['homosapien']).includes(race);
+            const lookRace = (typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(race);
             const creatorLook = lookRace && identity.appearance && typeof normalizeCharacterAppearance === 'function' && normalizeCharacterAppearance(identity.appearance);
             if (creatorLook && (gender === 'male' || gender === 'female')) { /* keep the chosen base */ }
             else if (!gender || !validGenders.includes(gender)) {
@@ -4102,7 +4116,7 @@
                     // default race — pick an owned vessel so the team can pass
                     // the unlock gate on Lock In / Start.
                     const slotRace = _defaultPartyRace(player, idx);
-                    const defaultRace = (player === 1 ? ownedRaceForSlot(slotRace) : null) || slotRace || 'homosapien';
+                    const defaultRace = (player === 1 ? ownedRaceForSlot(slotRace) : null) || slotRace || 'door agent';
                     const race = priorMeta.race || defaultRace;
 
                     // The builder keeps a unit's spells in partyMeta.customSpells
@@ -4130,7 +4144,7 @@
                     const rebuiltMeta = {
                         race: race,
                         gender: priorMeta.gender || archetype.gender || 'other',
-                        appearance: race === 'homosapien' && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,
+                        appearance: (typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(race) && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
                         zodiac: priorMeta.zodiac || archetype.zodiac || 'aries',
                         sleepPreference: priorMeta.sleepPreference || archetype.sleepPreference || 'none',
                         terrainPreference: getTerrainPreferenceForRace(race),
@@ -4693,7 +4707,7 @@
         function newCampaignSave(firstUnit, challengeType) {
             _campaignRosterIdCounter = 0;
             const instance = createRosterInstance(
-                firstUnit.race || 'homosapien',
+                firstUnit.race || 'door agent',
                 firstUnit.gender || 'male',
                 UNIT_CLASS,
                 firstUnit.name || 'Recruit'
@@ -4707,7 +4721,7 @@
                 highestLevelCleared: 0,
                 levelStars: {},
                 roster: [instance],
-                unlockedRaces: [firstUnit.race || 'homosapien'],
+                unlockedRaces: [firstUnit.race || 'door agent'],
                 unlockedSpells: [],
                 partySlots: [instance.id],
                 totalGoldEarned: 0,

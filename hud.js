@@ -670,6 +670,9 @@ function _getModeInfo(st) {
   }
 
   const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+  /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
+     its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
+  const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
   function _arenaScore(p) {
     const enemy = p === 1 ? 2 : 1;
     let pts = 0;
@@ -679,7 +682,7 @@ function _getModeInfo(st) {
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
     pts += Math.min(Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
     let hgCount = 0;
-    if (st.hourglasses) {
+    if (st.hourglasses && !_keysHid(p)) {
       hgCount = st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -700,7 +703,7 @@ function _getModeInfo(st) {
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
     if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
-    if (st.hourglasses) {
+    if (st.hourglasses && !_keysHid(p)) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -750,7 +753,7 @@ function _getModeInfo(st) {
   const keysToWin = (typeof window.getKeysToWin === 'function')
     ? (window.getKeysToWin() | 0)
     : Math.min((st.hourglassTarget | 0), (st.hourglasses || []).length);
-  const p1Keys = _keysHeld(1), p2Keys = _keysHeld(2);
+  const p1Keys = _keysHid(1) ? '?' : _keysHeld(1), p2Keys = _keysHid(2) ? '?' : _keysHeld(2);
   let keyAlertPlayer = 0;
   if (keysToWin > 1) {
     if (p1Keys === keysToWin - 1) keyAlertPlayer = 1;
@@ -1544,7 +1547,7 @@ function CombatLog({ st }) {
   const all = (st.logEntries || []);
   const visibleAll = (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active) || st.fogOfWar
     ? all.filter(e => typeof _logVisible === 'function' ? _logVisible(e) : true)
-    : all;
+    : all.filter(e => !(typeof _logKeyHidden === 'function' && _logKeyHidden(e)));
 
   const entries = visibleAll.map(e => {
     const msg = typeof _logMsg === 'function' ? _logMsg(e) : (e.msg || e.text || '');
@@ -1687,8 +1690,8 @@ function CombatLog({ st }) {
    acting unit is not repeated; on any other turn the bottom icon is the acting unit, bigger, glowing, with the
    turning halo. The fallen are small skull pips at the very top; Gauntlet reserves / the escaped ride pill strips.
    Icons shrink 46→26px to fit the height above the Horologe, then the latest-acting fold into a "+N" pip.
-   Hover = name + HP/MP tooltip. CLICK = the unit's full stat card (#unitHoverHud, the ⓘ / I card — the same toggle
-   the Horologe's ⓘ uses); click again to close. The card docks right of the Horologe column. Viewer-local, nothing
+   Hover = name + HP/MP tooltip. CLICK = the unit's quick menu, or the unit info panel alone (QuickPeek, the same card
+   the Horologe's ⓘ / I key shows); click again to close. Viewer-local, nothing
    relayed (RULE #2): both online seats read their own synced state, and the card's range overlay is fog-gated
    (battle.js previewUnitInfoRange). Off on Mystery Dungeon floors (the scoreboard's tactic chips own the party). */
 const PP_HP = HP_ALLY;
@@ -1848,6 +1851,11 @@ function _tcPeek(unitId) {
     if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
     if (typeof renderIfDirty === 'function') renderIfDirty();
     _tcPeekId = null;
+  }
+  /* one unit info panel at a time: a peek takes over from the Horologe's ⓘ / I card */
+  if (typeof state !== 'undefined' && state && state.showUnitInfo && _tcPeekId !== unitId) {
+    state.showUnitInfo = false;
+    if (typeof renderSelectedUnitPanel === 'function') renderSelectedUnitPanel();
   }
   _tcPeekSet(_tcPeekId === unitId ? null : unitId);
 }
@@ -3222,9 +3230,14 @@ function _hrlgStageOf(unit, stat) {
   return { n, capped: Math.abs(n) < Math.abs(raw) };
 }
 /* the movement change from active effects (+ the key charge's half) */
+/* THE HIDDEN KEYS: an enemy's Key Charge is its team's secret on this screen (map.js keysHiddenFor) */
+function _hrlgKeyCharge(unit) {
+  if (!unit || (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player))) return 0;
+  return unit.hourglassBuff || 0;
+}
 function _hrlgMovDelta(unit) {
   const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-  const hgBuff = (unit && unit.hourglassBuff) || 0;
+  const hgBuff = _hrlgKeyCharge(unit);
   return movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
 }
 function _hrlgStatusChips(unit) {
@@ -3254,7 +3267,7 @@ function _hrlgStatusChips(unit) {
       stat: { atk: 'atk', def: 'def', int: 'matk', mdef: 'mdef' }[stat] || '',
     });
   }
-  const hgBuff = unit.hourglassBuff || 0;
+  const hgBuff = _hrlgKeyCharge(unit);
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
   if (totalMov) chips.push({
@@ -3372,7 +3385,9 @@ function _hrlgQuickStats(panelKey) {
   const def  = (u.def || 0) + (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(u, 'none') : 0);
   const mdef = (u.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(u) : 0);
   const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
-  const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
+  /* THE HIDDEN KEYS: an enemy's Key Charge move bonus stays its secret on this screen */
+  const mov  = (typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0))
+    - ((typeof keysHiddenFor === 'function' && keysHiddenFor(u.player) && typeof getHourglassMoveBonus === 'function') ? getHourglassMoveBonus(u) : 0);
   const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
   const vis  = typeof getUnitVisionRange === 'function' ? getUnitVisionRange(u) : (u.vision || 0);
   const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
@@ -5187,7 +5202,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
       meta: portrait
         ? { text: t.dist + 't' }
-        : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't' },
+        : { text: (hpPct != null ? 'HP ' + hpPct + '% · ' : '') + t.dist + 't' },
       // Pass the target's own elevation so an airborne unit (or the upper
       // unit of a stack) is hit — not whoever stands on the ground below.
       // Second (confirming) click fires the action → hide the menus NOW.
@@ -5213,6 +5228,31 @@ function _hrlgTargetBlades(unit, st, mode) {
   // which re-validate AP per swing and so continue exactly when a press
   // handed the AP back.)
 
+  /* THE CUBE'S REASON (Cube vs Keys matchup 2026-10-23): the enemy Cube inside the swing's reach but with no clear line
+     (terrain in the way) or out of the team's sight used to just be missing from the list, which read as "the Cube
+     refuses hits". It lists greyed with why. */
+  if (mode === 'attack' && !targets.some(t => t.kind === 'tower')) {
+    try {
+      const _st = (typeof state !== 'undefined') ? state : null;
+      const _tw = _st && _st.towers && typeof enemyOf === 'function' ? _st.towers[enemyOf(unit.player)] : null;
+      if (_tw && _tw.hp > 0 && typeof combatDist === 'function' && typeof getEffectiveRange === 'function') {
+        const _uz = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+        const _tz = typeof getHeightAt === 'function' ? getHeightAt(_tw.x, _tw.y) : 0;
+        const _d = combatDist(unit.x, unit.y, _uz, _tw.x, _tw.y, _tz);
+        let why = null;
+        if (_d >= 1 && _d <= getEffectiveRange(unit)) {
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, _tw.x, _tw.y, _uz)) why = 'BLOCKED';
+          else if (typeof visionGatesTargeting === 'function' && visionGatesTargeting(unit)
+            && typeof isInVision === 'function' && !isInVision(unit, _tw.x, _tw.y)) why = 'NO SIGHT';
+        }
+        if (why) blades.push({
+          id: 'tg:cube-' + why, icon: '⬡', available: false, label: 'Cube',
+          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : 'OUT OF SIGHT',
+          meta: { text: Math.round(_d) + 't' },
+        });
+      }
+    } catch (e) {}
+  }
   if (!blades.length) {
     blades.push({
       id: 'none', icon: titleIcon, available: false,
@@ -5524,6 +5564,7 @@ function _hrlgComboBlades(unit, st) {
 }
 
 
+const _hrlgMtcLabelCache = { k: null, v: '' };   // the CONFIRM chip's MOVE→CAST read, per pick
 function ActionMenu({ st, hidden }) {
   if (!st || st.phase !== 'battle') return null;
   if (hidden) return null;   // board is animating — input already registered
@@ -6051,7 +6092,9 @@ function ActionMenu({ st, hidden }) {
     // a unit list would just mislead. Everything else lists units too.
     const _tileOnlyKinds = ['placeTrap', 'placeBlock', 'buildStructure', 'terrainCreate',
       'deployObject', 'deployPair', 'deployTurret', 'warpRune', 'summonWeather', 'placeMirror',
-      'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison'];
+      'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison',
+      /* Far Sight / scrying aim at a TILE: the ally list it used to open read as "cast on Mothman" (Keys vs Keys) */
+      'remoteView'];
     // THE SELF-CAST CONFIRM: a self-cast's only target is the caster — no list, just the green CONFIRM
     const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
@@ -6081,9 +6124,20 @@ function ActionMenu({ st, hidden }) {
       modeLabel = (st.selectedTool + ' — CLICK A LIT TILE TO THROW').toUpperCase();
       panels.push(_listUnits ? _mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade)
         : { key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
+    } else if (_quickPlace) {
+      /* THE CONFIRM FIRST (_hrlgArmAoePlacement): CONFIRM aimed at the unit it was picked for; back frees the
+         footprint; CANCEL goes straight back to that unit's quick menu */
+      modeLabel = (st.selectedTool + (st._quickAoeStage === 'confirm'
+        ? ' — CONFIRM · RIGHT-CLICK TO PLACE' : ' — CLICK A TILE TO PLACE')).toUpperCase();
+      const _qaCancel = { id: 'quickAoeCancel', label: 'CANCEL', icon: '‹', available: true, danger: true,
+        fire: () => { if (typeof window.quickAoeBackToMenu === 'function') window.quickAoeBackToMenu(); } };
+      panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [_qaCancel] });
     } else if (_listUnits) {
       modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
       panels.push(_mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade));
+    } else if (_aimSp && _aimSp.kind === 'remoteView') {
+      modeLabel = (st.selectedTool + (_aimSp.inspectAt ? ' — CLICK A TILE TO SEARCH' : ' — CLICK A TILE TO SCRY')).toUpperCase();
+      panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     } else {
       modeLabel = (st.selectedTool + ' — CLICK A TARGET'
         + (_aimOrientable ? ' · R ROTATES' : '')).toUpperCase();
@@ -6171,13 +6225,34 @@ function ActionMenu({ st, hidden }) {
     || (am === 'combo' && !!st.comboPartner)   // THE COMBO PICK
     || (view === 'aim' && (am === 'attack' || am === 'spell' || am === 'item'));
   if (_pt && _inTargetingView && !st._actionExecuting) {
-    const _ptUnit = (typeof unitAt === 'function')
+    let _ptUnit = (typeof unitAt === 'function')
       ? ((_pt.z != null ? unitAt(_pt.x, _pt.y, _pt.z) : null) || unitAt(_pt.x, _pt.y))
       : null;
     // Multi-strike count picked on the list rides the label ("— Cowboy ×3")
     const _repSuffix = (menuView === 'attackTargets' && _pt._repeatN > 1) ? ' ×' + _pt._repeatN : '';
+    /* a spell pick out of reach walks first (battle.js selectTargetFromMenu → _moveThenCast): the CONFIRM says so —
+       Far Sight on a far tile used to walk the caster with a plain "CONFIRM — <tile>" (Keys vs Keys matchup) */
+    let _mtcPrefix = '';
+    if (am === 'spell' && !_pt.selfCast && typeof _mtcReachesPick === 'function' && typeof findSpellApproachTile === 'function') {
+      const _cSp = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
+      /* the approach search runs once per pick, not once per menu render */
+      const _mtcKey = [unit.id, unit.x, unit.y, unit.z, unit.ap, unit.movesThisTurn, st.selectedTool, _pt.x, _pt.y, _pt.z].join('|');
+      if (_hrlgMtcLabelCache.k !== _mtcKey) {
+        let v = '';
+        try {
+          if (_cSp && !(typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp)) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z)
+            && findSpellApproachTile(unit, _cSp, _pt.x, _pt.y, _pt.z)) v = 'MOVE→CAST · ';
+        } catch (e) {}
+        _hrlgMtcLabelCache.k = _mtcKey; _hrlgMtcLabelCache.v = v;
+      }
+      _mtcPrefix = _hrlgMtcLabelCache.v;
+    }
+    /* THE CONFIRM FIRST: a quick-menu AoE's CONFIRM names the unit it was picked for (its footprint covers them) */
+    const _qaFrom = (st._quickAoeStage === 'confirm' && st._quickAoePlace === st.selectedTool && st._quickAoeFrom != null)
+      ? (st.units || []).find(u => u.id === st._quickAoeFrom && !u.dead) : null;
+    if (_qaFrom) _ptUnit = _qaFrom;
     confirmObj = {
-      label: _pt.selfCast ? 'SELF' : ((_ptUnit
+      label: _pt.selfCast ? 'SELF' : _mtcPrefix + ((_ptUnit
         ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
         : (typeof pickTargetName === 'function' ? pickTargetName(_pt.x, _pt.y, _pt.z) : (_pt.x + ',' + _pt.y))) + _repSuffix),   // THE PICK'S NAME
       fire: () => {
@@ -6374,7 +6449,8 @@ function spellTargetMode(sp) {
   const k = sp.kind || '';
   if (k === 'escape') return 'Landing Tile';   // THE ESCAPE PICK: the player picks where it lands
   if (k === 'selfHeal') return 'Self Target';
-  if (['warCry', 'encore'].includes(k)) return 'Self Target';
+  if (k === 'warCry') return 'Self Target';
+  if (k === 'encore') return 'Single Ally';
   if (k === 'link' || k === 'transfer') return 'Two Targets';
   if (k === 'cannibalize') return 'Remains';
   if (k === 'summonUnit') return 'Empty Tile';
@@ -7527,7 +7603,7 @@ function _predictTargetShove(spell, target, castX, castY) {
   // scaling, crash-through, wall rebounds, bowling pins) so the ghost
   // hologram sits on the tile the body will TRULY land on.
   if (typeof resolveForcedSlide === 'function' && typeof getUnitPushDistance === 'function') {
-    const sim = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, dist), {
+    const sim = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, dist, null, spell), {   // spell: its `weightless` flag (Telekinetic Slam)
       simulate: true,
       stopBefore: isPull ? { x: castX, y: castY } : null
     });
@@ -8138,7 +8214,15 @@ function _hrlgRightPress(e, onClick) {
    target menu, it needs to let me place it first, not just fire automatically"): a tile-aimed area spell picked from
    the enemy / ally quick menu no longer casts on the pick. It arms like the Abilities pick (setTool: the 'spells' aim
    view, its range lit), the footprint starts on the row's own centre (the off-centre aim) and follows the cursor;
-   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms. */
+   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms.
+   THE CONFIRM FIRST (mondo 2026-10-23: "the first click on the aoe spell should take me straight to the confirm, but
+   right clicking to go back should let me place the aoe, and right click from there would go back to the enemys quick
+   action menu"): the pick now lands on the green CONFIRM, aimed at that unit (the row's own centre, the one its
+   forecast read), and the hover leaves it alone (state._quickAoeStage 'confirm'). Back (right-click / ESC / BACK) frees
+   the footprint to follow the cursor ('place'); back again returns to the quick menu of the unit it was picked from
+   (state._quickAoeFrom, ui.js handleBackAction). A board click on another tile places it there too. The CANCEL row
+   goes straight back to that quick menu. The camera stays on the tactical board view throughout (battle.js clickTile /
+   selectTargetFromMenu skip the menu two-shot for this arm). */
 function _hrlgPlaceableAoe(spell, tx, ty) {
   if (!spell || typeof isSpellTileTargeted !== 'function' || !isSpellTileTargeted(spell)) return false;
   if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) return false;
@@ -8148,7 +8232,7 @@ function _hrlgPlaceableAoe(spell, tx, ty) {
   const fp = typeof getSpellAoeFootprint === 'function' ? (getSpellAoeFootprint(spell, tx, ty) || []) : [];
   return fp.length > 1;
 }
-function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
+function _hrlgArmAoePlacement(actingUnit, spell, x, y, fromId) {
   state._actionExecuting = false;
   state._enemyActionTargetId = null;
   state.pendingTarget = null;
@@ -8158,6 +8242,8 @@ function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
   /* NO TARGET LIST while placing (mondo 2026-10-20: "it should NOT bring up a target list menu while i am trying to
      select where to place the aoe"): the aim view drops its unit list for this arm; setTool clears the mark */
   state._quickAoePlace = spell.name;
+  state._quickAoeStage = 'confirm';
+  state._quickAoeFrom = fromId != null ? fromId : null;
   if (state.actionMenuView === 'spells') {
     state.pendingTarget = { x: x, y: y, mode: 'spell', tool: spell.name, viaHover: false };
     if (typeof updateAoePreview === 'function') {
@@ -8179,7 +8265,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (_placeAoe && !a.moveTile) {
     if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
     const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
-    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y)) return;
+    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y, targetUnit.id)) return;
   }
   // Sweep every lingering targeting visual (range overlays from blade hover,
   // AoE preview, terrain ghost, arrows) the moment the quick-cast fires —
@@ -8284,7 +8370,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }
-      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY)) return;   // THE AOE PLACEMENT
+      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY, targetUnit.id)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
         else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
@@ -10229,11 +10315,15 @@ function ControlHints({ st }) {
    column, the command panels, the root menu: all invisible, laid out by the same CSS + the UI Maker's moves), so the
    card lands in exactly the spot the quick menu's card takes and wears every UI Maker setting of it */
 function QuickPeek({ st }) {
-  const id = _tcPeekId;
+  /* the Horologe's ⓘ and the I key show this same card (mondo 2026-10-23: "the i info icon next to the unit name on the
+     horologe still opens the old unit info panel, it needs to instead look like the unit info panel of the quick
+     action menu"): state.showUnitInfo on the focused unit, falling back to the selected one (ui.js toggleUnitInfo) */
+  const peek = _tcPeekId != null;
+  const id = peek ? _tcPeekId : (st && st.showUnitInfo ? (st.focusedUnitId || st.selectedUnitId) : null);
   if (id == null || !st || st.phase !== 'battle') return null;
   const u = (st.units || []).find(x => x.id === id && !x.dead && !x._dying);
   /* a quick menu opening (a board click, a turn icon on your turn) takes over: that card IS this one */
-  if (!u || st._enemyActionTargetId != null) { _tcPeekId = null; return null; }
+  if (!u || st._enemyActionTargetId != null || (!peek && st._tileActionTarget)) { if (peek) _tcPeekId = null; return null; }
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
   const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
   const key = (home === viewer ? 'ally|' : 'enemy|') + u.id;

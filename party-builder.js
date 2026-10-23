@@ -686,7 +686,7 @@ function getSpriteUrl(race, gender, cls) {
 }
 function computeStats(race, cls) {
   const s = (typeof window.computeUnitStats === 'function')
-    ? window.computeUnitStats(race || 'homosapien', cls)
+    ? window.computeUnitStats(race || 'door agent', cls)
     : (window.CLASS_TEMPLATES?.Vessel || {});
   return _withCritEva({ ...s });
 }
@@ -2409,11 +2409,14 @@ function PartyBuilder(props) {
   /* ONE OF EACH (mondo, 2026-10-20: "disallow more than one of the same unit on a single team"): a unit is its race, so a
      team fields each race once. The wall greys out a race another slot already holds (a click is refused), a sheet that
      still carries one twice (a team saved before the rule) is flagged on its slots and cannot start until one is swapped. */
-  const pbSlotRace = (i) => { const mt = st.partyMeta?.[player]?.[i]; return String((mt && mt.race) || window.getDefaultIdentity?.()?.race || 'homosapien').toLowerCase(); };
+  const pbSlotRace = (i) => { const mt = st.partyMeta?.[player]?.[i]; return String((mt && mt.race) || window.getDefaultIdentity?.()?.race || 'door agent').toLowerCase(); };
   const pbTeamRaces = () => Array.from({ length: teamSize }, (_, i) => pbSlotRace(i));
   const pbRaceTakenElsewhere = (race, at) => pbTeamRaces().some((r, i) => i !== at && r === race);
   const pbDupRaces = (races) => (typeof window.teamDuplicateRaces === 'function') ? window.teamDuplicateRaces(races) : [];
   const pbRaceName = (race) => (window.RACE_PROFILES?.[race]?.label) || String(race || '').replace(/\b\w/g, c => c.toUpperCase());
+  /* HOMOSAPIEN OUT (mondo, 2026-10-23): a saved sheet that still fields a race that left the roster is kept and flagged
+     (REMOVED on its slot, a note on its card) and cannot start until that unit is swapped out (state.js teamRemovedRaces) */
+  const pbGoneRaces = (races) => (typeof window.teamRemovedRaces === 'function') ? window.teamRemovedRaces(races) : [];
   const pbOneOfEachToast = (race) => { try { sfx('uiError'); } catch (e) {} if (typeof window.ewToast === 'function') window.ewToast(pbRaceName(race) + ' is already on this team. A team fields one of each unit.'); };
   /* 2026-09-09 (found by playtest_builder.js): the flag is per INSTANCE
      now — the pre-match forge sleeping in #builderOverlay re-renders while
@@ -2503,7 +2506,7 @@ function PartyBuilder(props) {
      name is the slot's partyNames entry; an empty entry (or the race's own label) is the default and shows the race. */
   const slotRaceLabel = (p, i) => {
     const mt = st.partyMeta?.[p]?.[i] || {};
-    const race = mt.race || 'homosapien';
+    const race = mt.race || 'door agent';
     return (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(race, mt.gender || 'male') : '') || race;
   };
   const customUnitName = (p, i) => {
@@ -2528,7 +2531,7 @@ function PartyBuilder(props) {
       const lo = st.loadouts?.[player]?.[i] || {};
       slots.push({
         cls: cn,
-        race: mt.race || 'homosapien',
+        race: mt.race || 'door agent',
         gender: mt.gender || 'male',
         appearance: window.normalizeCharacterAppearance?.(mt.appearance) || null,
         unitName: customUnitName(player, i),   // THE NAMES: '' = the race
@@ -2586,7 +2589,7 @@ function PartyBuilder(props) {
     // cross (never a silent truncation to the first N).
     if (!standalone && !opts?.picked && preset.slots.length > sizeNow) {
       const _seen = new Set(), _first = [];   // ONE OF EACH: the pick opens on the first vessels of DIFFERENT races
-      preset.slots.forEach((s, i) => { const r = String(s?.race || '').toLowerCase(); if (_first.length < sizeNow && !_seen.has(r)) { _seen.add(r); _first.push(i); } });
+      preset.slots.forEach((s, i) => { const r = String(s?.race || '').toLowerCase(); if (_first.length < sizeNow && !_seen.has(r) && !pbGoneRaces([r]).length) { _seen.add(r); _first.push(i); } });   // (HOMOSAPIEN OUT: never a removed unit)
       setTeamPick({ preset, chosen: _first });
       sfx('uiCursorMove');
       return;
@@ -2633,6 +2636,7 @@ function PartyBuilder(props) {
     const chosen = teamPick.chosen.slice().sort((a, b) => a - b);
     if (chosen.length !== sizeNow) { sfx('uiError'); return; }
     if (pbDupRaces(chosen.map(i => teamPick.preset.slots[i]?.race)).length) { sfx('uiError'); return; }   // ONE OF EACH
+    if (pbGoneRaces(chosen.map(i => teamPick.preset.slots[i]?.race)).length) { sfx('uiError'); return; }   // HOMOSAPIEN OUT
     loadTeamPreset({ ...teamPick.preset, slots: chosen.map(i => teamPick.preset.slots[i]) }, { picked: true });
   };
   const toggleTeamPick = (i) => {
@@ -2641,6 +2645,7 @@ function PartyBuilder(props) {
     const has = teamPick.chosen.includes(i);
     if (!has && teamPick.chosen.length >= sizeNow) { sfx('uiError'); return; }
     const _r = String(teamPick.preset.slots[i]?.race || '').toLowerCase();
+    if (!has && pbGoneRaces([_r]).length) { try { sfx('uiError'); } catch (e) {} if (typeof window.ewToast === 'function') window.ewToast(pbRaceName(_r) + ' is out of the game. Pick another unit.'); return; }   // HOMOSAPIEN OUT
     if (!has && teamPick.chosen.some(j => String(teamPick.preset.slots[j]?.race || '').toLowerCase() === _r)) { pbOneOfEachToast(_r); return; }   // ONE OF EACH
     setTeamPick({ ...teamPick, chosen: has ? teamPick.chosen.filter(x => x !== i) : teamPick.chosen.concat(i) });
     sfx('uiCursorMove');
@@ -2750,7 +2755,7 @@ function PartyBuilder(props) {
 
   const clsName = typeof window.normalizeClassName === 'function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[slot], window.DEFAULT_BUILDS?.[player]?.[slot]) : (st.partyBuilds?.[player]?.[slot] || 'Warrior');
   const meta = st.partyMeta?.[player]?.[slot] || (typeof window.getDefaultIdentity === 'function' ? window.getDefaultIdentity() : {});
-  const identity = typeof window.resolveIdentityForBuild === 'function' ? window.resolveIdentityForBuild(clsName, meta) : { race: meta.race || 'homosapien', types: ['human'], gender: meta.gender || 'male', zodiac: meta.zodiac || 'aries' };
+  const identity = typeof window.resolveIdentityForBuild === 'function' ? window.resolveIdentityForBuild(clsName, meta) : { race: meta.race || 'door agent', types: ['human'], gender: meta.gender || 'male', zodiac: meta.zodiac || 'aries' };
   const unitRace = identity.race || '', unitTypes = identity.types || [];
   const fc = PB_ACCENT;
   const template = computeStats(unitRace, clsName);
@@ -2874,7 +2879,7 @@ function PartyBuilder(props) {
       const size = (st.partyBuilds?.[player] || []).length || teamSize;
       const lockedNames = [];
       for (let i = 0; i < size; i++) {
-        const rk = st.partyMeta?.[player]?.[i]?.race || 'homosapien';
+        const rk = st.partyMeta?.[player]?.[i]?.race || 'door agent';
         if (!window.isUnitUnlocked(rk)) {
           const lbl = (window.RACE_PROFILES?.[rk]?.label) || rk;
           if (lockedNames.indexOf(lbl) === -1) lockedNames.push(lbl);
@@ -2891,6 +2896,13 @@ function PartyBuilder(props) {
     if (_dups.length) {
       try { sfx('uiError'); } catch (e) {}
       alert('Your team has the same unit more than once: ' + _dups.map(pbRaceName).join(', ') + '.\nA team fields one of each unit. Swap one out before starting.');
+      return;
+    }
+    /* HOMOSAPIEN OUT: a sheet saved before the race left the roster */
+    const _gone = pbGoneRaces(pbTeamRaces());
+    if (_gone.length) {
+      try { sfx('uiError'); } catch (e) {}
+      alert('Your team has a unit that is out of the game: ' + _gone.map(pbRaceName).join(', ') + '.\nSwap it out before starting.');
       return;
     }
     if (typeof window.applyPartyBuild==='function') window.applyPartyBuild();
@@ -3798,18 +3810,19 @@ function PartyBuilder(props) {
         h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
         h('button', { className: 'pb-pill' + (player === 2 ? ' on' : ''), onClick: () => selectPlayer(2) }, 'P2 · CPU')) : null),
     h('div', { className: 'pb-party-slots' },
-      (() => { const _dupNow = pbDupRaces(pbTeamRaces()); return Array.from({length: teamSize}).map((_, i) => {
+      (() => { const _dupNow = pbDupRaces(pbTeamRaces()), _goneNow = pbGoneRaces(pbTeamRaces()); return Array.from({length: teamSize}).map((_, i) => {
         const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
         const mt = st.partyMeta?.[player]?.[i] || (typeof window.getDefaultIdentity==='function' ? window.getDefaultIdentity() : {});
-        const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',types:['human'],gender:'male'};
+        const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'door agent',types:['human'],gender:'male'};
         const isActive = i===slot, fCol = PB_ACCENT;
         const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
         const nm = resolveUnitName(player, i, cn);
         const rl = (_grl(id.race,id.gender)||id.race||'?');
         const dupe = _dupNow.includes(String(id.race || '').toLowerCase());   // ONE OF EACH: this race stands on the sheet twice
-        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : '') + (dupe ? ' dup' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) + (dupe ? ' — on this team twice: swap one out (one of each unit)' : '') },
+        const gone = _goneNow.includes(String(id.race || '').toLowerCase());   // HOMOSAPIEN OUT: this race left the roster
+        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : '') + (dupe || gone ? ' dup' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) + (dupe ? ' — on this team twice: swap one out (one of each unit)' : '') },
           h('div', { className:'pb-party-ring' },
-            dupe ? h('span', { className:'pb-party-dup' }, 'TWICE') : null,
+            gone ? h('span', { className:'pb-party-dup' }, 'REMOVED') : dupe ? h('span', { className:'pb-party-dup' }, 'TWICE') : null,
             h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive })),
             h('span', { className:'pb-party-no' }, numerals[i]),
             confirmed && (DOOR
@@ -3863,7 +3876,7 @@ function PartyBuilder(props) {
   // model live. Sections: BODY · FACE · SKIN · HAIR · CLOTHES.
   const appearance = window.normalizeCharacterAppearance?.(meta.appearance) || null;
   const changeAppearance = (changes, gender) => {
-    if (isWaitingOnline || unitRace !== 'homosapien') return;
+    if (isWaitingOnline || unitRace !== 'door agent') return;   // HOMOSAPIEN OUT (2026-10-23): the creator dresses the DOOR Agent
     const target = st.partyMeta[player][slot];
     st.teamLockedIn = false;
     target.appearance = window.normalizeCharacterAppearance({ ...(appearance || {}), ...changes });
@@ -3872,13 +3885,13 @@ function PartyBuilder(props) {
     refresh();
   };
   const officerLook = (typeof window.hqLook === 'function' && window.ProfileSystem) ? window.hqLook(window.ProfileSystem.getActiveProfile()) : null;   // rev 8: the card's look, one click onto a slot
-  const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('homosapien', identity.gender || 'male'));
+  const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('door agent', identity.gender || 'male'));
   const creatorPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
       h('button', { className: 'ms-tty-btn', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
     h('div', { className: 'pb-zone-body pb-creator' },
-      unitRace !== 'homosapien'
-        ? h('p', null, 'Select a Homosapien on the Roster tab to customize the male or female base model.')
+      unitRace !== 'door agent'
+        ? h('p', null, 'Select the DOOR Agent on the Roster tab to customize the male or female base model.')
         : !appearance
           ? h(React.Fragment, null,
               h('p', null, 'Build a custom appearance for this character. Your techniques and equipment stay attached to this slot.'),
@@ -3921,7 +3934,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-stage-view' },
         h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
         h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: !stageEntry && unitRace === 'homosapien' ? meta.appearance : null }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: !stageEntry && unitRace === 'door agent' ? meta.appearance : null }),
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.
@@ -3972,6 +3985,7 @@ function PartyBuilder(props) {
               h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
                 slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+pbRoleLabel(s.race) },
                   h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
+              pbGoneRaces(slots.map(s => s.race)).length ? h('div', { className:'pb-dup-note' }, 'REMOVED: ', pbGoneRaces(slots.map(s => s.race)).map(pbRaceName).join(', '), ' · out of the game, swap it out in the forge') : null,   // HOMOSAPIEN OUT
               h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
                 h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
                   (preset.gameMode || '').toUpperCase(), preset.lastUsed ? ' · ' + new Date(preset.lastUsed).toLocaleDateString() : '',
@@ -4011,7 +4025,8 @@ function PartyBuilder(props) {
                 })),
               h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' · ', new Date(preset.createdAt).toLocaleDateString(),
                 (preset.slots||[]).length > teamSize ? h('span', { style:{ color:EW.warn, marginLeft:6 }}, '· ', (preset.slots||[]).length, ' ON FILE — PICK ', teamSize) : null,
-                pbDupRaces((preset.slots||[]).map(s => s.race)).length ? h('span', { className:'pb-dup-note', style:{ marginLeft:6 }}, '· TWICE: ', pbDupRaces((preset.slots||[]).map(s => s.race)).map(pbRaceName).join(', ')) : null)),
+                pbDupRaces((preset.slots||[]).map(s => s.race)).length ? h('span', { className:'pb-dup-note', style:{ marginLeft:6 }}, '· TWICE: ', pbDupRaces((preset.slots||[]).map(s => s.race)).map(pbRaceName).join(', ')) : null,
+                pbGoneRaces((preset.slots||[]).map(s => s.race)).length ? h('span', { className:'pb-dup-note', style:{ marginLeft:6 }}, '· REMOVED: ', pbGoneRaces((preset.slots||[]).map(s => s.race)).map(pbRaceName).join(', ')) : null)),
             h('button', { className:'pb-team-act danger', onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);} }, 'DEL')))));
 
   /* THE DEPLOY PICK window: the sheet's vessels as toggles, DEPLOY when
@@ -4030,7 +4045,7 @@ function PartyBuilder(props) {
             h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:2 }},
               h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, s.unitName || rl),
               h('div', { style:{ fontSize:9, color:EW.inkMute }}, rl, ' · ', pbRoleLabel(s.race))),
-            h('span', { style:{ fontSize:10, letterSpacing:'0.12em', color: on ? EW.warn : EW.inkDim }}, on ? '✓ CROSSING' : 'ON FILE'));
+            h('span', { style:{ fontSize:10, letterSpacing:'0.12em', color: on ? EW.warn : pbGoneRaces([s.race]).length ? '#ff8a8a' : EW.inkDim }}, on ? '✓ CROSSING' : pbGoneRaces([s.race]).length ? 'REMOVED' : 'ON FILE'));
         }),
         h('div', { style:{ display:'flex', gap:6, justifyContent:'flex-end', marginTop:6 }},
           h('button', { className:'ms-tty-btn sm', onClick:()=>setTeamPick(null) }, 'CANCEL'),
@@ -4203,7 +4218,7 @@ function OfficerCreator() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
-  const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('homosapien', gender));
+  const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('door agent', gender));
   return h('div', { className: 'pb-officer' + (intake ? ' intake' : ''), role: 'dialog', 'aria-label': intake ? 'The intake — create your agent' : 'Character creator' },
     h('div', { className: 'pb-officer-head' },
       intake ? h('div', null, h('b', null, L.title || 'THE INTAKE'), h('span', null, ' · ' + (L.sub || 'D.O.O.R. HEADQUARTERS · FORM 1 · YOUR AGENT')), h('em', { className: 'pb-officer-brief' }, L.brief || 'A FREELANCER D.O.O.R. AGENT'))
@@ -4215,7 +4230,7 @@ function OfficerCreator() {
         h('button', { className: 'ms-tty-btn', onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },
-        h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Vessel', focus: 0.5, appearance }),
+        h(HeroViewer3D, { race: 'door agent', gender, cls: 'Vessel', focus: 0.5, appearance }),   // HOMOSAPIEN OUT (2026-10-23): the look on the DOOR Agent
         !viewerLoads ? h('p', { className: 'pb-creator-note', style: { position: 'absolute', left: 16, top: 16 } }, 'The 3D stage is unavailable here — the look still files.') : null),
       h('div', { className: 'pb-officer-controls' },
         h('div', { className: 'pb-creator' },
