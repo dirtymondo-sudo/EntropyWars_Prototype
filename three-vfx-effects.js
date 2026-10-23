@@ -40201,8 +40201,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || !x || x.fromX == null) return;
         var F = _nrvFrame(x.fromX, x.fromY), ts = F.ts, end = _worldPos(tx, ty), dx = end.x - F.wp.x, dz = end.z - F.wp.z, L = Math.hypot(dx, dz) + ts * 0.4, ux = dx / Math.max(1, L - ts * 0.4), uz = dz / Math.max(1, L - ts * 0.4);
         var hold = new THREE.Group(); hold.position.set(dx / 2, ts * 0.55 + (end.y - F.wp.y) / 2, dz / 2); hold.rotation.y = Math.atan2(ux, uz); F.g.add(hold);
-        var cut = _pzMesh(new THREE.BoxGeometry(ts * 0.012, ts * 0.012, L), _pzGlow(_PZ.cut), hold), red = [];
-        for (var s = -1; s <= 1; s += 2) red.push(_pzMesh(new THREE.BoxGeometry(ts * 0.01, ts * 0.01, L), _pzGlow(0xff2030), hold));
+        var cut = _pzMesh(new THREE.BoxGeometry(ts * 0.022, ts * 0.022, L), _pzGlow(_PZ.cut), hold), red = [];
+        for (var s = -1; s <= 1; s += 2) red.push(_pzMesh(new THREE.BoxGeometry(ts * 0.018, ts * 0.018, L), _pzGlow(0xff2030), hold));
         var glint = _pzSpr(0xffffff, ts * 0.5, hold), sheath = _pzSpr(_PZ.cut, ts * 0.7, hold); sheath.position.z = L / 2;
         var opened = false;
         return _sigRunOwned(F.g, 1100, function (el) {
@@ -40231,7 +40231,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tx = p.tx, ty = p.ty; if (tx == null || !_pzOnce(id, 1800)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, cuts = [], N = 26, burst = false;
         for (var i = 0; i < N; i++) {
-            var m = _pzMesh(new THREE.PlaneGeometry(ts * rn(0.55, 1.0), ts * 0.012), _pzGlow(_PZ.cut), F.g, rn(-0.22, 0.22) * ts, ts * rn(0.2, 1.0), rn(-0.22, 0.22) * ts);
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * rn(0.55, 1.0), ts * 0.022), _pzGlow(_PZ.cut), F.g, rn(-0.22, 0.22) * ts, ts * rn(0.2, 1.0), rn(-0.22, 0.22) * ts);
             m.rotation.set(rn(-0.4, 0.4), rn(0, Math.PI), rn(-1.2, 1.2)); cuts.push({ m: m, at: i * 24 });
         }
         return _sigRunOwned(F.g, 1250, function (el) {
