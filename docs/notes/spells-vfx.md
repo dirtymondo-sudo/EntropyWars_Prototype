@@ -1657,3 +1657,27 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
 - Flash Freeze swept again in the browser (Mount Shasta, Haunted, North Pole arenas: fresh tiles, recasts, water,
   cliffs, three ways of passing the aim height): every count matched the board. Its 10-20 zero was the already-ice
   case PR #385 fixed.
+
+## THE A-F SIGNATURE VFX PASS (2026-10-23, mondo: "are we good to go ahead and start on the vfx pass?")
+- Scope: the 66 A-F race signature spells (`sig*`, PR #432) and the 11 PR #423 spells (`race*`: Open Vein, Arterial
+  Spray, Conduction, Thornlash, Overgrowth, Crosswind, Eye of the Storm, Mudslide, Tailwind, Far Sight, Rustle).
+  Visuals only, no data.js row changed. G-O (`go*`) and P-Z (`pz*`) had their own threads on the same file.
+- Where: three-vfx-effects.js, one block after `_crTagShards();` (search "THE A-F SIGNATURE VFX PASS"): the `_AF`
+  palette, `_af*` helpers + canvas textures, an EFFECTS recipe for every row (tile / center / bolt / burst), the
+  SPELL_MAP rows, a `_af*3D` piece per spell and one `Object.assign(_spell3DGeometry, …)` registry at the end.
+- Which hook each kind fires (read off a browser probe of all 77 casts): damage → bolt + impact; physical r≤2,
+  chargeToTarget, tackle, debuff → impact; aoe/cross → aoe (the 3D piece needs `geom3D: true` on the aoe def);
+  warCry/buff/self barrage/zoneDebuff → aura (its look = impactCenterEffect, piece gets (tx, ty, aoeRadius));
+  line/linePush → beam; lifeDrain → drainHop + impact; terrainCreate → bolt + impact (do NOT map `wall`); pull → pull.
+- Two new doors in three-vfx-effects.js: fire('pull') runs the registry like impact; a beam def with `sigLine` runs
+  the piece with (fromX, fromY, hitTiles, params) before the laser, and `sigLineOwns` makes it the whole travel (the
+  piece lands the per-tile recipe itself — Forged Thunderbolt, Crosswind, Mudslide).
+- Kinds that fired nothing get visual-only doors in battle.js through `_sigVfxGeom(key, x, y, r, extra)` →
+  fireGeometry (relayed by online.js, fog-gated on the guest): `<id>:swap` (Fireman's Carry, Infernal Waltz),
+  `<id>:throw` (Fifty Times), `<id>:deploy` OWNER ONLY (Jack-in-the-Box, Hologram: a trap / decoy must not give itself
+  away), `<id>:detonate` (detonateDeployedObject), `<id>:mark` OWNER ONLY (Orbital Strike, Extinction Event at cast)
+  and `<id>:view` (Far Sight, falls back to the tarot card). A delayed row's end-of-round blast runs its plain id
+  (state.js gives 1100 ms of arming before it lands). Pull now passes fromX/fromY; Rustle joins the lasso tether regex.
+- Multi-hit rows (Six-Shooter, Thousand Stings, Piledriver, Organ, Engulf, Last Dance, Devour, Interrogation,
+  Overrun) build their big piece once per cast (`_afOnce`), the small recipe on every hit.
+- Nothing full-screen; big sprites stay additive and modest so the caster, target, hit and number read.
