@@ -5378,6 +5378,10 @@
                     /* its CONFIRM / placement step and the quick menu it came from (right-click steps back) */
                     _quickAoeStage: 1,
                     _quickAoeFrom: 1,
+                    /* the Tab spell-target cycle (battle.js) is per-viewer aiming UI, and its rows hold unit OBJECTS
+                       (RULE #2: never ride a snapshot — Wipeout vs Cube matchup 2026-10-23) */
+                    _spellCycleTargets: 1,
+                    _spellCycleIndex: 1,
                     /* per-viewer: which one-shot achievements THIS client
                        already toasted this match — the host's list must not
                        block or reset the guest's */
@@ -6250,6 +6254,8 @@
                 '_spellPick1',
                 // quick-menu AoE placement: no target list (per-viewer aiming UI)
                 '_quickAoePlace', '_quickAoeStage', '_quickAoeFrom',
+                // the Tab spell-target cycle (per-viewer aiming UI; its rows hold unit objects)
+                '_spellCycleTargets', '_spellCycleIndex',
                 // per-viewer one-shot achievement guard (see skip list)
                 '_matchAchievements',
                 '_matchAchievementsKey',

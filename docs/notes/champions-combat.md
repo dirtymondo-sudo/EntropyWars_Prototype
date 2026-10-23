@@ -2396,3 +2396,32 @@ Lab, all four on one team vs random CPU teams (code at PR #442): baseline 17.1% 
   and Misdirection (trickery family) change for every race that rolls them.
 - Stats (RACE_BASE_STATS): Symbiote HP 690 -> 900, SPD 79 -> 90 (move 2 -> 3); Bunny Girl HP 666 -> 900; Bee Queen
   HP 867 -> 1000, MP 146 -> 220; Wizard HP 349 -> 450, DEF 15 -> 40, SPD 23 -> 50 (move 1 -> 2).
+
+## WIPEOUT vs CUBE MATCHUP FIXES (2026-10-23, mondo: "fix the most prominent individual issues found in each one")
+Report: https://claude.ai/artifact/CWTojTHQLaLz8Jz6tqAeKF (copy /mnt/project-files/matchup-wipeout-vs-cube/). Existing rules only.
+- MARTYR'S TALISMAN IN THE FORECAST (top issue: rows said lethal, the target lived at 1 HP four times). battle.js
+  `talismanReady(u)` (gear hook `surviveLethalOnce`, not `_talismanSpent`); `forecastHitOnUnit` caps a lethal hit at
+  hp-1 and returns `talisman`; `forecastSpellPlan` / `forecastBanePlan` tag the unit 'talisman' and spend the save once
+  per plan (`_fcTalismanUsed`, cleared at start and in finally) so a second hit in the same plan is lethal again;
+  `forecastBasicAttack` returns `endures`. ui.js `predictDamageToUnit(..., out)` fills `out.endures` / `out.blocked`;
+  `_FC_TAG_TEXT.talisman` = "✨ TALISMAN · SURVIVES AT 1"; fallback intent badges show it instead of LETHAL. hud.js target
+  rows add "✨ SURVIVES AT 1" to the note and show PROTECTED / OUT OF REACH / GUARDED in place of a blank number.
+- ATTACK LIT WITH NOTHING TO HIT: state.js `getActionPanelCache` uses `_getAttackValidTargets(unit, {combatOnly:true})`
+  when the list exists; turret / deployed / seed fallbacks only without it; a building in reach no longer lights ATTACK
+  (buildings are not basic-attack targets). The Downtown case was already fixed by PR #444.
+- DOWNTOWN TOWER CAMERA: the tower is a GLB prop (`nr_building:building_5`) standing on 9-high columns, so grid columns
+  missed its upper storeys. three-renderer.js `tallSceneryTopAt(wx, wz)` reads room-piece boxes 1-10 tiles across that
+  rise 1.5+ tiles over their column (re-read every 3 s for the first 60 s); three-camera.js `_solidGroundYWorld` and
+  battle.js `_menuCamOccl` treat them as solid to the roof. `_menuShotPose` also tries two very wide swings (+56/+84 over
+  the normal swing, cost 1.2, drops ≤16) only while every nearer pose is blocked. `_menuCamSolve` walks the sight lines
+  from the eye AFTER THE CLEAR FRAME slide (three-camera.js sync slides the eye by fa.cx/fa.cy at the focal's depth): from
+  the unslid eye a caster against the tower's corner read as clear. Before/after: /mnt/project-files/wipeout-vs-cube-fixes/.
+- METEOR COOLDOWN: Meteor, Requiem and Tidal Slam say "Cooldown: 2 rounds" but carried none: `_applyManaCostFormula`
+  priced them under 80 before `_applyBaselineCooldowns` (cost ≥ 80 → 2) ran, then the tier ladder set 100. Pinned
+  `cooldownRounds: 2` on the three rows (every "Cooldown: N rounds" text now matches its row).
+- Small: element-terrain "Air" callout/log reads "IN THE AIR" / "up in the open air"; squad desk text names the
+  4v4/5v5 switch; online.js `_spellCycleTargets` / `_spellCycleIndex` are guest-local (skip list + `_guestUIKeys`).
+- Not reproduced / left: Stampede on a flyer (path may not have crossed it), Tornado triple fling, Overwatch, flyer over a
+  ground unit (existing rule), height counting as range (rule), Meteor MOVE→CAST farthest tile (existing rule), Ki Wave
+  rows. Already fixed on main: Cube row "HP NN%" (U01), 1-round statuses (U05). The shared-bugs thread (PR #470) owns the
+  round skip, MOVE→CAST numbers, CONFIRM chip, sliding rows, labels over the HUD, guest timer result.
