@@ -2553,7 +2553,7 @@ const OBJECT_RULES = {
    (state.js resolveIdentityForBuild) and DEFAULT_PARTY_RACES seats the default party (the races the old default
    jobs carried). */
 const DEFAULT_IDENTITY = {
-    race: 'homosapien',
+    race: 'door agent',   // HOMOSAPIEN OUT (mondo 2026-10-23): the neutral fallback is the DOOR Agent
     types: ['human'],
     gender: 'other',
     zodiac: 'sagittarius',
@@ -3552,7 +3552,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -4289,7 +4289,7 @@ function raceJumpStat(race, spd) {
 }
 
 function computeUnitStats(race, cls, zodiac) {
-    const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
+    const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['door agent'];
     /* the birth sign's natal changes (ZODIAC_EFFECTS[sign].natal) ride on the base, so the level formula scales them too */
     const base = zodiac && ZODIAC_EFFECTS[zodiac] ? Object.assign({}, base0) : base0;
     if (base !== base0) ZODIAC_NATAL_KEYS.forEach(k => { const d = zodiacNatalDelta(zodiac, k); if (d) base[k] = Math.max(k === 'hp' ? 1 : 0, (base[k] || 0) + d); });
@@ -13099,8 +13099,7 @@ const ACCT_MATCH_GOLD_CAP    = 5000;  // server-side sanity cap on banked gold p
 // Keep server.js ACCT_STARTER_UNITS in sync (npm run test:parity) — the server
 // unions this list into an existing account on login (it never removes).
 const ACCT_STARTER_UNITS = [
-  'door agent',     // Agent — the officer
-  'homosapien',     // Freelancer — the recruit
+  'door agent',     // Agent — the officer (HOMOSAPIEN OUT 2026-10-23: the Homosapien recruit is gone)
   'catgirl',        // Gunslinger — the user's three free hires (2026-09-20)
   'bigfoot',        // Harvester
   'honda civic',    // the Sedan
@@ -37072,12 +37071,12 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: -4.2, z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
-                { x: -2.1, z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
-                { x: 0,    z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
-                { x: 2.1,  z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
-                { x: 4.2,  z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
-                { x: 5.0,  z: -3.6, face: 200, clone: true, race: 'homosapien', say: ['“I stepped out of the line.” “Why?” “To see what you looked like from behind. It is the same.”'] },   // the sixth, in the corner, half-turned
+                { x: -4.2, z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
+                { x: -2.1, z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
+                { x: 0,    z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
+                { x: 2.1,  z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
+                { x: 4.2,  z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
+                { x: 5.0,  z: -3.6, face: 200, clone: true, race: 'door agent', say: ['“I stepped out of the line.” “Why?” “To see what you looked like from behind. It is the same.”'] },   // the sixth, in the corner, half-turned
                 { x: 3.6,  z: -3.4, face: 220, race: 'politician', stay: true, say: ['“Everything must go.” “Where?” “That is not on the banner.”', '“Six floor models.” “They look like me.” “They are the display. You are the stock.”'] },   // THE FLOOR MANAGER, at the till
             ],
             onlineSpots: [],
@@ -54311,7 +54310,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'homosapien', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...
@@ -55781,7 +55780,7 @@ function hqPartyNormMember(m, r) {
     m.name = typeof m.name === 'string' ? m.name.trim().slice(0, 24) : '';
     if (m.name && !m.you && hqNameIsRace(m.name, m.meta && m.meta.race)) m.name = '';   // THE NAMES: the race's own label is never filed as a name
     if (!m.meta || typeof m.meta !== 'object') m.meta = {};
-    if (!m.meta.race) m.meta.race = 'homosapien';
+    if (!m.meta.race) m.meta.race = 'door agent';
     if (m.meta.customSpells && !Array.isArray(m.meta.customSpells)) delete m.meta.customSpells;
     if (!m.loadout || typeof m.loadout !== 'object') m.loadout = { spells: [], items: {}, equipment: {} };
     if (!Array.isArray(m.loadout.spells)) m.loadout.spells = [];
@@ -55885,7 +55884,7 @@ function hqOfficerEnlist(profile, look) {
     return H.officer;
 }
 /* THE OFFICER: the walker as a member — the enlisted agent (a D.O.O.R. Agent in the intake's look, Adaptable in his kit), else the
-   mirror's look (Homosapien in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
+   mirror's look (the DOOR Agent in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
 function hqPartyOfficer(profile) {
     let pref = null, look = null;
     try { pref = (typeof hqAvatarPref === 'function') ? hqAvatarPref(profile) : null; } catch (e) { pref = null; }
@@ -55896,9 +55895,9 @@ function hqPartyOfficer(profile) {
         race = HQ_OFFICER_RULES.race; cls = HQ_OFFICER_RULES.cls; name = off.name || '';
         if (look) { gender = look.gender; appearance = look.appearance; if (look.name) name = look.name; }
     }
-    else if (pref && pref.mode === 'look' && look) { race = 'homosapien'; gender = look.gender; appearance = look.appearance; name = look.name || ''; }
+    else if (pref && pref.mode === 'look' && look) { race = HQ_OFFICER_RULES.race; gender = look.gender; appearance = look.appearance; name = look.name || ''; }   // HOMOSAPIEN OUT (2026-10-23): a look dresses the DOOR Agent
     else if (pref && pref.mode === 'race' && pref.race) { race = pref.race; gender = pref.gender || 'male'; }
-    if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) race = 'homosapien';
+    if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) race = HQ_OFFICER_RULES.race;
     const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
     if (!name) name = String((profile && profile.username) || 'THE OFFICER').slice(0, 24);
     const meta = { race, gender };
@@ -56048,7 +56047,7 @@ function hqPartySpellIds(m) {
 function hqPartySpellCap() { return (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7; }
 function hqPartySpellTree(m) {
     if (!m) return null;
-    const race = (m.meta && m.meta.race) || 'homosapien', cls = UNIT_CLASS;
+    const race = (m.meta && m.meta.race) || 'door agent', cls = UNIT_CLASS;
     const equipped = hqPartySpellIds(m);
     const parts = unitSpellPoolParts(race, cls, equipped);   // the Adaptable row in the kit opens the borrow part
     const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
@@ -56114,7 +56113,7 @@ function hqPartyTreeCircuit(m) {
 function hqPartySetSpells(profile, memberId, ids) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien', cls = UNIT_CLASS;
+    const race = m.meta.race || 'door agent', cls = UNIT_CLASS;
     let out = (ids || []).filter(Boolean);
     out = out.filter((id, i) => out.indexOf(id) === i);
     let trimmed = false;
@@ -56184,17 +56183,17 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
 function hqPartySpellsDefault(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien';
+    const race = m.meta.race || 'door agent';
     const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race));
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
 function hqPartySpellsRandom(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const ids = buildTreeLegalLoadout(m.meta.race || 'homosapien', m.cls, '', hqPartySpellCap(), rng);
+    const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng);
     delete m.meta.spellUpgrades;
     const w = hqPartySetSpells(profile, memberId, ids);
-    const ups = buildRandomUpgrades(m.meta.race || 'homosapien', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
+    const ups = buildRandomUpgrades(m.meta.race || 'door agent', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
     if (Object.keys(ups).length) m.meta.spellUpgrades = ups;
     return Object.assign({ kind: 'random', note: 'A RANDOM LEGAL KIT' }, w);
 }
@@ -56286,7 +56285,7 @@ function hqPartyLead(profile) { const r = hqPartyRecord(profile); return (r && r
 function hqPartyLeadAvatar(profile) {
     if (!HQ_PARTY_RULES.leadWalks) return null;
     const m = hqPartyLead(profile); if (!m) return null;
-    const race = (m.meta && m.meta.race) || 'homosapien';
+    const race = (m.meta && m.meta.race) || 'door agent';
     const genders = hqPartyGenders(race);
     let gender = (m.meta && m.meta.gender) || genders[0]; if (genders.indexOf(gender) < 0) gender = genders[0];
     const out = { race, gender, name: m.name || '', you: !!m.you, id: m.id };
@@ -60081,7 +60080,7 @@ const HQ_AVATAR_MODES = ['player', 'vessel', 'agent', 'race', 'look'];
    portrait (a JPEG data URL bust the mirror photographed, for the ID card),
    at }. hqLook(profile) reads it (null when none / unreadable); hqSetLook
    files it (null clears) and counts a cut. The chair's fifth mode, 'look',
-   walks the building as it (map.js _hqAvatar → { race: 'homosapien', gender,
+   walks the building as it (map.js _hqAvatar → { race: 'door agent', gender,
    appearance }) and is only on offer while a look is on file. */
 function hqLook(profile) {
     let rec = null;
