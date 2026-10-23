@@ -39126,8 +39126,18 @@
             return true;
         }
 
+        /* RANDOM KEYS (mondo 2026-10-23: "make the keys completely random on the whole board, not any rules like have
+           to be 2 tiles apart"): the 2-tile spacing is gone; a tile only refuses a Key that already lies on it. */
         function canPlaceHourglassAt(x, y) {
-            return !state.hourglasses.some(h => h.carriedBy === null && Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) <= 2);
+            return !state.hourglasses.some(h => h.carriedBy === null && h.x === x && h.y === y);
+        }
+        /* An even shuffle on the match's seeded stream (the old sort(() => rng - 0.5) favoured the scan order). */
+        function _shuffleKeySpots(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(engineRng() * (i + 1));
+                const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+            }
+            return arr;
         }
 
         /* Key rules for the active mode (2026-09-07 Arena rules pass).
@@ -39210,21 +39220,16 @@
                 }
             }
 
-            const w = bw();
-            const centerSpan = w >= 20 ? 4 : (w >= 8 ? 2 : w);
-            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
-            const centerMaxX = centerMinX + centerSpan - 1;
-
-            function getCenterCandidatesForFloor(floorId, terrain) {
+            /* RANDOM KEYS (mondo 2026-10-23): every Key lands on a random tile of the WHOLE board — no centre columns
+               first, no spacing. Kept: a walkable tile the teams can reach, no unit on it, one Key per tile. */
+            function getCandidatesForFloor(floorId, terrain) {
                 const floorCandidates = [];
+                if (floorId === 'ground' || floorId === 'earth') return candidates.slice();
                 if (!terrain) return floorCandidates;
                 for (let y = 0; y < terrain.length; y++) {
                     for (let x = 0; x < (terrain[y]?.length || 0); x++) {
-                        if (x < centerMinX || x > centerMaxX) continue;
                         const t = terrain[y][x];
-                        if ((floorId === 'ground' || floorId === 'earth') && !unitAt(x, y) && isTerrainPassable(x, y) && _keyTileOk(x, y)) {
-                            floorCandidates.push({ x, y });
-                        } else if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
+                        if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
                             floorCandidates.push({ x, y });
                         } else if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') {
                             floorCandidates.push({ x, y });
@@ -39236,54 +39241,20 @@
 
             function spawnHourglassesOnFloor(floorId, terrain, count) {
                 let placed = 0;
-
-                let pool = getCenterCandidatesForFloor(floorId, terrain);
                 /* Hourglass placement is match state — seeded stream (stage 5). */
-                pool.sort(() => engineRng() - 0.5);
+                const pool = _shuffleKeySpots(getCandidatesForFloor(floorId, terrain));
                 for (const spot of pool) {
-                    if (canPlaceHourglassAt(spot.x, spot.y)) {
-                        state.hourglasses.push({
-                            id: `hg-${state.hourglasses.length + 1}`,
-                            x: spot.x,
-                            y: spot.y,
-                            floor: floorId,
-                            visibleTo: { 1: false, 2: false },
-                            carriedBy: null
-                        });
-                        placed++;
-                        if (placed >= count) return placed;
-                    }
-                }
-
-                if (placed < count) {
-                    let fallback = [];
-                    if (floorId === 'ground' || floorId === 'earth') {
-                        fallback = candidates.filter(c => c.x < centerMinX || c.x > centerMaxX);
-                    } else if (terrain) {
-                        for (let y = 0; y < terrain.length; y++) {
-                            for (let x = 0; x < (terrain[y]?.length || 0); x++) {
-                                if (x >= centerMinX && x <= centerMaxX) continue;
-                                const t = terrain[y][x];
-                                if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') fallback.push({ x, y });
-                                if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') fallback.push({ x, y });
-                            }
-                        }
-                    }
-                    fallback.sort(() => engineRng() - 0.5);
-                    for (const spot of fallback) {
-                        if (canPlaceHourglassAt(spot.x, spot.y)) {
-                            state.hourglasses.push({
-                                id: `hg-${state.hourglasses.length + 1}`,
-                                x: spot.x,
-                                y: spot.y,
-                                floor: floorId,
-                                visibleTo: { 1: false, 2: false },
-                                carriedBy: null
-                            });
-                            placed++;
-                            if (placed >= count) return placed;
-                        }
-                    }
+                    if (placed >= count) break;
+                    if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
+                    state.hourglasses.push({
+                        id: `hg-${state.hourglasses.length + 1}`,
+                        x: spot.x,
+                        y: spot.y,
+                        floor: floorId,
+                        visibleTo: { 1: false, 2: false },
+                        carriedBy: null
+                    });
+                    placed++;
                 }
                 return placed;
             }
@@ -39309,24 +39280,21 @@
             const canSpawn = Math.min(RESPAWN_COUNT, MAX_UNCOLLECTED_GROUND - uncollectedGround);
             if (canSpawn <= 0) return;
 
+            /* RANDOM KEYS (mondo 2026-10-23): the top-up lands anywhere on the board too, not in the centre columns */
             const w = bw(), h = bh();
-            const centerSpan = w >= 20 ? 6 : (w >= 8 ? 4 : w);
-            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
-            const centerMaxX = centerMinX + centerSpan - 1;
-
-            const centerPool = [];
-            const terrain = state.boardTerrain || state.boardTerrain;
+            const pool = [];
             for (let y = 0; y < h; y++) {
-                for (let x = centerMinX; x <= centerMaxX; x++) {
-                    if (!unitAt(x, y) && isTerrainPassable(x, y) && canPlaceHourglassAt(x, y)) {
-                        centerPool.push({ x, y });
+                for (let x = 0; x < w; x++) {
+                    if (!unitAt(x, y) && isTerrainPassable(x, y) && canPlaceHourglassAt(x, y)
+                        && !(typeof isTowerTile === 'function' && isTowerTile(x, y))) {
+                        pool.push({ x, y });
                     }
                 }
             }
-            centerPool.sort(() => engineRng() - 0.5);
+            _shuffleKeySpots(pool);
 
             let placed = 0;
-            for (const spot of centerPool) {
+            for (const spot of pool) {
                 if (placed >= canSpawn) break;
 
                 if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
@@ -39343,7 +39311,9 @@
             }
 
             if (placed > 0) {
-                addLog(`${placed} new Key${placed > 1 ? 's' : ''} materialized in the center of the battlefield!`);
+                addLog(`${placed} new Key${placed > 1 ? 's' : ''} materialized on the battlefield!`);
+                /* THE SEARCH MAP: a new Key can lie on any searched tile now — both sides' searched tiles are cleared */
+                state.searchedByPlayer = { 1: new Set(), 2: new Set() };
             }
         }
 
@@ -50236,7 +50206,7 @@
                    hg_losing phases (it used to guess 5). Synced to the guest. */
                 state.hourglassTarget = _need;
                 if (_placed < _kr.spawn) {
-                    addLog(`Could not place all Keys with spacing rules on this roll (${_placed}/${_kr.spawn}).`);
+                    addLog(`Could not place all Keys on this board (${_placed}/${_kr.spawn}).`);
                 }
                 if (_placed > 0 && _need > 0 && _need < _placed) {
                     addLog(`${_placed} Keys scattered across the battlefield. Carry ${_need} at once to STABILIZE THE THRESHOLD — every Key secured is a permanent team buff!`);
@@ -55013,7 +54983,7 @@
             // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
             raceRoundValue_v1:       { value: 200,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
             searchKeyValue_v1:       { value: 180,   prev: 180,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
-            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: '× odds of a hidden Key on the centre columns, where Keys are placed first (1 = every tile equal)' },
+            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: 'No effect since 2026-10-23 (Keys land anywhere on the board, every tile equal); kept so saved weights load' },
             keyCarrierDenial_v1:     { value: 800,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
             anchorCaution_v1:        { value: 1,     prev: 1,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
             tacticCommitment_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
@@ -66054,6 +66024,7 @@
 
         // Shared scan footprint: centre first, then stable Manhattan-distance order.
         // Inspect collects Keys in this footprint, rather than by walking onto them.
+        // ONE TILE A SCAN (mondo 2026-10-23): getInspectTileCount is 1, so the footprint is the picked tile alone.
         function getInspectFootprint(unit, x, y) {
             const tileCount = getInspectTileCount(unit);
             const candidates = [];
@@ -66078,7 +66049,7 @@
 
         /* THE SEARCH MAP (Cube vs Keys report, 2026-10-23: "My B11 search missed the A12 Key in the corner, and a player
            can't tell that A12 was never checked"). state.searchedByPlayer[p] = every tile p's Inspects and Far Sights
-           covered (the footprint above, by VISION). scannedByPlayer can't be the record: the scan fade wipes it 0.7 s
+           covered (the footprint above). scannedByPlayer can't be the record: the scan fade wipes it 0.7 s
            later and the Scanner / Scan Pulse write it without searching for Keys. A tile someone dies on is forgotten
            for both sides (a carrier's Keys can lie there now; forgotten on every death, so it tells nobody a carrier
            fell). While the viewer's own unit aims an Inspect or Far Sight, its team's searched tiles show dim and the
@@ -66244,7 +66215,9 @@
 
             /* THE HIDDEN KEYS: the Inspect line is everyone's; what it found (or that it found nothing) is the
                searcher's team's alone, so from the other side a find and an empty search read the same */
-            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`);
+            addLog(toReveal.length === 1
+                ? `${_ctName(unit)} inspects ${coordLabel(x, y)}.`
+                : `${_ctName(unit)} inspects ${toReveal.length} tiles around ${coordLabel(x, y)}.`);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {

@@ -2337,6 +2337,25 @@ through the deep-water terrain (resolveTileArrival / TERRAIN_RULES.deep_water), 
 Swimmers (siren, kraken, Loch Ness, snorkel...) no longer take a spell's Drowning in deep water either, matching the
 terrain rule. Browser before/after: /mnt/project-files/drowning/.
 
+## ONE TILE A SCAN + RANDOM KEYS — 2026-10-23 (mondo)
+mondo: "inspect shouldnt grow with vision, it should only be 1 tile at a time for everyone. But some units can still
+have longer inspect ranges. Also let's make the keys completely random on the whole board, not any rules like have to
+be 2 tiles apart."
+- state.js `getInspectTileCount` returns 1 (was the unit's VISION), so battle.js `getInspectFootprint` is the picked
+  tile alone, for Inspect and Far Sight alike. REACH is untouched: `getEffectiveInspect` = RACE_KITS `inspect` (2 for
+  Android, Shadow Entity, Reptilian, Annunaki, Men in Black, Marksman, Door Agent, Halfdemon, Vampire, Cosmic Wraith,
+  Chosen One, Ghoul, Barbarella, Quarterback, Robinhood, Symbiote), the scanner trait (+1), gear `inspectBonus`, and
+  Far Sight's remote search (4). No new reach was added.
+- battle.js `randomizeSharedObjectives`: Keys go to an evenly shuffled pick (`_shuffleKeySpots`, engineRng) over the
+  WHOLE board. REMOVED: the 2-tile Key spacing (`canPlaceHourglassAt`) and the centre-columns-first pass. KEPT:
+  passable tile, reachable by walking from the units' start tiles (the 10-06 flood, which also skips the Cube tiles),
+  no unit on it, one Key per tile, the per-floor split when a layout has floors. The round-10 top-up
+  (`spawnPeriodicHourglasses`, non-fixed pools only) is whole-board too.
+- ai.js search map: every open unscanned tile is equally likely now (no spacing exclusion around seen Keys, no centre
+  prior; `searchCenterPrior_v1` stays in the registry but has no effect), and the expected find of one Inspect is one tile.
+- Tutorial: the Arena lesson's KEY step and WIN BY KEYS' INSPECT step re-worded; the last Key is now "on a tile next to
+  the marked tile".
+
 ## CUBE VS KEYS FIXES, PART 2 (2026-10-23)
 - Report: https://claude.ai/artifact/S3RPjrYtgW8wQvSPFEweZX. PR #449 took the first batch; this is the rest that was not
   owned by the shared-bugs thread.
@@ -2350,8 +2369,10 @@ terrain rule. Browser before/after: /mnt/project-files/drowning/.
   New `state.searchedByPlayer[p]`: every tile p's Inspect / Far Sight footprint covered (`_inspectFootprintAt`). A tile
   a unit dies on (or a capture door / EXIT takes it) is forgotten for both sides (`forgetSearchedTile`, every time, Keys or
   not, so it tells nobody a carrier fell). While the viewer's own unit aims Inspect or Far Sight: the hovered tile's real
-  footprint (getInspectFootprint, the VISION-sized cut of the 3x3) is a solid teal plate (`searchFoot`, dims the reach),
+  footprint (getInspectFootprint; one tile since PR #467) is a solid teal plate (`searchFoot`, dims the reach),
   the team's searched tiles a grey wash (`searchMap`). battle.js `syncSearchMap` (hover: updateHoveredTarget; mode:
   ui.js renderBoard). Online: the host sends the guest only the guest's own set (online.js `_guestTrapFilter`).
 - "+N KEY" floats as `pickup` (gold) instead of `streak` (hit-word red).
 - Already fixed on main before this pass: the two seats' load-screen / CASE CLOSED year (seeded by the match id).
+- The round-10 Key top-up (`spawnPeriodicHourglasses`, whole-board since PR #467) clears both sides' searched tiles:
+  a new Key can land on any tile, and clearing everything tells nobody where.

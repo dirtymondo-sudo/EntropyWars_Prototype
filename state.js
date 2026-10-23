@@ -3748,9 +3748,10 @@
         }
 
         function getInspectTileCount(unit) {
-            if (!unit) return 1;
-            // 2026-10-09: Inspect covers as many tiles as the unit's VISION (was AWR/14).
-            return Math.max(1, getEffectiveVision(unit));
+            /* ONE TILE A SCAN (mondo 2026-10-23: "inspect shouldnt grow with vision, it should only be 1 tile at a
+               time for everyone"): every Inspect searches exactly the tile picked. How FAR away a unit may pick it
+               (getEffectiveInspect: RACE_KITS inspect, the scanner trait, gear inspectBonus, Far Sight) is unchanged. */
+            return 1;
         }
 
         function getDebuffIntModifier(sourceUnit, targetUnit) {
