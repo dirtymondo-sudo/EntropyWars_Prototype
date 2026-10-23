@@ -8433,15 +8433,45 @@
             const floor = stat === 'spd' ? 1 : 0;
             return Math.min(floor, _statStageBase(unit, stat));
         }
-        /* THE RULER TOP (Cube playtest 2026-10-23): the race editor bake (2026-10-06) moved every base statline onto a
-           0-200 ruler (STAT_GRADE_BANDS re-cut, stats up to 200), and a fielded unit carries its earned level growth ON
-           TOP of its base (+58 ATK at the cap — statGradeValForUnit grades with it taken back off). The clamp still read
-           the old 0-100 ruler against the grown stat, so every level-100 unit (ATK 230+) sat above it: ATK buffs read
-           "ATK MAXED" and did nothing. The top is now the base ruler's top plus the unit's own earned growth. */
-        const STAT_STAGE_RULER_TOP = 200;
+        /* THE STAGE CAP (mondo 2026-10-23: "whatever the max attack stat is at level 100 plus 5 stages ... no matter how i
+           change those stats ... for all the main stats"): a buff can lift ATK / M ATK / DEF / M DEF / SPD up to the
+           roster's highest level-100 value of that stat (the top race base + the level growth at the cap + the biggest
+           birth-sign natal bonus) plus 5 stages. Read live from RACE_BASE_STATS / LEVEL_TOTAL_STAT_GAINS / ZODIAC_EFFECTS,
+           so race editor changes move it; cached for a second (getStatStageDelta runs per AI candidate). A unit already
+           above it keeps its own value as the cap (no buff, never a cut). The old cap (max(100, base)) sat below every
+           level-100 statline, so every ATK buff read "ATK maxed". */
+        const STAT_STAGE_CAP_STAGES = 5;
+        let _stageCapCache = null, _stageCapAt = -1e9;
+        function _statStageRosterTop(stat) {
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            if (!_stageCapCache || now - _stageCapAt > 1000) {
+                const tops = {};
+                for (const k of STAT_STAGE_KEYS) {
+                    let top = 0;
+                    if (typeof RACE_BASE_STATS !== 'undefined') {
+                        for (const r in RACE_BASE_STATS) {
+                            const row = RACE_BASE_STATS[r];
+                            const v = row && Number(row[k]);
+                            if (Number.isFinite(v) && v > top) top = v;
+                        }
+                    }
+                    const grow = (typeof LEVEL_TOTAL_STAT_GAINS !== 'undefined' && Number(LEVEL_TOTAL_STAT_GAINS[k])) || 0;
+                    let natal = 0;
+                    if (typeof ZODIAC_EFFECTS !== 'undefined') {
+                        for (const z in ZODIAC_EFFECTS) {
+                            const n = Number(ZODIAC_EFFECTS[z] && ZODIAC_EFFECTS[z].natal && ZODIAC_EFFECTS[z].natal[k]);
+                            if (Number.isFinite(n) && n > natal) natal = n;
+                        }
+                    }
+                    tops[k] = top + Math.max(0, grow) + natal;
+                }
+                _stageCapCache = tops; _stageCapAt = now;
+            }
+            return _stageCapCache[stat] || 0;
+        }
         function _statStageCeil(unit, stat) {
-            const grown = (unit && unit._lvlStatGains && stat !== 'spd') ? (unit._lvlStatGains[stat] || 0) : 0;
-            return Math.max(STAT_STAGE_RULER_TOP + Math.max(0, grown), _statStageBase(unit, stat));
+            const cap = _statStageRosterTop(stat) + STAT_STAGE_CAP_STAGES * (STAT_STAGE_STEP[stat] || 20);
+            return Math.max(cap, _statStageBase(unit, stat));
         }
         // How many of `n` requested stages would actually move the stat (the apply-time clamp below and ai.js stageRoom).
         function statStageRoom(unit, stat, n) {
