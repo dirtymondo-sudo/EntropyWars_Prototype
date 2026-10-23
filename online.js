@@ -1671,20 +1671,25 @@
            relayed shot, and the settle refuses to fire while one owns the
            camera. The function itself fog-gates the re-centre on the GUEST's
            own viewer, so a hidden enemy actor settles in place. */
+        /* the relay alone: battle.js softResetToUnit's full return (the host's own hand-played unit) moves only the
+           host's camera, so the guest watching that unit act gets just the settle (Cube vs Keys report 2026-10-23) */
+        window._ewRelayCamSettle = function(unitId, x, y, delayMs) {
+            var _netOn = window._NET && window._NET.online;
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                _emit('relay', {
+                    type: 'cam-action-settle',
+                    unitId: unitId != null ? unitId : null,
+                    x: Number.isFinite(x) ? x : null,
+                    y: Number.isFinite(y) ? y : null,
+                    delay: delayMs || 0
+                });
+            }
+        };
         if (typeof window._armActionCamSettle === 'function') {
             const _origArmActionCamSettle = window._armActionCamSettle;
             window._armActionCamSettle = function(unitId, x, y, delayMs, endShot) {
                 _origArmActionCamSettle(unitId, x, y, delayMs, endShot);
-                var _netOn = window._NET && window._NET.online;
-                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
-                    _emit('relay', {
-                        type: 'cam-action-settle',
-                        unitId: unitId != null ? unitId : null,
-                        x: Number.isFinite(x) ? x : null,
-                        y: Number.isFinite(y) ? y : null,
-                        delay: delayMs || 0
-                    });
-                }
+                window._ewRelayCamSettle(unitId, x, y, delayMs);
             };
         }
 
@@ -5654,6 +5659,13 @@
                itself), and after a match generation / recovery (NET._leanSent = null). Nothing changes on the guest side. */
             var LEAN_MIN = 1024, LEAN_FULL_MS = 3000;
             function _guestTrapFilter(s) {
+                /* THE SEARCH MAP (battle.js syncSearchMap): where the host's team searched stays on the host */
+                if (s && s.searchedByPlayer && typeof s.searchedByPlayer === 'object') {
+                    var _sgp = NET.myPlayer === 1 ? 2 : 1, _sb = {};
+                    _sb[_sgp] = s.searchedByPlayer[_sgp] || { _t: 'S', v: [] };
+                    _sb[NET.myPlayer] = { _t: 'S', v: [] };
+                    s.searchedByPlayer = _sb;
+                }
                 if (!s || !Array.isArray(s.traps) || !s.traps.length) return;
                 var gp = NET.myPlayer === 1 ? 2 : 1;
                 s.traps = s.traps.filter(function(t) {
