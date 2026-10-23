@@ -552,6 +552,15 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
   (`_fieldPatchFadeMat`: the field skins a spell or storm lays — ice, desert, grass, scorch, rubble —, the field's raised /
   dug strata patch, a tile board's `_deltaPatchBuild`) drew at renderOrder 1 (strata 0), after or among the plates. Now
   `GROUND_SHEET_ORDER = -3`: dry sheets, then liquids (-2 / -1), then every tile plate (0).
+- Follow-up 2 (2026-10-23, mondo: "frozen/ice tiles are covering up tile highlights or making them hard to see"): the order
+  was right, the CONTRAST was not: a plate is a see-through wash with a white-hot outline, so on white-blue ice it was pale
+  on pale (repro: Skinwalker Ranch Arena, 21 cells `setTerrainAt(x,y,'ice')`, move mode; water / desert / scorch read fine).
+  three-renderer.js THE PLATES ON THE ICE: `_hlBackOne` (run from `_syncHlGhosts` each frame) gives every highlight-shader
+  mesh in highlightGroup on a cell whose `getTerrainAt` matches `_HL_BACK_TERRAIN` (ice / snow / frost / frozen / igloo /
+  glacier) a BACKING child: same geometry + shader, colour = plate colour × `HL_BACK_SHADE` (0.3), no outline, full fill,
+  opacity `HL_BACK_K` (0.55) × the plate's live opacity ratio (focus dim, range pulse), renderOrder plate − 0.5. No x-ray
+  twin, no pick, the weather tint is skipped. Switch `window.EW_NO_HL_BACKING = true`. Seen on the same board, not touched:
+  painted ice on a raised cell (8,11 there) drapes the ground under the rise, and the edge fringe hangs down the board's front step.
 
 ## DAY AND NIGHT OUTDOORS (2026-10-17, mondo: "wood like the fairy forest and bohemian grove etc to still have day and night cycles, for battle and exploration. any outdoor area should have visible day and night. indoor areas should still have it mechanically")
 - Cause: since ZONES_PLAN Z0 cut THE LAND no zone had `clock: true`, so data.js `hqRoomClock` returned null for every room and nothing showed the hour.
