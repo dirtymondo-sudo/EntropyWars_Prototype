@@ -4992,12 +4992,19 @@
             const canMove = (unit.movesThisTurn || 0) < UNIT_MAX_MOVES && canUnitAct(unit) && getMoveTiles(unit).length > 0;
             const enemies = getHostileUnits(unit.player);
             const effRange = getEffectiveRange(unit);
-            let hasAttack = enemies.some(e => {
-                if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y, e.z)) return false;
-                const d = distToTarget(unit.x, unit.y, e);
-                return d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
-            });
-            if (!hasAttack && state.towers) {
+            /* the enemy units + the Cube ask the ATTACK list's own question (battle.js _getAttackValidTargets: the unit's
+               height in the reach and the sight line). The old copy measured from height 0 and sighted from the ground, so
+               the verb lit for an enemy on a ledge the list then refused (wipeout playtest 2026-10-23: ATTACK lit, the
+               click said "No target"). */
+            const _apcList = (typeof _getAttackValidTargets === 'function');
+            let hasAttack = _apcList
+                ? _getAttackValidTargets(unit, { combatOnly: true }).some(t => t.kind === 'unit' || t.kind === 'tower')
+                : enemies.some(e => {
+                    if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y, e.z)) return false;
+                    const d = distToTarget(unit.x, unit.y, e);
+                    return d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+                });
+            if (!hasAttack && !_apcList && state.towers) {
                 const enemyPlayer = enemyOf(unit.player);
                 const tw = state.towers[enemyPlayer];
                 if (tw && tw.hp > 0) {
