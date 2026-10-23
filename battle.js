@@ -2827,7 +2827,24 @@
             if (!u) return false;
             if (unitHasStatus(u, 'wet')) return true;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            // 🌧️ under rain-type weather right now counts too (the round-end tick stamps the status later)
+            if (_unitInRain(u)) return true;
             return _isWetTile(u.x, u.y);
+        }
+
+        /* 💧⚡ WET CONDUCTS (THE SPELL POWER REVIEW, 2026-10-23, mondo: "There is already an established water and
+           lightning interaction in the game, it needs to work for wet too"): a grounded Soaked unit is part of the
+           conductive body exactly like a water tile, so lightning that strikes a Soaked unit (or a pool it touches) arcs on
+           through every touching wet tile and every touching Soaked body (triggerTerrainSpellReaction). Drowning is its
+           own rule and is untouched. */
+        function _isSoakedBodyAt(x, y) {
+            const u = unitAt(x, y);
+            if (!u || u.dead || u._dying) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            return _unitIsSoaked(u);
+        }
+        function _isConductiveWetTile(x, y) {
+            return _isWetTile(x, y) || _isSoakedBodyAt(x, y);
         }
 
         // Round-end tick (runs beside tickBurningTiles): everyone still standing
@@ -3222,7 +3239,10 @@
                 zapped++;
             }
             if (body.length > 1 || zapped > 0) {
-                addLog(`⚡ ${_ctSp(spell.name)} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                const _anyWater = body.some(t => _isWetTile(t.x, t.y));
+                addLog(_anyWater
+                    ? `⚡ ${_ctSp(spell.name)} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`
+                    : `⚡ ${_ctSp(spell.name)} arcs through the soaked bodies${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
         }
@@ -3433,7 +3453,8 @@
                 if (el === 'lightning' && _isWetTile(tile.x, tile.y)) {
                     // wet is wet: the charge also races through the shallow
                     // spread-flow at a pool's edge (Minecraft-style flow tiles)
-                    const body = _floodConnectedTiles(tile.x, tile.y, _isWetTile, 80);
+                    // and through any Soaked body touching it (WET CONDUCTS)
+                    const body = _floodConnectedTiles(tile.x, tile.y, _isConductiveWetTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactLightningWater(caster, spell, tile.x, tile.y, body);
                 } else if (el === 'cold' && _isWaterTile(tile.x, tile.y)) {
@@ -3474,6 +3495,20 @@
                     // ❄️ frost smothers ground fire.
                     handled.add(tile.x + ',' + tile.y);
                     if (extinguishTile(tile.x, tile.y)) _doused++;
+                }
+            }
+            /* 💧⚡ WET CONDUCTS: a Soaked unit struck on dry ground carries the charge to every Soaked body (and wet tile)
+               touching it. Runs after the terrain loop so the ground under it still reacts (a struck tree still burns);
+               tiles a pool already electrified this cast are skipped so nobody is zapped twice. */
+            if (el === 'lightning') {
+                for (const tile of tiles) {
+                    if (!tile || !isInside(tile.x, tile.y)) continue;
+                    if (handled.has(tile.x + ',' + tile.y) && _isWetTile(tile.x, tile.y)) continue;
+                    if (!_isSoakedBodyAt(tile.x, tile.y)) continue;
+                    const body = _floodConnectedTiles(tile.x, tile.y,
+                        (bx, by) => (bx === tile.x && by === tile.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
+                    body.forEach(b => handled.add(b.x + ',' + b.y));
+                    if (body.length > 1) _reactLightningWater(caster, spell, tile.x, tile.y, body);
                 }
             }
             if (_lit) {
@@ -39678,7 +39713,7 @@
                 case 'skySlam':       return nm + ': select an enemy to dive onto.';
                 case 'leapStrike':    return nm + ': select an enemy to leap at.';
                 case 'summonWeather': return nm + ': select a tile to call the weather down on.';
-                case 'remoteView':    return nm + ': select any tile to scry — the fog there is revealed.';
+                case 'remoteView':    return spell.inspectAt ? nm + ': select a tile to search — it is Inspected as if you stood beside it.' : nm + ': select any tile to scry — the fog there is revealed.';
                 case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
                 case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
                 case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' empty tiles to hide the trapdoor on.' : ': select an empty tile to hide the trap on.');
@@ -65259,38 +65294,10 @@
 
         }
 
-        function doInspect(unit, x, y) {
-            /* SIMUL: inspect executes instantly — not plannable yet. */
-            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
-                && state._simulPhase === 'plan' && !state._simulResolving) {
-                addLog('🔍 Inspect is not available in Simul mode (yet).');
-                playErrorSfx();
-                return 0;
-            }
-            if (!canUnitAct(unit)) {
-                _actedLog(unit, 'That unit already acted this round.');
-                return;
-            }
-            const inspectReach = getEffectiveInspect(unit);
-            if (inspectReach <= 0) {
-                addLog(`${_ctName(unit)} cannot inspect right now.`);
-                return;
-            }
-            const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
-            if (d > inspectReach) {
-                addLog('That inspect target is out of reach.');
-                return;
-            }
-            if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
-                addLog('Terrain blocks that scan line.');
-                return;
-            }
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('inspect', unit)) return;
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('inspect', { uid: unit.id, x, y });
-            _imitObserve(unit, { type: 'inspect', x, y });
-
-            pushUndoSnapshot(true);
-
+        /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
+           logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
+           very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
+        function _inspectFootprintAt(unit, x, y) {
             const toReveal = getInspectFootprint(unit, x, y);
 
             let totalHourglasses = 0;
@@ -65378,23 +65385,6 @@
                 holdMs: 800
             });
 
-            spendAP(unit, AP_COST_ACTION);
-            state._actionExecuting = false;
-            state._tileActionTarget = null;
-            state._enemyActionTargetId = null;
-            if (!unitFinished(unit) && !unit.dead) {
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-            } else {
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-            }
-            state.selectedTool = null;
-            state.pendingTarget = null;
-            checkWin();
-            renderBattleUpdate();
-            const _inspectDelay = 700;
-            const _inspectUnit = unit;
             const _inspectPlayer = unit.player;
             const _inspectKeys = toReveal.map(t => scanKey(t.x, t.y));
             window.setTimeout(() => {
@@ -65414,6 +65404,64 @@
                         renderBattleUpdate();
                     }, 600);
                 }
+                renderBattleUpdate();
+            }, 700);
+            return toReveal;
+        }
+        window._inspectFootprintAt = _inspectFootprintAt;
+
+        function doInspect(unit, x, y) {
+            /* SIMUL: inspect executes instantly — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🔍 Inspect is not available in Simul mode (yet).');
+                playErrorSfx();
+                return 0;
+            }
+            if (!canUnitAct(unit)) {
+                _actedLog(unit, 'That unit already acted this round.');
+                return;
+            }
+            const inspectReach = getEffectiveInspect(unit);
+            if (inspectReach <= 0) {
+                addLog(`${_ctName(unit)} cannot inspect right now.`);
+                return;
+            }
+            const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
+            if (d > inspectReach) {
+                addLog('That inspect target is out of reach.');
+                return;
+            }
+            if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
+                addLog('Terrain blocks that scan line.');
+                return;
+            }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('inspect', unit)) return;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('inspect', { uid: unit.id, x, y });
+            _imitObserve(unit, { type: 'inspect', x, y });
+
+            pushUndoSnapshot(true);
+
+            _inspectFootprintAt(unit, x, y);
+
+            spendAP(unit, AP_COST_ACTION);
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            checkWin();
+            renderBattleUpdate();
+            const _inspectDelay = 700;
+            const _inspectUnit = unit;
+            window.setTimeout(() => {
                 endUnitIfDone(_inspectUnit);
                 renderBattleUpdate();
             }, _inspectDelay);
@@ -71328,6 +71376,16 @@
                         applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     }, Math.max(0, _yankDelayMs || 0));
                 }
+                /* THE SPELL POWER REVIEW (2026-10-23): a pull row with `stealKeys` / `stealItems` (Rustle) robs the hooked
+                   enemy the way the `steal` kind does (Stick-Up) — host state now, so the Key moves with the snapshot. */
+                if (!_plAlly && (spell.stealKeys || spell.stealItems) && !target.dead && typeof _stealFromUnit === 'function') {
+                    const _plTook = _stealFromUnit(unit, target, {
+                        keys: spell.stealKeys || 0,
+                        items: spell.stealItems || 0,
+                        verb: spell.name,
+                    });
+                    if (!_plTook.keys && !_plTook.items) addLog(`${_ctName(target)} had nothing worth taking.`);
+                }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */
                     const _plDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
@@ -72373,7 +72431,7 @@
                     triggerAttackAnim(unit, target.x, target.y);
                     const VFX = window.ThreeVFXEffects;
                     if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType, bonusVsStatus: spell.bonusVsStatus || null });
                     if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     if (_fromAbove && spell.splashDmg) {
                         /* the slam: every OTHER enemy beside the landing takes the weak hit */
@@ -73494,6 +73552,27 @@
                     unit.mp -= effectiveSpellCost;
                     completionDelay = actionMs(300);
                 }
+            }
+
+            else if (spell.kind === 'remoteView' && spell.inspectAt) {
+                /* 🔍 FAR SIGHT (THE SPELL POWER REVIEW, 2026-10-23): a normal Inspect at a tile within the spell's range,
+                   whatever the caster's own Inspect reach — same footprint (getInspectFootprint), same Keys / loot / bombs. */
+                const _fsDist = Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y));
+                if (!isInside(x, y) || _fsDist > getEffectiveSpellRange(unit, spell)) {
+                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('manaRegen');
+                unit.mp -= effectiveSpellCost;
+                if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
+                    && typeof ThreeVFXEffects.fireGeometry === 'function') {
+                    try { ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
+                }
+                addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} on ${coordLabel(x, y)}.`, unit.player);
+                _inspectFootprintAt(unit, x, y);
+                checkWin();
+                completionDelay = actionMs(700);
             }
 
             else if (spell.kind === 'remoteView') {
