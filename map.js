@@ -14894,6 +14894,35 @@
             return state.hourglasses.filter(h => h.carriedBy && unitFromId(h.carriedBy)?.player === player).length;
         }
 
+        /* THE HIDDEN KEYS (mondo 2026-10-23, after the Keys vs Keys matchup): a team never sees the OTHER team's
+           Keys. A find, a pickup, a drop, how many it carries, its Key Charge: none of it shows on the other side's
+           screen (log, floats, banner, close-up, scoreboard, cards, plates). The Inspect itself still shows ("…
+           inspects 8 tiles around G7."), so a find reads exactly like an empty search. Display only: the win at 5,
+           Key Charge and the Arena score still count every Key, and the match end reveals all.
+           keysHiddenFor(p) = this screen must not show team p's Keys. A screen with no human seat (dev auto-sim,
+           CPU vs CPU) watches both teams and sees everything. */
+        function keysHiddenFor(player) {
+            if (player !== 1 && player !== 2) return false;
+            if (state.phase !== 'battle' || state.winner || state.devAutoSim) return false;
+            const viewer = getViewerPlayer();
+            if (!viewer || viewer === player) return false;
+            if (window._NET && window._NET.online) return true;
+            return state.controllers?.[viewer] === CTRL.LOCAL;
+        }
+        window.keysHiddenFor = keysHiddenFor;
+        /* the Keys team p carries as THIS screen may show them: the count, or null when they are hidden */
+        function shownCarriedKeys(player) {
+            return keysHiddenFor(player) ? null : carriedHourglassCount(player);
+        }
+        window.shownCarriedKeys = shownCarriedKeys;
+        /* a log line about a team's own Keys (a find, a drop): only that team's screen prints it */
+        function addKeyLog(msg, player) {
+            addLog(msg, player);
+            const L = state.logEntries, e = L && L[L.length - 1];
+            if (e && typeof e === 'object' && e.m === msg) e.kp = 1;
+        }
+        window.addKeyLog = addKeyLog;
+
         function revealHourglassesAt(x, y, player) {
             let found = 0;
             for (const h of groundHourglassesAt(x, y)) {
@@ -15012,10 +15041,12 @@
                 h.carriedBy = null;
                 h.x = unit.x;
                 h.y = unit.y;
-                h.visibleTo[1] = true;
-                h.visibleTo[2] = true;
+                /* THE HIDDEN KEYS: only the dropper's team knows the Keys are lying there; to everyone else the
+                   tile is just another one to Inspect */
+                h.visibleTo[unit.player] = true;
+                h.visibleTo[unit.player === 1 ? 2 : 1] = false;
             }
-            if (carried.length) addLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            if (carried.length) addKeyLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;

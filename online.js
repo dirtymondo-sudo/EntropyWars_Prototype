@@ -1542,7 +1542,7 @@
         showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
             _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
             var _netOn = window._NET && window._NET.online;
-            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && !window._ewNoRelay) {
                 /* Damage-attribution opts (ACHIEVEMENTS_PLAN §5.2 Phase 3):
                    {_dmgAmt,_dmgBy} let the GUEST's display layer restyle a
                    number that breaks ITS OWN Biggest Hit record — the check
@@ -1581,11 +1581,22 @@
             window.playKeySecuredFx = function(x, y, count) {
                 _origPlayKeySecuredFx(x, y, count);
                 var _netOn = window._NET && window._NET.online;
-                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && !window._ewNoRelay) {
                     _emit('relay', { type: 'key-fx', x: x, y: y, n: count || 1 });
                 }
             };
         }
+
+        /* THE HIDDEN KEYS (mondo 2026-10-23): a Key find is the finder's team's alone. battle.js _presentKeyFind
+           plays the celebration on the host only for the host's own team (and with _ewNoRelay set, so none of its
+           floats / chime / close-up relay); a GUEST unit's find is sent here, to the guest alone, as 'key-private',
+           and the guest plays the same celebration (_playKeyFindLocal). The host's own finds send nothing. */
+        window._ewKeyPrivateRelay = function(unit, n, sub) {
+            var _netOn = window._NET && window._NET.online;
+            if (!_netOn || !_isHost() || !unit || state.phase !== 'battle') return;
+            if (unit.player === (window._NET.myPlayer || 1)) return;
+            _emit('relay', { type: 'key-private', unitId: unit.id, n: n || 1, sub: String(sub || '') });
+        };
 
         /* THE DEATH CLOSE-UP (battle.js playDeathCloseup, called by map.js defeatUnit): deaths resolve only on
            the HOST online, so relay each one; the guest starts the body's death clip (it never ran defeatUnit)
@@ -2748,7 +2759,7 @@
         playSfx = function(key, opts) {
             _origPlaySfx(key, opts);
             var _netOn = window._NET && window._NET.online;
-            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && key) {
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && key && !window._ewNoRelay) {
                 _emit('relay', { type: 'sfx', key: key });
             }
         };
@@ -2845,6 +2856,8 @@
                         ['tx', 'ty', 'tz', 'sx', 'sy', 'fromX', 'fromY', 'dx', 'dy', 'range',
                          'spellType', 'casterX', 'casterY', 'aoeRadius', 'cx', 'cy',
                          'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
+                         /* a fog-clamped shot's origin: no gun / bow / thrown prop by the victim (G-O pass) */
+                         'hideGunRig',
                          /* the aimed body's tile (a wide beam's side lane) */
                          'ax', 'ay',
                          'staggerMs', 'includePrimary',
@@ -4590,6 +4603,12 @@
                         }
                     }
 
+                    if (data.type === 'key-private' && _ewMirrorView()) {
+                        /* THE HIDDEN KEYS: this screen's own team found a Key — the host sent it to us alone */
+                        var _kpU = st && st.units ? st.units.find(function(u) { return u && u.id === data.unitId; }) : null;
+                        if (_kpU && typeof window._playKeyFindLocal === 'function') window._playKeyFindLocal(_kpU, data.n || 1, data.sub || '');
+                    }
+
                     if (data.type === 'key-fx' && _ewMirrorView()) {
                         /* DOOR 6.3: Key celebration at the securing unit. The
                            function fog-gates on the GUEST's own viewer, so a
@@ -5349,6 +5368,9 @@
                     /* an AoE armed from a quick menu places with no target
                        list (hud.js _hrlgArmAoePlacement) — per-viewer UI */
                     _quickAoePlace: 1,
+                    /* its CONFIRM / placement step and the quick menu it came from (right-click steps back) */
+                    _quickAoeStage: 1,
+                    _quickAoeFrom: 1,
                     /* per-viewer: which one-shot achievements THIS client
                        already toasted this match — the host's list must not
                        block or reset the guest's */
@@ -6213,7 +6235,7 @@
                 // two-click casts (wave B): the first pick is per-viewer aiming UI
                 '_spellPick1',
                 // quick-menu AoE placement: no target list (per-viewer aiming UI)
-                '_quickAoePlace',
+                '_quickAoePlace', '_quickAoeStage', '_quickAoeFrom',
                 // per-viewer one-shot achievement guard (see skip list)
                 '_matchAchievements',
                 '_matchAchievementsKey',

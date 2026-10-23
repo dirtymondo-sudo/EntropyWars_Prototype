@@ -2224,6 +2224,73 @@ and create a character should be accessed through door agent as well instead of 
   cannot start / deploy until the unit is swapped out. The host refuses a guest sheet with one (online.js).
 - Left as is (flagged to mondo): the Disaster City harbour angler NPC still stands as a plain human (it can't be fought).
 
+## FLANKED / BACKSTAB SHOW THEIR MULTIPLIER (2026-10-23, mondo: "flanked and backstab do bonus damage right? they should have the amount next to their floating number like "Flanked X1.25"") — battle.js, three-renderer.js
+- They do: basic attacks only, battle.js `FACING_BACK_DMG_MULT` 1.25 (back arc, also can't be dodged) and `FACING_SIDE_DMG_MULT` 1.10
+  (side arc), via `getFacingDamageMult`. Spells get no facing bonus, except the door rear rider (`state._doorRearCast`, priced as a back hit).
+- doAttack's pops now read `BACKSTAB ×1.25` (kind `crit`) and `FLANKED ×1.1` (kind `counter`), built from `_facingMult`, so a retune shows the
+  new number. The door rear rider's pop reads `🚪 REAR ×1.25`. Kinds, colours and the UI Maker look are unchanged; the UI Maker float preview
+  samples (FLOAT_PREV_BEATS / FLOAT_KIND_SAMPLE) match. Online: the pops ride the existing floating-text relay.
+- Browser-checked in a VS-CPU Arena match: /mnt/project-files/flank-backstab/flanked_backstab_multiplier.jpg.
+
+## WEAK RACES II — Grey, Djinn, Gnome, Ringmaster (2026-10-23, mondo picked the three fixes)
+- Report: hand match vs CPU + Balance Lab (all four on one team won 4.7%), https://claude.ai/artifact/P159GAtjGKrTGzquEvyVgA
+- CPU (ai.js): summons score by their life damage (bite = summonDef.dmg + ½ spell power × 1+hits/2 rounds, max 4 ×
+  reach × 0.7, + 20/hit body) with the old flat 150/70 as the floor; traps (placeTrap) and step mines (deployObject
+  detonateOnStep) score by `_trapHitValue` (P an enemy steps on it × the hit + its status) with the old flat as floor;
+  `statusSetupValue` credits a near-certain payoff (teammate with ap left this round, or the caster's own next turn
+  from a zone that lasts ≥2 rounds) at AI_TUNE.statusSetupSure 0.6 (NOT a trained key; the trained 0.115 stays for
+  the rest). `_aiStatusBlocked`: ccDenialValue / statusSetupValue give 0 for a status the target's passive blocks.
+- Spells (data.js): Ankle Biter 80→110 + Garden Shears 130→170, both spellType anomaly (gnome STAB); Scrap Mine blast
+  100→140 (goblin shares it); Tissue Sample range 2→4.
+- Stats: Grey SPD 48→60 (walks 2), Djinn HP 324→480. Nothing else.
+
+## ONE ROUND = ONE TURN + CUBE VS KEYS REPORT FIXES (2026-10-23, mondo: "a 1 round status means the unit has to actually have at least 1 turn with that status effect. but not take aim ... root definitely needs to not go away just because the round ends")
+- Report: https://claude.ai/artifact/S3RPjrYtgW8wQvSPFEweZX (Cube vs Keys matchup). Key carrying unchanged: any unit on
+  any team carries a Key (mondo).
+- battle.js `_statusLandsAfterTurn(u)`: during a blitz action phase, a unit whose turn this round is active, done
+  (ap 0), skipped (stun/freeze) or already taken (`u._turnRound === state.round`, stamped in maybeAdvanceTurn) has
+  already used this round. A status landing on it (`applyStatusPayload` → `_markStatusFresh`, `u._stFresh[key] =
+  round`) or a stat stage (`statStageMods` row `fr: round`) skips THIS round's end-of-round tick in
+  `_tickAllStatusDurations`, so it is still on for the unit's next turn. A status that lands before the unit acts
+  ticks as before. End-of-round effects (no active unit) and Strike RT are unchanged. Take Aim is a delayed mark,
+  not a status: still lands at end of round.
+- Side effects (flagged to mondo): a self-buff cast in the unit's own turn (Camouflage, etc.) now lasts through its
+  next turn; a 1-round stun/freeze that lands after the target acted costs it the next turn.
+- Encore: kind meta `encore: { minRange: 1, allyOnly, fogExempt }` (was self-cast, so the UI armed "Self Target" and
+  the engine refused self = never castable). `spellTargetUsableOn`: another ally that has finished (ap 0) and has
+  not had Encore this round. hud.js spellTargetMode 'Single Ally'. Checked in a browser: cast on Bigfoot, it acted
+  again.
+- three-renderer `_refreshHoverOnCameraMove`: a list / click pick (`pendingTarget` without `viaHover`) is never
+  re-aimed by the camera swinging under a still mouse (Psychic Beam CONFIRM named a tile).
+- clickTile fog gate lets Far Sight (`remoteView`) pick a fogged lit tile (its whole job; the kind is fogExempt).
+- hud.js Attack list: the enemy Cube inside reach but with terrain in the way / out of team sight lists greyed
+  with "TERRAIN IN THE WAY" / "OUT OF SIGHT" instead of being missing. Non-portrait rows read "HP 55% · 1t".
+
+## THE HIDDEN KEYS + KEYS VS KEYS FIXES (2026-10-23, mondo: an enemy dropping or picking up a Key must not show for the other side; the Inspect may show but must look the same found or not; the Key animation only for the searcher)
+- Report: https://claude.ai/artifact/8siq43vA1JeYEszPMUpMyk (Keys vs Keys matchup).
+- map.js `keysHiddenFor(p)`: this screen must not show team p's Keys (online: the other seat; VS CPU / hotseat: the
+  team not at the controls; dev auto-sim and match end show all). `shownCarriedKeys(p)` (count or null),
+  `addKeyLog(msg, p)` (an `addLog` entry flagged `kp`, printed only on team p's screen; battle.js `_logKeyHidden`,
+  used by `_logVisible`, hud.js CombatLog and ui.js renderLog / combat-log builder, fog or no fog).
+- `_inspectFootprintAt`: "X inspects N tiles around Y." is public; "Inspection uncovers…" / "Nothing found here." are
+  addKeyLog. The celebration is `_presentKeyFind` → `_playKeyFindLocal` (float, KEY SECURED banner, close-up, chime,
+  shake) under `window._ewNoRelay`, so online.js relays none of it; a guest unit's find goes to the guest alone as
+  relay `key-private`. `addEntropy(..., 'hourglass')` skips the flying orbs when hidden.
+- Drops (`dropHourglassesFromUnit`): only the dropper's team sees the Keys on the ground and the drop line.
+  Rustle / steal lines stay public (both sides are in it).
+- Hidden on the other side: scoreboard count shows "?/N" (hud + ui sidebar), its Keys left out of the shown ARENA
+  score (the round-limit decision still counts them), KEY+ chip, plate badge, "Carrying ×N" / Key Charge status rows,
+  the Key Charge MOV on cards. NOT hidden (rules, flagged to mondo): the forecast vs a carrier includes Key Charge,
+  its move range includes the MOV bonus, the Entropy gauge rises 2 per Key, the state-sync still carries the data.
+- Far Sight: no ally list / pre-pick (`_tileOnlyKinds` + setTool free aim skip `remoteView`), "FAR SIGHT — CLICK A
+  TILE TO SEARCH", desc says "4 steps" and "the turn's one cast". clickTile fog gate also passes any fogExempt
+  tile-targeted kind.
+- hud.js CONFIRM chip reads "MOVE→CAST · <pick>" when the spell pick walks first (cached per pick).
+- battle.js `_ewGuestBoardPick`: a guest tile cast (Gravity Well) outside reach with no approach step, or on a fogged
+  tile its kind can't cast into, is refused with the solo click's line (was armed, then the host said out of range).
+- `_forecastConduction`: the damage kind's forecast adds the lightning-water reaction (`_reactLightningWater` math,
+  allies included) with a "⚡ WATER CONDUCTS" badge. Checked: forecast 476 / 220 = the cast.
+
 ## ANTI-GRAVITY: big bodies move in Low Gravity (2026-10-23)
 mondo: "i think there's like an antigravity zone spell ... that should make it to where usually immovable enemies (the big
 ones) are able to be displaced like any other enemy. see if there are maybe a couple other spells that could be applied to,
