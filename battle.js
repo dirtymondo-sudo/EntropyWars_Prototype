@@ -54338,7 +54338,30 @@
             // ── NEW 2026-10-09 (no schema bump, every trained value carries over): VISION + BROKEN ──
             lastSeenHunt_v1:         { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
             breakValue_v1:           { value: 1,     prev: 1,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
+            // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
+            raceRoundValue_v1:       { value: 200,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
+            searchKeyValue_v1:       { value: 180,   prev: 180,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
+            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: '× odds of a hidden Key on the centre columns, where Keys are placed first (1 = every tile equal)' },
+            keyCarrierDenial_v1:     { value: 800,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
+            anchorCaution_v1:        { value: 1,     prev: 1,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
+            tacticCommitment_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
+            hardReplyFactor_v1:      { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hard', label: 'Hard: Reply Check', desc: 'Hard CPU only: × the worst enemy reply (an ally kill, or half the damage) charged to its top five options' },
         };
+        /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
+           in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
+           values are untouched and still play; imitation may still nudge them. A headless shard that names keys
+           explicitly (window.EW_TRAIN_KEYS) can still test any of them. */
+        const _AB_RETIRED_KEYS = new Set([
+            'comboKillBonus_v1', 'comboSynergyBonus_v1', 'pressRefundValue_v1', 'pressActionValue_v4', 'focusCommitBonus_v4',
+            'killBase_v4', 'supportKillPremium_v4', 'reviveBase_v4', 'mpValuePerPoint_v4', 'buffStageFactor_v4',
+            'healSafetyDiscount_v4', 'woundedPileOn_v4', 'engageAdvantage_v1', 'antiOscillationPen_v1', 'moveHighGroundMelee_v4',
+            'nexusCapBonus_v1', 'towerDefendBonus_v1', 'hgSeekPriority_v1', 'killBonusScore_v1', 'cubeWindowBonus_v1',
+        ]);
+        function _abKeyRetired(key) {
+            const f = window.EW_TRAIN_KEYS;
+            if (Array.isArray(f) && f.length) return false;
+            return _AB_RETIRED_KEYS.has(key);
+        }
 
         // Human-readable labels for state._winCondition — shared by the three
         // lab dashboards' "How Matches End" breakdown and the exports.
@@ -54408,6 +54431,23 @@
         // gauntlet is champion ≡ baseline the moment the defaults move.
         let _strengthBaselineSource = 'default';
         try { const _sb = localStorage.getItem('ew-strength-baseline-src'); if (_sb === 'prev' || _sb === 'default') _strengthBaselineSource = _sb; } catch (e) {}
+        /* SPARRING STYLES (2026-10-23, AI plan Phase 5): the baseline side can play one forced Tactic on every unit —
+           Key Rusher (Search), Cube Rusher (Siege), Turtle (Anchor) — so a trained champion is measured against
+           opponents other than its own mirror. Results are kept per style (bySparring). ai.js reads it through
+           window._ewSparringPersonaFor. */
+        const _SPARRING_STYLES = { search: 'Key Rusher', siege: 'Cube Rusher', anchor: 'Turtle' };
+        let _strengthSparring = null;
+        try { const _ss = localStorage.getItem('ew-strength-sparring'); if (_SPARRING_STYLES[_ss]) _strengthSparring = _ss; } catch (e) {}
+        window._ewSetStrengthSparring = function (id) {
+            _strengthSparring = _SPARRING_STYLES[id] ? id : null;
+            try { localStorage.setItem('ew-strength-sparring', _strengthSparring || ''); } catch (e) {}
+            if (typeof renderStrengthDashboard === 'function' && _strengthTestMode) renderStrengthDashboard();
+            return _strengthSparring;
+        };
+        window._ewSparringPersonaFor = function (player) {
+            if (!_strengthTestMode || !_strengthSparring || typeof _strengthBaselinePlayer !== 'function') return null;
+            return player === _strengthBaselinePlayer() ? _strengthSparring : null;
+        };
         window._ewSetStrengthBaseline = function (src) {
             _strengthBaselineSource = (src === 'prev') ? 'prev' : 'default';
             try { localStorage.setItem('ew-strength-baseline-src', _strengthBaselineSource); } catch (e) {}
@@ -54439,6 +54479,7 @@
                 if (def.probe === 'nexus') return !!(state.nexusPoints && Object.keys(state.nexusPoints).length);
                 if (def.probe === 'tower') return !!(state.towers && state.towers[1] && state.towers[2]);
                 if (def.probe === 'height') return _boardHasHeight();
+                if (def.probe === 'hard') return false;   // the labs pin the CPU to Normal (ai.js _aiDifficultyKey)
                 const _m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
                 if (def.probe === 'arena') return !!(_m && _m.id === 'arena');
                 if (def.probe === 'arenaClock') return !!(_m && _m.id === 'arena' && ((state.matchClock && state.matchClock.roundLimit) || _m.roundLimit || 0) > 0);
@@ -54507,7 +54548,7 @@
         }
 
         function _startNextExperiment() {
-            const keys = Object.keys(AI_WEIGHT_DEFAULTS).filter(_trainKeyAllowed);
+            const keys = Object.keys(AI_WEIGHT_DEFAULTS).filter(k => _trainKeyAllowed(k) && !_abKeyRetired(k));
 
             if (!_abWeightQueue || _abWeightQueue.length === 0) {
                 _abPassNumber = (_abPassNumber || 0) + 1;
@@ -54525,7 +54566,7 @@
             let nextKey = _abWeightQueue.shift();
             // Skip weights the current board can't exercise (see _weightRelevantNow).
             let _skipGuard = 0;
-            while (nextKey && (!_weightRelevantNow(nextKey) || !_trainKeyAllowed(nextKey) || !AI_WEIGHT_DEFAULTS[nextKey]) && _skipGuard++ < 100) {
+            while (nextKey && (!_weightRelevantNow(nextKey) || !_trainKeyAllowed(nextKey) || _abKeyRetired(nextKey) || !AI_WEIGHT_DEFAULTS[nextKey]) && _skipGuard++ < 100) {
                 if (AI_WEIGHT_DEFAULTS[nextKey] && _trainKeyAllowed(nextKey)) {
                     addLog(`🧪 Skipping ${AI_WEIGHT_DEFAULTS[nextKey]?.label || nextKey} — this board/mode never exercises it.`);
                 }
@@ -54800,6 +54841,9 @@
             // How the match ended (tower / wipeout / keys / nexus / clock) —
             // the "which win condition is carrying the game" signal.
             _tallyWinCond(_aiTrainingStats, _wc, _rounds);
+            // …split by the side that won (2026-10-23): a seat bias or a one-sided win condition shows up as a number
+            if (!_aiTrainingStats.winCondsBySide) _aiTrainingStats.winCondsBySide = { 1: {}, 2: {} };
+            _tallyWinCond({ winConds: _aiTrainingStats.winCondsBySide[winnerPlayer === 1 ? 1 : 2] }, _wc, _rounds);
             if (winnerPlayer === 1) { _aiTrainingStats.p1Wins++; _aiTrainingStats.batchP1Wins++; }
             else { _aiTrainingStats.p2Wins++; }
 
@@ -55144,6 +55188,7 @@
                 </div>` : ''}
 
                 ${_winCondSummaryHtml(stats.winConds, 'How Matches End')}
+                ${_winCondSummaryHtml((stats.winCondsBySide || {})[1], 'P1 wins by')}${_winCondSummaryHtml((stats.winCondsBySide || {})[2], 'P2 wins by')}
 
                 <div class="train-group">
                     <div class="train-group-title">Trained Weights <span style="font-weight:400;text-transform:none;letter-spacing:0">(${changedWeights.length} / ${totalWeights} changed)</span></div>
@@ -55435,6 +55480,10 @@
             // stronger) AI, and worth knowing before shipping it.
             if (!_strengthStats.winConds) _strengthStats.winConds = { champ: {}, base: {} };
             _tallyWinCond({ winConds: _strengthStats.winConds[champWon ? 'champ' : 'base'] }, state._winCondition || 'unknown', state.round || 0);
+            const _spk = _strengthSparring || 'mirror';
+            if (!_strengthStats.bySparring) _strengthStats.bySparring = {};
+            const _spb = _strengthStats.bySparring[_spk] || (_strengthStats.bySparring[_spk] = { matches: 0, champWins: 0 });
+            _spb.matches++; if (champWon) _spb.champWins++;
             if (_strengthStats.byMatch.length > 500) {
                 _strengthStats.byMatch.splice(0, _strengthStats.byMatch.length - 500);
             }
@@ -55476,6 +55525,15 @@
                 <button class="train-btn${_strengthBaselineSource !== 'prev' ? ' active' : ''}" onclick="_ewSetStrengthBaseline('default')">Baseline: defaults</button>
                 <button class="train-btn${_strengthBaselineSource === 'prev' ? ' active' : ''}" onclick="_ewSetStrengthBaseline('prev')">Baseline: previous champion</button>
             </div>`;
+            const sparBtns = `<div class="train-btns" style="margin:0 0 6px">
+                <button class="train-btn${!_strengthSparring ? ' active' : ''}" onclick="_ewSetStrengthSparring(null)">Opponent: mirror</button>
+                ${Object.keys(_SPARRING_STYLES).map(k => `<button class="train-btn${_strengthSparring === k ? ' active' : ''}" onclick="_ewSetStrengthSparring('${k}')">${_SPARRING_STYLES[k]}</button>`).join('')}
+            </div>`;
+            const sparRows = Object.entries(s.bySparring || {}).filter(([, b]) => b && b.matches > 0).map(([k, b]) =>
+                `<div class="train-wt-row"><span class="train-wt-name">${k === 'mirror' ? 'Mirror' : (_SPARRING_STYLES[k] || k)}</span>
+                    <span class="train-wt-val" style="color:var(--gold)">${Math.round(b.champWins / b.matches * 100)}%</span>
+                    <span class="train-wt-val" style="color:var(--muted);font-size:9px">${b.champWins}/${b.matches}</span></div>`).join('');
+            const sparHtml = sparRows ? `<div class="train-group"><div class="train-group-title">Champion win rate by opponent style</div><div class="train-wt-list">${sparRows}</div></div>` : '';
             const wcChamp = _winCondSummaryHtml((s.winConds || {}).champ, 'Champion wins by');
             const wcBase = _winCondSummaryHtml((s.winConds || {}).base, 'Baseline wins by');
 
@@ -55491,7 +55549,7 @@
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
                 <div class="train-subtitle">Champion (trained weights) vs Baseline (${baselineLabel}) · same v4 brain · mirror teams · sides alternate</div>
-                ${baselineBtns}
+                ${baselineBtns}${sparBtns}
 
                 <div class="train-cards">
                     <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${n}</span></div>
@@ -55507,7 +55565,7 @@
                     <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
                     <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${Math.min(60, (s.byMatch || []).length)} matches · green = champion won</div>
                 </div>
-                ${wcChamp}${wcBase}
+                ${sparHtml}${wcChamp}${wcBase}
 
                 <div class="train-btns">
                     <button class="train-btn danger" onclick="if(confirm('Reset strength-test results?')){resetStrengthStats().then(()=>{renderStrengthDashboard();addLog('Strength test reset.');});}">Reset</button>
@@ -64269,6 +64327,8 @@
             if (_nxSiege > 1) damage = Math.round(damage * _nxSiege);
             return { damage, siege: _nxSiege };
         }
+
+        window.getCubeAttackDamage = getCubeAttackDamage;   // ai.js: the race clocks' Cube hit for units not yet in range
 
         // Conservative direct Cube attack contract. Reject occupied columns
         // and use surface-height range; remote-door/telescope interception and
