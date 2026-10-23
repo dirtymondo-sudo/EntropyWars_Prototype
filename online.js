@@ -274,6 +274,12 @@
                         focusUnitPanel(clickedUnit.id);
                     }
 
+                    /* THE GUEST PICK (battle.js _ewGuestBoardPick, PvP playtest 2026-10-23): an attack / unit-spell /
+                       targeted-item click takes the engine's own pick — a list row is picked or confirmed like that
+                       row, a click off the list is refused — instead of arming a pick on whatever tile was clicked */
+                    if (actingUnit && !_qmTarget && typeof window._ewGuestBoardPick === 'function'
+                        && window._ewGuestBoardPick(actingUnit, x, y, z, _qmVisible ? _qmUnit : null)) return;
+
                     const sentActionMode = state.actionMode;
                     const sentPendingTarget = state.pendingTarget;
                     _emit('game-action', {

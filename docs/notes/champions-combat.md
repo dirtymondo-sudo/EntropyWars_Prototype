@@ -2151,6 +2151,32 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
 - Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
   cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).
 
+## THE PVP PLAYTEST TARGETING FIXES (2026-10-23, mondo: "yes go ahead and do fixes for the guest and host findings")
+From the 10-23 online PvP playtests (host + guest reports). Netcode and fog went to their own thread. PR #400 targeting
+rules kept: a board click PICKS (✓), CONFIRM fires; an out-of-reach enemy is MOVE→CAST / MOVE→ATK.
+- MOVE→ATK rows: battle.js `_getAttackApproachTargets(unit, have)` (the attack mirror of `_getSpellApproachTargets`; walk
+  only, the farthest landing that reaches, fog-gated from the start tile). hud.js `_hrlgTargetBlades` adds them to the
+  attack list; `attackHasReachableTarget` uses the same function, so the list and the lit ATTACK button agree.
+- A board click on an out-of-reach enemy now PICKS it (`_boardApproachPick` → `selectTargetFromMenu`) instead of moving
+  at once; the second click / CONFIRM walks and hits (`_moveThenAttack` / `_moveThenCast`, unchanged). The prompt reads
+  "Move + attack X". An enemy nobody can reach is refused on the FIRST click ("X is out of reach this turn.",
+  `_outOfReachLine`) and the mode stays armed.
+- GUEST board clicks (online.js armed clickTile): `_ewGuestBoardPick` validates the click against the same rows before
+  the guest's local pick. Before, a guest click on an enemy armed the TILE ("CONFIRM → (x,y)") and CONFIRM did nothing.
+  A unit spell clicked off its list (empty tile, enemy out of reach) is refused and stays armed. Checked in two browsers
+  (friendly room): guest MOVE→ATK hit 196 vs ≈201 shown, guest MOVE→CAST 299 vs ≈310.
+- The CONFIRM row follows the pick: HorologeMenu moves its cursor to the ✓ row; Enter in the aim view fires CONFIRM
+  (was: cancelled the floating CONFIRM / did nothing on an armed self-cast). An approach pick's CONFIRM reads
+  "CONFIRM / MOVE→ATK" (or MOVE→CAST) on two lines.
+- Previews from the landing tile: `approachCastFrom(unit,x,y,z)` (battle.js) gives the approach landing; the list's
+  damage + hit %, the name-plate forecast (ui.js `getPendingDamagePreview`) and `forecastSpellPlan` (now also when only
+  the height changes) all forecast from it. Hydraulic Crush 343 → 395 shown, real hit 393; Railgun MOVE→CAST row was 0.
+- Status chips per target (ui.js `_getStatusPreviewLabels(spell, target)`): drops a status the target is immune to /
+  absorbs (element affinity or passive) and marks a resisted one "½ CHANCE" (the existing halved apply chance).
+- Online pause menu says "MENU · ONLINE · THE MATCH KEEPS GOING" instead of PAUSED.
+- Not changed: lists open on the lowest-HP target (existing sort, asked mondo); the row slide-in lag is SwiftShader;
+  ENDS TURN tag is intended; heals do get MOVE→CAST rows (the report's Divine Light case was not reproduced).
+
 ## FIRE ON OIL / GOO, EVERY SPELL KIND (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of liquid explode? If not it should.")
 - Single-target spells (Fireball, Dragon Breath) already blew the whole connected slick (battle.js `_reactFireOil` via
   `triggerTerrainSpellReaction`). Nine fire / lightning spells did not, because their resolvers never called the dispatcher

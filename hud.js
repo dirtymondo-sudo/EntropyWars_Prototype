@@ -2978,7 +2978,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     onClick: (e) => { e.stopPropagation(); confirmBtn.fire(); },
   },
     h('span', { className: 'hrlg-confirm-inline-check' }, '✓'),
-    'CONFIRM',
+    /* the seal covers the row's amber MOVE→ATK / MOVE→CAST chip — it says so itself, under the word (PvP playtest 2026-10-23) */
+    b.note ? h('span', { className: 'hrlg-confirm-stack' }, 'CONFIRM', h('span', { className: 'hrlg-confirm-note' }, b.note)) : 'CONFIRM',
   ));
   // TYPE badge rides inline next to the name — it's the matchup intel.
   const _badgeEl = _hrlgBadgeEl;
@@ -3554,6 +3555,15 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
   // a fresh unit or a different menu view takes the wheel → reset the cursor
   useEffect(() => { setSelId(null); camSrc.current = null; }, [unitKey, viewKey]);
+  /* THE CURSOR FOLLOWS THE PICK (PvP playtest 2026-10-23: an enemy picked on the board got its CONFIRM while the
+     keyboard cursor sat on CANCEL, so ENTER cancelled the attack): whenever the ✓ moves to another row (a board
+     click, the engine's pre-pick, a press-refund re-pick) the cursor lands on it — ENTER then confirms it */
+  const _ckId = (blades.find(b => b && b.check) || {}).id || null;
+  const _ckPrev = useRef(_ckId);
+  useEffect(() => {
+    if (_ckId && _ckId !== _ckPrev.current) { camSrc.current = 'click'; setSelId(_ckId); }
+    _ckPrev.current = _ckId;
+  }, [_ckId, viewKey]);
 
   // THE MENU CAMERA (battle.js _menuTargetShot) — WHEN the camera moves, per input:
   //  · ↑/↓, the wheel and the controller D-pad step the cursor deliberately → the
@@ -3739,9 +3749,13 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // ENTER only confirms while browsing menus — never while aiming on the
-  // board (there the click on a tile is the confirm; ESC/crown backs out).
-  fireSelRef.current = (view === 'aim') ? null : () => { if (selBlade) fireBlade(selBlade); };
+  // ENTER fires the cursor row while browsing menus. While aiming on the board
+  // it fires only a green CONFIRM that is up (an armed self-cast's "CONFIRM — SELF",
+  // a picked aim tile) — PvP playtest 2026-10-23: ENTER did nothing on a self-cast
+  // that waited for its CONFIRM; the click on a tile stays the aim's own confirm.
+  fireSelRef.current = (view === 'aim')
+    ? ((confirm && confirm.fire) ? () => { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); confirm.fire(); } : null)
+    : () => { if (selBlade) fireBlade(selBlade); };
 
   // the crown — the big bar on top of the identity column. It is ALWAYS
   // END TURN now; backing out of sub-menus moved to the ↩ chip riding the
@@ -5041,6 +5055,13 @@ function _hrlgTargetBlades(unit, st, mode) {
        column here buried the real targets under "Smash Terrain" rows. */
     targets = (typeof _getAttackValidTargets === 'function' ? _getAttackValidTargets(unit) : [])
       .filter(t => t.kind !== 'terrain');
+    /* THE MOVE→ATK ROWS (PvP playtest 2026-10-23): what the unit reaches after its one step lists too (amber
+       MOVE→ATK chip, the forecast from the landing) — the lit ATTACK verb never opens on an empty list, and the
+       confirm walks then swings (battle.js selectTargetFromMenu → findAttackApproachTile → _moveThenAttack) */
+    if (typeof _getAttackApproachTargets === 'function') {
+      const _have = new Set(targets.map(t => t.x + ',' + t.y));
+      try { targets = targets.concat(_getAttackApproachTargets(unit, _have)); } catch (e) {}
+    }
     titleText = 'Attack'; titleIcon = '×';
   } else {
     spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
@@ -5116,10 +5137,13 @@ function _hrlgTargetBlades(unit, st, mode) {
     // player sees the outcome while browsing targets, not only after arming
     // (predictDamageToUnit, ui.js — mid estimate IF it lands; dodge/counter/
     // crit stay a gamble).
+    /* a MOVE→ATK / MOVE→CAST row forecasts from the tile its step lands on (PvP playtest 2026-10-23: the hits
+       landed 10-35% above a forecast read from where the caster stood) */
+    const _castFrom = (t._approach && t._approach.x != null) ? _mtCastTile(t._approach) : null;
     const previewDmg = (tUnit && isOffensive
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
-      ? predictDamageToUnit(unit, tUnit, spell || null) : 0;
+      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
     const previewHeal = (tUnit && !isOffensive && spell
@@ -5142,7 +5166,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
-      note: t._approach ? 'MOVE→CAST' : null,
+      note: t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
@@ -5156,8 +5180,8 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
-      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit) && !t._approach)
-        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit)) : null,
+      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
+        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit, _castFrom)) : null,
       portrait: portrait,
       // THE MENU CAMERA: the cursor landing on this row frames caster + target
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
@@ -5174,10 +5198,13 @@ function _hrlgTargetBlades(unit, st, mode) {
       // THE STRIKE ARROW (ui.js): the hovered attack row draws the red arrow onto its target, leaving goes back to the pick
       // THE STRIKE ARROWS (ui.js): a hovered spell row in reach paints its cast (footprint, numbers, an arrow onto
       // every body it hits, the ricochet hop); leaving goes back to the pick
-      hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); }
-        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y, tz); } : undefined,
-      hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); }
-        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(null); } : undefined,
+      // a MOVE→ATK / MOVE→CAST row draws its walk arrow + landing ghost instead (battle.js _ewApproachRowHover)
+      hoverIn: t._approach ? () => { if (typeof window._ewApproachRowHover === 'function') window._ewApproachRowHover(t.x, t.y); }
+        : mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); }
+        : spell ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y, tz); } : undefined,
+      hoverOut: t._approach ? () => { if (typeof window._ewApproachRowHover === 'function') window._ewApproachRowHover(null); }
+        : mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); }
+        : spell ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(null); } : undefined,
     };
   });
   // (The ×1/×2/×3 multi-strike picker is gone: an attack ENDS the turn, so
@@ -11771,6 +11798,8 @@ function _hudHideCss() {
     /* the row carrying the seal reserves its footprint, so the HP readout /
        chips only slide under it when the row is genuinely too tight */
     .hrlg-blade.cfm .hrlg-body { padding-right: 112px; }
+    .hrlg-confirm-stack { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
+    .hrlg-confirm-note { color: #f0b54a; font-size: 8px; letter-spacing: 0.06em; text-shadow: none; }
     .hrlg-confirm-inline-check {
       flex: none; width: 15px; height: 15px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;

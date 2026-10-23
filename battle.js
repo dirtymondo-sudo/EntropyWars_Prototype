@@ -36133,7 +36133,9 @@
             const hpUndo = new Map();   // unit -> [hp, shield] while a sequence of hits runs
             const _ambushWas = caster._ambushStrike;
             try {
-                if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y)) {
+                /* a height approach (take off / land / raise the ground) casts from the caster's own column at its new z */
+                if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y
+                    || (opts.castFrom.z != null && opts.castFrom.z !== caster.z))) {
                     moveTmp(caster, opts.castFrom.x, opts.castFrom.y);
                     if (opts.castFrom.z != null) caster.z = opts.castFrom.z;
                 }
@@ -39903,6 +39905,8 @@
                 if (am === 'jump') return _promptBarHtml('Select a highlighted tile to jump to.', 'ESC cancel');
                 if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn.', 'ESC cancel');
                 if (am === 'attack') {
+                    /* a MOVE→ATK pick says it walks first (approachCastFrom: its step's landing) */
+                    if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('Attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml('Select an enemy to attack.', 'ESC cancel');
                 }
@@ -39931,6 +39935,7 @@
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
                     }
                     if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
+                    if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
                 }
@@ -42675,27 +42680,9 @@
         function attackHasReachableTarget(unit, opts) {
             if (!unit) return false;
             if (_getAttackValidTargets(unit, opts).length > 0) return true; // in range now
-            const steps = _attackMoveBudget(unit);
-            if (steps <= 0) return false;
-            const sx = unit.x, sy = unit.y, sz = unit.z;
-            const _ahAltAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
-            try {
-                const ring1 = getMoveTiles(unit);
-                for (const t of ring1) {
-                    // A _takeoff tile really costs takeoff AP + move AP before
-                    // the swing — skip it unless the unit can pay all three.
-                    if (t._takeoff && (unit.ap || 0) < _ahAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
-                    if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = sx; unit.y = sy; unit.z = sz;
-                    const land = predictWalkLanding(unit, t.x, t.y, t.z, { takeoff: !!t._takeoff });   // THE SLIDE FORECAST
-                    unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
-                    if (_getAttackValidTargets(unit, opts).length > 0) return true;
-                }
-                unit.x = sx; unit.y = sy; unit.z = sz;
-            } finally {
-                unit.x = sx; unit.y = sy; unit.z = sz;
-            }
-            return false;
+            /* one walk step away: exactly the attack list's MOVE→ATK rows (fog-gated from where the unit stands), so a
+               lit ATTACK never opens on an empty list (PvP playtest 2026-10-23) */
+            return _getAttackApproachTargets(unit).length > 0;
         }
 
         // Best tile the unit can reach this turn from which it can attack the
@@ -42731,6 +42718,54 @@
             }
             return best;
         }
+
+        /* THE MOVE→ATK ROWS (PvP playtest 2026-10-23: ATTACK lit up, then its list was empty — "Click an enemy to
+           move + attack" — and a board click swung at once with no forecast or CONFIRM): every combat target the
+           unit reaches only after its one walk step, as attack-list rows { x, y, dist, unit|tower|…, kind, _approach }.
+           Same probe as attackHasReachableTarget (so the lit ATTACK verb and the list always agree) and the same
+           pick rule as findAttackApproachTile (the landing farthest from the target that still reaches it). `have`
+           = targets already listed in reach, keyed 'x,y'. */
+        function _getAttackApproachTargets(unit, have) {
+            if (!unit) return [];
+            if (typeof canUnitAct === 'function' && !canUnitAct(unit)) return [];
+            if ((unit.ap || 0) < AP_COST_ACTION) return [];
+            if (_attackMoveBudget(unit) <= 0) return [];
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const _altAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
+            const found = new Map();   // 'x,y' -> { t, approach, score }
+            try {
+                for (const mt of getMoveTiles(unit)) {
+                    if (mt._takeoff && (unit.ap || 0) < _altAp + AP_COST_ACTION + AP_COST_ACTION) continue;
+                    if (unitAt(mt.x, mt.y, mt.z)) continue;
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                    const land = predictWalkLanding(unit, mt.x, mt.y, mt.z, { takeoff: !!mt._takeoff });   // THE SLIDE FORECAST
+                    unit.x = land ? land.x : mt.x; unit.y = land ? land.y : mt.y; unit.z = land ? land.z : (mt.z ?? sz);
+                    for (const t of _getAttackValidTargets(unit, { combatOnly: true })) {
+                        const k = t.x + ',' + t.y;
+                        if (have && have.has(k)) continue;
+                        const score = Math.abs(unit.x - t.x) + Math.abs(unit.y - t.y);
+                        const prev = found.get(k);
+                        if (!prev || score > prev.score) {
+                            found.set(k, { t, score, approach: { x: mt.x, y: mt.y, z: mt.z ?? sz, moveCost: mt._takeoff ? _altAp + 1 : 1, land: land || undefined } });
+                        }
+                    }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            const out = [];
+            const _fog = visionGatesTargeting(unit);
+            found.forEach(({ t, approach }) => {
+                // fog: never list a body the unit cannot see from where it stands now (the step must not leak it)
+                if (_fog && t.kind !== 'tower' && t.kind !== 'turret' && !isInVision(unit, t.x, t.y)) return;
+                out.push(Object.assign({}, t, { dist: Math.abs(t.x - sx) + Math.abs(t.y - sy), _approach: approach }));
+            });
+            // the in-reach list's own order: enemies before structures, closest-to-death first
+            const _need = (t) => (t.unit && !t.unit.dead) ? (t.unit.hp || 0) : 1e9;
+            out.sort((a, b) => (_need(a) - _need(b)) || (a.dist - b.dist));
+            return out;
+        }
+        window._getAttackApproachTargets = _getAttackApproachTargets;
 
         // Walk `unit` to `approach` (one step) then attack (tx,ty). Mirrors
         // _moveThenCast: each doMove animates, we wait its walk delay, then issue
@@ -42808,6 +42843,146 @@
         // afford the swing, do the move-then-attack and return true (caller
         // stops). findAttackApproachTile validates (x,y) is a real attack target
         // from the approach tile, so no separate enemy check is needed.
+        /* THE MOVE→ATK / MOVE→CAST BOARD PICK (PvP playtest 2026-10-23: a board click on an enemy one step out of
+           reach walked and swung at once — no forecast, no CONFIRM): the click PICKS that enemy exactly like its
+           MOVE→ATK / MOVE→CAST row in the list (✓, CONFIRM, the forecast from the tile the step lands on, the walk
+           arrow); the next click on it, CONFIRM or ENTER walks and acts (selectTargetFromMenu). Returns true when the
+           click was such a pick or its confirm. */
+        function _boardApproachPick(actingUnit, x, y, z, clickedUnit) {
+            if (!actingUnit) return false;
+            let tz;
+            if (state.actionMode === 'attack') {
+                const row = _getAttackApproachTargets(actingUnit).find(t => t.x === x && t.y === y);
+                if (!row) return false;
+                tz = row.unit ? row.unit.z : undefined;
+            } else if (state.actionMode === 'spell') {
+                if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
+                const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                    || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (!spell || isSpellSelfCast(spell)) return false;
+                if (unitSpellsBlocked(actingUnit)) return false;
+                if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
+                if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
+                tz = z != null ? z : clickedUnit.z;
+                if (!findSpellApproachTile(actingUnit, spell, x, y, tz)) return false;
+            } else return false;
+            selectTargetFromMenu(x, y, tz);
+            return true;
+        }
+        window._boardApproachPick = _boardApproachPick;
+        /* THE GUEST PICK (PvP playtest 2026-10-23: the guest saw "CONFIRM — Dark Grass H10" with Catgirl highlighted,
+           and pressing it did nothing): an online guest's armed board click never ran the engine's pick — online.js
+           armed ITS OWN pick on whatever tile was clicked (an empty square, the enemy beside the one aimed at, one out
+           of reach) and relayed the click for the host to judge. Here the guest's click gets the engine's own answer:
+           a row of the target list (in reach, or its MOVE→ATK / MOVE→CAST step) is picked / confirmed exactly like that
+           row (selectTargetFromMenu — the confirm then runs through the relayed engine wrappers), an attack click off
+           the list is refused with its line and the mode holds, a potion / bane on the wrong team is refused. Returns
+           true when the click is handled here; false leaves it to online.js (tile / free-aim casts). */
+        window._ewGuestBoardPick = function (actingUnit, x, y, z, clickedUnit) {
+            if (!actingUnit || state._actionExecuting) return false;
+            const mode = state.actionMode;
+            if (mode === 'attack') {
+                const rows = _getAttackValidTargets(actingUnit).filter(t => t.kind !== 'terrain')
+                    .concat(_getAttackApproachTargets(actingUnit));
+                const row = rows.find(t => t.x === x && t.y === y && (!clickedUnit || !t.unit || t.unit.id === clickedUnit.id))
+                    || rows.find(t => t.x === x && t.y === y);
+                if (row) { selectTargetFromMenu(x, y, row.unit ? row.unit.z : undefined); return true; }
+                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
+                playErrorSfx();
+                markDirty('board', 'hud');
+                renderIfDirty();
+                return true;   // THE MODE HOLDS
+            }
+            if (mode === 'spell') {
+                const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                    || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (!spell || isSpellSelfCast(spell) || isSpellTileTargeted(spell) || _kindMeta(spell).directional) return false;
+                const cu = (clickedUnit && !clickedUnit.dead) ? clickedUnit : null;
+                const _hit = t => cu ? (t.unit ? t.unit.id === cu.id : (t.x === x && t.y === y)) : (t.x === x && t.y === y);
+                const row = _getSpellValidTargets(actingUnit, spell).find(_hit) || _getSpellApproachTargets(actingUnit, spell).find(_hit);
+                if (row) {
+                    const tu = row.unit || cu;
+                    if (tu) selectTargetFromMenu(tu.x, tu.y, tu.z); else selectTargetFromMenu(row.x, row.y, row.z);
+                    return true;
+                }
+                /* a unit spell aimed off its list (an empty tile, an enemy out of reach): refused like the solo click —
+                   the guest's pick used to land on the tile ("→ Checkerboard I4") and its CONFIRM did nothing */
+                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player);
+                playErrorSfx();
+                markDirty('board', 'hud');
+                renderIfDirty();
+                return true;   // THE MODE HOLDS
+            }
+            if (mode === 'item' && actionModeNeedsTargetConfirm()
+                && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y, z)) {
+                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
+                playErrorSfx();
+                markDirty('board', 'hud');
+                renderIfDirty();
+                return true;
+            }
+            return false;
+        };
+        /* a picked (or hovered) MOVE→ATK / MOVE→CAST target paints its walk: the arrow to the landing, the ghost there,
+           then the act — the strike preview a pick paints first assumed no walk (from the unit's own tile). Returns true
+           when the target is such an approach target. (x = null: the hovered row was left, back to the pick.) */
+        function _paintApproachPick(unit, x, y, z) {
+            if (!unit) return false;
+            if (x == null) {
+                _clearSpellApproachPreview();
+                const pt = state.pendingTarget;
+                if (pt && pt.x != null) { updateAoePreview(pt.x, pt.y); _paintApproachPick(unit, pt.x, pt.y, pt.z); }
+                return false;
+            }
+            let approach = false;
+            if (state.actionMode === 'attack') {
+                approach = !_getAttackValidTargets(unit).some(t => t.x === x && t.y === y) && !!findAttackApproachTile(unit, x, y);
+            } else if (state.actionMode === 'spell') {
+                const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                    || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                approach = !!sp && !isSpellSelfCast(sp) && !_mtcReachesPick(unit, sp, x, y, z) && !!findSpellApproachTile(unit, sp, x, y, z);
+            }
+            if (!approach) return false;
+            state._spellApproachKey = null;
+            if (state.actionMode === 'attack') { try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) ThreeRenderer.clearArrows3D(); } catch (e) {} _attackApproachHoverPreview(unit, x, y); }
+            else _spellApproachHoverPreview(unit, x, y);
+            return true;
+        }
+        /* the tile a picked MOVE→ATK / MOVE→CAST target is hit FROM ({ x, y, z } — the landing of the step, a jump's
+           tile, or the caster's own column at its new height), null when the pick is in reach from where the unit
+           stands. ui.js reads it so the name plate forecast is the hit the walk lands (PvP playtest 2026-10-23). */
+        function approachCastFrom(unit, x, y, z) {
+            if (!unit || x == null || y == null) return null;
+            let a = null;
+            if (state.actionMode === 'attack') {
+                if (_getAttackValidTargets(unit).some(t => t.x === x && t.y === y)) return null;
+                a = findAttackApproachTile(unit, x, y);
+            } else if (state.actionMode === 'spell') {
+                const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                    || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (!sp || isSpellSelfCast(sp) || _mtcReachesPick(unit, sp, x, y, z)) return null;
+                a = findSpellApproachTile(unit, sp, x, y, z);
+            }
+            if (!a) return null;
+            const L = (!a._jump && a.land) ? a.land : a;
+            return { x: L.x, y: L.y, z: L.z };
+        }
+        window.approachCastFrom = approachCastFrom;
+        window._ewApproachRowHover = function (x, y) {
+            const u = getSelectedUnit();
+            if (!u) return;
+            if (x == null) { _paintApproachPick(u, null); return; }
+            _paintApproachPick(u, x, y);
+        };
+        /* the line a target-list click off the list gets (it read "Target is no longer valid." for an enemy that never
+           was in reach — PvP playtest 2026-10-23) */
+        function _outOfReachLine(actingUnit, clickedUnit) {
+            if (clickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id && isEnemyUnit(actingUnit, clickedUnit)
+                && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y)))   // never name a fogged body
+                return `${_ctName(clickedUnit)} is out of reach this turn.`;
+            return state.actionMode === 'attack' ? 'Choose an enemy on an attack-highlighted tile.' : 'Choose a target from the list.';
+        }
+
         function _tryMoveThenAttack(actingUnit, x, y, z) {
             if (!actingUnit || state.actionMode !== 'attack') return false;
             if (typeof canUnitAct === 'function' && !canUnitAct(actingUnit)) return false;
@@ -58682,7 +58857,16 @@
                 state._repeatQueue = (state.actionMode === 'attack' || state.actionMode === 'spell')
                     ? { unitId: unit.id, mode: state.actionMode, tool: state.selectedTool, x, y, z: execZ, queued: _preQueued }
                     : null;
-                if (state.actionMode === 'attack') {
+                /* THE MOVE→ATK ROWS: a pick the unit reaches only after its step walks there first, then swings
+                   (recomputed fresh, never a stale menu) — the same executor the quick menus use */
+                const _matApproach = (state.actionMode === 'attack'
+                    && !_getAttackValidTargets(unit).some(t => t.x === x && t.y === y))
+                    ? findAttackApproachTile(unit, x, y) : null;
+                if (_matApproach) {
+                    if (state._repeatQueue) state._repeatQueue.queued = 0;
+                    _moveThenAttack(unit, _matApproach, x, y, execZ);
+                }
+                else if (state.actionMode === 'attack') {
                     const _atkR = _execAction(() => doAttack(unit, x, y, execZ));
                     // first swing rejected → don't leave pre-loaded repeats armed
                     if ((_atkR === 0 || _atkR === false) && state._repeatQueue) state._repeatQueue.queued = 0;
@@ -58726,6 +58910,7 @@
             state.pendingTarget = { x, y, z, mode: state.actionMode, tool: state.selectedTool, viaHover: false };
             playSfx('uiCursorFocus');
             updateAoePreview(x, y);
+            _paintApproachPick(unit, x, y, z);   // THE MOVE→ATK ROWS: a pick one step out of reach shows its walk
             // picking a target from the submenu swings the caster's TPS view
             // onto that unit — attacks, spells AND item targets (tile aim
             // stays tactical); switching targets re-aims the shot each time.
@@ -59866,13 +60051,13 @@
                     if (!isValidTarget) {
 
                         // Out of range, but the unit may be able to step into range
-                        // and still act this turn → walk there, then attack/cast.
-                        if (_tryMoveThenAttack(actingUnit, x, y, state._clickedZ)) return;
-                        if (_tryMoveThenCast(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
+                        // and still act this turn → PICK it (its MOVE→ATK / MOVE→CAST
+                        // row); the confirming click walks there, then attacks/casts.
+                        if (_boardApproachPick(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
 
                         // ── Stale highlight fix: clear + re-render + notify ──
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                        addLog('Target is no longer valid.', actingUnit.player);
+                        addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
@@ -59923,7 +60108,7 @@
 
                         // Out of cast range, but the unit may be able to step into
                         // range and still cast this turn → walk there, then cast.
-                        if (_tryMoveThenCast(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
+                        if (_boardApproachPick(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
 
                         // ── Stale highlight fix: clear + re-render + notify ──
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }

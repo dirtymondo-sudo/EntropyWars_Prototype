@@ -7244,6 +7244,8 @@
                     + `</div>`;
             }
 
+            /* an online match never pauses — the title must not say it did (PvP playtest 2026-10-23) */
+            const _pauseOnline = !_inEditor && !!(window._NET && window._NET.online);
             let body = '';
             if (_pauseTab === 'party') body = _buildPauseParty();
             else if (_pauseTab === 'match') body = `<div class="bp-hd"><b>MATCH</b><span>${_pauseEsc(modeLabel)} · ${roundStr} · ${durationStr}</span></div>` + _buildPauseScoreboard();
@@ -7266,7 +7268,7 @@
             _pauseOverlay.innerHTML = `
             <div class="pause-card bp-frame">
                 <div class="hq-pause-head bp-head">
-                    <div class="hq-pause-title"><div><b>PAUSED</b><span>${_inEditor ? 'THE MAP EDITOR' : _pauseEsc(modeLabel)}</span></div></div>
+                    <div class="hq-pause-title"><div><b>${_pauseOnline ? 'MENU' : 'PAUSED'}</b><span>${_inEditor ? 'THE MAP EDITOR' : _pauseOnline ? _pauseEsc(modeLabel) + ' · ONLINE · THE MATCH KEEPS GOING' : _pauseEsc(modeLabel)}</span></div></div>
                     ${vitals}
                 </div>
                 <div class="hq-pause-main bp-main">
@@ -15484,7 +15486,10 @@
                 const heal = _estimateSpellHeal(attacker, target, spell);
                 if (heal > 0) val = { unitId: target.id, heal: heal };
             } else if (target.id !== attacker.id) {
-                val = _forecastPreviewVal(attacker, target, spell, null);
+                /* a MOVE→ATK / MOVE→CAST pick forecasts from the tile its step lands on (battle.js approachCastFrom) —
+                   read from where the unit stood, the hits landed 10-35% above it (PvP playtest 2026-10-23) */
+                const _pvFrom = (mode !== 'item' && typeof approachCastFrom === 'function') ? approachCastFrom(attacker, pt.x, pt.y, pt.z) : null;
+                val = _forecastPreviewVal(attacker, target, spell, _pvFrom);
             }
             _dmgPreviewCacheKey = key;
             _dmgPreviewCacheVal = val;
@@ -15553,9 +15558,14 @@
             return null;
         }
 
-        function _getStatusPreviewLabels(spell) {
+        /* target (optional): the body the chips ride — a status it cannot take is not promised (PvP playtest 2026-10-23:
+           Rot on Cyborg read "Poison 2t" over "POISON RESISTED"). The engine's own gates (battle.js applyStatusPayload):
+           an immunity passive or an immune / absorbing element bounces it (chip dropped); a resisted element halves the
+           chance it sticks (getStatusApplyChance) — the chip says ½ CHANCE. */
+        function _getStatusPreviewLabels(spell, target) {
             if (!spell.statusEffects || spell.statusEffects.length === 0) return [];
             const labels = [];
+            const _hitEl = (target && typeof getSpellElement === 'function') ? getSpellElement(spell) : null;
             for (const se of spell.statusEffects) {
                 const def = STATUS_DEFS[se.id];
                 const label = def?.label || se.id;
@@ -15564,7 +15574,17 @@
                 // included); the legacy id list only covers ids with no def.
                 const isDebuff = def ? def.kind === 'debuff'
                     : ['stun', 'silence', 'slow', 'blind', 'poison', 'burn', 'stagger', 'marked', 'fear', 'frozen', 'bleed', 'confused', 'drowning', 'sleep'].includes(se.id);
-                labels.push({ text: `${label} ${dur}t`, isDebuff });
+                let half = false;
+                if (target) {
+                    try {
+                        if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(target, se.id)) continue;
+                        const _sEl = (typeof statusAffinityElement === 'function') ? statusAffinityElement(se.id, _hitEl) : null;
+                        const _sAff = (_sEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _sEl) : null;
+                        if (_sAff === 'immune' || _sAff === 'absorb') continue;
+                        half = _sAff === 'resist';
+                    } catch (e) {}
+                }
+                labels.push({ text: `${label} ${dur}t` + (half ? ' · ½ CHANCE' : ''), isDebuff });
             }
             return labels;
         }
@@ -15792,7 +15812,7 @@
                     if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _iSe : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
-                    for (const sl of _getStatusPreviewLabels(spell)) {
+                    for (const sl of _getStatusPreviewLabels(spell, target)) {
                         if (sl.isDebuff) push(sl.text, 'intent-status intent-status-debuff', 14);
                     }
                 }
@@ -15920,7 +15940,7 @@
                     }
                 }
 
-                const statusLabels = (_iSplash && (at.x !== x || at.y !== y)) ? [] : _getStatusPreviewLabels(spell);
+                const statusLabels = (_iSplash && (at.x !== x || at.y !== y)) ? [] : _getStatusPreviewLabels(spell, isEnemyUnit(caster, target) ? target : null);
                 for (const sl of statusLabels) {
                     const isFriendly = isAllyUnit(target, caster) || target.id === caster.id;
 
