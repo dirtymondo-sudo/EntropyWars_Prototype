@@ -1682,6 +1682,7 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
     + its old sonic rings. Excalibur Strike keeps `_sigExcalibur3D` (already Arthur's own sword).
 - Fog (RULE #2): online.js relays fire(), and the guest's own fire() draws every look. A caster the viewer can't see is
   never drawn from: `_goCasterFor` falls back to the target's own tile (no direction or position leaks); thrown objects
-  don't fly out of a fogged tile.
+  don't fly out of a fogged tile. online.js now relays `hideGunRig` too, so the guest also skips the gun / bow /
+  thrown prop on a shot the host fog-clamped (Codex review on PR #445).
 - Probe: `node --check`, then all 85 spells cast back to back in Chromium (SwiftShader) with no `[VFX] G-O` / `[SIG3D]`
   errors; before/after stills on WebGL and `?ew_gpu=webgpu` in /mnt/project-files/g-o-vfx/.
