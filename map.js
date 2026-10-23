@@ -386,7 +386,7 @@
             const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
             const online = _sqMode === 'online';
             if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
-            if (sub) sub.textContent = online ? ('Online matches are ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + '. Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
+            if (sub) sub.textContent = online ? ('Online · ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + ' (the 4v4 / 5v5 switch sets it). Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             if (count) count.innerHTML = presets.length ? `<b>${presets.length}</b> / ${max} TEAMS` : '';

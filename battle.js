@@ -28977,7 +28977,11 @@
                 dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
             }
             if (F[1] < 0) F[1] = 0;
-            const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
+            /* the lens the player gets: the board rig slides the eye sideways / up by the free frame's middle at the
+               focal's depth (three-camera.js THE CLEAR FRAME), so the sight lines are walked from the slid eye — from the
+               unslid one a body behind the Downtown tower's corner read as clear (Wipeout vs Cube matchup 2026-10-23) */
+            const sa = fa.cx * dist * tanH, sb = fa.cy * dist * tanV;
+            const E = [F[0] - g[0] * dist - rt[0] * sa - up[0] * sb, F[1] - g[1] * dist - up[1] * sb, F[2] - g[2] * dist - rt[2] * sa - up[2] * sb];
             return { F, dist, occl: _menuCamOccl(E, A, B), yaw: yawDeg, tilt: tiltDeg };
         }
         /* THE CLEAR TWO-SHOT (2026-10-22, mondo after the second playtest: "fix the camera being inside walls" / "fix the
@@ -28995,7 +28999,9 @@
                 const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts);
                 if (tx < 0 || ty < 0 || tx >= W || ty >= H) return null;
                 const f = (typeof window._camSolidGroundPx === 'function') ? window._camSolidGroundPx : window._camGroundPx;
-                return (typeof f === 'function') ? (f(tx, ty) || 0) : 0;
+                const g = (typeof f === 'function') ? (f(tx, ty) || 0) : 0;
+                /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a room's skyscraper prop is solid to its drawn roof */
+                return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.tallSceneryTopAt) ? Math.max(g, ThreeRenderer.tallSceneryTopAt(wx, wz)) : g;
             };
             // a room's wall piece stands a little proud of its column (a parapet, a lip, a capstone) and the x-ray shows
             // through any part of a body it hides: a sight line must clear a column's top by under half a tile
@@ -29060,16 +29066,21 @@
                 // THE CLEAR TWO-SHOT: a blocked pose may also swing wider off the line and look further down
                 // (to 26°) before it settles for a wall between the lens and a body; a clear pose still wins
                 // on the old small drops, so open ground frames exactly as before
-                const swings = swing ? [swing, swing + 28] : [0, 40, -40, 80, -80];
+                /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a caster standing against the Downtown tower had
+                   every pose up to side-on behind the tower — the two very wide swings (round towards the target's side)
+                   are tried only while every nearer pose is blocked, and cost more than a wide one */
+                const swings = swing ? [swing, swing + 28, swing + 56, swing + 84] : [0, 40, -40, 80, -80];
                 let best = null;
                 for (const side of sides) {
                     for (const sw of swings) {
                         for (const drop of [0, 8, 16, 24, 34]) {
                             const wide = Math.abs(sw) !== swing;
+                            const veryWide = !!swing && Math.abs(sw) > swing + 28;
                             if ((wide || drop > 16) && best && best.occl === 0) continue;
+                            if (veryWide && drop > 16) continue;
                             const c = _menuCamSolve(A, B, lineYaw + (side || 1) * sw, Math.max(drop > 16 ? 26 : 36, tilt0 - drop), fa);
                             c.side = side;
-                            c.score = c.occl * 4 + drop / 8 * 0.6 + (wide ? 0.5 : 0)
+                            c.score = c.occl * 4 + drop / 8 * 0.6 + (veryWide ? 1.2 : wide ? 0.5 : 0)
                                 + yawGap(c.yaw, curYaw) / 180
                                 + (ms && ms.side && side && side !== ms.side ? 0.4 : 0);
                             if (!best || c.score < best.score) best = c;
@@ -34916,10 +34927,14 @@
                         if (_etbSaid.indexOf('|' + _key + '|') < 0) {
                             _etbSaid = (_etbSaid.length > 400 ? '' : _etbSaid) + '|' + _key + '|';
                             const _elN = _affEl === 'earth' ? 'ground' : _affEl;
-                            _multCallout(_who, `🜃 ON ${String(_etb.label).toUpperCase()} ×${_etb.mult}`, 1000);
+                            /* a flyer's bonus is the open air, not a floor ("Dragon stands on air", Wipeout vs Cube matchup 2026-10-23) */
+                            const _etbAir = _etb.label === 'Air';
+                            _multCallout(_who, _etbAir ? `🜃 IN THE AIR ×${_etb.mult}` : `🜃 ON ${String(_etb.label).toUpperCase()} ×${_etb.mult}`, 1000);
                             addLog(_etb.who === 'caster'
-                                ? `🜃 ${_ctName(sourceUnit)} draws on the ${String(_etb.label).toLowerCase()} underfoot — the ${_elN} hits ×${_etb.mult}.`
-                                : `🜃 ${_ctName(target)} stands on ${String(_etb.label).toLowerCase()} — the ${_elN} hits ×${_etb.mult}.`);
+                                ? (_etbAir ? `🜃 ${_ctName(sourceUnit)} draws on the open air around it — the ${_elN} hits ×${_etb.mult}.`
+                                    : `🜃 ${_ctName(sourceUnit)} draws on the ${String(_etb.label).toLowerCase()} underfoot — the ${_elN} hits ×${_etb.mult}.`)
+                                : (_etbAir ? `🜃 ${_ctName(target)} is up in the open air — the ${_elN} hits ×${_etb.mult}.`
+                                    : `🜃 ${_ctName(target)} stands on ${String(_etb.label).toLowerCase()} — the ${_elN} hits ×${_etb.mult}.`));
                         }
                     }
                 }
@@ -35955,6 +35970,12 @@
                (resolveForcedSlide simulate, escapeLandingTile, chargeLandingTile, …). Bodies are moved for the
                duration of the read (an earlier victim's slide changes the next one's, as in the cast) and put back
                before it returns. Viewer-local, no RNG draws, no logs, no state writes survive. */
+        /* ✨ the Martyr's Talisman charm is live on `u` (the `surviveLethalOnce` hook, not yet spent this life) */
+        function talismanReady(u) {
+            return !!(u && !u.dead && !u._talismanSpent && typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'surviveLethalOnce'));
+        }
+        window.talismanReady = talismanReady;
+        const _fcTalismanUsed = new Set();   // body ids whose charm an earlier hit of the plan being read already spent
         function forecastHitOnUnit(target, damage, opts = {}) {
             if (!target || target.dead || target._dying) return null;
             const src = opts.sourceUnit || null;
@@ -35985,13 +36006,17 @@
             if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) return none('incorporeal');
             const hm = _hitDamageMath(target, damage, opts, false, _affEl, _affinity);
             let dmg = hm.finalDamage;
-            let indomitable = false;
+            let indomitable = false, talisman = false;
             if (dmg >= target.hp && unitHasStatus(target, 'indomitable')) { dmg = Math.max(0, target.hp - 1); indomitable = true; }
+            /* ✨ MARTYR'S TALISMAN (Wipeout vs Cube matchup 2026-10-23: four "lethal" hits left the target at 1 HP and the
+               forecast never said so): applyDamageToUnit's own save — the first killing blow each life stops at 1 HP. A
+               plan's later hit on the same body (_fcTalismanUsed) meets the spent charm and kills, as in the cast. */
+            else if (dmg >= target.hp && target.hp > 0 && talismanReady(target) && !_fcTalismanUsed.has(target.id)) { dmg = target.hp - 1; talisman = true; }
             // THE ABSORBED PART: the element part a split hit's target drinks (applyDamageToUnit heals it after the blow)
             const _absHeal = (hm.absorbHeal > 0 && target.hp - dmg > 0) ? Math.min(hm.absorbHeal, Math.max(0, target.maxHp - (target.hp - dmg))) : 0;
             return {
                 dmg: Math.max(0, dmg), raw: hm.finalDamage + hm.res.absorbed, absorbed: hm.res.absorbed,
-                shieldLeft: hm.res.shieldLeft, blocked: null, indomitable, affinity: _affinity, element: _affEl,
+                shieldLeft: hm.res.shieldLeft, blocked: null, indomitable, talisman, affinity: _affinity, element: _affEl,
                 typeNote: hm.typeNote, markedBonus: hm.markedBonus,
                 elemShare: hm.elemShare, heal: _absHeal
             };
@@ -36172,7 +36197,7 @@
                 const f = forecastHitOnUnit(target, raw(0), hopts);
                 if (!f) return null;
                 const dmg = Math.min(f.dmg, Math.max(0, target.hp));
-                return { dmg, min: run(-SPELL_DMG_VARIANCE), max: run(SPELL_DMG_VARIANCE), lethal: dmg > 0 && dmg >= target.hp, blocked: f.blocked, heal: f.heal || 0 };
+                return { dmg, min: run(-SPELL_DMG_VARIANCE), max: run(SPELL_DMG_VARIANCE), lethal: dmg > 0 && dmg >= target.hp, blocked: f.blocked, heal: f.heal || 0, endures: !!f.talisman };
             } catch (e) {
                 return null;
             } finally {
@@ -36201,6 +36226,7 @@
             };
             const hpUndo = new Map();   // unit -> [hp, shield] while a sequence of hits runs
             const _ambushWas = caster._ambushStrike;
+            _fcTalismanUsed.clear();
             try {
                 /* a height approach (take off / land / raise the ground) casts from the caster's own column at its new z */
                 if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y
@@ -36217,6 +36243,7 @@
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 for (let i = undo.length - 1; i >= 0; i--) { const r = undo[i]; r[0].x = r[1]; r[0].y = r[2]; r[0].z = r[3]; }
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
+                _fcTalismanUsed.clear();
             }
             _forecastHideFogged(plan, caster, spell, x, y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
@@ -36367,6 +36394,7 @@
             const from = opts.castFrom;
             const ox = thrower.x, oy = thrower.y, oz = thrower.z;
             const hpUndo = new Map();
+            _fcTalismanUsed.clear();
             const entry = (u) => {
                 let h = plan.byId[u.id];
                 if (!h) { h = { unit: u, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[u.id] = h; plan.hits.push(h); }
@@ -36383,6 +36411,7 @@
                 if (f.blocked && !h.blocked) h.blocked = f.blocked;
                 if (f.heal) h.heal += f.heal;
                 if (f.indomitable && !h.tags.includes('indomitable')) h.tags.push('indomitable');
+                if (f.talisman) { if (!h.tags.includes('talisman')) h.tags.push('talisman'); _fcTalismanUsed.add(u.id); }
                 if (tag && !h.tags.includes(tag)) h.tags.push(tag);
                 if (f.redirectedTo != null) {
                     const g = unitFromId(f.redirectedTo);
@@ -36422,6 +36451,7 @@
             } finally {
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 thrower.x = ox; thrower.y = oy; thrower.z = oz;
+                _fcTalismanUsed.clear();
             }
             _forecastHideFogged(plan, thrower, null, target.x, target.y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
@@ -36502,6 +36532,7 @@
                 if (fm.blocked && !h.blocked) h.blocked = fm.blocked;
                 if (fm.heal) h.heal += fm.heal;
                 if (fm.indomitable) tag(u, 'indomitable');
+                if (fm.talisman) { tag(u, 'talisman'); _fcTalismanUsed.add(u.id); }
                 if (fm.markedBonus) h._markUsed = true;
                 if (fm.redirectedTo != null) {
                     const g = unitFromId(fm.redirectedTo);

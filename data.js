@@ -5594,6 +5594,7 @@ const SPELL_LIBRARY = [
         name: 'Meteor',
         type: 'damage',
         cost: 80,
+        cooldownRounds: 2,   // Wipeout vs Cube matchup 2026-10-23: the derived mana pass priced it under 80 before _applyBaselineCooldowns ran, so the 2-round cooldown its text promises never stamped; pinned
         equipCost: 25,
         dmg: 160,
         range: 4,
@@ -5708,6 +5709,7 @@ const SPELL_LIBRARY = [
         name: 'Requiem',
         type: 'damage',
         cost: 100,
+        cooldownRounds: 2,   // Wipeout vs Cube matchup 2026-10-23: the derived mana pass priced it under 80 before _applyBaselineCooldowns ran, so the 2-round cooldown its text promises never stamped; pinned
         equipCost: 25,
         dmg: 160,
         /* 2026-08-16 (stats18 whiff audit): normalized to the self-origin
@@ -9720,7 +9722,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Submerge and resurface up to 3 tiles away. Protected 1 turn upon emerging.' },
         { id: 'raceTidalSlam', element: 'water', spellType: 'anomaly', name: 'Tidal Slam',
-          type: 'damage', tier: 3, cost: 75, dmg: 135, range: 0,
+          type: 'damage', tier: 3, cost: 75, dmg: 135, range: 0, cooldownRounds: 2,   // pinned like Meteor (Wipeout vs Cube matchup 2026-10-23)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           leaveTerrain: 'deep_water',
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },

@@ -14931,7 +14931,7 @@
                     if (!bp.handled) return null;
                     const bh = bp.byId[target.id];
                     if (!bh) return { dmg: 0, min: 0, max: 0, lethal: false, blocked: null, heal: 0, plan: bp };
-                    return { dmg: bh.dmg, min: bh.min, max: bh.max, lethal: bh.lethal, blocked: bh.blocked, heal: bh.heal, plan: bp };
+                    return { dmg: bh.dmg, min: bh.min, max: bh.max, lethal: bh.lethal, blocked: bh.blocked, heal: bh.heal, plan: bp, endures: (bh.tags || []).includes('talisman') };
                 }
                 if (typeof forecastSpellPlan !== 'function') return null;
                 /* aim = an off-centre AoE centre (the quick menu's best aim) — the unit is read from the cast there */
@@ -14941,7 +14941,7 @@
                 if (!plan.handled) return null;
                 const h = plan.byId[target.id];
                 if (!h) return { dmg: 0, min: 0, max: 0, lethal: false, blocked: null, heal: 0, plan };
-                return { dmg: h.dmg, min: h.min, max: h.max, lethal: h.lethal, blocked: h.blocked, heal: h.heal, plan };
+                return { dmg: h.dmg, min: h.min, max: h.max, lethal: h.lethal, blocked: h.blocked, heal: h.heal, plan, endures: (h.tags || []).includes('talisman') };
             } catch (e) { return null; }
         }
         window.forecastOnUnit = forecastOnUnit;
@@ -15124,11 +15124,13 @@
         /* Projected HP the target actually loses: the mid estimate run through
            the status damage-taken multipliers and the shield soak, clamped to
            current HP. spell=null → basic attack. Returns 0 for non-damage. */
-        function predictDamageToUnit(attacker, target, spell, castFrom) {
+        /* out (optional) = { endures, blocked } — ✨ Martyr's Talisman will hold the target at 1 HP (the forecast's
+           `talisman`); blocked = why the hit takes nothing (protected / immune / absorb / realm / guarded …) */
+        function predictDamageToUnit(attacker, target, spell, castFrom, out) {
             if (!attacker || !target || target.dead) return 0;
             if (!isEnemyUnit(attacker, target)) return 0;
-            { const _fc = forecastOnUnit(attacker, target, spell || null, castFrom); if (_fc) return Math.min(_fc.dmg, Math.max(0, target.hp)); }
-            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
+            { const _fc = forecastOnUnit(attacker, target, spell || null, castFrom); if (_fc) { if (out) { out.endures = !!_fc.endures; out.blocked = _fc.blocked || null; } return Math.min(_fc.dmg, Math.max(0, target.hp)); } }
+            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) { if (out) out.blocked = 'protected'; return 0; }
             let dmg = spell ? _estimateSpellDamage(attacker, target, spell)
                             : _estimateBasicAttackDamage(attacker, target);
             if (dmg <= 0) return 0;
@@ -15671,7 +15673,7 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1, crash: 1, conduct: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
@@ -15807,7 +15809,10 @@
                             const willKill = target.hp <= dmg && target.shield <= 0;
                             badgeStack.push({ html: `−${dmg}`, cls: 'intent-damage', yOff });
                             yOff += 18;
-                            if (willKill) {
+                            if (willKill && typeof talismanReady === 'function' && talismanReady(target)) {
+                                badgeStack.push({ html: _FC_TAG_TEXT.talisman, cls: 'intent-status intent-status-debuff', yOff });   // ✨ the charm holds it at 1 HP
+                                yOff += 14;
+                            } else if (willKill) {
                                 badgeStack.push({ html: 'LETHAL', cls: 'intent-kill', yOff });
                                 yOff += 14;
                             }

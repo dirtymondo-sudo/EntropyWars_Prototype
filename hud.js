@@ -5155,10 +5155,11 @@ function _hrlgTargetBlades(unit, st, mode) {
     /* a MOVE→ATK / MOVE→CAST row forecasts from the tile its step lands on (PvP playtest 2026-10-23: the hits
        landed 10-35% above a forecast read from where the caster stood) */
     const _castFrom = (t._approach && t._approach.x != null) ? _mtCastTile(t._approach) : null;
+    const _fcOut = { endures: false, blocked: null };   // ✨ Martyr's Talisman holds it at 1 HP / why the hit takes nothing
     const previewDmg = (tUnit && isOffensive
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
-      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom) : 0;
+      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
     const previewHeal = (tUnit && !isOffensive && spell
@@ -5181,7 +5182,8 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
-      note: t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+      note: [t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+        (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
@@ -5189,7 +5191,12 @@ function _hrlgTargetBlades(unit, st, mode) {
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
       // slot). A target that nullifies / drinks the WHOLE hit forecasts words;
       // a split hit's main part still lands, so it keeps its number (the red ! warns).
-      power: (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
+      /* a Protected / out-of-realm / guarded target says so (Wipeout vs Cube matchup 2026-10-23: spell rows on a
+         Protected enemy showed no number and no word) */
+      power: (_fcOut.blocked === 'protected' && !(previewDmg > 0)) ? { v: 'PROTECTED', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'realm' && !(previewDmg > 0)) ? { v: 'OUT OF REACH', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'guarded' && !(previewDmg > 0)) ? { v: 'GUARDED', color: '#9aa0b4' }
+        : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }

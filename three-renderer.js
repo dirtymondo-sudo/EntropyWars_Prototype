@@ -68380,6 +68380,33 @@ const ThreeRenderer = (function () {
     /* the matrix: room metres (the HQ's U px per metre) → the battle's frame */
     /* the battle-frame Y of room metre 0: the base plane less the reference floor (THE FLOOR LINE above) */
     function _hqBattleRoomFloorY(R, ts) { return R.base * ts * ELEV_STEP_RATIO - (R.refM || 0) * ts / R.T.C; }
+    /* THE TALL SCENERY (see ThreeRenderer.tallSceneryTopAt): one pass over the battle room's pieces → the boxes of the
+       tall grounded props, flat [x0, x1, z0, z1, top, …] in world px */
+    var _tallScenery = null;
+    function _tallSceneryRead(F, born, now) {
+        var ts = CONFIG.tileSize || BASE_TILE, W = bw(), H = bh();
+        var out = { group: F, born: born, at: now, boxes: [] };
+        var elev = (typeof window._getElevationPx === 'function') ? window._getElevationPx : null;
+        var heights = (typeof state !== 'undefined' && state.boardHeights) || null;
+        if (!elev || !heights || !(W > 0 && H > 0)) return out;
+        var b = new THREE.Box3(), ch = F.children;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i];
+            if (!c || c.visible === false || /^hq_(wall|ceil)/.test(c.name || '')) continue;
+            try { c.updateMatrixWorld(true); b.setFromObject(c); } catch (e) { continue; }
+            if (b.isEmpty()) continue;
+            var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
+            if (w < 1 || d < 1 || w > 10 || d > 10) continue;
+            var tx = Math.floor((b.min.x + b.max.x) / 2 / ts), ty = Math.floor((b.min.z + b.max.z) / 2 / ts);
+            if (tx < 0 || ty < 0 || tx >= W || ty >= H) continue;   // off the board: no lens goes there
+            var col = (heights[ty] && heights[ty][tx]) || 0;
+            var colPx = col > 0 ? elev(col) : 0;
+            if (b.max.y < colPx + ts * 1.5) continue;           // no taller than the column it stands on
+            if (b.min.y > colPx + ts * 1.0) continue;           // floats (an awning, a bridge, a sign)
+            out.boxes.push(b.min.x, b.max.x, b.min.z, b.max.z, b.max.y);
+        }
+        return out;
+    }
     function _hqBattleRoomMatrix(R, ts) {
         var U = _hqUnits(), C = R.T.C, s = (ts / C) / U;
         return new THREE.Matrix4().compose(new THREE.Vector3(-R.T.x0 * ts / C, _hqBattleRoomFloorY(R, ts), -R.T.z0 * ts / C), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
@@ -73627,6 +73654,27 @@ const ThreeRenderer = (function () {
                 out[k++] = -lx * sn + lz * c;
             }
             return true;
+        },
+        /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23: "the Downtown office tower swallows the camera"): the top
+           (world px) of a tall grounded room prop over world point (wx, wz), or -Infinity. A room arena's skyscraper is a
+           GLB prop (nr_building_*) standing on a grid column only a few steps high, so every camera check that read the
+           grid (the clear board, the two-shot's occlusion, the spell shots' sight line) put the lens inside it and drew
+           the board black. A piece counts when its box is at least a tile across both ways (a lamp post or a sign never
+           does), at most 10, stands on the ground under it (an awning or a bridge floats) and rises 1.5 tiles past the
+           column under its middle. Read by point, not by tile: the tower's wall stands a third of a tile into the next
+           row, where a unit can stand. Re-read every 3 s while the room's GLBs land (the first minute), then held. */
+        tallSceneryTopAt: function (wx, wz) {
+            var F = _facilityNearGroup;
+            if (!F || !F.parent || typeof bw !== 'function') return -Infinity;
+            var now = Date.now(), C = _tallScenery;
+            if (!C || C.group !== F || (now - C.born < 60000 && now - C.at > 3000)) {
+                C = _tallScenery = _tallSceneryRead(F, (C && C.group === F) ? C.born : now, now);
+            }
+            var top = -Infinity, B = C.boxes;
+            for (var i = 0; i < B.length; i += 5) {
+                if (wx >= B[i] && wx <= B[i + 1] && wz >= B[i + 2] && wz <= B[i + 3] && B[i + 4] > top) top = B[i + 4];
+            }
+            return top;
         },
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
