@@ -23925,10 +23925,37 @@
                 return true;
             },
 
+            /* THE HAND PAN LEAVES THE TWO-SHOT (mondo 2026-10-23: "panning the camera moves the camera angle real low to
+               the ground as i pan across the map"). A hand pan is a snap() that names x/y only, so it kept a menu
+               two-shot's low pitch, close zoom and raised focal (a target pick, the attack hold) and slid that ground-level
+               lens across the map. Like every other move that leaves the shot (moveTo), the pan gets the tactical pitch
+               and zoom the shot left back; the yaw stays where the player is looking, and the focal height latches at
+               the board under the focal instead of the pair's chest height. Returns the zoom the pan must keep. */
+            _leaveMenuShotForPan() {
+                const ms = this._menuShot;
+                if (!ms) return this.zoom;
+                const h = ms.home;
+                this._menuShot = null;
+                const ma = this._menuAtk;
+                if (ma && ma.timer) { clearTimeout(ma.timer); ma.timer = null; }
+                this._menuAtk = null;
+                this._stop();
+                if (Number.isFinite(h.tilt)) this.tilt = h.tilt;
+                if (Number.isFinite(h.zoom) && h.zoom > 0) this.zoom = h.zoom;
+                this._elevOverride = -1;
+                this._panElevLatch = this._naturalElevAt(this.x, this.y);
+                this._tt = this.tilt; this._tz = this.zoom; this._tElev = -1;
+                return this.zoom;
+            },
+
             snap(opts) {
                 if (state.cameraDisabled && !opts._force) return;
                 this._stop();
                 this._clearFit = null;   // THE CLEAR FRAME: a hand pan / zoom / orbit owns the framing now
+                if (this._menuShot && state._userPanning && !state._userOrbiting
+                    && (opts.x !== undefined || opts.y !== undefined) && opts.tilt === undefined && opts.yaw === undefined) {
+                    opts = { ...opts, zoom: this._leaveMenuShotForPan() };
+                }
 
                 // A snap is the user's (or a reset's) own reframe — a pending
                 // auto-settle firing after it would yank the view again.

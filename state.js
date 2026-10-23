@@ -5650,6 +5650,8 @@
                 _panStartX = e.clientX;
                 _panStartY = e.clientY;
                 if (typeof camera !== 'undefined') {
+                    // a menu two-shot hands the pan the tactical pitch + zoom it left (battle.js _leaveMenuShotForPan)
+                    if (camera._menuShot && typeof camera._leaveMenuShotForPan === 'function') camera._leaveMenuShotForPan();
                     const ts = CONFIG.tileSize || BASE_TILE;
                     const gap = CONFIG.tileGap ?? 0;
                     const pad = CONFIG.boardPadding ?? 2;
