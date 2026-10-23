@@ -720,3 +720,25 @@ same unit on a team". A unit = its race (units are named after their race; a gen
 - battle.js `captureRaceOwned(unit)`: `captureDoorCanTake` refuses a race the account owns (data.js `hqCaptureOwned`:
   starters, bought, captured before) or one another door holds / sealed this fight. The door is open floor for it (no
   stop, no hold); arriving on it shows "🚪 ALREADY OWNED" once. ai.js reads the same rule through captureDoorCanTake.
+
+## THE TUTORIAL PLAN — fixes + the new core tapes (2026-10-23, PRs #431 + this one)
+mondo approved the tutorial review (https://claude.ai/artifact/D2f39zkciSXETotan9x8Tw). PR #431: the ABILITIES gate
+(ui.js `_tutActionAllowed` with no spell id opens the list), the eleven stale lines, no random weather or celestial
+event in a lesson unless it sets `weather: true` (`window._tutWeatherOff`, state.js spawnWeather / rollSkyEvent), the
+coach top-left and click-through (fades while aiming), the shelf footer's npm-test line gone.
+This PR — THE CORE is now 8 tapes, the optional shelf renumbered 9-13:
+- Tape 4 HEIGHT, JUMP, CLIMB, FLIGHT (was THE HIGH GROUND; Holo Sim): riser + downhill shot, the JUMP stat, the Grey
+  (JUMP 1, ranged) presses 🧗 CLIMB onto the z7 pylon (goal `climb`), the Angel presses ⬇ LAND then ⬆ TAKE OFF (the
+  flyer's own 1 AP pusher, `focus.hud: 'fly'`; goals `landed` / `airborne`), next round the Grey stands on the pylon
+  (`stand` z 7) and shoots DUMMY A from it (+1 reach). Dummies Unholy only so no press refunds a turn mid-script.
+- Tapes 5-8 are REAL MATCHES (`cpuAi: true`): Stonehenge Arena 10×10 (the playtests' board), 4v4, fog on, weather on,
+  SPD turn order, the CPU's own AI (`_tutCpuTurn` returns false). ui.js `_tutOutcome` mirrors checkWin's order (wipeout,
+  Cube, Keys, + the lesson's round limit); a win → banner + the tape's finish step (goal `win`), a loss → LOST coach with
+  RESTART TAPE. Mid-match starts are first-step `enter` effects: `down` (defeatUnit without the close-up, optional
+  timer), `carry` (Keys into a pocket, Inspect bookkeeping), `nexus` (a held zone), `cube` (Cube HP share).
+  5 THE NEXUS AND RESPAWNS (Ghoul + Demon down; goals nexus → hold across a round end → respawn), 6 WIN BY CUBE (centre
+  held, Cube 20%, the refund trick), 7 WIN BY KEYS (4 carried, the 5th hidden north of the marked tile), 8 WIN BY
+  WIPEOUT (two down on 3-round timers, two hurt and out of sight, gauge full: eyes on both, then the Strike).
+- battle.js `_achLivePoll` stays quiet in a lesson (an Inspect had popped "Cartographer +100" though nothing commits).
+- RULE (the plan's drift note): a PR that changes a function named in data.js TUTORIAL_MECHANICS re-reads that tape's
+  steps in the same PR. No test, no tool.
