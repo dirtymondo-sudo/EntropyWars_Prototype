@@ -3521,6 +3521,20 @@
                 addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
             }
         }
+        window.triggerTerrainSpellReaction = triggerTerrainSpellReaction;
+
+        /* 💥🛢️ FIRE ON OIL / GOO (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of
+           liquid explode? If not it should."): a fire / lightning spell that leaves terrain (Meteor's scorch, Hellmouth's
+           lava, the nukes) used to paint the slick away BEFORE the reaction looked at it, so the oil never went up. Each
+           paint site calls this first: an oil / ooze cell under the paint detonates its whole connected slick (the
+           existing _reactFireOil, through the dispatcher), then the paint lands on the charred ground. */
+        function igniteOilBeforePaint(caster, spell, x, y) {
+            if (!caster || !spell || !isInside(x, y) || !_isOilTile(x, y)) return;
+            const el = classifySpellElement(spell);
+            if (el !== 'fire' && el !== 'lightning') return;
+            triggerTerrainSpellReaction(caster, spell, [{ x, y }]);
+        }
+        window.igniteOilBeforePaint = igniteOilBeforePaint;
 
         // ═══════════════════════════════════════════════════════════════════
         // 🔥 BURNING TILES — persistent ground fire (2026-07-08).
@@ -6709,6 +6723,7 @@
                 // Leave terrain — THE SPELL AUDIT Batch D: `leaveTerrainRadius` keeps it to the middle (Miasma's 3x3)
                 if (spell.leaveTerrain && !(spell.leaveTerrainRadius != null && opts.deformCenter
                     && Math.max(Math.abs(tile.x - opts.deformCenter.x), Math.abs(tile.y - opts.deformCenter.y)) > spell.leaveTerrainRadius)) {
+                    igniteOilBeforePaint(unit, spell, tile.x, tile.y);   // 💥 the slick goes up before the scorch covers it
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
@@ -7257,6 +7272,7 @@
                         }
                     }
                 }
+                if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, cx, cy);   // 💥 the slick goes up before the paint covers it
                 if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
                     if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                 } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(cx, cy, spell.leaveTerrain);   // ⏳ back to 3 rounds
@@ -7282,6 +7298,7 @@
                         if (!_zig && !_beamAtGround(lx, ly, c.z)) continue;
                         _groundCells.push({ x: lx, y: ly });
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
+                        if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, lx, ly);
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             if (setTerrainSpringAt(lx, ly, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                         } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(lx, ly, spell.leaveTerrain);   // ⏳ back to 3 rounds
@@ -36129,16 +36146,24 @@
         function _pressByOf(pc) {
             const e = (pc && pc.effSummary) || {};
             if (e.hasStrong && !e.hasWeak) return 'type';
-            if (pc && pc.elemAff === 'weak' && !(e.hasWeak && !e.hasStrong)) return 'element';
+            if (pc && pc.elemAff === 'weak') return 'element';
             return (pc && pc.combo) ? 'combo' : 'element';
+        }
+        /* the forecast answer of one hit ctx: { press, by, ap } — ap 2, or 1 with a resistance on it (THE PRESS SUM) */
+        function _pressAnswerOf(pc, by) {
+            const o = pc ? _pressOutcomeForHit(pc) : null;
+            if (o === PRESS_OUTCOME.WEAK) return { press: true, by: by || _pressByOf(pc), ap: PRESS_REFUND_AP };
+            if (o === PRESS_OUTCOME.HALF) return { press: true, by: by || _pressByOf(pc), ap: 1 };
+            return { press: false, by: null };
         }
         function _forecastPressResolve(plan) {
             plan.press = (plan.pressArmed && plan.pressHits.length && !plan._fogVeto) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
-            const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT;
+            const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT || plan.press === PRESS_OUTCOME.HALF;
+            plan.pressAp = presses ? (plan.press === PRESS_OUTCOME.HALF ? 1 : PRESS_REFUND_AP) : 0;   // THE PRESS SUM: +1 when a resistance is on it
             for (const h of plan.hits) {
                 h.press = false; h.pressBy = null;
                 if (!presses || h._pressMiss || !h._pressCtx) continue;
-                const pc = h._pressCtx.find(c => _pressOutcomeForHit(c) === PRESS_OUTCOME.WEAK);
+                const pc = h._pressCtx.find(c => _pressHitInfo(c).nSrc > 0 && _pressHitInfo(c).r > 0 && !_pressHitInfo(c).block);
                 if (!pc) continue;
                 h.press = true;
                 h.pressBy = _pressByOf(pc);
@@ -36148,37 +36173,36 @@
         /* One answer for every green !: does this action on this target hand the +2 AP press back? Spells read the
            forecast plan aimed at the target (so one resisting / protected body in the blast vetoes it everywhere, as
            in the real refund); a basic attack reads its type (crit / dodge stay a gamble); a combo its own type and
-           element. Returns { press, by: 'type' | 'element' | 'combo' | null }. Viewer-local, no state writes. */
+           element. Returns { press, by: 'type' | 'element' | 'combo' | null, ap: 2 | 1 }. Viewer-local, no state writes. */
         function forecastPressOn(caster, target, spell, opts = {}) {
             const no = { press: false, by: null };
             if (!caster || !target || target.dead || !isEnemyUnit(caster, target)) return no;
             if (!_isUnitVisibleToViewer(target, caster.player)) return no;   // THE FOG: nothing said about a body the caster's side can't see
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return no;   // Mystery Dungeon floors: no press turns
-            const byOf = _pressByOf;
             if (opts.combo) {
                 const combo = opts.combo, partner = opts.partner || null;
                 const atk = combo.spellType ? [combo.spellType] : [...(caster.types || []), ...((partner && partner.types) || [])];
                 const cEl = getSpellElement(combo);
                 const pc = { effSummary: getTypeEffectSummary(atk, target.types || []),
                     elemAff: (cEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, cEl) : null };
-                return _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK ? { press: true, by: byOf(pc) } : no;
+                return _pressAnswerOf(pc);
             }
             if (!spell) {
                 if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return no;
                 const pc = { effSummary: getTypeEffectSummary(caster.types || [], target.types || []) };
-                return _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK ? { press: true, by: 'type' } : no;
+                return _pressAnswerOf(pc, 'type');
             }
             if (!spellArmsPress(spell)) return no;
             const aim = opts.aim || target;   // an off-centre AoE aim (the quick menu's) still has to catch the target
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
-            if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
+            if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy, ap: plan.pressAp || PRESS_REFUND_AP } : no;
             // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
             if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), bonusVsStatus: spell.bonusVsStatus || null });
-            return (pc && _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK) ? { press: true, by: byOf(pc) } : no;
+            return _pressAnswerOf(pc);
         }
         window.forecastPressOn = forecastPressOn;
 
@@ -40054,6 +40078,7 @@
             WEAK:      'weak',     // hit a weakness (or a status combo) → refund
             CRIT:      'crit',     // landed a crit → refund
             WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (the second +2 vents to entropy: one hit presses once)
+            HALF:      'half',     // a press with one resistance on it → +1 (THE PRESS SUM, mondo 2026-10-23)
             NULL:      'null',     // the element was immune / absorbed → no press (vetoes the cast's), no drain
         };
 
@@ -40911,58 +40936,63 @@
         // Press outcome for a single hit. Detected off the type-effectiveness
         // TIER (hasStrong/hasWeak), never the raw multiplier number — sidesteps
         // the cross-file 1.30-vs-1.5 mismatch.
+        /* THE PRESS SUM (mondo 2026-10-23: "what if a resistance took away 1 ap instead of every refund? But an absorb
+           would still block every refund. still two attacks at most per turn"): a hit's SOURCES are a super effective
+           TYPE (the spell's own type vs the target, never the caster's), an element WEAKNESS, a STATUS COMBO (its
+           bonusVsStatus multiplier lands, hit.combo) and a CRIT — any of them is worth the +2 press, and one hit
+           presses once (extra sources vent to the Entropy Gauge). Each RESISTANCE on the hit — a resisted type, a
+           resisted element part — takes 1 AP off that refund (two resistances = no refund). An IMMUNE / ABSORBED
+           element blocks every refund. A resisted type with no source at all is the old drain (RESIST). */
+        function _pressHitInfo(hit) {
+            const eff = (hit && hit.effSummary) || {};
+            const typeTier = (!!eff.hasStrong && !eff.hasWeak) ? 1 : (!!eff.hasWeak && !eff.hasStrong) ? -1 : 0;
+            const aff = (hit && hit.elemAff) || null;
+            const block = aff === 'immune' || aff === 'absorb';
+            const typeRes = typeTier < 0;
+            const srcCrit = !!(hit && hit.isCrit);
+            const nSrc = (typeTier > 0 ? 1 : 0) + (aff === 'weak' ? 1 : 0) + (hit && hit.combo ? 1 : 0) + (srcCrit ? 1 : 0);
+            const resists = (typeRes ? 1 : 0) + (aff === 'resist' ? 1 : 0);
+            const r = nSrc ? Math.max(0, PRESS_REFUND_AP - resists) : (typeRes ? -1 : 0);
+            return { typeTier, block, typeRes, srcCrit, nSrc, resists, r };
+        }
         function _pressOutcomeForHit(hit) {
             if (!hit) return PRESS_OUTCOME.NORMAL;
             if (hit.evaded) return PRESS_OUTCOME.MISS;
-            const eff = hit.effSummary || {};
-            /* THE ELEMENT SHARE PRESS (mondo 2026-10-17 — replaces the 2026-09-23 tier sum): the TYPE (judged by
-               the SPELL's own type vs the target, never the caster's) decides; the element only presses on a
-               neutral type matchup; an immune / absorbed element never presses (data.js elemPressVerdict). A
-               divine fire spell on an unholy that resists fire still presses — only its fire part is resisted. */
-            const typeTier = (!!eff.hasStrong && !eff.hasWeak) ? 1 : (!!eff.hasWeak && !eff.hasStrong) ? -1 : 0;
-            const verdict = (typeof elemPressVerdict === 'function') ? elemPressVerdict(typeTier, hit.elemAff || null)
-                : (typeTier > 0 ? 'weak' : typeTier < 0 ? 'resist' : 'normal');
-            /* THE STATUS COMBO PRESS (mondo 2026-10-23: "lets make status combos (the multipliers) also reward +2 ap, but
-               not if the type spell is resisted by the target, similar to elemental weaknesses"): a hit that lands its
-               bonusVsStatus multiplier (hit.combo, _pressCtxForHit) presses like a weakness — unless the spell's type is
-               resisted or its element part is resisted / immune / absorbed. */
-            const _aff = hit.elemAff || null;
-            const combo = !!hit.combo && typeTier >= 0 && _aff !== 'resist' && _aff !== 'immune' && _aff !== 'absorb';
-            const weakness = verdict === 'weak' || combo;   // the target's weakness (type, or element on a neutral type) or a status combo
-            const resisted = verdict === 'resist';   // resisted type → no press, the AP drain
-            if (verdict === 'null') return PRESS_OUTCOME.NULL;
-            if (hit.isCrit && weakness) return PRESS_OUTCOME.WEAK_CRIT;
-            if (hit.isCrit) return PRESS_OUTCOME.CRIT;
-            if (weakness) return PRESS_OUTCOME.WEAK;
-            if (resisted) return PRESS_OUTCOME.RESIST;
+            const i = _pressHitInfo(hit);
+            if (i.block) return i.typeRes ? PRESS_OUTCOME.RESIST : PRESS_OUTCOME.NULL;   // absorb / immune: no refund
+            if (i.r >= PRESS_REFUND_AP) return i.srcCrit ? (i.nSrc > 1 ? PRESS_OUTCOME.WEAK_CRIT : PRESS_OUTCOME.CRIT) : PRESS_OUTCOME.WEAK;
+            if (i.r === 1) return PRESS_OUTCOME.HALF;      // one resistance took 1 AP off the press
+            if (i.r < 0) return PRESS_OUTCOME.RESIST;      // resisted type, nothing pressing: the drain
             return PRESS_OUTCOME.NORMAL;
         }
 
         // Resolve one PRESS_OUTCOME for an offensive action. Accepts a single
-        // hit ctx { evaded, isCrit, effSummary:{hasStrong,hasWeak} } or an array
-        // (multi-target/AoE) reduced worst-case: one dodged target drains AP
-        // (penalty); one RESISTED target denies the press (SMT-faithful) even if
-        // every other target was a weakness; otherwise the strongest press wins.
+        // hit ctx { evaded, isCrit, effSummary:{hasStrong,hasWeak}, elemAff, combo } or an array
+        // (multi-target/AoE): one dodged target drains AP (penalty); one immune / absorbing body blocks
+        // the refund; otherwise the best hit's refund pays, and a resistance anywhere in the cast takes
+        // 1 AP off it (THE PRESS SUM); a resisted body with nothing pressing anywhere drains.
         function resolvePressOutcome(ctx) {
             const hits = Array.isArray(ctx) ? ctx : [ctx];
-            const pressRank = { weakCrit: 3, weak: 2, crit: 1 };
-            let anyMiss = false;
-            let anyResist = false;
-            let anyNull = false;
-            let bestPress = null;
+            let anyMiss = false, anyBlock = false, anyDrain = false, anyResist = false;
+            let best = null, bestR = -Infinity;
             for (const h of hits) {
+                if (!h) continue;
+                if (h.evaded) { anyMiss = true; continue; }
+                const i = _pressHitInfo(h);
                 const o = _pressOutcomeForHit(h);
-                if (o === PRESS_OUTCOME.MISS) { anyMiss = true; }
-                else if (o === PRESS_OUTCOME.RESIST) { anyResist = true; }
-                else if (o === PRESS_OUTCOME.NULL) { anyNull = true; }
-                else if (pressRank[o] != null) {
-                    if (!bestPress || pressRank[o] > pressRank[bestPress]) bestPress = o;
-                }
+                if (i.block) anyBlock = true;
+                if (o === PRESS_OUTCOME.RESIST) anyDrain = true;
+                if (i.resists > 0) anyResist = true;
+                if (!i.block && i.nSrc && i.r > bestR) { bestR = i.r; best = o; }
             }
-            if (anyMiss) return PRESS_OUTCOME.MISS;       // penalty dominates
-            if (anyResist) return PRESS_OUTCOME.RESIST;   // one resist vetoes the press AND drains AP
-            if (anyNull) return PRESS_OUTCOME.NORMAL;     // an immune / absorbed element vetoes the press, no drain
-            if (bestPress) return bestPress;
+            if (anyMiss) return PRESS_OUTCOME.MISS;                                   // penalty dominates
+            if (anyBlock) return anyDrain ? PRESS_OUTCOME.RESIST : PRESS_OUTCOME.NORMAL;   // an absorb blocks every refund
+            if (best) {
+                const refund = anyResist ? Math.min(bestR, 1) : bestR;
+                if (refund >= PRESS_REFUND_AP) return best;
+                if (refund === 1) return PRESS_OUTCOME.HALF;
+            }
+            if (anyDrain) return PRESS_OUTCOME.RESIST;
             return PRESS_OUTCOME.NORMAL;
         }
 
@@ -41000,6 +41030,7 @@
             if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP + PRESS_CRIT_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.WEAK) want = PRESS_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.CRIT) want = PRESS_CRIT_REFUND_AP;
+            else if (outcome === PRESS_OUTCOME.HALF) want = 1;
             if (want <= 0) return result; // NORMAL / RESIST → unchanged
 
             const gained = unit._pressGainedThisTurn || 0;
@@ -41013,8 +41044,11 @@
                0 so EVERY weak/crit press vents through the entropy branch
                below instead. Hitting weaknesses still pays, in gauge. */
             const _simulNoPress = typeof window._isSimulMode === 'function' && window._isSimulMode();
-            const capRoom = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained - penalties);
-            const capRoomIfPerfect = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained);
+            /* ONE PRESS A TURN, whatever its size (mondo 2026-10-23: "still two attacks at most per turn"): a +1 press
+               used the turn's press too, so a later +1 can't hand back a third attack — it vents to the gauge. */
+            const _pressedAlready = gained > 0;
+            const capRoom = (_simulNoPress || _pressedAlready) ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - penalties);
+            const capRoomIfPerfect = (_simulNoPress || _pressedAlready) ? 0 : PRESS_MAX_BONUS_AP;
             const apRoom = Math.max(0, getUnitMaxAP(unit) - (unit.ap || 0));
             // one hit presses ONCE (+2): a weak crit's second +2 vents into the gauge below, as its extra +1 always did
             const hitRoom = PRESS_REFUND_AP;
@@ -58858,15 +58892,15 @@
             if (!unit || state.phase !== 'battle') return;
             const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
             if (!spell || !spellArmsPress(spell)) return;
-            const ids = [];
+            const ids = [], halfIds = [];
             for (const u of state.units) {
                 if (!u || u.dead || u._dying || !isEnemyUnit(unit, u)) continue;
                 try { if (!_shouldCameraFollowUnit(u)) continue; } catch (e) { continue; }
                 let pr = null;
                 try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
-                if (pr && pr.press) ids.push(u.id);
+                if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); }   // THE +1 LOOK: a +1 press wears the hollow !
             }
-            if (ids.length) ThreeRenderer.showPressMarks(ids);
+            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds);
         }
         window.previewSpellPressMarks = previewSpellPressMarks;
         function clearSpellPressMarks() {
@@ -60107,6 +60141,13 @@
                         _balAddSpellEffect(bomb.spellId || 'placeBomb', _applied, (target.dead || (target.hp || 0) <= 0) ? 1 : 0);
                     }
                 }
+            }
+            /* 💥 the blast's tiles react like a fire spell's (a bomb going off in an oil slick blows the whole slick);
+               read before the knockback so the bodies standing in it are the ones caught */
+            {
+                const _bSpell = bomb.spellId ? ((typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[bomb.spellId])
+                    || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[bomb.spellId]) || null) : null;
+                if (_bSpell && _bombCaster) triggerTerrainSpellReaction(_bombCaster, _bSpell, area);
             }
 
             /* 🧭 THE FORCED MOVE: every body the blast caught is thrown by the bomb's rule (bombKnockDir — the one that
@@ -70935,6 +70976,7 @@
                                 window.setTimeout(() => {
                                     try {
                                         if (enemy.dead) return;
+                                        const _brX = enemy.x, _brY = enemy.y;
                                         applyDamageToUnit(enemy, dmg, `${unitDisplayName(unit)}'s ${spell.name} hits `, {
                                             sourceUnit: unit,
                                             allowMarkBonus: false,
@@ -70942,6 +70984,8 @@
                                             damageType: spell.damageType || 'physical',
                                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                         });
+                                        // 💥 the struck tile reacts like any spell hit (Solar Flare on a target in oil blows the slick)
+                                        triggerTerrainSpellReaction(unit, spell, [{ x: _brX, y: _brY }]);
                                     } finally { _pendingSpellHits--; }
                                 }, actionMs(400));
                             }, idx * barrageGap);
@@ -72196,11 +72240,13 @@
                 const primaryDmg = Math.max(32, (spell.dmg || 0) + spellPower);
 
                 window.setTimeout(() => {
+                    const _sbX = target.x, _sbY = target.y;
                     applyDamageToUnit(target, primaryDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
+                    triggerTerrainSpellReaction(unit, spell, [{ x: _sbX, y: _sbY }]);   // 💥 the struck tile reacts (oil, water, trees)
 
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
@@ -72229,11 +72275,13 @@
                             playSfx(spellLaunchSfx(spell));
                             window.setTimeout(() => {
                                 if (hit.dead) return;
+                                const _spX = hit.x, _spY = hit.y;
                                 applyDamageToUnit(hit, splitDmg + spellPower, `${spell.name} splits to `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                 });
+                                triggerTerrainSpellReaction(unit, spell, [{ x: _spX, y: _spY }]);
                             }, splitProjectileMs + actionMs(60));
                         }, hitDelay);
                     });
@@ -73087,6 +73135,7 @@
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
                         if (spell.monument) return;
+                        igniteOilBeforePaint(unit, spell, tx, ty);   // 💥 Wall of Fire on a slick: it goes up before the scorch covers it
                         _tcFoot.push({ x: tx, y: ty, z: pz });
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
@@ -75046,6 +75095,8 @@
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
                             resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2 });   // ⛓ the throw's landing
                         }
+                        // 💥 the landing tile reacts like any spell hit (Infernal Hurl into an oil slick blows it)
+                        triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
                         scheduleBoardRender();

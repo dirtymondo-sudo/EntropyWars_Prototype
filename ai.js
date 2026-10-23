@@ -663,7 +663,7 @@
 
     // ── Press Turn expectation ───────────────────────────────────────────
     // A weakness hit, a status combo hit or a crit refunds +2 AP (one full
-    // free action), once a turn (mondo 2026-10-23); a resisted hit / whiff drains an extra AP. Detected off the
+    // free action), once a turn, 1 less per resistance (mondo 2026-10-23); a whiff drains an extra AP. Detected off the
     // type TIER (strong && !weak), matching the engine.
     function _pressTier(unit, tg, spellType) {
         const chart = (typeof TYPE_CHART !== 'undefined') ? TYPE_CHART : null;
@@ -687,37 +687,37 @@
     function pressEV(g, unit, tg, opts) {
         opts = opts || {};
         if (!_aiDiff().press) return 0;
-        // Only the turn's presses up to battle.js PRESS_MAX_BONUS_AP refund (one +2 today) — after that they vent
-        // to the entropy gauge (still nice, worth a sliver, not a whole action).
-        const _pressCap = (typeof PRESS_MAX_BONUS_AP !== 'undefined') ? PRESS_MAX_BONUS_AP : 2;
-        const alreadyPressed = ((unit._pressGainedThisTurn || 0) + (unit._pressPenaltiesThisTurn || 0)) >= _pressCap;
-        /* THE ELEMENT SHARE PRESS (data.js elemPressVerdict): the type decides, the element presses on a neutral type,
-           an immune / absorbed element never does. opts.spell = the spell being weighed (its element). */
-        let tier = _pressTier(unit, tg, opts.spellType || null);
-        if (opts.spell && typeof elemPressVerdict === 'function') {
+        // ONE press a turn (battle.js applyPressTurn) — after that it vents to the entropy gauge (still nice, worth a
+        // sliver, not a whole action).
+        const alreadyPressed = (unit._pressGainedThisTurn || 0) > 0;
+        /* THE PRESS SUM (battle.js _pressHitInfo, mondo 2026-10-23): a super effective type, an element weakness, a
+           status combo or a crit is worth +2; each resistance (type, element part) takes 1 off; an immune / absorbed
+           element blocks it. opts.spell = the spell being weighed (its element, its combo). */
+        const tier = _pressTier(unit, tg, opts.spellType || null);
+        let aff = null, combo = false;
+        if (opts.spell) {
             try {
                 const _el = (typeof getSpellElement === 'function') ? getSpellElement(opts.spell) : null;
                 const _ok = _el && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_el)
                     && !(typeof spellElemShare === 'function' && spellElemShare(opts.spell) <= 0);
-                const _aff = (_ok && typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
-                const v = elemPressVerdict(tier, _aff);
-                /* THE STATUS COMBO PRESS (battle.js _pressOutcomeForHit): the spell's bonusVsStatus landing on its
-                   status presses too, unless the type or the element part is resisted / immune / absorbed */
+                aff = (_ok && typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
                 const _bvs = opts.spell.bonusVsStatus;
-                const _combo = !!(_bvs && _bvs.status && typeof bonusStatusMatches === 'function' && bonusStatusMatches(tg, _bvs.status))
-                    && tier >= 0 && _aff !== 'resist' && _aff !== 'immune' && _aff !== 'absorb';
-                tier = (v === 'weak' || _combo) ? 1 : v === 'resist' ? -1 : 0;
+                combo = !!(_bvs && _bvs.status && typeof bonusStatusMatches === 'function' && bonusStatusMatches(tg, _bvs.status));
             } catch (e) {}
         }
+        const block = aff === 'immune' || aff === 'absorb';
+        const resists = (tier < 0 ? 1 : 0) + (aff === 'resist' ? 1 : 0);
+        const hasSrc = tier > 0 || aff === 'weak' || combo;
+        const size = Math.max(0, 2 - resists) / 2;   // share of a full +2 press
         const critP = (opts.canCrit && typeof g.getCritChance === 'function')
             ? (g.getCritChance(unit) || 0) : 0;
         const landP = opts.landP != null ? opts.landP : 1;
         const refund = Math.max(tuneW(g, 'pressActionValue'), (wght(g, 'pressRefundValue_v1', 113) || 0) * 1.5);
         // a crit refunds +2 AP like a weakness (mondo 2026-10-23) — its chance counts in full
-        const pressP = Math.min(1, landP * (tier > 0 ? 1 : critP));
+        const pressP = block ? 0 : Math.min(1, landP * (hasSrc ? 1 : critP));
         let v = 0;
-        if (pressP > 0) v += pressP * (alreadyPressed ? refund * 0.15 : refund);
-        if (tier < 0) v -= refund * 0.55;          // resist drains an extra AP
+        if (pressP > 0 && size > 0) v += pressP * size * (alreadyPressed ? refund * 0.15 : refund);
+        if (tier < 0 && (!hasSrc || block)) v -= refund * 0.55 * (block ? 1 : (1 - critP));   // resist with nothing pressing drains an extra AP
         if (landP < 1) v -= (1 - landP) * refund * 0.4;   // whiff drains too
         return v;
     }

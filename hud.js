@@ -2898,6 +2898,11 @@ function _hrlgBadgeEl(bd, k) {
 /* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): a basic attack's odds to
    land on `target` in whole percent — battle.js getAttackHitChance, the same rolls the swing makes. `from` = the tile a
    MOVE→ATK swing leaves from. null when it can't be read. */
+/* THE +1 LOOK (mondo 2026-10-23): a row's green ! from a forecastPressOn answer — true (+2, the solid !), 'half' (+1, a
+   resistance took 1 off: the hollow !) or false */
+function _hrlgPressMark(r) {
+  return (r && r.press) ? (r.ap === 1 ? 'half' : true) : false;
+}
 function _hrlgHitPct(attacker, target, from) {
   if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
   try { return Math.round(getAttackHitChance(attacker, target, from || null) * 100); } catch (e) { return null; }
@@ -2957,7 +2962,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   // Green !-circle: this action is SUPER EFFECTIVE against its target. Leads
   // the right-hand chips so it reads first on quick-menu and target rows.
   if (b.superEff) put('press', h('span', {
-    key: 'se', className: 'hrlg-supereff', title: 'Super effective against this target!',
+    key: 'se', className: 'hrlg-supereff' + (b.superEff === 'half' ? ' half' : ''),
+    title: b.superEff === 'half' ? '+1 AP back: it presses, but a resistance takes 1 off' : 'Super effective against this target! +2 AP back',
   }, '!'), true);
   // Red !-circle: the target is IMMUNE to (or ABSORBS) this action's element — the warning twin of the green one.
   if (b.immWarn) put('press', h('span', {
@@ -5029,7 +5035,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       }
       /* THE GREEN ! IS THE PRESS (mondo 2026-10-18): only when the real refund would pay (battle.js forecastPressOn —
          type first, the element on a neutral type only, absorb / immune never, the whole blast worst case). */
-      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, tUnit, spell || null).press : false;
+      superEff = (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(unit, tUnit, spell || null)) : false;
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -5341,7 +5347,7 @@ function _hrlgComboBlades(unit, st) {
       const _eff = getTypeDamageMultiplier(unit, t.u, _cType) / _stab;
       if (_eff < 0.999) typeAdv = '▼';
       // the green ! is the PRESS doComboAttack would pay (the combo's type, then its element on a neutral type)
-      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, t.u, null, { combo, partner }).press : false;
+      superEff = (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(unit, t.u, null, { combo, partner })) : false;
     }
     // Damage forecast: the projected combo damage blinks white on the row's
     // HP bar + reads as the ≈−N chip — the exact same treatment every
@@ -6633,7 +6639,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       moveTile: canAttack ? null : atkMoveTile,
       preview: canAttack ? atkPreview : moveAtkPreview,
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
-      press: (typeof window._pressOf === 'function') ? !!window._pressOf(actingUnit, targetUnit, null).press : false,
+      press: (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, null)) : false,
       acc: _hrlgHitPct(actingUnit, targetUnit, canAttack ? null : _mtCastTile(atkMoveTile)),
       available: true,
     });
@@ -7092,10 +7098,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
         press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
-          ? !!window._pressOf(actingUnit, targetUnit, sp, {
+          ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
-            }).press : false,
+            })) : false,
         available: true,
         spell: sp,
       });
@@ -7163,7 +7169,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (_cbBest && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, _cbBest.combo.spellType || null) : '',
         press: (_cbBest && typeof window._pressOf === 'function')
-          ? !!window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner }).press : false,
+          ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner })) : false,
         badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
         _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
         // THE PARTNER ROW: the quick combo row names the ally it is made with
@@ -8413,7 +8419,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
-      superEff: (a.press != null) ? !!a.press : (typeAdv === '▲' && !_eaImm),
+      superEff: (a.press != null) ? (a.press || false) : (typeAdv === '▲' && !_eaImm),
       immWarn: _eaImm,
       meta: typeAdv === '▼' ? { text: '▼', color: EW.bad, press: true, title: 'Weak against this target' } : null,
       note: isMove
@@ -11457,6 +11463,12 @@ function _hudHideCss() {
       border: calc(var(--ew-se-lw, 2px) * 0.6) solid var(--ew-se-line, #ffffff);
       font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: calc(12px * var(--ew-se-menu, 1)); line-height: 1;
       box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 8px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
+    }
+    /* THE +1 LOOK: a press with a resistance on it (+1 AP) — the same ! hollow: dark disc, green ring and mark */
+    .hrlg-supereff.half {
+      background: rgba(6,19,10,0.88); color: var(--ew-se-fill, #2ecc71);
+      border: calc(var(--ew-se-lw, 2px) * 0.6 + 1px) solid var(--ew-se-fill, #2ecc71);
+      box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 5px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
     }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
@@ -15223,9 +15235,9 @@ function zoneForm(X, pre, title, note, both) {
 }
 /* the green ! (Arrows + tiles > Super effective !): a specimen of each place it shows, in the look now */
 function seForm(X) {
-  const bang = (px, big) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big) : '!';
+  const bang = (px, big, half) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big, half) : '!';
   const spec = `<div class="uim-se-spec"><span class="uim-se-unit">${bang(0, true)}<i></i></span>`
-    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span></div>`;
+    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span><span class="uim-se-row">+1 AP <span class="hrlg-supereff half">!</span></span></div>`;
   let h = `<div class="uim-h">Super effective !</div>` + spec;
   h += sec('ehover', 'Over the enemies', xCheck('While a spell is hovered', 'eHover', X.eHover)
     + xp(fRange('Size', 'eBig', 12, 64, 1, +X.eBig) + fRange('Height above the head', 'eLift', -40, 80, 1, +X.eLift))
