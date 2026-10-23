@@ -2265,3 +2265,28 @@ and create a character should be accessed through door agent as well instead of 
 - clickTile fog gate lets Far Sight (`remoteView`) pick a fogged lit tile (its whole job; the kind is fogExempt).
 - hud.js Attack list: the enemy Cube inside reach but with terrain in the way / out of team sight lists greyed
   with "TERRAIN IN THE WAY" / "OUT OF SIGHT" instead of being missing. Non-portrait rows read "HP 55% · 1t".
+
+## THE HIDDEN KEYS + KEYS VS KEYS FIXES (2026-10-23, mondo: an enemy dropping or picking up a Key must not show for the other side; the Inspect may show but must look the same found or not; the Key animation only for the searcher)
+- Report: https://claude.ai/artifact/8siq43vA1JeYEszPMUpMyk (Keys vs Keys matchup).
+- map.js `keysHiddenFor(p)`: this screen must not show team p's Keys (online: the other seat; VS CPU / hotseat: the
+  team not at the controls; dev auto-sim and match end show all). `shownCarriedKeys(p)` (count or null),
+  `addKeyLog(msg, p)` (an `addLog` entry flagged `kp`, printed only on team p's screen; battle.js `_logKeyHidden`,
+  used by `_logVisible`, hud.js CombatLog and ui.js renderLog / combat-log builder, fog or no fog).
+- `_inspectFootprintAt`: "X inspects N tiles around Y." is public; "Inspection uncovers…" / "Nothing found here." are
+  addKeyLog. The celebration is `_presentKeyFind` → `_playKeyFindLocal` (float, KEY SECURED banner, close-up, chime,
+  shake) under `window._ewNoRelay`, so online.js relays none of it; a guest unit's find goes to the guest alone as
+  relay `key-private`. `addEntropy(..., 'hourglass')` skips the flying orbs when hidden.
+- Drops (`dropHourglassesFromUnit`): only the dropper's team sees the Keys on the ground and the drop line.
+  Rustle / steal lines stay public (both sides are in it).
+- Hidden on the other side: scoreboard count shows "?/N" (hud + ui sidebar), its Keys left out of the shown ARENA
+  score (the round-limit decision still counts them), KEY+ chip, plate badge, "Carrying ×N" / Key Charge status rows,
+  the Key Charge MOV on cards. NOT hidden (rules, flagged to mondo): the forecast vs a carrier includes Key Charge,
+  its move range includes the MOV bonus, the Entropy gauge rises 2 per Key, the state-sync still carries the data.
+- Far Sight: no ally list / pre-pick (`_tileOnlyKinds` + setTool free aim skip `remoteView`), "FAR SIGHT — CLICK A
+  TILE TO SEARCH", desc says "4 steps" and "the turn's one cast". clickTile fog gate also passes any fogExempt
+  tile-targeted kind.
+- hud.js CONFIRM chip reads "MOVE→CAST · <pick>" when the spell pick walks first (cached per pick).
+- battle.js `_ewGuestBoardPick`: a guest tile cast (Gravity Well) outside reach with no approach step, or on a fogged
+  tile its kind can't cast into, is refused with the solo click's line (was armed, then the host said out of range).
+- `_forecastConduction`: the damage kind's forecast adds the lightning-water reaction (`_reactLightningWater` math,
+  allies included) with a "⚡ WATER CONDUCTS" badge. Checked: forecast 476 / 220 = the cast.

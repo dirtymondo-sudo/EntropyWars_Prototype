@@ -11913,7 +11913,8 @@ const ThreeRenderer = (function () {
             }
         }
         var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-        var hgBuff = unit.hourglassBuff || 0;
+        /* THE HIDDEN KEYS: an enemy's Key Charge never shows on its plate here (map.js keysHiddenFor) */
+        var hgBuff = (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) ? 0 : (unit.hourglassBuff || 0);
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');

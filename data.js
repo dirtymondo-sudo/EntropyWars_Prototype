@@ -6367,7 +6367,7 @@ const SPELL_LIBRARY = [
           desc: 'The whole squad moves with the wind. Every ally within 2 tiles is Quickened (+1 move) for 2 rounds. Does not end the turn. Cooldown: 2 rounds.' },
         { id: 'raceFarSight', name: 'Far Sight', tier: 2, families: ['psychic'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'psychic', type: 'utility', kind: 'remoteView', range: 4, inspectAt: true,
-          desc: 'Search a place without walking to it. Inspects a tile up to 4 away as if you stood next to it: the same footprint and the same finds (Keys, items on the fallen, hidden bombs). Does not end the turn.' },
+          desc: 'Search a place without walking to it. Inspects a tile up to 4 steps away as if you stood next to it: the same footprint and the same finds (Keys, items on the fallen, hidden bombs). Does not end the turn, but it is the turn\'s one cast.' },
         { id: 'raceRustle', name: 'Rustle', tier: 2, families: ['cowboyskills'], cost: 50, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'pull', damageType: 'physical', dmg: 60, range: 3, pullDistance: 2, lineOfSight: true,
           stealKeys: 1, stealItems: 0,

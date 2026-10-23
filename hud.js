@@ -670,6 +670,9 @@ function _getModeInfo(st) {
   }
 
   const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+  /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
+     its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
+  const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
   function _arenaScore(p) {
     const enemy = p === 1 ? 2 : 1;
     let pts = 0;
@@ -679,7 +682,7 @@ function _getModeInfo(st) {
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
     pts += Math.min(Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
     let hgCount = 0;
-    if (st.hourglasses) {
+    if (st.hourglasses && !_keysHid(p)) {
       hgCount = st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -700,7 +703,7 @@ function _getModeInfo(st) {
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
     if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
-    if (st.hourglasses) {
+    if (st.hourglasses && !_keysHid(p)) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -750,7 +753,7 @@ function _getModeInfo(st) {
   const keysToWin = (typeof window.getKeysToWin === 'function')
     ? (window.getKeysToWin() | 0)
     : Math.min((st.hourglassTarget | 0), (st.hourglasses || []).length);
-  const p1Keys = _keysHeld(1), p2Keys = _keysHeld(2);
+  const p1Keys = _keysHid(1) ? '?' : _keysHeld(1), p2Keys = _keysHid(2) ? '?' : _keysHeld(2);
   let keyAlertPlayer = 0;
   if (keysToWin > 1) {
     if (p1Keys === keysToWin - 1) keyAlertPlayer = 1;
@@ -1544,7 +1547,7 @@ function CombatLog({ st }) {
   const all = (st.logEntries || []);
   const visibleAll = (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active) || st.fogOfWar
     ? all.filter(e => typeof _logVisible === 'function' ? _logVisible(e) : true)
-    : all;
+    : all.filter(e => !(typeof _logKeyHidden === 'function' && _logKeyHidden(e)));
 
   const entries = visibleAll.map(e => {
     const msg = typeof _logMsg === 'function' ? _logMsg(e) : (e.msg || e.text || '');
@@ -3222,9 +3225,14 @@ function _hrlgStageOf(unit, stat) {
   return { n, capped: Math.abs(n) < Math.abs(raw) };
 }
 /* the movement change from active effects (+ the key charge's half) */
+/* THE HIDDEN KEYS: an enemy's Key Charge is its team's secret on this screen (map.js keysHiddenFor) */
+function _hrlgKeyCharge(unit) {
+  if (!unit || (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player))) return 0;
+  return unit.hourglassBuff || 0;
+}
 function _hrlgMovDelta(unit) {
   const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-  const hgBuff = (unit && unit.hourglassBuff) || 0;
+  const hgBuff = _hrlgKeyCharge(unit);
   return movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
 }
 function _hrlgStatusChips(unit) {
@@ -3254,7 +3262,7 @@ function _hrlgStatusChips(unit) {
       stat: { atk: 'atk', def: 'def', int: 'matk', mdef: 'mdef' }[stat] || '',
     });
   }
-  const hgBuff = unit.hourglassBuff || 0;
+  const hgBuff = _hrlgKeyCharge(unit);
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
   if (totalMov) chips.push({
@@ -3372,7 +3380,9 @@ function _hrlgQuickStats(panelKey) {
   const def  = (u.def || 0) + (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(u, 'none') : 0);
   const mdef = (u.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(u) : 0);
   const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
-  const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
+  /* THE HIDDEN KEYS: an enemy's Key Charge move bonus stays its secret on this screen */
+  const mov  = (typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0))
+    - ((typeof keysHiddenFor === 'function' && keysHiddenFor(u.player) && typeof getHourglassMoveBonus === 'function') ? getHourglassMoveBonus(u) : 0);
   const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
   const vis  = typeof getUnitVisionRange === 'function' ? getUnitVisionRange(u) : (u.vision || 0);
   const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
@@ -5549,6 +5559,7 @@ function _hrlgComboBlades(unit, st) {
 }
 
 
+const _hrlgMtcLabelCache = { k: null, v: '' };   // the CONFIRM chip's MOVE→CAST read, per pick
 function ActionMenu({ st, hidden }) {
   if (!st || st.phase !== 'battle') return null;
   if (hidden) return null;   // board is animating — input already registered
@@ -6076,7 +6087,9 @@ function ActionMenu({ st, hidden }) {
     // a unit list would just mislead. Everything else lists units too.
     const _tileOnlyKinds = ['placeTrap', 'placeBlock', 'buildStructure', 'terrainCreate',
       'deployObject', 'deployPair', 'deployTurret', 'warpRune', 'summonWeather', 'placeMirror',
-      'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison'];
+      'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison',
+      /* Far Sight / scrying aim at a TILE: the ally list it used to open read as "cast on Mothman" (Keys vs Keys) */
+      'remoteView'];
     // THE SELF-CAST CONFIRM: a self-cast's only target is the caster — no list, just the green CONFIRM
     const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
@@ -6117,6 +6130,9 @@ function ActionMenu({ st, hidden }) {
     } else if (_listUnits) {
       modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
       panels.push(_mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade));
+    } else if (_aimSp && _aimSp.kind === 'remoteView') {
+      modeLabel = (st.selectedTool + (_aimSp.inspectAt ? ' — CLICK A TILE TO SEARCH' : ' — CLICK A TILE TO SCRY')).toUpperCase();
+      panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     } else {
       modeLabel = (st.selectedTool + ' — CLICK A TARGET'
         + (_aimOrientable ? ' · R ROTATES' : '')).toUpperCase();
@@ -6209,12 +6225,29 @@ function ActionMenu({ st, hidden }) {
       : null;
     // Multi-strike count picked on the list rides the label ("— Cowboy ×3")
     const _repSuffix = (menuView === 'attackTargets' && _pt._repeatN > 1) ? ' ×' + _pt._repeatN : '';
+    /* a spell pick out of reach walks first (battle.js selectTargetFromMenu → _moveThenCast): the CONFIRM says so —
+       Far Sight on a far tile used to walk the caster with a plain "CONFIRM — <tile>" (Keys vs Keys matchup) */
+    let _mtcPrefix = '';
+    if (am === 'spell' && !_pt.selfCast && typeof _mtcReachesPick === 'function' && typeof findSpellApproachTile === 'function') {
+      const _cSp = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
+      /* the approach search runs once per pick, not once per menu render */
+      const _mtcKey = [unit.id, unit.x, unit.y, unit.z, unit.ap, unit.movesThisTurn, st.selectedTool, _pt.x, _pt.y, _pt.z].join('|');
+      if (_hrlgMtcLabelCache.k !== _mtcKey) {
+        let v = '';
+        try {
+          if (_cSp && !(typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp)) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z)
+            && findSpellApproachTile(unit, _cSp, _pt.x, _pt.y, _pt.z)) v = 'MOVE→CAST · ';
+        } catch (e) {}
+        _hrlgMtcLabelCache.k = _mtcKey; _hrlgMtcLabelCache.v = v;
+      }
+      _mtcPrefix = _hrlgMtcLabelCache.v;
+    }
     /* THE CONFIRM FIRST: a quick-menu AoE's CONFIRM names the unit it was picked for (its footprint covers them) */
     const _qaFrom = (st._quickAoeStage === 'confirm' && st._quickAoePlace === st.selectedTool && st._quickAoeFrom != null)
       ? (st.units || []).find(u => u.id === st._quickAoeFrom && !u.dead) : null;
     if (_qaFrom) _ptUnit = _qaFrom;
     confirmObj = {
-      label: _pt.selfCast ? 'SELF' : ((_ptUnit
+      label: _pt.selfCast ? 'SELF' : _mtcPrefix + ((_ptUnit
         ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
         : (typeof pickTargetName === 'function' ? pickTargetName(_pt.x, _pt.y, _pt.z) : (_pt.x + ',' + _pt.y))) + _repSuffix),   // THE PICK'S NAME
       fire: () => {
