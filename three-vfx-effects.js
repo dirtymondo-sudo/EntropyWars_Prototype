@@ -39375,11 +39375,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return (_pzTexCache[key] = t);
     }
     /* the live rendered body of a unit (the pull drags it): the offset it has moved since the cast */
-    function _pzTrack(tx, ty) {
+    function _pzTrack(tx, ty, uid) {
         var R = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos) ? ThreeRenderer : null, u = null, o = [0, 0, 0], b = null;
         try {
             if (R && !_VS.on && typeof state !== 'undefined' && state.units) {
-                for (var i = 0; i < state.units.length; i++) { var c = state.units[i]; if (c && !c.dead && c.x === tx && c.y === ty) { u = c; break; } }
+                /* by id when the caller names it (a pull has already moved target.x/y to the landing tile by the time it fires) */
+                for (var i = 0; i < state.units.length; i++) { var c = state.units[i]; if (c && !c.dead && (uid != null ? c.id === uid : (c.x === tx && c.y === ty))) { u = c; break; } }
                 if (u && R.getUnitWorldPos(u.id, o)) b = o.slice();
             }
         } catch (e) { b = null; }
@@ -39921,10 +39922,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* a pull line the signature owns: from the caster's tile to the victim's body, which it follows as it is
        dragged (the live model, _pzTrack). draw(el, a, b) gets the two local points each frame. */
-    function _pzPullRig(tx, ty, ms, build, draw) {
+    function _pzPullRig(tx, ty, ms, build, draw, uid) {
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _sigCasterPos(tx, ty) || { x: tx - 1, y: ty }, ln = _nrvLine(F, from, tx, ty), see = _pzSeen(from.x, from.y);
         var a = see ? new THREE.Vector3(ln.dx, ln.dy, ln.dz) : new THREE.Vector3(ln.ux * ts * 1.2, 0, ln.uz * ts * 1.2);
-        var track = _pzTrack(tx, ty), b = new THREE.Vector3();
+        var track = _pzTrack(tx, ty, uid), b = new THREE.Vector3();
         var R = build(F, ts, a, see, ln);
         return _sigRunOwned(F.g, ms, function (el) {
             var d = track(); b.set(d ? d.x : 0, d ? d.y : 0, d ? d.z : 0);
@@ -39963,7 +39964,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 lastDrip = el; var q = A.clone().lerp(T, rn(0.2, 1));
                 _pzP(F, q.x, q.y, q.z, { sprite: 'poison-bubble', tint: _PZ.venom, ml: rn(300, 500), size0: rn(4, 7), size1: 2, vz: -rn(20, 60), gravity: 200, opacity0: 0.9 });
             }
-        });
+        }, p.uid);
     };
     EFFECTS['pzUnmasked_impact'] = _pzDef('unmasked', { shake: 'normal', layers: [
         { sprite: 'flash', ml: 120, size0: 54, size1: 14, tint: 0xb8ff6a, opacity0: 0.85, z: 40, delayMs: 300 },
@@ -40019,7 +40020,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 R.rings[j].material.opacity = 0.7 * vis * Math.sin(rt * Math.PI);
             }
             R.sig.position.set(b.x, b.y + ts * 0.04, b.z); R.sig.rotation.z = el * 0.0015; R.sig.material.opacity = 0.55 * vis;
-        });
+        }, p.uid);
     };
     EFFECTS['pzWearYourSkin_impact'] = _pzDef('wearSkin', { shake: 'normal', layers: [
         { sprite: 'flash', ml: 130, size0: 56, size1: 14, tint: 0xd02030, opacity0: 0.8, z: 40, delayMs: 380 },
@@ -40159,7 +40160,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 }
                 L.geo.attributes.position.needsUpdate = true; L.m.opacity = vis * (0.45 + 0.4 * Math.abs(Math.sin(el * 0.03 + i)));
             }
-        });
+        }, p.uid);
     };
     EFFECTS['pzCompactor_impact'] = _pzDef('compactor', { layers: [
         { count: 3, sprite: 'smoke-soft', ml: [600, 900], offsetXY: 10, z: [30, 70], tint: 0xf0f0f0, vzRange: [40, 90], drag: 0.5, size0: [14, 20], size1: [36, 50], opacity0: 0.45, delayMs: 260 },
@@ -41354,7 +41355,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireGeometry: fireGeometry,
         hasMapping: hasMapping,
         /* THE P-Z SIGNATURES: battle.js skips the rope tether for a pull whose signature draws its own line */
-        ownsPullTether: function (spellId) { var m = SPELL_MAP[spellId], d = m && m.pull && EFFECTS[m.pull]; return !!(d && d.pzOwnTether && !_catOff('spells')); },
+        ownsPullTether: function (spellId) { var m = SPELL_MAP[spellId], d = m && m.pull && EFFECTS[m.pull]; return !!(d && d.pzOwnTether && !_catOff('spells') && window.ThreeVFX && window.ThreeVFX.isActive && window.ThreeVFX.isActive() && _getVFXScene()); },
         /* the DOOR agent's leaf (rev 2): warm the catalogue GLB the door
            recipes wear — the renderer calls it when a board door is built */
         warmDoor: _doorFxWarm,

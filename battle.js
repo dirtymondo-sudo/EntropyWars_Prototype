@@ -71807,7 +71807,7 @@
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
                         if (!_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y });
+                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y, uid: target && target.id });
                         }
                     }
                 }, _pullCamHold);
