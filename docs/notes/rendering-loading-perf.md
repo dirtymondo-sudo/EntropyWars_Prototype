@@ -1005,3 +1005,14 @@ the walk), on the classic, pmndrs and node (TSL) chains. Nothing was removed. De
   picture on WebGL, drawn on WebGPU. Never use `THREE.LineLoop` again; close the point list by hand (the zodiac rim does too).
 - Checked on real WebGPU (SwiftShader) in a VS-CPU battle on Mount Shasta: old file 168 LineLoop errors in 8 s with the
   ghost up and no rim; new file 0 errors, 72 rim lines drawn, red rim visible on each tile.
+
+## THE QUIET COUNT (2026-10-23, matchup playtests shared-bugs thread)
+- The host's no-active-unit watchdog (battle.js `_noActiveUnitWatchdog`) skipped a whole round in Wipeout vs Wipeout
+  (R9) and fired in Cube vs Cube (R12): 15 s of wall clock read a long blocked frame (a shader build on a slow PC)
+  as 15 s of stall, in the middle of a live end of round, which then ran twice. A stall now also needs 7 answered
+  ticks in a row (a tick that comes >4 s late starts the window over) and an unchanged signature (`_ewStallSignature`:
+  round, log length, HP sum, `_blitzTurnGen`, round-advance flag).
+- One live end of round at a time: `_eorChainGen` bumps when an end-of-round chain starts (and when the watchdog
+  drops a stalled one); every beat of the chain checks it, so a slow old chain stops instead of running a second
+  round end. The recovery/drop gate from PR #438 is unchanged.
+- Checked in a rendered browser: a 16 s main-thread block no longer fires it; a truly dead round end still recovers ~17 s.
