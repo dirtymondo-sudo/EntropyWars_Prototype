@@ -16934,7 +16934,8 @@ const ThreeRenderer = (function () {
         g.setIndex(idx);
         return g;
     }
-    /* the drape's rim as a closed line (the paint ghost's crisp edge), same local frame as the drape mesh */
+    /* the drape's rim as a closed line (the paint ghost's crisp edge), same local frame as the drape mesh.
+       Closed by hand (first point repeated) for a THREE.Line: WebGPURenderer draws no LineLoop. */
     function _drapeRimGeo(geo) {
         var p = geo.attributes.position.array, n = Math.round(Math.sqrt(geo.attributes.position.count)) - 1, out = [], i;
         function at(gi, gj) { var k = (gj * (n + 1) + gi) * 3; out.push(p[k], p[k + 1], p[k + 2]); }
@@ -16942,6 +16943,7 @@ const ThreeRenderer = (function () {
         for (i = 0; i < n; i++) at(n, i);
         for (i = n; i > 0; i--) at(i, n);
         for (i = n; i > 0; i--) at(0, i);
+        at(0, 0);
         var g = new THREE.BufferGeometry();
         g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
         return g;
@@ -17728,7 +17730,7 @@ const ThreeRenderer = (function () {
                 var pEdgeMat = new THREE.LineBasicMaterial({
                     color: color, transparent: true, opacity: 0.8, depthWrite: false
                 });
-                var pEdges = new THREE.LineLoop(_drapeRimGeo(plane.geometry), pEdgeMat);
+                var pEdges = new THREE.Line(_drapeRimGeo(plane.geometry), pEdgeMat);
                 pEdges.rotation.y = plane.rotation.y;
                 pEdges.position.copy(plane.position); pEdges.position.y += 0.1;
                 pEdges.renderOrder = 6;

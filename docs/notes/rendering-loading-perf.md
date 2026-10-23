@@ -996,3 +996,12 @@ the walk), on the classic, pmndrs and node (TSL) chains. Nothing was removed. De
   socket drop on the loading screen restored, guest turns ended on the clock (activation 1 → 2 on both seats), injected
   fog log lines filtered on the guest (hidden-unit and fogged-tile lines gone, own-unit / own-seat / plain lines kept),
   a sudden-death kill ended the match on both seats (VICTORY / DEFEAT, 3 v 4 on both, same year, guest Export enabled).
+
+## THE LINELOOP (2026-10-23, WebGPU console spam)
+- mondo on Firefox `?ew_gpu=webgpu`: "THREE.Renderer: Objects of type THREE.LineLoop are not supported" x999. The node
+  renderer (three 0.186.1 `_projectObject`) logs that every frame for every visible LineLoop and draws nothing for it.
+- The only LineLoop left was the terrain-paint ghost's tile rim (`showTerrainGhost` paint mode, shown while aiming a
+  terrain or `leaveTerrain` spell). `_drapeRimGeo` now repeats its first point and the rim is a `THREE.Line`: same
+  picture on WebGL, drawn on WebGPU. Never use `THREE.LineLoop` again; close the point list by hand (the zodiac rim does too).
+- Checked on real WebGPU (SwiftShader) in a VS-CPU battle on Mount Shasta: old file 168 LineLoop errors in 8 s with the
+  ghost up and no rim; new file 0 errors, 72 rim lines drawn, red rim visible on each tile.
