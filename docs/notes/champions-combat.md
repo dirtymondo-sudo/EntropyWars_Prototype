@@ -2032,6 +2032,30 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
   AP 0); new code, 0 teal tiles for the player (CPU still 11), the same click does not take off, Take Off then Move
   lists the flying tiles.
 
+## THE WIPEOUT PLAYTEST FIXES (2026-10-23)
+From the 10-23 wipeout playtest (Stonehenge 4v4, Training). mondo: green ! = super effective (intended); no layout work
+except the Nexus counter; flyer take-off is its own thread.
+- Entropy Strike picker estimate (~972 shown, real hits 2011/1507): battle.js `getEntropyStrikeForecast` now runs each
+  enemy through `forecastHitOnUnit` (the engine's own hit math, live=false) and returns `hits` + `dmgLo`/`dmgHi`; hud.js
+  `_hrlgEntropyBlades` shows `lo–hi` (one number when equal). ai.js / `getEntropyStrikeBestType` untouched.
+- Nexus counter huge up close: three-renderer.js `NEXUS_PLATE_MAX_PX` (260) caps the plate's on-screen width, the mirror of
+  `NEXUS_PLATE_MIN_PX`.
+- Imitation Report over the cinematic / VICTORY: `_imitMatchSummary` only sets `_imitReportPending`; `showResultOverlay`
+  opens it (`_imitShowPendingReport`, 1.2 s after) FOLDED to its title bar; ▸/▾ (`_ewImitationReportFold`) opens it.
+- Camera inside the Dragon/Nephilim: the menu camera (`_menuCamOccl`) counts a model within `NEAR_LENS` (2.5 tiles) of
+  the lens as a heavy block; three-camera.js `_boardSightFloor` lifts the board rig over a body within
+  `BOARD_NEAR_BODY_TILES` (2.5) of the lens. `window._camBodyTopPx` takes the subject's point so the shot's own unit is
+  never its own blocker. Old behaviour for comparison: `EW_NO_CLEAR_BOARD = true`.
+- Target off screen after arming a tile-aim spell (Dragonfire etc.): the range fit framed only the lit tiles while the
+  list pre-picked a MOVE→CAST target outside them; setActionMode's free-aim branch refits the same board read to take in
+  the picked target (THE PICK IN FRAME).
+- ATTACK lit with nobody in reach ("No target" on click): state.js `getActionPanelCache` asks `_getAttackValidTargets`
+  (the list's own check) instead of a z-0 distance test.
+- Setup Field Assignment showed the size twice ("Stonehenge Arena 10×10 10×10"): match-select.js drops the size label
+  when the cut's name already carries it.
+- Already fixed on main by PR #419: "4 v 1 STANDING" after a wipeout, the list card's 12x12.
+- Not bugs: "Player holds the field." is the default profile name; "[BOOT] ... kicking the turn loop" is the slow-machine
+  diagnostic (sandbox); the low two-shot menu camera is the design (MENU_CAM_TILT).
 ## THE SPELL POWER REVIEW (2026-10-23, mondo: "lets go ahead and add those spells. Balance the status effects better like reduce the number of stagger spells ... it needs to work for wet too ... even out the elemental spread. Definitely too much metal too.")
 Review page: https://claude.ai/artifact/5v2kAZFtLm1yCam99A89kw (built from the wipeout / Cube / Keys playtests).
 - **Eleven new rows** (data.js, end of SPELL_LIBRARY, each in one existing family): Open Vein (blood I, Bleed 2 — the first

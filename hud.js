@@ -4674,6 +4674,9 @@ function _hrlgEntropyBlades(unit, st) {
     const tc = TYPE_TEXT_COLORS[id] || def.color || '#c9a5ff';
     const mult = fc ? fc.mult * (fc.stab ? stabMult : 1) : 1;
     const proj = Math.max(1, Math.round(dmg * mult));
+    // the engine's own hit on each visible enemy (getEntropyStrikeForecast hits, wipeout playtest 2026-10-23: ~972 shown,
+    // 2011 / 1507 landed) — one number when every victim takes the same, else the low–high spread like a spell row
+    const projV = (fc && fc.dmgLo != null) ? (fc.dmgLo === fc.dmgHi ? '~' + fc.dmgLo : fc.dmgLo + '–' + fc.dmgHi) : '~' + proj;
     const good = fc && fc.weak > 0 && fc.resist === 0;
     const bad = fc && fc.resist > 0 && fc.weak === 0;
     const powerColor = good ? '#7dff9a' : (bad ? '#ff7a7a' : '#f0e6c8');
@@ -4709,7 +4712,7 @@ function _hrlgEntropyBlades(unit, st) {
       label: def.name || id,
       badges,
       available: ready,
-      power: { v: '~' + proj, color: powerColor },
+      power: { v: projV, color: powerColor },
       meta: { text: metaText, color: metaColor, title: 'Visible enemies this type hits SUPER EFFECTIVE (▲) / that resist it (▼)' },
       note: (best && best.type === id) ? 'BEST' : null,
       superEff: !!good,
