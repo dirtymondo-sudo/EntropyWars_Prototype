@@ -2318,3 +2318,9 @@ lit), or got no Move towards at all. Now only `_takeoff` tiles are skipped; the 
 stays its own verb. Browser-proved on Pyramids of Giza: same click now lands on G5. Screenshot
 /mnt/project-files/move-towards-ledge/. The unit-target chase (hud.js `_bestTowardStep`) already counted them.
 findSpellApproachTile / _findSelfNovaApproachTile (MOVE→CAST) still skip hop tiles — left as they were.
+Follow-up (same day, mondo's same-kind-gaps rule): the move-then-act finders now count hop tiles too — findSpellApproachTile
+(MOVE→CAST rows, board pick, quick menus), _findSelfNovaApproachTile, TargetQuery.hasReachableTarget (the Abilities
+button), findInspectApproachTile and findCaptureDoorApproachTile skip only `_takeoff`. findAttackApproachTile already
+counted them. Browser-proved: Sedan on the Pyramids wall top, enemy on H8 below → before "No targets in range", after a
+MOVE→CAST row that steps off the wall to G7 and lands the punch. Mystery Dungeon companion steps (_mdGuardRegroup,
+_mdStepToward) and ai.js left as they were.
