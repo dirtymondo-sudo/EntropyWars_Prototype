@@ -3432,6 +3432,12 @@
         function triggerTerrainSpellReaction(caster, spell, tiles) {
             if (!caster || !spell || !tiles || !tiles.length) return;
             if (state.phase !== 'battle') return;
+            /* 🧊💥 ICE SHATTER (2026-10-23, mondo picked "slams + hard landings"): a slam breaks the ice tiles it hits */
+            if (spellShattersIce(spell)) {
+                let _cracked = 0;
+                for (const tile of tiles) if (tile && isInside(tile.x, tile.y) && shatterIceAt(tile.x, tile.y)) _cracked++;
+                if (_cracked) addLog(`🧊 ${_ctSp(spell.name)} shatters the ice — ${_cracked} tile${_cracked !== 1 ? 's' : ''} crack into water!`);
+            }
             /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo): a water or ice spell's hit on lava hardens it into stone
                (map.js lavaWaterMixOf; the paint notes the cells, so the field skins and the state-sync carry it) */
             const _rawEl = getSpellElement(spell);
@@ -3521,6 +3527,52 @@
                 addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
             }
         }
+        window.triggerTerrainSpellReaction = triggerTerrainSpellReaction;
+
+        /* 💥🛢️ FIRE ON OIL / GOO (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of
+           liquid explode? If not it should."): a fire / lightning spell that leaves terrain (Meteor's scorch, Hellmouth's
+           lava, the nukes) used to paint the slick away BEFORE the reaction looked at it, so the oil never went up. Each
+           paint site calls this first: an oil / ooze cell under the paint detonates its whole connected slick (the
+           existing _reactFireOil, through the dispatcher), then the paint lands on the charred ground. */
+        function igniteOilBeforePaint(caster, spell, x, y) {
+            if (!caster || !spell || !isInside(x, y) || !_isOilTile(x, y)) return;
+            const el = classifySpellElement(spell);
+            if (el !== 'fire' && el !== 'lightning') return;
+            triggerTerrainSpellReaction(caster, spell, [{ x, y }]);
+        }
+        window.igniteOilBeforePaint = igniteOilBeforePaint;
+
+        /* 🧊💥 ICE SHATTER (2026-10-23, mondo chose "Slams + hard landings" on: "Which physical abilities should shatter
+           ice into water?"). Two ways ice breaks into shallow water (on the normal 3-round terrain timer):
+             · a SLAM — a physical ability that hits the ground: the leap / drop kinds (leapStrike, skyDrop, skySlam) and
+               any crater maker (terrainDeform). Ice-element moves never break their own ice; walls (terrainCreate /
+               monuments) are not slams. Only the struck tiles break, not the whole sheet (fire melts the whole sheet).
+             · a HARD LANDING — a body an enemy sends onto ice hard enough to take fall damage (thrown, knocked off a
+               ledge, slammed out of the sky): state.js applyFallDamage, and a sky throw's landing. The body lands in
+               the water, so it does not glide on (resolveForcedSlide + its forecast skip the ice leg). */
+        function spellShattersIce(spell) {
+            if (!spell || !(spell.dmg > 0) || spell.monument || spell.kind === 'terrainCreate') return false;
+            if ((spell.damageType || 'physical') !== 'physical') return false;
+            if (getSpellElement(spell) === 'ice') return false;
+            return spell.kind === 'leapStrike' || spell.kind === 'skyDrop' || spell.kind === 'skySlam' || !!spell.terrainDeform;
+        }
+        window.spellShattersIce = spellShattersIce;
+        function shatterIceAt(x, y) {
+            if (!_isIceTile(x, y)) return false;
+            if (setTerrainAt(x, y, 'water') === false) return false;
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            if (!_skipVisuals()) showFloatingTextAtTile(x, y, '🧊 CRACK!', 'damage', { durationMs: 900 });
+            return true;
+        }
+        window.shatterIceAt = shatterIceAt;
+        /* the landing tile breaks under a hard landing: ice there, and the drop deals fall damage */
+        function hardLandingCracksIce(u, fromZ, toZ, x, y) {
+            if (!u || !_isIceTile(x, y)) return false;
+            return typeof predictFallDamage === 'function' && predictFallDamage(u, fromZ, toZ, x, y) > 0;
+        }
+        window.hardLandingCracksIce = hardLandingCracksIce;
+        function _fallThreshold() { return (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3; }
 
         // ═══════════════════════════════════════════════════════════════════
         // 🔥 BURNING TILES — persistent ground fire (2026-07-08).
@@ -5350,13 +5402,16 @@
 
             res.x = cx; res.y = cy; res.z = cz;
             res.landX = cx; res.landY = cy; res.landZ = cz;   // where the slide itself ends, before its chain
+            /* 🧊💥 a landing hard enough to hurt cracks ice into water (applyFallDamage breaks it): the body stays put, no glide */
+            const _hardIce = res.moved > 0 && !opts.noFall && hardLandingCracksIce(target, res.fromZ, cz, cx, cy);
+            if (_hardIce) res.iceCracked = true;
 
             /* THE CHAIN FORECAST (THE FORCED MOVE): the landing's chain walked with the real rules — a body shoved onto
                ice glides on the way it was going, a bomb throws it back, a storm flings it on its heading, and so on;
                every leg rides res.steps (tagged ice / blast / fling) and res.legs, the end is the landing. */
             if (simulate && res.moved > 0 && !opts.noSimChain) {
                 const ch = simulateArrivalChain(target, cx, cy, cz, res.dirX, res.dirY,
-                    { byUnit: opts.byUnit || null, noGlide: res.spent, viewer: opts.viewer, grounded: !!opts.groundFirst });
+                    { byUnit: opts.byUnit || null, noGlide: res.spent || _hardIce, viewer: opts.viewer, grounded: !!opts.groundFirst });
                 if (ch.legs.length) {
                     for (const st of ch.steps) res.steps.push(st);
                     res.legs = ch.legs;
@@ -5418,7 +5473,7 @@
                     }
                     if (res.moved > 0) {
                         /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
-                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent });
+                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
                     }
                 }
@@ -6709,6 +6764,7 @@
                 // Leave terrain — THE SPELL AUDIT Batch D: `leaveTerrainRadius` keeps it to the middle (Miasma's 3x3)
                 if (spell.leaveTerrain && !(spell.leaveTerrainRadius != null && opts.deformCenter
                     && Math.max(Math.abs(tile.x - opts.deformCenter.x), Math.abs(tile.y - opts.deformCenter.y)) > spell.leaveTerrainRadius)) {
+                    igniteOilBeforePaint(unit, spell, tile.x, tile.y);   // 💥 the slick goes up before the scorch covers it
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
@@ -7257,6 +7313,7 @@
                         }
                     }
                 }
+                if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, cx, cy);   // 💥 the slick goes up before the paint covers it
                 if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
                     if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                 } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(cx, cy, spell.leaveTerrain);   // ⏳ back to 3 rounds
@@ -7282,6 +7339,7 @@
                         if (!_zig && !_beamAtGround(lx, ly, c.z)) continue;
                         _groundCells.push({ x: lx, y: ly });
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
+                        if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, lx, ly);
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             if (setTerrainSpringAt(lx, ly, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                         } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(lx, ly, spell.leaveTerrain);   // ⏳ back to 3 rounds
@@ -13301,6 +13359,20 @@
 
         function rollEvasion(target) {
             return engineRng() < getEvasionChance(target);
+        }
+
+        /* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): the odds a basic
+           attack lands, read off the same rolls doAttack makes — a back-arc swing can't be dodged, any other loses the
+           target's EVA; Blind halves it; a Protected body is never hit. `from` = the tile the swing leaves from (a
+           MOVE→ATK row), else where the attacker stands. 0..1, no state writes. */
+        function getAttackHitChance(attacker, target, from) {
+            if (!attacker || !target) return 0;
+            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
+            const src = (from && from.x != null) ? { x: from.x, y: from.y } : attacker;
+            const arc = attacker._doorAttackOrigin ? 'back' : getAttackArc(src, target);
+            let p = arc === 'back' ? 1 : 1 - getEvasionChance(target);
+            if (unitHasStatus(attacker, 'blind')) p *= 0.5;
+            return Math.max(0, Math.min(1, p));
         }
 
         function getCounterChance(unit) {
@@ -21021,6 +21093,7 @@
             try {
                 if (!state || state.phase !== 'battle' || state.winner) return;
                 if (state.devAutoSim) return;
+                if (window._tutActive) return;   // THE TUTORIAL commits nothing, so it pops nothing (a lesson's Inspect had popped Cartographer +100)
                 if (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) return;
                 if (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) return;
                 if (typeof _strengthTestMode !== 'undefined' && _strengthTestMode) return;
@@ -36111,54 +36184,67 @@
             if (veto) plan._fogVeto = true;
         }
 
+        /* which part of a pressing hit earns it: the TYPE, the ELEMENT (neutral type only) or the STATUS COMBO */
+        function _pressByOf(pc) {
+            const e = (pc && pc.effSummary) || {};
+            if (e.hasStrong && !e.hasWeak) return 'type';
+            if (pc && pc.elemAff === 'weak') return 'element';
+            return (pc && pc.combo) ? 'combo' : 'element';
+        }
+        /* the forecast answer of one hit ctx: { press, by, ap } — ap 2, or 1 with a resistance on it (THE PRESS SUM) */
+        function _pressAnswerOf(pc, by) {
+            const o = pc ? _pressOutcomeForHit(pc) : null;
+            if (o === PRESS_OUTCOME.WEAK) return { press: true, by: by || _pressByOf(pc), ap: PRESS_REFUND_AP };
+            if (o === PRESS_OUTCOME.HALF) return { press: true, by: by || _pressByOf(pc), ap: 1 };
+            return { press: false, by: null };
+        }
         function _forecastPressResolve(plan) {
             plan.press = (plan.pressArmed && plan.pressHits.length && !plan._fogVeto) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
-            const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT;
+            const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT || plan.press === PRESS_OUTCOME.HALF;
+            plan.pressAp = presses ? (plan.press === PRESS_OUTCOME.HALF ? 1 : PRESS_REFUND_AP) : 0;   // THE PRESS SUM: +1 when a resistance is on it
             for (const h of plan.hits) {
                 h.press = false; h.pressBy = null;
                 if (!presses || h._pressMiss || !h._pressCtx) continue;
-                const pc = h._pressCtx.find(c => _pressOutcomeForHit(c) === PRESS_OUTCOME.WEAK);
+                const pc = h._pressCtx.find(c => _pressHitInfo(c).nSrc > 0 && _pressHitInfo(c).r > 0 && !_pressHitInfo(c).block);
                 if (!pc) continue;
-                const eff = pc.effSummary || {};
                 h.press = true;
-                h.pressBy = (eff.hasStrong && !eff.hasWeak) ? 'type' : 'element';
+                h.pressBy = _pressByOf(pc);
             }
         }
 
         /* One answer for every green !: does this action on this target hand the +2 AP press back? Spells read the
            forecast plan aimed at the target (so one resisting / protected body in the blast vetoes it everywhere, as
            in the real refund); a basic attack reads its type (crit / dodge stay a gamble); a combo its own type and
-           element. Returns { press, by: 'type' | 'element' | null }. Viewer-local, no state writes. */
+           element. Returns { press, by: 'type' | 'element' | 'combo' | null, ap: 2 | 1 }. Viewer-local, no state writes. */
         function forecastPressOn(caster, target, spell, opts = {}) {
             const no = { press: false, by: null };
             if (!caster || !target || target.dead || !isEnemyUnit(caster, target)) return no;
             if (!_isUnitVisibleToViewer(target, caster.player)) return no;   // THE FOG: nothing said about a body the caster's side can't see
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return no;   // Mystery Dungeon floors: no press turns
-            const byOf = (pc) => { const e = pc.effSummary || {}; return (e.hasStrong && !e.hasWeak) ? 'type' : 'element'; };
             if (opts.combo) {
                 const combo = opts.combo, partner = opts.partner || null;
                 const atk = combo.spellType ? [combo.spellType] : [...(caster.types || []), ...((partner && partner.types) || [])];
                 const cEl = getSpellElement(combo);
                 const pc = { effSummary: getTypeEffectSummary(atk, target.types || []),
                     elemAff: (cEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, cEl) : null };
-                return _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK ? { press: true, by: byOf(pc) } : no;
+                return _pressAnswerOf(pc);
             }
             if (!spell) {
                 if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return no;
                 const pc = { effSummary: getTypeEffectSummary(caster.types || [], target.types || []) };
-                return _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK ? { press: true, by: 'type' } : no;
+                return _pressAnswerOf(pc, 'type');
             }
             if (!spellArmsPress(spell)) return no;
             const aim = opts.aim || target;   // an off-centre AoE aim (the quick menu's) still has to catch the target
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
-            if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy } : no;
+            if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy, ap: plan.pressAp || PRESS_REFUND_AP } : no;
             // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
             if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
-                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) });
-            return (pc && _pressOutcomeForHit(pc) === PRESS_OUTCOME.WEAK) ? { press: true, by: byOf(pc) } : no;
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), bonusVsStatus: spell.bonusVsStatus || null });
+            return _pressAnswerOf(pc);
         }
         window.forecastPressOn = forecastPressOn;
 
@@ -36815,7 +36901,9 @@
                     return;
                 }
                 hit(tt, total, total, total, hopts);
-                chainMove(tt, x, y, Math.sign(x - tt.x), Math.sign(y - tt.y), 'thrown');
+                /* 🧊 a hurl from fall-damage height onto ice cracks it (doSpell's skyThrow): no glide in the forecast either */
+                const _thIce = _isIceTile(x, y) && Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) >= _fallThreshold();
+                chainMove(tt, x, y, Math.sign(x - tt.x), Math.sign(y - tt.y), 'thrown', _thIce ? { noGlide: true } : undefined);
                 return;
             }
 
@@ -39764,6 +39852,7 @@
                 if (unit.player !== state.activePlayer) return null;
                 if (unit.player !== getViewerPlayer()) return null;
                 if (!canUnitAct(unit)) return null;
+                if (unitOnTactic(unit)) return null;   // ♟ its Tactic plays this turn (hud.js TacticWatch says so)
 
                 const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s));
                 const am = state.actionMode;
@@ -39840,6 +39929,7 @@
                 if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
                 if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
                 if (menuView === 'switch') return _promptBarHtml('Select a reserve to switch in.', 'ESC back');
+                if (menuView === 'tactics') return _promptBarHtml('Pick a Tactic: the unit plays its own turns.', 'ESC back');
                 return _promptBarHtml('<strong>' + esc(_ctName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
             } catch (err) {
                 return null; // a broken prompt must never take the game down
@@ -40012,16 +40102,18 @@
            everything left (moving twice is a full turn). A unit may cast
            only ONE spell/ability per turn (the '1 spell/turn' gate in
            getSpellBlockReason). The ONLY way to keep acting after damage —
-           or to cast a second spell — is a press: the turn's FIRST weakness
-           hit hands back +2 AP at once (a full fresh action), a crit +1; every
-           press AFTER that vents into the team's Entropy Gauge instead — so
-           a unit can attack at most TWICE in one turn.
+           or to cast a second spell — is a press: a weakness hit, a status
+           combo hit or a crit hands back +2 AP at once (a full fresh action,
+           mondo 2026-10-23); the turn's FIRST press refunds, every press
+           AFTER that vents into the team's Entropy Gauge instead — so a unit
+           can attack at most TWICE in one turn. One hit presses once: a weak
+           crit pays +2 and its second +2 vents to the gauge.
            Only unit.ap mutates → online-safe (host authoritative) and
            undo-safe (ap is in every pushUndoSnapshot). See PRESS_OUTCOME /
            applyPressTurn below; turn termination stays owned by
            unitFinished/endUnitIfDone. */
-        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press on a weakness
-        const PRESS_CRIT_REFUND_AP  = 1;   // AP a critical hit grants (mondo 2026-10-21, PvP audit #8: a crit is a dice roll, so +1, not +2)
+        const PRESS_REFUND_AP       = 2;   // AP one press grants (a weakness, a status combo — mondo 2026-10-23)
+        const PRESS_CRIT_REFUND_AP  = 2;   // AP a critical hit grants (mondo 2026-10-23: "lets make crits allow 2 ap instead of 1"; was +1 since 2026-10-21)
         const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge (post-press swings)
         const PRESS_MAX_BONUS_AP    = 2;   // total press AP per unit per turn → ONE +2 press; extras vent to entropy
 
@@ -40029,9 +40121,10 @@
             MISS:      'miss',     // dodged/evaded → extra AP drain
             RESIST:    'resist',   // not very effective → extra AP drain
             NORMAL:    'normal',   // neutral → normal cost
-            WEAK:      'weak',     // hit a weakness → refund
+            WEAK:      'weak',     // hit a weakness (or a status combo) → refund
             CRIT:      'crit',     // landed a crit → refund
-            WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (+1 more vents to entropy past the cap)
+            WEAK_CRIT: 'weakCrit', // weakness AND crit → +2 (the second +2 vents to entropy: one hit presses once)
+            HALF:      'half',     // a press with one resistance on it → +1 (THE PRESS SUM, mondo 2026-10-23)
             NULL:      'null',     // the element was immune / absorbed → no press (vetoes the cast's), no drain
         };
 
@@ -40889,52 +40982,63 @@
         // Press outcome for a single hit. Detected off the type-effectiveness
         // TIER (hasStrong/hasWeak), never the raw multiplier number — sidesteps
         // the cross-file 1.30-vs-1.5 mismatch.
+        /* THE PRESS SUM (mondo 2026-10-23: "what if a resistance took away 1 ap instead of every refund? But an absorb
+           would still block every refund. still two attacks at most per turn"): a hit's SOURCES are a super effective
+           TYPE (the spell's own type vs the target, never the caster's), an element WEAKNESS, a STATUS COMBO (its
+           bonusVsStatus multiplier lands, hit.combo) and a CRIT — any of them is worth the +2 press, and one hit
+           presses once (extra sources vent to the Entropy Gauge). Each RESISTANCE on the hit — a resisted type, a
+           resisted element part — takes 1 AP off that refund (two resistances = no refund). An IMMUNE / ABSORBED
+           element blocks every refund. A resisted type with no source at all is the old drain (RESIST). */
+        function _pressHitInfo(hit) {
+            const eff = (hit && hit.effSummary) || {};
+            const typeTier = (!!eff.hasStrong && !eff.hasWeak) ? 1 : (!!eff.hasWeak && !eff.hasStrong) ? -1 : 0;
+            const aff = (hit && hit.elemAff) || null;
+            const block = aff === 'immune' || aff === 'absorb';
+            const typeRes = typeTier < 0;
+            const srcCrit = !!(hit && hit.isCrit);
+            const nSrc = (typeTier > 0 ? 1 : 0) + (aff === 'weak' ? 1 : 0) + (hit && hit.combo ? 1 : 0) + (srcCrit ? 1 : 0);
+            const resists = (typeRes ? 1 : 0) + (aff === 'resist' ? 1 : 0);
+            const r = nSrc ? Math.max(0, PRESS_REFUND_AP - resists) : (typeRes ? -1 : 0);
+            return { typeTier, block, typeRes, srcCrit, nSrc, resists, r };
+        }
         function _pressOutcomeForHit(hit) {
             if (!hit) return PRESS_OUTCOME.NORMAL;
             if (hit.evaded) return PRESS_OUTCOME.MISS;
-            const eff = hit.effSummary || {};
-            /* THE ELEMENT SHARE PRESS (mondo 2026-10-17 — replaces the 2026-09-23 tier sum): the TYPE (judged by
-               the SPELL's own type vs the target, never the caster's) decides; the element only presses on a
-               neutral type matchup; an immune / absorbed element never presses (data.js elemPressVerdict). A
-               divine fire spell on an unholy that resists fire still presses — only its fire part is resisted. */
-            const typeTier = (!!eff.hasStrong && !eff.hasWeak) ? 1 : (!!eff.hasWeak && !eff.hasStrong) ? -1 : 0;
-            const verdict = (typeof elemPressVerdict === 'function') ? elemPressVerdict(typeTier, hit.elemAff || null)
-                : (typeTier > 0 ? 'weak' : typeTier < 0 ? 'resist' : 'normal');
-            const weakness = verdict === 'weak';     // the target's weakness (type, or element on a neutral type)
-            const resisted = verdict === 'resist';   // resisted type → no press, the AP drain
-            if (verdict === 'null') return PRESS_OUTCOME.NULL;
-            if (hit.isCrit && weakness) return PRESS_OUTCOME.WEAK_CRIT;
-            if (hit.isCrit) return PRESS_OUTCOME.CRIT;
-            if (weakness) return PRESS_OUTCOME.WEAK;
-            if (resisted) return PRESS_OUTCOME.RESIST;
+            const i = _pressHitInfo(hit);
+            if (i.block) return i.typeRes ? PRESS_OUTCOME.RESIST : PRESS_OUTCOME.NULL;   // absorb / immune: no refund
+            if (i.r >= PRESS_REFUND_AP) return i.srcCrit ? (i.nSrc > 1 ? PRESS_OUTCOME.WEAK_CRIT : PRESS_OUTCOME.CRIT) : PRESS_OUTCOME.WEAK;
+            if (i.r === 1) return PRESS_OUTCOME.HALF;      // one resistance took 1 AP off the press
+            if (i.r < 0) return PRESS_OUTCOME.RESIST;      // resisted type, nothing pressing: the drain
             return PRESS_OUTCOME.NORMAL;
         }
 
         // Resolve one PRESS_OUTCOME for an offensive action. Accepts a single
-        // hit ctx { evaded, isCrit, effSummary:{hasStrong,hasWeak} } or an array
-        // (multi-target/AoE) reduced worst-case: one dodged target drains AP
-        // (penalty); one RESISTED target denies the press (SMT-faithful) even if
-        // every other target was a weakness; otherwise the strongest press wins.
+        // hit ctx { evaded, isCrit, effSummary:{hasStrong,hasWeak}, elemAff, combo } or an array
+        // (multi-target/AoE): one dodged target drains AP (penalty); one immune / absorbing body blocks
+        // the refund; otherwise the best hit's refund pays, and a resistance anywhere in the cast takes
+        // 1 AP off it (THE PRESS SUM); a resisted body with nothing pressing anywhere drains.
         function resolvePressOutcome(ctx) {
             const hits = Array.isArray(ctx) ? ctx : [ctx];
-            const pressRank = { weakCrit: 3, weak: 2, crit: 1 };
-            let anyMiss = false;
-            let anyResist = false;
-            let anyNull = false;
-            let bestPress = null;
+            let anyMiss = false, anyBlock = false, anyDrain = false, anyResist = false;
+            let best = null, bestR = -Infinity;
             for (const h of hits) {
+                if (!h) continue;
+                if (h.evaded) { anyMiss = true; continue; }
+                const i = _pressHitInfo(h);
                 const o = _pressOutcomeForHit(h);
-                if (o === PRESS_OUTCOME.MISS) { anyMiss = true; }
-                else if (o === PRESS_OUTCOME.RESIST) { anyResist = true; }
-                else if (o === PRESS_OUTCOME.NULL) { anyNull = true; }
-                else if (pressRank[o] != null) {
-                    if (!bestPress || pressRank[o] > pressRank[bestPress]) bestPress = o;
-                }
+                if (i.block) anyBlock = true;
+                if (o === PRESS_OUTCOME.RESIST) anyDrain = true;
+                if (i.resists > 0) anyResist = true;
+                if (!i.block && i.nSrc && i.r > bestR) { bestR = i.r; best = o; }
             }
-            if (anyMiss) return PRESS_OUTCOME.MISS;       // penalty dominates
-            if (anyResist) return PRESS_OUTCOME.RESIST;   // one resist vetoes the press AND drains AP
-            if (anyNull) return PRESS_OUTCOME.NORMAL;     // an immune / absorbed element vetoes the press, no drain
-            if (bestPress) return bestPress;
+            if (anyMiss) return PRESS_OUTCOME.MISS;                                   // penalty dominates
+            if (anyBlock) return anyDrain ? PRESS_OUTCOME.RESIST : PRESS_OUTCOME.NORMAL;   // an absorb blocks every refund
+            if (best) {
+                const refund = anyResist ? Math.min(bestR, 1) : bestR;
+                if (refund >= PRESS_REFUND_AP) return best;
+                if (refund === 1) return PRESS_OUTCOME.HALF;
+            }
+            if (anyDrain) return PRESS_OUTCOME.RESIST;
             return PRESS_OUTCOME.NORMAL;
         }
 
@@ -40972,6 +41076,7 @@
             if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP + PRESS_CRIT_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.WEAK) want = PRESS_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.CRIT) want = PRESS_CRIT_REFUND_AP;
+            else if (outcome === PRESS_OUTCOME.HALF) want = 1;
             if (want <= 0) return result; // NORMAL / RESIST → unchanged
 
             const gained = unit._pressGainedThisTurn || 0;
@@ -40985,10 +41090,15 @@
                0 so EVERY weak/crit press vents through the entropy branch
                below instead. Hitting weaknesses still pays, in gauge. */
             const _simulNoPress = typeof window._isSimulMode === 'function' && window._isSimulMode();
-            const capRoom = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained - penalties);
-            const capRoomIfPerfect = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained);
+            /* ONE PRESS A TURN, whatever its size (mondo 2026-10-23: "still two attacks at most per turn"): a +1 press
+               used the turn's press too, so a later +1 can't hand back a third attack — it vents to the gauge. */
+            const _pressedAlready = gained > 0;
+            const capRoom = (_simulNoPress || _pressedAlready) ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - penalties);
+            const capRoomIfPerfect = (_simulNoPress || _pressedAlready) ? 0 : PRESS_MAX_BONUS_AP;
             const apRoom = Math.max(0, getUnitMaxAP(unit) - (unit.ap || 0));
-            const refund = Math.min(want, capRoom, apRoom);
+            // one hit presses ONCE (+2): a weak crit's second +2 vents into the gauge below, as its extra +1 always did
+            const hitRoom = PRESS_REFUND_AP;
+            const refund = Math.min(want, hitRoom, capRoom, apRoom);
             if (refund > 0) {
                 unit.ap = (unit.ap || 0) + refund;
                 unit._pressGainedThisTurn = gained + refund;
@@ -41009,7 +41119,7 @@
             }
             // The hit WOULD have pressed but an earlier fumble locked it out —
             // flag it so the feedback layer can tell the player why.
-            const _refundIfPerfect = Math.min(want, capRoomIfPerfect, apRoom);
+            const _refundIfPerfect = Math.min(want, hitRoom, capRoomIfPerfect, apRoom);
             if (refund < _refundIfPerfect) result.pressDenied = true;
 
             /* ENTROPY: a press the AP pool can't hold — the unit already got
@@ -41100,7 +41210,10 @@
             const _el = opts && opts.spellElement;
             // only an element PART can press (THE ELEMENT SHARE — a tag no race resists, or a 0 share, has none)
             const elemAff = (_el && _hitElemShare(opts, _el) > 0 && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _el) : null;
-            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff };
+            // THE STATUS COMBO PRESS: the hit lands its bonusVsStatus multiplier (the same matcher the damage uses)
+            const _bvs = opts && opts.bonusVsStatus;
+            const combo = !!(_bvs && _bvs.status && bonusStatusMatches(target, _bvs.status));
+            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff, combo };
         }
 
         function _consumePressCollector(casterUnit, cost) {
@@ -46350,8 +46463,11 @@
         }
         window._mdUnitTactic = _mdUnitTactic;
 
-        /* True when the stock AI should play this player-1 unit's turn. */
+        /* True when the stock AI should play this player-1 unit's turn.
+           (Also true for any player's unit on a battle TACTIC — unitOnTactic
+           below — so every AI-routing gate that reads this covers both.) */
         function _mdUnitAuto(u) {
+            if (unitOnTactic(u)) return true;
             if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
             if (state._mdPhase !== 'floor' || !state._mdRun) return false;
             if (!u || u.player !== 1 || u._mdNpc || u.dead) return false;
@@ -46364,6 +46480,123 @@
             const t = _mdUnitTactic(u);
             return t === 'auto' || t === 'guard';
         }
+        /* ── UNIT TACTICS (2026-10-23, mondo: "those jobs - fight, siege, search, intercept, and anchor - to be called
+           tactics in the game and for the player to be able to apply them to their units so they dont have to manually
+           fight for them, like they can be on auto battle. Perhaps add heal to the list as well?"): a player's unit can
+           carry a Tactic (unit.tactic, one of UNIT_TACTIC_IDS; null = MANUAL). A unit on a Tactic plays its own turns
+           through the CPU's own brain (ai.js aiTakeTurn), which reads unit.tactic as that unit's forced job
+           (window.AI_TACTICS / aiTacticFor). The id is plain unit data, so it rides state-sync to the guest; a guest's
+           pick travels to the host as a 'setTactic' game-action (online.js). The CPU never sets one on its own units —
+           its planner keeps their jobs inside ai.js. The HUD's TACTICS menu (hud.js _hrlgTacticBlades) sets it. */
+        const UNIT_TACTIC_IDS = ['fight', 'siege', 'search', 'intercept', 'anchor', 'heal'];
+        const _TACTIC_HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive', 'zoneHeal', 'seedHeal']);
+        /* the menu's one-line descriptions (kept short to fit the row; ai.js AI_TACTICS carries the long ones) */
+        const _UNIT_TACTIC_FALLBACK = {
+            fight:     { label: 'Fight',     desc: 'Kill and stagger enemies' },
+            siege:     { label: 'Siege',     desc: 'Go hit the enemy Cube' },
+            search:    { label: 'Search',    desc: 'Inspect tiles for Keys' },
+            intercept: { label: 'Intercept', desc: 'Chase carriers and Cube hitters' },
+            anchor:    { label: 'Anchor',    desc: 'Guard the Cube, stay alive' },
+            heal:      { label: 'Heal',      desc: 'Heal and revive allies' },
+        };
+        /* label (ai.js AI_TACTICS when loaded) + the short line above, + ai.js's full text as `long` */
+        function unitTacticInfo(id) {
+            const row = Array.isArray(window.AI_TACTICS) ? window.AI_TACTICS.find(r => r && r.id === id) : null;
+            const fb = _UNIT_TACTIC_FALLBACK[id];
+            if (!row && !fb) return null;
+            return { id, label: (row && row.label) || fb.label, desc: (fb && fb.desc) || (row && row.desc) || '',
+                long: (row && row.desc) || (fb && fb.desc) || '' };
+        }
+        function unitOnTactic(u) {
+            if (!u || u.dead || !u.tactic || UNIT_TACTIC_IDS.indexOf(u.tactic) < 0) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            if (state.controllers?.[u.player] === CTRL.AI) return false;   // the CPU's planner owns its own units
+            if (unitIsControlled(u)) return false;                          // a possessed body plays for its captor
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;   // MD keeps its own tactic chips
+            if (window._tutActive) return false;
+            return true;
+        }
+        /* Why a Tactic can't be picked for this unit right now (null = it can): the board has nothing for it to do. */
+        function unitTacticProblem(u, id) {
+            const mpm = typeof getActiveMultiplayerMode === 'function' ? (getActiveMultiplayerMode() || {}) : {};
+            const foeCube = state.towers ? state.towers[enemyOf(u.player)] : null;
+            const hasCube = !!(foeCube && foeCube.hp > 0);
+            const hasKeys = !!mpm.hasHourglasses;
+            if (id === 'siege' && !hasCube) return 'No Cube';
+            if (id === 'search' && !hasKeys) return 'No Keys';
+            if (id === 'intercept' && !hasCube && !hasKeys) return 'No Cube or Keys';
+            if (id === 'heal') {
+                /* the kinds ai.js's Heal job plays (it falls back to Fight play on a turn with nothing to heal) */
+                const _heals = [...(u.spells || []), ...(u._raceAbilities || [])].filter(Boolean)
+                    .some(sp => _TACTIC_HEAL_KINDS.has(sp.kind));
+                const _pots = Object.keys(u.items || {}).some(k => (u.items[k] || 0) > 0
+                    && (typeof window._ewItemLike === 'function' ? window._ewItemLike(k, 'healPotion') : k === 'healPotion'));
+                if (!_heals && !_pots) return 'No heals';
+            }
+            return null;
+        }
+        /* Run fn once the board is idle for this unit's activation (no AI step / action animation in flight). */
+        function _tacticWhenIdle(u, fn) {
+            const gen = _blitzTurnGen;
+            const tryNow = (n) => {
+                if (gen !== _blitzTurnGen || state.winner || state.phase !== 'battle') return;
+                if (state._blitzActiveUnitId !== u.id || u.dead || unitFinished(u)) return;
+                if (state.aiThinking || state._actionExecuting || state._runComputerTurnTimer) {
+                    if (n < 80) window.setTimeout(() => tryNow(n + 1), 250);
+                    return;
+                }
+                fn();
+            };
+            tryNow(0);
+        }
+        function setUnitTactic(unitId, tactic) {
+            const u = state.units.find(x => x.id === unitId && !x.dead);
+            if (!u || state.phase !== 'battle' || state.winner) return false;
+            if (state.controllers?.[u.player] === CTRL.AI) return false;
+            const t = UNIT_TACTIC_IDS.indexOf(tactic) >= 0 ? tactic : null;
+            if (t && unitTacticProblem(u, t)) return false;
+            if ((u.tactic || null) === t) return true;
+            const wasAuto = unitOnTactic(u);
+            u.tactic = t;
+            const nowAuto = unitOnTactic(u);
+            addLog(`♟ ${_ctName(u)} tactic → ${t ? unitTacticInfo(t).label.toUpperCase() : 'MANUAL'}`);
+            if (state._blitzActiveUnitId === u.id && nowAuto !== wasAuto) {
+                if (nowAuto) {
+                    /* the ACTIVE unit put on a Tactic: its turn goes to the AI now */
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state.comboPartner = null;
+                    _tacticWhenIdle(u, () => {
+                        if (!unitOnTactic(u)) return;
+                        _stopShotClock();
+                        maybeTriggerComputerTurn();
+                    });
+                } else {
+                    /* TAKE CONTROL mid-turn: the AI finishes the step it is on, then the rest of the turn is yours */
+                    _tacticWhenIdle(u, () => {
+                        if (unitOnTactic(u)) return;
+                        _startShotClock();
+                        if (state.controllers?.[u.player] === CTRL.LOCAL) selectUnit(u.id, { _auto: true });
+                        else { state.selectedUnitId = u.id; state.focusedUnitId = u.id; }
+                        markDirty('hud', 'selectedUnit');
+                        renderIfDirty();
+                        if (window._broadcastState) window._broadcastState();
+                    });
+                }
+            }
+            markDirty('hud', 'selectedUnit');
+            renderIfDirty();
+            if (window._broadcastState) window._broadcastState();
+            return true;
+        }
+        window.UNIT_TACTIC_IDS = UNIT_TACTIC_IDS;
+        window.unitTacticInfo = unitTacticInfo;
+        window.unitOnTactic = unitOnTactic;
+        window.unitTacticProblem = unitTacticProblem;
+        window.setUnitTactic = setUnitTactic;
+
         function _mdAutoTurnActive() {
             if (!state._blitzActiveUnitId) return false;
             const u = state.units.find(x => x.id === state._blitzActiveUnitId);
@@ -49775,7 +50008,19 @@
         /* Timeline stamp for the card — every battle happens somewhen between
            12500 BC and 3333 AD. */
         function _lsRandomYear() {
-            const yr = Math.floor(Math.random() * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
+            /* online both seats draw the SAME year (the match id + number seed it): the two loading cards and the two
+               result stamps of one case read different years (online playtest 2026-10-23) */
+            let r = Math.random();
+            try {
+                const _n = window._NET;
+                if (_n && _n.online && _n.matchId) {
+                    const k = String(_n.matchId) + ':' + (state.matchNumber || 1);
+                    let h = 2166136261;
+                    for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 16777619); }
+                    r = (h >>> 0) / 4294967296;
+                }
+            } catch (e) {}
+            const yr = Math.floor(r * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
             const label = yr < 0 ? 'YEAR ' + (-yr) + ' BC' : (yr === 0 ? 'YEAR 1 AD' : 'YEAR ' + yr + ' AD');
             /* the D.O.O.R. result stamp quotes the same canon date (§3.5) */
             window._lsCanonYear = label;
@@ -53613,6 +53858,11 @@
                 if (typeof document !== 'undefined' && document.hidden) return reset();
                 /* Guests mirror the host's engine — never self-drive. */
                 if (window._NET && window._NET.online && window._NET.role !== 'host') return reset();
+                /* the opponent dropped or the match is being restored: the engine's next activation waits for the
+                   recovery (online.js _ewDeferRecovery), so the quiet board is the outage, not a stall (online playtest
+                   2026-10-23: a 7 s guest drop and the host forced a turn advance in the middle of it) */
+                if (window._NET && window._NET.online && (window._NET._recovering || window._NET._recoveryFailed
+                    || window._NET.connected === false)) return reset();
                 const mode = getActiveGameMode();
                 if (!mode || !mode.blitzMode) return reset();
                 if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return reset();
@@ -54034,7 +54284,11 @@
                     }, delay);
                 } else if (state.controllers?.[nextUnit.player] === CTRL.REMOTE) {
 
-                    _stopShotClock();
+                    /* THE GUEST'S CLOCK (online playtest 2026-10-23: one guest turn sat open 33 minutes): the remote turn
+                       stopped the clock here and nothing started it again, so the guest's own browser never timed its
+                       turn out and the host's backstop (_shotClockExpired, SHOT_CLOCK_HOST_GRACE_SEC) never had a running
+                       clock to fire on. The host's clock is the authority: it runs for the guest's unit too and syncs. */
+                    _startShotClock();
                     // Mirror the remote player's acting unit into the local
                     // selection/focus so the top-left ActiveUnitPanel (and the
                     // roster highlight) shows the SAME unit on both screens.
@@ -58804,15 +59058,15 @@
             if (!unit || state.phase !== 'battle') return;
             const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
             if (!spell || !spellArmsPress(spell)) return;
-            const ids = [];
+            const ids = [], halfIds = [];
             for (const u of state.units) {
                 if (!u || u.dead || u._dying || !isEnemyUnit(unit, u)) continue;
                 try { if (!_shouldCameraFollowUnit(u)) continue; } catch (e) { continue; }
                 let pr = null;
                 try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
-                if (pr && pr.press) ids.push(u.id);
+                if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); }   // THE +1 LOOK: a +1 press wears the hollow !
             }
-            if (ids.length) ThreeRenderer.showPressMarks(ids);
+            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds);
         }
         window.previewSpellPressMarks = previewSpellPressMarks;
         function clearSpellPressMarks() {
@@ -60053,6 +60307,13 @@
                         _balAddSpellEffect(bomb.spellId || 'placeBomb', _applied, (target.dead || (target.hp || 0) <= 0) ? 1 : 0);
                     }
                 }
+            }
+            /* 💥 the blast's tiles react like a fire spell's (a bomb going off in an oil slick blows the whole slick);
+               read before the knockback so the bodies standing in it are the ones caught */
+            {
+                const _bSpell = bomb.spellId ? ((typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[bomb.spellId])
+                    || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[bomb.spellId]) || null) : null;
+                if (_bSpell && _bombCaster) triggerTerrainSpellReaction(_bombCaster, _bSpell, area);
             }
 
             /* 🧭 THE FORCED MOVE: every body the blast caught is thrown by the bomb's rule (bombKnockDir — the one that
@@ -64840,24 +65101,26 @@
             // empty building tile falls through to the "choose an enemy" nag.
             // 🔨 NO ATTACKING TILES (2026-10-22): a raised column is lowered with Dig (Build), never a basic attack.
             if (!target || isAllyUnit(target, unit)) {
-                addLog('Choose an enemy on an attack-highlighted tile.');
+                addLog('Choose an enemy on an attack-highlighted tile.', unit.player);
                 playErrorSfx();
                 return 0;
             }
 
+            /* a refused attack is the attacking seat's own line: online it told the camouflaged unit's player that the
+               host had found its square (online playtest 2026-10-23) */
             if (unitHasStatus(target, 'invisible') && !unitHasStatus(target, 'marked')) {
-                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`);
+                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
             if (unitCryptidHiddenFrom(target, unit.player)) {
-                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
+                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
             // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
             if (isUnitRealmShieldedFrom(target, unit)) {
-                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
@@ -69188,7 +69451,7 @@
                 if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
                     addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
                 } else if (getSpellBlockReason(unit, spell) === '1 spell/turn') {
-                    addLog('Only one spell or ability per turn — a press refund (weakness/crit) earns another.');
+                    addLog('Only one spell or ability per turn — a press refund (weakness/status combo/crit) earns another.');
                 } else {
                     const needed = getSpellApCost(spell);
                     addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
@@ -70879,6 +71142,7 @@
                                 window.setTimeout(() => {
                                     try {
                                         if (enemy.dead) return;
+                                        const _brX = enemy.x, _brY = enemy.y;
                                         applyDamageToUnit(enemy, dmg, `${unitDisplayName(unit)}'s ${spell.name} hits `, {
                                             sourceUnit: unit,
                                             allowMarkBonus: false,
@@ -70886,6 +71150,8 @@
                                             damageType: spell.damageType || 'physical',
                                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                         });
+                                        // 💥 the struck tile reacts like any spell hit (Solar Flare on a target in oil blows the slick)
+                                        triggerTerrainSpellReaction(unit, spell, [{ x: _brX, y: _brY }]);
                                     } finally { _pendingSpellHits--; }
                                 }, actionMs(400));
                             }, idx * barrageGap);
@@ -72140,11 +72406,13 @@
                 const primaryDmg = Math.max(32, (spell.dmg || 0) + spellPower);
 
                 window.setTimeout(() => {
+                    const _sbX = target.x, _sbY = target.y;
                     applyDamageToUnit(target, primaryDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
+                    triggerTerrainSpellReaction(unit, spell, [{ x: _sbX, y: _sbY }]);   // 💥 the struck tile reacts (oil, water, trees)
 
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
@@ -72173,11 +72441,13 @@
                             playSfx(spellLaunchSfx(spell));
                             window.setTimeout(() => {
                                 if (hit.dead) return;
+                                const _spX = hit.x, _spY = hit.y;
                                 applyDamageToUnit(hit, splitDmg + spellPower, `${spell.name} splits to `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                 });
+                                triggerTerrainSpellReaction(unit, spell, [{ x: _spX, y: _spY }]);
                             }, splitProjectileMs + actionMs(60));
                         }, hitDelay);
                     });
@@ -73031,6 +73301,7 @@
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
                         if (spell.monument) return;
+                        igniteOilBeforePaint(unit, spell, tx, ty);   // 💥 Wall of Fire on a slick: it goes up before the scorch covers it
                         _tcFoot.push({ x: tx, y: ty, z: pz });
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
@@ -74838,6 +75109,8 @@
                     addLog(`${_ctName(unit)} drops ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
                     /* applyDamageToUnit already floats the real post-mitigation
                        number — no second (pre-armor) float. */
+                    // the impact tile reacts like any spell hit (a drop is a slam: it shatters ice)
+                    triggerTerrainSpellReaction(unit, spell, [{ x: target.x, y: target.y }]);
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, 0, spell.terrainDeform);
@@ -74988,8 +75261,13 @@
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
-                            resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2 });   // ⛓ the throw's landing
+                            /* 🧊💥 a hurl from fall-damage height onto ice cracks it: the body lands in the water, no glide */
+                            const _thCrack = elevDelta >= _fallThreshold() && shatterIceAt(x, y);
+                            if (_thCrack) addLog(`🧊 ${_ctName(throwTarget)} crashes through the ice!`);
+                            resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2, noGlide: _thCrack });   // ⛓ the throw's landing
                         }
+                        // 💥 the landing tile reacts like any spell hit (Infernal Hurl into an oil slick blows it)
+                        triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
                         scheduleBoardRender();
@@ -75206,6 +75484,8 @@
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
                     addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
+                    // the slammed ground reacts like any spell hit (shatters ice, freezes water, ...)
+                    triggerTerrainSpellReaction(unit, spell, getSquareArea(slamX, slamY, spell.aoeRadius || 0));
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(slamX, slamY, spell.aoeRadius || 0, spell.terrainDeform);
@@ -75361,6 +75641,8 @@
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
                     addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
+                    // the struck ground reacts like any spell hit (shatters ice, freezes water, ...)
+                    triggerTerrainSpellReaction(unit, spell, getSquareArea(target.x, target.y, spell.aoeRadius || 0));
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, spell.aoeRadius || 0, spell.terrainDeform);
@@ -75806,6 +76088,9 @@
                 clearInterval(_matchClockInterval);
                 _matchClockInterval = null;
             }
+            /* the pill is only ever redrawn by this interval: a countdown on screen when the match ended stayed over the
+               result screen ("⏱ 4s" over VICTORY, online test 2026-10-23) */
+            _renderShotClockPill(null, false);
         }
 
         function _shotClockExpired() {

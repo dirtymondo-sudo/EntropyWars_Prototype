@@ -655,7 +655,6 @@ basic attacks (`damageDoorAt`, `attack:door` on the tile card); its owner's side
 by spell id (`gunGustDoor:open/act/hit/break/fold`). A basic CPU placer is `window.doorGunAiPick`. Test:
 `door-gun-board.test.js` (the door block + the chain in one vm).
 
-
 ## THE DOOR AGENT rev 6 — THE GUST STREAM + THE DESTINATIONS (door wheel Phase 2) — 2026-09-25, local delivery
 DOOR_GUN_PLAN.md Phase 2 (full log in its §11). **THE GUST STREAM** (the user: "a persistent hazard on the field,
 not just blasting in between rounds … immovable units like the kaiju and giant should be able to stand in it"):
@@ -2096,6 +2095,12 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
 - BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Then (v4.18): Search loses its unit when Anchor + Intercept + Siege fill the budget, so when the Keys race is our nearest win or within 1.5x+1 of it, the plan hands out one unit per wanted job first (the nearest win's job before the other race) and the kept fighter becomes the searcher. Two more things kept the searcher from searching, both fixed: a CPU-assigned job now damps the other move goals ×0.75 (forced stays ×0.6), so siege_tower no longer walks the searcher to the Cube; and the Search job's Inspect is worth the Keys clock (`_keyClockValue`: expected Keys × rounds per Key off our Keys clock × share × Race Round Value), and with 2 AP it scans FIRST when its best option is a one-AP hit/heal/item (Inspect costs 1 AP, doesn't end the turn, AP doesn't carry over). Browser check: round 7 Robin Hood and Sheriff both scanned before shooting, Sheriff found a Key, Keys clock 14.7 -> 5. The Sheriff that looked like it walked back from the Cube was Bigfoot's Big Kick knocking it into the corner every other round; nothing to fix there.
 
+## THE PLAYER'S TACTICS (auto battle) (2026-10-23, mondo: "for the player to be able to apply them to their units so they dont have to manually fight for them, like they can be on auto battle") — battle.js, hud.js, online.js
+- **Set it.** Root verb ♟ TACTICS (hud.js `_hrlgTacticPartyBlades` + `_hrlgTacticBlades`): the party list (acting unit first, each with its Tactic) and beside it MANUAL + the six AI_TACTICS rows for the picked unit. Picking for the acting unit hands the turn to the AI at once; for a teammate it applies on its next turn. Not on Mystery Dungeon (own chips) or in the tutorial.
+- **Engine.** battle.js `setUnitTactic(id, tactic|null)` writes `unit.tactic`; `unitOnTactic(u)` is the gate (battle phase, controller ≠ AI, not possessed, not MD/tutorial) and is folded into `_mdUnitAuto`, so every AI-routing path (activation, `_shouldAIRun`, runComputerTurn, stall watchdog, safety timer, selectUnit, imitation skip, ActionMenu/turn column) covers it. `unitTacticProblem` greys Siege (no enemy Cube), Search (mode has no Keys), Intercept (neither), Heal (no heal/healAll/selfHeal/revive/zoneHeal/seedHeal kind and no Healing Potion — the Heal job's own list). MANUAL mid-turn: `_tacticWhenIdle` waits for the AI's step to finish, then restarts the shot clock + selects the unit. The tactic survives death/respawn (same unit object).
+- **During its turn.** hud.js `TacticWatch`: the command menu's spot shows "<name> · <TACTIC>", `aiTacticReason`, and the Tactic list (MANUAL = take control). The prompt bar is silent for a Tactic unit.
+- **Online.** The host owns unit.tactic (plain unit data → state-sync). Guest picks emit `game-action {type:'setTactic'}`; host handler checks the unit is the sender's (any time, not only its turn). The guest's units on a Tactic are played by the host's AI like the whole-side Auto mode.
+
 ## THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself ... think of each race as its own JRPG or Dark Souls boss") — data.js
 - Every race id A–F has a family of its own. 32 new SPELL_FAMILIES rows (kind 'signature', `unique: '<race>'`, an
   `identity` {who, adj, look, vibe} block for the library's IDENTITY tab, so no SLB_IDENTITY_KITS entry in ui.js), placed
@@ -2110,6 +2115,13 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
   (TDZ) and data.js dies at load, taking the whole game with it. The riders stay upgrade-only (Blast / Extra Target) and
   the rider example row lives after the pass. The three rows that wanted them use chainProfile / splitBeam / barrage.
 - The per-race list (names, kinds, statuses, finishers) is the HTML page delivered in the thread; the VFX pass is next.
+
+## THE UNIQUE FAMILIES, G to O (2026-10-23, mondo: "each race to have at least one spell family that is unique to itself")
+- One `kind: 'signature'` SPELL_FAMILIES row per race, `unique: '<race>'` (never borrowable, ★ in the codex), with an `identity` {who, adj, look, vibe} block for the library's IDENTITY tab. It sits FIRST in the race's RACE_FAMILIES list. 37 new families; the 9 single-race families that still said `unique: null` (streetsmarts, drivingskills, jellyfish, apeintelligence, tentacleappendages, unethicalscience, mecha, mothman, galacticfederation) now name their race (ki already did).
+- The rows live in RACE_ABILITIES['<race>'] under a "UNIQUE FAMILY (2026-10-23)" comment, ids `go*` (A-F uses `sig*`). 81 new spells. Rules kept: existing statuses and engine keys only; T1/T2 apply the status, T3/T4 are finishers (bonusVsStatus, no status of their own), apCost 1, T4 cooldown 2. Each family is a setup + payoff pair (e.g. Rainspout Soaks → Grotesque Dive bonus vs Soaked, +dmgPerLevel from the perch).
+- Moved (agreed with the "Shared spell family exclusions" thread): Excalibur Strike → excalibur (king arthur), Atomic Breath → kaijuatomic (kaiju), Fee Fi Fo Fum (raceTitanStep) → giant, Labyrinth Roar → minotaur. RACE_TREE rung swaps: goatman Labyrinth Roar → Treeline Scream, krampus → Krampus Chains.
+- data.js fix: `spellRandomTargetsOf` / `spellSplashOf` read `_spellRiderKindOk` / `_spellRandomMax` (function declarations) instead of the consts, because the boot mana pass prices RACE_ABILITIES rows before those consts exist (a random-target row there threw "Cannot access 'SPELL_RIDER_KINDS' before initialization" and took the whole data.js down).
+- Full list per race: the artifact "Unique families G-O" https://claude.ai/artifact/Nvu6Ua8Et28KfQfWzu9mgw (project-files unique-families/). All 85 rows cast on the real board (playwright probe, 2026-10-23). Orb of Light's T2 is "Plasma Loop" (P-Z owns "Solar Flare"); Necromancer's T3 goSoulHarvest is named "The Reaping" (A-F owns the spell name "Soul Harvest").
 
 ## THE SHARED FAMILY PASS (2026-10-23, thread "Shared spell family exclusions")
 - mondo: "exclude certain spells from a race's spell families, to make them more accurate ... not every one of those needs to be available to everyone with the cosmic spell family". Filled data.js `RACE_SPELL_EXCLUDES` (the 2026-10-17 per-race toggle, was empty): 292 exclusions on 97 races across the shared families. No spell deleted, no families tag changed by this pass, no new rules or statuses.
@@ -2138,3 +2150,30 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
   caster must stand higher than the target. Their descs say "From higher ground".
 - Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
   cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).
+
+## FIRE ON OIL / GOO, EVERY SPELL KIND (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of liquid explode? If not it should.")
+- Single-target spells (Fireball, Dragon Breath) already blew the whole connected slick (battle.js `_reactFireOil` via
+  `triggerTerrainSpellReaction`). Nine fire / lightning spells did not, because their resolvers never called the dispatcher
+  or painted the slick away first. Checked in a VS CPU match on the old code: Hellmouth, Solar Flare, Place Bomb, Fire for
+  Effect, Nuclear Option, Extinction Event, Infernal Hurl, Wall of Fire and Firefly Swarm left the oil standing (or
+  scorched it silently).
+- Fix: the dispatcher now also runs off a barrage hit (per struck tile), a splitBeam's primary + split hits, a skyThrow's
+  landing tile, a bomb blast (`detonateBomb`, the placer must be alive), and a delayed detonation (state.js, before the
+  crater's leaveTerrain). `igniteOilBeforePaint(caster, spell, x, y)` runs at every leaveTerrain / terrainCreate paint
+  site, so a slick under a scorch / lava paint goes up before it is covered. No new rules: these resolvers now get ALL the
+  existing reactions (conduction, flash-freeze, forest fire, crystal) like every other damage resolver.
+- "Goo" = the Black Goo's ooze terrain `swamp` (oil family, liquidFamilyOf 'oil'); the charred slick takes the normal
+  3-round terrain timer back to the map's own ground.
+
+## ICE SHATTER: SLAMS + HARD LANDINGS (2026-10-23, mondo picked "Slams + hard landings" on "Which physical abilities should shatter ice into water?")
+- battle.js `spellShattersIce(spell)`: physical damage, not ice element, not a wall (terrainCreate / monument), and a
+  leapStrike / skyDrop / skySlam kind or any `terrainDeform` crater maker (~25 rows: Ground Slam, Tremor Stomp, Cataclysm
+  Stomp, Cosmic Slam, Colossal Crush, Quake, Titan Drop, Seismic Leap, Stone Drop, Predator Drop ...). Runs at the top of
+  `triggerTerrainSpellReaction`: only the STRUCK ice tiles become shallow `water` (`shatterIceAt`), on the 3-round timer.
+  skyDrop / skySlam / leapStrike now call the dispatcher (they never did), so their ice/water/fire reactions work too.
+- Hard landing: state.js `applyFallDamage` with `opts.byEnemy` (knockbacks, Big Kick off a ledge, trapdoors, groundings)
+  cracks the ice under the body after the damage. `resolveForcedSlide` checks `hardLandingCracksIce` first and passes
+  noGlide to the chain AND its forecast, so the body stays in the hole. A sky throw from fall-damage height (carry 4, so
+  any flat throw) onto ice cracks it, no glide, forecast matches. Own jumps / walks off a ledge leave ice whole.
+- Checked in a browser (VS CPU, Football Stadium): Ground Slam 3 tiles, Tremor Stomp 3, Colossal Crush 1, Infernal Hurl
+  + To the Moon landings 1, a byEnemy fall 1; Glacial Slam and Sasquatch Smash left the ice whole.
