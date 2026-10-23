@@ -4928,6 +4928,20 @@
                 return;
             }
 
+            /* THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): an AoE picked from a unit's quick menu steps back
+               CONFIRM → free placement (the footprint follows the cursor) → that unit's quick menu */
+            if (state.actionMode === 'spell' && state.actionMenuView === 'spells' && state.selectedTool
+                && state._quickAoePlace === state.selectedTool) {
+                if (state._quickAoeStage === 'confirm') {
+                    playSfx('uiBack');
+                    state._quickAoeStage = 'place';
+                    renderBattleSelectionUI();
+                    return;
+                }
+                quickAoeBackToMenu();
+                return;
+            }
+
             // Armed spell aiming from the abilities drum (tile-target / free
             // aim) → back to the ABILITIES list, never all the way to root.
             if (state.actionMode === 'spell' && state.actionMenuView === 'spells' && state.selectedTool) {
@@ -4995,6 +5009,36 @@
                 return;
             }
         }
+
+        /* THE CONFIRM FIRST: leave a quick-menu AoE arm for the quick menu of the unit it was picked from (its
+           two-shot back, as when that menu first opened). The aim's CANCEL row, and back from the placement step. */
+        function quickAoeBackToMenu() {
+            if (state.phase !== 'battle') return;
+            playSfx('uiBack');
+            const fromId = state._quickAoeFrom;
+            _dropHeldSpellPick();
+            state.actionMode = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state._spellOrientation = null;
+            state._quickAoePlace = null;
+            state._quickAoeStage = null;
+            state._quickAoeFrom = null;
+            state.actionMenuView = 'root';
+            clearSpellAimPreviews();
+            if (typeof clearAoePreview === 'function') clearAoePreview();
+            if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview();
+            const unit = getSelectedUnit();
+            const from = fromId != null ? (state.units || []).find(u => u.id === fromId && !u.dead) : null;
+            if (unit && from && from.id !== unit.id) {
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = from.id;
+                if (typeof focusUnitPanel === 'function') focusUnitPanel(from.id);
+                if (typeof window._ewMenuCamTarget === 'function') window._ewMenuCamTarget({ uid: from.id, x: from.x, y: from.y });
+            }
+            renderBattleSelectionUI();
+        }
+        window.quickAoeBackToMenu = quickAoeBackToMenu;
 
         function chooseActionMenu(view) {
             const unit = getSelectedUnit();

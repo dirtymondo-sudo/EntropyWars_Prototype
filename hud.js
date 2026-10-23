@@ -6106,6 +6106,14 @@ function ActionMenu({ st, hidden }) {
       modeLabel = (st.selectedTool + ' — CLICK A LIT TILE TO THROW').toUpperCase();
       panels.push(_listUnits ? _mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade)
         : { key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
+    } else if (_quickPlace) {
+      /* THE CONFIRM FIRST (_hrlgArmAoePlacement): CONFIRM aimed at the unit it was picked for; back frees the
+         footprint; CANCEL goes straight back to that unit's quick menu */
+      modeLabel = (st.selectedTool + (st._quickAoeStage === 'confirm'
+        ? ' — CONFIRM · RIGHT-CLICK TO PLACE' : ' — CLICK A TILE TO PLACE')).toUpperCase();
+      const _qaCancel = { id: 'quickAoeCancel', label: 'CANCEL', icon: '‹', available: true, danger: true,
+        fire: () => { if (typeof window.quickAoeBackToMenu === 'function') window.quickAoeBackToMenu(); } };
+      panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [_qaCancel] });
     } else if (_listUnits) {
       modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
       panels.push(_mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade));
@@ -6196,11 +6204,15 @@ function ActionMenu({ st, hidden }) {
     || (am === 'combo' && !!st.comboPartner)   // THE COMBO PICK
     || (view === 'aim' && (am === 'attack' || am === 'spell' || am === 'item'));
   if (_pt && _inTargetingView && !st._actionExecuting) {
-    const _ptUnit = (typeof unitAt === 'function')
+    let _ptUnit = (typeof unitAt === 'function')
       ? ((_pt.z != null ? unitAt(_pt.x, _pt.y, _pt.z) : null) || unitAt(_pt.x, _pt.y))
       : null;
     // Multi-strike count picked on the list rides the label ("— Cowboy ×3")
     const _repSuffix = (menuView === 'attackTargets' && _pt._repeatN > 1) ? ' ×' + _pt._repeatN : '';
+    /* THE CONFIRM FIRST: a quick-menu AoE's CONFIRM names the unit it was picked for (its footprint covers them) */
+    const _qaFrom = (st._quickAoeStage === 'confirm' && st._quickAoePlace === st.selectedTool && st._quickAoeFrom != null)
+      ? (st.units || []).find(u => u.id === st._quickAoeFrom && !u.dead) : null;
+    if (_qaFrom) _ptUnit = _qaFrom;
     confirmObj = {
       label: _pt.selfCast ? 'SELF' : ((_ptUnit
         ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
@@ -8164,7 +8176,15 @@ function _hrlgRightPress(e, onClick) {
    target menu, it needs to let me place it first, not just fire automatically"): a tile-aimed area spell picked from
    the enemy / ally quick menu no longer casts on the pick. It arms like the Abilities pick (setTool: the 'spells' aim
    view, its range lit), the footprint starts on the row's own centre (the off-centre aim) and follows the cursor;
-   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms. */
+   a board click places it, the same click again or the green CONFIRM casts. A MOVE row walks first, then arms.
+   THE CONFIRM FIRST (mondo 2026-10-23: "the first click on the aoe spell should take me straight to the confirm, but
+   right clicking to go back should let me place the aoe, and right click from there would go back to the enemys quick
+   action menu"): the pick now lands on the green CONFIRM, aimed at that unit (the row's own centre, the one its
+   forecast read), and the hover leaves it alone (state._quickAoeStage 'confirm'). Back (right-click / ESC / BACK) frees
+   the footprint to follow the cursor ('place'); back again returns to the quick menu of the unit it was picked from
+   (state._quickAoeFrom, ui.js handleBackAction). A board click on another tile places it there too. The CANCEL row
+   goes straight back to that quick menu. The camera stays on the tactical board view throughout (battle.js clickTile /
+   selectTargetFromMenu skip the menu two-shot for this arm). */
 function _hrlgPlaceableAoe(spell, tx, ty) {
   if (!spell || typeof isSpellTileTargeted !== 'function' || !isSpellTileTargeted(spell)) return false;
   if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) return false;
@@ -8174,7 +8194,7 @@ function _hrlgPlaceableAoe(spell, tx, ty) {
   const fp = typeof getSpellAoeFootprint === 'function' ? (getSpellAoeFootprint(spell, tx, ty) || []) : [];
   return fp.length > 1;
 }
-function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
+function _hrlgArmAoePlacement(actingUnit, spell, x, y, fromId) {
   state._actionExecuting = false;
   state._enemyActionTargetId = null;
   state.pendingTarget = null;
@@ -8184,6 +8204,8 @@ function _hrlgArmAoePlacement(actingUnit, spell, x, y) {
   /* NO TARGET LIST while placing (mondo 2026-10-20: "it should NOT bring up a target list menu while i am trying to
      select where to place the aoe"): the aim view drops its unit list for this arm; setTool clears the mark */
   state._quickAoePlace = spell.name;
+  state._quickAoeStage = 'confirm';
+  state._quickAoeFrom = fromId != null ? fromId : null;
   if (state.actionMenuView === 'spells') {
     state.pendingTarget = { x: x, y: y, mode: 'spell', tool: spell.name, viaHover: false };
     if (typeof updateAoePreview === 'function') {
@@ -8205,7 +8227,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (_placeAoe && !a.moveTile) {
     if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
     const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
-    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y)) return;
+    if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y, targetUnit.id)) return;
   }
   // Sweep every lingering targeting visual (range overlays from blade hover,
   // AoE preview, terrain ghost, arrows) the moment the quick-cast fires —
@@ -8310,7 +8332,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }
-      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY)) return;   // THE AOE PLACEMENT
+      if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY, targetUnit.id)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
         else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));

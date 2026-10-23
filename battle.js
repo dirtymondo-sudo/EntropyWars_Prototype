@@ -39966,6 +39966,16 @@
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
                     }
                     if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
+                    // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE, aimed at the unit it was picked for
+                    if (state._quickAoePlace === spell.name && state.actionMenuView === 'spells') {
+                        const _qaU = state._quickAoeFrom != null ? (state.units || []).find(u => u.id === state._quickAoeFrom && !u.dead) : null;
+                        if (state._quickAoeStage === 'confirm' && ptLabel) {
+                            return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + (_qaU ? '<strong>' + esc(_ctName(_qaU)) + '</strong>' : ptLabel) + ' — press CONFIRM to cast.', 'right-click to place it yourself');
+                        }
+                        const _qaBack = _qaU ? 'right-click: back to ' + esc(_ctName(_qaU)) + '\'s menu' : 'ESC cancel';
+                        if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click again or CONFIRM to cast.', _qaBack);
+                        return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: click a tile to place it.', _qaBack);
+                    }
                     if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
@@ -57854,6 +57864,8 @@
             state.selectedTool = toolName;
             state.pendingTarget = null;
             state._quickAoePlace = null;   // hud.js _hrlgArmAoePlacement re-sets it for a quick-menu AoE
+            state._quickAoeStage = null;   // (and its CONFIRM / placement step + the quick menu it came from)
+            state._quickAoeFrom = null;
             clearAoePreview();
 
             /* Strike Mode's TPS rig owns the camera per-frame — a competing
@@ -58953,7 +58965,9 @@
             // stack, so an airborne target picked from the menu used to
             // resolve to whoever stood beneath it and the camera never
             // looked up.
-            if (state.actionMode === 'attack' || state.actionMode === 'spell'
+            if (state.actionMode === 'spell' && state._quickAoePlace === state.selectedTool) {
+                state._quickAoeStage = 'place';   // THE CONFIRM FIRST: a quick-menu AoE stays on the tactical view
+            } else if (state.actionMode === 'attack' || state.actionMode === 'spell'
                 || state.actionMode === 'item' || state.actionMode === 'combo') {
                 const _mu = getSelectedUnit();
                 const _mtgt = (typeof unitAt === 'function')
@@ -59572,6 +59586,9 @@
                     // THE SELF-CAST CONFIRM: the armed self-cast's pick is the caster and never moves — hovering
                     // the board must not re-aim it, clear its footprint or drop the green CONFIRM.
                     if (spell && isSpellSelfCast(spell) && spell.kind !== 'escape') return false;   // THE ESCAPE PICK: the hover aims the landing
+                    // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE waits on its CONFIRM; the hover
+                    // moves it only once back (right-click) has freed it for placement
+                    if (state._quickAoeStage === 'confirm' && state._quickAoePlace === state.selectedTool) return false;
                     if (spell) {
 
                         // Line beams included: getSpellRangeTiles returns their
@@ -60228,10 +60245,15 @@
                         viaHover: false
                     };
                     playSfx('uiCursorFocus');
+                    // THE CONFIRM FIRST: a quick-menu AoE placed on another tile is in placement now (the hover moves it)
+                    const _qaArm = state.actionMode === 'spell' && state._quickAoePlace === state.selectedTool;
+                    if (_qaArm) state._quickAoeStage = 'place';
                     // Picking a UNIT on the map swings the caster's over-the-
                     // shoulder view onto it — exactly like picking it from the
-                    // target drum (tile picks keep the tactical view).
-                    if (clickedUnit && !clickedUnit.dead
+                    // target drum (tile picks keep the tactical view; so does a
+                    // quick-menu AoE's placement: mondo 2026-10-23, the CONFIRM
+                    // step must stay the tactical view over the board).
+                    if (clickedUnit && !clickedUnit.dead && !_qaArm
                         && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
                         _tpsTargetShot(actingUnit, clickedUnit);
                     }
