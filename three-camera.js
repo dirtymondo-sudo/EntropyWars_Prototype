@@ -195,6 +195,17 @@ const ThreeCamera = (function () {
         }
         return -Infinity;
     }
+    /* a unit's drawn body standing on the sight line within BOARD_NEAR_BODY_TILES of the eye (not the subject's own) */
+    const BOARD_NEAR_BODY_TILES = 2.5;
+    function _bodyTopNearLens(wx, wz, sx, sz) {
+        if (typeof window !== 'undefined' && typeof window._camBodyTopPx === 'function') {
+            try {
+                const g = window._camBodyTopPx(wx, wz, tileSize * 0.3, sx, sz);
+                if (Number.isFinite(g)) return g;
+            } catch (e) {}
+        }
+        return -Infinity;
+    }
     function _boardSightFloor(sx, sy, sz, ex, ey, ez, clear) {
         let need = Math.max(_solidGroundYWorld(ex, ez), _bodyTopYWorld(ex, ez)) + clear;
         const hx = ex - sx, hz = ez - sz;
@@ -210,7 +221,10 @@ const ThreeCamera = (function () {
                 const px = sx + hx * t, pz = sz + hz * t;
                 // off the board there is no column (the lookup would stretch the edge tile outward)
                 if (W > 0 && H > 0 && (px < 0 || pz < 0 || px >= W * tileSize || pz >= H * tileSize)) continue;
-                const g = _solidGroundYWorld(px, pz) + m;
+                let g = _solidGroundYWorld(px, pz) + m;
+                /* THE NEAR BODY (wipeout playtest 2026-10-23: "the camera sat inside the Dragon / Nephilim"): a model on the
+                   line close to the lens fills the frame with its x-ray even when the eye is just outside its footprint */
+                if ((1 - t) * horiz < tileSize * BOARD_NEAR_BODY_TILES) g = Math.max(g, _bodyTopNearLens(px, pz, sx, sz) + clear);
                 if (g <= sy) continue;
                 const req = sy + (g - sy) / t;
                 if (req > need) need = req;

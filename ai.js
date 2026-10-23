@@ -1020,11 +1020,11 @@
             } catch (e) {}
             return val * wght(g, 'breakValue_v1', 1);
         }
-        if (id === 'burn' || id === 'poison') {
+        if (id === 'burn' || id === 'poison' || id === 'bleed') {   // bleed: Open Vein (THE SPELL POWER REVIEW)
             let dot = 30;
             try {
                 const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (G().STATUS_DEFS || {});
-                dot = (defs[id] && defs[id].dotDamage) || 30;
+                dot = (defs[id] && (defs[id].dotDamage || (id === 'bleed' ? defs[id].dot : 0))) || 30;
             } catch (e) {}
             return dot * (dur || 2) * _offScale(unit, tg) * 0.8;
         }
@@ -4441,6 +4441,9 @@
             return s;
         }
 
+        // 🔍 Far Sight (remoteView + inspectAt): the pick priced the search (_aiFarSightPick)
+        if (kind === 'remoteView' && spell.inspectAt) return (target && target._farSightScore) || 0;
+
         if (kind === 'remoteView') {
             // pure recon: mildly useful early under fog, useless otherwise
             if (!g.state.fogOfWar && !_aiVisionOn()) return 0;
@@ -6190,6 +6193,45 @@
         }
         return t;
     }
+    /* 🔍 FAR SIGHT (THE SPELL POWER REVIEW, 2026-10-23): remoteView + `inspectAt` is a ranged Inspect. The tile in range
+       whose footprint holds a seen loose Key wins (priced like scoreInspect's pickup); otherwise the unsearched tile the
+       unit's own Inspect can't reach, leaning to the board centre. Worth nothing once every Key is carried. */
+    function _aiFarSightPick(unit, spell, v) {
+        const g = G();
+        if (typeof g.getInspectFootprint !== 'function') return null;
+        const loose = (g.state.hourglasses || []).filter(h => h.carriedBy === null);
+        if (!loose.length) return null;
+        const range = (typeof g.getEffectiveSpellRange === 'function' ? g.getEffectiveSpellRange(unit, spell) : spell.range) || 4;
+        const seen = loose.filter(h => h.visibleTo && h.visibleTo[unit.player]);
+        const ownReach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(unit) : 1;
+        const scanned = (g.state.scannedByPlayer && g.state.scannedByPlayer[unit.player]) || new Set();
+        const cx = Math.floor(g.bw() / 2), cy = Math.floor(g.bh() / 2);
+        const fight = !!(v && v.visibleEnemies && v.visibleEnemies.length);
+        // THE SEARCH MAP (the Tactics pass): a blind Far Sight is aimed and priced by the Keys it is expected to find
+        const sm = window.EW_AI_NO_SEARCHMAP ? null : _searchMapFor(g, unit, unit.player);
+        let best = null;
+        for (let dy = -range; dy <= range; dy++) {
+            for (let dx = -range; dx <= range; dx++) {
+                const x = unit.x + dx, y = unit.y + dy;
+                if (x < 0 || y < 0 || x >= g.bw() || y >= g.bh()) continue;
+                const d = Math.max(Math.abs(dx), Math.abs(dy));
+                const fp = g.getInspectFootprint(unit, x, y);
+                const keys = seen.filter(h => fp.some(p => p.x === h.x && p.y === h.y)).length;
+                let s;
+                if (keys) s = keys * 180;
+                else {
+                    if (d <= ownReach || seen.length === loose.length) continue;   // a plain Inspect reaches it for free
+                    const fresh = fp.filter(p => !scanned.has(g.scanKey(p.x, p.y))).length;
+                    s = (sm && sm.hidden > 0) ? 10 + _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 180) * 0.9
+                        : 10 + fresh * 2 + (loose.length - seen.length) * 6 - (Math.abs(x - cx) + Math.abs(y - cy));
+                    if (fight) s *= 0.4;
+                }
+                if (!best || s > best.score) best = { x, y, score: s };
+            }
+        }
+        return best && best.score > 0 ? best : null;
+    }
+
     function _findSpellTargetRaw(unit, spell, v) {
         const g = G();
         const kind = spell.kind;
@@ -6835,6 +6877,10 @@
         }
 
         if (kind === 'healAll' || kind === 'manaRestoreAll' || kind === 'barrage') return { x: unit.x, y: unit.y };
+        if (kind === 'remoteView' && spell.inspectAt) {
+            const _fs = _aiFarSightPick(unit, spell, v);
+            return _fs ? { x: _fs.x, y: _fs.y, _farSightScore: _fs.score } : null;
+        }
         if (kind === 'scan' || kind === 'remoteView') return { x: unit.x, y: unit.y };
 
         if (kind === 'line' || kind === 'linePush') {

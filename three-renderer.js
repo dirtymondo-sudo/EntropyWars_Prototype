@@ -11397,6 +11397,7 @@ const ThreeRenderer = (function () {
        _hqTextCss) brings back the CSS2D bar. */
     var NEXUS_PLATE_W = 2.6;      // the plate's width in tiles (the zone is 2 tiles across)
     var NEXUS_PLATE_MIN_PX = 170; // a legibility floor (the unit plates have one too): never narrower on screen than the old bar
+    var NEXUS_PLATE_MAX_PX = 260; // and a ceiling (wipeout playtest 2026-10-23: up close the 2.6-tile plate filled a third of the screen)
     var NEXUS_PLATE_PX = 3;       // canvas px per CSS px of the old bar (crisp at close zoom)
     var NEXUS_PLATE_FONT = '"DotGothic16", monospace';
     var _nexusFontWait = false;
@@ -11525,7 +11526,9 @@ const ThreeRenderer = (function () {
             W.g.getWorldPosition(_batWorldVec);
             var dist = Math.max(1, _batWorldVec.distanceTo(cam.position));
             var projW = (ts * screenH) / (2 * dist * halfTan);   // one tile's width on screen, px
-            var fit = Math.min(4, Math.max(1, NEXUS_PLATE_MIN_PX / (NEXUS_PLATE_W * projW)));
+            var plateW = NEXUS_PLATE_W * projW;   // the plate's natural width on screen, px
+            var fit = plateW < NEXUS_PLATE_MIN_PX ? Math.min(4, NEXUS_PLATE_MIN_PX / plateW)
+                : (plateW > NEXUS_PLATE_MAX_PX ? Math.max(0.05, NEXUS_PLATE_MAX_PX / plateW) : 1);
             if (W.fit !== fit) { W.fit = fit; W.k = -1; }
             /* THE WORLD TEXT STEPS ASIDE: over an open menu the counter fades (_wmOverMenu). The sprite stands on its
                bottom centre, so its box on screen is the projected anchor, up by its height, out by half its width. */
