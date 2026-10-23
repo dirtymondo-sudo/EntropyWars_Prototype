@@ -564,7 +564,7 @@
             const _bc = _bloodcrazeSpdStages(unit);
             if (!_bc) return base;
             const _step = (typeof STAT_STAGE_STEP !== 'undefined' && STAT_STAGE_STEP.spd) || 20;
-            return Math.min(Math.max(100, unit.spd || 1), base + _bc * _step);
+            return Math.min(_statStageCeil(unit, 'spd'), base + _bc * _step);
         }
         let _bloodcrazeBusy = false;
         function _bloodcrazeSpdStages(unit) {
@@ -8433,8 +8433,24 @@
             const floor = stat === 'spd' ? 1 : 0;
             return Math.min(floor, _statStageBase(unit, stat));
         }
+        /* THE RULER TOP (Cube playtest 2026-10-23): the race editor bake (2026-10-06) moved every base statline onto a
+           0-200 ruler (STAT_GRADE_BANDS re-cut, stats up to 200), and a fielded unit carries its earned level growth ON
+           TOP of its base (+58 ATK at the cap — statGradeValForUnit grades with it taken back off). The clamp still read
+           the old 0-100 ruler against the grown stat, so every level-100 unit (ATK 230+) sat above it: ATK buffs read
+           "ATK MAXED" and did nothing. The top is now the base ruler's top plus the unit's own earned growth. */
+        const STAT_STAGE_RULER_TOP = 200;
         function _statStageCeil(unit, stat) {
-            return Math.max(100, _statStageBase(unit, stat));
+            const grown = (unit && unit._lvlStatGains && stat !== 'spd') ? (unit._lvlStatGains[stat] || 0) : 0;
+            return Math.max(STAT_STAGE_RULER_TOP + Math.max(0, grown), _statStageBase(unit, stat));
+        }
+        // How many of `n` requested stages would actually move the stat (the apply-time clamp below and ai.js stageRoom).
+        function statStageRoom(unit, stat, n) {
+            if (!n || !unit) return 0;
+            const step = STAT_STAGE_STEP[stat] || 20;
+            const lo = _statStageFloor(unit, stat), hi = _statStageCeil(unit, stat);
+            const now = Math.max(lo, Math.min(hi, _statStageBase(unit, stat) + getStatStageCount(unit, stat) * step));
+            if (n > 0) return Math.min(n, Math.ceil(Math.max(0, hi - now) / step));
+            return -Math.min(-n, Math.ceil(Math.max(0, now - lo) / step));
         }
 
         // Total live stages for one stat: ledger entries + per-status
@@ -27398,6 +27414,7 @@
                 u.status = { spawnGuard: 1 };
                 if (typeof restoreUnitPassives === 'function') restoreUnitPassives(u);   // 💔 a respawn wipe skips onRemove
                 delete u.statStageMods;   // fresh life — no carried stat stages
+                u._staggerApDebt = 0;   // and no stagger debt owed by the last life (Cube playtest 2026-10-23)
                 /* fresh life → drop Last Stand / kill-streak so the respawn
                    doesn't wear the crimson or golden aura (see map.js) */
                 if (typeof resetUnitPowerState === 'function') resetUnitPowerState(u);
@@ -37613,7 +37630,7 @@
 
         function doEnterBuilding(unit) {
             if (!unit || !canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return false;
             }
             const ent = getEnterableBuilding(unit);
@@ -38672,7 +38689,7 @@
                 return;
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return 0;
             }
             // Exact-z first so trading with a flyer stacked over an ally (or
@@ -39412,6 +39429,13 @@
                     renderTimer();
                 });
             }
+        }
+
+        /* "already acted" is a click answer for the player at the controls: a CPU (or remote) seat's planner probing a spent
+           unit never prints it into the player's log (Cube playtest 2026-10-23) — doMove's gate, for every action */
+        function _actedLog(unit, msg) {
+            if (unit && state.autoPlayers?.[unit.player]) return;
+            addLog(msg, unit ? unit.player : undefined);
         }
 
         function _logMsg(entry) {
@@ -45294,7 +45318,12 @@
             const facts = [];
             facts.push(_vicRoundStr);
             facts.push(durationStr);
-            facts.push(`<span class="p1">${(state.units||[]).filter(u=>u.player===1&&!u.dead).length}</span> v <span class="p2">${(state.units||[]).filter(u=>u.player===2&&!u.dead).length}</span> STANDING`);
+            /* standing = the wipeout count's own rule (getTeamWipeoutCount): a unit still in its death beat (_dying) or
+               sealed is down, and a possessed body counts for its home side (Cube playtest 2026-10-23: "2 v 4 STANDING ·
+               WIPEOUT" on a wipeout loss — the last blow's victims were still mid-death when the screen was built) */
+            const _vicStanding = (p) => (state.units || []).filter(u => (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) === p
+                && !u.dead && !u._dying && !u._sealed).length;
+            facts.push(`<span class="p1">${_vicStanding(1)}</span> v <span class="p2">${_vicStanding(2)}</span> STANDING`);
             /* THE SCORE ON THE FRONT (playtest 2026-10-21: "⏱ ARENA SCORE" with no number — the 404–447 was
                two tabs away): a match decided on points carries its final score right in the fact line,
                the same numbers the PERFORMANCE tally adds up */
@@ -51139,6 +51168,13 @@
 
         function startMatch() {
             state.startTime = Date.now();
+            /* a new match after a finished one is the NEXT match (Cube playtest 2026-10-23): a match started from the party
+               builder kept the finished one's number, so every result said "MATCH 1", and recordCompletedMatch (keyed on the
+               number) neither counted the second result in the series record nor kept it in the match history — it wrote
+               over the first. "Find Next Match" (continueToNextMatch) already counts up, so this only catches the rest. */
+            if (state.lastCompletedMatch && state.lastCompletedMatch.matchNumber === state.matchNumber) {
+                state.matchNumber = (state.matchNumber || 1) + 1;
+            }
             /* THE ENCOUNTER (PHASE9_QUALITY_PLAN §4 hardening, 2026-09-16): the run
                marker map.js sets for a strike launch (`armed: true`) is spent by
                the FIRST startMatch after it — this launch — and consumed by the
@@ -51167,6 +51203,7 @@
                 }
             } catch (e) {}
 
+            state._recentDefeats = [];   // the last match's final kills never open this one's log (Cube playtest 2026-10-23: "Dinosaur RETURNED TO THE VOID" from match 1 opened match 2)
             state._elemSeen = {};   // THE ELEMENT KNOWLEDGE (2026-09-23): what this match showed (synced; battle.js applyDamageToUnit)
             if (!_encMatch) { state.partyBag = null; state.partyGauge = 0; }   // THE SHARED BAG + THE CARRIED GAUGE ride an encounter only — a plain match never wears them
             _partyBagBind();
@@ -51471,7 +51508,7 @@
 
         function doPing(unit, x, y) {
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return 0;
             }
             if (!isInside(x, y)) {
@@ -56487,7 +56524,7 @@
             engineRng, engineRandInt, seedEngineRng,
             getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
             getStatusArmorDelta, getStatusMdefDelta, getStatusAtkDelta, getStatusIntDelta,
-            getStatStageCount, getStatStageDelta, applyStatStageBoost,
+            getStatStageCount, getStatStageDelta, applyStatStageBoost, statStageRoom,
             getEffectiveSpd, getMoveRangeThisTurn,
             getUnitLevel, getXPProgressPct, xpProgressionActive,
 
@@ -57122,7 +57159,7 @@
                 if (mode !== 'spell' || !_grabSp || _grabSp.name !== toolName) _releaseSkyThrowGrab(unit);
             }
             if (!canUnitAct(unit)) {
-                addLog(`${_ctName(unit)} already acted this round.`);
+                _actedLog(unit, `${_ctName(unit)} already acted this round.`);
                 return;
             }
             if (mode === 'spell' && unitSpellsBlocked(unit)) {
@@ -58289,7 +58326,7 @@
                 return;
             }
             if (!canUnitAct(unit)) {
-                addLog(`${_ctName(unit)} already acted this round.`);
+                _actedLog(unit, `${_ctName(unit)} already acted this round.`);
                 return;
             }
             if (mode === 'spell' && unitSpellsBlocked(unit)) {
@@ -61854,7 +61891,7 @@
                 return SimulEngine.queueStep(unit, { type: 'jump', x, y, z });
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return false;
             }
             if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
@@ -64099,13 +64136,13 @@
             if (isRangeBlockedByTerrain(probe.x, probe.y, tw.x, tw.y, probe.z)) return null;
             if (visionGatesTargeting(probe) && !isInVision(probe, tw.x, tw.y)) return null;
             const min = getCubeAttackDamage(probe, tw, -SPELL_DMG_VARIANCE).damage;
-            const typical = getCubeAttackDamage(probe, tw, 0).damage;
+            const _typHit = getCubeAttackDamage(probe, tw, 0), typical = _typHit.damage;
             const max = getCubeAttackDamage(probe, tw, SPELL_DMG_VARIANCE).damage;
             const mode = getActiveMultiplayerMode();
             const ongoing = !state.winner && !state._spellLabMode && !window._tutActive &&
                 state.towers?.[1]?.hp > 0 && state.towers?.[2]?.hp > 0 &&
                 getTeamWipeoutCount(1) > 0 && getTeamWipeoutCount(2) > 0;
-            return { min, typical, max, lethal: tw.hp <= min,
+            return { min, typical, max, siege: _typHit.siege || 1, lethal: tw.hp <= min,
                 wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
         }
 
@@ -64128,7 +64165,7 @@
                 return SimulEngine.queueStep(unit, { type: 'attack', x, y, z });
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return 0;
             }
             {
@@ -65118,7 +65155,7 @@
                 return 0;
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return;
             }
             const inspectReach = getEffectiveInspect(unit);
@@ -66593,7 +66630,7 @@
                 return 0;
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return 0;
             }
             const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
@@ -67444,7 +67481,7 @@
                 return;
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return;
             }
 
@@ -68574,7 +68611,7 @@
                 return SimulEngine.queueStep(unit, { type: 'spell', x, y, z });
             }
             if (!canUnitAct(unit)) {
-                addLog('That unit already acted this round.');
+                _actedLog(unit, 'That unit already acted this round.');
                 return 0;
             }
             /* 🜃 THE ELEMENT TERRAINS: from here to finishAction, a cell this cast changes counts as what it was (no self-combo) */

@@ -1028,6 +1028,8 @@
        the floor (the engine's apply-time clamp makes those literal no-ops). */
     function stageRoom(g, tg, k, n) {
         if (!n || !tg) return 0;
+        // the engine's own clamp (battle.js statStageRoom: the current ruler + the unit's level growth)
+        if (g.statStageRoom) { try { return g.statStageRoom(tg, k, n) || 0; } catch (e) {} }
         const base = (k === 'int' ? (tg.intStat != null ? tg.intStat : tg.int) : tg[k]) || 0;
         let cur = 0;
         try { cur = g.getStatStageCount ? (g.getStatStageCount(tg, k) || 0) : 0; } catch (e) {}

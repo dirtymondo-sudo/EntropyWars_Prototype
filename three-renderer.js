@@ -40369,7 +40369,10 @@ const ThreeRenderer = (function () {
 
     function _updateMinimap() {
         try {
-            if (!active || typeof state === 'undefined' || !state || !state.boardTerrain) {
+            /* off the battle (the in-match forge between matches): the battle HUD's stylesheet that keeps the PvP
+               minimap hidden is taken down with the HUD, so the last board's TACTICAL map sat over SEAL YOUR FATE
+               (Cube playtest 2026-10-23) — the board it charts is not in play there */
+            if (!active || typeof state === 'undefined' || !state || !state.boardTerrain || (state.phase !== 'battle' && !_mdScannerActive())) {
                 if (_miniWrap) _miniWrap.style.display = 'none';
                 return;
             }

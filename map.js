@@ -15853,6 +15853,7 @@
                         unit.status = { spawnGuard: 1 };
                         if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);   // 💔 a respawn wipe skips onRemove
                         delete unit.statStageMods;   // fresh life — no carried stat stages
+                        unit._staggerApDebt = 0;   // and no stagger debt owed by the last life (Cube playtest 2026-10-23)
                         unit._respawnIn = null;
                         unit._justRespawned = true;
                         unit._showRespawnBanner = true;
@@ -15903,6 +15904,7 @@
                             unit.status = { spawnGuard: 1 };
                         if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);   // 💔 a respawn wipe skips onRemove
                             delete unit.statStageMods;   // fresh life — no carried stat stages
+                            unit._staggerApDebt = 0;   // and no stagger debt owed by the last life (Cube playtest 2026-10-23)
                             unit._respawnIn = null;
                             unit._justRespawned = true;
                             unit._showRespawnBanner = true;
@@ -15999,6 +16001,7 @@
                     unit.status = { spawnGuard: 1 };
                         if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);   // 💔 a respawn wipe skips onRemove
                     delete unit.statStageMods;   // fresh life — no carried stat stages
+                    unit._staggerApDebt = 0;   // and no stagger debt owed by the last life (Cube playtest 2026-10-23)
                     unit._respawnIn = null;
                     unit._justRespawned = true;
                     unit._showRespawnBanner = true;
