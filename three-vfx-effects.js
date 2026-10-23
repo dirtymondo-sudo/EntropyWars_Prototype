@@ -38686,7 +38686,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, gold = _finBasic(_AF.gold, { opacity: 0 }); gold.transparent = true;
         var scale = new THREE.Group(); scale.position.y = ts * 1.55; F.g.add(scale);
-        scale.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.5, 6), gold), { position: new THREE.Vector3(0, ts * 0.05, 0) }));
+        var post = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.5, 6), gold); post.position.y = ts * 0.05; scale.add(post);
         var beam = new THREE.Group(); beam.position.y = ts * 0.3; scale.add(beam);
         beam.add(new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, ts * 0.025, ts * 0.025), gold));
         var pans = [];
@@ -38698,7 +38698,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var jaws = [];
         for (var j = 0; j < 2; j++) {
             var jaw = new THREE.Group(), side = j ? 1 : -1; F.g.add(jaw);
-            jaw.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(ts * 0.95, ts * 0.14, ts * 0.32), hide), { position: new THREE.Vector3(0, 0, side * ts * 0.16) }));
+            var jm = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.95, ts * 0.14, ts * 0.32), hide); jm.position.z = side * ts * 0.16; jaw.add(jm);
             for (var t = 0; t < 7; t++) { var th = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.035, ts * 0.16, 5), toothM); th.position.set(-ts * 0.42 + t * ts * 0.14, ts * 0.1, side * ts * 0.02); jaw.add(th); }
             jaw.position.set(0, -ts * 0.3, 0); jaws.push({ g: jaw, side: side });
         }
@@ -39056,7 +39056,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var pivot = new THREE.Group(); pivot.position.set(ln.ux * ts * 0.45, ts * 0.6, ln.uz * ts * 0.45); pivot.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(pivot);
         var steel = _finBasic(0x9aa0aa, { opacity: 0 }); steel.transparent = true;
         var bar = new THREE.Group(); pivot.add(bar);
-        bar.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, ts * 0.8, 8), steel), { position: new THREE.Vector3(0, 0, 0), rotation: new THREE.Euler(Math.PI / 2, 0, 0) }));
+        var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, ts * 0.8, 8), steel); shaft.rotation.x = Math.PI / 2; bar.add(shaft);
         for (var s = -1; s <= 1; s += 2) { var prong = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.12, 5), steel); prong.rotation.x = -Math.PI / 2; prong.position.set(s * ts * 0.03, 0, -ts * 0.45); bar.add(prong); }
         var adze = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.14, ts * 0.04), steel); adze.position.set(0, ts * 0.06, ts * 0.4); bar.add(adze);
         var total = 1000;
