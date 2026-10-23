@@ -26145,7 +26145,7 @@ const TUTORIAL_LESSONS = [
               say: 'A real crossing closes one of <b>three</b> ways: <b>⬡ destroy the BLACK CUBE</b> · <b>🗝 carry {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS</b> · <b>☠ remove every hostile</b>. Any one ends it. The scoreboard at the top tracks all three: each side\'s Cube is its TOWER bar, the Keys count sits beside it.',
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'key', title: 'THE KEYS',
-              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks the tiles around it, as far as the vessel\'s VISION allows, and pockets any Key it finds.',
+              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks that one tile and pockets any Key on it.',
               hint: 'click the marked tile · 🔍 INSPECT',
               focus: { tile: [4, 5] }, allow: ['inspect', 'move'],
               goal: { type: 'key', player: 1, count: 1 } },
@@ -26331,7 +26331,7 @@ const TUTORIAL_LESSONS = [
     },
     {
         id: 'win_keys', no: 7, tier: 'core', minutes: 6,
-        title: 'WIN BY KEYS', sub: 'INSPECT · THE SCAN FOOTPRINT · KEY SPACING · CARRIERS',
+        title: 'WIN BY KEYS', sub: 'INSPECT · ONE TILE A SCAN · KEYS ANYWHERE · CARRIERS',
         teaches: ['keys', 'inspect', 'arena'],
         map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
         board: {
@@ -26344,18 +26344,18 @@ const TUTORIAL_LESSONS = [
                   { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 1, spells: [] },
                   { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 2, spells: [] } ],
         },
-        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, north of the marked tile
+        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, on the tile north of the marked tile [1, 4]
         steps: [
             { id: 'start', title: 'MID-MATCH',
               say: 'Your <b>Swordfighter</b> and <b>Marksman</b> carry four of the {{KEYS_POOL}} Keys between them. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>. The last one is still on the ground, hidden.',
               enter: [['carry', 'p1-0', 2], ['carry', 'p1-1', 2]],
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'scan', title: 'INSPECT',
-              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that tile and the ones around it, nearest first, as many tiles as the vessel\'s <b>VISION</b> (VISION 9 covers the whole 3×3). No two Keys on the ground sit within 2 tiles of each other, so after a find, search further away.<br><br>The last Key is in the 3×3 around the marked tile.',
+              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that one tile, whatever the vessel\'s VISION; some vessels can pick a tile from farther away. Keys lie anywhere on the board, even side by side, so a find says nothing about where the next one is.<br><br>The last Key is on a tile next to the marked tile (north, south, east or west).',
               focus: { tile: [1, 4] }, goal: { type: 'ack' } },
             { id: 'find', title: 'THE LAST KEY',
               say: 'Find it and keep all five. A carrier that dies drops its Keys where it fell (the log says where), and the enemy can scan them up. Any win counts.',
-              hint: 'MOVE · 🔍 INSPECT around the marked tile',
+              hint: 'MOVE · 🔍 INSPECT the tiles next to the marked tile',
               focus: { tile: [1, 4] }, allow: 'all',
               goal: { type: 'win' } },
             { id: 'done', title: 'WIN BY KEYS',
