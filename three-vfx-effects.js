@@ -39360,9 +39360,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     /* ── the kit ── */
     function _goA(c, op) { return _finBasic(c, { additive: true, opacity: op != null ? op : 0, side: THREE.DoubleSide, depthWrite: false }); }
-    function _goM(c, op) { return _finBasic(c, { opacity: op != null ? op : 0, side: THREE.DoubleSide }); }
+    function _goM(c, op) { var m = _finBasic(c, { opacity: op != null ? op : 0, side: THREE.DoubleSide }); m.userData.goSolid = true; return m; }
+    /* a solid prop is MeshBasic (both renderers, no lights needed), so it gets its light baked into vertex colours:
+       lit from above and a little from the side, so a hand, a foot or a slab reads as a form and not a flat cut-out */
+    function _goBake(o) {
+        var geo = o.geometry, n = geo && geo.attributes && geo.attributes.normal;
+        if (!n || geo.attributes.color) return;
+        var cols = new Float32Array(n.count * 3);
+        for (var i = 0; i < n.count; i++) { var f = 0.6 + 0.3 * (n.getY(i) * 0.5 + 0.5) + 0.1 * (n.getX(i) * 0.5 + 0.5) - 0.06 * Math.max(0, -n.getZ(i)); cols[i * 3] = cols[i * 3 + 1] = cols[i * 3 + 2] = f; }
+        geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); o.material.vertexColors = true; o.material.needsUpdate = true;
+    }
     /* add a mesh / sprite that fades with _goShow; `op` is its full opacity */
-    function _goAdd(parent, o, op) { o.userData.op = op != null ? op : 1; if (o.material) { o.material.transparent = true; o.material.opacity = 0; } parent.add(o); return o; }
+    function _goAdd(parent, o, op) { o.userData.op = op != null ? op : 1; if (o.material) { o.material.transparent = true; o.material.opacity = 0; if (o.isMesh && o.material.userData && o.material.userData.goSolid) _goBake(o); } parent.add(o); return o; }
     function _goShow(list, k) { for (var i = 0; i < list.length; i++) { var o = list[i]; if (o && o.material) o.material.opacity = (o.userData.op != null ? o.userData.op : 1) * Math.max(0, k); } }
     function _goGlow(parent, c, size, x, y, z, op) { var s = _finSprite(c, _sigGlowTex(), size, 161); s.position.set(x || 0, y || 0, z || 0); s.userData.op = op != null ? op : 0.9; parent.add(s); return s; }
     function _goRing(parent, c, ri, ro, y, op, seg) {
@@ -39762,14 +39771,30 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, W = ts * (2 * R + 1);
         var shade = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(W * 0.62, 32), _goM(0x000000)), 0.5); shade.rotation.x = -Math.PI / 2; shade.position.y = 2; shade.scale.set(0.7, 1, 1);
         var foot = new THREE.Group(); foot.rotation.y = rn(0, Math.PI * 2); F.g.add(foot);
-        var sole = _goAdd(foot, new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, ts * 0.22, W * 1.02), _goM(0x2a2018)), 1);
-        var upper = _goAdd(foot, new THREE.Mesh(new THREE.BoxGeometry(W * 0.56, ts * 1.6, W * 0.62), _goM(0x5a4030)), 1); upper.position.set(0, ts * 0.9, -W * 0.18);
-        for (var t = 0; t < 5; t++) { var tr = _goAdd(foot, new THREE.Mesh(new THREE.BoxGeometry(W * 0.64, ts * 0.06, ts * 0.08), _goM(0x15100c)), 1); tr.position.set(0, -ts * 0.13, -W * 0.4 + t * W * 0.2); }
+        /* the sole: a footprint outline (narrow heel, wide ball) pushed up into a slab with a rounded edge */
+        var L = W * 1.0, out = [], N = 14, fw = function (t) { return W * (0.17 + 0.17 * Math.sin(Math.PI * Math.min(1, t * 1.15)) + 0.06 * t); };
+        for (var a = 0; a <= N; a++) { var t = a / N; out.push(new THREE.Vector2(fw(t), -L / 2 + t * L)); }
+        for (var b = N; b >= 0; b--) { var t2 = b / N; out.push(new THREE.Vector2(-fw(t2) * 0.92, -L / 2 + t2 * L)); }
+        var soleGeo = new THREE.ExtrudeGeometry(new THREE.Shape(new THREE.SplineCurve(out).getPoints(48)), { depth: ts * 0.22, bevelEnabled: true, bevelThickness: ts * 0.08, bevelSize: ts * 0.1, bevelSegments: 3, curveSegments: 6 });
+        soleGeo.rotateX(Math.PI / 2); soleGeo.computeVertexNormals();
+        var sole = _goAdd(foot, new THREE.Mesh(soleGeo, _goM(0x3a2a1e)), 1); sole.position.y = ts * 0.22;
+        /* five toes along the front, big toe on the inside */
+        for (var k = 0; k < 5; k++) {
+            var tr = 1 - k * 0.14, toe = _goAdd(foot, new THREE.Mesh(new THREE.SphereGeometry(W * 0.085 * tr, 14, 10), _goM(0x4a3526)), 1);
+            toe.scale.set(1, 0.75, 1.3); toe.position.set(W * (0.2 - k * 0.1), ts * 0.12, L * (0.5 + 0.02 - Math.abs(k - 1.2) * 0.025));
+        }
+        /* the shin, thick with fur, over the heel */
+        var shin = _goAdd(foot, new THREE.Mesh(new THREE.CylinderGeometry(W * 0.2, W * 0.27, ts * 2.4, 18, 3), _goM(0x5a4030)), 1); shin.position.set(0, ts * 1.4, -L * 0.22);
+        for (var q = 0; q < 14; q++) {
+            var qa = q / 14 * Math.PI * 2, tuft = _goAdd(foot, new THREE.Mesh(new THREE.ConeGeometry(W * 0.06, ts * 0.5, 6), _goM(q % 2 ? 0x4a3424 : 0x6a4c36)), 1);
+            tuft.position.set(Math.cos(qa) * W * 0.27, ts * (0.55 + (q % 3) * 0.12), -L * 0.22 + Math.sin(qa) * W * 0.27); tuft.rotation.set(Math.sin(qa) * 0.6, 0, -Math.cos(qa) * 0.6);
+            tuft.rotation.x += Math.PI;
+        }
         var total = 1900, downAt = 700, hit = false, parts = _goAll(foot);
         return _sigRunOwned(F.g, total, function (el) {
             var d = _sigClamp01((el - 250) / (downAt - 250)), e = _sigEaseInCubic(d);
             foot.position.y = ts * 6 * (1 - e) + ts * 0.11;
-            var k = el < downAt + 350 ? Math.min(1, (el - 200) / 150) : 1 - _sigClamp01((el - downAt - 350) / 500);
+            var k = el < downAt ? Math.min(1, (el - 200) / 150) : 1 - 0.75 * _sigClamp01((el - downAt - 60) / 160) - 0.25 * _sigClamp01((el - downAt - 350) / 500);
             _goShow(parts, el > 200 ? k : 0);
             shade.material.opacity = 0.5 * Math.min(1, el / 400) * (1 - _sigClamp01((el - 1200) / 500)); shade.scale.set(0.7 * (0.5 + 0.5 * Math.min(1, el / downAt)), 1, 0.5 + 0.5 * Math.min(1, el / downAt));
             if (el >= downAt + 350) foot.position.y = ts * 0.11 + ts * 3 * _sigEaseInCubic(_sigClamp01((el - downAt - 350) / 500));
@@ -40002,7 +40027,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var word = _goWord(F.g, 'אמת', '#ffd27a', ts * 1.25, ts * 0.8, 'serif');
         var plates = [];
         for (var i = 0; i < 6; i++) {
-            var a = i / 6 * Math.PI * 2, p = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.42, ts * 0.42, ts * 0.22, 12, 1, true, a, Math.PI / 3.4), _finBasic(_GOC.clay, { opacity: 0, side: THREE.DoubleSide })), 0.85);
+            /* a coil of wet clay, like a coil pot, wraps round the body */
+            var a = i / 6 * Math.PI * 2, cg = new THREE.TorusGeometry(ts * 0.42, ts * 0.065, 8, 28, Math.PI * 1.3); cg.rotateX(Math.PI / 2); cg.rotateY(a);
+            var p = _goAdd(F.g, new THREE.Mesh(cg, _goM(i % 2 ? _GOC.clay : _GOC.clayD)), 1);
             p.userData.y = ts * (0.2 + (i % 3) * 0.28); p.userData.t0 = i * 60; plates.push(p);
         }
         var glow = _goGlow(F.g, _GOC.emet, ts * 0.5, 0, ts * 1.2, 0, 0.7);
@@ -40013,7 +40040,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < plates.length; i++) {
                 var P = plates[i], t = _sigEaseOutBack(_sigClamp01((el - 200 - P.userData.t0) / 300));
                 P.scale.set(1.8 - 0.8 * t, 1, 1.8 - 0.8 * t); P.position.y = P.userData.y + ts * 0.8 * (1 - t); P.rotation.y = (1 - t) * 1.5;
-                P.material.opacity = 0.85 * (el > 200 + P.userData.t0 ? 1 : 0) * k;
+                P.material.opacity = (el > 200 + P.userData.t0 ? 1 : 0) * k;
             }
             if (el > 520 && el < 550) _goSpray(F, 8, { sprite: 'mud-chunk', ly: ts * 0.5, r: ts * 0.3, v: 80, vz0: 10, vz1: 60, g: 400, s0: 4, tint: _GOC.clay, ml0: 300, ml1: 600 });
         });
@@ -40047,7 +40074,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), px = -ln.uz, pz = ln.ux, slabs = [];
         for (var s = -1; s <= 1; s += 2) {
-            var sl = _goAdd(F.g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.16, ts * 0.9, ts * 0.7), _goM(s < 0 ? _GOC.clay : _GOC.clayD)), 1);
+            var sl = _goAdd(F.g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.45, 18, 14), _goM(s < 0 ? _GOC.clay : _GOC.clayD)), 1); sl.geometry.scale(0.2, 1, 0.8);
             sl.rotation.y = Math.atan2(px, pz) + Math.PI / 2; sl.userData.s = s; slabs.push(sl);
         }
         var total = 1100, hit = false;
@@ -40088,16 +40115,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _goTissueSample3D(tx, ty, r, x) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _goFrom(tx, ty, x), ln = _nrvLine(F, from, tx, ty);
-        var probe = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.002, ts * 0.9, 6), _goM(0xdfe6ee)), 1);
+        var probe = _goAdd(F.g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.022, ts * 0.004, ts * 0.9, 8), _goM(0xdfe6ee)), 1);
         var vial = new THREE.Group(); F.g.add(vial);
-        var glass = _goAdd(vial, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, ts * 0.18, 10, 1, true), _goA(0xd8f0ff)), 0.4);
-        var fill = _goAdd(vial, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.042, ts * 0.042, ts * 0.17, 10), _goA(0x7aff9a)), 0.85); fill.scale.y = 0.01;
-        var glow = _goGlow(vial, 0x7aff9a, ts * 0.3, 0, 0, 0, 0.6);
+        var glass = _goAdd(vial, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.09, ts * 0.09, ts * 0.32, 12, 1, true), _goA(0xd8f0ff)), 0.4);
+        var fill = _goAdd(vial, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.078, ts * 0.078, ts * 0.3, 12), _goA(0x7aff9a)), 0.85); fill.scale.y = 0.01;
+        var glow = _goGlow(vial, 0x7aff9a, ts * 0.5, 0, 0, 0, 0.6);
         var total = 1500;
         return _sigRunOwned(F.g, total, function (el) {
             var d = _sigEaseOutCubic(_sigClamp01(el / 220));
             probe.position.set(0, ts * (1.6 - 0.75 * d), 0); probe.material.opacity = 1 - _sigClamp01((el - 600) / 200);
-            var f = _sigClamp01((el - 250) / 400); fill.scale.y = Math.max(0.01, f); fill.position.y = -ts * 0.085 * (1 - f);
+            var f = _sigClamp01((el - 250) / 400); fill.scale.y = Math.max(0.01, f); fill.position.y = -ts * 0.15 * (1 - f);
             var fly = _sigEaseInCubic(_sigClamp01((el - 750) / 500));
             vial.position.set(ln.dx * fly, ts * (0.95 + 0.4 * Math.sin(fly * Math.PI)) + ln.dy * fly, ln.dz * fly);
             var k = Math.min(1, el / 150) * (1 - _sigClamp01((el - 1250) / 250));
@@ -40958,8 +40985,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty), stalks = [], threads = [];
         for (var s = 0; s < 6; s++) {
             var a = s / 6 * Math.PI * 2, st = new THREE.Group(); st.position.set(Math.cos(a) * ts * 0.12, ts * (0.85 + (s % 2) * 0.12), Math.sin(a) * ts * 0.12); st.rotation.set(Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6); F.g.add(st);
-            var stem = _goAdd(st, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.016, ts * 0.42, 5), _goM(_GOC.cordy)), 1); stem.position.y = ts * 0.21;
-            var club = _goAdd(st, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.028, 6, 5), _goM(0xb0501a)), 1); club.scale.y = 2; club.position.y = ts * 0.44;
+            var stem = _goAdd(st, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.034, ts * 0.6, 7), _goM(_GOC.cordy)), 1); stem.position.y = ts * 0.3;
+            var club = _goAdd(st, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 10, 8), _goM(0xb0501a)), 1); club.scale.y = 2; club.position.y = ts * 0.64;
             st.userData.t0 = 120 + s * 50; stalks.push(st);
         }
         for (var t = 0; t < 3; t++) {
@@ -41030,9 +41057,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
         var hand = new THREE.Group(); hand.rotation.y = Math.atan2(-ln.ux, -ln.uz); F.g.add(hand);
-        _goAdd(hand, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.7, ts * 0.14, ts * 0.6), _goM(0xb07a5a)), 1);
-        for (var f = 0; f < 4; f++) _goAdd(hand, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.13, ts * 0.12, ts * 0.42), _goM(0xa06a4a)), 1).position.set(-ts * 0.25 + f * ts * 0.167, 0, ts * 0.5);
-        var thumb = _goAdd(hand, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.14, ts * 0.12, ts * 0.32), _goM(0xa06a4a)), 1); thumb.position.set(ts * 0.42, 0, ts * 0.05); thumb.rotation.y = -0.7;
+        var palm = _goAdd(hand, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.36, 20, 12), _goM(0xb07a5a)), 1); palm.scale.set(1, 0.24, 0.9);
+        /* the forearm runs up and back out of the heel of the palm, out of the shot, so it never shows a cut end */
+        var armGeo = new THREE.CylinderGeometry(ts * 0.3, ts * 0.21, ts * 3.2, 16, 4, true); armGeo.translate(0, ts * 1.6, 0);
+        var wrist = _goAdd(hand, new THREE.Mesh(armGeo, _goM(0xa06a4a)), 1); wrist.rotation.x = -0.4; wrist.position.set(0, ts * 0.02, -ts * 0.26);
+        for (var f = 0; f < 4; f++) {
+            var fl = ts * (0.36 - Math.abs(f - 1.5) * 0.05), fg = _goAdd(hand, new THREE.Mesh(new THREE.CapsuleGeometry(ts * 0.065, fl, 4, 10), _goM(0xa06a4a)), 1);
+            fg.rotation.x = Math.PI / 2; fg.position.set(-ts * 0.24 + f * ts * 0.16, 0, ts * 0.3 + fl / 2);
+        }
+        var thumb = _goAdd(hand, new THREE.Mesh(new THREE.CapsuleGeometry(ts * 0.075, ts * 0.24, 4, 10), _goM(0xa06a4a)), 1); thumb.rotation.set(Math.PI / 2, 0, -0.8); thumb.position.set(ts * 0.4, 0, ts * 0.05);
         var hp = _goAll(hand), total = 1200, hit = false;
         return _sigRunOwned(F.g, total, function (el) {
             var d = _sigEaseInCubic(_sigClamp01(el / 220));

@@ -1688,3 +1688,17 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
   errors; before/after stills on WebGL in /mnt/project-files/g-o-vfx/. Real WebGPU (`?ew_gpu=webgpu`) booted and cast
   12 of them with no VFX errors, but headless SwiftShader WebGPU draws a black canvas (same on main), so the WebGPU
   renderer's stills were taken on its WebGL2 backend (`?ew_gpu=webgl2`, same node materials).
+- Follow-up (same day, coordinator: redo the spells that went off camera): 27 spells had only had their beats fired in
+  the first stills run. Seven were the probe's fault (the range-2 spells were aimed 3 tiles out; Grotesque Dive and Out
+  of the Loch need the caster above the target, the existing leap rule), and 20 came after the gnome's Lawn Ornament
+  left the caster in Stoneform. Reshot with the units staged on screen (leaps from the stadium's raised 0-1 columns).
+- Solid props are no longer flat cut-outs: `_goM` marks its material `goSolid`, and `_goAdd` bakes a fixed light into
+  vertex colours (`_goBake`: top lit, sides and underside darker). Still MeshBasic, so both renderers draw it the same.
+- Underfoot's sole is now a hairy foot (an extruded footprint, five toes, a furred shin) and it fades to see-through
+  160 ms after it lands, so the hit and the numbers under it show. Giant's Hand has a rounded palm, capsule fingers and
+  a wrist; Clay Crush's slabs are rounded clay; Emet's plates are clay coils; Tissue Sample's probe and vial and the
+  Cordyceps stalks are bigger so they read at board zoom.
+- Real WebGPU does run here (team memory sandbox-webgpu): with the Vulkan / SwiftShader adapter flags and the
+  `createView` swizzle strip it drew the whole battle with no device loss. Ten of the reshot spells have before/after
+  stills on it in /mnt/project-files/g-o-vfx/webgpu-real/; that run is what showed Giant's Hand's wrist as a log end,
+  so the forearm now runs up and back out of shot.
