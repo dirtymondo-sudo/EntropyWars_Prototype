@@ -2094,3 +2094,18 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - **Difficulty.** Easy plays without the plan and the clocks (AI_DIFFICULTY_PROFILES.tactics; a player's own Tactic still applies). **Phase 4.** Hard only: `_hardReplyCheck` (top five options − hardReplyFactor_v1 × the worst enemy reply). state.js `_cpuPlanDraft`: Hard VS CPU drafts brawl / siege / Key hunt from RACE_BASE_STATS + raceKit (top ten per role, one of each); never for crossings, encounters, online or labs. `window._ewCpuDraftPlan`.
 - **Phase 5.** battle.js `_AB_RETIRED_KEYS`: the 18 gen-40 flat weights + killBonusScore + cubeWindowBonus are no longer A/B-tested (values kept and still played; imitation still nudges; EW_TRAIN_KEYS overrides). Training dashboard: "P1 wins by" / "P2 wins by". Strength Test: Opponent mirror / Key Rusher / Cube Rusher / Turtle (`_ewSetStrengthSparring`, results per style). Imitation matches Inspect at the tile (synthetic score `_inspectScoreAt` when the CPU didn't propose it). New weights (no schema bump): raceRoundValue_v1, searchKeyValue_v1, searchCenterPrior_v1, keyCarrierDenial_v1, anchorCaution_v1, tacticCommitment_v1, hardReplyFactor_v1 (probe 'hard' = never in the labs). `window.getCubeAttackDamage` exported for the clocks.
 - Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
+
+## THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself ... think of each race as its own JRPG or Dark Souls boss") — data.js
+- Every race id A–F has a family of its own. 32 new SPELL_FAMILIES rows (kind 'signature', `unique: '<race>'`, an
+  `identity` {who, adj, look, vibe} block for the library's IDENTITY tab, so no SLB_IDENTITY_KITS entry in ui.js), placed
+  right after the `doors` row, each appended to its race's RACE_FAMILIES list. 66 new spell rows (ids `sig*`) live in
+  RACE_ABILITIES['<race>'] under a "THE SIGNATURE FAMILY" comment. The six families only one A–F race already carried
+  (gambling, feline, internetaddiction, door, dragonabilities, fortunetelling) are now flagged `unique` too (no new rows).
+  Sibling threads G–O and P–Z follow the same shape.
+- Rules kept: no new statuses, no new engine keys (every row copies the key set of a shipped spell), apCost 1, tier I–II
+  apply a status, tier III–IV are finishers (bonusVsStatus, no status). MP is the mana formula's, not the literal `cost`.
+- TRAP: `randomTargets` and `splash` CANNOT sit on a literal SPELL_LIBRARY / RACE_ABILITIES row: the boot-time mana pass
+  (`_applyManaCostFormula`, ~line 10630) calls spellRandomTargetsOf / spellSplashOf before `SPELL_RIDER_KINDS` is declared
+  (TDZ) and data.js dies at load, taking the whole game with it. The riders stay upgrade-only (Blast / Extra Target) and
+  the rider example row lives after the pass. The three rows that wanted them use chainProfile / splitBeam / barrage.
+- The per-race list (names, kinds, statuses, finishers) is the HTML page delivered in the thread; the VFX pass is next.
