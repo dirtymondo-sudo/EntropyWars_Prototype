@@ -39874,9 +39874,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.hatMan = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
-        var mat = _pzSolid(0x050408), man = new THREE.Group(); man.position.set(-ln.ux * ts * 0.62, 0, -ln.uz * ts * 0.62); man.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(man);
+        /* he stands BEHIND the victim as the viewer sees it (the lens side, else the caster's line), never in front of them */
+        var bx = -ln.ux, bz = -ln.uz, cam = _pzCam();
+        if (cam) { var cx = cam.position.x - (F.wp.x), cz = cam.position.z - (F.wp.z), cl = Math.hypot(cx, cz); if (cl > 1) { bx = -cx / cl; bz = -cz / cl; } }
+        var mat = _pzSolid(0x050408), man = new THREE.Group(); man.position.set(bx * ts * 0.62, 0, bz * ts * 0.62); man.rotation.y = Math.atan2(-bx, -bz); F.g.add(man);
         var lean = new THREE.Group(); man.add(lean);
-        var H = ts * 1.95;
+        var H = ts * 1.6;
         _pzMesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.3, H, 12), mat, lean, 0, H / 2, 0);
         _pzMesh(new THREE.SphereGeometry(ts * 0.13, 12, 10), mat, lean, 0, H + ts * 0.08, 0);
         _pzMesh(new THREE.CylinderGeometry(ts * 0.34, ts * 0.34, ts * 0.025, 20), mat, lean, 0, H + ts * 0.17, 0);
@@ -40710,10 +40713,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ring = _pzMesh(new THREE.RingGeometry(ts * 0.4, ts * 0.45, 40), _pzGlow(_PZ.gold), F.g, 0, ts * 0.03, 0); ring.rotation.x = -Math.PI / 2;
         var ticks = [];
         for (var i = 0; i < 4; i++) { var t = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.22), _pzGlow(_PZ.gold), F.g, 0, ts * 0.03, 0); t.rotation.set(-Math.PI / 2, 0, i * Math.PI / 2); ticks.push({ m: t, a: i * Math.PI / 2 }); }
-        var px = ln.ux * ts * 0.45, pz = ln.uz * ts * 0.45, yaw = Math.atan2(ln.ux, ln.uz);
+        var px = ln.ux * ts * 0.15, pz = ln.uz * ts * 0.15, yaw = Math.atan2(ln.ux, ln.uz);
         return _sigRunOwned(F.g, 1800, function (el) {
             var fall = _sigClamp01(el / 700), vis = _pzEnv(el, 0, 80, 1400, 1800);
-            poster.position.set(px + Math.sin(el * 0.012) * ts * 0.15 * (1 - fall), ts * (2.4 - 1.5 * _sigEaseOutCubic(fall)), pz);
+            poster.position.set(px + Math.sin(el * 0.012) * ts * 0.15 * (1 - fall), ts * (2.6 - 0.95 * _sigEaseOutCubic(fall)), pz);
             poster.rotation.set(0, yaw, el < 700 ? Math.sin(el * 0.015) * 0.5 * (1 - fall) : 0); paper.opacity = vis;
             var c = _sigEaseOutCubic(_sigClamp01(el / 500)), rot = (1 - c) * 1.5;
             ring.scale.setScalar(2 - c); ring.rotation.z = rot; ring.material.opacity = 0.85 * vis;
@@ -40782,7 +40785,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         return _sigRunOwned(F.g, 1500, function (el) {
             var drop = _sigEaseOutCubic(_sigClamp01(el / 300)), curl = _sigClamp01((el - 250) / 250), sq = el > 450 && el < 1150 ? Math.max(0, Math.sin((el - 450) / 700 * Math.PI * 5)) : 0;
-            star.position.y = ts * (2.4 - 1.35 * drop); star.rotation.y = el * 0.0015;
+            star.position.y = ts * (2.4 - 1.15 * drop); star.rotation.y = el * 0.0015;
             for (var j = 0; j < arms.length; j++) arms[j].rotation.x = 1.15 * curl + 0.25 * sq;
             star.scale.set(1 - 0.12 * sq, 1, 1 - 0.12 * sq); skin.opacity = _pzEnv(el, 0, 80, 1150, 1500);
         });
@@ -41053,7 +41056,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var broke = false;
             _sigRunOwned(F.g, 1500, function (el) {
                 var vis = el < 1100 ? Math.min(1, el / 80) : 0;
-                dome.opacity = 0.28 * vis; wood.opacity = red.opacity = vis; frost.opacity = 0.55 * _sigClamp01((el - 300) / 700) * vis;
+                dome.opacity = 0.28 * vis; wood.opacity = red.opacity = vis; frost.opacity = 0.32 * _sigClamp01((el - 300) / 700) * vis;
                 for (var k = 0; k < flakes.length; k++) { var f = flakes[k], a = f.a + el * f.sp; f.s.position.set(Math.cos(a) * f.r, ts * (f.y + 0.1 * Math.sin(el * 0.006 + k)), Math.sin(a) * f.r); f.s.material.opacity = 0.9 * vis; }
                 if (!broke && el >= 1100) { broke = true; _spawnEffect(EFFECTS['pzSnowGlobe_land'], { tx: tx, ty: ty }); _sigShake('normal'); }
             });
