@@ -9283,10 +9283,16 @@
             if (!thief || !victim) return out;
             const label = opts.verb || 'steals';
             out.keys = moveHourglassesBetweenUnits(victim, thief, opts.keys != null ? opts.keys : 1);
+            /* opts.fxDelayMs: the Keys / items change hands NOW (host state), the line and the floats wait for the hit
+               that takes them (Rustle's yank: the log read "Key taken" before the pull and the damage, Keys vs Keys) */
+            const _fx = (fn) => { if (opts.fxDelayMs > 0) window.setTimeout(fn, opts.fxDelayMs); else fn(); };
             if (out.keys) {
-                addLog(`${_ctName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
-                showFloatingTextForUnit(thief, `+${out.keys} KEY`, 'pickup', { durationMs: 1200 });
-                showFloatingTextForUnit(victim, `-${out.keys} KEY`, 'damage', { durationMs: 1000 });
+                const _nk = out.keys;
+                _fx(() => {
+                    addLog(`${_ctName(thief)} — ${label}: ${_nk} Key${_nk === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
+                    showFloatingTextForUnit(thief, `+${_nk} KEY`, 'pickup', { durationMs: 1200 });
+                    showFloatingTextForUnit(victim, `-${_nk} KEY`, 'damage', { durationMs: 1000 });
+                });
             }
             let wantItems = opts.items != null ? opts.items : 1;
             while (wantItems > 0 && victim.items) {
@@ -9300,8 +9306,11 @@
                 wantItems--;
             }
             if (out.items.length) {
-                addLog(`${_ctName(thief)} — ${label}: ${out.items.join(', ')} taken from ${_ctName(victim)}!`);
-                showFloatingTextForUnit(thief, `📦 Stole ${out.items[0]}${out.items.length > 1 ? ' +' + (out.items.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+                const _ni = out.items.slice();
+                _fx(() => {
+                    addLog(`${_ctName(thief)} — ${label}: ${_ni.join(', ')} taken from ${_ctName(victim)}!`);
+                    showFloatingTextForUnit(thief, `📦 Stole ${_ni[0]}${_ni.length > 1 ? ' +' + (_ni.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+                });
             }
             return out;
         }
@@ -72175,12 +72184,15 @@
                 /* THE SPELL POWER REVIEW (2026-10-23): a pull row with `stealKeys` / `stealItems` (Rustle) robs the hooked
                    enemy the way the `steal` kind does (Stick-Up) — host state now, so the Key moves with the snapshot. */
                 if (!_plAlly && (spell.stealKeys || spell.stealItems) && !target.dead && typeof _stealFromUnit === 'function') {
+                    /* the take reads after the pull and the hit (they land at the yank, below) */
+                    const _plFxMs = Math.max(0, _yankDelayMs || 0) + 60;
                     const _plTook = _stealFromUnit(unit, target, {
                         keys: spell.stealKeys || 0,
                         items: spell.stealItems || 0,
                         verb: spell.name,
+                        fxDelayMs: _plFxMs,
                     });
-                    if (!_plTook.keys && !_plTook.items) addLog(`${_ctName(target)} had nothing worth taking.`);
+                    if (!_plTook.keys && !_plTook.items) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
                 }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */

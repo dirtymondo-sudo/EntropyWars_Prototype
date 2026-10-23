@@ -8290,9 +8290,17 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   _clearMoveArrowPreview();
   const _placeAoe = !!(a.spell && a.id.startsWith('spell:') && !a._teamCast && typeof setTool === 'function'
     && _hrlgPlaceableAoe(a.spell, targetUnit.x, targetUnit.y));
-  if (_placeAoe && !a.moveTile) {
+  /* a "↳ MOVE" AoE row arms the placement BEFORE the walk too (Keys vs Keys matchup: Spike the Ball walked on the row
+     click, then waited for a second CONFIRM with the cursor on CANCEL): its CONFIRM reads MOVE→CAST and walks + casts
+     in one go (selectTargetFromMenu → findSpellApproachTile → _moveThenCast), so nothing is spent before the CONFIRM.
+     An aim the walk can't reach falls back to the target's own tile, then to the old walk-first flow. */
+  let _pa = _placeAoe ? (a.aim || { x: targetUnit.x, y: targetUnit.y }) : null;
+  if (_pa && a.moveTile && typeof findSpellApproachTile === 'function') {
+    const _canReach = (p) => { try { return !!findSpellApproachTile(actingUnit, a.spell, p.x, p.y); } catch (e) { return false; } };
+    if (!_canReach(_pa)) _pa = (a.aim && _canReach({ x: targetUnit.x, y: targetUnit.y })) ? { x: targetUnit.x, y: targetUnit.y } : null;
+  }
+  if (_pa) {
     if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
-    const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
     if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y, targetUnit.id)) return;
   }
   // Sweep every lingering targeting visual (range overlays from blade hover,
