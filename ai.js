@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.15-2026-10-07-gen40-champion'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.16-2026-10-23-tactics-clocks'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -82,9 +82,10 @@
     // AI-vs-AI harnesses (training / strength test / balance lab under
     // devAutoSim) are pinned to 'normal' so measurements stay comparable.
     const AI_DIFFICULTY_PROFILES = {
-        easy:   { pickTopN: 3, softmaxT: 60, combos: false, press: false, jointSearch: false, objectiveMult: 1.0 },
-        normal: { pickTopN: 1, softmaxT: 0,  combos: true,  press: true,  jointSearch: true,  objectiveMult: 1.0 },
-        hard:   { pickTopN: 1, softmaxT: 0,  combos: true,  press: true,  jointSearch: true,  objectiveMult: 1.3 },
+        // tactics (2026-10-23): the team plan + the race clocks. Easy plays without them (a player's own Tactic still applies).
+        easy:   { pickTopN: 3, softmaxT: 60, combos: false, press: false, jointSearch: false, objectiveMult: 1.0, tactics: false },
+        normal: { pickTopN: 1, softmaxT: 0,  combos: true,  press: true,  jointSearch: true,  objectiveMult: 1.0, tactics: true },
+        hard:   { pickTopN: 1, softmaxT: 0,  combos: true,  press: true,  jointSearch: true,  objectiveMult: 1.3, tactics: true },
     };
     function _aiDifficultyKey() {
         try {
@@ -95,7 +96,17 @@
         } catch (e) {}
         return 'normal';
     }
-    function _aiDiff() { return AI_DIFFICULTY_PROFILES[_aiDifficultyKey()]; }
+    // The difficulty the ACTING unit plays at (2026-10-23, the Tactics pass): a player's own unit on auto (its
+    // Tactic / auto battle — its side is not CTRL.AI) always plays Normal; the difficulty setting is the CPU's.
+    function _actorDiffKey() {
+        try {
+            const g = G();
+            const ctl = (_aiActor && g && g.state && g.state.controllers) ? g.state.controllers[_aiActor.player] : null;
+            if (ctl && ctl !== 'ai') return 'normal';
+        } catch (e) {}
+        return _aiDifficultyKey();
+    }
+    function _aiDiff() { return AI_DIFFICULTY_PROFILES[_actorDiffKey()]; }
     window._ewGetAiDifficulty = _aiDifficultyKey;
     window._ewSetAiDifficulty = function (k) {
         if (!AI_DIFFICULTY_PROFILES[k]) k = 'normal';
@@ -833,13 +844,61 @@
         return { now: pts, proj };
     }
 
+    /* ── THE WIPEOUT SHARE (2026-10-23, the Tactics pass) ── the part of the wipeout win a kill on tg carries:
+       all of it on a side's last standing body, 10% on the second-to-last. Shared by killValue (their bodies and,
+       as the price of losing a unit, ours), the Finisher and tileDangerCost's own-death price. */
+    function _wipeoutShare(g, tg) {
+        const out = { share: 0, wipeW: 0, left: null };
+        try {
+            const mode = (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
+            if (!(mode && Array.isArray(mode.winConditions) && mode.winConditions.includes('wipeout'))) return out;
+            if (typeof g.getTeamWipeoutCount !== 'function' || !tg || tg.dead || tg.player == null) return out;
+            out.left = g.getTeamWipeoutCount(tg.player);
+            out.wipeW = wght(g, 'wipeoutKillBonus_v1', 3000);
+            if (out.left === 1) out.share = out.wipeW;
+            else if (out.left === 2) out.share = out.wipeW * 0.1;
+        } catch (e) {}
+        return out;
+    }
+    /* Kills recorded while ONE action is scored (scoreSpells / scoreDetonate / scoreEntropyStrike open it). When the
+       action's kills reach every body the victims' side has standing, the action IS the wipeout: it is paid the
+       whole win, minus the per-victim shares killValue already gave. */
+    let _killTally = null;
+    function _openKillTally() { _killTally = { ids: new Map(), player: null, wipeW: 0 }; }
+    function _closeKillTally(g) {
+        const t = _killTally; _killTally = null;
+        if (!t || t.ids.size < 2 || t.player == null || !t.wipeW) return 0;
+        try {
+            if (typeof g.getTeamWipeoutCount !== 'function' || t.ids.size < g.getTeamWipeoutCount(t.player)) return 0;
+        } catch (e) { return 0; }
+        let given = 0;
+        for (const s of t.ids.values()) given += s || 0;
+        return Math.max(0, t.wipeW - given);
+    }
+    /* KEY CARRIER DENIAL (2026-10-23): a carrier's death drops its Keys, so it is worth more the closer its team is
+       to the Keys win: keyCarrierDenial_v1 × (Keys its team holds ÷ Keys to win)² × this carrier's share of them.
+       The carrier one Key from the win is worth ~500 more; a lone early Key ~30. All public (picked-up Keys are
+       shown to both sides). */
+    function _keyCarrierDenial(g, tg) {
+        try {
+            if (!tg || !(tg.hourglasses > 0) || typeof g.getKeysToWin !== 'function') return 0;
+            const need = g.getKeysToWin();
+            if (!(need > 0)) return 0;
+            const teamHeld = (g.state.hourglasses || []).filter(h => h.carriedBy != null &&
+                g.state.units.find(u => u.id === h.carriedBy)?.player === tg.player).length;
+            if (!teamHeld) return 0;
+            const frac = Math.min(1, teamHeld / need);
+            return wght(g, 'keyCarrierDenial_v1', 800) * frac * frac * Math.min(1, tg.hourglasses / teamHeld);
+        } catch (e) { return 0; }
+    }
+
     // Value of REMOVING tg from the board (the kill premium, added on top
     // of the damage that does it).
     function killValue(g, unit, tg, v) {
         let val = tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, tg, unit);
         if (unitIsHealerKit(tg)) val += tuneW(g, 'supportKillPremium');
         val += Math.min(150, (tg.intStat || tg.int || 0) * 1.2);   // big casters
-        if ((tg.hourglasses || 0) > 0) val += AI_TUNE.hourglassTargetBonus + tg.hourglasses * 12;
+        if ((tg.hourglasses || 0) > 0) val += AI_TUNE.hourglassTargetBonus + tg.hourglasses * 12 + _keyCarrierDenial(g, tg);
         // Kills are uncapped points in TDM/FFA/arena composite scoring.
         try {
             const mode = (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
@@ -855,12 +914,14 @@
                it walked off to the Cube instead of finishing the fight. The last standing body is
                worth a win; the second-to-last carries a share of it. Same value when it is OUR
                last body under threat (killValue is also the price of losing a unit). */
-            if (mode && Array.isArray(mode.winConditions) && mode.winConditions.includes('wipeout')
-                && typeof g.getTeamWipeoutCount === 'function' && tg && !tg.dead && tg.player != null) {
-                const left = g.getTeamWipeoutCount(tg.player);
-                const wipeW = wght(g, 'wipeoutKillBonus_v1', 3000);
-                if (left === 1) val += wipeW;
-                else if (left === 2) val += wipeW * 0.1;
+            /* THE TACTICS PASS (2026-10-23): the share now comes from _wipeoutShare, and an action that drops several
+               bodies at once (an AoE, the Entropy Strike) records each victim in _killTally, so the action that
+               leaves NOBODY standing is scored as the win after the whole action (scoreSpells → _closeKillTally). */
+            const ws0 = _wipeoutShare(g, tg);
+            if (ws0.share) val += ws0.share;
+            if (_killTally && _aiActor && tg.player !== _aiActor.player && ws0.wipeW) {
+                if (!_killTally.ids.has(tg.id)) _killTally.ids.set(tg.id, ws0.share);
+                _killTally.player = tg.player; _killTally.wipeW = ws0.wipeW;
             }
         } catch (e) {}
         // Score pressure adds value to a kill, never to ordinary chip damage.
@@ -1103,7 +1164,7 @@
         if (hpPct < 0.25) priority += 50;
         else if (hpPct < 0.5) priority += 25;
 
-        if ((target.hourglasses || 0) > 0) priority += AI_TUNE.hourglassTargetBonus + target.hourglasses * 10;
+        if ((target.hourglasses || 0) > 0) priority += AI_TUNE.hourglassTargetBonus + target.hourglasses * 10 + _keyCarrierDenial(g, target) * 0.5;
 
         const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
         const _modeId = _mpMode ? _mpMode.id : 'arena';
@@ -1250,6 +1311,10 @@
             let gift = tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, unit, v.closestEnemy || unit);
             // Arena: our death hands them a kill's points, and a bounty if we're ON FIRE.
             if (_isArenaMode()) gift += _arenaPts().kill * ARENA_PT_VALUE + arenaBountyPts(unit) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
+            // THE TACTICS PASS (2026-10-23): our own last body (or second-to-last) carries the wipeout share the
+            // enemy's does in killValue: the side's last unit standing plays to live. Anchor Caution scales it.
+            const _own = _wipeoutShare(g, unit);
+            if (_own.share) gift += _own.share * wght(g, 'anchorCaution_v1', 1);
             cost += tuneW(g, 'deathRiskFactor') * gift;
         }
         // Fragile units fear crowded pockets more.
@@ -1259,6 +1324,8 @@
         // consumers (joint search, safety moves and final ranking), using only
         // the visible-enemy threat estimate already supplied by vision.
         if (v.winState?.scorePolicy === 'protect_lead') cost *= 1 + 0.25 * v.winState.roundUrgency * (v.winState.scorePlay ?? 1);
+        // ANCHOR (the Tactics pass): the unit keeping the team alive / home prices exposure higher.
+        if (_tacticOf(unit) === 'anchor') cost *= 1 + 0.6 * wght(g, 'anchorCaution_v1', 1);
         cost += aiHazardPenaltyAt(unit, x, y) * 2;
         return cost;
     }
@@ -1791,6 +1858,692 @@
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // TACTICS + THE RACE CLOCKS (2026-10-23, mondo: the jobs "fight, siege, search, intercept, and anchor" are
+    // called TACTICS in the game, Heal is added, and a player can set one on each of their own units for auto
+    // battle — battle.js setUnitTactic writes unit.tactic, the one field this file reads and never writes).
+    //   · aiRaceClocks: for BOTH sides, how many rounds each win is away (wipeout / Cube / Keys / the buzzer).
+    //   · _planTactics: once per side per round (again when a body drops or a Key moves), every living unit gets
+    //     a Tactic from what the clocks need: Anchor when their Cube clock (or our wipe) is close, Intercept on a
+    //     Key carrier / a unit on our Cube, Siege when the Cube is our nearest win, Search while Keys are hidden,
+    //     Heal when allies are hurt, Fight for the rest. A unit with unit.tactic set is FORCED: the plan counts it.
+    //   · The Tactic steers through _applyTactic (rankCandidates) and _tacticGoal (pickMoveGoal), scaled by the
+    //     tacticCommitment_v1 weight (a forced Tactic ×1.5). The normal scoring still picks the spell, target, tile.
+    // Fog-honest: Cube HP, picked-up Keys, unit counts and HP are public; unseen enemies are placed only where they
+    // were last seen (_aiLastSeenFor); hidden Keys are read only through the search map's public odds.
+    // CPU-side only: the CPU's jobs live in _tacticJobs (keyed by unit id), nothing new on unit/state, nothing to
+    // sync. Kill-switches: window.EW_AI_NO_TACTICS (no CPU-assigned jobs; a player's own Tactic still applies),
+    // window.EW_AI_NO_CLOCKS (the old flat Cube window bonuses), window.EW_AI_NO_SEARCHMAP (the old blind Inspect).
+    // ═════════════════════════════════════════════════════════════════════
+    const AI_TACTICS = [
+        { id: 'fight',     label: 'Fight',     desc: 'Kill and stagger enemies. The default way to play.' },
+        { id: 'siege',     label: 'Siege',     desc: 'Go to the enemy Cube and hit it. Fights what stands in the way.' },
+        { id: 'search',    label: 'Search',    desc: 'Move and Inspect the tiles most likely to hide a Key.' },
+        { id: 'intercept', label: 'Intercept', desc: 'Chase the enemy Key carrier or the enemy hitting our Cube.' },
+        { id: 'anchor',    label: 'Anchor',    desc: 'Stay near our Cube and stay alive so the team cannot be wiped or sieged.' },
+        { id: 'heal',      label: 'Heal',      desc: 'Stay with the team and heal or revive allies.' },
+    ];
+    const _TACTIC_IDS = new Set(AI_TACTICS.map(t => t.id));
+    const _TACTIC_LABEL = {};
+    for (const t of AI_TACTICS) _TACTIC_LABEL[t.id] = t.label;
+    try { window.AI_TACTICS = AI_TACTICS; } catch (e) {}
+
+    const _CLOCK_INF = 99;
+    const _tacticJobs = new Map();                 // unit id → { job, reason, forced, targetId, tx, ty, ev }
+    const _tacticPlan = { units: null, round: 0, sig: { 1: '', 2: '' } };
+    const _tacticPersona = { 1: null, 2: null };   // training sparring styles: every unit of that side on one Tactic
+    const _cubeHist = { 1: [], 2: [] };            // a side's own Cube HP at the start of each round it planned
+
+    function _tacticResetIfNewMatch(g) {
+        const st = g.state;
+        const r = st.round || 0;
+        if (_tacticPlan.units !== st.units || r < _tacticPlan.round) {
+            _tacticJobs.clear();
+            _tacticPlan.sig = { 1: '', 2: '' };
+            _cubeHist[1] = []; _cubeHist[2] = [];
+            _tacticPlan.units = st.units;
+        }
+        _tacticPlan.round = r;
+    }
+    // A training persona: aiSetTacticPersona, or the Strength Test's sparring style (battle.js _ewSparringPersonaFor).
+    function _personaFor(p) {
+        if (_tacticPersona[p]) return _tacticPersona[p];
+        try { return (typeof window._ewSparringPersonaFor === 'function') ? (window._ewSparringPersonaFor(p) || null) : null; } catch (e) { return null; }
+    }
+    // A Tactic the planner may not change: the player's own pick, or a training persona.
+    function _forcedTactic(u) {
+        if (!u) return null;
+        if (typeof u.tactic === 'string' && _TACTIC_IDS.has(u.tactic)) return u.tactic;
+        const ps = _personaFor(u.player);
+        return (ps && _TACTIC_IDS.has(ps)) ? ps : null;
+    }
+    function _tacticInfo(u) {
+        if (!u) return null;
+        const f = _forcedTactic(u);
+        const j = _tacticJobs.get(u.id);
+        if (f) return (j && j.job === f) ? j : { job: f, forced: true, reason: null };
+        if (window.EW_AI_NO_TACTICS || !_aiDiff().tactics) return null;
+        return j || null;
+    }
+    function _tacticOf(u) { const t = _tacticInfo(u); return t ? t.job : null; }
+
+    // ── the public API (battle.js / ui.js: the Tactic picker and the unit card's "why") ──
+    window.aiTacticFor = function (unit) { try { return _tacticOf(unit); } catch (e) { return null; } };
+    window.aiTacticReason = function (unit) {
+        try {
+            const t = _tacticInfo(unit);
+            if (!t) return '';
+            const lbl = _TACTIC_LABEL[t.job] || t.job;
+            if (t.reason) return lbl + ': ' + t.reason;
+            return t.forced ? lbl + ' (your pick)' : lbl;
+        } catch (e) { return ''; }
+    };
+    // Training (battle.js sparring styles): every unit of `player` plays one Tactic; null clears it.
+    window.aiSetTacticPersona = function (player, id) {
+        if (player !== 1 && player !== 2) return;
+        _tacticPersona[player] = (id && _TACTIC_IDS.has(id)) ? id : null;
+    };
+    window.aiGetTacticPersona = function (player) { return _personaFor(player); };
+    // Console / lab readout of the clocks as `player` sees them.
+    window.aiRaceClocksFor = function (player) {
+        try {
+            const g = G();
+            const anyU = g.state.units.find(u => u.player === player && !u.dead);
+            if (!anyU) return null;
+            const own = g.state.towers?.[player], en = g.state.towers?.[g.enemyOf ? g.enemyOf(player) : (player === 1 ? 2 : 1)];
+            return aiRaceClocks(g, player, assessWinCondition(anyU, own, en));
+        } catch (e) { return null; }
+    };
+
+    function _knownPos(g, viewer, u) {
+        if (!u) return null;
+        if (u.player === viewer) return { x: u.x, y: u.y };
+        const rec = _aiLastSeenFor(g, viewer).get(u.id);
+        if (rec && (g.state.round || 0) - rec.round <= 3) return { x: rec.x, y: rec.y, round: rec.round };
+        return null;
+    }
+    function _cubeHitOf(g, u, tw) {
+        try {
+            if (typeof window.getCubeAttackDamage === 'function') return window.getCubeAttackDamage(u, tw, 0).damage || 0;
+        } catch (e) {}
+        try { return Math.max(_basicMinRaw(), Math.floor(_pwrAtk(u) * _basicCoef())); } catch (e) { return 0; }
+    }
+    function _noteCubeHist(g) {
+        const st = g.state, r = st.round || 0;
+        for (const p of [1, 2]) {
+            const tw = st.towers && st.towers[p];
+            if (!tw) continue;
+            const h = _cubeHist[p];
+            if (h.length && h[h.length - 1].round === r) continue;
+            h.push({ round: r, hp: tw.hp });
+            if (h.length > 4) h.shift();
+        }
+    }
+    // Cube damage per round the other side has ACTUALLY done to `owner`'s Cube lately (public: the Cube's HP bar).
+    function _observedCubeRate(g, owner, hpNow) {
+        const h = _cubeHist[owner] || [];
+        const r = g.state.round || 0;
+        let ref = null;
+        for (const e of h) if (e.round <= r - 2) ref = e;            // about two rounds back…
+        if (!ref) for (const e of h) if (e.round <= r - 1) ref = e;  // …or the last round on file
+        if (!ref) return 0;
+        return Math.max(0, (ref.hp - hpNow) / Math.max(1, r - ref.round));
+    }
+
+    /* ── THE SEARCH MAP (Phase 2): the odds a still-hidden Key lies on each tile, from facts every player has —
+       the Key count (shown), the tiles this side already Inspected (state.scannedByPlayer), the spots its Keys
+       were seen at (no Key spawns within 2 tiles of another: battle.js canPlaceHourglassAt), walkable tiles only
+       (randomizeSharedObjectives floods from the spawns), never the Cube's tile. searchCenterPrior_v1 weights the
+       centre columns, where randomizeSharedObjectives places Keys first (1 = no prior). */
+    const _keySeen = { 1: new Map(), 2: new Map(), units: null };
+    const _searchCache = { 1: null, 2: null };
+    function _searchMapFor(g, unit, p) {
+        const st = g.state;
+        const hg = st.hourglasses || [];
+        const scanned = st.scannedByPlayer && st.scannedByPlayer[p];
+        if (!hg.length || !scanned || !unit) return null;
+        if (_keySeen.units !== st.units) {
+            _keySeen[1].clear(); _keySeen[2].clear(); _keySeen.units = st.units;
+            _searchCache[1] = null; _searchCache[2] = null;
+        }
+        const seen = _keySeen[p];
+        for (const h of hg) if (h.visibleTo && h.visibleTo[p] && !seen.has(h.id)) seen.set(h.id, { x: h.x, y: h.y });
+        const hidden = hg.filter(h => !(h.visibleTo && h.visibleTo[p])).length;
+        const W = g.bw(), H = g.bh();
+        const key = (st.round || 0) + '|' + scanned.size + '|' + seen.size + '|' + hidden + '|' + W + 'x' + H;
+        const c = _searchCache[p];
+        if (c && c.key === key) return c.val;
+        const prob = new Float32Array(W * H);
+        const val = { p: prob, W, H, hidden, topEV: 0, tiles: 0 };
+        if (hidden > 0) {
+            const span = W >= 20 ? 4 : (W >= 8 ? 2 : W);
+            const bandMin = Math.floor(W / 2) - Math.floor(span / 2), bandMax = bandMin + span - 1;
+            const prior = Math.max(1, wght(g, 'searchCenterPrior_v1', 4));
+            const spots = [...seen.values()];
+            const towers = st.towers ? [st.towers[1], st.towers[2]].filter(Boolean) : [];
+            const hasPass = typeof isTerrainPassable === 'function';
+            let sumW = 0;
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                if (scanned.has(g.scanKey(x, y))) continue;
+                if (towers.some(t => t.x === x && t.y === y)) continue;
+                try { if (hasPass ? !isTerrainPassable(x, y) : !g.unitCanTraverse(unit, x, y)) continue; } catch (e) {}
+                if (spots.some(s => Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) <= 2)) continue;
+                const w = (x >= bandMin && x <= bandMax) ? prior : 1;
+                prob[x + y * W] = w; sumW += w;
+            }
+            if (sumW > 0) {
+                const k = hidden / sumW;
+                const vals = [];
+                for (let i = 0; i < prob.length; i++) if (prob[i] > 0) { prob[i] = Math.min(1, prob[i] * k); vals.push(prob[i]); }
+                vals.sort((a, b) => b - a);
+                val.tiles = vals.length;
+                const top = vals.slice(0, Math.max(1, Math.ceil(vals.length * 0.15)));
+                let F = 4;
+                try { F = (typeof g.getEffectiveVision === 'function' ? g.getEffectiveVision(unit) : 4) || 4; } catch (e) {}
+                val.topEV = Math.min(1, Math.min(F, 9) * top.reduce((a, b) => a + b, 0) / top.length);
+            }
+        }
+        _searchCache[p] = { key, val };
+        return val;
+    }
+    // Keys an Inspect aimed at (x,y) is expected to find (its real footprint: battle.js getInspectFootprint).
+    function _footprintEV(g, unit, sm, x, y) {
+        if (!sm || !(sm.hidden > 0)) return 0;
+        let fp;
+        try { fp = g.getInspectFootprint(unit, x, y); } catch (e) { fp = [{ x, y }]; }
+        let ev = 0;
+        for (const f of (fp || [])) ev += sm.p[f.x + f.y * sm.W] || 0;
+        return Math.min(ev, sm.hidden);
+    }
+    // The best unsearched area for one searcher, away from the areas its teammates already took (split the board).
+    function _bestSearchArea(g, u, sm, taken) {
+        let best = null, bestS = -Infinity;
+        for (let i = 0; i < sm.p.length; i++) {
+            if (!(sm.p[i] > 0)) continue;
+            const x = i % sm.W, y = Math.floor(i / sm.W);
+            if (taken.some(t => Math.max(Math.abs(t.x - x), Math.abs(t.y - y)) <= 3)) continue;
+            const ev = _footprintEV(g, u, sm, x, y);
+            const s = ev - 0.02 * (Math.abs(u.x - x) + Math.abs(u.y - y));
+            if (s > bestS) { bestS = s; best = { x, y, ev }; }
+        }
+        return best;
+    }
+
+    /* ── THE RACE CLOCKS (Phase 3): rounds until each win, for side p as `viewer` knows it. ── */
+    function _sideClock(g, p, q, viewer, wcs, ws) {
+        const st = g.state, INF = _CLOCK_INF;
+        const r = { wipe: INF, cube: INF, keys: INF, buzzer: INF, cubeRate: 0, best: INF, bestKind: 'none' };
+        const alive = pl => st.units.filter(u => u.player === pl && !u.dead && !u._dying && !u._sealed);
+        const mine = alive(p), theirs = alive(q);
+        if (!mine.length) return r;
+        // the team's damage per round into the other side, and the rounds one of their bodies takes to drop
+        let out = 0, hp = 0;
+        if (theirs.length) {
+            for (const a of mine) { let s = 0; for (const e of theirs) s += unitThreatOutput(g, a, e); out += s / theirs.length; }
+            for (const e of theirs) hp += effHp(e);
+        }
+        const perKill = theirs.length ? Math.max(1, (hp / theirs.length) / Math.max(1, out * 0.6)) : 1;
+        // WIPEOUT: every standing body; bodies come back on a timer in the Arena (a wipe must outpace them)
+        if (wcs.includes('wipeout')) {
+            if (!theirs.length) r.wipe = 0;
+            else {
+                r.wipe = 1 + hp / Math.max(1, out * 0.6);
+                if (_isArenaMode() || st.units.some(u => u.player === q && u.dead && typeof u._respawnIn === 'number')) r.wipe *= 1.3;
+            }
+        }
+        // CUBE: travel + HP ÷ the Cube damage of the k units that get there first (best k)
+        const tw = st.towers && st.towers[q];
+        if (wcs.includes('tower_destroyed') && tw && tw.hp > 0) {
+            const rows = [];
+            for (const a of mine) {
+                const hit = _cubeHitOf(g, a, tw);
+                if (!(hit > 0)) continue;
+                const pos = _knownPos(g, viewer, a);
+                let travel = 2;
+                if (pos) {
+                    let mv = 2, rg = 1;
+                    try { mv = g.getEffectiveMove(a) || a.move || 2; } catch (e) {}
+                    try { rg = g.getEffectiveRange(a) || 1; } catch (e) {}
+                    const d = Math.abs(pos.x - tw.x) + Math.abs(pos.y - tw.y);
+                    travel = Math.max(0, Math.ceil((d - rg) / Math.max(1, mv * 1.5)));
+                }
+                rows.push({ hit, travel });
+            }
+            rows.sort((a, b) => a.travel - b.travel || b.hit - a.hit);
+            let sum = 0;
+            for (const row of rows) {
+                sum += row.hit;
+                const eta = row.travel + tw.hp / sum;
+                if (eta < r.cube) { r.cube = eta; r.cubeRate = sum; }
+            }
+            // their clock on OUR Cube: what they have actually done to it lately says more than what they could do
+            if (p !== viewer && r.cube < INF) {
+                const obs = _observedCubeRate(g, viewer, tw.hp);
+                const near = mine.some(a => { const ps = _knownPos(g, viewer, a); return ps && (st.round || 0) - (ps.round ?? 0) <= 1 && Math.abs(ps.x - tw.x) + Math.abs(ps.y - tw.y) <= 4; });
+                if (obs > 0) r.cube = Math.min(r.cube + 2, tw.hp / obs);
+                else if (!near) r.cube += 3;   // nobody on it yet: they have to commit first
+            }
+        }
+        // KEYS: hidden Keys at our search rate (ours) or their pickup rate so far (theirs); Keys the other side
+        // carries have to come off a carrier's body first
+        const need = (typeof g.getKeysToWin === 'function') ? g.getKeysToWin() : 0;
+        if (wcs.includes('hourglasses_collected') && need > 0) {
+            const hg = st.hourglasses || [];
+            const heldBy = pl => hg.filter(h => h.carriedBy != null && st.units.find(u => u.id === h.carriedBy)?.player === pl).length;
+            const have = heldBy(p), lost = heldBy(q), total = hg.length;
+            const still = need - have;
+            if (still <= 0) r.keys = 0;
+            else {
+                let eta;
+                if (p === viewer) {
+                    const loose = hg.filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[viewer]).length;
+                    const sm = _searchMapFor(g, mine[0], viewer);
+                    const searchers = Math.max(1, mine.filter(u => _tacticOf(u) === 'search').length);
+                    const per = sm ? Math.max(0.02, sm.topEV) : 0.25;
+                    const fromLoose = Math.min(still, loose);
+                    const hiddenNeed = Math.max(0, still - fromLoose);
+                    eta = (fromLoose ? 1.5 : 0) + (hiddenNeed ? 1 + hiddenNeed / Math.min(2, searchers * per) : 0);
+                } else {
+                    const rate = Math.max(0.15, have / Math.max(1, (st.round || 1) - 1));
+                    eta = still / rate;
+                }
+                const short = need - (total - lost);
+                if (short > 0) eta += short * perKill;
+                r.keys = eta;
+            }
+        }
+        // THE BUZZER: the side ahead on the clock's score (a lead past one kill's points) wins when it runs out
+        if (ws && ws.roundsRemaining != null && ws.scoreLead != null && ws.scoreLead !== 0) {
+            const lead = p === viewer ? ws.scoreLead : -ws.scoreLead;
+            if (lead > 0) r.buzzer = ws.roundsRemaining;
+        }
+        for (const k of ['wipe', 'cube', 'keys', 'buzzer']) if (r[k] < r.best) { r.best = r[k]; r.bestKind = k; }
+        return r;
+    }
+    let _clockCache = { key: '', val: null };
+    function aiRaceClocks(g, p, ws) {
+        const st = g.state;
+        if (!st || (g._isFFA && g._isFFA())) return null;
+        const mode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+        const wcs = (mode && Array.isArray(mode.winConditions)) ? mode.winConditions : [];
+        if (!wcs.length) return null;
+        const q = g.enemyOf ? g.enemyOf(p) : (p === 1 ? 2 : 1);
+        const hg = st.hourglasses || [];
+        const key = p + '|' + (st.round || 0) + '|' + st.units.map(u => u.dead ? 'd' : ((u.hp | 0) + ':' + u.x + ',' + u.y)).join(';')
+            + '|' + hg.map(h => h.carriedBy == null ? (h.visibleTo && h.visibleTo[p] ? 'v' : 'h') : 'c' + h.carriedBy).join(',')
+            + '|' + (st.towers?.[1]?.hp | 0) + '/' + (st.towers?.[2]?.hp | 0) + '|' + (st.scannedByPlayer?.[p]?.size | 0)
+            + '|' + (ws ? ws.scoreLead + '/' + ws.roundsRemaining : '');
+        if (_clockCache.key === key) return _clockCache.val;
+        const val = { our: _sideClock(g, p, q, p, wcs, ws), their: _sideClock(g, q, p, p, wcs, ws), wcs };
+        _clockCache = { key, val };
+        return val;
+    }
+
+    /* The Cube hit's worth under the clocks (replaces the flat "window" bonuses of scoreTowerAttack): the rounds the
+       hit takes off our Cube clock × Race Round Value, × how much the Cube is our nearest finish (the wipeout or
+       the Keys nearer = less), × 1.5 when their nearest win is no later than our Cube (every round counts), plus
+       one more round's worth when this hit makes our Cube clock beat theirs. */
+    function _cubeClockValue(g, unit, v, estDmg, clk) {
+        const R = wght(g, 'raceRoundValue_v1', 200);
+        const our = clk.our, their = clk.their;
+        const siegers = g.aliveUnitsFor(unit.player).filter(u => u.id === unit.id || _tacticOf(u) === 'siege');
+        let rate = 0;
+        for (const u of siegers) rate += _cubeHitOf(g, u, v.enemyTower);
+        rate = Math.max(estDmg, rate);
+        const saved = estDmg / rate;
+        const other = Math.min(our.wipe, our.keys, our.buzzer);
+        const share = our.cube <= other + 0.5 ? 1 : Math.max(0.25, Math.min(1, other / Math.max(1, our.cube)));
+        const tight = their.best <= our.cube ? 1.5 : (their.best - our.cube <= 2 ? 1.25 : 1);
+        let val = R * saved * share * tight;
+        if (our.cube >= their.best && our.cube - saved < their.best) val += R * share;
+        return val;
+    }
+
+    // Who suits which Tactic (higher = better). -1e9 = cannot do it.
+    function _canHealJob(g, u) {
+        if ((u.spells || []).some(s => s && HEAL_KINDS.has(s.kind) && (u.mp || 0) >= _mpCost(u, s))) return true;
+        const lk = (typeof itemKeysLike === 'function') ? itemKeysLike('healPotion') : ['healPotion'];
+        return lk.some(k => (u.items?.[k] || 0) > 0);
+    }
+    function _tacticFitness(g, u, job, ctx) {
+        const d = (x, y) => Math.abs(u.x - x) + Math.abs(u.y - y);
+        let mv = 2, rg = 1;
+        try { mv = g.getEffectiveMove(u) || 2; } catch (e) {}
+        try { rg = g.getEffectiveRange(u) || 1; } catch (e) {}
+        switch (job) {
+            case 'anchor':
+                return ctx.ownTw ? -d(ctx.ownTw.x, ctx.ownTw.y) * 10 + effHp(u) / 40 + (unitIsHealerKit(u) ? 15 : 0) : -1e9;
+            case 'intercept': {
+                const t = ctx.threats[0];
+                if (!t) return -1e9;
+                return -d(t.pos.x, t.pos.y) * 8 + mv * 12 + unitThreatOutput(g, u, t.e) / 6;
+            }
+            case 'siege':
+                return ctx.enTw ? _cubeHitOf(g, u, ctx.enTw) - d(ctx.enTw.x, ctx.enTw.y) * 25 + rg * 10 - (unitIsHealerKit(u) ? 60 : 0) : -1e9;
+            case 'search': {
+                let vis = 3, reach = 1;
+                try { vis = (typeof g.getEffectiveVision === 'function' ? g.getEffectiveVision(u) : 3) || 3; } catch (e) {}
+                try { reach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(u) : (u.inspect || 1); } catch (e) {}
+                return vis * 30 + reach * 40 + mv * 10 - (unitIsHealerKit(u) ? 30 : 0);
+            }
+            case 'heal':
+                return _canHealJob(g, u) ? 100 + (u.intStat || u.int || 0) / 4 : -1e9;
+        }
+        return 0;
+    }
+
+    function _planTactics(g, unit, v) {
+        const st = g.state, p = unit.player;
+        const q = g.enemyOf ? g.enemyOf(p) : (p === 1 ? 2 : 1);
+        const team = st.units.filter(u => u.player === p && !u.dead && !u._dying && !u._sealed);
+        if (!team.length) return;
+        const mode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+        const wcs = (mode && Array.isArray(mode.winConditions)) ? mode.winConditions : [];
+        const clk = aiRaceClocks(g, p, v.winState);
+        const our = clk ? clk.our : null, their = clk ? clk.their : null;
+        const ownTw = st.towers?.[p], enTw = st.towers?.[q];
+        const hasOwnCube = wcs.includes('tower_destroyed') && ownTw && ownTw.hp > 0;
+        const hasCube = wcs.includes('tower_destroyed') && enTw && enTw.hp > 0;
+        const need = (typeof g.getKeysToWin === 'function') ? g.getKeysToWin() : 0;
+        const hasKeys = wcs.includes('hourglasses_collected') && need > 0;
+        const sm = hasKeys ? _searchMapFor(g, unit, p) : null;
+        const R = n => (n >= _CLOCK_INF ? 'no' : '~' + Math.max(0, Math.round(n)));
+        const KIND = { wipe: 'wipeout', cube: 'Cube', keys: 'Keys', buzzer: 'time', none: 'none' };
+        const n = team.length;
+
+        // threats the team sees (or saw within 3 rounds): Key carriers first, then enemies on our Cube
+        const enemies = st.units.filter(u => u.player === q && !u.dead && !u._dying);
+        const carriers = enemies.filter(e => (e.hourglasses || 0) > 0).map(e => ({ e, pos: _knownPos(g, p, e) })).filter(c => c.pos)
+            .sort((a, b) => (b.e.hourglasses || 0) - (a.e.hourglasses || 0));
+        const siegers = hasOwnCube ? enemies.map(e => ({ e, pos: _knownPos(g, p, e) }))
+            .filter(c => c.pos && Math.abs(c.pos.x - ownTw.x) + Math.abs(c.pos.y - ownTw.y) <= 4) : [];
+        const theirHeld = hasKeys ? (st.hourglasses || []).filter(h => h.carriedBy != null
+            && st.units.find(u => u.id === h.carriedBy)?.player === q).length : 0;
+        const keyThreat = hasKeys && carriers.length && their && our && their.keys <= our.best + 2;
+        const threats = (keyThreat ? carriers : []).concat(siegers);
+
+        const want = { anchor: 0, intercept: 0, siege: 0, search: 0, heal: 0 };
+        const why = {};
+        if (our && their) {
+            if (hasOwnCube && (siegers.length || their.cube <= Math.min(our.best + 1, 8))) {
+                want.anchor = 1; why.anchor = 'their Cube win is ' + R(their.cube) + ' rounds away';
+            }
+            const deadMine = st.units.filter(u => u.player === p && u.dead && !u._sealed).length;
+            if (wcs.includes('wipeout') && n <= 2 && deadMine > 0 && their.wipe <= our.best + 1) {
+                want.anchor = Math.max(want.anchor, 1); why.anchor = why.anchor || ('only ' + n + ' of us standing');
+            }
+            if (keyThreat) { want.intercept = theirHeld >= need - 1 ? 2 : 1; why.intercept = 'their Keys win is ' + R(their.keys) + ' rounds away'; }
+            if (siegers.length) { want.intercept = Math.max(want.intercept, 1); why.intercept = why.intercept || 'an enemy is on our Cube'; }
+            if (hasCube) {
+                if (our.bestKind === 'cube') { want.siege = Math.max(1, Math.ceil(n / 2)); why.siege = 'the Cube is our nearest win (' + R(our.cube) + ' rounds)'; }
+                else if (our.cube <= our.best * 1.5 + 1) { want.siege = 1; why.siege = 'Cube ' + R(our.cube) + ' rounds, ' + KIND[our.bestKind] + ' ' + R(our.best); }
+            }
+            if (hasKeys && sm && sm.hidden > 0) {
+                want.search = our.bestKind === 'keys' ? Math.max(1, Math.floor(n / 2)) : 1;
+                why.search = sm.hidden + ' Key' + (sm.hidden > 1 ? 's' : '') + ' still hidden';
+            }
+        }
+        const hurt = team.some(u => u.hp / (u.maxHp || 1) < 0.6);
+        const reviveable = st.units.some(u => u.player === p && u.dead && !u._sealed)
+            && team.some(u => (u.spells || []).some(s => s && s.kind === 'revive'));
+        if ((hurt || reviveable) && team.some(u => _canHealJob(g, u))) { want.heal = 1; why.heal = hurt ? 'allies are hurt' : 'an ally is down'; }
+
+        const jobs = new Map();
+        const free = new Set(team.map(u => u.id));
+        // forced Tactics first (the player's own pick or a training persona): the plan counts them
+        for (const u of team) {
+            const f = _forcedTactic(u);
+            if (!f) continue;
+            free.delete(u.id);
+            if (want[f] > 0) want[f]--;
+            jobs.set(u.id, { job: f, forced: true, reason: why[f] || null });
+        }
+        let budget = Math.max(0, free.size - (n >= 3 ? 1 : 0));   // keep a fighter when there are three or more
+        const ctx = { ownTw, enTw, threats, sm };
+        for (const job of ['anchor', 'intercept', 'siege', 'search', 'heal']) {
+            for (let k = 0; k < want[job] && budget > 0; k++) {
+                let best = null, bestF = -Infinity;
+                for (const u of team) {
+                    if (!free.has(u.id)) continue;
+                    const f = _tacticFitness(g, u, job, ctx);
+                    if (f > bestF) { bestF = f; best = u; }
+                }
+                if (!best || bestF <= -1e8) break;
+                free.delete(best.id); budget--;
+                jobs.set(best.id, { job, forced: false, reason: why[job] || null });
+            }
+        }
+        const fightWhy = our && our.best < _CLOCK_INF ? 'our nearest win is ' + KIND[our.bestKind] + ' (' + R(our.best) + ' rounds)' : null;
+        for (const u of team) if (free.has(u.id)) jobs.set(u.id, { job: 'fight', forced: false, reason: fightWhy });
+
+        // job targets: who to chase, where to search (searchers split the board)
+        const taken = [];
+        for (const u of team) {
+            const j = jobs.get(u.id);
+            if (j.job === 'intercept' && threats.length) {
+                let pick = null, ps = -Infinity;
+                for (const t of threats) {
+                    const s = ((t.e.hourglasses || 0) > 0 ? 3 + t.e.hourglasses : 2) * 10 - (Math.abs(u.x - t.pos.x) + Math.abs(u.y - t.pos.y));
+                    if (s > ps) { ps = s; pick = t; }
+                }
+                if (pick) { j.targetId = pick.e.id; j.tx = pick.pos.x; j.ty = pick.pos.y; }
+            } else if (j.job === 'search' && sm && sm.hidden > 0) {
+                const t = _bestSearchArea(g, u, sm, taken);
+                if (t) { j.tx = t.x; j.ty = t.y; j.ev = t.ev; taken.push(t); }
+            }
+            _tacticJobs.set(u.id, j);
+        }
+    }
+    // Plan once per side per round, and again when a body drops, a Key changes hands or a player changes a Tactic.
+    function _ensureTacticPlan(g, unit, v) {
+        try {
+            _tacticResetIfNewMatch(g);
+            if (g._isFFA && g._isFFA()) return;
+            const st = g.state, p = unit.player;
+            _noteCubeHist(g);
+            const hg = st.hourglasses || [];
+            const sig = (st.round || 0) + '|' + st.units.filter(u => !u.dead).map(u => u.id).join(',')
+                + '|' + hg.map(h => h.carriedBy == null ? (h.visibleTo && h.visibleTo[p] ? 'v' : 'h') : h.carriedBy).join(',')
+                + '|' + st.units.filter(u => u.player === p && u.tactic).map(u => u.id + ':' + u.tactic).join(',')
+                + '|' + (_personaFor(p) || '') + '|' + (window.EW_AI_NO_TACTICS ? 1 : 0);
+            if (_tacticPlan.sig[p] === sig && _tacticJobs.has(unit.id)) return;
+            _tacticPlan.sig[p] = sig;
+            _planTactics(g, unit, v);
+        } catch (e) { console.warn('[AI] Tactics plan failed:', e); }
+    }
+
+    // The Tactic's own move goal (pickMoveGoal adds it to the list; null = the normal goals decide).
+    function _tacticGoal(g, unit, v) {
+        const t = _tacticInfo(unit);
+        if (!t || !g.canUnitMove(unit)) return null;
+        const C = wght(g, 'tacticCommitment_v1', 1) * (t.forced ? 1.5 : 1);
+        if (!(C > 0)) return null;
+        const st = g.state;
+        const d = (x, y) => Math.abs(unit.x - x) + Math.abs(unit.y - y);
+        switch (t.job) {
+            case 'siege': {
+                const tw = v.enemyTower;
+                if (!tw || tw.hp <= 0) return null;
+                let rg = 1;
+                try { rg = g.getEffectiveRange(unit) || 1; } catch (e) {}
+                if (d(tw.x, tw.y) <= rg) return null;   // already in swinging range
+                return { x: tw.x, y: tw.y, score: 240 * C, reason: 'tactic_siege' };
+            }
+            case 'search': {
+                if (t.tx == null) return null;
+                let reach = 1;
+                try { reach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(unit) : (unit.inspect || 1); } catch (e) {}
+                if (Math.max(Math.abs(unit.x - t.tx), Math.abs(unit.y - t.ty)) <= reach) return null;   // Inspect takes over
+                return { x: t.tx, y: t.ty, score: (150 + 150 * Math.min(1, t.ev || 0)) * C, reason: 'tactic_search' };
+            }
+            case 'intercept': {
+                const e = t.targetId != null ? st.units.find(u => u.id === t.targetId && !u.dead) : null;
+                if (!e) return null;
+                const seen = v.visibleEnemies.find(x => x.id === e.id);
+                const pos = seen ? { x: seen.x, y: seen.y } : _knownPos(g, unit.player, e);
+                if (!pos) return null;
+                return { x: pos.x, y: pos.y, score: (seen ? 260 : 190) * C, reason: 'tactic_intercept' };
+            }
+            case 'anchor': {
+                const tw = v.ownTower;
+                if (!tw || tw.hp <= 0 || d(tw.x, tw.y) <= 2) return null;
+                return { x: tw.x, y: tw.y, score: 230 * C, reason: 'tactic_anchor' };
+            }
+            case 'heal': {
+                let best = null, bs = 0;
+                for (const a of (v.allies || [])) {
+                    if (!a || a.dead || a.id === unit.id) continue;
+                    const frac = a.hp / (a.maxHp || 1);
+                    if (frac >= 0.85) continue;
+                    const s = (1 - frac) * 200 - d(a.x, a.y) * 5;
+                    if (s > bs) { bs = s; best = a; }
+                }
+                if (!best || d(best.x, best.y) <= 2) return null;
+                return { x: best.x, y: best.y, score: (120 + bs * 0.5) * C, reason: 'tactic_heal' };
+            }
+        }
+        return null;
+    }
+    // Goals a FORCED Tactic keeps at full weight (pickups, emergencies); the rest are damped while its own goal exists.
+    const _TACTIC_KEEP_GOALS = new Set(['grab_hg', 'ctf_carry_home', 'ctf_intercept_carrier', 'ctf_return_flag',
+        'arena_nexus_deny', 'free_captive', 'retreat', 'defend_tower']);
+
+    // The Tactic's weight on the unit's options (rankCandidates, before the sort).
+    function _applyTactic(g, unit, v, candidates) {
+        const t = _tacticInfo(unit);
+        if (!t) return;
+        const C = wght(g, 'tacticCommitment_v1', 1) * (t.forced ? 1.5 : 1);
+        if (!(C > 0)) return;
+        const ownTw = v.ownTower && v.ownTower.hp > 0 ? v.ownTower : null;
+        const nearOwnCube = tg => ownTw && tg && tg.x != null && Math.abs(tg.x - ownTw.x) + Math.abs(tg.y - ownTw.y) <= 3;
+        for (const c of candidates) {
+            if (c._objectiveWin || !(c.score > -900)) continue;
+            const off = c.type === 'attack' || c.type === 'combo' || c.type === 'finisher'
+                || (c.type === 'spell' && DMG_KINDS.has(c.spell?.kind));
+            const healC = (c.type === 'spell' && HEAL_KINDS.has(c.spell?.kind))
+                || (c.type === 'item_targeted' && /heal/i.test(String(c.item || '')));
+            switch (t.job) {
+                case 'siege':
+                    if (c.type === 'attack_tower') c.score += 150 * C;
+                    break;
+                case 'search':
+                    if (c.type === 'inspect') c.score += (c._keyPickup ? 60 : (c._searchEV > 0 ? 40 + 200 * Math.min(1, c._searchEV) : 0)) * C;
+                    else if (c.type === 'move' && c._searchMove) c.score += 40 * C;
+                    else if (c.type === 'item' && c.item === 'scanner') c.score += 40 * C;
+                    break;
+                case 'intercept':
+                    if (off && c.target && c.target.id != null && c.target.id === t.targetId) c.score += 140 * C;
+                    else if (off && c.target && c.target.id != null && nearOwnCube(c.target)) c.score += 70 * C;
+                    break;
+                case 'anchor':
+                    if (c.type === 'move' && ownTw && c.x != null) {
+                        const dd = Math.abs(c.x - ownTw.x) + Math.abs(c.y - ownTw.y);
+                        if (dd > 4) c.score -= 12 * (dd - 4) * C;
+                    }
+                    if (off && c.target && c.target.id != null && nearOwnCube(c.target)) c.score += 60 * C;
+                    if (c.type === 'guard') c.score += 25 * C;
+                    if (healC && c.score > 0) c.score += 30 * C;
+                    break;
+                case 'heal':
+                    if (healC && c.score > 0) c.score = c.score * (1 + 0.5 * C) + 40 * C;
+                    else if (off && c.score > 0) c.score *= Math.max(0.5, 1 - 0.15 * C);
+                    break;
+                case 'fight':
+                    if (off && c.score > 0) c.score *= 1 + 0.08 * C;
+                    break;
+            }
+        }
+    }
+
+    // Move-then-Inspect (Phase 2): walk to the tile whose Inspect footprint has the best Key odds, then scan
+    // (the next AI loop's scoreInspect does the scan from there). Same budget as battle.js _inspectMoveBudget.
+    function _searchMoveCandidate(g, unit, v, moveTiles, out) {
+        if (window.EW_AI_NO_SEARCHMAP) return;
+        if ((unit.ap || 0) < g.AP_COST_ACTION * 2 || (unit.movesThisTurn || 0) >= 1) return;
+        if (typeof g.canUnitAct === 'function' && !g.canUnitAct(unit)) return;
+        const sm = _searchMapFor(g, unit, unit.player);
+        if (!sm || !(sm.hidden > 0)) return;
+        let reach = 1;
+        try { reach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(unit) : (unit.inspect || 1); } catch (e) {}
+        const evAt = new Map();
+        const ev = (x, y) => { const k = x + y * sm.W; if (!evAt.has(k)) evAt.set(k, _footprintEV(g, unit, sm, x, y)); return evAt.get(k); };
+        const bestFrom = (sx, sy, sz) => {
+            let b = 0;
+            for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+                const x = sx + dx, y = sy + dy;
+                if (x < 0 || y < 0 || x >= sm.W || y >= sm.H) continue;
+                const e = ev(x, y);
+                if (e <= b) continue;
+                try { if (g.isRangeBlockedByTerrain(sx, sy, x, y, sz)) continue; } catch (er) {}
+                b = e;
+            }
+            return b;
+        };
+        const here = bestFrom(unit.x, unit.y, unit.z);
+        let best = null, bestEV = here + 0.02;
+        for (const t of moveTiles) {
+            if (t._jump || t._takeoff) continue;
+            const e = bestFrom(t.x, t.y, t.z);
+            if (e > bestEV) { bestEV = e; best = t; }
+        }
+        if (!best) return;
+        let s = bestEV * wght(g, 'searchKeyValue_v1', 180) * 0.9;
+        if (v.visibleEnemies.length > 0) s *= _tacticOf(unit) === 'search' ? 0.75 : 0.3;
+        if (s > 5) out.push({ type: 'move', x: best.x, y: best.y, z: best.z, score: s, _intent: 'search_move', _searchMove: true });
+    }
+
+    // What an Inspect aimed at (x,y) is worth, for the imitation preview's synthetic score (the CPU's own math).
+    function _inspectScoreAt(g, unit, v, x, y) {
+        let fp = [];
+        try { fp = g.getInspectFootprint(unit, x, y) || []; } catch (e) {}
+        const known = (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]
+            && fp.some(f => f.x === h.x && f.y === h.y)).length;
+        const sm = _searchMapFor(g, unit, unit.player);
+        let s = known * 180 + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 180) : 0);
+        if (!known && v.visibleEnemies.length > 0) s *= 0.3;
+        return s;
+    }
+
+    /* THE HARD REPLY CHECK (Phase 4): Hard looks one reply ahead for its top five options — the worst thing a
+       visible enemy that is still standing afterwards can do to one of ours (a kill = that ally's kill value,
+       else half the damage). Options that remove the dangerous enemy, or step out of its reach, rise. */
+    function _enemyReplyCost(g, unit, v, c) {
+        let killedId = null;
+        try {
+            if ((c.type === 'attack' || c.type === 'spell') && c.target && c.target.id != null && c.target.hp != null
+                && estDamage(g, unit, c.target, c.type === 'spell' ? c.spell : null) >= effHp(c.target)) killedId = c.target.id;
+            if (c.type === 'finisher' && c.targetId != null) killedId = c.targetId;
+        } catch (e) {}
+        const endX = (c.type === 'move' && c.x != null) ? c.x : unit.x;
+        const endY = (c.type === 'move' && c.y != null) ? c.y : unit.y;
+        const ours = [{ u: unit, x: endX, y: endY }].concat((v.allies || []).filter(a => a && !a.dead && a.id !== unit.id).map(a => ({ u: a, x: a.x, y: a.y })));
+        let worst = 0;
+        for (const e of v.visibleEnemies) {
+            if (!e || e.dead || e.id === killedId) continue;
+            let mv = 2, rg = 1;
+            try { mv = g.getEffectiveMove(e) || 2; } catch (er) {}
+            try { rg = g.getEffectiveRange(e) || 1; } catch (er) {}
+            const reach = mv + Math.ceil(mv / 2) + rg;
+            for (const o of ours) {
+                if (Math.abs(e.x - o.x) + Math.abs(e.y - o.y) > reach) continue;
+                const dmg = unitThreatOutput(g, e, o.u);
+                const val = dmg >= effHp(o.u) ? killValue(g, e, o.u, null) : dmg * 0.5;
+                if (val > worst) worst = val;
+            }
+        }
+        return worst;
+    }
+    function _hardReplyCheck(g, unit, v, candidates) {
+        const f = wght(g, 'hardReplyFactor_v1', 0.5);
+        if (!(f > 0)) return;
+        const top = candidates.slice(0, 5).filter(c => c.score > 0 && !c._objectiveWin);
+        if (top.length < 2) return;
+        let min = Infinity;
+        for (const c of top) { c._replyCost = _enemyReplyCost(g, unit, v, c); if (c._replyCost < min) min = c._replyCost; }
+        for (const c of top) c.score -= f * (c._replyCost - min);
+        candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // MAIN LOOP — safety scaffolding kept from v3 (loop caps, stall
     // detection, failed-action memos); the decision pipeline is new:
     //   gather → per-candidate adjustments → end-tile danger → argmax
@@ -1868,6 +2621,8 @@
         }
 
         const vision = buildVision(unit);
+        // THE TACTICS (2026-10-23): the side's per-round plan (a no-op once planned this round)
+        _ensureTacticPlan(g, unit, vision);
         const _ranked = rankCandidates(unit, vision);
         const candidates = _ranked.candidates;
         let best = _ranked.best;
@@ -2037,7 +2792,12 @@
             c.score -= c._dangerCost;
         }
 
+        // THE TACTICS (2026-10-23): the unit's Tactic weighs its matching options.
+        _applyTactic(g, unit, vision, candidates);
+
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
+        // Hard looks one enemy reply ahead for its top options (Phase 4).
+        if (_actorDiffKey() === 'hard' && candidates.length > 1 && !candidates[0]._objectiveWin) _hardReplyCheck(g, unit, vision, candidates);
         let best = candidates[0];
 
         // FE rule: kills trump accumulated niceness. If a confirmed kill is
@@ -2101,8 +2861,9 @@
         if (h.type === 'entropyStrike') return !h.strikeType || !c.strikeType || c.strikeType === h.strikeType;
         if (h.type === 'finisher') return h.targetId == null || c.targetId === h.targetId;
         if (h.type === 'attack') return !!(c.target && c.target.x === h.x && c.target.y === h.y);
-        // The verb-level picks: which Key tile / which zone is a detail of the same choice.
-        if (h.type === 'inspect' || h.type === 'nexus_channel') return true;
+        // Inspect matches at the TILE now (the Tactics pass: imitation learns where to search); a zone stays verb-level.
+        if (h.type === 'inspect') return h.x == null || (c.x === h.x && c.y === h.y);
+        if (h.type === 'nexus_channel') return true;
         if (h.type === 'spell') {
             if (!c.spell) return false;
             const sameSpell = (h.spellId != null && c.spell.id === h.spellId) || (h.spellName && c.spell.name === h.spellName);
@@ -2178,6 +2939,11 @@
                     matched = true; synthetic = true;
                 }
             } else if (human.type === 'guard') { humanScore = 0; matched = true; synthetic = true; }
+            else if (human.type === 'inspect' && human.x != null) {
+                // an Inspect tile the CPU didn't propose: the CPU's own value of scanning there
+                humanScore = _inspectScoreAt(g, unit, v, human.x, human.y) - tileDangerCost(g, unit, v, unit.x, unit.y, unit.z);
+                matched = true; synthetic = true;
+            }
             if (!matched) return { matched: false, best: _candDesc(best) };
             const agree = !!(best && hc && best === hc);
             return { matched: true, synthetic, agree, margin: humanScore - bestScore,
@@ -2342,23 +3108,31 @@
         // nearer finish (2026-10-08 imitation report: with two of the CPU's
         // units dead it wanted the Cube by 580-1,170 while mondo finished the
         // team and won). Trainable via cubeWindowBonus_v1.
-        let windowB = 0;
-        const groundEnemies = v.visibleEnemies.filter(e =>
-            Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
-        );
-        if (groundEnemies.length === 0) windowB += AI_TUNE.towerClearBonus;
-        else if (groundEnemies.length === 1) windowB += 60;
-
         const ws = v.winState;
-        if (ws.enemyDeadCount >= 2) windowB += 300;
-        else if (ws.enemyDeadCount >= 1) windowB += 160;
-        if (ws.enemyMinRespawn >= 6) windowB += 300;
-        else if (ws.enemyMinRespawn >= 4) windowB += 200;
-        else if (ws.enemyMinRespawn >= 3) windowB += 130;
-        else if (ws.enemyMinRespawn >= 2) windowB += 60;
-        if (ws.phase === 'tower_push') windowB += 320;
-        if (ws.phase === 'numbers_advantage') windowB += 180;
-        score += windowB * _cubeWindowShare(g, unit, v, tower, estDmg) * wght(g, 'cubeWindowBonus_v1', 1);
+        /* THE CLOCKS (2026-10-23, Phase 3): the hit is worth the rounds it takes off our Cube clock, weighed
+           against how near our other wins and their nearest win are (_cubeClockValue). The flat window below
+           (and its trained cubeWindowBonus_v1) is the fallback: window.EW_AI_NO_CLOCKS, or a mode with no clocks. */
+        const _clk = (window.EW_AI_NO_CLOCKS || !_aiDiff().tactics) ? null : aiRaceClocks(g, unit.player, ws);
+        if (_clk && _clk.our.cube < _CLOCK_INF) {
+            score += _cubeClockValue(g, unit, v, estDmg, _clk);
+        } else {
+            let windowB = 0;
+            const groundEnemies = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
+            );
+            if (groundEnemies.length === 0) windowB += AI_TUNE.towerClearBonus;
+            else if (groundEnemies.length === 1) windowB += 60;
+
+            if (ws.enemyDeadCount >= 2) windowB += 300;
+            else if (ws.enemyDeadCount >= 1) windowB += 160;
+            if (ws.enemyMinRespawn >= 6) windowB += 300;
+            else if (ws.enemyMinRespawn >= 4) windowB += 200;
+            else if (ws.enemyMinRespawn >= 3) windowB += 130;
+            else if (ws.enemyMinRespawn >= 2) windowB += 60;
+            if (ws.phase === 'tower_push') windowB += 320;
+            if (ws.phase === 'numbers_advantage') windowB += 180;
+            score += windowB * _cubeWindowShare(g, unit, v, tower, estDmg) * wght(g, 'cubeWindowBonus_v1', 1);
+        }
         if (ws.enemyImminentRespawns > 0) score -= 40 * ws.enemyImminentRespawns;
         score += ws.roundUrgency * 100;
 
@@ -2556,7 +3330,21 @@
         let best = null;
         try { if (typeof g.getEntropyStrikeBestType === 'function') best = g.getEntropyStrikeBestType(unit); } catch (e) { best = null; }
         const mult = (best && best.score > 0) ? best.score : 1;
-        out.push({ type: 'entropyStrike', strikeType: best ? best.type : null, score: 300 + targets.length * per * 0.8 * mult, _noDanger: true });
+        /* KILLS COUNT (2026-10-23, the Tactics pass): the strike used to score the same on a full-HP board as on
+           the board it wipes. Each victim it would drop now adds its kill value, and dropping every standing body
+           adds the whole wipeout win (_killTally), like any other damage. The flat part is unchanged. */
+        let killB = 0;
+        _openKillTally();
+        try {
+            const sp = { kind: 'damage', dmg: per, damageType: 'magic', spellType: best ? best.type : null };
+            for (const t of targets) {
+                if (!t || t.dead || isProtected(g, t)) continue;
+                const est = estDamage(g, unit, t, sp, { rawBase: per, noRangeMult: true, noElement: true });
+                if (est >= effHp(t)) killB += killValue(g, unit, t, v);
+            }
+        } catch (e) {}
+        killB += _closeKillTally(g);
+        out.push({ type: 'entropyStrike', strikeType: best ? best.type : null, score: 300 + targets.length * per * 0.8 * mult + killB, _noDanger: true, _strikeKills: killB > 0 });
     }
 
     // ☠ THE FINISHER (2026-09-19): the gauge's other verb. One candidate
@@ -2580,7 +3368,9 @@
             if (!fc) continue;
             const value = (t.maxHp || 0) * 0.5 + (t.atk || 0) * 2 + (t.int || 0) * 2;
             if (fc.kill) {
-                out.push({ type: 'finisher', targetId: t.id, target: t, score: 340 + fc.dmg * 0.9 + value, _noDanger: true });
+                // THE TACTICS PASS (2026-10-23): an execution of their last body (or second-to-last) is the wipeout share too.
+                const wip = _wipeoutShare(g, t).share + _keyCarrierDenial(g, t);
+                out.push({ type: 'finisher', targetId: t.id, target: t, score: 340 + fc.dmg * 0.9 + value + wip, _noDanger: true });
             } else {
                 const s = 220 + fc.dmg * 0.7 * (fc.weak ? 1.15 : 1) * (fc.resist ? 0.6 : 1);
                 if (!bestNonKill || s > bestNonKill.score) bestNonKill = { type: 'finisher', targetId: t.id, target: t, score: s, _noDanger: true };
@@ -2648,14 +3438,18 @@
         const bombs = (g.state.bombs || []).filter(b => b.ownerUnitId === unit.id);
         if (bombs.length === 0) return;
         let total = 0;
-        for (const b of bombs) {
-            for (const e of v.visibleEnemies) {
-                if (Math.abs(e.x - b.x) + Math.abs(e.y - b.y) > (b.radius || 1)) continue;
-                const raw = (b.dmg || 120) * _offScale(unit, e);
-                total += Math.min(raw, effHp(e));
-                if (raw >= effHp(e)) total += killValue(g, unit, e, v) * 0.8;
+        _openKillTally();
+        try {
+            for (const b of bombs) {
+                for (const e of v.visibleEnemies) {
+                    if (Math.abs(e.x - b.x) + Math.abs(e.y - b.y) > (b.radius || 1)) continue;
+                    const raw = (b.dmg || 120) * _offScale(unit, e);
+                    total += Math.min(raw, effHp(e));
+                    if (raw >= effHp(e)) total += killValue(g, unit, e, v) * 0.8;
+                }
             }
-        }
+        } catch (e) { _killTally = null; throw e; }
+        total += _closeKillTally(g) * 0.8;
         if (total > 0) out.push({ type: 'detonate', score: total });
     }
 
@@ -2901,7 +3695,12 @@
                 'escape', 'selfHeal', 'transform'];
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
 
-            let score = scoreSpell(unit, spell, target, v);
+            // multi-kill wipeout: the tally sees every victim this one cast drops
+            _openKillTally();
+            let score = 0;
+            try { score = scoreSpell(unit, spell, target, v); } catch (e) { _killTally = null; throw e; }
+            const _wipeB = _closeKillTally(g);
+            if (score > 0) score += _wipeB;
             if (score <= 0) continue;
             // 🚪 THE ONE-WAY DOOR (§4.2): never land ourselves on a door, never slide an ally onto one
             const _capFeed = _capSpellFeeds(g, unit, spell, target);
@@ -2943,7 +3742,10 @@
         if (!pool.length) return 0;
         const hitSpell = rnd.mult !== 1 ? Object.assign({}, spell, { dmg: Math.round((spell.dmg || 0) * rnd.mult) }) : spell;
         let sum = 0;
-        for (const e of pool) sum += scoreOffensiveHit(g, unit, e, hitSpell, v, { splash: true }).val;
+        // the engine rolls the victims: a pool of kills is not a sure multi-kill, so it never counts toward the wipeout tally
+        const _kt = _killTally; _killTally = null;
+        try { for (const e of pool) sum += scoreOffensiveHit(g, unit, e, hitSpell, v, { splash: true }).val; }
+        finally { _killTally = _kt; }
         let n = pool.length;
         if (rnd.scope === 'units') {
             // our own side in reach dilutes the roll: each ally drawn is a hit on us
@@ -4127,6 +4929,9 @@
             }
         }
 
+        // 3b) move-then-Inspect: the tile with the best Key odds in Inspect reach (the search map)
+        _searchMoveCandidate(g, unit, v, moveTiles, out);
+
         // 4) macro-intent move
         const goal = pickMoveGoal(unit, v);
         if (!goal) return;
@@ -4610,6 +5415,14 @@
             score: 30, reason: 'explore',
         });
 
+        // THE TACTICS (2026-10-23): the unit's Tactic adds its own goal. A FORCED Tactic (the player's pick)
+        // damps the other goals while its own exists, so a Search unit doesn't wander off to siege.
+        const _tGoal = _tacticGoal(g, unit, v);
+        if (_tGoal) {
+            if (_tacticInfo(unit)?.forced) for (const goal of goals) if (!_TACTIC_KEEP_GOALS.has(goal.reason)) goal.score *= 0.6;
+            goals.push(_tGoal);
+        }
+
         // Apply the mode policy after generic intents too: otherwise the
         // 160-point approach_enemy silently overrides the TDM hunt policy.
         for (const goal of goals) {
@@ -4898,16 +5711,30 @@
         pool.sort((a, b) =>
             (Math.abs(a.x - cx) + Math.abs(a.y - cy)) - (Math.abs(b.x - cx) + Math.abs(b.y - cy)));
 
+        /* THE SEARCH MAP (2026-10-23, the Tactics pass): a blind Inspect is worth the Keys it is EXPECTED to find
+           (aiSearchMap: fog-honest odds per tile) × Search Value, aimed at the footprint with the best odds instead
+           of the tile nearest the centre. The old flat formula stays as the floor and as the kill-switch path
+           (window.EW_AI_NO_SEARCHMAP). One discount only now: a fight in sight (it used to stack ×0.3 twice). */
+        let pick = pool[0], ev = 0;
+        const sm = window.EW_AI_NO_SEARCHMAP ? null : _searchMapFor(g, unit, unit.player);
+        if (sm && sm.hidden > 0) {
+            for (const t of allTiles) {
+                const e = _footprintEV(g, unit, sm, t.x, t.y);
+                if (e > ev) { ev = e; pick = t; }
+            }
+        }
         let s = 8;
         if (unscanned.length > 0) s += 8;
         // Blind Key search (Arena hides all 5 and needs all 5).
         s += unrevHG * wght(g, 'keyHuntPriority_v1', 12);
+        if (sm) s = Math.max(s * 0.5, 8 + ev * wght(g, 'searchKeyValue_v1', 180));
         if (v.winState.phase === 'hg_losing') s += 25;
-        if (v.visibleEnemies.length > 0) s *= 0.3;   // there's a fight on
         const ws = v.winState;
-        if (ws.phase === 'tower_push' || ws.enemyDeadCount >= 1 || ws.roundUrgency >= 2) s *= 0.3;
+        // there's a fight on (a unit on the Search Tactic keeps most of its search value: the clocks sent it)
+        if (v.visibleEnemies.length > 0) s *= (sm && _tacticOf(unit) === 'search') ? 0.75 : 0.3;
+        else if (sm ? (ws.roundUrgency >= 2) : (ws.phase === 'tower_push' || ws.enemyDeadCount >= 1 || ws.roundUrgency >= 2)) s *= 0.3;
 
-        out.push({ type: 'inspect', x: pool[0].x, y: pool[0].y, score: s });
+        out.push({ type: 'inspect', x: pick.x, y: pick.y, score: s, _searchEV: ev });
     }
 
     function scoreFlairWard(unit, v, out) {
