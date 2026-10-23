@@ -1954,3 +1954,15 @@ real `false`.
   show up to 5 (was 4) so DETONATE still fits beside ENTROPY / CHANNEL / LAND / INSPECT.
 - Self Phase Walk log reads "X teleports from A to B" (named the caster twice).
 - Far Sight's unit list / caster pre-pick was already fixed by the Keys vs Keys thread (`_tileOnlyKinds` remoteView).
+
+## THE PICK REPAINTS NOW + the loading card + the Online chip (2026-10-23, matchup playtests shared-bugs thread)
+- Four of six matchup reports: after picking another target row the ▶ cursor moved at once but the ✓ CONFIRM chip
+  stayed on the old row until the next animation frame (seconds on a slow PC). The cursor is HorologeMenu state, the
+  ✓ comes from `state.pendingTarget` in the parent, which only repainted via rAF. battle.js `_hudPickNow()` dispatches
+  `ew-state-change-now` (hud.js `useGameState` → immediate setTick) on every new pick: `selectTargetFromMenu`,
+  `cycleSpellTarget`, `cycleAttackTarget`, the board-click pick in `clickTile`.
+- Row "slide" after a list opens is the rows' open animation: one frame on real hardware, seconds on SwiftShader. Left.
+- Loading card (`_lsFitCard` in showBattleLoadingScreen): a long map name wrapped and "BATTLE:1" sat on the CANON
+  NOTICE / SITE FILE note. The note moves down (to 5vh) first; only then the title steps down (floor 45 %), and between
+  notes it only shrinks. Re-fit on fonts.ready and every note.
+- online.js `#netStatusIndicator` sits under `.ew-matchmeta` (measured each tick, the UI Maker can move it), not on the map name.

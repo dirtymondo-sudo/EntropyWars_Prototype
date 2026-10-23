@@ -50737,11 +50737,35 @@
                     hintSrc.textContent = h.s ? '— ' + h.s : '';
                     hintIdx++;
                 };
+                /* THE CARD CLEARS THE NOTE (matchup playtests 2026-10-23, two of six: a long map name ran to two lines
+                   and "BATTLE:1" sat on top of the CANON NOTICE card under it). The note moves down under the card, as
+                   far as the loading strip allows; only if that is not enough does the title step its size down (never
+                   under 45 % of its size). Re-read on every new note and once the card's fonts have loaded; between
+                   notes the title only ever shrinks, so it does not jump in size each time the note changes. */
+                const _lsFitCard = (fresh) => {
+                    try {
+                        hintBox.style.bottom = '';
+                        if (fresh) { title.style.fontSize = ''; title._lsFs0 = 0; }
+                        if (!card.offsetHeight || !hintBox.offsetHeight || !hintText.textContent) return;
+                        const over = () => card.offsetTop + card.offsetHeight + 14 - hintBox.offsetTop;
+                        if (over() <= 0) return;
+                        const bottom = parseFloat(getComputedStyle(hintBox).bottom) || 0;
+                        hintBox.style.bottom = Math.max(Math.round(window.innerHeight * 0.05), Math.round(bottom - over())) + 'px';
+                        if (!title._lsFs0) title._lsFs0 = parseFloat(getComputedStyle(title).fontSize);
+                        for (let i = 0; i < 8 && over() > 0; i++) {
+                            const fs = parseFloat(getComputedStyle(title).fontSize);
+                            if (fs * 0.9 < title._lsFs0 * 0.45) break;
+                            title.style.fontSize = Math.round(fs * 0.9) + 'px';
+                        }
+                    } catch (_e) {}
+                };
+                try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => _lsFitCard(true)); } catch (_e) {}
                 setHint();
                 hintTimer = setInterval(() => {
                     hintBox.classList.add('ls-hint-fade');
                     setTimeout(() => {
                         setHint();
+                        _lsFitCard();
                         hintBox.classList.remove('ls-hint-fade');
                     }, 450);
                 }, LS_HINT_CYCLE_MS);
@@ -50823,6 +50847,7 @@
                 });
 
                 document.body.appendChild(overlay);
+                _lsFitCard(true);
                 requestAnimationFrame(() => overlay.classList.add('ls-active'));
                 /* THE GATE (2026-09-20): bring the battlefield up BEHIND the card — the same bring-up the opening
                    cinematic does behind its own veil (renderBoard + ThreeRenderer.activate) — so every terrain
@@ -53746,6 +53771,7 @@
                 if (!nextUnit) {
 
                     _setRoundAdvance(true);
+                    const _eorMine = ++_eorChainGen;   // THE QUIET COUNT: one live end of round at a time (see the watchdog)
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -53781,35 +53807,35 @@
                     showEndOfRoundOverview();
 
                     processEndOfRoundStatuses(function _afterStatusPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processEndOfRoundZonesAndSeeds(function _afterZoneSeedPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processDelayedSpellDetonations(function _afterDelayedSpellPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processTurretVolleys(function _afterTurretVolleyPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // 🚪 THE DOORS' TURN (DOOR_GUN_PLAN §3.3): every standing door acts, oldest first — after the turret
                     // volleys, before the capture hold tick (a lane that feeds a capture door this round is taken this round)
                     processDoorActs(function _afterDoorActsPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // Machine Elves — everyone still standing in a laser beam burns.
                     processMirrorBurn(function () {});
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processHomingWeather(function _afterHomingWeatherPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // 🧭 bodies the blasts, doors and storms threw into a hostile Nexus burn this round
                     processLateNexusBurn(function _afterLateNexusPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processEndOfRoundRegen(function _afterRegenPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     tickSkyEvent();
                     tickWeather();
@@ -53818,13 +53844,13 @@
                     meltIceNearLava();
                     _checkFrozenThaws();
                     /* 🚪 THE ONE-WAY DOOR: every holding door counts down; a seal can end the fight (wipeout) */
-                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner) return; }
+                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner || _eorMine !== _eorChainGen) return; }
                     state.round += 1;
                     _checkComebackArmed();
                     tickMatchClock();
                     /* The round limit just ended the match (round 20 done → TIME): stop here, so no
                        "Round 21 — Fight!", ROUND 21 card, respawns or new turn order follow the result. */
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
                     checkZodiacRotation();
                     checkNewSkyEvent();
 
@@ -53942,15 +53968,15 @@
 
                     const savedGen = _blitzTurnGen;
                     showRoundBanner(state.round, () => {
-                    if (_blitzTurnGen !== savedGen || state.winner) return;
+                    if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
                     playBufferedRoundEvents(() => {
-                        if (_blitzTurnGen !== savedGen || state.winner) return;
+                        if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                         showNextAnnouncement(() => {
-                            if (_blitzTurnGen !== savedGen || state.winner) return;
+                            if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             processPendingEarthquake(() => {
-                            if (_blitzTurnGen !== savedGen || state.winner) return;
+                            if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             _setRoundAdvance(false);
                             const firstUnit = getNextBlitzUnit();
@@ -54180,9 +54206,22 @@
            running, and the round++ mid-sequence also resets the timer). */
         let _ewStallSince = 0;
         let _ewStallRound = -1;
+        /* THE QUIET COUNT (matchup playtests 2026-10-23: the watchdog skipped all of round 9 in Wipeout vs Wipeout, round
+           19 in Wipeout vs Cube, and fired in round 12 of Cube vs Cube): 15 s of wall clock is not 15 s of quiet. One
+           long frame or a shader build on a slow PC blocks the page for seconds, and the next tick read the whole block
+           as a stall — in the middle of a live end of round, which then ran twice and ate a round. A stall now also needs
+           the engine to have answered EVERY tick in the window (a blocked page misses them) with nothing moving: no new
+           log line, no HP change, no new round, no new activation. */
+        const STALL_TICK_MS = 2000;
+        let _ewStallTicks = 0, _ewStallLastTick = 0, _ewStallSig = '';
+        function _ewStallSignature() {
+            let hp = 0;
+            for (const u of state.units || []) hp += (u.hp || 0) + (u.dead ? 100000 : 0);
+            return [state.round, (state._fullLogEntries || []).length, hp, _blitzTurnGen, _roundAdvanceInProgress ? 1 : 0].join('|');
+        }
         setInterval(function _noActiveUnitWatchdog() {
             try {
-                const reset = () => { _ewStallSince = 0; };
+                const reset = () => { _ewStallSince = 0; _ewStallTicks = 0; };
                 if (!state || state.phase !== 'battle' || state.winner) return reset();
                 if (typeof document !== 'undefined' && document.hidden) return reset();
                 /* Guests mirror the host's engine — never self-drive. */
@@ -54254,15 +54293,26 @@
                     maybeTriggerComputerTurn();
                     return;
                 }
-                if (!_ewStallSince || _ewStallRound !== state.round) {
+                /* the quiet count: a missed tick (the page was blocked) or anything that moved starts the window over */
+                const sig = _ewStallSignature();
+                const gap = _ewStallLastTick ? now - _ewStallLastTick : 0;
+                _ewStallLastTick = now;
+                if (!_ewStallSince || _ewStallRound !== state.round || sig !== _ewStallSig || gap > STALL_TICK_MS * 2) {
                     _ewStallSince = now;
                     _ewStallRound = state.round;
+                    _ewStallSig = sig;
+                    _ewStallTicks = 0;
                     return;
                 }
-                if (now - _ewStallSince < 15000) return;
+                _ewStallTicks++;
+                if (now - _ewStallSince < 15000 || _ewStallTicks < 7) return;
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
+                _ewStallTicks = 0;
+                /* a stalled end of round is dropped for good: the chain the watchdog restarts is the only one left
+                   (if the old one was only slow, it stops at its next beat instead of running a second round end) */
+                if (_roundAdvanceInProgress) _eorChainGen++;
                 _setRoundAdvance(false);
                 state._actionExecuting = false;
                 state.aiThinking = false;
@@ -54698,6 +54748,7 @@
         let _aiActionGen = 0;
 
         let _roundAdvanceInProgress = false;
+        let _eorChainGen = 0;   // bumps on each end-of-round start: an older chain stops at its next beat
         /* THE STEADY END OF ROUND (2026-10-19, mondo: "during the end of round, the combat log keeps fading in and out
            between camera movements, either keep it on or keep it off for the end of round"): state._eorLive mirrors the
            end-of-round sequence (synced, so the online guest has it too); three-renderer _takeoverBodyClasses turns it
@@ -58938,6 +58989,11 @@
         /* is the menu's pick in reach from where the caster stands? A pick that names a body of a shared column (a
            flyer over a ground unit) asks about THAT body: the lit tile is the column's, and casting from here would
            hand the hit to the other body (playtest 2026-10-21: a MOVE→CAST Cyborg row smashed the Cowboy below) */
+        /* THE PICK REPAINTS NOW (hud.js useGameState): a new ✓ pick repaints the HUD in the same turn, so the CONFIRM chip
+           never sits on the old row while the cursor and the bottom prompt already name the new one */
+        function _hudPickNow() {
+            try { window.dispatchEvent(new Event('ew-state-change-now')); } catch (e) {}
+        }
         function _mtcReachesPick(unit, spell, x, y, z) {
             const body = (z !== undefined && z !== null) ? unitAt(x, y, z) : null;
             if (body && body.x === x && body.y === y && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1)
@@ -59067,6 +59123,7 @@
             }
             renderBattleSelectionUI({ includeBoard: false });
             scheduleBoardRender();
+            _hudPickNow();
         }
         window.selectTargetFromMenu = selectTargetFromMenu;
 
@@ -59083,6 +59140,7 @@
                 const _cu = getSelectedUnit();
                 if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 scheduleBoardRender();
+                _hudPickNow();
             }
         }
         window.cycleSpellTarget = cycleSpellTarget;
@@ -59103,6 +59161,7 @@
                 if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 renderBattleSelectionUI({ includeBoard: false });
                 scheduleBoardRender();
+                _hudPickNow();
             }
         }
         window.cycleAttackTarget = cycleAttackTarget;
@@ -60354,6 +60413,7 @@
                     }
                     markDirty('board', 'selectedUnit', 'hud');
                     renderIfDirty();
+                    _hudPickNow();
                     return;
                 }
                 _confRepeatN = (state.pendingTarget && state.pendingTarget._repeatN) || 1;

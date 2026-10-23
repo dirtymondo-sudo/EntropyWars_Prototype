@@ -365,6 +365,12 @@ function useGameState() {
       });
     }
     window.addEventListener('ew-state-change', handler);
+    /* THE PICK REPAINTS NOW (matchup playtests 2026-10-23, four of six: after picking another target row the ▶ cursor
+       moved at once but the CONFIRM chip sat on the old row until the next frame — seconds on a slow PC — so a click or
+       ENTER in between went to the old pick). The cursor is the menu's own state; the ✓ CONFIRM comes from the game
+       state, which repainted only on the next animation frame. A pick (battle.js _hudPickNow) repaints in the same turn. */
+    const nowHandler = () => setTick(t => t + 1);
+    window.addEventListener('ew-state-change-now', nowHandler);
     // Status effects / stat stages can land or wear off outside a markDirty()
     // (DoT ticks, duration expiry, censer purges) — battle.js announces those
     // on the RenderBus, so listen there too and repaint the same frame. The
@@ -376,6 +382,7 @@ function useGameState() {
     }
     return () => {
       window.removeEventListener('ew-state-change', handler);
+      window.removeEventListener('ew-state-change-now', nowHandler);
       if (bus) {
         bus.off('unit:statusChanged', handler);
         bus.off('unit:damaged', handler);

@@ -6599,6 +6599,17 @@
                     '🔴 Disconnected';
                 ind.style.background = ok ? 'rgba(85,211,138,0.15)' : 'rgba(255,107,107,0.15)';
                 ind.style.color = ok ? 'var(--green)' : 'var(--red)';
+                /* under the map name, never on it (matchup playtests 2026-10-23, two of six: the chip sat across
+                   "AREA 51 ARENA" in the top right) — the name block can be moved in the UI Maker, so it is measured */
+                var top = 8;
+                try {
+                    var meta = document.querySelector('.ew-matchmeta'), host = ind.parentElement;
+                    var mr = meta && meta.getBoundingClientRect(), hr = host && host.getBoundingClientRect();
+                    var ir = ind.getBoundingClientRect();
+                    if (mr && hr && mr.height > 0 && mr.top - hr.top < 80 && mr.right > ir.left && mr.left < ir.right)
+                        top = Math.round(mr.bottom - hr.top + 6);
+                } catch (e) {}
+                if (ind.style.top !== top + 'px') ind.style.top = top + 'px';
             }, 2000);
 
             try {
