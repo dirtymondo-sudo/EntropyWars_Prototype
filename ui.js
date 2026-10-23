@@ -1550,6 +1550,7 @@
     function renderBoard() {
 
       const _threeActive = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive());
+      if (_threeActive && typeof syncSearchMap === 'function') syncSearchMap();   // THE SEARCH MAP follows the mode
 
       let _bfp = 0x811c9dc5 | 0;
       const _bfpI = (v) => { v = v | 0; _bfp = Math.imul(_bfp ^ (v & 0xffff), 16777619); _bfp = Math.imul(_bfp ^ (v >>> 16), 16777619); };
@@ -2678,7 +2679,9 @@
               const _sl = (_cls !== 'move-takeoff' && typeof predictWalkLanding === 'function')
                 ? predictWalkLanding(_self, _tx, _ty, _tz) : null;
               const _ex = _sl ? _sl.x : _tx, _ey = _sl ? _sl.y : _ty, _ez = _sl ? _sl.z : _tz;
-              if (_cls === 'move-jump' && typeof predictFallDamage === 'function'
+              /* a WALK down a drop deals the same fall (battle.js finishMoveAt: start height to end height) — Cube vs Cube
+                 matchup 2026-10-23: the Dinosaur walked into a crater for 156 with the tile lit like any other */
+              if ((_cls === 'move-jump' || _cls === 'move') && typeof predictFallDamage === 'function'
                   && predictFallDamage(_self, _self.z ?? 0, _dropZ, _tx, _ty) > 0) _tok += ' hazard';
               else if (_strikeFrom(_ex, _ey, _ez)) _tok += ' strike';
               else if (_hazardTile(_ex, _ey, _ez)) _tok += ' hazard';
@@ -4462,13 +4465,13 @@
 
                 let arenaP1Pts = 0, arenaP2Pts = 0;
                 if (isArena) {
-                    const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
+                    const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
                     function _liveArenaScore(p) {
                         const enemy = p === 1 ? 2 : 1;
                         let pts = 0;
                         pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                         const eTw = state.towers?.[enemy];
-                        if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
+                        if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
                         if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
                             pts += state.hourglasses.filter(h => {
                                 if (!h.carriedBy) return false;
@@ -5612,9 +5615,26 @@
            starts inside the same zone is not stepping in, so shuffling around
            inside a zone scores nothing. Cloaked / airborne units don't count
            (you can't claim ground you aren't visibly standing on). */
+        /* THE FLYER'S NOTE (Cube vs Cube matchup 2026-10-23): a flyer over a Nexus neither captures, contests nor holds
+           it (the rule above), but nothing said so — a Dragon "held" the centre while the enemy took it. Its own team
+           gets one line per zone visit (log line seen by that team only, so it leaks no position). */
+        function _nexusAirborneNote(unit) {
+            if (!unit || unit.dead || !state.nexusPoints || state.phase !== 'battle') return;
+            if (!(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) { if (unit._nexusAirNote) unit._nexusAirNote = null; return; }
+            let section = null;
+            for (const key of Object.keys(state.nexusPoints)) {
+                if (state.nexusPoints[key] && nexusZoneContains(state.nexusPoints[key], unit.x, unit.y)) { section = key; break; }
+            }
+            if (!section) { if (unit._nexusAirNote) unit._nexusAirNote = null; return; }
+            if (unit._nexusAirNote === section) return;
+            unit._nexusAirNote = section;
+            addLog(`⬡ ${_ctName(unit)} is flying over the ${_nexusLabel(section)} Nexus — airborne units don't capture, contest or hold a Nexus. LAND to count.`, unit.player);
+        }
+
         function nexusOnUnitArrive(unit, from) {
             if (!unit || unit.dead || !state.nexusPoints) return;
             if (state.phase !== 'battle') return;
+            _nexusAirborneNote(unit);
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'invisible')) return;
             if (from) _nexusOnUnitLeave(unit, from);
@@ -5672,6 +5692,7 @@
         function processNexusIncome() {
             if (!state.nexusPoints) return;
             const thr = _nexusThreshold();
+            for (const u of state.units) _nexusAirborneNote(u);
             for (const section of Object.keys(state.nexusPoints)) {
                 const nex = state.nexusPoints[section];
                 if (!nex) continue;
@@ -7337,13 +7358,13 @@
 
             const isArena = !mpMode || mpMode.id === 'arena';
             if (isArena) {
-                const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
+                const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
                 function _pmArenaScore(p) {
                     const enemy = p === 1 ? 2 : 1;
                     let pts = 0;
                     pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                     const eTw = state.towers?.[enemy];
-                    if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
+                    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
                     if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
                         pts += state.hourglasses.filter(h => {
                             if (!h.carriedBy) return false;
@@ -14680,10 +14701,28 @@
                 const isHeal = ['heal', 'healAll'].includes(spell.kind);
 
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    /* SPARED ALLIES (Keys vs Keys matchup: Spike the Ball painted the Quarterback's own team red): a footprint
+                       tile holding one of the caster's team the cast does NOT hurt (the engine's forecast leaves them out)
+                       wears a dim grey plate, not the crimson "will be hit" one. Friendly fire / a soaked ally the chain
+                       reaches stays crimson. */
+                    let _spared = null;
+                    if (!isHeal && typeof isAllyUnit === 'function') {
+                        const _allyTiles = footprint.filter(t => (state.units || []).some(u => !u.dead && u !== unit
+                            && u.x === t.x && u.y === t.y && isAllyUnit(u, unit)));
+                        const _plan = (_allyTiles.length && typeof forecastSpellPlan === 'function')
+                            ? forecastSpellPlan(unit, spell, x, y, ov ? undefined : (state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y ? state.pendingTarget.z : undefined))
+                            : null;
+                        if (_plan && _plan.handled) {
+                            const _hitIds = new Set(_plan.hits.map(hh => hh.unit && hh.unit.id));
+                            _spared = new Set(_allyTiles.filter(t => !(state.units || []).some(u => !u.dead && u.x === t.x && u.y === t.y
+                                && _hitIds.has(u.id))).map(t => t.x + ',' + t.y));
+                        }
+                    }
                     /* THE CLARITY PASS: every tile the cast WILL hit is the same loud crimson plate (the renderer's
                        'aoe' style adds the inner frame); the aim tile carries the cursor brackets. */
                     const overlayTiles = footprint.map(t => {
                         const isCenter = (t.x === x && t.y === y);
+                        if (_spared && _spared.has(t.x + ',' + t.y)) return { x: t.x, y: t.y, color: 0x9aa0b4, opacity: 0.32, cursor: isCenter };
                         return {
                             x: t.x, y: t.y,
                             color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,

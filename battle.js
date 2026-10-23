@@ -6231,6 +6231,7 @@
 
         /* Phase 5 wave A (2026-09-08): onKillHealPct / onKillRefundAp
            (Jurassic Jaw) — a kill feeds the caster and hands back AP. */
+        let _onKillCastSeq = 0;   // doSpell's cast counter: a kill refund belongs to the cast that was running when it landed
         function _applyOnKillRiders(unit, target, spell) {
             // THE SPELL AUDIT Batch D: a fresh kill is _dying (defeatUnit flips .dead ~800 ms later) — count it as dead
             if (!spell || !target || !(target.dead || target._dying) || !unit || unit.dead) return;
@@ -6243,6 +6244,10 @@
                 const before = unit.ap || 0;
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
+                    /* THE KILL'S AP OUTLIVES THE CAST (Wipeout vs Wipeout playtest 2026-10-23: "Jurassic Jaw: Dinosaur regains
+                       1 AP." and the turn passed at 0 AP): the hit lands before the cast's finishAction, whose spendAllAP (a
+                       damaging cast ends the turn) wiped the refund. finishAction pays it back after the spend, like a press. */
+                    unit._onKillApRefund = { n: unit.ap - before, seq: _onKillCastSeq };
                     unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
                     unit._jumpedThisTurn = false;   // a refund hands the jump back too (applyPressTurn)
                     addLog(`⚡ ${_ctSp(spell.name)}: ${_ctName(unit)} regains ${unit.ap - before} AP.`);
@@ -9278,10 +9283,16 @@
             if (!thief || !victim) return out;
             const label = opts.verb || 'steals';
             out.keys = moveHourglassesBetweenUnits(victim, thief, opts.keys != null ? opts.keys : 1);
+            /* opts.fxDelayMs: the Keys / items change hands NOW (host state), the line and the floats wait for the hit
+               that takes them (Rustle's yank: the log read "Key taken" before the pull and the damage, Keys vs Keys) */
+            const _fx = (fn) => { if (opts.fxDelayMs > 0) window.setTimeout(fn, opts.fxDelayMs); else fn(); };
             if (out.keys) {
-                addLog(`${_ctName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
-                showFloatingTextForUnit(thief, `+${out.keys} KEY`, 'pickup', { durationMs: 1200 });
-                showFloatingTextForUnit(victim, `-${out.keys} KEY`, 'damage', { durationMs: 1000 });
+                const _nk = out.keys;
+                _fx(() => {
+                    addLog(`${_ctName(thief)} — ${label}: ${_nk} Key${_nk === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
+                    showFloatingTextForUnit(thief, `+${_nk} KEY`, 'pickup', { durationMs: 1200 });
+                    showFloatingTextForUnit(victim, `-${_nk} KEY`, 'damage', { durationMs: 1000 });
+                });
             }
             let wantItems = opts.items != null ? opts.items : 1;
             while (wantItems > 0 && victim.items) {
@@ -9295,8 +9306,11 @@
                 wantItems--;
             }
             if (out.items.length) {
-                addLog(`${_ctName(thief)} — ${label}: ${out.items.join(', ')} taken from ${_ctName(victim)}!`);
-                showFloatingTextForUnit(thief, `📦 Stole ${out.items[0]}${out.items.length > 1 ? ' +' + (out.items.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+                const _ni = out.items.slice();
+                _fx(() => {
+                    addLog(`${_ctName(thief)} — ${label}: ${_ni.join(', ')} taken from ${_ctName(victim)}!`);
+                    showFloatingTextForUnit(thief, `📦 Stole ${_ni[0]}${_ni.length > 1 ? ' +' + (_ni.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+                });
             }
             return out;
         }
@@ -24335,7 +24349,11 @@
                     // spells). ownerUnitId drops the settle outright once the
                     // blitz turn has moved on, so the pull-back can never yank
                     // the view back off the newly-activated unit.
-                    armActionCamSettle(
+                    // window._armActionCamSettle, not the bare function: online.js wraps the window copy to relay
+                    // the settle, and this (the host's REMOTE-side branch) is the one the guest's own actions take.
+                    // Called bare, the relay never fired and the guest sat in the close-up after a press refund
+                    // (Cube vs Keys report 2026-10-23).
+                    (window._armActionCamSettle || armActionCamSettle)(
                         targetUnit ? targetUnit.id : null,
                         targetUnit && !targetUnit.dead ? targetUnit.x : undefined,
                         targetUnit && !targetUnit.dead ? targetUnit.y : undefined,
@@ -24429,7 +24447,7 @@
                     // (a chained cast/attack re-arms it, so fast chains still
                     // stay in the shot). _preCineView remains pending so the
                     // real return still lands on the player's own framing.
-                    armActionCamSettle(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
+                    (window._armActionCamSettle || armActionCamSettle)(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -24442,6 +24460,9 @@
                 // status ticks on OTHER units — keep the tactical path.)
                 if (this._tpsHold && !opts.focusTarget && focusUnit
                     && typeof _tpsUnitShot === 'function') {
+                    if ((this._cineShotId != null || this._preCineView != null) && typeof window._ewRelayCamSettle === 'function') {
+                        window._ewRelayCamSettle(focusUnit.id, focusUnit.x, focusUnit.y, actionMs(700));
+                    }
                     this._savedState = null;
                     this._preCineView = null;
                     this._cineShotId = null;
@@ -24456,6 +24477,10 @@
                 // can still tell it is returning from a cinematic shot.
                 const cineWasActive = this._cineShotId != null || this._preCineView != null;
                 this._cineShotId = null;
+                // The guest watching this unit act replayed the shot but gets none of this return: send it the settle.
+                if (cineWasActive && focusUnit && typeof window._ewRelayCamSettle === 'function') {
+                    window._ewRelayCamSettle(focusUnit.id, focusUnit.x, focusUnit.y, actionMs(700));
+                }
                 // Keep the rig's keep-subject floor response alive through the
                 // return tween (see _releaseCineSubject) — covers both branch
                 // durations below (800/650ms).
@@ -36109,6 +36134,23 @@
             return adj.find(t => canOccupy(t.x, t.y)) || null;
         }
         window.chargeLandingTile = chargeLandingTile;
+        /* Does this charge rush in BEFORE its strike (doSpell's third-person charge, _runChargeToTargetSpell) or strike
+           from where the caster stands and hop in after (_runPostEffects)? doSpell and the forecast both ask HERE, so the
+           preview hits from the same tile the cast does. The fog term reads the screen that RUNS the cast: online that is
+           the host's, so a guest's preview of its own charge reads the host's answer (Wipeout vs Keys matchup 2026-10-23:
+           an airborne Superhero's Heroic Leap showed -476 from the landing tile, the host struck from the air for 597). */
+        function chargeStrikesFirst(unit, spell, target) {
+            if (!unit || !spell || !spell.chargeToTarget || !target || target.id === unit.id) return false;
+            if (!state.cinematicActionCam || _skipVisuals() || _isClashMode()) return false;
+            if (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) <= 1) return false;
+            if (state.fogOfWar && typeof getViewerPlayer === 'function') {
+                const _netGuest = !!(window._NET && window._NET.online && window._NET.role === 'guest');
+                const engineViewer = _netGuest ? enemyOf(getViewerPlayer()) : getViewerPlayer();
+                if (state.activePlayer !== engineViewer) return false;
+            }
+            return true;
+        }
+        window.chargeStrikesFirst = chargeStrikesFirst;
 
         /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
            allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
@@ -36636,10 +36678,7 @@
                 const dt = spell.damageType || 'magic';
                 const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor });
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
-                const chargeFirst = spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
-                    && target.id !== unit.id && !_isClashMode()
-                    && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
-                    && !(state.fogOfWar && typeof getViewerPlayer === 'function' && state.activePlayer !== getViewerPlayer());
+                const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
                 if (chargeFirst) {
                     const lt = chargeLandingTile(unit, target);
@@ -39118,8 +39157,18 @@
             return true;
         }
 
+        /* RANDOM KEYS (mondo 2026-10-23: "make the keys completely random on the whole board, not any rules like have
+           to be 2 tiles apart"): the 2-tile spacing is gone; a tile only refuses a Key that already lies on it. */
         function canPlaceHourglassAt(x, y) {
-            return !state.hourglasses.some(h => h.carriedBy === null && Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) <= 2);
+            return !state.hourglasses.some(h => h.carriedBy === null && h.x === x && h.y === y);
+        }
+        /* An even shuffle on the match's seeded stream (the old sort(() => rng - 0.5) favoured the scan order). */
+        function _shuffleKeySpots(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(engineRng() * (i + 1));
+                const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+            }
+            return arr;
         }
 
         /* Key rules for the active mode (2026-09-07 Arena rules pass).
@@ -39128,9 +39177,8 @@
                          (mode.keySpawnCount, else the map's CONFIG.winHourglasses)
              toWin     — how many one team must CARRY for THRESHOLD STABILIZED
                          (mode.keysToWin, else "every Key on the board")
-             fixedPool — true when the mode pins both numbers: the pool never
-                         restocks (the old round-10 spawnPeriodicHourglasses top-up
-                         would hand out extra Keys against a fixed 3-of-5 target).
+             fixedPool — true when the mode pins both numbers. (No mode restocks
+                         Keys any more: the round-10 top-up was removed 2026-10-23.)
            Arena: 5 spawned / all 5 to win. Every other mode is unchanged. */
         function getArenaKeyRules(mpModeArg) {
             const mp = mpModeArg || (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
@@ -39202,21 +39250,16 @@
                 }
             }
 
-            const w = bw();
-            const centerSpan = w >= 20 ? 4 : (w >= 8 ? 2 : w);
-            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
-            const centerMaxX = centerMinX + centerSpan - 1;
-
-            function getCenterCandidatesForFloor(floorId, terrain) {
+            /* RANDOM KEYS (mondo 2026-10-23): every Key lands on a random tile of the WHOLE board — no centre columns
+               first, no spacing. Kept: a walkable tile the teams can reach, no unit on it, one Key per tile. */
+            function getCandidatesForFloor(floorId, terrain) {
                 const floorCandidates = [];
+                if (floorId === 'ground' || floorId === 'earth') return candidates.slice();
                 if (!terrain) return floorCandidates;
                 for (let y = 0; y < terrain.length; y++) {
                     for (let x = 0; x < (terrain[y]?.length || 0); x++) {
-                        if (x < centerMinX || x > centerMaxX) continue;
                         const t = terrain[y][x];
-                        if ((floorId === 'ground' || floorId === 'earth') && !unitAt(x, y) && isTerrainPassable(x, y) && _keyTileOk(x, y)) {
-                            floorCandidates.push({ x, y });
-                        } else if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
+                        if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
                             floorCandidates.push({ x, y });
                         } else if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') {
                             floorCandidates.push({ x, y });
@@ -39228,54 +39271,20 @@
 
             function spawnHourglassesOnFloor(floorId, terrain, count) {
                 let placed = 0;
-
-                let pool = getCenterCandidatesForFloor(floorId, terrain);
                 /* Hourglass placement is match state — seeded stream (stage 5). */
-                pool.sort(() => engineRng() - 0.5);
+                const pool = _shuffleKeySpots(getCandidatesForFloor(floorId, terrain));
                 for (const spot of pool) {
-                    if (canPlaceHourglassAt(spot.x, spot.y)) {
-                        state.hourglasses.push({
-                            id: `hg-${state.hourglasses.length + 1}`,
-                            x: spot.x,
-                            y: spot.y,
-                            floor: floorId,
-                            visibleTo: { 1: false, 2: false },
-                            carriedBy: null
-                        });
-                        placed++;
-                        if (placed >= count) return placed;
-                    }
-                }
-
-                if (placed < count) {
-                    let fallback = [];
-                    if (floorId === 'ground' || floorId === 'earth') {
-                        fallback = candidates.filter(c => c.x < centerMinX || c.x > centerMaxX);
-                    } else if (terrain) {
-                        for (let y = 0; y < terrain.length; y++) {
-                            for (let x = 0; x < (terrain[y]?.length || 0); x++) {
-                                if (x >= centerMinX && x <= centerMaxX) continue;
-                                const t = terrain[y][x];
-                                if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') fallback.push({ x, y });
-                                if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') fallback.push({ x, y });
-                            }
-                        }
-                    }
-                    fallback.sort(() => engineRng() - 0.5);
-                    for (const spot of fallback) {
-                        if (canPlaceHourglassAt(spot.x, spot.y)) {
-                            state.hourglasses.push({
-                                id: `hg-${state.hourglasses.length + 1}`,
-                                x: spot.x,
-                                y: spot.y,
-                                floor: floorId,
-                                visibleTo: { 1: false, 2: false },
-                                carriedBy: null
-                            });
-                            placed++;
-                            if (placed >= count) return placed;
-                        }
-                    }
+                    if (placed >= count) break;
+                    if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
+                    state.hourglasses.push({
+                        id: `hg-${state.hourglasses.length + 1}`,
+                        x: spot.x,
+                        y: spot.y,
+                        floor: floorId,
+                        visibleTo: { 1: false, 2: false },
+                        carriedBy: null
+                    });
+                    placed++;
                 }
                 return placed;
             }
@@ -39288,54 +39297,6 @@
             if (MAP_HAS_FLOORS) {
                 spawnHourglassesOnFloor('above', state.boardTerrain, hgPerSection);
                 spawnHourglassesOnFloor('below', state.boardTerrain, hgPerSection);
-            }
-        }
-
-        function spawnPeriodicHourglasses() {
-            const RESPAWN_COUNT = 3;
-            const MAX_UNCOLLECTED_GROUND = 6;
-
-            const uncollectedGround = state.hourglasses.filter(
-                h => h.carriedBy === null
-            ).length;
-            const canSpawn = Math.min(RESPAWN_COUNT, MAX_UNCOLLECTED_GROUND - uncollectedGround);
-            if (canSpawn <= 0) return;
-
-            const w = bw(), h = bh();
-            const centerSpan = w >= 20 ? 6 : (w >= 8 ? 4 : w);
-            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
-            const centerMaxX = centerMinX + centerSpan - 1;
-
-            const centerPool = [];
-            const terrain = state.boardTerrain || state.boardTerrain;
-            for (let y = 0; y < h; y++) {
-                for (let x = centerMinX; x <= centerMaxX; x++) {
-                    if (!unitAt(x, y) && isTerrainPassable(x, y) && canPlaceHourglassAt(x, y)) {
-                        centerPool.push({ x, y });
-                    }
-                }
-            }
-            centerPool.sort(() => engineRng() - 0.5);
-
-            let placed = 0;
-            for (const spot of centerPool) {
-                if (placed >= canSpawn) break;
-
-                if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
-                if (unitAt(spot.x, spot.y)) continue;
-                state.hourglasses.push({
-                    id: `hg-${state.hourglasses.length + 1}`,
-                    x: spot.x,
-                    y: spot.y,
-                    floor: 'ground',
-                    visibleTo: { 1: false, 2: false },
-                    carriedBy: null
-                });
-                placed++;
-            }
-
-            if (placed > 0) {
-                addLog(`${placed} new Key${placed > 1 ? 's' : ''} materialized in the center of the battlefield!`);
             }
         }
 
@@ -39493,6 +39454,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
@@ -43038,6 +43000,20 @@
             return true;
         }
         window._boardApproachPick = _boardApproachPick;
+        /* THE CASTER IS NO TARGET (Wipeout vs Wipeout playtest 2026-10-23: with Tail Whip armed, a click on the Mech behind
+           the Dinosaur hit the Dinosaur's own big model and the pick read "TAIL WHIP → Dinosaur"): while the armed verb can
+           never take the acting unit (an attack, an offensive unit-target spell), the renderer's click looks past its model
+           to the body behind it (three-renderer _screenClick). Returns the acting unit's id, else null. */
+        window._ewPickSkipsUnitId = function () {
+            const u = getSelectedUnit();
+            if (!u || u.dead || state.phase !== 'battle') return null;
+            if (state.actionMode === 'attack') return u.id;
+            if (state.actionMode !== 'spell') return null;
+            const sp = (u.spells || []).find(s => s.name === state.selectedTool)
+                || (u._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!sp || isSpellSelfCast(sp) || isSpellTileTargeted(sp) || _kindMeta(sp).directional) return null;
+            return _kindMeta(sp).offensive ? u.id : null;
+        };
         /* THE GUEST PICK (PvP playtest 2026-10-23: the guest saw "CONFIRM — Dark Grass H10" with Catgirl highlighted,
            and pressing it did nothing): an online guest's armed board click never ran the engine's pick — online.js
            armed ITS OWN pick on whatever tile was clicked (an empty square, the enemy beside the one aimed at, one out
@@ -46271,7 +46247,7 @@
            columns of points, the kill / point / capture modes as one score line. */
         /* the Arena composite score of one side — the PERFORMANCE tally and the head's fact line read the same */
         function _vicArenaScore(p) {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
             const enemy = p === 1 ? 2 : 1;
             let pts = 0, details = [];
             const kills = state.matchKills?.[p] || 0;
@@ -46282,7 +46258,6 @@
             let tDmg = 0;
             if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
             let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-            if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
             pts += tDmgPts;
             details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
             let hgCount = 0;
@@ -49312,6 +49287,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.winner = null;
             state.currentBattleTrackKey = null;
@@ -49907,6 +49883,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.winner = null;
             state.currentBattleTrackKey = null;
@@ -50117,6 +50094,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.setupStep = 'builder';
             state.bombs = [];
@@ -50183,6 +50161,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
 
             randomizeSharedObjectives();
@@ -50210,7 +50189,7 @@
                    hg_losing phases (it used to guess 5). Synced to the guest. */
                 state.hourglassTarget = _need;
                 if (_placed < _kr.spawn) {
-                    addLog(`Could not place all Keys with spacing rules on this roll (${_placed}/${_kr.spawn}).`);
+                    addLog(`Could not place all Keys on this board (${_placed}/${_kr.spawn}).`);
                 }
                 if (_placed > 0 && _need > 0 && _need < _placed) {
                     addLog(`${_placed} Keys scattered across the battlefield. Carry ${_need} at once to STABILIZE THE THRESHOLD — every Key secured is a permanent team buff!`);
@@ -50789,11 +50768,35 @@
                     hintSrc.textContent = h.s ? '— ' + h.s : '';
                     hintIdx++;
                 };
+                /* THE CARD CLEARS THE NOTE (matchup playtests 2026-10-23, two of six: a long map name ran to two lines
+                   and "BATTLE:1" sat on top of the CANON NOTICE card under it). The note moves down under the card, as
+                   far as the loading strip allows; only if that is not enough does the title step its size down (never
+                   under 45 % of its size). Re-read on every new note and once the card's fonts have loaded; between
+                   notes the title only ever shrinks, so it does not jump in size each time the note changes. */
+                const _lsFitCard = (fresh) => {
+                    try {
+                        hintBox.style.bottom = '';
+                        if (fresh) { title.style.fontSize = ''; title._lsFs0 = 0; }
+                        if (!card.offsetHeight || !hintBox.offsetHeight || !hintText.textContent) return;
+                        const over = () => card.offsetTop + card.offsetHeight + 14 - hintBox.offsetTop;
+                        if (over() <= 0) return;
+                        const bottom = parseFloat(getComputedStyle(hintBox).bottom) || 0;
+                        hintBox.style.bottom = Math.max(Math.round(window.innerHeight * 0.05), Math.round(bottom - over())) + 'px';
+                        if (!title._lsFs0) title._lsFs0 = parseFloat(getComputedStyle(title).fontSize);
+                        for (let i = 0; i < 8 && over() > 0; i++) {
+                            const fs = parseFloat(getComputedStyle(title).fontSize);
+                            if (fs * 0.9 < title._lsFs0 * 0.45) break;
+                            title.style.fontSize = Math.round(fs * 0.9) + 'px';
+                        }
+                    } catch (_e) {}
+                };
+                try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => _lsFitCard(true)); } catch (_e) {}
                 setHint();
                 hintTimer = setInterval(() => {
                     hintBox.classList.add('ls-hint-fade');
                     setTimeout(() => {
                         setHint();
+                        _lsFitCard();
                         hintBox.classList.remove('ls-hint-fade');
                     }, 450);
                 }, LS_HINT_CYCLE_MS);
@@ -50875,6 +50878,7 @@
                 });
 
                 document.body.appendChild(overlay);
+                _lsFitCard(true);
                 requestAnimationFrame(() => overlay.classList.add('ls-active'));
                 /* THE GATE (2026-09-20): bring the battlefield up BEHIND the card — the same bring-up the opening
                    cinematic does behind its own veil (renderBoard + ThreeRenderer.activate) — so every terrain
@@ -53798,6 +53802,7 @@
                 if (!nextUnit) {
 
                     _setRoundAdvance(true);
+                    const _eorMine = ++_eorChainGen;   // THE QUIET COUNT: one live end of round at a time (see the watchdog)
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -53833,35 +53838,35 @@
                     showEndOfRoundOverview();
 
                     processEndOfRoundStatuses(function _afterStatusPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processEndOfRoundZonesAndSeeds(function _afterZoneSeedPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processDelayedSpellDetonations(function _afterDelayedSpellPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processTurretVolleys(function _afterTurretVolleyPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // 🚪 THE DOORS' TURN (DOOR_GUN_PLAN §3.3): every standing door acts, oldest first — after the turret
                     // volleys, before the capture hold tick (a lane that feeds a capture door this round is taken this round)
                     processDoorActs(function _afterDoorActsPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // Machine Elves — everyone still standing in a laser beam burns.
                     processMirrorBurn(function () {});
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processHomingWeather(function _afterHomingWeatherPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // 🧭 bodies the blasts, doors and storms threw into a hostile Nexus burn this round
                     processLateNexusBurn(function _afterLateNexusPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processEndOfRoundRegen(function _afterRegenPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     tickSkyEvent();
                     tickWeather();
@@ -53870,13 +53875,13 @@
                     meltIceNearLava();
                     _checkFrozenThaws();
                     /* 🚪 THE ONE-WAY DOOR: every holding door counts down; a seal can end the fight (wipeout) */
-                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner) return; }
+                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner || _eorMine !== _eorChainGen) return; }
                     state.round += 1;
                     _checkComebackArmed();
                     tickMatchClock();
                     /* The round limit just ended the match (round 20 done → TIME): stop here, so no
                        "Round 21 — Fight!", ROUND 21 card, respawns or new turn order follow the result. */
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
                     checkZodiacRotation();
                     checkNewSkyEvent();
 
@@ -53988,32 +53993,21 @@
                         if (u._recallCooldown > 0) u._recallCooldown--;
                     }
 
-                    // Hourglasses restock ONCE, at round 10 — never again. (The old
-                    // `round % 10` schedule re-fired at round 20+ when sudden death
-                    // pushed a match past the round limit, dropping fresh hourglasses
-                    // into an instant-win-on-pickup situation.)
-                    // A FIXED Key pool (Arena: 5 spawned / 3 to win) never restocks —
-                    // a top-up would hand out extra Keys against a fixed target.
-                    if (state.round === 10 && !state.suddenDeathActive) {
-                        const _hgMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-                        if ((!_hgMode || _hgMode.hasHourglasses) && !getArenaKeyRules(_hgMode).fixedPool) {
-                            spawnPeriodicHourglasses();
-                        }
-                    }
+                    // No Key top-up: the round-10 restock (spawnPeriodicHourglasses) is gone (mondo 2026-10-23).
 
                     checkBossSpawns();
 
                     const savedGen = _blitzTurnGen;
                     showRoundBanner(state.round, () => {
-                    if (_blitzTurnGen !== savedGen || state.winner) return;
+                    if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
                     playBufferedRoundEvents(() => {
-                        if (_blitzTurnGen !== savedGen || state.winner) return;
+                        if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                         showNextAnnouncement(() => {
-                            if (_blitzTurnGen !== savedGen || state.winner) return;
+                            if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             processPendingEarthquake(() => {
-                            if (_blitzTurnGen !== savedGen || state.winner) return;
+                            if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             _setRoundAdvance(false);
                             const firstUnit = getNextBlitzUnit();
@@ -54243,9 +54237,22 @@
            running, and the round++ mid-sequence also resets the timer). */
         let _ewStallSince = 0;
         let _ewStallRound = -1;
+        /* THE QUIET COUNT (matchup playtests 2026-10-23: the watchdog skipped all of round 9 in Wipeout vs Wipeout, round
+           19 in Wipeout vs Cube, and fired in round 12 of Cube vs Cube): 15 s of wall clock is not 15 s of quiet. One
+           long frame or a shader build on a slow PC blocks the page for seconds, and the next tick read the whole block
+           as a stall — in the middle of a live end of round, which then ran twice and ate a round. A stall now also needs
+           the engine to have answered EVERY tick in the window (a blocked page misses them) with nothing moving: no new
+           log line, no HP change, no new round, no new activation. */
+        const STALL_TICK_MS = 2000;
+        let _ewStallTicks = 0, _ewStallLastTick = 0, _ewStallSig = '';
+        function _ewStallSignature() {
+            let hp = 0;
+            for (const u of state.units || []) hp += (u.hp || 0) + (u.dead ? 100000 : 0);
+            return [state.round, (state._fullLogEntries || []).length, hp, _blitzTurnGen, _roundAdvanceInProgress ? 1 : 0].join('|');
+        }
         setInterval(function _noActiveUnitWatchdog() {
             try {
-                const reset = () => { _ewStallSince = 0; };
+                const reset = () => { _ewStallSince = 0; _ewStallTicks = 0; };
                 if (!state || state.phase !== 'battle' || state.winner) return reset();
                 if (typeof document !== 'undefined' && document.hidden) return reset();
                 /* Guests mirror the host's engine — never self-drive. */
@@ -54317,15 +54324,26 @@
                     maybeTriggerComputerTurn();
                     return;
                 }
-                if (!_ewStallSince || _ewStallRound !== state.round) {
+                /* the quiet count: a missed tick (the page was blocked) or anything that moved starts the window over */
+                const sig = _ewStallSignature();
+                const gap = _ewStallLastTick ? now - _ewStallLastTick : 0;
+                _ewStallLastTick = now;
+                if (!_ewStallSince || _ewStallRound !== state.round || sig !== _ewStallSig || gap > STALL_TICK_MS * 2) {
                     _ewStallSince = now;
                     _ewStallRound = state.round;
+                    _ewStallSig = sig;
+                    _ewStallTicks = 0;
                     return;
                 }
-                if (now - _ewStallSince < 15000) return;
+                _ewStallTicks++;
+                if (now - _ewStallSince < 15000 || _ewStallTicks < 7) return;
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
+                _ewStallTicks = 0;
+                /* a stalled end of round is dropped for good: the chain the watchdog restarts is the only one left
+                   (if the old one was only slow, it stops at its next beat instead of running a second round end) */
+                if (_roundAdvanceInProgress) _eorChainGen++;
                 _setRoundAdvance(false);
                 state._actionExecuting = false;
                 state.aiThinking = false;
@@ -54761,6 +54779,7 @@
         let _aiActionGen = 0;
 
         let _roundAdvanceInProgress = false;
+        let _eorChainGen = 0;   // bumps on each end-of-round start: an older chain stops at its next beat
         /* THE STEADY END OF ROUND (2026-10-19, mondo: "during the end of round, the combat log keeps fading in and out
            between camera movements, either keep it on or keep it off for the end of round"): state._eorLive mirrors the
            end-of-round sequence (synced, so the online guest has it too); three-renderer _takeoverBodyClasses turns it
@@ -54987,7 +55006,7 @@
             // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
             raceRoundValue_v1:       { value: 200,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
             searchKeyValue_v1:       { value: 180,   prev: 180,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
-            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: '× odds of a hidden Key on the centre columns, where Keys are placed first (1 = every tile equal)' },
+            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: 'No effect since 2026-10-23 (Keys land anywhere on the board, every tile equal); kept so saved weights load' },
             keyCarrierDenial_v1:     { value: 800,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
             anchorCaution_v1:        { value: 1,     prev: 1,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
             tacticCommitment_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
@@ -57684,7 +57703,10 @@
                 }
             }
 
-            if (!unitFinished(unit) && !unit.dead) return;
+            /* a body that just fell is done too (Wipeout vs Wipeout playtest 2026-10-23: Nordic died to an opportunity
+               attack on its own move with AP left — .dead flips ~800 ms after the killing blow, so the move's call
+               returned here and nothing called again: the turn sat on the dead unit for good) */
+            if (!unitFinished(unit) && !unit.dead && !unit._dying) return;
             state._repeatQueue = null;
             _stopShotClock();
             state.actionMode = null;
@@ -58851,7 +58873,10 @@
                     // standing surface (diagonal neighbours are point-blank).
                     const _twZ = (typeof getHeightAt === 'function') ? getHeightAt(tw.x, tw.y) : 0;
                     const d = combatDist(unit.x, unit.y, unitZ, tw.x, tw.y, _twZ);
-                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)) {
+                    /* the same sight gate as the enemy rows and doAttack (Cube vs Cube matchup 2026-10-23: Longshot listed
+                       the Cube, CONFIRM said "Out of sight") — an unseen Cube lists greyed OUT OF SIGHT instead (hud.js) */
+                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)
+                        && !(visionGatesTargeting(unit) && !isInVision(unit, tw.x, tw.y))) {
                         targets.push({ x: tw.x, y: tw.y, dist: d, tower: tw, kind: 'tower' });
                     }
                 }
@@ -58995,6 +59020,11 @@
         /* is the menu's pick in reach from where the caster stands? A pick that names a body of a shared column (a
            flyer over a ground unit) asks about THAT body: the lit tile is the column's, and casting from here would
            hand the hit to the other body (playtest 2026-10-21: a MOVE→CAST Cyborg row smashed the Cowboy below) */
+        /* THE PICK REPAINTS NOW (hud.js useGameState): a new ✓ pick repaints the HUD in the same turn, so the CONFIRM chip
+           never sits on the old row while the cursor and the bottom prompt already name the new one */
+        function _hudPickNow() {
+            try { window.dispatchEvent(new Event('ew-state-change-now')); } catch (e) {}
+        }
         function _mtcReachesPick(unit, spell, x, y, z) {
             const body = (z !== undefined && z !== null) ? unitAt(x, y, z) : null;
             if (body && body.x === x && body.y === y && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1)
@@ -59124,6 +59154,7 @@
             }
             renderBattleSelectionUI({ includeBoard: false });
             scheduleBoardRender();
+            _hudPickNow();
         }
         window.selectTargetFromMenu = selectTargetFromMenu;
 
@@ -59140,6 +59171,7 @@
                 const _cu = getSelectedUnit();
                 if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 scheduleBoardRender();
+                _hudPickNow();
             }
         }
         window.cycleSpellTarget = cycleSpellTarget;
@@ -59160,6 +59192,7 @@
                 if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 renderBattleSelectionUI({ includeBoard: false });
                 scheduleBoardRender();
+                _hudPickNow();
             }
         }
         window.cycleAttackTarget = cycleAttackTarget;
@@ -59651,6 +59684,7 @@
 
         var _hoverPickLeft = false;   // the pointer left the hover pick for a no-confirm tile (THE WAY BACK IN)
         function updateHoveredTarget(x, y) {
+            syncSearchMap(x, y);   // THE SEARCH MAP: the hovered tile's Inspect / Far Sight footprint
             if (state._actionExecuting) return false;
 
             // Move/Jump mode: hovering a reachable tile previews the route
@@ -60410,6 +60444,7 @@
                     }
                     markDirty('board', 'selectedUnit', 'hud');
                     renderIfDirty();
+                    _hudPickNow();
                     return;
                 }
                 _confRepeatN = (state.pendingTarget && state.pendingTarget._repeatN) || 1;
@@ -63882,6 +63917,7 @@
             unit._captureDoorId = door.id;
             unit.ap = 0;                 // a body taken on its own walk ends its turn in the void
             if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
+            else forgetSearchedTile(unit.x, unit.y);   // THE SEARCH MAP: Keys or not, so the mark tells nobody
             if (!_skipVisuals()) {
                 showFloatingTextForUnit(unit, `🚪 HELD · ${seal}`, 'debuff');
                 window._doorGeom('raceCaptureDoor:take', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, seal });   // Phase 2: the void opens, the body is pulled in
@@ -66020,6 +66056,7 @@
 
         // Shared scan footprint: centre first, then stable Manhattan-distance order.
         // Inspect collects Keys in this footprint, rather than by walking onto them.
+        // ONE TILE A SCAN (mondo 2026-10-23): getInspectTileCount is 1, so the footprint is the picked tile alone.
         function getInspectFootprint(unit, x, y) {
             const tileCount = getInspectTileCount(unit);
             const candidates = [];
@@ -66042,6 +66079,81 @@
 
         }
 
+        /* THE SEARCH MAP (Cube vs Keys report, 2026-10-23: "My B11 search missed the A12 Key in the corner, and a player
+           can't tell that A12 was never checked"). state.searchedByPlayer[p] = every tile p's Inspects and Far Sights
+           covered (the footprint above). scannedByPlayer can't be the record: the scan fade wipes it 0.7 s
+           later and the Scanner / Scan Pulse write it without searching for Keys. A tile someone dies on is forgotten
+           for both sides (a carrier's Keys can lie there now; forgotten on every death, so it tells nobody a carrier
+           fell). While the viewer's own unit aims an Inspect or Far Sight, its team's searched tiles show dim and the
+           hovered tile's real footprint shows bright. Viewer-local overlay; online.js sends the guest only its own set. */
+        const SEARCH_FOOT_COLOR = 0x22eebb, SEARCHED_COLOR = 0x6c7078;   // the footprint a solid Inspect-teal plate; searched grey
+        let _searchMapHover = null;
+        const _searchMapKey = { searchFoot: '', searchMap: '' };
+        function _searchedSet(player) {
+            if (!state.searchedByPlayer) state.searchedByPlayer = { 1: new Set(), 2: new Set() };
+            if (!(state.searchedByPlayer[player] instanceof Set)) state.searchedByPlayer[player] = new Set();
+            return state.searchedByPlayer[player];
+        }
+        function forgetSearchedTile(x, y) {
+            const sb = state.searchedByPlayer;
+            if (!sb) return;
+            const k = scanKey(x, y);
+            for (const p in sb) if (sb[p] instanceof Set) sb[p].delete(k);
+        }
+        window.forgetSearchedTile = forgetSearchedTile;
+        /* hx/hy: the hovered tile (null = the pointer left); called with no args it repaints for the current mode */
+        function syncSearchMap(hx, hy) {
+            if (hx !== undefined) _searchMapHover = (hx == null || hy == null) ? null : { x: hx, y: hy };
+            const R = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            if (!R || !R.setOverlay || !(R.isActive && R.isActive())) return;
+            const foot = [], marks = [];
+            try {
+                const unit = state.phase === 'battle' && !state.winner && !state._actionExecuting ? getSelectedUnit() : null;
+                if (unit && !unit.dead && unit.player === getViewerPlayer() && state.controllers?.[unit.player] === CTRL.LOCAL
+                    && !state.autoPlayers?.[unit.player]) {
+                    let inReach = null;
+                    if (state.actionMode === 'inspect') {
+                        const reach = getInspectTiles(unit);
+                        inReach = (x, y) => reach.some(t => t.x === x && t.y === y);
+                    } else if (state.actionMode === 'spell') {
+                        const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                            || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        if (sp && sp.kind === 'remoteView' && sp.inspectAt) {
+                            const r = getEffectiveSpellRange(unit, sp);
+                            inReach = (x, y) => isInside(x, y) && Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y)) <= r;
+                        }
+                    }
+                    if (inReach) {
+                        const h = _searchMapHover;
+                        const inFoot = new Set();
+                        if (h && inReach(h.x, h.y)) {
+                            for (const t of getInspectFootprint(unit, h.x, h.y)) {
+                                inFoot.add(scanKey(t.x, t.y));
+                                foot.push({ x: t.x, y: t.y, color: SEARCH_FOOT_COLOR, opacity: 0.7, cursor: t.x === h.x && t.y === h.y });
+                            }
+                        }
+                        const searched = state.searchedByPlayer && state.searchedByPlayer[unit.player];
+                        if (searched) for (const k of searched) {
+                            if (inFoot.has(k)) continue;
+                            const c = String(k).split(',');
+                            const sx = +c[0], sy = +c[1];
+                            if (isInside(sx, sy)) marks.push({ x: sx, y: sy, color: SEARCHED_COLOR, opacity: 0.6 });
+                        }
+                    }
+                }
+            } catch (e) { foot.length = 0; marks.length = 0; }
+            const paint = (name, tiles) => {
+                const key = tiles.map(t => t.x + ',' + t.y).join('|');
+                if (key === _searchMapKey[name] && (!key || (R.hasOverlay && R.hasOverlay(name)))) return;
+                _searchMapKey[name] = key;
+                if (tiles.length) R.setOverlay(name, tiles, tiles[0].color, tiles[0].opacity);
+                else R.clearOverlay(name);
+            };
+            paint('searchFoot', foot);
+            paint('searchMap', marks);
+        }
+        window.syncSearchMap = syncSearchMap;
+
         /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
            logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
            very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
@@ -66061,7 +66173,7 @@
             if (!unit) return;
             window._ewNoRelay = (window._ewNoRelay || 0) + 1;
             try {
-                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'streak');
+                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'pickup');   // gold, not the hit-word red (Cube vs Keys report)
                 playKeySecuredFx(unit.x, unit.y, n);
                 showCombatBanner(`KEY SECURED!`, sub || '', 'pickup-friendly');
                 playSfx('playerHourglass');
@@ -66075,10 +66187,12 @@
 
             let totalHourglasses = 0;
             let lootedNow = 0;
+            const _searched = _searchedSet(unit.player);
             for (const tile of toReveal) {
                 const key = scanKey(tile.x, tile.y);
                 if (!state.scannedByPlayer[unit.player].has(key)) unit._matchScans = (unit._matchScans || 0) + 1;
                 state.scannedByPlayer[unit.player].add(key);
+                _searched.add(key);
 
                 const tileHG = state.hourglasses.filter(h => h.carriedBy === null && h.x === tile.x && h.y === tile.y);
                 for (const h of tileHG) {
@@ -66133,7 +66247,9 @@
 
             /* THE HIDDEN KEYS: the Inspect line is everyone's; what it found (or that it found nothing) is the
                searcher's team's alone, so from the other side a find and an empty search read the same */
-            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`);
+            addLog(toReveal.length === 1
+                ? `${_ctName(unit)} inspects ${coordLabel(x, y)}.`
+                : `${_ctName(unit)} inspects ${toReveal.length} tiles around ${coordLabel(x, y)}.`);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
@@ -67019,6 +67135,11 @@
 
             const modified = [];
             const _excavated = [];   // material-bearing blocks the blast tore out
+            /* who was AIRBORNE before the ground moved (Cube vs Cube matchup 2026-10-23): read after the blocks went, a
+               flyer standing on the ground was suddenly "above" its new floor and kept hovering at the old height —
+               LAND 1 AP, "BUILD land first" — when it should ride the ground down like everyone else */
+            const _wasAirborne = new Set((state.units || []).filter(u => !u.dead && typeof isUnitAirborne === 'function'
+                && Math.abs(u.x - cx) <= radius && Math.abs(u.y - cy) <= radius && isUnitAirborne(u)).map(u => u.id));
 
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
@@ -67097,14 +67218,15 @@
             if (modified.length === 0) return;
 
             for (const m of modified) {
-                const u = unitAt(m.x, m.y);
-                if (u && !u.dead) {
+                /* every body on the tile (a flyer over a grounded unit is two) */
+                for (const u of state.units) {
+                    if (u.dead || u._dying || u._insideBuildingId || u.x !== m.x || u.y !== m.y) continue;
                     /* 🕊️ Flying passive: an AIRBORNE flyer hovers above the
                        tile — reshaping the ground never yanks it down (or up)
                        to the new surface. It only rises if the new ground
                        would swallow its hover height. Grounded units (flyers
                        included) ride the terrain like always. */
-                    const _dAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(u);
+                    const _dAir = _wasAirborne.has(u.id);
                     if (_dAir) {
                         if ((u.z ?? 0) < m.newH) u.z = m.newH;
                         else continue;
@@ -69537,6 +69659,7 @@
 
         function doSpell(unit, x, y, z) {
             _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
+            const _castSeq = ++_onKillCastSeq;
             /* SIMUL plan phase: queue the cast instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -70242,11 +70365,20 @@
                 // their AP cost and leave the turn alive. A contact placement
                 // (deployable activated instantly on an enemy) is attack-grade:
                 // it ends the turn too.
+                /* a kill refund this cast already paid (_applyOnKillRiders) comes off before the spend and goes back on after */
+                const _okRef = unit._onKillApRefund;
+                const _okAp = (_okRef && _okRef.seq === _castSeq) ? _okRef.n : 0;
+                delete unit._onKillApRefund;
+                if (_okAp) unit.ap = Math.max(0, (unit.ap || 0) - _okAp);
                 if (spellEndsTurn(spell) || _placementStruck) spendAllAP(unit);
                 else if (!_doorFreeAction) spendAP(unit, spellApCost);   // 🚪 Keyholder's free toggle costs no AP
                 state._doorRearCast = null;
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
+                if (_okAp && !unit.dead && !unit._dying) {
+                    unit.ap = Math.min((unit.ap || 0) + _okAp, (typeof UNIT_MAX_AP !== 'undefined' ? UNIT_MAX_AP : 2) + (unit._xpBonusAP || 0));
+                    unit._jumpedThisTurn = false;
+                }
                 /* ── Recoil / HP cost ──────────────────────────────────────
                    selfDamagePct (Blood Ritual, Inner Demon) and recoilPct
                    (Twilight Reckoning, Blood Pact combos) both promise "costs
@@ -70388,12 +70520,7 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
-                } else if (spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
-                        && target && target.id !== unit.id
-                        && !(typeof _isClashMode === 'function' && _isClashMode())
-                        && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
-                        && !(state.fogOfWar && typeof getViewerPlayer === 'function'
-                             && state.activePlayer !== getViewerPlayer())) {
+                } else if (chargeStrikesFirst(unit, spell, target)) {
                     // Charge-to-target melee (Brave Charge, …): rush the gap in
                     // third-person and strike on arrival, following the caster.
                     completionDelay = _runChargeToTargetSpell(
@@ -72157,12 +72284,15 @@
                 /* THE SPELL POWER REVIEW (2026-10-23): a pull row with `stealKeys` / `stealItems` (Rustle) robs the hooked
                    enemy the way the `steal` kind does (Stick-Up) — host state now, so the Key moves with the snapshot. */
                 if (!_plAlly && (spell.stealKeys || spell.stealItems) && !target.dead && typeof _stealFromUnit === 'function') {
+                    /* the take reads after the pull and the hit (they land at the yank, below) */
+                    const _plFxMs = Math.max(0, _yankDelayMs || 0) + 60;
                     const _plTook = _stealFromUnit(unit, target, {
                         keys: spell.stealKeys || 0,
                         items: spell.stealItems || 0,
                         verb: spell.name,
+                        fxDelayMs: _plFxMs,
                     });
-                    if (!_plTook.keys && !_plTook.items) addLog(`${_ctName(target)} had nothing worth taking.`);
+                    if (!_plTook.keys && !_plTook.items) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
                 }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */
@@ -73325,6 +73455,7 @@
                     target._exitDoorId = _doorOrg ? _doorOrg.doorId : null;
                     target._exited = true;
                     if ((target.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(target);
+                    else forgetSearchedTile(target.x, target.y);   // THE SEARCH MAP: Keys or not, so the mark tells nobody
                     if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
                     /* the door stands up in front of the victim, takes them, shuts, and the EXIT stamp lands on the leaf (shot there from the gun) */
                     window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
@@ -74520,7 +74651,9 @@
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
-                        : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+                        : tUnit === unit
+                            ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
+                            : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
                     /* THE SPELL AUDIT Batch D: `arrivalStageBoost` (+ `arrivalStageRounds`) — the mover's stat stages on
                        landing (Land on Your Feet: +1 DEF for 1 round) */
@@ -76402,7 +76535,7 @@
         }
 
         function _resolveArenaTimerExpiry() {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
 
             function _arenaComposite(p) {
                 const enemy = p === 1 ? 2 : 1;
@@ -76419,7 +76552,6 @@
                 if (eTower) tDmg = Math.max(0, (eTower.maxHp || 1500) - eTower.hp);
                 // Percent-of-tower form (see _arenaScoreDetails above).
                 let tDmgPts = Math.floor(tDmg / ((eTower && eTower.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-                if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                 pts += tDmgPts;
                 breakdown.push(`${tDmg} tower dmg (${tDmgPts})`);
 

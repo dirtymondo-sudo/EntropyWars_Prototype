@@ -17164,7 +17164,11 @@ const ThreeRenderer = (function () {
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
         'spellApproachMove':   { fill: 0.30, edgeGlow: 0.9 },
         'spellApproachShove':  { fill: 0.50, edgeGlow: 1.3, dots: 1 },
-        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 }
+        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 },
+        /* THE SEARCH MAP (battle.js syncSearchMap): the hovered Inspect's real footprint, a solid plate; the tiles the
+           team already searched, a grey wash */
+        'searchFoot':          { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
+        'searchMap':           { fill: 0.55, edgeGlow: 0.5 }
     };
 
     /* Shared yellow-corner cursor material — stamped on top of whichever tile
@@ -17211,7 +17215,7 @@ const ThreeRenderer = (function () {
        consequence owns the board. Eases in/out so it never pops. */
     var _hlFocusDim = 1.0;
     var _HL_DIM_FOCUS = 0.28;   // THE CLARITY PASS (2026-10-01): was 0.4 — the reach must clearly step back
-    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget'];
+    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget', 'searchFoot'];
     /* reach layers drawn by setOverlay that do not pulse (the pulse loop dims spellRange / attackRange itself) */
     var _DIM_OVERLAYS = { actionPlanRange: true, spellRangeElem: true, infoRange: true };
     function _updateHlFocusDim() {
@@ -20495,6 +20499,13 @@ const ThreeRenderer = (function () {
                 var wd = state._visionWards[wi];
                 if (wd && wd.player === vp && wd.tiles && wd.tiles.indexOf && wd.tiles.indexOf(pk) >= 0) { seen = true; break; }
             }
+        }
+        /* THE TEAM'S OTHER EYES (Wipeout vs Wipeout playtest 2026-10-23: the guest's Eternal Slumber listed Superhero and
+           Mech with their HP and tagged their tiles while their models stayed hidden): the Cube, wards, open doors, flares
+           see for the team too. They light the tile (computeVisibleTiles) and the rules let the team aim there (map.js
+           isInVision), but the body stayed undrawn on its lit tile because no unit had eyes on it. */
+        if (!seen && typeof _teamStructureSeesTile === 'function') {
+            try { seen = !!_teamStructureSeesTile(vp, unit.x, unit.y); } catch (e) {}
         }
         _uFogCache.set(key, seen);
         return seen;
@@ -42102,6 +42113,15 @@ const ThreeRenderer = (function () {
             && typeof getSelectedUnit === 'function') {
             var _lpU = getSelectedUnit();
             if (_lpU && _lpU._skyThrowGrab) unitHit = null;
+        }
+        /* THE CASTER IS NO TARGET (battle.js _ewPickSkipsUnitId): an armed attack / offensive unit spell looks past the
+           acting unit's own model to the body behind it */
+        if (unitHit && typeof window._ewPickSkipsUnitId === 'function') {
+            var _skipId = window._ewPickSkipsUnitId();
+            if (_skipId != null && unitHit.unitId === _skipId) {
+                unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas,
+                    { children: unitGroup.children.filter(function (c) { return c._ew_unitId !== _skipId; }) });
+            }
         }
         if (unitHit) {
 
@@ -73501,6 +73521,7 @@ const ThreeRenderer = (function () {
         scanSpriteOffset,
 
         setOverlay, clearOverlay, clearAllOverlays, flashTelegraph,
+        hasOverlay: function (name) { var m = _overlayMeshes[name]; return !!(m && m.length); },
 
         /* Action tile glow (2026-09-02): actor + footprint tiles light up for
            the duration of an attack / spell — see the ACTION TILE GLOW block. */
