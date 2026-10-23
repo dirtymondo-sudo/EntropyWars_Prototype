@@ -18,9 +18,13 @@ const server = http.createServer(app);
 // can't open sockets against the matchmaker from their visitors' browsers.
 const ALLOWED_ORIGINS = (process.env.EW_ALLOWED_ORIGINS || '')
     .split(',').map(s => s.trim()).filter(Boolean);
+// pingTimeout 60 s (socket.io's default is 20 s): building a match's board on a weak PC holds the page's main thread for
+// tens of seconds, the page can't answer the heartbeat, and the default dropped a seat on the loading screen (online
+// playtest 2026-10-23). A closed tab or a dead network still drops at once; only a silent link waits longer.
 const io = new Server(server, {
     cors: { origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : '*' },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000
 });
 console.log(ALLOWED_ORIGINS.length
     ? '[BOOT] socket origin allowlist: ' + ALLOWED_ORIGINS.join(', ')
@@ -405,8 +409,11 @@ function beginRecovery(room, code, role, socketId) {
     if (!room._matchId) room._matchId = uuid();
     const recovery = room._recovery = { id: uuid(), host: room.host, guest: room.guest,
         snapshot: null, checksum: null, timer: null };
+    // 60 s (was 20 s): the host may still be on the loading screen building the board when the other seat comes
+    // back (online playtest 2026-10-23: a guest drop on the loading screen ended the match for both). online.js
+    // RECOVERY_WAIT_MS is the same window on both pages.
     recovery.timer = setTimeout(() => failRecovery(room, code, recovery,
-        'The match could not be restored. Please return to the main menu.'), 20000);
+        'The match could not be restored. Please return to the main menu.'), 60000);
     io.to(code).emit('player-rejoined', { role, socketId, recoveryId: recovery.id, matchId: room._matchId });
 }
 

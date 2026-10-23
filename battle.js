@@ -39851,6 +39851,7 @@
                 if (unit.player !== state.activePlayer) return null;
                 if (unit.player !== getViewerPlayer()) return null;
                 if (!canUnitAct(unit)) return null;
+                if (unitOnTactic(unit)) return null;   // ♟ its Tactic plays this turn (hud.js TacticWatch says so)
 
                 const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s));
                 const am = state.actionMode;
@@ -39927,6 +39928,7 @@
                 if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
                 if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
                 if (menuView === 'switch') return _promptBarHtml('Select a reserve to switch in.', 'ESC back');
+                if (menuView === 'tactics') return _promptBarHtml('Pick a Tactic: the unit plays its own turns.', 'ESC back');
                 return _promptBarHtml('<strong>' + esc(_ctName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
             } catch (err) {
                 return null; // a broken prompt must never take the game down
@@ -46460,8 +46462,11 @@
         }
         window._mdUnitTactic = _mdUnitTactic;
 
-        /* True when the stock AI should play this player-1 unit's turn. */
+        /* True when the stock AI should play this player-1 unit's turn.
+           (Also true for any player's unit on a battle TACTIC — unitOnTactic
+           below — so every AI-routing gate that reads this covers both.) */
         function _mdUnitAuto(u) {
+            if (unitOnTactic(u)) return true;
             if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
             if (state._mdPhase !== 'floor' || !state._mdRun) return false;
             if (!u || u.player !== 1 || u._mdNpc || u.dead) return false;
@@ -46474,6 +46479,123 @@
             const t = _mdUnitTactic(u);
             return t === 'auto' || t === 'guard';
         }
+        /* ── UNIT TACTICS (2026-10-23, mondo: "those jobs - fight, siege, search, intercept, and anchor - to be called
+           tactics in the game and for the player to be able to apply them to their units so they dont have to manually
+           fight for them, like they can be on auto battle. Perhaps add heal to the list as well?"): a player's unit can
+           carry a Tactic (unit.tactic, one of UNIT_TACTIC_IDS; null = MANUAL). A unit on a Tactic plays its own turns
+           through the CPU's own brain (ai.js aiTakeTurn), which reads unit.tactic as that unit's forced job
+           (window.AI_TACTICS / aiTacticFor). The id is plain unit data, so it rides state-sync to the guest; a guest's
+           pick travels to the host as a 'setTactic' game-action (online.js). The CPU never sets one on its own units —
+           its planner keeps their jobs inside ai.js. The HUD's TACTICS menu (hud.js _hrlgTacticBlades) sets it. */
+        const UNIT_TACTIC_IDS = ['fight', 'siege', 'search', 'intercept', 'anchor', 'heal'];
+        const _TACTIC_HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive', 'zoneHeal', 'seedHeal']);
+        /* the menu's one-line descriptions (kept short to fit the row; ai.js AI_TACTICS carries the long ones) */
+        const _UNIT_TACTIC_FALLBACK = {
+            fight:     { label: 'Fight',     desc: 'Kill and stagger enemies' },
+            siege:     { label: 'Siege',     desc: 'Go hit the enemy Cube' },
+            search:    { label: 'Search',    desc: 'Inspect tiles for Keys' },
+            intercept: { label: 'Intercept', desc: 'Chase carriers and Cube hitters' },
+            anchor:    { label: 'Anchor',    desc: 'Guard the Cube, stay alive' },
+            heal:      { label: 'Heal',      desc: 'Heal and revive allies' },
+        };
+        /* label (ai.js AI_TACTICS when loaded) + the short line above, + ai.js's full text as `long` */
+        function unitTacticInfo(id) {
+            const row = Array.isArray(window.AI_TACTICS) ? window.AI_TACTICS.find(r => r && r.id === id) : null;
+            const fb = _UNIT_TACTIC_FALLBACK[id];
+            if (!row && !fb) return null;
+            return { id, label: (row && row.label) || fb.label, desc: (fb && fb.desc) || (row && row.desc) || '',
+                long: (row && row.desc) || (fb && fb.desc) || '' };
+        }
+        function unitOnTactic(u) {
+            if (!u || u.dead || !u.tactic || UNIT_TACTIC_IDS.indexOf(u.tactic) < 0) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            if (state.controllers?.[u.player] === CTRL.AI) return false;   // the CPU's planner owns its own units
+            if (unitIsControlled(u)) return false;                          // a possessed body plays for its captor
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;   // MD keeps its own tactic chips
+            if (window._tutActive) return false;
+            return true;
+        }
+        /* Why a Tactic can't be picked for this unit right now (null = it can): the board has nothing for it to do. */
+        function unitTacticProblem(u, id) {
+            const mpm = typeof getActiveMultiplayerMode === 'function' ? (getActiveMultiplayerMode() || {}) : {};
+            const foeCube = state.towers ? state.towers[enemyOf(u.player)] : null;
+            const hasCube = !!(foeCube && foeCube.hp > 0);
+            const hasKeys = !!mpm.hasHourglasses;
+            if (id === 'siege' && !hasCube) return 'No Cube';
+            if (id === 'search' && !hasKeys) return 'No Keys';
+            if (id === 'intercept' && !hasCube && !hasKeys) return 'No Cube or Keys';
+            if (id === 'heal') {
+                /* the kinds ai.js's Heal job plays (it falls back to Fight play on a turn with nothing to heal) */
+                const _heals = [...(u.spells || []), ...(u._raceAbilities || [])].filter(Boolean)
+                    .some(sp => _TACTIC_HEAL_KINDS.has(sp.kind));
+                const _pots = Object.keys(u.items || {}).some(k => (u.items[k] || 0) > 0
+                    && (typeof window._ewItemLike === 'function' ? window._ewItemLike(k, 'healPotion') : k === 'healPotion'));
+                if (!_heals && !_pots) return 'No heals';
+            }
+            return null;
+        }
+        /* Run fn once the board is idle for this unit's activation (no AI step / action animation in flight). */
+        function _tacticWhenIdle(u, fn) {
+            const gen = _blitzTurnGen;
+            const tryNow = (n) => {
+                if (gen !== _blitzTurnGen || state.winner || state.phase !== 'battle') return;
+                if (state._blitzActiveUnitId !== u.id || u.dead || unitFinished(u)) return;
+                if (state.aiThinking || state._actionExecuting || state._runComputerTurnTimer) {
+                    if (n < 80) window.setTimeout(() => tryNow(n + 1), 250);
+                    return;
+                }
+                fn();
+            };
+            tryNow(0);
+        }
+        function setUnitTactic(unitId, tactic) {
+            const u = state.units.find(x => x.id === unitId && !x.dead);
+            if (!u || state.phase !== 'battle' || state.winner) return false;
+            if (state.controllers?.[u.player] === CTRL.AI) return false;
+            const t = UNIT_TACTIC_IDS.indexOf(tactic) >= 0 ? tactic : null;
+            if (t && unitTacticProblem(u, t)) return false;
+            if ((u.tactic || null) === t) return true;
+            const wasAuto = unitOnTactic(u);
+            u.tactic = t;
+            const nowAuto = unitOnTactic(u);
+            addLog(`♟ ${_ctName(u)} tactic → ${t ? unitTacticInfo(t).label.toUpperCase() : 'MANUAL'}`);
+            if (state._blitzActiveUnitId === u.id && nowAuto !== wasAuto) {
+                if (nowAuto) {
+                    /* the ACTIVE unit put on a Tactic: its turn goes to the AI now */
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state.comboPartner = null;
+                    _tacticWhenIdle(u, () => {
+                        if (!unitOnTactic(u)) return;
+                        _stopShotClock();
+                        maybeTriggerComputerTurn();
+                    });
+                } else {
+                    /* TAKE CONTROL mid-turn: the AI finishes the step it is on, then the rest of the turn is yours */
+                    _tacticWhenIdle(u, () => {
+                        if (unitOnTactic(u)) return;
+                        _startShotClock();
+                        if (state.controllers?.[u.player] === CTRL.LOCAL) selectUnit(u.id, { _auto: true });
+                        else { state.selectedUnitId = u.id; state.focusedUnitId = u.id; }
+                        markDirty('hud', 'selectedUnit');
+                        renderIfDirty();
+                        if (window._broadcastState) window._broadcastState();
+                    });
+                }
+            }
+            markDirty('hud', 'selectedUnit');
+            renderIfDirty();
+            if (window._broadcastState) window._broadcastState();
+            return true;
+        }
+        window.UNIT_TACTIC_IDS = UNIT_TACTIC_IDS;
+        window.unitTacticInfo = unitTacticInfo;
+        window.unitOnTactic = unitOnTactic;
+        window.unitTacticProblem = unitTacticProblem;
+        window.setUnitTactic = setUnitTactic;
+
         function _mdAutoTurnActive() {
             if (!state._blitzActiveUnitId) return false;
             const u = state.units.find(x => x.id === state._blitzActiveUnitId);
@@ -49885,7 +50007,19 @@
         /* Timeline stamp for the card — every battle happens somewhen between
            12500 BC and 3333 AD. */
         function _lsRandomYear() {
-            const yr = Math.floor(Math.random() * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
+            /* online both seats draw the SAME year (the match id + number seed it): the two loading cards and the two
+               result stamps of one case read different years (online playtest 2026-10-23) */
+            let r = Math.random();
+            try {
+                const _n = window._NET;
+                if (_n && _n.online && _n.matchId) {
+                    const k = String(_n.matchId) + ':' + (state.matchNumber || 1);
+                    let h = 2166136261;
+                    for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 16777619); }
+                    r = (h >>> 0) / 4294967296;
+                }
+            } catch (e) {}
+            const yr = Math.floor(r * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
             const label = yr < 0 ? 'YEAR ' + (-yr) + ' BC' : (yr === 0 ? 'YEAR 1 AD' : 'YEAR ' + yr + ' AD');
             /* the D.O.O.R. result stamp quotes the same canon date (§3.5) */
             window._lsCanonYear = label;
@@ -53723,6 +53857,11 @@
                 if (typeof document !== 'undefined' && document.hidden) return reset();
                 /* Guests mirror the host's engine — never self-drive. */
                 if (window._NET && window._NET.online && window._NET.role !== 'host') return reset();
+                /* the opponent dropped or the match is being restored: the engine's next activation waits for the
+                   recovery (online.js _ewDeferRecovery), so the quiet board is the outage, not a stall (online playtest
+                   2026-10-23: a 7 s guest drop and the host forced a turn advance in the middle of it) */
+                if (window._NET && window._NET.online && (window._NET._recovering || window._NET._recoveryFailed
+                    || window._NET.connected === false)) return reset();
                 const mode = getActiveGameMode();
                 if (!mode || !mode.blitzMode) return reset();
                 if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return reset();
@@ -54144,7 +54283,11 @@
                     }, delay);
                 } else if (state.controllers?.[nextUnit.player] === CTRL.REMOTE) {
 
-                    _stopShotClock();
+                    /* THE GUEST'S CLOCK (online playtest 2026-10-23: one guest turn sat open 33 minutes): the remote turn
+                       stopped the clock here and nothing started it again, so the guest's own browser never timed its
+                       turn out and the host's backstop (_shotClockExpired, SHOT_CLOCK_HOST_GRACE_SEC) never had a running
+                       clock to fire on. The host's clock is the authority: it runs for the guest's unit too and syncs. */
+                    _startShotClock();
                     // Mirror the remote player's acting unit into the local
                     // selection/focus so the top-left ActiveUnitPanel (and the
                     // roster highlight) shows the SAME unit on both screens.
@@ -64957,24 +65100,26 @@
             // empty building tile falls through to the "choose an enemy" nag.
             // 🔨 NO ATTACKING TILES (2026-10-22): a raised column is lowered with Dig (Build), never a basic attack.
             if (!target || isAllyUnit(target, unit)) {
-                addLog('Choose an enemy on an attack-highlighted tile.');
+                addLog('Choose an enemy on an attack-highlighted tile.', unit.player);
                 playErrorSfx();
                 return 0;
             }
 
+            /* a refused attack is the attacking seat's own line: online it told the camouflaged unit's player that the
+               host had found its square (online playtest 2026-10-23) */
             if (unitHasStatus(target, 'invisible') && !unitHasStatus(target, 'marked')) {
-                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`);
+                addLog(`${_ctName(target)} is camouflaged and cannot be targeted.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
             if (unitCryptidHiddenFrom(target, unit.player)) {
-                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
+                addLog(`📷 ${_ctName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
             // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
             if (isUnitRealmShieldedFrom(target, unit)) {
-                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`, unit.player);
                 playErrorSfx();
                 return 0;
             }
@@ -75942,6 +76087,9 @@
                 clearInterval(_matchClockInterval);
                 _matchClockInterval = null;
             }
+            /* the pill is only ever redrawn by this interval: a countdown on screen when the match ended stayed over the
+               result screen ("⏱ 4s" over VICTORY, online test 2026-10-23) */
+            _renderShotClockPill(null, false);
         }
 
         function _shotClockExpired() {
