@@ -708,7 +708,8 @@ function MatchSelect(props) {
   );
   const assignBlock = h('div', { className: 'ms-tty-assign' },
     h('div', { className: 'ms-tty-kicker' }, h('b', null, DOOR ? 'FIELD ASSIGNMENT' : 'SELECTED'), caseNo && h('span', null, 'CASE ' + caseNo)),
-    h('h2', null, mp.name, h('span', null, boardSizeLabel)),
+    // a sized cut's name already carries its size ("Stonehenge Arena 10×10") — no second "10×10" beside it (wipeout playtest 2026-10-23)
+    h('h2', null, mp.name, !(mp.w && mp.h && String(mp.name || '').indexOf(mp.w + '×' + mp.h) >= 0) && h('span', null, boardSizeLabel)),
     h('div', { className: 'ms-tty-line' }, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '') + (reservesOn ? ' · ⇄ RESERVES' : '')),
     sf && h('div', { className: 'ms-tty-line' }, 'SITE STATUS  ', h('span', { style: { color: STAMP_INK[sf.tone] || undefined } }, sf.status)),
     pre && !pre.practice && h('div', { className: 'ms-tty-dispatch' }, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · '

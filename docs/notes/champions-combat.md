@@ -2031,3 +2031,66 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - Browser-checked on Stonehenge (Sedan as a flyer): old code, 11 teal tiles and a click flew it to the lintel (z 8,
   AP 0); new code, 0 teal tiles for the player (CPU still 11), the same click does not take off, Take Off then Move
   lists the flying tiles.
+
+## THE WIPEOUT PLAYTEST FIXES (2026-10-23)
+From the 10-23 wipeout playtest (Stonehenge 4v4, Training). mondo: green ! = super effective (intended); no layout work
+except the Nexus counter; flyer take-off is its own thread.
+- Entropy Strike picker estimate (~972 shown, real hits 2011/1507): battle.js `getEntropyStrikeForecast` now runs each
+  enemy through `forecastHitOnUnit` (the engine's own hit math, live=false) and returns `hits` + `dmgLo`/`dmgHi`; hud.js
+  `_hrlgEntropyBlades` shows `lo–hi` (one number when equal). ai.js / `getEntropyStrikeBestType` untouched.
+- Nexus counter huge up close: three-renderer.js `NEXUS_PLATE_MAX_PX` (260) caps the plate's on-screen width, the mirror of
+  `NEXUS_PLATE_MIN_PX`.
+- Imitation Report over the cinematic / VICTORY: `_imitMatchSummary` only sets `_imitReportPending`; `showResultOverlay`
+  opens it (`_imitShowPendingReport`, 1.2 s after) FOLDED to its title bar; ▸/▾ (`_ewImitationReportFold`) opens it.
+- Camera inside the Dragon/Nephilim: the menu camera (`_menuCamOccl`) counts a model within `NEAR_LENS` (2.5 tiles) of
+  the lens as a heavy block; three-camera.js `_boardSightFloor` lifts the board rig over a body within
+  `BOARD_NEAR_BODY_TILES` (2.5) of the lens. `window._camBodyTopPx` takes the subject's point so the shot's own unit is
+  never its own blocker. Old behaviour for comparison: `EW_NO_CLEAR_BOARD = true`.
+- Target off screen after arming a tile-aim spell (Dragonfire etc.): the range fit framed only the lit tiles while the
+  list pre-picked a MOVE→CAST target outside them; setActionMode's free-aim branch refits the same board read to take in
+  the picked target (THE PICK IN FRAME).
+- ATTACK lit with nobody in reach ("No target" on click): state.js `getActionPanelCache` asks `_getAttackValidTargets`
+  (the list's own check) instead of a z-0 distance test.
+- Setup Field Assignment showed the size twice ("Stonehenge Arena 10×10 10×10"): match-select.js drops the size label
+  when the cut's name already carries it.
+- Already fixed on main by PR #419: "4 v 1 STANDING" after a wipeout, the list card's 12x12.
+- Not bugs: "Player holds the field." is the default profile name; "[BOOT] ... kicking the turn loop" is the slow-machine
+  diagnostic (sandbox); the low two-shot menu camera is the design (MENU_CAM_TILT).
+## THE SPELL POWER REVIEW (2026-10-23, mondo: "lets go ahead and add those spells. Balance the status effects better like reduce the number of stagger spells ... it needs to work for wet too ... even out the elemental spread. Definitely too much metal too.")
+Review page: https://claude.ai/artifact/5v2kAZFtLm1yCam99A89kw (built from the wipeout / Cube / Keys playtests).
+- **Eleven new rows** (data.js, end of SPELL_LIBRARY, each in one existing family): Open Vein (blood I, Bleed 2 — the first
+  spell that applies Bleed), Arterial Spray (blood III, ×1.5 vs Bleed), Conduction (lightning III, ×1.5 vs Wet, stacks with
+  the Soaked shock), Thornlash (nature I, Root 1), Overgrowth (nature III, ×1.5 vs Root), Crosswind (wind II linePush, Blind 1),
+  Eye of the Storm (wind IV aoePull, ×1.5 vs Blind, cd 2), Mudslide (earth III line, ×1.5 vs Slow), Tailwind (teamwork II
+  warCry, Quickened 2 to allies within 2, cd 2), Far Sight (psychic II, `remoteView` + `inspectAt`), Rustle (cowboyskills II,
+  `pull` + `stealKeys: 1`).
+- **Far Sight**: battle.js `_inspectFootprintAt(unit, x, y)` is the Inspect itself (footprint, Keys, corpse loot, hidden bombs,
+  logs, camera, scan fade) lifted out of doInspect; doInspect keeps its checks + AP + turn bookkeeping. doSpell's
+  `remoteView && inspectAt` branch range-checks (Chebyshev ≤ spell range), pays MP and calls it. ai.js `_aiFarSightPick`.
+- **Rustle**: the `pull` branch robs after the yank when a row carries `stealKeys` / `stealItems` (`_stealFromUnit`).
+- **Stagger 41 → 20 appliers**: tier III/IV rows stop applying it and became finishers (Stampede/Divine Swoop/Rampage ×1.5 vs
+  Root; Kill Mode/Cosmic Slam/Quake vs Slow; Shockwave Clap/Slap Leather/Drop In/Jackpot vs Stagger; Crowd Surge vs Charm;
+  Cuffed keeps only its Root). Tier I/II moved to under-used statuses: Static Shock + Yellow Thunder → Jammed, Mic Drop →
+  Silence, Cluster Rockets + Dynamite → Burn 2, Demonic Roar + Infernal Conscription → Feared; Hogtie and Fee Fi Fo Fum
+  dropped the extra Stagger. Drop In's hit now passes `bonusVsStatus` (the doorBreach branch never did).
+- **WET CONDUCTS** (battle.js `_isSoakedBodyAt` / `_isConductiveWetTile`): a grounded Soaked unit is part of the conductive
+  body like a water tile. Lightning on a pool floods through touching Soaked bodies; lightning striking a Soaked unit on dry
+  ground arcs (`_reactLightningWater`, same 75% tick) to every touching Soaked body / wet tile, after the terrain loop and
+  skipping tiles a pool already zapped. `_unitIsSoaked` also counts a unit under rain-type weather right now. Water and rain
+  already stamped Wet (tickWetUnits, weather soaks); Drowning untouched.
+- **Elements** (damage rows, before → after): metal 34 → 27, blood 10 → 22, wind 8 → 22, nature 8 → 18, lightning 11 → 13,
+  sonic 11 → 13; no-element 152 → 122. Spells with the cut light/shadow/arcane look were left alone. Hacking/AI spells were
+  NOT made lightning (lightning on tech = the overclock half-damage rule).
+- Open (asked mondo, not built): Eternal Slumber 5×5 stun, no-cooldown 5×5+ nukes, Meteor/Requiem/Tidal Slam say
+  "Cooldown: 2" but `_applyBaselineCooldowns` runs before `applyTreeRingCosts` so it never sees their tier MP,
+  Cataclysm Stomp 5×5 at tier II, Spirit Bomb.
+
+## THE TACTICS + THE RACE CLOCKS (2026-10-23, mondo: "lets go ahead and do the ai plan fixes … those jobs - fight, seige, search, intercept, and anchor - to be called tactics … Perhaps add heal") — ai.js v4.16, battle.js, state.js
+Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ7TXUQbgdjUZ3yCxKVN2). All CPU-side scoring; no game rule changed, nothing new to sync (the host runs the AI).
+- **Phase 1 fixes.** `_wipeoutShare` (one helper for killValue, the Finisher and the own-death price). `_killTally` records every victim ONE action drops (scoreSpells, the Entropy Strike, Detonate); when the kills reach every standing body of that side the action is paid the whole wipeout win minus the per-victim shares (random-target rolls never count). The Entropy Strike adds each victim's kill value (flat part unchanged). tileDangerCost's death price carries OUR wipeout share × anchorCaution_v1. Key carriers: `_keyCarrierDenial` = keyCarrierDenial_v1 × (team Keys ÷ Keys to win)² × the carrier's share. Blind Inspect: one ×0.3 (fight in sight; ×0.75 on the Search Tactic), no stacking after a death.
+- **Phase 2 search map.** `_searchMapFor(g, unit, player)`: odds per tile for the still-hidden Keys from public facts only (Key count, own scanned tiles, Chebyshev-2 around Keys this side saw, walkable, not a Cube tile); centre columns × searchCenterPrior_v1 (randomizeSharedObjectives places Keys there first; 1 = off; flagged to mondo). Inspect value = expected Keys in the real footprint × searchKeyValue_v1. `_searchMoveCandidate` = move-then-Inspect (same one-move budget as battle.js _inspectMoveBudget).
+- **Tactics.** `window.AI_TACTICS` (fight, siege, search, intercept, anchor, heal), `aiTacticFor(unit)`, `aiTacticReason(unit)`, `aiSetTacticPersona(player, id)`, `aiRaceClocksFor(player)`. unit.tactic (battle.js setUnitTactic, the auto battle thread) = FORCED, read-only here. CPU jobs live in ai.js `_tacticJobs` (never on unit/state). `_planTactics` once per side per round (re-planned when a body drops / a Key moves / a Tactic changes). Steering: `_applyTactic` (rankCandidates) + `_tacticGoal` (pickMoveGoal), × tacticCommitment_v1, forced ×1.5; a forced Tactic damps the other move goals ×0.6 except pickups/emergencies. A player's own auto unit always plays Normal (`_actorDiffKey`).
+- **Phase 3 clocks.** `aiRaceClocks(g, p, ws)` → {our, their} × {wipe, cube, keys, buzzer, best, bestKind}. Their Cube clock uses the observed damage to our Cube (`_cubeHist`). scoreTowerAttack: `_cubeClockValue` (raceRoundValue_v1 × rounds saved × share × tightness) replaces the flat window bonuses; the old window + cubeWindowBonus_v1 is the fallback. Kill-switches: `EW_AI_NO_TACTICS`, `EW_AI_NO_CLOCKS`, `EW_AI_NO_SEARCHMAP`.
+- **Difficulty.** Easy plays without the plan and the clocks (AI_DIFFICULTY_PROFILES.tactics; a player's own Tactic still applies). **Phase 4.** Hard only: `_hardReplyCheck` (top five options − hardReplyFactor_v1 × the worst enemy reply). state.js `_cpuPlanDraft`: Hard VS CPU drafts brawl / siege / Key hunt from RACE_BASE_STATS + raceKit (top ten per role, one of each); never for crossings, encounters, online or labs. `window._ewCpuDraftPlan`.
+- **Phase 5.** battle.js `_AB_RETIRED_KEYS`: the 18 gen-40 flat weights + killBonusScore + cubeWindowBonus are no longer A/B-tested (values kept and still played; imitation still nudges; EW_TRAIN_KEYS overrides). Training dashboard: "P1 wins by" / "P2 wins by". Strength Test: Opponent mirror / Key Rusher / Cube Rusher / Turtle (`_ewSetStrengthSparring`, results per style). Imitation matches Inspect at the tile (synthetic score `_inspectScoreAt` when the CPU didn't propose it). New weights (no schema bump): raceRoundValue_v1, searchKeyValue_v1, searchCenterPrior_v1, keyCarrierDenial_v1, anchorCaution_v1, tacticCommitment_v1, hardReplyFactor_v1 (probe 'hard' = never in the labs). `window.getCubeAttackDamage` exported for the clocks.
+- Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
