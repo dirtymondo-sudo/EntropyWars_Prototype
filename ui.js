@@ -2678,7 +2678,9 @@
               const _sl = (_cls !== 'move-takeoff' && typeof predictWalkLanding === 'function')
                 ? predictWalkLanding(_self, _tx, _ty, _tz) : null;
               const _ex = _sl ? _sl.x : _tx, _ey = _sl ? _sl.y : _ty, _ez = _sl ? _sl.z : _tz;
-              if (_cls === 'move-jump' && typeof predictFallDamage === 'function'
+              /* a WALK down a drop deals the same fall (battle.js finishMoveAt: start height to end height) — Cube vs Cube
+                 matchup 2026-10-23: the Dinosaur walked into a crater for 156 with the tile lit like any other */
+              if ((_cls === 'move-jump' || _cls === 'move') && typeof predictFallDamage === 'function'
                   && predictFallDamage(_self, _self.z ?? 0, _dropZ, _tx, _ty) > 0) _tok += ' hazard';
               else if (_strikeFrom(_ex, _ey, _ez)) _tok += ' strike';
               else if (_hazardTile(_ex, _ey, _ez)) _tok += ' hazard';
@@ -4462,13 +4464,13 @@
 
                 let arenaP1Pts = 0, arenaP2Pts = 0;
                 if (isArena) {
-                    const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
+                    const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
                     function _liveArenaScore(p) {
                         const enemy = p === 1 ? 2 : 1;
                         let pts = 0;
                         pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                         const eTw = state.towers?.[enemy];
-                        if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
+                        if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
                         if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
                             pts += state.hourglasses.filter(h => {
                                 if (!h.carriedBy) return false;
@@ -5612,9 +5614,26 @@
            starts inside the same zone is not stepping in, so shuffling around
            inside a zone scores nothing. Cloaked / airborne units don't count
            (you can't claim ground you aren't visibly standing on). */
+        /* THE FLYER'S NOTE (Cube vs Cube matchup 2026-10-23): a flyer over a Nexus neither captures, contests nor holds
+           it (the rule above), but nothing said so — a Dragon "held" the centre while the enemy took it. Its own team
+           gets one line per zone visit (log line seen by that team only, so it leaks no position). */
+        function _nexusAirborneNote(unit) {
+            if (!unit || unit.dead || !state.nexusPoints || state.phase !== 'battle') return;
+            if (!(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) { if (unit._nexusAirNote) unit._nexusAirNote = null; return; }
+            let section = null;
+            for (const key of Object.keys(state.nexusPoints)) {
+                if (state.nexusPoints[key] && nexusZoneContains(state.nexusPoints[key], unit.x, unit.y)) { section = key; break; }
+            }
+            if (!section) { if (unit._nexusAirNote) unit._nexusAirNote = null; return; }
+            if (unit._nexusAirNote === section) return;
+            unit._nexusAirNote = section;
+            addLog(`⬡ ${_ctName(unit)} is flying over the ${_nexusLabel(section)} Nexus — airborne units don't capture, contest or hold a Nexus. LAND to count.`, unit.player);
+        }
+
         function nexusOnUnitArrive(unit, from) {
             if (!unit || unit.dead || !state.nexusPoints) return;
             if (state.phase !== 'battle') return;
+            _nexusAirborneNote(unit);
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'invisible')) return;
             if (from) _nexusOnUnitLeave(unit, from);
@@ -5672,6 +5691,7 @@
         function processNexusIncome() {
             if (!state.nexusPoints) return;
             const thr = _nexusThreshold();
+            for (const u of state.units) _nexusAirborneNote(u);
             for (const section of Object.keys(state.nexusPoints)) {
                 const nex = state.nexusPoints[section];
                 if (!nex) continue;
@@ -7337,13 +7357,13 @@
 
             const isArena = !mpMode || mpMode.id === 'arena';
             if (isArena) {
-                const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
+                const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
                 function _pmArenaScore(p) {
                     const enemy = p === 1 ? 2 : 1;
                     let pts = 0;
                     pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                     const eTw = state.towers?.[enemy];
-                    if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
+                    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
                     if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
                         pts += state.hourglasses.filter(h => {
                             if (!h.carriedBy) return false;
