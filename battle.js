@@ -3432,6 +3432,12 @@
         function triggerTerrainSpellReaction(caster, spell, tiles) {
             if (!caster || !spell || !tiles || !tiles.length) return;
             if (state.phase !== 'battle') return;
+            /* 🧊💥 ICE SHATTER (2026-10-23, mondo picked "slams + hard landings"): a slam breaks the ice tiles it hits */
+            if (spellShattersIce(spell)) {
+                let _cracked = 0;
+                for (const tile of tiles) if (tile && isInside(tile.x, tile.y) && shatterIceAt(tile.x, tile.y)) _cracked++;
+                if (_cracked) addLog(`🧊 ${_ctSp(spell.name)} shatters the ice — ${_cracked} tile${_cracked !== 1 ? 's' : ''} crack into water!`);
+            }
             /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo): a water or ice spell's hit on lava hardens it into stone
                (map.js lavaWaterMixOf; the paint notes the cells, so the field skins and the state-sync carry it) */
             const _rawEl = getSpellElement(spell);
@@ -3535,6 +3541,38 @@
             triggerTerrainSpellReaction(caster, spell, [{ x, y }]);
         }
         window.igniteOilBeforePaint = igniteOilBeforePaint;
+
+        /* 🧊💥 ICE SHATTER (2026-10-23, mondo chose "Slams + hard landings" on: "Which physical abilities should shatter
+           ice into water?"). Two ways ice breaks into shallow water (on the normal 3-round terrain timer):
+             · a SLAM — a physical ability that hits the ground: the leap / drop kinds (leapStrike, skyDrop, skySlam) and
+               any crater maker (terrainDeform). Ice-element moves never break their own ice; walls (terrainCreate /
+               monuments) are not slams. Only the struck tiles break, not the whole sheet (fire melts the whole sheet).
+             · a HARD LANDING — a body an enemy sends onto ice hard enough to take fall damage (thrown, knocked off a
+               ledge, slammed out of the sky): state.js applyFallDamage, and a sky throw's landing. The body lands in
+               the water, so it does not glide on (resolveForcedSlide + its forecast skip the ice leg). */
+        function spellShattersIce(spell) {
+            if (!spell || !(spell.dmg > 0) || spell.monument || spell.kind === 'terrainCreate') return false;
+            if ((spell.damageType || 'physical') !== 'physical') return false;
+            if (getSpellElement(spell) === 'ice') return false;
+            return spell.kind === 'leapStrike' || spell.kind === 'skyDrop' || spell.kind === 'skySlam' || !!spell.terrainDeform;
+        }
+        window.spellShattersIce = spellShattersIce;
+        function shatterIceAt(x, y) {
+            if (!_isIceTile(x, y)) return false;
+            if (setTerrainAt(x, y, 'water') === false) return false;
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            if (!_skipVisuals()) showFloatingTextAtTile(x, y, '🧊 CRACK!', 'damage', { durationMs: 900 });
+            return true;
+        }
+        window.shatterIceAt = shatterIceAt;
+        /* the landing tile breaks under a hard landing: ice there, and the drop deals fall damage */
+        function hardLandingCracksIce(u, fromZ, toZ, x, y) {
+            if (!u || !_isIceTile(x, y)) return false;
+            return typeof predictFallDamage === 'function' && predictFallDamage(u, fromZ, toZ, x, y) > 0;
+        }
+        window.hardLandingCracksIce = hardLandingCracksIce;
+        function _fallThreshold() { return (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3; }
 
         // ═══════════════════════════════════════════════════════════════════
         // 🔥 BURNING TILES — persistent ground fire (2026-07-08).
@@ -5364,13 +5402,16 @@
 
             res.x = cx; res.y = cy; res.z = cz;
             res.landX = cx; res.landY = cy; res.landZ = cz;   // where the slide itself ends, before its chain
+            /* 🧊💥 a landing hard enough to hurt cracks ice into water (applyFallDamage breaks it): the body stays put, no glide */
+            const _hardIce = res.moved > 0 && !opts.noFall && hardLandingCracksIce(target, res.fromZ, cz, cx, cy);
+            if (_hardIce) res.iceCracked = true;
 
             /* THE CHAIN FORECAST (THE FORCED MOVE): the landing's chain walked with the real rules — a body shoved onto
                ice glides on the way it was going, a bomb throws it back, a storm flings it on its heading, and so on;
                every leg rides res.steps (tagged ice / blast / fling) and res.legs, the end is the landing. */
             if (simulate && res.moved > 0 && !opts.noSimChain) {
                 const ch = simulateArrivalChain(target, cx, cy, cz, res.dirX, res.dirY,
-                    { byUnit: opts.byUnit || null, noGlide: res.spent, viewer: opts.viewer, grounded: !!opts.groundFirst });
+                    { byUnit: opts.byUnit || null, noGlide: res.spent || _hardIce, viewer: opts.viewer, grounded: !!opts.groundFirst });
                 if (ch.legs.length) {
                     for (const st of ch.steps) res.steps.push(st);
                     res.legs = ch.legs;
@@ -5432,7 +5473,7 @@
                     }
                     if (res.moved > 0) {
                         /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
-                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent });
+                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
                     }
                 }
@@ -36859,7 +36900,9 @@
                     return;
                 }
                 hit(tt, total, total, total, hopts);
-                chainMove(tt, x, y, Math.sign(x - tt.x), Math.sign(y - tt.y), 'thrown');
+                /* 🧊 a hurl from fall-damage height onto ice cracks it (doSpell's skyThrow): no glide in the forecast either */
+                const _thIce = _isIceTile(x, y) && Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) >= _fallThreshold();
+                chainMove(tt, x, y, Math.sign(x - tt.x), Math.sign(y - tt.y), 'thrown', _thIce ? { noGlide: true } : undefined);
                 return;
             }
 
@@ -74920,6 +74963,8 @@
                     addLog(`${_ctName(unit)} drops ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
                     /* applyDamageToUnit already floats the real post-mitigation
                        number — no second (pre-armor) float. */
+                    // the impact tile reacts like any spell hit (a drop is a slam: it shatters ice)
+                    triggerTerrainSpellReaction(unit, spell, [{ x: target.x, y: target.y }]);
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, 0, spell.terrainDeform);
@@ -75070,7 +75115,10 @@
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
-                            resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2 });   // ⛓ the throw's landing
+                            /* 🧊💥 a hurl from fall-damage height onto ice cracks it: the body lands in the water, no glide */
+                            const _thCrack = elevDelta >= _fallThreshold() && shatterIceAt(x, y);
+                            if (_thCrack) addLog(`🧊 ${_ctName(throwTarget)} crashes through the ice!`);
+                            resolveTileArrival(throwTarget, { via: 'thrown', dirX: _thDx2, dirY: _thDy2, noGlide: _thCrack });   // ⛓ the throw's landing
                         }
                         // 💥 the landing tile reacts like any spell hit (Infernal Hurl into an oil slick blows it)
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
@@ -75290,6 +75338,8 @@
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
                     addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
+                    // the slammed ground reacts like any spell hit (shatters ice, freezes water, ...)
+                    triggerTerrainSpellReaction(unit, spell, getSquareArea(slamX, slamY, spell.aoeRadius || 0));
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(slamX, slamY, spell.aoeRadius || 0, spell.terrainDeform);
@@ -75445,6 +75495,8 @@
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
                     addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
+                    // the struck ground reacts like any spell hit (shatters ice, freezes water, ...)
+                    triggerTerrainSpellReaction(unit, spell, getSquareArea(target.x, target.y, spell.aoeRadius || 0));
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, spell.aoeRadius || 0, spell.terrainDeform);
