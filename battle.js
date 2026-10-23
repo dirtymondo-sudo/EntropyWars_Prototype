@@ -58819,7 +58819,10 @@
                     // standing surface (diagonal neighbours are point-blank).
                     const _twZ = (typeof getHeightAt === 'function') ? getHeightAt(tw.x, tw.y) : 0;
                     const d = combatDist(unit.x, unit.y, unitZ, tw.x, tw.y, _twZ);
-                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)) {
+                    /* the same sight gate as the enemy rows and doAttack (Cube vs Cube matchup 2026-10-23: Longshot listed
+                       the Cube, CONFIRM said "Out of sight") — an unseen Cube lists greyed OUT OF SIGHT instead (hud.js) */
+                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)
+                        && !(visionGatesTargeting(unit) && !isInVision(unit, tw.x, tw.y))) {
                         targets.push({ x: tw.x, y: tw.y, dist: d, tower: tw, kind: 'tower' });
                     }
                 }
@@ -66987,6 +66990,11 @@
 
             const modified = [];
             const _excavated = [];   // material-bearing blocks the blast tore out
+            /* who was AIRBORNE before the ground moved (Cube vs Cube matchup 2026-10-23): read after the blocks went, a
+               flyer standing on the ground was suddenly "above" its new floor and kept hovering at the old height —
+               LAND 1 AP, "BUILD land first" — when it should ride the ground down like everyone else */
+            const _wasAirborne = new Set((state.units || []).filter(u => !u.dead && typeof isUnitAirborne === 'function'
+                && Math.abs(u.x - cx) <= radius && Math.abs(u.y - cy) <= radius && isUnitAirborne(u)).map(u => u.id));
 
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
@@ -67065,14 +67073,15 @@
             if (modified.length === 0) return;
 
             for (const m of modified) {
-                const u = unitAt(m.x, m.y);
-                if (u && !u.dead) {
+                /* every body on the tile (a flyer over a grounded unit is two) */
+                for (const u of state.units) {
+                    if (u.dead || u._dying || u._insideBuildingId || u.x !== m.x || u.y !== m.y) continue;
                     /* 🕊️ Flying passive: an AIRBORNE flyer hovers above the
                        tile — reshaping the ground never yanks it down (or up)
                        to the new surface. It only rises if the new ground
                        would swallow its hover height. Grounded units (flyers
                        included) ride the terrain like always. */
-                    const _dAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(u);
+                    const _dAir = _wasAirborne.has(u.id);
                     if (_dAir) {
                         if ((u.z ?? 0) < m.newH) u.z = m.newH;
                         else continue;
