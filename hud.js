@@ -3832,7 +3832,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     // Pushers may now be PERMANENT (Channel / Land / Take Off): they carry
     // `available:false` + a `sub` reason instead of vanishing, exactly like
     // the BUILD row above.
-    (pushers || []).slice(0, 4).forEach(p => {
+    (pushers || []).slice(0, 5).forEach(p => {
       const live = p.available !== false;
       toolRows.push(h('div', {
         key: p.id,
@@ -5920,7 +5920,10 @@ function ActionMenu({ st, hidden }) {
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
     /* a strict boolean: off a zone _nex is null, and the row reads `available !== false` as lit
        (playtest 2026-10-21: CHANNEL lit with "1 AP" off the Nexus, then "Must be standing in a Nexus zone") */
-    const _chOk = !!_capturable && (unit.ap || 0) >= _chCost;
+    /* channelNexus refuses a flyer in the air ("Land first!") — the row greys the same way BUILD does
+       (Wipeout vs Keys matchup 2026-10-23: CHANNEL lit "1 AP" on an airborne Superhero) */
+    const _chAir = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+    const _chOk = !!_capturable && !_chAir && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
     /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
     const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
@@ -5929,11 +5932,30 @@ function ActionMenu({ st, hidden }) {
       id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: _chLocked ? '#ff8a7a' : '#5fd6ff',
       available: _chOk,
       sub: !_nex ? (_chLocked ? '⛔ NO SPAWN — take a zone' : 'Not on a nexus')
-         : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
+         : (!_capturable ? 'Already yours' : _chAir ? 'Land first' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
       // the unit this menu is drawn for — the row's grey-out was judged on it
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
+    });
+  }
+  // 🔍 INSPECT is a permanent tool row in the modes that hide Keys (the CHANNEL rule above): it arms the existing
+  // board pick (actionMode 'inspect' — the lit reach, "INSPECT — CLICK A TILE", a tile past the reach walks into it
+  // first). It only lived in the tile quick menu, so a Keys team had to know to click a tile (Wipeout vs Keys
+  // matchup 2026-10-23).
+  const _modeHasKeys = typeof getActiveMultiplayerMode === 'function'
+    ? (getActiveMultiplayerMode() ? getActiveMultiplayerMode().hasHourglasses !== false : true) : true;
+  if (_modeHasKeys && typeof doInspect === 'function' && typeof getEffectiveInspect === 'function'
+      && getEffectiveInspect(unit) > 0 && !(typeof window._isSimulMode === 'function' && window._isSimulMode())) {
+    const _inOk = (unit.ap || 0) >= 1;
+    pushers.push({
+      id: 'inspect', glyph: '🔍', label: 'INSPECT', color: '#22eebb',
+      available: _inOk,
+      active: am === 'inspect',
+      sub: _inOk ? null : 'No AP',
+      hint: '1 AP',
+      title: 'Inspect — search the tiles around a tile you pick for Keys, items on the fallen and hidden bombs (1 AP)',
+      fire: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); },
     });
   }
   // ⬆/⬇ flyers get a permanent LAND / TAKE OFF tool row the same way.
@@ -9843,7 +9865,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
   if (onSelf && typeof getNexusAtUnit === 'function' && typeof channelNexus === 'function') {
     const nex = getNexusAtUnit(actingUnit);
-    if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
+    if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)
+        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))) {
       const prog = actingUnit.player === 1 ? Math.max(0, nex.nexus.progress) : Math.max(0, -nex.nexus.progress);
       const thresh = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 3;
       const _chRead = typeof nexusTeamReadout === 'function' ? nexusTeamReadout(nex.nexus, actingUnit.player) : null;
