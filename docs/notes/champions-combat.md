@@ -2384,6 +2384,19 @@ mondo: "yes it should remember, and lets also get rid of the round 10 key top up
 - REMOVED: `spawnPeriodicHourglasses` and its round-10 call. It never reshuffled Keys; it ADDED up to 3 new Keys (at most
   6 loose on the ground) once, at round 10, only in a mode without a fixed Key pool. Arena pins keySpawnCount 5 /
   keysToWin 5 (fixedPool), so it never ran in Arena; it could only run in a match with no multiplayer mode set.
+
+## WEAK RACES 2: Symbiote, Bunny Girl, Bee Queen, Wizard (2026-10-23, mondo "sure lets do both")
+Study + lab report: https://claude.ai/artifact/DEtZE2J3xJzUBSXzN4Hp9L (screenshots in project files weak-races-2/).
+Lab, all four on one team vs random CPU teams (code at PR #442): baseline 17.1% (245 games), spells only 13.9%
+(244), spells + these stats 33.6% (304). mondo picked both.
+- Spells (data.js): A Thousand Stings 10x17 -> 10x30, Dead Man's Hand 4x34 -> 4x50, Magic Missile 5x27 -> 5x40.
+  calcDamageResolution takes armour off EVERY hit (35% soak floor), so multi-hit rows did far less than one hit of the
+  same total. Static Shock Jammed 1 -> 2 rounds, Misdirection Blind 1 -> 2 rounds: a 1-round status ticks off at the
+  end of the round it was cast in, so a caster who acts after its target wasted it. Static Shock (lightning family)
+  and Misdirection (trickery family) change for every race that rolls them.
+- Stats (RACE_BASE_STATS): Symbiote HP 690 -> 900, SPD 79 -> 90 (move 2 -> 3); Bunny Girl HP 666 -> 900; Bee Queen
+  HP 867 -> 1000, MP 146 -> 220; Wizard HP 349 -> 450, DEF 15 -> 40, SPD 23 -> 50 (move 1 -> 2).
+
 ## WIPEOUT vs CUBE MATCHUP FIXES (2026-10-23, mondo: "fix the most prominent individual issues found in each one")
 Report: https://claude.ai/artifact/CWTojTHQLaLz8Jz6tqAeKF (copy /mnt/project-files/matchup-wipeout-vs-cube/). Existing rules only.
 - MARTYR'S TALISMAN IN THE FORECAST (top issue: rows said lethal, the target lived at 1 HP four times). battle.js
