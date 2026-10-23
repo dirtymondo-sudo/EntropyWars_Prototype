@@ -784,8 +784,8 @@ function elemSplitFactor(typeEff, aff, share) {
     const r = Math.max(0, Math.min(1, share || 0));
     return (1 - r) * (typeEff == null ? 1 : typeEff) + r * elemShareMult(aff);
 }
-/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17; battle.js _pressOutcomeForHit
-   and the AI's press read it). typeTier = the SPELL's type vs the target
+/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17). HISTORY since 2026-10-23: battle.js THE PRESS SUM
+   (_pressHitInfo) and ai.js pressEV replaced it — kept for anything still reading it. typeTier = the SPELL's type vs the target
    (+1 super effective, −1 resisted, 0 neutral); aff = the target's affinity
    for the spell's element. Returns 'weak' (a press, +2 AP), 'resist' (no
    press and the AP drain), 'null' (no press, no drain — vetoes the press of
@@ -6711,6 +6711,16 @@ const _STAGGER_1 = [{ id: 'stagger', duration: 1 }];
 const RACE_ABILITIES = {
 
     'seraphim': [
+        /* SERAPHIC FIRE (the P-Z signature families, mondo 2026-10-23): the live coal Burns, the thrice-holy cry pays it off. */
+        { id: 'pzLiveCoal', name: 'Live Coal', tier: 1, families: ['seraphicfire'], cost: 25, apCost: 1,
+          spellType: 'divine', element: 'fire', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A coal from the altar, to the lips. Deals WEAK magic damage to a Single Enemy within 3 and Burns it for 2 rounds.' },
+        { id: 'pzThriceHoly', name: 'Holy, Holy, Holy', tier: 4, families: ['seraphicfire'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'fire', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 4,
+          hitDamages: [55, 55, 55],
+          bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'The cry that shook the doorposts. Deals HEAVY magic damage to a Single Enemy within 4 across 3 hits. Deals bonus damage to Burning targets. Cooldown: 2 rounds.' },
         { id: 'raceDivineJudgment', tier: 3, families: ['angelic'], spellType: 'divine', name: 'Divine Judgment',
           type: 'damage', cost: 75, dmg: 125, range: 4, apCost: 1,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
@@ -6728,6 +6738,15 @@ const RACE_ABILITIES = {
           desc: 'Summon the sacred chariot: counter-rotating star tetrahedra spin up over the battlefield, gather three rings of light, and collapse into a detonation. Deals HEAVY magic damage to All Enemies in an AOE. Cooldown: 2 rounds. Deals bonus damage to Burning targets.' },
     ],
     'orb of light': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Plasma Orb. */
+        { id: 'goSolarFlare', name: 'Plasma Loop', tier: 2, families: ['orboflight'], cost: 50, apCost: 1, spellType: 'divine',
+          element: 'fire', type: 'damage', kind: 'barrage', range: 0, aoeRadius: 2, aoeOriginSelf: true, dmg: 80,
+          damageType: 'magic', statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A loop of plasma off its own surface. Deals WEAK magic damage to every enemy within 2 tiles and Burns them for 2 rounds.' },
+        { id: 'goBurnout', name: 'Burnout', tier: 4, families: ['orboflight'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'fire', type: 'damage', kind: 'aoe', range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          dmg: 160, damageType: 'magic', selfDamagePct: 0.15, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'It burns itself down to take them with it. Deals HEAVY magic damage to every enemy within 2 tiles. Deals bonus damage to Burning targets. Recoil: the orb loses 15% of max HP. Cooldown: 2 rounds.' },
         { id: 'racePrismBurst', tier: 3, vfxElement: 'light', families: ['light'], spellType: 'divine', name: 'Prism Burst',
           type: 'damage', cost: 30, dmg: 125, range: 4,
           kind: 'ricochet', damageType: 'magic',
@@ -6754,6 +6773,17 @@ const RACE_ABILITIES = {
        map.js + the getMoveTiles/findMovePath hooks in battle.js). Boo is the
        new jump-scare nuke. */
     'ghost': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Poltergeist. */
+        { id: 'goThingsThatGoBump', name: 'Things That Go Bump', tier: 1, families: ['ghost'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 4, dmg: 45, damageType: 'magic',
+          ignoresLineOfSight: true, randomTargets: { count: 3, scope: 'enemies', distinct: true, mult: 1 },
+          statusEffects: [{ id: 'haunted', duration: 2 }],
+          desc: 'Plates, chairs, the piano. 3 random enemies within 4 tiles each take WEAK magic damage and are Haunted for 2 rounds. Fires through cover.' },
+        { id: 'goWholeHouseShakes', name: 'The Whole House Shakes', tier: 3, families: ['ghost'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 60, damageType: 'magic',
+          ignoresLineOfSight: true, randomTargets: { count: 4, scope: 'enemies', distinct: false, mult: 1 },
+          bonusVsStatus: { status: 'haunted', mult: 1.5 },
+          desc: 'Every door slams at once. 4 hits land on random enemies within 5 tiles (the same enemy can be hit more than once), WEAK magic damage each, through cover. Deals bonus damage to Haunted targets.' },
         /* Ghost capstone since the 2026-08-12 capstone pass (was Possession).
            §6.6 (Phase 5 wave B, 2026-09-08): ×1.5 vs Haunted — the payoff. */
         { id: 'raceBoo', spellType: 'anomaly', element: 'psychic', name: 'Boo',
@@ -6804,8 +6834,30 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'broken', duration: 1 }],   // 💔 2026-10-09
           desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Unholy targets. Breaks it for 1 round (its passives are off; a passive flyer falls). The full weight of heaven, delivered.' },
         SHARED_WING_ATTACK,
+        /* THE SIGNATURE FAMILY (2026-10-23): Heavenly Host, this race's own. */
+        { id: 'sigShelteringWings', name: 'Sheltering Wings', tier: 2, families: ['heavenlyhost'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'divine', vfxElement: 'light', type: 'buff', kind: 'warCry', range: 0, auraRadius: 1,
+          teamStatusEffects: [{ id: 'protect', duration: 2 }],
+          desc: 'Under my wings. Every ally beside the angel gains Protect for 2 rounds: the next attack on them is blocked completely. Cooldown: 3 rounds.' },
+        { id: 'sigLastTrumpet', name: 'The Last Trumpet', tier: 4, families: ['heavenlyhost'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', element: 'sonic', type: 'damage', kind: 'cross', range: 0, aoeOriginSelf: true,
+          crossRadius: 3, damageType: 'magic', dmg: 160, unholyBonus: 60,
+          desc: 'The last call. Deals HEAVY magic damage to All Enemies in a cross 3 tiles out from the angel, and more to Unholy targets. Cooldown: 2 rounds.' },
     ],
     'gargoyle': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Cathedral Watch. */
+        { id: 'goRainspout', name: 'Rainspout', tier: 1, families: ['gargoyle'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'water', type: 'damage', kind: 'line', range: 4, lineWidth: 1, dmg: 85, damageType: 'magic',
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'The cathedral spout was carved to vomit rain on the street. Deals WEAK magic damage to All Enemies in a line and Soaks them for 2 rounds.' },
+        { id: 'goCathedralPerch', name: 'Cathedral Perch', tier: 2, families: ['gargoyle'], cost: 50, apCost: 1,
+          cooldownRounds: 2, spellType: 'divine', element: 'wind', type: 'utility', kind: 'teleport', range: 4,
+          teleportDistance: 4, leap: true, arrivalStageBoost: { def: 1, mdef: 1 }, arrivalStageRounds: 2,
+          desc: 'Up to the highest ledge. Leap to any free tile within 4, whatever its height, with no fall damage. +1 DEF and +1 M.DEF stage for 2 rounds on landing. Cooldown: 2 rounds.' },
+        { id: 'goGrotesqueDive', name: 'Grotesque Dive', tier: 3, families: ['gargoyle'], cost: 75, apCost: 1,
+          spellType: 'divine', element: 'earth', type: 'damage', kind: 'leapStrike', range: 3, dmg: 125,
+          damageType: 'physical', dmgPerLevel: 25, bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'Wings shut, a ton of carved stone off the roof. Leaps onto a Single Enemy within 3 for MEDIUM physical damage, more for every level it drops. Deals bonus damage to Soaked targets.' },
         /* §6.17 Stoneform (Phase 5 wave A, 2026-09-08) — Perch Form's grown-up
            version; Perch Form is retired (the Phase 4 `stoneform` carrier:
            blockMove + blockAction + invulnerable + 15% regen, dispelProof). */
@@ -6879,9 +6931,27 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           desc: 'Grabs the target, carries it skyward and hurls it up to 3 tiles. Deals WEAK physical damage, more if they crash into another unit. Caster must be flying.' },
         SHARED_SUMMON_BLOOD_RAIN,
-        SHARED_WING_ATTACK
+        SHARED_WING_ATTACK,
+        /* THE SIGNATURE FAMILY (2026-10-23): Hell Pact, this race's own. */
+        { id: 'sigMarkOfTheBeast', name: 'Mark of the Beast', tier: 2, families: ['hellpact'], cost: 50, apCost: 1, spellType: 'unholy',
+          vfxElement: 'shadow', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'hexed', duration: 2 }],
+          statStageBoost: { mdef: -1 },
+          desc: 'Branded for the pit. A Single Enemy within 4 tiles is Hexed for 2 rounds (every action it takes hurts) and loses 1 M.DEF stage.' },
+        { id: 'sigSoulHarvest', name: 'Soul Harvest', tier: 4, families: ['hellpact'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', vfxElement: 'shadow', element: 'blood', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 150,
+          range: 4, aoeRadius: 1, aoeLifeDrain: 0.3, bonusVsStatus: { status: 'hexed', mult: 1.5 },
+          desc: 'Collection day. Deals HEAVY magic damage to All Enemies in a 3×3 within 4 tiles, and the demon heals 30% of all the damage dealt. Hexed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'succubus': [
+        /* NIGHT VISITOR (the P-Z signature families, mondo 2026-10-23): the stolen vitality wounds (Grievous), the last kiss pays it off. */
+        { id: 'pzStolenVitality', name: 'Stolen Vitality', tier: 2, families: ['nightvisitor'], cost: 50, apCost: 1,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 80, range: 2, drainPct: 0.5,
+          statusEffects: [{ id: 'grievous', duration: 2 }],
+          desc: 'She takes what would have healed you. Deals WEAK magic damage to a Single Enemy within 2, heals you for half of it, and gives it a Grievous Wound for 2 rounds.' },
+        { id: 'pzLastKiss', name: 'Last Kiss', tier: 4, families: ['nightvisitor'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 1, drainPct: 1,
+          bonusVsStatus: { status: 'grievous', mult: 1.5 },
+          desc: 'Goodnight. Deals HEAVY magic damage to an adjacent enemy and heals you for all of it. Deals bonus damage to targets with a Grievous Wound. Cooldown: 2 rounds.' },
         { id: 'raceSoulSuck', tier: 1, bonusVsStatus: { status: 'charm', mult: 1.5 }, families: ['seduction'], spellType: 'unholy', name: 'Soul Suck',
           type: 'damage', cost: 30, dmg: 100, range: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.5,
@@ -6956,9 +7026,27 @@ const RACE_ABILITIES = {
           desc: 'The feather against the heart. Deals HEAVY magic damage to a Single Enemy — ×1.5 if the target is under half HP.' },
 
         SHARED_SUMMON_SANDSTORM,
-        SHARED_FISSURE
+        SHARED_FISSURE,
+        /* THE SIGNATURE FAMILY (2026-10-23): The Duat, this race's own. */
+        { id: 'sigMummify', name: 'Mummify', tier: 2, families: ['duat'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          vfxElement: 'shadow', type: 'debuff', kind: 'debuff', range: 3,
+          statusEffects: [{ id: 'root', duration: 2 }, { id: 'silence', duration: 1 }],
+          desc: 'Wrapped for the long sleep while still awake. A Single Enemy within 3 tiles is Rooted for 2 rounds and Silenced for 1. No damage. Cooldown: 2 rounds.' },
+        { id: 'sigAmmit', name: 'Ammit Devours', tier: 4, families: ['duat'], cost: 100, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 165, range: 3, executeBelowPct: 0.25,
+          bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
+          desc: 'The heart was heavier than the feather. Deals HEAVY magic damage to a Single Enemy, and Ammit eats it outright if the hit leaves it under 25% HP. Rooted or Silenced targets take it worse. Cooldown: 2 rounds.' },
     ],
     'skeleton': [
+        /* RATTLING BONES (the P-Z signature families, mondo 2026-10-23): the shiver Discords, the danse macabre pays it off. */
+        { id: 'pzShiverDownTheSpine', name: 'Shiver Down the Spine', tier: 1, families: ['rattlingbones'], cost: 25, apCost: 1,
+          spellType: 'unholy', element: 'sonic', type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 70, range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'Every bone rattles at once. Deals WEAK physical damage to All Enemies in the 3×3 around you and Discords them for 2 rounds.' },
+        { id: 'pzDanseMacabre', name: 'Danse Macabre', tier: 4, families: ['rattlingbones'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', type: 'damage', kind: 'cross', diamond: true, crossRadius: 2, aoeOriginSelf: true, damageType: 'physical', dmg: 150, range: 0,
+          bonusVsStatus: { status: 'discord', mult: 1.5 },
+          desc: 'The dance of death, at midnight. Deals HEAVY physical damage to All Enemies in a diamond 2 tiles around you. Deals bonus damage to Discorded targets. Cooldown: 2 rounds.' },
         { id: 'raceBoneToss', tier: 1, families: ['bonedensity'], spellType: 'unholy', name: 'Bone Toss',
           type: 'damage', cost: 15, dmg: 80, range: 3,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
@@ -7016,6 +7104,15 @@ const RACE_ABILITIES = {
         SHARED_WING_ATTACK
     ],
     'shadow entity': [
+        /* SHADOW PEOPLE (the P-Z signature families, mondo 2026-10-23): the Hat Man Fears, the corner of the eye pays it off. */
+        { id: 'pzHatMan', name: 'The Hat Man', tier: 2, families: ['shadowpeople'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', vfxElement: 'shadow', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'He is standing at the foot of the bed. A Single Enemy within 4 is Feared for a round. Cooldown: 2 rounds.' },
+        { id: 'pzCornerOfYourEye', name: 'Corner of Your Eye', tier: 3, families: ['shadowpeople'], cost: 75, apCost: 1,
+          spellType: 'anomaly', vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 135, range: 4, chargeToTarget: true,
+          bonusVsStatus: { status: 'feared', mult: 1.5 },
+          desc: 'You turned too late. Rushes a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Feared targets.' },
         { id: 'racePhaseShift', tier: 2, families: ['shadow'], spellType: 'anomaly', name: 'Phase Shift',
           type: 'buff', cost: 50, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'invisible', duration: 2 }],
@@ -7086,9 +7183,27 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'blind', mult: 1.5 },
           families: ['fae'],
           kind: 'aoe', aoeShape: 'ring', aoeRadius: 2, damageType: 'magic',
-          desc: 'A ring of toadstools erupts. Deals HEAVY magic damage to All Enemies standing on the ring (the rim of a 5×5 — the center is spared). Never step inside a fairy ring; never stand on one either.' }
+          desc: 'A ring of toadstools erupts. Deals HEAVY magic damage to All Enemies standing on the ring (the rim of a 5×5 — the center is spared). Never step inside a fairy ring; never stand on one either.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Pixie Tricks, this race's own. */
+        { id: 'sigPixiePrank', name: 'Pixie Prank', tier: 1, families: ['pixie'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'minimize', duration: 2 }],
+          desc: 'A tap of the wand and they are pocket-sized. A Single Enemy within 4 tiles is Minimized for 2 rounds: weaker, but harder to hit. Cooldown: 2 rounds.' },
+        { id: 'sigFireflySwarm', name: 'Firefly Swarm', tier: 3, families: ['pixie'], cost: 75, apCost: 1, spellType: 'anomaly',
+          vfxElement: 'light', element: 'lightning', type: 'damage', kind: 'splitBeam', damageType: 'magic', dmg: 120, range: 4,
+          splitCount: 3, splitDmg: 60, splitRadius: 2, bonusVsStatus: { status: 'minimize', mult: 1.5 },
+          desc: 'Out of the jar. Deals MEDIUM magic damage to a Single Enemy within 4 tiles; the swarm splits and seeks up to 3 more enemies within 2 tiles for half. Minimized targets take it worse.' },
     ],
     'reptilian': [
+        /* REPTOID BIOLOGY (the P-Z signature families, mondo 2026-10-23): the tongue drags and Poisons, the unmasking pays it off. */
+        { id: 'pzTongueLash', name: 'Tongue Lash', tier: 1, families: ['reptoid'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 80, range: 4, pullDistance: 3,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'Faster than the eye. Deals WEAK physical damage to a Single Enemy within 4, drags it up to 3 tiles toward you and Poisons it for 2 rounds.' },
+        { id: 'pzUnmasked', name: 'Unmasked', tier: 4, families: ['reptoid'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 1, sneakBonus: true,
+          bonusVsStatus: { status: 'poison', mult: 1.5 },
+          desc: 'The human face comes off. Deals HEAVY physical damage to an adjacent enemy, more while you are invisible. Deals bonus damage to Poisoned targets. Cooldown: 2 rounds.' },
         { id: 'raceShedSkin', tier: 2, families: ['trickery'], spellType: 'anomaly', name: 'Shed Skin',
           type: 'utility', cost: 20, apCost: 1, range: 0,
           kind: 'escape', cleanse: 1, teleportDistance: 2, spawnDecoy: true,
@@ -7098,6 +7213,15 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'skinwalker': [
+        /* WEARING SKINS (the P-Z signature families, mondo 2026-10-23): the familiar voice drags and Hexes, the skin pays it off. */
+        { id: 'pzFamiliarVoice', name: 'Familiar Voice', tier: 1, families: ['wearingskins'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'pull', damageType: 'magic', dmg: 60, range: 4, pullDistance: 3,
+          statusEffects: [{ id: 'hexed', duration: 2 }],
+          desc: 'It sounds just like someone you love. Deals WEAK magic damage to a Single Enemy within 4, draws it up to 3 tiles toward you and Hexes it for 2 rounds.' },
+        { id: 'pzWearYourSkin', name: 'Wear Your Skin', tier: 4, families: ['wearingskins'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 1, drainPct: 0.6,
+          bonusVsStatus: { status: 'hexed', mult: 1.5 },
+          desc: 'Now it has your face. Deals HEAVY magic damage to an adjacent enemy and heals you for part of it. Deals bonus damage to Hexed targets. Cooldown: 2 rounds.' },
         { id: 'raceBorrowedClaw', tier: 1, families: ['trickery'], spellType: 'anomaly', name: 'Borrowed Claw',
           type: 'damage', cost: 25, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical', stealSpell: true,
@@ -7134,7 +7258,16 @@ const RACE_ABILITIES = {
           timedStatBonus: { move: 1, rounds: 2 },   // THE SPELL AUDIT Batch D: the swarm closes (the Quickened status)
           desc: 'The signal goes out. Everything with legs comes running. Every ally within 2 tiles gains +2 ATK stages and +1 MOV for 2 rounds.' },
         SHARED_POISON_SWAMP,
-        SHARED_INFECTIOUS_BITE
+        SHARED_INFECTIOUS_BITE,
+        /* THE SIGNATURE FAMILY (2026-10-23): The Colony, this race's own. */
+        { id: 'sigFiftyTimes', name: 'Fifty Times Its Weight', tier: 2, families: ['colony'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'nature', type: 'damage', kind: 'displacement', damageType: 'physical', dmg: 90, range: 1, pushDistance: 3,
+          collisionBonus: 60, throwAnyDirection: true, statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Ants lift fifty times their own weight. Picks up an adjacent enemy and throws it 3 tiles whichever way you pick (click the target, then a tile beside it): WEAK physical damage, more if it slams into something, and it is Staggered.' },
+        { id: 'sigOverrun', name: 'Overrun', tier: 3, families: ['colony'], cost: 75, apCost: 1, spellType: 'anomaly', element: 'nature',
+          type: 'damage', kind: 'multiHit', damageType: 'physical', range: 1, hitDamages: [30, 30, 30, 30],
+          bonusHitsPerAdjacentAlly: { dmg: 30, max: 3 }, bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'The colony arrives all at once. Deals MEDIUM physical damage to an adjacent enemy across 4 bites, plus one more bite for every ally beside the target (up to 3). Staggered targets take it worse.' },
     ],
     'scarecrow': [
         { id: 'raceHarvestHook', element: 'nature', tier: 1, families: ['scarecrow'], spellType: 'unholy', name: 'Harvest Hook',
@@ -7187,9 +7320,26 @@ const RACE_ABILITIES = {
           spellType: 'anomaly', element: 'nature', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125,
           range: 4, aoeRadius: 1, statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'The ground remembers what it grew. Deals MEDIUM magic damage to All Enemies in a 3×3 and Roots them for a round.' },
-
+        /* THE SIGNATURE FAMILY (2026-10-23): Elusive, this race's own. */
+        { id: 'sigBlurryPhoto', name: 'Blurry Photo', tier: 2, families: ['elusive'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'anomaly', element: 'nature', type: 'buff', kind: 'buff', range: 0, statusEffects: [{ id: 'invisible', duration: 2 }],
+          timedStatBonus: { move: 1, rounds: 2 },
+          desc: 'Nobody has ever got a clear shot. The caster turns Invisible for 2 rounds (until it acts) and gains +1 MOV for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'sigFromTheTreeline', name: 'From the Treeline', tier: 4, families: ['elusive'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 165, range: 4,
+          chargeToTarget: true, sneakBonus: true, bonusVsStatus: { status: ['feared', 'blind'], mult: 1.5 },
+          desc: 'You only see it once. Charges a Single Enemy up to 4 tiles away for HEAVY physical damage, harder still while Bigfoot is Invisible. Feared or Blinded targets take it worse. Cooldown: 2 rounds.' },
     ],
     'siren': [
+        /* SIREN'S CALL (the P-Z signature families, mondo 2026-10-23): the lure Charms, the rocks pay it off. */
+        { id: 'pzLureOfTheDeep', name: 'Lure of the Deep', tier: 2, families: ['sirencall'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'sonic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 60, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'The whole crew turns the wheel. Deals WEAK magic damage to All Enemies in a 3×3 within 4 and Charms them for a round. Cooldown: 2 rounds.' },
+        { id: 'pzDashedOnTheRocks', name: 'Dashed on the Rocks', tier: 4, families: ['sirencall'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 4,
+          bonusVsStatus: { status: 'charm', mult: 1.5 },
+          desc: 'The song stops; the rocks do not. Deals HEAVY magic damage to a Single Enemy within 4. Deals bonus damage to Charmed targets. Cooldown: 2 rounds.' },
         { id: 'raceSonicBreaker', tier: 2, element: 'sonic', spellType: 'anomaly', name: 'Sonic Breaker',
           type: 'damage', cost: 30, dmg: 100, range: 4,
           kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
@@ -7231,6 +7381,16 @@ const RACE_ABILITIES = {
         SHARED_NUKE,
     ],
     'glitch': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Corrupted Data. */
+        { id: 'goLagSpike', name: 'Lag Spike', tier: 1, families: ['glitch'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 80, damageType: 'magic',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Packet loss. Deals WEAK magic damage to a Single Enemy within 4 and Staggers them (they lose 1 AP).' },
+        { id: 'goStackOverflow', name: 'Stack Overflow', tier: 3, families: ['glitch'], cost: 75, apCost: 1, spellType: 'tech',
+          element: 'lightning', type: 'damage', kind: 'damage', range: 5, dmg: 50, damageType: 'magic',
+          ignoresLineOfSight: true, randomTargets: { count: 4, scope: 'enemies', distinct: false, mult: 1 },
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'A call that never returns. 4 hits land on random enemies within 5 tiles (the same enemy can be hit again), WEAK magic damage each, through cover. Deals bonus damage to Staggered targets.' },
         { id: 'raceCrashLoop', tier: 1, families: ['computerhacking'], spellType: 'tech', name: 'Crash Loop',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'damage', damageType: 'magic',
@@ -7274,10 +7434,27 @@ const RACE_ABILITIES = {
           families: ['artificialintelligence'],
           kind: 'aoePull', damageType: 'magic', aoeRadius: 2, pullToCenter: true, cooldownRounds: 2,
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them toward the center. The model converged. You were in the gradient.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Deep Learning, this race's own. */
+        { id: 'sigScrape', name: 'Scrape', tier: 2, families: ['deeplearning'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'tech',
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, stealSpell: true, statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'Every move you ever made is training data now. Steals one spell from a Single Enemy within 4 tiles (they lose it, the AI learns it for the match) and Jams them for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'sigOverfit', name: 'Overfit', tier: 3, families: ['deeplearning'], cost: 75, apCost: 1, spellType: 'tech',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4, echoLastDealt: true,
+          bonusVsStatus: { status: 'jammed', mult: 1.5 },
+          desc: 'It has seen this one before. Deals MEDIUM magic damage to a Single Enemy, then replays the last blow that enemy dealt back at it. Jammed targets take it worse.' },
     ],
     /* 2026-07-18: Chassis Slam reworked into Kill Mode (360° weapons-free
        barrage) + new Hydraulic Crush — the robot fights like a Warrior now. */
     'robot': [
+        /* COMBAT PROTOCOLS (the P-Z signature families, mondo 2026-10-23): the magnet hauls and Stuns, the compactor pays it off. */
+        { id: 'pzElectromagnet', name: 'Electromagnet', tier: 2, families: ['combatprotocols'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'tech', element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 80, range: 4, pullDistance: 3,
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'Polarity reversed. Deals WEAK physical damage to a Single Enemy within 4, hauls it up to 3 tiles toward you and Stuns it for a round. Cooldown: 2 rounds.' },
+        { id: 'pzCompactor', name: 'Compactor', tier: 4, families: ['combatprotocols'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'tech', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 1, ignoreArmor: true,
+          bonusVsStatus: { status: 'stun', mult: 1.5 },
+          desc: 'Scrap mode. Deals HEAVY physical damage to an adjacent enemy. Ignores DEF. Deals bonus damage to Stunned targets. Cooldown: 2 rounds.' },
         /* id typo raceChassisSlan → raceChassisSlam fixed in the spell-tree
            audit (§7.6); the old id aliases here via the legacy-alias table. */
         /* Robot capstone since the 2026-08-12 capstone pass (empBurst moved to
@@ -7311,13 +7488,27 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Lowers DEF by 1 stage. Deals bonus damage to targets with Jammed.' },
         SHARED_SMOKE_SCREEN,
+        /* THE SIGNATURE FAMILY (2026-10-23): Uncanny Valley, this race's own. */
+        { id: 'sigUncannySmile', name: 'Uncanny Smile', tier: 1, families: ['uncannyvalley'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'tech', element: 'psychic', type: 'debuff', kind: 'barrage', range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          noDamage: true, statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'Almost right. Not quite. Every enemy beside the android is Discorded for 2 rounds (ATK and DEF down). No damage. Cooldown: 2 rounds.' },
+        { id: 'sigTerminationProtocol', name: 'Termination Protocol', tier: 3, families: ['uncannyvalley'], cost: 75, apCost: 1,
+          cooldownRounds: 2, spellType: 'tech', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 130,
+          range: 3, chargeToTarget: true, executeBelowPct: 0.2, bonusVsStatus: { status: 'discord', mult: 1.5 },
+          desc: 'Target acquired. Charges a Single Enemy up to 3 tiles away for MEDIUM physical damage and terminates it outright if the hit leaves it under 20% HP. Discorded targets take it worse. Cooldown: 2 rounds.' },
     ],
 
     /* 2026-07-18: Bulwark Ring deleted from the giant kit (the golem/minotaur
        keep theirs) and Titan Step renamed Fee Fi Fo Fum — the giant is the
        Tank job's flagship race now. */
     'giant': [
-        { id: 'raceTitanStep', tier: 2, noDamage: true, families: ['titan'], spellType: 'human', element: 'earth', name: 'Fee Fi Fo Fum',
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Beanstalk. */
+        { id: 'goUnderfoot', name: 'Underfoot', tier: 3, families: ['giant'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'earth', type: 'damage', kind: 'aoe', range: 2, aoeRadius: 1, dmg: 130, damageType: 'physical',
+          terrainDeform: { centerDelta: -1, edgeDelta: 0 }, bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'The foot comes down. Deals MEDIUM physical damage to All Enemies in a 3x3 within 2 tiles and stamps the middle tile one level down. Deals bonus damage to Staggered targets.' },
+        { id: 'raceTitanStep', tier: 2, noDamage: true, families: ['giant'], spellType: 'human', element: 'earth', name: 'Fee Fi Fo Fum',
           type: 'damage', cost: 50, range: 0,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
@@ -7366,6 +7557,15 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'homosapien': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Persistence Hunter. */
+        { id: 'goAtlatl', name: 'Atlatl', tier: 1, families: ['homosapien'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 5, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'The spear-thrower, the oldest trick there is. Deals WEAK physical damage to a Single Enemy within 5 and Slows them for 2 rounds.' },
+        { id: 'goRunThemDown', name: 'Run Them Down', tier: 3, families: ['homosapien'], cost: 75, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', range: 5, dmg: 130, damageType: 'physical',
+          chargeToTarget: true, bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Humans cannot outrun anything. They just never stop. Charges a Single Enemy within 5 for MEDIUM physical damage. Deals bonus damage to Slowed targets.' },
         { id: 'raceElbowGrease', tier: 1, families: ['humangrit'], spellType: 'human', element: 'metal', name: 'Elbow Grease',
           type: 'damage', cost: 12, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -7438,6 +7638,16 @@ const RACE_ABILITIES = {
     // duelist: a tragic past, an unkillable narrative, and a blade the story
     // itself has blessed. The Swordmaster job's flagship vessel.
     'swordfighter': [
+        /* SWORD SAINT (the P-Z signature families, mondo 2026-10-23): the quickdraw cuts and Bleeds, the thousand cuts pay it off. */
+        { id: 'pzQuickdraw', name: 'Quickdraw', tier: 2, families: ['swordsaint'], cost: 50, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'dash', damageType: 'physical', dmg: 0, range: 4, dashDamage: 80,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Drawn, cut, sheathed. Dashes up to 4 tiles in a line; every enemy on the path takes WEAK physical damage and Bleeds for 2 rounds.' },
+        { id: 'pzThousandCuts', name: 'Thousand Cuts', tier: 4, families: ['swordsaint'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 1,
+          hitDamages: [28, 28, 28, 28, 28, 28],
+          bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'You never saw the blade. Deals HEAVY physical damage to an adjacent enemy across 6 hits. Deals bonus damage to Bleeding targets. Cooldown: 2 rounds.' },
         { id: 'raceSadBackstory', tier: 1, families: ['maincharacter'], spellType: 'human', element: 'psychic', name: 'Sad Backstory',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
@@ -7464,6 +7674,15 @@ const RACE_ABILITIES = {
     ],
 
     'knight': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Knight Errant. */
+        { id: 'goThrowDownTheGauntlet', name: 'Throw Down the Gauntlet', tier: 1, families: ['knighterrant'], cost: 25,
+          apCost: 1, cooldownRounds: 2, spellType: 'human', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'taunt', duration: 1 }],
+          desc: 'A challenge, in front of everyone. A Single Enemy within 4 is Provoked for a round. Cooldown: 2 rounds.' },
+        { id: 'goHonourBlow', name: 'Honour Blow', tier: 3, families: ['knighterrant'], cost: 75, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          desc: 'You accepted. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Provoked targets.' },
         SHARED_WALLS_OF_CAMELOT,
         { id: 'raceOathOfValor', tier: 3, families: ['knight'], spellType: 'divine', vfxElement: 'light', name: 'Oath of Valor',
           type: 'buff', cost: 25, apCost: 1, range: 0,
@@ -7483,6 +7702,15 @@ const RACE_ABILITIES = {
           desc: 'Deus vult. Deals HEAVY physical damage to All Enemies in an X around the knight, and bonus damage to Unholy targets.' }
     ],
     'shaman': [
+        /* SPIRIT ANIMALS (the P-Z signature families, mondo 2026-10-23): the spirit animal's bite Haunts, the ancestors pay it off. */
+        { id: 'pzSpiritAnimal', name: 'Spirit Animal', tier: 2, families: ['spiritanimals'], cost: 50, apCost: 1,
+          spellType: 'anomaly', element: 'nature', type: 'utility', kind: 'summonUnit', range: 1, maxActivePerCaster: 1,
+          summonDef: { key: 'wolf', name: 'Spirit Animal', move: 4, dmg: 45, hits: 2, hitStatus: { id: 'haunted', duration: 2 } },
+          desc: 'The drum calls it out of the smoke. Calls a Spirit Animal to an adjacent tile: at the end of every round it runs 4 tiles at the nearest enemy and bites for 45, Haunting it for 2 rounds. Two hits to put it down. One per shaman.' },
+        { id: 'pzCallTheAncestors', name: 'Call the Ancestors', tier: 4, families: ['spiritanimals'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 4, aoeRadius: 1,
+          bonusVsStatus: { status: 'haunted', mult: 1.5 },
+          desc: 'Every grandmother at once. Deals HEAVY magic damage to All Enemies in a 3×3 within 4. Deals bonus damage to Haunted targets. Cooldown: 2 rounds.' },
         { id: 'raceSpiritWalk', tier: 2, families: ['astralprojection'], spellType: 'anomaly', element: 'psychic', name: 'Spirit Walk',
           type: 'utility', cost: 20, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 4,
@@ -7617,8 +7845,26 @@ const RACE_ABILITIES = {
           /* no projectileOverride: the PNG bullet flew straight over the ricochet */
           bonusVsStatus: { status: ['stagger', 'tethered'], mult: 1.5 },
           desc: 'One bullet, fired at noon, bounces off every wall on the map before it finds them. HEAVY physical damage to a Single Enemy through any cover. Always a critical hit. Deals bonus damage to Staggered or Roped targets.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Gunslinger, this race's own. */
+        { id: 'sigShowdown', name: 'Showdown', tier: 2, families: ['gunslinger'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'debuff', kind: 'debuff', range: 5,
+          statusEffects: [{ id: 'taunt', duration: 1 }, { id: 'marked', duration: 2, bonusDamage: 40 }],
+          desc: 'This town ain\'t big enough. A Single Enemy within 5 tiles is Provoked for a round (it must come at the cowboy) and Marked for 2 (the next physical hit on it deals +40). Cooldown: 2 rounds.' },
+        { id: 'sigSixShooter', name: 'Six-Shooter', tier: 4, families: ['gunslinger'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 4,
+          hitDamages: [30, 30, 30, 30, 30, 30], projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          desc: 'Six in the chamber, six in the target. Deals HEAVY physical damage to a Single Enemy within 4 tiles across 6 shots. Provoked targets take it worse. Cooldown: 2 rounds.' },
     ],
     'men in black': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Neuralyzer. */
+        { id: 'goNeuralyzer', name: 'Neuralyzer', tier: 2, families: ['meninblack'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'tech', vfxElement: 'light', type: 'debuff', kind: 'aoe', range: 2, aoeRadius: 1, noDamage: true,
+          statusEffects: [{ id: 'blind', duration: 1 }, { id: 'stagger', duration: 1 }],
+          desc: 'Look right here. Flash. Every enemy in a 3x3 within 2 tiles is Blinded and Staggered for a round. Cooldown: 3 rounds.' },
+        { id: 'goNoisyCricket', name: 'Noisy Cricket', tier: 3, families: ['meninblack'], cost: 75, apCost: 1,
+          spellType: 'tech', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'magic',
+          pushDistance: 3, bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'The smallest gun in the building. Deals MEDIUM magic damage to a Single Enemy within 4 and knocks them back 3 tiles. Deals bonus damage to Blinded targets.' },
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', tier: 1, families: ['advancedtechnology'], spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
         { id: 'raceClassifiedWeapon', spellType: 'tech', element: 'lightning', name: 'Classified Weapon',
           type: 'damage', tier: 3, families: ['advancedtechnology'], cost: 75, dmg: 135, range: 4,
@@ -7633,6 +7879,15 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'telepath': [
+        /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
+        { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 5, ignoresLineOfSight: true,
+          statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'White noise behind the eyes. Deals WEAK magic damage to a Single Enemy within 5, through walls, and Jams it for 2 rounds.' },
+        { id: 'pzAneurysm', name: 'Aneurysm', tier: 4, families: ['telepathy'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 6, ignoresLineOfSight: true,
+          bonusVsStatus: { status: 'jammed', mult: 1.5 },
+          desc: 'Pop. Deals HEAVY magic damage to a Single Enemy within 6, through walls. Deals bonus damage to Jammed targets. Cooldown: 2 rounds.' },
         { id: 'raceMindCrush', spellType: 'anomaly', element: 'psychic', name: 'Migraine',
           type: 'damage', tier: 3, cost: 75, dmg: 135, range: 4,
           kind: 'damage', damageType: 'magic',
@@ -7655,6 +7910,15 @@ const RACE_ABILITIES = {
        MERGED into this one line spell (spell-tree audit §7.6); the old id
        aliases here via the legacy-alias table below. */
     'marksman': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Sniper's Nest. */
+        { id: 'goBipod', name: 'Bipod', tier: 2, families: ['marksman'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'buff', kind: 'buff', range: 0, statusEffects: [{ id: 'siegeMode', duration: 2 }],
+          desc: 'Legs down, belly down. For 2 rounds: +2 range and +1 ATK stage, -2 MOV. Cooldown: 2 rounds.' },
+        { id: 'goOneShotOneKill', name: 'One Shot, One Kill', tier: 4, families: ['marksman'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', range: 8, dmg: 165,
+          damageType: 'physical', projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'root', mult: 1.5 },
+          onKillRefundAp: 1,
+          desc: 'Breathe out. Squeeze. Deals HEAVY physical damage to a Single Enemy within 8. Deals bonus damage to Rooted targets. A kill refunds 1 AP. Cooldown: 2 rounds.' },
         { id: 'raceSuppressiveFire', upgradesBlock: ['upBlast', 'upRicochet', 'upExtraTarget'], tier: 1, families: ['militarysupport'], spellType: 'human', element: 'metal', name: 'Suppressive Fire',
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'line', damageType: 'physical', lineWidth: 1,
@@ -7682,6 +7946,15 @@ const RACE_ABILITIES = {
           desc: 'Calls in the whole battery on a marked grid. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' }
     ],
     'priest': [
+        /* HOLY ORDERS (the P-Z signature families, mondo 2026-10-23): holy water Soaks, the last rites pay it off. */
+        { id: 'pzHolyWater', name: 'Holy Water', tier: 1, families: ['holyorders'], cost: 25, apCost: 1,
+          spellType: 'divine', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3, unholyBonus: 40,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'The power of Christ compels you. Deals WEAK magic damage to a Single Enemy within 3, more to Unholy and Anomaly targets, and Soaks them for 2 rounds.' },
+        { id: 'pzLastRites', name: 'Last Rites', tier: 4, families: ['holyorders'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 2, unholyBonus: 60,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'Go in peace. Deals HEAVY magic damage to a Single Enemy within 2, more to Unholy and Anomaly targets. Deals bonus damage to Soaked targets. Cooldown: 2 rounds.' },
         { id: 'raceDivineLight', tier: 1, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Divine Light',
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 140,
@@ -7763,6 +8036,15 @@ const RACE_ABILITIES = {
        nothing new in the engine; the VFX are family aliases in
        three-vfx-effects.js's 2026-09-21 block. */
     'police officer': [
+        /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
+        { id: 'pzFreezePolice', name: 'Freeze! Police!', tier: 2, families: ['policeprocedure'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'Hands where I can see them. A Single Enemy within 4 is Rooted for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'pzFelonyTakedown', name: 'Felony Takedown', tier: 4, families: ['policeprocedure'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 4, chargeToTarget: true,
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'On the ground, now. Charges a Single Enemy within 4 and slams them down for HEAVY physical damage. Deals bonus damage to Rooted targets. Cooldown: 2 rounds.' },
         { id: 'racePoliceNightstick', tier: 1, families: ['policetraining'], spellType: 'human', element: 'metal', name: 'Nightstick',
           type: 'damage', cost: 20, dmg: 85, range: 1, apCost: 1,
           kind: 'damage', damageType: 'physical',
@@ -7844,12 +8126,30 @@ const RACE_ABILITIES = {
           kind: 'summonUnit', maxActivePerCaster: 2,
           summonDef: { key: 'cultist', name: 'Cult Member', move: 3, dmg: 55, hits: 2 },
           desc: 'The candles are lit and one of the family answers. A cult member steps out of the dark onto an adjacent tile: at the end of every round it walks 3 tiles toward the nearest enemy and strikes for 55. Two hits to put it down. Two members per leader.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Messiah Complex, this race's own. */
+        { id: 'sigSermon', name: 'The Sermon', tier: 2, families: ['messiah'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          element: 'psychic', type: 'debuff', kind: 'barrage', range: 0, aoeRadius: 2, aoeOriginSelf: true, noDamage: true,
+          statusEffects: [{ id: 'charm', duration: 2 }],
+          desc: 'He only has to talk. Every enemy within 2 tiles is Charmed for 2 rounds: it cannot move against the cult leader. No damage. Cooldown: 2 rounds.' },
+        { id: 'sigAscensionDay', name: 'Ascension Day', tier: 4, families: ['messiah'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'psychic', vfxElement: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160,
+          range: 4, aoeRadius: 1, bonusVsStatus: { status: 'charm', mult: 1.5 },
+          desc: 'The comet is here. Everyone is going. Deals HEAVY magic damage to All Enemies in a 3×3 within 4 tiles. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     /* THE 2026-09-22 BATCH — the POPSTAR (Harbinger, support; the headliner): Mic Drop → Encore! ⇄ Stage
        Dive → Spotlight → Stadium Show★. Plain kinds only (damage / encore / tackle / debuff / aoe — every one
        the engine already runs), the VFX family aliases in three-vfx-effects.js's 2026-09-22 block, the
        execution FINISHERS.popstar (Farewell Tour). Sonic is her element; the anomaly type carries it. */
     'popstar': [
+        /* POP IDOL (the P-Z signature families, mondo 2026-10-23): the flashes Blind, the hit single pays it off. */
+        { id: 'pzPaparazziFlash', name: 'Paparazzi Flash', tier: 1, families: ['popidol'], cost: 25, apCost: 1,
+          spellType: 'human', vfxElement: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 80, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'A wall of camera flashes. Deals WEAK magic damage to All Enemies in a 3×3 within 4 and Blinds them for a round.' },
+        { id: 'pzChartTopper', name: 'Chart Topper', tier: 4, families: ['popidol'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'sonic', type: 'damage', kind: 'line', damageType: 'magic', dmg: 160, range: 5, lineWidth: 1,
+          bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'Number one, with a bullet. Deals HEAVY magic damage to All Enemies in a line. Deals bonus damage to Blinded targets. Cooldown: 2 rounds.' },
         { id: 'racePopMicDrop', tier: 1, families: ['stagepresence'], spellType: 'anomaly', element: 'sonic', name: 'Mic Drop',
           type: 'damage', cost: 20, dmg: 80, range: 2, apCost: 1,
           kind: 'damage', damageType: 'magic',
@@ -7876,8 +8176,32 @@ const RACE_ABILITIES = {
     ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
-    'astronaut': [],
-    'krampus': [],
+    'astronaut': [
+        /* THE SIGNATURE FAMILY (2026-10-23): Mission Control, this race's own. */
+        { id: 'sigTetherLine', name: 'Tether Line', tier: 1, families: ['missioncontrol'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 60, range: 4, pullDistance: 2,
+          statusEffects: [{ id: 'tethered', duration: 1 }],
+          desc: 'Clip on, reel in. Deals WEAK physical damage to a Single Enemy within 4 tiles, pulls it 2 tiles toward you and keeps it Tethered for a round: it is dragged behind you when you move.' },
+        { id: 'sigOrbitalStrike', name: 'Orbital Strike', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'tech', element: 'lightning', vfxElement: 'light', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 170,
+          range: 7, aoeRadius: 1, delayTurns: 1, groundsFlyers: true, bonusVsStatus: { status: 'tethered', mult: 1.5 },
+          desc: 'Houston, we have a target. Marks a 3×3 within 7 tiles; at the end of the round the strike lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Tethered targets take it worse. Cooldown: 2 rounds.' },
+    ],
+    'krampus': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Krampusnacht. */
+        { id: 'goBirchSwitch', name: 'Birch Switch', tier: 1, families: ['krampus'], cost: 25, apCost: 1, spellType: 'unholy',
+          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'A bundle of birch for the naughty. Deals WEAK physical damage to a Single Enemy beside you and makes them Bleed for 2 rounds.' },
+        { id: 'goKrampusChains', name: 'Krampus Chains', tier: 2, families: ['krampus'], cost: 50, apCost: 1,
+          spellType: 'unholy', element: 'metal', type: 'utility', kind: 'pull', range: 3, pullDistance: 2,
+          statusEffects: [{ id: 'tethered', duration: 2 }],
+          desc: 'The bells and chains rattle in the street. Drags a Single Enemy within 3 two tiles toward you and Ropes them in chain for 2 rounds.' },
+        { id: 'goIntoTheSack', name: 'Into the Sack', tier: 4, families: ['krampus'], cost: 100, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'shadowRealm', range: 1,
+          statusEffects: [{ id: 'shadowRealm', duration: 2 }],
+          desc: 'In the basket, over the shoulder, and away. Krampus and a Single Enemy beside you vanish into the Shadow Realm together for 2 rounds, out of reach of everyone else. Cooldown: 3 rounds.' },
+    ],
     'rabbit': [
         { id: 'raceSprint', name: 'Sprint', tier: 1, families: ['athleticism'], cost: 25, apCost: 1, spellType: 'human',
           element: 'wind', type: 'utility', kind: 'dash', damageType: 'physical', dmg: 0, range: 3,
@@ -7887,13 +8211,64 @@ const RACE_ABILITIES = {
           type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 125, range: 3, dmgPerLevel: 15,
           desc: 'Over, not through. Leaps over walls and bodies onto a Single Enemy within 3 tiles for MEDIUM physical damage.' },
 ],
-    'luchador': [],
-    'firefighter': [],
-    'goblin': [],
-    'hippie': [],
+    'luchador': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Lucha Libre. */
+        { id: 'goSuplex', name: 'Suplex', tier: 1, families: ['luchador'], cost: 25, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'displacement', range: 1, dmg: 80, damageType: 'physical', throwAnyDirection: true,
+          pushDistance: 2, collisionBonus: 50, statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Over the shoulder and into whatever is behind. Deals WEAK physical damage to a Single Enemy beside you, throws them 2 tiles in the direction you pick and Staggers them. Extra damage if they hit something.' },
+        { id: 'goPiledriver', name: 'Piledriver', tier: 3, families: ['luchador'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'earth', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical', groundsFlyers: true,
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Upside down, head first, into the canvas. Deals MEDIUM physical damage to a Single Enemy beside you and knocks flyers out of the sky. Deals bonus damage to Staggered targets.' },
+    ],
+    'firefighter': [
+        /* THE SIGNATURE FAMILY (2026-10-23): Fire Rescue, this race's own. */
+        { id: 'sigFireHose', name: 'Fire Hose', tier: 2, families: ['firerescue'], cost: 50, apCost: 1, spellType: 'human',
+          element: 'water', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 80, range: 4, lineWidth: 1, pushDistance: 3,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'Full pressure down the hall. Deals WEAK magic damage to All Enemies in a line, pushes them 3 tiles and Soaks them for 2 rounds.' },
+        { id: 'sigFiremansCarry', name: 'Fireman\'s Carry', tier: 2, families: ['firerescue'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'utility', kind: 'swap', range: 4, allyOnly: true, healOnSwap: 100,
+          desc: 'Over the shoulder and out. Swap places with an ally within 4 tiles; the ally arrives healed for a MEDIUM amount of HP. Cooldown: 2 rounds.' },
+        { id: 'sigHalligan', name: 'Halligan Breach', tier: 3, families: ['firerescue'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 135, range: 1, ignoreArmor: true,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'The forcible-entry bar goes through doors. And people. Deals MEDIUM physical damage to an adjacent enemy and ignores its DEF. Soaked targets take it worse.' },
+    ],
+    'goblin': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Goblin Mob. */
+        { id: 'goPocketSand', name: 'Pocket Sand', tier: 1, families: ['goblin'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'earth', type: 'damage', kind: 'damage', range: 2, dmg: 70, damageType: 'physical',
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'A fistful, right in the eyes. Deals WEAK physical damage to a Single Enemy within 2 and Blinds them for a round.' },
+        { id: 'goDogpile', name: 'Dogpile', tier: 3, families: ['goblin'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'multiHit', range: 1, damageType: 'physical', hitDamages: [30, 30, 30],
+          bonusHitsPerAdjacentAlly: { dmg: 30, max: 3 }, bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'Everyone in! Three stabs on a Single Enemy beside you, plus one more for every ally standing beside the target (up to 3). Deals bonus damage to Blinded targets.' },
+    ],
+    'hippie': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Flower Power. */
+        { id: 'goFlowerInTheBarrel', name: 'Flower in the Barrel', tier: 1, families: ['hippie'], cost: 25, apCost: 1,
+          spellType: 'divine', vfxElement: 'nature', type: 'debuff', kind: 'debuff', range: 3, statStageBoost: { atk: -2 },
+          desc: 'A daisy in the muzzle. A Single Enemy within 3 loses 2 ATK stages.' },
+        { id: 'goMakeLoveNotWar', name: 'Make Love Not War', tier: 2, families: ['hippie'], cost: 50, apCost: 1,
+          cooldownRounds: 3, spellType: 'divine', vfxElement: 'nature', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
+          noDamage: true, statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'Nobody wants to fight anymore. Every enemy in a 3x3 within 4 tiles is Charmed for a round. Cooldown: 3 rounds.' },
+    ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
-    'clown': [],
+    'clown': [
+        /* THE SIGNATURE FAMILY (2026-10-23): Big Top, this race's own. */
+        { id: 'sigPieInTheFace', name: 'Pie in the Face', tier: 1, families: ['bigtop'], cost: 25, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 70, range: 3, statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Banana cream, right in the eyes. Deals WEAK physical damage to a Single Enemy within 3 tiles and Blinds it for a round.' },
+        { id: 'sigJackInTheBox', name: 'Jack-in-the-Box', tier: 3, families: ['bigtop'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'utility', kind: 'deployObject', range: 3, objectHp: 20, blastRadius: 1, blastDmg: 125,
+          detonateOnStep: true, maxActivePerCaster: 2,
+          desc: 'Pop goes the weasel. Leaves a painted box on a tile within 3: when an enemy steps on it, it springs for MEDIUM damage to everything in the 3×3. Two boxes per clown. Placing on an empty tile never ends your turn; throwing it straight onto an enemy springs it at once.' },
+    ],
     'bunny girl': [
         { id: 'raceDeadMansHand', name: 'Dead Man\'s Hand', tier: 1, families: ['gambling'], cost: 25, apCost: 1,
           spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3,
@@ -7904,21 +8279,110 @@ const RACE_ABILITIES = {
           spellType: 'anomaly', type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, def: -1 },
           desc: 'Everything on the table. Raises the caster\'s ATK by 2 stages and lowers their DEF by 1 stage.' },
 ],
-    'sharkman': [],
+    'sharkman': [
+        /* SHARK ATTACK (the P-Z signature families, mondo 2026-10-23): first blood Bleeds, the feeding frenzy pays it off. */
+        { id: 'pzBloodInTheWater', name: 'Blood in the Water', tier: 1, families: ['sharkattack'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'blood', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 1,
+          statusEffects: [{ id: 'bleed', duration: 3 }],
+          desc: 'One bite to find out. Deals WEAK physical damage to an adjacent enemy and it Bleeds for 3 rounds.' },
+        { id: 'pzFeedingFrenzy', name: 'Feeding Frenzy', tier: 4, families: ['sharkattack'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'blood', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 4, chargeToTarget: true,
+          onKillHealPct: 0.25,
+          bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'It smelled that from a mile off. Charges a Single Enemy within 4 for HEAVY physical damage; a kill heals you for 25% of your max HP. Deals bonus damage to Bleeding targets. Cooldown: 2 rounds.' },
+    ],
     'crystal guardian': [
         { id: 'racePetrify', name: 'Petrify', tier: 4, families: ['livingstone'], cost: 100, apCost: 1, spellType: 'unholy',
           element: 'earth', type: 'debuff', kind: 'debuff', range: 3, cooldownRounds: 2,
           statusEffects: [{ id: 'stun', duration: 2 }], statStageBoost: { def: -1 },
           desc: 'Grey climbs from the feet up. For two rounds they are a statue; when it lets go, the cracks stay. Stuns a Single Enemy for 2 rounds and lowers DEF by 1 stage. Cooldown: 2 rounds.' },
-],
-    'jack o lantern': [],
-    'sidekick': [],
-    'mushroom girl': [],
-    'tree person': [],
-    'sheriff': [],
+        /* THE SIGNATURE FAMILY (2026-10-23): Crystal Heart, this race's own. */
+        { id: 'sigGlint', name: 'Glint', tier: 1, families: ['crystalheart'], cost: 25, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'The sun catches a facet. Deals WEAK magic damage to a Single Enemy within 4 tiles and Blinds it for a round.' },
+        { id: 'sigCrystalCoffin', name: 'Crystal Coffin', tier: 2, families: ['crystalheart'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'divine', element: 'earth', type: 'buff', kind: 'buff', range: 3, statusEffects: [{ id: 'stoneform', duration: 1 }],
+          desc: 'Safe inside the quartz. Encases an ally within 3 tiles (or the guardian) in crystal for a round: it cannot move or act, takes no damage at all and regenerates 15% of its max HP. Cooldown: 3 rounds.' },
+        { id: 'sigShardstorm', name: 'Shardstorm', tier: 4, families: ['crystalheart'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'earth', type: 'damage', kind: 'ricochet', damageType: 'physical', dmg: 155, range: 4,
+          bounceDamage: 90, bounceRadius: 2, bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'One shard, then all the others. Deals HEAVY physical damage to a Single Enemy, then ricochets to another enemy within 2 tiles for MEDIUM. Blinded targets take it worse. Cooldown: 2 rounds.' },
+    ],
+    'jack o lantern': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Stingy Jack. */
+        { id: 'goUpTheAppleTree', name: 'Up the Apple Tree', tier: 1, families: ['jackolantern'], cost: 25, apCost: 1,
+          spellType: 'unholy', element: 'nature', type: 'damage', kind: 'damage', range: 4, dmg: 75, damageType: 'magic',
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'Jack sent the Devil up the tree and carved a cross in the bark. Deals WEAK magic damage to a Single Enemy within 4 and Roots them for 2 rounds.' },
+        { id: 'goTrickOrTreat', name: 'Trick or Treat', tier: 2, families: ['jackolantern'], cost: 50, apCost: 1,
+          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'buff', kind: 'warCry', range: 0, auraRadius: 3,
+          randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
+          desc: 'Nobody knows what is in the bag. Every ally within 3 tiles gains +1 stage in a random stat (ATK, M.ATK, DEF or M.DEF). Cooldown: 3 rounds.' },
+        { id: 'goDevilsCoal', name: 'Devil\'s Coal', tier: 3, families: ['jackolantern'], cost: 75, apCost: 1,
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'The coal from hell that lights the turnip. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Rooted targets.' },
+    ],
+    'sidekick': [
+        /* TRUSTY SIDEKICK (the P-Z signature families, mondo 2026-10-23): over here! Provokes, the dynamic duo pays it off. */
+        { id: 'pzOverHere', name: 'Hey, Over Here!', tier: 1, families: ['sidekicking'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'debuff', kind: 'barrage', range: 0, aoeRadius: 2, aoeOriginSelf: true, noDamage: true,
+          statusEffects: [{ id: 'taunt', duration: 1 }],
+          desc: 'Waving both arms. Every enemy within 2 tiles is Provoked for a round and must attack the sidekick. Cooldown: 2 rounds.' },
+        { id: 'pzDynamicDuo', name: 'Dynamic Duo', tier: 3, families: ['sidekicking'], cost: 75, apCost: 1,
+          spellType: 'human', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 1,
+          hitDamages: [40, 40], bonusHitsPerAdjacentAlly: { dmg: 40, max: 3 },
+          bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          desc: 'Holy teamwork. Deals MEDIUM physical damage to an adjacent enemy across 2 hits, plus one more hit for every ally beside the target (up to 3). Deals bonus damage to Provoked targets.' },
+    ],
+    'mushroom girl': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Mycelium. */
+        { id: 'goSporeCloud', name: 'Spore Cloud', tier: 1, families: ['mushroomgirl'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'aoe', range: 3, aoeRadius: 1, dmg: 60,
+          damageType: 'magic', statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'A puff of spores that settles in the lungs. Deals WEAK magic damage to All Enemies in a 3x3 within 3 tiles and Slows them for 2 rounds.' },
+        { id: 'goCordyceps', name: 'Cordyceps', tier: 3, families: ['mushroomgirl'], cost: 75, apCost: 1, cooldownRounds: 3,
+          spellType: 'anomaly', element: 'nature', type: 'debuff', kind: 'possess', range: 2, activations: 1,
+          statusEffects: [{ id: 'possessed', duration: 1 }],
+          desc: 'The threads reach the brain and the body walks for her. Take control of a Single Enemy within 2 for its next action. Cooldown: 3 rounds.' },
+    ],
+    'tree person': [
+        /* TREEFOLK (the P-Z signature families, mondo 2026-10-23): take root and Regen, then fall like timber on the Rooted. */
+        { id: 'pzTakeRoot', name: 'Take Root', tier: 2, families: ['treefolk'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'nature', type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'regen', duration: 3 }],
+          desc: 'Toes into the soil. The caster gains Regen for 3 rounds. Cooldown: 2 rounds.' },
+        { id: 'pzTimber', name: 'Timber!', tier: 4, families: ['treefolk'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'nature', type: 'damage', kind: 'line', damageType: 'physical', dmg: 160, range: 3, lineWidth: 1,
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'The whole trunk comes down. Deals HEAVY physical damage to All Enemies in a line. Deals bonus damage to Rooted targets. Cooldown: 2 rounds.' },
+    ],
+    'sheriff': [
+        /* FRONTIER JUSTICE (the P-Z signature families, mondo 2026-10-23): the poster Marks, justice pays it off. */
+        { id: 'pzWantedPoster', name: 'Wanted Poster', tier: 1, families: ['frontierjustice'], cost: 25, apCost: 1,
+          spellType: 'human', type: 'debuff', kind: 'debuff', range: 6,
+          statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 50 }],
+          desc: 'Dead or alive. Marks a Single Enemy within 6 for 3 rounds: the next hit anyone lands on it deals 50 extra damage.' },
+        { id: 'pzJusticeIsServed', name: 'Justice Is Served', tier: 4, families: ['frontierjustice'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 5,
+          projectileOverride: 'proj-bullet',
+          bonusVsStatus: { status: 'marked', mult: 1.5 },
+          desc: 'One bullet, one verdict. Deals HEAVY physical damage to a Single Enemy within 5. Deals bonus damage to Marked targets. Cooldown: 2 rounds.' },
+    ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
     'starfish': [
+        /* ECHINODERM (the P-Z signature families, mondo 2026-10-23): the tube feet Root, the five arms pay it off. */
+        { id: 'pzTubeFeet', name: 'Tube Feet', tier: 1, families: ['echinoderm'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 80, range: 1,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'A thousand little suckers. Deals WEAK physical damage to an adjacent enemy and Roots it for a round.' },
+        { id: 'pzFiveArmedCrush', name: 'Five-Armed Crush', tier: 3, families: ['echinoderm'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 1,
+          hitDamages: [27, 27, 27, 27, 27],
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'All five, all at once. Deals MEDIUM physical damage to an adjacent enemy across 5 hits. Deals bonus damage to Rooted targets.' },
         { id: 'raceSoothe', name: 'Soothe', tier: 1, families: ['healingmagic'], cost: 25, apCost: 1, spellType: 'divine',
           vfxElement: 'light', type: 'heal', kind: 'heal', range: 3, healAmt: 80,
           statusEffects: [{ id: 'regen', duration: 2 }],
@@ -7935,9 +8399,38 @@ const RACE_ABILITIES = {
           element: 'poison', type: 'utility', kind: 'summonUnit', range: 1, maxActivePerCaster: 1,
           summonDef: { key: 'drone', name: 'Drone', move: 4, dmg: 55, hits: 3, hitStatus: { id: 'poison', duration: 2 } },   // THE SPELL AUDIT Batch D
           desc: 'One is never found alone. Hatches a Drone beside the caster: at the end of every round it flies 4 tiles at the nearest enemy and stings for 55, Poisoning it for 2 rounds. Three hits to bring it down.' },
-],
-    'professor': [],
-    'deep sea fish': [],
+        /* THE SIGNATURE FAMILY (2026-10-23): Royal Hive, this race's own. */
+        { id: 'sigTheSwarm', name: 'The Swarm', tier: 2, families: ['royalhive'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'poison', type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 50, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The hive boils out around its queen. Deals WEAK physical damage to All Enemies within 2 tiles and Poisons them for 2 rounds.' },
+        { id: 'sigThousandStings', name: 'A Thousand Stings', tier: 4, families: ['royalhive'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 2,
+          hitDamages: [17, 17, 17, 17, 17, 17, 17, 17, 17, 17], bonusVsStatus: { status: 'poison', mult: 1.5 },
+          desc: 'Every bee in the hive, one after another. Deals HEAVY physical damage to a Single Enemy within 2 tiles across 10 stings. Poisoned targets take it worse. Cooldown: 2 rounds.' },
+    ],
+    'professor': [
+        /* ACADEMIA (the P-Z signature families, mondo 2026-10-23): Debunked Breaks every passive, the final exam pays it off. */
+        { id: 'pzDebunked', name: 'Debunked', tier: 2, families: ['academia'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'psychic', type: 'debuff', kind: 'debuff', range: 5,
+          statusEffects: [{ id: 'broken', duration: 2 }],
+          desc: 'Peer-reviewed and found wanting. A Single Enemy within 5 is Broken for 2 rounds: every passive it has is switched off. Cooldown: 2 rounds.' },
+        { id: 'pzFinalExam', name: 'Final Exam', tier: 3, families: ['academia'], cost: 75, apCost: 1,
+          spellType: 'human', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 135, range: 4,
+          bonusVsStatus: { status: 'broken', mult: 1.5 },
+          desc: 'Pencils down. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Broken targets.' },
+    ],
+    'deep sea fish': [
+        /* THE SIGNATURE FAMILY (2026-10-23): The Lure, this race's own. */
+        { id: 'sigLure', name: 'Lure', tier: 1, families: ['anglerlure'], cost: 25, apCost: 1, spellType: 'anomaly', vfxElement: 'light',
+          type: 'damage', kind: 'pull', damageType: 'magic', dmg: 50, range: 4, pullDistance: 3,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'Such a pretty light, down where there is none. Deals WEAK magic damage to a Single Enemy within 4 tiles, draws it 3 tiles toward you and Charms it for a round.' },
+        { id: 'sigAbyssJaws', name: 'Abyss Jaws', tier: 3, families: ['anglerlure'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1, onKillHealPct: 0.25,
+          bonusVsStatus: { status: 'charm', mult: 1.5 },
+          desc: 'The light was attached to something. Deals HEAVY physical damage to an adjacent enemy; a kill heals 25% of max HP. Charmed targets take it worse.' },
+    ],
     /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
        NOT THE DOORS. The user dropped the placed-door mechanic (Knock Knock,
        Slam, Special Delivery, EXIT, The Long Way Round are gone; the door
@@ -7995,6 +8488,19 @@ const RACE_ABILITIES = {
        → Blessing → Prayer → Hallelujah★. Purify is the new `cleanseArea`
        kind; Prayer finally gives the `shield` status row a caster. */
     'nun': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Convent. */
+        { id: 'goRulerSmack', name: 'Ruler Smack', tier: 1, families: ['nun'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
+        { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'silence', duration: 2 }],
+          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 130, damageType: 'magic',
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Three Hail Marys will not cover this. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Staggered targets.' },
         { id: 'racePurify', tier: 2, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Purify',
           type: 'heal', cost: 50, range: 3, apCost: 1,
           kind: 'cleanseArea', aoeRadius: 1,
@@ -8017,6 +8523,16 @@ const RACE_ABILITIES = {
           desc: 'The choir answers. Restores a LARGE amount of HP to All Allies and cleanses 2 debuffs from each.' },
     ],
     'wizard': [
+        /* HIGH WIZARDRY (the P-Z signature families, mondo 2026-10-23): the counterspell Silences, magic missile pays it off. */
+        { id: 'pzCounterspell', name: 'Counterspell', tier: 2, families: ['highwizardry'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'arcane', type: 'debuff', kind: 'debuff', range: 5,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Not today. A Single Enemy within 5 is Silenced for a round. Cooldown: 2 rounds.' },
+        { id: 'pzMagicMissile', name: 'Magic Missile', tier: 3, families: ['highwizardry'], cost: 75, apCost: 1,
+          spellType: 'human', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 5,
+          hitDamages: [27, 27, 27, 27, 27],
+          bonusVsStatus: { status: 'silence', mult: 1.5 },
+          desc: 'Five darts that never miss. Deals MEDIUM magic damage to a Single Enemy within 5 across 5 hits. Deals bonus damage to Silenced targets.' },
         /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
            wizard paints an X-shaped sigil — diagonal arms 3 tiles each way,
            the user-requested "X, 3 tiles in each direction". */
@@ -8068,6 +8584,19 @@ const RACE_ABILITIES = {
     ],
 
     'martian': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): The Red Planet. */
+        { id: 'goRedWeed', name: 'Red Weed', tier: 1, families: ['martian'], cost: 25, apCost: 1, spellType: 'alien',
+          element: 'nature', type: 'damage', kind: 'aoe', range: 4, aoeRadius: 1, dmg: 60, damageType: 'magic',
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'It grows over everything it touches. Deals WEAK magic damage to All Enemies in a 3x3 within 4 tiles and Roots them for a round.' },
+        { id: 'goBlackSmoke', name: 'Black Smoke', tier: 2, families: ['martian'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'alien', element: 'poison', type: 'damage', kind: 'aoe', range: 4, aoeRadius: 1, damageType: 'magic',
+          zoneDuration: 2, zoneTickDamage: 40, zoneTickStatus: [{ id: 'poison', duration: 2 }],
+          desc: 'The canister bursts and the smoke sinks into every low place. Lays a 3x3 zone within 4 tiles for 2 rounds: every enemy inside at the end of each round takes WEAK magic damage and is Poisoned for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'goTripodSweep', name: 'Tripod Sweep', tier: 3, families: ['martian'], cost: 75, apCost: 1, spellType: 'alien',
+          element: 'fire', type: 'damage', kind: 'line', range: 5, lineWidth: 1, dmg: 130, damageType: 'magic',
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'The fighting machine turns its hood across the field. Deals MEDIUM magic damage to All Enemies in a line. Deals bonus damage to Rooted targets.' },
         /* 2026-07-23 beam de-duplication: no longer the 4th identical line
            spell — now a focused single-target death ray that burns. */
         { id: 'raceHeatRay', tier: 1, families: ['alientechnology'], spellType: 'alien', element: 'fire', name: 'Heat Ray',
@@ -8111,7 +8640,16 @@ const RACE_ABILITIES = {
           monument: { kind: 'ziggurat_block' },   // THE SPELL-MADE MONUMENTS (2026-09-18): three stepped sandstone blocks
           desc: 'Three stepped ziggurat blocks rise in a line — carved sandstone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.' },
         SHARED_GRAVITY_CRUSH,
-        SHARED_FISSURE
+        SHARED_FISSURE,
+        /* THE SIGNATURE FAMILY (2026-10-23): Sky Gods, this race's own. */
+        { id: 'sigKneel', name: 'Kneel', tier: 2, families: ['skygods'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'alien',
+          vfxElement: 'arcane', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
+          statusEffects: [{ id: 'slow', duration: 2 }], statStageBoost: { atk: -1 },
+          desc: 'Kneel before your makers. Every enemy in a 3×3 within 4 tiles is Slowed for 2 rounds and loses 1 ATK stage. No damage. Cooldown: 2 rounds.' },
+        { id: 'sigEnlilsDeluge', name: 'Enlil\'s Deluge', tier: 4, families: ['skygods'], cost: 100, apCost: 1, cooldownRounds: 3,
+          spellType: 'alien', element: 'water', type: 'damage', kind: 'terrainCreate', terrainType: 'water', tileCount: 9,
+          elevationFlood: true, range: 4, dmg: 160, damageType: 'magic', bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'The gods decided they had made a mistake. Water pours into the target tile and rises to fill the basin around it (up to 9 tiles): every enemy caught takes HEAVY magic damage and can start to drown. Slowed targets take it worse. Cooldown: 3 rounds.' },
     ],
     /* Nordic = Nordic ALIENS (Tall Blondes / Galactic Federation), not Norse
        myth. Kit theme: light-tech, psychic calm, stasis — benevolent but
@@ -8162,6 +8700,15 @@ const RACE_ABILITIES = {
           desc: 'The accord is signed. Every ally on the field gains +1 M ATK and +1 M DEF stage.' }
     ],
     'grey': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Missing Time. */
+        { id: 'goMissingTime', name: 'Missing Time', tier: 2, families: ['grey'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'alien', element: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'You were driving. Now it is three hours later. A Single Enemy within 4 is Stunned for a round. Cooldown: 2 rounds.' },
+        { id: 'goTissueSample', name: 'Tissue Sample', tier: 3, families: ['grey'], cost: 75, apCost: 1, spellType: 'alien',
+          element: 'psychic', type: 'damage', kind: 'lifeDrain', range: 2, dmg: 125, damageType: 'magic', drainPct: 0.5,
+          bonusVsStatus: { status: 'stun', mult: 1.5 },
+          desc: 'Taken while you are out. Deals MEDIUM magic damage to a Single Enemy within 2 and heals the grey for half of it. Deals bonus damage to Stunned targets.' },
         { id: 'raceProbe', tier: 1, families: ['ufo'], spellType: 'alien', element: 'psychic', name: 'Probe',
           type: 'damage', cost: 20, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic', dmg: 100,
@@ -8185,6 +8732,15 @@ const RACE_ABILITIES = {
         SHARED_LOW_GRAVITY
     ],
     'mantid': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Praying Mantis. */
+        { id: 'goOrchidDisguise', name: 'Orchid Disguise', tier: 1, families: ['mantid'], cost: 25, apCost: 1,
+          cooldownRounds: 3, spellType: 'alien', element: 'nature', type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'invisible', duration: 2 }],
+          desc: 'Pink petals, perfectly still. The mantid turns Invisible for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'goRaptorialStrike', name: 'Raptorial Strike', tier: 3, families: ['mantid'], cost: 75, apCost: 1,
+          spellType: 'alien', element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
+          executeBonusPct: 0.5, onKillHealPct: 0.25,
+          desc: 'Faster than the eye. Deals MEDIUM physical damage to a Single Enemy beside you, x1.5 if they are under half HP. A kill heals the mantid 25% of max HP.' },
         { id: 'raceMandibleStrike', upgradesBlock: ['upRicochet', 'upExtraTarget', 'upBlast'], tier: 1, families: ['insectoid'], spellType: 'alien', name: 'Mandible Strike',
           type: 'damage', cost: 25, range: 1,
           kind: 'multiHit', damageType: 'physical', hitDamages: [45, 45, 45],
@@ -8230,6 +8786,15 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           desc: 'Words older than the pyramids. Deals HEAVY magic damage to a Single Enemy and Silences them for a round.' },
         SHARED_SUMMON_SANDSTORM,
+        /* THE SIGNATURE FAMILY (2026-10-23): Three Wishes, this race's own. */
+        { id: 'sigLampSmoke', name: 'Lamp Smoke', tier: 2, families: ['threewishes'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'wind', type: 'utility', kind: 'zoneDebuff', range: 3, aoeRadius: 1, zoneDuration: 2,
+          smokeConcealment: true, statusEffects: [{ id: 'blind', duration: 1 }], allyStatusEffects: [{ id: 'invisible', duration: 1 }],
+          desc: 'Out of the spout and over everything. Fills a 3×3 within 3 tiles with blue smoke for 2 rounds: allies inside are hidden while they stay in it, enemies inside are Blinded. Cooldown: 2 rounds.' },
+        { id: 'sigTwistedWish', name: 'Twisted Wish', tier: 4, families: ['threewishes'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 5,
+          chainProfile: [160, 100, 60], chainRadius: 2, bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'You should have been more specific. Deals HEAVY magic damage to a Single Enemy within 5 tiles, then the wish passes on to up to 2 more enemies within 2 tiles of the last, weaker each time. Blinded targets take it worse. Cooldown: 2 rounds.' },
     ],
     /* Machine Elves = the clockwork "machine elves" of DMT hyperspace, who
        refract reality through a lattice of laser-reflecting prism mirrors.
@@ -8241,6 +8806,15 @@ const RACE_ABILITIES = {
        Dimensional Fold → voidweaver, Bad Trip → shaman, Sacred Geometry →
        occulus. */
     'machine elves': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Hyperspace. */
+        { id: 'goVisibleLanguage', name: 'Visible Language', tier: 1, families: ['machineelves'], cost: 25, apCost: 1,
+          spellType: 'alien', element: 'psychic', type: 'damage', kind: 'damage', range: 4, dmg: 80, damageType: 'magic',
+          statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'They sing, and the song is a solid object. Deals WEAK magic damage to a Single Enemy within 4 and Discords them for 2 rounds.' },
+        { id: 'goJewelledToys', name: 'Jewelled Toys', tier: 3, families: ['machineelves'], cost: 75, apCost: 1,
+          spellType: 'alien', element: 'psychic', type: 'damage', kind: 'aoe', range: 4, aoeRadius: 1, dmg: 125,
+          damageType: 'magic', bonusVsStatus: { status: 'discord', mult: 1.5 },
+          desc: 'Self-dribbling jewelled shapes, too many to count. Deals MEDIUM magic damage to All Enemies in a 3x3 within 4 tiles. Deals bonus damage to Discorded targets.' },
         { id: 'racePrismMirror', tier: 1, families: ['prismlattice'], spellType: 'tech', vfxElement: 'arcane', name: 'Prism Mirror',
           type: 'utility', cost: 16, range: 4, apCost: 1,
           kind: 'placeMirror', maxActivePerCaster: 8, mirrorHp: 2,
@@ -8279,7 +8853,16 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 125, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 25,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          desc: 'Leaps to a Single Enemy, dealing MEDIUM physical damage.' }
+          desc: 'Leaps to a Single Enemy, dealing MEDIUM physical damage.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Cyclopean Forge, this race's own. */
+        { id: 'sigBellow', name: 'Polyphemus Bellow', tier: 2, families: ['cyclopean'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'sonic', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 70, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'NOBODY did this to me. Deals WEAK magic damage to All Enemies within 2 tiles and Staggers each of them.' },
+        { id: 'sigForgedThunderbolt', name: 'Forged Thunderbolt', tier: 4, families: ['cyclopean'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'line', damageType: 'magic', dmg: 170,
+          range: 5, lineWidth: 1, bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'The cyclopes forged Zeus his thunderbolts. They kept one. Deals HEAVY magic damage to All Enemies in a 5-tile line. Staggered targets take it worse. Cooldown: 2 rounds.' },
     ],
 
     'cyborg': [
@@ -8325,6 +8908,15 @@ const RACE_ABILITIES = {
           throwRange: 3, collisionBonus: 50,
           moonshot: true, moonArcTiles: 7,
           desc: 'Grabs the target, rockets skyward and hurls them AT THE MOON. The moon loses. Deals HEAVY physical damage plus the fall, more if the landing crushes another unit; the moon\'s debris rains on the landing. Caster must be flying.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Augments, this race's own. */
+        { id: 'sigGrappleArm', name: 'Grapple Arm', tier: 1, families: ['augments'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 70, range: 4, pullDistance: 3,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The forearm fires on a cable. Deals WEAK physical damage to a Single Enemy within 4 tiles, reels it 3 tiles toward you and Staggers it.' },
+        { id: 'sigPiledriver', name: 'Piledriver Arm', tier: 3, families: ['augments'], cost: 75, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 140, range: 1, ignoreArmor: true,
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Hydraulics to full. Deals HEAVY physical damage to an adjacent enemy and ignores its DEF. Staggered targets take it worse.' },
     ],
     'demon prince': [
         { id: 'raceDarkDominion', spellType: 'unholy', name: 'Dark Dominion',
@@ -8342,7 +8934,16 @@ const RACE_ABILITIES = {
           kind: 'pull',
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'Report for duty. Deals WEAK magic damage to a Single Enemy, drags them 3 tiles toward the caster and Fears them for a round.' },
-        SHARED_SUMMON_BLOOD_RAIN
+        SHARED_SUMMON_BLOOD_RAIN,
+        /* THE SIGNATURE FAMILY (2026-10-23): Heir to Hell, this race's own. */
+        { id: 'sigUsurp', name: 'Usurp', tier: 2, families: ['hellsheir'], cost: 50, apCost: 1, spellType: 'unholy', element: 'fire',
+          type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 3, stealBuffs: true,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'What is yours is the heir\'s. Deals WEAK magic damage to a Single Enemy within 3 tiles, takes every buff and raised stat stage it carries for the time they had left, and sets it Burning for 2 rounds.' },
+        { id: 'sigThroneOfAshes', name: 'Throne of Ashes', tier: 4, families: ['hellsheir'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 0, aoeRadius: 2,
+          aoeOriginSelf: true, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'He sits, and the court burns. Deals HEAVY magic damage to All Enemies within 2 tiles of the prince. Burning targets take it worse. Cooldown: 2 rounds.' },
     ],
     'demon princess': [
         SHARED_HEX_OF_TOIL,
@@ -8360,7 +8961,16 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
         SHARED_POISON_SWAMP,
-        SHARED_SUMMON_BLOOD_RAIN
+        SHARED_SUMMON_BLOOD_RAIN,
+        /* THE SIGNATURE FAMILY (2026-10-23): Hell's Belle, this race's own. */
+        { id: 'sigInfernalWaltz', name: 'Infernal Waltz', tier: 2, families: ['hellsbelle'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'psychic', type: 'debuff', kind: 'swap', range: 4, requiresLineOfSight: true,
+          statusEffects: [{ id: 'charm', duration: 2 }],
+          desc: 'May I have this dance. Trade places with a unit within 4 tiles you can see; an enemy partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'sigLastDance', name: 'Last Dance', tier: 4, families: ['hellsbelle'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.5,
+          bonusVsStatus: { status: 'charm', mult: 1.5 },
+          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for half of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'dreameater': [
         { id: 'raceDreamSiphon', element: 'psychic', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
@@ -8386,7 +8996,16 @@ const RACE_ABILITIES = {
           families: ['astral'],
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,
           statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' }
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Nightmares, this race's own. */
+        { id: 'sigCountingSheep', name: 'Counting Sheep', tier: 2, families: ['nightmares'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'alien', element: 'psychic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'One... two... Every enemy in a 3×3 within 4 tiles falls asleep: Stunned for a round. No damage. Cooldown: 3 rounds.' },
+        { id: 'sigDevourTheDream', name: 'Devour the Dream', tier: 4, families: ['nightmares'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'alien', element: 'psychic', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 165, range: 3,
+          drainPct: 0.5, bonusVsStatus: { status: 'stun', mult: 1.5 },
+          desc: 'It eats the dream while they are still in it. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the dreameater for half of it. Stunned targets take it worse. Cooldown: 2 rounds.' },
     ],
     'fallen angel': [
         { id: 'raceFallenGrace', upgradesBlock: ['upWiden'], tier: 1, families: ['fallenangel'], spellType: 'divine', name: 'Fallen Grace',
@@ -8407,9 +9026,31 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Dives from the sky onto the target, dealing MEDIUM magic damage. Deals bonus damage to targets with Burn. Caster must be flying.' },
         SHARED_SUMMON_BLOOD_RAIN,
-        SHARED_WING_ATTACK
+        SHARED_WING_ATTACK,
+        /* THE SIGNATURE FAMILY (2026-10-23): Morning Star, this race's own. */
+        { id: 'sigForsaken', name: 'Forsaken', tier: 2, families: ['morningstar'], cost: 50, apCost: 1, spellType: 'unholy',
+          vfxElement: 'shadow', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'grievous', duration: 2 }],
+          statStageBoost: { mdef: -1 },
+          desc: 'Heaven will not mend you either. A Single Enemy within 4 tiles takes a Grievous Wound for 2 rounds (healing halved) and loses 1 M.DEF stage.' },
+        { id: 'sigMorningStar', name: 'Morning Star', tier: 4, families: ['morningstar'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'fire', vfxElement: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 170, range: 5,
+          aoeRadius: 1, groundsFlyers: true, bonusVsStatus: { status: 'grievous', mult: 1.5 },
+          desc: 'How you are fallen from heaven, O morning star. Deals HEAVY magic damage to All Enemies in a 3×3 within 5 tiles and knocks flyers out of the sky. Targets with a Grievous Wound take it worse. Cooldown: 2 rounds.' },
     ],
     'goatman': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Lovers' Lane. */
+        { id: 'goHatchetThrow', name: 'Hatchet Throw', tier: 1, families: ['goatman'], cost: 25, apCost: 1,
+          spellType: 'unholy', element: 'metal', type: 'damage', kind: 'damage', range: 4, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Out of the dark, end over end. Deals WEAK physical damage to a Single Enemy within 4 and makes them Bleed for 2 rounds.' },
+        { id: 'goTreelineScream', name: 'Treeline Scream', tier: 2, families: ['goatman'], cost: 50, apCost: 1,
+          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'barrage', range: 0,
+          aoeRadius: 1, aoeOriginSelf: true, noDamage: true, statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'Half bleat, half a man screaming. Every enemy within 1 tile is Feared for a round. Cooldown: 3 rounds.' },
+        { id: 'goLoversLane', name: 'Lovers\' Lane', tier: 3, families: ['goatman'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'metal', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'physical', chargeToTarget: true,
+          bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'The car window, then the hatchet. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Bleeding targets.' },
         _mkCharge({ id: 'raceGoreCharge', element: 'blood', tier: 1, families: ['horns'], spellType: 'unholy', name: 'Gore Charge',
           cost: 30, statusEffects: _STAGGER_1,
           desc: 'Deals WEAK physical damage to a Single Enemy. Applies Stagger. The caster charges into melee first.', dmg: 90 }),
@@ -8427,6 +9068,15 @@ const RACE_ABILITIES = {
           desc: 'Offer your own blood and speak the name. Deals HEAVY magic damage to All Enemies in an AOE. Costs a portion of your HP — the goat always collects. Deals bonus damage to Staggered targets.' }
     ],
     'halfdemon': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Half-Blood. */
+        { id: 'goLetItOut', name: 'Let It Out', tier: 2, families: ['halfdemon'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'blood', type: 'buff', kind: 'buff', range: 0, selfDamagePct: 0.15,
+          statStageBoost: { atk: 1, int: 1 }, stageIfBelowPct: { pct: 0.5, boost: { atk: 1, int: 1 } },
+          desc: 'Stop holding it back. Costs 15% of max HP. +1 ATK and +1 M.ATK stage; under 50% HP, +1 more of each. Cooldown: 2 rounds.' },
+        { id: 'goDevilsDue', name: 'Devil\'s Due', tier: 3, families: ['halfdemon'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
+          bonusVsStatus: { status: 'contract', mult: 1.5 },
+          desc: 'The bill comes due. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to targets bound by a Contract.' },
         _mkBlink('shadow', { id: 'raceShadowStep', tier: 2, cost: 50, spellType: 'unholy', vfxElement: 'shadow', name: 'Shadow Step',
           desc: 'Blink through shadow up to 4 tiles. Ignores line of sight. Needs 2 rounds to gather shadow between blinks.' }),
         /* Halfdemon capstone since the 2026-08-12 capstone pass (was Inner
@@ -8446,6 +9096,15 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'mermaid': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Little Mermaid. */
+        { id: 'goSailorsLure', name: 'Sailor\'s Lure', tier: 1, families: ['mermaid'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'water', type: 'utility', kind: 'pull', range: 4, pullDistance: 2,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'Come down to the water. Draws a Single Enemy within 4 two tiles toward you and Charms them for a round. Cooldown: 2 rounds.' },
+        { id: 'goPullThemUnder', name: 'Pull Them Under', tier: 3, families: ['mermaid'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'magic',
+          bonusVsStatus: { status: 'charm', mult: 1.5 },
+          desc: 'A kiss, then the deep. Deals MEDIUM magic damage to a Single Enemy beside you. Deals bonus damage to Charmed targets.' },
         { id: 'raceTidalBlessing', tier: 2, healAmt: 140, cleanse: 1, families: ['water'], spellType: 'anomaly', name: 'Tidal Blessing',
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'heal',
@@ -8459,6 +9118,19 @@ const RACE_ABILITIES = {
         SHARED_TIDAL_SURGE
     ],
     'nephilim': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Watchers' Blood. */
+        { id: 'goGiantsHand', name: 'Giant\'s Hand', tier: 1, families: ['nephilim'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'A hand too big for a man\'s arm. Deals WEAK physical damage to a Single Enemy beside you and makes them Bleed for 2 rounds.' },
+        { id: 'goAzazelsForge', name: 'Azazel\'s Forge', tier: 2, families: ['nephilim'], cost: 50, apCost: 1,
+          cooldownRounds: 2, spellType: 'divine', element: 'metal', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
+          statStageBoost: { atk: 1, def: 1 },
+          desc: 'The forbidden art the Watchers taught: swords and shields. Every ally within 2 tiles gains +1 ATK and +1 DEF stage. Cooldown: 2 rounds.' },
+        { id: 'goDevourMankind', name: 'Devour Mankind', tier: 3, families: ['nephilim'], cost: 75, apCost: 1,
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 130, damageType: 'physical',
+          drainPct: 0.5, bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'When the harvests ran out, they turned on the people. Deals MEDIUM physical damage to a Single Enemy beside you and heals for half of it. Deals bonus damage to Bleeding targets.' },
         { id: 'raceHolyBulwark', tier: 2, families: ['holydefense'], spellType: 'divine', name: 'Holy Bulwark',
           type: 'buff', cost: 25, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 160,
@@ -8544,15 +9216,30 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
         SHARED_SUMMON_BLIZZARD,
         SHARED_BLACK_HOLE,
-        SHARED_NEBULA
+        SHARED_NEBULA,
+        /* THE SIGNATURE FAMILY (2026-10-23): Last Light, this race's own. */
+        { id: 'sigWitherStarlight', name: 'Wither Starlight', tier: 2, families: ['heatdeath'], cost: 50, apCost: 1, spellType: 'alien',
+          vfxElement: 'shadow', type: 'debuff', kind: 'debuff', range: 6, statusEffects: [{ id: 'haunted', duration: 2 }],
+          statStageBoost: { def: -1 },
+          desc: 'The stars over them go out one by one. A Single Enemy within 6 tiles is Haunted for 2 rounds (magic damage every round) and loses 1 DEF stage.' },
+        { id: 'sigLastLight', name: 'Last Light', tier: 4, families: ['heatdeath'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'alien', vfxElement: 'light', type: 'damage', kind: 'line', damageType: 'magic', dmg: 165, range: 6, lineWidth: 1,
+          beamZigzag: true, bonusVsStatus: { status: 'haunted', mult: 1.5 },
+          desc: 'The very last light in the universe, spent on you. Deals HEAVY magic damage to All Enemies in a 6-tile line, high or low, flyers included. Haunted targets take it worse. Cooldown: 2 rounds.' },
     ],
     'superhero': [
+        /* SOLAR POWERED (the P-Z signature families, mondo 2026-10-23): the solar flare Burns, Heat Vision (moved here from
+           Superhero Powers) pays it off. */
+        { id: 'pzSolarFlare', name: 'Solar Flare', tier: 2, families: ['solarpowered'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'alien', element: 'fire', type: 'damage', kind: 'barrage', damageType: 'magic', dmg: 80, range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Every drop of stored sunlight at once. Deals WEAK magic damage to All Enemies in the 3×3 around you and Burns them for 2 rounds. Cooldown: 2 rounds.' },
         _mkCharge({ id: 'raceHeroicLeap', element: 'wind', tier: 1, bonusVsStatus: { status: 'frozen', mult: 1.5 }, families: ['superheropowers'], spellType: 'human', name: 'Heroic Leap', dmg: 100, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         /* §6.25 (Phase 5 wave A, 2026-09-08): Laser Beam → Heat Vision (id
            kept), range 5 → 3; Freeze Breath + Sky Tackle (the `tackle` kind)
            are new. */
         { id: 'raceLaserBeam', element: 'fire', spellType: 'alien', name: 'Heat Vision',
-          type: 'damage', tier: 4, families: ['superheropowers'], cost: 60, dmg: 160, range: 3,
+          type: 'damage', tier: 4, families: ['solarpowered'], cost: 60, dmg: 160, range: 3,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to All Enemies in a line. Deals bonus damage to Burning targets.' },
@@ -8578,6 +9265,20 @@ const RACE_ABILITIES = {
         SHARED_NEBULA,
     ],
     'general': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): High Command. */
+        { id: 'goDesignateTarget', name: 'Designate Target', tier: 1, families: ['general'], cost: 25, apCost: 1,
+          spellType: 'human', type: 'debuff', kind: 'debuff', range: 6,
+          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
+          desc: 'Binoculars up, finger out: that one. A Single Enemy within 6 is Marked for 2 rounds.' },
+        { id: 'goForwardMarch', name: 'Forward March', tier: 2, families: ['general'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'buff', kind: 'warCry', range: 0, auraRadius: 3, statStageBoost: { spd: 1 },
+          timedStatBonus: { move: 1, rounds: 2 },
+          desc: 'The whole line steps off together. Every ally within 3 tiles gains +1 SPD stage and +1 MOV for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'goDecapitationStrike', name: 'Decapitation Strike', tier: 4, families: ['general'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'human', element: 'fire', type: 'damage', kind: 'aoe', range: 7, aoeRadius: 1,
+          dmg: 160, damageType: 'physical', ignoresLineOfSight: true, leaveTerrain: 'scorched',
+          bonusVsStatus: { status: 'marked', mult: 1.5 },
+          desc: 'The air strike on the command post. Deals HEAVY physical damage to All Enemies in a 3x3 within 7 tiles, through cover, and scorches the ground. Deals bonus damage to Marked targets. Cooldown: 2 rounds.' },
         { id: 'raceRallyCommand', tier: 1, families: ['militarysupport'], spellType: 'human', name: 'Rally Command',
           type: 'buff', cost: 30, range: 0, apCost: 1,
           kind: 'warCry', aoeRadius: 2,
@@ -8610,6 +9311,15 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 20, dmg: 70, range: 3,
           kind: 'damage', damageType: 'magic',
           desc: 'Two prongs into the housing. Systems stutter. Deals WEAK magic damage to a Single Enemy and Jams it for a round.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Astromech, this race's own. */
+        { id: 'sigShockProd', name: 'Shock Prod', tier: 1, families: ['astromech'], cost: 25, apCost: 1, spellType: 'tech',
+          element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 1,
+          statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'Out of the side panel, into the leg. Deals WEAK magic damage to an adjacent enemy and Jams it for 2 rounds.' },
+        { id: 'sigHologram', name: 'Hologram', tier: 2, families: ['astromech'], cost: 50, apCost: 1, spellType: 'tech',
+          vfxElement: 'light', type: 'utility', kind: 'deployObject', range: 1, objectHp: 100, maxActivePerCaster: 1,
+          drawsRangedAttack: true, drawsMeleeAttack: true,
+          desc: 'Help me. You\'re my only hope. Projects a decoy on an adjacent tile: it draws enemy attacks until it is shot apart, and cannot attack. One at a time. Placing never uses your spell slot.' },
     ],
     'antihero': [
         { id: 'raceCosmicSlam', bonusVsStatus: { status: 'slow', mult: 1.5 }, tier: 3, families: ['cosmic'], spellType: 'human', name: 'Cosmic Slam',
@@ -8628,6 +9338,15 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
           desc: 'Deals HEAVY physical damage to a Single Enemy. Executes a target below 25% HP outright. Deals bonus damage to Staggered targets.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Vigilante, this race's own. */
+        { id: 'sigInterrogation', name: 'Interrogation', tier: 1, families: ['vigilante'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'blood', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 85, range: 1,
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Where were you on the night of the ninth. Deals WEAK physical damage to an adjacent enemy and it Bleeds for 2 rounds.' },
+        { id: 'sigThroughTheWall', name: 'Through the Wall', tier: 3, families: ['vigilante'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 125, range: 3, chargeToTarget: true,
+          pushDistance: 2, collisionBonus: 50, bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'He does not use doors. Charges a Single Enemy up to 3 tiles away and drives it up to 2 tiles along the line: MEDIUM physical damage, 50 more if it crashes into a wall or another unit. Bleeding targets take it worse.' },
     ],
     /* 2026-08-12 kit rework: VOX Broadcast, Dead Air and the borrowed
        Summon Sandstorm are GONE. The new kit is a status-combo engine —
@@ -8662,6 +9381,15 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Silenced or Poisoned targets. The ground around them is flattened to its lowest point — it was never round.' },
     ],
     'overlord': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Dark Lord. */
+        { id: 'goKneel', name: 'KNEEL', tier: 2, families: ['overlord'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'barrage', range: 0, aoeRadius: 1,
+          aoeOriginSelf: true, noDamage: true, statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'One word from the throne. Every enemy within 1 tile is Feared for a round. Cooldown: 3 rounds.' },
+        { id: 'goCrushingWill', name: 'Crushing Will', tier: 4, families: ['overlord'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'unholy', element: 'psychic', type: 'damage', kind: 'damage', range: 4, dmg: 165,
+          damageType: 'magic', bonusVsStatus: { status: 'feared', mult: 1.5 },
+          desc: 'The Overlord does not need to touch them. Deals HEAVY magic damage to a Single Enemy within 4. Deals bonus damage to Feared targets. Cooldown: 2 rounds.' },
         { id: 'raceInfernalDecree', tier: 2, families: ['infernalcourt'], spellType: 'unholy', name: 'Infernal Decree',
           type: 'damage', cost: 40, dmg: 100, range: 3, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -8702,7 +9430,15 @@ const RACE_ABILITIES = {
           spellType: 'human', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 180, range: 2,
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
           desc: 'This is the part where it ends. Deals HEAVY physical damage to a Single Enemy. Deals bonus damage to Staggered targets.' },
-
+        /* THE SIGNATURE FAMILY (2026-10-23): Destiny, this race's own. */
+        { id: 'sigCalledByName', name: 'Called by Name', tier: 2, families: ['destiny'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'divine', vfxElement: 'light', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
+          teamStatusEffects: [{ id: 'blessed', duration: 2 }],
+          desc: 'They came because the prophecy said they would. Every ally within 2 tiles is Blessed for 2 rounds (+1 DEF and M.DEF stage, 40 HP back each round). Cooldown: 3 rounds.' },
+        { id: 'sigDestinyFulfilled', name: 'Destiny Fulfilled', tier: 4, families: ['destiny'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160,
+          range: 3, chargeToTarget: true, executeBonusPct: 0.5,
+          desc: 'It was always going to end like this. Charges a Single Enemy up to 3 tiles away for HEAVY physical damage, ×1.5 if the target is under half HP. Cooldown: 2 rounds.' },
     ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
@@ -8759,6 +9495,15 @@ const RACE_ABILITIES = {
           desc: 'The sea rises in judgment. Deals HEAVY magic damage to ALL Enemies standing in water, anywhere on the battlefield. The deep remembers what it is owed.' },
         SHARED_FLASH_FREEZE,
         SHARED_TIDAL_SURGE,
+        /* THE SIGNATURE FAMILY (2026-10-23): Orichalcum, this race's own. */
+        { id: 'sigOrichalcumRay', name: 'Orichalcum Ray', tier: 1, families: ['orichalcum'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'line', damageType: 'magic', dmg: 85, range: 5, lineWidth: 1,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'The lost metal still shines under the sea. Deals WEAK magic damage to All Enemies in a 5-tile line and Soaks them for 2 rounds.' },
+        { id: 'sigCrystalResonator', name: 'Crystal Resonator', tier: 3, families: ['orichalcum'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 130, range: 4, aoeRadius: 1,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'The great crystal that powered Atlantis, still humming. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Soaked targets take it worse.' },
     ],
     'dinosaur': [
         /* §6.14 (Phase 5 wave A, 2026-09-08): Apex Charge → Stampede (id kept
@@ -8785,6 +9530,15 @@ const RACE_ABILITIES = {
           onKillHealPct: 0.25, onKillRefundAp: 1,
           desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to Staggered targets. A kill heals 25% max HP and refunds 1 AP.' },
         SHARED_FISSURE,
+        /* THE SIGNATURE FAMILY (2026-10-23): Jurassic, this race's own. */
+        { id: 'sigTailSweep', name: 'Tail Sweep', tier: 2, families: ['jurassic'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'earth', type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 85, range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Everything behind it, too. Deals WEAK physical damage to All Enemies beside the dinosaur and Slows them for 2 rounds.' },
+        { id: 'sigExtinctionEvent', name: 'Extinction Event', tier: 4, families: ['jurassic'], cost: 100, apCost: 1, cooldownRounds: 3,
+          spellType: 'anomaly', element: 'fire', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 170, range: 6, aoeRadius: 2,
+          delayTurns: 1, groundsFlyers: true, bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'It happened once. It can happen again. Marks a 5×5 within 6 tiles; at the end of the round the meteor lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Slowed targets take it worse. Cooldown: 3 rounds.' },
     ],
     'dragon': [
         /* CHAMP_REWORK_PLAN §6.7 wave C (2026-09-08): Dragon Breath — the
@@ -8815,6 +9569,15 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
     ],
     'ghoul': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Graveyard Hunger. */
+        { id: 'goCadaverClaws', name: 'Cadaver Claws', tier: 1, families: ['ghoul'], cost: 25, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'grievous', duration: 2 }],
+          desc: 'Nails black with grave dirt; the wound will not close clean. Deals WEAK physical damage to a Single Enemy beside you and gives them a Grievous Wound for 2 rounds (heals on them do half).' },
+        { id: 'goGhoulsSupper', name: 'Ghoul\'s Supper', tier: 3, families: ['ghoul'], cost: 75, apCost: 1,
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
+          bonusVsStatus: { status: 'grievous', mult: 1.5 }, onKillHealPct: 0.3, onKillRefundAp: 1,
+          desc: 'It eats while they are still warm. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Grievously Wounded targets. A kill heals the ghoul 30% of max HP and refunds 1 AP.' },
         /* CHAMP_REWORK_PLAN §6.23 wave C (2026-09-08): Frenzy ⇄ Ghoulish Bite,
            Fear (feared barrage) ⇄ Corpse Crawl, Carrion Feast demoted to tier
            II beside Poison Swamp, Terror Pounce★ the new capstone. */
@@ -8852,6 +9615,19 @@ const RACE_ABILITIES = {
         SHARED_POISON_SWAMP,
     ],
     'gnome': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Garden Gnome. */
+        { id: 'goAnkleBiter', name: 'Ankle Biter', tier: 1, families: ['gnome'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Straight for the tendon. Deals WEAK physical damage to a Single Enemy beside you and Slows them for 2 rounds.' },
+        { id: 'goLawnOrnament', name: 'Lawn Ornament', tier: 2, families: ['gnome'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'anomaly', element: 'earth', type: 'buff', kind: 'buff', range: 0,
+          statusEffects: [{ id: 'stoneform', duration: 1 }],
+          desc: 'Freeze. Smile. Be ceramic. The gnome turns to Stoneform for a round: it cannot move or act, takes no damage and regenerates. Cooldown: 3 rounds.' },
+        { id: 'goGardenShears', name: 'Garden Shears', tier: 3, families: ['gnome'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Snip. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
 
 
 
@@ -8869,6 +9645,11 @@ const RACE_ABILITIES = {
 
     ],
     'kaiju': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Atomic Monster. */
+        { id: 'goNuclearPulse', name: 'Nuclear Pulse', tier: 2, families: ['kaijuatomic'], cost: 50, apCost: 1,
+          spellType: 'tech', element: 'fire', type: 'damage', kind: 'barrage', range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          dmg: 95, damageType: 'magic', statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The dorsal plates glow, then the whole body discharges. Deals WEAK magic damage to every enemy within 1 tile and Staggers them.' },
         { id: 'raceCataclysmStomp', element: 'sonic', upgradesBlock: ['upWiden'], tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
           type: 'damage', cost: 50, dmg: 100, range: 0, apCost: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
@@ -8878,7 +9659,7 @@ const RACE_ABILITIES = {
         // element: none (deliberate — nuclear, not fire: keeps kaiju mirror
         // matches honest, since kaiju ABSORBS fire via its affinity row).
         { id: 'raceAtomicBreath', spellType: 'tech', name: 'Atomic Breath',
-          type: 'damage', tier: 4, element: 'fire', families: ['kaiju'], cost: 55, dmg: 160, range: 5,
+          type: 'damage', tier: 4, element: 'fire', families: ['kaijuatomic'], cost: 55, dmg: 160, range: 5,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
           desc: 'Unleash a searing torrent of blue atomic fire, dealing HEAVY magic damage to All Enemies in a line. Deals bonus damage to Staggered targets.' },
@@ -8921,6 +9702,15 @@ const RACE_ABILITIES = {
         SHARED_VORTEX_SLAM
     ],
     'loch ness monster': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Nessie. */
+        { id: 'goLongNeck', name: 'Long Neck', tier: 1, families: ['lochness'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'pull', range: 3, pullDistance: 2, dmg: 70, damageType: 'physical',
+          statusEffects: [{ id: 'drowning', duration: 2 }],
+          desc: 'The neck reaches further out of the loch than it should. Deals WEAK physical damage to a Single Enemy within 3, drags them 2 tiles toward you and leaves them Drowning for 2 rounds.' },
+        { id: 'goOutOfTheLoch', name: 'Out of the Loch', tier: 3, families: ['lochness'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'leapStrike', range: 3, dmg: 125,
+          damageType: 'physical', dmgPerLevel: 15, bonusVsStatus: { status: 'drowning', mult: 1.5 },
+          desc: 'The humps vanish, then the whole body comes up under you. Leaps onto a Single Enemy within 3 for MEDIUM physical damage. Deals bonus damage to Drowning targets.' },
         { id: 'raceDeepDive', tier: 2, families: ['deepsea'], spellType: 'anomaly', name: 'Deep Dive',
           type: 'utility', cost: 20, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 3,
@@ -8944,6 +9734,15 @@ const RACE_ABILITIES = {
     /* Yeti (reworked 2026-07-23) — full frost kit built around the new Frozen
        status and slippery ice terrain. */
     'yeti': [
+        /* ABOMINABLE (the P-Z signature families, mondo 2026-10-23): the whiteout roar Slows, the ambush pays it off. */
+        { id: 'pzWhiteoutRoar', name: 'Whiteout Roar', tier: 2, families: ['abominable'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 70, range: 0, aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'The mountain answers. Deals WEAK physical damage to All Enemies within 2 tiles and Slows them for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'pzAbominableAmbush', name: 'Abominable Ambush', tier: 4, families: ['abominable'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 160, range: 4, dmgPerLevel: 20,
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Out of the snow. From higher ground, leaps down onto a Single Enemy below you within 4 for HEAVY physical damage. Deals bonus damage to Slowed targets. Cooldown: 2 rounds.' },
         /* 2026-08-16 balance (stats18): 1 cast in 362 matches — the AI's
            terrainCreate scorer only values raw dmg (40 read as worthless next
            to the ring-3 75 MP + 2 AP price). Damage raised to MEDIUM so the
@@ -9001,7 +9800,16 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'The whip cracks down the lane. Deals MEDIUM physical damage to All Enemies in a line up to 3 tiles long and sets them alight. It reaches further than it should and burns where it lands.' }
         /* Lava Lamp DELETED (§2.1 double-status offender, and cut from
-           barbarella's final 4 in the spell-tree audit). */
+           barbarella's final 4 in the spell-tree audit). */,
+        /* THE SIGNATURE FAMILY (2026-10-23): Space Vixen, this race's own. */
+        { id: 'sigLoveRay', name: 'Love Ray', tier: 2, families: ['spacevixen'], cost: 50, apCost: 1, cooldownRounds: 2, spellType: 'tech',
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 2 }],
+          statStageBoost: { spd: -1 },
+          desc: 'Set to stun. Then set to something nicer. A Single Enemy within 4 tiles is Charmed for 2 rounds (it cannot move against you) and loses 1 SPD stage. Cooldown: 2 rounds.' },
+        { id: 'sigExcessiveMachine', name: 'Excessive Machine', tier: 4, families: ['spacevixen'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'tech', element: 'sonic', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 2,
+          hitDamages: [28, 28, 28, 28, 28, 28], bonusVsStatus: { status: 'charm', mult: 1.5 },
+          desc: 'The organ plays until something burns out, and it is never her. Deals HEAVY magic damage to a Single Enemy within 2 tiles across 6 notes. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
 
     'black goo': [
@@ -9049,10 +9857,31 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 125, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Poison.' }
+          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Poison.' },
+        /* THE SIGNATURE FAMILY (2026-10-23): Black Oil, this race's own. */
+        { id: 'sigEyesGoBlack', name: 'Eyes Go Black', tier: 2, families: ['blackoil'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', element: 'poison', type: 'debuff', kind: 'possess', range: 3, activations: 1,
+          statusEffects: [{ id: 'possessed', duration: 2 }], possessAfterStatus: [{ id: 'goo', duration: 2 }],
+          desc: 'The oil gets in behind the eyes. A Single Enemy within 3 tiles takes its next activation under your orders, and comes back Gooed for 2 rounds. Bosses cannot be taken. Cooldown: 3 rounds.' },
+        { id: 'sigEngulf', name: 'Engulf', tier: 4, families: ['blackoil'], cost: 100, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 1, drainPct: 0.5,
+          bonusVsStatus: { status: 'goo', mult: 1.5 },
+          desc: 'It closes over them like a tide. Deals HEAVY magic damage to an adjacent enemy and heals the goo for half of it. Gooed targets take it worse. Cooldown: 2 rounds.' },
     ],
 
     'golem': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Emet. */
+        { id: 'goEmet', name: 'Emet', tier: 1, families: ['golem'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'earth', type: 'buff', kind: 'buff', range: 0, shield: 120, statStageBoost: { def: 1 },
+          desc: 'The word on the brow glows: truth. The golem gains a 120-point barrier and +1 DEF stage. Cooldown: 2 rounds.' },
+        { id: 'goClayGrip', name: 'Clay Grip', tier: 2, families: ['golem'], cost: 50, apCost: 1, spellType: 'divine',
+          element: 'earth', type: 'damage', kind: 'damage', range: 1, dmg: 95, damageType: 'physical',
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'It takes hold and does not let go. Deals WEAK physical damage to a Single Enemy beside you and Roots them for 2 rounds.' },
+        { id: 'goClayCrush', name: 'Clay Crush', tier: 3, families: ['golem'], cost: 75, apCost: 1, spellType: 'divine',
+          element: 'earth', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'Squeeze. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Rooted targets.' },
         /* NOTE: duplicate id with the giant's Boulder Hurl (a known dup —
            see the EWSpellMods refsFor note). Keep the element tags in sync
            so whichever copy wins SPELL_BY_ID, the affinity layer agrees. */
@@ -9106,6 +9935,15 @@ const RACE_ABILITIES = {
     ],
 
     'ice queen': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Snow Queen. */
+        { id: 'goMirrorSplinter', name: 'Mirror Splinter', tier: 2, families: ['icequeen'], cost: 50, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'ice', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'A splinter of the devil\'s mirror, in the eye and in the heart. A Single Enemy within 4 is Charmed for a round. Cooldown: 2 rounds.' },
+        { id: 'goSnowQueensKiss', name: 'Snow Queen\'s Kiss', tier: 4, families: ['icequeen'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'damage', range: 1, dmg: 165,
+          damageType: 'magic', bonusVsStatus: { status: 'frozen', mult: 1.5 },
+          desc: 'The third kiss is the last. Deals HEAVY magic damage to a Single Enemy beside you. Deals bonus damage to Frozen targets. Cooldown: 2 rounds.' },
         { id: 'raceIceSpear', tier: 1, element: 'ice', spellType: 'anomaly', name: 'Ice Spear',
           type: 'damage', cost: 25, dmg: 100, range: 4,
           kind: 'damage', damageType: 'magic',
@@ -9129,6 +9967,19 @@ const RACE_ABILITIES = {
     ],
 
     'juggernaut': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Unstoppable. */
+        { id: 'goShoulderThrough', name: 'Shoulder Through', tier: 1, families: ['juggernaut'], cost: 25, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'displacement', range: 1, dmg: 80,
+          damageType: 'physical', pushDistance: 2, collisionBonus: 40, statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Not around. Through. Deals WEAK physical damage to a Single Enemy beside you, knocks them back 2 tiles and Staggers them. Extra damage if they hit something.' },
+        { id: 'goCantStopMe', name: 'Can\'t Stop Me', tier: 2, families: ['juggernaut'], cost: 50, apCost: 1,
+          cooldownRounds: 3, spellType: 'human', element: 'metal', type: 'buff', kind: 'buff', range: 0, cleanse: 2,
+          statusEffects: [{ id: 'indomitable', duration: 2 }],
+          desc: 'It does not fall down. Cleanses 2 debuffs and gains Indomitable for 2 rounds: the next killing blow leaves it at 1 HP. Cooldown: 3 rounds.' },
+        { id: 'goRunaway', name: 'Runaway Train', tier: 4, families: ['juggernaut'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'dash', range: 5, dmg: 160, dashDamage: 80,
+          damageType: 'physical', chargeToTarget: true, dashSweep: 1, bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Everything on the track gets hit. Charges a Single Enemy within 5 for HEAVY physical damage, hitting every enemy beside the path on the way. Deals bonus damage to Staggered targets. Cooldown: 2 rounds.' },
         { id: 'raceBrutalSlam', element: 'blood', tier: 3, statusEffects: [{ id: 'grievous', duration: 2 }], families: ['dirtyfighting'], spellType: 'human', name: 'Brutal Slam',
           type: 'damage', cost: 30, dmg: 100, range: 0, apCost: 1,
           kind: 'barrage', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
@@ -9176,10 +10027,15 @@ const RACE_ABILITIES = {
     ],
 
     'king arthur': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Excalibur. */
+        { id: 'goScabbard', name: 'Scabbard of Excalibur', tier: 2, families: ['excalibur'], cost: 50, apCost: 1,
+          cooldownRounds: 3, spellType: 'divine', type: 'buff', kind: 'buff', range: 0, cleanse: 2,
+          statusEffects: [{ id: 'regen', duration: 3 }],
+          desc: 'Whoever wears the scabbard loses no blood. Cleanses 2 debuffs and gains Regen for 3 rounds. Cooldown: 3 rounds.' },
         /* King Arthur capstone since the 2026-08-12 capstone pass (was Knights
            of Round). */
         { id: 'raceExcaliburStrike', spellType: 'divine', name: 'Excalibur Strike',
-          type: 'damage', tier: 4, families: ['royalty'], cost: 55, dmg: 180, range: 1,
+          type: 'damage', tier: 4, families: ['excalibur'], cost: 55, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Burn.' },
@@ -9217,11 +10073,16 @@ const RACE_ABILITIES = {
     ],
 
     'minotaur': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Labyrinth. */
+        { id: 'goTribute', name: 'The Tribute', tier: 4, families: ['minotaur'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'damage', kind: 'damage', range: 1, dmg: 165, damageType: 'physical',
+          bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          desc: 'Seven youths and seven maidens, every nine years. Deals HEAVY physical damage to a Single Enemy beside you. Deals bonus damage to Provoked targets. Cooldown: 2 rounds.' },
         _mkCharge({ id: 'raceBullRush', element: 'nature', upgradesBlock: ['upBlast'], spellType: 'human', name: 'Bull Rush',
           kind: 'dash', tier: 4, dashDamage: 90, families: ['horns'],   /* BALANCE PASS 2026-10-06: PATH 60→90 (lab: T4 dashes dealt ~267 a cast, about half the Tier IV median) */ cost: 45, dmg: 170, range: 4,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
           desc: 'Dashes through the battlefield. Deals bonus damage to targets with Discord. The caster charges into melee first.' }),
-        { id: 'raceLabyrinthRoar', tier: 2, noDamage: true, families: ['horns'], spellType: 'unholy', name: 'Labyrinth Roar',
+        { id: 'raceLabyrinthRoar', tier: 2, noDamage: true, families: ['minotaur'], spellType: 'unholy', name: 'Labyrinth Roar',
           type: 'debuff', cost: 25, range: 0, apCost: 1,
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 2 }, { id: 'taunt', duration: 1 }],
@@ -9235,6 +10096,15 @@ const RACE_ABILITIES = {
     ],
 
     'necromancer': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Soul Harvest. */
+        { id: 'goGraveWhisper', name: 'Grave Whisper', tier: 1, families: ['necromancer'], cost: 25, apCost: 1,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'damage', kind: 'damage', range: 4, dmg: 80, damageType: 'magic',
+          statusEffects: [{ id: 'haunted', duration: 3 }],
+          desc: 'A name whispered at a grave, and something follows them home. Deals WEAK magic damage to a Single Enemy within 4 and Haunts them for 3 rounds.' },
+        { id: 'goSoulHarvest', name: 'The Reaping', tier: 3, families: ['necromancer'], cost: 75, apCost: 1,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'damage', kind: 'aoe', range: 4, aoeRadius: 1, dmg: 120,
+          damageType: 'magic', aoeLifeDrain: 0.3, bonusVsStatus: { status: 'haunted', mult: 1.5 },
+          desc: 'Every soul in the square comes loose. Deals MEDIUM magic damage to All Enemies in a 3x3 within 4 tiles; the necromancer heals 30% of all the damage dealt. Deals bonus damage to Haunted targets.' },
         { id: 'raceSoulDrain', element: 'blood', tier: 1, families: ['necromancy'], spellType: 'unholy', name: 'Life Drain',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.35,
@@ -9266,6 +10136,16 @@ const RACE_ABILITIES = {
     ],
 
     'occulus': [
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): All-Seeing. */
+        { id: 'goAntimagicGaze', name: 'Antimagic Gaze', tier: 2, families: ['occulus'], cost: 50, apCost: 1,
+          spellType: 'alien', element: 'psychic', type: 'damage', kind: 'line', range: 4, lineWidth: 1, dmg: 70,
+          damageType: 'magic', statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'The great central eye opens and magic dies in its stare. Deals WEAK magic damage to All Enemies in a line and Silences them for a round.' },
+        { id: 'goEyeStalks', name: 'Every Eye at Once', tier: 4, families: ['occulus'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'alien', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 50,
+          damageType: 'magic', randomTargets: { count: 5, scope: 'enemies', distinct: false, mult: 1 },
+          bonusVsStatus: { status: 'silence', mult: 1.5 },
+          desc: 'Every stalk turns and fires. 5 rays land on random enemies within 5 tiles (the same enemy can be hit again), WEAK magic damage each. Deals bonus damage to Silenced targets. Cooldown: 2 rounds.' },
         { id: 'raceDeathGaze', spellType: 'anomaly', name: 'Death Gaze',
           type: 'damage', tier: 4, families: ['eyesight'], cost: 50, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
@@ -9383,6 +10263,16 @@ const RACE_ABILITIES = {
        list, he runs you over with the sleigh, he leaves coal and one very
        dangerous present. */
     'santa clause': [
+        /* NORTH POLE (the P-Z signature families, mondo 2026-10-23): the snow globe Freezes, the chimney drop pays it off. */
+        { id: 'pzSnowGlobe', name: 'Snow Globe', tier: 2, families: ['northpole'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'ice', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'frozen', duration: 1 }],
+          desc: 'Shaken, not stirred. Deals WEAK magic damage to a Single Enemy within 4 and Freezes it for a round. Cooldown: 2 rounds.' },
+        { id: 'pzDownTheChimney', name: 'Down the Chimney', tier: 4, families: ['northpole'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 150, range: 4, dmgPerLevel: 20,
+          aoeRadius: 1, aoeDmgPct: 0.4,
+          bonusVsStatus: { status: 'frozen', mult: 1.5 },
+          desc: 'Ho ho ho. From higher ground, leaps down onto a Single Enemy below you within 4 for HEAVY physical damage, and everyone beside it takes some of the landing. Deals bonus damage to Frozen targets. Cooldown: 2 rounds.' },
         { id: 'raceSleighDash', tier: 2, element: 'ice', families: ['christmasspirit'], spellType: 'divine', name: 'Sleigh Dash',
           type: 'damage', cost: 25, dmg: 130, range: 4, apCost: 1,
           kind: 'dash', damageType: 'physical', dashDamage: 90,
@@ -9467,6 +10357,15 @@ const RACE_ABILITIES = {
     ],
 
     'symbiote': [
+        /* THE BOND (the P-Z signature families, mondo 2026-10-23): the tendrils Goo, the drop from the ceiling pays it off. */
+        { id: 'pzBlackTendrils', name: 'Black Tendrils', tier: 1, families: ['thebond'], cost: 25, apCost: 1,
+          spellType: 'unholy', element: 'poison', type: 'damage', kind: 'line', damageType: 'physical', dmg: 70, range: 3, lineWidth: 1,
+          statusEffects: [{ id: 'goo', duration: 2 }],
+          desc: 'It reaches. Deals WEAK physical damage to All Enemies in a line and Goos them for 2 rounds.' },
+        { id: 'pzFromTheCeiling', name: 'From the Ceiling', tier: 4, families: ['thebond'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 160, range: 3, dmgPerLevel: 20,
+          bonusVsStatus: { status: 'goo', mult: 1.5 },
+          desc: 'It was up there the whole time. From higher ground, drops onto a Single Enemy below you within 3 for HEAVY physical damage. Deals bonus damage to Gooed targets. Cooldown: 2 rounds.' },
         { id: 'raceTendrilStrike', element: 'poison', spellType: 'unholy', name: 'Tendril Strike',
           type: 'damage', tier: 4, families: ['symbiosis'], cost: 45, dmg: 180, range: 2,
           kind: 'damage', damageType: 'physical',
@@ -9494,6 +10393,16 @@ const RACE_ABILITIES = {
     ],
 
     'valkraye': [
+        /* VALHALLA (the P-Z signature families, mondo 2026-10-23): the host-fetter Slows, the ride to Valhalla pays it off. */
+        { id: 'pzHostFetter', name: 'Host-Fetter', tier: 2, families: ['valhalla'], cost: 50, apCost: 1,
+          spellType: 'divine', element: 'wind', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 70, range: 4, aoeRadius: 1,
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Fetters on the whole host. Deals WEAK physical damage to All Enemies in a 3×3 within 4 and Slows them for 2 rounds.' },
+        { id: 'pzRideToValhalla', name: 'Ride to Valhalla', tier: 4, families: ['valhalla'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'wind', type: 'damage', kind: 'tackle', damageType: 'physical', dmg: 150, range: 4,
+          chargeToTarget: true, pushDistance: 3, collisionBonus: 50,
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Chosen. Charges a Single Enemy within 4 and carries it up to 3 tiles along the line: HEAVY physical damage, and more if it crashes into a wall or another unit. Deals bonus damage to Slowed targets. Cooldown: 2 rounds.' },
         { id: 'raceValkyrieSpear', element: 'wind', tier: 1, families: ['holydefense'], spellType: 'divine', name: 'Valkyrie Spear',
           type: 'damage', cost: 25, dmg: 100, range: 2,
           kind: 'damage', damageType: 'physical',
@@ -9516,6 +10425,15 @@ const RACE_ABILITIES = {
     ],
 
     'watcher': [
+        /* THE WATCHER'S OATH (the P-Z signature families, mondo 2026-10-23): every enemy in sight is Marked, the broken oath pays it off. */
+        { id: 'pzNothingUnseen', name: 'Nothing Unseen', tier: 2, families: ['watchersoath'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'barrage', range: 0, aoeRadius: 3, aoeOriginSelf: true, noDamage: true,
+          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
+          desc: 'It has always been watching. Marks every enemy within 3 tiles for 2 rounds: the next hit on each one deals 30 extra damage. Cooldown: 3 rounds.' },
+        { id: 'pzTheOathBroken', name: 'The Oath Broken', tier: 4, families: ['watchersoath'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 6, ignoresLineOfSight: true,
+          bonusVsStatus: { status: 'marked', mult: 1.5 },
+          desc: 'For once, the Watcher interferes. Deals HEAVY magic damage to a Single Enemy within 6, through walls. Deals bonus damage to Marked targets. Cooldown: 2 rounds.' },
         { id: 'raceCosmicSight', tier: 2, families: ['cosmic'], spellType: 'divine', name: 'Cosmic Sight',
           type: 'utility', cost: 15, range: 4, apCost: 1,
           kind: 'scan', scanRadius: 4,
@@ -18483,7 +19401,7 @@ const RACE_TREE = {
     'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', 'raceBoneLance', 'raceMarrowstorm'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'zombie':        ['raceInfectiousBite', ['raceZombieRush', 'raceCannibalize'], ['raceOutbreak', 'raceInfect'], 'raceShamblingHorde'],   // §6.18 (wave B)
     'dreameater':    ['raceDreamSiphon', 'raceSleepParalysis', 'raceNightmarePulse', 'raceEternalSlumber'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
-    'goatman':       ['raceGoreCharge', 'raceLabyrinthRoar', 'lifeDrain', 'raceBullRush'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'goatman':       ['raceGoreCharge', 'goTreelineScream', 'lifeDrain', 'raceBullRush'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'antihero':      ['raceDarkJustice', 'raceInvulnerable', 'raceShockwaveClap', 'raceNoMercy'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'chosen one':    ['raceDarkFeather', 'racePlotArmor', 'raceProphecyFulfilled', 'raceRollCredits'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'gnome':         ['raceTeslaTrap', 'raceScrapMine', 'fiveGTower', 'raceOvertinker'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -18516,7 +19434,7 @@ const RACE_TREE = {
     'tree person': ['raceTremorStomp', ['raceEarthenGrasp', 'trunkThrow'], 'raceEntanglingRoots', 'raceQuake'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'sheriff': ['doubleShot', 'raceFanTheHammer', 'racePoliceCuffs', 'raceHighNoon'],   // 2026-09-30
     'astronaut': ['raceGravityWell', 'racePhaseWalk', 'sharedGravityCrush', 'railgun'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
-    'krampus': [['raceLumpOfCoal', 'raceFrozenPunch'], 'raceLabyrinthRoar', 'raceWhiteChristmas', ['raceBaphometsRite', 'raceAvalancheStrike']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'krampus': [['raceLumpOfCoal', 'raceFrozenPunch'], 'goKrampusChains', 'raceWhiteChristmas', ['raceBaphometsRite', 'raceAvalancheStrike']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'rabbit': ['raceSprint', 'raceNimbleDodge', 'raceVault', ['raceTimeRewind', 'rampage']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'luchador': ['raceBodyCheck', 'racePopStageDive', 'raceBrutalSlam', 'rampage'],   // 2026-09-30
     'firefighter': ['raceRiptide', 'sharedTidalSurge', 'raceUnderdogSpirit', 'raceTidalSlam'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -18856,12 +19774,17 @@ function flBorrowFamilyIds(race) {
 }
 function flRacePool(race) {
     const own = new Set(raceFamilyPoolIds(race).concat(raceExcludedSpellIds(race)));   // an excluded spell is never borrowed back
+    const owned = flOwnedRaces();
     const out = [];
     const seen = new Set();
     for (const f of flBorrowFamilyIds(race)) {
+        /* a family spell is borrowed only from a race that learns it (RACE_SPELL_EXCLUDES, 2026-10-23): borrowing COSMIC from
+           the Watcher gives Cosmic Sight, never the orb's Supernova */
+        const lent = new Set();
+        for (const r of owned) if (r !== race && raceFamilyIds(r).includes(f)) for (const id of raceFamilyMemberIds(r, f)) lent.add(id);
         for (const id of familyMemberIds(f)) {
             const sp = SPELL_BY_ID[id];
-            if (!sp || seen.has(id) || own.has(id)) continue;
+            if (!sp || seen.has(id) || own.has(id) || !lent.has(id)) continue;
             seen.add(id);
             out.push(sp);
         }
@@ -19875,6 +20798,329 @@ const SPELL_FAMILIES = {
         desc: 'The Door Agent\'s destinations — the standing doors on the wheel.',
         unique: 'door agent'
     },
+    /* THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "each race to have at least one spell family that is unique to itself"):
+       one race's own family each (unique, the Door Wheel model), new rows only, existing mechanics only. The spells sit in
+       RACE_ABILITIES[race]; `identity` feeds the library's IDENTITY tab. */
+    deeplearning: {
+        id: 'deeplearning',
+        name: 'Deep Learning',
+        glyph: '🧠',
+        color: '#5fd3c6',
+        kind: 'signature',
+        desc: 'The AI\'s own: it trains on your kit, takes a spell for itself and plays your best blow back at you.',
+        unique: 'ai',
+        identity: { who: ['Model', 'Neural Net', 'Oracle Engine'], adj: ['Trained', 'Converged', 'Self-Improving'], look: ['a pulsing server-light core', 'a halo of scrolling weights'], vibe: ['learns your moves and plays them back at you', 'scrapes your spells for its own'] }
+    },
+    uncannyvalley: {
+        id: 'uncannyvalley',
+        name: 'Uncanny Valley',
+        glyph: '🫥',
+        color: '#c9d4e0',
+        kind: 'signature',
+        desc: 'The Android\'s own: a smile that is almost right unsettles everyone near it, then a cold termination.',
+        unique: 'android',
+        identity: { who: ['Replicant', 'Synthetic', 'Unit'], adj: ['Uncanny', 'Flawless', 'Cold-Eyed'], look: ['a smile that is almost right', 'skin that never creases'], vibe: ['smiles until you flinch, then terminates', 'finishes the weak without blinking'] }
+    },
+    heavenlyhost: {
+        id: 'heavenlyhost',
+        name: 'Heavenly Host',
+        glyph: '🪽',
+        color: '#ffe9a8',
+        kind: 'signature',
+        desc: 'The Angel\'s own: wings over the allies beside it, and the last trumpet for the unholy.',
+        unique: 'angel',
+        identity: { who: ['Guardian', 'Herald', 'Host'], adj: ['Sheltering', 'Trumpeting', 'Winged'], look: ['wings spread over a friend', 'a golden trumpet'], vibe: ['shelters everyone under its wings', 'sounds the last trumpet'] }
+    },
+    skygods: {
+        id: 'skygods',
+        name: 'Sky Gods',
+        glyph: '🪐',
+        color: '#d6b25a',
+        kind: 'signature',
+        desc: 'The Annunaki\'s own: the makers make you kneel, then Enlil sends the flood.',
+        unique: 'annunaki',
+        identity: { who: ['Maker', 'Sky God', 'Overseer'], adj: ['Ancient', 'Godly', 'Commanding'], look: ['a horned crown of gold', 'a winged disk overhead'], vibe: ['makes lesser beings kneel', 'drowns the world it made'] }
+    },
+    vigilante: {
+        id: 'vigilante',
+        name: 'Vigilante',
+        glyph: '🦇',
+        color: '#8a8f9c',
+        kind: 'signature',
+        desc: 'The Antihero\'s own: rough interrogations, and a takedown that does not care who else is standing there.',
+        unique: 'antihero',
+        identity: { who: ['Vigilante', 'Punisher', 'Dark Knight'], adj: ['Brutal', 'Lawless', 'Grim'], look: ['bloody knuckles', 'a skull on the chest'], vibe: ['gets answers the hard way', 'does not care about collateral damage'] }
+    },
+    colony: {
+        id: 'colony',
+        name: 'The Colony',
+        glyph: '🐜',
+        color: '#b5562c',
+        kind: 'signature',
+        desc: 'The Antperson\'s own: lifts fifty times its weight and throws it, then the colony overruns the stunned.',
+        unique: 'antperson',
+        identity: { who: ['Worker', 'Soldier Ant', 'Forager'], adj: ['Tireless', 'Many-Legged', 'Strong'], look: ['mandibles that click', 'a boulder carried overhead'], vibe: ['throws things fifty times its weight', 'overruns whatever the colony surrounds'] }
+    },
+    duat: {
+        id: 'duat',
+        name: 'The Duat',
+        glyph: '🏺',
+        color: '#2f6f8f',
+        kind: 'signature',
+        desc: 'Anubis\'s own: wrap them for the tomb, then Ammit eats the hearts that fail the scale.',
+        unique: 'anubis',
+        identity: { who: ['Embalmer', 'Judge of the Dead', 'Jackal'], adj: ['Funerary', 'Weighing', 'Silent'], look: ['linen wraps on a hook', 'a golden scale'], vibe: ['mummifies the living', 'feeds failed hearts to Ammit'] }
+    },
+    missioncontrol: {
+        id: 'missioncontrol',
+        name: 'Mission Control',
+        glyph: '🚀',
+        color: '#e8eef5',
+        kind: 'signature',
+        desc: 'The Astronaut\'s own: an EVA tether to reel them in, and an orbital strike called down from Houston.',
+        unique: 'astronaut',
+        identity: { who: ['Spacewalker', 'Commander', 'Specialist'], adj: ['Orbital', 'Tethered', 'Zero-G'], look: ['an EVA tether', 'a radio to Houston'], vibe: ['reels targets in on a tether', 'calls down orbital strikes'] }
+    },
+    orichalcum: {
+        id: 'orichalcum',
+        name: 'Orichalcum',
+        glyph: '🔱',
+        color: '#3fc1b0',
+        kind: 'signature',
+        desc: 'The Atlantean\'s own: the lost metal\'s ray soaks them, the crystal resonator lights them up.',
+        unique: 'atlantean',
+        identity: { who: ['High Priest', 'Crystal Keeper', 'Atlantean'], adj: ['Sunken', 'Resonant', 'Lost'], look: ['an orichalcum circlet', 'a humming power crystal'], vibe: ['soaks the enemy, then lights them up', 'runs the lost empire\'s crystal'] }
+    },
+    spacevixen: {
+        id: 'spacevixen',
+        name: 'Space Vixen',
+        glyph: '💋',
+        color: '#ff7ac8',
+        kind: 'signature',
+        desc: 'Barbarella\'s own: a ray gun set to love, and the Excessive Machine for whoever falls for it.',
+        unique: 'barbarella',
+        identity: { who: ['Space Agent', 'Adventuress', 'Astronavigator'], adj: ['Groovy', 'Cosmic', 'Irresistible'], look: ['a silver catsuit', 'a ray gun with a heart on it'], vibe: ['charms the galaxy', 'outlasts the Excessive Machine'] }
+    },
+    royalhive: {
+        id: 'royalhive',
+        name: 'Royal Hive',
+        glyph: '👑',
+        color: '#f2c230',
+        kind: 'signature',
+        desc: 'The Bee Queen\'s own: the swarm peels off at random, then a thousand stings on the poisoned.',
+        unique: 'bee queen',
+        identity: { who: ['Queen', 'Matriarch', 'Hive Mother'], adj: ['Royal', 'Buzzing', 'Stinging'], look: ['a crown of honeycomb', 'a cloud of workers'], vibe: ['sends the swarm at everyone', 'stings a thousand times'] }
+    },
+    elusive: {
+        id: 'elusive',
+        name: 'Elusive',
+        glyph: '👣',
+        color: '#7a5a3a',
+        kind: 'signature',
+        desc: 'Bigfoot\'s own: gone before the shutter clicks, and out of the treeline when you stop looking.',
+        unique: 'bigfoot',
+        identity: { who: ['Cryptid', 'Wild Man', 'Squatch'], adj: ['Blurry', 'Elusive', 'Huge'], look: ['one blurry photo', 'giant footprints'], vibe: ['vanishes before the photo', 'ambushes from the treeline'] }
+    },
+    blackoil: {
+        id: 'blackoil',
+        name: 'Black Oil',
+        glyph: '🛢️',
+        color: '#1a1a24',
+        kind: 'signature',
+        desc: 'The Black Goo\'s own: the eyes go black and the body is the oil\'s, then it engulfs the coated.',
+        unique: 'black goo',
+        identity: { who: ['Black Oil', 'Passenger', 'Contagion'], adj: ['Oily', 'Black-Eyed', 'Seeping'], look: ['eyes gone fully black', 'oil crawling under the skin'], vibe: ['rides other bodies', 'engulfs whatever it coats'] }
+    },
+    destiny: {
+        id: 'destiny',
+        name: 'Destiny',
+        glyph: '✨',
+        color: '#f0e0a0',
+        kind: 'signature',
+        desc: 'The Chosen One\'s own: called by name, the allies rally; the prophecy ends the weakened.',
+        unique: 'chosen one',
+        identity: { who: ['Chosen One', 'Prophesied', 'Heir'], adj: ['Fated', 'Foretold', 'Destined'], look: ['a birthmark from the prophecy', 'a blade that hums'], vibe: ['rallies everyone by name', 'fulfils the prophecy on the weak'] }
+    },
+    bigtop: {
+        id: 'bigtop',
+        name: 'Big Top',
+        glyph: '🎈',
+        color: '#e8423f',
+        kind: 'signature',
+        desc: 'The Clown\'s own: a pie in the face, and a jack-in-the-box left where they will step.',
+        unique: 'clown',
+        identity: { who: ['Clown', 'Jester', 'Harlequin'], adj: ['Grinning', 'Painted', 'Giggling'], look: ['a cream pie', 'a crank on a painted box'], vibe: ['throws pies', 'leaves surprises for whoever steps there'] }
+    },
+    heatdeath: {
+        id: 'heatdeath',
+        name: 'Last Light',
+        glyph: '🌌',
+        color: '#5a4a9a',
+        kind: 'signature',
+        desc: 'The Cosmic Wraith\'s own: starlight withers on them, then the last light of the universe runs them through.',
+        unique: 'cosmic wraith',
+        identity: { who: ['Wraith', 'Void Ghost', 'Ender'], adj: ['Cosmic', 'Withering', 'Cold'], look: ['a hood full of dead stars', 'a trail of fading light'], vibe: ['withers starlight', 'fires the last light in the universe'] }
+    },
+    gunslinger: {
+        id: 'gunslinger',
+        name: 'Gunslinger',
+        glyph: '🤠',
+        color: '#b07a3a',
+        kind: 'signature',
+        desc: 'The Cowboy\'s own: call them out to a duel, then empty the six-shooter.',
+        unique: 'cowboy',
+        identity: { who: ['Gunslinger', 'Drifter', 'Duelist'], adj: ['Quick-Draw', 'Dusty', 'Steely'], look: ['a six-shooter on the hip', 'a hat pulled low'], vibe: ['calls you out at high noon', 'empties all six'] }
+    },
+    crystalheart: {
+        id: 'crystalheart',
+        name: 'Crystal Heart',
+        glyph: '💎',
+        color: '#8fe3ff',
+        kind: 'signature',
+        desc: 'The Crystal Guardian\'s own: a glint that blinds, a crystal coffin that saves a friend, a shardstorm that ricochets.',
+        unique: 'crystal guardian',
+        identity: { who: ['Guardian', 'Geode', 'Warden'], adj: ['Faceted', 'Shining', 'Unbreakable'], look: ['a body of living quartz', 'light bending through its chest'], vibe: ['encases friends in crystal', 'ricochets shards through a crowd'] }
+    },
+    messiah: {
+        id: 'messiah',
+        name: 'Messiah Complex',
+        glyph: '🕯️',
+        color: '#8a2a4a',
+        kind: 'signature',
+        desc: 'The Cult Leader\'s own: one sermon charms the room, then Ascension Day for the faithful.',
+        unique: 'cult leader',
+        identity: { who: ['Prophet', 'Messiah', 'Shepherd'], adj: ['Charismatic', 'Smiling', 'Devoted'], look: ['white robes', 'a sermon in hand'], vibe: ['charms everyone in the room', 'promises Ascension Day'] }
+    },
+    augments: {
+        id: 'augments',
+        name: 'Augments',
+        glyph: '🦾',
+        color: '#9aa6b2',
+        kind: 'signature',
+        desc: 'The Cyborg\'s own: the grapple arm reels them in, the piledriver arm ignores the armour.',
+        unique: 'cyborg',
+        identity: { who: ['Cyborg', 'Augment', 'Conversion'], adj: ['Chrome', 'Hydraulic', 'Rebuilt'], look: ['a grapple-arm', 'pistons in the forearm'], vibe: ['reels you in on a cable', 'piledrives through plate'] }
+    },
+    cyclopean: {
+        id: 'cyclopean',
+        name: 'Cyclopean Forge',
+        glyph: '⚒️',
+        color: '#c06a2a',
+        kind: 'signature',
+        desc: 'The Cyclops\'s own: a bellow that knocks them off balance, and the thunderbolt the cyclopes forged.',
+        unique: 'cyclops',
+        identity: { who: ['Cyclops', 'Forge-Giant', 'Smith'], adj: ['One-Eyed', 'Bellowing', 'Thunder-Forged'], look: ['a single great eye', 'a forge hammer'], vibe: ['bellows loud enough to stagger', 'throws the thunderbolt it forged'] }
+    },
+    anglerlure: {
+        id: 'anglerlure',
+        name: 'The Lure',
+        glyph: '🎣',
+        color: '#2a6ad8',
+        kind: 'signature',
+        desc: 'The Deep Sea Fish\'s own: a pretty light reels them in, then the jaws close.',
+        unique: 'deep sea fish',
+        identity: { who: ['Angler', 'Lurker', 'Abyssal'], adj: ['Glowing', 'Gaping', 'Patient'], look: ['a glowing lure on a stalk', 'needle teeth'], vibe: ['lures prey to its jaws', 'swallows whatever comes close'] }
+    },
+    hellpact: {
+        id: 'hellpact',
+        name: 'Hell Pact',
+        glyph: '📜',
+        color: '#a8231c',
+        kind: 'signature',
+        desc: 'The Demon\'s own: the mark of the beast, then the harvest of everything it marked.',
+        unique: 'demon',
+        identity: { who: ['Fiend', 'Tempter', 'Harvester'], adj: ['Branding', 'Hungry', 'Infernal'], look: ['a burning brand', 'a ledger of souls'], vibe: ['marks you for the pit', 'harvests souls to heal'] }
+    },
+    hellsheir: {
+        id: 'hellsheir',
+        name: 'Heir to Hell',
+        glyph: '🔥',
+        color: '#d0461e',
+        kind: 'signature',
+        desc: 'The Demon Prince\'s own: usurp their blessings, then sit on a throne of ashes.',
+        unique: 'demon prince',
+        identity: { who: ['Prince', 'Heir', 'Usurper'], adj: ['Princely', 'Burning', 'Entitled'], look: ['a crown of hellfire', 'a scorched throne'], vibe: ['takes what was blessed on you', 'burns the court down around him'] }
+    },
+    hellsbelle: {
+        id: 'hellsbelle',
+        name: 'Hell\'s Belle',
+        glyph: '💃',
+        color: '#c2185b',
+        kind: 'signature',
+        desc: 'The Demon Princess\'s own: a waltz that trades places and hearts, and a last dance that drains them.',
+        unique: 'demon princess',
+        identity: { who: ['Princess', 'Belle', 'Temptress'], adj: ['Waltzing', 'Charming', 'Deadly'], look: ['a ballgown of embers', 'a dance card of names'], vibe: ['waltzes you into her place', 'drains you on the last dance'] }
+    },
+    jurassic: {
+        id: 'jurassic',
+        name: 'Jurassic',
+        glyph: '🦖',
+        color: '#6b8f3a',
+        kind: 'signature',
+        desc: 'The Dinosaur\'s own: a tail sweep that cripples, and the extinction event itself.',
+        unique: 'dinosaur',
+        identity: { who: ['Tyrant Lizard', 'Apex', 'Terror'], adj: ['Prehistoric', 'Thundering', 'Extinct'], look: ['a tail like a tree trunk', 'a meteor in the sky behind it'], vibe: ['sweeps the legs out', 'brings the extinction event'] }
+    },
+    threewishes: {
+        id: 'threewishes',
+        name: 'Three Wishes',
+        glyph: '🪔',
+        color: '#4fb3d9',
+        kind: 'signature',
+        desc: 'The Djinn\'s own: lamp smoke to hide in, and a wish granted the wrong way round.',
+        unique: 'djinn',
+        identity: { who: ['Djinn', 'Genie', 'Wish-Granter'], adj: ['Smoky', 'Bound', 'Mischievous'], look: ['a brass lamp', 'a tail of blue smoke'], vibe: ['hides its friends in lamp smoke', 'grants wishes the wrong way'] }
+    },
+    nightmares: {
+        id: 'nightmares',
+        name: 'Nightmares',
+        glyph: '🌙',
+        color: '#6a3aa8',
+        kind: 'signature',
+        desc: 'The Dreameater\'s own: counting sheep puts a crowd to sleep, then it eats the dreams.',
+        unique: 'dreameater',
+        identity: { who: ['Dreameater', 'Baku', 'Night Visitor'], adj: ['Sleepy', 'Ravenous', 'Dreaming'], look: ['a nightcap of stars', 'a mouth full of dreams'], vibe: ['puts the room to sleep', 'eats your dreams'] }
+    },
+    astromech: {
+        id: 'astromech',
+        name: 'Astromech',
+        glyph: '🛠️',
+        color: '#5a8ad8',
+        kind: 'signature',
+        desc: 'The Droid\'s own: a shock prod that scrambles, and a hologram for the enemy to shoot.',
+        unique: 'droid',
+        identity: { who: ['Astromech', 'Unit', 'Droid'], adj: ['Beeping', 'Plucky', 'Projecting'], look: ['a dome that whistles', 'a holo-projector'], vibe: ['projects a hologram for them to shoot', 'zaps anyone who gets close'] }
+    },
+    pixie: {
+        id: 'pixie',
+        name: 'Pixie Tricks',
+        glyph: '🧚',
+        color: '#f8a8e8',
+        kind: 'signature',
+        desc: 'The Fairy\'s own: shrink them down to toy size, then let the fireflies at them.',
+        unique: 'fairy',
+        identity: { who: ['Pixie', 'Sprite', 'Prankster'], adj: ['Tiny', 'Glowing', 'Wicked'], look: ['a jar of fireflies', 'a wand that shrinks'], vibe: ['shrinks you to toy size', 'sets the fireflies on you'] }
+    },
+    morningstar: {
+        id: 'morningstar',
+        name: 'Morning Star',
+        glyph: '🌟',
+        color: '#ffb347',
+        kind: 'signature',
+        desc: 'The Fallen Angel\'s own: forsaken wounds that will not close, and the morning star falling on them.',
+        unique: 'fallen angel',
+        identity: { who: ['Light-Bringer', 'Rebel', 'Fallen'], adj: ['Prideful', 'Forsaken', 'Burning'], look: ['one wing of light, one of ash', 'a falling star in the palm'], vibe: ['makes wounds that never close', 'drops the morning star'] }
+    },
+    firerescue: {
+        id: 'firerescue',
+        name: 'Fire Rescue',
+        glyph: '🚒',
+        color: '#d83a2a',
+        kind: 'signature',
+        desc: 'The Firefighter\'s own: the hose, the fireman\'s carry and the Halligan bar.',
+        unique: 'firefighter',
+        identity: { who: ['Firefighter', 'Rescuer', 'Smoke-Eater'], adj: ['Soaked', 'Fearless', 'Heroic'], look: ['a fire hose', 'a Halligan bar'], vibe: ['hoses the enemy down the hall', 'carries a friend out of the fire'] }
+    },
     weaponstraining: {
         id: 'weaponstraining',
         name: 'Gun Training',
@@ -19945,7 +21191,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'robinhood'
     },
     spygear: {
         id: 'spygear',
@@ -19972,7 +21218,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'door agent'
     },
     chemistry: {
         id: 'chemistry',
@@ -19990,7 +21236,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'dragon'
     },
     martialarts: {
         id: 'martialarts',
@@ -20017,7 +21263,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'quarterback'
     },
     fortunetelling: {
         id: 'fortunetelling',
@@ -20026,7 +21272,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'fortune teller'
     },
     witchcraft: {
         id: 'witchcraft',
@@ -20053,7 +21299,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'vampire'
     },
     computerhacking: {
         id: 'computerhacking',
@@ -20071,7 +21317,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'politician'
     },
     deepstate: {
         id: 'deepstate',
@@ -20116,7 +21362,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'pirate'
     },
     teamwork: {
         id: 'teamwork',
@@ -20161,7 +21407,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'zombie'
     },
     cosmic: {
         id: 'cosmic',
@@ -20251,7 +21497,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'gangster'
     },
     psychadelic: {
         id: 'psychadelic',
@@ -20332,7 +21578,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'mad scientist'
     },
     ufo: {
         id: 'ufo',
@@ -20422,7 +21668,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'mech'
     },
     drivingskills: {
         id: 'drivingskills',
@@ -20431,7 +21677,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'honda civic'
     },
     blackmagic: {
         id: 'blackmagic',
@@ -20449,7 +21695,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'werewolf'
     },
     feline: {
         id: 'feline',
@@ -20458,7 +21704,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'catgirl'
     },
     athleticism: {
         id: 'athleticism',
@@ -20485,7 +21731,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'voidweaver'
     },
     winter: {
         id: 'winter',
@@ -20504,6 +21750,278 @@ const SPELL_FAMILIES = {
         kind: 'discipline',
         desc: '',
         unique: 'scarecrow'
+    },
+    /* THE P-Z SIGNATURE FAMILIES (mondo 2026-10-23: "each race to have at least one spell family that is unique to itself …
+       think of each race as its own JRPG or Dark Souls boss"): one race's own family each, a status setup + its finisher. */
+    policeprocedure: {
+        id: 'policeprocedure',
+        name: 'Police Procedure',
+        glyph: '🚨',
+        color: '#4a78d8',
+        kind: 'signature',
+        desc: 'Freeze, cuff, take down: the arrest, by the book.',
+        unique: 'police officer',
+        identity: { who: ['Beat Cop', 'Detective', 'Patrol Officer'], adj: ['By-the-Book', 'Badge-Carrying', 'Off-Duty'], look: ['a badge on the belt', 'mirrored sunglasses', 'a radio on the shoulder'], vibe: ['shouts freeze and means it', 'puts suspects on the ground'] }
+    },
+    popidol: {
+        id: 'popidol',
+        name: 'Pop Idol',
+        glyph: '🎤',
+        color: '#ff5ab4',
+        kind: 'signature',
+        desc: 'Camera flashes, then the number one hit.',
+        unique: 'popstar',
+        identity: { who: ['Pop Idol', 'Diva', 'Chart Topper'], adj: ['Platinum', 'Chart-Topping', 'Sold-Out'], look: ['rhinestone mic', 'a crowd of camera flashes', 'stage glitter'], vibe: ['blinds the front row with flashes', 'drops the hit single at stadium volume'] }
+    },
+    holyorders: {
+        id: 'holyorders',
+        name: 'Holy Orders',
+        glyph: '✝️',
+        color: '#e8d9a8',
+        kind: 'signature',
+        desc: 'Holy water first, last rites after.',
+        unique: 'priest',
+        identity: { who: ['Exorcist', 'Parish Priest', 'Confessor'], adj: ['Ordained', 'Anointed', 'Sacramental'], look: ['a dripping aspergillum', 'a purple stole', 'a worn breviary'], vibe: ['sprinkles holy water on the damned', 'reads the last rites over the soaked'] }
+    },
+    academia: {
+        id: 'academia',
+        name: 'Academia',
+        glyph: '🎓',
+        color: '#8a6ad8',
+        kind: 'signature',
+        desc: 'Debunk the theory, then grade the final.',
+        unique: 'professor',
+        identity: { who: ['Tenured Professor', 'Dean', 'Lecturer'], adj: ['Tenured', 'Peer-Reviewed', 'Published'], look: ['elbow patches', 'a red grading pen', 'chalk dust on the sleeves'], vibe: ['debunks every trick you have', 'fails you on the final exam'] }
+    },
+    reptoid: {
+        id: 'reptoid',
+        name: 'Reptoid Biology',
+        glyph: '🦎',
+        color: '#5ab45a',
+        kind: 'signature',
+        desc: 'A tongue that drags, a face that peels off.',
+        unique: 'reptilian',
+        identity: { who: ['Lizard Person', 'Shape-Shifter', 'Reptoid'], adj: ['Cold-Blooded', 'Forked-Tongued', 'Slit-Eyed'], look: ['vertical pupils', 'a human suit with a zipper', 'scales under the collar'], vibe: ['reels you in with its tongue', 'drops the human face when it strikes'] }
+    },
+    combatprotocols: {
+        id: 'combatprotocols',
+        name: 'Combat Protocols',
+        glyph: '🤖',
+        color: '#9aa8b8',
+        kind: 'signature',
+        desc: 'Magnetise, stun, compact.',
+        unique: 'robot',
+        identity: { who: ['War Machine', 'Combat Unit', 'Automaton'], adj: ['Chrome', 'Hydraulic', 'Programmed'], look: ['a magnet palm', 'a red visor', 'pistons for knuckles'], vibe: ['magnetises enemies into its fist', 'crushes anything that stops moving'] }
+    },
+    northpole: {
+        id: 'northpole',
+        name: 'North Pole',
+        glyph: '🎅',
+        color: '#d83a3a',
+        kind: 'signature',
+        desc: 'Snow globe, chimney, done.',
+        unique: 'santa clause',
+        identity: { who: ['Father Christmas', 'Saint Nick', 'Kringle'], adj: ['Jolly', 'Snow-Bearded', 'Gift-Giving'], look: ['a sack over one shoulder', 'soot on the boots', 'a snow globe in the hand'], vibe: ['shakes you up in a snow globe', 'comes down the chimney on top of you'] }
+    },
+    seraphicfire: {
+        id: 'seraphicfire',
+        name: 'Seraphic Fire',
+        glyph: '🔥',
+        color: '#ffb84a',
+        kind: 'signature',
+        desc: 'The burning ones: a live coal, then three cries of holy.',
+        unique: 'seraphim',
+        identity: { who: ['Seraph', 'Burning One', 'Throne Guard'], adj: ['Six-Winged', 'Burning', 'Thrice-Holy'], look: ['six wings of flame', 'a coal held in tongs', 'eyes that cannot be met'], vibe: ['sets the unworthy alight', 'cries holy three times and burns with each one'] }
+    },
+    shadowpeople: {
+        id: 'shadowpeople',
+        name: 'Shadow People',
+        glyph: '🎩',
+        color: '#5a4a7a',
+        kind: 'signature',
+        desc: 'The Hat Man at the foot of the bed.',
+        unique: 'shadow entity',
+        identity: { who: ['Hat Man', 'Shadow Person', 'Night Visitor'], adj: ['Hatted', 'Peripheral', 'Faceless'], look: ['a wide-brimmed hat', 'a shape in the corner of the eye', 'no face at all'], vibe: ['freezes you with a stare', 'strikes from the corner of your eye'] }
+    },
+    spiritanimals: {
+        id: 'spiritanimals',
+        name: 'Spirit Animals',
+        glyph: '🐺',
+        color: '#6ab48a',
+        kind: 'signature',
+        desc: 'A spirit animal that bites the soul, then the ancestors answer.',
+        unique: 'shaman',
+        identity: { who: ['Spirit Caller', 'Medicine Man', 'Drum Keeper'], adj: ['Spirit-Led', 'Ancestral', 'Drum-Beating'], look: ['a wolf-skull headdress', 'a hand drum', 'smoke curling round the shoulders'], vibe: ['sends a spirit animal to hunt', 'calls the ancestors down on the haunted'] }
+    },
+    sharkattack: {
+        id: 'sharkattack',
+        name: 'Shark Attack',
+        glyph: '🦈',
+        color: '#3a8ab4',
+        kind: 'signature',
+        desc: 'First blood, then the frenzy.',
+        unique: 'sharkman',
+        identity: { who: ['Great White', 'Hammerhead', 'Man-Eater'], adj: ['Blood-Scenting', 'Rows-of-Teeth', 'Finned'], look: ['a dorsal fin', 'rows and rows of teeth', 'dead black eyes'], vibe: ['smells blood in the water', 'charges in a feeding frenzy'] }
+    },
+    frontierjustice: {
+        id: 'frontierjustice',
+        name: 'Frontier Justice',
+        glyph: '⭐',
+        color: '#d8a84a',
+        kind: 'signature',
+        desc: 'Put up the poster, collect the bounty.',
+        unique: 'sheriff',
+        identity: { who: ['Marshal', 'Lawman', 'Bounty Collector'], adj: ['Tin-Star', 'Wanted', 'Dead-or-Alive'], look: ['a tin star', 'a wanted poster in the hand', 'a long duster'], vibe: ['puts a price on your head', 'serves justice with one bullet'] }
+    },
+    sidekicking: {
+        id: 'sidekicking',
+        name: 'Trusty Sidekick',
+        glyph: '🦸',
+        color: '#4ad8a8',
+        kind: 'signature',
+        desc: 'Draw the fire, then hit them with the whole team.',
+        unique: 'sidekick',
+        identity: { who: ['Boy Wonder', 'Partner', 'Second Banana'], adj: ['Trusty', 'Plucky', 'Loyal'], look: ['a domino mask', 'a cape a size too big', 'a utility belt'], vibe: ['shouts over here so the hero can strike', 'hits harder with friends beside it'] }
+    },
+    sirencall: {
+        id: 'sirencall',
+        name: 'Siren\'s Call',
+        glyph: '🧜‍♀️',
+        color: '#3ad8c8',
+        kind: 'signature',
+        desc: 'Lure the sailors, then the rocks.',
+        unique: 'siren',
+        identity: { who: ['Siren', 'Sea Singer', 'Rock Dweller'], adj: ['Luring', 'Sea-Voiced', 'Shipwrecking'], look: ['salt-white hair', 'a rock surrounded by wrecks', 'eyes like the deep'], vibe: ['charms whole crews with one song', 'dashes the charmed on the rocks'] }
+    },
+    rattlingbones: {
+        id: 'rattlingbones',
+        name: 'Rattling Bones',
+        glyph: '💀',
+        color: '#d8d0b8',
+        kind: 'signature',
+        desc: 'Shivers down the spine, then the dance of death.',
+        unique: 'skeleton',
+        identity: { who: ['Bone Dancer', 'Rattler', 'Calcium Knight'], adj: ['Spooky', 'Rattling', 'Fleshless'], look: ['a grin with no lips', 'ribs that clack', 'a jaw that never shuts'], vibe: ['sends shivers down every spine', 'dances the danse macabre through a crowd'] }
+    },
+    wearingskins: {
+        id: 'wearingskins',
+        name: 'Wearing Skins',
+        glyph: '🦌',
+        color: '#8a6a4a',
+        kind: 'signature',
+        desc: 'A familiar voice in the dark, then it wears you.',
+        unique: 'skinwalker',
+        identity: { who: ['Skin-Wearer', 'Night Caller', 'Voice Thief'], adj: ['Voice-Stealing', 'Hide-Wearing', 'Glowing-Eyed'], look: ['eyes that shine in headlights', 'a coyote hide', 'a voice that sounds like your mother'], vibe: ['calls you out in a familiar voice', 'wears what it takes'] }
+    },
+    echinoderm: {
+        id: 'echinoderm',
+        name: 'Echinoderm',
+        glyph: '🌟',
+        color: '#ff8a5a',
+        kind: 'signature',
+        desc: 'Grip with the tube feet, crush with all five arms.',
+        unique: 'starfish',
+        identity: { who: ['Sea Star', 'Reef Grazer', 'Five-Arm'], adj: ['Five-Armed', 'Suction-Gripped', 'Regrowing'], look: ['five arms', 'thousands of tube feet', 'a stomach it can turn inside out'], vibe: ['grips and never lets go', 'crushes with all five arms at once'] }
+    },
+    nightvisitor: {
+        id: 'nightvisitor',
+        name: 'Night Visitor',
+        glyph: '💋',
+        color: '#d83a8a',
+        kind: 'signature',
+        desc: 'Steal the vitality, then the last kiss.',
+        unique: 'succubus',
+        identity: { who: ['Night Visitor', 'Temptress', 'Dream Lover'], adj: ['Bewitching', 'Vitality-Stealing', 'Midnight'], look: ['bat wings folded like a cloak', 'lipstick the colour of blood', 'a tail like a spade'], vibe: ['steals the life that would heal you', 'ends it with a last kiss'] }
+    },
+    solarpowered: {
+        id: 'solarpowered',
+        name: 'Solar Powered',
+        glyph: '☀️',
+        color: '#ffd83a',
+        kind: 'signature',
+        desc: 'A solar flare, then the heat vision.',
+        unique: 'superhero',
+        identity: { who: ['Man of Tomorrow', 'Last Son', 'Big Blue'], adj: ['Sun-Charged', 'Caped', 'Invincible'], look: ['a cape and a crest', 'eyes that glow red', 'a sun-gold aura'], vibe: ['burns the area with a solar flare', 'cuts through a line with heat vision'] }
+    },
+    swordsaint: {
+        id: 'swordsaint',
+        name: 'Sword Saint',
+        glyph: '⚔️',
+        color: '#c8c8e8',
+        kind: 'signature',
+        desc: 'A draw that cuts on the way past, then a thousand cuts.',
+        unique: 'swordfighter',
+        identity: { who: ['Sword Saint', 'Duelist', 'Iaido Master'], adj: ['Quick-Drawing', 'Blade-Honed', 'Unbeaten'], look: ['a sheathed katana', 'a scar across the eye', 'a coat that never stops moving'], vibe: ['draws and cuts before you see the blade', 'opens a thousand cuts'] }
+    },
+    thebond: {
+        id: 'thebond',
+        name: 'The Bond',
+        glyph: '🖤',
+        color: '#3a3a5a',
+        kind: 'signature',
+        desc: 'Black tendrils that coat, then a drop from the ceiling.',
+        unique: 'symbiote',
+        identity: { who: ['Symbiote', 'Black Suit', 'Hungry One'], adj: ['Tendrilled', 'Hungry', 'Bonded'], look: ['a black suit that moves on its own', 'white eyes with no pupils', 'teeth too long for the mouth'], vibe: ['coats you in black goo', 'drops from the ceiling onto the gooed'] }
+    },
+    telepathy: {
+        id: 'telepathy',
+        name: 'Telepathy',
+        glyph: '🧠',
+        color: '#c87ad8',
+        kind: 'signature',
+        desc: 'Static in the head, then the aneurysm, through any wall.',
+        unique: 'telepath',
+        identity: { who: ['Mind Reader', 'Esper', 'Thought Thief'], adj: ['Mind-Reading', 'Wall-Piercing', 'Nosebleeding'], look: ['two fingers to the temple', 'a nosebleed', 'eyes rolled back white'], vibe: ['fills heads with static', 'pops a vein through a wall'] }
+    },
+    treefolk: {
+        id: 'treefolk',
+        name: 'Treefolk',
+        glyph: '🌳',
+        color: '#4a8a3a',
+        kind: 'signature',
+        desc: 'Take root and heal, then fall like timber.',
+        unique: 'tree person',
+        identity: { who: ['Treant', 'Old Oak', 'Walking Forest'], adj: ['Deep-Rooted', 'Ancient', 'Timber-Felling'], look: ['bark for skin', 'birds nesting in the hair', 'roots for toes'], vibe: ['takes root and grows back', 'falls on you like a felled oak'] }
+    },
+    valhalla: {
+        id: 'valhalla',
+        name: 'Valhalla',
+        glyph: '🪽',
+        color: '#a8c8ff',
+        kind: 'signature',
+        desc: 'Fetter the host, then ride them to Valhalla.',
+        unique: 'valkraye',
+        identity: { who: ['Valkyrie', 'Shield Maiden', 'Chooser'], adj: ['Winged', 'Chooser-of-the-Slain', 'Battle-Born'], look: ['a winged helm', 'a spear and a round shield', 'a winged horse'], vibe: ['fetters the enemy host in place', 'rides the slowed to Valhalla'] }
+    },
+    watchersoath: {
+        id: 'watchersoath',
+        name: 'The Watcher\'s Oath',
+        glyph: '👁️',
+        color: '#8ad8ff',
+        kind: 'signature',
+        desc: 'Sees everything. Interferes, once.',
+        unique: 'watcher',
+        identity: { who: ['The Watcher', 'Observer', 'Keeper of the Oath'], adj: ['All-Seeing', 'Silent', 'Oath-Bound'], look: ['a bald dome of a head', 'eyes like moons', 'a toga of starlight'], vibe: ['marks every enemy in sight', 'breaks the oath through any wall'] }
+    },
+    highwizardry: {
+        id: 'highwizardry',
+        name: 'High Wizardry',
+        glyph: '🧙',
+        color: '#7a5ad8',
+        kind: 'signature',
+        desc: 'Counterspell, then magic missile.',
+        unique: 'wizard',
+        identity: { who: ['Archmage', 'Spell Duelist', 'Battle Wizard'], adj: ['Archmage', 'Counter-Casting', 'Missile-Flinging'], look: ['a pointed hat', 'a staff with a glowing tip', 'a spellbook on a chain'], vibe: ['counters your spell before you cast it', 'never misses with magic missile'] }
+    },
+    abominable: {
+        id: 'abominable',
+        name: 'Abominable',
+        glyph: '👣',
+        color: '#c8e8ff',
+        kind: 'signature',
+        desc: 'A whiteout roar, then the ambush from the snow.',
+        unique: 'yeti',
+        identity: { who: ['Abominable Snowman', 'Mountain Beast', 'Yeti'], adj: ['Abominable', 'Snow-Blind', 'Frost-Furred'], look: ['white fur caked in ice', 'footprints the size of a door', 'a roar that sets off avalanches'], vibe: ['slows the climb with a whiteout roar', 'pounces out of the snow on the slowed'] }
     },
     artificialintelligence: {
         id: 'artificialintelligence',
@@ -20557,7 +22075,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'nordic'
     },
     livingstone: {
         id: 'livingstone',
@@ -20668,7 +22186,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: 'One color, one move: red, blue, black, yellow, pink and the Megazord.',
-        unique: null
+        unique: 'super sentai'
     },
     symbiosis: {
         id: 'symbiosis',
@@ -20695,7 +22213,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'bunny girl'
     },
     animalhandling: {
         id: 'animalhandling',
@@ -20704,7 +22222,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'ringmaster'
     },
     mirrormagic: {
         id: 'mirrormagic',
@@ -20713,7 +22231,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'rabbit'
     },
     trapmaking: {
         id: 'trapmaking',
@@ -20749,7 +22267,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'jellyfish'
     },
     desertacclimation: {
         id: 'desertacclimation',
@@ -20785,7 +22303,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'kraken'
     },
     apeintelligence: {
         id: 'apeintelligence',
@@ -20794,7 +22312,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'king kong'
     },
     mothman: {
         id: 'mothman',
@@ -20803,7 +22321,379 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'mothman'
+    },
+    /* THE UNIQUE FAMILIES G-O (2026-10-23, mondo: "each race needs at least one spell family unique to itself ... think of each
+       race as its own JRPG or Dark Souls boss"): one signature family per race, never borrowable (unique). */
+    gargoyle: {
+        id: 'gargoyle',
+        name: 'Cathedral Watch',
+        glyph: '⛪',
+        color: '#8f8a7e',
+        kind: 'signature',
+        desc: 'The roof-sentinel: soak them from the gutter spout, take the high perch, then drop the whole ton of stone.',
+        unique: 'gargoyle',
+        identity: { who: ['Gargoyle', 'Grotesque', 'Roof Sentinel'], adj: ['Carved', 'Rain-Streaked', 'Watchful'], look: ['a gutter spout for a mouth', 'folded stone wings', 'moss in the cracks'], vibe: ['waits on the highest ledge and drops on you', 'pours rain from its mouth onto the street below'] }
+    },
+    general: {
+        id: 'general',
+        name: 'High Command',
+        glyph: '🎖️',
+        color: '#b59b4c',
+        kind: 'signature',
+        desc: 'Point, march, strike: the general marks the objective, moves the line forward and calls the air strike onto the mark.',
+        unique: 'general',
+        identity: { who: ['General', 'Field Marshal', 'Commander'], adj: ['Decorated', 'Iron-Willed', 'Strategic'], look: ['a chest full of medals', 'field binoculars', 'a map case under the arm'], vibe: ['marks a target and lets the whole army hit it', 'calls in the air strike from a mile back'] }
+    },
+    ghost: {
+        id: 'ghost',
+        name: 'Poltergeist',
+        glyph: '🪑',
+        color: '#9fb8d6',
+        kind: 'signature',
+        desc: 'Nothing in the room stays on the shelf: random flying objects that haunt whoever they hit, then the whole house shaking at once.',
+        unique: 'ghost',
+        identity: { who: ['Poltergeist', 'Restless Spirit', 'Haunter'], adj: ['Restless', 'Spectral', 'Unseen'], look: ['a sheet with no one in it', 'a cold patch in the room', 'a rocking chair rocking by itself'], vibe: ['throws the furniture at random', 'shakes the whole house until someone leaves'] }
+    },
+    ghoul: {
+        id: 'ghoul',
+        name: 'Graveyard Hunger',
+        glyph: '🦴',
+        color: '#7d8c5a',
+        kind: 'signature',
+        desc: 'Grave-dirt claws that stop wounds healing, then a supper that heals the ghoul and refunds the turn on a kill.',
+        unique: 'ghoul',
+        identity: { who: ['Ghoul', 'Grave Eater', 'Corpse Hound'], adj: ['Ravenous', 'Grave-Fed', 'Rotting'], look: ['nails black with grave dirt', 'a jaw that unhinges', 'a shovel from the cemetery shed'], vibe: ['eats while they are still warm', 'keeps going as long as there is something to feed on'] }
+    },
+    giant: {
+        id: 'giant',
+        name: 'Beanstalk',
+        glyph: '🫘',
+        color: '#7a9a4a',
+        kind: 'signature',
+        desc: 'The giant at the top of the beanstalk: the bellow that marks and staggers everything near, then the foot coming down.',
+        unique: 'giant',
+        identity: { who: ['Giant', 'Ogre of the Clouds', 'Castle Giant'], adj: ['Towering', 'Thundering', 'Bone-Grinding'], look: ['a club made from an oak', 'a castle in the clouds', 'boots the size of a cart'], vibe: ['smells you before it sees you', 'steps on whatever is in the way'] }
+    },
+    glitch: {
+        id: 'glitch',
+        name: 'Corrupted Data',
+        glyph: '👾',
+        color: '#5affc8',
+        kind: 'signature',
+        desc: 'Lag and recursion: a packet-loss hit that steals an action, then a stack overflow that hits random enemies again and again.',
+        unique: 'glitch',
+        identity: { who: ['Glitch', 'Corrupted Process', 'Bug'], adj: ['Corrupted', 'Lagging', 'Recursive'], look: ['a body that tears into scanlines', 'missing texture purple and black', 'a frozen frame'], vibe: ['lags you out of your turn', 'repeats until something breaks'] }
+    },
+    gnome: {
+        id: 'gnome',
+        name: 'Garden Gnome',
+        glyph: '🏡',
+        color: '#d24b3c',
+        kind: 'signature',
+        desc: 'Small, underfoot and very still: a bite at the ankle, the lawn-ornament freeze nobody can hurt, and the shears for the slowed.',
+        unique: 'gnome',
+        identity: { who: ['Garden Gnome', 'Lawn Ornament', 'Hob'], adj: ['Pointy-Hatted', 'Ceramic', 'Underfoot'], look: ['a red pointed hat', 'a painted ceramic beard', 'a tiny pair of garden shears'], vibe: ['stands perfectly still until you turn your back', 'goes for the ankles'] }
+    },
+    goatman: {
+        id: 'goatman',
+        name: 'Lovers\' Lane',
+        glyph: '🪓',
+        color: '#8a5a3a',
+        kind: 'signature',
+        desc: 'The Maryland back-road legend: a hatchet out of the dark, the scream from the trees, and the charge at whoever is bleeding.',
+        unique: 'goatman',
+        identity: { who: ['Goatman', 'Back-Road Horror', 'Hatchet Man'], adj: ['Bleating', 'Hatchet-Swinging', 'Backwoods'], look: ['a rusted hatchet', 'goat legs and a man\'s chest', 'eyes shining from the treeline'], vibe: ['screams from the trees before it charges', 'throws the hatchet first'] }
+    },
+    goblin: {
+        id: 'goblin',
+        name: 'Goblin Mob',
+        glyph: '👺',
+        color: '#7fae3c',
+        kind: 'signature',
+        desc: 'Dirty tricks and numbers: sand in the eyes, then everyone in, with one more stab for every friend standing beside the target.',
+        unique: 'goblin',
+        identity: { who: ['Goblin', 'Mob Boss', 'Sneak'], adj: ['Greedy', 'Sneaky', 'Swarming'], look: ['a pocket full of sand', 'a rusty shiv', 'a sack of stolen shinies'], vibe: ['throws sand and runs', 'wins by bringing friends'] }
+    },
+    golem: {
+        id: 'golem',
+        name: 'Emet',
+        glyph: '📜',
+        color: '#b07a4a',
+        kind: 'signature',
+        desc: 'The clay guardian with the word on its brow: it hardens, grips whoever comes close and crushes what it holds.',
+        unique: 'golem',
+        identity: { who: ['Golem', 'Clay Guardian', 'Emet'], adj: ['Clay-Bodied', 'Unbreakable', 'Word-Bound'], look: ['a word carved in the brow', 'river-clay hands', 'thumbprints of its maker'], vibe: ['takes the hit so the others don\'t', 'never lets go once it grips'] }
+    },
+    grey: {
+        id: 'grey',
+        name: 'Missing Time',
+        glyph: '⌚',
+        color: '#a8b8c0',
+        kind: 'signature',
+        desc: 'The abduction itself: lose the hour, wake up on the table, and the sample is taken while you are still out.',
+        unique: 'grey',
+        identity: { who: ['Grey', 'Visitor', 'Abductor'], adj: ['Big-Eyed', 'Silent', 'Clinical'], look: ['huge black eyes', 'a thin grey body', 'a silver probe'], vibe: ['takes the hour you can\'t remember', 'takes samples while you sleep'] }
+    },
+    halfdemon: {
+        id: 'halfdemon',
+        name: 'Half-Blood',
+        glyph: '🌗',
+        color: '#b83a3a',
+        kind: 'signature',
+        desc: 'Half human, half fiend: let the demon out for power that grows as the body breaks, then collect on every contract.',
+        unique: 'halfdemon',
+        identity: { who: ['Half-Demon', 'Cambion', 'Half-Blood'], adj: ['Half-Born', 'Hell-Touched', 'Conflicted'], look: ['one horn grown and one filed down', 'a human eye and a demon eye', 'a scar where the wings were cut'], vibe: ['gets stronger the closer it gets to death', 'collects what the contract owes'] }
+    },
+    hippie: {
+        id: 'hippie',
+        name: 'Flower Power',
+        glyph: '☮️',
+        color: '#e8a33c',
+        kind: 'signature',
+        desc: 'Peace and love as a weapon: a daisy in the gun barrel to take the fight out of them, then a square of the field too charmed to move.',
+        unique: 'hippie',
+        identity: { who: ['Hippie', 'Flower Child', 'Peacenik'], adj: ['Groovy', 'Peaceful', 'Far-Out'], look: ['flowers in the hair', 'a tie-dye shirt', 'a peace sign on a string'], vibe: ['ends the fight without throwing a punch', 'puts a flower in your gun'] }
+    },
+    homosapien: {
+        id: 'homosapien',
+        name: 'Persistence Hunter',
+        glyph: '🏃',
+        color: '#c8a070',
+        kind: 'signature',
+        desc: 'What humans really are: the animal that throws, slows its prey, and keeps walking after it until it drops.',
+        unique: 'homosapien',
+        identity: { who: ['Persistence Hunter', 'Tracker', 'Spear-Thrower'], adj: ['Tireless', 'Sweat-Cooled', 'Relentless'], look: ['a spear and an atlatl', 'bare feet on hot ground', 'a water skin'], vibe: ['never stops following', 'wounds it, then walks it down'] }
+    },
+    icequeen: {
+        id: 'icequeen',
+        name: 'Snow Queen',
+        glyph: '👸',
+        color: '#9fe0ff',
+        kind: 'signature',
+        desc: 'The queen from the old tale: a splinter of the devil\'s mirror in the heart, and the kiss that finishes whatever is frozen.',
+        unique: 'ice queen',
+        identity: { who: ['Snow Queen', 'Ice Empress', 'Winter Sovereign'], adj: ['Frozen-Hearted', 'Crystalline', 'Regal'], look: ['a crown of icicles', 'a sledge of white', 'a mirror shard in her palm'], vibe: ['freezes hearts before bodies', 'kisses the frozen until they stop'] }
+    },
+    jackolantern: {
+        id: 'jackolantern',
+        name: 'Stingy Jack',
+        glyph: '🎃',
+        color: '#ff8a1e',
+        kind: 'signature',
+        desc: 'The man who tricked the Devil: trap them up the apple tree, hand out tricks and treats at random, then the coal from hell for whoever is stuck.',
+        unique: 'jack o lantern',
+        identity: { who: ['Jack', 'Lantern Man', 'Trickster of All Hallows'], adj: ['Hollow', 'Candle-Lit', 'Tricksy'], look: ['a carved turnip lantern', 'a coal from hell inside the head', 'a cross carved in bark'], vibe: ['tricks the Devil himself', 'gives you a trick or a treat, never knowing which'] }
+    },
+    juggernaut: {
+        id: 'juggernaut',
+        name: 'Unstoppable',
+        glyph: '🚂',
+        color: '#7a7a8a',
+        kind: 'signature',
+        desc: 'Nothing stops it: shoulder through the first one, refuse to die, then a charge that runs over everyone along the way.',
+        unique: 'juggernaut',
+        identity: { who: ['Juggernaut', 'Battering Ram', 'Unstoppable Force'], adj: ['Unstoppable', 'Armour-Plated', 'Thundering'], look: ['a helmet with no eye slits', 'plates bolted to the skin', 'a dent shaped like a wall'], vibe: ['goes through people instead of around them', 'refuses to fall down'] }
+    },
+    kaijuatomic: {
+        id: 'kaijuatomic',
+        name: 'Atomic Monster',
+        glyph: '☢️',
+        color: '#4adcff',
+        kind: 'signature',
+        desc: 'The radioactive king of monsters: a nuclear pulse off the dorsal plates that staggers everything close, then the atomic breath.',
+        unique: 'kaiju',
+        identity: { who: ['Kaiju', 'King of Monsters', 'Atomic Beast'], adj: ['Radioactive', 'Towering', 'Glowing'], look: ['dorsal plates glowing blue', 'skin like scorched stone', 'a tail through a skyscraper'], vibe: ['glows blue right before it breathes', 'flattens the city on its way through'] }
+    },
+    excalibur: {
+        id: 'excalibur',
+        name: 'Excalibur',
+        glyph: '🗡️',
+        color: '#e8d27a',
+        kind: 'signature',
+        desc: 'The sword and the scabbard: the scabbard that stops the king bleeding, and the blade from the lake.',
+        unique: 'king arthur',
+        identity: { who: ['Once and Future King', 'Pendragon', 'High King'], adj: ['Rightful', 'Legendary', 'Crowned'], look: ['Excalibur at the hip', 'the jewelled scabbard', 'a red dragon banner'], vibe: ['will not bleed while the scabbard is on him', 'draws the sword nobody else could'] }
+    },
+    knighterrant: {
+        id: 'knighterrant',
+        name: 'Knight Errant',
+        glyph: '🛡️',
+        color: '#b0b8c8',
+        kind: 'signature',
+        desc: 'The duel: throw down the gauntlet so the challenged must face the knight, then answer the challenge with the honour blow.',
+        unique: 'knight',
+        identity: { who: ['Knight Errant', 'Champion', 'Duellist'], adj: ['Honour-Bound', 'Steel-Clad', 'Challenging'], look: ['a thrown gauntlet', 'a dented shield', 'a lady\'s favour on the lance'], vibe: ['challenges the strongest to a duel', 'never refuses a challenge'] }
+    },
+    krampus: {
+        id: 'krampus',
+        name: 'Krampusnacht',
+        glyph: '⛓️',
+        color: '#7a2a2a',
+        kind: 'signature',
+        desc: 'The night before St Nicholas: the birch switch, the rattling chains that drag the naughty in, and the sack they vanish into.',
+        unique: 'krampus',
+        identity: { who: ['Krampus', 'Christmas Devil', 'Sack-Bearer'], adj: ['Chain-Rattling', 'Birch-Wielding', 'Horned'], look: ['a bundle of birch switches', 'rusted chains and bells', 'a wicker basket on the back'], vibe: ['drags the naughty off in chains', 'puts you in the sack and walks away'] }
+    },
+    lochness: {
+        id: 'lochness',
+        name: 'Nessie',
+        glyph: '🦕',
+        color: '#3a7a6a',
+        kind: 'signature',
+        desc: 'The long neck out of the loch: snatch someone from the bank and drag them under, then surface on whoever is already drowning.',
+        unique: 'loch ness monster',
+        identity: { who: ['Nessie', 'Loch Monster', 'Water-Horse'], adj: ['Elusive', 'Long-Necked', 'Peat-Dark'], look: ['a long neck above black water', 'a blurry photograph', 'humps in the loch'], vibe: ['drags people off the bank into the water', 'surfaces only when you look away'] }
+    },
+    luchador: {
+        id: 'luchador',
+        name: 'Lucha Libre',
+        glyph: '🤼',
+        color: '#e84a8a',
+        kind: 'signature',
+        desc: 'The masked wrestler\'s set: the suplex that throws them wherever the luchador wants, then the piledriver for whoever is still dazed.',
+        unique: 'luchador',
+        identity: { who: ['Luchador', 'Enmascarado', 'Técnico'], adj: ['Masked', 'High-Flying', 'Crowd-Pleasing'], look: ['a glittering mask', 'a championship belt', 'taped wrists'], vibe: ['suplexes you into your own friends', 'finishes with the piledriver'] }
+    },
+    machineelves: {
+        id: 'machineelves',
+        name: 'Hyperspace',
+        glyph: '💎',
+        color: '#ff5ae0',
+        kind: 'signature',
+        desc: 'The self-transforming elves of the breakthrough: a language you can see that scrambles the mind, then a burst of jewelled shapes into the confusion.',
+        unique: 'machine elves',
+        identity: { who: ['Machine Elf', 'Self-Transforming Elf', 'Tyke'], adj: ['Jewelled', 'Chattering', 'Hyperdimensional'], look: ['a body made of moving jewels', 'a voice you can see', 'toys that build themselves'], vibe: ['sings objects into being', 'shows you something you cannot hold in your head'] }
+    },
+    mantid: {
+        id: 'mantid',
+        name: 'Praying Mantis',
+        glyph: '🦗',
+        color: '#7ac83a',
+        kind: 'signature',
+        desc: 'The ambush hunter: vanish as an orchid, then the raptorial strike that hits harder on the wounded and feeds on the kill.',
+        unique: 'mantid',
+        identity: { who: ['Mantis', 'Orchid Hunter', 'Raptor'], adj: ['Patient', 'Praying', 'Lightning-Quick'], look: ['folded raptorial arms', 'petal-pink camouflage', 'a head that turns all the way round'], vibe: ['waits as a flower until you are close', 'eats the one it kills'] }
+    },
+    marksman: {
+        id: 'marksman',
+        name: 'Sniper\'s Nest',
+        glyph: '🔭',
+        color: '#6a8a5a',
+        kind: 'signature',
+        desc: 'Go prone, wait, one shot: the bipod that trades legs for reach, then the shot that kills a rooted target and refunds the turn.',
+        unique: 'marksman',
+        identity: { who: ['Sniper', 'Long-Range Specialist', 'Shooter'], adj: ['Prone', 'Patient', 'Long-Range'], look: ['a bipod', 'a ghillie hood', 'a range card'], vibe: ['lies down and does not miss', 'takes one shot and moves on'] }
+    },
+    martian: {
+        id: 'martian',
+        name: 'The Red Planet',
+        glyph: '🪐',
+        color: '#c84a2a',
+        kind: 'signature',
+        desc: 'The invasion from the old novel: the red weed that roots the ground, the black smoke that poisons it, and the tripod that sweeps it.',
+        unique: 'martian',
+        identity: { who: ['Martian', 'Invader', 'Tripod Pilot'], adj: ['Red', 'Invading', 'Cold-Blooded'], look: ['a three-legged fighting machine', 'canisters of black smoke', 'red weed in the tread'], vibe: ['poisons the ground before it walks on it', 'sweeps the field from three legs up'] }
+    },
+    meninblack: {
+        id: 'meninblack',
+        name: 'Neuralyzer',
+        glyph: '🕶️',
+        color: '#3a3a44',
+        kind: 'signature',
+        desc: 'The cover-up: a flash that leaves everyone staring and blind, then the tiny gun with the enormous kick.',
+        unique: 'men in black',
+        identity: { who: ['Agent', 'Man in Black', 'Cleaner'], adj: ['Suited', 'Deniable', 'Classified'], look: ['a black suit and sunglasses', 'a pen-shaped flasher', 'a gun the size of a thumb'], vibe: ['makes you forget you saw anything', 'carries the smallest gun with the biggest kick'] }
+    },
+    mermaid: {
+        id: 'mermaid',
+        name: 'Little Mermaid',
+        glyph: '🧜',
+        color: '#3ac8c8',
+        kind: 'signature',
+        desc: 'The sailor\'s lure: sing them to the water\'s edge, too charmed to move, then pull them under.',
+        unique: 'mermaid',
+        identity: { who: ['Mermaid', 'Sea-Maid', 'Sailor\'s Doom'], adj: ['Enchanting', 'Sea-Born', 'Tidal'], look: ['a fishtail of green scales', 'shells in the hair', 'a voice traded for legs'], vibe: ['sings sailors into the sea', 'pulls the charmed under'] }
+    },
+    minotaur: {
+        id: 'minotaur',
+        name: 'Labyrinth',
+        glyph: '🐂',
+        color: '#8a4a2a',
+        kind: 'signature',
+        desc: 'The beast at the centre of the maze: the roar that turns the walls against them and makes them face it, then the tribute.',
+        unique: 'minotaur',
+        identity: { who: ['Minotaur', 'Bull of Minos', 'Maze-Keeper'], adj: ['Bull-Headed', 'Maze-Born', 'Bellowing'], look: ['bull horns and a man\'s body', 'a ball of red thread', 'bones of the tribute'], vibe: ['makes you come to the centre', 'eats the tribute'] }
+    },
+    mushroomgirl: {
+        id: 'mushroomgirl',
+        name: 'Mycelium',
+        glyph: '🍄',
+        color: '#c87ad8',
+        kind: 'signature',
+        desc: 'The fungus that thinks: spores that slow the lungs, then the cordyceps that walks the body for her.',
+        unique: 'mushroom girl',
+        identity: { who: ['Mushroom Girl', 'Spore Maiden', 'Fungal Queen'], adj: ['Spore-Shedding', 'Mycelial', 'Rooted'], look: ['a mushroom cap for a hat', 'glowing gills', 'threads of mycelium under the skin'], vibe: ['fills the air with spores', 'grows into you and walks you around'] }
+    },
+    necromancer: {
+        id: 'necromancer',
+        name: 'Soul Harvest',
+        glyph: '💀',
+        color: '#6a5a8a',
+        kind: 'signature',
+        desc: 'The death-mage\'s craft: whisper a restless spirit onto them, then harvest every haunted soul in the square to feed the caster.',
+        unique: 'necromancer',
+        identity: { who: ['Necromancer', 'Death-Mage', 'Soul Reaper'], adj: ['Grave-Robbing', 'Soul-Eating', 'Deathly'], look: ['a staff topped with a skull', 'robes of grave linen', 'a lantern of trapped souls'], vibe: ['binds the dead to the living', 'eats the souls it harvests'] }
+    },
+    nephilim: {
+        id: 'nephilim',
+        name: 'Watchers\' Blood',
+        glyph: '🪽',
+        color: '#c8a84a',
+        kind: 'signature',
+        desc: 'The children of the Watchers: the forbidden forge of Azazel for the whole line, the giant\'s hand, and the hunger that devoured mankind.',
+        unique: 'nephilim',
+        identity: { who: ['Nephilim', 'Giant of Old', 'Son of the Watchers'], adj: ['Heaven-Born', 'Gigantic', 'Forbidden'], look: ['wings too small for the body', 'a bronze sword from Azazel\'s forge', 'a crown of the men of renown'], vibe: ['teaches the forbidden arts of war', 'devours everything in reach'] }
+    },
+    nun: {
+        id: 'nun',
+        name: 'Convent',
+        glyph: '📿',
+        color: '#e0e0f0',
+        kind: 'signature',
+        desc: 'Discipline: the ruler across the knuckles, the vow of silence imposed on others, and the penance for the dazed.',
+        unique: 'nun',
+        identity: { who: ['Nun', 'Mother Superior', 'Sister'], adj: ['Strict', 'Devout', 'Silent'], look: ['a wooden ruler', 'a rosary', 'a black habit'], vibe: ['raps your knuckles with a ruler', 'makes the whole room fall silent'] }
+    },
+    occulus: {
+        id: 'occulus',
+        name: 'All-Seeing',
+        glyph: '👁️',
+        color: '#c83a8a',
+        kind: 'signature',
+        desc: 'The floating eye of many eyes: the anti-magic stare that silences down a line, then every eye-stalk firing at once.',
+        unique: 'occulus',
+        identity: { who: ['Occulus', 'Eye Tyrant', 'All-Seer'], adj: ['Many-Eyed', 'Unblinking', 'Floating'], look: ['a ring of eyes on stalks', 'one great central eye', 'no eyelids'], vibe: ['stares the magic out of you', 'fires every eye at once'] }
+    },
+    orboflight: {
+        id: 'orboflight',
+        name: 'Plasma Orb',
+        glyph: '🔆',
+        color: '#ffe87a',
+        kind: 'signature',
+        desc: 'The ball of light seen over the fields: a flare off its own surface that sets everything close burning, then it burns out on purpose.',
+        unique: 'orb of light',
+        identity: { who: ['Orb of Light', 'Foo Fighter', 'Ball Lightning'], adj: ['Blazing', 'Hovering', 'Incandescent'], look: ['a sphere of white plasma', 'a halo of heat shimmer', 'scorch marks on the field'], vibe: ['flares like a small sun', 'burns itself out to burn you too'] }
+    },
+    overlord: {
+        id: 'overlord',
+        name: 'Dark Lord',
+        glyph: '♛',
+        color: '#5a2a6a',
+        kind: 'signature',
+        desc: 'The throne\'s command: KNEEL, and the frozen are crushed under the Overlord\'s will.',
+        unique: 'overlord',
+        identity: { who: ['Overlord', 'Dark Lord', 'Tyrant'], adj: ['Tyrannical', 'Enthroned', 'Absolute'], look: ['a crown of black iron', 'a throne of skulls', 'a cape that drinks the light'], vibe: ['orders you to kneel and you do', 'crushes whoever kneels'] }
     },
     internetaddiction: {
         id: 'internetaddiction',
@@ -20812,7 +22702,7 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'conspiracy theorist'
     },
     thievery: {
         id: 'thievery',
@@ -21409,129 +23299,129 @@ function spellUpgradeLabel(upId) {
 const RACE_FAMILIES = {
     /* THE JOBS REMOVAL (2026-09-27): MARKSMANSHIP (the Sniper's shots) and AGRICULTURE (the Harvester's seeds) sat on no
        race — the job was their only road — so they go to the races whose default job was Sniper / Harvester. */
-    ai: ['artificialintelligence', 'computerhacking', 'engineering'],
-    android: ['robot', 'computerhacking', 'cyberpunkweapons', 'trickery'],
-    angel: ['angelic', 'light', 'healingmagic'],
-    annunaki: ['cosmic', 'ancientknowledge', 'alientechnology'],
-    antihero: ['dirtyfighting', 'superheropowers', 'spygear', 'humangrit'],
-    antperson: ['insectoid', 'poison', 'teamwork', 'agriculture'],
-    anubis: ['ancientknowledge', 'necromancy', 'desertacclimation'],
-    atlantean: ['water', 'arcane', 'temporal', 'ancientknowledge'],
-    barbarella: ['alientechnology', 'seduction', 'spygear'],
-    bigfoot: ['sasquatch', 'nature', 'cryptid', 'athleticism'],
-    'black goo': ['ooze', 'poison', 'symbiosis'],
+    ai: ['artificialintelligence', 'computerhacking', 'engineering', 'deeplearning'],
+    android: ['robot', 'computerhacking', 'cyberpunkweapons', 'trickery', 'uncannyvalley'],
+    angel: ['angelic', 'light', 'healingmagic', 'heavenlyhost'],
+    annunaki: ['cosmic', 'ancientknowledge', 'alientechnology', 'skygods'],
+    antihero: ['dirtyfighting', 'superheropowers', 'spygear', 'humangrit', 'vigilante'],
+    antperson: ['insectoid', 'poison', 'teamwork', 'agriculture', 'colony'],
+    anubis: ['ancientknowledge', 'necromancy', 'desertacclimation', 'duat'],
+    atlantean: ['water', 'arcane', 'temporal', 'ancientknowledge', 'orichalcum'],
+    barbarella: ['alientechnology', 'seduction', 'spygear', 'spacevixen'],
+    bigfoot: ['sasquatch', 'nature', 'cryptid', 'athleticism', 'elusive'],
+    'black goo': ['ooze', 'poison', 'symbiosis', 'blackoil'],
     catgirl: ['feline', 'athleticism', 'seduction'],
-    'chosen one': ['maincharacter', 'light', 'shadow'],
+    'chosen one': ['maincharacter', 'light', 'shadow', 'destiny'],
     'conspiracy theorist': ['conspiracyknowledge', 'advancedtechnology', 'deepstate', 'internetaddiction'],
-    'cosmic wraith': ['cosmic', 'shadow', 'temporal'],
-    cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining', 'ropework'],
-    'cult leader': ['cult', 'meditation', 'blackmagic'],
-    cyborg: ['cyberpunkweapons', 'robot', 'humangrit'],
-    cyclops: ['titan', 'eyesight', 'earth'],
-    demon: ['demonicabilities', 'shadow', 'fire', 'blood'],
-    'demon prince': ['infernalcourt', 'demonicabilities', 'fire', 'blood'],
-    'demon princess': ['infernalcourt', 'witchcraft', 'poison', 'blood', 'seduction'],
-    dinosaur: ['apexpredator', 'beastabilities', 'earth'],
-    djinn: ['arcane', 'ancientknowledge', 'trickery'],
+    'cosmic wraith': ['cosmic', 'shadow', 'temporal', 'heatdeath'],
+    cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining', 'ropework', 'gunslinger'],
+    'cult leader': ['cult', 'meditation', 'blackmagic', 'messiah'],
+    cyborg: ['cyberpunkweapons', 'robot', 'humangrit', 'augments'],
+    cyclops: ['titan', 'eyesight', 'earth', 'cyclopean'],
+    demon: ['demonicabilities', 'shadow', 'fire', 'blood', 'hellpact'],
+    'demon prince': ['infernalcourt', 'demonicabilities', 'fire', 'blood', 'hellsheir'],
+    'demon princess': ['infernalcourt', 'witchcraft', 'poison', 'blood', 'seduction', 'hellsbelle'],
+    dinosaur: ['apexpredator', 'beastabilities', 'earth', 'jurassic'],
+    djinn: ['arcane', 'ancientknowledge', 'trickery', 'threewishes'],
     'door agent': ['door', 'doors', 'humangrit'],
     dragon: ['dragonabilities', 'fire', 'wind', 'beastabilities'],
-    dreameater: ['astral', 'psychic', 'shadow'],
-    droid: ['computerhacking', 'robot', 'engineering', 'artificialintelligence'],
-    fairy: ['fae', 'trickery', 'nature'],
-    'fallen angel': ['fallenangel', 'angelic', 'demonicabilities'],
+    dreameater: ['astral', 'psychic', 'shadow', 'nightmares'],
+    droid: ['computerhacking', 'robot', 'engineering', 'artificialintelligence', 'astromech'],
+    fairy: ['fae', 'trickery', 'nature', 'pixie'],
+    'fallen angel': ['fallenangel', 'angelic', 'demonicabilities', 'morningstar'],
     'fortune teller': ['fortunetelling', 'witchcraft', 'astralprojection'],
     gangster: ['streetsmarts', 'dirtyfighting', 'weaponstraining', 'thievery'],
-    gargoyle: ['livingstone', 'earth', 'wind'],
-    general: ['militarysupport', 'weaponstraining', 'teamwork'],
-    ghost: ['haunted', 'shadow', 'computerhacking'],
-    ghoul: ['ghoulish', 'poison', 'shadow'],
-    giant: ['titan', 'earth', 'dirtyfighting'],
-    glitch: ['computerhacking', 'temporal', 'artificialintelligence'],
-    gnome: ['engineering', 'trapmaking', 'advancedtechnology'],
-    goatman: ['horns', 'blood', 'blackmagic'],
-    golem: ['livingstone', 'earth', 'ancientknowledge'],
-    grey: ['ufo', 'psychic', 'cryptid'],
-    halfdemon: ['demonicabilities', 'shadow', 'spygear'],
-    homosapien: ['humangrit', 'teamwork', 'athleticism', 'ropework'],
+    gargoyle: ['gargoyle', 'livingstone', 'earth', 'wind'],
+    general: ['general', 'militarysupport', 'weaponstraining', 'teamwork'],
+    ghost: ['ghost', 'haunted', 'shadow', 'computerhacking'],
+    ghoul: ['ghoul', 'ghoulish', 'poison', 'shadow'],
+    giant: ['giant', 'titan', 'earth', 'dirtyfighting'],
+    glitch: ['glitch', 'computerhacking', 'temporal', 'artificialintelligence'],
+    gnome: ['gnome', 'engineering', 'trapmaking', 'advancedtechnology'],
+    goatman: ['goatman', 'horns', 'blood', 'blackmagic'],
+    golem: ['golem', 'livingstone', 'earth', 'ancientknowledge'],
+    grey: ['grey', 'ufo', 'psychic', 'cryptid'],
+    halfdemon: ['halfdemon', 'demonicabilities', 'shadow', 'spygear'],
+    homosapien: ['homosapien', 'humangrit', 'teamwork', 'athleticism', 'ropework'],
     'honda civic': ['drivingskills', 'robot', 'machinery'],
-    'ice queen': ['ice', 'cosmic', 'prismlattice'],
+    'ice queen': ['icequeen', 'ice', 'cosmic', 'prismlattice'],
     jellyfish: ['deepsea', 'water', 'jellyfish'],
-    juggernaut: ['athleticism', 'dirtyfighting', 'titan'],
-    kaiju: ['kaiju', 'earth', 'titan'],
+    juggernaut: ['juggernaut', 'athleticism', 'dirtyfighting', 'titan'],
+    kaiju: ['kaijuatomic', 'kaiju', 'earth', 'titan'],
     'ki fighter': ['ki', 'martialarts', 'athleticism', 'humangrit'],
-    'king arthur': ['royalty', 'knight', 'swordsmanship', 'horsebackriding'],
+    'king arthur': ['excalibur', 'royalty', 'knight', 'swordsmanship', 'horsebackriding'],
     'king kong': ['kaiju', 'beastabilities', 'apeintelligence', 'titan'],
-    knight: ['knight', 'royalty', 'swordsmanship', 'horsebackriding'],
+    knight: ['knighterrant', 'knight', 'royalty', 'swordsmanship', 'horsebackriding'],
     kraken: ['deepsea', 'water', 'tentacleappendages', 'cryptid'],
-    'loch ness monster': ['deepsea', 'water', 'cryptid', 'beastabilities'],
-    'machine elves': ['prismlattice', 'fractal', 'psychadelic', 'trickery'],
+    'loch ness monster': ['lochness', 'deepsea', 'water', 'cryptid', 'beastabilities'],
+    'machine elves': ['machineelves', 'prismlattice', 'fractal', 'psychadelic', 'trickery'],
     'mad scientist': ['unethicalscience', 'advancedtechnology', 'chemistry'],
-    mantid: ['insectoid', 'fractal', 'psychic'],
-    marksman: ['militarysupport', 'weaponstraining', 'huntingskills', 'marksmanship'],
-    martian: ['alientechnology', 'ufo', 'desertacclimation'],
+    mantid: ['mantid', 'insectoid', 'fractal', 'psychic'],
+    marksman: ['marksman', 'militarysupport', 'weaponstraining', 'huntingskills', 'marksmanship'],
+    martian: ['martian', 'alientechnology', 'ufo', 'desertacclimation'],
     mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
-    'men in black': ['spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
-    mermaid: ['water', 'sonic', 'deepsea'],
-    minotaur: ['horns', 'beastabilities', 'dirtyfighting'],
+    'men in black': ['meninblack', 'spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
+    mermaid: ['mermaid', 'water', 'sonic', 'deepsea'],
+    minotaur: ['minotaur', 'horns', 'beastabilities', 'dirtyfighting'],
     mothman: ['cryptid', 'lightning', 'mothman', 'psychic'],
-    necromancer: ['necromancy', 'bonedensity', 'blackmagic', 'poison'],
-    nephilim: ['fallenangel', 'earth', 'titan'],
+    necromancer: ['necromancer', 'necromancy', 'bonedensity', 'blackmagic', 'poison'],
+    nephilim: ['nephilim', 'fallenangel', 'earth', 'titan'],
     nordic: ['galacticfederation', 'light', 'psychic'],
-    nun: ['biblestudy', 'light', 'angelic'],
-    occulus: ['eyesight', 'psychic', 'ancientknowledge'],
-    'orb of light': ['light', 'cosmic', 'healingmagic'],
-    overlord: ['infernalcourt', 'dirtyfighting', 'demonicabilities'],
+    nun: ['nun', 'biblestudy', 'light', 'angelic'],
+    occulus: ['occulus', 'eyesight', 'psychic', 'ancientknowledge'],
+    'orb of light': ['orboflight', 'light', 'cosmic', 'healingmagic'],
+    overlord: ['overlord', 'infernalcourt', 'dirtyfighting', 'demonicabilities'],
     pirate: ['piracy', 'swordsmanship', 'ropework'],
-    'police officer': ['policetraining', 'weaponstraining', 'humangrit'],
+    'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
-    popstar: ['stagepresence', 'sonic', 'seduction'],
-    'starfish': ['water', 'deepsea', 'healingmagic'],
+    popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
+    'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
     'ringmaster': ['stagepresence', 'ropework', 'trickery', 'teamwork', 'animalhandling'],
-    'bee queen': ['insectoid', 'poison', 'agriculture', 'teamwork'],
-    'professor': ['ancientknowledge', 'chemistry', 'advancedtechnology'],
-    'deep sea fish': ['deepsea', 'water', 'beastabilities'],
-    'clown': ['trickery', 'dirtyfighting', 'shadow'],
+    'bee queen': ['insectoid', 'poison', 'agriculture', 'teamwork', 'royalhive'],
+    'professor': ['academia', 'ancientknowledge', 'chemistry', 'advancedtechnology'],
+    'deep sea fish': ['deepsea', 'water', 'beastabilities', 'anglerlure'],
+    'clown': ['trickery', 'dirtyfighting', 'shadow', 'bigtop'],
     'bunny girl': ['seduction', 'athleticism', 'trickery', 'gambling'],
-    'sharkman': ['deepsea', 'water', 'beastabilities', 'apexpredator'],
-    'crystal guardian': ['livingstone', 'prismlattice', 'holydefense', 'earth'],
-    'jack o lantern': ['fire', 'agriculture', 'haunted', 'witchcraft'],
-    'sidekick': ['superheropowers', 'teamwork', 'athleticism', 'humangrit'],
-    'mushroom girl': ['psychadelic', 'nature', 'poison', 'fae'],
-    'tree person': ['nature', 'earth', 'agriculture'],
-    'sheriff': ['weaponstraining', 'cowboyskills', 'policetraining', 'horsebackriding', 'marksmanship'],
-    'astronaut': ['advancedtechnology', 'cosmic', 'humangrit'],
-    'krampus': ['christmasspirit', 'horns', 'blackmagic', 'winter'],
+    'sharkman': ['sharkattack', 'deepsea', 'water', 'beastabilities', 'apexpredator'],
+    'crystal guardian': ['livingstone', 'prismlattice', 'holydefense', 'earth', 'crystalheart'],
+    'jack o lantern': ['jackolantern', 'fire', 'agriculture', 'haunted', 'witchcraft'],
+    'sidekick': ['sidekicking', 'superheropowers', 'teamwork', 'athleticism', 'humangrit'],
+    'mushroom girl': ['mushroomgirl', 'psychadelic', 'nature', 'poison', 'fae'],
+    'tree person': ['treefolk', 'nature', 'earth', 'agriculture'],
+    'sheriff': ['frontierjustice', 'weaponstraining', 'cowboyskills', 'policetraining', 'horsebackriding', 'marksmanship'],
+    'astronaut': ['advancedtechnology', 'cosmic', 'humangrit', 'missioncontrol'],
+    'krampus': ['krampus', 'christmasspirit', 'horns', 'blackmagic', 'winter'],
     'rabbit': ['athleticism', 'trickery', 'temporal', 'mirrormagic'],
-    'luchador': ['martialarts', 'athleticism', 'dirtyfighting', 'stagepresence'],
-    'firefighter': ['water', 'humangrit', 'teamwork', 'athleticism'],
-    'goblin': ['thievery', 'trapmaking', 'dirtyfighting', 'poison'],
-    'hippie': ['psychadelic', 'meditation', 'nature', 'agriculture'],
-    priest: ['biblestudy', 'light', 'healingmagic'],
+    'luchador': ['luchador', 'martialarts', 'athleticism', 'dirtyfighting', 'stagepresence'],
+    'firefighter': ['water', 'humangrit', 'teamwork', 'athleticism', 'firerescue'],
+    'goblin': ['goblin', 'thievery', 'trapmaking', 'dirtyfighting', 'poison'],
+    'hippie': ['hippie', 'psychadelic', 'meditation', 'nature', 'agriculture'],
+    priest: ['holyorders', 'biblestudy', 'light', 'healingmagic'],
     quarterback: ['football', 'athleticism', 'teamwork'],
-    reptilian: ['conspiracyknowledge', 'trickery', 'poison', 'spygear'],
+    reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
     robinhood: ['archery', 'huntingskills', 'thievery', 'marksmanship'],
-    robot: ['robot', 'machinery', 'cyberpunkweapons'],
-    'santa clause': ['christmasspirit', 'winter', 'engineering'],
+    robot: ['combatprotocols', 'robot', 'machinery', 'cyberpunkweapons'],
+    'santa clause': ['northpole', 'christmasspirit', 'winter', 'engineering'],
     scarecrow: ['scarecrow', 'witchcraft', 'nature', 'agriculture'],
-    seraphim: ['angelic', 'biblestudy', 'light'],
-    'shadow entity': ['shadow', 'haunted', 'temporal'],
-    shaman: ['nature', 'psychadelic', 'astralprojection', 'agriculture'],
-    siren: ['sonic', 'water', 'seduction'],
-    skeleton: ['bonedensity', 'haunted', 'swordsmanship'],
-    skinwalker: ['trickery', 'blackmagic', 'cryptid'],
-    succubus: ['seduction', 'astral', 'demonicabilities'],
+    seraphim: ['seraphicfire', 'angelic', 'biblestudy', 'light'],
+    'shadow entity': ['shadowpeople', 'shadow', 'haunted', 'temporal'],
+    shaman: ['spiritanimals', 'nature', 'psychadelic', 'astralprojection', 'agriculture'],
+    siren: ['sirencall', 'sonic', 'water', 'seduction'],
+    skeleton: ['rattlingbones', 'bonedensity', 'haunted', 'swordsmanship'],
+    skinwalker: ['wearingskins', 'trickery', 'blackmagic', 'cryptid'],
+    succubus: ['nightvisitor', 'seduction', 'astral', 'demonicabilities'],
     'super sentai': ['sentai', 'teamwork', 'martialarts'],
-    superhero: ['superheropowers', 'wind', 'athleticism', 'humangrit'],
-    swordfighter: ['maincharacter', 'swordsmanship', 'athleticism'],
-    symbiote: ['symbiosis', 'ooze', 'athleticism'],
-    telepath: ['psychic', 'deepstate', 'astralprojection'],
-    valkraye: ['holydefense', 'wind', 'knight'],
+    superhero: ['solarpowered', 'superheropowers', 'wind', 'athleticism', 'humangrit'],
+    swordfighter: ['swordsaint', 'maincharacter', 'swordsmanship', 'athleticism'],
+    symbiote: ['thebond', 'symbiosis', 'ooze', 'athleticism'],
+    telepath: ['telepathy', 'psychic', 'deepstate', 'astralprojection'],
+    valkraye: ['valhalla', 'holydefense', 'wind', 'knight'],
     vampire: ['vampiricabilties', 'beastabilities', 'blood'],
     voidweaver: ['arachnid', 'insectoid', 'fractal', 'shadow'],
-    watcher: ['temporal', 'cosmic', 'astralprojection'],
+    watcher: ['watchersoath', 'temporal', 'cosmic', 'astralprojection'],
     werewolf: ['werewolf', 'beastabilities', 'apexpredator'],
-    wizard: ['arcane', 'lightning', 'fire', 'ice'],
-    yeti: ['ice', 'winter', 'cryptid', 'sasquatch'],
+    wizard: ['highwizardry', 'arcane', 'lightning', 'fire', 'ice'],
+    yeti: ['abominable', 'ice', 'winter', 'cryptid', 'sasquatch'],
     zombie: ['zombie', 'poison', 'ghoulish'],
 };
 /* RACE_SPELL_EXCLUDES[race] = [spell ids] (the user, 2026-10-17: "exclude certain spells from a race's family, just a toggle ...
@@ -21539,7 +23429,109 @@ const RACE_FAMILIES = {
    family keeps the row for every other race; the race's pool, its kits, the AI's picks, the borrow window and the codex all
    skip it (raceFamilyPoolIds / flRacePool). The library's POOLS tab toggles it, written through the doc's raceExcludes
    registry (export → bake-spell-mods.js). */
-const RACE_SPELL_EXCLUDES = {};
+const RACE_SPELL_EXCLUDES = {
+    /* THE SHARED FAMILY PASS (the user, 2026-10-23: "exclude certain spells from a race's spell families, to make them more
+       accurate ... not every one of those needs to be available to everyone with the cosmic spell family"): a shared family's
+       spell that names or fits only some of its races is excluded for the rest — no spell deleted, no family tag changed. The
+       per-family reasons are on the delivery page (shared-families/ in the project files). Every race keeps 12+ spells. */
+    ai: ['raceOvertinker'],
+    android: ['raceBorrowedClaw', 'raceShedSkin'],
+    angel: ['raceMerkaba'],
+    annunaki: ['raceGravityBoots', 'racePlasmaWhip', 'sharedShrinkRay', 'raceWeighTheHeart', 'raceEntropicBeam', 'racePhaseWalk', 'raceCosmicSight', 'raceHeatDeath', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
+    antihero: ['raceAgentVanish', 'raceFreezeBreath'],
+    antperson: ['raceVenomFang', 'raceSplash'],
+    anubis: ['raceSacredGeometry', 'racePlaguefield'],
+    astronaut: ['raceDeneuralizer', 'raceTeslaTrap', 'raceBlueBeam', 'raceEntropicBeam', 'raceCosmicSight', 'raceHeatDeath', 'sharedNebula', 'raceStarDecree', 'raceSupernova', 'sharedBlackHole'],
+    atlantean: ['raceZigguratProtocol', 'raceSandstoneTomb', 'raceWeighTheHeart', 'raceWishGranted', 'raceJudgmentBeam'],
+    barbarella: ['raceDisintegrator', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceAgentVanish'],
+    'bee queen': ['raceTunnelNetwork', 'raceInfectiousBite', 'raceSplash'],
+    bigfoot: ['raceNimbleDodge', 'raceVault'],
+    'black goo': ['raceFormicAcid', 'raceInfectiousBite', 'raceSymbioteArmor', 'raceWebSwing'],
+    'bunny girl': ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceBorrowedClaw', 'raceShedSkin'],
+    catgirl: ['rampage', 'raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace'],
+    'chosen one': ['raceMerkaba', 'raceShadowRealm'],
+    clown: ['raceShadowRealm', 'raceBorrowedClaw', 'raceShedSkin'],
+    'conspiracy theorist': ['raceDeneuralizer', 'railgun', 'raceBlackBudget', 'raceBrainwash'],
+    'cosmic wraith': ['raceCosmicSight', 'raceCosmicSlam', 'sharedGravityCrush', 'raceStarDecree', 'raceSupernova', 'raceShadowRealm'],
+    'crystal guardian': ['raceBoulderHurl', 'raceTremorStomp', 'sharedFissure', 'raceMudslide', 'raceStoneDrop', 'raceValkyrieSpear', 'raceDivineSwoop', 'raceChooserOfSlain', 'raceStoneform'],
+    cyclops: ['raceStonefall', 'raceEarthenGrasp', 'rampart'],
+    'deep sea fish': ['passiveKeenNose', 'racePounce', 'racePoseidonsWrath'],
+    'demon prince': ['raceKissOfDecay'],
+    'demon princess': ['raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
+    dinosaur: ['raceBoulderHurl', 'raceStonefall', 'raceEarthenGrasp', 'rampart', 'raceStoneDrop'],
+    djinn: ['raceBorrowedClaw', 'raceShedSkin'],
+    dreameater: ['raceShadowRealm'],
+    droid: ['raceOvertinker'],
+    fairy: ['trunkThrow', 'raceBorrowedClaw', 'raceShedSkin'],
+    'fallen angel': ['raceDivineLight', 'passiveChoir', 'raceWingsOfMercy', 'raceRapture', 'raceDivineSmite'],
+    firefighter: ['raceNimbleDodge', 'passiveGills', 'raceCallOfTheDeep', 'raceFlood'],
+    gargoyle: ['raceTremorStomp', 'raceEarthenGrasp', 'sharedFissure', 'groundSlam', 'raceMudslide'],
+    ghost: ['raceShadowRealm'],
+    ghoul: ['raceFormicAcid', 'raceSplash', 'raceShadowRealm'],
+    giant: ['raceDarkJustice', 'raceStonefall'],
+    glitch: ['raceJudgmentBeam'],
+    gnome: ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon', 'railgun'],
+    goblin: ['raceBodyCheck', 'raceDarkJustice', 'raceBrutalSlam', 'raceFormicAcid', 'raceSplash'],
+    golem: ['raceWeighTheHeart', 'raceStoneform'],
+    halfdemon: ['raceAgentVanish'],
+    hippie: ['poisonSeed', 'trunkThrow'],
+    homosapien: ['raceLasso', 'raceRoundUp'],
+    'honda civic': ['raceRocketFist'],
+    'ice queen': ['raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'passiveEventHorizon', 'raceCosmicSlam', 'sharedGravityCrush', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
+    'jack o lantern': ['racePossession'],
+    jellyfish: ['raceSpout', 'racePoseidonsWrath'],
+    juggernaut: ['raceNimbleDodge', 'raceVault'],
+    kaiju: ['passiveMountainborn', 'raceStonefall', 'raceEarthenGrasp', 'rampart'],
+    knight: ['raceKnightsOfRound'],
+    kraken: ['raceOutOfTheDark'],
+    krampus: ['raceVoodoo', 'raceNeedleWork', 'passiveSpiritOfGiving', 'raceSleighDash', 'raceMilkAndCookies', 'raceBlizzardPresent'],
+    'loch ness monster': ['passiveKeenNose', 'racePounce', 'raceFeralDive'],
+    luchador: ['racePressurePoint', 'racePopMicDrop'],
+    'machine elves': ['raceBorrowedClaw', 'raceShedSkin'],
+    'mad scientist': ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon'],
+    mantid: ['raceBrood', 'raceTunnelNetwork', 'raceSwarmSignal'],
+    marksman: ['raceWhistle'],
+    martian: ['raceGravityBoots', 'racePlasmaWhip'],
+    'men in black': ['raceTeslaTrap', 'freeEnergy', 'raceGravityBoots', 'racePlasmaWhip'],
+    minotaur: ['raceBite', 'raceDarkJustice'],
+    'mushroom girl': ['trunkThrow', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
+    necromancer: ['raceBaphometsRite', 'raceReassemble', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
+    nephilim: ['raceStonefall', 'raceEarthenGrasp', 'rampart'],
+    nun: ['raceMerkaba'],
+    occulus: ['raceZigguratProtocol', 'raceSandstoneTomb', 'raceWeighTheHeart'],
+    'orb of light': ['raceEntropicBeam', 'raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'raceCosmicSlam', 'sharedGravityCrush', 'raceHeatDeath', 'raceStarDecree'],
+    overlord: ['raceDarkJustice', 'raceKissOfDecay'],
+    pirate: ['raceLasso', 'raceRoundUp'],
+    politician: ['raceCultKoolAid', 'raceCultGathering', 'passiveIronDiscipline', 'raceSuppressiveFire', 'raceRangefinder'],
+    popstar: ['raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceSirenSong'],
+    priest: ['raceMerkaba'],
+    professor: ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon'],
+    rabbit: ['raceJudgmentBeam', 'raceBorrowedClaw', 'raceShedSkin'],
+    reptilian: ['raceTinFoilHat', 'raceTruthBomb', 'raceFormicAcid', 'raceSplash', 'raceBorrowedClaw'],
+    ringmaster: ['raceLasso', 'raceBorrowedClaw', 'raceShedSkin'],
+    robinhood: ['raceWhistle', 'raceQuickDraw', 'raceHitALick'],
+    'santa clause': ['fiveGTower'],
+    scarecrow: ['trunkThrow'],
+    'shadow entity': ['raceBoo', 'raceJudgmentBeam'],
+    shaman: ['trunkThrow'],
+    sheriff: ['raceDynamite', 'raceRustle', 'raceLance', 'racePoliceSpray', 'racePoliceTaser', 'racePoliceLockdown'],
+    sidekick: ['raceFreezeBreath'],
+    siren: ['raceDrainingEmbrace'],
+    skinwalker: ['raceBaphometsRite'],
+    starfish: ['raceSpout', 'raceDepthCharge', 'racePoseidonsWrath'],
+    succubus: ['raceHellmouth'],
+    superhero: ['raceWingGust'],
+    swordfighter: ['raceDarkFeather'],
+    symbiote: ['raceMitosisSplit'],
+    telepath: ['raceBlackBudget'],
+    'tree person': ['raceBoulderHurl', 'passiveMountainborn', 'raceStonefall', 'sharedFissure', 'groundSlam', 'raceStoneDrop'],
+    voidweaver: ['raceTunnelNetwork', 'raceSwarmSignal', 'raceShadowRealm'],
+    watcher: ['raceGravityWell', 'passiveEventHorizon', 'raceCosmicSlam', 'sharedGravityCrush', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
+    werewolf: ['raceDeathRoll', 'raceJurassicJaw'],
+    wizard: ['raceWishGranted'],
+    yeti: ['raceAbsoluteZero'],
+    zombie: ['raceTerrorPounce', 'raceFormicAcid', 'raceSplash'],
+};
 /* A row's families (§4.2): the explicit tags, else its element's family, plus the wheel's for a door-wheel row. */
 function spellFamiliesOf(d) {
     if (!d) return [];
@@ -21613,18 +23605,22 @@ function aoeMaskPresetOf(mask) {
      unit of `team` on the tiles round the VICTIM (radius = a (2r+1)² box, or the drawn mask; the victim is the origin
      and is never hit twice) takes dmg × mult. Enemies only by default (§7 Q10); the caster is never splashed. ── */
 const SPELL_RIDER_KINDS = ['damage'];
-const SPELL_RANDOM_MAX = 8;
+const SPELL_RANDOM_MAX = _spellRandomMax();
+/* Functions, so the boot-time mana pass (_applyManaCostFormula, far above) can price a RACE_ABILITIES row that carries a
+   rider without touching these consts before they exist (2026-10-23: the G-O unique families put random-target rows there). */
+function _spellRiderKindOk(d) { return (d.kind || 'damage') === 'damage'; }
+function _spellRandomMax() { return 8; }
 function spellRandomTargetsOf(d) {
     const r = d && d.randomTargets;
-    if (!r || typeof r !== 'object' || !SPELL_RIDER_KINDS.includes(d.kind || 'damage')) return null;
-    const count = Math.max(1, Math.min(SPELL_RANDOM_MAX, Math.round(Number(r.count) || 0)));
+    if (!r || typeof r !== 'object' || !_spellRiderKindOk(d)) return null;
+    const count = Math.max(1, Math.min(_spellRandomMax(), Math.round(Number(r.count) || 0)));
     if (!(Number(r.count) >= 1)) return null;
     const mult = (typeof r.mult === 'number' && isFinite(r.mult) && r.mult > 0) ? r.mult : 1;
     return { count, scope: r.scope === 'units' ? 'units' : 'enemies', distinct: r.distinct !== false, mult };
 }
 function spellSplashOf(d) {
     const s = d && d.splash;
-    if (!s || typeof s !== 'object' || !SPELL_RIDER_KINDS.includes(d.kind || 'damage')) return null;
+    if (!s || typeof s !== 'object' || !_spellRiderKindOk(d)) return null;
     const mask = aoeMaskValid(s.mask) ? s.mask : null;
     const radius = mask ? aoeMaskBound(mask) : Math.max(0, Math.min(3, Math.round(Number(s.radius) || 0)));
     if (!mask && radius < 1) return null;
@@ -23922,8 +25918,11 @@ if (typeof window !== 'undefined') {
                            the `cap` strings freely, the `art` keys are the
                            drawn slides.
    TUTORIAL_LESSONS ...... the lessons, each a scripted crossing in Room 64
-                           (`prebuilt_training`; THE HIGH GROUND runs on the
-                           Holo Sim, the Training Facility's other board):
+                           (`prebuilt_training`; HEIGHT, JUMP, CLIMB, FLIGHT
+                           runs on the Holo Sim, the Training Facility's other
+                           board; core 5-8 are REAL matches on a 10×10 arena,
+                           `cpuAi: true` — the CPU's own AI, the match's own
+                           end, `where` names the board on the shelf):
                            `board` = both teams pinned (race · job · tile ·
                            spells · name), `order` = the forced turn order,
                            `steps` = the script. A step is
@@ -23941,13 +25940,18 @@ if (typeof window !== 'undefined') {
                                      attack · spell · press · guard · end ·
                                      inspect · channel · entropy · cpuDone ·
                                      round · nexus · key · cube · visible ·
-                                     activation
+                                     activation · climb · airborne · landed ·
+                                     stand (z) · hold (a zone across a round
+                                     end) · respawn · win
                            cpu ..... the dummies' plan while the step is
                                      live: { <unitKey>: hold | approach |
                                      attack | guard | pass } (default hold)
                            enter ... effects on arrival: [['gauge', n],
                                      ['fog', bool], ['key', x, y], ['ap',
-                                     unitKey, n], ['camera', x, y]]
+                                     unitKey, n], ['camera', x, y],
+                                     ['down', unitKey, rounds?], ['carry',
+                                     unitKey, n], ['nexus', section, team],
+                                     ['cube', team, hpShare]]
                            auto .... ms; a pure-say step that advances itself
    TUTORIAL_MECHANICS .... THE DRIFT REGISTER. Every mechanic a lesson teaches
                            names (a) the numbers the copy states (`pins`,
@@ -23979,9 +25983,9 @@ const TUTORIAL_TAPE = {
         { id: 'wars',     ms: 8200, art: 'globe',   title: 'PART 3 · THE ENTROPY WARS',
           cap: 'Uncontrolled thresholds are opening across Canon Reality. What comes through does not fill in a form. The Department calls this the Entropy Wars. You may call it Tuesday.' },
         { id: 'vessels',  ms: 8600, art: 'grid',    title: 'PART 4 · THE VESSELS',
-          cap: 'You will not fight them yourself. You will file a crossing and command four VESSELS — entities already through the door, and already on payroll. Four against four. Eight by eight.' },
+          cap: 'You will not fight them yourself. You will file a crossing and command four VESSELS — entities already through the door, and already on payroll. Four against four, on a board ten tiles a side.' },
         { id: 'turn',     ms: 9000, art: 'turn',    title: 'PART 5 · THE TURN',
-          cap: 'Vessels act one at a time, fastest first. Each vessel has {{AP}} ACTION POINTS a turn. Moving costs one. Striking costs everything you have left — unless you strike a WEAKNESS. Then you strike again.' },
+          cap: 'Vessels act one at a time, fastest first. Each vessel has {{AP}} ACTION POINTS a turn. Moving costs one. A strike costs one and ENDS THE TURN — unless you strike a WEAKNESS. Then the points come back, and you strike again.' },
         { id: 'threeway', ms: 9000, art: 'three',   title: 'PART 6 · HOW A CROSSING CLOSES',
           cap: 'In the field a crossing closes one of three ways: destroy the BLACK CUBE, secure {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS, or remove every hostile entity. Any one will do. The Department is not picky. The Department is thorough.' },
         { id: 'room64',   ms: 8000, art: 'room64',  title: 'PART 7 · REPORT TO ROOM 64',
@@ -23991,7 +25995,7 @@ const TUTORIAL_TAPE = {
     ],
 };
 
-/* The nine lessons. Board coordinates are the Δ frame: x 0..7 west→east,
+/* The lessons. Board coordinates (the Room 64 tapes) are the Δ frame: x 0..7 west→east,
    y 0..7 north→south; P1 spawns row 7 (south), P2 row 0 (north); the centre
    nexus is x 3..4 × y 3..4. Unit keys are `p<seat>-<slot>`. */
 const TUTORIAL_LESSONS = [
@@ -24004,8 +26008,10 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 2, y: 7, spells: [] } ],
-            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
-                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 5, y: 2, spells: [] } ],
+            /* both dummies UNHOLY only: neither BLADE (Human) nor SCOPE (Human + Tech) finds a weakness or a resist on them,
+               so no press fires before Tape 2 explains it; DUMMY B stands where SCOPE reaches it from its start tile (2026-10-23: the zombie, Human + Unholy, took a super-effective shot) */
+            p2: [ { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
+                  { race: 'ghoul',    job: 'Raider',      gender: 'male', name: 'DUMMY B', x: 4, y: 3, spells: [] } ],
         },
         order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
         steps: [
@@ -24013,24 +26019,24 @@ const TUTORIAL_LESSONS = [
               say: 'The only square room in the building. Two vessels are yours — <b>BLADE</b>, a swordfighter, and <b>SCOPE</b>, a marksman. The two at the far end are the Department\'s training dummies. Nothing in here is filed.',
               goal: { type: 'ack' } },
             { id: 'clock', title: 'THE TURN',
-              say: 'Vessels act <b>one at a time, fastest first</b>. It is BLADE\'s turn. Every vessel carries <b>{{AP}} ACTION POINTS</b> (AP) a turn — the pips beside the name. Every action costs at least one.',
+              say: 'Vessels act <b>one at a time, fastest first</b> — the portraits down the left are the turn order. It is BLADE\'s turn. Every vessel carries <b>{{AP}} ACTION POINTS</b> (AP) a turn — the cubes in the <b>top-left corner</b>. Every action costs at least one.',
               focus: { hud: 'ap' }, goal: { type: 'ack' } },
             { id: 'move', title: 'MOVE',
-              say: 'Press <b>MOVE</b>, then click an orange tile. A move costs <b>1 AP</b> and hands the menu back. Walk BLADE up until DUMMY A is within reach.',
+              say: 'Press <b>MOVE</b>, then click a lit tile. A move costs <b>1 AP</b> and hands the menu back. Walk BLADE up until DUMMY A is within reach.',
               hint: 'MOVE · then a tile next to DUMMY A',
               focus: { hud: 'move' }, allow: ['move'],
               goal: { type: 'move', unit: 'p1-0', inRangeOf: 'p2-0' } },
             { id: 'ap-left', title: 'ONE AP LEFT',
-              say: 'BLADE still has AP, so BLADE still has the turn. <b>Attacking costs everything you have left</b> — it ends the turn.',
-              focus: { hud: 'ap' }, auto: 3200 },
+              say: 'One AP cube is spent. BLADE still has AP, so BLADE still has the turn. An <b>ATTACK costs 1 AP and ends the turn</b> — the red <b>ENDS TURN</b> tag on a row says so before you press it.',
+              focus: { hud: 'ap' }, goal: { type: 'ack' } },
             { id: 'attack', title: 'ATTACK',
-              say: 'Press <b>ATTACK</b> and click DUMMY A. Click it again to confirm the strike.',
-              hint: 'ATTACK · DUMMY A · click twice',
+              say: 'Press <b>ATTACK</b>. The target row names DUMMY A with a <b>≈ damage forecast</b>. Press <b>✓ CONFIRM</b> on the row (or click DUMMY A again) to strike.',
+              hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'attack' }, allow: ['attack'],
               goal: { type: 'attack', unit: 'p1-0', target: 'p2-0' } },
             { id: 'attack-done', title: 'TURN OVER',
-              say: 'The strike spent BLADE\'s AP. The clock moves to the next vessel: <b>SCOPE</b>.',
-              auto: 3000 },
+              say: 'The strike ended BLADE\'s turn. The clock moves to the next vessel: <b>SCOPE</b>.',
+              goal: { type: 'ack' } },
             { id: 'scope', title: 'RANGE',
               say: 'SCOPE is a marksman — a basic attack reaches <b>RNG</b> tiles. Don\'t walk up. Press ATTACK and shoot DUMMY B from here.',
               hint: 'ATTACK · DUMMY B',
@@ -24041,20 +26047,20 @@ const TUTORIAL_LESSONS = [
               cpu: { 'p2-0': 'attack', 'p2-1': 'approach' },
               goal: { type: 'cpuDone' } },
             { id: 'round', title: 'A NEW ROUND',
-              say: 'When every vessel has acted the <b>round</b> ends: AP refills, statuses tick, and the clock starts over.',
-              focus: { el: '#roundLabel' }, auto: 3400 },
+              say: 'When every vessel has acted the <b>round</b> ends: AP refills, statuses tick, and the clock starts over. The round count sits under the score at the top.',
+              focus: { el: '#roundLabel' }, goal: { type: 'ack' } },
             { id: 'guard', title: 'GUARD',
               say: 'BLADE took a hit. <b>GUARD</b> raises DEF and M DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to stop within reach eats a free shot. Guard ends the turn.',
               hint: 'GUARD',
               focus: { hud: 'guard' }, allow: ['guard', 'move'],
               goal: { type: 'guard', unit: 'p1-0' } },
             { id: 'two-moves', title: 'TWO MOVES',
-              say: 'SCOPE: press <b>MOVE</b> twice. The second move of a turn costs <b>all remaining AP</b> — moving twice is a whole turn. (<b>END TURN</b> — SPACE — passes whatever is left.)',
+              say: 'SCOPE: press <b>MOVE</b> twice. The second move of a turn costs <b>all remaining AP</b> — moving twice is a whole turn. (<b>END TURN</b> passes whatever is left; SPACE pressed twice does the same.)',
               hint: 'MOVE · MOVE · or END TURN',
               focus: { hud: 'move' }, allow: ['move', 'end'],
               goal: { type: 'end', unit: 'p1-1' } },
             { id: 'done', title: 'THAT IS THE TURN',
-              say: 'MOVE costs 1 AP. ATTACK ends the turn. GUARD ends the turn. Two MOVEs are a whole turn. Everything else in this building is built on those four sentences.<br><br>Next: <b>THE PRESS</b> — weakness, criticals and the Entropy Gauge.',
+              say: 'MOVE costs 1 AP. ATTACK costs 1 AP and ends the turn. GUARD ends the turn. Two MOVEs are a whole turn. Everything else in this building is built on those four sentences.<br><br>Next: <b>THE PRESS</b> — weakness, criticals and the Entropy Gauge.',
               goal: { type: 'ack', finish: true } },
         ],
     },
@@ -24065,26 +26071,28 @@ const TUTORIAL_LESSONS = [
         teaches: ['types', 'press', 'entropy'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
         board: {
-            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceSmite', 'raceBlessing'] },
+            /* a spell needs the team to SEE its target (VISION_RULES) and the nun sees 2 tiles: both dummies start inside
+               SISTER's sight (2026-10-23: from 3,6 SMITE read NO TARGET on the first cast step) */
+            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 5, spells: ['raceSmite', 'raceBlessing'] },
                   { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 2, y: 7, spells: [] } ],
             p2: [ { race: 'zombie', job: 'Raider',  gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
-                  { race: 'grey',   job: 'Psychic', gender: 'male', name: 'DUMMY B', x: 5, y: 3, spells: [] } ],
+                  { race: 'grey',   job: 'Psychic', gender: 'male', name: 'DUMMY B', x: 4, y: 4, spells: [] } ],
         },
         order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
         steps: [
             { id: 'types', title: 'THE SIX TYPES',
-              say: 'Every entity has a <b>TYPE</b>: HUMAN · ALIEN · DIVINE · UNHOLY · TECH · ANOMALY. They chase each other round a wheel: <b>DIVINE › UNHOLY › ANOMALY › TECH › HUMAN › ALIEN › DIVINE</b>. A hit down the wheel finds a <b>WEAKNESS</b> (×{{WEAK_MULT}}). A hit against it is <b>RESISTED</b> (×{{RESIST_MULT}}).',
+              say: 'Every entity has <b>one or two TYPES</b> — the chips on its card: HUMAN · ALIEN · DIVINE · UNHOLY · TECH · ANOMALY. They chase each other round a wheel: <b>DIVINE › UNHOLY › ANOMALY › TECH › HUMAN › ALIEN › DIVINE</b>. Hit a type yours beats and it is a <b>WEAKNESS</b> (×{{WEAK_MULT}}). Hit a target with a type that beats yours and it is <b>RESISTED</b> (×{{RESIST_MULT}}). Both at once cancel out.',
               goal: { type: 'ack' } },
             { id: 'cast', title: 'SISTER',
-              say: '<b>SISTER</b> is DIVINE. DUMMY A is a zombie — UNHOLY. Her <b>SMITE</b> goes straight down the wheel. Open <b>ABILITIES</b>, pick SMITE, and click DUMMY A twice.',
-              hint: 'ABILITIES · SMITE · DUMMY A',
+              say: '<b>SISTER</b> is HUMAN and DIVINE. DUMMY A is a zombie — HUMAN and UNHOLY. <b>SMITE</b> is a DIVINE spell, and DIVINE beats UNHOLY. Open <b>ABILITIES</b>, pick SMITE, pick the <b>DUMMY A</b> row, then <b>✓ CONFIRM</b>.',
+              hint: 'ABILITIES · SMITE · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
               goal: { type: 'press', unit: 'p1-0', outcome: 'weak' } },
             { id: 'press', title: 'THE PRESS',
-              say: '<b>WEAKNESS — +{{PRESS_AP}} AP.</b> That is THE PRESS: the turn\'s first weakness hands the AP straight back (a critical hit hands back 1). A free action, once per turn. Spend it — SMITE again.',
-              hint: 'ABILITIES · SMITE · DUMMY A',
-              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'attack', 'move'],
-              goal: { type: 'spell', unit: 'p1-0' } },
+              say: '<b>WEAKNESS — +{{PRESS_AP}} AP.</b> That is THE PRESS: a vessel\'s first weakness of the turn hands the AP straight back (so does a critical hit, or a spell\'s ⚗ COMBO on a status). A green <b>!</b> on a target row means the refund is guaranteed. Spend it: each spell goes once a turn (SMITE now reads USED THIS TURN), so <b>ATTACK</b> DUMMY A.',
+              hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
+              focus: { hud: 'attack' }, allow: ['attack', 'move'],
+              goal: { type: 'attack', unit: 'p1-0' } },
             { id: 'blade', title: 'BLADE',
               say: 'A second weakness in the same turn can\'t press again — it <b>vents into the ENTROPY GAUGE</b> instead (top of the screen). BLADE: walk up or END TURN; the dummies are holding still.',
               hint: 'MOVE · or END TURN',
@@ -24100,20 +26108,20 @@ const TUTORIAL_LESSONS = [
               focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
               goal: { type: 'press', unit: 'p1-0', outcome: 'resist' } },
             { id: 'resist-done', title: 'WASTED',
-              say: 'RESISTED: ×{{RESIST_MULT}} damage, and the turn drains <b>{{PRESS_PENALTY}} extra AP</b>. A miss does the same. Every fumble also shrinks what a later press can refund. Read the type before you swing.',
-              auto: 4200 },
+              say: 'RESISTED: ×{{RESIST_MULT}} damage, and the turn drains <b>{{PRESS_PENALTY}} extra AP</b>. A miss does the same. Every fumble also shrinks what a later press can refund. Read the type chips before you swing.',
+              goal: { type: 'ack' } },
             { id: 'gauge', title: 'THE ENTROPY GAUGE',
               say: 'Kills, overkill, destruction and every press you can\'t hold feed the team\'s <b>ENTROPY GAUGE</b>. At {{GAUGE_MAX}} it is an apocalypse. The Department has filled yours for training.',
               focus: { el: '#ewEntropyMeterP1' }, enter: [['gauge', 1, 100]],
               goal: { type: 'ack' } },
             { id: 'strike', title: 'ENTROPY STRIKE',
-              say: 'On your next vessel\'s turn press <b>⚛ ENTROPY</b> on the bezel and choose an apocalypse — six, one per type. <b>REVELATIONS</b> is DIVINE. It hits every hostile you can see, typed.',
+              say: 'On your next vessel\'s turn press <b>⚛ ENTROPY</b> (bottom left, under BUILD). The top row is that vessel\'s own EXECUTION finisher; under it sit the six apocalypses, one per type. <b>REVELATIONS</b> is DIVINE. It hits every hostile you can see, typed.',
               hint: '⚛ ENTROPY · REVELATIONS',
               focus: { hud: 'entropy' }, allow: ['entropy', 'move', 'attack', 'spell', 'end'],
               cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
               goal: { type: 'entropy', player: 1 } },
             { id: 'done', title: 'THE PRESS',
-              say: 'Weakness: <b>+{{PRESS_AP}} AP</b>, crit: <b>+1 AP</b>, once a turn. Resist or miss: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
+              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel; each resistance on that hit takes 1 off, an absorb takes it all. Resist or miss with nothing else: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
               goal: { type: 'ack', finish: true } },
         ],
     },
@@ -24133,73 +26141,264 @@ const TUTORIAL_LESSONS = [
         keys: [[4, 5], [0, 3], [7, 4], [1, 5], [6, 5]],   // the fixed pool, the first one beside SCOPE
         steps: [
             { id: 'arena', title: 'ARENA',
-              say: 'A real crossing closes one of <b>three</b> ways: <b>⬡ destroy the BLACK CUBE</b> · <b>🗝 carry {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS</b> · <b>☠ remove every hostile</b>. Any one ends it. The scoreboard at the top tracks all three.',
+              say: 'A real crossing closes one of <b>three</b> ways: <b>⬡ destroy the BLACK CUBE</b> · <b>🗝 carry {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS</b> · <b>☠ remove every hostile</b>. Any one ends it. The scoreboard at the top tracks all three: each side\'s Cube is its TOWER bar, the Keys count sits beside it.',
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'key', title: 'THE KEYS',
-              say: 'A <b>KEY</b> lies on the marked tile beside SCOPE. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan uncovers the tiles around it and pockets any Key it finds.',
+              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks the tiles around it, as far as the vessel\'s VISION allows, and pockets any Key it finds.',
               hint: 'click the marked tile · 🔍 INSPECT',
               focus: { tile: [4, 5] }, allow: ['inspect', 'move'],
               goal: { type: 'key', player: 1, count: 1 } },
-            { id: 'key-done', title: 'ONE OF THREE',
-              say: 'Carried Keys buff the carrier — and drop where they fall. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>.',
-              focus: { el: '#scoreboard' }, auto: 3600 },
+            { id: 'key-done', title: 'ONE KEY',
+              say: 'Carried Keys power up the carrier — and drop where the carrier falls. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>.',
+              focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'nexus', title: 'THE NEXUS',
-              say: 'The centre 2×2 is a <b>NEXUS</b>. <b>{{NEXUS_TICKS}} ticks</b> flip it: stepping in (+1 per vessel per round), <b>CHANNEL</b> (1 AP, +1), or holding it when the round ends. A zone you hold <b>heals</b> your vessels standing in it and <b>burns</b> the enemy\'s — and it is the only place your fallen respawn.',
+              say: 'The centre 2×2 is a <b>NEXUS</b>. Its counter reads from your side: <b>0/{{NEXUS_BAR}}</b> the enemy holds it, <b>{{NEXUS_TICKS}}/{{NEXUS_BAR}}</b> neutral, <b>{{NEXUS_BAR}}/{{NEXUS_BAR}}</b> yours. Each tick moves it one: stepping in (+1 per vessel per round), <b>CHANNEL</b> (1 AP, +1), or standing in it when the round ends. A zone you hold <b>heals</b> your vessels standing in it and <b>burns</b> the enemy\'s — and your fallen respawn only on a zone you hold.',
               focus: { tile: [3, 3] }, goal: { type: 'ack' } },
             { id: 'capture', title: 'TAKE THE CENTRE',
-              say: 'Walk BLADE and SCOPE into the centre and press <b>⬡ CHANNEL</b> on the bezel until the zone flips. Two steps and two channels is four.',
+              say: 'Walk BLADE and SCOPE into the centre and press <b>⬡ CHANNEL</b> (bottom left, under BUILD) until the counter reaches {{NEXUS_BAR}}/{{NEXUS_BAR}}. Every step in and every channel is one tick.',
               hint: 'MOVE into the centre · ⬡ CHANNEL',
               focus: { hud: 'nexus' }, allow: ['move', 'channel', 'end'],
               cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
               goal: { type: 'nexus', player: 1, section: 'earth' } },
             { id: 'cube', title: 'THE BLACK CUBE',
-              say: 'Captured. Every non-home zone you hold is <b>×{{SIEGE}} SIEGE</b> damage on the enemy\'s <b>BLACK CUBE</b> — the block at the far end. Only <b>physical strikes</b> hurt it. Walk up and hit it.',
+              say: 'Captured. Every non-home zone you hold is <b>×{{SIEGE}} SIEGE</b> damage on the enemy\'s <b>BLACK CUBE</b> — the block at the far end. Only the basic <b>ATTACK</b> hurts it (it swings with ATK or M.ATK, whichever is higher); spells can\'t touch it. Walk up and hit it.',
               hint: 'MOVE · ATTACK the Cube',
               focus: { cube: 2 }, allow: ['move', 'attack', 'end', 'guard', 'channel'],
               cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
               goal: { type: 'cube', player: 1 } },
             { id: 'wipe', title: 'OR EVERY HOSTILE',
-              say: 'The third way needs no objective at all: <b>remove every hostile</b>. The dummies count. Respawns come back on a zone their team holds — hold every zone and nothing comes back.',
+              say: 'The third way needs no objective at all: <b>remove every hostile</b>. The dummies count. A fallen vessel comes back after 2 rounds (then 3, 5, 8) on a zone its team holds, and sits out its first round back. Vessels waiting to come back count as down — and with no zone held, nothing comes back.',
               goal: { type: 'ack' } },
             { id: 'done', title: 'THE THREE WAYS OUT',
-              say: '<b>Cube · Keys · Wipe.</b> The Nexus is the economy underneath all three: healing, respawns, siege. That is the core. Everything else is optional reading.<br><br>The rest of the tapes are on the shelf — take them in any order.',
+              say: '<b>Cube · Keys · Wipe.</b> The Nexus is the economy underneath all three: healing, respawns, siege. Each gets its own tape on a real arena.<br><br>Next: <b>HEIGHT, JUMP, CLIMB, FLIGHT</b>.',
               goal: { type: 'ack', finish: true } },
         ],
     },
-    /* ── OPTIONAL ───────────────────────────────────────────────────── */
     {
-        id: 'high_ground', no: 4, tier: 'optional', minutes: 3,
-        title: 'THE HIGH GROUND', sub: 'HEIGHT · RANGE · FALL DAMAGE  (the Holo Sim projects the terrain)',
-        teaches: ['height'],
-        map: 'prebuilt_holosim', mode: 'tdm', rounds: 30,
+        id: 'high_ground', no: 4, tier: 'core', minutes: 5,
+        title: 'HEIGHT, JUMP, CLIMB, FLIGHT', sub: 'HIGH GROUND · THE JUMP STAT · CLIMBING · TAKING OFF  (the Holo Sim projects the terrain)',
+        teaches: ['height', 'jump', 'climb', 'flight'],
+        map: 'prebuilt_holosim', where: 'ROOM 404 · HOLO SIM', mode: 'tdm', rounds: 30,
+        /* the Holo Sim floor is z5; risers (z6) at 7,1 · 2,2 · 5,5 · 0,6, pylons (z7) at 0,3 · 7,4. the Grey (JUMP 1, a ranged
+           attack) climbs the pylon and shoots down from it. ANGEL flies: no jump, no climb, a take-off. */
         board: {
-            p1: [ { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 4, y: 6, spells: [] },
-                  { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 2, y: 7, spells: [] } ],
-            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 5, y: 2, spells: [] },
-                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 1, y: 0, spells: [] } ],
+            p1: [ { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE',  x: 4, y: 6, spells: [] },
+                  { race: 'grey',         job: 'Psychic',     gender: 'male',   name: '',       x: 7, y: 6, spells: [] },     // no name: the race label (Grey)
+                  { race: 'angel',        job: 'White Mage',  gender: 'female', name: '',       x: 2, y: 7, spells: [] } ],   // no name: the race label (Angel)
+            /* the dummies are Unholy only: SCOPE's shot is neutral, so no press hands her the turn back before the Grey's step */
+            p2: [ { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY A', x: 5, y: 2, spells: [] },
+                  { race: 'ghoul',    job: 'Raider',      gender: 'male', name: 'DUMMY B', x: 1, y: 0, spells: [] },
+                  { race: 'ghoul',    job: 'Raider',      gender: 'male', name: 'DUMMY C', x: 3, y: 0, spells: [] } ],   // the sides stay even (CONFIG.teamSize); out of SCOPE's reach from the riser
         },
-        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        order: ['p1-0', 'p1-1', 'p1-2', 'p2-0', 'p2-1', 'p2-2'],
         steps: [
             { id: 'height', title: 'HEIGHT',
               say: 'Room 404 projects a floor of <b>risers</b> (one level up) and two tall <b>pylons</b> (two levels up). Attacking <b>downhill</b> is ×{{DOWNHILL}} per level; attacking <b>uphill</b> costs a flat −{{HIGH_DEF}} damage per level. A ranged vessel two levels up reaches <b>+{{HIGH_RANGE}}</b> tile.',
               goal: { type: 'ack' } },
-            { id: 'climb', title: 'CLIMB',
+            { id: 'riser', title: 'ONE LEVEL UP',
               say: 'Move SCOPE onto the marked riser (one level up).',
               hint: 'MOVE · the riser',
               focus: { tile: [5, 5] }, allow: ['move'],
               goal: { type: 'move', unit: 'p1-0', to: [5, 5] } },
             { id: 'shoot', title: 'DOWNHILL',
               say: 'Now shoot DUMMY A. Watch the damage note — <b>⛰ HIGH GROUND</b>.',
-              hint: 'ATTACK · DUMMY A',
+              hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'attack' }, allow: ['attack', 'move'],
               goal: { type: 'attack', unit: 'p1-0', target: 'p2-0' } },
-            { id: 'done', title: 'THE HIGH GROUND',
-              say: 'Height is damage both ways. Climbing more than one level takes a jump (SPD 90+ leaps two), and a long fall hurts. Take the hill before the enemy does.',
+            { id: 'jump', title: 'JUMP',
+              say: 'Every race has a <b>JUMP</b> of 1 to 3: how many levels it can step up while it moves. Stepping down one or two levels is free; a drop of three or more hurts. The <b>Grey</b> has <b>JUMP 1</b>. The marked pylon is two levels up, too tall for it to step onto.',
+              focus: { tile: [7, 4] }, goal: { type: 'ack' } },
+            { id: 'climb', title: 'CLIMB',
+              say: 'A face up to <b>two levels taller</b> than the jump is a <b>CLIMB</b>. Press <b>🧗 CLIMB</b> in the menu and pick the top of the pylon: the Grey walks to its foot and starts up. A climb <b>ends the turn</b>, and it hangs on the face until its next one with <b>−2 DEF and M.DEF</b> and no dodge. A damaging hit, a push, a stun or a freeze knocks it off, with fall damage.',
+              hint: '🧗 CLIMB · the pylon top',
+              focus: { hud: 'climb' }, allow: ['move', 'end'],
+              goal: { type: 'climb', unit: 'p1-1' } },
+            { id: 'land', title: 'FLIGHT',
+              say: 'The <b>Angel</b> flies, and starts in the air. A flyer never jumps or climbs: it hovers, and a pylon is only more air under it. <b>LAND</b> (1 AP) sets it down; on the ground a flyer walks like anyone else. Press <b>⬇ LAND</b> (bottom left, under BUILD).',
+              hint: '⬇ LAND',
+              focus: { hud: 'fly' }, allow: [],
+              goal: { type: 'landed', unit: 'p1-2' } },
+            { id: 'takeoff', title: 'TAKE OFF',
+              say: 'Now <b>⬆ TAKE OFF</b> (1 AP), in the same place. Landing and taking off are actions of their own: MOVE never takes off for you, so a flyer that lands and lifts again has spent both AP.',
+              hint: '⬆ TAKE OFF',
+              focus: { hud: 'fly' }, allow: [],
+              goal: { type: 'airborne', unit: 'p1-2' } },
+            { id: 'wait', title: 'THEIR TURN',
+              say: 'The dummies pass.',
+              cpu: { 'p2-0': 'pass', 'p2-1': 'pass', 'p2-2': 'pass' },
+              goal: { type: 'cpuDone' } },
+            { id: 'ledge', title: 'ON THE LEDGE',
+              say: 'A new round. SCOPE is up first: END TURN (Space twice). When the Grey\'s turn starts its climb is over, and it stands on top of the pylon with its full turn.',
+              hint: 'END TURN',
+              focus: { unit: 'p1-1' }, allow: ['end'],
+              goal: { type: 'stand', unit: 'p1-1', z: 7 } },
+            { id: 'top', title: 'SHOOT DOWN',
+              say: 'Two levels up, a ranged attack reaches <b>+{{HIGH_RANGE}}</b> tile. Shoot DUMMY A from the top of the pylon.',
+              hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
+              focus: { hud: 'attack' }, allow: ['attack'],
+              goal: { type: 'attack', unit: 'p1-1', target: 'p2-0' } },
+            { id: 'done', title: 'HEIGHT, JUMP, CLIMB, FLIGHT',
+              say: 'Height is damage both ways. A face up to your JUMP is a step; up to two levels more is a CLIMB that ends the turn and leaves you hanging; flyers take off instead. Take the hill before the enemy does.<br><br>Next: <b>THE NEXUS AND RESPAWNS</b> — a real arena, four against four.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── CORE 5-8: THE REAL THING (2026-10-23) ─────────────────────────
+       A real match: the Stonehenge Arena's 10×10 cut (the playtests' board), four against four, fog on, the turn order
+       by SPD, the CPU's own AI (`cpuAi`: battle.js runComputerTurn → the AI, never the dummy script), and the match
+       ends the way any match does (ui.js _tutOutcome: a win jumps to the tape's last word, a loss offers the tape
+       again). Each opens mid-match through its first step's `enter` (a fallen vessel, a held zone, a hit Cube, Keys
+       in a pocket); the play steps allow everything. Board: the centre Nexus is x 4..5 × y 4..5, P1's spawn row 9
+       (x 3..6) and Cube 5,8, P2's spawn row 0 and Cube 5,1, standing stones (three levels up) at 0,2 · 6,4 · 7,5 ·
+       7,6 · 8,7. No names: every vessel shows its race. */
+    {
+        id: 'nexus_respawns', no: 5, tier: 'core', minutes: 8,
+        title: 'THE NEXUS AND RESPAWNS', sub: 'THE 0-8 COUNTER · CHANNEL · HOLDING A ZONE · THE RESPAWN LADDER · CELESTIAL EVENTS',
+        teaches: ['nexus', 'respawn', 'celestial'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 7, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 8, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 8, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 9, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 3, y: 1, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 4, y: 2, spells: [] },
+                  { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 6, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 5, y: 0, spells: [] } ],
+        },
+        steps: [
+            { id: 'real', title: 'A REAL MATCH',
+              say: 'From this tape on, the lessons are real matches: four against four on a 10×10 arena, fog on, the CPU playing its own game, and the match ends the way any match does. It opens mid-match: your <b>Ghoul</b> and their <b>Demon</b> have just fallen. The combat log says when each one comes back.',
+              enter: [['down', 'p1-3'], ['down', 'p2-3']], goal: { type: 'ack' } },
+            { id: 'counter', title: 'THE COUNTER',
+              say: 'The centre 2×2 is a <b>NEXUS</b>. Its counter reads from your side: <b>0/{{NEXUS_BAR}}</b> the enemy holds it, <b>{{NEXUS_TICKS}}/{{NEXUS_BAR}}</b> neutral, <b>{{NEXUS_BAR}}/{{NEXUS_BAR}}</b> yours. Each spawn row is a zone too: yours starts yours, theirs starts theirs.',
+              focus: { tile: [4, 4] }, goal: { type: 'ack' } },
+            { id: 'take', title: 'TAKE THE CENTRE',
+              say: 'Take it. A vessel stepping in is +1, <b>⬡ CHANNEL</b> (1 AP, bottom left) is +1, and at the round\'s end one vessel standing in it is +1, two or more +2. Both teams inside is <b>CONTESTED</b>: the counter freezes. Stepping off a zone that isn\'t fully yours takes a point back.',
+              hint: 'MOVE into the centre · ⬡ CHANNEL',
+              focus: { tile: [4, 4] }, allow: 'all',
+              goal: { type: 'nexus', player: 1, section: 'earth' } },
+            { id: 'hold', title: 'HOLD IT',
+              say: 'Yours. At each round\'s end a zone you hold heals your vessels standing in it <b>{{NEXUS_HEAL}}%</b> HP and MP and cleanses them; an enemy standing in it burns <b>{{NEXUS_BURN}}%</b> of its max HP. While nobody contests it, it pays your team Hazard Pay every round. Hold it through the round\'s end.<br><br>Mind <b>MOVE→CAST</b>: a target row with that tag walks the vessel into range first, and the step can take it off the zone.',
+              hint: 'hold the centre to the round\'s end',
+              focus: { tile: [4, 4] }, allow: 'all',
+              goal: { type: 'hold', player: 1, section: 'earth' } },
+            { id: 'respawn', title: 'THE RESPAWN LADDER',
+              say: 'A fallen vessel waits <b>2</b> rounds, then 3, 5 and 8 for each death after. It comes back on your home spawn while you hold it, else on the nearest zone you hold, else not at all (<b>SPAWN LOCKOUT</b>), and it sits out the round it comes back in. Play on until your Ghoul is back.',
+              hint: 'play on until the Ghoul respawns',
+              allow: 'all',
+              goal: { type: 'respawn', player: 1 } },
+            { id: 'celestial', title: 'CELESTIAL EVENTS',
+              say: 'One more rule for the centre: from round 4, and every 5 rounds after, a <b>celestial event</b> resets it to neutral. The team that captures it during the event claims the event\'s buff for every vessel it has standing, and a vessel keeps it until it dies.',
+              goal: { type: 'ack' } },
+            { id: 'done', title: 'THE NEXUS AND RESPAWNS',
+              say: 'The Nexus is the economy under every win: healing, Hazard Pay, respawns and Cube damage. Lose every zone and nothing of yours comes back.<br><br>Next: <b>WIN BY CUBE</b>.',
               goal: { type: 'ack', finish: true } },
         ],
     },
     {
-        id: 'fog', no: 5, tier: 'optional', minutes: 3,
+        id: 'win_cube', no: 6, tier: 'core', minutes: 6,
+        title: 'WIN BY CUBE', sub: 'THE BLACK CUBE · SIEGE · THE REFUND TRICK · KEEP ONE BACK',
+        teaches: ['cube', 'press', 'arena'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 4, y: 4, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 5, y: 4, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 5, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
+            p2: [ { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 2, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 6, y: 2, spells: [] },
+                  { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 4, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 1, spells: [] } ],
+        },
+        steps: [
+            { id: 'start', title: 'MID-MATCH',
+              say: 'You hold the centre, and their <b>BLACK CUBE</b> (the block in front of their spawn) is down to 20%. Only the basic <b>ATTACK</b> hurts a Cube (it has its own row in the ATTACK list); spells can\'t touch it. It takes the higher of ATK and M.ATK, <b>×{{SIEGE}}</b> for each zone you hold that isn\'t your home, ×2 at most.',
+              enter: [['nexus', 'earth', 1], ['cube', 2, 0.2]],
+              focus: { cube: 2 }, goal: { type: 'ack' } },
+            { id: 'trick', title: 'THE REFUND TRICK',
+              say: 'A basic attack ends the turn, unless it hits a <b>weakness</b>. Hit a weak enemy first (a green <b>!</b> on its target row means <b>+{{PRESS_AP}} AP</b> back), then spend the refund on the Cube. Your <b>Nun</b> is super-effective on the Skeleton and the Demon, your <b>Swordfighter</b> on the Grey.<br><br>Keep one vessel back on the centre: losing it costs the siege bonus, and four of yours down at once is a wipeout.',
+              goal: { type: 'ack' } },
+            { id: 'break', title: 'BREAK IT',
+              say: 'Break their Cube. Any win counts: if the CPU gets careless, a wipeout ends it too.',
+              hint: 'ATTACK · ⬡ CUBE · ✓ CONFIRM',
+              focus: { cube: 2 }, allow: 'all',
+              goal: { type: 'win' } },
+            { id: 'done', title: 'WIN BY CUBE',
+              say: 'Hold zones for the siege bonus, use a weakness to buy the second hit, and never send all four. Next: <b>WIN BY KEYS</b>.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'win_keys', no: 7, tier: 'core', minutes: 6,
+        title: 'WIN BY KEYS', sub: 'INSPECT · THE SCAN FOOTPRINT · KEY SPACING · CARRIERS',
+        teaches: ['keys', 'inspect', 'arena'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 7, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 2, y: 7, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 6, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 4, y: 2, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 6, y: 3, spells: [] },
+                  { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 2, spells: [] } ],
+        },
+        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, north of the marked tile
+        steps: [
+            { id: 'start', title: 'MID-MATCH',
+              say: 'Your <b>Swordfighter</b> and <b>Marksman</b> carry four of the {{KEYS_POOL}} Keys between them. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>. The last one is still on the ground, hidden.',
+              enter: [['carry', 'p1-0', 2], ['carry', 'p1-1', 2]],
+              focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
+            { id: 'scan', title: 'INSPECT',
+              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that tile and the ones around it, nearest first, as many tiles as the vessel\'s <b>VISION</b> (VISION 9 covers the whole 3×3). No two Keys on the ground sit within 2 tiles of each other, so after a find, search further away.<br><br>The last Key is in the 3×3 around the marked tile.',
+              focus: { tile: [1, 4] }, goal: { type: 'ack' } },
+            { id: 'find', title: 'THE LAST KEY',
+              say: 'Find it and keep all five. A carrier that dies drops its Keys where it fell (the log says where), and the enemy can scan them up. Any win counts.',
+              hint: 'MOVE · 🔍 INSPECT around the marked tile',
+              focus: { tile: [1, 4] }, allow: 'all',
+              goal: { type: 'win' } },
+            { id: 'done', title: 'WIN BY KEYS',
+              say: 'Scan where the Keys can still be, spread your carriers, and keep them alive. Next: <b>WIN BY WIPEOUT</b>.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'win_wipeout', no: 8, tier: 'core', minutes: 6,
+        title: 'WIN BY WIPEOUT', sub: 'RESPAWN TIMERS · DOWN AT ONCE · THE ENTROPY STRIKE NEEDS EYES',
+        teaches: ['arena', 'respawn', 'entropy'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 5, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 6, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 6, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
+            /* the two still up are hurt and stand apart, out of sight of your four (fog): the Strike needs eyes on both */
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 2, y: 2, spells: [], hp: 0.3 },
+                  { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 8, y: 2, spells: [], hp: 0.3 },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 4, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 6, y: 0, spells: [] } ],
+        },
+        steps: [
+            { id: 'start', title: 'MID-MATCH',
+              say: 'Two of theirs are down on respawn timers (the log says when each comes back), and the other two are hurt. A team is wiped out when all its vessels are down at once, and the ones waiting to respawn count as down. Finish the last two before the first timer runs out.',
+              enter: [['down', 'p2-2', 3], ['down', 'p2-3', 3], ['gauge', 1, 100]],   // both back in 3 rounds (a second death's timer)
+              goal: { type: 'ack' } },
+            { id: 'strike', title: 'EYES FIRST',
+              say: 'Your Entropy Gauge is full. <b>⚛ ENTROPY</b> (bottom left, under BUILD) costs 1 AP and hits every hostile your team can <b>see</b>. In the fog that means eyes on both first: move vessels up until both are in sight, then strike.',
+              focus: { hud: 'entropy' }, goal: { type: 'ack' } },
+            { id: 'wipe', title: 'EVERY HOSTILE',
+              say: 'Put both down before the timers bring the others back. Any win counts.',
+              hint: 'get both in sight · ⚛ ENTROPY',
+              allow: 'all',
+              goal: { type: 'win' } },
+            { id: 'done', title: 'WIN BY WIPEOUT',
+              say: 'Kill in waves so the timers overlap, and get eyes on everyone before the Strike. That is the core: three ways out, and the Nexus under all of them. The rest of the shelf is optional reading, in any order.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── OPTIONAL ───────────────────────────────────────────────────── */
+    {
+        id: 'fog', no: 9, tier: 'optional', minutes: 3,
         title: 'FOG & VISION', sub: 'LINE OF SIGHT · VISION · CLOAKED ENTITIES',
         teaches: ['fog'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30, fog: true,
@@ -24225,15 +26424,18 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'facing', no: 6, tier: 'optional', minutes: 4,
+        id: 'facing', no: 10, tier: 'optional', minutes: 4,
         title: 'FACING & OVERWATCH', sub: 'THE BACK ARC · GUARD · THE REACTION SHOT',
         teaches: ['facing', 'guard'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
         board: {
-            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
+            /* BLADE starts one MOVE (4 tiles) from the tile behind DUMMY A, so the back-arc strike fits in one turn
+               (2026-10-23: from 3,6 it took two moves and a second turn); DUMMY B starts nearer SCOPE than BLADE, so its
+               approach ends inside SCOPE's range and the overwatch shot fires (from 5,0 it walked to BLADE instead) */
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 4, y: 5, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 5, y: 6, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [], face: [0, 1] },
-                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 5, y: 0, spells: [] } ],
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 7, y: 3, spells: [] } ],
         },
         order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
         steps: [
@@ -24260,7 +26462,7 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'abilities', no: 7, tier: 'optional', minutes: 4,
+        id: 'abilities', no: 11, tier: 'optional', minutes: 4,
         title: 'ABILITIES & MP', sub: 'RANGE · MP · ONE CAST A TURN · BUFFS DON\'T END THE TURN',
         teaches: ['spells', 'ap'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
@@ -24273,7 +26475,7 @@ const TUTORIAL_LESSONS = [
         order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
         steps: [
             { id: 'mp', title: 'ABILITIES',
-              say: 'Abilities cost <b>MP</b> (the blue bar) and have their own <b>range</b>. A vessel may cast <b>one ability a turn</b> — two after a press. A buff, heal or ward costs 1 AP and <b>keeps the turn</b>; a damaging cast ends it.',
+              say: 'Abilities cost <b>MP</b> (the blue bar) and have their own <b>range</b>. A vessel may cast <b>one ability a turn</b> — two after a press, never the same one twice. A buff, heal or ward costs 1 AP and <b>keeps the turn</b> (pick it, then ✓ CONFIRM); a damaging cast costs 1 AP and ends it.',
               focus: { hud: 'abil' }, goal: { type: 'ack' } },
             { id: 'bless', title: 'BLESSING',
               say: 'Open ABILITIES and cast <b>BLESSING</b> on BLADE. It costs 1 AP — SISTER keeps her turn.',
@@ -24281,7 +26483,7 @@ const TUTORIAL_LESSONS = [
               focus: { hud: 'abil' }, allow: ['spell:raceBlessing', 'move'],
               goal: { type: 'spell', unit: 'p1-0', spellId: 'raceBlessing' } },
             { id: 'gate', title: 'ONE CAST',
-              say: 'Try ABILITIES again — SMITE is grey: <b>1 spell/turn</b>. Spend the last AP on a MOVE, or END TURN.',
+              say: 'ABILITIES now reads <b>USED THIS TURN</b>: one cast a turn. Spend the last AP on a MOVE, or END TURN.',
               hint: 'MOVE · or END TURN',
               allow: ['move', 'end', 'spell'],
               goal: { type: 'end', unit: 'p1-0' } },
@@ -24291,7 +26493,7 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'items', no: 8, tier: 'optional', minutes: 2,
+        id: 'items', no: 12, tier: 'optional', minutes: 2,
         title: 'ITEMS', sub: 'THE BAG · POTIONS · BANES',
         teaches: ['items'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
@@ -24305,17 +26507,17 @@ const TUTORIAL_LESSONS = [
               say: 'Every vessel carries up to {{ITEM_SLOTS}} kinds of item, packed in the Party Builder. <b>ITEMS</b> costs 1 AP and keeps the turn. BLADE is hurt and carries two potions.',
               focus: { hud: 'items' }, goal: { type: 'ack' } },
             { id: 'drink', title: 'POTION',
-              say: 'Open <b>ITEMS</b>, pick the HEAL POTION and click BLADE.',
-              hint: 'ITEMS · HEAL POTION · BLADE',
+              say: 'Open <b>ITEMS</b>, pick the HEALING POTION, pick BLADE, then <b>✓ CONFIRM</b>.',
+              hint: 'ITEMS · HEALING POTION · BLADE · ✓ CONFIRM',
               focus: { hud: 'items' }, allow: ['item', 'move'],
               goal: { type: 'item', unit: 'p1-0' } },
             { id: 'done', title: 'ITEMS',
-              say: 'Potions target allies; <b>BANES</b> are thrown at enemies and press on a type weakness like a spell. Items never come back — the bag is the whole supply.',
+              say: 'Potions reach <b>any living ally on the map</b>; <b>BANES</b> are thrown at enemies and press on a type weakness like a spell. Items never come back — the bag is the whole supply.',
               goal: { type: 'ack', finish: true } },
         ],
     },
     {
-        id: 'hud_tour', no: 9, tier: 'optional', minutes: 2,
+        id: 'hud_tour', no: 13, tier: 'optional', minutes: 2,
         title: 'THE HOROLOGE', sub: 'A TOUR OF THE BATTLE SCREEN',
         teaches: ['hud'],
         map: 'prebuilt_training', mode: 'arena', rounds: 30,
@@ -24328,7 +26530,7 @@ const TUTORIAL_LESSONS = [
         order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
         steps: [
             { id: 'rig', title: 'THE HOROLOGE',
-              say: 'Bottom left: the active vessel\'s plate — HP, MP, the AP pips — and the command ladder. Each verb wears its own colour.',
+              say: 'Left: the active vessel\'s card — HP and MP — with the action menu beside it. Each verb wears its own colour; a red ENDS TURN tag marks the ones that end the turn. The AP cubes sit in the top-left corner.',
               focus: { hud: 'move' }, goal: { type: 'ack' } },
             { id: 'score', title: 'THE SCOREBOARD',
               say: 'Top: the score, the round, and the objectives — Cube HP, Keys held, the Nexus pips.',
@@ -24381,6 +26583,12 @@ const TUTORIAL_MECHANICS = {
     height:  { label: 'high ground', lessons: ['high_ground'],
                pins: [{ name: 'HIGH_GROUND_RANGE_BONUS', file: 'battle.js', value: 1 }, { name: 'HIGH_GROUND_DEF_BONUS', file: 'battle.js', value: 5 }, { name: 'DOWNHILL_DAMAGE_BONUS', file: 'battle.js', value: 0.1 }],
                watch: [] },
+    respawn: { label: 'the respawn ladder', lessons: ['nexus_respawns', 'win_wipeout'], pins: [], watch: [{ file: 'map.js', fn: 'defeatUnit' }, { file: 'map.js', fn: 'processRespawns' }, { file: 'map.js', fn: 'getRespawnZoneFor' }] },
+    celestial: { label: 'celestial events', lessons: ['nexus_respawns'], pins: [], watch: [{ file: 'state.js', fn: 'rollSkyEvent' }, { file: 'ui.js', fn: 'claimCelestialBuff' }] },
+    inspect: { label: 'inspect + the scan', lessons: ['win_keys'], pins: [], watch: [{ file: 'battle.js', fn: 'getInspectFootprint' }, { file: 'state.js', fn: 'getInspectTileCount' }, { file: 'battle.js', fn: 'canPlaceHourglassAt' }] },
+    jump:    { label: 'the jump stat', lessons: ['high_ground'], pins: [], watch: [] },
+    climb:   { label: 'climbing', lessons: ['high_ground'], pins: [], watch: [] },
+    flight:  { label: 'flyers: take off and land', lessons: ['high_ground'], pins: [], watch: [] },
     fog:     { label: 'fog + vision', lessons: ['fog'], pins: [], watch: [{ file: 'map.js', fn: 'computeVisibleTiles', hash: 'c98a65b968' }] },
     facing:  { label: 'facing arcs', lessons: ['facing'],
                pins: [{ name: 'FACING_BACK_DMG_MULT', file: 'battle.js', value: 1.25 }, { name: 'FACING_SIDE_DMG_MULT', file: 'battle.js', value: 1.10 }],
@@ -24424,6 +26632,7 @@ function tutorialFacts() {
         STAB: n('STAB_MULTIPLIER', 1.25),
         GAUGE_MAX: n('ENTROPY_GAUGE_MAX', 100),
         NEXUS_TICKS: n('NEXUS_CAPTURE_THRESHOLD', 4),
+        NEXUS_BAR: 2 * n('NEXUS_CAPTURE_THRESHOLD', 4),   // the zone counter reads 0..2×threshold from a team's side (ui.js nexusTeamReadout)
         NEXUS_HEAL: pct(n('NEXUS_HOLD_HEAL_PCT', 0.15)),
         NEXUS_BURN: pct(n('NEXUS_HOSTILE_DMG_PCT', 0.25)),
         SIEGE: (1 + n('NEXUS_CUBE_DMG_PER_ZONE', 0.5)).toFixed(1),

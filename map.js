@@ -7835,7 +7835,7 @@
                     <div class="tut-card-main">
                         <div class="tut-card-title">${esc(L.title)}${done ? '<span class="door-stamp tut-stamp">FILED</span>' : ''}</div>
                         <div class="tut-card-sub">${esc(T(L.sub || ''))}</div>
-                        <div class="tut-card-chips">${chips}<span>~${esc(L.minutes || 3)} MIN · ${esc(L.map === 'prebuilt_holosim' ? 'ROOM 404 · HOLO SIM' : 'ROOM 64')}</span></div>
+                        <div class="tut-card-chips">${chips}<span>~${esc(L.minutes || 3)} MIN · ${esc(L.where || (L.map === 'prebuilt_holosim' ? 'ROOM 404 · HOLO SIM' : 'ROOM 64'))}</span></div>
                     </div>
                     <div class="tut-card-actions"><button class="hq-btn${done ? '' : ' hq-btn-primary'}" data-tut-start="${esc(L.id)}">${done ? 'REPLAY' : 'START'} ▸</button></div>
                 </div>`;
@@ -7845,7 +7845,7 @@
             body.innerHTML = `
                 <div class="tut-shelf-hd">
                     <div class="tut-shelf-kicker">TRAINING FACILITY · ROOM 64 · ORTHOGONAL GEOMETRY EXPOSURE AREA</div>
-                    <div class="tut-shelf-line">Orientation is <b>optional</b> and unscored: nothing here is filed as a match, mistakes earn a memo, not a fail. Every tape is a scripted crossing on the Training Room grid with the Department's dummies. <b>${esc(prog.coreDone)}/${esc(prog.coreTotal)}</b> core tapes filed · ${esc(prog.doneCount)}/${esc(prog.total)} in all.</div>
+                    <div class="tut-shelf-line">Orientation is <b>optional</b> and unscored: nothing here is filed as a match, mistakes earn a memo, not a fail. The first tapes are scripted crossings against the Department's dummies; from THE NEXUS AND RESPAWNS on, every tape is a real match, four against four against the CPU. <b>${esc(prog.coreDone)}/${esc(prog.coreTotal)}</b> core tapes filed · ${esc(prog.doneCount)}/${esc(prog.total)} in all.</div>
                 </div>
                 <div class="tut-tape${prog.tape ? ' filed' : ''}">
                     <div class="tut-tape-cassette"><div class="tut-tape-label">${esc((typeof TUTORIAL_TAPE !== 'undefined' && TUTORIAL_TAPE.label) || 'D.O.O.R. ORIENTATION')}</div><div class="tut-tape-reels"><i></i><i></i></div></div>
@@ -7858,11 +7858,10 @@
                         <button class="hq-btn" data-tut-tape="only">REWATCH</button>
                     </div>
                 </div>
-                <div class="tut-shelf-sec">THE CORE · three tapes, in order</div>
+                <div class="tut-shelf-sec">THE CORE · ${esc(core.length)} tapes, in order</div>
                 <div class="tut-shelf-list">${core.map(card).join('')}</div>
                 <div class="tut-shelf-sec">OPTIONAL READING · any order</div>
-                <div class="tut-shelf-list">${opt.map(card).join('')}</div>
-                <div class="tut-shelf-foot">A rule that changes flags its tape: <code>npm test</code> (tutorial.test.js) fails on a drifted number or rule until the lesson is re-read. Dev: <code>Tutorial.start('the_press')</code> · <code>Tutorial.skipStep()</code> · <code>doorTapePlay()</code>.</div>`;
+                <div class="tut-shelf-list">${opt.map(card).join('')}</div>`;
         };
         window._tutorialPlayTape = function (opts) {
             opts = opts || {};

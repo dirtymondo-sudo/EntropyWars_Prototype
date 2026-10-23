@@ -962,3 +962,37 @@ the walk), on the classic, pmndrs and node (TSL) chains. Nothing was removed. De
 - **Night Mood** in a room: `_roomNight(night)` grades from the room's own night (walk: `H.sky.night`; fight: `field.night`
   from `_fieldCycle`). Factory 0.40 = as before; higher feeds `uNightGrade`, lower lifts the gain at night. Day = untouched.
 - Probe (scratchpad, not in repo): SwiftShader frames take seconds, so a shot needs `frames` drawn after a setting change.
+
+## THE ONLINE PLAYTEST FIXES (2026-10-23; the two-seat guest + host playtest reports, mondo: "do fixes for the guest and host findings")
+- **The match end reaches the guest.** The end happens inside finalizeMatch (no broadcast) and the host's handoff
+  heartbeat (online.js `_handoffHeartbeat`) stopped the moment `state.winner` was set, so the guest sat on the board
+  (3½ min on the host thread's run) or got a sudden-death result without the last kill (4 v 4 vs 3 v 4). The heartbeat
+  now keeps calling `_broadcastState` for 20 s after the end (`N._endSyncUntil`; the JSON dedup drops repeats), and the
+  guest finalizes a draw too (`_winCondition === 'draw'`, winner 0 is falsy).
+- **The guest's turn has a clock.** battle.js `_continueBlitzWithUnit_impl`'s REMOTE branch called `_stopShotClock()`
+  and nothing restarted it (a guest turn sat open 33 min). It now `_startShotClock()`s: the clock syncs, the guest's
+  own browser ends its turn, and the host backstop (`_shotClockExpired`, +8 s) has a running clock to fire on. The
+  pill shows the remote turn's last 15 s on the host too. `_stopMatchClockInterval` now hides the pill (a "⏱ 4s"
+  stayed over the result screen).
+- **A drop on the loading screen.** Building the board holds a weak PC's main thread for tens of seconds; socket.io's
+  20 s pingTimeout dropped the seat, and recovery gave the (still loading) host 20 s. server.js: `pingTimeout: 60000`
+  and the recovery deadline 60 s; online.js `RECOVERY_WAIT_S = 60` for the host's poll and the overlay. **server.js
+  changed** (the live matchmaker has to run the new copy).
+- **The guest's log** (`_guestLogFilter`, called from `_guestViewFilter`, so state-sync and the recovery snapshot): the
+  host judges each `logEntries` / `_fullLogEntries` / `logDialogue` entry ONCE as it first goes out, by the guest's own
+  rule (battle.js `_logVisible`): another seat's line (`v`) dropped, a line naming a unit `_guestView` hides with none
+  of the guest's own units named dropped, a line naming a tile in the guest's fog dropped. Kept beats get their `at`
+  remapped onto the kept log. A decided match sends the whole log (like the units). Before, every line went out whole
+  and only the guest's renderer judged it (fogged Bee Queen's Swarm Signal / War Cry, fogged Anubis "forms at E12",
+  shot-clock lines were all in the guest's data). Refused-attack lines (camouflaged / blur / Shadow Realm / "Choose an
+  enemy") are now the attacker's seat line (`addLog(msg, unit.player)`).
+- **Per-viewer:** `lastCompletedMatch` + `matchHistory` are in `_serializeState`'s skip list (the host's copy landed
+  between the guest's record and its result screen and greyed the guest's Export Last Match).
+- **Smaller:** the friendly room opens on Arena's own round limit (20, was 15 until Arena was clicked); the canon year
+  (`_lsRandomYear`, loading card + result stamp) is seeded from `NET.matchId` + match number online so both seats
+  read the same year; the no-active-unit watchdog stands down while the opponent is away / the match is restoring
+  (it forced a turn advance in the middle of a 7 s guest drop).
+- Browser check: local server.js + two headless seats (scratchpad ctl.js), Arena 4v4: friendly room 20 rounds, a guest
+  socket drop on the loading screen restored, guest turns ended on the clock (activation 1 → 2 on both seats), injected
+  fog log lines filtered on the guest (hidden-unit and fogged-tile lines gone, own-unit / own-seat / plain lines kept),
+  a sudden-death kill ended the match on both seats (VICTORY / DEFEAT, 3 v 4 on both, same year, guest Export enabled).

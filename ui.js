@@ -7904,6 +7904,9 @@
             const expMaxPct = Math.round(expRange.max*100);
             const nightMood = (typeof ThreePost!=='undefined'&&ThreePost.getNightMood)?ThreePost.getNightMood():0.65;
             const nightMoodPct = Math.round(nightMood*100);
+            // THE UNIT RIM LIGHT rev 2 (three-renderer.js setUnitLight): rim on/off, strength, colour + the night fill
+            const unitLight = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getUnitLight)?ThreeRenderer.getUnitLight():{on:true,strength:1,color:'#a8c4ff',fill:1};
+            const rimPct = Math.round(unitLight.strength*100), fillPct = Math.round(unitLight.fill*100);
             const impactFx = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFx)?ThreePost.getImpactFx():0.7;
             const impactFxMax = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFxMax)?ThreePost.getImpactFxMax():1.5;
             const impactFxPct = Math.round(impactFx*100);
@@ -8031,6 +8034,27 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light. In a room or zone it grades from the room's own night</span>
+                    </div>
+                    <div class="pm-set-toggles" style="margin-top:8px">
+                        <label class="pm-toggle"><input type="checkbox" ${unitLight.on ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({on:this.checked});"><span class="pm-toggle-label">Unit Rim Light</span><span class="pm-toggle-hint">a soft moonlit edge on every unit, stronger at night</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Rim Strength</span>
+                        <input type="range" min="0" max="200" step="5" value="${rimPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({strength:this.value/100});this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${rimPct===0?'off':unitLight.strength.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Rim Colour</span>
+                        <input type="color" value="${unitLight.color}" style="width:44px;height:22px;padding:0;border:1px solid rgba(255,255,255,0.25);background:none;cursor:pointer" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({color:this.value});this.nextElementSibling.textContent=this.value;">
+                        <span class="pm-vol-val">${unitLight.color}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Unit Night Fill</span>
+                        <input type="range" min="0" max="200" step="5" value="${fillPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({fill:this.value/100});this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${fillPct===0?'off':unitLight.fill.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">a soft light on the units only at night, in the rim colour, so they show their own colours instead of dark shapes</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Impact Flash</span>
@@ -15477,7 +15501,9 @@
            / -lw (outline px) / -glow / -rad (shape) / -menu (size of the small ones) / -big (size over a unit) / -lift /
            -anim. The var() fallbacks ARE the game's own look: green, a dark !, a white outline. big = the mark over a
            unit (it bobs); px = the small one's size before -menu scales it. */
-        function _seBangHtml(px, big) {
+        /* THE +1 LOOK (mondo 2026-10-23: "yeah give +1 its own look"): a press with a resistance on it hands back +1 AP,
+           not +2 (battle.js THE PRESS SUM) — its ! is HOLLOW: a dark disc, the green as the ring and the mark. `half`. */
+        function _seBangHtml(px, big, half) {
             const sz = big ? 'var(--ew-se-big, 26px)' : `calc(${px || 14}px * var(--ew-se-menu, 1))`;
             const lw = big ? 'var(--ew-se-lw, 2px)' : 'calc(var(--ew-se-lw, 2px) * 0.6)';
             if (!document.getElementById('ew-se-keys')) {
@@ -15485,15 +15511,19 @@
                 st.textContent = '@keyframes ewSeBob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.08); } }';
                 document.head.appendChild(st);
             }
-            return '<span class="ew-se-bang" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;'
-                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:var(--ew-se-fill, #2ecc71);color:var(--ew-se-mark, #06130a);`
-                + `border:${lw} solid var(--ew-se-line, #ffffff);font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
+            const fill = half ? 'rgba(6,19,10,0.88)' : 'var(--ew-se-fill, #2ecc71)';
+            const mark = half ? 'var(--ew-se-fill, #2ecc71)' : 'var(--ew-se-mark, #06130a)';
+            const ring = half ? `calc(${lw} + 1px) solid var(--ew-se-fill, #2ecc71)` : `${lw} solid var(--ew-se-line, #ffffff)`;
+            return `<span class="ew-se-bang${half ? ' ew-se-half' : ''}" title="${half ? '+1 AP back (a resistance takes 1 off the press)' : '+2 AP back (the press)'}" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;`
+                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:${fill};color:${mark};`
+                + `border:${ring};font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
                 + 'vertical-align:middle;flex:none;text-shadow:none;'
                 + (big ? 'animation:var(--ew-se-anim, ewSeBob) 1.2s ease-in-out infinite;' : 'margin-right:4px;')
                 + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
         }
         window._ewSeBangHtml = _seBangHtml;
         const _SE_CIRCLE_HTML = _seBangHtml(14);
+        const _SE_HALF_HTML = _seBangHtml(14, false, true);   // the +1 press
         // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
         const _IMM_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
             + 'width:14px;height:14px;border-radius:50%;background:#e8333f;color:#fff;'
@@ -15511,14 +15541,14 @@
         }
         window._pressOf = _pressOf;
 
-        function _getTypeEffLabel(caster, target, spell, pressBy) {
+        function _getTypeEffLabel(caster, target, spell, pressBy, half) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
             // STAB is a silent bonus — the label only speaks about the actual
             // weak/resist matchup, so back the STAB factor out first.
             const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
             const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
             const effMult = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
-            if (effMult > 1.001) return { text: (pressBy === 'type' ? _SE_CIRCLE_HTML : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
+            if (effMult > 1.001) return { text: (pressBy === 'type' ? (half ? _SE_HALF_HTML : _SE_CIRCLE_HTML) : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
             if (effMult < 0.999) return { text: 'RESISTED', cls: 'not-effective' };
             return null;
         }
@@ -15745,17 +15775,21 @@
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
                     const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
-                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null);
+                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null, plan.pressAp === 1);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     /* THE ELEMENT SHARE (2026-10-17): the element badge speaks for the element PART; the green !-circle
                        only when the plan presses and that part is what presses (h.pressBy, battle.js THE PRESS
                        FORECAST); immune / absorb wear the red one (the main part still lands, no press). */
                     const _iPress = !!(h.press && h.pressBy === 'element');
-                    if (_iAff === 'weak') push((_iPress ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
+                    const _iSe = plan.pressAp === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
+                    if (_iAff === 'weak') push((_iPress ? _iSe : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'immune') push(_immBadgeHtml(`${_iEl.toUpperCase()} IMMUNE`), 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'absorb') push(_immBadgeHtml(`${_iEl.toUpperCase()} ABSORBED`), 'intent-type-eff not-effective', 14);
+                    /* THE STATUS COMBO PRESS (mondo 2026-10-23): the hit lands its ×combo on the target's status — the
+                       green !-circle when the combo is what presses */
+                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _iSe : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
                     for (const sl of _getStatusPreviewLabels(spell)) {
@@ -15865,7 +15899,8 @@
 
                 if (spell.dmg || (spell.hitDamages && spell.hitDamages.length)) {
                     const _iPr = isEnemyUnit(caster, target) ? _pressOf(caster, target, spell, { aim: { x, y } }) : { press: false, by: null };
-                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null);
+                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null, _iPr.ap === 1);
+                    const _iPrSe = _iPr.ap === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
                     if (typeEff) {
                         badgeStack.push({ html: typeEff.text, cls: `intent-type-eff ${typeEff.cls}`, yOff });
                         yOff += 14;
@@ -15873,10 +15908,14 @@
                     // Element weak/resist reads beside the type matchup, named
                     // by its element (immune/absorb already spoke above).
                     if (_iAff === 'weak' && isEnemyUnit(caster, target)) {
-                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _iPrSe : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
                         badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });
+                        yOff += 14;
+                    }
+                    if (_iPr.press && _iPr.by === 'combo') {
+                        badgeStack.push({ html: _iPrSe + '⚗ COMBO', cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     }
                 }
@@ -16623,7 +16662,8 @@
         const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
                                abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
                                guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.ew-ap-press',
-                               entropy: '.hrlg-push[data-pid="entropyStrike"]', nexus: '.hrlg-push[data-pid="nexus"]' };
+                               entropy: '.hrlg-push[data-pid="entropyStrike"]', nexus: '.hrlg-push[data-pid="nexus"]',
+                               climb: '.hrlg-blade[data-bid="climb"]', fly: '.hrlg-push[data-pid="fly"]' };
         /* the engine's closure constants, for data.js tutorialFacts (the
            copy's {{numbers}} are always the live rule) */
         window._tutEngineFacts = function () {
@@ -16723,7 +16763,8 @@
                 if (window._NET && !window._NET.online) window._NET.myPlayer = 1;
                 window._hqCpuPool = null; window._hqPreselect = null; window._hqCodeRedRun = null; window._msCpuOnly = true;
                 _tut.lesson = L; _tut.active = true; window._tutActive = true;
-                _tut.stepIdx = -1; _tut.step = null; _tut.events = []; _tut.finished = false; _tut.booting = true; _tut.metAt = 0;
+                window._tutWeatherOff = !L.weather;   // state.js spawnWeather / rollSkyEvent: calm boards unless the lesson teaches the weather
+                _tut.stepIdx = -1; _tut.step = null; _tut.events = []; _tut.finished = false; _tut.booting = true; _tut.metAt = 0; _tut.outcome = null;
                 const ov = document.getElementById('startOverlay');
                 if (ov) { ov.classList.add('hidden'); ov.style.display = 'none'; ov.style.pointerEvents = 'none'; ov.setAttribute('aria-hidden', 'true'); }
                 state.teamLockedIn = true;
@@ -16731,7 +16772,7 @@
                 startMatch();
             } catch (e) {
                 console.error('[Tutorial] launch failed', e);
-                _tut.active = false; window._tutActive = false; _tut.booting = false; window._tutReturnPage = null;
+                _tut.active = false; window._tutActive = false; window._tutWeatherOff = false; _tut.booting = false; window._tutReturnPage = null;
                 if (_tut.saved) { window.EW_DISABLE_INTRO_CINE = _tut.saved.introCine; state.fogOfWar = _tut.saved.fog; _tut.saved = null; }
                 return false;
             }
@@ -16795,6 +16836,7 @@
             _tut.prevStepMark = _tut.stepMark || 0;
             _tut.stepMark = _tut.events.length;
             _tut.stepActiveId = state._blitzActiveUnitId || null;
+            _tut.stepRound = state.round || 0;
             _tut.metAt = 0;
             if (!st) { _tutFinish(); return; }
             try { (st.enter || []).forEach(fx => _tutEffect(fx)); } catch (e) { console.error('[Tutorial] enter effect', e); }
@@ -16832,6 +16874,39 @@
                 if (h) { h.x = fx[1]; h.y = fx[2]; h.visibleTo[1] = true; h.visibleTo[2] = true; }
             } else if (k === 'camera') {
                 _tutCamera(fx[1], fx[2]);
+            } else if (k === 'down') {
+                /* a vessel that fell before the tape starts (the arena tapes open mid-match): the real defeat — the respawn
+                   ladder, the log line, the Keys it carried — without the death close-up; fx[2] = its own respawn timer */
+                const u = _tutUnit(fx[1]);
+                if (u && !u.dead && typeof defeatUnit === 'function') {
+                    const cu = window.playDeathCloseup;
+                    window.playDeathCloseup = null;
+                    try { defeatUnit(u, null); } finally { window.playDeathCloseup = cu; }
+                    if (typeof fx[2] === 'number') u._respawnIn = fx[2];
+                    u._tutDown = true;
+                    /* it was the vessel up: the clock moves on once the body is down (the defeat's own beat) */
+                    if (state._blitzActiveUnitId === u.id) setTimeout(() => { if (_tut.active && u.dead && state._blitzActiveUnitId === u.id && typeof maybeAdvanceTurn === 'function') maybeAdvanceTurn(); }, 1000);
+                }
+            } else if (k === 'carry') {
+                /* fx[2] Keys off the ground into a vessel's pocket — the same bookkeeping an Inspect pickup does (battle.js _inspectFootprintAt) */
+                const u = _tutUnit(fx[1]);
+                for (let i = 0; u && i < (fx[2] || 1); i++) {
+                    const h = (state.hourglasses || []).find(x => !x.carriedBy);
+                    if (!h) break;
+                    h.carriedBy = u.id; h.visibleTo[1] = true; h.visibleTo[2] = true;
+                    u.hourglasses = (u.hourglasses || 0) + 1;
+                    u.hourglassBuff = (u.hourglassBuff || 0) + 1;
+                    if (state.hourglassBuffs) state.hourglassBuffs[u.player] = (state.hourglassBuffs[u.player] || 0) + 1;
+                }
+            } else if (k === 'nexus') {
+                /* a zone already held: fx[1] section, fx[2] team (the counter at its end, as a capture leaves it) */
+                const nex = state.nexusPoints && state.nexusPoints[fx[1]];
+                const thr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
+                if (nex) { nex.owner = fx[2]; nex.progress = fx[2] === 1 ? thr : (fx[2] === 2 ? -thr : 0); }
+            } else if (k === 'cube') {
+                /* a Cube already hit: fx[1] whose, fx[2] the HP left as a share of its max */
+                const tw = state.towers && state.towers[fx[1]];
+                if (tw) tw.hp = Math.max(1, Math.round((tw.maxHp || tw.hp) * fx[2]));
             }
         }
         function _tutCamera(x, y) {
@@ -16886,7 +16961,9 @@
             const allow = _tutAllowList();
             if (allow === null) return true;
             let ok = allow.includes(kind);
-            if (!ok && kind === 'spell') ok = allow.some(a => a === 'spell' || (detail && a === 'spell:' + detail));
+            /* no spell id = opening the ABILITIES list (chooseActionMenu): a step that allows one named spell opens it,
+               the cast itself is checked again with its id (2026-10-23: Tapes 2 + 7 had stood still on a list that never opened) */
+            if (!ok && kind === 'spell') ok = allow.some(a => a === 'spell' || (detail ? a === 'spell:' + detail : a.startsWith('spell:')));
             if (ok && kind === 'spell' && detail && allow.some(a => a.startsWith('spell:')) && !allow.includes('spell') && !allow.includes('spell:' + detail)) ok = false;
             if (!ok) _tutNudge();
             return ok;
@@ -17001,13 +17078,35 @@
                     return (state.units || []).some(v => v.player === (g.player || 1) && !v.dead && typeof isInVision === 'function' && isInVision(v, t.x, t.y));
                 }
                 case 'activation': return !!_tutSince('activation', e => !uid || e.uid === uid);
+                /* the unit hangs on a face (battle.js _startClimb) / is off the ground (a flyer's take-off) / stands at height z or above, done climbing */
+                case 'climb': return !!u && !!u._climb && !busy;
+                case 'airborne': return !!u && !u.dead && typeof isUnitAirborne === 'function' && isUnitAirborne(u) && !busy;
+                case 'landed': return !!u && !u.dead && typeof isUnitAirborne === 'function' && !isUnitAirborne(u) && !busy;
+                case 'stand': return !!u && !u.dead && !u._climb && (u.z ?? 0) >= (g.z || 0) && !busy;
+                /* the zone is still the team's after a round end that came during this step */
+                case 'hold': {
+                    const nex = state.nexusPoints && state.nexusPoints[g.section || 'earth'];
+                    return !!nex && nex.owner === (g.player || 1) && (state.round || 0) > (_tut.stepRound || 0);
+                }
+                /* a vessel the tape put down (['down', …]) is back on the board */
+                case 'respawn': return (state.units || []).some(x => x.player === (g.player || 1) && x._tutDown && !x.dead && !x._dying);
+                /* the match is won (the real-CPU tapes; _tutPoll judges the outcome) */
+                case 'win': return !!_tut.outcome && _tut.outcome.winner === 1;
                 default: return false;
             }
         }
         function _tutPoll() {
             if (!_tut.active || _tut.finished || _tut.booting) return;
             _tutApplyGlow();
+            /* the coach fades while a target or tile is being picked (styles-base.css .tut-coach.aiming) */
+            const _ce = document.getElementById('tutCoach');
+            if (_ce) _ce.classList.toggle('aiming', !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
+            /* the real-CPU tapes end the way a match does (checkWin stands aside while a lesson runs) */
+            if (_tut.lesson && _tut.lesson.cpuAi && !_tut.outcome && !state._actionExecuting) {
+                const oc = _tutOutcome();
+                if (oc) { _tutMatchOver(oc); return; }
+            }
             const st = _tut.step;
             if (!st || !st.goal || st.goal.type === 'ack') return;
             /* THEIR TURN with one of yours still up (a Press refunded the AP after the step's strike — the step allows nothing,
@@ -17033,9 +17132,70 @@
                 try { playSfx('uiConfirm'); } catch (e) {}
             }
         }
+        /* ── the real-CPU tapes: how the match ends ──────────────────────── */
+        /* battle.js checkWin's own conditions, in its order (a wipeout, the Cube, the Keys), plus the lesson's round limit */
+        function _tutOutcome() {
+            const mp = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+            const wcs = (mp && mp.winConditions) || [];
+            if (wcs.includes('wipeout') && typeof getTeamWipeoutCount === 'function') {
+                const a1 = getTeamWipeoutCount(1), a2 = getTeamWipeoutCount(2);
+                if (a2 === 0 && a1 > 0) return { winner: 1, how: 'wipeout' };
+                if (a1 === 0 && a2 > 0) return { winner: 2, how: 'wipeout' };
+            }
+            const tw = state.towers;
+            if (wcs.includes('tower_destroyed') && tw && tw[1] && tw[2]) {
+                if (tw[2].hp <= 0) return { winner: 1, how: 'cube' };
+                if (tw[1].hp <= 0) return { winner: 2, how: 'cube' };
+            }
+            if (wcs.includes('hourglasses_collected') && typeof getKeysToWin === 'function') {
+                const need = getKeysToWin(mp);
+                const held = p => (state.hourglasses || []).filter(h => h.carriedBy != null && (state.units || []).find(u => u.id === h.carriedBy)?.player === p).length;
+                if (need > 0 && held(1) >= need) return { winner: 1, how: 'keys' };
+                if (need > 0 && held(2) >= need) return { winner: 2, how: 'keys' };
+            }
+            const rl = _tut.lesson && _tut.lesson.rounds;
+            if (rl && (state.round || 0) > rl) return { winner: 2, how: 'clock' };
+            return null;
+        }
+        const _TUT_WIN_LINE = {
+            wipeout: ['☠ WIPEOUT', 'every hostile is down at once'],
+            cube: ['⬡ THRESHOLD CLOSED', 'the enemy Cube is destroyed'],
+            keys: ['🗝 THRESHOLD STABILIZED', 'every Key is secured'],
+            clock: ['⏱ TIME', 'the round limit ran out'],
+        };
+        const _TUT_LOSS_LINE = { wipeout: 'all four of yours are down at once', cube: 'your Cube is destroyed', keys: 'they secured every Key', clock: 'the round limit ran out' };
+        function _tutMatchOver(oc) {
+            _tut.outcome = oc;
+            const line = _TUT_WIN_LINE[oc.how] || ['', ''];
+            const won = oc.winner === 1;
+            const lost = _TUT_LOSS_LINE[oc.how] || '';
+            try { addLog(won ? `${line[0]} — Player 1 wins: ${line[1]}!` : `${line[0]} — Player 2 wins: ${lost}.`); } catch (e) {}
+            try { if (typeof showCombatBanner === 'function') showCombatBanner(won ? line[0] : 'DEFEAT', won ? 'VICTORY · ' + line[1] : 'Player 2 wins · ' + lost, won ? 'pickup-friendly' : 'pickup-enemy'); } catch (e) {}
+            const L = _tut.lesson;
+            if (won) {
+                /* straight to the tape's last word (its finish step); nothing more is asked */
+                const fi = L.steps.findIndex(x => x.goal && x.goal.finish);
+                _tutGoto(fi >= 0 ? fi : L.steps.length - 1);
+                return;
+            }
+            _tut.finished = true;   // a loss files nothing: the coach offers the tape again
+            if (_tut.autoTimer) { clearTimeout(_tut.autoTimer); _tut.autoTimer = null; }
+            if (_tut.tileTimer) { clearInterval(_tut.tileTimer); _tut.tileTimer = null; }
+            _tutApplyGlow();
+            try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
+            const el = _tutMountCoach();
+            el.classList.add('done');
+            el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span></div>'
+                + '<div class="tut-coach-stamp">LOST</div>'
+                + '<div class="tut-coach-body">Player 2 wins: ' + escapeHtml(lost) + '. Nothing is filed. Run the tape again.</div>'
+                + '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="restart">RESTART TAPE ▸</button>'
+                + '<button class="tut-btn" data-tut="list">' + (_tut.from === 'hq' ? 'BACK TO ROOM 64' : 'THE SHELF') + '</button></div>';
+        }
         /* ── the dummies ───────────────────────────────────────────────── */
         window._tutCpuTurn = function (unit) {
             if (!_tut.active || !unit || unit.player !== 2) return false;
+            /* the real-CPU tapes: the CPU plays its own game (battle.js runComputerTurn → the AI) until the match is over */
+            if (_tut.lesson && _tut.lesson.cpuAi && !_tut.finished && !_tut.outcome) return false;
             const st = _tut.step;
             const plan = (!_tut.finished && st && st.cpu && st.cpu[_tutKeyOf(unit.id)]) || 'hold';
             const gen = state._blitzActiveUnitId;
@@ -17091,6 +17251,7 @@
                 else if (act === 'leave') window._tutorialLeave();
                 else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutTeardown(() => window._tutorialLaunch(n.id, { from: _tut.from })); }
                 else if (act === 'list') window._tutorialLeave(true);
+                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutTeardown(() => window._tutorialLaunch(id, { from: _tut.from })); }
             });
             return el;
         }
@@ -17152,7 +17313,7 @@
             document.querySelectorAll('.tut-glow').forEach(el => el.classList.remove('tut-glow'));
             const el = document.getElementById('tutCoach');
             if (el) el.remove();
-            _tut.active = false; window._tutActive = false; _tut.finished = false; _tut.booting = false; _tut.step = null;
+            _tut.active = false; window._tutActive = false; window._tutWeatherOff = false; _tut.finished = false; _tut.booting = false; _tut.step = null;
         }
         function _tutTeardown(then) {
             const from = _tut.from;
@@ -17206,11 +17367,11 @@
             corner: () => '<svg viewBox="0 0 400 300" class="tape-svg"><line x1="40" y1="80" x2="360" y2="80" class="tp-line dim draw d1"/><line x1="40" y1="120" x2="360" y2="120" class="tp-line dim draw d1"/><text x="200" y="60" class="tp-lbl dim fade d2">PARALLEL · NEVER MEET</text><line x1="120" y1="270" x2="120" y2="160" class="tp-line draw d3"/><line x1="120" y1="270" x2="300" y2="270" class="tp-line draw d3"/><path d="M120 250 h20 v20" class="tp-line draw d4"/><rect x="123" y="205" width="36" height="65" class="tp-door fade d5"/><text x="200" y="185" class="tp-lbl fade d5">ORTHOGONAL · A CORNER · A DOOR</text></svg>',
             round: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="180" cy="150" r="110" class="tp-line draw d1"/><circle cx="180" cy="150" r="34" class="tp-line dim draw d2"/><g class="fade d3"><rect x="292" y="118" width="64" height="64" class="tp-line warn"/><line x1="292" y1="150" x2="356" y2="150" class="tp-line warn thin"/><line x1="324" y1="118" x2="324" y2="182" class="tp-line warn thin"/><text x="324" y="206" class="tp-lbl warn">ROOM 64</text></g><text x="180" y="290" class="tp-lbl fade d2">THE DEPARTMENT · ROUND · NO CORNERS</text></svg>',
             globe: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="200" cy="150" r="100" class="tp-line draw d1"/><ellipse cx="200" cy="150" rx="46" ry="100" class="tp-line dim draw d1"/><line x1="100" y1="150" x2="300" y2="150" class="tp-line dim draw d1"/><ellipse cx="200" cy="110" rx="90" ry="24" class="tp-line dim draw d2"/><ellipse cx="200" cy="190" rx="90" ry="24" class="tp-line dim draw d2"/><g class="tp-doors"><rect x="140" y="98" width="12" height="20" class="tp-door pop p1"/><rect x="236" y="130" width="12" height="20" class="tp-door pop p2"/><rect x="176" y="176" width="12" height="20" class="tp-door pop p3"/><rect x="262" y="88" width="12" height="20" class="tp-door pop p4"/><rect x="118" y="160" width="12" height="20" class="tp-door pop p5"/></g><text x="200" y="290" class="tp-lbl warn fade d4">THRESHOLD EVENTS · CANON REALITY</text></svg>',
-            grid: () => { let c = ''; for (let i = 0; i <= 8; i++) { c += '<line x1="' + (60 + i * 30) + '" y1="30" x2="' + (60 + i * 30) + '" y2="270" class="tp-line dim thin draw d1"/><line x1="60" y1="' + (30 + i * 30) + '" x2="300" y2="' + (30 + i * 30) + '" class="tp-line dim thin draw d1"/>'; }
-                for (let i = 0; i < 4; i++) { c += '<circle cx="' + (135 + i * 30) + '" cy="255" r="9" class="tp-unit us fade d2"/><circle cx="' + (135 + i * 30) + '" cy="45" r="9" class="tp-unit them fade d3"/>'; }
-                return '<svg viewBox="0 0 400 300" class="tape-svg">' + c + '<text x="180" y="290" class="tp-lbl fade d3">FOUR · AGAINST · FOUR</text><text x="340" y="150" class="tp-lbl fade d2" transform="rotate(90 340 150)">EIGHT BY EIGHT</text></svg>'; },
-            turn: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="110" cy="130" r="70" class="tp-line draw d1"/><line x1="110" y1="130" x2="110" y2="75" class="tp-line draw d2"/><line x1="110" y1="130" x2="150" y2="150" class="tp-line thin draw d2"/><text x="110" y="222" class="tp-lbl fade d2">FASTEST FIRST</text><g class="fade d3"><rect x="220" y="90" width="50" height="22" class="tp-pip on"/><rect x="280" y="90" width="50" height="22" class="tp-pip on"/><text x="275" y="80" class="tp-lbl">ACTION POINTS</text><text x="275" y="140" class="tp-lbl dim">MOVE · 1</text><text x="275" y="162" class="tp-lbl dim">STRIKE · ALL</text></g><g class="fade d5"><rect x="220" y="190" width="50" height="22" class="tp-pip on blink"/><rect x="280" y="190" width="50" height="22" class="tp-pip on blink"/><text x="275" y="240" class="tp-lbl warn">WEAKNESS · STRIKE AGAIN</text></g></svg>',
-            three: () => '<svg viewBox="0 0 400 300" class="tape-svg"><g class="fade d1"><rect x="50" y="90" width="70" height="70" class="tp-cube"/><rect x="60" y="80" width="70" height="70" class="tp-line"/><text x="95" y="196" class="tp-lbl">THE CUBE</text></g><g class="fade d2"><path d="M180 100 h24 a12 12 0 1 1 0 24 h-24 z M180 112 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 140 h24 a12 12 0 1 1 0 24 h-24 z M180 152 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 180 h24 a12 12 0 1 1 0 24 h-24 z M180 192 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><text x="190" y="236" class="tp-lbl">THREE KEYS</text></g><g class="fade d3"><circle cx="320" cy="125" r="34" class="tp-line"/><line x1="296" y1="101" x2="344" y2="149" class="tp-line warn"/><line x1="344" y1="101" x2="296" y2="149" class="tp-line warn"/><text x="320" y="196" class="tp-lbl">EVERY HOSTILE</text></g><text x="200" y="278" class="tp-lbl dim fade d4">ANY ONE WILL DO</text></svg>',
+            grid: () => { let c = ''; for (let i = 0; i <= 10; i++) { c += '<line x1="' + (60 + i * 24) + '" y1="30" x2="' + (60 + i * 24) + '" y2="270" class="tp-line dim thin draw d1"/><line x1="60" y1="' + (30 + i * 24) + '" x2="300" y2="' + (30 + i * 24) + '" class="tp-line dim thin draw d1"/>'; }
+                for (let i = 0; i < 4; i++) { c += '<circle cx="' + (144 + i * 24) + '" cy="258" r="8" class="tp-unit us fade d2"/><circle cx="' + (144 + i * 24) + '" cy="42" r="8" class="tp-unit them fade d3"/>'; }
+                return '<svg viewBox="0 0 400 300" class="tape-svg">' + c + '<text x="180" y="290" class="tp-lbl fade d3">FOUR · AGAINST · FOUR</text><text x="340" y="150" class="tp-lbl fade d2" transform="rotate(90 340 150)">TEN BY TEN</text></svg>'; },
+            turn: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="110" cy="130" r="70" class="tp-line draw d1"/><line x1="110" y1="130" x2="110" y2="75" class="tp-line draw d2"/><line x1="110" y1="130" x2="150" y2="150" class="tp-line thin draw d2"/><text x="110" y="222" class="tp-lbl fade d2">FASTEST FIRST</text><g class="fade d3"><rect x="220" y="90" width="50" height="22" class="tp-pip on"/><rect x="280" y="90" width="50" height="22" class="tp-pip on"/><text x="275" y="80" class="tp-lbl">ACTION POINTS</text><text x="275" y="140" class="tp-lbl dim">MOVE · 1</text><text x="275" y="162" class="tp-lbl dim">STRIKE · 1 · ENDS TURN</text></g><g class="fade d5"><rect x="220" y="190" width="50" height="22" class="tp-pip on blink"/><rect x="280" y="190" width="50" height="22" class="tp-pip on blink"/><text x="275" y="240" class="tp-lbl warn">WEAKNESS · STRIKE AGAIN</text></g></svg>',
+            three: () => '<svg viewBox="0 0 400 300" class="tape-svg"><g class="fade d1"><rect x="50" y="90" width="70" height="70" class="tp-cube"/><rect x="60" y="80" width="70" height="70" class="tp-line"/><text x="95" y="196" class="tp-lbl">THE CUBE</text></g><g class="fade d2"><path d="M180 100 h24 a12 12 0 1 1 0 24 h-24 z M180 112 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 140 h24 a12 12 0 1 1 0 24 h-24 z M180 152 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 180 h24 a12 12 0 1 1 0 24 h-24 z M180 192 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><text x="190" y="236" class="tp-lbl">THE KEYS</text></g><g class="fade d3"><circle cx="320" cy="125" r="34" class="tp-line"/><line x1="296" y1="101" x2="344" y2="149" class="tp-line warn"/><line x1="344" y1="101" x2="296" y2="149" class="tp-line warn"/><text x="320" y="196" class="tp-lbl">EVERY HOSTILE</text></g><text x="200" y="278" class="tp-lbl dim fade d4">ANY ONE WILL DO</text></svg>',
             room64: () => '<div class="tape-card"><div class="tape-card-no">ROOM 64</div><div class="tape-card-l1">ORTHOGONAL GEOMETRY EXPOSURE AREA</div><div class="tape-card-l2">MAX OCCUPANCY 45 MINUTES · DO NOT STAND IN CORNERS</div><div class="tape-card-arrow">▶</div></div>',
             dark: () => '<svg viewBox="0 0 400 300" class="tape-svg"><rect x="0" y="0" width="400" height="300" class="tp-black"/><g class="tp-knock k1"><line x1="330" y1="60" x2="380" y2="60" class="tp-line dim thin"/></g><g class="tp-knock k2"><line x1="330" y1="70" x2="380" y2="70" class="tp-line dim thin"/></g><g class="tp-knock k3"><line x1="330" y1="80" x2="380" y2="80" class="tp-line dim thin"/></g></svg>',
         };

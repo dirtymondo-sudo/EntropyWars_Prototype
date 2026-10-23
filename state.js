@@ -1193,6 +1193,13 @@
             }
             addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
 
+            /* 💥 the blast's tiles react like any spell hit (a nuke on an oil slick blows the whole slick), BEFORE the
+               crater's scorch paints the oil away (battle.js triggerTerrainSpellReaction) */
+            {
+                const _dsSpell = ds.spellId && typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[ds.spellId] : null;
+                if (_dsSpell && sourceUnit && typeof triggerTerrainSpellReaction === 'function') triggerTerrainSpellReaction(sourceUnit, _dsSpell, area);
+            }
+
             if (ds.leaveTerrain) {
                 for (const tile of area) {
                     const current = getTerrainAt(tile.x, tile.y);
@@ -1455,6 +1462,7 @@
 
         function rollSkyEvent() {
             if (state.skyEvent) return null;
+            if (typeof window !== 'undefined' && window._tutWeatherOff) return null;   // THE TUTORIAL: no celestial event unless the lesson asks
             /* the fixed timer (data.js SKY_EVENT_FIRST_ROUND / SKY_EVENT_EVERY); the event itself is random, never a repeat */
             if (state.round < SKY_EVENT_FIRST_ROUND || (state.round - SKY_EVENT_FIRST_ROUND) % SKY_EVENT_EVERY !== 0) return null;
             const pool = SKY_EVENT_KEYS.filter(k => k !== state._lastSkyEventType);
@@ -2119,6 +2127,11 @@
                 + (_gravMult > 1 ? ' 🕳 The crushing gravity triples the impact!' : '');
             addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
             applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
+            /* 🧊💥 ICE SHATTER, the hard landing (2026-10-23, mondo): a body an enemy sends crashing onto ice breaks it
+               into water (battle.js shatterIceAt). Your own jumps and walks off a ledge leave it whole. */
+            if (opts && opts.byEnemy && typeof shatterIceAt === 'function' && shatterIceAt(unit.x, unit.y)) {
+                addLog(`🧊 ${unitDisplayName(unit)} crashes through the ice!`);
+            }
             // Enemy-caused falls (knockbacks, pulls, tremor pits — callers tag
             // opts.byEnemy) flail on the way down (MAL Fall3 via battle.js
             // triggerFallAnim); voluntary drops (move/jump) stay quiet.
@@ -2568,6 +2581,8 @@
 
         function spawnWeather() {
             if (state.round < WEATHER_SPAWN_ROUND) return;
+            /* THE TUTORIAL: a lesson without `weather: true` keeps a calm board (ui.js _tutorialLaunch sets the flag) */
+            if (typeof window !== 'undefined' && window._tutWeatherOff) return;
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
             if (engineRng() > WEATHER_SPAWN_CHANCE) return;
 
