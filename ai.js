@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.16-2026-10-23-tactics-clocks'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.17-2026-10-23-tactics-steady'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -2254,8 +2254,12 @@
         const enemies = st.units.filter(u => u.player === q && !u.dead && !u._dying);
         const carriers = enemies.filter(e => (e.hourglasses || 0) > 0).map(e => ({ e, pos: _knownPos(g, p, e) })).filter(c => c.pos)
             .sort((a, b) => (b.e.hourglasses || 0) - (a.e.hourglasses || 0));
+        // an enemy seen this round or last close to our Cube (3 squares, 2 on a board 8-11 wide; older sightings
+        // keep the chase going, not the alarm)
+        const cubeR = Math.max(2, Math.min(3, Math.floor(Math.min(g.bw(), g.bh()) / 4)));
         const siegers = hasOwnCube ? enemies.map(e => ({ e, pos: _knownPos(g, p, e) }))
-            .filter(c => c.pos && Math.abs(c.pos.x - ownTw.x) + Math.abs(c.pos.y - ownTw.y) <= 4) : [];
+            .filter(c => c.pos && (c.pos.round == null || (st.round || 0) - c.pos.round <= 1)
+                && Math.abs(c.pos.x - ownTw.x) + Math.abs(c.pos.y - ownTw.y) <= cubeR) : [];
         const theirHeld = hasKeys ? (st.hourglasses || []).filter(h => h.carriedBy != null
             && st.units.find(u => u.id === h.carriedBy)?.player === q).length : 0;
         const keyThreat = hasKeys && carriers.length && their && our && their.keys <= our.best + 2;
@@ -2272,7 +2276,7 @@
                 want.anchor = Math.max(want.anchor, 1); why.anchor = why.anchor || ('only ' + n + ' of us standing');
             }
             if (keyThreat) { want.intercept = theirHeld >= need - 1 ? 2 : 1; why.intercept = 'their Keys win is ' + R(their.keys) + ' rounds away'; }
-            if (siegers.length) { want.intercept = Math.max(want.intercept, 1); why.intercept = why.intercept || 'an enemy is on our Cube'; }
+            if (siegers.length) { want.intercept = Math.max(want.intercept, 1); why.intercept = why.intercept || 'an enemy is near our Cube'; }
             if (hasCube) {
                 if (our.bestKind === 'cube') { want.siege = Math.max(1, Math.ceil(n / 2)); why.siege = 'the Cube is our nearest win (' + R(our.cube) + ' rounds)'; }
                 else if (our.cube <= our.best * 1.5 + 1) { want.siege = 1; why.siege = 'Cube ' + R(our.cube) + ' rounds, ' + KIND[our.bestKind] + ' ' + R(our.best); }
@@ -2299,12 +2303,15 @@
         }
         let budget = Math.max(0, free.size - (n >= 3 ? 1 : 0));   // keep a fighter when there are three or more
         const ctx = { ownTw, enTw, threats, sm };
+        // last plan's holder keeps its job unless another unit fits it clearly better (no swapping every round)
+        const prevJob = id => { const j = _tacticJobs.get(id); return j && !j.forced ? j.job : null; };
         for (const job of ['anchor', 'intercept', 'siege', 'search', 'heal']) {
             for (let k = 0; k < want[job] && budget > 0; k++) {
                 let best = null, bestF = -Infinity;
                 for (const u of team) {
                     if (!free.has(u.id)) continue;
-                    const f = _tacticFitness(g, u, job, ctx);
+                    let f = _tacticFitness(g, u, job, ctx);
+                    if (f > -1e8 && prevJob(u.id) === job) f += 60;
                     if (f > bestF) { bestF = f; best = u; }
                 }
                 if (!best || bestF <= -1e8) break;
