@@ -2845,6 +2845,8 @@
                         ['tx', 'ty', 'tz', 'sx', 'sy', 'fromX', 'fromY', 'dx', 'dy', 'range',
                          'spellType', 'casterX', 'casterY', 'aoeRadius', 'cx', 'cy',
                          'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
+                         /* a fog-clamped shot's origin: no gun / bow / thrown prop by the victim (G-O pass) */
+                         'hideGunRig',
                          /* the aimed body's tile (a wide beam's side lane) */
                          'ax', 'ay',
                          'staggerMs', 'includePrimary',

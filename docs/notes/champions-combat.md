@@ -2223,3 +2223,15 @@ and create a character should be accessed through door agent as well instead of 
   dropped) flags them — REMOVED on the forge slot, a note on the archive card, "Out of the game" on the squad desk — and they
   cannot start / deploy until the unit is swapped out. The host refuses a guest sheet with one (online.js).
 - Left as is (flagged to mondo): the Disaster City harbour angler NPC still stands as a plain human (it can't be fought).
+
+## WEAK RACES II — Grey, Djinn, Gnome, Ringmaster (2026-10-23, mondo picked the three fixes)
+- Report: hand match vs CPU + Balance Lab (all four on one team won 4.7%), https://claude.ai/artifact/P159GAtjGKrTGzquEvyVgA
+- CPU (ai.js): summons score by their life damage (bite = summonDef.dmg + ½ spell power × 1+hits/2 rounds, max 4 ×
+  reach × 0.7, + 20/hit body) with the old flat 150/70 as the floor; traps (placeTrap) and step mines (deployObject
+  detonateOnStep) score by `_trapHitValue` (P an enemy steps on it × the hit + its status) with the old flat as floor;
+  `statusSetupValue` credits a near-certain payoff (teammate with ap left this round, or the caster's own next turn
+  from a zone that lasts ≥2 rounds) at AI_TUNE.statusSetupSure 0.6 (NOT a trained key; the trained 0.115 stays for
+  the rest). `_aiStatusBlocked`: ccDenialValue / statusSetupValue give 0 for a status the target's passive blocks.
+- Spells (data.js): Ankle Biter 80→110 + Garden Shears 130→170, both spellType anomaly (gnome STAB); Scrap Mine blast
+  100→140 (goblin shares it); Tissue Sample range 2→4.
+- Stats: Grey SPD 48→60 (walks 2), Djinn HP 324→480. Nothing else.
