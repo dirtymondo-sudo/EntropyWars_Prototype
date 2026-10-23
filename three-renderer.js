@@ -42007,6 +42007,11 @@ const ThreeRenderer = (function () {
             if (state._actionExecuting || state._walkAnimActive) return;
             if (state._suppressHoverPreviewUntil
                 && performance.now() < state._suppressHoverPreviewUntil) return;
+            /* A pick made from the target list (or a board click) stays the pick while only the CAMERA moves: the
+               swing onto that target used to slide a new tile under the still pointer and re-aim the cast there
+               (Cube vs Keys matchup 2026-10-23: Psychic Beam on Superhero armed "CONFIRM — Dirt IV B4"). A real
+               mouse move still re-aims. */
+            if (state.pendingTarget && !state.pendingTarget.viaHover) return;
         }
         cam.updateMatrixWorld();
         var e = cam.matrixWorld.elements;
