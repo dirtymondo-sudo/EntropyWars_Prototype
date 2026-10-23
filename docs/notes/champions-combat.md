@@ -2207,3 +2207,19 @@ rules kept: a board click PICKS (✓), CONFIRM fires; an out-of-reach enemy is M
 ## THE HAND PAN LEAVES THE TWO-SHOT (2026-10-23, mondo: "panning the camera moves the camera angle real low to the ground as i pan across the map") — battle.js, state.js
 - Cause: a hand pan is `camera.snap({x, y, zoom})`; snap never left a menu two-shot (target pick, quick list, the attack hold after a basic attack), so the pan slid the shot's low pitch (MENU_CAM_TILT 50-66), its close zoom and its raised focal (the pair's chest) across the whole map. moveTo already leaves the shot for every programmatic move ("a pan ... never inherits the low angle") — the hand pan was the gap. Plain tactical pans on Shasta / Giza arenas and full Mount Shasta were already level (browser probe); THE CLEAR BOARD crane and THE NEAR BODY rise only ever lift the eye and are untouched.
 - Fix: `camera._leaveMenuShotForPan()` (battle.js, beside snap): drops `_menuShot` + `_menuAtk` (and its ease-out timer), takes back the shot's home tilt + zoom, keeps the yaw the player is looking along, latches the pan focal at `_naturalElevAt` (the board under the focal). Called by state.js `_panBegin` (left-drag pan, before it reads `_panStartZoom`) and by snap for any other hand pan (edge pan, one-finger touch). A right-drag orbit already adopts the player's own angle (snap with tilt/yaw). Viewer-local camera: nothing to relay.
+
+## HOMOSAPIEN OUT, DOOR AGENT DEFAULT (2026-10-23, mondo)
+mondo: "take homosapien out of the game anyway since it is so plain. door agent should be the default for story mode
+and create a character should be accessed through door agent as well instead of homosapien."
+- `homosapien` is out of data.js `AVAILABLE_RACES` and `ACCT_STARTER_UNITS` (and the server.js fallback literals), so it
+  is gone from the roster wall, the shop, the codex, random/CPU/Balance Lab/AI-training pools, Mystery Dungeon and the
+  underworld walker pool. Its data rows (stats, spells, finisher, lore, the 3D model) stay: the werewolf's day form wears
+  the Homosapien model, and old saves still draw.
+- `DEFAULT_IDENTITY.race`, every `|| 'homosapien'` fallback, `MD_STARTER_RACES`, the Challenge creator's default and the
+  mirror's look (`hqPartyOfficer` look mode, map.js `_hqAvatar`) are the DOOR Agent now.
+- The creator: the forge's GEAR → CHARACTER CREATOR works on a DOOR Agent slot (not Homosapien); the mirror / intake stage
+  shows the DOOR Agent. state.js `ensurePartyMeta` repair and the match preload keep / warm a DOOR Agent look too.
+- Old saved teams are never touched: state.js `teamRemovedRaces(races)` (a race RACE_PROFILES knows that AVAILABLE_RACES
+  dropped) flags them — REMOVED on the forge slot, a note on the archive card, "Out of the game" on the squad desk — and they
+  cannot start / deploy until the unit is swapped out. The host refuses a guest sheet with one (online.js).
+- Left as is (flagged to mondo): the Disaster City harbour angler NPC still stands as a plain human (it can't be fought).

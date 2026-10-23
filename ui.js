@@ -13298,7 +13298,7 @@
 
         window._spellLabActive = false;
         const _slbLab = {
-            cfg: { spellId: null, casterRace: 'homosapien', dummyRace: 'homosapien', distance: 3, targetGround: false, immortal: true, repeat: false, repeatGapMs: 1200 },
+            cfg: { spellId: null, casterRace: 'door agent', dummyRace: 'door agent', distance: 3, targetGround: false, immortal: true, repeat: false, repeatGapMs: 1200 },
             saved: null,
             tickTimer: null,
             repeatTimer: null,

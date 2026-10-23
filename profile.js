@@ -89,7 +89,7 @@ function backfillProfile(p) {
   if (!p.account || !Array.isArray(p.account.unlockedUnits)) {
     const starters = (typeof window !== 'undefined' && Array.isArray(window.ACCT_STARTER_UNITS))
       ? window.ACCT_STARTER_UNITS.slice()
-      : ['men in black', 'wizard', 'werewolf', 'mad scientist', 'homosapien', 'catgirl',
+      : ['men in black', 'wizard', 'werewolf', 'mad scientist', 'catgirl',
          'fortune teller', 'bigfoot', 'grey', 'marksman', 'knight', 'fairy'];
     p.account = {
       gold: (typeof window !== 'undefined' && typeof window.ACCT_STARTING_GOLD === 'number') ? window.ACCT_STARTING_GOLD : 0,

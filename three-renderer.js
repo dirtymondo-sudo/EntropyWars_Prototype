@@ -12915,7 +12915,7 @@ const ThreeRenderer = (function () {
         // board build is never a bald unit in plain cloth.
         var fabricUrls = [];
         (units || []).forEach(function (u) {
-            if (!u || u.dead || !u.appearance || u.race !== 'homosapien' || typeof getCharacterAppearanceAssets !== 'function') return;
+            if (!u || u.dead || !u.appearance || !(typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(u.race) || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
             var as = getCharacterAppearanceAssets(u.appearance);
             if (as.hair && !seen[as.hair] && !(_unitGlbCache[as.hair] && (_unitGlbCache[as.hair].root || _unitGlbCache[as.hair].failed))) { seen[as.hair] = true; urls.push(as.hair); }
             (as.fabrics || []).forEach(function (fu) {
@@ -73129,7 +73129,7 @@ const ThreeRenderer = (function () {
         T.members = [];
     }
     function _trAddMember(T, slot, spot, tok) {
-        var res = _cvResolveDef(slot.race || 'homosapien', slot.gender || 'male', slot.appearance);
+        var res = _cvResolveDef(slot.race || 'door agent', slot.gender || 'male', slot.appearance);
         if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
         var def = res.def, U = T.U;
         var mem = { def: def, wrap: new THREE.Group(), mixer: null, idle: null, clips: null, pose: null, rig: null, mats: [], blob: null,
@@ -73225,7 +73225,7 @@ const ThreeRenderer = (function () {
         var spots = TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4], tok = T.tok;
         /* big vessels stand further apart */
         var hMax = 0;
-        slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'homosapien', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });
+        slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'door agent', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });
         var spread = Math.max(1, hMax / 1.9);
         slots.forEach(function (s, i) {
             var sp = spots[i]; if (!sp) return;
