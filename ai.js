@@ -2182,6 +2182,21 @@
        hit takes off our Cube clock × Race Round Value, × how much the Cube is our nearest finish (the wipeout or
        the Keys nearer = less), × 1.5 when their nearest win is no later than our Cube (every round counts), plus
        one more round's worth when this hit makes our Cube clock beat theirs. */
+    // A blind Inspect on the Search job, in the race's own currency: the expected Keys it finds × the rounds one
+    // Key takes off our Keys clock × Race Round Value (2026-10-23 browser check: the flat bonus never beat a hit).
+    function _keyClockValue(g, unit, v, ev) {
+        if (!(ev > 0) || window.EW_AI_NO_CLOCKS || !_aiDiff().tactics) return 0;
+        const clk = aiRaceClocks(g, unit.player, v.winState);
+        if (!clk || !(clk.our.keys < _CLOCK_INF)) return 0;
+        const need = (typeof g.getKeysToWin === 'function') ? g.getKeysToWin() : 0;
+        const held = (g.state.hourglasses || []).filter(h => h.carriedBy != null
+            && g.state.units.find(u => u.id === h.carriedBy)?.player === unit.player).length;
+        const left = Math.max(1, need - held);
+        // a slow Keys race counts for less (same share rule as the Cube's)
+        const other = Math.min(clk.our.wipe, clk.our.cube, clk.our.buzzer);
+        const share = clk.our.keys <= other + 0.5 ? 1 : Math.max(0.25, Math.min(1, other / Math.max(1, clk.our.keys)));
+        return Math.min(1, ev) * (clk.our.keys / left) * share * wght(g, 'raceRoundValue_v1', 200);
+    }
     function _cubeClockValue(g, unit, v, estDmg, clk) {
         const R = wght(g, 'raceRoundValue_v1', 200);
         const our = clk.our, their = clk.their;
@@ -2441,7 +2456,7 @@
                     if (c.type === 'attack_tower') c.score += 150 * C;
                     break;
                 case 'search':
-                    if (c.type === 'inspect') c.score += (c._keyPickup ? 60 : (c._searchEV > 0 ? 40 + 200 * Math.min(1, c._searchEV) : 0)) * C;
+                    if (c.type === 'inspect') c.score += (c._keyPickup ? 60 : (c._searchEV > 0 ? Math.max(40 + 200 * Math.min(1, c._searchEV), _keyClockValue(g, unit, v, c._searchEV)) : 0)) * C;
                     else if (c.type === 'move' && c._searchMove) c.score += 40 * C;
                     else if (c.type === 'item' && c.item === 'scanner') c.score += 40 * C;
                     break;
@@ -2466,6 +2481,20 @@
                     if (off && c.score > 0) c.score *= 1 + 0.08 * C;
                     break;
             }
+        }
+        // Search first, then act: Inspect costs 1 AP and does not end the turn, and AP does not carry over, so with
+        // 2 AP a searcher whose best option is a one-AP action (hit, heal, item) loses nothing by scanning first.
+        // (2026-10-23 browser check: the searcher always took the hit and never scanned.)
+        if (t.job === 'search' && (unit.ap || 0) >= g.AP_COST_ACTION * 2) {
+            let top = null, insp = null;
+            for (const c of candidates) {
+                if (!(c.score > -900)) continue;
+                if (c.type === 'inspect') { if ((c._searchEV > 0 || c._keyPickup) && (!insp || c.score > insp.score)) insp = c; }
+                else if (!top || c.score > top.score) top = c;
+            }
+            const oneAp = top && !top._objectiveWin && ['attack', 'spell', 'item', 'item_targeted'].includes(top.type)
+                && (top.apCost != null ? top.apCost : g.AP_COST_ACTION) <= (unit.ap || 0) - g.AP_COST_ACTION;
+            if (insp && oneAp && insp.score > 0 && insp.score < top.score) insp.score = top.score + 1;
         }
     }
 
@@ -5435,9 +5464,12 @@
 
         // THE TACTICS (2026-10-23): the unit's Tactic adds its own goal. A FORCED Tactic (the player's pick)
         // damps the other goals while its own exists, so a Search unit doesn't wander off to siege.
+        // 2026-10-23 browser check: a CPU-assigned job damps them too (×0.75), or the generic siege_tower goal
+        // walked the plan's searcher to the Cube and it never searched.
         const _tGoal = _tacticGoal(g, unit, v);
         if (_tGoal) {
-            if (_tacticInfo(unit)?.forced) for (const goal of goals) if (!_TACTIC_KEEP_GOALS.has(goal.reason)) goal.score *= 0.6;
+            const damp = _tacticInfo(unit)?.forced ? 0.6 : 0.75;
+            for (const goal of goals) if (!_TACTIC_KEEP_GOALS.has(goal.reason)) goal.score *= damp;
             goals.push(_tGoal);
         }
 
