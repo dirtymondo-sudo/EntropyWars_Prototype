@@ -19274,17 +19274,19 @@ const ThreeRenderer = (function () {
        over the unit every frame so a camera move keeps it on the head. The look is the UI Maker's (Arrows + tiles >
        Super effective !), CSS variables on the page read by ui.js _seBangHtml. Viewer-local, nothing relayed. */
     var _pressMarks = [];   // { id, el }
-    function showPressMarks(ids) {
+    // halfIds: the bodies whose press is +1 (a resistance on it) — they wear the hollow ! (THE +1 LOOK, 2026-10-23)
+    function showPressMarks(ids, halfIds) {
         clearPressMarks();
         if (!ids || !ids.length) return;
         _ensureIntentBadgeContainer();
         if (!_intentBadgeContainer) return;
-        var bang = (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(0, true) : '!';
+        var bangFull = (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(0, true) : '!';
+        var bangHalf = (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(0, true, true) : '!';
         for (var i = 0; i < ids.length; i++) {
             var el = document.createElement('div');
             el.className = 'ti-press-mark';
             el.style.cssText = 'position:absolute;pointer-events:none;z-index:16;transform:translate(-50%,-100%);margin-top:calc(-1 * var(--ew-se-lift, 36px));visibility:hidden;';
-            el.innerHTML = bang;
+            el.innerHTML = (halfIds && halfIds.indexOf(ids[i]) >= 0) ? bangHalf : bangFull;
             _intentBadgeContainer.appendChild(el);
             _pressMarks.push({ id: ids[i], el: el });
         }

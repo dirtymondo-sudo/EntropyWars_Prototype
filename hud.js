@@ -2895,6 +2895,18 @@ function _hrlgBadgeEl(bd, k) {
     ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
     : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
 }
+/* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): a basic attack's odds to
+   land on `target` in whole percent — battle.js getAttackHitChance, the same rolls the swing makes. `from` = the tile a
+   MOVE→ATK swing leaves from. null when it can't be read. */
+/* THE +1 LOOK (mondo 2026-10-23): a row's green ! from a forecastPressOn answer — true (+2, the solid !), 'half' (+1, a
+   resistance took 1 off: the hollow !) or false */
+function _hrlgPressMark(r) {
+  return (r && r.press) ? (r.ap === 1 ? 'half' : true) : false;
+}
+function _hrlgHitPct(attacker, target, from) {
+  if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
+  try { return Math.round(getAttackHitChance(attacker, target, from || null) * 100); } catch (e) { return null; }
+}
 function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
@@ -2905,6 +2917,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   const put = (part, el, first) => { if (first) right.unshift(el); else right.push(el); (P[part] = P[part] || []).push(el); };
   if (b.check && !confirmBtn) put('x0', h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) put('power', h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
+  // THE HIT CHANCE (mondo 2026-10-23): the attack's accuracy rides beside its damage (_hrlgHitPct)
+  if (!dead && b.acc) put('power', h('span', { key: 'ac', className: 'hrlg-acc', title: b.accTitle || 'Chance to hit' }, b.acc));
   if (!dead && b.mp) put('mp', h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));   // plain blue text (the pill is gone — 2026-09-21)
   // Mystery Dungeon lockstep: AP is gone from the player's vocabulary — no
   // cost pips on any blade (one beat = one action, whatever it "costs").
@@ -2948,7 +2962,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   // Green !-circle: this action is SUPER EFFECTIVE against its target. Leads
   // the right-hand chips so it reads first on quick-menu and target rows.
   if (b.superEff) put('press', h('span', {
-    key: 'se', className: 'hrlg-supereff', title: 'Super effective against this target!',
+    key: 'se', className: 'hrlg-supereff' + (b.superEff === 'half' ? ' half' : ''),
+    title: b.superEff === 'half' ? '+1 AP back: it presses, but a resistance takes 1 off' : 'Super effective against this target! +2 AP back',
   }, '!'), true);
   // Red !-circle: the target is IMMUNE to (or ABSORBS) this action's element — the warning twin of the green one.
   if (b.immWarn) put('press', h('span', {
@@ -4890,6 +4905,73 @@ function _hrlgSwitchBlades(unit, st) {
   return { title: { icon: '🔄', text: 'Switch', count }, blades };
 }
 
+/* ♟ THE TACTICS MENU (battle.js setUnitTactic, mondo 2026-10-23): the root verb TACTICS opens two panels, Persona
+   style — the party (every living unit of this side, the acting one first, each with its Tactic) and, beside it, the
+   Tactic list for the picked one: MANUAL plus the six jobs the CPU plays (ai.js AI_TACTICS). Picking a Tactic for the
+   acting unit hands its turn to the AI at once; picking one for a teammate takes effect on its next turn. Which party
+   row is picked is viewer-local UI (kept here, never on state). */
+let _hrlgTacticPickId = null;
+const _HRLG_TACTIC_ICON = { manual: '🎮', fight: '⚔', siege: '⬢', search: '🗝', intercept: '➹', anchor: '⚓', heal: '♥' };
+function _hrlgTacticLabel(id) {
+  if (!id) return 'Manual';
+  const inf = typeof unitTacticInfo === 'function' ? unitTacticInfo(id) : null;
+  return inf ? inf.label : id;
+}
+function _hrlgTacticParty(unit, st) {
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  const party = (st.units || []).filter(u => u && !u.dead && !u._dying && u.player === unit.player && home(u) === unit.player);
+  party.sort((a, b) => (a.id === unit.id ? -1 : b.id === unit.id ? 1 : 0));
+  return party;
+}
+function _hrlgTacticPartyBlades(unit, st) {
+  const party = _hrlgTacticParty(unit, st);
+  if (!party.some(u => u.id === _hrlgTacticPickId)) _hrlgTacticPickId = unit.id;
+  const blades = party.map(u => {
+    const t = u.tactic || null;
+    return {
+      id: 'tp:' + u.id,
+      label: typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls),
+      available: true,
+      selected: u.id === _hrlgTacticPickId,
+      portrait: _hrlgPortraitData(u, unit),
+      meta: { text: (_HRLG_TACTIC_ICON[t || 'manual'] || '') + ' ' + _hrlgTacticLabel(t).toUpperCase(), color: t ? '#f2c468' : undefined },
+      fire: () => {
+        _hrlgTacticPickId = u.id;
+        if (typeof markDirty === 'function') markDirty('hud');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      },
+    };
+  });
+  return { title: { icon: '♟', text: 'Tactics', count: party.length + '' }, blades };
+}
+function _hrlgTacticBlades(unit, st, forUnit) {
+  const pick = forUnit || (st.units || []).find(u => u.id === _hrlgTacticPickId && !u.dead) || unit;
+  const cur = pick.tactic || null;
+  const ids = [null].concat(typeof UNIT_TACTIC_IDS !== 'undefined' ? UNIT_TACTIC_IDS : []);
+  const blades = ids.map(id => {
+    const inf = id && typeof unitTacticInfo === 'function' ? unitTacticInfo(id) : null;
+    const why = id && typeof unitTacticProblem === 'function' ? unitTacticProblem(pick, id) : null;
+    return {
+      id: 'tac:' + (id || 'manual'),
+      icon: _HRLG_TACTIC_ICON[id || 'manual'],
+      label: _hrlgTacticLabel(id),
+      available: !why,
+      selected: cur === id,
+      subBelow: true,
+      sub: why || (id ? (inf && inf.desc) || '' : 'You give the orders'),
+      meta: cur === id ? { text: '✓', color: '#f2c468' } : null,
+      fire: () => {
+        if (why) return;
+        if (typeof setUnitTactic === 'function') setUnitTactic(pick.id, id);
+        if (typeof markDirty === 'function') markDirty('hud');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      },
+    };
+  });
+  const nm = typeof unitDisplayName === 'function' ? unitDisplayName(pick) : (pick.name || pick.cls);
+  return { title: { icon: _HRLG_TACTIC_ICON[cur || 'manual'], text: nm }, blades };
+}
+
 function _hrlgPingBlades() {
   const pingKeys = typeof PING_TYPES !== 'undefined' ? Object.keys(PING_TYPES) : [];
   const blades = pingKeys.map(pk => {
@@ -5020,7 +5102,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       }
       /* THE GREEN ! IS THE PRESS (mondo 2026-10-18): only when the real refund would pay (battle.js forecastPressOn —
          type first, the element on a neutral type only, absorb / immune never, the whole blast worst case). */
-      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, tUnit, spell || null).press : false;
+      superEff = (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(unit, tUnit, spell || null)) : false;
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -5073,6 +5155,9 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
+      // THE HIT CHANCE: an attack row on an enemy says its odds to land
+      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit) && !t._approach)
+        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit)) : null,
       portrait: portrait,
       // THE MENU CAMERA: the cursor landing on this row frames caster + target
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
@@ -5329,7 +5414,7 @@ function _hrlgComboBlades(unit, st) {
       const _eff = getTypeDamageMultiplier(unit, t.u, _cType) / _stab;
       if (_eff < 0.999) typeAdv = '▼';
       // the green ! is the PRESS doComboAttack would pay (the combo's type, then its element on a neutral type)
-      superEff = (typeof window._pressOf === 'function') ? !!window._pressOf(unit, t.u, null, { combo, partner }).press : false;
+      superEff = (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(unit, t.u, null, { combo, partner })) : false;
     }
     // Damage forecast: the projected combo damage blinks white on the row's
     // HP bar + reads as the ≈−N chip — the exact same treatment every
@@ -5501,11 +5586,25 @@ function ActionMenu({ st, hidden }) {
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
   const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit, { combatOnly: true }));
+  /* THE HIT CHANCE on the Attack verb: the odds on every enemy it can swing at from here (one number, or lowest–highest) */
+  let atkAcc = null;
+  if (atkNow && typeof _getAttackValidTargets === 'function') {
+    try {
+      const pcts = _getAttackValidTargets(unit)
+        .filter(t => t.unit && !t.unit.dead && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, t.unit)))
+        .map(t => _hrlgHitPct(unit, t.unit)).filter(v => v != null);
+      if (pcts.length) {
+        const lo = Math.min(...pcts), hi = Math.max(...pcts);
+        atkAcc = (lo === hi ? hi : lo + '–' + hi) + '%';
+      }
+    } catch (e) { atkAcc = null; }
+  }
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
     available: atkReach,
     note: !atkNow && atkReach ? 'MOVE→ATK' : null,
     sub: atkReach ? null : 'No target',
+    acc: atkAcc, accTitle: 'Chance to hit the enemies in reach',
   };
 
   // anyCastableSpellNow (battle.js) is the SAME probe chooseActionMenu gates
@@ -5664,6 +5763,19 @@ function ActionMenu({ st, hidden }) {
   const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
     ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
     : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
+
+  // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
+  // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
+  if (typeof setUnitTactic === 'function' && !(typeof window._isDungeonMode === 'function' && window._isDungeonMode())
+      && !window._tutActive) {
+    const _onTac = (st.units || []).filter(u => u && !u.dead && u.player === unit.player && u.tactic).length;
+    actions.push({
+      id: 'tactics', label: 'Tactics', icon: '♟', cost: null,
+      available: true,
+      selected: menuView === 'tactics',
+      note: _onTac ? _onTac + ' AUTO' : null,
+    });
+  }
 
   // ⇄ SWITCH — Gauntlet + reserves matches (battle.js _benchOn): swap in a
   // benched reserve. A reserves match caps voluntary switches per round.
@@ -5824,6 +5936,7 @@ function ActionMenu({ st, hidden }) {
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
+      case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
       case 'teamEscape': if (typeof window.doTeamEscape === 'function' && typeof getSelectedUnit === 'function') window.doTeamEscape(getSelectedUnit()); break;
     }
@@ -5979,6 +6092,9 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st))); view = 'sub';
   } else if (menuView === 'switch') {
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
+  } else if (menuView === 'tactics') {
+    panels.push(_mkPanel('tacParty', _hrlgTacticPartyBlades(unit, st)));
+    panels.push(_mkPanel('tactics|' + (_hrlgTacticPickId || unit.id), _hrlgTacticBlades(unit, st))); view = 'sub';
   } else if (menuView === 'entropy') {
     panels.push(_mkPanel('entropy', _hrlgEntropyBlades(unit, st), cancelBlade)); view = 'sub';
   } else if (menuView === 'finisherTargets') {
@@ -6607,7 +6723,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       moveTile: canAttack ? null : atkMoveTile,
       preview: canAttack ? atkPreview : moveAtkPreview,
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
-      press: (typeof window._pressOf === 'function') ? !!window._pressOf(actingUnit, targetUnit, null).press : false,
+      press: (typeof window._pressOf === 'function') ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, null)) : false,
+      acc: _hrlgHitPct(actingUnit, targetUnit, canAttack ? null : _mtCastTile(atkMoveTile)),
       available: true,
     });
     // (No "Attack ×N" rows anymore: an attack ENDS the turn, so a second
@@ -7065,10 +7182,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         // the green ! = the press this cast would really earn, aimed and cast from where the row would do it
         press: (hudSpellCanPress(sp) && typeof window._pressOf === 'function')
-          ? !!window._pressOf(actingUnit, targetUnit, sp, {
+          ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, sp, {
               aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
               castFrom: (!canCast && spMoveTile && !spMoveTile._heightApproach) ? _mtCastTile(spMoveTile) : null,
-            }).press : false,
+            })) : false,
         available: true,
         spell: sp,
       });
@@ -7136,7 +7253,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         typeNote: (_cbBest && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, _cbBest.combo.spellType || null) : '',
         press: (_cbBest && typeof window._pressOf === 'function')
-          ? !!window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner }).press : false,
+          ? _hrlgPressMark(window._pressOf(actingUnit, targetUnit, null, { combo: _cbBest.combo, partner: _cbBest.partner })) : false,
         badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
         _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
         // THE PARTNER ROW: the quick combo row names the ally it is made with
@@ -8382,10 +8499,11 @@ function _hrlgEnemyBlades(actingUnit, st) {
       // the attack + combo rows lay out like the spell rows (THE BUTTON ROWS)
       rows: !!(look || a.id === 'attack' || a.id === 'combo'),
       power: power,
+      acc: (a.available && a.acc != null) ? a.acc + '%' : null,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
-      superEff: (a.press != null) ? !!a.press : (typeAdv === '▲' && !_eaImm),
+      superEff: (a.press != null) ? (a.press || false) : (typeAdv === '▲' && !_eaImm),
       immWarn: _eaImm,
       meta: typeAdv === '▼' ? { text: '▼', color: EW.bad, press: true, title: 'Weak against this target' } : null,
       note: isMove
@@ -10103,6 +10221,49 @@ function QuickPeek({ st }) {
       h('div', { className: 'hrlg-panel quick on' }, card)));
 }
 
+/* ♟ THE TACTIC WATCH: while one of YOUR units plays its turn on a Tactic (battle.js unitOnTactic), the command menu's
+   spot shows a small window instead — whose turn it is, its Tactic and why (ai.js aiTacticReason), and the Tactic list
+   so you can switch it, or pick MANUAL to take control (the AI finishes the step it is on, then the turn is yours).
+   It stays up through the AI's whole turn (the AI acts back to back, so a window that hid with each animation was
+   never clickable); spell close-ups still fade it (body.ew-spell-shot). */
+function TacticWatch({ st }) {
+  if (!st || st.phase !== 'battle' || st.winner) return null;
+  const u = (st.units || []).find(x => x.id === st._blitzActiveUnitId && !x.dead && !x._dying);
+  if (!u || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return null;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
+  if (u.player !== viewer || home !== viewer) return null;
+  if (st.autoPlayers && st.autoPlayers[u.player]) return null;
+  const built = _hrlgTacticBlades(u, st, u);
+  let why = null;
+  try { why = typeof window.aiTacticReason === 'function' ? window.aiTacticReason(u) : null; } catch (e) { why = null; }
+  const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
+  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  return h('div', { className: 'hrlg-rig hrlg-tacwatch', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
+    h('div', { className: 'hrlg-side hrlg-ghost' }),
+    h('div', { className: 'hrlg-panels' },
+      h('div', { className: 'hrlg-panel on' },
+        h('div', { className: 'hrlg-thead' },
+          h('div', { className: 'hrlg-view-tab' },
+            h('span', { className: 'hrlg-view-tab-icon' }, '♟'),
+            h('span', { className: 'hrlg-view-tab-text' }, name + ' · ' + _hrlgTacticLabel(u.tactic).toUpperCase()),
+          ),
+        ),
+        why ? h('div', { className: 'hrlg-mode' }, String(why)) : null,
+        h('div', { className: 'hrlg-list' },
+          built.blades.map((b, i) => h(HorologeBlade, {
+            key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
+            onFire: (b2) => {
+              if (!b2.available) return;
+              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+              b2.fire();
+            },
+            onHover: () => {},
+          })),
+        ),
+      )));
+}
+
 function ReactHUD() {
   const [st, tick] = useGameState();
   const menusHidden = useMenusHidden(st);
@@ -10133,6 +10294,9 @@ function ReactHUD() {
       h(ActionMenu, { st, hidden: menusHidden }),
     ),
     h(QuickPeek, { st }),
+    h('div', { style: { pointerEvents: 'auto' }},
+      h(TacticWatch, { st }),
+    ),
     h('div', { style: { pointerEvents: 'auto' }},
       h(TurnColumn, { st }),
     ),
@@ -11249,6 +11413,9 @@ function _hudHideCss() {
     .hrlg-peek .hrlg-panels, .hrlg-peek .hrlg-panel { pointer-events: none !important; }
     .hrlg-peek .hrlg-panel.quick > .hrlg-thead.qp { pointer-events: auto; }
     body.ew-spell-shot .hrlg-peek { opacity: 0; }
+    /* ♟ the Tactic watch (TacticWatch): the same stand-in Horologe, its one panel live */
+    .hrlg-tacwatch .hrlg-ghost { visibility: hidden !important; pointer-events: none !important; }
+    body.ew-spell-shot .hrlg-tacwatch { opacity: 0; pointer-events: none; }
     /* the card itself draws nothing: its panel is its own layer (.hrlg-qp-bg, classed .hrlg-thead so the header blade's
        look and every theme skin land on it), which the UI Maker can size, move, restyle or take away without the parts */
     :root:root:not(#qp-c):not(#qp-c):not(#qp-c):not(#qp-c) .hrlg-panel.quick > .hrlg-thead.qp { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; }
@@ -11430,6 +11597,12 @@ function _hudHideCss() {
       font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: calc(12px * var(--ew-se-menu, 1)); line-height: 1;
       box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 8px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
     }
+    /* THE +1 LOOK: a press with a resistance on it (+1 AP) — the same ! hollow: dark disc, green ring and mark */
+    .hrlg-supereff.half {
+      background: rgba(6,19,10,0.88); color: var(--ew-se-fill, #2ecc71);
+      border: calc(var(--ew-se-lw, 2px) * 0.6 + 1px) solid var(--ew-se-fill, #2ecc71);
+      box-shadow: 0 0 calc(var(--ew-se-glow, 1) * 5px) var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7);
+    }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     /* AP cost diamonds — always gold, matching the big AP row */
@@ -11442,6 +11615,7 @@ function _hudHideCss() {
     }
     /* right-side detail chips shared by every row */
     .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    .hrlg-acc  { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; color: #e8e4d0; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-chip {
       flex: none; font-size: 9px; letter-spacing: 0.08em; color: #8fd0e8;
       border: 1px solid rgba(79,216,255,0.45); background: #10141d;
@@ -15194,9 +15368,9 @@ function zoneForm(X, pre, title, note, both) {
 }
 /* the green ! (Arrows + tiles > Super effective !): a specimen of each place it shows, in the look now */
 function seForm(X) {
-  const bang = (px, big) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big) : '!';
+  const bang = (px, big, half) => (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(px, big, half) : '!';
   const spec = `<div class="uim-se-spec"><span class="uim-se-unit">${bang(0, true)}<i></i></span>`
-    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span></div>`;
+    + `<span class="uim-se-badge">${bang(14)}SUPER EFFECTIVE</span><span class="uim-se-row">Target row <span class="hrlg-supereff">!</span></span><span class="uim-se-row">+1 AP <span class="hrlg-supereff half">!</span></span></div>`;
   let h = `<div class="uim-h">Super effective !</div>` + spec;
   h += sec('ehover', 'Over the enemies', xCheck('While a spell is hovered', 'eHover', X.eHover)
     + xp(fRange('Size', 'eBig', 12, 64, 1, +X.eBig) + fRange('Height above the head', 'eLift', -40, 80, 1, +X.eLift))
