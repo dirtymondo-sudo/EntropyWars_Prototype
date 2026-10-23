@@ -39841,7 +39841,7 @@
                 if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
                 if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
                 if (menuView === 'switch') return _promptBarHtml('Select a reserve to switch in.', 'ESC back');
-                if (menuView === 'tactics') return _promptBarHtml('Pick a Tactic: that unit then plays its own turns. MANUAL gives you the orders back.', 'ESC back');
+                if (menuView === 'tactics') return _promptBarHtml('Pick a Tactic: the unit plays its own turns.', 'ESC back');
                 return _promptBarHtml('<strong>' + esc(_ctName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
             } catch (err) {
                 return null; // a broken prompt must never take the game down
@@ -46379,20 +46379,22 @@
            its planner keeps their jobs inside ai.js. The HUD's TACTICS menu (hud.js _hrlgTacticBlades) sets it. */
         const UNIT_TACTIC_IDS = ['fight', 'siege', 'search', 'intercept', 'anchor', 'heal'];
         const _TACTIC_HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive', 'zoneHeal', 'seedHeal']);
+        /* the menu's one-line descriptions (kept short to fit the row; ai.js AI_TACTICS carries the long ones) */
         const _UNIT_TACTIC_FALLBACK = {
             fight:     { label: 'Fight',     desc: 'Kill and stagger enemies' },
-            siege:     { label: 'Siege',     desc: 'Hit the enemy Cube' },
+            siege:     { label: 'Siege',     desc: 'Go hit the enemy Cube' },
             search:    { label: 'Search',    desc: 'Inspect tiles for Keys' },
-            intercept: { label: 'Intercept', desc: 'Chase Key carriers and Cube siegers' },
-            anchor:    { label: 'Anchor',    desc: 'Stay alive so the team is never wiped' },
-            heal:      { label: 'Heal',      desc: 'Heal and support allies' },
+            intercept: { label: 'Intercept', desc: 'Chase carriers and Cube hitters' },
+            anchor:    { label: 'Anchor',    desc: 'Guard the Cube, stay alive' },
+            heal:      { label: 'Heal',      desc: 'Heal and revive allies' },
         };
-        /* label + one-line description: ai.js's AI_TACTICS table when it is loaded, else the fallback above */
+        /* label (ai.js AI_TACTICS when loaded) + the short line above, + ai.js's full text as `long` */
         function unitTacticInfo(id) {
             const row = Array.isArray(window.AI_TACTICS) ? window.AI_TACTICS.find(r => r && r.id === id) : null;
             const fb = _UNIT_TACTIC_FALLBACK[id];
             if (!row && !fb) return null;
-            return { id, label: (row && row.label) || fb.label, desc: (row && row.desc) || (fb && fb.desc) || '' };
+            return { id, label: (row && row.label) || fb.label, desc: (fb && fb.desc) || (row && row.desc) || '',
+                long: (row && row.desc) || (fb && fb.desc) || '' };
         }
         function unitOnTactic(u) {
             if (!u || u.dead || !u.tactic || UNIT_TACTIC_IDS.indexOf(u.tactic) < 0) return false;

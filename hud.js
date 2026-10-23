@@ -10188,9 +10188,10 @@ function QuickPeek({ st }) {
 /* ♟ THE TACTIC WATCH: while one of YOUR units plays its turn on a Tactic (battle.js unitOnTactic), the command menu's
    spot shows a small window instead — whose turn it is, its Tactic and why (ai.js aiTacticReason), and the Tactic list
    so you can switch it, or pick MANUAL to take control (the AI finishes the step it is on, then the turn is yours).
-   Hidden through every action's animation, like the command menu. */
-function TacticWatch({ st, hidden }) {
-  if (hidden || !st || st.phase !== 'battle' || st.winner) return null;
+   It stays up through the AI's whole turn (the AI acts back to back, so a window that hid with each animation was
+   never clickable); spell close-ups still fade it (body.ew-spell-shot). */
+function TacticWatch({ st }) {
+  if (!st || st.phase !== 'battle' || st.winner) return null;
   const u = (st.units || []).find(x => x.id === st._blitzActiveUnitId && !x.dead && !x._dying);
   if (!u || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return null;
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
@@ -10258,7 +10259,7 @@ function ReactHUD() {
     ),
     h(QuickPeek, { st }),
     h('div', { style: { pointerEvents: 'auto' }},
-      h(TacticWatch, { st, hidden: menusHidden }),
+      h(TacticWatch, { st }),
     ),
     h('div', { style: { pointerEvents: 'auto' }},
       h(TurnColumn, { st }),
