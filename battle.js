@@ -12511,26 +12511,36 @@
            board rig's eye above it, so a close shot never sits inside a body (the playtest's "camera inside the
            Sedan"). Hidden models (fog, a cloak) never count: their place must not shape the camera. */
         const _cbtFp = [0, 0, 0, 0, 0, 0, 0, 0], _cbtPos = [0, 0, 0];
-        window._camBodyTopPx = function (wx, wz, pad) {
+        /* notX / notZ (optional): a body whose footprint covers that point is the subject itself and never counts (the
+           sight line to a big model must not be "blocked" by its own wings — wipeout playtest 2026-10-23) */
+        window._camBodyTopPx = function (wx, wz, pad, notX, notZ) {
             let top = -Infinity;
             try {
                 if (state.phase !== 'battle' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.getUnitWorldPos) return top;
                 const ts = CONFIG.tileSize || BASE_TILE;
                 pad = pad || 0;
+                const skipSubject = Number.isFinite(notX) && Number.isFinite(notZ);
                 for (const u of (state.units || [])) {
                     if (!u || u.dead) continue;
                     if (!ThreeRenderer.getUnitWorldPos(u.id, _cbtPos)) continue;
                     const dx = wx - _cbtPos[0], dz = wz - _cbtPos[2];
                     if (Math.abs(dx) > ts * 2.5 || Math.abs(dz) > ts * 2.5) continue;
-                    let inside;
+                    let inside, isSubject = false;
                     if (ThreeRenderer.getUnitFootprint && ThreeRenderer.getUnitFootprint(u.id, _cbtFp)) {
                         // corners (-,-) (-,+) (+,-) (+,+): half axes a = ((+,+) − (-,+)) / 2, b = ((+,+) − (+,-)) / 2
                         const ax = (_cbtFp[6] - _cbtFp[2]) / 2, az = (_cbtFp[7] - _cbtFp[3]) / 2;
                         const bx = (_cbtFp[6] - _cbtFp[4]) / 2, bz = (_cbtFp[7] - _cbtFp[5]) / 2;
                         const la = Math.hypot(ax, az) || 1, lb = Math.hypot(bx, bz) || 1;
                         inside = Math.abs((dx * ax + dz * az) / la) <= la + pad && Math.abs((dx * bx + dz * bz) / lb) <= lb + pad;
-                    } else inside = Math.hypot(dx, dz) <= ts * 0.38 + pad;
-                    if (!inside) continue;
+                        if (inside && skipSubject) {
+                            const nx = notX - _cbtPos[0], nz = notZ - _cbtPos[2];
+                            isSubject = Math.abs((nx * ax + nz * az) / la) <= la && Math.abs((nx * bx + nz * bz) / lb) <= lb;
+                        }
+                    } else {
+                        inside = Math.hypot(dx, dz) <= ts * 0.38 + pad;
+                        if (inside && skipSubject) isSubject = Math.hypot(notX - _cbtPos[0], notZ - _cbtPos[2]) <= ts * 0.38;
+                    }
+                    if (!inside || isSubject) continue;
                     const h = (ThreeRenderer.getUnitVisualHeight ? ThreeRenderer.getUnitVisualHeight(u.id) : 0) || ts * 0.95;
                     if (_cbtPos[1] + h > top) top = _cbtPos[1] + h;
                 }
@@ -13768,6 +13778,22 @@
                 else { out.neutral++; sum += 1; }
             }
             out.mult = targets.length ? sum / targets.length : 1;
+            /* THE REAL HIT (wipeout playtest 2026-10-23: the picker said ~972, the strike hit the Yeti for 2011 and the
+               Demon for 1507): the chart average × STAB left out the level magnitude, M.DEF, status taken-mults and the
+               rest of the hit math. Each victim now gets the engine's own read (forecastHitOnUnit, the same opts
+               doEntropyStrike's applyHit passes, mid roll) — the finisher's forecast does the same. */
+            out.hits = [];
+            const raw = getEntropyStrikeDamage(unit);
+            const hitOpts = { sourceUnit: unit, damageType: 'magic', spellType: def.id };
+            for (const t of targets) {
+                let f = null;
+                try { f = forecastHitOnUnit(t, raw, hitOpts); } catch (err) { f = null; }
+                if (f) out.hits.push({ id: t.id, dmg: f.dmg });
+            }
+            if (out.hits.length) {
+                out.dmgLo = Math.min(...out.hits.map(h => h.dmg));
+                out.dmgHi = Math.max(...out.hits.map(h => h.dmg));
+            }
             return out;
         }
         /* The type that squeezes the most damage out of the current targets
@@ -28725,7 +28751,9 @@
            wall between the lens and a body leaves that body as its x-ray hologram and the eye inside a wall turns the
            board black. Each body is sighted at its chest, its head and (a long body: a car) the four corners of its drawn
            footprint, and every sight line walks the solid columns every ¼ tile up to the body's own tile; the eye inside a
-           column or another unit's model counts 3, each blocked line 1, a line through another unit's model ½. */
+           column or another unit's model counts 3, each blocked line 1, a line through another unit's model ½ — or 2 when
+           that model stands within NEAR_LENS tiles of the eye (wipeout playtest 2026-10-23: an ally Dragon / Nephilim just in
+           front of the lens filled the screen with its x-ray, and ½ a line never outweighed the pose's other costs). */
         function _menuCamOccl(E, A, B) {
             const ts = CONFIG.tileSize || BASE_TILE;
             const W = bw(), H = bh();
@@ -28741,8 +28769,11 @@
             let occl = 0;
             const eg = solidAt(E[0], E[2]);
             if (eg != null && E[1] < eg + ts * 0.5) occl += 3;   // the eye itself inside a hill / wall
-            const bodyTop = (wx, wz) => (typeof window._camBodyTopPx === 'function') ? window._camBodyTopPx(wx, wz, 0) : -Infinity;
-            if (E[1] < bodyTop(E[0], E[2]) + ts * 0.3) occl += 3;   // the eye inside a model
+            const bodyTop = (wx, wz, pad, b) => (typeof window._camBodyTopPx === 'function')
+                ? window._camBodyTopPx(wx, wz, pad || 0, b ? b.x : undefined, b ? b.z : undefined) : -Infinity;
+            // the eye inside a model, or so close that the near plane cuts it (the board rig's own pad)
+            if (E[1] < bodyTop(E[0], E[2], ts * 0.3) + ts * 0.3) occl += 3;
+            const NEAR_LENS = ts * 2.5;
             for (const b of [A, B]) {
                 const sights = [[b.x, b.foot + (b.top - b.foot) * 0.5, b.z], [b.x, b.foot + (b.top - b.foot) * 0.85, b.z]];
                 if (b.fp) for (let i = 0; i < 8; i += 2) {
@@ -28751,7 +28782,7 @@
                 for (const P of sights) {
                     const hx = P[0] - E[0], hz = P[2] - E[2], horiz = Math.hypot(hx, hz);
                     const n = Math.min(64, Math.max(4, Math.ceil(horiz / (ts / 4))));
-                    let blocked = false, unitHit = false;
+                    let blocked = false, unitHit = false, unitNear = false;
                     for (let i = 1; i < n; i++) {
                         const u = i / n;
                         // the body's own tile stands under it — stop just short of it
@@ -28759,9 +28790,13 @@
                         const sx = E[0] + hx * u, sy = E[1] + (P[1] - E[1]) * u, sz = E[2] + hz * u;
                         const gy = solidAt(sx, sz);
                         if (gy != null && gy + lip > sy) { blocked = true; break; }
-                        if (!unitHit && (1 - u) * horiz > ts * 0.9 && bodyTop(sx, sz) > sy) unitHit = true;
+                        if (!unitNear && (1 - u) * horiz > ts * 0.9 && bodyTop(sx, sz, 0, b) > sy) {
+                            unitHit = true;
+                            if (u * horiz < NEAR_LENS) unitNear = true;
+                        }
                     }
                     if (blocked) occl += 1;
+                    else if (unitNear) occl += 2;
                     else if (unitHit) occl += 0.5;
                 }
             }
@@ -44183,7 +44218,20 @@
                 weightsChanged: weights, trainedWeights: _aiTrainedWeights ? JSON.parse(JSON.stringify(_aiTrainedWeights)) : {},
                 schema: AI_WEIGHT_SCHEMA_VERSION,
             };
-            _imitShowReport(_imitLastReport);
+            /* the report waits for the result screen (wipeout playtest 2026-10-23: it opened over the finishing Entropy
+               Strike cinematic and then sat on the VICTORY title) — showResultOverlay opens it, folded to its title bar */
+            _imitReportPending = true;
+        }
+        let _imitReportPending = false;
+        function _imitShowPendingReport() {
+            if (!_imitReportPending) return;
+            _imitReportPending = false;
+            const r = _imitLastReport;
+            if (!r) return;
+            setTimeout(() => {
+                if (_imitLastReport !== r || !resultOverlay || resultOverlay.classList.contains('hidden')) return;
+                _imitShowReport(r, { folded: true });
+            }, 1200);   // after the title slam
         }
 
         /* ── The report panel: stays up until closed (or the match screen is
@@ -44227,9 +44275,10 @@
             document.body.appendChild(el);
             return el;
         }
-        function _imitShowReport(r) {
+        function _imitShowReport(r, opts) {
             if (!r) return;
             const el = _imitReportEl();
+            const folded = !!(opts && opts.folded);
             const st = r.match || {};
             const esc = (s) => escapeHtml(String(s == null ? '' : s));
             const chip = (n, label, color) => `<div style="flex:1;text-align:center;padding:6px 4px;border:1px solid rgba(140,140,200,0.1);border-radius:4px">
@@ -44256,7 +44305,9 @@
             const h = (txt) => `<div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin:12px 0 4px">${txt}</div>`;
             el.innerHTML = `
                 <div class="train-drag-handle" id="imitDragHandle"><span class="train-title">🧠 Imitation Report</span>
+                    <button class="train-btn" id="imitFoldBtn" style="flex:0;padding:2px 8px" title="Open / fold the report" onclick="window._ewImitationReportFold()">${folded ? '▸' : '▾'}</button>
                     <button class="train-btn" style="flex:0;padding:2px 8px" onclick="window._ewImitationReportClose()">✕</button></div>
+                <div id="imitReportBody" style="${folded ? 'display:none' : ''}">
                 <div class="train-subtitle" style="margin-bottom:8px">Training match · ${esc(r.mode || '')} · ${esc(new Date(r.when).toLocaleString())}</div>
                 <div style="display:flex;gap:6px">${chip(st.observed || 0, 'SCORED', 'var(--text)')}${chip(st.agree || 0, 'AGREED', '#7fd9dd')}${chip(st.disagree || 0, 'LEARNED', '#7fd97f')}${chip(st.unmatched || 0, 'UNSCORED', 'var(--muted)')}</div>
                 <div style="margin-top:8px;padding:5px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${kept ? 'rgba(127,217,127,0.12)' : 'rgba(224,160,96,0.14)'};color:${kept ? '#7fd97f' : '#e0a060'}">
@@ -44272,7 +44323,9 @@
                     <button class="train-btn" onclick="window._ewImitationReportExport()">⬇ Export JSON</button>
                     <button class="train-btn" onclick="window._ewImitationReportCopy(this)">📋 Copy</button>
                     <button class="train-btn danger" onclick="window._ewImitationReportClose()">Close</button>
-                </div>`;
+                </div></div>`;
+            /* folded = the title bar only, at its natural width (the result screen's VICTORY title stays clear) */
+            _imitFoldLook(el, folded);
             el.style.display = 'block';
             _initTrainPanelDrag(el, document.getElementById('imitDragHandle'));
         }
@@ -44280,6 +44333,20 @@
         /* ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13): the table's panel asks before it offers the last report */
         window._ewImitationHasReport = () => !!_imitLastReport;
         window._ewImitationLastReport = () => _imitLastReport;
+        function _imitFoldLook(el, folded) {
+            el.style.width = folded ? 'auto' : '380px';
+            el.style.paddingBottom = folded ? '0' : '';
+            const hd = document.getElementById('imitDragHandle');
+            if (hd) { hd.style.marginBottom = folded ? '0' : ''; hd.style.borderBottom = folded ? 'none' : ''; }
+        }
+        window._ewImitationReportFold = () => {
+            const el = document.getElementById('imitReportPanel'), body = document.getElementById('imitReportBody'), btn = document.getElementById('imitFoldBtn');
+            if (!el || !body) return;
+            const open = body.style.display === 'none';
+            body.style.display = open ? '' : 'none';
+            _imitFoldLook(el, !open);
+            if (btn) btn.textContent = open ? '▾' : '▸';
+        };
         window._ewImitationReportClose = () => { const el = document.getElementById('imitReportPanel'); if (el) el.style.display = 'none'; };
         window._ewImitationReportExport = () => {
             if (!_imitLastReport) return;
@@ -45150,6 +45217,7 @@
                 }
                 if (typeof _vicLayoutSync === 'function') _vicLayoutSync({ tab: 'rewards' });
             } catch (e) { _vicFail('the way out', e); }
+            try { _imitShowPendingReport(); } catch (e) {}   // a training match's Imitation Report, now the result is up
         }
         function _showResultOverlayBody() {
             const viewer = getViewerPlayer();
@@ -57299,6 +57367,21 @@
                         if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport') {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
+                            /* THE PICK IN FRAME (wipeout playtest 2026-10-23): the range fit above frames only the
+                               lit tiles, so a MOVE→CAST pre-pick outside them was armed (CONFIRM) off screen. Refit
+                               the same board read to take in the picked target too. */
+                            const _pk = targets[0];
+                            const _pkTiles = _tilePickTiles(unit, 'spell', spell);
+                            if (!_scOwns && !state.cameraDisabled && _fogCamAllSeen(unit, _pk.unit || _pk)
+                                && !_pkTiles.some(t => t.x === _pk.x && t.y === _pk.y)) {
+                                const _pkAll = _pkTiles.concat([{ x: _pk.x, y: _pk.y }]);
+                                const _pkFr = _tilePickFrame(unit, _pkAll);
+                                if (_pkFr) {
+                                    camera.moveTo({ x: _pkFr.x, y: _pkFr.y, zoom: _pkFr.zoom, tilt: TILE_PICK_TILT, duration: 380, easing: 'easeInOut',
+                                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+                                    _tilePickArmRefit(unit, _pkAll, _pkFr);
+                                }
+                            }
                         }
                     }
                 }
