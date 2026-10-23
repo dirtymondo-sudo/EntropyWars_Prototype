@@ -1455,6 +1455,7 @@
 
         function rollSkyEvent() {
             if (state.skyEvent) return null;
+            if (typeof window !== 'undefined' && window._tutWeatherOff) return null;   // THE TUTORIAL: no celestial event unless the lesson asks
             /* the fixed timer (data.js SKY_EVENT_FIRST_ROUND / SKY_EVENT_EVERY); the event itself is random, never a repeat */
             if (state.round < SKY_EVENT_FIRST_ROUND || (state.round - SKY_EVENT_FIRST_ROUND) % SKY_EVENT_EVERY !== 0) return null;
             const pool = SKY_EVENT_KEYS.filter(k => k !== state._lastSkyEventType);
@@ -2568,6 +2569,8 @@
 
         function spawnWeather() {
             if (state.round < WEATHER_SPAWN_ROUND) return;
+            /* THE TUTORIAL: a lesson without `weather: true` keeps a calm board (ui.js _tutorialLaunch sets the flag) */
+            if (typeof window !== 'undefined' && window._tutWeatherOff) return;
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
             if (engineRng() > WEATHER_SPAWN_CHANCE) return;
 
