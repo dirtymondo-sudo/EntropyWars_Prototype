@@ -2047,16 +2047,23 @@
     }
 
     /* ── THE SEARCH MAP (Phase 2): the odds a still-hidden Key lies on each tile, from facts every player has —
-       the Key count (shown), the tiles this side already Inspected (state.scannedByPlayer), walkable tiles only
+       the Key count (shown), the tiles this side already Inspected (state.searchedByPlayer, via _aiSearched), walkable tiles only
        (randomizeSharedObjectives floods from the spawns), never the Cube's tile. RANDOM KEYS (mondo 2026-10-23):
        Keys land anywhere on the board with no spacing and no centre-first pass, so every open tile is equally
        likely (searchCenterPrior_v1 no longer applies; a seen Key's surroundings are no longer ruled out). */
+    /* The tiles side p already searched (battle.js THE SEARCH MAP: Inspect / Far Sight footprints; a death tile drops out).
+       Was state.scannedByPlayer, which the scan fade empties 0.7 s after every search, so the CPU never remembered
+       where it had looked (mondo 2026-10-23: "yes it should remember"). */
+    function _aiSearched(st, p) {
+        const sb = st && st.searchedByPlayer && st.searchedByPlayer[p];
+        return (sb instanceof Set) ? sb : new Set();
+    }
     const _keySeen = { 1: new Map(), 2: new Map(), units: null };
     const _searchCache = { 1: null, 2: null };
     function _searchMapFor(g, unit, p) {
         const st = g.state;
         const hg = st.hourglasses || [];
-        const scanned = st.scannedByPlayer && st.scannedByPlayer[p];
+        const scanned = _aiSearched(st, p);
         if (!hg.length || !scanned || !unit) return null;
         if (_keySeen.units !== st.units) {
             _keySeen[1].clear(); _keySeen[2].clear(); _keySeen.units = st.units;
@@ -2220,7 +2227,7 @@
         const hg = st.hourglasses || [];
         const key = p + '|' + (st.round || 0) + '|' + st.units.map(u => u.dead ? 'd' : ((u.hp | 0) + ':' + u.x + ',' + u.y)).join(';')
             + '|' + hg.map(h => h.carriedBy == null ? (h.visibleTo && h.visibleTo[p] ? 'v' : 'h') : 'c' + h.carriedBy).join(',')
-            + '|' + (st.towers?.[1]?.hp | 0) + '/' + (st.towers?.[2]?.hp | 0) + '|' + (st.scannedByPlayer?.[p]?.size | 0)
+            + '|' + (st.towers?.[1]?.hp | 0) + '/' + (st.towers?.[2]?.hp | 0) + '|' + (_aiSearched(st, p).size | 0)
             + '|' + (ws ? ws.scoreLead + '/' + ws.roundsRemaining : '');
         if (_clockCache.key === key) return _clockCache.val;
         const val = { our: _sideClock(g, p, q, p, wcs, ws), their: _sideClock(g, q, p, p, wcs, ws), wcs };
@@ -2796,7 +2803,7 @@
                     const inspTiles = g.getInspectTiles(unit);
                     if (inspTiles.length > 0) {
                         const unscanned = inspTiles.filter(t =>
-                            !g.state.scannedByPlayer[unit.player].has(g.scanKey(t.x, t.y))
+                            !_aiSearched(g.state, unit.player).has(g.scanKey(t.x, t.y))
                         );
                         const pool = unscanned.length > 0 ? unscanned : inspTiles;
                         const pick = pool[Math.floor(g.engineRng() * pool.length)];
@@ -5835,7 +5842,7 @@
         }
 
         const unscanned = allTiles.filter(t =>
-            !g.state.scannedByPlayer[unit.player].has(g.scanKey(t.x, t.y)));
+            !_aiSearched(g.state, unit.player).has(g.scanKey(t.x, t.y)));
 
         const cx = Math.floor(g.bw() / 2), cy = Math.floor(g.bh() / 2);
         const pool = unscanned.length > 0 ? unscanned : allTiles;
@@ -6332,7 +6339,7 @@
         const range = (typeof g.getEffectiveSpellRange === 'function' ? g.getEffectiveSpellRange(unit, spell) : spell.range) || 4;
         const seen = loose.filter(h => h.visibleTo && h.visibleTo[unit.player]);
         const ownReach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(unit) : 1;
-        const scanned = (g.state.scannedByPlayer && g.state.scannedByPlayer[unit.player]) || new Set();
+        const scanned = _aiSearched(g.state, unit.player);
         const cx = Math.floor(g.bw() / 2), cy = Math.floor(g.bh() / 2);
         const fight = !!(v && v.visibleEnemies && v.visibleEnemies.length);
         // THE SEARCH MAP (the Tactics pass): a blind Far Sight is aimed and priced by the Keys it is expected to find

@@ -2374,5 +2374,13 @@ be 2 tiles apart."
   ui.js renderBoard). Online: the host sends the guest only the guest's own set (online.js `_guestTrapFilter`).
 - "+N KEY" floats as `pickup` (gold) instead of `streak` (hit-word red).
 - Already fixed on main before this pass: the two seats' load-screen / CASE CLOSED year (seeded by the match id).
-- The round-10 Key top-up (`spawnPeriodicHourglasses`, whole-board since PR #467) clears both sides' searched tiles:
-  a new Key can land on any tile, and clearing everything tells nobody where.
+- (The round-10 Key top-up that cleared the searched tiles is gone, see below.)
+
+## CPU SEARCH MEMORY + NO KEY TOP-UP (2026-10-23, mondo)
+mondo: "yes it should remember, and lets also get rid of the round 10 key top up".
+- ai.js reads the searched tiles through `_aiSearched(st, p)` = `state.searchedByPlayer[p]` (was scannedByPlayer, always
+  empty after the scan fade): the search map, the fallback Inspect pick, the Keys objective pool, Far Sight's pick and
+  the win-clock cache key.
+- REMOVED: `spawnPeriodicHourglasses` and its round-10 call. It never reshuffled Keys; it ADDED up to 3 new Keys (at most
+  6 loose on the ground) once, at round 10, only in a mode without a fixed Key pool. Arena pins keySpawnCount 5 /
+  keysToWin 5 (fixedPool), so it never ran in Arena; it could only run in a match with no multiplayer mode set.
