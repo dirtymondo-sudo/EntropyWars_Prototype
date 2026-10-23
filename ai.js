@@ -2047,10 +2047,10 @@
     }
 
     /* ── THE SEARCH MAP (Phase 2): the odds a still-hidden Key lies on each tile, from facts every player has —
-       the Key count (shown), the tiles this side already Inspected (state.scannedByPlayer), the spots its Keys
-       were seen at (no Key spawns within 2 tiles of another: battle.js canPlaceHourglassAt), walkable tiles only
-       (randomizeSharedObjectives floods from the spawns), never the Cube's tile. searchCenterPrior_v1 weights the
-       centre columns, where randomizeSharedObjectives places Keys first (1 = no prior). */
+       the Key count (shown), the tiles this side already Inspected (state.scannedByPlayer), walkable tiles only
+       (randomizeSharedObjectives floods from the spawns), never the Cube's tile. RANDOM KEYS (mondo 2026-10-23):
+       Keys land anywhere on the board with no spacing and no centre-first pass, so every open tile is equally
+       likely (searchCenterPrior_v1 no longer applies; a seen Key's surroundings are no longer ruled out). */
     const _keySeen = { 1: new Map(), 2: new Map(), units: null };
     const _searchCache = { 1: null, 2: null };
     function _searchMapFor(g, unit, p) {
@@ -2072,10 +2072,6 @@
         const prob = new Float32Array(W * H);
         const val = { p: prob, W, H, hidden, topEV: 0, tiles: 0 };
         if (hidden > 0) {
-            const span = W >= 20 ? 4 : (W >= 8 ? 2 : W);
-            const bandMin = Math.floor(W / 2) - Math.floor(span / 2), bandMax = bandMin + span - 1;
-            const prior = Math.max(1, wght(g, 'searchCenterPrior_v1', 4));
-            const spots = [...seen.values()];
             const towers = st.towers ? [st.towers[1], st.towers[2]].filter(Boolean) : [];
             const hasPass = typeof isTerrainPassable === 'function';
             let sumW = 0;
@@ -2083,9 +2079,7 @@
                 if (scanned.has(g.scanKey(x, y))) continue;
                 if (towers.some(t => t.x === x && t.y === y)) continue;
                 try { if (hasPass ? !isTerrainPassable(x, y) : !g.unitCanTraverse(unit, x, y)) continue; } catch (e) {}
-                if (spots.some(s => Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) <= 2)) continue;
-                const w = (x >= bandMin && x <= bandMax) ? prior : 1;
-                prob[x + y * W] = w; sumW += w;
+                prob[x + y * W] = 1; sumW += 1;
             }
             if (sumW > 0) {
                 const k = hidden / sumW;
@@ -2094,9 +2088,8 @@
                 vals.sort((a, b) => b - a);
                 val.tiles = vals.length;
                 const top = vals.slice(0, Math.max(1, Math.ceil(vals.length * 0.15)));
-                let F = 4;
-                try { F = (typeof g.getEffectiveVision === 'function' ? g.getEffectiveVision(unit) : 4) || 4; } catch (e) {}
-                val.topEV = Math.min(1, Math.min(F, 9) * top.reduce((a, b) => a + b, 0) / top.length);
+                // ONE TILE A SCAN (2026-10-23): an Inspect searches one tile, whatever the VISION
+                val.topEV = Math.min(1, top.reduce((a, b) => a + b, 0) / top.length);
             }
         }
         _searchCache[p] = { key, val };

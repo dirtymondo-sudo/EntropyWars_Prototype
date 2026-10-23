@@ -5954,7 +5954,7 @@ function ActionMenu({ st, hidden }) {
       active: am === 'inspect',
       sub: _inOk ? null : 'No AP',
       hint: '1 AP',
-      title: 'Inspect — search the tiles around a tile you pick for Keys, items on the fallen and hidden bombs (1 AP)',
+      title: 'Inspect — search the tile you pick for Keys, items on the fallen and hidden bombs (1 AP)',
       fire: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); },
     });
   }
