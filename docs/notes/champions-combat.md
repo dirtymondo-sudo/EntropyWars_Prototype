@@ -1997,11 +1997,12 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - Not covered: touch/gamepad have no F (keyboard Enter cursor keeps its own z).
 
 ## THE CUBE PLAYTEST FIXES (2026-10-23, report https://claude.ai/artifact/BqLpotev1HFttbkZGZoiEW)
-- STAT STAGE RULER: battle.js `_statStageCeil` = max(STAT_STAGE_RULER_TOP 200 + the unit's earned level growth
-  (`_lvlStatGains`, not SPD), base). The old max(100, base) sat below every level-100 statline (race bake 2026-10-06 put
-  bases on 0-200, growth +58 ATK on top), so every ATK buff read "ATK maxed". `statStageRoom(unit, stat, n)` (GAME) is
-  the one room count; ai.js stageRoom and Bloodcraze's SPD clamp read it. STAT_STAGE_STEP is still 20 (half a letter on
-  the new bands) — flagged to mondo with the cap question (S-rank ATK races still gain only a few points).
+- STAT STAGE CAP (mondo's rule 10-23: "the max attack stat at level 100 plus 5 stages", for every main stat, following
+  his stat edits): battle.js `_statStageCeil` = max(roster top + 5 × STAT_STAGE_STEP, the unit's own value). Roster top
+  (`_statStageRosterTop`, cached 1 s) = highest RACE_BASE_STATS value + LEVEL_TOTAL_STAT_GAINS + biggest ZODIAC_EFFECTS
+  natal for ATK / M ATK / DEF / M DEF / SPD, so the race editor moves it. Shipped: ATK 358, M ATK 343, DEF 362, M DEF 369, SPD 300.
+  The old max(100, base) sat below every level-100 statline, so every ATK buff read "ATK maxed". `statStageRoom(unit, stat,
+  n)` (GAME) is the one room count; ai.js stageRoom and Bloodcraze's SPD clamp read it. STAT_STAGE_STEP stays 20.
 - Respawn clears `_staggerApDebt` beside the statStageMods reset (map.js x3, battle.js realtime).
 - ui.js `_estimateHealPotionHeal(target, item, user)` applies Devout healMult + healTakenMult (Grievous / Gooed).
 - hud.js Abilities sub: a spell blocked by its own guard (cooldown, one cast, Brand lock) names that reason
@@ -2015,6 +2016,21 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - match-select.js MapCard shows the cut a click would play (the picked BOARD SIZE).
 - NOT REPRODUCED: the Cube missing from Gargoyle's attack list once (same tile next round). The list's tower branch and
   the swing share combatDist + LoS from the unit's z; a changed z (airborne) or a changed column is the likely cause.
+
+## TAKE OFF FIRST — Move never takes off for the player (2026-10-23, Cube + wipeout playtests) — battle.js
+- mondo: "dont show tiles that you can take off+move to, it should require you to take off first. Same with land+move,
+  the player should have the choice to spend the ap to take off or land". The playtests had a grounded flyer click a
+  Stonehenge tile, take off onto the lintel and spend both AP (turn over).
+- battle.js `getMoveTiles`: the grounded-flyer TAKE OFF + MOVE fan-out (the teal `_takeoff` tiles) now runs only for
+  `state.autoPlayers[unit.player]` (the CPU). A player's grounded flyer sees walk/jump tiles only; Take Off (1 AP) is
+  its own action, then Move shows the flying tiles. Everything downstream of `_takeoff` (ghost route, "Take Off + Move"
+  tile card, move-then-cast) simply never sees one for a player unit. The CPU keeps the combined take-off + move.
+- Land + move: an airborne flyer's Move tiles were already all airborne (getFlightZChoices never returns the ground),
+  so nothing landed on its own; Land stays its own action.
+- Not changed: spell approaches that take off / land in place and then cast (`_spellHeightApproaches`).
+- Browser-checked on Stonehenge (Sedan as a flyer): old code, 11 teal tiles and a click flew it to the lintel (z 8,
+  AP 0); new code, 0 teal tiles for the player (CPU still 11), the same click does not take off, Take Off then Move
+  lists the flying tiles.
 
 ## THE WIPEOUT PLAYTEST FIXES (2026-10-23)
 From the 10-23 wipeout playtest (Stonehenge 4v4, Training). mondo: green ! = super effective (intended); no layout work
