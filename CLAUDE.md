@@ -61,6 +61,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
 - **NO TESTS (2026-09-29, mondo):** the test suite, the check-* tools and the CI workflow were deleted. Never write
   test files, never run a test suite, never re-add CI. Check work with `node --check <file>` on the JS you edited
   (a stray brace in data.js takes the whole game down) and, when useful, a quick load/playtest of what changed.
+- **THE TUTORIAL STAYS TRUE (2026-10-23):** a PR that changes a rule function named in data.js TUTORIAL_MECHANICS
+  (`watch`) re-reads that lesson's coach steps in the same PR and fixes any line the change made wrong. No test, no tool.
 - **NO TAPE / FIND / OLD-SAVE GUARDS (2026-09-27, mondo):** "I do not care about the tapes or the finds ... I do
   not care about save files or old saves." Don't migrate old save keys, and let tapes/finds move or drop when a
   room changes.

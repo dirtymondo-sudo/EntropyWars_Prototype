@@ -655,7 +655,6 @@ basic attacks (`damageDoorAt`, `attack:door` on the tile card); its owner's side
 by spell id (`gunGustDoor:open/act/hit/break/fold`). A basic CPU placer is `window.doorGunAiPick`. Test:
 `door-gun-board.test.js` (the door block + the chain in one vm).
 
-
 ## THE DOOR AGENT rev 6 — THE GUST STREAM + THE DESTINATIONS (door wheel Phase 2) — 2026-09-25, local delivery
 DOOR_GUN_PLAN.md Phase 2 (full log in its §11). **THE GUST STREAM** (the user: "a persistent hazard on the field,
 not just blasting in between rounds … immovable units like the kaiju and giant should be able to stand in it"):
@@ -2094,7 +2093,13 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - **Difficulty.** Easy plays without the plan and the clocks (AI_DIFFICULTY_PROFILES.tactics; a player's own Tactic still applies). **Phase 4.** Hard only: `_hardReplyCheck` (top five options − hardReplyFactor_v1 × the worst enemy reply). state.js `_cpuPlanDraft`: Hard VS CPU drafts brawl / siege / Key hunt from RACE_BASE_STATS + raceKit (top ten per role, one of each); never for crossings, encounters, online or labs. `window._ewCpuDraftPlan`.
 - **Phase 5.** battle.js `_AB_RETIRED_KEYS`: the 18 gen-40 flat weights + killBonusScore + cubeWindowBonus are no longer A/B-tested (values kept and still played; imitation still nudges; EW_TRAIN_KEYS overrides). Training dashboard: "P1 wins by" / "P2 wins by". Strength Test: Opponent mirror / Key Rusher / Cube Rusher / Turtle (`_ewSetStrengthSparring`, results per style). Imitation matches Inspect at the tile (synthetic score `_inspectScoreAt` when the CPU didn't propose it). New weights (no schema bump): raceRoundValue_v1, searchKeyValue_v1, searchCenterPrior_v1, keyCarrierDenial_v1, anchorCaution_v1, tacticCommitment_v1, hardReplyFactor_v1 (probe 'hard' = never in the labs). `window.getCubeAttackDamage` exported for the clocks.
 - Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
-- BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Seen, not changed: a ranged Siege unit (Sheriff) steps toward the Cube, shoots, then the old retreat logic walks it back, so it never reaches the Cube; Search loses its unit when Anchor + Intercept + Siege fill the budget.
+- BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Then (v4.18): Search loses its unit when Anchor + Intercept + Siege fill the budget, so when the Keys race is our nearest win or within 1.5x+1 of it, the plan hands out one unit per wanted job first (the nearest win's job before the other race) and the kept fighter becomes the searcher. Two more things kept the searcher from searching, both fixed: a CPU-assigned job now damps the other move goals ×0.75 (forced stays ×0.6), so siege_tower no longer walks the searcher to the Cube; and the Search job's Inspect is worth the Keys clock (`_keyClockValue`: expected Keys × rounds per Key off our Keys clock × share × Race Round Value), and with 2 AP it scans FIRST when its best option is a one-AP hit/heal/item (Inspect costs 1 AP, doesn't end the turn, AP doesn't carry over). Browser check: round 7 Robin Hood and Sheriff both scanned before shooting, Sheriff found a Key, Keys clock 14.7 -> 5. The Sheriff that looked like it walked back from the Cube was Bigfoot's Big Kick knocking it into the corner every other round; nothing to fix there.
+
+## THE PLAYER'S TACTICS (auto battle) (2026-10-23, mondo: "for the player to be able to apply them to their units so they dont have to manually fight for them, like they can be on auto battle") — battle.js, hud.js, online.js
+- **Set it.** Root verb ♟ TACTICS (hud.js `_hrlgTacticPartyBlades` + `_hrlgTacticBlades`): the party list (acting unit first, each with its Tactic) and beside it MANUAL + the six AI_TACTICS rows for the picked unit. Picking for the acting unit hands the turn to the AI at once; for a teammate it applies on its next turn. Not on Mystery Dungeon (own chips) or in the tutorial.
+- **Engine.** battle.js `setUnitTactic(id, tactic|null)` writes `unit.tactic`; `unitOnTactic(u)` is the gate (battle phase, controller ≠ AI, not possessed, not MD/tutorial) and is folded into `_mdUnitAuto`, so every AI-routing path (activation, `_shouldAIRun`, runComputerTurn, stall watchdog, safety timer, selectUnit, imitation skip, ActionMenu/turn column) covers it. `unitTacticProblem` greys Siege (no enemy Cube), Search (mode has no Keys), Intercept (neither), Heal (no heal/healAll/selfHeal/revive/zoneHeal/seedHeal kind and no Healing Potion — the Heal job's own list). MANUAL mid-turn: `_tacticWhenIdle` waits for the AI's step to finish, then restarts the shot clock + selects the unit. The tactic survives death/respawn (same unit object).
+- **During its turn.** hud.js `TacticWatch`: the command menu's spot shows "<name> · <TACTIC>", `aiTacticReason`, and the Tactic list (MANUAL = take control). The prompt bar is silent for a Tactic unit.
+- **Online.** The host owns unit.tactic (plain unit data → state-sync). Guest picks emit `game-action {type:'setTactic'}`; host handler checks the unit is the sender's (any time, not only its turn). The guest's units on a Tactic are played by the host's AI like the whole-side Auto mode.
 
 ## THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself ... think of each race as its own JRPG or Dark Souls boss") — data.js
 - Every race id A–F has a family of its own. 32 new SPELL_FAMILIES rows (kind 'signature', `unique: '<race>'`, an
@@ -2171,3 +2176,30 @@ rules kept: a board click PICKS (✓), CONFIRM fires; an out-of-reach enemy is M
 - Online pause menu says "MENU · ONLINE · THE MATCH KEEPS GOING" instead of PAUSED.
 - Not changed: lists open on the lowest-HP target (existing sort, asked mondo); the row slide-in lag is SwiftShader;
   ENDS TURN tag is intended; heals do get MOVE→CAST rows (the report's Divine Light case was not reproduced).
+
+## FIRE ON OIL / GOO, EVERY SPELL KIND (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of liquid explode? If not it should.")
+- Single-target spells (Fireball, Dragon Breath) already blew the whole connected slick (battle.js `_reactFireOil` via
+  `triggerTerrainSpellReaction`). Nine fire / lightning spells did not, because their resolvers never called the dispatcher
+  or painted the slick away first. Checked in a VS CPU match on the old code: Hellmouth, Solar Flare, Place Bomb, Fire for
+  Effect, Nuclear Option, Extinction Event, Infernal Hurl, Wall of Fire and Firefly Swarm left the oil standing (or
+  scorched it silently).
+- Fix: the dispatcher now also runs off a barrage hit (per struck tile), a splitBeam's primary + split hits, a skyThrow's
+  landing tile, a bomb blast (`detonateBomb`, the placer must be alive), and a delayed detonation (state.js, before the
+  crater's leaveTerrain). `igniteOilBeforePaint(caster, spell, x, y)` runs at every leaveTerrain / terrainCreate paint
+  site, so a slick under a scorch / lava paint goes up before it is covered. No new rules: these resolvers now get ALL the
+  existing reactions (conduction, flash-freeze, forest fire, crystal) like every other damage resolver.
+- "Goo" = the Black Goo's ooze terrain `swamp` (oil family, liquidFamilyOf 'oil'); the charred slick takes the normal
+  3-round terrain timer back to the map's own ground.
+
+## ICE SHATTER: SLAMS + HARD LANDINGS (2026-10-23, mondo picked "Slams + hard landings" on "Which physical abilities should shatter ice into water?")
+- battle.js `spellShattersIce(spell)`: physical damage, not ice element, not a wall (terrainCreate / monument), and a
+  leapStrike / skyDrop / skySlam kind or any `terrainDeform` crater maker (~25 rows: Ground Slam, Tremor Stomp, Cataclysm
+  Stomp, Cosmic Slam, Colossal Crush, Quake, Titan Drop, Seismic Leap, Stone Drop, Predator Drop ...). Runs at the top of
+  `triggerTerrainSpellReaction`: only the STRUCK ice tiles become shallow `water` (`shatterIceAt`), on the 3-round timer.
+  skyDrop / skySlam / leapStrike now call the dispatcher (they never did), so their ice/water/fire reactions work too.
+- Hard landing: state.js `applyFallDamage` with `opts.byEnemy` (knockbacks, Big Kick off a ledge, trapdoors, groundings)
+  cracks the ice under the body after the damage. `resolveForcedSlide` checks `hardLandingCracksIce` first and passes
+  noGlide to the chain AND its forecast, so the body stays in the hole. A sky throw from fall-damage height (carry 4, so
+  any flat throw) onto ice cracks it, no glide, forecast matches. Own jumps / walks off a ledge leave ice whole.
+- Checked in a browser (VS CPU, Football Stadium): Ground Slam 3 tiles, Tremor Stomp 3, Colossal Crush 1, Infernal Hurl
+  + To the Moon landings 1, a byEnemy fall 1; Glacial Slam and Sasquatch Smash left the ice whole.

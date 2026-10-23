@@ -784,8 +784,8 @@ function elemSplitFactor(typeEff, aff, share) {
     const r = Math.max(0, Math.min(1, share || 0));
     return (1 - r) * (typeEff == null ? 1 : typeEff) + r * elemShareMult(aff);
 }
-/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17; battle.js _pressOutcomeForHit
-   and the AI's press read it). typeTier = the SPELL's type vs the target
+/* THE PRESS VERDICT OF A HIT (mondo 2026-10-17). HISTORY since 2026-10-23: battle.js THE PRESS SUM
+   (_pressHitInfo) and ai.js pressEV replaced it — kept for anything still reading it. typeTier = the SPELL's type vs the target
    (+1 super effective, −1 resisted, 0 neutral); aff = the target's affinity
    for the spell's element. Returns 'weak' (a press, +2 AP), 'resist' (no
    press and the AP drain), 'null' (no press, no drain — vetoes the press of
@@ -25918,8 +25918,11 @@ if (typeof window !== 'undefined') {
                            the `cap` strings freely, the `art` keys are the
                            drawn slides.
    TUTORIAL_LESSONS ...... the lessons, each a scripted crossing in Room 64
-                           (`prebuilt_training`; THE HIGH GROUND runs on the
-                           Holo Sim, the Training Facility's other board):
+                           (`prebuilt_training`; HEIGHT, JUMP, CLIMB, FLIGHT
+                           runs on the Holo Sim, the Training Facility's other
+                           board; core 5-8 are REAL matches on a 10×10 arena,
+                           `cpuAi: true` — the CPU's own AI, the match's own
+                           end, `where` names the board on the shelf):
                            `board` = both teams pinned (race · job · tile ·
                            spells · name), `order` = the forced turn order,
                            `steps` = the script. A step is
@@ -25937,13 +25940,18 @@ if (typeof window !== 'undefined') {
                                      attack · spell · press · guard · end ·
                                      inspect · channel · entropy · cpuDone ·
                                      round · nexus · key · cube · visible ·
-                                     activation
+                                     activation · climb · airborne · landed ·
+                                     stand (z) · hold (a zone across a round
+                                     end) · respawn · win
                            cpu ..... the dummies' plan while the step is
                                      live: { <unitKey>: hold | approach |
                                      attack | guard | pass } (default hold)
                            enter ... effects on arrival: [['gauge', n],
                                      ['fog', bool], ['key', x, y], ['ap',
-                                     unitKey, n], ['camera', x, y]]
+                                     unitKey, n], ['camera', x, y],
+                                     ['down', unitKey, rounds?], ['carry',
+                                     unitKey, n], ['nexus', section, team],
+                                     ['cube', team, hpShare]]
                            auto .... ms; a pure-say step that advances itself
    TUTORIAL_MECHANICS .... THE DRIFT REGISTER. Every mechanic a lesson teaches
                            names (a) the numbers the copy states (`pins`,
@@ -25987,7 +25995,7 @@ const TUTORIAL_TAPE = {
     ],
 };
 
-/* The nine lessons. Board coordinates are the Δ frame: x 0..7 west→east,
+/* The lessons. Board coordinates (the Room 64 tapes) are the Δ frame: x 0..7 west→east,
    y 0..7 north→south; P1 spawns row 7 (south), P2 row 0 (north); the centre
    nexus is x 3..4 × y 3..4. Unit keys are `p<seat>-<slot>`. */
 const TUTORIAL_LESSONS = [
@@ -26113,7 +26121,7 @@ const TUTORIAL_LESSONS = [
               cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
               goal: { type: 'entropy', player: 1 } },
             { id: 'done', title: 'THE PRESS',
-              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel. Resist or miss: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
+              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel; each resistance on that hit takes 1 off, an absorb takes it all. Resist or miss with nothing else: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
               goal: { type: 'ack', finish: true } },
         ],
     },
@@ -26162,44 +26170,235 @@ const TUTORIAL_LESSONS = [
               say: 'The third way needs no objective at all: <b>remove every hostile</b>. The dummies count. A fallen vessel comes back after 2 rounds (then 3, 5, 8) on a zone its team holds, and sits out its first round back. Vessels waiting to come back count as down — and with no zone held, nothing comes back.',
               goal: { type: 'ack' } },
             { id: 'done', title: 'THE THREE WAYS OUT',
-              say: '<b>Cube · Keys · Wipe.</b> The Nexus is the economy underneath all three: healing, respawns, siege. That is the core. Everything else is optional reading.<br><br>The rest of the tapes are on the shelf — take them in any order.',
+              say: '<b>Cube · Keys · Wipe.</b> The Nexus is the economy underneath all three: healing, respawns, siege. Each gets its own tape on a real arena.<br><br>Next: <b>HEIGHT, JUMP, CLIMB, FLIGHT</b>.',
               goal: { type: 'ack', finish: true } },
         ],
     },
-    /* ── OPTIONAL ───────────────────────────────────────────────────── */
     {
-        id: 'high_ground', no: 4, tier: 'optional', minutes: 3,
-        title: 'THE HIGH GROUND', sub: 'HEIGHT · RANGE · FALL DAMAGE  (the Holo Sim projects the terrain)',
-        teaches: ['height'],
-        map: 'prebuilt_holosim', mode: 'tdm', rounds: 30,
+        id: 'high_ground', no: 4, tier: 'core', minutes: 5,
+        title: 'HEIGHT, JUMP, CLIMB, FLIGHT', sub: 'HIGH GROUND · THE JUMP STAT · CLIMBING · TAKING OFF  (the Holo Sim projects the terrain)',
+        teaches: ['height', 'jump', 'climb', 'flight'],
+        map: 'prebuilt_holosim', where: 'ROOM 404 · HOLO SIM', mode: 'tdm', rounds: 30,
+        /* the Holo Sim floor is z5; risers (z6) at 7,1 · 2,2 · 5,5 · 0,6, pylons (z7) at 0,3 · 7,4. the Grey (JUMP 1, a ranged
+           attack) climbs the pylon and shoots down from it. ANGEL flies: no jump, no climb, a take-off. */
         board: {
-            p1: [ { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 4, y: 6, spells: [] },
-                  { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 2, y: 7, spells: [] } ],
-            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 5, y: 2, spells: [] },
-                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 1, y: 0, spells: [] } ],
+            p1: [ { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE',  x: 4, y: 6, spells: [] },
+                  { race: 'grey',         job: 'Psychic',     gender: 'male',   name: '',       x: 7, y: 6, spells: [] },     // no name: the race label (Grey)
+                  { race: 'angel',        job: 'White Mage',  gender: 'female', name: '',       x: 2, y: 7, spells: [] } ],   // no name: the race label (Angel)
+            /* the dummies are Unholy only: SCOPE's shot is neutral, so no press hands her the turn back before the Grey's step */
+            p2: [ { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY A', x: 5, y: 2, spells: [] },
+                  { race: 'ghoul',    job: 'Raider',      gender: 'male', name: 'DUMMY B', x: 1, y: 0, spells: [] },
+                  { race: 'ghoul',    job: 'Raider',      gender: 'male', name: 'DUMMY C', x: 3, y: 0, spells: [] } ],   // the sides stay even (CONFIG.teamSize); out of SCOPE's reach from the riser
         },
-        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        order: ['p1-0', 'p1-1', 'p1-2', 'p2-0', 'p2-1', 'p2-2'],
         steps: [
             { id: 'height', title: 'HEIGHT',
               say: 'Room 404 projects a floor of <b>risers</b> (one level up) and two tall <b>pylons</b> (two levels up). Attacking <b>downhill</b> is ×{{DOWNHILL}} per level; attacking <b>uphill</b> costs a flat −{{HIGH_DEF}} damage per level. A ranged vessel two levels up reaches <b>+{{HIGH_RANGE}}</b> tile.',
               goal: { type: 'ack' } },
-            { id: 'climb', title: 'CLIMB',
+            { id: 'riser', title: 'ONE LEVEL UP',
               say: 'Move SCOPE onto the marked riser (one level up).',
               hint: 'MOVE · the riser',
               focus: { tile: [5, 5] }, allow: ['move'],
               goal: { type: 'move', unit: 'p1-0', to: [5, 5] } },
             { id: 'shoot', title: 'DOWNHILL',
               say: 'Now shoot DUMMY A. Watch the damage note — <b>⛰ HIGH GROUND</b>.',
-              hint: 'ATTACK · DUMMY A',
+              hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'attack' }, allow: ['attack', 'move'],
               goal: { type: 'attack', unit: 'p1-0', target: 'p2-0' } },
-            { id: 'done', title: 'THE HIGH GROUND',
-              say: 'Height is damage both ways. Each race has a <b>JUMP</b> of 1 to 3 levels; a face up to two levels taller than that is a <b>CLIMB</b>, which ends the turn. A long fall hurts. Take the hill before the enemy does.',
+            { id: 'jump', title: 'JUMP',
+              say: 'Every race has a <b>JUMP</b> of 1 to 3: how many levels it can step up while it moves. Stepping down one or two levels is free; a drop of three or more hurts. The <b>Grey</b> has <b>JUMP 1</b>. The marked pylon is two levels up, too tall for it to step onto.',
+              focus: { tile: [7, 4] }, goal: { type: 'ack' } },
+            { id: 'climb', title: 'CLIMB',
+              say: 'A face up to <b>two levels taller</b> than the jump is a <b>CLIMB</b>. Press <b>🧗 CLIMB</b> in the menu and pick the top of the pylon: the Grey walks to its foot and starts up. A climb <b>ends the turn</b>, and it hangs on the face until its next one with <b>−2 DEF and M.DEF</b> and no dodge. A damaging hit, a push, a stun or a freeze knocks it off, with fall damage.',
+              hint: '🧗 CLIMB · the pylon top',
+              focus: { hud: 'climb' }, allow: ['move', 'end'],
+              goal: { type: 'climb', unit: 'p1-1' } },
+            { id: 'land', title: 'FLIGHT',
+              say: 'The <b>Angel</b> flies, and starts in the air. A flyer never jumps or climbs: it hovers, and a pylon is only more air under it. <b>LAND</b> (1 AP) sets it down; on the ground a flyer walks like anyone else. Press <b>⬇ LAND</b> (bottom left, under BUILD).',
+              hint: '⬇ LAND',
+              focus: { hud: 'fly' }, allow: [],
+              goal: { type: 'landed', unit: 'p1-2' } },
+            { id: 'takeoff', title: 'TAKE OFF',
+              say: 'Now <b>⬆ TAKE OFF</b> (1 AP), in the same place. Landing and taking off are actions of their own: MOVE never takes off for you, so a flyer that lands and lifts again has spent both AP.',
+              hint: '⬆ TAKE OFF',
+              focus: { hud: 'fly' }, allow: [],
+              goal: { type: 'airborne', unit: 'p1-2' } },
+            { id: 'wait', title: 'THEIR TURN',
+              say: 'The dummies pass.',
+              cpu: { 'p2-0': 'pass', 'p2-1': 'pass', 'p2-2': 'pass' },
+              goal: { type: 'cpuDone' } },
+            { id: 'ledge', title: 'ON THE LEDGE',
+              say: 'A new round. SCOPE is up first: END TURN (Space twice). When the Grey\'s turn starts its climb is over, and it stands on top of the pylon with its full turn.',
+              hint: 'END TURN',
+              focus: { unit: 'p1-1' }, allow: ['end'],
+              goal: { type: 'stand', unit: 'p1-1', z: 7 } },
+            { id: 'top', title: 'SHOOT DOWN',
+              say: 'Two levels up, a ranged attack reaches <b>+{{HIGH_RANGE}}</b> tile. Shoot DUMMY A from the top of the pylon.',
+              hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
+              focus: { hud: 'attack' }, allow: ['attack'],
+              goal: { type: 'attack', unit: 'p1-1', target: 'p2-0' } },
+            { id: 'done', title: 'HEIGHT, JUMP, CLIMB, FLIGHT',
+              say: 'Height is damage both ways. A face up to your JUMP is a step; up to two levels more is a CLIMB that ends the turn and leaves you hanging; flyers take off instead. Take the hill before the enemy does.<br><br>Next: <b>THE NEXUS AND RESPAWNS</b> — a real arena, four against four.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── CORE 5-8: THE REAL THING (2026-10-23) ─────────────────────────
+       A real match: the Stonehenge Arena's 10×10 cut (the playtests' board), four against four, fog on, the turn order
+       by SPD, the CPU's own AI (`cpuAi`: battle.js runComputerTurn → the AI, never the dummy script), and the match
+       ends the way any match does (ui.js _tutOutcome: a win jumps to the tape's last word, a loss offers the tape
+       again). Each opens mid-match through its first step's `enter` (a fallen vessel, a held zone, a hit Cube, Keys
+       in a pocket); the play steps allow everything. Board: the centre Nexus is x 4..5 × y 4..5, P1's spawn row 9
+       (x 3..6) and Cube 5,8, P2's spawn row 0 and Cube 5,1, standing stones (three levels up) at 0,2 · 6,4 · 7,5 ·
+       7,6 · 8,7. No names: every vessel shows its race. */
+    {
+        id: 'nexus_respawns', no: 5, tier: 'core', minutes: 8,
+        title: 'THE NEXUS AND RESPAWNS', sub: 'THE 0-8 COUNTER · CHANNEL · HOLDING A ZONE · THE RESPAWN LADDER · CELESTIAL EVENTS',
+        teaches: ['nexus', 'respawn', 'celestial'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 7, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 8, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 8, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 9, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 3, y: 1, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 4, y: 2, spells: [] },
+                  { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 6, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 5, y: 0, spells: [] } ],
+        },
+        steps: [
+            { id: 'real', title: 'A REAL MATCH',
+              say: 'From this tape on, the lessons are real matches: four against four on a 10×10 arena, fog on, the CPU playing its own game, and the match ends the way any match does. It opens mid-match: your <b>Ghoul</b> and their <b>Demon</b> have just fallen. The combat log says when each one comes back.',
+              enter: [['down', 'p1-3'], ['down', 'p2-3']], goal: { type: 'ack' } },
+            { id: 'counter', title: 'THE COUNTER',
+              say: 'The centre 2×2 is a <b>NEXUS</b>. Its counter reads from your side: <b>0/{{NEXUS_BAR}}</b> the enemy holds it, <b>{{NEXUS_TICKS}}/{{NEXUS_BAR}}</b> neutral, <b>{{NEXUS_BAR}}/{{NEXUS_BAR}}</b> yours. Each spawn row is a zone too: yours starts yours, theirs starts theirs.',
+              focus: { tile: [4, 4] }, goal: { type: 'ack' } },
+            { id: 'take', title: 'TAKE THE CENTRE',
+              say: 'Take it. A vessel stepping in is +1, <b>⬡ CHANNEL</b> (1 AP, bottom left) is +1, and at the round\'s end one vessel standing in it is +1, two or more +2. Both teams inside is <b>CONTESTED</b>: the counter freezes. Stepping off a zone that isn\'t fully yours takes a point back.',
+              hint: 'MOVE into the centre · ⬡ CHANNEL',
+              focus: { tile: [4, 4] }, allow: 'all',
+              goal: { type: 'nexus', player: 1, section: 'earth' } },
+            { id: 'hold', title: 'HOLD IT',
+              say: 'Yours. At each round\'s end a zone you hold heals your vessels standing in it <b>{{NEXUS_HEAL}}%</b> HP and MP and cleanses them; an enemy standing in it burns <b>{{NEXUS_BURN}}%</b> of its max HP. While nobody contests it, it pays your team Hazard Pay every round. Hold it through the round\'s end.<br><br>Mind <b>MOVE→CAST</b>: a target row with that tag walks the vessel into range first, and the step can take it off the zone.',
+              hint: 'hold the centre to the round\'s end',
+              focus: { tile: [4, 4] }, allow: 'all',
+              goal: { type: 'hold', player: 1, section: 'earth' } },
+            { id: 'respawn', title: 'THE RESPAWN LADDER',
+              say: 'A fallen vessel waits <b>2</b> rounds, then 3, 5 and 8 for each death after. It comes back on your home spawn while you hold it, else on the nearest zone you hold, else not at all (<b>SPAWN LOCKOUT</b>), and it sits out the round it comes back in. Play on until your Ghoul is back.',
+              hint: 'play on until the Ghoul respawns',
+              allow: 'all',
+              goal: { type: 'respawn', player: 1 } },
+            { id: 'celestial', title: 'CELESTIAL EVENTS',
+              say: 'One more rule for the centre: from round 4, and every 5 rounds after, a <b>celestial event</b> resets it to neutral. The team that captures it during the event claims the event\'s buff for every vessel it has standing, and a vessel keeps it until it dies.',
+              goal: { type: 'ack' } },
+            { id: 'done', title: 'THE NEXUS AND RESPAWNS',
+              say: 'The Nexus is the economy under every win: healing, Hazard Pay, respawns and Cube damage. Lose every zone and nothing of yours comes back.<br><br>Next: <b>WIN BY CUBE</b>.',
               goal: { type: 'ack', finish: true } },
         ],
     },
     {
-        id: 'fog', no: 5, tier: 'optional', minutes: 3,
+        id: 'win_cube', no: 6, tier: 'core', minutes: 6,
+        title: 'WIN BY CUBE', sub: 'THE BLACK CUBE · SIEGE · THE REFUND TRICK · KEEP ONE BACK',
+        teaches: ['cube', 'press', 'arena'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 4, y: 4, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 5, y: 4, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 5, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
+            p2: [ { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 2, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 6, y: 2, spells: [] },
+                  { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 4, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 1, spells: [] } ],
+        },
+        steps: [
+            { id: 'start', title: 'MID-MATCH',
+              say: 'You hold the centre, and their <b>BLACK CUBE</b> (the block in front of their spawn) is down to 20%. Only the basic <b>ATTACK</b> hurts a Cube (it has its own row in the ATTACK list); spells can\'t touch it. It takes the higher of ATK and M.ATK, <b>×{{SIEGE}}</b> for each zone you hold that isn\'t your home, ×2 at most.',
+              enter: [['nexus', 'earth', 1], ['cube', 2, 0.2]],
+              focus: { cube: 2 }, goal: { type: 'ack' } },
+            { id: 'trick', title: 'THE REFUND TRICK',
+              say: 'A basic attack ends the turn, unless it hits a <b>weakness</b>. Hit a weak enemy first (a green <b>!</b> on its target row means <b>+{{PRESS_AP}} AP</b> back), then spend the refund on the Cube. Your <b>Nun</b> is super-effective on the Skeleton and the Demon, your <b>Swordfighter</b> on the Grey.<br><br>Keep one vessel back on the centre: losing it costs the siege bonus, and four of yours down at once is a wipeout.',
+              goal: { type: 'ack' } },
+            { id: 'break', title: 'BREAK IT',
+              say: 'Break their Cube. Any win counts: if the CPU gets careless, a wipeout ends it too.',
+              hint: 'ATTACK · ⬡ CUBE · ✓ CONFIRM',
+              focus: { cube: 2 }, allow: 'all',
+              goal: { type: 'win' } },
+            { id: 'done', title: 'WIN BY CUBE',
+              say: 'Hold zones for the siege bonus, use a weakness to buy the second hit, and never send all four. Next: <b>WIN BY KEYS</b>.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'win_keys', no: 7, tier: 'core', minutes: 6,
+        title: 'WIN BY KEYS', sub: 'INSPECT · THE SCAN FOOTPRINT · KEY SPACING · CARRIERS',
+        teaches: ['keys', 'inspect', 'arena'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 7, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 2, y: 7, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 6, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 4, y: 2, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 6, y: 3, spells: [] },
+                  { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 2, spells: [] } ],
+        },
+        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, north of the marked tile
+        steps: [
+            { id: 'start', title: 'MID-MATCH',
+              say: 'Your <b>Swordfighter</b> and <b>Marksman</b> carry four of the {{KEYS_POOL}} Keys between them. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>. The last one is still on the ground, hidden.',
+              enter: [['carry', 'p1-0', 2], ['carry', 'p1-1', 2]],
+              focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
+            { id: 'scan', title: 'INSPECT',
+              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that tile and the ones around it, nearest first, as many tiles as the vessel\'s <b>VISION</b> (VISION 9 covers the whole 3×3). No two Keys on the ground sit within 2 tiles of each other, so after a find, search further away.<br><br>The last Key is in the 3×3 around the marked tile.',
+              focus: { tile: [1, 4] }, goal: { type: 'ack' } },
+            { id: 'find', title: 'THE LAST KEY',
+              say: 'Find it and keep all five. A carrier that dies drops its Keys where it fell (the log says where), and the enemy can scan them up. Any win counts.',
+              hint: 'MOVE · 🔍 INSPECT around the marked tile',
+              focus: { tile: [1, 4] }, allow: 'all',
+              goal: { type: 'win' } },
+            { id: 'done', title: 'WIN BY KEYS',
+              say: 'Scan where the Keys can still be, spread your carriers, and keep them alive. Next: <b>WIN BY WIPEOUT</b>.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'win_wipeout', no: 8, tier: 'core', minutes: 6,
+        title: 'WIN BY WIPEOUT', sub: 'RESPAWN TIMERS · DOWN AT ONCE · THE ENTROPY STRIKE NEEDS EYES',
+        teaches: ['arena', 'respawn', 'entropy'],
+        map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 5, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 6, spells: [] },
+                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 6, spells: [] },
+                  { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
+            /* the two still up are hurt and stand apart, out of sight of your four (fog): the Strike needs eyes on both */
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 2, y: 2, spells: [], hp: 0.3 },
+                  { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 8, y: 2, spells: [], hp: 0.3 },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 4, y: 1, spells: [] },
+                  { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 6, y: 0, spells: [] } ],
+        },
+        steps: [
+            { id: 'start', title: 'MID-MATCH',
+              say: 'Two of theirs are down on respawn timers (the log says when each comes back), and the other two are hurt. A team is wiped out when all its vessels are down at once, and the ones waiting to respawn count as down. Finish the last two before the first timer runs out.',
+              enter: [['down', 'p2-2', 3], ['down', 'p2-3', 3], ['gauge', 1, 100]],   // both back in 3 rounds (a second death's timer)
+              goal: { type: 'ack' } },
+            { id: 'strike', title: 'EYES FIRST',
+              say: 'Your Entropy Gauge is full. <b>⚛ ENTROPY</b> (bottom left, under BUILD) costs 1 AP and hits every hostile your team can <b>see</b>. In the fog that means eyes on both first: move vessels up until both are in sight, then strike.',
+              focus: { hud: 'entropy' }, goal: { type: 'ack' } },
+            { id: 'wipe', title: 'EVERY HOSTILE',
+              say: 'Put both down before the timers bring the others back. Any win counts.',
+              hint: 'get both in sight · ⚛ ENTROPY',
+              allow: 'all',
+              goal: { type: 'win' } },
+            { id: 'done', title: 'WIN BY WIPEOUT',
+              say: 'Kill in waves so the timers overlap, and get eyes on everyone before the Strike. That is the core: three ways out, and the Nexus under all of them. The rest of the shelf is optional reading, in any order.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── OPTIONAL ───────────────────────────────────────────────────── */
+    {
+        id: 'fog', no: 9, tier: 'optional', minutes: 3,
         title: 'FOG & VISION', sub: 'LINE OF SIGHT · VISION · CLOAKED ENTITIES',
         teaches: ['fog'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30, fog: true,
@@ -26225,7 +26424,7 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'facing', no: 6, tier: 'optional', minutes: 4,
+        id: 'facing', no: 10, tier: 'optional', minutes: 4,
         title: 'FACING & OVERWATCH', sub: 'THE BACK ARC · GUARD · THE REACTION SHOT',
         teaches: ['facing', 'guard'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
@@ -26263,7 +26462,7 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'abilities', no: 7, tier: 'optional', minutes: 4,
+        id: 'abilities', no: 11, tier: 'optional', minutes: 4,
         title: 'ABILITIES & MP', sub: 'RANGE · MP · ONE CAST A TURN · BUFFS DON\'T END THE TURN',
         teaches: ['spells', 'ap'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
@@ -26294,7 +26493,7 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'items', no: 8, tier: 'optional', minutes: 2,
+        id: 'items', no: 12, tier: 'optional', minutes: 2,
         title: 'ITEMS', sub: 'THE BAG · POTIONS · BANES',
         teaches: ['items'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
@@ -26318,7 +26517,7 @@ const TUTORIAL_LESSONS = [
         ],
     },
     {
-        id: 'hud_tour', no: 9, tier: 'optional', minutes: 2,
+        id: 'hud_tour', no: 13, tier: 'optional', minutes: 2,
         title: 'THE HOROLOGE', sub: 'A TOUR OF THE BATTLE SCREEN',
         teaches: ['hud'],
         map: 'prebuilt_training', mode: 'arena', rounds: 30,
@@ -26384,6 +26583,12 @@ const TUTORIAL_MECHANICS = {
     height:  { label: 'high ground', lessons: ['high_ground'],
                pins: [{ name: 'HIGH_GROUND_RANGE_BONUS', file: 'battle.js', value: 1 }, { name: 'HIGH_GROUND_DEF_BONUS', file: 'battle.js', value: 5 }, { name: 'DOWNHILL_DAMAGE_BONUS', file: 'battle.js', value: 0.1 }],
                watch: [] },
+    respawn: { label: 'the respawn ladder', lessons: ['nexus_respawns', 'win_wipeout'], pins: [], watch: [{ file: 'map.js', fn: 'defeatUnit' }, { file: 'map.js', fn: 'processRespawns' }, { file: 'map.js', fn: 'getRespawnZoneFor' }] },
+    celestial: { label: 'celestial events', lessons: ['nexus_respawns'], pins: [], watch: [{ file: 'state.js', fn: 'rollSkyEvent' }, { file: 'ui.js', fn: 'claimCelestialBuff' }] },
+    inspect: { label: 'inspect + the scan', lessons: ['win_keys'], pins: [], watch: [{ file: 'battle.js', fn: 'getInspectFootprint' }, { file: 'state.js', fn: 'getInspectTileCount' }, { file: 'battle.js', fn: 'canPlaceHourglassAt' }] },
+    jump:    { label: 'the jump stat', lessons: ['high_ground'], pins: [], watch: [] },
+    climb:   { label: 'climbing', lessons: ['high_ground'], pins: [], watch: [] },
+    flight:  { label: 'flyers: take off and land', lessons: ['high_ground'], pins: [], watch: [] },
     fog:     { label: 'fog + vision', lessons: ['fog'], pins: [], watch: [{ file: 'map.js', fn: 'computeVisibleTiles', hash: 'c98a65b968' }] },
     facing:  { label: 'facing arcs', lessons: ['facing'],
                pins: [{ name: 'FACING_BACK_DMG_MULT', file: 'battle.js', value: 1.25 }, { name: 'FACING_SIDE_DMG_MULT', file: 'battle.js', value: 1.10 }],

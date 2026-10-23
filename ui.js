@@ -15506,7 +15506,9 @@
            / -lw (outline px) / -glow / -rad (shape) / -menu (size of the small ones) / -big (size over a unit) / -lift /
            -anim. The var() fallbacks ARE the game's own look: green, a dark !, a white outline. big = the mark over a
            unit (it bobs); px = the small one's size before -menu scales it. */
-        function _seBangHtml(px, big) {
+        /* THE +1 LOOK (mondo 2026-10-23: "yeah give +1 its own look"): a press with a resistance on it hands back +1 AP,
+           not +2 (battle.js THE PRESS SUM) — its ! is HOLLOW: a dark disc, the green as the ring and the mark. `half`. */
+        function _seBangHtml(px, big, half) {
             const sz = big ? 'var(--ew-se-big, 26px)' : `calc(${px || 14}px * var(--ew-se-menu, 1))`;
             const lw = big ? 'var(--ew-se-lw, 2px)' : 'calc(var(--ew-se-lw, 2px) * 0.6)';
             if (!document.getElementById('ew-se-keys')) {
@@ -15514,15 +15516,19 @@
                 st.textContent = '@keyframes ewSeBob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.08); } }';
                 document.head.appendChild(st);
             }
-            return '<span class="ew-se-bang" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;'
-                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:var(--ew-se-fill, #2ecc71);color:var(--ew-se-mark, #06130a);`
-                + `border:${lw} solid var(--ew-se-line, #ffffff);font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
+            const fill = half ? 'rgba(6,19,10,0.88)' : 'var(--ew-se-fill, #2ecc71)';
+            const mark = half ? 'var(--ew-se-fill, #2ecc71)' : 'var(--ew-se-mark, #06130a)';
+            const ring = half ? `calc(${lw} + 1px) solid var(--ew-se-fill, #2ecc71)` : `${lw} solid var(--ew-se-line, #ffffff)`;
+            return `<span class="ew-se-bang${half ? ' ew-se-half' : ''}" title="${half ? '+1 AP back (a resistance takes 1 off the press)' : '+2 AP back (the press)'}" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;`
+                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:${fill};color:${mark};`
+                + `border:${ring};font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:calc(${sz} * 0.72);line-height:1;`
                 + 'vertical-align:middle;flex:none;text-shadow:none;'
                 + (big ? 'animation:var(--ew-se-anim, ewSeBob) 1.2s ease-in-out infinite;' : 'margin-right:4px;')
                 + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
         }
         window._ewSeBangHtml = _seBangHtml;
         const _SE_CIRCLE_HTML = _seBangHtml(14);
+        const _SE_HALF_HTML = _seBangHtml(14, false, true);   // the +1 press
         // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
         const _IMM_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
             + 'width:14px;height:14px;border-radius:50%;background:#e8333f;color:#fff;'
@@ -15540,14 +15546,14 @@
         }
         window._pressOf = _pressOf;
 
-        function _getTypeEffLabel(caster, target, spell, pressBy) {
+        function _getTypeEffLabel(caster, target, spell, pressBy, half) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
             // STAB is a silent bonus — the label only speaks about the actual
             // weak/resist matchup, so back the STAB factor out first.
             const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
             const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
             const effMult = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
-            if (effMult > 1.001) return { text: (pressBy === 'type' ? _SE_CIRCLE_HTML : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
+            if (effMult > 1.001) return { text: (pressBy === 'type' ? (half ? _SE_HALF_HTML : _SE_CIRCLE_HTML) : '') + 'SUPER EFFECTIVE', cls: 'super-effective' };
             if (effMult < 0.999) return { text: 'RESISTED', cls: 'not-effective' };
             return null;
         }
@@ -15789,20 +15795,21 @@
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
                     const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
-                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null);
+                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null, plan.pressAp === 1);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     /* THE ELEMENT SHARE (2026-10-17): the element badge speaks for the element PART; the green !-circle
                        only when the plan presses and that part is what presses (h.pressBy, battle.js THE PRESS
                        FORECAST); immune / absorb wear the red one (the main part still lands, no press). */
                     const _iPress = !!(h.press && h.pressBy === 'element');
-                    if (_iAff === 'weak') push((_iPress ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
+                    const _iSe = plan.pressAp === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
+                    if (_iAff === 'weak') push((_iPress ? _iSe : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'immune') push(_immBadgeHtml(`${_iEl.toUpperCase()} IMMUNE`), 'intent-type-eff not-effective', 14);
                     else if (_iAff === 'absorb') push(_immBadgeHtml(`${_iEl.toUpperCase()} ABSORBED`), 'intent-type-eff not-effective', 14);
                     /* THE STATUS COMBO PRESS (mondo 2026-10-23): the hit lands its ×combo on the target's status — the
                        green !-circle when the combo is what presses */
-                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _SE_CIRCLE_HTML : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
+                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _iSe : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
                     for (const sl of _getStatusPreviewLabels(spell, target)) {
@@ -15912,7 +15919,8 @@
 
                 if (spell.dmg || (spell.hitDamages && spell.hitDamages.length)) {
                     const _iPr = isEnemyUnit(caster, target) ? _pressOf(caster, target, spell, { aim: { x, y } }) : { press: false, by: null };
-                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null);
+                    const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null, _iPr.ap === 1);
+                    const _iPrSe = _iPr.ap === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
                     if (typeEff) {
                         badgeStack.push({ html: typeEff.text, cls: `intent-type-eff ${typeEff.cls}`, yOff });
                         yOff += 14;
@@ -15920,14 +15928,14 @@
                     // Element weak/resist reads beside the type matchup, named
                     // by its element (immune/absorb already spoke above).
                     if (_iAff === 'weak' && isEnemyUnit(caster, target)) {
-                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _SE_CIRCLE_HTML : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: ((_iPr.press && _iPr.by === 'element') ? _iPrSe : '') + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
                         badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });
                         yOff += 14;
                     }
                     if (_iPr.press && _iPr.by === 'combo') {
-                        badgeStack.push({ html: _SE_CIRCLE_HTML + '⚗ COMBO', cls: 'intent-type-eff super-effective', yOff });
+                        badgeStack.push({ html: _iPrSe + '⚗ COMBO', cls: 'intent-type-eff super-effective', yOff });
                         yOff += 14;
                     }
                 }
@@ -16674,7 +16682,8 @@
         const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
                                abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
                                guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.ew-ap-press',
-                               entropy: '.hrlg-push[data-pid="entropyStrike"]', nexus: '.hrlg-push[data-pid="nexus"]' };
+                               entropy: '.hrlg-push[data-pid="entropyStrike"]', nexus: '.hrlg-push[data-pid="nexus"]',
+                               climb: '.hrlg-blade[data-bid="climb"]', fly: '.hrlg-push[data-pid="fly"]' };
         /* the engine's closure constants, for data.js tutorialFacts (the
            copy's {{numbers}} are always the live rule) */
         window._tutEngineFacts = function () {
@@ -16775,7 +16784,7 @@
                 window._hqCpuPool = null; window._hqPreselect = null; window._hqCodeRedRun = null; window._msCpuOnly = true;
                 _tut.lesson = L; _tut.active = true; window._tutActive = true;
                 window._tutWeatherOff = !L.weather;   // state.js spawnWeather / rollSkyEvent: calm boards unless the lesson teaches the weather
-                _tut.stepIdx = -1; _tut.step = null; _tut.events = []; _tut.finished = false; _tut.booting = true; _tut.metAt = 0;
+                _tut.stepIdx = -1; _tut.step = null; _tut.events = []; _tut.finished = false; _tut.booting = true; _tut.metAt = 0; _tut.outcome = null;
                 const ov = document.getElementById('startOverlay');
                 if (ov) { ov.classList.add('hidden'); ov.style.display = 'none'; ov.style.pointerEvents = 'none'; ov.setAttribute('aria-hidden', 'true'); }
                 state.teamLockedIn = true;
@@ -16847,6 +16856,7 @@
             _tut.prevStepMark = _tut.stepMark || 0;
             _tut.stepMark = _tut.events.length;
             _tut.stepActiveId = state._blitzActiveUnitId || null;
+            _tut.stepRound = state.round || 0;
             _tut.metAt = 0;
             if (!st) { _tutFinish(); return; }
             try { (st.enter || []).forEach(fx => _tutEffect(fx)); } catch (e) { console.error('[Tutorial] enter effect', e); }
@@ -16884,6 +16894,39 @@
                 if (h) { h.x = fx[1]; h.y = fx[2]; h.visibleTo[1] = true; h.visibleTo[2] = true; }
             } else if (k === 'camera') {
                 _tutCamera(fx[1], fx[2]);
+            } else if (k === 'down') {
+                /* a vessel that fell before the tape starts (the arena tapes open mid-match): the real defeat — the respawn
+                   ladder, the log line, the Keys it carried — without the death close-up; fx[2] = its own respawn timer */
+                const u = _tutUnit(fx[1]);
+                if (u && !u.dead && typeof defeatUnit === 'function') {
+                    const cu = window.playDeathCloseup;
+                    window.playDeathCloseup = null;
+                    try { defeatUnit(u, null); } finally { window.playDeathCloseup = cu; }
+                    if (typeof fx[2] === 'number') u._respawnIn = fx[2];
+                    u._tutDown = true;
+                    /* it was the vessel up: the clock moves on once the body is down (the defeat's own beat) */
+                    if (state._blitzActiveUnitId === u.id) setTimeout(() => { if (_tut.active && u.dead && state._blitzActiveUnitId === u.id && typeof maybeAdvanceTurn === 'function') maybeAdvanceTurn(); }, 1000);
+                }
+            } else if (k === 'carry') {
+                /* fx[2] Keys off the ground into a vessel's pocket — the same bookkeeping an Inspect pickup does (battle.js _inspectFootprintAt) */
+                const u = _tutUnit(fx[1]);
+                for (let i = 0; u && i < (fx[2] || 1); i++) {
+                    const h = (state.hourglasses || []).find(x => !x.carriedBy);
+                    if (!h) break;
+                    h.carriedBy = u.id; h.visibleTo[1] = true; h.visibleTo[2] = true;
+                    u.hourglasses = (u.hourglasses || 0) + 1;
+                    u.hourglassBuff = (u.hourglassBuff || 0) + 1;
+                    if (state.hourglassBuffs) state.hourglassBuffs[u.player] = (state.hourglassBuffs[u.player] || 0) + 1;
+                }
+            } else if (k === 'nexus') {
+                /* a zone already held: fx[1] section, fx[2] team (the counter at its end, as a capture leaves it) */
+                const nex = state.nexusPoints && state.nexusPoints[fx[1]];
+                const thr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
+                if (nex) { nex.owner = fx[2]; nex.progress = fx[2] === 1 ? thr : (fx[2] === 2 ? -thr : 0); }
+            } else if (k === 'cube') {
+                /* a Cube already hit: fx[1] whose, fx[2] the HP left as a share of its max */
+                const tw = state.towers && state.towers[fx[1]];
+                if (tw) tw.hp = Math.max(1, Math.round((tw.maxHp || tw.hp) * fx[2]));
             }
         }
         function _tutCamera(x, y) {
@@ -17055,6 +17098,20 @@
                     return (state.units || []).some(v => v.player === (g.player || 1) && !v.dead && typeof isInVision === 'function' && isInVision(v, t.x, t.y));
                 }
                 case 'activation': return !!_tutSince('activation', e => !uid || e.uid === uid);
+                /* the unit hangs on a face (battle.js _startClimb) / is off the ground (a flyer's take-off) / stands at height z or above, done climbing */
+                case 'climb': return !!u && !!u._climb && !busy;
+                case 'airborne': return !!u && !u.dead && typeof isUnitAirborne === 'function' && isUnitAirborne(u) && !busy;
+                case 'landed': return !!u && !u.dead && typeof isUnitAirborne === 'function' && !isUnitAirborne(u) && !busy;
+                case 'stand': return !!u && !u.dead && !u._climb && (u.z ?? 0) >= (g.z || 0) && !busy;
+                /* the zone is still the team's after a round end that came during this step */
+                case 'hold': {
+                    const nex = state.nexusPoints && state.nexusPoints[g.section || 'earth'];
+                    return !!nex && nex.owner === (g.player || 1) && (state.round || 0) > (_tut.stepRound || 0);
+                }
+                /* a vessel the tape put down (['down', …]) is back on the board */
+                case 'respawn': return (state.units || []).some(x => x.player === (g.player || 1) && x._tutDown && !x.dead && !x._dying);
+                /* the match is won (the real-CPU tapes; _tutPoll judges the outcome) */
+                case 'win': return !!_tut.outcome && _tut.outcome.winner === 1;
                 default: return false;
             }
         }
@@ -17065,6 +17122,11 @@
             const _ce = document.getElementById('tutCoach');
             if (_ce) _ce.classList.toggle('aiming', !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
+            /* the real-CPU tapes end the way a match does (checkWin stands aside while a lesson runs) */
+            if (_tut.lesson && _tut.lesson.cpuAi && !_tut.outcome && !state._actionExecuting) {
+                const oc = _tutOutcome();
+                if (oc) { _tutMatchOver(oc); return; }
+            }
             const st = _tut.step;
             if (!st || !st.goal || st.goal.type === 'ack') return;
             /* THEIR TURN with one of yours still up (a Press refunded the AP after the step's strike — the step allows nothing,
@@ -17090,9 +17152,70 @@
                 try { playSfx('uiConfirm'); } catch (e) {}
             }
         }
+        /* ── the real-CPU tapes: how the match ends ──────────────────────── */
+        /* battle.js checkWin's own conditions, in its order (a wipeout, the Cube, the Keys), plus the lesson's round limit */
+        function _tutOutcome() {
+            const mp = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+            const wcs = (mp && mp.winConditions) || [];
+            if (wcs.includes('wipeout') && typeof getTeamWipeoutCount === 'function') {
+                const a1 = getTeamWipeoutCount(1), a2 = getTeamWipeoutCount(2);
+                if (a2 === 0 && a1 > 0) return { winner: 1, how: 'wipeout' };
+                if (a1 === 0 && a2 > 0) return { winner: 2, how: 'wipeout' };
+            }
+            const tw = state.towers;
+            if (wcs.includes('tower_destroyed') && tw && tw[1] && tw[2]) {
+                if (tw[2].hp <= 0) return { winner: 1, how: 'cube' };
+                if (tw[1].hp <= 0) return { winner: 2, how: 'cube' };
+            }
+            if (wcs.includes('hourglasses_collected') && typeof getKeysToWin === 'function') {
+                const need = getKeysToWin(mp);
+                const held = p => (state.hourglasses || []).filter(h => h.carriedBy != null && (state.units || []).find(u => u.id === h.carriedBy)?.player === p).length;
+                if (need > 0 && held(1) >= need) return { winner: 1, how: 'keys' };
+                if (need > 0 && held(2) >= need) return { winner: 2, how: 'keys' };
+            }
+            const rl = _tut.lesson && _tut.lesson.rounds;
+            if (rl && (state.round || 0) > rl) return { winner: 2, how: 'clock' };
+            return null;
+        }
+        const _TUT_WIN_LINE = {
+            wipeout: ['☠ WIPEOUT', 'every hostile is down at once'],
+            cube: ['⬡ THRESHOLD CLOSED', 'the enemy Cube is destroyed'],
+            keys: ['🗝 THRESHOLD STABILIZED', 'every Key is secured'],
+            clock: ['⏱ TIME', 'the round limit ran out'],
+        };
+        const _TUT_LOSS_LINE = { wipeout: 'all four of yours are down at once', cube: 'your Cube is destroyed', keys: 'they secured every Key', clock: 'the round limit ran out' };
+        function _tutMatchOver(oc) {
+            _tut.outcome = oc;
+            const line = _TUT_WIN_LINE[oc.how] || ['', ''];
+            const won = oc.winner === 1;
+            const lost = _TUT_LOSS_LINE[oc.how] || '';
+            try { addLog(won ? `${line[0]} — Player 1 wins: ${line[1]}!` : `${line[0]} — Player 2 wins: ${lost}.`); } catch (e) {}
+            try { if (typeof showCombatBanner === 'function') showCombatBanner(won ? line[0] : 'DEFEAT', won ? 'VICTORY · ' + line[1] : 'Player 2 wins · ' + lost, won ? 'pickup-friendly' : 'pickup-enemy'); } catch (e) {}
+            const L = _tut.lesson;
+            if (won) {
+                /* straight to the tape's last word (its finish step); nothing more is asked */
+                const fi = L.steps.findIndex(x => x.goal && x.goal.finish);
+                _tutGoto(fi >= 0 ? fi : L.steps.length - 1);
+                return;
+            }
+            _tut.finished = true;   // a loss files nothing: the coach offers the tape again
+            if (_tut.autoTimer) { clearTimeout(_tut.autoTimer); _tut.autoTimer = null; }
+            if (_tut.tileTimer) { clearInterval(_tut.tileTimer); _tut.tileTimer = null; }
+            _tutApplyGlow();
+            try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
+            const el = _tutMountCoach();
+            el.classList.add('done');
+            el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span></div>'
+                + '<div class="tut-coach-stamp">LOST</div>'
+                + '<div class="tut-coach-body">Player 2 wins: ' + escapeHtml(lost) + '. Nothing is filed. Run the tape again.</div>'
+                + '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="restart">RESTART TAPE ▸</button>'
+                + '<button class="tut-btn" data-tut="list">' + (_tut.from === 'hq' ? 'BACK TO ROOM 64' : 'THE SHELF') + '</button></div>';
+        }
         /* ── the dummies ───────────────────────────────────────────────── */
         window._tutCpuTurn = function (unit) {
             if (!_tut.active || !unit || unit.player !== 2) return false;
+            /* the real-CPU tapes: the CPU plays its own game (battle.js runComputerTurn → the AI) until the match is over */
+            if (_tut.lesson && _tut.lesson.cpuAi && !_tut.finished && !_tut.outcome) return false;
             const st = _tut.step;
             const plan = (!_tut.finished && st && st.cpu && st.cpu[_tutKeyOf(unit.id)]) || 'hold';
             const gen = state._blitzActiveUnitId;
@@ -17148,6 +17271,7 @@
                 else if (act === 'leave') window._tutorialLeave();
                 else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutTeardown(() => window._tutorialLaunch(n.id, { from: _tut.from })); }
                 else if (act === 'list') window._tutorialLeave(true);
+                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutTeardown(() => window._tutorialLaunch(id, { from: _tut.from })); }
             });
             return el;
         }

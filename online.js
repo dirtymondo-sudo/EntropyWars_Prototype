@@ -1290,6 +1290,23 @@
             if (window._broadcastState) window._broadcastState();
         };
 
+        /* ♟ UNIT TACTICS (battle.js setUnitTactic): the HOST owns unit.tactic — it is what routes a unit's turn to the
+           AI, and the AI only ever runs on the host. A guest's pick (any of its own units, on or off its turn) travels as
+           a 'setTactic' game-action; the host applies it, takes over or hands back the active turn, and the change comes
+           back with the state-sync. */
+        if (typeof setUnitTactic === 'function') {
+            const _origSetUnitTactic = setUnitTactic;
+            setUnitTactic = function(unitId, tactic) {
+                if (!_isOnline() || state._remoteAction || _isHost()) return _origSetUnitTactic(unitId, tactic);
+                const u = state.units.find(function(x) { return x.id === unitId && !x.dead; });
+                if (!u || u.player !== _myPlayer() || state.phase !== 'battle' || state.winner) return false;
+                if (tactic && typeof unitTacticProblem === 'function' && unitTacticProblem(u, tactic)) return false;
+                _emit('game-action', { type: 'setTactic', unitId: unitId, tactic: tactic || null });
+                return true;
+            };
+            window.setUnitTactic = setUnitTactic;
+        }
+
         var _pendingCameraEvents = [];
         const _origPlayOffensiveActionCamera = playOffensiveActionCamera;
         playOffensiveActionCamera = function(sourceUnit, target, opts) {
@@ -1977,6 +1994,13 @@
                             }
                         }
                         break;
+                    case 'setTactic': {
+                        /* Ownership: only the sender's OWN units, on or off its turn (battle.js setUnitTactic). */
+                        var tacUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                        if (!tacUnit || tacUnit.player !== remoteP) break;
+                        if (typeof setUnitTactic === 'function') setUnitTactic(tacUnit.id, data.tactic || null);
+                        break;
+                    }
                     case 'engine': {
                         /* Direct engine mutator relayed from the guest's HUD
                            (quick-action menu, target submenu, tile actions,
@@ -3109,7 +3133,10 @@
             var _friendlyMode = 'arena';
             var _friendlySize = 4;
             var _friendlyMapId = 'medium';
-            var _friendlyRounds = 15;
+            /* the room opens on Arena, so it opens on Arena's own round limit (it said 15 until Arena was clicked again —
+               online playtest 2026-10-23) */
+            var _friendlyRounds = (typeof MULTIPLAYER_MODES !== 'undefined' && MULTIPLAYER_MODES[_friendlyMode]
+                && MULTIPLAYER_MODES[_friendlyMode].roundLimit) || 20;
 
             var _queueTeamSize = 4;
             var _queueTimerInterval = null;
@@ -3771,6 +3798,10 @@
                 button.focus();
             }
 
+            /* THE RESTORE WINDOW (online playtest 2026-10-23: a guest dropped on the loading screen, came back within
+               seconds, and the match was lost for both — the host was still building the board and had 20 s to answer).
+               The same window as server.js beginRecovery's deadline. */
+            var RECOVERY_WAIT_S = 60;
             function _beginSnapshotRecovery(data) {
                 if (!NET.online || !data || !data.recoveryId || NET._recoveryFailed) return;
                 if (NET.matchId && data.matchId !== NET.matchId) return;
@@ -3783,7 +3814,7 @@
                 NET.matchId = data.matchId;
                 NET._recoveryId = data.recoveryId;
                 NET.connected = false;
-                _showReconnectOverlay('Restoring match', 20);
+                _showReconnectOverlay('Restoring match', RECOVERY_WAIT_S);
                 var id = data.recoveryId, attempts = 0, sent = false;
                 function poll() {
                     if (!NET.online || NET._recoveryId !== id || NET._recoveryFailed) return;
@@ -3804,7 +3835,7 @@
                             sent = true;
                         }
                     }
-                    if (++attempts >= 24) return _recoveryFailure('The match could not be restored. Please start a new match.');
+                    if (++attempts >= Math.ceil(RECOVERY_WAIT_S / 0.9)) return _recoveryFailure('The match could not be restored. Please start a new match.');
                     if (attempts % 3 === 0) NET.socket.emit('recovery-retry', { id: id, matchId: NET.matchId });
                     _recoveryPoll = setTimeout(poll, 900);
                 }
@@ -3861,7 +3892,7 @@
                                     _showReconnectOverlay(resp.role === 'host' ? 'Player 2' : 'Player 1',
                                         resp.remainingSeconds);
                                 } else {
-                                    _showReconnectOverlay('Restoring match', 20);
+                                    _showReconnectOverlay('Restoring match', RECOVERY_WAIT_S);
                                 }
                                 NET._wasInMatch = false;
                                 if (resp.result) {
@@ -5314,6 +5345,11 @@
                        block or reset the guest's */
                     _matchAchievements: 1,
                     _matchAchievementsKey: 1,
+                    /* per-viewer: each seat records its own finished match (finalizeMatch → recordCompletedMatch). The
+                       host's copy landed on the guest between its record and its result screen and greyed out the
+                       guest's Export Last Match (online playtest 2026-10-23) */
+                    lastCompletedMatch: 1,
+                    matchHistory: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,
@@ -5722,6 +5758,74 @@
                 if (!v || !v.n) return units;
                 return units.map(function(u) { return (u && v.hidden[u.id]) ? _gvMaskUnit(u) : u; });
             }
+            /* THE GUEST'S LOG (online playtest 2026-10-23: a fogged Bee Queen's "Swarm Signal: Bee Queen is quickened." and
+               "Bee Queen lets out a War Cry! 1 allies within 2 tiles…", a fogged Anubis's "A Sandstorm forms at E12" — its
+               own tile — and "Bee Queen's turn ends automatically" all reached the guest): every log line went out whole and
+               only the guest's renderer judged it, against a board where the caster was already masked — and judged it
+               again later, so a line could also turn up once its unit walked into view. The host now judges each line
+               ONCE, as it first goes out, by the guest's own rule (battle.js _logVisible / _logFogVisible): another
+               seat's private line is dropped, a line naming a unit the guest can't see (and none of its own) is dropped,
+               a line naming a tile in its fog is dropped. A decided match sends the whole log, like the units. */
+            var _gvLogCache = {};
+            var _GV_COORD = /\b([A-Z])(\d{1,2})\b/g;
+            function _gvLogShows(v, st, e) {
+                if (e && typeof e === 'object' && (e.v === 1 || e.v === 2)) return e.v === v.gp;
+                var msg = String(typeof e === 'string' ? e : (e && e.m) || '').replace(/<[^>]+>/g, '').replace(/[\uE000-\uE00F]/g, '');
+                if (!msg) return true;
+                var hidden = false, own = false, us = st.units || [];
+                for (var i = 0; i < us.length; i++) {
+                    var u = us[i];
+                    if (!u) continue;
+                    var nm = typeof unitDisplayName === 'function' ? unitDisplayName(u) : u.name;
+                    if (!nm || msg.indexOf(nm) < 0) continue;
+                    if (u.player === v.gp) own = true;
+                    else if (v.hidden[u.id]) hidden = true;
+                }
+                if (hidden && !own) return false;
+                var W = (typeof bw === 'function') ? bw() : 99, H = (typeof bh === 'function') ? bh() : 99, m;
+                _GV_COORD.lastIndex = 0;
+                while ((m = _GV_COORD.exec(msg)) !== null) {
+                    var cx = m[1].charCodeAt(0) - 65, cy = parseInt(m[2], 10) - 1;
+                    if (cx >= 0 && cx < W && cy >= 0 && cy < H && !_gvTileVis(v, cx, cy)) return false;
+                }
+                return true;
+            }
+            /* the kept flags of one live array, judged once per entry (a new array = a new match or a reset log) */
+            function _gvLogKeep(key, arr, judge) {
+                var C = _gvLogCache[key];
+                if (!C || C.arr !== arr || C.keep.length > arr.length) C = _gvLogCache[key] = { arr: arr, keep: [] };
+                for (var i = C.keep.length; i < arr.length; i++) {
+                    var k = true;
+                    try { k = judge(arr[i]); } catch (err) { k = false; }
+                    C.keep.push(k);
+                }
+                return C.keep;
+            }
+            function _guestLogFilter(s, v) {
+                var st = window._gameState;
+                if (!s || !v || !st) return;
+                var lines = st.logEntries;
+                var judge = function(e) { return _gvLogShows(v, st, e); };
+                var keep = Array.isArray(lines) ? _gvLogKeep('logEntries', lines, judge) : null;
+                if (keep && Array.isArray(s.logEntries)) s.logEntries = lines.filter(function(e, i) { return keep[i]; });
+                if (Array.isArray(st._fullLogEntries) && Array.isArray(s._fullLogEntries)) {
+                    var fk = _gvLogKeep('_fullLogEntries', st._fullLogEntries, judge);
+                    s._fullLogEntries = st._fullLogEntries.filter(function(e, i) { return fk[i]; });
+                }
+                /* the text box's beats sit at a log index (`at`): a kept beat moves to the kept log's index */
+                if (keep && Array.isArray(st.logDialogue) && Array.isArray(s.logDialogue)) {
+                    var bk = _gvLogKeep('logDialogue', st.logDialogue, function(b) { return !b || _gvLogShows(v, st, { m: b.m }); });
+                    var before = [0];
+                    for (var i = 0; i < keep.length; i++) before.push(before[i] + (keep[i] ? 1 : 0));
+                    var out = [];
+                    st.logDialogue.forEach(function(b, j) {
+                        if (!bk[j] || !b) return;
+                        var at = Math.max(0, Math.min(keep.length, b.at | 0));
+                        out.push(Object.assign({}, b, { at: before[at] }));
+                    });
+                    s.logDialogue = out;
+                }
+            }
             /* applies the view to a snapshot; returns the units list the checksum is taken over */
             function _guestViewFilter(s) {
                 var st = window._gameState;
@@ -5729,6 +5833,7 @@
                 var gu = _guestUnits(st && st.units, v);
                 if (!s) return gu;
                 if (Array.isArray(s.units)) s.units = gu;
+                _guestLogFilter(s, v);
                 if (v && Array.isArray(s._deployedObjects) && s._deployedObjects.length) {
                     s._deployedObjects = s._deployedObjects.filter(function(o) {
                         if (!o || !o.isDecoy || o.ownerPlayer === v.gp || !(o.hp > 0)) return true;
@@ -6057,7 +6162,19 @@
                     try {
                         var N = window._NET, st = window._gameState;
                         if (!N || !N.online || N.role !== 'host' || !N.socket) return;
-                        if (!st || st.phase !== 'battle' || st.winner) return;
+                        if (!st || st.phase !== 'battle') return;
+                        /* THE LAST WORD (online playtests 2026-10-23: the host showed DEFEAT, the guest sat on the board for
+                           3½ minutes; a sudden-death kill never reached the guest, whose result read 4 v 4): the match ends
+                           inside finalizeMatch, which never broadcasts, and this heartbeat used to stop the moment a
+                           winner was set — so nothing carried the winner, or the last death that lands after it, to the
+                           guest. For a while after the end it keeps syncing (the JSON dedup drops repeats). */
+                        if (st.winner || st._winCondition === 'draw') {
+                            var _nowE = Date.now();
+                            if (!N._endSyncUntil) N._endSyncUntil = _nowE + 20000;
+                            if (_nowE <= N._endSyncUntil && window._broadcastState) window._broadcastState();
+                            return;
+                        }
+                        N._endSyncUntil = 0;
                         var remoteP = N.myPlayer === 1 ? 2 : 1;
                         // During the remote player's turn, FORCE a resend
                         // (bypassing the dedup) so a missed turn-handoff packet
@@ -6369,7 +6486,8 @@
                         }
                     }
 
-                    if (st.winner && !st._guestResultShown) {
+                    /* a draw is winner 0 (falsy): its own marker ends the guest's match too */
+                    if ((st.winner || st._winCondition === 'draw') && !st._guestResultShown) {
                         st._guestResultShown = true;
 
                         if (typeof window.finalizeMatch === 'function') {
