@@ -5187,7 +5187,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
       meta: portrait
         ? { text: t.dist + 't' }
-        : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't' },
+        : { text: (hpPct != null ? 'HP ' + hpPct + '% · ' : '') + t.dist + 't' },
       // Pass the target's own elevation so an airborne unit (or the upper
       // unit of a stack) is hit — not whoever stands on the ground below.
       // Second (confirming) click fires the action → hide the menus NOW.
@@ -5213,6 +5213,31 @@ function _hrlgTargetBlades(unit, st, mode) {
   // which re-validate AP per swing and so continue exactly when a press
   // handed the AP back.)
 
+  /* THE CUBE'S REASON (Cube vs Keys matchup 2026-10-23): the enemy Cube inside the swing's reach but with no clear line
+     (terrain in the way) or out of the team's sight used to just be missing from the list, which read as "the Cube
+     refuses hits". It lists greyed with why. */
+  if (mode === 'attack' && !targets.some(t => t.kind === 'tower')) {
+    try {
+      const _st = (typeof state !== 'undefined') ? state : null;
+      const _tw = _st && _st.towers && typeof enemyOf === 'function' ? _st.towers[enemyOf(unit.player)] : null;
+      if (_tw && _tw.hp > 0 && typeof combatDist === 'function' && typeof getEffectiveRange === 'function') {
+        const _uz = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+        const _tz = typeof getHeightAt === 'function' ? getHeightAt(_tw.x, _tw.y) : 0;
+        const _d = combatDist(unit.x, unit.y, _uz, _tw.x, _tw.y, _tz);
+        let why = null;
+        if (_d >= 1 && _d <= getEffectiveRange(unit)) {
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, _tw.x, _tw.y, _uz)) why = 'BLOCKED';
+          else if (typeof visionGatesTargeting === 'function' && visionGatesTargeting(unit)
+            && typeof isInVision === 'function' && !isInVision(unit, _tw.x, _tw.y)) why = 'NO SIGHT';
+        }
+        if (why) blades.push({
+          id: 'tg:cube-' + why, icon: '⬡', available: false, label: 'Cube',
+          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : 'OUT OF SIGHT',
+          meta: { text: Math.round(_d) + 't' },
+        });
+      }
+    } catch (e) {}
+  }
   if (!blades.length) {
     blades.push({
       id: 'none', icon: titleIcon, available: false,
@@ -6386,7 +6411,8 @@ function spellTargetMode(sp) {
   const k = sp.kind || '';
   if (k === 'escape') return 'Landing Tile';   // THE ESCAPE PICK: the player picks where it lands
   if (k === 'selfHeal') return 'Self Target';
-  if (['warCry', 'encore'].includes(k)) return 'Self Target';
+  if (k === 'warCry') return 'Self Target';
+  if (k === 'encore') return 'Single Ally';
   if (k === 'link' || k === 'transfer') return 'Two Targets';
   if (k === 'cannibalize') return 'Remains';
   if (k === 'summonUnit') return 'Empty Tile';
