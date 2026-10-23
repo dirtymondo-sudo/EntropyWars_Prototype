@@ -5041,6 +5041,12 @@ function _hrlgTargetBlades(unit, st, mode) {
         && typeof _estimateSpellHeal === 'function'
         && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
       ? _estimateSpellHeal(unit, tUnit, spell) : 0;
+    /* the Cube row's forecast (Cube playtest 2026-10-23: it showed only "63% · 4T"): the same hit math the swing rolls
+       (battle.js getCubeAttackForecast, mid roll), with the Nexus siege multiplier named when it is on */
+    let cubeFc = null;
+    if (t.kind === 'tower' && mode === 'attack' && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function') {
+      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower); } catch (e) { cubeFc = null; }
+    }
 
     return {
       id: 'tg:' + i + ':' + t.x + ',' + t.y,
@@ -5062,7 +5068,8 @@ function _hrlgTargetBlades(unit, st, mode) {
       power: (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
-        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
+        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       portrait: portrait,
       // THE MENU CAMERA: the cursor landing on this row frames caster + target
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
@@ -5162,7 +5169,7 @@ function _hrlgItemTargetBlades(unit, st) {
     // Healing Potion rows: projected restore in green on the row's HP bar
     // (percent-of-max × terrain, clamped — mirrors doItem via ui.js).
     const previewHeal = (isHeal && available && typeof _estimateHealPotionHeal === 'function')
-      ? _estimateHealPotionHeal(u, key) : 0;
+      ? _estimateHealPotionHeal(u, key, unit) : 0;
     // Bane rows: the throw's forecast blinks white on the row's HP bar with the ≈−N chip, like spell rows
     // (battle.js forecastBanePlan through ui.js forecastOnUnit — the real hit math).
     const _bFc = (isBane && typeof forecastOnUnit === 'function' && typeof baneForecastSpell === 'function')
@@ -5517,7 +5524,7 @@ function ActionMenu({ st, hidden }) {
       abilSub = 'Silenced';
     } else {
       const _abilList = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
-      let anyCastable = false, mpBlocked = false, apBlocked = false, targetBlocked = false, mpShort = false;
+      let anyCastable = false, mpBlocked = false, apBlocked = false, targetBlocked = false, mpShort = false, guardWhy = null;
       for (const sp of _abilList) {
         const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
         if (!tierOk) continue; // locked by level — never the headline reason
@@ -5531,6 +5538,15 @@ function ActionMenu({ st, hidden }) {
         // menu that then refuses to open (chooseActionMenu gates the same).
         const guardOk = _tqCanAfford(unit, sp);
         if (apOk && mpOk && tgt && guardOk) { anyCastable = true; break; }
+        // a cooldown / one-cast / Brand lock is the spell's own reason (Cube playtest 2026-10-23: Archon's Focus bound
+        // to Eternal Slumber on its cooldown read "No target" with Minotaur in reach) — the cooldown beats the lock
+        if (!guardOk) {
+          const why = _tqBlockReason(unit, sp);
+          if (why && why !== 'No MP' && why !== 'No AP') {
+            if (!guardWhy || (guardWhy.indexOf('🔒') === 0 && why.indexOf('🔒') !== 0)) guardWhy = why;
+            continue;
+          }
+        }
         if (!mpOk) mpShort = true;
         if (apOk && tgt && !mpOk) mpBlocked = true;        // would cast if it had MP
         else if (mpOk && tgt && !apOk) apBlocked = true;   // would cast if it had AP
@@ -5540,6 +5556,7 @@ function ActionMenu({ st, hidden }) {
         abilSub = mpBlocked ? 'No MP'
                 : apBlocked ? 'No AP'
                 : targetBlocked ? 'No target'
+                : guardWhy ? guardWhy
                 : mpShort ? 'No MP'
                 : 'No target';
       }
