@@ -9709,7 +9709,7 @@ const RACE_ABILITIES = {
         { id: 'goLongNeck', name: 'Long Neck', tier: 1, families: ['lochness'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'pull', range: 3, pullDistance: 2, dmg: 70, damageType: 'physical',
           statusEffects: [{ id: 'drowning', duration: 2 }],
-          desc: 'The neck reaches further out of the loch than it should. Deals WEAK physical damage to a Single Enemy within 3, drags them 2 tiles toward you and leaves them Drowning for 2 rounds.' },
+          desc: 'The neck reaches further out of the loch than it should. Deals WEAK physical damage to a Single Enemy within 3, drags them 2 tiles toward you. A target that ends up in deep water is left Drowning for 2 rounds.' },
         { id: 'goOutOfTheLoch', name: 'Out of the Loch', tier: 3, families: ['lochness'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'water', type: 'damage', kind: 'leapStrike', range: 3, dmg: 125,
           damageType: 'physical', dmgPerLevel: 15, bonusVsStatus: { status: 'drowning', mult: 1.5 },

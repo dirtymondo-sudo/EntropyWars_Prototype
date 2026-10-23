@@ -3701,6 +3701,8 @@
 
     function _mirrorStatusValue(g, source, target, effect, v) {
         if (!effect || g.unitHasStatus(target, effect.id)) return 0;
+        // Drowning lands only in deep water (battle.js applyStatusPayload → map.js unitCanDrownHere)
+        if (effect.id === 'drowning' && typeof unitCanDrownHere === 'function' && !unitCanDrownHere(target)) return 0;
         const defs = g.STATUS_DEFS || (typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS : {});
         if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(target, effect.id)) return 0;
         if (typeof unitPassiveValue === 'function' && defs[effect.id]?.kind
