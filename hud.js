@@ -2895,6 +2895,13 @@ function _hrlgBadgeEl(bd, k) {
     ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
     : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
 }
+/* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): a basic attack's odds to
+   land on `target` in whole percent — battle.js getAttackHitChance, the same rolls the swing makes. `from` = the tile a
+   MOVE→ATK swing leaves from. null when it can't be read. */
+function _hrlgHitPct(attacker, target, from) {
+  if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
+  try { return Math.round(getAttackHitChance(attacker, target, from || null) * 100); } catch (e) { return null; }
+}
 function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
@@ -2905,6 +2912,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   const put = (part, el, first) => { if (first) right.unshift(el); else right.push(el); (P[part] = P[part] || []).push(el); };
   if (b.check && !confirmBtn) put('x0', h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) put('power', h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
+  // THE HIT CHANCE (mondo 2026-10-23): the attack's accuracy rides beside its damage (_hrlgHitPct)
+  if (!dead && b.acc) put('power', h('span', { key: 'ac', className: 'hrlg-acc', title: b.accTitle || 'Chance to hit' }, b.acc));
   if (!dead && b.mp) put('mp', h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));   // plain blue text (the pill is gone — 2026-09-21)
   // Mystery Dungeon lockstep: AP is gone from the player's vocabulary — no
   // cost pips on any blade (one beat = one action, whatever it "costs").
@@ -5073,6 +5082,9 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
+      // THE HIT CHANCE: an attack row on an enemy says its odds to land
+      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit) && !t._approach)
+        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit)) : null,
       portrait: portrait,
       // THE MENU CAMERA: the cursor landing on this row frames caster + target
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
@@ -5501,11 +5513,25 @@ function ActionMenu({ st, hidden }) {
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
   const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit, { combatOnly: true }));
+  /* THE HIT CHANCE on the Attack verb: the odds on every enemy it can swing at from here (one number, or lowest–highest) */
+  let atkAcc = null;
+  if (atkNow && typeof _getAttackValidTargets === 'function') {
+    try {
+      const pcts = _getAttackValidTargets(unit)
+        .filter(t => t.unit && !t.unit.dead && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, t.unit)))
+        .map(t => _hrlgHitPct(unit, t.unit)).filter(v => v != null);
+      if (pcts.length) {
+        const lo = Math.min(...pcts), hi = Math.max(...pcts);
+        atkAcc = (lo === hi ? hi : lo + '–' + hi) + '%';
+      }
+    } catch (e) { atkAcc = null; }
+  }
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
     available: atkReach,
     note: !atkNow && atkReach ? 'MOVE→ATK' : null,
     sub: atkReach ? null : 'No target',
+    acc: atkAcc, accTitle: 'Chance to hit the enemies in reach',
   };
 
   // anyCastableSpellNow (battle.js) is the SAME probe chooseActionMenu gates
@@ -6608,6 +6634,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       preview: canAttack ? atkPreview : moveAtkPreview,
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
       press: (typeof window._pressOf === 'function') ? !!window._pressOf(actingUnit, targetUnit, null).press : false,
+      acc: _hrlgHitPct(actingUnit, targetUnit, canAttack ? null : _mtCastTile(atkMoveTile)),
       available: true,
     });
     // (No "Attack ×N" rows anymore: an attack ENDS the turn, so a second
@@ -8382,6 +8409,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       // the attack + combo rows lay out like the spell rows (THE BUTTON ROWS)
       rows: !!(look || a.id === 'attack' || a.id === 'combo'),
       power: power,
+      acc: (a.available && a.acc != null) ? a.acc + '%' : null,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       // the green ! is the PRESS (rows that carry `press`); a bane row keeps its own matchup
@@ -11442,6 +11470,7 @@ function _hudHideCss() {
     }
     /* right-side detail chips shared by every row */
     .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    .hrlg-acc  { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; color: #e8e4d0; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-chip {
       flex: none; font-size: 9px; letter-spacing: 0.08em; color: #8fd0e8;
       border: 1px solid rgba(79,216,255,0.45); background: #10141d;
