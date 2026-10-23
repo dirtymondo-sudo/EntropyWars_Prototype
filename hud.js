@@ -2978,7 +2978,8 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     onClick: (e) => { e.stopPropagation(); confirmBtn.fire(); },
   },
     h('span', { className: 'hrlg-confirm-inline-check' }, '✓'),
-    'CONFIRM',
+    /* the seal covers the row's amber MOVE→ATK / MOVE→CAST chip — it says so itself, under the word (PvP playtest 2026-10-23) */
+    b.note ? h('span', { className: 'hrlg-confirm-stack' }, 'CONFIRM', h('span', { className: 'hrlg-confirm-note' }, b.note)) : 'CONFIRM',
   ));
   // TYPE badge rides inline next to the name — it's the matchup intel.
   const _badgeEl = _hrlgBadgeEl;
@@ -3554,6 +3555,15 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
   // a fresh unit or a different menu view takes the wheel → reset the cursor
   useEffect(() => { setSelId(null); camSrc.current = null; }, [unitKey, viewKey]);
+  /* THE CURSOR FOLLOWS THE PICK (PvP playtest 2026-10-23: an enemy picked on the board got its CONFIRM while the
+     keyboard cursor sat on CANCEL, so ENTER cancelled the attack): whenever the ✓ moves to another row (a board
+     click, the engine's pre-pick, a press-refund re-pick) the cursor lands on it — ENTER then confirms it */
+  const _ckId = (blades.find(b => b && b.check) || {}).id || null;
+  const _ckPrev = useRef(_ckId);
+  useEffect(() => {
+    if (_ckId && _ckId !== _ckPrev.current) { camSrc.current = 'click'; setSelId(_ckId); }
+    _ckPrev.current = _ckId;
+  }, [_ckId, viewKey]);
 
   // THE MENU CAMERA (battle.js _menuTargetShot) — WHEN the camera moves, per input:
   //  · ↑/↓, the wheel and the controller D-pad step the cursor deliberately → the
@@ -3739,9 +3749,13 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // ENTER only confirms while browsing menus — never while aiming on the
-  // board (there the click on a tile is the confirm; ESC/crown backs out).
-  fireSelRef.current = (view === 'aim') ? null : () => { if (selBlade) fireBlade(selBlade); };
+  // ENTER fires the cursor row while browsing menus. While aiming on the board
+  // it fires only a green CONFIRM that is up (an armed self-cast's "CONFIRM — SELF",
+  // a picked aim tile) — PvP playtest 2026-10-23: ENTER did nothing on a self-cast
+  // that waited for its CONFIRM; the click on a tile stays the aim's own confirm.
+  fireSelRef.current = (view === 'aim')
+    ? ((confirm && confirm.fire) ? () => { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); confirm.fire(); } : null)
+    : () => { if (selBlade) fireBlade(selBlade); };
 
   // the crown — the big bar on top of the identity column. It is ALWAYS
   // END TURN now; backing out of sub-menus moved to the ↩ chip riding the
@@ -4905,6 +4919,73 @@ function _hrlgSwitchBlades(unit, st) {
   return { title: { icon: '🔄', text: 'Switch', count }, blades };
 }
 
+/* ♟ THE TACTICS MENU (battle.js setUnitTactic, mondo 2026-10-23): the root verb TACTICS opens two panels, Persona
+   style — the party (every living unit of this side, the acting one first, each with its Tactic) and, beside it, the
+   Tactic list for the picked one: MANUAL plus the six jobs the CPU plays (ai.js AI_TACTICS). Picking a Tactic for the
+   acting unit hands its turn to the AI at once; picking one for a teammate takes effect on its next turn. Which party
+   row is picked is viewer-local UI (kept here, never on state). */
+let _hrlgTacticPickId = null;
+const _HRLG_TACTIC_ICON = { manual: '🎮', fight: '⚔', siege: '⬢', search: '🗝', intercept: '➹', anchor: '⚓', heal: '♥' };
+function _hrlgTacticLabel(id) {
+  if (!id) return 'Manual';
+  const inf = typeof unitTacticInfo === 'function' ? unitTacticInfo(id) : null;
+  return inf ? inf.label : id;
+}
+function _hrlgTacticParty(unit, st) {
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  const party = (st.units || []).filter(u => u && !u.dead && !u._dying && u.player === unit.player && home(u) === unit.player);
+  party.sort((a, b) => (a.id === unit.id ? -1 : b.id === unit.id ? 1 : 0));
+  return party;
+}
+function _hrlgTacticPartyBlades(unit, st) {
+  const party = _hrlgTacticParty(unit, st);
+  if (!party.some(u => u.id === _hrlgTacticPickId)) _hrlgTacticPickId = unit.id;
+  const blades = party.map(u => {
+    const t = u.tactic || null;
+    return {
+      id: 'tp:' + u.id,
+      label: typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls),
+      available: true,
+      selected: u.id === _hrlgTacticPickId,
+      portrait: _hrlgPortraitData(u, unit),
+      meta: { text: (_HRLG_TACTIC_ICON[t || 'manual'] || '') + ' ' + _hrlgTacticLabel(t).toUpperCase(), color: t ? '#f2c468' : undefined },
+      fire: () => {
+        _hrlgTacticPickId = u.id;
+        if (typeof markDirty === 'function') markDirty('hud');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      },
+    };
+  });
+  return { title: { icon: '♟', text: 'Tactics', count: party.length + '' }, blades };
+}
+function _hrlgTacticBlades(unit, st, forUnit) {
+  const pick = forUnit || (st.units || []).find(u => u.id === _hrlgTacticPickId && !u.dead) || unit;
+  const cur = pick.tactic || null;
+  const ids = [null].concat(typeof UNIT_TACTIC_IDS !== 'undefined' ? UNIT_TACTIC_IDS : []);
+  const blades = ids.map(id => {
+    const inf = id && typeof unitTacticInfo === 'function' ? unitTacticInfo(id) : null;
+    const why = id && typeof unitTacticProblem === 'function' ? unitTacticProblem(pick, id) : null;
+    return {
+      id: 'tac:' + (id || 'manual'),
+      icon: _HRLG_TACTIC_ICON[id || 'manual'],
+      label: _hrlgTacticLabel(id),
+      available: !why,
+      selected: cur === id,
+      subBelow: true,
+      sub: why || (id ? (inf && inf.desc) || '' : 'You give the orders'),
+      meta: cur === id ? { text: '✓', color: '#f2c468' } : null,
+      fire: () => {
+        if (why) return;
+        if (typeof setUnitTactic === 'function') setUnitTactic(pick.id, id);
+        if (typeof markDirty === 'function') markDirty('hud');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      },
+    };
+  });
+  const nm = typeof unitDisplayName === 'function' ? unitDisplayName(pick) : (pick.name || pick.cls);
+  return { title: { icon: _HRLG_TACTIC_ICON[cur || 'manual'], text: nm }, blades };
+}
+
 function _hrlgPingBlades() {
   const pingKeys = typeof PING_TYPES !== 'undefined' ? Object.keys(PING_TYPES) : [];
   const blades = pingKeys.map(pk => {
@@ -4974,6 +5055,13 @@ function _hrlgTargetBlades(unit, st, mode) {
        column here buried the real targets under "Smash Terrain" rows. */
     targets = (typeof _getAttackValidTargets === 'function' ? _getAttackValidTargets(unit) : [])
       .filter(t => t.kind !== 'terrain');
+    /* THE MOVE→ATK ROWS (PvP playtest 2026-10-23): what the unit reaches after its one step lists too (amber
+       MOVE→ATK chip, the forecast from the landing) — the lit ATTACK verb never opens on an empty list, and the
+       confirm walks then swings (battle.js selectTargetFromMenu → findAttackApproachTile → _moveThenAttack) */
+    if (typeof _getAttackApproachTargets === 'function') {
+      const _have = new Set(targets.map(t => t.x + ',' + t.y));
+      try { targets = targets.concat(_getAttackApproachTargets(unit, _have)); } catch (e) {}
+    }
     titleText = 'Attack'; titleIcon = '×';
   } else {
     spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
@@ -5049,10 +5137,13 @@ function _hrlgTargetBlades(unit, st, mode) {
     // player sees the outcome while browsing targets, not only after arming
     // (predictDamageToUnit, ui.js — mid estimate IF it lands; dodge/counter/
     // crit stay a gamble).
+    /* a MOVE→ATK / MOVE→CAST row forecasts from the tile its step lands on (PvP playtest 2026-10-23: the hits
+       landed 10-35% above a forecast read from where the caster stood) */
+    const _castFrom = (t._approach && t._approach.x != null) ? _mtCastTile(t._approach) : null;
     const previewDmg = (tUnit && isOffensive
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
-      ? predictDamageToUnit(unit, tUnit, spell || null) : 0;
+      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
     const previewHeal = (tUnit && !isOffensive && spell
@@ -5075,7 +5166,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
-      note: t._approach ? 'MOVE→CAST' : null,
+      note: t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
@@ -5089,8 +5180,8 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
-      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit) && !t._approach)
-        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit)) : null,
+      acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
+        ? (v => v != null ? v + '%' : null)(_hrlgHitPct(unit, tUnit, _castFrom)) : null,
       portrait: portrait,
       // THE MENU CAMERA: the cursor landing on this row frames caster + target
       camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
@@ -5107,10 +5198,13 @@ function _hrlgTargetBlades(unit, st, mode) {
       // THE STRIKE ARROW (ui.js): the hovered attack row draws the red arrow onto its target, leaving goes back to the pick
       // THE STRIKE ARROWS (ui.js): a hovered spell row in reach paints its cast (footprint, numbers, an arrow onto
       // every body it hits, the ricochet hop); leaving goes back to the pick
-      hoverIn: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); }
-        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y, tz); } : undefined,
-      hoverOut: mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); }
-        : (spell && !t._approach) ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(null); } : undefined,
+      // a MOVE→ATK / MOVE→CAST row draws its walk arrow + landing ghost instead (battle.js _ewApproachRowHover)
+      hoverIn: t._approach ? () => { if (typeof window._ewApproachRowHover === 'function') window._ewApproachRowHover(t.x, t.y); }
+        : mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(t.x, t.y, tz); }
+        : spell ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(t.x, t.y, tz); } : undefined,
+      hoverOut: t._approach ? () => { if (typeof window._ewApproachRowHover === 'function') window._ewApproachRowHover(null); }
+        : mode === 'attack' ? () => { if (typeof window._ewAttackAimArrow === 'function') window._ewAttackAimArrow(null); }
+        : spell ? () => { if (typeof window._ewSpellAimHover === 'function') window._ewSpellAimHover(null); } : undefined,
     };
   });
   // (The ×1/×2/×3 multi-strike picker is gone: an attack ENDS the turn, so
@@ -5697,6 +5791,19 @@ function ActionMenu({ st, hidden }) {
     ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
     : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
 
+  // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
+  // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
+  if (typeof setUnitTactic === 'function' && !(typeof window._isDungeonMode === 'function' && window._isDungeonMode())
+      && !window._tutActive) {
+    const _onTac = (st.units || []).filter(u => u && !u.dead && u.player === unit.player && u.tactic).length;
+    actions.push({
+      id: 'tactics', label: 'Tactics', icon: '♟', cost: null,
+      available: true,
+      selected: menuView === 'tactics',
+      note: _onTac ? _onTac + ' AUTO' : null,
+    });
+  }
+
   // ⇄ SWITCH — Gauntlet + reserves matches (battle.js _benchOn): swap in a
   // benched reserve. A reserves match caps voluntary switches per round.
   if (typeof _benchOn === 'function' && _benchOn()) {
@@ -5856,6 +5963,7 @@ function ActionMenu({ st, hidden }) {
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
+      case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
       case 'teamEscape': if (typeof window.doTeamEscape === 'function' && typeof getSelectedUnit === 'function') window.doTeamEscape(getSelectedUnit()); break;
     }
@@ -6011,6 +6119,9 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st))); view = 'sub';
   } else if (menuView === 'switch') {
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
+  } else if (menuView === 'tactics') {
+    panels.push(_mkPanel('tacParty', _hrlgTacticPartyBlades(unit, st)));
+    panels.push(_mkPanel('tactics|' + (_hrlgTacticPickId || unit.id), _hrlgTacticBlades(unit, st))); view = 'sub';
   } else if (menuView === 'entropy') {
     panels.push(_mkPanel('entropy', _hrlgEntropyBlades(unit, st), cancelBlade)); view = 'sub';
   } else if (menuView === 'finisherTargets') {
@@ -10137,6 +10248,49 @@ function QuickPeek({ st }) {
       h('div', { className: 'hrlg-panel quick on' }, card)));
 }
 
+/* ♟ THE TACTIC WATCH: while one of YOUR units plays its turn on a Tactic (battle.js unitOnTactic), the command menu's
+   spot shows a small window instead — whose turn it is, its Tactic and why (ai.js aiTacticReason), and the Tactic list
+   so you can switch it, or pick MANUAL to take control (the AI finishes the step it is on, then the turn is yours).
+   It stays up through the AI's whole turn (the AI acts back to back, so a window that hid with each animation was
+   never clickable); spell close-ups still fade it (body.ew-spell-shot). */
+function TacticWatch({ st }) {
+  if (!st || st.phase !== 'battle' || st.winner) return null;
+  const u = (st.units || []).find(x => x.id === st._blitzActiveUnitId && !x.dead && !x._dying);
+  if (!u || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return null;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
+  if (u.player !== viewer || home !== viewer) return null;
+  if (st.autoPlayers && st.autoPlayers[u.player]) return null;
+  const built = _hrlgTacticBlades(u, st, u);
+  let why = null;
+  try { why = typeof window.aiTacticReason === 'function' ? window.aiTacticReason(u) : null; } catch (e) { why = null; }
+  const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
+  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  return h('div', { className: 'hrlg-rig hrlg-tacwatch', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
+    h('div', { className: 'hrlg-side hrlg-ghost' }),
+    h('div', { className: 'hrlg-panels' },
+      h('div', { className: 'hrlg-panel on' },
+        h('div', { className: 'hrlg-thead' },
+          h('div', { className: 'hrlg-view-tab' },
+            h('span', { className: 'hrlg-view-tab-icon' }, '♟'),
+            h('span', { className: 'hrlg-view-tab-text' }, name + ' · ' + _hrlgTacticLabel(u.tactic).toUpperCase()),
+          ),
+        ),
+        why ? h('div', { className: 'hrlg-mode' }, String(why)) : null,
+        h('div', { className: 'hrlg-list' },
+          built.blades.map((b, i) => h(HorologeBlade, {
+            key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
+            onFire: (b2) => {
+              if (!b2.available) return;
+              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+              b2.fire();
+            },
+            onHover: () => {},
+          })),
+        ),
+      )));
+}
+
 function ReactHUD() {
   const [st, tick] = useGameState();
   const menusHidden = useMenusHidden(st);
@@ -10167,6 +10321,9 @@ function ReactHUD() {
       h(ActionMenu, { st, hidden: menusHidden }),
     ),
     h(QuickPeek, { st }),
+    h('div', { style: { pointerEvents: 'auto' }},
+      h(TacticWatch, { st }),
+    ),
     h('div', { style: { pointerEvents: 'auto' }},
       h(TurnColumn, { st }),
     ),
@@ -11283,6 +11440,9 @@ function _hudHideCss() {
     .hrlg-peek .hrlg-panels, .hrlg-peek .hrlg-panel { pointer-events: none !important; }
     .hrlg-peek .hrlg-panel.quick > .hrlg-thead.qp { pointer-events: auto; }
     body.ew-spell-shot .hrlg-peek { opacity: 0; }
+    /* ♟ the Tactic watch (TacticWatch): the same stand-in Horologe, its one panel live */
+    .hrlg-tacwatch .hrlg-ghost { visibility: hidden !important; pointer-events: none !important; }
+    body.ew-spell-shot .hrlg-tacwatch { opacity: 0; pointer-events: none; }
     /* the card itself draws nothing: its panel is its own layer (.hrlg-qp-bg, classed .hrlg-thead so the header blade's
        look and every theme skin land on it), which the UI Maker can size, move, restyle or take away without the parts */
     :root:root:not(#qp-c):not(#qp-c):not(#qp-c):not(#qp-c) .hrlg-panel.quick > .hrlg-thead.qp { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; }
@@ -11638,6 +11798,8 @@ function _hudHideCss() {
     /* the row carrying the seal reserves its footprint, so the HP readout /
        chips only slide under it when the row is genuinely too tight */
     .hrlg-blade.cfm .hrlg-body { padding-right: 112px; }
+    .hrlg-confirm-stack { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
+    .hrlg-confirm-note { color: #f0b54a; font-size: 8px; letter-spacing: 0.06em; text-shadow: none; }
     .hrlg-confirm-inline-check {
       flex: none; width: 15px; height: 15px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;

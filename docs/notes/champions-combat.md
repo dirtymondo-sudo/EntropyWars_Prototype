@@ -655,7 +655,6 @@ basic attacks (`damageDoorAt`, `attack:door` on the tile card); its owner's side
 by spell id (`gunGustDoor:open/act/hit/break/fold`). A basic CPU placer is `window.doorGunAiPick`. Test:
 `door-gun-board.test.js` (the door block + the chain in one vm).
 
-
 ## THE DOOR AGENT rev 6 — THE GUST STREAM + THE DESTINATIONS (door wheel Phase 2) — 2026-09-25, local delivery
 DOOR_GUN_PLAN.md Phase 2 (full log in its §11). **THE GUST STREAM** (the user: "a persistent hazard on the field,
 not just blasting in between rounds … immovable units like the kaiju and giant should be able to stand in it"):
@@ -2094,7 +2093,13 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 - **Difficulty.** Easy plays without the plan and the clocks (AI_DIFFICULTY_PROFILES.tactics; a player's own Tactic still applies). **Phase 4.** Hard only: `_hardReplyCheck` (top five options − hardReplyFactor_v1 × the worst enemy reply). state.js `_cpuPlanDraft`: Hard VS CPU drafts brawl / siege / Key hunt from RACE_BASE_STATS + raceKit (top ten per role, one of each); never for crossings, encounters, online or labs. `window._ewCpuDraftPlan`.
 - **Phase 5.** battle.js `_AB_RETIRED_KEYS`: the 18 gen-40 flat weights + killBonusScore + cubeWindowBonus are no longer A/B-tested (values kept and still played; imitation still nudges; EW_TRAIN_KEYS overrides). Training dashboard: "P1 wins by" / "P2 wins by". Strength Test: Opponent mirror / Key Rusher / Cube Rusher / Turtle (`_ewSetStrengthSparring`, results per style). Imitation matches Inspect at the tile (synthetic score `_inspectScoreAt` when the CPU didn't propose it). New weights (no schema bump): raceRoundValue_v1, searchKeyValue_v1, searchCenterPrior_v1, keyCarrierDenial_v1, anchorCaution_v1, tacticCommitment_v1, hardReplyFactor_v1 (probe 'hard' = never in the labs). `window.getCubeAttackDamage` exported for the clocks.
 - Not built (said so): endgame starts, many-weight steps, plan-drafted training teams, Entropy-gauge spacing, killBonus/killBase merge (both just stop being tested).
-- BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Seen, not changed: a ranged Siege unit (Sheriff) steps toward the Cube, shoots, then the old retreat logic walks it back, so it never reaches the Cube; Search loses its unit when Anchor + Intercept + Siege fill the budget.
+- BROWSER CHECK (2026-10-23, v4.17): three VS CPU Arena matches in the cloud browser (Normal, Hard, Normal), no JS errors, none reached a win before the round/time limit (Hard: CPU 5-4 on kills at round 19, Swordfighter hit the Cube twice). Fixed from what they showed: (1) the plan swapped jobs between units every round, now the last holder keeps its job (+60 fitness) unless someone fits it clearly better; (2) the "enemy on our Cube" Intercept alarm used sightings up to 3 rounds old within 4 squares and fired every round on an 8-wide board; now this round or last, within 3 squares (2 on boards 8-11 wide), worded "near our Cube". Then (v4.18): Search loses its unit when Anchor + Intercept + Siege fill the budget, so when the Keys race is our nearest win or within 1.5x+1 of it, the plan hands out one unit per wanted job first (the nearest win's job before the other race) and the kept fighter becomes the searcher. Two more things kept the searcher from searching, both fixed: a CPU-assigned job now damps the other move goals ×0.75 (forced stays ×0.6), so siege_tower no longer walks the searcher to the Cube; and the Search job's Inspect is worth the Keys clock (`_keyClockValue`: expected Keys × rounds per Key off our Keys clock × share × Race Round Value), and with 2 AP it scans FIRST when its best option is a one-AP hit/heal/item (Inspect costs 1 AP, doesn't end the turn, AP doesn't carry over). Browser check: round 7 Robin Hood and Sheriff both scanned before shooting, Sheriff found a Key, Keys clock 14.7 -> 5. The Sheriff that looked like it walked back from the Cube was Bigfoot's Big Kick knocking it into the corner every other round; nothing to fix there.
+
+## THE PLAYER'S TACTICS (auto battle) (2026-10-23, mondo: "for the player to be able to apply them to their units so they dont have to manually fight for them, like they can be on auto battle") — battle.js, hud.js, online.js
+- **Set it.** Root verb ♟ TACTICS (hud.js `_hrlgTacticPartyBlades` + `_hrlgTacticBlades`): the party list (acting unit first, each with its Tactic) and beside it MANUAL + the six AI_TACTICS rows for the picked unit. Picking for the acting unit hands the turn to the AI at once; for a teammate it applies on its next turn. Not on Mystery Dungeon (own chips) or in the tutorial.
+- **Engine.** battle.js `setUnitTactic(id, tactic|null)` writes `unit.tactic`; `unitOnTactic(u)` is the gate (battle phase, controller ≠ AI, not possessed, not MD/tutorial) and is folded into `_mdUnitAuto`, so every AI-routing path (activation, `_shouldAIRun`, runComputerTurn, stall watchdog, safety timer, selectUnit, imitation skip, ActionMenu/turn column) covers it. `unitTacticProblem` greys Siege (no enemy Cube), Search (mode has no Keys), Intercept (neither), Heal (no heal/healAll/selfHeal/revive/zoneHeal/seedHeal kind and no Healing Potion — the Heal job's own list). MANUAL mid-turn: `_tacticWhenIdle` waits for the AI's step to finish, then restarts the shot clock + selects the unit. The tactic survives death/respawn (same unit object).
+- **During its turn.** hud.js `TacticWatch`: the command menu's spot shows "<name> · <TACTIC>", `aiTacticReason`, and the Tactic list (MANUAL = take control). The prompt bar is silent for a Tactic unit.
+- **Online.** The host owns unit.tactic (plain unit data → state-sync). Guest picks emit `game-action {type:'setTactic'}`; host handler checks the unit is the sender's (any time, not only its turn). The guest's units on a Tactic are played by the host's AI like the whole-side Auto mode.
 
 ## THE SIGNATURE FAMILIES A–F (2026-10-23, mondo: "i want each race to have at least one spell family that is unique to itself ... think of each race as its own JRPG or Dark Souls boss") — data.js
 - Every race id A–F has a family of its own. 32 new SPELL_FAMILIES rows (kind 'signature', `unique: '<race>'`, an
@@ -2146,6 +2151,32 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
 - Checked in a browser: every row cast through GAME.doSpell in the Spell Lab (scratch harness, not committed); finishers
   cast on a clean dummy and on one carrying their status ("⚗ Combo! … ×1.5" in the log).
 
+## THE PVP PLAYTEST TARGETING FIXES (2026-10-23, mondo: "yes go ahead and do fixes for the guest and host findings")
+From the 10-23 online PvP playtests (host + guest reports). Netcode and fog went to their own thread. PR #400 targeting
+rules kept: a board click PICKS (✓), CONFIRM fires; an out-of-reach enemy is MOVE→CAST / MOVE→ATK.
+- MOVE→ATK rows: battle.js `_getAttackApproachTargets(unit, have)` (the attack mirror of `_getSpellApproachTargets`; walk
+  only, the farthest landing that reaches, fog-gated from the start tile). hud.js `_hrlgTargetBlades` adds them to the
+  attack list; `attackHasReachableTarget` uses the same function, so the list and the lit ATTACK button agree.
+- A board click on an out-of-reach enemy now PICKS it (`_boardApproachPick` → `selectTargetFromMenu`) instead of moving
+  at once; the second click / CONFIRM walks and hits (`_moveThenAttack` / `_moveThenCast`, unchanged). The prompt reads
+  "Move + attack X". An enemy nobody can reach is refused on the FIRST click ("X is out of reach this turn.",
+  `_outOfReachLine`) and the mode stays armed.
+- GUEST board clicks (online.js armed clickTile): `_ewGuestBoardPick` validates the click against the same rows before
+  the guest's local pick. Before, a guest click on an enemy armed the TILE ("CONFIRM → (x,y)") and CONFIRM did nothing.
+  A unit spell clicked off its list (empty tile, enemy out of reach) is refused and stays armed. Checked in two browsers
+  (friendly room): guest MOVE→ATK hit 196 vs ≈201 shown, guest MOVE→CAST 299 vs ≈310.
+- The CONFIRM row follows the pick: HorologeMenu moves its cursor to the ✓ row; Enter in the aim view fires CONFIRM
+  (was: cancelled the floating CONFIRM / did nothing on an armed self-cast). An approach pick's CONFIRM reads
+  "CONFIRM / MOVE→ATK" (or MOVE→CAST) on two lines.
+- Previews from the landing tile: `approachCastFrom(unit,x,y,z)` (battle.js) gives the approach landing; the list's
+  damage + hit %, the name-plate forecast (ui.js `getPendingDamagePreview`) and `forecastSpellPlan` (now also when only
+  the height changes) all forecast from it. Hydraulic Crush 343 → 395 shown, real hit 393; Railgun MOVE→CAST row was 0.
+- Status chips per target (ui.js `_getStatusPreviewLabels(spell, target)`): drops a status the target is immune to /
+  absorbs (element affinity or passive) and marks a resisted one "½ CHANCE" (the existing halved apply chance).
+- Online pause menu says "MENU · ONLINE · THE MATCH KEEPS GOING" instead of PAUSED.
+- Not changed: lists open on the lowest-HP target (existing sort, asked mondo); the row slide-in lag is SwiftShader;
+  ENDS TURN tag is intended; heals do get MOVE→CAST rows (the report's Divine Light case was not reproduced).
+
 ## FIRE ON OIL / GOO, EVERY SPELL KIND (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of liquid explode? If not it should.")
 - Single-target spells (Fireball, Dragon Breath) already blew the whole connected slick (battle.js `_reactFireOil` via
   `triggerTerrainSpellReaction`). Nine fire / lightning spells did not, because their resolvers never called the dispatcher
@@ -2159,3 +2190,20 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
   existing reactions (conduction, flash-freeze, forest fire, crystal) like every other damage resolver.
 - "Goo" = the Black Goo's ooze terrain `swamp` (oil family, liquidFamilyOf 'oil'); the charred slick takes the normal
   3-round terrain timer back to the map's own ground.
+
+## ICE SHATTER: SLAMS + HARD LANDINGS (2026-10-23, mondo picked "Slams + hard landings" on "Which physical abilities should shatter ice into water?")
+- battle.js `spellShattersIce(spell)`: physical damage, not ice element, not a wall (terrainCreate / monument), and a
+  leapStrike / skyDrop / skySlam kind or any `terrainDeform` crater maker (~25 rows: Ground Slam, Tremor Stomp, Cataclysm
+  Stomp, Cosmic Slam, Colossal Crush, Quake, Titan Drop, Seismic Leap, Stone Drop, Predator Drop ...). Runs at the top of
+  `triggerTerrainSpellReaction`: only the STRUCK ice tiles become shallow `water` (`shatterIceAt`), on the 3-round timer.
+  skyDrop / skySlam / leapStrike now call the dispatcher (they never did), so their ice/water/fire reactions work too.
+- Hard landing: state.js `applyFallDamage` with `opts.byEnemy` (knockbacks, Big Kick off a ledge, trapdoors, groundings)
+  cracks the ice under the body after the damage. `resolveForcedSlide` checks `hardLandingCracksIce` first and passes
+  noGlide to the chain AND its forecast, so the body stays in the hole. A sky throw from fall-damage height (carry 4, so
+  any flat throw) onto ice cracks it, no glide, forecast matches. Own jumps / walks off a ledge leave ice whole.
+- Checked in a browser (VS CPU, Football Stadium): Ground Slam 3 tiles, Tremor Stomp 3, Colossal Crush 1, Infernal Hurl
+  + To the Moon landings 1, a byEnemy fall 1; Glacial Slam and Sasquatch Smash left the ice whole.
+
+## THE HAND PAN LEAVES THE TWO-SHOT (2026-10-23, mondo: "panning the camera moves the camera angle real low to the ground as i pan across the map") — battle.js, state.js
+- Cause: a hand pan is `camera.snap({x, y, zoom})`; snap never left a menu two-shot (target pick, quick list, the attack hold after a basic attack), so the pan slid the shot's low pitch (MENU_CAM_TILT 50-66), its close zoom and its raised focal (the pair's chest) across the whole map. moveTo already leaves the shot for every programmatic move ("a pan ... never inherits the low angle") — the hand pan was the gap. Plain tactical pans on Shasta / Giza arenas and full Mount Shasta were already level (browser probe); THE CLEAR BOARD crane and THE NEAR BODY rise only ever lift the eye and are untouched.
+- Fix: `camera._leaveMenuShotForPan()` (battle.js, beside snap): drops `_menuShot` + `_menuAtk` (and its ease-out timer), takes back the shot's home tilt + zoom, keeps the yaw the player is looking along, latches the pan focal at `_naturalElevAt` (the board under the focal). Called by state.js `_panBegin` (left-drag pan, before it reads `_panStartZoom`) and by snap for any other hand pan (edge pan, one-finger touch). A right-drag orbit already adopts the player's own angle (snap with tilt/yaw). Viewer-local camera: nothing to relay.

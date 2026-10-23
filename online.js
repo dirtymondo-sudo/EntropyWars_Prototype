@@ -274,6 +274,12 @@
                         focusUnitPanel(clickedUnit.id);
                     }
 
+                    /* THE GUEST PICK (battle.js _ewGuestBoardPick, PvP playtest 2026-10-23): an attack / unit-spell /
+                       targeted-item click takes the engine's own pick — a list row is picked or confirmed like that
+                       row, a click off the list is refused — instead of arming a pick on whatever tile was clicked */
+                    if (actingUnit && !_qmTarget && typeof window._ewGuestBoardPick === 'function'
+                        && window._ewGuestBoardPick(actingUnit, x, y, z, _qmVisible ? _qmUnit : null)) return;
+
                     const sentActionMode = state.actionMode;
                     const sentPendingTarget = state.pendingTarget;
                     _emit('game-action', {
@@ -1284,6 +1290,23 @@
             if (window._broadcastState) window._broadcastState();
         };
 
+        /* ♟ UNIT TACTICS (battle.js setUnitTactic): the HOST owns unit.tactic — it is what routes a unit's turn to the
+           AI, and the AI only ever runs on the host. A guest's pick (any of its own units, on or off its turn) travels as
+           a 'setTactic' game-action; the host applies it, takes over or hands back the active turn, and the change comes
+           back with the state-sync. */
+        if (typeof setUnitTactic === 'function') {
+            const _origSetUnitTactic = setUnitTactic;
+            setUnitTactic = function(unitId, tactic) {
+                if (!_isOnline() || state._remoteAction || _isHost()) return _origSetUnitTactic(unitId, tactic);
+                const u = state.units.find(function(x) { return x.id === unitId && !x.dead; });
+                if (!u || u.player !== _myPlayer() || state.phase !== 'battle' || state.winner) return false;
+                if (tactic && typeof unitTacticProblem === 'function' && unitTacticProblem(u, tactic)) return false;
+                _emit('game-action', { type: 'setTactic', unitId: unitId, tactic: tactic || null });
+                return true;
+            };
+            window.setUnitTactic = setUnitTactic;
+        }
+
         var _pendingCameraEvents = [];
         const _origPlayOffensiveActionCamera = playOffensiveActionCamera;
         playOffensiveActionCamera = function(sourceUnit, target, opts) {
@@ -1971,6 +1994,13 @@
                             }
                         }
                         break;
+                    case 'setTactic': {
+                        /* Ownership: only the sender's OWN units, on or off its turn (battle.js setUnitTactic). */
+                        var tacUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                        if (!tacUnit || tacUnit.player !== remoteP) break;
+                        if (typeof setUnitTactic === 'function') setUnitTactic(tacUnit.id, data.tactic || null);
+                        break;
+                    }
                     case 'engine': {
                         /* Direct engine mutator relayed from the guest's HUD
                            (quick-action menu, target submenu, tile actions,
