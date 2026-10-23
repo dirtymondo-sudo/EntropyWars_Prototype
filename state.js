@@ -2127,6 +2127,11 @@
                 + (_gravMult > 1 ? ' 🕳 The crushing gravity triples the impact!' : '');
             addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
             applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
+            /* 🧊💥 ICE SHATTER, the hard landing (2026-10-23, mondo): a body an enemy sends crashing onto ice breaks it
+               into water (battle.js shatterIceAt). Your own jumps and walks off a ledge leave it whole. */
+            if (opts && opts.byEnemy && typeof shatterIceAt === 'function' && shatterIceAt(unit.x, unit.y)) {
+                addLog(`🧊 ${unitDisplayName(unit)} crashes through the ice!`);
+            }
             // Enemy-caused falls (knockbacks, pulls, tremor pits — callers tag
             // opts.byEnemy) flail on the way down (MAL Fall3 via battle.js
             // triggerFallAnim); voluntary drops (move/jump) stay quiet.

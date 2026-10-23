@@ -2165,3 +2165,16 @@ Thread "Unique race families P to Z" (siblings: A-F, G-O, "Shared spell family e
   existing reactions (conduction, flash-freeze, forest fire, crystal) like every other damage resolver.
 - "Goo" = the Black Goo's ooze terrain `swamp` (oil family, liquidFamilyOf 'oil'); the charred slick takes the normal
   3-round terrain timer back to the map's own ground.
+
+## ICE SHATTER: SLAMS + HARD LANDINGS (2026-10-23, mondo picked "Slams + hard landings" on "Which physical abilities should shatter ice into water?")
+- battle.js `spellShattersIce(spell)`: physical damage, not ice element, not a wall (terrainCreate / monument), and a
+  leapStrike / skyDrop / skySlam kind or any `terrainDeform` crater maker (~25 rows: Ground Slam, Tremor Stomp, Cataclysm
+  Stomp, Cosmic Slam, Colossal Crush, Quake, Titan Drop, Seismic Leap, Stone Drop, Predator Drop ...). Runs at the top of
+  `triggerTerrainSpellReaction`: only the STRUCK ice tiles become shallow `water` (`shatterIceAt`), on the 3-round timer.
+  skyDrop / skySlam / leapStrike now call the dispatcher (they never did), so their ice/water/fire reactions work too.
+- Hard landing: state.js `applyFallDamage` with `opts.byEnemy` (knockbacks, Big Kick off a ledge, trapdoors, groundings)
+  cracks the ice under the body after the damage. `resolveForcedSlide` checks `hardLandingCracksIce` first and passes
+  noGlide to the chain AND its forecast, so the body stays in the hole. A sky throw from fall-damage height (carry 4, so
+  any flat throw) onto ice cracks it, no glide, forecast matches. Own jumps / walks off a ledge leave ice whole.
+- Checked in a browser (VS CPU, Football Stadium): Ground Slam 3 tiles, Tremor Stomp 3, Colossal Crush 1, Infernal Hurl
+  + To the Moon landings 1, a byEnemy fall 1; Glacial Slam and Sasquatch Smash left the ice whole.
