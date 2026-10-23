@@ -13047,9 +13047,9 @@ if (typeof window !== 'undefined') window.RESERVE_RULES = RESERVE_RULES;
 
 // ── ARENA COMPOSITE SCORING — single source of truth ──────────────────
 // Read by the timer-expiry resolver + victory screen (battle.js) and the
-// live scoreboard (hud.js). Tower damage is CAPPED so chip-poking the Cube
-// can't outscore playing the objectives (destroying it outright is still
-// an instant win); nexus control is the strongest per-round engine, and
+// live scoreboard (hud.js). Cube damage is UNCAPPED (mondo 2026-10-23: the
+// old 150 cap is gone; a full Cube is 250 points at 1 per 0.4% of its HP, and
+// destroying it outright is still an instant win); nexus control is the strongest per-round engine, and
 // accrual doubles in the final rounds (see tickMatchClock) so a trailing
 // team holding zones can close the gap.
 // Display names for nexus zone keys (zones are placed on a diagonal across
@@ -13063,8 +13063,7 @@ window.NEXUS_LABELS = {
 
 window.ARENA_PTS = {
     kill: 25,           // per kill (15 → 25 on 2026-10-07, mondo)
-    towerDmgPer10: 1,   // per 10 HP of damage to the enemy Cube…
-    towerDmgCap: 150,   // …capped here (6 kills' worth)
+    towerDmgPer10: 1,   // points per 0.4% of the enemy Cube's HP lost (250 for a whole Cube); no cap since 2026-10-23 (mondo)
     hourglass: 35,      // per hourglass carried at the buzzer
     nexusRound: 6,      // per nexus-control round accrued
     surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")

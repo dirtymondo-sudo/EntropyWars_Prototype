@@ -14682,8 +14682,12 @@
                 /* ⬡ The Cube is a solid body hovering over its tile: it blocks
                    sight (and shots) through the two cells above its surface —
                    the same band a standing unit's body fills. Never occludes
-                   itself (endpoint columns are excluded above). */
-                if (_towerBodyBlocksCell(ix, iy, iz, board)) return true;
+                   itself: the endpoint columns skip it at EVERY height (Cube vs
+                   Cube matchup 2026-10-23: the self-skip above stops at z+1, so a
+                   ray from higher up — a flyer, a ledge — dropped into the Cube's
+                   top cell and the Cube hid its own tile; flyers never saw or
+                   shot it from a step back). */
+                if (!(ix === x1 && iy === y1) && !(ix === x2 && iy === y2) && _towerBodyBlocksCell(ix, iy, iz, board)) return true;
 
                 if (iz >= 0 && ix >= 0 && iy >= 0 && ix < bw() && iy < bh()) {
                     /* Sight-blocking TERRAIN (walls, thickets…) occludes the two
