@@ -201,13 +201,13 @@ function ModeRow({ m, selected, onClick }) {
   );
 }
 
-function MapCard({ mp, selected, onClick }) {
+function MapCard({ mp, selected, onClick, sizeLabel }) {
   const sf = siteFileFor(mp);
   return h('div', { className: 'ms-tty-card' + (selected ? ' sel' : ''), onClick: onClick, title: sf ? sf.status + ' · ' + sf.juris : undefined },
     h(MapPreview, { mp: mp, size: 56, mini: true }),
     h('div', null,
       h('b', null, mp.name),
-      h('span', null, h('em', null, mp.size), h('span', { style: { color: sf ? (STAMP_INK[sf.tone] || undefined) : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, sf ? sf.status : (mp.isPrebuilt ? 'PRESET' : 'RANDOM'))),
+      h('span', null, h('em', null, sizeLabel || mp.size), h('span', { style: { color: sf ? (STAMP_INK[sf.tone] || undefined) : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, sf ? sf.status : (mp.isPrebuilt ? 'PRESET' : 'RANDOM'))),
       h('small', null, (mp.team || 4) + ' SPAWNS')
     )
   );
@@ -772,7 +772,9 @@ function MatchSelect(props) {
           ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) => h(Chip, { key: k, on: sizeFilter === k, onClick: () => setSizeFilter(sizeFilter === k ? null : k) }, l))
         ),
         h('div', { className: 'ms-tty-cards' },
-          ...filteredMaps.map(i => h(MapCard, { key: mapList[i].modeId, mp: mapList[i], selected: i === baseIdxOf(mapIdx), onClick: () => selectMap(i) })),
+          /* the card names the cut a click would play — the picked BOARD SIZE, not the site's 12 (Cube playtest 2026-10-23) */
+          ...filteredMaps.map(i => h(MapCard, { key: mapList[i].modeId, mp: mapList[i], selected: i === baseIdxOf(mapIdx), onClick: () => selectMap(i),
+            sizeLabel: (() => { const r = mapList[i === baseIdxOf(mapIdx) ? mapIdx : resolveIdx(i, arenaSize)]; return r ? (r.size || (r.w + '×' + r.h)) : null; })() })),
           filteredMaps.length === 0 && h('div', { className: 'ms-tty-empty' }, 'NO SITES MATCH FILTERS')
         )
       ),

@@ -1995,3 +1995,23 @@ would the game distinguish the clicks? ... please fix and come up with elegant s
 - Browser-checked on Giza Arena (Sedan): deck over lit ground with no route on top → moves to the ground; standing
   where both are reachable → click = deck, F + click = ground; prompt hint shown and flips.
 - Not covered: touch/gamepad have no F (keyboard Enter cursor keeps its own z).
+
+## THE CUBE PLAYTEST FIXES (2026-10-23, report https://claude.ai/artifact/BqLpotev1HFttbkZGZoiEW)
+- STAT STAGE RULER: battle.js `_statStageCeil` = max(STAT_STAGE_RULER_TOP 200 + the unit's earned level growth
+  (`_lvlStatGains`, not SPD), base). The old max(100, base) sat below every level-100 statline (race bake 2026-10-06 put
+  bases on 0-200, growth +58 ATK on top), so every ATK buff read "ATK maxed". `statStageRoom(unit, stat, n)` (GAME) is
+  the one room count; ai.js stageRoom and Bloodcraze's SPD clamp read it. STAT_STAGE_STEP is still 20 (half a letter on
+  the new bands) — flagged to mondo with the cap question (S-rank ATK races still gain only a few points).
+- Respawn clears `_staggerApDebt` beside the statStageMods reset (map.js x3, battle.js realtime).
+- ui.js `_estimateHealPotionHeal(target, item, user)` applies Devout healMult + healTakenMult (Grievous / Gooed).
+- hud.js Abilities sub: a spell blocked by its own guard (cooldown, one cast, Brand lock) names that reason
+  ("⏳ CD 2") instead of "No target"; the cooldown beats the Brand lock.
+- hud.js attack drum: the Cube row carries GAME.getCubeAttackForecast's mid roll ("≈−161", "×1.5" when sieging).
+- Result fact line "N v M STANDING" uses the wipeout rule (home side, not dead / _dying / _sealed).
+- startMatch: a match after a finished one counts up matchNumber (party-builder starts kept 1 → "MATCH 1" forever, the
+  series record skipped results and matchHistory overwrote itself); `_recentDefeats` reset there too.
+- `_actedLog(unit, msg)`: "already acted" click answers are silent for CPU / remote seats and private to the side.
+- three-renderer `_updateMinimap` hides off the battle phase (the HUD stylesheet that hides it leaves with the HUD).
+- match-select.js MapCard shows the cut a click would play (the picked BOARD SIZE).
+- NOT REPRODUCED: the Cube missing from Gargoyle's attack list once (same tile next round). The list's tower branch and
+  the swing share combatDist + LoS from the unit's z; a changed z (airborne) or a changed column is the likely cause.

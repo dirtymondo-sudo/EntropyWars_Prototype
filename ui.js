@@ -15294,13 +15294,21 @@
         /* Projected Healing Potion restore on a target — mirrors doItem's
            formula (ITEM_RULES.healPotion.healPct of max HP × terrain heal
            multiplier), clamped to the missing HP so a full bar previews 0. */
-        function _estimateHealPotionHeal(target, itemKey) {
+        function _estimateHealPotionHeal(target, itemKey, user) {
             if (!target || target.dead || !(target.maxHp > 0)) return 0;
             const _r = (typeof ITEM_RULES !== 'undefined' && (ITEM_RULES[itemKey || 'healPotion'] || ITEM_RULES.healPotion)) || null;
             const pct = (_r && _r.healPct) || 0.30;
             const mult = (typeof getTerrainHealMultiplier === 'function')
                 ? getTerrainHealMultiplier(target.x, target.y) : 1;
-            const raw = Math.max(1, Math.round(target.maxHp * pct * mult));
+            let amt = Math.max(1, Math.round(target.maxHp * pct * mult));
+            /* the rest of applyHealingToUnit's scaling (Cube playtest 2026-10-23: the row said ≈+410 on a Grievous target
+               and the potion healed 205): the user's Devout healMult, then the target's healTakenMult (Grievous, Gooed) */
+            const _devout = (user && typeof unitPassiveValue === 'function') ? unitPassiveValue(user, 'healMult') : undefined;
+            if (_devout && _devout !== 1) amt *= _devout;
+            if (typeof getActiveStatusKeys === 'function' && typeof STATUS_DEFS !== 'undefined') {
+                amt *= getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
+            }
+            const raw = Math.max(0, Math.round(amt));
             return Math.min(raw, Math.max(0, target.maxHp - target.hp));
         }
 
@@ -15372,7 +15380,7 @@
                         // Healing Potion row hover → projected potion heal on the
                         // ally's HP bar (percent-of-max × terrain, clamped to the
                         // missing HP — mirrors doItem's formula).
-                        const heal = _estimateHealPotionHeal(target, hov.itemKey);
+                        const heal = _estimateHealPotionHeal(target, hov.itemKey, attacker);
                         if (heal > 0) val = { unitId: target.id, heal: heal };
                     } else if (spell && !isEnemyUnit(attacker, target)) {
                         // Ally (or self) cast → projected heal, clamped to the
@@ -15444,7 +15452,7 @@
                 // Armed Healing Potion → projected restore grows green off the
                 // ally's fill, exactly like heal spells.
                 if (!isEnemyUnit(attacker, target)) {
-                    const heal = _estimateHealPotionHeal(target, itemKey);
+                    const heal = _estimateHealPotionHeal(target, itemKey, attacker);
                     if (heal > 0) val = { unitId: target.id, heal: heal };
                 }
             } else if (spell && !isEnemyUnit(attacker, target)) {
