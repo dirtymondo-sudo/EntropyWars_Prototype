@@ -76260,8 +76260,14 @@
                re-check after the real takeoff). The old hand-rolled scan here
                used flat step costs and skipped the edge/corner checks, which
                is how previewed tiles turned out unreachable after the AP was
-               already burned. */
-            if (_unitFlies && !isUnitAirborne(unit) && canChangeAltitude(unit, 'ascend').ok) {
+               already burned.
+               PLAYER UNITS GET NONE (mondo 2026-10-23, Cube playtest: a Move click
+               took off, flew onto the stones and ended the turn): Move shows only
+               tiles reachable without a take-off. The player spends the AP on Take
+               Off (or Land) as its own action, then moves. The CPU keeps the
+               combined take-off + move. */
+            if (_unitFlies && !isUnitAirborne(unit) && state.autoPlayers?.[unit.player]
+                && canChangeAltitude(unit, 'ascend').ok) {
 
                 const takeoffApCost = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' ? FLYING_ALTITUDE_CONFIG.apCost : 1) + AP_COST_ACTION;
                 if ((unit.ap || 0) >= takeoffApCost) {
