@@ -29,6 +29,10 @@ const TERRAIN_RESHAPE_CONFIG = {
     maxDeltaPerTurn: 3,
     minHeight: 0,
     maxHeight: 12,
+    /* THE CRATER FLOOR (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for fissure"):
+       no spell sinks a tile more than this many levels below the ground it stood at before the first spell moved it (a
+       second Meteor on the same crater no longer digs it deeper). Fissure's `toBed` cut is the one exception. */
+    spellSinkMax: 2,
 };
 
 /* ── BUILD action (universal Minecraft-style place/dig verb) ─────────────
@@ -6517,11 +6521,14 @@ const SHARED_WALLS_OF_CAMELOT = {
 const SHARED_FISSURE = {
     id: 'sharedFissure', tier: 2, spellType: 'divine', element: 'earth', name: 'Fissure',
     type: 'damage', cost: 50, dmg: 100, range: 4, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'chasm', tileCount: 3, orientable: true,
+    kind: 'terrainCreate', terrainType: 'lava', tileCount: 3, orientable: true,
     damageType: 'physical',
     statusEffects: [{ id: 'stagger', duration: 1 }],
-    terrainDeform: { centerDelta: -2, edgeDelta: 0 },
-    desc: 'Reshapes the battlefield — creates chasm across 3 tiles (pick the orientation). Applies Stagger.'
+    /* THE GAP (2026-10-24, mondo: "fissure which should actually make a gap in the map all the way down to the bottom lava
+       layer, dont use that texture that it uses now"): the three tiles are cut down to the board's bottom layer (the lava
+       under every board's bed, MF_DELTA_STRATA[0]); nothing is painted, the gap's floor is the bed's own block. */
+    terrainDeform: { toBed: true },
+    desc: 'Splits the ground open across 3 tiles (pick the orientation) — a gap all the way down to the lava under the battlefield. Applies Stagger.'
 };
 
 /* SHARED_SCORCHED_EARTH deleted by THE SPELL AUDIT Batch B (2026-09-30): Wall of Fire covers the scorched line. */

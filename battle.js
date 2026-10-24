@@ -67119,6 +67119,18 @@
             return _buildDelay;
         }
 
+        /* THE CRATER FLOOR (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for
+           fissure"): the lowest a spell may sink a tile — TERRAIN_RESHAPE_CONFIG.spellSinkMax under the height it had before
+           the first deform of the fight touched it (state.deformedTiles), or under its height now when none has. */
+        function spellSinkFloorAt(x, y, curH) {
+            const cfg = TERRAIN_RESHAPE_CONFIG;
+            const max = (typeof cfg.spellSinkMax === 'number') ? cfg.spellSinkMax : 2;
+            const k = x + ',' + y, D = state.deformedTiles;
+            const ref = (D && (k in D)) ? D[k] : (curH ?? getBaseHeightAt(x, y));
+            return Math.max(cfg.minHeight, ref - max);
+        }
+        window.spellSinkFloorAt = spellSinkFloorAt;
+
         function applyTerrainDeform(cx, cy, radius, deform) {
             if (!deform || !state.boardHeights) return;
             const minH = TERRAIN_RESHAPE_CONFIG.minHeight;
@@ -67132,6 +67144,10 @@
                overrides the caller's radius so a single-target spell can
                flatten its 3×3. */
             const _flatten = !!deform.flatten;
+            /* THE GAP (2026-10-24): `toBed` (Fissure) cuts every footprint tile straight down to the board's bottom block
+               (minHeight — the lava of the shared bed), the one cut the crater floor does not stop. Each modified row
+               carries `cut` = the blocks it took out, so the terrain timer can put the ground back exactly. */
+            const _toBed = !!deform.toBed;
             if (_flatten && deform.radius != null) radius = Math.max(0, deform.radius | 0);
             let _floorH = null;
             if (_flatten) {
@@ -67142,7 +67158,7 @@
                     if (_floorH === null || h < _floorH) _floorH = h;
                 }
                 if (_floorH === null) return;
-            } else if (cDelta === 0 && eDelta === 0) return;
+            } else if (cDelta === 0 && eDelta === 0 && !_toBed) return;
 
             const modified = [];
             const _excavated = [];   // material-bearing blocks the blast tore out
@@ -67159,7 +67175,7 @@
 
                     const terrain = getTerrainAt(tx, ty);
                     if (terrain === 'wall') continue;
-                    if (terrain === 'mountain' && (cDelta < 0 || _flatten)) continue;
+                    if (terrain === 'mountain' && (cDelta < 0 || _flatten || _toBed)) continue;
                     /* (2026-10-07, mondo: "we can change the terrain on objectives" — the objective guard is gone) */
                     if (fieldCellFixed(tx, ty)) continue;   // THE NO-DEFORM FLAG: the ground under a prop / a doorway / water in a field
                     const obj = getObjectAt(tx, ty);
@@ -67181,6 +67197,8 @@
                     }
                     const oldH = getBaseHeightAt(tx, ty);
                     if (_flatten) delta = _floorH - oldH;
+                    if (_toBed) delta = minH - oldH;
+                    else if (delta < 0) delta = Math.min(0, Math.max(delta, spellSinkFloorAt(tx, ty, oldH) - oldH));   // the crater floor
                     if (delta === 0) continue;
 
                     const newH = Math.max(minH, Math.min(maxH, oldH + delta));
@@ -67190,6 +67208,7 @@
                        the pool's bed (dry — the water runs off it), and ground dug out under a pool keeps the pool on its
                        new, lower top (Tidal Slam's "leaves deep water" used to dig its own water away). */
                     const _liqTop = (typeof liquidFamilyOf === 'function') && !!liquidFamilyOf(terrain);
+                    const _cut = [];
                     if (newH > oldH) {
                         const _raiseT = _liqTop && typeof liquidBedTerrainAt === 'function' ? liquidBedTerrainAt(tx, ty) : (terrain || 'grass');
                         if (_liqTop) setBlockAt(tx, ty, oldH, _raiseT);   // the old pool surface is buried ground now, not a water stripe in the wall
@@ -67203,6 +67222,7 @@
                             // 🧱 Blasted-out blocks scatter as debris cubes —
                             // remember what each one was made of before it goes.
                             const _exBlk = (typeof getBlockAt === 'function') ? getBlockAt(tx, ty, z) : null;
+                            if (_toBed && _exBlk) _cut.push({ z, terrain: _exBlk.terrain });
                             if (_exBlk && getTerrainMaterial(_exBlk.terrain)) {
                                 _excavated.push({ terrain: _exBlk.terrain });
                             }
@@ -67211,7 +67231,7 @@
                         if (_liqTop && getBaseHeightAt(tx, ty) === newH && getTerrainAt(tx, ty) !== terrain) setTerrainAt(tx, ty, terrain);
                     }
 
-                    modified.push({ x: tx, y: ty, oldH, newH });
+                    modified.push(_toBed ? { x: tx, y: ty, oldH, newH, cut: _cut } : { x: tx, y: ty, oldH, newH });
                     /* THE PATCH (2026-10-05): the cell's height before its first deform — three-renderer.js _deltaPatchBuild sheets
                        the moved cells of a tile board as one ground, not a tile pattern. Plain state: rides the state-sync. */
                     const _dTiles = state.deformedTiles || (state.deformedTiles = {}), _dKey = tx + ',' + ty;
@@ -67226,7 +67246,7 @@
                 }
             }
 
-            if (modified.length === 0) return;
+            if (modified.length === 0) return modified;
 
             for (const m of modified) {
                 /* every body on the tile (a flyer over a grounded unit is two) */
@@ -67267,6 +67287,7 @@
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            return modified;
         }
 
         /* ── 💥 STRUCTURAL SETTLE AFTER A CRATER (2026-07-24) ─────────────────
@@ -67580,14 +67601,14 @@
                 if (spell.monument && typeof canPlaceSpellMonumentAt === 'function'
                     && !canPlaceSpellMonumentAt(spell.monument.kind, x, y, _monRot, true)) return;
                 const deform = spell.terrainDeform;
-                if (deform && (deform.centerDelta || 0) !== 0) {
+                if (deform && ((deform.centerDelta || 0) !== 0 || deform.toBed)) {
                     // terrainCreate applies the deform per affected tile with
                     // radius 0 → only centerDelta matters. Mirror the guards in
                     // applyTerrainDeform (mountain can't sink, objectives and
                     // solid props are untouchable).
                     const cDelta = deform.centerDelta || 0;
                     let blocked = false;
-                    if (current === 'mountain' && cDelta < 0) blocked = true;
+                    if (current === 'mountain' && (cDelta < 0 || deform.toBed)) blocked = true;
                     if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) blocked = true;   // the handler's field guard too
                     const obj = getObjectAt(x, y);
                     if (obj) {
@@ -67596,13 +67617,16 @@
                     }
                     if (!blocked) {
                         const oldH = getBaseHeightAt(x, y);
-                        const newH = Math.max(TERRAIN_RESHAPE_CONFIG.minHeight,
-                            Math.min(TERRAIN_RESHAPE_CONFIG.maxHeight, oldH + cDelta));
+                        /* the cast's own cuts: Fissure's gap to the bottom block, any other sink stops at the crater floor */
+                        const newH = deform.toBed ? TERRAIN_RESHAPE_CONFIG.minHeight
+                            : Math.max(cDelta < 0 ? spellSinkFloorAt(x, y, oldH) : TERRAIN_RESHAPE_CONFIG.minHeight,
+                                Math.min(TERRAIN_RESHAPE_CONFIG.maxHeight, oldH + cDelta));
                         if (newH !== oldH) {
                             changes.push({ x, y, mode: newH > oldH ? 'raise' : 'lower', dz: Math.abs(newH - oldH), color });
                             return;
                         }
                     }
+                    if (deform.toBed) return;   // THE GAP paints nothing: a tile it can't cut shows no ghost
                 }
                 changes.push({ x, y, mode: 'paint', dz: 0, color });
             };
@@ -73898,6 +73922,7 @@
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
                         if (spell.monument) return;
+                        if (spell.terrainDeform && spell.terrainDeform.toBed) return;   // THE GAP: Fissure paints nothing, it cuts (below)
                         igniteOilBeforePaint(unit, spell, tx, ty);   // 💥 Wall of Fire on a slick: it goes up before the scorch covers it
                         _tcFoot.push({ x: tx, y: ty, z: pz });
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
@@ -74112,7 +74137,8 @@
                        standing wall still says 3, like an ice tile recast to ice). */
                     const _tcLine = (n) => addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${terrainType}.`);
                     let _tcLogged = false;
-                    if (!spell.monument) {
+                    const _tcGap = !!(spell.terrainDeform && spell.terrainDeform.toBed);
+                    if (!spell.monument && !_tcGap) {
                         _tcLine(_tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
                             ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length);
                         _tcLogged = true;
@@ -74138,7 +74164,51 @@
                         triggerTerrainSpellReaction(unit, spell, affectedTiles);
                     }
 
-                    if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
+                    if (_tcGap && affectedTiles.length > 0) {
+                        /* THE GAP (2026-10-24, mondo: "fissure which should actually make a gap in the map all the way down to
+                           the bottom lava layer"): each tile is cut to the board's bottom block (the bed's lava). The cell goes
+                           on the ONE terrain clock like the chasm it replaced (map.js _noteTerrainChange's shape) with `cut`
+                           = the blocks taken out, so when the clock ends revertTerrainTimer stands them back exactly. */
+                        let _gapN = 0, _gapBed = null;
+                        for (const at of affectedTiles) {
+                            const _gk = at.x + ',' + at.y;
+                            const _gPrior = getTerrainAt(at.x, at.y);
+                            const _gMod = applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform) || [];
+                            const _gRow = _gMod.find(m => m.x === at.x && m.y === at.y);
+                            if (!_gRow) {   // already open: a gap cut again starts its clock over
+                                const _gEx = state.terrainTimers && state.terrainTimers[_gk];
+                                if (_gEx && _gEx.cut && getBaseHeightAt(at.x, at.y) <= TERRAIN_RESHAPE_CONFIG.minHeight) {
+                                    _gEx.n = (typeof TERRAIN_CHANGE_ROUNDS === 'number' && TERRAIN_CHANGE_ROUNDS > 0) ? TERRAIN_CHANGE_ROUNDS : 3;
+                                    _gapN++; _gapBed = _gapBed || getTerrainAt(at.x, at.y);
+                                }
+                                continue;
+                            }
+                            _gapN++;
+                            _gapBed = _gapBed || getTerrainAt(at.x, at.y);
+                            /* the true ground (an arena cut from a room) sheets the gap's floor in the bed's own terrain (the lava's
+                               animated surface + glow, three-renderer.js _fieldSkinBuild), as for any repainted cell */
+                            (state.paintedTiles || (state.paintedTiles = {}))[_gk] = 1;
+                            (state.gapTiles || (state.gapTiles = {}))[_gk] = 1;   // the true ground draws it sheer (three-renderer.js THE GAP)
+                            if (state.phase !== 'battle' || !state._terrainClock) continue;   // no clock running: the gap stays
+                            const T = state.terrainTimers || (state.terrainTimers = {});
+                            const _gRounds = (typeof TERRAIN_CHANGE_ROUNDS === 'number' && TERRAIN_CHANGE_ROUNDS > 0) ? TERRAIN_CHANGE_ROUNDS : 3;
+                            const ex = T[_gk];
+                            if (ex) {
+                                ex.cut = (ex.cut || []).concat(_gRow.cut);
+                                ex.t = getTerrainAt(at.x, at.y); ex.n = _gRounds; ex.m = null;
+                            } else {
+                                const pf = state.paintedFrom && state.paintedFrom[_gk];
+                                T[_gk] = { n: _gRounds, t: getTerrainAt(at.x, at.y), z: null, o: pf ? pf.t : _gPrior, oz: pf ? pf.z : null,
+                                    p: _gPrior, d: 0, m: null, cut: _gRow.cut };
+                            }
+                        }
+                        _tcLogged = true;
+                        const _gBedName = _gapBed ? ((TERRAIN_RULES[_gapBed] && TERRAIN_RULES[_gapBed].label) || _gapBed).toLowerCase() : 'the bottom';
+                        addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! The ground splits open: ${_gapN} tile${_gapN !== 1 ? 's' : ''} down to the ${_gBedName}.`);
+                        _invalidateBoardGrid();
+                        if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                        scheduleBoardRender();
+                    } else if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
                             /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out */

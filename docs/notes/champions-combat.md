@@ -2425,3 +2425,21 @@ Report: https://claude.ai/artifact/CWTojTHQLaLz8Jz6tqAeKF (copy /mnt/project-fil
   ground unit (existing rule), height counting as range (rule), Meteor MOVE→CAST farthest tile (existing rule), Ki Wave
   rows. Already fixed on main: Cube row "HP NN%" (U01), 1-round statuses (U05). The shared-bugs thread (PR #470) owns the
   round skip, MOVE→CAST numbers, CONFIRM chip, sliding rows, labels over the HUD, guest timer result.
+
+## THE CRATER FLOOR + THE FISSURE GAP (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for fissure which should actually make a gap in the map all the way down to the bottom lava layer, dont use that texture that it uses now")
+- **Crater floor:** data.js `TERRAIN_RESHAPE_CONFIG.spellSinkMax: 2`. battle.js `spellSinkFloorAt(x, y, curH)` = the
+  cell's height before the first spell deformed it (`state.deformedTiles[k]`, else its current/base height) minus 2,
+  never under `minHeight`. `applyTerrainDeform` clamps every negative delta to that floor, so stacked Meteors / Ground
+  Slams / Flat Earth stop 2 below the original ground. The preview (pushChange) uses the same floor. Build/Dig (the
+  block actions) do not go through applyTerrainDeform and are untouched.
+- **Fissure gap:** SHARED_FISSURE carries `terrainDeform: { toBed: true }` (still `kind: terrainCreate`,
+  `terrainType: 'lava'`, 3 tiles, orientable, Stagger). `toBed` drops each cell to `minHeight` (the bed: lava on
+  MF_DELTA_STRATA boards), records the removed blocks in the row's `cut`, skips the surface paint, and marks
+  `state.gapTiles[k]` + `state.paintedTiles[k]`. The 3-round timer carries `cut`; map.js revertTerrainTimer rebuilds the
+  column from it and clears gapTiles, so the gap closes like every other battle terrain change (until mondo picks the
+  permanent-height rule). Units on a cut cell ride down with the existing deform rule.
+- **Field-arena look:** three-renderer.js `_fieldDeformPlan(..., gap)` makes gap cells a flat-bottomed slot instead of
+  a bowl (`isGap`), `_fieldDeformMesh` snaps vertices within `FIELD_GAP_SNAP` (0.34 tile) onto the gap edge for a
+  straight cut, and `_fieldStrataBuild` adds inward rock faces on every gap side whose neighbour isn't a gap. The lava
+  bottom is the existing painted-tile lava skin + glow. Kill-switch `window.EW_NO_FIELD_GAP`. Plain state keys ride
+  the state-sync, so the guest sees the same gap.
