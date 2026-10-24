@@ -46133,6 +46133,46 @@ function hqRoomClock(roomId) {
     const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
     return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
 }
+/* THE PAINTED SKIES (2026-10-24, mondo painted 80s/90s anime watercolour skies): a zone's sky as his paintings on R2
+   (Assets/skies/<key>_day / _night / _silhouette .webp, a `_low` copy of each for the low-power setting). Day and night are
+   4096 × 1024 strips (360° round, the horizon at the bottom row, straight overhead at the top); the silhouette is a 4096 × 512
+   transparent strip standing on the horizon (`silH` = its height as a share of the sky strip: 512 / 1024 = 45°). The dome
+   (three-renderer.js THE PAINTED SKY) fades day to night with the clock / the round and keeps its sun, moon, stars, weather and
+   celestial events over the painting. A row claims the outdoor rooms of its `sites` (a hub's interiors and the sewers stay
+   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true. */
+const HQ_PAINTED_SKIES = {
+    base: 'https://cdn.entropywars.net/Assets/skies/',
+    silH: 0.5,
+    rows: {
+        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'] },
+        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'] },
+    },
+};
+/* the painting for a room id, a `field:<room>:…` fight or a board / map id (null = the shader's own sky):
+   { key, day, night, sil, silH } — `low` picks the half-size copies */
+function hqPaintedSky(id, low) {
+    const P = HQ_PAINTED_SKIES, s = String(id || '');
+    if (!s) return null;
+    const rooms = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
+    let roomId = null;
+    if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); roomId = f ? f.room : null; }
+    else if (rooms[s]) roomId = s;
+    else { const bare = s.replace(/_delta$/, '').replace(/_(\d+)x\1$/, ''); if (rooms[bare]) roomId = bare; }
+    let key = null;
+    if (roomId) {
+        const S = rooms[roomId] && rooms[roomId].shell;
+        if (!S || !S.open || !S.sky) return null;   // an interior: no sky to paint
+        if (typeof S.sky.paint === 'string' && P.rows[S.sky.paint]) key = S.sky.paint;
+    }
+    if (!key) {
+        const site = roomId ? ((typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null) : hqSiteId(s);
+        if (!site) return null;
+        for (const k in P.rows) if ((P.rows[k].sites || []).indexOf(site) >= 0) { key = k; break; }
+    }
+    if (!key) return null;
+    const x = low ? '_low.webp' : '.webp', b = P.base + key;
+    return { key, day: b + '_day' + x, night: b + '_night' + x, sil: b + '_silhouette' + x, silH: P.silH };
+}
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], sky = R && R.shell && R.shell.sky;
