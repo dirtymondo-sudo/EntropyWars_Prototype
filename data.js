@@ -46139,17 +46139,30 @@ function hqRoomClock(roomId) {
    transparent strip standing on the horizon (`silH` = its height as a share of the sky strip: 512 / 1024 = 45°). The dome
    (three-renderer.js THE PAINTED SKY) fades day to night with the clock / the round and keeps its sun, moon, stars, weather and
    celestial events over the painting. A row claims the outdoor rooms of its `sites` (a hub's interiors and the sewers stay
-   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true. */
+   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true.
+   THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead"): his four sets on R2 Assets/skies/1024x512/<Name> Sky/
+   (<Name>_Sky-Blue_0N / -Night_0N / -Sunset_0N -1024x512.png, N = 1..4). Each sheet is the same strip (horizon at the bottom
+   row, straight overhead at the top) but 1024 px for 90° up, so it goes `rep` = 2 times round the horizon to keep the clouds
+   as painted. A row with `set` draws that set in place of its own `<key>_day / _night` paintings (those stay on R2 and here:
+   drop `set` to bring them back); Blue = day, Night = night, Sunset = the clock's dawn and dusk (the walk only: a fight keeps
+   day and night). A room keeps one number N of the set for all three times: the row's open rooms take 1, 2, 3, 4 in the
+   building's order (a board with no room: 1). The row's silhouette stays
+   on (`noSil: true` drops it). The sets have no `_low` copy: low power draws the same sheets. */
 const HQ_PAINTED_SKIES = {
     base: 'https://cdn.entropywars.net/Assets/skies/',
     silH: 0.5,
+    sets: {
+        base: 'https://cdn.entropywars.net/Assets/skies/1024x512/',
+        rep: 2, count: 4,
+        names: { bumpy: 'Bumpy', cloudy: 'Cloudy', wispy: 'Wispy', fading: 'Fading' },
+    },
     rows: {
-        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'] },
-        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'] },
+        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'], set: 'wispy' },
+        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'], set: 'fading' },
     },
 };
 /* the painting for a room id, a `field:<room>:…` fight or a board / map id (null = the shader's own sky):
-   { key, day, night, sil, silH } — `low` picks the half-size copies */
+   { key, set, n, day, night, dusk, sil, silH, rep } — `low` picks the half-size copies (dusk null = no sunset sheet) */
 function hqPaintedSky(id, low) {
     const P = HQ_PAINTED_SKIES, s = String(id || '');
     if (!s) return null;
@@ -46170,8 +46183,19 @@ function hqPaintedSky(id, low) {
         for (const k in P.rows) if ((P.rows[k].sites || []).indexOf(site) >= 0) { key = k; break; }
     }
     if (!key) return null;
-    const x = low ? '_low.webp' : '.webp', b = P.base + key;
-    return { key, day: b + '_day' + x, night: b + '_night' + x, sil: b + '_silhouette' + x, silH: P.silH };
+    const row = P.rows[key], x = low ? '_low.webp' : '.webp', b = P.base + key;
+    const sil = row.noSil ? null : b + '_silhouette' + x, Q = P.sets || {}, name = row.set && (Q.names || {})[row.set];
+    if (name) {
+        let i = -1;   // the room's place among the row's open rooms (the building's order), so rooms side by side differ; a bare board: 1
+        if (roomId) {
+            const mine = Object.keys(rooms).filter(r => { const S = rooms[r] && rooms[r].shell; if (!S || !S.open || !S.sky) return false;
+                return (typeof S.sky.paint === 'string' && P.rows[S.sky.paint]) ? S.sky.paint === key : (row.sites || []).indexOf((typeof hqRoomSite === 'function') ? hqRoomSite(r) : null) >= 0; });
+            i = mine.indexOf(roomId);
+        }
+        const n = 1 + (Math.max(0, i) % (Q.count || 4)), f = Q.base + encodeURIComponent(name + ' Sky') + '/' + name + '_Sky-', t = '_0' + n + '-1024x512.png';
+        return { key, set: row.set, n, day: f + 'Blue' + t, night: f + 'Night' + t, dusk: f + 'Sunset' + t, sil, silH: P.silH, rep: Q.rep || 1 };
+    }
+    return { key, set: null, n: 0, day: b + '_day' + x, night: b + '_night' + x, dusk: null, sil, silH: P.silH, rep: 1 };
 }
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
