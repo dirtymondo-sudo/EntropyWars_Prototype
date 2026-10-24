@@ -706,3 +706,15 @@ the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
   exist, so low power loads the same PNGs (≈ 0.4-0.8 MB each, 4 per room).
 - Shot harness note: with draw-on-demand the sky tick only runs on drawn frames, so a live flip needs `ph draw always`.
 - Proof: /mnt/project-files/painted-skies/sets/.
+
+### THE FAR FOG ON THE SILHOUETTES (2026-10-24, mondo: "the treeline and skyline dont react to the fog like far away objects do")
+- The silhouette strip takes the scene's FogExp2 as if it stood at the room's far edge: half the field's longer side + the
+  outer ground (`terrain.outer.m` or HQ_OUTER_M 54 m); a board with no room: 20 m + 54 m. Amount = 1 − e^−(density ·
+  distance)² (FogExp2's own curve), colour = the live scene fog's (the clock's fog colour too). Uniform uPaintSilFog
+  (rgb, a), GLSL + TSL. Only the silhouette: the painted sky keeps the dome's own horizon band.
+- Walk: `_hqPaintFog(H)` = the dry fog × the Fog Density setting (_ewFogShape().m), 0 when Scene Fog is off (the same scaling
+  _hqFogHold applies at the draw). Fight: the battle scene.fog as is (Scene Fog / Fog Density already in it), px per metre
+  = _fieldGroundState.s in a field fight, else tileSize / 1.75.
+- At factory density the woods (0.03/m, 73 m) and downtown (0.016/m, 166 m) silhouettes are ~99% fog, like the far 3D
+  buildings and trees; Fog Density 0.3× leaves about half; Scene Fog off leaves them crisp. Debug: `_ewPaintSky().silFog`.
+- Proof: /mnt/project-files/painted-skies/sets/far_fog_*.jpg.
