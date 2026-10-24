@@ -11898,6 +11898,11 @@ const ThreeRenderer = (function () {
                 var _wxc = getWeatherStatChips(u);
                 for (var wci = 0; wci < _wxc.length; wci++) h = _hashStr(h, _wxc[wci].key);
             }
+            /* the ground under a standing unit can change without it moving (a spell paints it, a 3-round change runs out) */
+            if (typeof getTerrainStatChips === 'function') {
+                var _grc = getTerrainStatChips(u);
+                for (var gci = 0; gci < _grc.length; gci++) h = _hashStr(h, _grc[gci].key);
+            }
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
@@ -11984,6 +11989,13 @@ const ThreeRenderer = (function () {
             var _wx = getWeatherStatChips(unit);
             for (var wi = 0; wi < _wx.length; wi++) {
                 badges.push('<span class="tp-sbadge ' + (_wx[wi].kind === 'up' ? 'tp-stat-up' : 'tp-stat-dn') + '" title="' + _wx[wi].title + '">' + _wx[wi].label + '</span>');
+            }
+        }
+        /* 🌲 the ground it stands on: movement cost per tile + terrain affinity (state.js getTerrainStatChips) */
+        if (typeof getTerrainStatChips === 'function') {
+            var _gr = getTerrainStatChips(unit);
+            for (var gri = 0; gri < _gr.length; gri++) {
+                badges.push('<span class="tp-sbadge ' + (_gr[gri].kind === 'up' ? 'tp-stat-up' : 'tp-stat-dn') + '" title="' + _gr[gri].title + '">' + _gr[gri].label + '</span>');
             }
         }
 

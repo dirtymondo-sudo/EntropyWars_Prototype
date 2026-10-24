@@ -956,7 +956,9 @@ const TERRAIN_RULES = {
         label: 'Desert',
         short: 'DST',
         passable: true,
-        moveCost: 2,
+        /* SAND WALKS LIKE GROUND (mondo 2026-10-24: "Just take away the mov-2 property from desert"): was 2, which left
+           a move-1 / second-move unit boxed in on sand with only Jump (his Ice Queen bug) */
+        moveCost: 1,
         blocksRanged: false,
         healMultiplier: 0.7,
         endTurn(unit) {
@@ -14562,7 +14564,7 @@ _MF_BUILDERS.prebuilt_giza = function () {
         strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
         tints: { desert: '#e8cf8f', dirt_2: '#d8b884', ruins: '#d0b890' },
     });
-    // hard-packed processional avenues (desert is slow; these are the fast lanes)
+    // hard-packed processional avenues
     M.rect(9, 0, 10, 19, 'dirt_2'); M.rect(0, 9, 19, 10, 'dirt_2');
     // dune ridges (slow high ground) — mirrored arcs
     M.disc(4, 3, 1.6, 'desert', 4); M.disc(16, 6, 1.4, 'desert', 4);
