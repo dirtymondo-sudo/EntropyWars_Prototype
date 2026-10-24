@@ -1048,3 +1048,23 @@ battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.
   walk on every blocker recompute (every frame in a shot); now at most every 250 ms.
 - **PROPOSED, NOT BUILT** (a feel change, mondo decides): three-camera.js caps a frame's step at 0.05 s and the mixers at
   0.1 s, so below ~20 fps camera glides and animations run slower than real time.
+
+## THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really dark overall, please fix")
+Measured before (mean frame luminance 0-255, the walker's view): Merlin's Undercroft 4, The Cavern 8, the Catacombs 8, the haunted
+cellar 9, the sewers 17, the office 30 (the main hall 77). Cause: a closed box room's light is `mood.ambient` × (hemi 0.5, key 0.22,
+fill 0.14), CLAMPED at `ambientFloor` 0.55 — so every dim site room (caves, crypts, cellars, sewers: ambient 0.22-0.5) lit at
+hemi 0.275 / key 0.12 plus one 9 m ceiling lamp at the room's centre; the walker's dark suit and the floor read black. A fight in the
+same room was darker still: the field rig kept the pre-rig key 0.22 × mood while the walk's `_hqLightArm` sets 0.34.
+- **THE KEY LIGHT** (three-renderer.js `_hqKeyLampArm` / `_hqKeyLampTick`): ONE PointLight (no shadow map, decay 1) that rides with the
+  camera in an ENCLOSED room (`_hqEnclosed`: a box room without an open sky, a bay corridor), placed 35% of the way from the walker's
+  head to the eye, 0.9 m up, 0.6 m to the camera's right; built once per visit (`keyLamp` is a zone key — the scene's light count never
+  changes, so no material recompiles), eased to 0 in an open room / the hall. In a fight in an enclosed room (`_fieldGroundDress` →
+  `_fieldKeyLampTick`, from `_fieldGroundTick`) it hangs 7 m over the floor point the camera looks at, reach 30 m, intensity 1.5.
+- **THE LIFT** (`_hqMoodAmb`): a dim mood no longer clamps — ambient m lights at floor + (1 − floor) × m with `ambientFloor` 0.7
+  (0.3 → 0.79, 0.55 → 0.87, ≥ 1 untouched), so the dark rooms read and every room keeps its order. Walk and fight share it.
+- **THE FIGHT'S KEY** = the walk's (`HQ_LIGHT_RULES.key.box.intensity` / `shell.rig`) instead of 0.22 × mood.
+- Numbers: data.js `HQ_LIGHT_RULES.keyLamp` (renderer default `HQ_LIGHT_DEFAULT.keyLamp`, keep in step). Setting: **Settings → Video →
+  The Polish → Key Light** (HQ_POLISH_PREFS `keyLight`, slider, default 0.5 = the rule's intensity, 1 = double, 0 = off; scope both,
+  live). Kill-switch `window.EW_NO_KEY_LIGHT`. Open rooms, the day / night clock, the looks, bloom and fog are untouched.
+- After (same views): Undercroft 22, Cavern 20, Catacombs 24, cellar 26, sewers 32, office 54; D.U.M.B. arena fight 16 → 37, Lodge
+  arena fight 22 → 40 (Key Light 0 in the Lodge: 28 — the slider proven on screen). Proof: /mnt/project-files/key-light/.

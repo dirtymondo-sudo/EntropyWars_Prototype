@@ -27646,7 +27646,7 @@ const ThreeRenderer = (function () {
     }
     /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
        building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
-    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.55, fillColor: 0x9fb4d0, fill: 0.14,
+    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14,
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
         shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
@@ -27659,7 +27659,8 @@ const ThreeRenderer = (function () {
         decals: { on: true, alpha: 0.7, max: 80, wear: 0.42 },
         ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
         motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
-        reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 } };
+        reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
+        keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 } };
     /* THE POLISH SETTINGS (2026-09-21): the player's rows (data.js HQ_POLISH_PREFS, localStorage ew_polish) are read BEFORE
        every EW_* kill-switch — _polishOff(key, flag) = the player turned it off, or the dev flag is set; _polishLevel(key) = a
        level / slider row's number (1 = the shipped count). A row the catalogue does not know reads as ON. */
@@ -27678,6 +27679,7 @@ const ThreeRenderer = (function () {
         o.open = Object.assign({}, HQ_LIGHT_DEFAULT.open, R.open || {});
         ['shadows', 'ao', 'heightFog', 'atmos', 'ssao', 'motionBlur', 'reflect'].forEach(function (k) { o[k] = Object.assign({}, HQ_LIGHT_DEFAULT[k], R[k] || {}); });
         o.key = Object.assign({}, HQ_LIGHT_DEFAULT.key, R.key || {});
+        o.keyLamp = Object.assign({}, HQ_LIGHT_DEFAULT.keyLamp, R.keyLamp || {});
         return o;
     }
     function _sceneLookOf(look, name) {
@@ -67137,6 +67139,46 @@ const ThreeRenderer = (function () {
         if (rig.intensity != null) L.intensity = +rig.intensity;
         L.position.copy(H.keyDir).multiplyScalar(1000);
     }
+    /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really
+       dark overall"): ONE soft point light that rides with the camera in an ENCLOSED place (a closed box room, a cave, a bay
+       corridor), just over the walker's shoulder toward the eye, so the walker, the floor ahead and the near walls read whatever
+       the room's mood. No shadow map; built once per visit so the scene's light count never changes (a changing count would
+       recompile every material) — in an open room / the hall it eases to 0. Strength = Settings → Key Light (HQ_POLISH_PREFS
+       'keyLight', 0 = off, the default 0.5 = HQ_LIGHT_RULES.keyLamp.intensity); the shape = HQ_LIGHT_RULES.keyLamp. */
+    function _keyLampRules() { return _hqLightRules().keyLamp; }
+    function _keyLampGain() { var v = _polishPref('keyLight'); if (typeof window !== 'undefined' && window.EW_NO_KEY_LIGHT) return 0; return (typeof v === 'number' && isFinite(v)) ? Math.max(0, v) * 2 : 1; }
+    function _hqEnclosed(room) {
+        if (!room) return false;
+        var S = room.shell || {}, sky = !!(S.open && S.sky);
+        if (room.kind === 'bay') return true;
+        return room.kind === 'box' && !sky;
+    }
+    function _hqKeyLampArm(H) {
+        if (!H || H.keyLamp || !H.scene) return;
+        var K = _keyLampRules(), U = _hqUnits();
+        var L = new THREE.PointLight(K.color, 0, (K.reach || 16) * U, (K.decay != null) ? K.decay : 1);
+        L.name = 'ew key light'; L.castShadow = false;
+        H.scene.add(L); H.keyLamp = L;
+        _hqKeyLampTick(H, 1);
+    }
+    var _klV = null, _klV2 = null, _klV3 = null;
+    function _hqKeyLampTick(H, dt) {
+        var L = H && H.keyLamp, cam = H && H.camera; if (!L || !cam) return;
+        if (!_klV) { _klV = new THREE.Vector3(); _klV2 = new THREE.Vector3(); _klV3 = new THREE.Vector3(); }
+        var K = _keyLampRules(), U = _hqUnits(), pl = H.player;
+        var want = _hqEnclosed(H.room) ? (K.intensity || 0) * _keyLampGain() : 0;
+        L.intensity += (want - L.intensity) * Math.min(1, (dt || 0) * 3);
+        if (Math.abs(L.intensity - want) < 0.002) L.intensity = want;
+        var C = cam.position;
+        if (pl && !H.fp) {
+            _klV.set(pl.x * U, (pl.visY + (pl.heightM || 1.75) * 0.9) * U, pl.z * U);   // the walker's head
+            _klV.lerp(C, K.back != null ? K.back : 0.35);
+        } else _klV.copy(C);
+        _klV2.set(1, 0, 0).applyQuaternion(cam.quaternion); _klV2.y = 0; if (_klV2.lengthSq() > 1e-6) _klV2.normalize();
+        _klV.addScaledVector(_klV2, (K.side || 0) * U);
+        _klV.y += (K.up || 0) * U;
+        L.position.copy(_klV);
+    }
     /* 2.1 THE SHADOW: the key casts ONE map (the battle's Settings → Performance tier sizes it; off under 'off', EW_PERF_LOW,
        EW_HQ_NO_SHADOWS). The ortho frustum is FITTED to the room's box but never wider than 30 m — in a city it FOLLOWS the
        walker (_hqShadowTick), snapped to its own texel grid so nothing swims. The depth pass pulses every `everyN` frames
@@ -67895,6 +67937,7 @@ const ThreeRenderer = (function () {
         if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
+        if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
@@ -68695,9 +68738,12 @@ const ThreeRenderer = (function () {
                     if (FCy) { ml.intensity = LRo.nightLamp + (LRo.dayLamp - LRo.nightLamp) * _fieldCycleEase(FCy.k); FCy.lamps.push({ l: ml, d: LRo.dayLamp, n: LRo.nightLamp }); }
                 });
             } else {
-                var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LR.ambientFloor || 0);
+                var amb = _hqMoodAmb(S, LR);   // THE LIFT (2026-10-24): the walk's own numbers
                 field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb };
-                field.sun = { color: 0xe8ecf5, intensity: 0.22 * amb, dir: [0.3, 1, 0.2] };
+                /* THE KEY LIGHT (2026-10-24): the walk's key strength (HQ_LIGHT_RULES.key.box / shell.rig, _hqLightArm) — the fight used to
+                   keep the pre-rig 0.22 × mood, so the same room read darker in a fight than on the walk */
+                var rigB = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
+                field.sun = { color: 0xe8ecf5, intensity: (rigB.intensity != null) ? +rigB.intensity : 0.22 * amb, dir: [0.3, 1, 0.2] };
                 var bxf = new THREE.DirectionalLight(LR.fillColor, (LR.fill || 0) * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(bxf);
                 var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
                 var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
@@ -68714,6 +68760,17 @@ const ThreeRenderer = (function () {
             _facilityNearGroup.add(lg);
             if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(field);
         } catch (e) { console.warn('[HQ→battle] the room\'s lights did not stand', e); }
+        /* THE KEY LIGHT (2026-10-24): a fight in an enclosed room hangs the walk's key light over what the camera looks at */
+        try {
+            if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
+            st.keyLamp = null; st.keyFloorY = floorY;
+            if (_hqEnclosed(room) && _horizonGroup) {
+                var KL = _keyLampRules();
+                var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);
+                kl.name = 'ew key light'; kl.castShadow = false; kl.position.set(0, floorY + (KL.battleUp || 7) * s, 0);
+                _horizonGroup.add(kl); st.keyLamp = kl;
+            }
+        } catch (e) { console.warn('[HQ→battle] the key light did not stand', e); }
         /* THE FOG: the room's own on the battle scene (the same colour, the density per battle px) + the height fog in the battle's frame */
         var fogC = 0x0d0e12, fogD = 0.00017 * U / s;
         try {
@@ -68838,7 +68895,23 @@ const ThreeRenderer = (function () {
         });
     }
     /* per frame: the ceiling fades as the eye rises through it (opaque from inside the room — the walker's frame; 3 % from above) */
+    var _fklDir = null;
+    function _fieldKeyLampTick() {
+        var st = _fieldGroundState, L = st && st.keyLamp; if (!L || !L.parent || !active) return;
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
+        var K = _keyLampRules(), s = st.s || 1, fy = st.keyFloorY || 0;
+        /* over the point the camera looks at on the room's floor (the eye's ray onto the floor plane; a level eye: 12 m out) */
+        if (!_fklDir) _fklDir = new THREE.Vector3();
+        cam.getWorldDirection(_fklDir);
+        var t = (_fklDir.y < -0.05) ? (fy - cam.position.y) / _fklDir.y : 12 * s;
+        t = Math.max(0, Math.min(40 * s, t));
+        L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
+        var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
+        if (L.intensity !== want) L.intensity = want;
+        L.distance = (K.battleReach || 30) * s;
+    }
     function _fieldGroundTick() {
+        _fieldKeyLampTick();   // THE KEY LIGHT (2026-10-24)
         var st = _fieldGroundState; if (!st || !st.ceil || !active) return;
         var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
         var s = st.s || 1, y = st.ceil.y;
@@ -70046,6 +70119,7 @@ const ThreeRenderer = (function () {
     function _fieldGroundRelease() {
         _fieldSeedRelease(); _envSnapPending = false; _fieldCycle = null;
         var st = _fieldGroundState; _fieldGroundState = null;
+        try { if (st && st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp); } catch (e) {}   // THE KEY LIGHT
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
         _HQ_AO.w = 0;
@@ -70210,7 +70284,7 @@ const ThreeRenderer = (function () {
     var HQ_STAGE_PAD = 1.5, HQ_STAGE_BLEND_MS = 2000;
     var _HQ_ZONE_KEYS = {};
     ['opts', 'host', 'profile', 'snap', 'scene', 'camera', 'player', 'sky', 'portal', 'gun', 'ride', 'vehicle', 'shadows', 'atmos', 'heightFog', 'ao',
-     'keyLight', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
+     'keyLight', 'keyLamp', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
      'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'lod', '_lodAt', '_lodWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'lod': THE LOD LEVELS (Phase 10)
@@ -70556,9 +70630,18 @@ const ThreeRenderer = (function () {
         var fm = _alNow() - t0; S.frames++; if (fm > S.frameMax) S.frameMax = fm; if (fm > (((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.buildMs) || 6) * 1.5) S.over++;
     }
     /* a closed box room's light (the hemisphere, the key, the fill): `mood.ambient` scales them, never below the floor */
+    /* THE LIFT (2026-10-24, mondo: "the game is really dark overall"): a dim mood (ambient < 1) no longer CLAMPS at the floor — it
+       is lifted toward 1 from the floor (0 → ambientFloor, 1 → 1), so the darkest rooms read and every room keeps its order */
+    function _hqMoodAmb(S, LR) {
+        var amb = (S && S.mood && S.mood.ambient != null) ? +S.mood.ambient : 1;
+        if (!isFinite(amb)) amb = 1;
+        if (amb >= 1) return amb;
+        var F = Math.max(0, Math.min(1, (LR && LR.ambientFloor) || 0));
+        return F + (1 - F) * Math.max(0, amb);
+    }
     function _hqBoxLightVals(room) {
         var S = room.shell || {}, LRb = _hqLightRules();
-        var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LRb.ambientFloor);
+        var amb = _hqMoodAmb(S, LRb);
         return { hemiI: 0.5 * amb, keyI: 0.22 * amb, fillI: LRb.fill * amb };
     }
     /* a closed box room's own lamps (the fluorescents at shell.light / shell.lights, a warm pool at each desk lamp) — _hqEnter
@@ -71861,6 +71944,7 @@ const ThreeRenderer = (function () {
            light shafts, the atmosphere) */
         _hq.roomDef = room;   // THE POLISH SETTINGS: the record polishApply re-arms against
         try { _hqLightArm(room); } catch (e) { console.warn('[HQ] the light rig failed', e); }
+        try { _hqKeyLampArm(_hq); } catch (e) { console.warn('[HQ] the key light failed', e); }
         try { _hqShadowArm(room); } catch (e) { console.warn('[HQ] the shadows failed', e); }
         try { _hqAoArm(room); } catch (e) { console.warn('[HQ] the AO failed', e); }
         try { _hqHeightFogArm(room); } catch (e) { console.warn('[HQ] the height fog failed', e); }
