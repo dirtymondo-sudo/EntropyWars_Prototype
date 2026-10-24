@@ -365,6 +365,12 @@ function useGameState() {
       });
     }
     window.addEventListener('ew-state-change', handler);
+    /* THE PICK REPAINTS NOW (matchup playtests 2026-10-23, four of six: after picking another target row the ▶ cursor
+       moved at once but the CONFIRM chip sat on the old row until the next frame — seconds on a slow PC — so a click or
+       ENTER in between went to the old pick). The cursor is the menu's own state; the ✓ CONFIRM comes from the game
+       state, which repainted only on the next animation frame. A pick (battle.js _hudPickNow) repaints in the same turn. */
+    const nowHandler = () => setTick(t => t + 1);
+    window.addEventListener('ew-state-change-now', nowHandler);
     // Status effects / stat stages can land or wear off outside a markDirty()
     // (DoT ticks, duration expiry, censer purges) — battle.js announces those
     // on the RenderBus, so listen there too and repaint the same frame. The
@@ -376,6 +382,7 @@ function useGameState() {
     }
     return () => {
       window.removeEventListener('ew-state-change', handler);
+      window.removeEventListener('ew-state-change-now', nowHandler);
       if (bus) {
         bus.off('unit:statusChanged', handler);
         bus.off('unit:damaged', handler);
@@ -669,7 +676,7 @@ function _getModeInfo(st) {
     };
   }
 
-  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
   /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
      its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
   const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
@@ -680,7 +687,7 @@ function _getModeInfo(st) {
     const eTw = st.towers && st.towers[enemy];
     let tDmg = 0;
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-    pts += Math.min(Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    pts += Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     let hgCount = 0;
     if (st.hourglasses && !_keysHid(p)) {
       hgCount = st.hourglasses.filter(hg => {
@@ -702,7 +709,7 @@ function _getModeInfo(st) {
     const kills = (st.matchKills ? (st.matchKills[p] || 0) : 0);
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
-    if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     if (st.hourglasses && !_keysHid(p)) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
@@ -3832,7 +3839,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     // Pushers may now be PERMANENT (Channel / Land / Take Off): they carry
     // `available:false` + a `sub` reason instead of vanishing, exactly like
     // the BUILD row above.
-    (pushers || []).slice(0, 4).forEach(p => {
+    (pushers || []).slice(0, 5).forEach(p => {
       const live = p.available !== false;
       toolRows.push(h('div', {
         key: p.id,
@@ -5155,10 +5162,11 @@ function _hrlgTargetBlades(unit, st, mode) {
     /* a MOVE→ATK / MOVE→CAST row forecasts from the tile its step lands on (PvP playtest 2026-10-23: the hits
        landed 10-35% above a forecast read from where the caster stood) */
     const _castFrom = (t._approach && t._approach.x != null) ? _mtCastTile(t._approach) : null;
+    const _fcOut = { endures: false, blocked: null };   // ✨ Martyr's Talisman holds it at 1 HP / why the hit takes nothing
     const previewDmg = (tUnit && isOffensive
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
-      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom) : 0;
+      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
     const previewHeal = (tUnit && !isOffensive && spell
@@ -5181,7 +5189,8 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
-      note: t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+      note: [t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+        (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
@@ -5189,7 +5198,12 @@ function _hrlgTargetBlades(unit, st, mode) {
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
       // slot). A target that nullifies / drinks the WHOLE hit forecasts words;
       // a split hit's main part still lands, so it keeps its number (the red ! warns).
-      power: (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
+      /* a Protected / out-of-realm / guarded target says so (Wipeout vs Cube matchup 2026-10-23: spell rows on a
+         Protected enemy showed no number and no word) */
+      power: (_fcOut.blocked === 'protected' && !(previewDmg > 0)) ? { v: 'PROTECTED', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'realm' && !(previewDmg > 0)) ? { v: 'OUT OF REACH', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'guarded' && !(previewDmg > 0)) ? { v: 'GUARDED', color: '#9aa0b4' }
+        : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
@@ -5240,14 +5254,20 @@ function _hrlgTargetBlades(unit, st, mode) {
         const _tz = typeof getHeightAt === 'function' ? getHeightAt(_tw.x, _tw.y) : 0;
         const _d = combatDist(unit.x, unit.y, _uz, _tw.x, _tw.y, _tz);
         let why = null;
-        if (_d >= 1 && _d <= getEffectiveRange(unit)) {
+        const _rng = getEffectiveRange(unit);
+        if (_d >= 1 && _d <= _rng) {
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, _tw.x, _tw.y, _uz)) why = 'BLOCKED';
           else if (typeof visionGatesTargeting === 'function' && visionGatesTargeting(unit)
             && typeof isInVision === 'function' && !isInVision(unit, _tw.x, _tw.y)) why = 'NO SIGHT';
+        } else if (_d > _rng && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
+          && combatDist(unit.x, unit.y, _tz, _tw.x, _tw.y, _tz) <= _rng) {
+          /* THE FLYER'S REACH (Cube vs Cube matchup 2026-10-23): a flyer beside the Cube but more levels above it than
+             its range lost the row with no word, while the flat range tiles still covered the Cube */
+          why = 'TOO HIGH';
         }
         if (why) blades.push({
           id: 'tg:cube-' + why, icon: '⬡', available: false, label: 'Cube',
-          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : 'OUT OF SIGHT',
+          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : why === 'TOO HIGH' ? 'TOO HIGH · LAND TO REACH IT' : 'OUT OF SIGHT',
           meta: { text: Math.round(_d) + 't' },
         });
       }
@@ -5914,7 +5934,10 @@ function ActionMenu({ st, hidden }) {
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
     /* a strict boolean: off a zone _nex is null, and the row reads `available !== false` as lit
        (playtest 2026-10-21: CHANNEL lit with "1 AP" off the Nexus, then "Must be standing in a Nexus zone") */
-    const _chOk = !!_capturable && (unit.ap || 0) >= _chCost;
+    /* channelNexus refuses a flyer in the air ("Land first!") — the row greys the same way BUILD does
+       (Wipeout vs Keys matchup 2026-10-23: CHANNEL lit "1 AP" on an airborne Superhero) */
+    const _chAir = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+    const _chOk = !!_capturable && !_chAir && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
     /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
     const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
@@ -5923,11 +5946,30 @@ function ActionMenu({ st, hidden }) {
       id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: _chLocked ? '#ff8a7a' : '#5fd6ff',
       available: _chOk,
       sub: !_nex ? (_chLocked ? '⛔ NO SPAWN — take a zone' : 'Not on a nexus')
-         : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
+         : (!_capturable ? 'Already yours' : _chAir ? 'Land first' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
       // the unit this menu is drawn for — the row's grey-out was judged on it
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
+    });
+  }
+  // 🔍 INSPECT is a permanent tool row in the modes that hide Keys (the CHANNEL rule above): it arms the existing
+  // board pick (actionMode 'inspect' — the lit reach, "INSPECT — CLICK A TILE", a tile past the reach walks into it
+  // first). It only lived in the tile quick menu, so a Keys team had to know to click a tile (Wipeout vs Keys
+  // matchup 2026-10-23).
+  const _modeHasKeys = typeof getActiveMultiplayerMode === 'function'
+    ? (getActiveMultiplayerMode() ? getActiveMultiplayerMode().hasHourglasses !== false : true) : true;
+  if (_modeHasKeys && typeof doInspect === 'function' && typeof getEffectiveInspect === 'function'
+      && getEffectiveInspect(unit) > 0 && !(typeof window._isSimulMode === 'function' && window._isSimulMode())) {
+    const _inOk = (unit.ap || 0) >= 1;
+    pushers.push({
+      id: 'inspect', glyph: '🔍', label: 'INSPECT', color: '#22eebb',
+      available: _inOk,
+      active: am === 'inspect',
+      sub: _inOk ? null : 'No AP',
+      hint: '1 AP',
+      title: 'Inspect — search the tile you pick for Keys, items on the fallen and hidden bombs (1 AP)',
+      fire: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); },
     });
   }
   // ⬆/⬇ flyers get a permanent LAND / TAKE OFF tool row the same way.
@@ -8262,9 +8304,17 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   _clearMoveArrowPreview();
   const _placeAoe = !!(a.spell && a.id.startsWith('spell:') && !a._teamCast && typeof setTool === 'function'
     && _hrlgPlaceableAoe(a.spell, targetUnit.x, targetUnit.y));
-  if (_placeAoe && !a.moveTile) {
+  /* a "↳ MOVE" AoE row arms the placement BEFORE the walk too (Keys vs Keys matchup: Spike the Ball walked on the row
+     click, then waited for a second CONFIRM with the cursor on CANCEL): its CONFIRM reads MOVE→CAST and walks + casts
+     in one go (selectTargetFromMenu → findSpellApproachTile → _moveThenCast), so nothing is spent before the CONFIRM.
+     An aim the walk can't reach falls back to the target's own tile, then to the old walk-first flow. */
+  let _pa = _placeAoe ? (a.aim || { x: targetUnit.x, y: targetUnit.y }) : null;
+  if (_pa && a.moveTile && typeof findSpellApproachTile === 'function') {
+    const _canReach = (p) => { try { return !!findSpellApproachTile(actingUnit, a.spell, p.x, p.y); } catch (e) { return false; } };
+    if (!_canReach(_pa)) _pa = (a.aim && _canReach({ x: targetUnit.x, y: targetUnit.y })) ? { x: targetUnit.x, y: targetUnit.y } : null;
+  }
+  if (_pa) {
     if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
-    const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
     if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y, targetUnit.id)) return;
   }
   // Sweep every lingering targeting visual (range overlays from blade hover,
@@ -9329,8 +9379,11 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           } : null,
         });
       } else {
+        /* a walk down a drop pays the fall on arrival (battle.js finishMoveAt) — the price goes on the button like Jump's */
+        const _mvDropDmg = (typeof predictFallDamage === 'function' && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)))
+          ? predictFallDamage(actingUnit, actingUnit.z ?? 0, moveTile.z ?? 0, tx, ty) : 0;
         actions.push({
-          id: 'move', label: 'Move here', icon: '⬆', category: 'movement',
+          id: 'move', label: _mvDropDmg > 0 ? `Move here (−${_mvDropDmg} HP)` : 'Move here', icon: '⬆', category: 'movement',
           apCost: 1, available: true,
           // THE SLIDE FORECAST: an ice tile's row previews the slide on hover
           _slideZ: (_mtLand(actingUnit, moveTile) ? (moveTile.z ?? null) : undefined),
@@ -9834,7 +9887,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
   if (onSelf && typeof getNexusAtUnit === 'function' && typeof channelNexus === 'function') {
     const nex = getNexusAtUnit(actingUnit);
-    if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
+    if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)
+        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))) {
       const prog = actingUnit.player === 1 ? Math.max(0, nex.nexus.progress) : Math.max(0, -nex.nexus.progress);
       const thresh = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 3;
       const _chRead = typeof nexusTeamReadout === 'function' ? nexusTeamReadout(nex.nexus, actingUnit.player) : null;
@@ -14417,6 +14471,14 @@ const UX_DEF = {
   pPanel: 'none', pPanelCol: '',
   /* the plates' level + HP / MP numbers (2026-10-18, mondo: "anywhere with text should be editable"): 0 / '' = as the game */
   pLvlSize: 0, pNumSize: 0, pNumCol: '',
+  /* m* = THE SMALL NAME PLATES (2026-10-24, mondo: "let me control the smaller version of the nameplates, the ones that show
+     the portrait when you zoom out from the map. I want settings that let place the health bars below the portrait, exclude
+     the name, and choose how far/close you have to be from the board for them to show (i want them to require less zooming
+     out than they do right now). All of these things should be separate from the normal sized nameplates"): the portrait
+     card a plate turns into (.tp-far). mBars side (beside the portrait, the game's) | below; mName / mLvl = its name and
+     level (the p* Name / Level reach only the full plates now); mAt = the camera's distance to a unit, in battle squares,
+     from which its plate is the small one (miniSignal -> window._ewMiniPlateLook, three-renderer _plateFarAtSq) */
+  mBars: 'side', mName: true, mLvl: true, mAt: 11,
   sPanel: 'theme', sPanelCol: '', sEdgeCol: '', sFont: '', sScoreFont: '', sScoreSize: 22, sScoreCol: '', sModeSize: 8, sModeCol: '',
   sLineSize: 9, sTimeCol: '', sRoundCol: '', sNameSize: 12, sGap: 12, sSideW: 0, sDot: true,
   /* pass 11 (2026-10-17, mondo: "i want to remove the arena mode text and also be able to make the team names different
@@ -15070,6 +15132,15 @@ function clogSignal() {
   _clogSent = k; window._ewLogLook = L;
   try { if (typeof window.renderFloatCombatLog === 'function') window.renderFloatCombatLog(); } catch (e) {}
 }
+/* the small name plates the renderer reads (window._ewMiniPlateLook, bumped _ewMiniPlateLookV: three-renderer _plateFarAtSq
+   takes `at` and repaints every plate on a bump, so the bars / name / level sheets show at once), re-published only when
+   they change */
+let _miniSent = '';
+function miniSignal() {
+  const X = uxOf(), L = { at: +X.mAt, bars: X.mBars, name: !!X.mName, lvl: !!X.mLvl };
+  const k = JSON.stringify(L); if (k === _miniSent) return;
+  _miniSent = k; window._ewMiniPlateLook = L; window._ewMiniPlateLookV = (window._ewMiniPlateLookV || 0) + 1;
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -15110,8 +15181,8 @@ function uxCss() {
   const W = HI + '.tp-wrap';
   if (chg('pSize')) css += `${W} { scale: ${n('pSize', 0.5, 2.5)}; }\n`;
   if (chg('pW')) css += `${W} { width: ${n('pW', 100, 320)}px !important; }\n`;
-  if (!X.pName) css += `${W} .tp-nm { display: none !important; }\n`;
-  if (!X.pLvl) css += `${W} .tp-lvl { display: none !important; }\n`;
+  if (!X.pName) css += `${W}:not(.tp-far) .tp-nm { display: none !important; }\n`;
+  if (!X.pLvl) css += `${W}:not(.tp-far) .tp-lvl { display: none !important; }\n`;
   if (X.pTypes === 'none') css += `${W} .tp-types { display: none !important; }\n`;
   else if (X.pTypes === 'above' || X.pTypes === 'below') css += `${W} .tp-body { flex-direction: ${X.pTypes === 'above' ? 'column' : 'column-reverse'} !important; }\n${W} .tp-types { flex-direction: row !important; justify-content: center; }\n${W} .tp-type { flex: none !important; padding: 1px 6px !important; }\n`;
   if (X.pTypeShape !== 'pill') {
@@ -15139,6 +15210,23 @@ function uxCss() {
   if (X.pPanel !== 'none') {
     const bg = X.pPanelCol || (X.pPanel === 'theme' ? 'var(--ew-plate-bg, rgba(5,5,8,0.85))' : 'rgba(0,0,0,0.6)');
     css += `${W} .tp-main { background: ${bg} !important; padding: 3px 6px 4px; border-radius: ${X.pPanel === 'theme' ? '6px' : '3px'}; border: 1px solid ${X.pPanel === 'theme' ? 'var(--ew-plate-edge, rgba(255,255,255,0.2))' : 'rgba(255,255,255,0.12)'}; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }\n`;
+  }
+  /* ── the small name plates (the zoomed-out portrait card, .tp-far; when they show = miniSignal) ── */
+  const MW = W + '.tp-far';
+  if (!X.mName) css += `${MW} .tp-nm { display: none !important; }\n`;
+  if (!X.mLvl) css += `${MW} .tp-lvl { display: none !important; }\n`;
+  if (!X.mName && !X.mLvl) css += `${MW} .tp-name { display: none !important; }\n`;
+  /* below: the card stands up (name, portrait, the HP bar as wide as the portrait, its number centred under it); tp-main
+     steps out of the box (display: contents) so the name can sit over the portrait and the bar under it */
+  if (X.mBars === 'below') {
+    css += `${MW} { width: auto !important; flex-direction: column !important; align-items: center !important; gap: 2px !important; }
+${MW} .tp-main { display: contents !important; }
+${MW} .tp-name { order: 0; justify-content: center !important; max-width: 170px; margin-bottom: 0 !important; }
+${MW} .tp-portrait { order: 1; }
+${MW} .tp-body { order: 2; width: 48px; }
+${MW} .tp-bars { padding-right: 0 !important; padding-bottom: ${X.pNums ? 14 : 0}px; }
+${MW} .tp-bar-num { left: 50% !important; top: 100% !important; margin: 2px 0 0 !important; transform: translateX(-50%) !important; }
+`;
   }
   /* ── the AP press icons ── */
   const A = HI + '.ew-ap-press', aSz = n('aSize', 16, 96), aGap = n('aGap', -10, 40);
@@ -15734,6 +15822,29 @@ function platesDetail() {
     + '<div class="uim-note">Fade = how see-through a plate is while it is not the current, hovered or targeted unit.</div>');
   return h + xReset('p', 'Reset the name plates');
 }
+/* the small name plates (Health bars > Small name plates): the portrait card a plate turns into when the camera is far
+   from its unit. Their own settings (m*); the readout under the distance says where the camera is now (miniNowTick) */
+function miniPlatesDetail() {
+  const X = uxOf();
+  let h = `<div class="uim-note">The small name plates: the portrait card a unit's name plate turns into when you zoom out. These settings are their own; the Name plates settings for the name and level don't reach them.</div>`;
+  h += sec('mwhen', 'When they show', xp(fRange('Camera distance', 'mAt', 4, 40, 0.5, +X.mAt, 'Battle squares from the camera to a unit: from this far its plate is the small one'))
+    + '<div class="uim-note">A plate turns small once the camera is this many battle squares from its unit, and back to the full plate a tenth closer. Lower = less zooming out.</div>'
+    + '<div class="uim-note uim-mini-now"></div>');
+  h += sec('mshow', 'What they show', xCheck('Name', 'mName', X.mName) + xCheck('Level', 'mLvl', X.mLvl));
+  h += sec('mbars', 'Health bar', xp(fSeg('Where', 'mBars', [['side', 'Beside the portrait ·'], ['below', 'Below the portrait']], X.mBars)));
+  return h + xReset('m', 'Reset the small name plates');
+}
+/* the live line under the distance: the camera's distance to the units with a plate now, and how many plates are small */
+function miniNowTick() {
+  const A = UI.live, el = A && A.dock && A.dock.querySelector('.uim-mini-now');
+  if (!el) { clearInterval(miniNowTick.t); miniNowTick.t = 0; return; }
+  let I = null;
+  try { I = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.plateFarInfo) ? ThreeRenderer.plateFarInfo() : null; } catch (e) {}
+  const f = v => (Math.round(v * 2) / 2).toFixed(1).replace(/\.0$/, '');
+  setText(el, !I || !I.n ? 'Now: no name plates on the board (open this in a battle to see the distance).'
+    : `Now: the camera is ${I.n > 1 && f(I.far) !== f(I.near) ? f(I.near) + ' to ' + f(I.far) : f(I.near)} squares from the units; ${I.small} of ${I.n} plates are small.`);
+}
+function miniNowStart() { miniNowTick(); if (!miniNowTick.t) miniNowTick.t = setInterval(miniNowTick, 400); }
 /* the combat log's own settings (Layout > Combat log) */
 function clogForm() {
   const X = uxOf();
@@ -16382,6 +16493,10 @@ const KEYFRAMES = `@keyframes uim-pop { from { scale: 0.1; opacity: 0; } 70% { o
 /* every baked image is written ONCE as a custom property on :root; the rules point at it */
 function skinVar(bi) { let n = _skinVars.get(bi); if (!n) { n = '--uim-sk' + _skinVars.size; _skinVars.set(bi, n); } return `var(${n})`; }
 function scheduleApply() { if (_applyT) return; _applyT = setTimeout(() => { _applyT = 0; apply(); }, 30); }
+/* a UI Maker sheet on the page changed: the in-world name plates (three-renderer THE PLATES IN THE WORLD paint the
+   plate's DOM into a texture) repaint on this count, so a plate setting shows on the board at once, not on the plate's next
+   change */
+function uimSheetBump() { window._ewUimSheetV = (window._ewUimSheetV || 0) + 1; }
 function apply() {
   window._ewUimGen = (window._ewUimGen || 0) + 1;   // the unit info card's pinned spot is measured afresh (_qpPinRoom)
   const gid = globalId(), G = themeById(gid);
@@ -16404,19 +16519,19 @@ function apply() {
   const lay = document.getElementById('ew-ui-layout');
   const okPos = el.parentNode === document.head && (el === document.head.lastElementChild || (lay && el.nextElementSibling === lay && lay === document.head.lastElementChild));
   if (!okPos) document.head.appendChild(el);
-  if (el.textContent !== css) el.textContent = css;
+  if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   applyLayout();
   if (_stages.size) stagesRefresh();
   return !pending;
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
   if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
-  if (el.textContent !== css) el.textContent = css;
+  if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   _stages.forEach(st => stageLay(st, css));
   wordsApply();
 }
@@ -17996,8 +18111,9 @@ function dockBarsBody() {
   let h = dockTop() + `<div class="uim-note">Which places get a straight bar, a ring, or both, and how every bar and ring looks. The yellow boxes are the places on screen now; click one to pick it.</div><div class="uim-dk-mock"></div>`;
   h += BAR_PLACES.map(P => `<div class="uim-dk-bar${UI.bar === P.id ? ' on' : ''}" data-bar="${P.id}" title="${esc(P.hint)}"><i></i><div><b>${esc(P.label)}</b><small>${esc(P.hint)}</small></div>`
     + `<div class="uimb-seg">${P.barOnly ? '<span class="uim-note" style="margin:0">Bars only</span>' : [['bar', 'Bar'], ['ring', 'Ring'], ['both', 'Both']].map(([v, l]) => `<button class="uim-btn${place[P.id] === v ? ' on' : ''}" data-dk="bplace" data-place="${P.id}" data-val="${v}"${v === 'ring' && P.ring ? ` title="${esc(P.ring)}"` : ''}>${l}${P.def === v ? ' ·' : ''}</button>`).join('')}</div></div>`).join('');
+  h += `<div class="uim-dk-bar${UI.bar === 'mini' ? ' on' : ''}" data-bar="mini" title="The portrait cards the name plates turn into when you zoom out"><i></i><div><b>Small name plates</b><small>The portrait cards when you zoom out</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Bar, name + when</span></div></div>`;
   h += `<div class="uim-dk-bar${UI.bar === 'sel' ? ' on' : ''}" data-bar="sel" title="The ring + facing arrow under every unit"><i></i><div><b>Selection rings</b><small>The ring + facing arrow under each unit</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Look + who</span></div></div>`;
-  h += `<div class="uim-note">· marks how the game draws it. Name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
+  h += `<div class="uim-note">· marks how the game draws it. Name plates, Small name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
   <div class="uim-note"><span class="uim-kbd">Tab</span> next place on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
   return h;
 }
@@ -18243,7 +18359,11 @@ function dockDetail() {
   const A = UI.live; if (!A) return;
   const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
-  else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
+  else if (A.mode === 'bars') {
+    d.innerHTML = UI.bar === 'sel' ? ringDetail() : UI.bar === 'mini' ? miniPlatesDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail();
+    barsMockRefresh();
+    if (UI.bar === 'mini') miniNowStart();
+  }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else if (A.mode === 'aim') d.innerHTML = aimDetail();
   else if (A.mode === 'float') d.innerHTML = floatDetail();

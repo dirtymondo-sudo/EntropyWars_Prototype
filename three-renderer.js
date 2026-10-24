@@ -15920,7 +15920,7 @@ const ThreeRenderer = (function () {
             var cs = getComputedStyle(el);
             return cs.visibility !== 'hidden' && !(parseFloat(cs.opacity) < 0.05);
         };
-        var rigs = document.querySelectorAll('.hrlg-rig');
+        var rigs = document.getElementsByClassName('hrlg-rig');   // (live lists: no walk of the whole page each frame — the smooth pass)
         for (var i = 0; i < rigs.length; i++) {
             var rig = rigs[i];
             if (!shown(rig)) continue;
@@ -15934,7 +15934,7 @@ const ThreeRenderer = (function () {
                 for (var k = 0; k < c.children.length; k++) add(c.children[k].getBoundingClientRect(), box);
             }
         }
-        var bars = document.querySelectorAll('.ew-descbar-inner');
+        var bars = document.getElementsByClassName('ew-descbar-inner');
         for (var d = 0; d < bars.length; d++) if (shown(bars[d])) add(bars[d].getBoundingClientRect());
         return out;
     }
@@ -15954,9 +15954,13 @@ const ThreeRenderer = (function () {
 
     /* ── per frame (renderFrame, before the draw): the mirror's records, the repaints, the sizes, the stack ── */
     var _pmV = null, _pmR = null, _pmU = null;
+    var _pmSheetV = 0;
     function _pmTick(cam) {
         if (!_pmList.length) return;
         if (_pmObs) { var recs = _pmObs.takeRecords(); if (recs.length) _pmOnMut(recs); }
+        /* a UI Maker sheet changed (hud.js uimSheetBump): the CSS on every plate may have, with no mutation to say so */
+        var shV = window._ewUimSheetV || 0;
+        if (shV !== _pmSheetV) { _pmSheetV = shV; _pmDirtyAll(); }
         var gate = (scene && cam && _parentEl) ? _pmGate() : 0;
         var sw = _parentEl ? _parentEl.clientWidth : 0, sh = _parentEl ? _parentEl.clientHeight : 0;
         if (sw <= 0 || sh <= 0) gate = 0;
@@ -16405,16 +16409,37 @@ const ThreeRenderer = (function () {
     var PLATE_BASE_W = 172;
     var MIN_PLATE_SCALE = 1.0;
     var MAX_PLATE_SCALE = 3.0;
-    /* Far-zoom portrait mode: below FAR_ENTER projected-tile-px the plate is
-       bigger than the unit it labels → swap to the portrait card; back out
-       above FAR_EXIT. The gap is hysteresis so orbiting at the boundary
-       doesn't strobe the layout. */
-    var PLATE_FAR_ENTER_PX = 68;
-    var PLATE_FAR_EXIT_PX = 86;
+    /* Far-zoom portrait mode: once the camera is PLATE_FAR_AT_SQ battle squares
+       or more from a unit its plate swaps to the portrait card; back out
+       PLATE_FAR_BACK of that. The gap is hysteresis so orbiting at the
+       boundary doesn't strobe the layout.
+       THE SMALL PLATES (2026-10-24, mondo: "choose how far/close you have to be from the board for them to show (i want
+       them to require less zooming out than they do right now). All of these things should be separate from the normal
+       sized nameplates"): the line is the UI Maker's (Health bars > Small name plates, window._ewMiniPlateLook.at, hud.js
+       miniSignal), in squares from the camera. It was a tile under 68 screen px (back over 86): ~12.8 squares on a 720 px
+       tall window, ~16 on 900, so 11 asks for less zooming out on every screen. A swap is a class change (tp-far), which
+       repaints that plate; the bars-below / name / level sheets repaint every plate through _pmTick's sheet count. */
+    var PLATE_FAR_AT_SQ = 11;
+    var PLATE_FAR_BACK = 0.9;
+    var _plateFarV = -1, _plateFarAt = PLATE_FAR_AT_SQ, _plateFarGen = 0;
+    function _plateFarAtSq() {
+        var v = window._ewMiniPlateLookV || 0;
+        if (v !== _plateFarV) {
+            _plateFarV = v;
+            var L = window._ewMiniPlateLook, at = L ? +L.at : NaN, was = _plateFarAt;
+            _plateFarAt = (isFinite(at) && at > 0) ? at : PLATE_FAR_AT_SQ;
+            if (_plateFarAt !== was) _plateFarGen++;
+        }
+        return _plateFarAt;
+    }
 
-    function _plateFarToggle(holder, el, projW) {
-        var wasFar = !!holder._farMode;
-        var isFar = wasFar ? (projW < PLATE_FAR_EXIT_PX) : (projW < PLATE_FAR_ENTER_PX);
+    /* distSq = the camera's distance to the plate's unit, in battle squares. A new line (the UI Maker's slider) is
+       taken fresh, with no gap, so every plate on the board answers the number set at once */
+    function _plateFarToggle(holder, el, distSq) {
+        var wasFar = !!holder._farMode, at = _plateFarAtSq();
+        var fresh = holder._farGen !== _plateFarGen;
+        holder._farGen = _plateFarGen;
+        var isFar = (wasFar && !fresh) ? (distSq > at * PLATE_FAR_BACK) : (distSq > at);
         if (isFar !== wasFar) {
             holder._farMode = isFar;
             el.classList.toggle('tp-far', isFar);
@@ -16446,7 +16471,7 @@ const ThreeRenderer = (function () {
             /* far-zoom portrait card swap — BEFORE the scale-skip return
                below (at far range the scale pins at MIN and stops changing,
                but the camera can still cross the far threshold). */
-            _plateFarToggle(po, po.el, projW);
+            _plateFarToggle(po, po.el, dist / refW);
 
             /* scale so plate is at least as wide as one tile, with a legibility floor */
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
@@ -16464,7 +16489,7 @@ const ThreeRenderer = (function () {
             var _ddist = _scalePlateVec.distanceTo(cam.position);
             if (_ddist < 1) _ddist = 1;
             var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
-            _plateFarToggle(_dse, _dse.el, _dprojW);
+            _plateFarToggle(_dse, _dse.el, _ddist / _drefW);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
             _writePlateTransform(_dse, _ds, _dprojW);
         }
@@ -17164,7 +17189,11 @@ const ThreeRenderer = (function () {
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
         'spellApproachMove':   { fill: 0.30, edgeGlow: 0.9 },
         'spellApproachShove':  { fill: 0.50, edgeGlow: 1.3, dots: 1 },
-        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 }
+        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 },
+        /* THE SEARCH MAP (battle.js syncSearchMap): the hovered Inspect's real footprint, a solid plate; the tiles the
+           team already searched, a grey wash */
+        'searchFoot':          { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
+        'searchMap':           { fill: 0.55, edgeGlow: 0.5 }
     };
 
     /* Shared yellow-corner cursor material — stamped on top of whichever tile
@@ -17211,7 +17240,7 @@ const ThreeRenderer = (function () {
        consequence owns the board. Eases in/out so it never pops. */
     var _hlFocusDim = 1.0;
     var _HL_DIM_FOCUS = 0.28;   // THE CLARITY PASS (2026-10-01): was 0.4 — the reach must clearly step back
-    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget'];
+    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget', 'searchFoot'];
     /* reach layers drawn by setOverlay that do not pulse (the pulse loop dims spellRange / attackRange itself) */
     var _DIM_OVERLAYS = { actionPlanRange: true, spellRangeElem: true, infoRange: true };
     function _updateHlFocusDim() {
@@ -19080,7 +19109,7 @@ const ThreeRenderer = (function () {
             if (!plate) return;
             var dist = cam.position.length(), halfTan = Math.tan(cam.fov * D2R / 2);
             var projW = (ts * FH) / (2 * Math.max(1, dist) * halfTan);
-            _plateFarToggle(plate, plate.el, projW);
+            _plateFarToggle(plate, plate.el, Math.max(1, dist) / ts);
             _writePlateTransform(plate, Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE)), projW);
             _pv.set(0, plate.css2d.position.y, 0).project(cam);
             plate.outer.style.left = ((_pv.x * 0.5 + 0.5) * crop.w).toFixed(1) + 'px';
@@ -20496,6 +20525,13 @@ const ThreeRenderer = (function () {
                 if (wd && wd.player === vp && wd.tiles && wd.tiles.indexOf && wd.tiles.indexOf(pk) >= 0) { seen = true; break; }
             }
         }
+        /* THE TEAM'S OTHER EYES (Wipeout vs Wipeout playtest 2026-10-23: the guest's Eternal Slumber listed Superhero and
+           Mech with their HP and tagged their tiles while their models stayed hidden): the Cube, wards, open doors, flares
+           see for the team too. They light the tile (computeVisibleTiles) and the rules let the team aim there (map.js
+           isInVision), but the body stayed undrawn on its lit tile because no unit had eyes on it. */
+        if (!seen && typeof _teamStructureSeesTile === 'function') {
+            try { seen = !!_teamStructureSeesTile(vp, unit.x, unit.y); } catch (e) {}
+        }
         _uFogCache.set(key, seen);
         return seen;
     }
@@ -20656,7 +20692,9 @@ const ThreeRenderer = (function () {
         var all = (now - F.at) >= F.refreshMs, k = 0;
         for (var i = 0; i < F.roots.length; i++) {
             var rec = F.roots[i];
-            if (all || (rec.r === 0 && k < 24)) { _occFieldMeasure(rec); if (!all) k++; }
+            /* the smooth pass (2026-10-24): a still-empty root is looked at again every 250 ms, not on every recompute (every
+               frame in a shot) — a root that never holds a mesh (the room's light rig) cost a forced matrix walk each time */
+            if (all || (rec.r === 0 && k < 24 && !(now - (rec.t || 0) < 250))) { _occFieldMeasure(rec); rec.t = now; if (!all) k++; }
         }
         if (all) F.at = now;
     }
@@ -27278,7 +27316,10 @@ const ThreeRenderer = (function () {
         // the glow wraps the mesh and the disc never double-exposes behind it.
         'uniform float uMoonMesh;\n' +
         // THE CELESTIAL EVENTS (2026-10-17): seconds since the event was revealed (the eclipse's diamond ring, the umbra's slide)
-        'uniform float uEvAge;\n' + _ENV_COMMON + '\n' +
+        'uniform float uEvAge;\n' +
+        // THE PAINTED SKIES (2026-10-24): mondo's paintings (data.js HQ_PAINTED_SKIES) — day / night strips, the silhouette strip
+        'uniform sampler2D uPaintDay; uniform sampler2D uPaintNight; uniform sampler2D uPaintSil;\n' +
+        'uniform float uPaintAmt; uniform float uPaintSilOn; uniform float uPaintSilH;\n' + _ENV_COMMON + '\n' +
         // THE SKY SEAM (2026-10-14): az=atan(rd.x,rd.z) jumps from +PI to -PI straight behind the board (-Z, the zodiac prime
         // slot), so every fbm fed az cut off in a hard vertical line there. fbmW cross-fades the last 18 deg before the wrap
         // (nd.x -0.8..-1) into the noise continued past +PI (p+per = one full turn on), so -PI meets +PI with the same value.
@@ -27403,13 +27444,34 @@ const ThreeRenderer = (function () {
         '    dsky=mix(dsky,cloudC,cover*0.92);\n' +
         '    float dlum=dot(dsky,vec3(0.299,0.587,0.114)); dsky=mix(dsky,vec3(dlum)*vec3(0.92,0.95,1.02),dcl*0.45); dsky*=1.0-0.30*wStorm;\n' +
         '    col=mix(col,dsky,dayK); }\n' +
+        // ── THE PAINTED SKY (2026-10-24, mondo's 80s/90s anime watercolour skies, data.js HQ_PAINTED_SKIES): his painting takes
+        //    the place of the cosmic / day sky above. A strip 360° round: u = the bearing (the seam straight behind the board, the
+        //    old wrap), v = the altitude (0 the horizon, 1 straight overhead); under the horizon the bottom rows carry on. Day and
+        //    night cross-fade with the night (the clock in the walk, the round in a fight); the silhouette strip stands on the
+        //    horizon (uPaintSilH of the sky's height; the sheets are not flipped, so v runs from the image's top), dimmed to moonlight at night. The sun, the moon and (where the painting is
+        //    dark) the stars stay the game's, drawn over it but behind the silhouette; weather and the events wash it as they
+        //    wash the dome. The map tint does not (it is his colour); dusk, the eclipse and the horizon fog below still do. ──
+        '  if(uPaintAmt>0.001){ float pu=az/TAU+0.5; float pn=smoothstep(0.0,1.0,night); vec2 puv=vec2(pu,1.0-clamp(lat,0.0,1.0));\n' +
+        '    vec3 pc=mix(texture2D(uPaintDay,puv).rgb,texture2D(uPaintNight,puv).rgb,pn);\n' +
+        '    float sA=0.0; vec3 sC=vec3(0.0);\n' +
+        '    if(uPaintSilOn>0.5){ vec4 sl=texture2D(uPaintSil,vec2(pu,1.0-clamp(lat/uPaintSilH,0.0,1.0))); sA=sl.a*step(lat,uPaintSilH*0.995); sC=sl.rgb*mix(vec3(1.0),vec3(0.17,0.20,0.32),pn); }\n' +
+        '    float pl=dot(pc,vec3(0.299,0.587,0.114));\n' +
+        '    vec3 pSun=(vec3(1.0,0.97,0.88)*smoothstep(0.045,0.030,sa)*1.6+vec3(1.0,0.90,0.70)*exp(-sa*4.0)*0.30)*sunVis*(1.0-pn)*(1.0-bsun)*(1.0-lun);\n' +
+        '    vec3 pMoon=mix(mix(moonC*moonVis,moonEv,bloodM),lunC,lun)*(1.0-bsun); pMoon=pMoon/(pMoon+vec3(0.6));\n' +
+        '    vec3 pStar=starAcc*uMapStars*pn*(1.0-smoothstep(0.10,0.28,pl))*(1.0-0.6*wStorm); pStar=pStar/(pStar+vec3(0.6));\n' +
+        '    pc+=(pSun+pMoon+pStar)*(1.0-sA); pc=mix(pc,sC,sA);\n' +
+        '    pc=mix(pc,pc*vec3(1.35,0.55,0.50)+vec3(0.04,0.0,0.0),bloodM*0.6); pc=mix(pc,pc*vec3(0.60,0.60,0.72),lun*0.5);\n' +
+        '    pl=dot(pc,vec3(0.299,0.587,0.114)); pc=mix(pc,vec3(pl)*vec3(0.80,0.82,0.88),wStorm*0.55);\n' +
+        '    pc=mix(pc,pc*vec3(0.85,0.95,1.15)+vec3(0.04,0.06,0.09),wSnow*0.4); pc=mix(pc,pc*vec3(1.18,1.00,0.74)+vec3(0.05,0.03,0.0),wSand*0.35);\n' +
+        '    pc=mix(pc,pc*vec3(1.30,0.50,0.45)+vec3(0.05,0.0,0.0),wBlood*0.45);\n' +
+        '    col=mix(col,pc,clamp(uPaintAmt,0.0,1.0)); }\n' +
         // ── THE WORLD CLOCK's dawn and dusk (Phase 3): the band over the horizon goes warm, most toward the low sun ──
         '  if(uDusk>0.001){ float lowB=1.0-smoothstep(-0.06,0.42,el); float toSun=0.45+0.55*pow(max(dot(normalize(vec3(rd.x,0.0,rd.z)+1e-4),normalize(vec3(sunDir.x,0.0,sunDir.z)+1e-4)),0.0),2.0);\n' +
         '    col=mix(col,col*vec3(1.25,0.82,0.62)+vec3(0.30,0.12,0.05)*toSun,clamp(uDusk*lowB*0.85,0.0,1.0)); }\n' +
         // ── per-map sky wash (state.mapEnv.tint): pull the dome toward the
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
         '  if(uMapTintAmt>0.001){ float ml=dot(col,vec3(0.299,0.587,0.114));\n' +
-        '    col=mix(col,uMapTint*(0.45+1.10*ml),clamp(uMapTintAmt,0.0,1.0)); }\n' +
+        '    col=mix(col,uMapTint*(0.45+1.10*ml),clamp(uMapTintAmt,0.0,1.0)*(1.0-clamp(uPaintAmt,0.0,1.0))); }\n' +
         // ── THE TOTAL SOLAR ECLIPSE (2026-10-17, mondo: "make the celestial events look more realistic and badass"): drawn
         //    last (display space) so no day sky or map tint washes it. Daylight collapses to a deep eclipse twilight with a
         //    sunset glow on every horizon; the moon's disc is pitch black; the pearly corona streams out of it (broad helmet
@@ -27504,7 +27566,16 @@ const ThreeRenderer = (function () {
                 uSunDir: { value: new THREE.Vector3(0.50, 0.40, -0.58) },
                 uMoonDir: { value: new THREE.Vector3(-0.50, 0.40, 0.56) },
                 uSunClock: { value: 0.0 },
-                uDusk: { value: 0.0 }
+                uDusk: { value: 0.0 },
+                // THE PAINTED SKIES (2026-10-24): mondo's paintings, written by _paintSkyTick (amt 0 = the shader's own sky)
+                // (each its own 1×1 stand-in from the start: the WebGPU twin binds a sampler per sheet it first saw, and three
+                //  sheets that began as one shared texture drew as one — the day painting in all three)
+                uPaintDay: { value: _paintSkyBlank() },
+                uPaintNight: { value: _paintSkyBlank() },
+                uPaintSil: { value: _paintSkyBlank() },
+                uPaintAmt: { value: 0.0 },
+                uPaintSilOn: { value: 0.0 },
+                uPaintSilH: { value: 0.5 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -27546,6 +27617,62 @@ const ThreeRenderer = (function () {
             console.warn('[ThreeRenderer] environment init failed', e);
         }
     }
+
+    /* ── THE PAINTED SKIES (2026-10-24, mondo: "water color backgrounds for the sky ... inspired by old 80s and 90s anime") ──
+       data.js hqPaintedSky(id) names the place's paintings (R2 Assets/skies/); the dome draws them (_envDomeFS THE PAINTED SKY,
+       and its TSL twin). _paintSkyTick(id, snap) runs every frame from the walk's _hqTickSky (the room) and the battle's
+       _updateEnvironment (activeGameMode): it asks for the three sheets through the game's own texture loader (the load card
+       and the battle gate wait for them), puts them on the dome's uniforms and eases uPaintAmt in once day and night have
+       landed (a sheet that fails leaves the shader's sky). The low-power setting (EW_PERF_LOW) takes the half-size copies.
+       No mip chain: the strip is drawn near 1:1 on screen and a mip chain would draw a line down the wrap. Sheets of a place
+       you left are dropped. Kill-switch: window.EW_NO_PAINTED_SKY = true. Nothing on `state`, nothing relayed: both seats of
+       an online fight read the same board id and draw the same painting (RULE #2). */
+    var _paintSky = { id: null, sig: null, row: null, tex: {}, amt: 0 };
+    function _paintSkyBlank() { var t = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1); t.needsUpdate = true; t._ew_shared = true; return t; }
+    function _paintSkySheet(url) {
+        var P = _paintSky.tex[url];
+        if (P) return P;
+        P = _paintSky.tex[url] = { url: url, ok: false, bad: false, t: null };
+        try {
+            var t = textureLoader.load(url, function () { P.ok = true; }, undefined, function () { P.bad = true; });
+            t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter;
+            t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+            t.flipY = false;   // the image's top row at v 0 on every path (WebGL and WebGPU, <img> and the bitmaps, which flip at the decode): the dome reads v = 1 − altitude
+            if (THREE.NoColorSpace !== undefined) t.colorSpace = THREE.NoColorSpace;   // his colours as painted (the dome draws in display space)
+            t._ew_shared = true;
+            P.t = t;
+        } catch (e) { P.bad = true; }
+        return P;
+    }
+    function _paintSkyRow(id) {
+        var W = (typeof window !== 'undefined') ? window : {};
+        if (W.EW_NO_PAINTED_SKY || typeof hqPaintedSky !== 'function' || !id) return null;
+        try { return hqPaintedSky(id, !!W.EW_PERF_LOW); } catch (e) { return null; }
+    }
+    function _paintSkyTick(id, snap) {
+        if (!_envUni) return;
+        var PS = _paintSky, u = _envUni, W = (typeof window !== 'undefined') ? window : {};
+        var sig = id + '|' + (W.EW_PERF_LOW ? 'low' : '') + (W.EW_NO_PAINTED_SKY ? '|off' : '');   // the low-power setting / the kill-switch flipped live
+        if (sig !== PS.sig) {
+            PS.id = id; PS.sig = sig; PS.row = _paintSkyRow(id);
+            var keep = {};
+            if (PS.row) [PS.row.day, PS.row.night, PS.row.sil].forEach(function (k) { keep[k] = 1; _paintSkySheet(k); });
+            for (var k in PS.tex) if (!keep[k]) { try { if (PS.tex[k].t) PS.tex[k].t.dispose(); } catch (e) {} delete PS.tex[k]; }
+        }
+        var R = PS.row, D = R && PS.tex[R.day], N = R && PS.tex[R.night], S = R && PS.tex[R.sil];
+        var ready = !!(D && N && D.ok && N.ok);
+        if (ready) {
+            u.uPaintDay.value = D.t; u.uPaintNight.value = N.t;
+            if (S && S.ok) u.uPaintSil.value = S.t;
+            u.uPaintSilOn.value = (S && S.ok) ? 1 : 0;
+            u.uPaintSilH.value = R.silH || 0.5;
+        }
+        var want = ready ? 1 : 0;
+        PS.amt = (snap || !ready) ? want : PS.amt + (want - PS.amt) * 0.08;
+        if (Math.abs(PS.amt - want) < 0.002) PS.amt = want;
+        u.uPaintAmt.value = PS.amt;
+    }
+    if (typeof window !== 'undefined') window._ewPaintSky = function () { var R = _paintSky.row; return { id: _paintSky.id, key: R ? R.key : null, amt: _paintSky.amt, sheets: Object.keys(_paintSky.tex).map(function (k) { var P = _paintSky.tex[k]; return { url: k, ok: P.ok, bad: P.bad }; }) }; };
 
     /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the board's site's day look when one of its rooms is on the world clock (data.js
        hqRoomClock: an outdoor room) — { tint, clouds } | null (an indoor site, a HQ_WORLD_CLOCK.still sky, no site) */
@@ -27633,7 +27760,7 @@ const ThreeRenderer = (function () {
     }
     /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
        building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
-    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.55, fillColor: 0x9fb4d0, fill: 0.14,
+    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14,
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
         shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
@@ -27646,7 +27773,9 @@ const ThreeRenderer = (function () {
         decals: { on: true, alpha: 0.7, max: 80, wear: 0.42 },
         ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
         motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
-        reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 } };
+        reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
+        nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
+        keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 } };
     /* THE POLISH SETTINGS (2026-09-21): the player's rows (data.js HQ_POLISH_PREFS, localStorage ew_polish) are read BEFORE
        every EW_* kill-switch — _polishOff(key, flag) = the player turned it off, or the dev flag is set; _polishLevel(key) = a
        level / slider row's number (1 = the shipped count). A row the catalogue does not know reads as ON. */
@@ -27665,6 +27794,8 @@ const ThreeRenderer = (function () {
         o.open = Object.assign({}, HQ_LIGHT_DEFAULT.open, R.open || {});
         ['shadows', 'ao', 'heightFog', 'atmos', 'ssao', 'motionBlur', 'reflect'].forEach(function (k) { o[k] = Object.assign({}, HQ_LIGHT_DEFAULT[k], R[k] || {}); });
         o.key = Object.assign({}, HQ_LIGHT_DEFAULT.key, R.key || {});
+        o.keyLamp = Object.assign({}, HQ_LIGHT_DEFAULT.keyLamp, R.keyLamp || {});
+        o.nightFill = Object.assign({}, HQ_LIGHT_DEFAULT.nightFill, R.nightFill || {});
         return o;
     }
     function _sceneLookOf(look, name) {
@@ -27727,7 +27858,7 @@ const ThreeRenderer = (function () {
         S.blood += (s.w.blood - S.blood) * k;
 
         // ── per-map environment preset (state.mapEnv → dome/fog/scenery) ──
-        var me = (typeof state !== 'undefined' && state && state.mapEnv) || null;
+        var me = (typeof state !== 'undefined' && state && state.mapEnv) || null, envSnap = _envSnapPending;
         if (_envSnapPending) {
             /* THE SEAMLESS FIELD rev 3: the first battle frame wears the room's sky at once — the eased tint / stars / nebula
                used to arrive over the first second of the fight (the dome brightening beyond the walls after the cut) */
@@ -27772,6 +27903,7 @@ const ThreeRenderer = (function () {
         _envUni.uMapNebula.value = S.mapNebula;
         _envUni.uSkyDay.value = S.mapDay; _envUni.uSkyClouds.value = S.mapClouds;
         _envUni.uSunClock.value = 0; _envUni.uDusk.value = 0;   // THE WORLD CLOCK (Phase 3) is the building's: the battle keeps its fixed sun
+        _paintSkyTick((typeof activeGameMode !== 'undefined' && activeGameMode) ? String(activeGameMode) : null, envSnap);   // THE PAINTED SKIES: the board's place
         // map fog feeds the same uFog* pipeline as the retro-fog filter (which
         // wins while enabled); scenery haze shares those uniforms and follows
         var fogKey = (me && me.fog) ? (me.fog.color + ',' + me.fog.amount + ',' + me.fog.top + ',' + me.fog.band) : '';
@@ -38202,6 +38334,9 @@ const ThreeRenderer = (function () {
                 Flow = R('uSkyFlow', 'float'), SunN = R('uSunNear', 'float'), MoonN = R('uMoonNear', 'float'), Yaw = R('uSkyYaw', 'float'), Lift = R('uSkyLift', 'float'),
                 Day = R('uSkyDay', 'float'), Clouds = R('uSkyClouds', 'float'), SunD = R('uSunDir', 'vec3'), MoonD = R('uMoonDir', 'vec3'), Clock = R('uSunClock', 'float'),
                 Dusk = R('uDusk', 'float'), MMesh = _ewPU(m.uniforms.uMoonMesh, 'float'), EvAge = _ewPU(m.uniforms.uEvAge, 'float'), vn = L.vn;
+            /* THE PAINTED SKIES: the GLSL block (see _envDomeFS) */
+            var PDay = _ewPT(m.uniforms.uPaintDay), PNight = _ewPT(m.uniforms.uPaintNight), PSil = _ewPT(m.uniforms.uPaintSil),
+                PAmt = _ewPU(m.uniforms.uPaintAmt, 'float'), PSilOn = _ewPU(m.uniforms.uPaintSilOn, 'float'), PSilH = _ewPU(m.uniforms.uPaintSilH, 'float');
             /* THE LUNAR ECLIPSE: the GLSL lunUmbra (see _envDomeFS) */
             var lunUmbra = function (p, age) {
                 var sl = ss(0, 3.2, age), d = T.length(p.add(V2(0.748, 0.663).mul(T.mix(3.9, 2.05, sl)))).sub(2.6).toVar();
@@ -38309,6 +38444,30 @@ const ThreeRenderer = (function () {
                     dsky.assign(T.mix(dsky, V3(L.lum(dsky)).mul(V3(0.92, 0.95, 1.02)), dcl.mul(0.45))); dsky.mulAssign(one.sub(wStorm.mul(0.3)));
                     col.assign(T.mix(col, dsky, dayK));
                 });
+                T.If(PAmt.greaterThan(0.001), function () {
+                    var pu = az.div(PI * 2).add(0.5).toVar(), pn = ss(0, 1, night).toVar(), puv = V2(pu, one.sub(T.clamp(lat, 0, 1))).toVar();
+                    var pc = T.mix(PDay(puv).rgb, PNight(puv).rgb, pn).toVar();
+                    var sA = F(0).toVar(), sC = V3(0).toVar();
+                    T.If(PSilOn.greaterThan(0.5), function () {
+                        var sl = PSil(V2(pu, one.sub(T.clamp(lat.div(PSilH), 0, 1)))).toVar();
+                        sA.assign(sl.a.mul(T.step(lat, PSilH.mul(0.995))));
+                        sC.assign(sl.rgb.mul(T.mix(V3(1), V3(0.17, 0.20, 0.32), pn)));
+                    });
+                    var pl = L.lum(pc).toVar();
+                    var pSun = V3(1, 0.97, 0.88).mul(ss(0.045, 0.03, sa)).mul(1.6).add(V3(1, 0.9, 0.7).mul(T.exp(sa.mul(-4))).mul(0.3))
+                        .mul(sunVis).mul(one.sub(pn)).mul(one.sub(bsun)).mul(one.sub(lun));
+                    var pMoon = T.mix(T.mix(moonC.mul(moonVis), moonEv, bloodM), lunC, lun).mul(one.sub(bsun)).toVar();
+                    var pStar = starAcc.mul(MStars).mul(pn).mul(one.sub(ss(0.10, 0.28, pl))).mul(one.sub(wStorm.mul(0.6))).toVar();
+                    pc.addAssign(pSun.add(pMoon.div(pMoon.add(0.6))).add(pStar.div(pStar.add(0.6))).mul(one.sub(sA)));
+                    pc.assign(T.mix(pc, sC, sA));
+                    pc.assign(T.mix(pc, pc.mul(V3(1.35, 0.55, 0.5)).add(V3(0.04, 0, 0)), bloodM.mul(0.6)));
+                    pc.assign(T.mix(pc, pc.mul(V3(0.6, 0.6, 0.72)), lun.mul(0.5)));
+                    pc.assign(T.mix(pc, V3(L.lum(pc)).mul(V3(0.8, 0.82, 0.88)), wStorm.mul(0.55)));
+                    pc.assign(T.mix(pc, pc.mul(V3(0.85, 0.95, 1.15)).add(V3(0.04, 0.06, 0.09)), wSnow.mul(0.4)));
+                    pc.assign(T.mix(pc, pc.mul(V3(1.18, 1, 0.74)).add(V3(0.05, 0.03, 0)), wSand.mul(0.35)));
+                    pc.assign(T.mix(pc, pc.mul(V3(1.3, 0.5, 0.45)).add(V3(0.05, 0, 0)), wBlood.mul(0.45)));
+                    col.assign(T.mix(col, pc, T.clamp(PAmt, 0, 1)));
+                });
                 T.If(Dusk.greaterThan(0.001), function () {
                     var lowB = one.sub(ss(-0.06, 0.42, el));
                     var toSun = T.pow(T.max(T.dot(T.normalize(V3(rd.x, 0, rd.z).add(1e-4)), T.normalize(V3(sunDir.x, 0, sunDir.z).add(1e-4))), 0), 2).mul(0.55).add(0.45);
@@ -38316,7 +38475,7 @@ const ThreeRenderer = (function () {
                 });
                 T.If(MTintA.greaterThan(0.001), function () {
                     var ml = L.lum(col);
-                    col.assign(T.mix(col, MTint.mul(ml.mul(1.1).add(0.45)), T.clamp(MTintA, 0, 1)));
+                    col.assign(T.mix(col, MTint.mul(ml.mul(1.1).add(0.45)), T.clamp(MTintA, 0, 1).mul(one.sub(T.clamp(PAmt, 0, 1)))));
                 });
                 /* THE TOTAL SOLAR ECLIPSE: the GLSL block (see _envDomeFS) */
                 T.If(bsun.greaterThan(0.001), function () {
@@ -38950,7 +39109,7 @@ const ThreeRenderer = (function () {
            aspect + post + CSS2D sizes to .map-center (see _viewW) */
         _viewW = -1; _viewH = -1;
         _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
-        /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S brightness through the fight */
+        /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S auto-exposure through the fight (THE ONE BRIGHTNESS: the slider's value is shared) */
         _arenaLatch();   // THE ARENAS (E8): the room round a PvP arena, read once per fight
         _fieldGroundArmed = !!_fieldGround();
         try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
@@ -41727,7 +41886,7 @@ const ThreeRenderer = (function () {
                     renderer.render(scene, cam);
                 }
 
-                if (css2dRenderer) css2dRenderer.render(scene, cam);
+                if (css2dRenderer) _css2dRender(scene, cam);
                 _scaleNexusPlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
@@ -41736,6 +41895,22 @@ const ThreeRenderer = (function () {
         }
 
         _updateMinimap();
+    }
+
+    /* THE PLATES' PASS (2026-10-24, the smooth pass): CSS2DRenderer.render starts with scene.updateMatrixWorld(), a second walk of
+       every object in the scene, right after the frame's own draw did the same walk (nothing moves in between). When the draw
+       walked this scene since the last plates pass (the stamp below), the plates read the matrices that walk made; otherwise
+       (a frame drawn from another scene: the close-up panes) they walk it themselves, as before. */
+    var _css2dTick = 1;
+    function _css2dRender(sc, cam) {
+        if (!sc._ew_mwStamp) {
+            var um = sc.updateMatrixWorld;
+            sc.updateMatrixWorld = function () { this._ew_mwAt = _css2dTick; return um.apply(this, arguments); };
+            sc._ew_mwStamp = true;
+        }
+        var fresh = sc._ew_mwAt === _css2dTick, au = sc.matrixWorldAutoUpdate;
+        if (fresh) sc.matrixWorldAutoUpdate = false;
+        try { css2dRenderer.render(sc, cam); } finally { sc.matrixWorldAutoUpdate = au; _css2dTick++; }
     }
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
@@ -42103,6 +42278,15 @@ const ThreeRenderer = (function () {
             && typeof getSelectedUnit === 'function') {
             var _lpU = getSelectedUnit();
             if (_lpU && _lpU._skyThrowGrab) unitHit = null;
+        }
+        /* THE CASTER IS NO TARGET (battle.js _ewPickSkipsUnitId): an armed attack / offensive unit spell looks past the
+           acting unit's own model to the body behind it */
+        if (unitHit && typeof window._ewPickSkipsUnitId === 'function') {
+            var _skipId = window._ewPickSkipsUnitId();
+            if (_skipId != null && unitHit.unitId === _skipId) {
+                unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas,
+                    { children: unitGroup.children.filter(function (c) { return c._ew_unitId !== _skipId; }) });
+            }
         }
         if (unitHit) {
 
@@ -48770,6 +48954,29 @@ const ThreeRenderer = (function () {
         m.position.y = (y0 + y1) * 0.5 * U;
         return m;
     }
+    /* THE ROUND JOIN (2026-10-24): the lower drum is cut at a joined doorway — the runs either side keep the whole drum's texture
+       scale, the wall over the opening stands on its own (behind the door's lintel). → [{ a0, a1, top }] by angle */
+    function _hqDrumCuts(room) {
+        var out = [];
+        (room.doors || []).forEach(function (d) {
+            if (!d || d.hidden || (d.level || 0) !== 0 || !isFinite(+d.deg)) return;
+            var dj = _hqDoorJoinOf(d); if (!dj || !dj.round) return;
+            var half = (dj.ow / 2 + 0.03) / room.shell.radius * 180 / Math.PI;
+            out.push({ a0: +d.deg - half, a1: +d.deg + half, top: dj.oh + 0.03 });
+        });
+        return out.sort(function (p, q) { return p.a0 - q.a0; });
+    }
+    /* a drum band (r, y0..y1) with the cuts left out; mk(share of the round, height) = its material */
+    function _hqDrumBand(G, cuts, r, y0, y1, mk) {
+        var low = cuts.filter(function (c) { return y0 < c.top; });
+        if (!low.length) { G.add(_hqBand(r, y0, y1, mk(1, y1 - y0))); return; }
+        for (var i = 0; i < low.length; i++) {
+            var from = low[i].a1, to = (i + 1 < low.length) ? low[i + 1].a0 : low[0].a0 + 360;
+            if (to - from > 0.05) G.add(_hqArcBand(r, y0, y1, from, to, mk((to - from) / 360, y1 - y0)));
+            var y2 = Math.max(y0, low[i].top);
+            if (y1 > y2 + 0.01) G.add(_hqArcBand(r, y2, y1, low[i].a0, low[i].a1, mk((low[i].a1 - low[i].a0) / 360, y1 - y2)));
+        }
+    }
     /* radius of the wall a door / wall prop hangs on: the rotunda's lower or
        upper drum by level; a bay's outer wall, or its inner wall for
        side: 'in' (those face OUTWARD, away from the arc centre). */
@@ -49529,12 +49736,13 @@ const ThreeRenderer = (function () {
             }
         }
         /* lower drum: wall, dado, trims (BackSide = the inside faces) */
-        var circ = 2 * Math.PI * R;
-        G.add(_hqBand(R, 0, WH, _hqMat(texWall, circ / 3.2, WH / 3.2, { side: THREE.BackSide })));
-        G.add(_hqBand(R - 0.03, 0.06, S.dadoH, _hqMat(texDado, circ / 2.2, 1, { side: THREE.BackSide, shininess: 14 })));
+        var circ = 2 * Math.PI * R, cuts = _hqDrumCuts(room);   // THE ROUND JOIN: a joined doorway is cut through the drum
+        _hqDrumBand(G, cuts, R, 0, WH, function (f, h) { return _hqMat(texWall, circ * f / 3.2, h / 3.2, { side: THREE.BackSide }); });
+        _hqDrumBand(G, cuts, R - 0.03, 0.06, S.dadoH, function (f) { return _hqMat(texDado, circ * f / 2.2, 1, { side: THREE.BackSide, shininess: 14 }); });
         var trimMat = _hqMat(texTrim, circ / 1.5, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 });
-        G.add(_hqBand(R - 0.05, S.dadoH, S.dadoH + 0.09, trimMat));
-        G.add(_hqBand(R - 0.05, 0, 0.08, trimMat));
+        var trimMk = function (f) { return f >= 1 ? trimMat : _hqMat(texTrim, circ * f / 1.5, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 }); };
+        _hqDrumBand(G, cuts, R - 0.05, S.dadoH, S.dadoH + 0.09, trimMk);
+        _hqDrumBand(G, cuts, R - 0.05, 0, 0.08, trimMk);
         G.add(_hqBand(R - 0.05, WH - 0.12, WH, trimMat));
         /* mezzanine slab: top (terrazzo), underside (ceiling panels), fascia (teal) */
         G.add(_hqSectorMesh(MZ.inner, MZ.outer, 0, 360, WH, _hqMat(texFloor, 26, 2, { shininess: 22 })));
@@ -54771,6 +54979,7 @@ const ThreeRenderer = (function () {
         var dome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), domeMat);
         dome.renderOrder = -1000; dome.frustumCulled = false; dome.scale.setScalar(_ENV_DOME_R);
         H.scene.add(dome);
+        if (H === _hq) _paintSkyTick((H.opts && H.opts.room) || null, true);   // THE PAINTED SKIES: the sheets are asked for inside the room's build (the load card waits)
         H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: (typeof sky.night === 'number') ? sky.night : (sky.night ? 1 : 0),
                   clockLamps: [] };   // THE WORLD CLOCK (Phase 3): the horizon's night glows (a far skyline's windows, a gate's floods)
         var theme = sky.scenery || 'cosmic';
@@ -54883,6 +55092,7 @@ const ThreeRenderer = (function () {
         u.uMapStars.value = (env.stars != null) ? env.stars : 1;
         u.uMapNebula.value = (env.nebula != null) ? env.nebula : 1;
         u.uSkyDay.value = env.day || 0; u.uSkyClouds.value = env.clouds || 0;   // THE DAY SKY (2026-09-21): a room's own daylight
+        _paintSkyTick(H === _hq ? ((H.clock && H.clock.id) || (H.opts && H.opts.room) || null) : null, true);   // THE PAINTED SKIES (the menu scene keeps the shader's)
         /* THE WORLD CLOCK (Phase 3): the sun and the moon where the hour puts them, carried into the dome's own frame (the dome
            turns its rays by uSkyYaw, so the bodies are turned the same way to stand still over the ground) */
         var CKs = H.clock;
@@ -59284,7 +59494,7 @@ const ThreeRenderer = (function () {
             /* `motion` = how the leaf opens when the walker stands at it
                (_hqTickDoors): swing (a hinge pivot), slide (pockets into
                the jamb behind a clip plane), elevator (both halves pocket) */
-            var motion = null;
+            var motion = null, leafModel = null;
             if (secret) {
                 /* the panel: a slab of wall on a hinge, flush with the wall face */
                 leafGroup.position.z = (pd / 2 - 0.07) * U;
@@ -59370,6 +59580,7 @@ const ThreeRenderer = (function () {
                         }
                     });
                     lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? Math.PI : 0;
+                    leafModel = lg;   // THE ROUND JOIN: the revolving leaf turns as a whole (the intro's spin, _INTRO_DOOR_MOTION)
                     if (motion && motion.mode === 'swing') { lg.position.x = -motion.pivot.position.x; motion.pivot.add(lg); }
                     else if (motion && motion.mode === 'slide') motion.carrier.add(lg);
                     else leafGroup.add(lg);
@@ -59389,8 +59600,13 @@ const ThreeRenderer = (function () {
             if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
             var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
-            var dj = box ? _hqDoorJoinOf(door) : null;
+            var dj = (box || room.kind !== 'bay') ? _hqDoorJoinOf(door) : null;   // THE ROUND JOIN: a door of the round hall joins too
             if (dj) { rec.join = dj; rec.joinBack = back; rec.leafG = leafGroup; rec.oh = oh; rec.pd = pd; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2); the leaf + the recess for THE PORTALS (G1)
+            if (dj && dj.round) {
+                /* THE ROUND JOIN: the doorway's point (the near test from either side), the revolving leaf that turns in it */
+                rec.wpt = box ? { x: box.wx, z: box.wz } : { x: Rw * Math.sin(_hqRad(a)), z: -Rw * Math.cos(_hqRad(a)) };
+                if (leafModel && _INTRO_DOOR_MOTION[leafKey] === 'spin') rec.spin = { m: leafModel, a: 0, v: 0, base: null, z0: leafGroup.position.z };
+            }
             if (motion && motion.clips) {
                 /* clip planes live in world space: each pocket's jamb edge,
                    keeping the side of the opening AWAY from that pocket
@@ -62424,6 +62640,7 @@ const ThreeRenderer = (function () {
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return null;
             y = 0;
         } else {
+            if (_hq.stage) { var rjY = _hqStageRoundSurface(x, z, curY, ignoreBlockers); if (rjY !== undefined) return rjY; }   // THE ROUND JOIN: the doorway through the drum, the room beyond it
             /* THE THIRD RING (2026-09-16): the gallery's flight, its slab (for a walker up there) or its rail — else the mezzanine / the floor decide */
             if (S.ring3) { var r3 = _hqRing3At(x, z, curY); if (r3 === null) return null; if (r3 !== undefined) y = r3; }
             var stairs = room.stairs || [];
@@ -62808,6 +63025,7 @@ const ThreeRenderer = (function () {
             if (!S.full && !_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return false;
         } else {
+            if (_hq.stage && y < S.wallH * 0.5) { var rjA = _hqStageRoundSurface(x, z, null, true); if (rjA !== undefined) return rjA !== null && y >= rjA - 0.05; }   // THE ROUND JOIN: the doorway's air, the room beyond's
             var wallR = _hqLevelR(S, _hqLevelOf(S, y));
             if (r > wallR - HQ_BODY_R - 0.08) return false;
             if (S.ring3 && !_hqRing3Air(x, z, y)) return false;   // THE THIRD RING: the slab, its rail and the flight are solid in the air
@@ -62891,6 +63109,7 @@ const ThreeRenderer = (function () {
         }
         var pl = _hq.player;
         var lvlC = _hqLevelOf(S, pl ? pl.y : 0), onMezz = lvlC >= 1;
+        if (_hq.stage && !onMezz) { var rjC = _hqStageRoundCam(px, pz, py); if (rjC !== undefined) return rjC; }   // THE ROUND JOIN: the boom through the doorway / over the room beyond
         var wallR = _hqLevelR(S, lvlC);
         if (r > wallR - 0.28) return true;
         if (S.ring3 && _hqRing3Cam(px, pz, py, pl ? pl.y : 0)) return true;   // THE THIRD RING: the gallery slab / rail / flight
@@ -66918,9 +67137,34 @@ const ThreeRenderer = (function () {
     function _hqJoinDoorTick(H, d, px, pz, dt) {
         var on = _hqJoinOn(H, d.join.nb);
         if (d.joinBack) d.joinBack.visible = !on;
+        if (d.join.round) return _hqRoundDoorTick(H, d, on, px, pz, dt);   // THE ROUND JOIN: the revolving door
         if (!on) return false;
         var near = !!d.box && Math.hypot(px - d.box.wx, pz - d.box.wz) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 1.1) / 2;
         _hqDoorMotionStep(d, (near && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0, dt);
+        return true;
+    }
+    /* THE ROUND JOIN's doorway: while the room beyond stands on the stage the hall's revolving leaf stands in the middle of the
+       doorway (half in each room, the depth of the wall between) and the foyer's own leaf stands down — one revolving door, seen
+       from both sides. It TURNS while the walker is within HQ_WORLD_RULES.swingM of it, one way only (the foyer's doorman: "the
+       door turns one way"), and settles on the next quarter turn when you have gone through. → true when the join owns it. */
+    var HQ_ROUND_SPIN = 1.9;   // rad / s at the walker's pace (a quarter turn in under a second)
+    function _hqRoundDoorTick(H, d, on, px, pz, dt) {
+        var Sp = d.spin;
+        if (!d.join.keep) { if (d.leafG) d.leafG.visible = !on; return on; }
+        if (d.leafG && Sp) d.leafG.position.z = on ? (-(d.pd || 0.55) / 2 + 0.05 - (d.join.gap || 0) / 2) * _hqUnits() : Sp.z0;   // the middle of the doorway, frame face to frame face
+        if (!on || !Sp || !Sp.m) return on;
+        if (Sp.base == null) Sp.base = Sp.m.rotation.y;
+        var W = d.wpt || { x: 0, z: 0 }, near = Math.hypot(px - W.x, pz - W.z) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 2.2) / 2;
+        var Q = Math.PI / 2, want = near ? HQ_ROUND_SPIN : 0;
+        Sp.v += (want - Sp.v) * Math.min(1, dt * 4);
+        if (!near && Sp.v < 0.35) {
+            var rest = Math.ceil(Sp.a / Q - 1e-4) * Q, gap = rest - Sp.a;   // the next quarter turn ahead: never back
+            Sp.a = gap > 1e-3 ? Sp.a + Math.min(gap, Math.max(0.12, Sp.v) * dt) : rest;
+            if (gap <= 1e-3) Sp.v = 0;
+        } else Sp.a += Sp.v * dt;
+        if (Sp.a > 2 * Math.PI) Sp.a -= 2 * Math.PI;
+        Sp.m.rotation.y = Sp.base - Sp.a;
+        if (H) H.dirty = true;
         return true;
     }
     function _hqDoorJoinOf(door) {
@@ -67137,6 +67381,59 @@ const ThreeRenderer = (function () {
         if (rig.color != null) L.color.setHex(rig.color);
         if (rig.intensity != null) L.intensity = +rig.intensity;
         L.position.copy(H.keyDir).multiplyScalar(1000);
+    }
+    /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really
+       dark overall"): ONE soft point light that rides with the camera in an ENCLOSED place (a closed box room, a cave, a bay
+       corridor), just over the walker's shoulder toward the eye, so the walker, the floor ahead and the near walls read whatever
+       the room's mood. No shadow map; built once per visit so the scene's light count never changes (a changing count would
+       recompile every material) — in an open room / the hall it eases to 0. Strength = Settings → Key Light (HQ_POLISH_PREFS
+       'keyLight', 0 = off, the default 0.5 = HQ_LIGHT_RULES.keyLamp.intensity); the shape = HQ_LIGHT_RULES.keyLamp. */
+    function _keyLampRules() { return _hqLightRules().keyLamp; }
+    /* THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?"):
+       an outdoor room's hemisphere took the night sky's own tint (a near-black blue) with only 22% white, so under the canopy (the moon
+       key shadowed by the trees) the ground lit at ~0.18. At night the hemisphere's colour now leans `amount` of the way to a soft
+       moonlight (HQ_LIGHT_RULES.nightFill.color) — still blue, still night, but the ground, the trunks and the walker read. Every
+       outdoor rig reads it: the walk (_hqEnter, the clock, the stage's blend) and the fight (_fieldGroundDress, the cycle's rows). */
+    function _hqSkyHemiC(skyC, night) {
+        var NF = _hqLightRules().nightFill || {}, n = Math.max(0, Math.min(1, +night || 0));
+        var c = new THREE.Color(skyC).lerp(new THREE.Color(0xffffff), 0.22 + 0.23 * (1 - n));
+        if (n > 0 && NF.amount > 0) c.lerp(new THREE.Color(NF.color != null ? NF.color : 0xa8bad8), Math.min(1, NF.amount) * n);
+        return c;
+    }
+    function _keyLampGain() { var v = _polishPref('keyLight'); if (typeof window !== 'undefined' && window.EW_NO_KEY_LIGHT) return 0; return (typeof v === 'number' && isFinite(v)) ? Math.max(0, v) * 2 : 1; }
+    function _hqEnclosed(room) {
+        if (!room) return false;
+        var S = room.shell || {}, sky = !!(S.open && S.sky);
+        if (room.kind === 'bay') return true;
+        return room.kind === 'box' && !sky;
+    }
+    function _hqKeyLampArm(H) {
+        if (!H || H.keyLamp || !H.scene) return;
+        var K = _keyLampRules(), U = _hqUnits();
+        var L = new THREE.PointLight(K.color, 0, (K.reach || 16) * U, (K.decay != null) ? K.decay : 1);
+        L.name = 'ew key light'; L.castShadow = false;
+        H.scene.add(L); H.keyLamp = L;
+        _hqKeyLampTick(H, 1);
+    }
+    var _klV = null, _klV2 = null, _klV3 = null;
+    function _hqKeyLampTick(H, dt) {
+        var L = H && H.keyLamp, cam = H && H.camera; if (!L || !cam) return;
+        if (!_klV) { _klV = new THREE.Vector3(); _klV2 = new THREE.Vector3(); _klV3 = new THREE.Vector3(); }
+        var K = _keyLampRules(), U = _hqUnits(), pl = H.player;
+        var NFl = _hqLightRules().nightFill || {};
+        var nOut = (!_hqEnclosed(H.room) && H.sky && H.room && H.room.kind === 'box') ? Math.max(0, Math.min(1, +H.sky.night || 0)) * (NFl.keyLight || 0) : 0;   // THE NIGHT FILL: outdoors, a share of it by night
+        var want = (_hqEnclosed(H.room) ? 1 : nOut) * (K.intensity || 0) * _keyLampGain();
+        L.intensity += (want - L.intensity) * Math.min(1, (dt || 0) * 3);
+        if (Math.abs(L.intensity - want) < 0.002) L.intensity = want;
+        var C = cam.position;
+        if (pl && !H.fp) {
+            _klV.set(pl.x * U, (pl.visY + (pl.heightM || 1.75) * 0.9) * U, pl.z * U);   // the walker's head
+            _klV.lerp(C, K.back != null ? K.back : 0.35);
+        } else _klV.copy(C);
+        _klV2.set(1, 0, 0).applyQuaternion(cam.quaternion); _klV2.y = 0; if (_klV2.lengthSq() > 1e-6) _klV2.normalize();
+        _klV.addScaledVector(_klV2, (K.side || 0) * U);
+        _klV.y += (K.up || 0) * U;
+        L.position.copy(_klV);
     }
     /* 2.1 THE SHADOW: the key casts ONE map (the battle's Settings → Performance tier sizes it; off under 'off', EW_PERF_LOW,
        EW_HQ_NO_SHADOWS). The ortho frustum is FITTED to the room's box but never wider than 30 m — in a city it FOLLOWS the
@@ -67896,6 +68193,7 @@ const ThreeRenderer = (function () {
         if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
+        if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
@@ -67905,7 +68203,7 @@ const ThreeRenderer = (function () {
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fogHold); }
-        if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
+        if (css2dRenderer) _css2dRender(H.scene, H.camera);
         if (_hqCine()) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
     }
     /* ══ THE INSTANCE PASS (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26) ══
@@ -68313,6 +68611,7 @@ const ThreeRenderer = (function () {
         var gateOk = !G || G.idle() || G.closed;
         var capped = now - H.t0 > HQ_GATE_CAP_MS;
         if (!((playerOk && gateOk) || capped)) return;
+        if (!capped && H.stage && H.stage.round && !_hqStageRoundBeside(H)) return;   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
@@ -68419,6 +68718,33 @@ const ThreeRenderer = (function () {
     /* the matrix: room metres (the HQ's U px per metre) → the battle's frame */
     /* the battle-frame Y of room metre 0: the base plane less the reference floor (THE FLOOR LINE above) */
     function _hqBattleRoomFloorY(R, ts) { return R.base * ts * ELEV_STEP_RATIO - (R.refM || 0) * ts / R.T.C; }
+    /* THE TALL SCENERY (see ThreeRenderer.tallSceneryTopAt): one pass over the battle room's pieces → the boxes of the
+       tall grounded props, flat [x0, x1, z0, z1, top, …] in world px */
+    var _tallScenery = null;
+    function _tallSceneryRead(F, born, now) {
+        var ts = CONFIG.tileSize || BASE_TILE, W = bw(), H = bh();
+        var out = { group: F, born: born, at: now, boxes: [] };
+        var elev = (typeof window._getElevationPx === 'function') ? window._getElevationPx : null;
+        var heights = (typeof state !== 'undefined' && state.boardHeights) || null;
+        if (!elev || !heights || !(W > 0 && H > 0)) return out;
+        var b = new THREE.Box3(), ch = F.children;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i];
+            if (!c || c.visible === false || /^hq_(wall|ceil)/.test(c.name || '')) continue;
+            try { c.updateMatrixWorld(true); b.setFromObject(c); } catch (e) { continue; }
+            if (b.isEmpty()) continue;
+            var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
+            if (w < 1 || d < 1 || w > 10 || d > 10) continue;
+            var tx = Math.floor((b.min.x + b.max.x) / 2 / ts), ty = Math.floor((b.min.z + b.max.z) / 2 / ts);
+            if (tx < 0 || ty < 0 || tx >= W || ty >= H) continue;   // off the board: no lens goes there
+            var col = (heights[ty] && heights[ty][tx]) || 0;
+            var colPx = col > 0 ? elev(col) : 0;
+            if (b.max.y < colPx + ts * 1.5) continue;           // no taller than the column it stands on
+            if (b.min.y > colPx + ts * 1.0) continue;           // floats (an awning, a bridge, a sign)
+            out.boxes.push(b.min.x, b.max.x, b.min.z, b.max.z, b.max.y);
+        }
+        return out;
+    }
     function _hqBattleRoomMatrix(R, ts) {
         var U = _hqUnits(), C = R.T.C, s = (ts / C) / U;
         return new THREE.Matrix4().compose(new THREE.Vector3(-R.T.x0 * ts / C, _hqBattleRoomFloorY(R, ts), -R.T.z0 * ts / C), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
@@ -68647,7 +68973,7 @@ const ThreeRenderer = (function () {
             var lampMax = (typeof HQ_PROP_LIGHT_MAX !== 'undefined') ? HQ_PROP_LIGHT_MAX : 10;
             if (open) {
                 var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = LR.open || {};
-                field.hemi = { sky: skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
+                field.hemi = { sky: _hqSkyHemiC(skyC, nightO).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
                 field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
                 /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight starts at the hour the room was at — a clocked room's rig is the
                    held hour's (the sun or the moon as the key, the hemisphere between the day and night rows); a locked room keeps its own */
@@ -68669,9 +68995,12 @@ const ThreeRenderer = (function () {
                     if (FCy) { ml.intensity = LRo.nightLamp + (LRo.dayLamp - LRo.nightLamp) * _fieldCycleEase(FCy.k); FCy.lamps.push({ l: ml, d: LRo.dayLamp, n: LRo.nightLamp }); }
                 });
             } else {
-                var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LR.ambientFloor || 0);
+                var amb = _hqMoodAmb(S, LR);   // THE LIFT (2026-10-24): the walk's own numbers
                 field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb };
-                field.sun = { color: 0xe8ecf5, intensity: 0.22 * amb, dir: [0.3, 1, 0.2] };
+                /* THE KEY LIGHT (2026-10-24): the walk's key strength (HQ_LIGHT_RULES.key.box / shell.rig, _hqLightArm) — the fight used to
+                   keep the pre-rig 0.22 × mood, so the same room read darker in a fight than on the walk */
+                var rigB = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
+                field.sun = { color: 0xe8ecf5, intensity: (rigB.intensity != null) ? +rigB.intensity : 0.22 * amb, dir: [0.3, 1, 0.2] };
                 var bxf = new THREE.DirectionalLight(LR.fillColor, (LR.fill || 0) * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(bxf);
                 var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
                 var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
@@ -68688,6 +69017,17 @@ const ThreeRenderer = (function () {
             _facilityNearGroup.add(lg);
             if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(field);
         } catch (e) { console.warn('[HQ→battle] the room\'s lights did not stand', e); }
+        /* THE KEY LIGHT (2026-10-24): a fight in an enclosed room hangs the walk's key light over what the camera looks at */
+        try {
+            if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
+            st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0;
+            if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
+                var KL = _keyLampRules();
+                var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);
+                kl.name = 'ew key light'; kl.castShadow = false; kl.position.set(0, floorY + (KL.battleUp || 7) * s, 0);
+                _horizonGroup.add(kl); st.keyLamp = kl;
+            }
+        } catch (e) { console.warn('[HQ→battle] the key light did not stand', e); }
         /* THE FOG: the room's own on the battle scene (the same colour, the density per battle px) + the height fog in the battle's frame */
         var fogC = 0x0d0e12, fogD = 0.00017 * U / s;
         try {
@@ -68812,7 +69152,24 @@ const ThreeRenderer = (function () {
         });
     }
     /* per frame: the ceiling fades as the eye rises through it (opaque from inside the room — the walker's frame; 3 % from above) */
+    var _fklDir = null;
+    function _fieldKeyLampTick() {
+        var st = _fieldGroundState, L = st && st.keyLamp; if (!L || !L.parent || !active) return;
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
+        var K = _keyLampRules(), s = st.s || 1, fy = st.keyFloorY || 0;
+        /* over the point the camera looks at on the room's floor (the eye's ray onto the floor plane; a level eye: 12 m out) */
+        if (!_fklDir) _fklDir = new THREE.Vector3();
+        cam.getWorldDirection(_fklDir);
+        var t = (_fklDir.y < -0.05) ? (fy - cam.position.y) / _fklDir.y : 12 * s;
+        t = Math.max(0, Math.min(40 * s, t));
+        L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
+        var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
+        if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL
+        if (L.intensity !== want) L.intensity = want;
+        L.distance = (K.battleReach || 30) * s;
+    }
     function _fieldGroundTick() {
+        _fieldKeyLampTick();   // THE KEY LIGHT (2026-10-24)
         var st = _fieldGroundState; if (!st || !st.ceil || !active) return;
         var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
         var s = st.s || 1, y = st.ceil.y;
@@ -68892,34 +69249,43 @@ const ThreeRenderer = (function () {
        neighbour keeps its centre); a RAISE stays a block (the strata's quad + faces — "I can place blocks now"). The
        floor's ORIGINAL vertices are kept on the mesh and re-derived on every rebuild; deactivate() puts them back, and
        the next room entry rebuilds the room from its data anyway — the map is back to normal after the battle. */
-    function _fieldDeformPlan(W, H, deltaAt, elev, band) {   // THE FIELD IS THE ROOM: W × H (was one N)
+    function _fieldDeformPlan(W, H, deltaAt, elev, band, gap) {   // THE FIELD IS THE ROOM: W × H (was one N)
         var dug = [], D = new Array(W * H);
         for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var d = deltaAt(x, y) || 0; D[y * W + x] = d < 0 ? d * elev : 0; if (d < 0) dug.push({ x: x, y: y, delta: d }); }
         var at = function (x, y) { return (x < 0 || y < 0 || x >= W || y >= H) ? 0 : D[y * W + x]; };
         var ss = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
         var side = function (f) { return f < band ? -(1 - ss(f / band)) : f > 1 - band ? ss((f - (1 - band)) / band) : 0; };
+        /* THE GAP (2026-10-24): a Fissure cell (state.gapTiles, cut to the bed) is no bowl — its floor is flat to its edges and
+           the ground beside it never leans into it, so the wall is sheer (_fieldDeformMesh stands the floor's edge vertices on
+           the cell's edge, _fieldStrataBuild faces it with the bed's rock) */
+        var isGap = function (x, y) { return !!(gap && gap[x + ',' + y] && at(x, y) < 0); };
         var dyAt = function (tx, tz) {   // tiles in → the drop (≤ 0, the elev's units) out
             if (!dug.length) return 0;
             var cx = Math.floor(tx), cz = Math.floor(tz), fx = tx - cx, fz = tz - cz;
             var dc = at(cx, cz), tX = side(fx), tZ = side(fz);
+            if (gap && isGap(cx, cz)) return dc;
             var sx = tX < 0 ? -1 : 1, sz = tZ < 0 ? -1 : 1, ax = Math.abs(tX), az = Math.abs(tZ);
             if (!ax && !az) return dc;
-            var dx = at(cx + sx, cz), dz = at(cx, cz + sz), dxz = at(cx + sx, cz + sz);
+            var nb = function (x, y) { return (gap && isGap(x, y)) ? dc : at(x, y); };
+            var dx = nb(cx + sx, cz), dz = nb(cx, cz + sz), dxz = nb(cx + sx, cz + sz);
             var ex = (dc + dx) / 2, ez = (dc + dz) / 2, ec = (dc + dx + dz + dxz) / 4;
             return (1 - ax) * (1 - az) * dc + ax * (1 - az) * ex + (1 - ax) * az * ez + ax * az * ec;
         };
-        return { dug: dug, dyAt: dyAt, band: band };
+        var gapAny = false; if (gap) for (var gi = 0; gi < dug.length; gi++) if (isGap(dug[gi].x, dug[gi].y)) { gapAny = true; break; }
+        return { dug: dug, dyAt: dyAt, band: band, isGap: gapAny ? isGap : null };
     }
     var _fieldStrataMats = null;
     var FIELD_DEFORM_BAND = 0.3;   // tiles — the wall of a dig either side of the cell's edge (HQ_FIELD_RULES.strata.deformBand overrides)
+    var FIELD_GAP_SNAP = 0.34;     // tiles — THE GAP: the floor's vertices this near a gap cell's edge stand on it (≥ the field's widest grid step, 0.5 m)
     var _fieldDeformCache = { key: null, plan: null };
     function _fieldDeformPlanLive() {
         var G = _fieldGround(); if (!G || !G.levels) { _fieldDeformCache.key = null; _fieldDeformCache.plan = null; return null; }
-        var key = ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key;
+        var gapT = (typeof state !== 'undefined' && state && state.gapTiles && !(typeof window !== 'undefined' && window.EW_NO_FIELD_GAP)) ? state.gapTiles : null;
+        var key = ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key + '|' + (gapT ? Object.keys(gapT).join(';') : '');
         if (_fieldDeformCache.key === key) return _fieldDeformCache.plan;
         var band = FIELD_DEFORM_BAND;
         try { var rs = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.strata) ? HQ_FIELD_RULES.strata : null; if (rs && rs.deformBand > 0 && rs.deformBand < 0.5) band = rs.deformBand; } catch (e) {}
-        var plan = _fieldDeformPlan(G.W, G.H, function (x, y) { return G.deltaAt(x, y); }, G.elev, band);
+        var plan = _fieldDeformPlan(G.W, G.H, function (x, y) { return G.deltaAt(x, y); }, G.elev, band, gapT);
         _fieldDeformCache.key = key; _fieldDeformCache.plan = plan;
         return plan;
     }
@@ -68961,12 +69327,29 @@ const ThreeRenderer = (function () {
         _fdInv.copy(mw).invert();
         var o = m._ew_fieldOrig, v = _fdV, G = _fieldGround(); if (!G) return false;
         var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.W * ts + pad, z0 = -pad, z1 = G.H * ts + pad, moved = 0;
+        /* THE GAP: a vertex this close (tiles) to a gap cell's edge stands ON the edge, at its own side's height — the two
+           rows either side of the edge make one sheer wall, never a slope across it (the field's grid is ~3.5–7 a tile) */
+        var gS = FIELD_GAP_SNAP, isGap = plan.isGap;
+        var snapA = function (t, gs) {   // t tiles along one axis, gs(c) = is cell c a gap → the snapped t
+            var c = Math.floor(t), f = t - c, g0 = gs(c);
+            if (f < gS && g0 !== gs(c - 1)) return c;
+            if (f > 1 - gS && g0 !== gs(c + 1)) return c + 1;
+            return t;
+        };
         for (var i = 0, n = pos.count; i < n; i++) {
             var ox = o[i * 3], oy = o[i * 3 + 1], oz = o[i * 3 + 2];
             v.set(ox, oy, oz).applyMatrix4(mw);
             if (v.x < x0 || v.x > x1 || v.z < z0 || v.z > z1) { pos.setXYZ(i, ox, oy, oz); continue; }
-            var dy = plan.dyAt(v.x / ts, v.z / ts);
-            if (!dy) { pos.setXYZ(i, ox, oy, oz); continue; }
+            var tx = v.x / ts, tz = v.z / ts;
+            var dy = plan.dyAt(tx, tz);
+            var sx2 = tx, sz2 = tz;
+            if (isGap) {
+                var cz0 = Math.floor(tz), cx0 = Math.floor(tx);
+                sx2 = snapA(tx, function (c) { return isGap(c, cz0); });
+                sz2 = snapA(tz, function (c) { return isGap(cx0, c); });
+            }
+            if (!dy && sx2 === tx && sz2 === tz) { pos.setXYZ(i, ox, oy, oz); continue; }
+            v.x = sx2 * ts; v.z = sz2 * ts;
             v.y += dy; v.applyMatrix4(_fdInv); pos.setXYZ(i, v.x, v.y, v.z); moved++;
         }
         pos.needsUpdate = true;
@@ -69708,7 +70091,21 @@ const ThreeRenderer = (function () {
         }
         var riseG = function (q) { return _riseGroup(grp, q.rec, q.vis, 'field_strata_rise'); };
         if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return sDelta(f.x, f.y) > 0; }); }
-        if (!plan.tops.length) return 0;
+        /* THE GAP (2026-10-24): a Fissure cell's walls are the bed's rock, sheer from its floor to every side's top (a dug
+           neighbour too), a hair inside the cell so the floor's own sheer edge (_fieldDeformMesh) never fights it */
+        var gPlan = deformed ? _fieldDeformPlanLive() : null;
+        if (gPlan && gPlan.isGap) gPlan.dug.forEach(function (c) {
+            if (!gPlan.isGap(c.x, c.y)) return;
+            var t = sYAt(c.x, c.y); if (t === null || t === undefined) return;
+            [[1, 0, 'e'], [-1, 0, 'w'], [0, 1, 's'], [0, -1, 'n']].forEach(function (nb) {
+                var nx = c.x + nb[0], ny = c.y + nb[1];
+                if (nx >= 0 && ny >= 0 && nx < G.W && ny < G.H && gPlan.isGap(nx, ny)) return;
+                var inB = nx >= 0 && ny >= 0 && nx < G.W && ny < G.H, nt = inB ? sYAt(nx, ny) : null;
+                if (nt === null || nt === undefined) nt = t - c.delta * elev;   // the board's edge / an OUT cell: the ground it was cut from
+                if (nt > t + 0.5) plan.faces.push({ x: c.x, y: c.y, side: nb[2], y0: t, y1: nt, out: false, gap: true });
+            });
+        });
+        if (!plan.tops.length && !plan.faces.length) return 0;
         var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
         var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
         var matOf = function (key) {
@@ -69771,11 +70168,11 @@ const ThreeRenderer = (function () {
                 } catch (e) {}
             } else try { var uv = geo.attributes.uv; for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / ts)); } catch (e) {}   // the sheet tiles by height
             var m = new THREE.Mesh(geo, matOf(paintedSide(f.x, f.y) || bed.side)); m.material.side = THREE.DoubleSide;
-            var cx = f.x * ts + ts / 2, cz = f.y * ts + ts / 2, cy = (f.y0 + f.y1) / 2;
-            if (f.side === 'e') { m.position.set(cx + ts / 2, cy, cz); m.rotation.y = Math.PI / 2; }
-            else if (f.side === 'w') { m.position.set(cx - ts / 2, cy, cz); m.rotation.y = -Math.PI / 2; }
-            else if (f.side === 's') { m.position.set(cx, cy, cz + ts / 2); }
-            else { m.position.set(cx, cy, cz - ts / 2); m.rotation.y = Math.PI; }
+            var cx = f.x * ts + ts / 2, cz = f.y * ts + ts / 2, cy = (f.y0 + f.y1) / 2, gin = f.gap ? 1.5 : 0;
+            if (f.side === 'e') { m.position.set(cx + ts / 2 - gin, cy, cz); m.rotation.y = Math.PI / 2; }
+            else if (f.side === 'w') { m.position.set(cx - ts / 2 + gin, cy, cz); m.rotation.y = -Math.PI / 2; }
+            else if (f.side === 's') { m.position.set(cx, cy, cz + ts / 2 - gin); }
+            else { m.position.set(cx, cy, cz - ts / 2 + gin); m.rotation.y = Math.PI; }
             m.castShadow = f.out; m.receiveShadow = true; m._ew_fieldStrata = true;
             var fq = riseOf[f.x + ',' + f.y];   // THE RISE: a climbing cell's faces bake into its own group
             if (mergeFaces) { var fk = (fq ? fq.rec.id + ':' + fq.vis + '#' : '') + m.material.id + '|' + (f.out ? 1 : 0); var fb = faceBins[fk] || (faceBins[fk] = []); fb.q = fq || null; fb.push(m); }
@@ -69980,6 +70377,7 @@ const ThreeRenderer = (function () {
     function _fieldGroundRelease() {
         _fieldSeedRelease(); _envSnapPending = false; _fieldCycle = null;
         var st = _fieldGroundState; _fieldGroundState = null;
+        try { if (st && st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp); } catch (e) {}   // THE KEY LIGHT
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
         try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
         _HQ_AO.w = 0;
@@ -70144,7 +70542,7 @@ const ThreeRenderer = (function () {
     var HQ_STAGE_PAD = 1.5, HQ_STAGE_BLEND_MS = 2000;
     var _HQ_ZONE_KEYS = {};
     ['opts', 'host', 'profile', 'snap', 'scene', 'camera', 'player', 'sky', 'portal', 'gun', 'ride', 'vehicle', 'shadows', 'atmos', 'heightFog', 'ao',
-     'keyLight', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
+     'keyLight', 'keyLamp', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
      'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'lod', '_lodAt', '_lodWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'lod': THE LOD LEVELS (Phase 10)
@@ -70155,10 +70553,31 @@ const ThreeRenderer = (function () {
     function _hqStageArm(H) {
         H.stage = null;
         var id = H.opts && H.opts.room;
-        if (!id || _hqStageOff() || typeof hqStagePart !== 'function' || !hqStagePart(id) || !H.room || H.room.kind !== 'box') return;
+        var round = _hqStageRoundOf(id);   // THE ROUND JOIN: the round hall stages too (its one box behind the revolving door)
+        if (!round && (!id || _hqStageOff() || typeof hqStagePart !== 'function' || !hqStagePart(id) || !H.room || H.room.kind !== 'box')) return;
         var nbs = _hqStageNbsOf(id); if (!nbs.length) return;
-        H.stage = { id: id, nbs: nbs, nbsAll: nbs, parts: {}, skyYaw: 0, readyAt: 0, lampAt: 0, lampN: -1, blend: null, crossed: 0, loadAsked: null, warned: {} };
+        H.stage = { id: id, nbs: nbs, nbsAll: nbs, parts: {}, skyYaw: 0, readyAt: 0, lampAt: 0, lampN: -1, blend: null, crossed: 0, loadAsked: null, warned: {}, round: !!round };
     }
+    /* ══ THE ROUND JOIN (data.js HQ_STAGE_RULES.round, 2026-10-24 — mondo: "lets get rid of the loading screen between the foyer and
+       the main hall") ══════════════════════════════════════════════════════════════════════════════════════════════════════
+       The round hall and the box room behind one of its doors (the foyer, behind the revolving door at 195°) stand on ONE stage,
+       either way round: in the hall the foyer is built beside it at the door's own angle (a fraction of a quarter turn); in the
+       foyer the hall is built beside it by the hall's own builders (the drum, the stairs, the desk, its doors, props, lamps and
+       people). The doorway is cut through both walls and lined; the hall's revolving leaf stands in the middle of it and TURNS
+       while you are at it (one way, like the door says), the foyer's own leaf stands down while the hall is beside it. A room
+       entered fresh holds its load card until the other is beside it, so the walk through is never a card. The crossing, the
+       swap, the lamps, the cast and the people are THE STAGE's own (box ⇄ box rules), with the round hall's floor, air and boom
+       answering past its wall through the doorway (_hqStageRoundSurface / _hqStageRoundCam). Off: window.EW_HQ_NO_STAGE. */
+    function _hqStageRoundOf(id) {
+        if (!id || _hqStageOff() || typeof hqStageRoundJoin !== 'function') return null;
+        try { return hqStageRoundJoin(id); } catch (e) { return null; }
+    }
+    function _hqStageRoundBeside(H) {
+        var st = H && H.stage; if (!st) return true;
+        for (var i = 0; i < st.nbs.length; i++) { var nb = st.nbs[i]; if (!nb.round) continue; var E = st.parts[nb.id]; if (!E || !E.attached) return false; }
+        return true;
+    }
+    function _hqRoundRoom(room) { return !!(room && room.kind !== 'box' && room.kind !== 'bay' && room.shell && room.shell.radius > 0); }
     /* a neighbour's record: its part fields, a stand-in `scene` group (a builder that adds to the scene adds to the part),
        its own opts (the room it is), its own gate (the black-texture rule) */
     function _hqStagePartNew(H, id) {
@@ -70198,7 +70617,7 @@ const ThreeRenderer = (function () {
     }
     /* the builders, one step a frame — the same order as _hqEnter's */
     var _HQ_STAGE_STEPS = [
-        function (room) { _hq.gallery = _hqGalleryFrame(room); _hqBuildBoxShell(room); },
+        function (room) { _hq.gallery = _hqGalleryFrame(room); if (_hqRoundRoom(room)) _hqBuildShell(room); else _hqBuildBoxShell(room); },   // THE ROUND JOIN: the hall's drum beside the foyer
         function (room) { if (_hq.gallery) _hqBuildGallery(room); if (room.cave) _hqBuildCave(room); },
         function (room) { if (room.terrain) { _hqSliceAsk = true; return _hqBuildTerrain(room); } },   // THE SLICE (Phase 11): a generator, resumed a few ms a frame
         function (room) { _hqBuildStairs(room); _hqBuildDesk(room); },
@@ -70209,8 +70628,9 @@ const ThreeRenderer = (function () {
         /* Phase 2 (THE DOOR JOIN): a closed room's own lamps, and — HQ_STAGE_RULES.nbPeople 'interior' — its cast, so the ward is
            lit and staffed through its open door (an outdoor part's crowd still comes out at the crossing) */
         function (room) {
-            if (!_hqStageClosedBox(room)) return;
-            _hqBoxRoomLamps(room, _hq.scene);
+            var rnd = _hqRoundRoom(room);   // THE ROUND JOIN: the hall beside the foyer is lit and peopled like a closed room
+            if (!_hqStageClosedBox(room) && !rnd) return;
+            if (rnd) _hqRoundRoomLamps(room, _hq.scene); else _hqBoxRoomLamps(room, _hq.scene);
             if (HQ_STAGE_RULES.nbPeople === 'interior') {
                 var sfx = _hqCharIdSuffix; _hqCharIdSuffix = '@' + (_hq.opts && _hq.opts.room);
                 try { _hqSpawnPopulation(room, Object.assign({}, _hq.opts, { _stageNoPlayer: true })); } finally { _hqCharIdSuffix = sfx; }
@@ -70218,6 +70638,23 @@ const ThreeRenderer = (function () {
             }
         },
     ];
+    /* the round hall's light (the hemisphere, the key, the fill — _hqEnter's rotunda branch) and its lamps: the ground ring's four
+       over the floor and THE THIRD RING's four warm lights under the cone over the gallery's walkway (2026-09-16) — _hqEnter hangs
+       them on the scene; a stage neighbour (THE ROUND JOIN) hangs them in its part */
+    var _HQ_HALL_LIGHT = { hemiC: 0xf1e6cf, hemiG: 0x2d2a30, hemiI: 0.78, keyC: 0xfff0d8, keyI: 0.42, fillC: 0x9fb4c8, fillI: 0.16 };
+    function _hqRoundRoomLamps(room, sc) {
+        var U = _hqUnits(), S = room.shell;
+        [[90, 12], [270, 12], [0, 12], [180, 12]].forEach(function (pp) {
+            var pl = new THREE.PointLight(0xffe0bd, 0.5, 26 * U, 2);
+            pl.position.copy(_hqPolarW(pp[0], pp[1], S.wallH + S.upperWallH * 0.55));
+            sc.add(pl);
+        });
+        if (S.ring3) [45, 135, 225, 315].forEach(function (ga) {
+            var gl = new THREE.PointLight(0xffe0bd, 0.38, 18 * U, 2);
+            gl.position.copy(_hqPolarW(ga, (S.ring3.inner + S.ring3.outer) / 2, S.wallH + S.ring3.h + 2.4));
+            sc.add(gl);
+        });
+    }
     function _hqStageClosedBox(room) { return !!(room && room.kind === 'box' && room.shell && !(room.shell.open && room.shell.sky) && !room.terrain && !room.cave); }
     function _hqStageRootPlace(H, E) {
         var rel = E.rel || (E.rel = hqStageRel(H.stage.id, E.id)); if (!rel) return;
@@ -70423,7 +70860,10 @@ const ThreeRenderer = (function () {
     }
     /* one frame of the stage: the build step, the attach, the neighbours' tick, the lamps, the blend, the crossing */
     function _hqStageTick(H, dt, now) {
-        var st = H.stage; if (!st || !H.ready) return;
+        var st = H.stage; if (!st) return;
+        /* THE ROUND JOIN: the room beyond builds under the load card (the card waits for it, _hqGateTick) — the first walk to the
+           revolving door is never a card */
+        if (!H.ready) { if (st.round) { if (!st.readyAt) { st.readyAt = now; _hqStageRing(H); } _hqStageBuildTick(H, now); } return; }
         if (!st.readyAt) { st.readyAt = now + (HQ_STAGE_RULES.buildDelayMs || 600); _hqStageRing(H); }
         if (now >= st.readyAt) _hqStageBuildTick(H, now);
         for (var id in st.parts) { var E = st.parts[id]; if (E.attached) _hqStageTickPart(H, E, dt, now); }
@@ -70490,9 +70930,18 @@ const ThreeRenderer = (function () {
         var fm = _alNow() - t0; S.frames++; if (fm > S.frameMax) S.frameMax = fm; if (fm > (((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.buildMs) || 6) * 1.5) S.over++;
     }
     /* a closed box room's light (the hemisphere, the key, the fill): `mood.ambient` scales them, never below the floor */
+    /* THE LIFT (2026-10-24, mondo: "the game is really dark overall"): a dim mood (ambient < 1) no longer CLAMPS at the floor — it
+       is lifted toward 1 from the floor (0 → ambientFloor, 1 → 1), so the darkest rooms read and every room keeps its order */
+    function _hqMoodAmb(S, LR) {
+        var amb = (S && S.mood && S.mood.ambient != null) ? +S.mood.ambient : 1;
+        if (!isFinite(amb)) amb = 1;
+        if (amb >= 1) return amb;
+        var F = Math.max(0, Math.min(1, (LR && LR.ambientFloor) || 0));
+        return F + (1 - F) * Math.max(0, amb);
+    }
     function _hqBoxLightVals(room) {
         var S = room.shell || {}, LRb = _hqLightRules();
-        var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LRb.ambientFloor);
+        var amb = _hqMoodAmb(S, LRb);
         return { hemiI: 0.5 * amb, keyI: 0.22 * amb, fillI: LRb.fill * amb };
     }
     /* a closed box room's own lamps (the fluorescents at shell.light / shell.lights, a warm pool at each desk lamp) — _hqEnter
@@ -70535,7 +70984,8 @@ const ThreeRenderer = (function () {
         var best = Infinity;
         for (var i = 0; i < spans.length; i++) {
             var sp = spans[i], ax, az, bx, bz;
-            if (sp.side === 'n' || sp.side === 's') { az = bz = (sp.side === 'n') ? -hd : hd; ax = sp.t0; bx = sp.t1; }
+            if (sp.side === 'round') { var ra = _hqRad(sp.deg); ax = bx = sp.R * Math.sin(ra); az = bz = -sp.R * Math.cos(ra); }   // THE ROUND JOIN: the hall's doorway
+            else if (sp.side === 'n' || sp.side === 's') { az = bz = (sp.side === 'n') ? -hd : hd; ax = sp.t0; bx = sp.t1; }
             else { ax = bx = (sp.side === 'w') ? -hw : hw; az = sp.t0; bz = sp.t1; }
             var dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz, t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)) : 0;
             var ex = ax + t * dx - x, ez = az + t * dz - z, d = Math.sqrt(ex * ex + ez * ez);
@@ -71218,7 +71668,8 @@ const ThreeRenderer = (function () {
         var V = H.vehicle && H.vehicle.on ? H.vehicle : null;
         var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || (pl.sit && !V) || (H.ride && H.ride.on)) return;
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2;
-        var to = hqStageWhere(hw, hd, st.nbs, V ? V.x : pl.x, V ? V.z : pl.z, HQ_WORLD_RULES.crossHys);
+        var to = _hqRoundRoom(H.room) ? hqStageWhereRound(S.radius, st.nbs, pl.x, pl.z, HQ_WORLD_RULES.crossHys)   // THE ROUND JOIN: from the hall, into the box beyond its door
+            : hqStageWhere(hw, hd, st.nbs, V ? V.x : pl.x, V ? V.z : pl.z, HQ_WORLD_RULES.crossHys);
         if (!to) return;
         var E = st.parts[to];
         if (V && !(E && E.attached)) return;   // aboard, the crossing waits for the part to be drawn (no load under a hull)
@@ -71248,7 +71699,7 @@ const ThreeRenderer = (function () {
         var pl = H.player;
         /* THE DOOR JOIN (Phase 2): a closed room keeps its cast when you step out of it (HQ_STAGE_RULES.nbPeople) — the nurse
            stays at her desk behind you; they stand still until you come back (their rounds resume then) */
-        var keepCast = HQ_STAGE_RULES.nbPeople === 'interior' && _hqStageClosedBox(fromRoom);
+        var keepCast = HQ_STAGE_RULES.nbPeople === 'interior' && (_hqStageClosedBox(fromRoom) || (st.round && _hqRoundRoom(fromRoom)));   // THE ROUND JOIN: the hall keeps its people too
         if (keepCast) {
             Q.P.chars = (Q.P.chars || []).filter(function (ch) { return ch !== pl; });
             Q.P.chars.forEach(function (ch) { ch.moving = false; });
@@ -71321,6 +71772,7 @@ const ThreeRenderer = (function () {
         var p3 = _hq3DOn();
         try { if (!peopled) _hqSpawnPopulation(H.room, Object.assign({}, H.opts, { _stageNoPlayer: true })); } catch (e) { console.warn('[HQ stage] population', e); } finally { _hq3DOff(p3); }
         try { if (!peopled) _hqClearArrival(); } catch (e) {}   // THE CLEAR ARRIVAL: the part's people spawned around the officer walking in
+        if (st.round) { try { _hqLightArm(H.room); } catch (e) {} }   // THE ROUND JOIN: the hall's key rig is not a box's (the blend eases its strength)
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
@@ -71345,7 +71797,7 @@ const ThreeRenderer = (function () {
         var skyC = new THREE.Color((sky.tint != null) ? sky.tint : 0x8090b0);
         return {
             fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12), fogD: ((sky.fog && sky.fog.density > 0) ? sky.fog.density : 0.00005 * U) / U,
-            hemiC: skyC.clone().lerp(new THREE.Color(0xffffff), night ? 0.22 : 0.45), hemiI: night ? LRo.nightHemi : LRo.dayHemi,
+            hemiC: _hqSkyHemiC(skyC, night ? 1 : 0), hemiI: night ? LRo.nightHemi : LRo.dayHemi,
             keyC: new THREE.Color(rig.color != null ? rig.color : (night ? 0xaabfe0 : 0xfff1d6)), keyI: (rig.intensity != null) ? +rig.intensity : (night ? LRo.nightSun : LRo.daySun),
             tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), night: night,
             env: { tint: sky.tint, tintAmt: (sky.tint != null && sky.tintAmt != null) ? sky.tintAmt : 0, stars: (sky.stars != null) ? sky.stars : 1, nebula: (sky.nebula != null) ? sky.nebula : 1,
@@ -71353,8 +71805,24 @@ const ThreeRenderer = (function () {
             look: S.look, label: room.label,
         };
     }
+    /* THE ROUND JOIN: the light a closed room is entered with (_hqEnter's branch + _hqLightArm's rig) — the round hall's or a box's */
+    function _hqIndoorLightVals(room) {
+        var LR = _hqLightRules();
+        if (_hqRoundRoom(room)) {
+            var hV = _HQ_HALL_LIGHT, kh = (LR.key && LR.key.hall) || {};
+            return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
+        }
+        var bx = _hqBoxLightVals(room), S = room.shell || {}, kb = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
+        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: new THREE.Color(0x1c1a1e), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
+    }
     function _hqStageBlendStart(H, fromRoom, toRoom, fromId, toId) {
         var st = H.stage;
+        /* THE ROUND JOIN: hall ⇄ foyer — the hemisphere, the key and the fill ease to the room you walked into, colours and all */
+        if (st.round && !H.sky && (_hqStageClosedBox(fromRoom) || _hqRoundRoom(fromRoom)) && (_hqStageClosedBox(toRoom) || _hqRoundRoom(toRoom))) {
+            var ra = (st.blend && st.blend.rnd) ? st.blend.cur : _hqIndoorLightVals(fromRoom);
+            st.blend = { box: true, rnd: true, a: ra, b: _hqIndoorLightVals(toRoom), t0: performance.now(), looked: false, cur: ra, lookB: toRoom.shell.look, labelB: toRoom.label };
+            return;
+        }
         /* THE DOOR JOIN (Phase 2): room to room indoors — the hemisphere, the key and the fill ease to the new room's mood */
         if (!H.sky && _hqStageClosedBox(fromRoom) && _hqStageClosedBox(toRoom)) {
             var ba = st.blend && st.blend.box ? st.blend.cur : _hqBoxLightVals(fromRoom);
@@ -71370,6 +71838,12 @@ const ThreeRenderer = (function () {
         var B = H.stage.blend, t = Math.min(1, (now - B.t0) / HQ_STAGE_BLEND_MS), k = t * t * (3 - 2 * t), a = B.a, b = B.b;
         if (B.box) {
             B.cur = { hemiI: a.hemiI + (b.hemiI - a.hemiI) * k, keyI: a.keyI + (b.keyI - a.keyI) * k, fillI: a.fillI + (b.fillI - a.fillI) * k };
+            if (B.rnd) {   // THE ROUND JOIN: the colours ease too (the hall's warm hemisphere, the box's cooler one)
+                ['hemiC', 'hemiG', 'keyC', 'fillC'].forEach(function (kc) { B.cur[kc] = a[kc].clone().lerp(b[kc], k); });
+                if (H.hemiLight) { H.hemiLight.color.copy(B.cur.hemiC); H.hemiLight.groundColor.copy(B.cur.hemiG); }
+                if (H.keyLight) H.keyLight.color.copy(B.cur.keyC);
+                if (H.fillLight) H.fillLight.color.copy(B.cur.fillC);
+            }
             if (H.hemiLight) H.hemiLight.intensity = B.cur.hemiI;
             if (H.keyLight) H.keyLight.intensity = B.cur.keyI;
             if (H.fillLight) H.fillLight.intensity = B.cur.fillI;
@@ -71445,11 +71919,14 @@ const ThreeRenderer = (function () {
         if (dk > 0 && DU.color != null) fogC.lerp(new THREE.Color(DU.color).multiplyScalar(0.3 + 0.7 * d), dk * (DU.fog || 0));
         var tint = nightTint.clone().lerp(dayTint, d);
         var sunK = _hqClkS(-3, 10, sun.sunEl), moonK = _hqClkS(-3, 10, sun.moonEl) * (1 - sunK);
+        /* THE NIGHT FILL: a night with the moon low (just after dusk, before dawn) kept no key at all — the moonlight never drops below
+           nightFill.moonFloor of the night (its direction is already held at keyMinEl) */
+        var NFk = _hqLightRules().nightFill || {}; moonK = Math.max(moonK, (1 - sun.day) * (1 - sunK) * (NFk.moonFloor || 0));
         var useSun = sunK >= moonK, kAz = useSun ? sun.sunAz : sun.moonAz, kEl = Math.max(useSun ? sun.sunEl : sun.moonEl, CK.keyMinEl || 18);
         var keyC = useSun ? new THREE.Color(0xfff1d6).lerp(new THREE.Color((DU.key != null) ? DU.key : 0xffb27a), Math.min(1, dk * 1.2)) : new THREE.Color(0xaabfe0);
         var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
         return Object.assign(out, {
-            fogC: fogC, fogD: base.fogD, hemiC: tint.clone().lerp(new THREE.Color(0xffffff), 0.22 + 0.23 * d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
+            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
             keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
             env: { tint: sky.tint, tintAmt: base.env.tintAmt, stars: base.env.stars, nebula: base.env.nebula, day: d, clouds: (sky.clouds || 0) + (dayClouds - (sky.clouds || 0)) * d, fog: base.env.fog },
             look: base.look, label: base.label, keyDir: _hqClkV(hqWorldDir(kAz, kEl, C.rot)).normalize(),
@@ -71574,6 +72051,42 @@ const ThreeRenderer = (function () {
         }
         return undefined;
     }
+    /* THE ROUND JOIN: where a point past the hall's wall stands — in the doorway through the drum (`door`, a margin `pad` off
+       its jambs, from the drum's inner face to `reach` m into the box beyond) or inside the box beyond (`nb`, its metres `q`).
+       null = the hall's own (inside the drum, the mezzanine and the gallery over the doorway, any wall) */
+    function _hqStageRoundAt(H, x, z, pad, reach) {
+        var st = H.stage, S = H.room.shell, R = S.radius, r = Math.hypot(x, z);
+        if (!st || !(r > R - 0.5)) return null;
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i], sp = nb.spans && nb.spans[0]; if (!nb.round || !sp || sp.side !== 'round') continue;
+            var a = _hqRad(sp.deg), along = x * Math.sin(a) - z * Math.cos(a), lat = x * Math.cos(a) + z * Math.sin(a);
+            var E = st.parts[nb.id], on = !!(E && E.attached);
+            if (Math.abs(lat) <= sp.t1 - pad && along >= R - 0.5 && along <= R + (sp.depth - 0.5) + reach) return { k: 'door', nb: nb, E: E, on: on };
+            var B = _hqData().rooms[nb.id], SB = B && B.shell; if (!SB) continue;
+            var q = hqStageFromRoom(nb.rel, x, z);
+            if (Math.abs(q.x) < SB.w / 2 && Math.abs(q.z) < SB.d / 2) return { k: 'nb', nb: nb, E: E, on: on, q: q };
+        }
+        return null;
+    }
+    function _hqStageRoundSurface(x, z, curY, ignoreBlockers) {
+        var H = _hq, S = H.room.shell;
+        if ((curY != null && curY > S.wallH * 0.5) || (H.player && H.player.y > S.wallH * 0.5)) return undefined;   // up on the mezzanine / the gallery: the hall's own
+        var at = _hqStageRoundAt(H, x, z, HQ_BODY_R, 0.7); if (!at) return undefined;
+        if (!at.on) return at.k === 'door' ? undefined : null;   // until the room beyond stands on the stage the door is the door it was
+        if (at.k === 'door') return 0;
+        var y = null;
+        _hqStageAsk(H, at.E, function () { y = _hqSurface(at.q.x, at.q.z, curY, ignoreBlockers); });
+        return y;
+    }
+    function _hqStageRoundCam(px, pz, py) {
+        var H = _hq, at = _hqStageRoundAt(H, px, pz, 0.28, 0.5); if (!at) return undefined;
+        if (!at.on) return at.k === 'door' ? undefined : true;
+        if (at.k === 'door') return py < 0.22 || py > _hqRoundOh(at.nb) - 0.15;
+        var b = true;
+        _hqStageAsk(H, at.E, function () { b = _hqCamBlocked(at.q.x, at.q.z, py); });
+        return b;
+    }
+    function _hqRoundOh(nb) { var j = (typeof hqStageRoundJoin === 'function') ? hqStageRoundJoin(nb.id) : null, G = j ? hqStageRoundGeom(j) : null; return G ? G.oh : 2.45; }
     /* THE HAND-OVER: a fight flattens the drawn neighbours into the current part's groups (baked through their root) */
     function _hqStageFlatten(H) {
         var st = H && H.stage; if (!st) return;
@@ -71689,7 +72202,7 @@ const ThreeRenderer = (function () {
             /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
             var LRo = _hqLightRules().open;
-            _hq.hemiLight = new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
+            _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
             var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
@@ -71731,20 +72244,11 @@ const ThreeRenderer = (function () {
                 sc.add(bpl);
             }
         } else {
-            sc.add(new THREE.HemisphereLight(0xf1e6cf, 0x2d2a30, 0.78));
-            var key = new THREE.DirectionalLight(0xfff0d8, 0.42); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key); _hq.keyLight = key;
-            var fill = new THREE.DirectionalLight(0x9fb4c8, 0.16); fill.position.set(-0.6, 0.5, -0.4).multiplyScalar(1000); sc.add(fill);
-            [[90, 12], [270, 12], [0, 12], [180, 12]].forEach(function (pp) {
-                var pl = new THREE.PointLight(0xffe0bd, 0.5, 26 * U, 2);
-                pl.position.copy(_hqPolarW(pp[0], pp[1], S.wallH + S.upperWallH * 0.55));
-                sc.add(pl);
-            });
-            /* THE THIRD RING (2026-09-16): four warm lights under the cone over the gallery's walkway */
-            if (S.ring3) [45, 135, 225, 315].forEach(function (ga) {
-                var gl = new THREE.PointLight(0xffe0bd, 0.38, 18 * U, 2);
-                gl.position.copy(_hqPolarW(ga, (S.ring3.inner + S.ring3.outer) / 2, S.wallH + S.ring3.h + 2.4));
-                sc.add(gl);
-            });
+            var hV = _HQ_HALL_LIGHT;
+            _hq.hemiLight = new THREE.HemisphereLight(hV.hemiC, hV.hemiG, hV.hemiI); sc.add(_hq.hemiLight);   // (THE ROUND JOIN eases it at the foyer's crossing)
+            var key = new THREE.DirectionalLight(hV.keyC, hV.keyI); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key); _hq.keyLight = key;
+            var fill = new THREE.DirectionalLight(hV.fillC, hV.fillI); fill.position.set(-0.6, 0.5, -0.4).multiplyScalar(1000); sc.add(fill); _hq.fillLight = fill;
+            _hqRoundRoomLamps(room, sc);
         }
         /* camera */
         var host = opts.host;
@@ -71795,6 +72299,7 @@ const ThreeRenderer = (function () {
            light shafts, the atmosphere) */
         _hq.roomDef = room;   // THE POLISH SETTINGS: the record polishApply re-arms against
         try { _hqLightArm(room); } catch (e) { console.warn('[HQ] the light rig failed', e); }
+        try { _hqKeyLampArm(_hq); } catch (e) { console.warn('[HQ] the key light failed', e); }
         try { _hqShadowArm(room); } catch (e) { console.warn('[HQ] the shadows failed', e); }
         try { _hqAoArm(room); } catch (e) { console.warn('[HQ] the AO failed', e); }
         try { _hqHeightFogArm(room); } catch (e) { console.warn('[HQ] the height fog failed', e); }
@@ -71818,7 +72323,7 @@ const ThreeRenderer = (function () {
            read dark one visit and fine the next). The building wears HQ_LIGHT_RULES.cycle (day: no grade, exposure 1);
            a room's mood is its own lights, its fog and its look's retro preset. The battle rewrites the cycle from its map. */
         try { var LRc = _hqLightRules(); if (document.body && document.body.dataset) document.body.dataset.cycle = LRc.cycle || 'day'; var bst = document.getElementById('boardStage'); if (bst && bst.dataset) bst.dataset.cycle = LRc.cycle || 'day'; } catch (e) {}
-        /* THE TWO BRIGHTNESSES (2026-09-20): the building's own Brightness value, eased in (three-post.js) */
+        /* THE ONE BRIGHTNESS (2026-10-24): the building's frame — the Brightness value is the same everywhere; this only turns on the building's auto-exposure (three-post.js) */
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSsaoScale) ThreePost.setSsaoScale('hq', _hqUnits()); } catch (e) {}   // THE THIRD PASS 3.4: the AO's reach in the building's metres
         renderer.setAnimationLoop(_hqFrameGuarded);   // THE FRAME GUARD (2026-09-22): a throw never ends the loop
@@ -72065,7 +72570,7 @@ const ThreeRenderer = (function () {
         try { _mqDemoteQueued(); } catch (e) {}   // THE LEFT ROOM'S FILES: its unstarted scene jobs fall behind the next room's
         _mqSpots = {};   // THE NEAR FIRST: the room's spots leave with it (the battle's files keep their request order)
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
-        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE ONE BRIGHTNESS: same value; the building's auto-exposure eases off
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         try { _hqStageLeave(H); } catch (e) {}   // THE STAGE: the neighbours' gates, the detached parts
@@ -73513,6 +74018,7 @@ const ThreeRenderer = (function () {
         scanSpriteOffset,
 
         setOverlay, clearOverlay, clearAllOverlays, flashTelegraph,
+        hasOverlay: function (name) { var m = _overlayMeshes[name]; return !!(m && m.length); },
 
         /* Action tile glow (2026-09-02): actor + footprint tiles light up for
            the duration of an attack / spell — see the ACTION TILE GLOW block. */
@@ -73666,6 +74172,27 @@ const ThreeRenderer = (function () {
                 out[k++] = -lx * sn + lz * c;
             }
             return true;
+        },
+        /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23: "the Downtown office tower swallows the camera"): the top
+           (world px) of a tall grounded room prop over world point (wx, wz), or -Infinity. A room arena's skyscraper is a
+           GLB prop (nr_building_*) standing on a grid column only a few steps high, so every camera check that read the
+           grid (the clear board, the two-shot's occlusion, the spell shots' sight line) put the lens inside it and drew
+           the board black. A piece counts when its box is at least a tile across both ways (a lamp post or a sign never
+           does), at most 10, stands on the ground under it (an awning or a bridge floats) and rises 1.5 tiles past the
+           column under its middle. Read by point, not by tile: the tower's wall stands a third of a tile into the next
+           row, where a unit can stand. Re-read every 3 s while the room's GLBs land (the first minute), then held. */
+        tallSceneryTopAt: function (wx, wz) {
+            var F = _facilityNearGroup;
+            if (!F || !F.parent || typeof bw !== 'function') return -Infinity;
+            var now = Date.now(), C = _tallScenery;
+            if (!C || C.group !== F || (now - C.born < 60000 && now - C.at > 3000)) {
+                C = _tallScenery = _tallSceneryRead(F, (C && C.group === F) ? C.born : now, now);
+            }
+            var top = -Infinity, B = C.boxes;
+            for (var i = 0; i < B.length; i += 5) {
+                if (wx >= B[i] && wx <= B[i + 1] && wz >= B[i + 2] && wz <= B[i + 3] && B[i + 4] > top) top = B[i + 4];
+            }
+            return top;
         },
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
@@ -73822,6 +74349,25 @@ const ThreeRenderer = (function () {
             _applyPlateStyleLive();
         },
         getPlateStyle: function () { return _plateLook.style; },
+        /* THE SMALL PLATES: the UI Maker's readout — how far the camera is now from the units with a plate up (battle
+           squares, nearest + farthest), how many of those plates are small, and the line they turn small at */
+        plateFarInfo: function () {
+            var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            var ts = CONFIG.tileSize || BASE_TILE, out = { at: _plateFarAtSq(), n: 0, small: 0, near: null, far: null };
+            if (!cam) return out;
+            _plateObjs.forEach(function (po, uid) {
+                if (!po.css2d.visible) return;
+                var ue = unitEntries.get(uid);
+                if (!ue || !ue.group || !_pmInScene(ue.group)) return;
+                ue.group.getWorldPosition(_scalePlateVec);
+                var d = _scalePlateVec.distanceTo(cam.position) / ts;
+                out.n++;
+                if (po._farMode) out.small++;
+                if (out.near === null || d < out.near) out.near = d;
+                if (out.far === null || d > out.far) out.far = d;
+            });
+            return out;
+        },
 
         setHorizonFog,
 

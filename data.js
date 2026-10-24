@@ -29,6 +29,10 @@ const TERRAIN_RESHAPE_CONFIG = {
     maxDeltaPerTurn: 3,
     minHeight: 0,
     maxHeight: 12,
+    /* THE CRATER FLOOR (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for fissure"):
+       no spell sinks a tile more than this many levels below the ground it stood at before the first spell moved it (a
+       second Meteor on the same crater no longer digs it deeper). Fissure's `toBed` cut is the one exception. */
+    spellSinkMax: 2,
 };
 
 /* ── BUILD action (universal Minecraft-style place/dig verb) ─────────────
@@ -4019,12 +4023,12 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'starfish': { hp: 1178, mp: 220, atk: 63, def: 130, mdef: 132, int: 119, vision: 3, crt: 17, spd: 11 },
     'ringmaster': { hp: 946, mp: 180, atk: 59, def: 118, mdef: 107, int: 114, vision: 2, crt: 26, spd: 57 },
-    'bee queen': { hp: 867, mp: 146, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146
+    'bee queen': { hp: 1000, mp: 220, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146 // WEAK RACES 2 (mondo 10-23): HP 867->1000, MP 146->220
     'professor': { hp: 873, mp: 240, atk: 44, def: 79, mdef: 143, int: 163, vision: 3, crt: 26, spd: 31 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%) // race editor 2026-10-17: DEF 79
     'deep sea fish': { hp: 849, mp: 140, atk: 153, def: 103, mdef: 53, int: 94, vision: 2, crt: 25, spd: 77 },
     // 2026-09-30 — the new-race batch
     'clown': { hp: 812, mp: 130, atk: 93, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },
-    'bunny girl': { hp: 666, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },
+    'bunny girl': { hp: 900, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900
     'sharkman': { hp: 1507, mp: 90, atk: 174, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 188 },
     'crystal guardian': { hp: 1727, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
@@ -4040,7 +4044,7 @@ const RACE_BASE_STATS = {
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
     'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },   // race editor 2026-10-17: DEF 62
-    'wizard':             { hp: 349, mp: 255, atk:   5, def:  15, mdef:  198, int:  184, vision: 4, crt: 16, spd: 23 },
+    'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 50 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
@@ -4087,7 +4091,7 @@ const RACE_BASE_STATS = {
     'robinhood':          { hp: 837, mp: 110, atk:  154, def:  32, mdef:  24, int:  20, vision: 6, crt: 26, spd: 160 },
     'santa clause':       { hp: 1324, mp: 200, atk:  99, def:  140, mdef:  134, int:  140, vision: 3, crt: 17, spd: 51 },
     'super sentai':       { hp: 1617, mp: 120, atk:  122, def:  175, mdef:  75, int:  37, vision: 2, crt: 26, spd: 165 },
-    'symbiote':           { hp: 690, mp: 125, atk:  73, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 79 },
+    'symbiote':           { hp: 900, mp: 125, atk:  73, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 90 },   // WEAK RACES 2 (mondo 10-23): HP 690->900, SPD 79->90 (move 2->3)
     'valkraye':           { hp: 1385, mp:  80, atk:  107, def:  151, mdef:  73, int:  47, vision: 4, crt: 16, spd: 182 },
     'watcher':            { hp: 885, mp: 210, atk:   67, def:  70, mdef:  166, int:  159, vision: 6, crt: 26, spd: 178 },
 };
@@ -5594,6 +5598,7 @@ const SPELL_LIBRARY = [
         name: 'Meteor',
         type: 'damage',
         cost: 80,
+        cooldownRounds: 2,   // Wipeout vs Cube matchup 2026-10-23: the derived mana pass priced it under 80 before _applyBaselineCooldowns ran, so the 2-round cooldown its text promises never stamped; pinned
         equipCost: 25,
         dmg: 160,
         range: 4,
@@ -5708,6 +5713,7 @@ const SPELL_LIBRARY = [
         name: 'Requiem',
         type: 'damage',
         cost: 100,
+        cooldownRounds: 2,   // Wipeout vs Cube matchup 2026-10-23: the derived mana pass priced it under 80 before _applyBaselineCooldowns ran, so the 2-round cooldown its text promises never stamped; pinned
         equipCost: 25,
         dmg: 160,
         /* 2026-08-16 (stats18 whiff audit): normalized to the self-origin
@@ -6126,8 +6132,8 @@ const SPELL_LIBRARY = [
           desc: 'Edge of the shield, under the chin. Deals MEDIUM physical damage to an adjacent enemy and Staggers them: they lose 1 AP.' },
         { id: 'raceStaticShock', name: 'Static Shock', tier: 1, families: ['lightning'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 100,
-          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 1 }],
-          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for a round).' },
+          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds (a 1-round status ran out before a faster target acted)
+          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 2 rounds).' },
         { id: 'raceChainLightning', name: 'Chain Lightning', tier: 3, families: ['lightning'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 130,
           damageType: 'magic', chainProfile: [130, 85, 50], chainRadius: 2,
@@ -6145,7 +6151,7 @@ const SPELL_LIBRARY = [
           damageType: 'physical', statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Two fingers. Lights out. Deals MEDIUM physical damage to an adjacent enemy and Stuns them for a round. Cooldown: 2 rounds.' },
         { id: 'raceFullBurst', upgradesBlock: ['upWiden'], name: 'Full Burst', tier: 4, families: ['mecha'], cost: 100, apCost: 2, cooldownRounds: 2,
-          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 150, damageType: 'physical', aoeRadius: 2,
+          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 120, damageType: 'physical', aoeRadius: 2,   // strong races check 2026-10-24: was 150 (1,302 dmg a cast, the most of any spell)
           ignoresLineOfSight: true,
           desc: 'Every hardpoint on the frame, at once. Deals HEAVY physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
         { id: 'raceDeepBreath', name: 'Deep Breath', tier: 1, families: ['meditation'], cost: 25, apCost: 1,
@@ -6235,8 +6241,8 @@ const SPELL_LIBRARY = [
           desc: 'They drop a frame. Staggers a Single Enemy for 1 round and Slows it for 1 round.' },
         { id: 'raceMisdirection', name: 'Misdirection', tier: 1, families: ['trickery'], cost: 25, apCost: 1,
           spellType: 'anomaly', type: 'debuff', kind: 'debuff', range: 3,
-          statusEffects: [{ id: 'blind', duration: 1 }],
-          desc: 'Look — over there. Blinds a Single Enemy within 3 for 1 round: its attacks miss half the time.' },
+          statusEffects: [{ id: 'blind', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds
+          desc: 'Look — over there. Blinds a Single Enemy within 3 for 2 rounds: its attacks miss half the time.' },
         { id: 'raceSuckerPunch', name: 'Sucker Punch', tier: 1, families: ['trickery'], cost: 25, apCost: 1,
           spellType: 'anomaly', type: 'damage', kind: 'damage', range: 1, dmg: 100, damageType: 'physical',
           bonusVsStatus: { status: 'blind', mult: 1.5 },
@@ -6515,11 +6521,14 @@ const SHARED_WALLS_OF_CAMELOT = {
 const SHARED_FISSURE = {
     id: 'sharedFissure', tier: 2, spellType: 'divine', element: 'earth', name: 'Fissure',
     type: 'damage', cost: 50, dmg: 100, range: 4, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'chasm', tileCount: 3, orientable: true,
+    kind: 'terrainCreate', terrainType: 'lava', tileCount: 3, orientable: true,
     damageType: 'physical',
     statusEffects: [{ id: 'stagger', duration: 1 }],
-    terrainDeform: { centerDelta: -2, edgeDelta: 0 },
-    desc: 'Reshapes the battlefield — creates chasm across 3 tiles (pick the orientation). Applies Stagger.'
+    /* THE GAP (2026-10-24, mondo: "fissure which should actually make a gap in the map all the way down to the bottom lava
+       layer, dont use that texture that it uses now"): the three tiles are cut down to the board's bottom layer (the lava
+       under every board's bed, MF_DELTA_STRATA[0]); nothing is painted, the gap's floor is the bed's own block. */
+    terrainDeform: { toBed: true },
+    desc: 'Splits the ground open across 3 tiles (pick the orientation) — a gap all the way down to the lava under the battlefield. Applies Stagger.'
 };
 
 /* SHARED_SCORCHED_EARTH deleted by THE SPELL AUDIT Batch B (2026-09-30): Wall of Fire covers the scorched line. */
@@ -7367,15 +7376,15 @@ const RACE_ABILITIES = {
 
     'mech': [
         { id: 'raceMortarSalvo', tier: 1, families: ['mecha'], spellType: 'tech', name: 'Mortar Salvo',
-          type: 'damage', cost: 40, dmg: 80, range: 5,
+          type: 'damage', cost: 40, dmg: 70, range: 4,   // strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           ignoresLineOfSight: true,
           desc: 'Deals WEAK physical damage to All Enemies in an AOE. Fires through cover.' },
         { id: 'raceSiegeMode', tier: 2, families: ['mecha'], spellType: 'tech', name: 'Siege Mode',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statusEffects: [{ id: 'siegeMode', duration: 3 }],   // THE SPELL AUDIT Batch D: the lock-down (STATUS_DEFS siegeMode)
-          desc: 'Anchors down. Everything in range is a target. For 3 rounds the caster gains +1 ATK stage and +2 RNG, and loses 2 MOV.' },
+          statusEffects: [{ id: 'siegeMode', duration: 2 }],   // THE SPELL AUDIT Batch D: the lock-down (STATUS_DEFS siegeMode). Strong races check 2026-10-24: 3 -> 2 rounds, like the Sniper's Bipod (the status is shared, so its +2 RNG stays)
+          desc: 'Anchors down. Everything in range is a target. For 2 rounds the caster gains +1 ATK stage and +2 RNG, and loses 2 MOV.' },
         { id: 'raceEject', tier: 3, cleanse: 99, selfHealPct: 0.2, families: ['mecha'], spellType: 'tech', name: 'Eject!',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'escape', teleportDistance: 3,
@@ -8274,7 +8283,7 @@ const RACE_ABILITIES = {
     'bunny girl': [
         { id: 'raceDeadMansHand', name: 'Dead Man\'s Hand', tier: 1, families: ['gambling'], cost: 25, apCost: 1,
           spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3,
-          hitDamages: [34, 34, 34, 34],
+          hitDamages: [50, 50, 50, 50],   // WEAK RACES 2 (mondo 10-23): 4x34 -> 4x50, armour comes off every card
           desc: 'Aces and eights, thrown edge-first. Four cards at a Single Enemy for WEAK magic damage each.' },
 
         { id: 'raceDoubleDown', upgradesBlock: ['upReach', 'upLinger'], name: 'Double Down', tier: 3, families: ['gambling'], cost: 75, apCost: 1,
@@ -8408,7 +8417,7 @@ const RACE_ABILITIES = {
           desc: 'The hive boils out around its queen. Deals WEAK physical damage to All Enemies within 2 tiles and Poisons them for 2 rounds.' },
         { id: 'sigThousandStings', name: 'A Thousand Stings', tier: 4, families: ['royalhive'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 2,
-          hitDamages: [17, 17, 17, 17, 17, 17, 17, 17, 17, 17], bonusVsStatus: { status: 'poison', mult: 1.5 },
+          hitDamages: [30, 30, 30, 30, 30, 30, 30, 30, 30, 30], bonusVsStatus: { status: 'poison', mult: 1.5 },   // WEAK RACES 2 (mondo 10-23): 10x17 -> 10x30, armour comes off every sting
           desc: 'Every bee in the hive, one after another. Deals HEAVY physical damage to a Single Enemy within 2 tiles across 10 stings. Poisoned targets take it worse. Cooldown: 2 rounds.' },
     ],
     'professor': [
@@ -8532,7 +8541,7 @@ const RACE_ABILITIES = {
           desc: 'Not today. A Single Enemy within 5 is Silenced for a round. Cooldown: 2 rounds.' },
         { id: 'pzMagicMissile', name: 'Magic Missile', tier: 3, families: ['highwizardry'], cost: 75, apCost: 1,
           spellType: 'human', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 5,
-          hitDamages: [27, 27, 27, 27, 27],
+          hitDamages: [40, 40, 40, 40, 40],   // WEAK RACES 2 (mondo 10-23): 5x27 -> 5x40, armour comes off every dart
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Five darts that never miss. Deals MEDIUM magic damage to a Single Enemy within 5 across 5 hits. Deals bonus damage to Silenced targets.' },
         /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
@@ -8959,7 +8968,7 @@ const RACE_ABILITIES = {
         { id: 'raceKissOfDecay', element: 'poison', spellType: 'unholy', name: 'Kiss of Decay',
           type: 'damage', cost: 75, dmg: 125, range: 3, tier: 3,
           families: ['infernalcourt'],
-          kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
+          kind: 'lifeDrain', damageType: 'magic', drainPct: 0.25,   // strong races check 2026-10-24: was 0.40
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
         SHARED_POISON_SWAMP,
@@ -8970,9 +8979,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 2 }],
           desc: 'May I have this dance. Trade places with a unit within 4 tiles you can see; an enemy partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'sigLastDance', name: 'Last Dance', tier: 4, families: ['hellsbelle'], cost: 100, apCost: 1, cooldownRounds: 2,
-          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.5,
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.3,   // strong races check 2026-10-24: was 0.5
           bonusVsStatus: { status: 'charm', mult: 1.5 },
-          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for half of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
+          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for part of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'dreameater': [
         { id: 'raceDreamSiphon', element: 'psychic', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
@@ -9504,7 +9513,7 @@ const RACE_ABILITIES = {
           desc: 'The lost metal still shines under the sea. Deals WEAK magic damage to All Enemies in a 5-tile line and Soaks them for 2 rounds.' },
         { id: 'sigCrystalResonator', name: 'Crystal Resonator', tier: 3, families: ['orichalcum'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 130, range: 4, aoeRadius: 1,
-          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          bonusVsStatus: { status: 'wet', mult: 1.25 },   // strong races check 2026-10-24: was 1.5, which stacked with Wet conducting lightning (x1.5) to x2.25
           desc: 'The great crystal that powered Atlantis, still humming. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Soaked targets take it worse.' },
     ],
     'dinosaur': [
@@ -9515,7 +9524,7 @@ const RACE_ABILITIES = {
           kind: 'dash', cost: 75, apCost: 2, 
           desc: 'Stampedes through the battlefield and ends up behind the target. Deals MEDIUM physical damage to the target, tramples every enemy on the path for WEAK damage. Rooted targets take it worse.', dmg: 130 }),
         { id: 'raceDinoTailWhip', element: 'nature', tier: 1, families: ['apexpredator'], spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
-          type: 'damage', cost: 20, dmg: 100, range: 1, apCost: 1,
+          type: 'damage', cost: 20, dmg: 85, range: 1, apCost: 1,   // strong races check 2026-10-24: was 100, now the tier 1 median
           kind: 'damage', damageType: 'physical', pushDistance: 2,
           desc: 'A spinning tail strike. Deals MEDIUM physical damage to a Single Enemy. Knocks the target back 2 tiles.' },
         { id: 'raceApexRoar', tier: 2, families: ['apexpredator'], spellType: 'anomaly', element: 'sonic', name: 'Apex Roar',
@@ -9720,7 +9729,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Submerge and resurface up to 3 tiles away. Protected 1 turn upon emerging.' },
         { id: 'raceTidalSlam', element: 'water', spellType: 'anomaly', name: 'Tidal Slam',
-          type: 'damage', tier: 3, cost: 75, dmg: 135, range: 0,
+          type: 'damage', tier: 3, cost: 75, dmg: 135, range: 0, cooldownRounds: 2,   // pinned like Meteor (Wipeout vs Cube matchup 2026-10-23)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           leaveTerrain: 'deep_water',
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },
@@ -13047,9 +13056,9 @@ if (typeof window !== 'undefined') window.RESERVE_RULES = RESERVE_RULES;
 
 // ── ARENA COMPOSITE SCORING — single source of truth ──────────────────
 // Read by the timer-expiry resolver + victory screen (battle.js) and the
-// live scoreboard (hud.js). Tower damage is CAPPED so chip-poking the Cube
-// can't outscore playing the objectives (destroying it outright is still
-// an instant win); nexus control is the strongest per-round engine, and
+// live scoreboard (hud.js). Cube damage is UNCAPPED (mondo 2026-10-23: the
+// old 150 cap is gone; a full Cube is 250 points at 1 per 0.4% of its HP, and
+// destroying it outright is still an instant win); nexus control is the strongest per-round engine, and
 // accrual doubles in the final rounds (see tickMatchClock) so a trailing
 // team holding zones can close the gap.
 // Display names for nexus zone keys (zones are placed on a diagonal across
@@ -13063,8 +13072,7 @@ window.NEXUS_LABELS = {
 
 window.ARENA_PTS = {
     kill: 25,           // per kill (15 → 25 on 2026-10-07, mondo)
-    towerDmgPer10: 1,   // per 10 HP of damage to the enemy Cube…
-    towerDmgCap: 150,   // …capped here (6 kills' worth)
+    towerDmgPer10: 1,   // points per 0.4% of the enemy Cube's HP lost (250 for a whole Cube); no cap since 2026-10-23 (mondo)
     hourglass: 35,      // per hourglass carried at the buzzer
     nexusRound: 6,      // per nexus-control round accrued
     surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")
@@ -26146,7 +26154,7 @@ const TUTORIAL_LESSONS = [
               say: 'A real crossing closes one of <b>three</b> ways: <b>⬡ destroy the BLACK CUBE</b> · <b>🗝 carry {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS</b> · <b>☠ remove every hostile</b>. Any one ends it. The scoreboard at the top tracks all three: each side\'s Cube is its TOWER bar, the Keys count sits beside it.',
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'key', title: 'THE KEYS',
-              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks the tiles around it, as far as the vessel\'s VISION allows, and pockets any Key it finds.',
+              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks that one tile and pockets any Key on it.',
               hint: 'click the marked tile · 🔍 INSPECT',
               focus: { tile: [4, 5] }, allow: ['inspect', 'move'],
               goal: { type: 'key', player: 1, count: 1 } },
@@ -26332,7 +26340,7 @@ const TUTORIAL_LESSONS = [
     },
     {
         id: 'win_keys', no: 7, tier: 'core', minutes: 6,
-        title: 'WIN BY KEYS', sub: 'INSPECT · THE SCAN FOOTPRINT · KEY SPACING · CARRIERS',
+        title: 'WIN BY KEYS', sub: 'INSPECT · ONE TILE A SCAN · KEYS ANYWHERE · CARRIERS',
         teaches: ['keys', 'inspect', 'arena'],
         map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
         board: {
@@ -26345,18 +26353,18 @@ const TUTORIAL_LESSONS = [
                   { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 1, spells: [] },
                   { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 2, spells: [] } ],
         },
-        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, north of the marked tile
+        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, on the tile north of the marked tile [1, 4]
         steps: [
             { id: 'start', title: 'MID-MATCH',
               say: 'Your <b>Swordfighter</b> and <b>Marksman</b> carry four of the {{KEYS_POOL}} Keys between them. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>. The last one is still on the ground, hidden.',
               enter: [['carry', 'p1-0', 2], ['carry', 'p1-1', 2]],
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'scan', title: 'INSPECT',
-              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that tile and the ones around it, nearest first, as many tiles as the vessel\'s <b>VISION</b> (VISION 9 covers the whole 3×3). No two Keys on the ground sit within 2 tiles of each other, so after a find, search further away.<br><br>The last Key is in the 3×3 around the marked tile.',
+              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that one tile, whatever the vessel\'s VISION; some vessels can pick a tile from farther away. Keys lie anywhere on the board, even side by side, so a find says nothing about where the next one is.<br><br>The last Key is on a tile next to the marked tile (north, south, east or west).',
               focus: { tile: [1, 4] }, goal: { type: 'ack' } },
             { id: 'find', title: 'THE LAST KEY',
               say: 'Find it and keep all five. A carrier that dies drops its Keys where it fell (the log says where), and the enemy can scan them up. Any win counts.',
-              hint: 'MOVE · 🔍 INSPECT around the marked tile',
+              hint: 'MOVE · 🔍 INSPECT the tiles next to the marked tile',
               focus: { tile: [1, 4] }, allow: 'all',
               goal: { type: 'win' } },
             { id: 'done', title: 'WIN BY KEYS',
@@ -45986,6 +45994,16 @@ const HQ_STAGE_RULES = {
        are in; its farther props land under the fog where they stand. `propsGate: 'whole'` = the fork's alternative (every
        file first, Phase 1's rule). `trkMs` = how often the tracker re-walks a waiting part. */
     nearPropM: 60, propsGate: 'near', trkMs: 250,
+    /* THE ROUND JOIN (2026-10-24, mondo: "lets get rid of the loading screen between the foyer and the main hall ... figure out a way
+       to actually animate/rotate the revolving doors"): a door of the ROUND hall (`a` = the rotunda, `door` = its door id) and a
+       box room's door (`b`, `bDoor`) are ONE doorway on ONE stage — the box stands behind the hall's wall at that door's angle,
+       turned to face the hall (any angle, not only quarter turns), HQ_WORLD_RULES.wallM of wall between the two. Either room
+       built beside the other, walked through like THE DOOR JOIN (no card); the hall's revolving leaf stands in the doorway and
+       turns while you walk through it (the box's own leaf stands down while the hall is beside it). The box room is not a part
+       of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
+    round: [
+        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the revolving door at 195°
+    ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
@@ -46114,6 +46132,46 @@ function hqRoomClock(roomId) {
     const L = HQ_WORLD_CLOCK.lock || {};
     const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
     return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
+}
+/* THE PAINTED SKIES (2026-10-24, mondo painted 80s/90s anime watercolour skies): a zone's sky as his paintings on R2
+   (Assets/skies/<key>_day / _night / _silhouette .webp, a `_low` copy of each for the low-power setting). Day and night are
+   4096 × 1024 strips (360° round, the horizon at the bottom row, straight overhead at the top); the silhouette is a 4096 × 512
+   transparent strip standing on the horizon (`silH` = its height as a share of the sky strip: 512 / 1024 = 45°). The dome
+   (three-renderer.js THE PAINTED SKY) fades day to night with the clock / the round and keeps its sun, moon, stars, weather and
+   celestial events over the painting. A row claims the outdoor rooms of its `sites` (a hub's interiors and the sewers stay
+   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true. */
+const HQ_PAINTED_SKIES = {
+    base: 'https://cdn.entropywars.net/Assets/skies/',
+    silH: 0.5,
+    rows: {
+        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'] },
+        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'] },
+    },
+};
+/* the painting for a room id, a `field:<room>:…` fight or a board / map id (null = the shader's own sky):
+   { key, day, night, sil, silH } — `low` picks the half-size copies */
+function hqPaintedSky(id, low) {
+    const P = HQ_PAINTED_SKIES, s = String(id || '');
+    if (!s) return null;
+    const rooms = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
+    let roomId = null;
+    if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); roomId = f ? f.room : null; }
+    else if (rooms[s]) roomId = s;
+    else { const bare = s.replace(/_delta$/, '').replace(/_(\d+)x\1$/, ''); if (rooms[bare]) roomId = bare; }
+    let key = null;
+    if (roomId) {
+        const S = rooms[roomId] && rooms[roomId].shell;
+        if (!S || !S.open || !S.sky) return null;   // an interior: no sky to paint
+        if (typeof S.sky.paint === 'string' && P.rows[S.sky.paint]) key = S.sky.paint;
+    }
+    if (!key) {
+        const site = roomId ? ((typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null) : hqSiteId(s);
+        if (!site) return null;
+        for (const k in P.rows) if ((P.rows[k].sites || []).indexOf(site) >= 0) { key = k; break; }
+    }
+    if (!key) return null;
+    const x = low ? '_low.webp' : '.webp', b = P.base + key;
+    return { key, day: b + '_day' + x, night: b + '_night' + x, sil: b + '_silhouette' + x, silH: P.silH };
 }
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
@@ -46530,23 +46588,93 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
+    const rj = hqStageRoundJoin(fromId);   // THE ROUND JOIN: the hall and its box at the door's own angle
+    if (rj && (rj.a === toId || rj.b === toId) && fromId !== toId) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
     if (!A || !B || A.ground !== B.ground || A.absorbedBy || B.absorbedBy) return null;
     const o = hqZoneToRoom(fromId, B.x, B.z);
     return { x: o.x, z: o.z, y: B.y - A.y, rot: (((B.rot - A.rot) % 4) + 4) % 4 };
 }
+/* a rel's [cos, sin]: a quarter turn from the table, THE ROUND JOIN's free angle (rot is then a fraction of a quarter turn) */
+function _hqStageCS(rel) {
+    return _HQ_ROT[rel.rot] || [Math.cos(rel.rot * Math.PI / 2), Math.sin(rel.rot * Math.PI / 2)];
+}
 function hqStageToRoom(rel, x, z) {
-    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1];
+    const cs = _hqStageCS(rel), c = cs[0], s = cs[1];
     return { x: rel.x + x * c + z * s, z: rel.z - x * s + z * c };
 }
 function hqStageFromRoom(rel, x, z) {
-    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1], dx = x - rel.x, dz = z - rel.z;
+    const cs = _hqStageCS(rel), c = cs[0], s = cs[1], dx = x - rel.x, dz = z - rel.z;
     return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
+/* ══ THE ROUND JOIN (HQ_STAGE_RULES.round, 2026-10-24) ══════════════════════════════════════════════════════════════
+   The round hall's door and a box room's door as one doorway: the box is placed so its door's point stands
+   HQ_WORLD_RULES.wallM behind the hall's wall at the door's angle, its door facing the hall's centre. → the row (with its
+   two doors) for a room of either end, or null (the rows are checked here: a level-0 door of a round room, a wall door of a
+   box room). */
+function hqStageRoundJoin(roomId) {
+    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {};
+    for (let i = 0; i < rows.length; i++) {
+        const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId)) continue;
+        const A = R[j.a], B = R[j.b];
+        if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
+        if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
+        const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
+        if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
+        return { a: j.a, b: j.b, door: da, bDoor: db };
+    }
+    return null;
+}
+/* the join's geometry: `rel` = the box in the hall's metres, `back` = the hall in the box's; `R` the hall's wall, `deg` the
+   door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
+function hqStageRoundGeom(j) {
+    if (!j) return null;
+    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = A.shell.radius;
+    const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
+    const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
+    let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
+    th = Math.atan2(Math.sin(th), Math.cos(th));
+    const rel = { x: 0, z: 0, y: 0, rot: th / (Math.PI / 2) };
+    const q = hqStageToRoom(rel, pb.x, pb.z), Rf = R + gap;
+    rel.x = Rf * Math.sin(a) - q.x; rel.z = -Rf * Math.cos(a) - q.z;
+    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: 0, rot: -rel.rot };
+    const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
+    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb };
+}
+/* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
+   door's angle, `t0` / `t1` across the doorway) — null for any other room */
+function hqStageRoundNeighbours(roomId) {
+    const j = hqStageRoundJoin(roomId); if (!j) return null;
+    const G = hqStageRoundGeom(j); if (!G) return null;
+    if (roomId === j.a) {
+        const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
+        return [{ id: j.b, rel: G.rel, round: true, links: [],
+                  rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
+                  spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    }
+    const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
+    return [{ id: j.a, rel: G.back, round: true, links: [],
+              rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
+              spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+}
+/* THE CROSSING's rule from the round hall: past its wall and `hys` metres inside the box beyond (no flip-flop) */
+function hqStageWhereRound(R, nbs, x, z, hys) {
+    const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
+    if (!(Math.hypot(x, z) > R)) return null;
+    for (let i = 0; i < nbs.length; i++) {
+        if (!(nbs[i].spans && nbs[i].spans.length)) continue;
+        const S = ((DOOR_HQ.rooms || {})[nbs[i].id] || {}).shell; if (!S || !(S.w > 0)) continue;
+        const q = hqStageFromRoom(nbs[i].rel, x, z);
+        if (Math.max(Math.abs(q.x) - S.w / 2, Math.abs(q.z) - S.d / 2) < -hy) return nbs[i].id;
+    }
+    return null;
 }
 /* the staged neighbours of a staged part: [{ id, rel, rect: { x0, z0, x1, z1 } (the neighbour's box in THIS room's
    metres), spans: [{ side, t0, t1, kind }] (the joined stretches of THIS room's edge, in its own metres), links: [ids of
    the link doors on this room that a span replaces] }]. Empty for a room that is not staged. */
 function hqStageNeighbours(roomId) {
+    const rnb = hqStageRoundNeighbours(roomId); if (rnb) return rnb;   // THE ROUND JOIN (the hall ⇄ the foyer)
     if (!hqStagePart(roomId)) return [];
     const out = [], R = DOOR_HQ.rooms[roomId];
     hqWorldJoins(roomId).forEach(j => {
@@ -46744,6 +46872,12 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
+    const rj = hqStageRoundJoin(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
+    if (rj) {
+        const mine = roomId === rj.a ? rj.door : rj.bDoor; if (!mine || mine.id !== doorId) return null;
+        const G = hqStageRoundGeom(rj); if (!G) return null;
+        return { nb: roomId === rj.a ? rj.b : rj.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: roomId === rj.a ? rj.bDoor.id : rj.door.id, round: true, keep: roomId === rj.a };
+    }
     if (!hqStagePart(roomId)) return null;
     const j = hqWorldJoins(roomId).find(x => x.kind === 'door' && ((x.a === roomId && x.door === doorId) || (x.b === roomId && x.bDoor === doorId)));
     if (!j) return null;
@@ -58670,12 +58804,12 @@ if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
                   unreadable); the torches carry the vibe on top of it.
    · fill         a cool fill light from behind the key in every box / open room (no black side on a face).
    · open         an outdoor room's hemisphere / sun / lamp intensities by day and by night — the night keeps a real
-                  MOON key. The Brightness slider is PER PLACE now (three-post.js THE TWO BRIGHTNESSES): the building's
-                  value and the battle's are separate and the swap eases. */
+                  MOON key. The Brightness slider is ONE value for battles and exploring alike (three-post.js THE ONE
+                  BRIGHTNESS, 2026-10-24; it was per place). */
 const HQ_LIGHT_RULES = {
     cycle: 'day',
     nightCap: 0.45,
-    ambientFloor: 0.55,
+    ambientFloor: 0.7,   // THE LIFT (2026-10-24): a closed room's mood.ambient m lights at floor + (1 - floor) × m (it used to clamp at the floor)
     fillColor: 0x9fb4d0,
     fill: 0.14,
     open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
@@ -58721,6 +58855,17 @@ const HQ_LIGHT_RULES = {
     ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
     motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
     reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
+    /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really dark
+       overall"): one soft point light that rides with the camera in an ENCLOSED place (a closed room, a cave, a corridor; a fight in one)
+       — `intensity` at Settings → Key Light's default, `reach` m (decay 1 = a linear ramp to it), lifted `up` m, `back` = how far from the
+       walker's head toward the eye, `side` m to the camera's right; a fight hangs it `battleUp` m over the floor where the camera looks,
+       `battleReach` m, at `battleIntensity` (the fight's camera stands farther off). No shadow map. three-renderer.js _hqKeyLampTick / _fieldKeyLampTick. */
+    /* THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?"): at
+       night an outdoor room's hemisphere leans `amount` of the way from the night sky's tint to a soft moonlight `color` (it was the sky's
+       near-black blue + 22% white), the moon key never drops below `moonFloor` of the night (a low moon used to leave no key at all), and
+       the Key Light rides along outdoors at `keyLight` of its strength × the night (0 by day). The walk and the fight alike. */
+    nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
+    keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 },
 };
 /* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
    the polish the player owns. Every row is a setting on the shared video sheet (ui.js _buildVideoSettingsHTML → the battle's
@@ -58752,6 +58897,8 @@ const HQ_POLISH_PREFS = [
     { key: 'camFeel',      label: 'Camera Feel',        hint: 'the stride bob, the landing shake, the sprint lens, the carve roll', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
     /* THE ROOM SETTINGS (2026-10-20): Auto Exposure now reaches the screen (three-post.js _brightGain); def false keeps the picture as it was */
+    /* THE KEY LIGHT (2026-10-24): the soft light that rides with the camera in enclosed rooms, caves and corridors, and in a fight in one (HQ_LIGHT_RULES.keyLamp) */
+    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors, and outdoors at night (softer), so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
     { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: false, scope: 'hq', live: true },
     { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },

@@ -3748,9 +3748,10 @@
         }
 
         function getInspectTileCount(unit) {
-            if (!unit) return 1;
-            // 2026-10-09: Inspect covers as many tiles as the unit's VISION (was AWR/14).
-            return Math.max(1, getEffectiveVision(unit));
+            /* ONE TILE A SCAN (mondo 2026-10-23: "inspect shouldnt grow with vision, it should only be 1 tile at a
+               time for everyone"): every Inspect searches exactly the tile picked. How FAR away a unit may pick it
+               (getEffectiveInspect: RACE_KITS inspect, the scanner trait, gear inspectBonus, Far Sight) is unchanged. */
+            return 1;
         }
 
         function getDebuffIntModifier(sourceUnit, targetUnit) {
@@ -4484,6 +4485,7 @@
                 1: new Set(),
                 2: new Set()
             },
+            searchedByPlayer: { 1: new Set(), 2: new Set() },   // THE SEARCH MAP (battle.js syncSearchMap)
             placed: false,
             winner: null,
             isRankedMatch: false,
@@ -5067,8 +5069,11 @@
                the verb lit for an enemy on a ledge the list then refused (wipeout playtest 2026-10-23: ATTACK lit, the
                click said "No target"). */
             const _apcList = (typeof _getAttackValidTargets === 'function');
+            /* Wipeout vs Cube matchup 2026-10-23 (Downtown): ATTACK lit "ENDS TURN" beside the office tower with nothing to
+               hit — the old copies below lit it for a building (never a basic-attack target, see _getAttackValidTargets)
+               and for structures the list's sight check refuses. With the list available, the list alone answers. */
             let hasAttack = _apcList
-                ? _getAttackValidTargets(unit, { combatOnly: true }).some(t => t.kind === 'unit' || t.kind === 'tower')
+                ? _getAttackValidTargets(unit, { combatOnly: true }).length > 0
                 : enemies.some(e => {
                     if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y, e.z)) return false;
                     const d = distToTarget(unit.x, unit.y, e);
@@ -5086,7 +5091,7 @@
             // directly BELOW a flying unit — i.e. on the unit's own tile (d === 0). Use
             // d <= effRange (no lower bound) so a flyer can attack straight down and the
             // Attack button isn't greyed out in that case.
-            if (!hasAttack && state.turrets) {
+            if (!hasAttack && !_apcList && state.turrets) {
                 for (const t of state.turrets) {
                     if (t.owner !== unit.player && t.hp > 0) {
                         const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
@@ -5095,7 +5100,7 @@
                 }
             }
 
-            if (!hasAttack && state._deployedObjects) {
+            if (!hasAttack && !_apcList && state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
                     if (obj.hp <= 0) continue;
                     const isOwn = obj.ownerPlayer === unit.player;
@@ -5105,7 +5110,7 @@
                 }
             }
 
-            if (!hasAttack && state.plantedSeeds) {
+            if (!hasAttack && !_apcList && state.plantedSeeds) {
                 for (const s of state.plantedSeeds) {
                     if (s.owner === unit.player) continue;
                     const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
@@ -5117,23 +5122,8 @@
             // right-click chop hold, but a verb lit purely by scenery reads as
             // "there's something to fight" when there isn't. Only enemies,
             // towers, turrets, deployables, seeds and buildings light it.
-            // 🏢 An in-range building can always be sieged with a basic attack —
-            // keeps the Attack button lit.
-            if (!hasAttack && typeof getBuildingAt === 'function') {
-                bOuter:
-                for (let dy = -effRange; dy <= effRange; dy++) {
-                    for (let dx = -effRange; dx <= effRange; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        if (Math.abs(dx) + Math.abs(dy) > effRange) continue;
-                        const tx = unit.x + dx, ty = unit.y + dy;
-                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
-                        if (!getBuildingAt(tx, ty)) continue;
-                        if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
-                        if (visionGatesTargeting(unit) && !isInVision(unit, tx, ty)) continue;
-                        if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break bOuter; }
-                    }
-                }
-            }
+            // 🏢 Buildings are NOT basic-attack targets (they take only area effects — battle.js buildingHitsForSpell),
+            // so a building in reach never lights the Attack button any more.
             // Nothing attackable from where the unit stands, but it may be able to
             // step into range and still afford the swing (move-then-attack). Keep
             // the Attack button enabled in that case so it matches the quick-action
