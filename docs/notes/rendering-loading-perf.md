@@ -1016,3 +1016,12 @@ the walk), on the classic, pmndrs and node (TSL) chains. Nothing was removed. De
   drops a stalled one); every beat of the chain checks it, so a slow old chain stops instead of running a second
   round end. The recovery/drop gate from PR #438 is unchanged.
 - Checked in a rendered browser: a 16 s main-thread block no longer fires it; a truly dead round end still recovers ~17 s.
+
+## THE ONE BRIGHTNESS (2026-10-24)
+mondo: the battle pause menu said "Brightness · EXPLORING" in a VS CPU arena fight (arenas are cut from rooms, so the
+fight runs in the building's exposure context 'hq'), and the battle and exploring kept two separate values
+(ew_exposure / ew_exposure_hq, THE TWO BRIGHTNESSES 2026-09-20). Now three-post.js keeps ONE value (localStorage
+ew_exposure) for battles and exploring alike; setExposureContext only switches the building's auto-exposure gain on/off.
+The pause slider is labelled plain "Brightness" with the hint "the whole picture lighter or darker — one setting for
+battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.55, 72 at 1.00, 90 at 1.25
+(/mnt/project-files/brightness-slider/).

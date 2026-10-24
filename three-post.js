@@ -58,27 +58,22 @@ const ThreePost = (function () {
     var _exposureUser = 1.0;
     var EXPOSURE_FACTORY = 1.0;
     var EXPOSURE_MIN = 0.55, EXPOSURE_MAX = 1.25;
-    /* THE TWO BRIGHTNESSES (2026-09-20): the Brightness slider is kept PER PLACE — one value for
-       the battle (a map with a sun; localStorage ew_exposure, the old key) and one for the
-       building / the explorable areas (ew_exposure_hq). The user turned it all the way up in a
-       dark room and every battle after it was blown out. setExposureContext('hq' | 'battle')
-       swaps the active value (three-renderer.js _hqEnter / _hqLeave); the swap EASES over
-       ~0.4 s (_expLk, EXPOSURE_EASE_K) so a door never pops the exposure; a slider move lands
-       at once. _expLk() is the ONE read every toneMappingExposure write goes through. */
-    var EXPOSURE_CTX_KEYS = { battle: 'ew_exposure', hq: 'ew_exposure_hq' };
+    /* THE ONE BRIGHTNESS (2026-10-24, was THE TWO BRIGHTNESSES 2026-09-20): ONE Brightness value for every place — the
+       battle, the building, the explorable areas and a fight in the room (the user: "the exploration and battle areas are
+       supposed to be the same environment ... the whole thing is just confusing"). localStorage ew_exposure; the old
+       per-building key ew_exposure_hq is no longer read. setExposureContext('hq' | 'battle') still says where the frame is,
+       but only for the building's auto-exposure gain (_ae) — the player's value is the same in both. _expLk() is the ONE
+       read every toneMappingExposure write goes through. */
+    var EXPOSURE_KEY = 'ew_exposure';
     var EXPOSURE_EASE_K = 2.6;
-    var _expCtx = 'battle', _expByCtx = { battle: 1.0, hq: 1.0 };
+    var _expCtx = 'battle';
     try {
-        for (var _ec in EXPOSURE_CTX_KEYS) {
-            var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem(EXPOSURE_CTX_KEYS[_ec]) : null;
-            if (_expSaved !== null) {
-                var _ev = parseFloat(_expSaved);
-                if (!isNaN(_ev)) _expByCtx[_ec] = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
-            } else if (_ec !== 'battle') _expByCtx[_ec] = null;   // never set: follows the battle's until the player moves it here
+        var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem(EXPOSURE_KEY) : null;
+        if (_expSaved !== null) {
+            var _ev = parseFloat(_expSaved);
+            if (!isNaN(_ev)) _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
         }
     } catch (e) {}
-    if (_expByCtx.hq == null) _expByCtx.hq = _expByCtx.battle;
-    _exposureUser = _expByCtx[_expCtx];
     var _expEased = _exposureUser, _expEaseAt = 0;
     function _expLk() {
         if (_expEased !== _exposureUser) {
@@ -100,14 +95,7 @@ const ThreePost = (function () {
        toneMappingExposure, which never reaches the screen with Post FX on). The measurement reads the frame BEFORE this gain
        (the frame pass's input), so the loop is open: the gain is the room's own (AE_TARGET / luminance)^0.55, clamped. */
     function _brightGain() { _expLk(); return Math.max(0.3, Math.min(2, _lkNum('exposure', _expEased) * ((_expCtx === 'hq') ? _ae.gain : 1))); }
-    function setExposureContext(ctx) {
-        ctx = EXPOSURE_CTX_KEYS[ctx] ? ctx : 'battle';
-        if (ctx === _expCtx) return;
-        _expByCtx[_expCtx] = _exposureUser;
-        _expCtx = ctx;
-        _exposureUser = _expByCtx[ctx];
-        _expEaseAt = 0;   // the ease runs from the value on screen to this place's
-    }
+    function setExposureContext(ctx) { _expCtx = (ctx === 'hq') ? 'hq' : 'battle'; }   // THE ONE BRIGHTNESS: the value stays; only the auto-exposure follows
     function getExposureContext() { return _expCtx; }
     /* ══ THE POST PASS 7.4 — THE AUTO EXPOSURE (PREMIUM_POLISH_PLAN, 2026-09-21) ══
        The eye ADAPTS in the building: every AE_INTERVAL_MS the composer's read buffer (the frame before the retro pass) is
@@ -4097,11 +4085,11 @@ const ThreePost = (function () {
         var s = parseFloat(v);
         if (isNaN(s)) return;
         _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, s));
-        _expEased = _exposureUser; _expByCtx[_expCtx] = _exposureUser;   // a slider move lands at once, on THIS place's value
+        _expEased = _exposureUser;   // a slider move lands at once — THE ONE BRIGHTNESS: battle and exploring alike
         // Include the filmic compensation — omitting it made the Brightness
         // slider visibly darken the scene until the next day/night ease.
         if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem(EXPOSURE_CTX_KEYS[_expCtx] || 'ew_exposure', String(_exposureUser)); } catch (e) {}
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem(EXPOSURE_KEY, String(_exposureUser)); } catch (e) {}
     }
     function getExposureScale() { return _exposureUser; }
     function getExposureRange() { return { min: EXPOSURE_MIN, max: EXPOSURE_MAX }; }

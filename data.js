@@ -58671,8 +58671,8 @@ if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
                   unreadable); the torches carry the vibe on top of it.
    · fill         a cool fill light from behind the key in every box / open room (no black side on a face).
    · open         an outdoor room's hemisphere / sun / lamp intensities by day and by night — the night keeps a real
-                  MOON key. The Brightness slider is PER PLACE now (three-post.js THE TWO BRIGHTNESSES): the building's
-                  value and the battle's are separate and the swap eases. */
+                  MOON key. The Brightness slider is ONE value for battles and exploring alike (three-post.js THE ONE
+                  BRIGHTNESS, 2026-10-24; it was per place). */
 const HQ_LIGHT_RULES = {
     cycle: 'day',
     nightCap: 0.45,
