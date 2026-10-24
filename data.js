@@ -45994,6 +45994,16 @@ const HQ_STAGE_RULES = {
        are in; its farther props land under the fog where they stand. `propsGate: 'whole'` = the fork's alternative (every
        file first, Phase 1's rule). `trkMs` = how often the tracker re-walks a waiting part. */
     nearPropM: 60, propsGate: 'near', trkMs: 250,
+    /* THE ROUND JOIN (2026-10-24, mondo: "lets get rid of the loading screen between the foyer and the main hall ... figure out a way
+       to actually animate/rotate the revolving doors"): a door of the ROUND hall (`a` = the rotunda, `door` = its door id) and a
+       box room's door (`b`, `bDoor`) are ONE doorway on ONE stage — the box stands behind the hall's wall at that door's angle,
+       turned to face the hall (any angle, not only quarter turns), HQ_WORLD_RULES.wallM of wall between the two. Either room
+       built beside the other, walked through like THE DOOR JOIN (no card); the hall's revolving leaf stands in the doorway and
+       turns while you walk through it (the box's own leaf stands down while the hall is beside it). The box room is not a part
+       of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
+    round: [
+        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the revolving door at 195°
+    ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
@@ -46578,23 +46588,93 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
+    const rj = hqStageRoundJoin(fromId);   // THE ROUND JOIN: the hall and its box at the door's own angle
+    if (rj && (rj.a === toId || rj.b === toId) && fromId !== toId) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
     if (!A || !B || A.ground !== B.ground || A.absorbedBy || B.absorbedBy) return null;
     const o = hqZoneToRoom(fromId, B.x, B.z);
     return { x: o.x, z: o.z, y: B.y - A.y, rot: (((B.rot - A.rot) % 4) + 4) % 4 };
 }
+/* a rel's [cos, sin]: a quarter turn from the table, THE ROUND JOIN's free angle (rot is then a fraction of a quarter turn) */
+function _hqStageCS(rel) {
+    return _HQ_ROT[rel.rot] || [Math.cos(rel.rot * Math.PI / 2), Math.sin(rel.rot * Math.PI / 2)];
+}
 function hqStageToRoom(rel, x, z) {
-    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1];
+    const cs = _hqStageCS(rel), c = cs[0], s = cs[1];
     return { x: rel.x + x * c + z * s, z: rel.z - x * s + z * c };
 }
 function hqStageFromRoom(rel, x, z) {
-    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1], dx = x - rel.x, dz = z - rel.z;
+    const cs = _hqStageCS(rel), c = cs[0], s = cs[1], dx = x - rel.x, dz = z - rel.z;
     return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
+/* ══ THE ROUND JOIN (HQ_STAGE_RULES.round, 2026-10-24) ══════════════════════════════════════════════════════════════
+   The round hall's door and a box room's door as one doorway: the box is placed so its door's point stands
+   HQ_WORLD_RULES.wallM behind the hall's wall at the door's angle, its door facing the hall's centre. → the row (with its
+   two doors) for a room of either end, or null (the rows are checked here: a level-0 door of a round room, a wall door of a
+   box room). */
+function hqStageRoundJoin(roomId) {
+    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {};
+    for (let i = 0; i < rows.length; i++) {
+        const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId)) continue;
+        const A = R[j.a], B = R[j.b];
+        if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
+        if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
+        const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
+        if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
+        return { a: j.a, b: j.b, door: da, bDoor: db };
+    }
+    return null;
+}
+/* the join's geometry: `rel` = the box in the hall's metres, `back` = the hall in the box's; `R` the hall's wall, `deg` the
+   door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
+function hqStageRoundGeom(j) {
+    if (!j) return null;
+    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = A.shell.radius;
+    const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
+    const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
+    let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
+    th = Math.atan2(Math.sin(th), Math.cos(th));
+    const rel = { x: 0, z: 0, y: 0, rot: th / (Math.PI / 2) };
+    const q = hqStageToRoom(rel, pb.x, pb.z), Rf = R + gap;
+    rel.x = Rf * Math.sin(a) - q.x; rel.z = -Rf * Math.cos(a) - q.z;
+    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: 0, rot: -rel.rot };
+    const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
+    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb };
+}
+/* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
+   door's angle, `t0` / `t1` across the doorway) — null for any other room */
+function hqStageRoundNeighbours(roomId) {
+    const j = hqStageRoundJoin(roomId); if (!j) return null;
+    const G = hqStageRoundGeom(j); if (!G) return null;
+    if (roomId === j.a) {
+        const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
+        return [{ id: j.b, rel: G.rel, round: true, links: [],
+                  rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
+                  spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    }
+    const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
+    return [{ id: j.a, rel: G.back, round: true, links: [],
+              rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
+              spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+}
+/* THE CROSSING's rule from the round hall: past its wall and `hys` metres inside the box beyond (no flip-flop) */
+function hqStageWhereRound(R, nbs, x, z, hys) {
+    const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
+    if (!(Math.hypot(x, z) > R)) return null;
+    for (let i = 0; i < nbs.length; i++) {
+        if (!(nbs[i].spans && nbs[i].spans.length)) continue;
+        const S = ((DOOR_HQ.rooms || {})[nbs[i].id] || {}).shell; if (!S || !(S.w > 0)) continue;
+        const q = hqStageFromRoom(nbs[i].rel, x, z);
+        if (Math.max(Math.abs(q.x) - S.w / 2, Math.abs(q.z) - S.d / 2) < -hy) return nbs[i].id;
+    }
+    return null;
 }
 /* the staged neighbours of a staged part: [{ id, rel, rect: { x0, z0, x1, z1 } (the neighbour's box in THIS room's
    metres), spans: [{ side, t0, t1, kind }] (the joined stretches of THIS room's edge, in its own metres), links: [ids of
    the link doors on this room that a span replaces] }]. Empty for a room that is not staged. */
 function hqStageNeighbours(roomId) {
+    const rnb = hqStageRoundNeighbours(roomId); if (rnb) return rnb;   // THE ROUND JOIN (the hall ⇄ the foyer)
     if (!hqStagePart(roomId)) return [];
     const out = [], R = DOOR_HQ.rooms[roomId];
     hqWorldJoins(roomId).forEach(j => {
@@ -46792,6 +46872,12 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
+    const rj = hqStageRoundJoin(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
+    if (rj) {
+        const mine = roomId === rj.a ? rj.door : rj.bDoor; if (!mine || mine.id !== doorId) return null;
+        const G = hqStageRoundGeom(rj); if (!G) return null;
+        return { nb: roomId === rj.a ? rj.b : rj.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: roomId === rj.a ? rj.bDoor.id : rj.door.id, round: true, keep: roomId === rj.a };
+    }
     if (!hqStagePart(roomId)) return null;
     const j = hqWorldJoins(roomId).find(x => x.kind === 'door' && ((x.a === roomId && x.door === doorId) || (x.b === roomId && x.bDoor === doorId)));
     if (!j) return null;
@@ -58774,6 +58860,11 @@ const HQ_LIGHT_RULES = {
        — `intensity` at Settings → Key Light's default, `reach` m (decay 1 = a linear ramp to it), lifted `up` m, `back` = how far from the
        walker's head toward the eye, `side` m to the camera's right; a fight hangs it `battleUp` m over the floor where the camera looks,
        `battleReach` m, at `battleIntensity` (the fight's camera stands farther off). No shadow map. three-renderer.js _hqKeyLampTick / _fieldKeyLampTick. */
+    /* THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?"): at
+       night an outdoor room's hemisphere leans `amount` of the way from the night sky's tint to a soft moonlight `color` (it was the sky's
+       near-black blue + 22% white), the moon key never drops below `moonFloor` of the night (a low moon used to leave no key at all), and
+       the Key Light rides along outdoors at `keyLight` of its strength × the night (0 by day). The walk and the fight alike. */
+    nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
     keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 },
 };
 /* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
@@ -58807,7 +58898,7 @@ const HQ_POLISH_PREFS = [
     { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
     /* THE ROOM SETTINGS (2026-10-20): Auto Exposure now reaches the screen (three-post.js _brightGain); def false keeps the picture as it was */
     /* THE KEY LIGHT (2026-10-24): the soft light that rides with the camera in enclosed rooms, caves and corridors, and in a fight in one (HQ_LIGHT_RULES.keyLamp) */
-    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
+    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors, and outdoors at night (softer), so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
     { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: false, scope: 'hq', live: true },
     { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },
