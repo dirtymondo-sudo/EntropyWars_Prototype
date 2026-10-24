@@ -24085,6 +24085,14 @@ const ThreeRenderer = (function () {
 
     var _strikeTweens = new Map();
 
+    /* the 3D form a unit wears right now drives (the def's `drives` — the sedan, never the robot it stands up into) */
+    function _unitDrivesNow(unit) {
+        try {
+            var d = (typeof getRace3DModel === 'function') ? getRace3DModel(unit.race, unit.gender || 'male', unit.appearance) : null;
+            if (d && unit._spriteOverride) d = (d.overrideForms && d.overrideForms[unit._spriteOverride]) || null;
+            return !!(d && d.drives);
+        } catch (e) { return false; }
+    }
     function startStrikeLeapTween(unit, tx, ty, opts) {
         if (!unit) return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -24107,6 +24115,10 @@ const ThreeRenderer = (function () {
         if (_slTarget && !_slTarget.dead) { try { toSY = unitSurfaceY(_slTarget); } catch (e) {} }
         var _slRise = toSY - fromSY;
         arcPeak = Math.max(arcPeak, Math.abs(_slRise) * 0.35 + ts * 0.3, Math.max(_slRise, 0) / 2 + ts * 0.34);
+        /* THE CAR RAMS (2026-10-24, mondo: "if i attack as a car i wanna see the car do it"): a form that DRIVES
+           (sprites.js `drives`, the honda civic's sedan) rolls in along the ground and rams instead of hopping —
+           only a ledge between the two lifts it, by just what the climb needs. */
+        if (_unitDrivesNow(unit)) arcPeak = Math.abs(_slRise) > ts * 0.05 ? Math.abs(_slRise) * 0.35 + ts * 0.1 : 0;
         /* stopShort (tiles): a rigged model lunges TOWARD the victim and
            holds beside it — never onto its tile (the two bodies would share
            one column). A sprite keeps the classic jump onto the tile (0). */

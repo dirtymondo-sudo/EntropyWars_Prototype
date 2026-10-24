@@ -2197,15 +2197,14 @@ const RACE_MODELS_3D = {
   },
   // Honda Civic — the transformer. TWO models: the boneless sedan
   // (texture-stage GLB — a static mesh is exactly right for a parked car)
-  // idles and drives, and the rigged robot ("1990s_sedan_transform", a
-  // standard Meshy biped → library-animated) takes over for combat actions.
-  // The swap rides the existing 2D transform state machine: battle.js
-  // UNIT_ANIM_OVERRIDES['honda civic'] sets unit._spriteOverride to the
-  // combat/moving sprite URLs around casts/attacks/moves, and the renderer
-  // resolves def.overrideForms[_spriteOverride] to pick the 3D form — so the
-  // robot appears for exactly the frames the 2D transformer sprite used to,
-  // then reverts (revertAfter) back to the car. transformFx pops a ground
-  // ring at each morph. If the sedan drives tail-first, flip yawOffset sign.
+  // idles, drives AND fights (2026-10-24, mondo: the car attacks as the car),
+  // and the rigged robot ("1990s_sedan_transform", a standard Meshy biped →
+  // library-animated) takes over only while the unit wears the Transform
+  // carrier (STATUS_DEFS mechaForm): battle.js UNIT_ANIM_OVERRIDES['honda
+  // civic'].formSprites pins unit._spriteOverride to the combat sprite URL,
+  // and the renderer resolves def.overrideForms[_spriteOverride] to pick the
+  // 3D form. Transform again folds it back into the car. transformFx pops a
+  // ground ring at each morph. If the sedan drives tail-first, flip yawOffset sign.
   'honda civic': {
     male: (function () {
       const car = {
@@ -2214,6 +2213,7 @@ const RACE_MODELS_3D = {
         heightRatio: 0.55,        // roofline ~chest-high → ~1.7 tiles bumper-to-bumper
         yawOffset: Math.PI / 2,   // export's long axis is X — swing the nose to +Z (sign flipped 2026-07-19: it drove tail-first)
         transformFx: true,
+        drives: true,             // three-renderer.js _unitDrivesNow: its melee strike rolls in and rams, no hop (2026-10-24)
         moveTimeScale: 1, castTimeScale: 1,
         deathTimeScale: 1.9, hitTimeScale: 2.8, jumpTimeScale: 3.2,
       };
