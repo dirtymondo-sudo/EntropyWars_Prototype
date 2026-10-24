@@ -29856,6 +29856,11 @@ const DOOR_HQ = {
                 { key: 'coffee_mug',     x: -0.9, z: -5.55, y: 0.9, face: 30 },             // on the counter top, by the wells
                 { key: 'solo_cup',       x: 0.2,  z: -5.5, y: 0.9 },
                 { key: 'clipboard_flat', x: 0.75, z: -5.55, y: 0.9, face: -12 },              // the seconds sheet; nobody has had seconds
+                /* THE CHRISTMAS PACK (2026-10-24, mondo: "there is some food that could go in the cafeteria"): the pack's roast on the
+                   counter over the wells, the flan / cocoa / punch / cookies on the tables, a gingerbread man by the lava lamp */
+                { key: 'xmas_turkey',    x: -3.9, z: -5.55, y: 0.9, face: 0 },
+                { key: 'xmas_carvery',   x: -2.75, z: -5.55, y: 0.9, face: 0 },
+                { key: 'xmas_roast',     x: -1.75, z: -5.55, y: 0.9, face: 0 },
                 { key: 'observation_window', wall: 'n', x: -2.0, mount: 1.45 },              // the kitchen hatch; the kitchen is not on the plan
                 { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 2.9 },
                 { key: 'vent_grille',    wall: 'n', x: 2.2, mount: 3.3 },                      // over the hatch; the kitchen door took its wall (Phase 8)
@@ -29885,6 +29890,8 @@ const DOOR_HQ = {
                 { key: 'coffee_mug',     x: -3.1, z: -0.8,  y: 0.74 },
                 { key: 'solo_cup',       x: -3.8, z: -0.6,  y: 0.74 },
                 { key: 'papers_a',       x: -2.8, z: -1.5,  y: 0.74, face: 30 },              // somebody is working through lunch
+                { key: 'xmas_flan',      x: -4.6, z: -0.75, y: 0.74 },                         // THE CHRISTMAS PACK
+                { key: 'xmas_cocoa',     x: -4.65, z: -1.35, y: 0.74, face: 200 },
                 { key: 'conference_table', x: -3.6, z: 3.0, face: 0 },
                 { key: 'cafeteria_chair', x: -5.1, z: 3.0,  face: 90 },
                 { key: 'cafeteria_chair', x: -2.1, z: 3.0,  face: 270 },
@@ -29896,6 +29903,8 @@ const DOOR_HQ = {
                 { key: 'meal_tray_empty', x: -4.3, z: 2.7,  y: 0.74, face: 12 },
                 { key: 'solo_cup',       x: -3.6, z: 2.4,  y: 0.74 },
                 { key: 'coffee_mug',     x: -2.8, z: 2.6,  y: 0.74 },
+                { key: 'xmas_punch',     x: -4.65, z: 3.35, y: 0.74, face: 30 },                // THE CHRISTMAS PACK
+                { key: 'xmas_cookies',   x: -3.95, z: 3.5,  y: 0.74 },
                 /* ── the east half: THE CONVERSATION RING — six arcs of orange velour round a tulip table on a shag rug (the
                    sunken lounge of every 1960s terminal, raised: the floor is one level); the sixth arc left out at the
                    north-west so the tables walk in ── */
@@ -29909,6 +29918,7 @@ const DOOR_HQ = {
                 { key: 'lava_lamp',      x: 2.8,  z: 1.2, y: 0.74, face: 30 },                 // on the tulip table: the wax, at lunch
                 { key: 'solo_cup',       x: 3.3,  z: 1.0, y: 0.74 },
                 { key: 'coffee_mug',     x: 2.35, z: 1.5, y: 0.74, face: 200 },
+                { key: 'xmas_gingerbread', x: 3.05, z: 1.6, y: 0.74, face: 160 },               // THE CHRISTMAS PACK
                 { key: 'sputnik_lamp',   x: 2.8,  z: 1.2, ceil: true },                        // over the ring
                 { key: 'mushroom_lamp',  x: 0.3,  z: -4.0 },                                   // by the till
                 /* ── the door end and the south wall (z 6) ── */
@@ -29971,7 +29981,7 @@ const DOOR_HQ = {
                     shell: { mood: { light: 0xff4f9a } },
                     drop: ['serving_line', 'tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
                            'conference_table', 'cafeteria_chair', 'molded_chair', 'papers_a', 'clipboard_flat', 'wet_floor_sign', 'rug_office',
-                           'coffee_mug', 'solo_cup'],
+                           'coffee_mug', 'solo_cup', 'xmas_turkey', 'xmas_carvery', 'xmas_roast', 'xmas_flan', 'xmas_cocoa', 'xmas_punch', 'xmas_cookies', 'xmas_gingerbread'],
                     add: [
                         { key: 'mobius_bar',      x: 0, z: 0.3, face: 0 },
                         /* six chairs round the one side, facing the middle */
@@ -29986,6 +29996,8 @@ const DOOR_HQ = {
                         { key: 'solo_cup',        x: -1.5, z: 0.3,  y: 1.05 },
                         { key: 'solo_cup',        x: 0,    z: -1.2, y: 1.05 },
                         { key: 'coffee_mug',      x: 0,    z: 1.8,  y: 1.05, face: 40 },   // somebody is still working through lunch
+                        { key: 'xmas_champagne',  x: 1.06, z: -0.76, y: 1.05 },            // THE CHRISTMAS PACK (2026-10-24): two bottles on the band
+                        { key: 'xmas_champagne',  x: -1.06, z: 1.36, y: 1.05 },
                         { key: 'globe_lamp',      x: -5.2, z: -3.6 },
                         { key: 'globe_lamp',      x: 5.2,  z: -3.6 },
                         { key: 'retro_speakers',  x: -5.4, z: 3.7, face: 40 },
@@ -48113,7 +48125,7 @@ const HQ_AREA_SPECS = {
         parti: 'A workshop village on a frozen lake; the sleigh road leaves north over the drift where the pole stands.', typology: 'pearls',
         floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
         gen: { kind: 'plan', look: 'walls', wallKey: 'wood_planks', wallH: 4.5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 7 },
-        forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['pine'] },
+        forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['xmas_pine', 'xmas_pine_2', 'xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'] },   // THE CHRISTMAS PACK (2026-10-24): the pack's snowy pines (were the retro pine)
         plaza: { x: 0, z: 6 },
         features: [
             /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built timber walls (4.5 m) where the rooms gen raised banks. The bay
@@ -48177,12 +48189,31 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: 15, z0: 18, x1: 21, z1: 18, w: 1.6, y: 0.3 },
             /* THE GIFT STACK (1.3) — a crate pile with a ladder up it */
             { k: 'plateau', x: 25, z: 16, w: 5, d: 5, h: 1.3, edge: 0.15 }, { k: 'climb', x: 22.8, z: 16, face: 90, look: 'ladder' },
-            { k: 'grove', x: -13, z: 18.5, r: 5, n: 5, kinds: ['pine'] }, { k: 'grove', x: 22, z: -10.5, r: 2, n: 2, kinds: ['pine'] },
+            { k: 'grove', x: -13, z: 18.5, r: 5, n: 5, kinds: ['xmas_pine'] }, { k: 'grove', x: 22, z: -10.5, r: 2, n: 2, kinds: ['xmas_pine'] },   // THE CHRISTMAS PACK: the same spots, the pack's snowy pine
             { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
         props: [{ key: 'riser_1', x: 6, z: 9 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
                 { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 25, z: 16, y: 1.3 }, { key: 'signpost', x: -2, z: 2 },
-                { key: 'cardboard_boxes', x: 29, z: -22 }, { key: 'cardboard_box', x: 29.5, z: -20 }],
+                { key: 'cardboard_boxes', x: 29, z: -22 }, { key: 'cardboard_box', x: 29.5, z: -20 },
+                /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): every piece stands off the North Pole arena's windows (the board's cells are
+                   baked from this room, x −25 … −4), so no fight square changes. THE PLAZA's tree with the presents under it */
+                { key: 'xmas_tree', x: 4, z: 3, h: 3.2 },
+                { key: 'xmas_gift', x: 2.9, z: 3.7, face: 20 }, { key: 'xmas_gift_2', x: 5.1, z: 3.9, face: -15 }, { key: 'xmas_gift_3', x: 3.3, z: 1.8, face: 35 }, { key: 'xmas_gift_4', x: 5.0, z: 2.0, face: 60 },
+                /* the hearth (the fireplace way on the workshop deck's west wall, its mantel 1.7 over the deck): the wreath on the breast, the
+                   garland and two stockings off the mantel, the cocoa and a gingerbread man left on it; the workshop's mallets by the wall */
+                { key: 'xmas_wreath', x: -31.3, z: -2, y: 2.95, face: 90, mount: 0 },
+                { key: 'xmas_garland', x: -31.22, z: -2, y: 2.28, face: 90, mount: 0 },
+                { key: 'xmas_stocking', x: -31.25, z: -2.85, y: 2.18, face: 90, mount: 0 }, { key: 'xmas_stocking_2', x: -31.25, z: -1.15, y: 2.18, face: 90, mount: 0 },
+                { key: 'xmas_cocoa', x: -31.37, z: -3.0, y: 2.7, face: 90 }, { key: 'xmas_gingerbread', x: -31.37, z: -2.65, y: 2.7, face: 90 },
+                { key: 'xmas_hammer', x: -31.4, z: 1.6, y: 1.0, face: 90 }, { key: 'xmas_hammer_2', x: -31.4, z: 2.0, y: 1.0, face: 70 },
+                /* the snowmen: the lake's west shore, the pole's yard under the drift, the sledge yard's far corner */
+                { key: 'xmas_snowman', x: 12, z: -4.5, face: 330 }, { key: 'xmas_snowman_2', x: 9.2, z: -13, face: 20 }, { key: 'xmas_snowman_3', x: -27.5, z: -13, face: 120 },
+                /* THE GIFT STACK's presents (on top, round the cardboard), two more on the yard's floor, the plain tree in its corner */
+                { key: 'xmas_gift_2', x: 24.0, z: 14.6, y: 1.3, face: 10 }, { key: 'xmas_gift_3', x: 26.3, z: 17.4, y: 1.3, face: -25 }, { key: 'xmas_gift', x: 26.4, z: 14.7, y: 1.3, face: 40 },
+                { key: 'xmas_gift_4', x: 27.2, z: 20.4, face: 15 }, { key: 'xmas_gift', x: 26.3, z: 20.9, face: -30 },
+                { key: 'xmas_tree_plain', x: 14.5, z: 20.2, h: 2.8 },
+                /* the bay door's hall: a wreath either side */
+                { key: 'xmas_wreath_2', x: -1.62, z: 15, y: 1.9, face: 90, mount: 0 }, { key: 'xmas_wreath_2', x: 1.62, z: 15, y: 1.9, face: 270, mount: 0 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 11, z: -5, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
                    { x: -20, z: -3, face: 180, race: 'yeti', say: '“The loft is where the wrapping is kept. I am not allowed up the ladder.”' }],
         lines: ['“December 25th.” “Every day here.”'] },
@@ -49525,6 +49556,12 @@ const HQ_TREE_KINDS = {
     /* THE ISLAND (2026-10-20): the palm — the `palm_tree` GLB in the D.O.O.R. kit folder (the renderer's `kit:` foliage), a tree like the rest:
        a blocker on the walk, a blocked cell in a fight, the editor's TREES tab */
     palm:    { model: 'kit:Meshy_AI_palm_tree_0910054114_texture.glb', name: 'palm' },
+    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): `xmas:<node>` = a tree cut out of R2 Assets/christmas/models/Christmas.dae
+       (three-renderer.js _foliageIsXmas) — the snowy pines (Tree_N*: frosted low-poly cones) and the snow-laden pine cards (Trees_0*) */
+    xmas_pine:   { model: 'xmas:Tree_N', name: 'snowy pine' },     xmas_pine_2: { model: 'xmas:Tree_N_P', name: 'tall snowy pine', tall: true },
+    xmas_pine_3: { model: 'xmas:Tree_N_01', name: 'snowy fir' },
+    xmas_snow_pine:   { model: 'xmas:Trees_01', name: 'snow pine', tall: true },   xmas_snow_pine_2: { model: 'xmas:Trees_02', name: 'snow pine 2', tall: true },
+    xmas_snow_pine_3: { model: 'xmas:Trees_03', name: 'snow pine 3', tall: true },
     /* THE LOOKING-GLASS ARENA (2026-10-20, mondo: the voxel maps remade as new maps built with the editor's tools): the board's marble
        chess pieces as ROOM pieces — planted like a tree (the walker bumps it; THE FIELD's raster makes its square solid cover, the
        fight's LOS blocker), drawn by three-renderer.js _hqChessStatue (the Δ's own lathe at room scale on a square plinth, no file).
@@ -49645,8 +49682,57 @@ const HQ_CATALOGUE_METRO = {
     /* … without its platform-side middle door pair: the `train` way slides its own leaves there (three-renderer.js _HQ_METRO_TRAIN) */
     metro_car_open:       { file: 'Metro.glb', base: 'metro', node: 'subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012', span: 16.3, foot: 1.4, rect: { hw: 1.35, hd: 8.15 }, block: true, palette: false },
 };
+/* THE CHRISTMAS PACK (2026-10-24, mondo's upload: "added this christmas pack to the bucket, can you utilize them for the north pole
+   area and santa spells? Also see what from this pack could be used elsewhere in the game, like there is some food that could go in
+   the cafeteria"): R2 Assets/christmas/models/Christmas.dae holds the whole PSX kit in ONE COLLADA file (62 pieces; the .fbx beside it
+   is the same kit, the SantaClaus*.fbx two rigged Santas, Roads.* snowy street tiles — unused); its sheets are loose in
+   Assets/christmas/textures/. A row names its node (`node`, a comma list = a composite that keeps the file's layout) and the renderer
+   cuts it out of the one download (three-renderer.js _asDae + _miscPiece). The file is in metres: the sizes below are its own,
+   measured, except the food and the cookies, drawn down to table size (the file's cookies are a hand across). */
+const _XMAS_COOKIES = 'Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11';
+const _XMAS_BAUBLES = 'Christmas_sphere,Christmas_sphere_01,Christmas_sphere_02,Christmas_sphere_03,Christmas_sphere_04,Christmas_sphere_05,Christmas_sphere_06';
+const HQ_CATALOGUE_XMAS = {
+    xmas_tree:        { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_tree',      h: 2.43, foot: 0.7, block: true },   // dressed: baubles, the ribbon, the star
+    xmas_tree_plain:  { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_tree_01',   h: 2.38, foot: 0.7, block: true },
+    xmas_snowman:     { file: 'Christmas.dae', base: 'xmas', node: 'Snowman',             h: 1.58, foot: 0.45, block: true },
+    xmas_snowman_2:   { file: 'Christmas.dae', base: 'xmas', node: 'Snowman_01',          h: 1.59, foot: 0.45, block: true },
+    xmas_snowman_3:   { file: 'Christmas.dae', base: 'xmas', node: 'Snowman_02',          h: 1.69, foot: 0.45, block: true },
+    xmas_gift:        { file: 'Christmas.dae', base: 'xmas', node: 'Gift',                h: 0.49, foot: 0 },   // white, red ribbon
+    xmas_gift_2:      { file: 'Christmas.dae', base: 'xmas', node: 'Gift_01',             h: 0.48, foot: 0 },   // red, green ribbon
+    xmas_gift_3:      { file: 'Christmas.dae', base: 'xmas', node: 'Gift_02',             h: 0.27, foot: 0 },   // green, red bow
+    xmas_gift_4:      { file: 'Christmas.dae', base: 'xmas', node: 'Gift_03',             h: 0.24, foot: 0 },   // red foil
+    xmas_wreath:      { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_wreath',    h: 0.69, foot: 0, wall: true, mount: 1.6 },
+    xmas_wreath_2:    { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_wreath_01', h: 0.71, foot: 0, wall: true, mount: 1.6 },
+    xmas_stocking:    { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_stocking',  h: 0.40, foot: 0, wall: true, mount: 1.2 },
+    xmas_stocking_2:  { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_stocking_01', h: 0.40, foot: 0, wall: true, mount: 1.2 },
+    xmas_garland:     { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_decoration',    span: 0.90, foot: 0, wall: true, mount: 2.0 },   // the bells
+    xmas_garland_2:   { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_decoration_01', span: 1.26, foot: 0, wall: true, mount: 2.0 },   // the bows
+    xmas_garland_3:   { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_decoration_02', span: 1.26, foot: 0, wall: true, mount: 2.0 },   // plain
+    xmas_baubles:     { file: 'Christmas.dae', base: 'xmas', node: _XMAS_BAUBLES,          span: 0.45, foot: 0 },
+    xmas_hat:         { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_hat',       span: 0.31, foot: 0 },
+    xmas_hammer:      { file: 'Christmas.dae', base: 'xmas', node: 'Hammer',              h: 0.95, foot: 0 },   // the workshop's mallets
+    xmas_hammer_2:    { file: 'Christmas.dae', base: 'xmas', node: 'Hammer_01',           h: 0.95, foot: 0 },
+    xmas_turkey:      { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food',      span: 0.50, foot: 0 },   // on its platter
+    xmas_carvery:     { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food_01',   span: 0.55, foot: 0 },   // the carved joint on its board
+    xmas_bake:        { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food_02',   span: 0.50, foot: 0 },   // the baking tray
+    xmas_roast:       { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food_03',   span: 0.29, foot: 0 },   // the roasting pan
+    xmas_cookies:     { file: 'Christmas.dae', base: 'xmas', node: _XMAS_COOKIES,          span: 0.50, foot: 0 },   // the twelve, laid out as the file has them
+    xmas_gingerbread: { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_cookie_07', span: 0.14, foot: 0 },
+    xmas_cocoa:       { file: 'Christmas.dae', base: 'xmas', node: 'Cup_chocolate',       h: 0.11, foot: 0 },
+    xmas_cocoa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'Cup_chocolate_01',    h: 0.12, foot: 0 },
+    xmas_punch:       { file: 'Christmas.dae', base: 'xmas', node: 'Ponche',              h: 0.14, foot: 0 },
+    xmas_punch_2:     { file: 'Christmas.dae', base: 'xmas', node: 'Ponche_01',           h: 0.11, foot: 0 },
+    xmas_punch_3:     { file: 'Christmas.dae', base: 'xmas', node: 'Ponche_02',           h: 0.12, foot: 0 },
+    xmas_flan:        { file: 'Christmas.dae', base: 'xmas', node: 'Flan',                span: 0.30, foot: 0 },
+    xmas_champagne:   { file: 'Christmas.dae', base: 'xmas', node: 'Champam',             h: 0.33, foot: 0 },
+    xmas_foil_tray:   { file: 'Christmas.dae', base: 'xmas', node: 'Aluminum_tray',       span: 0.45, foot: 0 },
+    /* the editor's palette only (placed nowhere): the cottage on its own patch of snow, and the two Santa figures */
+    xmas_house:       { file: 'Christmas.dae', base: 'xmas', node: 'House',               h: 8.8,  foot: 4.0, block: true },
+    xmas_santa:       { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus',          h: 1.92, foot: 0.35, block: true },
+    xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
+};
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
-[HQ_CATALOGUE_METRO].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
+[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
@@ -49762,10 +49848,11 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
+        ['Christmas',       c => c.base === 'xmas', null],    // THE CHRISTMAS PACK (2026-10-24)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -49786,7 +49873,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -49877,7 +49964,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
