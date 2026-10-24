@@ -28839,8 +28839,16 @@
                 };
                 // the command menus: a side band (left or right of the screen's middle); one spanning the
                 // screen (a phone layout) is a bottom / top band instead
-                document.querySelectorAll('.hrlg-rig > .hrlg-side, .hrlg-rig > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
-                    + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => {
+                /* the smooth pass (2026-10-24): the command menus all live inside a .hrlg-rig, so the look runs over the rigs
+                   only (a whole-document query of ~10,000 nodes cost ~2 ms on a slow machine, several times a second) */
+                const rigs = document.getElementsByClassName('hrlg-rig'), menuEls = [];
+                for (let ri = 0; ri < rigs.length; ri++) {
+                    const rg = rigs[ri];
+                    if (rg.classList.contains('hrlg-peek')) menuEls.push(rg);
+                    rg.querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
+                        + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => menuEls.push(el));
+                }
+                menuEls.forEach(el => {
                     const r = boxOf(el);
                     if (!r) return;
                     menu = true;
@@ -28851,8 +28859,11 @@
                 });
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
-                const sub = [...document.querySelectorAll('.hrlg-rig:not(.hrlg-peek) .hrlg-panels > .hrlg-panel:not(.root)')]
-                    .some(el => boxOf(el));
+                let sub = false;
+                for (let ri = 0; ri < rigs.length && !sub; ri++) {
+                    if (rigs[ri].classList.contains('hrlg-peek')) continue;
+                    sub = [...rigs[ri].querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)')].some(el => boxOf(el));
+                }
                 if (!sub) return (_cfArea = _CLEAR_ROOT);
                 // the HUD strips: scoreboard / match line on top, the prompt + description bars below
                 document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
