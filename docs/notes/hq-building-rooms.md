@@ -1079,3 +1079,25 @@ screen ... the E to talk option ruins the new location animation."
   `EW_HQ_NO_CLEAR` turns it off; distances in `HQ_CROWD_RULES.clear`.
 - THE HUSH: `hq.hush(ms)` / `hq.hushed()`; no npc / agent / cast prompt (and no ATTACK line) under the load card, for
   `hushMs` 1800 after it fades, and while the arrival card plays (its length + 300 ms). Doors and counters still answer.
+
+## THE ROUND JOIN — the foyer ⇄ the main hall with no card (2026-10-24)
+mondo: "lets get rid of the loading screen between the foyer and the main hall, it needs a different door or figure out a
+way to actually animate/rotate the revolving doors to make them not need a loading screen."
+- data.js `HQ_STAGE_RULES.round` = `[{ a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' }]`: a level-0
+  door of the ROUND hall + a box room's wall door are one doorway on one stage. The foyer is in no HQ_WORLD zone; the stage
+  readers answer for it directly: `hqStageRoundJoin(id)`, `hqStageRoundGeom(j)` (the box stands `wallM` 0.2 m behind the
+  drum at the door's angle, its door facing the hall's centre — `rel.rot` is a FRACTION of a quarter turn, −1/6 for 195°;
+  `hqStageToRoom` / `hqStageFromRoom` take any angle through `_hqStageCS`), `hqStageRoundNeighbours` (the hall's span is
+  `side: 'round'`), `hqStageWhereRound` (from the hall: past the drum and 1 m inside the box). `hqStageNeighbours`,
+  `hqStageRel` and `hqStageDoorJoin` (`round: true`, `keep` = the hall's side) answer a round-join room first.
+- three-renderer.js: `_hqStageArm` arms the hall too (`st.round`); the stage steps build the round hall as a neighbour
+  (`_hqBuildShell`, `_hqRoundRoomLamps`, its people) when you stand in the foyer. `_hqDrumCuts` / `_hqDrumBand` cut the
+  lower drum at the doorway; the hall door gets the join's sleeve and back plate. `_hqStageRoundAt` / `_hqStageRoundSurface`
+  / `_hqStageRoundCam` answer the floor, air and boom past the drum (only at floor level — the mezzanine and gallery over
+  the doorway are the hall's own). `_hqRoundDoorTick`: the hall's revolving leaf (`_INTRO_DOOR_MOTION` 'spin') stands in
+  the middle of the doorway and turns one way while the walker is within swingM, settling on the next quarter turn; the
+  foyer's own leaf hides while the hall is beside it. The swap keeps the hall's people, re-rigs the key (`_hqLightArm`) and
+  eases the hemisphere / key / fill, colours too (`_hqIndoorLightVals`, `_HQ_HALL_LIGHT`).
+- THE CARD HOLDS: a round-join room builds its neighbour UNDER its load card and `_hqGateTick` waits for it
+  (`_hqStageRoundBeside`, capped by HQ_GATE_CAP_MS) — the arrival in the foyer is one longer load, the walk to the hall none.
+- Off: `window.EW_HQ_NO_STAGE = true` (re-enter) — the revolving door is a press-E door with a card again.
