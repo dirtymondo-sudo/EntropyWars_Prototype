@@ -6147,7 +6147,7 @@ const SPELL_LIBRARY = [
           damageType: 'physical', statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Two fingers. Lights out. Deals MEDIUM physical damage to an adjacent enemy and Stuns them for a round. Cooldown: 2 rounds.' },
         { id: 'raceFullBurst', upgradesBlock: ['upWiden'], name: 'Full Burst', tier: 4, families: ['mecha'], cost: 100, apCost: 2, cooldownRounds: 2,
-          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 150, damageType: 'physical', aoeRadius: 2,
+          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 120, damageType: 'physical', aoeRadius: 2,   // strong races check 2026-10-24: was 150 (1,302 dmg a cast, the most of any spell)
           ignoresLineOfSight: true,
           desc: 'Every hardpoint on the frame, at once. Deals HEAVY physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
         { id: 'raceDeepBreath', name: 'Deep Breath', tier: 1, families: ['meditation'], cost: 25, apCost: 1,
@@ -7369,15 +7369,15 @@ const RACE_ABILITIES = {
 
     'mech': [
         { id: 'raceMortarSalvo', tier: 1, families: ['mecha'], spellType: 'tech', name: 'Mortar Salvo',
-          type: 'damage', cost: 40, dmg: 80, range: 5,
+          type: 'damage', cost: 40, dmg: 70, range: 4,   // strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           ignoresLineOfSight: true,
           desc: 'Deals WEAK physical damage to All Enemies in an AOE. Fires through cover.' },
         { id: 'raceSiegeMode', tier: 2, families: ['mecha'], spellType: 'tech', name: 'Siege Mode',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statusEffects: [{ id: 'siegeMode', duration: 3 }],   // THE SPELL AUDIT Batch D: the lock-down (STATUS_DEFS siegeMode)
-          desc: 'Anchors down. Everything in range is a target. For 3 rounds the caster gains +1 ATK stage and +2 RNG, and loses 2 MOV.' },
+          statusEffects: [{ id: 'siegeMode', duration: 2 }],   // THE SPELL AUDIT Batch D: the lock-down (STATUS_DEFS siegeMode). Strong races check 2026-10-24: 3 -> 2 rounds, like the Sniper's Bipod (the status is shared, so its +2 RNG stays)
+          desc: 'Anchors down. Everything in range is a target. For 2 rounds the caster gains +1 ATK stage and +2 RNG, and loses 2 MOV.' },
         { id: 'raceEject', tier: 3, cleanse: 99, selfHealPct: 0.2, families: ['mecha'], spellType: 'tech', name: 'Eject!',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'escape', teleportDistance: 3,
@@ -8961,7 +8961,7 @@ const RACE_ABILITIES = {
         { id: 'raceKissOfDecay', element: 'poison', spellType: 'unholy', name: 'Kiss of Decay',
           type: 'damage', cost: 75, dmg: 125, range: 3, tier: 3,
           families: ['infernalcourt'],
-          kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
+          kind: 'lifeDrain', damageType: 'magic', drainPct: 0.25,   // strong races check 2026-10-24: was 0.40
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
         SHARED_POISON_SWAMP,
@@ -8972,9 +8972,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 2 }],
           desc: 'May I have this dance. Trade places with a unit within 4 tiles you can see; an enemy partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'sigLastDance', name: 'Last Dance', tier: 4, families: ['hellsbelle'], cost: 100, apCost: 1, cooldownRounds: 2,
-          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.5,
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.3,   // strong races check 2026-10-24: was 0.5
           bonusVsStatus: { status: 'charm', mult: 1.5 },
-          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for half of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
+          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for part of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'dreameater': [
         { id: 'raceDreamSiphon', element: 'psychic', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
@@ -9506,7 +9506,7 @@ const RACE_ABILITIES = {
           desc: 'The lost metal still shines under the sea. Deals WEAK magic damage to All Enemies in a 5-tile line and Soaks them for 2 rounds.' },
         { id: 'sigCrystalResonator', name: 'Crystal Resonator', tier: 3, families: ['orichalcum'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 130, range: 4, aoeRadius: 1,
-          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          bonusVsStatus: { status: 'wet', mult: 1.25 },   // strong races check 2026-10-24: was 1.5, which stacked with Wet conducting lightning (x1.5) to x2.25
           desc: 'The great crystal that powered Atlantis, still humming. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Soaked targets take it worse.' },
     ],
     'dinosaur': [
@@ -9517,7 +9517,7 @@ const RACE_ABILITIES = {
           kind: 'dash', cost: 75, apCost: 2, 
           desc: 'Stampedes through the battlefield and ends up behind the target. Deals MEDIUM physical damage to the target, tramples every enemy on the path for WEAK damage. Rooted targets take it worse.', dmg: 130 }),
         { id: 'raceDinoTailWhip', element: 'nature', tier: 1, families: ['apexpredator'], spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
-          type: 'damage', cost: 20, dmg: 100, range: 1, apCost: 1,
+          type: 'damage', cost: 20, dmg: 85, range: 1, apCost: 1,   // strong races check 2026-10-24: was 100, now the tier 1 median
           kind: 'damage', damageType: 'physical', pushDistance: 2,
           desc: 'A spinning tail strike. Deals MEDIUM physical damage to a Single Enemy. Knocks the target back 2 tiles.' },
         { id: 'raceApexRoar', tier: 2, families: ['apexpredator'], spellType: 'anomaly', element: 'sonic', name: 'Apex Roar',
