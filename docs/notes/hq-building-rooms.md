@@ -1101,3 +1101,15 @@ way to actually animate/rotate the revolving doors to make them not need a loadi
 - THE CARD HOLDS: a round-join room builds its neighbour UNDER its load card and `_hqGateTick` waits for it
   (`_hqStageRoundBeside`, capped by HQ_GATE_CAP_MS) — the arrival in the foyer is one longer load, the walk to the hall none.
 - Off: `window.EW_HQ_NO_STAGE = true` (re-enter) — the revolving door is a press-E door with a card again.
+
+## MAP LOOKS OFF = THE CLEAN PICTURE (2026-10-24)
+mondo: "if i have map looks unchecked then why do i always have to change the settings for it to not have the map looks? i
+want it to remember". The box WAS remembered (localStorage `ew_scene_looks`) and DID refuse every map / room look; what he
+still saw was the shipped PS1 grade (Dreamy tint, dither, 2x pixelate, grain, vignette, CRT), which is nearly the
+building's own look. three-post.js `_LOOK_CLEAN`: with Map Looks off, `setSceneLook(null)` (and the boot) lays a clean look
+that turns those six settings OFF wherever the player never set them — it yields exactly like a map look (`_retroOwned`,
+new `_cinOwned` / localStorage `ew_cin_owned` for CRT / vignette / their sliders). `getSceneLook()` answers null for it;
+`getWornRetroState()` / `getWornCinematicState()` = what is on screen, and ui.js `_buildVideoSettingsHTML` shows those
+while Map Looks is off so every box reads the way the picture looks. Room fog / night mood are not part of it.
+Proof shots: /mnt/project-files/map-looks/. Decision card asked mondo to pick between this (recommended), the shipped grade
+off for everyone, or a screenshot of something else.
