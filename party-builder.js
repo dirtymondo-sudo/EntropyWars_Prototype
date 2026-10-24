@@ -2906,7 +2906,7 @@ function PartyBuilder(props) {
     setPbTab('tech');   // C-1: a picked vessel goes straight to its techniques
     refresh();
   }
-  function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; let thunk=false; try{ thunk = typeof window.playDoorSfx==='function' && window.playDoorSfx('stamp',{volume:0.75})!==false; }catch(e){} if(!thunk) sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
+  function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; let thunk=false; const _sl=window._ewStampLook||{}; if(!_sl.forgeOff && !_sl.quiet){ try{ thunk = typeof window.playDoorSfx==='function' && window.playDoorSfx('stamp',{volume:0.75})!==false; }catch(e){} } if(!thunk) sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
   function selectSlot(i) { setSlot(i); st.builderSelectedSlot=i; st.builderSelectedPlayer=player; sfx('uiCursorMove'); refresh(); }
   function doRandomize() { if (typeof window.randomizeUnitSlot==='function') window.randomizeUnitSlot(player,slot); if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiButtonConfirm'); refresh(); }
   function doRandomizeAll() { if (typeof window.randomizeParty==='function') window.randomizeParty(player); if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; st.builderConfirmedSlots[player]={}; for(let i=0;i<teamSize;i++) st.builderConfirmedSlots[player][i]=true; sfx('uiButtonConfirm'); refresh(); }
@@ -3928,7 +3928,7 @@ function PartyBuilder(props) {
   const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('door agent', identity.gender || 'male'));
   const creatorPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
-      h('button', { className: 'ms-tty-btn', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
+      h('button', { className: 'ms-tty-btn ew-back', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
     h('div', { className: 'pb-zone-body pb-creator' },
       unitRace !== 'door agent'
         ? h('p', null, 'Select the DOOR Agent on the Roster tab to customize the male or female base model.')
@@ -4267,7 +4267,7 @@ function OfficerCreator() {
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
         h('button', { className: 'ms-tty-btn', onClick: () => { window.EWCharViewer?.resetView(); window.EWCharViewer?.play('walk', { full: true, name: 'Walk' }); } }, 'WALK'),
-        h('button', { className: 'ms-tty-btn', onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
+        h('button', { className: 'ms-tty-btn' + (intake ? ' ew-back' : ''), onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },
         h(HeroViewer3D, { race: 'door agent', gender, cls: 'Vessel', focus: 0.5, appearance }),   // HOMOSAPIEN OUT (2026-10-23): the look on the DOOR Agent
