@@ -2919,18 +2919,15 @@ function _hrlgPressMark(r) {
   return (r && r.press) ? (r.ap === 1 ? 'half' : true) : false;
 }
 /* THE DAMAGE CHIP (PvP playtest 2026-10-24): the forecast number is capped at the target's HP, so "≈−310" on a 310 HP
-   target read as a kill and left it on 2 HP. The roll's ends say it: LETHAL when even the low roll kills, MAY KILL when
-   only the high one does. A split hit whose element part the target ABSORBS heals it back after the blow (Lump of Coal
-   on Kaiju: ≈−98, net +3), so the drink rides the chip in green. */
-function _hrlgDmgChip(dmg, tUnit, fc, elemAff) {
+   target read as a kill and left it on 2 HP. The roll's ends colour it (the enemy quick menu's kill green, no longer
+   words that spilled past the row): green ≈−N = even the low roll kills, gold ≈−N? = only the high roll does. The
+   element part a target ABSORBS already reads on its nameplate ("FIRE ABSORBED +102"), so the chip leaves it out. */
+function _hrlgDmgChip(dmg, tUnit, fc) {
   const hp = tUnit ? Math.max(0, tUnit.hp || 0) : 0;
-  const heal = (fc && fc.heal > 0) ? fc.heal : 0;
-  const sure = !!(tUnit && fc && !fc.endures && !heal && fc.min != null && hp > 0 && fc.min >= hp);
-  const maybe = !sure && !!(tUnit && fc && !fc.endures && !heal && fc.max != null && hp > 0 && fc.max >= hp);
-  const tag = sure ? ' LETHAL' : maybe ? ' MAY KILL' : '';
-  if (!heal) return { v: '≈−' + dmg + tag, color: sure ? '#7dff9a' : EW.bad };
-  const icon = (elemAff === 'absorb') ? ' ABSORBS' : '';
-  return { v: h('span', null, '≈−' + dmg + ' ', h('span', { style: { color: '#57d97e' } }, '+' + heal + icon)), color: EW.bad };
+  const live = !!(tUnit && fc && !fc.endures && !(fc.heal > 0) && hp > 0);
+  if (live && fc.min != null && fc.min >= hp) return { v: '≈−' + dmg, color: '#7dff9a' };
+  if (live && fc.max != null && fc.max >= hp) return { v: '≈−' + dmg + '?', color: EW.gold };
+  return { v: '≈−' + dmg, color: EW.bad };
 }
 function _hrlgHitPct(attacker, target, from) {
   if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
@@ -5223,7 +5220,7 @@ function _hrlgTargetBlades(unit, st, mode) {
         : (_fcOut.blocked === 'guarded' && !(previewDmg > 0)) ? { v: 'GUARDED', color: '#9aa0b4' }
         : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
-        : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut, elemAff)
+        : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land

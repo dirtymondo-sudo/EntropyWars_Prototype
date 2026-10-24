@@ -2452,13 +2452,15 @@ From the 10-24 two-seat playtest (report https://claude.ai/artifact/6eCz5YkErHgF
   and online.js `'triggerEndTurn'` writes "⏱ Shot clock! X's turn ends automatically." + the TIME! float on the host.
 - **The podium never reaches the guest:** `_stageVictoryPodium` revives and lines up the viewer's cast in place; the host
   kept broadcasting, so the guest's result said "4 v 3 STANDING" and its Export Last Match had a dead unit alive.
-  `window._ewPodiumStaged()` → online.js `_broadcastState` sends nothing while the podium is up.
+  `window._ewPodiumStaged()` → online.js `_broadcastState` sends nothing while the podium is up. The host FIRST flushes
+  the final snapshot (`window._ewFlushFinalSync`, called at the top of the podium staging, cancels the 50 ms throttle):
+  without it the guest never got `winner` and sat on the last round with no result screen.
 - **The press line reaches the guest:** `_pressDialogueLine(res)` (the "+2 AP — Free action!" dialogue) is relayed as
   `'press-feedback'` (online.js wraps `_showPressFeedback`); fogged presses stay silent. The press itself shows only AFTER
   the hit (mondo: a pre-hit +2 would give away the crit).
-- **The damage chip:** hud.js `_hrlgDmgChip` — the number is capped at the target's HP, so the chip says LETHAL (low roll
-  kills) / MAY KILL (only the high roll does), and a split hit whose element part the target absorbs shows the heal
-  back in green ("≈−98 +103 ABSORBS"). ui.js `predictDamageToUnit` out now carries `heal`, `min`, `max`.
+- **The damage chip:** hud.js `_hrlgDmgChip` — colour only, so it never spills out of the target row: green when even the
+  low roll kills, gold with "?" when only the high roll does, red otherwise. ui.js `predictDamageToUnit` out carries
+  `heal`, `min`, `max`. (A first try with LETHAL / MAY KILL words and the absorb heal on the chip overflowed the row.)
 - Checked, already right: an absorbed element part blocks the press (`_pressHitInfo`), and the row's red ! was the absorb
   warning; walking off a drop already tints the tile hazard, badges the move ghost with the damage and labels the tile
   menu "Move here (−N HP)".

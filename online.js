@@ -6161,6 +6161,15 @@
                 }
             }
 
+            /* battle.js _stageVictoryPodium calls this before it lines up the cast: the final snapshot (the winner and
+               the real board) is sent at once, past the 50 ms throttle, because nothing is sent while the podium is up */
+            window._ewFlushFinalSync = function() {
+                if (!NET.online || NET.role !== 'host' || !state.winner) return;
+                if (NET.syncThrottle) { clearTimeout(NET.syncThrottle); NET.syncThrottle = null; }
+                NET._syncPending = false;
+                window._broadcastState();
+            };
+
             window._broadcastState = function() {
                 /* REPLAY TAP: the recorder rides the exact same sync points the
                    online guest does — every _broadcastState call is a potential

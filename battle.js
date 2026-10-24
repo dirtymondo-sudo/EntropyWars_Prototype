@@ -45281,6 +45281,9 @@
                     return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
                 }).slice(0, 8);
 
+                /* the host's last real board goes out NOW, before the lineup mutates it: online.js holds every snapshot
+                   while the podium is up, and a throttled final sync lost here left the guest on round 5 with no result */
+                if (typeof window._ewFlushFinalSync === 'function') { try { window._ewFlushFinalSync(); } catch (e) {} }
                 _podiumState = {
                     won: playerWon,
                     saved: sorted.map(u => ({
