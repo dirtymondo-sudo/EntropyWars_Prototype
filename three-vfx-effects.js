@@ -11116,7 +11116,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        — the red present with the green ribbon (Blizzard Present, THE NAUGHTY LIST's house-sized one), Milk and Cookies' foil tray,
        the twelve cookies on it and the cocoa. Lump of Coal stays Santa throwing coal (mondo's rule). */
     var _XMAS_COOKIE_NODES = 'Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11';
-    var _XMAS_SPELL_NODES = ['Gift_01', 'Aluminum_tray', _XMAS_COOKIE_NODES, 'Cup_chocolate'];
+    var _XMAS_SPELL_NODES = ['Gift_01', _XMAS_COOKIE_NODES, 'Cup_chocolate'];
     function _xmasPiece(node, target, align, o) {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (!TR || typeof TR.xmasClone !== 'function') return null;
@@ -16570,18 +16570,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
-    /* ── MILK AND COOKIES — the plate left out (THE CHRISTMAS PACK, 2026-10-24). The pack's foil tray with its twelve cookies and a
-       mug of cocoa beside it is set down warm beside the caster's feet, turns once, and is gone as the heal goes out to the allies. Pack pieces
+    /* ── MILK AND COOKIES — the plate left out (THE CHRISTMAS PACK, 2026-10-24). The pack's twelve cookies (no tray) and a
+       mug of cocoa beside them are set down warm beside the caster's feet, turns once, and is gone as the heal goes out to the allies. Pack pieces
        only: nothing is drawn while the file streams. ─────────────────────────────────────────────────────────────────── */
     function _sigMilkCookies3D(tx, ty) {
         if (!_canSpawn()) return false;
         var wp = _worldPos(tx, ty), ts = wp.ts;
-        var tray = _xmasPiece('Aluminum_tray', ts * 0.5, null, { fit: 'span' });
-        if (!tray) return false;
+        var cookies = _xmasPiece(_XMAS_COOKIE_NODES, ts * 0.4, null, { fit: 'span' });   // no tray (mondo 2026-10-24: "drop the tray")
+        if (!cookies) return false;
         var g = new THREE.Group(); g.position.set(wp.x + ts * 0.55, wp.y, wp.z);   // beside the caster, never through the legs
-        var plate = new THREE.Group(); plate.add(tray);
-        var cookies = _xmasPiece(_XMAS_COOKIE_NODES, ts * 0.4, null, { fit: 'span' });
-        if (cookies) { cookies.position.y = ts * 0.05; plate.add(cookies); }
+        var plate = new THREE.Group(); plate.add(cookies);
         var cup = _xmasPiece('Cup_chocolate', ts * 0.17);
         if (cup) { cup.position.set(ts * 0.36, 0, ts * 0.05); plate.add(cup); }
         g.add(plate);
