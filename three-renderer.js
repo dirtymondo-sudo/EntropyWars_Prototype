@@ -74432,6 +74432,10 @@ const ThreeRenderer = (function () {
            `metres`, null while it streams — the call warms it). See _spellAstralEye / _spellSedan for the opts. */
         astralEye: function (o) { return _spellAstralEye(o); },
         sedan: function (o) { return _spellSedan(o); },
+        /* the map's own threshold leaf for THE DOOR AGENT's spell doors (three-vfx-effects.js _doorFxLeafKey) and the
+           cast slot chain for the Spell Library's preview label (ui.js _slb2ChainFor) — both read these and got nothing */
+        doorLeaf: _doorLeafFor,
+        castChainFor: _castChainFor,
 
         setLightRayStrength, getLightRayStrength,
         setUnitLight, getUnitLight,   // THE UNIT RIM LIGHT rev 2: the Graphics settings
