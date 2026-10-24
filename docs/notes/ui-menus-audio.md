@@ -1901,6 +1901,39 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - Proven in a real VS CPU battle (playtest harness): /mnt/project-files/small-nameplates/ (default before/after at the same camera spot,
   distance 20 vs 11, bar beside vs below, name/level off, normal Name off leaving the small names, the form). Viewer-local, nothing relayed.
 
+### UI Maker pass 29: THE BACK + CONFIRM BUTTONS + THE STAMP (2026-10-24, mondo: "in the ui maker can we add settings for all back buttons and confirm buttons, like i want to be able to make a red back button and have every menu that uses a back button look like it, but also be able to change them individually, like the back button in the combat menu would look different. And same thing with confirm, i want all confirm buttons to be green. And that little stamp thing it does, let me choose if i want that or not or let me customize it")
+- UI Maker > tab **Buttons** (live mode `buttons`, dock `dockBtnsBody`): three kinds, BACK / CONFIRM / STAMP (`UI.bkind`). The top row of
+  each kind is "Every BACK" / "Every CONFIRM"; under it one row per menu (`BTN_MENUS`, hud.js). Untouched = the game's own look.
+- db.btns (viewer-local, nothing relayed): `back` / `confirm` = the every-button look, `'<kind>-<menu id>'` = one menu's own look on top
+  (`solo` = "Every X look" unticked: its own alone), `stamp` = STAMP_DEF. `btnTidy` drops a menu key equal to what it would inherit.
+- Settings per look (BTN_DEF): Colour (one tint that derives fill/edge/words; ticking it starts red for BACK, green for CONFIRM), Fill
+  top/bottom, Edge colour + width, Corners, Glow + glow colour, Pulse (the game's breathing glow, its colour), Hover brightness (only when
+  colours are set), Padding, Words (ink, font, weight, size, case, tracking, glow), Icon/✓ colour, and Shape (the theme's Button skin via
+  `skinForm(…, 'button', true, {skin, path: 'sk'})`). A button inside a theme's shaped skin keeps its shape; the colours re-bake it.
+- CSS: `btnCss` → `btnRule` per menu, `:root:root` + `:not(#uim-b)`×3 (×4 for skin rules) so it beats every game/theme rule; written into the
+  `ew-ui-maker` sheet (and the stand-in stage via `btnCss(true)`). Keyframes `uim-bpulse`, `uim-thunk`.
+- Menus (BTN_MENUS): Combat menu (◀ BACK chip / CONFIRM + inline CONFIRM), Match select, Party builder (◂ BACK, ◂ TEAMS, ◂ MAIN MENU /
+  SAVE TEAM, START MATCH, SEAL YOUR FATE), Character creator (BACK TO GEAR / intake BACK TO THE MENU, class `ew-back` added in
+  party-builder.js), Squad desk (‹ Back / DEPLOY), Play hub, Online lobby, Settings, Codex, Shop (← Back + ✕ Cancel / ✓ Confirm Purchase),
+  Spell library, Race editor, Tutorial shelf, HQ pause menu (◂ PARTY / ◂ DONE), Profile + leaderboard + community maps (class `ew-back`
+  added in profile.js), Other pages (char select, challenge, campaign, map editor, shop overlay, `#backToLobbyBtn`), Victory/defeat
+  (Back to Party Builder / Back to Map), Pop-up questions (ui.js confirm dialog now has class `ui-confirm-dialog`: Cancel / Confirm, the
+  trade window, the banner buttons). Combat CANCEL rows are NOT counted as BACK.
+- Live mode: orange boxes (`btnBoxes`, `.bbtn`) on every mapped button on screen (top-most only, `btnOnTop` uses elementsFromPoint so a
+  hidden builder under a menu doesn't box). Click a box = its menu's row. `btnWhere` says where the menu is when it isn't on screen.
+  The form has a preview iframe (`btnPrevMount` / `btnPrevRefresh`, `BTN_PREV_CSS`) of the menu's button(s) with the look applied.
+- THE STAMP (`STAMP_DEF`, `STAMP_PLACES` M = match select CONFIRM `.door-stamp`, F = party builder slot `.pb-party-filed`, S = shop
+  confirm bar): on/off per place, word, ink, size, tilt, font, frame, clean ink, slam scale, thunk ms, "Match starts after" ms, thunk
+  sound. `stampSignal` publishes `window._ewStampLook = { matchOff, forgeOff, shopOff, wait, quiet }`: match-select.js `handleConfirm`
+  (off = no stamp, match starts at once with the plain confirm click; wait = the delay before `_msConfirm`), party-builder.js
+  `confirmSlot` and ui.js `_shopAskConfirm` (skip the stamp sound when off or quiet). Stamp off on party slots shows a green ✓ instead.
+  No new sound: off/quiet plays the existing confirm click. The preview has "▶ Stamp it".
+- The dock header wraps now (`.uim-dock-hd` flex-wrap) — undo/redo/peek/fold were cut off the right edge before this tab.
+- Proven in a real browser (playtest harness): /mnt/project-files/ui-buttons/ (every BACK red + every CONFIRM green on the squad desk,
+  match select, codex, shop, settings, team archive + forge; gold combat BACK over the red one in a real battle; the stamp custom and off).
+- Found, NOT fixed: when the Codex / Shop is opened from the main menu an invisible `#hqPage .hq-strip-l` IMG sits over the top-left
+  "← Back", so it can't be clicked and Escape doesn't leave.
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".

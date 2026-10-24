@@ -2213,6 +2213,7 @@ function LeaderboardPage() {
       padding: '20px 24px 16px', textAlign: 'center',
     }},
       h('button', {
+        className: 'ew-back',   // the UI Maker's BACK look (hud.js BTN_MENUS 'profile')
         onClick: function() { if (typeof window._unmountLeaderboard === 'function') window._unmountLeaderboard(); },
         style: {
           position: 'absolute', top: 16, left: 16,
@@ -2412,6 +2413,7 @@ function CommunityMapsPage() {
       padding: '20px 24px 16px', textAlign: 'center',
     }},
       h('button', {
+        className: 'ew-back',   // the UI Maker's BACK look (hud.js BTN_MENUS 'profile')
         onClick: function() { if (typeof window._unmountCommunityMaps === 'function') window._unmountCommunityMaps(); },
         style: {
           position: 'absolute', top: 16, left: 16,
@@ -2668,6 +2670,7 @@ function ProfilePage({ initialTab } = {}) {
     }},
 
       h('button', {
+        className: 'ew-back',   // the UI Maker's BACK look (hud.js BTN_MENUS 'profile')
         onClick: () => { if (typeof window._unmountReactProfile === 'function') window._unmountReactProfile(); },
         style: {
           position: 'absolute', top: 16, left: 16,
