@@ -2586,7 +2586,11 @@
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
             if (engineRng() > WEATHER_SPAWN_CHANCE) return;
 
-            let availableKeys = WEATHER_KEYS;
+            /* 🌦 a weather that is already up never forms a second time on top of itself (PvP playtest 10-24: Solar Flare formed
+               in round 2 and again in round 3, and the two ran at once) — the roll picks among the kinds not on the board */
+            const _upNow = new Set((state.activeWeather || []).map(w => w && w.type));
+            let availableKeys = WEATHER_KEYS.filter(k => !_upNow.has(k));
+            if (!availableKeys.length) return;
             const type = availableKeys[engineRandInt(availableKeys.length)];
             const def = WEATHER_REGISTRY[type];
             const dur = def.duration[0] + engineRandInt(def.duration[1] - def.duration[0] + 1);
@@ -3560,6 +3564,53 @@
             }
             return cost;
         }
+
+        /* THE GROUND CHIPS (mondo 2026-10-24: "There was nothing to indicate that the sand was affecting me negatively ...
+           That needs to show just like the attack and defense stages show"): what the tile a body stands on does to it,
+           for the nameplate badge row (three-renderer _plateStatusBadgesHtml) and the Horologe / unit card chips (hud.js
+           _hrlgStatusChips), beside the storm chips. Two reads, both the engine's own: the per-tile movement cost of this
+           ground for THIS body (getTerrainMoveCost: forest, mountain, lava, bog ... after boots, wings, adaptations), and
+           the race's terrain affinity stats (getTerrainPreferenceModifier). [{ key, label, kind: 'up'|'dn', title }] */
+        const _GROUND_CHIP_GLYPH = { grass: '🌿', water: '💧', deep_water: '🌊', mountain: '⛰', mountain_2: '⛰', desert: '🏜', tree: '🌲',
+            forest: '🌲', forest_2: '🌲', dark_woods: '🌲', ice: '🧊', lava: '🌋', poison: '☠', poison_bog: '☠', purple_bog: '☠', wasteland: '☢',
+            swamp: '🟢', scorched: '🔥', oil: '🛢', storm: '⛈', rocks_1: '🪨', rocks_2: '🪨', rocks_3: '🪨', rocks_4: '🪨', rocks_5: '🪨',
+            rock_wall_1: '🪨', rock_wall_2: '🪨', cave_wall: '🪨', cliff: '🪨' };
+        const _GROUND_CHIP_STATS = [['atk', 'ATK'], ['armor', 'DEF'], ['int', 'M ATK'], ['vision', 'VISION'], ['move', 'MOV']];
+        function getTerrainStatChips(unit) {
+            const out = [];
+            if (!unit || unit.dead || unit.x == null || unit.y == null || typeof getTerrainAt !== 'function') return out;
+            const _chipName = (t) => (getTerrainRule(t) || {}).label || t;
+            const _chipGlyph = (t) => _GROUND_CHIP_GLYPH[t] || (getTerrainRule(t) || {}).short || '';
+            /* the cost: the block the body stands on (a flyer up in the air has no ground under its feet, and the
+               engine walks it through air at cost 1, so it gets no chip) */
+            const _has3D = typeof getTerrainAt3D === 'function' && state.boardColumns?.length > 0 && unit.z != null;
+            const _onGround = !_has3D || (typeof getWalkableSurfaces === 'function' && (getWalkableSurfaces(unit.x, unit.y) || []).includes(unit.z));
+            if (_onGround) {
+                const t = _has3D ? getTerrainAt3D(unit.x, unit.y, unit.z) : getTerrainAt(unit.x, unit.y);
+                const cost = t ? getTerrainMoveCost(unit, unit.x, unit.y, _has3D ? unit.z : undefined) : 1;
+                if (cost > 1 && cost < 99) {
+                    /* a thing on the tile that adds to the cost (OBJECT_RULES moveCostAdd: a mountain peak, a beanstalk) names the chip */
+                    const _o = (typeof getObjectAt === 'function') ? getObjectAt(unit.x, unit.y) : null;
+                    const _oR = (_o && typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_o] : null;
+                    const nm = (_oR && _oR.moveCostAdd > 0 && _oR.label) ? _oR.label : _chipName(t);
+                    out.push({ key: 'gr-cost-' + t + '-' + cost, label: `${_chipGlyph(t)} MOV COST ${cost}`, kind: 'dn',
+                        title: `${nm}: every ${nm} tile costs ${cost} movement to walk onto` });
+                }
+            }
+            /* the affinity: the same column read the engine makes (getTerrainPreferenceModifier) */
+            const pref = getTerrainPreferenceModifier(unit);
+            if (pref && pref.label) {
+                const t = getTerrainAt(unit.x, unit.y);
+                for (const [k, lbl] of _GROUND_CHIP_STATS) {
+                    const n = pref[k] || 0;
+                    if (!n) continue;
+                    out.push({ key: 'gr-aff-' + t + '-' + k, label: `${_chipGlyph(t)} ${lbl}${n > 0 ? '+' : ''}${n}`, kind: n > 0 ? 'up' : 'dn',
+                        title: `${pref.label}: ${n > 0 ? '+' : ''}${n} ${lbl} while standing on ${_chipName(t)}` });
+                }
+            }
+            return out;
+        }
+        window.getTerrainStatChips = getTerrainStatChips;
 
         // Flat damage soaked per point of the relevant defense stat. Physical
         // attacks are mitigated by DEF, magical attacks by MDEF.

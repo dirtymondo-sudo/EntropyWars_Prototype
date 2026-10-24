@@ -20683,7 +20683,11 @@
                             if (p) {
                                 const r = hqDefeatedMark(p, fell);
                                 PS.saveProfile(idx, p);
-                                if (r && r.added.length) { addLog(`📇 ON FILE — ${r.added.map(x => String(x).toUpperCase()).join(', ')}: the Quartermaster can sell ${r.added.length === 1 ? 'it' : 'them'} now.`); try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {} }
+                                /* an online match keeps the ledger but not the line: the combat log rides the state-sync, so the host's
+                                   story note landed in both players' PvP logs (PvP playtest 10-24) */
+                                const _onlineM = (typeof isOnlineMatch === 'function' && isOnlineMatch());
+                                if (r && r.added.length && !_onlineM) { addLog(`📇 ON FILE — ${r.added.map(x => String(x).toUpperCase()).join(', ')}: the Quartermaster can sell ${r.added.length === 1 ? 'it' : 'them'} now.`); }
+                                if (r && r.added.length) { try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {} }
                             }
                         }
                     }
@@ -66024,7 +66028,7 @@
                                 const _fuDmg = Math.max(24, Math.floor(pwrAtk(_fuAlly) * 0.4) + randInt(24));
                                 _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
                                 grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
-                                addLog(`🤝 ${_ctName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
+                                addLog(`🤝 ${_ctName(_fuAlly)} follows up from the far side!`);   // the hit line below carries the number the hit math lands (playtest 10-24: "for 84" then "takes 79")
                                 showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
                                 applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
                                     sourceUnit: _fuAlly,

@@ -3299,6 +3299,10 @@ function _hrlgStatusChips(unit) {
   if (typeof getWeatherStatChips === 'function') {
     for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
   }
+  /* 🌲 the ground the unit stands on: its movement cost per tile + any terrain affinity (state.js getTerrainStatChips) */
+  if (typeof getTerrainStatChips === 'function') {
+    for (const c of getTerrainStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
