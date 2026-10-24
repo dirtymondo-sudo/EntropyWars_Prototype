@@ -15954,9 +15954,13 @@ const ThreeRenderer = (function () {
 
     /* ── per frame (renderFrame, before the draw): the mirror's records, the repaints, the sizes, the stack ── */
     var _pmV = null, _pmR = null, _pmU = null;
+    var _pmSheetV = 0;
     function _pmTick(cam) {
         if (!_pmList.length) return;
         if (_pmObs) { var recs = _pmObs.takeRecords(); if (recs.length) _pmOnMut(recs); }
+        /* a UI Maker sheet changed (hud.js uimSheetBump): the CSS on every plate may have, with no mutation to say so */
+        var shV = window._ewUimSheetV || 0;
+        if (shV !== _pmSheetV) { _pmSheetV = shV; _pmDirtyAll(); }
         var gate = (scene && cam && _parentEl) ? _pmGate() : 0;
         var sw = _parentEl ? _parentEl.clientWidth : 0, sh = _parentEl ? _parentEl.clientHeight : 0;
         if (sw <= 0 || sh <= 0) gate = 0;
@@ -16405,16 +16409,37 @@ const ThreeRenderer = (function () {
     var PLATE_BASE_W = 172;
     var MIN_PLATE_SCALE = 1.0;
     var MAX_PLATE_SCALE = 3.0;
-    /* Far-zoom portrait mode: below FAR_ENTER projected-tile-px the plate is
-       bigger than the unit it labels → swap to the portrait card; back out
-       above FAR_EXIT. The gap is hysteresis so orbiting at the boundary
-       doesn't strobe the layout. */
-    var PLATE_FAR_ENTER_PX = 68;
-    var PLATE_FAR_EXIT_PX = 86;
+    /* Far-zoom portrait mode: once the camera is PLATE_FAR_AT_SQ battle squares
+       or more from a unit its plate swaps to the portrait card; back out
+       PLATE_FAR_BACK of that. The gap is hysteresis so orbiting at the
+       boundary doesn't strobe the layout.
+       THE SMALL PLATES (2026-10-24, mondo: "choose how far/close you have to be from the board for them to show (i want
+       them to require less zooming out than they do right now). All of these things should be separate from the normal
+       sized nameplates"): the line is the UI Maker's (Health bars > Small name plates, window._ewMiniPlateLook.at, hud.js
+       miniSignal), in squares from the camera. It was a tile under 68 screen px (back over 86): ~12.8 squares on a 720 px
+       tall window, ~16 on 900, so 11 asks for less zooming out on every screen. A swap is a class change (tp-far), which
+       repaints that plate; the bars-below / name / level sheets repaint every plate through _pmTick's sheet count. */
+    var PLATE_FAR_AT_SQ = 11;
+    var PLATE_FAR_BACK = 0.9;
+    var _plateFarV = -1, _plateFarAt = PLATE_FAR_AT_SQ, _plateFarGen = 0;
+    function _plateFarAtSq() {
+        var v = window._ewMiniPlateLookV || 0;
+        if (v !== _plateFarV) {
+            _plateFarV = v;
+            var L = window._ewMiniPlateLook, at = L ? +L.at : NaN, was = _plateFarAt;
+            _plateFarAt = (isFinite(at) && at > 0) ? at : PLATE_FAR_AT_SQ;
+            if (_plateFarAt !== was) _plateFarGen++;
+        }
+        return _plateFarAt;
+    }
 
-    function _plateFarToggle(holder, el, projW) {
-        var wasFar = !!holder._farMode;
-        var isFar = wasFar ? (projW < PLATE_FAR_EXIT_PX) : (projW < PLATE_FAR_ENTER_PX);
+    /* distSq = the camera's distance to the plate's unit, in battle squares. A new line (the UI Maker's slider) is
+       taken fresh, with no gap, so every plate on the board answers the number set at once */
+    function _plateFarToggle(holder, el, distSq) {
+        var wasFar = !!holder._farMode, at = _plateFarAtSq();
+        var fresh = holder._farGen !== _plateFarGen;
+        holder._farGen = _plateFarGen;
+        var isFar = (wasFar && !fresh) ? (distSq > at * PLATE_FAR_BACK) : (distSq > at);
         if (isFar !== wasFar) {
             holder._farMode = isFar;
             el.classList.toggle('tp-far', isFar);
@@ -16446,7 +16471,7 @@ const ThreeRenderer = (function () {
             /* far-zoom portrait card swap — BEFORE the scale-skip return
                below (at far range the scale pins at MIN and stops changing,
                but the camera can still cross the far threshold). */
-            _plateFarToggle(po, po.el, projW);
+            _plateFarToggle(po, po.el, dist / refW);
 
             /* scale so plate is at least as wide as one tile, with a legibility floor */
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
@@ -16464,7 +16489,7 @@ const ThreeRenderer = (function () {
             var _ddist = _scalePlateVec.distanceTo(cam.position);
             if (_ddist < 1) _ddist = 1;
             var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
-            _plateFarToggle(_dse, _dse.el, _dprojW);
+            _plateFarToggle(_dse, _dse.el, _ddist / _drefW);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
             _writePlateTransform(_dse, _ds, _dprojW);
         }
@@ -19084,7 +19109,7 @@ const ThreeRenderer = (function () {
             if (!plate) return;
             var dist = cam.position.length(), halfTan = Math.tan(cam.fov * D2R / 2);
             var projW = (ts * FH) / (2 * Math.max(1, dist) * halfTan);
-            _plateFarToggle(plate, plate.el, projW);
+            _plateFarToggle(plate, plate.el, Math.max(1, dist) / ts);
             _writePlateTransform(plate, Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE)), projW);
             _pv.set(0, plate.css2d.position.y, 0).project(cam);
             plate.outer.style.left = ((_pv.x * 0.5 + 0.5) * crop.w).toFixed(1) + 'px';
@@ -27660,6 +27685,7 @@ const ThreeRenderer = (function () {
         ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
         motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
         reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
+        nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
         keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 } };
     /* THE POLISH SETTINGS (2026-09-21): the player's rows (data.js HQ_POLISH_PREFS, localStorage ew_polish) are read BEFORE
        every EW_* kill-switch — _polishOff(key, flag) = the player turned it off, or the dev flag is set; _polishLevel(key) = a
@@ -27680,6 +27706,7 @@ const ThreeRenderer = (function () {
         ['shadows', 'ao', 'heightFog', 'atmos', 'ssao', 'motionBlur', 'reflect'].forEach(function (k) { o[k] = Object.assign({}, HQ_LIGHT_DEFAULT[k], R[k] || {}); });
         o.key = Object.assign({}, HQ_LIGHT_DEFAULT.key, R.key || {});
         o.keyLamp = Object.assign({}, HQ_LIGHT_DEFAULT.keyLamp, R.keyLamp || {});
+        o.nightFill = Object.assign({}, HQ_LIGHT_DEFAULT.nightFill, R.nightFill || {});
         return o;
     }
     function _sceneLookOf(look, name) {
@@ -67204,6 +67231,17 @@ const ThreeRenderer = (function () {
        recompile every material) — in an open room / the hall it eases to 0. Strength = Settings → Key Light (HQ_POLISH_PREFS
        'keyLight', 0 = off, the default 0.5 = HQ_LIGHT_RULES.keyLamp.intensity); the shape = HQ_LIGHT_RULES.keyLamp. */
     function _keyLampRules() { return _hqLightRules().keyLamp; }
+    /* THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?"):
+       an outdoor room's hemisphere took the night sky's own tint (a near-black blue) with only 22% white, so under the canopy (the moon
+       key shadowed by the trees) the ground lit at ~0.18. At night the hemisphere's colour now leans `amount` of the way to a soft
+       moonlight (HQ_LIGHT_RULES.nightFill.color) — still blue, still night, but the ground, the trunks and the walker read. Every
+       outdoor rig reads it: the walk (_hqEnter, the clock, the stage's blend) and the fight (_fieldGroundDress, the cycle's rows). */
+    function _hqSkyHemiC(skyC, night) {
+        var NF = _hqLightRules().nightFill || {}, n = Math.max(0, Math.min(1, +night || 0));
+        var c = new THREE.Color(skyC).lerp(new THREE.Color(0xffffff), 0.22 + 0.23 * (1 - n));
+        if (n > 0 && NF.amount > 0) c.lerp(new THREE.Color(NF.color != null ? NF.color : 0xa8bad8), Math.min(1, NF.amount) * n);
+        return c;
+    }
     function _keyLampGain() { var v = _polishPref('keyLight'); if (typeof window !== 'undefined' && window.EW_NO_KEY_LIGHT) return 0; return (typeof v === 'number' && isFinite(v)) ? Math.max(0, v) * 2 : 1; }
     function _hqEnclosed(room) {
         if (!room) return false;
@@ -67224,7 +67262,9 @@ const ThreeRenderer = (function () {
         var L = H && H.keyLamp, cam = H && H.camera; if (!L || !cam) return;
         if (!_klV) { _klV = new THREE.Vector3(); _klV2 = new THREE.Vector3(); _klV3 = new THREE.Vector3(); }
         var K = _keyLampRules(), U = _hqUnits(), pl = H.player;
-        var want = _hqEnclosed(H.room) ? (K.intensity || 0) * _keyLampGain() : 0;
+        var NFl = _hqLightRules().nightFill || {};
+        var nOut = (!_hqEnclosed(H.room) && H.sky && H.room && H.room.kind === 'box') ? Math.max(0, Math.min(1, +H.sky.night || 0)) * (NFl.keyLight || 0) : 0;   // THE NIGHT FILL: outdoors, a share of it by night
+        var want = (_hqEnclosed(H.room) ? 1 : nOut) * (K.intensity || 0) * _keyLampGain();
         L.intensity += (want - L.intensity) * Math.min(1, (dt || 0) * 3);
         if (Math.abs(L.intensity - want) < 0.002) L.intensity = want;
         var C = cam.position;
@@ -68775,7 +68815,7 @@ const ThreeRenderer = (function () {
             var lampMax = (typeof HQ_PROP_LIGHT_MAX !== 'undefined') ? HQ_PROP_LIGHT_MAX : 10;
             if (open) {
                 var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = LR.open || {};
-                field.hemi = { sky: skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
+                field.hemi = { sky: _hqSkyHemiC(skyC, nightO).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
                 field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
                 /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight starts at the hour the room was at — a clocked room's rig is the
                    held hour's (the sun or the moon as the key, the hemisphere between the day and night rows); a locked room keeps its own */
@@ -68822,8 +68862,8 @@ const ThreeRenderer = (function () {
         /* THE KEY LIGHT (2026-10-24): a fight in an enclosed room hangs the walk's key light over what the camera looks at */
         try {
             if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
-            st.keyLamp = null; st.keyFloorY = floorY;
-            if (_hqEnclosed(room) && _horizonGroup) {
+            st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0;
+            if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
                 var KL = _keyLampRules();
                 var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);
                 kl.name = 'ew key light'; kl.castShadow = false; kl.position.set(0, floorY + (KL.battleUp || 7) * s, 0);
@@ -68966,6 +69006,7 @@ const ThreeRenderer = (function () {
         t = Math.max(0, Math.min(40 * s, t));
         L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
         var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
+        if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL
         if (L.intensity !== want) L.intensity = want;
         L.distance = (K.battleReach || 30) * s;
     }
@@ -71598,7 +71639,7 @@ const ThreeRenderer = (function () {
         var skyC = new THREE.Color((sky.tint != null) ? sky.tint : 0x8090b0);
         return {
             fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12), fogD: ((sky.fog && sky.fog.density > 0) ? sky.fog.density : 0.00005 * U) / U,
-            hemiC: skyC.clone().lerp(new THREE.Color(0xffffff), night ? 0.22 : 0.45), hemiI: night ? LRo.nightHemi : LRo.dayHemi,
+            hemiC: _hqSkyHemiC(skyC, night ? 1 : 0), hemiI: night ? LRo.nightHemi : LRo.dayHemi,
             keyC: new THREE.Color(rig.color != null ? rig.color : (night ? 0xaabfe0 : 0xfff1d6)), keyI: (rig.intensity != null) ? +rig.intensity : (night ? LRo.nightSun : LRo.daySun),
             tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), night: night,
             env: { tint: sky.tint, tintAmt: (sky.tint != null && sky.tintAmt != null) ? sky.tintAmt : 0, stars: (sky.stars != null) ? sky.stars : 1, nebula: (sky.nebula != null) ? sky.nebula : 1,
@@ -71720,11 +71761,14 @@ const ThreeRenderer = (function () {
         if (dk > 0 && DU.color != null) fogC.lerp(new THREE.Color(DU.color).multiplyScalar(0.3 + 0.7 * d), dk * (DU.fog || 0));
         var tint = nightTint.clone().lerp(dayTint, d);
         var sunK = _hqClkS(-3, 10, sun.sunEl), moonK = _hqClkS(-3, 10, sun.moonEl) * (1 - sunK);
+        /* THE NIGHT FILL: a night with the moon low (just after dusk, before dawn) kept no key at all — the moonlight never drops below
+           nightFill.moonFloor of the night (its direction is already held at keyMinEl) */
+        var NFk = _hqLightRules().nightFill || {}; moonK = Math.max(moonK, (1 - sun.day) * (1 - sunK) * (NFk.moonFloor || 0));
         var useSun = sunK >= moonK, kAz = useSun ? sun.sunAz : sun.moonAz, kEl = Math.max(useSun ? sun.sunEl : sun.moonEl, CK.keyMinEl || 18);
         var keyC = useSun ? new THREE.Color(0xfff1d6).lerp(new THREE.Color((DU.key != null) ? DU.key : 0xffb27a), Math.min(1, dk * 1.2)) : new THREE.Color(0xaabfe0);
         var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
         return Object.assign(out, {
-            fogC: fogC, fogD: base.fogD, hemiC: tint.clone().lerp(new THREE.Color(0xffffff), 0.22 + 0.23 * d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
+            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
             keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
             env: { tint: sky.tint, tintAmt: base.env.tintAmt, stars: base.env.stars, nebula: base.env.nebula, day: d, clouds: (sky.clouds || 0) + (dayClouds - (sky.clouds || 0)) * d, fog: base.env.fog },
             look: base.look, label: base.label, keyDir: _hqClkV(hqWorldDir(kAz, kEl, C.rot)).normalize(),
@@ -72000,7 +72044,7 @@ const ThreeRenderer = (function () {
             /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
             var LRo = _hqLightRules().open;
-            _hq.hemiLight = new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
+            _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
             var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
@@ -74147,6 +74191,25 @@ const ThreeRenderer = (function () {
             _applyPlateStyleLive();
         },
         getPlateStyle: function () { return _plateLook.style; },
+        /* THE SMALL PLATES: the UI Maker's readout — how far the camera is now from the units with a plate up (battle
+           squares, nearest + farthest), how many of those plates are small, and the line they turn small at */
+        plateFarInfo: function () {
+            var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            var ts = CONFIG.tileSize || BASE_TILE, out = { at: _plateFarAtSq(), n: 0, small: 0, near: null, far: null };
+            if (!cam) return out;
+            _plateObjs.forEach(function (po, uid) {
+                if (!po.css2d.visible) return;
+                var ue = unitEntries.get(uid);
+                if (!ue || !ue.group || !_pmInScene(ue.group)) return;
+                ue.group.getWorldPosition(_scalePlateVec);
+                var d = _scalePlateVec.distanceTo(cam.position) / ts;
+                out.n++;
+                if (po._farMode) out.small++;
+                if (out.near === null || d < out.near) out.near = d;
+                if (out.far === null || d > out.far) out.far = d;
+            });
+            return out;
+        },
 
         setHorizonFog,
 

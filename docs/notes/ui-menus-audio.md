@@ -1882,6 +1882,25 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - Online guest: the card's `enemy` / `foe` class is picked relative to the guest's own unit (`isEnemyUnit`; the turn-icon peek uses `getViewerPlayer`), so the same CSS covers it. Checked in a two-browser friendly room: guest's enemy card red, guest's ally card green.
 - Not changed: the ally low-HP colour rule (`.hrlg-thp-fill.low`) loses to the HP rule the same way on this card.
 
+### UI Maker pass 28: THE SMALL NAME PLATES (2026-10-24, mondo: "in the ui maker, let me control the smaller version of the nameplates, the ones that show the portrait when you zoom out from the map. I want settings that let place the health bars below the portrait, exclude the name, and choose how far/close you have to be from the board for them to show (i want them to require less zooming out than they do right now). All of these things should be separate from the normal sized nameplates")
+- UI Maker > Bars (Health bars view) > row "Small name plates" (`data-bar="mini"`, hud.js `miniPlatesDetail`), its own reset group `m`:
+  `mAt` Camera distance (battle squares, 4-40, default 11), `mName` / `mLvl` (Name, Level), `mBars` side (beside the portrait, the game's) | below.
+- The swap to the portrait card (`.tp-far`) is by distance now: three-renderer `_plateFarToggle(holder, el, distSq)`, the camera's distance to
+  the unit in squares (`dist / tileSize`), small from `_plateFarAtSq()` (window._ewMiniPlateLook.at from hud.js `miniSignal`, else
+  PLATE_FAR_AT_SQ = 11), back to the full plate at 0.9 of it. A new line is taken fresh (`_plateFarGen`), so moving the slider redraws every
+  plate at once. It was a tile under 68 screen px (back over 86): 12.8 squares on a 720 px tall window, 16 on 900, so 11 asks for less
+  zooming out on any normal window. Decoys use the same toggle (indistinguishable), the Pops preview passes its own camera distance.
+- The form's live line (`miniNowTick`, 400 ms while the form is open) reads `ThreeRenderer.plateFarInfo()`: nearest / farthest unit with a
+  plate up, how many plates are small.
+- CSS (hud.js uxCss, `MW = .tp-wrap.tp-far`): Name / Level hide `.tp-nm` / `.tp-lvl`, both off hides the row; below = the card stands up
+  (`.tp-main { display: contents }` so the name sits over the portrait, `.tp-body` 48 px under it, the HP number centred under the bar).
+  The normal plates' Name / Level (`pName` / `pLvl`) are scoped to `:not(.tp-far)` now, so the two pieces are separate.
+- THE SHEET REPAINT: the in-world plates repaint only on a mutation of their DOM, so a UI Maker sheet change (any plate setting, normal or
+  small) did not reach the board until the plate changed for another reason (an untick of Name left the names drawn). hud.js
+  `uimSheetBump()` counts every write of the `ew-ui-maker` / `ew-ui-layout` sheets; `_pmTick` repaints every plate when the count moves.
+- Proven in a real VS CPU battle (playtest harness): /mnt/project-files/small-nameplates/ (default before/after at the same camera spot,
+  distance 20 vs 11, bar beside vs below, name/level off, normal Name off leaving the small names, the form). Viewer-local, nothing relayed.
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".
