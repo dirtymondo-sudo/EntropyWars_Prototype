@@ -72559,14 +72559,25 @@ const ThreeRenderer = (function () {
     }
     /* Fog Horizon in a room: how many times higher the height fog reaches (the factory spot = 1; the slider's top ≈ 3.5×, its bottom ≈ ½) */
     function _ewFogClimb(lift) { return Math.max(0.25, 1 + (+lift || 0) * 6); }
+    var _hqFogPfC = null;
     function _hqFogHold(H) {
         if (!H || !H.scene) return null;
         var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 };
-        if (on && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4) return null;
+        /* MAP LOOKS OFF (2026-10-24, mondo: "going to any new area with different colored fog it takes away my green"): the room's fog,
+           its height fog, the dome's band and the painted sky's far fog all wear the player's fog colour (ThreePost.getPlayerFogHex) */
+        var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}
+        if (on && pf == null && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4) return null;
         var m = sh.m;
         var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
         var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
-                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y };
+                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y,
+                  fc: null, sil: (_envUni && _envUni.uPaintSilFog) ? _envUni.uPaintSilFog.value.clone() : null };
+        if (pf != null && f && !wet && f.color) { s.fc = f.color.getHex(); f.color.setHex(pf); }
+        if (pf != null && !wet && _envUni) {
+            var pc = (_hqFogPfC || (_hqFogPfC = new THREE.Color())).setHex(pf);
+            _envUni.uFogColor.value.set(pc.r, pc.g, pc.b);
+            if (_envUni.uPaintSilFog) { _envUni.uPaintSilFog.value.x = pc.r; _envUni.uPaintSilFog.value.y = pc.g; _envUni.uPaintSilFog.value.z = pc.b; }
+        }
         if (f && !wet) {
             s.f = f;
             if (f.isFogExp2) { s.d = f.density; f.density = f.density * m; }
@@ -72591,7 +72602,8 @@ const ThreeRenderer = (function () {
     function _hqFogBack(s) {
         if (!s) return;
         var f = s.f;
-        if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } }
+        if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } if (s.fc != null) f.color.setHex(s.fc); }
+        if (_envUni && s.sil && _envUni.uPaintSilFog) _envUni.uPaintSilFog.value.copy(s.sil);
         _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy;
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
         if (_envUni && s.top != null) _envUni.uFogTop.value = s.top;

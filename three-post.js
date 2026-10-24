@@ -1431,7 +1431,15 @@ const ThreePost = (function () {
         if (typeof window !== 'undefined' && window.EW_NO_SCENE_LOOKS) return true;
         try { return typeof localStorage !== 'undefined' && localStorage.getItem('ew_scene_looks') === 'off'; } catch (e) { return false; }
     }
-    if (_sceneLooksOff()) _look = _LOOK_CLEAN;
+    /* MAP LOOKS OFF = MY SETTINGS IN EVERY AREA (2026-10-24, mondo: "i have the fog settings a certain way like on haunted green,
+       but going to any new area with different colored fog it takes away my green, even though i have map looks checked off" ·
+       "when i have the settings a certain way and i go somewhere new and the night mood is not the way i had it"): with Map Looks
+       off no room, zone or fight on a room paints over the player's own fog colour (the mood preset's fogColor: _playerFogHex),
+       night mood (_roomNight: the classic board's rule, night × Night Mood, everywhere) or bloom (_bloomSteady: his strength,
+       threshold and spread everywhere). _looksOffNow is re-read on every setSceneLook (the toggle calls it). */
+    var _looksOffNow = _sceneLooksOff();
+    if (_looksOffNow) _look = _LOOK_CLEAN;
+    function _playerFogHex() { return _looksOffNow ? (RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal).fogColor : null; }
     /* THE LOOK YIELDS TO THE PLAYER (2026-09-17 — the user: "when I change the settings in the menu it doesn't change anything;
        it needs to still let me adjust the graphics"): a look fills in ONLY the settings the player has left at their FACTORY
        default (the sheet's numbers above, captured before the saved preference lands). Any slider or toggle the player has
@@ -1443,6 +1451,17 @@ const ThreePost = (function () {
     /* the bloom the player asked for: 0 (the default since 2026-10-02) is OFF everywhere — a scene look may raise a strength
        the player set, never switch bloom on for them */
     function _bloomUser() { return BLOOM_USER_STRENGTH > 0 ? _lkNum('bloom', BLOOM_USER_STRENGTH) : 0; }
+    /* the steady bloom: a room (F) wears the building's bar and a 0.42 floor, a board the hour's preset — MAP LOOKS OFF: the player's
+       strength, threshold and spread wherever he is */
+    function _bloomSteady(F) {
+        var bu = _bloomUser();
+        if (_looksOffNow) return { s: bu, t: _bloomThrFor(BLOOM_USER_THRESHOLD, BLOOM_USER_THRESHOLD), r: BLOOM_USER_RADIUS };
+        if (F) {
+            var tIn = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
+            return { s: Math.max(bu, 0.42), t: _bloomThrFor(tIn, HQ_BLOOM_THRESHOLD), r: (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS };
+        }
+        return { s: Math.max(_cur.bloomStr, bu), t: _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD), r: BLOOM_USER_RADIUS };
+    }
     function _lkNum(key, base) { return (_look && typeof _look[key] === 'number' && !isNaN(_look[key]) && !_lkOwnNum(key, base)) ? _look[key] : base; }
     function _lkRetro() {
         if (!_look || !_look.retro) return _retro;
@@ -1475,8 +1494,10 @@ const ThreePost = (function () {
     function setSceneLook(look) {
         var next = null;
         if (look && typeof look === 'object') { next = {}; for (var k in look) next[k] = look[k]; }
-        else if (_sceneLooksOff()) next = _LOOK_CLEAN;   // MAP LOOKS OFF: the clean picture, never the shipped grade
+        _looksOffNow = _sceneLooksOff();
+        if (!next && _looksOffNow) next = _LOOK_CLEAN;   // MAP LOOKS OFF: the clean picture, never the shipped grade
         _look = next;
+        _applySceneFog();
         _applyRetroUniforms();
         if (_retroPass) _retroPass.enabled = _retroLive();
         _applyCinematicUniforms();
@@ -1525,7 +1546,7 @@ const ThreePost = (function () {
         if (_scene && _ff) {
             if (!_retro.fogEnabled) _scene.fog = null;
             else {
-                if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_ff.color, _ff.density);
+                if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_playerFogHex() != null ? _playerFogHex() : _ff.color, _ff.density);
                 _scene.fog.density = _ff.density * getRetroFogScale();
             }
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setFieldFogScale) ThreeRenderer.setFieldFogScale(_retro.fogEnabled ? getRetroFogScale() : 0, getRetroFogLift()); } catch (e) {}
@@ -1763,10 +1784,10 @@ const ThreePost = (function () {
                 // floor the env grade (which is 0 by day/night) to the user level
                 // so the glow is always visible, and let bright sky-events add to it
                 /* THE FIELD LIGHT: the building's bloom (renderScene's rule) — the look's bar as a share of HQ_BLOOM_THRESHOLD, a white wall never glows */
-                var _thrIn = F ? ((_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD) : Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
-                _bloomPass.strength  = F ? Math.max(_bu, 0.42) : Math.max(_cur.bloomStr, _bu);
-                _bloomPass.threshold = _bloomThrFor(_thrIn, F ? HQ_BLOOM_THRESHOLD : BLOOM_USER_THRESHOLD);
-                _bloomPass.radius    = F ? ((_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS) : BLOOM_USER_RADIUS;
+                var _bs = _bloomSteady(!!F);
+                _bloomPass.strength  = _bs.s;
+                _bloomPass.threshold = _bs.t;
+                _bloomPass.radius    = _bs.r;
             }
         }
     }
@@ -3919,6 +3940,7 @@ const ThreePost = (function () {
     function _roomNight(night) {
         var n = Math.max(0, Math.min(1, +night || 0)), m = _lkNum('nightMood', _nightMood), F = NIGHT_FACTORY;
         if (n <= 0.001) return { grade: 0, lift: 1 };
+        if (_looksOffNow) return { grade: n * m * 0.85, lift: 1 };   // MAP LOOKS OFF: the slider means the same in every area
         if (m >= F) return { grade: n * ((m - F) / Math.max(0.001, 1 - F)) * 0.85, lift: 1 };
         return { grade: 0, lift: 1 + n * ((F - m) / Math.max(0.001, F)) * 0.35 };
     }
@@ -3926,6 +3948,9 @@ const ThreePost = (function () {
     function render(cam) {
 
         syncLighting();
+        /* MAP LOOKS OFF: a fight on a room keeps the player's fog colour (the room's fog and the hour's tint write theirs every tick) */
+        var _pfh = _playerFogHex();
+        if (_pfh != null && _scene && _scene.fog && _scene.fog.color) _scene.fog.color.setHex(_pfh);
         _updateWardLights();
         _updateStreetLampLights();
         _updateLavaLights();
@@ -4012,7 +4037,7 @@ const ThreePost = (function () {
         // Impact flash — decaying bloom kick over the steady user strength.
         if (_bloomPass && _bloomPass.enabled) {
             var _pulse = _bloomPulseCurrent(performance.now()) + _swellCurrent(performance.now());
-            _bloomPass.strength = (_fieldLight ? Math.max(_bloomUser(), 0.42) : Math.max(_cur.bloomStr, _bloomUser())) + _pulse;
+            _bloomPass.strength = _bloomSteady(!!_fieldLight).s + _pulse;
         }
 
         if (_cinematicPass && _cinematicPass.enabled) {
@@ -4122,10 +4147,10 @@ const ThreePost = (function () {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
                    look (`bloomThr`, default HQ_BLOOM_THRESHOLD: only the emissive surfaces — the neon, the torches, the ley
                    veins, the screens — cross it, a white wall never does), the radius too (`bloomRadius`), the strength the look's */
-                _bloomPass.strength = Math.max(_bloomUser(), 0.42);
-                _bloomPass.threshold = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
-                _bloomPass.threshold = _bloomThrFor(_bloomPass.threshold, HQ_BLOOM_THRESHOLD);   // THE HDR BLOOM: the look's bar as a share of the default
-                _bloomPass.radius = (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS;
+                var _bsH = _bloomSteady(true);   // THE HDR BLOOM: the look's bar as a share of the default (Map Looks off: the player's)
+                _bloomPass.strength = _bsH.s;
+                _bloomPass.threshold = _bsH.t;
+                _bloomPass.radius = _bsH.r;
                 if (opts && opts.noBloom) _bloomPass.strength = 0;
             }
             var _aeNow = performance.now(); _aeTick(_aeNow);
@@ -4191,9 +4216,10 @@ const ThreePost = (function () {
             var on = BLOOM_USER_STRENGTH > 0;
             _bloomPass.enabled = on;
             if (on) {
-                _bloomPass.strength  = Math.max(_cur.bloomStr, _bloomUser());
-                _bloomPass.threshold = _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD);
-                _bloomPass.radius    = BLOOM_USER_RADIUS;
+                var _bsS = _bloomSteady(!!_fieldLight);
+                _bloomPass.strength  = _bsS.s;
+                _bloomPass.threshold = _bsS.t;
+                _bloomPass.radius    = _bsS.r;
             }
         }
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v4', String(BLOOM_USER_STRENGTH)); } catch (e) {}
@@ -4568,6 +4594,7 @@ const ThreePost = (function () {
         setFieldLight: setFieldLight, getFieldLight: getFieldLight,   // THE SEAMLESS FIELD: the room's rig over the battle's
         getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
+        getPlayerFogHex: _playerFogHex,
         getWornRetroState: getWornRetroState,
         getWornCinematicState: getWornCinematicState,
         isReady: isReady,

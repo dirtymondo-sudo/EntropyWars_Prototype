@@ -7978,7 +7978,7 @@
                         <span class="pm-vol-val">${nightMoodPct===0?'soft':nightMood.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
-                        <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light. In a room or zone it grades from the room's own night</span>
+                        <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light. ${looksOn ? 'In a room or zone it grades from the room\'s own night' : 'Map Looks off: the same at night in every area'}</span>
                     </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${unitLight.on ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setUnitLight)ThreeRenderer.setUnitLight({on:this.checked});"><span class="pm-toggle-label">Unit Rim Light</span><span class="pm-toggle-hint">a soft moonlit edge on every unit, stronger at night</span></label>
@@ -8013,7 +8013,7 @@
                         <label class="pm-toggle"><input type="checkbox" ${spellGradeOn ? 'checked' : ''} onchange="window.EW_DISABLE_SPELL_GRADE=!this.checked;if(!this.checked&&typeof ThreePost!=='undefined'&&ThreePost.spellGradeClear)ThreePost.spellGradeClear();try{localStorage.setItem('ew_spellGrade',this.checked?'1':'0');}catch(e){}"><span class="pm-toggle-label">Spell Cinematics</span><span class="pm-toggle-hint">big spells black out the board around the caster and target, cycle colour and split the RGB</span></label>
                     </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
-                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${!looksOn ? 'off: no map grade, and any tint, dither, pixelate, grain, vignette or CRT you have not set yourself stays off' : lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${!looksOn ? 'off: every area keeps your settings: your fog colour, night mood and bloom, no map grade, and any tint, dither, pixelate, grain, vignette or CRT you have not set yourself stays off' : lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>
