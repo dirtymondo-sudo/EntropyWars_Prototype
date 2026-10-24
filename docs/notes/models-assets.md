@@ -412,5 +412,5 @@ nodes, Z-up, metres); the game reads the `.dae` with three's ColladaLoader (inde
   (dropped in after_hours) + after-hours champagne. Wall-flagged rows add `mount` on top of y, so placed wall rows use `mount: 0`.
 - Spells: three-vfx-effects.js `_xmasPiece` → `ThreeRenderer.xmasClone` (unlit copy, scaled by height or `fit: 'span'`, null while
   the file streams; `_spellLibWarm` warms `_XMAS_SPELL_NODES`). Blizzard Present + The Naughty List finisher use the pack's red
-  gift (procedural box stays as the stream fallback); Milk and Cookies (`_stageSupportBurst`) sets the foil tray + cookies + cocoa
+  gift (procedural box stays as the stream fallback); Milk and Cookies (`_stageSupportBurst`) sets the cookies + cocoa (no tray: mondo dropped it 10-24)
   down beside the caster. Lump of Coal untouched (rule: just Santa throwing coal).
