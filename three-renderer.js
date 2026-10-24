@@ -15954,9 +15954,13 @@ const ThreeRenderer = (function () {
 
     /* ── per frame (renderFrame, before the draw): the mirror's records, the repaints, the sizes, the stack ── */
     var _pmV = null, _pmR = null, _pmU = null;
+    var _pmSheetV = 0;
     function _pmTick(cam) {
         if (!_pmList.length) return;
         if (_pmObs) { var recs = _pmObs.takeRecords(); if (recs.length) _pmOnMut(recs); }
+        /* a UI Maker sheet changed (hud.js uimSheetBump): the CSS on every plate may have, with no mutation to say so */
+        var shV = window._ewUimSheetV || 0;
+        if (shV !== _pmSheetV) { _pmSheetV = shV; _pmDirtyAll(); }
         var gate = (scene && cam && _parentEl) ? _pmGate() : 0;
         var sw = _parentEl ? _parentEl.clientWidth : 0, sh = _parentEl ? _parentEl.clientHeight : 0;
         if (sw <= 0 || sh <= 0) gate = 0;
@@ -16405,16 +16409,37 @@ const ThreeRenderer = (function () {
     var PLATE_BASE_W = 172;
     var MIN_PLATE_SCALE = 1.0;
     var MAX_PLATE_SCALE = 3.0;
-    /* Far-zoom portrait mode: below FAR_ENTER projected-tile-px the plate is
-       bigger than the unit it labels → swap to the portrait card; back out
-       above FAR_EXIT. The gap is hysteresis so orbiting at the boundary
-       doesn't strobe the layout. */
-    var PLATE_FAR_ENTER_PX = 68;
-    var PLATE_FAR_EXIT_PX = 86;
+    /* Far-zoom portrait mode: once the camera is PLATE_FAR_AT_SQ battle squares
+       or more from a unit its plate swaps to the portrait card; back out
+       PLATE_FAR_BACK of that. The gap is hysteresis so orbiting at the
+       boundary doesn't strobe the layout.
+       THE SMALL PLATES (2026-10-24, mondo: "choose how far/close you have to be from the board for them to show (i want
+       them to require less zooming out than they do right now). All of these things should be separate from the normal
+       sized nameplates"): the line is the UI Maker's (Health bars > Small name plates, window._ewMiniPlateLook.at, hud.js
+       miniSignal), in squares from the camera. It was a tile under 68 screen px (back over 86): ~12.8 squares on a 720 px
+       tall window, ~16 on 900, so 11 asks for less zooming out on every screen. A swap is a class change (tp-far), which
+       repaints that plate; the bars-below / name / level sheets repaint every plate through _pmTick's sheet count. */
+    var PLATE_FAR_AT_SQ = 11;
+    var PLATE_FAR_BACK = 0.9;
+    var _plateFarV = -1, _plateFarAt = PLATE_FAR_AT_SQ, _plateFarGen = 0;
+    function _plateFarAtSq() {
+        var v = window._ewMiniPlateLookV || 0;
+        if (v !== _plateFarV) {
+            _plateFarV = v;
+            var L = window._ewMiniPlateLook, at = L ? +L.at : NaN, was = _plateFarAt;
+            _plateFarAt = (isFinite(at) && at > 0) ? at : PLATE_FAR_AT_SQ;
+            if (_plateFarAt !== was) _plateFarGen++;
+        }
+        return _plateFarAt;
+    }
 
-    function _plateFarToggle(holder, el, projW) {
-        var wasFar = !!holder._farMode;
-        var isFar = wasFar ? (projW < PLATE_FAR_EXIT_PX) : (projW < PLATE_FAR_ENTER_PX);
+    /* distSq = the camera's distance to the plate's unit, in battle squares. A new line (the UI Maker's slider) is
+       taken fresh, with no gap, so every plate on the board answers the number set at once */
+    function _plateFarToggle(holder, el, distSq) {
+        var wasFar = !!holder._farMode, at = _plateFarAtSq();
+        var fresh = holder._farGen !== _plateFarGen;
+        holder._farGen = _plateFarGen;
+        var isFar = (wasFar && !fresh) ? (distSq > at * PLATE_FAR_BACK) : (distSq > at);
         if (isFar !== wasFar) {
             holder._farMode = isFar;
             el.classList.toggle('tp-far', isFar);
@@ -16446,7 +16471,7 @@ const ThreeRenderer = (function () {
             /* far-zoom portrait card swap — BEFORE the scale-skip return
                below (at far range the scale pins at MIN and stops changing,
                but the camera can still cross the far threshold). */
-            _plateFarToggle(po, po.el, projW);
+            _plateFarToggle(po, po.el, dist / refW);
 
             /* scale so plate is at least as wide as one tile, with a legibility floor */
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
@@ -16464,7 +16489,7 @@ const ThreeRenderer = (function () {
             var _ddist = _scalePlateVec.distanceTo(cam.position);
             if (_ddist < 1) _ddist = 1;
             var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
-            _plateFarToggle(_dse, _dse.el, _dprojW);
+            _plateFarToggle(_dse, _dse.el, _ddist / _drefW);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
             _writePlateTransform(_dse, _ds, _dprojW);
         }
@@ -19084,7 +19109,7 @@ const ThreeRenderer = (function () {
             if (!plate) return;
             var dist = cam.position.length(), halfTan = Math.tan(cam.fov * D2R / 2);
             var projW = (ts * FH) / (2 * Math.max(1, dist) * halfTan);
-            _plateFarToggle(plate, plate.el, projW);
+            _plateFarToggle(plate, plate.el, Math.max(1, dist) / ts);
             _writePlateTransform(plate, Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE)), projW);
             _pv.set(0, plate.css2d.position.y, 0).project(cam);
             plate.outer.style.left = ((_pv.x * 0.5 + 0.5) * crop.w).toFixed(1) + 'px';
@@ -73994,6 +74019,25 @@ const ThreeRenderer = (function () {
             _applyPlateStyleLive();
         },
         getPlateStyle: function () { return _plateLook.style; },
+        /* THE SMALL PLATES: the UI Maker's readout — how far the camera is now from the units with a plate up (battle
+           squares, nearest + farthest), how many of those plates are small, and the line they turn small at */
+        plateFarInfo: function () {
+            var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            var ts = CONFIG.tileSize || BASE_TILE, out = { at: _plateFarAtSq(), n: 0, small: 0, near: null, far: null };
+            if (!cam) return out;
+            _plateObjs.forEach(function (po, uid) {
+                if (!po.css2d.visible) return;
+                var ue = unitEntries.get(uid);
+                if (!ue || !ue.group || !_pmInScene(ue.group)) return;
+                ue.group.getWorldPosition(_scalePlateVec);
+                var d = _scalePlateVec.distanceTo(cam.position) / ts;
+                out.n++;
+                if (po._farMode) out.small++;
+                if (out.near === null || d < out.near) out.near = d;
+                if (out.far === null || d > out.far) out.far = d;
+            });
+            return out;
+        },
 
         setHorizonFog,
 
