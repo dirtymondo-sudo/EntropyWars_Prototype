@@ -6511,7 +6511,7 @@
                  onConfirm, onCancel } — reuses the pickup-dialog styling. */
             if (dialog.type === 'confirm') {
                 card.innerHTML = `
-          <div class="pickup-dialog">
+          <div class="pickup-dialog ui-confirm-dialog">
             <div class="pickup-icon pickup-icon-text">${escapeHtml(dialog.icon || '⚠')}</div>
             <div class="pickup-title">${escapeHtml(dialog.title || 'Are you sure?')}</div>
             ${dialog.text ? `<div class="pickup-flavor">${escapeHtml(dialog.text)}</div>` : ''}
@@ -9392,7 +9392,8 @@
             window._ewMountDossierViewer();
             /* the DECLASSIFIED stamp on the confirm bar lands ~0.27s into its
                .thunk animation (styles-base.css doorThunk, 60% keyframe) */
-            try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { delay: 0.25 }); } catch (e) {}
+            const _sl = window._ewStampLook || {};   // the UI Maker's stamp (hud.js THE STAMP): off or quiet = no thunk
+            if (!_sl.shopOff && !_sl.quiet) { try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { delay: 0.25 }); } catch (e) {} }
         };
 
         window._shopCancelConfirm = function() {

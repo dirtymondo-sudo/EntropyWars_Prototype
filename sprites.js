@@ -40,6 +40,7 @@ const RACE_PATH_RULES = {
   'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
+  'time cop': { folder: 'Homosapien', capGender: true },   // 2026-10-24 — the Police Officer's 2D path
   'cult leader': { folder: 'Homosapien', capGender: true },      // 2026-09-21 — borrows the harbinger sheet in 2D; his own GLB in 3D (Races/cultleader/)
   'popstar':    { folder: 'popstar',    capGender: false },       // 2026-09-22 — HER OWN sheet (Races/popstar/popstar_female.png, the VFX pass) + her own GLB in 3D (Races/popstar/)
   'wizard':     { folder: 'Homosapien', capGender: true },
@@ -88,6 +89,7 @@ const RACE_SPRITE_GENDERS = {
   'nun': 'female',
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
+  'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
   'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
@@ -272,6 +274,7 @@ const _CHARACTER_SPRITES = {
   'krampus': `${_CS}/krampus.png`,
   'mushroom girl': `${_CS}/mushroomgirl.png`,
   'police officer': `${_CS}/policeofficer.png`,
+  'time cop': `${_CS}/policeofficer.png`,   // 2026-10-24 — the cop look
   'professor': `${_CS}/professor.png`,
   'rabbit': `${_CS}/rabbit.png`,
   'ringmaster': `${_CS}/ringmaster.png`,
@@ -313,6 +316,16 @@ const HONDA_CIVIC_SPRITES = {
   idle: `${_S}/Races/hondacivic/hondacivic.png`,
   moving: `${_S}/Races/hondacivic/hondacivic_2.png`,
   combat: `${_S}/Races/hondacivic/transformer.png`,
+};
+
+/* THE TIME COP's three looks (mondo 2026-10-24). Each value is the _spriteOverride a cast sets (battle.js
+   UNIT_ANIM_OVERRIDES['time cop']) and the key RACE_MODELS_3D['time cop'].male.overrideForms maps to that
+   look's model; it is also the 2D sprite if a model fails. The future cop has no 2D sprite of its own, so it
+   borrows the cop's under its own #fragment (same image, a distinct key). */
+const TIME_COP_LOOKS = {
+  cop:     `${_S}/character_sprites/policeofficer.png`,
+  sheriff: `${_S}/character_sprites/sheriff.png`,
+  future:  `${_S}/character_sprites/policeofficer.png#future`,
 };
 
 const SENTAI_SPRITES = {
@@ -384,6 +397,7 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
+    'time cop': 'gunslinger',         // 2026-10-24 — the 2D fallback only
     'cult leader': 'harbinger',       // 2026-09-21 — the 2D fallback only
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
@@ -1951,6 +1965,32 @@ const RACE_MODELS_3D = {
       heightRatio: 1.04, basicAttackKind: 'ranged',
     }),
   },
+  // Time Cop (mondo 2026-10-24) — a sheriff, a cop or a future cop depending on the ability it casts. Three
+  // existing rigs: the Police Officer's (the look it starts in), the Sheriff's, and the Cyberpunk City cop
+  // (RACE_MODEL_SKINS). The swap is the honda civic's: a cast sets unit._spriteOverride to a TIME_COP_LOOKS
+  // url (battle.js UNIT_ANIM_OVERRIDES['time cop'], picked by the spell's family) and the renderer resolves
+  // overrideForms[url]. No revertAfter, so the look stays until an ability from another look is cast.
+  'time cop': {
+    male: (function () {
+      const cop = _mkUAL('police', 'a_black_police_officer', {
+        model: `${_S}/Races/police/Meshy_AI_a_black_police_officer_Running.glb`,
+        heightRatio: 1.02, basicAttackKind: 'ranged',
+      });
+      const sheriff = _mkUAL('sherrif', 'western_sherrif', {
+        model: `${_S}/Races/sherrif/Meshy_AI_western_sherrif_Running.glb`,
+        heightRatio: 1.04, basicAttackKind: 'ranged',
+      });
+      const future = _mkUAL('police', 'a_cyberpunk_police_officer', {
+        model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb`,
+        heightRatio: 1.02, basicAttackKind: 'ranged',
+      });
+      cop.overrideForms = {};
+      cop.overrideForms[TIME_COP_LOOKS.cop] = cop;
+      cop.overrideForms[TIME_COP_LOOKS.sheriff] = sheriff;
+      cop.overrideForms[TIME_COP_LOOKS.future] = future;
+      return cop;
+    })(),
+  },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
   'starfish': {
     male: _mkUAL('starfish', 'sentient_starfish', {
@@ -3273,6 +3313,7 @@ const RACE_SPRITES = {
   'nun': `${_S}/homosapien.png`,
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
+  'time cop': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-24 — the cop look
   'jellyfish': `${_S}/character_sprites/jellyfish.png`,   // 2026-10-04 — his own sprite
   'cult leader': `${_S}/character_sprites/cultleader.png`,   // 2026-10-04 — his own sprite
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)

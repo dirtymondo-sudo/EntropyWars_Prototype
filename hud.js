@@ -13016,6 +13016,7 @@ if (!Array.isArray(db.picks)) db.picks = [];
 db.picks = db.picks.filter(k => k && typeof k === 'object' && typeof k.id === 'string' && typeof k.sel === 'string');
 if (!db.faces || typeof db.faces !== 'object' || Array.isArray(db.faces)) db.faces = {};
 if (!db.faces.u || typeof db.faces.u !== 'object' || Array.isArray(db.faces.u)) db.faces.u = {};
+if (!db.btns || typeof db.btns !== 'object' || Array.isArray(db.btns)) db.btns = {};
 if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
 if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
@@ -14952,6 +14953,252 @@ function qpTidy() {
   });
   if (!Object.keys(X.qParts).length) delete X.qParts;
 }
+/* ── THE BACK + CONFIRM BUTTONS (pass 29, 2026-10-24, mondo: "in the ui maker can we add settings for all back buttons and
+   confirm buttons, like i want to be able to make a red back button and have every menu that uses a back button look like
+   it, but also be able to change them individually, like the back button in the combat menu would look different. And
+   same thing with confirm, i want all confirm buttons to be green. And that little stamp thing it does, let me choose if i
+   want that or not or let me customize it"). db.btns holds only what was changed:
+     back / confirm       = the look every BACK / every CONFIRM button wears,
+     '<kind>-<menu id>'   = one menu's own look on top of it (solo: its own alone, the every-button look skipped),
+     stamp                = the rubber stamp a CONFIRM thunks down (STAMP_DEF).
+   Untouched = every button as the game draws it. A button inside a theme's shaped skin keeps its shape: its colours
+   re-bake that skin (btnTint). Viewer-local like the rest of the UI Maker, nothing relayed. ── */
+const BTN_KINDS = [['back', 'BACK'], ['confirm', 'CONFIRM']];
+/* every menu with a BACK or a CONFIRM button. sel = the buttons; inside them (a sub-selector, '::before' = drawn by the
+   button itself): words = text with a colour of its own, icon = a mark (its colour), disc = a mark on a filled disc (the
+   ✓). skin = the buttons that wear the screen theme's Button skin (1 = all of them); pulse = the game breathes their glow;
+   glow = the game gives them a coloured glow; tglow = their words glow. */
+const BTN_MENUS = [
+  { id: 'battle', label: 'Combat menu', surf: 'battle',
+    back: { sel: '.hrlg-backchip', words: '.hrlg-backchip-lbl', icon: '.hrlg-backchip-arrow, svg', tglow: 1, what: 'The ◀ BACK chip over every sub-menu and over the move / jump aim' },
+    confirm: { sel: '.hrlg-confirm, .hrlg-confirm-inline', words: '.hrlg-confirm-lbl', disc: '.hrlg-confirm-check, .hrlg-confirm-inline-check', pulse: 1, glow: 1, tglow: 1, what: 'The CONFIRM at the end of a picked row, and the big one over the list' } },
+  { id: 'match', label: 'Match select', surf: 'match',
+    back: { sel: '.ms-crt:not(.ms-crt-forge) .ms-tty-btn.danger', skin: 1, tglow: 1, what: '◂ BACK (◂ STEP AWAY at a site)' },
+    confirm: { sel: '.ms-crt:not(.ms-crt-forge) .ms-tty-btn.primary', words: '> b', icon: '> i', skin: 1, glow: 1, tglow: 1, what: 'CONFIRM (FILE THE CROSSING at a site)' } },
+  { id: 'forge', label: 'Party builder', surf: 'forge',
+    back: { sel: '.ms-crt-forge .pb-party-left .ms-tty-btn.danger, .ms-crt-forge .pb-locker .ms-tty-btn.danger', skin: '.ms-crt-forge .pb-locker .pb-foot .ms-tty-btn.danger', tglow: 1, what: '◂ BACK / ◂ TEAMS, and ◂ MAIN MENU / ◂ TEAM SELECT in the team archive' },
+    confirm: { sel: '.ms-crt-forge .ms-tty-btn.ok, .ms-crt-forge .pb-seal .ms-tty-btn.primary', words: '> b', icon: '> i', skin: '.ms-crt-forge .pb-foot .ms-tty-btn.ok, .ms-crt-forge .pb-foot .ms-tty-btn.primary', glow: 1, tglow: 1, what: 'CONFIRM I-VIII, and SEAL YOUR FATE / START MATCH / SAVE TEAM' } },
+  { id: 'creator', label: 'Character creator', surf: 'forge',
+    back: { sel: '.ms-tty-btn.ew-back', tglow: 1, what: 'BACK TO GEAR, and BACK TO THE MENU at the intake' } },
+  { id: 'squad', label: 'Squad desk', surf: 'squad',
+    back: { sel: '#squadDeskPage .sq-back', icon: '> span', skin: 1, what: '‹ Back' },
+    confirm: { sel: '#squadDeskPage .sq-cta[data-sq-go]', icon: '::before', skin: 1, what: 'DEPLOY' } },
+  { id: 'hub', label: 'Play hub', surf: 'menu', back: { sel: '#playHubPage .mm-btn-return', words: '.mm-label', skin: 1, what: 'Back (to the team pick)' } },
+  { id: 'lobby', label: 'Online lobby', surf: 'lobby', back: { sel: '#lobbyPage .lobby-back', skin: 1, what: '← Back / ← Cancel' } },
+  { id: 'settings', label: 'Settings', surf: 'settings', back: { sel: '#settingsPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'codex', label: 'Codex', surf: 'shell', back: { sel: '#codexPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'shop', label: 'Shop', surf: 'shell',
+    back: { sel: '#shopPage .ms-back-btn, #shopPage .door-form-confirm .cdx-btn-ghost', skin: 1, what: '← Back, and ✕ Cancel on a purchase' },
+    confirm: { sel: '#shopPage .door-form-confirm .cdx-btn-confirm', skin: 1, what: '✓ Confirm Purchase' } },
+  { id: 'library', label: 'Spell library', surf: 'shell', back: { sel: '#spellLibraryPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'race', label: 'Race editor', surf: 'shell', back: { sel: '#raceEditorPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'tutorial', label: 'Tutorial shelf', surf: 'shell', back: { sel: '#tutorialPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'hq', label: 'HQ pause menu', surf: 'explore', back: { sel: '#hqPage .hq-btn[data-cmd="party"], #hqPage .hq-panel-actions .hq-btn[data-party-act^="circuit:"], #hqPage .hq-circ-tools .hq-btn[data-party-act^="circuit:"]', skin: 1, what: '◂ PARTY / ◂ THE PARTY, and ◂ DONE on a vessel\'s spells' } },
+  { id: 'profile', label: 'Profile + leaderboard', surf: '', back: { sel: 'button.ew-back:not(.ms-tty-btn)', what: '← Back on the profile, the leaderboard and the community maps' } },
+  { id: 'pages', label: 'Other pages', surf: '', back: { sel: '#mdCharPage .ms-back-btn, #challengePickPage .ms-back-btn, #campaignCharCreatePage .ms-back-btn, #campaignMapPage .ms-back-btn, #mapEditorPage .ms-back-btn, #cshopOverlay .ms-back-btn, .cpb-back-btn, #backToLobbyBtn', what: '← Back on the character, challenge and campaign pages, a challenge level\'s briefing, the campaign shop, the map editor and the old team setup' } },
+  { id: 'results', label: 'Victory / defeat', surf: 'results', back: { sel: '#resultOverlay #startOverBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Back to Map' } },
+  { id: 'dialog', label: 'Pop-up questions', surf: 'dialog',
+    back: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave, #uiDialogOverlay .trade-footer [data-trade-action="cancel"], .ew-banner-box .ew-banner-btn.secondary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave', what: 'Cancel on the "are you sure?" boxes, the save / load box and the trade' },
+    confirm: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take, #uiDialogOverlay .trade-footer [data-trade-action="confirm"], .ew-banner-box .ew-banner-btn.primary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take', what: 'Confirm on the "are you sure?" boxes, Save on the save box, Confirm Trade' } },
+];
+/* '' / -1 / 0 = as the game; hov = the brightness a coloured button takes under the pointer (its own hover colours give
+   way to the set ones) */
+const BTN_DEF = { solo: false, tint: '', bg: '', bg2: '', edge: '', edgeW: 2, rad: -1, glow: 0, glowC: '', pulse: '', hov: 1.25, padX: -1, padY: -1,
+  ink: '', font: '', fw: '', fsz: 0, tcase: '', track: 0, tfx: '', icon: '' };
+const BTN_FRAME = ['tint', 'bg', 'edge', 'glowC'];   // what re-colours a shaped skin (with glow > 0)
+const SK_PARTS = ['fill', 'material', 'outline', 'inner', 'bevel', 'glow', 'shadow'];
+function btnMenu(id) { return BTN_MENUS.find(m => m.id === id) || null; }
+function btnRaw(id) { const o = (db.btns || {})[id]; return o && typeof o === 'object' ? o : {}; }
+function btnOn(L) { return Object.keys(BTN_DEF).some(k => k !== 'solo' && L[k] != null && String(L[k]) !== String(BTN_DEF[k])) || !!(L.sk && L.sk.on); }
+function skMerge(a, b) {
+  const o = Object.assign({}, a || {}, b || {});
+  SK_PARTS.forEach(k => { const x = a && a[k], y = b && b[k]; if (x || y) o[k] = Object.assign({}, x && typeof x === 'object' ? x : {}, y && typeof y === 'object' ? y : {}); });
+  return o;
+}
+/* the look a menu's BACK / CONFIRM wears: the every-button look with the menu's own on top (or its own alone) */
+function btnLook(kind, mid) {
+  const G = btnRaw(kind), O = mid ? btnRaw(kind + '-' + mid) : {};
+  const L = Object.assign({}, O.solo ? {} : G, O);
+  if (G.sk || O.sk) L.sk = O.solo ? O.sk : skMerge(G.sk, O.sk);
+  delete L.solo;
+  return L;
+}
+/* the theme the menu's screen wears (null = the original look: no skins) and its colours */
+function btnTheme(M) {
+  const S = M && M.surf ? UIM_SURFACES.find(x => x.id === M.surf) : null;
+  const tid = S ? effectiveId(S) : globalId();
+  return tid === 'original' ? null : themeById(tid);
+}
+function btnColors(T) {
+  const G = T || themeById(globalId()) || themeById('crystal');
+  return G && !G.builtin && G.colors ? G.colors : colorsFromTokens(G && G.tokens ? G.tokens : HUD_THEME_TOKENS.crystal);
+}
+/* a skin spec in the button's colours: Colour paints the fill dark, the frame, the inner rim and the glow; Fill / Frame /
+   Glow set their own part */
+function btnTint(s, L) {
+  const o = clone(s), c = L.tint, ew = L.edgeW == null ? BTN_DEF.edgeW : +L.edgeW;
+  if (c) {
+    if (o.fill && o.fill.kind !== 'none') o.fill = Object.assign({}, o.fill, { kind: o.fill.kind === 'material' ? 'material' : 'gradient', c1: shade(c, -0.72), c2: '', c3: shade(c, -0.86) });
+    o.outline = Object.assign({}, o.outline, { c: toHex(c) });
+    if (o.inner && +o.inner.w > 0) o.inner = Object.assign({}, o.inner, { c: toHex(shade(c, 0.35)) });
+    if (o.glow && +o.glow.r > 0) o.glow = Object.assign({}, o.glow, { c: toHex(c) });
+  }
+  if (L.bg) o.fill = Object.assign({}, o.fill, { kind: o.fill && o.fill.kind === 'material' ? 'material' : 'gradient', c1: L.bg, c2: '', c3: L.bg2 || L.bg });
+  if (L.edge) o.outline = Object.assign({}, o.outline, { w: Math.max(0, Math.min(16, ew)), c: toHex(L.edge) });
+  const gc = L.glowC || c;
+  if (+L.glow > 0) o.glow = { r: Math.min(40, +L.glow), c: toHex(gc || (o.glow && o.glow.c) || '#ffffff'), a: 0.6 };
+  else if (gc && o.glow && +o.glow.r > 0) o.glow = Object.assign({}, o.glow, { c: toHex(gc) });
+  return o;
+}
+/* the shaped skin a button wears from its own Shape + skin: a Button skin in the screen theme's colours, in the
+   button's colours, then what was changed in the skin form */
+function btnOwnSkin(L, T) {
+  const b = blankSkin(btnColors(T), 'button');
+  const base = BTN_FRAME.some(k => L[k]) || +L.glow > 0 ? btnTint(b, L) : b;
+  return skMerge(base, L.sk);
+}
+/* the skin the dock's form shows for one stored look (a menu's: over the every-button one) */
+function btnSkinShown(id) {
+  const i = id.indexOf('-'), kind = i > 0 ? id.slice(0, i) : id, M = i > 0 ? btnMenu(id.slice(i + 1)) : null;
+  return btnOwnSkin(btnLook(kind, M ? M.id : ''), btnTheme(M));
+}
+function btnPre(list, n) { return parts(list).map(s => ':root:root' + ':not(#uim-b)'.repeat(n) + ' ' + s).join(', '); }
+function btnSub(sel, sub) { return parts(sel).flatMap(a => parts(sub).map(b => b.indexOf('::') === 0 ? a + b : a + ' ' + b)).join(', '); }
+/* every button's CSS (in the theme sheet: a shaped skin is baked there). inline = the border-image written out (a stand-in
+   has no --uim-sk vars) */
+function btnCss(inline) {
+  let css = '', pending = false;
+  BTN_MENUS.forEach(M => BTN_KINDS.forEach(([kind]) => {
+    const K = M[kind]; if (!K) return;
+    const L = btnLook(kind, M.id); if (!btnOn(L)) return;
+    const r = btnRule(M, K, L, inline); css += r.css; pending = pending || r.pending;
+  }));
+  return { css: css + stampCss(), pending };
+}
+function btnRule(M, K, L, inline) {
+  const n = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0)), sel = K.sel, c = L.tint || '';
+  let css = '', pending = false;
+  const gc = L.glowC || c, gr = +L.glow > 0 ? n(L.glow, 0, 60) : (gc && K.glow ? 18 : 0);
+  const pulse = L.pulse === 'on' || (L.pulse !== 'off' && !!K.pulse && !!(gc || +L.glow > 0));
+  /* the frame + fill as plain CSS (a button no theme skin draws) */
+  const d = [];
+  if (c || L.bg || L.edge) d.push('border-image: none !important;');
+  if (L.bg) d.push(`background: ${L.bg2 ? `linear-gradient(180deg, ${L.bg}, ${L.bg2})` : L.bg} !important;`);
+  else if (c) d.push(`background: linear-gradient(180deg, ${shade(c, -0.72)}, ${shade(c, -0.86)}) !important;`);
+  if (L.edge) d.push(`border: ${n(L.edgeW == null ? BTN_DEF.edgeW : L.edgeW, 0, 16)}px solid ${L.edge} !important;`);
+  else if (c) d.push(`border-color: ${c} !important;`);
+  if (L.rad != null && +L.rad >= 0) d.push(`border-radius: ${n(L.rad, 0, 200)}px !important;`);
+  if (L.padY != null && +L.padY >= 0) d.push(`padding-top: ${n(L.padY, 0, 60)}px !important; padding-bottom: ${n(L.padY, 0, 60)}px !important;`);
+  if (L.padX != null && +L.padX >= 0) d.push(`padding-left: ${n(L.padX, 0, 80)}px !important; padding-right: ${n(L.padX, 0, 80)}px !important;`);
+  if (L.pulse === 'off') d.push('animation: none !important;');
+  /* the breathing glow is a drop-shadow, so it follows a shaped skin's outline */
+  if (pulse) d.push(`--uim-bpc: ${withAlpha(gc || '#ffffff', 0.85)}; --uim-bpr: ${gr || 14}px; animation: uim-bpulse 1.1s ease-in-out infinite !important; box-shadow: 0 2px 0 rgba(0,0,0,0.5) !important;`);
+  else if (gr && gc) d.push(`box-shadow: 0 0 ${gr}px ${withAlpha(gc, 0.6)}, 0 2px 0 rgba(0,0,0,0.5) !important;`);
+  if (d.length) css += `${btnPre(sel, 3)} { ${d.join(' ')} }\n`;
+  /* the shaped skin: its own (Shape + skin), else the screen theme's Button skin re-baked in the button's colours */
+  const T = btnTheme(M), skSel = K.skin === 1 ? sel : K.skin, recol = BTN_FRAME.some(k => L[k]) || +L.glow > 0;
+  let spec = null, on = '';
+  if (L.sk && L.sk.on) { spec = btnOwnSkin(L, T); on = sel; }
+  else if (skSel && recol && T) { const s = roleSpec(T, 'button'); if (s && !s.slice) { spec = btnTint(s, L); on = skSel; } }
+  if (spec) {
+    let bi = '';
+    if (spec.slice) bi = sliceCss(db.slices.find(x => x.id === spec.slice));
+    else { const b = bakeSkin(spec); if (b === null) pending = true; else bi = b.css; }
+    if (bi && bi !== 'none') {
+      const px = _pixelCss.has(bi);
+      css += `${btnPre(on, 4)} { border-image: ${inline ? bi : skinVar(bi)} !important; background: none !important;${pulse ? '' : ' box-shadow: none !important;'}${px ? ' image-rendering: pixelated !important;' : ''} }\n`;
+      if (px) css += `${btnPre(btnSub(on, '> *'), 4)} { image-rendering: auto !important; }\n`;
+    }
+  }
+  /* the words (the button's own and its word parts) */
+  const ink = L.ink || c, t = [];
+  if (ink) t.push(`color: ${ink} !important;`);
+  if (L.font) t.push(`font-family: ${L.font} !important;`);
+  if (L.fw) t.push(`font-weight: ${L.fw} !important;`);
+  if (+L.fsz > 0) t.push(`font-size: ${n(L.fsz, 6, 80)}px !important;`);
+  if (L.tcase) t.push(`text-transform: ${CASE_CSS[L.tcase] || 'none'} !important;`);
+  if (L.track != null && +L.track !== 0) t.push(`letter-spacing: ${(+L.track || 0).toFixed(2)}em !important;`);
+  if (L.tfx && TFX[L.tfx]) t.push(`text-shadow: ${TFX[L.tfx]} !important;`);
+  else if (ink && K.tglow) t.push(`text-shadow: 0 0 8px ${withAlpha(ink, 0.5)} !important;`);
+  if (t.length) css += `${btnPre(K.words ? sel + ', ' + btnSub(sel, K.words) : sel, 3)} { ${t.join(' ')} }\n`;
+  /* the marks: the arrow / ↵ in the button's colour, the ✓ disc filled with it */
+  const ic = L.icon || c;
+  if (ic && K.icon) css += `${btnPre(btnSub(sel, K.icon), 3)} { color: ${ic} !important; }\n`;
+  if (ic && K.disc) css += `${btnPre(btnSub(sel, K.disc), 3)} { background: ${ic} !important; color: ${shade(ic, -0.88)} !important; box-shadow: 0 0 8px ${withAlpha(ic, 0.75)} !important; }\n`;
+  /* its own hover colours give way to the set ones: it brightens instead (a breathing one through the pulse, whose
+     drop-shadow rides the same filter) */
+  const hv = L.hov == null ? BTN_DEF.hov : +L.hov;
+  if ((c || L.bg || L.edge || ink || spec) && hv !== 1) css += `${btnPre(parts(sel).map(s => s + ':hover').join(', '), 3)} { ${pulse ? `--uim-bh: ${n(hv, 0.5, 3)};` : `filter: brightness(${n(hv, 0.5, 3)}) !important;`} }\n`;
+  return { css, pending };
+}
+/* ── THE STAMP: the rubber stamp a CONFIRM thunks down (styles-base.css .door-stamp): FILED onto the match select's
+   CONFIRM (match-select.js handleConfirm), FILED on each party slot a CONFIRM locked in (party-builder.js), DECLASSIFIED
+   on the shop's purchase bar (ui.js). The look is CSS; the word rides ::after so it changes live everywhere; off, the
+   tilt and the timing are read by those files from window._ewStampLook (stampSignal). ── */
+const STAMP_DEF = { onM: true, onF: true, onS: true, word: '', ink: '', size: 1, tilt: -4, font: '', frame: '', clean: false, slam: 2.2, ms: 450, wait: 420, sound: true };
+const STAMP_PLACES = [
+  { id: 'M', label: 'Match select CONFIRM', hint: 'FILED thunks onto CONFIRM, then the match starts', sel: '.ms-tty-btn.primary .ms-tty-filed .door-stamp', size: 15, track: 0.26, anim: 1 },
+  { id: 'F', label: 'Party builder slots', hint: 'FILED on each party slot a CONFIRM locked in', sel: '.pb-party-ring .door-stamp.pb-party-filed', size: 8, track: 0.12 },
+  { id: 'S', label: 'Shop purchase', hint: 'DECLASSIFIED on the bar that asks you to confirm a purchase', sel: '#shopPage .door-form-confirm .door-stamp', size: 9, track: 0.18, anim: 1 },
+];
+function stampOf() { return Object.assign({}, STAMP_DEF, btnRaw('stamp')); }
+function cssStr(s) { return String(s).replace(/[\\"]/g, ch => '\\' + ch).replace(/[\n\r]/g, ' '); }
+function stampCss() {
+  const R = btnRaw('stamp'); if (!Object.keys(R).length) return '';
+  const X = stampOf(), n = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0));
+  const tilt = n(X.tilt, -90, 90), moved = tilt !== STAMP_DEF.tilt || +X.slam !== STAMP_DEF.slam || +X.ms !== STAMP_DEF.ms;
+  let css = '';
+  STAMP_PLACES.forEach(P => {
+    const S = btnPre(P.sel, 3);
+    if (!X['on' + P.id]) {
+      /* off: a locked party slot shows the ✓ the game shows without the stamp; elsewhere it is gone */
+      css += P.id === 'F'
+        ? `${S} { font-size: 0 !important; border-color: transparent !important; outline: none !important; filter: none !important; transform: none !important; padding: 0 !important; }\n${btnPre(P.sel + '::after', 3)} { content: '✓'; font-size: 15px; color: var(--ph-green, #66ff8a); font-weight: 700; letter-spacing: 0; }\n`
+        : `${S} { display: none !important; }\n`;
+      return;
+    }
+    const fs = Math.round(P.size * n(X.size, 0.3, 4) * 10) / 10, d = [];
+    if (X.ink) d.push(`color: ${X.ink} !important;`);
+    if (X.font) d.push(`font-family: ${X.font} !important;`);
+    if (X.frame === 'single') d.push('outline: none !important;');
+    else if (X.frame === 'none') d.push('border-color: transparent !important; outline: none !important;');
+    if (X.clean) d.push('filter: none !important;');
+    if (X.word) d.push('font-size: 0 !important; letter-spacing: 0 !important;');
+    else if (+X.size !== 1) d.push(`font-size: ${fs}px !important;`);
+    if (!P.anim && tilt !== STAMP_DEF.tilt) d.push(`transform: rotate(${tilt}deg) !important;`);
+    if (d.length) css += `${S} { ${d.join(' ')} }\n`;
+    /* the thunk: the game's doorThunk with the tilt, the slam and the speed as numbers (uim-thunk) */
+    if (P.anim && moved) css += `${S} { --uim-st-r: ${tilt}deg; --uim-st-s: ${n(X.slam, 1, 6)}; animation: uim-thunk ${Math.round(n(X.ms, 60, 3000))}ms cubic-bezier(0.2, 1.4, 0.3, 1) forwards !important; }\n`;
+    if (X.word) css += `${btnPre(P.sel + '::after', 3)} { content: "${cssStr(String(X.word).slice(0, 24))}"; font-size: ${fs}px; letter-spacing: ${P.track}em; }\n`;
+  });
+  return css;
+}
+/* what match-select.js, party-builder.js and ui.js read when a CONFIRM stamps (re-published only when it changes) */
+let _stampSent = '';
+function stampSignal() {
+  const X = stampOf(), L = { matchOff: !X.onM, forgeOff: !X.onF, shopOff: !X.onS, wait: Math.round(Math.max(0, Math.min(5000, +X.wait || 0))), quiet: !X.sound };
+  const k = JSON.stringify(L); if (k === _stampSent) return;
+  _stampSent = k; window._ewStampLook = L;
+}
+function btnSet(id, k, v) {
+  const B = db.btns || (db.btns = {}), o = B[id] || (B[id] = {});
+  if (k.indexOf('.') > 0) { if (k.indexOf('sk.') === 0 && (!o.sk || typeof o.sk !== 'object')) o.sk = {}; setPath(o, k, v); }
+  else o[k] = v;
+  btnTidy(); touchLayout(); scheduleApply();
+}
+function btnTidy() {
+  const B = db.btns; if (!B || typeof B !== 'object') { db.btns = {}; return; }
+  Object.keys(B).forEach(id => {
+    const o = B[id]; if (!o || typeof o !== 'object' || Array.isArray(o)) { delete B[id]; return; }
+    /* a menu's own key that matches what it would wear anyway (the every-button look, or the game's) goes */
+    const D = id === 'stamp' ? STAMP_DEF : BTN_DEF, i = id.indexOf('-'), G = i > 0 && !o.solo ? btnRaw(id.slice(0, i)) : {};
+    Object.keys(o).forEach(k => {
+      if (k === 'sk') { if (!o.sk || typeof o.sk !== 'object' || !Object.keys(o.sk).length) delete o.sk; return; }
+      if (!(k in D) || o[k] == null || String(o[k]) === String(G[k] != null ? G[k] : D[k])) delete o[k];
+    });
+    if (!Object.keys(o).length) delete B[id];
+  });
+}
 /* the scoreboard's text pieces, re-published only when they change (the Scoreboard reads window._ewSbLook each render) */
 let _sbSent = '';
 function sbSignal() {
@@ -16504,6 +16751,8 @@ const KEYFRAMES = `@keyframes uim-pop { from { scale: 0.1; opacity: 0; } 70% { o
 @keyframes uim-wipe { from { clip-path: inset(-80px 100% -80px -80px); } to { clip-path: inset(-80px); } }
 @keyframes uim-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes uim-bob { from { translate: 0 0; } to { translate: 3px 0; } }
+@keyframes uim-bpulse { 0%, 100% { filter: drop-shadow(0 0 calc(var(--uim-bpr, 14px) * 0.3) var(--uim-bpc, #fff)) brightness(var(--uim-bh, 1)); } 50% { filter: drop-shadow(0 0 var(--uim-bpr, 14px) var(--uim-bpc, #fff)) brightness(var(--uim-bh, 1)); } }
+@keyframes uim-thunk { 0% { opacity: 0; transform: rotate(var(--uim-st-r, -4deg)) scale(var(--uim-st-s, 2.2)); } 60% { opacity: 1; transform: rotate(var(--uim-st-r, -4deg)) scale(0.94); } 100% { opacity: 0.92; transform: rotate(var(--uim-st-r, -4deg)) scale(1); } }
 `;
 /* every baked image is written ONCE as a custom property on :root; the rules point at it */
 function skinVar(bi) { let n = _skinVars.get(bi); if (!n) { n = '--uim-sk' + _skinVars.size; _skinVars.set(bi, n); } return `var(${n})`; }
@@ -16527,6 +16776,7 @@ function apply() {
   if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
   { const r = pieceSkinCss(); css += r.css; pending = pending || r.pending; }
   { const r = qpSkinCss(); css += r.css; pending = pending || r.pending; }
+  { const r = btnCss(); css += r.css; pending = pending || r.pending; }
   let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
   css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css;
   let el = document.getElementById('ew-ui-maker');
@@ -16537,11 +16787,12 @@ function apply() {
   if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   applyLayout();
   if (_stages.size) stagesRefresh();
+  if (UI.live && UI.live.mode === 'btns') btnPrevRefresh();
   return !pending;
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -16616,7 +16867,7 @@ function stageLay(st, lay) {
   const d = st.fr.contentDocument, el = d && d.getElementById('uim-stage-lay'); if (!el) return;
   const keep = _skinVars; _skinVars = new Map();
   let css = '';
-  try { css = (lay == null ? layoutCss() : lay.replace(/^\/\*[^*]*\*\/\n/, '')) + pieceSkinCss().css; } catch (e) {}
+  try { css = (lay == null ? layoutCss() : lay.replace(/^\/\*[^*]*\*\/\n/, '')) + pieceSkinCss().css + btnCss(true).css; } catch (e) {}
   _skinVars = keep;
   if (el.textContent !== css) el.textContent = css;
   wordsApply(d);
@@ -16763,7 +17014,7 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-arr-box.ghost > span { background: #4a56c8; }
 .uim-arr-box.off > span { background: #b8761a; }
 .uim-arr-box > .uim-rs { display: none; position: absolute; right: -6px; bottom: -6px; width: 11px; height: 11px; background: #ff3df0; border: 1px solid #000; cursor: nwse-resize; pointer-events: auto; }
-.uim-arr-box.on:not(.ghost):not(.part):not(.surf):not(.bar) > .uim-rs { display: block; }
+.uim-arr-box.on:not(.ghost):not(.part):not(.surf):not(.bar):not(.bbtn) > .uim-rs { display: block; }
 .uim-arr-box.qpart.on > .uim-rs { display: block; background: #66ff8a; }
 .uim-arr-box.qpart { cursor: move; }
 .uim-arr-box.qpanel { border-style: dashed; }
@@ -16824,7 +17075,7 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
 .uim-dock.busy { opacity: 0.35; pointer-events: none; }
-.uim-dock-hd { display: flex; align-items: center; gap: 4px; padding: 6px 7px; background: #14161c; border-bottom: 1px solid #2a2e38; border-radius: 9px 9px 0 0; cursor: grab; user-select: none; touch-action: none; }
+.uim-dock-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 7px; background: #14161c; border-bottom: 1px solid #2a2e38; border-radius: 9px 9px 0 0; cursor: grab; user-select: none; touch-action: none; }
 .uim-dock.fold .uim-dock-hd { border-bottom: none; border-radius: 9px; }
 .uim-dock-hd .grip { color: #4b5568; letter-spacing: -2px; margin-right: 2px; }
 .uim-dock-hd .uim-btn { padding: 3px 7px; }
@@ -16863,6 +17114,22 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.bar:hover { background: rgba(255,210,61,0.12); }
 .uim-arr-box.bar.on { border-style: solid; border-width: 2px; background: rgba(255,210,61,0.14); }
 .uim-arr-box.bar > span { background: #a3820f; }
+.uim-arr-box.bbtn { border-color: #ff9a2e; background: rgba(255,154,46,0.04); cursor: pointer; }
+.uim-arr-box.bbtn:hover { background: rgba(255,154,46,0.12); }
+.uim-arr-box.bbtn.on { border-style: solid; border-width: 2px; background: rgba(255,154,46,0.08); }
+.uim-arr-box.bbtn > span { background: #b0600f; }
+.uim-dk-bmenu { display: grid; grid-template-columns: 10px 1fr auto; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-dk-bmenu:hover { background: #191c24; }
+.uim-dk-bmenu.on { border-color: #ff9a2e; background: #2a1c10; }
+.uim-dk-bmenu i { width: 8px; height: 8px; border-radius: 50%; background: #3a4050; }
+.uim-dk-bmenu i.live { background: #ff9a2e; box-shadow: 0 0 6px #ff9a2e; }
+.uim-dk-bmenu b { color: #e4e8ef; font-weight: 500; }
+.uim-dk-bmenu small { display: block; color: #7d8699; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uim-dk-bmenu > div { min-width: 0; }
+.uim-dk-bmenu em { font-style: normal; font-size: 10px; color: #c9a06a; white-space: nowrap; }
+.uim-btprev { margin: 6px 0 8px; border: 1px solid #2c3140; border-radius: 6px; overflow: hidden; background: #05060a; }
+.uim-btprev-fr { display: block; width: 100%; height: 60px; border: 0; }
+
 .uim-dk-bar { display: grid; grid-template-columns: 10px 1fr; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
 .uim-dk-bar:hover { background: #191c24; }
 .uim-dk-bar.on { border-color: #ffd23d; background: #2a2410; }
@@ -16964,7 +17231,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, faces: db.faces, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, faces: db.faces, btns: db.btns, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -16978,6 +17245,7 @@ function travel(from, to) {
       const j = JSON.parse(e.j);
       db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.ux = j.ux || {}; db.assign = j.assign || {}; db.words = j.words || {}; db.picks = j.picks || []; HIST.t = 0;
       db.faces = j.faces && typeof j.faces === 'object' ? j.faces : {}; if (!db.faces.u || typeof db.faces.u !== 'object') db.faces.u = {}; faceBump();
+      db.btns = j.btns && typeof j.btns === 'object' ? j.btns : {};
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -17270,9 +17538,9 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once'], ['float', 'Floating text ⧉', 'Opens on the real screen: how the damage numbers, heals and words that pop over the units look and move, with a unit and its name plate that show every change at once']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once'], ['float', 'Floating text ⧉', 'Opens on the real screen: how the damage numbers, heals and words that pop over the units look and move, with a unit and its name plate that show every change at once'], ['btns', 'Buttons ⧉', 'Opens on the real screen: one look for every BACK and every CONFIRM button, each menu its own on top, and the stamp a CONFIRM thunks down']];
 /* the tabs that open on the real screen (the live dock) */
-const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim', 'float'];
+const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim', 'float', 'btns'];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
   if (LIVE_MODES.indexOf(UI.tab) >= 0) UI.tab = UI.back || 'skins';
@@ -17855,6 +18123,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
     <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows, the tile highlights and the green super-effective ! look">Arrows</button>
     <button class="uim-btn${UI.live.mode === 'float' ? ' on' : ''}" data-dk="float" title="Floating text: how the damage numbers, heals and words that pop over the units look">Pops</button>
+    <button class="uim-btn${UI.live.mode === 'btns' ? ' on' : ''}" data-dk="btns" title="Every BACK and every CONFIRM button, each menu's own, and the stamp">Buttons</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -18177,6 +18446,204 @@ function barBoxes() {
   if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
 }
 
+/* ── THE BUTTONS panel (pass 29): BACK / CONFIRM / The stamp; "Every BACK button" and a row per menu; orange boxes on
+   the buttons on screen; a preview of the picked buttons (the real class names inside wrappers that lay flat) ── */
+const btx = (id, html) => html.replace(/data-path="/g, `data-btpath="${id}.`).replace(/data-set="/g, `data-btset="${id}.`);
+const BTN_TICK = { back: '#e0453a', confirm: '#3ccf6e' };   // only where a ticked colour box starts; nothing changes until it is ticked
+const BTN_SAMPLE = (() => {
+  const page = (id, cls, inner) => `<div class="uim-w title-page" id="${id}"><div class="uim-w ms-container${cls}"><div class="uim-w ms-top-bar">${inner}</div></div></div>`;
+  const back = '<button class="ms-back-btn">← Back</button>';
+  const crt = (cls, inner) => `<div class="uim-w ms-crt ${cls}"><div class="uim-w ms-tty">${inner}</div></div>`;
+  const dlg = (b, ic, w) => `<div class="uim-w ui-dialog-overlay" id="uiDialogOverlay"><div class="uim-w ui-dialog-card"><div class="uim-w pickup-dialog ui-confirm-dialog"><div class="uim-w pickup-choices"><button class="pickup-btn ${b}"><span class="pickup-btn-icon">${ic}</span><span class="pickup-btn-text"><strong>${w}</strong></span></button></div></div></div></div>`;
+  return {
+    'back-battle': '<div class="uim-w hrlg-panel"><div class="hrlg-backchip"><span class="hrlg-backchip-arrow">◀</span><span class="hrlg-backchip-lbl">BACK</span></div></div>',
+    'confirm-battle': '<div class="hrlg-confirm"><span class="hrlg-confirm-check">✓</span><span class="hrlg-confirm-lbl">CONFIRM<span class="hrlg-confirm-tgt"> — Grey</span></span></div><div class="uim-bp-rel"><span class="hrlg-confirm-inline"><span class="hrlg-confirm-inline-check">✓</span>CONFIRM</span></div>',
+    'back-match': crt('ms-crt-desk', '<div class="uim-w ms-tty-foot"><button class="ms-tty-btn danger">◂ BACK</button></div>'),
+    'confirm-match': crt('ms-crt-desk', '<div class="uim-w ms-tty-foot"><button class="ms-tty-btn primary"><b>CONFIRM</b><i>↵</i></button></div>'),
+    'back-forge': crt('ms-crt-forge', '<div class="uim-w pb-party"><div class="uim-w pb-party-left"><button class="ms-tty-btn danger">◂ BACK</button></div></div>'),
+    'confirm-forge': crt('ms-crt-forge', '<div class="uim-w pb-party"><div class="uim-w pb-party-right ms-tty-foot pb-foot"><div class="uim-w pb-seal"><button class="ms-tty-btn ok">CONFIRM I</button><button class="ms-tty-btn primary"><b>⚔ START MATCH</b><i>↵</i></button></div></div></div>'),
+    'back-creator': crt('ms-crt-forge', '<button class="ms-tty-btn ew-back">BACK TO GEAR</button>'),
+    'back-squad': '<div class="uim-w" id="squadDeskPage"><button class="sq-back"><span>‹</span> Back</button></div>',
+    'confirm-squad': '<div class="uim-w" id="squadDeskPage"><button class="sq-cta is-ready" data-sq-go>Deploy</button></div>',
+    'back-hub': '<div class="uim-w title-page void-menu" id="playHubPage"><div class="uim-w mm-buttons"><button class="mm-btn mm-btn-return"><span class="mm-label">Back</span><span class="mm-desc-text">Back to the team pick</span></button></div></div>',
+    'back-lobby': '<div class="uim-w" id="lobbyPage"><button class="lobby-back">← Back</button></div>',
+    'back-settings': page('settingsPage', '', back),
+    'back-codex': page('codexPage', ' codex-container', back),
+    'back-shop': page('shopPage', ' codex-container', back + '<div class="uim-w cdx-actionbar door-form-confirm"><button class="cdx-btn cdx-btn-ghost">✕ Cancel</button></div>'),
+    'confirm-shop': page('shopPage', ' codex-container', '<div class="uim-w cdx-actionbar door-form-confirm"><button class="cdx-btn cdx-btn-confirm">✓ Confirm Purchase</button></div>'),
+    'back-library': page('spellLibraryPage', ' codex-container', back),
+    'back-race': page('raceEditorPage', ' codex-container', back),
+    'back-tutorial': page('tutorialPage', ' codex-container', back),
+    'back-pages': page('mdCharPage', '', back),
+    'back-hq': '<div class="uim-w" id="hqPage"><div class="uim-w hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button></div></div>',
+    'back-profile': '<button class="ew-back" style="background: rgba(255,255,255,0.06); border: 1px solid #3a3550; color: #8a849c; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-family: DotGothic16, monospace">← Back</button>',
+    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button></div></div>',
+    'back-dialog': dlg('pickup-btn-leave', '✕', 'Cancel'),
+    'confirm-dialog': dlg('pickup-btn-take', '✓', 'Confirm'),
+  };
+})();
+/* the three places the stamp lands, as the game draws them (the match select's thunks in as CONFIRM is pressed) */
+const STAMP_SAMPLE = {
+  M: '<div class="uim-w ms-crt ms-crt-desk"><div class="uim-w ms-tty"><div class="uim-w ms-tty-foot"><button class="ms-tty-btn primary filed"><b>CONFIRM</b><i>↵</i><span class="ms-tty-filed"><span class="door-stamp admit door-stamp-lg" style="animation: doorThunk 0.45s cubic-bezier(0.2, 1.4, 0.3, 1) forwards; opacity: 0">FILED</span></span></button></div></div></div>',
+  F: '<div class="uim-w ms-crt ms-crt-forge"><div class="uim-w pb-party"><div class="uim-w pb-party-slot filed"><div class="pb-party-ring uim-bp-ring"><span class="door-stamp door-stamp-sm admit pb-party-filed">FILED</span></div></div></div></div>',
+  S: '<div class="uim-w title-page" id="shopPage"><div class="uim-w ms-container codex-container"><div class="uim-w cdx-actionbar door-form-confirm"><span class="door-stamp door-stamp-sm admit thunk">DECLASSIFIED</span><span class="cdx-action-status">Declassify <b>Grey</b>?</span></div></div></div>',
+};
+const BTN_PREV_CSS = `html, body { margin: 0 !important; background: #05060a !important; } html { overflow-x: hidden !important; overflow-y: auto !important; height: auto !important; }
+body { padding: 4px !important; overflow: visible !important; height: auto !important; min-height: 0 !important; }
+.uim-bp-row { display: flex; flex-direction: column; gap: 4px; padding: 5px 6px 7px; border-radius: 6px; cursor: pointer; }
+.uim-bp-row:hover { background: rgba(255,255,255,0.05); }
+.uim-bp-row > small { font: 10px/1.2 system-ui, sans-serif; color: #8a93a6; letter-spacing: 0.04em; }
+:root:root:not(#uim-bp):not(#uim-bp):not(#uim-bp):not(#uim-bp):not(#uim-bp):not(#uim-bp) .uim-w { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; position: relative !important; inset: auto !important; width: auto !important; height: auto !important; min-width: 0 !important; min-height: 0 !important; max-width: none !important; max-height: none !important; transform: none !important; opacity: 1 !important; visibility: visible !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-image: none !important; border-radius: 0 !important; box-shadow: none !important; animation: none !important; filter: none !important; clip-path: none !important; z-index: auto !important; pointer-events: auto !important; }
+.uim-bp-rel { position: relative; width: 150px; height: 30px; }
+:root:root:not(#uim-bp):not(#uim-bp) .uim-bp-ring { position: relative; width: 48px; height: 48px; margin: 4px 22px 4px 4px; border-radius: 50%; border: 2px solid #57d98a; background: #101a14; }`;
+function btnKind() { return UI.bkind === 'confirm' || UI.bkind === 'stamp' ? UI.bkind : 'back'; }
+function btnWord(kind) { return kind === 'confirm' ? 'CONFIRM' : 'BACK'; }
+function btnMenusOf(kind) { return BTN_MENUS.filter(M => M[kind]); }
+function btnTag(kind, mid) {
+  const G = btnOn(btnRaw(kind));
+  if (!mid) return G ? 'changed' : 'as the game';
+  const O = btnRaw(kind + '-' + mid), own = Object.keys(O).some(k => k !== 'solo');
+  if (O.solo) return own ? 'own look only' : 'as the game';
+  return own ? (G ? 'every + own' : 'own look') : G ? 'every-' + btnWord(kind) : 'as the game';
+}
+function dockBtnsBody() {
+  const kind = btnKind();
+  if (kind !== 'stamp' && UI.bmenu && !(btnMenu(UI.bmenu) || {})[kind]) UI.bmenu = '';
+  let h = dockTop() + `<div class="uim-f"><label>Buttons</label><div style="flex-wrap:wrap">${[['back', 'BACK'], ['confirm', 'CONFIRM'], ['stamp', 'The stamp', 'The rubber stamp a CONFIRM thunks down']].map(([v, l, tip]) => `<button class="uim-btn${kind === v ? ' on' : ''}" data-dk="bkind" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>`;
+  const keys = '<div class="uim-note"><span class="uim-kbd">Tab</span> next menu on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>';
+  if (kind === 'stamp') return h + `<div class="uim-note">The rubber stamp a CONFIRM thunks down: FILED onto the match select's CONFIRM, FILED on each party slot a CONFIRM locked in, DECLASSIFIED on the shop's purchase bar.</div><div class="uim-dk-detail"></div>` + keys;
+  const W = btnWord(kind);
+  h += `<div class="uim-note">One look for every ${W} button in the game, and each menu can wear its own on top. The orange boxes are the ${W} buttons on screen now: click one to pick its menu.</div><div class="uim-dk-detail"></div>`;
+  h += `<div class="uim-dk-bmenu${!UI.bmenu ? ' on' : ''}" data-bmenu=""><i></i><div><b>Every ${W} button</b><small>The look every menu below wears</small></div><em></em></div>`;
+  h += btnMenusOf(kind).map(M => `<div class="uim-dk-bmenu${UI.bmenu === M.id ? ' on' : ''}" data-bmenu="${M.id}" title="${esc(M[kind].what)}"><i></i><div><b>${esc(M.label)}</b><small>${esc(M[kind].what)}</small></div><em></em></div>`).join('');
+  return h + keys;
+}
+/* what one field shows: a menu's look over the every-button one, the every-button look, the stamp */
+function btnShown(id, k) {
+  if (id === 'stamp') return stampOf()[k];
+  const i = id.indexOf('-'), L = i > 0 ? btnLook(id.slice(0, i), id.slice(i + 1)) : btnLook(id, '');
+  return L[k] == null ? BTN_DEF[k] : L[k];
+}
+/* the line under the picked look: is it on screen now (the boxes refresh it) */
+function btnWhere(M, kind) {
+  const A = UI.live, on = Object.keys((A && A.liveSet) || {}).length > 0;
+  if (M) return esc(M[kind].what) + '. ' + (A && A.liveSet[M.id] ? 'On screen now (the orange box): a change shows there at once.' : 'Not on screen right now: the preview shows it as it will look.');
+  return 'Every menu below wears this unless its own look says otherwise. ' + (on ? 'The orange boxes show where they are on screen now.' : 'None is on screen right now: the preview shows each menu\'s.');
+}
+function btnDetail() {
+  const kind = btnKind();
+  if (kind === 'stamp') return stampDetail();
+  const A = UI.live, M = btnMenu(UI.bmenu), W = btnWord(kind), id = M ? kind + '-' + M.id : kind;
+  const O = btnRaw(id), v = k => btnShown(id, k), tick = BTN_TICK[kind], c0 = v('tint') || tick;
+  const chg = ks => ks.some(k => O[k] != null) ? 'changed' : '';
+  let h = `<div class="uim-dk-sel"><b>${M ? esc(M.label) + ' · ' + W : 'Every ' + W + ' button'}</b>`;
+  h += `<div class="uim-note uim-bt-where">${btnWhere(M, kind)}</div>`;
+  if (M) h += `<div class="uim-f" title="On: this menu wears the every-${W} look, with its own settings on top. Off: only its own settings, the rest as the game draws it"><label>Every-${W} look</label><div><input type="checkbox" data-btfollow="${id}"${O.solo ? '' : ' checked'}><span class="uim-note" style="margin:0">${O.solo ? 'Off: only its own settings below.' : 'Worn, with what you change here on top.'}</span></div></div>`;
+  h += btx(id, fColorOpt('Colour', 'tint', v('tint'), tick, false, 'One colour for the whole button: its frame, a dark fill of it, its words, its marks and its glow. The settings below change one part each.'));
+  h += '<div class="uim-btprev" title="Click a button here to pick its menu"><iframe class="uim-btprev-fr" tabindex="-1" aria-hidden="true"></iframe></div>';
+  h += sec('btfill', 'Fill, frame + glow', btx(id, fColorOpt('Fill', 'bg', v('bg'), shade(c0, -0.78), true) + (v('bg') ? fColorOpt('Fade to', 'bg2', v('bg2'), shade(c0, -0.9), true, 'A second fill colour: the fill fades into it top to bottom') : '')
+    + fColorOpt('Frame', 'edge', v('edge'), c0, true) + (v('edge') ? fRange('Frame width', 'edgeW', 0, 8, 1, +v('edgeW')) : '')
+    + fRange('Corners (−1 = as the game)', 'rad', -1, 40, 1, +v('rad'))
+    + fRange('Glow', 'glow', 0, 40, 1, +v('glow'), '0 = the game\'s glow (a coloured button that glows in the game keeps its glow, in the colour)')
+    + fColorOpt('Glow colour', 'glowC', v('glowC'), c0, false, 'Unticked = the Colour')
+    + fSeg('Pulse', 'pulse', [['', 'As the game'], ['on', 'Breathe'], ['off', 'Still']], v('pulse'))
+    + fRange('Under the pointer', 'hov', 0.5, 2, 0.05, +v('hov'), 'How much a coloured button brightens under the pointer (1 = not at all)')
+    + fRange('Inner space across (−1 = as the game)', 'padX', -1, 60, 1, +v('padX')) + fRange('Inner space up + down (−1 = as the game)', 'padY', -1, 30, 1, +v('padY'))),
+    chg(['bg', 'bg2', 'edge', 'edgeW', 'rad', 'glow', 'glowC', 'pulse', 'hov', 'padX', 'padY']));
+  h += sec('bttext', 'Words + marks', btx(id, fColorOpt('Words', 'ink', v('ink'), c0, false, 'Unticked = the Colour, or the game\'s') + fFont('Font', 'font', v('font')) + fSeg('Weight', 'fw', WEIGHTS, v('fw'))
+    + fRange('Size (0 = as the game)', 'fsz', 0, 40, 1, +v('fsz'))
+    + fSeg('Case', 'tcase', [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed']], v('tcase'))
+    + fRange('Letter spacing', 'track', -0.1, 0.5, 0.01, +v('track') || 0)
+    + fSeg('Effect', 'tfx', [['', 'As the game'], ['none', 'None'], ['drop', 'Soft shadow'], ['hard', 'Hard 1px'], ['hard2', 'Hard 2px'], ['outline', 'Outline'], ['glow', 'Glow']], v('tfx'))
+    + fColorOpt('Marks', 'icon', v('icon'), c0, false, 'The arrow, the ✓ disc and the ↵ (unticked = the Colour)')),
+    chg(['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'icon']));
+  const sk = btnSkinShown(id), skOn = !!(sk && sk.on);
+  h += sec('btsk', 'Shape + skin', btx(id, skinForm(null, 'button', true, { skin: sk, path: 'sk' }))
+    + `<div class="uim-note">${skOn ? 'The button wears this shape, in the colours above.' : 'Off: a button its menu\'s theme draws in a shape keeps that shape, in the colours above; the rest keep their own.'}</div>`, skOn ? (SHAPES.find(x => x[0] === sk.shape) || [0, ''])[1] : '');
+  const any = Object.keys(db.btns || {}).some(k => k !== 'stamp');
+  h += `<div class="uim-btns"><button class="uim-btn bad" data-dk="btreset" data-val="${id}"${Object.keys(O).length ? '' : ' disabled'}>Reset ${M ? 'this menu' : 'the every-' + W + ' look'}</button><button class="uim-btn bad" data-dk="btresetall"${any ? '' : ' disabled'}>Reset every button look</button></div>`;
+  return h + '</div>';
+}
+function stampDetail() {
+  const X = stampOf(), R = btnRaw('stamp'), chg = ks => ks.some(k => R[k] != null) ? 'changed' : '';
+  let h = '<div class="uim-dk-sel"><b>The stamp</b>';
+  h += `<div class="uim-btprev"><iframe class="uim-btprev-fr" tabindex="-1" aria-hidden="true"></iframe></div><div class="uim-btns"><button class="uim-btn" data-dk="stampgo" title="Thunk it down again, as it lands on CONFIRM">▶ Stamp it</button></div>`;
+  h += sec('stwhere', 'Where it stamps', btx('stamp', STAMP_PLACES.map(P => `<div class="uim-f" title="${esc(P.hint)}"><label>${esc(P.label)}</label><div><input type="checkbox" data-path="on${P.id}" data-bool="1" data-re="1"${X['on' + P.id] ? ' checked' : ''}><span class="uim-note" style="margin:0">${esc(P.hint)}</span></div></div>`).join(''))
+    + '<div class="uim-note">Off on the match select: CONFIRM starts the match at once, with the plain confirm click. Off on the party slots: the ✓ the game shows without stamps.</div>', chg(['onM', 'onF', 'onS']));
+  h += sec('stlook', 'Look', btx('stamp', `<div class="uim-f" title="The word on every stamp (empty = the game's: FILED, DECLASSIFIED)"><label>Word</label><div><input class="uim-in" data-path="word" maxlength="24" value="${esc(X.word)}" placeholder="FILED / DECLASSIFIED" spellcheck="false"></div></div>`
+    + fColorOpt('Ink', 'ink', X.ink, '#2e8b57', false, 'Unticked = the game\'s green')
+    + fRange('Size', 'size', 0.3, 4, 0.05, +X.size, '1 = as the game')
+    + fRange('Tilt', 'tilt', -45, 45, 1, +X.tilt, 'Degrees (the game: −4)')
+    + fFont('Font', 'font', X.font)
+    + fSeg('Frame', 'frame', [['', 'Double'], ['single', 'Single'], ['none', 'None']], X.frame)
+    + `<div class="uim-f" title="Off = the game's smudged rubber-stamp ink; on = crisp edges"><label>Clean ink</label><div><input type="checkbox" data-path="clean" data-bool="1"${X.clean ? ' checked' : ''}></div></div>`), chg(['word', 'ink', 'size', 'tilt', 'font', 'frame', 'clean']));
+  h += sec('stmove', 'Thunk + timing', btx('stamp', fRange('Slam from', 'slam', 1, 6, 0.1, +X.slam, 'How big it starts before it lands (the game: 2.2×)')
+    + fRange('Thunk (ms)', 'ms', 60, 3000, 10, +X.ms, 'How long the slam takes (the game: 450)')
+    + fRange('Match starts after (ms)', 'wait', 0, 5000, 10, +X.wait, 'How long the match select holds on the stamp before the match starts (the game: 420)')
+    + fCheck('Thunk sound', 'sound', X.sound))
+    + '<div class="uim-note">Sound off: the plain confirm click plays instead (no new sound).</div>', chg(['slam', 'ms', 'wait', 'sound']));
+  h += `<div class="uim-btns"><button class="uim-btn bad" data-dk="btreset" data-val="stamp"${Object.keys(R).length ? '' : ' disabled'}>Reset the stamp</button></div>`;
+  return h + '</div>';
+}
+function stampGo() { btnPrevMount(); }   // a fresh preview: the match select's stamp thunks in again
+/* the preview: every menu's button of the kind (or the picked menu's), with the page's sheets + the UI Maker theme sheet */
+function btnPrevMount() {
+  const A = UI.live, fr = A && A.dock.querySelector('.uim-btprev-fr'), d = fr && fr.contentDocument; if (!d) return;
+  const kind = btnKind(), M = btnMenu(UI.bmenu);
+  const rows = kind === 'stamp' ? STAMP_PLACES.map(P => [P.id, P.label, STAMP_SAMPLE[P.id], 0])
+    : (M ? [M] : btnMenusOf(kind)).filter(m => BTN_SAMPLE[kind + '-' + m.id]).map(m => [m.id, m.label, BTN_SAMPLE[kind + '-' + m.id], 1]);
+  const de = document.documentElement, at = [];
+  for (const a of de.attributes) if (a.name !== 'class' && a.name !== 'style') at.push(`${a.name}="${esc(a.value)}"`);
+  const cls = Array.from(de.classList).filter(c => c.indexOf('uim-') !== 0).join(' ');
+  const bat = []; for (const a of document.body.attributes) if (a.name.indexOf('data-') === 0) bat.push(`${a.name}="${esc(a.value)}"`);
+  d.open();
+  d.write(`<!doctype html><html ${at.join(' ')} class="${esc(cls)}"><head><meta charset="utf-8"><base href="${esc(location.href)}">${stageSheets()}<style id="uim-bp-sheet"></style><style>${BTN_PREV_CSS}</style></head>`
+    + `<body ${bat.join(' ')}>${rows.map(([id, l, html, pick]) => `<div class="uim-bp-row"${pick ? ` data-m="${id}"` : ''}><small>${esc(l)}</small><div class="uim-w uim-bp-cell">${html}</div></div>`).join('')}</body></html>`);
+  d.close();
+  d.addEventListener('click', ev => { ev.preventDefault(); const r = ev.target.closest('[data-m]'); if (r && UI.live && UI.bmenu !== r.dataset.m) liveSelect(r.dataset.m); }, true);
+  fr.onload = () => btnPrevRefresh();
+  btnPrevRefresh();
+}
+function btnPrevRefresh() {
+  const A = UI.live, fr = A && A.dock.querySelector('.uim-btprev-fr'), d = fr && fr.contentDocument; if (!d || !d.body) return;
+  const el = d.getElementById('uim-bp-sheet'), src = document.getElementById('ew-ui-maker');
+  if (el && src && el.textContent !== src.textContent) el.textContent = src.textContent;
+  const fit = () => { if (fr.isConnected && d.body) fr.style.height = Math.min(250, Math.max(36, d.body.scrollHeight)) + 'px'; };   // taller scrolls inside
+  fit(); requestAnimationFrame(fit); setTimeout(fit, 400);
+}
+/* a button is on screen only when nothing covers it (the party builder sits in the page under the menus) */
+function btnOnTop(v) {
+  const r = v.r, x = Math.max(1, Math.min(innerWidth - 2, r.left + r.width / 2)), y = Math.max(1, Math.min(innerHeight - 2, r.top + r.height / 2));
+  let hits = []; try { hits = document.elementsFromPoint(x, y); } catch (e) { return true; }
+  const top = hits.find(h => !h.closest(LIVE_SKIP + ', .uim-stand'));
+  return !!top && (v.el === top || v.el.contains(top));
+}
+function btnBoxes() {
+  const A = UI.live, W = innerWidth, H = innerHeight, kind = btnKind(), rects = {}, live = {}, used = new Set();
+  if (kind !== 'stamp') btnMenusOf(kind).forEach(M => {
+    const list = allVis(M[kind].sel, 6).filter(btnOnTop).map(v => v.r);
+    if (!list.length) return;
+    live[M.id] = 1; rects[M.id] = [];
+    list.forEach((r, i) => {
+      const k = 'bt:' + M.id + ':' + i; used.add(k);
+      const bx = boxEl(k); bx.dataset.bmenu = M.id; bx.classList.add('bbtn');
+      const l = Math.max(0, r.left), t = Math.max(0, r.top), w = Math.min(W - l, r.left + r.width - l), h = Math.min(H - t, r.top + r.height - t);
+      if (w < 2 || h < 2) { bx.style.display = 'none'; return; }
+      placeBox(bx, l - 3, t - 3, w + 6, h + 6);
+      bx.classList.toggle('on', !UI.bmenu || UI.bmenu === M.id);
+      bx.firstChild.style.display = i === 0 ? '' : 'none';
+      setText(bx.firstChild, `${M.label} · ${btnWord(kind)}`);
+      rects[M.id].push({ left: l, top: t, right: l + w, bottom: t + h });
+    });
+  });
+  Object.keys(A.boxes).forEach(k => { if (!used.has(k)) A.boxes[k].style.display = 'none'; });
+  A.rects = rects;
+  const key = kind + ':' + Object.keys(live).join(',');
+  if (key !== A.liveKey) {
+    A.liveSet = live; A.liveKey = key; liveBadges();
+    const w = A.dock.querySelector('.uim-bt-where'); if (w && kind !== 'stamp') w.innerHTML = btnWhere(btnMenu(UI.bmenu), kind);
+  }
+}
 /* ── THE PORTRAITS panel (pass 19): pick a unit (its row, or its portrait on screen), choose portrait art, a face cut
    from its sprite or the whole sprite, and aim the face on the sprite ── */
 function faceArt(u) { try { return typeof getUnitPortraitArtUrl === 'function' ? getUnitPortraitArtUrl(u) : null; } catch (e) { return null; } }
@@ -18365,7 +18832,7 @@ function faceBoxes() {
 
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : A.mode === 'float' ? dockFloatBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : A.mode === 'float' ? dockFloatBody() : A.mode === 'btns' ? dockBtnsBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
   if (A.mode === 'aim') aimPrevMount();
   else if (A.mode === 'float') floatPrevMount();
@@ -18382,6 +18849,7 @@ function dockDetail() {
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else if (A.mode === 'aim') d.innerHTML = aimDetail();
   else if (A.mode === 'float') d.innerHTML = floatDetail();
+  else if (A.mode === 'btns') { d.innerHTML = btnDetail(); btnPrevMount(); }
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -18398,6 +18866,7 @@ function markRows() {
   A.dock.querySelectorAll('[data-surf]').forEach(r => r.classList.toggle('on', r.dataset.surf === UI.surf));
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(r => r.classList.toggle('on', r.dataset.bar === UI.bar));
   A.dock.querySelectorAll('.uim-dk-bar[data-face]').forEach(r => r.classList.toggle('on', r.dataset.face === UI.face));
+  A.dock.querySelectorAll('.uim-dk-bmenu[data-bmenu]').forEach(r => r.classList.toggle('on', r.dataset.bmenu === (UI.bmenu || '')));
   const fa = A.dock.querySelector('select[data-dk="faceany"]'); if (fa) fa.value = [...fa.options].some(o => o.value === UI.face) ? UI.face : '';
 }
 function liveBadges() {
@@ -18413,6 +18882,10 @@ function liveBadges() {
   });
   A.dock.querySelectorAll('.uim-dk-surf[data-surf]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.surf] ? 'live' : ''; row.title = A.liveSet[row.dataset.surf] ? 'On screen now' : 'Not on screen right now'; });
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.bar] ? 'live' : ''; });
+  A.dock.querySelectorAll('.uim-dk-bmenu[data-bmenu]').forEach(row => {
+    const m = row.dataset.bmenu, on = m ? !!A.liveSet[m] : Object.keys(A.liveSet).length > 0;
+    row.firstChild.className = on ? 'live' : ''; setText(row.lastChild, btnTag(btnKind(), m));
+  });
   A.dock.querySelectorAll('.uim-dk-bar[data-face]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.face] ? 'live' : ''; row.title = A.liveSet[row.dataset.face] ? 'On screen now (yellow box)' : 'Not on screen right now'; });
   const st = A.dock.querySelector('.uim-dk-status');
   if (st) {
@@ -18428,7 +18901,7 @@ function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
   if (A.mode === 'aim' || A.mode === 'float') return;   // no boxes to pick: the board below the panel is the game's own
-  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
+  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else if (A.mode === 'btns') UI.bmenu = id || ''; else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
   if (det && bd) {   // the controls for the pick (above the list) come into view from their top
@@ -18447,6 +18920,7 @@ function placeDock(x, y) {
 function selRects() {
   const A = UI.live;
   if (A.mode === 'layout') return A.rects[UI.piece] ? [A.rects[UI.piece]] : [];
+  if (A.mode === 'btns') return UI.bmenu ? A.rects[UI.bmenu] || [] : [].concat(...Object.values(A.rects));
   return A.rects[A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf] || [];
 }
 function dodge(force) {
@@ -18511,7 +18985,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.mode === 'float') { /* the preview runs itself */ } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.mode === 'float') { /* the preview runs itself */ } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else if (A.mode === 'btns') btnBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -18522,7 +18996,7 @@ function liveMode(mode) {
   const A = UI.live;
   A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null; A.listGroup = null;
   if (mode !== 'layout' && UI.picking) pickMode(false);
-  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus');   // the pause menus step aside so the HUD shows
+  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus' && mode !== 'btns');   // the pause menus step aside so the HUD shows (the menus + their buttons stay)
   A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = mode === 'layout' && UI.guides ? '' : 'none'; });
   A.dock.innerHTML = dockHead(); A.dock.dataset.mode = mode;
   dockBody(); apply();
@@ -18574,6 +19048,7 @@ function liveDown(e) {
   if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
   if (A.mode === 'bars') { if (bx.dataset.bar) liveSelect(bx.dataset.bar); return; }
   if (A.mode === 'faces') { if (bx.dataset.face) liveSelect(bx.dataset.face); return; }
+  if (A.mode === 'btns') { if (bx.dataset.bmenu != null) liveSelect(bx.dataset.bmenu); return; }
   if (bx.dataset.hpart) { partDown(e, bx.dataset.hpart); return; }
   if (bx.dataset.qpart) { A.partKeys = false; A.qpKeys = true; qpartDown(e, bx.dataset.qpart); return; }
   A.partKeys = false; A.qpKeys = false;
@@ -18905,6 +19380,14 @@ function dockClick(e) {
     const k = bs.dataset.bset.replace(/^look\./, ''); B.look[k] = bs.dataset.val;
     barsTidy(); touchLayout(); dockDetail(); return;
   }
+  const bt = e.target.closest('button[data-btset]');
+  if (bt) {
+    try { bt.blur(); } catch (er) {}
+    const t = bt.dataset.btset, i = t.indexOf('.');
+    snapLayout(true); btnSet(t.slice(0, i), t.slice(i + 1), bt.dataset.val); dockDetail(); liveBadges(); return;
+  }
+  const brow = e.target.closest('.uim-dk-bmenu[data-bmenu]');
+  if (brow && A.dock.contains(brow)) { if ((UI.bmenu || '') !== brow.dataset.bmenu) liveSelect(brow.dataset.bmenu); return; }
   const lk = e.target.closest('.uim-dk-look button:not([data-dk])');
   if (lk) { try { lk.blur(); } catch (er) {} const T = battleTheme(); if (T) { UI.themeId = T.id; UI.role = UI.hrole; } onClick(e, A.dock); dockDetail(); return; }
   const b = e.target.closest('button[data-dk]');
@@ -19087,6 +19570,14 @@ function dockClick(e) {
     }
     else if (k === 'faceaim' && UI.face) { snapLayout(true); const o = db.faces.u[UI.face]; if (o) { delete o.x; delete o.y; delete o.s; } faceTidy(UI.face); faceTouch(UI.face); dockDetail(); }
     else if (k === 'facesreset') { if (confirm('Put every portrait back: the art where a unit has it, an auto-aimed zoomed sprite where it does not?')) { snapLayout(true); db.faces = { u: {} }; clearTimeout(_saveT); _saveT = setTimeout(save, 250); faceBump(); dockBody(); } }
+    else if (k === 'bkind') { UI.bkind = v; if (v !== 'stamp' && UI.bmenu && !(btnMenu(UI.bmenu) || {})[v]) UI.bmenu = ''; A.liveKey = null; dockBody(); const bd = A.dock.querySelector('.uim-dock-bd'); if (bd) bd.scrollTop = 0; }
+    else if (k === 'btreset') { snapLayout(true); if (db.btns) delete db.btns[v]; btnTidy(); touchLayout(); scheduleApply(); dockDetail(); liveBadges(); }
+    else if (k === 'btresetall') {
+      if (confirm('Put every BACK and every CONFIRM button back to how the game draws it, in every menu? (The stamp keeps its settings.)')) {
+        snapLayout(true); const st = btnRaw('stamp'); db.btns = Object.keys(st).length ? { stamp: st } : {}; touchLayout(); scheduleApply(); dockBody();
+      }
+    }
+    else if (k === 'stampgo') stampGo();
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
     return;
@@ -19166,6 +19657,31 @@ function dockInput(e) {
     if (el.dataset.kind) A.dock.querySelectorAll(`[data-qppath="${t}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
     else syncTwins(el, 'data-qppath', v);
     if (el.dataset.optc != null || el.dataset.mid || (el.dataset.re && e.type === 'change')) dockDetail();
+    return;
+  }
+  if (el.dataset.btfollow) { snapLayout(true); btnSet(el.dataset.btfollow, 'solo', !el.checked); dockDetail(); liveBadges(); return; }
+  if (el.dataset.btpath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    const t = el.dataset.btpath, i = t.indexOf('.'), id = t.slice(0, i), k = t.slice(i + 1);
+    /* a skin key reads the skin as it shows (its untouched keys are the blank Button skin's) */
+    const cur = k.indexOf('sk.') === 0 ? getPath({ sk: btnSkinShown(id) }, k) : btnShown(id, k);
+    let v;
+    if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.mid) v = el.checked ? (btnSkinShown(id).fill.c1 || '#444444') : '';
+    else if (el.dataset.bool) v = !!el.checked;
+    else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
+      const hx = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase();
+      v = cur && alphaOf(cur) < 1 ? withAlpha(hx, alphaOf(cur)) : hx;
+    }
+    else if (el.dataset.kind === 'alpha') v = withAlpha(cur || '#000000', +el.value);
+    else v = el.dataset.num ? +el.value : el.value;
+    snapLayout();
+    btnSet(id, k, v);
+    if (el.dataset.kind) A.dock.querySelectorAll(`[data-btpath="${t}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
+    else syncTwins(el, 'data-btpath', v);
+    if (el.dataset.optc != null || el.dataset.mid || (el.dataset.re && e.type === 'change')) dockDetail();
+    liveBadges();
     return;
   }
   if (el.dataset.qslook) {
@@ -19306,8 +19822,8 @@ function liveKey(e) {
   if (e.code === 'Space' || e.key === ' ') { if (!e.repeat) peek(true); return true; }
   if (e.key === 'f' || e.key === 'F') { foldDock(); return true; }
   if (e.key === 'Tab') {
-    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : A.mode === 'faces' ? faceFieldKeys().filter(k => A.liveSet[k]) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
-    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
+    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'btns' ? (btnKind() === 'stamp' ? [] : btnMenusOf(btnKind()).filter(M => A.liveSet[M.id]).map(M => M.id)) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : A.mode === 'faces' ? faceFieldKeys().filter(k => A.liveSet[k]) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
+    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'btns' ? UI.bmenu : A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
     return true;
   }
   if (A.mode !== 'layout') return false;
