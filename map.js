@@ -1800,7 +1800,8 @@
                     onSit: (typeof _hqSitEvent === 'function') ? _hqSitEvent : null,
                     /* ESC: close the panel, else Settings (plan D6 — an overlay,
                        not a place); EXIT on the strip is how you leave */
-                    onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
+                    onEscape: () => { if (window._ewWalkWindowEsc && window._ewWalkWindowEsc()) return;   /* a window over the walk (ui.js: THE AREA UNITS, THE DATA PANEL) closes first */
+                        if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
                     /* Q: answer a BELL call from anywhere in the building (plan D2) */
                     onHotkey: (k) => {
                         if (k === 'q') _hqOpenCounter('dispatch');
@@ -2047,6 +2048,9 @@
            2.6): the scene is rebuilt for `roomId` under the loading card and
            the avatar stands at door `at` in the new room with it at their
            back. Returns from screens / matches rebuild the same room. */
+        /* THE AREA UNITS window (ui.js, 2026-10-24): the room the walk stands in, or null off the walk */
+        window._hqCurRoomId = function () { try { const ed = window.EWEditor, es = (ed && ed.state) ? ed.state() : null; if (es && es.open && !es.playing) return null;   // the editor's viewport is not the walk
+            return (state.gameState === GS.HQ && !_hqSuspended && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ? _hqCurRoom : null; } catch (e) { return null; } };
         window._hqGoRoom = function (roomId, at) {
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
@@ -2278,7 +2282,7 @@
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
             { id: 'camera',    label: 'CAMERA',    sub: 'CINEMATIC · PHOTOS · VIDEO' },   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
-            { id: 'data',      label: 'DATA',      sub: 'LIVE TABLES · ITEMS (F9)' },   // THE DATA PANEL (2026-10-08, ui.js)
+            { id: 'data',      label: 'DATA',      sub: 'LIVE TABLES · ITEMS · AREA UNITS (F9)' },   // THE DATA PANEL (2026-10-08, ui.js); THE AREA UNITS is its button (2026-10-24)
             { id: 'edit',      label: 'EDIT',      sub: 'THIS ROOM IN THE EDITOR' },   // THE EDITOR (EDITOR_PLAN §5.1, E0)
             { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
         ];
@@ -8996,10 +9000,11 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToRaceEditor('settings')">Open Race Editor</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Data Panel (F9, anywhere) — edit the game's rules tables while it runs, and the ITEMS editor: every item's name, icon, numbers, shop and drops, plus new items. Off in online matches; Export hands the changes to a thread to bake in.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Data Panel (F9, anywhere) — edit the game's rules tables while it runs, and the ITEMS editor: every item's name, icon, numbers, shop and drops, plus new items. Area Units (Shift+F9) — pick which units turn up in each area, by portrait. Off in online matches; Export hands the changes to a thread to bake in.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('tables')">Open Data Panel</button>
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('items')">Open Item Editor</button>
+                            <button class="pm-set-btn" onclick="window.openAreaUnits && window.openAreaUnits()">Open Area Units</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">

@@ -7076,7 +7076,7 @@
             cmds.push({ id: 'library', label: 'STATUSES', sub: 'EVERY EFFECT IN THE GAME' });
             if (!inEditor && window.EWCine) cmds.push({ id: 'camera', label: 'CAMERA', sub: 'CINEMATIC · PHOTOS · VIDEO' });   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
             if (!inEditor && window.EWShots) cmds.push({ id: 'shots', label: 'SHOTS', sub: 'FRAME + RECORD THE TARGET CAMERA (F7)' });   // THE SHOT RECORDER (2026-10-18, three-camera.js EWShots)
-            if (window.openDataPanel && !(typeof isOnlineMatch === 'function' && isOnlineMatch())) cmds.push({ id: 'data', label: 'DATA', sub: 'LIVE TABLES · ITEMS (F9)' });   // THE DATA PANEL (2026-10-08)
+            if (window.openDataPanel && !(typeof isOnlineMatch === 'function' && isOnlineMatch())) cmds.push({ id: 'data', label: 'DATA', sub: 'LIVE TABLES · ITEMS · AREA UNITS (F9)' });   // THE DATA PANEL (2026-10-08)
             cmds.push({ id: 'settings', label: 'SETTINGS', sub: 'AUDIO · VIDEO · CONTROLS' });
             if (!inEditor) cmds.push({ id: 'forfeit', label: 'FORFEIT', sub: 'COUNTS AS A LOSS', danger: true });
             return cmds;
@@ -18755,6 +18755,31 @@
         }
     })();
 
+    /* ══ A WINDOW OVER THE WALK (2026-10-24, with THE AREA UNITS): THE DATA PANEL and THE AREA UNITS hold the HQ walk paused while
+       they are up. A click on DATA in the pause menu closed the pause, the walk re-grabbed the pointer lock on that click, and
+       every click on the panel then went to the canvas. Paused, the lock is let go and nobody walks off; ESC in the walk closes
+       the newest window first (map.js onEscape); the last one to close lets the walk go. Viewer-local, nothing relayed. */
+    (function () {
+        const holds = [];   // [{ who, close }], newest last
+        const hq = () => (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) || null;
+        window._ewWalkHold = function (who, on, close) {
+            try {
+                const i = holds.findIndex(h => h.who === who);
+                if (on) {
+                    if (i >= 0 || typeof window._hqCurRoomId !== 'function' || !window._hqCurRoomId()) return;
+                    holds.push({ who, close });
+                    if (holds.length === 1 && hq()) hq().setPaused(true);
+                } else {
+                    if (i < 0) return;
+                    holds.splice(i, 1);
+                    if (!holds.length && hq() && !(window._hqPauseIsOpen && window._hqPauseIsOpen()) && typeof window._hqCurRoomId === 'function' && window._hqCurRoomId()) hq().setPaused(false);
+                }
+            } catch (e) {}
+        };
+        window._ewWalkWindowsClose = function () { holds.slice().reverse().forEach(h => { try { h.close(); } catch (e) {} }); };   // a walk to another room closes every window over the walk
+        window._ewWalkWindowEsc = function () { const h = holds[holds.length - 1]; if (!h) return false; try { h.close(); } catch (e) {} return true; };
+    })();
+
     /* ══ THE DATA PANEL (2026-10-08, mondo: "a live data panel" + "an item and equipment editor") ════════════════════════
        F9 (or Settings → Developer → Open Data Panel, or the pause menus) opens a floating window over the game. TABLES edits
        any rules table data.js EWDataMods lists (numbers, words, on/off, lists) while the game runs; ITEMS is the item editor:
@@ -18997,7 +19022,7 @@ textarea.dp-in { resize: vertical; min-height: 54px; }
             const online = D.online;
             const c = D.counts();
             el.querySelector('.dp-n').textContent = c.edits ? `${c.edits} change${c.edits === 1 ? '' : 's'}${D.doc.enabled ? '' : ' (OFF)'}` : '';
-            el.querySelector('.dp-bar').innerHTML = `<button class="dp-btn${DP.tab === 'tables' ? ' on' : ''}" data-tab="tables">TABLES</button><button class="dp-btn${DP.tab === 'items' ? ' on' : ''}" data-tab="items">ITEMS</button>
+            el.querySelector('.dp-bar').innerHTML = `<button class="dp-btn${DP.tab === 'tables' ? ' on' : ''}" data-tab="tables">TABLES</button><button class="dp-btn${DP.tab === 'items' ? ' on' : ''}" data-tab="items">ITEMS</button><button class="dp-btn" data-areaunits="1" title="Which units turn up in each area, by portrait (Shift+F9)">AREA UNITS</button>
                 <span style="flex:1"></span>
                 <button class="dp-btn${D.doc.enabled ? ' on' : ''}" data-enable="1" title="Turn every change off or on without losing them">${D.doc.enabled ? 'Changes ON' : 'Changes OFF'}</button>
                 <button class="dp-btn" data-export="1" title="Copy every change as JSON for a thread to bake into the game">Export</button>
@@ -19052,10 +19077,11 @@ textarea.dp-in { resize: vertical; min-height: 54px; }
             render();
         }
         function onClick(e) {
-            const D = M(), b = e.target.closest('[data-tab],[data-table],[data-tog],[data-rev],[data-revtable],[data-pick],[data-irev],[data-revitem],[data-delitem],[data-newitem],[data-mkitem],[data-cancelnew],[data-enable],[data-export],[data-import],[data-doimport],[data-closeio],[data-resetall],[data-close]');
+            const D = M(), b = e.target.closest('[data-tab],[data-table],[data-tog],[data-rev],[data-revtable],[data-pick],[data-irev],[data-revitem],[data-delitem],[data-newitem],[data-mkitem],[data-cancelnew],[data-enable],[data-export],[data-import],[data-doimport],[data-closeio],[data-resetall],[data-close],[data-areaunits]');
             if (!b) return;
             const d = b.dataset;
             if (d.close != null) { window.closeDataPanel(); return; }
+            if (d.areaunits) { if (window.openAreaUnits) window.openAreaUnits((typeof window._hqCurRoomId === 'function') ? window._hqCurRoomId() : null); return; }   // THE AREA UNITS (2026-10-24)
             if (d.tab) { DP.tab = d.tab; DP.io = null; }
             else if (d.table) { DP.table = d.table; DP.q = ''; }
             else if (d.tog != null) { const id = DP.table + ':' + d.tog; if (DP.open.has(id)) DP.open.delete(id); else DP.open.add(id); }
@@ -19109,12 +19135,383 @@ textarea.dp-in { resize: vertical; min-height: 54px; }
                 window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
             });
             render(); place();
+            if (window._ewWalkHold) window._ewWalkHold('data', true, window.closeDataPanel);   // A WINDOW OVER THE WALK (2026-10-24): the cursor is free to click it
         };
-        window.closeDataPanel = function () { if (!DP.el) return; DP.el.remove(); DP.el = null; DP.io = null; if (DP.tab === 'newitem') DP.tab = 'items'; savePrefs(); };
+        window.closeDataPanel = function () { if (!DP.el) return; DP.el.remove(); DP.el = null; DP.io = null; if (DP.tab === 'newitem') DP.tab = 'items'; savePrefs(); if (window._ewWalkHold) window._ewWalkHold('data', false); };
         window.toggleDataPanel = function (tab) { if (DP.el && (!tab || tab === DP.tab)) window.closeDataPanel(); else window.openDataPanel(tab); };
         document.addEventListener('keydown', e => {
-            if (e.key !== 'F9' || e.repeat) return;
+            if (e.key !== 'F9' || e.repeat || e.shiftKey) return;   // Shift+F9 = THE AREA UNITS (below)
             const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
             e.preventDefault(); window.toggleDataPanel();
+        }, true);
+    })();
+
+    /* ══ THE AREA UNITS (2026-10-24, mondo: "is there somewhere in the dev tools that lets me change what units appear in what
+       areas? If not can you add one and add a scrollable list or something with unit portraits to make it easy, good ui") ══
+       One window in the HUD theme's own window material (the --ew-* tokens: Classic Blue unless the UI Maker set another):
+       the areas down the left (each zone of DOOR_HQ.hubs, then each place in it = one site's rooms in that zone), the picked
+       area's units as portrait cards (how often each turns up), and every unit as a scrollable portrait grid: a click puts it
+       on the list or takes it off. It writes data.js HQ_AREA_ENCOUNTERS[room] through EWDataMods (localStorage, off online,
+       the Data Panel's EXPORT to bake it); data.js hqRoomEncTable reads it for the walkers, the placed people, the travellers
+       and the fights. No row = the game's own people (shown greyed as GAME DEFAULT). The map editor's ENCOUNTERS table is the
+       same shape; a list here wins over it. Opens from the Data Panel's AREA UNITS button (DATA in the pause menus), Settings →
+       Developer, the editor's ENCOUNTERS section and Shift+F9. Viewer-local: nothing on `state`, nothing relayed (RULE #2). */
+    (function () {
+        const TBL = 'HQ_AREA_ENCOUNTERS';
+        const AU = { el: null, area: null, room: '*', q: '', gq: '', gf: 'all', draft: false, undo: [], x: null, y: null, def: {} };
+        try { const s = JSON.parse(localStorage.getItem('ew_area_units') || 'null'); if (s) { AU.area = s.area || null; AU.x = s.x; AU.y = s.y; } } catch (e) {}
+        const M = () => window.EWDataMods;
+        const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const clone = v => (v === undefined || v === null) ? v : JSON.parse(JSON.stringify(v));
+        const same = (a, b) => JSON.stringify(a == null ? null : a) === JSON.stringify(b == null ? null : b);
+        function savePrefs() { try { localStorage.setItem('ew_area_units', JSON.stringify({ area: AU.area, x: AU.x, y: AU.y })); } catch (e) {} }
+        function toast(t) { if (typeof window._hqToast === 'function') window._hqToast(t, 2000); else if (typeof addLog === 'function') addLog(t); }
+        const ROOMS = () => (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
+        const AREA_T = () => (typeof HQ_AREA_ENCOUNTERS !== 'undefined') ? HQ_AREA_ENCOUNTERS : {};
+        const siteLabel = id => { try { const m = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(x => x.id === id) : null; if (m && m.label) return String(m.label).toUpperCase(); } catch (e) {} return String(id).replace(/^prebuilt_/, '').replace(/_/g, ' ').toUpperCase(); };
+        const roomLabel = id => { const r = ROOMS()[id]; return String((r && (r.label || r.part)) || id).toUpperCase(); };
+        const unitLabel = r => { try { return (typeof getRaceLabel === 'function') ? getRaceLabel(r) : r; } catch (e) { return r; } };
+        const TIER = { native: 'NATIVE', biome: 'LOCAL', neighbour: 'NEIGHBOUR', sector: 'SECTOR', city: 'CITY FOLK', people: 'PEOPLE', roster: 'ROSTER' };
+        const TYPE_C = { human: '#a0a0c3', alien: '#32aa50', divine: '#dcaa1e', unholy: '#9632b4', tech: '#28a0be', anomaly: '#dc3c82' };
+        const typeColor = r => { try { const p = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES[r] : null; return (p && p.types && TYPE_C[p.types[0]]) || '#7079b8'; } catch (e) { return '#7079b8'; } };
+        /* the unit's face: its portrait art (or the UI Maker's face cut), else its map sprite */
+        const faces = {};
+        function face(r) {
+            if (faces[r] && faces[r].u) return faces[r];
+            let u = null, k = 'face';
+            try { if (typeof getUnitPortraitUrl === 'function') u = getUnitPortraitUrl({ race: r, gender: 'male' }) || getUnitPortraitUrl({ race: r, gender: 'female' }); } catch (e) {}
+            if (!u) { k = 'body'; try { if (typeof window.getR2RaceSpriteUrl === 'function') u = window.getR2RaceSpriteUrl(r, 'male') || window.getR2RaceSpriteUrl(r, 'female'); } catch (e) {} }
+            return (faces[r] = { u: u || '', k });
+        }
+        const faceHtml = (r, cls) => { const f = face(r); return `<span class="au-face ${f.k}${cls ? ' ' + cls : ''}" style="--tc:${typeColor(r)};${f.u ? `background-image:url('${esc(f.u)}')` : ''}">${f.u ? '' : esc(unitLabel(r).slice(0, 2).toUpperCase())}</span>`; };
+        /* every unit the table may hold: the roster's 3D-ready races (data.js hqRoomEncTable keeps only those) */
+        function allUnits() {
+            const all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES.slice() : [];
+            return all.filter(r => r !== 'men in black' && (typeof isRace3DReady !== 'function' || isRace3DReady(r))).sort((a, b) => unitLabel(a).localeCompare(unitLabel(b)));
+        }
+        /* THE AREAS: every room with a SITE (a fight can start there), by zone (DOOR_HQ.hubs via hqHubOf) then by site */
+        function areas() {
+            if (AU._areas) return AU._areas;
+            const R = ROOMS(), byKey = {}, out = [];
+            Object.keys(R).forEach(id => {
+                const site = (typeof hqRoomSite === 'function') ? hqRoomSite(id) : null; if (!site) return;
+                let hub = null; try { hub = (typeof hqHubOf === 'function') ? hqHubOf(id) : null; } catch (e) {}
+                const zone = (hub && hub.id) || '', key = zone + '|' + site;
+                if (!byKey[key]) out.push(byKey[key] = { key, zone, zoneLabel: hub ? String(hub.label || zone).toUpperCase() : 'MORE PLACES', site, label: siteLabel(site), rooms: [] });
+                byKey[key].rooms.push(id);
+            });
+            const order = Object.keys((typeof DOOR_HQ !== 'undefined' && DOOR_HQ.hubs) || {}), zi = a => a.zone ? order.indexOf(a.zone) : 999;
+            out.sort((a, b) => (zi(a) - zi(b)) || a.label.localeCompare(b.label));
+            return (AU._areas = out);
+        }
+        const areaOf = key => areas().find(a => a.key === key) || null;
+        const areaOfRoom = id => areas().find(a => a.rooms.indexOf(id) >= 0) || null;
+        function defaults(id) { if (!AU.def[id]) { try { AU.def[id] = hqAreaDefaultUnits(id); } catch (e) { AU.def[id] = { n: 0, units: [] }; } } return AU.def[id]; }
+        /* a room's list as the game reads it: this window's (area), the map editor's (editor), or the game's own (default) */
+        function roomState(id) {
+            const A = AREA_T()[id];
+            if (A && Array.isArray(A.list) && A.list.length) return { src: 'area', t: clone(A) };
+            const E = (ROOMS()[id] || {}).encounters;
+            if (E && Array.isArray(E.list) && E.list.length) return { src: 'editor', t: clone(E) };
+            return { src: 'default', t: null };
+        }
+        const curArea = () => areaOf(AU.area);
+        const curRooms = () => { const A = curArea(); return !A ? [] : (AU.room === '*' || A.rooms.indexOf(AU.room) < 0) ? A.rooms.slice() : [AU.room]; };
+        function view() {
+            const ids = curRooms(), st = ids.length ? roomState(ids[0]) : { src: 'default', t: null };
+            return { ids, st, differ: ids.some(id => !same(roomState(id), st)) };
+        }
+        /* the list an edit starts from: the shown one, the game's own as weights (its share of the draw, in %), or empty */
+        function base() {
+            const v = view();
+            if (v.st.src !== 'default') return v.st.t;
+            if (AU.draft) return { list: [] };
+            return { list: defaults(v.ids[0]).units.map(u => ({ race: u.race, w: Math.max(1, Math.round(u.share * 100)) })) };
+        }
+        /* ONE WRITE: every room in view gets the same list (an empty one = back to the game's own people); one undo step */
+        function write(t, label) {
+            const D = M(); if (!D) return;
+            const ids = curRooms(), before = {};
+            ids.forEach(id => { before[id] = clone(AREA_T()[id]); });
+            AU.undo.push({ before, area: AU.area, room: AU.room, label }); if (AU.undo.length > 80) AU.undo.shift();
+            const keep = t && Array.isArray(t.list) && t.list.length;
+            ids.forEach(id => D.set(TBL, id, keep ? clone(t) : undefined));
+            if (keep) AU.draft = false;
+            AU.said = label; render();
+        }
+        function undo() {
+            const D = M(), u = AU.undo.pop(); if (!D || !u) return;
+            Object.keys(u.before).forEach(id => D.set(TBL, id, u.before[id] || undefined));
+            AU.area = u.area; AU.room = u.room; AU.said = 'undid: ' + u.label; render();
+        }
+        function toggle(r) {
+            const t = base(), i = t.list.findIndex(x => x.race === r);
+            if (i >= 0) t.list.splice(i, 1); else t.list.push({ race: r, w: 10 });
+            if (!t.list.length) { AU.draft = true; write(undefined, unitLabel(r) + ' off (list empty)'); return; }
+            write(t, unitLabel(r) + (i >= 0 ? ' off' : ' on'));
+        }
+        function weight(r, to) {
+            const t = base(), x = t.list.find(y => y.race === r); if (!x) return;
+            x.w = Math.max(1, Math.min(999, Math.round(to))); write(t, unitLabel(r) + ' × ' + x.w);
+        }
+        /* the walkers / levels / companions ranges (the editor's ENCOUNTERS fields; blank = the game's rule) */
+        function span(f, i, raw) {
+            const t = base(); if (!t.list.length) return;
+            const cur = (t[f] || ['', '']).slice(); cur[i] = raw === '' ? '' : Math.max(0, Math.round(+raw || 0));
+            if (cur[0] === '' && cur[1] === '') delete t[f];
+            else { if (cur[0] === '') cur[0] = cur[1]; if (cur[1] === '') cur[1] = cur[0]; t[f] = [Math.min(cur[0], cur[1]), Math.max(cur[0], cur[1])]; }
+            write(t, f);
+        }
+
+        const CSS = `
+.au-root { position: fixed; z-index: 10046; width: min(1060px, calc(100vw - 24px)); height: min(88vh, 800px); min-width: 560px; min-height: 380px; resize: both; overflow: hidden;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; color: var(--ew-ink, #f6f6fa); font: 12px/1.4 'IBM Plex Mono', monospace; text-shadow: var(--ew-tshadow, 0 1px 2px rgba(0,0,0,0.7));
+  background: var(--ew-plate-scan, repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)), var(--ew-plate-bg, linear-gradient(180deg, #16188e 0%, #0c0e64 42%, #050632 78%, #010214 100%));
+  border: 2px solid var(--ew-plate-edge, #d9dceb); border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--ew-plate-seam, #03041c), inset 0 0 0 3px var(--ew-plate-rim, #4a55b4), var(--ew-drop, 0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45)); }
+.au-root * { box-sizing: border-box; }
+.au-root button { font: inherit; color: inherit; text-shadow: inherit; }
+.au-top { display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: var(--ew-head-bg, linear-gradient(180deg, #1e2298 0%, #0f1170 100%)); border-bottom: 1px solid var(--ew-plate-seam, #03041c); cursor: move; user-select: none; border-radius: 7px 7px 0 0; }
+.au-top b { font-size: 13px; letter-spacing: 0.3em; color: var(--ew-head-ink, #c7ccff); }
+.au-top span { color: var(--ew-ink-mute, #b7bee8); font-size: 10px; letter-spacing: 0.12em; }
+.au-top .sp { flex: 1; }
+.au-btn { font-size: 11px !important; letter-spacing: 0.08em; background: var(--ew-row-bg, linear-gradient(180deg, #1a1d90 0%, #10126a 55%, #08093e 100%)); border: 1px solid var(--ew-row-edge, #5a64cc); border-radius: 5px; padding: 4px 10px; cursor: pointer; box-shadow: inset 0 1px 0 var(--ew-row-lip, rgba(255,255,255,0.09)); white-space: nowrap; }
+.au-btn:hover:not(:disabled), .au-btn.on { background: var(--ew-row-sel-bg, linear-gradient(180deg, #2b31b8 0%, #1c2090 55%, #12156c 100%)); border-color: var(--ew-sel, #f0d060); color: var(--ew-sel, #f0d060); }
+.au-btn:disabled { opacity: 0.4; cursor: default; }
+.au-btn.xs { padding: 1px 6px; font-size: 10px !important; }
+.au-btn.bad:hover:not(:disabled) { color: #ff8f80; border-color: #ff8f80; }
+.au-body { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 0; }
+.au-left { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--ew-hair, rgba(255,255,255,0.13)); }
+.au-left .au-scroll { padding: 4px 8px 10px; }
+.au-scroll { overflow: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--ew-row-edge, #5a64cc) transparent; }
+.au-in { font: inherit; font-size: 11px; color: var(--ew-ink, #f6f6fa); background: rgba(255,255,255,0.07); border: 1px solid var(--ew-row-edge, #5a64cc); border-radius: 5px; padding: 4px 8px; min-width: 0; width: 100%; }
+.au-in:focus { border-color: var(--ew-sel, #f0d060); outline: none; }
+.au-in.n { width: 52px; text-align: center; padding: 3px 4px; }
+.au-zone { margin: 10px 2px 4px; font-size: 10px; letter-spacing: 0.24em; color: var(--ew-ink-dim, #7079b8); }
+.au-area { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 5px 6px; margin: 2px 0; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
+.au-area:hover { background: rgba(255,255,255,0.05); border-color: var(--ew-hair, rgba(255,255,255,0.13)); }
+.au-area.on { background: var(--ew-row-sel-bg, linear-gradient(180deg, #2b31b8 0%, #1c2090 55%, #12156c 100%)); border-color: var(--ew-sel, #f0d060); }
+.au-area.on b { color: var(--ew-sel, #f0d060); }
+.au-area b { display: block; font-size: 11px; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.au-area small { display: block; font-size: 9px; color: var(--ew-ink-mute, #b7bee8); letter-spacing: 0.08em; }
+.au-area small.own { color: var(--ew-sel, #f0d060); }
+.au-stack { display: flex; }
+.au-stack .au-face { width: 22px; height: 22px; margin-right: -7px; border-width: 1px; }
+.au-face { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 56px; height: 56px; border-radius: 5px; border: 2px solid var(--tc, #7079b8); background-color: #05061e; background-size: cover; background-position: center 18%; background-repeat: no-repeat; image-rendering: pixelated; font-size: 11px; color: var(--ew-ink-dim, #7079b8); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6); }
+.au-face.body { background-size: 150% auto; background-position: center 8%; }
+.au-right { display: flex; flex-direction: column; min-height: 0; padding: 10px 12px 0; gap: 8px; }
+.au-hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.au-hd b { font-size: 16px; letter-spacing: 0.16em; }
+.au-hd span { font-size: 10px; color: var(--ew-ink-mute, #b7bee8); letter-spacing: 0.14em; }
+.au-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.au-chip i { font-style: normal; color: var(--ew-sel, #f0d060); margin-left: 4px; }
+.au-src { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--ew-hair, rgba(255,255,255,0.13)); border-radius: 6px; background: rgba(0,0,0,0.22); }
+.au-tag { font-size: 10px; letter-spacing: 0.2em; padding: 2px 7px; border-radius: 4px; border: 1px solid currentColor; }
+.au-tag.area { color: var(--ew-sel, #f0d060); } .au-tag.editor { color: #7fd9dd; } .au-tag.default { color: var(--ew-ink-mute, #b7bee8); }
+.au-src .txt { flex: 1; min-width: 200px; color: var(--ew-ink-mute, #b7bee8); font-size: 11px; }
+.au-warn { color: #ffb15c; font-size: 11px; }
+.au-sec { font-size: 10px; letter-spacing: 0.24em; color: var(--ew-ink-dim, #7079b8); display: flex; align-items: center; gap: 8px; }
+.au-sec::after { content: ''; flex: 1; height: 1px; background: var(--ew-hair, rgba(255,255,255,0.13)); }
+.au-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 6px; max-height: 31%; min-height: 66px; padding: 2px 2px 4px; flex: none; }
+.au-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 5px; border-radius: 6px; border: 1px solid var(--ew-row-edge, #5a64cc); background: var(--ew-row-bg, linear-gradient(180deg, #1a1d90 0%, #10126a 55%, #08093e 100%)); box-shadow: inset 0 1px 0 var(--ew-row-lip, rgba(255,255,255,0.09)); }
+.au-card .au-face { width: 44px; height: 44px; }
+.au-card b { display: block; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.au-card small { display: block; font-size: 10px; color: var(--ew-ink-mute, #b7bee8); }
+.au-card small em { font-style: normal; color: var(--ew-sel, #f0d060); }
+.au-card.dim { opacity: 0.62; border-style: dashed; }
+.au-bar { height: 3px; border-radius: 2px; background: rgba(0,0,0,0.4); margin-top: 3px; overflow: hidden; } .au-bar i { display: block; height: 100%; background: var(--ew-sel, #f0d060); }
+.au-w { display: flex; align-items: center; gap: 2px; }
+.au-w tt { min-width: 26px; text-align: center; font-size: 11px; }
+.au-opts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 11px; color: var(--ew-ink-mute, #b7bee8); flex: none; }
+.au-opts label { display: inline-flex; align-items: center; gap: 5px; }
+.au-opts .au-stack { margin-left: 2px; }
+.au-gridbar { display: flex; gap: 6px; align-items: center; flex: none; }
+.au-gridbar .au-in { max-width: 240px; }
+.au-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; align-content: start; padding: 2px 2px 12px; }
+.au-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px; border-radius: 7px; border: 1px solid var(--ew-dead-edge, #232866); background: var(--ew-dead-bg, #05061e); cursor: pointer; color: var(--ew-ink-mute, #b7bee8); }
+.au-tile .au-face { width: 64px; height: 64px; filter: grayscale(0.55) brightness(0.8); }
+.au-tile b { font-size: 10px; font-weight: 500; line-height: 1.15; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 23px; }
+.au-tile:hover { border-color: var(--ew-row-edge, #5a64cc); color: var(--ew-ink, #f6f6fa); }
+.au-tile:hover .au-face { filter: none; }
+.au-tile.on { border-color: var(--ew-sel, #f0d060); background: var(--ew-row-sel-bg, linear-gradient(180deg, #2b31b8 0%, #1c2090 55%, #12156c 100%)); color: var(--ew-ink, #f6f6fa); }
+.au-tile.on .au-face { filter: none; }
+.au-tile.on::after { content: '✓'; position: absolute; top: 3px; right: 5px; color: var(--ew-sel, #f0d060); font-size: 13px; font-weight: 700; }
+.au-tile.def::after { content: '·'; position: absolute; top: 0; right: 6px; color: var(--ew-ink-mute, #b7bee8); font-size: 18px; }
+.au-foot { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-top: 1px solid var(--ew-hair, rgba(255,255,255,0.13)); font-size: 10px; color: var(--ew-ink-mute, #b7bee8); flex-wrap: wrap; }
+.au-foot .msg { flex: 1; min-width: 200px; }
+.au-foot .msg b { color: var(--ew-sel, #f0d060); font-weight: 500; }
+.au-empty { color: var(--ew-ink-mute, #b7bee8); font-size: 11px; padding: 8px 4px; grid-column: 1 / -1; }
+`;
+        /* ── the window ── */
+        function leftHtml() {
+            const q = AU.q.trim().toLowerCase();
+            let h = '', zone = null;
+            areas().forEach(a => {
+                if (q && (a.label + ' ' + a.zoneLabel + ' ' + a.rooms.map(roomLabel).join(' ')).toLowerCase().indexOf(q) < 0) return;
+                if (a.zoneLabel !== zone) { zone = a.zoneLabel; h += `<div class="au-zone">${esc(zone)}</div>`; }
+                const sts = a.rooms.map(roomState), own = sts.filter(s => s.src !== 'default').length;
+                const st = sts.find(s => s.src !== 'default');
+                const top = (st ? st.t.list.slice().sort((x, y) => (+y.w || 0) - (+x.w || 0)).map(x => x.race) : defaults(a.rooms[0]).units.map(u => u.race)).slice(0, 3);
+                h += `<button class="au-area${a.key === AU.area ? ' on' : ''}" data-area="${esc(a.key)}"><span class="au-stack">${top.map(r => faceHtml(r)).join('')}</span>`
+                    + `<span><b>${esc(a.label)}</b><small class="${own ? 'own' : ''}">${own ? (own === a.rooms.length ? 'YOUR LIST' : own + ' OF ' + a.rooms.length + ' ROOMS YOURS') : 'GAME DEFAULT'} · ${a.rooms.length} ROOM${a.rooms.length === 1 ? '' : 'S'}</small></span><span></span></button>`;
+            });
+            return h || '<div class="au-empty">No area matches.</div>';
+        }
+        function rightHtml() {
+            const A = curArea();
+            if (!A) return '<div class="au-empty">Pick an area on the left.</div>';
+            const v = view(), st = v.st, ids = v.ids, own = st.src !== 'default' || AU.draft;
+            const D0 = defaults(ids[0]);
+            let h = `<div class="au-hd"><b>${esc(A.label)}</b><span>${esc(A.zoneLabel)} · ${A.rooms.length} ROOM${A.rooms.length === 1 ? '' : 'S'}</span></div>`;
+            if (A.rooms.length > 1) h += `<div class="au-chips"><button class="au-btn xs au-chip${AU.room === '*' ? ' on' : ''}" data-room="*">ALL ROOMS</button>` + A.rooms.map(id => `<button class="au-btn xs au-chip${AU.room === id ? ' on' : ''}" data-room="${esc(id)}">${esc(roomLabel(id))}${roomState(id).src !== 'default' ? '<i>●</i>' : ''}</button>`).join('') + '</div>';
+            /* the source line */
+            const n = st.t ? st.t.list.length : D0.units.length;
+            h += '<div class="au-src">';
+            if (st.src === 'area') h += `<span class="au-tag area">YOUR LIST</span><span class="txt">${n} unit${n === 1 ? '' : 's'} turn up here. Saved as you go.</span><button class="au-btn xs" data-act="empty">CLEAR LIST</button><button class="au-btn xs bad" data-act="default" title="Drop your list: the game's own people walk here again">BACK TO GAME DEFAULT</button>`;
+            else if (st.src === 'editor') h += `<span class="au-tag editor">MAP EDITOR TABLE</span><span class="txt">This room's ENCOUNTERS table from the map editor. A change here makes it your list (it then wins over the editor's).</span><button class="au-btn xs" data-act="empty">START EMPTY</button>`;
+            else if (AU.draft) h += `<span class="au-tag area">YOUR LIST</span><span class="txt">Empty. Click units below to add them. Until one is on it, the game's own people still walk here.</span><button class="au-btn xs" data-act="cancel">CANCEL</button>`;
+            else h += `<span class="au-tag default">GAME DEFAULT</span><span class="txt">The site's own people (about ${D0.n} walk a room at once). Click any unit below to make this list yours, or start from nothing.</span><button class="au-btn xs" data-act="empty">START EMPTY</button>`;
+            h += '</div>';
+            if (v.differ) h += `<div class="au-warn">These ${ids.length} rooms don't all have the same list (● = its own). A change here gives every one of them the same list; pick a room above to change just that room.</div>`;
+            /* the list */
+            h += `<div class="au-sec">${own ? 'WHO TURNS UP HERE · HOW OFTEN' : 'WHO TURNS UP HERE NOW · THE GAME\'S OWN DRAW'}</div><div class="au-list au-scroll" data-col="list">`;
+            if (st.t) {
+                const tot = st.t.list.reduce((a, x) => a + Math.max(0, +x.w || 0), 0) || 1;
+                st.t.list.slice().sort((x, y) => (+y.w || 0) - (+x.w || 0) || unitLabel(x.race).localeCompare(unitLabel(y.race))).forEach(x => {
+                    const p = Math.round(Math.max(0, +x.w || 0) * 1000 / tot) / 10;
+                    h += `<div class="au-card">${faceHtml(x.race)}<span><b>${esc(unitLabel(x.race))}</b><small><em>${p}%</em> of who walks in</small><span class="au-bar"><i style="width:${Math.min(100, p * 2)}%"></i></span></span>`
+                        + `<span class="au-w"><button class="au-btn xs" data-w="${esc(x.race)}" data-d="-1" title="Less often">−</button><tt title="weight: how often it turns up next to the others">${esc(+x.w || 0)}</tt><button class="au-btn xs" data-w="${esc(x.race)}" data-d="1" title="More often">+</button><button class="au-btn xs bad" data-tog="${esc(x.race)}" title="Take it off the list">✕</button></span></div>`;
+                });
+            } else if (!AU.draft) {
+                D0.units.forEach(u => {
+                    const p = Math.round(u.share * 1000) / 10;
+                    h += `<div class="au-card dim">${faceHtml(u.race)}<span><b>${esc(unitLabel(u.race))}</b><small>${esc(TIER[u.tier] || u.tier)} · <em>${p}%</em></small><span class="au-bar"><i style="width:${Math.min(100, p * 2)}%"></i></span></span><span></span></div>`;
+                });
+                if (!D0.units.length) h += '<div class="au-empty">Nobody walks here by the game\'s rules. Add units below to people it.</div>';
+            } else h += '<div class="au-empty">Nothing on your list yet.</div>';
+            h += '</div>';
+            /* the options (your list only) */
+            if (st.t) {
+                const placed = []; ids.forEach(id => (ROOMS()[id].npcSpots || []).forEach(s => { if (s && s.race && !s.talk && !s.cast && !s.clone && placed.indexOf(s.race) < 0) placed.push(s.race); }));
+                const sp = (f, lab, tip) => { const r = st.t[f] || ['', '']; return `<label title="${esc(tip)}">${lab} <input class="au-in n" type="number" min="0" data-span="${f}" data-i="0" value="${esc(r[0])}" placeholder="min">–<input class="au-in n" type="number" min="0" data-span="${f}" data-i="1" value="${esc(r[1])}" placeholder="max"></label>`; };
+                h += '<div class="au-opts">'
+                    + (placed.length ? `<label title="The people placed in the room (its PEOPLE spots). On: a placed person not on your list stands as one of your units, at the same spot. Off: they stay who they are."><input type="checkbox" data-act="spots"${st.t.spots === false ? '' : ' checked'}> placed people follow the list <span class="au-stack">${placed.slice(0, 8).map(r => faceHtml(r)).join('')}</span></label>` : '')
+                    + sp('walkers', 'walkers', 'How many walk a room at once (blank = the game\'s rule; the crowd cap still applies)')
+                    + sp('levels', 'levels', 'The enemy levels in a fight here (blank = the game\'s rule)')
+                    + sp('group', 'companions', 'How many join a lone unit when you start a fight (blank = the game\'s rule)')
+                    + '</div>';
+            }
+            /* the grid */
+            const on = {}; (st.t ? st.t.list : (AU.draft ? [] : [])).forEach(x => { on[x.race] = 1; });
+            const def = {}; if (!st.t && !AU.draft) D0.units.forEach(u => { def[u.race] = 1; });
+            const gq = AU.gq.trim().toLowerCase();
+            const list = allUnits().filter(r => (!gq || (unitLabel(r) + ' ' + r).toLowerCase().indexOf(gq) >= 0) && (AU.gf === 'all' || (AU.gf === 'on' ? (on[r] || def[r]) : !(on[r] || def[r]))));
+            h += `<div class="au-gridbar"><span class="au-sec" style="flex:none">ALL UNITS · ${allUnits().length}</span><input class="au-in" id="auGq" placeholder="Find a unit…" value="${esc(AU.gq)}">`
+                + ['all', 'on', 'off'].map(k => `<button class="au-btn xs${AU.gf === k ? ' on' : ''}" data-gf="${k}">${k === 'all' ? 'ALL' : k === 'on' ? 'ON THE LIST' : 'NOT ON IT'}</button>`).join('') + '</div>';
+            h += '<div class="au-grid au-scroll" data-col="grid">' + list.map(r => `<button class="au-tile${on[r] ? ' on' : def[r] ? ' def' : ''}" data-tog="${esc(r)}" title="${esc(unitLabel(r))}: ${on[r] ? 'click to take it off' : 'click to add it'}">${faceHtml(r)}<b>${esc(unitLabel(r))}</b></button>`).join('') + (list.length ? '' : '<div class="au-empty">No unit matches.</div>') + '</div>';
+            return h;
+        }
+        function footHtml() {
+            const A = curArea(), here = (typeof window._hqCurRoomId === 'function') ? window._hqCurRoomId() : null;
+            const inArea = here && A && curRooms().indexOf(here) >= 0;
+            const D = M(), online = D && D.online;
+            const msg = online ? '<b>Off during an online match</b> (both players run the shipped game).'
+                : (AU.said ? `<b>${esc(AU.said)}</b> · saved. ` : '') + 'The walkers change the next time you walk into the room' + (inArea ? ' (you are in it: SEE IT NOW walks in again).' : '.');
+            return `<span class="msg">${msg}</span><button class="au-btn xs" data-act="undo"${AU.undo.length ? '' : ' disabled'} title="Ctrl+Z">UNDO</button>`
+                + (inArea ? `<button class="au-btn xs" data-act="see" title="Close this and walk into the room again with the new list">SEE IT NOW ▸</button>` : (here && A ? `<button class="au-btn xs" data-act="go" title="Close this and walk into ${esc(roomLabel(curRooms()[0]))}">GO THERE ▸</button>` : ''))
+                + `<button class="au-btn xs" data-act="data" title="The Data Panel: EXPORT hands every change to a thread to bake into the game">DATA PANEL</button>`;
+        }
+        function render() {
+            const el = AU.el; if (!el) return;
+            const sc = {}; el.querySelectorAll('.au-scroll').forEach(c => { sc[c.getAttribute('data-col')] = c.scrollTop; });
+            const fe = document.activeElement, fid = fe && el.contains(fe) ? fe.id : null, fpos = fid && fe.selectionStart;
+            el.querySelector('.au-left .au-scroll').innerHTML = leftHtml();
+            el.querySelector('.au-right').innerHTML = rightHtml();
+            el.querySelector('.au-foot').innerHTML = footHtml();
+            el.querySelectorAll('.au-scroll').forEach(c => { const k = c.getAttribute('data-col'); if (sc[k]) c.scrollTop = sc[k]; });
+            if (fid) { const f = el.querySelector('#' + fid); if (f) { f.focus(); try { f.setSelectionRange(fpos, fpos); } catch (e) {} } }
+            savePrefs();
+        }
+        function pick(key) {
+            AU.area = key; AU.room = '*'; AU.draft = false; AU.said = '';
+            const g = AU.el && AU.el.querySelector('[data-col="grid"]'); if (g) g.scrollTop = 0;
+            const l = AU.el && AU.el.querySelector('[data-col="list"]'); if (l) l.scrollTop = 0;
+        }
+        function onClick(e) {
+            const b = e.target.closest('[data-area],[data-room],[data-tog],[data-w],[data-gf],[data-act],[data-close]'); if (!b || b.disabled) return;
+            const d = b.dataset;
+            if (d.close != null) { window.closeAreaUnits(); return; }
+            if (d.area) pick(d.area);
+            else if (d.room) { AU.room = d.room; AU.draft = false; }
+            else if (d.tog) { toggle(d.tog); return; }
+            else if (d.w) { const t = base(), x = t.list.find(y => y.race === d.w); if (x) weight(d.w, (+x.w || 0) + (+d.d) * ((+x.w || 0) >= 10 ? 5 : 1)); return; }
+            else if (d.gf) AU.gf = d.gf;
+            else if (d.act === 'empty') { if (view().st.src === 'area') { AU.draft = true; write(undefined, 'list cleared'); return; } AU.draft = true; }
+            else if (d.act === 'cancel') AU.draft = false;
+            else if (d.act === 'default') { AU.draft = false; write(undefined, 'back to the game default'); return; }
+            else if (d.act === 'spots') { const t = base(); if (b.checked) delete t.spots; else t.spots = false; write(t, b.checked ? 'placed people follow the list' : 'placed people keep their races'); return; }
+            else if (d.act === 'undo') { undo(); return; }
+            else if (d.act === 'see' || d.act === 'go') { const here = window._hqCurRoomId && window._hqCurRoomId(); const to = d.act === 'see' ? here : curRooms()[0]; if (to && typeof window._hqGoRoom === 'function') { window.closeAreaUnits(); if (window._ewWalkWindowsClose) window._ewWalkWindowsClose(); window._hqGoRoom(to); } return; }
+            else if (d.act === 'data') { if (window.openDataPanel) window.openDataPanel('tables'); return; }
+            render();
+        }
+        function onChange(e) {
+            const t = e.target;
+            if (t.dataset.span) { span(t.dataset.span, +t.dataset.i, t.value); return; }
+        }
+        function place() {
+            const el = AU.el, w = el.offsetWidth, h = el.offsetHeight;
+            let x = AU.x == null ? Math.round((window.innerWidth - w) / 2) : AU.x, y = AU.y == null ? Math.max(8, Math.round((window.innerHeight - h) / 2)) : AU.y;
+            x = Math.max(0, Math.min(window.innerWidth - Math.min(w, 140), x)); y = Math.max(0, Math.min(window.innerHeight - 40, y));
+            el.style.left = x + 'px'; el.style.top = y + 'px';
+        }
+        /* open on a room's area (the walk's room, the editor's room), else the last one */
+        window.openAreaUnits = function (roomId) {
+            if (!window.EWDataMods || typeof hqAreaDefaultUnits !== 'function') { toast('AREA UNITS · data.js is out of date'); return; }
+            AU._areas = null;
+            const A = roomId ? areaOfRoom(roomId) : null;
+            if (A) { pick(A.key); if (A.rooms.some(id => !same(roomState(id), roomState(roomId)))) AU.room = roomId; }
+            else if (!areaOf(AU.area)) { const a0 = areas()[0]; AU.area = a0 ? a0.key : null; AU.room = '*'; }
+            if (AU.el) { render(); return; }
+            if (!document.getElementById('auStyles')) { const st = document.createElement('style'); st.id = 'auStyles'; st.textContent = CSS; document.head.appendChild(st); }
+            const el = document.createElement('div');
+            el.className = 'au-root'; el.id = 'areaUnits'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Area units');
+            el.innerHTML = `<div class="au-top"><b>AREA UNITS</b><span>WHO TURNS UP IN EACH AREA</span><span class="sp"></span><span>SHIFT+F9</span><button class="au-btn xs" data-close="1">CLOSE ✕</button></div>`
+                + `<div class="au-body"><div class="au-left"><div style="padding:8px 8px 2px"><input class="au-in" id="auQ" placeholder="Find an area or room…" value="${esc(AU.q)}"></div><div class="au-scroll" data-col="areas"></div></div><div class="au-right"></div></div><div class="au-foot"></div>`;
+            document.body.appendChild(el); AU.el = el;
+            el.addEventListener('click', onClick);
+            el.addEventListener('change', onChange);
+            el.addEventListener('input', e => {
+                const t = e.target; if (t.id !== 'auQ' && t.id !== 'auGq') return;
+                if (t.id === 'auQ') AU.q = t.value; else AU.gq = t.value;
+                clearTimeout(AU._qt); AU._qt = setTimeout(render, 160);
+            });
+            ['keydown', 'keyup', 'keypress'].forEach(ev => el.addEventListener(ev, e => {
+                if (ev === 'keydown') {
+                    const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+                    if (e.key === 'Escape') window.closeAreaUnits();
+                    else if (e.key === 'F9' && e.shiftKey) { e.preventDefault(); window.closeAreaUnits(); }
+                    else if ((e.ctrlKey || e.metaKey) && !typing && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); }
+                }
+                e.stopPropagation();
+            }));
+            ['wheel', 'mousedown', 'pointerdown', 'contextmenu'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+            el.querySelector('.au-top').addEventListener('pointerdown', e => {
+                if (e.target.closest('button')) return;
+                const r = el.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
+                const mv = ev => { AU.x = ev.clientX - ox; AU.y = ev.clientY - oy; place(); };
+                const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); savePrefs(); };
+                window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+            });
+            render(); place();
+            const on = el.querySelector('.au-area.on'); if (on) on.scrollIntoView({ block: 'center' });
+            if (window._ewWalkHold) window._ewWalkHold('units', true, window.closeAreaUnits);   // A WINDOW OVER THE WALK: the cursor is free, nobody walks off
+        };
+        window.closeAreaUnits = function () { if (!AU.el) return; AU.el.remove(); AU.el = null; savePrefs(); if (window._ewWalkHold) window._ewWalkHold('units', false); };
+        window.toggleAreaUnits = function (roomId) { if (AU.el) window.closeAreaUnits(); else window.openAreaUnits(roomId || ((typeof window._hqCurRoomId === 'function') ? window._hqCurRoomId() : null)); };
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'F9' || !e.shiftKey || e.repeat) return;
+            const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            e.preventDefault(); window.toggleAreaUnits();
         }, true);
     })();

@@ -607,6 +607,32 @@ tables) from the dev-tools list.
   the last page; a 250 ms guard keeps the opening E from turning the first page). Finishing sets `set` and the choice's `set` via
   `hqStoryFlagSet` on `profile.door.hq.flags` (viewer-local, never relayed). ESC abandons without setting flags. No talk = the old `say`.
 
+## THE AREA UNITS (2026-10-24, thread "Add area encounter editor to dev tools")
+
+R2 files: ui.js, data.js, map.js, three-renderer.js, editor.js. mondo: "is there somewhere in the dev tools that lets me change
+what units appear in what areas? If not can you add one and add a scrollable list or something with unit portraits to make it
+easy, good ui". The only tool was the editor room inspector's ENCOUNTERS dropdowns (one room at a time, no portraits).
+
+- **The window** (ui.js "THE AREA UNITS" IIFE, `openAreaUnits(roomId)` / `closeAreaUnits` / Shift+F9; also the Data Panel's
+  AREA UNITS button (DATA in the pause menus), Settings → Developer, the editor's ENCOUNTERS "AREA UNITS…" button). PS1 window
+  in the HUD theme tokens (`--ew-plate-bg` etc., Classic Blue fallbacks). Left: areas = every room with a SITE grouped by zone
+  (DOOR_HQ.hubs via hqHubOf, labels verbatim; no hub = MORE PLACES) then by site. Right: room chips (ALL ROOMS or one), the
+  source (YOUR LIST / MAP EDITOR TABLE / GAME DEFAULT), the list as portrait cards (weight stepper + share %), placed-people
+  toggle, walkers/levels/companions ranges, then every 3D-ready unit as a scrollable portrait grid (search, ALL / ON THE LIST
+  / NOT ON IT): a click adds or removes. UNDO (Ctrl+Z), SEE IT NOW / GO THERE (`_hqGoRoom`, closes the windows first).
+- **The data:** data.js `HQ_AREA_ENCOUNTERS[roomId]` = the editor's shape + `spots`, written via EWDataMods (table listed under
+  Story & field; localStorage, off online, Data Panel EXPORT bakes it). `hqRoomEncTable(roomId, skip)` reads it before the
+  room's own `encounters`. The game default view is `hqAreaDefaultUnits(roomId)` (hqRoomPopulation with `noTable`, shares by
+  the tier weights). Seeding a list from the default turns each share into a weight (% , min 1); a new unit gets weight 10.
+- **What it changes:** walkers (now city rooms too: Disaster City / The Sewers ignored the table before), placed people
+  (`hqSpotRaces`: a PEOPLE spot whose race is off the list stands as a list race, seeded per day/room/spot; a spot with talk /
+  cast / clone keeps who it is; `spots: false` keeps all), travellers (`hqRoomTakesRace`: only list races walk in), fights
+  (the existing table reads in hqEncounterLaunch / hqMarkerLaunch / hqRoomNatives). THE CROWD CAP still applies (the clearing
+  shows 2 bodies, one of each race).
+- **A window over the walk** (ui.js `_ewWalkHold`): the Data Panel and this window pause the walk while up (the pointer lock
+  re-grabbed on the DATA click made every panel click land on the canvas); ESC in the walk closes the newest window first
+  (map.js onEscape → `_ewWalkWindowEsc`). `_hqCurRoomId()` (map.js) = the walk's room, null off the walk / in the editor.
+
 ## THE GAME ROOM EDITS (2026-10-18, thread "Room saves and arena boards")
 
 R2 files: editor.js, data.js, map.js, online.js, three-renderer.js. mondo: "if i make some changes in an existing room in the editor,

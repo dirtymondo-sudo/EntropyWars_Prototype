@@ -2814,6 +2814,10 @@
         var E = r.encounters || null;
         var h = '<div class="ed-sub">ENCOUNTERS</div><div class="ed-form">' +
             '<label class="ed-f"><span>own table</span><input type="checkbox" data-en="on"' + (E ? ' checked' : '') + '></label>';
+        /* THE AREA UNITS (2026-10-24, ui.js): the same table picked by portrait, for the whole area at once; its list wins over this one */
+        var AE = (typeof HQ_AREA_ENCOUNTERS !== 'undefined') ? HQ_AREA_ENCOUNTERS[ED.roomId] : null;
+        if (W.openAreaUnits) h += '<label class="ed-f"><span>by portrait</span><button class="ed-btn" data-en-pick="1" title="AREA UNITS: pick who turns up here from a portrait grid (Shift+F9 in the game)">AREA UNITS…</button></label>';
+        if (AE && AE.list && AE.list.length) h += '<div class="ed-note"><b>AREA UNITS sets this room</b> (' + esc(AE.list.map(function (x) { return encLabel(x.race); }).join(', ')) + '); it wins over this table.</div>';
         if (E) {
             var rs = encRaces(), tot = (E.list || []).reduce(function (a, x) { return a + (+x.w || 0); }, 0) || 1;
             (E.list || []).forEach(function (x, i) {
@@ -2841,6 +2845,7 @@
             if (el.checked) { var first = (W.hqRoomNatives ? W.hqRoomNatives(ED.roomId) : []).slice(0, 3); if (!first.length) first = encRaces().slice(0, 1); encSet({ list: first.map(function (k) { return { race: k, w: 1 }; }) }, 'own encounter table'); }
             else encSet(undefined, 'encounters: the site\'s own');
         }; });
+        P.querySelectorAll('[data-en-pick]').forEach(function (el) { el.onclick = function () { if (W.openAreaUnits) W.openAreaUnits(ED.roomId); }; });
         if (!E) return;
         P.querySelectorAll('[data-en-race]').forEach(function (el) { el.onchange = function () { E.list[+el.getAttribute('data-en-race')].race = el.value; encSet(E, 'encounter race'); }; });
         P.querySelectorAll('[data-en-w]').forEach(function (el) { el.onchange = function () { var v = Math.max(0, Math.round(+el.value || 0)); E.list[+el.getAttribute('data-en-w')].w = v; encSet(E, 'encounter weight ' + v); }; });
