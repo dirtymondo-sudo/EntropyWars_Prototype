@@ -1025,3 +1025,26 @@ ew_exposure) for battles and exploring alike; setExposureContext only switches t
 The pause slider is labelled plain "Brightness" with the hint "the whole picture lighter or darker — one setting for
 battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.55, 72 at 1.00, 90 at 1.25
 (/mnt/project-files/brightness-slider/).
+
+## THE SMOOTH PASS (2026-10-24, mondo: "optimize the game and save on frame rate, without drastically changing how the game looks ... There are light rays thats look like they come from every star in the sky")
+- **THE RAY SOURCE** (three-post.js `_RaySrcShader`, `_raySrcRender`, node renderer `_ngRaySrc`): the Light Rays gathered every
+  full-size pixel past the bar, and at night the bar is the dark frame's own (0.06), so every star threw a shaft. One small
+  draw before the frame pass now shrinks the frame to 1/8 size (each cell = its 8 × 8 pixels as 16 bilinear taps, every tap
+  past the bar counts); a cell keeps its light only when a quarter to half of it is lit (`smoothstep(0.25, 0.5, coverage)`).
+  A moon, a brazier, a window, a glowing zone or a sunlit gap still throws shafts; a star or a glint does not. The frame
+  pass's 24 taps read that little picture (`tRaySrc`) instead of the full frame. Drawn only while the rays are on (the node
+  renderer's rtt flips `autoUpdate`). Checked: Göbekli Tepe night sky, rays 1, the rays' own contribution (rays 1 minus
+  rays 0) before = streaks across the whole starry sky, after = only off the braziers and the zone glow; WebGPU rays draw.
+- **THE NO-STALL READ** (`_aeMeasure`): the 16 × 16 frame read that feeds the rays' bar and the building's auto exposure
+  used `readRenderTargetPixels` every 220 ms, which makes the CPU wait for the GPU to finish the frame. WebGL 2 now uses
+  `readRenderTargetPixelsAsync` (a pixel buffer + fence), as the node renderer already did. Sandbox (llvmpipe), Light Rays
+  on: CPU per frame 800-950 ms → ~20-30 ms, walk and battle alike (the stall was the whole GPU frame).
+- **THE PLATES' PASS** (three-renderer.js `_css2dRender`): CSS2DRenderer.render walked the whole scene's matrices a second
+  time right after the draw did. A stamp on `scene.updateMatrixWorld` tells whether the draw walked it since the last plates
+  pass; then the plates skip the walk (median 1.5 → 0.6 ms a frame in the sandbox). Panes drawn from another scene still walk.
+- **THE MENU MEASURES**: battle.js `_menuFreeArea` queries only inside `.hrlg-rig` (was the whole ~10,000-node page, median
+  5.0 → 2.5 ms a call); `_wmMenuRects` reads live `getElementsByClassName` lists instead of whole-page queries each frame.
+- **THE EMPTY ROOTS** (`_occFieldRefresh`): a room root with no mesh (its light rig) was re-measured with a forced matrix
+  walk on every blocker recompute (every frame in a shot); now at most every 250 ms.
+- **PROPOSED, NOT BUILT** (a feel change, mondo decides): three-camera.js caps a frame's step at 0.05 s and the mixers at
+  0.1 s, so below ~20 fps camera glides and animations run slower than real time.

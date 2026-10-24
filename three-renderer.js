@@ -15920,7 +15920,7 @@ const ThreeRenderer = (function () {
             var cs = getComputedStyle(el);
             return cs.visibility !== 'hidden' && !(parseFloat(cs.opacity) < 0.05);
         };
-        var rigs = document.querySelectorAll('.hrlg-rig');
+        var rigs = document.getElementsByClassName('hrlg-rig');   // (live lists: no walk of the whole page each frame — the smooth pass)
         for (var i = 0; i < rigs.length; i++) {
             var rig = rigs[i];
             if (!shown(rig)) continue;
@@ -15934,7 +15934,7 @@ const ThreeRenderer = (function () {
                 for (var k = 0; k < c.children.length; k++) add(c.children[k].getBoundingClientRect(), box);
             }
         }
-        var bars = document.querySelectorAll('.ew-descbar-inner');
+        var bars = document.getElementsByClassName('ew-descbar-inner');
         for (var d = 0; d < bars.length; d++) if (shown(bars[d])) add(bars[d].getBoundingClientRect());
         return out;
     }
@@ -20667,7 +20667,9 @@ const ThreeRenderer = (function () {
         var all = (now - F.at) >= F.refreshMs, k = 0;
         for (var i = 0; i < F.roots.length; i++) {
             var rec = F.roots[i];
-            if (all || (rec.r === 0 && k < 24)) { _occFieldMeasure(rec); if (!all) k++; }
+            /* the smooth pass (2026-10-24): a still-empty root is looked at again every 250 ms, not on every recompute (every
+               frame in a shot) — a root that never holds a mesh (the room's light rig) cost a forced matrix walk each time */
+            if (all || (rec.r === 0 && k < 24 && !(now - (rec.t || 0) < 250))) { _occFieldMeasure(rec); rec.t = now; if (!all) k++; }
         }
         if (all) F.at = now;
     }
@@ -41737,7 +41739,7 @@ const ThreeRenderer = (function () {
                     renderer.render(scene, cam);
                 }
 
-                if (css2dRenderer) css2dRenderer.render(scene, cam);
+                if (css2dRenderer) _css2dRender(scene, cam);
                 _scaleNexusPlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
@@ -41746,6 +41748,22 @@ const ThreeRenderer = (function () {
         }
 
         _updateMinimap();
+    }
+
+    /* THE PLATES' PASS (2026-10-24, the smooth pass): CSS2DRenderer.render starts with scene.updateMatrixWorld(), a second walk of
+       every object in the scene, right after the frame's own draw did the same walk (nothing moves in between). When the draw
+       walked this scene since the last plates pass (the stamp below), the plates read the matrices that walk made; otherwise
+       (a frame drawn from another scene: the close-up panes) they walk it themselves, as before. */
+    var _css2dTick = 1;
+    function _css2dRender(sc, cam) {
+        if (!sc._ew_mwStamp) {
+            var um = sc.updateMatrixWorld;
+            sc.updateMatrixWorld = function () { this._ew_mwAt = _css2dTick; return um.apply(this, arguments); };
+            sc._ew_mwStamp = true;
+        }
+        var fresh = sc._ew_mwAt === _css2dTick, au = sc.matrixWorldAutoUpdate;
+        if (fresh) sc.matrixWorldAutoUpdate = false;
+        try { css2dRenderer.render(sc, cam); } finally { sc.matrixWorldAutoUpdate = au; _css2dTick++; }
     }
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
@@ -67886,7 +67904,7 @@ const ThreeRenderer = (function () {
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fogHold); }
-        if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
+        if (css2dRenderer) _css2dRender(H.scene, H.camera);
         if (_hqCine()) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
     }
     /* ══ THE INSTANCE PASS (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26) ══
