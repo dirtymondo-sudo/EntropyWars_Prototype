@@ -9101,7 +9101,27 @@
             } else {
                 mapId = _trainMapSetting;
             }
+            /* THE ROOM ROUND THE ARENA (2026-10-24, mondo: "why is the ai balance lab using the old voxel maps?"): an arena only
+               becomes its room's board once the room is surveyed (data.js hqArenaUpgrade). VS CPU waits for that under _msConfirm's
+               gate; the labs went straight to applyGameMode, whose survey is non-urgent and lands mid-fight (skipped), so every lab
+               match played the baked board drawn as voxel blocks. The labs now attach the room first, the same sync compile
+               _msArenaGate falls back to (15-160 ms a room, once). A cut that no longer fits stays `failed`, as in VS CPU.
+               The renderer reads the room ONCE per fight, at activate() (three-renderer.js _arenaLatch). A VS CPU match goes back
+               through the menus, so it activates afresh; a lab match follows the last one with the renderer still up, so every
+               lab match after the first kept the first map's latch and drew no room. A lab match on a new board re-activates. */
+            const _prevMap = (typeof activeGameMode !== 'undefined') ? activeGameMode : null;
+            let _upgraded = false;
+            try {
+                const _a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null;
+                if (_a && !_a.ready && !_a.failed) _upgraded = !!window.hqArenaUpgrade(mapId, { compile: true });
+            } catch (e) { console.warn('[ARENA] lab upgrade failed', mapId, e); }
             applyGameMode(mapId);
+            try {
+                if ((_prevMap !== mapId || _upgraded) && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()) {
+                    ThreeRenderer.deactivate();
+                    ThreeRenderer.activate();
+                }
+            } catch (e) { console.warn('[ARENA] lab re-latch failed', mapId, e); }
 
             if (modeId === 'gauntlet') {
                 // Roster/deploy/spawn fixups (applyGameMode just set
