@@ -5303,7 +5303,9 @@
                 vision: unit.vision || 0,
                 crt: unit.crt || 0,
                 intStat: unit.intStat || 0,
-                dead: !!unit.dead,
+                /* a unit still in its death clip is down (the result's STANDING count reads it the same way): the guest
+                   records off the host's first winner snapshot, which lands before the clip sets .dead */
+                dead: !!unit.dead || !!unit._dying,
                 ap: unit.ap || 0,
                 hourglasses: unit.hourglasses || 0,
                 hourglassBuff: unit.hourglassBuff || 0,
@@ -5417,7 +5419,7 @@
                             race: unit?.race || 'unknown',
                             loadout: serializeLoadoutForExport(state.loadouts[1][idx], unit),
                             stats: unit ? {
-                                dead: !!unit.dead,
+                                dead: !!unit.dead || !!unit._dying,
                                 kills: unit._trackKills || 0,
                                 assists: unit._trackAssists || 0,
                                 deaths: unit._matchDeaths || 0,
@@ -5445,7 +5447,7 @@
                             race: unit?.race || 'unknown',
                             loadout: serializeLoadoutForExport(state.loadouts[2][idx], unit),
                             stats: unit ? {
-                                dead: !!unit.dead,
+                                dead: !!unit.dead || !!unit._dying,
                                 kills: unit._trackKills || 0,
                                 assists: unit._trackAssists || 0,
                                 deaths: unit._matchDeaths || 0,
