@@ -4095,6 +4095,9 @@ body.diorama-3d .tile-underpass.jump::before {
    ═══════════════════════════════════════════════════════════════════════ */
 #hqPage.title-page { display: block; transform: none; transition: opacity 0.35s ease; background: #07070a; }
 #hqPage.title-page.active, #hqPage.title-page.exit-left { transform: none; }
+/* the hidden HQ page sits over the menu pages (later in the DOM, same z-index); its strip / dock / panels turn pointer
+   events back on, so its invisible name plate took the Codex / Shop "← Back" click (2026-10-24). Off until the HQ shows. */
+#hqPage.title-page:not(.active) * { pointer-events: none !important; }
 .hq-stage { position: absolute; inset: 0; overflow: hidden; background: #07070a; cursor: crosshair; }
 .hq-stage canvas { display: block; }
 .hq-strip { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; pointer-events: none; z-index: 20; background: linear-gradient(rgba(5,5,8,0.88), rgba(5,5,8,0)); font-family: 'IBM Plex Mono', monospace; }

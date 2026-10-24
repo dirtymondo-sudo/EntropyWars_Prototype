@@ -1931,8 +1931,11 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - The dock header wraps now (`.uim-dock-hd` flex-wrap) — undo/redo/peek/fold were cut off the right edge before this tab.
 - Proven in a real browser (playtest harness): /mnt/project-files/ui-buttons/ (every BACK red + every CONFIRM green on the squad desk,
   match select, codex, shop, settings, team archive + forge; gold combat BACK over the red one in a real battle; the stamp custom and off).
-- Found, NOT fixed: when the Codex / Shop is opened from the main menu an invisible `#hqPage .hq-strip-l` IMG sits over the top-left
-  "← Back", so it can't be clicked and Escape doesn't leave.
+- Found + fixed after (mondo: "yes"): opened from the main menu, the Codex / Shop "← Back" took no click. #hqPage sits after the menu
+  pages with the same z-index; hidden it is opacity 0 + pointer-events none, but `#hqPage .hq-strip-l` (and the strip-r, the dock)
+  turn pointer events back on, so its invisible name plate caught the click. styles-base.css: `#hqPage.title-page:not(.active) *
+  { pointer-events: none !important }`. Proven by a real mouse click (Codex + Shop Back back to the main menu); shots in
+  /mnt/project-files/ui-buttons/back-fix/. Escape on those two pages was never wired (no handler), left as is.
 
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
