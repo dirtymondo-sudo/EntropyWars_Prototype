@@ -1068,3 +1068,17 @@ same room was darker still: the field rig kept the pre-rig key 0.22 × mood whil
   live). Kill-switch `window.EW_NO_KEY_LIGHT`. Open rooms, the day / night clock, the looks, bloom and fog are untouched.
 - After (same views): Undercroft 22, Cavern 20, Catacombs 24, cellar 26, sewers 32, office 54; D.U.M.B. arena fight 16 → 37, Lodge
   arena fight 22 → 40 (Key Light 0 in the Lodge: 28 — the slider proven on screen). Proof: /mnt/project-files/key-light/.
+
+## THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?")
+The Key Light above is enclosed-only, so outdoor nights got nothing. Measured: The Woods clearing 46 by day, 10-11 at night; the redwood
+trail 52 / 12-13. Cause: an outdoor room's hemisphere colour at night was the night sky's tint (`#46544c` in the woods) + 22% white, so
+the hemisphere lit at ~0.18 and under the canopy (the moon key shadowed by the trees) that is all the ground got; with the moon low
+(just after dusk / before dawn) `_hqClockVals` gave no key at all (moonK ≈ 0).
+- **`_hqSkyHemiC(skyC, night)`** (three-renderer.js, used by the walk's open branch, `_hqStageSkyValsRaw`, `_hqClockVals` and the fight's
+  open rig): the old white mix, then `nightFill.amount` (0.5) × night of the way to a soft moonlight `nightFill.color` (`#a8bad8`).
+- **The moon floor**: `_hqClockVals`'s moonK ≥ (1 − day) × (1 − sunK) × `nightFill.moonFloor` (0.75).
+- **The Key Light outdoors**: `_hqKeyLampTick` lights an open box room at `nightFill.keyLight` (0.6) × the sky's night; a fight in an open
+  room carries the lamp too, × the cycle's night (`_fieldCycleRigAt(...).t`) or the room's night. 0 by day: day frames unchanged.
+- Numbers: data.js `HQ_LIGHT_RULES.nightFill` (renderer `HQ_LIGHT_DEFAULT.nightFill`). The Key Light slider scales the lamp part.
+- After: clearing 18-21 at night (day 47), redwoods 20-22 (day 54); the Fairy Forest arena's night round 22 → 27. Proof:
+  /mnt/project-files/key-light/ba_woods_*.jpg, ba_battle_woods_night.jpg (the night round was forced for that one screenshot only).

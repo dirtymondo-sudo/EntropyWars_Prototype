@@ -58734,6 +58734,11 @@ const HQ_LIGHT_RULES = {
        — `intensity` at Settings → Key Light's default, `reach` m (decay 1 = a linear ramp to it), lifted `up` m, `back` = how far from the
        walker's head toward the eye, `side` m to the camera's right; a fight hangs it `battleUp` m over the floor where the camera looks,
        `battleReach` m, at `battleIntensity` (the fight's camera stands farther off). No shadow map. three-renderer.js _hqKeyLampTick / _fieldKeyLampTick. */
+    /* THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?"): at
+       night an outdoor room's hemisphere leans `amount` of the way from the night sky's tint to a soft moonlight `color` (it was the sky's
+       near-black blue + 22% white), the moon key never drops below `moonFloor` of the night (a low moon used to leave no key at all), and
+       the Key Light rides along outdoors at `keyLight` of its strength × the night (0 by day). The walk and the fight alike. */
+    nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
     keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 },
 };
 /* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
@@ -58767,7 +58772,7 @@ const HQ_POLISH_PREFS = [
     { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
     /* THE ROOM SETTINGS (2026-10-20): Auto Exposure now reaches the screen (three-post.js _brightGain); def false keeps the picture as it was */
     /* THE KEY LIGHT (2026-10-24): the soft light that rides with the camera in enclosed rooms, caves and corridors, and in a fight in one (HQ_LIGHT_RULES.keyLamp) */
-    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
+    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors, and outdoors at night (softer), so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
     { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: false, scope: 'hq', live: true },
     { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },
