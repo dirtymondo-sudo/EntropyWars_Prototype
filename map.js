@@ -15846,6 +15846,12 @@
             unit._streakAtkBonus = 0;
             unit._turnKills = 0;
             unit.skyBuff = null;   // a new life never carries the celestial buff back
+            /* a fresh life that wears no stance carrier (STATUS_DEFS `form` — the Sedan's Mecha) drops the form's model:
+               the respawn wipes mechaForm, so the Sedan comes back a CAR, not a car-stats robot (2026-10-24) */
+            if (unit._spriteOverride && !Object.keys(unit.status || {}).some(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].form)) {
+                unit._spriteOverride = null;
+                unit._spriteFlipX = false;
+            }
         }
 
         /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──

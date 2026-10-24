@@ -916,9 +916,11 @@
                 applyTo: 'all',
             },
             'honda civic': {
-                castSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
+                /* THE CAR STAYS A CAR (2026-10-24, mondo: "it should be driving by default but can transform with its
+                   ability. So if i attack as a car i wanna see the car do it, not the robot, unless i transform
+                   first"): no castSprite / attackSprite — a car-form attack or cast is the car's (it drives in, the
+                   strike rams). Only the Transform carrier (formSprites.mecha below) ever puts the robot on. */
                 moveSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.moving : null,
-                attackSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
                 revertAfter: true,
                 flipOnTravel: true,
                 // §6.2 Transform (Phase 5 wave A): while the unit wears a
