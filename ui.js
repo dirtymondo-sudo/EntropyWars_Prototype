@@ -11543,7 +11543,7 @@
             return s ? { slot, clip: s.clip, lib: s.lib || 0, ts: s.ts || 1, trim: s.trim || null, strikeAt: s.strikeAt, travel: !!s.travel, defer: !!s.defer } : null;
         }
         function _slb2ChainFor(kind) {
-            try { if (window.ThreeRenderer && typeof window.ThreeRenderer.castChainFor === 'function') return window.ThreeRenderer.castChainFor(kind) || ['cast']; } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.castChainFor === 'function') return ThreeRenderer.castChainFor(kind) || ['cast']; } catch (e) {}
             return ['cast'];
         }
         function _slb2SlotLabel(slot) {
