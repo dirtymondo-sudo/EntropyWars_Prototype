@@ -46162,7 +46162,7 @@ const HQ_PAINTED_SKIES = {
     },
 };
 /* the painting for a room id, a `field:<room>:…` fight or a board / map id (null = the shader's own sky):
-   { key, set, n, day, night, dusk, sil, silH, rep } — `low` picks the half-size copies (dusk null = no sunset sheet) */
+   { key, roomId, set, n, day, night, dusk, sil, silH, rep } — `low` picks the half-size copies (dusk null = no sunset sheet) */
 function hqPaintedSky(id, low) {
     const P = HQ_PAINTED_SKIES, s = String(id || '');
     if (!s) return null;
@@ -46193,9 +46193,9 @@ function hqPaintedSky(id, low) {
             i = mine.indexOf(roomId);
         }
         const n = 1 + (Math.max(0, i) % (Q.count || 4)), f = Q.base + encodeURIComponent(name + ' Sky') + '/' + name + '_Sky-', t = '_0' + n + '-1024x512.png';
-        return { key, set: row.set, n, day: f + 'Blue' + t, night: f + 'Night' + t, dusk: f + 'Sunset' + t, sil, silH: P.silH, rep: Q.rep || 1 };
+        return { key, roomId, set: row.set, n, day: f + 'Blue' + t, night: f + 'Night' + t, dusk: f + 'Sunset' + t, sil, silH: P.silH, rep: Q.rep || 1 };
     }
-    return { key, set: null, n: 0, day: b + '_day' + x, night: b + '_night' + x, dusk: null, sil, silH: P.silH, rep: 1 };
+    return { key, roomId, set: null, n: 0, day: b + '_day' + x, night: b + '_night' + x, dusk: null, sil, silH: P.silH, rep: 1 };
 }
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
