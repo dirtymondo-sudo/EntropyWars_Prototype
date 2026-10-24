@@ -38960,7 +38960,7 @@ const ThreeRenderer = (function () {
            aspect + post + CSS2D sizes to .map-center (see _viewW) */
         _viewW = -1; _viewH = -1;
         _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
-        /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S brightness through the fight */
+        /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S auto-exposure through the fight (THE ONE BRIGHTNESS: the slider's value is shared) */
         _arenaLatch();   // THE ARENAS (E8): the room round a PvP arena, read once per fight
         _fieldGroundArmed = !!_fieldGround();
         try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
@@ -71866,7 +71866,7 @@ const ThreeRenderer = (function () {
            read dark one visit and fine the next). The building wears HQ_LIGHT_RULES.cycle (day: no grade, exposure 1);
            a room's mood is its own lights, its fog and its look's retro preset. The battle rewrites the cycle from its map. */
         try { var LRc = _hqLightRules(); if (document.body && document.body.dataset) document.body.dataset.cycle = LRc.cycle || 'day'; var bst = document.getElementById('boardStage'); if (bst && bst.dataset) bst.dataset.cycle = LRc.cycle || 'day'; } catch (e) {}
-        /* THE TWO BRIGHTNESSES (2026-09-20): the building's own Brightness value, eased in (three-post.js) */
+        /* THE ONE BRIGHTNESS (2026-10-24): the building's frame — the Brightness value is the same everywhere; this only turns on the building's auto-exposure (three-post.js) */
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSsaoScale) ThreePost.setSsaoScale('hq', _hqUnits()); } catch (e) {}   // THE THIRD PASS 3.4: the AO's reach in the building's metres
         renderer.setAnimationLoop(_hqFrameGuarded);   // THE FRAME GUARD (2026-09-22): a throw never ends the loop
@@ -72113,7 +72113,7 @@ const ThreeRenderer = (function () {
         try { _mqDemoteQueued(); } catch (e) {}   // THE LEFT ROOM'S FILES: its unstarted scene jobs fall behind the next room's
         _mqSpots = {};   // THE NEAR FIRST: the room's spots leave with it (the battle's files keep their request order)
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
-        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE ONE BRIGHTNESS: same value; the building's auto-exposure eases off
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         try { _hqStageLeave(H); } catch (e) {}   // THE STAGE: the neighbours' gates, the detached parts
