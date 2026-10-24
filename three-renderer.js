@@ -62581,6 +62581,9 @@ const ThreeRenderer = (function () {
             spots.forEach(function (spot, si) {
                 var rh = spot.race;
                 if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours
+                /* THE AREA UNITS (2026-10-24, data.js hqSpotRaces): with the room's table on, a placed person off the list stands as a race on it */
+                var swap = (typeof hqSpotRaces === 'function') ? hqSpotRaces(crowd.room || opts.room, si, spot) : null;
+                if (swap) { rh = null; for (var q = 0; q < swap.length && !rh; q++) if (!crowd.has(swap[q]) && typeof getRace3DModel === 'function' && (getRace3DModel(swap[q], 'male') || getRace3DModel(swap[q], 'female'))) rh = swap[q]; if (!rh) return; }
                 if (spot.clone && av.race) {
                     if (!crowd.take('clone')) return;
                     _hqSpawnCharacter({ id: 'hq-clone-' + si, kind: 'npc', race: av.race, gender: av.gender || 'male', appearance: av.appearance || undefined, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
@@ -64199,6 +64202,7 @@ const ThreeRenderer = (function () {
             _hqTravellers = _hqTravellers.filter(function (t) { return t.to !== roomId && now - t.t < R.travelTtlMs; });
             arriving.forEach(function (t, i) {
                 if (!walksRace(t.race)) return;
+                if (typeof hqRoomTakesRace === 'function' && !hqRoomTakesRace(roomId, t.race)) return;   // THE AREA UNITS: a room with a table lets in only its own people
                 if (crowd && !crowd.take(t.race)) return;   // THE CROWD CAP
                 var by = stops.find(function (s) { return s.kind === 'door' && s.doorId === t.at; }) || stops.find(function (s) { return s.kind === 'door'; }) || stops[0];
                 /* THE CLEAR ARRIVAL: the officer follows a walker through ITS door — the walker is already a few steps into the room, past the landing */

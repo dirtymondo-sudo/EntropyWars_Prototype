@@ -54681,10 +54681,13 @@ function hqRoomPopulation(roomId, profile, opts) {
         Object.keys(P).forEach(r => { if (!seen[r] && P[r] && (P[r].types || []).indexOf('human') >= 0 && r !== 'men in black' && ready(r)) { seen[r] = 1; pool.push(r); tiers[r] = 'people'; } });
         /* THE UNDERWORLD: the sewer's own people (the table), never the street's crowd */
         if (hubId === 'underworld') { pool = R.underworld.filter(r => ready(r)); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
+        /* THE AREA UNITS (2026-10-24): a city room's table is its people too (the street read none, so Disaster City and The Sewers never changed) */
+        const ETc = site ? hqRoomEncTable(roomId, opts.noTable) : null;
+        if (ETc) { pool = ETc.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
     } else if (site) {
         const res = hqSiteResidents(site);
         pool = res.slice(); tiers = res.tiers || {};
-        const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE: the room's own people, every one a native
+        const ET = hqRoomEncTable(roomId, opts.noTable);   // THE ENCOUNTER TABLE: the room's own people, every one a native
         if (ET) { pool = ET.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
     } else {
         pool = hqRosterRaces(profile);
@@ -54708,7 +54711,7 @@ function hqRoomPopulation(roomId, profile, opts) {
     const seed = hqHash((opts.date || hqToday()) + '|' + roomId + '|population');
     let s = seed || 1;
     const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
-    const ET = (kind === 'wild') ? hqRoomEncTable(roomId) : null;   // THE ENCOUNTER TABLE: its walker count and its weights
+    const ET = (site && (kind === 'wild' || kind === 'city')) ? hqRoomEncTable(roomId, opts.noTable) : null;   // THE ENCOUNTER TABLE: its walker count and its weights (a city room's too, THE AREA UNITS)
     if (ET && ET.walkers && pool.length && !(roomId === 'car' || room.kind === 'bay' && room.corridor === false)) {
         n = Math.max(0, Math.min(8, Math.round(ET.walkers[0] + rnd() * (ET.walkers[1] - ET.walkers[0] + 1) - 0.5)));
         if (opts.perfLow) n = Math.round(n * R.perfLowMul);
@@ -54767,16 +54770,54 @@ function hqSwarmRace(natives, rnd) {
    (walkers, still under THE CROWD CAP), the enemy levels (clamped into levels) and the companions a lone native brings (group).
    The fight still needs the room's SITE (its battle map); a spot with a race (PEOPLE / MARKERS in the editor) stands where it is.
    Blank ranges keep the game's own rules. Pure. */
-function hqRoomEncTable(roomId) {
+/* THE AREA UNITS (2026-10-24, mondo: "is there somewhere in the dev tools that lets me change what units appear in what areas?
+   ... a scrollable list or something with unit portraits"): ui.js's AREA UNITS window writes a room's table HERE through
+   EWDataMods (localStorage, off online, EXPORT to bake), keyed by the room id, in the editor's shape plus `spots`:
+   { list: [{ race, w }], walkers, levels, group, spots }. It wins over the room's own editor table. Empty (as shipped) = every
+   room keeps the game's own people. `spots: false` = the people placed in the room keep their own races. */
+const HQ_AREA_ENCOUNTERS = {};
+function hqRoomEncTable(roomId, skip) {
+    if (skip) return null;   // the game's own people (THE AREA UNITS window's "game default" read)
     const room = (DOOR_HQ.rooms || {})[roomId];
-    const E = room && room.encounters;
+    const A = (typeof HQ_AREA_ENCOUNTERS !== 'undefined') ? HQ_AREA_ENCOUNTERS[roomId] : null;
+    const E = (A && typeof A === 'object' && Array.isArray(A.list) && A.list.length) ? A : (room && room.encounters);
     if (!E || typeof E !== 'object' || !Array.isArray(E.list)) return null;
     const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
     const list = E.list.filter(x => x && x.race && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(x.race) >= 0) && ready(x.race))
         .map(x => ({ race: x.race, w: Math.max(0, Number.isFinite(+x.w) ? +x.w : 1) })).filter(x => x.w > 0);
     if (!list.length) return null;
     const span = (v) => (Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n))) ? [Math.min(+v[0], +v[1]), Math.max(+v[0], +v[1])] : null;
-    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group) };
+    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group), spots: E.spots !== false, from: E === A ? 'area' : 'room' };
+}
+/* THE AREA UNITS: who a PLACED person (a PEOPLE spot with a race) stands as while the room has a table — null = its own race.
+   A spot whose race is off the list takes the list's races in a seeded order (the day, the room, the spot); the renderer stands
+   the first one the room does not already show (THE CROWD CAP). A spot with a TALK (his own person), a cast or a clone keeps
+   who it is; `spots: false` on the table keeps every placed person. Pure. */
+function hqSpotRaces(roomId, si, spot) {
+    if (!spot || !spot.race || spot.talk || spot.cast || spot.clone) return null;
+    const T = hqRoomEncTable(roomId); if (!T || !T.spots) return null;
+    if (T.list.some(x => x.race === spot.race)) return null;
+    const rnd = hqLevelRng(((typeof hqToday === 'function') ? hqToday() : '') + '|' + roomId + '|spotrace|' + si), left = T.list.slice(), out = [];
+    while (left.length) { const r = hqEncTablePick({ list: left }, rnd); out.push(r); left.splice(left.findIndex(x => x.race === r), 1); }
+    return out;
+}
+/* THE AREA UNITS: may a walker from another room (a traveller) come in? With a table, only a race on it. */
+function hqRoomTakesRace(roomId, race) { const T = hqRoomEncTable(roomId); return !T || T.list.some(x => x.race === race); }
+/* THE AREA UNITS window's GAME DEFAULT: the room's own people as the game draws them with no table — each race with its tier
+   and its share of the walkers' draw (the population's tier weights, read the way hqRoomPopulation's draw falls through) */
+function hqAreaDefaultUnits(roomId) {
+    const P = hqRoomPopulation(roomId, null, { noTable: true });
+    if (!P || !P.pool || !P.pool.length) return { kind: P ? P.kind : 'none', n: 0, units: [] };
+    const tier = r => P.tiers[r] || 'native', of = f => P.pool.filter(r => f(tier(r)));
+    const nat = of(t => t === 'native' || t === 'biome'), ppl = of(t => t === 'people'), cf = of(t => t === 'city');
+    const trueN = of(t => t === 'native'), tagged = of(t => t === 'biome'), others = of(t => t !== 'native' && t !== 'biome');
+    const city = P.kind === 'city' && (ppl.length || cf.length), W = city ? HQ_POPULATION_RULES.cityWeights : HQ_POPULATION_RULES.wildWeights;
+    const from = u => city ? ((u < W[0] && nat.length) ? nat : (u < W[0] + W[1] && ppl.length) ? ppl : (cf.length ? cf : (ppl.length ? ppl : nat)))
+        : ((u < W[0] && trueN.length) ? trueN : (u < W[0] + W[1] && tagged.length) ? tagged : (others.length ? others : (nat.length ? nat : P.pool)));
+    const share = {}, STEPS = 400;
+    for (let i = 0; i < STEPS; i++) { const g = from((i + 0.5) / STEPS); g.forEach(r => { share[r] = (share[r] || 0) + 1 / STEPS / g.length; }); }
+    const units = P.pool.map(r => ({ race: r, tier: tier(r), share: share[r] || 0 })).sort((a, b) => b.share - a.share || a.race.localeCompare(b.race));
+    return { kind: P.kind, n: P.n, units };
 }
 /* one weighted race off the table (rnd: a 0..1 stream) */
 function hqEncTablePick(T, rnd) {
@@ -61557,6 +61598,7 @@ window.EWDataMods = (function () {
         ['Story & field', 'HQ_ESCAPE_RULES', HQ_ESCAPE_RULES], ['Story & field', 'HQ_FIELD_RULES', HQ_FIELD_RULES], ['Story & field', 'HQ_FIND_RULES', HQ_FIND_RULES],
         ['Story & field', 'HQ_POPULATION_RULES', HQ_POPULATION_RULES], ['Story & field', 'HQ_CROWD_RULES', HQ_CROWD_RULES], ['Story & field', 'HQ_OFFICER_RULES', HQ_OFFICER_RULES],
         ['Story & field', 'HQ_HEAL_ZONE', HQ_HEAL_ZONE], ['Story & field', 'HQ_WORLD_CLOCK', HQ_WORLD_CLOCK],
+        ['Story & field', 'HQ_AREA_ENCOUNTERS', HQ_AREA_ENCOUNTERS],   // THE AREA UNITS window (ui.js) writes it; one row per room
         ['Arenas & modes', 'HQ_ARENA_RULES', HQ_ARENA_RULES], ['Arenas & modes', 'DOOR_GUN_RULES', DOOR_GUN_RULES], ['Arenas & modes', 'HQ_GUN_RULES', HQ_GUN_RULES],
         ['Arenas & modes', 'HQ_SKATE_RULES', HQ_SKATE_RULES], ['Arenas & modes', 'HQ_SEA_RULES', HQ_SEA_RULES],
         ['Engine', 'HQ_LIGHT_RULES', HQ_LIGHT_RULES], ['Engine', 'HQ_ENGINE_RULES', HQ_ENGINE_RULES], ['Engine', 'HQ_STAGE_RULES', HQ_STAGE_RULES],
