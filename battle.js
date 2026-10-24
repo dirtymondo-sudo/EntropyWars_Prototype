@@ -41314,28 +41314,39 @@
         // floating-text / battle-dialogue / sfx helpers so it is renderer-
         // agnostic and auto-suppressed during dev sim (_skipVisuals). Call this
         // at impact time.
+        /* the press's dialogue line — online.js relays it to the guest ('press-feedback'; the floats ride their own relay) */
+        function _pressDialogueLine(res) {
+            if (!res) return null;
+            if (res.pressed) return `<span class="dlg-effective">⚡ +${Math.max(1, res.apDelta || 0)} AP — Free action!</span>`;
+            if (res.entropyOverflow > 0 && !res.penalty) return `<span class="dlg-effective">⚛ Press → Entropy Gauge!</span>`;
+            if (res.penalty) return `<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`;
+            if (res.pressDenied) return `<span class="dlg-resist">💢 No press — momentum already wasted this turn.</span>`;
+            return null;
+        }
+        window._pressDialogueLine = _pressDialogueLine;
         function _showPressFeedback(unit, res) {
             if (!unit || !res) return;
             if (_skipVisuals()) return;
+            const _line = _pressDialogueLine(res);
             if (res.pressed) {
                 const _apGain = Math.max(1, res.apDelta || 0);
                 showFloatingTextForUnit(unit, `+${_apGain} AP!`, 'revive', { durationMs: 1000, jitterY: -26 });
-                showBattleDialogue([`<span class="dlg-effective">⚡ +${_apGain} AP — Free action!</span>`], 1100);
+                showBattleDialogue([_line], 1100);
                 if (typeof playSfx === 'function') playSfx('buff');
             } else if (res.entropyOverflow > 0 && !res.penalty) {
                 // Already pressed this turn (or the tank is full) — the press
                 // vents into the Entropy Gauge instead of granting AP.
                 showFloatingTextForUnit(unit, '⚛ ENTROPY!', 'buff', { durationMs: 1000, jitterY: -26 });
-                showBattleDialogue([`<span class="dlg-effective">⚛ Press → Entropy Gauge!</span>`], 1100);
+                showBattleDialogue([_line], 1100);
                 if (typeof playSfx === 'function') playSfx('buff');
             } else if (res.penalty) {
                 showFloatingTextForUnit(unit, 'WASTED!', 'dodge', { durationMs: 1000 });
-                showBattleDialogue([`<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`], 1100);
+                showBattleDialogue([_line], 1100);
                 if (typeof playErrorSfx === 'function') playErrorSfx();
             } else if (res.pressDenied) {
                 // Would have pressed, but an earlier fumble locked the refund out.
                 showFloatingTextForUnit(unit, 'NO PRESS', 'neutral', { durationMs: 1000 });
-                showBattleDialogue([`<span class="dlg-resist">💢 No press — momentum already wasted this turn.</span>`], 1100);
+                showBattleDialogue([_line], 1100);
             }
         }
 
@@ -45230,6 +45241,10 @@
            match is over and both clients stage the same lineup from their own
            final state. Teardown restores every mutated field. */
         let _podiumState = null;
+        /* online.js _broadcastState holds the host's snapshots while this is staged: the revived, moved cast reached the
+           guest as the final board ("4 v 3 STANDING" vs the host's "3 v 3", and the guest's Export Last Match had a dead
+           Luchador alive at full HP on another tile — PvP playtest 2026-10-24) */
+        if (typeof window !== 'undefined') window._ewPodiumStaged = () => !!_podiumState;
 
         function _canStagePodium() {
             return !state.devAutoSim
@@ -76788,7 +76803,11 @@
             if (state.shotClock.activationId != null && _shotClockExpiredActivation === state.shotClock.activationId) return;
             _shotClockExpiredActivation = state.shotClock.activationId;
             state.shotClock.active = false;
-            addLog(`⏱ Shot clock! ${_ctName(unit)}'s turn ends automatically.`);
+            /* the guest's own log is replaced by the host's next snapshot, so a line written here never showed on either
+               seat (PvP playtest 2026-10-24: 29 timeout lines, all host units): the guest's END TURN carries `timeout` and
+               the host writes the line (online.js 'triggerEndTurn') */
+            const _guestSeat = !!_net && _net.role === 'guest' && isOnlineMatch();
+            if (!_guestSeat) addLog(`⏱ Shot clock! ${_ctName(unit)}'s turn ends automatically.`);
             showFloatingTextForUnit(unit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
             playSfx('uiBack');
 
@@ -76814,7 +76833,8 @@
                 if (typeof window._broadcastState === 'function') window._broadcastState();
                 return;
             }
-            triggerEndTurn();
+            state._shotClockTimeoutEnd = true;
+            try { triggerEndTurn(); } finally { state._shotClockTimeoutEnd = false; }
         }
 
         function _startShotClock() {
