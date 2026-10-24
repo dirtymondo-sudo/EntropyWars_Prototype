@@ -27701,7 +27701,7 @@ const ThreeRenderer = (function () {
         if (Math.abs(PS.amt - want) < 0.002) PS.amt = want;
         u.uPaintAmt.value = PS.amt;
     }
-    if (typeof window !== 'undefined') window._ewPaintSky = function () { var R = _paintSky.row; return { id: _paintSky.id, key: R ? R.key : null, set: R ? R.set : null, n: R ? R.n : 0, farM: _paintSky.farM, silFog: +_envUni.uPaintSilFog.value.w.toFixed(3), amt: _paintSky.amt, sheets: Object.keys(_paintSky.tex).map(function (k) { var P = _paintSky.tex[k]; return { url: k, ok: P.ok, bad: P.bad }; }) }; };
+    if (typeof window !== 'undefined') window._ewPaintSky = function () { var R = _paintSky.row; return { id: _paintSky.id, key: R ? R.key : null, set: R ? R.set : null, n: R ? R.n : 0, farM: _paintSky.farM, silFog: _envUni ? +_envUni.uPaintSilFog.value.w.toFixed(3) : 0, amt: _paintSky.amt, sheets: Object.keys(_paintSky.tex).map(function (k) { var P = _paintSky.tex[k]; return { url: k, ok: P.ok, bad: P.bad }; }) }; };
 
     /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the board's site's day look when one of its rooms is on the world clock (data.js
        hqRoomClock: an outdoor room) — { tint, clouds } | null (an indoor site, a HQ_WORLD_CLOCK.still sky, no site) */
