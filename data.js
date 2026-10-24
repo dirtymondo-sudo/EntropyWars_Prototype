@@ -393,6 +393,7 @@ const FINISHERS = {
     /* THE 2026-09-21 BATCH — designed here, played as the TYPED EXECUTION (sig null) until each gets its
        director + signature + stage script (FINISHER_PLAN rule 0; the BUILT table in finishers.test.js). */
     'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
+    'time cop': { id: 'fin_time_cop', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },   // 2026-10-24 — the Police Officer's own finisher
     'jellyfish':      { id: 'fin_jellyfish', name: 'The Bloom', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'A THOUSAND OF US', desc: 'The sea comes up over the tile and the water fills with jellyfish, more and more of them, until the victim is a shape inside a glowing bloom. When the water drains there is nothing on the tile but a print.' },
     'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: 'ascensionDay', built: true, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
     'popstar':        { id: 'fin_popstar', name: 'Farewell Tour', glyph: '🎤', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'ONE NIGHT ONLY', desc: 'A stadium stands up round the victim — the stands, the floodlights, a crowd of glow sticks — and the spotlight finds them. She sings one last song from her stage. The pyro goes on the final note, the fireworks over the stands, and when the lights come back up there is a SOLD OUT poster where they stood.' },
@@ -2911,6 +2912,12 @@ const RACE_PROFILES = {
         label: 'Police Officer',
         types: ['human']
     },
+    /* THE TIME COP (mondo 2026-10-24): a sheriff, a cop or a future cop depending on the ability it casts —
+       sprites.js RACE_MODELS_3D['time cop'] + battle.js UNIT_ANIM_OVERRIDES['time cop']. */
+    'time cop': {
+        label: 'Time Cop',
+        types: ['human']
+    },
     'jellyfish': {
         label: 'Jellyfish',
         types: ['anomaly', 'alien']
@@ -3457,6 +3464,7 @@ const RACE_PASSIVES = {
     'nun':           ['devout'],
     'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
     'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
+    'time cop':      ['pointBlank'],          // 2026-10-24 — the Police Officer's
     'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
     'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
     'popstar':       ['showMustGoOn'],        // 2026-09-22 — nobody cuts her mic
@@ -3558,7 +3566,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3571,6 +3579,7 @@ const RACE_KITS = {
     'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
     'marksman': { range: 4, inspect: 2 }, 'gangster': { range: 2 }, 'door agent': { range: 2, inspect: 2 },
     'police officer': { range: 2 }, 'dreameater': { range: 2 }, 'halfdemon': { range: 2, inspect: 2 },
+    'time cop': { range: 2 },   // 2026-10-24 — the Police Officer's reach
     'vampire': { range: 2, inspect: 2 }, 'cosmic wraith': { range: 4, inspect: 2 }, 'chosen one': { range: 2, inspect: 2 },
     'ghoul': { range: 2, inspect: 2 }, 'barbarella': { range: 2, inspect: 2 }, 'quarterback': { range: 4, inspect: 2 },
     'robinhood': { range: 4, inspect: 2 }, 'symbiote': { range: 2, inspect: 2 },
@@ -3632,6 +3641,7 @@ const RACE_CLASS = {
     'nun': 'healer',
     'door agent': 'assassin',
     'police officer': 'ranged',
+    'time cop': 'ranged',   // 2026-10-24
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
@@ -4018,6 +4028,7 @@ const RACE_BASE_STATS = {
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
     'police officer':     { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // race editor 2026-10-17: DEF 140, SPD 112, MDEF 58
+    'time cop':           { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // 2026-10-24 — the Police Officer's stats
     'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  36 },
     'cult leader':        { hp: 861, mp: 220, atk:  47, def:  110, mdef:  152, int:  143, vision: 3, crt: 26, spd:  65 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
@@ -4123,6 +4134,7 @@ const RACE_PHYSIQUE = {
     'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
     'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
+    'time cop':            { h: 1.80, w: 86 },   // 2026-10-24 — the Police Officer's
     'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
     'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
     'popstar':             { h: 1.68, w: 54 },   // 2026-09-22 — in the heels
@@ -8048,6 +8060,7 @@ const RACE_ABILITIES = {
        is three-renderer.js _buildSummon3D 'cultist'). Plain kinds only —
        nothing new in the engine; the VFX are family aliases in
        three-vfx-effects.js's 2026-09-21 block. */
+    'time cop': [],   // 2026-10-24 — no rows of its own: the kit is RACE_TREE + its families
     'police officer': [
         /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
         { id: 'pzFreezePolice', name: 'Freeze! Police!', tier: 2, families: ['policeprocedure'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -19429,6 +19442,9 @@ const RACE_TREE = {
     'nun':           [['raceAbsolution', 'raceBlessing'], ['racePurify', 'raceCultSermon'], 'racePrayer', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'door agent':    ['raceSwingDoor', ['raceBreakingEntering', 'raceAirMail', 'raceDoorDash'], 'raceUnderdogSpirit', 'raceDropIn'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
+    /* THE TIME COP (2026-10-24): two picks a rung, one per look — Police Training = the cop, Cowboy Skills /
+       Marksmanship = the sheriff, Robotic Weapons / Hidden Technology = the future cop. */
+    'time cop': [['racePoliceNightstick', 'raceTaserBolt'], ['racePoliceTaser', 'raceQuickDraw'], ['raceSlapLeather', 'raceClassifiedWeapon'], ['raceHighNoon', 'railgun']],
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceCultTithe', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
@@ -23386,6 +23402,7 @@ const RACE_FAMILIES = {
     overlord: ['overlord', 'infernalcourt', 'dirtyfighting', 'demonicabilities'],
     pirate: ['piracy', 'swordsmanship', 'ropework'],
     'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
+    'time cop': ['policetraining', 'cowboyskills', 'marksmanship', 'cyberpunkweapons', 'advancedtechnology'],   // 2026-10-24 — one family set per look
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -23968,6 +23985,7 @@ const CAMPAIGN_RACE_PRICES = {
   'door agent': 300,
   // 2026-09-21 — the three new rigs
   'police officer': 250,
+  'time cop': 250,   // 2026-10-24
   'jellyfish': 350,
   'cult leader': 400,
   // 2026-09-22

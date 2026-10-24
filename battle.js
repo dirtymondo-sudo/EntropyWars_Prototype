@@ -929,6 +929,20 @@
                     mecha: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
                 },
             },
+            /* THE TIME COP (mondo 2026-10-24): the ability's family picks the look — Police Training = the cop,
+               Cowboy Skills / Marksmanship = the sheriff, Robotic Weapons / Hidden Technology = the future cop
+               (sprites.js TIME_COP_LOOKS → overrideForms). No revertAfter: the look stays until an ability from
+               another look is cast; a spell from any other family leaves it as it is. */
+            'time cop': {
+                castSprite: (_unit, spell) => {
+                    if (typeof TIME_COP_LOOKS === 'undefined') return null;
+                    const fams = (spell && spell.families) || [];
+                    if (fams.includes('policetraining')) return TIME_COP_LOOKS.cop;
+                    if (fams.includes('cowboyskills') || fams.includes('marksmanship')) return TIME_COP_LOOKS.sheriff;
+                    if (fams.includes('cyberpunkweapons') || fams.includes('advancedtechnology')) return TIME_COP_LOOKS.future;
+                    return null;
+                },
+            },
             'super sentai': {
                 castSprite: (_unit, spell) => {
                     if (!spell?._sentaiColor || typeof SENTAI_SPRITES === 'undefined') return null;
@@ -12132,7 +12146,7 @@
             'ghost': 'magic', 'android': 'ranged', 'shadow entity': 'ranged', 'reptilian': 'ranged', 'martian': 'ranged',
             'mech': 'ranged', 'catgirl': 'ranged', 'annunaki': 'ranged', 'mantid': 'magic', 'grey': 'magic',
             'succubus': 'magic', 'skinwalker': 'magic', 'cowboy': 'ranged', 'men in black': 'ranged', 'telepath': 'magic',
-            'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged',
+            'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged', 'time cop': 'ranged',
             'dreameater': 'magic', 'halfdemon': 'ranged', 'vampire': 'ranged', 'cosmic wraith': 'ranged',
             'chosen one': 'ranged', 'ghoul': 'ranged', 'barbarella': 'ranged', 'quarterback': 'ranged',
             'robinhood': 'ranged', 'symbiote': 'ranged'
@@ -12149,6 +12163,7 @@
             'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged',
             'gangster': 'ranged', 'martian': 'ranged', 'mad scientist': 'ranged',
             'police officer': 'ranged', 'jellyfish': 'magic', 'cult leader': 'magic',   // 2026-09-21
+            'time cop': 'ranged',   // 2026-10-24
             'popstar': 'magic',   // 2026-09-22 — the PA
             'ai': 'ranged', 'android': 'ranged', 'droid': 'ranged',
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
