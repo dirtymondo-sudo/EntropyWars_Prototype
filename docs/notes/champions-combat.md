@@ -2444,6 +2444,25 @@ Report: https://claude.ai/artifact/CWTojTHQLaLz8Jz6tqAeKF (copy /mnt/project-fil
   bottom is the existing painted-tile lava skin + glow. Kill-switch `window.EW_NO_FIELD_GAP`. Plain state keys ride
   the state-sync, so the guest sees the same gap.
 
+## PvP playtest fixes (2026-10-24, thread "PvP playtest")
+
+From the 10-24 two-seat playtest (report https://claude.ai/artifact/6eCz5YkErHgFJVkhBY1tAE), mondo's answers:
+- **Guest timeouts are logged:** battle.js `_shotClockExpired` on the GUEST no longer writes its own line (the host's next
+  snapshot replaced it, so it never showed); the guest's END TURN carries `timeout: true` (`state._shotClockTimeoutEnd`)
+  and online.js `'triggerEndTurn'` writes "⏱ Shot clock! X's turn ends automatically." + the TIME! float on the host.
+- **The podium never reaches the guest:** `_stageVictoryPodium` revives and lines up the viewer's cast in place; the host
+  kept broadcasting, so the guest's result said "4 v 3 STANDING" and its Export Last Match had a dead unit alive.
+  `window._ewPodiumStaged()` → online.js `_broadcastState` sends nothing while the podium is up.
+- **The press line reaches the guest:** `_pressDialogueLine(res)` (the "+2 AP — Free action!" dialogue) is relayed as
+  `'press-feedback'` (online.js wraps `_showPressFeedback`); fogged presses stay silent. The press itself shows only AFTER
+  the hit (mondo: a pre-hit +2 would give away the crit).
+- **The damage chip:** hud.js `_hrlgDmgChip` — the number is capped at the target's HP, so the chip says LETHAL (low roll
+  kills) / MAY KILL (only the high roll does), and a split hit whose element part the target absorbs shows the heal
+  back in green ("≈−98 +103 ABSORBS"). ui.js `predictDamageToUnit` out now carries `heal`, `min`, `max`.
+- Checked, already right: an absorbed element part blocks the press (`_pressHitInfo`), and the row's red ! was the absorb
+  warning; walking off a drop already tints the tile hazard, badges the move ghost with the damage and labels the tile
+  menu "Move here (−N HP)".
+
 ## SAND WALKS LIKE GROUND + THE GROUND CHIPS (2026-10-24)
 mondo: "Just take away the mov-2 property from desert, that is what was causing my ice queen bug where it could only
 jump ... There was nothing to indicate that the sand was affecting me negatively. That needs to show just like the

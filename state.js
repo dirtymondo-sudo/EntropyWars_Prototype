@@ -2586,7 +2586,11 @@
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
             if (engineRng() > WEATHER_SPAWN_CHANCE) return;
 
-            let availableKeys = WEATHER_KEYS;
+            /* 🌦 a weather that is already up never forms a second time on top of itself (PvP playtest 10-24: Solar Flare formed
+               in round 2 and again in round 3, and the two ran at once) — the roll picks among the kinds not on the board */
+            const _upNow = new Set((state.activeWeather || []).map(w => w && w.type));
+            let availableKeys = WEATHER_KEYS.filter(k => !_upNow.has(k));
+            if (!availableKeys.length) return;
             const type = availableKeys[engineRandInt(availableKeys.length)];
             const def = WEATHER_REGISTRY[type];
             const dur = def.duration[0] + engineRandInt(def.duration[1] - def.duration[0] + 1);
