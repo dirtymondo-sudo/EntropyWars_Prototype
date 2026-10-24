@@ -37293,8 +37293,9 @@ const ThreeRenderer = (function () {
             w.assign(w.mul(w).mul(w).mul(w)); w.divAssign(w.x.add(w.y).add(w.z).add(0.0001));
             var uy = wp.xz.div(TM), ux = wp.zy.div(TM), uz = wp.xy.div(TM);
             var tri = function (t, s) { return T.texture(t, uy.mul(s)).mul(w.y).add(T.texture(t, ux.mul(s)).mul(w.x)).add(T.texture(t, uz.mul(s)).mul(w.z)); };
-            var c = tri(map, 1).toVar();
-            var cliff = tri(D.cliff || map, 0.85), path = tri(D.path || map, 1.15);
+            var tint = function (v, t) { return t ? v.mul(T.vec4(t.r, t.g, t.b, 1)) : v; };   // THE SHEET LOOKS (2026-10-24)
+            var c = tint(tri(map, 1), D.tFloor).toVar();
+            var cliff = tint(tri(D.cliff || map, D.cliffK || 1), D.tCliff), path = tint(tri(D.path || map, 1), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
@@ -50856,12 +50857,14 @@ const ThreeRenderer = (function () {
             var g = tops[k], geo = new THREE.PlaneGeometry(CM, CM);
             inst(geo, caveMat(g.key, g.tint), g.list, function (t, d) { d.position.set(cellX(t.x) * U, 0.6, cellZ(t.y) * U); d.rotation.set(-Math.PI / 2, 0, 0); d.scale.set(1, 1, 1); });
         });
-        /* ledges: one instanced box per (sheet, level), the sheet tiled down the faces; a sunken cell (a dry pit) is a floor below with bed walls */
+        /* ledges: one instanced box per (sheet, level), the sheet tiled down the faces; a sunken cell (a dry pit) is a floor below with bed walls.
+           2026-10-24 (mondo: one square = one 128 sprite): the ledge and the rock boxes were UV'd at the far horizon's density (_hzBoxUV,
+           one sheet per TWO cells, the rock per 3.2) beside the level tops' one per cell; every box here is one sheet per cell (_nrBoxUV) */
         Object.keys(ledges).forEach(function (k) {
             var g = ledges[k];
             if (g.lvl > 0) {
                 var hM = g.lvl * L, geo = new THREE.BoxGeometry(CM * 0.998, hM * U, CM * 0.998);
-                _hzBoxUV(geo, CM, hM * U, CM, CM); geo.translate(0, hM * U / 2, 0);
+                _nrBoxUV(geo, CM, hM * U, CM, CM); geo.translate(0, hM * U / 2, 0);
                 inst(geo, caveMat(g.key, g.tint, { sh: 4 }), g.list, function (t, d) { d.position.set(cellX(t.x) * U, 0.3, cellZ(t.y) * U); d.rotation.set(0, 0, 0); d.scale.set(1, 1, 1); });
             } else {
                 var dM = -g.lvl * L;
@@ -50874,7 +50877,7 @@ const ThreeRenderer = (function () {
         });
         /* THE ROCK: to the ceiling, jittered — a crag, not a tile */
         if (rocks.length) {
-            var rgeo = new THREE.BoxGeometry(CM, rockH * U, CM); _hzBoxUV(rgeo, CM, rockH * U, CM, CM * 1.6); rgeo.translate(0, rockH * U / 2, 0);
+            var rgeo = new THREE.BoxGeometry(CM, rockH * U, CM); _nrBoxUV(rgeo, CM, rockH * U, CM, CM); rgeo.translate(0, rockH * U / 2, 0);
             inst(rgeo, caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.06 }), rocks, function (t, d) {
                 var j = rng();
                 d.position.set(cellX(t.x) * U, -0.4, cellZ(t.y) * U); d.rotation.set(0, (j - 0.5) * 0.22, 0);
@@ -51047,6 +51050,27 @@ const ThreeRenderer = (function () {
        the scatter (catalogue props through _hqPlaceProps), the treeline of
        an open room past its edge, stalactites under a closed one. Rails and
        ramps join the park registers (_hq.rails / _hq.ramps) for the rider. */
+    /* THE SHEET LOOKS (2026-10-24, mondo: "an option to zoom them in or out ... an option to tint the terrain different colors"): a
+       terrain room's `cliffZoom` = how big its cliff sheet is drawn (1 = one sheet per battle square, the rule: one 1.75 m square = one
+       128 sprite; 2 = one sheet per 2 × 2 squares; 0.5 = four a square) and `floorTint` / `cliffTint` / `pathTint` ('#rrggbb',
+       multiplied over that sheet; white or none = as drawn). A stair row's `sideZoom` / `sideTint` set its own sides. A room or a
+       row naming none looks as before (the editor's THE GROUND and a stair's fields write them). */
+    function _hqZoomOf(v) { v = +v; return (isFinite(v) && v > 0) ? Math.max(0.125, Math.min(16, v)) : 1; }
+    function _hqTintOf(v) {
+        if (v == null || v === '') return null;
+        var c; try { c = new THREE.Color(v); } catch (e) { return null; }
+        return (c.r > 0.998 && c.g > 0.998 && c.b > 0.998) ? null : c;
+    }
+    function _hqSheetLook(info) {
+        var T = (info && info.room && info.room.terrain) || {};
+        return { cliffZoom: _hqZoomOf(T.cliffZoom), floor: _hqTintOf(T.floorTint), cliff: _hqTintOf(T.cliffTint), path: _hqTintOf(T.pathTint) };
+    }
+    /* a flight's sides: its own `side` sheet (else the kind's `own`, else the room's cliff) with its own zoom / tint, else the room's
+       cliff look when it wears the room's cliff sheet */
+    function _hqSideLook(f, own, info) {
+        var L = _hqSheetLook(info), mine = !!(f.side || own);
+        return { key: f.side || own || info.cliff, zoom: (f.sideZoom != null) ? _hqZoomOf(f.sideZoom) : (mine ? 1 : L.cliffZoom), tint: (f.sideTint != null) ? _hqTintOf(f.sideTint) : (mine ? null : L.cliff) };
+    }
     function _hqTerrainMat(info, S) {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
@@ -51059,9 +51083,12 @@ const ThreeRenderer = (function () {
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
+        var look = _hqSheetLook(info);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
+            sh.uniforms.uCliffK = { value: 1 / look.cliffZoom };   // THE SHEET LOOKS: the cliff sheet's zoom, the three tints
+            sh.uniforms.uFloorT = { value: look.floor || new THREE.Color(1, 1, 1) }; sh.uniforms.uCliffT = { value: look.cliff || new THREE.Color(1, 1, 1) }; sh.uniforms.uPathT = { value: look.path || new THREE.Color(1, 1, 1) };
             var pv = '', pf = '', pb = '';
             if (palTex.length) {
                 palTex.forEach(function (t, i) { sh.uniforms['tPaint' + i] = { value: t }; pf += 'uniform sampler2D tPaint' + i + ';\n'; });
@@ -51078,16 +51105,18 @@ const ThreeRenderer = (function () {
             /* THE TRIPLANAR CLIFF (2026-09-19): the field's UVs are planar (x, z), so every steep face — a plateau's flank, a
                city block's mass, a plan's rock wall — stretched its sheet the whole way down. Each sheet is sampled on the
                three world axes and blended by the face's normal (sharpened ^4): a flat face reads exactly as before, a
-               vertical one tiles DOWN by height at the same tile size, a slope blends the two. World metres / one tile. */
+               vertical one tiles DOWN by height at the same tile size, a slope blends the two. World metres / one tile.
+               2026-10-24 (mondo: one square = one 128 sprite, keep the pixel density): the cliff sheet was drawn at 0.85 (a sheet per
+               2.06 m) and the path at 1.15 (per 1.52 m); both are one sheet per square now, the cliff's own zoom (uCliffK) aside. */
             sh.vertexShader = 'attribute vec2 aBlend;\nattribute float aAO;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
                 .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = texture2D( tCliff, triUy * uCliffK ) * triW.y + texture2D( tCliff, triUx * uCliffK ) * triW.x + texture2D( tCliff, triUz * uCliffK ) * triW.z;\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = texture2D( tPath, triUy ) * triW.y + texture2D( tPath, triUx ) * triW.x + texture2D( tPath, triUz ) * triW.z;\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
         m.customProgramCacheKey = function () { return 'hqTerrainTri' + (palTex.length ? 'P' + palTex.length : ''); };
-        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex });   // WEBGPU W1: the same sheets for the node renderer
+        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -51656,7 +51685,7 @@ const ThreeRenderer = (function () {
     function _spEmit(A, fnW, fnWN, role, texK, U, B) {
         var nT = A.M.length, own = A.own && A.UV && A.UV.length;
         for (var t = 0; t < nT; t++) {
-            var rk = role(A, t), bk = B[rk] || (B[rk] = { P: [], N: [], UV: [] }), o = t * 9, q;
+            var rk = role(A, t), bk = B[rk] || (B[rk] = { P: [], N: [], UV: [] }), o = t * 9, q, tK = (typeof texK === 'function') ? texK(rk) : texK;   // texK: per metre, or per bucket (a stair side's zoom)
             var fx = A.N[o] + A.N[o + 3] + A.N[o + 6], fy = A.N[o + 1] + A.N[o + 4] + A.N[o + 7], fz = A.N[o + 2] + A.N[o + 5] + A.N[o + 8];
             var ax = Math.abs(fx), ay = Math.abs(fy), az = Math.abs(fz);
             for (q = 0; q < 3; q++) {
@@ -51664,9 +51693,9 @@ const ThreeRenderer = (function () {
                 var nl = Math.hypot(nn[0], nn[1], nn[2]) || 1;
                 bk.P.push(w[0] * U, w[1] * U + 0.3, w[2] * U); bk.N.push(nn[0] / nl, nn[1] / nl, nn[2] / nl);
                 if (own) bk.UV.push(A.UV[t * 6 + q * 2], A.UV[t * 6 + q * 2 + 1]);
-                else if (ay >= ax && ay >= az) bk.UV.push(lx * texK, lz * texK);
-                else if (ax >= az) bk.UV.push(lz * texK, ly * texK);
-                else bk.UV.push(lx * texK, ly * texK);
+                else if (ay >= ax && ay >= az) bk.UV.push(lx * tK, lz * tK);
+                else if (ax >= az) bk.UV.push(lz * tK, ly * tK);
+                else bk.UV.push(lx * tK, ly * tK);
             }
         }
     }
@@ -51696,7 +51725,7 @@ const ThreeRenderer = (function () {
     function _spBuildFlights(room, info, G, TM, U) {
         if (!_spOn()) return;
         var SP = _spPack(), K = (typeof HQ_STAIR_KINDS !== 'undefined') ? HQ_STAIR_KINDS : {}, S = room.shell || {};
-        var texK = U / TM * HZ_TEX_DENSITY, byFlight = {};
+        var texK = U / TM, byFlight = {};   // one sheet per square (2026-10-24: was × HZ_TEX_DENSITY, the far horizon's one per two)
         (info.builts || []).forEach(function (f) {
             if (Math.abs(f.h1 - f.h0) < 0.12) return;
             var kind = (typeof hqStairKind === 'function') ? hqStairKind(f, room) : null, kd = kind ? K[kind] : null, fk = kd ? kd.flight : null;
@@ -51707,22 +51736,23 @@ const ThreeRenderer = (function () {
             var spec = SP.flights[fk];
             _spSoup('flight', fk, function (soup) {
                 if (!soup) return;
-                var B = {}, mats = {};
+                var B = {}, mats = {}, kOf = {};   // kOf: a side bucket's own texK (its zoom)
                 byFlight[fk].forEach(function (it) {
                     var f = it.f, kd = it.kd, up = f.h1 >= f.h0;
                     var x0 = up ? f.x0 : f.x1, z0 = up ? f.z0 : f.z1, x1 = up ? f.x1 : f.x0, z1 = up ? f.z1 : f.z0, lo = Math.min(f.h0, f.h1), R = Math.abs(f.h1 - f.h0);
                     var L = Math.hypot(x1 - x0, z1 - z0) || 1, ux = (x1 - x0) / L, uz = (z1 - z0) / L;
                     var fit = _spFlightFit(soup, spec, f.w, R, L), fr = _spFrameFns(x0, z0, ux, uz, lo, fit);
-                    var tread = f.key || kd.tread || info.path, side = f.side || kd.side || info.cliff, tint = (S.floorColor != null && !f.key) ? S.floorColor : null;
-                    var tk = 'tread|' + tread + '|' + tint, sk = 'side|' + side;
-                    if (!mats[tk]) mats[tk] = _spSheet(tread, spec.look, tint);
-                    if (!mats[sk]) mats[sk] = _spSheet(side, spec.look);
+                    var tread = f.key || kd.tread || info.path, sdl = _hqSideLook(f, kd.side, info), side = sdl.key, tint = (S.floorColor != null && !f.key) ? S.floorColor : null;
+                    var pathT = (!f.key && !kd.tread) ? _hqSheetLook(info).path : null;   // THE SHEET LOOKS: a tread in the room's path sheet wears its tint
+                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '');
+                    if (!mats[tk]) { mats[tk] = _spSheet(tread, spec.look, tint); if (pathT) mats[tk].color.multiply(pathT); }
+                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
                     _spEmit(fit.A, fr.P, fr.N, function (A, t) {
                         var mi = A.M[t], mat = A.mats[mi];
                         if (_spIsGlass(mat)) return 'glass';
                         if (A.own) { var ok = 'own|' + mi; if (!mats[ok]) mats[ok] = mat; return ok; }
                         return (A.N[t * 9 + 1] + A.N[t * 9 + 4] + A.N[t * 9 + 7] > 1.8) ? tk : sk;
-                    }, texK, U, B);
+                    }, function (rk) { return kOf[rk] || texK; }, U, B);
                 });
                 _spFlush(B, G, function (rk) { return rk === 'glass' ? (mats.glass || (mats.glass = _spGlass())) : mats[rk]; }, '_ew_hqStairs');
                 _objectsDirty = true;
@@ -51735,7 +51765,7 @@ const ThreeRenderer = (function () {
         if (!_spOn()) return;
         var byModel = {};
         list.forEach(function (r) { if (r.model && SP.railings[r.model]) (byModel[r.model] || (byModel[r.model] = [])).push(r); });
-        var texK = U / TM * HZ_TEX_DENSITY;
+        var texK = U / TM;   // one sheet per square (2026-10-24)
         Object.keys(byModel).forEach(function (mk) {
             var spec = SP.railings[mk];
             _spSoup('rail', mk, function (soup) {
@@ -51777,7 +51807,7 @@ const ThreeRenderer = (function () {
     function _spBuildEscalators(room, info, G, TM, U) {
         if (!_spOn()) return;
         var fs = (room.terrain.features || []).filter(function (f) { return f.k === 'ramp' && f.escalator && Math.abs(f.h1 - f.h0) > 0.3; }); if (!fs.length) return;
-        var texK = U / TM * HZ_TEX_DENSITY, SP = _spPack(), byKey = {};
+        var texK = U / TM, SP = _spPack(), byKey = {};   // one sheet per square (2026-10-24)
         fs.forEach(function (f) { var k = (f.model && SP.escalators[f.model]) ? f.model : 'escalator'; (byKey[k] || (byKey[k] = [])).push(f); });
         Object.keys(byKey).forEach(function (ek) {
             var E = SP.escalators[ek];
@@ -51809,9 +51839,12 @@ const ThreeRenderer = (function () {
        `runner: { w, color }` lies up the slope; `cheek` parapets slope with it. The field under it is cut away (_hqBuildTerrain's index
        loop); the walker walks the field's own smooth slope, which is the same surface. */
     /* one sloped prism in the flight's local frame (x across, centred on xOff; z along the run, 0 → L, flat on to Lt; y up, metres):
-       the top from h0 + lift to h1 + lift, the bottom at base. Group 0 = the top, group 1 = the flanks, the ends and the bottom. */
-    function _hqSlopePrismGeo(w, xOff, L, Lt, h0, h1, lift, base, U, ts) {
-        var hx = w / 2, P = [], N = [], UV = [], top = [], rest = [], k = U / ts * HZ_TEX_DENSITY;
+       the top from h0 + lift to h1 + lift, the bottom at base. Group 0 = the top, group 1 = the flanks, the ends and the bottom.
+       `ts` = one sheet's size in world units (2026-10-24: one sheet per ts, the board's density — it was × HZ_TEX_DENSITY, the far
+       horizon's one per TWO squares, so every flight's flanks wore their sheet twice the size of the ground beside them); `tsSide` = the
+       flanks' own (a stair's sideZoom), else ts */
+    function _hqSlopePrismGeo(w, xOff, L, Lt, h0, h1, lift, base, U, ts, tsSide) {
+        var hx = w / 2, P = [], N = [], UV = [], top = [], rest = [], k = U / ts, kS = U / (tsSide || ts);
         var ht = function (z) { return h0 + (h1 - h0) * Math.min(1, z / L) + lift; };
         var zs = (Lt > L + 1e-3) ? [0, L, Lt] : [0, L];
         var V = function (x, y, z) { return [(x + xOff) * U, y * U + 0.3, z * U]; };
@@ -51838,8 +51871,8 @@ const ThreeRenderer = (function () {
         tri(rest, V(hx, base, 0), V(-hx, yF, 0), V(hx, yF, 0), [hx, base], [-hx, yF], [hx, yF]);
         tri(rest, V(-hx, base, zH), V(hx, base, zH), V(hx, yH, zH), [-hx, base], [hx, base], [hx, yH]);
         tri(rest, V(-hx, base, zH), V(hx, yH, zH), V(-hx, yH, zH), [-hx, base], [hx, yH], [-hx, yH]);
-        var push = function (list) { list.forEach(function (t) { for (var q = 0; q < 3; q++) { P.push(t[q][0], t[q][1], t[q][2]); UV.push(t[q + 3][0] * k, t[q + 3][1] * k); } }); };
-        push(top); push(rest);
+        var push = function (list, kk) { list.forEach(function (t) { for (var q = 0; q < 3; q++) { P.push(t[q][0], t[q][1], t[q][2]); UV.push(t[q + 3][0] * kk, t[q + 3][1] * kk); } }); };
+        push(top, k); push(rest, kS);
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
@@ -51851,8 +51884,11 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell || {};
         (info.builts || []).forEach(function (f) {
             var treadMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.key || info.path) || null, color: 0xffffff, shininess: 16 }); treadMat.emissive = new THREE.Color(0x141414);
-            var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.side || info.cliff) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
+            var sdl = _hqSideLook(f, null, info), pathT = f.key ? null : _hqSheetLook(info).path;   // THE SHEET LOOKS: the flanks' sheet, zoom, tint; the path's tint on a keyless tread
+            var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(sdl.key) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
+            if (sdl.tint) sideMat.color.multiply(sdl.tint);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
+            if (pathT) treadMat.color.multiply(pathT);
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
             var lo0 = Math.min(f.h0, f.h1), gLo = (info.flightLo && info.flightLo.has(f)) ? Math.max(lo0 - 4, info.flightLo.get(f)) : Infinity;   // THE JOINED FLIGHTS (2026-10-06): down to the lowest ground under it (≤ 4 m)
             var base = Math.min(lo0, gLo, (typeof f.foot === 'number') ? f.foot : Infinity) - 0.05, Lt = L + 0.25;   // `foot` (the editor's MODULAR STAIRS on an upper floor): the mass drawn down to it
@@ -51863,7 +51899,7 @@ const ThreeRenderer = (function () {
             var packed = _spOn() && Math.abs(f.h1 - f.h0) >= 0.12 && (function () { var kd = (typeof HQ_STAIR_KINDS !== 'undefined' && typeof hqStairKind === 'function') ? HQ_STAIR_KINDS[hqStairKind(f, room)] : null; return !!(kd && kd.flight && HQ_STAIR_PACK.flights[kd.flight]); })();
             var SRr = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : { riser: 0.18, minSteps: 2, maxSteps: 90 }, Rr = Math.abs(f.h1 - f.h0);
             var sink = packed ? -(0.5 * Rr / Math.max(SRr.minSteps, Math.min(SRr.maxSteps, Math.round(Rr / SRr.riser))) + 0.02) : 0;
-            var slope = new THREE.Mesh(_hqSlopePrismGeo(f.w * (packed ? 0.96 : 1), 0, L, Lt, f.h0, f.h1, sink, base, U, TM), [packed ? sideMat : treadMat, sideMat]);
+            var slope = new THREE.Mesh(_hqSlopePrismGeo(f.w * (packed ? 0.96 : 1), 0, L, Lt, f.h0, f.h1, sink, base, U, packed ? TM * sdl.zoom : TM, TM * sdl.zoom), [packed ? sideMat : treadMat, sideMat]);
             slope.castShadow = true; slope.receiveShadow = true; slope.renderOrder = 1; F.add(slope);
             var runW = (f.runner && f.runner.w && !packed) ? Math.min(f.w - 0.2, f.runner.w) : 0;
             if (runW > 0) {
@@ -51885,7 +51921,7 @@ const ThreeRenderer = (function () {
                     _hq.blockers.push({ obj: bo, y: base, top: null, rad: midS, rect: { hw: ct / 2, hd: midS }, yaw: yaw, cheek: true });
                 });
                 if (CK.head) {
-                    var htop = Math.max(f.h0, f.h1) + chh, hg = new THREE.BoxGeometry((f.w + 2 * ct) * U, (htop - base) * U, ct * U); _hzBoxUV(hg, (f.w + 2 * ct) * U, (htop - base) * U, ct * U, TM);
+                    var htop = Math.max(f.h0, f.h1) + chh, hg = new THREE.BoxGeometry((f.w + 2 * ct) * U, (htop - base) * U, ct * U); _nrBoxUV(hg, (f.w + 2 * ct) * U, (htop - base) * U, ct * U, TM);
                     var hm = new THREE.Mesh(hg, cheekMat), hs = Lt + ct / 2; hm.position.set((f.x0 + ux * hs) * U, (base + (htop - base) / 2) * U + 0.3, (f.z0 + uz * hs) * U); hm.rotation.y = yaw; hm.castShadow = true; G.add(hm);
                     var hb = new THREE.Object3D(); hb.position.set((f.x0 + ux * hs) * U, base * U, (f.z0 + uz * hs) * U); G.add(hb);
                     _hq.blockers.push({ obj: hb, y: base, top: null, rad: f.w / 2 + ct, rect: { hw: f.w / 2 + ct, hd: ct / 2 }, yaw: yaw, cheek: true });
@@ -51911,7 +51947,7 @@ const ThreeRenderer = (function () {
                 var top = f.h - 0.12, round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, thick = Math.max(0.6, Math.min(1.6, 0.18 * Math.max(rx, rz) + 0.4));
                 var body;
                 if (round) { body = new THREE.Mesh(new THREE.CylinderGeometry((rx + 0.15) * U, (rx * 0.7) * U, thick * U, 24), puffMat); if (rz !== rx) body.scale.z = rz / rx; }
-                else { body = new THREE.Mesh(new THREE.BoxGeometry((f.w + 0.3) * U, thick * U, (f.d + 0.3) * U), puffMat); _hzBoxUV(body.geometry, (f.w + 0.3) * U, thick * U, (f.d + 0.3) * U, TM); }
+                else { body = new THREE.Mesh(new THREE.BoxGeometry((f.w + 0.3) * U, thick * U, (f.d + 0.3) * U), puffMat); _nrBoxUV(body.geometry, (f.w + 0.3) * U, thick * U, (f.d + 0.3) * U, TM); }
                 body.position.set(f.x * U, (top - thick / 2) * U + 0.3, f.z * U); body.rotation.y = -((f.rot || 0) * Math.PI / 180); body.renderOrder = 1; G.add(body);
                 /* the puffs: a ring under the rim, a few under the belly */
                 var per = Math.max(6, Math.round((rx + rz) * 2.2)), rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), sn = Math.sin(rot);
@@ -51929,7 +51965,7 @@ const ThreeRenderer = (function () {
                 var tread = 2 * res, n = Math.max(1, Math.round(L / tread)), rise = (f.h1 - f.h0) / n, depth = L / n, tDepth = depth * 0.9, thick2 = 0.42;
                 for (var k2 = 0; k2 < n; k2++) {
                     var sMid = (k2 + 0.5) * depth, topY = f.h0 + rise * k2, cx = f.x0 + ux2 * sMid, cz = f.z0 + uz2 * sMid;
-                    var slab = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, thick2 * U, tDepth * U), treadMat); _hzBoxUV(slab.geometry, f.w * U, thick2 * U, tDepth * U, TM);
+                    var slab = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, thick2 * U, tDepth * U), treadMat); _nrBoxUV(slab.geometry, f.w * U, thick2 * U, tDepth * U, TM);
                     slab.position.set(cx * U, (topY - thick2 / 2) * U + 0.34, cz * U); slab.rotation.y = yaw; slab.renderOrder = 1; slab.castShadow = true; G.add(slab);
                     var pr2 = 0.45 + rng() * 0.25 + f.w * 0.12;
                     var pm = puff(cx + (rng() - 0.5) * f.w * 0.3, topY - thick2 - pr2 * 0.45, cz + (rng() - 0.5) * depth * 0.2, pr2, 0.55, f.w / (2 * pr2) + 0.3, 1.0); pm.rotation.y = yaw;
@@ -52114,8 +52150,8 @@ const ThreeRenderer = (function () {
             var flush = function () {
                 if (!run || run.b - run.a < res * 0.9) { run = null; return; }
                 var L = run.b - run.a, mid = (run.a + run.b) / 2, inset = bwT / 2, g;
-                if (horiz) { g = new THREE.BoxGeometry(L * U, bwH * U, bwT * U); _hzBoxUV(g, L * U, bwH * U, bwT * U, TM); place(g, mid * U, Y(run.h + bwH / 2), (sd[0] === 'n' ? zMin + inset : zMax - inset) * U); }
-                else { g = new THREE.BoxGeometry(bwT * U, bwH * U, L * U); _hzBoxUV(g, bwT * U, bwH * U, L * U, TM); place(g, (sd[0] === 'w' ? xMin + inset : xMax - inset) * U, Y(run.h + bwH / 2), mid * U); }
+                if (horiz) { g = new THREE.BoxGeometry(L * U, bwH * U, bwT * U); _nrBoxUV(g, L * U, bwH * U, bwT * U, TM); place(g, mid * U, Y(run.h + bwH / 2), (sd[0] === 'n' ? zMin + inset : zMax - inset) * U); }
+                else { g = new THREE.BoxGeometry(bwT * U, bwH * U, L * U); _nrBoxUV(g, bwT * U, bwH * U, L * U, TM); place(g, (sd[0] === 'w' ? xMin + inset : xMax - inset) * U, Y(run.h + bwH / 2), mid * U); }
                 trim.push(g); run = null;
             };
             for (var k = 0; k < cnt; k++) {
@@ -52185,8 +52221,8 @@ const ThreeRenderer = (function () {
         });
         /* ── THE BRIDGE on the nose: a deckhouse, its windows lit fore and on both sides, the mast over it ── */
         var xB = xMax + 7, topB = yc(xB) + hh(xB), wB = Math.min(hw(xB) * 0.55, 9), hB = 3.4, lB = 9;
-        var bg = new THREE.BoxGeometry(lB * U, hB * U, wB * 2 * U); _hzBoxUV(bg, lB * U, hB * U, wB * 2 * U, TM); skin.push(place(bg, xB * U, Y(topB - 0.4 + hB / 2), zc * U));
-        var cg = new THREE.BoxGeometry(lB * 0.55 * U, 1.4 * U, wB * 1.2 * U); _hzBoxUV(cg, lB * 0.55 * U, 1.4 * U, wB * 1.2 * U, TM); skin.push(place(cg, (xB - 0.8) * U, Y(topB - 0.4 + hB + 0.7), zc * U));
+        var bg = new THREE.BoxGeometry(lB * U, hB * U, wB * 2 * U); _nrBoxUV(bg, lB * U, hB * U, wB * 2 * U, TM); skin.push(place(bg, xB * U, Y(topB - 0.4 + hB / 2), zc * U));
+        var cg = new THREE.BoxGeometry(lB * 0.55 * U, 1.4 * U, wB * 1.2 * U); _nrBoxUV(cg, lB * 0.55 * U, 1.4 * U, wB * 1.2 * U, TM); skin.push(place(cg, (xB - 0.8) * U, Y(topB - 0.4 + hB + 0.7), zc * U));
         var winMat = glowMat(0xbfe8ff, 0.8, 0.08, 0.6), wins = [], wy = Y(topB - 0.4 + hB * 0.62);
         wins.push(place(new THREE.PlaneGeometry(wB * 1.7 * U, 0.8 * U), (xB + lB / 2 + 0.06) * U, wy, zc * U, 0, Math.PI / 2, 0));
         [-1, 1].forEach(function (sd) { wins.push(place(new THREE.PlaneGeometry(lB * 0.8 * U, 0.7 * U), xB * U, wy, (zc + sd * (wB + 0.06)) * U)); });
@@ -52352,7 +52388,7 @@ const ThreeRenderer = (function () {
             });
         });
         /* THE RUDDER on the sternpost */
-        var rg = new THREE.BoxGeometry(0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U); _hzBoxUV(rg, 0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U, TM);
+        var rg = new THREE.BoxGeometry(0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U); _nrBoxUV(rg, 0.9 * U, (wl + 1.5 - yKeel) * U, 0.35 * U, TM);
         dark.push(place(rg, (sternX - 0.45) * U, Y((wl + 1.5 + yKeel) / 2), zc * U));
         /* THE GUN DECK's ports down each side (between the wales): a dark lid frame each, some lit from inside */
         var portLit = [], portY = -1.45;
@@ -52371,7 +52407,7 @@ const ThreeRenderer = (function () {
             dark.push(place(new THREE.BoxGeometry(0.1 * U, 1.5 * U, 0.12 * U), (sternX - 0.06) * U, Y(galY + 0.75), (zc + wz - 0.72) * U));
         }
         dark.push(place(new THREE.BoxGeometry(0.12 * U, 0.14 * U, tW * 1.6 * U), (sternX - 0.06) * U, Y(galY + 1.48), zc * U));
-        var balc = new THREE.BoxGeometry(1.1 * U, 0.16 * U, tW * 1.7 * U); _hzBoxUV(balc, 1.1 * U, 0.16 * U, tW * 1.7 * U, TM); deck.push(place(balc, (sternX - 0.55) * U, Y(galY - 0.08), zc * U));
+        var balc = new THREE.BoxGeometry(1.1 * U, 0.16 * U, tW * 1.7 * U); _nrBoxUV(balc, 1.1 * U, 0.16 * U, tW * 1.7 * U, TM); deck.push(place(balc, (sternX - 0.55) * U, Y(galY - 0.08), zc * U));
         trim.push(place(new THREE.BoxGeometry(0.08 * U, 0.08 * U, tW * 1.7 * U), (sternX - 1.05) * U, Y(galY + 0.95), zc * U));
         for (var bz = -tW * 0.85; bz <= tW * 0.85 + 0.01; bz += tW * 0.85 / 7) trim.push(place(new THREE.BoxGeometry(0.07 * U, 0.95 * U, 0.07 * U), (sternX - 1.05) * U, Y(galY + 0.47), (zc + bz) * U));
         var nameTex = _hzTextTex('fd_name_hull', ['THE FLYING DUTCHMAN'], { w: 512, h: 64, bg: '#2a1a10', border: '#d8a860', color: '#f4e4c8', pad: 0.12 });
@@ -52384,7 +52420,7 @@ const ThreeRenderer = (function () {
         for (k0 = 0; k0 < bp.count; k0++) { var bxx = bp.getX(k0), bzz = bp.getY(k0); bp.setXYZ(k0, bxx * U, Y(beakY), (zc + bzz) * U); buv.setXY(k0, bxx * U / TM, bzz * U / TM); }
         bg2.computeVertexNormals(); deck.push(bg2);
         var fcTop = rimH(xMax);
-        if (fcTop > beakY + 0.1) { var bh = new THREE.BoxGeometry(0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U); _hzBoxUV(bh, 0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U, TM); hullSkin.push(place(bh, (xMax + 0.07) * U, Y((fcTop + beakY) / 2), zc * U)); }
+        if (fcTop > beakY + 0.1) { var bh = new THREE.BoxGeometry(0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U); _nrBoxUV(bh, 0.14 * U, (fcTop - beakY) * U, hb0 * 2 * U, TM); hullSkin.push(place(bh, (xMax + 0.07) * U, Y((fcTop + beakY) / 2), zc * U)); }
         /* ── THE MAIN HATCH (the plaza: the nexus) and the castles' hatches: a grating of slats over the dark hold ── */
         var grate = function (cx, cz, w) {
             var y = hAt(cx, cz) + 0.03, n = Math.round(w / 0.42);
@@ -52475,7 +52511,7 @@ const ThreeRenderer = (function () {
             var chY = rimH(mx) - 0.35;
             [-1, 1].forEach(function (sd) {
                 var cz = zc + sd * chOut, chG = new THREE.BoxGeometry(5.0 * s * U, 0.14 * U, 0.6 * U);
-                _hzBoxUV(chG, 5.0 * s * U, 0.14 * U, 0.6 * U, TM); mDark.push(place(chG, (mx - 0.9) * U, Y(chY), (cz - sd * 0.1) * U));
+                _nrBoxUV(chG, 5.0 * s * U, 0.14 * U, 0.6 * U, TM); mDark.push(place(chG, (mx - 0.9) * U, Y(chY), (cz - sd * 0.1) * U));
                 var tops = [], feet = [];
                 for (var q3 = 0; q3 < 6; q3++) { var dx = -2.6 * s + q3 * 0.85 * s; tops.push(V3(mx + dx * 0.12, yT - 0.2, mz + sd * r0 * 1.2)); feet.push(V3(mx + dx, chY + 0.1, cz)); L2(tops[q3], feet[q3]); }
                 for (var ry = chY + 0.7; ry < yT - 0.6; ry += 0.6) {
@@ -52743,6 +52779,7 @@ const ThreeRenderer = (function () {
         var topMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.path) || null, color: 0xffffff, shininess: 8 }); topMat.emissive = new THREE.Color(0x101010);
         var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xdcdcdc, shininess: 4 }); sideMat.emissive = new THREE.Color(0x0e0e0e);
         if (S.wallColor != null) sideMat.color.multiply(new THREE.Color(S.wallColor));
+        var bLook = _hqSheetLook(info); if (bLook.path) topMat.color.multiply(bLook.path); if (bLook.cliff) sideMat.color.multiply(bLook.cliff);   // THE SHEET LOOKS: the room's path / cliff tints
         var steel = new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 });
         var kerbMat = new THREE.MeshPhongMaterial({ color: 0xb9b6ae, shininess: 10 });
         _hq.blockers = _hq.blockers || [];
@@ -52757,7 +52794,7 @@ const ThreeRenderer = (function () {
                no girder, no kerb lips, no rails, no piers; its seats are drawn with the rows' (_hqBuildTierSeats) */
             if (b.plain || b.tier) {
                 var bw = b.drawW || b.w;   // a tier bridge is read a little wider than it is drawn (the rows' slabs overlap, so no walker falls between them)
-                var pg = new THREE.BoxGeometry(bw * U, b.thick * U, L * U); _hzBoxUV(pg, bw * U, b.thick * U, L * U, TM);
+                var pg = new THREE.BoxGeometry(bw * U, b.thick * U, L * U); _nrBoxUV(pg, bw * U, b.thick * U, L * U, TM);
                 var pm = new THREE.Mesh(pg, b.key ? keyMat : sideMat); pm.position.set(cx * U, (b.y - b.thick / 2) * U + 0.3, cz * U); pm.rotation.y = yaw;
                 pm.castShadow = true; pm.receiveShadow = true; pm.renderOrder = 1; G.add(pm);
                 /* THE PRESS BOX: a `glaze` block wears a lit window band down both long sides */
@@ -52771,7 +52808,7 @@ const ThreeRenderer = (function () {
                triangles under it z-fought from any distance. The deck rides 2.5 cm over its height (the feet read the data rule). */
             var g = new THREE.Group(); g.position.set(cx * U, (b.y + 0.025) * U, cz * U); g.rotation.y = yaw;
             /* the slab: six faces, the top in its own sheet */
-            var slabGeo = new THREE.BoxGeometry(b.w * U, b.thick * U, L * U); _hzBoxUV(slabGeo, b.w * U, b.thick * U, L * U, TM);
+            var slabGeo = new THREE.BoxGeometry(b.w * U, b.thick * U, L * U); _nrBoxUV(slabGeo, b.w * U, b.thick * U, L * U, TM);
             var mats = [sideMat, sideMat, keyMat, sideMat, sideMat, sideMat];   // +x −x +y −y +z −z
             var slab = new THREE.Mesh(slabGeo, mats); slab.position.y = -b.thick / 2 * U; slab.receiveShadow = true; slab.renderOrder = 1; g.add(slab);
             /* a deeper girder under the middle (an overpass reads as a box girder from below) */
@@ -52923,7 +52960,7 @@ const ThreeRenderer = (function () {
             bySheet[k].forEach(function (w) {
                 if (w.quad && w.quad.length === 4) { _hqPrismInto(w.quad, w.base, w.slopeTop || w.top, U, TM / U, P, Nn, UVs, I); return; }   // a mitred row (hqStandBowl): no overlap at the joints, no z-fight on the treads
                 var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
-                var g = new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U); _hzBoxUV(g, w.t * U, hM * U, (L + w.t) * U, TM);
+                var g = new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U); _nrBoxUV(g, w.t * U, hM * U, (L + w.t) * U, TM);
                 e.set(0, yaw, 0); m4.makeRotationFromEuler(e); m4.setPosition((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); g.applyMatrix4(m4);
                 var base = P.length / 3, pa = g.attributes.position.array, na = g.attributes.normal.array, ua = g.attributes.uv.array, ia = g.index.array;
                 for (var i = 0; i < pa.length; i++) { P.push(pa[i]); Nn.push(na[i]); }
@@ -53445,7 +53482,7 @@ const ThreeRenderer = (function () {
             var L = Math.hypot(dk.x1 - dk.x0, dk.z1 - dk.z0), yaw = Math.atan2(dk.x1 - dk.x0, dk.z1 - dk.z0);
             /* THE FLICKER (2026-09-22): a deck is WRITTEN INTO the field, so the slab's top z-fought the field's own triangles — it rides 2.5 cm over its height (the bridge layer's rule; the feet read the data rule) */
             var g = new THREE.Group(); g.position.set((dk.x0 + dk.x1) / 2 * U, (dk.y + 0.025) * U + 0.3, (dk.z0 + dk.z1) / 2 * U); g.rotation.y = yaw;
-            var slab = new THREE.Mesh(new THREE.BoxGeometry(dk.w * U, 0.18 * U, (L + 0.3) * U), plankMat); _hzBoxUV(slab.geometry, dk.w * U, 0.18 * U, (L + 0.3) * U, TM); slab.position.y = -0.09 * U; g.add(slab);
+            var slab = new THREE.Mesh(new THREE.BoxGeometry(dk.w * U, 0.18 * U, (L + 0.3) * U), plankMat); _nrBoxUV(slab.geometry, dk.w * U, 0.18 * U, (L + 0.3) * U, TM); slab.position.y = -0.09 * U; g.add(slab);
             if (dk.rails !== false) [-1, 1].forEach(function (sg) {
                 var bar = _hqBox(0.05, 0.05, L, ropeMat); bar.position.set(sg * (dk.w / 2 - 0.08) * U, 0.95 * U, 0); g.add(bar);
                 for (var pk = 0; pk <= 1; pk++) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 1.0 * U, 6), ropeMat); post.position.set(sg * (dk.w / 2 - 0.08) * U, 0.5 * U, (pk ? 1 : -1) * (L / 2 - 0.1) * U); g.add(post); }
@@ -53468,6 +53505,7 @@ const ThreeRenderer = (function () {
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
         if (S.wallColor != null) wallMat.color.multiply(new THREE.Color(S.wallColor));
+        var sheetLook = _hqSheetLook(info); if (sheetLook.cliff) wallMat.color.multiply(sheetLook.cliff);   // THE SHEET LOOKS: a keyless wall wears the room's cliff, its tint and zoom too
         /* THE HALLS (D.U.M.B., 2026-09-17): a keyed wall material is made ONCE per sheet — a floor plan's traced walls (info.planWalls) are hundreds of rows in one sheet */
         var keyedMats = {};
         var keyedMat = function (key) {
@@ -53484,8 +53522,9 @@ const ThreeRenderer = (function () {
             else if (w.keyIn && w.keyIn !== w.key) wm = [wm, keyedMat(w.keyIn), wm, wm, wm, wm];
             var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), wm);
             if (w.glass) { m.renderOrder = 3; m.castShadow = false; }
-            /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat */
-            _hzBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, w.yard ? TM * ((typeof HZ_TEX_DENSITY !== 'undefined') ? HZ_TEX_DENSITY : 0.5) : TM);
+            /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat
+               (2026-10-24: every wall row now, the yard's rule was the only one at the board's density) */
+            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (wm === wallMat) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
@@ -53888,9 +53927,9 @@ const ThreeRenderer = (function () {
                 } else {
                     /* a LOW lot: a one-storey box from the ground, the parapet and the plant (an AC unit, a tank) on its roof */
                     var grp = new THREE.Group(); grp.position.set(lot.x * U, base, lot.z * U); grp.rotation.y = yaw; G.add(grp);
-                    var bx = new THREE.Mesh(new THREE.BoxGeometry((lot.w - 0.1) * U, lot.top * U, (lot.d - 0.1) * U), lowMat); _hzBoxUV(bx.geometry, (lot.w - 0.1) * U, lot.top * U, (lot.d - 0.1) * U, TM);
+                    var bx = new THREE.Mesh(new THREE.BoxGeometry((lot.w - 0.1) * U, lot.top * U, (lot.d - 0.1) * U), lowMat); _nrBoxUV(bx.geometry, (lot.w - 0.1) * U, lot.top * U, (lot.d - 0.1) * U, TM);
                     bx.position.y = lot.top / 2 * U; bx.castShadow = true; grp.add(bx);
-                    var par = new THREE.Mesh(new THREE.BoxGeometry(lot.w * U, 0.5 * U, lot.d * U), lowMat); _hzBoxUV(par.geometry, lot.w * U, 0.5 * U, lot.d * U, TM);
+                    var par = new THREE.Mesh(new THREE.BoxGeometry(lot.w * U, 0.5 * U, lot.d * U), lowMat); _nrBoxUV(par.geometry, lot.w * U, 0.5 * U, lot.d * U, TM);
                     par.position.y = (lot.top + 0.25) * U; grp.add(par);
                     var ac = new THREE.Mesh(new THREE.BoxGeometry(1.2 * U, 0.8 * U, 1.0 * U), acMat); ac.position.set(((lot.seed % 3) - 1) * 1.2 * U, (lot.top + 0.9) * U, (((lot.seed >> 2) % 3) - 1) * 1.1 * U); grp.add(ac);
                     if (lot.seed % 2) { var tank = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * U, 0.55 * U, 1.1 * U, 12), acMat); tank.position.set(-lot.w * 0.3 * U, (lot.top + 1.05) * U, lot.d * 0.25 * U); grp.add(tank); }
@@ -53939,7 +53978,7 @@ const ThreeRenderer = (function () {
                     var dr = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.1 * U), glassMat); dr.position.set((L * 0.22) * U, 1.05 * U, 0.035 * U); g.add(dr);
                     var drF = new THREE.Mesh(new THREE.BoxGeometry(1.1 * U, 0.06 * U, 0.06 * U), frameMat); drF.position.set((L * 0.22) * U, 2.13 * U, 0.05 * U); g.add(drF);
                     var sh = null;
-                    if (fi % 3 === 1) { sh = new THREE.Mesh(new THREE.BoxGeometry((L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U), shutterMat); _hzBoxUV(sh.geometry, (L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U, TM); sh.position.set(0, (signY - signH / 2) * (1 - 0.275) * U, 0.07 * U); g.add(sh); }
+                    if (fi % 3 === 1) { sh = new THREE.Mesh(new THREE.BoxGeometry((L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U), shutterMat); _nrBoxUV(sh.geometry, (L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U, TM); sh.position.set(0, (signY - signH / 2) * (1 - 0.275) * U, 0.07 * U); g.add(sh); }
                     var lamp = _hzGlowSprite(1.6 * U, 0xfff0d0, 0.16, 0.0, 0.0, 0.0); lamp.position.set(0, (signY + 0.1) * U, 0.5 * U); g.add(lamp);
                     if (kitOn) {
                         var su = _hzMiscKit('storefront_unit', { metres: L - 0.3, fit: 'span', yaw: 0, lift: 0.14, cast: false, low: 'skip', foot: 0, onDone: function (grp, scale, bb) { /* +Z is the measured shop front; recess its full depth behind the facade. */ grp.position.z = 0.06 * U - (bb.max.z - bb.min.z) * scale / 2; grp.scale.y = (signY - signH / 2) * U / ((bb.max.y - bb.min.y) * scale); glass.visible = false; mull.visible = false; dr.visible = false; drF.visible = false; if (sh) sh.visible = false; } });
@@ -59013,7 +59052,7 @@ const ThreeRenderer = (function () {
     function _hqPassageWay(U, ctx) {
         var g = new THREE.Group(), door = ctx.door || {}, room = ctx.room || {}, S = room.shell || {}, T = room.terrain || {};
         var P = _hqPassageSpec(door) || { w: 3, h: 3, len: 10, deep: 6.5, rise: 0, look: 'rock', fade: 'black', inside: false, land: 3.5, roof: true };
-        var W = P.w, H = P.h, L = P.len, look = P.look, SEG = 0.5, TS = 1.25 * U, T0 = 0.9;
+        var W = P.w, H = P.h, L = P.len, look = P.look, SEG = 0.5, TS = 1.75 * U, T0 = 0.9;   // TS: one sheet per battle square (2026-10-24: was 1.25 at the horizon's half density, a sheet per 2.5 m)
         var fy = function (d) { return P.rise * Math.max(0, d); };   // the floor `d` m in (metres over the mouth's)
         var tex = function (k) { return (k && typeof _hzTex === 'function') ? (_hzTex(k) || null) : null; };
         var lift = (+P.lift > 0) ? Math.min(1, +P.lift) : 0;   // THE METRO PACK's STAIR: `lift` = a self-lit floor under its sheets (an unlit tube reads black from the room)
@@ -59022,7 +59061,7 @@ const ThreeRenderer = (function () {
         if (!lift && P.roof && P.fade !== 'white') lift = (look === 'hall') ? 0.22 : 0.14;
         var mat = function (k, color, emis) { var m = new THREE.MeshPhongMaterial({ map: tex(k), color: (color != null) ? color : 0xffffff, shininess: 6 }); m.emissive = new THREE.Color((emis != null) ? emis : 0x0c0c0c); if (lift && m.map) { m.emissive.setScalar(lift); m.emissiveMap = m.map; } return m; };
         var box = function (w, h, d, m, x, y, z, ry, rx) {
-            var geo = new THREE.BoxGeometry(w * U, h * U, d * U); if (typeof _hzBoxUV === 'function') _hzBoxUV(geo, w * U, h * U, d * U, TS);
+            var geo = new THREE.BoxGeometry(w * U, h * U, d * U); _nrBoxUV(geo, w * U, h * U, d * U, TS);
             var me = new THREE.Mesh(geo, m); me.position.set(x * U, y * U, z * U); if (ry) me.rotation.y = ry; if (rx) me.rotation.x = rx;
             me.castShadow = true; me.receiveShadow = true; g.add(me); return me;
         };
@@ -59069,7 +59108,7 @@ const ThreeRenderer = (function () {
                 box(W + 0.2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.015, -(L / 2 + 0.2));
             } else {
                 /* a trail / a cloud road: a strip on the ground the outer ground was carved to (_hqBuildOuterGround) */
-                var SL = L + 5, sg = new THREE.PlaneGeometry(W * U, SL * U); scaleUV(sg, W / 2.5, SL / 2.5);
+                var SL = L + 5, sg = new THREE.PlaneGeometry(W * U, SL * U); scaleUV(sg, W / 1.75, SL / 1.75);
                 var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip);
             }
         }
