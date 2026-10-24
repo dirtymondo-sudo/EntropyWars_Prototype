@@ -393,6 +393,7 @@ const FINISHERS = {
     /* THE 2026-09-21 BATCH — designed here, played as the TYPED EXECUTION (sig null) until each gets its
        director + signature + stage script (FINISHER_PLAN rule 0; the BUILT table in finishers.test.js). */
     'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
+    'time cop': { id: 'fin_time_cop', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },   // 2026-10-24 — the Police Officer's own finisher
     'jellyfish':      { id: 'fin_jellyfish', name: 'The Bloom', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'A THOUSAND OF US', desc: 'The sea comes up over the tile and the water fills with jellyfish, more and more of them, until the victim is a shape inside a glowing bloom. When the water drains there is nothing on the tile but a print.' },
     'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: 'ascensionDay', built: true, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
     'popstar':        { id: 'fin_popstar', name: 'Farewell Tour', glyph: '🎤', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'ONE NIGHT ONLY', desc: 'A stadium stands up round the victim — the stands, the floodlights, a crowd of glow sticks — and the spotlight finds them. She sings one last song from her stage. The pyro goes on the final note, the fireworks over the stands, and when the lights come back up there is a SOLD OUT poster where they stood.' },
@@ -2911,6 +2912,12 @@ const RACE_PROFILES = {
         label: 'Police Officer',
         types: ['human']
     },
+    /* THE TIME COP (mondo 2026-10-24): a sheriff, a cop or a future cop depending on the ability it casts —
+       sprites.js RACE_MODELS_3D['time cop'] + battle.js UNIT_ANIM_OVERRIDES['time cop']. */
+    'time cop': {
+        label: 'Time Cop',
+        types: ['human']
+    },
     'jellyfish': {
         label: 'Jellyfish',
         types: ['anomaly', 'alien']
@@ -3457,6 +3464,7 @@ const RACE_PASSIVES = {
     'nun':           ['devout'],
     'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
     'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
+    'time cop':      ['pointBlank'],          // 2026-10-24 — the Police Officer's
     'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
     'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
     'popstar':       ['showMustGoOn'],        // 2026-09-22 — nobody cuts her mic
@@ -3558,7 +3566,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3571,6 +3579,7 @@ const RACE_KITS = {
     'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
     'marksman': { range: 4, inspect: 2 }, 'gangster': { range: 2 }, 'door agent': { range: 2, inspect: 2 },
     'police officer': { range: 2 }, 'dreameater': { range: 2 }, 'halfdemon': { range: 2, inspect: 2 },
+    'time cop': { range: 2 },   // 2026-10-24 — the Police Officer's reach
     'vampire': { range: 2, inspect: 2 }, 'cosmic wraith': { range: 4, inspect: 2 }, 'chosen one': { range: 2, inspect: 2 },
     'ghoul': { range: 2, inspect: 2 }, 'barbarella': { range: 2, inspect: 2 }, 'quarterback': { range: 4, inspect: 2 },
     'robinhood': { range: 4, inspect: 2 }, 'symbiote': { range: 2, inspect: 2 },
@@ -3632,6 +3641,7 @@ const RACE_CLASS = {
     'nun': 'healer',
     'door agent': 'assassin',
     'police officer': 'ranged',
+    'time cop': 'ranged',   // 2026-10-24
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
@@ -4018,6 +4028,7 @@ const RACE_BASE_STATS = {
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
     'police officer':     { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // race editor 2026-10-17: DEF 140, SPD 112, MDEF 58
+    'time cop':           { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // 2026-10-24 — the Police Officer's stats
     'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  36 },
     'cult leader':        { hp: 861, mp: 220, atk:  47, def:  110, mdef:  152, int:  143, vision: 3, crt: 26, spd:  65 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
@@ -4123,6 +4134,7 @@ const RACE_PHYSIQUE = {
     'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
     'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
+    'time cop':            { h: 1.80, w: 86 },   // 2026-10-24 — the Police Officer's
     'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
     'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
     'popstar':             { h: 1.68, w: 54 },   // 2026-09-22 — in the heels
@@ -8048,6 +8060,7 @@ const RACE_ABILITIES = {
        is three-renderer.js _buildSummon3D 'cultist'). Plain kinds only —
        nothing new in the engine; the VFX are family aliases in
        three-vfx-effects.js's 2026-09-21 block. */
+    'time cop': [],   // 2026-10-24 — no rows of its own: the kit is RACE_TREE + its families
     'police officer': [
         /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
         { id: 'pzFreezePolice', name: 'Freeze! Police!', tier: 2, families: ['policeprocedure'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -19429,6 +19442,9 @@ const RACE_TREE = {
     'nun':           [['raceAbsolution', 'raceBlessing'], ['racePurify', 'raceCultSermon'], 'racePrayer', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'door agent':    ['raceSwingDoor', ['raceBreakingEntering', 'raceAirMail', 'raceDoorDash'], 'raceUnderdogSpirit', 'raceDropIn'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
+    /* THE TIME COP (2026-10-24): two picks a rung, one per look — Police Training = the cop, Cowboy Skills /
+       Marksmanship = the sheriff, Robotic Weapons / Hidden Technology = the future cop. */
+    'time cop': [['racePoliceNightstick', 'raceTaserBolt'], ['racePoliceTaser', 'raceQuickDraw'], ['raceSlapLeather', 'raceClassifiedWeapon'], ['raceHighNoon', 'railgun']],
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceCultTithe', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
@@ -23386,6 +23402,7 @@ const RACE_FAMILIES = {
     overlord: ['overlord', 'infernalcourt', 'dirtyfighting', 'demonicabilities'],
     pirate: ['piracy', 'swordsmanship', 'ropework'],
     'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
+    'time cop': ['policetraining', 'cowboyskills', 'marksmanship', 'cyberpunkweapons', 'advancedtechnology'],   // 2026-10-24 — one family set per look
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -23968,6 +23985,7 @@ const CAMPAIGN_RACE_PRICES = {
   'door agent': 300,
   // 2026-09-21 — the three new rigs
   'police officer': 250,
+  'time cop': 250,   // 2026-10-24
   'jellyfish': 350,
   'cult leader': 400,
   // 2026-09-22
@@ -46048,7 +46066,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
-                             site_prebuilt_fairy_forest_glade: { fog: 0xa6c4b0, tint: 0x9fc4e8, clouds: 0.3 },   // THE FAIRY FOREST (2026-10-24)
+                             site_prebuilt_fairy_forest_glade: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },   // THE FAIRY FOREST (2026-10-24): the clearing's day look
                              /* the Grove (old redwoods, a deeper green) and the ranch's corn fields (a dry, dusty haze) by day */
                              site_prebuilt_bohemian_grove_grove: { fog: 0x8aa088, tint: 0x9cbede, clouds: 0.3 },
                              site_prebuilt_skinwalker_fields: { fog: 0xc4bc9e, tint: 0xa6c4e4, clouds: 0.25 },
@@ -58205,7 +58223,6 @@ const HQ_ARENA_RULES = {
        ENCLOSURE E in THE TELL (mondo 2026-10-05: its own board, never the ley lines) */
     within: {
         prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 43.75, z: 0, r: 3 },
-        prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_glade', x: 0, z: 0, r: 2 },   // THE FAIRY FOREST (2026-10-24): its own room, the board in the middle
     },
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
@@ -58231,7 +58248,7 @@ const HQ_ARENA_RULES = {
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":27,"oz":18,"base":"marble_light","open":1,"keys":["marble_light","water","ice_1"],"cells":"011111110101010101010101010101010101010102010125010101010101010302010101010101010101010102012525020202020202020101012525010101010101010102012525010101010101010201012525010101010101020101012525010101010102010101012525010101010201010101012525010101010101010101012525010101010101010101012525"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121112111110404211111212121211121110411211121112121211121111111211121111121211121111111211111211121211121111111112111112121212121212111111121111111212111111121111111212121211111112111111111111111212121111111111111111111212111111111111111111111212111111111111111111104212111"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":20,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"020101010111010101010101020101010111010101212121110101010111010121212121110101010111012222222222110101111111120202020202111111110111112121212121111101343401110121212121110101343401110101012121110101010101110101010101110101010101111111111111110101010101010101010101110101010101010101340101"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":14,"oz":14,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","rocks_5"],"cells":"010111111101011111110101010111111101011111110101011111111101011111241101011124111101011111111101241111111101011111111111111111111101011111112411112411111101011111111111111111111101011111111124011111111101011111241101011124111101011111111101010111111101011111110101010111111101011111110101"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"021111110101010101020202110101110101010101010202010101011101012401011101010101011101240124011101010101011111010111111111010101011111111101240111111111010111010124010101010101010111010101010131010101010111010124313131240201013131313131313124242431310111010101012424313131310101010124242424"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon","moon_3","moon_2"],"cells":"010101010101010101010101020101010101010101010101141401010101010101010101020101010101010101010101010101010101010202020202010101010101010202020202010101010101010202020202010101010101010202020202010101010101010101141401210101010101010101141401212101010101010101010101212121210101010101010101"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":15,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101140101010101010101010101140101010101010101141401010101010101010101141401010101010101010101141401010101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010114141414141414140101010114141414"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151503010101010101010101010202010101010101010115151503151501011515151515151515151501011515151515151515010101010101010101010101010101010101010101010101"},
@@ -58272,7 +58289,7 @@ const HQ_ARENA_RULES = {
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":16,"base":"marble_light","open":1,"keys":["water","marble_light"],"cells":"010111111111111111010101111111111111010101111111111111111111111111111211111111111111131211111111111111111211121212121212111111111111111111111211111111111111121111"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121110404211111212121110411211121112121111111211121111121111111211111211121111111112111112121212111111121111111111121111111212121112111111111111111"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":16,"base":"cave_floor","open":1,"keys":["cave_floor","cave_wall","crystal"],"cells":"010101010101010101141401212101010101140101212101010101210101212101012121212121212121212101012121212121011414212121212101011414010101212101010101010101212101010101"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":15,"oz":15,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","rocks_5"],"cells":"011111110101111111111111110101111124112411110101111111111111110101111111111111110101111111241111110101111111111111110101111111111111110101111124112411110101111111"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"011111110101010101110101110101010101010101011101012401010101011101240124010101011111010111010101011111111101111111010111010124010101010111010101010101010111010124"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":20,"oz":12,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"010101010101010101140101010101010101010101010101010101010101010101020202010101010101020202010101010101020202010101010101020202010101010101010114010101010101010114"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":15,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111"},
@@ -58310,7 +58327,7 @@ const HQ_ARENA_RULES = {
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":20,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010302010101010101010101010101010101010101010101010101010101010102010101010101010102010101010101010102010101010101010102010101010101010102010101010101010101010101010115010101010101010101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01111111110101012424010101010111111111110101012424111111111124240101110101111101012424110101111111110124011101110111111101010111011101011111010101110101110111110101010111010111111111110101011101010111"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":19,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"02020101010111010101020201010101110101011111010101011101012111110101010111012222111101011111111202021111111111011111212111111101343401110121111101013434011101011111010101010111010111110101010101111111"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":15,"oz":15,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","rocks_5"],"cells":"01111111010111111101111111110101111124111124111101011111111111111111010111111111111111110101111111242411111101011111111111111111010111111111111111110101111124111124111101011111111101111111010111111101"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"02011111010101010103021111110101010101021101011101010101010101010101110101250101010101011101250125010101010111110101111101010101111111110125111111010111010125010101010101110101010101010101011101012531"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111041111111111111111111212111111111111111112040411111111111111121211111111111111111211111111111111121211111111111111111212111111111111111112122111111111111111121221111111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101011414010101010101010114140101010101010101141401010101010101011414010101010101010101010101010101010101141414140101141414141414141401011414141414140101010101010101010101010101010101010101"},
@@ -58364,7 +58381,6 @@ const HQ_ARENA_RULES = {
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":33,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010114141401010101010101011414140101010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":61,"oz":32,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011515151501010101010101151515150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"01111111111111111101011111111111111111111101241111111111111111110111111111111124111111111111111111111111121224241111111111111212121111112411111111241211111112241111111124111111121212111111111111242412121111111111111111111111112411111111111111"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":14,"oz":14,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","rocks_5"],"cells":"01011111110101111111010101111111010111111101011111111101011111241101112411110101111111112411111111010111111111111111111101011111112411241111110101111111111111111111010111111111011111111101011111241101112411110101111111110101111111010111111101"},
     },
     /* </ARENA PICKS 11> */
 };
@@ -58554,16 +58570,13 @@ function hqArenaCaps(S) {
     return { obstacles: Math.round(HQ_ARENA_RULES.obstacles * k), wallMax: Math.round(HQ_ARENA_RULES.wallMax * k) };
 }
 /* ══ THE FAIRY FOREST (2026-10-24, mondo: "why does fairy forest look like shit? Is it still an old voxel map? Please fix") ══
-   The Fairy Forest's battle map, rebuilt as a room from the editor's own pieces (it was the 20 × 20 voxel board for the FULL SITE,
-   and its arenas were cut from THE WOODS' clearing, the board hard under the treeline). The voxel board's own plan on the 1.75 m
-   squares, 70 × 70 m (40 squares a side), the battle in the middle: THE FAIRY RING round the nexus (a pale ring on the grass), the
-   middle path north to south, the two winding fae paths either side (the voxel's sine lanes), the wood between them as cover — retro
-   pack trees and the misc folder's Meshy mushrooms planted as trees (HQ_TREE_KINDS fae_cap / fae_cap_2: solid squares) — and a mossy
-   knoll each side one battle level up; everything 180° symmetric. Round the board the low ring (ferns, glowing mushrooms and
-   toadstools, stumps, logs, the spring, the brook) and then the wood to the treeline. The lights are the mushrooms' own (catalogue
-   `fae_mushroom` / `fae_toadstool`: the same R2 mushroom GLBs with a glow and a point light), a square or two off the board. Every Fairy Forest board is cut here: the FULL SITE 20 × 20
-   6v6 (HQ_ARENA_RULES.own.prebuilt_fairy_forest — the voxel board stays as "Fairy Forest · voxel") and the 12 / 11 / 10 / 9 arenas
-   (HQ_ARENA_RULES.within). Not linked into the world (the Woods keep their seven ways); `site` with no `part`, so it is no Woods part.
+   The FULL SITE's 20 × 20 (it was the voxel board), as a room from the editor's own pieces. RESTYLED the same day (mondo, shown the
+   before/after shots: the old ARENA — the cut of THE WOODS' clearing — "looks way better"): the clearing's own look, the woods
+   shell's night and fog, tall trees on the board, dense groves to the treeline, no mushrooms. The 12 / 10 / 9 arenas are the
+   clearing's cut again (HQ_ARENA_RULES.picks*); a 20 × 20 does not fit in the clearing, so the full site is cut here
+   (HQ_ARENA_RULES.own.prebuilt_fairy_forest — the voxel board stays as "Fairy Forest · voxel"). 70 × 70 m, the board in the middle:
+   a pale ring round the nexus, the middle path and the two winding paths (the voxel's lanes), the trees between them as cover, a
+   knoll each side one battle level up; everything 180° symmetric. Not linked into the world; `site` with no `part`.
    Board squares (bx, by) of the 20 × 20 → x = −16.625 + 1.75 bx, z = −16.625 + 1.75 by (P2 on row 0, north; P1 on row 19). */
 DOOR_HQ.catalogue.fae_mushroom = { file: 'Meshy_AI_mushroom_0727200342_texture.glb', base: 'misc', h: 3.5, foot: 0.8, block: true, palette: true,
                                    glow: { y: 2.3, size: 2.6, color: 0x9fffd8 }, light: { color: 0x8ff0d0, intensity: 0.85, dist: 9, y: 2.2 } };   // the giant cap, glowing from under its gills
@@ -58571,18 +58584,14 @@ DOOR_HQ.catalogue.fae_toadstool = { file: 'Meshy_AI_mushroom_realistic_072720204
                                     glow: { y: 1.1, size: 1.8, color: 0xd0b0ff }, light: { color: 0xc0a0ff, intensity: 0.7, dist: 8, y: 1.0 } };   // the squat cap, violet
 DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
     label: 'THE FAIRY FOREST',
-    sub: 'THE FAIRY RING · THE FAE PATHS · THE MUSHROOMS',
+    sub: 'THE RING · THE PATHS · THE KNOLLS',
     kind: 'box', site: 'prebuilt_fairy_forest',
-    shell: hqWoodsShell({ w: 70, d: 70, plate: { x: 0, z: -34.6, y: 4.4 }, floorColor: 0x6f8a52,
-                          forest: { depth: 12, spacing: 2.6, rows: 2.4, start: 1.4, kinds: ['tree', 'tree_2', 'tree_3', 'tree_4', 'pine'], canopy: { to: 62 } },
-                          mood: { light: 0xb0d8ff, ambient: 0.46 },
-                          sky: { night: 1, tint: 0x14281e, tintAmt: 0.45, stars: 1.1, nebula: 0.6, fog: { color: 0x1e3a2c, amount: 0.7, top: 0.1, band: 0.6, density: 0.012 },
-                                 scenery: 'dark', density: 0.4, landmarks: HQ_WOODS_LANDMARKS.map(l => Object.assign({}, l)) } }),
+    shell: hqWoodsShell({ w: 70, d: 70, plate: { x: 0, z: -34.6, y: 4.4 }, forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4, canopy: { to: 62 } } }),   // the clearing's shell: the woods' own night, fog and treeline
     terrain: {
         floor: 'grass_2', cliff: 'rocks_5', path: 'dirt_2', stairs: 'forest',
         noise: { amp: 0.12, scale: 8 }, crag: false,
         marks: [
-            { k: 'ring', x: 0, z: 0, r: 3.6, w: 0.42, color: 0xc8ffd8, a: 0.5 },   // THE FAIRY RING round the nexus (the voxel's mushroom ring)
+            { k: 'ring', x: 0, z: 0, r: 3.6, w: 0.42, color: 0xc8ffd8, a: 0.35 },   // the pale ring round the nexus (the voxel's mushroom ring)
         ],
         features: [
             /* the ground past the board: low swells in the corners, the spring and the stream in the low ring */
@@ -58597,28 +58606,29 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
             { k: 'path', pts: [[0, -36], [0, 36]], w: 3.5 },
             { k: 'path', pts: [[-13.1, -36], [-13.1, -21.9], [-11.15, -17.5], [-8.29, -13.13], [-8.46, -8.75], [-11.42, -4.38], [-13.12, 0], [-11.23, 4.38], [-8.34, 8.75], [-8.4, 13.13], [-11.34, 17.5], [-13.12, 21.88], [-13.1, 36]], w: 3.0 },
             { k: 'path', pts: [[13.1, 36], [13.1, 21.9], [11.15, 17.5], [8.29, 13.13], [8.46, 8.75], [11.42, 4.38], [13.12, 0], [11.23, -4.38], [8.34, -8.75], [8.4, -13.13], [11.34, -17.5], [13.12, -21.88], [13.1, -36]], w: 3.0 },
-            /* THE WOOD ON THE BOARD: one square each, kept low so the fight is seen (the pair in each row is the 180° twin) */
-            { k: 'tree', x: -6.125, z: -13.125, kind: 'tree_2', h: 5.0, r: 0.55 }, { k: 'tree', x: 6.125, z: 13.125, kind: 'tree_2', h: 5.0, r: 0.55 },
-            { k: 'tree', x: -13.125, z: -14.875, kind: 'pine_2', h: 3.6, r: 0.55 }, { k: 'tree', x: 13.125, z: 14.875, kind: 'pine_2', h: 3.6, r: 0.55 },
-            { k: 'tree', x: -6.125, z: 6.125, kind: 'tree_3', h: 5.0, r: 0.55 }, { k: 'tree', x: 6.125, z: -6.125, kind: 'tree_3', h: 5.0, r: 0.55 },
-            { k: 'tree', x: -14.875, z: -2.625, kind: 'tree', h: 5.5, r: 0.55 }, { k: 'tree', x: 14.875, z: 2.625, kind: 'tree', h: 5.5, r: 0.55 },
-            { k: 'tree', x: -11.375, z: 11.375, kind: 'pine', h: 4.5, r: 0.55 }, { k: 'tree', x: 11.375, z: -11.375, kind: 'pine', h: 4.5, r: 0.55 },
-            { k: 'tree', x: -7.875, z: 14.875, kind: 'pine_2', h: 3.6, r: 0.55 }, { k: 'tree', x: 7.875, z: -14.875, kind: 'pine_2', h: 3.6, r: 0.55 },
-            { k: 'tree', x: -16.625, z: -9.625, kind: 'tree_5', h: 5.0, r: 0.55 }, { k: 'tree', x: 16.625, z: 9.625, kind: 'tree_5', h: 5.0, r: 0.55 },
-            /* THE FAE CAPS (the voxel's mushrooms): the giant ones and a toadstool, planted like trees so each is a solid square */
-            { k: 'tree', x: -6.125, z: -4.375, kind: 'fae_cap', h: 2.6, r: 0.55 }, { k: 'tree', x: 6.125, z: 4.375, kind: 'fae_cap', h: 2.6, r: 0.55 },
-            { k: 'tree', x: -7.875, z: 0.875, kind: 'fae_cap', h: 2.3, r: 0.55 }, { k: 'tree', x: 7.875, z: -0.875, kind: 'fae_cap', h: 2.3, r: 0.55 },
-            { k: 'tree', x: -16.625, z: 9.625, kind: 'fae_cap', h: 2.6, r: 0.55 }, { k: 'tree', x: 16.625, z: -9.625, kind: 'fae_cap', h: 2.6, r: 0.55 },
-            { k: 'tree', x: -9.625, z: -2.625, kind: 'fae_cap_2', h: 1.4, r: 0.5 }, { k: 'tree', x: 9.625, z: 2.625, kind: 'fae_cap_2', h: 1.4, r: 0.5 },
-            /* THE WOOD PAST THE BOARD: the outer ring of the room, to the treeline */
-            { k: 'grove', x: -28, z: -28, r: 6.5, n: 12, kinds: ['tree', 'tree_2', 'tree_3', 'tree_4', 'pine'], seed: 31 },
-            { k: 'grove', x: 0, z: -29, r: 6.0, n: 10, kinds: ['tree', 'tree_2', 'tree_4', 'pine'], seed: 32 },
-            { k: 'grove', x: 28, z: -28, r: 6.5, n: 12, kinds: ['tree', 'tree_2', 'tree_3', 'tree_4', 'pine'], seed: 33 },
-            { k: 'grove', x: 29, z: 0, r: 6.0, n: 10, kinds: ['tree', 'tree_3', 'tree_4', 'tree_5'], seed: 34 },
-            { k: 'grove', x: 28, z: 28, r: 6.5, n: 12, kinds: ['tree', 'tree_2', 'tree_3', 'tree_4', 'pine'], seed: 35 },
-            { k: 'grove', x: 0, z: 29, r: 6.0, n: 10, kinds: ['tree', 'tree_2', 'tree_4', 'pine'], seed: 36 },
-            { k: 'grove', x: -28, z: 28, r: 6.5, n: 12, kinds: ['tree', 'tree_2', 'tree_3', 'tree_4', 'pine'], seed: 37 },
-            { k: 'grove', x: -29, z: 0, r: 6.0, n: 10, kinds: ['tree', 'tree_3', 'tree_4', 'tree_5'], seed: 38 },
+            /* THE WOOD ON THE BOARD: one square each, the clearing's tall trees (6–7.5 m) (the pair in each row is the 180° twin) */
+            { k: 'tree', x: -6.125, z: -13.125, kind: 'tree_2', h: 7.0, r: 0.55 }, { k: 'tree', x: 6.125, z: 13.125, kind: 'tree_2', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -13.125, z: -14.875, kind: 'tree_3', h: 6.5, r: 0.55 }, { k: 'tree', x: 13.125, z: 14.875, kind: 'tree_3', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -6.125, z: 6.125, kind: 'tree_3', h: 6.5, r: 0.55 }, { k: 'tree', x: 6.125, z: -6.125, kind: 'tree_3', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -14.875, z: -2.625, kind: 'tree', h: 7.0, r: 0.55 }, { k: 'tree', x: 14.875, z: 2.625, kind: 'tree', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -11.375, z: 11.375, kind: 'tree_2', h: 7.0, r: 0.55 }, { k: 'tree', x: 11.375, z: -11.375, kind: 'tree_2', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -7.875, z: 14.875, kind: 'tree', h: 6.5, r: 0.55 }, { k: 'tree', x: 7.875, z: -14.875, kind: 'tree', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -16.625, z: -9.625, kind: 'tree_5', h: 6.0, r: 0.55 }, { k: 'tree', x: 16.625, z: 9.625, kind: 'tree_5', h: 6.0, r: 0.55 },
+            { k: 'tree', x: -6.125, z: -4.375, kind: 'tree_4', h: 7.5, r: 0.55 }, { k: 'tree', x: 6.125, z: 4.375, kind: 'tree_4', h: 7.5, r: 0.55 },
+            { k: 'tree', x: -7.875, z: 0.875, kind: 'tree_2', h: 6.5, r: 0.55 }, { k: 'tree', x: 7.875, z: -0.875, kind: 'tree_2', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -16.625, z: 9.625, kind: 'tree_3', h: 7.0, r: 0.55 }, { k: 'tree', x: 16.625, z: -9.625, kind: 'tree_3', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -9.625, z: -2.625, kind: 'tree', h: 6.0, r: 0.5 }, { k: 'tree', x: 9.625, z: 2.625, kind: 'tree', h: 6.0, r: 0.5 },
+            /* THE WOOD PAST THE BOARD: dense to the treeline (the clearing's grove kinds) */
+            { k: 'grove', x: -27, z: -27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 31 },
+            { k: 'grove', x: 0, z: -28, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 32 },
+            { k: 'grove', x: 27, z: -27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 33 },
+            { k: 'grove', x: 28, z: 0, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 34 },
+            { k: 'grove', x: 27, z: 27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 35 },
+            { k: 'grove', x: 0, z: 28, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 36 },
+            { k: 'grove', x: -27, z: 27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 37 },
+            { k: 'grove', x: -28, z: 0, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 38 },
+            { k: 'grove', x: -20.5, z: -11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 39 }, { k: 'grove', x: 20.5, z: 11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 40 },
+            { k: 'grove', x: 11, z: -20.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 51 }, { k: 'grove', x: -11, z: 20.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 52 },
             /* the low ring round the board: ferns, stumps */
             { k: 'scatter', key: 'fern', x: -20.5, z: 0, r: 2.2, n: 6, seed: 41 }, { k: 'scatter', key: 'fern', x: 20.5, z: 0, r: 2.2, n: 6, seed: 42 },
             { k: 'scatter', key: 'fern', x: 0, z: -20.5, r: 2.2, n: 5, seed: 43 }, { k: 'scatter', key: 'fern', x: 0, z: 20.5, r: 2.2, n: 5, seed: 44 },
@@ -58630,20 +58640,7 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
     doors: [],
     counters: [],
     props: [
-        /* THE LIGHTS first (a fight lights the room's first ten): the glowing giant caps a square off the board's sides, then the
-           glowing toadstools round it (a prop on a terrain board is scenery a unit would stand in, so none stands on the 20 × 20) */
-        { key: 'fae_mushroom', x: -19.6, z: 1.6, face: 30 }, { key: 'fae_mushroom', x: 19.6, z: -1.6, face: 210 },
-        { key: 'fae_mushroom', x: -9.5, z: -19.6, face: 120 }, { key: 'fae_mushroom', x: 9.5, z: 19.6, face: 300 },
-        { key: 'fae_toadstool', x: -19.4, z: -12.5, face: 40 }, { key: 'fae_toadstool', x: 19.4, z: 12.5, face: 220 },
-        { key: 'fae_toadstool', x: 6.5, z: -19.4, face: 160 }, { key: 'fae_toadstool', x: -6.5, z: 19.4, face: 340 },
-        { key: 'fae_toadstool', x: -22.5, z: 21.5, face: 90 }, { key: 'fae_toadstool', x: 22.5, z: -21.5, face: 270 },
-        /* the low ring: more caps and toadstools under the trees, stumps, the fallen logs */
-        { key: 'mushroom', x: -24, z: -19, face: 10 }, { key: 'mushroom', x: 24, z: 19, face: 190 },
-        { key: 'mushroom', x: 19.5, z: -25, face: 300 }, { key: 'mushroom', x: -19.5, z: 25, face: 120 },
-        { key: 'mushroom2', x: -20.4, z: -6.5, face: 15 }, { key: 'mushroom2', x: 20.4, z: 6.5, face: 195 },
-        { key: 'mushroom2', x: -13, z: -20.6, face: 80 }, { key: 'mushroom2', x: 13, z: 20.6, face: 260 },
-        { key: 'mushroom2', x: 21.2, z: 16.5, face: 140 }, { key: 'mushroom2', x: -21.2, z: -16.5, face: 320 },
-        { key: 'mushroom2', x: -26.6, z: 20.8, face: 60 },
+        /* the low ring: stumps and fallen logs (no mushrooms, no lamps — the clearing has none; the woods' night fill lights it) */
         { key: 'stump', x: -20.2, z: 9.0, face: 20 }, { key: 'stump', x: 20.2, z: -9.0, face: 200 },
         { key: 'fallen_log', x: -21, z: 27.5, face: 70 }, { key: 'fallen_log', x: 21.5, z: -4.5, face: 90 }, { key: 'fallen_log', x: -21.5, z: 4.5, face: 90 },
     ],

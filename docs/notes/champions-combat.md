@@ -2483,3 +2483,18 @@ attack and defense stages show."
   badge serial hashes the chip keys so a repaint of the ground under a still unit refreshes it). Client-side read of
   synced state: the guest sees the same chips.
 - Screens: /mnt/project-files/sand-move/.
+
+## THE TIME COP (2026-10-24, mondo)
+mondo: "a unit that was a time cop, and depending on their ability they use they are either a sheriff, a cop, or a
+future cop (the ones in cyberpunk city)". Proposal shown first, then he picked "look stays until next ability".
+- Race `time cop` (male only). Stats, reach 2, ranged class, physique, Point Blank passive, price and the Book 'Em
+  finisher are all the Police Officer's. RACE_ABILITIES is empty; no signature family (flagged to mondo).
+  Not placed in story / capture (no biomes, no POINT_OF_ENTRY); lore falls back to "File pending".
+- Families: policetraining, cowboyskills, marksmanship, cyberpunkweapons, advancedtechnology. RACE_TREE, two picks
+  a rung: Nightstick / Taser Bolt, Taser / Long Rifle, Slap Leather / Classified Weapon, High Noon / Railgun.
+- Looks: sprites.js TIME_COP_LOOKS {cop, sheriff, future} are the _spriteOverride keys; RACE_MODELS_3D['time cop'].male
+  is the black police officer rig with overrideForms → itself, the western_sherrif rig, the cyberpunk_police_officer rig.
+  battle.js UNIT_ANIM_OVERRIDES['time cop'].castSprite picks by the cast spell's family (policetraining = cop,
+  cowboyskills/marksmanship = sheriff, cyberpunkweapons/advancedtechnology = future); any other family returns null
+  and leaves the look. No revertAfter, so the look persists through moves and basic attacks. Online: rides the synced
+  `_spriteOverride` like the honda civic; decoys copy it.
