@@ -6338,7 +6338,7 @@ const SPELL_LIBRARY = [
         { id: 'raceOpenVein', name: 'Open Vein', tier: 1, families: ['blood'], cost: 25, apCost: 1, spellType: 'unholy',
           element: 'blood', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 3,
           statusEffects: [{ id: 'bleed', duration: 2 }],
-          desc: 'One clean cut. WEAK physical damage to a Single Enemy, and it Bleeds for 2 rounds (20 damage at the end of each round, armor ignored).' },
+          desc: 'One clean cut. WEAK physical damage to a Single Enemy, and it Bleeds for 2 rounds (20 damage at the end of each round, DEF ignored).' },
         { id: 'raceArterialSpray', name: 'Arterial Spray', tier: 3, families: ['blood'], cost: 75, apCost: 1, spellType: 'unholy',
           element: 'blood', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125, range: 4, aoeRadius: 1,
           bonusVsStatus: { status: 'bleed', mult: 1.5 },
@@ -6776,7 +6776,7 @@ const RACE_ABILITIES = {
           families: ['cosmic'],
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statStageBoost: { def: -1 },
-          desc: 'The orb goes supernova. Deals MEDIUM magic damage to All Enemies around the caster (AOE) and sears their armor, lowering DEF by 1 stage.' },
+          desc: 'The orb goes supernova. Deals MEDIUM magic damage to All Enemies around the caster (AOE) and sears them, lowering DEF by 1 stage.' },
     ],
     /* 2026-07-23 ghost rework: Human+Anomaly Psychic now. Spectral Passage
        stopped being a spell and became the race PASSIVE (ghosts phase through
@@ -6809,7 +6809,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 5, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'haunted', duration: 3 }],
-          desc: 'A restless spirit sinks into a Single Enemy. Applies Haunted: 28 magic damage at the end of every round for 3 rounds, armor ignored. Boo hits Haunted targets harder.' },
+          desc: 'A restless spirit sinks into a Single Enemy. Applies Haunted: 28 magic damage at the end of every round for 3 rounds, M DEF ignored. Boo hits Haunted targets harder.' },
         { id: 'raceColdSpot', upgradesBlock: ['upWiden'], tier: 2, families: ['haunted'], element: 'ice', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -10630,10 +10630,10 @@ const TRAINING_PASSIVES = [
       desc: '+10 SPD, and basic-attack crits hit ×2.0 instead of ×1.8. Always ready to draw first.' },
     { id: 'passiveWarpath', tier: 2, name: 'Warpath', icon: '⚔️',
       hooks: { basicDmgMult: 1.15, counterChance: 0.30, armor: 5 },
-      desc: 'Basic attacks hit +15% harder, +5 armor, and counterattacks at a hardened 30% rate. Born for the front line.' },
+      desc: 'Basic attacks hit +15% harder, every hit taken is 5 smaller, and counterattacks at a hardened 30% rate. Born for the front line.' },
     { id: 'passiveBulwark', tier: 1, name: 'Bulwark', icon: '🛡️',
       hooks: { damageSoak: 8, counterChance: 0.30, armor: 5 },
-      desc: 'Reduces incoming damage by 8, +5 armor, and counterattacks at a 30% rate.' },
+      desc: 'Reduces incoming damage by 8, then 5 more off every hit, and counterattacks at a 30% rate.' },
     { id: 'passiveArcaneSurge', tier: 1, name: 'Arcane Surge', icon: '✴️',
       hooks: { spellPower: 8 },
       desc: '+8 spell damage on every cast.' },
@@ -10709,7 +10709,7 @@ const FAMILY_PASSIVES = [
       desc: 'Invisible enemies within 2 tiles are revealed at the end of every round. +1 VISION.' },
     { id: 'passiveUnweathered', tier: 1, families: ['livingstone'], name: 'Unweathered', icon: '🪨',
       hooks: { immuneStatus: ['burn'], armor: 5 },
-      desc: 'Never Burned, and +5 armor.' },
+      desc: 'Never Burned, and every hit taken is 5 smaller.' },
     { id: 'passiveDeepAdapted', tier: 1, families: ['deepsea'], name: 'Deep Adapted', icon: '🐟',
       hooks: { terrainBonus: { water: { defStages: 1, spdStages: 1 }, deep_water: { defStages: 1, spdStages: 1 } } },
       desc: '+1 DEF and +1 SPD stage while standing in water.' },
@@ -10730,7 +10730,7 @@ const FAMILY_PASSIVES = [
       desc: 'Basic attacks reach 1 tile further. +1 VISION.' },
     { id: 'passiveBallisticVest', tier: 1, families: ['policetraining'], name: 'Ballistic Vest', icon: '🦺',
       hooks: { armor: 5, healOnceBelowPct: { pct: 30, healPct: 25 } },
-      desc: '+5 armor. Once per life, dropping under 30% HP heals 25% of max HP.' },
+      desc: 'Every hit taken is 5 smaller. Once per life, dropping under 30% HP heals 25% of max HP.' },
     /* THE SPELL AUDIT Batch D: the PARTIAL rows, finished (Batch C shipped their live half) */
     { id: 'passiveSnowborn', tier: 1, families: ['ice'], name: 'Snowborn', icon: '❄️',
       hooks: { weatherBonus: { blizzard: { intStages: 1 } }, weatherStatusImmune: { blizzard: ['blind'] }, noIceSlide: true },
@@ -11496,7 +11496,7 @@ const COMBO_REGISTRY = {
     },
     'human|unholy': {
         name: 'Blood Pact',
-        desc: 'A blood sacrifice fuels a devastating armor-piercing strike.',
+        desc: 'A blood sacrifice fuels a devastating DEF-piercing strike.',
         dmg: 240,
         kind: 'damage',
         damageType: 'physical',
@@ -11548,7 +11548,7 @@ const COMBO_REGISTRY = {
     },
     'human|tech': {
         name: 'Tactical Strike',
-        desc: 'Technology-assisted precision — a perfectly calculated armor-piercing hit.',
+        desc: 'Technology-assisted precision — a perfectly calculated DEF-piercing hit.',
         dmg: 176,
         kind: 'damage',
         damageType: 'physical',
@@ -12936,12 +12936,12 @@ const STATUS_META = STATUS_DEFS;
 const STATUS_LIBRARY_DESCS = {
     burn:      'Takes fire damage at the end of every round. Standing in water or getting soaked puts it out.',
     poison:    'Takes poison damage at the end of every round.',
-    bleed:     'Bleeding out: takes 20 physical damage at the end of every round (armor ignored).',
+    bleed:     'Bleeding out: takes 20 physical damage at the end of every round (DEF ignored).',
     goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25.',
     wolfForm:  'The Beast is loose: +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages while the night lasts.',
     // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch.
-    haunted:   'Wracked by a restless spirit: takes 28 magic damage at the end of every round (armor ignored). Boo hits Haunted targets harder.',
-    corroded:  'Eaten by chemical fire: takes 44 damage at the end of every round (armor ignored). Counts as BOTH Burn and Poison for every payoff.',
+    haunted:   'Wracked by a restless spirit: takes 28 magic damage at the end of every round (M DEF ignored). Boo hits Haunted targets harder.',
+    corroded:  'Eaten by chemical fire: takes 44 damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff.',
     grievous:  'A wound that will not close: healing received is halved.',
     feared:    'Paralysed with fear: at its next activation the unit can only flee from what frightened it — no attacks, no spells.',
     possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',
@@ -46151,17 +46151,30 @@ function hqRoomClock(roomId) {
    transparent strip standing on the horizon (`silH` = its height as a share of the sky strip: 512 / 1024 = 45°). The dome
    (three-renderer.js THE PAINTED SKY) fades day to night with the clock / the round and keeps its sun, moon, stars, weather and
    celestial events over the painting. A row claims the outdoor rooms of its `sites` (a hub's interiors and the sewers stay
-   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true. */
+   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true.
+   THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead"): his four sets on R2 Assets/skies/1024x512/<Name> Sky/
+   (<Name>_Sky-Blue_0N / -Night_0N / -Sunset_0N -1024x512.png, N = 1..4). Each sheet is the same strip (horizon at the bottom
+   row, straight overhead at the top) but 1024 px for 90° up, so it goes `rep` = 2 times round the horizon to keep the clouds
+   as painted. A row with `set` draws that set in place of its own `<key>_day / _night` paintings (those stay on R2 and here:
+   drop `set` to bring them back); Blue = day, Night = night, Sunset = the clock's dawn and dusk (the walk only: a fight keeps
+   day and night). A room keeps one number N of the set for all three times: the row's open rooms take 1, 2, 3, 4 in the
+   building's order (a board with no room: 1). The row's silhouette stays
+   on (`noSil: true` drops it). The sets have no `_low` copy: low power draws the same sheets. */
 const HQ_PAINTED_SKIES = {
     base: 'https://cdn.entropywars.net/Assets/skies/',
     silH: 0.5,
+    sets: {
+        base: 'https://cdn.entropywars.net/Assets/skies/1024x512/',
+        rep: 2, count: 4,
+        names: { bumpy: 'Bumpy', cloudy: 'Cloudy', wispy: 'Wispy', fading: 'Fading' },
+    },
     rows: {
-        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'] },
-        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'] },
+        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'], set: 'wispy' },
+        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'], set: 'fading' },
     },
 };
 /* the painting for a room id, a `field:<room>:…` fight or a board / map id (null = the shader's own sky):
-   { key, day, night, sil, silH } — `low` picks the half-size copies */
+   { key, roomId, set, n, day, night, dusk, sil, silH, rep } — `low` picks the half-size copies (dusk null = no sunset sheet) */
 function hqPaintedSky(id, low) {
     const P = HQ_PAINTED_SKIES, s = String(id || '');
     if (!s) return null;
@@ -46182,8 +46195,19 @@ function hqPaintedSky(id, low) {
         for (const k in P.rows) if ((P.rows[k].sites || []).indexOf(site) >= 0) { key = k; break; }
     }
     if (!key) return null;
-    const x = low ? '_low.webp' : '.webp', b = P.base + key;
-    return { key, day: b + '_day' + x, night: b + '_night' + x, sil: b + '_silhouette' + x, silH: P.silH };
+    const row = P.rows[key], x = low ? '_low.webp' : '.webp', b = P.base + key;
+    const sil = row.noSil ? null : b + '_silhouette' + x, Q = P.sets || {}, name = row.set && (Q.names || {})[row.set];
+    if (name) {
+        let i = -1;   // the room's place among the row's open rooms (the building's order), so rooms side by side differ; a bare board: 1
+        if (roomId) {
+            const mine = Object.keys(rooms).filter(r => { const S = rooms[r] && rooms[r].shell; if (!S || !S.open || !S.sky) return false;
+                return (typeof S.sky.paint === 'string' && P.rows[S.sky.paint]) ? S.sky.paint === key : (row.sites || []).indexOf((typeof hqRoomSite === 'function') ? hqRoomSite(r) : null) >= 0; });
+            i = mine.indexOf(roomId);
+        }
+        const n = 1 + (Math.max(0, i) % (Q.count || 4)), f = Q.base + encodeURIComponent(name + ' Sky') + '/' + name + '_Sky-', t = '_0' + n + '-1024x512.png';
+        return { key, roomId, set: row.set, n, day: f + 'Blue' + t, night: f + 'Night' + t, dusk: f + 'Sunset' + t, sil, silH: P.silH, rep: Q.rep || 1 };
+    }
+    return { key, roomId, set: null, n: 0, day: b + '_day' + x, night: b + '_night' + x, dusk: null, sil, silH: P.silH, rep: 1 };
 }
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {

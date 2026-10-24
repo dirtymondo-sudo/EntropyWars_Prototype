@@ -1935,6 +1935,9 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, kicker),
       h('div', { className: 'pb-technique-name' }, name),
+      /* why it can't go on, right under the name (PvP playtest 10-24: a passive clicked with 7/7 slots full "does nothing,
+         no message" — the bar's red note lasts 1.6 s and the NO SLOT verb sits below the fold of this panel) */
+      verbCls === 'off' && verb ? h('div', { className: 'pb-tree-note', style: { maxWidth: '100%', alignSelf: 'flex-start', whiteSpace: 'normal', borderRadius: 6, animation: 'none' } }, verb + ' · ' + verbTitle.toUpperCase()) : null,
       sp ? h('div', { className: 'pb-technique-badges' }, ...pbSpellBadges(sp, 8), pbAoeTiles(sp, true)) : null,
       h('div', { className: 'pb-technique-desc' }, desc),
       (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },
