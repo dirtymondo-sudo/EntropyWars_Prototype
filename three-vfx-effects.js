@@ -11112,6 +11112,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
+    /* THE CHRISTMAS PACK (2026-10-24, mondo: "utilize them for the north pole area and santa spells"): the pieces Santa's spells draw
+       — the red present with the green ribbon (Blizzard Present, THE NAUGHTY LIST's house-sized one), Milk and Cookies' foil tray,
+       the twelve cookies on it and the cocoa. Lump of Coal stays Santa throwing coal (mondo's rule). */
+    var _XMAS_COOKIE_NODES = 'Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11';
+    var _XMAS_SPELL_NODES = ['Gift_01', _XMAS_COOKIE_NODES, 'Cup_chocolate'];
+    function _xmasPiece(node, target, align, o) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.xmasClone !== 'function') return null;
+        try { return TR.xmasClone(node, target, align, o); } catch (e) { return null; }
+    }
+    /* every material of a pack clone (a cast fades them) */
+    function _xmasMats(g) { var out = []; g.traverse(function (n) { if (n.isMesh) (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { out.push(m); }); }); return out; }
     function _spellLibWarm(onProgress) {
         if (_spellWarm) {
             if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
@@ -11133,6 +11145,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try { TR.warmMiscModels(_SPELL_MISC_KEYS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         try { if (TR && typeof TR.sedan === 'function') TR.sedan({ metres: 4.4 }); } catch (e) {}
+        /* THE CHRISTMAS PACK (2026-10-24): Santa's pieces of mondo's pack — one file, cut on landing (ThreeRenderer.xmasClone) */
+        if (TR && typeof TR.warmXmasModels === 'function') {
+            try { TR.warmXmasModels(_XMAS_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
         /* the summons that wear a rig (the cult leader's Gathering → the user's cult member GLB) */
         if (TR && typeof TR.warmSummonModels === 'function') {
             try { TR.warmSummonModels().forEach(function (fn) { checks.push(fn); }); } catch (e) {}
@@ -16488,6 +16504,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lidY = S * 0.92;
         lid.position.y = lidY;
         g.add(lid);
+        /* THE CHRISTMAS PACK (2026-10-24): the present is the pack's red one with the green ribbon (the box above stays only while the
+           file streams); it drops, squashes and rattles the same, and at the burst it jumps open and is gone in the blizzard */
+        var pack = _xmasPiece('Gift_01', S * 1.05), packMats = null;
+        if (pack) {
+            body.visible = false; lid.visible = false;
+            packMats = _xmasMats(pack);
+            packMats.forEach(function (m) { m.opacity = 0; });
+            body.add(pack); body.visible = true;
+            boxMat.visible = false; ribbonMat.visible = false;
+        }
         /* icy light spilling out of the open box */
         var coreMat = _sigMat(opts.burstColor != null ? opts.burstColor : 0x9adfff, { map: _sigGlowTex() });
         var core = new THREE.Mesh(new THREE.PlaneGeometry(S * 2.6, S * 2.6), coreMat);
@@ -16502,6 +16528,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var popped = false;
         var lidVy = 0;
         _sigRunOwned(g, totalMs, function (el) {
+            if (packMats) for (var pm = 0; pm < packMats.length; pm++) packMats[pm].opacity = boxMat.opacity;
             if (el < dropMs) {
                 var t0 = _sigEaseInCubic(el / dropMs);
                 g.position.y = wp.y + dropH * (1 - t0);
@@ -16530,6 +16557,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigScreenFlash('#cfeaff', 140, 0.16);
                 }
                 var t3 = (el - dropMs - settleMs - rattleMs) / burstMs;
+                if (packMats) { var jp = 1 + 0.35 * Math.sin(Math.min(1, t3 * 2) * Math.PI * 0.5); body.scale.set(jp, jp, jp); body.rotation.y += 0.05; }
                 lid.position.y += lidVy;
                 lidVy -= ts * 0.0007;
                 lid.rotation.z += 0.09;
@@ -16539,6 +16567,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 boxMat.opacity = fade;
                 ribbonMat.opacity = fade;
             }
+        });
+    }
+
+    /* ── MILK AND COOKIES — the plate left out (THE CHRISTMAS PACK, 2026-10-24). The pack's twelve cookies (no tray) and a
+       mug of cocoa beside them are set down warm beside the caster's feet, turns once, and is gone as the heal goes out to the allies. Pack pieces
+       only: nothing is drawn while the file streams. ─────────────────────────────────────────────────────────────────── */
+    function _sigMilkCookies3D(tx, ty) {
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var cookies = _xmasPiece(_XMAS_COOKIE_NODES, ts * 0.4, null, { fit: 'span' });   // no tray (mondo 2026-10-24: "drop the tray")
+        if (!cookies) return false;
+        var g = new THREE.Group(); g.position.set(wp.x + ts * 0.55, wp.y, wp.z);   // beside the caster, never through the legs
+        var plate = new THREE.Group(); plate.add(cookies);
+        var cup = _xmasPiece('Cup_chocolate', ts * 0.17);
+        if (cup) { cup.position.set(ts * 0.36, 0, ts * 0.05); plate.add(cup); }
+        g.add(plate);
+        var glowMat = _sigMat(0xffd9a0, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.3, ts * 1.3), glowMat);
+        glow.rotation.x = -Math.PI / 2; glow.position.y = -ts * 0.02; glow.renderOrder = 157; plate.add(glow);
+        var mats = _xmasMats(plate).filter(function (m) { return m !== glowMat; });
+        var y0 = ts * 0.02, y1 = ts * 0.14, totalMs = 1500;   // set down at the caster's feet (the cast clip kneels to it), then lifts a hand's width
+        plate.position.y = y0;
+        return !!_sigRunOwned(g, totalMs, function (el) {
+            var t = el / totalMs, op = t < 0.15 ? t / 0.15 : (t > 0.75 ? Math.max(0, (1 - t) / 0.25) : 1);
+            plate.position.y = y0 + (y1 - y0) * _sigEaseOutCubic(Math.min(1, t * 1.6));
+            plate.rotation.y = t * Math.PI * 0.9;
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = op;
+            glowMat.opacity = op * 0.35;
         });
     }
 
@@ -21651,6 +21707,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (_sdef && (_sdef.kind === 'healAll' || _sdef.kind === 'manaRestoreAll')) auraRank = 0;
         } catch (e) {}
         try { _sigSupportAura3D(tx, ty, P.support, { rank: auraRank }); } catch (e) {}
+        if (spellId === 'raceMilkAndCookies') { try { _sigMilkCookies3D(tx, ty); } catch (e) {} }   // THE CHRISTMAS PACK (2026-10-24): the plate left out
         if (p && p.bloomPulse) p.bloomPulse(Math.min(0.4, T.bloom * 0.65), 300);
         _stageGrade(spellId, 'burst', params, info);
         /* no shock ring, no expanding orb, no rush lines, no shake —
@@ -24560,7 +24617,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _DOOR_FX = { frame: 0x2f6b66, sill: 0x9a9690, light: 0xfff0cc, stamp: 0xff3a3a, teal: 0x5ce0d0 };
     function _doorFxLeafKey() {
         var leaf = null;
-        try { if (typeof window !== 'undefined' && window.ThreeRenderer && typeof window.ThreeRenderer.doorLeaf === 'function') leaf = window.ThreeRenderer.doorLeaf(); } catch (e) { leaf = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.doorLeaf === 'function') leaf = ThreeRenderer.doorLeaf(); } catch (e) { leaf = null; }   // a top-level const, never window.ThreeRenderer
         var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
         if ((!leaf || !leaf.cat || !leaf.cat.file) && D && D.catalogue && D.catalogue.leaf_hollow_core) leaf = { key: 'leaf_hollow_core', cat: D.catalogue.leaf_hollow_core };
         if (!leaf || !leaf.cat || !leaf.cat.file || !D || !D.assets || !D.assets.models) return null;
@@ -27179,7 +27236,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var diam = ts * 3.4;
         var moon = null, moonMats = [];
         try {
-            if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) moon = ThreeRenderer.getMiscModelClone('moon', diam, 'center');
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) moon = ThreeRenderer.getMiscModelClone('moon', diam, 'center');
         } catch (e) { moon = null; }
         if (moon) {
             moon.traverse(function (n) { if (n.isMesh && n.material) { n.material.transparent = true; n.material.opacity = 0; moonMats.push(n.material); } });
@@ -27677,6 +27734,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var r2 = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.32, ts * 2.26, ts * 2.26), rib); r2.position.y = ts * 1.1; boxG.add(r2);
         var tag = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.45), _finBasic(0xffffff, { map: _finTextTex('TO: ' + name, { ink: '#222', bg: '#fff8e0', w: 512, h: 256, fontPx: 70 }), side: THREE.DoubleSide, depthWrite: false })); tag.position.set(0, ts * 1.2, ts * 1.12); boxG.add(tag);
         boxG.visible = false; boxG.position.y = ts * 12; g.add(boxG);
+        /* THE CHRISTMAS PACK (2026-10-24): the present is the pack's red one with the green ribbon, house-sized (the box above stays only
+           while the file streams); the tag still hangs on its front */
+        var packG = _xmasPiece('Gift_01', ts * 2.3);
+        if (packG) { box.visible = false; r1.visible = false; r2.visible = false; boxG.add(packG); tag.position.z = ts * 1.22; }
+        var bowY = packG ? ts * 2.3 : ts * 2.2;   // the bow lands on the present's top
         var bowG = new THREE.Group();
         var bowMat = _finBasic(0x2fbf5a);
         var loop1 = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.34, ts * 0.11, 8, 18), bowMat); loop1.position.x = -ts * 0.36; loop1.rotation.y = 0.5; bowG.add(loop1);
@@ -27716,8 +27778,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el >= bowAt) {
                 bowG.visible = true;
                 var bt = _sigClamp01((el - bowAt) / 420);
-                if (!bowLanded) { bowG.position.y = ts * 2.2 + ts * 12 * (1 - bt * bt); bowG.rotation.y = el * 0.003; }
-                if (bt >= 1 && !bowLanded) { bowLanded = true; bowG.position.y = ts * 2.2; _shake('normal'); _finDust(c.x, c.y, bz + ts * 2.2, 6, { r: 10, op: 0.35 }); }
+                if (!bowLanded) { bowG.position.y = bowY + ts * 12 * (1 - bt * bt); bowG.rotation.y = el * 0.003; }
+                if (bt >= 1 && !bowLanded) { bowLanded = true; bowG.position.y = bowY; _shake('normal'); _finDust(c.x, c.y, bz + bowY, 6, { r: 10, op: 0.35 }); }
             }
             /* snow */
             if (el - lastSnow > 70 && _canSpawn()) { lastSnow = el; _spawn({ x: c.x + rn(-ts * 3, ts * 3), y: c.y + rn(-ts * 3, ts * 3), z: bz + ts * 5, mode: 'billboard', sprite: 'snowflake', ml: rn(1400, 2400), size0: rn(5, 10), size1: rn(5, 10), vx: rn(-10, 10), vy: rn(-10, 10), vz: -rn(40, 80), opacity0: 0.9, opacity1: 0 }); }
@@ -27744,9 +27806,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            parked cars, nose +Z, fresh materials); the misc cars stand in
            while it streams */
         var sedan = null;
-        try { if (!_crOff() && window.ThreeRenderer && ThreeRenderer.sedan) sedan = ThreeRenderer.sedan({ metres: carLen / ts * 1.75 }); } catch (e) { sedan = null; }
+        try { if (!_crOff() && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.sedan) sedan = ThreeRenderer.sedan({ metres: carLen / ts * 1.75 }); } catch (e) { sedan = null; }
         try {
-            if (!sedan && window.ThreeRenderer && ThreeRenderer.getMiscModelClone) {
+            if (!sedan && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) {
                 for (var k = 0; k < keys.length && !car; k++) car = ThreeRenderer.getMiscModelClone(keys[k], ts * 0.72, 'center');
             }
         } catch (e) { car = null; }
@@ -27759,7 +27821,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            only when the car itself was the Meshy one (one look, not two) */
         var wreck = null;
         if (car && !_crOff()) {
-            try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) wreck = ThreeRenderer.getMiscModelClone('crashed_car', ts * 0.62, 'center'); } catch (e) { wreck = null; }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) wreck = ThreeRenderer.getMiscModelClone('crashed_car', ts * 0.62, 'center'); } catch (e) { wreck = null; }
             if (wreck) {
                 wreck.rotation.y = Math.PI / 2;
                 wreck.traverse(function (n) { if (n.isMesh && n.material) { n.material = n.material.clone(); n.material.transparent = true; } });
@@ -28156,7 +28218,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group();
         /* the ship: the wreck GLB (nose −X → turned to local +Z = the bow) */
         var ship = new THREE.Group(), glb = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('wreck', hullLen, 'center'); } catch (e) { glb = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('wreck', hullLen, 'center'); } catch (e) { glb = null; }
         if (glb) { glb.rotation.y = Math.PI / 2; glb.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); glb.position.y = ts * 0.9; ship.add(glb); }
         /* NO STAND-INS (2026-10-05): no plank ship — the wreck GLB or nothing */
         var yaw = Math.atan2(-ux, -uz);   // the bow points from the victim toward the caster (local +Z)
@@ -28452,7 +28514,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < 6; i++) { var gh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), ghostMat); gh.visible = false; gh.position.set(wpT.x, wpT.y + ts * 0.5, wpT.z); g.add(gh); ghosts.push(gh); }
         /* the sedan */
         var carG = new THREE.Group(), car = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
         if (car) { car.rotation.y = Math.PI / 2; car.traverse(function (n) { if (n.isMesh && n.material) { n.material = n.material.clone(); n.material.transparent = true; if (n.material.color) n.material.color.multiplyScalar(0.35); } }); carG.add(car); }
         /* NO STAND-INS (2026-10-05): no procedural box sedan */
         var lamp = _finBasic(0xfff4c0, { additive: true });
@@ -29063,7 +29125,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var caps = [], N = 10;
         for (var i = 0; i < N; i++) {
             var a = i / N * Math.PI * 2, m = null;
-            try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) m = ThreeRenderer.getMiscModelClone(i % 2 ? 'mushroom2' : 'mushroom', ts * 0.7, 'bottom'); } catch (e) { m = null; }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) m = ThreeRenderer.getMiscModelClone(i % 2 ? 'mushroom2' : 'mushroom', ts * 0.7, 'bottom'); } catch (e) { m = null; }
             if (!m) m = new THREE.Group();   /* NO STAND-INS (2026-10-05): the mushroom GLB or nothing */
             m.position.set(Math.cos(a) * ts * 1.35, 0, Math.sin(a) * ts * 1.35); m.rotation.y = Math.random() * Math.PI * 2; m.scale.setScalar(0.01); m.visible = false; g.add(m); caps.push(m);
         }
@@ -29386,7 +29448,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var trees = [], TD = ts * 3.6;
         for (var i = -3; i <= 3; i++) {
             var t = null;
-            try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) t = ThreeRenderer.getMiscModelClone('pine', ts * rn(2.2, 3.0), 'bottom'); } catch (e) { t = null; }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) t = ThreeRenderer.getMiscModelClone('pine', ts * rn(2.2, 3.0), 'bottom'); } catch (e) { t = null; }
             if (!t) t = new THREE.Group();   /* NO STAND-INS (2026-10-05): the pine GLB or nothing */
             t.position.set(ux * TD - uz * i * ts * 1.1 + rn(-ts * 0.2, ts * 0.2), 0, uz * TD + ux * i * ts * 1.1 + rn(-ts * 0.2, ts * 0.2));
             t.rotation.y = Math.random() * Math.PI * 2; t.scale.set(1, 0.01, 1); t.visible = false; g.add(t); trees.push(t);
@@ -30633,7 +30695,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var SILVER = 0xdfe6f4, BLOOD = 0xff3030, MOON_D = ts * 7;
         var moon = new THREE.Group(); var glb = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('moon', MOON_D, 'center'); } catch (e) { glb = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('moon', MOON_D, 'center'); } catch (e) { glb = null; }
         var moonMat = _finBasic(0xc8ccd8);
         if (glb) moon.add(glb);   /* NO STAND-INS (2026-10-05): the moon GLB or nothing (no grey ball) */
         var glow = _finSprite(SILVER, _sigGlowTex(), MOON_D * 2.2, 150); glow.material.opacity = 0; moon.add(glow);
@@ -31812,7 +31874,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var disc = new THREE.Mesh(new THREE.CircleGeometry(R * 0.97, 40), _finBasic(0x050003, { side: THREE.DoubleSide })); disc.rotation.x = Math.PI / 2; portal.add(disc);
         var glow = _finSprite(RED, _sigGlowTex(), R * 3.2, 157); glow.material.opacity = 0.5; portal.add(glow);
         var crown = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) crown = ThreeRenderer.getMiscModelClone('demon_statue', ts * 1.4, 'bottom'); } catch (e) { crown = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) crown = ThreeRenderer.getMiscModelClone('demon_statue', ts * 1.4, 'bottom'); } catch (e) { crown = null; }
         if (!crown) crown = new THREE.Group();   /* NO STAND-INS (2026-10-05): the demon statue GLB or nothing */
         crown.position.set(0, ts * 0.2, -R); crown.traverse(function (n) { if (n.isMesh && n.material && n.material.color) { n.userData._finBase = n.material.color.clone(); } }); portal.add(crown);
         var crownEyes = [];
@@ -32081,12 +32143,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var columnCore = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.3, TOP + ts * 2, 12, 1, true), _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide })); columnCore.position.y = column.position.y; g.add(columnCore);
         var halo = new THREE.Mesh(new THREE.RingGeometry(ts * 1.6, ts * 2.0, 40), _finBasic(LIGHT, { additive: true, opacity: 0, side: THREE.DoubleSide })); halo.rotation.x = Math.PI / 2; halo.position.y = TOP + ts * 0.6; g.add(halo);
         var gate = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) gate = ThreeRenderer.getMiscModelClone('pearly_gate', ts * 2.0, 'bottom'); } catch (e) { gate = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) gate = ThreeRenderer.getMiscModelClone('pearly_gate', ts * 2.0, 'bottom'); } catch (e) { gate = null; }
         if (!gate) gate = new THREE.Group();   /* NO STAND-INS (2026-10-05): the pearly gate GLB or nothing */
         gate.position.set(0, TOP + ts * 0.1, -ts * 1.0); gate.visible = false; g.add(gate);
         var gateGlow = _finSprite(LIGHT, _sigGlowTex(), ts * 3.6, 157); gateGlow.position.set(0, TOP + ts * 0.9, -ts * 1.0); g.add(gateGlow);
         var clouds = [];
-        for (var cl = 0; cl < 6; cl++) { var cm = null; try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) cm = ThreeRenderer.getMiscModelClone('white_cloud', ts * rn(1.2, 2.0), 'center'); } catch (e) { cm = null; } if (!cm) cm = new THREE.Group(); var ca = cl * Math.PI / 3 + rn(-0.3, 0.3); cm.position.set(Math.cos(ca) * ts * rn(1.6, 2.6), TOP - ts * rn(1.5, 3.5), Math.sin(ca) * ts * rn(1.6, 2.6)); cm.visible = false; g.add(cm); clouds.push({ m: cm, ph: rn(0, 9) }); }
+        for (var cl = 0; cl < 6; cl++) { var cm = null; try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) cm = ThreeRenderer.getMiscModelClone('white_cloud', ts * rn(1.2, 2.0), 'center'); } catch (e) { cm = null; } if (!cm) cm = new THREE.Group(); var ca = cl * Math.PI / 3 + rn(-0.3, 0.3); cm.position.set(Math.cos(ca) * ts * rn(1.6, 2.6), TOP - ts * rn(1.5, 3.5), Math.sin(ca) * ts * rn(1.6, 2.6)); cm.visible = false; g.add(cm); clouds.push({ m: cm, ph: rn(0, 9) }); }
         var wings = [], wingMat = _finBasic(0x0a0206, { side: THREE.DoubleSide, opacity: 0 });
         for (var w = 0; w < 2; w++) { var wing = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.1, ts * 0.55), wingMat); wing.position.set((w ? 1 : -1) * ts * 0.6, ts * 0.6, -ts * 0.1); wing.visible = false; body.add(wing); wings.push(wing); }
         var trail = _finSprite(LIGHT, _sigGlowTex(), ts * 1.4, 158); trail.material.opacity = 0; g.add(trail);
@@ -33879,7 +33941,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var p = 0; p < NPK; p++) { var pa = (p / NPK) * Math.PI * 2; var gap = Math.abs(Math.cos(pa - yaw)) > 0.94 ? true : false; if (gap) continue; var pk = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.42, ts * 0.03), _finBasic(PICKET)); pk.position.set(Math.cos(pa) * ts * 3.1, ts * 0.21, Math.sin(pa) * ts * 3.1); pk.rotation.y = -pa; garden.add(pk); }
         var flowers = [];
         for (var fl = 0; fl < 14; fl++) { var fa = rn(0, Math.PI * 2), fr = ts * rn(1.1, 2.7); var stalk = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.32, 5), _finBasic(0x2f6a2a)); stalk.position.set(Math.cos(fa) * fr, ts * 0.16, Math.sin(fa) * fr); garden.add(stalk); var bloom = _finSprite([0xff6ab0, 0xffd75a, 0xffffff, 0xff8a3a][fl % 4], _sigGlowTex(), ts * 0.28, 159); bloom.material.opacity = 1; bloom.material.blending = THREE.NormalBlending; bloom.position.set(Math.cos(fa) * fr, ts * 0.36, Math.sin(fa) * fr); garden.add(bloom); flowers.push({ s: stalk, b: bloom, a: fa, r: fr }); }
-        for (var m = 0; m < 3; m++) { var mush = null; try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) mush = ThreeRenderer.getMiscModelClone(m % 2 ? 'mushroom2' : 'mushroom', ts * 0.5, 'bottom'); } catch (e) { mush = null; } if (!mush) mush = new THREE.Group(); var ma = 1.2 + m * 2.0; mush.position.set(Math.cos(ma) * ts * 2.2, 0, Math.sin(ma) * ts * 2.2); garden.add(mush); }
+        for (var m = 0; m < 3; m++) { var mush = null; try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) mush = ThreeRenderer.getMiscModelClone(m % 2 ? 'mushroom2' : 'mushroom', ts * 0.5, 'bottom'); } catch (e) { mush = null; } if (!mush) mush = new THREE.Group(); var ma = 1.2 + m * 2.0; mush.position.set(Math.cos(ma) * ts * 2.2, 0, Math.sin(ma) * ts * 2.2); garden.add(mush); }
         var bath = new THREE.Group(); bath.position.set(Math.cos(yaw + 2.2) * ts * 1.8, 0, Math.sin(yaw + 2.2) * ts * 1.8); garden.add(bath);
         var ped = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.1, ts * 0.5, 8), _finBasic(0xb8b8b0)); ped.position.y = ts * 0.25; bath.add(ped);
         var bowl = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.12, ts * 0.1, 12), _finBasic(0xb8b8b0)); bowl.position.y = ts * 0.55; bath.add(bowl);
@@ -34032,7 +34094,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var ang = (a / NARM) * Math.PI * 2 + yaw + 0.2;
             var arm = { ang: ang, segs: [], glb: null, order: a, base: new THREE.Vector3(Math.cos(ang) * R, 0, Math.sin(ang) * R) };
             var glb = null;
-            try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone(a % 2 ? 'tentacle2' : 'tentacle', ts * 2.8, 'bottom'); } catch (e) { glb = null; }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone(a % 2 ? 'tentacle2' : 'tentacle', ts * 2.8, 'bottom'); } catch (e) { glb = null; }
             if (glb) { glb.position.copy(arm.base); glb.position.y = -ts * 3.2; glb.rotation.y = -ang + Math.PI; glb.visible = false; g.add(glb); arm.glb = glb; }
             var mat = _finBasic(ARM);
             for (var s = 0; s < NSEG; s++) { var r = ts * (0.24 - 0.018 * s); var seg = new THREE.Mesh(new THREE.SphereGeometry(Math.max(ts * 0.03, r), 10, 8), mat); seg.visible = false; g.add(seg); arm.segs.push(seg); if (s % 3 === 1) { var sk = new THREE.Mesh(new THREE.SphereGeometry(Math.max(ts * 0.015, r * 0.35), 6, 5), _finBasic(SUCK)); sk.visible = false; g.add(sk); seg.userData.sucker = sk; } }
@@ -35451,7 +35513,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var px = -uz, pz = ux;   // the lane runs beside the victim, perpendicular to the line, on the caster's side
         var LANE = ts * 1.3;
         var car = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
         var carG = new THREE.Group(); g.add(carG);
         if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }   /* NO STAND-INS (2026-10-05): no box car */
         var muzzles = []; for (var m = 0; m < 4; m++) { var mz = _finSprite(0xffe090, _sigGlowTex(), ts * 0.42, 163); mz.material.opacity = 0; mz.position.set(-ts * 0.5 + m * ts * 0.3, ts * 0.72, ts * 0.38); carG.add(mz); muzzles.push({ s: mz, t: 0 }); }
@@ -35591,7 +35653,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var RED = 0xff2a3a, BLUE = 0x3a8aff, AMBER = 0xffe090;
         /* the cruiser */
         var car = null;
-        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('copcar', ts * 0.78, 'center'); } catch (e) { car = null; }
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('copcar', ts * 0.78, 'center'); } catch (e) { car = null; }
         var carG = new THREE.Group(); g.add(carG);
         if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }   /* NO STAND-INS (2026-10-05): no box cop car */
         /* the light bar: two lamps that strobe against each other + the spot */

@@ -1005,3 +1005,80 @@ the walk), on the classic, pmndrs and node (TSL) chains. Nothing was removed. De
   picture on WebGL, drawn on WebGPU. Never use `THREE.LineLoop` again; close the point list by hand (the zodiac rim does too).
 - Checked on real WebGPU (SwiftShader) in a VS-CPU battle on Mount Shasta: old file 168 LineLoop errors in 8 s with the
   ghost up and no rim; new file 0 errors, 72 rim lines drawn, red rim visible on each tile.
+
+## THE QUIET COUNT (2026-10-23, matchup playtests shared-bugs thread)
+- The host's no-active-unit watchdog (battle.js `_noActiveUnitWatchdog`) skipped a whole round in Wipeout vs Wipeout
+  (R9) and fired in Cube vs Cube (R12): 15 s of wall clock read a long blocked frame (a shader build on a slow PC)
+  as 15 s of stall, in the middle of a live end of round, which then ran twice. A stall now also needs 7 answered
+  ticks in a row (a tick that comes >4 s late starts the window over) and an unchanged signature (`_ewStallSignature`:
+  round, log length, HP sum, `_blitzTurnGen`, round-advance flag).
+- One live end of round at a time: `_eorChainGen` bumps when an end-of-round chain starts (and when the watchdog
+  drops a stalled one); every beat of the chain checks it, so a slow old chain stops instead of running a second
+  round end. The recovery/drop gate from PR #438 is unchanged.
+- Checked in a rendered browser: a 16 s main-thread block no longer fires it; a truly dead round end still recovers ~17 s.
+
+## THE ONE BRIGHTNESS (2026-10-24)
+mondo: the battle pause menu said "Brightness · EXPLORING" in a VS CPU arena fight (arenas are cut from rooms, so the
+fight runs in the building's exposure context 'hq'), and the battle and exploring kept two separate values
+(ew_exposure / ew_exposure_hq, THE TWO BRIGHTNESSES 2026-09-20). Now three-post.js keeps ONE value (localStorage
+ew_exposure) for battles and exploring alike; setExposureContext only switches the building's auto-exposure gain on/off.
+The pause slider is labelled plain "Brightness" with the hint "the whole picture lighter or darker — one setting for
+battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.55, 72 at 1.00, 90 at 1.25
+(/mnt/project-files/brightness-slider/).
+
+## THE SMOOTH PASS (2026-10-24, mondo: "optimize the game and save on frame rate, without drastically changing how the game looks ... There are light rays thats look like they come from every star in the sky")
+- **THE RAY SOURCE** (three-post.js `_RaySrcShader`, `_raySrcRender`, node renderer `_ngRaySrc`): the Light Rays gathered every
+  full-size pixel past the bar, and at night the bar is the dark frame's own (0.06), so every star threw a shaft. One small
+  draw before the frame pass now shrinks the frame to 1/8 size (each cell = its 8 × 8 pixels as 16 bilinear taps, every tap
+  past the bar counts); a cell keeps its light only when a quarter to half of it is lit (`smoothstep(0.25, 0.5, coverage)`).
+  A moon, a brazier, a window, a glowing zone or a sunlit gap still throws shafts; a star or a glint does not. The frame
+  pass's 24 taps read that little picture (`tRaySrc`) instead of the full frame. Drawn only while the rays are on (the node
+  renderer's rtt flips `autoUpdate`). Checked: Göbekli Tepe night sky, rays 1, the rays' own contribution (rays 1 minus
+  rays 0) before = streaks across the whole starry sky, after = only off the braziers and the zone glow; WebGPU rays draw.
+- **THE NO-STALL READ** (`_aeMeasure`): the 16 × 16 frame read that feeds the rays' bar and the building's auto exposure
+  used `readRenderTargetPixels` every 220 ms, which makes the CPU wait for the GPU to finish the frame. WebGL 2 now uses
+  `readRenderTargetPixelsAsync` (a pixel buffer + fence), as the node renderer already did. Sandbox (llvmpipe), Light Rays
+  on: CPU per frame 800-950 ms → ~20-30 ms, walk and battle alike (the stall was the whole GPU frame).
+- **THE PLATES' PASS** (three-renderer.js `_css2dRender`): CSS2DRenderer.render walked the whole scene's matrices a second
+  time right after the draw did. A stamp on `scene.updateMatrixWorld` tells whether the draw walked it since the last plates
+  pass; then the plates skip the walk (median 1.5 → 0.6 ms a frame in the sandbox). Panes drawn from another scene still walk.
+- **THE MENU MEASURES**: battle.js `_menuFreeArea` queries only inside `.hrlg-rig` (was the whole ~10,000-node page, median
+  5.0 → 2.5 ms a call); `_wmMenuRects` reads live `getElementsByClassName` lists instead of whole-page queries each frame.
+- **THE EMPTY ROOTS** (`_occFieldRefresh`): a room root with no mesh (its light rig) was re-measured with a forced matrix
+  walk on every blocker recompute (every frame in a shot); now at most every 250 ms.
+- **PROPOSED, NOT BUILT** (a feel change, mondo decides): three-camera.js caps a frame's step at 0.05 s and the mixers at
+  0.1 s, so below ~20 fps camera glides and animations run slower than real time.
+
+## THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really dark overall, please fix")
+Measured before (mean frame luminance 0-255, the walker's view): Merlin's Undercroft 4, The Cavern 8, the Catacombs 8, the haunted
+cellar 9, the sewers 17, the office 30 (the main hall 77). Cause: a closed box room's light is `mood.ambient` × (hemi 0.5, key 0.22,
+fill 0.14), CLAMPED at `ambientFloor` 0.55 — so every dim site room (caves, crypts, cellars, sewers: ambient 0.22-0.5) lit at
+hemi 0.275 / key 0.12 plus one 9 m ceiling lamp at the room's centre; the walker's dark suit and the floor read black. A fight in the
+same room was darker still: the field rig kept the pre-rig key 0.22 × mood while the walk's `_hqLightArm` sets 0.34.
+- **THE KEY LIGHT** (three-renderer.js `_hqKeyLampArm` / `_hqKeyLampTick`): ONE PointLight (no shadow map, decay 1) that rides with the
+  camera in an ENCLOSED room (`_hqEnclosed`: a box room without an open sky, a bay corridor), placed 35% of the way from the walker's
+  head to the eye, 0.9 m up, 0.6 m to the camera's right; built once per visit (`keyLamp` is a zone key — the scene's light count never
+  changes, so no material recompiles), eased to 0 in an open room / the hall. In a fight in an enclosed room (`_fieldGroundDress` →
+  `_fieldKeyLampTick`, from `_fieldGroundTick`) it hangs 7 m over the floor point the camera looks at, reach 30 m, intensity 1.5.
+- **THE LIFT** (`_hqMoodAmb`): a dim mood no longer clamps — ambient m lights at floor + (1 − floor) × m with `ambientFloor` 0.7
+  (0.3 → 0.79, 0.55 → 0.87, ≥ 1 untouched), so the dark rooms read and every room keeps its order. Walk and fight share it.
+- **THE FIGHT'S KEY** = the walk's (`HQ_LIGHT_RULES.key.box.intensity` / `shell.rig`) instead of 0.22 × mood.
+- Numbers: data.js `HQ_LIGHT_RULES.keyLamp` (renderer default `HQ_LIGHT_DEFAULT.keyLamp`, keep in step). Setting: **Settings → Video →
+  The Polish → Key Light** (HQ_POLISH_PREFS `keyLight`, slider, default 0.5 = the rule's intensity, 1 = double, 0 = off; scope both,
+  live). Kill-switch `window.EW_NO_KEY_LIGHT`. Open rooms, the day / night clock, the looks, bloom and fog are untouched.
+- After (same views): Undercroft 22, Cavern 20, Catacombs 24, cellar 26, sewers 32, office 54; D.U.M.B. arena fight 16 → 37, Lodge
+  arena fight 22 → 40 (Key Light 0 in the Lodge: 28 — the slider proven on screen). Proof: /mnt/project-files/key-light/.
+
+## THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?")
+The Key Light above is enclosed-only, so outdoor nights got nothing. Measured: The Woods clearing 46 by day, 10-11 at night; the redwood
+trail 52 / 12-13. Cause: an outdoor room's hemisphere colour at night was the night sky's tint (`#46544c` in the woods) + 22% white, so
+the hemisphere lit at ~0.18 and under the canopy (the moon key shadowed by the trees) that is all the ground got; with the moon low
+(just after dusk / before dawn) `_hqClockVals` gave no key at all (moonK ≈ 0).
+- **`_hqSkyHemiC(skyC, night)`** (three-renderer.js, used by the walk's open branch, `_hqStageSkyValsRaw`, `_hqClockVals` and the fight's
+  open rig): the old white mix, then `nightFill.amount` (0.5) × night of the way to a soft moonlight `nightFill.color` (`#a8bad8`).
+- **The moon floor**: `_hqClockVals`'s moonK ≥ (1 − day) × (1 − sunK) × `nightFill.moonFloor` (0.75).
+- **The Key Light outdoors**: `_hqKeyLampTick` lights an open box room at `nightFill.keyLight` (0.6) × the sky's night; a fight in an open
+  room carries the lamp too, × the cycle's night (`_fieldCycleRigAt(...).t`) or the room's night. 0 by day: day frames unchanged.
+- Numbers: data.js `HQ_LIGHT_RULES.nightFill` (renderer `HQ_LIGHT_DEFAULT.nightFill`). The Key Light slider scales the lamp part.
+- After: clearing 18-21 at night (day 47), redwoods 20-22 (day 54); the Fairy Forest arena's night round 22 → 27. Proof:
+  /mnt/project-files/key-light/ba_woods_*.jpg, ba_battle_woods_night.jpg (the night round was forced for that one screenshot only).

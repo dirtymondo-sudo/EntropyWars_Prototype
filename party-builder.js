@@ -705,7 +705,14 @@ function computeFullStats(race, cls, secJob, equipment, ups, zodiac) {
     const d = (secB[k]||0) + (eqB[k]||0) + (zodiac && typeof window.zodiacNatalDelta === 'function' ? window.zodiacNatalDelta(zodiac, k) : 0);
     delta[k] = d;
     final[k] = Math.max(k==='vision'||k==='spd'?1:0, b + d);
-    if (k === 'vision') final[k] = Math.min(8, final[k]);   // data.js VISION_RULES.maxVision
+    if (k === 'vision') {
+      /* VISION TOPS OUT AT 8 (Keys vs Keys matchup: King Arthur read "VIS 8 (+4)" on base 5 — the gear past 8 did nothing,
+         and Inspect covers as many tiles as vision): the ± is what the gear really adds, and the cut is kept for the MAX tag */
+      const _cap = (window.VISION_RULES && Number.isFinite(window.VISION_RULES.maxVision)) ? window.VISION_RULES.maxVision : 8;
+      final[k] = Math.min(_cap, final[k]);
+      delta[k] = final[k] - Math.max(1, b);
+      final._visionOver = Math.max(0, b + d - _cap);
+    }
   }
   // MOV derives from SPD (2026-08-29 rework: SPD 1-25 → 1 tile, then 1 tile per 20 SPD, cap 5);
   // gear MOV (jetpack) is a flat tile bonus on top of the band.
@@ -1079,6 +1086,13 @@ function GradeChip({ statKey, val }) {
    engine's stat id for the grade ring / the tooltip. The bar is rounded
    (--pb-r-sm), the fill is the stat's colour, the zodiac ▲▼ and the
    subclass / gear delta read exactly as before. */
+/* the VISION row at the cap (computeFullStats _visionOver): a small MAX after the 8, and the tip says the gear past it adds nothing */
+function pbVisMax(k, stats) {
+  const over = (k === 'VIS' && stats) ? (stats._visionOver || 0) : 0;
+  if (!over) return { suffix: '', tip: null };
+  return { suffix: h('small', { key: 'max', style: { fontFamily: "'DotGothic16', monospace", fontSize: 7, letterSpacing: '0.08em', marginLeft: 3, opacity: 0.75 } }, 'MAX'), tip: 'Vision tops out at ' + (stats.vision || 8) + ': ' + over + ' point' + (over === 1 ? '' : 's')
+    + ' of gear past it add nothing (Inspect searches as many tiles as Vision).' };
+}
 function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey, statKey }) {
   const pct = Math.min(100, (val / max) * 100);
   const look = PB_STAT_LOOK[statKey] || PB_STAT_LOOK[label] || { c: EW.inkMute, g: '●' };
@@ -1097,7 +1111,7 @@ function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, grad
       zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
       zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
     gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-stat-disc' }, look.g),
-    h('span', { className: 'pb-stat-val', style: { color: valColor } }, val + (suffix || '')),
+    h('span', { className: 'pb-stat-val', style: { color: valColor, whiteSpace: 'nowrap' } }, ...((typeof suffix === 'string' || !suffix) ? [val + (suffix || '')] : [val, suffix])),
     h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%` } })),
     h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
@@ -1921,6 +1935,9 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, kicker),
       h('div', { className: 'pb-technique-name' }, name),
+      /* why it can't go on, right under the name (PvP playtest 10-24: a passive clicked with 7/7 slots full "does nothing,
+         no message" — the bar's red note lasts 1.6 s and the NO SLOT verb sits below the fold of this panel) */
+      verbCls === 'off' && verb ? h('div', { className: 'pb-tree-note', style: { maxWidth: '100%', alignSelf: 'flex-start', whiteSpace: 'normal', borderRadius: 6, animation: 'none' } }, verb + ' · ' + verbTitle.toUpperCase()) : null,
       sp ? h('div', { className: 'pb-technique-badges' }, ...pbSpellBadges(sp, 8), pbAoeTiles(sp, true)) : null,
       h('div', { className: 'pb-technique-desc' }, desc),
       (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },
@@ -2247,6 +2264,29 @@ function pbNoteRot(seed, i) {
   return (((x + i * 977) % 61) / 10 - 3).toFixed(1);
 }
 function PbNotes({ notes, seed, paper, onOpen }) {
+  /* THE NOTES STOP ABOVE THE PARTY BAR (Keys vs Keys matchup: on the Gear tab a third note ran down over ONE / RESET /
+     SAVE): the column gets the room down to the bar, and the notes shrink to share it (each clips its own text; a click
+     still opens the full notes). Measured after every render and on resize. */
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const fit = () => {
+      el.style.maxHeight = '';
+      for (const c of el.children) c.style.minHeight = '';
+      const body = el.closest('.pb-body');
+      const party = body && body.querySelector(':scope > .pb-party');
+      if (!party) return;
+      const room = Math.floor(party.getBoundingClientRect().top - el.getBoundingClientRect().top - 10);
+      if (room > 60 && el.scrollHeight > room) {
+        el.style.maxHeight = room + 'px';
+        for (const c of el.children) c.style.minHeight = '0';
+      }
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  });
   const items = [];
   notes.passives.forEach((p, i) => {
     items.push(h('div', { key: 'p' + p.id, className: 'pb-note ' + paper, style: { '--rot': pbNoteRot(seed, i) + 'deg' }, onClick: onOpen, title: 'Open the notes' },
@@ -2264,7 +2304,7 @@ function PbNotes({ notes, seed, paper, onOpen }) {
       notes.terrain.length > rows.length ? h('span', { className: 'pb-note-clip' }, '\u{1F4CE} +' + (notes.terrain.length - rows.length) + ' MORE') : null));
   }
   if (!items.length) return null;
-  return h('div', { className: 'pb-notes' }, ...items);
+  return h('div', { className: 'pb-notes', ref }, ...items);
 }
 
 /* ══ Stage 5 (plan §5.5 item 3): AFFINITIES ══════════════════════════════
@@ -3756,7 +3796,7 @@ function PartyBuilder(props) {
           const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
           const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
           return h(StatBar, { key:k, label:statLabel(k), statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:d,
-            suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
+            suffix: STAT_PCT[k] ? '%' : pbVisMax(k, fullStats).suffix, tip: pbVisMax(k, fullStats).tip || window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
         })),
       // MOVE / RANGE footprints — the diamonds ARE the rule's shape (§3.2), inside round badges
       h('div', { style:{ display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
@@ -3790,7 +3830,7 @@ function PartyBuilder(props) {
         const val = k === 'JUMP' ? (typeof window.raceJumpStat === 'function' ? window.raceJumpStat(stageEntry ? stageEntry.race : unitRace, qStats.spd) : 1) : (qStats[mapped]??0);
         const d = (stageEntry || k === 'JUMP') ? 0 : (statDeltas[mapped]??0);
         return h(StatBar, { key:k, label, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:stageEntry ? null : zMod(mapped), delta:d,
-          suffix: STAT_PCT[k] ? '%' : '', gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
+          suffix: STAT_PCT[k] ? '%' : pbVisMax(k, qStats).suffix, gradeKey: mapped, tip: pbVisMax(k, qStats).tip || window.STAT_HELP?.[mapped] || null });
       })),
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 

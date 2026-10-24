@@ -663,3 +663,58 @@ the rain im just talking about grass tiles being on fire".
 - Draw calls: the room's scenery ~230-500 per frame by pose (the voxel board's scenery was ~3300). Text tape marks cost a call each, so the
   marks are plain lines.
 - Screens: /mnt/project-files/new-maps/training/ (before_* = voxel board, after_* = the hall, tut_* = lessons on it).
+
+## THE PAINTED SKIES (2026-10-24)
+mondo painted 80s/90s anime watercolour skies and uploaded them to R2 `Assets/skies/`: `woods_*` and `disaster_city_*`, each
+`_day` / `_night` (4096 × 1024 RGB, 360° strip, horizon at the bottom row, straight overhead at the top), `_silhouette`
+(4096 × 512 RGBA, tree line / skyline standing on the horizon = 45°) and a half-size `_low` copy of each. Spec he was given:
+the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
+- data.js `HQ_PAINTED_SKIES` (base, silH, rows `{ key: { label, sites } }`) + `hqPaintedSky(id, low)`: a room id, a
+  `field:<room>:…` fight or a board / arena id → `{ key, day, night, sil, silH }`; an interior (no `shell.open` / sky) → null.
+  A room can also name a row with `shell.sky.paint: '<key>'`. Rows today: woods = prebuilt_fairy_forest; disaster_city =
+  prebuilt_downtown + prebuilt_stadium (the Sewers' rooms are closed, so unpainted). A new zone = one row + his files.
+- three-renderer.js THE PAINTED SKIES (`_paintSky*`, beside `_initEnvironment`): `_paintSkyTick(id, snap)` from `_hqTickSky`
+  (+ `_hqBuildSky`, so the HQ load card waits for the sheets) and `_updateEnvironment` (activeGameMode). Loads through the
+  game's `textureLoader` (ledger / gate / retry), `flipY = false` (the bitmaps flip at the decode on Chromium; with no flip
+  every path agrees, the shader reads v = 1 − altitude), no mips (a mip chain draws a line down the wrap), `_low` on
+  EW_PERF_LOW, sheets of a place you left disposed. Uniforms uPaintDay / uPaintNight / uPaintSil / uPaintAmt / uPaintSilOn /
+  uPaintSilH on `_envUni`. The three sampler uniforms MUST start as three different textures (`_paintSkyBlank`): the WebGPU
+  twin (`_ewPT`) binds per first-seen texture, and three nulls (one shared stand-in) drew the day sheet for all three.
+- `_envDomeFS` THE PAINTED SKY block (and the TSL twin, keep in step): after the day sky, before dusk; day ↔ night by
+  smoothstep(uDayNight); silhouette dimmed ×(0.17, 0.20, 0.32) at night; the game's sun (day), moon and stars (night,
+  only where the painting is dark) drawn over the sky but behind the silhouette; blood moon / lunar eclipse / storm / snow /
+  sand / blood rain wash it; the map tint is skipped (× 1 − uPaintAmt); dusk, the Black Sun block and the horizon fog still apply.
+- Kill-switch / before-shots: `window.EW_NO_PAINTED_SKY = true` (read live). Debug: `window._ewPaintSky()`.
+- Online: nothing on state, nothing relayed; both seats resolve the same board id.
+- The far roster (floating bodies, lone doors) and landmarks still hang in front of the painting (not removed).
+- Proof: /mnt/project-files/painted-skies/ (walk before/after day + night for both zones, WebGPU day/night, a battle looking up).
+
+### THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead")
+- His four 1024 × 512 PNG sets on R2 `Assets/skies/1024x512/<Name> Sky/<Name>_Sky-<Blue|Night|Sunset>_0N-1024x512.png`
+  (Bumpy, Cloudy, Wispy, Fading; N = 1..4). Same strip layout as the paintings (horizon bottom row, zenith top), so the
+  shader reads them the same way; each wraps seamlessly and goes `rep` = 2 times round (1024 px for 360° would stretch
+  the clouds 2× wide next to 512 px for 90° up).
+- data.js `HQ_PAINTED_SKIES.sets` + a row's `set`: woods = wispy, disaster_city = fading. Bumpy and Cloudy are in `names`
+  but on no row (one word on a row swaps them in). Dropping `set` brings back the row's own `<key>_day/_night` paintings,
+  which stay on R2 and in data. The row's silhouette stays on (`noSil: true` drops it).
+- Blue = day, Night = night (crossfade by uDayNight as before), Sunset = the clock's dawn/dusk triangle (uDusk, 0..1,
+  peaks mid-dawn 6:15 and mid-dusk 19:15). With a Sunset sheet the clock's warm horizon band is skipped (× 1 −
+  uPaintAmt·uPaintDuskOn). A fight has uDusk 0, so battles show Blue / Night only.
+- Number N per room: the row's open rooms in DOOR_HQ order take 1, 2, 3, 4 (clearing 1, redwoods 2, ritual 3; streets 1,
+  harbour 2, stadium bowl 3); a board with no room takes 1. All three times use the same N.
+- New uniforms: uPaintDusk (own blank DataTexture: the WebGPU sampler gotcha), uPaintDuskOn, uPaintRep. No `_low` copies
+  exist, so low power loads the same PNGs (≈ 0.4-0.8 MB each, 4 per room).
+- Shot harness note: with draw-on-demand the sky tick only runs on drawn frames, so a live flip needs `ph draw always`.
+- Proof: /mnt/project-files/painted-skies/sets/.
+
+### THE FAR FOG ON THE SILHOUETTES (2026-10-24, mondo: "the treeline and skyline dont react to the fog like far away objects do")
+- The silhouette strip takes the scene's FogExp2 as if it stood at the room's far edge: half the field's longer side + the
+  outer ground (`terrain.outer.m` or HQ_OUTER_M 54 m); a board with no room: 20 m + 54 m. Amount = 1 − e^−(density ·
+  distance)² (FogExp2's own curve), colour = the live scene fog's (the clock's fog colour too). Uniform uPaintSilFog
+  (rgb, a), GLSL + TSL. Only the silhouette: the painted sky keeps the dome's own horizon band.
+- Walk: `_hqPaintFog(H)` = the dry fog × the Fog Density setting (_ewFogShape().m), 0 when Scene Fog is off (the same scaling
+  _hqFogHold applies at the draw). Fight: the battle scene.fog as is (Scene Fog / Fog Density already in it), px per metre
+  = _fieldGroundState.s in a field fight, else tileSize / 1.75.
+- At factory density the woods (0.03/m, 73 m) and downtown (0.016/m, 166 m) silhouettes are ~99% fog, like the far 3D
+  buildings and trees; Fog Density 0.3× leaves about half; Scene Fog off leaves them crisp. Debug: `_ewPaintSky().silFog`.
+- Proof: /mnt/project-files/painted-skies/sets/far_fog_*.jpg.

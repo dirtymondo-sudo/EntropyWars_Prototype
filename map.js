@@ -386,7 +386,7 @@
             const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
             const online = _sqMode === 'online';
             if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
-            if (sub) sub.textContent = online ? ('Online matches are ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + '. Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
+            if (sub) sub.textContent = online ? ('Online · ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + ' (the 4v4 / 5v5 switch sets it). Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             if (count) count.innerHTML = presets.length ? `<b>${presets.length}</b> / ${max} TEAMS` : '';
@@ -10882,7 +10882,7 @@
             const T = state.terrainTimers || (state.terrainTimers = {});
             const ex = T[k];
             if (ex) {
-                if (now === ex.o && (lower || (state.boardHeights?.[y]?.[x] ?? 0) === ex.oz) && !ex.d) { delete T[k]; return; }
+                if (now === ex.o && (lower || (state.boardHeights?.[y]?.[x] ?? 0) === ex.oz) && !ex.d && !ex.cut) { delete T[k]; return; }
                 if (ex.t !== now) ex.m = null;   // the snow wall turned into something else: no puddle when it ends
                 ex.t = now; ex.n = _terrainChangeRounds();
                 return;
@@ -10912,6 +10912,17 @@
             const h0 = getBaseHeightAt(x, y);
             _terrainRevertHold = true;
             try {
+                /* THE GAP (2026-10-24): a Fissure cut (`cut` = the blocks it took out) closes — whatever settled in the gap
+                   above the blocks comes out, the ground's own blocks stand back, then the cell goes home like any other */
+                if (Array.isArray(e.cut) && e.cut.length) {
+                    const col = state.boardColumns?.[y]?.[x];
+                    const lo = Math.min.apply(null, e.cut.map(b => b.z));
+                    if (col) for (const b of col.slice()) if (b.z >= lo) removeBlockAt(x, y, b.z);
+                    for (const b of e.cut.slice().sort((a, b2) => a.z - b2.z)) setBlockAt(x, y, b.z, b.terrain);
+                    if (state.liquidSprings) delete state.liquidSprings[k];
+                    if (state.gapTiles) delete state.gapTiles[k];
+                    if (typeof _terrainChunkCache !== 'undefined') _terrainChunkCache.clear();
+                }
                 if (e.z !== null && e.z !== undefined) {
                     if (getTerrainAt3D(x, y, e.z) === e.t) setTerrainAt(x, y, e.o, e.z);
                 } else if (!e.m) {
@@ -12493,6 +12504,7 @@
             state.terrainTimers = {}; state._terrainClock = false;   // ⏳ battle.js startMatch starts the clock   // ⏳ THE TERRAIN TIMERS: nor a changed cell's clock (setTerrainAt)
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
             state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
+            state.gapTiles = {};   // THE GAP: nor Fissure's cuts to the bed (battle.js terrainCreate notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so
@@ -14687,8 +14699,12 @@
                 /* ⬡ The Cube is a solid body hovering over its tile: it blocks
                    sight (and shots) through the two cells above its surface —
                    the same band a standing unit's body fills. Never occludes
-                   itself (endpoint columns are excluded above). */
-                if (_towerBodyBlocksCell(ix, iy, iz, board)) return true;
+                   itself: the endpoint columns skip it at EVERY height (Cube vs
+                   Cube matchup 2026-10-23: the self-skip above stops at z+1, so a
+                   ray from higher up — a flyer, a ledge — dropped into the Cube's
+                   top cell and the Cube hid its own tile; flyers never saw or
+                   shot it from a step back). */
+                if (!(ix === x1 && iy === y1) && !(ix === x2 && iy === y2) && _towerBodyBlocksCell(ix, iy, iz, board)) return true;
 
                 if (iz >= 0 && ix >= 0 && iy >= 0 && ix < bw() && iy < bh()) {
                     /* Sight-blocking TERRAIN (walls, thickets…) occludes the two
@@ -15052,6 +15068,8 @@
 
         function dropHourglassesFromUnit(unit) {
             if (!unit) return;
+            /* THE SEARCH MAP (battle.js): the tile is unsearched again for both sides, Keys or not */
+            if (typeof forgetSearchedTile === 'function') forgetSearchedTile(unit.x, unit.y);
             const carried = state.hourglasses.filter(h => h.carriedBy === unit.id);
             for (const h of carried) {
                 h.carriedBy = null;

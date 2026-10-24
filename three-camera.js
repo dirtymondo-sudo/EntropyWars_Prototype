@@ -146,14 +146,20 @@ const ThreeCamera = (function () {
        sky; that rare case keeps the old fade. */
     const SIGHT_MAX_LIFT_TILES = 3.5;
     const CINE_MIN_EYE_TILES = 1.15;   // THE LOWEST LENS (2026-10-15): see sync()
+    /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a room's skyscraper prop (three-renderer tallSceneryTopAt)
+       stands far above the grid column under it — the lens treats it as solid to its drawn roof */
+    function _tallTopWorld(wx, wz) {
+        if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.tallSceneryTopAt !== 'function') return -Infinity;
+        try { return ThreeRenderer.tallSceneryTopAt(wx, wz); } catch (e) { return -Infinity; }
+    }
     function _solidGroundYWorld(wx, wz) {
         if (typeof window !== 'undefined' && typeof window._camSolidGroundPx === 'function') {
             try {
                 const g = window._camSolidGroundPx(Math.floor(wx / tileSize), Math.floor(wz / tileSize));
-                if (Number.isFinite(g)) return Math.max(0, g);
+                if (Number.isFinite(g)) return Math.max(0, g, _tallTopWorld(wx, wz));
             } catch (e) {}
         }
-        return _groundYWorld(wx, wz);
+        return Math.max(_groundYWorld(wx, wz), _tallTopWorld(wx, wz));
     }
     function _sightLineFloor(sx, sy, sz, ex, ey, ez, clear) {
         let need = _solidGroundYWorld(ex, ez) + clear;

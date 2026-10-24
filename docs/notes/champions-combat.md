@@ -2336,3 +2336,150 @@ water. Audit: Long Neck is the only spell row that applies Drowning; Walk the Pl
 through the deep-water terrain (resolveTileArrival / TERRAIN_RULES.deep_water), which already checked the tile.
 Swimmers (siren, kraken, Loch Ness, snorkel...) no longer take a spell's Drowning in deep water either, matching the
 terrain rule. Browser before/after: /mnt/project-files/drowning/.
+
+## ONE TILE A SCAN + RANDOM KEYS — 2026-10-23 (mondo)
+mondo: "inspect shouldnt grow with vision, it should only be 1 tile at a time for everyone. But some units can still
+have longer inspect ranges. Also let's make the keys completely random on the whole board, not any rules like have to
+be 2 tiles apart."
+- state.js `getInspectTileCount` returns 1 (was the unit's VISION), so battle.js `getInspectFootprint` is the picked
+  tile alone, for Inspect and Far Sight alike. REACH is untouched: `getEffectiveInspect` = RACE_KITS `inspect` (2 for
+  Android, Shadow Entity, Reptilian, Annunaki, Men in Black, Marksman, Door Agent, Halfdemon, Vampire, Cosmic Wraith,
+  Chosen One, Ghoul, Barbarella, Quarterback, Robinhood, Symbiote), the scanner trait (+1), gear `inspectBonus`, and
+  Far Sight's remote search (4). No new reach was added.
+- battle.js `randomizeSharedObjectives`: Keys go to an evenly shuffled pick (`_shuffleKeySpots`, engineRng) over the
+  WHOLE board. REMOVED: the 2-tile Key spacing (`canPlaceHourglassAt`) and the centre-columns-first pass. KEPT:
+  passable tile, reachable by walking from the units' start tiles (the 10-06 flood, which also skips the Cube tiles),
+  no unit on it, one Key per tile, the per-floor split when a layout has floors. The round-10 top-up
+  (`spawnPeriodicHourglasses`, non-fixed pools only) is whole-board too.
+- ai.js search map: every open unscanned tile is equally likely now (no spacing exclusion around seen Keys, no centre
+  prior; `searchCenterPrior_v1` stays in the registry but has no effect), and the expected find of one Inspect is one tile.
+- Tutorial: the Arena lesson's KEY step and WIN BY KEYS' INSPECT step re-worded; the last Key is now "on a tile next to
+  the marked tile".
+
+## CUBE VS KEYS FIXES, PART 2 (2026-10-23)
+- Report: https://claude.ai/artifact/S3RPjrYtgW8wQvSPFEweZX. PR #449 took the first batch; this is the rest that was not
+  owned by the shared-bugs thread.
+- **Refund camera (online).** battle.js softResetToUnit called the bare `armActionCamSettle`, so online.js's
+  `window._armActionCamSettle` wrapper (the `cam-action-settle` relay) never ran: the guest replayed every action shot
+  and then sat in the target close-up, which a press refund made last the whole turn. Both hold branches now call the
+  window copy; the full return and the TPS return (the host's own unit) send the guest the settle alone
+  (`window._ewRelayCamSettle`). Checked offline (the settle + relay fire on CPU actions, no errors), not in a two-seat match.
+- **THE SEARCH MAP.** `state.scannedByPlayer` was wiped 0.7 s after every Inspect (the scan fade), so nothing remembered
+  which tiles a team searched (ai.js's "own scanned tiles" reads it too and has always seen it empty; left alone, flagged).
+  New `state.searchedByPlayer[p]`: every tile p's Inspect / Far Sight footprint covered (`_inspectFootprintAt`). A tile
+  a unit dies on (or a capture door / EXIT takes it) is forgotten for both sides (`forgetSearchedTile`, every time, Keys or
+  not, so it tells nobody a carrier fell). While the viewer's own unit aims Inspect or Far Sight: the hovered tile's real
+  footprint (getInspectFootprint; one tile since PR #467) is a solid teal plate (`searchFoot`, dims the reach),
+  the team's searched tiles a grey wash (`searchMap`). battle.js `syncSearchMap` (hover: updateHoveredTarget; mode:
+  ui.js renderBoard). Online: the host sends the guest only the guest's own set (online.js `_guestTrapFilter`).
+- "+N KEY" floats as `pickup` (gold) instead of `streak` (hit-word red).
+- Already fixed on main before this pass: the two seats' load-screen / CASE CLOSED year (seeded by the match id).
+- (The round-10 Key top-up that cleared the searched tiles is gone, see below.)
+
+## CPU SEARCH MEMORY + NO KEY TOP-UP (2026-10-23, mondo)
+mondo: "yes it should remember, and lets also get rid of the round 10 key top up".
+- ai.js reads the searched tiles through `_aiSearched(st, p)` = `state.searchedByPlayer[p]` (was scannedByPlayer, always
+  empty after the scan fade): the search map, the fallback Inspect pick, the Keys objective pool, Far Sight's pick and
+  the win-clock cache key.
+- REMOVED: `spawnPeriodicHourglasses` and its round-10 call. It never reshuffled Keys; it ADDED up to 3 new Keys (at most
+  6 loose on the ground) once, at round 10, only in a mode without a fixed Key pool. Arena pins keySpawnCount 5 /
+  keysToWin 5 (fixedPool), so it never ran in Arena; it could only run in a match with no multiplayer mode set.
+
+## WEAK RACES 2: Symbiote, Bunny Girl, Bee Queen, Wizard (2026-10-23, mondo "sure lets do both")
+Study + lab report: https://claude.ai/artifact/DEtZE2J3xJzUBSXzN4Hp9L (screenshots in project files weak-races-2/).
+Lab, all four on one team vs random CPU teams (code at PR #442): baseline 17.1% (245 games), spells only 13.9%
+(244), spells + these stats 33.6% (304). mondo picked both.
+- Spells (data.js): A Thousand Stings 10x17 -> 10x30, Dead Man's Hand 4x34 -> 4x50, Magic Missile 5x27 -> 5x40.
+  calcDamageResolution takes armour off EVERY hit (35% soak floor), so multi-hit rows did far less than one hit of the
+  same total. Static Shock Jammed 1 -> 2 rounds, Misdirection Blind 1 -> 2 rounds: a 1-round status ticks off at the
+  end of the round it was cast in, so a caster who acts after its target wasted it. Static Shock (lightning family)
+  and Misdirection (trickery family) change for every race that rolls them.
+- Stats (RACE_BASE_STATS): Symbiote HP 690 -> 900, SPD 79 -> 90 (move 2 -> 3); Bunny Girl HP 666 -> 900; Bee Queen
+  HP 867 -> 1000, MP 146 -> 220; Wizard HP 349 -> 450, DEF 15 -> 40, SPD 23 -> 50 (move 1 -> 2).
+
+## WIPEOUT vs CUBE MATCHUP FIXES (2026-10-23, mondo: "fix the most prominent individual issues found in each one")
+Report: https://claude.ai/artifact/CWTojTHQLaLz8Jz6tqAeKF (copy /mnt/project-files/matchup-wipeout-vs-cube/). Existing rules only.
+- MARTYR'S TALISMAN IN THE FORECAST (top issue: rows said lethal, the target lived at 1 HP four times). battle.js
+  `talismanReady(u)` (gear hook `surviveLethalOnce`, not `_talismanSpent`); `forecastHitOnUnit` caps a lethal hit at
+  hp-1 and returns `talisman`; `forecastSpellPlan` / `forecastBanePlan` tag the unit 'talisman' and spend the save once
+  per plan (`_fcTalismanUsed`, cleared at start and in finally) so a second hit in the same plan is lethal again;
+  `forecastBasicAttack` returns `endures`. ui.js `predictDamageToUnit(..., out)` fills `out.endures` / `out.blocked`;
+  `_FC_TAG_TEXT.talisman` = "✨ TALISMAN · SURVIVES AT 1"; fallback intent badges show it instead of LETHAL. hud.js target
+  rows add "✨ SURVIVES AT 1" to the note and show PROTECTED / OUT OF REACH / GUARDED in place of a blank number.
+- ATTACK LIT WITH NOTHING TO HIT: state.js `getActionPanelCache` uses `_getAttackValidTargets(unit, {combatOnly:true})`
+  when the list exists; turret / deployed / seed fallbacks only without it; a building in reach no longer lights ATTACK
+  (buildings are not basic-attack targets). The Downtown case was already fixed by PR #444.
+- DOWNTOWN TOWER CAMERA: the tower is a GLB prop (`nr_building:building_5`) standing on 9-high columns, so grid columns
+  missed its upper storeys. three-renderer.js `tallSceneryTopAt(wx, wz)` reads room-piece boxes 1-10 tiles across that
+  rise 1.5+ tiles over their column (re-read every 3 s for the first 60 s); three-camera.js `_solidGroundYWorld` and
+  battle.js `_menuCamOccl` treat them as solid to the roof. `_menuShotPose` also tries two very wide swings (+56/+84 over
+  the normal swing, cost 1.2, drops ≤16) only while every nearer pose is blocked. `_menuCamSolve` walks the sight lines
+  from the eye AFTER THE CLEAR FRAME slide (three-camera.js sync slides the eye by fa.cx/fa.cy at the focal's depth): from
+  the unslid eye a caster against the tower's corner read as clear. Before/after: /mnt/project-files/wipeout-vs-cube-fixes/.
+- METEOR COOLDOWN: Meteor, Requiem and Tidal Slam say "Cooldown: 2 rounds" but carried none: `_applyManaCostFormula`
+  priced them under 80 before `_applyBaselineCooldowns` (cost ≥ 80 → 2) ran, then the tier ladder set 100. Pinned
+  `cooldownRounds: 2` on the three rows (every "Cooldown: N rounds" text now matches its row).
+- Small: element-terrain "Air" callout/log reads "IN THE AIR" / "up in the open air"; squad desk text names the
+  4v4/5v5 switch; online.js `_spellCycleTargets` / `_spellCycleIndex` are guest-local (skip list + `_guestUIKeys`).
+- Not reproduced / left: Stampede on a flyer (path may not have crossed it), Tornado triple fling, Overwatch, flyer over a
+  ground unit (existing rule), height counting as range (rule), Meteor MOVE→CAST farthest tile (existing rule), Ki Wave
+  rows. Already fixed on main: Cube row "HP NN%" (U01), 1-round statuses (U05). The shared-bugs thread (PR #470) owns the
+  round skip, MOVE→CAST numbers, CONFIRM chip, sliding rows, labels over the HUD, guest timer result.
+
+## THE CRATER FLOOR + THE FISSURE GAP (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for fissure which should actually make a gap in the map all the way down to the bottom lava layer, dont use that texture that it uses now")
+- **Crater floor:** data.js `TERRAIN_RESHAPE_CONFIG.spellSinkMax: 2`. battle.js `spellSinkFloorAt(x, y, curH)` = the
+  cell's height before the first spell deformed it (`state.deformedTiles[k]`, else its current/base height) minus 2,
+  never under `minHeight`. `applyTerrainDeform` clamps every negative delta to that floor, so stacked Meteors / Ground
+  Slams / Flat Earth stop 2 below the original ground. The preview (pushChange) uses the same floor. Build/Dig (the
+  block actions) do not go through applyTerrainDeform and are untouched.
+- **Fissure gap:** SHARED_FISSURE carries `terrainDeform: { toBed: true }` (still `kind: terrainCreate`,
+  `terrainType: 'lava'`, 3 tiles, orientable, Stagger). `toBed` drops each cell to `minHeight` (the bed: lava on
+  MF_DELTA_STRATA boards), records the removed blocks in the row's `cut`, skips the surface paint, and marks
+  `state.gapTiles[k]` + `state.paintedTiles[k]`. The 3-round timer carries `cut`; map.js revertTerrainTimer rebuilds the
+  column from it and clears gapTiles, so the gap closes like every other battle terrain change (until mondo picks the
+  permanent-height rule). Units on a cut cell ride down with the existing deform rule.
+- **Field-arena look:** three-renderer.js `_fieldDeformPlan(..., gap)` makes gap cells a flat-bottomed slot instead of
+  a bowl (`isGap`), `_fieldDeformMesh` snaps vertices within `FIELD_GAP_SNAP` (0.34 tile) onto the gap edge for a
+  straight cut, and `_fieldStrataBuild` adds inward rock faces on every gap side whose neighbour isn't a gap. The lava
+  bottom is the existing painted-tile lava skin + glow. Kill-switch `window.EW_NO_FIELD_GAP`. Plain state keys ride
+  the state-sync, so the guest sees the same gap.
+
+## PvP playtest fixes (2026-10-24, thread "PvP playtest")
+
+From the 10-24 two-seat playtest (report https://claude.ai/artifact/6eCz5YkErHgFJVkhBY1tAE), mondo's answers:
+- **Guest timeouts are logged:** battle.js `_shotClockExpired` on the GUEST no longer writes its own line (the host's next
+  snapshot replaced it, so it never showed); the guest's END TURN carries `timeout: true` (`state._shotClockTimeoutEnd`)
+  and online.js `'triggerEndTurn'` writes "⏱ Shot clock! X's turn ends automatically." + the TIME! float on the host.
+- **The podium never reaches the guest:** `_stageVictoryPodium` revives and lines up the viewer's cast in place; the host
+  kept broadcasting, so the guest's result said "4 v 3 STANDING" and its Export Last Match had a dead unit alive.
+  `window._ewPodiumStaged()` → online.js `_broadcastState` sends nothing while the podium is up. The host FIRST flushes
+  the final snapshot (`window._ewFlushFinalSync`, called at the top of the podium staging, cancels the 50 ms throttle):
+  without it the guest never got `winner` and sat on the last round with no result screen.
+- **The press line reaches the guest:** `_pressDialogueLine(res)` (the "+2 AP — Free action!" dialogue) is relayed as
+  `'press-feedback'` (online.js wraps `_showPressFeedback`); fogged presses stay silent. The press itself shows only AFTER
+  the hit (mondo: a pre-hit +2 would give away the crit).
+- **The damage chip:** hud.js `_hrlgDmgChip` — colour only, so it never spills out of the target row: green when even the
+  low roll kills, gold with "?" when only the high roll does, red otherwise. ui.js `predictDamageToUnit` out carries
+  `heal`, `min`, `max`. (A first try with LETHAL / MAY KILL words and the absorb heal on the chip overflowed the row.)
+- Checked, already right: an absorbed element part blocks the press (`_pressHitInfo`), and the row's red ! was the absorb
+  warning; walking off a drop already tints the tile hazard, badges the move ghost with the damage and labels the tile
+  menu "Move here (−N HP)".
+
+## SAND WALKS LIKE GROUND + THE GROUND CHIPS (2026-10-24)
+mondo: "Just take away the mov-2 property from desert, that is what was causing my ice queen bug where it could only
+jump ... There was nothing to indicate that the sand was affecting me negatively. That needs to show just like the
+attack and defense stages show."
+- data.js TERRAIN_RULES.desert.moveCost 2 → 1. Confirmed the bug in the browser on The Bermuda Triangle Arena (all sand):
+  Ice Queen is MOV 1, so with sand at 2 per tile she had 0 walk tiles (only Jump); now 2. Other units on that board went
+  from 3-5 tiles to 19-30. Desert still heals ×0.7 and still counts as earth home ground; desert-adapted races keep their
+  full-heal on it. unitIsDesertAdapted's move line in getTerrainMoveCost is now a no-op (kept).
+- Movement on terrain was never a stat change: getTerrainMoveCost charges a cost per tile ENTERED (forest/mountain/rocks/
+  oil/bog 2, lava 3 ...), which is why no MOV number ever moved. state.js getTerrainStatChips (beside getWeatherStatChips)
+  now shows it: "<glyph> MOV COST N" (red) while the body stands on ground that costs it more than 1 (the engine's own
+  read for THIS body: boots, wings, adaptations, a cost-adding object), plus the race's terrain affinity stats
+  (getTerrainPreferenceModifier, e.g. Anubis/Fallen Angel on sand "🏜 ATK+8", "🏜 M ATK+5", green), which were also
+  invisible. A flyer up in the air gets no cost chip (the engine walks it through air at 1). Shown in the unit card /
+  quick-menu chips (hud.js _hrlgStatusChips) and the nameplate badge row (three-renderer _plateStatusBadgesHtml; the
+  badge serial hashes the chip keys so a repaint of the ground under a still unit refreshes it). Client-side read of
+  synced state: the guest sees the same chips.
+- Screens: /mnt/project-files/sand-move/.

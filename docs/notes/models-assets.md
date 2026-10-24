@@ -396,3 +396,21 @@ not have roofs?"
   flight's nearer side, whichever is higher). `info.drawXZ` moves nodes within 0.75 of a cell of a side onto that side (2 cm in), so a
   tier's face meets the flight at its edge. The walker still reads H / info.exact. `info.flightLo` (lowest ground under a flight) takes
   the wedge and cheeks down to it (≤ 4 m under its low end), so no slit opens under a flank where the floor dips.
+
+## THE CHRISTMAS PACK (2026-10-24, mondo's upload)
+R2 `Assets/christmas/models/` + `textures/` (55 sheets, mostly 256 px). `Christmas.dae` and `Christmas.fbx` are the same kit (62
+nodes, Z-up, metres); the game reads the `.dae` with three's ColladaLoader (index.html importmap → `THREE.ColladaLoader`).
+`Roads.*` (snowy road tiles) and the rigged `SantaClaus.fbx` / `SantaClaus_B.fbx` are unused (the Santa rigs are mondo's call).
+- Load: three-renderer.js `_asDae` (texture paths in the file are absolute `C:/Users/...`: a LoadingManager maps every image to
+  `textures/<basename>`), `_xmasPackMats` (linear maps, alphaTest 0.5, cards double-sided). Pieces are cut at load like the metro
+  pack: catalogue `base: 'xmas', node: '<names>'` → URL `Christmas.dae#node,node`. Kill-switch `window.EW_NO_XMAS_PACK`.
+- Catalogue: data.js `HQ_CATALOGUE_XMAS` (tree, snowmen, gifts, wreaths, stockings, garlands, food, cocoa, punch, flan, champagne,
+  foil tray, house/Santa palette-only). Editor palette group "Christmas". Trees: HQ_TREE_KINDS `xmas_pine*` / `xmas_snow_pine*`
+  (`'xmas:<node>'` foliage keys).
+- Placed: North Pole village forest + groves (the pack's snowy pines), plaza tree + gifts, the hearth (wreath, bell garland,
+  stockings, cocoa + gingerbread on the mantel, mallets), snowmen, gift stack, bay-hall wreaths; cafeteria counter/table food
+  (dropped in after_hours) + after-hours champagne. Wall-flagged rows add `mount` on top of y, so placed wall rows use `mount: 0`.
+- Spells: three-vfx-effects.js `_xmasPiece` → `ThreeRenderer.xmasClone` (unlit copy, scaled by height or `fit: 'span'`, null while
+  the file streams; `_spellLibWarm` warms `_XMAS_SPELL_NODES`). Blizzard Present + The Naughty List finisher use the pack's red
+  gift (procedural box stays as the stream fallback); Milk and Cookies (`_stageSupportBurst`) sets the cookies + cocoa (no tray: mondo dropped it 10-24)
+  down beside the caster. Lump of Coal untouched (rule: just Santa throwing coal).

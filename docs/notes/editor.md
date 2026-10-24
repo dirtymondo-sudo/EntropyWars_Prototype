@@ -686,3 +686,16 @@ out from it and goes on forever".
   runs an odd lattice offset half a square (hqFieldTerrainInfo), so the room's edges are square edges on both sides; game rooms
   keep the even, centred rule (site_prebuilt_hollow_earth_vent's d = 9 squares is the one game room it would have moved). The
   editor's grid and TILE snap read the same offset (`tileOff`).
+
+### THE SHEET LOOKS (2026-10-24) — cliff zoom, terrain tints, one sheet per square
+- mondo: Area 51's stair sides in Dirt 2 were "zoomed in and blurry"; rule: one 1.75 m battle square = one 128 sprite everywhere.
+- Cause: in-room geometry was UV'd at the far horizon's density (`HZ_TEX_DENSITY` 0.5 in `_hzBoxUV` / `_hqSlopePrismGeo` /
+  the stairs pack `texK`), one sheet per TWO squares. Every terrain-room box (walls, stands, decks, bridges, floats, the hull,
+  city lots, cave ledges + rock, passages) now uses `_nrBoxUV` (the board's density); the pack's flights / railings / escalators
+  and the stair wedge use `U / TM`. The field shader's cliff (0.85) and path (1.15) scales are 1 now. The horizon keeps 0.5.
+- New fields (default writes nothing, the room looks as before): `terrain.cliffZoom` (squares per cliff sheet, the field's
+  steep faces, keyless walls, stair sides wearing the room's cliff), `terrain.floorTint` / `cliffTint` / `pathTint` ('#rrggbb',
+  multiplied; white = none); a stair ramp row's `side` (its sides' sheet), `sideZoom`, `sideTint`. Renderer helpers
+  `_hqSheetLook(info)` / `_hqSideLook(f, kindSide, info)`; WebGPU `_ewNodeTerrain` reads `cliffK` / `tFloor` / `tCliff` / `tPath`.
+- Editor: THE GROUND shows cliffZoom (a select) + the three tints (a hex box + a colour picker); a stairs row shows side /
+  sideZoom / sideTint. Proof shots: /mnt/project-files/cliff-textures/.
