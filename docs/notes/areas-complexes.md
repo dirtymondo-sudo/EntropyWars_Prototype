@@ -1976,3 +1976,9 @@ the old swim-stroke-stood-up chain still plays. `ClimbUp_1m` stays the mantle.
 - TRAP: `bake-arenas.js --size N --apply` writes the WHOLE picksN block from the json; a json of one site wipes every other site's
   row. Bake one site at a size with `--json`, then merge its row into the block by hand (or bake all sites).
 - The Woods clearing is unchanged; the Woods crystal fight (hqMarkerArenaId → `<site>_delta`) now fights in the new room.
+- RESTYLED the same day (mondo, shown the shots: the old arena — the Woods clearing cut — "looks way better"; he picked "arena
+  back + restyle full site"): the 12/10/9 picks are the clearing cut again (picks11 has no Fairy Forest row, as before), the
+  `within` row is gone (so the Woods crystal fight is the clearing again), and the glade is the clearing's look: hqWoodsShell
+  defaults (fog 0.03/m, the woods' mood), tall trees on the board (6-7.5 m, tree/tree_2/tree_3/tree_4/tree_5), dense groves, no
+  mushrooms and no mushroom lamps. Only the 20×20 full site (HQ_ARENA_RULES.own) is cut from the glade. The fae_* catalogue rows
+  and the fae_cap tree kinds stay in the palette, unused.
