@@ -68900,34 +68900,43 @@ const ThreeRenderer = (function () {
        neighbour keeps its centre); a RAISE stays a block (the strata's quad + faces — "I can place blocks now"). The
        floor's ORIGINAL vertices are kept on the mesh and re-derived on every rebuild; deactivate() puts them back, and
        the next room entry rebuilds the room from its data anyway — the map is back to normal after the battle. */
-    function _fieldDeformPlan(W, H, deltaAt, elev, band) {   // THE FIELD IS THE ROOM: W × H (was one N)
+    function _fieldDeformPlan(W, H, deltaAt, elev, band, gap) {   // THE FIELD IS THE ROOM: W × H (was one N)
         var dug = [], D = new Array(W * H);
         for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var d = deltaAt(x, y) || 0; D[y * W + x] = d < 0 ? d * elev : 0; if (d < 0) dug.push({ x: x, y: y, delta: d }); }
         var at = function (x, y) { return (x < 0 || y < 0 || x >= W || y >= H) ? 0 : D[y * W + x]; };
         var ss = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
         var side = function (f) { return f < band ? -(1 - ss(f / band)) : f > 1 - band ? ss((f - (1 - band)) / band) : 0; };
+        /* THE GAP (2026-10-24): a Fissure cell (state.gapTiles, cut to the bed) is no bowl — its floor is flat to its edges and
+           the ground beside it never leans into it, so the wall is sheer (_fieldDeformMesh stands the floor's edge vertices on
+           the cell's edge, _fieldStrataBuild faces it with the bed's rock) */
+        var isGap = function (x, y) { return !!(gap && gap[x + ',' + y] && at(x, y) < 0); };
         var dyAt = function (tx, tz) {   // tiles in → the drop (≤ 0, the elev's units) out
             if (!dug.length) return 0;
             var cx = Math.floor(tx), cz = Math.floor(tz), fx = tx - cx, fz = tz - cz;
             var dc = at(cx, cz), tX = side(fx), tZ = side(fz);
+            if (gap && isGap(cx, cz)) return dc;
             var sx = tX < 0 ? -1 : 1, sz = tZ < 0 ? -1 : 1, ax = Math.abs(tX), az = Math.abs(tZ);
             if (!ax && !az) return dc;
-            var dx = at(cx + sx, cz), dz = at(cx, cz + sz), dxz = at(cx + sx, cz + sz);
+            var nb = function (x, y) { return (gap && isGap(x, y)) ? dc : at(x, y); };
+            var dx = nb(cx + sx, cz), dz = nb(cx, cz + sz), dxz = nb(cx + sx, cz + sz);
             var ex = (dc + dx) / 2, ez = (dc + dz) / 2, ec = (dc + dx + dz + dxz) / 4;
             return (1 - ax) * (1 - az) * dc + ax * (1 - az) * ex + (1 - ax) * az * ez + ax * az * ec;
         };
-        return { dug: dug, dyAt: dyAt, band: band };
+        var gapAny = false; if (gap) for (var gi = 0; gi < dug.length; gi++) if (isGap(dug[gi].x, dug[gi].y)) { gapAny = true; break; }
+        return { dug: dug, dyAt: dyAt, band: band, isGap: gapAny ? isGap : null };
     }
     var _fieldStrataMats = null;
     var FIELD_DEFORM_BAND = 0.3;   // tiles — the wall of a dig either side of the cell's edge (HQ_FIELD_RULES.strata.deformBand overrides)
+    var FIELD_GAP_SNAP = 0.34;     // tiles — THE GAP: the floor's vertices this near a gap cell's edge stand on it (≥ the field's widest grid step, 0.5 m)
     var _fieldDeformCache = { key: null, plan: null };
     function _fieldDeformPlanLive() {
         var G = _fieldGround(); if (!G || !G.levels) { _fieldDeformCache.key = null; _fieldDeformCache.plan = null; return null; }
-        var key = ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key;
+        var gapT = (typeof state !== 'undefined' && state && state.gapTiles && !(typeof window !== 'undefined' && window.EW_NO_FIELD_GAP)) ? state.gapTiles : null;
+        var key = ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key + '|' + (gapT ? Object.keys(gapT).join(';') : '');
         if (_fieldDeformCache.key === key) return _fieldDeformCache.plan;
         var band = FIELD_DEFORM_BAND;
         try { var rs = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.strata) ? HQ_FIELD_RULES.strata : null; if (rs && rs.deformBand > 0 && rs.deformBand < 0.5) band = rs.deformBand; } catch (e) {}
-        var plan = _fieldDeformPlan(G.W, G.H, function (x, y) { return G.deltaAt(x, y); }, G.elev, band);
+        var plan = _fieldDeformPlan(G.W, G.H, function (x, y) { return G.deltaAt(x, y); }, G.elev, band, gapT);
         _fieldDeformCache.key = key; _fieldDeformCache.plan = plan;
         return plan;
     }
@@ -68969,12 +68978,29 @@ const ThreeRenderer = (function () {
         _fdInv.copy(mw).invert();
         var o = m._ew_fieldOrig, v = _fdV, G = _fieldGround(); if (!G) return false;
         var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.W * ts + pad, z0 = -pad, z1 = G.H * ts + pad, moved = 0;
+        /* THE GAP: a vertex this close (tiles) to a gap cell's edge stands ON the edge, at its own side's height — the two
+           rows either side of the edge make one sheer wall, never a slope across it (the field's grid is ~3.5–7 a tile) */
+        var gS = FIELD_GAP_SNAP, isGap = plan.isGap;
+        var snapA = function (t, gs) {   // t tiles along one axis, gs(c) = is cell c a gap → the snapped t
+            var c = Math.floor(t), f = t - c, g0 = gs(c);
+            if (f < gS && g0 !== gs(c - 1)) return c;
+            if (f > 1 - gS && g0 !== gs(c + 1)) return c + 1;
+            return t;
+        };
         for (var i = 0, n = pos.count; i < n; i++) {
             var ox = o[i * 3], oy = o[i * 3 + 1], oz = o[i * 3 + 2];
             v.set(ox, oy, oz).applyMatrix4(mw);
             if (v.x < x0 || v.x > x1 || v.z < z0 || v.z > z1) { pos.setXYZ(i, ox, oy, oz); continue; }
-            var dy = plan.dyAt(v.x / ts, v.z / ts);
-            if (!dy) { pos.setXYZ(i, ox, oy, oz); continue; }
+            var tx = v.x / ts, tz = v.z / ts;
+            var dy = plan.dyAt(tx, tz);
+            var sx2 = tx, sz2 = tz;
+            if (isGap) {
+                var cz0 = Math.floor(tz), cx0 = Math.floor(tx);
+                sx2 = snapA(tx, function (c) { return isGap(c, cz0); });
+                sz2 = snapA(tz, function (c) { return isGap(cx0, c); });
+            }
+            if (!dy && sx2 === tx && sz2 === tz) { pos.setXYZ(i, ox, oy, oz); continue; }
+            v.x = sx2 * ts; v.z = sz2 * ts;
             v.y += dy; v.applyMatrix4(_fdInv); pos.setXYZ(i, v.x, v.y, v.z); moved++;
         }
         pos.needsUpdate = true;
@@ -69716,7 +69742,21 @@ const ThreeRenderer = (function () {
         }
         var riseG = function (q) { return _riseGroup(grp, q.rec, q.vis, 'field_strata_rise'); };
         if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return sDelta(f.x, f.y) > 0; }); }
-        if (!plan.tops.length) return 0;
+        /* THE GAP (2026-10-24): a Fissure cell's walls are the bed's rock, sheer from its floor to every side's top (a dug
+           neighbour too), a hair inside the cell so the floor's own sheer edge (_fieldDeformMesh) never fights it */
+        var gPlan = deformed ? _fieldDeformPlanLive() : null;
+        if (gPlan && gPlan.isGap) gPlan.dug.forEach(function (c) {
+            if (!gPlan.isGap(c.x, c.y)) return;
+            var t = sYAt(c.x, c.y); if (t === null || t === undefined) return;
+            [[1, 0, 'e'], [-1, 0, 'w'], [0, 1, 's'], [0, -1, 'n']].forEach(function (nb) {
+                var nx = c.x + nb[0], ny = c.y + nb[1];
+                if (nx >= 0 && ny >= 0 && nx < G.W && ny < G.H && gPlan.isGap(nx, ny)) return;
+                var inB = nx >= 0 && ny >= 0 && nx < G.W && ny < G.H, nt = inB ? sYAt(nx, ny) : null;
+                if (nt === null || nt === undefined) nt = t - c.delta * elev;   // the board's edge / an OUT cell: the ground it was cut from
+                if (nt > t + 0.5) plan.faces.push({ x: c.x, y: c.y, side: nb[2], y0: t, y1: nt, out: false, gap: true });
+            });
+        });
+        if (!plan.tops.length && !plan.faces.length) return 0;
         var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
         var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
         var matOf = function (key) {
@@ -69779,11 +69819,11 @@ const ThreeRenderer = (function () {
                 } catch (e) {}
             } else try { var uv = geo.attributes.uv; for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / ts)); } catch (e) {}   // the sheet tiles by height
             var m = new THREE.Mesh(geo, matOf(paintedSide(f.x, f.y) || bed.side)); m.material.side = THREE.DoubleSide;
-            var cx = f.x * ts + ts / 2, cz = f.y * ts + ts / 2, cy = (f.y0 + f.y1) / 2;
-            if (f.side === 'e') { m.position.set(cx + ts / 2, cy, cz); m.rotation.y = Math.PI / 2; }
-            else if (f.side === 'w') { m.position.set(cx - ts / 2, cy, cz); m.rotation.y = -Math.PI / 2; }
-            else if (f.side === 's') { m.position.set(cx, cy, cz + ts / 2); }
-            else { m.position.set(cx, cy, cz - ts / 2); m.rotation.y = Math.PI; }
+            var cx = f.x * ts + ts / 2, cz = f.y * ts + ts / 2, cy = (f.y0 + f.y1) / 2, gin = f.gap ? 1.5 : 0;
+            if (f.side === 'e') { m.position.set(cx + ts / 2 - gin, cy, cz); m.rotation.y = Math.PI / 2; }
+            else if (f.side === 'w') { m.position.set(cx - ts / 2 + gin, cy, cz); m.rotation.y = -Math.PI / 2; }
+            else if (f.side === 's') { m.position.set(cx, cy, cz + ts / 2 - gin); }
+            else { m.position.set(cx, cy, cz - ts / 2 + gin); m.rotation.y = Math.PI; }
             m.castShadow = f.out; m.receiveShadow = true; m._ew_fieldStrata = true;
             var fq = riseOf[f.x + ',' + f.y];   // THE RISE: a climbing cell's faces bake into its own group
             if (mergeFaces) { var fk = (fq ? fq.rec.id + ':' + fq.vis + '#' : '') + m.material.id + '|' + (f.out ? 1 : 0); var fb = faceBins[fk] || (faceBins[fk] = []); fb.q = fq || null; fb.push(m); }
