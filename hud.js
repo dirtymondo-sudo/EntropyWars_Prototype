@@ -14471,6 +14471,14 @@ const UX_DEF = {
   pPanel: 'none', pPanelCol: '',
   /* the plates' level + HP / MP numbers (2026-10-18, mondo: "anywhere with text should be editable"): 0 / '' = as the game */
   pLvlSize: 0, pNumSize: 0, pNumCol: '',
+  /* m* = THE SMALL NAME PLATES (2026-10-24, mondo: "let me control the smaller version of the nameplates, the ones that show
+     the portrait when you zoom out from the map. I want settings that let place the health bars below the portrait, exclude
+     the name, and choose how far/close you have to be from the board for them to show (i want them to require less zooming
+     out than they do right now). All of these things should be separate from the normal sized nameplates"): the portrait
+     card a plate turns into (.tp-far). mBars side (beside the portrait, the game's) | below; mName / mLvl = its name and
+     level (the p* Name / Level reach only the full plates now); mAt = the camera's distance to a unit, in battle squares,
+     from which its plate is the small one (miniSignal -> window._ewMiniPlateLook, three-renderer _plateFarAtSq) */
+  mBars: 'side', mName: true, mLvl: true, mAt: 11,
   sPanel: 'theme', sPanelCol: '', sEdgeCol: '', sFont: '', sScoreFont: '', sScoreSize: 22, sScoreCol: '', sModeSize: 8, sModeCol: '',
   sLineSize: 9, sTimeCol: '', sRoundCol: '', sNameSize: 12, sGap: 12, sSideW: 0, sDot: true,
   /* pass 11 (2026-10-17, mondo: "i want to remove the arena mode text and also be able to make the team names different
@@ -15124,6 +15132,15 @@ function clogSignal() {
   _clogSent = k; window._ewLogLook = L;
   try { if (typeof window.renderFloatCombatLog === 'function') window.renderFloatCombatLog(); } catch (e) {}
 }
+/* the small name plates the renderer reads (window._ewMiniPlateLook, bumped _ewMiniPlateLookV: three-renderer _plateFarAtSq
+   takes `at` and repaints every plate on a bump, so the bars / name / level sheets show at once), re-published only when
+   they change */
+let _miniSent = '';
+function miniSignal() {
+  const X = uxOf(), L = { at: +X.mAt, bars: X.mBars, name: !!X.mName, lvl: !!X.mLvl };
+  const k = JSON.stringify(L); if (k === _miniSent) return;
+  _miniSent = k; window._ewMiniPlateLook = L; window._ewMiniPlateLookV = (window._ewMiniPlateLookV || 0) + 1;
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -15164,8 +15181,8 @@ function uxCss() {
   const W = HI + '.tp-wrap';
   if (chg('pSize')) css += `${W} { scale: ${n('pSize', 0.5, 2.5)}; }\n`;
   if (chg('pW')) css += `${W} { width: ${n('pW', 100, 320)}px !important; }\n`;
-  if (!X.pName) css += `${W} .tp-nm { display: none !important; }\n`;
-  if (!X.pLvl) css += `${W} .tp-lvl { display: none !important; }\n`;
+  if (!X.pName) css += `${W}:not(.tp-far) .tp-nm { display: none !important; }\n`;
+  if (!X.pLvl) css += `${W}:not(.tp-far) .tp-lvl { display: none !important; }\n`;
   if (X.pTypes === 'none') css += `${W} .tp-types { display: none !important; }\n`;
   else if (X.pTypes === 'above' || X.pTypes === 'below') css += `${W} .tp-body { flex-direction: ${X.pTypes === 'above' ? 'column' : 'column-reverse'} !important; }\n${W} .tp-types { flex-direction: row !important; justify-content: center; }\n${W} .tp-type { flex: none !important; padding: 1px 6px !important; }\n`;
   if (X.pTypeShape !== 'pill') {
@@ -15193,6 +15210,23 @@ function uxCss() {
   if (X.pPanel !== 'none') {
     const bg = X.pPanelCol || (X.pPanel === 'theme' ? 'var(--ew-plate-bg, rgba(5,5,8,0.85))' : 'rgba(0,0,0,0.6)');
     css += `${W} .tp-main { background: ${bg} !important; padding: 3px 6px 4px; border-radius: ${X.pPanel === 'theme' ? '6px' : '3px'}; border: 1px solid ${X.pPanel === 'theme' ? 'var(--ew-plate-edge, rgba(255,255,255,0.2))' : 'rgba(255,255,255,0.12)'}; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }\n`;
+  }
+  /* ── the small name plates (the zoomed-out portrait card, .tp-far; when they show = miniSignal) ── */
+  const MW = W + '.tp-far';
+  if (!X.mName) css += `${MW} .tp-nm { display: none !important; }\n`;
+  if (!X.mLvl) css += `${MW} .tp-lvl { display: none !important; }\n`;
+  if (!X.mName && !X.mLvl) css += `${MW} .tp-name { display: none !important; }\n`;
+  /* below: the card stands up (name, portrait, the HP bar as wide as the portrait, its number centred under it); tp-main
+     steps out of the box (display: contents) so the name can sit over the portrait and the bar under it */
+  if (X.mBars === 'below') {
+    css += `${MW} { width: auto !important; flex-direction: column !important; align-items: center !important; gap: 2px !important; }
+${MW} .tp-main { display: contents !important; }
+${MW} .tp-name { order: 0; justify-content: center !important; max-width: 170px; margin-bottom: 0 !important; }
+${MW} .tp-portrait { order: 1; }
+${MW} .tp-body { order: 2; width: 48px; }
+${MW} .tp-bars { padding-right: 0 !important; padding-bottom: ${X.pNums ? 14 : 0}px; }
+${MW} .tp-bar-num { left: 50% !important; top: 100% !important; margin: 2px 0 0 !important; transform: translateX(-50%) !important; }
+`;
   }
   /* ── the AP press icons ── */
   const A = HI + '.ew-ap-press', aSz = n('aSize', 16, 96), aGap = n('aGap', -10, 40);
@@ -15788,6 +15822,29 @@ function platesDetail() {
     + '<div class="uim-note">Fade = how see-through a plate is while it is not the current, hovered or targeted unit.</div>');
   return h + xReset('p', 'Reset the name plates');
 }
+/* the small name plates (Health bars > Small name plates): the portrait card a plate turns into when the camera is far
+   from its unit. Their own settings (m*); the readout under the distance says where the camera is now (miniNowTick) */
+function miniPlatesDetail() {
+  const X = uxOf();
+  let h = `<div class="uim-note">The small name plates: the portrait card a unit's name plate turns into when you zoom out. These settings are their own; the Name plates settings for the name and level don't reach them.</div>`;
+  h += sec('mwhen', 'When they show', xp(fRange('Camera distance', 'mAt', 4, 40, 0.5, +X.mAt, 'Battle squares from the camera to a unit: from this far its plate is the small one'))
+    + '<div class="uim-note">A plate turns small once the camera is this many battle squares from its unit, and back to the full plate a tenth closer. Lower = less zooming out.</div>'
+    + '<div class="uim-note uim-mini-now"></div>');
+  h += sec('mshow', 'What they show', xCheck('Name', 'mName', X.mName) + xCheck('Level', 'mLvl', X.mLvl));
+  h += sec('mbars', 'Health bar', xp(fSeg('Where', 'mBars', [['side', 'Beside the portrait ·'], ['below', 'Below the portrait']], X.mBars)));
+  return h + xReset('m', 'Reset the small name plates');
+}
+/* the live line under the distance: the camera's distance to the units with a plate now, and how many plates are small */
+function miniNowTick() {
+  const A = UI.live, el = A && A.dock && A.dock.querySelector('.uim-mini-now');
+  if (!el) { clearInterval(miniNowTick.t); miniNowTick.t = 0; return; }
+  let I = null;
+  try { I = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.plateFarInfo) ? ThreeRenderer.plateFarInfo() : null; } catch (e) {}
+  const f = v => (Math.round(v * 2) / 2).toFixed(1).replace(/\.0$/, '');
+  setText(el, !I || !I.n ? 'Now: no name plates on the board (open this in a battle to see the distance).'
+    : `Now: the camera is ${I.n > 1 && f(I.far) !== f(I.near) ? f(I.near) + ' to ' + f(I.far) : f(I.near)} squares from the units; ${I.small} of ${I.n} plates are small.`);
+}
+function miniNowStart() { miniNowTick(); if (!miniNowTick.t) miniNowTick.t = setInterval(miniNowTick, 400); }
 /* the combat log's own settings (Layout > Combat log) */
 function clogForm() {
   const X = uxOf();
@@ -16436,6 +16493,10 @@ const KEYFRAMES = `@keyframes uim-pop { from { scale: 0.1; opacity: 0; } 70% { o
 /* every baked image is written ONCE as a custom property on :root; the rules point at it */
 function skinVar(bi) { let n = _skinVars.get(bi); if (!n) { n = '--uim-sk' + _skinVars.size; _skinVars.set(bi, n); } return `var(${n})`; }
 function scheduleApply() { if (_applyT) return; _applyT = setTimeout(() => { _applyT = 0; apply(); }, 30); }
+/* a UI Maker sheet on the page changed: the in-world name plates (three-renderer THE PLATES IN THE WORLD paint the
+   plate's DOM into a texture) repaint on this count, so a plate setting shows on the board at once, not on the plate's next
+   change */
+function uimSheetBump() { window._ewUimSheetV = (window._ewUimSheetV || 0) + 1; }
 function apply() {
   window._ewUimGen = (window._ewUimGen || 0) + 1;   // the unit info card's pinned spot is measured afresh (_qpPinRoom)
   const gid = globalId(), G = themeById(gid);
@@ -16458,19 +16519,19 @@ function apply() {
   const lay = document.getElementById('ew-ui-layout');
   const okPos = el.parentNode === document.head && (el === document.head.lastElementChild || (lay && el.nextElementSibling === lay && lay === document.head.lastElementChild));
   if (!okPos) document.head.appendChild(el);
-  if (el.textContent !== css) el.textContent = css;
+  if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   applyLayout();
   if (_stages.size) stagesRefresh();
   return !pending;
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
   if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
-  if (el.textContent !== css) el.textContent = css;
+  if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   _stages.forEach(st => stageLay(st, css));
   wordsApply();
 }
@@ -18050,8 +18111,9 @@ function dockBarsBody() {
   let h = dockTop() + `<div class="uim-note">Which places get a straight bar, a ring, or both, and how every bar and ring looks. The yellow boxes are the places on screen now; click one to pick it.</div><div class="uim-dk-mock"></div>`;
   h += BAR_PLACES.map(P => `<div class="uim-dk-bar${UI.bar === P.id ? ' on' : ''}" data-bar="${P.id}" title="${esc(P.hint)}"><i></i><div><b>${esc(P.label)}</b><small>${esc(P.hint)}</small></div>`
     + `<div class="uimb-seg">${P.barOnly ? '<span class="uim-note" style="margin:0">Bars only</span>' : [['bar', 'Bar'], ['ring', 'Ring'], ['both', 'Both']].map(([v, l]) => `<button class="uim-btn${place[P.id] === v ? ' on' : ''}" data-dk="bplace" data-place="${P.id}" data-val="${v}"${v === 'ring' && P.ring ? ` title="${esc(P.ring)}"` : ''}>${l}${P.def === v ? ' ·' : ''}</button>`).join('')}</div></div>`).join('');
+  h += `<div class="uim-dk-bar${UI.bar === 'mini' ? ' on' : ''}" data-bar="mini" title="The portrait cards the name plates turn into when you zoom out"><i></i><div><b>Small name plates</b><small>The portrait cards when you zoom out</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Bar, name + when</span></div></div>`;
   h += `<div class="uim-dk-bar${UI.bar === 'sel' ? ' on' : ''}" data-bar="sel" title="The ring + facing arrow under every unit"><i></i><div><b>Selection rings</b><small>The ring + facing arrow under each unit</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Look + who</span></div></div>`;
-  h += `<div class="uim-note">· marks how the game draws it. Name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
+  h += `<div class="uim-note">· marks how the game draws it. Name plates, Small name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
   <div class="uim-note"><span class="uim-kbd">Tab</span> next place on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
   return h;
 }
@@ -18297,7 +18359,11 @@ function dockDetail() {
   const A = UI.live; if (!A) return;
   const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
-  else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
+  else if (A.mode === 'bars') {
+    d.innerHTML = UI.bar === 'sel' ? ringDetail() : UI.bar === 'mini' ? miniPlatesDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail();
+    barsMockRefresh();
+    if (UI.bar === 'mini') miniNowStart();
+  }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else if (A.mode === 'aim') d.innerHTML = aimDetail();
   else if (A.mode === 'float') d.innerHTML = floatDetail();
