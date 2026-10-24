@@ -1958,3 +1958,21 @@ non-podium city: Downtown, the Strip, Cyberpunk (the mall has `podium`).
 paces the clip by `rate` (metres a second at ts 1: ladder 0.62, rope 0.23) against the climb speed, clamped 0.5-2.4,
 plays it backwards going down and freezes it (timeScale 0) as the hang; no nose-up pitch with a real clip. Without lib 4
 the old swim-stroke-stood-up chain still plays. `ClimbUp_1m` stays the mantle.
+
+## THE FAIRY FOREST REBUILT (2026-10-24, mondo: "why does fairy forest look like shit? Is it still an old voxel map? Please fix")
+- What it was: the FULL SITE (20×20, 6v6) was still the old voxel board (purple, chunky caps and crystals); the 12/10/9 arenas were
+  cut out of THE WOODS' clearing (`site_prebuilt_fairy_forest_clearing`) hard under the treeline, so the fight sat in fog and trunks.
+- Now: its own room `DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade` (data.js, defined just before the arenas register): 70×70 m
+  hqWoodsShell (fog 0.012/m, retro pack treeline + canopy), grass_2 / dirt_2 / rocks_5, the board in the middle: the fairy ring mark
+  round the nexus, the middle path + two winding fae paths (the voxel's lanes), retro trees and the misc Meshy mushrooms as cover, a
+  1.75 m knoll each side (one level; a rise under tierMin 1.2 m is floor), 180° symmetric. The low ring: ferns, stumps, logs, the
+  spring, a brook, glowing mushrooms.
+- The mushrooms on the board are TREES (HQ_TREE_KINDS `fae_cap` / `fae_cap_2`, foliage name `misc:<file>` → three-renderer.js
+  _foliageUrl reads Assets/misc/) because a PROP on a terrain board is scenery only (hqFieldTerrainInfo blocks trees, not props).
+- Lights: catalogue `fae_mushroom` / `fae_toadstool` (the same two GLBs + glow + point light), all a square or more OFF the board.
+- Boards: HQ_ARENA_RULES.own.prebuilt_fairy_forest (20×20 at 10,10, `node bake-arenas.js --own prebuilt_fairy_forest`) and
+  HQ_ARENA_RULES.within.prebuilt_fairy_forest (12 @14,14; 11 @14,14; 10 @15,15; 9 @15,15). The voxel stays as "Fairy Forest · voxel".
+- 6v6 house: HQ_ARENA_TEAM_BY_SIZE[20] = 6 and hqArenaHouse lays a row of six (x 7..12) — the voxel had 6 spawns a side.
+- TRAP: `bake-arenas.js --size N --apply` writes the WHOLE picksN block from the json; a json of one site wipes every other site's
+  row. Bake one site at a size with `--json`, then merge its row into the block by hand (or bake all sites).
+- The Woods clearing is unchanged; the Woods crystal fight (hqMarkerArenaId → `<site>_delta`) now fights in the new room.

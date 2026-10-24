@@ -6187,9 +6187,12 @@ const ThreeRenderer = (function () {
     function _foliageIsKit(name) { return typeof name === 'string' && name.slice(0, 4) === 'kit:'; }
     /* THE CHRISTMAS PACK (2026-10-24): a name `xmas:<node>` is a tree cut out of the pack's one COLLADA file (the snowy pines) */
     function _foliageIsXmas(name) { return typeof name === 'string' && name.slice(0, 5) === 'xmas:'; }
-    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name) || _foliageIsXmas(name)); }
+    /* THE FAIRY FOREST (2026-10-24): a name `misc:<file>` is a GLB in the misc folder (the giant Meshy mushroom planted as a tree) */
+    function _foliageIsMisc(name) { return typeof name === 'string' && name.slice(0, 5) === 'misc:'; }
+    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name) || _foliageIsXmas(name) || _foliageIsMisc(name)); }
     function _foliageUrl(name) {
         if (_foliageIsXmas(name)) return _xmasUrl(name.slice(5));
+        if (_foliageIsMisc(name)) return (_R2_MISC || 'https://cdn.entropywars.net/Assets/misc/') + encodeURIComponent(name.slice(5));
         if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/door/models/'; return KB + encodeURIComponent(name.slice(4)); }
         return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
     }
