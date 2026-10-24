@@ -11112,6 +11112,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
+    /* THE CHRISTMAS PACK (2026-10-24, mondo: "utilize them for the north pole area and santa spells"): the pieces Santa's spells draw
+       — the red present with the green ribbon (Blizzard Present, THE NAUGHTY LIST's house-sized one), Milk and Cookies' foil tray,
+       the twelve cookies on it and the cocoa. Lump of Coal stays Santa throwing coal (mondo's rule). */
+    var _XMAS_COOKIE_NODES = 'Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11';
+    var _XMAS_SPELL_NODES = ['Gift_01', 'Aluminum_tray', _XMAS_COOKIE_NODES, 'Cup_chocolate'];
+    function _xmasPiece(node, target, align, o) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.xmasClone !== 'function') return null;
+        try { return TR.xmasClone(node, target, align, o); } catch (e) { return null; }
+    }
+    /* every material of a pack clone (a cast fades them) */
+    function _xmasMats(g) { var out = []; g.traverse(function (n) { if (n.isMesh) (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { out.push(m); }); }); return out; }
     function _spellLibWarm(onProgress) {
         if (_spellWarm) {
             if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
@@ -11133,6 +11145,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try { TR.warmMiscModels(_SPELL_MISC_KEYS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         try { if (TR && typeof TR.sedan === 'function') TR.sedan({ metres: 4.4 }); } catch (e) {}
+        /* THE CHRISTMAS PACK (2026-10-24): Santa's pieces of mondo's pack — one file, cut on landing (ThreeRenderer.xmasClone) */
+        if (TR && typeof TR.warmXmasModels === 'function') {
+            try { TR.warmXmasModels(_XMAS_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
         /* the summons that wear a rig (the cult leader's Gathering → the user's cult member GLB) */
         if (TR && typeof TR.warmSummonModels === 'function') {
             try { TR.warmSummonModels().forEach(function (fn) { checks.push(fn); }); } catch (e) {}
@@ -16488,6 +16504,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lidY = S * 0.92;
         lid.position.y = lidY;
         g.add(lid);
+        /* THE CHRISTMAS PACK (2026-10-24): the present is the pack's red one with the green ribbon (the box above stays only while the
+           file streams); it drops, squashes and rattles the same, and at the burst it jumps open and is gone in the blizzard */
+        var pack = _xmasPiece('Gift_01', S * 1.05), packMats = null;
+        if (pack) {
+            body.visible = false; lid.visible = false;
+            packMats = _xmasMats(pack);
+            packMats.forEach(function (m) { m.opacity = 0; });
+            body.add(pack); body.visible = true;
+            boxMat.visible = false; ribbonMat.visible = false;
+        }
         /* icy light spilling out of the open box */
         var coreMat = _sigMat(opts.burstColor != null ? opts.burstColor : 0x9adfff, { map: _sigGlowTex() });
         var core = new THREE.Mesh(new THREE.PlaneGeometry(S * 2.6, S * 2.6), coreMat);
@@ -16502,6 +16528,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var popped = false;
         var lidVy = 0;
         _sigRunOwned(g, totalMs, function (el) {
+            if (packMats) for (var pm = 0; pm < packMats.length; pm++) packMats[pm].opacity = boxMat.opacity;
             if (el < dropMs) {
                 var t0 = _sigEaseInCubic(el / dropMs);
                 g.position.y = wp.y + dropH * (1 - t0);
@@ -16530,6 +16557,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigScreenFlash('#cfeaff', 140, 0.16);
                 }
                 var t3 = (el - dropMs - settleMs - rattleMs) / burstMs;
+                if (packMats) { var jp = 1 + 0.35 * Math.sin(Math.min(1, t3 * 2) * Math.PI * 0.5); body.scale.set(jp, jp, jp); body.rotation.y += 0.05; }
                 lid.position.y += lidVy;
                 lidVy -= ts * 0.0007;
                 lid.rotation.z += 0.09;
@@ -16539,6 +16567,36 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 boxMat.opacity = fade;
                 ribbonMat.opacity = fade;
             }
+        });
+    }
+
+    /* ── MILK AND COOKIES — the plate left out (THE CHRISTMAS PACK, 2026-10-24). The pack's foil tray with its twelve cookies and a
+       mug of cocoa beside it is set down warm beside the caster's feet, turns once, and is gone as the heal goes out to the allies. Pack pieces
+       only: nothing is drawn while the file streams. ─────────────────────────────────────────────────────────────────── */
+    function _sigMilkCookies3D(tx, ty) {
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var tray = _xmasPiece('Aluminum_tray', ts * 0.5, null, { fit: 'span' });
+        if (!tray) return false;
+        var g = new THREE.Group(); g.position.set(wp.x + ts * 0.55, wp.y, wp.z);   // beside the caster, never through the legs
+        var plate = new THREE.Group(); plate.add(tray);
+        var cookies = _xmasPiece(_XMAS_COOKIE_NODES, ts * 0.4, null, { fit: 'span' });
+        if (cookies) { cookies.position.y = ts * 0.05; plate.add(cookies); }
+        var cup = _xmasPiece('Cup_chocolate', ts * 0.17);
+        if (cup) { cup.position.set(ts * 0.36, 0, ts * 0.05); plate.add(cup); }
+        g.add(plate);
+        var glowMat = _sigMat(0xffd9a0, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.3, ts * 1.3), glowMat);
+        glow.rotation.x = -Math.PI / 2; glow.position.y = -ts * 0.02; glow.renderOrder = 157; plate.add(glow);
+        var mats = _xmasMats(plate).filter(function (m) { return m !== glowMat; });
+        var y0 = ts * 0.02, y1 = ts * 0.14, totalMs = 1500;   // set down at the caster's feet (the cast clip kneels to it), then lifts a hand's width
+        plate.position.y = y0;
+        return !!_sigRunOwned(g, totalMs, function (el) {
+            var t = el / totalMs, op = t < 0.15 ? t / 0.15 : (t > 0.75 ? Math.max(0, (1 - t) / 0.25) : 1);
+            plate.position.y = y0 + (y1 - y0) * _sigEaseOutCubic(Math.min(1, t * 1.6));
+            plate.rotation.y = t * Math.PI * 0.9;
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = op;
+            glowMat.opacity = op * 0.35;
         });
     }
 
@@ -21651,6 +21709,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (_sdef && (_sdef.kind === 'healAll' || _sdef.kind === 'manaRestoreAll')) auraRank = 0;
         } catch (e) {}
         try { _sigSupportAura3D(tx, ty, P.support, { rank: auraRank }); } catch (e) {}
+        if (spellId === 'raceMilkAndCookies') { try { _sigMilkCookies3D(tx, ty); } catch (e) {} }   // THE CHRISTMAS PACK (2026-10-24): the plate left out
         if (p && p.bloomPulse) p.bloomPulse(Math.min(0.4, T.bloom * 0.65), 300);
         _stageGrade(spellId, 'burst', params, info);
         /* no shock ring, no expanding orb, no rush lines, no shake —
@@ -27677,6 +27736,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var r2 = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.32, ts * 2.26, ts * 2.26), rib); r2.position.y = ts * 1.1; boxG.add(r2);
         var tag = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.45), _finBasic(0xffffff, { map: _finTextTex('TO: ' + name, { ink: '#222', bg: '#fff8e0', w: 512, h: 256, fontPx: 70 }), side: THREE.DoubleSide, depthWrite: false })); tag.position.set(0, ts * 1.2, ts * 1.12); boxG.add(tag);
         boxG.visible = false; boxG.position.y = ts * 12; g.add(boxG);
+        /* THE CHRISTMAS PACK (2026-10-24): the present is the pack's red one with the green ribbon, house-sized (the box above stays only
+           while the file streams); the tag still hangs on its front */
+        var packG = _xmasPiece('Gift_01', ts * 2.3);
+        if (packG) { box.visible = false; r1.visible = false; r2.visible = false; boxG.add(packG); tag.position.z = ts * 1.22; }
+        var bowY = packG ? ts * 2.3 : ts * 2.2;   // the bow lands on the present's top
         var bowG = new THREE.Group();
         var bowMat = _finBasic(0x2fbf5a);
         var loop1 = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.34, ts * 0.11, 8, 18), bowMat); loop1.position.x = -ts * 0.36; loop1.rotation.y = 0.5; bowG.add(loop1);
@@ -27716,8 +27780,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el >= bowAt) {
                 bowG.visible = true;
                 var bt = _sigClamp01((el - bowAt) / 420);
-                if (!bowLanded) { bowG.position.y = ts * 2.2 + ts * 12 * (1 - bt * bt); bowG.rotation.y = el * 0.003; }
-                if (bt >= 1 && !bowLanded) { bowLanded = true; bowG.position.y = ts * 2.2; _shake('normal'); _finDust(c.x, c.y, bz + ts * 2.2, 6, { r: 10, op: 0.35 }); }
+                if (!bowLanded) { bowG.position.y = bowY + ts * 12 * (1 - bt * bt); bowG.rotation.y = el * 0.003; }
+                if (bt >= 1 && !bowLanded) { bowLanded = true; bowG.position.y = bowY; _shake('normal'); _finDust(c.x, c.y, bz + bowY, 6, { r: 10, op: 0.35 }); }
             }
             /* snow */
             if (el - lastSnow > 70 && _canSpawn()) { lastSnow = el; _spawn({ x: c.x + rn(-ts * 3, ts * 3), y: c.y + rn(-ts * 3, ts * 3), z: bz + ts * 5, mode: 'billboard', sprite: 'snowflake', ml: rn(1400, 2400), size0: rn(5, 10), size1: rn(5, 10), vx: rn(-10, 10), vy: rn(-10, 10), vz: -rn(40, 80), opacity0: 0.9, opacity1: 0 }); }
