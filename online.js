@@ -6652,15 +6652,23 @@
                 ind.style.color = ok ? 'var(--green)' : 'var(--red)';
                 /* under the map name, never on it (matchup playtests 2026-10-23, two of six: the chip sat across
                    "AREA 51 ARENA" in the top right) — the name block can be moved in the UI Maker, so it is measured */
-                var top = 8;
+                var top = 8, right = 12;
                 try {
                     var meta = document.querySelector('.ew-matchmeta'), host = ind.parentElement;
                     var mr = meta && meta.getBoundingClientRect(), hr = host && host.getBoundingClientRect();
                     var ir = ind.getBoundingClientRect();
-                    if (mr && hr && mr.height > 0 && mr.top - hr.top < 80 && mr.right > ir.left && mr.left < ir.right)
+                    /* the result screen's DEBRIEF column owns the top right (PvP playtest 10-24: the chip sat across the
+                       HONOURS / PERFORMANCE tabs) — the chip steps left of it, at the top, where the stage is empty */
+                    var deb = document.querySelector('#resultOverlay .vic-debrief');
+                    var dr = deb && deb.getBoundingClientRect();
+                    if (dr && hr && dr.width > 0 && dr.height > 0 && dr.top - hr.top < 80 && dr.right > hr.right - ir.width - 24) {
+                        right = Math.max(12, Math.round(hr.right - dr.left + 12));
+                    } else if (mr && hr && mr.height > 0 && mr.top - hr.top < 80 && mr.right > ir.left && mr.left < ir.right) {
                         top = Math.round(mr.bottom - hr.top + 6);
+                    }
                 } catch (e) {}
                 if (ind.style.top !== top + 'px') ind.style.top = top + 'px';
+                if (ind.style.right !== right + 'px') ind.style.right = right + 'px';
             }, 2000);
 
             try {

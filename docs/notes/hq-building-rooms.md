@@ -1101,3 +1101,29 @@ way to actually animate/rotate the revolving doors to make them not need a loadi
 - THE CARD HOLDS: a round-join room builds its neighbour UNDER its load card and `_hqGateTick` waits for it
   (`_hqStageRoundBeside`, capped by HQ_GATE_CAP_MS) — the arrival in the foyer is one longer load, the walk to the hall none.
 - Off: `window.EW_HQ_NO_STAGE = true` (re-enter) — the revolving door is a press-E door with a card again.
+
+## MAP LOOKS OFF = THE CLEAN PICTURE (2026-10-24)
+mondo: "if i have map looks unchecked then why do i always have to change the settings for it to not have the map looks? i
+want it to remember". The box WAS remembered (localStorage `ew_scene_looks`) and DID refuse every map / room look; what he
+still saw was the shipped PS1 grade (Dreamy tint, dither, 2x pixelate, grain, vignette, CRT), which is nearly the
+building's own look. three-post.js `_LOOK_CLEAN`: with Map Looks off, `setSceneLook(null)` (and the boot) lays a clean look
+that turns those six settings OFF wherever the player never set them — it yields exactly like a map look (`_retroOwned`,
+new `_cinOwned` / localStorage `ew_cin_owned` for CRT / vignette / their sliders). `getSceneLook()` answers null for it;
+`getWornRetroState()` / `getWornCinematicState()` = what is on screen, and ui.js `_buildVideoSettingsHTML` shows those
+while Map Looks is off so every box reads the way the picture looks. Room fog / night mood are not part of it.
+Proof shots: /mnt/project-files/map-looks/. Decision card asked mondo to pick between this (recommended), the shipped grade
+off for everyone, or a screenshot of something else.
+
+## MAP LOOKS OFF = MY SETTINGS IN EVERY AREA (2026-10-24, follow-up)
+mondo: "i have the fog settings a certain way like on haunted green, but going to any new area with different colored fog it
+takes away my green, even though i have map looks checked off" · "when i ... go somewhere new and the night mood is not the way i
+had it". With Map Looks off (three-post.js `_looksOffNow`, re-read on every setSceneLook):
+- FOG COLOUR = the mood preset's `fogColor` (`ThreePost.getPlayerFogHex`, null while Map Looks is on). A fight on a room: `render()`
+  sets `_scene.fog.color` every frame (the room fog + the hour's tint write theirs every tick). The building: `_hqFogHold` lays it on
+  the scene fog (so the height fog too), the dome band (`_envUni.uFogColor`) and the painted sky's far fog (`uPaintSilFog`) for the
+  draw and `_hqFogBack` restores them, so the crossings' blends keep easing from the room's real numbers.
+- NIGHT MOOD: `_roomNight` = night × Night Mood × 0.85 (the classic board's rule) in rooms, zones and fights on rooms; no lift.
+- BLOOM: `_bloomSteady(F)` = the player's strength, threshold (BLOOM_USER_THRESHOLD) and spread everywhere (no 0.42 room floor, no
+  look bar, no hour preset).
+- FOG DENSITY stays the slider × the area's base (absolute numbers mean nothing across a 3 m room and a 12-square board).
+Proof: /mnt/project-files/map-looks/fog_heaven_before_after.jpg, fog_hell_before_after.jpg (Haunted Green, Map Looks off).

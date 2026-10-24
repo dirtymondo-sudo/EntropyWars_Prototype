@@ -2119,6 +2119,47 @@ const ThreeRenderer = (function () {
             }).catch(fail);
         });
     }
+    /* THE CHRISTMAS PACK: a COLLADA file through the store → ColladaLoader.parse; else the loader's own network path. The file names
+       its sheets by the author's own disk paths (C:/Users/…/Textures/Gift.png), so every image it asks for is read from the pack's
+       textures/ folder by its file name. The result is the scene in a plain group: the loader turns a Z-up file upright with a
+       rotation on its scene, and a piece cut from the group (_miscPiece) keeps that turn baked in. */
+    function _isDaeUrl(url) { return /\.dae(?:[?#]|$)/i.test(String(url || '')); }
+    function _asDae(url, onLoad, onError, o) {
+        if (typeof THREE === 'undefined' || typeof THREE.ColladaLoader !== 'function') { if (onError) onError(new Error('no ColladaLoader')); return; }
+        var base = _asBasePath(String(url).split(/[?#]/)[0]), texBase = base.replace(/models\/$/, 'textures/');
+        var mgr = new THREE.LoadingManager();
+        mgr.setURLModifier(function (u) {
+            if (!/\.(png|jpe?g)(?:\?|$)/i.test(u)) return u;
+            var f = String(u).split('?')[0].split(/[\\\/]/).pop();
+            try { f = decodeURIComponent(f); } catch (e) {}
+            return texBase + encodeURIComponent(f);
+        });
+        var done = function (c) {
+            var wrap = new THREE.Group();
+            if (c && c.scene) wrap.add(c.scene);
+            _xmasPackMats(wrap);
+            if (onLoad) onLoad(wrap);
+        };
+        if (!_asAvailable()) { new THREE.ColladaLoader(mgr).load(url, done, undefined, onError); return; }
+        _asFetch(url, o).then(function (res) { return res.text(); }).then(function (text) {
+            var c = null;
+            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { if (onError) onError(e); return; }
+            done(c);
+        }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* the pack's sheets in the game's terms: no sRGB decode (the game's linear output, like every prop sheet), the alpha cut at 0.5
+       (the tree's branch cards, the ribbon, the star, the snowy pine cards; an opaque sheet is untouched by it), the card sheets
+       two-sided */
+    var _XMAS_CARDS = /^(Branches|Ribbon|Christmas_star|Trees_0\d)$/;
+    function _xmasPackMats(root) {
+        root.traverse(function (n) {
+            if (!n.isMesh || !n.material) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+                if (m.map) { _ewTexSetSRGB(m.map, false); m.alphaTest = 0.5; m.transparent = false; }
+                if (_XMAS_CARDS.test(m.name || '')) m.side = THREE.DoubleSide;
+            });
+        });
+    }
     /* an OBJ through the store → OBJLoader.parse; else the loader's own network path */
     function _asObj(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.OBJLoader !== 'function') { if (onError) onError(new Error('no OBJLoader')); return; }
@@ -6144,8 +6185,11 @@ const ThreeRenderer = (function () {
     };
     /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
     function _foliageIsKit(name) { return typeof name === 'string' && name.slice(0, 4) === 'kit:'; }
-    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name)); }
+    /* THE CHRISTMAS PACK (2026-10-24): a name `xmas:<node>` is a tree cut out of the pack's one COLLADA file (the snowy pines) */
+    function _foliageIsXmas(name) { return typeof name === 'string' && name.slice(0, 5) === 'xmas:'; }
+    function _foliageIsGlb(name) { return typeof name === 'string' && (name.slice(0, 3) === 'rt:' || _foliageIsKit(name) || _foliageIsXmas(name)); }
     function _foliageUrl(name) {
+        if (_foliageIsXmas(name)) return _xmasUrl(name.slice(5));
         if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/door/models/'; return KB + encodeURIComponent(name.slice(4)); }
         return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
     }
@@ -6234,6 +6278,22 @@ const ThreeRenderer = (function () {
         var entry = _foliageModelCache[name];
         if (entry) { if (entry.loading) _alJoin(entry._alRec); return entry.obj; }   // THE ASSET LEDGER: still streaming → the open gate waits
         entry = _foliageModelCache[name] = { obj: null, loading: true, failed: false };
+        /* THE CHRISTMAS PACK: the piece comes through the misc loader (the one parse of the one file), baked like a retro-pack tree */
+        if (_foliageIsXmas(name)) {
+            if (!_xmasPackOn()) { entry.loading = false; entry.failed = true; return null; }
+            var xe = entry, xu = _foliageUrl(name);
+            _loadMiscModel(xu, false, function (piece) {
+                if (_foliageModelCache[name] !== xe) return;
+                var root = _foliageBakeGlb(piece);
+                _normalizeFoliageModel(root);
+                xe.obj = root; xe.loading = false;
+                _objectsDirty = true;
+            });
+            var xm = _miscModelCache[xu];
+            if (!xm || xm.failed) { entry.loading = false; entry.failed = true; }
+            else entry._alRec = xm._alRec;   // the open gate waits on the file's own record (the misc loader settles it)
+            return entry.obj;
+        }
         var glb = _foliageIsGlb(name);   // THE RETRO TREE PACK
         if (typeof (glb ? THREE.GLTFLoader : THREE.OBJLoader) !== 'function') { entry.loading = false; entry.failed = true; return null; }
         var rec = entry._alRec = _alTrack('foliage', _foliageUrl(name));
@@ -11838,6 +11898,11 @@ const ThreeRenderer = (function () {
                 var _wxc = getWeatherStatChips(u);
                 for (var wci = 0; wci < _wxc.length; wci++) h = _hashStr(h, _wxc[wci].key);
             }
+            /* the ground under a standing unit can change without it moving (a spell paints it, a 3-round change runs out) */
+            if (typeof getTerrainStatChips === 'function') {
+                var _grc = getTerrainStatChips(u);
+                for (var gci = 0; gci < _grc.length; gci++) h = _hashStr(h, _grc[gci].key);
+            }
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
@@ -11924,6 +11989,13 @@ const ThreeRenderer = (function () {
             var _wx = getWeatherStatChips(unit);
             for (var wi = 0; wi < _wx.length; wi++) {
                 badges.push('<span class="tp-sbadge ' + (_wx[wi].kind === 'up' ? 'tp-stat-up' : 'tp-stat-dn') + '" title="' + _wx[wi].title + '">' + _wx[wi].label + '</span>');
+            }
+        }
+        /* 🌲 the ground it stands on: movement cost per tile + terrain affinity (state.js getTerrainStatChips) */
+        if (typeof getTerrainStatChips === 'function') {
+            var _gr = getTerrainStatChips(unit);
+            for (var gri = 0; gri < _gr.length; gri++) {
+                badges.push('<span class="tp-sbadge ' + (_gr[gri].kind === 'up' ? 'tp-stat-up' : 'tp-stat-dn') + '" title="' + _gr[gri].title + '">' + _gr[gri].label + '</span>');
             }
         }
 
@@ -29138,6 +29210,16 @@ const ThreeRenderer = (function () {
        loader, which fetches the file ONCE and cuts each piece out of it (_miscPiece). Kill-switch: window.EW_NO_METRO_PACK. */
     var _R2_METRO = 'https://cdn.entropywars.net/Assets/Metro_PSX/';
     function _metroPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_METRO_PACK); }
+    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): R2 Assets/christmas/models/Christmas.dae is ONE COLLADA file of PSX props (the
+       trees, the snowmen, the gifts, the food, the cookies, the wreaths, the stockings, the garlands, the hammers, the house, two
+       Santas), its sheets loose in Assets/christmas/textures/. Same rule as the metro pack: a catalogue row with `base: 'xmas'` names
+       its node and loads `<file>#<node>` through the misc loader, which fetches + parses the file ONCE (_asDae) and cuts the piece
+       out (_miscPiece); a tree kind `xmas:<node>` is the same piece baked as foliage; the spells clone pieces (_xmasClone).
+       Kill-switch: window.EW_NO_XMAS_PACK (the rows draw nothing, the spells keep their own build). */
+    var _R2_XMAS = 'https://cdn.entropywars.net/Assets/christmas/';
+    var _XMAS_FILE = 'Christmas.dae';
+    function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
+    function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -29265,7 +29347,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
-            if (isGLB) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
+            if (isGLB && !_isDaeUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
@@ -29282,7 +29364,10 @@ const ThreeRenderer = (function () {
                 _ewAssetFailed('model', reqUrl, false); failed();
             }
             try {
-                if (isGLB) {
+                if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
+                    if (!_xmasPackOn()) { failed(); return; }
+                    _asDae(reqUrl, loaded, err, { rec: rec });
+                } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
                 } else {
@@ -30271,6 +30356,44 @@ const ThreeRenderer = (function () {
             out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
         });
         return out;
+    }
+    /* THE CHRISTMAS PACK (2026-10-24): the spells' pieces of the pack (the gifts, the cookies, the cocoa) — the same one file the
+       North Pole's props cut, warmed on the loading card and pinned for the match like the misc spell props. _xmasClone(node,
+       target, align) is _getMiscModelClone for a pack piece: `target` = its height in world units ('span' in `o.fit` = its widest
+       side), unlit sheets with the alpha cut, every material its own (a cast fades it); null while the file streams (it starts). */
+    function _warmXmasModels(nodes) {
+        var out = [];
+        if (!_xmasPackOn()) return out;
+        (nodes || []).forEach(function (node) {
+            var url = _xmasUrl(node);
+            var pin = function () { var e = _miscModelCache[url], f = _miscModelCache[_xmasUrl('')]; if (e) e._ewOneFile = true; if (f) f._ewOneFile = true; };
+            _loadMiscModel(url, true, pin);
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _xmasClone(node, target, align, o) {
+        o = o || {};
+        if (!_xmasPackOn() || typeof THREE === 'undefined') return null;
+        var url = _xmasUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var bb = e.root._ew_bbox;
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'span' ? Math.max(ex, ez) : ey);
+        var m = e.root.clone(true);
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (src) {
+                return new THREE.MeshBasicMaterial({ map: (src && src.map) || null, color: 0xffffff, side: (src && src.side) || THREE.FrontSide,
+                    alphaTest: 0.5, transparent: true, depthWrite: true, fog: false });
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var g = new THREE.Group();
+        g.add(m);
+        return g;
     }
     function _getMiscModelClone(key, target, align) {
         var file = _MISC_GLB[key];
@@ -49395,6 +49518,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
+        if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
         return D.assets.models + encodeURIComponent(entry.file);
     }
@@ -72435,14 +72559,25 @@ const ThreeRenderer = (function () {
     }
     /* Fog Horizon in a room: how many times higher the height fog reaches (the factory spot = 1; the slider's top ≈ 3.5×, its bottom ≈ ½) */
     function _ewFogClimb(lift) { return Math.max(0.25, 1 + (+lift || 0) * 6); }
+    var _hqFogPfC = null;
     function _hqFogHold(H) {
         if (!H || !H.scene) return null;
         var on = _ewSceneFogOn(), sh = on ? _ewFogShape() : { m: 0, lift: 0 };
-        if (on && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4) return null;
+        /* MAP LOOKS OFF (2026-10-24, mondo: "going to any new area with different colored fog it takes away my green"): the room's fog,
+           its height fog, the dome's band and the painted sky's far fog all wear the player's fog colour (ThreePost.getPlayerFogHex) */
+        var pf = null; try { pf = (on && typeof ThreePost !== 'undefined' && ThreePost.getPlayerFogHex) ? ThreePost.getPlayerFogHex() : null; } catch (e) {}
+        if (on && pf == null && Math.abs(sh.m - 1) < 1e-3 && Math.abs(sh.lift) < 1e-4) return null;
         var m = sh.m;
         var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
         var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null, top: _envUni ? _envUni.uFogTop.value : null,
-                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y };
+                  col: _envUni ? _envUni.uFogColor.value.clone() : null, band: _envUni ? _envUni.uFogBand.value : null, hy: _EW_HFOG.y,
+                  fc: null, sil: (_envUni && _envUni.uPaintSilFog) ? _envUni.uPaintSilFog.value.clone() : null };
+        if (pf != null && f && !wet && f.color) { s.fc = f.color.getHex(); f.color.setHex(pf); }
+        if (pf != null && !wet && _envUni) {
+            var pc = (_hqFogPfC || (_hqFogPfC = new THREE.Color())).setHex(pf);
+            _envUni.uFogColor.value.set(pc.r, pc.g, pc.b);
+            if (_envUni.uPaintSilFog) { _envUni.uPaintSilFog.value.x = pc.r; _envUni.uPaintSilFog.value.y = pc.g; _envUni.uPaintSilFog.value.z = pc.b; }
+        }
         if (f && !wet) {
             s.f = f;
             if (f.isFogExp2) { s.d = f.density; f.density = f.density * m; }
@@ -72467,7 +72602,8 @@ const ThreeRenderer = (function () {
     function _hqFogBack(s) {
         if (!s) return;
         var f = s.f;
-        if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } }
+        if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } if (s.fc != null) f.color.setHex(s.fc); }
+        if (_envUni && s.sil && _envUni.uPaintSilFog) _envUni.uPaintSilFog.value.copy(s.sil);
         _EW_HFOG.z = s.hz; if (s.hy != null) _EW_HFOG.y = s.hy;
         if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
         if (_envUni && s.top != null) _envUni.uFogTop.value = s.top;
@@ -74422,6 +74558,8 @@ const ThreeRenderer = (function () {
            Returns null while the model is still streaming — the caller keeps
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
+        xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        warmXmasModels: _warmXmasModels,
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —
            nose on +Z, the lit Lambert per clone, `metres` to resize). The
@@ -74432,6 +74570,10 @@ const ThreeRenderer = (function () {
            `metres`, null while it streams — the call warms it). See _spellAstralEye / _spellSedan for the opts. */
         astralEye: function (o) { return _spellAstralEye(o); },
         sedan: function (o) { return _spellSedan(o); },
+        /* the map's own threshold leaf for THE DOOR AGENT's spell doors (three-vfx-effects.js _doorFxLeafKey) and the
+           cast slot chain for the Spell Library's preview label (ui.js _slb2ChainFor) — both read these and got nothing */
+        doorLeaf: _doorLeafFor,
+        castChainFor: _castChainFor,
 
         setLightRayStrength, getLightRayStrength,
         setUnitLight, getUnitLight,   // THE UNIT RIM LIGHT rev 2: the Graphics settings

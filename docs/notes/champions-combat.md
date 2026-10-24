@@ -2464,3 +2464,22 @@ From the 10-24 two-seat playtest (report https://claude.ai/artifact/6eCz5YkErHgF
 - Checked, already right: an absorbed element part blocks the press (`_pressHitInfo`), and the row's red ! was the absorb
   warning; walking off a drop already tints the tile hazard, badges the move ghost with the damage and labels the tile
   menu "Move here (−N HP)".
+
+## SAND WALKS LIKE GROUND + THE GROUND CHIPS (2026-10-24)
+mondo: "Just take away the mov-2 property from desert, that is what was causing my ice queen bug where it could only
+jump ... There was nothing to indicate that the sand was affecting me negatively. That needs to show just like the
+attack and defense stages show."
+- data.js TERRAIN_RULES.desert.moveCost 2 → 1. Confirmed the bug in the browser on The Bermuda Triangle Arena (all sand):
+  Ice Queen is MOV 1, so with sand at 2 per tile she had 0 walk tiles (only Jump); now 2. Other units on that board went
+  from 3-5 tiles to 19-30. Desert still heals ×0.7 and still counts as earth home ground; desert-adapted races keep their
+  full-heal on it. unitIsDesertAdapted's move line in getTerrainMoveCost is now a no-op (kept).
+- Movement on terrain was never a stat change: getTerrainMoveCost charges a cost per tile ENTERED (forest/mountain/rocks/
+  oil/bog 2, lava 3 ...), which is why no MOV number ever moved. state.js getTerrainStatChips (beside getWeatherStatChips)
+  now shows it: "<glyph> MOV COST N" (red) while the body stands on ground that costs it more than 1 (the engine's own
+  read for THIS body: boots, wings, adaptations, a cost-adding object), plus the race's terrain affinity stats
+  (getTerrainPreferenceModifier, e.g. Anubis/Fallen Angel on sand "🏜 ATK+8", "🏜 M ATK+5", green), which were also
+  invisible. A flyer up in the air gets no cost chip (the engine walks it through air at 1). Shown in the unit card /
+  quick-menu chips (hud.js _hrlgStatusChips) and the nameplate badge row (three-renderer _plateStatusBadgesHtml; the
+  badge serial hashes the chip keys so a repaint of the ground under a still unit refreshes it). Client-side read of
+  synced state: the guest sees the same chips.
+- Screens: /mnt/project-files/sand-move/.
