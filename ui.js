@@ -15170,12 +15170,14 @@
         /* Projected HP the target actually loses: the mid estimate run through
            the status damage-taken multipliers and the shield soak, clamped to
            current HP. spell=null → basic attack. Returns 0 for non-damage. */
-        /* out (optional) = { endures, blocked } — ✨ Martyr's Talisman will hold the target at 1 HP (the forecast's
-           `talisman`); blocked = why the hit takes nothing (protected / immune / absorb / realm / guarded …) */
+        /* out (optional) = { endures, blocked, heal, min, max } — ✨ Martyr's Talisman will hold the target at 1 HP (the
+           forecast's `talisman`); blocked = why the hit takes nothing (protected / immune / absorb / realm / guarded …);
+           heal = the element part a split hit's target drinks back after the blow; min / max = the roll's ends (capped at
+           its HP like the number, so min >= HP = it kills whatever it rolls) */
         function predictDamageToUnit(attacker, target, spell, castFrom, out) {
             if (!attacker || !target || target.dead) return 0;
             if (!isEnemyUnit(attacker, target)) return 0;
-            { const _fc = forecastOnUnit(attacker, target, spell || null, castFrom); if (_fc) { if (out) { out.endures = !!_fc.endures; out.blocked = _fc.blocked || null; } return Math.min(_fc.dmg, Math.max(0, target.hp)); } }
+            { const _fc = forecastOnUnit(attacker, target, spell || null, castFrom); if (_fc) { if (out) { out.endures = !!_fc.endures; out.blocked = _fc.blocked || null; out.heal = _fc.heal || 0; out.min = (_fc.min != null) ? _fc.min : null; out.max = (_fc.max != null) ? _fc.max : null; } return Math.min(_fc.dmg, Math.max(0, target.hp)); } }
             if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) { if (out) out.blocked = 'protected'; return 0; }
             let dmg = spell ? _estimateSpellDamage(attacker, target, spell)
                             : _estimateBasicAttackDamage(attacker, target);
