@@ -27318,8 +27318,8 @@ const ThreeRenderer = (function () {
         // THE CELESTIAL EVENTS (2026-10-17): seconds since the event was revealed (the eclipse's diamond ring, the umbra's slide)
         'uniform float uEvAge;\n' +
         // THE PAINTED SKIES (2026-10-24): mondo's paintings (data.js HQ_PAINTED_SKIES) — day / night strips, the silhouette strip
-        'uniform sampler2D uPaintDay; uniform sampler2D uPaintNight; uniform sampler2D uPaintSil;\n' +
-        'uniform float uPaintAmt; uniform float uPaintSilOn; uniform float uPaintSilH;\n' + _ENV_COMMON + '\n' +
+        'uniform sampler2D uPaintDay; uniform sampler2D uPaintNight; uniform sampler2D uPaintSil; uniform sampler2D uPaintDusk;\n' +
+        'uniform float uPaintAmt; uniform float uPaintSilOn; uniform float uPaintSilH; uniform float uPaintDuskOn; uniform float uPaintRep;\n' + _ENV_COMMON + '\n' +
         // THE SKY SEAM (2026-10-14): az=atan(rd.x,rd.z) jumps from +PI to -PI straight behind the board (-Z, the zodiac prime
         // slot), so every fbm fed az cut off in a hard vertical line there. fbmW cross-fades the last 18 deg before the wrap
         // (nd.x -0.8..-1) into the noise continued past +PI (p+per = one full turn on), so -PI meets +PI with the same value.
@@ -27450,9 +27450,12 @@ const ThreeRenderer = (function () {
         //    night cross-fade with the night (the clock in the walk, the round in a fight); the silhouette strip stands on the
         //    horizon (uPaintSilH of the sky's height; the sheets are not flipped, so v runs from the image's top), dimmed to moonlight at night. The sun, the moon and (where the painting is
         //    dark) the stars stay the game's, drawn over it but behind the silhouette; weather and the events wash it as they
-        //    wash the dome. The map tint does not (it is his colour); dusk, the eclipse and the horizon fog below still do. ──
-        '  if(uPaintAmt>0.001){ float pu=az/TAU+0.5; float pn=smoothstep(0.0,1.0,night); vec2 puv=vec2(pu,1.0-clamp(lat,0.0,1.0));\n' +
+        //    wash the dome. The map tint does not (it is his colour); dusk, the eclipse and the horizon fog below still do.
+        //    THE SKY SETS: a set's sheets go uPaintRep times round (the silhouette once), and its Sunset sheet takes the clock's
+        //    dawn and dusk (uDusk) in place of the warm band below. ──
+        '  if(uPaintAmt>0.001){ float pu=az/TAU+0.5; float pn=smoothstep(0.0,1.0,night); vec2 puv=vec2(pu*uPaintRep,1.0-clamp(lat,0.0,1.0));\n' +
         '    vec3 pc=mix(texture2D(uPaintDay,puv).rgb,texture2D(uPaintNight,puv).rgb,pn);\n' +
+        '    if(uPaintDuskOn>0.5) pc=mix(pc,texture2D(uPaintDusk,puv).rgb,clamp(uDusk,0.0,1.0));\n' +
         '    float sA=0.0; vec3 sC=vec3(0.0);\n' +
         '    if(uPaintSilOn>0.5){ vec4 sl=texture2D(uPaintSil,vec2(pu,1.0-clamp(lat/uPaintSilH,0.0,1.0))); sA=sl.a*step(lat,uPaintSilH*0.995); sC=sl.rgb*mix(vec3(1.0),vec3(0.17,0.20,0.32),pn); }\n' +
         '    float pl=dot(pc,vec3(0.299,0.587,0.114));\n' +
@@ -27467,7 +27470,7 @@ const ThreeRenderer = (function () {
         '    col=mix(col,pc,clamp(uPaintAmt,0.0,1.0)); }\n' +
         // ── THE WORLD CLOCK's dawn and dusk (Phase 3): the band over the horizon goes warm, most toward the low sun ──
         '  if(uDusk>0.001){ float lowB=1.0-smoothstep(-0.06,0.42,el); float toSun=0.45+0.55*pow(max(dot(normalize(vec3(rd.x,0.0,rd.z)+1e-4),normalize(vec3(sunDir.x,0.0,sunDir.z)+1e-4)),0.0),2.0);\n' +
-        '    col=mix(col,col*vec3(1.25,0.82,0.62)+vec3(0.30,0.12,0.05)*toSun,clamp(uDusk*lowB*0.85,0.0,1.0)); }\n' +
+        '    col=mix(col,col*vec3(1.25,0.82,0.62)+vec3(0.30,0.12,0.05)*toSun,clamp(uDusk*lowB*0.85,0.0,1.0)*(1.0-clamp(uPaintAmt,0.0,1.0)*uPaintDuskOn)); }\n' +
         // ── per-map sky wash (state.mapEnv.tint): pull the dome toward the
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
         '  if(uMapTintAmt>0.001){ float ml=dot(col,vec3(0.299,0.587,0.114));\n' +
@@ -27575,7 +27578,10 @@ const ThreeRenderer = (function () {
                 uPaintSil: { value: _paintSkyBlank() },
                 uPaintAmt: { value: 0.0 },
                 uPaintSilOn: { value: 0.0 },
-                uPaintSilH: { value: 0.5 }
+                uPaintSilH: { value: 0.5 },
+                uPaintDusk: { value: _paintSkyBlank() },   // its own blank: the WebGPU twin binds a sampler per first-seen texture
+                uPaintDuskOn: { value: 0.0 },
+                uPaintRep: { value: 1.0 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -27624,6 +27630,8 @@ const ThreeRenderer = (function () {
        _updateEnvironment (activeGameMode): it asks for the three sheets through the game's own texture loader (the load card
        and the battle gate wait for them), puts them on the dome's uniforms and eases uPaintAmt in once day and night have
        landed (a sheet that fails leaves the shader's sky). The low-power setting (EW_PERF_LOW) takes the half-size copies.
+       THE SKY SETS (mondo's 1024 × 512 sets): a fourth sheet, the Sunset, takes the clock's dawn and dusk when it lands, and
+       the set's sheets go R.rep times round the horizon.
        No mip chain: the strip is drawn near 1:1 on screen and a mip chain would draw a line down the wrap. Sheets of a place
        you left are dropped. Kill-switch: window.EW_NO_PAINTED_SKY = true. Nothing on `state`, nothing relayed: both seats of
        an online fight read the same board id and draw the same painting (RULE #2). */
@@ -27656,23 +27664,26 @@ const ThreeRenderer = (function () {
         if (sig !== PS.sig) {
             PS.id = id; PS.sig = sig; PS.row = _paintSkyRow(id);
             var keep = {};
-            if (PS.row) [PS.row.day, PS.row.night, PS.row.sil].forEach(function (k) { keep[k] = 1; _paintSkySheet(k); });
+            if (PS.row) [PS.row.day, PS.row.night, PS.row.dusk, PS.row.sil].forEach(function (k) { if (!k) return; keep[k] = 1; _paintSkySheet(k); });
             for (var k in PS.tex) if (!keep[k]) { try { if (PS.tex[k].t) PS.tex[k].t.dispose(); } catch (e) {} delete PS.tex[k]; }
         }
-        var R = PS.row, D = R && PS.tex[R.day], N = R && PS.tex[R.night], S = R && PS.tex[R.sil];
+        var R = PS.row, D = R && PS.tex[R.day], N = R && PS.tex[R.night], S = R && R.sil && PS.tex[R.sil], K = R && R.dusk && PS.tex[R.dusk];
         var ready = !!(D && N && D.ok && N.ok);
         if (ready) {
             u.uPaintDay.value = D.t; u.uPaintNight.value = N.t;
             if (S && S.ok) u.uPaintSil.value = S.t;
             u.uPaintSilOn.value = (S && S.ok) ? 1 : 0;
             u.uPaintSilH.value = R.silH || 0.5;
+            if (K && K.ok) u.uPaintDusk.value = K.t;
+            u.uPaintDuskOn.value = (K && K.ok) ? 1 : 0;   // THE SKY SETS: the Sunset sheet takes dawn and dusk once it lands
+            u.uPaintRep.value = R.rep || 1;
         }
         var want = ready ? 1 : 0;
         PS.amt = (snap || !ready) ? want : PS.amt + (want - PS.amt) * 0.08;
         if (Math.abs(PS.amt - want) < 0.002) PS.amt = want;
         u.uPaintAmt.value = PS.amt;
     }
-    if (typeof window !== 'undefined') window._ewPaintSky = function () { var R = _paintSky.row; return { id: _paintSky.id, key: R ? R.key : null, amt: _paintSky.amt, sheets: Object.keys(_paintSky.tex).map(function (k) { var P = _paintSky.tex[k]; return { url: k, ok: P.ok, bad: P.bad }; }) }; };
+    if (typeof window !== 'undefined') window._ewPaintSky = function () { var R = _paintSky.row; return { id: _paintSky.id, key: R ? R.key : null, set: R ? R.set : null, n: R ? R.n : 0, amt: _paintSky.amt, sheets: Object.keys(_paintSky.tex).map(function (k) { var P = _paintSky.tex[k]; return { url: k, ok: P.ok, bad: P.bad }; }) }; };
 
     /* THE BATTLE'S DAY AND NIGHT (2026-10-17): the board's site's day look when one of its rooms is on the world clock (data.js
        hqRoomClock: an outdoor room) — { tint, clouds } | null (an indoor site, a HQ_WORLD_CLOCK.still sky, no site) */
@@ -38336,7 +38347,8 @@ const ThreeRenderer = (function () {
                 Dusk = R('uDusk', 'float'), MMesh = _ewPU(m.uniforms.uMoonMesh, 'float'), EvAge = _ewPU(m.uniforms.uEvAge, 'float'), vn = L.vn;
             /* THE PAINTED SKIES: the GLSL block (see _envDomeFS) */
             var PDay = _ewPT(m.uniforms.uPaintDay), PNight = _ewPT(m.uniforms.uPaintNight), PSil = _ewPT(m.uniforms.uPaintSil),
-                PAmt = _ewPU(m.uniforms.uPaintAmt, 'float'), PSilOn = _ewPU(m.uniforms.uPaintSilOn, 'float'), PSilH = _ewPU(m.uniforms.uPaintSilH, 'float');
+                PAmt = _ewPU(m.uniforms.uPaintAmt, 'float'), PSilOn = _ewPU(m.uniforms.uPaintSilOn, 'float'), PSilH = _ewPU(m.uniforms.uPaintSilH, 'float'),
+                PDusk = _ewPT(m.uniforms.uPaintDusk), PDuskOn = _ewPU(m.uniforms.uPaintDuskOn, 'float'), PRep = _ewPU(m.uniforms.uPaintRep, 'float');
             /* THE LUNAR ECLIPSE: the GLSL lunUmbra (see _envDomeFS) */
             var lunUmbra = function (p, age) {
                 var sl = ss(0, 3.2, age), d = T.length(p.add(V2(0.748, 0.663).mul(T.mix(3.9, 2.05, sl)))).sub(2.6).toVar();
@@ -38445,8 +38457,9 @@ const ThreeRenderer = (function () {
                     col.assign(T.mix(col, dsky, dayK));
                 });
                 T.If(PAmt.greaterThan(0.001), function () {
-                    var pu = az.div(PI * 2).add(0.5).toVar(), pn = ss(0, 1, night).toVar(), puv = V2(pu, one.sub(T.clamp(lat, 0, 1))).toVar();
+                    var pu = az.div(PI * 2).add(0.5).toVar(), pn = ss(0, 1, night).toVar(), puv = V2(pu.mul(PRep), one.sub(T.clamp(lat, 0, 1))).toVar();
                     var pc = T.mix(PDay(puv).rgb, PNight(puv).rgb, pn).toVar();
+                    T.If(PDuskOn.greaterThan(0.5), function () { pc.assign(T.mix(pc, PDusk(puv).rgb, T.clamp(Dusk, 0, 1))); });
                     var sA = F(0).toVar(), sC = V3(0).toVar();
                     T.If(PSilOn.greaterThan(0.5), function () {
                         var sl = PSil(V2(pu, one.sub(T.clamp(lat.div(PSilH), 0, 1)))).toVar();
@@ -38471,7 +38484,7 @@ const ThreeRenderer = (function () {
                 T.If(Dusk.greaterThan(0.001), function () {
                     var lowB = one.sub(ss(-0.06, 0.42, el));
                     var toSun = T.pow(T.max(T.dot(T.normalize(V3(rd.x, 0, rd.z).add(1e-4)), T.normalize(V3(sunDir.x, 0, sunDir.z).add(1e-4))), 0), 2).mul(0.55).add(0.45);
-                    col.assign(T.mix(col, col.mul(V3(1.25, 0.82, 0.62)).add(V3(0.3, 0.12, 0.05).mul(toSun)), T.clamp(Dusk.mul(lowB).mul(0.85), 0, 1)));
+                    col.assign(T.mix(col, col.mul(V3(1.25, 0.82, 0.62)).add(V3(0.3, 0.12, 0.05).mul(toSun)), T.clamp(Dusk.mul(lowB).mul(0.85), 0, 1).mul(one.sub(T.clamp(PAmt, 0, 1).mul(PDuskOn)))));
                 });
                 T.If(MTintA.greaterThan(0.001), function () {
                     var ml = L.lum(col);
