@@ -58683,7 +58683,7 @@ if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
 const HQ_LIGHT_RULES = {
     cycle: 'day',
     nightCap: 0.45,
-    ambientFloor: 0.55,
+    ambientFloor: 0.7,   // THE LIFT (2026-10-24): a closed room's mood.ambient m lights at floor + (1 - floor) × m (it used to clamp at the floor)
     fillColor: 0x9fb4d0,
     fill: 0.14,
     open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
@@ -58729,6 +58729,12 @@ const HQ_LIGHT_RULES = {
     ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
     motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
     reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
+    /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really dark
+       overall"): one soft point light that rides with the camera in an ENCLOSED place (a closed room, a cave, a corridor; a fight in one)
+       — `intensity` at Settings → Key Light's default, `reach` m (decay 1 = a linear ramp to it), lifted `up` m, `back` = how far from the
+       walker's head toward the eye, `side` m to the camera's right; a fight hangs it `battleUp` m over the floor where the camera looks,
+       `battleReach` m, at `battleIntensity` (the fight's camera stands farther off). No shadow map. three-renderer.js _hqKeyLampTick / _fieldKeyLampTick. */
+    keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 },
 };
 /* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
    the polish the player owns. Every row is a setting on the shared video sheet (ui.js _buildVideoSettingsHTML → the battle's
@@ -58760,6 +58766,8 @@ const HQ_POLISH_PREFS = [
     { key: 'camFeel',      label: 'Camera Feel',        hint: 'the stride bob, the landing shake, the sprint lens, the carve roll', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
     /* THE ROOM SETTINGS (2026-10-20): Auto Exposure now reaches the screen (three-post.js _brightGain); def false keeps the picture as it was */
+    /* THE KEY LIGHT (2026-10-24): the soft light that rides with the camera in enclosed rooms, caves and corridors, and in a fight in one (HQ_LIGHT_RULES.keyLamp) */
+    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
     { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: false, scope: 'hq', live: true },
     { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },
