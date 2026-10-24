@@ -7814,8 +7814,11 @@
             const fxaaOn = typeof ThreePost!=='undefined'&&ThreePost.isFXAAEnabled&&ThreePost.isFXAAEnabled();
             const aaMode = (typeof ThreePost!=='undefined'&&ThreePost.getAA) ? ThreePost.getAA() : (fxaaOn ? 'fxaa' : 'off');   // THE POST PASS 7.5: off / FXAA / SMAA
             const isNativePixel = typeof window==='undefined'||window._ewPixelRatio!==1;
-            const crtOn = typeof ThreePost!=='undefined'&&ThreePost.isCinematicFilterEnabled&&ThreePost.isCinematicFilterEnabled();
-            const vignetteOn = typeof ThreePost!=='undefined'&&ThreePost.isVignetteEnabled&&ThreePost.isVignetteEnabled();
+            /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
+               so the sheet shows what is worn — a box reads the way the picture looks */
+            const wornCin = (!looksOn && typeof ThreePost!=='undefined'&&ThreePost.getWornCinematicState) ? ThreePost.getWornCinematicState() : null;
+            const crtOn = wornCin ? !!wornCin.crt : (typeof ThreePost!=='undefined'&&ThreePost.isCinematicFilterEnabled&&ThreePost.isCinematicFilterEnabled());
+            const vignetteOn = wornCin ? !!wornCin.vignette : (typeof ThreePost!=='undefined'&&ThreePost.isVignetteEnabled&&ThreePost.isVignetteEnabled());
             const cinState = (typeof ThreePost!=='undefined'&&ThreePost.getCinematicState)?ThreePost.getCinematicState():{scanline:0.07,chroma:0.8,curvature:0,vigAmount:0.45,vigSize:0.42,vigSoft:0.55};
             const scanPct = Math.max(0,Math.min(100,Math.round((cinState.scanline/0.30)*100)));
             const chromaPct = Math.max(0,Math.min(100,Math.round((cinState.chroma/3.0)*100)));
@@ -7856,8 +7859,9 @@
 
             // Retro / Haunted-PS1 filter state
             const _TP = (typeof ThreePost!=='undefined') ? ThreePost : null;
-            const retroOn = !!(_TP && _TP.isRetroFilterEnabled && _TP.isRetroFilterEnabled());
-            const retroState = (_TP && _TP.getRetroState) ? _TP.getRetroState() : {pixelSize:1,ditherStrength:0.6,ditherScale:1,grain:0.04,levels:24,tintAmount:0.55};
+            const wornRetro = (!looksOn && _TP && _TP.getWornRetroState) ? _TP.getWornRetroState() : null;   // MAP LOOKS OFF: what is worn
+            const retroOn = wornRetro ? !!wornRetro.enabled : !!(_TP && _TP.isRetroFilterEnabled && _TP.isRetroFilterEnabled());
+            const retroState = wornRetro || ((_TP && _TP.getRetroState) ? _TP.getRetroState() : {pixelSize:1,ditherStrength:0.6,ditherScale:1,grain:0.04,levels:24,tintAmount:0.55});
             const retroPreset = (_TP && _TP.getRetroPreset) ? _TP.getRetroPreset() : 'teal';
             const retroPresets = (_TP && _TP.getRetroPresets) ? _TP.getRetroPresets() : [];
             const retroFogOn = !!(_TP && _TP.isRetroFogEnabled && _TP.isRetroFogEnabled());
@@ -8009,7 +8013,7 @@
                         <label class="pm-toggle"><input type="checkbox" ${spellGradeOn ? 'checked' : ''} onchange="window.EW_DISABLE_SPELL_GRADE=!this.checked;if(!this.checked&&typeof ThreePost!=='undefined'&&ThreePost.spellGradeClear)ThreePost.spellGradeClear();try{localStorage.setItem('ew_spellGrade',this.checked?'1':'0');}catch(e){}"><span class="pm-toggle-label">Spell Cinematics</span><span class="pm-toggle-hint">big spells black out the board around the caster and target, cycle colour and split the RGB</span></label>
                     </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
-                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${!looksOn ? 'off: no map grade, and any tint, dither, pixelate, grain, vignette or CRT you have not set yourself stays off' : lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>

@@ -699,6 +699,17 @@ const ThreePost = (function () {
             if (typeof localStorage !== 'undefined') localStorage.setItem('ew_cinematic', JSON.stringify(_cin));
         } catch (e) {}
     }
+    /* the CRT / vignette settings the player has SET in the menu (even back to a factory value) — like _retroOwned: a scene
+       look (and Map Looks off's clean picture) never overrides them */
+    var _cinOwned = {};
+    try {
+        var _coSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_cin_owned') || 'null') : null;
+        if (_coSaved && typeof _coSaved === 'object') for (var _cok in _coSaved) if (_coSaved[_cok] === true) _cinOwned[_cok] = true;
+    } catch (e) {}
+    function _ownCin(key) {
+        _cinOwned[key] = true;
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_cin_owned', JSON.stringify(_cinOwned)); } catch (e) {}
+    }
 
     // ── Tilt-shift blur shader (run twice: horizontal then vertical) ─────
     // Separable 9-tap gaussian whose radius scales with distance from a focus
@@ -1409,6 +1420,18 @@ const ThreePost = (function () {
        every look at once (Settings → Graphics → Map Looks): map.js / the renderer pass null
        when localStorage ew_scene_looks === 'off'. */
     var _look = null;
+    /* MAP LOOKS OFF = THE CLEAN PICTURE (2026-10-24, mondo: "if i have map looks unchecked then why do i always have to change
+       the settings for it to not have the map looks? i want it to remember"): the shipped PS1 grade (the Dreamy tint, the
+       dither, the 2x pixelate, the grain, the vignette, the CRT) is almost the building's own look, so unchecking Map Looks
+       changed nothing he could see. With Map Looks off every grade setting the player never touched reads OFF everywhere —
+       laid as a look so it yields exactly like one (a setting he moved or set himself still wins); getSceneLook() answers
+       null for it. */
+    var _LOOK_CLEAN = { _clean: true, retro: { enabled: false, pixelSize: 1, ditherStrength: 0, grain: 0 }, cin: { crt: false, vignette: false } };
+    function _sceneLooksOff() {
+        if (typeof window !== 'undefined' && window.EW_NO_SCENE_LOOKS) return true;
+        try { return typeof localStorage !== 'undefined' && localStorage.getItem('ew_scene_looks') === 'off'; } catch (e) { return false; }
+    }
+    if (_sceneLooksOff()) _look = _LOOK_CLEAN;
     /* THE LOOK YIELDS TO THE PLAYER (2026-09-17 — the user: "when I change the settings in the menu it doesn't change anything;
        it needs to still let me adjust the graphics"): a look fills in ONLY the settings the player has left at their FACTORY
        default (the sheet's numbers above, captured before the saved preference lands). Any slider or toggle the player has
@@ -1438,7 +1461,7 @@ const ThreePost = (function () {
     function _lkCin() {
         if (!_look || !_look.cin) return _cin;
         var o = {}; for (var k in _cin) o[k] = _cin[k];
-        var L = _look.cin; for (var k2 in L) if (L[k2] != null && _lkSame(_cin[k2], _CIN_FACTORY[k2])) o[k2] = L[k2];
+        var L = _look.cin; for (var k2 in L) if (L[k2] != null && !_cinOwned[k2] && _lkSame(_cin[k2], _CIN_FACTORY[k2])) o[k2] = L[k2];
         return o;
     }
     /* what the look is worn over: every key the player owns (for the settings panels' hint + the tests) */
@@ -1446,12 +1469,13 @@ const ThreePost = (function () {
         var own = [];
         for (var k in _LK_FACTORY) if (_lkOwnNum(k, k === 'exposure' ? _exposureUser : k === 'bloom' ? BLOOM_USER_STRENGTH : k === 'dof' ? _dofStrength : _nightMood)) own.push(k);
         for (var r in _RETRO_FACTORY) if (_retroOwned[r] || !_lkSame(_retro[r], _RETRO_FACTORY[r])) own.push('retro.' + r);
-        for (var c in _CIN_FACTORY) if (!_lkSame(_cin[c], _CIN_FACTORY[c])) own.push('cin.' + c);
+        for (var c in _CIN_FACTORY) if (_cinOwned[c] || !_lkSame(_cin[c], _CIN_FACTORY[c])) own.push('cin.' + c);
         return own;
     }
     function setSceneLook(look) {
         var next = null;
         if (look && typeof look === 'object') { next = {}; for (var k in look) next[k] = look[k]; }
+        else if (_sceneLooksOff()) next = _LOOK_CLEAN;   // MAP LOOKS OFF: the clean picture, never the shipped grade
         _look = next;
         _applyRetroUniforms();
         if (_retroPass) _retroPass.enabled = _retroLive();
@@ -1459,7 +1483,10 @@ const ThreePost = (function () {
         _applyDofUniforms();
         if (_renderer && _cur) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
     }
-    function getSceneLook() { return _look; }
+    function getSceneLook() { return (_look && !_look._clean) ? _look : null; }
+    /* what the screen wears right now (the preference with any look on top) — the settings sheet shows these while Map Looks is off */
+    function getWornRetroState() { var R = _lkRetro(), o = {}; for (var k in R) o[k] = R[k]; return o; }
+    function getWornCinematicState() { var C = _lkCin(), o = {}; for (var k in C) o[k] = C[k]; return o; }
     // Push the full _retro state (including the active preset's tint/sat/contrast)
     // into the live shader uniforms.
     function _applyRetroUniforms() {
@@ -4329,6 +4356,7 @@ const ThreePost = (function () {
     // The vignette is now a SEPARATE toggle (setVignetteEnabled).
     function setCinematicFilter(enabled) {
         _cin.crt = !!enabled;
+        _ownCin('crt');
         _applyCinematicUniforms();
         _saveCinematic();
     }
@@ -4336,6 +4364,7 @@ const ThreePost = (function () {
 
     function setVignetteEnabled(enabled) {
         _cin.vignette = !!enabled;
+        _ownCin('vignette');
         _applyCinematicUniforms();
         _saveCinematic();
     }
@@ -4347,6 +4376,7 @@ const ThreePost = (function () {
         if (isNaN(v)) return;
         if (!(key in _cin) || typeof _cin[key] !== 'number') return;
         _cin[key] = v;
+        _ownCin(key);
         _applyCinematicUniforms();
         _saveCinematic();
     }
@@ -4538,6 +4568,8 @@ const ThreePost = (function () {
         setFieldLight: setFieldLight, getFieldLight: getFieldLight,   // THE SEAMLESS FIELD: the room's rig over the battle's
         getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
+        getWornRetroState: getWornRetroState,
+        getWornCinematicState: getWornCinematicState,
         isReady: isReady,
         dispose: dispose
     };
