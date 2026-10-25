@@ -1849,3 +1849,37 @@ block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P
 - THE TARGET STAYS: no screen flash of its own; crown low and see-through; columns / spikes / prongs stand on the far
   side of the body from the lens (`_nbCamDir`); coils thin.
 - Proof: Spell Lab ✦ CAST per spell, performance.now() frozen at set delays after the cast. Stills: /mnt/project-files/water-vfx/.
+
+
+## THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every sonic-element spell (28 rows + Screech / Sonic Boom, rules in champions-combat.md "THE SONIC PASS") reads as sound
+in one violet language. Code: three-vfx-effects.js block "THE SONIC PASS" right after END THE NATURE PASS, helpers `_sn*`.
+- THE KIT: `_snRing` (a canvas ring over a dark ink rim, so it reads on a bright floor; `_snJagTex` = the thin zigzag of
+  a LOUD sound), `_snCone` (rings leave A, travel to B and grow: the cone a voice makes), `_snRipple` (flat floor rings),
+  `_snHum` (three rings round the body that shiver, can track a dragged body), `_snEq` (a crown of LED level meters
+  BEHIND the body, one mesh per meter, the level = draw range). Pieces return tick(el); `_snRun` runs them in one
+  _sigRunOwned. `_snLean` leans a lane's rings toward the lens: rings aimed straight down a lane that runs across the
+  screen were edge-on slivers.
+- THE STAMP (`_snStage`, called from _fireStage): the windup / burst staging beats fire for EVERY spell from its data,
+  so all sonic rows get it with no per-spell wiring, on top of their own looks. Windup = rings out of the caster's mouth
+  toward the target (a shout: hum + floor ring). Burst = rings through the body from the caster's side, floor + body
+  hum, the meter on heavy / ultimate; self-origin rows (barrage, aoeOriginSelf, warCry) shout from the caster's tile.
+  `_SN_FLAVOUR` per row: sung (notes), gentle (slow smooth rings), roar (jagged), discord (clash pink, broken notes).
+- Generic sonic: `_THEME_MAP.sonic`, `_ELEMENT_THEME.sonic = 'sonic'` (was anomaly), `_STAGE_ARCHETYPES.sonic` (violet,
+  noOrb, no glyph), `_STAGE_GRADES.sonic`, `_BEAM_COLORS.sonic`. `_stageArchetype` gives a sonic row 'sonic' whatever its
+  kind, except support kinds (`_SN_SUPPORT_ARCH`: buffs stay gold aura, stat-downs stay the violet hex). Sonic
+  Boomerang's SPELL_STAGE_MAP archetype kinetic → sonic (its grade kept).
+- Own looks (routes probed in the Spell Lab): Discordance impact = two clashing jagged ring stacks (was the generic dark
+  debuff); Siren Song = `pull` with pzOwnTether, a stream of rings + notes mouth → body for the whole drag (was the
+  plain rope); Lullaby keeps its impact + slow rings settle over the head; Sonic Breaker beam (pzOwn, was a plain light
+  band) and Shockwave Clap beam (its band kept) = `_snLane`: a ring tunnel down the whole reach + a jagged floor ripple
+  per tile it crosses. A line beam sends fromX/fromY + dx/dy + range (no sx/sy). Crack the Whip / Screech / Sonic Boom /
+  Requiem's per-target bolt = `snWave_bolt` (pzOwn: rings fly the path, `_nvLand` lands the impact recipe); Requiem's
+  bolt was `_bolt_bullet`. Impacts: Crack the Whip + Screech = `snCrack` (a jagged ring snaps at head height), Sonic Boom
+  = `snBoom` (jagged rings on three tilts + a floor slam). Barrage rows (Meow, Requiem, Shiver, Bellow) fire no
+  aoe/impact intent: the stamp is their look.
+- THE TARGET STAYS: thin rings, the meter behind the body, no screen flash. Fog / RULE #2: everything rides fire() /
+  the staging beats (relayed); caster-end pieces gate on `_pzSeen(caster)`, hit pieces on `_pzSeen(hit)`; Siren
+  Song's fogged siren sings from the sight line. MeshBasic / Sprite only.
+- Proof: Spell Lab ✦ CAST per spell, capture rig froze performance.now() at set delays after the intent. Stills:
+  /mnt/project-files/sonic-vfx/.
