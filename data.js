@@ -2861,7 +2861,7 @@ const RACE_PROFILES = {
         label: 'Men in Black',
         labelMale: 'Man in Black',
         // A woman can't very well be a Man in Black — she's the Spy (mondo 2026-10-25: a James Bond
-        // spy, not an "intel spy"). (Portrait art file is still named "glowie" on R2 — path only.)
+        // spy, not an "intel spy"). Her portrait is the zoomed-in face of her new sprite (sprites.js RACE_PORTRAITS).
         labelFemale: 'Spy',
         types: ['human', 'tech']
     },
