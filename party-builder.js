@@ -642,6 +642,10 @@ const CODEX_LORE = {
   'firefighter': 'Human. The one engine company in Disaster City still answering calls. Subjects walk into what everyone else is running out of, carry the wounded out on one shoulder, and put out fires, floods and fights with the same hose.',
   'goblin': 'Anomalous. Small, green, quick and never alone. Recovered from the tunnels of Hollow Earth with somebody else\'s wallet. Subjects rig the ground they stand on, bite with something in their teeth that should not be there, and take whatever is not bolted down.',
   'hippie': 'Human. Found camped at the stones on the solstice and every day since. Subjects grow their own medicine, share it with anyone, and keep a whole squad on its feet on seeds, herbs and good intentions. The Bureau has asked them to leave the site eleven times.',
+  'chef': 'Human. Head chef of a Strip casino kitchen that never closes. Recovered from the pass mid-service, still calling tickets. Subjects cook with fire, season with things that should not be eaten, and keep their own side fed between rounds.',   // 2026-10-25
+  'eagleman': 'Anomalous. A man in a pressed suit with the head and talons of an eagle. Recovered from the grounds of the Estate, where he had been watching the lawn from the roof. Subjects see farther than anyone on the board, pick their prey early and come down on it from above.',   // 2026-10-25
+  'flesheater': 'Anomalous. Long-limbed, hairless, and split down the middle by a mouth lined with ribs. Recovered from the lower levels of the D.U.M.B. and sighted since in the sewers under Disaster City. Subjects hold their prey still with the tendrils in their chest and heal on what they eat.',   // 2026-10-25
+  'mime': 'Human. White face, striped shirt, beret, gloves. Recovered from a Downtown street corner, where she had been trapped in the same invisible box for most of a day. Subjects never speak, silence anyone who does, and hit a great deal harder than the act suggests.',   // 2026-10-25
   'mummy': 'Unholy. A woman wrapped head to foot in old linen, long black hair loose over the bandages. Recovered from a sealed chamber under the Pyramids of Giza with the seal still unbroken from the inside. Subjects bind whoever comes close in their own wrappings, curse everyone who walked into the tomb, and do not burn slowly.',
   'swamp monster': 'Anomalous. Long-limbed, eyeless and hung with moss and weed, it walks out of standing water. Sighted in the standing water of the woods below D.O.O.R. HQ and in the sewers under Disaster City, never on dry ground for long. Subjects grab an ankle, breathe swamp gas over everyone near, and drag down whatever cannot get away.',
   'undead': 'Unholy. A body that would not stay buried: bare ribs, torn flesh and long bloody nails. Recovered from the graveyard at the Haunted House, with more sightings in Hell and the sewers under Disaster City. Subjects open a wound and follow the blood, let out a death rattle that scatters the living, and do not let go once they grip.',
@@ -2166,6 +2170,18 @@ const RACE_TRAITS = {
   ],
   'hippie': [
     { icon: '☮', name: 'Good Vibes', desc: 'Nothing can harsh this mellow — immune to Discord.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'chef': [
+    { icon: '🍳', name: 'Iron Stomach', desc: 'Tastes everything on the line — immune to Poison.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'eagleman': [
+    { icon: '🦅', name: 'Eagle-Eyed', desc: 'Sees a mouse move from a mile up — immune to Blind.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'flesheater': [
+    { icon: '🦷', name: 'Mindless Hunger', desc: 'Nothing in there to scare — immune to Fear.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'mime': [
+    { icon: '🤍', name: 'Not a Peep', desc: 'Never says a word anyway — immune to Silence.' },   // CODED (PASSIVE_DEFS)
   ],
   'mummy': [
     { icon: '⚱', name: 'Embalmed', desc: 'Nothing left in the veins to lose — immune to Bleed.' },   // CODED (PASSIVE_DEFS)

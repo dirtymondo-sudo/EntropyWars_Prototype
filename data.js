@@ -421,6 +421,11 @@ const FINISHERS = {
     'firefighter': { id: 'fin_firefighter', name: 'Hose Down', glyph: '🚒', type: 'human', sig: 'theWave', built: true, tagline: 'FULL PRESSURE', lines: [['🌊 THE TIDE', '🚒 OPEN THE HYDRANT'], ['NINE TILES TALL', 'FULL PRESSURE'], ['ONLY ONE WAS STANDING THERE.', 'FIRE\'S OUT.']], desc: 'Every hydrant in the city opens at once. A wall of water taller than the sky rolls in from the edge of the map, and only one unit is standing where it lands.' },
     'goblin': { id: 'fin_goblin', name: 'The Horde', glyph: '👺', type: 'anomaly', sig: 'pileOn', built: true, tagline: 'SHINIES', lines: [['🧟 THEY COME OVER THE EDGE', '👺 THEY COME OVER THE EDGE'], ['BRAAAINS', 'SHINIES'], ['…AND OFF WITH THE PIECES.', '…AND OFF WITH THE POCKETS.']], desc: 'A horde pours over the edges of the map, dogpiles one unit, and runs off with everything it had on it.' },
     'hippie': { id: 'fin_hippie', name: 'Bad Trip', glyph: '☮', type: 'human', sig: 'theTrip', built: true, tagline: 'FAR OUT', lines: [['🍄 THE DOSE', '☮ FAR OUT'], ['NO ONE HOME.', 'PEACE.']], desc: 'The victim\'s reality goes fractal, kaleidoscopes inside kaleidoscopes, until there is no victim left to have a bad time.' },
+    /* THE 2026-10-25 BATCH (mondo: chef, eagleman, flesheater, mime) — each borrows a built execution's staging (sig) + `lines`. */
+    'chef': { id: 'fin_chef', name: 'Order Up', glyph: '🍳', type: 'human', sig: 'shrinkRay', built: true, tagline: 'BON APPÉTIT', lines: [['> shrink --target ', '> mise en place: '], ['SIZE: 1/40', 'BITE-SIZED'], ['⬆ ACME', '⬆ THE TENDERIZER'], ['SCIENCE.', 'ORDER UP.']], desc: 'The victim is cut down to bite size, and the biggest tenderizer in the kitchen comes down on them from the sky. Order up.' },
+    'eagleman': { id: 'fin_eagleman', name: 'Bird\'s Eye View', glyph: '🦅', type: 'anomaly', sig: 'upUpAndAway', built: true, tagline: 'TALONS OUT', lines: [['🦸 UP', '🦅 TALONS IN'], ['AND AWAY', 'HIGHER'], ['AND THEN DOWN', 'AND THEN HE LETS GO'], ['THE LANDING.', 'DROPPED.']], desc: 'The eagleman takes the victim in his talons, carries them high enough to see the curve of the Earth, and lets go.' },
+    'flesheater': { id: 'fin_flesheater', name: 'Feeding Time', glyph: '🦷', type: 'unholy', sig: 'devoured', built: true, tagline: 'IT IS HUNGRY', lines: [['🌙 zzz', '🦷 IT SMELLS YOU'], ['A NICE DREAM', 'DON\'T MOVE'], ['SOMETHING ELSE IS IN IT', 'IT OPENS'], ['THE DREAM WAS YOU', 'DINNER WAS YOU'], ['DEVOURED.', 'EATEN.'], ['SWEET DREAMS.', 'NOTHING LEFT.']], desc: 'The victim cannot move, the jaws open round them, and the flesheater eats them in bites until there is nothing left on the tile.' },
+    'mime': { id: 'fin_mime', name: 'The Box', glyph: '🤍', type: 'human', sig: 'compactor', built: true, tagline: '( . . . )', lines: [['> compactor: ARMED\n> walls: 2\n> output: 1 cube', '( the walls )\n( are closing )\n( in )'], ['⚠ STAND CLEAR', '🤍 PUSH'], ['CUBED', 'BOXED'], ['ONE (1) CUBE.', '( SILENCE )']], desc: 'The mime pushes the walls of an invisible box in on the victim from both sides until the box is very small. Not a sound.' },
     /* THE UNDEAD BATCH (2026-10-25, mondo): mummy (female), swamp monster, undead — R2 Races/<folder>/ GLB + sprite */
     'mummy': { id: 'fin_mummy', name: 'Entombed', glyph: '⚱', type: 'unholy', sig: 'weighing', built: true, tagline: 'THE TOMB IS SEALED', lines: [['♥ ⚖ 𓆃', '⚱ 𓂀 𓆃'], ['HEAVIER THAN A FEATHER', 'THE TOMB IS SEALED']], desc: 'The scales of the old dead lower from the sky. The victim\'s heart on one pan, the feather on the other, and the mummy closes the lid on the verdict.' },
     'swamp monster': { id: 'fin_swamp_monster', name: 'Dragged Under', glyph: '🌿', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', lines: [['🦕 THE LOCH', '🌿 THE BOG'], ['THE NECK', 'THE HANDS']], desc: 'The bog rises through the map, long hands come up under the victim, and the only evidence is out of focus.' },
@@ -3029,6 +3034,24 @@ const RACE_PROFILES = {
         labelFemale: 'Hippie',
         types: ['human']
     },
+    /* THE 2026-10-25 BATCH (mondo's Meshy uploads: Races/<race>/Meshy_AI_<name>_Running.glb + <race>.png) */
+    'chef': {
+        label: 'Chef',
+        types: ['human']
+    },
+    'eagleman': {
+        label: 'Eagleman',
+        types: ['anomaly']
+    },
+    'flesheater': {
+        label: 'Flesheater',
+        types: ['anomaly', 'unholy']
+    },
+    'mime': {
+        label: 'Mime',
+        labelFemale: 'Mime',
+        types: ['human']
+    },
     /* THE UNDEAD BATCH (2026-10-25, mondo): mummy (female), swamp monster, undead — R2 Races/<folder>/ GLB + sprite */
     'mummy': {
         label: 'Mummy',
@@ -3353,6 +3376,27 @@ const PASSIVE_DEFS = {
         immuneStatus: ['discord'],
         desc: 'Nothing can harsh this mellow — immune to Discord.',
     },
+    /* 2026-10-25 — the chef / eagleman / flesheater / mime batch: the same immuneStatus hook. */
+    ironStomach: {
+        id: 'ironStomach', icon: '🍳', name: 'Iron Stomach',
+        immuneStatus: ['poison'],
+        desc: 'Tastes everything on the line — immune to Poison.',
+    },
+    eagleEyed: {
+        id: 'eagleEyed', icon: '🦅', name: 'Eagle-Eyed',
+        immuneStatus: ['blind'],
+        desc: 'Sees a mouse move from a mile up — immune to Blind.',
+    },
+    mindlessHunger: {
+        id: 'mindlessHunger', icon: '🦷', name: 'Mindless Hunger',
+        immuneStatus: ['feared'],
+        desc: 'Nothing in there to scare — immune to Fear.',
+    },
+    notAPeep: {
+        id: 'notAPeep', icon: '🤍', name: 'Not a Peep',
+        immuneStatus: ['silence'],
+        desc: 'Never says a word anyway — immune to Silence.',
+    },
     /* THE UNDEAD BATCH (2026-10-25): one immuneStatus row each, the 09-30 batch's hook */
     embalmed: {
         id: 'embalmed', icon: '⚱', name: 'Embalmed',
@@ -3526,6 +3570,10 @@ const RACE_PASSIVES = {
     'firefighter': ['turnoutGear'],   // 2026-09-30
     'goblin': ['caveEyes'],   // 2026-09-30
     'hippie': ['goodVibes'],   // 2026-09-30
+    'chef': ['ironStomach'],   // 2026-10-25
+    'eagleman': ['eagleEyed'],   // 2026-10-25
+    'flesheater': ['mindlessHunger'],   // 2026-10-25
+    'mime': ['notAPeep'],   // 2026-10-25
     'mummy': ['embalmed'],   // 2026-10-25
     'swamp monster': ['bogBody'],   // 2026-10-25
     'undead': ['rottenThrough'],   // 2026-10-25
@@ -3606,7 +3654,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3709,6 +3757,10 @@ const RACE_CLASS = {
     'firefighter': 'tank',   // 2026-09-30
     'goblin': 'assassin',   // 2026-09-30
     'hippie': 'support',   // 2026-09-30
+    'chef': 'support',   // 2026-10-25
+    'eagleman': 'assassin',   // 2026-10-25
+    'flesheater': 'bruiser',   // 2026-10-25
+    'mime': 'assassin',   // 2026-10-25
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -4100,6 +4152,11 @@ const RACE_BASE_STATS = {
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
     'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },   // race editor 2026-10-17: DEF 62
+    // 2026-10-25 — on their class medians (the budget above): the chef a sturdy cook who feeds the line, the eagleman a quick hunter with the best eyes on the board, the flesheater a tall bruiser, the mime a slippery trickster.
+    'chef': { hp: 1100, mp: 180, atk: 95, def: 110, mdef: 95, int: 105, vision: 3, crt: 24, spd: 90 },
+    'eagleman': { hp: 760, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },
+    'flesheater': { hp: 1600, mp: 90, atk: 158, def: 130, mdef: 60, int: 30, vision: 2, crt: 22, spd: 120 },
+    'mime': { hp: 780, mp: 160, atk: 105, def: 85, mdef: 95, int: 95, vision: 3, crt: 26, spd: 140 },
     // 2026-10-25 — the undead batch, first pass (race editor to tune): a curse caster, a bog bruiser, a quick ripper
     'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
     'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
@@ -4206,6 +4263,10 @@ const RACE_PHYSIQUE = {
     'firefighter': { h: 1.85, w: 110 },   // 2026-09-30
     'goblin': { h: 1.1, w: 35 },   // 2026-09-30
     'hippie': { h: 1.75, w: 66 },   // 2026-09-30
+    'chef': { h: 1.80, w: 88 },   // 2026-10-25 — the whites and the toque
+    'eagleman': { h: 1.86, w: 80 },   // 2026-10-25 — in the suit
+    'flesheater': { h: 2.20, w: 95 },   // 2026-10-25 — long-limbed, all ribs and mouth
+    'mime': { h: 1.65, w: 52 },   // 2026-10-25
     'mummy': { h: 1.68, w: 48 },   // 2026-10-25
     'swamp monster': { h: 2.1, w: 110 },   // 2026-10-25 — long-limbed, hunched
     'undead': { h: 1.85, w: 52 },   // 2026-10-25 — skin and bone
@@ -8332,6 +8393,64 @@ const RACE_ABILITIES = {
           cooldownRounds: 3, spellType: 'divine', vfxElement: 'nature', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
           noDamage: true, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Nobody wants to fight anymore. Every enemy in a 3x3 within 4 tiles is Charmed for a round. Cooldown: 3 rounds.' },
+    ],
+    /* THE 2026-10-25 BATCH — each race's own signature family (mondo: "each needs its own race family with at least one
+       spell"): T1-2 apply an existing status, the T3-4 finisher deals bonus damage against it and applies nothing. */
+    'chef': [
+        { id: 'nrHotPan', name: 'Hot Pan', tier: 1, families: ['chef'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'fire', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Straight off the burner. Deals MEDIUM physical damage to a Single Enemy beside you and Burns them for 2 rounds.' },
+        { id: 'nrTasteTest', name: 'Taste Test', tier: 2, families: ['chef'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'nature', type: 'heal', kind: 'heal', range: 3, healAmt: 80,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Here, try this. Heals a Single Ally within 3 a MEDIUM amount and gives them Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrFlambe', name: 'Flambé', tier: 3, families: ['chef'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'fire', type: 'damage', kind: 'damage', range: 2, dmg: 135, damageType: 'magic',
+          bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'A splash of brandy and a match. Deals MEDIUM magic damage to a Single Enemy within 2. Deals bonus damage to Burning targets.' },
+    ],
+    'eagleman': [
+        { id: 'nrTalonRake', name: 'Talon Rake', tier: 1, families: ['eagleman'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Both hands, all talons. Deals MEDIUM physical damage to a Single Enemy beside you and makes them Bleed for 2 rounds.' },
+        { id: 'nrEagleEye', name: 'Eagle Eye', tier: 2, families: ['eagleman'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', vfxElement: 'wind', type: 'debuff', kind: 'debuff', range: 6,
+          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
+          desc: 'Picked out from a mile up. Marks a Single Enemy within 6 for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrStoopDive', name: 'Stoop Dive', tier: 3, families: ['eagleman'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'physical', chargeToTarget: true,
+          bonusVsStatus: { status: ['bleed', 'marked'], mult: 1.5 },
+          desc: 'Wings in, straight down. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Bleeding or Marked targets.' },
+    ],
+    'flesheater': [
+        { id: 'nrTendrilSnare', name: 'Tendril Snare', tier: 1, families: ['flesheater'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'blood', type: 'damage', kind: 'damage', range: 2, dmg: 70, damageType: 'physical',
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'The tendrils under its ribs reach out. Deals WEAK physical damage to a Single Enemy within 2 and Roots them for a round.' },
+        { id: 'nrGnash', name: 'Gnash', tier: 2, families: ['flesheater'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 80, damageType: 'physical', drainPct: 0.5,
+          statusEffects: [{ id: 'grievous', duration: 2 }],
+          desc: 'A mouthful. Deals MEDIUM physical damage to a Single Enemy beside you, heals for half of it and leaves a Grievous Wound for 2 rounds.' },
+        { id: 'nrEatenAlive', name: 'Eaten Alive', tier: 4, families: ['flesheater'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 160, damageType: 'physical',
+          drainPct: 1, bonusVsStatus: { status: ['root', 'grievous'], mult: 1.5 },
+          desc: 'The whole mouth opens. Deals HEAVY physical damage to a Single Enemy beside you and heals for all of it. Deals bonus damage to Rooted or Grievously Wounded targets. Cooldown: 2 rounds.' },
+    ],
+    'mime': [
+        { id: 'nrInvisibleBox', name: 'Invisible Box', tier: 1, families: ['mime'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'psychic', type: 'debuff', kind: 'debuff', range: 3,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'Four walls nobody else can see. Roots a Single Enemy within 3 for a round. Cooldown: 2 rounds.' },
+        { id: 'nrShhh', name: 'Shhh!', tier: 2, families: ['mime'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'silence', duration: 2 }],
+          desc: 'A finger to the lips. Silences a Single Enemy within 4 for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrSilentTreatment', name: 'Silent Treatment', tier: 3, families: ['mime'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
+          desc: 'A very real punch from an invisible glove. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Rooted or Silenced targets.' },
     ],
     /* THE UNDEAD BATCH (2026-10-25, mondo): each race's own family. Tier 1-2 apply an existing status; the tier 3 finisher
        hits ×1.5 vs it and applies nothing. Existing kinds, statuses and riders only. */
@@ -19030,6 +19149,10 @@ const EW_RACE_BIOMES = {
     'firefighter': ['urban'],   // 2026-09-30
     'goblin': ['inner_earth', 'forest'],   // 2026-09-30
     'hippie': ['forest', 'ancient'],   // 2026-09-30
+    'chef': ['urban', 'neon_city'],   // 2026-10-25 — Disaster City (the Strip's kitchens)
+    'eagleman': ['ranch', 'clandestine'],   // 2026-10-25 — The Estate
+    'flesheater': ['underground_base'],   // 2026-10-25 — The D.U.M.B. (+ The Sewers: HQ_POPULATION_RULES.underworld)
+    'mime': ['urban', 'stadium'],   // 2026-10-25 — Disaster City (Downtown)
     'mummy': ['desert', 'ancient'],   // 2026-10-25 — the pyramids (Giza)
     'swamp monster': ['forest'],   // 2026-10-25 — The Woods; The Sewers by HQ_POPULATION_RULES.underworld
     'undead': ['gothic', 'infernal'],   // 2026-10-25 — The Estate's graveyard; Hell
@@ -19569,6 +19692,10 @@ const RACE_TREE = {
     'firefighter': ['raceRiptide', 'sharedTidalSurge', 'raceUnderdogSpirit', 'raceTidalSlam'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'goblin': ['raceInfectiousBite', 'raceStealFromRich', 'raceTrapdoor', 'raceNoMercy'],   // 2026-09-30
     'hippie': ['healingSeed', 'cleanse', 'raceAyahuascaRetreat', 'raceAwakening'],   // 2026-09-30
+    'chef': ['fire1', ['healingSeed', 'raceCombust'], ['raceRot', 'skullCrack'], 'raceBumperCrop'],   // 2026-10-25
+    'eagleman': ['racePounce', ['raceCrosswind', 'raceDeathRoll'], ['raceFeralDive', 'raceSkyTackle'], 'raceEyeOfTheStorm'],   // 2026-10-25
+    'flesheater': ['raceGhoulishBite', ['raceHemorrhage', 'raceFrenzy'], ['raceArterialSpray', 'raceEyewitness'], 'raceTerrorPounce'],   // 2026-10-25
+    'mime': ['raceMisdirection', ['raceShedSkin', 'raceNimbleDodge'], ['raceTrickRoom', 'racePopSpotlight'], 'raceMimicry'],   // 2026-10-25
     'mummy': ['mmLinenBind', 'mmTombCurse', 'raceSandstoneTomb', 'raceWeighTheHeart'],   // 2026-10-25
     'swamp monster': ['smMuckGrab', 'smSwampGas', 'raceEntanglingRoots', 'raceFlood'],   // 2026-10-25
     'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
@@ -22547,6 +22674,47 @@ const SPELL_FAMILIES = {
         unique: 'goblin',
         identity: { who: ['Goblin', 'Mob Boss', 'Sneak'], adj: ['Greedy', 'Sneaky', 'Swarming'], look: ['a pocket full of sand', 'a rusty shiv', 'a sack of stolen shinies'], vibe: ['throws sand and runs', 'wins by bringing friends'] }
     },
+    /* THE 2026-10-25 BATCH — signature families (kind 'signature', unique to the race) */
+    chef: {
+        id: 'chef',
+        name: 'Haute Cuisine',
+        glyph: '🔪',
+        color: '#e8e2d4',
+        kind: 'signature',
+        desc: 'The line cook\'s kit: a pan straight off the burner, a taste of something good for whoever is hurt, and a flambé for whoever is already on fire.',
+        unique: 'chef',
+        identity: { who: ['Chef', 'Head Chef', 'Line Cook'], adj: ['Fiery', 'Exacting', 'Well-Seasoned'], look: ['a tall white toque', 'chef\'s whites and an apron', 'a pan still smoking'], vibe: ['sends it back if it is not right', 'feeds the team between rounds'] }
+    },
+    eagleman: {
+        id: 'eagleman',
+        name: 'Bird of Prey',
+        glyph: '🦅',
+        color: '#8a5a2b',
+        kind: 'signature',
+        desc: 'The raptor\'s hunt: talons that open a wound, an eye that marks the prey from a mile up, and the stoop that ends it.',
+        unique: 'eagleman',
+        identity: { who: ['Eagleman', 'Raptor', 'Bird of Prey'], adj: ['Sharp-Eyed', 'Taloned', 'Sharp-Dressed'], look: ['an eagle\'s head over a suit and tie', 'yellow talons for hands', 'a hooked beak'], vibe: ['picks the prey before the fight starts', 'comes down from above'] }
+    },
+    flesheater: {
+        id: 'flesheater',
+        name: 'The Maw',
+        glyph: '🦷',
+        color: '#9a2a2a',
+        kind: 'signature',
+        desc: 'Hunger with legs: tendrils that hold the prey still, a bite that will not close, and the whole mouth for whoever cannot get away.',
+        unique: 'flesheater',
+        identity: { who: ['Flesheater', 'The Maw', 'Thing in the Dark'], adj: ['Ravenous', 'Gaping', 'Tendriled'], look: ['a mouth that splits the whole body', 'ribs like teeth', 'tendrils hanging from the chest'], vibe: ['holds the prey still before it bites', 'heals on what it eats'] }
+    },
+    mime: {
+        id: 'mime',
+        name: 'Pantomime',
+        glyph: '🤍',
+        color: '#dcdcdc',
+        kind: 'signature',
+        desc: 'The silent act: an invisible box that holds them in place, a finger to the lips, and a very real punch from an invisible glove.',
+        unique: 'mime',
+        identity: { who: ['Mime', 'Street Performer', 'Silent Act'], adj: ['Silent', 'Painted', 'Theatrical'], look: ['a white painted face', 'a striped shirt and a beret', 'white gloves'], vibe: ['never says a word', 'traps you in walls you cannot see'] }
+    },
     golem: {
         id: 'golem',
         name: 'Emet',
@@ -23560,6 +23728,10 @@ const RACE_FAMILIES = {
     'firefighter': ['water', 'humangrit', 'teamwork', 'athleticism', 'firerescue'],
     'goblin': ['goblin', 'thievery', 'trapmaking', 'dirtyfighting', 'poison'],
     'hippie': ['hippie', 'psychadelic', 'meditation', 'nature', 'agriculture'],
+    'chef': ['chef', 'fire', 'poison', 'agriculture', 'dirtyfighting'],   // 2026-10-25
+    'eagleman': ['eagleman', 'wind', 'apexpredator', 'beastabilities'],   // 2026-10-25
+    'flesheater': ['flesheater', 'ghoulish', 'blood', 'apexpredator', 'cryptid'],   // 2026-10-25
+    'mime': ['mime', 'trickery', 'stagepresence', 'athleticism'],   // 2026-10-25
     'mummy': ['mummy', 'ancientknowledge', 'desertacclimation', 'necromancy', 'witchcraft'],   // 2026-10-25
     'swamp monster': ['swampmonster', 'water', 'poison', 'nature', 'cryptid'],   // 2026-10-25
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
@@ -23642,6 +23814,10 @@ const RACE_SPELL_EXCLUDES = {
     golem: ['raceWeighTheHeart', 'raceStoneform'],
     halfdemon: ['raceAgentVanish'],
     hippie: ['poisonSeed', 'trunkThrow'],
+    chef: ['meteor', 'raceSplash'],   // 2026-10-25 — no meteor from the kitchen, no goo
+    eagleman: ['raceWingGust', 'raceDinoTailWhip', 'raceJurassicJaw'],   // 2026-10-25 — no wings (the suit), no tail
+    flesheater: ['raceDinoTailWhip'],   // 2026-10-25 — no tail
+    mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
     mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
     'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
@@ -24153,6 +24329,10 @@ const CAMPAIGN_RACE_PRICES = {
   'firefighter': 250,
   'goblin': 200,
   'hippie': 250,
+  'chef': 250,   // 2026-10-25
+  'eagleman': 300,   // 2026-10-25
+  'flesheater': 350,   // 2026-10-25
+  'mime': 250,   // 2026-10-25
   'mummy': 300,   // 2026-10-25
   'swamp monster': 250,   // 2026-10-25
   'undead': 200,   // 2026-10-25
@@ -25723,6 +25903,10 @@ const DOOR_TEXT = {
         'firefighter': 'Downtown',   // 2026-09-30 — Disaster City
         'goblin': 'Hollow Earth',   // 2026-09-30 — The Cavern
         'hippie': 'Stonehenge',   // 2026-09-30 — Leylines
+        'chef': 'The Strip',   // 2026-10-25 — Disaster City
+        'eagleman': 'The Haunted House',   // 2026-10-25 — The Estate (the mansion)
+        'flesheater': 'D.U.M.B.',   // 2026-10-25 — The D.U.M.B. (+ The Sewers, the underworld's people)
+        'mime': 'Downtown',   // 2026-10-25 — Disaster City
         'mummy': 'Pyramids of Giza',   // 2026-10-25 — the pyramids (Leylines)
         'swamp monster': 'Fairy Forest',   // 2026-10-25 — The Woods (+ The Sewers: HQ_POPULATION_RULES.underworld)
         'undead': 'The Haunted House',   // 2026-10-25 — The Estate's graveyard (+ Hell: ALSO_NATIVE)
@@ -54730,7 +54914,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead'],   // 2026-10-25: + swamp monster, undead
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater'],   // 2026-10-25: + swamp monster, undead, flesheater
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...

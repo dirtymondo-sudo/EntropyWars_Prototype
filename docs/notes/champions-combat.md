@@ -2499,6 +2499,33 @@ future cop (the ones in cyberpunk city)". Proposal shown first, then he picked "
   and leaves the look. No revertAfter, so the look persists through moves and basic attacks. Online: rides the synced
   `_spriteOverride` like the honda civic; decoys copy it.
 
+## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
+mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family
+with at least one spell, an entropy ult, and some shared spell families ... Assign them to areas in the map." (A sibling
+thread did mummy / swamp monster / undead; another the shadow entity / sniper / spy / tree person remodels.)
+- R2: `Races/chef/male/Meshy_AI_chef_male_Running.glb` + `chef/male/chef.png` (the chef is in male/), `Races/eagleman/
+  Meshy_AI_eagleman__Running.glb` (two underscores) + `eagleman.png`, `Races/flesheater/Meshy_AI_flesheater_Running.glb` +
+  `flesheater.png` (`flesheater_2.png` unused, asked mondo), `Races/mime/Meshy_AI_mime_female_Running.glb` + `mime_female.png`.
+  All rigged, 28 joints, 1.7 m. The pngs are the 2D sprite (_CHARACTER_SPRITES + RACE_SPRITES); portraits cut from them.
+- Rows: RACE_PROFILES, RACE_PASSIVES (+ PASSIVE_DEFS on the immuneStatus hook: ironStomach poison · eagleEyed blind ·
+  mindlessHunger feared · notAPeep silence; party-builder.js RACE_TRAITS), AVAILABLE_RACES (+ server.js literal),
+  RACE_CLASS (support · assassin · bruiser · assassin), RACE_BASE_STATS (each on its class's median budget),
+  RACE_PHYSIQUE, RACE_ABILITIES, EW_RACE_BIOMES, RACE_TREE, SPELL_FAMILIES, RACE_FAMILIES, RACE_SPELL_EXCLUDES,
+  CAMPAIGN_RACE_PRICES, DOOR_TEXT.POINT_OF_ENTRY, HQ_POPULATION_RULES.underworld (flesheater), CODEX_LORE (both copies).
+- Signature families (ids `nr*`): chef `Haute Cuisine` (Hot Pan T1 burn · Taste Test T2 heal + regen · Flambé T3 ×1.5
+  vs burn), eagleman `Bird of Prey` (Talon Rake T1 bleed · Eagle Eye T2 marked · Stoop Dive T3 charge ×1.5 vs
+  bleed/marked), flesheater `The Maw` (Tendril Snare T1 root · Gnash T2 drain + grievous · Eaten Alive T4 drain ×1.5 vs
+  root/grievous), mime `Pantomime` (Invisible Box T1 root · Shhh! T2 silence · Silent Treatment T3 ×1.5 vs
+  root/silence). Shared: chef fire/poison/agriculture/dirtyfighting (minus Meteor, Splash); eagleman wind/apexpredator/
+  beastabilities (minus Wing Attack, Tail Whip, Jurassic Jaw: no wings, no tail); flesheater ghoulish/blood/apexpredator/
+  cryptid (minus Tail Whip); mime trickery/stagepresence/athleticism (minus the sound rows Mic Drop, Chorus, Call Out,
+  Crowd Surge, Stadium Show, and the skinwalker's Borrowed Claw). Pools 27 / 19 / 25 / 17.
+- Finishers borrow a built staging + `lines`: Order Up = shrinkRay, Bird's Eye View = upUpAndAway, Feeding Time =
+  devoured, The Box = compactor.
+- Homes: chef The Strip (Disaster City), eagleman The Haunted House (The Estate), flesheater D.U.M.B. + the underworld
+  list (The Sewers), mime Downtown (Disaster City).
+- Proof (harness VS CPU): 11 of the 12 own spells cast in battle with their combos; screens in
+  /mnt/project-files/new-races-2026-10-25/.
 ## THE UNDEAD BATCH (2026-10-25, mondo) — mummy, swamp monster, undead
 mondo's Meshy uploads: R2 `Assets/Sprites/Races/<folder>/Meshy_AI_<name>_Running.glb` + his sprite beside it
 (mummy/mummy_female · swampmonster/swampmonster · undead/undead; the swamp monster's rig has finger bones, 66 joints).
