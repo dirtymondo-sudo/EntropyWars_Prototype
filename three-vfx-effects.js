@@ -46846,7 +46846,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        caster-end tell draws only where the viewer sees the caster's tile, the
        mark only on struck tiles the viewer sees (_pzSeen).
        Kill-switch: window.EW_DISABLE_EARTH_PASS = true. ═══════════════════ */
-    var _EA = { amber: 0xe8a050, glow: 0xffa040, hot: 0xffe2a8, sand: 0xe2c690, deep: 0x2a1a0c, lava: 0xff7a2a, dust: 0xb09878, grey: 0xc4c0b8 };
+    var _EA = { amber: 0xe8a050, glow: 0xffa040, hot: 0xffe2a8, sand: 0xe2c690, deep: 0x2a1a0c, lava: 0xff7a2a, dust: 0xb09878, grey: [2.1, 2.05, 1.95] };
     /* a seeded random: a canvas draws the same every time (the thick and the thin crack line up) */
     function _eaRand(seed) { var s = (seed >>> 0) || 1; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
     /* the fault lines: jagged cracks running out from the centre with side branches, white (the material tints them).
@@ -46864,17 +46864,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var steps = 5, l = len / steps;
                 for (var i = 0; i < steps; i++) {
                     var na = a + (R() - 0.5) * 0.9, nx = x + Math.cos(na) * l, ny = y + Math.sin(na) * l;
+                    if (core) {   /* the glow: a soft halo round a bright core */
+                        g.strokeStyle = 'rgba(255,255,255,0.32)'; g.lineWidth = Math.max(4, lw * 3.2); g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke();
+                        g.strokeStyle = '#ffffff';
+                    }
                     g.lineWidth = Math.max(0.8, lw); g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke();
                     var br = R();
                     if (depth > 0 && br < 0.42) run(nx, ny, na + (R() < 0.5 ? 0.85 : -0.85), len * 0.42, lw * 0.6, depth - 1);
                     x = nx; y = ny; a = na; lw *= 0.84;
                 }
             }
-            for (var k = 0; k < 9; k++) run(c, c, k / 9 * Math.PI * 2 + (R() - 0.5) * 0.4, 96 + R() * 22, core ? 2.4 : 7.5, 2);
+            for (var k = 0; k < 9; k++) run(c, c, k / 9 * Math.PI * 2 + (R() - 0.5) * 0.4, 96 + R() * 22, core ? 4.6 : 9, 2);
             /* a broken ring where the ground heaved */
             for (var s = 0; s < 7; s++) {
                 var a0 = s / 7 * Math.PI * 2 + R() * 0.3, a1 = a0 + 0.35 + R() * 0.3, rr = 52 + R() * 12;
-                g.lineWidth = core ? 1.6 : 4.5; g.beginPath(); g.arc(c, c, rr, a0, a1); g.stroke();
+                g.lineWidth = core ? 3 : 6; g.beginPath(); g.arc(c, c, rr, a0, a1); g.stroke();
             }
         });
     }
@@ -46894,9 +46898,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* ── materials (every one starts at opacity 0; the signature fades it) ── */
-    function _eaCrackMats() { return { dark: _pzSolid(_EA.deep, _eaCrackTex(false), { depthWrite: false }), glow: _pzGlow(_EA.glow, _eaCrackTex(true)) }; }
+    function _eaCrackMats() {
+        var glow = _pzGlow(0xffffff, _eaCrackTex(true)); glow.color.setRGB(1.55, 0.72, 0.22);   /* over-bright amber: the lines burn through a lit tile */
+        return { dark: _pzSolid(_EA.deep, _eaCrackTex(false), { depthWrite: false }), glow: glow };
+    }
+    /* rocks_5 is a dark sheet (mean ~70/255): the stone wears it lifted to a warm ochre grey (a colour over 1 —
+       MeshBasic multiplies it into the map), the sand its desert sheet as it is */
     function _eaStoneMat(sand, tint) {
-        var m = _pzSolid(tint != null ? tint : (sand ? 0xf2dcb0 : 0xffffff), _sigTerrainTex(sand ? 'desert.png' : 'rocks_5.png', 1, 1));
+        var m = _pzSolid(0xffffff, _sigTerrainTex(sand ? 'desert.png' : 'rocks_5.png', 1, 1)), t = tint != null ? tint : (sand ? [1.15, 1.05, 0.95] : [2.35, 2.0, 1.62]);
+        if (Array.isArray(t)) m.color.setRGB(t[0], t[1], t[2]); else m.color.set(t);
         m.vertexColors = true; return m;
     }
     /* ── shared geometries (flagged _ew_shared: the group disposal leaves them) ── */
@@ -46904,7 +46914,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _eaShared(key, make) { var g = _eaGeos[key]; if (!g) { g = make(); g._ew_shared = true; _eaGeos[key] = g; } return g; }
     /* light from above baked into vertex colours, on a faceted (non-indexed) copy */
     function _eaFacet(geo, lo) { var g = geo.index ? geo.toNonIndexed() : geo; g.computeVertexNormals(); _nvBake(g, lo != null ? lo : 0.5); return g; }
-    function _eaSpikeGeo() { return _eaShared('spike', function () { var g = new THREE.ConeGeometry(1, 1, 5, 2); g.translate(0, 0.5, 0); return _eaFacet(g, 0.45); }); }
+    function _eaSpikeGeo() { return _eaShared('spike', function () { var g = new THREE.ConeGeometry(1, 1, 5, 2); g.translate(0, 0.5, 0); return _eaFacet(g, 0.55); }); }
     /* a stone: a dodecahedron squashed three ways (unit radius) */
     function _eaRockGeo(i) {
         var v = ((i || 0) % 3 + 3) % 3;
@@ -46968,13 +46978,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var c = _eaOff(F, q.x, q.y), dl = Math.max(Math.abs(q.x - tx), Math.abs(q.y - ty)); far = Math.max(far, dl);
             cracks.push({ g: _eaCrackAt(F.g, M, c, ts, i * 1.3 + 0.4), sz: ts * (single ? 1.45 + 0.3 * rank : 1.15), d: dl * 70 });
             if (o.noSpikes) continue;
-            var n = single ? [3, 4, 6, 8][rank] : (rank >= 1 && (i % 2 === 0 || rank >= 2) ? 1 : 0);
+            var n = single ? [3, 5, 6, 8][rank] : (rank >= 1 && (i % 2 === 0 || rank >= 2) ? 1 : 0);
             for (var k = 0; k < n; k++) {
                 var a = behind + (n > 1 ? (k / (n - 1) - 0.5) * (single ? 2.4 : 1.2) : 0) + (single ? 0 : ((i * 0.7) % 0.6) - 0.3);
                 var r = ts * (single ? 0.5 + 0.05 * rank : 0.36) * (0.9 + 0.1 * ((k * 5) % 3));
-                var h = ts * (single ? 0.42 + 0.15 * rank : 0.34 + 0.08 * rank) * (0.75 + 0.5 * ((k * 3 + i) % 4) / 3) * (k % 2 ? 0.8 : 1);
+                var h = ts * (single ? 0.5 + 0.16 * rank : 0.38 + 0.08 * rank) * (0.75 + 0.5 * ((k * 3 + i) % 4) / 3) * (k % 2 ? 0.8 : 1);
                 var ln = _eaLean(a, 0.3);
-                pts.push({ x: c.x + Math.cos(a) * r, y: c.y, z: c.z + Math.sin(a) * r, h: h, w: ts * (0.07 + 0.016 * rank), d: dl * 70 + k * 32, rx: ln.rx, rz: ln.rz });
+                pts.push({ x: c.x + Math.cos(a) * r, y: c.y, z: c.z + Math.sin(a) * r, h: h, w: ts * (0.095 + 0.018 * rank), d: dl * 70 + k * 32, rx: ln.rx, rz: ln.rz });
             }
         }
         if (!shown) { _sigDisposeGroup(F.g); return null; }
@@ -47009,10 +47019,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var REL = Math.max(220, Math.min(1800, (hold || 700) - 120));
         var aim = (!body && tx != null && (tx !== sx || ty !== sy) && _pzSeen(tx, ty)) ? _eaOff(F, tx, ty) : null;
         if (aim) aim.y += ts * 0.5;
-        var rocks = [], N = body ? 5 + 2 * rank : 3 + rank;
+        var rocks = [], N = body ? 6 + 2 * rank : 4 + rank;
         for (var i = 0; i < N; i++) {
             var a = i / N * Math.PI * 2 + rn(-0.3, 0.3), r = ts * (body ? rn(0.22, 0.5) : rn(0.4, 0.6));
-            var s = ts * (body ? rn(0.028, 0.05) : rn(0.045, 0.07) * (1 + 0.1 * rank));
+            var s = ts * (body ? rn(0.035, 0.06) : rn(0.06, 0.09) * (1 + 0.1 * rank));
             var front = (Math.cos(a) * cd.x + Math.sin(a) * cd.z) > 0.3;
             var m = _pzMesh(_eaRockGeo(i), stone, F.g, Math.cos(a) * r, -s, Math.sin(a) * r); m.scale.setScalar(s); m.visible = false;
             rocks.push({ m: m, a: a, r: r, s: s, hy: ts * (front ? rn(0.14, 0.24) : rn(0.3, 0.66)), hop: ts * rn(0.1, 0.24), per: rn(420, 620),
@@ -47090,7 +47100,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        side heave up and fall into the gap the spell cuts to the lava bed, embers climb out of it ════ */
     function _eaFissure(P) {
         var tiles = (P.tiles && P.tiles.length) ? P.tiles.slice() : [{ x: P.tx, y: P.ty }];
-        var F = _nrvFrame(P.tx, P.ty), ts = F.ts, stone = _eaStoneMat(false), hot = _pzGlow(_EA.hot), warm = _pzGlow(_EA.lava);
+        var F = _nrvFrame(P.tx, P.ty), ts = F.ts, stone = _eaStoneMat(false), hot = _pzGlow(0xffffff), warm = _pzGlow(0xffffff);
+        hot.color.setRGB(1.8, 1.35, 0.75); warm.color.setRGB(1.6, 0.55, 0.12);   /* over-bright: the seam burns through any floor */
         /* the line's direction: first tile → last, else across the caster's line of sight */
         var ux = 1, uz = 0;
         if (tiles.length > 1) { var A = _eaOff(F, tiles[0].x, tiles[0].y), B = _eaOff(F, tiles[tiles.length - 1].x, tiles[tiles.length - 1].y), dl = Math.hypot(B.x - A.x, B.z - A.z); if (dl > 1) { ux = (B.x - A.x) / dl; uz = (B.z - A.z) / dl; } }
@@ -47108,7 +47119,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var cur = new THREE.Vector3(c.x + ux * ts * (t * 1.1 - 0.55) + vx * jag, c.y + ts * 0.035, c.z + uz * ts * (t * 1.1 - 0.55) + vz * jag);
                 var len = prev.distanceTo(cur), ang = Math.atan2(cur.x - prev.x, cur.z - prev.z);
                 for (var w = 0; w < 2; w++) {
-                    var pg = new THREE.PlaneGeometry(ts * (w ? 0.05 : 0.16), len * 1.08); pg.rotateX(-Math.PI / 2);
+                    var pg = new THREE.PlaneGeometry(ts * (w ? 0.08 : 0.26), len * 1.08); pg.rotateX(-Math.PI / 2);
                     var m = _pzMesh(pg, w ? hot : warm, F.g); m.position.copy(prev).lerp(cur, 0.5); m.position.y += w * ts * 0.003; m.rotation.y = ang; m.visible = false;
                     seams.push({ m: m, d: d + t * 100 });
                 }
@@ -47150,15 +47161,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
-    /* ════ SANDSTONE TOMB — sand spirals up round the victim and four sandstone slabs close round it (the back and
-       sides tall, the front one low so the body stays in sight), then crumble back to sand ════ */
+    /* ════ SANDSTONE TOMB — sand spirals up round the victim and five sandstone slabs close round it (three tall ones
+       in an arc behind it, two low ones at the front corners so the body stays in sight), then crumble back to sand ════ */
     function _eaTomb(P) {
         var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(true), sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false }), behind = _eaBehind(F), slabs = [];
         var disc = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.03, 0); disc.scale.setScalar(ts * 1.5);
-        var defs = [[0, 1.25, 0.66], [Math.PI / 2, 0.95, 0.6], [-Math.PI / 2, 0.95, 0.6], [Math.PI, 0.3, 0.62]];
+        var defs = [[0, 1.25, 0.6], [1.1, 1.0, 0.52], [-1.1, 1.0, 0.52], [2.25, 0.3, 0.46], [-2.25, 0.3, 0.46]];
         for (var i = 0; i < defs.length; i++) {
-            var a = behind + defs[i][0], g = new THREE.Group(); g.position.set(Math.cos(a) * ts * 0.36, 0, Math.sin(a) * ts * 0.36);
+            var a = behind + defs[i][0], g = new THREE.Group(); g.position.set(Math.cos(a) * ts * 0.4, 0, Math.sin(a) * ts * 0.4);
             g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); F.g.add(g);   /* the slab's face looks at the body */
             var m = _pzMesh(_eaSlabGeo(), stone, g); m.scale.set(ts * defs[i][2], ts * defs[i][1], ts * 0.1);
             slabs.push({ g: g, m: m, h: ts * defs[i][1], d: 120 + i * 70 });
@@ -47228,7 +47239,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, END + 40, function (el) {
             stone.opacity = el < END ? 1 : 0;
             spikes(el, 220, HOLD, END - HOLD - 40);
-            if (!broke && el >= HOLD) { broke = true; _capShards(tx, ty, 'stone', { n: 10, scale: 0.9, height: 0.45 }); _capPuff(tx, ty, 'dust-puff', 8, { r: 0.35, out: 60, vz0: 10, vz1: 50, s0: 14, s1: 22, sEnd: 44, op: 0.5, tint: _EA.grey, h: 0.3 }); }
+            if (!broke && el >= HOLD) { broke = true; _capShards(tx, ty, 'stone', { n: 10, scale: 0.9, height: 0.45 }); _capPuff(tx, ty, 'dust-puff', 8, { r: 0.35, out: 60, vz0: 10, vz1: 50, s0: 14, s1: 22, sEnd: 44, op: 0.5, tint: 0xc4c0b8, h: 0.3 }); }
         });
     }
 
