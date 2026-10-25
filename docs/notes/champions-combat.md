@@ -2662,3 +2662,10 @@ Lightning Magic had Static Shock (T1, Jammed) as its only setup and no finisher 
 - Family now 8 rows. Who gets them: Lightning Magic in RACE_FAMILIES (mothman, wizard) + Adaptable borrowers.
 - Left as they were (flagged to mondo): Tempest (T4) and EMP Burst / EMP Grenade still APPLY statuses at tier 3-4.
   Looks: spells-vfx.md "THE LIGHTNING PASS".
+
+## THE BLOOD PASS (2026-10-25) — no rule changes
+mondo asked each element to have "a nice amount of spells". Blood already has the full spread, so no rows were added:
+Open Vein T1 (applies Bleed), Hemorrhage T2 / Maul T2 / Claw Sweep T2 (apply Grievous), Death Roll T2 (Root), Arterial
+Spray T3 (×1.5 vs Bleed, applies nothing), Life Sap T3 (×1.5 vs Poison/Grievous), Exsanguinate T4 (×1.5 vs Grievous,
+applies nothing), plus Blood Ritual (buff), Summon Blood Rain (weather) and the Sanguine passive. Looks only:
+spells-vfx.md "THE BLOOD PASS".
