@@ -22058,6 +22058,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _capStage(phase, spellId, params); } catch (e) {}
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
+        /* THE WIND PASS: every wind spell's cast + hit carry the wind (the gather, the mark, the family's own looks) */
+        try { _wdStage(phase, spellId, params); } catch (e) { console.warn('[VFX] wind pass failed', spellId, e); }
         /* THE SONIC PASS: every sonic spell's cast and hit read as sound (rings, the floor and the body hum) */
         try { _snStage(phase, spellId, params); } catch (e) { console.warn('[VFX] sonic stamp failed', spellId, e); }
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
@@ -45256,6 +45258,488 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['udGraveGrip']   = { impact: 'nbGraveGrip_impact' };
 
     /* ═════════ END THE 2026-10-25 BATCH SIGNATURES ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE WIND PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable and making sure there's a nice
+       amount of spells for each") — every wind spell reads as WIND: bands of
+       moving air, the swirl on the ground, the twister.
+       THE KIT (_wd*): a gust is a RIBBON — a flat strip laid along a curve
+       (TubeGeometry's idea, but one quad wide) wearing a streak canvas (air
+       lines, a bright head, a long fading tail). It never grows like a vine:
+       a WINDOW slides along it (set(k0, k1) = draw range + the streak's UVs
+       stretched over just that stretch), so a gust runs down its path, whips
+       round a body, climbs a funnel. Light, white-mint, normal blending (the
+       air reads on dark ground and keeps its colour on bright sky); the swirl
+       is a flat canvas on the ground (the wind's sigil, like the nature ring).
+       THE MARK: every wind spell's cast and hit ride the staging beats
+       (_fireStage → _wdStage): the windup coils air round the caster, the
+       burst whips a gust round the target and spins the swirl under it. A
+       wind spell with its own look below skips the generic hit (_WD_BURST).
+       The family's own looks: Squall (new), Gale, Crosswind, Tornado (new),
+       Eye of the Storm, Vortex Slam (was the WATER whirlpool's tiles),
+       Updraft, Tailwind. Generic wind (no SPELL_MAP row) had borrowed the
+       human theme (beige dust); it is its own theme + staging archetype now.
+       Same hook as the P-Z / 10-25 / nature passes (`pzSig` / `pzOwn`), and
+       the beats ride fire(), which online.js relays, so the guest sees the
+       same wind (RULE #2). Caster-end pieces draw only where the viewer can
+       see that tile (_pzSeen); the hit only where the target is seen.
+       THE TARGET STAYS: no screen flash, nothing full-screen; the ribbons
+       are thin and see-through, the twister's bands leave gaps, the storm
+       wall stands on the area's rim. ═══════════════════════════════════════ */
+    var _WD = { air: 0xf4fffb, mint: 0x9be7c4, glow: 0xd8fff0, grit: 0xead8b0, dust: 0xcfc2a6, debris: 0x6a5a48, calm: 0xbff5df };
+    /* ── the canvases ── */
+    /* a gust stroke: u runs tail (0) → head (1): a long fade up, a bright head, a quick fade; v across: air lines */
+    function _wdStreakTex(grit) {
+        return _pzTex(grit ? 'wd-streak-grit' : 'wd-streak', 256, 64, function (g, w, h) {
+            var lines = [[0.18, 2.0, 0.55], [0.32, 3.5, 0.9], [0.47, 6.0, 1.0], [0.6, 3.0, 0.85], [0.74, 2.0, 0.6], [0.86, 1.4, 0.45]];
+            var sg = g.createLinearGradient(0, 0, 0, h);
+            sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, grit ? 'rgba(240,220,180,0.45)' : 'rgba(210,255,236,0.42)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = sg; g.fillRect(0, 0, w, h);
+            for (var i = 0; i < lines.length; i++) {
+                var L = lines[i], y = L[0] * h, x0 = w * (0.05 + 0.12 * ((i * 5) % 3));
+                var lg = g.createLinearGradient(x0, 0, w, 0);
+                lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(0.75, 'rgba(255,255,255,' + L[2] + ')'); lg.addColorStop(1, 'rgba(255,255,255,' + L[2] + ')');
+                g.strokeStyle = lg; g.lineWidth = L[1]; g.lineCap = 'round';
+                g.beginPath(); g.moveTo(x0, y); g.bezierCurveTo(w * 0.4, y + (i % 2 ? 3 : -3), w * 0.7, y + (i % 2 ? -2 : 2), w - 4, y); g.stroke();
+            }
+            if (grit) { g.fillStyle = 'rgba(120,96,60,0.75)'; for (var k = 0; k < 40; k++) { var gx = w * (0.25 + 0.72 * ((k * 37) % 100) / 100), gy = h * (0.15 + 0.7 * ((k * 53) % 100) / 100); g.fillRect(gx, gy, 2, 2); } }
+            /* the stroke's ends: fade the tail in, cut the head off soft */
+            g.globalCompositeOperation = 'destination-in';
+            var eg = g.createLinearGradient(0, 0, w, 0);
+            eg.addColorStop(0, 'rgba(0,0,0,0)'); eg.addColorStop(0.55, 'rgba(0,0,0,0.75)'); eg.addColorStop(0.9, 'rgba(0,0,0,1)'); eg.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = eg; g.fillRect(0, 0, w, h);
+        });
+    }
+    /* the wind's sigil on the ground: four tapering spiral arms round a still ring */
+    function _wdSwirlTex() {
+        return _pzTex('wd-swirl', 512, 512, function (g, w, h) {
+            var c = 256; g.lineCap = 'round';
+            var dg = g.createRadialGradient(c, c, 20, c, c, 250); dg.addColorStop(0, 'rgba(210,255,236,0.35)'); dg.addColorStop(0.7, 'rgba(210,255,236,0.12)'); dg.addColorStop(1, 'rgba(210,255,236,0)');
+            g.fillStyle = dg; g.fillRect(0, 0, w, h);
+            for (var a = 0; a < 4; a++) {
+                for (var k = 0; k < 70; k++) {
+                    var t = k / 70, ang = a * Math.PI / 2 + t * 3.6, r = 40 + t * 205;
+                    var t2 = (k + 1) / 70, ang2 = a * Math.PI / 2 + t2 * 3.6, r2 = 40 + t2 * 205;
+                    g.strokeStyle = 'rgba(' + (t < 0.5 ? '255,255,255' : '200,255,232') + ',' + (0.95 * Math.sin(Math.min(1, t * 1.15) * Math.PI)).toFixed(3) + ')';
+                    g.lineWidth = 6 + 34 * Math.sin(t * Math.PI) * (1 - t * 0.4);
+                    g.beginPath(); g.moveTo(c + Math.cos(ang) * r, c + Math.sin(ang) * r); g.lineTo(c + Math.cos(ang2) * r2, c + Math.sin(ang2) * r2); g.stroke();
+                }
+            }
+            g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4; g.beginPath(); g.arc(c, c, 30, 0, Math.PI * 2); g.stroke();
+            g.strokeStyle = 'rgba(200,255,232,0.5)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, 244, 0, Math.PI * 2); g.stroke();
+        });
+    }
+    /* a stone chip for the twister's debris */
+    function _wdChipTex() {
+        return _pzTex('wd-chip', 64, 64, function (g, w, h) {
+            g.fillStyle = '#6a5a48'; g.beginPath(); g.moveTo(10, 20); g.lineTo(34, 6); g.lineTo(58, 22); g.lineTo(50, 52); g.lineTo(20, 58); g.lineTo(6, 40); g.closePath(); g.fill();
+            g.fillStyle = 'rgba(255,240,210,0.35)'; g.beginPath(); g.moveTo(12, 22); g.lineTo(34, 9); g.lineTo(40, 24); g.lineTo(18, 32); g.closePath(); g.fill();
+        });
+    }
+    function _wdAirMat(grit, color) { var m = _pzSolid(color != null ? color : 0xffffff, _wdStreakTex(grit), { side: THREE.DoubleSide, depthWrite: false }); return m; }
+
+    var _wdUp = null;
+    /* ONE RIBBON along `pts` (or a curve). o: w0 · w1 (width at start / end) · segs · roll (the band's turn about the path:
+       0 = stands up, PI/2 = lies flat) · twist (more roll along the length) · mat. Returns { set(k0, k1), curve, mesh } —
+       set shows the stretch k0..k1 of the length with the whole streak (tail → head) stretched over it. */
+    function _wdRibbon(parent, pts, o) {
+        if (!_wdUp) _wdUp = new THREE.Vector3(0, 1, 0);
+        var curve = pts.isCurve ? pts : new THREE.CatmullRomCurve3(pts), N = o.segs || 40;
+        var w0 = o.w0 * 1.7, w1 = (o.w1 != null ? o.w1 : o.w0) * 1.7, roll = o.roll || 0, twist = o.twist || 0;   /* 1.7: read at battle-camera distance */
+        var pos = new Float32Array((N + 1) * 6), uv = new Float32Array((N + 1) * 4), idx = [];
+        var p = new THREE.Vector3(), tan = new THREE.Vector3(), nrm = new THREE.Vector3();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N; curve.getPointAt(u, p); curve.getTangentAt(u, tan);
+            nrm.copy(_wdUp).addScaledVector(tan, -tan.dot(_wdUp));
+            if (nrm.lengthSq() < 1e-4) nrm.set(1, 0, 0).addScaledVector(tan, -tan.x);
+            nrm.normalize().applyAxisAngle(tan, roll + twist * u);
+            var hw = (w0 + (w1 - w0) * u) * 0.5;
+            pos[i * 6] = p.x + nrm.x * hw; pos[i * 6 + 1] = p.y + nrm.y * hw; pos[i * 6 + 2] = p.z + nrm.z * hw;
+            pos[i * 6 + 3] = p.x - nrm.x * hw; pos[i * 6 + 4] = p.y - nrm.y * hw; pos[i * 6 + 5] = p.z - nrm.z * hw;
+            uv[i * 4] = u; uv[i * 4 + 1] = 1; uv[i * 4 + 2] = u; uv[i * 4 + 3] = 0;
+            if (i < N) { var a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var uvA = new THREE.BufferAttribute(uv, 2); geo.setAttribute('uv', uvA); geo.setIndex(idx);
+        var mesh = _pzMesh(geo, o.mat, parent); mesh.frustumCulled = false;
+        /* the glow twin: the same strip, additive mint, so the air reads bright on dark ground */
+        var gmat = o.glow === false ? null : _pzGlow(o.glowColor != null ? o.glowColor : _WD.mint, _wdStreakTex(false)), gm = null;
+        if (gmat) { gm = _pzMesh(geo, gmat, parent); gm.frustumCulled = false; gm.renderOrder = 159; }
+        return {
+            curve: curve, mesh: mesh,
+            op: function (v) { o.mat.opacity = v; if (gmat) gmat.opacity = v * 0.55; },
+            set: function (k0, k1) {
+                k0 = Math.max(0, Math.min(1, k0)); k1 = Math.max(0, Math.min(1, k1));
+                if (k1 - k0 < 0.004) { mesh.visible = false; if (gm) gm.visible = false; return; }
+                mesh.visible = true; if (gm) gm.visible = true;
+                var i0 = Math.floor(k0 * N), i1 = Math.min(N, Math.ceil(k1 * N)), span = Math.max(1e-3, k1 - k0);
+                geo.setDrawRange(i0 * 6, Math.max(0, i1 - i0) * 6);
+                for (var j = i0; j <= i1; j++) { var s = (j / N - k0) / span; uv[j * 4] = s; uv[j * 4 + 2] = s; }
+                uvA.needsUpdate = true;
+            },
+        };
+    }
+    /* a window that runs once along a ribbon: head from 0 to 1+len over [t0, t0+ms], `len` of the path long */
+    function _wdRun(R, el, t0, ms, len) {
+        var h = (el - t0) / Math.max(1, ms) * (1 + len);
+        if (h <= 0 || h - len >= 1) { R.set(0, 0); return; }
+        R.set(h - len, h);
+    }
+    /* points of a helix round a vertical axis (the _nvCoil shape): radius r0→r1, height y0→y1, `turns` from angle ph */
+    function _wdHelix(r0, r1, y0, y1, turns, ph, n) { return _nvCoil(r0, r1, y0, y1, turns, ph, n); }
+    /* the swirl flat on the ground of frame F: returns its mesh (opacity / scale driven by the caller) */
+    function _wdSwirl(F, size, color) {
+        var m = _pzMesh(new THREE.PlaneGeometry(size, size), _pzSolid(color != null ? color : 0xffffff, _wdSwirlTex(), { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, F.ts * 0.05, 0);
+        m.rotation.x = -Math.PI / 2; m.renderOrder = 160;
+        /* the glow twin rides the same plane (a child), its opacity following the swirl's */
+        var gm = _pzGlow(_WD.mint, _wdSwirlTex()), gl = _pzMesh(m.geometry, gm, m), mo = 0; gl.renderOrder = 161;
+        Object.defineProperty(m.material, 'opacity', { configurable: true, get: function () { return mo; }, set: function (v) { mo = v; gm.opacity = v * 0.6; } });
+        return m;
+    }
+    /* air motes blown along (vx, vy) in frame-local spawn units */
+    function _wdMotes(F, x, y, z, n, o) {
+        o = o || {};
+        for (var i = 0; i < n; i++) _pzP(F, x + rn(-1, 1) * (o.r || 10), y + rn(-4, 6), z + rn(-1, 1) * (o.r || 10), {
+            sprite: o.sprite || 'frost-mist', tint: o.tint != null ? o.tint : _WD.air, ml: rn(o.ml0 || 380, o.ml1 || 700),
+            size0: rn(o.s0 || 8, (o.s0 || 8) * 1.5), size1: o.s1 != null ? o.s1 : 2,
+            vx: (o.vx || 0) + rn(-1, 1) * (o.v || 60), vy: (o.vy || 0) + rn(-1, 1) * (o.v || 60), vz: rn(o.vz0 != null ? o.vz0 : 10, o.vz1 != null ? o.vz1 : 70),
+            gravity: o.g != null ? o.g : 0, drag: o.drag != null ? o.drag : 0.8, opacity0: o.op != null ? o.op : 0.75 });
+    }
+    function _wdRadius(spellId, p) {
+        if (p && p.aoeRadius != null) return p.aoeRadius;
+        var d = _spellDefFor(spellId); if (!d) return 0;
+        if (d.aoeRadius) return d.aoeRadius;
+        if (d.kind === 'cross' && d.crossRadius) return d.crossRadius;
+        return 0;
+    }
+    /* the beam route (the line kinds hand fromX/fromY + dx/dy + range, or hitTiles) — what _fireBeamMapped walks */
+    function _wdRoute(p) {
+        var fx = (p.fromX != null ? p.fromX : p.sx) | 0, fy = (p.fromY != null ? p.fromY : p.sy) | 0, dx = p.dx | 0, dy = p.dy | 0, range = p.range | 0;
+        if (!dx && !dy && p.tx != null) { var ddx = p.tx - fx, ddy = p.ty - fy, st = Math.max(Math.abs(ddx), Math.abs(ddy)); if (st > 0) { dx = Math.round(ddx / st); dy = Math.round(ddy / st); if (!range) range = st; } }
+        var tiles = p.hitTiles && p.hitTiles.length ? p.hitTiles.slice() : [];
+        if (!tiles.length) for (var i = 1; i <= range; i++) tiles.push({ x: fx + dx * i, y: fy + dy * i });
+        return { fx: fx, fy: fy, tiles: tiles };
+    }
+
+    /* ════ THE MARK — any wind hit: a gust whips up round the body, the swirl spins out under it (a wider ring of air
+       for an area) ════ */
+    function _wdMark(tx, ty, o) {
+        o = o || {};
+        if (!_pzOnce('wdMark' + tx + ',' + ty, 260)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, r = Math.max(0, Math.min(3, o.r || 0)), rib = [], mats = [];
+        var sw = _wdSwirl(F, ts * (0.95 + r * 1.25));
+        for (var i = 0; i < 3; i++) {
+            var m = _wdAirMat(false); mats.push(m);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.36, ts * 0.3, ts * 0.06, ts * 1.15, 1.25, i * 2.094 + rn(-0.2, 0.2), 30), { w0: ts * 0.1, w1: ts * 0.16, segs: 44, roll: 0.25, twist: 1.6, mat: m }));
+        }
+        for (var k = 0; k < (r >= 1 ? 4 : 0); k++) {
+            var m2 = _wdAirMat(false); mats.push(m2);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * (r + 0.42), ts * (r + 0.3), ts * 0.12, ts * 0.36, 0.42, k * Math.PI / 2, 16), { w0: ts * 0.1, w1: ts * 0.2, segs: 28, roll: Math.PI / 2 - 0.3, mat: m2 }));
+        }
+        var puffed = false;
+        return _sigRunOwned(F.g, 820, function (el) {
+            var sp = _sigEaseOutCubic(_sigClamp01(el / 520));
+            sw.scale.setScalar(0.55 + 0.6 * sp); sw.rotation.z = -el * 0.006; sw.material.opacity = 0.8 * (1 - _sigClamp01((el - 380) / 420));
+            for (var j = 0; j < rib.length; j++) { _wdRun(rib[j], el, j < 3 ? j * 50 : 60 + (j - 3) * 35, j < 3 ? 520 : 420, 0.6); rib[j].op(0.95); }
+            if (!puffed && el > 60) {
+                puffed = true;
+                _wdMotes(F, 0, ts * 0.4, 0, 6, { r: ts * 0.25, v: 120, vz0: 40, vz1: 140, s0: 7 });
+                if (r >= 1) for (var q = 0; q < 8; q++) { var a = q / 8 * Math.PI * 2; _wdMotes(F, Math.cos(a) * ts * (r + 0.3), ts * 0.15, Math.sin(a) * ts * (r + 0.3), 1, { sprite: 'smoke-soft', tint: _WD.air, s0: 16, s1: 30, v: 30, vx: -Math.sin(a) * 120, vy: Math.cos(a) * 120, op: 0.45, ml0: 500, ml1: 800 }); }
+            }
+        });
+    }
+    /* ════ THE GATHER — any wind cast: air coils in round the caster and up its body ════ */
+    function _wdGather(sx, sy, holdMs) {
+        if (!_pzOnce('wdGather' + sx + ',' + sy, 400)) return null;
+        var F = _nrvFrame(sx, sy), ts = F.ts, total = Math.max(520, Math.min(1100, holdMs || 800)), rib = [], mats = [];
+        var sw = _wdSwirl(F, ts * 1.0);
+        for (var i = 0; i < 2; i++) {
+            var m = _wdAirMat(false); mats.push(m);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.62, ts * 0.22, ts * 0.04, ts * 1.05, 1.1, i * Math.PI + 0.6, 26), { w0: ts * 0.06, w1: ts * 0.12, segs: 36, roll: 0.3, twist: 1.4, mat: m }));
+        }
+        return _sigRunOwned(F.g, total, function (el) {
+            var out = _sigClamp01((el - total + 260) / 260);
+            sw.scale.setScalar(1.1 - 0.4 * _sigClamp01(el / total)); sw.rotation.z = el * 0.004; sw.material.opacity = 0.5 * _sigClamp01(el / 160) * (1 - out);
+            for (var j = 0; j < rib.length; j++) {
+                var cyc = 420, h = ((el + j * 210) % cyc) / cyc * 1.55;
+                rib[j].set(h - 0.55, Math.min(1, h)); rib[j].op(0.85 * (1 - out));
+            }
+        });
+    }
+
+    /* ════ THE LANE GUST — Gale / Crosswind: bands of air race down the lane from the caster, dust kicked up where the
+       front passes. grit = Crosswind's sand-laden air that crosses the lane in an X and leaves a cloud at head height ════ */
+    function _wdLane(p, grit) {
+        var R = _wdRoute(p); if (!R.tiles.length) return null;
+        var end = R.tiles[R.tiles.length - 1], F = _nrvFrame(R.fx, R.fy), ts = F.ts;
+        var see = _pzSeen(R.fx, R.fy), first = see ? -1 : 0;
+        if (!see) { for (var s0 = 0; s0 < R.tiles.length; s0++) if (_pzSeen(R.tiles[s0].x, R.tiles[s0].y)) { first = s0; break; } if (first < 0) return null; }
+        var B = _nvOff(F, end.x, end.y), A = first < 0 ? new THREE.Vector3() : _nvOff(F, R.tiles[first].x, R.tiles[first].y);
+        var dir = B.clone().sub(A); dir.y = 0; var L = Math.max(ts, dir.length()); dir.normalize();
+        if (first >= 0) A.addScaledVector(dir, -ts * 0.45);
+        var side = new THREE.Vector3(-dir.z, 0, dir.x), Bx = B.clone().addScaledVector(dir, ts * 0.7), span = A.distanceTo(Bx);
+        var n = R.tiles.length - Math.max(0, first), fly = Math.max(260, 120 + n * 75), rib = [], mats = [];
+        var NR = grit ? 9 : 8;
+        for (var i = 0; i < NR; i++) {
+            var h = ts * (0.18 + 0.9 * ((i * 0.618) % 1)), off = (i % 2 ? 1 : -1) * ts * (0.08 + 0.34 * ((i * 0.37) % 1)), pts = [];
+            var cross = grit && i % 3 !== 2, cs = (i % 2 ? 1 : -1) * ts * 0.62;
+            for (var k = 0; k <= 7; k++) {
+                var u = k / 7, so = cross ? cs * (1 - 2 * u) : off + Math.sin(u * Math.PI * 2 + i) * ts * 0.06;
+                pts.push(new THREE.Vector3(A.x + (Bx.x - A.x) * u + side.x * so, A.y + (Bx.y - A.y) * u + h + Math.sin(u * Math.PI) * ts * 0.12, A.z + (Bx.z - A.z) * u + side.z * so));
+            }
+            var m = _wdAirMat(grit && i % 2 === 0, grit ? _WD.grit : null); mats.push(m);
+            rib.push({ r: _wdRibbon(F.g, pts, { w0: ts * (0.12 + 0.06 * (i % 3)), w1: ts * (0.22 + 0.08 * (i % 2)), segs: Math.max(30, Math.round(span / ts * 14)), roll: grit ? 0.9 + i * 0.5 : (i % 3) * 0.55, twist: grit ? 2.2 : 0.8, mat: m }),
+                t0: (i % 4) * 45 + (i >> 2) * 70, ms: fly * (0.85 + 0.1 * (i % 3)) });
+        }
+        var total = fly + 780, done = {};
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var j = 0; j < rib.length; j++) { _wdRun(rib[j].r, el, rib[j].t0, rib[j].ms, 0.5); rib[j].r.op(0.95); }
+            for (var t = Math.max(0, first); t < R.tiles.length; t++) {
+                if (done[t] || el < fly * (t - Math.max(0, first) + 0.6) / n) continue;
+                done[t] = true; var T = R.tiles[t];
+                if (!_pzSeen(T.x, T.y)) continue;
+                var o2 = _nvOff(F, T.x, T.y);
+                _wdMotes(F, o2.x, ts * 0.05, o2.z, 3, { sprite: grit ? 'dust-puff' : 'smoke-soft', tint: grit ? _WD.dust : _WD.air, s0: 14, s1: 34, v: 30, vx: dir.x * 160, vy: dir.z * 160, vz0: 20, vz1: 60, op: 0.55, ml0: 520, ml1: 820, r: ts * 0.2 });
+                _wdMotes(F, o2.x, ts * 0.5, o2.z, 4, { vx: dir.x * 260, vy: dir.z * 260, v: 40, r: ts * 0.3, s0: 7 });
+                if (grit) _wdMotes(F, o2.x, ts * 0.8, o2.z, 5, { sprite: 'dust-puff', tint: _WD.dust, s0: 12, s1: 30, v: 26, vz0: 4, vz1: 20, op: 0.6, ml0: 900, ml1: 1300, r: ts * 0.18, drag: 1.4 });
+                if (grit) _wdMotes(F, o2.x, ts * 0.7, o2.z, 8, { sprite: 'sand-particle', tint: 0xe8d0a0, s0: 3, s1: 2, vx: dir.x * 300, vy: dir.z * 300, v: 80, op: 0.95, ml0: 420, ml1: 700, r: ts * 0.3 });
+            }
+        });
+    }
+    EFFECTS['wdGale_beam'] = _pzDef('wdGale', { pzOwn: true });
+    EFFECTS['wdCrosswind_beam'] = _pzDef('wdCrosswind', { pzOwn: true });
+    _PZ_SIGS.wdGale = function (p) { _wdLane(p, false); };
+    _PZ_SIGS.wdCrosswind = function (p) { _wdLane(p, true); };
+
+    /* ════ SQUALL — the new tier I: a spinning blade of air flies, cuts, and leaves grit whirling round the head (Blind) ════ */
+    function _wdBlade(ts) {
+        var G = new THREE.Group(), cm = _pzSolid(_WD.air, _sigCrescentTex(), { side: THREE.DoubleSide, depthWrite: false }); cm.opacity = 0.95;
+        /* two crescents: one stands across the flight (face-on to a lens behind the caster), one lies flat (seen from above) */
+        var c1 = _pzMesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), cm, G);
+        var c3 = _pzMesh(new THREE.PlaneGeometry(ts * 0.85, ts * 0.85), cm, G); c3.rotation.x = -Math.PI / 2;
+        var gm = _pzGlow(_WD.mint, _sigCrescentTex()); gm.opacity = 0.55;
+        var c2 = _pzMesh(new THREE.PlaneGeometry(ts * 1.2, ts * 1.2), gm, G);
+        return { g: G, spin: function (el) { c1.rotation.z = -el * 0.03; c2.rotation.z = -el * 0.03 + 0.25; c3.rotation.z = el * 0.03; } };
+    }
+    EFFECTS['wdSquall_bolt'] = _pzDef('wdSquallFly', { pzOwn: true });
+    _PZ_SIGS.wdSquallFly = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 300, ts0 = _cfg().tileSize || 128;
+        if (_pzSeen(fx, fy)) {
+            var b = _wdBlade(ts0);
+            _pzFly(fx, fy, tx, ty, b.g, { ms: ms, arc: 0.04, h0: ts0 * 0.62, h1: ts0 * 0.6, hideOnLand: true,
+                trail: { sprite: 'frost-mist', tint: _WD.air, every: 22, size: 9 }, spin: function (el) { b.spin(el); } });
+        }
+        _fxDelay(function () { if (!_suppressed() && !_catOff('spells') && _pzSeen(tx, ty)) _wdSquallHit(tx, ty, fx, fy); }, ms);
+    };
+    function _wdSquallHit(tx, ty, fx, fy) {
+        _wdMark(tx, ty, { r: 0 });
+        var F = _nrvFrame(tx, ty), ts = F.ts, rib = [], mats = [];
+        for (var i = 0; i < 2; i++) {
+            var m = _wdAirMat(true, _WD.grit); mats.push(m);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.3, ts * 0.26, ts * (0.74 + 0.1 * i), ts * (0.86 + 0.1 * i), 1.6, i * Math.PI, 28), { w0: ts * 0.06, w1: ts * 0.1, segs: 40, roll: Math.PI / 2 - 0.4, mat: m }));
+        }
+        _wdMotes(F, 0, ts * 0.85, 0, 10, { sprite: 'dust-puff', tint: _WD.dust, s0: 16, s1: 38, v: 34, vz0: 0, vz1: 16, op: 0.6, ml0: 900, ml1: 1200, r: ts * 0.16, drag: 1.5 });
+        _wdMotes(F, 0, ts * 0.8, 0, 10, { sprite: 'sand-particle', tint: 0xe8d0a0, s0: 3, s1: 2, v: 140, vz0: -10, vz1: 40, op: 0.95, ml0: 400, ml1: 700, r: ts * 0.12 });
+        return _sigRunOwned(F.g, 1100, function (el) {
+            var fade = _sigClamp01((el - 800) / 300);
+            for (var j = 0; j < rib.length; j++) { var h = ((el * 1.2 + j * 300) % 700) / 700 * 1.6; rib[j].set(h - 0.6, Math.min(1, h)); rib[j].op(0.95 * (1 - fade)); }
+        });
+    }
+
+    /* ════ TORNADO — the new tier III finisher: a little whirl skims the ground to the target and stands up into a
+       twister over it — bands of air climbing a widening funnel, stones and dust going round, then it lifts away ════ */
+    function _wdFunnel(F, o) {
+        var ts = F.ts, S = new THREE.Group(); F.g.add(S);
+        var n = o.n || 7, H = o.h || ts * 2.6, rib = [], mats = [], chips = [];
+        for (var i = 0; i < n; i++) {
+            var m = _wdAirMat(i % 3 === 2, i % 3 === 2 ? _WD.grit : null); mats.push(m);
+            rib.push(_wdRibbon(S, _wdHelix(ts * (o.r0 || 0.16), ts * (o.r1 || 0.9), 0, H, o.turns || 2.3, i / n * Math.PI * 2, 46),
+                { w0: ts * 0.07, w1: ts * 0.3, segs: 70, roll: 0.15, twist: 0.4, mat: m }));
+        }
+        for (var c = 0; c < (o.chips || 0); c++) {
+            var cm = _pzSolid(0xffffff, _wdChipTex(), { side: THREE.DoubleSide, depthWrite: false });
+            var ch = _pzMesh(new THREE.PlaneGeometry(ts * 0.09, ts * 0.09), cm, S); chips.push({ m: ch, mat: cm, a: c * 2.4, h: (c * 0.37) % 1, sp: 0.004 + 0.002 * (c % 3) });
+        }
+        return {
+            S: S,
+            tick: function (el, op, spin, rise) {
+                S.rotation.y = el * (spin || 0.009);
+                for (var j = 0; j < rib.length; j++) { var h = ((el * 0.0016 + j * 0.17) % 1.45); rib[j].set(h - 0.6, Math.min(1, h)); rib[j].op(op * (j % 3 === 2 ? 0.9 : 0.8)); }
+                for (var k = 0; k < chips.length; k++) {
+                    var C = chips[k], hh = (C.h + el * 0.00045 * (1 + rise)) % 1, rr = ts * ((o.r0 || 0.16) + ((o.r1 || 0.9) - (o.r0 || 0.16)) * hh) * 1.05, a = C.a + el * C.sp;
+                    C.m.position.set(Math.cos(a) * rr, hh * H, Math.sin(a) * rr); C.m.rotation.set(el * 0.01 + k, el * 0.013, 0); C.mat.opacity = op;
+                }
+            },
+        };
+    }
+    EFFECTS['wdTornado_bolt'] = _pzDef('wdTornadoFly', { pzOwn: true });
+    _PZ_SIGS.wdTornadoFly = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 300, ts0 = _cfg().tileSize || 128;
+        if (_pzSeen(fx, fy)) {
+            var mini = new THREE.Group(), MF = { g: mini, ts: ts0 * 0.42 }, fn = _wdFunnel(MF, { n: 3, h: ts0 * 0.5, r0: 0.1, r1: 0.7, turns: 1.6 });
+            _pzFly(fx, fy, tx, ty, mini, { ms: ms, arc: 0, h0: 0, h1: 0, face: false, hideOnLand: true,
+                trail: { sprite: 'dust-puff', tint: _WD.dust, every: 30, size: 14 }, spin: function (el) { fn.tick(el, 0.9, 0.02, 0); } });
+        }
+        _fxDelay(function () { if (!_suppressed() && !_catOff('spells') && _pzSeen(tx, ty)) _wdTornado(tx, ty); }, Math.max(0, ms - 60));
+    };
+    function _wdTornado(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, fn = _wdFunnel(F, { n: 7, h: ts * 2.7, r0: 0.18, r1: 0.95, turns: 2.4, chips: 10 }), sw = _wdSwirl(F, ts * 1.7);
+        var TOTAL = 1650, lastD = 0;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 340)), lift = _sigEaseInCubic(_sigClamp01((el - 1150) / 500));
+            fn.S.scale.set(1 + lift * 0.5, Math.max(0.02, up), 1 + lift * 0.5); fn.S.position.y = lift * ts * 1.4;
+            fn.tick(el, 1 - lift, 0.011, lift * 3);
+            sw.rotation.z = -el * 0.008; sw.scale.setScalar(0.7 + 0.35 * _sigEaseOutCubic(_sigClamp01(el / 400))); sw.material.opacity = 0.7 * (1 - _sigClamp01((el - 1000) / 500));
+            if (el < 1250 && el - lastD > 70 && _canSpawn()) {
+                lastD = el; var a = rn(0, 6.28);
+                _wdMotes(F, Math.cos(a) * ts * 0.42, ts * 0.04, Math.sin(a) * ts * 0.42, 1, { sprite: 'dust-puff', tint: _WD.dust, s0: 16, s1: 36, v: 20, vx: -Math.sin(a) * 160, vy: Math.cos(a) * 160, vz0: 30, vz1: 90, op: 0.5, ml0: 600, ml1: 900 });
+            }
+        });
+    }
+
+    /* ════ EYE OF THE STORM — a wall of cyclone stands up on the area's rim and closes in on the calm middle (the pull),
+       dust running in along the ground ════ */
+    EFFECTS['wdEye_aoe'] = _pzDef('wdEye', { pzOwn: true });
+    _PZ_SIGS.wdEye = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, at = _nvAoeTiles(id, p, null, _wdRadius(id, p) || 1), r = at.r || 1, R = ts * (r + 0.5);
+        var W = new THREE.Group(); F.g.add(W);
+        var NW = 12, wall = [], mats = [];
+        for (var i = 0; i < NW; i++) {
+            var m = _wdAirMat(i % 4 === 3, i % 4 === 3 ? _WD.grit : null); mats.push(m);
+            wall.push(_wdRibbon(W, _wdHelix(R * 1.0, R * 1.18, 0, ts * (2.0 + 0.4 * (i % 3)), 0.55, i / NW * Math.PI * 2, 24),
+                { w0: ts * 0.24, w1: ts * 0.4, segs: 40, roll: 0.1, twist: 1.1, mat: m }));
+        }
+        var sw = _wdSwirl(F, R * 2.4), eye = _wdSwirl(F, ts * 0.8, _WD.calm);
+        var TOTAL = 1850, last = 0, puffs = {};
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 380)), close = _sigEaseInCubic(_sigClamp01((el - 300) / 1100)), out = _sigClamp01((el - 1450) / 400);
+            W.rotation.y = el * 0.0045; W.scale.set(1.15 - 0.45 * close, Math.max(0.02, up), 1.15 - 0.45 * close);
+            for (var j = 0; j < wall.length; j++) { var h = ((el * 0.0013 + j * 0.11) % 1.5); wall[j].set(Math.max(0, h - 0.7), Math.min(1, h)); wall[j].op((j % 4 === 3 ? 0.9 : 0.8) * (1 - out)); }
+            sw.rotation.z = el * 0.005; sw.scale.setScalar(1.1 - 0.4 * close); sw.material.opacity = 0.65 * up * (1 - out);
+            eye.rotation.z = -el * 0.002; eye.material.opacity = 0.55 * up * (1 - out);
+            if (el < 1450 && el - last > 60 && _canSpawn()) {
+                last = el; var a = rn(0, 6.28), rr = R * (1.1 - 0.4 * close);
+                _wdMotes(F, Math.cos(a) * rr, ts * 0.06, Math.sin(a) * rr, 1, { sprite: 'dust-puff', tint: _WD.dust, s0: 14, s1: 30, v: 10, vx: -Math.cos(a) * 200 - Math.sin(a) * 90, vy: -Math.sin(a) * 200 + Math.cos(a) * 90, vz0: 10, vz1: 40, op: 0.5, ml0: 500, ml1: 800 });
+                _wdMotes(F, Math.cos(a + 1) * rr * 0.9, ts * rn(0.3, 1.2), Math.sin(a + 1) * rr * 0.9, 1, { vx: -Math.sin(a + 1) * 260, vy: Math.cos(a + 1) * 260, v: 20, s0: 8 });
+            }
+            if (el > 380) for (var q = 0; q < at.offs.length; q++) {
+                if (puffs[q]) continue; puffs[q] = 1; var o = at.offs[q], X = tx + o.dx, Y = ty + o.dy;
+                if (!_pzSeen(X, Y)) continue; var w2 = _nvOff(F, X, Y);
+                _wdMotes(F, w2.x, ts * 0.05, w2.z, 2, { sprite: 'smoke-soft', tint: _WD.air, s0: 16, s1: 34, v: 20, vx: -w2.x * 1.2, vy: -w2.z * 1.2, vz0: 10, vz1: 40, op: 0.45, ml0: 600, ml1: 900 });
+            }
+        });
+    };
+
+    /* ════ VORTEX SLAM — bands of air spiral DOWN out of the sky into the centre and slam flat: the gust ring blasts out
+       along the ground (it wore the water whirlpool's tiles before) ════ */
+    EFFECTS['wdVortexSlam_aoe'] = _pzDef('wdVortexSlam', { pzOwn: true });
+    _PZ_SIGS.wdVortexSlam = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, at = _nvAoeTiles(id, p, null, _wdRadius(id, p) || 1), r = at.r || 1, R = ts * (r + 0.5);
+        var down = [], dm = [], blast = [], bm = [], NB = 10;
+        for (var i = 0; i < 6; i++) {
+            var m = _wdAirMat(false); dm.push(m);
+            var pts = _wdHelix(R * 1.25, ts * 0.12, ts * 3.2, ts * 0.1, 1.4, i / 6 * Math.PI * 2, 30);
+            down.push(_wdRibbon(F.g, pts, { w0: ts * 0.36, w1: ts * 0.22, segs: 56, roll: 0.2, twist: 2.4, mat: m }));
+        }
+        for (var k = 0; k < NB; k++) {
+            var a = k / NB * Math.PI * 2, m2 = _wdAirMat(k % 2 === 1, k % 2 ? _WD.grit : null); bm.push(m2);
+            var pts2 = [];
+            for (var s = 0; s <= 5; s++) { var u = s / 5, rr = ts * 0.2 + (R * 1.35 - ts * 0.2) * u, aa = a + u * 0.7; pts2.push(new THREE.Vector3(Math.cos(aa) * rr, ts * (0.08 + 0.1 * Math.sin(u * Math.PI)), Math.sin(aa) * rr)); }
+            blast.push(_wdRibbon(F.g, pts2, { w0: ts * 0.1, w1: ts * 0.32, segs: 26, roll: Math.PI / 2 - 0.25, mat: m2 }));
+        }
+        var sw = _wdSwirl(F, R * 2.2), SLAM = 520, TOTAL = 1450, slammed = false;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            for (var j = 0; j < down.length; j++) { _wdRun(down[j], el, j * 30, SLAM - 60, 0.55); down[j].op(0.9); }
+            for (var q = 0; q < blast.length; q++) { _wdRun(blast[q], el, SLAM + (q % 3) * 25, 520, 0.6); blast[q].op(0.95); }
+            var e2 = el - SLAM;
+            sw.material.opacity = e2 < 0 ? 0.35 * _sigClamp01(el / 300) : 0.8 * (1 - _sigClamp01(e2 / 800));
+            sw.scale.setScalar(e2 < 0 ? 0.5 : 0.5 + 0.75 * _sigEaseOutCubic(_sigClamp01(e2 / 450))); sw.rotation.z = -el * 0.007;
+            if (!slammed && e2 >= 0) {
+                slammed = true;
+                _sigShockRing3D(tx, ty, { color: _WD.mint, r0: ts * 0.2, r1: R * 1.4, ms: 420, height: ts * 0.08, torus: false, opacity: 0.6 });
+                for (var t = 0; t < at.offs.length; t++) { var o = at.offs[t], X = tx + o.dx, Y = ty + o.dy; if (!_pzSeen(X, Y)) continue; var w2 = _nvOff(F, X, Y);
+                    _wdMotes(F, w2.x, ts * 0.05, w2.z, 2, { sprite: 'dust-puff', tint: _WD.dust, s0: 16, s1: 40, v: 30, vx: w2.x * 2.2, vy: w2.z * 2.2, vz0: 30, vz1: 90, op: 0.55, ml0: 600, ml1: 900 }); }
+            }
+        });
+    };
+
+    /* ════ UPDRAFT — a column of air climbs under the ally and lifts it (Levitating) ════ */
+    function _wdUpdraft(tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, rib = [], mats = [], sw = _wdSwirl(F, ts * 1.1), last = 0;
+        for (var i = 0; i < 5; i++) {
+            var m = _wdAirMat(false); mats.push(m);
+            rib.push(_wdRibbon(F.g, _wdHelix(ts * 0.4, ts * 0.3, 0, ts * 2.3, 1.15, i / 5 * Math.PI * 2, 30), { w0: ts * 0.16, w1: ts * 0.07, segs: 48, roll: 0.15, twist: 1.2, mat: m }));
+        }
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var out = _sigClamp01((el - 1050) / 350);
+            for (var j = 0; j < rib.length; j++) { var h = ((el * 0.0022 + j * 0.2) % 1.5); rib[j].set(h - 0.5, Math.min(1, h)); rib[j].op(0.9 * (1 - out)); }
+            sw.rotation.z = el * 0.006; sw.scale.setScalar(0.8 + 0.2 * Math.sin(el * 0.01)); sw.material.opacity = 0.6 * _sigClamp01(el / 200) * (1 - out);
+            if (el < 1050 && el - last > 50) { last = el; _wdMotes(F, rn(-1, 1) * ts * 0.3, ts * 0.05, rn(-1, 1) * ts * 0.3, 1, { v: 10, vz0: 220, vz1: 320, s0: 7, ml0: 500, ml1: 700 }); }
+        });
+    }
+
+    /* ════ TAILWIND — streamers of air run past the whole squad round the caster (its tile recipe stays) ════ */
+    _PZ_SIGS.wdTailwind = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, r = p.aoeRadius != null ? p.aoeRadius : 2, cd = _nbCamDir(F);
+        var dir = new THREE.Vector3(-cd.z, 0, cd.x), side = new THREE.Vector3(cd.x, 0, cd.z), rib = [], mats = [], RR = ts * (r + 0.6);
+        for (var i = 0; i < 9; i++) {
+            var so = (i / 8 * 2 - 1) * RR * 0.9, h = ts * (0.15 + 0.85 * ((i * 0.618) % 1)), pts = [];
+            for (var k = 0; k <= 6; k++) { var u = k / 6; pts.push(new THREE.Vector3(dir.x * RR * (u * 2 - 1) + side.x * (so + Math.sin(u * 5 + i) * ts * 0.08), h + Math.sin(u * Math.PI * 2 + i) * ts * 0.06, dir.z * RR * (u * 2 - 1) + side.z * (so + Math.sin(u * 5 + i) * ts * 0.08))); }
+            var m = _wdAirMat(false); mats.push(m);
+            rib.push({ r: _wdRibbon(F.g, pts, { w0: ts * 0.08, w1: ts * 0.16, segs: 40, roll: (i % 3) * 0.6, twist: 0.7, mat: m }), t0: (i * 97) % 380 });
+        }
+        return _sigRunOwned(F.g, 1300, function (el) {
+            for (var j = 0; j < rib.length; j++) { _wdRun(rib[j].r, el, rib[j].t0, 620, 0.45); rib[j].r.op(0.9); }
+        });
+    };
+
+    /* ── the beat hook: every wind spell's cast + hit (called from _fireStage, the relayed beats) ── */
+    var _WD_BURST = {
+        raceGale: false, raceCrosswind: false, raceSquall: false, raceTornado: false, raceEyeOfTheStorm: false,
+        sharedVortexSlam: false, raceTailwind: false,
+        raceUpdraft: function (p) { if (_pzSeen(p.tx, p.ty)) _wdUpdraft(p.tx, p.ty); },
+    };
+    function _wdStage(phase, spellId, p) {
+        if (_catOff('spells') || !p) return;
+        var d = _spellDefFor(spellId); if (!d || d.element !== 'wind') return;
+        if (phase === 'windup') { if (p.sx != null && !p.mark && _pzSeen(p.sx, p.sy)) _wdGather(p.sx, p.sy, p.holdMs); return; }
+        if (phase !== 'burst' || p.tx == null) return;
+        var own = _WD_BURST[spellId];
+        if (own === false) return;
+        if (own) { own(p, d); return; }
+        if (d.type !== 'damage' || !_pzSeen(p.tx, p.ty)) return;   /* a utility wind spell's mark is the cast */
+        _wdMark(p.tx, p.ty, { r: _wdRadius(spellId, null) });
+    }
+
+    /* ── generic wind: its own theme + staging archetype (it was 'human' = beige dust) ── */
+    _THEME_MAP.wind = { core: 'frost-mist', trail: 'smoke-soft', burst: 'frost-mist', ring: 'shockwave', glow: 0xd8fff0 };
+    _ELEMENT_THEME.wind = 'wind';
+    _STAGE_ARCHETYPES.wind = { orb: 0xd8fff0, ring: 0xbff5df, flash: '#a8ecd0', mote: 'frost-mist', moteTint: 0xeafff6, glyph: false, slash: true, lineColor: '#e4fff4', noOrb: true };
+    _STAGE_GRADES.wind = { tint: [0.94, 1.08, 1.06], tintAmt: 0.24, chroma: 2.0 };
+    ['raceGale', 'raceCrosswind', 'raceEyeOfTheStorm', 'raceSquall', 'raceTornado', 'raceWingGust'].forEach(function (id) {
+        SPELL_STAGE_MAP[id] = Object.assign({}, SPELL_STAGE_MAP[id] || {}, { archetype: 'wind' });
+    });
+
+    /* ── the wiring ── */
+    EFFECTS['wdTailwind_aura'] = Object.assign({}, EFFECTS['raceTailwind_aura'] || { layers: [] }, { pzSig: 'wdTailwind' });
+    SPELL_MAP['raceSquall']        = { bolt: 'wdSquall_bolt' };
+    SPELL_MAP['raceTornado']       = { bolt: 'wdTornado_bolt' };
+    SPELL_MAP['raceGale']          = { beam: 'wdGale_beam' };
+    SPELL_MAP['raceCrosswind']     = { beam: 'wdCrosswind_beam' };
+    SPELL_MAP['raceEyeOfTheStorm'] = { aoe: 'wdEye_aoe' };
+    SPELL_MAP['sharedVortexSlam']  = Object.assign({}, SPELL_MAP['sharedVortexSlam'], { aoe: 'wdVortexSlam_aoe' });
+    SPELL_MAP['raceTailwind']      = Object.assign({}, SPELL_MAP['raceTailwind'], { aura: 'wdTailwind_aura' });
+    delete _spell3DGeometry.raceCrosswind;       /* the A-F flat ribbons give way to the lane gust */
+    delete _spell3DGeometry.raceEyeOfTheStorm;   /* the A-F turning rings give way to the storm wall */
+    /* ═════════ END THE WIND PASS ═════════ */
 
 
     /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────
