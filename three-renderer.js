@@ -42329,20 +42329,20 @@ const ThreeRenderer = (function () {
                    per pane camera. Post/CSS2D are bypassed — their overlays
                    are hidden for the duration (see showSplitscreen). */
                 _ssRenderFrame();
-            } else if (_quietHold(cam)) {
-                /* THE QUIET COMPILE: the room's held frame is on screen; the fight's shaders build first */
             } else {
+                _quietBefore(cam);   // THE QUIET COMPILE: a piece whose shader is still building sits this frame out — the frame draws
                 if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
                     ThreePost.render(cam);
                 } else {
                     renderer.render(scene, cam);
                 }
+                _quietAfter();
 
                 if (css2dRenderer) _css2dRender(scene, cam);
                 _scaleNexusPlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
-                if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first (rev 3: once the party's rigs stand, or the hold's cap — _fieldDissolveReady)
+                if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's last frame fades over this, the battle's first (2026-10-25 rev 4: the very first — nothing is waited for)
             }
         }
 
@@ -67335,15 +67335,15 @@ const ThreeRenderer = (function () {
             eye = pivot.clone().add(ideal.clone().sub(pivot).multiplyScalar(c.f));
             look = pivot.clone().add(lookDir.clone().multiplyScalar(2.5));
         }
-        /* THE WAY BACK (2026-09-22): the camera stands at the debrief's eye under the held snapshot, then — the frame the
-           room is READY (the snapshot fades) — eases onto the walker's boom over H.arrive.ms with the lens following;
+        /* THE WAY BACK (2026-09-22): the camera stands at the debrief's eye under the snapshot, then — the frame the
+           snapshot fades (2026-10-25: the room's first drawn frame with the walker in it, A.go; else the room's READY) — eases onto the walker's boom over H.arrive.ms with the lens following;
            the ordinary damping resumes after. A one-way beat: no input steers it, the room's own ease stands behind it. */
         if (H.arrive) {
             var A = H.arrive, E = A.eye, nowA = performance.now();
             if (!A.t0) {
                 c.ex = E.x; c.ey = E.y; c.ez = E.z; c.lx = E.lx; c.ly = E.ly; c.lz = E.lz; c.init = true; c.f = 1;
                 if (isFinite(+E.fov) && Math.abs(cam.fov - +E.fov) > 0.01) { cam.fov = +E.fov; cam.updateProjectionMatrix(); }
-                if (H.ready) A.t0 = nowA;
+                if (H.ready || A.go) A.t0 = nowA;
                 cam.position.set(c.ex * U, c.ey * U, c.ez * U); cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
                 return;
             }
@@ -68676,6 +68676,16 @@ const ThreeRenderer = (function () {
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
         } finally { _hqFogBack(fogHold); }
+        /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
+           drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
+           starts with the fade, not at the room's READY */
+        if (H.opts.onFirstFrame && !H.firstFramed) {
+            var pdF = H.player ? H.player.def : null;
+            if (H.playerAttached || !pdF || !pdF.model || !!(_unitGlbCache[pdF.model] && _unitGlbCache[pdF.model].failed) || now - H.t0 > 4000) {
+                H.firstFramed = true; if (H.arrive) H.arrive.go = true;
+                try { H.opts.onFirstFrame(); } catch (e) {}
+            }
+        }
         if (css2dRenderer) _css2dRender(H.scene, H.camera);
         if (_hqCine()) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
     }
@@ -69425,10 +69435,9 @@ const ThreeRenderer = (function () {
        room's fog goes on the battle scene (the density re-based to battle px), the room-box AO is re-centred on the room
        (_HQ_AO2.zw), the ceiling stays and fades as the eye rises through it (_fieldGroundTick), the dome is snapped to the
        room's colour on the first frame (_envSnapPending; data.js hqFieldLayout paints a closed room's dome its fog colour and
-       carries the room's look), and the crossfade waits for the party's rigs (_fieldDissolveReady) with THE SWOOP held at
-       the walker's eye under it (ThreeCamera.seedHold). _fieldGroundRelease hands everything back on deactivate. */
+       carries the room's look), and the crossfade runs on the battle's first drawn frame (2026-10-25: no wait for the party's
+       rigs — mondo, "no freeze") with THE SWOOP seeded at the walker's eye (ThreeCamera.seedHold, released by the fade). _fieldGroundRelease hands everything back on deactivate. */
     var _fieldGroundState = null;   // { s, prevFog, ceil: { y, mats, parts, op } | null }
-    var _fieldGate = null, _fieldGateAt = 0;
     var _envSnapPending = false;
     function _fieldGroundDress(R, room, M, ts) {
         var S = room.shell || {}, s = ts / R.T.C, U = _hqUnits(), LR = _hqLightRules();
@@ -70836,60 +70845,70 @@ const ThreeRenderer = (function () {
         if (!_fieldGroundArmed) return;
         _envSnapPending = true;
         if (_hqDissolveRec) {
-            try { _fieldGate = _alGateOpen('field', { adoptLive: true }); _fieldGateAt = performance.now(); } catch (e) { _fieldGate = null; }
             try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.seedHold) ThreeCamera.seedHold(true); } catch (e) {}
             _quietArm();
         }
     }
-    /* THE QUIET COMPILE (2026-10-25, mondo: "still a big frame drop transitioning from exploration to battle"): the fight's
-       first frame built every program it had not drawn before (the units' outline and x-ray twins, the plates, the board's
-       own pieces, the room pieces the fight hazes) inside that one frame, and three blocks the frame until each is linked.
-       Under the room's held frame nothing of the fight is seen anyway, so the fight draws NOTHING until its bodies have
-       streamed in (the gate above), then hands every drawn object to renderer.compileAsync (the programs build on the
-       driver's own threads where KHR_parallel_shader_compile is offered, keyed for the target the frame draws into) and draws
-       once they are ready — or at the held frame's cap, whichever comes first. Classic WebGL only. Off: window.EW_NO_QUIET_COMPILE. */
-    var _quiet = { state: 0, at: 0, cap: 1500, n: 0, ms: 0 };
+    /* THE QUIET COMPILE (2026-10-25, mondo: "still a big frame drop transitioning from exploration to battle"; rev 2 the same
+       day: "should be zero seconds, no freeze"): the fight's first frames meet programs the walk never drew (the units'
+       outline and x-ray twins, the plates, the board's own pieces, the room pieces the fight hazes), and three blocks a frame
+       until each is linked. The fight DRAWS from its first frame — nothing waits: the first frame hands every drawn object to
+       renderer.compileAsync (the programs build on the driver's own threads where KHR_parallel_shader_compile is offered,
+       keyed for the target the frame draws into), and until they all stand (15 s at most), each frame leaves out only the pieces
+       whose program is still building and first-uses about 4 ms of the finished ones a frame (on a fast machine: a few frames).
+       Classic WebGL only. Off: window.EW_NO_QUIET_COMPILE. */
+    var _quiet = { state: 0, at: 0, win: 15000, n: 0, ms: 0, used: null, hid: [], left: 0, maxLeft: 0 };
     function _quietArm() {
         _quiet.state = 0;
         if (typeof window !== 'undefined' && window.EW_NO_QUIET_COMPILE) return;
         if (!renderer || renderer.isWebGPURenderer || typeof renderer.compileAsync !== 'function') return;
-        _quiet.state = 1; _quiet.at = performance.now(); _quiet.n = 0; _quiet.ms = 0;
-        var R = _hqDissolveRec;   // the held frame's own cap (its timer fades it then whatever happens): the fight draws by then
-        _quiet.cap = (R && R.hold > 0) ? Math.max(0, R.hold - ((R.at > 0) ? _quiet.at - R.at : 0) - 60) : 1500;
+        _quiet.state = 1; _quiet.at = performance.now(); _quiet.n = 0; _quiet.ms = 0; _quiet.left = 0; _quiet.maxLeft = 0; _quiet.hid.length = 0;
+        _quiet.used = new WeakSet();   // the programs the walk drew are in use already
+        try { (renderer.info.programs || []).forEach(function (p) { _quiet.used.add(p); }); } catch (e) {}
     }
-    /* true = hold this frame's draw */
-    function _quietHold(cam) {
-        if (!_quiet.state || _quiet.state === 3) return false;
+    function _quietCompile(list, cam) {
+        var fake = { isScene: true, traverseVisible: function () {}, traverse: function (cb) { for (var i = 0; i < list.length; i++) cb(list[i]); } };
+        var wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, wp = renderer.getRenderTarget();
+        try { renderer.setRenderTarget(wt); var p = renderer.compileAsync(fake, cam, scene); if (p && p.catch) p.catch(function () {}); }
+        catch (e) { console.warn('[ThreeRenderer] the quiet compile failed', e); }
+        finally { renderer.setRenderTarget(wp); }
+    }
+    /* before the draw: the pieces still building sit this frame out (_quietAfter puts them back right after it) */
+    function _quietBefore(cam) {
+        if (!_quiet.state || _quiet.state === 3) return;
         var now = performance.now();
-        if (now - _quiet.at > _quiet.cap || !_hqDissolveRec || !scene || !cam) { _quiet.ms = Math.round(now - _quiet.at); _quiet.state = 3; return false; }
-        if (_quiet.state === 1) {
-            try { if (_fieldGate && _fieldGate.pending() > 0) return true; } catch (e) {}
-            _quiet.state = 2;
-            var list = [];
-            scene.traverseVisible(function (o) { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) list.push(o); });
-            var fake = { isScene: true, traverseVisible: function () {}, traverse: function (cb) { for (var i = 0; i < list.length; i++) cb(list[i]); } };
-            var wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, wp = renderer.getRenderTarget();
-            var t0 = performance.now(), p = null;
-            try { renderer.setRenderTarget(wt); p = renderer.compileAsync(fake, cam, scene); }
-            catch (e) { console.warn('[ThreeRenderer] the quiet compile failed — the fight draws now', e); p = null; }
-            finally { renderer.setRenderTarget(wp); }
-            _quiet.n = list.length;
-            if (!p) { _quiet.state = 3; return false; }
-            p.then(function () { _quiet.pDone = renderer.info.programs.length; if (_quiet.state === 2) { _quiet.ms = Math.round(performance.now() - _quiet.at); _quiet.state = 3; } }, function () { _quiet.state = 3; });
-            return true;
+        if (now - _quiet.at > _quiet.win || !scene || !cam) { _quiet.ms = Math.round(now - _quiet.at); _quiet.state = 3; return; }
+        var list = [], props = renderer.properties;
+        scene.traverseVisible(function (o) { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) list.push(o); });
+        var progOf = function (m) { var p = m ? props.get(m) : null; return p ? p.currentProgram : null; };
+        var fresh = [];
+        for (var i = 0; i < list.length; i++) { var ms = Array.isArray(list[i].material) ? list[i].material : [list[i].material]; for (var j = 0; j < ms.length; j++) if (ms[j] && !progOf(ms[j])) { fresh.push(list[i]); break; } }
+        if (_quiet.state === 1) { _quiet.state = 2; _quiet.n = list.length; _quietCompile(list, cam); }
+        else if (fresh.length) _quietCompile(fresh, cam);   // a piece that arrived since (a rig landing, a plate)
+        var budget = performance.now() + 4, left = 0;
+        for (var k = 0; k < list.length; k++) {
+            var o = list[k], mats = Array.isArray(o.material) ? o.material : [o.material], ok = true;
+            for (var q = 0; q < mats.length && ok; q++) {
+                if (!mats[q]) continue;
+                var pr = progOf(mats[q]);
+                if (!pr) { ok = false; break; }
+                if (_quiet.used.has(pr)) continue;
+                var ready = false; try { ready = pr.isReady(); } catch (e) { ready = true; }
+                if (!ready || performance.now() > budget) { ok = false; break; }
+                try { pr.getUniforms(); } catch (e) {}   // its first use (the link check, the uniform table) — inside this frame's budget
+                _quiet.used.add(pr);
+            }
+            if (!ok) { o.visible = false; _quiet.hid.push(o); left++; }
         }
-        return true;
+        _quiet.left = left; if (left > _quiet.maxLeft) _quiet.maxLeft = left;
+        if (!left && _quiet.state === 2 && now - _quiet.at > 300) { _quiet.ms = Math.round(now - _quiet.at); _quiet.state = 3; }   // everything stands
     }
-    /* the held snapshot fades once nothing the fight asked for is still streaming (the party's rigs), else at the hold's cap */
-    function _fieldDissolveReady() {
-        if (!_fieldGate) return true;
-        var rec = _hqDissolveRec;
-        if (rec && rec.fadingAt) return true;
-        try { if (_fieldGate.pending() === 0) return true; } catch (e) { return true; }
-        return (performance.now() - _fieldGateAt) > ((rec && rec.hold > 0) ? rec.hold : 1500);
+    function _quietAfter() {
+        var h = _quiet.hid; if (!h.length) return;
+        for (var i = 0; i < h.length; i++) h[i].visible = true;
+        h.length = 0;
     }
     function _fieldSeedRelease() {
-        if (_fieldGate) { try { _fieldGate.close(); } catch (e) {} _fieldGate = null; }
         try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.seedHold) ThreeCamera.seedHold(false); } catch (e) {}
     }
     /* deactivate(): every dial back */
@@ -72885,7 +72904,7 @@ const ThreeRenderer = (function () {
        viewpoint); `hold` is then the CAP on that wait. The encounter asks for a short fade: the seam is a
        camera move, not a crossfade. */
     var _hqDissolveRec = null;
-    function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; if (typeof _fieldDissolveReady === 'function' && !_fieldDissolveReady()) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} }
+    function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} }
     /* THE TILT-SHIFT ON THE WALK (2026-10-18, mondo: "the tilt shift seems to only affect the voxel maps"): the sharp band sits on
        the walker's body (world px — the walker's group stands at pl.x·U, pl.visY·U, pl.z·U); first person holds the look point */
     function _hqDofFocus(H) {

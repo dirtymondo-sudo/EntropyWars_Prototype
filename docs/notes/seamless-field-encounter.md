@@ -1041,11 +1041,11 @@ exploration to battle and back".
   a story fight pads up to the count the walk had at the hand-over. Not on the node renderer (THE ONE RIG). Off: `EW_NO_LIGHT_MATCH`.
 - THE WARM TARGET (three-post.js warmTarget): the HQ stage warm-up compiled with no render target set = the canvas twin of every
   material (tone map 1), never drawn. It now hands the classic / pmndrs chain's scene target.
-- THE QUIET COMPILE (`_quiet*`): under the strike's held frame the fight draws nothing until the gate's files are in, then
-  renderer.compileAsync on every visible object (keyed for the chain's target; KHR_parallel_shader_compile builds them on the
-  driver's threads), drawing when ready or at the held frame's cap. The strike's hold cap 1500 → 2500 ms (map.js; the frame still
-  fades the moment the fight is ready). Off: `EW_NO_QUIET_COMPILE`. In the sandbox's software GL the programs report ready but the
-  first draw still pays their info-log read, so its gain is not measurable there.
+- THE QUIET COMPILE (`_quiet*`), rev 2 (see NO HELD FRAME below): the fight draws from its first frame. That frame hands every
+  visible object to renderer.compileAsync (keyed for the chain's target; KHR_parallel_shader_compile builds them on the driver's
+  threads). Until they all stand (15 s cap), `_quietBefore` hides only the objects whose program is still building and runs the
+  first use (`program.getUniforms()`) of finished ones for about 4 ms a frame. `_quietAfter` shows them again right after the draw.
+  Off: `EW_NO_QUIET_COMPILE`.
 - THE WALK'S OWN SKY (`_hqBuildRoomInBattle`): a handed-over sky + landmarks are `_ew_hzNearRoot` (no altitude-fog hook, fog not
   switched off): the walk's look and the walk's programs.
 - THE INSTANCE SPHERES (`_bvhInstall`): InstancedMesh.raycast tests each instance's cached world sphere before the full test.
@@ -1055,3 +1055,23 @@ exploration to battle and back".
 - Measured (harness, Fairy Forest clearing, the same native, old code vs new): into the fight worst frame 10.6 s → 4.7 s, 47 → 34
   program links, 19 → 13 point lights; the way back worst frame 3.0 s → 1.1 s, long tasks 10.1 s → 4.0 s, 13 → 5 links, no
   creator-look rebuild. Stills + numbers: /mnt/project-files/seamless-transition/.
+
+### NO HELD FRAME (2026-10-25, the same day, mondo)
+mondo: "should be zero seconds, no freeze ... what part of seamless transition dont you understand?? ... its the same room!!".
+The first pass kept the room's last picture up over the fight's build (cap raised 1.5 → 2.5 s). He wants no held frame at all.
+- INTO THE FIGHT: map.js `_hqLeave({ dissolve: { onFrame: true, hold: 3000 } })`. The snapshot covers only the one frame where the
+  fight does not exist yet and fades on the fight's first drawn frame (`_hqDissolveFrame`). The 3000 is only a safety net for a
+  fight that never draws. The wait for the party's rigs (`_fieldDissolveReady`, `_fieldGate`) is gone. THE SWOOP's seed hold is
+  released by that fade, so the camera eases from the walker's eye at once.
+- THE WAY BACK: map.js `_hqEnter({ seamless })` passes `onFirstFrame`. The HQ frame (`_hqFrame`, after the draw) calls it on the
+  first drawn frame where the walker's rig stands (or there is no rig, or 4 s pass). The debrief's picture fades then, not at
+  the room's READY (the gate: every file landed). THE WAY BACK's ease starts with that fade (`H.arrive.go`). The room's
+  late files land in the live picture. battle.js `holdCap` 4500 stays as the safety net.
+- Measured (harness, draw always, sandbox llvmpipe at about 2 fps on the walk):
+  - Into the fight: before, about 2 s of still picture and then a 3.0 s first frame. After, the fight's first frame comes about
+    1.1 s after the strike, with the snapshot fading on it. That is about two walk frames. No skipped draws.
+  - The way back: before, the debrief still was up about 3.6 s. After, it fades on the room's first frame with the walker in it.
+  - Left over in the sandbox: first uses of shadow depth/distance programs (MeshDepth/MeshDistance variants that three makes
+    inside the shadow pass, which can't be warmed from outside) and late-arriving pieces. llvmpipe pays about 0.3-1.5 s for
+    every first use, so this is far worse than real GPUs.
+
