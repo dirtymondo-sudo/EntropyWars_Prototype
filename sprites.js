@@ -3245,10 +3245,10 @@ const RACE_PORTRAITS = {
   'shaman':         { male: _pm('harvester'),    female: _pf('harvester') },
   'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
   'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
-  'men in black':   { male: _pm('meninblack'),   female: _pf('glowie') },
+  'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
   'popstar':        { female: `${_S}/Races/popstar/popstar_female.png` },   // 2026-09-22 — the sheet stands in for the portrait for now (the user's call)
   'telepath':       { female: _pf('psychic') },
-  'marksman':       { male: _pm('sniper'),       female: _pf('sniper') },
+  'marksman':       { male: _pm('sniper') },   // 2026-10-25 — the female sniper wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call
   'priest':         { male: _pm('priest') },                // no priestess file yet
   'wizard':         { female: _pf('witch') },               // no male wizard file yet
   'fortune teller': {
