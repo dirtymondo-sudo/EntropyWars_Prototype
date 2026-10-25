@@ -1815,6 +1815,45 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+
+## THE WIND PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every wind-element spell (39 of them, data.js `element: 'wind'`) reads as wind; Wind Control's own spells get full looks,
+plus the two new rows (Squall, Tornado — rules in champions-combat.md "THE WIND PASS"). Code: three-vfx-effects.js block
+"THE WIND PASS" right after THE 2026-10-25 BATCH SIGNATURES, helpers `_wd*`, same `pzSig` hook as the P-Z / nature passes.
+- THE KIT: `_wdRibbon(parent, pts, o)` = a flat strip along a curve wearing the streak canvas (`_wdStreakTex`: air lines,
+  long fading tail, bright head), white-mint normal blend + an additive mint glow twin on the same geometry. A gust is a
+  WINDOW sliding along it: `set(k0, k1)` = draw range + the streak's UVs stretched over that stretch (`_wdRun` runs it
+  once). `op(v)` sets both materials. Widths ×1.7 inside the helper so the air reads at battle-camera distance. The
+  ground sigil is `_wdSwirl` (four tapering spiral arms, glow twin child, opacity setter drives both).
+- THE MARK (every wind spell, data-driven, so a new wind row gets it free): `_wdStage` rides `_fireStage` (the relayed
+  windup / burst beats). Windup = `_wdGather` (two bands coil in round the caster, a small swirl under the feet; skipped
+  for a delayed mark). Burst on a damage spell = `_wdMark` (three bands whip up round the body, the swirl spins out;
+  an area adds four flat bands on the rim). `_WD_BURST` lists the spells whose own look owns the hit (false) or a
+  custom burst (Updraft). Utility wind spells (Smoke Screen, Mist Form, Sprint…) carry the cast gather only.
+- Routes (probed in the Spell Lab): Squall / Tornado = `bolt` (pzOwn; the hit lands on its own timer at flyMs). Gale /
+  Crosswind = `beam` (pzOwn; route from `_wdRoute`, the same walk as _fireBeamMapped). Eye of the Storm / Vortex Slam =
+  `aoe` (pzOwn; tiles from `_nvAoeTiles`). Tailwind = `aura` (pzSig on a copy of raceTailwind_aura, its tile recipe
+  stays). Updraft has no intent: its column rides the burst beat.
+- The looks: Squall = a spinning crescent blade of air, then grit whirling round the head (Blind). Gale = bands of air race
+  down the lane, dust kicked up where the front passes. Crosswind = sand-laden bands crossing the lane in an X, a grit
+  cloud left at head height. Tornado = a little whirl skims to the target and stands up into a twister (seven bands up a
+  widening funnel, stone chips and dust going round), then lifts away. Eye of the Storm = a cyclone wall on the area's
+  rim closing on a calm middle. Vortex Slam = bands spiral down out of the sky and slam flat into a ground gust ring
+  (it wore the WATER whirlpool's tile recipe before). Updraft = a rising column. Tailwind = streamers running past the
+  squad.
+- Generic wind (no SPELL_MAP row) had borrowed the human theme (beige dust): `_THEME_MAP.wind`, `_ELEMENT_THEME.wind`,
+  `_STAGE_ARCHETYPES.wind` (white-mint, crescents, `noOrb`) and `_STAGE_GRADES.wind` are set in the block (not inline in
+  the tables, so the sibling element passes don't collide on those lines). SPELL_STAGE_MAP puts Gale, Crosswind, Eye,
+  Squall, Tornado and Wing Attack on the wind archetype (their kinds sent them to kinetic / grapple).
+- Old looks replaced: Crosswind's A-F flat ribbons (`_afCrosswind3D`) and Eye's A-F turning rings (`_afStorm3D`) — registry
+  entries deleted; Vortex Slam's whirlpool tiles. Kept: Wing Attack's own aoe, Dust Devil's twister, Summon Sandstorm,
+  the race signatures (Talon Rake, Stoop Dive, Ride to Valhalla, Host-Fetter, Twisted Wish), the arrows / balls / kicks —
+  each now carries the wind gather + mark on top.
+- Fog / RULE #2: everything rides fire() (relayed). The gather and the bolt flights draw only where the viewer sees the
+  caster's tile; the lane gust starts at the first tile the viewer can see; the hit, the dust and the twister only on seen
+  tiles. THE TARGET STAYS: no screen flash; the bands are thin and see-through, the twister narrows at the body.
+- Proof: Spell Lab ✦ CAST per spell, capture rig freezes performance.now() at set delays after the intent. Stills:
+  /mnt/project-files/wind-vfx/.
 ## THE WATER PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
 Every water spell (data.js `element: 'water'`, 39 with the two new rows) now reads as water. Code: three-vfx-effects.js
 block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`).
