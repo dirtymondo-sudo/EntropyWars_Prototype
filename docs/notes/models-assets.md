@@ -414,3 +414,15 @@ nodes, Z-up, metres); the game reads the `.dae` with three's ColladaLoader (inde
   the file streams; `_spellLibWarm` warms `_XMAS_SPELL_NODES`). Blizzard Present + The Naughty List finisher use the pack's red
   gift (procedural box stays as the stream fallback); Milk and Cookies (`_stageSupportBurst`) sets the cookies + cocoa (no tray: mondo dropped it 10-24)
   down beside the caster. Lump of Coal untouched (rule: just Santa throwing coal).
+
+## THE FOUR NEW LOOKS (2026-10-25)
+mondo's new Meshy models + 2D sprites replace four existing looks (no rule, stat or spell change):
+- Shadow Entity (male) → `Races/shadowentity/male/Meshy_AI_shadowperson_Walking.glb` + `shadowperson.png`
+  (the female keeps `Races/shadowentity/female/shadowentity_female.png`; she has no 3D model).
+- Tree Person → `Races/treeperson/Meshy_AI_treeperson_Running.glb` + `Races/treeperson/treeperson.png`.
+- Female Marksman (sniper) → `Races/Homosapien/Female/sniper/Meshy_AI_sniper_female_Running.glb` + `sniper_female.png`.
+- Female Men in Black → the Spy (labelFemale 'Intel Spy' → 'Spy', a James Bond spy): `Races/spy/Meshy_AI_spy_female_Running.glb`
+  + `Races/spy/spy_female.png`. She moved from per-character `_mk3d` clips to the shared library (`_mkUAL`), whose castRanged is the
+  same trimmed quick-draw.
+Sprites: `_CHARACTER_SPRITES` / `_CHARACTER_SPRITES_GENDERED` + `RACE_SPRITES` (sprites.js). The 128px face portraits
+(`character_portraits/female/glowie.png`, `.../sniper.png`) were left as they are.
