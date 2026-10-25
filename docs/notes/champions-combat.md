@@ -2544,3 +2544,11 @@ mondo's Meshy uploads: R2 `Assets/Sprites/Races/<folder>/Meshy_AI_<name>_Running
   graveRobbery.
 - Homes: mummy Pyramids of Giza; swamp monster Fairy Forest (The Woods) + The Sewers (HQ_POPULATION_RULES.underworld);
   undead The Haunted House + Hell (ALSO_NATIVE) + The Sewers.
+
+## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
+mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
+spells (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse, Kneel, Treeline Scream…) are aoe / barrage / aoePull
+kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund never paid, but `forecastPressOn` fell
+back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
+so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
+unchanged (spellDealsDamage still counts the kind).
