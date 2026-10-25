@@ -2118,3 +2118,47 @@ NATURE PASS, helpers `_lz*`, same `pzSig` hook as the nature / P-Z passes.
 - Staging archetype `lightning` untouched (its orb did not hide the hits in the stills).
 - Proof: Spell Lab ✦ CAST per spell with the capture rig freezing performance.now() after the intent.
   Stills + contact sheet: /mnt/project-files/lightning-vfx/.
+
+## THE BLOOD PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One look for every blood-element spell: wet crimson blood that gushes in glossy streams, a blood sigil that burns on the
+floor, and gore globs that land and stain (THE GORE's `_bloodStainer`, same 'blood-glob' sprite). No new rows (the spread
+is already full, champions-combat.md "THE BLOOD PASS"). Code: three-vfx-effects.js block "THE BLOOD PASS" right after
+THE NATURE PASS, helpers `_bd*`, same `pzSig` hook.
+- THE KIT: `_bdStream` = `_nvVine` with a wet crimson skin (`_bdSkinTex`, gloss stripe) and a glowing tip — thick at the
+  source, thin at the end, `grow(k0, k1)` gushes it out and detaches it. `_bdSigil` = the blood sigil (canvas: rings of
+  drops, drips, a downward triangle round a drop) drawn crimson (normal blend, reads on bright floors) + an additive glow
+  copy + halo. `_bdGlobs` throws globs that stain, `_bdSplat` leaves a splat, `_bdPulse` = a crimson glow on a body.
+  THE LENS CUT: `_bdLens` / `_bdGrowL` never draw the end runs of a stream that sit within 2 tiles of the camera or
+  would be thicker than 5% of the frame (close or long-lens spell cameras); checked each tick.
+- The signatures (all on the rows' existing routes, probed in the Spell Lab):
+  - Open Vein (T1, `bolt` pzOwn): a spinning blood sickle flies out; a hot crescent cut, the sigil, two arterial jets
+    spurt out of the far side (away from the cut, swung across the lens's view so an over-the-shoulder camera sees
+    them), land and stain. The A-F slash (`_afOpenVein3D`) registry entry was deleted.
+  - Hemorrhage (T2, `bolt` pzOwn): a taut blood thread from the caster's hand yanks; the sigil opens and seven streams
+    burst out of the chest in every direction (the ones toward the lens short and low), splash and stain.
+  - Life Sap (T3 lifeDrain): a glossy stream torn out of the victim arcs back into the caster with hot beads racing
+    along it; the caster glows. The bolt is `bdBolt` (pzOwn, crimson bolt + `_bdLand`) because a plain bolt lands only
+    its impact layers, never the impact's signature. The six drain hops drop blood off the line.
+  - Exsanguinate (T4 lifeDrain): the sigil locks onto the victim during the flight (and a small one under a seen
+    caster); with the hit seven blood-crystal spikes skewer up round it (lens side short), five thin streams spiral up
+    tight round the body into an orb that swells over the victim, then the orb flies to the caster and bursts into the
+    body (glow, globs, shock ring). The streams stay round the victim so they never cross the screen between the two.
+  - Arterial Spray (T3 aoe): a big sigil over the area; every tile gushes two thick jets (behind / beside the body, away
+    from the lens) that arc outward and splash, staggered outward from the centre.
+  - Blood Ritual (buff, aura on the caster): a palm spurt, three streams spiral up round the body and close into a
+    blood ring over the head that sinks through the body into the floor.
+  - Summon Blood Rain (weather): the sigil and a column of blood shooting into the sky from the caster; the rain is the
+    weather's own (`_RAIN_CFG.bloodRain`, untouched).
+- Generic blood (every other blood spell, e.g. Death Roll / Maul / Claw Sweep): `_THEME_MAP.blood` (blood drop /
+  streak / fleck, crimson glow), `_ELEMENT_THEME.blood = 'blood'` (was `unholy` = purple), `_BEAM_COLORS.blood`, a staging
+  archetype + grade (crimson glyph, blood-drop motes, `noOrb: true` = no glass orb shell on heavy blood hits, it hid the
+  target; noOrb now also skips the closing telegraph orb `_teleOrbOK` at the target, nature included), and `_bolt_blood`. Blood bolts that pointed at a purple bolt (`_bolt_unholy` / `_bolt_curse` / `_bolt_psi`) with
+  no `vfxElement` now use `_bolt_blood` (Lifetap, Soul Drain). A spell whose element is blood themes crimson even when
+  its `vfxElement` says otherwise (element wins in `_resolveTheme`, already the rule).
+- THE TARGET STAYS: no full-screen layer; big pieces stand round / behind the body; the lens cut; numbers untouched.
+- Fog / RULE #2: everything rides fire() (relayed). Caster-end pieces gate on `_bdSeen` = integer origin AND `_pzSeen`
+  (battle.js moves a hidden shooter's origin 1.5 tiles off the victim, off the grid, which counts as unseen): the thread
+  comes out of the dark a tile out, Life Sap's stream ends a tile out, Exsanguinate's orb comes apart over the victim,
+  the sickle hides on fogged tiles.
+- Proof: Spell Lab ✦ CAST (vampire caster, door agent dummy), slow-motion capture clock (performance.now() at 3% rate
+  from a set delay after the signature, then stepped). Stills: /mnt/project-files/blood-vfx/.
