@@ -2696,3 +2696,23 @@ teleports (target finder only blinks when hurt+adjacent or out of walk reach), t
 Stat tests (lab only, NOT applied; ~28 games per arm, ±18 points noise): Mech HP 1544→1350 79%→50% is the only clear
 signal; the other eight moved within noise. Harness: /mnt/project-files/balance/weak-races-harness/lab3.js (per-match
 alternating arms, `--alt`) + diag.js.
+
+## NO FACE IS TOO TALL + THE GAP'S FLOOR (2026-10-25, mondo: "There shouldnt be a wall thats too big to climb ... let me climb it in multiple turns ... The whole point of climbing is to not get stuck to a spell like fissure or a bunch of craters" / "Fissure shows lava on the sides, but its supposed to be only at the bottom")
+- battle.js getClimbTilesFrom: the `rise <= cap` ceiling is gone (up and down). Each climb tile carries `cap` (one stretch =
+  jump + CLIMB_RULES.capOverJump, +2 in weak gravity) and `turns` = ceil(rise / cap).
+- unit._climb gains `h` (how high it holds on) and `cap`. Up starts at h = min(rise, cap); down starts at h = rise.
+  processClimbArrival (the activation hook) now returns true when the top / foot is still more than a stretch away: it
+  climbs the next stretch (_climbNextStretch: h += cap up, h -= cap down), keeps the hang (climbing status, −DEF, no
+  dodge, knock-off rules) and the activation ends the unit's turn (ap 0, the building-emerge pattern). The turn after the
+  last stretch pulls up / climbs down with the whole turn, as before. A one-stretch face behaves exactly as before.
+- knockOffClimber falls from `h` (where it hangs), predictClimbFallDamage previews the first stretch (_climbHangH). The
+  ground at the foot moving under the hang (a Fissure closing) re-reads the rise; rise ≤ h pulls up.
+- The round-start "is stunned and cannot move!" line no longer fires for the climbing status (blockMove, not a stun).
+- three-renderer.js _updateBattleClimbers: the body hangs at h (feet a stretch's (1 − hangFrac) below the grip); each new
+  stretch keys on h and climbs on from where the body is.
+- HUD: the tile action reads "Climb up here · N turns" when N > 1; the prompt bar says a tall face takes a turn per stretch.
+- THE GAP's floor: _fieldSkinBuild's drape (liquids and dry skins) reads null on a state.gapTiles cell, so the sheet lies
+  flat on the bed. It used to read the rim's height on the cell's edge vertices and pull the lava up every wall (the lava
+  mesh ran from the bed y≈41 to the rim y≈689; now 42–43). The walls are the strata's own faces (hqFieldBedFor side).
+- Calls flagged to mondo: a mid-wall turn is spent climbing automatically (no other action that turn, same as the climb
+  itself ending the turn); an enemy can still knock the climber off on every stretch.

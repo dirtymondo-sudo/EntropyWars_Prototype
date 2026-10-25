@@ -13328,7 +13328,7 @@ const STATUS_LIBRARY_DESCS = {
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
     guarding:  'Braced for impact — bonus defense until the next turn.',
-    climbing:  'Hanging on a wall face until its next turn: no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage.',
+    climbing:  'Hanging on a wall face until its next turn (a tall face takes a turn per stretch): no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage from where it hangs.',
     guardRegen: 'Catching a breath from Guard: an extra 5% max HP and 3% max MP recover at the end of this round.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
