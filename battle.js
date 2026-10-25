@@ -9687,6 +9687,23 @@
             });
 
             if (!affected.length || _skipVisuals()) {
+                /* No-visuals rounds (CPU-vs-CPU sims, the Balance Lab, animations off) still TICK: burn / poison /
+                   bleed / regen resolve their onRoundEnd here with no camera or dialogue. This path used to skip them,
+                   so in every sim a DoT never dealt damage (found 2026-10-25 by the Balance Lab status telemetry). */
+                for (const unit of affected) {
+                    if (state.winner) break;
+                    if (unit.dead) continue;
+                    for (const key of getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k))) {
+                        const def = STATUS_DEFS[key];
+                        if (!def?.onRoundEnd) continue;
+                        const hpBefore = unit.hp;
+                        def.onRoundEnd(unit);
+                        if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
+                        if (unit.dead) break;
+                    }
+                    if (unit.dead) checkWin();
+                }
+                if (state.winner) { if (onDone) onDone(); return; }
 
                 _tickAllStatusDurations();
                 if (onDone) onDone();
@@ -56555,7 +56572,7 @@
             typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
             statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
             react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Soaked shock (lightning on wet)',
-            react_soakedFire: 'Soaked fire (fire on wet)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            react_soakedFire: 'Soaked fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
             highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
         };
         function _balFxMark(u, kind, key) {
@@ -56588,6 +56605,9 @@
                 r.applied++;
                 if (src && tgt) {
                     if (isEnemyUnit(src, tgt)) r.onEnemy++; else r.onAlly++;
+                } else if (tgt && STATUS_DEFS[id]?.kind === 'buff') {
+                    r.onAlly++;   // a self buff with no source passed (Guard, a stance): its wearer is the one using it
+                    _balFxMark(tgt, 's', id);
                 }
                 _balFxMark(src, 's', id);
             } else if (ev === 'resisted') r.resisted++;
@@ -56635,9 +56655,9 @@
                 for (const k of fx) _balEffect(src, k, 0, dmg);
                 rec.fx = fx;
                 if (hm && hm.bvsIds) for (const id of hm.bvsIds) { const sr = _balStatusRow(id); sr.comboHits++; sr.comboDmg += dmg; }
-                // the debuffs the target wears / the buffs the attacker wears when the blow lands
+                // what the target wears (anything but a buff: debuffs, Wet, Haunted…) / the buffs the attacker wears
                 for (const k of getActiveStatusKeys(tgt)) {
-                    if (STATUS_DEFS[k]?.kind !== 'debuff') continue;
+                    if (!STATUS_DEFS[k] || STATUS_DEFS[k].kind === 'buff') continue;
                     _balStatusRow(k).dmgWhile += dmg; rec.st.push(k);
                 }
                 for (const k of getActiveStatusKeys(src)) {
@@ -57067,7 +57087,7 @@
                 detail = `${r.uses}× · ${per(r.impact, r.uses)}d · ${r.kills}k${(b.resisted || b.blocked) ? ` · ${Math.round(r.resistPct * 100)}%r` : ''}`;
                 tip += ` · ${r.kind || 'status'} · applied ${b.applied || 0} (on enemies ${b.onEnemy || 0}, on allies ${b.onAlly || 0}) · resisted ${b.resisted || 0} · immune ${b.blocked || 0}`
                     + ` · tick damage ${b.dotDmg || 0} (${b.dotKills || 0} kills)${b.heal ? ` · tick healing ${b.heal}` : ''}`
-                    + ` · ${r.kind === 'buff' ? 'damage dealt while worn' : 'damage taken from enemies while worn'} ${b.dmgWhile || 0} (${b.killsWhile || 0} kills)`
+                    + ` · ${r.kind === 'buff' ? 'damage the wearer dealt while worn' : 'damage the wearer took from enemies while worn'} ${b.dmgWhile || 0} (${b.killsWhile || 0} kills)`
                     + `${b.comboHits ? ` · combo finisher hits on it ${b.comboHits} for ${b.comboDmg || 0}` : ''}${b.blockedHits ? ` · hits turned away ${b.blockedHits}` : ''}`;
             } else if (_balanceTab === 'elementUse') {
                 const wPct = b.hits ? Math.round((b.weak || 0) / b.hits * 100) : 0;
