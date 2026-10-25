@@ -1816,6 +1816,33 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
 
+## THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One fire look everywhere, plus signatures for the Fire Magic family and its two new rows (Flamethrower, Inferno — rules in
+champions-combat.md "THE FIRE PASS"). Code: three-vfx-effects.js block "THE FIRE PASS" right after END THE NATURE PASS,
+helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
+- THE FIRE MARK (`_fpMark`, on the staging BURST beat): every fire-element damage spell (`element: 'fire'`, `type: 'damage'`,
+  any family / kind) scorches each tile it hits (char decal + glowing cracks + firelight), licks flame tongues up round the
+  body (camera-facing additive planes, depth-tested; TALL on the side away from the lens, short in front, so body + number
+  read), a second lower wave as the first blows out, embers and smoke. The tiles are the windup's footprint (`params.tiles`,
+  cached by glowKey) — a line / aoe burns every tile it covers; a self-centred blast skips the caster's tile. One `_sigRun`
+  per mark (the signature cap is 20), density drops past 3 / 9 tiles, 25 tiles max.
+- THE CAST (`_fpWindup`, windup beat): fire-element MAGIC casts light a ring of small flames round the caster's feet and a
+  fire gathering in the hand toward the target, embers drawn in. Physical fire (arrows, cannon, punches) skips it.
+- The `fire` staging archetype is `noOrb` now: no glass orb on a fire cast / heavy hit; a heavy+ fire-archetype magic hit
+  throws a ring of flame out across the ground instead (`bloom`; fire-named spells with no element get only that ring).
+- Palette: kaiju atomic fire (raceAtomicBreath, goNuclearPulse) wears the same shapes in BLUE (`_FP_ATOMIC`). Skipped
+  (`_FP_SKIP`): Lump of Coal (mondo: just Santa throwing coal), Morning Star (vfxElement light). Delayed artillery (Nuclear
+  Option, Fire for Effect, Extinction Event) has no burst beat at cast, so it keeps its own landing.
+- Signatures: Fireball = `bolt` pzOwn (a roiling ball: white heart, halo, six flame tongues streaming back, flame + smoke
+  tail; `_fpBurst` at flyMs). Combust = `bolt` pzOwn (a heat thread, then `_fpCombust` at flyMs: a fire circle under the
+  feet and a pillar of tall tongues at the back, embers fountaining off the top). Wall of Fire = the old wall recipe +
+  pzSig `fpWallOfFire` (a 3D curtain ignites tile by tile along the wall, parts round a body standing in it, sits a little
+  behind it from the lens). Flamethrower = `beam` pzOwn (a cone of crossed flame planes down the line from the hand + a
+  stream of swelling fire blobs, smoke off the end). Inferno = `aoe` pzOwn (the fire circle burns out to the blast edge, a
+  ring of fire races out, a firestorm spirals round the caster in a clear middle). Meteor keeps its rock + gets the mark.
+- Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
+  every caster-side piece gates on `_pzSeen`. No screen flash.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
 ## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
 Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-Z signatures; helpers `_ps*`.

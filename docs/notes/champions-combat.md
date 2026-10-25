@@ -2571,6 +2571,15 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+## THE FIRE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Fire Magic had one row per tier (Fireball I, Combust II, Wall of Fire III, Meteor IV). Two rows (data.js, after Combust in
+SPELL_LIBRARY), existing kinds and rules only:
+- **Flamethrower** (`raceFlamethrower`, tier II, 50 MP, 1 AP, unholy, fire): `line`, range 3, width 1, 100 magic, Burn 2
+  (setup; Dragon Breath's shape without its burning tiles).
+- **Inferno** (`raceInferno`, tier IV, 100 MP, 1 AP, cd 2, unholy, fire): `aoe`, range 0, aoeRadius 2, aoeOriginSelf,
+  160 magic, ×1.5 vs Burn, applies nothing (finisher, no self-combo; Throne of Ashes' shape).
+- Who gets them: every race with Fire Magic in RACE_FAMILIES (demon, demon prince, dragon, jack o lantern, wizard) +
+  Adaptable borrowers. Stats are thread calls (flagged to mondo). Looks: spells-vfx.md "THE FIRE PASS".
 ## THE WIND PASS (2026-10-25, mondo: "a similar thread on each element ... making sure there's a nice amount of spells for each")
 Wind Control had no tier I setup and no tier III finisher. Two rows (data.js, after Eye of the Storm in SPELL_LIBRARY),
 existing kinds and rules only:
