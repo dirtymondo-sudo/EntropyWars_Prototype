@@ -48387,16 +48387,68 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _eaPlaneGeo() { return _eaShared('plane', function () { var g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g; }); }
     /* ── small helpers ── */
     function _eaOff(F, x, y) { var w = _worldPos(x, y); return new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z); }
+    /* THE FLOOR (fix 2026-10-25, mondo: "the crack decal ... is like floating in the air clipping through the units
+       chests"): cracks, seams and spikes stand on the GROUND of each tile, never the body's surface. The floor under a
+       body (a flyer's air pocket, a cave under a roof) comes from the renderer's unitGroundY; an empty tile is tileZ,
+       the renderer's real top (room fields, roofs, natural terrain, stairs). */
+    function _eaGroundY(x, y) {
+        var ix = Math.round(x), iy = Math.round(y);
+        try {
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()
+                && typeof ThreeRenderer.unitGroundY === 'function' && typeof state !== 'undefined' && Array.isArray(state.units)) {
+                for (var i = 0; i < state.units.length; i++) {
+                    var u = state.units[i];
+                    if (!u || u.dead || u._dying) continue;
+                    if ((u.x === ix && u.y === iy) || (u._isBoss && u._bossSize === 2 && (ix === u.x || ix === u.x + 1) && (iy === u.y || iy === u.y + 1))) {
+                        var gy = ThreeRenderer.unitGroundY(u);
+                        if (typeof gy === 'number' && isFinite(gy)) return gy;
+                        break;
+                    }
+                }
+            }
+        } catch (e) {}
+        return tileZ(ix, iy);
+    }
+    /* an earth frame stands on the ground of its tile (the stock frame stands on the body's surface) */
+    function _eaFrame(tx, ty) {
+        var F = _nrvFrame(tx, ty), gy = _eaGroundY(tx, ty) + 3;   /* + the same 3 px slab _worldPos adds */
+        if (typeof gy === 'number' && isFinite(gy) && !_VS.on) { F.g.position.y = gy; F.wp = { x: F.wp.x, y: gy, z: F.wp.z, ts: F.wp.ts }; }
+        return F;
+    }
+    /* the ground of tile (x, y) in frame F */
+    function _eaGOff(F, x, y) { var w = _worldPos(x, y); return new THREE.Vector3(w.x - F.wp.x, _VS.on ? w.y - F.wp.y : _eaGroundY(x, y) + 3 - F.wp.y, w.z - F.wp.z); }
+    /* the ground's tilt at a tile from its neighbours' tops (a step bigger than ~half a tile is a cliff, not a slope) */
+    var _EA_UP = new THREE.Vector3(0, 1, 0);
+    function _eaSlopeN(x, y, ts) {
+        if (_VS.on) return null;
+        var ix = Math.round(x), iy = Math.round(y), h0 = _eaGroundY(ix, iy), lim = ts * 0.45;
+        var W = (typeof CONFIG !== 'undefined' && CONFIG.boardWidth) || 0, H = (typeof CONFIG !== 'undefined' && CONFIG.boardHeight) || W;
+        function d(dx, dy) {
+            var nx = ix + dx, ny = iy + dy;
+            if (nx < 0 || ny < 0 || (W && nx >= W) || (H && ny >= H)) return null;
+            var v = _eaGroundY(nx, ny) - h0;
+            return (isFinite(v) && Math.abs(v) <= lim) ? v : null;
+        }
+        function g(p, m) { return (p != null && m != null) ? (p - m) / (2 * ts) : p != null ? p / ts : m != null ? -m / ts : 0; }
+        var gx = g(d(1, 0), d(-1, 0)), gz = g(d(0, 1), d(0, -1));
+        if (Math.abs(gx) < 0.02 && Math.abs(gz) < 0.02) return null;
+        return new THREE.Vector3(-gx, 1, -gz).normalize();
+    }
+    /* a crack's size: width and depth only, so the glow plane never lifts off the dark one as it grows */
+    function _eaSize(g, s) { g.scale.set(s, 1, s); }
     function _eaIs(def) { return !!(def && (def.element === 'earth' || def.vfxElement === 'earth')); }
     function _eaSandy(id, def) { return /sand|tomb/i.test(String(id) + ' ' + ((def && def.name) || '')); }
     function _eaRank(id) { try { var w = stageInfo(id).weight; return _TIER_ORDER[w] != null ? _TIER_ORDER[w] : 1; } catch (e) { return 1; } }
     /* the angle (x = cos, z = sin) of the side away from the lens */
     function _eaBehind(F) { var cd = _nbCamDir(F); return Math.atan2(-cd.z, -cd.x); }
     /* a fault-line decal (dark crack + its glow) lying on the ground at a frame-local point; scale it to grow it */
-    function _eaCrackAt(parent, M, c, ts, rot) {
-        var grp = new THREE.Group(); grp.position.set(c.x, c.y + ts * 0.03, c.z); grp.rotation.y = rot || 0; parent.add(grp);
-        _pzMesh(_eaPlaneGeo(), M.dark, grp); _pzMesh(_eaPlaneGeo(), M.glow, grp, 0, ts * 0.004, 0);
-        grp.scale.setScalar(0.01);
+    function _eaCrackAt(parent, M, c, ts, rot, tx, ty) {
+        var hold = new THREE.Group(); hold.position.set(c.x, c.y + ts * 0.012, c.z); parent.add(hold);
+        var n = tx != null ? _eaSlopeN(tx, ty, ts) : null; if (n) hold.quaternion.setFromUnitVectors(_EA_UP, n);
+        var grp = new THREE.Group(); grp.rotation.y = rot || 0; hold.add(grp);
+        var dk = _pzMesh(_eaPlaneGeo(), M.dark, grp), gl = _pzMesh(_eaPlaneGeo(), M.glow, grp, 0, 0.6, 0);
+        dk.renderOrder = 2; gl.renderOrder = 3;
+        _eaSize(grp, 0.01);
         return grp;
     }
     /* stone spikes that break the floor and sink back. pts: { x, y, z (frame-local base), h, w, d (delay ms),
@@ -48429,13 +48481,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _eaMark(tx, ty, o) {
         if (tx == null || ty == null || !_getVFXScene()) return null;
         o = o || {};
-        var rank = Math.max(0, Math.min(3, o.rank != null ? o.rank : 1)), F = _nrvFrame(tx, ty), ts = F.ts;
+        var rank = Math.max(0, Math.min(3, o.rank != null ? o.rank : 1)), F = _eaFrame(tx, ty), ts = F.ts;
         var list = (o.tiles && o.tiles.length > 1) ? o.tiles : [{ x: tx, y: ty }], single = list.length === 1;
         var M = _eaCrackMats(), stone = _eaStoneMat(o.sand), behind = _eaBehind(F), cracks = [], pts = [], shown = 0, far = 0;
         for (var i = 0; i < list.length && shown < 25; i++) {
             var q = list[i]; if (!q || !_pzSeen(q.x, q.y)) continue; shown++;
-            var c = _eaOff(F, q.x, q.y), dl = Math.max(Math.abs(q.x - tx), Math.abs(q.y - ty)); far = Math.max(far, dl);
-            cracks.push({ g: _eaCrackAt(F.g, M, c, ts, i * 1.3 + 0.4), sz: ts * (single ? 1.45 + 0.3 * rank : 1.15), d: dl * 70 });
+            var c = _eaGOff(F, q.x, q.y), dl = Math.max(Math.abs(q.x - tx), Math.abs(q.y - ty)); far = Math.max(far, dl);
+            cracks.push({ g: _eaCrackAt(F.g, M, c, ts, i * 1.3 + 0.4, q.x, q.y), sz: ts * (single ? 1.45 + 0.3 * rank : 1.15), d: dl * 70 });
             if (o.noSpikes) continue;
             var n = single ? [3, 5, 6, 8][rank] : (rank >= 1 && (i % 2 === 0 || rank >= 2) ? 1 : 0);
             for (var k = 0; k < n; k++) {
@@ -48461,7 +48513,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             M.dark.opacity = 0.85 * _pzEnv(el, 0, 60, HOLD, END);
             for (var j = 0; j < cracks.length; j++) {
                 var e = el - cracks[j].d, s = e <= 0 ? 0.01 : cracks[j].sz * (0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(e / 150)));
-                cracks[j].g.scale.setScalar(s);
+                _eaSize(cracks[j].g, s);
             }
             stone.opacity = el < END ? 1 : 0;
             if (spikes) spikes(el, 150, HOLD, 420);
@@ -48473,8 +48525,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        (a body spell). The stones between the lens and the caster hang low, so the face stays clear. ════ */
     function _eaTell(sx, sy, tx, ty, hold, rank, body, sand) {
         if (sx == null || sy == null || !_pzSeen(sx, sy) || !_getVFXScene()) return null;
-        var F = _nrvFrame(sx, sy), ts = F.ts, M = _eaCrackMats(), stone = _eaStoneMat(sand), cd = _nbCamDir(F);
-        var crack = _eaCrackAt(F.g, M, new THREE.Vector3(0, 0, 0), ts, rn(0, 6.28)), CS = ts * (1.2 + 0.18 * rank);
+        var F = _eaFrame(sx, sy), ts = F.ts, M = _eaCrackMats(), stone = _eaStoneMat(sand), cd = _nbCamDir(F);
+        var crack = _eaCrackAt(F.g, M, new THREE.Vector3(0, 0, 0), ts, rn(0, 6.28), sx, sy), CS = ts * (1.2 + 0.18 * rank);
         var REL = Math.max(220, Math.min(1800, (hold || 700) - 120));
         var aim = (!body && tx != null && (tx !== sx || ty !== sy) && _pzSeen(tx, ty)) ? _eaOff(F, tx, ty) : null;
         if (aim) aim.y += ts * 0.5;
@@ -48489,7 +48541,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var TOTAL = REL + (aim ? 240 : 460), dusted = false;
         return _sigRunOwned(F.g, TOTAL, function (el) {
-            crack.scale.setScalar(Math.max(0.01, CS * _sigEaseOutCubic(_sigClamp01(el / 220))));
+            _eaSize(crack, Math.max(0.01, CS * _sigEaseOutCubic(_sigClamp01(el / 220))));
             M.glow.opacity = (0.6 + 0.3 * Math.sin(el * 0.012)) * _pzEnv(el, 0, 120, REL, TOTAL);
             M.dark.opacity = 0.8 * _pzEnv(el, 0, 100, REL + 60, TOTAL);
             stone.opacity = el < TOTAL - 20 ? 1 : 0;
@@ -48526,7 +48578,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        stones that pop up and settle as the wave passes; the slam leaves a crater and rolls twice ════ */
     function _eaStomp(P, big) {
         var cx = P.tx, cy = P.ty; if (cx == null || !_pzSeen(cx, cy)) return;
-        var F = _nrvFrame(cx, cy), ts = F.ts, stone = _eaStoneMat(false), rad = (P.def && P.def.aoeRadius) || 1, R = ts * (rad + 0.55);
+        var F = _eaFrame(cx, cy), ts = F.ts, stone = _eaStoneMat(false), rad = (P.def && P.def.aoeRadius) || 1, R = ts * (rad + 0.55);
         var waves = big ? [0, 210] : [0], lumps = [];
         for (var w = 0; w < waves.length; w++) {
             var N = big ? 22 : 16;
@@ -48559,7 +48611,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        side heave up and fall into the gap the spell cuts to the lava bed, embers climb out of it ════ */
     function _eaFissure(P) {
         var tiles = (P.tiles && P.tiles.length) ? P.tiles.slice() : [{ x: P.tx, y: P.ty }];
-        var F = _nrvFrame(P.tx, P.ty), ts = F.ts, stone = _eaStoneMat(false), hot = _pzGlow(0xffffff), warm = _pzGlow(0xffffff);
+        var F = _eaFrame(P.tx, P.ty), ts = F.ts, stone = _eaStoneMat(false), hot = _pzGlow(0xffffff), warm = _pzGlow(0xffffff);
         hot.color.setRGB(1.8, 1.35, 0.75); warm.color.setRGB(1.6, 0.55, 0.12);   /* over-bright: the seam burns through any floor */
         /* the line's direction: first tile → last, else across the caster's line of sight */
         var ux = 1, uz = 0;
@@ -48570,7 +48622,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var seen = tiles.filter(function (t) { return _pzSeen(t.x, t.y); });
         if (!seen.length) { _sigDisposeGroup(F.g); return; }
         for (var i = 0; i < seen.length; i++) {
-            var c = _eaOff(F, seen[i].x, seen[i].y), d = i * 110;
+            var c = _eaGOff(F, seen[i].x, seen[i].y), d = i * 110;
             /* the seam: a jagged run of glowing strips across the tile, wide warm + thin hot */
             var prev = new THREE.Vector3(c.x - ux * ts * 0.55, c.y + ts * 0.035, c.z - uz * ts * 0.55);
             for (var s = 1; s <= 5; s++) {
@@ -48624,7 +48676,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        in an arc behind it, two low ones at the front corners so the body stays in sight), then crumble back to sand ════ */
     function _eaTomb(P) {
         var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(true), sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false }), behind = _eaBehind(F), slabs = [];
+        var F = _eaFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(true), sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false }), behind = _eaBehind(F), slabs = [];
         var disc = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.03, 0); disc.scale.setScalar(ts * 1.5);
         var defs = [[0, 1.25, 0.6], [1.1, 1.0, 0.52], [-1.1, 1.0, 0.52], [2.25, 0.3, 0.46], [-2.25, 0.3, 0.46]];
         for (var i = 0; i < defs.length; i++) {
@@ -48663,7 +48715,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the middle, grains pour down into it ════ */
     function _eaQuicksand(P) {
         var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, r = (P.def && P.def.aoeRadius) || 1, sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false });
+        var F = _eaFrame(tx, ty), ts = F.ts, r = (P.def && P.def.aoeRadius) || 1, sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false });
         var disc = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.032, 0), disc2 = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.036, 0);
         var D = ts * (r * 2 + 1.1), last = 0, TOTAL = 2300;
         return _sigRunOwned(F.g, TOTAL, function (el) {
@@ -48687,7 +48739,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        in, hold, then crack and fall away ════ */
     function _eaPetrify(P) {
         var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false, _EA.grey), pts = [];
+        var F = _eaFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false, _EA.grey), pts = [];
         for (var t = 0; t < 3; t++) {
             for (var i = 0; i < 9; i++) {
                 var a = i / 9 * Math.PI * 2 + t * 0.35, r = ts * (0.25 - 0.03 * t), ln = _eaLean(a, -0.45 - 0.1 * t);
@@ -48708,7 +48760,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _eaSlides = {};
     function _eaCliff(tx, ty, maxWait) {
         if (tx == null || !_pzSeen(tx, ty) || !_getVFXScene()) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false), behind = _eaBehind(F), pts = [], tops = [];
+        var F = _eaFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false), behind = _eaBehind(F), pts = [], tops = [];
         for (var i = 0; i < 7; i++) {
             var a = behind + (i / 6 - 0.5) * 2.0, r = ts * (0.95 + 0.12 * (i % 2)), h = ts * (1.25 + 0.55 * Math.sin(i / 6 * Math.PI)) * (i % 2 ? 0.82 : 1), ln = _eaLean(a, -0.22);
             pts.push({ x: Math.cos(a) * r, y: 0, z: Math.sin(a) * r, h: h, w: ts * rn(0.2, 0.26), d: i * 60, rx: ln.rx, rz: ln.rz });
@@ -48768,15 +48820,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var k = 1; k < N; k++) {
             var t = k / N, gx = Math.round(from.x + (tx - from.x) * t), gy = Math.round(from.y + (ty - from.y) * t);
             if (!_pzSeen(gx, gy)) continue;
-            var o = _eaOff(F, gx, gy), oc = _eaOff(F, from.x, from.y).lerp(new THREE.Vector3(0, 0, 0), t);
-            var cg = _eaCrackAt(F.g, M, new THREE.Vector3(oc.x, o.y, oc.z), ts, k * 1.9); cracks.push({ g: cg, d: (1 - t) * 160 });
+            var o = _eaGOff(F, gx, gy), oc = _eaOff(F, from.x, from.y).lerp(new THREE.Vector3(0, 0, 0), t);
+            var cg = _eaCrackAt(F.g, M, new THREE.Vector3(oc.x, o.y, oc.z), ts, k * 1.9, gx, gy); cracks.push({ g: cg, d: (1 - t) * 160 });
         }
         var ridge = [], lastR = null, TOTAL = 1750, GRAB = 230, LET = 1300, crumbled = false, off = new THREE.Vector3();
         return _sigRunOwned(F.g, TOTAL, function (el) {
             var d = track(); off.set(d ? d.x : 0, d ? d.y : 0, d ? d.z : 0); C.position.copy(off);
             stone.opacity = el < TOTAL - 20 ? 1 : 0;
             M.glow.opacity = 0.9 * _pzEnv(el, 0, 80, 500, 1100); M.dark.opacity = 0.8 * _pzEnv(el, 0, 60, 900, 1500);
-            for (var c = 0; c < cracks.length; c++) cracks[c].g.scale.setScalar(Math.max(0.01, el < cracks[c].d ? 0.01 : ts * 0.9 * _sigEaseOutCubic(_sigClamp01((el - cracks[c].d) / 140))));
+            for (var c = 0; c < cracks.length; c++) _eaSize(cracks[c].g, Math.max(0.01, el < cracks[c].d ? 0.01 : ts * 0.9 * _sigEaseOutCubic(_sigClamp01((el - cracks[c].d) / 140))));
             var g = _sigEaseOutBack(_sigClamp01(el / GRAB)), back = _sigClamp01((el - LET) / (TOTAL - LET - 60));
             for (var f = 0; f < fingers.length; f++) fingers[f].grow(back, Math.min(1, g));
             if (!crumbled && el >= LET) { crumbled = true; _nvLeaves(F, off.x, off.y + ts * 0.25, off.z, 6, { sprite: 'rock-debris', tint: 0x8a7458, r: 18, s0: 5, s1: 2, v: 80, vz0: 60, vz1: 150, g: 480, ml0: 400, ml1: 700 }); }

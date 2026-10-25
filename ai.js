@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.18-2026-10-23-tactics-search'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.19-2026-10-25-dead-slots'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1160,6 +1160,15 @@
     }
 
     // Value of buff stages on ally `tg`.
+    /* THE DEAD SLOTS (2026-10-25): a friendly status (Indomitable, Pep Talk, Extended Clips, regen, haste…) was a flat
+       +35, less than the MP of any tier 2+ cast (the tier ladder: 50 / 75 / 100 MP), so those buffs never paid for
+       themselves and were never cast. Worth a share of what the wearer deals per turn over the rounds it lasts. */
+    function _friendlyStatusValue(g, unit, tg, eff, v) {
+        if (!eff || !eff.id || !tg || tg.dead) return 0;
+        try { if (g.unitHasStatus(tg, eff.id)) return 0; } catch (e) {}
+        const dur = Math.min(Math.max(1, eff.duration || 1), 3);
+        return 20 + 0.15 * dur * unitThreatOutput(g, tg, v.closestEnemy || null);
+    }
     function buffStageValue(g, unit, tg, spell, v) {
         let boost = spell.statStageBoost || {};
         /* THE SPELL AUDIT D: the conditional stages — Hellfire Crown's stageHigherOf (the axis the target uses),
@@ -2845,6 +2854,35 @@
     // (aiScoreMargin below), so "what would the CPU do here?" is answered
     // by exactly the code that decides it.
     // ═════════════════════════════════════════════════════════════════════
+    /* SETUP FIRST (THE DEAD SLOTS, 2026-10-25): a buff, a status-only debuff, a shield, a weather call costs its AP and
+       keeps the turn; the hit costs 1 AP and ends it; AP does not carry over. So with the AP for both, the support cast
+       before the hit loses nothing, yet the ranking took the hit (it scores higher) and the turn ended with the setup
+       unused: 95 fielded spells had 0 casts in 840 lab matches. When the best option is a turn-ending act from where we
+       stand and a positive setup cast still leaves the AP and MP for it, the setup goes first (the next loop takes the
+       hit). Casts that move the caster are left out: the hit was picked from this tile. Same idea as Search first. */
+    const _SETUP_MOVES_CASTER = new Set(['teleport', 'escape', 'swap', 'dash', 'utility', 'transform', 'doorExit']);
+    function _setupFirst(g, unit, candidates) {
+        const ap = unit.ap || 0, one = g.AP_COST_ACTION || 1;
+        if (ap < one * 2 || !g.TargetQuery || typeof g.TargetQuery.spellEndsTurn !== 'function') return;
+        if (typeof _isClashMode === 'function' && _isClashMode()) return;   // Clash: any paid act ends the turn
+        let top = null;
+        for (const c of candidates) if (c.score > -900 && (!top || c.score > top.score)) top = c;
+        if (!top || top._objectiveWin) return;
+        const topSpell = top.type === 'spell' ? top.spell : null;
+        if (!(top.type === 'attack' || (topSpell && g.TargetQuery.spellEndsTurn(topSpell)))) return;
+        const topAp = topSpell ? (top.apCost != null ? top.apCost : one) : one;
+        const topMp = topSpell ? _mpCost(unit, topSpell) : 0;
+        let setup = null;
+        for (const c of candidates) {
+            if (c.type !== 'spell' || !c.spell || c === top || !(c.score > 0)) continue;
+            if (g.TargetQuery.spellEndsTurn(c.spell) || _SETUP_MOVES_CASTER.has(c.spell.kind)) continue;
+            if ((c.apCost != null ? c.apCost : one) + topAp > ap) continue;
+            if ((unit.mp || 0) - _mpCost(unit, c.spell) < topMp) continue;
+            if (!setup || c.score > setup.score) setup = c;
+        }
+        if (setup) setup.score = top.score + 1;
+    }
+
     function rankCandidates(unit, vision) {
         const g = G();
         const candidates = gatherCandidates(unit, vision);
@@ -2886,15 +2924,27 @@
             // somewhere — charge that tile's real threat. (Moves end on
             // their destination; everything else ends where we stand.)
             if (c._noDanger) continue;
-            const endX = (c.type === 'move' && c.x != null) ? c.x : unit.x;
-            const endY = (c.type === 'move' && c.y != null) ? c.y : unit.y;
-            const endZ = (c.type === 'move' && c.z != null) ? c.z : unit.z;
-            if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ);
+            let endX = (c.type === 'move' && c.x != null) ? c.x : unit.x;
+            let endY = (c.type === 'move' && c.y != null) ? c.y : unit.y;
+            let endZ = (c.type === 'move' && c.z != null) ? c.z : unit.z;
+            /* THE DEAD SLOTS (2026-10-25): a blink or an escape ends the activation where it LANDS, but it was charged
+               the danger of the tile it leaves, the very danger it exists to get out of (hurt-blink 200 minus a
+               deadly tile = never cast). Charge the landing; an escape that cloaks or Protects is hard to hit there. */
+            let _cloak = 1;
+            if (c.type === 'spell' && c.spell && c.spell.kind === 'teleport' && c.target && c.target.id == null && c.target.x != null) {
+                endX = c.target.x; endY = c.target.y; endZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(endX, endY) : undefined;
+            } else if (c.type === 'spell' && c.spell && c.spell.kind === 'escape' && typeof window.escapeLandingTile === 'function') {
+                const _lt = window.escapeLandingTile(unit, c.spell);
+                if (_lt) { endX = _lt.x; endY = _lt.y; endZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(endX, endY) : undefined; }
+                if ((c.spell.statusEffects || []).some(e => e && (e.id === 'invisible' || e.id === 'protect'))) _cloak = 0.3;
+            }
+            if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ) * _cloak;
             c.score -= c._dangerCost;
         }
 
         // THE TACTICS (2026-10-23): the unit's Tactic weighs its matching options.
         _applyTactic(g, unit, vision, candidates);
+        _setupFirst(g, unit, candidates);
 
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
         // Hard looks one enemy reply ahead for its top options (Phase 4).
@@ -3086,7 +3136,17 @@
     function scoreOffensiveHit(g, unit, tg, sp, v, opts) {
         opts = opts || {};
         const est = estDamage(g, unit, tg, sp, opts);
-        if (est <= 0) return { est: 0, val: 0 };
+        if (est <= 0) {
+            /* THE DEAD SLOTS (2026-10-25): a status-only cast (Fear, Eyewitness, Dread Aura, Meow, Executive Order…)
+               has no damage, so this returned 0 before its riders were counted and every AoE / barrage debuff scored
+               nothing: 0 casts in 840 lab matches. A spell that deals no damage is worth its statuses and stages. */
+            if (sp && _baseSpellDmg(sp) <= 0 && tg && !tg.dead && !isProtected(g, tg)) {
+                let val = statusRiderValue(g, unit, tg, sp, v);
+                if (val > 0 && !opts.splash) val += getTargetPriority(tg, unit, v) * 0.2;
+                return { est: 0, val };
+            }
+            return { est: 0, val: 0 };
+        }
         let landP = 1, arc = 'front';
         if (!sp) {
             try { arc = g.getAttackArc({ x: opts.fromX != null ? opts.fromX : unit.x, y: opts.fromY != null ? opts.fromY : unit.y }, tg) || 'front'; } catch (e) {}
@@ -4382,7 +4442,7 @@
             }
             for (const eff of (spell.statusEffects || [])) {
                 if (!eff || !eff.id || eff.id === 'protect') continue;
-                s += 35;   // regen/haste-style friendly riders
+                s += _friendlyStatusValue(g, unit, target, eff, v);   // regen/haste-style friendly riders
             }
             // THE SPELL AUDIT D: a buff row's barrier (Ki Charge), its taunt (Shield Maiden), its decoy (Mimicry)
             if (spell.shield > 0) s += Math.min(spell.shield, (target.maxHp || 0) * 0.5) * 0.6;
@@ -4403,13 +4463,23 @@
             const inRange = g.aliveUnitsFor(unit.player).filter(a =>
                 Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
             // Fermata (statLock): lock in live buff stages.
-            if (spell.teamStatusEffects) {
+            if (spell.teamStatusEffects && spell.teamStatusEffects.some(e => e && e.id === 'statLock')) {
                 const lockable = inRange.filter(a => !g.unitHasStatus(a, 'statLock'));
                 const buffed = lockable.filter(a =>
                     ['atk', 'def', 'mdef', 'spd', 'int'].some(k => {
                         try { return g.getStatStageCount && g.getStatStageCount(a, k) > 0; } catch (e) { return false; }
                     }));
                 return buffed.length >= 2 ? 60 + buffed.length * 45 : (buffed.length === 1 ? 35 : 0);
+            }
+            /* THE DEAD SLOTS (2026-10-25): every other team-status cry (Extended Clips, Tin Foil Hat…) took the Fermata
+               branch above and scored 0 unless two allies already had raised stages. It is worth its statuses on the
+               allies in reach. */
+            if (spell.teamStatusEffects) {
+                let s = 0;
+                for (const a of inRange) for (const eff of spell.teamStatusEffects) s += _friendlyStatusValue(g, unit, a, eff, v) * 0.8;
+                if (spell.statStageBoost) for (const a of inRange) s += buffStageValue(g, unit, a, spell, v) * 0.8;
+                if (!v.visibleEnemies.length) s *= 0.25;
+                return s;
             }
             let s = 0;
             for (const a of inRange) {
@@ -4933,6 +5003,8 @@
             }
             if ((sid === 'plunder' || sid === 'racePlunder') && target) {
                 let s = 40;
+                // THE DEAD SLOTS (2026-10-25): the strike is real damage (dmg 100) and was never counted
+                if (spell.dmg && target.id != null) s += scoreOffensiveHit(g, unit, target, spell, v, {}).val;
                 if ((target.hourglasses || 0) > 0) s += 110;
                 if ((target.gold || 0) > 0) s += 25;
                 return s;

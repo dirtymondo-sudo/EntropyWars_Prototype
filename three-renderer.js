@@ -22402,12 +22402,17 @@ const ThreeRenderer = (function () {
                 continue;
             }
             if (busy) continue;
-            var key = c.dir + '|' + c.wallX + ',' + c.wallY + '|' + c.footX + ',' + c.footY + '|' + c.round;
+            var key = c.dir + '|' + c.wallX + ',' + c.wallY + '|' + c.footX + ',' + c.footY + '|' + c.round + '|' + (c.h != null ? c.h : '');
             var footY = unitSurfaceY(unit);
-            var hangY = footY + c.rise * lvl * CLIMB_VIS.hangFrac;
+            /* NO FACE IS TOO TALL (2026-10-25): a tall face is climbed a stretch a turn — the body hangs at c.h (how high it
+               holds on), its feet a stretch's (1 − hangFrac) under the grip; a one-stretch face reads as before (rise × hangFrac) */
+            var gripH = (c.h != null) ? c.h : c.rise, stretchH = Math.min(gripH, c.cap || c.rise);
+            var hangY = footY + Math.max(0, gripH - stretchH * (1 - CLIMB_VIS.hangFrac)) * lvl;
             if (!cv || cv.key !== key) {
+                /* the next stretch climbs on from where the body hangs now */
+                var fromNow = (cv && !cv.drop && cv.footX === c.footX && cv.footY === c.footY) ? g.position.y : null;
                 if (cv) _climbRestoreClip(uid, cv);
-                cv = { key: key, t0: now, fromY: (c.dir === 'down') ? footY + c.rise * lvl : footY, frozenAt: null, ts0: null,
+                cv = { key: key, t0: now, fromY: (fromNow != null) ? fromNow : (c.dir === 'down') ? footY + c.rise * lvl : footY, frozenAt: null, ts0: null,
                        footX: c.footX, footY: c.footY, knock: unit._climbKnockSeq || 0, drop: null };
                 _climbVis.set(uid, cv);
             }
@@ -70586,7 +70591,12 @@ const ThreeRenderer = (function () {
                 Object.keys(bodies).forEach(function (bk) {
                     /* THE DRAPE: each sheet lies on the true ground under every vertex, a highlight's lift over it (the floor mesh is
                        sampled coarser than the sheet; the plate lift keeps the ground from rising through between their vertices) */
-                    var gLift = HL_FIELD_LIFT * ts, gFn = _liqDrapeSampler();
+                    var gLift = HL_FIELD_LIFT * ts, gFn0 = _liqDrapeSampler();
+                    /* THE GAP's floor (2026-10-25, mondo: "Fissure shows lava on the sides, but its supposed to be only at the bottom"):
+                       a Fissure cell's lava lies flat on its bed — the drape read the rim's height on the cell's edge vertices and
+                       pulled the sheet up every wall. The walls are the strata's own sides (the room's bed). */
+                    var gGap = (typeof state !== 'undefined' && state && state.gapTiles) ? state.gapTiles : null;
+                    var gFn = gGap ? function (wx, wz, x, y, ref) { return gGap[x + ',' + y] ? null : gFn0(wx, wz, x, y, ref); } : gFn0;
                     var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 + gLift, ground: gFn }), order: LIQ_BLEND_ORDER }];
                     if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05 + gLift, deep: deeps[bk], near: deeps[bk], ground: gFn }), order: LIQ_BLEND_ORDER + 1 });
                     parts.forEach(function (pt) {
@@ -70608,7 +70618,8 @@ const ThreeRenderer = (function () {
                 var gDry = null, dLift = 0;
                 if (!fluid && !rq) {
                     var gS = _liqDrapeSampler();   // THE WALL TOPS: a monument cell keeps its floor's flat sheet (the ground read there is the stone's top)
-                    gDry = function (wx, wz, x, y, ref) { return monFloor(x, y) !== null ? null : gS(wx, wz, x, y, ref); };
+                    var gGapD = (typeof state !== 'undefined' && state && state.gapTiles) ? state.gapTiles : null;   // THE GAP's floor: flat on its bed, never up its walls (as the liquids)
+                    gDry = function (wx, wz, x, y, ref) { return (monFloor(x, y) !== null || (gGapD && gGapD[x + ',' + y])) ? null : gS(wx, wz, x, y, ref); };
                     dLift = HL_FIELD_LIFT * ts;
                 }
                 _fieldPatchRuns(byKey[bk]).forEach(function (run) {

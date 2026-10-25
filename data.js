@@ -5380,7 +5380,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 55,
         equipCost: 25,
-        dmg: 180,
+        dmg: 225,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 180→225 (+25%)
         cooldownRounds: 0,   // BALANCE PASS 2026-10-07: dmg 160→180 would cross the derived-cost line and stamp a 2-round cooldown; pinned to keep it cooldown-free as before
         range: 5,
         kind: 'line',
@@ -5565,7 +5565,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 40,
         equipCost: 20,
-        dmg: 170,
+        dmg: 240,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 170→240 (+40%, weakest T4 dash)
         range: 4,
         kind: 'dash',
         damageType: 'physical',
@@ -7032,14 +7032,14 @@ const RACE_ABILITIES = {
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Poltergeist. */
         { id: 'goThingsThatGoBump', name: 'Things That Go Bump', tier: 1, families: ['ghost'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 4, dmg: 45, damageType: 'magic',
-          ignoresLineOfSight: true, randomTargets: { count: 3, scope: 'enemies', distinct: true, mult: 1 },
+          ignoresLineOfSight: true, randomTargets: { count: 2, scope: 'enemies', distinct: true, mult: 1 },   // BALANCE PASS 2026-10-25 (stats20 lab): 3→2 targets (Ghost 69%)
           statusEffects: [{ id: 'haunted', duration: 2 }],
-          desc: 'Plates, chairs, the piano. 3 random enemies within 4 tiles each take WEAK magic damage and are Haunted for 2 rounds. Fires through cover.' },
+          desc: 'Plates, chairs, the piano. 2 random enemies within 4 tiles each take WEAK magic damage and are Haunted for 2 rounds. Fires through cover.' },
         { id: 'goWholeHouseShakes', name: 'The Whole House Shakes', tier: 3, families: ['ghost'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 60, damageType: 'magic',
-          ignoresLineOfSight: true, randomTargets: { count: 4, scope: 'enemies', distinct: false, mult: 1 },
+          ignoresLineOfSight: true, randomTargets: { count: 3, scope: 'enemies', distinct: false, mult: 1 },   // BALANCE PASS 2026-10-25 (stats20 lab): 4→3 hits (Ghost 69%)
           bonusVsStatus: { status: 'haunted', mult: 1.5 },
-          desc: 'Every door slams at once. 4 hits land on random enemies within 5 tiles (the same enemy can be hit more than once), WEAK magic damage each, through cover. Deals bonus damage to Haunted targets.' },
+          desc: 'Every door slams at once. 3 hits land on random enemies within 5 tiles (the same enemy can be hit more than once), WEAK magic damage each, through cover. Deals bonus damage to Haunted targets.' },
         /* Ghost capstone since the 2026-08-12 capstone pass (was Possession).
            §6.6 (Phase 5 wave B, 2026-09-08): ×1.5 vs Haunted — the payoff. */
         { id: 'raceBoo', spellType: 'anomaly', element: 'psychic', name: 'Boo',
@@ -7549,7 +7549,7 @@ const RACE_ABILITIES = {
     ],
     'bigfoot': [
         { id: 'raceTremorStomp', tier: 1, spellType: 'anomaly', element: 'earth', name: 'Tremor Stomp',
-          type: 'damage', cost: 30, dmg: 80, range: 0,
+          type: 'damage', cost: 30, dmg: 64, range: 0,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 80→64 (-20%, top T1 by dmg/cast)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -7793,7 +7793,7 @@ const RACE_ABILITIES = {
         { id: 'raceNinefoldScratch', upgradesBlock: ['upExtraTarget', 'upBlast'], spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', tier: 4, families: ['feline'], cost: 40, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [20, 20, 20, 20, 20, 20, 20, 20, 20],
+          hitDamages: [30, 30, 30, 30, 30, 30, 30, 30, 30],   // BALANCE PASS 2026-10-25 (stats20 lab): 20→30 a hit (229/cast vs A Thousand Stings 412)
           desc: 'Nine lives, nine scratches. Deals SEVERE physical damage to a Single Enemy across 9 hits.' },
         { id: 'raceNimbleDodge', tier: 2, families: ['athleticism'], spellType: 'human', element: 'wind', name: 'Nimble Dodge',
           type: 'utility', cost: 20, apCost: 1, range: 0, cooldownRounds: 2,
@@ -8108,7 +8108,8 @@ const RACE_ABILITIES = {
           desc: 'This town ain\'t big enough. A Single Enemy within 5 tiles is Provoked for a round (it must come at the cowboy) and Marked for 2 (the next physical hit on it deals +40). Cooldown: 2 rounds.' },
         { id: 'sigSixShooter', name: 'Six-Shooter', tier: 4, families: ['gunslinger'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'human', element: 'metal', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 4,
-          hitDamages: [30, 30, 30, 30, 30, 30], projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          hitDamages: [42, 42, 42, 42, 42, 42], projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          // BALANCE PASS 2026-10-25 (stats20 lab): 30→42 a shot (multi-hit T4s read well under single-hit T4s)
           desc: 'Six in the chamber, six in the target. Deals HEAVY physical damage to a Single Enemy within 4 tiles across 6 shots. Provoked targets take it worse. Cooldown: 2 rounds.' },
     ],
     'men in black': [
@@ -8436,7 +8437,7 @@ const RACE_ABILITIES = {
     'astronaut': [
         /* THE SIGNATURE FAMILY (2026-10-23): Mission Control, this race's own. */
         { id: 'sigTetherLine', name: 'Tether Line', tier: 1, families: ['missioncontrol'], cost: 25, apCost: 1, spellType: 'tech',
-          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 60, range: 4, pullDistance: 2,
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 100, range: 4, pullDistance: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched)
           statusEffects: [{ id: 'tethered', duration: 1 }],
           desc: 'Clip on, reel in. Deals WEAK physical damage to a Single Enemy within 4 tiles, pulls it 2 tiles toward you and keeps it Tethered for a round: it is dragged behind you when you move.' },
         { id: 'sigOrbitalStrike', name: 'Orbital Strike', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -9201,7 +9202,7 @@ const RACE_ABILITIES = {
           kind: 'line', damageType: 'magic', lineWidth: 1, destroysObstacles: true,
           desc: 'Deals MEDIUM magic damage to All Enemies in a line.' },
         { id: 'raceGiantSmash', spellType: 'alien', name: 'Giant Smash',
-          type: 'damage', tier: 4, apCost: 2, families: ['titan'], cost: 50, dmg: 170, range: 2,
+          type: 'damage', tier: 4, apCost: 2, families: ['titan'], cost: 50, dmg: 230, range: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 170→230 (still 228/cast for 2 AP after two path buffs)
           kind: 'dash', damageType: 'physical',
           dashDamage: 110,   // BALANCE PASS 2026-10-06: PATH 56→84 (lab: 227 damage a cast for 100 MP + 2 AP); 2026-10-07: 84→110 (still 228 a cast)
           statusEffects: [{ id: 'stun', duration: 1 }],
@@ -9291,8 +9292,8 @@ const RACE_ABILITIES = {
           kind: 'aoe', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'Terrifying roar. All enemies within 2 tiles are Feared for a round.' },
-        { id: 'raceInfernalConscription', tier: 2, dmg: 60, damageType: 'magic', pullDistance: 3, lineOfSight: true, families: ['infernalcourt'], spellType: 'unholy', name: 'Infernal Conscription',
-          type: 'debuff', cost: 35, range: 4, apCost: 1,
+        { id: 'raceInfernalConscription', tier: 2, dmg: 100, damageType: 'magic', pullDistance: 3, lineOfSight: true, families: ['infernalcourt'], spellType: 'unholy', name: 'Infernal Conscription',
+          type: 'debuff', cost: 35, range: 4, apCost: 1,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched)
           kind: 'pull',
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'Report for duty. Deals WEAK magic damage to a Single Enemy, drags them 3 tiles toward the caster and Fears them for a round.' },
@@ -9356,9 +9357,8 @@ const RACE_ABILITIES = {
         { id: 'raceEternalSlumber', spellType: 'alien', element: 'psychic', name: 'Eternal Slumber',
           type: 'damage', cost: 60, dmg: 160, range: 4, apCost: 2, tier: 4,
           families: ['astral'],
-          kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' },
+          kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): AoE stun dropped (T4 finishers do not apply statuses; a radius-2 stun was the Dreameater carry)
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Sleep now. The dream will finish eating on its own.' },
         /* THE SIGNATURE FAMILY (2026-10-23): Nightmares, this race's own. */
         { id: 'sigCountingSheep', name: 'Counting Sheep', tier: 2, families: ['nightmares'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'alien', element: 'psychic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
@@ -10171,7 +10171,7 @@ const RACE_ABILITIES = {
           desc: 'Set to stun. Then set to something nicer. A Single Enemy within 4 tiles is Charmed for 2 rounds (it cannot move against you) and loses 1 SPD stage. Cooldown: 2 rounds.' },
         { id: 'sigExcessiveMachine', name: 'Excessive Machine', tier: 4, families: ['spacevixen'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'tech', element: 'sonic', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 2,
-          hitDamages: [28, 28, 28, 28, 28, 28], bonusVsStatus: { status: 'charm', mult: 1.5 },
+          hitDamages: [40, 40, 40, 40, 40, 40], bonusVsStatus: { status: 'charm', mult: 1.5 },   // BALANCE PASS 2026-10-25 (stats20 lab): 28→40 a note
           desc: 'The organ plays until something burns out, and it is never her. Deals HEAVY magic damage to a Single Enemy within 2 tiles across 6 notes. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
 
@@ -13328,7 +13328,7 @@ const STATUS_LIBRARY_DESCS = {
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
     guarding:  'Braced for impact — bonus defense until the next turn.',
-    climbing:  'Hanging on a wall face until its next turn: no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage.',
+    climbing:  'Hanging on a wall face until its next turn (a tall face takes a turn per stretch): no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage from where it hangs.',
     guardRegen: 'Catching a breath from Guard: an extra 5% max HP and 3% max MP recover at the end of this round.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
