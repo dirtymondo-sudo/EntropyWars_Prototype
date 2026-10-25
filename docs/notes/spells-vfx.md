@@ -1843,6 +1843,39 @@ helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
 - Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
   every caster-side piece gates on `_pzSeen`. No screen flash.
 - Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
+## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
+Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-Z signatures; helpers `_ps*`.
+- THE SHARED LANGUAGE: the wind-up beat opens THE THIRD EYE over the caster's head (eye sprite with a black pupil,
+  normal blend; brainwave rings ripple off the head; motes pulled into the eye; shuts at holdMs). Where the spell lands,
+  THE MIND RINGS: three brainwave rings close round the head (hostile) or rise off it (a buff / shield / heal kind on an
+  ally) and a small eye blinks over it. An aoe lays THE MIND SIGIL (eye in the triangle) first, rings on each body in it
+  (enemies of the caster for a hostile cast, its allies for a buff). Utility rows with no damage (doors, teleports,
+  Far Sight) get the eye only.
+- HOOKS (no shared line touched): `fire`, `_stageArchetype` and `_beamColorFor` are closure bindings reassigned in the
+  block (the export at the bottom reads `fire` after it runs). The rings key off the first LANDING intent (impact, bolt
+  at flyMs, beam hitTiles, aoe/descent, pull with uid, chain, aura); the staging `burst` is only the fallback for a row
+  that fired none (Psychosis's burst came ~1 s after its impact, so burst can't be the clock). One ring set per tile per
+  700 ms. `_PS_OWN` = rows whose own signature draws the rings.
+- COLOUR: `_THEME_MAP.psychic` / `_ELEMENT_THEME.psychic` (was 'anomaly'), `_BEAM_COLORS.psychic` wins over the row's
+  spellType (alien rows had green beams), staging archetypes `psychic` / `psychicAid` (buff grammar) / `psychicHex`
+  (debuff grammar), all `noOrb` (no glass orb on heavy hits), grades to match. A row with another vfxElement (Ascension
+  Day = light), a vfxArchetype, a non-mind SPELL_STAGE_MAP archetype, or a heal stage keeps its own.
+- SIGNATURES (Psychic Abilities family): Kinetic Hurl (bolt, pzOwn: rings race out, THE GRIP — three gyre rings — rides
+  the thrown body, crash ring where it stops); Telekinetic Slam (pull, pzOwnTether: a beam out of the third eye, rings
+  reel along it, grip + slam; battle.js skips the rope); Psychic Beam (beam, layered: `_psLance` pink lance + rings + mind
+  rings on every body hit); Migraine (bolt, pzOwn: rings clamp the head, light cracks, three throbs, snap open); Mind
+  Shatter (bolt, pzOwn: sigil, a great eye over the 3×3, the old `_sigMindShatter3D` cage on the centre, a glass shell that
+  bursts into shards on every other enemy in it); Telepathic Link (aura, pzOwn: a thread from the third eye to each ally's
+  head, an eye + rising rings on each); Mind Blank (new row; bolt, pzOwn: rings close, the eye goes white and shuts, a flat
+  line, the rings hush out). pzOwn bolts land their impact recipe through the nature pass's `_nvLand`.
+- Untouched looks (they get the shared eye + rings on top): every race signature (pz / sig / go / nr / door rows),
+  Psychosis's brain, Psychic Barrier's dome, Far Sight's view.
+- Proof: Spell Lab, the capture rig freezes performance.now() at set delays after an intent. Telepathic Link's threads
+  were drawn by firing its aura with the dummy counted on the caster's side for one call (the Lab has no ally).
+  Stills: /mnt/project-files/psychic-vfx/.
+
+
 ## THE METAL PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Metal rides 72 rows over 40-odd races (guns, blades, chains, hooks, machines), each with its own look already, so metal's
 identity is a STAMP every metal cast wears on top of its own look. Code: three-vfx-effects.js block "THE METAL PASS" just
