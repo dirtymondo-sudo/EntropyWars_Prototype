@@ -5859,6 +5859,19 @@ const SPELL_LIBRARY = [
         bonusVsStatus: { status: 'discord', mult: 1.5 },
         desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Deals bonus damage to targets with Discord. Cooldown: 2 rounds.'
     },
+    /* THE SONIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each" element): two Sonic
+       family rows on existing kinds and rules only. Screech = the family's tier II single-target Silence (the setup
+       Sonic Breaker and Deafening Wail's lane already pay off); Sonic Boom = the family's tier IV single-target
+       finisher, bonus vs Stun (Lullaby's sleep), applies nothing (no self-combo). Numbers mirror THE NATURE PASS's
+       Vine Whip / Wrath of the Wild. Their looks: three-vfx-effects.js "THE SONIC PASS". */
+    { id: 'raceScreech', name: 'Screech', tier: 2, families: ['sonic'], cost: 50, apCost: 1, spellType: 'anomaly',
+      element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4,
+      statusEffects: [{ id: 'silence', duration: 1 }],
+      desc: 'A piercing shriek. Deals MEDIUM magic damage to a Single Enemy within 4 and Silences it for 1 round.' },
+    { id: 'raceSonicBoom', name: 'Sonic Boom', tier: 4, families: ['sonic'], cost: 100, apCost: 1, cooldownRounds: 2,
+      spellType: 'anomaly', element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
+      bonusVsStatus: { status: 'stun', mult: 1.5 },
+      desc: 'The air round a Single Enemy within 4 bursts in a wall of sound for HEAVY magic damage. Stunned targets take it worse. Cooldown: 2 rounds.' },
 
 
     {
@@ -6164,6 +6177,19 @@ const SPELL_LIBRARY = [
           element: 'water', type: 'damage', kind: 'damage', range: 3, dmg: 80, damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
           desc: 'A jet of seawater from the gills. WEAK water damage and the target is soaked through.' },
+        /* THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or
+           making them easily identifiable and making sure there's a nice amount of spells for each"): Water Abilities had
+           no single-target Soak and no finisher vs Soaked (water's own status) at all. Two rows on existing kinds and
+           rules only: Water Jet = the Spout shape (damage, Soaked 2) at tier I; Maelstrom = the family's tier IV
+           finisher, bonus vs Soaked, applies nothing (no self-combo). Their looks: three-vfx-effects.js "THE WATER PASS". */
+        { id: 'raceWaterJet', name: 'Water Jet', tier: 1, families: ['water'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'A hard jet of water from the open hand. WEAK magic damage to a Single Enemy within 3 and it is Soaked for 2 rounds.' },
+        { id: 'raceMaelstrom', name: 'Maelstrom', tier: 4, families: ['water'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'The sea turns on one spot. A whirlpool opens under a Single Enemy within 4 and its water closes over it for HEAVY magic damage. Soaked targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceSurveillance', name: 'Surveillance', tier: 1, families: ['deepstate'], cost: 25, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 6,
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
@@ -6191,6 +6217,19 @@ const SPELL_LIBRARY = [
           element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Feed the fire what it wants. MEDIUM magic damage — a Burning target goes up like tinder.' },
+        /* THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element ... making sure there's a nice amount
+           of spells for each"): Fire Magic had one row per tier. Two more on existing kinds and rules only: Flamethrower =
+           the line shape (Dragon Breath's, without its burning tiles) at tier II, Burn 2 (setup); Inferno = the
+           self-centred tier IV finisher (Throne of Ashes' shape), bonus vs Burn, applies nothing (no self-combo).
+           Their looks: three-vfx-effects.js "THE FIRE PASS". */
+        { id: 'raceFlamethrower', name: 'Flamethrower', tier: 2, families: ['fire'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'fire', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 3, lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A roaring jet of flame from the open hand. MEDIUM magic damage to All Enemies in a 3-tile line; they keep Burning for 2 rounds.' },
+        { id: 'raceInferno', name: 'Inferno', tier: 4, families: ['fire'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 0, aoeRadius: 2,
+          aoeOriginSelf: true, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'The caster becomes the heart of a firestorm. HEAVY magic damage to All Enemies within 2 tiles. Burning targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceStrangeLoop', upgradesBlock: ['upLinger'], name: 'Strange Loop', tier: 2, families: ['fractal'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', vfxElement: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'stun', duration: 1 }],
@@ -6317,6 +6356,19 @@ const SPELL_LIBRARY = [
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           leaveTerrain: 'poison', leaveTerrainRadius: 1,   // THE SPELL AUDIT Batch D: only the middle 3x3 stays poisoned
           desc: 'The air goes green. HEAVY magic damage to a 5x5. Deals bonus damage to targets with Poison. The centre 3x3 turns to poison ground.' },
+        /* THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): the Poison family had
+           one tier II (Splash, a Goo spell) and one tier III (Rot, which applies) and no single-target setup + finisher pair.
+           Two rows on existing kinds and rules only: Venom Spit = the tier II setup (damage + Poison 2, the Poison Dart
+           shape in magic); Venom Burst = the tier III finisher, bonus vs Poison, applies nothing (no self-combo). Their
+           looks: three-vfx-effects.js "THE POISON PASS". */
+        { id: 'raceVenomSpit', name: 'Venom Spit', tier: 2, families: ['poison'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'A glob of venom spat across the field. MEDIUM magic damage to a Single Enemy within 4 tiles; it Poisons them for 2 rounds.' },
+        { id: 'raceVenomBurst', name: 'Venom Burst', tier: 3, families: ['poison'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4,
+          bonusVsStatus: { status: 'poison', mult: 1.5 },
+          desc: 'The venom already in them boils over. MEDIUM magic damage to a Single Enemy within 4 tiles. Poisoned targets take it worse.' },
         { id: 'raceCampaignPromise', name: 'Campaign Promise', tier: 2, families: ['politics'], cost: 50, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round.' },
@@ -6333,6 +6385,14 @@ const SPELL_LIBRARY = [
           damageType: 'magic', pullDistance: 3, groundsFlyers: true,
           weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): the mind weighs nothing — heavy and colossal bodies come like any other
           desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
+        /* THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): Mind Shatter (the
+           family's tier IV) pays off Silence, but no Psychic Abilities row applied it. Mind Blank = the setup, on an
+           existing kind and status only (the Antimagic Gaze / Timber Stomp shape: tier II, WEAK damage, Silence 1). Its
+           look: three-vfx-effects.js "THE PSYCHIC PASS". */
+        { id: 'raceMindBlank', name: 'Mind Blank', tier: 2, families: ['psychic'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Wipe the thought before it forms. Deals WEAK magic damage to a Single Enemy within 4 and Silences it for 1 round. Sets up Mind Shatter.' },
         { id: 'raceHogtie', name: 'Hogtie', tier: 2, families: ['ropework'], cost: 50, apCost: 1, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 1,
           statusEffects: [{ id: 'root', duration: 2 }],
@@ -6501,6 +6561,19 @@ const SPELL_LIBRARY = [
           aoeRadius: 1, pullToCenter: true, groundsFlyers: true,
           bonusVsStatus: { status: 'blind', mult: 1.5 },
           desc: 'A tight cyclone drags everything to its center. HEAVY magic damage to All Enemies in a 3×3 within 4 tiles, pulls them toward the middle and knocks flyers out of the sky. Blinded targets take it worse. Cooldown: 2 rounds.' },
+        /* THE WIND PASS (2026-10-25, mondo: "a similar thread on each element, giving them a consistent look ... and
+           making sure there's a nice amount of spells for each"): Wind Control had no tier I setup and no tier III
+           finisher. Two rows on existing kinds and rules only: Squall = the Thornlash shape (tier I, applies the
+           family's status, Blind 1); Tornado = the Conduction shape (tier III, ×1.5 vs Blind, applies nothing — no
+           self-combo). Their looks: three-vfx-effects.js "THE WIND PASS". */
+        { id: 'raceSquall', name: 'Squall', tier: 1, families: ['wind'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'A cutting gust full of grit. WEAK magic damage to a Single Enemy within 4 and Blinds it for 1 round.' },
+        { id: 'raceTornado', name: 'Tornado', tier: 3, families: ['wind'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 4,
+          bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'A twister drops on one target. MEDIUM magic damage to a Single Enemy within 4. Blinded targets take it worse.' },
         { id: 'raceMudslide', name: 'Mudslide', tier: 3, families: ['earth'], cost: 75, apCost: 1, spellType: 'anomaly',
           element: 'earth', type: 'damage', kind: 'line', damageType: 'physical', dmg: 125, range: 4, lineWidth: 1,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
