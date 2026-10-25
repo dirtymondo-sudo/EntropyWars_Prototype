@@ -42761,6 +42761,676 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['pzMentalStatic'] = { bolt: 'pzStatic_bolt' };
     SPELL_MAP['pzAneurysm']     = { bolt: 'pzAneurysm_bolt' };
 
+    /* ═════════════════════════════════════════════════════════════════════
+       THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable") — every psychic spell (data.js
+       element 'psychic', or vfxElement 'psychic' on a row with no element)
+       now speaks one language, so a cast reads as psychic before its own look
+       lands:
+         · THE THIRD EYE — a pink eye opens over the caster's head on the
+           wind-up beat, brainwave rings ripple off the head and motes are
+           drawn into the eye; it shuts as the cast lands.
+         · THE MIND RINGS — on whoever the spell lands on, three brainwave
+           rings close round the head (a hostile cast) or rise off it (a buff,
+           shield or heal on an ally) and a small eye blinks over it. An aoe
+           lays the mind sigil (the eye in the triangle) on the ground first.
+         · THE COLOUR — psychic pink + violet everywhere (theme, beam colour,
+           staging palette, grade) whatever the row's spellType, and no glass
+           orb on the heavy hits: the rings are the hit.
+       The Psychic Abilities family's rows get their own signatures on top:
+       Kinetic Hurl, Telekinetic Slam, Psychic Beam, Migraine, Mind Shatter,
+       Telepathic Link and the new Mind Blank (data.js THE PSYCHIC PASS).
+       HOOKS: fire() and _stageArchetype() / _beamColorFor() are function
+       bindings of this closure, wrapped here (the export below reads fire
+       after this runs), so no shared line changed. Everything rides fire(),
+       which online.js relays, so the guest sees the same eye and rings
+       (RULE #2). The caster's eye only draws where the viewer sees the
+       caster's tile, the rings only where it sees the target's (_pzSeen).
+       THE TARGET STAYS: no screen flash, nothing full-screen; the rings sit
+       thin round the head, the eye above it. ═══════════════════════════════ */
+    var _PS = { psi: 0xff4fd8, hot: 0xff9ae8, core: 0xfff0fc, violet: 0x9a5cff, deep: 0x6a2ab0, lilac: 0xd8a8ff };
+
+    /* ── the canvases (white, tinted by the material) ── */
+    /* the third eye: an almond lid with rays over it, a ringed iris, a black pupil (drawn for normal blending) */
+    function _psEyeTex() {
+        return _pzTex('ps-eye', 256, 256, function (g, w, h) {
+            var c = 128, cy = 150;
+            g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#ffffff';
+            for (var i = 0; i < 9; i++) {
+                var a = Math.PI + (i + 0.5) / 9 * Math.PI;
+                g.globalAlpha = 0.55 + 0.45 * Math.sin((i + 0.5) / 9 * Math.PI); g.lineWidth = 7;
+                g.beginPath(); g.moveTo(c + Math.cos(a) * 92, cy + Math.sin(a) * 66); g.lineTo(c + Math.cos(a) * 122, cy + Math.sin(a) * 118); g.stroke();
+            }
+            g.globalAlpha = 1;
+            function lid() { g.beginPath(); g.moveTo(c - 118, cy); g.quadraticCurveTo(c, cy - 96, c + 118, cy); g.quadraticCurveTo(c, cy + 96, c - 118, cy); g.closePath(); }
+            lid(); g.fillStyle = 'rgba(255,255,255,0.42)'; g.fill();
+            g.save(); lid(); g.clip();
+            var ir = g.createRadialGradient(c, cy, 6, c, cy, 44); ir.addColorStop(0, '#ffffff'); ir.addColorStop(1, 'rgba(255,255,255,0.75)');
+            g.fillStyle = ir; g.beginPath(); g.arc(c, cy, 44, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = 'rgba(40,0,40,0.55)'; g.lineWidth = 2;
+            for (var k = 0; k < 28; k++) { var b = k / 28 * Math.PI * 2; g.beginPath(); g.moveTo(c + Math.cos(b) * 22, cy + Math.sin(b) * 22); g.lineTo(c + Math.cos(b) * 42, cy + Math.sin(b) * 42); g.stroke(); }
+            g.strokeStyle = 'rgba(40,0,40,0.8)'; g.lineWidth = 4; g.beginPath(); g.arc(c, cy, 44, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = '#0a0010'; g.beginPath(); g.arc(c, cy, 19, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#ffffff'; g.beginPath(); g.arc(c - 9, cy - 10, 6, 0, Math.PI * 2); g.fill();
+            g.restore();
+            lid(); g.strokeStyle = '#ffffff'; g.lineWidth = 9; g.stroke();
+            g.strokeStyle = 'rgba(60,0,60,0.6)'; g.lineWidth = 2.5; g.stroke();
+        });
+    }
+    /* a brainwave ring: a wavy loop, a thin inner circle and eight beads on it */
+    function _psWaveTex() {
+        return _pzTex('ps-wave', 512, 512, function (g, w, h) {
+            var c = 256; g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineJoin = 'round';
+            function wave(lw, a0) { g.lineWidth = lw; g.globalAlpha = a0; g.beginPath(); for (var i = 0; i <= 720; i++) { var a = i / 720 * Math.PI * 2, r = 220 + 18 * Math.sin(a * 14) * (0.55 + 0.45 * Math.sin(a * 3)); g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); } g.closePath(); g.stroke(); }
+            wave(34, 0.12); wave(20, 0.28); wave(10, 1);   /* a soft glow under a hard line */
+            g.lineWidth = 12; g.globalAlpha = 0.2; g.beginPath(); g.arc(c, c, 186, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 4; g.globalAlpha = 0.85; g.beginPath(); g.arc(c, c, 186, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
+            for (var k = 0; k < 8; k++) { var b = k / 8 * Math.PI * 2; g.beginPath(); g.arc(c + Math.cos(b) * 186, c + Math.sin(b) * 186, 10, 0, Math.PI * 2); g.fill(); }
+        });
+    }
+    /* the mind sigil on the ground: double ring, a band of marks, a brainwave ring, the eye in the triangle */
+    function _psSigilTex() {
+        return _pzTex('ps-sigil', 512, 512, function (g, w, h) {
+            var c = 256; g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineCap = 'round'; g.lineJoin = 'round';
+            g.lineWidth = 7; g.beginPath(); g.arc(c, c, 246, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3; g.beginPath(); g.arc(c, c, 229, 0, Math.PI * 2); g.stroke();
+            for (var i = 0; i < 36; i++) {
+                var a = i / 36 * Math.PI * 2;
+                if (i % 3 === 0) { g.beginPath(); g.arc(c + Math.cos(a) * 211, c + Math.sin(a) * 211, 7, 0, Math.PI * 2); g.fill(); }
+                else { g.lineWidth = 4; g.beginPath(); g.moveTo(c + Math.cos(a) * 199, c + Math.sin(a) * 199); g.lineTo(c + Math.cos(a) * 222, c + Math.sin(a) * 222); g.stroke(); }
+            }
+            g.lineWidth = 5; g.beginPath();
+            for (var k = 0; k <= 720; k++) { var b = k / 720 * Math.PI * 2, r = 172 + 10 * Math.sin(b * 18); g.lineTo(c + Math.cos(b) * r, c + Math.sin(b) * r); }
+            g.closePath(); g.stroke();
+            g.lineWidth = 6; g.beginPath();
+            for (var t = 0; t < 3; t++) { var ta = -Math.PI / 2 + t / 3 * Math.PI * 2; g.lineTo(c + Math.cos(ta) * 152, c + Math.sin(ta) * 152); }
+            g.closePath(); g.stroke();
+            g.lineWidth = 6; g.beginPath(); g.moveTo(c - 66, c + 16); g.quadraticCurveTo(c, c - 40, c + 66, c + 16); g.quadraticCurveTo(c, c + 72, c - 66, c + 16); g.stroke();
+            g.beginPath(); g.arc(c, c + 18, 19, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* a migraine: jagged light cracks running out of a hot point */
+    function _psCrackTex() {
+        return _pzTex('ps-crack', 256, 256, function (g, w, h) {
+            var c = 128, gr = g.createRadialGradient(c, c, 2, c, c, 46); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.strokeStyle = '#ffffff'; g.lineCap = 'round'; g.lineJoin = 'round';
+            for (var i = 0; i < 9; i++) {
+                var a = i / 9 * Math.PI * 2 + (i % 2) * 0.25, r = 10, x = c, y = c;
+                g.lineWidth = 5; g.beginPath(); g.moveTo(x, y);
+                for (var k = 0; k < 6; k++) { r += 15 + ((i * 7 + k * 5) % 9); a += ((k + i) % 2 ? 0.32 : -0.28); x = c + Math.cos(a) * r; y = c + Math.sin(a) * r; g.lineTo(x, y); g.lineWidth = Math.max(1.5, 5 - k * 0.7); }
+                g.stroke();
+            }
+        });
+    }
+
+    /* ── reading the board ── */
+    function _psUnitAt(x, y, uid) {
+        try {
+            if (typeof state === 'undefined' || !state.units) return null;
+            for (var i = 0; i < state.units.length; i++) {
+                var u = state.units[i];
+                if (u && !u.dead && (uid != null ? u.id === uid : (u.x === x && u.y === y))) return u;
+            }
+        } catch (e) {}
+        return null;
+    }
+    /* units standing within r of a tile (a fogged unit the guest holds without a tile is skipped) */
+    function _psUnitsIn(tx, ty, r) {
+        var out = [];
+        try {
+            for (var i = 0; i < state.units.length; i++) {
+                var u = state.units[i];
+                if (!u || u.dead || u.x == null || u.y == null) continue;
+                if (Math.max(Math.abs(u.x - tx), Math.abs(u.y - ty)) <= r) out.push(u);
+            }
+        } catch (e) {}
+        return out;
+    }
+    /* the head of whoever stands on the tile, as a height over the frame's floor: the drawn model's height (big bodies
+       are taller), a flyer's lift counted; a bare tile gets a person's height */
+    function _psHeadY(F, x, y, uid) {
+        var ts = F.ts, u = _psUnitAt(x, y, uid), h = ts, lift = 0;
+        var R = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (u && R && !_VS.on) {
+            try { if (R.getUnitVisualHeight) h = R.getUnitVisualHeight(u.id) || ts; } catch (e) {}
+            try { var o = [0, 0, 0]; if (R.getUnitWorldPos && R.getUnitWorldPos(u.id, o)) lift = Math.max(0, Math.min(ts * 2, o[1] - F.wp.y + 3)); } catch (e) {}
+        }
+        return Math.max(ts * 0.5, Math.min(ts * 2.2, h * 0.84)) + lift;
+    }
+    function _psRank(spellId) {
+        try { var w = stageInfo(spellId).weight; return w === 'ultimate' ? 3 : w === 'heavy' ? 2 : w === 'light' ? 0 : 1; } catch (e) { return 1; }
+    }
+    function _psIsPsychic(d) { return !!(d && (d.element === 'psychic' || (!d.element && d.vfxElement === 'psychic'))); }
+    function _psFlat(parent, size, color, tex, y) {
+        var m = _pzMesh(new THREE.PlaneGeometry(1, 1), _pzGlow(color, tex), parent, 0, y || 0, 0);
+        m.rotation.x = -Math.PI / 2; m.scale.setScalar(size); return m;
+    }
+    /* a normal-blend sprite (the eye's black pupil must stay black) */
+    function _psEyeSpr(color, size, parent) {
+        var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: _psEyeTex(), color: new THREE.Color(color), transparent: true, opacity: 0, depthWrite: false, depthTest: false }));
+        s.scale.set(size, size, 1); s.renderOrder = 163; if (parent) parent.add(s); return s;
+    }
+
+    /* ════ THE THIRD EYE — the caster's wind-up: the eye opens over the head, brainwave rings ripple off it, motes are
+       pulled into the eye; it shuts when the cast lands (holdMs). rank 0-3 (the stage weight) grows it. ════ */
+    function _psThirdEye(sx, sy, holdMs, rank) {
+        if (sx == null || sy == null || !_pzSeen(sx, sy)) return null;
+        var F = _nrvFrame(sx, sy), ts = F.ts, hy = _psHeadY(F, sx, sy), k = 1 + 0.16 * (rank || 0);
+        var eyeS = ts * 0.4 * k, ey = hy + ts * 0.34;
+        var glow = _pzSpr(_PS.psi, eyeS * 1.9, F.g); glow.position.y = ey;
+        var eye = _psEyeSpr(_PS.hot, eyeS, F.g); eye.position.y = ey;
+        var wt = _psWaveTex(), rings = [];
+        for (var i = 0; i < 3; i++) rings.push(_psFlat(F.g, 1, i === 1 ? _PS.violet : _PS.psi, wt, hy - ts * 0.02));
+        var ms = Math.max(520, Math.min(2200, holdMs || 900)), lastM = 0;
+        return _sigRunOwned(F.g, ms + 220, function (el) {
+            var open = _sigEaseOutBack(_sigClamp01(el / 240)), shut = _sigClamp01((el - ms) / 200), oy = Math.max(0.02, open * (1 - shut));
+            var bob = Math.sin(el * 0.004) * ts * 0.02;
+            eye.scale.set(eyeS, eyeS * oy, 1); eye.position.y = glow.position.y = ey + bob;
+            eye.material.opacity = el < ms + 200 ? 1 : 0;
+            glow.material.opacity = 0.5 * Math.min(1, el / 200) * (1 - shut) * (0.8 + 0.2 * Math.sin(el * 0.02));
+            for (var j = 0; j < rings.length; j++) {
+                var t = (el / 700 + j / 3) % 1, R = rings[j];
+                R.scale.setScalar(ts * (0.22 + 0.62 * t) * k); R.rotation.z = el * 0.0012 * (j % 2 ? 1 : -1);
+                R.material.opacity = 0.7 * Math.sin(Math.PI * t) * Math.min(1, el / 250) * (1 - shut);
+            }
+            if (el < ms - 80 && el - lastM > 70 && _canSpawn()) {
+                lastM = el;
+                var a = rn(0, 6.283), r = ts * rn(0.45, 0.7), ox = Math.cos(a) * r, oz = Math.sin(a) * r, oyy = rn(-0.25, 0.3) * ts;
+                _pzP(F, ox, ey + oyy, oz, { sprite: 'psi-pulse', tint: Math.random() < 0.5 ? _PS.violet : _PS.psi, ml: 380, size0: rn(6, 10), size1: 2,
+                    vx: -ox / 0.4, vy: -oz / 0.4, vz: -oyy / 0.4, opacity0: 0.9 });
+            }
+        });
+    }
+
+    /* ════ THE MIND RINGS — where a psychic spell lands. o: lift (an ally's buff: the rings rise and open instead of
+       closing) · uid (whose head; the rings follow it if it is moved) · big · hy (a height already known) ════ */
+    function _psRings(tx, ty, o) {
+        o = o || {};
+        if (tx == null || ty == null || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hy = o.hy != null ? o.hy : _psHeadY(F, tx, ty, o.uid), lift = !!o.lift, k = o.big ? 1.25 : 1;
+        var track = o.uid != null ? _pzTrack(tx, ty, o.uid) : null;
+        var H = new THREE.Group(); H.position.y = hy; F.g.add(H);
+        var wt = _psWaveTex(), rings = [];
+        for (var i = 0; i < 3; i++) {
+            var m = _psFlat(H, 1, i === 1 ? _PS.violet : _PS.psi, wt, (i - 1) * ts * 0.06);
+            m.rotation.x = -Math.PI / 2 + (i - 1) * 0.24; m.rotation.y = (i - 1) * 0.18; rings.push(m);
+        }
+        var eyeS = ts * 0.24 * k, eye = _psEyeSpr(lift ? _PS.lilac : _PS.hot, eyeS, H); eye.position.y = ts * 0.3;
+        var glow = _pzSpr(_PS.psi, eyeS * 1.6, H); glow.position.y = ts * 0.3;
+        var MS = lift ? 900 : 820, sparked = false;
+        return _sigRunOwned(F.g, MS, function (el) {
+            if (track) { var d = track(); if (d) F.g.position.set(F.wp.x + d.x, F.wp.y + d.y, F.wp.z + d.z); }
+            var fade = _sigClamp01((el - MS + 240) / 240);
+            for (var j = 0; j < rings.length; j++) {
+                var e = el - j * 60, t = _sigClamp01(e / 320), R = rings[j];
+                if (e < 0) { R.material.opacity = 0; continue; }
+                var s = lift ? (0.38 + 0.95 * _sigEaseOutCubic(_sigClamp01(e / 600))) : (1.55 - 1.13 * _sigEaseOutCubic(t)) * (1 + (t >= 1 ? 0.06 * Math.sin(e * 0.03) : 0));
+                R.scale.setScalar(ts * s * k); R.rotation.z = e * 0.004 * (j % 2 ? 1 : -1);
+                if (lift) R.position.y = (j - 1) * ts * 0.06 + ts * 0.45 * _sigClamp01(e / 700);
+                R.material.opacity = (lift ? 0.65 * (1 - _sigClamp01(e / 760)) : 0.85 * Math.min(1, e / 90)) * (1 - fade);
+            }
+            var open = _sigEaseOutBack(_sigClamp01((el - 80) / 200)), shut = _sigClamp01((el - MS + 200) / 160);
+            eye.scale.set(eyeS, eyeS * Math.max(0.02, open * (1 - shut)), 1); eye.material.opacity = el > 80 && el < MS - 40 ? 1 : 0;
+            glow.material.opacity = 0.45 * open * (1 - shut);
+            if (!lift && !sparked && el >= 300) {
+                sparked = true;
+                for (var q = 0; q < 8; q++) { var a = q / 8 * 6.283; _pzP(F, Math.cos(a) * ts * 0.12, hy, Math.sin(a) * ts * 0.12, { sprite: 'spark-pink', ml: rn(240, 420), size0: rn(5, 8), size1: 1, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, vz: rn(-20, 80), drag: 1.4, opacity0: 1 }); }
+            }
+        });
+    }
+
+    /* ════ THE MIND SIGIL — an aoe's ground mark: the eye in the triangle, a brainwave ring rolling out of it ════ */
+    function _psSigil(tx, ty, r, o) {
+        o = o || {};
+        if (tx == null || ty == null || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, D = ts * (2 * Math.max(0, r) + 1) * 1.02, ms = o.ms || 1150;
+        var m = _psFlat(F.g, D, _PS.psi, _psSigilTex(), ts * 0.03), w = _psFlat(F.g, D, _PS.violet, _psWaveTex(), ts * 0.04);
+        return _sigRunOwned(F.g, ms, function (el) {
+            var a = _sigEaseOutCubic(_sigClamp01(el / 260)), f = _sigClamp01((el - ms + 400) / 400), t = _sigClamp01(el / 720);
+            m.scale.setScalar(D * (0.55 + 0.45 * a)); m.rotation.z = el * 0.0009; m.material.opacity = 0.8 * a * (1 - f);
+            w.scale.setScalar(D * (0.25 + 0.95 * _sigEaseOutCubic(t))); w.rotation.z = -el * 0.002; w.material.opacity = 0.7 * (1 - t);
+        });
+    }
+
+    /* ════ the brainwave rings racing down a line, caster's head → victim's head (a fogged caster: they start a tile
+       short of the victim, on the sight line) ════ */
+    function _psWaveFly(fx, fy, tx, ty, ms, n, o) {
+        o = o || {};
+        if (tx == null || fx == null || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = { x: fx, y: fy }, ln = _nrvLine(F, from, tx, ty), see = _pzSeen(fx, fy);
+        var C = _nrvFrame(fx, fy), hyC = see ? _psHeadY(C, fx, fy) : ts * 0.8, hyT = o.hyT != null ? o.hyT : _psHeadY(F, tx, ty) * 0.92;
+        var A = see ? new THREE.Vector3(ln.dx, ln.dy + hyC, ln.dz) : new THREE.Vector3(ln.ux * ts * 1.1, hyT, ln.uz * ts * 1.1);
+        var B = new THREE.Vector3(0, hyT, 0), dir = B.clone().sub(A).normalize(), Z = new THREE.Vector3(0, 0, 1), wt = _psWaveTex(), rings = [];
+        for (var i = 0; i < n; i++) { var m = _pzMesh(new THREE.PlaneGeometry(1, 1), _pzGlow(i % 2 ? _PS.violet : _PS.psi, wt), F.g); m.quaternion.setFromUnitVectors(Z, dir); m.visible = false; rings.push(m); }
+        var core = _pzSpr(_PS.core, ts * 0.22, F.g), gap = Math.min(70, ms * 0.18), P = new THREE.Vector3(), lastT = 0;
+        return _sigRunOwned(F.g, ms + gap * n + 60, function (el) {
+            for (var j = 0; j < rings.length; j++) {
+                var t = (el - j * gap) / ms, R = rings[j];
+                if (t < 0 || t > 1) { R.visible = false; continue; }
+                R.visible = true; R.position.copy(A).lerp(B, t);
+                R.scale.setScalar(ts * (0.28 + 0.3 * t) * (o.k || 1)); R.rotation.z = el * 0.01;
+                R.material.opacity = 0.85 * Math.min(1, t * 6) * (1 - Math.max(0, (t - 0.85) / 0.15));
+            }
+            var tc = _sigClamp01(el / ms); core.position.copy(A).lerp(B, tc); core.material.opacity = el < ms ? 0.9 : 0;
+            if (el < ms && el - lastT > 30 && _canSpawn()) { lastT = el; P.copy(core.position); _pzP(F, P.x, P.y, P.z, { sprite: 'psi-pulse', tint: _PS.psi, ml: rn(220, 380), size0: rn(8, 12), size1: 2, vz: rn(-10, 20), opacity0: 0.85 }); }
+        });
+    }
+
+    /* ════ THE GRIP — the telekinetic hold: three brainwave rings gyre round the body like a gyroscope; `track` follows
+       the body while it is thrown / dragged; o.slam = a crash ring where it ends up ════ */
+    function _psGrip(tx, ty, track, o) {
+        o = o || {};
+        if (tx == null || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hy = _psHeadY(F, tx, ty, o.uid), cy = hy * 0.56, wt = _psWaveTex(), rings = [];
+        var G = new THREE.Group(); G.position.y = cy; F.g.add(G);
+        for (var i = 0; i < 3; i++) { var m = _pzMesh(new THREE.PlaneGeometry(1, 1), _pzGlow(i === 1 ? _PS.violet : _PS.psi, wt), G); rings.push({ m: m, ax: i * 1.05 }); }
+        var aura = _pzSpr(_PS.psi, hy * 1.5, G);
+        var ms = o.ms || 1300, hold = o.hold || ms - 300, slammed = false, last = null, still = 0, lastP = 0;
+        var base = new THREE.Vector3(F.wp.x, F.wp.y, F.wp.z);
+        return _sigRunOwned(F.g, ms, function (el) {
+            var d = track ? track() : null;
+            if (d) F.g.position.set(base.x + d.x, base.y + d.y, base.z + d.z);
+            var close = _sigEaseOutCubic(_sigClamp01(el / 260)), rel = _sigClamp01((el - hold) / (ms - hold));
+            for (var j = 0; j < rings.length; j++) {
+                var R = rings[j], s = hy * (1.25 - 0.4 * close + 0.9 * _sigEaseOutCubic(rel)) * (o.k || 1);
+                R.m.scale.setScalar(s);
+                R.m.rotation.set(Math.PI / 2 + Math.sin(el * 0.003 + R.ax) * 0.9, el * 0.0024 * (j % 2 ? 1 : -1) + R.ax, el * 0.006);
+                R.m.material.opacity = Math.min(1, el / 120) * (1 - rel);
+            }
+            aura.material.opacity = 0.45 * close * (1 - rel) * (0.85 + 0.15 * Math.sin(el * 0.03));
+            if (d && el - lastP > 50 && _canSpawn()) {
+                lastP = el;
+                var moving = last && (Math.abs(d.x - last.x) + Math.abs(d.z - last.z) + Math.abs(d.y - last.y)) > ts * 0.01;
+                if (moving) { still = 0; _pzP(F, d.x + rn(-ts, ts) * 0.15, cy + d.y + rn(-0.3, 0.3) * ts, d.z + rn(-ts, ts) * 0.15, { sprite: 'psi-pulse', tint: _PS.psi, ml: rn(300, 480), size0: rn(8, 13), size1: 2, opacity0: 0.8 }); }
+                else still++;
+                if (o.slam && !slammed && last && still >= 2 && (Math.abs(d.x) + Math.abs(d.z)) > ts * 0.4) { slammed = true; _psSlamAt(F, d, ts); }
+                last = { x: d.x, y: d.y, z: d.z };
+            }
+            if (o.slam && !slammed && el >= hold) { slammed = true; if (d) _psSlamAt(F, d, ts); }
+        });
+    }
+    /* the slam where a dragged body lands: a pink crash ring and a puff of dust at its feet (frame-local offset d) */
+    function _psSlamAt(F, d, ts) {
+        _pzP(F, d.x, ts * 0.05 + d.y, d.z, { mode: 'world', sprite: 'shockwave', tint: _PS.psi, ml: 460, size0: ts * 0.3, size1: ts * 1.5, opacity0: 0.8 });
+        for (var i = 0; i < 6; i++) { var a = i / 6 * 6.283; _pzP(F, d.x + Math.cos(a) * ts * 0.2, ts * 0.06 + d.y, d.z + Math.sin(a) * ts * 0.2, { sprite: 'dust-puff', ml: rn(500, 800), size0: rn(14, 20), size1: rn(36, 50), vx: Math.cos(a) * 70, vy: Math.sin(a) * 70, vz: rn(10, 40), drag: 0.8, opacity0: 0.5 }); }
+        for (var q = 0; q < 10; q++) { var b = rn(0, 6.283); _pzP(F, d.x, ts * 0.3 + d.y, d.z, { sprite: 'spark-pink', ml: rn(260, 460), size0: rn(5, 8), size1: 1, vx: Math.cos(b) * rn(120, 220), vy: Math.sin(b) * rn(120, 220), vz: rn(40, 160), gravity: 300, drag: 1.1, opacity0: 1 }); }
+        if (typeof window.shakeBoard === 'function') _shake('normal');
+    }
+
+    /* ════ KINETIC HURL — no orb: the brainwave rings race out, the grip closes round the victim at the landing and
+       rides the body the whole way it is thrown ════ */
+    EFFECTS['psHurl_bolt'] = _pzDef('psHurl', { pzOwn: true });
+    _PZ_SIGS.psHurl = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 340, track = _pzTrack(tx, ty);
+        _nvLand(id, tx, ty, ms);
+        _psWaveFly(fx, fy, tx, ty, ms, 3);
+        _fxDelay(function () { if (!_suppressed()) _psGrip(tx, ty, track, { ms: 1500, hold: 1150, slam: true }); }, Math.max(0, ms - 60));
+    };
+
+    /* ════ TELEKINETIC SLAM — the mind's own line: a beam out of the third eye locks onto the victim, the grip closes on
+       it, brainwave rings reel along the beam toward the caster the whole drag, and it crashes down where it stops.
+       It owns the pull line (battle.js skips the rope). ════ */
+    EFFECTS['psSlam_pull'] = _pzDef('psSlam', { pzOwnTether: true });
+    _PZ_SIGS.psSlam = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), see = _pzSeen(from.x, from.y);
+        var track = _pzTrack(tx, ty, p.uid), hyT = _psHeadY(F, tx, ty, p.uid);
+        _psGrip(tx, ty, track, { ms: 1750, hold: 1350, slam: true, uid: p.uid });
+        if (!_pzSeen(tx, ty) && !see) return;
+        var C = _nrvFrame(from.x, from.y), hyC = _psHeadY(C, from.x, from.y);
+        var A = see ? new THREE.Vector3(ln.dx, ln.dy + hyC + ts * 0.3, ln.dz) : new THREE.Vector3(ln.ux * ts * 1.1, hyT * 0.6, ln.uz * ts * 1.1);
+        var beamG = _pzGlow(_PS.psi), coreM = _pzGlow(_PS.core);
+        var beam = _pzMesh(new THREE.CylinderGeometry(ts * 0.035, ts * 0.035, 1, 8, 1, true), beamG, F.g);
+        var core = _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 6, 1, true), coreM, F.g);
+        var wt = _psWaveTex(), NR = 5, rings = [], Z = new THREE.Vector3(0, 0, 1);
+        for (var i = 0; i < NR; i++) rings.push(_pzMesh(new THREE.PlaneGeometry(1, 1), _pzGlow(i % 2 ? _PS.violet : _PS.psi, wt), F.g));
+        var B = new THREE.Vector3(), P = new THREE.Vector3(), dir = new THREE.Vector3(), off = new THREE.Vector3();
+        var SHOOT = 220, LET = 1350, TOTAL = 1700;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var d = track(); off.set(d ? d.x : 0, d ? d.y : 0, d ? d.z : 0);
+            B.set(off.x, off.y + hyT * 0.56, off.z);
+            var out = _sigEaseOutCubic(_sigClamp01(el / SHOOT)), back = _sigEaseInCubic(_sigClamp01((el - LET) / (TOTAL - LET - 40)));
+            P.copy(A).lerp(B, out); var tail = A.clone().lerp(B, back);
+            _pzSpan(beam, tail, P); _pzSpan(core, tail, P);
+            var live = el < TOTAL - 40 && out > back;
+            beamG.opacity = live ? 0.55 * (0.8 + 0.2 * Math.sin(el * 0.05)) : 0; coreM.opacity = live ? 0.95 : 0;
+            dir.copy(A).sub(B).normalize();
+            for (var j = 0; j < NR; j++) {
+                var R = rings[j], u = ((el / 520) + j / NR) % 1;     /* victim → caster: the reel */
+                if (!live || el < SHOOT || u < back) { R.visible = false; continue; }
+                R.visible = true; R.position.copy(B).lerp(A, u); R.quaternion.setFromUnitVectors(Z, dir); R.rotateZ(el * 0.008);
+                R.scale.setScalar(ts * (0.42 - 0.24 * u)); R.material.opacity = 0.8 * Math.sin(Math.PI * u);
+            }
+        });
+    };
+
+    /* ════ PSYCHIC BEAM — brainwave rings fire down the whole line, a pink core under them, and the mind rings close on
+       every body it passes ════ */
+    function _psBeam(p, spellId) {
+        var fx = p.fromX, fy = p.fromY; if (fx == null) return;
+        var hits = p.hitTiles && p.hitTiles.length ? p.hitTiles : [{ x: p.tx, y: p.ty }];
+        var end = { x: fx + (p.dx || 0) * (p.range || hits.length), y: fy + (p.dy || 0) * (p.range || hits.length) };
+        var last = hits[hits.length - 1];
+        if (Math.hypot(last.x - fx, last.y - fy) > Math.hypot(end.x - fx, end.y - fy)) end = last;
+        var B = _psClampTile(end.x, end.y);
+        _psWaveFly(fx, fy, B.x, B.y, 420, 6, { hyT: _cfg().tileSize * 0.62, k: 1.3 });
+        _psLance(fx, fy, B.x, B.y);
+        for (var i = 0; i < hits.length; i++) {
+            var h = hits[i], u = _psUnitAt(h.x, h.y);
+            if (!u) continue;
+            (function (h, u, i) { _fxDelay(function () { if (!_suppressed()) _psRings(h.x, h.y, { uid: u.id }); }, 120 + i * 70); })(h, u, i);
+        }
+    }
+    /* the beam itself: a pink lance with a white core, caster's head → the end of the line, that snaps out, hums and
+       thins away (a fogged caster: it starts a tile short of the first body it can see) */
+    function _psLance(fx, fy, tx, ty) {
+        if (!_pzSeen(tx, ty) && !_pzSeen(fx, fy)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty), see = _pzSeen(fx, fy);
+        var C = _nrvFrame(fx, fy), hyC = see ? _psHeadY(C, fx, fy) * 0.8 : ts * 0.62;
+        var A = see ? new THREE.Vector3(ln.dx, ln.dy + hyC, ln.dz) : new THREE.Vector3(ln.ux * ts * 1.1, ts * 0.62, ln.uz * ts * 1.1), B = new THREE.Vector3(0, ts * 0.62, 0);
+        var gm = _pzGlow(_PS.psi), cm = _pzGlow(_PS.core);
+        var glow = _pzMesh(new THREE.CylinderGeometry(ts * 0.09, ts * 0.09, 1, 10, 1, true), gm, F.g), core = _pzMesh(new THREE.CylinderGeometry(ts * 0.022, ts * 0.022, 1, 8, 1, true), cm, F.g);
+        var P = new THREE.Vector3();
+        return _sigRunOwned(F.g, 900, function (el) {
+            var out = _sigEaseOutCubic(_sigClamp01(el / 140)), fade = _sigClamp01((el - 520) / 380);
+            P.copy(A).lerp(B, out); _pzSpan(glow, A, P); _pzSpan(core, A, P);
+            var w = 1 - 0.7 * fade; glow.scale.x = glow.scale.z = w * (1 + 0.12 * Math.sin(el * 0.06)); core.scale.x = core.scale.z = w;
+            gm.opacity = 0.42 * (1 - fade); cm.opacity = 0.95 * (1 - fade);
+        });
+    }
+    function _psClampTile(x, y) {
+        var W = (typeof CONFIG !== 'undefined' && CONFIG.boardWidth) || 8, H = (typeof CONFIG !== 'undefined' && CONFIG.boardHeight) || 8;
+        return { x: Math.max(0, Math.min(W - 1, Math.round(x))), y: Math.max(0, Math.min(H - 1, Math.round(y))) };
+    }
+    _PZ_SIGS.psBeam = function (p, id) { _psBeam(p, id); };
+
+    /* ════ MIGRAINE — the pressure: rings race to the head and clamp it, light cracks across the skull, it throbs three
+       times and the rings snap open with the hit ════ */
+    EFFECTS['psMigraine_bolt'] = _pzDef('psMigraine', { pzOwn: true });
+    _PZ_SIGS.psMigraine = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(300, p.flyMs > 0 ? p.flyMs : 360);
+        _nvLand(id, tx, ty, ms);
+        _psWaveFly(fx, fy, tx, ty, ms, 2);
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hy = _psHeadY(F, tx, ty), H = new THREE.Group(); H.position.y = hy; F.g.add(H);
+        var wt = _psWaveTex(), rings = [];
+        for (var i = 0; i < 3; i++) { var m = _psFlat(H, 1, i === 1 ? _PS.violet : _PS.psi, wt, (i - 1) * ts * 0.05); m.rotation.x = -Math.PI / 2 + (i - 1) * 0.3; rings.push(m); }
+        var crack = _pzSpr(_PS.hot, ts * 0.6, H, _psCrackTex()), throb = _pzSpr(_PS.psi, ts * 0.5, H);
+        var T = ms + 900, cracked = false;
+        return _sigRunOwned(F.g, T + 160, function (el) {
+            var clamp = _sigEaseInCubic(_sigClamp01(el / ms)), snap = _sigEaseOutCubic(_sigClamp01((el - T + 160) / 160)), after = Math.max(0, el - ms);
+            var pulse = after > 0 && after < 900 ? Math.pow(Math.max(0, Math.sin(after / 900 * Math.PI * 3)), 2) : 0;
+            for (var j = 0; j < rings.length; j++) {
+                var R = rings[j], s = (1.8 - 1.42 * clamp) * (1 - 0.08 * pulse) + 1.2 * snap;
+                R.scale.setScalar(ts * s); R.rotation.z = el * 0.006 * (j % 2 ? 1 : -1);
+                R.material.opacity = Math.min(0.9, el / 120) * (1 - snap);
+            }
+            if (!cracked && el >= ms) { cracked = true; for (var q = 0; q < 10; q++) { var a = q / 10 * 6.283; _pzP(F, 0, hy, 0, { sprite: 'spark-pink', ml: rn(260, 440), size0: rn(5, 9), size1: 1, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, vz: rn(0, 90), drag: 1.3, opacity0: 1 }); } }
+            crack.material.opacity = el >= ms ? (0.35 + 0.65 * pulse) * (1 - snap) : 0; crack.material.rotation = 0.3;
+            crack.scale.setScalar(ts * (0.4 + 0.2 * pulse));
+            throb.material.opacity = el >= ms ? 0.55 * pulse * (1 - snap) : 0.25 * clamp;
+            throb.scale.setScalar(ts * (0.38 + 0.2 * pulse));
+        });
+    };
+
+    /* ════ MIND SHATTER — the big one: a great eye opens over the 3×3 and stares down, the sigil burns under it, and a
+       psychic glass shell closes on every body in it and bursts into shards with the hit (the centre keeps the old
+       cracking cage) ════ */
+    EFFECTS['psShatter_bolt'] = _pzDef('psShatter', { pzOwn: true });
+    _PZ_SIGS.psShatter = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(360, p.flyMs > 0 ? p.flyMs : 420), r = (_spellDefFor(id) || {}).aoeRadius != null ? _spellDefFor(id).aoeRadius : 1;
+        _psWaveFly(fx, fy, tx, ty, ms, 3, { k: 1.3 });
+        _psSigil(tx, ty, r, { ms: ms + 1400 });
+        _nvLand(id, tx, ty, ms);
+        _fxDelay(function () { if (!_suppressed()) try { _sigMindShatter3D(tx, ty); } catch (e) {} }, ms);
+        if (_pzSeen(tx, ty)) {
+            var F = _nrvFrame(tx, ty), ts = F.ts, eyeS = ts * (1.1 + 0.4 * r), eye = _psEyeSpr(_PS.hot, eyeS, F.g), glow = _pzSpr(_PS.psi, eyeS * 1.5, F.g);
+            eye.position.y = glow.position.y = ts * 1.75;
+            var TT = ms + 1300;
+            _sigRunOwned(F.g, TT, function (el) {
+                var open = _sigEaseOutBack(_sigClamp01(el / 300)), shut = _sigClamp01((el - TT + 260) / 260);
+                eye.scale.set(eyeS, eyeS * Math.max(0.02, open * (1 - shut)), 1); eye.material.opacity = el < TT - 30 ? 1 : 0;
+                glow.material.opacity = 0.45 * open * (1 - shut) * (el >= ms && el < ms + 200 ? 1.6 : 1);
+                eye.position.y = glow.position.y = ts * (1.75 + 0.05 * Math.sin(el * 0.004));
+            });
+        }
+        var us = _psUnitsIn(tx, ty, r), caster = _psUnitAt(fx, fy);
+        for (var i = 0; i < us.length && i < 9; i++) {
+            var u = us[i];
+            if (caster && (u === caster || u.player === caster.player)) continue;
+            if (u.x === tx && u.y === ty) continue;   /* the centre has the cage */
+            _psShell(u.x, u.y, ms, u.id);
+        }
+    };
+    /* a psychic glass shell round one body: closes over the cast, cracks and bursts into shards at `at` ms */
+    function _psShell(x, y, at, uid) {
+        if (!_pzSeen(x, y)) return null;
+        var F = _nrvFrame(x, y), ts = F.ts, hy = _psHeadY(F, x, y, uid), cy = hy * 0.55, R = Math.max(ts * 0.4, hy * 0.6);
+        var gm = _pzGlow(_PS.psi), wm = _pzGlow(_PS.core);
+        var shell = _pzMesh(new THREE.IcosahedronGeometry(1, 1), gm, F.g, 0, cy, 0);
+        var wire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1.01, 1)), new THREE.LineBasicMaterial({ color: _PS.core, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+        wire.position.y = cy; wire.renderOrder = 159; F.g.add(wire);
+        var shards = [], sg = new THREE.TetrahedronGeometry(ts * 0.07, 0);
+        for (var i = 0; i < 14; i++) { var s = _pzMesh(sg, wm, F.g, 0, cy, 0); s.visible = false; var a = rn(0, 6.283), e = rn(-0.6, 0.9); shards.push({ m: s, v: new THREE.Vector3(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)), sp: rn(0.6, 1.2) }); }
+        var burst = false;
+        return _sigRunOwned(F.g, at + 700, function (el) {
+            var c = _sigEaseOutCubic(_sigClamp01(el / Math.max(120, at))), b = el - at;
+            if (b < 0) {
+                shell.scale.setScalar(R * (1.6 - 0.6 * c)); wire.scale.copy(shell.scale); shell.rotation.y = wire.rotation.y = el * 0.002;
+                gm.opacity = 0.14 * c; wire.material.opacity = 0.75 * c;
+                return;
+            }
+            if (!burst) { burst = true; gm.opacity = 0; wire.material.opacity = 0; for (var j = 0; j < shards.length; j++) shards[j].m.visible = true; }
+            var t = b / 700;
+            wm.opacity = 1 - t;
+            for (var k = 0; k < shards.length; k++) {
+                var S = shards[k], d = R * (1 + 2.2 * _sigEaseOutCubic(t) * S.sp);
+                S.m.position.set(S.v.x * d, cy + S.v.y * d - ts * 0.6 * t * t, S.v.z * d); S.m.rotation.set(b * 0.01 * S.sp, b * 0.013, 0);
+            }
+        });
+    }
+
+    /* ════ TELEPATHIC LINK — a glowing thread runs from the caster's third eye to every ally's head in reach, an eye
+       opens over each and the rings rise off them in time ════ */
+    EFFECTS['psLink_aura'] = _pzDef('psLink', { pzOwn: true });
+    _PZ_SIGS.psLink = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var r = p.aoeRadius != null ? p.aoeRadius : 3, me = _psUnitAt(tx, ty), us = _psUnitsIn(tx, ty, r), allies = [];
+        for (var i = 0; i < us.length; i++) if (us[i] !== me && (!me || us[i].player === me.player)) allies.push(us[i]);
+        var seeMe = _pzSeen(tx, ty);
+        if (seeMe) _psRings(tx, ty, { lift: true, uid: me && me.id });
+        if (!allies.length) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hy = _psHeadY(F, tx, ty) + ts * 0.34, threads = [];
+        for (var a = 0; a < allies.length && a < 6; a++) {
+            var u = allies[a];
+            if (!seeMe && !_pzSeen(u.x, u.y)) continue;
+            var o = _nvOff(F, u.x, u.y), U = _nrvFrame(u.x, u.y), uh = _psHeadY(U, u.x, u.y, u.id);
+            var A = new THREE.Vector3(0, hy, 0), B = new THREE.Vector3(o.x, o.y + uh, o.z), M = A.clone().lerp(B, 0.5); M.y += ts * (0.5 + 0.12 * Math.hypot(o.x, o.z) / ts);
+            var curve = new THREE.QuadraticBezierCurve3(A, M, B), geo = new THREE.TubeGeometry(curve, 30, ts * 0.016, 5, false), mat = _pzGlow(a % 2 ? _PS.violet : _PS.psi);
+            var mesh = _pzMesh(geo, mat, F.g), spark = _pzSpr(_PS.core, ts * 0.18, F.g);
+            threads.push({ geo: geo, mat: mat, curve: curve, spark: spark, n: geo.index ? geo.index.count : 0, d: a * 90, u: u, ringed: false });
+        }
+        if (!threads.length) return;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            for (var j = 0; j < threads.length; j++) {
+                var T = threads[j], e = el - T.d, g = _sigEaseOutCubic(_sigClamp01(e / 380)), fade = _sigClamp01((el - 1300) / 360);
+                if (T.n) T.geo.setDrawRange(0, Math.ceil(T.n * g / 30) * 30);
+                T.mat.opacity = e < 0 ? 0 : 0.85 * (1 - fade) * (0.75 + 0.25 * Math.sin(el * 0.02 + j));
+                var su = e < 380 ? g : ((e - 380) / 500) % 1; T.curve.getPointAt(Math.max(0, Math.min(1, su)), T.spark.position);
+                T.spark.material.opacity = e < 0 ? 0 : 0.9 * (1 - fade);
+                if (!T.ringed && e >= 380) { T.ringed = true; _psRings(T.u.x, T.u.y, { lift: true, uid: T.u.id }); }
+            }
+        });
+    };
+
+    /* ════ MIND BLANK — the new tier II: the rings fly in, close on the head, and the thought is wiped — the eye over it
+       goes white and its lid shuts, a flat line runs out of it and the rings hush outward (Silence) ════ */
+    EFFECTS['psBlank_bolt'] = _pzDef('psBlank', { pzOwn: true });
+    _PZ_SIGS.psBlank = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(280, p.flyMs > 0 ? p.flyMs : 340);
+        _nvLand(id, tx, ty, ms);
+        _psWaveFly(fx, fy, tx, ty, ms, 3);
+        if (!_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hy = _psHeadY(F, tx, ty), H = new THREE.Group(); H.position.y = hy; F.g.add(H);
+        var wt = _psWaveTex(), rings = [];
+        for (var i = 0; i < 3; i++) { var m = _psFlat(H, 1, i === 1 ? _PS.violet : _PS.psi, wt, (i - 1) * ts * 0.05); m.rotation.x = -Math.PI / 2 + (i - 1) * 0.2; rings.push(m); }
+        var eyeS = ts * 0.34, eye = _psEyeSpr(_PS.hot, eyeS, H); eye.position.y = ts * 0.34;
+        var blank = _pzSpr(0xffffff, ts * 0.5, H); blank.position.y = ts * 0.34;
+        var line = _pzMesh(new THREE.PlaneGeometry(1, ts * 0.02), _pzGlow(_PS.core), H, 0, ts * 0.34, 0);
+        var T = ms + 1000;
+        return _sigRunOwned(F.g, T, function (el) {
+            var clamp = _sigEaseOutCubic(_sigClamp01(el / ms)), after = el - ms, hush = _sigEaseOutCubic(_sigClamp01((after - 380) / 520));
+            for (var j = 0; j < rings.length; j++) {
+                var R = rings[j], s = after < 380 ? 1.6 - 1.2 * clamp : 0.4 + 1.5 * hush;
+                R.scale.setScalar(ts * s); R.rotation.z = el * 0.005 * (j % 2 ? 1 : -1);
+                R.material.opacity = Math.min(0.85, el / 100) * (after < 380 ? 1 : 1 - hush);
+            }
+            var open = _sigEaseOutBack(_sigClamp01((el - 60) / 200)), lid = _sigEaseInCubic(_sigClamp01((after - 120) / 260));
+            eye.scale.set(eyeS, eyeS * Math.max(0.02, open * (1 - lid)), 1); eye.material.opacity = el > 60 && lid < 1 ? 1 : 0;
+            eye.material.color.setHex(after > 0 ? 0xffffff : _PS.hot);
+            blank.material.opacity = after > 0 && after < 420 ? 0.8 * (1 - after / 420) : 0; blank.scale.setScalar(ts * (0.3 + 0.5 * _sigClamp01(after / 300)));
+            _pzFace(line); var lw = _sigEaseOutCubic(_sigClamp01((after - 300) / 260));
+            line.scale.x = ts * (0.05 + 1.1 * lw); line.material.opacity = after > 300 ? 0.9 * (1 - _sigClamp01((after - 700) / 300)) : 0;
+        });
+    };
+
+    /* ── the wiring ── */
+    EFFECTS['psBeam_beam'] = Object.assign({}, EFFECTS['racePsychicBeam_beam'] || { layers: [] }, { pzSig: 'psBeam' });
+    SPELL_MAP['kineticHurl']         = Object.assign({}, SPELL_MAP['kineticHurl'], { bolt: 'psHurl_bolt' });
+    SPELL_MAP['raceTelekineticSlam'] = Object.assign({}, SPELL_MAP['raceTelekineticSlam'], { pull: 'psSlam_pull' });
+    SPELL_MAP['racePsychicBeam']     = Object.assign({}, SPELL_MAP['racePsychicBeam'], { beam: 'psBeam_beam' });
+    SPELL_MAP['raceMindCrush']       = Object.assign({}, SPELL_MAP['raceMindCrush'], { bolt: 'psMigraine_bolt' });
+    SPELL_MAP['mindShatter']         = Object.assign({}, SPELL_MAP['mindShatter'], { bolt: 'psShatter_bolt' });
+    SPELL_MAP['raceTelepathicLink']  = Object.assign({}, SPELL_MAP['raceTelepathicLink'], { aura: 'psLink_aura' });
+    SPELL_MAP['raceMindBlank']       = { bolt: 'psBlank_bolt', impact: 'raceMindCrush_impact' };
+    /* these draw their own rings — the shared ones would double them (their caster still gets the third eye) */
+    var _PS_OWN = { kineticHurl: 1, raceTelekineticSlam: 1, racePsychicBeam: 1, raceMindCrush: 1, mindShatter: 1, raceTelepathicLink: 1, raceMindBlank: 1 };
+
+    /* ── the colour: psychic is its own theme, beam colour and staging family (it was 'anomaly', and a psychic row's
+       spellType — alien, human, tech — picked its beam colour and its stage) ── */
+    _THEME_MAP.psychic = { core: 'psi-pulse', trail: 'spark-pink', burst: 'psi-pulse', ring: 'target-ring', glow: _PS.psi };
+    _ELEMENT_THEME.psychic = 'psychic';
+    _BEAM_COLORS.psychic = { core: 0xfff0fc, glow: 0xff4fd8 };
+    _STAGE_ARCHETYPES.psychic    = { orb: 0xff6ae0, ring: 0xc04ad8, flash: '#ffc8f4', mote: 'psi-pulse', glyph: true, slash: false, lineColor: '#ffb8f0', moteTint: 0xff70e0, noOrb: true };
+    _STAGE_ARCHETYPES.psychicAid = { orb: 0xff9ae8, ring: 0xd88cff, flash: '#ffe0f8', mote: 'psi-pulse', glyph: true, slash: false, lineColor: '#ffd0f4', moteTint: 0xffa8ec, noOrb: true, gentle: true, support: 'buff' };
+    _STAGE_ARCHETYPES.psychicHex = { orb: 0xc070ff, ring: 0x9a5cff, flash: '#e8c8ff', mote: 'psi-pulse', glyph: true, slash: false, lineColor: '#dcb8ff', moteTint: 0xd070ff, noOrb: true, gentle: true, support: 'debuff' };
+    _STAGE_GRADES.psychic    = { tint: [1.18, 0.70, 1.24], tintAmt: 0.42, chroma: 5.0, trip: 0.45, warp: 0.0020, hueRate: 0.30 };
+    _STAGE_GRADES.psychicAid = { tint: [1.14, 0.90, 1.16], tintAmt: 0.28, chroma: 2.0 };
+    _STAGE_GRADES.psychicHex = { tint: [1.08, 0.70, 1.26], tintAmt: 0.40, chroma: 3.5 };
+    var _psArch0 = _stageArchetype;
+    _stageArchetype = function (spellId, def) {
+        var a = _psArch0(spellId, def), d = def || _spellDefFor(spellId);
+        if (!_psIsPsychic(d)) return a;
+        if (d.vfxElement && d.vfxElement !== 'psychic') return a;          /* a row dressed as another element keeps that look */
+        if (d.vfxArchetype && _STAGE_ARCHETYPES[d.vfxArchetype]) return a;  /* a row's own pick wins */
+        var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].archetype;
+        if (ov && ov !== 'mind' && ov !== 'anomaly') return a;              /* an explicit other stage (ki, divine…) stays */
+        if (a === 'heal' || a === 'divine' || a === 'mana') return a;       /* a heal still reads green-and-rising */
+        if (a === 'aura') return 'psychicAid';
+        if (a === 'hex') return 'psychicHex';
+        return 'psychic';
+    };
+    var _psBeamCol0 = _beamColorFor;
+    _beamColorFor = function (spellType, element) {
+        return element === 'psychic' ? _BEAM_COLORS.psychic : _psBeamCol0(spellType, element);
+    };
+
+    /* ── the shared hook: every fire() of a psychic row ── */
+    var _PS_AID_KINDS = { buff: 1, shield: 1, aoeShield: 1, warCry: 1, encore: 1, heal: 1, healAll: 1, selfHeal: 1, zoneHeal: 1, seedHeal: 1, revive: 1, cleanse: 1, manaRestoreAll: 1 };
+    function _psMode(d) {
+        if (_PS_AID_KINDS[d.kind] || d.type === 'buff' || d.type === 'heal') return 'lift';
+        if (d.type === 'utility' && !d.dmg) return null;    /* teleports, doors, sight: the third eye only */
+        return 'lock';
+    }
+    var _psCast = {}, _psHit = {};
+    function _psClaim(key, ms) {
+        var now = performance.now();
+        if (_psHit[key] && now - _psHit[key] < (ms || 700)) return false;
+        _psHit[key] = now; return true;
+    }
+    function _psLanded(spellId) { var c = _psCast[spellId]; if (c) c.landed = true; }
+    function _psRingsOn(spellId, x, y, mode, uid) {
+        if (x == null || y == null || _PS_OWN[spellId]) return;
+        if (!_psClaim(spellId + '@' + x + ',' + y)) return;
+        _psLanded(spellId);
+        _psRings(x, y, { lift: mode === 'lift', uid: uid });
+    }
+    function _psAoeOn(spellId, tx, ty, r, mode) {
+        if (tx == null || ty == null || _PS_OWN[spellId]) return;
+        if (!_psClaim(spellId + '#aoe@' + tx + ',' + ty, 900)) return;
+        _psLanded(spellId);
+        _psSigil(tx, ty, r);
+        var c = _psCast[spellId], me = c ? _psUnitAt(c.sx, c.sy) : null, us = _psUnitsIn(tx, ty, r), n = 0;
+        for (var i = 0; i < us.length && n < 6; i++) {
+            var u = us[i];
+            if (me && (mode === 'lift' ? u.player !== me.player : (u === me || u.player === me.player))) continue;
+            (function (u, k) { _fxDelay(function () { if (!_suppressed()) _psRingsOn(spellId, u.x, u.y, mode, u.id); }, 140 + k * 60); })(u, n++);
+        }
+    }
+    /* the reach the rings spread over: the cast's aoe, else the row's (a war cry's aura counts) */
+    function _psAoeR(d, p) {
+        var r = p && p.aoeRadius != null ? p.aoeRadius : (d.aoeRadius != null ? d.aoeRadius : (d.kind === 'warCry' ? d.auraRadius : 0));
+        return r > 0 ? r : 0;
+    }
+    function _psOnIntent(intent, spellId, p) {
+        var d = _spellDefFor(spellId);
+        if (!_psIsPsychic(d)) return;
+        if (intent === 'windup') {
+            _psCast[spellId] = { t: performance.now(), sx: p.sx, sy: p.sy, landed: false };
+            _psThirdEye(p.sx, p.sy, p.holdMs, _psRank(spellId));
+            return;
+        }
+        var mode = _psMode(d); if (!mode) return;
+        var r;
+        if (intent === 'burst') {        /* the fallback: a row that fired no landing intent of its own gets its rings here */
+            var c = _psCast[spellId];
+            if ((c && c.landed && performance.now() - c.t < 8000) || p.tx == null) return;
+            r = _psAoeR(d, p);
+            if (r > 0) _psAoeOn(spellId, p.tx, p.ty, r, mode);
+            else { var bu = _psUnitAt(p.tx, p.ty); _psRingsOn(spellId, p.tx, p.ty, mode, bu && bu.id); }
+            return;
+        }
+        if (intent === 'impact') { _psRingsOn(spellId, p.tx, p.ty, mode); return; }
+        if (intent === 'bolt') {
+            var bx = p.toX, by = p.toY; if (bx == null || _PS_OWN[spellId]) return;
+            _psLanded(spellId); r = _psAoeR(d, p);
+            _fxDelay(function () { if (_suppressed()) return; if (r > 0) _psAoeOn(spellId, bx, by, r, mode); else _psRingsOn(spellId, bx, by, mode); }, p.flyMs > 0 ? p.flyMs : 320);
+            return;
+        }
+        if (intent === 'aoe' || intent === 'descent') {
+            r = p.aoeRadius != null ? p.aoeRadius : (d.aoeRadius != null ? d.aoeRadius : 1);
+            if (intent === 'descent') { _psLanded(spellId); var dx = p.tx, dy = p.ty; _fxDelay(function () { if (!_suppressed()) _psAoeOn(spellId, dx, dy, r, mode); }, getDescentTotalMs(spellId)); }
+            else _psAoeOn(spellId, p.tx, p.ty, r, mode);
+            return;
+        }
+        if (intent === 'beam') {
+            var hits = p.hitTiles || [];
+            _psLanded(spellId);
+            for (var i = 0; i < hits.length; i++) { var hu = _psUnitAt(hits[i].x, hits[i].y); if (hu) (function (h, u, k) { _fxDelay(function () { if (!_suppressed()) _psRingsOn(spellId, h.x, h.y, mode, u.id); }, 140 + k * 60); })(hits[i], hu, i); }
+            return;
+        }
+        if (intent === 'pull') { var px = p.tx, py = p.ty, uid = p.uid; _psLanded(spellId); _fxDelay(function () { if (!_suppressed()) _psRingsOn(spellId, px, py, mode, uid); }, 300); return; }
+        if (intent === 'chain' && p.chain) { for (var k = 0; k < p.chain.length && k < 6; k++) (function (h, k) { _fxDelay(function () { if (!_suppressed()) _psRingsOn(spellId, h.x, h.y, mode); }, k * 90); })(p.chain[k], k); return; }
+        if (intent === 'aura') {
+            r = p.aoeRadius != null ? p.aoeRadius : 0;
+            if (r > 0 && mode === 'lift') _psAoeOn(spellId, p.tx, p.ty, r, mode);
+            else _psRingsOn(spellId, p.tx, p.ty, mode);
+        }
+    }
+    var _psFire0 = fire;
+    fire = function (intent, spellId, params) {
+        var out = _psFire0.apply(this, arguments);
+        if (!_suppressed() && !_catOff('spells')) { try { _psOnIntent(intent, spellId, params || {}); } catch (e) { console.warn('[VFX] psychic pass failed', spellId, e); } }
+        return out;
+    };
+    /* ═════════ END THE PSYCHIC PASS ═════════ */
+
     /* ════ PRIEST — gold, white light, blessed water ════ */
     EFFECTS['pzHolyWater_bolt'] = _pzDef('holyWater', { pzOwn: true });
     EFFECTS['pzHolyWater_land'] = { layers: [
