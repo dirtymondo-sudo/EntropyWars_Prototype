@@ -6164,6 +6164,19 @@ const SPELL_LIBRARY = [
           element: 'water', type: 'damage', kind: 'damage', range: 3, dmg: 80, damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
           desc: 'A jet of seawater from the gills. WEAK water damage and the target is soaked through.' },
+        /* THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or
+           making them easily identifiable and making sure there's a nice amount of spells for each"): Water Abilities had
+           no single-target Soak and no finisher vs Soaked (water's own status) at all. Two rows on existing kinds and
+           rules only: Water Jet = the Spout shape (damage, Soaked 2) at tier I; Maelstrom = the family's tier IV
+           finisher, bonus vs Soaked, applies nothing (no self-combo). Their looks: three-vfx-effects.js "THE WATER PASS". */
+        { id: 'raceWaterJet', name: 'Water Jet', tier: 1, families: ['water'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'A hard jet of water from the open hand. WEAK magic damage to a Single Enemy within 3 and it is Soaked for 2 rounds.' },
+        { id: 'raceMaelstrom', name: 'Maelstrom', tier: 4, families: ['water'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'The sea turns on one spot. A whirlpool opens under a Single Enemy within 4 and its water closes over it for HEAVY magic damage. Soaked targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceSurveillance', name: 'Surveillance', tier: 1, families: ['deepstate'], cost: 25, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 6,
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],

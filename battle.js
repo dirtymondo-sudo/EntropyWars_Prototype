@@ -40728,6 +40728,10 @@
             // contact and DOES resolve as an offensive act — the doSpell
             // placement branches flag that at runtime: see _placementStruck.)
             if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
+            /* A STATUS-ONLY CAST KEEPS THE TURN (mondo 2026-10-25: Fear & co "shouldnt end your turn"): a `noDamage` area
+               (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse…) is an aoe / barrage kind but never hits, so it costs
+               its apCost like a buff instead of the whole turn. */
+            if (spell.noDamage) return false;
             if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
             /* THE ZONE'S CAST HIT IS DAMAGE (2026-10-21 PvP audit #2): Outbreak's zoneCastDamage strikes every enemy in the
                footprint inside the cast — it ends the turn and presses like any nuke (data.js spellHasDamage counts it too). */
