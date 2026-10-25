@@ -43588,6 +43588,982 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ═════════ END THE P-Z SIGNATURES ═════════ */
 
+    /* ═════════════════════════════════════════════════════════════════════
+       THE 2026-10-25 BATCH SIGNATURE VFX (mondo: "done a vfx pass on them
+       yet?") — the 21 signature spells of chef, eagleman, flesheater, mime
+       (PR #505, `nr*`) and mummy, swamp monster, undead (PR #504, `mm*`
+       `sm*` `ud*`) shipped on their element's stock look; each gets its own
+       recipe + a 3D piece here. Visuals only: no row, rule, range, status
+       or timing in data.js changed.
+       Same hook as the P-Z pass: each EFFECTS def names a `pzSig` key
+       (`nb*`) that fire() runs from _PZ_SIGS; the bolt rows (Flambé,
+       Stoop Dive, Linen Bind, Embalm) own their travel (`pzOwn`) and land
+       their own recipe. Everything rides fire(), which online.js relays,
+       so the guest sees the same piece (RULE #2); a caster-side prop (the
+       match, the glint) draws only where the viewer sees the caster's tile
+       (_pzSeen). Nothing is full-screen and no _sigScreenFlash is used: the
+       pieces stay round the body, sparse or additive and modest, so the
+       caster, the target, the hit and the number read. Basic materials
+       only (WebGPU draws the same); textures are the R2 terrain sprites
+       (gunmetal, wood, enamel, rock, marble) and small canvases drawn here. */
+    var _NB = {
+        iron: 0x2a2a30, oil: 0xffd86a, fire: 0xff7a2a, blue: 0x5a9aff, brandy: 0xe8962a, steam: 0xf4f4f0, broth: 0xffd05a, heal: 0x7dffb0,
+        talon: 0x1e160e, toe: 0xe8b830, feather: 0x6a4a2a, gold: 0xffc83a, wind: 0xe8f4ff, blood: 0x9a0a1a, flesh: 0xb04858, gum: 0x7a1e2e,
+        mime: 0xffffff, lips: 0xc0102a, linen: 0xe9dfc4, sand: 0xd8b878, hex: 0xa8e05a, mud: 0x7a6038, bog: 0x1e2a16, gas: 0x9ad03a,
+        wisp: 0xd0ffd8, rot: 0xd0c8a8, nail: 0xc8b87a, fear: 0xc0b8e8, bone: 0xc8c4ae, soil: 0x5a4028, fly: 0x14120a,
+    };
+    function _nbSprDark(color, size, parent) { return _pzSprN(color, size, _sigGlowTex(), parent); }
+    /* the flat direction from the tile toward the lens (else +z) */
+    function _nbCamDir(F) {
+        var cam = _pzCam();
+        if (cam) { var dx = cam.position.x - F.wp.x, dz = cam.position.z - F.wp.z, dl = Math.hypot(dx, dz); if (dl > 1) return { x: dx / dl, z: dz / dl }; }
+        return { x: 0, z: 1 };
+    }
+    /* the side of the body away from the lens (else away from the caster): a prop there never stands in front of the victim */
+    function _nbBehind(F, ln) {
+        var bx = -ln.ux, bz = -ln.uz, cam = _pzCam();
+        if (cam) { var cx = cam.position.x - F.wp.x, cz = cam.position.z - F.wp.z, cl = Math.hypot(cx, cz); if (cl > 1) { bx = -cx / cl; bz = -cz / cl; } }
+        return { x: bx, z: bz };
+    }
+
+    /* ── the small canvases ── */
+    function _nbRR(g, x, y, w, h, r) {
+        g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+        g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fill(); g.stroke();
+    }
+    function _nbLinenTex() {
+        var t = _pzTex('nb-linen', 256, 32, function (g, w, h) {
+            g.fillStyle = '#e6dcc0'; g.fillRect(0, 0, w, h);
+            g.strokeStyle = 'rgba(120,100,70,0.3)'; g.lineWidth = 1;
+            for (var x = 0; x < w; x += 4) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+            for (var y = 0; y < h; y += 4) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+            g.fillStyle = 'rgba(140,100,50,0.32)';
+            for (var i = 0; i < 9; i++) { g.beginPath(); g.ellipse((i * 61) % w, (i * 13) % h, 10 + (i % 3) * 6, 5, 0, 0, Math.PI * 2); g.fill(); }
+            g.fillStyle = 'rgba(90,60,30,0.55)'; g.fillRect(0, 0, w, 2); g.fillRect(0, h - 2, w, 2);
+        });
+        t.wrapS = THREE.RepeatWrapping; t.repeat.set(6, 1);
+        return t;
+    }
+    /* the mime's white glove: open palm · shh (index up) · fist */
+    function _nbGloveTex(kind) {
+        return _pzTex('nb-glove-' + kind, 128, 160, function (g, w, h) {
+            g.fillStyle = '#ffffff'; g.strokeStyle = '#7a7a88'; g.lineWidth = 4; g.lineJoin = 'round';
+            _nbRR(g, 38, 128, 52, 28, 6);
+            if (kind === 'open') {
+                var F = [[28, 18, 17, 60], [48, 6, 17, 70], [68, 10, 17, 66], [88, 24, 16, 54]];
+                for (var i = 0; i < F.length; i++) _nbRR(g, F[i][0], F[i][1], F[i][2], F[i][3], 8);
+                _nbRR(g, 28, 62, 76, 72, 22); _nbRR(g, 4, 78, 40, 18, 9);
+            } else if (kind === 'shh') {
+                _nbRR(g, 40, 6, 18, 76, 9);
+                _nbRR(g, 34, 66, 64, 68, 22);
+                for (var k = 0; k < 3; k++) _nbRR(g, 56 + k * 14, 58, 16, 26, 8);
+                _nbRR(g, 64, 98, 44, 16, 8);
+            } else {
+                _nbRR(g, 24, 50, 80, 84, 26);
+                for (var j = 0; j < 4; j++) _nbRR(g, 26 + j * 19, 40, 19, 26, 9);
+                _nbRR(g, 30, 88, 56, 18, 9);
+            }
+            g.strokeStyle = 'rgba(120,120,136,0.8)'; g.lineWidth = 2;
+            for (var s = 0; s < 3; s++) { g.beginPath(); g.moveTo(44, 138 + s * 6); g.lineTo(84, 138 + s * 6); g.stroke(); }
+        });
+    }
+    /* an eagle from below / above: spread wings with fingered primaries, a fanned tail (white — the material tints it) */
+    function _nbEagleTex() {
+        return _pzTex('nb-eagle', 256, 128, function (g, w, h) {
+            g.fillStyle = '#ffffff';
+            g.beginPath(); g.ellipse(128, 62, 13, 36, 0, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.ellipse(128, 24, 9, 12, 0, 0, Math.PI * 2); g.fill();
+            for (var s = -1; s <= 1; s += 2) {
+                g.beginPath(); g.moveTo(128, 44); g.quadraticCurveTo(128 + s * 56, 26, 128 + s * 112, 36);
+                for (var k = 0; k < 5; k++) { g.lineTo(128 + s * (122 - k * 7), 44 + k * 7); g.lineTo(128 + s * (108 - k * 8), 46 + k * 7); }
+                g.quadraticCurveTo(128 + s * 50, 82, 128, 78); g.closePath(); g.fill();
+            }
+            g.beginPath(); g.moveTo(116, 90); g.lineTo(140, 90); g.lineTo(150, 124); g.lineTo(106, 124); g.closePath(); g.fill();
+        });
+    }
+    function _nbRaptorEyeTex() {
+        return _pzTex('nb-raptorEye', 128, 64, function (g, w, h) {
+            g.save(); g.beginPath(); g.moveTo(6, 34); g.quadraticCurveTo(64, -6, 122, 30); g.quadraticCurveTo(64, 74, 6, 34); g.clip();
+            var gr = g.createRadialGradient(64, 34, 4, 64, 34, 34); gr.addColorStop(0, '#fff2a0'); gr.addColorStop(0.55, '#f2b81c'); gr.addColorStop(1, '#b86a08');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#060402'; g.beginPath(); g.arc(64, 34, 14, 0, Math.PI * 2); g.fill();
+            g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(58, 28, 4, 0, Math.PI * 2); g.fill();
+            g.fillStyle = 'rgba(40,24,8,0.92)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(w, 0); g.lineTo(w, 22); g.quadraticCurveTo(64, 2, 0, 30); g.closePath(); g.fill();
+            g.restore();
+            g.strokeStyle = '#2a1806'; g.lineWidth = 4; g.beginPath(); g.moveTo(6, 34); g.quadraticCurveTo(64, 74, 122, 30); g.stroke();
+        });
+    }
+    function _nbHieroTex() {
+        return _pzTex('nb-hiero', 512, 512, function (g, w, h) {
+            var c = 256, col = '#ffd27a';
+            g.strokeStyle = col; g.fillStyle = col; g.lineCap = 'round'; g.lineJoin = 'round';
+            g.lineWidth = 8; g.beginPath(); g.arc(c, c, 246, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 4; g.beginPath(); g.arc(c, c, 230, 0, Math.PI * 2); g.stroke();
+            g.beginPath(); g.arc(c, c, 168, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 6; g.beginPath(); g.arc(c, c, 154, 0, Math.PI * 2); g.stroke();
+            for (var i = 0; i < 16; i++) {
+                g.save(); g.translate(c, c); g.rotate(i / 16 * Math.PI * 2); g.translate(0, -199); g.lineWidth = 4;
+                var t = i % 6;
+                if (t === 0) { g.beginPath(); g.ellipse(0, -12, 8, 11, 0, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.moveTo(-14, 0); g.lineTo(14, 0); g.moveTo(0, 0); g.lineTo(0, 20); g.stroke(); }
+                else if (t === 1) { g.beginPath(); g.ellipse(0, 0, 16, 8, 0, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(0, 0, 5, 0, Math.PI * 2); g.fill(); g.beginPath(); g.moveTo(-6, 8); g.lineTo(-10, 20); g.moveTo(6, 8); g.quadraticCurveTo(16, 18, 8, 22); g.stroke(); }
+                else if (t === 2) { g.beginPath(); g.moveTo(-14, 14); g.lineTo(-4, -2); g.lineTo(2, -14); g.lineTo(10, -8); g.lineTo(4, 0); g.lineTo(14, 14); g.stroke(); }
+                else if (t === 3) { for (var r = 0; r < 3; r++) { g.beginPath(); for (var x = -16; x <= 16; x += 4) g.lineTo(x, -10 + r * 10 + (x / 4 % 2 ? -3 : 3)); g.stroke(); } }
+                else if (t === 4) { g.beginPath(); g.ellipse(0, 2, 10, 13, 0, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(0, -14, 5, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.moveTo(-10, -4); g.lineTo(-18, -10); g.moveTo(10, -4); g.lineTo(18, -10); g.moveTo(-10, 8); g.lineTo(-18, 14); g.moveTo(10, 8); g.lineTo(18, 14); g.stroke(); }
+                else { g.beginPath(); g.moveTo(0, 20); g.quadraticCurveTo(-12, 0, 0, -20); g.quadraticCurveTo(12, 0, 0, 20); g.stroke(); g.beginPath(); g.moveTo(0, -18); g.lineTo(0, 20); g.stroke(); }
+                g.restore();
+            }
+            g.globalAlpha = 0.35; g.lineWidth = 3;
+            for (var k = 0; k < 24; k++) { var a = k / 24 * Math.PI * 2; g.beginPath(); g.moveTo(c + Math.cos(a) * 60, c + Math.sin(a) * 60); g.lineTo(c + Math.cos(a) * 146, c + Math.sin(a) * 146); g.stroke(); }
+        });
+    }
+    function _nbScarabTex() {
+        return _pzTex('nb-scarab', 64, 80, function (g, w, h) {
+            g.strokeStyle = '#1a1206'; g.lineWidth = 3;
+            for (var s = -1; s <= 1; s += 2) for (var k = 0; k < 3; k++) { g.beginPath(); g.moveTo(32, 34 + k * 12); g.lineTo(32 + s * 28, 26 + k * 18); g.stroke(); }
+            var gr = g.createLinearGradient(14, 0, 50, 0); gr.addColorStop(0, '#1c4a40'); gr.addColorStop(0.5, '#3aa088'); gr.addColorStop(1, '#1c4a40');
+            g.fillStyle = gr; g.beginPath(); g.ellipse(32, 46, 18, 26, 0, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = '#ffd27a'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.moveTo(32, 26); g.lineTo(32, 72); g.stroke();
+            g.fillStyle = '#ffd27a'; g.beginPath(); g.ellipse(32, 16, 11, 8, 0, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* the painted lid: nemes stripes, a gold face, the broad collar, the crossed crook and flail, the text bands */
+    function _nbSarcTex() {
+        return _pzTex('nb-sarc', 128, 256, function (g, w, h) {
+            g.save(); g.beginPath(); g.moveTo(64, 4); g.bezierCurveTo(124, 4, 122, 70, 112, 110); g.lineTo(100, 250); g.lineTo(28, 250); g.lineTo(16, 110); g.bezierCurveTo(6, 70, 4, 4, 64, 4); g.closePath(); g.clip();
+            var gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#9a6a14'); gr.addColorStop(0.5, '#f2c650'); gr.addColorStop(1, '#9a6a14');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#2a4ab8'; for (var i = 0; i < 9; i++) g.fillRect(0, 10 + i * 10, w, 5);
+            g.fillStyle = '#d8a040'; g.beginPath(); g.ellipse(64, 56, 22, 28, 0, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#0a0806'; g.fillRect(48, 50, 12, 3); g.fillRect(68, 50, 12, 3); g.beginPath(); g.arc(54, 54, 3, 0, Math.PI * 2); g.arc(74, 54, 3, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#2a4ab8'; g.fillRect(59, 82, 10, 14);
+            var cols = ['#2a4ab8', '#c03020', '#f2c650', '#2a4ab8', '#3a9a6a'];
+            for (var k = 0; k < cols.length; k++) { g.strokeStyle = cols[k]; g.lineWidth = 4; g.beginPath(); g.arc(64, 88, 30 + k * 5, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); }
+            g.strokeStyle = '#2a4ab8'; g.lineWidth = 6; g.beginPath(); g.moveTo(40, 150); g.lineTo(88, 126); g.moveTo(88, 150); g.lineTo(40, 126); g.stroke();
+            g.fillStyle = '#2a1806'; for (var b = 0; b < 3; b++) for (var r = 0; r < 9; r++) g.fillRect(44 + b * 16, 170 + r * 8, 8, 4);
+            g.restore();
+            g.strokeStyle = '#4a2a06'; g.lineWidth = 3; g.beginPath(); g.moveTo(64, 4); g.bezierCurveTo(124, 4, 122, 70, 112, 110); g.lineTo(100, 250); g.lineTo(28, 250); g.lineTo(16, 110); g.bezierCurveTo(6, 70, 4, 4, 64, 4); g.stroke();
+        });
+    }
+    function _nbAnkhTex() {
+        return _pzTex('nb-ankh', 64, 96, function (g, w, h) {
+            g.strokeStyle = '#ffd27a'; g.lineWidth = 7; g.lineCap = 'round'; g.shadowColor = '#ffd27a'; g.shadowBlur = 8;
+            g.beginPath(); g.ellipse(32, 22, 11, 15, 0, 0, Math.PI * 2); g.stroke();
+            g.beginPath(); g.moveTo(10, 42); g.lineTo(54, 42); g.moveTo(32, 38); g.lineTo(32, 90); g.stroke();
+        });
+    }
+    function _nbGhostTex() {
+        return _pzTex('nb-ghost', 128, 160, function (g, w, h) {
+            g.filter = 'blur(4px)';
+            var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(236,236,255,0.95)'); gr.addColorStop(1, 'rgba(236,236,255,0)');
+            g.fillStyle = gr; g.beginPath(); g.ellipse(64, 70, 40, 56, 0, 0, Math.PI * 2); g.fill(); g.fillRect(30, 70, 68, 86);
+            g.filter = 'blur(2px)'; g.fillStyle = 'rgba(8,6,24,0.95)';
+            g.beginPath(); g.ellipse(46, 58, 9, 15, 0.25, 0, Math.PI * 2); g.ellipse(82, 58, 9, 15, -0.25, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.ellipse(64, 104, 11, 22, 0, 0, Math.PI * 2); g.fill();
+        });
+    }
+    function _nbCraniumTex() {
+        return _pzTex('nb-cranium', 128, 112, function (g, w, h) {
+            g.fillStyle = '#e4ddc8'; g.beginPath(); g.arc(64, 52, 46, Math.PI, 0); g.lineTo(110, 70); g.quadraticCurveTo(104, 92, 90, 96); g.lineTo(38, 96); g.quadraticCurveTo(24, 92, 18, 70); g.closePath(); g.fill();
+            g.fillStyle = '#0e0c0a'; g.beginPath(); g.ellipse(44, 64, 13, 15, 0, 0, Math.PI * 2); g.ellipse(84, 64, 13, 15, 0, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.moveTo(64, 76); g.lineTo(57, 90); g.lineTo(71, 90); g.closePath(); g.fill();
+            g.fillStyle = '#e4ddc8'; for (var i = 0; i < 8; i++) g.fillRect(36 + i * 7, 96, 5, 12);
+        });
+    }
+    function _nbJawTex() {
+        return _pzTex('nb-jaw', 128, 56, function (g, w, h) {
+            g.fillStyle = '#d8d0b8'; g.beginPath(); g.moveTo(22, 4); g.lineTo(106, 4); g.lineTo(100, 30); g.quadraticCurveTo(64, 58, 28, 30); g.closePath(); g.fill();
+            g.fillStyle = '#0e0c0a'; for (var i = 0; i < 9; i++) g.fillRect(36 + i * 6.5, 4, 1.5, 9);
+        });
+    }
+    function _nbWhirlTex() {
+        return _pzTex('nb-whirl', 256, 256, function (g, w, h) {
+            var gr = g.createRadialGradient(128, 128, 4, 128, 128, 128); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.7, 'rgba(20,30,14,0.9)'); gr.addColorStop(1, 'rgba(20,30,14,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.strokeStyle = 'rgba(130,180,90,0.9)'; g.lineCap = 'round';
+            for (var k = 0; k < 5; k++) {
+                g.lineWidth = 5; g.beginPath();
+                for (var s = 0; s <= 40; s++) { var t = s / 40, a = k / 5 * Math.PI * 2 + t * 4.2, r = 10 + t * 108; g.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); }
+                g.stroke();
+            }
+        });
+    }
+    /* black-and-white wedges in a ring (the mime's stripes), clear in the middle */
+    function _nbStripeRingTex() {
+        return _pzTex('nb-stripeRing', 256, 256, function (g, w, h) {
+            for (var i = 0; i < 24; i++) { g.fillStyle = i % 2 ? '#101010' : '#f6f6f6'; g.beginPath(); g.moveTo(128, 128); g.arc(128, 128, 126, i / 24 * Math.PI * 2, (i + 1) / 24 * Math.PI * 2); g.closePath(); g.fill(); }
+            g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(128, 128, 92, 0, Math.PI * 2); g.fill();
+        });
+    }
+
+    /* a hand that rises out of the ground, fingers up, palm toward local +z; userData.curl(k) closes it (0 open · 1 a fist) */
+    function _nbHand(ts, mat, o) {
+        o = o || {};
+        var s = (o.s || 1) * ts, g = new THREE.Group(), fingers = [], lg = o.long || 1;
+        _pzMesh(new THREE.BoxGeometry(s * 0.16, s * 0.17, s * 0.06), mat, g, 0, s * 0.085, 0);
+        _pzMesh(new THREE.CylinderGeometry(s * 0.05, s * 0.065, s * 0.32, 8), mat, g, 0, -s * 0.16, 0);
+        for (var i = 0; i < 4; i++) {
+            var a = new THREE.Group(); a.position.set((i - 1.5) * s * 0.042, s * 0.17, 0); g.add(a);
+            var L = s * (i === 0 || i === 3 ? 0.085 : 0.105) * lg;
+            _pzMesh(new THREE.CylinderGeometry(s * 0.016, s * 0.02, L, 6), mat, a, 0, L / 2, 0);
+            var b = new THREE.Group(); b.position.y = L; a.add(b);
+            _pzMesh(new THREE.CylinderGeometry(s * 0.008, s * 0.016, L * 0.85, 6), mat, b, 0, L * 0.42, 0);
+            fingers.push({ a: a, b: b });
+        }
+        var th = new THREE.Group(); th.position.set(s * 0.085, s * 0.06, s * 0.01); th.rotation.z = -0.75; g.add(th);
+        _pzMesh(new THREE.CylinderGeometry(s * 0.016, s * 0.02, s * 0.09, 6), mat, th, 0, s * 0.045, 0);
+        g.userData.curl = function (k) {
+            for (var j = 0; j < fingers.length; j++) { fingers[j].a.rotation.x = 0.95 * k; fingers[j].b.rotation.x = 1.2 * k; }
+            th.rotation.x = 0.6 * k;
+        };
+        return g;
+    }
+    /* a linen wrap wound round the body from the feet up: grow(t) draws t of it */
+    function _nbWrap(F, ts, o) {
+        o = o || {};
+        var pts = [], turns = o.turns || 4.5, r = ts * (o.r || 0.27), y0 = ts * (o.y0 != null ? o.y0 : 0.08), y1 = ts * (o.y1 || 1.0), ph = o.ph || 0;
+        for (var i = 0; i <= 72; i++) { var t = i / 72, a = ph + t * turns * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * r, y0 + (y1 - y0) * t, Math.sin(a) * r)); }
+        var geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 220, ts * (o.w || 0.03), 4, false);
+        var mat = _pzSolid(0xffffff, _nbLinenTex(), { side: THREE.DoubleSide });
+        _pzMesh(geo, mat, F.g);
+        var idx = geo.index ? geo.index.count : 0;
+        return { mat: mat, grow: function (t) { if (idx) geo.setDrawRange(0, Math.floor(idx * _sigClamp01(t) / 3) * 3); } };
+    }
+
+    /* ════ CHEF — the kitchen: cast iron, brandy, a wooden spoon ════ */
+    EFFECTS['nbHotPan_impact'] = _pzDef('nbHotPan', { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 130, size0: 54, size1: 14, tint: 0xffb46a, opacity0: 0.85, z: 56, delayMs: 70 },
+        { count: 12, sprite: 'spark', ml: [260, 520], offsetXY: 8, z: [50, 66], tint: 0xffd86a, vxRange: 200, vyRange: 200, vzRange: [40, 180], gravity: 420, drag: 1.1, size0: [4, 7], size1: 1, delayMs: 70 },
+        { count: 3, mode: 'y-locked', sprite: 'flame', ml: [360, 560], offsetXY: 10, z: [20, 34], w0: [10, 14], w1: [4, 6], h0: [22, 30], h1: [40, 56], opacity0: 0.85, delayMs: 90 },
+        { count: 4, sprite: 'smoke-soft', ml: [700, 1100], offsetXY: 10, z: [56, 70], tint: 0xf4f4f0, vzRange: [30, 70], drag: 0.5, size0: [10, 14], size1: [30, 44], opacity0: 0.35, delayMs: 120 },
+    ] });
+    /* straight off the burner: a cast-iron pan comes over from the chef's side and lands flat on the head, sizzling */
+    _PZ_SIGS.nbHotPan = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var iron = _pzSolid(_NB.iron, _sigTerrainTex('gunmetal.png', 1, 1), { side: THREE.DoubleSide });
+        /* the pivot is the chef's hand; the pan reaches 0.55 of a tile toward the victim and swings flat-faced into the side of the head */
+        var piv = new THREE.Group(); piv.position.set(ln.ux * ts * 0.55, ts * 0.86, ln.uz * ts * 0.55); F.g.add(piv);
+        var arm = new THREE.Group(); piv.add(arm);
+        var dish = new THREE.Group(); dish.position.z = -ts * 0.5; dish.rotation.z = Math.PI / 2; arm.add(dish);
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.17, ts * 0.14, ts * 0.05, 22, 1, true), iron, dish);
+        var base = _pzMesh(new THREE.CircleGeometry(ts * 0.14, 22), iron, dish, 0, -ts * 0.025, 0); base.rotation.x = Math.PI / 2;
+        _pzMesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.04, ts * 0.32), iron, arm, 0, 0, -ts * 0.18);
+        var glow = _pzSpr(_NB.fire, ts * 0.42, dish);
+        var yaw0 = Math.atan2(ln.ux, ln.uz), lastS = 0;
+        return _sigRunOwned(F.g, 850, function (el) {
+            var sw;
+            if (el < 70) sw = 1.35 - 1.5 * _sigEaseInCubic(el / 70);
+            else if (el < 220) sw = -0.15 + 0.6 * _sigEaseOutCubic((el - 70) / 150);
+            else sw = 0.45 + 0.15 * _sigClamp01((el - 220) / 400);
+            arm.rotation.y = yaw0 + sw; arm.rotation.z = -0.25 * sw;
+            iron.opacity = _pzEnv(el, 0, 30, 520, 850);
+            glow.material.opacity = 0.5 * _pzEnv(el, 0, 40, 180, 600);
+            if (el > 70 && el < 650 && el - lastS > 70 && _canSpawn()) { lastS = el; _pzP(F, rn(-1, 1) * ts * 0.1, ts * 0.95, rn(-1, 1) * ts * 0.1,
+                { sprite: 'smoke-soft', tint: _NB.steam, ml: rn(500, 800), size0: rn(8, 12), size1: rn(24, 34), vz: rn(30, 60), drag: 0.5, opacity0: 0.3 }); }
+        });
+    };
+
+    EFFECTS['nbTasteTest_center'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'heal-glow', ml: 900, z: 3, size0: 40, size1: 110, opacity0: 0.55, delayMs: 330 },
+        { count: 6, sprite: 'heal-cross', ml: [600, 900], offsetXY: 16, z: [20, 50], vzRange: [30, 70], drag: 0.6, size0: [8, 12], size1: 3, opacity0: 0.85, delayMs: 350 },
+        { count: 6, sprite: 'leaf', ml: [700, 1100], offsetXY: 18, z: [30, 60], tint: 0x8adf5a, vxRange: 60, vyRange: 60, vzRange: [10, 40], drag: 0.7, size0: [6, 9], size1: 3, opacity0: 0.9, delayMs: 380 },
+    ] };
+    EFFECTS['nbTasteTest_aura'] = _pzDef('nbTasteTest', { aoeRadius: 0, impactCenterEffect: 'nbTasteTest_center' });
+    /* here, try this: a wooden spoon with a steaming dollop comes up to the mouth from the chef's side, tips, and it's gone */
+    _PZ_SIGS.nbTasteTest = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var wood = _pzSolid(0xc89a5a, _sigTerrainTex('wood.png', 1, 1));
+        var sp = new THREE.Group(); sp.rotation.order = 'YXZ'; sp.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(sp);
+        var h = _pzMesh(new THREE.CylinderGeometry(ts * 0.014, ts * 0.018, ts * 0.46, 8), wood, sp, 0, 0, ts * 0.23); h.rotation.x = Math.PI / 2;
+        var bowl = _pzMesh(new THREE.SphereGeometry(ts * 0.07, 12, 8), wood, sp, 0, 0, -ts * 0.02); bowl.scale.set(1, 0.35, 1.3);
+        var dollop = _pzSpr(_NB.broth, ts * 0.22, sp); dollop.position.set(0, ts * 0.03, -ts * 0.02);
+        var lastS = 0, ate = false;
+        return _sigRunOwned(F.g, 950, function (el) {
+            var t = _sigEaseOutCubic(_sigClamp01(el / 260)), back = _sigClamp01((el - 520) / 380);
+            var d = ts * (1.0 - 0.72 * t + 0.6 * back);
+            sp.position.set(ln.ux * d, ts * (0.62 + 0.33 * t), ln.uz * d);
+            sp.rotation.x = el > 260 ? -0.7 * _sigClamp01((el - 260) / 80) * (1 - back) : 0;
+            wood.opacity = _pzEnv(el, 0, 70, 700, 950);
+            if (!ate && el >= 340) { ate = true; _sigShockRing3D(tx, ty, { color: _NB.heal, r1: ts * 1.1, ms: 420, height: ts * 0.05 }); }
+            dollop.material.opacity = ate ? 0 : 0.9 * Math.min(1, el / 100) * (0.85 + 0.15 * Math.sin(el * 0.04));
+            if (!ate && el - lastS > 60 && _canSpawn()) { lastS = el; _pzP(F, sp.position.x, sp.position.y + ts * 0.06, sp.position.z,
+                { sprite: 'smoke-soft', tint: _NB.steam, ml: rn(400, 700), size0: rn(5, 8), size1: rn(16, 24), vz: rn(30, 60), vx: rn(-10, 10), drag: 0.5, opacity0: 0.4 }); }
+        });
+    };
+
+    EFFECTS['nbFlambe_bolt'] = _pzDef('nbFlambe', { pzOwn: true });
+    EFFECTS['nbFlambe_blue'] = { layers: [
+        { count: 6, anchor: 'floor', mode: 'y-locked', sprite: 'flame-hot', ml: [260, 420], offsetXY: 14, tint: 0x6aa8ff, w0: [16, 24], w1: [8, 12], h0: [50, 70], h1: [110, 150], opacity0: 0.9 },
+        { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 420, z: 2, tint: 0x5a9aff, size0: 40, size1: 100, opacity0: 0.7 },
+    ] };
+    EFFECTS['nbFlambe_land'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 160, size0: 70, size1: 18, tint: 0x9ac8ff, opacity0: 0.85, z: 36 },
+        { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 900, z: 2, size0: 50, size1: 110, opacity0: 0.65 },
+        { count: 16, sprite: 'ember', ml: [400, 800], offsetXY: 12, z: [20, 60], vxRange: 160, vyRange: 160, vzRange: [80, 240], gravity: 200, drag: 1.1, size0: [5, 10], size1: 2 },
+        { count: 5, anchor: 'floor', mode: 'y-locked', sprite: 'flame-hot', ml: [420, 700], offsetXY: 18, w0: [12, 18], w1: [6, 10], h0: [40, 60], h1: [80, 120], opacity0: 0.85, delayMs: 140 },
+    ] };
+    /* a splash of brandy and a match: an amber arc of drops, then the column goes up blue and turns orange */
+    _PZ_SIGS.nbFlambe = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 380;
+        /* the lit match at the chef's hand */
+        if (!p.hideGunRig && _pzSeen(fx, fy)) {
+            var M = _nrvFrame(fx, fy), mts = M.ts, ml = _nrvLine(M, { x: tx, y: ty }, fx, fy), wood = _pzSolid(0xd8b070, _sigTerrainTex('wood.png', 1, 1));
+            var match = new THREE.Group(); match.position.set(ml.ux * mts * 0.28, mts * 0.7, ml.uz * mts * 0.28); M.g.add(match);
+            _pzMesh(new THREE.BoxGeometry(mts * 0.012, mts * 0.13, mts * 0.012), wood, match, 0, 0, 0);
+            var head = _pzSpr(_NB.fire, mts * 0.16, match); head.position.y = mts * 0.075;
+            _sigRunOwned(M.g, 560, function (el) { wood.opacity = _pzEnv(el, 0, 50, 380, 560); head.material.opacity = 0.9 * _pzEnv(el, 0, 40, 300, 520) * (0.8 + 0.2 * Math.sin(el * 0.06)); match.rotation.z = -0.9 * _sigEaseOutCubic(_sigClamp01(el / 240)); });
+        }
+        for (var i = 0; i < 5; i++) {
+            var drop = new THREE.Group(), core = _pzSpr(_NB.brandy, (_cfg().tileSize || 128) * (0.16 - i * 0.015), drop); core.material.opacity = 0.9;
+            _pzFly(fx, fy, tx, ty, drop, { ms: ms * (0.9 + i * 0.03), arc: 0.32 + i * 0.05, h1: (_cfg().tileSize || 128) * 0.35, hideOnLand: true,
+                trail: i === 0 ? { sprite: 'spark', tint: 0xffb04a, every: 26, size: 6 } : null });
+        }
+        /* the brandy catches: a blue whoosh first, the orange fire a beat later */
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            _spawnEffect(EFFECTS['nbFlambe_blue'], { tx: tx, ty: ty });
+            var B = _nrvFrame(tx, ty), bts = B.ts, cd = _nbCamDir(B), puffs = [];
+            _sigShockRing3D(tx, ty, { color: _NB.blue, r1: bts * 1.3, ms: 380 });
+            /* the blue whoosh up the lens side of the body */
+            for (var k = 0; k < 4; k++) { var sp = _pzSpr(_NB.blue, bts * (0.75 - k * 0.1), B.g); sp.position.set(cd.x * bts * 0.3, bts * (0.25 + k * 0.4), cd.z * bts * 0.3); puffs.push(sp); }
+            _sigRunOwned(B.g, 420, function (el) { for (var j = 0; j < puffs.length; j++) { var e = el - j * 35; puffs[j].material.opacity = 0.55 * _pzEnv(e, 0, 50, 140, 380); puffs[j].position.y = bts * (0.25 + j * 0.4) + bts * 0.4 * _sigClamp01(e / 380); } });
+        }, ms);
+        _fxDelay(function () { if (!_suppressed()) _spawnEffect(EFFECTS['nbFlambe_land'], { tx: tx, ty: ty }); }, ms + 140);
+    };
+    SPELL_MAP['nrHotPan']    = { impact: 'nbHotPan_impact' };
+    SPELL_MAP['nrTasteTest'] = { aura: 'nbTasteTest_aura' };
+    SPELL_MAP['nrFlambe']    = { bolt: 'nbFlambe_bolt' };
+
+    /* ════ EAGLEMAN — the bird of prey: gold eye, brown feathers, talons ════ */
+    function _nbTalonFoot(ts, horn, toe) {
+        var f = new THREE.Group();
+        var A = [-0.45, 0, 0.45, Math.PI];
+        for (var i = 0; i < A.length; i++) {
+            var d = new THREE.Group(); d.rotation.y = A[i]; f.add(d);
+            var L = ts * (i === 3 ? 0.1 : 0.15);
+            var seg = _pzMesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.026, L, 6), toe, d, 0, 0, -L / 2); seg.rotation.x = Math.PI / 2;
+            var cl = new THREE.Group(); cl.position.z = -L; d.add(cl); cl.rotation.x = -0.9;
+            _pzMesh(new THREE.ConeGeometry(ts * 0.022, ts * 0.13, 6), horn, cl, 0, -ts * 0.065, 0).rotation.x = Math.PI;
+        }
+        _pzMesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.04, ts * 0.22, 8), toe, f, 0, ts * 0.11, 0);
+        return f;
+    }
+    EFFECTS['nbTalonRake_impact'] = _pzDef('nbTalonRake', { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 110, size0: 46, size1: 12, tint: 0xff5a4a, opacity0: 0.75, z: 44, delayMs: 80 },
+        { count: 10, sprite: 'blood-fleck', ml: [380, 640], offsetXY: 10, z: [30, 56], vxRange: 160, vyRange: 160, vzRange: [20, 120], gravity: 320, drag: 0.9, size0: [4, 7], size1: 2, delayMs: 80 },
+        { count: 2, sprite: 'dust-puff', anchor: 'floor', ml: [420, 640], offsetXY: 12, z: [2, 8], size0: [14, 20], size1: [30, 42], opacity0: 0.35, delayMs: 100 },
+    ] });
+    /* both feet, all talons: they come down out of the air from the eagle's side and rake through the body; six red lines stay */
+    _PZ_SIGS.nbTalonRake = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var horn = _pzSolid(_NB.talon, _sigTerrainTex('obsidian.png', 1, 1)), toe = _pzSolid(_NB.toe, _sigTerrainTex('leather.png', 1, 1));
+        var px = -ln.uz, pz = ln.ux, feet = [];
+        for (var s = -1; s <= 1; s += 2) { var ft = _nbTalonFoot(ts * 1.45, horn, toe); ft.rotation.order = 'YXZ'; ft.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(ft); feet.push({ g: ft, s: s }); }
+        var cd = _nbCamDir(F), marks = new THREE.Group(); marks.position.set(cd.x * ts * 0.3, ts * 0.6, cd.z * ts * 0.3); F.g.add(marks);
+        var lines = [];
+        for (var k = 0; k < 6; k++) {
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.03, ts * 0.8), _pzGlow(k % 2 ? 0xff2a2a : 0xff6a3a), marks, (k - 2.5) * ts * 0.075 + (k < 3 ? -ts * 0.06 : ts * 0.06), 0, 0);
+            m.rotation.z = k < 3 ? 0.42 : -0.42; lines.push(m);
+        }
+        _fxDelay(function () { if (!_suppressed()) _pzFeathers(tx, ty, _NB.feather, 7, { ms: 950 }); }, 90);
+        return _sigRunOwned(F.g, 1100, function (el) {
+            for (var i = 0; i < feet.length; i++) {
+                var Ft = feet[i], t = _sigEaseInCubic(_sigClamp01((el - i * 40) / 130));
+                var a = ts * (0.6 - 1.0 * t), y = ts * (1.2 - 0.95 * t);
+                Ft.g.position.set(ln.ux * a + px * Ft.s * ts * 0.17 + cd.x * ts * 0.22, y, ln.uz * a + pz * Ft.s * ts * 0.17 + cd.z * ts * 0.22);
+                Ft.g.rotation.x = -0.5 + 0.9 * t;
+            }
+            horn.opacity = toe.opacity = _pzEnv(el, 0, 40, 220, 380);
+            _pzFace(marks);
+            for (var j = 0; j < lines.length; j++) {
+                var g = _sigClamp01((el - 50 - (j < 3 ? 0 : 40) - (j % 3) * 15) / 90);
+                lines[j].scale.y = Math.max(0.01, g); lines[j].material.opacity = 0.85 * g * (1 - _sigClamp01((el - 650) / 420));
+            }
+        });
+    };
+
+    EFFECTS['nbEagleEye_impact'] = _pzDef('nbEagleEye', { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-gold', ml: 1100, z: 3, size0: 110, size1: 64, opacity0: 0.8, delayMs: 520 },
+        { count: 8, sprite: 'divine-sparkle', ml: [500, 800], offsetXY: 16, z: [30, 70], tint: 0xffd27a, vzRange: [10, 50], drag: 0.6, size0: [5, 8], size1: 2, delayMs: 560 },
+    ] });
+    /* picked out from a mile up: an eagle's shadow circles the victim, the gold eye opens over them, the reticle locks on */
+    _PZ_SIGS.nbEagleEye = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p);
+        var shadow = _pzMesh(new THREE.PlaneGeometry(ts * 1.0, ts * 0.5), _pzSolid(0x000000, _nbEagleTex(), { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 0.04, 0);
+        shadow.rotation.order = 'YXZ';
+        var eye = _pzMesh(new THREE.PlaneGeometry(ts * 1.2, ts * 0.6), _pzSolid(0xffffff, _nbRaptorEyeTex(), { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 1.55, 0);
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.92, ts, 48), _pzGlow(_NB.gold), F.g, 0, ts * 0.05, 0); ring.rotation.x = -Math.PI / 2;
+        var ticks = new THREE.Group(); ticks.position.y = ts * 0.05; F.g.add(ticks);
+        for (var k = 0; k < 4; k++) { var tk = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, ts * 0.22), _pzGlow(_NB.gold), ticks, Math.sin(k * Math.PI / 2) * ts * 0.62, 0, Math.cos(k * Math.PI / 2) * ts * 0.62); tk.rotation.set(-Math.PI / 2, 0, -k * Math.PI / 2); }
+        var glint = null;
+        if (_pzSeen(from.x, from.y)) { var G = _nrvFrame(from.x, from.y); glint = _pzSpr(_NB.gold, G.ts * 0.5, G.g); glint.position.y = G.ts * 1.05; _sigRunOwned(G.g, 420, function (el) { glint.material.opacity = 0.95 * _pzEnv(el, 0, 60, 120, 420); glint.scale.setScalar(G.ts * (0.3 + 0.5 * _sigClamp01(el / 200))); }); }
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var t = el / 1600, a = el * 0.0062, r = ts * (1.35 - 0.6 * t);
+            shadow.position.set(Math.cos(a) * r, ts * 0.04, Math.sin(a) * r); shadow.rotation.set(-Math.PI / 2, 0, 0); shadow.rotation.y = -a;
+            shadow.material.opacity = 0.42 * _pzEnv(el, 0, 200, 1200, 1600);
+            _pzFace(eye);
+            eye.scale.set(1, Math.max(0.04, _sigEaseOutBack(_sigClamp01((el - 120) / 240))), 1); eye.material.opacity = _pzEnv(el, 100, 200, 1100, 1450);
+            var lock = _sigEaseOutCubic(_sigClamp01((el - 320) / 320)), sc = 1.7 - 1.15 * lock;
+            ring.scale.setScalar(sc); ticks.scale.setScalar(sc); ticks.rotation.y = (1 - lock) * 1.6;
+            ring.material.opacity = 0.85 * _pzEnv(el, 300, 360, 1250, 1600);
+            for (var j = 0; j < ticks.children.length; j++) ticks.children[j].material.opacity = ring.material.opacity;
+        });
+    };
+
+    EFFECTS['nbStoopDive_bolt'] = _pzDef('nbStoopDive', { pzOwn: true });
+    EFFECTS['nbStoopDive_impact'] = _pzDef('nbStoopDive', { pzOwn: true });
+    EFFECTS['nbStoopDive_land'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 140, size0: 70, size1: 16, tint: 0xf4f8ff, opacity0: 0.8, z: 40 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 480, z: 3, tint: 0xe8f4ff, size0: 30, size1: 210, opacity0: 0.6 },
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 22, z: [2, 10], vxRange: 160, vyRange: 160, size0: [16, 22], size1: [40, 56], opacity0: 0.4 },
+        { count: 8, sprite: 'blood-fleck', ml: [380, 620], offsetXY: 10, z: [30, 54], vxRange: 140, vyRange: 140, vzRange: [30, 120], gravity: 320, size0: [4, 7], size1: 2 },
+    ] };
+    /* wings in, straight down: a folded eagle drops out of the sky on the victim, speed lines behind it, and flares on the hit */
+    _PZ_SIGS.nbStoopDive = function (p, id, intent) {
+        /* the charge that rushes in first strikes on the impact intent (battle.js _runChargeToTargetSpell): the drop is quick there */
+        var imp = intent === 'impact', fx = p.fromX, fy = p.fromY, tx = imp ? p.tx : p.toX, ty = imp ? p.ty : p.toY; if (tx == null) return;
+        var ms = imp ? 160 : Math.max(260, p.flyMs > 0 ? p.flyMs : 340);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx != null ? fx : tx - 1, y: fy != null ? fy : ty }, tx, ty);
+        var cd = _nbCamDir(F), top = imp ? new THREE.Vector3(-ln.ux * ts * 0.5 - ln.uz * ts * 0.3, ts * 1.95, -ln.uz * ts * 0.5 + ln.ux * ts * 0.3) : new THREE.Vector3(ln.ux * ts * 1.1, ts * 4.2, ln.uz * ts * 1.1);
+        /* it lands on the lens side of the body, so the body never swallows it; on the charge the follow camera sits behind
+           the eagleman, so the bird pulls up and flares over the victim's head where it clears the caster's shoulders */
+        var hitP = imp ? new THREE.Vector3(-ln.uz * ts * 0.3, ts * 1.2, ln.ux * ts * 0.3) : new THREE.Vector3(cd.x * ts * 0.4, ts * 1.0, cd.z * ts * 0.4), cur = new THREE.Vector3();
+        var bird = new THREE.Sprite(new THREE.SpriteMaterial({ map: _nbEagleTex(), color: new THREE.Color(0xc89048), transparent: true, opacity: 0, depthWrite: false }));
+        bird.renderOrder = 161; bird.material.rotation = Math.PI; F.g.add(bird);
+        /* a pale rim of air behind it, so the brown bird reads on a dark sky */
+        var rim = _pzSpr(_NB.wind, ts * 1.1, F.g);
+        var streaks = [];
+        for (var i = 0; i < 3; i++) streaks.push({ m: _pzMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.004, 1, 5), _pzGlow(_NB.wind), F.g), o: (i - 1) * ts * 0.12 });
+        var hit = false, a = new THREE.Vector3(), b = new THREE.Vector3();
+        return _sigRunOwned(F.g, ms + 700, function (el) {
+            var t = imp ? _sigClamp01(el / ms) : _sigEaseInCubic(_sigClamp01(el / ms));
+            cur.copy(top).lerp(hitP, t); bird.position.copy(cur);
+            var flare = _sigClamp01((el - ms) / 180);
+            bird.scale.set(ts * (0.75 + 1.0 * flare), ts * (1.0 + 0.2 * flare), 1);
+            bird.material.opacity = el < ms ? Math.min(1, el / 60) : 1 - flare;
+            rim.position.copy(cur); rim.material.opacity = 0.45 * bird.material.opacity;
+            for (var j = 0; j < streaks.length; j++) {
+                var S = streaks[j]; a.set(cur.x + S.o, cur.y + ts * 0.25, cur.z); b.set(top.x + S.o, top.y, top.z).lerp(a, 0.35 + 0.4 * t);
+                _pzSpan(S.m, b, a); S.m.material.opacity = el < ms ? 0.55 : 0.55 * (1 - _sigClamp01((el - ms) / 160));
+            }
+            if (!hit && el >= ms) { hit = true; _spawnEffect(EFFECTS['nbStoopDive_land'], { tx: tx, ty: ty }); _pzFeathers(tx, ty, _NB.feather, 9, { ms: 1000 }); _sigShockRing3D(tx, ty, { color: _NB.wind, r1: ts * 1.7, ms: 420 }); }
+        });
+    };
+    SPELL_MAP['nrTalonRake'] = { impact: 'nbTalonRake_impact' };
+    SPELL_MAP['nrEagleEye']  = { impact: 'nbEagleEye_impact' };
+    SPELL_MAP['nrStoopDive'] = { bolt: 'nbStoopDive_bolt', impact: 'nbStoopDive_impact' };
+
+    /* ════ FLESHEATER — the maw: raw red, wet tendrils, too many teeth ════ */
+    function _nbToothMat() { return _pzSolid(0xf0ead8, _sigTerrainTex('enamel.png', 1, 1)); }
+    function _nbFleshMat() { return _pzSolid(_NB.flesh, null, { side: THREE.DoubleSide }); }
+    EFFECTS['nbTendril_impact'] = _pzDef('nbTendril', { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 1100, z: 3, tint: 0xa01a2a, size0: 70, size1: 54, opacity0: 0.65, delayMs: 180 },
+        { count: 6, sprite: 'blood-drop', ml: [420, 700], offsetXY: 12, z: [10, 30], vxRange: 60, vyRange: 60, vzRange: [20, 80], gravity: 300, size0: [4, 6], size1: 2, delayMs: 200 },
+    ] });
+    /* the tendrils under its ribs reach out: three wet cords from the flesheater's chest coil round the victim's legs and hold */
+    _PZ_SIGS.nbTendril = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), see = _pzSeen(from.x, from.y);
+        var start = see ? new THREE.Vector3(ln.dx * 0.92, ts * 0.62 + ln.dy, ln.dz * 0.92) : new THREE.Vector3(ln.ux * ts * 0.95, ts * 0.02, ln.uz * ts * 0.95);
+        var mat = _nbFleshMat(), tubes = [];
+        for (var k = 0; k < 3; k++) {
+            var ph = k / 3 * Math.PI * 2, pts = [start.clone()];
+            var mid = start.clone().multiplyScalar(0.5); mid.y = Math.max(start.y * 0.5, ts * 0.2) + (k - 1) * ts * 0.12; mid.x += -ln.uz * (k - 1) * ts * 0.2; mid.z += ln.ux * (k - 1) * ts * 0.2; pts.push(mid);
+            for (var i = 0; i <= 10; i++) { var a = ph + i / 10 * Math.PI * 3.2, r = ts * (0.25 - i * 0.006); pts.push(new THREE.Vector3(Math.cos(a) * r, ts * (0.38 - i * 0.025) + k * ts * 0.05, Math.sin(a) * r)); }
+            var geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, ts * (0.03 - k * 0.004), 6, false);
+            _pzMesh(geo, mat, F.g); tubes.push({ geo: geo, n: geo.index ? geo.index.count : 0 });
+        }
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 220)), back = _sigClamp01((el - 1100) / 380);
+            for (var j = 0; j < tubes.length; j++) {
+                var T = tubes[j]; if (!T.n) continue;
+                var s0 = Math.floor(T.n * back * 0.999 / 3) * 3, e0 = Math.floor(T.n * grow / 3) * 3;
+                T.geo.setDrawRange(s0, Math.max(0, e0 - s0));
+            }
+            mat.opacity = Math.min(1, el / 60) * (1 - back * 0.6);
+        });
+    };
+
+    /* a mouth that faces the lens: an upper arch (∩) and a lower one (∪) of gum, the teeth pointing in */
+    function _nbJaws(F, ts, w, mat, gum) {
+        var J = new THREE.Group(), up = new THREE.Group(), lo = new THREE.Group(); J.add(up); J.add(lo);
+        for (var s = 0; s < 2; s++) {
+            var jaw = s ? lo : up, arc = new THREE.Group(); arc.scale.y = 0.55; if (s) arc.rotation.z = Math.PI; jaw.add(arc);
+            _pzMesh(new THREE.TorusGeometry(w, ts * 0.045, 6, 20, Math.PI), gum, arc);
+            for (var i = 0; i < 7; i++) {
+                var an = 0.22 + i / 6 * (Math.PI - 0.44), big = i === 1 || i === 5;
+                var tth = _pzMesh(new THREE.ConeGeometry(ts * (big ? 0.045 : 0.038), ts * (big ? 0.2 : 0.13), 6), mat, arc, Math.cos(an) * w * 0.94, Math.sin(an) * w * 0.94, 0);
+                tth.rotation.z = an + Math.PI / 2; tth.scale.y = 1 / 0.55 * 0.6;
+            }
+        }
+        F.g.add(J);
+        return { g: J, up: up, lo: lo };
+    }
+    EFFECTS['nbGnash_impact'] = _pzDef('nbGnash', { shake: 'normal', layers: [
+        { count: 8, sprite: 'blood-fleck', ml: [360, 620], offsetXY: 10, z: [36, 56], vxRange: 160, vyRange: 160, vzRange: [20, 120], gravity: 320, size0: [4, 7], size1: 2, delayMs: 90 },
+        { sprite: 'blood-splat', ml: 600, size0: 30, size1: 50, z: 44, opacity0: 0.7, delayMs: 90 },
+        { count: 6, sprite: 'blood-fleck', ml: [360, 620], offsetXY: 10, z: [36, 56], vxRange: 160, vyRange: 160, vzRange: [20, 120], gravity: 320, size0: [4, 7], size1: 2, delayMs: 380 },
+    ] });
+    EFFECTS['nbGnash_hop'] = { layers: [
+        { count: 3, sprite: 'blood-drop', ml: [300, 480], offsetXY: 6, z: [44, 60], vzRange: [10, 40], drag: 0.8, size0: [5, 8], size1: 2, opacity0: 0.95 },
+        { sprite: 'blood-mist', ml: 360, z: 50, size0: 10, size1: 22, tint: 0xb0102a, opacity0: 0.45 },
+    ] };
+    /* a mouthful: a set of jaws snaps shut on the victim twice */
+    _PZ_SIGS.nbGnash = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mat = _nbToothMat(), gum = _pzSolid(_NB.gum);
+        var cd = _nbCamDir(F), J = _nbJaws(F, ts, ts * 0.36, mat, gum); J.g.position.set(cd.x * ts * 0.16, ts * 0.62, cd.z * ts * 0.16);
+        function bite(el, at) { var d = Math.abs(el - at); return d < 110 ? 1 - d / 110 : 0; }
+        return _sigRunOwned(F.g, 950, function (el) {
+            _pzFace(J.g);
+            var c = Math.max(bite(el, 90), bite(el, 380)), gap = ts * (0.02 + 0.2 * (1 - c));
+            J.up.position.y = gap; J.lo.position.y = -gap;
+            mat.opacity = gum.opacity = _pzEnv(el, 0, 40, 560, 900);
+        });
+    };
+
+    EFFECTS['nbEatenAlive_impact'] = _pzDef('nbEatenAlive', { shake: 'hard', layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'blood-splat', ml: 1500, z: 2, size0: 70, size1: 110, opacity0: 0.7, delayMs: 300 },
+        { count: 14, sprite: 'blood-fleck', ml: [400, 700], offsetXY: 14, z: [20, 60], vxRange: 220, vyRange: 220, vzRange: [60, 200], gravity: 320, size0: [5, 8], size1: 2, delayMs: 300 },
+        { count: 4, sprite: 'blood-mist', ml: [700, 1000], offsetXY: 14, z: [10, 40], tint: 0x9a0a1a, vzRange: [10, 40], drag: 0.6, size0: [16, 22], size1: [40, 56], opacity0: 0.4, delayMs: 340 },
+    ] });
+    EFFECTS['nbEatenAlive_hop'] = { layers: [
+        { count: 4, sprite: 'blood-drop', ml: [300, 520], offsetXY: 8, z: [44, 60], vzRange: [10, 40], drag: 0.8, size0: [5, 9], size1: 2, opacity0: 0.95 },
+        { sprite: 'blood-mist', ml: 420, z: 50, size0: 12, size1: 28, tint: 0x9a0a1a, opacity0: 0.55 },
+    ] };
+    /* the whole mouth opens: a ring of teeth rises out of a red pit under the victim, closes on them twice, and sinks */
+    _PZ_SIGS.nbEatenAlive = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * 0.62, mat = _nbToothMat(), gum = _pzSolid(_NB.gum), pitM = _pzSolid(0x2a0408, null, { depthWrite: false });
+        var mouth = new THREE.Group(); F.g.add(mouth);
+        var pit = _pzMesh(new THREE.CircleGeometry(R * 1.05, 32), pitM, F.g, 0, ts * 0.025, 0); pit.rotation.x = -Math.PI / 2;
+        var gumR = _pzMesh(new THREE.TorusGeometry(R, ts * 0.07, 8, 32), gum, mouth); gumR.rotation.x = -Math.PI / 2;
+        var teeth = [];
+        for (var i = 0; i < 14; i++) {
+            var a = i / 14 * Math.PI * 2, x = Math.cos(a) * R, z = Math.sin(a) * R, pv = new THREE.Group();
+            pv.rotation.order = 'YXZ'; pv.position.set(x, 0, z); pv.rotation.y = Math.atan2(-x, -z); mouth.add(pv);
+            var hgt = ts * (i % 2 ? 0.3 : 0.4);
+            _pzMesh(new THREE.ConeGeometry(ts * 0.065, hgt, 6), mat, pv, 0, hgt / 2, 0);
+            teeth.push(pv);
+        }
+        function chomp(el, at) { var d = el - at; return d < 0 ? Math.max(0, 1 + d / 120) : Math.max(0, 1 - d / 200); }
+        return _sigRunOwned(F.g, 1650, function (el) {
+            var rise = _sigEaseOutBack(_sigClamp01(el / 200)), sink = _sigEaseInCubic(_sigClamp01((el - 1150) / 450));
+            mouth.position.y = -ts * 0.45 * (1 - rise) - ts * 0.5 * sink;
+            var c = Math.max(chomp(el, 300), chomp(el, 720) * 0.85);
+            for (var j = 0; j < teeth.length; j++) teeth[j].rotation.x = 0.15 + 0.85 * c;
+            mat.opacity = gum.opacity = Math.min(1, el / 90) * (1 - sink);
+            pitM.opacity = 0.9 * _pzEnv(el, 0, 80, 1200, 1650);
+        });
+    };
+    SPELL_MAP['nrTendrilSnare'] = { impact: 'nbTendril_impact' };
+    SPELL_MAP['nrGnash']        = { impact: 'nbGnash_impact', drainHop: 'nbGnash_hop' };
+    SPELL_MAP['nrEatenAlive']   = { impact: 'nbEatenAlive_impact', drainHop: 'nbEatenAlive_hop' };
+
+    /* ════ MIME — white gloves, black and white stripes, things nobody else can see ════ */
+    /* the face of a box round the body that looks at the lens: { axis 'x'|'z', sign } */
+    function _nbCamFace(F) {
+        var cam = _pzCam(); if (!cam) return { ax: 'z', s: 1 };
+        var cx = cam.position.x - F.wp.x, cz = cam.position.z - F.wp.z;
+        return Math.abs(cx) > Math.abs(cz) ? { ax: 'x', s: cx > 0 ? 1 : -1 } : { ax: 'z', s: cz > 0 ? 1 : -1 };
+    }
+    EFFECTS['nbInvisibleBox_impact'] = _pzDef('nbInvisibleBox', { layers: [
+        { count: 8, sprite: 'sparkle', ml: [500, 800], offsetXY: 18, z: [20, 70], tint: 0xffffff, vzRange: [0, 20], drag: 0.6, size0: [4, 7], size1: 1, opacity0: 0.8, delayMs: 300 },
+    ] });
+    /* four walls nobody else can see: the box is traced edge by edge round the victim, two white gloves feel along the glass */
+    _PZ_SIGS.nbInvisibleBox = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, W = ts * 0.9, H = ts * 1.4;
+        var box = new THREE.Group(); box.position.y = H / 2; F.g.add(box);
+        var eg = new THREE.EdgesGeometry(new THREE.BoxGeometry(W, H, W)), lm = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+        var edges = new THREE.LineSegments(eg, lm); edges.renderOrder = 160; box.add(edges);
+        var pane = _pzMesh(new THREE.BoxGeometry(W, H, W), _pzGlow(0xd8e8ff), box); pane.material.side = THREE.DoubleSide;
+        var fc = _nbCamFace(F), gloves = [], gt = _nbGloveTex('open');
+        for (var i = 0; i < 2; i++) {
+            var gl = _pzSprN(0xffffff, ts * 0.32, gt, box); gl.scale.set(ts * 0.26, ts * 0.33, 1);
+            gloves.push({ s: gl, y: (i ? 0.12 : -0.08) * H, k: i ? -1 : 1 });
+        }
+        var glint = _pzMesh(new THREE.PlaneGeometry(ts * 0.08, H * 1.05), _pzGlow(0xffffff), box);
+        var nSeg = eg.attributes.position.count / 2;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var drawn = Math.ceil(nSeg * _sigClamp01(el / 520));
+            eg.setDrawRange(0, drawn * 2);
+            var vis = _pzEnv(el, 0, 60, 1250, 1700);
+            lm.opacity = 0.95 * vis; pane.material.opacity = 0.07 * vis;
+            for (var j = 0; j < gloves.length; j++) {
+                var G = gloves[j], slide = Math.sin(el * 0.004 + j * 1.7) * W * 0.22 * G.k, push = 1 + 0.06 * Math.sin(el * 0.02 + j);
+                var off = W / 2 + ts * 0.02;
+                if (fc.ax === 'x') G.s.position.set(fc.s * off, G.y, slide); else G.s.position.set(slide, G.y, fc.s * off);
+                G.s.scale.set(ts * 0.26 * push, ts * 0.33 * push, 1);
+                G.s.material.opacity = 0.95 * _pzEnv(el, 380 + j * 120, 480 + j * 120, 1200, 1600);
+            }
+            var gs = _sigClamp01((el - 560) / 500), gx = (gs - 0.5) * W;
+            if (fc.ax === 'x') { glint.position.set(fc.s * (W / 2 + ts * 0.01), 0, gx); glint.rotation.set(0, Math.PI / 2, 0.25); }
+            else { glint.position.set(gx, 0, fc.s * (W / 2 + ts * 0.01)); glint.rotation.set(0, 0, 0.25); }
+            glint.material.opacity = 0.5 * Math.sin(Math.PI * gs) * vis;
+        });
+    };
+
+    EFFECTS['nbShhh_impact'] = _pzDef('nbShhh', { layers: [
+        { count: 2, sprite: 'psi-pulse', ml: [500, 700], z: 60, tint: 0xf0f0ff, size0: 50, size1: 12, opacity0: 0.45, delayMs: 200 },
+    ] });
+    /* a finger to the lips: a white glove goes up in front of the victim's face, every sound round their head is pulled in and gone */
+    _PZ_SIGS.nbShhh = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), cx = cd.x, cz = cd.z;
+        var glove = _pzSprN(0xffffff, ts * 0.5, _nbGloveTex('shh'), F.g); glove.scale.set(ts * 0.42, ts * 0.52, 1);
+        var rings = [];
+        for (var i = 0; i < 3; i++) { var r = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.012, 6, 40), _pzGlow(0xe8e4ff), F.g, 0, ts * 1.0, 0); r.rotation.x = -Math.PI / 2; rings.push(r); }
+        var floor = _pzMesh(new THREE.PlaneGeometry(ts * 1.3, ts * 1.3), _pzSolid(0xffffff, _nbStripeRingTex(), { side: THREE.DoubleSide, depthWrite: false }), F.g, 0, ts * 0.03, 0); floor.rotation.x = -Math.PI / 2;
+        return _sigRunOwned(F.g, 1550, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 300));
+            glove.position.set(cx * ts * 0.42, ts * (0.75 + 0.45 * up), cz * ts * 0.42);
+            glove.material.opacity = _pzEnv(el, 0, 120, 1100, 1450);
+            glove.material.rotation = -0.1 + 0.06 * Math.sin(el * 0.012);
+            for (var j = 0; j < rings.length; j++) {
+                var t = _sigClamp01((el - 150 - j * 160) / 520);
+                rings[j].scale.setScalar(Math.max(0.05, 1.8 - 1.7 * _sigEaseInCubic(t)));
+                rings[j].material.opacity = t > 0 && t < 1 ? 0.7 * (1 - t * 0.6) : 0;
+            }
+            floor.rotation.z = el * 0.0012; floor.material.opacity = 0.55 * _pzEnv(el, 0, 200, 1100, 1550);
+        });
+    };
+
+    EFFECTS['nbSilentTreatment_impact'] = _pzDef('nbSilentTreatment', { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 120, size0: 56, size1: 14, tint: 0xffffff, opacity0: 0.8, z: 46, delayMs: 90 },
+        { count: 10, sprite: 'steel-spark', ml: [240, 440], offsetXY: 6, z: [40, 56], tint: 0xffffff, vxRange: 220, vyRange: 220, vzRange: [20, 140], gravity: 300, size0: [4, 7], size1: 1, delayMs: 90 },
+        { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [400, 620], offsetXY: 10, z: [2, 8], size0: [14, 20], size1: [30, 40], opacity0: 0.35, delayMs: 100 },
+    ] });
+    /* a very real punch from an invisible glove: a white glove flies in from the mime's side, and the hit bursts in black and white */
+    _PZ_SIGS.nbSilentTreatment = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var fist = _pzSprN(0xffffff, ts * 0.4, _nbGloveTex('fist'), F.g);
+        var burst = new THREE.Group(); burst.position.set(ln.ux * ts * 0.12, ts * 0.66, ln.uz * ts * 0.12); F.g.add(burst);
+        var rays = [];
+        for (var i = 0; i < 12; i++) {
+            var hold = new THREE.Group(); hold.rotation.z = i / 12 * Math.PI * 2; burst.add(hold);
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.05, 1), i % 2 ? _pzSolid(0x0a0a0a, null, { side: THREE.DoubleSide, depthWrite: false }) : _pzGlow(0xffffff), hold);
+            rays.push(m);
+        }
+        var speed = [];
+        for (var k = 0; k < 3; k++) speed.push(_pzMesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, 1, 4), _pzGlow(0xffffff), F.g));
+        var hit = false, a = new THREE.Vector3(), b = new THREE.Vector3();
+        return _sigRunOwned(F.g, 720, function (el) {
+            var t = _sigEaseInCubic(_sigClamp01(el / 90)), back = _sigClamp01((el - 230) / 220);
+            var d = ts * (1.0 - 0.8 * t + 0.4 * back);
+            fist.position.set(ln.ux * d, ts * 0.66, ln.uz * d);
+            var sq = el > 90 && el < 230 ? 0.9 : 1;
+            fist.scale.set(ts * 0.34 * sq * (0.7 + 0.3 * t), ts * 0.36 * (2 - sq) * (0.7 + 0.3 * t), 1);
+            fist.material.opacity = (el < 90 ? Math.min(1, el / 30) : 1) * (1 - back);
+            for (var k2 = 0; k2 < speed.length; k2++) {
+                a.copy(fist.position); a.y += (k2 - 1) * ts * 0.08; b.set(ln.ux * ts * 1.3, a.y, ln.uz * ts * 1.3);
+                _pzSpan(speed[k2], b, a); speed[k2].material.opacity = el < 110 ? 0.6 : 0;
+            }
+            _pzFace(burst);
+            var bt = _sigClamp01((el - 90) / 170), bo = el < 90 ? 0 : 0.9 * (1 - _sigClamp01((el - 300) / 300));
+            for (var j = 0; j < rays.length; j++) { var L = ts * (0.15 + 0.5 * _sigEaseOutCubic(bt)) * (j % 2 ? 0.8 : 1); rays[j].scale.y = L; rays[j].position.y = ts * 0.12 + L / 2; rays[j].material.opacity = bo; }
+            if (!hit && el >= 90) { hit = true; _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 1.2, ms: 360 }); }
+        });
+    };
+    SPELL_MAP['nrInvisibleBox']    = { impact: 'nbInvisibleBox_impact' };
+    SPELL_MAP['nrShhh']            = { impact: 'nbShhh_impact' };
+    SPELL_MAP['nrSilentTreatment'] = { impact: 'nbSilentTreatment_impact' };
+
+    /* ════ MUMMY — linen, sand, Egyptian gold and lapis ════ */
+    EFFECTS['nbLinenBind_bolt'] = _pzDef('nbLinenBind', { pzOwn: true });
+    EFFECTS['nbLinenBind_land'] = { layers: [
+        { sprite: 'flash', ml: 120, size0: 44, size1: 12, tint: 0xffe8b0, opacity0: 0.7, z: 40 },
+        { count: 12, sprite: 'sand-particle', ml: [500, 800], offsetXY: 12, z: [10, 50], tint: 0xd8b878, vxRange: 120, vyRange: 120, vzRange: [20, 100], gravity: 200, drag: 0.7, size0: [4, 7], size1: 2 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 12, z: [2, 8], tint: 0xd8c090, size0: [14, 20], size1: [32, 44], opacity0: 0.4 },
+    ] };
+    /* the wrappings unwind and lash out: three strips flutter across and wind round the victim from the feet up */
+    _PZ_SIGS.nbLinenBind = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 380, ts0 = _cfg().tileSize || 128;
+        var bundle = new THREE.Group(), lt = _nbLinenTex(), lmat = _pzSolid(0xffffff, lt, { side: THREE.DoubleSide }); lmat.opacity = 1;
+        for (var i = 0; i < 3; i++) { var st = _pzMesh(new THREE.PlaneGeometry(ts0 * 0.07, ts0 * 0.5, 1, 6), lmat, bundle, (i - 1) * ts0 * 0.06, 0, 0); st.rotation.x = Math.PI / 2; st.rotation.y = (i - 1) * 0.3; }
+        _pzFly(fx, fy, tx, ty, bundle, { ms: ms, arc: 0.22, hideOnLand: true, trail: { sprite: 'sand-particle', tint: _NB.sand, every: 30, size: 7 },
+            spin: function (el, o) { for (var j = 0; j < o.children.length; j++) o.children[j].rotation.z = Math.sin(el * 0.03 + j * 2) * 0.5; } });
+        var F = _nrvFrame(tx, ty), ts = F.ts, wrap = _nbWrap(F, ts, {}), hit = false;
+        return _sigRunOwned(F.g, ms + 1500, function (el) {
+            var e = el - ms;
+            if (!hit && e >= 0) { hit = true; _spawnEffect(EFFECTS['nbLinenBind_land'], { tx: tx, ty: ty }); }
+            wrap.grow(e < 0 ? 0 : _sigEaseOutCubic(e / 420));
+            wrap.mat.opacity = e < 0 ? 0 : _pzEnv(e, 0, 40, 1050, 1450);
+        });
+    };
+
+    EFFECTS['nbTombCurse_tile'] = { layers: [
+        { count: 3, sprite: 'sand-particle', ml: [600, 900], offsetXY: 16, z: [4, 20], tint: 0xd8b878, vzRange: [20, 60], drag: 0.6, size0: [4, 7], size1: 2, delayMs: 200 },
+        { count: 1, sprite: 'shadow-wisp', ml: [800, 1100], offsetXY: 14, z: [10, 30], tint: 0x8ad04a, vzRange: [20, 50], drag: 0.6, size0: [14, 18], size1: [30, 40], opacity0: 0.45, delayMs: 300 },
+    ] };
+    EFFECTS['nbTombCurse_aoe'] = _pzDef('nbTombCurse', { aoeRadius: 1, impactTileEffect: 'nbTombCurse_tile' });
+    /* whoever opened the tomb: a gold ring of glyphs burns into the floor, scarabs pour out across it, sand runs down from above */
+    _PZ_SIGS.nbTombCurse = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * ((p.aoeRadius != null ? p.aoeRadius : 1) + 0.6);
+        var sig = _pzMesh(new THREE.PlaneGeometry(R * 2, R * 2), _pzGlow(_NB.gold, _nbHieroTex()), F.g, 0, ts * 0.04, 0); sig.rotation.x = -Math.PI / 2;
+        var hexGlow = _pzMesh(new THREE.PlaneGeometry(R * 2.1, R * 2.1), _pzGlow(_NB.hex, _sigGlowTex()), F.g, 0, ts * 0.03, 0); hexGlow.rotation.x = -Math.PI / 2;
+        var bugs = [], st = _nbScarabTex(), smat = _pzSolid(0xffffff, st, { side: THREE.DoubleSide, depthWrite: false });
+        for (var i = 0; i < 12; i++) { var b = _pzMesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.2), smat, F.g); b.rotation.order = 'YXZ'; bugs.push({ m: b, a: i / 12 * Math.PI * 2, r: R * (0.75 + (i % 3) * 0.1), sp: 0.0022 + (i % 4) * 0.0004 }); }
+        var lastS = 0;
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var vis = _pzEnv(el, 0, 260, 1400, 1900);
+            sig.material.opacity = 0.75 * vis; sig.rotation.z = el * 0.0004; sig.scale.setScalar(0.85 + 0.15 * _sigEaseOutCubic(_sigClamp01(el / 400)));
+            hexGlow.material.opacity = 0.22 * vis;
+            smat.opacity = _pzEnv(el, 150, 300, 1350, 1700);
+            for (var j = 0; j < bugs.length; j++) {
+                var B = bugs[j], a = B.a + el * B.sp, r = B.r * (1 - 0.55 * _sigClamp01((el - 150) / 1400));
+                B.m.position.set(Math.cos(a) * r, ts * 0.05, Math.sin(a) * r);
+                B.m.rotation.set(-Math.PI / 2, 0, 0); B.m.rotation.y = -a - Math.PI;
+            }
+            if (el < 1300 && el - lastS > 45 && _canSpawn()) { lastS = el; _pzP(F, rn(-1, 1) * ts * 0.35, ts * 2.3, rn(-1, 1) * ts * 0.35,
+                { sprite: 'sand-particle', tint: _NB.sand, ml: rn(500, 700), size0: rn(4, 7), size1: 2, vz: -rn(160, 240), drag: 0, opacity0: 0.85 }); }
+        });
+    };
+
+    EFFECTS['nbEmbalm_bolt'] = _pzDef('nbEmbalm', { pzOwn: true });
+    EFFECTS['nbEmbalm_land'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 150, size0: 60, size1: 16, tint: 0xffe0a0, opacity0: 0.75, z: 40 },
+        { count: 14, sprite: 'sand-particle', ml: [500, 900], offsetXY: 14, z: [10, 60], tint: 0xe8d8b0, vxRange: 140, vyRange: 140, vzRange: [20, 120], gravity: 200, drag: 0.7, size0: [4, 7], size1: 2 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [600, 900], offsetXY: 16, z: [2, 8], tint: 0xd8c090, size0: [16, 22], size1: [36, 50], opacity0: 0.4 },
+    ] };
+    /* wrapped, salted and sealed: a stream of salt, the painted lid rises behind the victim, the linen winds on, the ankh seals it */
+    _PZ_SIGS.nbEmbalm = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 360, ts0 = _cfg().tileSize || 128;
+        var salt = new THREE.Group(), sc = _pzSpr(0xfff4d8, ts0 * 0.2, salt); sc.material.opacity = 0.9;
+        _pzFly(fx, fy, tx, ty, salt, { ms: ms, arc: 0.3, hideOnLand: true, trail: { sprite: 'sand-particle', tint: 0xf4ead0, every: 20, size: 7 } });
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty), bh = _nbBehind(F, ln);
+        var lidM = _pzSolid(0xffffff, _nbSarcTex(), { side: THREE.DoubleSide });
+        var lid = _pzMesh(new THREE.PlaneGeometry(ts * 0.8, ts * 1.6), lidM, F.g, bh.x * ts * 0.58, 0, bh.z * ts * 0.58); lid.rotation.y = Math.atan2(-bh.x, -bh.z);
+        var rim = _pzSpr(_NB.gold, ts * 1.6, F.g); rim.position.set(bh.x * ts * 0.62, ts * 0.8, bh.z * ts * 0.62);
+        var wrap = _nbWrap(F, ts, { turns: 5, r: 0.25, w: 0.028, ph: 1.3 });
+        var ankh = _pzMesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.75), _pzGlow(_NB.gold, _nbAnkhTex()), F.g, 0, ts * 0.05, 0); ankh.rotation.x = -Math.PI / 2;
+        var hit = false;
+        return _sigRunOwned(F.g, ms + 1700, function (el) {
+            var e = el - ms;
+            if (!hit && e >= 0) { hit = true; _spawnEffect(EFFECTS['nbEmbalm_land'], { tx: tx, ty: ty }); }
+            if (e < 0) { lidM.opacity = 0; wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
+            var rise = _sigEaseOutCubic(_sigClamp01(e / 320)), sink = _sigEaseInCubic(_sigClamp01((e - 1250) / 420));
+            lid.position.y = ts * (0.8 * rise - 0.15 - 0.9 * sink) + ts * 0.15;
+            lidM.opacity = Math.min(1, e / 80) * (1 - sink);
+            rim.material.opacity = 0.25 * _pzEnv(e, 0, 200, 900, 1500);
+            wrap.grow(_sigEaseOutCubic(_sigClamp01((e - 200) / 450))); wrap.mat.opacity = _pzEnv(e, 200, 240, 1200, 1600);
+            ankh.material.opacity = 0.9 * _pzEnv(e, 650, 720, 1150, 1500); ankh.scale.setScalar(0.6 + 0.4 * _sigEaseOutBack(_sigClamp01((e - 650) / 220)));
+        });
+    };
+    SPELL_MAP['mmLinenBind'] = { bolt: 'nbLinenBind_bolt' };
+    SPELL_MAP['mmTombCurse'] = { aoe: 'nbTombCurse_aoe' };
+    SPELL_MAP['mmEmbalm']    = { bolt: 'nbEmbalm_bolt' };
+
+    /* ════ SWAMP MONSTER — black water, mud, marsh gas, the will-o'-wisp ════ */
+    function _nbMudMat() { return _pzSolid(_NB.mud, _sigTerrainTex('leather.png', 1, 1)); }
+    EFFECTS['nbMuckGrab_impact'] = _pzDef('nbMuckGrab', { layers: [
+        { count: 8, sprite: 'mud-chunk', ml: [400, 700], offsetXY: 10, z: [4, 20], vxRange: 140, vyRange: 140, vzRange: [60, 180], gravity: 420, size0: [5, 9], size1: 3, delayMs: 120 },
+        { count: 2, anchor: 'floor', sprite: 'water-splash', ml: [400, 600], offsetXY: 10, z: [2, 6], tint: 0x4a4028, size0: [16, 22], size1: [34, 46], opacity0: 0.6, delayMs: 100 },
+        { count: 4, sprite: 'bubble', ml: [500, 900], offsetXY: 14, z: [2, 8], tint: 0x6a7a4a, vzRange: [10, 30], size0: [4, 7], size1: 2, opacity0: 0.7, delayMs: 300 },
+    ] });
+    /* a long, wet hand closes on the ankle: it comes up out of a mud puddle at the victim's feet, grabs, and slides back down */
+    _PZ_SIGS.nbMuckGrab = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
+        var off = { x: (ln.ux - ln.uz * 0.5) * ts * 0.24, z: (ln.uz + ln.ux * 0.5) * ts * 0.24 };
+        var pm = _pzSolid(0x2a2014, null, { depthWrite: false }), pud = _pzMesh(new THREE.CircleGeometry(ts * 0.36, 24), pm, F.g, off.x, ts * 0.025, off.z); pud.rotation.x = -Math.PI / 2;
+        var mat = _nbMudMat(), hand = _nbHand(ts, mat, { s: 1.5, long: 1.3 }); hand.rotation.order = 'YXZ'; hand.rotation.y = Math.atan2(-off.x, -off.z); F.g.add(hand);
+        var lastD = 0;
+        return _sigRunOwned(F.g, 1400, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 180)), down = _sigEaseInCubic(_sigClamp01((el - 1000) / 380));
+            hand.position.set(off.x, -ts * 0.45 + ts * 0.47 * up - ts * 0.5 * down, off.z);
+            hand.rotation.x = 0.35 * up;
+            hand.userData.curl(_sigEaseOutCubic(_sigClamp01((el - 150) / 150)) * 0.6 * (1 - down));
+            mat.opacity = Math.min(1, el / 60) * (1 - down * 0.8); pm.opacity = 0.85 * _pzEnv(el, 0, 100, 1050, 1400);
+            if (el > 200 && el < 1000 && el - lastD > 90 && _canSpawn()) { lastD = el; _pzP(F, off.x + rn(-1, 1) * ts * 0.06, ts * rn(0.15, 0.35), off.z + rn(-1, 1) * ts * 0.06,
+                { sprite: 'mud-chunk', ml: rn(300, 500), size0: rn(3, 5), size1: 2, vz: -rn(40, 80), gravity: 300, opacity0: 0.9 }); }
+        });
+    };
+
+    EFFECTS['nbSwampGas_tile'] = { layers: [
+        { count: 3, sprite: 'poison-bubble', ml: [500, 900], offsetXY: 18, z: [2, 10], vzRange: [10, 40], size0: [5, 8], size1: 2, opacity0: 0.8, delayMs: 80 },
+        { count: 1, sprite: 'poison-mist', ml: [900, 1300], offsetXY: 16, z: [10, 24], vzRange: [10, 30], drag: 0.5, size0: [18, 24], size1: [40, 54], opacity0: 0.28, delayMs: 150 },
+    ] };
+    EFFECTS['nbSwampGas_aoe'] = _pzDef('nbSwampGas', { aoeRadius: 1, impactTileEffect: 'nbSwampGas_tile' });
+    /* the bog lets out a breath: the floor goes to black bog water, it bubbles, the green gas comes up, three wisps drift through */
+    _PZ_SIGS.nbSwampGas = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rr = p.aoeRadius != null ? p.aoeRadius : 1, bog = _pzSolid(_NB.bog, _sigTerrainTex('water.png', 1, 1), { depthWrite: false }), clouds = [];
+        for (var dy = -rr; dy <= rr; dy++) for (var dx = -rr; dx <= rr; dx++) {
+            var w = _worldPos(tx + dx, ty + dy), ox = w.x - F.wp.x, oy = w.y - F.wp.y, oz = w.z - F.wp.z;
+            var d = _pzMesh(new THREE.CircleGeometry(ts * 0.47, 20), bog, F.g, ox, oy + ts * 0.025, oz); d.rotation.x = -Math.PI / 2;
+            for (var c = 0; c < 2; c++) { var cl = _pzSpr(_NB.gas, ts * 0.9, F.g, _sigGlowTex()); cl.position.set(ox + rn(-0.2, 0.2) * ts, oy, oz + rn(-0.2, 0.2) * ts); clouds.push({ s: cl, y0: oy, d: rn(0, 300) }); }
+        }
+        var wisps = [];
+        for (var k = 0; k < 3; k++) wisps.push({ s: _pzSpr(_NB.wisp, ts * 0.22, F.g), a: k / 3 * Math.PI * 2 });
+        return _sigRunOwned(F.g, 1900, function (el) {
+            bog.opacity = 0.7 * _pzEnv(el, 0, 220, 1350, 1900);
+            for (var i = 0; i < clouds.length; i++) {
+                var C = clouds[i], t = _sigClamp01((el - 150 - C.d) / 1300);
+                C.s.position.y = C.y0 + ts * (0.2 + 1.1 * t); C.s.scale.setScalar(ts * (0.5 + 0.8 * t));
+                C.s.material.opacity = 0.22 * Math.sin(Math.PI * t);
+            }
+            for (var j = 0; j < wisps.length; j++) {
+                var W = wisps[j], a = W.a + el * 0.0016;
+                W.s.position.set(Math.cos(a) * ts * 1.15, ts * (0.7 + 0.15 * Math.sin(el * 0.005 + j * 2)), Math.sin(a) * ts * 1.15);
+                W.s.material.opacity = 0.75 * _pzEnv(el, 200 + j * 120, 400 + j * 120, 1400, 1800) * (0.75 + 0.25 * Math.sin(el * 0.02 + j));
+            }
+        });
+    };
+
+    EFFECTS['nbIntoTheBog_impact'] = _pzDef('nbIntoTheBog', { shake: 'normal', layers: [
+        { count: 3, anchor: 'floor', sprite: 'water-splash', ml: [420, 640], offsetXY: 14, z: [2, 8], tint: 0x2e3a22, size0: [20, 26], size1: [40, 56], opacity0: 0.7, delayMs: 150 },
+        { count: 8, sprite: 'mud-chunk', ml: [400, 700], offsetXY: 12, z: [6, 24], vxRange: 160, vyRange: 160, vzRange: [80, 200], gravity: 420, size0: [5, 9], size1: 3, delayMs: 170 },
+        { count: 6, sprite: 'bubble', ml: [600, 1000], offsetXY: 16, z: [2, 8], tint: 0x6a7a4a, vzRange: [10, 30], size0: [4, 7], size1: 2, opacity0: 0.7, delayMs: 300 },
+    ] });
+    /* down into the black water: the floor turns to a whirl of bog under the victim, the water surges up round their legs, muck hands pull */
+    _PZ_SIGS.nbIntoTheBog = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var wm = _pzSolid(0xffffff, _nbWhirlTex(), { side: THREE.DoubleSide, depthWrite: false }), whirl = _pzMesh(new THREE.PlaneGeometry(ts * 1.4, ts * 1.4), wm, F.g, 0, ts * 0.03, 0); whirl.rotation.x = -Math.PI / 2;
+        var cm = _pzSolid(0x1c2a18, _sigTerrainTex('water.png', 1, 1), { side: THREE.DoubleSide, depthWrite: false }), col = _pzMesh(new THREE.CylinderGeometry(ts * 0.36, ts * 0.42, 1, 20, 1, true), cm, F.g);
+        var mat = _nbMudMat(), hands = [], cd = _nbCamDir(F);
+        for (var s = -1; s <= 1; s += 2) {
+            var hx = -cd.z * s * ts * 0.4, hz = cd.x * s * ts * 0.4;
+            var h = _nbHand(ts, mat, { s: 1.05, long: 1.2 }); h.rotation.order = 'YXZ'; h.rotation.y = Math.atan2(-hx, -hz); F.g.add(h); hands.push({ g: h, x: hx, z: hz, d: s > 0 ? 0 : 90 });
+        }
+        return _sigRunOwned(F.g, 1600, function (el) {
+            whirl.rotation.z = -el * 0.004; wm.opacity = 0.9 * _pzEnv(el, 0, 150, 1150, 1600);
+            var surge = Math.sin(Math.PI * _sigClamp01((el - 120) / 620)), H = Math.max(1, ts * 0.5 * surge);
+            col.scale.set(1, H, 1); col.position.y = H / 2; cm.opacity = 0.55 * surge;
+            for (var i = 0; i < hands.length; i++) {
+                var Hd = hands[i], up = _sigEaseOutBack(_sigClamp01((el - 200 - Hd.d) / 240)), down = _sigEaseInCubic(_sigClamp01((el - 1050) / 380));
+                Hd.g.position.set(Hd.x, -ts * 0.35 + ts * 0.38 * up - ts * 0.4 * down, Hd.z); Hd.g.rotation.x = 0.5 * up;
+                Hd.g.userData.curl(_sigClamp01((el - 420 - Hd.d) / 160) * 0.6);
+            }
+            mat.opacity = _pzEnv(el, 180, 240, 1150, 1450);
+        });
+    };
+    SPELL_MAP['smMuckGrab']   = { impact: 'nbMuckGrab_impact' };
+    SPELL_MAP['smSwampGas']   = { aoe: 'nbSwampGas_aoe' };
+    SPELL_MAP['smIntoTheBog'] = { impact: 'nbIntoTheBog_impact' };
+
+    /* ════ UNDEAD — rot, flies, grave dirt, the last breath ════ */
+    EFFECTS['nbRotClaw_impact'] = _pzDef('nbRotClaw', { shake: 'normal', layers: [
+        { count: 10, sprite: 'blood-fleck', ml: [380, 640], offsetXY: 10, z: [30, 56], vxRange: 160, vyRange: 160, vzRange: [20, 120], gravity: 320, size0: [4, 7], size1: 2, delayMs: 80 },
+        { count: 4, sprite: 'blood-drop', ml: [500, 800], offsetXY: 8, z: [30, 50], vzRange: [-40, -10], gravity: 200, size0: [4, 6], size1: 2, delayMs: 160 },
+        { count: 2, sprite: 'poison-mist', ml: [800, 1100], offsetXY: 10, z: [30, 50], tint: 0x8a9a4a, vzRange: [10, 30], drag: 0.6, size0: [16, 20], size1: [36, 46], opacity0: 0.25, delayMs: 120 },
+    ] });
+    /* long, filthy nails: four of them rake down across the body and leave black-red lines; the flies come with it */
+    _PZ_SIGS.nbRotClaw = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var cd = _nbCamDir(F), G = new THREE.Group(); G.position.set(cd.x * ts * 0.3, ts * 0.62, cd.z * ts * 0.3); F.g.add(G);
+        var nails = [], marks = [], nm = _pzSolid(_NB.nail, _sigTerrainTex('enamel.png', 1, 1), { side: THREE.DoubleSide, depthWrite: false });
+        for (var i = 0; i < 4; i++) {
+            var n = _pzMesh(new THREE.ConeGeometry(ts * 0.022, ts * 0.3, 4), nm, G); n.rotation.z = 0.6; nails.push(n);
+            var m = _pzMesh(new THREE.PlaneGeometry(ts * 0.035, ts * 0.85), _pzGlow(i % 2 ? 0x7a1010 : 0xa02a18), G, (i - 1.5) * ts * 0.08, 0, ts * 0.01); m.rotation.z = 0.6; marks.push(m);
+        }
+        var flies = [];
+        for (var k = 0; k < 9; k++) flies.push({ s: _nbSprDark(_NB.fly, ts * 0.06, F.g), a: rn(0, 6.28), r: ts * rn(0.25, 0.5), h: ts * rn(0.4, 1.1), sp: rn(0.008, 0.016) * (k % 2 ? 1 : -1) });
+        return _sigRunOwned(F.g, 1550, function (el) {
+            _pzFace(G);
+            var t = _sigEaseInCubic(_sigClamp01(el / 130));
+            for (var i2 = 0; i2 < nails.length; i2++) {
+                var x0 = (i2 - 1.5) * ts * 0.08;
+                nails[i2].position.set(x0 + ts * (0.25 - 0.5 * t), ts * (0.42 - 0.84 * t), ts * 0.04);
+                var g = _sigClamp01((el - 30 - i2 * 15) / 120);
+                marks[i2].scale.y = Math.max(0.01, g); marks[i2].position.y = ts * 0.42 * (1 - g); marks[i2].material.opacity = 0.85 * g * (1 - _sigClamp01((el - 700) / 500));
+            }
+            nm.opacity = _pzEnv(el, 0, 30, 180, 320);
+            for (var j = 0; j < flies.length; j++) {
+                var Fl = flies[j], a = Fl.a + el * Fl.sp;
+                Fl.s.position.set(Math.cos(a) * Fl.r + Math.sin(el * 0.05 + j) * ts * 0.04, Fl.h + Math.sin(el * 0.03 + j * 3) * ts * 0.08, Math.sin(a) * Fl.r);
+                Fl.s.material.opacity = 0.9 * _pzEnv(el, 150, 300, 1200, 1550);
+            }
+        });
+    };
+
+    EFFECTS['nbDeathRattle_tile'] = { layers: [
+        { count: 2, sprite: 'shadow-wisp', ml: [700, 1000], offsetXY: 16, z: [8, 30], tint: 0xc8c0e8, vzRange: [20, 50], drag: 0.6, size0: [12, 18], size1: [28, 38], opacity0: 0.4, delayMs: 300 },
+    ] };
+    EFFECTS['nbDeathRattle_aoe'] = _pzDef('nbDeathRattle', { aoeRadius: 1, impactTileEffect: 'nbDeathRattle_tile' });
+    /* the last breath it ever took, let out again: a skull's jaw drops over the square, the pale breath rolls out, faces wail up */
+    _PZ_SIGS.nbDeathRattle = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rr = p.aoeRadius != null ? p.aoeRadius : 1;
+        var head = new THREE.Group(); head.position.y = ts * 2.0; F.g.add(head);
+        var cran = _pzSprN(0xffffff, ts * 0.9, _nbCraniumTex(), head); cran.scale.set(ts * 0.9, ts * 0.79, 1);
+        var jaw = _pzSprN(0xffffff, ts * 0.8, _nbJawTex(), head); jaw.scale.set(ts * 0.72, ts * 0.32, 1);
+        var ring = _pzMesh(new THREE.RingGeometry(ts * 0.9, ts, 48), _pzGlow(_NB.fear), F.g, 0, ts * 0.06, 0); ring.rotation.x = -Math.PI / 2;
+        var faces = [], gt = _nbGhostTex();
+        for (var dy = -rr; dy <= rr; dy++) for (var dx = -rr; dx <= rr; dx++) {
+            var w = _worldPos(tx + dx, ty + dy), f = _pzSprN(0xe8e4ff, ts * 0.5, gt, F.g); f.scale.set(ts * 0.42, ts * 0.52, 1);
+            faces.push({ s: f, x: w.x - F.wp.x, y: w.y - F.wp.y, z: w.z - F.wp.z, d: (Math.abs(dx) + Math.abs(dy)) * 90 });
+        }
+        var lastB = 0;
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var vis = _pzEnv(el, 0, 150, 1300, 1700), drop = _sigEaseOutCubic(_sigClamp01((el - 150) / 160)), shake = el > 300 && el < 1000 ? Math.sin(el * 0.09) * ts * 0.015 : 0;
+            cran.material.opacity = jaw.material.opacity = vis;
+            cran.position.set(shake, ts * 0.12, 0); jaw.position.set(shake * 0.6, -ts * 0.27 - ts * 0.2 * drop, 0); jaw.material.rotation = 0.12 * drop;
+            var br = _sigEaseOutCubic(_sigClamp01((el - 280) / 700));
+            ring.scale.setScalar(Math.max(0.05, (rr + 0.7) * br)); ring.material.opacity = 0.6 * (1 - br) * (el > 280 ? 1 : 0);
+            if (el > 280 && el < 900 && el - lastB > 50 && _canSpawn()) {
+                lastB = el; var a = rn(0, 6.28);
+                _pzP(F, 0, ts * 1.6, 0, { sprite: 'smoke-soft', tint: 0xdcd8f4, ml: rn(700, 1000), size0: rn(10, 14), size1: rn(34, 46), vx: Math.cos(a) * rn(120, 200), vy: Math.sin(a) * rn(120, 200), vz: -rn(60, 120), drag: 0.9, opacity0: 0.3 });
+            }
+            for (var j = 0; j < faces.length; j++) {
+                var Fc = faces[j], t = _sigClamp01((el - 380 - Fc.d) / 900);
+                Fc.s.position.set(Fc.x, Fc.y + ts * (0.35 + 0.95 * t), Fc.z);
+                Fc.s.scale.set(ts * 0.42 * (1 - 0.15 * t), ts * 0.52 * (1 + 0.4 * t), 1);
+                Fc.s.material.opacity = 0.55 * Math.sin(Math.PI * t);
+            }
+        });
+    };
+
+    EFFECTS['nbGraveGrip_impact'] = _pzDef('nbGraveGrip', { shake: 'normal', layers: [
+        { count: 10, sprite: 'rock-debris', ml: [400, 700], offsetXY: 14, z: [4, 14], tint: 0x6a4a2a, vxRange: 160, vyRange: 160, vzRange: [80, 220], gravity: 460, size0: [5, 9], size1: 3 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 14, z: [2, 8], tint: 0x8a6a4a, size0: [16, 22], size1: [36, 48], opacity0: 0.45 },
+        { count: 6, sprite: 'blood-fleck', ml: [380, 620], offsetXY: 8, z: [10, 30], vxRange: 100, vyRange: 100, vzRange: [20, 90], gravity: 320, size0: [4, 6], size1: 2, delayMs: 380 },
+    ] });
+    /* it does not let go: the ground splits, two dead hands come up through the dirt and lock on the legs, a headstone rises behind */
+    _PZ_SIGS.nbGraveGrip = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), bh = _nbBehind(F, ln);
+        var crack = _pzMesh(new THREE.PlaneGeometry(ts * 1.4, ts * 1.4), _pzSolid(0xffffff, _pzCrackTex('#3a2412'), { depthWrite: false }), F.g, 0, ts * 0.03, 0); crack.rotation.x = -Math.PI / 2;
+        var bone = _pzSolid(_NB.rot, _sigTerrainTex('enamel.png', 1, 1)), hands = [];
+        var sx = -bh.z, sz = bh.x;
+        for (var s = -1; s <= 1; s += 2) {
+            var hx = sx * s * ts * 0.24, hz = sz * s * ts * 0.24, h = _nbHand(ts, bone, { s: 0.95, long: 1.6 });
+            h.rotation.order = 'YXZ'; h.rotation.y = Math.atan2(-hx, -hz); F.g.add(h); hands.push({ g: h, x: hx, z: hz, d: s > 0 ? 0 : 70 });
+        }
+        var stoneM = _pzSolid(0x8a8a86, _sigTerrainTex('marble_light.png', 1, 1)), stone = new THREE.Group(); F.g.add(stone);
+        _pzMesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.5, ts * 0.09), stoneM, stone, 0, ts * 0.25, 0);
+        var cap = _pzMesh(new THREE.CylinderGeometry(ts * 0.21, ts * 0.21, ts * 0.09, 16, 1, false, 0, Math.PI), stoneM, stone, 0, ts * 0.5, 0); cap.rotation.set(Math.PI / 2, 0, Math.PI / 2);
+        stone.rotation.y = Math.atan2(-bh.x, -bh.z);
+        return _sigRunOwned(F.g, 1600, function (el) {
+            var sink = _sigEaseInCubic(_sigClamp01((el - 1150) / 420));
+            crack.material.opacity = 0.9 * _pzEnv(el, 0, 80, 1150, 1600); crack.scale.setScalar(0.5 + 0.5 * _sigEaseOutCubic(_sigClamp01(el / 200)));
+            for (var i = 0; i < hands.length; i++) {
+                var Hd = hands[i], up = _sigEaseOutBack(_sigClamp01((el - Hd.d) / 240));
+                Hd.g.position.set(Hd.x, -ts * 0.42 + ts * 0.44 * up - ts * 0.5 * sink, Hd.z); Hd.g.rotation.x = 0.45 * up;
+                Hd.g.userData.curl(_sigEaseOutCubic(_sigClamp01((el - 250 - Hd.d) / 160)) * 0.55);
+            }
+            bone.opacity = Math.min(1, el / 60) * (1 - sink);
+            var rise = _sigEaseOutCubic(_sigClamp01((el - 100) / 320));
+            stone.position.set(bh.x * ts * 0.62, -ts * 0.6 * (1 - rise) - ts * 0.6 * sink, bh.z * ts * 0.62);
+            stoneM.opacity = _pzEnv(el, 100, 160, 1200, 1600);
+        });
+    };
+    SPELL_MAP['udRottingClaw'] = { impact: 'nbRotClaw_impact' };
+    SPELL_MAP['udDeathRattle'] = { aoe: 'nbDeathRattle_aoe' };
+    SPELL_MAP['udGraveGrip']   = { impact: 'nbGraveGrip_impact' };
+
+    /* ═════════ END THE 2026-10-25 BATCH SIGNATURES ═════════ */
+
 
     /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────
        enter({ tile, heroH, fx }) / exit() / fire(intent, spellId, params) /

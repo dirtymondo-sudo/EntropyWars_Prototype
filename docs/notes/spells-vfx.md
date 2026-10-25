@@ -1769,3 +1769,19 @@ Display only; who gets a grave, where, and what raises/loots it are unchanged.
 - Screenshots: the cloud browser renders about 1 frame a second, so real-time shots miss every effect; the shots were
   taken on Playwright's fake clock (page.clock.install + fastForward per frame). Before/after on WebGL and WebGPU in
   /mnt/project-files/pz-vfx/.
+
+## THE 2026-10-25 BATCH SIGNATURE VFX (chef, eagleman, flesheater, mime, mummy, swamp monster, undead)
+The 21 signature spells of the seven races added 10-25 (PR #504 mm*/sm*/ud*, PR #505 nr*) each got their own look.
+Visuals only, no rule changes, no new art (canvas textures + R2 terrain sprites). Code: three-vfx-effects.js block
+"THE 2026-10-25 BATCH SIGNATURE VFX" right after the P-Z block, same hook (`pzSig` / `pzOwn` / `_pzDef`), helpers `_nb*`.
+- Routes (which intent fires, probed in the browser): melee / physical r<=2 damage + debuffs = impact; magic r2/r3 damage
+  = bolt (Flambé, Linen Bind, Embalm are pzOwn: the sig flies the bolt and spawns its own land); lifeDrain = impact +
+  drainHop (Gnash, Eaten Alive); AoE = aoe (Curse of the Tomb, Swamp Gas, Death Rattle); single heal = aura on the ally
+  (Taste Test, from battle.js _executeAllySpellAnimation).
+- Stoop Dive (chargeToTarget) is mapped BOTH ways: the charge-first path (_runChargeToTargetSpell) fires impact, a cast
+  from an adjacent tile fires bolt. Both are pzOwn.
+- The impact intent arrives with the damage number, so melee pieces (pan, talons, jaws, punch, mud hand, claw) hit
+  within ~100 ms of it. Marks/jaws/gloves offset toward the lens (`_nbCamDir`) so the body's depth doesn't hide them.
+  Caster-side props (Flambé match, Eagle Eye glint) gate on `_pzSeen` (fog). No screen flashes anywhere.
+- Proof: Spell Lab ✦ CAST for 20 spells; Taste Test can't be cast in the Lab (no ally), proved in a VS CPU match healing
+  a hurt ally. Capture rig froze performance.now() at set delays after the intent. Stills: /mnt/project-files/new-races-vfx/.
