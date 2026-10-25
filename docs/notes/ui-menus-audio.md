@@ -1937,6 +1937,31 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   { pointer-events: none !important }`. Proven by a real mouse click (Codex + Shop Back back to the main menu); shots in
   /mnt/project-files/ui-buttons/back-fix/. Escape on those two pages was never wired (no handler), left as is.
 
+### UI Maker pass 30: THE BADGE LOOKS on the spell buttons (2026-10-25, mondo: "in the ui maker, for the spells list and quick action menu, let me control the size of the element icon, and the element icons should be the same ones in the unit info panel should, we need consistency. Also let me put the status effect and the status multiplier on different rows, and also change how they look, everything on the spell buttons look like type badges so its hard to tell at a glance, i want to differentiate their looks more. more customization for how spells display on the buttons")
+- THE ELEMENT ART: a spell button's element is the unit info panel's own icon now (data.js `elementIconUrl`, Assets/Icons/elements/<el>.png;
+  the ELEMENT_ICONS emoji if a file fails), drawn by hud.js `_ewElemBadgeEl`. The badge object keeps `label` (the old glyph) + `style` (the
+  emoji pill) because party-builder.js `pbSpellBadges` and map.js `_hqSpellBadgesHtml` still read those two; they were not changed.
+- THE MULTIPLIER IS ITS OWN PART: `_hrlgStatusBadges` tags the bonus-vs-status chip `part: 'mult'` (EW_BTN_PARTS row "Status multiplier",
+  EW_BTN_ROWS_DEF `mult:top` right after `status`). `ewBtnRowsParse` puts a part a saved string lacks right after its default predecessor,
+  on that part's row, so a saved layout keeps its look (the multiplier follows the status badges until moved).
+- THE BADGE LOOKS (hud.js `EW_BADGE_PARTS` / `EW_BADGE_DEF`, db.ux `k<stem><Look|Size|Col|Font|Words|Case>` from `ewBadgeUxDefs`, stems Type,
+  Elem, Stat, Mult, Ride, Ups; `kNameMin`). `btnSignal` publishes `window._ewBadgeLook` (`ewBadgeLookFrom`); `_hrlgBadgeEl` reads it
+  (`_ewBadgeLookOf`, memoised on the object). A part at its defaults keeps the exact style it was built with (`L.game`); otherwise
+  `_ewBadgeStyle(look, colour, L)`: pill (the game's) | box | outline | tag | text (words only). Dark status colours are lifted for words
+  (`_ewBadgeTextCol`). Words: type ANOMALY | AN (party-builder's two letters, EW_TYPE_SHORT), status BRN | BURN | icon | icon + BRN,
+  multiplier ×2 HNT | ×2 vs HNT | ×2 vs HAUNTED | ×2 + icon (`bd.words`). Element looks: Icon (default) | Icon on a chip | Icon in a ring |
+  Icon + name | Name only, Size = the icon px (default 18). Every badge now carries `col` (its own colour) for this.
+- `kNameMin` (uxCss): `.hrlg-blade.brows .hrlg-blabel { min-width: min(Npx, 70%) }` + the top row clips — the name keeps that much room
+  and the badges past the end are cut. `.brows` = a blade laid out by THE BUTTON ROWS (new class).
+- The form: `btnLookForm` ("Spell buttons: how each part looks"), beside `btnRowsForm` on Unit info panel, Command panels and Quick action
+  list. Element icon size first, then a Part picker (`UI.bkPart`, • = changed), its Look / Size / Words / Letters / Colour / Font, a sample
+  (`bkPrevHtml`: up to 3 real spells covering the most parts, the active unit's first, drawn by `_hrlgBadgeEl` itself, refreshed on every
+  k* input), Name keeps at least, Start from (`BADGE_LOOK_SETS`: The game's look / Tell them apart = statuses outlined, multiplier a gold
+  box ×2 vs HNT, riders + upgrades as words; a set only touches Look / Words / Col), reset group `k`.
+- One setting for the Abilities list, every quick action menu and the description bar (it uses `_hrlgBadgeEl` too). Viewer-local, nothing relayed.
+- Proven in a real VS CPU battle (playtest harness): /mnt/project-files/spell-buttons/ (Abilities list + quick action menu before / untouched /
+  tuned, the form on the multiplier and the element, the multiplier on its own row, the four other element looks).
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".
