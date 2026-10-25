@@ -2162,3 +2162,13 @@ THE NATURE PASS, helpers `_bd*`, same `pzSig` hook.
   the sickle hides on fogged tiles.
 - Proof: Spell Lab ✦ CAST (vampire caster, door agent dummy), slow-motion capture clock (performance.now() at 3% rate
   from a set delay after the signature, then stepped). Stills: /mnt/project-files/blood-vfx/.
+
+### THE EARTH PASS — crack on the floor (fix 2026-10-25)
+mondo: "the crack decal for earth spells is too high and is like floating in the air clipping through the units chests".
+Cause: `_eaCrackAt` grew the crack with a UNIFORM scale (~ts·1.5-2.4), so the glow plane's tiny local lift (ts·0.004)
+was multiplied up to most of a tile — chest height. Fix: cracks scale only in x/z (`_eaSize`), the glow sits 0.6 px over
+the dark plane, and every earth floor piece stands on the GROUND: `_eaGroundY` (renderer `unitGroundY` under a body —
+flyers, caves — else `tileZ`, the real top: room fields, roofs, natural terrain, stairs), `_eaFrame` / `_eaGOff` put the
+mark, tell, stomps, Fissure seams, Tomb, Quicksand, Petrify and Rockslide on it, and `_eaSlopeN` tilts each crack to the
+slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slopes). Earthen Grasp keeps the body frame
+(it rides the dragged body). Stills: /mnt/project-files/earth-vfx/crack_on_ground_battle.jpg (VS CPU, Mount Shasta).
