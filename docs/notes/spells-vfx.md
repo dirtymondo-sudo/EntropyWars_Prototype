@@ -1816,6 +1816,66 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
 
+## THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One fire look everywhere, plus signatures for the Fire Magic family and its two new rows (Flamethrower, Inferno — rules in
+champions-combat.md "THE FIRE PASS"). Code: three-vfx-effects.js block "THE FIRE PASS" right after END THE NATURE PASS,
+helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
+- THE FIRE MARK (`_fpMark`, on the staging BURST beat): every fire-element damage spell (`element: 'fire'`, `type: 'damage'`,
+  any family / kind) scorches each tile it hits (char decal + glowing cracks + firelight), licks flame tongues up round the
+  body (camera-facing additive planes, depth-tested; TALL on the side away from the lens, short in front, so body + number
+  read), a second lower wave as the first blows out, embers and smoke. The tiles are the windup's footprint (`params.tiles`,
+  cached by glowKey) — a line / aoe burns every tile it covers; a self-centred blast skips the caster's tile. One `_sigRun`
+  per mark (the signature cap is 20), density drops past 3 / 9 tiles, 25 tiles max.
+- THE CAST (`_fpWindup`, windup beat): fire-element MAGIC casts light a ring of small flames round the caster's feet and a
+  fire gathering in the hand toward the target, embers drawn in. Physical fire (arrows, cannon, punches) skips it.
+- The `fire` staging archetype is `noOrb` now: no glass orb on a fire cast / heavy hit; a heavy+ fire-archetype magic hit
+  throws a ring of flame out across the ground instead (`bloom`; fire-named spells with no element get only that ring).
+- Palette: kaiju atomic fire (raceAtomicBreath, goNuclearPulse) wears the same shapes in BLUE (`_FP_ATOMIC`). Skipped
+  (`_FP_SKIP`): Lump of Coal (mondo: just Santa throwing coal), Morning Star (vfxElement light). Delayed artillery (Nuclear
+  Option, Fire for Effect, Extinction Event) has no burst beat at cast, so it keeps its own landing.
+- Signatures: Fireball = `bolt` pzOwn (a roiling ball: white heart, halo, six flame tongues streaming back, flame + smoke
+  tail; `_fpBurst` at flyMs). Combust = `bolt` pzOwn (a heat thread, then `_fpCombust` at flyMs: a fire circle under the
+  feet and a pillar of tall tongues at the back, embers fountaining off the top). Wall of Fire = the old wall recipe +
+  pzSig `fpWallOfFire` (a 3D curtain ignites tile by tile along the wall, parts round a body standing in it, sits a little
+  behind it from the lens). Flamethrower = `beam` pzOwn (a cone of crossed flame planes down the line from the hand + a
+  stream of swelling fire blobs, smoke off the end). Inferno = `aoe` pzOwn (the fire circle burns out to the blast edge, a
+  ring of fire races out, a firestorm spirals round the caster in a clear middle). Meteor keeps its rock + gets the mark.
+- Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
+  every caster-side piece gates on `_pzSeen`. No screen flash.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
+## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
+Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-Z signatures; helpers `_ps*`.
+- THE SHARED LANGUAGE: the wind-up beat opens THE THIRD EYE over the caster's head (eye sprite with a black pupil,
+  normal blend; brainwave rings ripple off the head; motes pulled into the eye; shuts at holdMs). Where the spell lands,
+  THE MIND RINGS: three brainwave rings close round the head (hostile) or rise off it (a buff / shield / heal kind on an
+  ally) and a small eye blinks over it. An aoe lays THE MIND SIGIL (eye in the triangle) first, rings on each body in it
+  (enemies of the caster for a hostile cast, its allies for a buff). Utility rows with no damage (doors, teleports,
+  Far Sight) get the eye only.
+- HOOKS (no shared line touched): `fire`, `_stageArchetype` and `_beamColorFor` are closure bindings reassigned in the
+  block (the export at the bottom reads `fire` after it runs). The rings key off the first LANDING intent (impact, bolt
+  at flyMs, beam hitTiles, aoe/descent, pull with uid, chain, aura); the staging `burst` is only the fallback for a row
+  that fired none (Psychosis's burst came ~1 s after its impact, so burst can't be the clock). One ring set per tile per
+  700 ms. `_PS_OWN` = rows whose own signature draws the rings.
+- COLOUR: `_THEME_MAP.psychic` / `_ELEMENT_THEME.psychic` (was 'anomaly'), `_BEAM_COLORS.psychic` wins over the row's
+  spellType (alien rows had green beams), staging archetypes `psychic` / `psychicAid` (buff grammar) / `psychicHex`
+  (debuff grammar), all `noOrb` (no glass orb on heavy hits), grades to match. A row with another vfxElement (Ascension
+  Day = light), a vfxArchetype, a non-mind SPELL_STAGE_MAP archetype, or a heal stage keeps its own.
+- SIGNATURES (Psychic Abilities family): Kinetic Hurl (bolt, pzOwn: rings race out, THE GRIP — three gyre rings — rides
+  the thrown body, crash ring where it stops); Telekinetic Slam (pull, pzOwnTether: a beam out of the third eye, rings
+  reel along it, grip + slam; battle.js skips the rope); Psychic Beam (beam, layered: `_psLance` pink lance + rings + mind
+  rings on every body hit); Migraine (bolt, pzOwn: rings clamp the head, light cracks, three throbs, snap open); Mind
+  Shatter (bolt, pzOwn: sigil, a great eye over the 3×3, the old `_sigMindShatter3D` cage on the centre, a glass shell that
+  bursts into shards on every other enemy in it); Telepathic Link (aura, pzOwn: a thread from the third eye to each ally's
+  head, an eye + rising rings on each); Mind Blank (new row; bolt, pzOwn: rings close, the eye goes white and shuts, a flat
+  line, the rings hush out). pzOwn bolts land their impact recipe through the nature pass's `_nvLand`.
+- Untouched looks (they get the shared eye + rings on top): every race signature (pz / sig / go / nr / door rows),
+  Psychosis's brain, Psychic Barrier's dome, Far Sight's view.
+- Proof: Spell Lab, the capture rig freezes performance.now() at set delays after an intent. Telepathic Link's threads
+  were drawn by firing its aura with the dummy counted on the caster's side for one call (the Lab has no ally).
+  Stills: /mnt/project-files/psychic-vfx/.
+
+
 ## THE METAL PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Metal rides 72 rows over 40-odd races (guns, blades, chains, hooks, machines), each with its own look already, so metal's
 identity is a STAMP every metal cast wears on top of its own look. Code: three-vfx-effects.js block "THE METAL PASS" just

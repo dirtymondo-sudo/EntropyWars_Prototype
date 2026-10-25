@@ -6217,6 +6217,19 @@ const SPELL_LIBRARY = [
           element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Feed the fire what it wants. MEDIUM magic damage — a Burning target goes up like tinder.' },
+        /* THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element ... making sure there's a nice amount
+           of spells for each"): Fire Magic had one row per tier. Two more on existing kinds and rules only: Flamethrower =
+           the line shape (Dragon Breath's, without its burning tiles) at tier II, Burn 2 (setup); Inferno = the
+           self-centred tier IV finisher (Throne of Ashes' shape), bonus vs Burn, applies nothing (no self-combo).
+           Their looks: three-vfx-effects.js "THE FIRE PASS". */
+        { id: 'raceFlamethrower', name: 'Flamethrower', tier: 2, families: ['fire'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'fire', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 3, lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A roaring jet of flame from the open hand. MEDIUM magic damage to All Enemies in a 3-tile line; they keep Burning for 2 rounds.' },
+        { id: 'raceInferno', name: 'Inferno', tier: 4, families: ['fire'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 0, aoeRadius: 2,
+          aoeOriginSelf: true, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'The caster becomes the heart of a firestorm. HEAVY magic damage to All Enemies within 2 tiles. Burning targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceStrangeLoop', upgradesBlock: ['upLinger'], name: 'Strange Loop', tier: 2, families: ['fractal'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', vfxElement: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'stun', duration: 1 }],
@@ -6372,6 +6385,14 @@ const SPELL_LIBRARY = [
           damageType: 'magic', pullDistance: 3, groundsFlyers: true,
           weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): the mind weighs nothing — heavy and colossal bodies come like any other
           desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
+        /* THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): Mind Shatter (the
+           family's tier IV) pays off Silence, but no Psychic Abilities row applied it. Mind Blank = the setup, on an
+           existing kind and status only (the Antimagic Gaze / Timber Stomp shape: tier II, WEAK damage, Silence 1). Its
+           look: three-vfx-effects.js "THE PSYCHIC PASS". */
+        { id: 'raceMindBlank', name: 'Mind Blank', tier: 2, families: ['psychic'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Wipe the thought before it forms. Deals WEAK magic damage to a Single Enemy within 4 and Silences it for 1 round. Sets up Mind Shatter.' },
         { id: 'raceHogtie', name: 'Hogtie', tier: 2, families: ['ropework'], cost: 50, apCost: 1, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 1,
           statusEffects: [{ id: 'root', duration: 2 }],
