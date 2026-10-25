@@ -2669,3 +2669,30 @@ Open Vein T1 (applies Bleed), Hemorrhage T2 / Maul T2 / Claw Sweep T2 (apply Gri
 Spray T3 (×1.5 vs Bleed, applies nothing), Life Sap T3 (×1.5 vs Poison/Grievous), Exsanguinate T4 (×1.5 vs Grievous,
 applies nothing), plus Blood Ritual (buff), Summon Blood Rain (weather) and the Sanguine passive. Looks only:
 spells-vfx.md "THE BLOOD PASS".
+
+## THE STATS20 PASS + THE DEAD SLOTS (2026-10-25, mondo: "let's do the recomended spell nerfs and buffs, and the stat tests, and the ai pass on the dead slots")
+From the stats20 proposals (Balance Lab, 840 Arena matches; doc https://claude.ai/artifact/QZYZLqzhSuLXZwprdMQyfs).
+Spell rows (data.js, each tagged `BALANCE PASS 2026-10-25`): Things That Go Bump 3→2 random targets; The Whole House
+Shakes 4→3 hits; Eternal Slumber (T4) drops its radius-2 Stun (T4 finishers apply nothing; flagged to mondo); Tremor
+Stomp 80→64. Buffs: Ninefold Scratch 9×20→9×30, Six-Shooter 6×30→6×42, Excessive Machine 6×28→6×40, Giant Smash
+170→230, Rampage 170→240, Railgun 180→225 (its `cooldownRounds: 0` pin kept), Tether Line 60→100, Infernal
+Conscription 60→100. Cooldowns checked with load-data.js: none changed. Miasma left alone until a DoT-fixed lab rerun.
+
+THE DEAD SLOTS (ai.js, EW_AI_VERSION v4.19): 95 fielded spells had 0 casts. Causes found with a headless diagnosis run
+(per spell: turns fielded, affordable, a candidate, ranked top, attempted):
+1. scoreOffensiveHit returned 0 before the status riders when estDamage was 0, so every `noDamage` aoe / barrage debuff
+   (Fear, Eyewitness, Dread Aura, Meow, Executive Order, Hypnotic Pulse…) scored nothing. Now worth its statuses + stages.
+2. Setup casts never went first: the hit scores more and ends the turn. `_setupFirst` (rankCandidates): with AP for
+   both, a positive non-ending cast that does not move the caster and leaves the MP for the hit goes before it.
+3. Friendly statuses on `buff` rows were a flat +35, under any T2+ MP cost → `_friendlyStatusValue` (20 + 0.15 × rounds
+   × the wearer's output).
+4. warCry rows with `teamStatusEffects` all took Fermata's statLock branch (0 unless allies had raised stages). Only
+   statLock takes it now; the rest are worth their statuses on allies in reach.
+5. Blinks / escapes were charged the danger of the tile they leave; now the landing tile (×0.3 when the escape cloaks
+   or Protects). Plunder counts its 100 dmg hit.
+Lab after (492 Arena matches, new spells + AI): 42 of 818 fielded spells never cast (was 95 of the same pool in 840).
+Casts per 100 fielded games: buff 12→66, debuff 23→101, warCry 20→108, barrage debuff 0→60. Still dead or near:
+teleports (target finder only blinks when hurt+adjacent or out of walk reach), traps, Temporal Tide, Cleanse.
+Stat tests (lab only, NOT applied; ~28 games per arm, ±18 points noise): Mech HP 1544→1350 79%→50% is the only clear
+signal; the other eight moved within noise. Harness: /mnt/project-files/balance/weak-races-harness/lab3.js (per-match
+alternating arms, `--alt`) + diag.js.
