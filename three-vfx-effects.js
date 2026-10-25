@@ -260,6 +260,8 @@ const ThreeVFXEffects = (function () {
         heal:      { core: 'heal-cross',    trail: 'heal-glow',  burst: 'divine-sparkle',   ring: 'target-ring-green', glow: 0xa8ffc4 },
         mana:      { core: 'spark-blue',    trail: 'frost-mist', burst: 'spark-blue',       ring: 'target-ring-blue',  glow: 0x6faeff },
         poison:    { core: 'poison-bubble', trail: 'poison-mist', burst: 'acid-green',      ring: 'target-ring-green', glow: 0x9dff5e },
+        /* THE NATURE PASS (2026-10-25): nature had borrowed poison's bubbles; its own look is leaves and green light */
+        nature:    { core: 'vine-green',    trail: 'leaf',        burst: 'leaf',            ring: 'target-ring-green', glow: 0x8dff6a },
     };
 
     /* Organizational spell `element` tag (data.js) → visual theme. Not a
@@ -267,7 +269,7 @@ const ThreeVFXEffects = (function () {
        a spell has no bespoke SPELL_MAP entry. Explicit tag beats name-regex. */
     var _ELEMENT_THEME = {
         fire: 'fire', ice: 'ice', water: 'water', lightning: 'lightning',
-        poison: 'poison', nature: 'poison', light: 'divine', shadow: 'unholy',
+        poison: 'poison', nature: 'nature', light: 'divine', shadow: 'unholy',
         psychic: 'anomaly', arcane: 'anomaly', sonic: 'anomaly',
         earth: 'human', wind: 'human', blood: 'unholy', metal: 'tech',
     };
@@ -20667,6 +20669,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         alien:    { orb: 0x86ff7a, ring: 0x55dd66, flash: '#c8ffbe', mote: 'acid-green',     glyph: false, slash: false, lineColor: '#b6ffa8' },
         anomaly:  { orb: 0xff77dd, ring: 0xcc44aa, flash: '#ffc0f0', mote: 'laser-pink',     glyph: true,  slash: false, lineColor: '#ffb0ee' },
         poison:   { orb: 0x9dff5e, ring: 0x66bb33, flash: '#d8ffb0', mote: 'poison-bubble',  glyph: false, slash: false, lineColor: '#c4ff90' },
+        /* THE NATURE PASS (2026-10-25): nature staged as poison (bubbles); its own beat throws leaves */
+        nature:   { orb: 0x8dff6a, ring: 0x5cc84a, flash: '#d8ffb8', mote: 'leaf',           glyph: false, slash: false, lineColor: '#c8ffa8', noOrb: true },
         heal:     { orb: 0xa8ffc4, ring: 0x66dd99, flash: '#d8ffe8', mote: 'heal-cross',     glyph: true,  slash: false, lineColor: '#b8ffd4', gentle: true, support: 'heal' },
         /* mana: MP restoration — deep arcane blue, the heal's cool sibling.
            Distinct from tech-cyan so "mana" always reads as a resource gift. */
@@ -20853,6 +20857,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         alien:    { tint: [0.70, 1.24, 0.82], tintAmt: 0.46, chroma: 3.5 },
         anomaly:  { tint: [1.22, 0.66, 1.18], tintAmt: 0.48, chroma: 6.5, trip: 0.55, warp: 0.0024, hueRate: 0.38 },
         poison:   { tint: [0.84, 1.22, 0.58], tintAmt: 0.46, chroma: 2.5 },
+        nature:   { tint: [0.86, 1.18, 0.66], tintAmt: 0.40, chroma: 2.0 },
         heal:     { tint: [0.84, 1.16, 0.98], tintAmt: 0.30, chroma: 0.0 },
         human:    { tint: [1.10, 1.02, 0.90], tintAmt: 0.22, chroma: 1.5 },
         kinetic:  { tint: [1.12, 1.02, 0.86], tintAmt: 0.26, chroma: 4.0 },
@@ -21228,7 +21233,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var _physCast = _isKineticFam || _isGunSpell(spellId)
             || (_wDef && _wDef.damageType === 'physical');
 
-        if (!_physCast) {
+        if (!_physCast && !P.noOrb) {   /* noOrb: nature casts call vines, not a glass orb (THE NATURE PASS) */
             try {
                 _sigMagicOrb3D(tx, ty, {
                     color: P.orb,
@@ -21800,7 +21805,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                identically; now it's the signature of a BIG magical hit.
                Physical hits take a hard anime speed-burst frame instead. */
             var _bRank = _TIER_ORDER[info.weight] || 0;
-            if (!_physHit && _bRank >= 2) {
+            if (!_physHit && _bRank >= 2 && !P.noOrb) {   /* noOrb: the nature roots / vines are the big hit (THE NATURE PASS) */
                 try {
                     _sigOrbBurst3D(tx, ty, {
                         mode: 'out', color: P.orb,
@@ -46809,6 +46814,731 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* Atomic Breath keeps its breath cone; the dorsal plates charge blue down the kaiju's back first */
         raceAtomicBreath: function (fx, fy) { _goAtomicPlates3D(fx, fy); return null; },
     });
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE NATURE PASS (2026-10-25, mondo: "Can we make badass impressive vfx
+       for nature spells like vines and stuff? ... give nature spells and
+       nature spell families some love") — the Nature Magic and Agriculture
+       families' plant spells get real vines, roots, thorns, leaves and
+       flowers, plus the family's two new rows (data.js THE NATURE PASS:
+       Vine Whip, Wrath of the Wild).
+       THE KIT (_nv*): a vine / root is a tapered tube (TubeGeometry, the
+       radius narrowed ring by ring toward the tip) that GROWS along its curve
+       (setDrawRange over the tube's segments), with thorns and leaves that
+       pop out as the growth passes them and a sap glow on the growing tip.
+       Roots wear the R2 bark (terrain/wood.png), vines a canvas skin; light
+       is baked into vertex colours (MeshBasic, so WebGPU draws the same).
+       Same hook as the P-Z / 10-25 passes (`pzSig` / `pzOwn` /
+       `pzOwnTether`): everything rides fire(), which online.js relays, so
+       the guest sees the same vines (RULE #2). Anything drawn at the
+       caster's end (Vine Whip's hand, the racing brambles, the fissures)
+       only draws where the viewer can see that tile (_pzSeen).
+       THE TARGET STAYS: no screen flash, nothing full-screen; the big roots
+       and arches stand round / behind the body (the side away from the lens,
+       _nbCamDir), the coils are thin, so the caster, the target, the hit and
+       the number all read. ═════════════════════════════════════════════════ */
+    var _NV = {
+        leaf: 0x5cc84a, deep: 0x2a7a30, glow: 0x8dff6a, sap: 0xd8ff9a, thorn: 0xd8c898, bark: 0xe8c89a,
+        bloom: 0xff6fae, petal: 0xffb6d4, gold: 0xffe07a, wheat: 0xe8c862, soil: 0x2a1c10, leech: 0xc05ae8, heal: 0x7dffb0,
+    };
+    /* ── the canvases ── */
+    function _nvVineTex() {
+        var t = _pzTex('nv-vine', 128, 32, function (g, w, h) {
+            var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2f7a2a'); gr.addColorStop(0.5, '#62c04a'); gr.addColorStop(1, '#2f7a2a');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.strokeStyle = 'rgba(20,60,16,0.55)'; g.lineWidth = 2;
+            for (var y = 4; y < h; y += 7) { g.beginPath(); g.moveTo(0, y); for (var x = 0; x <= w; x += 16) g.lineTo(x, y + Math.sin(x * 0.2 + y) * 1.5); g.stroke(); }
+            g.fillStyle = 'rgba(200,255,160,0.35)';
+            for (var k = 0; k < 4; k++) g.fillRect(k * 32 + 10, 0, 3, h);
+        });
+        t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 1);
+        return t;
+    }
+    function _nvLeechTex() {
+        var t = _pzTex('nv-leech', 128, 32, function (g, w, h) {
+            var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3a1a4a'); gr.addColorStop(0.5, '#7a3a9a'); gr.addColorStop(1, '#3a1a4a');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.fillStyle = 'rgba(160,255,120,0.55)';
+            for (var k = 0; k < 6; k++) { g.beginPath(); g.ellipse(k * 22 + 8, h / 2, 4, 3, 0, 0, Math.PI * 2); g.fill(); }
+        });
+        t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 1);
+        return t;
+    }
+    function _nvLeafTex() {
+        return _pzTex('nv-leaf', 64, 128, function (g, w, h) {
+            g.beginPath(); g.moveTo(w / 2, h - 2); g.bezierCurveTo(-6, h * 0.62, w * 0.18, h * 0.12, w / 2, 2); g.bezierCurveTo(w * 0.82, h * 0.12, w + 6, h * 0.62, w / 2, h - 2); g.closePath();
+            var gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#2f8a2c'); gr.addColorStop(0.5, '#72d455'); gr.addColorStop(1, '#2f8a2c');
+            g.fillStyle = gr; g.fill(); g.strokeStyle = '#1e5a1c'; g.lineWidth = 2; g.stroke();
+            g.strokeStyle = 'rgba(220,255,180,0.85)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(w / 2, h - 4); g.lineTo(w / 2, 10); g.stroke();
+            g.lineWidth = 1.2;
+            for (var i = 0; i < 5; i++) { var y = h * 0.78 - i * h * 0.13; g.beginPath(); g.moveTo(w / 2, y); g.lineTo(w * 0.18, y - h * 0.09); g.moveTo(w / 2, y); g.lineTo(w * 0.82, y - h * 0.09); g.stroke(); }
+        });
+    }
+    function _nvFlowerTex(kind) {
+        return _pzTex('nv-flower-' + (kind || 'pink'), 128, 128, function (g, w, h) {
+            var c = w / 2, P = kind === 'white' ? ['#ffffff', '#e8f0ff'] : kind === 'gold' ? ['#ffe27a', '#f2a81c'] : ['#ffb6d4', '#ff5fa0'];
+            for (var i = 0; i < 6; i++) {
+                g.save(); g.translate(c, c); g.rotate(i / 6 * Math.PI * 2);
+                var gr = g.createLinearGradient(0, 0, 0, -c); gr.addColorStop(0, P[1]); gr.addColorStop(1, P[0]);
+                g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(-c * 0.42, -c * 0.4, -c * 0.3, -c * 0.92, 0, -c * 0.96); g.bezierCurveTo(c * 0.3, -c * 0.92, c * 0.42, -c * 0.4, 0, 0); g.fill();
+                g.strokeStyle = 'rgba(120,20,60,0.35)'; g.lineWidth = 1.5; g.stroke(); g.restore();
+            }
+            var cg = g.createRadialGradient(c, c, 2, c, c, c * 0.24); cg.addColorStop(0, '#fff6a0'); cg.addColorStop(1, '#e09a10');
+            g.fillStyle = cg; g.beginPath(); g.arc(c, c, c * 0.22, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* the druid ring on the ground: two rings, a wreath of leaves between them, a spiral of vines in the middle */
+    function _nvSigilTex() {
+        return _pzTex('nv-sigil', 512, 512, function (g, w, h) {
+            var c = 256; g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineCap = 'round';
+            g.lineWidth = 7; g.beginPath(); g.arc(c, c, 244, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3; g.beginPath(); g.arc(c, c, 226, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 4; g.beginPath(); g.arc(c, c, 150, 0, Math.PI * 2); g.stroke();
+            for (var i = 0; i < 24; i++) {
+                g.save(); g.translate(c, c); g.rotate(i / 24 * Math.PI * 2 + (i % 2) * 0.06); g.translate(0, -188);
+                g.rotate(i % 2 ? 0.5 : -0.5);
+                g.beginPath(); g.moveTo(0, 22); g.bezierCurveTo(-14, 6, -10, -16, 0, -26); g.bezierCurveTo(10, -16, 14, 6, 0, 22); g.fill();
+                g.restore();
+            }
+            g.lineWidth = 5;
+            for (var s = 0; s < 3; s++) {
+                g.beginPath();
+                for (var k = 0; k <= 60; k++) { var a = s * 2.094 + k / 60 * 4.2, r = 136 - k * 2; g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); }
+                g.stroke();
+            }
+            g.beginPath(); g.arc(c, c, 14, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* torn-up ground: a dark soil patch, broken into clods, with cracks running out */
+    function _nvRuptureTex() {
+        return _pzTex('nv-rupture', 256, 256, function (g, w, h) {
+            var c = 128, gr = g.createRadialGradient(c, c, 10, c, c, 124);
+            gr.addColorStop(0, 'rgba(26,16,8,0.95)'); gr.addColorStop(0.55, 'rgba(46,30,16,0.85)'); gr.addColorStop(1, 'rgba(46,30,16,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.strokeStyle = 'rgba(8,4,0,0.9)'; g.lineWidth = 3;
+            for (var i = 0; i < 11; i++) {
+                var a = i / 11 * Math.PI * 2 + (i % 3) * 0.2, r = 20; g.beginPath(); g.moveTo(c + Math.cos(a) * r, c + Math.sin(a) * r);
+                for (var k = 0; k < 5; k++) { r += 18 + (k * 7 + i * 3) % 10; a += ((k + i) % 2 ? 0.18 : -0.15); g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); }
+                g.stroke();
+            }
+            g.fillStyle = 'rgba(92,64,36,0.9)';
+            for (var j = 0; j < 14; j++) { var b = j * 2.4, rr = 30 + (j * 17) % 70; g.beginPath(); g.ellipse(c + Math.cos(b) * rr, c + Math.sin(b) * rr, 7 + j % 4, 5 + j % 3, b, 0, Math.PI * 2); g.fill(); }
+        });
+    }
+
+    /* ── materials (every one starts at opacity 0; the signature fades it) ── */
+    function _nvVineMat(tex) { var m = _pzSolid(0xffffff, tex || _nvVineTex()); m.vertexColors = true; return m; }
+    function _nvBarkMat() { var m = _pzSolid(_NV.bark, _sigTerrainTex('wood.png', 3, 1)); m.vertexColors = true; return m; }
+    function _nvThornMat() { var m = _pzSolid(_NV.thorn); m.vertexColors = true; return m; }
+    function _nvLeafMat() { return _pzSolid(0xffffff, _nvLeafTex(), { side: THREE.DoubleSide, depthWrite: false }); }
+    function _nvFlowerMat(kind) { return _pzSolid(0xffffff, _nvFlowerTex(kind), { side: THREE.DoubleSide, depthWrite: false }); }
+
+    /* light from above baked into vertex colours (lit top, darker underside), the _goBake idea */
+    function _nvBake(geo, lo) {
+        var n = geo.attributes.normal; if (!n) return;
+        lo = lo != null ? lo : 0.5;
+        var cols = new Float32Array(n.count * 3);
+        for (var i = 0; i < n.count; i++) { var f = lo + (1 - lo) * (0.5 + 0.5 * n.getY(i)) * 0.85 + 0.15 * (0.5 + 0.5 * n.getX(i)); cols[i * 3] = cols[i * 3 + 1] = cols[i * 3 + 2] = Math.min(1, f); }
+        geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    }
+    /* a tube along `curve` whose radius narrows from r0 at the base to r1 at the tip */
+    function _nvTube(curve, segs, r0, r1, radial) {
+        var geo = new THREE.TubeGeometry(curve, segs, 1, radial, false);
+        var pos = geo.attributes.position, R = radial + 1, c = new THREE.Vector3(), v = new THREE.Vector3();
+        for (var i = 0; i <= segs; i++) {
+            var u = i / segs, r = r0 + (r1 - r0) * u; curve.getPointAt(u, c);
+            for (var j = 0; j < R; j++) { var k = i * R + j; v.fromBufferAttribute(pos, k).sub(c).multiplyScalar(r).add(c); pos.setXYZ(k, v.x, v.y, v.z); }
+        }
+        pos.needsUpdate = true;
+        return geo;
+    }
+    var _nvUp = null;
+    /* ONE VINE / ROOT that grows along its curve. o: ts · r0 · r1 · segs · radial · mat · thorns (count) · thornLen ·
+       thornMat · leaves (count) · leafLen · leafMat · tip (glow colour) · lo (bake floor). Returns { grow(k0, k1),
+       point(u) } — grow shows the stretch from k0 to k1 of the length (0→1 grows it out, a rising k0 pulls it in
+       from the base, a falling k1 pulls it back from the tip). */
+    function _nvVine(parent, pts, o) {
+        if (!_nvUp) _nvUp = new THREE.Vector3(0, 1, 0);
+        var ts = o.ts, curve = pts.isCurve ? pts : new THREE.CatmullRomCurve3(pts);
+        var segs = o.segs || 40, radial = o.radial || 6, r0 = o.r0, r1 = o.r1 != null ? o.r1 : o.r0 * 0.25;
+        var geo = _nvTube(curve, segs, r0, r1, radial); _nvBake(geo, o.lo);
+        var mesh = _pzMesh(geo, o.mat, parent), n = geo.index ? geo.index.count : 0, per = radial * 6, bits = [];
+        var p = new THREE.Vector3(), tan = new THREE.Vector3(), side = new THREE.Vector3(), ref = new THREE.Vector3();
+        function frame(u, spin) {
+            curve.getPointAt(u, p); curve.getTangentAt(u, tan);
+            ref.set(Math.abs(tan.y) > 0.92 ? 1 : 0, Math.abs(tan.y) > 0.92 ? 0 : 1, 0);
+            side.crossVectors(tan, ref).normalize().applyAxisAngle(tan, spin);
+            return r0 + (r1 - r0) * u;
+        }
+        var nT = o.thorns || 0;
+        if (nT && o.thornMat) {
+            var tl = o.thornLen || ts * 0.07, tg = new THREE.ConeGeometry(tl * 0.26, tl, 4); tg.translate(0, tl / 2, 0); _nvBake(tg, 0.6);
+            for (var i = 0; i < nT; i++) {
+                var u = 0.1 + 0.82 * (i + 0.5) / nT, r = frame(u, i * 2.39 + 0.5);
+                var cone = _pzMesh(tg, o.thornMat, parent); cone.position.copy(p).addScaledVector(side, r * 0.8);
+                cone.quaternion.setFromUnitVectors(_nvUp, side.clone().addScaledVector(tan, 0.55).normalize());
+                cone.scale.setScalar(1 - 0.45 * u); cone.visible = false; bits.push({ m: cone, u: u, s: 1 - 0.45 * u });
+            }
+        }
+        var nL = o.leaves || 0;
+        if (nL && o.leafMat) {
+            var ll = o.leafLen || ts * 0.16, lg = new THREE.PlaneGeometry(ll * 0.5, ll); lg.translate(0, ll / 2, 0);
+            for (var k = 0; k < nL; k++) {
+                var u2 = 0.18 + 0.72 * (k + 0.5) / nL, r2 = frame(u2, k * 2.1 + 1.3);
+                var leaf = _pzMesh(lg, o.leafMat, parent); leaf.position.copy(p).addScaledVector(side, r2 * 0.7);
+                leaf.quaternion.setFromUnitVectors(_nvUp, side.clone().addScaledVector(tan, 0.8).addScaledVector(_nvUp, 0.35).normalize());
+                leaf.rotateY(k * 1.7); leaf.visible = false; bits.push({ m: leaf, u: u2, s: 0.8 + 0.4 * ((k * 7) % 5) / 5 });
+            }
+        }
+        var tip = o.tip != null ? _pzSpr(o.tip, ts * 0.26, parent) : null;
+        return {
+            curve: curve,
+            point: function (u, out) { return curve.getPointAt(Math.max(0, Math.min(1, u)), out || new THREE.Vector3()); },
+            grow: function (k0, k1, tipOp) {
+                k0 = Math.max(0, Math.min(1, k0)); k1 = Math.max(0, Math.min(1, k1));
+                if (n) { var s0 = Math.floor(n * k0 / per) * per, e0 = Math.ceil(n * k1 / per) * per; geo.setDrawRange(s0, Math.max(0, Math.min(n, e0) - s0)); }
+                for (var b = 0; b < bits.length; b++) {
+                    var B = bits[b], on = B.u >= k0 && B.u <= k1; B.m.visible = on;
+                    if (on) B.m.scale.setScalar(B.s * Math.max(0.02, _sigEaseOutBack(_sigClamp01((k1 - B.u) * 7))));
+                }
+                if (tip) {
+                    var live = k1 > 0.01 && k1 < 0.995 && k1 > k0;
+                    tip.material.opacity = live ? (tipOp != null ? tipOp : 0.85) : 0;
+                    if (live) curve.getPointAt(k1, tip.position);
+                }
+            },
+        };
+    }
+    /* points of a spiral round a body: radius r0→r1, height y0→y1, `turns` turns from angle ph */
+    function _nvCoil(r0, r1, y0, y1, turns, ph, n) {
+        var out = [];
+        n = n || Math.max(8, Math.round(turns * 10));
+        for (var i = 0; i <= n; i++) { var t = i / n, a = ph + t * turns * Math.PI * 2, r = r0 + (r1 - r0) * t; out.push(new THREE.Vector3(Math.cos(a) * r, y0 + (y1 - y0) * t, Math.sin(a) * r)); }
+        return out;
+    }
+    /* the frame's offset to another tile (its height difference included) */
+    function _nvOff(F, x, y) { var w = _worldPos(x, y); return new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z); }
+    /* the aoe's own tiles (shape + the mask the cast used) as {dx, dy} — what _fireAoeMapped walks */
+    function _nvAoeTiles(spellId, p, def, rDef) {
+        var r = p.aoeRadius != null ? p.aoeRadius : (rDef != null ? rDef : (def && def.aoeRadius != null ? def.aoeRadius : 1));
+        var offs = _buildTileOffsets((def && def.shape) || 'square', r);
+        try { var mo = _maskTileOffsets(spellId, p, r); if (mo) { offs = mo.tileOffsets; r = mo.aoeRadius; } } catch (e) {}
+        return { offs: offs, r: r };
+    }
+    function _nvRadius(spellId, key, fb) { var d = _spellDefFor(spellId); return d && d[key] != null ? d[key] : fb; }
+    /* a burst of falling leaves / petals at a frame-local point */
+    function _nvLeaves(F, x, y, z, n, o) {
+        o = o || {};
+        for (var i = 0; i < n; i++) _pzP(F, x + rn(-1, 1) * (o.r || 10), y + rn(-4, 8), z + rn(-1, 1) * (o.r || 10), {
+            sprite: o.sprite || 'leaf', tint: o.tint, ml: rn(o.ml0 || 700, o.ml1 || 1200), size0: rn(o.s0 || 7, (o.s0 || 7) * 1.6), size1: o.s1 != null ? o.s1 : 4,
+            vx: rn(-1, 1) * (o.v || 120), vy: rn(-1, 1) * (o.v || 120), vz: rn(o.vz0 != null ? o.vz0 : 40, o.vz1 != null ? o.vz1 : 180),
+            gravity: o.g != null ? o.g : 140, drag: o.drag != null ? o.drag : 1.4, opacity0: o.op != null ? o.op : 0.95 });
+    }
+
+    /* a bolt the signature owns (pzOwn) skips the bolt pipeline, which is what lands a bolt spell's impact recipe:
+       land it here when the flight ends — the recipe and its own signature, as an impact intent would */
+    function _nvLand(spellId, tx, ty, ms) {
+        var m = SPELL_MAP[spellId], d = m && m.impact && EFFECTS[m.impact];
+        if (!d) return;
+        _fxDelay(function () {
+            if (_suppressed() || _catOff('spells')) return;
+            if (d.layers && d.layers.length) _spawnEffect(d, { tx: tx, ty: ty });
+            if (d.pzSig && _PZ_SIGS[d.pzSig]) try { _PZ_SIGS[d.pzSig]({ tx: tx, ty: ty }, spellId, 'impact', d); } catch (e) {}
+        }, ms);
+    }
+
+    /* ════ VINE WHIP — the new tier II pull: a thorned vine cracks out of the caster's hand, coils round the victim's
+       legs, holds taut for the whole drag and reels back in. It owns the pull line (battle.js skips the rope). ════ */
+    EFFECTS['nvVineWhip_pull'] = _pzDef('nvVineWhip', { pzOwnTether: true });
+    EFFECTS['nvVineWhip_crack'] = { layers: [
+        { sprite: 'flash', ml: 110, size0: 46, size1: 10, tint: 0xe8ffc8, opacity0: 0.8, z: 40 },
+        { count: 10, sprite: 'leaf', ml: [700, 1100], offsetXY: 10, z: [24, 50], vxRange: 160, vyRange: 160, vzRange: [40, 160], gravity: 140, drag: 1.3, size0: [7, 11], size1: 5 },
+        { count: 8, sprite: 'vine-green', ml: [260, 460], offsetXY: 8, z: [30, 50], vxRange: 220, vyRange: 220, vzRange: [20, 140], gravity: 200, size0: [5, 9], size1: 2 },
+    ] };
+    _PZ_SIGS.nvVineWhip = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), see = _pzSeen(from.x, from.y);
+        var A = see ? new THREE.Vector3(ln.dx - ln.ux * ts * 0.22, ln.dy + ts * 0.66, ln.dz - ln.uz * ts * 0.22)
+                    : new THREE.Vector3(ln.ux * ts * 1.15, ts * 0.04, ln.uz * ts * 1.15);   /* a fogged caster: out of the ground at the sight line */
+        var track = _pzTrack(tx, ty, p.uid), off = new THREE.Vector3();
+        var vm = _nvVineMat(), th = _nvThornMat(), lf = _nvLeafMat();
+        /* the span: segments between animated points (it bends, cracks and drags, so it is placed every frame) */
+        var NS = 30, segs = [], thorns = [], tg = new THREE.ConeGeometry(ts * 0.02, ts * 0.075, 4); tg.translate(0, ts * 0.037, 0); _nvBake(tg, 0.6);
+        var lg = new THREE.PlaneGeometry(ts * 0.07, ts * 0.14); lg.translate(0, ts * 0.07, 0);
+        for (var i = 0; i < NS; i++) {
+            var rr = ts * (0.06 - 0.034 * i / NS), cg = new THREE.CylinderGeometry(rr * 0.96, rr, 1, 7, 1, true); _nvBake(cg);
+            segs.push(_pzMesh(cg, vm, F.g));
+            if (i % 2) thorns.push({ m: _pzMesh(tg, th, F.g), k: i, a: i * 2.39, r: rr });
+            if (i % 5 === 2) thorns.push({ m: _pzMesh(lg, lf, F.g), k: i, a: i * 1.7 + 1, r: rr * 0.6, leaf: true });
+        }
+        /* the coil round the legs (the victim frame — it rides the drag) */
+        var C = new THREE.Group(); F.g.add(C);
+        var a0 = Math.atan2(ln.uz, ln.ux);
+        var coil = _nvVine(C, [new THREE.Vector3(ln.ux * ts * 0.24, ts * 0.52, ln.uz * ts * 0.24)].concat(_nvCoil(ts * 0.22, ts * 0.19, ts * 0.5, ts * 0.1, 2.2, a0 + 0.3, 26)),
+            { ts: ts, r0: ts * 0.044, r1: ts * 0.02, segs: 60, radial: 6, mat: vm, thorns: 10, thornLen: ts * 0.07, thornMat: th, leaves: 4, leafLen: ts * 0.12, leafMat: lf });
+        var B = new THREE.Vector3(), P = new THREE.Vector3(), Q = new THREE.Vector3(), dir = new THREE.Vector3(), sd = new THREE.Vector3(), cracked = false, lastLeaf = 0;
+        var SHOOT = 240, CRACK = 260, LET = 1320, TOTAL = 1720;
+        function at(u, el, out) {
+            /* the line hand → coil, an arc while it flies, a whip wave that runs down it and dies at the crack, a sag when taut */
+            out.copy(A).lerp(B, u);
+            var fly = _sigClamp01(el / SHOOT), taut = _sigClamp01((el - CRACK) / 120);
+            var wave = (1 - taut) * ts * 0.32 * Math.sin(u * Math.PI * 3.2 - el * 0.045) * Math.sin(u * Math.PI) * (1 - 0.5 * fly);
+            out.addScaledVector(sd, wave);
+            out.y += Math.sin(u * Math.PI) * ts * (0.38 * (1 - taut) - 0.06 * taut);
+            return out;
+        }
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var d = track(); off.set(d ? d.x : 0, d ? d.y : 0, d ? d.z : 0); C.position.copy(off);
+            B.set(off.x + ln.ux * ts * 0.24, off.y + ts * 0.52, off.z + ln.uz * ts * 0.24);
+            dir.copy(B).sub(A).normalize(); sd.set(-dir.z, 0, dir.x);
+            var out = el < SHOOT ? _sigEaseOutCubic(el / SHOOT) : 1, back = _sigEaseInCubic(_sigClamp01((el - LET) / (TOTAL - LET - 60)));
+            var hi = Math.min(out, 1 - back), vis = el < TOTAL - 40;
+            vm.opacity = th.opacity = vis ? 1 : 0; lf.opacity = vis ? 0.95 : 0;
+            for (var j = 0; j < NS; j++) {
+                var u0 = j / NS, u1 = (j + 1) / NS, m = segs[j];
+                if (u1 > hi + 1e-3) { m.visible = false; continue; }
+                at(u0, el, P); at(u1, el, Q); _pzSpan(m, P, Q);
+            }
+            for (var t = 0; t < thorns.length; t++) {
+                var T = thorns[t], u = (T.k + 0.5) / NS;
+                if (u > hi) { T.m.visible = false; continue; }
+                at(u - 0.01, el, P); at(u + 0.01, el, Q); var tan = Q.clone().sub(P).normalize();
+                var s2 = new THREE.Vector3().crossVectors(tan, _nvUp || new THREE.Vector3(0, 1, 0)).normalize().applyAxisAngle(tan, T.a);
+                T.m.visible = true; T.m.position.copy(P).lerp(Q, 0.5).addScaledVector(s2, T.r * 0.8);
+                T.m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), s2.addScaledVector(tan, T.leaf ? 0.9 : 0.5).normalize());
+            }
+            /* the coil winds on from the crack and unwinds before the line goes home */
+            var wind = _sigEaseOutCubic(_sigClamp01((el - CRACK + 20) / 200)), unwind = _sigClamp01((el - LET + 260) / 260);
+            coil.grow(0, wind * (1 - unwind));
+            if (!cracked && el >= CRACK) {
+                cracked = true;
+                _spawnEffect(EFFECTS['nvVineWhip_crack'], { tx: tx, ty: ty });
+                _sigShockRing3D(tx, ty, { color: _NV.glow, r0: ts * 0.1, r1: ts * 0.75, ms: 300, height: ts * 0.5, torus: false, opacity: 0.6 });
+            }
+            if (el > CRACK && el < LET && el - lastLeaf > 90 && _canSpawn()) {
+                lastLeaf = el; at(rn(0.15, 0.9), el, P);
+                _pzP(F, P.x, P.y, P.z, { sprite: 'leaf', ml: rn(700, 1000), size0: rn(6, 9), size1: 4, vz: rn(-10, 30), vx: rn(-30, 30), vy: rn(-30, 30), gravity: 120, drag: 1.2, opacity0: 0.95 });
+            }
+        });
+    };
+
+    /* ════ THORNLASH — brambles race along the ground from the caster and burst up round the victim's legs ════ */
+    EFFECTS['nvThornlash_bolt'] = _pzDef('nvThornRace', { pzOwn: true });
+    EFFECTS['nvThornlash_impact'] = _pzDef('nvThornlash', { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 900, z: 3, size0: 40, size1: 70, opacity0: 0.6 },
+        { count: 8, anchor: 'floor', sprite: 'leaf', ml: [700, 1100], offsetXY: 14, z: [6, 20], vxRange: 140, vyRange: 140, vzRange: [60, 180], gravity: 160, drag: 1.3, size0: [7, 11], size1: 5 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 14, z: [2, 8], tint: 0x8a7050, size0: [12, 18], size1: [30, 40], opacity0: 0.45 },
+    ] });
+    /* a sprout of brambles: three thorned stems fanning up out of the ground */
+    function _nvBramble(F, at, ts, vm, th, h, ph) {
+        var out = [];
+        for (var i = 0; i < 3; i++) {
+            var a = ph + i * 2.1, lean = ts * (0.1 + 0.04 * i);
+            out.push(_nvVine(F.g, [at.clone().add(new THREE.Vector3(0, -ts * 0.04, 0)), at.clone().add(new THREE.Vector3(Math.cos(a) * lean * 0.4, h * 0.5, Math.sin(a) * lean * 0.4)),
+                at.clone().add(new THREE.Vector3(Math.cos(a + 0.5) * lean, h * (0.8 + 0.1 * i), Math.sin(a + 0.5) * lean))],
+                { ts: ts, r0: ts * 0.036, r1: ts * 0.008, segs: 12, radial: 5, mat: vm, thorns: 4, thornLen: ts * 0.07, thornMat: th }));
+        }
+        return out;
+    }
+    _PZ_SIGS.nvThornRace = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 340, F = _nrvFrame(tx, ty), ts = F.ts, vm = _nvVineMat(), th = _nvThornMat();
+        _nvLand(id, tx, ty, ms);
+        var L = Math.max(1, Math.hypot(tx - fx, ty - fy)), K = Math.max(3, Math.round(L * 2.2)), sprouts = [];
+        for (var i = 1; i <= K; i++) {
+            var t = i / (K + 1), gx = fx + (tx - fx) * t, gy = fy + (ty - fy) * t;
+            if (!_pzSeen(Math.round(gx), Math.round(gy))) continue;
+            var o0 = _nvOff(F, Math.round(gx), Math.round(gy)), o1 = _nvOff(F, fx, fy).lerp(new THREE.Vector3(0, 0, 0), t);
+            var at = new THREE.Vector3(o1.x, o0.y + ts * 0.02, o1.z);
+            sprouts.push({ t0: ms * (t - 0.15), parts: _nvBramble(F, at, ts, vm, th, ts * (0.34 + 0.18 * t), i * 1.3), at: at, dust: false });
+        }
+        if (!sprouts.length) return;
+        return _sigRunOwned(F.g, ms + 520, function (el) {
+            vm.opacity = th.opacity = 1;
+            for (var s = 0; s < sprouts.length; s++) {
+                var S = sprouts[s], e = el - S.t0, up = _sigEaseOutBack(_sigClamp01(e / 130)), down = _sigClamp01((e - 260) / 200);
+                for (var k = 0; k < S.parts.length; k++) S.parts[k].grow(0, e < 0 ? 0 : up * (1 - down));
+                if (!S.dust && e >= 0) { S.dust = true; _nvLeaves(F, S.at.x, S.at.y + 4, S.at.z, 2, { sprite: 'dust-puff', tint: 0x8a7050, s0: 10, s1: 26, v: 30, vz0: 10, vz1: 40, g: 0, op: 0.45, ml0: 400, ml1: 600 }); }
+            }
+        });
+    };
+    _PZ_SIGS.nvThornlash = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, vm = _nvVineMat(), th = _nvThornMat(), lf = _nvLeafMat(), vines = [];
+        for (var i = 0; i < 5; i++) {
+            var a = i / 5 * Math.PI * 2;
+            vines.push(_nvVine(F.g, [new THREE.Vector3(Math.cos(a) * ts * 0.42, -ts * 0.05, Math.sin(a) * ts * 0.42)].concat(_nvCoil(ts * 0.3, ts * 0.17, ts * 0.04, ts * (0.42 + 0.05 * (i % 2)), 1.1, a + 0.4, 14)),
+                { ts: ts, r0: ts * 0.03, r1: ts * 0.008, segs: 36, radial: 5, mat: vm, thorns: 6, thornLen: ts * 0.06, thornMat: th, leaves: 2, leafLen: ts * 0.11, leafMat: lf, tip: _NV.sap }));
+        }
+        return _sigRunOwned(F.g, 1300, function (el) {
+            var g = _sigEaseOutCubic(_sigClamp01(el / 230)), back = _sigEaseInCubic(_sigClamp01((el - 900) / 360));
+            vm.opacity = th.opacity = 1 - back * 0.3; lf.opacity = 0.95;
+            for (var j = 0; j < vines.length; j++) vines[j].grow(0, g * (1 - back), 0.8 * (1 - _sigClamp01(el / 400)));
+        });
+    };
+
+    /* ════ WRATH OF THE WILD — the new tier IV finisher: green fissures race from the caster's feet, the druid ring
+       opens under the victim, six great thorned roots tear up out of the ground round it, rear high and crash down
+       onto it with the hit; flowers burst open in the torn earth and the roots sink back. The roots rise in the bolt's
+       flight so the crash lands WITH the number (the impact intent). ════ */
+    EFFECTS['nvWrath_bolt'] = _pzDef('nvWrathRace', { pzOwn: true });
+    EFFECTS['nvWrath_impact'] = _pzDef('nvWrathHit', { shake: 'hard', layers: [
+        { count: 18, sprite: 'leaf', ml: [900, 1500], offsetXY: 18, z: [20, 60], vxRange: 240, vyRange: 240, vzRange: [120, 320], gravity: 150, drag: 1.2, size0: [8, 13], size1: 6 },
+        { count: 10, anchor: 'floor', sprite: 'rock-debris', ml: [500, 900], offsetXY: 18, z: [4, 16], tint: 0x6a5038, vxRange: 220, vyRange: 220, vzRange: [120, 300], gravity: 520, size0: [6, 10], size1: 4 },
+        { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [700, 1100], offsetXY: 26, z: [2, 10], tint: 0x7a6040, size0: [18, 26], size1: [50, 70], opacity0: 0.5 },
+        { sprite: 'flash', ml: 140, size0: 70, size1: 20, tint: 0xd8ffb0, opacity0: 0.55, z: 30 },
+    ] });
+    var _nvWrathAt = {};
+    _PZ_SIGS.nvWrathRace = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(300, p.flyMs > 0 ? p.flyMs : 420);
+        _nvWrathAt[tx + ',' + ty] = performance.now();
+        _nvLand(id, tx, ty, ms + 50);
+        _nvWrathRoots(tx, ty, ms);
+        /* three green fissures zig-zag across the ground from the caster to the victim (only over tiles the viewer sees) */
+        var F = _nrvFrame(tx, ty), ts = F.ts, gl = _pzGlow(_NV.glow), core = _pzGlow(0xeaffd0), cracks = [];
+        var oC = _nvOff(F, fx, fy), L = Math.max(1, Math.hypot(tx - fx, ty - fy)), N = Math.max(4, Math.round(L * 4));
+        for (var f = 0; f < 3; f++) {
+            var prev = new THREE.Vector3(oC.x, oC.y + ts * 0.03, oC.z);
+            for (var i = 1; i <= N; i++) {
+                var t = i / N, gx = fx + (tx - fx) * t, gy = fy + (ty - fy) * t, jag = (i < N) ? ts * 0.22 * Math.sin(i * 2.7 + f * 2.1) : 0;
+                var sx = -(oC.z), sz = oC.x, sl = Math.max(1, Math.hypot(sx, sz));
+                var oT = _nvOff(F, Math.round(gx), Math.round(gy)), cur = new THREE.Vector3(oC.x * (1 - t) + sx / sl * jag, oT.y + ts * 0.03, oC.z * (1 - t) + sz / sl * jag);
+                if (_pzSeen(Math.round(gx), Math.round(gy))) {
+                    var len = prev.distanceTo(cur), w = ts * (0.07 - 0.015 * f);
+                    var pg = new THREE.PlaneGeometry(w, len); pg.rotateX(-Math.PI / 2);
+                    var m = _pzMesh(pg, f ? gl : core, F.g); m.position.copy(prev).lerp(cur, 0.5); m.rotation.y = Math.atan2(cur.x - prev.x, cur.z - prev.z);
+                    cracks.push({ m: m, t: t, at: cur.clone() });
+                }
+                prev = cur;
+            }
+        }
+        var lastD = 0;
+        return _sigRunOwned(F.g, ms + 700, function (el) {
+            var head = el / (ms * 0.8);
+            gl.opacity = 0.85 * (1 - _sigClamp01((el - ms) / 600)); core.opacity = gl.opacity;
+            for (var c = 0; c < cracks.length; c++) cracks[c].m.visible = cracks[c].t <= head;
+            if (el < ms * 0.8 && el - lastD > 50 && cracks.length && _canSpawn()) {
+                lastD = el; var hc = null; for (var q = 0; q < cracks.length; q++) if (cracks[q].t <= head) hc = cracks[q];
+                if (hc) _nvLeaves(F, hc.at.x, hc.at.y + 3, hc.at.z, 2, { sprite: 'rock-debris', tint: 0x6a5038, s0: 4, s1: 2, v: 50, vz0: 60, vz1: 140, g: 480, ml0: 300, ml1: 500 });
+            }
+        });
+    };
+    _PZ_SIGS.nvWrathHit = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var k = tx + ',' + ty, last = _nvWrathAt[k];
+        /* a cast that never flew a bolt (no travel on some path) still gets its roots, crashing a beat late */
+        if (!last || performance.now() - last > 2500) _nvWrathRoots(tx, ty, 260);
+        delete _nvWrathAt[k];
+    };
+    function _nvWrathRoots(tx, ty, pre) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, bark = _nvBarkMat(), th = _nvThornMat(), lf = _nvLeafMat(), fl = _nvFlowerMat('pink'), fw = _nvFlowerMat('white');
+        var cd = _nbCamDir(F), roots = [];
+        var sig = _pzMesh(new THREE.PlaneGeometry(ts * 2.8, ts * 2.8), _pzGlow(_NV.glow, _nvSigilTex()), F.g, 0, ts * 0.035, 0); sig.rotation.x = -Math.PI / 2;
+        var sigG = _pzMesh(new THREE.PlaneGeometry(ts * 3.2, ts * 3.2), _pzGlow(_NV.glow, _sigGlowTex()), F.g, 0, ts * 0.03, 0); sigG.rotation.x = -Math.PI / 2;
+        var rup = _pzMesh(new THREE.PlaneGeometry(ts * 2.2, ts * 2.2), _pzSolid(0xffffff, _nvRuptureTex(), { depthWrite: false }), F.g, 0, ts * 0.04, 0); rup.rotation.x = -Math.PI / 2;
+        for (var i = 0; i < 6; i++) {
+            var a = i / 6 * Math.PI * 2 + 0.26, ca = Math.cos(a), sa = Math.sin(a);
+            /* a root between the lens and the body comes down at the feet, lower and thinner, so it never hides the victim */
+            var front = (ca * cd.x + sa * cd.z) > 0.45, R = ts * (front ? 0.95 : 1.1), top = ts * (front ? 1.15 : 2.0 + 0.25 * (i % 2));
+            var ea = a + (i % 2 ? 0.7 : -0.7), er = ts * (front ? 0.3 : 0.24), ey = ts * (front ? 0.1 : 0.32 + 0.14 * (i % 3));
+            var pts = [new THREE.Vector3(ca * R, -ts * 0.3, sa * R), new THREE.Vector3(ca * R * 1.08, top * 0.45, sa * R * 1.08),
+                new THREE.Vector3(ca * R * 0.95, top * 0.9, sa * R * 0.95), new THREE.Vector3(ca * R * 0.55, top, sa * R * 0.55),
+                new THREE.Vector3(Math.cos(ea) * er * 1.6, (top + ey) * 0.5, Math.sin(ea) * er * 1.6), new THREE.Vector3(Math.cos(ea) * er, ey, Math.sin(ea) * er)];
+            roots.push({ v: _nvVine(F.g, pts, { ts: ts, r0: ts * (front ? 0.09 : 0.13), r1: ts * 0.022, segs: 44, radial: 7, mat: bark, lo: 0.62,
+                thorns: front ? 5 : 8, thornLen: ts * (front ? 0.08 : 0.12), thornMat: th, leaves: front ? 1 : 3, leafLen: ts * 0.2, leafMat: lf, tip: _NV.glow }), d: i * 30 });
+        }
+        /* flowers that open in the torn ground after the crash */
+        var flowers = [];
+        for (var f = 0; f < 10; f++) {
+            var fa = f / 10 * Math.PI * 2 + 0.4, fr = ts * (0.55 + 0.35 * (f % 3) / 2), m = _pzMesh(new THREE.PlaneGeometry(ts * 0.24, ts * 0.24), f % 3 ? fl : fw, F.g, Math.cos(fa) * fr, ts * 0.06, Math.sin(fa) * fr);
+            m.rotation.x = -Math.PI / 2 + 0.35; m.rotation.order = 'YXZ'; m.rotation.y = -fa + Math.PI / 2; m.scale.setScalar(0.01); flowers.push({ m: m, d: f * 35 });
+        }
+        var rise0 = Math.max(0, pre - 300), arch = pre - 40, crash = pre + 50, HOLD = pre + 950, END = pre + 1500, crashed = false, lastL = 0;
+        return _sigRunOwned(F.g, END + 40, function (el) {
+            var vis = _pzEnv(el, 0, 160, HOLD, END);
+            sig.material.opacity = 0.8 * vis; sig.rotation.z = el * 0.0006; sig.scale.setScalar(0.6 + 0.4 * _sigEaseOutCubic(_sigClamp01(el / 300)));
+            sigG.material.opacity = 0.25 * vis * (1 + 0.6 * Math.max(0, 1 - Math.abs(el - crash) / 200));
+            rup.material.opacity = el < rise0 ? 0 : 0.9 * _pzEnv(el, rise0, rise0 + 120, HOLD + 200, END);
+            bark.opacity = th.opacity = el < END - 30 ? 1 : 0; lf.opacity = bark.opacity * 0.95;
+            var sink = _sigEaseInCubic(_sigClamp01((el - HOLD) / (END - HOLD - 60)));
+            for (var r = 0; r < roots.length; r++) {
+                var R2 = roots[r], e = el - R2.d, g;
+                if (e < rise0) g = 0;
+                else if (e < arch) g = 0.72 * _sigEaseOutCubic((e - rise0) / Math.max(1, arch - rise0));
+                else g = 0.72 + 0.28 * _sigEaseInCubic(_sigClamp01((e - arch) / Math.max(1, crash - arch)));
+                R2.v.grow(sink * 0.999, g * (1 - sink * 0.02), e < crash ? 0.9 : 0.3 * (1 - sink));
+            }
+            fl.opacity = fw.opacity = el < END - 30 ? 1 : 0;
+            for (var q = 0; q < flowers.length; q++) {
+                var Fq = flowers[q], b = _sigEaseOutBack(_sigClamp01((el - crash - 120 - Fq.d) / 260)) * (1 - sink);
+                Fq.m.scale.setScalar(Math.max(0.01, b));
+            }
+            if (!crashed && el >= crash) {
+                crashed = true; _sigShake('hard');
+                _sigShockRing3D(tx, ty, { color: _NV.glow, r0: ts * 0.3, r1: ts * 2.2, ms: 520, opacity: 0.75 });
+                _nvLeaves(F, 0, ts * 0.6, 0, 10, { sprite: 'petal', r: 30, v: 200, vz0: 120, vz1: 300, s0: 6 });
+            }
+            if (el > crash && el < HOLD && el - lastL > 70) { lastL = el; var aa = rn(0, 6.28); _nvLeaves(F, Math.cos(aa) * ts * 0.9, ts * 0.1, Math.sin(aa) * ts * 0.9, 1, { v: 40, vz0: 120, vz1: 220, g: 60 }); }
+        });
+    }
+
+    /* ════ OVERGROWTH — the roots keep growing: thorned roots breach the ground on every tile of the 3x3, arching up
+       BEHIND whoever stands there (the side away from the lens) and diving back in; thorn spikes burst at the corners ════ */
+    EFFECTS['nvOvergrowth_tile'] = { layers: [
+        { count: 5, anchor: 'floor', sprite: 'leaf', ml: [700, 1100], offsetXY: 22, z: [6, 24], vxRange: 120, vyRange: 120, vzRange: [60, 200], gravity: 150, drag: 1.3, size0: [7, 11], size1: 5, delayMs: 120 },
+        { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [600, 900], offsetXY: 20, z: [2, 8], tint: 0x7a6040, size0: [14, 20], size1: [36, 48], opacity0: 0.45, delayMs: 100 },
+        { count: 4, anchor: 'floor', sprite: 'rock-debris', ml: [400, 700], offsetXY: 18, z: [4, 12], tint: 0x6a5038, vxRange: 160, vyRange: 160, vzRange: [100, 240], gravity: 520, size0: [5, 8], size1: 3, delayMs: 100 },
+    ] };
+    EFFECTS['nvOvergrowth_aoe'] = _pzDef('nvOvergrowth', { aoeRadius: 1, impactTileEffect: 'nvOvergrowth_tile', shake: 'normal' });
+    _PZ_SIGS.nvOvergrowth = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _nvAoeTiles(id, p, def, _nvRadius(id, 'aoeRadius', 1)), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
+        var bark = _nvBarkMat(), th = _nvThornMat(), lf = _nvLeafMat(), arches = [], spikes = [], spG = new THREE.ConeGeometry(ts * 0.06, ts * 0.5, 5); spG.translate(0, ts * 0.25, 0); _nvBake(spG, 0.55);
+        var sig = _pzMesh(new THREE.PlaneGeometry(ts * (A.r * 2 + 1.6), ts * (A.r * 2 + 1.6)), _pzGlow(_NV.glow, _nvSigilTex()), F.g, 0, ts * 0.035, 0); sig.rotation.x = -Math.PI / 2;
+        for (var i = 0; i < A.offs.length; i++) {
+            var o = A.offs[i], c = _nvOff(F, tx + o.dx, ty + o.dy), dl = Math.abs(o.dx) + Math.abs(o.dy);
+            /* the arch runs along the tile's far side: across the lens line, 0.36 of a tile behind the centre */
+            var tw = ((i * 7) % 5 - 2) * 0.22, bx = -cd.x * Math.cos(tw) + cd.z * Math.sin(tw), bz = -cd.z * Math.cos(tw) - cd.x * Math.sin(tw), ax = -bz, az = bx, ph = (i * 1.7) % 1 - 0.5;
+            var base = c.clone().add(new THREE.Vector3(bx * ts * 0.36, 0, bz * ts * 0.36)), hgt = ts * (0.75 + 0.25 * ((i * 5) % 3) / 2);
+            arches.push({ v: _nvVine(F.g, [base.clone().add(new THREE.Vector3(-ax * ts * 0.5, -ts * 0.25, -az * ts * 0.5)), base.clone().add(new THREE.Vector3(-ax * ts * 0.34, hgt * 0.75, -az * ts * 0.34)),
+                base.clone().add(new THREE.Vector3(ax * ts * 0.05 * ph, hgt, az * ts * 0.05 * ph)), base.clone().add(new THREE.Vector3(ax * ts * 0.34, hgt * 0.75, az * ts * 0.34)), base.clone().add(new THREE.Vector3(ax * ts * 0.5, -ts * 0.25, az * ts * 0.5))],
+                { ts: ts, r0: ts * 0.085, r1: ts * 0.05, segs: 34, radial: 7, mat: bark, lo: 0.62, thorns: 7, thornLen: ts * 0.1, thornMat: th, leaves: 2, leafLen: ts * 0.17, leafMat: lf }), d: dl * 90 });
+            for (var s = 0; s < 2; s++) {
+                var sa = (s ? 0.75 : -0.75) * Math.PI + Math.atan2(bz, bx), sp = _pzMesh(spG, bark, F.g, c.x + Math.cos(sa) * ts * 0.4, c.y, c.z + Math.sin(sa) * ts * 0.4);
+                sp.rotation.set(rn(-0.3, 0.3), 0, rn(-0.3, 0.3)); sp.scale.set(1, 0.01, 1); spikes.push({ m: sp, d: dl * 90 + 60 + s * 40 });
+            }
+        }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var sink = _sigEaseInCubic(_sigClamp01((el - 1150) / 500));
+            sig.material.opacity = 0.65 * _pzEnv(el, 0, 200, 1100, 1650); sig.rotation.z = -el * 0.0005;
+            bark.opacity = th.opacity = el < 1660 ? 1 : 0; lf.opacity = bark.opacity * 0.95;
+            for (var a = 0; a < arches.length; a++) { var e = el - arches[a].d; arches[a].v.grow(sink, e < 0 ? 0 : _sigEaseOutCubic(_sigClamp01(e / 380))); }
+            for (var b = 0; b < spikes.length; b++) { var e2 = el - spikes[b].d; spikes[b].m.scale.set(1, Math.max(0.01, e2 < 0 ? 0.01 : _sigEaseOutBack(_sigClamp01(e2 / 160)) * (1 - sink)), 1); }
+        });
+    };
+
+    /* ════ ENTANGLING ROOTS — a net of creepers runs out across the ground from the centre and grabs: on every tile a
+       knot of leafy vines winds up the legs and holds them ════ */
+    EFFECTS['nvEntangle_tile'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'leaf', ml: [700, 1100], offsetXY: 22, z: [4, 18], vxRange: 90, vyRange: 90, vzRange: [40, 140], gravity: 140, drag: 1.3, size0: [6, 10], size1: 4, delayMs: 260 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 1100, z: 3, size0: 50, size1: 66, opacity0: 0.45, delayMs: 240 },
+    ] };
+    EFFECTS['nvEntangle_aoe'] = _pzDef('nvEntangle', { aoeRadius: 1, impactTileEffect: 'nvEntangle_tile' });
+    _PZ_SIGS.nvEntangle = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _nvAoeTiles(id, p, def, _nvRadius(id, 'aoeRadius', 1)), F = _nrvFrame(tx, ty), ts = F.ts;
+        var vm = _nvVineMat(), th = _nvThornMat(), lf = _nvLeafMat(), creep = [], knots = [];
+        for (var i = 0; i < A.offs.length; i++) {
+            var o = A.offs[i], c = _nvOff(F, tx + o.dx, ty + o.dy), dl = Math.hypot(o.dx, o.dy);
+            if (dl > 0) {   /* a creeper along the ground from the centre to this tile, wandering a little */
+                var pts = [], N = 6;
+                var cl = Math.max(1, Math.hypot(c.x, c.z)), px = -c.z / cl, pz = c.x / cl;
+                for (var k = 0; k <= N; k++) { var t = k / N, w = Math.sin(t * Math.PI) * ts * 0.14 * (i % 2 ? 1 : -1); pts.push(new THREE.Vector3(c.x * t + px * w, c.y * t + ts * 0.025, c.z * t + pz * w)); }
+                creep.push({ v: _nvVine(F.g, pts, { ts: ts, r0: ts * 0.026, r1: ts * 0.016, segs: 24, radial: 5, mat: vm, leaves: 3, leafLen: ts * 0.13, leafMat: lf }), d: 0, len: dl });
+            }
+            var parts = [];
+            for (var s = 0; s < 3; s++) {
+                var a = s / 3 * Math.PI * 2 + i;
+                parts.push(_nvVine(F.g, [c.clone().add(new THREE.Vector3(Math.cos(a) * ts * 0.36, -ts * 0.03, Math.sin(a) * ts * 0.36))].concat(_nvCoil(ts * 0.26, ts * 0.17, ts * 0.04, ts * 0.34, 0.9, a + 0.4, 10).map(function (v) { return v.add(c); })),
+                    { ts: ts, r0: ts * 0.026, r1: ts * 0.008, segs: 26, radial: 5, mat: vm, thorns: 2, thornLen: ts * 0.045, thornMat: th, leaves: 2, leafLen: ts * 0.11, leafMat: lf }));
+            }
+            knots.push({ parts: parts, d: 120 + dl * 140 });
+        }
+        return _sigRunOwned(F.g, 1650, function (el) {
+            var back = _sigEaseInCubic(_sigClamp01((el - 1150) / 450));
+            vm.opacity = th.opacity = el < 1610 ? 1 : 0; lf.opacity = vm.opacity * 0.95;
+            for (var a = 0; a < creep.length; a++) creep[a].v.grow(0, _sigEaseOutCubic(_sigClamp01(el / (140 * creep[a].len + 60))) * (1 - back));
+            for (var b = 0; b < knots.length; b++) { var e = el - knots[b].d, g = e < 0 ? 0 : _sigEaseOutCubic(_sigClamp01(e / 240)) * (1 - back); for (var q = 0; q < knots[b].parts.length; q++) knots[b].parts[q].grow(0, g); }
+        });
+    };
+
+    /* ════ BUMPER CROP — sow the whole field: a golden ring, a wave of crops shooting up across the 5x5 from the centre
+       out, swaying, roots grabbing at every tile ════ */
+    EFFECTS['nvBumperCrop_tile'] = { layers: [
+        { count: 3, anchor: 'floor', sprite: 'divine-sparkle', ml: [700, 1100], offsetXY: 22, z: [10, 40], tint: 0xffe07a, vzRange: [30, 80], drag: 0.8, size0: [5, 8], size1: 2, delayMs: 200 },
+        { count: 3, anchor: 'floor', sprite: 'leaf', ml: [700, 1100], offsetXY: 20, z: [4, 16], vxRange: 80, vyRange: 80, vzRange: [40, 140], gravity: 140, drag: 1.3, size0: [6, 9], size1: 4, delayMs: 160 },
+    ] };
+    EFFECTS['nvBumperCrop_aoe'] = _pzDef('nvBumperCrop', { aoeRadius: 2, impactTileEffect: 'nvBumperCrop_tile', shake: 'normal' });
+    _PZ_SIGS.nvBumperCrop = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _nvAoeTiles(id, p, def, _nvRadius(id, 'aoeRadius', 2)), F = _nrvFrame(tx, ty), ts = F.ts;
+        var stalk = _pzSolid(0xa8c050), headM = _pzSolid(_NV.wheat, _sigTerrainTex('gold.png', 1, 1)), bark = _nvBarkMat(), lf = _nvLeafMat();
+        stalk.vertexColors = true; headM.vertexColors = true;
+        var sig = _pzMesh(new THREE.PlaneGeometry(ts * (A.r * 2 + 1.8), ts * (A.r * 2 + 1.8)), _pzGlow(_NV.gold, _nvSigilTex()), F.g, 0, ts * 0.035, 0); sig.rotation.x = -Math.PI / 2;
+        var sG = new THREE.CylinderGeometry(ts * 0.008, ts * 0.016, 1, 4, 1, true); sG.translate(0, 0.5, 0); _nvBake(sG, 0.6);
+        var hG = new THREE.SphereGeometry(ts * 0.032, 7, 6); hG.scale(1, 2.6, 1); hG.translate(0, ts * 0.075, 0); _nvBake(hG, 0.6);
+        var tufts = [], roots = [];
+        for (var i = 0; i < A.offs.length; i++) {
+            var o = A.offs[i], c = _nvOff(F, tx + o.dx, ty + o.dy), dl = Math.max(Math.abs(o.dx), Math.abs(o.dy)), T = new THREE.Group(); T.position.copy(c); F.g.add(T);
+            var st = [];
+            for (var s = 0; s < 6; s++) {
+                /* the stalks stand round the tile's rim, never in its middle where a body stands */
+                var a = s / 6 * Math.PI * 2 + i, r = ts * (0.33 + 0.08 * (s % 2)), h = ts * (0.32 + 0.14 * ((s * 3 + i) % 4) / 3);
+                var pv = new THREE.Group(); pv.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); T.add(pv);
+                var m = _pzMesh(sG, stalk, pv); m.scale.set(1, h, 1); var hd = _pzMesh(hG, headM, pv, 0, h, 0);
+                st.push({ pv: pv, m: m, hd: hd, h: h, ph: a });
+            }
+            tufts.push({ st: st, d: dl * 110 });
+            roots.push({ v: _nvVine(F.g, [c.clone().add(new THREE.Vector3(ts * 0.3, -ts * 0.04, 0))].concat(_nvCoil(ts * 0.24, ts * 0.17, ts * 0.03, ts * 0.26, 0.8, i, 9).map(function (v) { return v.add(c); })),
+                { ts: ts, r0: ts * 0.022, r1: ts * 0.008, segs: 20, radial: 5, mat: bark, lo: 0.45, leaves: 1, leafLen: ts * 0.1, leafMat: lf }), d: dl * 110 + 160 });
+        }
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var fade = _sigClamp01((el - 1300) / 480);
+            sig.material.opacity = 0.7 * _pzEnv(el, 0, 220, 1200, 1750); sig.rotation.z = el * 0.0004;
+            stalk.opacity = headM.opacity = bark.opacity = el < 1760 ? 1 : 0; lf.opacity = stalk.opacity * 0.95;
+            for (var t = 0; t < tufts.length; t++) {
+                var e = el - tufts[t].d, g = e < 0 ? 0.01 : Math.max(0.01, _sigEaseOutBack(_sigClamp01(e / 260))) * (1 - fade);
+                for (var s2 = 0; s2 < tufts[t].st.length; s2++) {
+                    var S = tufts[t].st[s2]; S.m.scale.set(1, Math.max(0.01, S.h * g), 1); S.hd.position.y = S.h * g; S.hd.scale.setScalar(Math.max(0.01, g));
+                    S.pv.rotation.z = Math.sin(el * 0.006 + S.ph) * 0.12; S.pv.rotation.x = Math.cos(el * 0.005 + S.ph) * 0.08;
+                }
+            }
+            for (var r2 = 0; r2 < roots.length; r2++) { var e3 = el - roots[r2].d; roots[r2].v.grow(0, e3 < 0 ? 0 : _sigEaseOutCubic(_sigClamp01(e3 / 240)) * (1 - fade)); }
+        });
+    };
+
+    /* ════ REJUVENATION — everything green wakes up: a ring of vines runs round the 3-tile circle and flowers open
+       along it, a blossom opens at the caster's feet, and a flowering vine runs out to every ally in reach ════ */
+    EFFECTS['nvRejuvenation_aura'] = _pzDef('nvRejuvenation', { aoeRadius: 0, layers: [
+        { count: 14, anchor: 'floor', sprite: 'heal-glow', ml: [900, 1400], offsetXY: 30, z: [6, 20], vzRange: [40, 110], drag: 0.6, size0: [6, 10], size1: 2, opacity0: 0.85, delayMs: 200 },
+        { count: 10, sprite: 'petal', ml: [1000, 1500], offsetXY: 16, z: [30, 60], vxRange: 70, vyRange: 70, vzRange: [40, 120], gravity: 40, drag: 1.0, size0: [6, 9], size1: 4, delayMs: 300 },
+    ] });
+    _PZ_SIGS.nvRejuvenation = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = ts * (_nvRadius(id, 'auraRadius', 3) + 0.45), vm = _nvVineMat(), lf = _nvLeafMat(), fl = _nvFlowerMat('pink'), fw = _nvFlowerMat('white');
+        var ring = [], flowers = [], runs = [];
+        for (var h = 0; h < 2; h++) {   /* two vines run from the front round either half of the circle */
+            var pts = [], s0 = Math.atan2(_nbCamDir(F).z, _nbCamDir(F).x);
+            for (var k = 0; k <= 32; k++) { var a = s0 + (h ? 1 : -1) * k / 32 * Math.PI, w = 1 + 0.05 * Math.sin(k * 1.9); pts.push(new THREE.Vector3(Math.cos(a) * R * w, ts * 0.03, Math.sin(a) * R * w)); }
+            ring.push(_nvVine(F.g, pts, { ts: ts, r0: ts * 0.05, r1: ts * 0.032, segs: 90, radial: 6, mat: vm, leaves: 16, leafLen: ts * 0.24, leafMat: lf, tip: _NV.heal }));
+        }
+        for (var f = 0; f < 14; f++) {
+            var fa = f / 14 * Math.PI * 2, m = _pzMesh(new THREE.PlaneGeometry(ts * 0.46, ts * 0.46), f % 2 ? fl : fw, F.g, Math.cos(fa) * R, ts * 0.07, Math.sin(fa) * R);
+            m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2 + 0.3, -fa + Math.PI / 2, 0); m.scale.setScalar(0.01);
+            var u = Math.abs(((fa - Math.atan2(_nbCamDir(F).z, _nbCamDir(F).x)) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) / Math.PI;
+            flowers.push({ m: m, at: 60 + u * 520, x: Math.cos(fa) * R, z: Math.sin(fa) * R });
+        }
+        /* a blossom at the caster's feet: a stem, two leaves, a flower that opens */
+        var bud = _pzMesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.5), fl, F.g, 0, ts * 0.05, 0); bud.rotation.x = -Math.PI / 2; bud.scale.setScalar(0.01);
+        /* the allies in reach the viewer can see: a flowering creeper runs out to their feet */
+        try {
+            var me = null; for (var u0 = 0; u0 < state.units.length; u0++) { var U = state.units[u0]; if (U && !U.dead && U.x === tx && U.y === ty) { me = U; break; } }
+            var reach = _nvRadius(id, 'auraRadius', 3);
+            if (me) for (var j = 0; j < state.units.length; j++) {
+                var V = state.units[j];
+                if (!V || V.dead || V === me || V.player !== me.player || Math.abs(V.x - tx) + Math.abs(V.y - ty) > reach || !_pzSeen(V.x, V.y)) continue;
+                var c = _nvOff(F, V.x, V.y), cp = [];
+                for (var q = 0; q <= 6; q++) { var t = q / 6; cp.push(new THREE.Vector3(c.x * t + Math.sin(t * Math.PI * 2 + j) * ts * 0.1, c.y * t + ts * 0.03, c.z * t + Math.cos(t * Math.PI * 2 + j) * ts * 0.1)); }
+                var fm = _pzMesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.3), fw, F.g, c.x, c.y + ts * 0.06, c.z); fm.rotation.x = -Math.PI / 2; fm.scale.setScalar(0.01);
+                runs.push({ v: _nvVine(F.g, cp, { ts: ts, r0: ts * 0.022, r1: ts * 0.016, segs: 30, radial: 5, mat: vm, leaves: 4, leafLen: ts * 0.12, leafMat: lf, tip: _NV.heal }), f: fm, c: c, done: false, d: 120 });
+            }
+        } catch (e) {}
+        return _sigRunOwned(F.g, 2100, function (el) {
+            var fade = _sigClamp01((el - 1650) / 420), g = _sigEaseOutCubic(_sigClamp01((el - 40) / 620));
+            vm.opacity = 1 - fade; lf.opacity = 0.95 * (1 - fade); fl.opacity = fw.opacity = 1 - fade;
+            for (var r = 0; r < ring.length; r++) ring[r].grow(0, g);
+            for (var q2 = 0; q2 < flowers.length; q2++) {
+                var Fq = flowers[q2], b = _sigEaseOutBack(_sigClamp01((el - Fq.at) / 240));
+                Fq.m.scale.setScalar(Math.max(0.01, b)); Fq.m.rotation.y += 0.004;
+                if (b > 0 && !Fq.lit) { Fq.lit = true; _nvLeaves(F, Fq.x, ts * 0.12, Fq.z, 2, { sprite: 'heal-glow', v: 10, vz0: 60, vz1: 120, g: -20, s0: 6, s1: 2, op: 0.9, drag: 0.6 }); }
+            }
+            bud.scale.setScalar(Math.max(0.01, _sigEaseOutBack(_sigClamp01((el - 150) / 320)))); bud.rotation.z = el * 0.0015;
+            for (var a2 = 0; a2 < runs.length; a2++) {
+                var Rn = runs[a2], e = el - Rn.d, gr = _sigEaseOutCubic(_sigClamp01(e / 420)); Rn.v.grow(0, gr);
+                Rn.f.scale.setScalar(Math.max(0.01, _sigEaseOutBack(_sigClamp01((e - 420) / 240))));
+                if (!Rn.done && e >= 420) { Rn.done = true; _nvLeaves(F, Rn.c.x, Rn.c.y + ts * 0.4, Rn.c.z, 6, { sprite: 'petal', v: 60, vz0: 60, vz1: 140, g: 40, s0: 6 }); }
+            }
+        });
+    };
+
+    /* ════ INTO THE GREEN — the undergrowth takes it: a thicket of leafy vines winds up round the caster and closes
+       over it, then sinks; at the far end the thicket grows up, opens and lets it out ════ */
+    EFFECTS['nvIntoTheGreen_tp'] = _pzDef('nvIntoTheGreen', { pzOwn: true });
+    function _nvThicket(x, y, ts0, closing, delay) {
+        var F = _nrvFrame(x, y), ts = F.ts, vm = _nvVineMat(), lf = _nvLeafMat(), vines = [];
+        for (var i = 0; i < 7; i++) {
+            var a = i / 7 * Math.PI * 2;
+            vines.push(_nvVine(F.g, [new THREE.Vector3(Math.cos(a) * ts * 0.46, -ts * 0.06, Math.sin(a) * ts * 0.46)].concat(_nvCoil(ts * 0.38, ts * 0.04, ts * 0.05, ts * (1.15 + 0.1 * (i % 2)), 0.75, a + 0.5, 12)),
+                { ts: ts, r0: ts * 0.038, r1: ts * 0.012, segs: 32, radial: 5, mat: vm, leaves: 11, leafLen: ts * 0.27, leafMat: lf }));
+        }
+        var burst = false;
+        return _sigRunOwned(F.g, delay + 1000, function (el) {
+            var e = el - delay; if (e < 0) { vm.opacity = lf.opacity = 0; return; }
+            vm.opacity = 1; lf.opacity = 0.95;
+            var g = closing ? _sigEaseOutCubic(_sigClamp01(e / 320)) : 1, gone = closing ? _sigEaseInCubic(_sigClamp01((e - 520) / 420)) : 0;
+            if (!closing) { var up = _sigEaseOutCubic(_sigClamp01(e / 300)), open = _sigEaseInCubic(_sigClamp01((e - 420) / 480)); F.g.scale.set(1, Math.max(0.01, up), 1); for (var j = 0; j < vines.length; j++) vines[j].grow(0, 1 - open); }
+            else { F.g.scale.set(1, Math.max(0.01, 1 - gone), 1); for (var k = 0; k < vines.length; k++) vines[k].grow(0, g); }
+            if (!burst && e >= (closing ? 300 : 420)) { burst = true; _nvLeaves(F, 0, ts * 0.7, 0, 14, { r: 20, v: 180, vz0: 60, vz1: 220 }); }
+        });
+    }
+    _PZ_SIGS.nvIntoTheGreen = function (p) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX != null ? p.toX : p.tx, ty = p.toY != null ? p.toY : p.ty;
+        if (fx != null && _pzSeen(fx, fy)) _nvThicket(fx, fy, 0, true, 0);
+        if (tx != null && (tx !== fx || ty !== fy) && _pzSeen(tx, ty)) _nvThicket(tx, ty, 0, false, 380);
+    };
+
+    /* ════ THE SEEDS (Agriculture): Healing Seed and Leech Seed fly as a real seed; the healing one sprouts a sapling
+       where it lands (its heal recipe stays), the leech seed's purple creepers burst out and latch on ════ */
+    function _nvSeedFly(p, color, glow) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ts0 = _cfg().tileSize || 128, seed = new THREE.Group(), sm = _pzSolid(color); sm.opacity = 1;
+        var body = _pzMesh(new THREE.SphereGeometry(ts0 * 0.05, 10, 8), sm, seed); body.scale.set(1, 1.5, 1);
+        var gw = _pzSpr(glow, ts0 * 0.32, seed); gw.material.opacity = 0.8;
+        _pzFly(fx, fy, tx, ty, seed, { ms: p.flyMs > 0 ? p.flyMs : 420, arc: 0.45, hideOnLand: true, trail: { sprite: 'leaf', every: 40, size: 7 },
+            spin: function (el, o) { body.rotation.z = el * 0.02; } });
+    }
+    EFFECTS['nvHealingSeed_bolt'] = _pzDef('nvHealingSeedFly', { pzOwn: true });
+    _PZ_SIGS.nvHealingSeedFly = function (p) { _nvSeedFly(p, 0x8a5a2a, _NV.heal); };
+    /* a sapling: a stem rises out of the seed, two leaves unfurl and a white flower opens on top */
+    _PZ_SIGS.nvSprout = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, vm = _nvVineMat(), lf = _nvLeafMat(), fw = _nvFlowerMat('white');
+        var cd = _nbCamDir(F), bx = -cd.x * ts * 0.3, bz = -cd.z * ts * 0.3;   /* beside the body, on the far side */
+        var stem = _nvVine(F.g, [new THREE.Vector3(bx, 0, bz), new THREE.Vector3(bx + ts * 0.03, ts * 0.22, bz), new THREE.Vector3(bx - ts * 0.02, ts * 0.42, bz + ts * 0.02)],
+            { ts: ts, r0: ts * 0.022, r1: ts * 0.012, segs: 16, radial: 5, mat: vm, leaves: 3, leafLen: ts * 0.16, leafMat: lf, tip: _NV.heal });
+        var fm = _pzMesh(new THREE.PlaneGeometry(ts * 0.2, ts * 0.2), fw, F.g, bx - ts * 0.02, ts * 0.44, bz + ts * 0.02); fm.rotation.x = -Math.PI / 2 + 0.5; fm.scale.setScalar(0.01);
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var fade = _sigClamp01((el - 1150) / 330);
+            vm.opacity = 1 - fade; lf.opacity = 0.95 * (1 - fade); fw.opacity = 1 - fade;
+            stem.grow(0, _sigEaseOutCubic(_sigClamp01(el / 380)));
+            fm.scale.setScalar(Math.max(0.01, _sigEaseOutBack(_sigClamp01((el - 360) / 260)))); fm.rotation.z = el * 0.002;
+        });
+    };
+    EFFECTS['nvLeechSeed_bolt'] = _pzDef('nvLeechSeedFly', { pzOwn: true });
+    _PZ_SIGS.nvLeechSeedFly = function (p, id) { _nvSeedFly(p, 0x4a2a5a, _NV.leech); if (p.toX != null) _nvLand(id, p.toX, p.toY, p.flyMs > 0 ? p.flyMs : 420); };
+    _PZ_SIGS.nvLeechLatch = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, vm = _nvVineMat(_nvLeechTex()), th = _nvThornMat(), vines = [];
+        for (var i = 0; i < 4; i++) {
+            var a = i / 4 * Math.PI * 2 + 0.4;
+            vines.push(_nvVine(F.g, [new THREE.Vector3(0, ts * 0.02, 0), new THREE.Vector3(Math.cos(a) * ts * 0.3, ts * 0.06, Math.sin(a) * ts * 0.3)].concat(_nvCoil(ts * 0.28, ts * 0.18, ts * 0.12, ts * 0.72, 1.1, a + 0.3, 12)),
+                { ts: ts, r0: ts * 0.036, r1: ts * 0.012, segs: 30, radial: 6, mat: vm, thorns: 5, thornLen: ts * 0.065, thornMat: th, tip: _NV.leech }));
+        }
+        var lastS = 0;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            var g = _sigEaseOutCubic(_sigClamp01(el / 300)), back = _sigEaseInCubic(_sigClamp01((el - 1050) / 420));
+            vm.opacity = th.opacity = 1;
+            for (var j = 0; j < vines.length; j++) vines[j].grow(0, g * (1 - back), 0.9);
+            if (el > 300 && el < 1000 && el - lastS > 80) { lastS = el; var aa = rn(0, 6.28); _nvLeaves(F, Math.cos(aa) * ts * 0.2, ts * rn(0.2, 0.5), Math.sin(aa) * ts * 0.2, 1, { sprite: 'heal-glow', tint: 0xb0ff8a, v: 20, vz0: 30, vz1: 80, g: -40, s0: 5, s1: 2, op: 0.85, drag: 0.6 }); }
+        });
+    };
+
+    /* ── the wiring ── */
+    EFFECTS['nvHealingSeed_aura'] = Object.assign({}, EFFECTS['healingSeed_aura'] || { layers: [] }, { pzSig: 'nvSprout' });
+    EFFECTS['nvLeechSeed_impact'] = Object.assign({}, EFFECTS['leechSeed_impact_p3'] || { layers: [] }, { pzSig: 'nvLeechLatch' });
+    SPELL_MAP['raceVineWhip']        = { pull: 'nvVineWhip_pull' };
+    SPELL_MAP['raceThornlash']       = { bolt: 'nvThornlash_bolt', impact: 'nvThornlash_impact' };
+    SPELL_MAP['raceWrathOfTheWild']  = { bolt: 'nvWrath_bolt', impact: 'nvWrath_impact' };
+    SPELL_MAP['raceOvergrowth']      = { aoe: 'nvOvergrowth_aoe' };
+    SPELL_MAP['raceEntanglingRoots'] = { aoe: 'nvEntangle_aoe' };
+    SPELL_MAP['raceBumperCrop']      = { aoe: 'nvBumperCrop_aoe' };
+    SPELL_MAP['raceRejuvenation']    = { aura: 'nvRejuvenation_aura' };
+    SPELL_MAP['raceTreelineRetreat'] = { teleport: 'nvIntoTheGreen_tp' };
+    SPELL_MAP['healingSeed']         = Object.assign({}, SPELL_MAP['healingSeed'], { bolt: 'nvHealingSeed_bolt', aura: 'nvHealingSeed_aura' });
+    SPELL_MAP['leechSeed']           = Object.assign({}, SPELL_MAP['leechSeed'], { bolt: 'nvLeechSeed_bolt', impact: 'nvLeechSeed_impact' });
+    delete _spell3DGeometry.raceThornlash;   /* the A-F brambles (_afThornlash3D) give way to the new ones */
+    /* ═════════ END THE NATURE PASS ═════════ */
 
     /* THE SHEET WARM (2026-10-12, mondo: "it will still freeze or dip in FPS at heavy moments like combo spell animations"):
        the spells' canvas sheets were drawn and uploaded in the very frame a spell first used them (sandbox, real WebGPU: ~20

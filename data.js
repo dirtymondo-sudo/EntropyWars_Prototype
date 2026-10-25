@@ -6480,6 +6480,18 @@ const SPELL_LIBRARY = [
           element: 'nature', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125, range: 4, aoeRadius: 1,
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'The roots keep growing. MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Rooted targets take it worse.' },
+        /* THE NATURE PASS (2026-10-25, mondo: "I dont really feel like there's a solid vine whip spell in the game or
+           signature nature spell"): two Nature Magic rows on existing kinds and rules only. Vine Whip = the Horn Hook
+           pull shape (damage, pull, Root on landing) at tier II; Wrath of the Wild = the family's tier IV finisher,
+           bonus vs Root, applies nothing (no self-combo). Their looks: three-vfx-effects.js "THE NATURE PASS". */
+        { id: 'raceVineWhip', name: 'Vine Whip', tier: 2, families: ['nature'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'nature', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 100, range: 4, pullDistance: 2,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'A thorned vine cracks out and coils round the legs. MEDIUM physical damage to a Single Enemy within 4; it is hauled 2 tiles toward you and Rooted for 1 round where it lands.' },
+        { id: 'raceWrathOfTheWild', name: 'Wrath of the Wild', tier: 4, families: ['nature'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'nature', type: 'damage', kind: 'damage', damageType: 'magic',
+          dmg: 170, range: 4, bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'The whole wood answers. Great roots tear up out of the ground and crush a Single Enemy within 4 for HEAVY magic damage. Rooted targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceCrosswind', name: 'Crosswind', tier: 2, families: ['wind'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'wind', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 100, range: 4, lineWidth: 1, pushDistance: 1,
           statusEffects: [{ id: 'blind', duration: 1 }],

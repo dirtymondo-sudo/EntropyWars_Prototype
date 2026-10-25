@@ -2544,6 +2544,14 @@ mondo's Meshy uploads: R2 `Assets/Sprites/Races/<folder>/Meshy_AI_<name>_Running
   graveRobbery.
 - Homes: mummy Pyramids of Giza; swamp monster Fairy Forest (The Woods) + The Sewers (HQ_POPULATION_RULES.underworld);
   undead The Haunted House + Hell (ALSO_NATIVE) + The Sewers.
+## THE NATURE PASS (2026-10-25, mondo: "I dont really feel like there's a solid vine whip spell in the game or signature nature spell")
+Two Nature Magic rows (data.js, after Overgrowth in SPELL_LIBRARY), existing kinds and rules only:
+- **Vine Whip** (`raceVineWhip`, tier II, 50 MP, 1 AP, anomaly, nature): `pull`, range 4, 100 physical, pullDistance 2,
+  Root 1 on landing (the Horn Hook shape). Sets up Overgrowth / Wrath.
+- **Wrath of the Wild** (`raceWrathOfTheWild`, tier IV, 100 MP, 1 AP, cd 2, anomaly, nature): single-target `damage`,
+  range 4, 170 magic, ×1.5 vs Root, applies nothing (finisher, no self-combo).
+- Who gets them: every race with Nature Magic in RACE_FAMILIES (bigfoot, fairy, mushroom girl, tree person, hippie, swamp
+  monster, scarecrow, shaman) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE NATURE PASS".
 
 ## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
 mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
