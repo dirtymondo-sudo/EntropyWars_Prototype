@@ -54580,6 +54580,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
 
@@ -56416,7 +56417,7 @@
         let _balSpellCollector = null;
         const BALANCE_STATS_VERSION = 4;
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
-        const BALANCE_MATCH_LOG_CAP = 400; // raw per-match records kept for offline analysis
+        const BALANCE_MATCH_LOG_CAP = 2000; // raw per-match records kept for offline analysis + the team-adjusted fit (was 400; ~1.4 KB a match)
         const _BAL_TABS = [
             { id: 'races', label: 'Races' },
             { id: 'builds', label: 'Builds' },
@@ -56478,13 +56479,16 @@
                 // matches it covers (older matches carry none of it).
                 statusUse: {}, elementUse: {}, effectUse: {},
                 fxMatches: 0,
+                // Balance Lab (2026-10-25, the race detail): per race damage / kills by source, casts, MP, turns, dry
+                // turns (_balFoldFxMatch), and per spell the games + wins of the units that cast it.
+                raceDetail: {}, spellCastGames: {},
                 updatedAt: 0,
             };
         }
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse']) {
+            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse', 'raceDetail', 'spellCastGames']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -56558,6 +56562,13 @@
             // Whiff = a damage-kind cast that hit nothing (aimed at nobody /
             // dodged / fizzled). Utility casts (heals, buffs) never whiff here.
             if (c.isDmg && !c.dmg && !c.targetsHit) b.whiffs++;
+            // the race detail: a damage cast or a utility cast (no damage kind, no damage), its MP, the spell's name
+            const L = _balLedger((typeof unitFromId === 'function') ? unitFromId(c.casterId) : null);
+            if (L) {
+                if (c.isDmg || c.dmg > 0) L.c.dmg++; else L.c.util++;
+                L.c.mp += c.mp || 0;
+                L.cs[c.name] = 1;
+            }
         }
 
         /* ═══ STATUS / EFFECT / ELEMENT TELEMETRY (Balance Lab, mondo 2026-10-25: "Can we start tracking specific
@@ -56587,6 +56598,35 @@
             if (!_balFx) _balFx = {};
             const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
             L[kind][key] = 1;
+        }
+        /* THE RACE DETAIL (Balance Lab, mondo 2026-10-25: "what else can we add to the export to make it more useful"):
+           per unit this match, where its damage and kills came from (basic attack / spell / DoT tick / other), its
+           casts (damage vs utility, MP spent), its turns and the turns it started too dry to cast its cheapest spell,
+           and the names of the spells it actually cast. Folded per race (stats.raceDetail) and per cast spell
+           (stats.spellCastGames) by _balFoldFxMatch. Same ledger as _balFx, by unit ID. */
+        function _balLedger(u) {
+            if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2)) return null;
+            if (!_balFx) _balFx = {};
+            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
+            if (!L.d) {
+                L.d = { basic: 0, spell: 0, dot: 0, other: 0 };
+                L.k = { basic: 0, spell: 0, dot: 0, other: 0 };
+                L.c = { dmg: 0, util: 0, mp: 0, turns: 0, dry: 0 };
+                L.cs = {};
+            }
+            return L;
+        }
+        // A unit is up (_continueBlitzWithUnit): one turn, and a dry one when its MP can't pay for any equipped spell.
+        function _balTurnStart(u) {
+            const L = _balLedger(u);
+            if (!L) return;
+            L.c.turns++;
+            let cheapest = Infinity;
+            for (const s of (u.spells || [])) {
+                if (!s || s.kind === 'passive' || !(s.cost > 0)) continue;
+                if (s.cost < cheapest) cheapest = s.cost;
+            }
+            if (cheapest < Infinity && (u.mp || 0) < cheapest) L.c.dry++;
         }
         function _balStatusRow(id) {
             ensureBalanceStats();
@@ -56641,6 +56681,14 @@
         function _balRecordHit(src, tgt, dmg, opts, hm, affEl, affinity, damageType) {
             if (!_balanceSimMode || !src || !tgt || !(dmg > 0) || !isEnemyUnit(src, tgt)) return null;
             const rec = { el: null, fx: [], st: [] };
+            // where the hit came from, for the race detail (a cast in flight from this unit = spell)
+            const _led = _balLedger(src);
+            if (_led) {
+                rec.kind = damageType === 'dot' ? 'dot' : (opts.basicAttack ? 'basic'
+                    : ((_balSpellCollector && _balSpellCollector.casterId === src.id) ? 'spell' : 'other'));
+                rec.srcId = src.id;
+                _led.d[rec.kind] += dmg;
+            }
             const el = (affEl && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(affEl)) ? affEl : '(none)';
             if (damageType !== 'dot') {
                 rec.el = el;
@@ -56676,6 +56724,7 @@
         }
         function _balRecordHitKill(rec) {
             if (!_balanceSimMode || !rec) return;
+            if (rec.kind && _balFx && _balFx[rec.srcId] && _balFx[rec.srcId].k) _balFx[rec.srcId].k[rec.kind]++;
             if (rec.el) _balElemRow(rec.el).kills++;
             for (const k of rec.fx) _balEffectRow(k).kills++;
             for (const k of rec.st) _balStatusRow(k).killsWhile++;
@@ -56684,8 +56733,18 @@
         function _balStatusTick(id, unit, hpLost, died) {
             if (!_balanceSimMode || !id) return;
             const r = _balStatusRow(id);
+            /* a lethal tick leaves hp <= 0 with the death still to resolve (unit.dead is set later), so every export
+               before 2026-10-25 read dotKills 0 for burn / poison / bleed */
+            if (!died && unit && unit.hp <= 0) died = true;
             if (hpLost > 0) r.dotDmg += hpLost; else if (hpLost < 0) r.heal += -hpLost;
             if (died) r.dotKills++;
+            // the race detail: the tick's damage (and kill) belongs to whoever applied the status
+            const srcId = unit && unit._statusSrc ? unit._statusSrc[id] : null;
+            const src = (srcId != null && typeof unitFromId === 'function') ? unitFromId(srcId) : null;
+            if (hpLost > 0 && src && isEnemyUnit(src, unit)) {
+                const L = _balLedger(src);
+                if (L) { L.d.dot += hpLost; if (died) L.k.dot++; }
+            }
         }
         // The match is over: every unit's ledger lands on its rows with the team's result.
         function _balFoldFxMatch(winner) {
@@ -56702,6 +56761,21 @@
                 for (const k of Object.keys(led.s)) { const r = _balStatusRow(k); r.games++; r.wins += won; }
                 for (const k of Object.keys(led.el)) { const r = _balElemRow(k); r.games++; r.wins += won; }
                 for (const k of Object.keys(led.fx)) { const r = _balEffectRow(k); r.games++; r.wins += won; }
+                if (led.d && u.race) {
+                    const m = _balanceStats.raceDetail;
+                    const r = m[u.race] || (m[u.race] = { games: 0, wins: 0, turns: 0, dryTurns: 0, dmgCasts: 0, utilCasts: 0, mp: 0,
+                        dmgBasic: 0, dmgSpell: 0, dmgDot: 0, dmgOther: 0, killsBasic: 0, killsSpell: 0, killsDot: 0, killsOther: 0 });
+                    r.games++; r.wins += won;
+                    r.turns += led.c.turns; r.dryTurns += led.c.dry;
+                    r.dmgCasts += led.c.dmg; r.utilCasts += led.c.util; r.mp += led.c.mp;
+                    r.dmgBasic += led.d.basic; r.dmgSpell += led.d.spell; r.dmgDot += led.d.dot; r.dmgOther += led.d.other;
+                    r.killsBasic += led.k.basic; r.killsSpell += led.k.spell; r.killsDot += led.k.dot; r.killsOther += led.k.other;
+                    // win rate of the units that CAST each spell (Spells tab = units that only fielded it)
+                    for (const nm of Object.keys(led.cs)) {
+                        const sc = _balanceStats.spellCastGames[nm] || (_balanceStats.spellCastGames[nm] = { games: 0, wins: 0 });
+                        sc.games++; sc.wins += won;
+                    }
+                }
             }
         }
 
@@ -56887,6 +56961,7 @@
                     race: u.race || null,
                     spells: spellNames,
                     shape: shape ? shape.sig : null,
+                    k: kills, dmg: Math.round(dd), dead: died,   // 2026-10-25: per-unit result for offline reads
                 });
 
                 // A spell can sit on units on both teams; count each unit that
@@ -57350,6 +57425,28 @@
                     dmgTakenPerGame: Math.round((b.dmgTaken || 0) / b.games),
                     towerDmgPerGame: b.towerDmg != null ? Math.round(b.towerDmg / b.games) : null,
                 };
+                // 2026-10-25: the race's stat line in this build + the race detail (damage by source, casts, dry turns)
+                const base = _balRaceBaseSnap(k);
+                if (base) raceRows[k].base = base;
+                const det = (s.raceDetail || {})[k];
+                if (det && det.games) {
+                    const dmgAll = det.dmgBasic + det.dmgSpell + det.dmgDot + det.dmgOther;
+                    const share = v => dmgAll > 0 ? Number((v / dmgAll).toFixed(3)) : null;
+                    const casts = det.dmgCasts + det.utilCasts;
+                    raceRows[k].detail = {
+                        games: det.games,
+                        turnsPerGame: Number((det.turns / det.games).toFixed(1)),
+                        dryTurnRate: det.turns ? Number((det.dryTurns / det.turns).toFixed(3)) : null,
+                        castsPerGame: Number((casts / det.games).toFixed(2)),
+                        utilityCastShare: casts ? Number((det.utilCasts / casts).toFixed(3)) : null,
+                        mpPerGame: Math.round(det.mp / det.games),
+                        dmgShare: { basic: share(det.dmgBasic), spell: share(det.dmgSpell), dot: share(det.dmgDot), other: share(det.dmgOther) },
+                        killsPerGame: {
+                            basic: Number((det.killsBasic / det.games).toFixed(2)), spell: Number((det.killsSpell / det.games).toFixed(2)),
+                            dot: Number((det.killsDot / det.games).toFixed(2)), other: Number((det.killsOther / det.games).toFixed(2)),
+                        },
+                    };
+                }
             }
             // Balance Lab (2026-10-06): name → row, so spell rows carry their tier + families and roll up by family
             const _rowByName = {};
@@ -57370,6 +57467,11 @@
                     tier: _rowByName[k] ? (_rowByName[k].tier || null) : null,
                     families: _rowByName[k] ? (_rowByName[k].families || []) : [],
                 };
+                // 2026-10-25: win rate of the units that CAST it (fielded-only units left out), and the row as it
+                // stands in this build, so an export can be read against the numbers that produced it
+                const cg = (s.spellCastGames || {})[k];
+                if (cg && cg.games) { spellEff[k].castGames = cg.games; spellEff[k].castWr = Number((cg.wins / cg.games).toFixed(4)); }
+                if (_rowByName[k]) spellEff[k].row = _balSpellRowSnap(_rowByName[k]);
             }
             // Fielded on 20+ units and never cast once: a dead slot (the AI never picks it, or its cast is not counted)
             const neverCast = Object.keys(s.spells || {}).filter(k => (s.spells[k].games || 0) >= 20 && !(s.spellUse || {})[k]
@@ -57482,7 +57584,147 @@
                     uses: b.n || 0, amount: b.amt || 0, dmg: b.dmg || 0, kills: b.kills || 0,
                     perUse: b.n ? Number((((b.amt || 0) || (b.dmg || 0)) / b.n).toFixed(1)) : null,
                 })),
+                // 2026-10-25: the reads a balance pass needs first — see each helper
+                teamAdjusted: _balTeamAdjusted(s.matchLog || []),
+                statVsWinRate: _balStatVsWinRate(raceRows),
+                flags: _balFlags(raceRows, spellEff, s),
             };
+        }
+
+        /* ═══ BALANCE PASS READS (2026-10-25, mondo: "What else can we add or modify to the export to make it more useful
+           and help quickly achieve a mostly balanced game") ═══════════════════════════════════════════════════════════
+           A race's raw win rate in random 4v4 / 5v5 teams is diluted by its three or four random teammates and needs
+           hundreds of games to move. These fold the same matches into the numbers a pass reads first. */
+        // The race's base stat line (RACE_BASE_STATS), the move / jump it gives and the power budget.
+        function _balRaceBaseSnap(race) {
+            try {
+                const b = (typeof RACE_BASE_STATS !== 'undefined') ? RACE_BASE_STATS[race] : null;
+                if (!b) return null;
+                const out = { hp: b.hp, mp: b.mp, atk: b.atk, int: b.int, def: b.def, mdef: b.mdef, spd: b.spd, crt: b.crt, vision: b.vision };
+                if (typeof moveFromSpd === 'function') out.move = moveFromSpd(b.spd);
+                if (typeof raceJumpStat === 'function') out.jump = raceJumpStat(race, b.spd);
+                const kit = (typeof raceKit === 'function') ? raceKit(race) : null;
+                if (kit && kit.range != null) out.range = kit.range;
+                if (typeof racePowerBudget === 'function') out.budget = racePowerBudget(b, out.range);
+                return out;
+            } catch (e) { return null; }
+        }
+        // A spell row's balance numbers as they stand in this build.
+        function _balSpellRowSnap(r) {
+            const out = {};
+            for (const k of ['kind', 'element', 'damageType', 'dmg', 'dashDamage', 'cost', 'apCost', 'range', 'aoeRadius', 'cooldownRounds', 'healPct']) {
+                if (r[k] != null) out[k] = r[k];
+            }
+            if (Array.isArray(r.hitDamages)) { out.hits = r.hitDamages.length; out.hitTotal = r.hitDamages.reduce((a, v) => a + (+v || 0), 0); }
+            if (r.randomTargets && r.randomTargets.count) out.randomTargets = r.randomTargets.count;
+            if (Array.isArray(r.statusEffects) && r.statusEffects.length) out.statuses = r.statusEffects.map(x => x && (x.id + (x.duration ? ':' + x.duration : ''))).filter(Boolean);
+            if (r.bonusVsStatus) out.bonusVs = (r.bonusVsStatus.status || '?') + ' x' + (r.bonusVsStatus.mult || 1);
+            return out;
+        }
+        /* Team-adjusted race strength: one logistic fit over the match log (this build's matches when there are 200+),
+           P(team 1 wins) = sigmoid(sum of team 1's race edges - sum of team 2's), a light prior holding each edge near 0.
+           adjWr = how often a team with that race beats the same team with an average race in its place; ci95 its
+           range. Reads the race itself, with its teammates and opponents taken out. */
+        function _balTeamAdjusted(log) {
+            try {
+                const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || null;
+                let rows = log.filter(m => m && m.teams && (m.winner === 1 || m.winner === 2));
+                const cur = rows.filter(m => m.build === tok);
+                if (cur.length >= 200) rows = cur;
+                if (rows.length < 50) return null;
+                const idx = {}, names = [];
+                const X = rows.map(m => {
+                    const x = {};
+                    for (const p of [1, 2]) for (const u of (m.teams[p] || [])) {
+                        if (!u || !u.race) continue;
+                        if (idx[u.race] == null) { idx[u.race] = names.length; names.push(u.race); }
+                        x[idx[u.race]] = (x[idx[u.race]] || 0) + (p === 1 ? 1 : -1);
+                    }
+                    return x;
+                });
+                const y = rows.map(m => m.winner === 1 ? 1 : 0);
+                const n = names.length, beta = new Float64Array(n), LAMBDA = 2;
+                const appear = new Float64Array(n);
+                for (const x of X) for (const j in x) appear[j] += Math.abs(x[j]);
+                let H = new Float64Array(n);
+                for (let it = 0; it < 60; it++) {
+                    const g = new Float64Array(n); H = new Float64Array(n);
+                    for (let i = 0; i < X.length; i++) {
+                        let z = 0; const x = X[i];
+                        for (const j in x) z += beta[j] * x[j];
+                        const p = 1 / (1 + Math.exp(-z)), w = p * (1 - p), r = y[i] - p;
+                        for (const j in x) { g[j] += r * x[j]; H[j] += w * x[j] * x[j]; }
+                    }
+                    for (let j = 0; j < n; j++) beta[j] += 0.7 * (g[j] - LAMBDA * beta[j]) / (H[j] + LAMBDA);
+                }
+                const sig = v => 1 / (1 + Math.exp(-v));
+                const out = { matches: rows.length, build: rows === cur ? tok : 'all builds in the log', races: {} };
+                const order = names.map((r, j) => j).sort((a, b) => beta[b] - beta[a]);
+                for (const j of order) {
+                    const se = 1 / Math.sqrt(H[j] + LAMBDA);
+                    out.races[names[j]] = { n: appear[j], edge: Number(beta[j].toFixed(3)), adjWr: Number(sig(beta[j]).toFixed(3)),
+                        ci95: [Number(sig(beta[j] - 1.96 * se).toFixed(3)), Number(sig(beta[j] + 1.96 * se).toFixed(3))] };
+                }
+                return out;
+            } catch (e) { return null; }
+        }
+        // Which base stat goes with winning: per stat, its correlation with race win rate (races with 12+ games) and
+        // the win rate of the races in its bottom and top quarter.
+        function _balStatVsWinRate(raceRows) {
+            const rs = Object.values(raceRows).filter(r => r.base && r.games >= BALANCE_MIN_SAMPLE);
+            if (rs.length < 12) return null;
+            const out = {};
+            for (const k of ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'move', 'jump', 'range', 'crt', 'vision', 'budget']) {
+                const pts = rs.filter(r => typeof r.base[k] === 'number');
+                if (pts.length < 12) continue;
+                const xs = pts.map(r => r.base[k]), ys = pts.map(r => r.wr);
+                const mx = xs.reduce((a, v) => a + v, 0) / xs.length, my = ys.reduce((a, v) => a + v, 0) / ys.length;
+                let sxy = 0, sxx = 0, syy = 0;
+                for (let i = 0; i < xs.length; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+                const sorted = pts.slice().sort((a, b) => a.base[k] - b.base[k]);
+                const q = Math.max(1, Math.floor(sorted.length / 4));
+                const wrOf = arr => { const g = arr.reduce((a, r) => a + r.games, 0); return g ? Number((arr.reduce((a, r) => a + r.wr * r.games, 0) / g).toFixed(3)) : null; };
+                out[k] = { r: (sxx > 0 && syy > 0) ? Number((sxy / Math.sqrt(sxx * syy)).toFixed(3)) : null,
+                    bottomQuarterWr: wrOf(sorted.slice(0, q)), topQuarterWr: wrOf(sorted.slice(-q)) };
+            }
+            return out;
+        }
+        /* The short list: races whose 95% range sits off 50%, damage spells far off their tier's median damage a cast
+           (30+ casts), statuses / elements whose 95% range sits off 50% (100+ games). */
+        function _balFlags(raceRows, spellEff, s) {
+            const out = { strongRaces: [], weakRaces: [], spellsOverTier: [], spellsUnderTier: [], statuses: [], elements: [] };
+            for (const [k, r] of Object.entries(raceRows)) {
+                if (r.games < BALANCE_MIN_SAMPLE || !r.wilson95) continue;
+                if (r.wilson95[0] > 0.5) out.strongRaces.push([k, r.wr]);
+                else if (r.wilson95[1] < 0.5) out.weakRaces.push([k, r.wr]);
+            }
+            out.strongRaces.sort((a, b) => b[1] - a[1]); out.weakRaces.sort((a, b) => a[1] - b[1]);
+            const byTier = {};
+            for (const [k, e] of Object.entries(spellEff)) {
+                if (e.casts >= 30 && e.dmgPerCast > 50 && e.tier) (byTier[e.tier] = byTier[e.tier] || []).push([k, e]);
+            }
+            out.tierMedianDmgPerCast = {};
+            for (const t of Object.keys(byTier)) {
+                const v = byTier[t].map(x => x[1].dmgPerCast).sort((a, b) => a - b);
+                const med = v[Math.floor(v.length / 2)];
+                out.tierMedianDmgPerCast[t] = med;
+                for (const [k, e] of byTier[t]) {
+                    const x = Number((e.dmgPerCast / med).toFixed(2));
+                    if (x >= 1.6) out.spellsOverTier.push([k, 'T' + t, x]);
+                    else if (x <= 0.6) out.spellsUnderTier.push([k, 'T' + t, x]);
+                }
+            }
+            out.spellsOverTier.sort((a, b) => b[2] - a[2]); out.spellsUnderTier.sort((a, b) => a[2] - b[2]);
+            for (const [key, map] of [['statuses', s.statusUse], ['elements', s.elementUse]]) {
+                for (const k of Object.keys(map || {})) {
+                    const b = map[k];
+                    if (!b || (b.games || 0) < 100) continue;
+                    const ci = _wilson(b.wins || 0, b.games);
+                    if (ci.lo > 0.5 || ci.hi < 0.5) out[key].push([k, Number((b.wins / b.games).toFixed(3)), b.games]);
+                }
+                out[key].sort((a, b) => b[1] - a[1]);
+            }
+            return out;
         }
         function _balFxAnalysis(map, extra) {
             const out = {};

@@ -2716,3 +2716,37 @@ alternating arms, `--alt`) + diag.js.
   mesh ran from the bed y≈41 to the rim y≈689; now 42–43). The walls are the strata's own faces (hqFieldBedFor side).
 - Calls flagged to mondo: a mid-wall turn is spent climbing automatically (no other action that turn, same as the climb
   itself ending the turn); an enemy can still knock the climber off on every stretch.
+
+## THE STATS21 PASS + THE RACE DETAIL EXPORT (2026-10-25, mondo: "analyze these balance stats and see how much the most recent changes helped or not, and try to buff/nerf the weakest and strongest enemies through small purposeful changes to their stats or their spells. Are there are any status effects, elements, or spells that dominate? A stat that dominates? What else can we add or modify to the export")
+Read: ew-balance-stats21.json (1,239 Arena matches, all on build 20261025-climb-02-cors, AI v4.19) against stats20 (840).
+- PR #524 read: the spread of race win rates barely moved (true spread ~8 points either run once sampling noise is
+  taken out). Eternal Slumber's stun cut worked (Dreameater 64→44%); the pull buffs worked (Tether Line, Infernal
+  Conscription); Ghost (69→68%) and Bigfoot did not move. The dead-slot AI change nearly tripled utility casts
+  (3.8→10.7 a match): Trick Room 507 casts, Misdirection 371, Shake It Off 335, all for ~0 damage.
+- HP is the stat that goes with winning (r 0.50; top HP quarter 57% vs bottom 44%); SPD/move next (move 5 races 58%,
+  move 1 races 43%). With HP held, ATK/INT add almost nothing and CRT/MDEF read negative: the power budget prices HP
+  and SPD under what the lab says they are worth.
+- Elements: earth 57% (k/cast 0.17, the best) and blood 57% (never resisted) lead; psychic 46% trails (5.2 dmg/MP, the
+  worst). Statuses: bleed 63%, burn / grievous / stagger 56%. Units that Guard 42%, shields / Protect / Quickened
+  under 40% (the Arena score doesn't count what they save).
+Changes (data.js, each tagged `BALANCE PASS 2026-10-25 (stats21 lab)`), existing rules only:
+- Nerfs: Descending Wrath dmg 135→115 + per level 25→15 (1,237 a cast, 2.6× the Tier III median); Stone Drop
+  125→100 + per level 15→12; Cataclysm Stomp 100→80 (desc WEAK); The Whole House Shakes 60→48 a hit. HP: Kaiju
+  1556→1450, Ghoul 1300→1180, Flesheater 1600→1460, Gargoyle 1459→1350, Mech 1544→1430.
+- Buffs: Mental Static 70→88, Silent Treatment 135→170 (HEAVY), Seven Years 100→125, Hall of Mirrors tick 60→80, Ankle
+  Biter 110→135, Garden Shears 170→200 (SEVERE), Web Shoot 95→125 (MEDIUM), Pie in the Face 70→100 (MEDIUM), Devil's
+  Coal 130→155 (HEAVY). HP: Telepath 373→470, Shadow Entity 361→460, Mime 780→880, Voidweaver 459→540. SPD: Nun
+  28→50 and Jellyfish 36→50 (move 1→2, the Wizard fix). No tier, status or cooldown changed (load-data.js check).
+THE RACE DETAIL (battle.js, Balance Lab only, same IndexedDB key; older matches simply carry none of it):
+- `_balLedger` per unit this match: damage + kills by source (basic attack / spell / DoT tick credited to its
+  applier / other), damage vs utility casts, MP, turns (`_balTurnStart` from _continueBlitzWithUnit_impl) and dry turns
+  (MP under the cheapest equipped spell), spells actually cast. Folded into stats.raceDetail and stats.spellCastGames.
+- analysis.races[r].base (stat line, move, jump, range, budget) and .detail (dmgShare, killsPerGame, castsPerGame,
+  utilityCastShare, dryTurnRate, mpPerGame, turnsPerGame); spellEfficiency rows gain castGames / castWr (units that
+  cast it) and `row` (the spell's numbers in this build).
+- analysis.teamAdjusted: a logistic fit over the match log (this build's matches when 200+): each race's edge with
+  its teammates and opponents taken out, adjWr + ci95. matchLog cap 400→2000; team entries carry k / dmg / dead.
+- analysis.statVsWinRate (per stat: r, bottom / top quarter WR) and analysis.flags (races off 50% at 95%, damage
+  spells ≥1.6× / ≤0.6× their tier's median a cast, statuses / elements off 50%).
+- DoT kills: a lethal tick leaves hp ≤ 0 with the death still to resolve, so dotKills read 0 in every export; the tick
+  hook now counts hp ≤ 0.
