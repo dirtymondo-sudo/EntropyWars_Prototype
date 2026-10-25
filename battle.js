@@ -40322,6 +40322,12 @@
         /* Does casting this spell arm the press collector (doSpell)? The previews ask the same question. */
         function spellArmsPress(spell) {
             if (!spell) return false;
+            /* A STATUS-ONLY CAST NEVER PRESSES (mondo 2026-10-25: "feared shows me a green exclamation point even though
+               its not even a damaging move"): a `noDamage` area (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse…) is
+               an aoe / barrage kind, so the kind list armed it, but the cast only applies statuses and never records a
+               hit, so the refund never paid. forecastPressOn fell back to the bare type chart and put the green ! on
+               every weak enemy. */
+            if (spell.noDamage) return false;
             /* THE CONTACT BOMB PRESSES (mondo 2026-10-19: "i am using it on a cowboy ... it WAS super effective, so why
                does it not show it in the spell list"): Place Bomb dropped straight onto a grounded enemy goes off inside
                the cast (doSpell _placementStruck) and ends the turn like any damaging cast, so its blast judges the press
