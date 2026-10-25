@@ -2563,3 +2563,13 @@ unchanged (spellDealsDamage still counts the kind).
 Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage` answers false for `noDamage` too, so
 those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
 plan all read it). The one-cast-a-turn lock still applies.
+
+## THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Psychic Abilities family already had 10 rows across tiers I-IV (Kinetic Hurl, Psychic Beam, Telepathic Link, Psychosis,
+Far Sight, Psychic Barrier, Migraine, Telekinetic Slam, Teleport, Mind Shatter) and Discord → Migraine closes. The gap:
+Mind Shatter (tier IV) pays off Silence and no family row applied it. One row added (data.js, after Telekinetic Slam),
+existing kind and status only:
+- **Mind Blank** (`raceMindBlank`, tier II, 50 MP, 1 AP, anomaly, psychic): single-target `damage`, range 4, 90 magic,
+  Silence 1 round (the Antimagic Gaze / Timber Stomp shape). Stats were a THREAD CALL, flagged to mondo.
+- Who gets it: every race with Psychic Abilities in RACE_FAMILIES (dreameater, grey, mantid, mothman, nordic, occulus,
+  telepath) + Adaptable borrowers. Looks: spells-vfx.md "THE PSYCHIC PASS".
