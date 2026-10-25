@@ -6317,6 +6317,19 @@ const SPELL_LIBRARY = [
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           leaveTerrain: 'poison', leaveTerrainRadius: 1,   // THE SPELL AUDIT Batch D: only the middle 3x3 stays poisoned
           desc: 'The air goes green. HEAVY magic damage to a 5x5. Deals bonus damage to targets with Poison. The centre 3x3 turns to poison ground.' },
+        /* THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): the Poison family had
+           one tier II (Splash, a Goo spell) and one tier III (Rot, which applies) and no single-target setup + finisher pair.
+           Two rows on existing kinds and rules only: Venom Spit = the tier II setup (damage + Poison 2, the Poison Dart
+           shape in magic); Venom Burst = the tier III finisher, bonus vs Poison, applies nothing (no self-combo). Their
+           looks: three-vfx-effects.js "THE POISON PASS". */
+        { id: 'raceVenomSpit', name: 'Venom Spit', tier: 2, families: ['poison'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'A glob of venom spat across the field. MEDIUM magic damage to a Single Enemy within 4 tiles; it Poisons them for 2 rounds.' },
+        { id: 'raceVenomBurst', name: 'Venom Burst', tier: 3, families: ['poison'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4,
+          bonusVsStatus: { status: 'poison', mult: 1.5 },
+          desc: 'The venom already in them boils over. MEDIUM magic damage to a Single Enemy within 4 tiles. Poisoned targets take it worse.' },
         { id: 'raceCampaignPromise', name: 'Campaign Promise', tier: 2, families: ['politics'], cost: 50, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round.' },
