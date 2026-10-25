@@ -3752,6 +3752,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            with no extra plumbing. */
         if (intent === 'windup' || intent === 'burst' || intent === 'finish') {
             _fireStage(intent, spellId, params || {});
+            /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
+            if (intent === 'burst') try { _lzBurstMark(spellId, params || {}); } catch (e) {}
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -4754,7 +4756,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _geom3D(spellId)(tx, ty);
             }
 
-            if (_LT() && /thunder|lightning|emp|callLightning|yellowThunder|sentaiYellowThunder/i.test(spellId)) {
+            if (_LT() && !_LZ_OWN[spellId] && /thunder|lightning|emp|callLightning|yellowThunder|sentaiYellowThunder/i.test(spellId)) {
 
                 for (var li = 0; li < tileOffsets.length; li++) {
                     (function(off, delay) {
@@ -5753,7 +5755,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 aoeDef.impactTileEffect, aoeDef.impactCenterEffect, aoeRadius);
         }
 
-        if (_LT() &&
+        if (_LT() && !_LZ_OWN[spellId] &&
             /emp|thunder|lightning|yellowThunder|sentaiYellowThunder|overcharge|signalPulse|deadAir/i.test(spellId)) {
             var _aoeLightDelay = (aoeDef.missiles && params.cx != null) ? (aoeDef.missiles.flyMs || 350) : 0;
             for (var _ali = 0; _ali < tileOffsets.length; _ali++) {
@@ -52493,6 +52495,666 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceTendrilWhip']     = { impact: 'pvTendrilWhip_impact' };
     ['raceVivisection', 'goCadaverClaws'].forEach(function (id) { if (!SPELL_MAP[id] || !SPELL_MAP[id].impact) SPELL_MAP[id] = Object.assign({}, SPELL_MAP[id], { impact: 'pvSeal_impact' }); });
     /* ═════════ END THE POISON PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE LIGHTNING PASS (2026-10-25, mondo: "the nature spells look great
+       now, can you do a similar thread on each element, giving them a
+       consistent look or making them easily identifiable and making sure
+       there's a nice amount of spells for each") — every lightning spell
+       reads as lightning, and the Lightning Magic family gets its own looks
+       plus two new rows (data.js THE LIGHTNING PASS: Ball Lightning, Bolt
+       from the Blue).
+       THE KIT (_lz*): a bolt is a real jagged channel in 3D (a white-hot
+       core tube inside a blue sheath, forks off it) cut fresh every few
+       frames so it crackles; electricity crawls over a struck body (the
+       CAGE: short arcs that wrap round the body for most of a second); and
+       every strike burns a LICHTENBERG SCAR into the ground (the branching
+       fern figure real lightning leaves: it flares cyan, then stays as a
+       dark burn and fades). Storm spells gather a real cloud overhead.
+       The pieces are built into ONE group per cast and driven by ONE run
+       (_lzStage) — the signature runner caps live runs at 20.
+       THE MARK: every lightning-element damage spell (any race, any family)
+       gets the cage on each body it hits and the scar under it, on the
+       staging 'burst' beat (the real hit, relayed to the guest, so both
+       screens draw it — RULE #2). Lightning is picked by the spell's
+       element, never its name (the old zaps went by name: Static Shock,
+       Tempest and Chain Lightning had none). The family's own signatures
+       draw their mark on their own clock (_LZ_OWN).
+       Same hook as the P-Z / nature passes (`pzSig` / `pzOwn`). Anything at
+       the caster's end only draws when the viewer sees that tile (_pzSeen);
+       a fogged caster's arc comes down out of the sky instead.
+       THE TARGET STAYS: no screen flash, nothing full-screen; the arcs are
+       thin, the clouds hang high, the scar is on the ground. ════════════ */
+    var _LZ = { core: 0xffffff, glow: 0x4f9dff, cyan: 0x9fe0ff, deep: 0x2a5cff, violet: 0xb59cff, ion: 0x8a7dff, cloud: 0x2b3140, cloudLit: 0x6a7898 };
+    var _LZ_OWN = { thunder1: 1, raceStaticShock: 1, raceChainLightning: 1, raceTempest: 1, raceBallLightning: 1, raceBoltFromTheBlue: 1 };
+    function _lzMs(ms) { try { if (typeof window !== 'undefined' && typeof window.actionMs === 'function') { var v = window.actionMs(ms); if (v > 0) return v; } } catch (e) {} return ms; }
+    /* a frame on a tile (_nrvFrame) that also knows its tile and its GROUND (the frame sits on the unit's surface — a
+       flyer's hover — so ground pieces drop to the tile top) */
+    function _lzFrame(tx, ty) { var F = _nrvFrame(tx, ty); F.tx = tx; F.ty = ty; F.gy = tileZ(tx, ty) + 3 - F.wp.y; return F; }
+    /* frame-local ground point / body base of another tile */
+    function _lzGroundAt(F, x, y) { var o = _nvOff(F, x, y); o.y = tileZ(x, y) + 3 - F.wp.y; return o; }
+    function _lzChest(F, x, y, up) { var o = _nvOff(F, x, y); o.y += F.ts * (up != null ? up : 0.55); return o; }
+    /* ONE RUN PER CAST: pieces ({ tick(e) }, e = ms since the piece's start, -1 before it) driven by one _sigRunOwned */
+    function _lzStage(F, totalMs) {
+        var list = [], now = 0;
+        return {
+            add: function (piece, t) { if (piece) { piece.t = t != null ? t : now; list.push(piece); } return piece; },
+            run: function (extra) {
+                return _sigRunOwned(F.g, totalMs, function (el) {
+                    now = el;
+                    for (var i = 0; i < list.length; i++) { var P = list[i]; P.tick(el < P.t ? -1 : el - P.t); }
+                    if (extra) extra(el);
+                });
+            },
+        };
+    }
+
+    /* ── the channel ── */
+    /* a jagged channel a → b: n kinks, each pushed off the line by up to amp × the length (most in the middle) */
+    function _lzJag(a, b, n, amp) {
+        var d = new THREE.Vector3().subVectors(b, a), L = d.length() || 1, dir = d.multiplyScalar(1 / L);
+        var ref = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+        var p1 = new THREE.Vector3().crossVectors(dir, ref).normalize(), p2 = new THREE.Vector3().crossVectors(dir, p1).normalize();
+        var pts = [a.clone()];
+        for (var i = 1; i < n; i++) {
+            var t = (i + rn(-0.35, 0.35)) / n, m = L * amp * Math.sin(t * Math.PI);
+            pts.push(a.clone().addScaledVector(dir, L * t).addScaledVector(p1, rn(-m, m)).addScaledVector(p2, rn(-m, m)));
+        }
+        pts.push(b.clone());
+        return pts;
+    }
+    /* a tube along a polyline (sharp corners: a CurvePath of straight pieces) */
+    function _lzTubeGeo(pts, r, radial) {
+        var path = new THREE.CurvePath();
+        for (var i = 0; i < pts.length - 1; i++) path.add(new THREE.LineCurve3(pts[i], pts[i + 1]));
+        return new THREE.TubeGeometry(path, Math.max(2, (pts.length - 1) * 3), r, radial || 4, false);
+    }
+    /* ONE BOLT: a white-hot core inside a blue sheath (two additive tubes) with forks. strike(a, b, so) cuts a fresh
+       channel (so.pts = a path to use as it is), op(k) sets its brightness. o / so: r (core radius) · glowR · n (kinks)
+       · amp · forks · color · glow · glowOp. Each bolt owns its two materials (it fades on its own clock). */
+    function _lzBolt(parent, o) {
+        o = o || {};
+        var core = _pzGlow(o.color != null ? o.color : _LZ.core), glow = _pzGlow(o.glow != null ? o.glow : _LZ.glow);
+        var haze = _pzGlow(o.glow != null ? o.glow : _LZ.glow);
+        var G = new THREE.Group(); parent.add(G);
+        var meshes = [], last = null;
+        function clear() { for (var i = 0; i < meshes.length; i++) { G.remove(meshes[i]); meshes[i].geometry.dispose(); } meshes.length = 0; }
+        /* three tubes: a wide faint haze, the blue glow, a thin white-hot core, so the bolt reads as light, not a noodle */
+        function add(pts, r, gr) {
+            var m0 = new THREE.Mesh(_lzTubeGeo(pts, gr * 2.2, 5), haze); m0.renderOrder = 157; G.add(m0); meshes.push(m0);
+            var m1 = new THREE.Mesh(_lzTubeGeo(pts, gr, 5), glow); m1.renderOrder = 158; G.add(m1); meshes.push(m1);
+            var m2 = new THREE.Mesh(_lzTubeGeo(pts, r * 0.7, 4), core); m2.renderOrder = 159; G.add(m2); meshes.push(m2);
+        }
+        return {
+            strike: function (a, b, so) {
+                so = so || {};
+                clear();
+                var r = so.r != null ? so.r : (o.r || 2), gr = so.glowR != null ? so.glowR : (o.glowR || r * 4.2);
+                var pts = so.pts || _lzJag(a, b, so.n || o.n || 10, so.amp != null ? so.amp : (o.amp != null ? o.amp : 0.12));
+                add(pts, r, gr);
+                var nf = so.forks != null ? so.forks : (o.forks || 0), span = pts[0].distanceTo(pts[pts.length - 1]);
+                for (var f = 0; f < nf && pts.length > 3; f++) {
+                    var k = 1 + Math.floor(rn(0.1, 0.85) * (pts.length - 2)), s = pts[k];
+                    var dir = new THREE.Vector3().subVectors(pts[Math.min(pts.length - 1, k + 1)], pts[k - 1]).normalize();
+                    var len = span * rn(0.12, 0.28);
+                    var e = s.clone().addScaledVector(dir, len * 0.75).add(new THREE.Vector3(rn(-1, 1), rn(-0.5, 0.5), rn(-1, 1)).multiplyScalar(len * 0.6));
+                    add(_lzJag(s, e, 4, 0.25), r * 0.55, gr * 0.55);
+                }
+                last = pts;
+                return pts;
+            },
+            op: function (k) { k = Math.max(0, Math.min(1, k)); core.opacity = k; glow.opacity = k * (o.glowOp != null ? o.glowOp : 0.8); haze.opacity = k * 0.22; G.visible = k > 0.001; },
+            path: function () { return last; },
+        };
+    }
+
+    /* ── the canvases ── */
+    /* the Lichtenberg figure: seven to nine arms wander out from the centre and fork, thinning as they go. Two looks of
+       the SAME figure: the flare (white veins in a blue haze) and the burn it leaves (dark veins on char) */
+    var _lzLichCache = {};
+    function _lzLichSegs(v) {
+        if (_lzLichCache[v]) return _lzLichCache[v];
+        var R = _sigRand(9137 + v * 7919), c = 256, segs = [];
+        function grow(x, y, a, len, wd, depth) {
+            var n = Math.max(2, Math.round(len / 11));
+            for (var i = 0; i < n; i++) {
+                a += (R() - 0.5) * 1.1;
+                var sl = len / n * (0.7 + R() * 0.6), nx = x + Math.cos(a) * sl, ny = y + Math.sin(a) * sl;
+                var dd = Math.hypot(nx - c, ny - c); if (dd > 238) break;
+                var ww = wd * (1 - 0.55 * i / n);
+                segs.push([x, y, nx, ny, ww, 1 - dd / 250]);
+                if (depth < 4 && R() < 0.34) grow(nx, ny, a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.75), len * (0.32 + R() * 0.3), ww * 0.62, depth + 1);
+                x = nx; y = ny;
+            }
+        }
+        var arms = 7 + Math.floor(R() * 3);
+        for (var k = 0; k < arms; k++) grow(c, c, k / arms * Math.PI * 2 + (R() - 0.5) * 0.6, 160 + R() * 70, 6.5 + R() * 3, 0);
+        return (_lzLichCache[v] = segs);
+    }
+    function _lzLichTex(v, burn) {
+        return _pzTex('lz-lich-' + v + (burn ? '-burn' : '-flare'), 512, 512, function (g, w, h) {
+            var segs = _lzLichSegs(v), c = w / 2;
+            function pass(col, wMul, aMul) {
+                for (var i = 0; i < segs.length; i++) {
+                    var s = segs[i]; g.strokeStyle = 'rgba(' + col + ',' + Math.min(1, aMul * s[5]).toFixed(3) + ')'; g.lineWidth = Math.max(1, s[4] * wMul);
+                    g.beginPath(); g.moveTo(s[0], s[1]); g.lineTo(s[2], s[3]); g.stroke();
+                }
+            }
+            g.lineCap = 'round'; g.lineJoin = 'round';
+            if (burn) {
+                var sg = g.createRadialGradient(c, c, 4, c, c, 110); sg.addColorStop(0, 'rgba(8,6,4,0.92)'); sg.addColorStop(0.45, 'rgba(18,14,10,0.6)'); sg.addColorStop(1, 'rgba(18,14,10,0)');
+                g.fillStyle = sg; g.fillRect(0, 0, w, h);
+                pass('20,14,10', 2.6, 0.55); pass('4,3,2', 1.1, 0.95);
+            } else {
+                var hg = g.createRadialGradient(c, c, 4, c, c, 150); hg.addColorStop(0, 'rgba(160,215,255,0.55)'); hg.addColorStop(1, 'rgba(60,120,255,0)');
+                g.fillStyle = hg; g.fillRect(0, 0, w, h);
+                pass('80,150,255', 4.2, 0.4); pass('190,230,255', 1.6, 0.85); pass('255,255,255', 0.6, 1);
+            }
+        });
+    }
+    /* a soft storm-cloud puff (white; the sprite's colour darkens it) */
+    function _lzPuffTex() {
+        return _pzTex('lz-puff', 128, 128, function (g) {
+            var R = _sigRand(4411);
+            for (var i = 0; i < 9; i++) {
+                var x = 30 + R() * 68, y = 34 + R() * 60, r = 22 + R() * 26, gr = g.createRadialGradient(x, y, 2, x, y, r);
+                gr.addColorStop(0, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.6, 'rgba(235,240,250,0.35)'); gr.addColorStop(1, 'rgba(230,235,245,0)');
+                g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+            }
+        });
+    }
+
+    /* ── the pieces (each builds into F.g; tick(e) with e = ms since its start, -1 before) ── */
+    /* THE SCAR at a frame-local ground point: the Lichtenberg figure flares cyan, then stays as a burn and fades. size in tiles */
+    function _lzScar(F, at, size, o) {
+        o = o || {};
+        var ts = F.ts, S = ts * size, v = o.v != null ? o.v : Math.floor(Math.random() * 3), spin = rn(0, 6.28), hold = o.hold != null ? o.hold : 1500;
+        var burnM = _pzSolid(0xffffff, _lzLichTex(v, true), { depthWrite: false }), flareM = _pzGlow(o.color != null ? o.color : 0xffffff, _lzLichTex(v, false));
+        var burn = _pzMesh(new THREE.PlaneGeometry(S, S), burnM, F.g, at.x, at.y + ts * 0.028, at.z); burn.rotation.set(-Math.PI / 2, 0, spin);
+        var flare = _pzMesh(new THREE.PlaneGeometry(S, S), flareM, F.g, at.x, at.y + ts * 0.034, at.z); flare.rotation.set(-Math.PI / 2, 0, spin);
+        return { tick: function (e) {
+            if (e < 0) { burnM.opacity = flareM.opacity = 0; return; }
+            var sp = 0.55 + 0.45 * _sigEaseOutCubic(_sigClamp01(e / 90));
+            flare.scale.setScalar(sp); burn.scale.setScalar(sp);
+            flareM.opacity = (o.flare != null ? o.flare : 1) * _pzEnv(e, 0, 40, 160, 760) * (e < 300 && Math.random() < 0.15 ? 0.55 : 1);
+            burnM.opacity = 0.82 * _pzEnv(e, 30, 160, hold, hold + 1100);
+        } };
+    }
+    /* THE CAGE on a body standing at frame-local `at`: short arcs that wrap round it (each bends out through a point
+       beside the body, so it hugs the silhouette), cut fresh every ~65 ms, sparks spitting off. o: ms · arcs · h · r · glow */
+    function _lzCage(F, at, o) {
+        o = o || {};
+        var ts = F.ts, n = o.arcs || 3, ms = o.ms || 700, H = ts * (o.h || 0.92), R = ts * (o.r || 0.23), bolts = [];
+        for (var i = 0; i < n; i++) bolts.push(_lzBolt(F.g, { r: ts * 0.0075, glowR: ts * 0.026, glow: o.glow != null ? o.glow : _LZ.glow, glowOp: 0.85 }));
+        var next = 0, lastS = 0, A = new THREE.Vector3(), B = new THREE.Vector3(), M = new THREE.Vector3();
+        return { tick: function (e) {
+            if (e < 0 || e > ms) { for (var z = 0; z < n; z++) bolts[z].op(0); return; }
+            var fade = 1 - _sigClamp01((e - ms * 0.55) / (ms * 0.45));
+            if (e >= next) {
+                next = e + rn(45, 85);
+                for (var b = 0; b < n; b++) {
+                    if (Math.random() < 0.18 * (1 - fade) + 0.08) { bolts[b].op(0); continue; }
+                    var a1 = rn(0, 6.28), a2 = a1 + (Math.random() < 0.5 ? -1 : 1) * rn(0.9, 2.3), y1 = rn(0.08, 0.95) * H;
+                    var y2 = Math.max(0.05 * H, Math.min(H, y1 + rn(-0.5, 0.5) * H)), r1 = R * rn(0.85, 1.15), r2 = R * rn(0.85, 1.15), am = (a1 + a2) / 2;
+                    A.set(at.x + Math.cos(a1) * r1, at.y + y1, at.z + Math.sin(a1) * r1); B.set(at.x + Math.cos(a2) * r2, at.y + y2, at.z + Math.sin(a2) * r2);
+                    M.set(at.x + Math.cos(am) * R * 1.32, at.y + (y1 + y2) / 2, at.z + Math.sin(am) * R * 1.32);
+                    var p1 = _lzJag(A, M, 3, 0.3); p1.pop();
+                    bolts[b].strike(null, null, { pts: p1.concat(_lzJag(M, B, 3, 0.3)) });
+                    bolts[b].op((0.65 + 0.35 * Math.random()) * fade);
+                }
+            }
+            if (e - lastS > 85 && fade > 0.2) {
+                lastS = e; var sa = rn(0, 6.28);
+                _pzP(F, at.x + Math.cos(sa) * R, at.y + rn(0.15, 0.9) * H, at.z + Math.sin(sa) * R, { sprite: 'spark-elec', ml: rn(160, 300), size0: rn(4, 8), size1: 1, vx: Math.cos(sa) * rn(60, 160), vy: Math.sin(sa) * rn(60, 160), vz: rn(20, 140), gravity: 360, drag: 1.4, opacity0: 1 });
+            }
+        } };
+    }
+    /* THE CRAWL: arcs skittering out along the ground from frame-local `at`, flickering a few times */
+    function _lzCrawl(F, at, n, reach, o) {
+        o = o || {};
+        var ts = F.ts, arcs = [], ms = o.ms || 340;
+        for (var i = 0; i < n; i++) arcs.push({ b: _lzBolt(F.g, { r: ts * 0.007, glowR: ts * 0.024, glow: o.glow != null ? o.glow : _LZ.glow, glowOp: 0.85 }), a: i / n * Math.PI * 2 + rn(-0.4, 0.4), L: ts * rn(0.35, reach || 0.9), next: 0 });
+        return { tick: function (e) {
+            for (var j = 0; j < arcs.length; j++) {
+                var Q = arcs[j];
+                if (e < 0 || e > ms) { Q.b.op(0); continue; }
+                if (e >= Q.next) {
+                    Q.next = e + rn(55, 95);
+                    var L2 = Q.L * rn(0.7, 1.1), a2 = Q.a + rn(-0.25, 0.25);
+                    Q.b.strike(new THREE.Vector3(at.x, at.y + ts * 0.02, at.z), new THREE.Vector3(at.x + Math.cos(a2) * L2, at.y + ts * rn(0.01, 0.05), at.z + Math.sin(a2) * L2), { n: 6, amp: 0.3, forks: 1 });
+                }
+                Q.b.op((1 - e / ms) * (Math.random() < 0.2 ? 0.3 : 1));
+            }
+        } };
+    }
+    /* THE FLASH at a strike point: a hot white bloom and blue sparks (particles, at the point; never a screen flash) */
+    function _lzFlash(F, at, big) {
+        var s = big || 1;
+        _pzP(F, at.x, at.y + 6, at.z, { sprite: 'flash', tint: 0xdff0ff, ml: 150, size0: 70 * s, size1: 18 * s, opacity0: 0.85 });
+        for (var i = 0; i < Math.round(10 * s); i++) {
+            var a = rn(0, 6.28), sp = rn(80, 260) * s;
+            _pzP(F, at.x, at.y + 6, at.z, { sprite: 'spark-elec', ml: rn(180, 420), size0: rn(4, 8), size1: 1, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(40, 220), gravity: 420, drag: 1.4, opacity0: 1 });
+        }
+    }
+    /* A STRIKE FROM THE SKY onto frame-local `at`: the channel and its re-strikes (a fresh path each, thinner), the
+       flash and the crawl. o: H · top (frame-local start) · r · glowR · forks · strikes · gap · ms · flash · crawl · glow */
+    function _lzStrike(F, at, o) {
+        o = o || {};
+        var ts = F.ts, H = o.H || ts * 5.5, r = o.r || ts * 0.02, b = _lzBolt(F.g, { r: r, glowR: o.glowR || r * 3.4, glow: o.glow != null ? o.glow : _LZ.glow, glowOp: 0.85 });
+        var top = o.top || new THREE.Vector3(at.x + rn(-0.35, 0.35) * ts, at.y + H, at.z + rn(-0.35, 0.35) * ts);
+        var hits = [], strikes = o.strikes || 2, gap = o.gap || 75, ms = o.ms || 220, cur = -1, landed = false;
+        for (var i = 0; i < strikes; i++) hits.push(i * gap * (1 + 0.3 * i));
+        var crawl = o.crawl !== 0 ? _lzCrawl(F, at, o.crawl || 4, 0.9, { glow: o.glow }) : null;
+        return { tick: function (e) {
+            if (crawl) crawl.tick(e);
+            var idx = -1; for (var k = hits.length - 1; k >= 0; k--) if (e >= hits[k]) { idx = k; break; }
+            if (idx < 0 || e > hits[hits.length - 1] + ms) { b.op(0); return; }
+            if (idx !== cur) { cur = idx; b.strike(top, at, { n: o.n || 14, amp: o.amp != null ? o.amp : 0.09, forks: idx ? 1 : (o.forks != null ? o.forks : 3), r: r * (idx ? 0.75 : 1) }); }
+            b.op((1 - _sigClamp01((e - hits[idx]) / ms)) * (idx ? 0.8 : 1) * (Math.random() < 0.15 ? 0.45 : 1));
+            if (!landed) { landed = true; _lzFlash(F, at, o.flash || 1); }
+        } };
+    }
+    /* A STORM CLOUD over frame-local `at` (radius R, height H): dark puffs roll in and churn, lit from inside by
+       flickers. The handle's lit(k) flares it (a strike), end(e) sets when it starts to go. */
+    function _lzCloud(F, at, R, H, o) {
+        o = o || {};
+        var ts = F.ts, puffs = [], n = o.n || Math.max(10, Math.round(R / ts * 9)), tex = _lzPuffTex(), flick = [], inMs = o.inMs || 320;
+        for (var i = 0; i < n; i++) {
+            var sz = ts * rn(1.1, 1.8) * (o.puff || 1), s = _pzSprN(_LZ.cloud, sz, tex, F.g);
+            puffs.push({ s: s, a: i / n * Math.PI * 2 + rn(-0.3, 0.3), rr: R * Math.sqrt(rn(0.05, 1)), sz: sz, ph: rn(0, 6.28), d: rn(0, inMs * 0.5), y: at.y + H + rn(-0.15, 0.2) * ts });
+        }
+        for (var j = 0; j < 4; j++) { var fs = _pzSpr(_LZ.cyan, ts * rn(1.2, 2.0), F.g); fs.position.set(at.x + rn(-0.6, 0.6) * R, at.y + H - ts * 0.1, at.z + rn(-0.6, 0.6) * R); flick.push(fs); }
+        var litK = 0, col = new THREE.Color(), cA = new THREE.Color(_LZ.cloud), cB = new THREE.Color(_LZ.cloudLit);
+        var C = { endAt: o.endAt != null ? o.endAt : 1e9, endMs: o.endMs || 700 };
+        C.lit = function (k) { litK = Math.max(litK, k == null ? 1 : k); };
+        C.tick = function (e) {
+            if (e < 0) { for (var z = 0; z < puffs.length; z++) puffs[z].s.material.opacity = 0; return; }
+            var outK = 1 - _sigClamp01((e - C.endAt) / C.endMs), inK = _sigEaseOutCubic(_sigClamp01(e / inMs));
+            col.copy(cA).lerp(cB, Math.min(1, litK));
+            for (var p = 0; p < puffs.length; p++) {
+                var P = puffs[p], k = _sigEaseOutCubic(_sigClamp01((e - P.d) / inMs)), rr2 = P.rr * (1.8 - 0.8 * k), a2 = P.a + e * 0.00022;
+                P.s.position.set(at.x + Math.cos(a2) * rr2, P.y, at.z + Math.sin(a2) * rr2);
+                P.s.material.opacity = 0.9 * k * outK; P.s.material.color.copy(col);
+                P.s.scale.setScalar(P.sz * (0.85 + 0.15 * Math.sin(e * 0.002 + P.ph)));
+            }
+            for (var q = 0; q < flick.length; q++) flick[q].material.opacity = ((Math.random() < 0.07 ? 0.3 : 0) * inK + litK * 0.45) * outK;
+            litK *= 0.85;
+        };
+        return C;
+    }
+    /* the caster's hand (frame-local, toward the target), or null when the viewer can't see the caster */
+    function _lzHand(F, from, tx, ty) {
+        if (!from || !_pzSeen(from.x, from.y)) return null;
+        var ln = _nrvLine(F, from, tx, ty), ts = F.ts;
+        return new THREE.Vector3(ln.dx - ln.ux * ts * 0.24, ln.dy + ts * 0.64, ln.dz - ln.uz * ts * 0.24);
+    }
+    /* a bolt spell the signature owns (pzOwn) skips the bolt pipeline, which lands its impact recipe: land it here */
+    function _lzLand(spellId, tx, ty, ms) {
+        var m = SPELL_MAP[spellId], d = m && m.impact && EFFECTS[m.impact];
+        if (!d) return;
+        _fxDelay(function () {
+            if (_suppressed() || _catOff('spells')) return;
+            if (d.layers && d.layers.length) _spawnEffect(d, { tx: tx, ty: ty });
+            if (d.pzSig && _PZ_SIGS[d.pzSig]) try { _PZ_SIGS[d.pzSig]({ tx: tx, ty: ty }, spellId, 'impact', d); } catch (e) {}
+        }, ms);
+    }
+    function _lzUnitAt(x, y) {
+        try { for (var i = 0; i < state.units.length; i++) { var U = state.units[i]; if (U && !U.dead && !U._dying && U.x === x && U.y === y) return U; } } catch (e) {}
+        return null;
+    }
+
+    /* ════ THE MARK — every lightning-element damage spell, on its hit (the staging 'burst' beat): the cage on each
+       body it struck (a single target, or each foe in an area's footprint) and the scar under it ════ */
+    function _lzBurstMark(spellId, p) {
+        if (_LZ_OWN[spellId] || !p || p.tx == null || _catOff('spells') || _suppressed()) return;
+        var def = _spellDefFor(spellId);
+        if (!def || def.element !== 'lightning' || def.type !== 'damage' || def.kind === 'delayed') return;
+        var caster = p.sx != null ? _lzUnitAt(p.sx, p.sy) : null;
+        var r = def.aoeRadius || 0, cx = p.tx, cy = p.ty, tiles = [];
+        if (def.aoeOriginSelf && p.sx != null) { cx = p.sx; cy = p.sy; }
+        if (r > 0) { var offs = _buildTileOffsets(def.shape || 'square', r); for (var i = 0; i < offs.length; i++) tiles.push({ x: cx + offs[i].dx, y: cy + offs[i].dy }); }
+        else tiles.push({ x: p.tx, y: p.ty });
+        var F = _lzFrame(cx, cy), S = _lzStage(F, 2800), any = false, n = 0;
+        for (var t = 0; t < tiles.length && n < 6; t++) {
+            var U = _lzUnitAt(tiles[t].x, tiles[t].y);
+            if (!U || (caster && U.player === caster.player) || !_pzSeen(U.x, U.y)) continue;
+            S.add(_lzCage(F, _nvOff(F, U.x, U.y), { ms: 650 }), n * 40); n++; any = true;
+        }
+        if (_pzSeen(cx, cy) && (any || r > 0)) { S.add(_lzScar(F, _lzGroundAt(F, cx, cy), r > 0 ? Math.min(3.2, 1.1 + r * 0.9) : 1.1), 0); any = true; }
+        if (any) S.run();
+    }
+
+    /* ════ STATIC SHOCK — tier I, the Jammed setup: static builds in a violet crackle round the caster's hand, then a
+       thin spitting arc SNAPS across to the target, re-cutting itself three times; violet arcs crawl over the body and a
+       scrambled ring of static jitters round its head (the jam) ════ */
+    EFFECTS['lzStatic_bolt'] = _pzDef('lzStaticArc', { pzOwn: true });
+    EFFECTS['lzStatic_impact'] = _pzDef('lzStaticHit', { layers: [
+        { count: 10, sprite: 'spark-elec', ml: [200, 420], offsetXY: 8, z: [30, 60], vxRange: 220, vyRange: 220, vzRange: [40, 200], gravity: 380, drag: 1.4, size0: [4, 8], size1: 1 },
+    ] });
+    _PZ_SIGS.lzStaticArc = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 420, snap = Math.max(120, ms - 140);
+        _lzLand(id, tx, ty, ms);
+        var F = _lzFrame(tx, ty), ts = F.ts, hand = _lzHand(F, { x: fx, y: fy }, tx, ty);
+        var chest = new THREE.Vector3(0, ts * 0.58, 0), from = hand || new THREE.Vector3(rn(-0.2, 0.2) * ts, ts * 3.2, rn(-0.2, 0.2) * ts);
+        var arc = _lzBolt(F.g, { r: ts * 0.009, glowR: ts * 0.034, glow: _LZ.violet, glowOp: 0.9 });
+        var buzz = []; if (hand) for (var i = 0; i < 3; i++) buzz.push(_lzBolt(F.g, { r: ts * 0.005, glowR: ts * 0.018, glow: _LZ.violet, glowOp: 0.9 }));
+        var next = 0, nArc = 0, lastS = 0;
+        return _sigRunOwned(F.g, snap + 300, function (el) {
+            /* the hand charging: tiny arcs jumping round it */
+            var re = el >= next; if (re) next = el + 60;
+            for (var b = 0; b < buzz.length; b++) {
+                if (el >= snap) { buzz[b].op(0); continue; }
+                if (re) {
+                    var a1 = rn(0, 6.28), r1 = ts * rn(0.04, 0.09);
+                    buzz[b].strike(new THREE.Vector3(hand.x + Math.cos(a1) * r1, hand.y + rn(-0.05, 0.05) * ts, hand.z + Math.sin(a1) * r1),
+                        new THREE.Vector3(hand.x + Math.cos(a1 + 2.4) * r1, hand.y + rn(-0.06, 0.06) * ts, hand.z + Math.sin(a1 + 2.4) * r1), { n: 3, amp: 0.4 });
+                }
+                buzz[b].op((0.4 + 0.6 * _sigClamp01(el / snap)) * (Math.random() < 0.2 ? 0.3 : 1));
+            }
+            if (hand && el < snap && el - lastS > 70) { lastS = el; _pzP(F, hand.x, hand.y, hand.z, { sprite: 'spark-elec', ml: 220, size0: rn(3, 6), size1: 1, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(-20, 60), drag: 1.2, opacity0: 0.9 }); }
+            /* THE SNAP: three fresh cuts of the arc, 45 ms apart, then it dies */
+            if (el >= snap) {
+                var k = Math.floor((el - snap) / 45);
+                if (k < 3 && k >= nArc) { nArc = k + 1; arc.strike(from, chest, { n: 9, amp: 0.2, forks: 2 }); }
+                arc.op(k < 3 ? (Math.random() < 0.2 ? 0.4 : 1) : 1 - _sigClamp01((el - snap - 135) / 120));
+            } else arc.op(0);
+        });
+    };
+    _PZ_SIGS.lzStaticHit = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _lzFrame(tx, ty), ts = F.ts, S = _lzStage(F, 2700), N = 7, ring = [];
+        S.add(_lzCage(F, new THREE.Vector3(0, 0, 0), { ms: 820, arcs: 3, glow: _LZ.violet }), 0);
+        S.add(_lzScar(F, new THREE.Vector3(0, F.gy, 0), 0.9, { color: 0xd8ccff, hold: 1100 }), 0);
+        /* the scrambled halo: a ring of static that jitters and breaks round the head */
+        for (var i = 0; i < N; i++) ring.push(_lzBolt(F.g, { r: ts * 0.005, glowR: ts * 0.02, glow: _LZ.violet, glowOp: 0.9 }));
+        var next = 0;
+        S.add({ tick: function (e) {
+            if (e < 0 || e > 1080) { for (var z = 0; z < N; z++) ring[z].op(0); return; }
+            if (e < next) return;
+            next = e + 70;
+            var fade = 1 - _sigClamp01((e - 700) / 380), rot = rn(0, 6.28), y = ts * 1.0;
+            for (var j = 0; j < N; j++) {
+                if (Math.random() < 0.25) { ring[j].op(0); continue; }
+                var a1 = rot + j / N * Math.PI * 2, a2 = a1 + Math.PI * 2 / N * 0.8, R1 = ts * 0.2 * rn(0.9, 1.1);
+                ring[j].strike(new THREE.Vector3(Math.cos(a1) * R1, y + rn(-0.04, 0.04) * ts, Math.sin(a1) * R1), new THREE.Vector3(Math.cos(a2) * R1, y + rn(-0.04, 0.04) * ts, Math.sin(a2) * R1), { n: 3, amp: 0.35 });
+                ring[j].op(0.85 * fade);
+            }
+        } }, 0);
+        return S.run();
+    };
+
+    /* ════ THUNDERBOLT — tier II: a storm cloud rolls together over the target, flickering inside; ONE great bolt drops
+       out of it with two re-strikes, the ground flares and burns the scar, arcs crawl out and the body crackles ════ */
+    EFFECTS['lzThunderbolt_descent'] = Object.assign({}, EFFECTS['thunder1_descent'] || { telegraphMs: 320, descentMs: 380, telegraphSprite: 'target-ring-blue', impactCenterEffect: 'thunder1_impact' }, { layers: [], pzSig: 'lzThunderbolt' });
+    _PZ_SIGS.lzThunderbolt = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var total = getDescentTotalMs(id) || 700, F = _lzFrame(tx, ty), ts = F.ts, at = new THREE.Vector3(0, F.gy, 0), H = ts * 4.4;
+        var S = _lzStage(F, total + 2700);
+        var cloud = S.add(_lzCloud(F, at, ts * 0.9, H, { inMs: Math.min(380, total * 0.55), endAt: total + 650, endMs: 700 }), 0);
+        S.add(_lzStrike(F, at, { H: H, r: ts * 0.026, glowR: ts * 0.09, forks: 4, strikes: 3, gap: 70, ms: 240, flash: 1.3, crawl: 5,
+            top: new THREE.Vector3(rn(-0.2, 0.2) * ts, at.y + H - ts * 0.15, rn(-0.2, 0.2) * ts) }), total);
+        S.add(_lzScar(F, at, 1.7), total);
+        S.add(_lzCage(F, new THREE.Vector3(0, 0, 0), { ms: 760, arcs: 4 }), total);
+        var hit = false, pre = false;
+        return S.run(function (el) {
+            if (!pre && el >= total - 160) { pre = true; cloud.lit(0.4); }
+            if (!hit && el >= total) {
+                hit = true; cloud.lit(1); _sigShake('normal');
+                _sigShockRing3D(tx, ty, { color: _LZ.cyan, r0: ts * 0.2, r1: ts * 1.7, ms: 420, height: F.gy + ts * 0.05, opacity: 0.7 });
+            }
+        });
+    };
+
+    /* ════ CHAIN LIGHTNING — tier III: the arc leaves the caster's hand for the first body, then leaps body to body,
+       thinner each jump; every body it touches crackles and gets a small scar ════ */
+    EFFECTS['lzChain_hop'] = _pzDef('lzChain', { pzOwn: true });
+    function _lzChainRun(chain, stagger, from) {
+        if (!chain || !chain.length) return;
+        var t0 = chain[0], F = _lzFrame(t0.x, t0.y), ts = F.ts, links = [], prev = null, hand = _lzHand(F, from, t0.x, t0.y);
+        var last = (chain.length - 1) * stagger, S = _lzStage(F, last + 2700);
+        for (var i = 0; i < chain.length; i++) {
+            var c = chain[i], end = _lzChest(F, c.x, c.y), seenT = _pzSeen(c.x, c.y);
+            var start = i ? prev : (hand || new THREE.Vector3(rn(-0.2, 0.2) * ts, ts * 3.4, rn(-0.2, 0.2) * ts));
+            var seen = seenT || (i > 0 && _pzSeen(chain[i - 1].x, chain[i - 1].y));
+            links.push({ b: seen ? _lzBolt(F.g, { r: ts * (0.016 - 0.003 * Math.min(3, i)), glowR: ts * (0.06 - 0.01 * Math.min(3, i)), glowOp: 0.85 }) : null,
+                a: start, e: end, t: i * stagger, cut: -1, done: false, seen: seenT });
+            if (seenT) {
+                S.add(_lzCage(F, _nvOff(F, c.x, c.y), { ms: 620, arcs: 3 }), i * stagger);
+                S.add(_lzScar(F, _lzGroundAt(F, c.x, c.y), 0.95, { hold: 1000 }), i * stagger);
+            }
+            prev = end;
+        }
+        return S.run(function (el) {
+            for (var j = 0; j < links.length; j++) {
+                var Lk = links[j], e = el - Lk.t;
+                if (!Lk.done && e >= 0) { Lk.done = true; if (Lk.seen) _lzFlash(F, Lk.e, 0.7); }
+                if (!Lk.b) continue;
+                if (e < 0) { Lk.b.op(0); continue; }
+                var k = Math.floor(e / 50);
+                if (k < 3 && k !== Lk.cut) { Lk.cut = k; Lk.b.strike(Lk.a, Lk.e, { n: 10, amp: 0.16, forks: j ? 1 : 2 }); }
+                /* each link stays lit while the chain runs on, then every link dies together */
+                Lk.b.op(e < 150 ? (Math.random() < 0.18 ? 0.45 : 1) : Math.max(0, 0.75 - (el - last - 150) / 300) * (Math.random() < 0.2 ? 0.4 : 1));
+            }
+        });
+    }
+    _PZ_SIGS.lzChain = function (p) {
+        var ch = p && p.chain; if (!ch || !ch.length) return;
+        _lzChainRun(ch, p.staggerMs != null ? p.staggerMs : 140, _sigCasterPos(ch[0].x, ch[0].y));
+    };
+
+    /* ════ TEMPEST — tier IV: a wide storm cloud wheels in over the 3x3, then the sky comes down on it — a bolt on every
+       tile, the centre first, each with a re-strike; arcs jump tile to tile across the ground; scars everywhere ════ */
+    EFFECTS['lzTempest_tile'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 600, z: 3, size0: 30, size1: 90, opacity0: 0.5, delayMs: 300 },
+    ] };
+    EFFECTS['lzTempest_aoe'] = _pzDef('lzTempest', { aoeRadius: 1, impactTileEffect: 'lzTempest_tile', shake: 'normal' });
+    _PZ_SIGS.lzTempest = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _nvAoeTiles(id, p, def, _nvRadius(id, 'aoeRadius', 1)), F = _lzFrame(tx, ty), ts = F.ts, at = new THREE.Vector3(0, F.gy, 0);
+        var H = ts * 4.8, hit0 = _lzMs(300);
+        var order = A.offs.slice().sort(function (a, b) { return (Math.abs(a.dx) + Math.abs(a.dy)) - (Math.abs(b.dx) + Math.abs(b.dy)) || (Math.atan2(a.dy, a.dx) - Math.atan2(b.dy, b.dx)); });
+        var spots = [];
+        for (var i = 0; i < order.length; i++) { var x = tx + order[i].dx, y = ty + order[i].dy; spots.push({ x: x, y: y, at: _lzGroundAt(F, x, y), t: hit0 + (i ? 60 + i * 75 : 0), seen: _pzSeen(x, y) }); }
+        var lastT = spots[spots.length - 1].t, S = _lzStage(F, lastT + 2800);
+        var cloud = S.add(_lzCloud(F, at, ts * (A.r + 0.9), H, { inMs: Math.min(300, hit0), puff: 1.2, endAt: lastT + 500, endMs: 900 }), 0);
+        for (var k = 0; k < spots.length; k++) {
+            var Sp = spots[k];
+            if (!Sp.seen) continue;
+            S.add(_lzStrike(F, Sp.at, { H: H, r: ts * (k ? 0.016 : 0.026), glowR: ts * (k ? 0.055 : 0.09), forks: k ? 2 : 4, strikes: 2, gap: 65, ms: 210, flash: k ? 0.8 : 1.3, crawl: k ? 2 : 5,
+                top: new THREE.Vector3(Sp.at.x * 0.55 + rn(-0.3, 0.3) * ts, at.y + H - ts * 0.1, Sp.at.z * 0.55 + rn(-0.3, 0.3) * ts) }), Sp.t);
+            S.add(_lzScar(F, Sp.at, k ? 0.95 : 1.4, { hold: 1500 }), Sp.t);
+            if (_lzUnitAt(Sp.x, Sp.y)) S.add(_lzCage(F, _nvOff(F, Sp.x, Sp.y), { ms: 800, arcs: 3 }), Sp.t);
+        }
+        /* the net: arcs jump between neighbouring struck tiles across the ground once the barrage is down */
+        var net = [], up = new THREE.Vector3(0, ts * 0.03, 0);
+        for (var a = 0; a < spots.length; a++) for (var b = a + 1; b < spots.length; b++) {
+            var S1 = spots[a], S2 = spots[b];
+            if (Math.abs(S1.x - S2.x) + Math.abs(S1.y - S2.y) === 1 && S1.seen && S2.seen && net.length < 12) net.push({ a: S1.at.clone().add(up), b: S2.at.clone().add(up), bolt: _lzBolt(F.g, { r: ts * 0.007, glowR: ts * 0.026, glowOp: 0.85 }), next: 0 });
+        }
+        S.add({ tick: function (e) {
+            for (var n = 0; n < net.length; n++) {
+                var N = net[n];
+                if (e < 0 || e > 650) { N.bolt.op(0); continue; }
+                if (e >= N.next) { N.next = e + rn(60, 110); N.bolt.strike(N.a, N.b, { n: 6, amp: 0.22 }); }
+                N.bolt.op((Math.random() < 0.35 ? 0 : 0.9) * (1 - e / 650));
+            }
+        } }, lastT - 100);
+        var hitIdx = 0;
+        return S.run(function (el) {
+            while (hitIdx < spots.length && el >= spots[hitIdx].t) {
+                cloud.lit(hitIdx ? 0.6 : 1);
+                if (!hitIdx) { _sigShake('hard'); _sigShockRing3D(tx, ty, { color: _LZ.cyan, r0: ts * 0.3, r1: ts * (A.r + 1.4), ms: 520, height: F.gy + ts * 0.05, opacity: 0.7 }); }
+                hitIdx++;
+            }
+        });
+    };
+
+    /* ════ BALL LIGHTNING — the new tier II: a crackling ball of plasma rolls out down the line at chest height, its
+       tendrils licking the ground; it lashes every body it passes and bursts at the end of the line ════ */
+    EFFECTS['lzBall_beam'] = _pzDef('lzBall', { pzOwn: true });
+    _PZ_SIGS.lzBall = function (p) {
+        var fx = p.fromX != null ? p.fromX : p.sx, fy = p.fromY != null ? p.fromY : p.sy; if (fx == null) return;
+        var cells = (p.hitTiles && p.hitTiles.length) ? p.hitTiles.slice() : null;
+        if (!cells) { cells = []; for (var c0 = 1; c0 <= (p.range || 4); c0++) cells.push({ x: fx + (p.dx || 0) * c0, y: fy + (p.dy || 0) * c0 }); }
+        if (!cells.length) return;
+        var F = _lzFrame(fx, fy), ts = F.ts, pts = [new THREE.Vector3(0, ts * 0.55, 0)];
+        for (var i = 0; i < cells.length; i++) pts.push(_lzChest(F, cells[i].x, cells[i].y));
+        /* the beam fires at launch and the damage lands ~430ms later: the ball reaches the end of the line on the hit */
+        var ms = Math.max(300, _lzMs(420)), S = _lzStage(F, ms + 2700);
+        var ball = new THREE.Group(); F.g.add(ball);
+        /* a deep-blue normal-blend halo under it, so the ball still reads over a lit (yellow) target lane */
+        var haloS = _pzSprN(_LZ.deep, ts * 1.3, _sigGlowTex(), ball); haloS.renderOrder = 160;
+        var coreS = _pzSpr(0xffffff, ts * 0.42, ball), glowS = _pzSpr(_LZ.glow, ts * 1.2, ball);
+        var shellM = _pzGlow(_LZ.cyan), shell = _pzMesh(new THREE.SphereGeometry(ts * 0.19, 14, 10), shellM, ball);
+        var tend = []; for (var t = 0; t < 5; t++) tend.push(_lzBolt(ball, { r: ts * 0.006, glowR: ts * 0.022, glowOp: 0.85 }));
+        var lick = _lzBolt(F.g, { r: ts * 0.008, glowR: ts * 0.03, glowOp: 0.85 });
+        var seenFrom = _pzSeen(fx, fy), passed = -1, burst = false, next = 0, pos = new THREE.Vector3(), O = new THREE.Vector3();
+        var end = cells[cells.length - 1], endAt = pts[pts.length - 1], rays = [];
+        for (var s = 0; s < 6; s++) { var sa = s / 6 * Math.PI * 2; rays.push({ b: _lzBolt(F.g, { r: ts * 0.008, glowR: ts * 0.03 }), to: endAt.clone().add(new THREE.Vector3(Math.cos(sa) * ts * 0.7, ts * rn(-0.45, 0.35), Math.sin(sa) * ts * 0.7)), next: 0 }); }
+        return S.run(function (el) {
+            var u = Math.min(1, el / ms), f = u * (pts.length - 1), k = Math.min(pts.length - 2, Math.floor(f));
+            pos.copy(pts[k]).lerp(pts[k + 1], f - k); ball.position.copy(pos);
+            var ci = Math.min(cells.length - 1, Math.max(0, Math.round(f) - 1)), here = cells[ci], show = u < 1 && (f < 0.6 ? seenFrom : _pzSeen(here.x, here.y));
+            var pulse = 0.85 + 0.15 * Math.sin(el * 0.06);
+            haloS.material.opacity = show ? 0.75 : 0; coreS.material.opacity = show ? 1 : 0; glowS.material.opacity = show ? 0.85 * pulse : 0; shellM.opacity = show ? 0.45 * pulse : 0;
+            shell.scale.setScalar(pulse); shell.rotation.y = el * 0.01;
+            if (el >= next) {
+                next = el + 55;
+                for (var j = 0; j < tend.length; j++) {
+                    if (!show) { tend[j].op(0); continue; }
+                    var a = rn(0, 6.28), b2 = rn(-1.2, 1.2), R1 = ts * rn(0.2, 0.34);
+                    tend[j].strike(O.set(0, 0, 0), new THREE.Vector3(Math.cos(a) * Math.cos(b2) * R1, Math.sin(b2) * R1, Math.sin(a) * Math.cos(b2) * R1), { n: 4, amp: 0.35 });
+                    tend[j].op(0.9);
+                }
+                /* a tendril licks down to the ground under it */
+                if (show && Math.random() < 0.6) { var gp = _lzGroundAt(F, here.x, here.y); lick.strike(pos.clone(), new THREE.Vector3(pos.x + rn(-0.3, 0.3) * ts, gp.y + ts * 0.02, pos.z + rn(-0.3, 0.3) * ts), { n: 5, amp: 0.25 }); lick.op(0.85); }
+                else lick.op(0);
+            }
+            /* each cell it rolls over: a scorch, and the cage + a flash for a body standing there */
+            var reached = Math.min(cells.length - 1, Math.floor(f + 0.35) - 1);
+            while (passed < reached) {
+                passed++; var C = cells[passed];
+                if (!_pzSeen(C.x, C.y)) continue;
+                S.add(_lzScar(F, _lzGroundAt(F, C.x, C.y), 0.75, { hold: 900, flare: 0.7 }), el);
+                if (_lzUnitAt(C.x, C.y)) { S.add(_lzCage(F, _nvOff(F, C.x, C.y), { ms: 700, arcs: 3 }), el); _lzFlash(F, pts[passed + 1], 0.6); }
+            }
+            /* the end of the line: it bursts — a flash, a ring, six arcs thrown out */
+            if (u >= 1) {
+                haloS.material.opacity = coreS.material.opacity = glowS.material.opacity = shellM.opacity = 0;
+                for (var q = 0; q < tend.length; q++) tend[q].op(0);
+                lick.op(0);
+                var see = _pzSeen(end.x, end.y), e2 = el - ms;
+                if (!burst) {
+                    burst = true;
+                    if (see) { _lzFlash(F, endAt, 1.4); _sigShockRing3D(end.x, end.y, { color: _LZ.cyan, r0: ts * 0.15, r1: ts * 1.3, ms: 360, height: ts * 0.5, torus: false, opacity: 0.7 }); }
+                }
+                for (var r = 0; r < rays.length; r++) {
+                    var Ry = rays[r];
+                    if (!see || e2 > 260) { Ry.b.op(0); continue; }
+                    if (e2 >= Ry.next) { Ry.next = e2 + 60; Ry.b.strike(endAt, Ry.to, { n: 5, amp: 0.25 }); }
+                    Ry.b.op(1 - e2 / 260);
+                }
+            } else for (var r2 = 0; r2 < rays.length; r2++) rays[r2].b.op(0);
+        });
+    };
+
+    /* ════ BOLT FROM THE BLUE — the new tier IV finisher: out of a clear sky. A cold point of light kindles high above
+       the target; the air charges (sparks rise off the body, St Elmo's fire flickers at its feet); faint stepped leaders
+       feel their way down in jerks, a streamer reaches up off the body to meet them — and the RETURN STROKE: one huge
+       white channel with two re-strikes, the great scar, arcs crawling out across the ground ════ */
+    EFFECTS['lzBlue_hit'] = { shake: 'hard', layers: [
+        { count: 24, sprite: 'spark-elec', ml: [300, 700], offsetXY: 10, z: [10, 60], vxRange: 320, vyRange: 320, vzRange: [80, 320], gravity: 420, drag: 1.3, size0: [5, 10], size1: 1 },
+        { count: 4, anchor: 'floor', sprite: 'smoke', ml: [700, 1100], offsetXY: 22, z: [4, 14], tint: 0x8a96b0, size0: [18, 26], size1: [50, 70], opacity0: 0.35 },
+    ] };
+    EFFECTS['lzBlue_descent'] = { telegraphMs: 500, descentMs: 700, telegraphSprite: 'target-ring-blue', impactCenterEffect: 'lzBlue_hit', layers: [], pzSig: 'lzBlue' };
+    _PZ_SIGS.lzBlue = function (p, id) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var total = getDescentTotalMs(id) || 1200, tg = Math.min(total * 0.42, 500);
+        var F = _lzFrame(tx, ty), ts = F.ts, H = ts * 6.2, at = new THREE.Vector3(0, F.gy, 0), headY = ts * 1.05, STRIKE = total;
+        var S = _lzStage(F, STRIKE + 3600);
+        var star = _pzSpr(0xffffff, ts * 0.3, F.g), halo = _pzSpr(_LZ.glow, ts * 1.1, F.g);
+        star.position.set(0, H, 0); halo.position.set(0, H, 0);
+        /* the stepped leaders: three channels cut once, revealed a step at a time (the main one aimed at the head) */
+        var leaders = [];
+        for (var i = 0; i < 3; i++) {
+            var aim = i === 0 ? new THREE.Vector3(0, headY + ts * 0.25, 0) : new THREE.Vector3(rn(-1, 1) * ts * 1.1, F.gy + ts * rn(0.6, 1.6), rn(-1, 1) * ts * 1.1);
+            leaders.push({ path: _lzJag(new THREE.Vector3(0, H, 0), aim, 16, 0.1), b: _lzBolt(F.g, { r: ts * 0.006, glowR: ts * 0.024, glow: _LZ.ion, glowOp: 0.85 }), shown: 0, stop: i === 0 ? 1 : rn(0.45, 0.8) });
+        }
+        var streamer = _lzBolt(F.g, { r: ts * 0.006, glowR: ts * 0.022, glowOp: 0.9 });
+        var elmo = []; for (var q0 = 0; q0 < 4; q0++) elmo.push(_lzBolt(F.g, { r: ts * 0.005, glowR: ts * 0.018, glow: _LZ.ion, glowOp: 0.9 }));
+        var main = _lzBolt(F.g, { r: ts * 0.036, glowR: ts * 0.11, glowOp: 0.85 }), outer = _lzBolt(F.g, { r: ts * 0.07, glowR: ts * 0.2, color: _LZ.cyan, glow: _LZ.deep, glowOp: 0.3 });
+        var colM = _pzGlow(_LZ.ion), column = _pzMesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.22, H, 12, 1, true), colM, F.g, 0, F.gy + H / 2, 0);
+        S.add(_lzCrawl(F, at, 8, 1.4, { ms: 480 }), STRIKE);
+        S.add(_lzScar(F, at, 2.5, { hold: 2000 }), STRIKE);
+        S.add(_lzCage(F, new THREE.Vector3(0, 0, 0), { ms: 950, arcs: 4 }), STRIKE);
+        var hits = [STRIKE, STRIKE + 75, STRIKE + 170], cut = -1, landed = false, nextE = 0, lastM = 0;
+        return S.run(function (el) {
+            /* the point of light kindles and swells */
+            var kin = _sigEaseOutCubic(_sigClamp01(el / Math.max(1, tg)));
+            star.material.opacity = el < STRIKE ? kin * (0.8 + 0.2 * Math.sin(el * 0.05)) : Math.max(0, 1 - (el - STRIKE) / 300);
+            halo.material.opacity = el < STRIKE ? kin * 0.45 : Math.max(0, 0.45 - (el - STRIKE) / 500);
+            star.scale.setScalar(ts * (0.2 + 0.25 * kin)); halo.scale.setScalar(ts * (0.6 + 0.9 * kin));
+            /* the air charging: sparks rise off the body, St Elmo's fire at the feet */
+            if (el < STRIKE && el - lastM > 70) {
+                lastM = el; var ma = rn(0, 6.28);
+                _pzP(F, Math.cos(ma) * ts * 0.22, ts * rn(0.1, 0.9), Math.sin(ma) * ts * 0.22, { sprite: 'spark-elec', ml: rn(400, 700), size0: rn(3, 6), size1: 1, vz: rn(60, 140), vx: rn(-10, 10), vy: rn(-10, 10), drag: 0.6, gravity: -40, opacity0: 0.9 });
+            }
+            if (el < STRIKE && el >= nextE) {
+                nextE = el + 80;
+                for (var q = 0; q < elmo.length; q++) {
+                    if (el < tg * 0.5 || Math.random() < 0.3) { elmo[q].op(0); continue; }
+                    var a1 = rn(0, 6.28), r1 = ts * 0.3;
+                    elmo[q].strike(new THREE.Vector3(Math.cos(a1) * r1, F.gy + ts * 0.02, Math.sin(a1) * r1), new THREE.Vector3(Math.cos(a1) * r1 * 0.9, F.gy + ts * rn(0.12, 0.22), Math.sin(a1) * r1 * 0.9), { n: 3, amp: 0.4 });
+                    elmo[q].op(0.8);
+                }
+            } else if (el >= STRIKE) for (var q2 = 0; q2 < elmo.length; q2++) elmo[q2].op(0);
+            /* the leaders step down in jerks from tg to the strike */
+            for (var l = 0; l < leaders.length; l++) {
+                var Ld = leaders[l];
+                if (el < tg) { Ld.b.op(0); continue; }
+                if (el >= STRIKE) { Ld.b.op(l === 0 ? 0 : Math.max(0, 0.5 - (el - STRIKE) / 200)); continue; }
+                var prog = Math.min(Ld.stop, Math.floor(((el - tg) / (STRIKE - tg)) * 8) / 8 + 0.02);
+                var n = Math.max(2, Math.round(prog * (Ld.path.length - 1)) + 1);
+                if (n !== Ld.shown) { Ld.shown = n; Ld.b.strike(null, null, { pts: Ld.path.slice(0, n), forks: l === 0 ? 2 : 1 }); }
+                Ld.b.op(0.35 + 0.25 * Math.random());
+            }
+            /* the streamer reaches up off the head to meet the leader, the last 130 ms */
+            if (el > STRIKE - 130 && el < STRIKE) { streamer.strike(new THREE.Vector3(0, headY - ts * 0.1, 0), new THREE.Vector3(rn(-0.05, 0.05) * ts, headY + ts * 0.25 * _sigClamp01((el - STRIKE + 130) / 110), rn(-0.05, 0.05) * ts), { n: 4, amp: 0.3 }); streamer.op(0.8); }
+            else streamer.op(0);
+            /* THE RETURN STROKE down the leader's own channel, then two re-strikes on fresh paths */
+            if (el >= STRIKE) {
+                var idx = el >= hits[2] ? 2 : (el >= hits[1] ? 1 : 0);
+                if (idx !== cut) {
+                    cut = idx;
+                    var foot = new THREE.Vector3(0, F.gy + ts * 0.04, 0);
+                    var ch = idx === 0 ? leaders[0].path.slice(0, -1).concat([foot]) : _lzJag(new THREE.Vector3(0, H, 0), foot, 16, 0.08);
+                    main.strike(null, null, { pts: ch, forks: idx ? 2 : 5, r: ts * (idx ? 0.026 : 0.036) });
+                    outer.strike(null, null, { pts: ch });
+                }
+                var kk = (1 - _sigClamp01((el - hits[idx]) / 260)) * (idx ? 0.85 : 1);
+                main.op(kk * (Math.random() < 0.12 ? 0.5 : 1)); outer.op(kk * 0.6);
+                colM.opacity = 0.22 * Math.max(0, 1 - (el - STRIKE) / 900);
+                if (!landed) {
+                    landed = true;
+                    _lzFlash(F, at, 2);
+                    _sigShockRing3D(tx, ty, { color: _LZ.cyan, r0: ts * 0.3, r1: ts * 2.4, ms: 520, height: F.gy + ts * 0.05, opacity: 0.8 });
+                }
+            } else { main.op(0); outer.op(0); colM.opacity = el > tg ? 0.05 * kin : 0; }
+        });
+    };
+
+    /* ── the wiring ── */
+    SPELL_MAP['raceStaticShock']     = { bolt: 'lzStatic_bolt', impact: 'lzStatic_impact' };
+    SPELL_MAP['thunder1']            = Object.assign({}, SPELL_MAP['thunder1'], { descent: 'lzThunderbolt_descent' });
+    SPELL_MAP['raceChainLightning']  = Object.assign({}, SPELL_MAP['raceChainLightning'], { chain: 'lzChain_hop' });
+    SPELL_MAP['raceTempest']         = { aoe: 'lzTempest_aoe' };
+    SPELL_MAP['raceBallLightning']   = { beam: 'lzBall_beam' };
+    SPELL_MAP['raceBoltFromTheBlue'] = { descent: 'lzBlue_descent' };
+    delete _spell3DGeometry.thunder1;   /* the sky rune + screen flash give way to the cloud and the real bolt */
+    /* a chain with nobody to jump to (battle.js _sigVfxGeom '<id>:solo') still throws its one arc */
+    _spell3DGeometry['raceChainLightning:solo'] = function (tx, ty, r, x) { x = x || {}; _lzChainRun([{ x: tx, y: ty }], 0, x.fromX != null ? { x: x.fromX, y: x.fromY } : _sigCasterPos(tx, ty)); return true; };
+    /* ═════════ END THE LIGHTNING PASS ═════════ */
 
     /* THE SHEET WARM (2026-10-12, mondo: "it will still freeze or dip in FPS at heavy moments like combo spell animations"):
        the spells' canvas sheets were drawn and uploaded in the very frame a spell first used them (sandbox, real WebGPU: ~20

@@ -2651,3 +2651,14 @@ finisher pair. Two rows (data.js, after Miasma in SPELL_LIBRARY), existing kinds
 - Who gets them: every race with Poison Abilities in RACE_FAMILIES (antperson, black goo, demon princess, ghoul,
   necromancer, bee queen, mushroom girl, goblin, chef, swamp monster, reptilian, zombie) + Adaptable borrowers. Stats are
   thread calls, flagged to mondo. Looks: spells-vfx.md "THE POISON PASS".
+
+## THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Lightning Magic had Static Shock (T1, Jammed) as its only setup and no finisher that paid off its own status. Two rows
+(data.js, after Conduction in SPELL_LIBRARY), existing kinds and rules only:
+- **Ball Lightning** (`raceBallLightning`, tier II, 50 MP, 1 AP, anomaly, lightning): `line`, range 4, width 1, 100
+  magic, Jammed 1 (the Rainspout shape). A second Jammed setup.
+- **Bolt from the Blue** (`raceBoltFromTheBlue`, tier IV, 100 MP, 1 AP, cd 2, anomaly, lightning): single-target
+  `damage`, range 4, 170 magic, ×1.5 vs Jammed, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Family now 8 rows. Who gets them: Lightning Magic in RACE_FAMILIES (mothman, wizard) + Adaptable borrowers.
+- Left as they were (flagged to mondo): Tempest (T4) and EMP Burst / EMP Grenade still APPLY statuses at tier 3-4.
+  Looks: spells-vfx.md "THE LIGHTNING PASS".

@@ -6545,6 +6545,19 @@ const SPELL_LIBRARY = [
           element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 4,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
           desc: 'Current finds water. MEDIUM magic damage to a Single Enemy. A Soaked target takes it worse, on top of the usual lightning-on-water shock.' },
+        /* THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): two Lightning
+           Magic rows on existing kinds and rules only. Ball Lightning = a tier II line that Jams (the Rainspout shape: a
+           lane, a status; the Crosswind numbers) — the family's second Jammed setup beside Static Shock; Bolt from the Blue = the family's tier IV
+           finisher, bonus vs Jammed, applies nothing (no self-combo) — the Wrath of the Wild shape. The family had no
+           finisher for its own status. Their looks: three-vfx-effects.js "THE LIGHTNING PASS". */
+        { id: 'raceBallLightning', name: 'Ball Lightning', tier: 2, families: ['lightning'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'lightning', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 4, lineWidth: 1,
+          statusEffects: [{ id: 'jammed', duration: 1 }],
+          desc: 'A crackling ball of plasma rolls down the lane. MEDIUM magic damage to All Enemies in a line, and the static Jams them for 1 round.' },
+        { id: 'raceBoltFromTheBlue', name: 'Bolt from the Blue', tier: 4, families: ['lightning'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic',
+          dmg: 170, range: 4, bonusVsStatus: { status: 'jammed', mult: 1.5 },
+          desc: 'Out of a clear sky. One enormous bolt drops on a Single Enemy within 4 for HEAVY magic damage. Jammed targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceThornlash', name: 'Thornlash', tier: 1, families: ['nature'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 3,
           statusEffects: [{ id: 'root', duration: 1 }],
