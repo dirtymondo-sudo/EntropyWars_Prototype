@@ -1839,3 +1839,72 @@ before THE NATURE PASS, helpers `_mtl*`. No rule or data change; no new rows (th
   layer. Proof: Spell Lab casts frozen 200 ms after the burst; stills in /mnt/project-files/metal-vfx/.
 - Seen while counting (NOT changed, flagged to mondo): Lockdown (T4) applies Rooted + Slowed, Cuffed (T3) applies Rooted,
   Dead Eye (T3) Marked, Shrink Ray (T3) Minimized — tier 3-4 rows that apply a status (none of them self-combo).
+
+## THE WATER PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every water spell (data.js `element: 'water'`, 39 with the two new rows) now reads as water. Code: three-vfx-effects.js
+block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`).
+- THE WATER STAGING (the look every water spell shares): `_STAGE_ARCHETYPES.water` + `_STAGE_GRADES.water` (blue,
+  droplet motes, `noOrb`, `water: true`). `_stageArchetype` gives element 'water' the water archetype over the movement
+  kinds (kinetic / grapple / rig / skyfall / mind: pushes, pulls, terrain spells); heals, buffs and hexes keep their own
+  grammar. Before it, water spells staged as their kind or spellType (pink anomaly orbs + trip on heavies, gold grapple
+  rings, purple rig glyphs). SPELL_STAGE_MAP.raceFlood went 'arcane' → 'water'.
+  - Windup (magic casts): `_wvGather` — a wobbling ball of water with the water skin at the caster, droplets streaming
+    in, a ring wheeling round it; bursts into spray at 72 % of holdMs (as the spell leaves the hand). Gated on `_pzSeen`.
+  - Burst: `_wvMark` — THE WATER MARK on the target: a see-through crown sleeve with white tips at the feet, droplets
+    thrown in arcs, two ripple rings and a dark wet patch. Every water hit ends on it, sized by the stage weight.
+- THE KIT: canvases (water skin with a caustic net, wave face deep→white foam band, crown, ripple rings, whirlpool
+  spiral); `_wvStream` = the `_nvVine` tube in the water skin; `_wvRunWave` = a curling sheet (`_WV_PROFILE`: back slope,
+  crest, lip hanging forward) run down a lane, following the board height and hidden over tiles the viewer can't see;
+  `_wvRingWave` = the same profile on a LatheGeometry; `_wvVortex` = spinning spiral disc + inner disc + a rim of water;
+  `_wvGeyser` = an open column, skin running up, a foam cap throwing spray; `_wvDrip` = a soaked body dripping. The water
+  skins share one clock (`_wvFlow`).
+- Signatures (routes probed in the Spell Lab): Water Jet / Spout = `bolt` (pzOwn, Spout arcs high) + `impact` (drip);
+  Maelstrom = `bolt` (whirlpool opens + 3 thin coils rise during the flight) + `impact` (coils close, a column rises
+  BEHIND the body); Whirlpool (raceRiptide) = `aoe`; Water Pulse (sharedTidalSurge) = `beam` (the wave, waist high, 1 lane,
+  see-through; it replaced the flat wave-1 sprite beam); Tidal Slam = `aoe` (ring wave out of the caster's feet); Call of the
+  Deep = `wall` (dark whirl, black-water spikes behind the body, bubbles); Depth Charge = `aoe` (geysers per tile, the
+  middle first, behind a body on an occupied tile); Poseidon's Wrath = `impact` (three columns behind the body like a
+  trident's prongs, gold glints); Great Flood = NEW `wall` mapping (ring wave over the basin, a surge of spray on each
+  flooded tile; the mapping makes battle.js skip its flat playAoeRing); Temporal Tide = its zone recipe + slow ripples
+  and a lazy whirl (`wvTide`). Whirlpool / Tidal Slam / Depth Charge / Poseidon's Wrath / Call of the Deep replaced the
+  generic `_water_impact_*` / halo-ring sprite recipes they wore.
+- Untouched looks (they still get the water staging + mark): Tsunami (its own wall, _sigTsunami3D), the jellyfish, mermaid, siren, loch ness, starfish, deep sea
+  fish, swamp monster, pirate, firefighter, gargoyle, priest, annunaki, atlantean signature spells, Constrict / Eightfold
+  Lash / Tentacle Lash, Fluoride Water.
+- THE TARGET STAYS: no screen flash of its own; crown low and see-through; columns / spikes / prongs stand on the far
+  side of the body from the lens (`_nbCamDir`); coils thin.
+- Proof: Spell Lab ✦ CAST per spell, performance.now() frozen at set delays after the cast. Stills: /mnt/project-files/water-vfx/.
+
+
+## THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every sonic-element spell (28 rows + Screech / Sonic Boom, rules in champions-combat.md "THE SONIC PASS") reads as sound
+in one violet language. Code: three-vfx-effects.js block "THE SONIC PASS" right after END THE NATURE PASS, helpers `_sn*`.
+- THE KIT: `_snRing` (a canvas ring over a dark ink rim, so it reads on a bright floor; `_snJagTex` = the thin zigzag of
+  a LOUD sound), `_snCone` (rings leave A, travel to B and grow: the cone a voice makes), `_snRipple` (flat floor rings),
+  `_snHum` (three rings round the body that shiver, can track a dragged body), `_snEq` (a crown of LED level meters
+  BEHIND the body, one mesh per meter, the level = draw range). Pieces return tick(el); `_snRun` runs them in one
+  _sigRunOwned. `_snLean` leans a lane's rings toward the lens: rings aimed straight down a lane that runs across the
+  screen were edge-on slivers.
+- THE STAMP (`_snStage`, called from _fireStage): the windup / burst staging beats fire for EVERY spell from its data,
+  so all sonic rows get it with no per-spell wiring, on top of their own looks. Windup = rings out of the caster's mouth
+  toward the target (a shout: hum + floor ring). Burst = rings through the body from the caster's side, floor + body
+  hum, the meter on heavy / ultimate; self-origin rows (barrage, aoeOriginSelf, warCry) shout from the caster's tile.
+  `_SN_FLAVOUR` per row: sung (notes), gentle (slow smooth rings), roar (jagged), discord (clash pink, broken notes).
+- Generic sonic: `_THEME_MAP.sonic`, `_ELEMENT_THEME.sonic = 'sonic'` (was anomaly), `_STAGE_ARCHETYPES.sonic` (violet,
+  noOrb, no glyph), `_STAGE_GRADES.sonic`, `_BEAM_COLORS.sonic`. `_stageArchetype` gives a sonic row 'sonic' whatever its
+  kind, except support kinds (`_SN_SUPPORT_ARCH`: buffs stay gold aura, stat-downs stay the violet hex). Sonic
+  Boomerang's SPELL_STAGE_MAP archetype kinetic → sonic (its grade kept).
+- Own looks (routes probed in the Spell Lab): Discordance impact = two clashing jagged ring stacks (was the generic dark
+  debuff); Siren Song = `pull` with pzOwnTether, a stream of rings + notes mouth → body for the whole drag (was the
+  plain rope); Lullaby keeps its impact + slow rings settle over the head; Sonic Breaker beam (pzOwn, was a plain light
+  band) and Shockwave Clap beam (its band kept) = `_snLane`: a ring tunnel down the whole reach + a jagged floor ripple
+  per tile it crosses. A line beam sends fromX/fromY + dx/dy + range (no sx/sy). Crack the Whip / Screech / Sonic Boom /
+  Requiem's per-target bolt = `snWave_bolt` (pzOwn: rings fly the path, `_nvLand` lands the impact recipe); Requiem's
+  bolt was `_bolt_bullet`. Impacts: Crack the Whip + Screech = `snCrack` (a jagged ring snaps at head height), Sonic Boom
+  = `snBoom` (jagged rings on three tilts + a floor slam). Barrage rows (Meow, Requiem, Shiver, Bellow) fire no
+  aoe/impact intent: the stamp is their look.
+- THE TARGET STAYS: thin rings, the meter behind the body, no screen flash. Fog / RULE #2: everything rides fire() /
+  the staging beats (relayed); caster-end pieces gate on `_pzSeen(caster)`, hit pieces on `_pzSeen(hit)`; Siren
+  Song's fogged siren sings from the sight line. MeshBasic / Sprite only.
+- Proof: Spell Lab ✦ CAST per spell, capture rig froze performance.now() at set delays after the intent. Stills:
+  /mnt/project-files/sonic-vfx/.
