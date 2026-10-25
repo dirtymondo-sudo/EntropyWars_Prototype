@@ -2560,3 +2560,10 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+
+## THE BLOOD PASS (2026-10-25) — no rule changes
+mondo asked each element to have "a nice amount of spells". Blood already has the full spread, so no rows were added:
+Open Vein T1 (applies Bleed), Hemorrhage T2 / Maul T2 / Claw Sweep T2 (apply Grievous), Death Roll T2 (Root), Arterial
+Spray T3 (×1.5 vs Bleed, applies nothing), Life Sap T3 (×1.5 vs Poison/Grievous), Exsanguinate T4 (×1.5 vs Grievous,
+applies nothing), plus Blood Ritual (buff), Summon Blood Rain (weather) and the Sanguine passive. Looks only:
+spells-vfx.md "THE BLOOD PASS".

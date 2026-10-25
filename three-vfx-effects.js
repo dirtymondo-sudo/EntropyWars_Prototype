@@ -21337,7 +21337,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _teleAt = Math.max(80, holdMs - _teleMs);
             var _ttx = params.tx, _tty = params.ty;
             var _teleRing = P.ring, _teleOrb = P.orb, _teleScale = T.orbScale;
-            var _teleOrbOK = _rank >= 2 && !params.mark;
+            var _teleOrbOK = _rank >= 2 && !params.mark && !P.noOrb;   /* noOrb: no closing glass orb either (THE BLOOD PASS) */
             window.setTimeout(function () {
                 if (_suppressed() || !_canSpawn()) return;
                 if (_teleOrbOK) {
@@ -47539,6 +47539,591 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['leechSeed']           = Object.assign({}, SPELL_MAP['leechSeed'], { bolt: 'nvLeechSeed_bolt', impact: 'nvLeechSeed_impact' });
     delete _spell3DGeometry.raceThornlash;   /* the A-F brambles (_afThornlash3D) give way to the new ones */
     /* ═════════ END THE NATURE PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE BLOOD PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable") — blood had no look of its
+       own: the element fell back to the unholy theme, so every blood spell
+       without a recipe flew purple dark-flame bolts and staged a violet orb.
+       ONE LOOK FOR THE ELEMENT: deep crimson, wet glossy STREAMS of blood (a
+       tapered tube that runs along its curve — the _nvVine grower in a blood
+       skin, so it gushes, detaches and drains), the BLOOD SIGIL (a crimson
+       ring of drops round a downward drop) under every Blood Magic cast,
+       crimson blood CRYSTAL spikes, and real gore globs that land and stain
+       the floor (_bloodStainer, the same marks THE GORE leaves).
+       THE GENERIC LAYER: blood gets its own theme (projectiles, aoe bursts),
+       staging archetype + grade (crimson orb, blood-drop motes, a red push
+       on the frame), beam / ribbon colour and a crimson bolt (_bolt_blood)
+       that replaces the purple drain / curse bolts on every blood row — so
+       all 43 blood spells read red, not only the ones below.
+       THE SIGNATURES (Blood Magic family): Open Vein, Hemorrhage, Life Sap,
+       Arterial Spray, Exsanguinate, Blood Ritual, Summon Blood Rain.
+       Visuals only: no row, rule, number or timing changed.
+       Same hook as the P-Z / nature passes (`pzSig` / `pzOwn`): everything
+       rides fire(), which online.js relays, so the guest sees the same blood
+       (RULE #2). Anything at the caster's end (Hemorrhage's thread, Life
+       Sap's / Exsanguinate's return to the caster, the caster's sigil) only
+       draws where the viewer can see that tile (_pzSeen).
+       THE TARGET STAYS: no screen flash, nothing full-screen; the streams are
+       thin, the spikes on the lens side stay short, the jets rise beside /
+       behind the body, so the caster, the target, the hit and the number all
+       read. ═════════════════════════════════════════════════════════════ */
+    var _BD = {
+        blood: 0x8a0614, crimson: 0xc8102e, bright: 0xff2a3c, glow: 0xff3048, hot: 0xffc0c6, dark: 0x3a0207, glob: 0x9a0a16,
+    };
+    /* ── the generic layer: blood is its own element on screen ── */
+    _THEME_MAP.blood = { core: 'blood-drop', trail: 'blood-streak', burst: 'blood-fleck', ring: 'target-ring', glow: _BD.glow };
+    _ELEMENT_THEME.blood = 'blood';
+    _BEAM_COLORS.blood = { core: 0xffd2d8, glow: 0xd8142e };
+    /* noOrb: the blood is the hit — the glass orb shell would swallow the victim the streams and spikes stand round */
+    _STAGE_ARCHETYPES.blood = { orb: 0xd8142e, ring: 0xa00a20, flash: '#ffb8c0', mote: 'blood-drop', glyph: true, slash: false, lineColor: '#ff9aa6', moteTint: 0xff3048, noOrb: true };
+    _STAGE_GRADES.blood = { tint: [1.24, 0.72, 0.74], tintAmt: 0.42, chroma: 2.5 };
+    EFFECTS['_bolt_blood'] = { boltCore: 'blood-drop', boltTrail: 'blood-streak', boltBurst: 'blood-fleck', boltRing: 'target-ring', boltCoreSize: 0.24, boltTrailSize: 0.09, boltBurstCount: 32 };
+    /* a blood row that flew the purple drain / curse / psi bolt flies the crimson one */
+    (function () {
+        var purple = { _bolt_unholy: 1, _bolt_curse: 1, _bolt_psi: 1 };
+        for (var id in SPELL_MAP) {
+            var m = SPELL_MAP[id];
+            if (!m || !purple[m.bolt]) continue;
+            var d = _spellDefFor(id);
+            if (d && d.element === 'blood' && !d.vfxElement) m.bolt = '_bolt_blood';
+        }
+    })();
+
+    /* ── the canvases ── */
+    /* the wet skin of a stream: dark at the edges, crimson in the middle, a glossy highlight running along it */
+    function _bdSkinTex() {
+        var t = _pzTex('bd-skin', 128, 32, function (g, w, h) {
+            var gr = g.createLinearGradient(0, 0, 0, h);
+            gr.addColorStop(0, '#3a0207'); gr.addColorStop(0.35, '#a80a1e'); gr.addColorStop(0.55, '#d0142c'); gr.addColorStop(1, '#4a0309');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.fillStyle = 'rgba(255,200,205,0.55)'; g.fillRect(0, 9, w, 3);
+            g.fillStyle = 'rgba(255,230,232,0.8)';
+            for (var k = 0; k < 5; k++) g.fillRect(k * 26 + 6, 9, 9, 2);
+            g.fillStyle = 'rgba(40,0,4,0.45)';
+            for (var j = 0; j < 7; j++) { g.beginPath(); g.ellipse(j * 19 + 8, 22 + (j % 3) * 2, 6, 2, 0, 0, Math.PI * 2); g.fill(); }
+        });
+        t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 1);
+        return t;
+    }
+    /* THE BLOOD SIGIL: two rings, a ring of falling drops between them, drips running in, a downward drop in a
+       triangle at the heart — drawn white, worn crimson */
+    function _bdSigilTex() {
+        return _pzTex('bd-sigil', 512, 512, function (g, w, h) {
+            var c = 256; g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineCap = 'round'; g.lineJoin = 'round';
+            g.lineWidth = 14; g.beginPath(); g.arc(c, c, 236, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 5; g.beginPath(); g.arc(c, c, 214, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 8; g.beginPath(); g.arc(c, c, 150, 0, Math.PI * 2); g.stroke();
+            function drop(x, y, s, rot) {
+                g.save(); g.translate(x, y); g.rotate(rot); g.beginPath(); g.moveTo(0, -s * 1.5);
+                g.bezierCurveTo(s * 0.35, -s * 0.6, s, -s * 0.1, s, s * 0.35); g.arc(0, s * 0.35, s, 0, Math.PI); g.bezierCurveTo(-s, -s * 0.1, -s * 0.35, -s * 0.6, 0, -s * 1.5);
+                g.fill(); g.restore();
+            }
+            for (var i = 0; i < 16; i++) { var a = i / 16 * Math.PI * 2; drop(c + Math.cos(a) * 184, c + Math.sin(a) * 184, i % 2 ? 11 : 17, a - Math.PI / 2); }
+            /* drips: from the inner ring toward the heart */
+            g.lineWidth = 8;
+            for (var k = 0; k < 8; k++) {
+                var b = k / 8 * Math.PI * 2 + 0.2, r0 = 150, r1 = 150 - (34 + (k * 13) % 30);
+                g.beginPath(); g.moveTo(c + Math.cos(b) * r0, c + Math.sin(b) * r0); g.lineTo(c + Math.cos(b) * r1, c + Math.sin(b) * r1); g.stroke();
+                g.beginPath(); g.arc(c + Math.cos(b) * (r1 - 6), c + Math.sin(b) * (r1 - 6), 7, 0, Math.PI * 2); g.fill();
+            }
+            /* the heart: a triangle pointing down, a drop inside it */
+            g.lineWidth = 9; g.beginPath();
+            for (var t = 0; t < 3; t++) { var ta = Math.PI / 2 + t * Math.PI * 2 / 3, tx = c + Math.cos(ta) * 82, ty = c + Math.sin(ta) * 82; if (t) g.lineTo(tx, ty); else g.moveTo(tx, ty); }
+            g.closePath(); g.stroke();
+            drop(c, c - 2, 22, 0);
+        });
+    }
+
+    /* ── materials (every one starts at opacity 0; the signature fades it) ── */
+    function _bdMat() { var m = _pzSolid(0xffffff, _bdSkinTex()); m.vertexColors = true; return m; }
+    function _bdCrystalMat() { var m = _pzSolid(0xe0283c); m.vertexColors = true; return m; }
+    var _bdSpikeGeoC = {};
+    function _bdSpikeGeo(ts) {
+        var k = Math.round(ts);
+        if (_bdSpikeGeoC[k]) return _bdSpikeGeoC[k];
+        var g = new THREE.ConeGeometry(ts * 0.075, ts * 0.8, 5); g.translate(0, ts * 0.4, 0); _nvBake(g, 0.42);
+        return (_bdSpikeGeoC[k] = g);
+    }
+
+    /* ── the kit ── */
+    /* THE BLOOD SIGIL on the floor at a frame-local point: a crimson line drawing (normal blend, it reads on bright
+       floors) and an additive glow copy over it. set(op, rot, scale) drives both. */
+    function _bdSigil(F, ox, oy, oz, size) {
+        var tex = _bdSigilTex();
+        var a = _pzMesh(new THREE.PlaneGeometry(size, size), _pzSolid(_BD.crimson, tex, { side: THREE.DoubleSide, depthWrite: false }), F.g, ox, oy + F.ts * 0.03, oz);
+        var b = _pzMesh(new THREE.PlaneGeometry(size * 1.04, size * 1.04), _pzGlow(_BD.glow, tex), F.g, ox, oy + F.ts * 0.034, oz);
+        var halo = _pzMesh(new THREE.PlaneGeometry(size * 1.25, size * 1.25), _pzGlow(_BD.blood, _sigGlowTex()), F.g, ox, oy + F.ts * 0.026, oz);
+        a.rotation.x = b.rotation.x = halo.rotation.x = -Math.PI / 2;
+        return {
+            set: function (op, rot, s) {
+                a.material.opacity = op; b.material.opacity = 0.8 * op; halo.material.opacity = 0.4 * op;
+                a.rotation.z = b.rotation.z = rot || 0;
+                var sc = s != null ? s : 1; a.scale.setScalar(sc); b.scale.setScalar(sc); halo.scale.setScalar(sc);
+            },
+        };
+    }
+    /* ONE STREAM of blood along pts (frame-local): thick at the first point, thin at the last, grows with grow(k0, k1)
+       like a vine — k1 rising gushes it out, k0 rising detaches it from where it came from */
+    function _bdStream(parent, pts, ts, r0, r1, mat, o) {
+        o = o || {};
+        return _nvVine(parent, pts, { ts: ts, r0: r0, r1: r1, segs: o.segs || 36, radial: o.radial || 6, mat: mat, lo: 0.5, tip: o.tip === false ? null : _BD.glow });
+    }
+    /* n gore globs from a frame-local point; they land and stain like THE GORE's (o: ang + spread (radians, else all
+       round), sp0/sp1 speed, vz0/vz1 lift, s0 size, g gravity, stretch, marks / markMs = how many stains, how long) */
+    function _bdGlobs(F, ox, oy, oz, n, o) {
+        if (!_canSpawn() || n <= 0) return;
+        o = o || {};
+        var dens = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 0.55 : 1;
+        n = Math.max(1, Math.round(n * dens));
+        var stain = _bloodStainer(o.marks != null ? o.marks : Math.ceil(n * 0.6), o.markMs || 7000);
+        for (var i = 0; i < n; i++) {
+            var a = o.ang != null ? o.ang + rn(-(o.spread || 0.6), o.spread || 0.6) : rn(0, 6.2832), sp = rn(o.sp0 != null ? o.sp0 : 50, o.sp1 || 150), s0 = o.s0 || 4;
+            _pzP(F, ox + rn(-3, 3), oy + rn(-3, 3), oz + rn(-3, 3), {
+                sprite: 'blood-glob', globColor: o.color != null ? o.color : _BD.glob, stretch: !!o.stretch,
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(o.vz0 != null ? o.vz0 : 40, o.vz1 != null ? o.vz1 : 160),
+                ml: rn(1100, 1600), gravity: o.g || 760, drag: o.drag != null ? o.drag : 0.15,
+                size0: rn(s0, s0 * 1.7), size1: rn(s0 * 0.6, s0), opacity0: 1, opacity1: 0.9,
+                floorAt: stain.floorAt, onLand: stain.onLand });
+        }
+    }
+    /* a splat that stays on the floor under a frame-local point */
+    function _bdSplat(F, ox, oz, size, ms) {
+        if (!_canSpawn()) return;
+        var x = F.c.x + ox, y = F.c.y + oz, z = _bloodStainer(1, ms || 6000).floorAt(x, y);
+        if (z == null) return;   /* off the board */
+        _spawn({ x: x, y: y, z: z + 1 + Math.random() * 0.6, mode: 'world', sprite: 'blood-splat', size0: size * 0.5, size1: size, sizeEaseOut: 8,
+            ml: ms || 6000, opHold: 0.75, opacity0: 0.8, opacity1: 0, spriteRot: rn(0, 360), decor: true });
+    }
+    /* the frame-local angle (board plane) of a direction (ux, uz) — what _bdGlobs aims with */
+    function _bdAng(ux, uz) { return Math.atan2(uz, ux); }
+    /* a crimson glow that swells on a body (the blood under the skin answering) */
+    function _bdPulse(parent, ts, y, size) { var s = _pzSpr(_BD.glow, ts * (size || 0.9), parent); s.position.y = y; return s; }
+    /* can the viewer see the caster? A fog-clamped bolt origin (battle.js moves a hidden shooter's origin 1.5 tiles off the
+       victim, off the grid) counts as unseen, so nothing is drawn on an empty spot that would point at it */
+    function _bdSeen(from) { return from && from.x === Math.round(from.x) && from.y === Math.round(from.y) && _pzSeen(from.x, from.y); }
+    /* THE LENS CUT: the part of a stream that would fill the screen is not drawn — within two tiles of the camera, or
+       so close (or under so long a lens) that the tube would be thicker than 5% of the frame. A stream running back
+       into a caster the spell camera looks at would otherwise cover the shot. Returns lens() → { lo, hi }: grow the
+       stream inside [lo, hi] — lo past the big run at the start, hi short of the big run at the end. Checked every
+       tick, the spell camera moves. r0 / r1 = the stream's radius at its two ends. */
+    function _bdLens(F, s, r0, r1, n) {
+        n = n || 16; var pts = [], out = { lo: 0, hi: 1 };
+        for (var i = 0; i <= n; i++) pts.push(s.point(i / n));
+        function big(i, cx, cy, cz, k) {
+            var P = pts[i], d = Math.hypot(P.x - cx, P.y - cy, P.z - cz);
+            return d < F.ts * 2 || (r0 + (r1 - r0) * i / n) / Math.max(1, d * k) > 0.05;
+        }
+        return function () {
+            out.lo = 0; out.hi = 1;
+            var cam = _pzCam(); if (!cam) return out;
+            var cx = cam.position.x - F.wp.x, cy = cam.position.y - F.wp.y, cz = cam.position.z - F.wp.z, i;
+            var k = Math.tan(((cam.fov || 50) * Math.PI / 180) / 2) / (cam.zoom || 1);
+            for (i = 0; i <= n; i++) { if (!big(i, cx, cy, cz, k)) break; out.lo = Math.min(1, (i + 1) / n); }
+            for (i = n; i >= 0; i--) { if (!big(i, cx, cy, cz, k)) break; out.hi = Math.max(0, (i - 1) / n); }
+            return out;
+        };
+    }
+    /* clamp a grow(k0, k1) pair into the lens window */
+    function _bdGrowL(s, L, k0, k1, tip) { var w = L(); s.grow(Math.max(k0, w.lo), Math.min(k1, w.hi), w.hi < 1 && k1 > w.hi ? 0 : tip); }
+    /* a bolt the signature owns lands its impact def (layers + signature) at flyMs — _nvLand, with the bolt's origin
+       handed on so the impact knows where the caster stands */
+    function _bdLand(spellId, p, ms) {
+        var m = SPELL_MAP[spellId], d = m && m.impact && EFFECTS[m.impact];
+        if (!d || p.toX == null) return;
+        var q = { tx: p.toX, ty: p.toY, fromX: p.fromX, fromY: p.fromY };
+        _fxDelay(function () {
+            if (_suppressed() || _catOff('spells')) return;
+            if (d.layers && d.layers.length) _spawnEffect(d, { tx: q.tx, ty: q.ty });
+            if (d.pzSig && _PZ_SIGS[d.pzSig]) try { _PZ_SIGS[d.pzSig](q, spellId, 'impact', d); } catch (e) {}
+        }, ms);
+    }
+    /* the crimson bolt, drawn by the signature so the landing runs the impact's own signature too */
+    EFFECTS['bdBolt'] = _pzDef('bdBolt', { pzOwn: true });
+    _PZ_SIGS.bdBolt = function (p, id) {
+        if (p.toX == null || p.fromX == null) return;
+        fireBoltDirect('_bolt_blood', p);
+        var ms = p.flyMs > 0 ? p.flyMs : Math.max(180, Math.hypot(p.toX - p.fromX, p.toY - p.fromY) * (_cfg().tileSize || 128) / 600 * 1000);
+        _bdLand(id, p, ms);
+    };
+
+    /* ════ OPEN VEIN — a sickle of blood spins out of the caster's hand, cuts across the victim and opens the vein:
+       two arterial jets spurt out of the far side (away from the cut, like THE GORE), land and stain. ════ */
+    EFFECTS['bdOpenVein_bolt'] = _pzDef('bdVeinBlade', { pzOwn: true });
+    EFFECTS['bdOpenVein_impact'] = Object.assign({}, EFFECTS['raceOpenVein_impact'] || { layers: [] }, { pzSig: 'bdOpenVein' });
+    function _bdSickle(ts) {
+        var g = new THREE.Group(), geo = new THREE.TorusGeometry(ts * 0.2, ts * 0.024, 5, 20, Math.PI * 1.05); _nvBake(geo, 0.55);
+        var body = _pzMesh(geo, _bdCrystalMat(), g), glow = _pzMesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.05, 4, 20, Math.PI * 1.05), _pzGlow(_BD.glow), g);
+        g.rotation.x = -Math.PI / 2 + 0.35;
+        return { g: g, body: body, glow: glow };
+    }
+    _PZ_SIGS.bdVeinBlade = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 300, ts = _worldPos(tx, ty).ts, S = _bdSickle(ts);
+        _bdLand(id, p, ms);
+        return _pzFly(fx, fy, tx, ty, S.g, { ms: ms, arc: 0.06, h0: ts * 0.62, h1: ts * 0.62, face: false, hideOnLand: true,
+            trail: { sprite: 'blood-drop', every: 22, size: 7 },
+            spin: function (el, obj, t) {
+                var seen = _pzSeen(Math.round(fx + (tx - fx) * t), Math.round(fy + (ty - fy) * t));
+                S.g.rotation.z = el * 0.035; S.body.material.opacity = seen && t < 1 ? 1 : 0; S.glow.material.opacity = seen && t < 1 ? 0.55 : 0;
+            } });
+    };
+    _PZ_SIGS.bdOpenVein = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), mat = _bdMat(), cd = _nbCamDir(F);
+        /* the jets leave away from the cut (THE GORE's rule) but swing across the lens's view, never straight behind the
+           body where the camera over the caster's shoulder would lose them */
+        var px = -cd.z, pz = cd.x; if (px * -ln.ux + pz * -ln.uz < 0) { px = -px; pz = -pz; }
+        var bx = -ln.ux * 0.45 + px * 0.9, bz = -ln.uz * 0.45 + pz * 0.9, bl = Math.max(0.01, Math.hypot(bx, bz)); bx /= bl; bz /= bl;
+        var sx = -bz, sz = bx;
+        var sig = _bdSigil(F, 0, 0, 0, ts * 1.5);
+        /* the cut: a bright crimson crescent swept across the chest, square to the caster's line */
+        var cutG = new THREE.TorusGeometry(ts * 0.34, ts * 0.016, 4, 22, Math.PI * 0.75);
+        var cut = _pzMesh(cutG, _pzGlow(_BD.hot), F.g, 0, ts * 0.6, 0), cut2 = _pzMesh(new THREE.TorusGeometry(ts * 0.34, ts * 0.04, 4, 22, Math.PI * 0.75), _pzGlow(_BD.glow), F.g, 0, ts * 0.6, 0);
+        cut.rotation.set(0, Math.atan2(ln.ux, ln.uz) + Math.PI / 2, -0.9); cut2.rotation.copy(cut.rotation);
+        /* two pulses out of the vein, the second a little lower and shorter */
+        var jets = [];
+        for (var j = 0; j < 2; j++) {
+            var reach = ts * (1.05 - 0.25 * j), lift = ts * (0.18 - 0.06 * j), side = (j ? -0.12 : 0.1) * ts;
+            var pts = [new THREE.Vector3(bx * ts * 0.12 + sx * side * 0.3, ts * 0.58, bz * ts * 0.12 + sz * side * 0.3),
+                new THREE.Vector3(bx * reach * 0.4 + sx * side, ts * 0.58 + lift, bz * reach * 0.4 + sz * side),
+                new THREE.Vector3(bx * reach * 0.78 + sx * side * 1.4, ts * 0.38, bz * reach * 0.78 + sz * side * 1.4),
+                new THREE.Vector3(bx * reach + sx * side * 1.6, ts * 0.03, bz * reach + sz * side * 1.6)];
+            jets.push({ s: _bdStream(F.g, pts, ts, ts * 0.05, ts * 0.018, mat, { segs: 28 }), t0: 60 + j * 300, end: pts[3], landed: false });
+        }
+        var spurt = false;
+        return _sigRunOwned(F.g, 1100, function (el) {
+            sig.set(_pzEnv(el, 0, 90, 600, 1000), el * 0.0012, 0.8 + 0.2 * _sigEaseOutCubic(_sigClamp01(el / 200)));
+            var ck = _sigClamp01(el / 110);
+            cut.rotation.z = cut2.rotation.z = -0.9 + 1.3 * ck;
+            cut.material.opacity = 0.95 * _pzEnv(el, 0, 30, 200, 380); cut2.material.opacity = 0.6 * _pzEnv(el, 0, 30, 200, 380);
+            mat.opacity = el < 1060 ? 1 : 0;
+            for (var i = 0; i < jets.length; i++) {
+                var J = jets[i], e = el - J.t0;
+                if (e < 0) { J.s.grow(0, 0); continue; }
+                var k1 = _sigEaseOutCubic(_sigClamp01(e / 170)), k0 = _sigEaseInCubic(_sigClamp01((e - 150) / 260));
+                J.s.grow(k0, k1, 0.8 * (1 - k0));
+                if (!J.landed && e >= 170) {
+                    J.landed = true;
+                    _bdGlobs(F, J.end.x, J.end.y + 4, J.end.z, 7, { ang: _bdAng(bx, bz), spread: 0.9, sp0: 30, sp1: 90, vz0: 40, vz1: 110, s0: 3.5 });
+                    _bdSplat(F, J.end.x, J.end.z, ts * 0.42, 7000);
+                }
+            }
+            if (!spurt) { spurt = true; _bdGlobs(F, 0, ts * 0.6, 0, 6, { ang: _bdAng(bx, bz), spread: 0.5, sp0: 120, sp1: 220, vz0: 30, vz1: 110, stretch: true, s0: 3 }); }
+        });
+    };
+
+    /* ════ HEMORRHAGE — a taut thread of blood shoots from the caster's hand into the victim and yanks; the sigil
+       opens under it and the blood bursts out of the body from the inside: streams run out of the chest in every
+       direction, splash down and stain. The wounds stay open (Grievous). ════ */
+    EFFECTS['bdHemorrhage_bolt'] = _pzDef('bdThread', { pzOwn: true });
+    EFFECTS['bdHemorrhage_impact'] = _pzDef('bdHemorrhage', { layers: [
+        { sprite: 'flash', ml: 120, size0: 50, size1: 14, tint: 0xff8a96, opacity0: 0.7, z: 50 },
+        { count: 3, sprite: 'blood-mist', ml: [500, 800], offsetXY: 8, z: [40, 70], size0: [14, 20], size1: [34, 46], opacity0: 0.55 },
+    ] });
+    _PZ_SIGS.bdThread = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(200, p.flyMs > 0 ? p.flyMs : 320);
+        _bdLand(id, p, ms);
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty), see = _bdSeen({ x: fx, y: fy }), mat = _bdMat();
+        /* a fogged caster: the thread comes out of the dark a tile short of the victim */
+        var A = see ? new THREE.Vector3(ln.dx - ln.ux * ts * 0.22, ln.dy + ts * 0.62, ln.dz - ln.uz * ts * 0.22)
+                    : new THREE.Vector3(ln.ux * ts * 1.1, ts * 0.6, ln.uz * ts * 1.1);
+        var B = new THREE.Vector3(ln.ux * ts * 0.1, ts * 0.58, ln.uz * ts * 0.1), M = A.clone().lerp(B, 0.5); M.y += ts * 0.12;
+        var th = _bdStream(F.g, [A, M, B], ts, ts * 0.018, ts * 0.012, mat, { segs: 30 }), thL = _bdLens(F, th, ts * 0.018, ts * 0.012);
+        if (see) { var hand = _bdPulse(F.g, ts, A.y, 0.45); hand.position.x = A.x; hand.position.z = A.z; }
+        return _sigRunOwned(F.g, ms + 360, function (el) {
+            mat.opacity = 1;
+            var k1 = _sigEaseOutCubic(_sigClamp01(el / (ms * 0.85))), k0 = _sigEaseInCubic(_sigClamp01((el - ms) / 300));
+            _bdGrowL(th, thL, k0, k1, 0.9 * (1 - k0));
+            if (hand) hand.material.opacity = 0.6 * _pzEnv(el, 0, 60, ms * 0.6, ms + 100);
+        });
+    };
+    _PZ_SIGS.bdHemorrhage = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), mat = _bdMat(), sig = _bdSigil(F, 0, 0, 0, ts * 2.1), glow = _bdPulse(F.g, ts, ts * 0.58, 1.0);
+        var streams = [];
+        for (var i = 0; i < 7; i++) {
+            var a = i / 7 * Math.PI * 2 + 0.35, ca = Math.cos(a), sa = Math.sin(a);
+            /* a stream toward the lens stays short and low, so it never hides the body */
+            var front = (ca * cd.x + sa * cd.z) > 0.4, R = ts * (front ? 0.62 : 1.0 + 0.15 * (i % 2)), up = ts * (front ? 0.04 : 0.28);
+            var pts = [new THREE.Vector3(ca * ts * 0.08, ts * 0.6, sa * ts * 0.08), new THREE.Vector3(ca * R * 0.42, ts * 0.66 + up, sa * R * 0.42),
+                new THREE.Vector3(ca * R * 0.82, ts * 0.36, sa * R * 0.82), new THREE.Vector3(ca * R, ts * 0.03, sa * R)];
+            streams.push({ s: _bdStream(F.g, pts, ts, ts * (front ? 0.032 : 0.046), ts * 0.018, mat, { segs: 26 }), d: (i % 3) * 40, end: pts[3], a: a, landed: false });
+        }
+        var burst = false;
+        return _sigRunOwned(F.g, 1250, function (el) {
+            sig.set(_pzEnv(el, 0, 80, 800, 1200), -el * 0.0015, 0.7 + 0.3 * _sigEaseOutBack(_sigClamp01(el / 260)));
+            glow.material.opacity = 0.6 * _pzEnv(el, 0, 40, 160, 520);
+            mat.opacity = el < 1200 ? 1 : 0;
+            for (var i = 0; i < streams.length; i++) {
+                var S = streams[i], e = el - 40 - S.d;
+                if (e < 0) { S.s.grow(0, 0); continue; }
+                var k1 = _sigEaseOutCubic(_sigClamp01(e / 210)), k0 = _sigEaseInCubic(_sigClamp01((e - 260) / 360));
+                S.s.grow(k0, k1, 0.8 * (1 - k0));
+                if (!S.landed && e >= 210) {
+                    S.landed = true;
+                    _bdGlobs(F, S.end.x, S.end.y + 4, S.end.z, 4, { ang: S.a, spread: 0.8, sp0: 20, sp1: 70, vz0: 30, vz1: 90, s0: 3.5 });
+                    _bdSplat(F, S.end.x, S.end.z, ts * 0.36, 7000);
+                }
+            }
+            if (!burst && el >= 40) { burst = true; _bdGlobs(F, 0, ts * 0.6, 0, 10, { sp0: 70, sp1: 170, vz0: 80, vz1: 200, s0: 3.5 }); }
+        });
+    };
+
+    /* ════ LIFE SAP — the blood is torn out of the victim's chest in one glossy stream that arcs back into the caster;
+       beads of it race along the stream, the caster drinks it in. A fogged caster: the stream runs off into the dark
+       a tile short. ════ */
+    EFFECTS['bdSap_impact'] = _pzDef('bdSap', { layers: [
+        { sprite: 'flash', ml: 140, size0: 60, size1: 16, tint: 0xff7a88, opacity0: 0.6, z: 50 },
+        { count: 2, sprite: 'blood-mist', ml: [500, 800], offsetXY: 6, z: [40, 70], size0: [14, 20], size1: [30, 40], opacity0: 0.5 },
+    ] });
+    /* the engine's six drain hops along the line: a couple of drops each, falling off the stream */
+    EFFECTS['bdSap_hop'] = { layers: [
+        { count: 2, sprite: 'blood-drop', ml: [260, 420], z: [40, 60], offsetXY: 6, vzRange: [-40, 20], gravity: 420, size0: [5, 8], size1: 2, opacity0: 0.95 },
+    ] };
+    /* the return stream target → caster in frame F (o: r0 · r1 · in (ms the gush takes) · hold · drain · wave) */
+    function _bdReturn(F, from, tx, ty, mat, o) {
+        var ts = F.ts, ln = _nrvLine(F, from, tx, ty), see = _bdSeen(from);
+        var T = new THREE.Vector3(ln.ux * ts * 0.08, ts * 0.58, ln.uz * ts * 0.08), C = new THREE.Vector3(ln.dx - ln.ux * ts * 0.1, ln.dy + ts * 0.6, ln.dz - ln.uz * ts * 0.1);
+        var sx = -ln.uz, sz = ln.ux, pts = [], N = 9, arc = Math.min(ts * 0.9, ln.L * 0.28);
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, wv = Math.sin(u * Math.PI * 2) * ts * (o.wave != null ? o.wave : 0.14) * Math.sin(u * Math.PI);
+            var q = T.clone().lerp(C, u); q.y += Math.sin(u * Math.PI) * arc; q.x += sx * wv; q.z += sz * wv; pts.push(q);
+        }
+        var s = _bdStream(F.g, pts, ts, o.r0, o.r1, mat, { segs: Math.max(30, Math.round(ln.L / ts * 16)) });
+        /* a fogged caster: the stream never shows where it goes — it ends a tile out from the victim */
+        var cap = see ? 1 : Math.min(1, ts * 1.15 / Math.max(1, ln.L));
+        return { s: s, cap: cap, see: see, C: C, ln: ln };
+    }
+    _PZ_SIGS.bdSap = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), mat = _bdMat();
+        var R = _bdReturn(F, from, tx, ty, mat, { r0: ts * 0.05, r1: ts * 0.026 }), sig = _bdSigil(F, 0, 0, 0, ts * 1.6), RL = _bdLens(F, R.s, ts * 0.05, ts * 0.026);
+        var beads = [], bp = new THREE.Vector3();
+        for (var b = 0; b < 6; b++) beads.push(_pzSpr(_BD.hot, ts * 0.13, F.g));
+        var cg = R.see ? _bdPulse(F.g, ts, R.C.y, 0.9) : null; if (cg) { cg.position.x = R.C.x; cg.position.z = R.C.z; }
+        var IN = 420, HOLD = 1000, END = 1400, drunk = false, torn = false;
+        return _sigRunOwned(F.g, END + 60, function (el) {
+            sig.set(_pzEnv(el, 0, 90, HOLD, END), el * 0.0014, 1);
+            mat.opacity = el < END ? 1 : 0;
+            var k1 = _sigEaseOutCubic(_sigClamp01(el / IN)) * R.cap, k0 = _sigEaseInCubic(_sigClamp01((el - HOLD) / (END - HOLD - 40))) * R.cap;
+            var w = RL(); k0 = Math.max(k0, w.lo); k1 = Math.min(k1, w.hi);
+            R.s.grow(k0, k1, R.see && w.hi >= 1 ? 0.9 : 0);
+            for (var i = 0; i < beads.length; i++) {
+                var u = ((el * 0.0016) + i / beads.length) % 1, on = el > 120 && el < END - 60 && u > k0 && u < k1;
+                beads[i].material.opacity = on ? 0.9 : 0;
+                if (on) { R.s.point(u, bp); beads[i].position.copy(bp); }
+            }
+            if (cg) cg.material.opacity = 0.65 * _pzEnv(el, IN - 60, IN + 120, END - 200, END + 40);
+            if (!torn) { torn = true; _bdGlobs(F, 0, ts * 0.6, 0, 6, { ang: _bdAng(R.ln.ux, R.ln.uz), spread: 0.7, sp0: 40, sp1: 110, vz0: 60, vz1: 150, s0: 3.5 }); }
+            if (R.see && !drunk && el >= END - 160) {
+                drunk = true;
+                _bdGlobs(F, R.C.x, R.C.y + ts * 0.1, R.C.z, 5, { sp0: 20, sp1: 60, vz0: 40, vz1: 120, s0: 3, marks: 2 });
+            }
+        });
+    };
+
+    /* ════ EXSANGUINATE — the tier IV drain: the sigil locks onto the victim while the spell flies, blood crystal
+       spikes skewer up round it with the hit, then every drop is ripped out — five streams spiral up out of the body
+       into a swelling orb of blood over the victim, which then flies to the caster and bursts into the body. A fogged
+       caster: the orb comes apart into mist over the victim. ════ */
+    EFFECTS['bdExs_bolt'] = _pzDef('bdExsMark', { pzOwn: true });
+    EFFECTS['bdExs_impact'] = _pzDef('bdExsHit', { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 150, size0: 80, size1: 20, tint: 0xff6a7a, opacity0: 0.6, z: 50 },
+        { count: 4, sprite: 'blood-mist', ml: [600, 1000], offsetXY: 14, z: [30, 70], size0: [16, 24], size1: [40, 56], opacity0: 0.55 },
+        { count: 6, anchor: 'floor', sprite: 'rock-debris', ml: [400, 700], offsetXY: 18, z: [4, 12], tint: 0x5a1010, vxRange: 180, vyRange: 180, vzRange: [100, 240], gravity: 520, size0: [5, 8], size1: 3 },
+    ] });
+    var _bdExsAt = {};
+    _PZ_SIGS.bdExsMark = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(280, p.flyMs > 0 ? p.flyMs : 420);
+        _bdExsAt[tx + ',' + ty] = performance.now();
+        _bdLand(id, p, ms);
+        var F = _nrvFrame(tx, ty), ts = F.ts, sig = _bdSigil(F, 0, 0, 0, ts * 2.6), see = _bdSeen({ x: fx, y: fy }), oC = see ? _nvOff(F, fx, fy) : null;
+        var csig = see ? _bdSigil(F, oC.x, oC.y, oC.z, ts * 1.4) : null;
+        /* crimson light rising off the ring */
+        var col = _pzMesh(new THREE.CylinderGeometry(ts * 0.95, ts * 1.1, ts * 1.6, 20, 1, true), _pzGlow(_BD.glow, _sigGlowTex()), F.g, 0, ts * 0.8, 0);
+        return _sigRunOwned(F.g, ms + 260, function (el) {
+            var k = _sigClamp01(el / ms);
+            sig.set(_pzEnv(el, 0, 120, ms + 60, ms + 250), el * (0.001 + 0.004 * k), 0.5 + 0.5 * _sigEaseOutCubic(k));
+            if (csig) csig.set(_pzEnv(el, 0, 80, ms * 0.7, ms), -el * 0.002, 1);
+            col.material.opacity = 0.16 * _pzEnv(el, ms * 0.3, ms, ms + 40, ms + 250); col.rotation.y = el * 0.002;
+        });
+    };
+    _PZ_SIGS.bdExsHit = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var k = tx + ',' + ty, last = _bdExsAt[k]; delete _bdExsAt[k];
+        var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), see = _bdSeen(from);
+        var mat = _bdMat(), cry = _bdCrystalMat(), sg = _bdSpikeGeo(ts);
+        var sig = (!last || performance.now() - last > 2500) ? _bdSigil(F, 0, 0, 0, ts * 2.6) : null;   /* no flight, no mark: the hit brings its own ring */
+        /* the spikes: a ring of blood crystals leaning in; the ones on the lens side stay short */
+        var spikes = [];
+        for (var i = 0; i < 7; i++) {
+            var a = i / 7 * Math.PI * 2 + 0.2, ca = Math.cos(a), sa = Math.sin(a), front = (ca * cd.x + sa * cd.z) > 0.35;
+            var m = _pzMesh(sg, cry, F.g, ca * ts * (front ? 0.62 : 0.5), -ts * 0.02, sa * ts * (front ? 0.62 : 0.5));
+            var h = front ? 0.45 : 1.0 + 0.25 * (i % 3) / 2, lean = front ? 0.55 : 0.32;
+            m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-ca * lean, 1, -sa * lean).normalize());
+            m.scale.set(1, 0.01, 1); spikes.push({ m: m, h: h, d: i * 18, x: m.position.x, z: m.position.z });
+        }
+        /* the orb gathers over the victim; the streams spiral up tight round the body into it, so they never cross the
+           screen between the two units whatever the camera does */
+        var O = new THREE.Vector3(0, ts * 1.75, 0), C = new THREE.Vector3(ln.dx, ln.dy + ts * 0.62, ln.dz);
+        var orb = _pzMesh(new THREE.SphereGeometry(ts * 0.3, 18, 12), mat, F.g, O.x, O.y, O.z); _nvBake(orb.geometry, 0.45); orb.scale.setScalar(0.01);
+        var orbG = _pzSpr(_BD.glow, ts * 1.1, F.g); orbG.position.copy(O);
+        var streams = [];
+        for (var s = 0; s < 5; s++) {
+            var ph = s / 5 * Math.PI * 2, pts = [], N = 12, P0 = new THREE.Vector3(0, ts * 0.6, 0);
+            for (var j = 0; j <= N; j++) {
+                var u = j / N, rr = ts * 0.42 * Math.sin(u * Math.PI) + ts * 0.06, aa = ph + u * Math.PI * 1.8;
+                var q = P0.clone().lerp(O, u); q.x += Math.cos(aa) * rr; q.z += Math.sin(aa) * rr; pts.push(q);
+            }
+            var st = _bdStream(F.g, pts, ts, ts * 0.036, ts * 0.016, mat, { segs: 40 });
+            streams.push({ s: st, L: _bdLens(F, st, ts * 0.036, ts * 0.016), d: s * 45 });
+        }
+        /* then it is drunk: the full orb flies to the caster and bursts into the body (a fogged caster: it comes apart into
+           mist over the victim and never shows where it would have gone) */
+        var UP = 140, RIP = 180, HOLD = 900, FLY = 1150, DROP = 1500, END = 1750, spl = false, burst = false, op = new THREE.Vector3(), cp = null;
+        return _sigRunOwned(F.g, END + 40, function (el) {
+            if (sig) sig.set(_pzEnv(el, 0, 80, HOLD, DROP), el * 0.003, 1);
+            mat.opacity = el < END ? 1 : 0; cry.opacity = el < DROP ? 1 : 0;
+            var melt = _sigEaseInCubic(_sigClamp01((el - HOLD) / 400));
+            for (var i = 0; i < spikes.length; i++) {
+                var S = spikes[i], g = _sigEaseOutBack(_sigClamp01((el - S.d) / UP));
+                S.m.scale.set(1 - 0.5 * melt, Math.max(0.01, S.h * g * (1 - melt)), 1 - 0.5 * melt);
+            }
+            if (!spl && el > UP) {
+                spl = true;
+                for (var q = 0; q < spikes.length; q += 2) _bdGlobs(F, spikes[q].x, ts * 0.1, spikes[q].z, 3, { sp0: 30, sp1: 80, vz0: 120, vz1: 220, s0: 3.5, marks: 2 });
+            }
+            for (var t = 0; t < streams.length; t++) {
+                var R = streams[t], e = el - RIP - R.d;
+                var k1 = _sigEaseOutCubic(_sigClamp01(e / 420)), k0 = _sigEaseInCubic(_sigClamp01((el - HOLD - R.d) / (FLY - HOLD)));
+                _bdGrowL(R.s, R.L, k0, k1, 0.85 * (1 - k0));
+            }
+            var fill = _sigClamp01((el - RIP - 200) / (FLY - RIP - 200)), wob = 1 + 0.06 * Math.sin(el * 0.03);
+            var fq = _sigClamp01((el - FLY) / (DROP - FLY)), fk = see ? fq * fq * (3 - 2 * fq) : 0;
+            op.copy(O).lerp(C, fk); op.y += Math.sin(fk * Math.PI) * ts * 0.6;
+            orb.position.copy(op); orbG.position.copy(op);
+            var osz = el < DROP ? Math.max(0.01, (0.25 + 0.6 * fill) * (1 - 0.35 * fk)) : 0.01;
+            /* a camera over the caster's shoulder: the orb is not drawn in its face */
+            var cam = _pzCam(); if (cam && Math.hypot(cam.position.x - F.wp.x - op.x, cam.position.y - F.wp.y - op.y, cam.position.z - F.wp.z - op.z) < ts * 2) osz = 0.01;
+            orb.scale.set(osz * wob, osz / wob, osz * wob);
+            orbG.material.opacity = el < DROP ? (osz > 0.02 ? 0.5 * fill : 0) : 0.6 * (1 - _sigClamp01((el - DROP) / 250));
+            if (!burst && el >= DROP) {
+                burst = true;
+                if (see) { _bdGlobs(F, C.x, C.y + ts * 0.1, C.z, 10, { sp0: 50, sp1: 140, vz0: 60, vz1: 180, s0: 4, marks: 5 });
+                    var bf = _pzSpr(_BD.hot, ts * 1.1, F.g); bf.position.copy(C); _fxDelay(function () { bf.material.opacity = 0; }, 120);
+                    cp = _bdPulse(F.g, ts, C.y, 1.0); cp.position.x = C.x; cp.position.z = C.z; cp.material.opacity = 0.6;
+                    _sigShockRing3D(from.x, from.y, { color: _BD.glow, r0: ts * 0.2, r1: ts * 1.2, ms: 380, height: ts * 0.1, opacity: 0.6 }); }
+                else { _bdGlobs(F, O.x, O.y, O.z, 10, { sp0: 40, sp1: 120, vz0: 0, vz1: 80, s0: 3.5, marks: 4 });
+                    _nvLeaves(F, O.x, O.y, O.z, 6, { sprite: 'blood-mist', s0: 16, s1: 40, v: 60, vz0: -10, vz1: 30, g: 0, ml0: 600, ml1: 900, op: 0.5 }); }
+            }
+            if (burst && cp) cp.material.opacity = 0.6 * (1 - _sigClamp01((el - DROP) / 240));
+        });
+    };
+
+    /* ════ ARTERIAL SPRAY — the sigil opens over the 3x3 and the ground bleeds: arterial jets gush up out of every
+       tile, arc over beside / behind whoever stands there and splash down, twice, staining the floor. ════ */
+    EFFECTS['bdArterial_tile'] = { layers: [
+        { count: 5, anchor: 'floor', sprite: 'blood-glob', ml: [500, 800], offsetXY: 14, z: [6, 20], vxRange: 80, vyRange: 80, vzRange: [160, 300], gravity: 620, size0: [4, 7], size1: 3, opacity0: 0.95, delayMs: 80 },
+        { anchor: 'floor', mode: 'world', sprite: 'blood-splat', ml: 6000, z: 1, size0: 40, size1: 70, opacity0: 0.75, delayMs: 140 },
+        { count: 2, anchor: 'floor', sprite: 'blood-mist', ml: [500, 800], offsetXY: 12, z: [6, 20], size0: [12, 18], size1: [30, 40], opacity0: 0.45, delayMs: 80 },
+    ] };
+    EFFECTS['bdArterial_aoe'] = _pzDef('bdArterial', { aoeRadius: 1, impactTileEffect: 'bdArterial_tile', shake: 'normal' });
+    _PZ_SIGS.bdArterial = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _nvAoeTiles(id, p, def, _nvRadius(id, 'aoeRadius', 1)), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F), mat = _bdMat();
+        var sig = _bdSigil(F, 0, 0, 0, ts * (A.r * 2 + 1.5)), jets = [];
+        for (var i = 0; i < A.offs.length; i++) {
+            var o = A.offs[i], c = _nvOff(F, tx + o.dx, ty + o.dy), dl = Math.abs(o.dx) + Math.abs(o.dy);
+            /* the jet rises beside the body on the far side from the lens, and splashes down outward */
+            var ol = Math.hypot(o.dx, o.dy), ox = ol ? o.dx / ol : Math.cos(i * 2.4), oz = ol ? o.dy / ol : Math.sin(i * 2.4);
+            for (var pp = 0; pp < 2; pp++) {
+                var side = (pp ? 1 : -1) * 0.28, bx = -cd.x * 0.3 + (-cd.z) * side, bz = -cd.z * 0.3 + cd.x * side;
+                var base = c.clone().add(new THREE.Vector3(bx * ts, -ts * 0.02, bz * ts));
+                var ax = ox * 0.6 + bx * 0.8, az = oz * 0.6 + bz * 0.8, al = Math.max(0.01, Math.hypot(ax, az)); ax /= al; az /= al;
+                var hgt = ts * (0.95 + 0.25 * ((i + pp) % 3) / 2), reach = ts * (0.55 + 0.15 * pp);
+                var pts = [base, base.clone().add(new THREE.Vector3(ax * reach * 0.15, hgt * 0.7, az * reach * 0.15)), base.clone().add(new THREE.Vector3(ax * reach * 0.5, hgt, az * reach * 0.5)),
+                    base.clone().add(new THREE.Vector3(ax * reach * 0.85, hgt * 0.55, az * reach * 0.85)), base.clone().add(new THREE.Vector3(ax * reach, ts * 0.02, az * reach))];
+                jets.push({ s: _bdStream(F.g, pts, ts, ts * 0.075, ts * 0.03, mat, { segs: 30 }), t0: 90 + dl * 70 + pp * 360, end: pts[4], base: base, a: _bdAng(ax, az), landed: false, gushed: false });
+            }
+        }
+        return _sigRunOwned(F.g, 1700, function (el) {
+            sig.set(_pzEnv(el, 0, 120, 1250, 1650), el * 0.0009, 0.75 + 0.25 * _sigEaseOutCubic(_sigClamp01(el / 260)));
+            mat.opacity = el < 1660 ? 1 : 0;
+            for (var j = 0; j < jets.length; j++) {
+                var J = jets[j], e = el - J.t0;
+                if (e < 0) { J.s.grow(0, 0); continue; }
+                var k1 = _sigEaseOutCubic(_sigClamp01(e / 240)), k0 = _sigEaseInCubic(_sigClamp01((e - 200) / 320));
+                J.s.grow(k0, k1, 0.8 * (1 - k0));
+                if (!J.gushed) { J.gushed = true; _bdGlobs(F, J.base.x, J.base.y + 6, J.base.z, 3, { sp0: 10, sp1: 50, vz0: 180, vz1: 300, s0: 3.5, marks: 1 }); }
+                if (!J.landed && e >= 240) {
+                    J.landed = true;
+                    _bdGlobs(F, J.end.x, J.end.y + 4, J.end.z, 4, { ang: J.a, spread: 0.9, sp0: 20, sp1: 70, vz0: 30, vz1: 90, s0: 3.5, marks: 2 });
+                }
+            }
+        });
+    };
+
+    /* ════ BLOOD RITUAL — the caster opens a palm: the sigil burns under the feet, three streams of the caster's own
+       blood spiral up round the body and close into a crimson ring over the head, which sinks down through the body
+       into the ground — the price paid, the strength taken. ════ */
+    EFFECTS['bdRitual_aura'] = _pzDef('bdRitual', { layers: [
+        { count: 3, sprite: 'blood-mist', ml: [600, 900], offsetXY: 10, z: [20, 60], size0: [12, 18], size1: [30, 40], opacity0: 0.4, delayMs: 200 },
+    ] });
+    _PZ_SIGS.bdRitual = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mat = _bdMat(), sig = _bdSigil(F, 0, 0, 0, ts * 1.9), coils = [];
+        for (var i = 0; i < 3; i++) coils.push(_bdStream(F.g, _nvCoil(ts * 0.44, ts * 0.3, ts * 0.04, ts * 1.3, 1.25, i * 2.094, 26), ts, ts * 0.034, ts * 0.016, mat, { segs: 50 }));
+        var ringM = _pzSolid(0xffffff, _bdSkinTex()); ringM.vertexColors = true;
+        var rg = new THREE.TorusGeometry(ts * 0.34, ts * 0.025, 8, 32); _nvBake(rg, 0.5);
+        var ring = _pzMesh(rg, ringM, F.g, 0, ts * 1.35, 0); ring.rotation.x = Math.PI / 2; ring.scale.setScalar(0.01);
+        var ringG = _pzMesh(new THREE.TorusGeometry(ts * 0.34, ts * 0.06, 4, 32), _pzGlow(_BD.glow), F.g, 0, ts * 1.35, 0); ringG.rotation.x = Math.PI / 2;
+        var body = _bdPulse(F.g, ts, ts * 0.6, 1.1);
+        var CUT = 120, UP = 650, CLOSE = 900, SINK = 1500, END = 1800, cut = false, lastD = 0;
+        return _sigRunOwned(F.g, END + 40, function (el) {
+            sig.set(_pzEnv(el, 0, 140, SINK, END), -el * 0.0012, 0.8 + 0.2 * _sigEaseOutCubic(_sigClamp01(el / 260)));
+            mat.opacity = ringM.opacity = el < END ? 1 : 0;
+            if (!cut && el >= CUT) { cut = true; _bdGlobs(F, ts * 0.18, ts * 0.55, 0, 6, { sp0: 20, sp1: 70, vz0: 60, vz1: 140, s0: 3, marks: 3 }); }
+            var k1 = _sigEaseOutCubic(_sigClamp01((el - CUT) / (UP - CUT))), k0 = _sigEaseInCubic(_sigClamp01((el - UP) / (CLOSE - UP + 150)));
+            for (var i = 0; i < coils.length; i++) coils[i].grow(k0, k1, 0.85 * (1 - k0));
+            var form = _sigEaseOutBack(_sigClamp01((el - UP + 80) / 260)), sink = _sigEaseInCubic(_sigClamp01((el - CLOSE) / (SINK - CLOSE)));
+            var y = ts * (1.35 - 1.3 * sink), sc = el < SINK + 40 ? Math.max(0.01, form * (1 + 0.25 * sink)) : 0.01;
+            ring.position.y = ringG.position.y = y; ring.scale.setScalar(sc); ringG.scale.setScalar(sc);
+            ringG.material.opacity = el < SINK + 40 ? 0.45 * form : 0;
+            body.material.opacity = 0.55 * _pzEnv(el, CLOSE + 200, CLOSE + 400, SINK, END);
+            if (el > CLOSE && el < SINK && el - lastD > 80) { lastD = el; var a = rn(0, 6.28); _bdGlobs(F, Math.cos(a) * ts * 0.34, y, Math.sin(a) * ts * 0.34, 1, { sp0: 0, sp1: 10, vz0: -20, vz1: 0, s0: 3, marks: 1 }); }
+        });
+    };
+
+    /* ════ SUMMON BLOOD RAIN — the sigil opens under the caster and a column of blood shoots up into the sky; the rain
+       it brings is the weather's own (three-vfx.js _RAIN_CFG.bloodRain). ════ */
+    EFFECTS['sharedSummonBloodRain_aura'] = Object.assign({}, EFFECTS['sharedSummonBloodRain_aura'] || { layers: [] }, { pzSig: 'bdRainCall' });
+    _PZ_SIGS.bdRainCall = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mat = _bdMat(), sig = _bdSigil(F, 0, 0, 0, ts * 2.2);
+        var col = _bdStream(F.g, [new THREE.Vector3(ts * 0.12, ts * 0.7, 0), new THREE.Vector3(ts * 0.18, ts * 1.6, ts * 0.05), new THREE.Vector3(ts * 0.1, ts * 3.2, -ts * 0.04), new THREE.Vector3(0, ts * 5.5, 0)],
+            ts, ts * 0.06, ts * 0.03, mat, { segs: 40 });
+        var gush = false;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            sig.set(_pzEnv(el, 0, 140, 1100, 1450), el * 0.0015, 1);
+            mat.opacity = el < 1450 ? 1 : 0;
+            var k1 = _sigEaseOutCubic(_sigClamp01((el - 100) / 380)), k0 = _sigEaseInCubic(_sigClamp01((el - 520) / 520));
+            col.grow(k0, k1, 0.9 * (1 - k0));
+            if (!gush && el > 100) { gush = true; _bdGlobs(F, ts * 0.12, ts * 0.7, 0, 6, { sp0: 20, sp1: 80, vz0: 100, vz1: 220, s0: 3.5, marks: 3 }); }
+        });
+    };
+
+    SPELL_MAP['raceOpenVein']       = { bolt: 'bdOpenVein_bolt', impact: 'bdOpenVein_impact' };
+    SPELL_MAP['raceHemorrhage']     = { bolt: 'bdHemorrhage_bolt', impact: 'bdHemorrhage_impact' };
+    SPELL_MAP['lifeDrain']          = Object.assign({}, SPELL_MAP['lifeDrain'], { bolt: 'bdBolt', impact: 'bdSap_impact', drainHop: 'bdSap_hop' });
+    SPELL_MAP['raceExsanguinate']   = { bolt: 'bdExs_bolt', impact: 'bdExs_impact', drainHop: 'bdSap_hop' };
+    SPELL_MAP['raceArterialSpray']  = { aoe: 'bdArterial_aoe' };
+    SPELL_MAP['raceBloodRitual']    = { aura: 'bdRitual_aura' };
+    delete _spell3DGeometry.raceOpenVein;   /* the A-F slash (_afOpenVein3D) gives way to the sickle and the jets */
+    /* ═════════ END THE BLOOD PASS ═════════ */
 
     /* THE SHEET WARM (2026-10-12, mondo: "it will still freeze or dip in FPS at heavy moments like combo spell animations"):
        the spells' canvas sheets were drawn and uploaded in the very frame a spell first used them (sandbox, real WebGPU: ~20
