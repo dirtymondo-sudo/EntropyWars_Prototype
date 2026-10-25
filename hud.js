@@ -2837,7 +2837,8 @@ const EW_BTN_PARTS = [
   ['name', 'Name', 'The action\'s name (always shown)'],
   ['type', 'Type badge', 'HUMAN, TECH, UNHOLY …: drives type advantage'],
   ['elem', 'Element', 'The element icon (🔥, ❄ …)'],
-  ['status', 'Status badges', 'The statuses it applies (BRN, DIS …)'],
+  ['status', 'Status effects', 'The statuses it applies (BRN, DIS …)'],
+  ['mult', 'Status multiplier', 'The bonus against a status (×2 HNT: double damage on a Haunted target)'],
   ['riders', 'Extra targets', 'Random targets, ricochet, forked, splash'],
   ['ups', 'Upgrades', 'The ⚙ upgrade count'],
   ['press', 'Super effective !', 'The green ! (and the red ! / ▼) against the unit you clicked, in the quick action menus'],
@@ -2849,18 +2850,138 @@ const EW_BTN_PARTS = [
   ['reason', 'Why it is greyed', 'No MP, Out of range …'],
   ['shape', 'Area shape', 'The little tiles of its area'],
 ];
-const EW_BTN_ROWS_DEF = 'icon:side,name:top,type:top,elem:top,status:top,riders:top,ups:top,press:bot,power:bot,mp:bot,ap:bot,ends:bot,note:bot,reason:bot,shape:bot';
+const EW_BTN_ROWS_DEF = 'icon:side,name:top,type:top,elem:top,status:top,mult:top,riders:top,ups:top,press:bot,power:bot,mp:bot,ap:bot,ends:bot,note:bot,reason:bot,shape:bot';
 /* a part's allowed rows: the icon may sit beside both rows; the name is always shown */
 function ewBtnRowsOk(id, row) {
   return id === 'icon' ? ['side', 'top', 'bot', 'off'].includes(row) : id === 'name' ? ['top', 'bot'].includes(row) : ['top', 'bot', 'off'].includes(row);
 }
-/* 'part:row,…' → [[part, row], …]: every part once, in order; unknown or bad entries dropped, missing parts at their default */
+/* 'part:row,…' → [[part, row], …]: every part once, in order; unknown or bad entries dropped. A part the saved string
+   lacks (a part added after it was saved: the status multiplier split from the status badges 2026-10-25) sits right
+   after the part before it in the default order, on that part's row, so a saved layout keeps its look */
 function ewBtnRowsParse(str) {
   const seen = {}, list = [];
   const add = (t) => { const [id, row] = String(t).split(':'); if (seen[id] || !EW_BTN_PARTS.some(p => p[0] === id) || !ewBtnRowsOk(id, row)) return; seen[id] = 1; list.push([id, row]); };
   String(str || '').split(',').forEach(add);
-  EW_BTN_ROWS_DEF.split(',').forEach(add);
+  EW_BTN_ROWS_DEF.split(',').forEach((t, n, D) => {
+    const [id, row] = t.split(':'); if (seen[id]) return;
+    const prev = n ? D[n - 1].split(':')[0] : null, at = prev ? list.findIndex(r => r[0] === prev) : -1;
+    if (at < 0) { add(t); return; }
+    const pr = list[at][1], r = (pr !== 'side' && ewBtnRowsOk(id, pr)) ? pr : row;
+    seen[id] = 1; list.splice(at + 1, 0, [id, r]);
+  });
   return list;
+}
+/* THE BADGE LOOKS (2026-10-25, mondo: "let me control the size of the element icon, and the element icons should be the
+   same ones in the unit info panel ... we need consistency. Also let me put the status effect and the status multiplier
+   on different rows, and also change how they look, everything on the spell buttons look like type badges so its hard to
+   tell at a glance, i want to differentiate their looks more. more customization for how spells display on the
+   buttons"): each badge part of a spell button (the Abilities list, every quick action menu, the description bar) has
+   its own look: Look (pill = the game's, box, outline, tag, words only), size, colour, font, words, case. The element is
+   the unit info panel's own art (data.js elementIconUrl: Assets/Icons/elements/<el>.png, the emoji if a file fails) at
+   its own size. The UI Maker's db.ux k* (Spell buttons: how each part looks, on the Unit info panel / Command panels /
+   Quick action list pieces) reach the HUD as window._ewBadgeLook (btnSignal); viewer-local, nothing relayed. A part left
+   at its defaults wears exactly the look it always had (the element: its art, bare). [id, label, key stem, words] */
+const EW_BADGE_PARTS = [
+  ['type', 'Type', 'Type', [['full', 'ANOMALY', 'The whole type'], ['short', 'AN', 'Two letters, the party builder\'s']]],
+  ['elem', 'Element', 'Elem', null],
+  ['status', 'Status effect', 'Stat', [['short', 'BRN', 'The short name'], ['full', 'BURN', 'The whole name'], ['icon', '🔥', 'The status icon'], ['iconshort', '🔥 BRN', 'The icon and the short name']]],
+  ['mult', 'Status multiplier', 'Mult', [['short', '×2 HNT'], ['vs', '×2 vs HNT'], ['full', '×2 vs HAUNTED'], ['icon', '×2 👻', 'The status icon']]],
+  ['riders', 'Extra targets', 'Ride', null],
+  ['ups', 'Upgrades', 'Ups', null],
+];
+/* each part's defaults = the game's look; Size = the words' px (the element: the icon's px) */
+const EW_BADGE_DEF = {
+  type: { look: 'pill', size: 10, words: 'full', kase: 'upper' },
+  elem: { look: 'icon', size: 18, words: '', kase: 'upper' },
+  status: { look: 'pill', size: 9, words: 'short', kase: 'upper' },
+  mult: { look: 'pill', size: 9, words: 'short', kase: 'upper' },
+  riders: { look: 'pill', size: 11, words: '', kase: 'upper' },
+  ups: { look: 'pill', size: 11, words: '', kase: 'upper' },
+};
+const EW_BADGE_LOOKS = [['pill', 'Pill', 'A solid pill in its colour (the game\'s look)'], ['box', 'Box', 'A solid square chip'],
+  ['outline', 'Outline', 'A frame in its colour, the words in its colour, a dark ground'], ['tag', 'Tag', 'A colour bar on its left, a faint wash'],
+  ['text', 'Words only', 'Just the words in its colour, no chip']];
+const EW_ELEM_LOOKS = [['icon', 'Icon', 'The element\'s icon alone, as on the unit info panel'], ['chip', 'Icon on a chip', 'The icon on a chip of the element\'s colour'],
+  ['ring', 'Icon in a ring', 'The icon in a ring of the element\'s colour'], ['iconword', 'Icon + name', 'The icon, then the element\'s name'], ['word', 'Name only', 'The element\'s name in its colour']];
+/* the UI Maker's db.ux keys: k<stem>Look / Size / Col / Font / Words / Case, at the game's look */
+function ewBadgeUxDefs() {
+  const o = {};
+  EW_BADGE_PARTS.forEach(([id, , st, words]) => {
+    const D = EW_BADGE_DEF[id];
+    o['k' + st + 'Look'] = D.look; o['k' + st + 'Size'] = D.size; o['k' + st + 'Col'] = ''; o['k' + st + 'Font'] = ''; o['k' + st + 'Case'] = D.kase;
+    if (words) o['k' + st + 'Words'] = D.words;
+  });
+  return o;
+}
+/* db.ux (through uxOf) → the look the HUD reads (window._ewBadgeLook) */
+function ewBadgeLookFrom(X) {
+  const B = {};
+  EW_BADGE_PARTS.forEach(([id, , st]) => {
+    const g = k => X['k' + st + k];
+    B[id] = { look: g('Look'), size: +g('Size'), col: g('Col') || '', font: g('Font') || '', words: g('Words') || '', kase: g('Case') };
+  });
+  return B;
+}
+/* the type's two letters (party-builder.js PB_TYPE_GLYPH, the same six) */
+const EW_TYPE_SHORT = { human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' };
+let _ewBadgeMemo = { src: undefined, v: null };
+/* a part's look now: null = the game's own (the badge keeps the style it was built with) */
+function _ewBadgeLookOf(part) {
+  const B = window._ewBadgeLook || null;
+  if (_ewBadgeMemo.src !== B) {
+    const v = {};
+    Object.keys(EW_BADGE_DEF).forEach(p => {
+      const D = EW_BADGE_DEF[p], s = (B && B[p]) || {};
+      const L = { look: s.look || D.look, size: +s.size > 0 ? +s.size : D.size, col: s.col || '', font: s.font || '', words: s.words || D.words, kase: s.kase || D.kase };
+      L.game = p !== 'elem' && L.look === D.look && L.size === D.size && !L.col && !L.font && L.words === D.words && L.kase === D.kase;
+      v[p] = L;
+    });
+    _ewBadgeMemo = { src: B, v };
+  }
+  return _ewBadgeMemo.v[part] || null;
+}
+/* a colour that reads as words on the dark buttons: a dark one is lifted toward white */
+function _ewBadgeTextCol(hex) {
+  const m = /^#?([0-9a-f]{6})/i.exec(String(hex || ''));
+  if (!m) return hex || '#cfd6ea';
+  const n = parseInt(m[1], 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  if (lum >= 0.45) return '#' + m[1];
+  const t = Math.min(0.7, (0.45 - lum) * 1.6 + 0.2);
+  r = Math.round(r + (255 - r) * t); g = Math.round(g + (255 - g) * t); b = Math.round(b + (255 - b) * t);
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+/* a badge's style for a look (pill | box | outline | tag | text) in colour col at size px */
+function _ewBadgeStyle(look, col, L) {
+  const s = L.size, pv = Math.max(0, Math.round(s * 0.2)), ph = Math.max(2, Math.round(s * 0.55)), up = L.kase === 'upper';
+  const st = {
+    display: 'inline-flex', alignItems: 'center', gap: Math.max(2, Math.round(s * 0.3)), flexShrink: 0, whiteSpace: 'nowrap',
+    fontFamily: L.font || '"IBM Plex Mono", monospace', fontSize: s, fontWeight: 700, lineHeight: 1.3,
+    letterSpacing: up ? '0.12em' : '0.03em', textTransform: up ? 'uppercase' : 'none',
+  };
+  if (look === 'pill' || look === 'box') {
+    const ink = badgeInk(col);
+    return Object.assign(st, {
+      color: ink, background: col, border: '1px solid rgba(0,0,0,0.55)', padding: pv + 'px ' + ph + 'px', borderRadius: look === 'pill' ? 999 : 2,
+      textShadow: ink === '#ffffff' ? '0 1px 1px rgba(0,0,0,0.6)' : 'none', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5)',
+    });
+  }
+  const tc = _ewBadgeTextCol(col);
+  if (look === 'outline') return Object.assign(st, { color: tc, background: 'rgba(8,7,12,0.78)', border: '1px solid ' + tc, padding: pv + 'px ' + ph + 'px', borderRadius: 3, textShadow: '0 1px 2px rgba(0,0,0,0.85)' });
+  if (look === 'tag') return Object.assign(st, { color: tc, background: tc + '26', borderLeft: '3px solid ' + tc, padding: pv + 'px ' + ph + 'px ' + pv + 'px ' + Math.max(2, Math.round(s * 0.45)) + 'px', borderRadius: 0, textShadow: '0 1px 2px rgba(0,0,0,0.85)' });
+  return Object.assign(st, { color: tc, background: 'none', border: 0, padding: 0, textShadow: '0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.7)' });
+}
+/* a badge's words for its part's Words setting (bd.words carries the choices; the label is the game's) */
+function _ewBadgeWords(bd, L) {
+  const W = bd.words;
+  if (!W) return bd.label;
+  if (bd.part === 'type') return L.words === 'short' ? (W.short || bd.label) : W.full || bd.label;
+  if (bd.part === 'status') return L.words === 'full' ? W.full : L.words === 'icon' ? W.icon : L.words === 'iconshort' ? W.icon + ' ' + W.short : W.short;
+  if (bd.part === 'mult') {
+    const x = '×' + W.mult + ' ';
+    return x + (L.words === 'vs' ? 'vs ' + W.short : L.words === 'full' ? 'vs ' + W.full : L.words === 'icon' ? W.icon : W.short);
+  }
+  return bd.label;
 }
 let _ewBtnRowsMemo = { k: null, v: null };
 function _ewBtnRowsNow() {
@@ -2915,9 +3036,32 @@ function _hrlgBadgeIcon(bd) {
     : null;
 }
 function _hrlgBadgeEl(bd, k) {
-  return bd.plain
-    ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
-    : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
+  if (bd.plain) return h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label);
+  const L = bd.part ? _ewBadgeLookOf(bd.part) : null;
+  if (bd.part === 'elem' && bd.el && L) return _ewElemBadgeEl(bd, k, L);
+  if (!L || L.game || !bd.col) return h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
+  return h('span', { key: k, className: 'hrlg-bd ' + L.look, style: _ewBadgeStyle(L.look, L.col || bd.col, L), title: bd.title || undefined }, _ewBadgeWords(bd, L));
+}
+/* THE ELEMENT on a spell button: the unit info panel's own icon (data.js elementIconUrl), the emoji if the file fails */
+function _ewElemBadgeEl(bd, k, L) {
+  const s = Math.max(8, L.size), col = L.col || bd.col, emo = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[bd.el]) || bd.label, word = L.kase === 'upper' ? bd.el.toUpperCase() : bd.el.charAt(0).toUpperCase() + bd.el.slice(1);
+  const url = typeof elementIconUrl === 'function' ? elementIconUrl(bd.el) : null;
+  const img = url
+    ? h(React.Fragment, { key: 'i' },
+        h('img', {
+          className: 'ew-elicon hrlg-elimg', src: url, alt: bd.el, draggable: false, style: { width: s, height: s, margin: 0, verticalAlign: 'middle', flex: 'none' },
+          onError: (e) => { const im = e.currentTarget; im.style.display = 'none'; if (im.nextSibling) im.nextSibling.style.display = ''; },
+        }),
+        h('span', { style: { display: 'none', fontSize: Math.round(s * 0.8), lineHeight: 1 } }, emo))
+    : h('span', { key: 'i', style: { fontSize: Math.round(s * 0.8), lineHeight: 1 } }, emo);
+  const tx = (fs) => h('span', { key: 'w', style: { fontFamily: L.font || '"IBM Plex Mono", monospace', fontSize: fs, fontWeight: 700, letterSpacing: L.kase === 'upper' ? '0.12em' : '0.03em', color: _ewBadgeTextCol(col), textShadow: '0 1px 2px rgba(0,0,0,0.9)' } }, word);
+  const box = { display: 'inline-flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'nowrap', lineHeight: 1 };
+  const t = bd.title || undefined, cls = 'hrlg-bd hrlg-elem ' + L.look;
+  if (L.look === 'chip') return h('span', { key: k, className: cls, title: t, style: Object.assign(box, { background: col, border: '1px solid rgba(0,0,0,0.55)', borderRadius: 999, padding: Math.max(1, Math.round(s * 0.08)) + 'px ' + Math.max(2, Math.round(s * 0.3)) + 'px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5)' }) }, img);
+  if (L.look === 'ring') return h('span', { key: k, className: cls, title: t, style: Object.assign(box, { justifyContent: 'center', border: Math.max(1, Math.round(s * 0.1)) + 'px solid ' + col, borderRadius: '50%', padding: Math.max(1, Math.round(s * 0.1)), background: 'rgba(8,7,12,0.7)' }) }, img);
+  if (L.look === 'iconword') return h('span', { key: k, className: cls, title: t, style: Object.assign(box, { gap: Math.max(2, Math.round(s * 0.25)) }) }, img, tx(Math.max(7, Math.round(s * 0.55))));
+  if (L.look === 'word') return h('span', { key: k, className: cls, title: t, style: box }, tx(Math.max(7, Math.round(s * 0.6))));
+  return h('span', { key: k, className: cls, title: t, style: box }, img);
 }
 /* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): a basic attack's odds to
    land on `target` in whole percent — battle.js getAttackHitChance, the same rolls the swing makes. `from` = the tile a
@@ -3030,7 +3174,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     const L = _ewBtnRowsNow();
     const grp = part => { const l = (b.badges || []).filter(bd => (bd.part || 'type') === part); return l.length ? [h('span', { key: 'bg-' + part, className: 'hrlg-badges' }, l.map(_badgeEl))] : null; };
     const at = { icon: [glyph], name: [h('span', { key: 'nm', className: 'hrlg-blabel', style: { flex: '0 1 auto' } }, b.label)],
-      type: grp('type'), elem: grp('elem'), status: grp('status'), riders: grp('riders'), ups: grp('ups'),
+      type: grp('type'), elem: grp('elem'), status: grp('status'), mult: grp('mult'), riders: grp('riders'), ups: grp('ups'),
       press: P.press ? P.press.slice().reverse() : null, power: P.power, mp: P.mp, ap: P.ap, ends: P.ends, note: P.note, reason: P.reason, shape: P.shape };
     let side = false; const top = [], bot = [];
     L.list.forEach(([id, row]) => {
@@ -3124,6 +3268,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       + (ghost && !dead ? ' ghost' : '')
       + (port ? ' trow' + (port.showMp && port.maxMp > 0 ? ' has-mp' : '') : '')
       + ((rowsLay ? !rowsLay.one : (badgeRow && !port)) ? ' two' : '')
+      + (rowsLay ? ' brows' : '')
       + (sel ? ' sel' : '')
       + (muted ? ' muted' : '')
       + (catVars ? ' catc' : '')
@@ -4398,11 +4543,17 @@ function _hrlgStatusRows(sp) {
   if (sp.enterStatus) push(sp.enterStatus, 'target');
   return rows;
 }
+/* a status's words for THE BADGE LOOKS: its short name, whole name and icon */
+function _hrlgStatusWords(id) {
+  const d = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[id] : null;
+  return { short: _hrlgStatusShort(id), full: _hrlgStatusLabel(id), icon: (d && (d.icon || d.glyph)) || _hrlgStatusShort(id) };
+}
 function _hrlgStatusBadges(sp) {
   const out = [];
   for (const r of _hrlgStatusRows(sp)) {
     const col = _HRLG_SB_COLORS[r.id] || '#777';
     out.push({
+      part: 'status', col, words: _hrlgStatusWords(r.id),
       label: _hrlgStatusShort(r.id),
       style: typeBadgeStyle(col, { fontSize: _HRLG_TYPE_FS - 1, padding: '2px 5px' }),
       title: 'Applies ' + _hrlgStatusLabel(r.id) + (r.dur ? ' (' + r.dur + 't)' : '')
@@ -4416,6 +4567,7 @@ function _hrlgStatusBadges(sp) {
     for (const id of ids) {
       const col = _HRLG_SB_COLORS[id] || '#777';
       out.push({
+        part: 'mult', col, words: Object.assign({ mult }, _hrlgStatusWords(id)),
         label: '×' + mult + ' ' + _hrlgStatusShort(id),
         style: Object.assign(typeBadgeStyle(col, { fontSize: _HRLG_TYPE_FS - 1, padding: '2px 5px' }), { outline: '1px solid #f0d060', outlineOffset: -1 }),
         title: '×' + mult + ' damage against ' + _hrlgStatusLabel(id) + ' targets',
@@ -4483,7 +4635,8 @@ function _hrlgSpellBadges(sp, cat, quick) {
   /* each badge names its part (THE BUTTON ROWS place them): type · elem · status · riders · ups */
   const badges = [];
   if (spellTypeShown(sp)) badges.push({
-    part: 'type',
+    part: 'type', col: TYPE_COLORS[String(sp.spellType).toLowerCase()] || EW.inkMute,
+    words: { full: sp.spellType.toUpperCase(), short: EW_TYPE_SHORT[String(sp.spellType).toLowerCase()] || sp.spellType.slice(0, 2).toUpperCase() },
     label: sp.spellType.toUpperCase(),
     style: typeBadgeStyleFor(sp.spellType, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Spell type — drives type advantage',
@@ -4496,10 +4649,10 @@ function _hrlgSpellBadges(sp, cat, quick) {
     const _elCol = ELEM_BADGE_COLORS[_el] || '#cfd6ea';
     const _elIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_el]) || '';
     const _elCombat = (typeof COMBAT_ELEMENTS !== 'undefined') && COMBAT_ELEMENTS.includes(_el);
-    // Image icon from R2 (data.js ELEMENT_ICON_FILES); the badge renderer
-    // falls back to the emoji glyph if the file 404s (art not uploaded yet).
+    // The spell buttons draw it as the unit info panel's own art (_ewElemBadgeEl: data.js elementIconUrl, the emoji
+    // if the file fails, THE BADGE LOOKS 2026-10-25); label + style stay the emoji chip the party builder / HQ racks read.
     badges.push({
-      part: 'elem', icon: null,
+      part: 'elem', icon: null, el: _el, col: _elCol,
       label: _ELEM_BLADE_GLYPH[_el] || _elIcon || _el.slice(0, 2).toUpperCase(),
       style: Object.assign(typeBadgeStyle(_elCol, { fontSize: 14, padding: '0 5px' }), { lineHeight: '18px', letterSpacing: 0 }),
       title: _el.toUpperCase() + ' · ' + (_elCombat
@@ -4508,14 +4661,14 @@ function _hrlgSpellBadges(sp, cat, quick) {
     });
   }
   // the statuses it applies + the status it punishes
-  for (const bd of _hrlgStatusBadges(sp)) badges.push(Object.assign(bd, { part: 'status' }));
+  for (const bd of _hrlgStatusBadges(sp)) badges.push(bd);   // part 'status' (it applies) / 'mult' (the bonus against one)
   // THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): random victims · a splash round the target
   for (const bd of _hrlgRiderBadges(sp)) badges.push(Object.assign(bd, { part: 'riders' }));
   // ⚙ THE UPGRADES (Phase 5): a derived def (unit.spells holds it) wears its upgrades as one badge — ⚙n, the names on hover
   if (sp && Array.isArray(sp._ups) && sp._ups.length) {
     const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
     badges.push({
-      part: 'ups',
+      part: 'ups', col: '#ffcd6b',
       label: '⚙' + sp._ups.length,
       style: Object.assign(typeBadgeStyle('#ffcd6b', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
       title: 'Upgraded — ' + sp._ups.map(u => (reg[u] && (reg[u].name + (reg[u].desc ? ': ' + reg[u].desc : ''))) || u).join(' · '),
@@ -4528,7 +4681,7 @@ function _hrlgRiderBadges(sp) {
   const rt = (sp && sp.randomTargets && typeof spellRandomTargetsOf === 'function') ? spellRandomTargetsOf(sp) : null;
   const spl = (sp && sp.splash && typeof spellSplashOf === 'function') ? spellSplashOf(sp) : null;
   if (rt) out.push({
-    label: '🎲×' + rt.count,
+    col: '#c9a2ff', label: '🎲×' + rt.count,
     style: Object.assign(typeBadgeStyle('#c9a2ff', { fontSize: 12, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Random targets — no aim: hits ' + rt.count + (rt.distinct ? ' different' : '') + ' random ' + (rt.scope === 'units' ? 'units' : 'enemies') + ' in range' + (rt.mult !== 1 ? ' at ×' + rt.mult + ' damage each' : ''),
   });
@@ -4536,17 +4689,17 @@ function _hrlgRiderBadges(sp) {
   const ric = (sp && sp.ricochetRider && typeof spellRicochetRiderOf === 'function') ? spellRicochetRiderOf(sp) : null;
   const ext = (sp && sp.extraTargets && typeof spellExtraTargetsOf === 'function') ? spellExtraTargetsOf(sp) : null;
   if (ric) out.push({
-    label: '↯ ' + Math.round(ric.mult * 100) + '%',
+    col: '#9ad7ff', label: '↯ ' + Math.round(ric.mult * 100) + '%',
     style: Object.assign(typeBadgeStyle('#9ad7ff', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Ricochet — the hit bounces once to the weakest enemy within ' + ric.radius + ' tiles of the target for ' + Math.round(ric.mult * 100) + '% damage',
   });
   if (ext) out.push({
-    label: '⑂+' + ext.count,
+    col: '#9ad7ff', label: '⑂+' + ext.count,
     style: Object.assign(typeBadgeStyle('#9ad7ff', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Forked — ' + ext.count + ' more ' + (ext.count === 1 ? 'enemy' : 'enemies') + ' in range (the nearest to the target) take ' + Math.round(ext.mult * 100) + '% damage',
   });
   if (spl) out.push({
-    label: 'SPL ' + Math.round(spl.mult * 100) + '%',
+    col: '#ff9d5c', label: 'SPL ' + Math.round(spl.mult * 100) + '%',
     style: Object.assign(typeBadgeStyle('#ff9d5c', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Splash — ' + Math.round(spl.mult * 100) + '% of the hit lands on every ' + (spl.team === 'units' ? 'unit' : 'enemy') + (spl.mask ? ' in the drawn shape' : spl.radius === 1 ? ' adjacent to' : ' within ' + spl.radius + ' tiles of') + ' the target',
   });
@@ -4561,7 +4714,8 @@ function _hrlgRiderBadges(sp) {
 function _hrlgComboTypeBadges(combo, fs) {
   if (!combo) return [];
   return [combo.typeA, combo.typeB].filter(Boolean).map(t => ({
-    part: 'type',
+    part: 'type', col: TYPE_COLORS[String(t).toLowerCase()] || EW.inkMute,
+    words: { full: t.toUpperCase(), short: EW_TYPE_SHORT[String(t).toLowerCase()] || t.slice(0, 2).toUpperCase() },
     label: t.toUpperCase(),
     style: typeBadgeStyleFor(t, { fontSize: fs || _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Combo component type — ' + (combo.name || 'combo'),
@@ -14628,6 +14782,12 @@ const UX_DEF = {
      button whose top row holds only its name keeps one line. One setting for the Abilities list and every quick action
      menu: btnSignal → window._ewBtnRows → HorologeBlade */
   bRows: EW_BTN_ROWS_DEF, bFold: true,
+  /* k* = THE BADGE LOOKS (2026-10-25, mondo: "everything on the spell buttons look like type badges so its hard to tell at a
+     glance, i want to differentiate their looks more"): per badge part (EW_BADGE_PARTS: Type, Elem, Stat, Mult, Ride,
+     Ups) its Look / Size / Col / Font / Words / Case (ewBadgeUxDefs = the game's look); kNameMin = px a spell's name keeps
+     before the badges push it shut (0 = as the game). One setting for the Abilities list, every quick action menu and
+     the description bar: btnSignal → window._ewBadgeLook → hud _hrlgBadgeEl */
+  ...ewBadgeUxDefs(), kNameMin: 0,
   /* THE ARROWS + TILES (2026-10-18, mondo: "i dont really like how the arrows look for spell/move previews ... add a
      section for them and the tile highlights to the ui maker"): w* = the preview arrows (three-renderer.js reads
      window._ewArrowLook, bumped _ewArrowLookV: _arrowLook), t* = the tile highlights (window._ewTileLook, _ewTileLookV:
@@ -15284,9 +15444,9 @@ function sbSignal() {
 /* THE BUTTON ROWS, re-published only when they change (HorologeBlade reads window._ewBtnRows each render) */
 let _btnSent = '';
 function btnSignal() {
-  const X = uxOf(), L = { rows: ewBtnRowsParse(X.bRows).map(r => r.join(':')).join(','), fold: !!X.bFold };
-  const k = JSON.stringify(L); if (k === _btnSent) return;
-  _btnSent = k; window._ewBtnRows = L;
+  const X = uxOf(), L = { rows: ewBtnRowsParse(X.bRows).map(r => r.join(':')).join(','), fold: !!X.bFold }, B = ewBadgeLookFrom(X);
+  const k = JSON.stringify([L, B]); if (k === _btnSent) return;
+  _btnSent = k; window._ewBtnRows = L; window._ewBadgeLook = B;
   try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}   // repaint the HUD with it
 }
 function uxTidy() {
@@ -15604,6 +15764,8 @@ ${MW} .tp-bar-num { left: 50% !important; top: 100% !important; margin: 2px 0 0 
   }
   if (chg('qRowH')) css += `${SUB} .hrlg-blade:not(.trow) { height: ${n('qRowH', 26, 80)}px !important; }\n`;
   if (chg('qRowFont')) css += `${SUB} .hrlg-blabel { font-size: ${n('qRowFont', 10, 28)}px !important; }\n`;
+  /* THE BADGE LOOKS: a spell button's name keeps this much room before its badges push it shut (they clip at the end instead) */
+  if (chg('kNameMin')) css += `${HI}.hrlg-blade.brows .hrlg-blabel { min-width: min(${n('kNameMin', 0, 300)}px, 70%) !important; }\n${HI}.hrlg-blade.brows .hrlg-brow1 { overflow: hidden; }\n`;
   if (X.qShape === 'tall') {   // the old column (as wide as a default list, on its own like the wide card), the small portrait in the name row
     css += `${QP} { display: flex !important; flex-direction: column !important; width: 304px !important; left: 0 !important; right: auto !important; align-self: stretch !important; margin: 0 7px 0 5px !important; }\n${QP} > .hrlg-qp-port { display: none !important; }\n${QP} .hrlg-view-tab .hrlg-tport { display: block !important; }\n${QP} > .hrlg-qstats { grid-template-columns: 1fr 1fr !important; border-left: 0 !important; border-top: 1px solid var(--hfc-faint) !important; padding: 4px 18px 7px 13px !important; }\n${QP} > .hrlg-qelem { margin: 0 14px 6px 13px !important; }\n`;
   } else {
@@ -16282,6 +16444,72 @@ function btnRowsForm(X) {
     + xReset('b', 'Reset the spell buttons');
   return sec('brows', 'Spell buttons: top + bottom row', h, (X.bRows !== UX_DEF.bRows || !X.bFold) ? 'changed' : '');
 }
+/* THE BADGE LOOKS' form (2026-10-25, mondo: "let me control the size of the element icon ... let me put the status effect
+   and the status multiplier on different rows, and also change how they look ... i want to differentiate their looks
+   more"): the element icon's size first, then one badge part at a time (UI.bkPart): its look, size, words, letters,
+   colour, font; a sample of real spell buttons' badges drawn by the HUD's own code (bkPrevHtml); two starting looks
+   (BADGE_LOOK_SETS). The same form (the same db.ux k* keys) sits beside the button rows on Unit info panel, Command
+   panels and Quick action list, so the Abilities list and every quick action menu always change together */
+const BADGE_LOOK_SETS = [
+  ['game', 'The game\'s look', 'Every part back to its pill, its own colour and words (sizes, letters and fonts stay)', {}],
+  ['apart', 'Tell them apart', 'A different look per part: the type a solid pill, the element its bare icon, statuses outlined, the multiplier a gold box (×2 vs HNT), extra targets + upgrades as words',
+    { kStatLook: 'outline', kMultLook: 'box', kMultWords: 'vs', kMultCol: '#f0d060', kRideLook: 'text', kUpsLook: 'text' }],
+];
+const bkWordy = (id, look) => !(id === 'riders' || id === 'ups' || (id === 'elem' && ['icon', 'chip', 'ring'].includes(look)));
+function bkPartChanged(X, st) { return ['Look', 'Size', 'Col', 'Font', 'Words', 'Case'].some(x => { const k = 'k' + st + x; return k in UX_DEF && String(X[k]) !== String(UX_DEF[k]); }); }
+function btnLookForm(X) {
+  const P = EW_BADGE_PARTS.find(p => p[0] === UI.bkPart) || EW_BADGE_PARTS[0], [id, , st, words] = P, k = x => 'k' + st + x, elem = id === 'elem', look = X[k('Look')];
+  let h = fRange('Element icon size', 'kElemSize', 8, 48, 1, +X.kElemSize, 'The element icon on every spell button: the same art as the unit info panel\'s element box');
+  h += `<div class="uim-f"><label>Part</label><div style="flex-wrap:wrap">${EW_BADGE_PARTS.map(([pid, pl, pst]) => `<button class="uim-btn${pid === id ? ' on' : ''}" data-dk="bkpart" data-val="${pid}" title="${esc((EW_BTN_PARTS.find(b => b[0] === pid) || [])[2] || pl)}">${esc(pl)}${bkPartChanged(X, pst) ? ' •' : ''}</button>`).join('')}</div></div>`;
+  h += fSeg('Look', k('Look'), elem ? EW_ELEM_LOOKS : EW_BADGE_LOOKS, look)
+    + fRange(elem ? 'Icon size' : 'Size', k('Size'), elem ? 8 : 6, elem ? 48 : 24, 1, +X[k('Size')], elem ? 'The icon\'s px' : 'The words\' px; the chip grows with them');
+  if (words) h += fSeg('Words', k('Words'), words, X[k('Words')]);
+  if (bkWordy(id, look)) h += fSeg('Letters', k('Case'), [['upper', 'CAPITALS'], ['as', 'As written']], X[k('Case')]);
+  h += fColorOpt(elem ? 'Colour (chip, ring, name)' : 'Colour', k('Col'), X[k('Col')], elem ? '#8fd8ff' : '#f0d060', false, 'Unticked = each badge its own colour (its type, element or status)');
+  if (bkWordy(id, look)) h += fFont('Font', k('Font'), X[k('Font')]);
+  h += `<div class="uim-h">How they look now</div><div class="uim-bkprev">${bkPrevHtml()}</div>`;
+  h += fRange('Name keeps at least', 'kNameMin', 0, 300, 2, +X.kNameMin, 'px a spell\'s name keeps before its badges push it shut (the badges past the end are cut instead); 0 = as the game');
+  h += `<div class="uim-f"><label>Start from</label><div style="flex-wrap:wrap">${BADGE_LOOK_SETS.map(([v, l, tip]) => `<button class="uim-btn" data-dk="bklookset" data-val="${v}" title="${esc(tip)}">${esc(l)}</button>`).join('')}</div></div>`;
+  h += '<div class="uim-note">Every spell button in the Abilities list and in every quick action menu (and the description bar under them) follows these. The element icon is the unit info panel\'s own art. Move the status effects and the status multiplier to their own rows in Spell buttons: top + bottom row.</div>'
+    + xReset('k', 'Reset the badge looks');
+  const any = EW_BADGE_PARTS.some(p => bkPartChanged(X, p[2])) || +X.kNameMin !== UX_DEF.kNameMin;
+  return sec('bklook', 'Spell buttons: how each part looks', xp(h), any ? 'changed' : '');
+}
+/* the sample: up to three real spells that between them wear the most badge parts (the active unit's first, then every
+   race's), drawn by the HUD's own badge code on a button-dark strip */
+let _bkPrevPick = { k: null, v: [] };
+function bkPrevSpells() {
+  const st = window.GAME && window.GAME.state, uid = st && st.phase === 'battle' ? (st._blitzActiveUnitId || st.selectedUnitId) : null;
+  const unit = uid ? (st.units || []).find(u => u.id === uid) : null, key = unit ? unit.id + ':' + (unit.spells || []).length : '-';
+  if (_bkPrevPick.k === key) return _bkPrevPick.v;
+  const pool = [];
+  if (unit) [...(unit.spells || []), ...(unit._raceAbilities || [])].forEach(sp => sp && pool.push(sp));
+  if (typeof RACE_ABILITIES !== 'undefined') Object.keys(RACE_ABILITIES).forEach(r => (RACE_ABILITIES[r] || []).forEach(sp => sp && pool.push(sp)));
+  const parts = sp => { try { return new Set(_hrlgSpellBadges(sp).map(b => b.part)); } catch (e) { return new Set(); } };
+  const got = new Set(), out = [], names = new Set(), cands = pool.slice(0, 900).map(sp => ({ sp, p: parts(sp) }));
+  for (let n = 0; n < 3; n++) {
+    let best = null, bs = 0;
+    cands.forEach(c => { if (names.has(c.sp.name)) return; const nw = [...c.p].filter(x => !got.has(x)).length, s = nw * 10 + c.p.size; if ((nw || !n) && s > bs) { bs = s; best = c; } });
+    if (!best) break;
+    names.add(best.sp.name);
+    out.push(best.sp); best.p.forEach(x => got.add(x));
+  }
+  _bkPrevPick = { k: key, v: out };
+  return out;
+}
+function bkPrevHtml() {
+  const rows = bkPrevSpells().map(sp => {
+    let b = '';
+    try { b = _ewStaticHtml(h('span', { className: 'hrlg-badges' }, _hrlgSpellBadges(sp).map(_hrlgBadgeEl))); } catch (e) { b = ''; }
+    return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 8px;background:#0d0b14;border-left:3px solid #ff5f5f;margin-top:3px"><span style="font-family:'Cormorant SC',serif;font-weight:600;font-size:15px;letter-spacing:0.1em;color:#e8e4d8">${esc(sp.name || '')}</span>${b}</div>`;
+  }).join('');
+  return rows || '<div class="uim-note">No spell to show.</div>';
+}
+function bkPrevRefresh() {
+  const A = UI.live; if (!A || !A.dock) return;
+  const html = bkPrevHtml();
+  A.dock.querySelectorAll('.uim-bkprev').forEach(el => { el.innerHTML = html; });
+}
 function qpStatSizes(X) {
   return fRange('Stat name size (ATK, DEF …)', 'qStatLblSize', 6, 32, 1, +X.qStatLblSize)
     + fRange('Stat number size', 'qStatNumSize', 6, 40, 1, +X.qStatNumSize)
@@ -16361,7 +16589,7 @@ function qpForm() {
   h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 60, 1000, 10, +X.qListH, 'The quick action list takes this height (it hangs under the unit info panel, so only its bottom end moves; the panel stays where it is, and the list never runs past the room below the panel); other lists scroll past it. A Shortest or Tallest below wins over it.')
     + qlistFit(X) + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
     + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names. Untouched, the quick actions stop under the card and a long list scrolls. The Quick action list piece moves, sizes and dresses the quick list on its own.</div>');
-  h += btnRowsForm(X);
+  h += btnRowsForm(X) + btnLookForm(X);
   return h + xReset('q', 'Reset the unit info panel');
 }
 function scoreForm() {
@@ -18257,7 +18485,7 @@ function pieceDetail() {
   if (P.clog) h += clogForm();
   if (P.qp) h += qpForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
-  if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS)
+  if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   h += lookForm(P, L) + wordsForm(P);
   return h + '</div>';
@@ -19496,6 +19724,15 @@ function dockClick(e) {
       qpParts(X).forEach(p => { const q = qpPartsOf(X)[p.id]; if (q && q.hide) return; if (p.id === 'panel' && !(q && +q.w > 0)) return; const sp = qpLiveSpot(X, p); r = Math.max(r, +sp.x + +sp.w); bt = Math.max(bt, +sp.y + +sp.h); });
       if (r > 0 && bt > 0) { snapLayout(true); db.ux.qFreeW = Math.round(r); db.ux.qFreeH = Math.round(bt); uxTidy(); touchLayout(); dockDetail(); }
     }
+    else if (k === 'bkpart') { UI.bkPart = v; dockDetail(); }   // THE BADGE LOOKS: the part the form edits
+    else if (k === 'bklookset') {   // a starting look: every part's Look / Words / Colour from the set (sizes, letters, fonts stay)
+      const S = BADGE_LOOK_SETS.find(x => x[0] === v);
+      if (S) {
+        snapLayout(true); db.ux = db.ux || {};
+        Object.keys(db.ux).forEach(x => { if (/^k[A-Z][a-z]+(Look|Words|Col)$/.test(x)) delete db.ux[x]; });
+        Object.assign(db.ux, S[3]); uxTidy(); touchLayout(); dockDetail();
+      }
+    }
     else if (k === 'brow' || k === 'bmove') {   // THE BUTTON ROWS: a part to another row, or earlier / later on its own
       const [id, w] = v.split(':'), L = ewBtnRowsParse(uxOf().bRows), i = L.findIndex(r => r[0] === id);
       if (i >= 0) {
@@ -19811,6 +20048,7 @@ function dockInput(e) {
     if (k === 'qStatEach' && v) qpFreeze(true);
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
+    if (/^k[A-Z]/.test(k)) bkPrevRefresh();   // THE BADGE LOOKS: the form's sample follows a slider / colour as it moves
     const crit = !!el.closest('[data-sec="fcrit"]');
     if (el.dataset.re && e.type === 'change') dockDetail();
     else {
