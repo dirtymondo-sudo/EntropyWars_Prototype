@@ -40090,7 +40090,7 @@
                     return _promptBarHtml('Select a highlighted tile to move to.', 'ESC cancel');
                 }
                 if (am === 'jump') return _promptBarHtml('Select a highlighted tile to jump to.', 'ESC cancel');
-                if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn.', 'ESC cancel');
+                if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn (a tall face takes a turn per stretch).', 'ESC cancel');
                 if (am === 'attack') {
                     /* a MOVE→ATK pick says it walks first (approachCastFrom: its step's landing) */
                     if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
@@ -54072,7 +54072,7 @@
                             u._guardCounterBonus = 0;
                             u._overwatchArmed = false;
                             u._skippedTurn = false;
-                            const stunned = getActiveStatusKeys(u).some(k => STATUS_DEFS[k]?.blockMove);
+                            const stunned = getActiveStatusKeys(u).some(k => k !== 'climbing' && STATUS_DEFS[k]?.blockMove);   // a climber hangs, it isn't stunned
                             if (stunned) addLog(`${_ctName(u)} is stunned and cannot move!`);
 
                         }
@@ -54698,7 +54698,14 @@
                    roof is completely occupied it waits inside and skips the turn. */
                 /* 🧗 THE CLIMB arrives: a unit that climbed last turn pulls up onto its ledge (or lets go at the foot)
                    before anything else happens on its turn, and keeps the whole turn either way. */
-                if (nextUnit._climb) processClimbArrival(nextUnit);
+                if (nextUnit._climb && processClimbArrival(nextUnit)) {
+                    /* NO FACE IS TOO TALL: the top is still more than a stretch away — this turn was the next stretch up the wall */
+                    nextUnit.ap = 0;
+                    if (typeof window._broadcastState === 'function') { try { window._broadcastState(); } catch (e) {} }
+                    scheduleBoardRender();
+                    window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo || _skipVisuals()) ? 0 : 1300);
+                    return;
+                }
 
                 if (nextUnit._insideBuildingId) {
                     const _emerged = processBuildingEmerge(nextUnit);
@@ -63378,6 +63385,12 @@
                −2 DEF / −2 M.DEF stages. Any damaging hit from a unit, any push / pull, a stun or a freeze knocks it off:
                fall damage for the whole height climbed with the forced threshold 1 (knockOffClimber).
              • climbing DOWN is the same move the other way, offered only where the drop would hurt.
+             • NO FACE IS TOO TALL (2026-10-25, mondo: "There shouldnt be a wall thats too big to climb ... let me climb it in
+               multiple turns ... The whole point of climbing is to not get stuck to a spell like fissure or a bunch of craters"):
+               one turn on the wall covers jump + CLIMB_RULES.capOverJump levels (unit._climb.h = how high it hangs). A taller
+               face takes more turns: each turn that starts with the top still out of reach is spent climbing the next stretch
+               (the hang goes on, the same −DEF / no dodge / knock-off), and the turn after the last stretch pulls up with the
+               whole turn, as before. A knock-off falls from where it hangs (h), not the whole face.
              • never: edge-wall panels, arena rock, building roofs, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers
                that can still fly, a roof over the lane.
            The climber STAYS IN THE FOOT COLUMN (unit.x/y/z = the bottom of the face) — occupancy, reach and every hit
@@ -63430,32 +63443,34 @@
                     if (!unitCanTraverse(unit, nx, ny, has3D ? nz : undefined)) continue;
                     if (getGravityFieldAt(nx, ny) === 'super') continue;
                     const rise = nz - fz;
-                    if (rise > jc && rise <= cap) {
+                    if (rise > jc) {
                         /* 🏢 roofs stay lift-only; a roof over the hang lane stops the climb (Jump's own rule) */
                         const _o = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                         const _r = _o && typeof OBJECT_RULES !== 'undefined' ? OBJECT_RULES[_o] : null;
                         if (_r && _r.roofWalkable) continue;
                         if (typeof columnLaneClear === 'function' && !columnLaneClear(fx, fy, fz, nz)) continue;
                         if (_occ(nx, ny, nz)) continue;
-                        out.push({ x: nx, y: ny, z: nz, dir: 'up', rise, fromX: fx, fromY: fy, fromZ: fz });
-                    } else if (rise < 0 && -rise <= cap) {
+                        out.push({ x: nx, y: ny, z: nz, dir: 'up', rise, cap, turns: Math.ceil(rise / cap), fromX: fx, fromY: fy, fromZ: fz });
+                    } else if (rise < 0) {
                         /* down: only where dropping would hurt (a smaller drop is a free hop) */
                         if (!(typeof predictFallDamage === 'function' && predictFallDamage(unit, fz, nz, nx, ny) > 0)) continue;
                         if (typeof columnLaneClear === 'function' && !columnLaneClear(nx, ny, nz, fz)) continue;
                         if (_occ(nx, ny, nz)) continue;
-                        out.push({ x: nx, y: ny, z: nz, dir: 'down', rise: -rise, fromX: fx, fromY: fy, fromZ: fz });
+                        out.push({ x: nx, y: ny, z: nz, dir: 'down', rise: -rise, cap, turns: Math.ceil(-rise / cap), fromX: fx, fromY: fy, fromZ: fz });
                     }
                 }
             }
             return out;
         }
-        /* What a knock-off would cost: the forced fall (threshold 1) over the whole height. predictFallDamage's
-           threshold is 3, so asking it for rise + 2 levels gives the same (drop − (threshold − 1)) factor = rise. */
+        /* What a knock-off would cost: the forced fall (threshold 1) from where the climb leaves it hanging after this
+           turn (_climbHangH). predictFallDamage's threshold is 3, so asking it for h + 2 levels gives the same
+           (drop − (threshold − 1)) factor = h. */
+        function _climbHangH(c) { return c.dir === 'down' ? c.rise : Math.min(c.rise, c.cap || c.rise); }
         function predictClimbFallDamage(unit, c) {
             if (!unit || !c || typeof predictFallDamage !== 'function') return 0;
             const footX = c.dir === 'down' ? c.x : c.fromX, footY = c.dir === 'down' ? c.y : c.fromY;
             const footZ = c.dir === 'down' ? c.z : c.fromZ;
-            return predictFallDamage(unit, footZ + c.rise + 2, footZ, footX, footY);
+            return predictFallDamage(unit, footZ + _climbHangH(c) + 2, footZ, footX, footY);
         }
         /* Every climb the unit can make this turn: straight from where it stands, or — with 2 AP and no move spent —
            after one walk to the foot of a face (viaMove: that move tile). Short memo: the menu, the board overlay and
@@ -63544,17 +63559,18 @@
                 /* down: the body goes over the edge into the column below and hangs on the face it left */
                 unit.x = c.x; unit.y = c.y; unit.z = c.z;
                 if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
-                unit._climb = { dir: 'down', rise: c.rise, wallX: fromX, wallY: fromY, wallZ: c.fromZ, footX: c.x, footY: c.y, footZ: c.z, round: state.round || 0 };
+                unit._climb = { dir: 'down', rise: c.rise, h: _climbHangH(c), cap: c.cap || c.rise, wallX: fromX, wallY: fromY, wallZ: c.fromZ, footX: c.x, footY: c.y, footZ: c.z, round: state.round || 0 };
                 setUnitFacing(unit, fromX - c.x, fromY - c.y);
             } else {
-                unit._climb = { dir: 'up', rise: c.rise, wallX: c.x, wallY: c.y, wallZ: c.z, footX: unit.x, footY: unit.y, footZ: unit.z ?? 0, round: state.round || 0 };
+                unit._climb = { dir: 'up', rise: c.rise, h: _climbHangH(c), cap: c.cap || c.rise, wallX: c.x, wallY: c.y, wallZ: c.z, footX: unit.x, footY: unit.y, footZ: unit.z ?? 0, round: state.round || 0 };
                 setUnitFacing(unit, c.x - unit.x, c.y - unit.y);
             }
             ensureUnitStatus(unit).climbing = 99;   // the hang lasts until the arrival; _endClimb takes it off
             spendAllAP(unit);   // the climb ends the turn
             const _fall = predictClimbFallDamage(unit, c);
-            addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} — hanging there until their next turn${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
-            showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN ${c.rise}` : `🧗 CLIMB +${c.rise}`, 'buff', { durationMs: 1200 });
+            const _turns = c.turns || 1;
+            addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} — hanging there until their next turn${_turns > 1 ? ` (${_turns} turns on the wall)` : ''}${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
+            showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN ${c.rise}` : (_turns > 1 ? `🧗 CLIMB ${unit._climb.h}/${c.rise}` : `🧗 CLIMB +${c.rise}`), 'buff', { durationMs: 1200 });
             playSfx('moveStep');
             checkStealthReveals(unit);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
@@ -63602,7 +63618,7 @@
             unit._climbKnockSeq = (unit._climbKnockSeq || 0) + 1;   // the renderer's cue: this let-go is a fall (the flail)
             addLog(`🧗 ${_ctName(unit)} is knocked off the wall${why ? ' ' + why : ''}!`);
             showFloatingTextForUnit(unit, '🧗 KNOCKED OFF!', 'debuff', { durationMs: 1100 });
-            const uid = unit.id, rise = c.rise;
+            const uid = unit.id, rise = (c.h != null) ? c.h : c.rise;   // the fall is from where it hangs
             const _land = () => {
                 const u = unitFromId(uid);
                 if (!u || u.dead) return;
@@ -63618,51 +63634,79 @@
         }
 
         /* The arrival, at the start of the climber's next activation (the activation calls this before anything else
-           happens on the turn). Up: the ledge must still be free, within the cap, outside Gravity Crush, with an open
-           lane — else the climber lets go at the foot unhurt. Either way it keeps its whole turn (design §4.5). */
+           happens on the turn). Up: the ledge must still be free, outside Gravity Crush, with an open lane — else the
+           climber lets go at the foot unhurt. Either way it keeps its whole turn (design §4.5).
+           NO FACE IS TOO TALL: while the top (up) or the foot (down) is still more than one stretch away, this turn is
+           the next stretch — the hang goes on and the turn is spent (→ true: the activation ends the unit's turn). */
         function processClimbArrival(unit) {
             const c = unit && unit._climb;
-            if (!c) return;
+            if (!c) return false;
             /* moved by something that didn't knock it off (a swap, a teleport): the hang is over */
-            if (unit.x !== c.footX || unit.y !== c.footY || unit.dead) { _endClimb(unit); return; }
-            _endClimb(unit);
+            if (unit.x !== c.footX || unit.y !== c.footY || unit.dead) { _endClimb(unit); return false; }
+            const fz = unit.z ?? 0;
+            const stretch = Math.max(1, c.cap || getUnitClimbCap(unit, unit.x, unit.y));
             if (c.dir === 'down') {
+                if ((c.h ?? 0) > stretch) return _climbNextStretch(unit, c, Math.max(0, (c.h ?? 0) - stretch));
+                _endClimb(unit);
                 addLog(`🧗 ${_ctName(unit)} climbs down to the foot of the wall.`);
                 showFloatingTextForUnit(unit, '🧗 DOWN', 'neutral', { durationMs: 900 });
                 if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
                 resolveTileArrival(unit, { via: 'climb' });
                 scheduleBoardRender();
-                return;
+                return false;
             }
-            const fz = unit.z ?? 0;
-            const _ok = isInside(c.wallX, c.wallY)
+            const rise = c.wallZ - fz;   // the ground at the foot can have moved under the hang (a closing Fissure)
+            const _face = isInside(c.wallX, c.wallY)
                 && (typeof getWalkableSurfaces !== 'function' || !state.boardColumns?.length || getWalkableSurfaces(c.wallX, c.wallY).includes(c.wallZ))
                 && unitCanTraverse(unit, c.wallX, c.wallY, c.wallZ)
-                && (c.wallZ - fz) <= getUnitClimbCap(unit, unit.x, unit.y)
                 && getGravityFieldAt(c.wallX, c.wallY) !== 'super'
-                && !(typeof columnLaneClear === 'function' && !columnLaneClear(unit.x, unit.y, fz, c.wallZ))
-                && !(() => { const o = unitAt(c.wallX, c.wallY, c.wallZ); return o && o.id !== unit.id; })();
+                && !(typeof columnLaneClear === 'function' && !columnLaneClear(unit.x, unit.y, fz, c.wallZ));
+            const _h = Math.min(c.h ?? c.rise, Math.max(0, rise));
+            if (_face && rise > 0 && _h < rise) return _climbNextStretch(unit, c, Math.min(rise, _h + stretch), rise);
+            _endClimb(unit);
+            const _ok = _face && !(() => { const o = unitAt(c.wallX, c.wallY, c.wallZ); return o && o.id !== unit.id; })();
             if (!_ok) {
                 addLog(`🧗 ${_ctName(unit)} can't pull up onto ${coordLabel(c.wallX, c.wallY)} and drops back to the foot.`);
                 showFloatingTextForUnit(unit, '🧗 BLOCKED', 'neutral', { durationMs: 1000 });
                 scheduleBoardRender();
-                return;
+                return false;
             }
             const fromX = unit.x, fromY = unit.y;
             const _arc = typeof animateJumpArc === 'function' && boardEl && !_skipVisuals();
-            if (_arc) animateJumpArc(unit, fromX, fromY, c.wallX, c.wallY, fz + Math.ceil(c.rise / 2), c.wallZ, 560);
+            if (_arc) animateJumpArc(unit, fromX, fromY, c.wallX, c.wallY, fz + Math.ceil(Math.max(1, rise) / 2), c.wallZ, 560);
             unit.x = c.wallX; unit.y = c.wallY; unit.z = c.wallZ;
             setUnitFacing(unit, c.wallX - fromX, c.wallY - fromY);
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             collectMatDropsAt(unit, unit.x, unit.y);
             if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
             addLog(`🧗 ${_ctName(unit)} pulls up onto the ledge at ${coordLabel(unit.x, unit.y)}!`);
-            showFloatingTextForUnit(unit, `🧗 UP +${c.rise}`, 'buff', { durationMs: 1100 });
+            showFloatingTextForUnit(unit, `🧗 UP +${Math.max(0, rise)}`, 'buff', { durationMs: 1100 });
             if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
             checkOverwatchTriggers(unit);
             if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit, { x: fromX, y: fromY, z: fz });
             if (!unit.dead) resolveTileArrival(unit, { via: 'climb' });
             scheduleBoardRender();
+            return false;
+        }
+        /* THE NEXT STRETCH: the climber's turn is spent on the wall — it climbs from h to `to` (up: higher; down: lower) and
+           hangs on, the climbing status and every hang rule still on it. The renderer climbs the body to the new height
+           (three-renderer.js _updateBattleClimbers keys on h). */
+        function _climbNextStretch(unit, c, to, rise) {
+            c.h = to;
+            if (rise != null) c.rise = rise;
+            c.round = state.round || 0;
+            setUnitFacing(unit, c.wallX - unit.x, c.wallY - unit.y);
+            const _fall = (typeof predictFallDamage === 'function') ? predictFallDamage(unit, (unit.z ?? 0) + to + 2, unit.z ?? 0, unit.x, unit.y) : 0;
+            const _left = c.dir === 'down' ? to : c.rise - to;
+            addLog(`🧗 ${_ctName(unit)} keeps climbing ${c.dir === 'down' ? 'down' : 'up'} the face at ${coordLabel(c.wallX, c.wallY)} — ${_left > 0 ? `${_left} to go` : (c.dir === 'down' ? 'at the foot next turn' : 'at the top, pulling up next turn')}, hanging there until their next turn${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
+            showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN · ${to} LEFT` : `🧗 CLIMB ${to}/${c.rise}`, 'buff', { durationMs: 1200 });
+            playSfx('moveStep');
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            if (typeof _followUnitCam === 'function') _followUnitCam(unit);
+            _procHexedOnAction(unit, 'climbs');
+            if (!unit.dead && unit._climb) checkOverwatchTriggers(unit);
+            scheduleBoardRender();
+            return true;
         }
         window.getClimbTiles = getClimbTiles;
         window.knockOffClimber = knockOffClimber;
