@@ -13488,12 +13488,24 @@ function unitRosterScope() {
   return window._ewRosterScope === 'all' ? 'all' : 'owned';
 }
 // The LEDGER read: is the vessel on the account (a starter offline)? Never the scope.
+// THE OWNED READ (2026-10-25, the seamless pass): a fight's launch asks isUnitOwned for every seat and race (the party repair, the
+// roster scope), and each call parsed the whole stored profile again (~250 ms of the sandbox's strike hitch) — the parse is kept
+// while the stored text is the same text. Read-only: isUnitOwned never writes the profile it reads.
+let _ownedProfMemo = { raw: null, prof: null };
+function _ownedProfileRead() {
+  const PS = (typeof window !== 'undefined') ? window.ProfileSystem : null;
+  if (!PS || typeof PS.getActiveProfile !== 'function') return null;
+  let raw = null;
+  try { const i = (typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null; raw = (i === null || i === undefined) ? null : localStorage.getItem('ew-profile-' + i); } catch (e) { raw = null; }
+  if (raw !== null && raw === _ownedProfMemo.raw && _ownedProfMemo.prof) return _ownedProfMemo.prof;
+  const prof = PS.getActiveProfile() || {};
+  _ownedProfMemo = { raw: raw, prof: raw !== null ? prof : null };
+  return prof;
+}
 function isUnitOwned(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
-  const prof = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
-    ? (window.ProfileSystem.getActiveProfile() || {})
-    : null;
+  const prof = _ownedProfileRead();
   const acct = prof ? prof.account : null;
   /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
      already be unlocked"): a race a capture door SEALED is owned — the captured ledger (local + the synced blob) is the claim */
@@ -55430,21 +55442,18 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     /* THE GROUP (2026-09-21, the user: "attack one NPC and only 1–2 come with them; a roaming group is more"): the enemy's line is
        the target + its roaming group's members (their own races) + the companions the rule draws — never the crossing's team size;
        `teamSize` stays the OFFICER's deploy (the party's shift). THE LEVELS: every body's level about the party's (hqEncounterLevels). */
-    const grp = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group', { natives: hqRoomNatives(roomId) });
-    const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE (2026-10-08): its companions, its draw, its levels
-    if (ET && ET.group && grp.kind === 'solo') {
-        const gr = hqLevelRng((roomId || '') + '|' + (ch.id || ch.race) + '|tablegroup');
-        grp.extra = Math.max(0, Math.min(7, Math.round(ET.group[0] + gr() * (ET.group[1] - ET.group[0] + 1) - 0.5)));
-        grp.size = 1 + grp.extra;
-    }
-    const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group + the companions the rule drew
-    const pool = ET ? hqEncTableDraw(ET, Math.max(n, enemyTeam), (roomId || '') + '|' + (ch.id || ch.race) + '|tablepool')
-        : (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
-    const withGroup = [ch.race].concat(grp.members.map(x => x.race));
-    /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the target leads, every other seat is the swarm's native race; the grunts stand under the party level */
+    const grp0 = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group', { natives: hqRoomNatives(roomId) });
+    const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE (2026-10-08): its levels
+    /* THE MAP'S OWN ENEMIES (2026-10-25, mondo: "ditch encounters spawning multiple new enemies, i would rather it stick to the
+       enemies that were actually on the exploration map"): the enemy line is the native you hit + the members of its group walking
+       the room with it (the aim reports them, `ch.group`) — no companions drawn for a lone native, no roam extras, no swarm conjured
+       past the bodies in the room, no table group. A group that won the swarm coin on the map keeps the swarm's levels. */
+    const members = (Array.isArray(ch.group) ? ch.group : []).filter(x => x && x.race && x.id !== ch.id).slice(0, 7);
+    const grp = { kind: members.length ? (grp0.kind === 'swarm' ? 'swarm' : 'roam') : 'solo', members, extra: 0, size: 1 + members.length, elite: grp0.elite, race: grp0.race };
+    const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group, as they stood in the room
+    /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the grunts stand under the party level; every body is on the board */
     const swarm = grp.kind === 'swarm' ? { n: enemyTeam, elite: Math.min(grp.elite | 0, enemyTeam), race: grp.race || ch.race } : null;
-    const roster = swarm ? [ch.race].concat(Array.from({ length: enemyTeam - 1 }, () => swarm.race))
-        : withGroup.concat(ET ? pool : pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));   // a table's draw may repeat a race
+    const roster = [ch.race].concat(members.map(x => x.race));
     const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels',
                                  swarm ? { grunts: { from: swarm.elite, offset: HQ_LEVEL_RULES.swarm.offset } } : null);
     if (ET && ET.levels) lv.levels = lv.levels.map(l => Math.max(1, Math.min(LEVEL_CAP, Math.max(ET.levels[0], Math.min(ET.levels[1], l)))));

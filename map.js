@@ -1777,6 +1777,7 @@
                        the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
                        and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
                     arrive: seamless ? seamless.eye : null,   // THE WAY BACK: the camera starts at the debrief's eye
+                    from: opts.from || null,   // THE BODIES CARRY OVER (2026-10-25): back from a fight, the walker takes its own body back
                     portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
                     onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
                     onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
@@ -4631,7 +4632,9 @@
             _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
             window._hqEncounterParty = party;
             _hqClosePanel({ keepPaused: true });
-            window._hqLeave({ dissolve: { onFrame: true, hold: 1500, ms: 220 }, handover: true });   // THE HAND-OVER (SEAMLESS_FIELD_PLAN §4 step 3): the room's groups go to the battle, never rebuilt   // THE DISSOLVE (seam 3): the room's last frame HOLDS over the build and fades over the battle's first (Phase 9 polish: a short fade — the seam is THE SWOOP)
+            /* hold 2500 (was 1500, 2026-10-25): a cap only — the frame fades the moment the fight is ready (bodies in, shaders built:
+               THE QUIET COMPILE); a slow machine keeps the still frame a moment longer instead of stuttering after it fades */
+            window._hqLeave({ dissolve: { onFrame: true, hold: 2500, ms: 220 }, handover: true });   // THE HAND-OVER (SEAMLESS_FIELD_PLAN §4 step 3): the room's groups go to the battle, never rebuilt   // THE DISSOLVE (seam 3): the room's last frame HOLDS over the build and fades over the battle's first (Phase 9 polish: a short fade — the seam is THE SWOOP)
             try { window._msConfirm(); }
             catch (e) { console.error('[HQ] the encounter failed to start', e); window._hqEncounterParty = null; window._hqEncounterRun = null; return false; }
             return true;
