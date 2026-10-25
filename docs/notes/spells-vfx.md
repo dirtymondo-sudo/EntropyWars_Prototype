@@ -1785,3 +1785,33 @@ Visuals only, no rule changes, no new art (canvas textures + R2 terrain sprites)
   Caster-side props (Flambé match, Eagle Eye glint) gate on `_pzSeen` (fog). No screen flashes anywhere.
 - Proof: Spell Lab ✦ CAST for 20 spells; Taste Test can't be cast in the Lab (no ally), proved in a VS CPU match healing
   a hurt ally. Capture rig froze performance.now() at set delays after the intent. Stills: /mnt/project-files/new-races-vfx/.
+
+## THE NATURE PASS (2026-10-25, mondo: "Can we make badass impressive vfx for nature spells like vines and stuff?")
+Real vines, roots, thorns, leaves and flowers for the Nature Magic + Agriculture plant spells, plus the two new Nature
+Magic rows (Vine Whip, Wrath of the Wild — rules in champions-combat.md "THE NATURE PASS"). Code: three-vfx-effects.js
+block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as the P-Z / 10-25 passes (`pzSig`).
+- THE KIT: `_nvVine(parent, pts, o)` = a tapered TubeGeometry (`_nvTube` narrows each ring toward the tip) that grows along
+  its curve with setDrawRange; thorns (cones) and leaves (canvas leaf planes) pop out as the growth passes them; optional
+  sap-glow tip. `grow(k0, k1)` shows the stretch k0..k1 (k1 falling = pulls back from the tip, k0 rising = from the base).
+  Roots wear R2 terrain/wood.png (`_nvBarkMat`), vines a canvas skin; light baked into vertex colours (`_nvBake`).
+  Canvases: vine skin, leech skin, leaf, flower (pink / white / gold), druid sigil, torn-ground rupture.
+- Routes (probed in the Spell Lab): Vine Whip = `pull` (pzOwnTether: it draws the line, battle.js skips the rope; the coil
+  rides the dragged body via `_pzTrack(uid)`). Thornlash / Wrath / Leech Seed / Healing Seed = `bolt` (pzOwn). A pzOwn bolt
+  skips _fireBoltMapped, which is what lands a bolt spell's impact recipe, so `_nvLand` lands the impact def (layers + its
+  pzSig) at flyMs. Overgrowth / Entangling Roots / Bumper Crop = `aoe` (tiles from `_nvAoeTiles` = _buildTileOffsets +
+  the cast's mask). Rejuvenation = `aura` on the caster (self-cast). Into the Green = `teleport` (pzOwn).
+- Wrath of the Wild: the roots rise during the bolt's flight and crash at flyMs+50, so the crash lands with the number.
+  If an impact ever fires without the bolt, `nvWrathHit` grows the roots itself (crash 300 ms late).
+- THE TARGET STAYS: big roots/arches stand round or BEHIND the body (the side away from the lens, `_nbCamDir`; Wrath's
+  roots between lens and body come down at the feet, thinner); coils are thin; no screen flash.
+- Fog / RULE #2: everything rides fire() (relayed). Caster-end pieces gate on `_pzSeen`: Vine Whip's hand (a fogged
+  caster's vine comes out of the ground at the sight line), Thornlash's racing brambles and Wrath's fissures (per tile),
+  Into the Green's two thickets, Rejuvenation's runs to allies.
+- Generic nature: `_THEME_MAP.nature` (leaf / vine-green) — nature had borrowed poison's bubbles. Staging got a `nature`
+  archetype + grade (green, leaf motes, `noOrb: true` = no expanding orb shell on heavy nature hits; the roots are the hit).
+  Without the archetype the staging fell through to the spellType (anomaly = pink dome).
+- Old looks replaced: Thornlash's A-F brambles (`_afThornlash3D`, registry entry deleted), Overgrowth's A-F tile recipe,
+  Into the Green's borrowed raceEject. Healing Seed keeps its heal aura recipe (+ a sapling), Leech Seed keeps its p3 impact
+  recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
+- Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
+  Stills: /mnt/project-files/nature-vfx/.
