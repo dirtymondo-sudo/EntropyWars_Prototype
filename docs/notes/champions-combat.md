@@ -2583,3 +2583,15 @@ SPELL_LIBRARY), existing kinds and rules only:
 Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage` answers false for `noDamage` too, so
 those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
 plan all read it). The one-cast-a-turn lock still applies.
+
+## THE SONIC PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each" element)
+Sonic had 28 rows across tiers I-IV (7 / 9 / 7 / 5) but the Sonic family pool itself (siren, mermaid, popstar) held only
+9, one of them tier IV. Two Sonic family rows (data.js, after Requiem in SPELL_LIBRARY), existing kinds and rules only,
+numbers mirror THE NATURE PASS's Vine Whip / Wrath of the Wild (THREAD CALLS, flagged to mondo):
+- **Screech** (`raceScreech`, tier II, 50 MP, 1 AP, anomaly, sonic): single-target `damage`, range 4, 100 magic,
+  Silence 1 (the setup Sonic Breaker pays off).
+- **Sonic Boom** (`raceSonicBoom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, sonic): single-target `damage`, range 4,
+  170 magic, ×1.5 vs Stun (Lullaby's sleep), applies nothing (finisher, no self-combo).
+- Who gets them: siren, mermaid, popstar (Sonic in RACE_FAMILIES) + Adaptable borrowers. Looks: spells-vfx.md "THE SONIC PASS".
+- Left as they were, flagged: Deafening Wail (tier III) applies Silence and Sonic Breaker (tier II) is the Silence
+  finisher, the reverse of the tier convention.

@@ -21104,6 +21104,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE WATER PASS (2026-10-25): a water spell reads as water whatever moves it — the movement kinds (a push, a
            pull, a terrain spell, a drop) give way to the water archetype; heals, buffs and hexes keep their grammar */
         if (def && def.element === 'water' && (!def.kind || !_STAGE_BY_KIND[def.kind] || _WATER_OVER_KIND[_STAGE_BY_KIND[def.kind]])) return 'water';
+        /* THE SONIC PASS: a sonic attack stages as sound whatever its kind (support kinds keep their grammar) */
+        if (_STAGE_ARCHETYPES.sonic && _snArch(def)) return 'sonic';
         if (def && def.kind && _STAGE_BY_KIND[def.kind]) return _STAGE_BY_KIND[def.kind];
         var _stEl = def && (def.element || def.vfxElement);
         if (_stEl && _ELEMENT_THEME[_stEl]
@@ -22057,6 +22059,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _capStage(phase, spellId, params); } catch (e) {}
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
+        /* THE SONIC PASS: every sonic spell's cast and hit read as sound (rings, the floor and the body hum) */
+        try { _snStage(phase, spellId, params); } catch (e) { console.warn('[VFX] sonic stamp failed', spellId, e); }
         /* THE FIRE PASS: every fire-element cast / hit wears the same fire (the cast ring, the fire mark) */
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
@@ -48207,6 +48211,494 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceFlood']          = Object.assign({}, SPELL_MAP['raceFlood'], { wall: 'wvFlood_wall' });
     SPELL_MAP['raceTemporalTide']   = Object.assign({}, SPELL_MAP['raceTemporalTide'], { aura: 'wvTide_aura' });
     /* ═════════ END THE WATER PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable and making sure there's a nice
+       amount of spells for each") — every sonic spell now READS as sound, in
+       one violet language, whatever else its own look does:
+         · SOUND RINGS — rings that leave the mouth and travel the line,
+           growing as they go (the cone a voice makes), and pass THROUGH the
+           victim; thin, so the body and the number stay readable
+         · THE FLOOR HUMS — flat rings ripple out over the tiles it hits
+         · THE BODY HUMS — three rings round the struck body shiver
+         · THE METER — on heavy / ultimate sonic hits a crown of LED level
+           meters jumps like an equalizer BEHIND the body (never in front)
+         · sung spells carry notes, roars a jagged first ring, discords
+           clash, lullabies go slow and smooth.
+       THE STAMP: _snStage rides the staging beats (windup at the caster,
+       burst on the hit) — those fire for EVERY spell from its data, so all
+       28 sonic rows get the language with no per-spell wiring; it sits on
+       top of the spells that already have their own look (Mic Drop's mic,
+       Chart Topper's record, the capstones). The sonic rows whose look was
+       borrowed from another element get their own: Discordance (was the
+       generic dark debuff), Siren Song (was the plain rope), Lullaby, Crack
+       the Whip (was a flat DOM sprite), Sonic Breaker / Shockwave Clap (the
+       rings race the whole lane), and the two new rows (data.js THE SONIC
+       PASS: Screech, Sonic Boom).
+       Generic sonic: its own theme + staging archetype (violet, no glass
+       orb — the rings are the cast) where it used to stage as anomaly pink.
+       RULE #2: everything rides fire() / the staging beats, which online.js
+       relays, so the guest sees the same rings. Caster-end pieces draw only
+       where the viewer sees the caster's tile, hit pieces only where it sees
+       the hit (_pzSeen). No screen flash, nothing full-screen; MeshBasic /
+       Sprite only, so WebGPU draws the same. Visual only, no sound. ═════ */
+    var _SN = { wave: 0xc4a6ff, hot: 0xf2ecff, deep: 0x7a4adf, ink: 0x2a1450, note: 0xdcc8ff, clash: 0xff7ad0 };
+    _THEME_MAP.sonic = { core: 'shockwave', trail: 'spark-pink', burst: 'shockwave', ring: 'halo-ring', glow: _SN.wave };
+    _ELEMENT_THEME.sonic = 'sonic';
+    _STAGE_ARCHETYPES.sonic = { orb: _SN.wave, ring: 0xa880ff, flash: '#e6dcff', mote: 'spark-pink', glyph: false, slash: false,
+        lineColor: '#d8c8ff', moteTint: 0xd0b8ff, noOrb: true };
+    _STAGE_GRADES.sonic = { tint: [1.02, 0.92, 1.22], tintAmt: 0.34, chroma: 4.0 };   /* violet, a little ring-out on the edges; no trip */
+    _BEAM_COLORS.sonic = { core: 0xf2ecff, glow: 0xa880ff };
+    if (SPELL_STAGE_MAP.raceSonicBoomerang) SPELL_STAGE_MAP.raceSonicBoomerang.archetype = 'sonic';
+    /* a sonic spell stages as sound whatever its kind; support kinds (buffs, stat-downs, heals) keep their own grammar */
+    var _SN_SUPPORT_ARCH = { aura: 1, hex: 1, heal: 1, mana: 1, divine: 1, rig: 1, mind: 1 };
+    function _snIsSonic(def) { return !!(def && def.element === 'sonic'); }
+    function _snArch(def) { return _snIsSonic(def) && !(def.kind && _SN_SUPPORT_ARCH[_STAGE_BY_KIND[def.kind]]); }
+
+    /* each row's flavour inside the one language: sung (notes) · gentle (slow smooth rings) · roar (jagged rings, a
+       bigger shout) · discord (clashing rings, broken notes) */
+    var _SN_FLAVOUR = {
+        warCry: 'sung', encore: 'sung', raceSirenSong: 'gentle', lullaby: 'gentle', pzLureOfTheDeep: 'gentle',
+        racePopStadiumShow: 'sung', pzChartTopper: 'sung', requiem: 'sung', sigLastTrumpet: 'sung', raceSpaceDisco: 'sung',
+        sigExcessiveMachine: 'sung', racePopMicDrop: 'sung',
+        raceHowl: 'roar', raceApexRoar: 'roar', sigBellow: 'roar', raceDeafeningWail: 'roar', raceCrackTheWhip: 'roar',
+        raceShockwaveClap: 'roar', raceCataclysmStomp: 'roar', raceAudible: 'roar', provoke: 'roar', raceSonicBreaker: 'roar',
+        raceScreech: 'roar', raceSonicBoom: 'roar',
+        discordance: 'discord', pzShiverDownTheSpine: 'discord', raceMeow: 'gentle',
+    };
+
+    /* ── the canvases ── */
+    function _snRingTex() {
+        return _pzTex('sn-ring', 256, 256, function (g, w) {
+            var c = w / 2, gr = g.createRadialGradient(c, c, c * 0.55, c, c, c);
+            gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.35)');
+            gr.addColorStop(0.7, 'rgba(255,255,255,1)'); gr.addColorStop(0.8, 'rgba(255,255,255,0.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, w);
+            g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.beginPath(); g.arc(c, c, c * 0.86, 0, Math.PI * 2); g.stroke();
+            g.globalAlpha = 0.5; g.lineWidth = 2.5; g.beginPath(); g.arc(c, c, c * 0.62, 0, Math.PI * 2); g.stroke();
+            g.globalAlpha = 0.28; g.lineWidth = 2; g.beginPath(); g.arc(c, c, c * 0.46, 0, Math.PI * 2); g.stroke();
+            g.globalAlpha = 1;
+        });
+    }
+    /* the jagged ring of a LOUD sound (roars, cracks): a thin zigzag, so the body behind it stays readable */
+    function _snJagTex() {
+        return _pzTex('sn-jag', 256, 256, function (g, w) {
+            var c = w / 2;
+            function zig(r, amp, lw, a0, teeth, ph) {
+                g.globalAlpha = a0; g.lineWidth = lw; g.beginPath();
+                for (var i = 0; i <= teeth; i++) { var a = ph + i * Math.PI * 2 / teeth, rr = r + (i % 2 ? amp : -amp); if (i) g.lineTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr); else g.moveTo(c + Math.cos(a) * rr, c + Math.sin(a) * rr); }
+                g.closePath(); g.stroke();
+            }
+            g.strokeStyle = '#ffffff'; g.lineJoin = 'miter'; g.shadowColor = '#ffffff'; g.shadowBlur = 6;
+            zig(c * 0.84, c * 0.05, 3.5, 1, 44, 0);
+            zig(c * 0.66, c * 0.035, 2, 0.45, 36, 0.09);
+            g.globalAlpha = 1; g.shadowBlur = 0;
+        });
+    }
+    /* the dark rim under every ring: keeps the ring readable on a bright floor or a day sky */
+    function _snInkTex() {
+        return _pzTex('sn-ink', 256, 256, function (g, w) {
+            var c = w / 2; g.strokeStyle = '#ffffff'; g.lineWidth = 11; g.beginPath(); g.arc(c, c, c * 0.86, 0, Math.PI * 2); g.stroke();
+        });
+    }
+    /* one lit cell of a level meter */
+    function _snCellTex() {
+        return _pzTex('sn-cell', 32, 32, function (g, w, h) {
+            var gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0.7)');
+            g.fillStyle = gr; g.beginPath();
+            if (g.roundRect) g.roundRect(3, 5, w - 6, h - 10, 4); else g.rect(3, 5, w - 6, h - 10);
+            g.fill();
+        });
+    }
+
+    /* ONE SOUND RING — a glow ring over its ink rim; set(r, op) = radius in world units + opacity */
+    var _snGeo = null, _snZ = null;
+    function _snRing(parent, jag) {
+        if (!_snGeo) { _snGeo = new THREE.PlaneGeometry(1, 1); _snGeo._ew_shared = true; _snZ = new THREE.Vector3(0, 0, 1); }
+        var g = new THREE.Group(); parent.add(g);
+        var inkM = _pzSolid(_SN.ink, _snInkTex(), { side: THREE.DoubleSide, depthWrite: false });
+        var ink = _pzMesh(_snGeo, inkM, g); ink.renderOrder = 157;
+        var glowM = _pzGlow(_SN.wave, jag ? _snJagTex() : _snRingTex());
+        _pzMesh(_snGeo, glowM, g);
+        g.visible = false;
+        return {
+            g: g,
+            set: function (r, op) {
+                g.visible = op > 0.004 && r > 0.01;
+                if (!g.visible) return;
+                g.scale.set(r * 2, r * 2, r * 2);
+                glowM.opacity = op; inkM.opacity = op * 0.42;
+            },
+        };
+    }
+    /* face a ring along a direction (its normal = dir) */
+    function _snAim(R, dir) { if (!_snZ) _snZ = new THREE.Vector3(0, 0, 1); R.g.quaternion.setFromUnitVectors(_snZ, dir); }
+    /* the ring's facing for a line seen from the lens: the travel direction leaned toward the camera, so a lane that
+       runs across the screen still shows its rings as rings, not edge-on slivers */
+    function _snLean(F, dir, k) {
+        var cam = _pzCam(), n = dir.clone();
+        if (cam) {
+            var c = new THREE.Vector3(cam.position.x - F.wp.x, cam.position.y - F.wp.y, cam.position.z - F.wp.z).normalize();
+            if (c.dot(dir) < 0) c.negate();
+            n.addScaledVector(c, k != null ? k : 0.9).normalize();
+        }
+        return n;
+    }
+    function _snFlat(R) { R.g.rotation.set(-Math.PI / 2, 0, 0); }
+
+    /* ── the pieces: each builds into a frame and returns its tick(el); a signature runs them in one _sigRunOwned ── */
+
+    /* SOUND RINGS down a line: n rings leave A one after another, travel to B and grow r0 → r1 on the way */
+    function _snCone(F, A, B, o) {
+        var n = o.n || 3, gap = o.gap || 90, ms = o.ms || 380, d0 = o.delay || 0, rings = [];
+        var dir = new THREE.Vector3().subVectors(B, A), L = dir.length();
+        if (L < 1e-3) dir.set(0, 0, 1); else dir.multiplyScalar(1 / L);
+        var face = _snLean(F, dir, o.lean);
+        for (var i = 0; i < n; i++) { var R = _snRing(F.g, o.jag === 'all' || (o.jag && i === 0)); _snAim(R, face); rings.push(R); }
+        return function (el) {
+            for (var i = 0; i < n; i++) {
+                var t = (el - d0 - i * gap) / ms, R = rings[i];
+                if (t <= 0 || t >= 1) { R.set(0, 0); continue; }
+                var k = 1 - Math.pow(1 - t, 1.6);
+                R.g.position.copy(A).addScaledVector(dir, L * k);
+                R.set(o.r0 + (o.r1 - o.r0) * k, (o.op || 0.95) * Math.min(1, t * 7) * (1 - t * t) * (1 - i * 0.12));
+            }
+        };
+    }
+    /* THE FLOOR HUMS: flat rings spread over the floor from (x, z) out to radius R */
+    function _snRipple(F, o) {
+        var ts = F.ts, n = o.n || 3, gap = o.gap || 120, ms = o.ms || 560, d0 = o.delay || 0, rings = [];
+        for (var i = 0; i < n; i++) { var R = _snRing(F.g, o.jag && i === 0); _snFlat(R); R.g.position.set(o.x || 0, o.y != null ? o.y : ts * 0.05, o.z || 0); rings.push(R); }
+        var r0 = o.r0 != null ? o.r0 : ts * 0.2;
+        return function (el) {
+            for (var i = 0; i < n; i++) {
+                var t = (el - d0 - i * gap) / ms, R = rings[i];
+                if (t <= 0 || t >= 1) { R.set(0, 0); continue; }
+                R.set(r0 + (o.R - r0) * _sigEaseOutCubic(t), (o.op || 0.8) * Math.min(1, t * 8) * (1 - t) * (1 - i * 0.15));
+            }
+        };
+    }
+    /* THE BODY HUMS: three rings round the body at shin / waist / chest, shivering; o.track = a body offset getter */
+    function _snHum(F, o) {
+        var ts = F.ts, d0 = o.delay || 0, ms = o.ms || 700, rings = [], H = [0.2, 0.5, 0.8], s = o.s || 1;
+        for (var i = 0; i < 3; i++) { var R = _snRing(F.g, false); _snFlat(R); rings.push(R); }
+        var off = new THREE.Vector3();
+        return function (el) {
+            var e = el - d0;
+            var env = e <= 0 || e >= ms ? 0 : Math.min(1, e / 90) * (1 - Math.max(0, (e - ms * 0.55) / (ms * 0.45)));
+            var d = o.track ? o.track() : null; off.set(d ? d.x : 0, d ? d.y : 0, d ? d.z : 0);
+            for (var i = 0; i < 3; i++) {
+                var R = rings[i], shiver = Math.sin(e * (o.rate || 0.075) + i * 2.1);
+                R.g.position.set(off.x, off.y + ts * H[i] * s, off.z);
+                R.set(ts * (0.4 + 0.05 * shiver) * s * (1 - 0.08 * i), env * (o.op || 0.8) * (0.75 + 0.25 * shiver));
+            }
+        };
+    }
+    /* THE METER: a crown of LED level meters on the far side of the body, jumping like an equalizer. One mesh per
+       meter: its cells are one geometry (colour per row in the vertex colours), the level is the draw range. */
+    function _snEq(F, o) {
+        var ts = F.ts, cd = _nbCamDir(F), nb = o.n || 11, rows = 9, cw = ts * 0.075, ch = ts * 0.06, rad = ts * (o.r || 0.66);
+        var base = Math.atan2(-cd.z, -cd.x), yaw = Math.atan2(cd.x, cd.z), d0 = o.delay || 0, ms = o.ms || 900;
+        var pos = [], uv = [], col = [], idx = [], c0 = new THREE.Color(_SN.deep), cT = new THREE.Color();
+        for (var r = 0; r < rows; r++) {
+            var y0 = r * ch * 1.18, y1 = y0 + ch, v = pos.length / 3;
+            cT.copy(c0).lerp(new THREE.Color(r >= rows - 2 ? _SN.clash : _SN.hot), r / (rows - 1));
+            pos.push(-cw / 2, y0, 0, cw / 2, y0, 0, cw / 2, y1, 0, -cw / 2, y1, 0);
+            uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+            for (var q = 0; q < 4; q++) col.push(cT.r, cT.g, cT.b);
+            idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
+        }
+        var proto = new THREE.BufferGeometry();
+        proto.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        proto.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        proto.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+        proto.setIndex(idx);
+        var mat = _pzGlow(0xffffff, _snCellTex()); mat.vertexColors = true;
+        var bars = [];
+        for (var b = 0; b < nb; b++) {
+            var a = base + (b / (nb - 1) - 0.5) * 3.6, geo = b ? proto.clone() : proto;
+            var m = _pzMesh(geo, mat, F.g, Math.cos(a) * rad, 0, Math.sin(a) * rad); m.rotation.y = yaw; geo.setDrawRange(0, 0);
+            bars.push({ geo: geo, f1: rn(0.012, 0.022), f2: rn(0.004, 0.009), ph: rn(0, 6.28) });
+        }
+        return function (el) {
+            var e = el - d0, env = e <= 0 || e >= ms ? 0 : Math.min(1, e / 120) * (1 - Math.max(0, (e - ms * 0.6) / (ms * 0.4)));
+            mat.opacity = env > 0 ? 0.95 : 0;
+            for (var b = 0; b < bars.length; b++) {
+                var B = bars[b], lvl = env * (0.22 + 0.78 * Math.abs(Math.sin(e * B.f1 + B.ph)) * (0.55 + 0.45 * Math.abs(Math.sin(e * B.f2 + b))));
+                B.geo.setDrawRange(0, Math.round(lvl * rows) * 6);
+            }
+        };
+    }
+    /* run the pieces of one signature in one frame */
+    function _snRun(F, total, parts) {
+        return _sigRunOwned(F.g, total, function (el) { for (var i = 0; i < parts.length; i++) parts[i](el); });
+    }
+    function _snNotes(tx, ty, flav, n, o) {
+        o = o || {};
+        try {
+            _sigMusicNotes3D(tx, ty, { count: n, color: flav === 'discord' ? _SN.clash : _SN.note, broken: flav === 'discord',
+                gentle: flav === 'gentle', scale: o.scale || 1, sparkSprite: 'spark-pink' });
+        } catch (e) {}
+    }
+    /* a frame-local mouth point of the unit standing on tile (x, y) */
+    function _snMouth(F, x, y, h) {
+        var w = _worldPos(x, y); return new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y + F.ts * (h != null ? h : 0.62), w.z - F.wp.z);
+    }
+
+    /* ── THE STAMP ── */
+    /* the voice leaves the caster: rings out of the mouth toward the target (or round it, for a shout) */
+    function _snCast(sx, sy, to, flav, holdMs, big) {
+        var F = _nrvFrame(sx, sy), ts = F.ts, parts = [], A = new THREE.Vector3(0, ts * 0.62, 0);
+        var gentle = flav === 'gentle', ms = gentle ? 520 : 360, gap = gentle ? 150 : 100;
+        if (to) {
+            var w = _worldPos(to.x, to.y), dir = new THREE.Vector3(w.x - F.wp.x, 0, w.z - F.wp.z);
+            if (dir.lengthSq() < 1) dir.set(0, 0, 1); dir.normalize();
+            var B = A.clone().addScaledVector(dir, ts * (gentle ? 0.9 : 1.15));
+            A.addScaledVector(dir, ts * 0.18);
+            var beats = Math.max(1, Math.min(3, Math.round(holdMs / 380)));
+            for (var i = 0; i < beats; i++)
+                parts.push(_snCone(F, A, B, { n: 3, gap: gap, ms: ms, r0: ts * 0.08, r1: ts * (0.3 + 0.06 * big), jag: flav === 'roar', delay: i * holdMs / (beats + 0.6), op: 0.8 }));
+        } else {
+            parts.push(_snHum(F, { ms: Math.max(500, holdMs), op: 0.75 }));
+            parts.push(_snRipple(F, { n: 2, R: ts * 0.75, ms: 520, gap: 220, op: 0.6 }));
+        }
+        if (flav === 'sung' || gentle) _snNotes(sx, sy, gentle ? 'gentle' : 'sung', 2, { scale: 0.8 });
+        return _snRun(F, Math.max(700, holdMs + 500), parts);
+    }
+    /* the sound lands: rings through the body from the caster's side, the floor and the body hum, the meter on big hits */
+    function _snHit(tx, ty, from, def, flav, big, ult) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, parts = [];
+        var gentle = flav === 'gentle', roar = flav === 'roar', aoeR = def.kind === 'aoe' || def.kind === 'aoePull' ? (def.aoeRadius || 1) : 0;
+        if (from && (from.x !== tx || from.y !== ty)) {
+            var ln = _nrvLine(F, from, tx, ty);
+            var A = new THREE.Vector3(ln.ux * ts * 1.25, ts * 0.58 + Math.max(-ts * 0.3, Math.min(ts * 0.3, ln.dy * 0.3)), ln.uz * ts * 1.25);
+            var B = new THREE.Vector3(-ln.ux * ts * 0.6, ts * 0.55, -ln.uz * ts * 0.6);
+            parts.push(_snCone(F, A, B, { n: 3 + big, gap: gentle ? 140 : 80, ms: gentle ? 560 : 340, r0: ts * 0.2, r1: ts * (0.5 + 0.08 * big),
+                jag: roar ? 'all' : !gentle, op: 0.85 }));
+        }
+        parts.push(_snRipple(F, { n: 2 + big, R: ts * (0.95 + aoeR + 0.25 * big), ms: gentle ? 760 : 560, gap: gentle ? 200 : 120, delay: 60, jag: roar }));
+        if (aoeR) parts.push(_snRipple(F, { n: 2, R: ts * (aoeR + 0.6), y: ts * 0.55, ms: 520, gap: 140, delay: 30, jag: roar, op: 0.7 }));
+        parts.push(_snHum(F, { delay: 40, ms: gentle ? 1100 : 760, rate: gentle ? 0.03 : flav === 'discord' ? 0.13 : 0.075 }));
+        if (big) parts.push(_snEq(F, { delay: 60, ms: ult ? 1150 : 900, n: ult ? 13 : 11, r: aoeR ? 0.9 : 0.66 }));
+        if (flav === 'sung' || gentle || flav === 'discord') _snNotes(tx, ty, flav, 2 + big);
+        return _snRun(F, 1500, parts);
+    }
+    /* a shout from the caster's own tile (self-origin novas, war cries): rings spread at mouth height and over the floor */
+    function _snShout(sx, sy, R, flav, big, ult) {
+        var F = _nrvFrame(sx, sy), ts = F.ts, roar = flav === 'roar', gentle = flav === 'gentle', parts = [];
+        parts.push(_snRipple(F, { n: 3 + big, R: ts * (R + 0.55), y: ts * 0.6, ms: gentle ? 760 : 520, gap: gentle ? 180 : 110, jag: roar, op: 0.85 }));
+        parts.push(_snRipple(F, { n: 2 + big, R: ts * (R + 0.4), ms: gentle ? 820 : 600, gap: 150, delay: 70, op: 0.7 }));
+        parts.push(_snHum(F, { ms: 820, rate: flav === 'discord' ? 0.13 : 0.075 }));
+        if (big) parts.push(_snEq(F, { delay: 50, ms: ult ? 1150 : 900, n: ult ? 13 : 11, r: 0.72 }));
+        if (flav === 'sung' || gentle || flav === 'discord') _snNotes(sx, sy, flav, 3 + big, { scale: 1.1 });
+        return _snRun(F, 1500, parts);
+    }
+    function _snStage(phase, spellId, p) {
+        if (phase !== 'windup' && phase !== 'burst') return;
+        if (_catOff('spells') || !_canSpawn() || !p || p.mark) return;
+        var def = _spellDefFor(spellId);
+        if (!_snIsSonic(def)) return;
+        var info = stageInfo(spellId), w = info.weight, big = (w === 'heavy' || w === 'ultimate') ? 1 : 0;
+        var flav = _SN_FLAVOUR[spellId] || (def.type === 'buff' ? 'sung' : 'plain');
+        var shout = def.aoeOriginSelf || def.kind === 'warCry' || def.kind === 'barrage' || p.tx == null
+            || (p.sx === p.tx && p.sy === p.ty);
+        var R = def.aoeRadius || def.auraRadius || 1;
+        if (phase === 'windup') {
+            if (p.sx == null || !_pzSeen(p.sx, p.sy)) return;
+            _snCast(p.sx, p.sy, shout ? null : { x: p.tx, y: p.ty }, flav, p.holdMs || 700, big);
+            return;
+        }
+        if (shout) {
+            var ox = p.sx != null ? p.sx : p.tx, oy = p.sx != null ? p.sy : p.ty;
+            if (ox != null && _pzSeen(ox, oy)) _snShout(ox, oy, R, flav, big, w === 'ultimate');
+            return;
+        }
+        if (_pzSeen(p.tx, p.ty)) _snHit(p.tx, p.ty, p.sx != null ? { x: p.sx, y: p.sy } : null, def, flav, big, w === 'ultimate');
+    }
+
+    /* ── THE OWN LOOKS ── */
+
+    /* DISCORDANCE — two jagged ring stacks round the body, out of step and spinning against each other, a clash of
+       pink and violet; the broken notes come with the status itself (fireStatus) */
+    EFFECTS['snDiscord_impact'] = _pzDef('snDiscord');
+    _PZ_SIGS.snDiscord = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, St = [];
+        for (var s = 0; s < 2; s++) {
+            var G = new THREE.Group(); F.g.add(G); var rs = [];
+            for (var i = 0; i < 3; i++) {
+                var R = _snRing(G, true); _snFlat(R); R.g.position.y = ts * (0.25 + 0.27 * i);
+                R.g.children[1].material.color.setHex(s ? _SN.clash : _SN.wave); rs.push(R);
+            }
+            St.push({ G: G, rs: rs, sp: s ? -0.006 : 0.008, tilt: s ? 0.32 : -0.28 });
+        }
+        return _sigRunOwned(F.g, 1100, function (el) {
+            var env = Math.min(1, el / 120) * (1 - Math.max(0, (el - 650) / 450));
+            for (var s = 0; s < 2; s++) {
+                var S = St[s]; S.G.rotation.set(S.tilt * Math.sin(el * 0.011 + s * 2), el * S.sp, S.tilt * Math.cos(el * 0.009 + s));
+                for (var i = 0; i < 3; i++) {
+                    var beat = Math.sin(el * (s ? 0.05 : 0.071) + i * 1.7);
+                    S.rs[i].set(ts * (0.36 + 0.07 * beat + 0.05 * s), env * 0.85 * (0.7 + 0.3 * beat));
+                }
+            }
+        });
+    };
+
+    /* SIREN SONG — the song is the line: a stream of soft rings and notes runs from the siren's mouth to the victim,
+       holds for the whole drag (it rides the dragged body) and the body hums under it. It owns the pull line. */
+    EFFECTS['snSiren_pull'] = _pzDef('snSiren', { pzOwnTether: true });
+    _PZ_SIGS.snSiren = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty), see = _pzSeen(from.x, from.y);
+        var A = see ? new THREE.Vector3(ln.dx - ln.ux * ts * 0.2, ln.dy + ts * 0.62, ln.dz - ln.uz * ts * 0.2)
+                    : new THREE.Vector3(ln.ux * ts * 1.15, ts * 0.6, ln.uz * ts * 1.15);   /* a fogged siren: the song comes out of the fog line */
+        var track = _pzTrack(tx, ty, p.uid), B = new THREE.Vector3(), dir = new THREE.Vector3(), N = 9, rings = [], notes = [];
+        for (var i = 0; i < N; i++) rings.push(_snRing(F.g, false));
+        var nt = _sigNoteTex(false);
+        for (var k = 0; k < 4; k++) notes.push(_pzSpr(_SN.note, ts * 0.3, F.g, nt));
+        var hum = _snHum(F, { delay: 260, ms: 1250, rate: 0.03, track: track });
+        var TOTAL = 1700, SHOOT = 300, LET = 1250, PER = 520, EVERY = PER / N;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var d = track(); B.set(d ? d.x : 0, (d ? d.y : 0) + ts * 0.58, d ? d.z : 0);
+            dir.subVectors(B, A); var L = dir.length(); if (L < 1) L = 1; dir.multiplyScalar(1 / L);
+            var reach = _sigEaseOutCubic(_sigClamp01(el / SHOOT)), fade = _sigClamp01((el - LET) / (TOTAL - LET - 40)), face = _snLean(F, dir);
+            for (var i = 0; i < N; i++) {
+                var R = rings[i], u = ((el + i * EVERY) % PER) / PER;   /* each ring rides the line mouth → body, over and over */
+                if (u > reach) { R.set(0, 0); continue; }
+                _snAim(R, face); R.g.position.copy(A).addScaledVector(dir, L * u);
+                R.g.position.y += Math.sin(u * Math.PI * 2 + el * 0.012) * ts * 0.06;
+                R.set(ts * (0.1 + 0.16 * Math.sin(u * Math.PI)), 0.8 * (1 - fade) * Math.min(1, u * 6) * Math.min(1, (1 - u) * 5));
+            }
+            for (var k = 0; k < notes.length; k++) {
+                var S = notes[k], v = ((el * 0.9 + k * PER / notes.length) % PER) / PER;
+                if (v > reach) { S.material.opacity = 0; continue; }
+                S.position.copy(A).addScaledVector(dir, L * v); S.position.y += ts * (0.16 + 0.08 * Math.sin(v * 9 + k));
+                S.material.opacity = 0.9 * (1 - fade) * Math.sin(v * Math.PI);
+            }
+            hum(el);
+        });
+    };
+
+    /* LULLABY — its sleepy impact stays; on top, slow wide rings settle down over the body like a hush */
+    EFFECTS['snLullaby_impact'] = Object.assign({}, EFFECTS['lullaby_impact'] || { layers: [] }, { pzSig: 'snLullaby' });
+    _PZ_SIGS.snLullaby = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rings = [];
+        for (var i = 0; i < 4; i++) { var R = _snRing(F.g, false); _snFlat(R); rings.push(R); }
+        return _sigRunOwned(F.g, 1600, function (el) {
+            for (var i = 0; i < 4; i++) {
+                var t = (el - i * 220) / 1000, R = rings[i];
+                if (t <= 0 || t >= 1) { R.set(0, 0); continue; }
+                R.g.position.y = ts * (1.25 - 1.15 * _sigEaseOutCubic(t));   /* they come down from over the head */
+                R.set(ts * (0.75 - 0.33 * t), 0.75 * Math.min(1, t * 5) * (1 - t));
+            }
+        });
+    };
+
+    /* SONIC BREAKER / SHOCKWAVE CLAP — the rings race the whole lane: a tunnel of jagged rings from the caster down
+       the line to its reach, a floor ripple bursting on every tile they cross */
+    function _snLane(p, id, o) {
+        /* a line beam sends fromX/fromY + dx/dy + range + hitTiles; a body-to-body beam sends sx/sy → tx/ty */
+        var sx = p.fromX != null ? p.fromX : p.sx, sy = p.fromX != null ? p.fromY : p.sy, tx = p.tx, ty = p.ty;
+        if (sx == null) return;
+        if (p.dx != null && (p.dx || p.dy)) { tx = sx + p.dx; ty = sy + p.dy; }
+        if (tx == null) return;
+        var def = _spellDefFor(id) || {}, reach = Math.max(2, p.range || def.range || 4);
+        var F = _nrvFrame(sx, sy), ts = F.ts, wT = _worldPos(tx, ty), dir = new THREE.Vector3(wT.x - F.wp.x, 0, wT.z - F.wp.z);
+        if (dir.lengthSq() < 1) return; dir.normalize();
+        var see = _pzSeen(sx, sy), A = new THREE.Vector3(0, ts * 0.55, 0).addScaledVector(dir, ts * (see ? 0.3 : 1.2));
+        var B = new THREE.Vector3(0, ts * 0.55, 0).addScaledVector(dir, ts * (reach + 0.4));
+        var travel = 140 * reach, parts = [];
+        parts.push(_snCone(F, A, B, { n: o.n || 7, gap: 60, ms: travel, r0: ts * 0.3, r1: ts * (o.r1 || 0.85), jag: 'all', op: 1 }));
+        parts.push(_snCone(F, A, B, { n: 4, gap: 60, delay: 30, ms: travel, r0: ts * 0.2, r1: ts * 0.6, op: 0.8 }));
+        /* the tiles it crosses: one floor ripple each, as the front passes */
+        var dx = Math.round(Math.sign(tx - sx)), dy = Math.round(Math.sign(ty - sy));
+        if (Math.abs(tx - sx) > Math.abs(ty - sy)) dy = 0; else if (Math.abs(ty - sy) > Math.abs(tx - sx)) dx = 0;
+        for (var s = 1; s <= reach; s++) {
+            var x = sx + dx * s, y = sy + dy * s;
+            if (!_snOnBoard(x, y) || !_pzSeen(x, y)) continue;
+            var off = _nvOff(F, x, y);
+            parts.push(_snRipple(F, { x: off.x, z: off.z, y: off.y + ts * 0.05, n: 2, R: ts * 0.75, ms: 420, gap: 90, delay: travel * (s / (reach + 0.4)) - 40, jag: true, op: 0.85 }));
+        }
+        return _snRun(F, travel + 900, parts);
+    }
+    function _snOnBoard(x, y) {
+        var W = 8, H = 8;
+        try { if (typeof CONFIG !== 'undefined') { W = CONFIG.boardWidth || CONFIG.boardSize || W; H = CONFIG.boardHeight || CONFIG.boardSize || H; } } catch (e) {}
+        return x >= 0 && y >= 0 && x < W && y < H;
+    }
+    _PZ_SIGS.snLane = function (p, id) { return _snLane(p, id, {}); };
+    EFFECTS['snBreaker_beam'] = _pzDef('snLane', { pzOwn: true });   /* its old beam was a plain light band */
+    EFFECTS['snClap_beam'] = Object.assign({}, EFFECTS['raceShockwaveClap_beam'] || { layers: [] }, { pzSig: 'snLane' });
+
+    /* THE SOUND BOLT — a single-target sonic spell that travels: the rings fly the whole way, then land its impact */
+    EFFECTS['snWave_bolt'] = _pzDef('snWaveBolt', { pzOwn: true });
+    _PZ_SIGS.snWaveBolt = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 420;
+        if (_pzSeen(fx, fy) || _pzSeen(tx, ty)) {
+            var F = _nrvFrame(fx, fy), ts = F.ts, A = _snMouth(F, fx, fy, 0.6), B = _snMouth(F, tx, ty, 0.55), dir = new THREE.Vector3().subVectors(B, A);
+            dir.normalize(); A.addScaledVector(dir, ts * 0.2);
+            if (!_pzSeen(fx, fy)) A.copy(B).addScaledVector(dir, -ts * 1.1);   /* a fogged caster: the wave only shows near the target */
+            _snRun(F, ms + 500, [_snCone(F, A, B, { n: 5, gap: Math.max(50, ms / 7), ms: ms, r0: ts * 0.1, r1: ts * 0.48, jag: _SN_FLAVOUR[id] === 'roar', op: 0.9 })]);
+        }
+        _nvLand(id, tx, ty, ms);
+    };
+    /* CRACK THE WHIP — the crack: a jagged ring snaps open at head height, a white kink of sound and sparks */
+    EFFECTS['snCrack_impact'] = _pzDef('snCrack');
+    _PZ_SIGS.snCrack = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rings = [], cd = _nbCamDir(F);
+        for (var i = 0; i < 3; i++) { var R = _snRing(F.g, true); _snAim(R, new THREE.Vector3(cd.x, 0.35, cd.z).normalize()); R.g.position.set(0, ts * (0.95 + 0.04 * i), 0); rings.push(R); }
+        _pzP(F, 0, ts * 0.95, 0, { sprite: 'flash', tint: _SN.hot, ml: 110, size0: ts * 0.34, size1: ts * 0.08, opacity0: 0.9 });
+        for (var s = 0; s < 8; s++) _pzP(F, 0, ts * 0.95, 0, { sprite: 'spark-pink', ml: rn(260, 420), size0: rn(5, 8), size1: 2,
+            vx: rn(-1, 1) * 220, vy: rn(-1, 1) * 220, vz: rn(40, 200), gravity: 260, opacity0: 1 });
+        return _sigRunOwned(F.g, 700, function (el) {
+            for (var i = 0; i < 3; i++) {
+                var t = (el - i * 70) / 360, R = rings[i];
+                if (t <= 0 || t >= 1) { R.set(0, 0); continue; }
+                R.set(ts * (0.08 + 0.55 * _sigEaseOutCubic(t)), 0.95 * (1 - t));
+            }
+        });
+    };
+
+
+    /* SONIC BOOM — the new tier IV finisher: the air round the body bursts — jagged rings blow out from the chest
+       on three tilts at once (a shell of sound), a ring slams flat across the floor, a white kink at the core */
+    EFFECTS['snBoom_impact'] = _pzDef('snBoom');
+    _PZ_SIGS.snBoom = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rings = [], tilts = [[1.05, 0.5], [1.05, -0.9], [1.4, 2.0]];
+        for (var i = 0; i < tilts.length; i++) {
+            var R = _snRing(F.g, true); R.g.rotation.set(tilts[i][0], tilts[i][1], 0); R.g.position.y = ts * 0.55; rings.push(R);
+        }
+        var floor = _snRipple(F, { n: 3, R: ts * 1.6, ms: 520, gap: 90, jag: true, op: 0.9 });
+        _pzP(F, 0, ts * 0.55, 0, { sprite: 'flash', tint: _SN.wave, ml: 120, size0: ts * 0.3, size1: ts * 0.08, opacity0: 0.6 });
+        for (var s = 0; s < 12; s++) _pzP(F, 0, ts * 0.55, 0, { sprite: 'spark-pink', ml: rn(300, 520), size0: rn(5, 9), size1: 2,
+            vx: rn(-1, 1) * 280, vy: rn(-1, 1) * 280, vz: rn(20, 220), gravity: 240, opacity0: 1 });
+        return _sigRunOwned(F.g, 1000, function (el) {
+            for (var i = 0; i < rings.length; i++) {
+                var t = (el - (i % 2) * 60) / 420, R = rings[i];
+                if (t <= 0 || t >= 1) { R.set(0, 0); continue; }
+                R.set(ts * (0.3 + 0.62 * _sigEaseOutCubic(t)), 0.85 * (1 - t) * (1 - t));
+            }
+            floor(el);
+        });
+    };
+
+    /* ── the wiring ── */
+    SPELL_MAP['discordance']       = { impact: 'snDiscord_impact' };
+    SPELL_MAP['raceSirenSong']     = { pull: 'snSiren_pull' };
+    SPELL_MAP['lullaby']           = Object.assign({}, SPELL_MAP['lullaby'], { impact: 'snLullaby_impact' });
+    SPELL_MAP['raceSonicBreaker']  = Object.assign({}, SPELL_MAP['raceSonicBreaker'], { beam: 'snBreaker_beam' });
+    SPELL_MAP['raceShockwaveClap'] = Object.assign({}, SPELL_MAP['raceShockwaveClap'], { beam: 'snClap_beam' });
+    SPELL_MAP['raceCrackTheWhip']  = { bolt: 'snWave_bolt', impact: 'snCrack_impact' };
+    SPELL_MAP['raceScreech']       = { bolt: 'snWave_bolt', impact: 'snCrack_impact' };
+    SPELL_MAP['raceSonicBoom']     = { bolt: 'snWave_bolt', impact: 'snBoom_impact' };
+    SPELL_MAP['requiem']           = Object.assign({}, SPELL_MAP['requiem'], { bolt: 'snWave_bolt' });   /* a sonic nova never fired a bullet */
+    /* ═════════ END THE SONIC PASS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
        THE FIRE PASS (2026-10-25, mondo: "the nature spells look great now,

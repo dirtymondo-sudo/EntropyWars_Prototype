@@ -5859,6 +5859,19 @@ const SPELL_LIBRARY = [
         bonusVsStatus: { status: 'discord', mult: 1.5 },
         desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Deals bonus damage to targets with Discord. Cooldown: 2 rounds.'
     },
+    /* THE SONIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each" element): two Sonic
+       family rows on existing kinds and rules only. Screech = the family's tier II single-target Silence (the setup
+       Sonic Breaker and Deafening Wail's lane already pay off); Sonic Boom = the family's tier IV single-target
+       finisher, bonus vs Stun (Lullaby's sleep), applies nothing (no self-combo). Numbers mirror THE NATURE PASS's
+       Vine Whip / Wrath of the Wild. Their looks: three-vfx-effects.js "THE SONIC PASS". */
+    { id: 'raceScreech', name: 'Screech', tier: 2, families: ['sonic'], cost: 50, apCost: 1, spellType: 'anomaly',
+      element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4,
+      statusEffects: [{ id: 'silence', duration: 1 }],
+      desc: 'A piercing shriek. Deals MEDIUM magic damage to a Single Enemy within 4 and Silences it for 1 round.' },
+    { id: 'raceSonicBoom', name: 'Sonic Boom', tier: 4, families: ['sonic'], cost: 100, apCost: 1, cooldownRounds: 2,
+      spellType: 'anomaly', element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
+      bonusVsStatus: { status: 'stun', mult: 1.5 },
+      desc: 'The air round a Single Enemy within 4 bursts in a wall of sound for HEAVY magic damage. Stunned targets take it worse. Cooldown: 2 rounds.' },
 
 
     {
