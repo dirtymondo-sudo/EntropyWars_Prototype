@@ -1051,6 +1051,8 @@ const ThreeRenderer = (function () {
         'uniform float uShield;',
         'uniform float uPrev;',
         'uniform float uPrevHeal;',
+        'uniform float uPrevMp;',
+        'uniform float uPrevMpGain;',
         'uniform float uMeterRot;',
         'uniform vec3 uHpCol;',
         'uniform vec3 uMpCol;',
@@ -1147,7 +1149,13 @@ const ThreeRenderer = (function () {
         '    hpCol = mix(hpCol, vec3(0.62, 1.0, 0.72), healMask * blink * 0.85);',
         '    hpCol = mix(rim, hpCol, hpBand);',
         '    vec3 mpC = mix(uMpCol, vec3(1.0), 0.18 * (1.0 - smoothstep(0.0, 0.016, mrd)));',
-        '    vec3 mpCol = mix(rim, mix(track, mpC, mpFill), mpBand);',
+        /* the mana forecast on the MP meter: the cost / leak blinks pale blue, a restore grows past the fill */
+        '    float mpPrevMask = arcIn(frac, max(0.0, uMp - uPrevMp), uMp) * step(0.001, uPrevMp);',
+        '    float mpGainMask = arcIn(frac, uMp, min(1.0, uMp + uPrevMpGain)) * step(0.001, uPrevMpGain);',
+        '    vec3 mpIn = mix(track, mpC, mpFill);',
+        '    mpIn = mix(mpIn, vec3(0.81, 0.91, 1.0), mpPrevMask * blink);',
+        '    mpIn = mix(mpIn, vec3(0.89, 0.96, 1.0), mpGainMask * blink * 0.85);',
+        '    vec3 mpCol = mix(rim, mpIn, mpBand);',
         '    float hpA = hpOuter * mix(0.78, 1.0, max(hpFill, shFill)) * (0.94 + 0.06 * pulse);',
         '    float mpA = mpOuter * mix(0.74, 1.0, mpFill) * (0.94 + 0.06 * pulse);',
         /* the facing pointer OUTSIDE the meters */
@@ -1247,6 +1255,8 @@ const ThreeRenderer = (function () {
                 uShield:   { value: 0.0 },
                 uPrev:     { value: 0.0 },
                 uPrevHeal: { value: 0.0 },
+                uPrevMp:     { value: 0.0 },
+                uPrevMpGain: { value: 0.0 },
                 uMeterRot: { value: 0.0 },
                 uHpCol:    { value: new THREE.Color(hpColor || color) },
                 uMpCol:    { value: new THREE.Color(RING_MP_COLOR) },
@@ -12126,6 +12136,78 @@ const ThreeRenderer = (function () {
         return true;
     }
 
+    /* THE MANA FORECAST (mondo 2026-10-25: "a mana bar preview just like for healing and damage"): the MP side of the
+       plate forecast — ui.js getPendingManaPreview names every body whose MP the hovered / armed action moves (the
+       caster's cost, Memory Leak's leak, Free Energy's and a Mana Potion's restore). The loss blinks off the plate's MP
+       fill, a restore grows from it, and the ring vitals' MP meter carries the same slices. Per frame like the HP one;
+       viewer-local. */
+    var _mpPrevIds = [];
+    function _clearMpPreviewOn(id) {
+        var po = _plateObjs.get(id);
+        var el = (po && po.el) ? po.el.querySelector('.tp-mp-preview') : null;
+        if (el) el.remove();
+        var ret = _reticleOfUnit(id);
+        if (ret && ret.material.uniforms && ret.material.uniforms.uPrevMp) {
+            ret.material.uniforms.uPrevMp.value = 0;
+            ret.material.uniforms.uPrevMpGain.value = 0;
+        }
+    }
+    function _updateMpPreviewPlates() {
+        var info = (typeof window.getPendingManaPreview === 'function') ? window.getPendingManaPreview() : null;
+        if (!info && !_mpPrevIds.length) return;
+        var entries = info ? info.all : [];
+        var keep = {};
+        for (var k = 0; k < entries.length; k++) keep[entries[k].unitId] = true;
+        for (var p = 0; p < _mpPrevIds.length; p++) {
+            if (!keep[_mpPrevIds[p]]) _clearMpPreviewOn(_mpPrevIds[p]);
+        }
+        _mpPrevIds = [];
+        for (var e = 0; e < entries.length; e++) {
+            if (_paintMpPreviewOn(entries[e])) _mpPrevIds.push(entries[e].unitId);
+        }
+    }
+    function _paintMpPreviewOn(info) {
+        var u = null;
+        for (var i = 0; i < (state.units || []).length; i++) {
+            if (state.units[i].id === info.unitId) { u = state.units[i]; break; }
+        }
+        if (!u || u.dead || !(u.maxMp > 0)) return false;
+        var maxMp = u.maxMp;
+        var painted = false;
+        var ret = _reticleOfUnit(info.unitId);
+        if (ret && ret.material.uniforms && ret.material.uniforms.uPrevMp) {
+            var _rMp = _ringFrac(u.mp || 0, maxMp);
+            ret.material.uniforms.uPrevMp.value = info.loss > 0 ? Math.min(_rMp, _ringFrac(info.loss, maxMp)) : 0;
+            ret.material.uniforms.uPrevMpGain.value = info.gain > 0 ? Math.min(1 - _rMp, _ringFrac(info.gain, maxMp)) : 0;
+            painted = true;
+        }
+        var po = _plateObjs.get(info.unitId);
+        if (!po || !po.el) return painted;
+        var refs = _plateRefs(po);
+        if (!refs.mpBar) return painted;
+        var el = refs.mpBar.querySelector('.tp-mp-preview');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'tp-mp-preview';
+            refs.mpBar.insertBefore(el, refs.mpNum || null);
+        }
+        var mpPct = Math.max(0, Math.min(100, 100 * (u.mp || 0) / maxMp));
+        if (info.loss > 0) {
+            var lossPct = Math.max(0, Math.min(mpPct, 100 * info.loss / maxMp));
+            el.style.left = (mpPct - lossPct) + '%';
+            el.style.width = lossPct + '%';
+            el.classList.remove('mp-preview-gain');
+            el.classList.toggle('mp-preview-short', !!info.short);
+        } else {
+            var gainPct = Math.max(0, Math.min(100 - mpPct, 100 * (info.gain || 0) / maxMp));
+            el.style.left = mpPct + '%';
+            el.style.width = gainPct + '%';
+            el.classList.add('mp-preview-gain');
+            el.classList.remove('mp-preview-short');
+        }
+        return true;
+    }
+
     /* the nnn/nnn after the bar's HP / MP word (the trailing text node), written only when it changed */
     function _plateNumSet(el, txt) {
         var t = el.lastChild;
@@ -15323,7 +15405,8 @@ const ThreeRenderer = (function () {
                 '  width: auto; height: auto; background: none; box-shadow: none !important;',
                 '}',
                 '.tp-wrap.tp-side:not(.tp-far) .tp-hp-fill, .tp-wrap.tp-side:not(.tp-far) .tp-mp-fill,',
-                '.tp-wrap.tp-side:not(.tp-far) .tp-shield, .tp-wrap.tp-side:not(.tp-far) .tp-dmg-preview { display: none; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-shield, .tp-wrap.tp-side:not(.tp-far) .tp-dmg-preview,',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-mp-preview { display: none; }',
                 '.tp-wrap.tp-side:not(.tp-far) .tp-bar-num {',
                 '  position: static; transform: none; margin: 0; font-size: 10px;',
                 '}',
@@ -38207,6 +38290,7 @@ const ThreeRenderer = (function () {
             var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Ph = _ewPU(u.uPhase, 'float'),
                 Me = _ewPU(u.uMeters, 'float'), Hp = _ewPU(u.uHp, 'float'), Mp = _ewPU(u.uMp, 'float'), Sh = _ewPU(u.uShield, 'float'),
                 Pv = _ewPU(u.uPrev, 'float'), PvH = _ewPU(u.uPrevHeal, 'float'), Rot = _ewPU(u.uMeterRot, 'float'),
+                PvM = _ewPU(u.uPrevMp, 'float'), PvMG = _ewPU(u.uPrevMpGain, 'float'),
                 HpC = _ewPU(u.uHpCol, 'color'), MpC = _ewPU(u.uMpCol, 'color');
             /* THE RING LOOK (shared uniforms, see _retLookU) */
             var LU = function (k, t) { return _ewPU(u[k] || _retLookU[k], t || 'float'); };
@@ -38256,7 +38340,13 @@ const ThreeRenderer = (function () {
                     hpCol.assign(T.mix(hpCol, V3(0.62, 1, 0.72), healMask.mul(blink).mul(0.85)));
                     hpCol.assign(T.mix(rim, hpCol, hpBand));
                     var mpC = T.mix(MpC, WHITE, one.sub(ss(0, 0.016, mrd)).mul(0.18));
-                    var mpCol = T.mix(rim, T.mix(track, mpC, mpFill), mpBand);
+                    /* the mana forecast on the MP meter (the GLSL above) */
+                    var mpPrevMask = arcIn(frac, T.max(0, Mp.sub(PvM)), Mp).mul(T.step(0.001, PvM));
+                    var mpGainMask = arcIn(frac, Mp, T.min(1, Mp.add(PvMG))).mul(T.step(0.001, PvMG));
+                    var mpIn = T.mix(track, mpC, mpFill).toVar();
+                    mpIn.assign(T.mix(mpIn, V3(0.81, 0.91, 1), mpPrevMask.mul(blink)));
+                    mpIn.assign(T.mix(mpIn, V3(0.89, 0.96, 1), mpGainMask.mul(blink).mul(0.85)));
+                    var mpCol = T.mix(rim, mpIn, mpBand);
                     var hpA = hpOuter.mul(T.mix(0.78, 1, T.max(hpFill, shFill))).mul(pulse.mul(0.06).add(0.94)).toVar();
                     var mpA = mpOuter.mul(T.mix(0.74, 1, mpFill)).mul(pulse.mul(0.06).add(0.94)).toVar();
                     var chA = T.min(arA, 1).toVar();
@@ -41848,6 +41938,7 @@ const ThreeRenderer = (function () {
         _updateMdItemPulse();
         _updateMatDrops();
         _updateDmgPreviewPlates();
+        _updateMpPreviewPlates();
         var uSer = _computeUnitSerial();
         if (uSer !== _lastUnitSerial) {
 

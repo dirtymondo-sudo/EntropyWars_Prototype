@@ -1766,6 +1766,13 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
     else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
   }
+  /* THE MANA FORECAST (ui.js getPendingManaPreview): the cost / leak blinks off the MP ring, a restore grows from it */
+  let mpLossPct = 0, mpGainPct = 0, mpShort = false;
+  const _mfc = (!dead && maxMp > 0 && typeof window._ewManaPreviewFor === 'function') ? window._ewManaPreviewFor(unit.id) : null;
+  if (_mfc) {
+    if (_mfc.loss > 0) { mpLossPct = _ppClamp((_mfc.loss / maxMp) * 100, 0, mpPct); mpShort = !!_mfc.short; }
+    if (_mfc.gain > 0) mpGainPct = _ppClamp((_mfc.gain / maxMp) * 100, 0, 100 - mpPct);
+  }
   const clipId = 'ppclip-' + String(unit.id).replace(/[^a-z0-9_-]/gi, '_');
   const R_HP = 43, R_MP = 36.5, R_FACE = 30.5, R_HALO = 48;
 
@@ -1792,6 +1799,8 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       dmgPct > 0 && _ppArc(R_HP, dmgPct, hpPct - dmgPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
       healPct > 0 && _ppArc(R_HP, healPct, hpPct, 'hp prev heal', { stroke: PP_HEAL }),
       maxMp > 0 && _ppArc(R_MP, mpPct, 0, 'mp fill', { stroke: PP_MP }),
+      mpLossPct > 0 && _ppArc(R_MP, mpLossPct, mpPct - mpLossPct, 'mp prev', { stroke: mpShort ? '#ffb3bc' : '#cfe9ff' }),
+      mpGainPct > 0 && _ppArc(R_MP, mpGainPct, mpPct, 'mp prev gain', { stroke: '#e3f4ff' }),
       h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
       h('g', { clipPath: 'url(#' + clipId + ')' },
         h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-disc' }),
@@ -3086,6 +3095,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
             width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
             background: MP_FILL, boxShadow: MP_GLOW,
           }}),
+          /* the row's own mana forecast (a Mana Potion's restore, Memory Leak's leak), else the live one */
+          _hrlgMpPreviewSlices({ id: port.unitId, mp: port.mp, maxMp: port.maxMp },
+            (b.previewMpLoss > 0 || b.previewMpGain > 0) ? { loss: b.previewMpLoss || 0, gain: b.previewMpGain || 0 } : null),
         ),
         h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
       ),
@@ -3306,6 +3318,31 @@ function _hrlgStatusChips(unit) {
   return chips;
 }
 
+/* THE MANA FORECAST on an MP bar (ui.js getPendingManaPreview, mondo 2026-10-25: "a mana bar preview just like for
+   healing and damage"): what the hovered / armed action costs or drains blinks as a pale slice off the fill's leading
+   edge (red-tinted when the caster can't pay it), a restore grows from the edge — the HP forecast's read, in blue. */
+function _hrlgMpPreviewSlices(u, own) {
+  const fc = own || ((u && typeof window._ewManaPreviewFor === 'function') ? window._ewManaPreviewFor(u.id) : null);
+  if (!fc || !(u.maxMp > 0)) return null;
+  const mpPct = Math.max(0, Math.min(100, ((u.mp || 0) / u.maxMp) * 100));
+  const lossPct = fc.loss > 0 ? Math.max(0, Math.min(mpPct, (fc.loss / u.maxMp) * 100)) : 0;
+  const gainPct = fc.gain > 0 ? Math.max(0, Math.min(100 - mpPct, (fc.gain / u.maxMp) * 100)) : 0;
+  return [
+    lossPct > 0 && h('span', { key: 'mpl', className: 'hrlg-thp-preview mp-preview' + (fc.short ? ' mp-preview-short' : ''),
+      style: { left: (mpPct - lossPct) + '%', width: lossPct + '%' } }),
+    gainPct > 0 && h('span', { key: 'mpg', className: 'hrlg-thp-preview mp-preview-gain',
+      style: { left: mpPct + '%', width: gainPct + '%' } }),
+  ];
+}
+/* the −N / +N beside an MP bar, blinking with its slice */
+function _hrlgMpPreviewChip(u, cls) {
+  const fc = (u && typeof window._ewManaPreviewFor === 'function') ? window._ewManaPreviewFor(u.id) : null;
+  if (!fc) return null;
+  const net = Math.round((fc.gain || 0) - (fc.loss || 0));
+  if (!net) return null;
+  return h('span', { className: cls + ' mp' + (fc.short ? ' short' : '') }, (net > 0 ? '+' : '−') + Math.abs(net));
+}
+
 // ── Quick-menu header vitals ────────────────────────────────────────
 // The clicked unit's real HP/MP bars ride the quick-menu header, right
 // under the name tab (the panel key carries the unit: 'enemy|<id>' /
@@ -3368,8 +3405,10 @@ function _hrlgQuickVitals(panelKey) {
           width: Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) + '%',
           background: MP_FILL, boxShadow: MP_GLOW,
         }}),
+        _hrlgMpPreviewSlices(u),
       ),
       h('span', { className: 'hrlg-qv-num mp' }, Math.max(0, Math.round(u.mp)) + '/' + u.maxMp),
+      _hrlgMpPreviewChip(u, 'hrlg-qv-fc'),
     ),
     /* THE STATUS EFFECTS + THE BUFFS / DEBUFFS (mondo 2026-10-18: "the unit info panel needs to have the unit's status
        effect badges and debuffs/buffs as sections too. ideally the debuffs can show next to their relevant stat"): the
@@ -3577,6 +3616,11 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     if (selIdx < 0) selIdx = 0;
   }
   const selBlade = blades[selIdx] || null;
+  /* THE MANA FORECAST (ui.js getPendingManaPreview): the cursor's spell row tells every MP bar what it costs — set
+     during render so the unit info card drawn below reads it on this same pass; cleared when the menu goes */
+  window._ewRowMpSpend = (apUnit && selBlade && selBlade.spell && (selBlade.available || selBlade.check)
+    && typeof selBlade.mp === 'number' && selBlade.mp > 0) ? { unitId: apUnit.id, spellName: selBlade.spell.name } : null;
+  useEffect(() => () => { window._ewRowMpSpend = null; }, []);
   /* every row's cost + whether it ends the turn (its cost pips, its ENDS TURN tag and the AP press icons read it) */
   _panels.forEach(p => (p.blades || []).forEach(b => { b.apUse = _hrlgApUseOf(apUnit, b); }));
   /* THE AP PRESS ICONS flash what the cursor row (hover IS selection) costs, and mark the rest lost when it ends the
@@ -3972,7 +4016,11 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
             if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
               ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
           }
+          /* THE MANA FORECAST: a Mana Potion (or an ally's Free Energy) aimed at this unit grows its MP fill */
+          const _mfc = (typeof window._ewManaPreviewFor === 'function' && apUnit) ? window._ewManaPreviewFor(apUnit.id) : null;
+          const mpGain = (_mfc && _mfc.gain > 0) ? _mfc.gain : 0;
           const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
+          const gainPct = mpGain > 0 ? Math.max(0, Math.min(100 - mpPct, (mpGain / maxMp) * 100)) : 0;
           return h('div', { className: 'hrlg-vrow mp' },
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
             h('span', { className: 'hrlg-vbar mp' },
@@ -3981,9 +4029,14 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
                 className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
                 style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
               }),
+              gainPct > 0 && h('span', {
+                className: 'hrlg-vspend gain',
+                style: { left: mpPct + '%', width: gainPct + '%' },
+              }),
             ),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
-              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend) : null),
+              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend)
+                : mpGain > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' +' + mpGain) : null),
           );
         })(),
         /* XP to next level — progression modes only (Mystery Dungeon /
@@ -5071,6 +5124,7 @@ function _hrlgPortraitData(u, actingUnit) {
     ko: !!u.dead,
     hp: Math.max(0, Math.round(u.hp || 0)), maxHp: u.maxHp || 0,
     shield: u.shield || 0,
+    unitId: u.id,
   };
 }
 
@@ -5188,6 +5242,16 @@ function _hrlgTargetBlades(unit, st, mode) {
         && typeof _estimateSpellHeal === 'function'
         && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
       ? _estimateSpellHeal(unit, tUnit, spell) : 0;
+    /* THE MANA FORECAST: a spell that leaks MP (Memory Leak's mpDrain, battle.js debuff branch) shows the target's MP
+       bar on its row with the leak blinking off it */
+    const previewMpLoss = (tUnit && portrait && spell && spell.kind === 'debuff' && spell.mpDrain > 0 && (tUnit.maxMp || 0) > 0
+        && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
+      ? Math.min(Math.max(0, tUnit.mp || 0), spell.mpDrain) : 0;
+    if (previewMpLoss > 0) {
+      portrait.showMp = true;
+      portrait.mp = Math.max(0, Math.round(tUnit.mp || 0));
+      portrait.maxMp = tUnit.maxMp || 0;
+    }
     /* the Cube row's forecast (Cube playtest 2026-10-23: it showed only "63% · 4T"): the same hit math the swing rolls
        (battle.js getCubeAttackForecast, mid roll), with the Nexus siege multiplier named when it is on */
     let cubeFc = null;
@@ -5210,6 +5274,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
+      previewMpLoss: previewMpLoss,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
       // slot). A target that nullifies / drinks the WHOLE hit forecasts words;
       // a split hit's main part still lands, so it keeps its number (the red ! warns).
@@ -5222,6 +5287,7 @@ function _hrlgTargetBlades(unit, st, mode) {
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewMpLoss > 0 ? { v: '−' + previewMpLoss + ' MP', color: '#8fd0ff' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
       acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
@@ -5365,6 +5431,9 @@ function _hrlgItemTargetBlades(unit, st) {
     const _bFc = (isBane && typeof forecastOnUnit === 'function' && typeof baneForecastSpell === 'function')
       ? forecastOnUnit(unit, u, baneForecastSpell(key)) : null;
     const previewDmg = _bFc ? Math.min(_bFc.dmg, Math.max(0, u.hp)) : 0;
+    /* Mana Potion rows: the projected restore grows off the row's MP bar (ui.js _ewManaPotionGain mirrors doItem) */
+    const previewMpGain = (isMana && available && typeof window._ewManaPotionGain === 'function')
+      ? window._ewManaPotionGain(u, key) : 0;
     const portrait = _hrlgPortraitData(u, unit);
     if (portrait && isMana) {
       portrait.showMp = true;
@@ -5384,9 +5453,11 @@ function _hrlgItemTargetBlades(unit, st) {
       camTarget: { x: u.x, y: u.y, z: u.z, uid: u.id },
       previewHeal: previewHeal,
       previewDmg: previewDmg,
+      previewMpGain: previewMpGain,
       superEff: baneHit && previewDmg > 0,
       power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
-        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
+        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewMpGain > 0 ? { v: '+' + previewMpGain + ' MP', color: '#8fd0ff' } : undefined,
       meta: { text: t.dist + 't' },
       fire: () => {
         if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
@@ -11357,6 +11428,7 @@ function _hudHideCss() {
       animation: dmgPreviewBlink 0.85s ease-in-out infinite;
     }
     .hrlg-vspend.short { background: #ffb3bc; }
+    .hrlg-vspend.gain { background: #e3f4ff; }
     .hrlg-vspendnum {
       color: #8fd0ff; font-weight: 900;
       text-shadow: 0 0 6px rgba(120,190,255,0.7), 0 1px 2px #000;
@@ -11545,6 +11617,8 @@ function _hudHideCss() {
     .hrlg-qv-fc.dmg { color: #ff8d97; text-shadow: 0 0 6px rgba(255,74,86,0.7), 0 1px 2px #000; }
     .hrlg-qv-fc.dmg.lethal { color: #ffd0d5; }
     .hrlg-qv-fc.heal { color: #7df0a5; text-shadow: 0 0 6px rgba(46,209,88,0.7), 0 1px 2px #000; }
+    .hrlg-qv-fc.mp { color: #8fd0ff; text-shadow: 0 0 6px rgba(120,190,255,0.7), 0 1px 2px #000; }
+    .hrlg-qv-fc.mp.short { color: #ffb3bc; }
     /* ── clicked unit's stat readout: plain numbers, two columns, no
        bars — the last section of the header blade (replaced the ⓘ
        stat-card button). CRT/EVA tooltips carry the full formula. */

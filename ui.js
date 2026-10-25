@@ -15470,6 +15470,124 @@
         }
         window.getPendingDamagePreview = getPendingDamagePreview;
 
+        /* THE MANA FORECAST (mondo 2026-10-25: "there needs to be a mana bar preview just like for healing and
+           damage"): the MP side of getPendingDamagePreview, read by the same bars (3D nameplates, ring vitals, turn
+           icons, the unit info card, the target rows, the Horologe). Each entry is {unitId, loss, gain, short}:
+             · the caster's MP bar loses the spell's real cost (getSpellMpCostFor, what doSpell charges);
+               `short` = it costs more than the caster has;
+             · Memory Leak (a debuff with mpDrain) leaks min(MP, mpDrain) off the enemy it lands on;
+             · Free Energy (manaRestoreAll) fills every OTHER living ally by min(mpRestore || 40, missing MP);
+             · a Mana Potion fills its target by round(maxMp × mpPct), clamped to the missing MP (doItem).
+           Sources, like the HP forecast: a hovered quick-menu row with a target (window._hoverActionForecast), the
+           Horologe's cursor row (window._ewRowMpSpend, hud.js), then the armed spell / item (+ its picked target).
+           Viewer-local: nothing here syncs online. */
+        function _manaSpellOf(unit, name) {
+            if (!unit || !name) return null;
+            return (unit.spells || []).find(s => s && s.name === name)
+                || (unit._raceAbilities || []).find(s => s && s.name === name) || null;
+        }
+        function _manaPotionGain(target, itemKey) {
+            if (!target || target.dead || !(target.maxMp > 0)) return 0;
+            const _r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[itemKey]) || {};
+            const restore = Math.max(1, Math.round(target.maxMp * (_r.mpPct || 0.35)));
+            return Math.min(restore, Math.max(0, target.maxMp - (target.mp || 0)));
+        }
+        function _isManaPotion(itemKey) {
+            return !!itemKey && (typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'manaPotion') : itemKey === 'manaPotion');
+        }
+        function _manaForecast(caster, spell, target, itemKey) {
+            const out = [];
+            const add = (u, loss, gain) => {
+                if (!u || u.dead || !(u.maxMp > 0) || !(loss > 0 || gain > 0)) return;
+                const e = out.find(x => x.unitId === u.id);
+                if (e) { e.loss += loss || 0; e.gain += gain || 0; }
+                else out.push({ unitId: u.id, loss: loss || 0, gain: gain || 0, short: false });
+            };
+            if (spell && caster) {
+                const cost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(caster, spell) : (spell.cost || 0);
+                if (cost > 0) {
+                    add(caster, cost, 0);
+                    const e = out.find(x => x.unitId === caster.id);
+                    if (e) e.short = cost > (caster.mp || 0);
+                }
+                if (spell.kind === 'manaRestoreAll') {
+                    const allies = (typeof aliveUnitsFor === 'function') ? aliveUnitsFor(caster.player)
+                        : (state.units || []).filter(u => u.player === caster.player && !u.dead && !u._dying);
+                    for (const a of allies) {
+                        if (a.id === caster.id) continue;   // the caster never refills itself (battle.js)
+                        add(a, 0, Math.min(spell.mpRestore || 40, Math.max(0, (a.maxMp || 0) - (a.mp || 0))));
+                    }
+                } else if (spell.kind === 'debuff' && spell.mpDrain > 0 && target && target.id !== caster.id
+                    && isEnemyUnit(caster, target)) {
+                    add(target, Math.min(Math.max(0, target.mp || 0), spell.mpDrain), 0);
+                }
+            } else if (_isManaPotion(itemKey) && target && caster && !isEnemyUnit(caster, target)) {
+                add(target, 0, _manaPotionGain(target, itemKey));
+            }
+            return out;
+        }
+        let _mpPreviewCacheKey = '';
+        let _mpPreviewCacheVal = null;
+        function getPendingManaPreview() {
+            if (!state || !state.units || state._actionExecuting || state.devAutoSim) return null;
+            let caster = null, spell = null, target = null, itemKey = null, src = '';
+            const hov = window._hoverActionForecast;
+            const row = window._ewRowMpSpend;
+            if (hov) {
+                caster = state.units.find(u => u.id === hov.attackerId && !u.dead) || null;
+                target = state.units.find(u => u.id === hov.targetId && !u.dead) || null;
+                if (caster) {
+                    spell = _manaSpellOf(caster, hov.spellName);
+                    if (!spell && hov.itemKey) itemKey = hov.itemKey;
+                }
+                src = 'hov';
+            }
+            if (!spell && !itemKey && row && row.unitId != null) {
+                /* the Horologe's cursor row: a spell row costs its MP (no target picked yet) */
+                caster = state.units.find(u => u.id === row.unitId && !u.dead) || null;
+                spell = caster ? _manaSpellOf(caster, row.spellName) : null;
+                target = null;
+                src = 'row';
+            }
+            if (!spell && !itemKey) {
+                const mode = (state.pendingTarget && state.pendingTarget.mode) || state.actionMode;
+                if (mode === 'spell' || mode === 'item') {
+                    caster = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
+                    if (caster && !caster.dead) {
+                        const tool = (state.pendingTarget && state.pendingTarget.tool) || state.selectedTool;
+                        if (mode === 'spell') spell = _manaSpellOf(caster, tool);
+                        else if (_isManaPotion(tool)) itemKey = tool;
+                        const pt = state.pendingTarget;
+                        target = null;
+                        if (pt && pt.x != null) {
+                            const side = itemKey ? 'ally' : 'enemy';
+                            target = (typeof resolveUnitInColumn === 'function')
+                                ? resolveUnitInColumn(caster, pt.x, pt.y, pt.z, { side: side })
+                                : unitAt(pt.x, pt.y);
+                        }
+                        src = 'arm';
+                    }
+                }
+            }
+            if (!caster || (!spell && !itemKey)) return null;
+            const key = [src, caster.id, caster.mp, (spell && spell.name) || itemKey || '',
+                target ? target.id + ':' + target.mp : '',
+                (state.units || []).reduce((s, u) => s + (u.dead ? 0 : (u.mp || 0)), 0)].join('|');
+            if (key === _mpPreviewCacheKey) return _mpPreviewCacheVal;
+            const all = _manaForecast(caster, spell, target, itemKey);
+            _mpPreviewCacheKey = key;
+            _mpPreviewCacheVal = all.length ? { all: all } : null;
+            return _mpPreviewCacheVal;
+        }
+        window.getPendingManaPreview = getPendingManaPreview;
+        window._ewManaPotionGain = _manaPotionGain;
+        /* one unit's slice of the mana forecast ({loss, gain, short}) or null */
+        window._ewManaPreviewFor = function (unitId) {
+            const fc = getPendingManaPreview();
+            if (!fc || unitId == null) return null;
+            return fc.all.find(e => String(e.unitId) === String(unitId)) || null;
+        };
+
         // Green !-circle marking a super-effective hit (inline-styled so it
         // renders identically through the 3D intent badges and the DOM path).
         /* THE GREEN ! LOOK (2026-10-18, mondo: "make the icon more clear like give it an outline or add it somewhere in
