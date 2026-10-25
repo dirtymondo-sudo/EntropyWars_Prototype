@@ -114,6 +114,10 @@ const RACE_SPRITE_GENDERS = {
   'firefighter': 'male',   // 2026-09-30
   'goblin': 'male',   // 2026-09-30
   'hippie': 'both',   // 2026-09-30
+  'chef': 'male',   // 2026-10-25
+  'eagleman': 'male',   // 2026-10-25
+  'flesheater': 'male',   // 2026-10-25
+  'mime': 'female',   // 2026-10-25 — the mime_female upload
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -284,6 +288,11 @@ const _CHARACTER_SPRITES = {
   'starfish': `${_CS}/starfish.png`,
   'tree person': `${_CS}/treeperson.png`,
   'luchador': `${_CS}/wrestler.png`,
+  // 2026-10-25 — mondo's sprites in each race's own R2 folder (Races/<race>/<race>.png; the chef's in male/)
+  'chef': `${_S}/Races/chef/male/chef.png`,
+  'eagleman': `${_S}/Races/eagleman/eagleman.png`,
+  'flesheater': `${_S}/Races/flesheater/flesheater.png`,
+  'mime': `${_S}/Races/mime/mime_female.png`,
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
@@ -1910,6 +1919,31 @@ const RACE_MODELS_3D = {
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
+  // ── THE 2026-10-25 BATCH ── mondo's Meshy uploads (rigged, 28 joints, 1.7 m in the file): chef, eagleman, flesheater, mime.
+  'chef': {
+    male: _mkUAL('chef/male', 'chef_male', {
+      model: `${_S}/Races/chef/male/Meshy_AI_chef_male_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
+  },
+  'eagleman': {
+    male: _mkUAL('eagleman', 'eagleman_', {
+      model: `${_S}/Races/eagleman/Meshy_AI_eagleman__Running.glb`,
+      heightRatio: 1.04, basicAttackKind: 'claw',
+    }),
+  },
+  'flesheater': {
+    male: _mkUAL('flesheater', 'flesheater', {
+      model: `${_S}/Races/flesheater/Meshy_AI_flesheater_Running.glb`,
+      heightRatio: 1.22, basicAttackKind: 'claw',
+    }),
+  },
+  'mime': {
+    female: _mkUAL('mime', 'mime_female', {
+      model: `${_S}/Races/mime/Meshy_AI_mime_female_Running.glb`,
+      heightRatio: 0.93, basicAttackKind: 'punch',
+    }),
+  },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
   'clown': {
     male: _mkUAL('clown', 'evil_clown', {
@@ -3338,6 +3372,10 @@ const RACE_SPRITES = {
   'firefighter': `${_S}/character_sprites/firefighter.png`,   // 2026-10-04 — his own sprite
   'goblin': `${_S}/character_sprites/gremlin.png`,   // 2026-10-04 — his own sprite
   'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
+  'chef': `${_S}/Races/chef/male/chef.png`,   // 2026-10-25 — his own sprite
+  'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
+  'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
+  'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
