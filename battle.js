@@ -5517,6 +5517,9 @@
                         ? { delayMs: imp.atMs, dx: imp.dx, dy: imp.dy, z: imp.z } : { delayMs: imp.atMs });
                 }
             }
+            // Balance Lab: an enemy's push / pull (the first body of a throw; the chain's bodies ride the same one)
+            if (_balanceSimMode && !simulate && !depth && res.moved > 0 && opts.byUnit && opts.byUnit.id !== target.id
+                && isEnemyUnit(opts.byUnit, target)) _balEffect(opts.byUnit, 'forcedMove', res.moved, res.slamDamage || 0);
             return res;
         }
 
@@ -9381,6 +9384,7 @@
             if (_immPassive) {
                 addLog(`${_immPassive.icon} ${_ctName(target)}'s ${_immPassive.name} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immPassive.icon} IMMUNE`, 'heal', { durationMs: 900 });
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             /* 🖤 Pure Negativity (ghoul, plan §5.2): a passive with
@@ -9391,6 +9395,7 @@
                 const _immDef = (typeof getUnitPassives === 'function' ? getUnitPassives(target) : []).find(p => p.immuneKind === _immKind);
                 addLog(`${_immDef?.icon || '🖤'} ${_ctName(target)}'s ${_immDef?.name || 'passive'} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immDef?.icon || '🖤'} IMMUNE`, 'heal', { durationMs: 900 });
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             /* 🜂 Elemental status immunity (2026-09-01): a status that IS an
@@ -9408,6 +9413,7 @@
                 const _stIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_stAffEl]) || '∅';
                 addLog(`${_stIcon} ${_ctName(target)} is immune to ${_stAffEl} — ${(STATUS_DEFS[payload.id]?.label) || payload.id} has no effect!`);
                 showFloatingTextForUnit(target, `${_stIcon} IMMUNE`, 'heal', { durationMs: 900 });
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
@@ -9427,6 +9433,7 @@
                 if (typeof showFloatingTextForUnit === 'function') {
                     showFloatingTextForUnit(target, '🔏 LOCKED', 'buff', { durationMs: 1000 });
                 }
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             const isEnemyDebuff = !!sourceUnit && isEnemyUnit(sourceUnit, target) && meta.kind === 'debuff';
@@ -9434,6 +9441,7 @@
                 const chance = getStatusApplyChance(sourceUnit, target, payload);
                 if (engineRng() > chance) {
                     addLog(`${sourceLabel}${_ctName(target)} resists ${meta.label}.`);
+                    _balStatusEvt(payload.id, 'resisted');
                     return false;
                 }
             }
@@ -9641,6 +9649,7 @@
                 }
             }
 
+            _balStatusEvt(payload.id, 'applied', sourceUnit, target);   // Balance Lab status telemetry
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
         }
@@ -9678,6 +9687,23 @@
             });
 
             if (!affected.length || _skipVisuals()) {
+                /* No-visuals rounds (CPU-vs-CPU sims, the Balance Lab, animations off) still TICK: burn / poison /
+                   bleed / regen resolve their onRoundEnd here with no camera or dialogue. This path used to skip them,
+                   so in every sim a DoT never dealt damage (found 2026-10-25 by the Balance Lab status telemetry). */
+                for (const unit of affected) {
+                    if (state.winner) break;
+                    if (unit.dead) continue;
+                    for (const key of getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k))) {
+                        const def = STATUS_DEFS[key];
+                        if (!def?.onRoundEnd) continue;
+                        const hpBefore = unit.hp;
+                        def.onRoundEnd(unit);
+                        if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
+                        if (unit.dead) break;
+                    }
+                    if (unit.dead) checkWin();
+                }
+                if (state.winner) { if (onDone) onDone(); return; }
 
                 _tickAllStatusDurations();
                 if (onDone) onDone();
@@ -9741,6 +9767,7 @@
                     if (!def?.onRoundEnd) continue;
                     const hpBefore = unit.hp;
                     def.onRoundEnd(unit);
+                    if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
 
                     if (unit.dead) {
                         dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${_ctName(unit)} was claimed by ${def.label || key}</span>`);
@@ -13331,6 +13358,7 @@
             if (actual <= 0) return 0;
             target.hp = Math.min(target.maxHp, target.hp + actual);
             if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
+            if (_balanceSimMode && sourceUnit) _balEffect(sourceUnit, 'heal', actual, 0);
             target._trackHealReceived = (target._trackHealReceived || 0) + actual;
 
             if (sourceUnit && sourceUnit.id !== target.id) {
@@ -34748,6 +34776,8 @@
                   (×1.625 STAB+weak × ×1.5 combo × ×1.25 resonance × … used
                   to exceed ×5 and one-shot through full armor). */
             let _offMult = 1;
+            // Balance Lab: which bonuses this hit rode (returned to applyDamageToUnit for the effect telemetry)
+            let _balHg = false, _balBvs = null, _balZod = false, _balEtb = false, _balReact = null;
 
             // Surface the hidden math: small ×N callouts for every live
             // multiplier so the player sees WHY a number came out big.
@@ -34862,6 +34892,7 @@
                         const heightAdv = srcH - tgtH;
                         const _hgMult = 1 + DOWNHILL_DAMAGE_BONUS * heightAdv;
                         _offMult *= _hgMult;
+                        _balHg = true;
                         _multCallout(sourceUnit, `⛰ HIGH GROUND! ×${_hgMult.toFixed(1)}`, 1100);
                     } else if (tgtH > srcH) {
 
@@ -34918,6 +34949,7 @@
                 && isEnemyUnit(sourceUnit, target) && bonusStatusMatches(target, _bvs.status)) {
                 const _bvsMult = _bvs.mult || 1.5;
                 _offMult *= _bvsMult;
+                _balBvs = [].concat(_bvs.status).filter(id => bonusStatusMatches(target, id));
                 const _bvsName = [].concat(_bvs.status)
                     .filter(id => bonusStatusMatches(target, id))
                     .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
@@ -34961,6 +34993,7 @@
             if (_affEl && finalDamage > 0 && sourceUnit && damageType !== 'dot'
                 && getZodiacResonanceElement() === _affEl) {
                 _offMult *= ZODIAC_RESONANCE_MULT;
+                _balZod = true;
                 if (live && sourceUnit._zResCalloutRound !== state.round) {
                     sourceUnit._zResCalloutRound = state.round;
                     const _zsName = _affEl === 'earth' ? 'ground' : _affEl;
@@ -34978,6 +35011,7 @@
                 const _etb = elementTerrainBonus(_affEl, sourceUnit, target, { live, tgtX: _sa ? _sa.x : undefined, tgtY: _sa ? _sa.y : undefined });
                 if (_etb) {
                     _offMult *= _etb.mult;
+                    _balEtb = true;
                     if (live) {
                         const _who = _etb.who === 'caster' ? sourceUnit : target;
                         const _key = sourceUnit.id + ':' + _protectActionSeq + ':' + _who.id;
@@ -35006,6 +35040,7 @@
                 });
                 if (_cmb.mult !== 1) _offMult *= _cmb.mult;
                 _comboSupercharge = _cmb.supercharge;
+                if (_cmb.mult !== 1 && _cmb.note) _balReact = _cmb.note;
                 if (!live) { /* forecast: no callouts */ } else if (_cmb.note === 'shortCircuit') {
                     showFloatingTextForUnit(target, '⚡💧 ×1.5 SHORT CIRCUIT!', 'mult', { durationMs: 1100 });
                 } else if (_cmb.note === 'soakedShock') {
@@ -35124,7 +35159,8 @@
                 res: _res, finalDamage, sourceUnit, damageType, typeEffectOverride, typeNote,
                 hrTypeEff: _hrTypeEff, comboSupercharge: _comboSupercharge, comboEl: _comboEl,
                 offMult: _offMult, markedBonus: _markedBonus,
-                elemShare: _eShare, splitHit: _splitHit, splitEff: _splitEff, absorbHeal: _absorbHeal
+                elemShare: _eShare, splitHit: _splitHit, splitEff: _splitEff, absorbHeal: _absorbHeal,
+                highGround: _balHg, bvsIds: _balBvs, zodiacSurge: _balZod, elemTerrain: _balEtb, reactNote: _balReact
             };
         }
 
@@ -35268,6 +35304,7 @@
                 }
             }
             if (invulnStatus) {
+                if (_balanceSimMode && sourceUnit_pre && isEnemyUnit(sourceUnit_pre, target)) _balStatusEvt(invulnStatus, 'blockedHit', null, target);
                 // Press Turn: a spell wasted on a Protected enemy cuts the turn
                 // short exactly like a whiff — record a MISS in the collector
                 // (a miss vetoes any press from the rest of the cast).
@@ -35344,6 +35381,7 @@
             // only its element part heals (after the blow, below).
             // (The matching status DoT is also blocked — see applyStatusPayload.)
             if (_affinity === 'absorb' && _wholeElem && damage > 0) {
+                _balElemBlocked(opts.sourceUnit || null, target, _affEl, 'absorb');
                 const _regen = Math.max(1, Math.round(damage));
                 target.hp = Math.min(target.maxHp, (target.hp || 0) + _regen);
                 if (_drinks) {
@@ -35366,6 +35404,7 @@
             // in _hitDamageMath; the element's statuses bounce in
             // applyStatusPayload). weak/resist multiply in _hitDamageMath.
             if (_affinity === 'immune' && _wholeElem && damage > 0) {
+                _balElemBlocked(opts.sourceUnit || null, target, _affEl, 'immune');
                 const _immIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '∅';
                 addLog(`${_immIcon} ${_ctName(target)} is immune to ${_affEl} — no effect!`);
                 if (!_skipVisuals()) {
@@ -35419,6 +35458,7 @@
             const _guardBroke = _res.absorbed > 0 && !(_res.shieldLeft > 0) && _res.dmg > 0;
             if (_res.absorbed > 0) {
                 target.shield = _res.shieldLeft;
+                _balEffect(target, 'shieldAbsorb', _res.absorbed, 0);
                 addLog(`${_ctName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
@@ -35451,6 +35491,7 @@
                 }
             }
 
+            let _balHitRec = null;   // Balance Lab: this hit's element / effects / statuses, for the kill credit below
             if (finalDamage > 0) {
                 target.hp -= finalDamage;
                 target._tookDamageThisRound = true;
@@ -35491,6 +35532,7 @@
                         _balSpellCollector.dmg += finalDamage;
                         _balSpellCollector.targetsHit++;
                     }
+                    if (_balanceSimMode) _balHitRec = _balRecordHit(sourceUnit, target, finalDamage, opts, _hm, _affEl, _affinity, damageType);
 
                     // Whip around to face the attacker: the first backstab lands,
                     // but a hit unit won't keep its back turned — repeat attacks
@@ -35933,6 +35975,7 @@
                     && target.player !== killer.player) {
                     _balSpellCollector.kills++;
                 }
+                if (killer && killer === sourceUnit && _balHitRec) _balRecordHitKill(_balHitRec);
                 if (killer) {
                     killer._trackKills = (killer._trackKills || 0) + 1;
 
@@ -39506,6 +39549,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -41440,7 +41484,12 @@
             if (!c || c.casterId !== casterUnit.id || c.hits.length === 0) {
                 return { outcome: PRESS_OUTCOME.NORMAL, apDelta: 0, pressed: false, penalty: false };
             }
-            return applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
+            const _pr = applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
+            if (_balanceSimMode && _pr) {
+                if (_pr.pressed) _balEffect(casterUnit, 'press', Math.max(0, _pr.apDelta || 0), 0);
+                else if (_pr.penalty) _balEffect(casterUnit, 'pressMiss', Math.abs(_pr.apDelta || 0), 0);
+            }
+            return _pr;
         }
 
         /* ===================================================================
@@ -49362,6 +49411,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -49958,6 +50008,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -50168,6 +50219,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -56364,7 +56416,11 @@
             { id: 'treeShapes', label: 'Tree' },
             { id: 'spells', label: 'Spells' },
             { id: 'spellUse', label: 'Casts' },
+            { id: 'statusUse', label: 'Status' },
+            { id: 'elementUse', label: 'Elements' },
+            { id: 'effectUse', label: 'Effects' },
         ];
+        const _BAL_FX_TABS = { statusUse: 1, elementUse: 1, effectUse: 1 };
         // Dashboard view state (survives the per-match re-render).
         let _balanceFilter = '';
         let _balanceFilterFocused = false;
@@ -56411,13 +56467,17 @@
                 // Balance Lab (2026-10-06): matches per game build (index.html ?v= token), so an export that spans
                 // balance changes says so instead of silently mixing old and new numbers.
                 buildTokens: {},
+                // Balance Lab (2026-10-25): status / element / effect telemetry (see _balRecordHit) + how many
+                // matches it covers (older matches carry none of it).
+                statusUse: {}, elementUse: {}, effectUse: {},
+                fxMatches: 0,
                 updatedAt: 0,
             };
         }
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse']) {
+            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -56430,6 +56490,7 @@
             if (_balanceStats.roundsTotal == null) _balanceStats.roundsTotal = 0;
             if (_balanceStats.comebackWins == null) _balanceStats.comebackWins = 0;
             if (_balanceStats.firstKillWins == null) _balanceStats.firstKillWins = 0;
+            if (_balanceStats.fxMatches == null) _balanceStats.fxMatches = 0;
             _balanceStats.version = BALANCE_STATS_VERSION;
             return _balanceStats;
         }
@@ -56480,10 +56541,161 @@
             if (!m[c.name]) m[c.name] = { casts: 0, mp: 0, dmg: 0, kills: 0, targetsHit: 0, whiffs: 0 };
             const b = m[c.name];
             b.casts++; b.mp += c.mp || 0; b.dmg += c.dmg || 0;
+            if (c.el) {
+                const er = _balElemRow(c.el);
+                er.casts++; er.mp += c.mp || 0;
+                const caster = (typeof unitFromId === 'function') ? unitFromId(c.casterId) : null;
+                if (caster) _balFxMark(caster, 'el', c.el);
+            }
             b.kills += c.kills || 0; b.targetsHit += c.targetsHit || 0;
             // Whiff = a damage-kind cast that hit nothing (aimed at nobody /
             // dodged / fizzled). Utility casts (heals, buffs) never whiff here.
             if (c.isDmg && !c.dmg && !c.targetsHit) b.whiffs++;
+        }
+
+        /* ═══ STATUS / EFFECT / ELEMENT TELEMETRY (Balance Lab, mondo 2026-10-25: "Can we start tracking specific
+           status and effects and element usage, so we can see how strong those are") ═══════════════════════════════
+           Three more tables in the same saved stats (same IndexedDB key, so every older match stays):
+           • statusUse[id]  — applied (onEnemy / onAlly), resisted, blocked (immunities), DoT tick damage + kills, the
+             damage the WEARER took from enemies while carrying a debuff (or dealt while carrying a buff) + kills in
+             that state, combo-finisher hits on it (bonusVsStatus) and hits a Protect-style status turned away.
+           • elementUse[el] — casts + MP of spells of that element, enemy hits / damage / kills, and how the hits met
+             the target (weak / resist / immune / absorb). '(none)' = hits with no element (the baseline).
+           • effectUse[key] — crits, presses, status combos, element reactions, zodiac surge, element terrain, high
+             ground, Marked, heals, shield soak, pushes / pulls: count, amount, damage of those hits, kills.
+           games / wins on every row = the units that used it at least once in a match, and whether their team won
+           (the same read as the Spells tab). The per-match ledger lives here by unit ID (never on state or a unit),
+           and is folded in by recordBalanceMatch. Balance sim only. */
+        let _balFx = null;   // { [unitId]: { s: {statusId: 1}, el: {element: 1}, fx: {effectKey: 1} } } — this match
+        const _BAL_FX_LABELS = {
+            crit: 'Critical hit', press: 'Press (+AP refund)', pressMiss: 'Press miss (-AP)',
+            typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
+            statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
+            react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Soaked shock (lightning on wet)',
+            react_soakedFire: 'Soaked fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
+        };
+        function _balFxMark(u, kind, key) {
+            if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2) || !key) return;
+            if (!_balFx) _balFx = {};
+            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
+            L[kind][key] = 1;
+        }
+        function _balStatusRow(id) {
+            ensureBalanceStats();
+            const m = _balanceStats.statusUse;
+            return m[id] || (m[id] = { applied: 0, onEnemy: 0, onAlly: 0, resisted: 0, blocked: 0, dotDmg: 0, dotKills: 0,
+                heal: 0, dmgWhile: 0, killsWhile: 0, comboHits: 0, comboDmg: 0, blockedHits: 0, games: 0, wins: 0 });
+        }
+        function _balElemRow(el) {
+            ensureBalanceStats();
+            const m = _balanceStats.elementUse;
+            return m[el] || (m[el] = { casts: 0, mp: 0, hits: 0, dmg: 0, kills: 0, weak: 0, resist: 0, immune: 0, absorb: 0, games: 0, wins: 0 });
+        }
+        function _balEffectRow(key) {
+            ensureBalanceStats();
+            const m = _balanceStats.effectUse;
+            return m[key] || (m[key] = { n: 0, amt: 0, dmg: 0, kills: 0, games: 0, wins: 0 });
+        }
+        // A status event: 'applied' (with its source and target), 'resisted', 'blocked', 'blockedHit'.
+        function _balStatusEvt(id, ev, src, tgt) {
+            if (!_balanceSimMode || !id) return;
+            const r = _balStatusRow(id);
+            if (ev === 'applied') {
+                r.applied++;
+                if (src && tgt) {
+                    if (isEnemyUnit(src, tgt)) r.onEnemy++; else r.onAlly++;
+                } else if (tgt && STATUS_DEFS[id]?.kind === 'buff') {
+                    r.onAlly++;   // a self buff with no source passed (Guard, a stance): its wearer is the one using it
+                    _balFxMark(tgt, 's', id);
+                }
+                _balFxMark(src, 's', id);
+            } else if (ev === 'resisted') r.resisted++;
+            else if (ev === 'blocked') r.blocked++;
+            else if (ev === 'blockedHit') { r.blockedHits++; _balFxMark(tgt, 's', id); }
+        }
+        // One effect use by unit u: amount (heal / shield / tiles) and the damage of the hit it rode.
+        function _balEffect(u, key, amt, dmg) {
+            if (!_balanceSimMode || !key) return;
+            const r = _balEffectRow(key);
+            r.n++; r.amt += amt || 0; r.dmg += dmg || 0;
+            _balFxMark(u, 'fx', key);
+        }
+        // An element hit that met an immunity / absorb and never landed (applyDamageToUnit's early outs).
+        function _balElemBlocked(src, tgt, el, tier) {
+            if (!_balanceSimMode || !el || !src || !tgt || !isEnemyUnit(src, tgt)) return;
+            const r = _balElemRow(el);
+            r.hits++;
+            if (tier === 'immune' || tier === 'absorb') r[tier]++;
+            _balFxMark(src, 'el', el);
+        }
+        /* One landed hit (applyDamageToUnit, after the blow): files its element, the effects it rode and the statuses
+           the two bodies wear. Returns the hit's record so a kill can be credited to the same rows. */
+        function _balRecordHit(src, tgt, dmg, opts, hm, affEl, affinity, damageType) {
+            if (!_balanceSimMode || !src || !tgt || !(dmg > 0) || !isEnemyUnit(src, tgt)) return null;
+            const rec = { el: null, fx: [], st: [] };
+            const el = (affEl && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(affEl)) ? affEl : '(none)';
+            if (damageType !== 'dot') {
+                rec.el = el;
+                const er = _balElemRow(el);
+                er.hits++; er.dmg += dmg;
+                if (el !== '(none)' && affinity && er[affinity] != null) er[affinity]++;
+                _balFxMark(src, 'el', el);
+                const fx = [];
+                if (opts.isCrit) fx.push('crit');
+                if (hm) {
+                    if (hm.hrTypeEff > 1.001) fx.push('typeWeak'); else if (hm.hrTypeEff > 0 && hm.hrTypeEff < 0.999) fx.push('typeResist');
+                    if (hm.bvsIds && hm.bvsIds.length) fx.push('statusCombo');
+                    if (hm.markedBonus > 0) fx.push('marked');
+                    if (hm.reactNote) fx.push('react_' + hm.reactNote);
+                    if (hm.zodiacSurge) fx.push('zodiacSurge');
+                    if (hm.elemTerrain) fx.push('elemTerrain');
+                    if (hm.highGround) fx.push('highGround');
+                }
+                for (const k of fx) _balEffect(src, k, 0, dmg);
+                rec.fx = fx;
+                if (hm && hm.bvsIds) for (const id of hm.bvsIds) { const sr = _balStatusRow(id); sr.comboHits++; sr.comboDmg += dmg; }
+                // what the target wears (anything but a buff: debuffs, Wet, Haunted…) / the buffs the attacker wears
+                for (const k of getActiveStatusKeys(tgt)) {
+                    if (!STATUS_DEFS[k] || STATUS_DEFS[k].kind === 'buff') continue;
+                    _balStatusRow(k).dmgWhile += dmg; rec.st.push(k);
+                }
+                for (const k of getActiveStatusKeys(src)) {
+                    if (STATUS_DEFS[k]?.kind !== 'buff') continue;
+                    _balStatusRow(k).dmgWhile += dmg; rec.st.push(k);
+                }
+            }
+            return rec;
+        }
+        function _balRecordHitKill(rec) {
+            if (!_balanceSimMode || !rec) return;
+            if (rec.el) _balElemRow(rec.el).kills++;
+            for (const k of rec.fx) _balEffectRow(k).kills++;
+            for (const k of rec.st) _balStatusRow(k).killsWhile++;
+        }
+        // One status tick (the end-of-round loop): its damage / heal, and the kill if it was lethal.
+        function _balStatusTick(id, unit, hpLost, died) {
+            if (!_balanceSimMode || !id) return;
+            const r = _balStatusRow(id);
+            if (hpLost > 0) r.dotDmg += hpLost; else if (hpLost < 0) r.heal += -hpLost;
+            if (died) r.dotKills++;
+        }
+        // The match is over: every unit's ledger lands on its rows with the team's result.
+        function _balFoldFxMatch(winner) {
+            const L = _balFx;
+            _balFx = null;
+            ensureBalanceStats();
+            _balanceStats.fxMatches = (_balanceStats.fxMatches || 0) + 1;
+            if (!L) return;
+            for (const u of (state.units || [])) {
+                if (u.player !== 1 && u.player !== 2) continue;
+                const led = L[u.id];
+                if (!led) continue;
+                const won = u.player === winner ? 1 : 0;
+                for (const k of Object.keys(led.s)) { const r = _balStatusRow(k); r.games++; r.wins += won; }
+                for (const k of Object.keys(led.el)) { const r = _balElemRow(k); r.games++; r.wins += won; }
+                for (const k of Object.keys(led.fx)) { const r = _balEffectRow(k); r.games++; r.wins += won; }
+            }
         }
 
         /* Post-cast effect attribution: deployables deal their damage rounds
@@ -56606,6 +56818,7 @@
                 _balanceStats.totalMatches++;
                 _tallyWinCond(_balanceStats, 'no_contest', state.round || 0);
                 state._balMatch = null;
+                _balFx = null;
                 saveBalanceStats();
                 return;
             }
@@ -56697,6 +56910,7 @@
             if (_balanceStats.matchLog.length > BALANCE_MATCH_LOG_CAP) {
                 _balanceStats.matchLog.splice(0, _balanceStats.matchLog.length - BALANCE_MATCH_LOG_CAP);
             }
+            _balFoldFxMatch(winner);   // statuses / elements / effects: games + wins per unit that used them
 
             state._balMatch = null;
             saveBalanceStats();
@@ -56829,6 +57043,71 @@
             return line('Archetype', agg.archetype) + line('Capstone', capAgg);
         }
 
+        /* Status / Elements / Effects rows: the same win-rate read as _balRows (games / wins of the units that used it),
+           plus the tab's own numbers. */
+        function _balFxRows(tab, map) {
+            const rows = [];
+            for (const key of Object.keys(map || {})) {
+                const b = map[key];
+                if (!b) continue;
+                const g = b.games || 0;
+                const ci = g ? _wilson(b.wins || 0, g) : { lo: 0, hi: 1 };
+                const r = { key, name: key, games: g, wr: g ? (b.wins || 0) / g : 0, ciHalf: (ci.hi - ci.lo) / 2, ciLo: ci.lo, ciHi: ci.hi, b };
+                if (tab === 'statusUse') {
+                    const def = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[key]) || null;
+                    r.name = def ? `${def.icon || ''} ${def.label || key}` : key;
+                    r.kind = def ? (def.kind || '') : '';
+                    r.uses = b.applied || 0;
+                    r.impact = (b.dotDmg || 0) + (b.dmgWhile || 0);
+                    r.kills = (b.dotKills || 0) + (b.killsWhile || 0);
+                    const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
+                    r.resistPct = tries ? ((b.resisted || 0) + (b.blocked || 0)) / tries : 0;
+                } else if (tab === 'elementUse') {
+                    const icon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[key]) || '';
+                    r.name = key === '(none)' ? 'no element' : `${icon} ${key === 'earth' ? 'ground' : key}`;
+                    r.uses = b.hits || 0;
+                } else {
+                    r.name = _BAL_FX_LABELS[key] || key;
+                    r.uses = b.n || 0;
+                }
+                if (r.uses || g) rows.push(r);
+            }
+            return rows;
+        }
+        function _balFxRowHtml(r) {
+            const b = r.b;
+            const pct = Math.round(r.wr * 100);
+            const low = r.games < BALANCE_MIN_SAMPLE;
+            let col = 'var(--muted)';
+            if (!low) col = r.ciLo > 0.5 ? 'var(--green)' : (r.ciHi < 0.5 ? 'var(--red)' : 'var(--gold)');
+            const ci = low ? '' : `<span style="color:var(--muted);font-weight:400">±${Math.round(r.ciHalf * 100)}</span>`;
+            const per = (v, n) => n > 0 ? Math.round(v / n) : 0;
+            let detail = '', tip = `${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}`;
+            if (_balanceTab === 'statusUse') {
+                detail = `${r.uses}× · ${per(r.impact, r.uses)}d · ${r.kills}k${(b.resisted || b.blocked) ? ` · ${Math.round(r.resistPct * 100)}%r` : ''}`;
+                tip += ` · ${r.kind || 'status'} · applied ${b.applied || 0} (on enemies ${b.onEnemy || 0}, on allies ${b.onAlly || 0}) · resisted ${b.resisted || 0} · immune ${b.blocked || 0}`
+                    + ` · tick damage ${b.dotDmg || 0} (${b.dotKills || 0} kills)${b.heal ? ` · tick healing ${b.heal}` : ''}`
+                    + ` · ${r.kind === 'buff' ? 'damage the wearer dealt while worn' : 'damage the wearer took from enemies while worn'} ${b.dmgWhile || 0} (${b.killsWhile || 0} kills)`
+                    + `${b.comboHits ? ` · combo finisher hits on it ${b.comboHits} for ${b.comboDmg || 0}` : ''}${b.blockedHits ? ` · hits turned away ${b.blockedHits}` : ''}`;
+            } else if (_balanceTab === 'elementUse') {
+                const wPct = b.hits ? Math.round((b.weak || 0) / b.hits * 100) : 0;
+                detail = `${b.hits || 0}h · ${per(b.dmg || 0, b.hits || 0)}d/h · ${b.kills || 0}k${r.key === '(none)' ? '' : ` · ${wPct}%w`}`;
+                tip += ` · casts ${b.casts || 0} (${b.mp || 0} MP) · enemy hits ${b.hits || 0} for ${b.dmg || 0} · kills ${b.kills || 0}`
+                    + (r.key === '(none)' ? '' : ` · weak ${b.weak || 0} · resist ${b.resist || 0} · immune ${b.immune || 0} · absorb ${b.absorb || 0}`);
+            } else {
+                const amtKey = { heal: 'healed', shieldAbsorb: 'soaked', forcedMove: 'tiles', press: 'AP', pressMiss: 'AP' }[r.key];
+                detail = `${b.n || 0}× · ${amtKey ? per(b.amt || 0, b.n || 0) + ' ' + amtKey : per(b.dmg || 0, b.n || 0) + 'd'} · ${b.kills || 0}k`;
+                tip += ` · uses ${b.n || 0} · amount ${b.amt || 0} · damage ${b.dmg || 0} · kills ${b.kills || 0}`;
+            }
+            return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${_balEsc(tip)}">
+                <span class="bal-row-name">${_balEsc(r.name)}</span>
+                <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${pct}% ${ci}</span>
+                <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
+                <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.games}g</span>
+                <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:118px;text-align:right">${detail}</span>
+            </div>`;
+        }
+
         function renderBalanceDashboard() {
             const panel = document.getElementById('trainingPanel');
             if (!panel) return;
@@ -56881,7 +57160,19 @@
             let treeAggHtml = '';
             let totalRows = 0, shownRows = 0;
 
-            if (_balanceTab === 'spellUse') {
+            if (_BAL_FX_TABS[_balanceTab]) {
+                // Status / Elements / Effects tabs (2026-10-25): win rate of the units that used it + what it did.
+                let fxRows = _balFxRows(_balanceTab, map);
+                totalRows = fxRows.length;
+                fxRows = fxRows.filter(r => matchesFilter(r.key) || matchesFilter(r.name));
+                if (_balanceSort === 'games') fxRows.sort((a, b) => b.uses - a.uses);
+                else _balSortRows(fxRows);
+                shownRows = Math.min(fxRows.length, 120);
+                tableHtml = fxRows.length
+                    ? fxRows.slice(0, 120).map(_balFxRowHtml).join('')
+                    : `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'Nothing matches the filter.' : 'No data yet — this records from the next Balance Lab match on.'}</div>`;
+                treeAggHtml = `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${s.fxMatches || 0} of ${totalM} matches carry this table (tracking started 2026-10-25; older matches have none of it)</div>`;
+            } else if (_balanceTab === 'spellUse') {
                 // "Casts" tab: real per-cast spell efficiency (dmg/MP,
                 // kills/100MP, whiff rate) — its own table shape.
                 let useRows = Object.keys(map).map(k => {
@@ -56938,7 +57229,13 @@
             const modeLabel = _trainModeSetting === 'rotate' ? 'mode rotation' : modeName;
             const mapLabel = _trainMapSetting === 'rotate' ? 'map rotation' : _trainMapSetting;
 
-            const legend = _balanceTab === 'spellUse'
+            const legend = _balanceTab === 'statusUse'
+                ? '% ±CI = win rate of units that landed it · g = games · × = times applied · d = damage per application (ticks + hits on the debuffed / by the buffed) · k = kills · r = resisted · hover for more'
+                : _balanceTab === 'elementUse'
+                ? '% ±CI = win rate of units that used it · g = games · h = enemy hits · d/h = damage per hit · k = kills · w = hits on a weakness · hover for casts, resist, immune'
+                : _balanceTab === 'effectUse'
+                ? '% ±CI = win rate of units that used it · g = games · × = uses · d = damage of those hits (or amount healed / soaked / tiles moved) · k = kills'
+                : _balanceTab === 'spellUse'
                 ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
                 : _balanceTab === 'treeShapes'
                 ? 'R = race row picks · T = Tier I/II/III/IV counts · % ±CI = win rate (Wilson-95)'
@@ -56981,7 +57278,7 @@
                         <input id="balFilterInput" class="bal-filter" type="text" placeholder="filter…" value="${_balEsc(_balanceFilter)}"
                             oninput="_balSetFilter(this.value)" onfocus="_balanceFilterFocused=true" onblur="_balanceFilterFocused=false">
                         <div class="bal-sort-group">
-                            ${sortBtn('imbalance', 'Δ50%')}${sortBtn('wr', 'WR')}${sortBtn('games', _balanceTab === 'spellUse' ? 'Casts' : 'Games')}
+                            ${sortBtn('imbalance', 'Δ50%')}${sortBtn('wr', 'WR')}${sortBtn('games', _balanceTab === 'spellUse' ? 'Casts' : _BAL_FX_TABS[_balanceTab] ? 'Uses' : 'Games')}
                         </div>
                     </div>
                     ${treeAggHtml}
@@ -57151,7 +57448,48 @@
                     opsPerMatch: decisive > 0 ? Number((buildOps / decisive).toFixed(2)) : null,
                     byTool: bu.tools || {},
                 },
+                // Balance Lab (2026-10-25): statuses / elements / effects — win rate of the units that used each, plus
+                // per-use numbers (raw counters are in stats.statusUse / elementUse / effectUse). fxMatches = matches
+                // recorded since tracking began.
+                fxMatches: s.fxMatches || 0,
+                statuses: _balFxAnalysis(s.statusUse, b => {
+                    const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
+                    return {
+                        kind: (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[b._k] && STATUS_DEFS[b._k].kind) || null,
+                        applied: b.applied || 0, onEnemy: b.onEnemy || 0, onAlly: b.onAlly || 0,
+                        resistRate: tries ? Number((((b.resisted || 0) + (b.blocked || 0)) / tries).toFixed(3)) : null,
+                        dotDmg: b.dotDmg || 0, dotKills: b.dotKills || 0, tickHeal: b.heal || 0,
+                        dmgWhileWorn: b.dmgWhile || 0, killsWhileWorn: b.killsWhile || 0,
+                        impactPerApply: b.applied ? Number((((b.dotDmg || 0) + (b.dmgWhile || 0)) / b.applied).toFixed(1)) : null,
+                        comboHits: b.comboHits || 0, comboDmg: b.comboDmg || 0, hitsTurnedAway: b.blockedHits || 0,
+                    };
+                }),
+                elements: _balFxAnalysis(s.elementUse, b => ({
+                    casts: b.casts || 0, mp: b.mp || 0, hits: b.hits || 0, dmg: b.dmg || 0, kills: b.kills || 0,
+                    dmgPerHit: b.hits ? Number(((b.dmg || 0) / b.hits).toFixed(1)) : null,
+                    dmgPerMp: b.mp ? Number(((b.dmg || 0) / b.mp).toFixed(2)) : null,
+                    weakRate: b.hits ? Number(((b.weak || 0) / b.hits).toFixed(3)) : null,
+                    weak: b.weak || 0, resist: b.resist || 0, immune: b.immune || 0, absorb: b.absorb || 0,
+                })),
+                effects: _balFxAnalysis(s.effectUse, b => ({
+                    uses: b.n || 0, amount: b.amt || 0, dmg: b.dmg || 0, kills: b.kills || 0,
+                    perUse: b.n ? Number((((b.amt || 0) || (b.dmg || 0)) / b.n).toFixed(1)) : null,
+                })),
             };
+        }
+        function _balFxAnalysis(map, extra) {
+            const out = {};
+            for (const k of Object.keys(map || {})) {
+                const b = map[k];
+                if (!b) continue;
+                const g = b.games || 0;
+                const ci = g ? _wilson(b.wins || 0, g) : null;
+                out[k] = Object.assign({
+                    games: g, wr: g ? Number(((b.wins || 0) / g).toFixed(4)) : null,
+                    wilson95: ci ? [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))] : null,
+                }, extra(Object.assign({ _k: k }, b)));
+            }
+            return out;
         }
 
         // Standalone spell-tree definition dump ("Export Trees" button):
@@ -57244,6 +57582,23 @@
                     ].join(','));
                 }
             }
+            // Status / element / effect rows (2026-10-25), each table with its own header.
+            const fxCsv = (cat, m, cols) => {
+                const keys = Object.keys(m || {});
+                if (!keys.length) return;
+                lines.push('');
+                lines.push(['category', 'name', 'games', 'wins', 'winRate'].concat(cols).join(','));
+                for (const key of keys) {
+                    const b = m[key];
+                    if (!b) continue;
+                    const g = b.games || 0;
+                    lines.push([cat, '"' + String(key).replace(/"/g, '""') + '"', g, b.wins || 0, g ? ((b.wins || 0) / g).toFixed(3) : '']
+                        .concat(cols.map(c => b[c] || 0)).join(','));
+                }
+            };
+            fxCsv('status', _balanceStats.statusUse, ['applied', 'onEnemy', 'onAlly', 'resisted', 'blocked', 'dotDmg', 'dotKills', 'heal', 'dmgWhile', 'killsWhile', 'comboHits', 'comboDmg', 'blockedHits']);
+            fxCsv('element', _balanceStats.elementUse, ['casts', 'mp', 'hits', 'dmg', 'kills', 'weak', 'resist', 'immune', 'absorb']);
+            fxCsv('effect', _balanceStats.effectUse, ['n', 'amt', 'dmg', 'kills']);
             const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -70407,6 +70762,7 @@
                     // _detonateDelayedSpell).
                     isDmg: _PRESS_SPELL_KINDS.has(spell.kind) && !spell.delayedMark && spell.kind !== 'delayed',
                     dmg: 0, kills: 0, targetsHit: 0,
+                    el: getSpellElement(spell) || '(none)',   // the element usage table's casts + MP
                 };
             }
 
