@@ -2526,3 +2526,21 @@ thread did mummy / swamp monster / undead; another the shadow entity / sniper / 
   list (The Sewers), mime Downtown (Disaster City).
 - Proof (harness VS CPU): 11 of the 12 own spells cast in battle with their combos; screens in
   /mnt/project-files/new-races-2026-10-25/.
+## THE UNDEAD BATCH (2026-10-25, mondo) — mummy, swamp monster, undead
+mondo's Meshy uploads: R2 `Assets/Sprites/Races/<folder>/Meshy_AI_<name>_Running.glb` + his sprite beside it
+(mummy/mummy_female · swampmonster/swampmonster · undead/undead; the swamp monster's rig has finger bones, 66 joints).
+- Race keys `mummy` (female only), `swamp monster`, `undead`. Every table the 09-30 batch touched: RACE_PROFILES, RACE_CLASS
+  (caster / bruiser / assassin), RACE_BASE_STATS (first pass), RACE_PHYSIQUE, RACE_ELEMENT_AFFINITY (fire weak each; swamp
+  water resist; undead poison resist), RACE_PASSIVES + PASSIVE_DEFS on the immuneStatus hook (Embalmed bleed · Bog Body slow ·
+  Rotten Through poison) + party-builder.js RACE_TRAITS, AVAILABLE_RACES (+ server.js literal), CAMPAIGN_RACE_PRICES, lore in
+  party-builder.js + ui.js; sprites.js RACE_SPRITE_GENDERS, _CHARACTER_SPRITES, RACE_MODELS_3D, RACE_SPRITES.
+- Signature families (kind 'signature', unique, identity): `mummy` Mummy's Curse (Linen Bind root · Curse of the Tomb aoe
+  hexed · Embalm ×1.5 vs root), `swampmonster` From the Bog (Muck Grab slow · Swamp Gas aoe poison · Into the Bog ×1.5 vs
+  slow), `undead` The Restless Dead (Rotting Claw bleed · Death Rattle aoe feared · Grave Grip ×1.5 vs bleed).
+- Shared families: mummy ancientknowledge · desertacclimation · necromancy · witchcraft (excludes Sacred Geometry); swamp
+  monster water · poison · nature · cryptid (excludes Temporal Tide, Formic Acid, Tidal Blessing); undead ghoulish ·
+  bonedensity · blood · necromancy. Pools 21 / 29 / 25.
+- Finishers borrow built stagings with `lines`: Entombed = weighing, Dragged Under = nessieSurfaces, Six Feet Under =
+  graveRobbery.
+- Homes: mummy Pyramids of Giza; swamp monster Fairy Forest (The Woods) + The Sewers (HQ_POPULATION_RULES.underworld);
+  undead The Haunted House + Hell (ALSO_NATIVE) + The Sewers.

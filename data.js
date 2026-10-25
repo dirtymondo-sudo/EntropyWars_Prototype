@@ -426,6 +426,10 @@ const FINISHERS = {
     'eagleman': { id: 'fin_eagleman', name: 'Bird\'s Eye View', glyph: '🦅', type: 'anomaly', sig: 'upUpAndAway', built: true, tagline: 'TALONS OUT', lines: [['🦸 UP', '🦅 TALONS IN'], ['AND AWAY', 'HIGHER'], ['AND THEN DOWN', 'AND THEN HE LETS GO'], ['THE LANDING.', 'DROPPED.']], desc: 'The eagleman takes the victim in his talons, carries them high enough to see the curve of the Earth, and lets go.' },
     'flesheater': { id: 'fin_flesheater', name: 'Feeding Time', glyph: '🦷', type: 'unholy', sig: 'devoured', built: true, tagline: 'IT IS HUNGRY', lines: [['🌙 zzz', '🦷 IT SMELLS YOU'], ['A NICE DREAM', 'DON\'T MOVE'], ['SOMETHING ELSE IS IN IT', 'IT OPENS'], ['THE DREAM WAS YOU', 'DINNER WAS YOU'], ['DEVOURED.', 'EATEN.'], ['SWEET DREAMS.', 'NOTHING LEFT.']], desc: 'The victim cannot move, the jaws open round them, and the flesheater eats them in bites until there is nothing left on the tile.' },
     'mime': { id: 'fin_mime', name: 'The Box', glyph: '🤍', type: 'human', sig: 'compactor', built: true, tagline: '( . . . )', lines: [['> compactor: ARMED\n> walls: 2\n> output: 1 cube', '( the walls )\n( are closing )\n( in )'], ['⚠ STAND CLEAR', '🤍 PUSH'], ['CUBED', 'BOXED'], ['ONE (1) CUBE.', '( SILENCE )']], desc: 'The mime pushes the walls of an invisible box in on the victim from both sides until the box is very small. Not a sound.' },
+    /* THE UNDEAD BATCH (2026-10-25, mondo): mummy (female), swamp monster, undead — R2 Races/<folder>/ GLB + sprite */
+    'mummy': { id: 'fin_mummy', name: 'Entombed', glyph: '⚱', type: 'unholy', sig: 'weighing', built: true, tagline: 'THE TOMB IS SEALED', lines: [['♥ ⚖ 𓆃', '⚱ 𓂀 𓆃'], ['HEAVIER THAN A FEATHER', 'THE TOMB IS SEALED']], desc: 'The scales of the old dead lower from the sky. The victim\'s heart on one pan, the feather on the other, and the mummy closes the lid on the verdict.' },
+    'swamp monster': { id: 'fin_swamp_monster', name: 'Dragged Under', glyph: '🌿', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', lines: [['🦕 THE LOCH', '🌿 THE BOG'], ['THE NECK', 'THE HANDS']], desc: 'The bog rises through the map, long hands come up under the victim, and the only evidence is out of focus.' },
+    'undead': { id: 'fin_undead', name: 'Six Feet Under', glyph: '💀', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'SIX FEET UNDER', lines: [['⚰ THE PLOT WAS PRE-DUG', '💀 SIX FEET UNDER'], ['IN YOU GO', 'MOVE OVER']], desc: 'The tile opens into a grave, the undead pulls the victim in with it, and the headstone already has the date on it.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
@@ -594,6 +598,9 @@ const RACE_ELEMENT_AFFINITY = {
     'djinn':             { wind: 'absorb' },
     'valkraye':          { wind: 'resist' },
     'mushroom girl':     { nature: 'resist' },
+    'mummy':             { fire: 'weak' },   // 2026-10-25 — dry linen
+    'swamp monster':     { water: 'resist', fire: 'weak' },   // 2026-10-25 — wet moss
+    'undead':            { poison: 'resist', fire: 'weak' },   // 2026-10-25 — the zombie's rows, less the psychic immunity
     // ── metal promotion 2026-10-17 ──
     'werewolf':          { metal: 'weak' },
     'juggernaut':        { metal: 'resist' },
@@ -2865,9 +2872,9 @@ const RACE_PROFILES = {
     'men in black': {
         label: 'Men in Black',
         labelMale: 'Man in Black',
-        // A woman can't very well be a Man in Black — she's an Intel Spy.
-        // (Portrait art file is still named "glowie" on R2 — path only.)
-        labelFemale: 'Intel Spy',
+        // A woman can't very well be a Man in Black — she's the Spy (mondo 2026-10-25: a James Bond
+        // spy, not an "intel spy"). Her portrait is the zoomed-in face of her new sprite (sprites.js RACE_PORTRAITS).
+        labelFemale: 'Spy',
         types: ['human', 'tech']
     },
     'telepath': {
@@ -3044,6 +3051,20 @@ const RACE_PROFILES = {
         label: 'Mime',
         labelFemale: 'Mime',
         types: ['human']
+    },
+    /* THE UNDEAD BATCH (2026-10-25, mondo): mummy (female), swamp monster, undead — R2 Races/<folder>/ GLB + sprite */
+    'mummy': {
+        label: 'Mummy',
+        labelFemale: 'Mummy',
+        types: ['unholy', 'human']
+    },
+    'swamp monster': {
+        label: 'Swamp Monster',
+        types: ['anomaly']
+    },
+    'undead': {
+        label: 'Undead',
+        types: ['unholy']
     },
     'wizard': {
         label: 'Wizard',
@@ -3376,6 +3397,22 @@ const PASSIVE_DEFS = {
         immuneStatus: ['silence'],
         desc: 'Never says a word anyway — immune to Silence.',
     },
+    /* THE UNDEAD BATCH (2026-10-25): one immuneStatus row each, the 09-30 batch's hook */
+    embalmed: {
+        id: 'embalmed', icon: '⚱', name: 'Embalmed',
+        immuneStatus: ['bleed'],
+        desc: 'Nothing left in the veins to lose — immune to Bleed.',
+    },
+    bogBody: {
+        id: 'bogBody', icon: '🌿', name: 'Bog Body',
+        immuneStatus: ['slow'],
+        desc: 'Born in the muck and moves through it — immune to Slow.',
+    },
+    rottenThrough: {
+        id: 'rottenThrough', icon: '💀', name: 'Rotten Through',
+        immuneStatus: ['poison'],
+        desc: 'Already rotting — immune to Poison.',
+    },
     hemophage: {
         id: 'hemophage', icon: '🩸', name: 'Hemophage',
         basicAttackLifesteal: 0.25,
@@ -3537,6 +3574,9 @@ const RACE_PASSIVES = {
     'eagleman': ['eagleEyed'],   // 2026-10-25
     'flesheater': ['mindlessHunger'],   // 2026-10-25
     'mime': ['notAPeep'],   // 2026-10-25
+    'mummy': ['embalmed'],   // 2026-10-25
+    'swamp monster': ['bogBody'],   // 2026-10-25
+    'undead': ['rottenThrough'],   // 2026-10-25
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3614,7 +3654,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'chef', 'eagleman', 'flesheater', 'mime'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3690,6 +3730,9 @@ const RACE_CLASS = {
     'door agent': 'assassin',
     'police officer': 'ranged',
     'time cop': 'ranged',   // 2026-10-24
+    'mummy': 'caster',   // 2026-10-25
+    'swamp monster': 'bruiser',   // 2026-10-25
+    'undead': 'assassin',   // 2026-10-25
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
@@ -4114,6 +4157,10 @@ const RACE_BASE_STATS = {
     'eagleman': { hp: 760, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },
     'flesheater': { hp: 1600, mp: 90, atk: 158, def: 130, mdef: 60, int: 30, vision: 2, crt: 22, spd: 120 },
     'mime': { hp: 780, mp: 160, atk: 105, def: 85, mdef: 95, int: 95, vision: 3, crt: 26, spd: 140 },
+    // 2026-10-25 — the undead batch, first pass (race editor to tune): a curse caster, a bog bruiser, a quick ripper
+    'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
+    'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
+    'undead': { hp: 1150, mp: 100, atk: 140, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 150 },
     'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 50 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
@@ -4220,6 +4267,9 @@ const RACE_PHYSIQUE = {
     'eagleman': { h: 1.86, w: 80 },   // 2026-10-25 — in the suit
     'flesheater': { h: 2.20, w: 95 },   // 2026-10-25 — long-limbed, all ribs and mouth
     'mime': { h: 1.65, w: 52 },   // 2026-10-25
+    'mummy': { h: 1.68, w: 48 },   // 2026-10-25
+    'swamp monster': { h: 2.1, w: 110 },   // 2026-10-25 — long-limbed, hunched
+    'undead': { h: 1.85, w: 52 },   // 2026-10-25 — skin and bone
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -8401,6 +8451,53 @@ const RACE_ABILITIES = {
           element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
           bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
           desc: 'A very real punch from an invisible glove. Deals MEDIUM physical damage to a Single Enemy beside you. Deals bonus damage to Rooted or Silenced targets.' },
+    ],
+    /* THE UNDEAD BATCH (2026-10-25, mondo): each race's own family. Tier 1-2 apply an existing status; the tier 3 finisher
+       hits ×1.5 vs it and applies nothing. Existing kinds, statuses and riders only. */
+    'mummy': [
+        /* THE SIGNATURE FAMILY: Mummy's Curse, this race's own. */
+        { id: 'mmLinenBind', name: 'Linen Bind', tier: 1, families: ['mummy'], cost: 25, apCost: 1, spellType: 'unholy',
+          type: 'damage', kind: 'damage', range: 3, dmg: 70, damageType: 'magic',
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'The wrappings unwind and lash out. Deals WEAK magic damage to a Single Enemy within 3 and Roots them for a round.' },
+        { id: 'mmTombCurse', name: 'Curse of the Tomb', tier: 2, families: ['mummy'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
+          noDamage: true, statusEffects: [{ id: 'hexed', duration: 2 }],
+          desc: 'Whoever opened the tomb. Every enemy in a 3x3 within 4 tiles is Hexed for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'mmEmbalm', name: 'Embalm', tier: 3, families: ['mummy'], cost: 75, apCost: 1, spellType: 'unholy',
+          type: 'damage', kind: 'damage', range: 2, dmg: 135, damageType: 'magic',
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'Wrapped, salted and sealed. Deals MEDIUM magic damage to a Single Enemy within 2. Rooted targets take it worse.' },
+    ],
+    'swamp monster': [
+        /* THE SIGNATURE FAMILY: From the Bog, this race's own. */
+        { id: 'smMuckGrab', name: 'Muck Grab', tier: 1, families: ['swampmonster'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'A long, wet hand closes on the ankle. Deals WEAK physical damage to an adjacent enemy and Slows them for 2 rounds.' },
+        { id: 'smSwampGas', name: 'Swamp Gas', tier: 2, families: ['swampmonster'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'aoe', range: 3, aoeRadius: 1, dmg: 60, damageType: 'magic',
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The bog lets out a breath. Deals WEAK magic damage to every enemy in a 3x3 within 3 tiles and Poisons them for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'smIntoTheBog', name: 'Into the Bog', tier: 3, families: ['swampmonster'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Down into the black water. Deals MEDIUM physical damage to an adjacent enemy. Slowed targets take it worse.' },
+    ],
+    'undead': [
+        /* THE SIGNATURE FAMILY: The Restless Dead, this race's own. */
+        { id: 'udRottingClaw', name: 'Rotting Claw', tier: 1, families: ['undead'], cost: 25, apCost: 1, spellType: 'unholy',
+          element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Long, filthy nails. Deals WEAK physical damage to an adjacent enemy and makes them Bleed for 2 rounds.' },
+        { id: 'udDeathRattle', name: 'Death Rattle', tier: 2, families: ['undead'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
+          noDamage: true, statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'The last breath it ever took, let out again. Every enemy in a 3x3 within 4 tiles is Feared for a round. Cooldown: 3 rounds.' },
+        { id: 'udGraveGrip', name: 'Grave Grip', tier: 3, families: ['undead'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'It does not let go. Deals MEDIUM physical damage to an adjacent enemy. Bleeding targets take it worse.' },
     ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
@@ -19056,6 +19153,9 @@ const EW_RACE_BIOMES = {
     'eagleman': ['ranch', 'clandestine'],   // 2026-10-25 — The Estate
     'flesheater': ['underground_base'],   // 2026-10-25 — The D.U.M.B. (+ The Sewers: HQ_POPULATION_RULES.underworld)
     'mime': ['urban', 'stadium'],   // 2026-10-25 — Disaster City (Downtown)
+    'mummy': ['desert', 'ancient'],   // 2026-10-25 — the pyramids (Giza)
+    'swamp monster': ['forest'],   // 2026-10-25 — The Woods; The Sewers by HQ_POPULATION_RULES.underworld
+    'undead': ['gothic', 'infernal'],   // 2026-10-25 — The Estate's graveyard; Hell
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -19596,6 +19696,9 @@ const RACE_TREE = {
     'eagleman': ['racePounce', ['raceCrosswind', 'raceDeathRoll'], ['raceFeralDive', 'raceSkyTackle'], 'raceEyeOfTheStorm'],   // 2026-10-25
     'flesheater': ['raceGhoulishBite', ['raceHemorrhage', 'raceFrenzy'], ['raceArterialSpray', 'raceEyewitness'], 'raceTerrorPounce'],   // 2026-10-25
     'mime': ['raceMisdirection', ['raceShedSkin', 'raceNimbleDodge'], ['raceTrickRoom', 'racePopSpotlight'], 'raceMimicry'],   // 2026-10-25
+    'mummy': ['mmLinenBind', 'mmTombCurse', 'raceSandstoneTomb', 'raceWeighTheHeart'],   // 2026-10-25
+    'swamp monster': ['smMuckGrab', 'smSwampGas', 'raceEntanglingRoots', 'raceFlood'],   // 2026-10-25
+    'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -22652,6 +22755,37 @@ const SPELL_FAMILIES = {
         unique: 'hippie',
         identity: { who: ['Hippie', 'Flower Child', 'Peacenik'], adj: ['Groovy', 'Peaceful', 'Far-Out'], look: ['flowers in the hair', 'a tie-dye shirt', 'a peace sign on a string'], vibe: ['ends the fight without throwing a punch', 'puts a flower in your gun'] }
     },
+    /* THE UNDEAD BATCH (2026-10-25, mondo): the three new races' own families */
+    mummy: {
+        id: 'mummy',
+        name: 'Mummy\'s Curse',
+        glyph: '⚱',
+        color: '#c8a46a',
+        kind: 'signature',
+        desc: 'The wrappings and the curse: linen that binds whoever comes close, a hex on everyone who opened the tomb, and the embalming for whoever cannot move.',
+        unique: 'mummy',
+        identity: { who: ['Mummy', 'Tomb Queen', 'Wrapped Dead'], adj: ['Wrapped', 'Cursed', 'Ancient'], look: ['trailing linen wrappings', 'long black hair', 'sand in every fold'], vibe: ['binds you before she curses you', 'never forgets who opened the tomb'] }
+    },
+    swampmonster: {
+        id: 'swampmonster',
+        name: 'From the Bog',
+        glyph: '🌿',
+        color: '#5f6b3a',
+        kind: 'signature',
+        desc: 'Long wet hands and the gas off the water: it grabs an ankle, breathes on everyone near, and drags down whatever cannot get away.',
+        unique: 'swamp monster',
+        identity: { who: ['Swamp Monster', 'Bog Thing', 'Muck Walker'], adj: ['Dripping', 'Mossy', 'Long-Limbed'], look: ['hanging moss and weed', 'long clawed fingers', 'a smooth, eyeless head'], vibe: ['slows you down first', 'drags you under when you cannot run'] }
+    },
+    undead: {
+        id: 'undead',
+        name: 'The Restless Dead',
+        glyph: '💀',
+        color: '#a83a32',
+        kind: 'signature',
+        desc: 'What is left of a body that will not lie down: claws that open wounds, a death rattle that scatters the living, and a grip that tears at whoever is bleeding.',
+        unique: 'undead',
+        identity: { who: ['Undead', 'Restless Corpse', 'Walking Dead'], adj: ['Rotting', 'Bloody', 'Restless'], look: ['bare ribs and torn flesh', 'long bloody nails', 'a jaw that hangs open'], vibe: ['opens a wound and waits', 'never lets go'] }
+    },
     homosapien: {
         id: 'homosapien',
         name: 'Persistence Hunter',
@@ -23598,6 +23732,9 @@ const RACE_FAMILIES = {
     'eagleman': ['eagleman', 'wind', 'apexpredator', 'beastabilities'],   // 2026-10-25
     'flesheater': ['flesheater', 'ghoulish', 'blood', 'apexpredator', 'cryptid'],   // 2026-10-25
     'mime': ['mime', 'trickery', 'stagepresence', 'athleticism'],   // 2026-10-25
+    'mummy': ['mummy', 'ancientknowledge', 'desertacclimation', 'necromancy', 'witchcraft'],   // 2026-10-25
+    'swamp monster': ['swampmonster', 'water', 'poison', 'nature', 'cryptid'],   // 2026-10-25
+    'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
     priest: ['holyorders', 'biblestudy', 'light', 'healingmagic'],
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
@@ -23681,6 +23818,8 @@ const RACE_SPELL_EXCLUDES = {
     eagleman: ['raceWingGust', 'raceDinoTailWhip', 'raceJurassicJaw'],   // 2026-10-25 — no wings (the suit), no tail
     flesheater: ['raceDinoTailWhip'],   // 2026-10-25 — no tail
     mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
+    mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
+    'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
     'honda civic': ['raceRocketFist'],
     'ice queen': ['raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'passiveEventHorizon', 'raceCosmicSlam', 'sharedGravityCrush', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
@@ -24194,6 +24333,9 @@ const CAMPAIGN_RACE_PRICES = {
   'eagleman': 300,   // 2026-10-25
   'flesheater': 350,   // 2026-10-25
   'mime': 250,   // 2026-10-25
+  'mummy': 300,   // 2026-10-25
+  'swamp monster': 250,   // 2026-10-25
+  'undead': 200,   // 2026-10-25
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -25765,6 +25907,9 @@ const DOOR_TEXT = {
         'eagleman': 'The Haunted House',   // 2026-10-25 — The Estate (the mansion)
         'flesheater': 'D.U.M.B.',   // 2026-10-25 — The D.U.M.B. (+ The Sewers, the underworld's people)
         'mime': 'Downtown',   // 2026-10-25 — Disaster City
+        'mummy': 'Pyramids of Giza',   // 2026-10-25 — the pyramids (Leylines)
+        'swamp monster': 'Fairy Forest',   // 2026-10-25 — The Woods (+ The Sewers: HQ_POPULATION_RULES.underworld)
+        'undead': 'The Haunted House',   // 2026-10-25 — The Estate's graveyard (+ Hell: ALSO_NATIVE)
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'H-Wing',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
@@ -25794,6 +25939,7 @@ const DOOR_TEXT = {
         'professor': ['Downtown'],
         'sharkman': ['Atlantis'],
         'deep sea fish': ['Atlantis'],
+        'undead': ['Hell'],   // 2026-10-25
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -54768,7 +54914,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'flesheater'],   // flesheater 2026-10-25
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater'],   // 2026-10-25: + swamp monster, undead, flesheater
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...

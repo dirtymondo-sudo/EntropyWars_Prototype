@@ -646,6 +646,9 @@ const CODEX_LORE = {
   'eagleman': 'Anomalous. A man in a pressed suit with the head and talons of an eagle. Recovered from the grounds of the Estate, where he had been watching the lawn from the roof. Subjects see farther than anyone on the board, pick their prey early and come down on it from above.',   // 2026-10-25
   'flesheater': 'Anomalous. Long-limbed, hairless, and split down the middle by a mouth lined with ribs. Recovered from the lower levels of the D.U.M.B. and sighted since in the sewers under Disaster City. Subjects hold their prey still with the tendrils in their chest and heal on what they eat.',   // 2026-10-25
   'mime': 'Human. White face, striped shirt, beret, gloves. Recovered from a Downtown street corner, where she had been trapped in the same invisible box for most of a day. Subjects never speak, silence anyone who does, and hit a great deal harder than the act suggests.',   // 2026-10-25
+  'mummy': 'Unholy. A woman wrapped head to foot in old linen, long black hair loose over the bandages. Recovered from a sealed chamber under the Pyramids of Giza with the seal still unbroken from the inside. Subjects bind whoever comes close in their own wrappings, curse everyone who walked into the tomb, and do not burn slowly.',
+  'swamp monster': 'Anomalous. Long-limbed, eyeless and hung with moss and weed, it walks out of standing water. Sighted in the standing water of the woods below D.O.O.R. HQ and in the sewers under Disaster City, never on dry ground for long. Subjects grab an ankle, breathe swamp gas over everyone near, and drag down whatever cannot get away.',
+  'undead': 'Unholy. A body that would not stay buried: bare ribs, torn flesh and long bloody nails. Recovered from the graveyard at the Haunted House, with more sightings in Hell and the sewers under Disaster City. Subjects open a wound and follow the blood, let out a death rattle that scatters the living, and do not let go once they grip.',
   'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
   'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
   'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
@@ -2179,6 +2182,15 @@ const RACE_TRAITS = {
   ],
   'mime': [
     { icon: '🤍', name: 'Not a Peep', desc: 'Never says a word anyway — immune to Silence.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'mummy': [
+    { icon: '⚱', name: 'Embalmed', desc: 'Nothing left in the veins to lose — immune to Bleed.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'swamp monster': [
+    { icon: '🌿', name: 'Bog Body', desc: 'Born in the muck and moves through it — immune to Slow.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'undead': [
+    { icon: '💀', name: 'Rotten Through', desc: 'Already rotting — immune to Poison.' },   // CODED (PASSIVE_DEFS)
   ],
   'door agent': [
     { icon: '🗝️', name: 'Keyholder', desc: 'Once a turn, open or shut a friendly door beside you for free; your doors take 4 hits; friendly doors never harm you.' },   // CODED (PASSIVE_DEFS)
