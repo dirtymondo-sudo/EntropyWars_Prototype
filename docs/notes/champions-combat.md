@@ -2750,3 +2750,20 @@ THE RACE DETAIL (battle.js, Balance Lab only, same IndexedDB key; older matches 
   spells ≥1.6× / ≤0.6× their tier's median a cast, statuses / elements off 50%).
 - DoT kills: a lethal tick leaves hp ≤ 0 with the death still to resolve, so dotKills read 0 in every export; the tick
   hook now counts hp ≤ 0.
+
+## THE STATS22 PASS (2026-10-25, mondo: "let's analyze these balance lab stats and again see what recent change worked and didnt work, and balance the weakest and strongest units. Each pass should be getting closer to everyone having 50% WR")
+Read: ew-balance-stats22.json (635 Arena matches, builds 20261025-skiesoff-02 + nofreeze-01, both after PR #528, AI v4.19)
+against stats21 (1,239) and stats20 (840). ~40 games a race, so one run's WR is ±15; a race is only called strong / weak
+when it sits there in all three runs and in analysis.teamAdjusted. Run-to-run correlation of race WR is 0.59 (real signal).
+- PR #528 read. WORKED: HP cuts on Kaiju 81→66, Ghoul 68→53, Flesheater 68→46 (Gargoyle 68→65, team-adjusted 51);
+  Mime HP + Silent Treatment 31→60; Nun SPD 50 (move 2) 36→47 (team-adjusted 59); Telepath HP + Mental Static 28→38;
+  Jack o Lantern Devil's Coal 38→48; Clown Pie in the Face 36→44. DID NOT: Mech HP 1430 (64→69); Ghost after two
+  Things That Go Bump / Whole House Shakes trims (68→79); Voidweaver HP + Web Shoot (35→22); Rabbit's Seven Years /
+  Hall of Mirrors (32→28); Shadow Entity HP (35→39); Gnome's Ankle Biter / Garden Shears (31→36); Jellyfish SPD (36→39).
+- SPD / move is now the stat that goes with winning (r 0.47, move 0.46, HP 0.40): the Arena score is kills + tower damage +
+  Keys + Nexus rounds, and the top six are all move 5 except Crystal Guardian (HP 1727, DEF 195).
+Changes (data.js, each tagged `BALANCE PASS 2026-10-25 (stats22 lab)`), existing rules only, no tier / status change:
+- Nerfs: Ghost SPD 177→160 (move 5→4); HP Dragon 1239→1130, Juggernaut 1776→1640, Ki Fighter 1288→1190, Crystal
+  Guardian 1727→1600; Mech's own Mortar Salvo 70→56 and Full Burst 120→105 (desc MEDIUM, the house word for 105).
+- Buffs: SPD Hippie 34→50, AI 19→50, Mermaid 40→50 (move 1→2); Voidweaver 85→88, Gnome 82→88, Wizard 50→88 (move 2→3);
+  HP Rabbit 593→700, Catgirl 763→840; Ninefold Scratch 30→40 a hit (Catgirl's own, 0.51× the Tier IV median).
