@@ -3639,7 +3639,18 @@ const ThreePost = (function () {
         D.quad.render(r);   // the splitscreen draws its panes with autoClear off: a cleared blit would wipe the panes before it
     }
     /* the warm-up compiles into the scene pass's target, so its pipelines are the ones the frame draws with */
-    function warmTarget() { return _ng ? _ng.sp.renderTarget : null; }
+    /* THE WARM TARGET (2026-10-25): three keys a program on the target it draws to (tone map, colour space) — the frame draws the
+       scene into the chain's target, so a renderer.compile() with no target set built the CANVAS twin of every material, never
+       drawn (sandbox, the Fairy Forest clearing: 14 such programs after one walk, and the stage warm-up saved nothing). The
+       classic and pmndrs chains hand their scene target too; with no chain up (Low mode / before init) the frame draws to the
+       canvas and null is right. */
+    function warmTarget() {
+        if (_ng) return _ng.sp.renderTarget;
+        if (!_ready) return null;
+        if (_pp && _pp.composer) return _pp.composer.inputBuffer || null;
+        if (_composer) return _composer.readBuffer || _composer.renderTarget1 || null;
+        return null;
+    }
     function getPostChain() {
         if (_ng) return { lib: 'node', passes: _ng.lastPasses || 0, effectsA: _ng.sig, ao: _ng.cur ? (_ng.cur.gtao ? 'gtao' : (_ng.sig && _ng.sig.indexOf('|classic|') >= 0 ? 'classic' : 'off')) : 'off', n8ao: 'idle', pipelines: Object.keys(_ng.pipes).length };
         if (_pp) {

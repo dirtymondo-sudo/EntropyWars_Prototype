@@ -1020,3 +1020,38 @@ elevation like how raising elevation works in the map editor, and make the sides
   swell (highlights / walks / rings), the cells beside keep flat plates. Rules untouched (+2 levels, jump-only, LOS).
 - Tile boards (Training Room, Holo Sim, every Δ / moving board) keep the voxel column. Off: `window.EW_NO_FIELD_MOUND`.
 - Proof shots: /mnt/project-files/rampart-mound/.
+
+## THE SEAMLESS CUT — walk ↔ fight without the freeze (2026-10-25, mondo)
+mondo: "still a big frame drop transitioning from exploration to battle, and the game looks noticably different because i think
+all the units get ring lights. I think I want to ditch encounters spawning multiple new enemies, i would rather it stick to the
+enemies that were actually on the exploration map ... whatever you can do or think of to help make a seamless transition from
+exploration to battle and back".
+- THE MAP'S OWN ENEMIES (data.js hqEncounterLaunch): the fight = the struck native + the companions walking WITH it on the map
+  (`ch.group`). No solo companions, no roamExtra, no swarm coin, no ENCOUNTER TABLE group draw. A lone native fights alone.
+  The table's levels still apply. `hqEncounterGroup` still runs for its elite/race/kind; its member draw is unused here.
+- THE WALK'S LIGHT IN THE FIGHT (three-renderer.js rebuildUnits): a story field fight (`field:` mode) hangs no per-unit lamp
+  (three-post.js rebuildUnitLights, the "ring lights"); PvP / VS-CPU arenas keep them. `_ewRimTick` now also runs in the HQ
+  frame off the walk's own night, so the rim / night fill no longer flips at the cut.
+- THE BODIES CARRY OVER (`_rigCarry*`): `_hqLeave({handover})` parks the walkers' rigs, the fight's `_attachUnitModel` takes the
+  matching one (url + creator look + clip set); `_hqEnter({from:'return'})` parks the viewer's standing units' rigs for the walk.
+  `_rigRescale`: a rig baked at another tile size (the fight BASE_TILE, the debrief MENU_TILE) is rescaled (the clone's scale +
+  offset, the fit half sizes, the outline width) instead of re-baked; the fast path does the same. Off: `EW_NO_RIG_CARRY`.
+- THE SAME LIGHT COUNT (`_lightMatch*`): classic WebGL keys every lit program on the point-light COUNT. The walk carries the
+  board's standing dark lights (void key + ThreeVFX flash pool = the battle scene's direct-child point lights) as dark pads;
+  a story fight pads up to the count the walk had at the hand-over. Not on the node renderer (THE ONE RIG). Off: `EW_NO_LIGHT_MATCH`.
+- THE WARM TARGET (three-post.js warmTarget): the HQ stage warm-up compiled with no render target set = the canvas twin of every
+  material (tone map 1), never drawn. It now hands the classic / pmndrs chain's scene target.
+- THE QUIET COMPILE (`_quiet*`): under the strike's held frame the fight draws nothing until the gate's files are in, then
+  renderer.compileAsync on every visible object (keyed for the chain's target; KHR_parallel_shader_compile builds them on the
+  driver's threads), drawing when ready or at the held frame's cap. The strike's hold cap 1500 → 2500 ms (map.js; the frame still
+  fades the moment the fight is ready). Off: `EW_NO_QUIET_COMPILE`. In the sandbox's software GL the programs report ready but the
+  first draw still pays their info-log read, so its gain is not measurable there.
+- THE WALK'S OWN SKY (`_hqBuildRoomInBattle`): a handed-over sky + landmarks are `_ew_hzNearRoot` (no altitude-fog hook, fog not
+  switched off): the walk's look and the walk's programs.
+- THE INSTANCE SPHERES (`_bvhInstall`): InstancedMesh.raycast tests each instance's cached world sphere before the full test.
+  The field's wall-fade rays walked every instanced tree on every ray (sandbox: ~40% of the main thread in the fight → ~5%).
+- Hover re-resolve while the camera moves is throttled to 120 ms (`HOVER_CAM_MS`); data.js `isUnitOwned` reads the profile JSON
+  once per text (`_ownedProfileRead`).
+- Measured (harness, Fairy Forest clearing, the same native, old code vs new): into the fight worst frame 10.6 s → 4.7 s, 47 → 34
+  program links, 19 → 13 point lights; the way back worst frame 3.0 s → 1.1 s, long tasks 10.1 s → 4.0 s, 13 → 5 links, no
+  creator-look rebuild. Stills + numbers: /mnt/project-files/seamless-transition/.

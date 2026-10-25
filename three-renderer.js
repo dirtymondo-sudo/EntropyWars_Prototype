@@ -1995,6 +1995,53 @@ const ThreeRenderer = (function () {
             tree.raycastObject3D(this, raycaster, intersects);
         };
         M._ew_bvhRaycast = plain;
+        /* THE INSTANCE SPHERES (2026-10-25, the seamless pass): three's InstancedMesh.raycast rebuilds every instance's world
+           matrix (getMatrixAt + a multiply) and runs the mesh test for EACH instance on EVERY ray once the batch's one big sphere
+           is crossed — and a room's instanced trees / rocks cover the whole board, so the fight's wall-fade rays (a 4 × 4 lattice
+           + every unit, each 60 ms) walked every instance: sandbox, the Fairy Forest clearing fight, ~40% of the main thread.
+           Each instance's world sphere is kept now (rebuilt when its matrices or the batch's world matrix change) and a ray
+           tests those first; only an instance whose sphere it crosses gets the full test. Same hits. */
+        var IM = THREE.InstancedMesh && THREE.InstancedMesh.prototype;
+        if (IM && !IM._ew_sphRaycast) {
+            var imPlain = IM.raycast, imS = new THREE.Sphere(), imL = new THREE.Matrix4(), imW = new THREE.Matrix4(), imMesh = new THREE.Mesh(), imHits = [], imV = new THREE.Vector3();
+            IM._ew_sphRaycast = imPlain;
+            var imSpheres = function (im) {
+                var g = im.geometry, n = im.count | 0, mw = im.matrixWorld.elements, C = im._ew_imSph;
+                if (g.boundingSphere === null) g.computeBoundingSphere();
+                var bs = g.boundingSphere;
+                if (C && C.v === im.instanceMatrix.version && C.n === n && C.bs === bs && C.r0 === bs.radius) {
+                    var same = true; for (var q = 0; q < 16; q++) if (C.mw[q] !== mw[q]) { same = false; break; }
+                    if (same) return C.a;
+                }
+                var a = (C && C.a && C.a.length === n * 4) ? C.a : new Float32Array(n * 4);
+                for (var i = 0; i < n; i++) {
+                    im.getMatrixAt(i, imL); imW.multiplyMatrices(im.matrixWorld, imL);
+                    imV.copy(bs.center).applyMatrix4(imW);
+                    a[i * 4] = imV.x; a[i * 4 + 1] = imV.y; a[i * 4 + 2] = imV.z; a[i * 4 + 3] = bs.radius * imW.getMaxScaleOnAxis();
+                }
+                C = im._ew_imSph = { v: im.instanceMatrix.version, n: n, bs: bs, r0: bs.radius, mw: (C && C.mw) || new Float64Array(16), a: a };
+                for (var k = 0; k < 16; k++) C.mw[k] = mw[k];
+                return a;
+            };
+            IM.raycast = function (raycaster, intersects) {
+                if (this.material === undefined || !this.geometry || (this.morphTexture && this.morphTexture !== null)) return imPlain.call(this, raycaster, intersects);
+                if (this.boundingSphere === null) this.computeBoundingSphere();
+                imS.copy(this.boundingSphere).applyMatrix4(this.matrixWorld);
+                if (!raycaster.ray.intersectsSphere(imS)) return;
+                var a = imSpheres(this), o = raycaster.ray.origin, d = raycaster.ray.direction, n = this.count | 0;
+                imMesh.geometry = this.geometry; imMesh.material = this.material;
+                for (var i = 0; i < n; i++) {
+                    var j = i * 4, vx = a[j] - o.x, vy = a[j + 1] - o.y, vz = a[j + 2] - o.z, t = vx * d.x + vy * d.y + vz * d.z, r = a[j + 3];
+                    if (t > 0) { vx -= d.x * t; vy -= d.y * t; vz -= d.z * t; }
+                    if (vx * vx + vy * vy + vz * vz > r * r) continue;
+                    this.getMatrixAt(i, imL); imW.multiplyMatrices(this.matrixWorld, imL);
+                    imMesh.matrixWorld = imW;
+                    imMesh.raycast(raycaster, imHits);
+                    for (var h = 0; h < imHits.length; h++) { imHits[h].instanceId = i; imHits[h].object = this; intersects.push(imHits[h]); }
+                    imHits.length = 0;
+                }
+            };
+        }
         /* the lens's numbers: every intersect call, timed at the outermost level */
         var R = THREE.Raycaster.prototype;
         ['intersectObject', 'intersectObjects'].forEach(function (k) {
@@ -12770,6 +12817,135 @@ const ThreeRenderer = (function () {
         _unitModelRigs.clear();
         _modelAnimState.clear();
     }
+    /* ══ THE BODIES CARRY OVER (2026-10-25, mondo: "still a big frame drop transitioning from exploration to battle ...
+       whatever you can do or think of to help make a seamless transition from exploration to battle and back") ══
+       The walk and the fight each built their own copy of every body: the strike disposed the walker's and the natives' rigs
+       and the fight's first rebuild cloned, re-materialed, re-baked (the officer's whole creator look: ~1.4 s of the sandbox's
+       hitch) and re-retargeted them again; the way back did the same for the walker. Now the side that leaves PARKS its rigs
+       here and the side that arrives TAKES the one that is the same body (the same model file, tile size and creator look, and
+       a clip set that covers what the new def asks for): the same clone, materials and mixer — no hitch, and the unit looks
+       exactly as it did a frame ago. The taker re-stamps what belongs to the unit (its outline stencil, its team colours) and
+       starts it on its idle. Whatever is not taken is disposed after RIG_CARRY_MS or at the next room / match.
+       Off: window.EW_NO_RIG_CARRY. */
+    /* a story fight on the walk's own room (the strike's `field:<room>:…` board, map.js _hqFieldRegister) — the fight that must look
+       like the walk it came out of (THE WALK'S LIGHT IN THE FIGHT, rebuildUnits) */
+    function _storyFightLit() { return typeof activeGameMode !== 'undefined' && String(activeGameMode || '').indexOf('field:') === 0; }
+    var _rigCarry = [], _rigCarryTimer = null, RIG_CARRY_MS = 20000;
+    function _rigCarryOff() { return typeof window !== 'undefined' && !!window.EW_NO_RIG_CARRY; }
+    function _rigCarryDrop() {
+        if (_rigCarryTimer) { clearTimeout(_rigCarryTimer); _rigCarryTimer = null; }
+        var list = _rigCarry; _rigCarry = [];
+        list.forEach(function (c) { try { _disposeModelRig(c.rig); } catch (e) {} });
+    }
+    function _rigCarryPut(rig) {
+        if (!rig || !rig.inner || _rigCarryOff()) return false;
+        try { if (rig.inner.parent) rig.inner.parent.remove(rig.inner); } catch (e) {}
+        _rigCarry.push({ rig: rig, at: performance.now() });
+        if (_rigCarryTimer) clearTimeout(_rigCarryTimer);
+        _rigCarryTimer = setTimeout(_rigCarryDrop, RIG_CARRY_MS);
+        return true;
+    }
+    /* does the parked rig's clip set cover the def's? (the walker's rig carries the building's extra clips: it serves the fight;
+       the fight's rig does not carry them: it never serves the walk unless it was the walk's own) */
+    function _rigCarryClipsOk(rig, def) {
+        var lib = _animLibActive(def);
+        if (!!rig.libBaked !== lib) return false;
+        if (!lib) return true;
+        var have = (rig.libDef && rig.libDef.libClips) || {}, want = def.libClips || {};
+        for (var k in want) if (want[k] && !have[k]) return false;
+        return true;
+    }
+    /* a rig baked for another tile size, brought to this one: the fit is one uniform scale of the clone under `inner` (its scale,
+       its feet-on-the-tile offset), the drawn half sizes and the team outline's view-space width; everything else (the bones, the
+       held prop's holder, the x-ray twins) rides the clone. The fight's board is BASE_TILE, the debrief's menu size MENU_TILE,
+       the walk BASE_TILE: re-baking the body for each (the creator look ~1-2 s) was the freeze at the debrief and on the way back */
+    function _rigRescale(rig, ts) {
+        if (!rig || !rig.inner || !(rig.ts > 0) || !(ts > 0) || rig.ts === ts) return !!rig;
+        var k = ts / rig.ts, ch = rig.inner.children;
+        for (var i = 0; i < ch.length; i++) { ch[i].scale.multiplyScalar(k); ch[i].position.multiplyScalar(k); }
+        if (rig.inner._ew_fitHalf) rig.inner._ew_fitHalf = [rig.inner._ew_fitHalf[0] * k, rig.inner._ew_fitHalf[1] * k];
+        (rig.outlineMats || []).forEach(function (m) { if (m.uniforms && m.uniforms.uOutline) m.uniforms.uOutline.value *= k; });
+        rig.ts = ts;
+        return true;
+    }
+    function _rigCarryTake(unit, def, ts, appearanceKey) {
+        if (!_rigCarry.length || _rigCarryOff()) return null;
+        for (var i = 0; i < _rigCarry.length; i++) {
+            var rig = _rigCarry[i].rig;
+            if (rig.url !== def.model || rig.appearanceKey !== appearanceKey || !rig.mixer || !rig.actions || !_rigCarryClipsOk(rig, def)) continue;
+            _rigCarry.splice(i, 1);
+            _rigRescale(rig, ts);
+            var own = unit.player === _viewerPlayerNum(), st = _unitStencilRef(unit.id);
+            (rig.modelMats || []).forEach(function (m) { m.stencilRef = st; });
+            (rig.outlineMats || []).forEach(function (m) { m.stencilRef = st; if (m.uniforms && m.uniforms.uColor) m.uniforms.uColor.value.setHex(own ? TEAM_OUTLINE_ALLY_COLOR : TEAM_OUTLINE_ENEMY_COLOR); });
+            (rig.silMats || []).forEach(function (m) { if (m.uniforms && m.uniforms.uColor) m.uniforms.uColor.value.setHex(own ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR); });
+            /* the walk's own touches come off: its held props, its padded culling, its hidden x-ray / outline twins */
+            var held = [];
+            rig.inner.traverse(function (n) {
+                if (n.name && n.name.indexOf('hq_held_') === 0) held.push(n);
+                if (n.isMesh) n.frustumCulled = false;
+                if (n._ew_silhouette) n.visible = true;
+            });
+            held.forEach(function (n) { try { if (n.parent) n.parent.remove(n); _disposeR(n); } catch (e) {} });
+            try { rig.mixer.stopAllAction(); if (rig.actions.idle) rig.actions.idle.reset().play(); } catch (e) {}
+            _modelAnimState.set(unit.id, { name: rig.actions.idle ? 'idle' : null, time: 0 });
+            _unitModelRigs.set(unit.id, rig);
+            if (!_rigCarry.length && _rigCarryTimer) { clearTimeout(_rigCarryTimer); _rigCarryTimer = null; }
+            return rig;
+        }
+        return null;
+    }
+
+    /* THE SAME LIGHT COUNT (2026-10-25, mondo: "still a big frame drop transitioning from exploration to battle"): classic WebGL
+       keys every lit program on the NUMBER of point lights. The walk drew the room's lamps + its Key Light (sandbox, the Fairy
+       Forest clearing: 9); the fight draws those same lamps (the hand-over) plus the board's own standing dark lights — the void
+       key and ThreeVFX's pooled flash lights (4) — so 13, and ~45 programs (every lit material, its shadow depth twins, the
+       units) were built again in the fight's first frame (12 s in the sandbox's software GL) and again on the way back. Now the
+       walk carries that many dark pads (intensity 0, lighting nothing) so its count is the fight's, and a story fight on the
+       walk's own room pads itself up to the count the walk had at the hand-over. Same programs both ways; the kept programs
+       find them. Not on the node renderer (THE ONE RIG keys it the same already). Off: window.EW_NO_LIGHT_MATCH. */
+    var _lightMatch = { walk: 0, at: 0, own: -1 };
+    function _lightMatchOff() { return (typeof window !== 'undefined' && !!window.EW_NO_LIGHT_MATCH) || !renderer || !!renderer.isWebGPURenderer; }
+    function _lightMatchPads(sc, k) {
+        var P = sc.userData.ewMatchPads;
+        if (!P) { if (!k) return; var g = new THREE.Group(); g.name = 'ew_match_pads'; sc.add(g); P = sc.userData.ewMatchPads = { group: g, list: [] }; }
+        if (P.group.parent !== sc) sc.add(P.group);
+        while (P.list.length < k) { var L = new THREE.PointLight(0x000000, 0, 1, 2); L.name = 'ew_match_pad'; L._ew_matchPad = true; L.castShadow = false; L.position.set(0, -99999, 0); P.group.add(L); P.list.push(L); }
+        for (var i = 0; i < P.list.length; i++) if (P.list[i].visible !== (i < k)) P.list[i].visible = i < k;
+    }
+    /* the point lights a draw of this scene counts (the pads too, unless told not to) */
+    function _lightMatchCount(sc, noPads) {
+        var n = 0;
+        sc.traverseVisible(function (o) { if (o.isPointLight && !(noPads && o._ew_matchPad)) n++; });
+        return n;
+    }
+    /* the board's standing point lights: the ones the battle scene holds itself (the void key, the flash pool) */
+    function _lightMatchBoardOwn() {
+        if (!scene) return 0;
+        var n = 0, ch = scene.children;
+        for (var i = 0; i < ch.length; i++) if (ch[i].isPointLight && ch[i].visible && !ch[i]._ew_matchPad) n++;
+        return n;
+    }
+    function _lightMatchWalk(H) {
+        if (!H || !H.scene) return;
+        _lightMatchPads(H.scene, _lightMatchOff() ? 0 : _lightMatchBoardOwn());
+    }
+    /* the hand-over: what the walk's last frame counted */
+    function _lightMatchNote(H) {
+        _lightMatch.walk = 0; _lightMatch.own = -1;
+        if (!H || !H.scene || _lightMatchOff()) return;
+        try { _lightMatch.walk = _lightMatchCount(H.scene, false); } catch (e) { _lightMatch.walk = 0; }
+    }
+    /* a story fight on the walk's room: pads up to the walk's count (re-counted 4x a second; the board's lights rarely change) */
+    function _lightMatchBoard(now) {
+        if (!scene) return;
+        if (_lightMatchOff() || !_lightMatch.walk || !_storyFightLit()) { if (scene.userData.ewMatchPads) _lightMatchPads(scene, 0); return; }
+        if (_lightMatch.own < 0 || now - _lightMatch.at > 250) {
+            _lightMatch.at = now;
+            try { _lightMatch.own = _lightMatchCount(scene, true); } catch (e) { _lightMatch.own = 0; }
+        }
+        _lightMatchPads(scene, Math.max(0, _lightMatch.walk - _lightMatch.own));
+    }
 
     // One model decode at a time in low mode: compressed GLBs expand into
     // images, typed arrays and GPU resources at once. Shared by units/props.
@@ -13887,6 +14063,7 @@ const ThreeRenderer = (function () {
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
         var appearanceKey = def.creatorBase ? JSON.stringify(normalizeCharacterAppearance(unit.appearance)) : '';
+        if (_rig && _rig.ts !== ts && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
         if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
             _unitModelRigs.delete(unit.id);
@@ -13910,6 +14087,7 @@ const ThreeRenderer = (function () {
                 } catch (_e) {}
             }
         }
+        if (!_rig) _rig = _rigCarryTake(unit, def, ts, appearanceKey);   // THE BODIES CARRY OVER: the same body from the walk / the fight
         if (_rig) {
             entry._ew_modelAttached = true;
             if (_rig.inner.parent) _rig.inner.parent.remove(_rig.inner);
@@ -15049,7 +15227,10 @@ const ThreeRenderer = (function () {
         _bbLastCamX = NaN;
 
         if (ThreePost && ThreePost.rebuildUnitLights) {
-            ThreePost.rebuildUnitLights(state.units, unitSurfaceY, CONFIG.tileSize || BASE_TILE);
+            /* THE WALK'S LIGHT IN THE FIGHT (2026-10-25, mondo: "the game looks noticably different because i think all the units get
+               ring lights"): a story fight on the walk's own room hangs no lamp over each unit — the bodies keep the light they walked
+               in (the room's lamps, its sun, the Key Light), and every lit shader keeps the walk's light count (no recompile at the cut) */
+            ThreePost.rebuildUnitLights(_storyFightLit() ? [] : state.units, unitSurfaceY, CONFIG.tileSize || BASE_TILE);
         }
     }
 
@@ -42140,6 +42321,7 @@ const ThreeRenderer = (function () {
             /* THE PLATES IN THE WORLD: the plates are in the scene now, so their size, paint and stack come before the draw */
             if (!_simNoDraw && cam) { _scalePlates(cam); _pmTick(cam); }
 
+            if (!_simNoDraw) _lightMatchBoard(_frameNow);   // THE SAME LIGHT COUNT: a story fight keeps the walk's count
             if (_simNoDraw) {
                 /* headless lab tick: bookkeeping only, no draw */
             } else if (_ss.active) {
@@ -42147,6 +42329,8 @@ const ThreeRenderer = (function () {
                    per pane camera. Post/CSS2D are bypassed — their overlays
                    are hidden for the duration (see showSplitscreen). */
                 _ssRenderFrame();
+            } else if (_quietHold(cam)) {
+                /* THE QUIET COMPILE: the room's held frame is on screen; the fight's shaders build first */
             } else {
                 if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
                     ThreePost.render(cam);
@@ -42528,9 +42712,17 @@ const ThreeRenderer = (function () {
                 + e[0].toFixed(4) + ',' + e[5].toFixed(4) + ',' + e[10].toFixed(4) + ','
                 + cam.projectionMatrix.elements[0].toFixed(5);
         if (sig === _lastHoverCamSig) return;
+        /* THE GLIDING CAMERA (2026-10-25, the seamless pass): while the camera keeps moving under a still mouse (the arrival swoop, a
+           glide onto the next unit) the pointer is re-resolved at most every HOVER_CAM_MS, not every frame — each resolve raycasts the
+           units' animated bodies triangle by triangle on the CPU (sandbox: ~1.7 s of every 10 s of the first battle seconds). The
+           pose that settles is always resolved: a stable signature after a skipped frame takes the next call. */
+        var hNow = performance.now();
+        if (_lastHoverCamSig !== '' && hNow - _lastHoverCamAt < HOVER_CAM_MS) return;   // '' = a forced repaint (a cursor change): at once
+        _lastHoverCamAt = hNow;
         _lastHoverCamSig = sig;
         _resolveHoverAt(_lastMouseClientX, _lastMouseClientY);
     }
+    var _lastHoverCamAt = 0, HOVER_CAM_MS = 120;
 
     /* The full click pipeline at a screen point — extracted from the canvas
        click handler so the third-person shooter reticle (which fires while the
@@ -68473,8 +68665,10 @@ const ThreeRenderer = (function () {
         if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
+        _ewRimTick(H.sky ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
+        _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
         try {
             if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
@@ -70644,7 +70838,47 @@ const ThreeRenderer = (function () {
         if (_hqDissolveRec) {
             try { _fieldGate = _alGateOpen('field', { adoptLive: true }); _fieldGateAt = performance.now(); } catch (e) { _fieldGate = null; }
             try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.seedHold) ThreeCamera.seedHold(true); } catch (e) {}
+            _quietArm();
         }
+    }
+    /* THE QUIET COMPILE (2026-10-25, mondo: "still a big frame drop transitioning from exploration to battle"): the fight's
+       first frame built every program it had not drawn before (the units' outline and x-ray twins, the plates, the board's
+       own pieces, the room pieces the fight hazes) inside that one frame, and three blocks the frame until each is linked.
+       Under the room's held frame nothing of the fight is seen anyway, so the fight draws NOTHING until its bodies have
+       streamed in (the gate above), then hands every drawn object to renderer.compileAsync (the programs build on the
+       driver's own threads where KHR_parallel_shader_compile is offered, keyed for the target the frame draws into) and draws
+       once they are ready — or at the held frame's cap, whichever comes first. Classic WebGL only. Off: window.EW_NO_QUIET_COMPILE. */
+    var _quiet = { state: 0, at: 0, cap: 1500, n: 0, ms: 0 };
+    function _quietArm() {
+        _quiet.state = 0;
+        if (typeof window !== 'undefined' && window.EW_NO_QUIET_COMPILE) return;
+        if (!renderer || renderer.isWebGPURenderer || typeof renderer.compileAsync !== 'function') return;
+        _quiet.state = 1; _quiet.at = performance.now(); _quiet.n = 0; _quiet.ms = 0;
+        var R = _hqDissolveRec;   // the held frame's own cap (its timer fades it then whatever happens): the fight draws by then
+        _quiet.cap = (R && R.hold > 0) ? Math.max(0, R.hold - ((R.at > 0) ? _quiet.at - R.at : 0) - 60) : 1500;
+    }
+    /* true = hold this frame's draw */
+    function _quietHold(cam) {
+        if (!_quiet.state || _quiet.state === 3) return false;
+        var now = performance.now();
+        if (now - _quiet.at > _quiet.cap || !_hqDissolveRec || !scene || !cam) { _quiet.ms = Math.round(now - _quiet.at); _quiet.state = 3; return false; }
+        if (_quiet.state === 1) {
+            try { if (_fieldGate && _fieldGate.pending() > 0) return true; } catch (e) {}
+            _quiet.state = 2;
+            var list = [];
+            scene.traverseVisible(function (o) { if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material) list.push(o); });
+            var fake = { isScene: true, traverseVisible: function () {}, traverse: function (cb) { for (var i = 0; i < list.length; i++) cb(list[i]); } };
+            var wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, wp = renderer.getRenderTarget();
+            var t0 = performance.now(), p = null;
+            try { renderer.setRenderTarget(wt); p = renderer.compileAsync(fake, cam, scene); }
+            catch (e) { console.warn('[ThreeRenderer] the quiet compile failed — the fight draws now', e); p = null; }
+            finally { renderer.setRenderTarget(wp); }
+            _quiet.n = list.length;
+            if (!p) { _quiet.state = 3; return false; }
+            p.then(function () { _quiet.pDone = renderer.info.programs.length; if (_quiet.state === 2) { _quiet.ms = Math.round(performance.now() - _quiet.at); _quiet.state = 3; } }, function () { _quiet.state = 3; });
+            return true;
+        }
+        return true;
     }
     /* the held snapshot fades once nothing the fight asked for is still streaming (the party's rigs), else at the hold's cap */
     function _fieldDissolveReady() {
@@ -70787,7 +71021,10 @@ const ThreeRenderer = (function () {
         if (voyage && hand && hand.sky) { [hand.sky.group, hand.sky.landmarks].forEach(function (sg) { if (sg) { if (sg.parent) sg.parent.remove(sg); try { _disposeR(sg); } catch (e) {} } }); }
         if (trueGround && HR.roomSky && !voyage) {
             var skyH = holder('hq_sky'); skyH._ew_occNear = false;
-            if (hand && hand.sky) { if (hand.sky.group) skyH.add(hand.sky.group); if (hand.sky.landmarks) skyH.add(hand.sky.landmarks); }
+            /* THE WALK'S OWN SKY (2026-10-25): the handed-over sky and landmarks are the walk's meshes on the walk's materials — they
+               keep them (near scenery: no altitude-fog hook, no fog switched off), so they look as they did a moment ago and every
+               one of their shaders is the one the walk already built (the hook and the fog flag each made a new program at the cut) */
+            if (hand && hand.sky) { skyH._ew_hzNearRoot = true; if (hand.sky.group) skyH.add(hand.sky.group); if (hand.sky.landmarks) skyH.add(hand.sky.landmarks); }
             else if (room.shell && room.shell.open && room.shell.sky && Array.isArray(room.shell.sky.landmarks) && room.shell.sky.landmarks.length) {
                 var Hs = { scene: { add: function (o) { skyH.add(o); } }, sky: {}, fxPulse: [] };
                 try { _hqBuildLandmarks(Hs, room.shell.sky.landmarks, 6000); } catch (e) { console.warn('[HQ→battle] landmarks failed', e); }
@@ -72435,6 +72672,19 @@ const ThreeRenderer = (function () {
         if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
         _hqHandoverDrop();   // THE HAND-OVER: a stash the battle never took
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
+        /* THE BODIES CARRY OVER (2026-10-25): bodies parked for a fight that never took them go; coming back from a fight, the
+           viewer's standing units park theirs for the walk (the walker takes its own body back when it is the one the walk lent) */
+        _rigCarryDrop();
+        if (opts.from === 'return' && typeof state !== 'undefined' && state && Array.isArray(state.units)) {
+            var vpC = _viewerPlayerNum();
+            state.units.forEach(function (u) {
+                if (!u || u.player !== vpC || u.dead || u._dying) return;
+                var rigC = _unitModelRigs.get(u.id);
+                if (!rigC) return;
+                _unitModelRigs.delete(u.id); _modelAnimState.delete(u.id);
+                if (!_rigCarryPut(rigC)) _disposeModelRig(rigC);
+            });
+        }
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
         var U = _hqUnits(), S = room.shell;
@@ -72651,6 +72901,7 @@ const ThreeRenderer = (function () {
         return { focus: _hqDofFocus(H), night: (H && H.sky) ? (+H.sky.night || 0) : 0, keyDir: (H && (H.keyDir || (H.keyLight && H.keyLight.position))) || null, keyLight: (H && H.keyLight) || null };
     }
     function _hqRenderOnce(H) {
+        _lightMatchWalk(H);
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
         var fh = _hqFogHold(H);
         try {
@@ -72751,7 +73002,7 @@ const ThreeRenderer = (function () {
         var done = false, fading = false;
         var drop = function () { if (done) return; done = true; if (_hqDissolveRec && _hqDissolveRec.el === snap) _hqDissolveRec = null; try { if (snap.parentNode) snap.parentNode.removeChild(snap); } catch (e) {} };
         var fade = function () { if (fading || done) return; fading = true; rec.fadingAt = performance.now(); try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} try { snap.style.opacity = '0'; } catch (e) {} setTimeout(drop, ms + 120); };
-        var rec = { el: snap, ms: ms, hold: hold, drop: drop, fade: fade, fadingAt: 0 };
+        var rec = { el: snap, ms: ms, hold: hold, drop: drop, fade: fade, fadingAt: 0, at: performance.now() };
         if (o && o.onFrame) _hqDissolveRec = rec;   // the first battle frame fades it; `hold` caps the wait
         setTimeout(fade, hold);
         setTimeout(drop, hold + ms + 120);
@@ -72849,6 +73100,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
@@ -72872,11 +73124,12 @@ const ThreeRenderer = (function () {
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         try { _hqStageLeave(H); } catch (e) {}   // THE STAGE: the neighbours' gates, the detached parts
         var handed = _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below
-        /* characters: evict their rig-cache records (ids are ours) */
+        /* characters: evict their rig-cache records (ids are ours) — into a fight, the bodies are PARKED for it (THE BODIES CARRY OVER) */
+        var carryRigs = !!(opts && opts.handover);
         H.chars.forEach(function (ch) {
             try {
                 var rig = _unitModelRigs.get(ch.id);
-                if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); }
+                if (rig) { _unitModelRigs.delete(ch.id); if (!(carryRigs && !ch.away && _rigCarryPut(rig))) _disposeModelRig(rig); }
                 _modelAnimState.delete(ch.id);
             } catch (e) {}
         });
