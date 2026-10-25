@@ -114,6 +114,9 @@ const RACE_SPRITE_GENDERS = {
   'firefighter': 'male',   // 2026-09-30
   'goblin': 'male',   // 2026-09-30
   'hippie': 'both',   // 2026-09-30
+  'mummy': 'female',   // 2026-10-25 — the undead batch
+  'swamp monster': 'male',   // 2026-10-25
+  'undead': 'male',   // 2026-10-25
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -284,6 +287,10 @@ const _CHARACTER_SPRITES = {
   'starfish': `${_CS}/starfish.png`,
   'tree person': `${_S}/Races/treeperson/treeperson.png`,   // 2026-10-25 — his new treeperson sprite (Races/treeperson/)
   'luchador': `${_CS}/wrestler.png`,
+  // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
+  'mummy': `${_S}/Races/mummy/mummy_female.png`,
+  'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,
+  'undead': `${_S}/Races/undead/undead.png`,
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
@@ -1919,6 +1926,26 @@ const RACE_MODELS_3D = {
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
+  // ── THE UNDEAD BATCH (2026-10-25, mondo) ── Races/<folder>/Meshy_AI_<name>_Running.glb, rigged (the swamp monster's
+  // rig carries finger bones: 66 joints)
+  'mummy': {
+    female: _mkUAL('mummy', 'mummy_female', {
+      model: `${_S}/Races/mummy/Meshy_AI_mummy_female_Running.glb`,
+      heightRatio: 0.95, basicAttackKind: 'punch',
+    }),
+  },
+  'swamp monster': {
+    male: _mkUAL('swampmonster', 'swampmonster', {
+      model: `${_S}/Races/swampmonster/Meshy_AI_swampmonster_Running.glb`,
+      heightRatio: 1.2, basicAttackKind: 'claw',
+    }),
+  },
+  'undead': {
+    male: _mkUAL('undead', 'undead', {
+      model: `${_S}/Races/undead/Meshy_AI_undead_Running.glb`,
+      heightRatio: 1.05, basicAttackKind: 'claw',
+    }),
+  },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
   'clown': {
     male: _mkUAL('clown', 'evil_clown', {
@@ -3347,6 +3374,9 @@ const RACE_SPRITES = {
   'firefighter': `${_S}/character_sprites/firefighter.png`,   // 2026-10-04 — his own sprite
   'goblin': `${_S}/character_sprites/gremlin.png`,   // 2026-10-04 — his own sprite
   'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
+  'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
+  'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,   // 2026-10-25 — his own sprite
+  'undead': `${_S}/Races/undead/undead.png`,   // 2026-10-25 — his own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
