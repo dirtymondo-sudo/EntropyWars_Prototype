@@ -1815,3 +1815,31 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+
+## THE ICE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every ice-element spell now reads as ICE at a glance: a six-armed frost sigil on the ground, faceted crystal clusters that
+grow and shatter, frost ferns, white glints and ice shards. Two new Ice Magic rows (Hailstorm, Glacier Break; rules in
+champions-combat.md "THE ICE PASS"). Code: three-vfx-effects.js block "THE ICE PASS" right after END THE NATURE PASS,
+helpers `_iv*`, same `pzSig` hook as the P-Z / nature passes.
+- THE KIT: `_ivCrystalGeo` = a lathe crystal, flat facets (non-indexed), light baked into vertex colours (`_ivBake`), white
+  additive edge lines + an additive back-face halo so the ice reads bright on any map; skin = R2 terrain/ice.png.
+  `_ivRing` = a ring of crystals with lens-aware heights (crystals on the camera side stay short, `_nbCamDir`) so the
+  victim stays visible. `_ivShards` = flat-shaded tetra shards with gravity + one bounce. `_ivDecal` = sigil / frost /
+  crack canvases laid on the tile (renderOrder 160/161, above the team ground ring). `_ivMist`, `_ivGlints`.
+- Signatures (8): Ice Spear (a real ice lance flies; ankle-grip crystals + frost on hit; the old iceSpear travel removed
+  for it), Shatter (crystal shell round the target blows out at 210 ms), Flash Freeze + Permafrost (on their `wall`
+  intent: crystals erupt per frozen tile, staggered like the tile conversion), Summon Blizzard (sigil + snow column),
+  Diamond Dust (falling diamonds over the cross-diamond tiles), Hailstorm (hail crystals drop on every tile of the 3×3),
+  Glacier Break (a crack races from the caster to the target, then great spikes tear up ROUND the body and shatter;
+  impact is deduped so the bolt and impact never double it).
+- THE ICE STAMP: every other ice spell (Frozen Punch, Freeze Breath, Absolute Zero, Snowball Volley, Grave Chill, Cold
+  Spot, White Christmas, Blizzard Present, Avalanche Strike, Sleigh Dash, Ice Slide…) keeps its own look and gets the stamp
+  on the staging `burst` beat: sigil + frost + a ring of 4+rank crystals that shatter (`_ivStamp`, rank = spell weight).
+- Staging: the `ice` archetype now has `noOrb: true`, `glyph: false`, `iceSigil: true` — the windup draws the frost sigil
+  and a growing gem toward the target (`_ivWindup`) instead of the glass orb, and the target telegraph drops its orb on ice.
+  Non-physical ice rows whose kind fell to the rig/mind archetype are pinned to `ice` in SPELL_STAGE_MAP.
+- Fog / RULE #2: all of it rides fire() intents (bolt / impact / wall / aoe / burst / windup), so the guest sees it.
+  Glacier Break's racing crack is fog-gated per tile (`_pzSeen`).
+- No screen flash, no full-screen layer: crystals stand round or behind the body, never over the number.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() + setTimeout at set delays after `burst`.
+  Stills: /mnt/project-files/ice-vfx/ (ice_pass_overview.jpg). Console clean over every ice spell.

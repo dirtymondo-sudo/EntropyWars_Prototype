@@ -2560,3 +2560,16 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+
+## THE ICE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]")
+Ice Magic (`ice` family: ice queen, wizard, yeti + Adaptable borrowers) had setups at T1-T3 but no T3/T4 finisher. Two
+rows added (data.js, after Shatter in SPELL_LIBRARY), existing kinds and rules only:
+- **Hailstorm** (`raceHailstorm`, tier III, 75 MP, 1 AP, anomaly, ice): `aoe` 3×3 (aoeRadius 1), range 4, 125 magic,
+  ×1.5 vs Slow, applies nothing (finisher on Ice Spear / Diamond Dust's Slow).
+- **Glacier Break** (`raceGlacierBreak`, tier IV, 100 MP, 1 AP, cd 2, anomaly, ice): single `damage`, range 4, 170 magic,
+  ×1.5 vs Frozen, applies nothing (finisher on Flash Freeze / Permafrost's Frozen). Same numbers as Wrath of the Wild.
+- Spread now: T1 Ice Spear (Slow), Shatter (×1.5 vs Frozen) · T2 Flash Freeze (Frozen), Summon Blizzard, Ice Slide ·
+  T3 Permafrost (Frozen), Diamond Dust (Slow), Hailstorm · T4 Absolute Zero (Frozen), Glacier Break.
+- Left as they were (existing exceptions to the tier convention, flagged to mondo, not changed): Absolute Zero is T4 and
+  APPLIES Frozen; Shatter is T1 and carries the frozen bonus.
+- Names "Hailstorm" and "Glacier Break" were picked by the thread (flagged). Looks: spells-vfx.md "THE ICE PASS".

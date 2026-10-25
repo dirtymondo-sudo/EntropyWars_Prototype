@@ -6236,6 +6236,19 @@ const SPELL_LIBRARY = [
           element: 'ice', type: 'damage', kind: 'damage', range: 4, dmg: 100, damageType: 'magic',
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
           desc: 'Tap the ice and watch it go. MEDIUM magic damage — a Frozen target takes it through every crack.' },
+        /* THE ICE PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each"): Ice Magic had no
+           tier III / IV finisher (its Slow and Frozen setups had nothing in the family to cash them in). Two rows on
+           existing kinds and rules only: Hailstorm = the tier III area finisher on Slow (Ice Spear / Diamond Dust set it
+           up), Glacier Break = the tier IV single finisher on Frozen (Flash Freeze / Permafrost / Absolute Zero set it
+           up); both apply nothing (no self-combo). Their looks: three-vfx-effects.js "THE ICE PASS". */
+        { id: 'raceHailstorm', name: 'Hailstorm', tier: 3, families: ['ice'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'ice', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125, range: 4, aoeRadius: 1,
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Hail the size of fists. MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Slowed targets take it worse.' },
+        { id: 'raceGlacierBreak', name: 'Glacier Break', tier: 4, families: ['ice'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'damage', damageType: 'magic',
+          dmg: 170, range: 4, bonusVsStatus: { status: 'frozen', mult: 1.5 },
+          desc: 'The ice was always under them. Great crystal spikes tear up round a Single Enemy within 4 and shatter on it for HEAVY magic damage. Frozen targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceDoomscroll', name: 'Doomscroll', tier: 1, families: ['internetaddiction'], cost: 25, apCost: 1,
           spellType: 'human', element: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
           statusEffects: [{ id: 'discord', duration: 2 }],
