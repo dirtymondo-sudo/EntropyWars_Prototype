@@ -718,3 +718,9 @@ the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
 - At factory density the woods (0.03/m, 73 m) and downtown (0.016/m, 166 m) silhouettes are ~99% fog, like the far 3D
   buildings and trees; Fog Density 0.3× leaves about half; Scene Fog off leaves them crisp. Debug: `_ewPaintSky().silFog`.
 - Proof: /mnt/project-files/painted-skies/sets/far_fog_*.jpg.
+
+### SWITCHED OFF (2026-10-25, mondo: "not really a fan of the skies that were added, i cant really tell when its day or night. Can we go back to how it was before, no water color stuff")
+- data.js `HQ_PAINTED_SKIES.on: false`: `hqPaintedSky` returns null for every id, so `_paintSkyTick` keeps uPaintAmt 0 and
+  every zone (walk + fights) draws the shader's own day / night dome again, exactly the pre-#481 sky (every painted-sky
+  shader path is gated on uPaintAmt). The rows, the sets, the renderer code and his files on R2 stay; `on: true` brings
+  them back. Proof: /mnt/project-files/painted-skies/off/.

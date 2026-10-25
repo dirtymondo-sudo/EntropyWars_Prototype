@@ -46643,8 +46643,12 @@ function hqRoomClock(roomId) {
    drop `set` to bring them back); Blue = day, Night = night, Sunset = the clock's dawn and dusk (the walk only: a fight keeps
    day and night). A room keeps one number N of the set for all three times: the row's open rooms take 1, 2, 3, 4 in the
    building's order (a board with no room: 1). The row's silhouette stays
-   on (`noSil: true` drops it). The sets have no `_low` copy: low power draws the same sheets. */
+   on (`noSil: true` drops it). The sets have no `_low` copy: low power draws the same sheets.
+   SWITCHED OFF (2026-10-25, mondo: "not really a fan of the skies that were added, i cant really tell when its day or night.
+   Can we go back to how it was before, no water color stuff"): `on: false` = every zone draws the game's own sky again (the
+   clear day / night dome from before the paintings). The rows, the sets and his files on R2 stay: `on: true` brings them back. */
 const HQ_PAINTED_SKIES = {
+    on: false,
     base: 'https://cdn.entropywars.net/Assets/skies/',
     silH: 0.5,
     sets: {
@@ -46661,7 +46665,7 @@ const HQ_PAINTED_SKIES = {
    { key, roomId, set, n, day, night, dusk, sil, silH, rep } — `low` picks the half-size copies (dusk null = no sunset sheet) */
 function hqPaintedSky(id, low) {
     const P = HQ_PAINTED_SKIES, s = String(id || '');
-    if (!s) return null;
+    if (!s || !P.on) return null;   // switched off (2026-10-25): the shader's own sky everywhere
     const rooms = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
     let roomId = null;
     if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); roomId = f ? f.room : null; }
