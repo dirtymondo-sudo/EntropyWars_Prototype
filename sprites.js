@@ -282,11 +282,16 @@ const _CHARACTER_SPRITES = {
   'sheriff': `${_CS}/sheriff.png`,
   'sidekick': `${_CS}/sidekick.png`,
   'starfish': `${_CS}/starfish.png`,
-  'tree person': `${_CS}/treeperson.png`,
+  'tree person': `${_S}/Races/treeperson/treeperson.png`,   // 2026-10-25 — his new treeperson sprite (Races/treeperson/)
   'luchador': `${_CS}/wrestler.png`,
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
+  // 2026-10-25 — the female sniper and the female men in black (the Spy) wear his new sprites; the males keep their job sheets.
+  'marksman': { male: `${_S}/Races/Homosapien/Male/sniper/homosapien_male_sniper.png`, female: `${_S}/Races/Homosapien/Female/sniper/sniper_female.png` },
+  'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png`, female: `${_S}/Races/spy/spy_female.png` },
+  // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
+  'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
   'bunny girl': { female: `${_S}/Races/catgirl/female/catgirl_female.png` },   // 2026-10-12 — no 2D sheet of her own on R2 (the art is the GLB); borrows catgirl's instead of asking for the missing Races/bunnygirl/female/bunnygirl_female.png
 };
 
@@ -1324,10 +1329,12 @@ const RACE_MODELS_3D = {
     }, { heightRatio: 0.95, basicAttackKind: 'magic' }),
   },
   'men in black': {
-    female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
-      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
-      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95 }),   // quick-draw is 7.33s; show draw+shot fast
+    // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
+    // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
+    female: _mkUAL('spy', 'spy_female', {
+      model: `${_S}/Races/spy/Meshy_AI_spy_female_Running.glb`,
+      heightRatio: 0.95,
+    }),
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
@@ -1655,7 +1662,9 @@ const RACE_MODELS_3D = {
     // Female sniper (2026-07-11d batch) — lives in the race's SPRITE folder
     // (Homosapien/Female/sniper), unlike the male whose model sits in
     // marksman/male. Standard idle; rifle shots via the default castRanged.
-    female: _mkUAL('Homosapien/Female/sniper', 'female_sniper_beauti', {
+    // 2026-10-25 — his new "sniper_female" Running export, same folder.
+    female: _mkUAL('Homosapien/Female/sniper', 'sniper_female', {
+      model: `${_S}/Races/Homosapien/Female/sniper/Meshy_AI_sniper_female_Running.glb`,
       heightRatio: 0.96,
     }),
   },
@@ -1954,8 +1963,8 @@ const RACE_MODELS_3D = {
     }),
   },
   'tree person': {
-    male: _mkUAL('treeperson', 'walking_tree', {
-      model: `${_S}/Races/treeperson/Meshy_AI_walking_tree_Running.glb`,
+    male: _mkUAL('treeperson', 'treeperson', {
+      model: `${_S}/Races/treeperson/Meshy_AI_treeperson_Running.glb`,   // 2026-10-25 — his new treeperson model
       heightRatio: 1.5, basicAttackKind: 'claw',
     }),
   },
@@ -2059,10 +2068,10 @@ const RACE_MODELS_3D = {
       heightRatio: 1.0, basicAttackKind: 'punch',
     }),
   },
-  // Shadow Entity (caster; flies — SKY_RACES) — "shadow_monster" Running export (Races/shadowentity/male/).
+  // Shadow Entity (caster; flies — SKY_RACES) — "shadowperson" Walking export (Races/shadowentity/male/), 2026-10-25.
   'shadow entity': {
-    male: _mkUAL('shadowentity/male', 'shadow_monster', {
-      model: `${_S}/Races/shadowentity/male/Meshy_AI_shadow_monster_Running.glb`,
+    male: _mkUAL('shadowentity/male', 'shadowperson', {
+      model: `${_S}/Races/shadowentity/male/Meshy_AI_shadowperson_Walking.glb`,
       heightRatio: 1.12, basicAttackKind: 'magic',
     }),
   },
@@ -3329,7 +3338,7 @@ const RACE_SPRITES = {
   'jack o lantern': `${_S}/character_sprites/jackolantern.png`,   // 2026-10-04 — his own sprite
   'sidekick': `${_S}/character_sprites/sidekick.png`,   // 2026-10-04 — his own sprite
   'mushroom girl': `${_S}/character_sprites/mushroomgirl.png`,   // 2026-10-04 — his own sprite
-  'tree person': `${_S}/character_sprites/treeperson.png`,   // 2026-10-04 — his own sprite
+  'tree person': `${_S}/Races/treeperson/treeperson.png`,   // 2026-10-25 — his new treeperson sprite
   'sheriff': `${_S}/character_sprites/sheriff.png`,   // 2026-10-04 — his own sprite
   'astronaut': `${_S}/character_sprites/astronaut.png`,   // 2026-10-04 — his own sprite
   'krampus': `${_S}/character_sprites/krampus.png`,   // 2026-10-04 — his own sprite
@@ -3347,7 +3356,7 @@ const RACE_SPRITES = {
   'reptilian': `${_S}/reptilian.png`,
   'robot': `${_S}/robot.png`,
   'seraphim': `${_S}/seraphim.png`,
-  'shadow entity': `${_S}/shadow_entity.png`,
+  'shadow entity': `${_S}/Races/shadowentity/male/shadowperson.png`,   // 2026-10-25 — his new shadowperson sprite
   'skeleton': `${_S}/skeleton.png`,
   'skinwalker': `${_S}/skinwalker.png`,
   'succubus': `${_S}/succubus.png`,
