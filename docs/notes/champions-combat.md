@@ -2560,3 +2560,14 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+
+## THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Lightning Magic had Static Shock (T1, Jammed) as its only setup and no finisher that paid off its own status. Two rows
+(data.js, after Conduction in SPELL_LIBRARY), existing kinds and rules only:
+- **Ball Lightning** (`raceBallLightning`, tier II, 50 MP, 1 AP, anomaly, lightning): `line`, range 4, width 1, 100
+  magic, Jammed 1 (the Rainspout shape). A second Jammed setup.
+- **Bolt from the Blue** (`raceBoltFromTheBlue`, tier IV, 100 MP, 1 AP, cd 2, anomaly, lightning): single-target
+  `damage`, range 4, 170 magic, ×1.5 vs Jammed, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Family now 8 rows. Who gets them: Lightning Magic in RACE_FAMILIES (mothman, wizard) + Adaptable borrowers.
+- Left as they were (flagged to mondo): Tempest (T4) and EMP Burst / EMP Grenade still APPLY statuses at tier 3-4.
+  Looks: spells-vfx.md "THE LIGHTNING PASS".

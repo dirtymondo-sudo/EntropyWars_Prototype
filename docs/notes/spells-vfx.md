@@ -1815,3 +1815,33 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+
+## THE LIGHTNING PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+One look for every lightning spell, plus two new Lightning Magic rows (Ball Lightning, Bolt from the Blue — rules in
+champions-combat.md "THE LIGHTNING PASS"). Code: three-vfx-effects.js block "THE LIGHTNING PASS" right after END THE
+NATURE PASS, helpers `_lz*`, same `pzSig` hook as the nature / P-Z passes.
+- THE KIT (every piece is one stage run per cast, `_lzStage` → ONE `_sigRunOwned`, so a cast never eats more than one of
+  the 20 run slots): `_lzBolt` = real 3D jagged bolts (TubeGeometry: a wide faint haze, a blue glow, a thin white-hot
+  core; re-cut every few frames so they flicker), forks; `_lzCage` = arcs wrapping the body that was hit; `_lzScar` = a
+  Lichtenberg flare (white veins in blue haze) that cools to a burn on the ground; `_lzCrawl` = arcs crawling out over the
+  ground; `_lzStrike` = a channel from the sky + re-strikes; `_lzCloud` = a dark storm cloud lit from inside, kept 4.4+
+  tiles up so it never covers a unit. Palette `_LZ` (white core, electric blue glow, cyan, violet for Static Shock).
+- THE MARK (what makes any lightning hit identifiable): `fire()`'s `burst` beat calls `_lzBurstMark` — every lightning-
+  element DAMAGE spell that isn't one of the six owned below gets a cage on each visible enemy it hit (max 6) and a scar
+  sized to its footprint. That includes signature spells with their own looks (Firefly Swarm, Taser Bolt, Shock Prod,
+  EMP Grenade, Tesla Trap…): their own look stays, the mark lands on top. For line kinds the `burst` beat comes ~1 s after
+  the damage (the damage lands ~430 ms after `beam`), so the mark trails a line spell's hit.
+- THE SIX OWNED (`_LZ_OWN`, the old MeshLine regex bolts skip them):
+  Static Shock (bolt, pzOwn) = violet buzz at the hand, the snap arc, a violet cage + scrambled static halo (the Jammed look);
+  Thunderbolt (`lzThunderbolt_descent`, the old sky rune + screen flash replaced) = cloud, 3-hit strike, scar, cage, ring;
+  Chain Lightning (chain, pzOwn; `:solo` geometry too) = arcs hand → body → body with a cage + scar each;
+  Tempest (`lzTempest_aoe`) = cloud over the area, a strike per tile, scars, cages, a ground net of arcs, hard shake;
+  Ball Lightning (beam, pzOwn) = a plasma ball (deep-blue halo under it so it reads over the lit lane) rolls the line at
+  chest height in ~420 ms, licks the ground, cages each body it passes, bursts with six arcs at the end;
+  Bolt from the Blue (`lzBlue_descent`) = a cold star high above, rising sparks, St Elmo arcs, three stepped leaders, a
+  streamer up off the body, the return stroke + 2 re-strikes, ion column, big scar, crawl.
+- Fog / RULE #2: everything rides fire() (relayed). Hand pieces gate on `_pzSeen` (`_lzHand` returns null for a fogged
+  caster), the ball shows per tile, cages/scars only on seen tiles.
+- Staging archetype `lightning` untouched (its orb did not hide the hits in the stills).
+- Proof: Spell Lab ✦ CAST per spell with the capture rig freezing performance.now() after the intent.
+  Stills + contact sheet: /mnt/project-files/lightning-vfx/.
