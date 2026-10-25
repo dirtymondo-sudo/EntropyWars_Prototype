@@ -6540,6 +6540,19 @@ const SPELL_LIBRARY = [
           aoeRadius: 1, pullToCenter: true, groundsFlyers: true,
           bonusVsStatus: { status: 'blind', mult: 1.5 },
           desc: 'A tight cyclone drags everything to its center. HEAVY magic damage to All Enemies in a 3×3 within 4 tiles, pulls them toward the middle and knocks flyers out of the sky. Blinded targets take it worse. Cooldown: 2 rounds.' },
+        /* THE WIND PASS (2026-10-25, mondo: "a similar thread on each element, giving them a consistent look ... and
+           making sure there's a nice amount of spells for each"): Wind Control had no tier I setup and no tier III
+           finisher. Two rows on existing kinds and rules only: Squall = the Thornlash shape (tier I, applies the
+           family's status, Blind 1); Tornado = the Conduction shape (tier III, ×1.5 vs Blind, applies nothing — no
+           self-combo). Their looks: three-vfx-effects.js "THE WIND PASS". */
+        { id: 'raceSquall', name: 'Squall', tier: 1, families: ['wind'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'A cutting gust full of grit. WEAK magic damage to a Single Enemy within 4 and Blinds it for 1 round.' },
+        { id: 'raceTornado', name: 'Tornado', tier: 3, families: ['wind'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 4,
+          bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'A twister drops on one target. MEDIUM magic damage to a Single Enemy within 4. Blinded targets take it worse.' },
         { id: 'raceMudslide', name: 'Mudslide', tier: 3, families: ['earth'], cost: 75, apCost: 1, spellType: 'anomaly',
           element: 'earth', type: 'damage', kind: 'line', damageType: 'physical', dmg: 125, range: 4, lineWidth: 1,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
