@@ -2560,6 +2560,9 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage` answers false for `noDamage` too, so
+those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
+plan all read it). The one-cast-a-turn lock still applies.
 
 ## THE SONIC PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each" element)
 Sonic had 28 rows across tiers I-IV (7 / 9 / 7 / 5) but the Sonic family pool itself (siren, mermaid, popstar) held only
