@@ -674,6 +674,29 @@
             background: #d9ffe9;
         }
 
+        /* Mana forecast (ui.js getPendingManaPreview): the MP an action
+           costs or drains blinks pale blue off the MP fill's edge (kill-red
+           tint when the caster can't pay it); a restore grows from the edge. */
+        .tp-mp-preview {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            pointer-events: none;
+            animation: dmgPreviewBlink 0.85s ease-in-out infinite;
+        }
+        .tp-mp-preview,
+        .hrlg-thp-preview.mp-preview {
+            background: #cfe9ff;
+        }
+        .tp-mp-preview.mp-preview-short,
+        .hrlg-thp-preview.mp-preview-short {
+            background: #ffb3bc;
+        }
+        .tp-mp-preview.mp-preview-gain,
+        .hrlg-thp-preview.mp-preview-gain {
+            background: #e3f4ff;
+        }
+
         @keyframes dmgPreviewBlink {
             0%, 100% { opacity: 0.25; }
             50% { opacity: 0.95; }
