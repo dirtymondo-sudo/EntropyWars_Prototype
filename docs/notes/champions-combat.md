@@ -2584,6 +2584,17 @@ rows added (data.js, after Shatter in SPELL_LIBRARY), existing kinds and rules o
 - Left as they were (existing exceptions to the tier convention, flagged to mondo, not changed): Absolute Zero is T4 and
   APPLIES Frozen; Shatter is T1 and carries the frozen bonus.
 - Names "Hailstorm" and "Glacier Break" were picked by the thread (flagged). Looks: spells-vfx.md "THE ICE PASS".
+
+## THE FIRE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Fire Magic had one row per tier (Fireball I, Combust II, Wall of Fire III, Meteor IV). Two rows (data.js, after Combust in
+SPELL_LIBRARY), existing kinds and rules only:
+- **Flamethrower** (`raceFlamethrower`, tier II, 50 MP, 1 AP, unholy, fire): `line`, range 3, width 1, 100 magic, Burn 2
+  (setup; Dragon Breath's shape without its burning tiles).
+- **Inferno** (`raceInferno`, tier IV, 100 MP, 1 AP, cd 2, unholy, fire): `aoe`, range 0, aoeRadius 2, aoeOriginSelf,
+  160 magic, ×1.5 vs Burn, applies nothing (finisher, no self-combo; Throne of Ashes' shape).
+- Who gets them: every race with Fire Magic in RACE_FAMILIES (demon, demon prince, dragon, jack o lantern, wizard) +
+  Adaptable borrowers. Stats are thread calls (flagged to mondo). Looks: spells-vfx.md "THE FIRE PASS".
+
 ## THE WIND PASS (2026-10-25, mondo: "a similar thread on each element ... making sure there's a nice amount of spells for each")
 Wind Control had no tier I setup and no tier III finisher. Two rows (data.js, after Eye of the Storm in SPELL_LIBRARY),
 existing kinds and rules only:
@@ -2619,3 +2630,13 @@ numbers mirror THE NATURE PASS's Vine Whip / Wrath of the Wild (THREAD CALLS, fl
 - Who gets them: siren, mermaid, popstar (Sonic in RACE_FAMILIES) + Adaptable borrowers. Looks: spells-vfx.md "THE SONIC PASS".
 - Left as they were, flagged: Deafening Wail (tier III) applies Silence and Sonic Breaker (tier II) is the Silence
   finisher, the reverse of the tier convention.
+
+## THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Poison family had one tier II (Splash, a Goo spell) and one tier III (Rot, which applies), so no single-target setup +
+finisher pair. Two rows (data.js, after Miasma in SPELL_LIBRARY), existing kinds and rules only:
+- **Venom Spit** (`raceVenomSpit`, tier II, 50 MP, 1 AP, unholy, poison): single `damage`, range 4, 100 magic, Poison 2.
+- **Venom Burst** (`raceVenomBurst`, tier III, 75 MP, 1 AP, unholy, poison): single `damage`, range 4, 125 magic, ×1.5 vs
+  Poison, applies nothing (finisher, no self-combo).
+- Who gets them: every race with Poison Abilities in RACE_FAMILIES (antperson, black goo, demon princess, ghoul,
+  necromancer, bee queen, mushroom girl, goblin, chef, swamp monster, reptilian, zombie) + Adaptable borrowers. Stats are
+  thread calls, flagged to mondo. Looks: spells-vfx.md "THE POISON PASS".

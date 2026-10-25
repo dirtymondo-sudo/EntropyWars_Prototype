@@ -1844,6 +1844,34 @@ helpers `_iv*`, same `pzSig` hook as the P-Z / nature passes.
 - Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() + setTimeout at set delays after `burst`.
   Stills: /mnt/project-files/ice-vfx/ (ice_pass_overview.jpg). Console clean over every ice spell.
 
+## THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One fire look everywhere, plus signatures for the Fire Magic family and its two new rows (Flamethrower, Inferno — rules in
+champions-combat.md "THE FIRE PASS"). Code: three-vfx-effects.js block "THE FIRE PASS" right after END THE NATURE PASS,
+helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
+- THE FIRE MARK (`_fpMark`, on the staging BURST beat): every fire-element damage spell (`element: 'fire'`, `type: 'damage'`,
+  any family / kind) scorches each tile it hits (char decal + glowing cracks + firelight), licks flame tongues up round the
+  body (camera-facing additive planes, depth-tested; TALL on the side away from the lens, short in front, so body + number
+  read), a second lower wave as the first blows out, embers and smoke. The tiles are the windup's footprint (`params.tiles`,
+  cached by glowKey) — a line / aoe burns every tile it covers; a self-centred blast skips the caster's tile. One `_sigRun`
+  per mark (the signature cap is 20), density drops past 3 / 9 tiles, 25 tiles max.
+- THE CAST (`_fpWindup`, windup beat): fire-element MAGIC casts light a ring of small flames round the caster's feet and a
+  fire gathering in the hand toward the target, embers drawn in. Physical fire (arrows, cannon, punches) skips it.
+- The `fire` staging archetype is `noOrb` now: no glass orb on a fire cast / heavy hit; a heavy+ fire-archetype magic hit
+  throws a ring of flame out across the ground instead (`bloom`; fire-named spells with no element get only that ring).
+- Palette: kaiju atomic fire (raceAtomicBreath, goNuclearPulse) wears the same shapes in BLUE (`_FP_ATOMIC`). Skipped
+  (`_FP_SKIP`): Lump of Coal (mondo: just Santa throwing coal), Morning Star (vfxElement light). Delayed artillery (Nuclear
+  Option, Fire for Effect, Extinction Event) has no burst beat at cast, so it keeps its own landing.
+- Signatures: Fireball = `bolt` pzOwn (a roiling ball: white heart, halo, six flame tongues streaming back, flame + smoke
+  tail; `_fpBurst` at flyMs). Combust = `bolt` pzOwn (a heat thread, then `_fpCombust` at flyMs: a fire circle under the
+  feet and a pillar of tall tongues at the back, embers fountaining off the top). Wall of Fire = the old wall recipe +
+  pzSig `fpWallOfFire` (a 3D curtain ignites tile by tile along the wall, parts round a body standing in it, sits a little
+  behind it from the lens). Flamethrower = `beam` pzOwn (a cone of crossed flame planes down the line from the hand + a
+  stream of swelling fire blobs, smoke off the end). Inferno = `aoe` pzOwn (the fire circle burns out to the blast edge, a
+  ring of fire races out, a firestorm spirals round the caster in a clear middle). Meteor keeps its rock + gets the mark.
+- Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
+  every caster-side piece gates on `_pzSeen`. No screen flash.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
+
 ## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
 Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-Z signatures; helpers `_ps*`.
@@ -1875,7 +1903,6 @@ Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-
 - Proof: Spell Lab, the capture rig freezes performance.now() at set delays after an intent. Telepathic Link's threads
   were drawn by firing its aura with the dummy counted on the caster's side for one call (the Lab has no ally).
   Stills: /mnt/project-files/psychic-vfx/.
-
 
 ## THE METAL PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Metal rides 72 rows over 40-odd races (guns, blades, chains, hooks, machines), each with its own look already, so metal's
@@ -1974,7 +2001,6 @@ block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P
   side of the body from the lens (`_nbCamDir`); coils thin.
 - Proof: Spell Lab ✦ CAST per spell, performance.now() frozen at set delays after the cast. Stills: /mnt/project-files/water-vfx/.
 
-
 ## THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Every sonic-element spell (28 rows + Screech / Sonic Boom, rules in champions-combat.md "THE SONIC PASS") reads as sound
 in one violet language. Code: three-vfx-effects.js block "THE SONIC PASS" right after END THE NATURE PASS, helpers `_sn*`.
@@ -2007,3 +2033,28 @@ in one violet language. Code: three-vfx-effects.js block "THE SONIC PASS" right 
   Song's fogged siren sings from the sight line. MeshBasic / Sprite only.
 - Proof: Spell Lab ✦ CAST per spell, capture rig froze performance.now() at set delays after the intent. Stills:
   /mnt/project-files/sonic-vfx/.
+
+## THE POISON PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every poison-element spell lands the same mark: THE VENOM POOL. Code: three-vfx-effects.js block "THE POISON PASS", right
+after THE NATURE PASS, helpers `_pv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`) plus its own `pvOwn`.
+- THE MARK (`_pvSpill`): a lobed puddle of glowing venom with a violet rim (canvas `pv-pool`) spreads under each hit tile,
+  bubbles (`pv-bubble` sprites) swell and pop (ring + droplets) again and again while it holds, fumes (violet smoke-soft +
+  green poison-mist) curl off the FAR rim (`_nbCamDir`, never in front of the body), venom drips off a body standing on it.
+  The black goo / ooze rows (`_pvIsGoo`: Goo status, ooze / blackoil / thebond families) lay it in black oil.
+- WHERE IT RIDES: `_pvAuto` is called from fire() (impact / aoe / aura for self-origin barrages / beam = the line's tiles /
+  chain / wall / pull = where the body lands, by `uid`, 420 ms later) and from the bolt pipeline's landing (`boltLand`), so
+  spells with their own looks (bites, bees, tongue, gas, drains) keep them and gain the pool. Only element 'poison' rows of
+  type damage / debuff. `_pvGate`: one pool per tile per 700 ms (multi-hits, bolt + impact). A def with `pvOwn` lays its own.
+- THE HAZARD RING (`pv-sigil`): the three-lobed hazard mark inside a ring of drips and bubbles — Miasma (whole area) and
+  Venom Burst (under the victim).
+- Signatures: Miasma = `aoe` (ring, pools wave out over the 5x5, flat floor fog, plumes off the far edge); Rot = `impact`
+  (rot patch, green veins via `_nvVine`, circling flies, pool 260 ms late); Acid Flask = `bolt` pzOwn (a lathe-glass flask
+  lobbed end over end) + `impact` (glass, splash, steam, pool); Corrosive Splash = its old aoe recipe + globs raining onto
+  each tile; Tendril Whip = `impact` (three symbiote tendrils behind the body); Venom Spit = `bolt` pzOwn (venom glob) +
+  `impact` splat; Venom Burst = `bolt` pzOwn (dart) — the ring opens and the pool boils during the flight, six lathe venom
+  jets erupt at flyMs+30 (the ones on the lens side, decided at the eruption, stay low and thin). Vivisection and Cadaver
+  Claws got an empty `pvSeal_impact` mapping so the pool lands (Cadaver Claws keeps its G-O burst look).
+- RULE #2: all via fire() (relayed) and the bolt landing the guest flies itself; every pool / glob / jet gates on `_pzSeen`.
+- Proof: Spell Lab ✦ CAST + a capture rig that freezes performance.now() a set time after the first intent. Casts back to
+  back with less than ~10 s between them sometimes come out in a wide "select a target" frame; space them out.
+  Stills: /mnt/project-files/poison-vfx/ (before_after, new_spells, the_mark_on_other_spells + single frames).
