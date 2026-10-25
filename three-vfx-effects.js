@@ -3771,6 +3771,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var effectId = SPELL_MAP[spellId][intent];
         var effectDef = EFFECTS[effectId];
         if (!effectDef) return;
+        /* THE METAL PASS: each impact of a metal spell spits steel sparks off the body it hit */
+        if (intent === 'impact') { try { _mtlSpit(spellId, params); } catch (e) {} }
         /* THE P-Z SIGNATURES (2026-10-23): a def naming `pzSig` runs its race signature; `pzOwn` = it owns the intent */
         if (effectDef.pzSig && _PZ_SIGS[effectDef.pzSig] && !_catOff('spells')) {
             try { _PZ_SIGS[effectDef.pzSig](params || {}, spellId, intent, effectDef); } catch (e) { console.warn('[VFX] pz signature failed', spellId, e); }
@@ -5359,6 +5361,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             ts: ts,
             toTx: toTx,
             toTy: toTy,
+            fromTx: fromTx,
+            fromTy: fromTy,
             spellId: spellId,
             tracer: tracer,
         });
@@ -5589,6 +5593,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         _spawnEffect(impDef, { tx: e.toTx, ty: e.toTy });
                     }
                 }
+
+                /* THE METAL PASS: a metal bolt (a bullet, a knife, a hatchet) spits steel sparks off the body it lands on */
+                if (e.toTx != null) { try { _mtlSpit(e.spellId, { tx: e.toTx, ty: e.toTy, fromX: e.fromTx, fromY: e.fromTy }); } catch (mErr) {} }
 
                 /* …and its bespoke 3D signature, when the bolt def opted in */
                 if (e.geom && _geom3D(e.spellId) && e.toTx != null) {
@@ -22058,6 +22065,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _capStage(phase, spellId, params); } catch (e) {}
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
+        /* THE METAL PASS: every metal cast wears the cog / sparks / glint stamp on the same beats */
+        try { _mtlStage(phase, spellId, params); } catch (e) { console.warn('[VFX] metal stamp failed', spellId, e); }
         /* THE WIND PASS: every wind spell's cast + hit carry the wind (the gather, the mark, the family's own looks) */
         try { _wdStage(phase, spellId, params); } catch (e) { console.warn('[VFX] wind pass failed', spellId, e); }
         /* THE SONIC PASS: every sonic spell's cast and hit read as sound (rings, the floor and the body hum) */
@@ -47986,6 +47995,269 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* Atomic Breath keeps its breath cone; the dorsal plates charge blue down the kaiju's back first */
         raceAtomicBreath: function (fx, fy) { _goAtomicPlates3D(fx, fy); return null; },
     });
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE METAL PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable") — metal is the element that
+       rides the guns, blades, chains, hooks and machines: 72 rows over 40-odd
+       races, every one with its own look already. So metal's identity is a
+       STAMP every metal cast wears on top of its own look, the same
+       everywhere, built from the ⚙ of the element badge:
+         THE COG     a steel gear lies on the ground and RATCHETS round (it
+                     clicks a tooth at a time): small under the caster while
+                     it winds up, under the target as the hit lands (as wide
+                     as an aoe's reach)
+         THE SPARKS  orange and white-hot grinder sparks (real 3D streaks,
+                     stretched by their speed) spray off the body away from
+                     the caster, fall and skip once off the floor
+         THE GLINT   a chrome star twinkles on the body's edge as it's struck
+         THE SHARDS  heavy + ultimate hits throw steel chips (R2 metal.png)
+                     that tumble, land and ring out
+       Every impact of a metal spell (each bullet that lands, each victim of
+       a line) spits a few sparks too, so a spray of hits reads metal on
+       every body.
+       A non-damaging metal cast (Repair, Extended Clips, Rescue Line, the
+       buffs and deploys) gets the cog + glint only: no sparks, no shards.
+       Generic metal: _THEME_MAP.metal + a 'metal' staging archetype + grade
+       (metal used to fall through to 'tech' — cyan plasma, which read as
+       lightning). Rides the staging beats + the impact intent of fire(),
+       which online.js relays, so the guest sees the same stamp (RULE #2);
+       each end draws only where the viewer sees that tile (_pzSeen).
+       THE TARGET STAYS: the cog is on the floor, the sparks and shards are
+       small and fly off the body, the glint sits on its edge; nothing is
+       full-screen and nothing stands between the lens and the body. ══════ */
+    var _MTL = { steel: 0xdfe6ee, rim: 0xeaf2ff, spark: 0xffa848, hot: 0xfff4e2, glint: 0xf4f8ff, shard: 0xd8dee8 };
+    _THEME_MAP.metal = { core: 'steel-spark', trail: 'steel-spark', burst: 'spark', ring: 'target-ring', glow: 0xe6eef8 };
+    _ELEMENT_THEME.metal = 'metal';
+    _STAGE_ARCHETYPES.metal = { orb: 0xdfe6ef, ring: 0xe8eef6, flash: '#f2f6ff', mote: 'steel-spark', glyph: false, slash: false,
+        lineColor: '#e6ecf4', noOrb: true, moteTint: _MTL.spark };
+    _STAGE_GRADES.metal = { tint: [0.96, 1.00, 1.10], tintAmt: 0.28, chroma: 3.0 };
+
+    var _mtlIsCache = {};
+    function _mtlIs(spellId) {
+        if (!spellId) return false;
+        if (_mtlIsCache[spellId] !== undefined) return _mtlIsCache[spellId];
+        var d = _spellDefFor(spellId);
+        return (_mtlIsCache[spellId] = !!(d && d.element === 'metal'));
+    }
+
+    /* ── the canvases ── */
+    /* the gear's outer ring: 16 teeth round a rim, the hole in the middle (one path, even-odd) */
+    function _mtlCogPath(g, c, rO, rI, rH) {
+        var N = 16, tw = Math.PI * 2 / N;
+        g.beginPath();
+        for (var i = 0; i < N; i++) {
+            var a0 = i * tw, pts = [[a0, rI], [a0 + tw * 0.12, rO], [a0 + tw * 0.44, rO], [a0 + tw * 0.56, rI]];
+            for (var k = 0; k < 4; k++) {
+                var x = c + Math.cos(pts[k][0]) * pts[k][1], y = c + Math.sin(pts[k][0]) * pts[k][1];
+                if (i === 0 && k === 0) g.moveTo(x, y); else g.lineTo(x, y);
+            }
+            g.arc(c, c, rI, a0 + tw * 0.56, a0 + tw, false);
+        }
+        g.closePath();
+        g.moveTo(c + rH, c); g.arc(c, c, rH, 0, Math.PI * 2, true);
+    }
+    /* the hub and its five spokes */
+    function _mtlHubPath(g, c, rH) {
+        g.beginPath();
+        g.moveTo(c + 62, c); g.arc(c, c, 62, 0, Math.PI * 2, false);
+        g.moveTo(c + 26, c); g.arc(c, c, 26, 0, Math.PI * 2, true);
+        for (var s = 0; s < 5; s++) {
+            var a = s / 5 * Math.PI * 2 + 0.3, ca = Math.cos(a), sa = Math.sin(a), nx = -sa * 15, ny = ca * 15;
+            g.moveTo(c + ca * 56 + nx, c + sa * 56 + ny); g.lineTo(c + ca * (rH + 6) + nx, c + sa * (rH + 6) + ny);
+            g.lineTo(c + ca * (rH + 6) - nx, c + sa * (rH + 6) - ny); g.lineTo(c + ca * 56 - nx, c + sa * 56 - ny); g.closePath();
+        }
+    }
+    /* THE COG: brushed steel (a cross-lit gradient), dark edges, a ring of bolt heads, the hub and spokes */
+    function _mtlCogTex() {
+        return _pzTex('mtl-cog', 512, 512, function (g, w, h) {
+            var c = 256;
+            var gr = g.createLinearGradient(40, 30, 470, 480);
+            gr.addColorStop(0, '#f6f9fc'); gr.addColorStop(0.3, '#8e9aaa'); gr.addColorStop(0.5, '#eef3f8');
+            gr.addColorStop(0.72, '#6c7686'); gr.addColorStop(1, '#d4dce6');
+            _mtlCogPath(g, c, 248, 214, 150); g.fillStyle = gr; g.fill('evenodd');
+            g.strokeStyle = 'rgba(24,30,40,0.92)'; g.lineWidth = 5; g.stroke();
+            /* the brushed grain: fine concentric scratches */
+            g.save(); _mtlCogPath(g, c, 248, 214, 150); g.clip('evenodd');
+            for (var r = 152; r < 248; r += 5) { g.strokeStyle = 'rgba(255,255,255,' + (0.06 + 0.06 * ((r * 7) % 3)) + ')'; g.lineWidth = 1.2; g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.stroke(); }
+            g.restore();
+            g.strokeStyle = 'rgba(24,30,40,0.7)'; g.lineWidth = 3; g.beginPath(); g.arc(c, c, 200, 0, Math.PI * 2); g.stroke();
+            for (var b = 0; b < 8; b++) {
+                var a = b / 8 * Math.PI * 2 + 0.2, bx = c + Math.cos(a) * 180, by = c + Math.sin(a) * 180;
+                g.fillStyle = '#4a5260'; g.beginPath(); g.arc(bx, by, 11, 0, Math.PI * 2); g.fill();
+                g.fillStyle = '#e8eef4'; g.beginPath(); g.arc(bx - 3, by - 3, 6, 0, Math.PI * 2); g.fill();
+            }
+            _mtlHubPath(g, c, 150); g.fillStyle = gr; g.fill('evenodd');
+            g.strokeStyle = 'rgba(24,30,40,0.92)'; g.lineWidth = 4; g.stroke();
+        });
+    }
+    /* the cog's lit rim (additive): the same outline, stroked white with a soft bloom */
+    function _mtlCogRimTex() {
+        return _pzTex('mtl-cog-rim', 512, 512, function (g, w, h) {
+            var c = 256;
+            g.strokeStyle = '#ffffff'; g.shadowColor = '#ffffff'; g.shadowBlur = 16; g.lineWidth = 6; g.lineJoin = 'round';
+            _mtlCogPath(g, c, 246, 214, 150); g.stroke();
+            g.lineWidth = 4; _mtlHubPath(g, c, 150); g.stroke();
+        });
+    }
+    /* THE GLINT: a sharp four-point chrome star with a soft core */
+    function _mtlGlintTex() {
+        return _pzTex('mtl-glint', 128, 128, function (g, w, h) {
+            var c = 64, gr = g.createRadialGradient(c, c, 0, c, c, 30);
+            gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(c, 2);
+            g.quadraticCurveTo(c + 5, c - 5, w - 2, c); g.quadraticCurveTo(c + 5, c + 5, c, h - 2);
+            g.quadraticCurveTo(c - 5, c + 5, 2, c); g.quadraticCurveTo(c - 5, c - 5, c, 2); g.fill();
+        });
+    }
+
+    /* ── THE COG on the ground of a tile: r = its radius, ms = its life; it pops in, ratchets a tooth every `tick`
+       ms (a click with a little overshoot), holds and fades. dir = which way it turns. ── */
+    function _mtlCog(x, y, o) {
+        var F = _nrvFrame(x, y), ts = F.ts, r = o.r || ts * 0.6, ms = o.ms || 1100, tick = o.tick || 150, dir = o.dir || 1;
+        var steelM = _sigMat(0xffffff, { map: _mtlCogTex(), normal: true }), rimM = _sigMat(_MTL.rim, { map: _mtlCogRimTex() });
+        var geo = new THREE.PlaneGeometry(2, 2);
+        var steel = new THREE.Mesh(geo, steelM); steel.rotation.x = -Math.PI / 2; steel.renderOrder = 162; F.g.add(steel);
+        var rim = new THREE.Mesh(geo.clone(), rimM); rim.rotation.x = -Math.PI / 2; rim.renderOrder = 163; F.g.add(rim);
+        F.g.position.y += o.lift != null ? o.lift : 4;
+        var tw = Math.PI * 2 / 16, a0 = rn(0, tw), peak = o.opacity != null ? o.opacity : 0.82, fadeAt = ms - (o.fadeMs || 320);
+        return _sigRunOwned(F.g, ms, function (el) {
+            var s = Math.max(0.01, _sigEaseOutBack(_sigClamp01(el / 150))), out = _sigClamp01((el - fadeAt) / (ms - fadeAt));
+            var n = Math.floor(el / tick), click = _sigEaseOutBack(_sigClamp01((el - n * tick) / 70));
+            var a = a0 + dir * (n + click) * tw;
+            steel.rotation.z = rim.rotation.z = a;
+            steel.scale.set(r * s, r * s, 1); rim.scale.set(r * s, r * s, 1);
+            steelM.opacity = peak * (1 - out);
+            /* the rim flares on each click, then settles */
+            rimM.opacity = (o.rimOp != null ? o.rimOp : 0.5) * (1 - out) * (0.55 + 0.45 * (1 - _sigClamp01((el - n * tick) / 110)));
+        });
+    }
+
+    /* ── THE HIT: one run per hit (the signature cap counts runs) holding the grinder sparks, the steel shards on the
+       big ones and the glint(s). The sparks are real 3D streaks, not pool sprites: thin additive rods laid along their
+       velocity and stretched by their speed; they fly off the body away from the caster, fall, skip once off the floor
+       and burn out. The shards are triangular steel plates (R2 metal.png) that tumble, land with one small bounce and a
+       spark, and fade. The glint is a four-point chrome star on the body's edge, on the side of the lens.
+       o: sparks · speed · h (torso height, tiles) · shards · glints [{ size, side, h, delay }] ── */
+    function _mtlHit(tx, ty, fx, fy, o) {
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, G = ts * 16, floorY = ts * 0.03;
+        var ux = 0, uz = 0;
+        if (fx != null && (fx !== tx || fy !== ty)) { var ln = _nrvLine(F, { x: fx, y: fy }, tx, ty); ux = -ln.ux; uz = -ln.uz; }
+        var hy = ts * (o.h != null ? o.h : 0.5), sp = o.speed || 1, cd0 = _nbCamDir(F);   /* the sparks leave the lens side of the body, never from inside it */
+        var orange = _pzGlow(_MTL.spark), hot = _pzGlow(_MTL.hot), rod = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
+        var sparks = [], n = o.sparks || 0, nFloor = Math.round(n * 0.3), UP = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
+        for (var i = 0; i < n; i++) {
+            var fl = i >= n - nFloor, a = rn(0, 6.2832), v = ts * rn(2.2, 5.0) * sp, push = ts * rn(2.0, 4.4) * sp;
+            var m = _pzMesh(rod, i % 3 ? orange : hot, F.g); m.visible = false;
+            sparks.push({ m: m, r: ts * rn(0.02, 0.032), life: fl ? rn(380, 620) : rn(440, 780), bounced: false,
+                p: new THREE.Vector3((rn(-0.06, 0.06) + cd0.x * 0.16) * ts, fl ? floorY + 1 : hy + rn(-0.12, 0.12) * ts, (rn(-0.06, 0.06) + cd0.z * 0.16) * ts),
+                v: new THREE.Vector3(Math.cos(a) * v * (fl ? 1.2 : 1) + ux * push, fl ? ts * rn(0.2, 0.8) : ts * rn(1.2, 4.2) * sp, Math.sin(a) * v * (fl ? 1.2 : 1) + uz * push) });
+        }
+        var shards = [], nS = o.shards || 0, sMat = null;
+        if (nS) {
+            sMat = _pzSolid(_MTL.shard, _sigTerrainTex('metal.png', 1, 1)); sMat.vertexColors = true;
+            var sg = new THREE.CylinderGeometry(0.5, 0.5, 0.16, 3); _nvBake(sg, 0.45);
+            for (var k = 0; k < nS; k++) {
+                var sm = _pzMesh(sg, sMat, F.g), s = ts * rn(0.08, 0.13), b = rn(0, 6.2832), w = ts * rn(1.4, 3.0);
+                sm.scale.set(s, s, s * rn(0.6, 1)); sm.position.set(rn(-0.08, 0.08) * ts, ts * rn(0.38, 0.62), rn(-0.08, 0.08) * ts);
+                shards.push({ m: sm, v: new THREE.Vector3(Math.cos(b) * w + ux * ts * 2, ts * rn(2.2, 4.0), Math.sin(b) * w + uz * ts * 2),
+                    sx: rn(-14, 14), sz: rn(-14, 14), rest: false, hits: 0 });
+            }
+        }
+        var glints = [], cd = _nbCamDir(F), px = -cd.z, pz = cd.x;
+        (o.glints || []).forEach(function (g) {
+            var size = g.size || ts * 0.5, spr = _pzSpr(_MTL.glint, size, F.g, _mtlGlintTex()), side = g.side || 1;
+            spr.position.set(px * ts * 0.3 * side + cd.x * ts * 0.1, ts * (g.h != null ? g.h : 0.74), pz * ts * 0.3 * side + cd.z * ts * 0.1);
+            glints.push({ s: spr, size: size, at: g.delay || 0, ms: g.ms || 360 });
+        });
+        var total = nS ? 1500 : Math.max(720, glints.reduce(function (m, g) { return Math.max(m, g.at + g.ms + 40); }, 0)), last = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var dt = Math.min(0.05, (el - last) / 1000); last = el;
+            orange.opacity = hot.opacity = 1;
+            for (var j = 0; j < sparks.length; j++) {
+                var S = sparks[j];
+                if (el >= S.life) { S.m.visible = false; continue; }
+                S.v.y -= G * dt; S.v.multiplyScalar(Math.max(0, 1 - 0.5 * dt));
+                S.p.addScaledVector(S.v, dt);
+                if (S.p.y < floorY && S.v.y < 0) {
+                    S.p.y = floorY;
+                    if (!S.bounced) { S.bounced = true; S.v.y = -S.v.y * 0.35; S.v.x *= 0.7; S.v.z *= 0.7; } else { S.v.y = 0; }
+                }
+                var spd = S.v.length(), L = Math.max(ts * 0.06, Math.min(ts * 0.55, spd * 0.045)), k = 1 - Math.pow(el / S.life, 2);
+                dir.copy(S.v).divideScalar(spd || 1);
+                S.m.visible = true; S.m.quaternion.setFromUnitVectors(UP, dir);
+                S.m.scale.set(S.r * k, L, S.r * k);
+                S.m.position.copy(S.p).addScaledVector(dir, -L * 0.5);
+            }
+            if (sMat) {
+                sMat.opacity = 1 - _sigClamp01((el - 1150) / 330);
+                for (var q = 0; q < shards.length; q++) {
+                    var B = shards[q]; if (B.rest) continue;
+                    B.v.y -= ts * 15 * dt; B.m.position.addScaledVector(B.v, dt);
+                    B.m.rotation.x += B.sx * dt; B.m.rotation.z += B.sz * dt;
+                    if (B.m.position.y <= ts * 0.02 && B.v.y < 0) {
+                        B.m.position.y = ts * 0.02; B.hits++;
+                        if (B.hits === 1 && _canSpawn()) _pzP(F, B.m.position.x, ts * 0.04, B.m.position.z, { sprite: 'steel-spark', tint: _MTL.spark,
+                            ml: rn(160, 260), size0: rn(6, 9), size1: 1, vx: rn(-120, 120), vy: rn(-120, 120), vz: rn(60, 160), gravity: 700, drag: 1, opacity0: 1 });
+                        if (B.hits >= 2 || Math.abs(B.v.y) < ts * 1.2) { B.rest = true; B.m.rotation.x = Math.round(B.m.rotation.x / Math.PI) * Math.PI; B.m.rotation.z = 0; continue; }
+                        B.v.y = -B.v.y * 0.32; B.v.x *= 0.45; B.v.z *= 0.45; B.sx *= 0.5; B.sz *= 0.5;
+                    }
+                }
+            }
+            for (var g = 0; g < glints.length; g++) {
+                var Gl = glints[g], e = el - Gl.at, kk = e / Gl.ms;
+                if (e < 0 || kk >= 1) { Gl.s.material.opacity = 0; continue; }
+                var pop = kk < 0.3 ? _sigEaseOutBack(kk / 0.3) : 1 - _sigEaseInCubic((kk - 0.3) / 0.7);
+                Gl.s.scale.set(Gl.size * Math.max(0.01, pop), Gl.size * Math.max(0.01, pop), 1);
+                Gl.s.material.rotation = kk * 0.9; Gl.s.material.opacity = 0.9 * Math.max(0, Math.min(1, pop));
+            }
+        });
+    }
+
+    /* ── the hooks ── */
+    function _mtlAoeR(def, params) {
+        var r = params && params.aoeRadius != null ? params.aoeRadius : (def && def.aoeRadius) || 0;
+        if (!r && def && typeof aoeMaskValid === 'function' && aoeMaskValid(def.aoeMask)) r = aoeMaskBound(def.aoeMask);
+        return Math.max(0, Math.min(3, +r || 0));
+    }
+    /* the staging beats (_fireStage): the caster's cog at the windup, the full stamp at the burst */
+    function _mtlStage(phase, spellId, params) {
+        if (!_mtlIs(spellId) || !_stageOK() || !_canSpawn()) return;
+        var info = stageInfo(spellId), rank = _TIER_ORDER[info.weight] || 0, def = _spellDefFor(spellId), ts = _cfg().tileSize || 128;
+        if (phase === 'windup') {
+            var sx = params.sx != null ? params.sx : params.tx, sy = params.sy != null ? params.sy : params.ty;
+            if (sx == null || !_pzSeen(sx, sy)) return;
+            var hold = Math.max(300, Math.min(2400, params.holdMs || 700));
+            _mtlCog(sx, sy, { r: ts * (0.48 + 0.08 * rank), ms: hold + 160, fadeMs: 220, tick: 170, dir: 1, opacity: 0.72, rimOp: 0.42 });
+            return;
+        }
+        if (phase !== 'burst') return;
+        var tx = params.tx, ty = params.ty;
+        if (tx == null || !_pzSeen(tx, ty)) return;
+        var hostile = params.glowHostile != null ? !!params.glowHostile
+            : !!(def && ((def.dmg || 0) > 0 || (def.dashDamage || 0) > 0 || def.hitDamages || def.type === 'damage' || def.type === 'debuff'));
+        var self = params.sx === tx && params.sy === ty, aoe = _mtlAoeR(def, params);
+        var cogR = ts * Math.min(2.4, (aoe ? 0.55 + 0.75 * aoe : 0.6 + 0.1 * rank));
+        _mtlCog(tx, ty, { r: cogR, ms: 950 + 180 * rank, tick: rank >= 2 ? 110 : 140, dir: -1, opacity: hostile ? 0.82 : 0.7, rimOp: hostile ? 0.55 : 0.45 });
+        var glints = [{ size: ts * (0.34 + 0.04 * rank), side: 1, delay: 60 }];
+        if (rank >= 2) glints.push({ size: ts * 0.26, side: -1, h: 0.5, delay: 200 });
+        if (!hostile) { _mtlHit(tx, ty, null, null, { glints: glints }); return; }
+        var fx = self ? null : params.sx, fy = self ? null : params.sy;
+        _mtlHit(tx, ty, fx, fy, { sparks: [14, 20, 28, 36][rank] || 20, speed: 1 + 0.12 * rank, glints: glints, shards: rank >= 3 ? 10 : (rank >= 2 ? 6 : 0) });
+        if (_canSpawn()) { var c = tilePx(tx, ty); _spawn({ x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + ts * 0.5, mode: 'billboard', sprite: 'flash', tint: _MTL.hot,
+            ml: 90, size0: ts * (0.36 + 0.06 * rank), size1: ts * 0.12, opacity0: 0.85, opacity1: 0 }); }
+    }
+    /* every impact of a metal spell spits a few sparks off the body it hit (once per tile per beat) */
+    function _mtlSpit(spellId, params) {
+        if (!params || params.tx == null || !_mtlIs(spellId) || _catOff('spells') || !_canSpawn()) return;
+        if (!_pzSeen(params.tx, params.ty) || !_pzOnce('mtl-spit:' + params.tx + ',' + params.ty, 110)) return;
+        var fx = params.fromX != null ? params.fromX : (params.sx != null ? params.sx : null), fy = params.fromY != null ? params.fromY : (params.sy != null ? params.sy : null);
+        _mtlHit(params.tx, params.ty, fx, fy, { sparks: 9, speed: 0.9 });
+    }
+    /* ═════════ END THE METAL PASS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
        THE NATURE PASS (2026-10-25, mondo: "Can we make badass impressive vfx
