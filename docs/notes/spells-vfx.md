@@ -1815,6 +1815,309 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+## THE EARTH PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every spell tagged earth (data.js `element: 'earth'`, 37 + Rockslide) shares one language. Code: three-vfx-effects.js block
+"THE EARTH PASS" just before THE NATURE PASS, helpers `_ea*` (it borrows the nature kit's `_nvVine` / `_nvBake` / `_nvLeaves`).
+- THE HOOK: `_fireStage` is wrapped (`_eaFireStage0`) so the windup / burst beats every spell kind fires run `_eaStage` after
+  the stock beat — no SPELL_MAP row needed, the guest gets it off the relayed fire(). `_stageArchetype` is wrapped too: every
+  earth spell stages as the new `earth` archetype (ochre, rock-debris motes, heavyLand dust skirt, noOrb) except dash /
+  leapStrike / charge (kinetic slash stays) and the support kinds (gold aura stays). An explicit SPELL_STAGE_MAP / vfxArchetype
+  override still wins; Calcify's override now says earth. `_THEME_MAP.earth` / `_ELEMENT_THEME.earth` = the generic fallback.
+- THE TELL (windup, caster tile, only if the viewer sees it): amber fault lines open under the feet (`_eaCrackAt`, canvas
+  `ea-crack` dark + `ea-crack-core` over-bright glow); a ranged spell lifts 4-7 rocks_5 stones round the knees (the ones
+  between the lens and the caster hang low) that fly at the target on the release; a body spell (range <= 1, self-centred,
+  dash kinds, self casts) kicks pebbles up instead.
+- THE MARK (burst, `_eaMark`): fault lines on every struck tile (the windup's footprint tiles), stone spikes BEHIND the body
+  (`_nbCamDir`, leaning out), stone shards, dust, a warm light; weight scales it (spikes 3/5/6/8, a shock ring on heavy+).
+  No spikes when the spell's own look breaks the floor (`_EA_OWN`, the capstones' `_CAP_SIGS`) or it pushes / pulls the body;
+  support kinds get the tell only.
+- Stone: rocks_5 lifted with a colour over 1 (`[2.35, 2.0, 1.62]`, MeshBasic multiplies it into the dark sheet) = warm ochre
+  grey; sand spells (id/name has sand / tomb) wear desert.png. Light baked into vertex colours (WebGPU draws the same).
+- Own looks (`_EA_SIG`, burst): Tremor Stomp + Timber Stomp (a ring of stones heaves out from the caster), Ground Slam (two
+  rings + a crater), Fissure (a molten seam races down the tiles, slabs slide into the gap the spell cuts, embers + lava light),
+  Sandstone Tomb (sand swirl + five sandstone slabs: three tall behind, two low at the front corners), Quicksand (turning sand
+  whirlpool, rings and grains drawn in), Petrify (three rings of grey spikes grow up the legs to the waist, then break),
+  Rockslide (`_EA_CHARGE` raises a cliff behind the victim on the windup — `_eaCliff` holds until the burst calls crash();
+  boulders tumble round the body, bounce, roll off). Earthen Grasp = `pull` `eaGrasp_pull` (pzOwnTether, battle.js skips the
+  rope): five stone fingers ride the dragged body (`_pzTrack(uid)`), a ridge of stones heaves up behind it, the caster's fault
+  line runs out to it. Timber Stomp borrows Tremor Stomp's tile dust row. Everything else keeps its own look + the language.
+- Kill-switch: `window.EW_DISABLE_EARTH_PASS = true`.
+- Proof: Spell Lab, the harness clock frozen at set delays after CAST. Stills: /mnt/project-files/earth-vfx/.
+
+
+
+## THE ICE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every ice-element spell now reads as ICE at a glance: a six-armed frost sigil on the ground, faceted crystal clusters that
+grow and shatter, frost ferns, white glints and ice shards. Two new Ice Magic rows (Hailstorm, Glacier Break; rules in
+champions-combat.md "THE ICE PASS"). Code: three-vfx-effects.js block "THE ICE PASS" right after END THE NATURE PASS,
+helpers `_iv*`, same `pzSig` hook as the P-Z / nature passes.
+- THE KIT: `_ivCrystalGeo` = a lathe crystal, flat facets (non-indexed), light baked into vertex colours (`_ivBake`), white
+  additive edge lines + an additive back-face halo so the ice reads bright on any map; skin = R2 terrain/ice.png.
+  `_ivRing` = a ring of crystals with lens-aware heights (crystals on the camera side stay short, `_nbCamDir`) so the
+  victim stays visible. `_ivShards` = flat-shaded tetra shards with gravity + one bounce. `_ivDecal` = sigil / frost /
+  crack canvases laid on the tile (renderOrder 160/161, above the team ground ring). `_ivMist`, `_ivGlints`.
+- Signatures (8): Ice Spear (a real ice lance flies; ankle-grip crystals + frost on hit; the old iceSpear travel removed
+  for it), Shatter (crystal shell round the target blows out at 210 ms), Flash Freeze + Permafrost (on their `wall`
+  intent: crystals erupt per frozen tile, staggered like the tile conversion), Summon Blizzard (sigil + snow column),
+  Diamond Dust (falling diamonds over the cross-diamond tiles), Hailstorm (hail crystals drop on every tile of the 3×3),
+  Glacier Break (a crack races from the caster to the target, then great spikes tear up ROUND the body and shatter;
+  impact is deduped so the bolt and impact never double it).
+- THE ICE STAMP: every other ice spell (Frozen Punch, Freeze Breath, Absolute Zero, Snowball Volley, Grave Chill, Cold
+  Spot, White Christmas, Blizzard Present, Avalanche Strike, Sleigh Dash, Ice Slide…) keeps its own look and gets the stamp
+  on the staging `burst` beat: sigil + frost + a ring of 4+rank crystals that shatter (`_ivStamp`, rank = spell weight).
+- Staging: the `ice` archetype now has `noOrb: true`, `glyph: false`, `iceSigil: true` — the windup draws the frost sigil
+  and a growing gem toward the target (`_ivWindup`) instead of the glass orb, and the target telegraph drops its orb on ice.
+  Non-physical ice rows whose kind fell to the rig/mind archetype are pinned to `ice` in SPELL_STAGE_MAP.
+- Fog / RULE #2: all of it rides fire() intents (bolt / impact / wall / aoe / burst / windup), so the guest sees it.
+  Glacier Break's racing crack is fog-gated per tile (`_pzSeen`).
+- No screen flash, no full-screen layer: crystals stand round or behind the body, never over the number.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() + setTimeout at set delays after `burst`.
+  Stills: /mnt/project-files/ice-vfx/ (ice_pass_overview.jpg). Console clean over every ice spell.
+
+## THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One fire look everywhere, plus signatures for the Fire Magic family and its two new rows (Flamethrower, Inferno — rules in
+champions-combat.md "THE FIRE PASS"). Code: three-vfx-effects.js block "THE FIRE PASS" right after END THE NATURE PASS,
+helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
+- THE FIRE MARK (`_fpMark`, on the staging BURST beat): every fire-element damage spell (`element: 'fire'`, `type: 'damage'`,
+  any family / kind) scorches each tile it hits (char decal + glowing cracks + firelight), licks flame tongues up round the
+  body (camera-facing additive planes, depth-tested; TALL on the side away from the lens, short in front, so body + number
+  read), a second lower wave as the first blows out, embers and smoke. The tiles are the windup's footprint (`params.tiles`,
+  cached by glowKey) — a line / aoe burns every tile it covers; a self-centred blast skips the caster's tile. One `_sigRun`
+  per mark (the signature cap is 20), density drops past 3 / 9 tiles, 25 tiles max.
+- THE CAST (`_fpWindup`, windup beat): fire-element MAGIC casts light a ring of small flames round the caster's feet and a
+  fire gathering in the hand toward the target, embers drawn in. Physical fire (arrows, cannon, punches) skips it.
+- The `fire` staging archetype is `noOrb` now: no glass orb on a fire cast / heavy hit; a heavy+ fire-archetype magic hit
+  throws a ring of flame out across the ground instead (`bloom`; fire-named spells with no element get only that ring).
+- Palette: kaiju atomic fire (raceAtomicBreath, goNuclearPulse) wears the same shapes in BLUE (`_FP_ATOMIC`). Skipped
+  (`_FP_SKIP`): Lump of Coal (mondo: just Santa throwing coal), Morning Star (vfxElement light). Delayed artillery (Nuclear
+  Option, Fire for Effect, Extinction Event) has no burst beat at cast, so it keeps its own landing.
+- Signatures: Fireball = `bolt` pzOwn (a roiling ball: white heart, halo, six flame tongues streaming back, flame + smoke
+  tail; `_fpBurst` at flyMs). Combust = `bolt` pzOwn (a heat thread, then `_fpCombust` at flyMs: a fire circle under the
+  feet and a pillar of tall tongues at the back, embers fountaining off the top). Wall of Fire = the old wall recipe +
+  pzSig `fpWallOfFire` (a 3D curtain ignites tile by tile along the wall, parts round a body standing in it, sits a little
+  behind it from the lens). Flamethrower = `beam` pzOwn (a cone of crossed flame planes down the line from the hand + a
+  stream of swelling fire blobs, smoke off the end). Inferno = `aoe` pzOwn (the fire circle burns out to the blast edge, a
+  ring of fire races out, a firestorm spirals round the caster in a clear middle). Meteor keeps its rock + gets the mark.
+- Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
+  every caster-side piece gates on `_pzSeen`. No screen flash.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
+
+## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
+Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-Z signatures; helpers `_ps*`.
+- THE SHARED LANGUAGE: the wind-up beat opens THE THIRD EYE over the caster's head (eye sprite with a black pupil,
+  normal blend; brainwave rings ripple off the head; motes pulled into the eye; shuts at holdMs). Where the spell lands,
+  THE MIND RINGS: three brainwave rings close round the head (hostile) or rise off it (a buff / shield / heal kind on an
+  ally) and a small eye blinks over it. An aoe lays THE MIND SIGIL (eye in the triangle) first, rings on each body in it
+  (enemies of the caster for a hostile cast, its allies for a buff). Utility rows with no damage (doors, teleports,
+  Far Sight) get the eye only.
+- HOOKS (no shared line touched): `fire`, `_stageArchetype` and `_beamColorFor` are closure bindings reassigned in the
+  block (the export at the bottom reads `fire` after it runs). The rings key off the first LANDING intent (impact, bolt
+  at flyMs, beam hitTiles, aoe/descent, pull with uid, chain, aura); the staging `burst` is only the fallback for a row
+  that fired none (Psychosis's burst came ~1 s after its impact, so burst can't be the clock). One ring set per tile per
+  700 ms. `_PS_OWN` = rows whose own signature draws the rings.
+- COLOUR: `_THEME_MAP.psychic` / `_ELEMENT_THEME.psychic` (was 'anomaly'), `_BEAM_COLORS.psychic` wins over the row's
+  spellType (alien rows had green beams), staging archetypes `psychic` / `psychicAid` (buff grammar) / `psychicHex`
+  (debuff grammar), all `noOrb` (no glass orb on heavy hits), grades to match. A row with another vfxElement (Ascension
+  Day = light), a vfxArchetype, a non-mind SPELL_STAGE_MAP archetype, or a heal stage keeps its own.
+- SIGNATURES (Psychic Abilities family): Kinetic Hurl (bolt, pzOwn: rings race out, THE GRIP — three gyre rings — rides
+  the thrown body, crash ring where it stops); Telekinetic Slam (pull, pzOwnTether: a beam out of the third eye, rings
+  reel along it, grip + slam; battle.js skips the rope); Psychic Beam (beam, layered: `_psLance` pink lance + rings + mind
+  rings on every body hit); Migraine (bolt, pzOwn: rings clamp the head, light cracks, three throbs, snap open); Mind
+  Shatter (bolt, pzOwn: sigil, a great eye over the 3×3, the old `_sigMindShatter3D` cage on the centre, a glass shell that
+  bursts into shards on every other enemy in it); Telepathic Link (aura, pzOwn: a thread from the third eye to each ally's
+  head, an eye + rising rings on each); Mind Blank (new row; bolt, pzOwn: rings close, the eye goes white and shuts, a flat
+  line, the rings hush out). pzOwn bolts land their impact recipe through the nature pass's `_nvLand`.
+- Untouched looks (they get the shared eye + rings on top): every race signature (pz / sig / go / nr / door rows),
+  Psychosis's brain, Psychic Barrier's dome, Far Sight's view.
+- Proof: Spell Lab, the capture rig freezes performance.now() at set delays after an intent. Telepathic Link's threads
+  were drawn by firing its aura with the dummy counted on the caster's side for one call (the Lab has no ally).
+  Stills: /mnt/project-files/psychic-vfx/.
+
+## THE METAL PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Metal rides 72 rows over 40-odd races (guns, blades, chains, hooks, machines), each with its own look already, so metal's
+identity is a STAMP every metal cast wears on top of its own look. Code: three-vfx-effects.js block "THE METAL PASS" just
+before THE NATURE PASS, helpers `_mtl*`. No rule or data change; no new rows (the spread was already healthy: 21 T1,
+11 T2, 22 T3, 15 T4, setups and finishers on every tier).
+- THE COG (`_mtlCog`): the ⚙ of the element badge, a brushed-steel gear (canvas, normal blend) + a lit rim (additive) on
+  the ground that RATCHETS a tooth at a time. Small under the caster for the windup, under the target at the burst
+  (as wide as an aoe's reach, `_mtlAoeR`). renderOrder 162/163 so it reads over the capstone sigil disc.
+- THE HIT (`_mtlHit`, ONE signature run per hit, the 20-run cap counts runs): grinder sparks as real 3D streaks
+  (additive rods along their velocity, stretched by speed, spawned on the lens side of the body, skip once off the floor),
+  steel shards (R2 metal.png triangular plates, heavy+ only) that tumble, land and spark, and a small chrome glint star on
+  the body's edge. Pool sprites were too small to read in stills, which is why the sparks are meshes.
+- Hooks: `_fireStage` → `_mtlStage` (windup cog, burst stamp; a non-hostile cast — glowHostile 0 — gets cog + glint only);
+  fire() impact intent → `_mtlSpit`; the bolt landing in the bolt tick → `_mtlSpit` (bolts never fire an impact intent),
+  so every bullet / knife / hatchet that lands spits sparks. Throttled per tile (110 ms).
+- Generic metal: `_THEME_MAP.metal`, `_ELEMENT_THEME.metal = 'metal'`, `_STAGE_ARCHETYPES.metal` (steel, noOrb, steel-spark
+  motes) + `_STAGE_GRADES.metal` — metal used to stage as 'tech' (cyan plasma, read as lightning). All set from the
+  METAL PASS block, not the tables, to keep sibling element threads' merges clean. Railgun keeps its own tech override.
+- Fog / RULE #2: everything rides fire() (relayed); each end draws only where the viewer sees that tile (`_pzSeen`).
+- THE TARGET STAYS: cog on the floor, small streaks flying off the body, glint at the edge (0.34-0.46 tile); no screen
+  layer. Proof: Spell Lab casts frozen 200 ms after the burst; stills in /mnt/project-files/metal-vfx/.
+- Seen while counting (NOT changed, flagged to mondo): Lockdown (T4) applies Rooted + Slowed, Cuffed (T3) applies Rooted,
+  Dead Eye (T3) Marked, Shrink Ray (T3) Minimized — tier 3-4 rows that apply a status (none of them self-combo).
+
+## THE WIND PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every wind-element spell (39 of them, data.js `element: 'wind'`) reads as wind; Wind Control's own spells get full looks,
+plus the two new rows (Squall, Tornado — rules in champions-combat.md "THE WIND PASS"). Code: three-vfx-effects.js block
+"THE WIND PASS" right after THE 2026-10-25 BATCH SIGNATURES, helpers `_wd*`, same `pzSig` hook as the P-Z / nature passes.
+- THE KIT: `_wdRibbon(parent, pts, o)` = a flat strip along a curve wearing the streak canvas (`_wdStreakTex`: air lines,
+  long fading tail, bright head), white-mint normal blend + an additive mint glow twin on the same geometry. A gust is a
+  WINDOW sliding along it: `set(k0, k1)` = draw range + the streak's UVs stretched over that stretch (`_wdRun` runs it
+  once). `op(v)` sets both materials. Widths ×1.7 inside the helper so the air reads at battle-camera distance. The
+  ground sigil is `_wdSwirl` (four tapering spiral arms, glow twin child, opacity setter drives both).
+- THE MARK (every wind spell, data-driven, so a new wind row gets it free): `_wdStage` rides `_fireStage` (the relayed
+  windup / burst beats). Windup = `_wdGather` (two bands coil in round the caster, a small swirl under the feet; skipped
+  for a delayed mark). Burst on a damage spell = `_wdMark` (three bands whip up round the body, the swirl spins out;
+  an area adds four flat bands on the rim). `_WD_BURST` lists the spells whose own look owns the hit (false) or a
+  custom burst (Updraft). Utility wind spells (Smoke Screen, Mist Form, Sprint…) carry the cast gather only.
+- Routes (probed in the Spell Lab): Squall / Tornado = `bolt` (pzOwn; the hit lands on its own timer at flyMs). Gale /
+  Crosswind = `beam` (pzOwn; route from `_wdRoute`, the same walk as _fireBeamMapped). Eye of the Storm / Vortex Slam =
+  `aoe` (pzOwn; tiles from `_nvAoeTiles`). Tailwind = `aura` (pzSig on a copy of raceTailwind_aura, its tile recipe
+  stays). Updraft has no intent: its column rides the burst beat.
+- The looks: Squall = a spinning crescent blade of air, then grit whirling round the head (Blind). Gale = bands of air race
+  down the lane, dust kicked up where the front passes. Crosswind = sand-laden bands crossing the lane in an X, a grit
+  cloud left at head height. Tornado = a little whirl skims to the target and stands up into a twister (seven bands up a
+  widening funnel, stone chips and dust going round), then lifts away. Eye of the Storm = a cyclone wall on the area's
+  rim closing on a calm middle. Vortex Slam = bands spiral down out of the sky and slam flat into a ground gust ring
+  (it wore the WATER whirlpool's tile recipe before). Updraft = a rising column. Tailwind = streamers running past the
+  squad.
+- Generic wind (no SPELL_MAP row) had borrowed the human theme (beige dust): `_THEME_MAP.wind`, `_ELEMENT_THEME.wind`,
+  `_STAGE_ARCHETYPES.wind` (white-mint, crescents, `noOrb`) and `_STAGE_GRADES.wind` are set in the block (not inline in
+  the tables, so the sibling element passes don't collide on those lines). SPELL_STAGE_MAP puts Gale, Crosswind, Eye,
+  Squall, Tornado and Wing Attack on the wind archetype (their kinds sent them to kinetic / grapple).
+- Old looks replaced: Crosswind's A-F flat ribbons (`_afCrosswind3D`) and Eye's A-F turning rings (`_afStorm3D`) — registry
+  entries deleted; Vortex Slam's whirlpool tiles. Kept: Wing Attack's own aoe, Dust Devil's twister, Summon Sandstorm,
+  the race signatures (Talon Rake, Stoop Dive, Ride to Valhalla, Host-Fetter, Twisted Wish), the arrows / balls / kicks —
+  each now carries the wind gather + mark on top.
+- Fog / RULE #2: everything rides fire() (relayed). The gather and the bolt flights draw only where the viewer sees the
+  caster's tile; the lane gust starts at the first tile the viewer can see; the hit, the dust and the twister only on seen
+  tiles. THE TARGET STAYS: no screen flash; the bands are thin and see-through, the twister narrows at the body.
+- Proof: Spell Lab ✦ CAST per spell, capture rig freezes performance.now() at set delays after the intent. Stills:
+  /mnt/project-files/wind-vfx/.
+## THE WATER PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every water spell (data.js `element: 'water'`, 39 with the two new rows) now reads as water. Code: three-vfx-effects.js
+block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`).
+- THE WATER STAGING (the look every water spell shares): `_STAGE_ARCHETYPES.water` + `_STAGE_GRADES.water` (blue,
+  droplet motes, `noOrb`, `water: true`). `_stageArchetype` gives element 'water' the water archetype over the movement
+  kinds (kinetic / grapple / rig / skyfall / mind: pushes, pulls, terrain spells); heals, buffs and hexes keep their own
+  grammar. Before it, water spells staged as their kind or spellType (pink anomaly orbs + trip on heavies, gold grapple
+  rings, purple rig glyphs). SPELL_STAGE_MAP.raceFlood went 'arcane' → 'water'.
+  - Windup (magic casts): `_wvGather` — a wobbling ball of water with the water skin at the caster, droplets streaming
+    in, a ring wheeling round it; bursts into spray at 72 % of holdMs (as the spell leaves the hand). Gated on `_pzSeen`.
+  - Burst: `_wvMark` — THE WATER MARK on the target: a see-through crown sleeve with white tips at the feet, droplets
+    thrown in arcs, two ripple rings and a dark wet patch. Every water hit ends on it, sized by the stage weight.
+- THE KIT: canvases (water skin with a caustic net, wave face deep→white foam band, crown, ripple rings, whirlpool
+  spiral); `_wvStream` = the `_nvVine` tube in the water skin; `_wvRunWave` = a curling sheet (`_WV_PROFILE`: back slope,
+  crest, lip hanging forward) run down a lane, following the board height and hidden over tiles the viewer can't see;
+  `_wvRingWave` = the same profile on a LatheGeometry; `_wvVortex` = spinning spiral disc + inner disc + a rim of water;
+  `_wvGeyser` = an open column, skin running up, a foam cap throwing spray; `_wvDrip` = a soaked body dripping. The water
+  skins share one clock (`_wvFlow`).
+- Signatures (routes probed in the Spell Lab): Water Jet / Spout = `bolt` (pzOwn, Spout arcs high) + `impact` (drip);
+  Maelstrom = `bolt` (whirlpool opens + 3 thin coils rise during the flight) + `impact` (coils close, a column rises
+  BEHIND the body); Whirlpool (raceRiptide) = `aoe`; Water Pulse (sharedTidalSurge) = `beam` (the wave, waist high, 1 lane,
+  see-through; it replaced the flat wave-1 sprite beam); Tidal Slam = `aoe` (ring wave out of the caster's feet); Call of the
+  Deep = `wall` (dark whirl, black-water spikes behind the body, bubbles); Depth Charge = `aoe` (geysers per tile, the
+  middle first, behind a body on an occupied tile); Poseidon's Wrath = `impact` (three columns behind the body like a
+  trident's prongs, gold glints); Great Flood = NEW `wall` mapping (ring wave over the basin, a surge of spray on each
+  flooded tile; the mapping makes battle.js skip its flat playAoeRing); Temporal Tide = its zone recipe + slow ripples
+  and a lazy whirl (`wvTide`). Whirlpool / Tidal Slam / Depth Charge / Poseidon's Wrath / Call of the Deep replaced the
+  generic `_water_impact_*` / halo-ring sprite recipes they wore.
+- Untouched looks (they still get the water staging + mark): Tsunami (its own wall, _sigTsunami3D), the jellyfish, mermaid, siren, loch ness, starfish, deep sea
+  fish, swamp monster, pirate, firefighter, gargoyle, priest, annunaki, atlantean signature spells, Constrict / Eightfold
+  Lash / Tentacle Lash, Fluoride Water.
+- THE TARGET STAYS: no screen flash of its own; crown low and see-through; columns / spikes / prongs stand on the far
+  side of the body from the lens (`_nbCamDir`); coils thin.
+- Proof: Spell Lab ✦ CAST per spell, performance.now() frozen at set delays after the cast. Stills: /mnt/project-files/water-vfx/.
+
+## THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every sonic-element spell (28 rows + Screech / Sonic Boom, rules in champions-combat.md "THE SONIC PASS") reads as sound
+in one violet language. Code: three-vfx-effects.js block "THE SONIC PASS" right after END THE NATURE PASS, helpers `_sn*`.
+- THE KIT: `_snRing` (a canvas ring over a dark ink rim, so it reads on a bright floor; `_snJagTex` = the thin zigzag of
+  a LOUD sound), `_snCone` (rings leave A, travel to B and grow: the cone a voice makes), `_snRipple` (flat floor rings),
+  `_snHum` (three rings round the body that shiver, can track a dragged body), `_snEq` (a crown of LED level meters
+  BEHIND the body, one mesh per meter, the level = draw range). Pieces return tick(el); `_snRun` runs them in one
+  _sigRunOwned. `_snLean` leans a lane's rings toward the lens: rings aimed straight down a lane that runs across the
+  screen were edge-on slivers.
+- THE STAMP (`_snStage`, called from _fireStage): the windup / burst staging beats fire for EVERY spell from its data,
+  so all sonic rows get it with no per-spell wiring, on top of their own looks. Windup = rings out of the caster's mouth
+  toward the target (a shout: hum + floor ring). Burst = rings through the body from the caster's side, floor + body
+  hum, the meter on heavy / ultimate; self-origin rows (barrage, aoeOriginSelf, warCry) shout from the caster's tile.
+  `_SN_FLAVOUR` per row: sung (notes), gentle (slow smooth rings), roar (jagged), discord (clash pink, broken notes).
+- Generic sonic: `_THEME_MAP.sonic`, `_ELEMENT_THEME.sonic = 'sonic'` (was anomaly), `_STAGE_ARCHETYPES.sonic` (violet,
+  noOrb, no glyph), `_STAGE_GRADES.sonic`, `_BEAM_COLORS.sonic`. `_stageArchetype` gives a sonic row 'sonic' whatever its
+  kind, except support kinds (`_SN_SUPPORT_ARCH`: buffs stay gold aura, stat-downs stay the violet hex). Sonic
+  Boomerang's SPELL_STAGE_MAP archetype kinetic → sonic (its grade kept).
+- Own looks (routes probed in the Spell Lab): Discordance impact = two clashing jagged ring stacks (was the generic dark
+  debuff); Siren Song = `pull` with pzOwnTether, a stream of rings + notes mouth → body for the whole drag (was the
+  plain rope); Lullaby keeps its impact + slow rings settle over the head; Sonic Breaker beam (pzOwn, was a plain light
+  band) and Shockwave Clap beam (its band kept) = `_snLane`: a ring tunnel down the whole reach + a jagged floor ripple
+  per tile it crosses. A line beam sends fromX/fromY + dx/dy + range (no sx/sy). Crack the Whip / Screech / Sonic Boom /
+  Requiem's per-target bolt = `snWave_bolt` (pzOwn: rings fly the path, `_nvLand` lands the impact recipe); Requiem's
+  bolt was `_bolt_bullet`. Impacts: Crack the Whip + Screech = `snCrack` (a jagged ring snaps at head height), Sonic Boom
+  = `snBoom` (jagged rings on three tilts + a floor slam). Barrage rows (Meow, Requiem, Shiver, Bellow) fire no
+  aoe/impact intent: the stamp is their look.
+- THE TARGET STAYS: thin rings, the meter behind the body, no screen flash. Fog / RULE #2: everything rides fire() /
+  the staging beats (relayed); caster-end pieces gate on `_pzSeen(caster)`, hit pieces on `_pzSeen(hit)`; Siren
+  Song's fogged siren sings from the sight line. MeshBasic / Sprite only.
+- Proof: Spell Lab ✦ CAST per spell, capture rig froze performance.now() at set delays after the intent. Stills:
+  /mnt/project-files/sonic-vfx/.
+
+## THE POISON PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every poison-element spell lands the same mark: THE VENOM POOL. Code: three-vfx-effects.js block "THE POISON PASS", right
+after THE NATURE PASS, helpers `_pv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`) plus its own `pvOwn`.
+- THE MARK (`_pvSpill`): a lobed puddle of glowing venom with a violet rim (canvas `pv-pool`) spreads under each hit tile,
+  bubbles (`pv-bubble` sprites) swell and pop (ring + droplets) again and again while it holds, fumes (violet smoke-soft +
+  green poison-mist) curl off the FAR rim (`_nbCamDir`, never in front of the body), venom drips off a body standing on it.
+  The black goo / ooze rows (`_pvIsGoo`: Goo status, ooze / blackoil / thebond families) lay it in black oil.
+- WHERE IT RIDES: `_pvAuto` is called from fire() (impact / aoe / aura for self-origin barrages / beam = the line's tiles /
+  chain / wall / pull = where the body lands, by `uid`, 420 ms later) and from the bolt pipeline's landing (`boltLand`), so
+  spells with their own looks (bites, bees, tongue, gas, drains) keep them and gain the pool. Only element 'poison' rows of
+  type damage / debuff. `_pvGate`: one pool per tile per 700 ms (multi-hits, bolt + impact). A def with `pvOwn` lays its own.
+- THE HAZARD RING (`pv-sigil`): the three-lobed hazard mark inside a ring of drips and bubbles — Miasma (whole area) and
+  Venom Burst (under the victim).
+- Signatures: Miasma = `aoe` (ring, pools wave out over the 5x5, flat floor fog, plumes off the far edge); Rot = `impact`
+  (rot patch, green veins via `_nvVine`, circling flies, pool 260 ms late); Acid Flask = `bolt` pzOwn (a lathe-glass flask
+  lobbed end over end) + `impact` (glass, splash, steam, pool); Corrosive Splash = its old aoe recipe + globs raining onto
+  each tile; Tendril Whip = `impact` (three symbiote tendrils behind the body); Venom Spit = `bolt` pzOwn (venom glob) +
+  `impact` splat; Venom Burst = `bolt` pzOwn (dart) — the ring opens and the pool boils during the flight, six lathe venom
+  jets erupt at flyMs+30 (the ones on the lens side, decided at the eruption, stay low and thin). Vivisection and Cadaver
+  Claws got an empty `pvSeal_impact` mapping so the pool lands (Cadaver Claws keeps its G-O burst look).
+- RULE #2: all via fire() (relayed) and the bolt landing the guest flies itself; every pool / glob / jet gates on `_pzSeen`.
+- Proof: Spell Lab ✦ CAST + a capture rig that freezes performance.now() a set time after the first intent. Casts back to
+  back with less than ~10 s between them sometimes come out in a wide "select a target" frame; space them out.
+  Stills: /mnt/project-files/poison-vfx/ (before_after, new_spells, the_mark_on_other_spells + single frames).
+
+## THE LIGHTNING PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+One look for every lightning spell, plus two new Lightning Magic rows (Ball Lightning, Bolt from the Blue — rules in
+champions-combat.md "THE LIGHTNING PASS"). Code: three-vfx-effects.js block "THE LIGHTNING PASS" right after END THE
+NATURE PASS, helpers `_lz*`, same `pzSig` hook as the nature / P-Z passes.
+- THE KIT (every piece is one stage run per cast, `_lzStage` → ONE `_sigRunOwned`, so a cast never eats more than one of
+  the 20 run slots): `_lzBolt` = real 3D jagged bolts (TubeGeometry: a wide faint haze, a blue glow, a thin white-hot
+  core; re-cut every few frames so they flicker), forks; `_lzCage` = arcs wrapping the body that was hit; `_lzScar` = a
+  Lichtenberg flare (white veins in blue haze) that cools to a burn on the ground; `_lzCrawl` = arcs crawling out over the
+  ground; `_lzStrike` = a channel from the sky + re-strikes; `_lzCloud` = a dark storm cloud lit from inside, kept 4.4+
+  tiles up so it never covers a unit. Palette `_LZ` (white core, electric blue glow, cyan, violet for Static Shock).
+- THE MARK (what makes any lightning hit identifiable): `fire()`'s `burst` beat calls `_lzBurstMark` — every lightning-
+  element DAMAGE spell that isn't one of the six owned below gets a cage on each visible enemy it hit (max 6) and a scar
+  sized to its footprint. That includes signature spells with their own looks (Firefly Swarm, Taser Bolt, Shock Prod,
+  EMP Grenade, Tesla Trap…): their own look stays, the mark lands on top. For line kinds the `burst` beat comes ~1 s after
+  the damage (the damage lands ~430 ms after `beam`), so the mark trails a line spell's hit.
+- THE SIX OWNED (`_LZ_OWN`, the old MeshLine regex bolts skip them):
+  Static Shock (bolt, pzOwn) = violet buzz at the hand, the snap arc, a violet cage + scrambled static halo (the Jammed look);
+  Thunderbolt (`lzThunderbolt_descent`, the old sky rune + screen flash replaced) = cloud, 3-hit strike, scar, cage, ring;
+  Chain Lightning (chain, pzOwn; `:solo` geometry too) = arcs hand → body → body with a cage + scar each;
+  Tempest (`lzTempest_aoe`) = cloud over the area, a strike per tile, scars, cages, a ground net of arcs, hard shake;
+  Ball Lightning (beam, pzOwn) = a plasma ball (deep-blue halo under it so it reads over the lit lane) rolls the line at
+  chest height in ~420 ms, licks the ground, cages each body it passes, bursts with six arcs at the end;
+  Bolt from the Blue (`lzBlue_descent`) = a cold star high above, rising sparks, St Elmo arcs, three stepped leaders, a
+  streamer up off the body, the return stroke + 2 re-strikes, ion column, big scar, crawl.
+- Fog / RULE #2: everything rides fire() (relayed). Hand pieces gate on `_pzSeen` (`_lzHand` returns null for a fogged
+  caster), the ball shows per tile, cages/scars only on seen tiles.
+- Staging archetype `lightning` untouched (its orb did not hide the hits in the stills).
+- Proof: Spell Lab ✦ CAST per spell with the capture rig freezing performance.now() after the intent.
+  Stills + contact sheet: /mnt/project-files/lightning-vfx/.
 
 ## THE BLOOD PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One look for every blood-element spell: wet crimson blood that gushes in glossy streams, a blood sigil that burns on the

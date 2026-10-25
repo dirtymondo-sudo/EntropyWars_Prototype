@@ -2553,6 +2553,17 @@ Two Nature Magic rows (data.js, after Overgrowth in SPELL_LIBRARY), existing kin
 - Who gets them: every race with Nature Magic in RACE_FAMILIES (bigfoot, fairy, mushroom girl, tree person, hippie, swamp
   monster, scarecrow, shaman) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE NATURE PASS".
 
+## THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element ... making sure there's a nice amount of spells for each")
+Water Abilities (11 races: atlantean, jellyfish, kraken, loch ness monster, mermaid, starfish, deep sea fish, sharkman,
+firefighter, swamp monster, siren) had T1 Whirlpool, T2 Water Pulse, T3 Call of the Deep / Tsunami / Temporal Tide /
+Tidal Slam, T4 Great Flood: no single-target Soak and no finisher vs Soaked (water's own status). Two rows (data.js,
+after Spout in SPELL_LIBRARY), existing kinds and rules only:
+- **Water Jet** (`raceWaterJet`, tier I, 25 MP, 1 AP, anomaly, water): single-target `damage`, range 3, 80 magic,
+  Soaked 2 (the Spout shape).
+- **Maelstrom** (`raceMaelstrom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, water): single-target `damage`, range 4, 170
+  magic, ×1.5 vs Soaked, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Who gets them: every race with Water Abilities in RACE_FAMILIES + Adaptable borrowers. No exclusions added. The stats
+  are thread calls copied from the nature pair. Looks: spells-vfx.md "THE WATER PASS".
 ## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
 mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
 spells (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse, Kneel, Treeline Scream…) are aoe / barrage / aoePull
@@ -2560,6 +2571,97 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+
+## THE ICE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]")
+Ice Magic (`ice` family: ice queen, wizard, yeti + Adaptable borrowers) had setups at T1-T3 but no T3/T4 finisher. Two
+rows added (data.js, after Shatter in SPELL_LIBRARY), existing kinds and rules only:
+- **Hailstorm** (`raceHailstorm`, tier III, 75 MP, 1 AP, anomaly, ice): `aoe` 3×3 (aoeRadius 1), range 4, 125 magic,
+  ×1.5 vs Slow, applies nothing (finisher on Ice Spear / Diamond Dust's Slow).
+- **Glacier Break** (`raceGlacierBreak`, tier IV, 100 MP, 1 AP, cd 2, anomaly, ice): single `damage`, range 4, 170 magic,
+  ×1.5 vs Frozen, applies nothing (finisher on Flash Freeze / Permafrost's Frozen). Same numbers as Wrath of the Wild.
+- Spread now: T1 Ice Spear (Slow), Shatter (×1.5 vs Frozen) · T2 Flash Freeze (Frozen), Summon Blizzard, Ice Slide ·
+  T3 Permafrost (Frozen), Diamond Dust (Slow), Hailstorm · T4 Absolute Zero (Frozen), Glacier Break.
+- Left as they were (existing exceptions to the tier convention, flagged to mondo, not changed): Absolute Zero is T4 and
+  APPLIES Frozen; Shatter is T1 and carries the frozen bonus.
+- Names "Hailstorm" and "Glacier Break" were picked by the thread (flagged). Looks: spells-vfx.md "THE ICE PASS".
+
+## THE FIRE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Fire Magic had one row per tier (Fireball I, Combust II, Wall of Fire III, Meteor IV). Two rows (data.js, after Combust in
+SPELL_LIBRARY), existing kinds and rules only:
+- **Flamethrower** (`raceFlamethrower`, tier II, 50 MP, 1 AP, unholy, fire): `line`, range 3, width 1, 100 magic, Burn 2
+  (setup; Dragon Breath's shape without its burning tiles).
+- **Inferno** (`raceInferno`, tier IV, 100 MP, 1 AP, cd 2, unholy, fire): `aoe`, range 0, aoeRadius 2, aoeOriginSelf,
+  160 magic, ×1.5 vs Burn, applies nothing (finisher, no self-combo; Throne of Ashes' shape).
+- Who gets them: every race with Fire Magic in RACE_FAMILIES (demon, demon prince, dragon, jack o lantern, wizard) +
+  Adaptable borrowers. Stats are thread calls (flagged to mondo). Looks: spells-vfx.md "THE FIRE PASS".
+
+## THE WIND PASS (2026-10-25, mondo: "a similar thread on each element ... making sure there's a nice amount of spells for each")
+Wind Control had no tier I setup and no tier III finisher. Two rows (data.js, after Eye of the Storm in SPELL_LIBRARY),
+existing kinds and rules only:
+- **Squall** (`raceSquall`, tier I, 25 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 90 magic, Blind 1 (the
+  Thornlash shape). Sets up Tornado / Eye of the Storm.
+- **Tornado** (`raceTornado`, tier III, 75 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 110 magic, ×1.5 vs
+  Blind, applies nothing (the Conduction shape: finisher, no self-combo).
+- Who gets them: every race with Wind Control in RACE_FAMILIES (dragon, gargoyle, eagleman, superhero, valkraye) +
+  Adaptable borrowers. No exclusions added. Wind Control is now 9 spells + Windborne: I Wing Attack, Squall · II Gale,
+  Updraft, Crosswind · III Sky Tackle, Tornado · IV Eye of the Storm, Vortex Slam. Looks: spells-vfx.md "THE WIND PASS".
+Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage` answers false for `noDamage` too, so
+those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
+plan all read it). The one-cast-a-turn lock still applies.
+
+## THE EARTH PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]")
+One Earth Abilities row (data.js, after Mudslide in SPELL_LIBRARY), existing kinds and rules only:
+- **Rockslide** (`raceRockslide`, tier IV, 100 MP, 1 AP, cd 2, anomaly, earth): single-target `damage`, range 4, 170 physical,
+  ×1.5 vs Root, applies nothing (finisher, no self-combo). Why: the family's only tier IV (Quake) paid off Slow; nothing paid off
+  its Root (Earthen Grasp). The numbers are Wrath of the Wild's on the physical side — a thread call, flagged to mondo.
+- Who gets it: every race with Earth Abilities in RACE_FAMILIES (cyclops, dinosaur, gargoyle, giant, golem, kaiju, nephilim,
+  crystal guardian, tree person) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE EARTH PASS".
+- The family now: T1 Stonefall / Tremor Stomp / Boulder Hurl, T2 Fissure / Rampart / Earthen Grasp, T3 Stone Drop / Mudslide /
+  Ground Slam, T4 Quake / Rockslide (+ the Mountainborn passive).
+
+
+## THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Psychic Abilities family already had 10 rows across tiers I-IV (Kinetic Hurl, Psychic Beam, Telepathic Link, Psychosis,
+Far Sight, Psychic Barrier, Migraine, Telekinetic Slam, Teleport, Mind Shatter) and Discord → Migraine closes. The gap:
+Mind Shatter (tier IV) pays off Silence and no family row applied it. One row added (data.js, after Telekinetic Slam),
+existing kind and status only:
+- **Mind Blank** (`raceMindBlank`, tier II, 50 MP, 1 AP, anomaly, psychic): single-target `damage`, range 4, 90 magic,
+  Silence 1 round (the Antimagic Gaze / Timber Stomp shape). Stats were a THREAD CALL, flagged to mondo.
+- Who gets it: every race with Psychic Abilities in RACE_FAMILIES (dreameater, grey, mantid, mothman, nordic, occulus,
+  telepath) + Adaptable borrowers. Looks: spells-vfx.md "THE PSYCHIC PASS".
+
+## THE SONIC PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each" element)
+Sonic had 28 rows across tiers I-IV (7 / 9 / 7 / 5) but the Sonic family pool itself (siren, mermaid, popstar) held only
+9, one of them tier IV. Two Sonic family rows (data.js, after Requiem in SPELL_LIBRARY), existing kinds and rules only,
+numbers mirror THE NATURE PASS's Vine Whip / Wrath of the Wild (THREAD CALLS, flagged to mondo):
+- **Screech** (`raceScreech`, tier II, 50 MP, 1 AP, anomaly, sonic): single-target `damage`, range 4, 100 magic,
+  Silence 1 (the setup Sonic Breaker pays off).
+- **Sonic Boom** (`raceSonicBoom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, sonic): single-target `damage`, range 4,
+  170 magic, ×1.5 vs Stun (Lullaby's sleep), applies nothing (finisher, no self-combo).
+- Who gets them: siren, mermaid, popstar (Sonic in RACE_FAMILIES) + Adaptable borrowers. Looks: spells-vfx.md "THE SONIC PASS".
+- Left as they were, flagged: Deafening Wail (tier III) applies Silence and Sonic Breaker (tier II) is the Silence
+  finisher, the reverse of the tier convention.
+
+## THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Poison family had one tier II (Splash, a Goo spell) and one tier III (Rot, which applies), so no single-target setup +
+finisher pair. Two rows (data.js, after Miasma in SPELL_LIBRARY), existing kinds and rules only:
+- **Venom Spit** (`raceVenomSpit`, tier II, 50 MP, 1 AP, unholy, poison): single `damage`, range 4, 100 magic, Poison 2.
+- **Venom Burst** (`raceVenomBurst`, tier III, 75 MP, 1 AP, unholy, poison): single `damage`, range 4, 125 magic, ×1.5 vs
+  Poison, applies nothing (finisher, no self-combo).
+- Who gets them: every race with Poison Abilities in RACE_FAMILIES (antperson, black goo, demon princess, ghoul,
+  necromancer, bee queen, mushroom girl, goblin, chef, swamp monster, reptilian, zombie) + Adaptable borrowers. Stats are
+  thread calls, flagged to mondo. Looks: spells-vfx.md "THE POISON PASS".
+
+## THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Lightning Magic had Static Shock (T1, Jammed) as its only setup and no finisher that paid off its own status. Two rows
+(data.js, after Conduction in SPELL_LIBRARY), existing kinds and rules only:
+- **Ball Lightning** (`raceBallLightning`, tier II, 50 MP, 1 AP, anomaly, lightning): `line`, range 4, width 1, 100
+  magic, Jammed 1 (the Rainspout shape). A second Jammed setup.
+- **Bolt from the Blue** (`raceBoltFromTheBlue`, tier IV, 100 MP, 1 AP, cd 2, anomaly, lightning): single-target
+  `damage`, range 4, 170 magic, ×1.5 vs Jammed, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Family now 8 rows. Who gets them: Lightning Magic in RACE_FAMILIES (mothman, wizard) + Adaptable borrowers.
+- Left as they were (flagged to mondo): Tempest (T4) and EMP Burst / EMP Grenade still APPLY statuses at tier 3-4.
+  Looks: spells-vfx.md "THE LIGHTNING PASS".
 
 ## THE BLOOD PASS (2026-10-25) — no rule changes
 mondo asked each element to have "a nice amount of spells". Blood already has the full spread, so no rows were added:
