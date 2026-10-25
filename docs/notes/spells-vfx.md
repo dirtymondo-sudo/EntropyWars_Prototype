@@ -1815,3 +1815,27 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+
+## THE METAL PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Metal rides 72 rows over 40-odd races (guns, blades, chains, hooks, machines), each with its own look already, so metal's
+identity is a STAMP every metal cast wears on top of its own look. Code: three-vfx-effects.js block "THE METAL PASS" just
+before THE NATURE PASS, helpers `_mtl*`. No rule or data change; no new rows (the spread was already healthy: 21 T1,
+11 T2, 22 T3, 15 T4, setups and finishers on every tier).
+- THE COG (`_mtlCog`): the ⚙ of the element badge, a brushed-steel gear (canvas, normal blend) + a lit rim (additive) on
+  the ground that RATCHETS a tooth at a time. Small under the caster for the windup, under the target at the burst
+  (as wide as an aoe's reach, `_mtlAoeR`). renderOrder 162/163 so it reads over the capstone sigil disc.
+- THE HIT (`_mtlHit`, ONE signature run per hit, the 20-run cap counts runs): grinder sparks as real 3D streaks
+  (additive rods along their velocity, stretched by speed, spawned on the lens side of the body, skip once off the floor),
+  steel shards (R2 metal.png triangular plates, heavy+ only) that tumble, land and spark, and a small chrome glint star on
+  the body's edge. Pool sprites were too small to read in stills, which is why the sparks are meshes.
+- Hooks: `_fireStage` → `_mtlStage` (windup cog, burst stamp; a non-hostile cast — glowHostile 0 — gets cog + glint only);
+  fire() impact intent → `_mtlSpit`; the bolt landing in the bolt tick → `_mtlSpit` (bolts never fire an impact intent),
+  so every bullet / knife / hatchet that lands spits sparks. Throttled per tile (110 ms).
+- Generic metal: `_THEME_MAP.metal`, `_ELEMENT_THEME.metal = 'metal'`, `_STAGE_ARCHETYPES.metal` (steel, noOrb, steel-spark
+  motes) + `_STAGE_GRADES.metal` — metal used to stage as 'tech' (cyan plasma, read as lightning). All set from the
+  METAL PASS block, not the tables, to keep sibling element threads' merges clean. Railgun keeps its own tech override.
+- Fog / RULE #2: everything rides fire() (relayed); each end draws only where the viewer sees that tile (`_pzSeen`).
+- THE TARGET STAYS: cog on the floor, small streaks flying off the body, glint at the edge (0.34-0.46 tile); no screen
+  layer. Proof: Spell Lab casts frozen 200 ms after the burst; stills in /mnt/project-files/metal-vfx/.
+- Seen while counting (NOT changed, flagged to mondo): Lockdown (T4) applies Rooted + Slowed, Cuffed (T3) applies Rooted,
+  Dead Eye (T3) Marked, Shrink Ray (T3) Minimized — tier 3-4 rows that apply a status (none of them self-combo).
