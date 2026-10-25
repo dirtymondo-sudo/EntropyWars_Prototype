@@ -2021,3 +2021,17 @@ real `false`.
   NOTICE / SITE FILE note. The note moves down (to 5vh) first; only then the title steps down (floor 45 %), and between
   notes it only shrinks. Re-fit on fonts.ready and every note.
 - online.js `#netStatusIndicator` sits under `.ew-matchmeta` (measured each tick, the UI Maker can move it), not on the map name.
+
+## THE MANA FORECAST (2026-10-25, mondo: "there needs to be a mana bar preview just like for healing and damage")
+- ui.js `getPendingManaPreview()` = the MP side of `getPendingDamagePreview`: `{all: [{unitId, loss, gain, short}]}`.
+  Caster cost = `getSpellMpCostFor` (what doSpell charges; `short` when it can't pay). Memory Leak (`kind: 'debuff'` +
+  `mpDrain`) = min(MP, mpDrain) off the enemy. Free Energy (`manaRestoreAll`) = min(mpRestore||40, missing) on every
+  OTHER living ally. Mana Potion = round(maxMp × mpPct) clamped to missing (`window._ewManaPotionGain`, doItem's math).
+  Sources in order: `_hoverActionForecast` (quick-menu row with a target), `window._ewRowMpSpend` (the Horologe's
+  cursor spell row, set in HorologeMenu's render), then the armed spell / item + its pending target.
+- Painted on: 3D plate MP bar (`.tp-mp-preview`, three-renderer `_updateMpPreviewPlates`), ring vitals (`uPrevMp` /
+  `uPrevMpGain`, GLSL + the WebGPU TSL twin), turn icon rings (`.ew-pp-arc.mp.prev`), unit info card + target rows
+  (`_hrlgMpPreviewSlices` / `_hrlgMpPreviewChip`; Mana Potion and Memory Leak target rows show the MP bar and their own
+  `previewMpGain` / `previewMpLoss` + a "+N MP" / "−N MP" chip), Horologe MP bar (`.hrlg-vspend.gain` for a restore).
+- **How to apply:** a change to a spell/item's MP math in battle.js must be mirrored in ui.js `_manaForecast`.
+  Viewer-local, nothing syncs. Browser-checked: every preview equalled the MP the cast really moved.
