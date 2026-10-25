@@ -2553,6 +2553,17 @@ Two Nature Magic rows (data.js, after Overgrowth in SPELL_LIBRARY), existing kin
 - Who gets them: every race with Nature Magic in RACE_FAMILIES (bigfoot, fairy, mushroom girl, tree person, hippie, swamp
   monster, scarecrow, shaman) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE NATURE PASS".
 
+## THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element ... making sure there's a nice amount of spells for each")
+Water Abilities (11 races: atlantean, jellyfish, kraken, loch ness monster, mermaid, starfish, deep sea fish, sharkman,
+firefighter, swamp monster, siren) had T1 Whirlpool, T2 Water Pulse, T3 Call of the Deep / Tsunami / Temporal Tide /
+Tidal Slam, T4 Great Flood: no single-target Soak and no finisher vs Soaked (water's own status). Two rows (data.js,
+after Spout in SPELL_LIBRARY), existing kinds and rules only:
+- **Water Jet** (`raceWaterJet`, tier I, 25 MP, 1 AP, anomaly, water): single-target `damage`, range 3, 80 magic,
+  Soaked 2 (the Spout shape).
+- **Maelstrom** (`raceMaelstrom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, water): single-target `damage`, range 4, 170
+  magic, ×1.5 vs Soaked, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Who gets them: every race with Water Abilities in RACE_FAMILIES + Adaptable borrowers. No exclusions added. The stats
+  are thread calls copied from the nature pair. Looks: spells-vfx.md "THE WATER PASS".
 ## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
 mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
 spells (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse, Kneel, Treeline Scream…) are aoe / barrage / aoePull
@@ -2573,3 +2584,38 @@ rows added (data.js, after Shatter in SPELL_LIBRARY), existing kinds and rules o
 - Left as they were (existing exceptions to the tier convention, flagged to mondo, not changed): Absolute Zero is T4 and
   APPLIES Frozen; Shatter is T1 and carries the frozen bonus.
 - Names "Hailstorm" and "Glacier Break" were picked by the thread (flagged). Looks: spells-vfx.md "THE ICE PASS".
+## THE WIND PASS (2026-10-25, mondo: "a similar thread on each element ... making sure there's a nice amount of spells for each")
+Wind Control had no tier I setup and no tier III finisher. Two rows (data.js, after Eye of the Storm in SPELL_LIBRARY),
+existing kinds and rules only:
+- **Squall** (`raceSquall`, tier I, 25 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 90 magic, Blind 1 (the
+  Thornlash shape). Sets up Tornado / Eye of the Storm.
+- **Tornado** (`raceTornado`, tier III, 75 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 110 magic, ×1.5 vs
+  Blind, applies nothing (the Conduction shape: finisher, no self-combo).
+- Who gets them: every race with Wind Control in RACE_FAMILIES (dragon, gargoyle, eagleman, superhero, valkraye) +
+  Adaptable borrowers. No exclusions added. Wind Control is now 9 spells + Windborne: I Wing Attack, Squall · II Gale,
+  Updraft, Crosswind · III Sky Tackle, Tornado · IV Eye of the Storm, Vortex Slam. Looks: spells-vfx.md "THE WIND PASS".
+Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage` answers false for `noDamage` too, so
+those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
+plan all read it). The one-cast-a-turn lock still applies.
+
+## THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Psychic Abilities family already had 10 rows across tiers I-IV (Kinetic Hurl, Psychic Beam, Telepathic Link, Psychosis,
+Far Sight, Psychic Barrier, Migraine, Telekinetic Slam, Teleport, Mind Shatter) and Discord → Migraine closes. The gap:
+Mind Shatter (tier IV) pays off Silence and no family row applied it. One row added (data.js, after Telekinetic Slam),
+existing kind and status only:
+- **Mind Blank** (`raceMindBlank`, tier II, 50 MP, 1 AP, anomaly, psychic): single-target `damage`, range 4, 90 magic,
+  Silence 1 round (the Antimagic Gaze / Timber Stomp shape). Stats were a THREAD CALL, flagged to mondo.
+- Who gets it: every race with Psychic Abilities in RACE_FAMILIES (dreameater, grey, mantid, mothman, nordic, occulus,
+  telepath) + Adaptable borrowers. Looks: spells-vfx.md "THE PSYCHIC PASS".
+
+## THE SONIC PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each" element)
+Sonic had 28 rows across tiers I-IV (7 / 9 / 7 / 5) but the Sonic family pool itself (siren, mermaid, popstar) held only
+9, one of them tier IV. Two Sonic family rows (data.js, after Requiem in SPELL_LIBRARY), existing kinds and rules only,
+numbers mirror THE NATURE PASS's Vine Whip / Wrath of the Wild (THREAD CALLS, flagged to mondo):
+- **Screech** (`raceScreech`, tier II, 50 MP, 1 AP, anomaly, sonic): single-target `damage`, range 4, 100 magic,
+  Silence 1 (the setup Sonic Breaker pays off).
+- **Sonic Boom** (`raceSonicBoom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, sonic): single-target `damage`, range 4,
+  170 magic, ×1.5 vs Stun (Lullaby's sleep), applies nothing (finisher, no self-combo).
+- Who gets them: siren, mermaid, popstar (Sonic in RACE_FAMILIES) + Adaptable borrowers. Looks: spells-vfx.md "THE SONIC PASS".
+- Left as they were, flagged: Deafening Wail (tier III) applies Silence and Sonic Breaker (tier II) is the Silence
+  finisher, the reverse of the tier convention.
