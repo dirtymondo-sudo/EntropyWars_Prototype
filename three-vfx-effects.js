@@ -47866,8 +47866,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), T = [];
         for (var j = 0; j < 15; j++) {
             var a = j / 15 * Math.PI * 2, fx = Math.cos(a), fz = Math.sin(a), front = fx * cd.x + fz * cd.z;
-            var h = ts * (front > 0.3 ? rn(0.5, 0.7) : rn(2.0, 2.7));
-            T.push(_fpTongueMesh({ x: fx * ts * 0.32, y: -3, z: fz * ts * 0.32, h: h, w: h * (front > 0.3 ? 0.6 : 0.32), d: 140 + rn(0, 80), life: rn(900, 1150), ph: rn(0, 9), tw: rn(-0.2, 0.2) }, geo, fm, F.g));
+            var h = ts * (front > 0.3 ? rn(0.3, 0.42) : rn(2.0, 2.7)), pr = front > 0.3 ? 0.36 : 0.32;
+            T.push(_fpTongueMesh({ x: fx * ts * pr - cd.x * ts * 0.08, y: -3, z: fz * ts * pr - cd.z * ts * 0.08, h: h, w: h * (front > 0.3 ? 0.6 : 0.32), d: 140 + rn(0, 80), life: rn(900, 1150), ph: rn(0, 9), tw: rn(-0.2, 0.2) }, geo, fm, F.g));
         }
         var lastF = 0, popped = false;
         return _sigRunOwned(F.g, 1500, function (el) {
