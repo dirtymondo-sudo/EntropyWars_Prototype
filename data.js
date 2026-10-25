@@ -6191,6 +6191,19 @@ const SPELL_LIBRARY = [
           element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Feed the fire what it wants. MEDIUM magic damage — a Burning target goes up like tinder.' },
+        /* THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element ... making sure there's a nice amount
+           of spells for each"): Fire Magic had one row per tier. Two more on existing kinds and rules only: Flamethrower =
+           the line shape (Dragon Breath's, without its burning tiles) at tier II, Burn 2 (setup); Inferno = the
+           self-centred tier IV finisher (Throne of Ashes' shape), bonus vs Burn, applies nothing (no self-combo).
+           Their looks: three-vfx-effects.js "THE FIRE PASS". */
+        { id: 'raceFlamethrower', name: 'Flamethrower', tier: 2, families: ['fire'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'fire', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 3, lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A roaring jet of flame from the open hand. MEDIUM magic damage to All Enemies in a 3-tile line; they keep Burning for 2 rounds.' },
+        { id: 'raceInferno', name: 'Inferno', tier: 4, families: ['fire'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 0, aoeRadius: 2,
+          aoeOriginSelf: true, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'The caster becomes the heart of a firestorm. HEAVY magic damage to All Enemies within 2 tiles. Burning targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceStrangeLoop', upgradesBlock: ['upLinger'], name: 'Strange Loop', tier: 2, families: ['fractal'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', vfxElement: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'stun', duration: 1 }],
