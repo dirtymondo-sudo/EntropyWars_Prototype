@@ -6591,6 +6591,15 @@ const SPELL_LIBRARY = [
           element: 'earth', type: 'damage', kind: 'line', damageType: 'physical', dmg: 125, range: 4, lineWidth: 1,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'The slope gives way down a lane. MEDIUM physical damage to All Enemies in a line. Slowed targets take it worse.' },
+        /* THE EARTH PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]"): the Earth
+           Abilities family had one tier IV (Quake, the Slow payoff) and nothing that paid off its Root (Earthen Grasp).
+           Rockslide = the family's single-target tier IV finisher on existing rules only: bonus vs Root, applies nothing
+           (no self-combo), the Wrath of the Wild numbers on the earth side (physical). Its look: three-vfx-effects.js
+           "THE EARTH PASS". */
+        { id: 'raceRockslide', name: 'Rockslide', tier: 4, families: ['earth'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 170, range: 4,
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'A cliff rears up behind them and comes down. HEAVY physical damage to a Single Enemy within 4. Rooted targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceTailwind', name: 'Tailwind', tier: 2, families: ['teamwork'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'wind', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
           teamStatusEffects: [{ id: 'quickened', duration: 2 }],

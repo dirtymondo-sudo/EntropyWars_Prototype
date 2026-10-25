@@ -2609,6 +2609,17 @@ Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage
 those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
 plan all read it). The one-cast-a-turn lock still applies.
 
+## THE EARTH PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]")
+One Earth Abilities row (data.js, after Mudslide in SPELL_LIBRARY), existing kinds and rules only:
+- **Rockslide** (`raceRockslide`, tier IV, 100 MP, 1 AP, cd 2, anomaly, earth): single-target `damage`, range 4, 170 physical,
+  ×1.5 vs Root, applies nothing (finisher, no self-combo). Why: the family's only tier IV (Quake) paid off Slow; nothing paid off
+  its Root (Earthen Grasp). The numbers are Wrath of the Wild's on the physical side — a thread call, flagged to mondo.
+- Who gets it: every race with Earth Abilities in RACE_FAMILIES (cyclops, dinosaur, gargoyle, giant, golem, kaiju, nephilim,
+  crystal guardian, tree person) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE EARTH PASS".
+- The family now: T1 Stonefall / Tremor Stomp / Boulder Hurl, T2 Fissure / Rampart / Earthen Grasp, T3 Stone Drop / Mudslide /
+  Ground Slam, T4 Quake / Rockslide (+ the Mountainborn passive).
+
+
 ## THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
 The Psychic Abilities family already had 10 rows across tiers I-IV (Kinetic Hurl, Psychic Beam, Telepathic Link, Psychosis,
 Far Sight, Psychic Barrier, Migraine, Telekinetic Slam, Teleport, Mind Shatter) and Discord → Migraine closes. The gap:

@@ -1815,6 +1815,36 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+## THE EARTH PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every spell tagged earth (data.js `element: 'earth'`, 37 + Rockslide) shares one language. Code: three-vfx-effects.js block
+"THE EARTH PASS" just before THE NATURE PASS, helpers `_ea*` (it borrows the nature kit's `_nvVine` / `_nvBake` / `_nvLeaves`).
+- THE HOOK: `_fireStage` is wrapped (`_eaFireStage0`) so the windup / burst beats every spell kind fires run `_eaStage` after
+  the stock beat — no SPELL_MAP row needed, the guest gets it off the relayed fire(). `_stageArchetype` is wrapped too: every
+  earth spell stages as the new `earth` archetype (ochre, rock-debris motes, heavyLand dust skirt, noOrb) except dash /
+  leapStrike / charge (kinetic slash stays) and the support kinds (gold aura stays). An explicit SPELL_STAGE_MAP / vfxArchetype
+  override still wins; Calcify's override now says earth. `_THEME_MAP.earth` / `_ELEMENT_THEME.earth` = the generic fallback.
+- THE TELL (windup, caster tile, only if the viewer sees it): amber fault lines open under the feet (`_eaCrackAt`, canvas
+  `ea-crack` dark + `ea-crack-core` over-bright glow); a ranged spell lifts 4-7 rocks_5 stones round the knees (the ones
+  between the lens and the caster hang low) that fly at the target on the release; a body spell (range <= 1, self-centred,
+  dash kinds, self casts) kicks pebbles up instead.
+- THE MARK (burst, `_eaMark`): fault lines on every struck tile (the windup's footprint tiles), stone spikes BEHIND the body
+  (`_nbCamDir`, leaning out), stone shards, dust, a warm light; weight scales it (spikes 3/5/6/8, a shock ring on heavy+).
+  No spikes when the spell's own look breaks the floor (`_EA_OWN`, the capstones' `_CAP_SIGS`) or it pushes / pulls the body;
+  support kinds get the tell only.
+- Stone: rocks_5 lifted with a colour over 1 (`[2.35, 2.0, 1.62]`, MeshBasic multiplies it into the dark sheet) = warm ochre
+  grey; sand spells (id/name has sand / tomb) wear desert.png. Light baked into vertex colours (WebGPU draws the same).
+- Own looks (`_EA_SIG`, burst): Tremor Stomp + Timber Stomp (a ring of stones heaves out from the caster), Ground Slam (two
+  rings + a crater), Fissure (a molten seam races down the tiles, slabs slide into the gap the spell cuts, embers + lava light),
+  Sandstone Tomb (sand swirl + five sandstone slabs: three tall behind, two low at the front corners), Quicksand (turning sand
+  whirlpool, rings and grains drawn in), Petrify (three rings of grey spikes grow up the legs to the waist, then break),
+  Rockslide (`_EA_CHARGE` raises a cliff behind the victim on the windup — `_eaCliff` holds until the burst calls crash();
+  boulders tumble round the body, bounce, roll off). Earthen Grasp = `pull` `eaGrasp_pull` (pzOwnTether, battle.js skips the
+  rope): five stone fingers ride the dragged body (`_pzTrack(uid)`), a ridge of stones heaves up behind it, the caster's fault
+  line runs out to it. Timber Stomp borrows Tremor Stomp's tile dust row. Everything else keeps its own look + the language.
+- Kill-switch: `window.EW_DISABLE_EARTH_PASS = true`.
+- Proof: Spell Lab, the harness clock frozen at set delays after CAST. Stills: /mnt/project-files/earth-vfx/.
+
+
 
 ## THE ICE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
 Every ice-element spell now reads as ICE at a glance: a six-armed frost sigil on the ground, faceted crystal clusters that

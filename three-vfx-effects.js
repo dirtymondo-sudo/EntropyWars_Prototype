@@ -48273,6 +48273,604 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ═════════ END THE METAL PASS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
+       THE EARTH PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable and making sure there's a nice
+       amount of spells for each") — every spell tagged earth in data.js (37,
+       Rampart to Quake) now reads as EARTH at a glance through one shared
+       language, the earth spells that had no look of their own got one, and
+       the Earth Abilities family got its tier IV finisher (data.js THE EARTH
+       PASS: Rockslide).
+       THE LANGUAGE rides the staging beats every spell kind fires (windup /
+       burst — _fireStage, the hook the G-O signatures use):
+         · THE TELL (windup, the caster): amber fault lines crack open under
+           the caster's feet. A spell thrown from range tears stones loose and
+           holds them turning round the caster's knees (they fly at the target
+           on the release); a body spell (melee / self-centred) kicks pebbles
+           up off the cracked ground instead.
+         · THE MARK (burst, every struck tile): the ground cracks open in
+           amber fault lines with a warm light out of them, stone spikes break
+           the floor BEHIND the body (the side away from the lens, _nbCamDir),
+           rock chunks and dust fly. The spell's weight scales it.
+         · Earth's own theme + staging archetype (ochre, rock motes, no glass
+           orb — the stone is the hit) instead of the borrowed 'human' look.
+       THE KIT (_ea*): rocks_5 (the cliffs' sheet) on spikes, stones and slabs,
+       desert.png on the sand spells, light baked into vertex colours
+       (MeshBasic, so WebGPU draws the same), canvas fault lines + sand swirl.
+       THE TARGET STAYS: no screen layer; spikes and slabs stand behind / beside
+       the body (the front ones low), decals lie flat on the ground.
+       Fog / RULE #2: everything rides fire(), which online.js relays; the
+       caster-end tell draws only where the viewer sees the caster's tile, the
+       mark only on struck tiles the viewer sees (_pzSeen).
+       Kill-switch: window.EW_DISABLE_EARTH_PASS = true. ═══════════════════ */
+    var _EA = { amber: 0xe8a050, glow: 0xffa040, hot: 0xffe2a8, sand: 0xe2c690, deep: 0x2a1a0c, lava: 0xff7a2a, dust: 0xb09878, grey: [2.1, 2.05, 1.95] };
+    /* a seeded random: a canvas draws the same every time (the thick and the thin crack line up) */
+    function _eaRand(seed) { var s = (seed >>> 0) || 1; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+    /* the fault lines: jagged cracks running out from the centre with side branches, white (the material tints them).
+       `core` = the thin bright line the glow wears, the plain one the wide dark crack + a smudge of upturned soil */
+    function _eaCrackTex(core) {
+        return _pzTex(core ? 'ea-crack-core' : 'ea-crack', 256, 256, function (g, w, h) {
+            var R = _eaRand(11), c = 128;
+            if (!core) {
+                var gr = g.createRadialGradient(c, c, 6, c, c, 120);
+                gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+                g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            }
+            g.strokeStyle = '#ffffff'; g.lineCap = 'round'; g.lineJoin = 'round';
+            function run(x, y, a, len, lw, depth) {
+                var steps = 5, l = len / steps;
+                for (var i = 0; i < steps; i++) {
+                    var na = a + (R() - 0.5) * 0.9, nx = x + Math.cos(na) * l, ny = y + Math.sin(na) * l;
+                    if (core) {   /* the glow: a soft halo round a bright core */
+                        g.strokeStyle = 'rgba(255,255,255,0.32)'; g.lineWidth = Math.max(4, lw * 3.2); g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke();
+                        g.strokeStyle = '#ffffff';
+                    }
+                    g.lineWidth = Math.max(0.8, lw); g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke();
+                    var br = R();
+                    if (depth > 0 && br < 0.42) run(nx, ny, na + (R() < 0.5 ? 0.85 : -0.85), len * 0.42, lw * 0.6, depth - 1);
+                    x = nx; y = ny; a = na; lw *= 0.84;
+                }
+            }
+            for (var k = 0; k < 9; k++) run(c, c, k / 9 * Math.PI * 2 + (R() - 0.5) * 0.4, 96 + R() * 22, core ? 4.6 : 9, 2);
+            /* a broken ring where the ground heaved */
+            for (var s = 0; s < 7; s++) {
+                var a0 = s / 7 * Math.PI * 2 + R() * 0.3, a1 = a0 + 0.35 + R() * 0.3, rr = 52 + R() * 12;
+                g.lineWidth = core ? 3 : 6; g.beginPath(); g.arc(c, c, rr, a0, a1); g.stroke();
+            }
+        });
+    }
+    /* the quicksand: a sand disc with darker arms winding into the middle */
+    function _eaSwirlTex() {
+        return _pzTex('ea-swirl', 256, 256, function (g, w, h) {
+            var c = 128, gr = g.createRadialGradient(c, c, 4, c, c, 124);
+            gr.addColorStop(0, 'rgba(96,70,36,0.95)'); gr.addColorStop(0.3, 'rgba(196,160,104,0.9)'); gr.addColorStop(0.85, 'rgba(226,198,144,0.75)'); gr.addColorStop(1, 'rgba(226,198,144,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.lineCap = 'round';
+            for (var s = 0; s < 4; s++) {
+                g.strokeStyle = s % 2 ? 'rgba(120,88,44,0.6)' : 'rgba(250,232,190,0.55)'; g.lineWidth = s % 2 ? 7 : 4;
+                g.beginPath();
+                for (var k = 0; k <= 80; k++) { var a = s * Math.PI / 2 + k / 80 * 5.2, r = 118 - k * 1.38; g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r); }
+                g.stroke();
+            }
+        });
+    }
+    /* ── materials (every one starts at opacity 0; the signature fades it) ── */
+    function _eaCrackMats() {
+        var glow = _pzGlow(0xffffff, _eaCrackTex(true)); glow.color.setRGB(1.55, 0.72, 0.22);   /* over-bright amber: the lines burn through a lit tile */
+        return { dark: _pzSolid(_EA.deep, _eaCrackTex(false), { depthWrite: false }), glow: glow };
+    }
+    /* rocks_5 is a dark sheet (mean ~70/255): the stone wears it lifted to a warm ochre grey (a colour over 1 —
+       MeshBasic multiplies it into the map), the sand its desert sheet as it is */
+    function _eaStoneMat(sand, tint) {
+        var m = _pzSolid(0xffffff, _sigTerrainTex(sand ? 'desert.png' : 'rocks_5.png', 1, 1)), t = tint != null ? tint : (sand ? [1.15, 1.05, 0.95] : [2.35, 2.0, 1.62]);
+        if (Array.isArray(t)) m.color.setRGB(t[0], t[1], t[2]); else m.color.set(t);
+        m.vertexColors = true; return m;
+    }
+    /* ── shared geometries (flagged _ew_shared: the group disposal leaves them) ── */
+    var _eaGeos = {};
+    function _eaShared(key, make) { var g = _eaGeos[key]; if (!g) { g = make(); g._ew_shared = true; _eaGeos[key] = g; } return g; }
+    /* light from above baked into vertex colours, on a faceted (non-indexed) copy */
+    function _eaFacet(geo, lo) { var g = geo.index ? geo.toNonIndexed() : geo; g.computeVertexNormals(); _nvBake(g, lo != null ? lo : 0.5); return g; }
+    function _eaSpikeGeo() { return _eaShared('spike', function () { var g = new THREE.ConeGeometry(1, 1, 5, 2); g.translate(0, 0.5, 0); return _eaFacet(g, 0.55); }); }
+    /* a stone: a dodecahedron squashed three ways (unit radius) */
+    function _eaRockGeo(i) {
+        var v = ((i || 0) % 3 + 3) % 3;
+        return _eaShared('rock' + v, function () {
+            var g = new THREE.DodecahedronGeometry(1, 0), S = [[1, 0.72, 0.86], [0.84, 0.66, 1.08], [1.1, 0.8, 0.78]][v];
+            g.scale(S[0], S[1], S[2]); g.rotateY(v * 0.7);
+            return _eaFacet(g, 0.42);
+        });
+    }
+    function _eaSlabGeo() { return _eaShared('slab', function () { var g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0); return _eaFacet(g, 0.5); }); }
+    function _eaPlaneGeo() { return _eaShared('plane', function () { var g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g; }); }
+    /* ── small helpers ── */
+    function _eaOff(F, x, y) { var w = _worldPos(x, y); return new THREE.Vector3(w.x - F.wp.x, w.y - F.wp.y, w.z - F.wp.z); }
+    function _eaIs(def) { return !!(def && (def.element === 'earth' || def.vfxElement === 'earth')); }
+    function _eaSandy(id, def) { return /sand|tomb/i.test(String(id) + ' ' + ((def && def.name) || '')); }
+    function _eaRank(id) { try { var w = stageInfo(id).weight; return _TIER_ORDER[w] != null ? _TIER_ORDER[w] : 1; } catch (e) { return 1; } }
+    /* the angle (x = cos, z = sin) of the side away from the lens */
+    function _eaBehind(F) { var cd = _nbCamDir(F); return Math.atan2(-cd.z, -cd.x); }
+    /* a fault-line decal (dark crack + its glow) lying on the ground at a frame-local point; scale it to grow it */
+    function _eaCrackAt(parent, M, c, ts, rot) {
+        var grp = new THREE.Group(); grp.position.set(c.x, c.y + ts * 0.03, c.z); grp.rotation.y = rot || 0; parent.add(grp);
+        _pzMesh(_eaPlaneGeo(), M.dark, grp); _pzMesh(_eaPlaneGeo(), M.glow, grp, 0, ts * 0.004, 0);
+        grp.scale.setScalar(0.01);
+        return grp;
+    }
+    /* stone spikes that break the floor and sink back. pts: { x, y, z (frame-local base), h, w, d (delay ms),
+       rx, rz (lean), grow (scale up in place instead of rising out of the floor) } → tick(el, rise, holdEnd, sink) */
+    function _eaSpikes(parent, mat, pts) {
+        var geo = _eaSpikeGeo(), S = [];
+        for (var i = 0; i < pts.length; i++) {
+            var p = pts[i], m = _pzMesh(geo, mat, parent);
+            m.rotation.set(p.rx || 0, 0, p.rz || 0); m.visible = false;
+            S.push({ m: m, p: p, wz: p.w * (0.8 + 0.4 * ((i * 7) % 5) / 4) });
+        }
+        return function (el, rise, holdEnd, sink) {
+            for (var j = 0; j < S.length; j++) {
+                var s = S[j], P = s.p, t = el - P.d, k;
+                if (t <= 0) k = 0;
+                else if (t < rise) k = _sigEaseOutBack(t / rise);
+                else if (el < holdEnd) k = 1;
+                else k = Math.max(0, 1 - (el - holdEnd) / sink);
+                s.m.visible = k > 0.002;
+                if (P.grow) { s.m.scale.set(P.w * Math.min(1, k + 0.2), P.h * Math.max(0.01, k), s.wz * Math.min(1, k + 0.2)); s.m.position.set(P.x, P.y, P.z); }
+                else { s.m.scale.set(P.w, P.h, s.wz); s.m.position.set(P.x, P.y - P.h * 1.02 * (1 - k), P.z); }
+            }
+        };
+    }
+    /* a spike's lean outward from the centre of its ring (angle a, x = cos, z = sin) */
+    function _eaLean(a, amt) { return { rz: -Math.cos(a) * amt, rx: Math.sin(a) * amt }; }
+
+    /* ════ THE MARK — the burst on every earth spell: fault lines on every struck tile, spikes behind the body,
+       chunks, dust and the warm light out of the cracks. o: rank · tiles · noSpikes · sand ════ */
+    function _eaMark(tx, ty, o) {
+        if (tx == null || ty == null || !_getVFXScene()) return null;
+        o = o || {};
+        var rank = Math.max(0, Math.min(3, o.rank != null ? o.rank : 1)), F = _nrvFrame(tx, ty), ts = F.ts;
+        var list = (o.tiles && o.tiles.length > 1) ? o.tiles : [{ x: tx, y: ty }], single = list.length === 1;
+        var M = _eaCrackMats(), stone = _eaStoneMat(o.sand), behind = _eaBehind(F), cracks = [], pts = [], shown = 0, far = 0;
+        for (var i = 0; i < list.length && shown < 25; i++) {
+            var q = list[i]; if (!q || !_pzSeen(q.x, q.y)) continue; shown++;
+            var c = _eaOff(F, q.x, q.y), dl = Math.max(Math.abs(q.x - tx), Math.abs(q.y - ty)); far = Math.max(far, dl);
+            cracks.push({ g: _eaCrackAt(F.g, M, c, ts, i * 1.3 + 0.4), sz: ts * (single ? 1.45 + 0.3 * rank : 1.15), d: dl * 70 });
+            if (o.noSpikes) continue;
+            var n = single ? [3, 5, 6, 8][rank] : (rank >= 1 && (i % 2 === 0 || rank >= 2) ? 1 : 0);
+            for (var k = 0; k < n; k++) {
+                var a = behind + (n > 1 ? (k / (n - 1) - 0.5) * (single ? 2.4 : 1.2) : 0) + (single ? 0 : ((i * 0.7) % 0.6) - 0.3);
+                var r = ts * (single ? 0.5 + 0.05 * rank : 0.36) * (0.9 + 0.1 * ((k * 5) % 3));
+                var h = ts * (single ? 0.5 + 0.16 * rank : 0.38 + 0.08 * rank) * (0.75 + 0.5 * ((k * 3 + i) % 4) / 3) * (k % 2 ? 0.8 : 1);
+                var ln = _eaLean(a, 0.3);
+                pts.push({ x: c.x + Math.cos(a) * r, y: c.y, z: c.z + Math.sin(a) * r, h: h, w: ts * (0.095 + 0.018 * rank), d: dl * 70 + k * 32, rx: ln.rx, rz: ln.rz });
+            }
+        }
+        if (!shown) { _sigDisposeGroup(F.g); return null; }
+        var spikes = pts.length ? _eaSpikes(F.g, stone, pts) : null;
+        if (_pzSeen(tx, ty)) {
+            _capShards(tx, ty, 'stone', { n: 3 + rank * 2, scale: 0.75 + 0.15 * rank, lite: rank < 2 });
+            _capPuff(tx, ty, 'dust-puff', 3 + 2 * rank, { r: single ? 0.45 : far + 0.4, out: 50 + 20 * rank, vz0: 10, vz1: 50, s0: 16, s1: 26, sEnd: 54, op: 0.5,
+                tint: o.sand ? _EA.sand : _EA.dust, ml0: 600, ml1: 1000 });
+            _capLight(tx, ty, _EA.glow, { i: 1.1 + 0.4 * rank, r: 2.2 + far, ms: 700, h: 0.15 });
+            if (rank >= 2) { try { _sigShockRing3D(tx, ty, { color: _EA.amber, r0: ts * 0.2, r1: ts * (1.4 + far), ms: 460, height: 3, opacity: 0.6 }); } catch (e) {} }
+        }
+        var HOLD = 700 + 120 * rank + far * 70, END = HOLD + 520;
+        return _sigRunOwned(F.g, END + 40, function (el) {
+            M.glow.opacity = 0.95 * _pzEnv(el, 0, 70, 180, HOLD);
+            M.dark.opacity = 0.85 * _pzEnv(el, 0, 60, HOLD, END);
+            for (var j = 0; j < cracks.length; j++) {
+                var e = el - cracks[j].d, s = e <= 0 ? 0.01 : cracks[j].sz * (0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(e / 150)));
+                cracks[j].g.scale.setScalar(s);
+            }
+            stone.opacity = el < END ? 1 : 0;
+            if (spikes) spikes(el, 150, HOLD, 420);
+        });
+    }
+
+    /* ════ THE TELL — the windup on every earth spell: fault lines open under the caster; stones tear loose and hang
+       round the knees (a ranged spell, they fly at the target on the release) or pebbles hop off the cracked ground
+       (a body spell). The stones between the lens and the caster hang low, so the face stays clear. ════ */
+    function _eaTell(sx, sy, tx, ty, hold, rank, body, sand) {
+        if (sx == null || sy == null || !_pzSeen(sx, sy) || !_getVFXScene()) return null;
+        var F = _nrvFrame(sx, sy), ts = F.ts, M = _eaCrackMats(), stone = _eaStoneMat(sand), cd = _nbCamDir(F);
+        var crack = _eaCrackAt(F.g, M, new THREE.Vector3(0, 0, 0), ts, rn(0, 6.28)), CS = ts * (1.2 + 0.18 * rank);
+        var REL = Math.max(220, Math.min(1800, (hold || 700) - 120));
+        var aim = (!body && tx != null && (tx !== sx || ty !== sy) && _pzSeen(tx, ty)) ? _eaOff(F, tx, ty) : null;
+        if (aim) aim.y += ts * 0.5;
+        var rocks = [], N = body ? 6 + 2 * rank : 4 + rank;
+        for (var i = 0; i < N; i++) {
+            var a = i / N * Math.PI * 2 + rn(-0.3, 0.3), r = ts * (body ? rn(0.22, 0.5) : rn(0.4, 0.6));
+            var s = ts * (body ? rn(0.035, 0.06) : rn(0.06, 0.09) * (1 + 0.1 * rank));
+            var front = (Math.cos(a) * cd.x + Math.sin(a) * cd.z) > 0.3;
+            var m = _pzMesh(_eaRockGeo(i), stone, F.g, Math.cos(a) * r, -s, Math.sin(a) * r); m.scale.setScalar(s); m.visible = false;
+            rocks.push({ m: m, a: a, r: r, s: s, hy: ts * (front ? rn(0.14, 0.24) : rn(0.3, 0.66)), hop: ts * rn(0.1, 0.24), per: rn(420, 620),
+                d: i * 45, sp: rn(-1, 1), ph: rn(0, 6.28), x0: 0, y0: 0, z0: 0 });
+        }
+        var TOTAL = REL + (aim ? 240 : 460), dusted = false;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            crack.scale.setScalar(Math.max(0.01, CS * _sigEaseOutCubic(_sigClamp01(el / 220))));
+            M.glow.opacity = (0.6 + 0.3 * Math.sin(el * 0.012)) * _pzEnv(el, 0, 120, REL, TOTAL);
+            M.dark.opacity = 0.8 * _pzEnv(el, 0, 100, REL + 60, TOTAL);
+            stone.opacity = el < TOTAL - 20 ? 1 : 0;
+            for (var j = 0; j < rocks.length; j++) {
+                var R = rocks[j], e = el - R.d, m = R.m;
+                m.visible = e > 0;
+                if (e <= 0) continue;
+                m.rotation.set(el * 0.003 * R.sp + R.ph, el * 0.004 * R.sp, 0);
+                if (body) {
+                    /* pebbles kicked up off the cracked ground, falling back and hopping again; the last kick at the release */
+                    var big = el >= REL, t = big ? _sigClamp01((el - REL) / 420) : (e % R.per) / R.per, hh = big ? R.hop * 2.2 : R.hop;
+                    m.position.set(Math.cos(R.a) * R.r * (big ? 1 + t * 0.6 : 1), -R.s * 0.3 + 4 * hh * t * (1 - t), Math.sin(R.a) * R.r * (big ? 1 + t * 0.6 : 1));
+                    if (big) m.scale.setScalar(R.s * (1 - 0.6 * t));
+                } else if (el < REL) {
+                    var up = _sigEaseOutBack(_sigClamp01(e / 340));
+                    m.position.set(Math.cos(R.a) * R.r, -R.s + (R.hy + R.s) * up + Math.sin(el * 0.005 + R.ph) * ts * 0.02, Math.sin(R.a) * R.r);
+                    R.x0 = m.position.x; R.y0 = m.position.y; R.z0 = m.position.z;
+                } else if (aim) {
+                    /* the stones fly at the target and break on it */
+                    var k = _sigEaseInCubic(_sigClamp01((el - REL) / 200));
+                    m.position.set(R.x0 + (aim.x - R.x0) * k, R.y0 + (aim.y - R.y0) * k + Math.sin(k * Math.PI) * ts * 0.25, R.z0 + (aim.z - R.z0) * k);
+                    m.scale.setScalar(R.s * (1 - 0.5 * k));
+                } else {
+                    /* a self cast: the stones drop back and break */
+                    var f = _sigClamp01((el - REL) / 300);
+                    m.position.y = Math.max(-R.s, R.y0 - ts * 1.2 * f * f);
+                    if (!dusted && f > 0.6) { dusted = true; _nvLeaves(F, 0, 4, 0, 4 + rank, { sprite: 'dust-puff', tint: sand ? _EA.sand : _EA.dust, r: 26, s0: 12, s1: 30, v: 50, vz0: 10, vz1: 40, g: 0, op: 0.45, ml0: 500, ml1: 800 }); }
+                }
+            }
+        });
+    }
+
+    /* ════ STOMPS — Tremor Stomp, Timber Stomp, Ground Slam: the ground heaves out from the caster in a ring of
+       stones that pop up and settle as the wave passes; the slam leaves a crater and rolls twice ════ */
+    function _eaStomp(P, big) {
+        var cx = P.tx, cy = P.ty; if (cx == null || !_pzSeen(cx, cy)) return;
+        var F = _nrvFrame(cx, cy), ts = F.ts, stone = _eaStoneMat(false), rad = (P.def && P.def.aoeRadius) || 1, R = ts * (rad + 0.55);
+        var waves = big ? [0, 210] : [0], lumps = [];
+        for (var w = 0; w < waves.length; w++) {
+            var N = big ? 22 : 16;
+            for (var i = 0; i < N; i++) {
+                var a = (i + w * 0.5) / N * Math.PI * 2, s = ts * rn(0.05, 0.085) * (big ? 1.25 : 1) * (w ? 0.75 : 1);
+                var m = _pzMesh(_eaRockGeo(i + w), stone, F.g, 0, -s, 0); m.scale.setScalar(s); m.visible = false;
+                lumps.push({ m: m, a: a, s: s, d: waves[w], sp: rn(-1, 1), j: rn(0.9, 1.08) });
+            }
+        }
+        var crater = null;
+        if (big) { crater = _pzMesh(_eaPlaneGeo(), _pzSolid(0xffffff, _nvRuptureTex(), { depthWrite: false }), F.g, 0, ts * 0.028, 0); crater.scale.setScalar(ts * 1.5); }
+        var WAVE = big ? 460 : 380, TOTAL = (big ? 210 : 0) + WAVE + 900;
+        _capPuff(cx, cy, 'dust-puff', big ? 14 : 9, { r: 0.4, out: big ? 260 : 190, vz0: 5, vz1: 30, s0: 18, s1: 30, sEnd: 64, op: 0.5, tint: _EA.dust, ml0: 700, ml1: 1100, drag: 1.4 });
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            stone.opacity = el < TOTAL - 20 ? 1 : 0;
+            if (crater) crater.material.opacity = 0.9 * _pzEnv(el, 0, 80, TOTAL - 500, TOTAL - 40);
+            for (var j = 0; j < lumps.length; j++) {
+                var L = lumps[j], e = el - L.d, k = _sigClamp01(e / WAVE);
+                L.m.visible = e > 0 && e < WAVE + 700;
+                if (!L.m.visible) continue;
+                var rr = R * L.j * _sigEaseOutCubic(k), bump = Math.sin(Math.PI * Math.min(1, k * 1.3)) * ts * 0.22 * (big ? 1.2 : 1);
+                var settle = _sigClamp01((e - WAVE) / 600);
+                L.m.position.set(Math.cos(L.a) * rr, -L.s * 0.4 + Math.max(0, bump) - settle * L.s, Math.sin(L.a) * rr);
+                L.m.rotation.set(e * 0.008 * L.sp, e * 0.006 * L.sp, 0);
+            }
+        });
+    }
+
+    /* ════ FISSURE — the ground tears open along the three tiles: a molten seam races down the line, the slabs either
+       side heave up and fall into the gap the spell cuts to the lava bed, embers climb out of it ════ */
+    function _eaFissure(P) {
+        var tiles = (P.tiles && P.tiles.length) ? P.tiles.slice() : [{ x: P.tx, y: P.ty }];
+        var F = _nrvFrame(P.tx, P.ty), ts = F.ts, stone = _eaStoneMat(false), hot = _pzGlow(0xffffff), warm = _pzGlow(0xffffff);
+        hot.color.setRGB(1.8, 1.35, 0.75); warm.color.setRGB(1.6, 0.55, 0.12);   /* over-bright: the seam burns through any floor */
+        /* the line's direction: first tile → last, else across the caster's line of sight */
+        var ux = 1, uz = 0;
+        if (tiles.length > 1) { var A = _eaOff(F, tiles[0].x, tiles[0].y), B = _eaOff(F, tiles[tiles.length - 1].x, tiles[tiles.length - 1].y), dl = Math.hypot(B.x - A.x, B.z - A.z); if (dl > 1) { ux = (B.x - A.x) / dl; uz = (B.z - A.z) / dl; } }
+        else if (P.sx != null) { var C = _eaOff(F, P.sx, P.sy), cl = Math.hypot(C.x, C.z); if (cl > 1) { ux = -C.z / cl; uz = C.x / cl; } }
+        tiles.sort(function (p, q) { var a = _eaOff(F, p.x, p.y), b = _eaOff(F, q.x, q.y); return (a.x * ux + a.z * uz) - (b.x * ux + b.z * uz); });
+        var vx = -uz, vz = ux, yaw = Math.atan2(ux, uz), seams = [], slabs = [], embers = [];
+        var seen = tiles.filter(function (t) { return _pzSeen(t.x, t.y); });
+        if (!seen.length) { _sigDisposeGroup(F.g); return; }
+        for (var i = 0; i < seen.length; i++) {
+            var c = _eaOff(F, seen[i].x, seen[i].y), d = i * 110;
+            /* the seam: a jagged run of glowing strips across the tile, wide warm + thin hot */
+            var prev = new THREE.Vector3(c.x - ux * ts * 0.55, c.y + ts * 0.035, c.z - uz * ts * 0.55);
+            for (var s = 1; s <= 5; s++) {
+                var t = s / 5, jag = s < 5 ? ts * 0.1 * Math.sin(s * 2.3 + i * 1.7) : 0;
+                var cur = new THREE.Vector3(c.x + ux * ts * (t * 1.1 - 0.55) + vx * jag, c.y + ts * 0.035, c.z + uz * ts * (t * 1.1 - 0.55) + vz * jag);
+                var len = prev.distanceTo(cur), ang = Math.atan2(cur.x - prev.x, cur.z - prev.z);
+                for (var w = 0; w < 2; w++) {
+                    var pg = new THREE.PlaneGeometry(ts * (w ? 0.08 : 0.26), len * 1.08); pg.rotateX(-Math.PI / 2);
+                    var m = _pzMesh(pg, w ? hot : warm, F.g); m.position.copy(prev).lerp(cur, 0.5); m.position.y += w * ts * 0.003; m.rotation.y = ang; m.visible = false;
+                    seams.push({ m: m, d: d + t * 100 });
+                }
+                prev = cur;
+            }
+            /* two slabs per side that heave up, slide in and drop into the gap */
+            for (var side = -1; side <= 1; side += 2) {
+                for (var k = 0; k < 2; k++) {
+                    var g = new THREE.Group(), off = (k - 0.5) * ts * 0.5; F.g.add(g);
+                    var sm = _pzMesh(_eaSlabGeo(), stone, g, 0, -ts * 0.06, 0); sm.scale.set(ts * 0.3, ts * 0.12, ts * 0.44);
+                    slabs.push({ g: g, side: side, bx: c.x + ux * off, by: c.y - ts * 0.04, bz: c.z + uz * off, d: d + 60 + k * 40 });
+                }
+            }
+            embers.push({ c: c, x: seen[i].x, y: seen[i].y, d: d });
+            _capLight(seen[i].x, seen[i].y, _EA.lava, { i: 1.6, r: 2.4, ms: 1500, h: 0.05, attack: 120 + d });
+        }
+        var lastE = 0, TOTAL = 1700 + seen.length * 110, shook = false;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var fade = _pzEnv(el, 0, 60, TOTAL - 600, TOTAL - 40);
+            warm.opacity = 0.75 * fade; hot.opacity = 0.95 * fade; stone.opacity = el < TOTAL - 20 ? 1 : 0;
+            for (var a = 0; a < seams.length; a++) seams[a].m.visible = el >= seams[a].d;
+            for (var b = 0; b < slabs.length; b++) {
+                var S = slabs[b], e = el - S.d;
+                var up = _sigEaseOutBack(_sigClamp01(e / 160)), slide = _sigEaseInCubic(_sigClamp01((e - 260) / 420)), sink = _sigEaseInCubic(_sigClamp01((e - 420) / 700));
+                var sd = S.side * ts * (0.3 - 0.2 * slide);
+                S.g.position.set(S.bx + vx * sd, S.by + ts * 0.1 * up - ts * 0.8 * sink, S.bz + vz * sd);
+                S.g.rotation.set(0, yaw, 0); S.g.rotateZ(S.side * (0.25 + 0.6 * slide));
+                S.g.visible = e > 0 && sink < 1;
+            }
+            if (!shook && el > 80) { shook = true; _sigShake('normal'); }
+            if (el - lastE > 70 && el < TOTAL - 500 && _canSpawn()) {
+                lastE = el;
+                for (var q = 0; q < embers.length; q++) {
+                    var E = embers[q]; if (el < E.d) continue;
+                    _pzP(F, E.c.x + ux * rn(-0.45, 0.45) * ts, E.c.y + 4, E.c.z + uz * rn(-0.45, 0.45) * ts, { sprite: 'ember', ml: rn(600, 1000), size0: rn(5, 9), size1: 1,
+                        vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(60, 140), gravity: -20, drag: 0.6, opacity0: 0.95 });
+                }
+            }
+        });
+    }
+
+    /* ════ SANDSTONE TOMB — sand spirals up round the victim and five sandstone slabs close round it (three tall ones
+       in an arc behind it, two low ones at the front corners so the body stays in sight), then crumble back to sand ════ */
+    function _eaTomb(P) {
+        var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(true), sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false }), behind = _eaBehind(F), slabs = [];
+        var disc = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.03, 0); disc.scale.setScalar(ts * 1.5);
+        var defs = [[0, 1.25, 0.6], [1.1, 1.0, 0.52], [-1.1, 1.0, 0.52], [2.25, 0.3, 0.46], [-2.25, 0.3, 0.46]];
+        for (var i = 0; i < defs.length; i++) {
+            var a = behind + defs[i][0], g = new THREE.Group(); g.position.set(Math.cos(a) * ts * 0.4, 0, Math.sin(a) * ts * 0.4);
+            g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); F.g.add(g);   /* the slab's face looks at the body */
+            var m = _pzMesh(_eaSlabGeo(), stone, g); m.scale.set(ts * defs[i][2], ts * defs[i][1], ts * 0.1);
+            slabs.push({ g: g, m: m, h: ts * defs[i][1], d: 120 + i * 70 });
+        }
+        var lastS = 0, CLOSE = 1350, END = 1950, crumbled = false;
+        return _sigRunOwned(F.g, END + 40, function (el) {
+            stone.opacity = el < END ? 1 : 0;
+            sw.opacity = 0.85 * _pzEnv(el, 0, 200, CLOSE, END); disc.rotation.y = -el * 0.0025;
+            for (var j = 0; j < slabs.length; j++) {
+                var S = slabs[j], e = el - S.d, up = _sigEaseOutBack(_sigClamp01(e / 260)), sink = _sigEaseInCubic(_sigClamp01((el - CLOSE) / (END - CLOSE - 80)));
+                S.g.visible = e > 0;
+                S.m.position.y = -S.h * (1 - up) - S.h * sink;
+                S.g.rotation.x = 0.12 * up;   /* the tops lean in over the victim */
+            }
+            if (!crumbled && el >= CLOSE) {
+                crumbled = true;
+                _capShards(tx, ty, 'stone', { n: 8, scale: 1, lite: false });
+                _capPuff(tx, ty, 'dust-puff', 10, { r: 0.5, out: 90, vz0: 20, vz1: 80, s0: 18, s1: 28, sEnd: 56, op: 0.55, tint: _EA.sand, ml0: 700, ml1: 1100 });
+            }
+            if (el < CLOSE && el - lastS > 40 && _canSpawn()) {
+                lastS = el; var aa = el * 0.012;
+                for (var k = 0; k < 2; k++) {
+                    var b = aa + k * Math.PI, r = ts * 0.5;
+                    _pzP(F, Math.cos(b) * r, ts * 0.06, Math.sin(b) * r, { sprite: 'dust-puff', tint: _EA.sand, ml: rn(600, 900), size0: rn(8, 12), size1: rn(18, 26),
+                        vx: -Math.sin(b) * 120, vy: Math.cos(b) * 120, vz: rn(60, 110), drag: 1.2, opacity0: 0.6 });
+                }
+            }
+        });
+    }
+
+    /* ════ QUICKSAND — the 3×3 turns to a slow sand whirlpool: the swirl sinks and turns, rings of sand draw in to
+       the middle, grains pour down into it ════ */
+    function _eaQuicksand(P) {
+        var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, r = (P.def && P.def.aoeRadius) || 1, sw = _pzSolid(0xffffff, _eaSwirlTex(), { depthWrite: false });
+        var disc = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.032, 0), disc2 = _pzMesh(_eaPlaneGeo(), sw, F.g, 0, ts * 0.036, 0);
+        var D = ts * (r * 2 + 1.1), last = 0, TOTAL = 2300;
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            sw.opacity = 0.9 * _pzEnv(el, 0, 260, TOTAL - 700, TOTAL - 40);
+            var g = _sigEaseOutCubic(_sigClamp01(el / 360));
+            disc.scale.setScalar(Math.max(0.01, D * g)); disc.rotation.y = -el * 0.0018;
+            disc2.scale.setScalar(Math.max(0.01, D * 0.62 * g)); disc2.rotation.y = -el * 0.0034 + 1;
+            if (el - last > 240 && el < TOTAL - 800 && _canSpawn()) {
+                last = el; var c = tilePx(tx, ty);
+                _spawn({ x: c.x, y: c.y, z: tileZ(tx, ty) + 3, mode: 'world', sprite: 'target-ring', tint: _EA.sand, ml: 700, size0: D * 1.05, size1: ts * 0.25, opacity0: 0.55, opacity1: 0 });
+                for (var k = 0; k < 6; k++) {
+                    var a = rn(0, 6.28), rr = D * 0.5 * rn(0.6, 1);
+                    _spawn({ x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr, z: tileZ(tx, ty) + rn(4, 14), mode: 'billboard', sprite: 'dust-puff', tint: _EA.sand,
+                        ml: 900, seek: { x: c.x, y: c.y, z: tileZ(tx, ty) - 6, ms: 820, ease: 'in', spiralDeg: 160 }, size0: rn(8, 12), size1: 3, opacity0: 0.7, opacity1: 0.1 });
+                }
+            }
+        });
+    }
+
+    /* ════ PETRIFY — stone climbs the victim: three rings of grey spikes grow up round the legs to the waist, leaning
+       in, hold, then crack and fall away ════ */
+    function _eaPetrify(P) {
+        var tx = P.tx, ty = P.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false, _EA.grey), pts = [];
+        for (var t = 0; t < 3; t++) {
+            for (var i = 0; i < 9; i++) {
+                var a = i / 9 * Math.PI * 2 + t * 0.35, r = ts * (0.25 - 0.03 * t), ln = _eaLean(a, -0.45 - 0.1 * t);
+                pts.push({ x: Math.cos(a) * r, y: ts * (0.02 + 0.15 * t), z: Math.sin(a) * r, h: ts * (0.26 - 0.03 * t), w: ts * 0.06, d: 60 + t * 200 + i * 12, rx: ln.rx, rz: ln.rz, grow: true });
+            }
+        }
+        var spikes = _eaSpikes(F.g, stone, pts), HOLD = 1500, END = 2000, broke = false;
+        return _sigRunOwned(F.g, END + 40, function (el) {
+            stone.opacity = el < END ? 1 : 0;
+            spikes(el, 220, HOLD, END - HOLD - 40);
+            if (!broke && el >= HOLD) { broke = true; _capShards(tx, ty, 'stone', { n: 10, scale: 0.9, height: 0.45 }); _capPuff(tx, ty, 'dust-puff', 8, { r: 0.35, out: 60, vz0: 10, vz1: 50, s0: 14, s1: 22, sEnd: 44, op: 0.5, tint: 0xc4c0b8, h: 0.3 }); }
+        });
+    }
+
+    /* ════ ROCKSLIDE — the new tier IV finisher: a cliff of jagged rock rears up behind the victim (the side away from
+       the lens) over the cast and breaks on the hit; the boulders tumble down round the body, bounce and roll away.
+       The cliff rises on the windup and holds until the burst (or crashes on its own if the burst never comes). ════ */
+    var _eaSlides = {};
+    function _eaCliff(tx, ty, maxWait) {
+        if (tx == null || !_pzSeen(tx, ty) || !_getVFXScene()) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false), behind = _eaBehind(F), pts = [], tops = [];
+        for (var i = 0; i < 7; i++) {
+            var a = behind + (i / 6 - 0.5) * 2.0, r = ts * (0.95 + 0.12 * (i % 2)), h = ts * (1.25 + 0.55 * Math.sin(i / 6 * Math.PI)) * (i % 2 ? 0.82 : 1), ln = _eaLean(a, -0.22);
+            pts.push({ x: Math.cos(a) * r, y: 0, z: Math.sin(a) * r, h: h, w: ts * rn(0.2, 0.26), d: i * 60, rx: ln.rx, rz: ln.rz });
+            tops.push(new THREE.Vector3(Math.cos(a) * r * 0.88, h * 0.85, Math.sin(a) * r * 0.88));
+        }
+        var spikes = _eaSpikes(F.g, stone, pts), boulders = [], crashAt = -1, lastP = 0, wait = Math.max(300, maxWait || 2200);
+        for (var b = 0; b < 8; b++) {
+            var s = ts * rn(0.14, 0.22), m = _pzMesh(_eaRockGeo(b), stone, F.g); m.scale.setScalar(s); m.visible = false;
+            /* where it lands: round the body, never in front of it */
+            var la = behind + rn(-1.6, 1.6), lr = ts * rn(0.3, 0.6);
+            boulders.push({ m: m, s: s, from: tops[b % tops.length].clone(), to: new THREE.Vector3(Math.cos(la) * lr, s * 0.7, Math.sin(la) * lr), d: b * 55, fly: rn(320, 420),
+                roll: new THREE.Vector3(Math.cos(la), 0, Math.sin(la)).multiplyScalar(ts * rn(0.35, 0.7)), sp: rn(-1, 1), hit: false });
+        }
+        var t0 = performance.now(), CTL = { crash: function () { if (crashAt < 0) crashAt = Math.max(0, performance.now() - t0); } };
+        _sigRunOwned(F.g, wait + 1900, function (el) {
+            if (crashAt < 0 && el > wait) crashAt = el;
+            var end = crashAt < 0 ? 1e9 : crashAt;
+            stone.opacity = 1;
+            spikes(el, 420, end, 360);
+            /* the cliff rumbles: grit spills down its face while it waits */
+            if (crashAt < 0 && el > 300 && el - lastP > 110 && _canSpawn()) { lastP = el; var T = tops[(Math.random() * tops.length) | 0]; _pzP(F, T.x, T.y, T.z, { sprite: 'rock-debris', tint: 0x8a7458, ml: 600, size0: rn(4, 7), size1: 2, vz: 0, gravity: 420, opacity0: 0.9 }); }
+            for (var q = 0; q < boulders.length; q++) {
+                var B = boulders[q], e = crashAt < 0 ? -1 : el - crashAt - B.d;
+                B.m.visible = e > 0 && e < B.fly + 1100;
+                if (!B.m.visible) continue;
+                var k = _sigClamp01(e / B.fly), p = B.m.position;
+                if (k < 1) { p.copy(B.from).lerp(B.to, k); p.y = B.from.y + (B.to.y - B.from.y) * k * k + Math.sin(k * Math.PI) * ts * 0.25; }
+                else {
+                    if (!B.hit) { B.hit = true; if (q === 0) { _sigShake('hard'); _capLight(tx, ty, _EA.glow, { i: 2.2, r: 3, ms: 600, h: 0.2 }); }
+                        _pzP(F, B.to.x, B.s, B.to.z, { sprite: 'dust-puff', tint: _EA.dust, ml: 800, size0: 18, size1: 46, vz: 20, drag: 1, opacity0: 0.55 }); }
+                    var r2 = _sigClamp01((e - B.fly) / 700), bounce = Math.abs(Math.sin(r2 * Math.PI * 2)) * (1 - r2) * ts * 0.18;
+                    p.set(B.to.x + B.roll.x * _sigEaseOutCubic(r2), B.to.y + bounce - B.s * 1.6 * _sigClamp01((e - B.fly - 700) / 400), B.to.z + B.roll.z * _sigEaseOutCubic(r2));
+                }
+                B.m.rotation.set(e * 0.01 * B.sp, e * 0.006, e * 0.008 * B.sp);
+            }
+        });
+        return CTL;
+    }
+
+    /* ════ EARTHEN GRASP — a stone hand closes round the victim's legs and drags it through the ground: the hand rides
+       the body, the earth heaves up in a ridge behind it as it goes, and the caster's fault line runs out to it. It
+       owns the pull line (battle.js skips the rope). ════ */
+    EFFECTS['eaGrasp_pull'] = _pzDef('eaGrasp', { pzOwnTether: true });
+    _PZ_SIGS.eaGrasp = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null || !_getVFXScene()) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, stone = _eaStoneMat(false), from = _pzFrom(tx, ty, p), track = _pzTrack(tx, ty, p.uid);
+        var C = new THREE.Group(); F.g.add(C);
+        var fingers = [], ln = _nrvLine(F, from, tx, ty), a0 = Math.atan2(ln.uz, ln.ux);
+        for (var i = 0; i < 5; i++) {
+            var a = a0 + Math.PI + (i / 4 - 0.5) * 3.6, ca = Math.cos(a), sa = Math.sin(a);
+            fingers.push(_nvVine(C, [new THREE.Vector3(ca * ts * 0.42, -ts * 0.12, sa * ts * 0.42), new THREE.Vector3(ca * ts * 0.4, ts * 0.18, sa * ts * 0.4),
+                new THREE.Vector3(ca * ts * 0.26, ts * 0.36, sa * ts * 0.26), new THREE.Vector3(ca * ts * 0.12, ts * 0.38, sa * ts * 0.12)],
+                { ts: ts, r0: ts * 0.065, r1: ts * 0.028, segs: 16, radial: 6, mat: stone, lo: 0.45 }));
+        }
+        /* the caster's fault line, over tiles the viewer sees */
+        var M = _eaCrackMats(), cracks = [], L = Math.max(1, Math.hypot(tx - from.x, ty - from.y)), N = Math.max(2, Math.round(L * 2));
+        for (var k = 1; k < N; k++) {
+            var t = k / N, gx = Math.round(from.x + (tx - from.x) * t), gy = Math.round(from.y + (ty - from.y) * t);
+            if (!_pzSeen(gx, gy)) continue;
+            var o = _eaOff(F, gx, gy), oc = _eaOff(F, from.x, from.y).lerp(new THREE.Vector3(0, 0, 0), t);
+            var cg = _eaCrackAt(F.g, M, new THREE.Vector3(oc.x, o.y, oc.z), ts, k * 1.9); cracks.push({ g: cg, d: (1 - t) * 160 });
+        }
+        var ridge = [], lastR = null, TOTAL = 1750, GRAB = 230, LET = 1300, crumbled = false, off = new THREE.Vector3();
+        return _sigRunOwned(F.g, TOTAL, function (el) {
+            var d = track(); off.set(d ? d.x : 0, d ? d.y : 0, d ? d.z : 0); C.position.copy(off);
+            stone.opacity = el < TOTAL - 20 ? 1 : 0;
+            M.glow.opacity = 0.9 * _pzEnv(el, 0, 80, 500, 1100); M.dark.opacity = 0.8 * _pzEnv(el, 0, 60, 900, 1500);
+            for (var c = 0; c < cracks.length; c++) cracks[c].g.scale.setScalar(Math.max(0.01, el < cracks[c].d ? 0.01 : ts * 0.9 * _sigEaseOutCubic(_sigClamp01((el - cracks[c].d) / 140))));
+            var g = _sigEaseOutBack(_sigClamp01(el / GRAB)), back = _sigClamp01((el - LET) / (TOTAL - LET - 60));
+            for (var f = 0; f < fingers.length; f++) fingers[f].grow(back, Math.min(1, g));
+            if (!crumbled && el >= LET) { crumbled = true; _nvLeaves(F, off.x, off.y + ts * 0.25, off.z, 6, { sprite: 'rock-debris', tint: 0x8a7458, r: 18, s0: 5, s1: 2, v: 80, vz0: 60, vz1: 150, g: 480, ml0: 400, ml1: 700 }); }
+            /* the ridge heaves up behind the body as it is dragged: a stone pops up every quarter tile it covers */
+            if (el > GRAB && el < LET && (!lastR || lastR.distanceTo(off) > ts * 0.24) && ridge.length < 24) {
+                var s = ts * rn(0.06, 0.1), m = _pzMesh(_eaRockGeo(ridge.length), stone, F.g, off.x + rn(-0.08, 0.08) * ts, off.y - s, off.z + rn(-0.08, 0.08) * ts); m.scale.setScalar(s);
+                ridge.push({ m: m, t0: el, s: s, y: off.y }); lastR = off.clone();
+                _pzP(F, off.x, off.y + 4, off.z, { sprite: 'dust-puff', tint: _EA.dust, ml: rn(500, 800), size0: 12, size1: 30, vz: 15, drag: 1, opacity0: 0.5 });
+            }
+            for (var r = 0; r < ridge.length; r++) {
+                var Rg = ridge[r], e = el - Rg.t0, up = _sigEaseOutBack(_sigClamp01(e / 140)), sink = _sigClamp01((e - 500) / 400);
+                Rg.m.position.y = Rg.y - Rg.s + Rg.s * 1.5 * up - Rg.s * 2 * sink;
+                Rg.m.rotation.y = e * 0.002;
+            }
+        });
+    };
+
+    /* ── the registry: burst looks (the mark still lays the fault lines under them) ── */
+    var _EA_SIG = {
+        raceTremorStomp: function (P) { _eaStomp(P, false); },
+        raceTimberStomp: function (P) { _eaStomp(P, false); },
+        groundSlam:      function (P) { _eaStomp(P, true); },
+        sharedFissure:   _eaFissure,
+        raceSandstoneTomb: _eaTomb,
+        raceQuicksand:   _eaQuicksand,
+        racePetrify:     _eaPetrify,
+        raceRockslide:   function (P) {
+            var k = P.tx + ',' + P.ty, S = _eaSlides[k];
+            delete _eaSlides[k];
+            if (S && S.c && performance.now() - S.t < 6000) S.c.crash();
+            else _eaCliff(P.tx, P.ty, 450);   /* no windup seen: the cliff rises fast and breaks on its own */
+        },
+    };
+    /* windup looks */
+    var _EA_CHARGE = {
+        raceRockslide: function (P) { var c = _eaCliff(P.tx, P.ty, (P.hold || 900) + 1500); if (c) _eaSlides[P.tx + ',' + P.ty] = { c: c, t: performance.now() }; },
+    };
+    /* spells whose own look already breaks the floor (the capstones' spikes, the slabs, the cliff): the mark keeps its
+       fault lines and leaves the spikes out */
+    var _EA_OWN = { sharedFissure: 1, raceSandstoneTomb: 1, racePetrify: 1, raceRockslide: 1, raceQuicksand: 1, rampart: 1, raceZigguratProtocol: 1, raceShieldWall: 1 };
+    /* support casts on yourself or an ally: the tell only, never a hit mark on a friend */
+    var _EA_SUPPORT = { buff: 1, shield: 1, aoeShield: 1, warCry: 1, escape: 1, heal: 1, selfHeal: 1 };
+    /* kinds whose mechanical grammar stays the read (the kinetic slash of a dash or a leap, the gold of a blessing);
+       every other earth spell stages as earth */
+    var _EA_KEEP_KIND = { dash: 1, leapStrike: 1, charge: 1, buff: 1, shield: 1, aoeShield: 1, warCry: 1, escape: 1, heal: 1, selfHeal: 1 };
+    var _eaLive = {};
+    function _eaStage(phase, spellId, p) {
+        if (!p || (phase !== 'windup' && phase !== 'burst')) return;
+        if (window.EW_DISABLE_EARTH_PASS || _suppressed() || _catOff('spells')) return;
+        var def = _spellDefFor(spellId); if (!_eaIs(def)) return;
+        var rank = _eaRank(spellId), sand = _eaSandy(spellId, def), sup = !!_EA_SUPPORT[def.kind];
+        if (phase === 'windup') {
+            if (p.mark) return;
+            var sx = p.sx != null ? p.sx : p.tx, sy = p.sy != null ? p.sy : p.ty;
+            var P0 = { sx: sx, sy: sy, tx: p.tx != null ? p.tx : sx, ty: p.ty != null ? p.ty : sy, tiles: Array.isArray(p.tiles) ? p.tiles : null, hold: p.holdMs || 700, rank: rank, def: def, sand: sand };
+            _eaLive[spellId] = { P: P0, t0: performance.now() };
+            /* a body spell (melee, self-centred, a dash) kicks pebbles; a spell thrown from range lifts stones */
+            var body = !!(def.aoeOriginSelf || (def.range != null && def.range <= 1) || _EA_KEEP_KIND[def.kind] || (P0.tx === sx && P0.ty === sy));
+            _eaTell(sx, sy, P0.tx, P0.ty, P0.hold, rank, body, sand);
+            if (_EA_CHARGE[spellId]) _EA_CHARGE[spellId](P0);
+            return;
+        }
+        if (p.tx == null || p.ty == null) return;
+        var L = _eaLive[spellId]; delete _eaLive[spellId];
+        if (L && performance.now() - L.t0 > 12000) L = null;
+        var P = { sx: L ? L.P.sx : p.sx, sy: L ? L.P.sy : p.sy, tx: p.tx, ty: p.ty, tiles: L ? L.P.tiles : null, rank: rank, def: def, sand: sand, hold: 0 };
+        if (_EA_SIG[spellId]) { try { _EA_SIG[spellId](P); } catch (e) { console.warn('[VFX] earth look failed', spellId, e); } }
+        if (sup) return;
+        /* a push or a pull moves the body off the tile: the cracks stay, no spikes where it is dragged through */
+        var own = !!_EA_OWN[spellId] || !!_CAP_SIGS[spellId] || !!(def.pushDistance || def.pullDistance || def.kind === 'pull' || def.kind === 'aoePull');
+        _eaMark(p.tx, p.ty, { rank: rank, tiles: P.tiles, sand: sand, noSpikes: own });
+    }
+    /* the hooks: the staging beat runs the earth language after the stock beat; the archetype answers 'earth' for
+       every earth spell except the kinds above (an explicit SPELL_STAGE_MAP / vfxArchetype override still wins) */
+    var _eaFireStage0 = _fireStage;
+    _fireStage = function (phase, spellId, params) {
+        _eaFireStage0(phase, spellId, params);
+        try { _eaStage(phase, spellId, params); } catch (e) { console.warn('[VFX] earth pass failed', spellId, e); }
+    };
+    var _eaArchetype0 = _stageArchetype;
+    _stageArchetype = function (spellId, def) {
+        var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].archetype;
+        if (!ov && !(def && def.vfxArchetype) && _eaIs(def) && !_EA_KEEP_KIND[def.kind]) return 'earth';
+        return _eaArchetype0(spellId, def);
+    };
+    _THEME_MAP.earth = { core: 'rock-debris', trail: 'dust-puff', burst: 'rock-debris', ring: 'target-ring', glow: _EA.amber };
+    _ELEMENT_THEME.earth = 'earth';
+    _STAGE_ARCHETYPES.earth = { orb: _EA.amber, ring: 0xe8c088, flash: '#ffe0b0', mote: 'rock-debris', glyph: false, slash: false, lineColor: '#f0c890',
+        heavyLand: true, noOrb: true, moteTint: 0xc8a070 };
+    if (SPELL_STAGE_MAP.raceCalcify) SPELL_STAGE_MAP.raceCalcify.archetype = 'earth';   /* Calcify staged as a 'rig' deploy */
+    /* Earthen Grasp owns its pull line now (its stone-hand impact recipe stays); Timber Stomp borrows Tremor Stomp's tile dust */
+    SPELL_MAP['raceEarthenGrasp'] = Object.assign({}, SPELL_MAP['raceEarthenGrasp'], { pull: 'eaGrasp_pull' });
+    if (!SPELL_MAP['raceTimberStomp'] && SPELL_MAP['raceTremorStomp']) SPELL_MAP['raceTimberStomp'] = Object.assign({}, SPELL_MAP['raceTremorStomp']);
+    /* ═════════ END THE EARTH PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
        THE NATURE PASS (2026-10-25, mondo: "Can we make badass impressive vfx
        for nature spells like vines and stuff? ... give nature spells and
        nature spell families some love") — the Nature Magic and Agriculture
