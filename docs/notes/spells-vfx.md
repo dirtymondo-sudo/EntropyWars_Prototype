@@ -2006,3 +2006,28 @@ in one violet language. Code: three-vfx-effects.js block "THE SONIC PASS" right 
   Song's fogged siren sings from the sight line. MeshBasic / Sprite only.
 - Proof: Spell Lab ✦ CAST per spell, capture rig froze performance.now() at set delays after the intent. Stills:
   /mnt/project-files/sonic-vfx/.
+
+## THE POISON PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
+Every poison-element spell lands the same mark: THE VENOM POOL. Code: three-vfx-effects.js block "THE POISON PASS", right
+after THE NATURE PASS, helpers `_pv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`) plus its own `pvOwn`.
+- THE MARK (`_pvSpill`): a lobed puddle of glowing venom with a violet rim (canvas `pv-pool`) spreads under each hit tile,
+  bubbles (`pv-bubble` sprites) swell and pop (ring + droplets) again and again while it holds, fumes (violet smoke-soft +
+  green poison-mist) curl off the FAR rim (`_nbCamDir`, never in front of the body), venom drips off a body standing on it.
+  The black goo / ooze rows (`_pvIsGoo`: Goo status, ooze / blackoil / thebond families) lay it in black oil.
+- WHERE IT RIDES: `_pvAuto` is called from fire() (impact / aoe / aura for self-origin barrages / beam = the line's tiles /
+  chain / wall / pull = where the body lands, by `uid`, 420 ms later) and from the bolt pipeline's landing (`boltLand`), so
+  spells with their own looks (bites, bees, tongue, gas, drains) keep them and gain the pool. Only element 'poison' rows of
+  type damage / debuff. `_pvGate`: one pool per tile per 700 ms (multi-hits, bolt + impact). A def with `pvOwn` lays its own.
+- THE HAZARD RING (`pv-sigil`): the three-lobed hazard mark inside a ring of drips and bubbles — Miasma (whole area) and
+  Venom Burst (under the victim).
+- Signatures: Miasma = `aoe` (ring, pools wave out over the 5x5, flat floor fog, plumes off the far edge); Rot = `impact`
+  (rot patch, green veins via `_nvVine`, circling flies, pool 260 ms late); Acid Flask = `bolt` pzOwn (a lathe-glass flask
+  lobbed end over end) + `impact` (glass, splash, steam, pool); Corrosive Splash = its old aoe recipe + globs raining onto
+  each tile; Tendril Whip = `impact` (three symbiote tendrils behind the body); Venom Spit = `bolt` pzOwn (venom glob) +
+  `impact` splat; Venom Burst = `bolt` pzOwn (dart) — the ring opens and the pool boils during the flight, six lathe venom
+  jets erupt at flyMs+30 (the ones on the lens side, decided at the eruption, stay low and thin). Vivisection and Cadaver
+  Claws got an empty `pvSeal_impact` mapping so the pool lands (Cadaver Claws keeps its G-O burst look).
+- RULE #2: all via fire() (relayed) and the bolt landing the guest flies itself; every pool / glob / jet gates on `_pzSeen`.
+- Proof: Spell Lab ✦ CAST + a capture rig that freezes performance.now() a set time after the first intent. Casts back to
+  back with less than ~10 s between them sometimes come out in a wide "select a target" frame; space them out.
+  Stills: /mnt/project-files/poison-vfx/ (before_after, new_spells, the_mark_on_other_spells + single frames).

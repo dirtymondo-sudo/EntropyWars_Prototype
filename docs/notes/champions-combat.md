@@ -2615,3 +2615,13 @@ numbers mirror THE NATURE PASS's Vine Whip / Wrath of the Wild (THREAD CALLS, fl
 - Who gets them: siren, mermaid, popstar (Sonic in RACE_FAMILIES) + Adaptable borrowers. Looks: spells-vfx.md "THE SONIC PASS".
 - Left as they were, flagged: Deafening Wail (tier III) applies Silence and Sonic Breaker (tier II) is the Silence
   finisher, the reverse of the tier convention.
+
+## THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Poison family had one tier II (Splash, a Goo spell) and one tier III (Rot, which applies), so no single-target setup +
+finisher pair. Two rows (data.js, after Miasma in SPELL_LIBRARY), existing kinds and rules only:
+- **Venom Spit** (`raceVenomSpit`, tier II, 50 MP, 1 AP, unholy, poison): single `damage`, range 4, 100 magic, Poison 2.
+- **Venom Burst** (`raceVenomBurst`, tier III, 75 MP, 1 AP, unholy, poison): single `damage`, range 4, 125 magic, ×1.5 vs
+  Poison, applies nothing (finisher, no self-combo).
+- Who gets them: every race with Poison Abilities in RACE_FAMILIES (antperson, black goo, demon princess, ghoul,
+  necromancer, bee queen, mushroom girl, goblin, chef, swamp monster, reptilian, zombie) + Adaptable borrowers. Stats are
+  thread calls, flagged to mondo. Looks: spells-vfx.md "THE POISON PASS".
