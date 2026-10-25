@@ -1816,6 +1816,34 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
 
+## THE ICE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every ice-element spell now reads as ICE at a glance: a six-armed frost sigil on the ground, faceted crystal clusters that
+grow and shatter, frost ferns, white glints and ice shards. Two new Ice Magic rows (Hailstorm, Glacier Break; rules in
+champions-combat.md "THE ICE PASS"). Code: three-vfx-effects.js block "THE ICE PASS" right after END THE NATURE PASS,
+helpers `_iv*`, same `pzSig` hook as the P-Z / nature passes.
+- THE KIT: `_ivCrystalGeo` = a lathe crystal, flat facets (non-indexed), light baked into vertex colours (`_ivBake`), white
+  additive edge lines + an additive back-face halo so the ice reads bright on any map; skin = R2 terrain/ice.png.
+  `_ivRing` = a ring of crystals with lens-aware heights (crystals on the camera side stay short, `_nbCamDir`) so the
+  victim stays visible. `_ivShards` = flat-shaded tetra shards with gravity + one bounce. `_ivDecal` = sigil / frost /
+  crack canvases laid on the tile (renderOrder 160/161, above the team ground ring). `_ivMist`, `_ivGlints`.
+- Signatures (8): Ice Spear (a real ice lance flies; ankle-grip crystals + frost on hit; the old iceSpear travel removed
+  for it), Shatter (crystal shell round the target blows out at 210 ms), Flash Freeze + Permafrost (on their `wall`
+  intent: crystals erupt per frozen tile, staggered like the tile conversion), Summon Blizzard (sigil + snow column),
+  Diamond Dust (falling diamonds over the cross-diamond tiles), Hailstorm (hail crystals drop on every tile of the 3×3),
+  Glacier Break (a crack races from the caster to the target, then great spikes tear up ROUND the body and shatter;
+  impact is deduped so the bolt and impact never double it).
+- THE ICE STAMP: every other ice spell (Frozen Punch, Freeze Breath, Absolute Zero, Snowball Volley, Grave Chill, Cold
+  Spot, White Christmas, Blizzard Present, Avalanche Strike, Sleigh Dash, Ice Slide…) keeps its own look and gets the stamp
+  on the staging `burst` beat: sigil + frost + a ring of 4+rank crystals that shatter (`_ivStamp`, rank = spell weight).
+- Staging: the `ice` archetype now has `noOrb: true`, `glyph: false`, `iceSigil: true` — the windup draws the frost sigil
+  and a growing gem toward the target (`_ivWindup`) instead of the glass orb, and the target telegraph drops its orb on ice.
+  Non-physical ice rows whose kind fell to the rig/mind archetype are pinned to `ice` in SPELL_STAGE_MAP.
+- Fog / RULE #2: all of it rides fire() intents (bolt / impact / wall / aoe / burst / windup), so the guest sees it.
+  Glacier Break's racing crack is fog-gated per tile (`_pzSeen`).
+- No screen flash, no full-screen layer: crystals stand round or behind the body, never over the number.
+- Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() + setTimeout at set delays after `burst`.
+  Stills: /mnt/project-files/ice-vfx/ (ice_pass_overview.jpg). Console clean over every ice spell.
+
 ## THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One fire look everywhere, plus signatures for the Fire Magic family and its two new rows (Flamethrower, Inferno — rules in
 champions-combat.md "THE FIRE PASS"). Code: three-vfx-effects.js block "THE FIRE PASS" right after END THE NATURE PASS,
@@ -1843,6 +1871,7 @@ helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
 - Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
   every caster-side piece gates on `_pzSeen`. No screen flash.
 - Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
+
 ## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
 Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-Z signatures; helpers `_ps*`.
@@ -1874,7 +1903,6 @@ Code: three-vfx-effects.js block "THE PSYCHIC PASS", right after the TELEPATH P-
 - Proof: Spell Lab, the capture rig freezes performance.now() at set delays after an intent. Telepathic Link's threads
   were drawn by firing its aura with the dummy counted on the caster's side for one call (the Lab has no ally).
   Stills: /mnt/project-files/psychic-vfx/.
-
 
 ## THE METAL PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Metal rides 72 rows over 40-odd races (guns, blades, chains, hooks, machines), each with its own look already, so metal's
@@ -1972,7 +2000,6 @@ block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P
 - THE TARGET STAYS: no screen flash of its own; crown low and see-through; columns / spikes / prongs stand on the far
   side of the body from the lens (`_nbCamDir`); coils thin.
 - Proof: Spell Lab ✦ CAST per spell, performance.now() frozen at set delays after the cast. Stills: /mnt/project-files/water-vfx/.
-
 
 ## THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Every sonic-element spell (28 rows + Screech / Sonic Boom, rules in champions-combat.md "THE SONIC PASS") reads as sound

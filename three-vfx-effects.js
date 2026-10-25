@@ -20673,7 +20673,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         arcane:   { orb: 0x9a7cff, ring: 0xb69cff, flash: '#c9b8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#c0a8ff', moteTint: 0x9a8cff },
         /* THE FIRE PASS (2026-10-25): no glass orb on a fire cast or hit; the flames in the hand and the ring of fire out across the ground are fire's own (_fpStage) */
         fire:     { orb: 0xff7a22, ring: 0xffa544, flash: '#ffcf90', mote: 'ember',          glyph: true,  slash: false, lineColor: '#ffb066', noOrb: true },
-        ice:      { orb: 0x8fd8ff, ring: 0xbfeaff, flash: '#dff2ff', mote: 'frost-crystal',  glyph: true,  slash: false, lineColor: '#cfeeff' },
+        /* THE ICE PASS (2026-10-25): ice gathers on its own frost sigil + a growing crystal (iceSigil), not the glass orb / rune ring */
+        ice:      { orb: 0x8fd8ff, ring: 0xbfeaff, flash: '#dff2ff', mote: 'frost-crystal',  glyph: false, slash: false, lineColor: '#cfeeff', noOrb: true, iceSigil: true },
         /* THE WATER PASS (2026-10-25): water staged as its kind / spellType (pink anomaly, gold grapple); its own beat
            gathers a ball of water at the caster (_wvGather) and lands the water mark on the target (_wvMark) */
         water:    { orb: 0x5fc8ff, ring: 0x9adcff, flash: '#d8f2ff', mote: 'water-splash',   glyph: false, slash: false, lineColor: '#bfe8ff', noOrb: true, water: true },
@@ -21284,6 +21285,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) {}
         }
 
+        /* THE ICE PASS: an ice cast gathers on the frost sigil, a crystal growing in front of it */
+        if (P.iceSigil && !_physCast) { try { _ivWindup(tx, ty, params.tx, params.ty, T, holdMs); } catch (e) {} }
+
         /* motes converging INWARD — a true reverse emitter now: spawned out
            on a ring and pulled INTO the gathering point on an accelerating
            SPIRAL (seek physics, three-vfx.js). The swirl is the tell-tale
@@ -21362,7 +21366,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _teleAt = Math.max(80, holdMs - _teleMs);
             var _ttx = params.tx, _tty = params.ty;
             var _teleRing = P.ring, _teleOrb = P.orb, _teleScale = T.orbScale;
-            var _teleOrbOK = _rank >= 2 && !params.mark;
+            var _teleOrbOK = _rank >= 2 && !params.mark && !P.iceSigil;   /* THE ICE PASS: no glass orb on an ice victim either */
             window.setTimeout(function () {
                 if (_suppressed() || !_canSpawn()) return;
                 if (_teleOrbOK) {
@@ -21790,6 +21794,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 });
             } catch (e) {}
 
+            /* THE ICE PASS: every ice spell lands the frost stamp (sigil, ferns, crystals that shatter) */
+            _ivStageBurst(spellId, tx, ty, info);
             /* THE WATER MARK (THE WATER PASS): every water hit lands on the same crown splash + ripples */
             if (P.water) { try { _wvMark(tx, ty, 0.8 + 0.22 * (_TIER_ORDER[info.weight] || 0), _physHit); } catch (e) {} }
 
@@ -48992,6 +48998,670 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ═════════ END THE NATURE PASS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
+       THE ICE PASS (2026-10-25, mondo: "the nature spells look great now,
+       can you do a similar thread on each element, giving them a consistent
+       look or making them easily identifiable and making sure there's a nice
+       amount of spells for each") — ONE look every ice spell shares, so ice
+       reads as ice at a glance:
+         · THE FROST SIGIL — a six-armed snowflake ring blooms on the ground
+           where the cold lands (and under an ice caster while it gathers,
+           in place of the glass orb + generic rune circle);
+         · FROST FERNS — rime creeps out over the ground from the sigil;
+         · HEX CRYSTALS — faceted six-sided crystals (white tip, deep blue
+           root, white facet edges, the R2 terrain/ice.png skin) grow out of
+           the ground and SHATTER into tumbling 3D shards;
+         · cold mist rolling low, glints.
+       THE STAMP: every ice-element spell's staging burst (any family, any
+       kind — Frozen Punch, Freeze Breath, Snow Globe, Sleigh Dash…) puts the
+       sigil + ferns + a ring of crystals round the victim's feet that shatter,
+       sized by the cast's weight. The Ice Magic family (and the family's two
+       new rows, data.js THE ICE PASS: Hailstorm, Glacier Break) get full
+       signatures instead (_IV_OWN skips the stamp for them).
+       Same hook as the P-Z / 10-25 / nature passes (`pzSig` / `pzOwn`).
+       Everything rides fire() (the staging beats included), which online.js
+       relays, so the guest sees the same ice (RULE #2); caster-end pieces
+       (Glacier Break's racing crack) only draw where the viewer can see the
+       tile (_pzSeen). THE TARGET STAYS: no screen flash, nothing full-screen;
+       crystals stand round / behind the body (the lens side stays low,
+       _nbCamDir), so the caster, the target, the hit and the number read.
+       Basic materials only (MeshBasic / LineBasic / Sprite): WebGPU draws the
+       same picture. ═════════════════════════════════════════════════════ */
+    var _IV = {
+        rime: 0xffffff, ice: 0xcff0ff, deep: 0x6fb8f2, abyss: 0x123e78, glow: 0x8fd8ff, sigil: 0xa8e4ff,
+        frost: 0xdff4ff, mist: 0xcfeaff, glint: 0xeaf8ff,
+    };
+    var _IV_OWN = {};   /* spells with a full ice signature: the burst stamp leaves them alone */
+
+    /* ── the canvases ── */
+    /* the frost sigil: two rings, a hexagram, six snowflake arms with their branches, a hex at the heart */
+    function _ivSigilTex() {
+        return _pzTex('iv-sigil', 512, 512, function (g, w, h) {
+            var c = 256, i, k, a;
+            g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineCap = 'round'; g.lineJoin = 'round';
+            g.lineWidth = 7; g.beginPath(); g.arc(c, c, 244, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3; g.beginPath(); g.arc(c, c, 228, 0, Math.PI * 2); g.stroke();
+            /* the tick ring between the two rings */
+            g.lineWidth = 2;
+            for (i = 0; i < 72; i++) { a = i / 72 * Math.PI * 2; var r0 = i % 6 ? 230 : 214; g.beginPath(); g.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0); g.lineTo(c + Math.cos(a) * 242, c + Math.sin(a) * 242); g.stroke(); }
+            /* the hexagram */
+            g.lineWidth = 3.5;
+            for (k = 0; k < 2; k++) {
+                g.beginPath();
+                for (i = 0; i <= 3; i++) { a = k * Math.PI / 3 + i * Math.PI * 2 / 3 - Math.PI / 2; g.lineTo(c + Math.cos(a) * 206, c + Math.sin(a) * 206); }
+                g.stroke();
+            }
+            /* six snowflake arms */
+            for (i = 0; i < 6; i++) {
+                g.save(); g.translate(c, c); g.rotate(i / 6 * Math.PI * 2);
+                g.lineWidth = 6; g.beginPath(); g.moveTo(0, -36); g.lineTo(0, -178); g.stroke();
+                g.lineWidth = 4;
+                for (k = 0; k < 3; k++) {
+                    var y = -70 - k * 36, L = 40 - k * 9;
+                    g.beginPath(); g.moveTo(0, y); g.lineTo(-L * 0.8, y - L); g.moveTo(0, y); g.lineTo(L * 0.8, y - L); g.stroke();
+                }
+                g.beginPath(); g.moveTo(0, -196); g.lineTo(-9, -180); g.lineTo(0, -164); g.lineTo(9, -180); g.closePath(); g.fill();
+                g.restore();
+            }
+            g.lineWidth = 5; g.beginPath();
+            for (i = 0; i <= 6; i++) { a = i / 6 * Math.PI * 2 - Math.PI / 2; g.lineTo(c + Math.cos(a) * 34, c + Math.sin(a) * 34); }
+            g.stroke();
+            g.beginPath(); g.arc(c, c, 10, 0, Math.PI * 2); g.fill();
+        });
+    }
+    /* frost ferns: rime fronds branching out from the middle, thinner and fainter toward the edge */
+    function _ivFrostTex() {
+        return _pzTex('iv-frost', 512, 512, function (g, w, h) {
+            var c = 256, seed = 7;
+            function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+            var gr = g.createRadialGradient(c, c, 0, c, c, 250);
+            gr.addColorStop(0, 'rgba(255,255,255,0.8)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.38)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, w, h);
+            g.lineCap = 'round';
+            function frond(x, y, a, len, wid, depth) {
+                var steps = 6, sx = x, sy = y;
+                for (var s = 0; s < steps; s++) {
+                    var nx = sx + Math.cos(a) * len / steps, ny = sy + Math.sin(a) * len / steps;
+                    var dc = Math.hypot(nx - c, ny - c) / 250, al = Math.max(0, 1 - dc * 0.7);
+                    g.strokeStyle = 'rgba(255,255,255,' + al.toFixed(3) + ')'; g.lineWidth = Math.max(0.6, wid * (1 - s / steps * 0.5));
+                    g.beginPath(); g.moveTo(sx, sy); g.lineTo(nx, ny); g.stroke();
+                    if (depth > 0 && s % 2 === 1) {
+                        frond(nx, ny, a + 0.9 + (rnd() - 0.5) * 0.3, len * 0.42, wid * 0.6, depth - 1);
+                        frond(nx, ny, a - 0.9 + (rnd() - 0.5) * 0.3, len * 0.42, wid * 0.6, depth - 1);
+                    }
+                    sx = nx; sy = ny; a += (rnd() - 0.5) * 0.18;
+                }
+            }
+            for (var i = 0; i < 9; i++) { var a0 = i / 9 * Math.PI * 2 + rnd() * 0.3; frond(c + Math.cos(a0) * 10, c + Math.sin(a0) * 10, a0, 210 + rnd() * 30, 6, 2); }
+            /* a scatter of tiny star crystals */
+            g.fillStyle = 'rgba(255,255,255,0.9)';
+            for (var j = 0; j < 40; j++) { var b = rnd() * Math.PI * 2, r = 30 + rnd() * 200; g.fillRect(c + Math.cos(b) * r - 1.5, c + Math.sin(b) * r - 1.5, 3, 3); }
+        });
+    }
+    /* cracked ice under a shatter: dark crazing lines with a pale core */
+    function _ivCrackTex() {
+        return _pzTex('iv-crack', 256, 256, function (g, w, h) {
+            var c = 128, seed = 11;
+            function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+            g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineCap = 'round';
+            for (var i = 0; i < 12; i++) {
+                var a = i / 12 * Math.PI * 2 + rnd() * 0.3, r = 6, x = c, y = c; g.lineWidth = 3;
+                g.beginPath(); g.moveTo(x, y);
+                for (var k = 0; k < 6; k++) { r += 14 + rnd() * 10; a += (rnd() - 0.5) * 0.5; x = c + Math.cos(a) * r; y = c + Math.sin(a) * r; g.lineTo(x, y); }
+                g.stroke();
+            }
+            g.lineWidth = 1.5;
+            for (var j = 1; j < 4; j++) { g.beginPath(); for (var q = 0; q <= 12; q++) { var aa = q / 12 * Math.PI * 2, rr = j * 30 + rnd() * 8; g.lineTo(c + Math.cos(aa) * rr, c + Math.sin(aa) * rr); } g.stroke(); }
+        });
+    }
+
+    /* ── the crystal ── */
+    /* light baked into vertex colours: deep blue at the root, rime white at the tip, facets lit from one side */
+    function _ivBake(geo, deep, rime) {
+        var pos = geo.attributes.position, n = geo.attributes.normal; if (!pos || !n) return;
+        var D = new THREE.Color(deep != null ? deep : _IV.deep), R = new THREE.Color(rime != null ? rime : _IV.rime), C = new THREE.Color();
+        var y0 = Infinity, y1 = -Infinity, i;
+        for (i = 0; i < pos.count; i++) { var yy = pos.getY(i); if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+        var span = Math.max(1e-4, y1 - y0), cols = new Float32Array(pos.count * 3);
+        for (i = 0; i < pos.count; i++) {
+            var t = (pos.getY(i) - y0) / span, d = 0.46 * n.getX(i) + 0.72 * n.getY(i) + 0.52 * n.getZ(i);
+            var lit = 0.8 + 0.42 * Math.max(0, d), spec = Math.pow(Math.max(0, d), 8) * 0.6;
+            C.copy(D).lerp(R, Math.pow(t, 0.75));
+            cols[i * 3] = C.r * lit + spec; cols[i * 3 + 1] = C.g * lit + spec; cols[i * 3 + 2] = C.b * lit + spec;
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    }
+    /* the unit crystal (radius 1, height 1, base at y 0): a six-sided prism with a pointed tip. `pts` overrides the
+       profile (the lance is pointed at both ends, the hail is a lump); flat facets (non-indexed, own normals) */
+    function _ivCrystalGeo(pts, sides) {
+        pts = pts || [[0.001, -0.06], [0.82, 0], [1, 0.14], [0.9, 0.7], [0.001, 1]];
+        var v = []; for (var i = 0; i < pts.length; i++) v.push(new THREE.Vector2(pts[i][0], pts[i][1]));
+        var lathe = new THREE.LatheGeometry(v, sides || 6);
+        var geo = lathe.index ? lathe.toNonIndexed() : lathe; geo.computeVertexNormals(); _ivBake(geo);
+        var edges = new THREE.EdgesGeometry(lathe, 25); if (geo !== lathe) lathe.dispose();
+        var halo = _pzGlow(_IV.glow); halo.side = THREE.BackSide; halo.opacity = 0.3;
+        return { geo: geo, edges: edges, halo: halo };
+    }
+    function _ivIceMat() { var m = _pzSolid(0xffffff, _sigTerrainTex('ice.png', 1, 1)); m.vertexColors = true; return m; }
+    function _ivEdgeMat() { return new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }); }
+    /* ONE crystal standing at `at` (frame-local), leaning toward `dir` (a unit Vector3, default straight up), r × h,
+       spun `spin` round its own axis. Returns { g, set(k) } — set grows it (0 = gone, 1 = full; the girth pops in
+       ahead of the height so it reads as a crystal pushing up, not a balloon) */
+    var _ivUp = null;
+    function _ivCrystal(parent, K, mat, emat, at, r, h, dir, spin) {
+        if (!_ivUp) _ivUp = new THREE.Vector3(0, 1, 0);
+        var g = new THREE.Group(); g.position.copy(at);
+        if (dir) g.quaternion.setFromUnitVectors(_ivUp, dir);
+        g.rotateY(spin || 0);
+        var m = new THREE.Mesh(K.geo, mat); m.scale.set(r, h, r); m.renderOrder = 158; g.add(m);
+        if (emat) { var e = new THREE.LineSegments(K.edges, emat); e.scale.copy(m.scale); e.renderOrder = 159; g.add(e); }
+        /* the cold light inside: the same crystal a little fatter, back faces only, added on (the halo round its rim) */
+        if (K.halo) { var hm = new THREE.Mesh(K.geo, K.halo); hm.scale.set(r * 1.22, h * 1.06, r * 1.22); hm.position.y = -h * 0.02; hm.renderOrder = 157; g.add(hm); }
+        g.scale.setScalar(0.001); g.visible = false; parent.add(g);
+        return {
+            g: g, r: r, h: h,
+            set: function (k) {
+                if (k <= 0.002) { g.visible = false; return; }
+                g.visible = true; g.scale.set(Math.min(1, 0.35 + k), Math.max(0.001, k), Math.min(1, 0.35 + k));
+            },
+        };
+    }
+    /* a lean direction: `out` (x, z unit) tipped from vertical by `tilt` radians */
+    function _ivLean(ox, oz, tilt) { var s = Math.sin(tilt); return new THREE.Vector3(ox * s, Math.cos(tilt), oz * s).normalize(); }
+    /* a ring of crystals round a body standing at `at`: tall behind it (away from the lens), low on the lens side, so
+       they never cover the victim. o: n · r (ring radius) · h (tallest) · lo (lens-side height ratio) · tilt · ph */
+    function _ivRing(parent, F, at, K, mat, emat, o) {
+        var cd = _nbCamDir(F), out = [], n = o.n || 6;
+        for (var i = 0; i < n; i++) {
+            var a = (o.ph || 0) + i / n * Math.PI * 2 + ((i * 7) % 5 - 2) * 0.08, ox = Math.cos(a), oz = Math.sin(a);
+            var front = Math.max(0, ox * cd.x + oz * cd.z), hk = 1 - front * (1 - (o.lo != null ? o.lo : 0.35));
+            var h = o.h * hk * (0.75 + 0.25 * ((i * 5) % 4) / 3), rr = (o.r || F.ts * 0.3) * (1 + front * 0.25);
+            var c = _ivCrystal(parent, K, mat, emat, at.clone().add(new THREE.Vector3(ox * rr, -F.ts * 0.02, oz * rr)),
+                (o.w || F.ts * 0.07) * (0.7 + 0.3 * hk), h, _ivLean(ox, oz, (o.tilt != null ? o.tilt : 0.42) + front * 0.25), a * 2.3);
+            c.front = front; c.ox = ox; c.oz = oz; out.push(c);
+        }
+        return out;
+    }
+
+    /* ── the shatter: tumbling 3D shards with gravity that bounce once off the ground and shrink away ── */
+    function _ivShards(parent, ts, mat) {
+        var geo = new THREE.TetrahedronGeometry(1, 0); if (geo.index) geo = geo.toNonIndexed(); geo.computeVertexNormals(); _ivBake(geo, _IV.ice, _IV.rime);
+        geo.scale(1, 1.8, 1);
+        var live = [];
+        return {
+            /* n shards from `at` (frame-local) at el0: o.v speed · o.up lift · o.dx/o.dz push · o.s size · o.ms life · o.floor y */
+            burst: function (at, n, el0, o) {
+                o = o || {};
+                for (var i = 0; i < n; i++) {
+                    var a = rn(0, Math.PI * 2), sp = ts * rn(0.6, 1.4) * (o.v || 1), m = new THREE.Mesh(geo, mat);
+                    m.renderOrder = 158; m.visible = false; parent.add(m);
+                    live.push({ m: m, t0: el0, p: at.clone().add(new THREE.Vector3(rn(-1, 1) * ts * 0.06, rn(-1, 1) * ts * 0.06, rn(-1, 1) * ts * 0.06)),
+                        v: new THREE.Vector3(Math.cos(a) * sp + (o.dx || 0) * ts, ts * rn(0.5, 1.4) * (o.up != null ? o.up : 1), Math.sin(a) * sp + (o.dz || 0) * ts),
+                        s: ts * rn(0.022, 0.05) * (o.s || 1), sp: new THREE.Vector3(rn(-14, 14), rn(-14, 14), rn(-14, 14)),
+                        ms: (o.ms || 900) * rn(0.75, 1.15), floor: o.floor != null ? o.floor : 0, b: false });
+                }
+            },
+            tick: function (el) {
+                for (var i = 0; i < live.length; i++) {
+                    var S = live[i], t = (el - S.t0) / 1000; if (t < 0) { S.m.visible = false; continue; }
+                    var k = t * 1000 / S.ms; if (k >= 1) { S.m.visible = false; continue; }
+                    var y = S.p.y + S.v.y * t - 0.5 * ts * 7 * t * t;
+                    if (y < S.floor) {   /* one hop off the ground, then it skids */
+                        if (!S.b) { S.b = true; S.p.set(S.p.x + S.v.x * t, S.floor, S.p.z + S.v.z * t); S.v.set(S.v.x * 0.35, Math.abs(S.v.y - ts * 7 * t) * 0.28, S.v.z * 0.35); S.t0 = el; S.ms = Math.max(120, S.ms * (1 - k)); continue; }
+                        y = S.floor;
+                    }
+                    S.m.visible = true;
+                    S.m.position.set(S.p.x + S.v.x * t, y, S.p.z + S.v.z * t);
+                    S.m.rotation.set(S.sp.x * t, S.sp.y * t, S.sp.z * t);
+                    S.m.scale.setScalar(S.s * Math.min(1, (1 - k) * 2.2));
+                }
+            },
+        };
+    }
+
+    /* ── ground pieces ── */
+    function _ivDecal(parent, tex, size, at, color, glow) {
+        var mat = glow ? _pzGlow(color, tex) : _pzSolid(color, tex, { side: THREE.DoubleSide, depthWrite: false });
+        var m = _pzMesh(new THREE.PlaneGeometry(size, size), mat, parent, at.x, at.y, at.z); m.rotation.x = -Math.PI / 2; m.renderOrder = glow ? 161 : 160;   /* over the tile marks + stains under the body */
+        return m;
+    }
+    /* a puff of cold mist / glints at a frame-local point */
+    function _ivMist(F, x, y, z, n, o) {
+        o = o || {};
+        for (var i = 0; i < n; i++) _pzP(F, x + rn(-1, 1) * (o.r || 14), y + rn(0, 6), z + rn(-1, 1) * (o.r || 14), {
+            sprite: 'frost-mist', tint: _IV.mist, ml: rn(o.ml0 || 800, o.ml1 || 1300), size0: rn(o.s0 || 18, (o.s0 || 18) * 1.5), size1: rn(o.s1 || 44, (o.s1 || 44) * 1.4),
+            vx: rn(-1, 1) * (o.v || 40), vy: rn(-1, 1) * (o.v || 40), vz: rn(4, o.vz || 26), drag: 0.6, opacity0: o.op != null ? o.op : 0.5 });
+    }
+    function _ivGlints(F, x, y, z, n, o) {
+        o = o || {};
+        for (var i = 0; i < n; i++) _pzP(F, x + rn(-1, 1) * (o.r || 20), y + rn(0, o.h || 30), z + rn(-1, 1) * (o.r || 20), {
+            sprite: o.sprite || 'frost-crystal', tint: _IV.glint, ml: rn(400, 800), size0: rn(5, 9) * (o.s || 1), size1: 1.5,
+            vx: rn(-1, 1) * (o.v || 30), vy: rn(-1, 1) * (o.v || 30), vz: rn(o.vz0 != null ? o.vz0 : -10, o.vz1 != null ? o.vz1 : 40), gravity: o.g || 0, drag: 0.8, opacity0: 0.95 });
+    }
+    function _ivTilesOf(spellId, p, def) {
+        var d = _spellDefFor(spellId);
+        if (d && d.kind === 'cross' && d.diamond) {   /* Diamond Dust: the literal diamond (Manhattan radius) */
+            var R = d.crossRadius || 2, offs = [];
+            for (var dx = -R; dx <= R; dx++) for (var dy = -R; dy <= R; dy++) if (Math.abs(dx) + Math.abs(dy) <= R) offs.push({ dx: dx, dy: dy });
+            return { offs: offs, r: R };
+        }
+        return _nvAoeTiles(spellId, p, def, _nvRadius(spellId, 'aoeRadius', 1));
+    }
+
+    /* ════ THE STAMP — what makes every ice spell read as ice: the sigil flashes on the ground under the hit, frost
+       ferns creep out, a ring of crystals pushes up round the feet and shatters. `rank` = the cast's weight
+       (0 light … 3 ultimate). Run from the staging burst (_stageBurst) for every ice-element spell not in _IV_OWN. ════ */
+    function _ivStamp(tx, ty, rank, o) {
+        o = o || {};
+        if (tx == null || ty == null || !_canSpawn()) return null;
+        rank = Math.max(0, Math.min(3, rank || 0));
+        var F = _nrvFrame(tx, ty), ts = F.ts, s = 0.8 + 0.18 * rank, base = new THREE.Vector3(0, 0, 0);
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * 1.7 * s, new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var fr = _ivDecal(F.g, _ivFrostTex(), ts * 2.2 * s, new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
+        var K = _ivCrystalGeo(), im = _ivIceMat(), em = _ivEdgeMat();
+        var ring = o.noCrystals ? [] : _ivRing(F.g, F, base, K, im, em, { n: 4 + rank, r: ts * 0.3, h: ts * (0.26 + 0.07 * rank), w: ts * 0.06, lo: 0.4, ph: rn(0, 6.28) });
+        var SH = _ivShards(F.g, ts, im), broke = false, BREAK = 560 + 60 * rank, END = 1700 + 120 * rank;
+        _ivMist(F, 0, 2, 0, 2 + rank, { r: 22, s0: 16, s1: 40 });
+        return _sigRunOwned(F.g, END, function (el) {
+            var fade = _sigClamp01((el - (END - 500)) / 480);
+            sig.material.opacity = 0.75 * _pzEnv(el, 0, 90, 380, 1000); sig.rotation.z = el * 0.0006; sig.scale.setScalar(0.8 + 0.25 * _sigEaseOutCubic(_sigClamp01(el / 300)));
+            fr.material.opacity = 0.85 * _sigEaseOutCubic(_sigClamp01(el / 320)) * (1 - fade); fr.scale.setScalar(0.25 + 0.75 * _sigEaseOutCubic(_sigClamp01(el / 380)));
+            im.opacity = el < END - 20 ? 0.92 : 0; em.opacity = 0.55 * (1 - fade);
+            for (var i = 0; i < ring.length; i++) ring[i].set(el < BREAK ? _sigEaseOutBack(_sigClamp01((el - i * 18) / 150)) : 0);
+            if (!broke && el >= BREAK) {
+                broke = true;
+                for (var j = 0; j < ring.length; j++) SH.burst(ring[j].g.position.clone().add(new THREE.Vector3(0, ring[j].h * 0.5, 0)), 3, el, { v: 0.5, up: 0.8, s: 0.9 + 0.1 * rank, ms: 800 });
+                _ivGlints(F, 0, ts * 0.1, 0, 4 + rank * 2, { r: 24, h: 26 });
+            }
+            SH.tick(el);
+        });
+    }
+
+    /* ════ THE GATHER — the ice caster's windup (the ice staging archetype): the sigil opens under its feet and a
+       small crystal grows and spins in front of it, toward the target; replaces the glass orb + generic rune ring ════ */
+    function _ivWindup(sx, sy, tx, ty, T, holdMs) {
+        if (sx == null || !_canSpawn()) return;
+        var F = _nrvFrame(sx, sy), ts = F.ts, os = (T && T.orbScale) || 1, hold = Math.max(300, holdMs || 700);
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * (1.05 + 0.35 * os), new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var fr = _ivDecal(F.g, _ivFrostTex(), ts * (1.0 + 0.3 * os), new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
+        var ux = 0, uz = 0;
+        if (tx != null && (tx !== sx || ty !== sy)) { var o = _nvOff(F, tx, ty), L = Math.max(1, Math.hypot(o.x, o.z)); ux = o.x / L; uz = o.z / L; }
+        var K = _ivCrystalGeo([[0.001, 0], [0.7, 0.3], [0.6, 0.72], [0.001, 1]]), im = _ivIceMat(), em = _ivEdgeMat();
+        var gem = _ivCrystal(F.g, K, im, em, new THREE.Vector3(ux * ts * 0.34, ts * 0.52, uz * ts * 0.34), ts * 0.07 * os, ts * 0.22 * os, null, 0);
+        gem.g.position.y -= ts * 0.11 * os;
+        var halo = _pzSpr(_IV.glow, ts * 0.42 * os, F.g); halo.position.set(ux * ts * 0.34, ts * 0.52, uz * ts * 0.34);
+        var END = hold + 260;
+        return _sigRunOwned(F.g, END, function (el) {
+            var inK = _sigEaseOutCubic(_sigClamp01(el / 260)), out = _sigClamp01((el - hold) / 240);
+            sig.material.opacity = 0.7 * inK * (1 - out); sig.rotation.z = -el * 0.0011; sig.scale.setScalar(0.6 + 0.4 * inK);
+            fr.material.opacity = 0.7 * inK * (1 - out); fr.scale.setScalar(0.3 + 0.7 * inK);
+            im.opacity = 0.95 * (1 - out); em.opacity = 0.6 * (1 - out);
+            gem.set(_sigEaseOutBack(_sigClamp01(el / Math.max(200, hold * 0.6))) * (1 - out)); gem.g.rotation.y = el * 0.006;
+            halo.material.opacity = 0.45 * inK * (1 - out) * (0.8 + 0.2 * Math.sin(el * 0.02));
+        });
+    }
+
+    /* ════ ICE SPEAR (tier I, Slow) — a real crystal lance flies spinning on a flat arc with a trail of rime; it bursts on
+       the body into shards, frost runs over the ground and small crystals grip the ankles (the Slow) ════ */
+    EFFECTS['ivIceSpear_bolt'] = _pzDef('ivIceSpearFly', { pzOwn: true });
+    EFFECTS['ivIceSpear_impact'] = _pzDef('ivIceSpearHit', { layers: [
+        { count: 10, sprite: 'ice-shard', ml: [300, 520], offsetXY: 10, vxRange: 200, vyRange: 200, vzRange: [40, 200], gravity: 420, drag: 0.8, size0: [7, 12], size1: 2 },
+        { count: 4, sprite: 'frost-mist', ml: [500, 800], offsetXY: 14, vzRange: [10, 40], drag: 0.6, size0: [16, 26], size1: [40, 60], opacity0: 0.5 },
+    ] });
+    function _ivLanceObj(ts, len, rad) {
+        var K = _ivCrystalGeo([[0.001, 0], [0.55, 0.1], [1, 0.26], [0.86, 0.8], [0.001, 1]]), im = _ivIceMat(), em = _ivEdgeMat();
+        im.opacity = 0.95; em.opacity = 0.75;
+        var inner = new THREE.Group(), c = _ivCrystal(inner, K, im, em, new THREE.Vector3(0, 0, -len * 0.5), rad, len, new THREE.Vector3(0, 0, 1), 0);
+        c.set(1);
+        var gl = _pzSpr(_IV.glow, ts * 0.36, inner); gl.material.opacity = 0.5;
+        return inner;
+    }
+    _PZ_SIGS.ivIceSpearFly = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = p.flyMs > 0 ? p.flyMs : 420, ts = _cfg().tileSize || 128;
+        _nvLand(id, tx, ty, ms);
+        var lance = _ivLanceObj(ts, ts * 0.9, ts * 0.075);
+        _pzFly(fx, fy, tx, ty, lance, { ms: ms, arc: 0.12, hideOnLand: true, trail: { sprite: 'frost-crystal', tint: _IV.glint, every: 22, size: 9 },
+            spin: function (el, obj) { obj.rotation.z = el * 0.02; } });
+    };
+    _PZ_SIGS.ivIceSpearHit = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _pzFrom(tx, ty, p), tx, ty), base = new THREE.Vector3(0, 0, 0);
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * 1.6, new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var fr = _ivDecal(F.g, _ivFrostTex(), ts * 2.3, new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
+        var K = _ivCrystalGeo(), im = _ivIceMat(), em = _ivEdgeMat(), SH = _ivShards(F.g, ts, im);
+        var grip = _ivRing(F.g, F, base, K, im, em, { n: 6, r: ts * 0.2, h: ts * 0.24, w: ts * 0.05, lo: 0.6, tilt: 0.25, ph: 0.3 });
+        SH.burst(new THREE.Vector3(0, ts * 0.55, 0), 12, 0, { v: 0.8, up: 0.9, dx: -ln.ux * 1.2, dz: -ln.uz * 1.2, ms: 900 });
+        _ivGlints(F, 0, ts * 0.4, 0, 8, { r: 18, h: 30 });
+        _ivMist(F, 0, 2, 0, 3, { r: 18 });
+        var broke = false;
+        return _sigRunOwned(F.g, 1900, function (el) {
+            var fade = _sigClamp01((el - 1400) / 480);
+            sig.material.opacity = 0.7 * _pzEnv(el, 0, 80, 360, 950); sig.rotation.z = el * 0.0007;
+            fr.material.opacity = 0.85 * _sigEaseOutCubic(_sigClamp01(el / 300)) * (1 - fade); fr.scale.setScalar(0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(el / 360)));
+            im.opacity = 0.92; em.opacity = 0.55 * (1 - fade);
+            for (var i = 0; i < grip.length; i++) grip[i].set(el < 1150 ? _sigEaseOutBack(_sigClamp01((el - 60 - i * 25) / 180)) : 0);
+            if (!broke && el >= 1150) { broke = true; for (var j = 0; j < grip.length; j++) SH.burst(grip[j].g.position.clone().add(new THREE.Vector3(0, ts * 0.1, 0)), 2, el, { v: 0.35, up: 0.6, ms: 600 }); }
+            SH.tick(el);
+        });
+    };
+
+    /* ════ SHATTER (tier I, pays on Frozen) — a sliver of ice flicks to the victim; a shell of crystal plates snaps up
+       round it, cracks and BLOWS OUT into a storm of shards over a crazed-ice sigil ════ */
+    EFFECTS['ivShatter_bolt'] = _pzDef('ivShatterFly', { pzOwn: true });
+    EFFECTS['ivShatter_impact'] = _pzDef('ivShatterHit', { shake: 'normal', layers: [
+        { count: 14, sprite: 'ice-shard', ml: [320, 600], offsetXY: 12, vxRange: 260, vyRange: 260, vzRange: [60, 240], gravity: 420, drag: 0.7, size0: [8, 14], size1: 2 },
+        { count: 6, sprite: 'frost-crystal', ml: [400, 700], offsetXY: 16, vzRange: [20, 80], drag: 0.8, size0: [6, 10], size1: 2 },
+    ] });
+    _PZ_SIGS.ivShatterFly = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(200, Math.min(p.flyMs > 0 ? p.flyMs : 320, 360)), ts = _cfg().tileSize || 128;
+        _nvLand(id, tx, ty, ms);
+        var sliver = _ivLanceObj(ts, ts * 0.32, ts * 0.06);
+        _pzFly(fx, fy, tx, ty, sliver, { ms: ms, arc: 0.2, hideOnLand: true, trail: { sprite: 'frost-crystal', tint: _IV.glint, every: 18, size: 7 },
+            spin: function (el, obj) { obj.rotation.z = el * 0.035; obj.rotation.x = el * 0.01; } });
+    };
+    _PZ_SIGS.ivShatterHit = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, base = new THREE.Vector3(0, 0, 0);
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * 1.6, new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var ck = _ivDecal(F.g, _ivCrackTex(), ts * 1.4, new THREE.Vector3(0, ts * 0.025, 0), _IV.rime, false);
+        var fr = _ivDecal(F.g, _ivFrostTex(), ts * 2.4, new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
+        var K = _ivCrystalGeo([[0.001, -0.04], [1, 0], [0.9, 0.78], [0.001, 1]], 4), im = _ivIceMat(), em = _ivEdgeMat(), SH = _ivShards(F.g, ts, im);
+        /* the shell: plates leaning IN over the body (the lens side stays at the ankles) */
+        var shell = [], cd = _nbCamDir(F);
+        for (var i = 0; i < 8; i++) {
+            var a = i / 8 * Math.PI * 2 + 0.2, ox = Math.cos(a), oz = Math.sin(a), front = Math.max(0, ox * cd.x + oz * cd.z);
+            var c = _ivCrystal(F.g, K, im, em, new THREE.Vector3(ox * ts * 0.3, -ts * 0.02, oz * ts * 0.3), ts * 0.12, ts * (0.8 - 0.62 * front), _ivLean(-ox, -oz, 0.16), a);
+            shell.push(c);
+        }
+        var BLOW = 210, blown = false;
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var fade = _sigClamp01((el - 1300) / 480);
+            sig.material.opacity = 0.8 * _pzEnv(el, 0, 70, 420, 1000); sig.rotation.z = -el * 0.0008;
+            ck.material.opacity = 0.9 * _sigClamp01((el - BLOW + 40) / 60) * (1 - fade);
+            fr.material.opacity = 0.8 * _sigEaseOutCubic(_sigClamp01(el / 260)) * (1 - fade); fr.scale.setScalar(0.4 + 0.6 * _sigEaseOutCubic(_sigClamp01(el / 300)));
+            im.opacity = 0.9; em.opacity = 0.7 * (1 - fade);
+            for (var j = 0; j < shell.length; j++) shell[j].set(el < BLOW ? _sigEaseOutCubic(_sigClamp01(el / 110)) : 0);
+            if (!blown && el >= BLOW) {
+                blown = true;
+                for (var k = 0; k < shell.length; k++) { var S = shell[k]; SH.burst(S.g.position.clone().add(new THREE.Vector3(0, S.h * 0.5, 0)), 4, el, { v: 1.1, up: 1.1, dx: Math.sign(S.g.position.x) * 0.4, dz: Math.sign(S.g.position.z) * 0.4, s: 1.3, ms: 1000 }); }
+                _sigShockRing3D(tx, ty, { color: _IV.glow, r0: ts * 0.15, r1: ts * 1.2, ms: 320, height: ts * 0.4, torus: false, opacity: 0.7 });
+                _ivGlints(F, 0, ts * 0.3, 0, 12, { r: 26, h: 40, v: 80 });
+                _ivMist(F, 0, 4, 0, 4, { r: 20, v: 70 });
+            }
+            SH.tick(el);
+        });
+    };
+
+    /* ════ FLASH FREEZE (tier II, Frozen) — the line freezes tile by tile from the caster: frost floods each tile and a
+       thicket of crystals bursts up on it, holds, and shatters ════ */
+    _PZ_SIGS.ivFlashFreeze = function (p) {
+        var tiles = p.tiles || (p.tx != null ? [{ x: p.tx, y: p.ty }] : null); if (!tiles || !tiles.length) return;
+        var st = p.staggerMs != null ? p.staggerMs : 80;
+        _ivFreezeTiles(tiles, { stagger: st, h: 0.62, n: 5, hold: 1250, frost: 1.35 });
+    };
+    /* the shared tile freezer (Flash Freeze, Permafrost): one frame on the first tile, every tile an offset */
+    function _ivFreezeTiles(tiles, o) {
+        var t0 = tiles[0], F = _nrvFrame(t0.x, t0.y), ts = F.ts, K = _ivCrystalGeo(), im = _ivIceMat(), em = _ivEdgeMat(), SH = _ivShards(F.g, ts, im);
+        var fz = _ivFrostTex(), cells = [], cx = 0, cy = 0, i;
+        for (i = 0; i < tiles.length; i++) { cx += tiles[i].x; cy += tiles[i].y; }
+        cx /= tiles.length; cy /= tiles.length;
+        for (i = 0; i < tiles.length; i++) {
+            var T = tiles[i]; if (!_pzSeen(T.x, T.y)) continue;
+            var at = _nvOff(F, T.x, T.y), d = i * (o.stagger || 0) + (o.radial ? Math.hypot(T.x - cx, T.y - cy) * 110 : 0);
+            var fr = _ivDecal(F.g, fz, ts * (o.frost || 1.3), at.clone().add(new THREE.Vector3(0, ts * 0.042, 0)), _IV.rime, false); fr.rotation.z = i * 1.3;
+            var ring = _ivRing(F.g, F, at, K, im, em, { n: o.n || 5, r: ts * 0.3, h: ts * (o.h || 0.6), w: ts * 0.075, lo: 0.4, ph: i * 0.9 });
+            cells.push({ at: at, d: d, fr: fr, ring: ring, broke: false });
+            _fxDelay((function (A) { return function () { if (!_suppressed()) _ivMist(F, A.x, A.y + 2, A.z, 2, { r: 18 }); }; })(at), d + 80);
+        }
+        if (!cells.length) return null;
+        var sig = null;
+        if (o.sigil) sig = _ivDecal(F.g, _ivSigilTex(), ts * o.sigil, _nvOff(F, Math.round(cx), Math.round(cy)).add(new THREE.Vector3((cx - Math.round(cx)) * ts, ts * 0.03, (cy - Math.round(cy)) * ts)), _IV.sigil, true);
+        var hold = o.hold || 1200, END = hold + 1100 + (cells[cells.length - 1].d || 0);
+        return _sigRunOwned(F.g, END, function (el) {
+            im.opacity = 0.92; em.opacity = 0.55 * (1 - _sigClamp01((el - END + 500) / 480));
+            if (sig) { sig.material.opacity = 0.7 * _pzEnv(el, 0, 160, hold * 0.8, hold + 500); sig.rotation.z = el * 0.0005; }
+            for (var c = 0; c < cells.length; c++) {
+                var C = cells[c], e = el - C.d, br = hold + c * 30;
+                C.fr.material.opacity = e < 0 ? 0 : 0.85 * _sigEaseOutCubic(_sigClamp01(e / 260)) * (1 - _sigClamp01((el - END + 600) / 560));
+                C.fr.scale.setScalar(0.2 + 0.8 * _sigEaseOutCubic(_sigClamp01(e / 320)));
+                for (var r = 0; r < C.ring.length; r++) C.ring[r].set(e < 0 || e >= br ? 0 : _sigEaseOutBack(_sigClamp01((e - r * 20) / 170)));
+                if (!C.broke && e >= br) {
+                    C.broke = true;
+                    for (var q = 0; q < C.ring.length; q++) SH.burst(C.ring[q].g.position.clone().add(new THREE.Vector3(0, C.ring[q].h * 0.45, 0)), 3, el, { v: 0.6, up: 0.8, ms: 800, floor: C.at.y });
+                    _ivGlints(F, C.at.x, C.at.y + ts * 0.15, C.at.z, 4, { r: 20, h: 26 });
+                }
+            }
+            SH.tick(el);
+        });
+    }
+
+    /* ════ PERMAFROST (tier III, Frozen 2) — the frost floods out from the middle over the whole square, the big sigil
+       turns under it, tall rime spikes stand on every tile and shatter late ════ */
+    _PZ_SIGS.ivPermafrost = function (p) {
+        var tiles = p.tiles || (p.tx != null ? [{ x: p.tx, y: p.ty }] : null); if (!tiles || !tiles.length) return;
+        _ivFreezeTiles(tiles, { stagger: 0, radial: true, h: 0.85, n: 4, hold: 1600, frost: 1.6, sigil: 3.4 });
+    };
+
+    /* ════ SUMMON BLIZZARD (tier II, weather) — the call: the sigil and the rime open where the storm is set down and
+       a spiral of snow climbs out of it (the storm column itself stays the blizzard vortex) ════ */
+    _PZ_SIGS.ivBlizzardCall = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (p.aoeRadius != null ? p.aoeRadius : 1);
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * (R * 2 + 1.2), new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var fr = _ivDecal(F.g, _ivFrostTex(), ts * (R * 2 + 1.4), new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
+        var last = 0;
+        return _sigRunOwned(F.g, 2200, function (el) {
+            sig.material.opacity = 0.7 * _pzEnv(el, 0, 220, 1200, 2000); sig.rotation.z = el * 0.0009;
+            fr.material.opacity = 0.8 * _pzEnv(el, 0, 400, 1500, 2150); fr.scale.setScalar(0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(el / 500)));
+            if (el < 1300 && el - last > 60) {
+                last = el; var a = el * 0.012, r = ts * (0.3 + 0.9 * R * ((el % 600) / 600));
+                _pzP(F, Math.cos(a) * r, 4, Math.sin(a) * r, { sprite: 'snowflake', ml: rn(700, 1000), size0: rn(6, 10), size1: 4, vz: rn(90, 160), vx: -Math.sin(a) * 60, vy: Math.cos(a) * 60, drag: 0.4, opacity0: 0.95 });
+            }
+        });
+    };
+
+    /* ════ DIAMOND DUST (tier III, Slow, leaves ice) — the air over the diamond fills with glittering ice: little
+       diamonds hang and turn over every tile, then fall and burst into shards on the frosted ground ════ */
+    _PZ_SIGS.ivDiamondDust = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _ivTilesOf(id, p, def), F = _nrvFrame(tx, ty), ts = F.ts;
+        var K = _ivCrystalGeo([[0.001, 0], [1, 0.5], [0.001, 1]], 4), im = _ivIceMat(), em = _ivEdgeMat(), SH = _ivShards(F.g, ts, im), fz = _ivFrostTex();
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * (A.r * 2 + 1.4), new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true); sig.rotation.z = Math.PI / 4;
+        var gems = [], frs = [];
+        for (var i = 0; i < A.offs.length; i++) {
+            var o = A.offs[i]; if (!_pzSeen(tx + o.dx, ty + o.dy)) continue;
+            var at = _nvOff(F, tx + o.dx, ty + o.dy), dl = Math.abs(o.dx) + Math.abs(o.dy);
+            var fr = _ivDecal(F.g, fz, ts * 1.25, at.clone().add(new THREE.Vector3(0, ts * 0.042, 0)), _IV.rime, false); fr.rotation.z = i * 0.7;
+            frs.push({ m: fr, d: 300 + dl * 70 });
+            for (var k = 0; k < 2; k++) {
+                var gx = at.x + rn(-0.3, 0.3) * ts, gz = at.z + rn(-0.3, 0.3) * ts, hy = at.y + ts * rn(1.25, 1.75);
+                var c = _ivCrystal(F.g, K, im, em, new THREE.Vector3(gx, hy, gz), ts * 0.06, ts * 0.17, null, rn(0, 6));
+                gems.push({ c: c, y0: hy, floor: at.y, fall: 260 + dl * 70 + k * 90 + rn(0, 80), sp: rn(0.004, 0.009), hit: false });
+            }
+        }
+        var lastG = 0;
+        return _sigRunOwned(F.g, 2000, function (el) {
+            sig.material.opacity = 0.75 * _pzEnv(el, 0, 160, 1000, 1700); sig.rotation.z = Math.PI / 4 + el * 0.0005;
+            im.opacity = 0.95; em.opacity = 0.7;
+            for (var g = 0; g < gems.length; g++) {
+                var G = gems[g];
+                if (G.hit) { G.c.set(0); continue; }
+                G.c.set(_sigEaseOutBack(_sigClamp01(el / 160))); G.c.g.rotation.y = el * G.sp;
+                var t = Math.max(0, el - G.fall) / 1000, y = G.y0 - 0.5 * ts * 9 * t * t;
+                if (y <= G.floor + ts * 0.02) {
+                    G.hit = true; G.c.set(0);
+                    SH.burst(new THREE.Vector3(G.c.g.position.x, G.floor + ts * 0.04, G.c.g.position.z), 4, el, { v: 0.45, up: 0.7, ms: 700, floor: G.floor });
+                } else G.c.g.position.y = y;
+            }
+            for (var f = 0; f < frs.length; f++) { var e = el - frs[f].d; frs[f].m.material.opacity = e < 0 ? 0 : 0.8 * _sigEaseOutCubic(_sigClamp01(e / 240)) * (1 - _sigClamp01((el - 1450) / 500)); frs[f].m.scale.setScalar(0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(e / 300))); }
+            if (el < 1200 && el - lastG > 50 && _canSpawn()) {   /* the dust: glints drifting down over the whole diamond */
+                lastG = el; var oo = A.offs[(Math.random() * A.offs.length) | 0], aa = _nvOff(F, tx + oo.dx, ty + oo.dy);
+                _ivGlints(F, aa.x, aa.y + ts * 1.1, aa.z, 2, { r: ts * 0.4, h: ts * 0.5, vz0: -60, vz1: -20, v: 15, sprite: 'divine-sparkle' });
+            }
+            SH.tick(el);
+        });
+    };
+
+    /* ════ HAILSTORM (new tier III, pays on Slow) — hailstones (faceted ice lumps) slam down at a slant all over the
+       square and burst into shards and frost ════ */
+    EFFECTS['ivHail_tile'] = { layers: [
+        { count: 3, anchor: 'floor', sprite: 'frost-mist', ml: [500, 800], offsetXY: 22, z: [2, 10], size0: [14, 20], size1: [34, 48], opacity0: 0.45, delayMs: 260 },
+        { count: 4, anchor: 'floor', sprite: 'ice-shard', ml: [300, 520], offsetXY: 18, z: [4, 12], vxRange: 160, vyRange: 160, vzRange: [80, 200], gravity: 480, size0: [5, 9], size1: 2, delayMs: 240 },
+    ] };
+    EFFECTS['ivHailstorm_aoe'] = _pzDef('ivHailstorm', { aoeRadius: 1, impactTileEffect: 'ivHail_tile', shake: 'normal' });
+    _PZ_SIGS.ivHailstorm = function (p, id, intent, def) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var A = _ivTilesOf(id, p, def), F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
+        var K = _ivCrystalGeo([[0.001, 0], [0.8, 0.12], [1, 0.5], [0.8, 0.88], [0.001, 1]], 7), im = _ivIceMat(), em = _ivEdgeMat(), SH = _ivShards(F.g, ts, im), fz = _ivFrostTex();
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * (A.r * 2 + 1.5), new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var stones = [], frs = [], sx = -cd.z, sz = cd.x;   /* the slant comes in across the lens line */
+        for (var i = 0; i < A.offs.length; i++) {
+            var o = A.offs[i]; if (!_pzSeen(tx + o.dx, ty + o.dy)) continue;
+            var at = _nvOff(F, tx + o.dx, ty + o.dy);
+            var fr = _ivDecal(F.g, fz, ts * 1.3, at.clone().add(new THREE.Vector3(0, ts * 0.042, 0)), _IV.rime, false); fr.rotation.z = i * 1.1; frs.push({ m: fr, d: 0 });
+            for (var k = 0; k < 2; k++) {
+                var land = at.clone().add(new THREE.Vector3(rn(-0.32, 0.32) * ts, 0, rn(-0.32, 0.32) * ts)), sz0 = ts * rn(0.07, 0.11);
+                var c = _ivCrystal(F.g, K, im, em, land.clone(), sz0, sz0 * 1.6, null, rn(0, 6)); c.g.children[0].position.y = -sz0 * 0.8; if (c.g.children[1]) c.g.children[1].position.y = -sz0 * 0.8;
+                var t0 = rn(0, 520) + k * 140;
+                stones.push({ c: c, land: land, t0: t0, ms: 300, h: ts * rn(3.2, 4.2), off: ts * rn(1.2, 1.8), hit: false, fi: frs.length - 1 });
+                if (frs[frs.length - 1].d === 0 || t0 + 300 < frs[frs.length - 1].d) frs[frs.length - 1].d = t0 + 300;
+            }
+        }
+        if (!stones.length) return;
+        return _sigRunOwned(F.g, 2100, function (el) {
+            sig.material.opacity = 0.7 * _pzEnv(el, 0, 200, 1100, 1800); sig.rotation.z = -el * 0.0007;
+            im.opacity = 0.95; em.opacity = 0.65;
+            for (var s = 0; s < stones.length; s++) {
+                var S = stones[s], t = (el - S.t0) / S.ms;
+                if (t < 0 || S.hit) { S.c.set(0); continue; }
+                if (t >= 1) {
+                    S.hit = true; S.c.set(0);
+                    SH.burst(S.land.clone().add(new THREE.Vector3(0, ts * 0.05, 0)), 5, el, { v: 0.55, up: 0.75, ms: 750, floor: S.land.y });
+                    if (_canSpawn()) _ivMist(F, S.land.x, S.land.y + 2, S.land.z, 1, { r: 8, s0: 12, s1: 30 });
+                    continue;
+                }
+                var k2 = t * t;
+                S.c.set(1); S.c.g.position.set(S.land.x + sx * S.off * (1 - k2), S.land.y + S.h * (1 - k2), S.land.z + sz * S.off * (1 - k2));
+                S.c.g.rotation.set(el * 0.01, el * 0.007, 0);
+            }
+            for (var f = 0; f < frs.length; f++) { var e = el - frs[f].d; frs[f].m.material.opacity = e < 0 ? 0 : 0.8 * _sigEaseOutCubic(_sigClamp01(e / 200)) * (1 - _sigClamp01((el - 1600) / 480)); frs[f].m.scale.setScalar(0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01(e / 260))); }
+            SH.tick(el);
+        });
+    };
+
+    /* ════ GLACIER BREAK (new tier IV, pays on Frozen) — a rime crack races over the ground from the caster with
+       crystals popping along it; under the victim the sigil opens, six great crystal spikes tear up round it (tall
+       behind, low on the lens side), lean in, and the whole glacier SHATTERS with the hit ════ */
+    EFFECTS['ivGlacier_bolt'] = _pzDef('ivGlacierRace', { pzOwn: true });
+    EFFECTS['ivGlacier_impact'] = _pzDef('ivGlacierHit', { shake: 'hard', layers: [
+        { count: 18, sprite: 'ice-shard', ml: [400, 750], offsetXY: 18, z: [20, 70], vxRange: 300, vyRange: 300, vzRange: [120, 320], gravity: 460, drag: 0.6, size0: [9, 15], size1: 3 },
+        { count: 6, anchor: 'floor', sprite: 'frost-mist', ml: [800, 1200], offsetXY: 26, z: [2, 12], size0: [20, 30], size1: [56, 80], opacity0: 0.5 },
+    ] });
+    var _ivGlacierAt = {};
+    _PZ_SIGS.ivGlacierRace = function (p, id) {
+        var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
+        var ms = Math.max(320, p.flyMs > 0 ? p.flyMs : 440);
+        _ivGlacierAt[tx + ',' + ty] = performance.now();
+        _nvLand(id, tx, ty, ms + 40);
+        _ivGlacierSpikes(tx, ty, ms);
+        /* the racing crack: crystals popping up along the line, over tiles the viewer sees */
+        var F = _nrvFrame(tx, ty), ts = F.ts, K = _ivCrystalGeo(), im = _ivIceMat(), em = _ivEdgeMat(), fz = _ivFrostTex(), pops = [];
+        var L = Math.max(1, Math.hypot(tx - fx, ty - fy)), N = Math.max(3, Math.round(L * 2.4)), oC = _nvOff(F, fx, fy);
+        for (var i = 1; i < N; i++) {
+            var t = i / N, gx = Math.round(fx + (tx - fx) * t), gy = Math.round(fy + (ty - fy) * t);
+            if (!_pzSeen(gx, gy)) continue;
+            var o0 = _nvOff(F, gx, gy), at = new THREE.Vector3(oC.x * (1 - t), o0.y, oC.z * (1 - t)), side = (i % 2 ? 1 : -1) * ts * 0.12;
+            var ux = -oC.z / Math.max(1, Math.hypot(oC.x, oC.z)), uz = oC.x / Math.max(1, Math.hypot(oC.x, oC.z));
+            at.x += ux * side; at.z += uz * side;
+            var fr = _ivDecal(F.g, fz, ts * 0.7, at.clone().add(new THREE.Vector3(0, ts * 0.02, 0)), _IV.rime, false);
+            pops.push({ c: _ivCrystal(F.g, K, im, em, at, ts * 0.06, ts * (0.22 + 0.2 * t), _ivLean(ux * (i % 2 ? 1 : -1), uz * (i % 2 ? 1 : -1), 0.35), i), fr: fr, d: ms * (t - 0.1) });
+        }
+        if (!pops.length) return;
+        return _sigRunOwned(F.g, ms + 900, function (el) {
+            im.opacity = 0.92; em.opacity = 0.6;
+            for (var k = 0; k < pops.length; k++) {
+                var P = pops[k], e = el - P.d;
+                P.c.set(e < 0 ? 0 : _sigEaseOutBack(_sigClamp01(e / 120)) * (1 - _sigClamp01((e - 380) / 220)));
+                P.fr.material.opacity = e < 0 ? 0 : 0.75 * _sigClamp01(e / 120) * (1 - _sigClamp01((el - ms - 400) / 480));
+            }
+        });
+    };
+    function _ivGlacierSpikes(tx, ty, crashMs) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, base = new THREE.Vector3(0, 0, 0), K = _ivCrystalGeo(), im = _ivIceMat(), em = _ivEdgeMat(), SH = _ivShards(F.g, ts, im);
+        var sig = _ivDecal(F.g, _ivSigilTex(), ts * 2.8, new THREE.Vector3(0, ts * 0.05, 0), _IV.sigil, true);
+        var fr = _ivDecal(F.g, _ivFrostTex(), ts * 3.0, new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
+        var ck = _ivDecal(F.g, _ivCrackTex(), ts * 1.8, new THREE.Vector3(0, ts * 0.026, 0), _IV.rime, false);
+        var spikes = _ivRing(F.g, F, base, K, im, em, { n: 6, r: ts * 0.42, h: ts * 1.9, w: ts * 0.16, lo: 0.25, tilt: 0.12, ph: 0.25 });
+        var small = _ivRing(F.g, F, base, K, im, em, { n: 9, r: ts * 0.7, h: ts * 0.5, w: ts * 0.07, lo: 0.5, tilt: 0.5, ph: 0.9 });
+        var RISE = Math.max(0, crashMs - 260), broke = false, BREAK = crashMs + 420, END = crashMs + 1900;
+        return _sigRunOwned(F.g, END, function (el) {
+            var fade = _sigClamp01((el - END + 600) / 560), up = _sigEaseOutBack(_sigClamp01((el - RISE) / 220));
+            sig.material.opacity = 0.8 * _pzEnv(el, Math.max(0, RISE - 200), RISE, crashMs + 700, crashMs + 1300); sig.rotation.z = el * 0.0008;
+            fr.material.opacity = 0.85 * _sigEaseOutCubic(_sigClamp01((el - RISE + 200) / 400)) * (1 - fade); fr.scale.setScalar(0.3 + 0.7 * _sigEaseOutCubic(_sigClamp01((el - RISE + 200) / 450)));
+            ck.material.opacity = 0.9 * _sigClamp01((el - crashMs) / 80) * (1 - fade);
+            im.opacity = 0.93; em.opacity = 0.7 * (1 - fade);
+            /* the spikes lean in over the body at the crash */
+            var lean = _sigEaseInCubic(_sigClamp01((el - RISE - 120) / Math.max(80, crashMs - RISE - 80)));
+            for (var i = 0; i < spikes.length; i++) {
+                var S = spikes[i]; S.set(el < BREAK ? up : 0);
+                S.g.quaternion.setFromUnitVectors(_ivUp, _ivLean(S.ox, S.oz, 0.12 - (0.12 + 0.3 * (1 - S.front)) * lean)); S.g.rotateY(i * 2.3);
+            }
+            for (var j = 0; j < small.length; j++) small[j].set(el < BREAK ? _sigEaseOutBack(_sigClamp01((el - RISE - 60 - j * 15) / 180)) : 0);
+            if (!broke && el >= BREAK) {
+                broke = true;
+                for (var a = 0; a < spikes.length; a++) { var P = spikes[a]; for (var q = 0; q < 3; q++) SH.burst(P.g.position.clone().add(new THREE.Vector3(0, P.h * (0.2 + 0.3 * q), 0)), 3, el, { v: 1.0, up: 1.0, dx: P.ox * 0.5, dz: P.oz * 0.5, s: 1.6, ms: 1100 }); }
+                for (var b = 0; b < small.length; b++) SH.burst(small[b].g.position.clone().add(new THREE.Vector3(0, ts * 0.15, 0)), 2, el, { v: 0.5, up: 0.7, ms: 800 });
+                _sigShockRing3D(tx, ty, { color: _IV.glow, r0: ts * 0.2, r1: ts * 1.8, ms: 420, height: ts * 0.3, torus: false, opacity: 0.7 });
+                _ivGlints(F, 0, ts * 0.5, 0, 16, { r: 40, h: 60, v: 90 });
+                _ivMist(F, 0, 4, 0, 5, { r: 30, v: 90 });
+            }
+            SH.tick(el);
+        });
+    }
+    _PZ_SIGS.ivGlacierHit = function (p) {
+        var tx = p.tx, ty = p.ty; if (tx == null) return;
+        var t = _ivGlacierAt[tx + ',' + ty];
+        if (t && performance.now() - t < 2500) return;   /* the race already raised the spikes */
+        _ivGlacierSpikes(tx, ty, 300);
+    };
+
+    /* ── the wiring ── */
+    EFFECTS['ivFlashFreeze_wall'] = Object.assign({}, EFFECTS['sharedFlashFreeze_tile'] || { layers: [] }, { pzSig: 'ivFlashFreeze' });
+    EFFECTS['ivPermafrost_wall'] = Object.assign({}, EFFECTS['sharedFlashFreeze_tile'] || { layers: [] }, { pzSig: 'ivPermafrost' });
+    EFFECTS['ivSummonBlizzard_aoe'] = Object.assign({}, EFFECTS['sharedSummonBlizzard_aoe'] || { layers: [] }, { pzSig: 'ivBlizzardCall' });
+    EFFECTS['ivDiamondDust_aoe'] = Object.assign({}, EFFECTS['raceDiamondDust_aoe'] || { layers: [] }, { pzSig: 'ivDiamondDust', geom3D: false });
+    SPELL_MAP['raceIceSpear']         = { bolt: 'ivIceSpear_bolt', impact: 'ivIceSpear_impact' };
+    SPELL_MAP['raceShatter']          = { bolt: 'ivShatter_bolt', impact: 'ivShatter_impact' };
+    SPELL_MAP['sharedFlashFreeze']    = Object.assign({}, SPELL_MAP['sharedFlashFreeze'], { wall: 'ivFlashFreeze_wall' });
+    SPELL_MAP['racePermafrost']       = Object.assign({}, SPELL_MAP['racePermafrost'], { wall: 'ivPermafrost_wall' });
+    SPELL_MAP['sharedSummonBlizzard'] = Object.assign({}, SPELL_MAP['sharedSummonBlizzard'], { aoe: 'ivSummonBlizzard_aoe' });
+    SPELL_MAP['raceDiamondDust']      = Object.assign({}, SPELL_MAP['raceDiamondDust'], { aoe: 'ivDiamondDust_aoe' });
+    SPELL_MAP['raceHailstorm']        = { aoe: 'ivHailstorm_aoe' };
+    SPELL_MAP['raceGlacierBreak']     = { bolt: 'ivGlacier_bolt', impact: 'ivGlacier_impact' };
+    delete _ICE_PROJECTILE_IDS.raceIceSpear;   /* the lance is the bolt now (the old octahedron flight + the sky spear go) */
+    delete _spell3DGeometry.raceIceSpear;
+    delete _spell3DGeometry.raceDiamondDust;   /* the dome of falling octahedra gives way to the diamonds */
+    ['raceIceSpear', 'raceShatter', 'sharedFlashFreeze', 'racePermafrost', 'sharedSummonBlizzard', 'raceDiamondDust', 'raceHailstorm', 'raceGlacierBreak']
+        .forEach(function (k) { _IV_OWN[k] = true; });
+    /* the ice gather + stamp also need the cast to STAGE as ice: element-ice rows whose kind maps to a machine family
+       (terrainCreate → rig, …) stage as ice; dashes, leaps and other muscle kinds keep their kinetic beat */
+    try {
+        if (typeof SPELL_BY_ID !== 'undefined') for (var _ivId in SPELL_BY_ID) {
+            var _ivD = SPELL_BY_ID[_ivId];
+            if (!_ivD || _ivD.element !== 'ice' || SPELL_STAGE_MAP[_ivId] || _ivD.damageType === 'physical') continue;
+            var _ivK = _STAGE_BY_KIND[_ivD.kind];
+            if (_ivK === 'rig' || _ivK === 'mind') SPELL_STAGE_MAP[_ivId] = { archetype: 'ice' };
+        }
+    } catch (e) {}
+    /* the staging hooks (_stageWindup / _stageBurst call these) */
+    function _ivIsIce(spellId) { var d = _spellDefFor(spellId); return !!(d && d.element === 'ice'); }
+    function _ivStageBurst(spellId, tx, ty, info) {
+        if (_IV_OWN[spellId] || !_ivIsIce(spellId)) return;
+        try { _ivStamp(tx, ty, _TIER_ORDER[info.weight] || 0); } catch (e) {}
+    }
+    /* ═════════ END THE ICE PASS ═════════ */
+    /* ═══════════════════════════════════════════════════
        THE WATER PASS (2026-10-25, mondo: "the nature spells look great now,
        can you do a similar thread on each element, giving them a consistent
        look or making them easily identifiable and making sure there's a nice
