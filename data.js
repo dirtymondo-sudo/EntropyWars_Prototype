@@ -4082,7 +4082,7 @@ const RACE_BASE_STATS = {
     'antperson':          { hp: 1702, mp: 100, atk:  145, def:  135, mdef:  101, int:  59, vision: 3, crt: 16, spd: 111 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3)
     'werewolf':           { hp: 1166, mp:  80, atk:  31, def:  121, mdef:  22, int:  13, vision: 2, crt: 16, spd: 66 },
     'angel':              { hp: 507, mp: 220, atk:   42, def:  115, mdef:  181, int:  145, vision: 4, crt: 26, spd: 45 },
-    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, vision: 4, crt: 26, spd: 177 },
+    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, vision: 4, crt: 26, spd: 160 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 177→160 (WR 69/68/79% over stats20/21/22, two spell trims did not move it; move 5→4, 696 tower dmg a game, the most)
     'nordic':             { hp: 1337, mp: 200, atk:  49, def:  76, mdef:  163, int:  179, vision: 3, crt: 18, spd: 97 },
     'fairy':              { hp: 654, mp: 220, atk:   3, def:  38, mdef:  151, int:  124, vision: 2, crt: 26, spd: 149 },
     'scarecrow':          { hp: 1568, mp: 150, atk:  72, def:  166, mdef:  106, int:  63, vision: 2, crt: 12, spd: 71 },
@@ -4094,7 +4094,7 @@ const RACE_BASE_STATS = {
     'android':            { hp: 678, mp: 140, atk:  104, def:  69, mdef:  118, int:  83, vision: 2, crt: 26, spd: 135 },
     'shadow entity':      { hp: 460, mp: 130, atk:  143, def:  30, mdef:  138, int:  120, vision: 4, crt: 26, spd: 168 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 361→460 (WR 41/35%, survival 40%, the lowest)
     'reptilian':          { hp: 580, mp: 130, atk:  166, def:  92, mdef:  49, int:  73, vision: 3, crt: 26, spd: 186 },
-    'catgirl':            { hp: 763, mp: 110, atk:  125, def:  87, mdef:  56, int:  49, vision: 3, crt: 26, spd: 126 },
+    'catgirl':            { hp: 840, mp: 110, atk:  125, def:  87, mdef:  56, int:  49, vision: 3, crt: 26, spd: 126 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 763→840 (WR 56/39/29%, survival 45%)
     'mantid':             { hp: 434, mp: 190, atk:  164, def:  21, mdef:  92, int:  192, vision: 3, crt: 26, spd: 146 },
     'skinwalker':         { hp: 398, mp: 160, atk:  151, def:  29, mdef:  112, int:  176, vision: 3, crt: 26, spd: 125 },
     'seraphim':           { hp: 300, mp: 260, atk:   24, def:  13, mdef:  194, int:  182, vision: 4, crt: 21, spd: 49 },
@@ -4102,7 +4102,7 @@ const RACE_BASE_STATS = {
     'anubis':             { hp: 337, mp: 245, atk:   98, def:  44, mdef:  191, int:  171, vision: 3, crt: 25, spd: 96 },
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
     'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
-    'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 19 },
+    'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 19→50 (WR 36/44/28%; move 1→2, the Nun/Wizard fix)
     'machine elves':      { hp: 760, mp: 220, atk:  41, def:  67, mdef:  175, int:  190, vision: 2, crt: 26, spd: 92 },   // race editor 2026-10-17: DEF 67
     'glitch':             { hp: 727, mp: 170, atk:  70, def:  49, mdef:  149, int:  167, vision: 3, crt: 19, spd: 117 },
     'homosapien':         { hp: 1410, mp: 140, atk:  83, def:  158, mdef:  70, int:  54, vision: 2, crt: 26, spd: 119 },
@@ -4138,7 +4138,7 @@ const RACE_BASE_STATS = {
     'clown': { hp: 812, mp: 130, atk: 93, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },
     'bunny girl': { hp: 900, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900
     'sharkman': { hp: 1507, mp: 90, atk: 174, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 188 },
-    'crystal guardian': { hp: 1727, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
+    'crystal guardian': { hp: 1600, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage); BALANCE PASS 2026-10-25 (stats22 lab): HP 1727→1600 (WR 60/59/73%, team-adjusted 66%)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
     'sidekick': { hp: 1190, mp: 130, atk: 133, def: 154, mdef: 76, int: 86, vision: 2, crt: 26, spd: 183 },
     'mushroom girl': { hp: 898, mp: 220, atk: 23, def: 95, mdef: 146, int: 127, vision: 2, crt: 22, spd: 33 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%)
@@ -4147,11 +4147,11 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'astronaut': { hp: 1093, mp: 150, atk: 15, def: 163, mdef: 100, int: 106, vision: 2, crt: 26, spd: 52 },
     'krampus': { hp: 1580, mp: 110, atk: 161, def: 132, mdef: 54, int: 88, vision: 2, crt: 18, spd: 112 },   // race editor 2026-10-17: MDEF 54
-    'rabbit': { hp: 593, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 151 },
+    'rabbit': { hp: 700, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 151 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 593→700 (WR 36/32/28%, survival 42%; the stats21 spell buffs did not help)
     'luchador': { hp: 1446, mp: 90, atk: 115, def: 155, mdef: 41, int: 26, vision: 2, crt: 18, spd: 122 },
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
-    'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },   // race editor 2026-10-17: DEF 62
+    'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 50 },   // race editor 2026-10-17: DEF 62; BALANCE PASS 2026-10-25 (stats22 lab): SPD 34→50 (WR 42/46/19%; move 1→2, the Nun/Wizard fix)
     // 2026-10-25 — on their class medians (the budget above): the chef a sturdy cook who feeds the line, the eagleman a quick hunter with the best eyes on the board, the flesheater a tall bruiser, the mime a slippery trickster.
     'chef': { hp: 1100, mp: 180, atk: 95, def: 110, mdef: 95, int: 105, vision: 3, crt: 24, spd: 90 },
     'eagleman': { hp: 760, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },
@@ -4161,18 +4161,18 @@ const RACE_BASE_STATS = {
     'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
     'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
     'undead': { hp: 1150, mp: 100, atk: 140, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 150 },
-    'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 50 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2)
+    'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
     'goatman':            { hp: 1520, mp:  90, atk:  159, def:  123, mdef:  51, int:  57, vision: 2, crt: 14, spd: 175 },   // race editor 2026-10-17: MDEF 51
-    'mermaid':            { hp: 483, mp: 225, atk:   50, def:  100, mdef:  188, int:  151, vision: 3, crt: 23, spd: 40 },
+    'mermaid':            { hp: 483, mp: 225, atk:   50, def:  100, mdef:  188, int:  151, vision: 3, crt: 23, spd: 50 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 40→50 (WR 38/40/33%; move 1→2, the Nun/Wizard fix)
     'demon princess':     { hp: 995, mp: 215, atk:   52, def:  55, mdef:  169, int:  169, vision: 3, crt: 24, spd: 99 },
     'dreameater':         { hp: 1007, mp: 225, atk:   68, def:  63, mdef:  189, int:  193, vision: 3, crt: 26, spd: 109 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
     'halfdemon':          { hp: 751, mp: 135, atk:  140, def:  67, mdef:  115, int:  76, vision: 3, crt: 26, spd: 189 },
     'vampire':            { hp: 385, mp: 155, atk:  138, def:  56, mdef:  89, int:  70, vision: 5, crt: 26, spd: 191 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%)
     'fallen angel':       { hp: 446, mp: 215, atk:   54, def:  27, mdef:  192, int: 198, vision: 4, crt: 14, spd: 100 },
-    'voidweaver':         { hp: 540, mp: 195, atk:  163, def:  12, mdef:  154, int:  112, vision: 3, crt: 26, spd: 85 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 459→540 (WR 40/35%)
+    'voidweaver':         { hp: 540, mp: 195, atk:  163, def:  12, mdef:  154, int:  112, vision: 3, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 459→540 (WR 40/35%); BALANCE PASS 2026-10-25 (stats22 lab): SPD 85→88 (WR 40/35/22%, the stats21 HP buff did not help; move 2→3)
     'cosmic wraith':      { hp: 1080, mp: 140, atk:  101, def:  41, mdef:  61, int:  78, vision: 6, crt: 26, spd: 76 },
     'cyborg':             { hp: 1263, mp: 100, atk:  106, def:  144, mdef:  55, int:  137, vision: 2, crt: 15, spd: 139 },
     'superhero':          { hp: 1032, mp:  90, atk:  190, def:  172, mdef:  10, int:  98, vision: 4, crt: 12, spd: 200 },
@@ -4185,9 +4185,9 @@ const RACE_BASE_STATS = {
     'politician':         { hp: 1276, mp: 165, atk:  11, def:  141, mdef:  144, int:  132, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
     'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
     'dinosaur':           { hp: 1715, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 192 },
-    'dragon':             { hp: 1239, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },   // race editor 2026-10-17: DEF 108
+    'dragon':             { hp: 1130, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most)
     'ghoul':              { hp: 1180, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%)
-    'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 82 },
+    'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3)
     'kaiju':              { hp: 1450, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%)
     'kraken':             { hp: 1212, mp: 205, atk:  184, def:  117, mdef:  155, int:  125, vision: 4, crt: 23, spd: 26 },
     'loch ness monster':  { hp: 1751, mp:  95, atk:  176, def:  197, mdef:  83, int:  75, vision: 4, crt: 10, spd: 86 },
@@ -4197,8 +4197,8 @@ const RACE_BASE_STATS = {
     'golem':              { hp: 1800, mp:  70, atk:  192, def: 200, mdef:  104, int:   3, vision: 3, crt: 11, spd: 17 },
     'honda civic':        { hp: 1151, mp:  90, atk:  179, def:  178, mdef:  16, int:  15, vision: 2, crt: 12, spd: 197 },
     'ice queen':          { hp: 629, mp: 245, atk:   13, def:  40, mdef:  178, int:  156, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP) // race editor 2026-10-17: DEF 40
-    'juggernaut':         { hp: 1776, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 172 },   // race editor 2026-10-17: MDEF 55, DEF 155
-    'ki fighter':         { hp: 1288, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },
+    'juggernaut':         { hp: 1640, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 172 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%)
+    'ki fighter':         { hp: 1190, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 1288→1190 (WR 63/63/72%, team-adjusted 67%)
     'king arthur':        { hp: 1495, mp:  80, atk:  120, def:  180, mdef:  66, int:  52, vision: 5, crt: 23, spd: 129 },
     'king kong':          { hp: 1739, mp:  75, atk: 198, def:  157, mdef:  27, int:  31, vision: 5, crt: 13, spd: 88 },
     'minotaur':           { hp: 1629, mp:  70, atk:  180, def:  126, mdef:  44, int:   8, vision: 2, crt: 13, spd: 180 },
@@ -6328,9 +6328,9 @@ const SPELL_LIBRARY = [
           damageType: 'physical', statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Two fingers. Lights out. Deals MEDIUM physical damage to an adjacent enemy and Stuns them for a round. Cooldown: 2 rounds.' },
         { id: 'raceFullBurst', upgradesBlock: ['upWiden'], name: 'Full Burst', tier: 4, families: ['mecha'], cost: 100, apCost: 2, cooldownRounds: 2,
-          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 120, damageType: 'physical', aoeRadius: 2,   // strong races check 2026-10-24: was 150 (1,302 dmg a cast, the most of any spell)
+          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 105, damageType: 'physical', aoeRadius: 2,   // strong races check 2026-10-24: was 150 (1,302 dmg a cast, the most of any spell); BALANCE PASS 2026-10-25 (stats22 lab): dmg 120→105 (1,023 a cast = 1.8× the Tier IV median; Mech)
           ignoresLineOfSight: true,
-          desc: 'Every hardpoint on the frame, at once. Deals HEAVY physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
+          desc: 'Every hardpoint on the frame, at once. Deals MEDIUM physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
         { id: 'raceDeepBreath', name: 'Deep Breath', tier: 1, families: ['meditation'], cost: 25, apCost: 1,
           spellType: 'divine', type: 'heal', kind: 'selfHeal', range: 0, healAmt: 100, cleanse: 1,
           desc: 'In through the nose. Restores a MEDIUM amount of HP to the caster and cleanses 1 debuff.' },
@@ -7621,7 +7621,7 @@ const RACE_ABILITIES = {
 
     'mech': [
         { id: 'raceMortarSalvo', tier: 1, families: ['mecha'], spellType: 'tech', name: 'Mortar Salvo',
-          type: 'damage', cost: 40, dmg: 70, range: 4,   // strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile)
+          type: 'damage', cost: 40, dmg: 56, range: 4,   // strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile); BALANCE PASS 2026-10-25 (stats22 lab): dmg 70→56 (603 a cast = 1.8× the Tier I median; Mech 70/64/69%, its stats21 HP cut did not move it)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           ignoresLineOfSight: true,
           desc: 'Deals WEAK physical damage to All Enemies in an AOE. Fires through cover.' },
@@ -7793,7 +7793,7 @@ const RACE_ABILITIES = {
         { id: 'raceNinefoldScratch', upgradesBlock: ['upExtraTarget', 'upBlast'], spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', tier: 4, families: ['feline'], cost: 40, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [30, 30, 30, 30, 30, 30, 30, 30, 30],   // BALANCE PASS 2026-10-25 (stats20 lab): 20→30 a hit (229/cast vs A Thousand Stings 412)
+          hitDamages: [40, 40, 40, 40, 40, 40, 40, 40, 40],   // BALANCE PASS 2026-10-25 (stats20 lab): 20→30 a hit (229/cast vs A Thousand Stings 412); BALANCE PASS 2026-10-25 (stats22 lab): 30→40 a hit (296 a cast, 0.51× the Tier IV median; Catgirl 29%)
           desc: 'Nine lives, nine scratches. Deals SEVERE physical damage to a Single Enemy across 9 hits.' },
         { id: 'raceNimbleDodge', tier: 2, families: ['athleticism'], spellType: 'human', element: 'wind', name: 'Nimble Dodge',
           type: 'utility', cost: 20, apCost: 1, range: 0, cooldownRounds: 2,
