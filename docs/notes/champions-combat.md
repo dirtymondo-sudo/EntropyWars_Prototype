@@ -2552,3 +2552,11 @@ Two Nature Magic rows (data.js, after Overgrowth in SPELL_LIBRARY), existing kin
   range 4, 170 magic, ×1.5 vs Root, applies nothing (finisher, no self-combo).
 - Who gets them: every race with Nature Magic in RACE_FAMILIES (bigfoot, fairy, mushroom girl, tree person, hippie, swamp
   monster, scarecrow, shaman) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE NATURE PASS".
+
+## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
+mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
+spells (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse, Kneel, Treeline Scream…) are aoe / barrage / aoePull
+kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund never paid, but `forecastPressOn` fell
+back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
+so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
+unchanged (spellDealsDamage still counts the kind).
