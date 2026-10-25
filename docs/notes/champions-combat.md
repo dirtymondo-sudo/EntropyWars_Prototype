@@ -2560,3 +2560,13 @@ kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund ne
 back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
 so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
 unchanged (spellDealsDamage still counts the kind).
+## THE WIND PASS (2026-10-25, mondo: "a similar thread on each element ... making sure there's a nice amount of spells for each")
+Wind Control had no tier I setup and no tier III finisher. Two rows (data.js, after Eye of the Storm in SPELL_LIBRARY),
+existing kinds and rules only:
+- **Squall** (`raceSquall`, tier I, 25 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 90 magic, Blind 1 (the
+  Thornlash shape). Sets up Tornado / Eye of the Storm.
+- **Tornado** (`raceTornado`, tier III, 75 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 110 magic, ×1.5 vs
+  Blind, applies nothing (the Conduction shape: finisher, no self-combo).
+- Who gets them: every race with Wind Control in RACE_FAMILIES (dragon, gargoyle, eagleman, superhero, valkraye) +
+  Adaptable borrowers. No exclusions added. Wind Control is now 9 spells + Windborne: I Wing Attack, Squall · II Gale,
+  Updraft, Crosswind · III Sky Tackle, Tornado · IV Eye of the Storm, Vortex Slam. Looks: spells-vfx.md "THE WIND PASS".
