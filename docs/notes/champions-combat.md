@@ -2553,6 +2553,17 @@ Two Nature Magic rows (data.js, after Overgrowth in SPELL_LIBRARY), existing kin
 - Who gets them: every race with Nature Magic in RACE_FAMILIES (bigfoot, fairy, mushroom girl, tree person, hippie, swamp
   monster, scarecrow, shaman) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE NATURE PASS".
 
+## THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element ... making sure there's a nice amount of spells for each")
+Water Abilities (11 races: atlantean, jellyfish, kraken, loch ness monster, mermaid, starfish, deep sea fish, sharkman,
+firefighter, swamp monster, siren) had T1 Whirlpool, T2 Water Pulse, T3 Call of the Deep / Tsunami / Temporal Tide /
+Tidal Slam, T4 Great Flood: no single-target Soak and no finisher vs Soaked (water's own status). Two rows (data.js,
+after Spout in SPELL_LIBRARY), existing kinds and rules only:
+- **Water Jet** (`raceWaterJet`, tier I, 25 MP, 1 AP, anomaly, water): single-target `damage`, range 3, 80 magic,
+  Soaked 2 (the Spout shape).
+- **Maelstrom** (`raceMaelstrom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, water): single-target `damage`, range 4, 170
+  magic, ×1.5 vs Soaked, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Who gets them: every race with Water Abilities in RACE_FAMILIES + Adaptable borrowers. No exclusions added. The stats
+  are thread calls copied from the nature pair. Looks: spells-vfx.md "THE WATER PASS".
 ## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
 mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
 spells (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse, Kneel, Treeline Scream…) are aoe / barrage / aoePull

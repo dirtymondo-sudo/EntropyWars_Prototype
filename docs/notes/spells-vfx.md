@@ -1815,6 +1815,41 @@ block "THE NATURE PASS" just before THE SHEET WARM, helpers `_nv*`, same hook as
   recipe + capture cine (+ purple creepers that latch on). Trunk Throw and Herbal Remedy keep their own looks.
 - Proof: Spell Lab ✦ CAST per spell, the capture rig freezes performance.now() at set delays after the intent.
   Stills: /mnt/project-files/nature-vfx/.
+## THE WATER PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable and making sure there's a nice amount of spells for each")
+Every water spell (data.js `element: 'water'`, 39 with the two new rows) now reads as water. Code: three-vfx-effects.js
+block "THE WATER PASS" after THE NATURE PASS, helpers `_wv*`, same hook as the P-Z / nature passes (`pzSig` / `pzOwn`).
+- THE WATER STAGING (the look every water spell shares): `_STAGE_ARCHETYPES.water` + `_STAGE_GRADES.water` (blue,
+  droplet motes, `noOrb`, `water: true`). `_stageArchetype` gives element 'water' the water archetype over the movement
+  kinds (kinetic / grapple / rig / skyfall / mind: pushes, pulls, terrain spells); heals, buffs and hexes keep their own
+  grammar. Before it, water spells staged as their kind or spellType (pink anomaly orbs + trip on heavies, gold grapple
+  rings, purple rig glyphs). SPELL_STAGE_MAP.raceFlood went 'arcane' → 'water'.
+  - Windup (magic casts): `_wvGather` — a wobbling ball of water with the water skin at the caster, droplets streaming
+    in, a ring wheeling round it; bursts into spray at 72 % of holdMs (as the spell leaves the hand). Gated on `_pzSeen`.
+  - Burst: `_wvMark` — THE WATER MARK on the target: a see-through crown sleeve with white tips at the feet, droplets
+    thrown in arcs, two ripple rings and a dark wet patch. Every water hit ends on it, sized by the stage weight.
+- THE KIT: canvases (water skin with a caustic net, wave face deep→white foam band, crown, ripple rings, whirlpool
+  spiral); `_wvStream` = the `_nvVine` tube in the water skin; `_wvRunWave` = a curling sheet (`_WV_PROFILE`: back slope,
+  crest, lip hanging forward) run down a lane, following the board height and hidden over tiles the viewer can't see;
+  `_wvRingWave` = the same profile on a LatheGeometry; `_wvVortex` = spinning spiral disc + inner disc + a rim of water;
+  `_wvGeyser` = an open column, skin running up, a foam cap throwing spray; `_wvDrip` = a soaked body dripping. The water
+  skins share one clock (`_wvFlow`).
+- Signatures (routes probed in the Spell Lab): Water Jet / Spout = `bolt` (pzOwn, Spout arcs high) + `impact` (drip);
+  Maelstrom = `bolt` (whirlpool opens + 3 thin coils rise during the flight) + `impact` (coils close, a column rises
+  BEHIND the body); Whirlpool (raceRiptide) = `aoe`; Water Pulse (sharedTidalSurge) = `beam` (the wave, waist high, 1 lane,
+  see-through; it replaced the flat wave-1 sprite beam); Tidal Slam = `aoe` (ring wave out of the caster's feet); Call of the
+  Deep = `wall` (dark whirl, black-water spikes behind the body, bubbles); Depth Charge = `aoe` (geysers per tile, the
+  middle first, behind a body on an occupied tile); Poseidon's Wrath = `impact` (three columns behind the body like a
+  trident's prongs, gold glints); Great Flood = NEW `wall` mapping (ring wave over the basin, a surge of spray on each
+  flooded tile; the mapping makes battle.js skip its flat playAoeRing); Temporal Tide = its zone recipe + slow ripples
+  and a lazy whirl (`wvTide`). Whirlpool / Tidal Slam / Depth Charge / Poseidon's Wrath / Call of the Deep replaced the
+  generic `_water_impact_*` / halo-ring sprite recipes they wore.
+- Untouched looks (they still get the water staging + mark): Tsunami (its own wall, _sigTsunami3D), the jellyfish, mermaid, siren, loch ness, starfish, deep sea
+  fish, swamp monster, pirate, firefighter, gargoyle, priest, annunaki, atlantean signature spells, Constrict / Eightfold
+  Lash / Tentacle Lash, Fluoride Water.
+- THE TARGET STAYS: no screen flash of its own; crown low and see-through; columns / spikes / prongs stand on the far
+  side of the body from the lens (`_nbCamDir`); coils thin.
+- Proof: Spell Lab ✦ CAST per spell, performance.now() frozen at set delays after the cast. Stills: /mnt/project-files/water-vfx/.
+
 
 ## THE SONIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 Every sonic-element spell (28 rows + Screech / Sonic Boom, rules in champions-combat.md "THE SONIC PASS") reads as sound
