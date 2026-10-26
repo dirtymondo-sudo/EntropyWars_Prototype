@@ -12655,7 +12655,7 @@ const STATUS_DEFS = {
         glyph: '🏗',
         short: 'SGE',
         label: 'Siege Mode',
-        colorText: 'anchored down in siege mode',
+        colorText: 'anchored down',   // spell look audit FX-5: Bipod borrowed the mech's "in siege mode"
         kind: 'buff',
         category: 'buff',
         stack: 'max',
