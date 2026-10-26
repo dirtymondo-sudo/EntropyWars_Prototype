@@ -1982,3 +1982,40 @@ the old swim-stroke-stood-up chain still plays. `ClimbUp_1m` stays the mantle.
   defaults (fog 0.03/m, the woods' mood), tall trees on the board (6-7.5 m, tree/tree_2/tree_3/tree_4/tree_5), dense groves, no
   mushrooms and no mushroom lamps. Only the 20×20 full site (HQ_ARENA_RULES.own) is cut from the glade. The fae_* catalogue rows
   and the fae_cap tree kinds stay in the palette, unused.
+
+## THE GRID FIT, GROUP 6 (2026-10-26): the field-fight terrain rooms on the battle squares
+mondo: "redesign the maps with the square grid in mind ... a ramp ... could easily just take up the width of one or 2 and sit
+nicely in the grid". 38 site/zone terrain rooms + the garage kickers: every existing ramp, stair, deck, bridge, tier, wall and
+tree moved/resized onto the 1.75 m squares (edges on square lines, k×1.75 from the room centre), nothing added or deleted.
+- Terrain ramps a walker uses (≥ 2.2 m) are 2 squares wide: a 1-square terrain ramp never makes an IN square (side blends).
+  Narrow ones stay 1 square with their side skirts outside it (w = 1.75 + 2·edge). Built flights read edge to edge.
+- A ramp's top end stays tucked into its tier by the old overlap (the "ends off 0.7 m" the audit lists is that tuck, on purpose).
+- Rooms sampled at 0.5 m now sample at `res: 0.4375` (a quarter square) and a moved tier/ramp lip is `edge: 0.2`: at 0.5 a
+  cliff ON a square line smeared into the square beside it and that row dropped OUT. The huge rooms (sea, abyss, harbour,
+  leylines, astral sea + library) keep 0.5. Soft banks (edge > 0.6, the Bermuda island's beach) keep their edge.
+- Two same-height tiers that now meet on a line overlap 0.5 m (else each blends down at the line: a trough).
+- Cave rooms (`gen.kind: 'cave'`) regrow their rock from the pieces: in the Nightmare only the moves that keep the cave whole
+  were kept (3 fangs + its props stay put; the stage stair is 2 squares at x -15.75..-23.45, z -21); in the Oubliette the
+  torch by the rock stays.
+- Left round/slanted on purpose: the garage drum (ring walls, spiral, radial stairs), the harbour's slanted causeway, the
+  mall ring bridges, the astral library's radial stairs, the Hell pit's slanted obsidian walls.
+Plans + shots: /mnt/project-files/grid-fit/group6/.
+## GRID FIT — GROUP 2 SITES ON THE BATTLE SQUARES (2026-10-26)
+mondo: "redesign the maps with the square grid in mind" (ramps overlapping two tiles etc.). Group 2 = Area 51
+hangar + flight line, D.U.M.B. motor pool + sub-level 7, CERN ring, Spaceship (derelict) deck, Singularity
+horizon, Saturn hexagon, Mars Cydonia, Moon mare. Only existing pieces moved/resized in data.js; no new rules.
+- Lattice lines are multiples of 1.75 from the room centre. Plateau/deck edges sit on lines; ramps/stairs/bridges
+  run on an axis, 1 or 2 squares wide (1.75 / 3.5), foot on a line, sides on lines, never steeper than before.
+- Stair head sits 0.4 m inside the tier rim (0.7 m where 0.4 left a stair-cheek invisible-wall spot). Bridges
+  overlap a square onto each tier. Round pieces: odd diameter on a square centre, even on a corner.
+- Strict plan rooms: a plateau whose edge lands exactly on a plan wall line leaves a trapped 0-height ditch row,
+  so tiers that ran past a wall keep running under it (hangar catwalk/south deck/freight gantry, sub-level 7
+  side room 3 + CH03 gallery). CH04 over-decks start at the catwalk edge x 17.5.
+- Arena picks: all 32 (12/11/10/9 × 8 sites) keep their room + ox/oz; only the cells re-baked. To keep them the
+  flight line tower deck stops at z -12.25, the hangar south deck at x -10.5, CERN beam dump moved to (35,7),
+  hangar crane hook one square north.
+- Not moved: Saturn hexagon walls (slanted by design), CERN control room (inside off-grid plan walls).
+- Saturn (10.5,3.5) and Singularity (12.25,5.25) lowest floating stones are no longer reachable on foot in
+  explore (were only via scattered rocks).
+- Checked with the grid-fit tools (/mnt/project-files/grid-fit/tools/verify.js): traps 0, pads joined,
+  invisible-wall counts ≤ main in every room. Plans + shots: /mnt/project-files/grid-fit/group2/.

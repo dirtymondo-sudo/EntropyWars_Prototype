@@ -4089,6 +4089,9 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           + (p.id === 'entropyStrike' ? ' entropy' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
         title: live ? (p.title || p.label) : ((p.title || p.label) + ' — ' + (p.sub || 'Unavailable')),
+        /* a pusher's own preview (DETONATE: every blast, its damage and where each body is thrown) */
+        onMouseEnter: (live && p.hoverIn) ? () => p.hoverIn() : undefined,
+        onMouseLeave: p.hoverOut ? () => p.hoverOut() : undefined,
         onClick: () => {
           if (!live) return;
           if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
@@ -10747,9 +10750,9 @@ function ReactHUD() {
     h('div', { style: { pointerEvents: 'auto' }},
       h(MatchMeta, { st }),
     ),
-    // Combat log, control-hints strip, and minimap are hidden from the HUD
-    // (minimap suppressed via CSS on #battleMinimap in the injected styles —
-    // except on Mystery Dungeon floors, where it becomes the vector SCANNER).
+    // The control-hints strip is hidden from the HUD. The combat log is ui.js
+    // renderFloatCombatLog; the minimap is three-renderer.js THE MINIMAP
+    // (#ewMinimap; the old #battleMinimap is only the Mystery Dungeon SCANNER).
     // ONE menu system: the Horologe drum renders the root verbs, every
     // submenu, the target pickers, and the enemy/tile quick menus.
     h('div', { style: { pointerEvents: 'auto' }},
@@ -12295,10 +12298,10 @@ function _hudHideCss() {
     .ew-scoreboard { transform: translateX(-50%) scale(var(--ew-hud-scale, 1)) !important; transform-origin: 50% 0; }
     .ew-matchmeta  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
     .ew-combatlog  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
-    /* The tactical minimap stays off in every PvP mode. Mystery Dungeon
-       floors are the exception: there the renderer flips it into the vector
-       SCANNER (three-renderer _drawMdScanner) — a 1979-arcade phosphor
-       display that charts the maze as the party discovers it. */
+    /* #battleMinimap is only the Mystery Dungeon SCANNER now (three-renderer
+       _drawMdScanner) — a 1979-arcade phosphor display that charts the maze as
+       the party discovers it. The battle's minimap is #ewMinimap (THE MINIMAP,
+       styles-hud.css .ew-mmap). */
     #battleMinimap:not(.md-scanner) { display: none !important; }
     #battleMinimap.md-scanner {
       background: rgba(2,6,10,0.90) !important;
@@ -14365,7 +14368,9 @@ const UIM_PIECES = [
   /* THE COMBAT LOG (2026-10-18, ui.js renderFloatCombatLog): the whole match's combat lines on the right; its own options
      are the l* keys (clogForm); keepCodes like the text box, so an All text colour leaves the colour-coded words alone */
   { id: 'clog', group: 'Battle', label: 'Combat log', sel: '#ewCombatLog', origin: '100% 100%', keepCodes: true, noScroll: true, clog: true, def: { r: 12, b: 120, w: 340, h: 340 } },
-  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
+  /* THE MINIMAP (2026-10-26, three-renderer.js; the Mystery Dungeon's SCANNER is #battleMinimap): its own options are the
+     g* keys (mmapForm) */
+  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#ewMinimap, #battleMinimap', origin: '100% 0', noScroll: true, mmap: true, def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
 /* ── EVERY SCREEN IN LAYOUT (2026-10-18, mondo: "i can only use the layout feature in the ui editor with the battle and
@@ -14869,6 +14874,21 @@ const UX_DEF = {
   /* zLink = the two edited together (one form, every change lands on both; see zoneBoth) */
   zLink: false,
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
+  /* g* = THE MINIMAP (2026-10-26, mondo: "Add it to the UI maker and let me change how it looks and what displays in it and
+     how it looks ... hide it during spell animations and other appropriate times. Want it to look simplistic, all black
+     with white gridlines and colored icons, options to customize and change and hide stuff"): mapSignal turns them into
+     window._ewMapLook (+ _ewMapLookV) for three-renderer.js THE MINIMAP (its MMAP_DEF holds the same defaults). gSize = px
+     of its longest side; gView board | near (gSpan battle squares across, round the camera's spot); gTurn = up is the way
+     the camera faces; colours are hex with their own opacity (g*Op); gIcon dot | square | diamond | ring | face, gIconSize
+     in squares; gCam off | arrow | view; gGround none | height | terrain; gAuto = Hide while, like the combat log's lAuto
+     (board | shots | off), gAim adds the aiming */
+  gSize: 180, gView: 'board', gSpan: 12, gTurn: false, gShape: 'square',
+  gBg: '#000000', gBgOp: 1, gGrid: '#ffffff', gGridOp: 0.45, gGridW: 1, gEvery: 1, gFrame: '#ffffff', gFrameOp: 1, gFrameW: 1,
+  gIcon: 'dot', gIconSize: 0.62, gAlly: '#14b4ff', gFoe: '#ff3355', gLine: '', gLineW: 1,
+  gAllies: true, gFoes: true, gActive: true, gActiveCol: '#ffffff', gPulse: true,
+  gCam: 'off', gCamCol: '#ffffff', gCamOp: 0.85, gFog: false, gFogCol: '#8c96aa', gFogOp: 0.35,
+  gGround: 'none', gSpawn: false, gNexus: false, gCube: false, gNeutral: '#f2c64a',
+  gAuto: 'board', gAim: false,
   /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
      like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
@@ -15679,6 +15699,20 @@ function clogSignal() {
   _clogSent = k; window._ewLogLook = L;
   try { if (typeof window.renderFloatCombatLog === 'function') window.renderFloatCombatLog(); } catch (e) {}
 }
+/* the minimap's look three-renderer.js reads (window._ewMapLook, bumped _ewMapLookV: THE MINIMAP redraws on a bump),
+   re-published only when it changes */
+let _mapSent = '';
+const MAP_KEYS = { size: 'gSize', view: 'gView', span: 'gSpan', turn: 'gTurn', shape: 'gShape', bg: 'gBg', bgOp: 'gBgOp', grid: 'gGrid',
+  gridOp: 'gGridOp', gridW: 'gGridW', every: 'gEvery', frame: 'gFrame', frameOp: 'gFrameOp', frameW: 'gFrameW', icon: 'gIcon',
+  iconSize: 'gIconSize', ally: 'gAlly', foe: 'gFoe', line: 'gLine', lineW: 'gLineW', allies: 'gAllies', foes: 'gFoes', active: 'gActive',
+  activeCol: 'gActiveCol', pulse: 'gPulse', cam: 'gCam', camCol: 'gCamCol', camOp: 'gCamOp', fog: 'gFog', fogCol: 'gFogCol', fogOp: 'gFogOp',
+  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim' };
+function mapSignal() {
+  const X = uxOf(), L = {};
+  Object.keys(MAP_KEYS).forEach(k => { L[k] = X[MAP_KEYS[k]]; });
+  const k = JSON.stringify(L); if (k === _mapSent) return;
+  _mapSent = k; window._ewMapLook = L; window._ewMapLookV = (window._ewMapLookV || 0) + 1;
+}
 /* the small name plates the renderer reads (window._ewMiniPlateLook, bumped _ewMiniPlateLookV: three-renderer _plateFarAtSq
    takes `at` and repaints every plate on a bump, so the bars / name / level sheets show at once), re-published only when
    they change */
@@ -16411,6 +16445,42 @@ function clogForm() {
     + fRange('Backing', 'lBack', 0, 1, 0.02, +X.lBack, 'How dark the box behind the lines is (0 = none). A Fill under Panel look replaces it')));
   h += '<div class="uim-note">Drag it, size it from its corner (or Width / Height under Size + order), text sizes and colours under Text look. The ▾ on the log folds it to its bar.</div>';
   return h + xReset('l', 'Reset the combat log');
+}
+/* the minimap's own settings (Layout > Minimap; three-renderer.js THE MINIMAP draws them) */
+function mmapForm() {
+  const X = uxOf();
+  const op = (label, k, tip) => fRange(label, k, 0, 1, 0.05, +X[k], tip);
+  let h = `<div class="uim-h">The minimap</div>`;
+  h += sec('gshow', 'What it shows', xp(xCheck('Your units', 'gAllies', X.gAllies) + xCheck('Enemies', 'gFoes', X.gFoes)
+    + '<div class="uim-note">Only the enemies the board shows you: none in the fog, none hidden by smoke or Invisible.</div>'
+    + xCheck('Ring on the unit whose turn it is', 'gActive', X.gActive, true)
+    + (X.gActive ? xCheck('The ring pulses', 'gPulse', X.gPulse) + fColor('Ring colour', 'gActiveCol', X.gActiveCol) : '')
+    + fSeg('Camera', 'gCam', [['off', 'Off'], ['arrow', 'Arrow', 'An arrow on the spot the camera looks at, pointing the way it faces'], ['view', 'What is on screen', 'The patch of the board the camera shows']], X.gCam)
+    + (X.gCam !== 'off' ? fColor('Camera colour', 'gCamCol', X.gCamCol) + op('Camera opacity', 'gCamOp') : '')
+    + fSeg('Ground', 'gGround', [['none', 'Black'], ['height', 'Heights', 'The higher a square, the lighter'], ['terrain', 'Terrain colours', 'Grass, water, lava ... in the match-select map\'s colours']], X.gGround)
+    + xCheck('Fog: shade the squares your team can\'t see', 'gFog', X.gFog, true)
+    + (X.gFog ? fColor('Fog colour', 'gFogCol', X.gFogCol) + op('Fog opacity', 'gFogOp') : '')
+    + xCheck('Spawn zones', 'gSpawn', X.gSpawn) + xCheck('Nexus zones', 'gNexus', X.gNexus, true) + xCheck('Cubes', 'gCube', X.gCube, true)
+    + (X.gNexus || X.gCube ? fColor('Neutral colour', 'gNeutral', X.gNeutral) : '')));
+  h += sec('glook', 'Look', xp(fSeg('Shape', 'gShape', [['square', 'Square'], ['round', 'Round']], X.gShape)
+    + fRange('Size (px)', 'gSize', 80, 480, 2, +X.gSize, 'Its longest side. The whole board keeps the board\'s shape')
+    + fColor('Background', 'gBg', X.gBg) + op('Background opacity', 'gBgOp')
+    + fColor('Grid lines', 'gGrid', X.gGrid) + op('Grid opacity', 'gGridOp') + fRange('Grid line width (px, 0 = none)', 'gGridW', 0, 4, 0.5, +X.gGridW)
+    + fRange('A grid line every (squares)', 'gEvery', 1, 6, 1, +X.gEvery)
+    + fColor('Frame', 'gFrame', X.gFrame) + op('Frame opacity', 'gFrameOp') + fRange('Frame width (px, 0 = none)', 'gFrameW', 0, 8, 1, +X.gFrameW)));
+  h += sec('gicon', 'Unit icons', xp(fSeg('Icon', 'gIcon', [['dot', 'Dot'], ['square', 'Square'], ['diamond', 'Diamond'], ['ring', 'Ring'], ['face', 'Portrait', 'The unit\'s portrait in a ring of its side\'s colour']], X.gIcon)
+    + fRange('Icon size (squares)', 'gIconSize', 0.2, 1.6, 0.02, +X.gIconSize)
+    + fColor('Your units', 'gAlly', X.gAlly) + fColor('Enemies', 'gFoe', X.gFoe)
+    + fColorOpt('Outline', 'gLine', X.gLine, '#ffffff') + (X.gLine ? fRange('Outline width (px)', 'gLineW', 0.5, 4, 0.5, +X.gLineW) : '')));
+  h += sec('gview', 'Area + direction', xp(fSeg('Shows', 'gView', [['board', 'The whole board'], ['near', 'Around the camera', 'The squares round the spot the camera looks at; it follows the camera']], X.gView)
+    + (X.gView === 'near' ? fRange('Squares across', 'gSpan', 4, 40, 1, +X.gSpan) : '')
+    + xCheck('Turn with the camera', 'gTurn', X.gTurn))
+    + '<div class="uim-note">Off: the board\'s top edge is up. On: up is the way the camera faces.</div>');
+  h += sec('ghide', 'Hide on its own', xp(fSeg('Hide while', 'gAuto', [['board', 'The game has the board', 'The CPU\'s or the opponent\'s turn, moves, spells, camera flights, death close-ups, banners, the end of round'],
+    ['shots', 'Spell shots + camera', 'Only spell shots, camera flights, close-ups, banners and the end of round'], ['off', 'Never', 'Always on screen in a battle']], X.gAuto)
+    + xCheck('Also while you pick a tile or a target', 'gAim', X.gAim))
+    + '<div class="uim-note">It fades out at once and comes back half a second after the board is yours again. Hide (at the top) takes it off the screen for good.</div>');
+  return h + xReset('g', 'Reset the minimap');
 }
 function apForm() {
   const X = uxOf();
@@ -17145,7 +17215,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal(); mapSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -18534,6 +18604,7 @@ function pieceDetail() {
   if (P.score) h += scoreForm();
   if (P.ap) h += apForm();
   if (P.clog) h += clogForm();
+  if (P.mmap) h += mmapForm();
   if (P.qp) h += qpForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
   if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
