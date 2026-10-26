@@ -2767,3 +2767,28 @@ Changes (data.js, each tagged `BALANCE PASS 2026-10-25 (stats22 lab)`), existing
   Guardian 1727→1600; Mech's own Mortar Salvo 70→56 and Full Burst 120→105 (desc MEDIUM, the house word for 105).
 - Buffs: SPD Hippie 34→50, AI 19→50, Mermaid 40→50 (move 1→2); Voidweaver 85→88, Gnome 82→88, Wizard 50→88 (move 2→3);
   HP Rabbit 593→700, Catgirl 763→840; Ninefold Scratch 30→40 a hit (Catgirl's own, 0.51× the Tier IV median).
+
+## THE STATS23 PASS + EVEN GAMES (2026-10-26, mondo: "Some of the spells have like a 90% win rate ... make informed surgical buffs and debuffs to the weakest and strongest units ... is there a way we can ensure all the units get the same amount of games?")
+Read: ew-balance-stats23.json (409 Arena matches, build 20261025-stats22-01-cors) against stats21 + stats22, then THREE
+cloud Balance Lab rounds on the candidate changes (525 + 501 + 550 matches, headless harness
+/mnt/project-files/balance/weak-races-harness/lab4.js, 2 tabs ≈ 6.5 matches a minute, mods applied in-page only).
+- The "90% spells": every one of them (Crystal Resonator 89, Splitting Arrow 88, Camouflage 88, Horn Hook 87, Arrow
+  Volley 87, Entropic Beam 86, Plasma Cannon 83) sits on 8-15 cast games, and cast WR mostly follows the caster race
+  (Crystal Resonator read 29% in stats22). Pooled over stats22+23 the top spell is ~76%. Trimmed only the ones that are
+  high in both runs AND over their tier's damage median: Arrow Volley, Piercing Arrow, Bomb Arrow (Robin Hood), Mortar
+  Salvo (Mech), Wing Attack + Stone Drop (Gargoyle).
+- Lab lessons: a SPD change that crosses a move band (49 / 88 / 126 / 163) is the lever that moves a race; HP buffs on
+  weak races (Mantid, Fairy, Machine Elves), Ghost INT -15, Ghost HP 560, Minotaur HP 1530/1450 + SPD 160 and Dinosaur
+  SPD 160 did nothing measurable. Noise at ~35 games a race is bigger than binomial (Gnome 59% → 14% → 56% with no change).
+Changes (data.js, tagged `BALANCE PASS 2026-10-26`), existing rules only, no tier / status change:
+- Nerfs: Ghost SPD 160→125 (move 4→3); Mech HP 1430→1350 + SPD 195→160 (move 5→4); Juggernaut + Dragon SPD →160 (move
+  5→4); Kaiju HP 1450→1320; Cowboy HP 1532→1350; Gargoyle HP 1350→1250; spells above.
+- Buffs: SPD Telepath 59→88, Jellyfish 50→88, Fortune Teller 14→88, Necromancer 22→50, Mushroom Girl 33→50, Giant 37→50,
+  Angel 45→50, Machine Elves 92→126, Rabbit 151→165; HP Eagleman 760→880.
+- Tested and NOT shipped (no effect): Deep Sea Fish / Clown SPD 88, Mantid / Catgirl / Men in Black SPD 165, Voidweaver
+  SPD 126, Hippie SPD 88, Professor SPD 50, Fairy HP 760 / SPD 165, Minotaur, Dinosaur. Still weak/strong: Fairy,
+  Professor, Shadow Entity, Voidweaver, Catgirl (~35%); Minotaur, Dinosaur (~65%).
+- EVEN GAMES (battle.js `_balEvenDraftTeams`, called from randomizeBothTeamsForDevSim in the Balance Lab only): the lab
+  drafts the 2×teamSize races with the fewest games on the CURRENT build token (`_balanceStats.raceGamesByBuild`), ties
+  in random order, then deals them into the two teams at random. Spells, maps, teammates and foes stay random. In the
+  cloud runs every race landed within 3 games of every other (34-36 in 525 matches).

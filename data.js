@@ -4070,10 +4070,10 @@ const SKY_EVENT_DURATION = 3;
 // is the map-crossing guard. Werewolf's stored line is the DAY form; the
 // planned Lycanthropy passive stages it up at night (budget = day/night avg).
 const RACE_BASE_STATS = {
-    'giant':              { hp: 1788, mp:  60, atk:  193, def:  198, mdef:  117, int:   5, vision: 5, crt: 11, spd: 37 },
+    'giant':              { hp: 1788, mp:  60, atk:  193, def:  198, mdef:  117, int:   5, vision: 5, crt: 11, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 37→50 (WR 63/32/35%; move 1→2 read 50/64/49%)
     'robot':              { hp: 1654, mp:  50, atk:  102, def:  192, mdef:  36, int:   7, vision: 2, crt: 17, spd: 137 },
-    'mech':               { hp: 1430, mp: 110, atk:  172, def:  177, mdef:  19, int:  65, vision: 4, crt: 18, spd: 195 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1544→1430 (WR 70/64%; the 10-25 lab arm at 1350 read 79→50%)
-    'gargoyle':           { hp: 1350, mp:  90, atk:  171, def:  169, mdef:  121, int:  28, vision: 4, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1459→1350 (WR 64/68%)
+    'mech':               { hp: 1350, mp: 110, atk:  172, def:  177, mdef:  19, int:  65, vision: 4, crt: 18, spd: 160 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1544→1430 (WR 70/64%; the 10-25 lab arm at 1350 read 79→50%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1430→1350, SPD 195→160 (WR 64/69/76% in stats21-23, still 72% in the cloud rounds; move 5→4)
+    'gargoyle':           { hp: 1250, mp:  90, atk:  171, def:  169, mdef:  121, int:  28, vision: 4, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1459→1350 (WR 64/68%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1350→1250 (WR 68/65/69%; with the Wing Attack / Stone Drop trims read 59/49%)
     'zombie':             { hp: 1605, mp:  70, atk:  85, def:  194, mdef:  15, int:   0, vision: 2, crt: 11, spd: 63 },
     'cyclops':            { hp: 1678, mp:  65, atk:  182, def:  181, mdef:  38, int:  46, vision: 2, crt: 20, spd: 163 },
     'skeleton':           { hp: 1044, mp: 120, atk:  76, def:  106, mdef:  137, int:  99, vision: 2, crt: 12, spd: 103 },
@@ -4081,8 +4081,8 @@ const RACE_BASE_STATS = {
     'bigfoot':            { hp: 1690, mp:  80, atk:  169, def:  164, mdef:  98, int:  18, vision: 3, crt: 15, spd: 161 },
     'antperson':          { hp: 1702, mp: 100, atk:  145, def:  135, mdef:  101, int:  59, vision: 3, crt: 16, spd: 111 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3)
     'werewolf':           { hp: 1166, mp:  80, atk:  31, def:  121, mdef:  22, int:  13, vision: 2, crt: 16, spd: 66 },
-    'angel':              { hp: 507, mp: 220, atk:   42, def:  115, mdef:  181, int:  145, vision: 4, crt: 26, spd: 45 },
-    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, vision: 4, crt: 26, spd: 160 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 177→160 (WR 69/68/79% over stats20/21/22, two spell trims did not move it; move 5→4, 696 tower dmg a game, the most)
+    'angel':              { hp: 507, mp: 220, atk:   42, def:  115, mdef:  181, int:  145, vision: 4, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 45→50 (WR 40/50/24%; move 1→2 read 47/47%)
+    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, vision: 4, crt: 26, spd: 125 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 177→160 (WR 69/68/79% over stats20/21/22, two spell trims did not move it; move 5→4, 696 tower dmg a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 160→125 (WR 68/79/71%, HP 560 and INT 165 lab arms did nothing; move 4→3 read 61%)
     'nordic':             { hp: 1337, mp: 200, atk:  49, def:  76, mdef:  163, int:  179, vision: 3, crt: 18, spd: 97 },
     'fairy':              { hp: 654, mp: 220, atk:   3, def:  38, mdef:  151, int:  124, vision: 2, crt: 26, spd: 149 },
     'scarecrow':          { hp: 1568, mp: 150, atk:  72, def:  166, mdef:  106, int:  63, vision: 2, crt: 12, spd: 71 },
@@ -4103,7 +4103,7 @@ const RACE_BASE_STATS = {
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
     'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
     'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 19→50 (WR 36/44/28%; move 1→2, the Nun/Wizard fix)
-    'machine elves':      { hp: 760, mp: 220, atk:  41, def:  67, mdef:  175, int:  190, vision: 2, crt: 26, spd: 92 },   // race editor 2026-10-17: DEF 67
+    'machine elves':      { hp: 760, mp: 220, atk:  41, def:  67, mdef:  175, int:  190, vision: 2, crt: 26, spd: 126 },   // race editor 2026-10-17: DEF 67; BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 92→126 (WR 41/35/37%; HP 860 did nothing (38%), move 3→4 read 68/47%)
     'glitch':             { hp: 727, mp: 170, atk:  70, def:  49, mdef:  149, int:  167, vision: 3, crt: 19, spd: 117 },
     'homosapien':         { hp: 1410, mp: 140, atk:  83, def:  158, mdef:  70, int:  54, vision: 2, crt: 26, spd: 119 },
     'pirate':             { hp: 1398, mp: 100, atk:  128, def:  98, mdef:  68, int:  42, vision: 3, crt: 22, spd: 123 },   // race editor 2026-10-17: DEF 98, MDEF 68
@@ -4111,9 +4111,9 @@ const RACE_BASE_STATS = {
     'knight':             { hp: 1483, mp:  95, atk:  132, def:  174, mdef:  80, int:  55, vision: 2, crt: 13, spd: 128 },
     'shaman':             { hp: 568, mp: 250, atk:  55, def:  58, mdef:  147, int:  161, vision: 3, crt: 21, spd: 72 },
     'mad scientist':      { hp: 556, mp: 230, atk:  46, def:  33, mdef:  25, int:  153, vision: 3, crt: 26, spd: 39 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
-    'cowboy':             { hp: 1532, mp: 150, atk:  130, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 159 },
+    'cowboy':             { hp: 1350, mp: 150, atk:  130, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 159 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1532→1350 (WR 60/49/85%; HP 1450 read 69/76%, 1350 read 53%)
     'men in black':       { hp: 410, mp: 145, atk:  50, def:  66, mdef:  142, int:  122, vision: 2, crt: 26, spd: 143 },   // race editor 2026-10-17: MDEF 142, ATK 50
-    'telepath':           { hp: 470, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 59 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 373→470 (WR 36/28%, survival 42%)
+    'telepath':           { hp: 470, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 373→470 (WR 36/28%, survival 42%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 59→88 (WR 28/38/33%; move 2→3 read 51/45/47%)
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
@@ -4124,7 +4124,7 @@ const RACE_BASE_STATS = {
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
     'police officer':     { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // race editor 2026-10-17: DEF 140, SPD 112, MDEF 58
     'time cop':           { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // 2026-10-24 — the Police Officer's stats
-    'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  50 },   // BALANCE PASS 2026-10-25 (stats21 lab): SPD 36→50 = move 1→2 (WR 39/36%)
+    'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  88 },   // BALANCE PASS 2026-10-25 (stats21 lab): SPD 36→50 = move 1→2 (WR 39/36%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 50→88 (WR 36/39/39%; move 2→3 read 49%)
     'cult leader':        { hp: 861, mp: 220, atk:  47, def:  110, mdef:  152, int:  143, vision: 3, crt: 26, spd:  65 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
     'popstar':            { hp: 532, mp: 230, atk:  18, def:  80, mdef:  140, int:  141, vision: 2, crt: 20, spd:  62 },
@@ -4141,20 +4141,20 @@ const RACE_BASE_STATS = {
     'crystal guardian': { hp: 1600, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage); BALANCE PASS 2026-10-25 (stats22 lab): HP 1727→1600 (WR 60/59/73%, team-adjusted 66%)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
     'sidekick': { hp: 1190, mp: 130, atk: 133, def: 154, mdef: 76, int: 86, vision: 2, crt: 26, spd: 183 },
-    'mushroom girl': { hp: 898, mp: 220, atk: 23, def: 95, mdef: 146, int: 127, vision: 2, crt: 22, spd: 33 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%)
+    'mushroom girl': { hp: 898, mp: 220, atk: 23, def: 95, mdef: 146, int: 127, vision: 2, crt: 22, spd: 50 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 33→50 (WR 42/39/38%; move 1→2 read 50/39/46%)
     'tree person': { hp: 1763, mp: 110, atk: 187, def: 191, mdef: 130, int: 62, vision: 4, crt: 12, spd: 46 },
     'sheriff': { hp: 1202, mp: 110, atk: 114, def: 160, mdef: 63, int: 24, vision: 3, crt: 26, spd: 132 },
     // 2026-09-30 — the new-race batch
     'astronaut': { hp: 1093, mp: 150, atk: 15, def: 163, mdef: 100, int: 106, vision: 2, crt: 26, spd: 52 },
     'krampus': { hp: 1580, mp: 110, atk: 161, def: 132, mdef: 54, int: 88, vision: 2, crt: 18, spd: 112 },   // race editor 2026-10-17: MDEF 54
-    'rabbit': { hp: 700, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 151 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 593→700 (WR 36/32/28%, survival 42%; the stats21 spell buffs did not help)
+    'rabbit': { hp: 700, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 165 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 593→700 (WR 36/32/28%, survival 42%; the stats21 spell buffs did not help); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 151→165 (WR 32/28/25%, the HP 700 buff did nothing; move 4→5 read 49/38/24%)
     'luchador': { hp: 1446, mp: 90, atk: 115, def: 155, mdef: 41, int: 26, vision: 2, crt: 18, spd: 122 },
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
     'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 50 },   // race editor 2026-10-17: DEF 62; BALANCE PASS 2026-10-25 (stats22 lab): SPD 34→50 (WR 42/46/19%; move 1→2, the Nun/Wizard fix)
     // 2026-10-25 — on their class medians (the budget above): the chef a sturdy cook who feeds the line, the eagleman a quick hunter with the best eyes on the board, the flesheater a tall bruiser, the mime a slippery trickster.
     'chef': { hp: 1100, mp: 180, atk: 95, def: 110, mdef: 95, int: 105, vision: 3, crt: 24, spd: 90 },
-    'eagleman': { hp: 760, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },
+    'eagleman': { hp: 880, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 760→880 (WR 49/35/31%, survival 41%; read 54/42/59%)
     'flesheater': { hp: 1460, mp: 90, atk: 158, def: 130, mdef: 60, int: 30, vision: 2, crt: 22, spd: 120 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1600→1460 (WR 66/68%)
     'mime': { hp: 880, mp: 160, atk: 105, def: 85, mdef: 95, int: 95, vision: 3, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 780→880 (WR 25/31%)
     // 2026-10-25 — the undead batch, first pass (race editor to tune): a curse caster, a bog bruiser, a quick ripper
@@ -4162,7 +4162,7 @@ const RACE_BASE_STATS = {
     'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
     'undead': { hp: 1150, mp: 100, atk: 140, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 150 },
     'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3)
-    'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
+    'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 14→88 (WR 46/38/36%; move 1→3 read 55/54% (SPD 50 = move 2 read 43%))
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
     'goatman':            { hp: 1520, mp:  90, atk:  159, def:  123, mdef:  51, int:  57, vision: 2, crt: 14, spd: 175 },   // race editor 2026-10-17: MDEF 51
@@ -4185,10 +4185,10 @@ const RACE_BASE_STATS = {
     'politician':         { hp: 1276, mp: 165, atk:  11, def:  141, mdef:  144, int:  132, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
     'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
     'dinosaur':           { hp: 1715, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 192 },
-    'dragon':             { hp: 1130, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most)
+    'dragon':             { hp: 1130, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 160 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 194→160 (WR 68/79/63/76/76%; move 5→4 read 65%)
     'ghoul':              { hp: 1180, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%)
     'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3)
-    'kaiju':              { hp: 1450, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%)
+    'kaiju':              { hp: 1320, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1450→1320 (WR 81/66/52/83/79%; the lab arm read 70%)
     'kraken':             { hp: 1212, mp: 205, atk:  184, def:  117, mdef:  155, int:  125, vision: 4, crt: 23, spd: 26 },
     'loch ness monster':  { hp: 1751, mp:  95, atk:  176, def:  197, mdef:  83, int:  75, vision: 4, crt: 10, spd: 86 },
     'yeti':               { hp: 1422, mp: 120, atk:  177, def:  137, mdef:  103, int:  107, vision: 3, crt: 10, spd: 83 },
@@ -4197,12 +4197,12 @@ const RACE_BASE_STATS = {
     'golem':              { hp: 1800, mp:  70, atk:  192, def: 200, mdef:  104, int:   3, vision: 3, crt: 11, spd: 17 },
     'honda civic':        { hp: 1151, mp:  90, atk:  179, def:  178, mdef:  16, int:  15, vision: 2, crt: 12, spd: 197 },
     'ice queen':          { hp: 629, mp: 245, atk:   13, def:  40, mdef:  178, int:  156, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP) // race editor 2026-10-17: DEF 40
-    'juggernaut':         { hp: 1640, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 172 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%)
+    'juggernaut':         { hp: 1640, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 160 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 172→160 (WR 61/76/65/83%; move 5→4 read 67/64%)
     'ki fighter':         { hp: 1190, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 1288→1190 (WR 63/63/72%, team-adjusted 67%)
     'king arthur':        { hp: 1495, mp:  80, atk:  120, def:  180, mdef:  66, int:  52, vision: 5, crt: 23, spd: 129 },
     'king kong':          { hp: 1739, mp:  75, atk: 198, def:  157, mdef:  27, int:  31, vision: 5, crt: 13, spd: 88 },
     'minotaur':           { hp: 1629, mp:  70, atk:  180, def:  126, mdef:  44, int:   8, vision: 2, crt: 13, spd: 180 },
-    'necromancer':        { hp: 471, mp: 250, atk:   34, def:  18, mdef:  174, int:  154, vision: 3, crt: 22, spd: 22 },
+    'necromancer':        { hp: 471, mp: 250, atk:   34, def:  18, mdef:  174, int:  154, vision: 3, crt: 22, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 22→50 (WR 40/38/36%; move 1→2 read 51/62/38%)
     'occulus':            { hp: 739, mp: 200, atk:   36, def:  47, mdef:  164, int:  164, vision: 6, crt: 26, spd: 13 },
     'quarterback':        { hp: 1056, mp: 100, atk:  135, def:  59, mdef:  18, int:  21, vision: 5, crt: 26, spd: 162 },   // BALANCE PASS 2026-10-06: ATK 82→74 (lab WR 67%; range-4 basic attacks + PR #138)
     'robinhood':          { hp: 837, mp: 110, atk:  154, def:  32, mdef:  24, int:  20, vision: 6, crt: 26, spd: 160 },
@@ -6801,7 +6801,7 @@ const SHARED_INFECTIOUS_BITE = {
    old raceWingGust id so the existing 3D gust VFX fires unchanged. */
 const SHARED_WING_ATTACK = {
     id: 'raceWingGust', tier: 1, spellType: 'anomaly', element: 'wind', name: 'Wing Attack',
-    type: 'damage', cost: 25, dmg: 80, range: 0, apCost: 1,
+    type: 'damage', cost: 25, dmg: 65, range: 0, apCost: 1,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 80→65 (641 a cast = 1.96× the Tier I median)
     kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
     pushDistance: 2,
     desc: 'A sweeping blow with both wings. Deals WEAK physical damage to All Enemies around the caster (AOE) and knocks them back.'
@@ -7129,12 +7129,12 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger. Fires through cover.' },
 
         { id: 'raceStoneDrop', element: 'earth', spellType: 'unholy', name: 'Stone Drop',
-          type: 'damage', tier: 3, cost: 75, dmg: 100, range: 1, apCost: 1,
-          kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 12,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 125→100, per level 15→12 (814 a cast = 1.7× the Tier III median; earth leads the elements)
+          type: 'damage', tier: 3, cost: 75, dmg: 85, range: 1, apCost: 1,
+          kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 10,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 100→85, per level 12→10 (still 802 a cast = 1.68× the Tier III median); BALANCE PASS 2026-10-25 (stats21 lab): dmg 125→100, per level 15→12 (814 a cast = 1.7× the Tier III median; earth leads the elements)
           requiresFlight: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Lifts the target high and drops it. Deals MEDIUM physical damage plus fall damage. Deals bonus damage to targets with Stagger. Caster must be flying.' },
+          desc: 'Lifts the target high and drops it. Deals WEAK physical damage plus fall damage. Deals bonus damage to targets with Stagger. Caster must be flying.' },
         { id: 'raceCalcify', tier: 3, families: ['livingstone'], spellType: 'unholy', element: 'earth', name: 'Calcify',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
@@ -7621,7 +7621,7 @@ const RACE_ABILITIES = {
 
     'mech': [
         { id: 'raceMortarSalvo', tier: 1, families: ['mecha'], spellType: 'tech', name: 'Mortar Salvo',
-          type: 'damage', cost: 40, dmg: 56, range: 4,   // strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile); BALANCE PASS 2026-10-25 (stats22 lab): dmg 70→56 (603 a cast = 1.8× the Tier I median; Mech 70/64/69%, its stats21 HP cut did not move it)
+          type: 'damage', cost: 40, dmg: 48, range: 4,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 56→48 (still 640 a cast = 1.96× the Tier I median); strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile); BALANCE PASS 2026-10-25 (stats22 lab): dmg 70→56 (603 a cast = 1.8× the Tier I median; Mech 70/64/69%, its stats21 HP cut did not move it)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           ignoresLineOfSight: true,
           desc: 'Deals WEAK physical damage to All Enemies in an AOE. Fires through cover.' },
@@ -10584,7 +10584,7 @@ const RACE_ABILITIES = {
        precisionShot). In its place: a proper trick-arrow quiver. */
     'robinhood': [
         { id: 'raceBombArrow', tier: 2, statusEffects: [{ id: 'burn', duration: 1 }], families: ['archery'], spellType: 'human', element: 'fire', name: 'Bomb Arrow',
-          type: 'damage', cost: 30, dmg: 80, range: 4,
+          type: 'damage', cost: 30, dmg: 70, range: 4,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 80→70 (cast WR 91/83%, 1.29× the Tier II median)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           desc: 'An arrow with a powder charge lashed to the head. Deals WEAK physical damage to All Enemies in a 3×3 and sets them alight for a round.' },
         { id: 'raceFireArrow', tier: 1, families: ['archery'], spellType: 'human', element: 'fire', name: 'Fire Arrow',
@@ -10599,11 +10599,11 @@ const RACE_ABILITIES = {
            the first linePush with collision riders (battle.js _applyLineDamage
            `collisionBonus` / `collisionStatus` / `collisionStatusBoth`). */
         { id: 'raceArrowRain', element: 'wind', spellType: 'human', name: 'Arrow Volley',
-          type: 'damage', tier: 4, ignoresLineOfSight: true, families: ['archery'], cost: 50, dmg: 160, range: 6, apCost: 1,
+          type: 'damage', tier: 4, ignoresLineOfSight: true, families: ['archery'], cost: 50, dmg: 140, range: 6, apCost: 1,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 160→140 (797 a cast = 1.43× the Tier IV median; cast WR 61/87%, Robin Hood 60/66/77%)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           desc: 'Loose high and let gravity do the rest. HEAVY physical damage to every enemy in a 3×3 up to 6 tiles away. The arrows come down over any wall.' },
         { id: 'racePiercingArrow', tier: 3, families: ['archery'], spellType: 'human', element: 'wind', name: 'Piercing Arrow',
-          type: 'damage', cost: 35, dmg: 120, range: 5, apCost: 1,
+          type: 'damage', cost: 35, dmg: 110, range: 5, apCost: 1,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 120→110 (cast WR 75/100%, 1.18× the Tier III median)
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
           collisionBonus: 40, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
           desc: 'A bodkin that carries its victim with it. Deals MEDIUM physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
