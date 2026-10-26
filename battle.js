@@ -7088,6 +7088,10 @@
             const _landLeadRaw = (!_skipVisuals() && !hasDescent && VFX && typeof VFX.aoeLandMs === 'function'
                 && VFX.hasMapping(spell.id, 'aoe')) ? (VFX.aoeLandMs(spell.id) || 0) : 0;
             const _landLead = _landLeadRaw > 0 ? actionMs(_landLeadRaw) : 0;
+            /* …and an area whose burst signature strikes a while after it starts (VFX hitLeadMs: Underfoot's foot
+               comes down 700 ms in): the burst starts on the old impact beat and the damage waits for the strike. */
+            const _strikeLeadRaw = (!_landLeadRaw && !_skipVisuals() && !hasDescent && VFX && typeof VFX.hitLeadMs === 'function')
+                ? (VFX.hitLeadMs(spell.id) || 0) : 0;
             // Every enemy caught in the area (plus the blast centre) — beat 2
             // of the action shot frames the WHOLE group, not just the first hit.
             const _aoeFrameTiles = (firstHit && extraTargets.length > 0)
@@ -7095,7 +7099,7 @@
                    ...extraTargets.map(e => ({ x: e.x, y: e.y }))]
                 : undefined;
             const cam = playOffensiveActionCamera(unit, camTarget, {
-                sourceHold: 1100, targetHold: 900 + _landLeadRaw,
+                sourceHold: 1100, targetHold: 900 + _landLeadRaw + _strikeLeadRaw,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 frameTiles: _aoeFrameTiles,
                 attackName: spell.name,
@@ -7122,6 +7126,10 @@
             const vfxDelay = impactDelay;   // the aoe intent (the look) — the damage waits _landLead more for the payload
             impactDelay += _landLead;
             if (_landLead > 0) _stageRetimeBurst(unit, spell, { x: tx, y: ty }, impactDelay);
+            if (_strikeLeadRaw > 0) {
+                _stageRetimeBurst(unit, spell, { x: tx, y: ty }, impactDelay);
+                impactDelay += actionMs(_strikeLeadRaw);
+            }
             const completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
             return { cam, projectileDelay, impactDelay, vfxDelay, completionDelay, hasDescent };
         }
@@ -8337,6 +8345,17 @@
 
             // Allow callers to adjust timing (e.g. multiHit extends completionDelay)
             let { impactDelay, completionDelay } = timing;
+            /* THE LANDING ON THE SHOT (2026-10-26): a strike whose impact signature only strikes a while after it
+               starts (VFX hitLeadMs: Valkyrie Spear's polearms plant ~0.7 s in) lands its damage on that strike —
+               the strike leap fires the signature on its impact frame, the number used to pop before any spear. */
+            if (travel === 'strikeLeap' && !_skipVisuals() && window.ThreeVFXEffects
+                && typeof window.ThreeVFXEffects.hitLeadMs === 'function' && window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
+                const _hitLead = window.ThreeVFXEffects.hitLeadMs(spell.id) || 0;
+                if (_hitLead > 0) {
+                    impactDelay += actionMs(_hitLead);
+                    completionDelay = Math.max(completionDelay, impactDelay + actionMs(500));
+                }
+            }
             if (opts.timingOverride) {
                 const adjusted = opts.timingOverride({ impactDelay, completionDelay, cam, timing });
                 impactDelay = adjusted.impactDelay ?? impactDelay;

@@ -48487,6 +48487,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        chariot let go): _sigMerkaba3D spins up and collapses over 1900 ms and lets go at 0.62 + 0.38 × 0.55 of it — the
        burst tiles wait for that, and so does the damage (battle.js reads aoeLandMs) */
     _spell3DGeometry.raceMerkaba.landMs = Math.round(1900 * (0.62 + 0.38 * 0.55));
+    /* …and a signature that STRIKES a while after it starts (`hitMs`, read by hitLeadMs): Valkyrie Spear's five polearms
+       plant at 240 + 4 × 90 + 110 ms (_sigSpearPrison3D: summon, stagger, thrust); Underfoot's below the _GO_SIG table */
+    _spell3DGeometry.raceValkyrieSpear.hitMs = 240 + 4 * 90 + 110;
 
     Object.assign(_GO_SIG, {
         goSolarFlare: _goPlasmaLoop3D, goBurnout: _goBurnout3D,
@@ -48526,6 +48529,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     });
     for (var _goId in _GO_BOLTS) { if (_GO_BOLTS[_goId].boltGeometry && !_GO_LAND[_goId]) _GO_LAND[_goId] = _GO_SIG[_goId]; }
     for (var _goL in _GO_LAND) { if (_GO_LAND[_goL]) _spell3DGeometry[_goL] = _goLandFn(_goL, _GO_LAND[_goL]); }
+    /* Underfoot's foot comes down 700 ms into _goUnderfoot3D (downAt): its damage waits for that (VFX hitLeadMs) */
+    _GO_SIG.goUnderfoot.hitMs = 700;
     Object.assign(_GO_THROWN, {
         goThingsThatGoBump: _goBumpThrow, goHatchetThrow: _goHatchetThrow, goAtlatl: _goAtlatlThrow, goDevilsCoal: _goCoalThrow,
         goVisibleLanguage: _goVisibleLanguageThrow, goNoisyCricket: _goCricketShot, goEyeStalks: _goEyeStalkShot,
@@ -54370,6 +54375,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (g && g.landMs > 0) return g.landMs;
             if (d.missiles) return d.missiles.flyMs || 350;
             return 0;
+        },
+        /* …and a signature that strikes a while after it starts (the fn's `hitMs`): the impact signature of a strike
+           (Valkyrie Spear's spears) or the burst signature of an area (Underfoot's foot). battle.js lands the damage
+           that long after the signature starts. 0 = it strikes at once. */
+        hitLeadMs: function (spellId) {
+            var g = _spell3DGeometry[spellId] || _GO_SIG[spellId];
+            return (g && g.hitMs > 0) ? g.hitMs : 0;
         },
         /* …and a wall that ROLLS down its line (Tsunami's `beamTsunami`): ms from the beam's fire until the front
            crosses step `step` of an `n`-cell line (_sigTsunami3D: the charge, then the front rolls from a quarter tile

@@ -2277,6 +2277,10 @@ the steal number popping before the camera arrived. Timing only: same damage, sa
   arrives after its intent — the geometry fn's `landMs` (Skyscraper Toss 240, Merkaba 1575 = its detonation) or
   `missiles.flyMs` (Snowball Volley) — lands the damage on the payload; the look keeps its beat (`timing.vfxDelay`),
   the target beat holds that much longer, the burst moves with the hit. Merkaba's burst tiles wait for the detonation too.
+- THE LATE STRIKE (`hitLeadMs` = a signature fn's `hitMs`): Valkyrie Spear's impact signature plants its polearms
+  710 ms after it starts (read in executeSpellAnimation for a strikeLeap cast, the number used to pop before any spear);
+  Underfoot's burst signature brings the foot down 700 ms in (read in `_setupAoeCameraAndTiming`: the burst starts on the
+  old impact beat, the damage waits for the foot; the hit-is-the-burst hook had made the foot start on the number).
 - THE ROLLING WALL (`beamFrontMs`, the line branch): Tsunami's numbers popped with the wall still at the caster. The
   line hit lands when the wall's front reaches the NEAREST body (the farther ones are shoved by its surge).
 - RULE #2: everything above runs on the host and reaches the guest through the existing relays (support-cine /
