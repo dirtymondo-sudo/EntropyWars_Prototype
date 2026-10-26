@@ -2325,6 +2325,25 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
     }),
   },
+  // Seraphim (2026-10-26, mondo's ring-of-eyes upload) — a boneless Meshy
+  // texture-stage GLB, so no library clips: procRig 'seraphRings'
+  // (three-renderer.js THE PROCEDURAL RIGS) nests a second copy inside it, a
+  // wheel within a wheel, and drives both with its own keyframe clips (always
+  // turning; on attacks and spells the inner wheel flies out and the game's
+  // eyeball opens at the core). 2.4 m (data.js physique) → 1.25 like the djinn.
+  'seraphim': (function () {
+    const ring = {
+      model: `${_S}/Races/seraphim/Meshy_AI_a_circular_ring_of_ey_1026083741_texture.glb`,
+      clips: {},
+      procRig: 'seraphRings',
+      heightRatio: 1.25,
+      yawOffset: 0,
+      basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+    };
+    // both genders: the 3D-only roster rule (getAvailableGendersForRace) drops a gender with no model
+    return { male: ring, female: ring };
+  })(),
   // Ghost (White Mage, healer) — the drifting dead, spectral zaps.
   'ghost': {
     female: _mkUAL('ghost/female', 'ghost_realistic_hot', {
@@ -3869,7 +3888,12 @@ const TERRAIN_SPRITES = {
     dirt:           [`${_T}/dirt.png`],
     lava:           [`${_T}/lava.png`],
     scorched:       [`${_T}/scorched.png`],
-    poison:         [`${_T}/purple_grass.png`],
+    /* 🧪 THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as
+       is"): every liquid that isn't water or lava wears its own sheet from R2 Assets/Sprites/terrain/liquids/ (his 48-sheet
+       upload, LIQUID_SHEETS below) in place of the tinted water / purple grass it borrowed. The 3D fluid tops read the same
+       sheet (three-renderer.js _LIQUID_STYLES). poison = the toxic green, poison_bog = the olive bog, purple_bog = the
+       purple, swamp (Black Ooze) = the dark slate goo, oil = the brown swirls (both darkened in 3D), blood = the deep red. */
+    poison:         [`${_T}/liquids/Liquid_Green_02-128x128.png`],
     cave_floor:     [`${_T}/cave_floor.png`],
     cave_wall:      [`${_T}/cave_wall.png`],
     cloud:          [`${_T}/cloud.png`],
@@ -3919,7 +3943,7 @@ const TERRAIN_SPRITES = {
     rubble_2:         [`${_T}/rubble_2.png`],
     rubble_3:         [`${_T}/rubble_3.png`],
     rubble_4:         [`${_T}/rubble_4.png`],
-    poison_bog:       [`${_T}/poison_bog.png`],
+    poison_bog:       [`${_T}/liquids/Liquid_Green_08-128x128.png`],
     rocks_1:          [`${_T}/rocks_1.png`],
     rocks_2:          [`${_T}/rocks_2.png`],
     rocks_3:          [`${_T}/rocks_3.png`],
@@ -3933,13 +3957,12 @@ const TERRAIN_SPRITES = {
     dark_woods:       [`${_T}/dark_woods.png`],
     urban_wall:       [`${_T}/urban_wall.png`],
     grass_rocky:      [`${_T}/grass_rocky.png`],
-    purple_bog:       [`${_T}/purple_bog.png`],
-    /* Black liquid family (2026-07-14): no bespoke art — they reuse the water
-       sprite; the 3D fluid pipeline tints them black (see three-renderer.js
-       _LIQUID_STYLES). 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. */
-    swamp:            [`${_T}/water.png`],
-    oil:              [`${_T}/water.png`],
-    blood:            [`${_T}/water.png`],   // 🩸 the Blood Pool (2026-10-21): water sheet, tinted red in 3D
+    purple_bog:       [`${_T}/liquids/Liquid_Purple_07-128x128.png`],
+    /* Black liquid family (2026-07-14): 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. Since 2026-10-26 (THE
+       LIQUIDS, above) each wears its own liquid sheet; the 3D fluid top darkens both (three-renderer.js _LIQUID_STYLES). */
+    swamp:            [`${_T}/liquids/Liquid_Blue_06-128x128.png`],
+    oil:              [`${_T}/liquids/Liquid_Brown_02-128x128.png`],
+    blood:            [`${_T}/liquids/Liquid_Red_05-128x128.png`],   // 🩸 the Blood Pool (2026-10-21; its own red sheet since 2026-10-26)
     /* THE STREET (2026-09-16): the old urban_street.png carried lane markings
        running one way, so every street laid across it (and every tile beside
        another) read as chaos. Streets wear the concrete sheet now, darkened
@@ -4069,6 +4092,10 @@ const TERRAIN_BASE_TINT = {
     gold_3: '#c89230',
     /* THE METALS (2026-09-21): metal_3 = the aluminium sheet as blued steel */
     metal_3: '#8a949e',
+    /* 🧪 THE LIQUIDS (2026-10-26): Black Ooze = the dark slate liquid sheet, the oil slick = the brown swirl sheet, both
+       darkened toward black (their 3D fluid tops, room floors and drapes alike) */
+    swamp: '#4a4a4a',
+    oil: '#7a7a7a',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 
@@ -4146,6 +4173,14 @@ Object.assign(URBAN_TEXTURES, {
     MetroMetal: `${_TMETRO}/metal.jpg`,
 });
 URBAN_TEX_FAMILIES.MetroPSX = Object.keys(URBAN_TEXTURES).filter(n => /^Metro/.test(n));   // the editor's texture list shows them as one family
+/* THE LIQUIDS (2026-10-26, mondo's upload): all 48 sheets on R2 Assets/Sprites/terrain/liquids/ (Blue / Brown / Green / Purple /
+   Red _01-_08, Yellow _1-_8 with no zero pad), worn as `urban:Liquid_<Colour>_<NN>` by a room's floor / pool / shell like any
+   urban sheet, and listed as one family (Liquids, which no random city pick names) in the editor's texture picker. The
+   liquid terrains themselves (poison, poison_bog, purple_bog, swamp, oil, blood) name theirs in TERRAIN_SPRITES. */
+const LIQUID_SHEETS = {};
+['Blue', 'Brown', 'Green', 'Purple', 'Red', 'Yellow'].forEach(c => { for (let i = 1; i <= 8; i++) LIQUID_SHEETS[`Liquid_${c}_${c === 'Yellow' ? i : '0' + i}`] = `${_T}/liquids/Liquid_${c}_${c === 'Yellow' ? i : '0' + i}-128x128.png`; });
+Object.assign(URBAN_TEXTURES, LIQUID_SHEETS);
+URBAN_TEX_FAMILIES.Liquids = Object.keys(LIQUID_SHEETS);
 function urbanTexUrl(name) { return URBAN_TEXTURES[name] || null; }
 function urbanTexKey(name) { return 'urban:' + name; }
 /* a seeded pick from a family: `rng` a 0..1 function (or a number in 0..1), `filter` a predicate / a RegExp on the name */
@@ -4168,7 +4203,7 @@ function urbanTexGlow(name) {
     if (m2 && URBAN_TEXTURES[m2[1] + m2[2] + 'a-Glow']) return m2[1] + m2[2] + 'a-Glow';
     return null;
 }
-if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; }
+if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; window.LIQUID_SHEETS = LIQUID_SHEETS; }
 
 const TERRAIN_SIDE_SPRITES = {
 

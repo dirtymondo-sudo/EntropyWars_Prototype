@@ -426,3 +426,24 @@ mondo's new Meshy models + 2D sprites replace four existing looks (no rule, stat
   same trimmed quick-draw.
 Sprites: `_CHARACTER_SPRITES` / `_CHARACTER_SPRITES_GENDERED` + `RACE_SPRITES` (sprites.js). The 128px face portraits
 (`character_portraits/female/glowie.png`, `.../sniper.png`) were left as they are.
+
+## THE SERAPHIM RINGS (2026-10-26)
+mondo's ring-of-eyes model (`Races/seraphim/Meshy_AI_a_circular_ring_of_ey_1026083741_texture.glb`, boneless, 1 mesh,
+upright ring 1 across, hole radius 0.296) is the Seraphim's 3D body: "two of them rotate around each other like a
+biblically accurate angel", rings separating on attacks, the single eyeball as an option. No stat / spell / rule change.
+- New hook: a RACE_MODELS_3D def's `procRig` names a builder in three-renderer.js `_PROC_RIGS` ("THE PROCEDURAL RIGS").
+  `_loadUnitGLB` runs it ONCE on the cached root and stores its keyframe clips as `procClips`; the board wires them as
+  ordinary slots (idle / walk / cast / castMagic / castRanged / castMelee / castAOE / castUltimate / castSupport /
+  castHeal / hit / death), so every cast chain, hit flinch and death runs through the usual mixer machinery. The party
+  builder dock and the character viewer play them too.
+- `seraphRings`: ring B = the same mesh at 0.54 nested in A's hole on a gimbal (turns with A, tumbles on A's cross axis),
+  hovering 0.14 above the floor. Idle 8 s loop, walk 2 s loop. Attacks/magic/ranged: B flies out through the hole toward
+  the target while A wheels in its own plane. AOE/ultimate/support/heal: B leaves through the hole and rises to a flat
+  spinning halo over the crown. Melee kinds: the whole wheel somersaults forward. Death: the wheels lie down level and drop.
+  Moves out of A's plane go through the hole with A face-on, so the wheels never clip.
+- The core eye is `ThreeRenderer.astralEye` (the sky's eyeball OBJ, no lids) in the `ewSerEye` group, scaled to nothing
+  except during attacks/spells/death; while open it turns to look at the board camera (`_procRigEyeTrack`; from behind
+  the OBJ is a black back). It wears its own 512 px copy of Eye_D per drawing surface (`_procEyeTex`: board / dock /
+  viewer, via astralEye's new `tex` option): with the shared `_miscTex` sheet the eye drew solid black on the board once
+  the party builder had drawn it too. It is added after the x-ray/outline twins, so it has none.
+- Both genders wear the rings: the 3D-only roster rule (`getAvailableGendersForRace`) drops a gender with no model.
