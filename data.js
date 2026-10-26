@@ -40921,36 +40921,39 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-16, 16.2], [-16, 18.3]], w: 2.6 },             // side room 3
                     { k: 'hall', pts: [[16, 16.2], [16, 18.3]], w: 2.6 },               // workshop 2
                     /* THE RIG (the saucer stands on it), its stair from the east, its rail round the west side */
-                    { k: 'plateau', x: -12, z: -2, r: 6.5, h: 1.2, edge: 0.15 },
-                    { k: 'ramp', x0: -2.4, z0: -2, x1: -6.2, z1: -2, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', arc: { x: -12, z: -2, r: 6.1, a0: 210, a1: 330 }, model: 'balusters_b' },
+                    /* GRID FIT (2026-10-26): every piece below sits on the battle squares (1.75 m): tiers, decks and gantries on square
+                       lines, stairs 1 or 2 squares wide with their foot on a line and their head 0.4 m under the tier's rim, round pieces
+                       centred on a square, never steeper than before. Pieces against a plan wall run on under it. */
+                    { k: 'plateau', x: -11.375, z: -2.625, r: 6.125, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: -1.75, z0: -2.625, x1: -5.67, z1: -2.625, w: 1.75, h0: 0, h1: 1.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', arc: { x: -11.375, z: -2.625, r: 5.725, a0: 210, a1: 330 }, model: 'balusters_b' },
                     /* the upper level at 5.5 m: THE CATWALK along the north wall (its steel stair from the east), the west gantry and the
                        cross gantry over the floor (the floor runs on under them), the grate stair down the east wall; a 2.5 m gap between
                        the catwalk and the west gantry (a jump, a pipe rail across it) */
-                    { k: 'plateau', x: -10, z: -12.5, w: 20, d: 3, h: 5.5, edge: 0.15 },
-                    { k: 'ramp', x0: 13.3, z0: -12.6, x1: -0.7, z1: -12.6, w: 2.4, h0: 0, h1: 5.5, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', x0: -16, z0: -11.3, x1: -1.2, z1: -11.3, model: 'balusters_b' },                       // the catwalk's edge (open at the gap end)
-                    { k: 'bridge', x0: -18.6, z0: -8.5, x1: -18.6, z1: 1.7, w: 2.6, y: 5.5, key: 'urban:MetalSubwayGrill1a' },   // the west gantry
-                    { k: 'bridge', x0: -19.9, z0: -5, x1: 20.3, z1: -5, w: 2.6, y: 5.5, key: 'urban:MetalSubwayGrill1a' },      // the cross gantry
-                    { k: 'rail', x0: -18.6, z0: -11.4, x1: -18.6, z1: -8.1, y: 5.5, model: 'pipe', block: false },      // across the gap
-                    { k: 'ramp', x0: 19.6, z0: 8.0, x1: 19.6, z1: -4.3, w: 2.4, h0: 0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },   // the east stair up to the cross gantry
+                    { k: 'plateau', x: -10.5, z: -12.25, w: 21, d: 3.5, h: 5.5, edge: 0.15 },
+                    { k: 'ramp', x0: 14, z0: -13.125, x1: -0.4, z1: -13.125, w: 1.75, h0: 0, h1: 5.5, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: -16, z0: -10.7, x1: -1.2, z1: -10.7, model: 'balusters_b' },                       // the catwalk's edge (open at the gap end)
+                    { k: 'bridge', x0: -19.25, z0: -8.75, x1: -19.25, z1: 1.75, w: 3.5, y: 5.5, key: 'urban:MetalSubwayGrill1a' },   // the west gantry
+                    { k: 'bridge', x0: -21, z0: -5.25, x1: 21, z1: -5.25, w: 3.5, y: 5.5, key: 'urban:MetalSubwayGrill1a' },      // the cross gantry
+                    { k: 'rail', x0: -19.25, z0: -10.85, x1: -19.25, z1: -8.4, y: 5.5, model: 'pipe', block: false },      // across the gap (one square)
+                    { k: 'ramp', x0: 20.125, z0: 8.75, x1: 20.125, z1: -3.9, w: 1.75, h0: 0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },   // the east stair up to the cross gantry
                     /* THE SOUTH DECK (3 m): the grate stair down from the west gantry, the steel stair down to the floor (a pipe rail down its middle) */
-                    { k: 'plateau', x: -14.75, z: 8.3, w: 10.5, d: 3.4, h: 3.0, edge: 0.15 },
-                    { k: 'ramp', x0: -18.6, z0: 7.3, x1: -18.6, z1: 1.0, w: 2.4, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
-                    { k: 'ramp', x0: -2.6, z0: 8.2, x1: -10.2, z1: 8.2, w: 3.2, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', pts: [[-2.2, 8.2, 0], [-10.2, 8.2, 3.0]], model: 'pipe', block: false },
-                    { k: 'rail', x0: -16.9, z0: 6.9, x1: -10.6, z1: 6.9, model: 'balusters_b' },                        // the deck's north edge
-                    { k: 'plateau', x: 8, z: 6, r: 1.3, h: 8.0, edge: 0.15 },                                           // THE CRANE HOOK (the tape — the door gun's)
-                    { k: 'wall', x0: 3, z0: 9.4, x1: 14, z1: 9.4, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb the trucks park against
+                    { k: 'plateau', x: -14.875, z: 8.75, w: 12.25, d: 3.5, h: 3.0, edge: 0.15 },
+                    { k: 'ramp', x0: -18.375, z0: 8.75, x1: -18.375, z1: 1.35, w: 1.75, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
+                    { k: 'ramp', x0: 0, z0: 8.75, x1: -9.15, z1: 8.75, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', pts: [[0.4, 8.75, 0], [-9.15, 8.75, 3.0]], model: 'pipe', block: false },
+                    { k: 'rail', x0: -17.3, z0: 7.3, x1: -9.65, z1: 7.3, model: 'balusters_b' },                        // the deck's north edge
+                    { k: 'plateau', x: 7.875, z: 4.375, r: 0.875, h: 8.0, edge: 0.15 },                                 // THE CRANE HOOK (the tape — the door gun's); one square north, clear of the truck
+                    { k: 'wall', x0: 3.5, z0: 8.75, x1: 14, z1: 8.75, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb the trucks park against
                     { k: 'path', pts: [[0, 23], [0, 12], [0, -2], [-2.4, -2]], w: 2.6 },                                // the painted lane door → rig
                     { k: 'path', pts: [[26, 10.5], [33.2, 10.5]], w: 2.2 },                                             // the floor lift's lane
                     { k: 'path', pts: [[18, -23], [18, -8]], w: 3.0 },                                                  // the big door's lane
                     { k: 'path', pts: [[-35, -12], [-31, -12]], w: 2.0 },                                               // the white rooms' lane
                     /* AREA CONTENT D4 (2026-09-20): THE FREIGHT GANTRY — the tunnel's door (links.area51_dumb.a) stands 3 m up on the east
                        wall of the floor lift's room, up a stair from the south (R4: a door you climb to) */
-                    { k: 'plateau', x: 32, z: -1, w: 6, d: 8, h: 3.0, edge: 0.15 },
-                    { k: 'ramp', x0: 33.2, z0: 9.5, x1: 33.2, z1: 2.3, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },   // L 7.2 ≥ 2.2 × 3; ends 0.7 m inside
-                    { k: 'rail', x0: 29.4, z0: 3.3, x1: 31.6, z1: 3.3, model: 'balusters_b' },
+                    { k: 'plateau', x: 31.5, z: -0.875, w: 7, d: 8.75, h: 3.0, edge: 0.15 },
+                    { k: 'ramp', x0: 32.375, z0: 10.5, x1: 32.375, z1: 3.1, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },   // L 7.4 ≥ 2.2 × 3; ends 0.4 m inside
+                    { k: 'rail', x0: 29.2, z0: 3.3, x1: 31.3, z1: 3.3, model: 'balusters_b' },
                 ],
             },
             doors: [
@@ -40971,20 +40974,20 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE RIG: the saucer under its tarp, the tape round it, the sign */
-                { key: 'saucer_rig',      x: -12, z: -2, face: 0 },
-                { key: 'warning_tape',    x: -12, z: 5.5, face: 0 },
+                { key: 'saucer_rig',      x: -11.375, z: -2.625, face: 0 },
+                { key: 'warning_tape',    x: -11.375, z: 4.375, face: 0 },
                 { key: 'radiation_sign',  x: 21.6, z: -6, face: 270, mount: 1.7 },                                       // free-standing on the floor's east plan wall
-                { key: 'railing_1m',      x: -3, z: -12.6, face: 0 },                                                    // THE PARK RULE's catalogue rail on the catwalk
-                { key: 'monitor_stack',   x: -8, z: -13, face: 180 },                                                    // on the catwalk, watching the rig
+                { key: 'railing_1m',      x: -2.625, z: -11.375, face: 0 },                                              // THE PARK RULE's catalogue rail on the catwalk
+                { key: 'monitor_stack',   x: -7.875, z: -13.125, face: 180 },                                            // on the catwalk, watching the rig
                 /* THE FLOOR: the desk under the catwalk, the trucks, the tanks, the clutter */
-                { key: 'steel_table',     x: 2, z: -10, face: 0 }, { key: 'crt_terminal', x: 2, z: -10, y: 0.76, face: 0 }, { key: 'paper_sheet', x: 2.6, z: -9.7, y: 0.76, face: 30 },
-                { key: 'computer_chair_grey', x: 2, z: -8.8, face: 0 },
-                { key: 'fire_truck',      x: 13, z: 1.5, face: 90 },
-                { key: 'car_truck',       x: 6, z: 8, face: 270 },
+                { key: 'steel_table',     x: 2.625, z: -9.625, face: 0 }, { key: 'crt_terminal', x: 2.625, z: -9.625, y: 0.76, face: 0 }, { key: 'paper_sheet', x: 3.225, z: -9.325, y: 0.76, face: 30 },
+                { key: 'computer_chair_grey', x: 2.625, z: -7.875, face: 0 },
+                { key: 'fire_truck',      x: 13.125, z: 1.75, face: 90 },                                                // its 2.5 m width on two square rows
+                { key: 'car_truck',       x: 6.125, z: 7, face: 270 },                                                   // its 2.6 m width on two square rows, against the kerb
                 { key: 'iso_tank',        x: -31, z: 6, face: 90 }, { key: 'iso_tank', x: -31, z: 8.6, face: 90 },       // the specimen tanks in side room 2 (the vent behind them)
-                { key: 'quarter_pipe',    x: -4, z: 4.4, face: 0 },                                                   // THE PARK RULE's ramp
-                { key: 'traffic_cone',    x: 2.4, z: 8.8 }, { key: 'traffic_cone', x: 14.6, z: 8.8 }, { key: 'traffic_cone', x: 15, z: 4 },
-                { key: 'traffic_barrel',  x: 13, z: -2, face: 30 },
+                { key: 'quarter_pipe',    x: -4.375, z: 4.375, face: 0 },                                             // THE PARK RULE's ramp
+                { key: 'traffic_cone',    x: 2.625, z: 9.625 }, { key: 'traffic_cone', x: 14.875, z: 9.625 }, { key: 'traffic_cone', x: 14.875, z: 4.375 },
+                { key: 'traffic_barrel',  x: 13.125, z: -2.625, face: 30 },
                 { key: 'cardboard_boxes', x: -33, z: -7, face: 20 },
                 { key: 'floor_stain',     x: -15, z: -9 },
                 { key: 'evac_button',     x: 21.6, z: -9, face: 270, mount: 1.2 },
