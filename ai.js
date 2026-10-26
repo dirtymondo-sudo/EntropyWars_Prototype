@@ -4734,7 +4734,9 @@
         if (kind === 'placeTrap' && target) {
             const active = (g.state.traps || []).filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType).length;
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
-            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
+            /* a 2×2 / 3×3 trap's target is its NW anchor: measure from the footprint, like _trapHitValue does */
+            const _tpSlack = Math.max(0, (spell.trapSize || 1) - 1);
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) - _tpSlack <= 2).length;
             const _tpFlat = nearE > 0 ? 45 + nearE * 30 + (spell.dmg || 0) * 0.2 : 0;
             if (!_tpFlat) return 0;
             /* WEAK RACES II (2026-10-23, mondo): a trap is worth the hit it will likely land — P(an enemy walks onto it)
@@ -6398,6 +6400,13 @@
        gate would refuse (range, line of sight, sight, hidden, above) is no pick — the CPU never plans a cast doSpell
        turns down. The kinds below re-derive range with _effRange, so the shared check closes the gap. */
     const _AIM_CHECKED_KINDS = new Set(['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain', 'tackle']);
+    /* THE TILE AIM (spell audit 2026-10-26): a TILE the CPU picks for a dash end, a trap or a seed must pass the same
+       gate doSpell runs (range, line of sight, the team's sight) — the CPU aimed dashes and traps at tiles nobody on its
+       team could see and doSpell turned them down "Out of sight". */
+    function _aimOkAt(unit, spell, x, y) {
+        if (typeof window.spellAimProblem !== 'function') return true;
+        try { return window.spellAimProblem(unit, spell, x, y) === null; } catch (e) { return true; }
+    }
     function findSpellTarget(unit, spell, v) {
         const t = _findSpellTargetRaw(unit, spell, v);
         if (t && t !== unit && t.id != null && spell && _AIM_CHECKED_KINDS.has(spell.kind)
@@ -6809,7 +6818,9 @@
             if (!enemies.length) return null;
             if (spell.linkTargets === 'enemy-ally') {
                 // The doll's ally = the one enemies can reach most easily.
-                const allies = [unit, ...v.allies].filter(a => !a.dead && _reach(g, unit.x, unit.y, srcZ, a, longR) <= R);
+                /* "one of your allies": the caster is not one (doSpell refused the CPU's self pick "out of range") */
+                const allies = v.allies.filter(a => !a.dead && a.id !== unit.id && (() => {
+                    const d = _reach(g, unit.x, unit.y, srcZ, a, longR); return d >= 1 && d <= R; })());
                 if (!allies.length) return null;
                 const exposure = a => v.visibleEnemies.reduce((m, e) => Math.min(m, Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
                 allies.sort((a, b) => exposure(a) - exposure(b));
@@ -6890,12 +6901,46 @@
         if (kind === 'rallyPull') return { x: unit.x, y: unit.y };
 
         if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
-            const terrain = g.getTerrainAt(unit.x, unit.y);
-            if (terrain === 'mountain' || terrain === 'lava') return null;
+            /* THE SEED AIM (spell audit 2026-10-26): the CPU planted on its OWN tile, and the grown tree shoved it off.
+               Now a tile in range the cast accepts: under a hurt ally (Healing Seed heals it at once) or an enemy (Poison
+               / Leech Seed bite at once), else the free tile with the most of them beside it (the tree's reach), leaning
+               toward the nearest of them. */
             const _stype = kind === 'seedHeal' ? 'heal' : kind === 'seedPoison' ? 'poison' : 'leech';
-            if (g.state.plantedSeeds?.some(s2 => s2.x === unit.x && s2.y === unit.y && s2.type === _stype)) return null;
-            if (g.state.plantedTrees?.some(t2 => t2.x === unit.x && t2.y === unit.y)) return null;
-            return { x: unit.x, y: unit.y };
+            const friendly = kind === 'seedHeal';
+            const pool = friendly ? [unit, ...v.allies].filter(a => !a.dead && !a._dying) : (v.visibleEnemies || []);
+            const R = _effRange(unit, spell) || 3;
+            let best = null, bestS = 0;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    const terrain = g.getTerrainAt(tx, ty);
+                    if (terrain === 'mountain' || terrain === 'lava') continue;
+                    if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
+                    if (g.state.plantedSeeds?.some(s2 => s2.x === tx && s2.y === ty && s2.type === _stype)) continue;
+                    if (g.state.plantedTrees?.some(t2 => t2.x === tx && t2.y === ty)) continue;
+                    let sc = 1;
+                    const occ = g.unitAt(tx, ty);
+                    if (occ && !occ.dead) {
+                        const foe = g.isEnemyUnit(occ, unit);
+                        if (friendly ? (foe || occ.hp >= occ.maxHp) : !(foe && pool.includes(occ))) continue;
+                        sc += friendly ? 20 + 20 * (1 - occ.hp / Math.max(1, occ.maxHp)) : 20;
+                    }
+                    let near = 99;
+                    for (const p of pool) {
+                        if (p.x === tx && p.y === ty) continue;
+                        const pd = Math.max(Math.abs(p.x - tx), Math.abs(p.y - ty));
+                        if (pd <= 1) sc += 6;
+                        near = Math.min(near, pd);
+                    }
+                    sc += Math.max(0, 10 - near) * 0.2;
+                    if (sc <= bestS || !_aimOkAt(unit, spell, tx, ty)) continue;
+                    bestS = sc; best = { x: tx, y: ty };
+                }
+            }
+            return best;
         }
 
         if (kind === 'buff' || kind === 'shield') {
@@ -6939,15 +6984,23 @@
                     if (d < 1 || d > R) continue;
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
-                    if (typeof g._placeTrapProblem === 'function'
+                    /* a 2×2 / 3×3 trap (Trapdoor, Deathtrap) needs EVERY tile of its footprint free — doSpell's
+                       _trapFootprint (spell audit 2026-10-26: the CPU judged only the anchor tile, and the cast refused) */
+                    const _tsz = spell.trapSize || 1;
+                    let _fpTiles = [{ x: tx, y: ty }];
+                    if (_tsz > 1 && typeof g._trapFootprint === 'function') {
+                        const _fp = g._trapFootprint(tx, ty, _tsz);
+                        if (!_fp || _fp.problem) continue;
+                        _fpTiles = _fp.tiles;
+                    } else if (typeof g._placeTrapProblem === 'function'
                         ? g._placeTrapProblem(tx, ty) : g.unitAt(tx, ty)) continue;
                     let score = 0;
                     for (const e of v.visibleEnemies) {
-                        const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                        const eDist = _fpTiles.reduce((m, t) => Math.min(m, Math.abs(e.x - t.x) + Math.abs(e.y - t.y)), 99);
                         if (eDist <= 1) score += 12;
                         else if (eDist <= 3) score += 4;
                     }
-                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                    if (score > bestScore && _aimOkAt(unit, spell, tx, ty)) { bestScore = score; bestTile = { x: tx, y: ty }; }
                 }
             }
             return bestTile;
@@ -7409,7 +7462,7 @@
                     }
                     if (hits === 0 && shot === 0) continue;
                     const score = hits * 100 + hitPriority + d * 2 + shot;
-                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                    if (score > bestScore && _aimOkAt(unit, spell, tx, ty)) { bestScore = score; bestTile = { x: tx, y: ty }; }
                 }
             }
             return bestTile;

@@ -5311,7 +5311,7 @@ const SPELL_LIBRARY = [
             duration: 1,
             bonusDamage: 24
         }],
-        desc: 'A knife from the sleeve. Deals MEDIUM physical damage to a Single Enemy within 4 and Marks them: the next physical hit any ally lands deals +24.'
+        desc: 'A knife from the sleeve. Deals MEDIUM physical damage to a Single Enemy within 4 and Marks them: the next basic attack any ally lands on them deals +24.'
     },
     {
         id: 'sneakSlash',
@@ -5713,7 +5713,7 @@ const SPELL_LIBRARY = [
         families: ['weaponstraining'],
         school: 'Gunslinger',
         statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 60 }],
-        desc: 'Deals MEDIUM physical damage to a Single Enemy and Marks them for 3 rounds: the next hit on them lands 60 harder.'
+        desc: 'Deals MEDIUM physical damage to a Single Enemy and Marks them for 3 rounds: the next basic attack on them lands 60 harder.'
     },
 
     {
@@ -7653,7 +7653,6 @@ const RACE_ABILITIES = {
         { id: 'raceCrashLoop', tier: 1, families: ['computerhacking'], spellType: 'tech', name: 'Crash Loop',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'damage', damageType: 'magic',
-          repeatOnStay: true, repeatDmg: 112,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
           statusEffects: [{ id: 'broken', duration: 1 }],   // 💔 2026-10-09: Break joins the families
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Jammed. Breaks it for 1 round (its passives are off; a passive flyer falls).' },

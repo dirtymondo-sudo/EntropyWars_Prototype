@@ -356,19 +356,21 @@
         }
 
         // Single-target damage-spell rider stack, in resolution order: the
-        // Time Rewind echo REPLACES the base roll when bigger (capped at
-        // p.echoCap), then the flat acted-target/unholy riders add, then the
-        // caster-in-water and sneak-ambush multipliers floor. The wrapper
-        // resolves every condition (terrain, unit flags, types) and passes
-        // null/0 for inert riders. Returns { dmg, echoed, echoDmg } —
-        // echoDmg is the value at the echo stage (what the replay callout
-        // prints, before later riders adjust it).
+        // flat acted-target/unholy riders add, then the caster-in-water and
+        // sneak-ambush multipliers floor. The wrapper resolves every condition
+        // (terrain, unit flags, types) and passes null/0 for inert riders.
+        // Returns { dmg, echoed, echoDmg }. The Time Rewind echo (Overfit,
+        // Paradox: "then replays the last blow it dealt against it") is a
+        // SECOND hit of exactly the last blow (capped at p.echoCap): echoDmg is
+        // that number and dmg (the spell's own hit) is untouched by it — the
+        // echo used to REPLACE the base and run the whole formula on it (spell
+        // audit 2026-10-26: last blow 480 landed 1045).
         function calcSpellHitRiders(p) {
             let dmg = p.base;
             let echoed = false, echoDmg = 0;
             if (p.echo != null) {
-                const e = Math.round(p.echo);
-                if (e > dmg) { dmg = echoDmg = Math.min(e, p.echoCap); echoed = true; }
+                const e = Math.min(Math.round(p.echo), p.echoCap);
+                if (e > 0) { echoDmg = e; echoed = true; }
             }
             if (p.actedBonus) dmg += p.actedBonus;
             if (p.unholyBonus) dmg += p.unholyBonus;
@@ -6281,9 +6283,6 @@
                    leaves it under N%") judges the HP the hit LEFT instead (below, after applyDamageToUnit). */
                 const _execArmed = !!spell.executeBelowPct && target.maxHp > 0 && (spell.executeAfterHit
                     || (target.hp / target.maxHp) <= spell.executeBelowPct);
-                if (_riders.echoed) {
-                    addLog(`⏪ ${_ctSp(spell.name)} replays ${_ctName(target)}'s last blow in reverse — ${_riders.echoDmg} damage returns to sender!`);
-                }
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
                     addLog(`🗡️ ${_ctName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
                 }
@@ -6312,6 +6311,17 @@
                         element: _spellEl, isCrit: _hitCrit.isCrit
                     });
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, _hitCrit.isCrit);
+                /* ⏪ THE REPLAY (Overfit, Paradox): the target's own last blow comes back as a second hit of exactly that
+                   number — no DEF, level scaling or damage multipliers (link-echo style: source-less, the caster credited) */
+                if (_riders.echoed && !target.dead && !target._dying) {
+                    target._lastDamageSourceId = unit.id;
+                    applyDamageToUnit(target, _riders.echoDmg, `⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow back at it: `, {
+                        damageType: spell.damageType || 'magic',
+                        ignoreArmor: true, preScaled: true, exactDamage: true,
+                        consumeMarked: false, allowMarkBonus: false, noRangeMult: true,
+                        floatKind: 'combo'
+                    });
+                }
                 if (_wasJammed) _applyJammedArc(unit, spell, target, damage);
                 if (_sitHas) _applyStatusIfTargetHas(unit, spell, target);
                 if (_execArmed && !target.dead && !target._dying
@@ -10513,7 +10523,10 @@
                     // The `regenPerRound` hook (% max HP; the Chrono Locket's gear row = 5) on top of the baseline regen.
                     const _regenHook = (typeof unitPassiveValue === 'function') ? (+unitPassiveValue(u, 'regenPerRound') || 0) : 0;
                     const _regenPct = REGEN_PERCENT + _skyRegen + (Math.max(0, _regenHook) + Math.max(0, _condRegen)) / 100;
-                    const amt = Math.max(1, Math.round(u.maxHp * _regenPct));
+                    /* 🛢️ Gooed / Grievous Wound halve regen too (STATUS_DEFS healTakenMult: "every heal source, regen too";
+                       the spell audit 2026-10-26 found the round's regen skipped it) */
+                    const _regenTaken = getActiveStatusKeys(u).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
+                    const amt = Math.max(1, Math.round(u.maxHp * _regenPct * _regenTaken));
                     const before = u.hp;
                     u.hp = Math.min(u.maxHp, u.hp + amt);
                     const actual = u.hp - before;
@@ -35401,7 +35414,8 @@
                 gapMult: _gapMult,
                 rangedMult: (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target))
                     ? getStatusRangedDamageTakenMultiplier(target) : null,
-                statusTakenMult: getStatusDamageTakenMultiplier(target)
+                /* opts.exactDamage (the ⏪ replayed blow): the number lands as given — no damage-taken statuses either */
+                statusTakenMult: opts.exactDamage ? null : getStatusDamageTakenMultiplier(target)
                     * (damageType === 'magic' ? getStatusMagicDamageTakenMultiplier(target) : 1),
                 basicFloorShare: (opts.basicAttack && !opts.preScaled) ? BASIC_FLOOR_SHARE : 0,
                 basicFloorMin: (opts.basicAttack && !opts.preScaled)
@@ -37054,6 +37068,10 @@
                     const _cm = (spell.critChance >= 1 && !unitCritWarded(target)) ? getCritMultiplier(unit) : 1;
                     const _rc = (b) => _cm !== 1 ? Math.floor(riders(b) * _cm) : riders(b);
                     hit(target, _rc(m), _rc(l), _rc(hgh), hopts);
+                    /* ⏪ Overfit / Paradox: the replayed last blow, a second exact hit */
+                    const _echoN = spell.echoLastDealt ? calcSpellHitRiders({ base: 0, echo: target._lastHitDealt || 0, echoCap: 500 }).echoDmg : 0;
+                    if (_echoN > 0) hit(target, _echoN, _echoN, _echoN, { damageType: dt, ignoreArmor: true, preScaled: true, exactDamage: true,
+                        consumeMarked: false, allowMarkBonus: false, noRangeMult: true }, { tag: 'echo' });
                     /* THE SPELL AUDIT FIX (2026-10-26): the execute rider (No Mercy, Ammit Devours, Termination Protocol) in the
                        preview — judged on the HP before the hit, or on the HP the hit leaves for an `executeAfterHit` row */
                     const _eh = plan.byId[target.id];
@@ -41540,8 +41558,13 @@
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
                 && (unitFinished(u) || u.ap === 0);
             if (k === 'cleanse') {
-                return typeof getActiveStatusKeys === 'function'
-                    && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff');
+                if (typeof getActiveStatusKeys === 'function'
+                    && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff')) return true;
+                /* Inner Peace ("removes every debuff … and raises their M DEF by 1 stage", spell audit 2026-10-26): the
+                   stage alone is worth the cast on an ally with nothing to cleanse, while it still has room to rise */
+                const _clB = spell.statStageBoost;
+                return !!_clB && !isEnemyUnit(u, unit)
+                    && Object.keys(_clB).some(st => _clB[st] > 0 && statStageRoom(u, st, _clB[st]) > 0);
             }
             // Status effects don't stack: a pure-status spell has nothing to
             // give a target that already carries every status it applies.
@@ -66912,6 +66935,7 @@
             }
 
             window.setTimeout(() => {
+                let _wardPledged = false;   // 🛡 Chivalry (set on the hit below)
                 if (evaded) {
 
                     target._matchDodges = (target._matchDodges || 0) + 1;
@@ -66960,6 +66984,8 @@
                         if (_typeNote) _activeCinematic.showTypeEffect(_typeNote);
                     }
                     if (_pointBlank && !_skipVisuals()) showFloatingTextForUnit(unit, `💥 ×${_pbRule.mult} POINT BLANK`, 'mult', { durationMs: 1000 });
+                    /* 🛡 Chivalry: a knight who intercepts the swing takes the hit, so the ward never took it and does not counter */
+                    _wardPledged = !!target._guardedBy;
                     const killed = applyDamageToUnit(target, damage, `${unitDisplayName(unit)} attacks${isCrit ? ' (CRIT!)' : ''}: `, {
                         sourceUnit: unit,
                         isCrit,
@@ -67087,7 +67113,8 @@
 
                 /* Clash: the melee gap-closer counts as a melee exchange — the
                    defender's riposte stays live (counters are a JRPG staple). */
-                if (!evaded && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && rollCounter(target)) {
+                const _wardIntercepted = !evaded && _wardPledged && !target._guardedBy;
+                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && rollCounter(target)) {
                     const counterDmg = getCounterDamage(target);
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
@@ -71577,13 +71604,23 @@
                    fraction of MAX HP after the cast resolves. Never lethal:
                    the price bottoms out at 1 HP left, so a ritual can't KO
                    its own ritualist. Runs after the press collector is
-                   consumed so self-damage can never feed a press turn. */
+                   consumed so self-damage can never feed a press turn.
+                   THE EXACT PRICE (spell audit 2026-10-26): the price is the stated share of max HP, paid straight off
+                   the HP — no DEF / M DEF, soaks, shield, Protect or damage multipliers (through applyDamageToUnit DEF
+                   cut Burnout's 15% to 11%, Go Ape's 10% to 6%). */
                 const _recoilFrac = spell.selfDamagePct || spell.recoilPct || 0;
                 if (_recoilFrac > 0 && !unit.dead && !unit._dying) {
                     const _price = Math.min(
                         Math.round((unit.maxHp || 0) * _recoilFrac),
                         Math.max(0, unit.hp - 1));
-                    if (_price > 0) applyDamageToUnit(unit, _price, `${spell.name} recoil: `);
+                    if (_price > 0) {
+                        unit.hp -= _price;
+                        unit._trackDmgReceived = (unit._trackDmgReceived || 0) + _price;
+                        flashUnit(unit.id, 'hit');
+                        showFloatingTextForUnit(unit, `-${_price}`, 'damage');
+                        addLog(_dmgLogLine(`${spell.name} recoil: `, unit, '', _price, null), 0, [Math.max(0, Math.round(unit.hp)), Math.round(unit.maxHp || 0)]);
+                        if (window.RenderBus) window.RenderBus.emit('unit:damaged', { unit, damage: _price });
+                    }
                 }
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
@@ -73044,7 +73081,7 @@
                 // with nothing on them (map clicks bypass the target drum).
                 const _clPre = (unitAt(x, y, z) || unitAt(x, y));
                 if (_clPre && !spellTargetUsableOn(unit, spell, _clPre)) {
-                    addLog(`${_ctName(_clPre)} has no debuffs to cleanse.`);
+                    addLog(`${_ctName(_clPre)} has no debuffs to cleanse${spell.statStageBoost ? ' and no room to rise' : ''}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -73064,7 +73101,8 @@
                 }
                 if (cleansedCount > 0) unit._matchCleanses = (unit._matchCleanses || 0) + cleansedCount;
                 if (spell.statStageBoost) applyStatStageBoost(_ct, spell.statStageBoost, `${spell.name}: `, unit);   // THE SPELL AUDIT: Inner Peace
-                addLog(`${_ctName(unit)} cleanses ${_ctName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
+                addLog(cleansedCount > 0 ? `${_ctName(unit)} cleanses ${_ctName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`
+                    : `${_ctName(unit)} casts ${_ctSp(spell.name)} on ${_ctName(_ct)}.`);
                 showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
                 flashUnit(_ct.id, 'heal');
                 completionDelay = Math.max(actionMs(500), _clResult.completionDelay);
