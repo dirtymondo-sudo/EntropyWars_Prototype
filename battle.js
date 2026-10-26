@@ -36548,7 +36548,7 @@
                     if (h._pressMiss) plan.pressHits.push({ evaded: true });
                 }
             }
-            /* JUDGE WHAT YOU CAN SEE (2026-10-26, mondo: "chain reaction and chemical concoction arent showing a green
+            /* JUDGE WHAT YOU CAN SEE (2026-10-26, mondo picked it on the card, after: "chain reaction and chemical concoction arent showing a green
                super effective icon ... it still says super effective on him but the exclamation point icon is not there"):
                the old fog veto dropped the ! whenever the blast touched a fogged tile, so a 5×5 blast (Chain Reaction)
                almost never wore it. The ! is judged on the bodies the viewer sees (the hidden ones left the plan above,
