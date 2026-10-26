@@ -3086,8 +3086,12 @@
         // Standing +ATK / +spell-power buff — applies ONLY to the Harvester that
         // planted the trees, scaling with how many of ITS OWN trees are still alive.
         // Not a team buff: only units that plant trees (Harvesters) ever gain it.
+        // THE SPELL AUDIT F6 (2026-10-26): only a unit with Green Thumb (the `plantedTrees` hook) — any planter got it before.
+        function _hasGreenThumb(unit) {
+            return !!(unit && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'plantedTrees'));
+        }
         function getPlantedTreeBonus(unit) {
-            if (!unit) return 0;
+            if (!_hasGreenThumb(unit)) return 0;
             const n = Math.min(PLANTED_TREE_STAT_CAP, getOwnPlantedTreeCount(unit));
             return n * PLANTED_TREE_STAT_PER;
         }
@@ -3096,7 +3100,7 @@
         // the number of living trees the CASTER has personally planted on the
         // map (Wildwood plants + grown seeds) — NOT with trees the team felled.
         function getTreeThrowBonus(unit, spell) {
-            if (!unit || !spell || !spell.treeScale) return 0;
+            if (!unit || !spell || !spell.treeScale || !_hasGreenThumb(unit)) return 0;
             const grove = getOwnPlantedTreeCount(unit);
             const per = spell.treePerTree || 30;
             const cap = spell.treeCap || 300;
@@ -35768,14 +35772,15 @@
                        status (Bleeding) — basic attacks, physical abilities,
                        opportunity attacks. Runs through applyStatusPayload so
                        resist rolls, immunities and the credit ledger apply. */
-                    const _serr = (damageType === 'physical' && target.hp > 0 && typeof unitPassiveValue === 'function')
-                        ? unitPassiveValue(sourceUnit, 'physicalHitStatus') : undefined;
-                    if (_serr && _serr.id && isEnemyUnit(sourceUnit, target) && STATUS_DEFS[_serr.id]) {
-                        /* spell audit F3 (10-26): the line names the passive that fired (Cheap Shot, Venomous, Cinder Touch…),
-                           not Serrated's old "serrated hit" */
-                        const _serrP = getUnitPassives(sourceUnit).find(p => p && p.physicalHitStatus === _serr);
-                        const _serrName = String((_serrP && _serrP.name) || 'Serrated').replace(/ \+\d+$/, '');
-                        applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${unitDisplayName(sourceUnit)}'s ${_serrName}: `, sourceUnit);
+                    /* THE SPELL AUDIT F6 (2026-10-26): EVERY passive with the hook lands its own status (Cheap Shot + Venomous both
+                       land; the first row used to win alone), each named by its passive like Jelly Drift's line
+                       (F3: the old line said "serrated hit" for every one). */
+                    if (damageType === 'physical' && target.hp > 0 && isEnemyUnit(sourceUnit, target) && typeof getUnitPassives === 'function') {
+                        for (const _sp of getUnitPassives(sourceUnit)) {
+                            const _serr = _sp && _sp.physicalHitStatus;
+                            if (!_serr || !_serr.id || !STATUS_DEFS[_serr.id] || target.hp <= 0) continue;
+                            applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${unitDisplayName(sourceUnit)}'s ${String(_sp.name || 'Serrated').replace(/ \+\d+$/, '')}: `, sourceUnit);
+                        }
                     }
                     /* THE SPELL AUDIT Batch D — Sanguine's ledger (`regenAfterDealing`: a primitive flag the round end reads
                        and clears) and Jelly Drift's `terrainHitStatus` (an enemy hit while standing on that terrain). */
@@ -36146,16 +36151,21 @@
             /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4) — `healOnceBelowPct: { pct, healPct }`: once per life, a hit
                that leaves the unit alive under pct% HP heals it healPct% of max HP. The ledger `_passiveSpent` is per life
                (cleared at respawn beside `_talismanSpent`); host-side, the HP rides state-sync. */
-            if (target.hp > 0 && typeof unitPassiveValue === 'function') {
-                const _hob = unitPassiveValue(target, 'healOnceBelowPct');
-                if (_hob && typeof _hob === 'object' && !(target._passiveSpent && target._passiveSpent.healOnceBelowPct)
-                    && target.hp < (target.maxHp || 1) * ((+_hob.pct || 50) / 100)) {
+            /* THE SPELL AUDIT F6 (2026-10-26): EACH passive with the hook keeps its own once (Consecrated + Triage, Ballistic Vest +
+               Second Wind): the ledger is keyed by the row id, and each one checks the HP the one before it left. */
+            if (target.hp > 0 && typeof getUnitPassives === 'function') {
+                for (const _hobP of getUnitPassives(target)) {
+                    const _hob = _hobP && _hobP.healOnceBelowPct;
+                    if (!_hob || typeof _hob !== 'object') continue;
+                    const _hobKey = 'healOnceBelowPct:' + (_hobP.id || _hobP.name || '');
+                    if (target._passiveSpent && target._passiveSpent[_hobKey]) continue;
+                    if (!(target.hp < (target.maxHp || 1) * ((+_hob.pct || 50) / 100))) continue;
                     if (!target._passiveSpent) target._passiveSpent = {};
-                    target._passiveSpent.healOnceBelowPct = true;
+                    target._passiveSpent[_hobKey] = true;
                     const _hobAmt = Math.max(1, Math.round((target.maxHp || 1) * ((+_hob.healPct || 40) / 100)));
                     const _hobBefore = target.hp;
                     target.hp = Math.min(target.maxHp, target.hp + _hobAmt);
-                    const _hobName = (getUnitPassives(target).find(p => p && p.healOnceBelowPct) || {}).name || 'Second Wind';
+                    const _hobName = _hobP.name || 'Second Wind';
                     addLog(`💚 ${_ctName(target)}'s ${_hobName} answers — +${target.hp - _hobBefore} HP!`);
                     showFloatingTextForUnit(target, `+${target.hp - _hobBefore}`, 'heal', { durationMs: 1200 });
                     // THE SPELL AUDIT Batch D — the hook's optional `cleanse: N` (Consecrated sheds 1 debuff with the heal)
@@ -38696,13 +38706,13 @@
                 return !!(typeof state !== 'undefined' && state && state.partyBag && state.partyBag.items);
             } catch (e) { return false; }
         }
-        function normalizeLoadoutForClass(loadout, cls) {
+        function normalizeLoadoutForClass(loadout, cls, meta) {
             const normalized = emptyLoadout();
 
             normalized.spells = [];
 
             for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
-                const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item (a tonic, an elixir) never enters a battle loadout; THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1): a story-only item (a capture door) only rides a story fight's bag
+                const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey, meta);   // THE BAG (2026-09-20): a field-only item (a tonic, an elixir) never enters a battle loadout; THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1): a story-only item (a capture door) only rides a story fight's bag
                 normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
@@ -38786,11 +38796,13 @@
            the neutral class string (a loadout being normalized before there is a unit). The scanner cap was 2 for the Agent
            job; it is the Field Operative row's `scannerCap` hook (max) now, which only a unit carries — a class string
            answers the base 1 (state.js's copy agrees). */
-        function getItemCapForClass(cls, itemKey) {
+        function getItemCapForClass(cls, itemKey, meta) {
             if (_partyBagOn()) return 9999;   // THE SHARED BAG: no cap on the bag — the enemy's own pockets are what they were built with anyway
             const _mdBag = typeof _isDungeonMode === 'function' && _isDungeonMode();
             if (itemKey === 'scanner') {
-                const _opCap = (cls && typeof cls === 'object') ? (unitPassiveMax(cls, 'scannerCap') || 0) : 0;
+                // THE SPELL AUDIT F6 (2026-10-26): a class string + the slot's party meta reads the kit's rows (Field Operative → 2)
+                const _opCap = (cls && typeof cls === 'object') ? (unitPassiveMax(cls, 'scannerCap') || 0)
+                    : ((meta && Array.isArray(meta.customSpells) && typeof passiveIdsMax === 'function') ? passiveIdsMax(meta.customSpells, 'scannerCap', meta.spellUpgrades) : 0);
                 return Math.max(1, _opCap) + (_mdBag ? 1 : 0);
             }
             const base = ITEM_RULES[itemKey].max;
@@ -39486,7 +39498,7 @@
 
                     if (!lo.equipment) lo.equipment = emptyEquipment();
 
-                    state.loadouts[player][i] = normalizeLoadoutForClass(lo, cls);
+                    state.loadouts[player][i] = normalizeLoadoutForClass(lo, cls, state.partyMeta?.[player]?.[i]);
                 }
             });
         }
@@ -39652,7 +39664,7 @@
                     clsName = normalizeClassName(clsName, DEFAULT_BUILDS[player]?.[idx]);
                     const spawn = SPAWNS[player]?.[idx] || SPAWNS[player]?.[0] || { x: 1 + idx, y: player === 1 ? 1 : (CONFIG.boardHeight || CONFIG.boardSize || 16) - 2 };
                     const template = CLASS_TEMPLATES[UNIT_CLASS];   // THE JOBS REMOVAL (the user 2026-09-27): one neutral class, no per-job template
-                    const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName);
+                    const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName, state.partyMeta?.[player]?.[idx]);
                     ensurePartyMeta();
                     const unit = createUnit(`${player}-${idx}`, player, spawn.x, spawn.y, template, loadout, state.partyMeta?.[player]?.[idx] || null);
                     unit.name = sanitizeUnitName(state.partyNames?.[player]?.[idx], unit.name);   // THE NAMES (2026-09-30): no name typed = createUnit's race label
@@ -39908,7 +39920,7 @@
                         // scout roles now (data.js RACE_CLASS 'assassin' / 'ranged'), and the heal-first split below to the
                         // frontline + healer roles (was Warrior / Tank / White Mage / Harvester).
                         const _role = (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[race]) || '';
-                        const scannerCap = getItemCapForClass(cls, 'scanner');
+                        const scannerCap = getItemCapForClass(cls, 'scanner', state.partyMeta?.[player]?.[idx]);
                         if ((loadout.items.scanner || 0) < scannerCap && (_role === 'assassin' || _role === 'ranged') && remaining > 0) {
                             const toAdd = Math.min(remaining, scannerCap - (loadout.items.scanner || 0));
                             loadout.items.scanner = (loadout.items.scanner || 0) + toAdd;
@@ -39937,7 +39949,7 @@
                         }
                     }
 
-                    state.loadouts[player][idx] = normalizeLoadoutForClass(loadout, cls);
+                    state.loadouts[player][idx] = normalizeLoadoutForClass(loadout, cls, state.partyMeta?.[player]?.[idx]);
                 });
             });
             ensurePartyMeta();
@@ -40012,7 +40024,7 @@
                             state.partyBuilds[player] = (payload.partyBuilds?.[player] || DEFAULT_BUILDS[player]).slice(0, CONFIG.teamSize);
                             while (state.partyBuilds[player].length < CONFIG.teamSize) state.partyBuilds[player].push(DEFAULT_BUILDS[player][state.partyBuilds[player].length] || UNIT_CLASS);
                             state.partyNames[player] = state.partyBuilds[player].map((cls, idx) => normalizeDisplayedUnitName(payload.partyNames?.[player]?.[idx], cls, player, idx));
-                            state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => normalizeLoadoutForClass(payload.loadouts?.[player]?.[idx] || emptyLoadout(), cls));
+                            state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => normalizeLoadoutForClass(payload.loadouts?.[player]?.[idx] || emptyLoadout(), cls, payload.partyMeta?.[player]?.[idx]));
                             if (payload.partyMeta?.[player]) {
                                 if (!state.partyMeta) state.partyMeta = {};
                                 state.partyMeta[player] = JSON.parse(JSON.stringify(payload.partyMeta[player]));

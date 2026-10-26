@@ -2897,3 +2897,31 @@ Batch F3 of /mnt/project-files/spell-audit/fix/BRIEF.md: lines carried over from
   caller wrote its own (the pull kind). The pull kind skips "pulls N tiles" when the body held or is colossal.
 - `physicalHitStatus` lines name the passive that fired (Cheap Shot / Venomous / Cinder Touch / Serrated).
 - `stagePerRounds` labels with the passive's own icon + name (Rising Power) and a permanent stage logs "gains +1 ATK."
+
+### Spell audit fix F6 — passives (2026-10-26)
+- Hooks that two equipped passives can share now fire per passive: `healOnceBelowPct` loops every row, the once-per-life
+  ledger is `_passiveSpent['healOnceBelowPct:<rowId>']` and each row checks the HP the one before it left (Consecrated +
+  Triage, Ballistic Vest + Second Wind). `physicalHitStatus` loops every row (Cheap Shot + Venomous both land), each line
+  named by its passive ("Cheap Shot: EnemyA is grievously wounded."). `physicalElementRider` stays first-row-wins (one element).
+- Green Thumb: `getPlantedTreeBonus` / `getTreeThrowBonus` need the `plantedTrees` hook (`_hasGreenThumb`); any planter got
+  the tree ATK / spell power / Trunk Throw bonus before. Text: "Every drain heals 20% more" (the lifeSapMult reads every drain).
+- Cinder Touch / Live Wire text: "physical spells with no element of their own" (the rider only fills an empty element).
+- Field Operative: `getItemCapForClass(cls, key, meta)` + `normalizeLoadoutForClass(lo, cls, meta)` read the slot's party meta
+  (`passiveIdsMax(meta.customSpells, 'scannerCap', meta.spellUpgrades)`, data.js); the forge stepper reads the same; createUnit
+  clamps the scanners again once the kept rows are known (a kit that lost the row keeps 1).
+
+## SPELL AUDIT FIX F1 — card text + data-only rows (2026-10-26)
+mondo "fix all" on the 10-26 spell audit, batch F1 of /mnt/project-files/spell-audit/fix/BRIEF.md (data.js only).
+- Card text now matches the rows: combo statuses (Dragon Slash Grievous, Ape Fury / Haymaker Staggered, Take Aim Stunned or
+  Rooted, Hydraulic Crush Jammed or Staggered; added Heroic Leap Frozen, Hocus Pocus Hexed, Curb Stomp Staggered, Abduction
+  Beam Marked, Predator Drop Grievous, Indoctrinate 2 activations vs Charmed, Dragon Fist charge + Stunned + fire on grass,
+  Exorcism / Divine Smite "Unholy and Anomaly"), counts (Infect 2, Meow / Sanctuary 3 rounds, Avalanche Strike CD 2, Nimble
+  Dodge 3 tiles / 2 rounds), shapes (Diamond Dust / Blade Waltz diamond, Crusade cross, Prism Burst / Splitting Arrow one
+  bounce), effects (Water Pulse Soaked, Self-Repair / Yo Ho cleanse 2, Land Ho swap, Pounce leaps in, the 7 leap strikes
+  "from higher ground" + Seismic Leap's 40% shockwave, Ice Slide WEAK path / MEDIUM target, Stampede stops and knocks aside,
+  Round Up crash damage, Call of the Deep overflow, Walk the Plank drowns the target only, Scatter Shot "you can see",
+  Tidal Slam "deep water", Eternal Slumber sleep line gone, Trick or Treat one stat for the team), power words on the
+  `_dscDmgWord` scale (row dmg), Bloodlust "for 3 rounds".
+- Rows: Demonic Roar `noDamage` (was spell-power chip damage), Rally Command / Royal Decree `auraRadius: 2` (warCry reads
+  auraRadius, default 3), Dimensional Fold `requiresLineOfSight: true` (the cast already refused 'los'; the CPU now filters too).
+- Kept: Heat Death / Hall of Mirrors ticks stay WEAK (row zoneTickDamage 70 / 80; describeSpell words ticks off the row number).
