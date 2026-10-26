@@ -12550,7 +12550,7 @@ const STATUS_DEFS = {
             if (typeof levitateUnit === 'function') levitateUnit(unit, info);
         },
         onRemove(unit) {
-            if (typeof forceGroundUnit === 'function') forceGroundUnit(unit, { byLabel: 'as the fairy dust fades' });
+            if (typeof forceGroundUnit === 'function') { const _by = unit._levitateBy; unit._levitateBy = null; forceGroundUnit(unit, { byLabel: _by ? `as ${_by} fades` : 'as the fairy dust fades' }); }
         }
     },
     /* 🙏 Blessed: +1 DEF stage, +1 M.DEF stage and 40 HP of regen a round,
