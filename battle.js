@@ -46,9 +46,10 @@
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireTeleportLegacy) ThreeVFXEffects.fireTeleportLegacy(fromTx, fromTy, toTx, toTy);
         }
-        function _vfxZone(centerTx, centerTy, radius, type) {
+        function _vfxZone(centerTx, centerTy, radius, type, spellId) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireZone) ThreeVFXEffects.fireZone(centerTx, centerTy, radius, type);
+            // spellId (FX-4): the burst wears the spell's own colour, not one pink burst for every element
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireZone) ThreeVFXEffects.fireZone(centerTx, centerTy, radius, type, spellId);
         }
         function _vfxCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy, typeA, typeB) {
             if (_skipVisuals()) return;
@@ -38498,6 +38499,8 @@
             for (const m of prisms) {
                 if (_fx && _fx.hasMapping('racePulseLattice', 'aura')) _fx.fire('aura', 'racePulseLattice', { tx: m.x, ty: m.y, aoeRadius: 1 });
                 else if (typeof playAoeRing === 'function') playAoeRing(m.x, m.y, 1, f.spellType, actionMs(550));
+                // FX-4: the prism itself bursts into glass where it stood (fire() is relayed to the guest)
+                if (_fx && _fx.hasMapping(spell.id, 'impact')) _fx.fire('impact', spell.id, { tx: m.x, ty: m.y });
                 for (const e of state.units) {
                     if (!e || e.dead || e._dying || e.player === unit.player) continue;
                     if (Math.max(Math.abs(e.x - m.x), Math.abs(e.y - m.y)) > 1) continue;
@@ -72259,7 +72262,7 @@
                    victim (ThreeVFXEffects.sigSpiralBeam3D). Stasis Beam caps it
                    with the frozen-light stasis column on the target. ── */
                 const _spiralBeamSpells = {
-                    raceStasisBeam: { color: 0x00d0ff, coreColor: 0xffffff, stasisColumn: 0xbfefff },
+                    raceStasisBeam: { color: 0xffd27a, coreColor: 0xffffff, stasisColumn: null },   // FX-4: held in light (vfxElement light), not ice-blue; the white column hid the target (the gold stasis rings are the hold now)
                 };
                 const _spiralCfg = _spiralBeamSpells[spell.id];
                 if (_spiralCfg && !_skipVisuals()
@@ -75184,7 +75187,7 @@
                         });
                     }
                 } else {
-                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff');
+                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff', spell.id);
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -75216,7 +75219,7 @@
                         window.ThreeVFXEffects.fire('aura', spell.id, _spellMaskOf(spell) ? { tx: x, ty: y, aoeMask: _spellMaskOf(spell), aoeRadius: _spellAoeReach(spell, 1) } : { tx: x, ty: y });
                     }
                 } else {
-                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'heal');
+                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'heal', spell.id);
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
