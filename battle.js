@@ -46,9 +46,10 @@
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireTeleportLegacy) ThreeVFXEffects.fireTeleportLegacy(fromTx, fromTy, toTx, toTy);
         }
-        function _vfxZone(centerTx, centerTy, radius, type) {
+        function _vfxZone(centerTx, centerTy, radius, type, spellId) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireZone) ThreeVFXEffects.fireZone(centerTx, centerTy, radius, type);
+            // spellId (FX-4): the burst wears the spell's own colour, not one pink burst for every element
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireZone) ThreeVFXEffects.fireZone(centerTx, centerTy, radius, type, spellId);
         }
         function _vfxCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy, typeA, typeB) {
             if (_skipVisuals()) return;
@@ -2221,6 +2222,13 @@
                     if (state.phase !== 'battle' || _skipVisuals()) return;
                     window._doorGeom('raceSwingDoor:swing', tx, ty, { fromX: _swH.x, fromY: _swH.y });
                 }, Math.max(projectileDelay, impactDelay - actionMs(240)));
+                /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "no door opens over EnemyA's head", "no door is shot onto
+                   EnemyA or slammed"): the doorGun rows never fire the impact intent their recipe is keyed on, so the
+                   travel fires it as the shot lands — Air Mail's swallow + door overhead + fall, Door Slam's slam */
+                if (target && !_swH) window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    window._doorGeom(spell.id, tx, ty, { fromX: unit.x, fromY: unit.y });
+                }, Math.max(projectileDelay, impactDelay - actionMs(60)));
                 if (drop) window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals() || target.dead || typeof cineUnitFade !== 'function') return;
                     cineUnitFade(target, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(target, 0, 1, 140), actionMs(1150)); });
@@ -2706,6 +2714,9 @@
                 _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                 delete unit._chargeHandledExternally;
             }, _chargeDelay + chargeMs);
+            /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): the staging burst (the metal cog / sparks stamp, the element marks)
+               lands WITH the strike on arrival, not ~1.3 s later on the estimate */
+            _stageRetimeBurst(unit, spell, { x: target.x, y: target.y }, _chargeDelay + chargeMs);
 
             return Math.max(_chargeDelay + chargeMs + actionMs(360), actionMs(600));
         }
@@ -5233,6 +5244,33 @@
             }
         }
 
+        /* THE CRASH ON THE HIT (mondo 2026-10-26, "yes" to the landing pass's call): a push / pull's wall slam, bowling-pin
+           crash and auto attack used to land their HP + number when the slide STARTED, a beat before the body met the
+           wall on screen. They now land on the impact frame (the same atMs the collision FX plays on), like the slide's
+           fall damage already did. The slide's own decisions still read the hit at once: a body whose landed + pending
+           slide hits reach its HP counts as down (_slideDown), so the wall still wins and a dead pin still starts no
+           chain. Fast sims, buffered round events and caller-animated slides keep the instant hit. */
+        const _slidePendingDmg = new Map();   // unit id → slide damage scheduled but not landed yet
+        function _slideHitDelay(atMs, opts) {
+            return (atMs > 0 && opts.animate !== false && !opts.simulate && !_skipVisuals() && !_bufferingRoundEvents) ? atMs : 0;
+        }
+        function _slideDown(u) {
+            return !u || u.dead || u._dying || (_slidePendingDmg.get(u.id) || 0) >= (u.hp || 0);
+        }
+        function _slideHitAt(hits, ms, fn) {
+            if (!(ms > 0)) { fn(); return; }
+            for (const h of hits) _slidePendingDmg.set(h.u.id, (_slidePendingDmg.get(h.u.id) || 0) + h.dmg);
+            window.setTimeout(() => {
+                for (const h of hits) {
+                    const left = (_slidePendingDmg.get(h.u.id) || 0) - h.dmg;
+                    if (left > 0) _slidePendingDmg.set(h.u.id, left); else _slidePendingDmg.delete(h.u.id);
+                }
+                if (state.phase !== 'battle' || state.winner) return;
+                fn();
+                scheduleBoardRender();
+                if (typeof checkWin === 'function') checkWin();
+            }, ms);
+        }
         function _slideSlamDamage(mover, dmg, info, opts) {
             if (!mover || mover.dead || mover._dying) return;
             const what = info.kind === 'edge' ? 'the edge of the battlefield'
@@ -5254,15 +5292,18 @@
             if (!isEnemyUnit(byUnit, target) || isEnemyUnit(byUnit, occ) || !isEnemyUnit(occ, target)) return null;
             return _oppStrikeCanReach(occ, x, y, z) ? occ : null;
         }
-        /* The strike itself: the hit lands now (gameplay never waits on the animation), the swing, the text and the
-           banner play when the body reaches the striker (atMs). */
+        /* The strike itself: the swing, the text, the banner AND the hit land when the body reaches the striker (atMs,
+           THE CRASH ON THE HIT); the slide reads the pending hit at once (_slideDown). */
         function _slideAutoAttack(striker, victim, dmg, atMs, opts) {
             setUnitFacing(striker, victim.x - striker.x, victim.y - striker.y);
-            addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
-            applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
-                sourceUnit: striker, damageType: 'physical', noPress: true
-            });
             striker._matchOppStrikes = (striker._matchOppStrikes || 0) + 1;
+            _slideHitAt([{ u: victim, dmg }], _slideHitDelay(atMs, opts), () => {
+                if (victim.dead || victim._dying) return;
+                addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
+                applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
+                    sourceUnit: striker, damageType: 'physical', noPress: true
+                });
+            });
             if (_skipVisuals()) return;
             const vx = victim.x, vy = victim.y, vid = victim.id;
             const beat = () => {
@@ -5350,6 +5391,7 @@
                 if (_anchor0) _logAnchorHold(target, _anchor0, (opts.stopBefore || toward) ? 'pull' : 'push');
             }
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
+            if (!simulate && _slideDown(target)) return res;   // THE CRASH ON THE HIT: a pending crash already killed it
             /* 🌑 THE SHADOW REALM: nothing on another plane moves a body (a storm or a trap with no owner is the board's) */
             if (opts.byUnit ? (opts.byUnit.id !== target.id && isUnitRealmShieldedFrom(target, opts.byUnit)) : !!shadowRealmKey(target)) return res;
             /* 🧗 a push / pull tears a climber off the wall first; the slide then runs from the foot of the face */
@@ -5450,23 +5492,26 @@
                     const atMs = baseDelay + res.steps.length * perStepMs;
                     if (!simulate) {
                         impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'unit' });
-                        addLog(`🎳 ${_ctName(target)} crashes into ${_ctName(occ)} — both bodies are battered!`);
-                        if (!occ.dead && !occ._dying) {
-                            applyDamageToUnit(occ, crash, `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `, {
-                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
-                            });
-                        }
-                        if (!target.dead && !target._dying) {
-                            applyDamageToUnit(target, crash, `${unitDisplayName(target)} crashes into ${unitDisplayName(occ)}: `, {
-                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
-                            });
-                        }
+                        const _cHits = [];   // THE CRASH ON THE HIT: both bodies take it on the impact frame
+                        if (!_slideDown(occ)) _cHits.push({ u: occ, dmg: crash });
+                        if (!_slideDown(target)) _cHits.push({ u: target, dmg: crash });
+                        _slideHitAt(_cHits, _slideHitDelay(atMs, opts), () => {
+                            addLog(`🎳 ${_ctName(target)} crashes into ${_ctName(occ)} — both bodies are battered!`);
+                            for (const h of _cHits) {
+                                if (h.u.dead || h.u._dying) continue;
+                                applyDamageToUnit(h.u, crash, h.u === occ
+                                    ? `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `
+                                    : `${unitDisplayName(target)} crashes into ${unitDisplayName(occ)}: `, {
+                                    ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
+                                });
+                            }
+                        });
                         res.slamDamage += crash;
                     } else {
                         /* the forecast reads the crash both ways (simSlams) and the chain the pin starts */
                         res.simSlams.push({ unitId: occ.id, dmg: crash }, { unitId: target.id, dmg: crash });
                     }
-                    if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
+                    if (tDist > 0 && depth < cfg.maxChain && !(simulate ? occ.dead : _slideDown(occ))) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
                                 simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr, _struck: opts._struck,
@@ -5500,7 +5545,7 @@
                     const uref = _slideReflect(target, cx, cy, cz, vx, vy);
                     vx = uref.dx; vy = uref.dy;
                     res.bounces++; thr.bounces++;
-                    if (!simulate && (target.dead || target._dying)) break;
+                    if (!simulate && _slideDown(target)) break;
                     continue;
                 }
 
@@ -5534,7 +5579,9 @@
                         impacts.push({ x: cx, y: cy, atMs, kind: 'edge', z: cz,
                             dx: isInside(cx + vx, cy) ? 0 : vx, dy: isInside(cx, cy + vy) ? 0 : vy });
                     } else impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
-                    _slideSlamDamage(target, slamDmg, info, opts);
+                    if (!_slideDown(target)) {
+                        _slideHitAt([{ u: target, dmg: slamDmg }], _slideHitDelay(atMs, opts), () => _slideSlamDamage(target, slamDmg, info, opts));
+                    }
                     res.slamDamage += slamDmg;
                 } else {
                     res.simSlams.push({ unitId: target.id, dmg: slamDmg });
@@ -5546,7 +5593,7 @@
                 const refl = _slideReflect(target, cx, cy, cz, vx, vy);
                 vx = refl.dx; vy = refl.dy;
                 res.bounces++; thr.bounces++;
-                if (!simulate && (target.dead || target._dying)) break;   // the wall won
+                if (!simulate && _slideDown(target)) break;   // the wall won (a pending slam that will kill counts)
             }
 
             res.x = cx; res.y = cy; res.z = cz;
@@ -5605,8 +5652,10 @@
                 // already move the body again (its own slide handled them).
                 // (Runs AFTER the animation setup so the fall-damage pop can be
                 // timed to the slide's touchdown instead of frame 0.)
+                /* a body a pending crash will kill gets no landing (it used to be dead already here) */
+                const _landDown = _slideDown(target) && !target.dead && !target._dying;
                 if (target.x === cx && target.y === cy) {
-                    if (!opts.noFall && typeof applyFallDamage === 'function') {
+                    if (!_landDown && !opts.noFall && typeof applyFallDamage === 'function') {
                         const _fsFallDelay = (opts.animate !== false && !_skipVisuals()
                             && !_bufferingRoundEvents) ? (res.animMs || 0) : 0;
                         if (_fsFallDelay > 0) {
@@ -5622,7 +5671,7 @@
                     }
                     if (res.moved > 0) {
                         /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
-                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
+                        if (!opts.noChain && !_landDown) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
                     }
                 }
@@ -6554,7 +6603,12 @@
         function _applyTimedStatBonus(target, tsb, label, src) {
             if (!target || target.dead || !tsb) return false;
             if ((tsb.move || 0) > 0 && STATUS_DEFS.quickened) {
-                return applyStatusPayload(target, { id: 'quickened', duration: tsb.rounds || 2 }, label || '', src || null);
+                const _tsbOk = applyStatusPayload(target, { id: 'quickened', duration: tsb.rounds || 2 }, label || '', src || null);
+                /* spell look audit FX-5: the MOV shows like the stages beside it (Forward March / Swarm Signal popped only "+1 SPD") */
+                if (_tsbOk !== false && typeof showFloatingTextForUnit === 'function') {
+                    window.setTimeout(() => { if (!target.dead) showFloatingTextForUnit(target, `+${tsb.move} MOV`, 'buff', { durationMs: 1100 }); }, 260);
+                }
+                return _tsbOk;
             }
             return false;
         }
@@ -7076,6 +7130,17 @@
             const camTarget = firstHit || { x: tx, y: ty };
             const VFX = window.ThreeVFXEffects;
             const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
+            /* THE LANDING ON THE SHOT (the camera + damage timing pass, 2026-10-26: Merkaba's numbers popped 1.5 s before
+               the chariot let go, Skyscraper Toss's before the building came down, Snowball Volley's before the snowballs
+               arrived): an aoe whose payload lands a while after its intent fires (VFX aoeLandMs) lands the damage on
+               the payload. The look still starts on the old impact beat; the target beat holds that much longer. */
+            const _landLeadRaw = (!_skipVisuals() && !hasDescent && VFX && typeof VFX.aoeLandMs === 'function'
+                && VFX.hasMapping(spell.id, 'aoe')) ? (VFX.aoeLandMs(spell.id) || 0) : 0;
+            const _landLead = _landLeadRaw > 0 ? actionMs(_landLeadRaw) : 0;
+            /* …and an area whose burst signature strikes a while after it starts (VFX hitLeadMs: Underfoot's foot
+               comes down 700 ms in): the burst starts on the old impact beat and the damage waits for the strike. */
+            const _strikeLeadRaw = (!_landLeadRaw && !_skipVisuals() && !hasDescent && VFX && typeof VFX.hitLeadMs === 'function')
+                ? (VFX.hitLeadMs(spell.id) || 0) : 0;
             // Every enemy caught in the area (plus the blast centre) — beat 2
             // of the action shot frames the WHOLE group, not just the first hit.
             const _aoeFrameTiles = (firstHit && extraTargets.length > 0)
@@ -7083,7 +7148,7 @@
                    ...extraTargets.map(e => ({ x: e.x, y: e.y }))]
                 : undefined;
             const cam = playOffensiveActionCamera(unit, camTarget, {
-                sourceHold: 1100, targetHold: 900,
+                sourceHold: 1100, targetHold: 900 + _landLeadRaw + _strikeLeadRaw,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 frameTiles: _aoeFrameTiles,
                 attackName: spell.name,
@@ -7107,8 +7172,15 @@
             } else {
                 impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
             }
+            const vfxDelay = impactDelay;   // the aoe intent (the look) — the damage waits _landLead more for the payload
+            impactDelay += _landLead;
+            if (_landLead > 0) _stageRetimeBurst(unit, spell, { x: tx, y: ty }, impactDelay);
+            if (_strikeLeadRaw > 0) {
+                _stageRetimeBurst(unit, spell, { x: tx, y: ty }, impactDelay);
+                impactDelay += actionMs(_strikeLeadRaw);
+            }
             const completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
-            return { cam, projectileDelay, impactDelay, completionDelay, hasDescent };
+            return { cam, projectileDelay, impactDelay, vfxDelay, completionDelay, hasDescent };
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -8056,6 +8128,9 @@
                flashes on the burst — host and guest alike. */
             const _glow = _spellGlowTiles(unit, spell, _trueSelf ? null : tx, _trueSelf ? null : ty);
             const _glowKey = 'u' + unit.id;
+            /* THE HIT IS THE BURST: an area's footprint (not a lane drawn tile by tile — a dash / a beam) is where a hit
+               may fire the burst early; elsewhere only a hit on or beside the burst tile does */
+            if (!_glow.stagger && _glow.tiles.length > 1) rec.area = new Set(_glow.tiles.map(t => t.x + ',' + t.y));
             _fireStageBeat('windup', spell, {
                 sx: unit.x, sy: unit.y, tx: stx, ty: sty,
                 holdMs: Math.max(240, impactMs), mark: _marksOnly,
@@ -8187,6 +8262,31 @@
             }
         }
 
+        /* THE HIT IS THE BURST (2026-10-26, the camera + damage timing pass): the burst is the cast's HIT (the
+           capstone signatures, the metal stamp, the heavy pillar all draw on it), but a kind that never retimed it
+           burst on the ESTIMATE — a charge (Terror Pounce, Out of the Dark), Drop In, the metal finishers and the
+           area stomps landed their number up to ~1.8 s before their own impact. The first hit the caster lands
+           during the cast on the burst's tile (or beside it, or anywhere in an area's footprint) now fires a burst
+           that hasn't fired yet, on that frame. A hit on the cast commit itself (an HP cost, a forced slide's crash)
+           is not the impact, so the first ~250 ms are ignored. */
+        function _stageBurstOnHit(unit, target) {
+            const seq = unit && _stageByUnit.get(unit.id);
+            if (!seq || !target || target.id === unit.id) return;
+            const rec = _stageLive.get(seq);
+            if (!rec || rec.fired || !rec.burst || rec.t0 == null) return;
+            if (Math.max(Math.abs(target.x - rec.tx), Math.abs(target.y - rec.ty)) > 1
+                && !(rec.area && rec.area.has(target.x + ',' + target.y))) return;
+            const elapsed = performance.now() - rec.t0;
+            if (elapsed < actionMs(250)) return;
+            for (const t of rec.timers) clearTimeout(t);
+            rec.timers.length = 0;
+            rec.burst();
+            if (rec.armCues && rec.cueBeats) {
+                rec.cueBeats.impactMs = elapsed;
+                rec.armCues();
+            }
+        }
+
         // ═══════════════════════════════════════════════════════════════════
         // executeSpellAnimation() — unified spell animation pipeline.
         // Phase 4: handles offensive single-target spells.
@@ -8294,6 +8394,17 @@
 
             // Allow callers to adjust timing (e.g. multiHit extends completionDelay)
             let { impactDelay, completionDelay } = timing;
+            /* THE LANDING ON THE SHOT (2026-10-26): a strike whose impact signature only strikes a while after it
+               starts (VFX hitLeadMs: Valkyrie Spear's polearms plant ~0.7 s in) lands its damage on that strike —
+               the strike leap fires the signature on its impact frame, the number used to pop before any spear. */
+            if (travel === 'strikeLeap' && !_skipVisuals() && window.ThreeVFXEffects
+                && typeof window.ThreeVFXEffects.hitLeadMs === 'function' && window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
+                const _hitLead = window.ThreeVFXEffects.hitLeadMs(spell.id) || 0;
+                if (_hitLead > 0) {
+                    impactDelay += actionMs(_hitLead);
+                    completionDelay = Math.max(completionDelay, impactDelay + actionMs(500));
+                }
+            }
             if (opts.timingOverride) {
                 const adjusted = opts.timingOverride({ impactDelay, completionDelay, cam, timing });
                 impactDelay = adjusted.impactDelay ?? impactDelay;
@@ -8740,6 +8851,9 @@
         // exactly like statStages did.
         const STAT_STAGE_STEP = { atk: 20, def: 20, mdef: 20, spd: 20, int: 20 };
         const STAT_STAGE_KEYS = ['atk', 'def', 'mdef', 'spd', 'int'];
+        /* the names the spell text uses (spell look audit FX-5: Overcalculate's pop said "INT" where its text says M ATK) */
+        const _STAGE_STAT_LABELS = { atk: 'ATK', def: 'DEF', mdef: 'M DEF', spd: 'SPD', int: 'M ATK' };
+        function _stageStatLabel(k) { return _STAGE_STAT_LABELS[k] || String(k).toUpperCase(); }
         const STAT_STAGE_DURATION = 3;
 
         // The unit's CURRENT base value for a staged stat (pre-stage, pre-
@@ -9061,7 +9175,7 @@
                     applied = -Math.min(-n, Math.ceil(room / step));
                 }
                 if (!applied) {
-                    parts.push(`${stat.toUpperCase()} ${n > 0 ? 'maxed' : 'floored'}`);
+                    parts.push(`${_stageStatLabel(stat)} ${n > 0 ? 'maxed' : 'floored'}`);
                     continue;
                 }
                 // THE SPELL AUDIT Batch D: opts.rounds — a shorter / longer entry than the 3-round default (Land on Your Feet's 1)
@@ -9079,7 +9193,7 @@
                 if (applied > 0) anyPos = true; else anyNeg = true;
                 const atBound = (base + getStatStageCount(target, stat) * step) >= hi
                     || (base + getStatStageCount(target, stat) * step) <= lo;
-                parts.push(`${applied > 0 ? '+' : ''}${applied} ${stat.toUpperCase()}${atBound ? ' (max)' : ''}`);
+                parts.push(`${applied > 0 ? '+' : ''}${applied} ${_stageStatLabel(stat)}${atBound ? ' (max)' : ''}`);
             }
             if (!parts.length) return;
             // Carrier badges: applyStatusPayload keeps the log/VFX/Censer
@@ -22336,6 +22450,10 @@
             if (!spell) return 'rope';
             const st = spell.spellType;
             const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
+            /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): a chain is iron links (Krampus Chains drew a green vine), a tech grab a
+               braided steel cable (Grapple Arm / Tether Line drew the hemp rope) */
+            if (/chain/.test(idn)) return 'chain';
+            if (/grapple arm|tether line|cable/.test(idn)) return 'cable';
             // Grasping / organic pulls read better as a vine than a woven rope.
             if (/grasp|vine|root|tentacle|grip|thorn|bramble|lash|weed|creeper/.test(idn)) return 'vine';
             if (st === 'anomaly' || st === 'unholy') return 'vine';
@@ -23769,6 +23887,18 @@
            third-person shot, not the tactical overhead — let the remembered
            rest tilt ride much closer to the horizon there (90 = dead level). */
         const FOLLOW_REST_TILT_MAX = 85;
+        /* THE LEVEL LENS (spell look fix FX-CAM, 2026-10-26: Probe at tilt 118, Eject! 116, Hallelujah 107, the mothman
+           bolts, Summon Sandstorm / Blizzard 103-108, Predator Drop, Revive, Aurora Ray… shot from the floor looking up,
+           the board a strip at the bottom, the bodies blurred blobs in front of the lens — mondo's Persona 5 reference
+           never goes there): while a spell shot owns the camera (the TPS cine rig), no beat pitches past dead level.
+           A beat that wanted the sky (a crane over the caster, the sky watch over a descent) frames the subject level
+           instead; the sky watch lifts its pivot so its level look still sees the airspace the payload falls from. */
+        const CINE_SHOT_TILT_MAX = 90;
+        function _cineTiltCap(tilt) {
+            if (tilt === undefined || tilt === null || !(tilt > CINE_SHOT_TILT_MAX)) return tilt;
+            if (typeof window !== 'undefined' && window.EW_CINE_SKY_TILT) return tilt;   // console: the old craned shots
+            return (camera._cineTps && camera._cineShotId != null) ? CINE_SHOT_TILT_MAX : tilt;
+        }
 
         /* The unit whose ALTITUDE the camera's focal height should track at a
            tile. unitAt() prefers the GROUND unit of a stack (correct for
@@ -24237,12 +24367,20 @@
                 const _px = opts ? opts.x : undefined;
                 const _py = opts ? opts.y : undefined;
                 const _owner = opts ? opts.ownerUnitId : undefined;
+                /* THE LAST CAST'S RETURN (spell look fix FX-CAM, 2026-10-26): `requirePre` — fire only while the shot's
+                   remembered framing is still pending, i.e. nothing (the next unit's activation pan, a new shot) has
+                   brought the camera home yet; once the turn has passed to another unit it levels in place. */
+                const _needPre = !!(opts && opts.requirePre);
+                let _px2 = _px, _py2 = _py;
                 this._autoSettleTimer = setTimeout(() => {
                     this._autoSettleTimer = null;
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                     if (this._rafId || this._busy || this._cineShotId != null) return;
                     if (state._userPanning || state._fullMapOverview) return;
-                    if (_owner != null && state._blitzActiveUnitId != null
+                    if (_needPre) {
+                        if (!this._preCineView) return;
+                        if (_owner != null && state._blitzActiveUnitId != null && state._blitzActiveUnitId !== _owner) { _px2 = undefined; _py2 = undefined; }
+                    } else if (_owner != null && state._blitzActiveUnitId != null
                         && state._blitzActiveUnitId !== _owner) return;
                     // End-of-round tour in progress: its beats (overview, status
                     // dives, detonations…) own the camera — a leftover settle
@@ -24305,7 +24443,7 @@
                         ...(_pull ? {
                             zoom: _setZoom,
                             _allowZoomChange: true, _bypassCap: true,
-                            ...(_px !== undefined ? { x: _px, y: _py } : {})
+                            ...(_px2 !== undefined ? { x: _px2, y: _py2 } : {})
                         } : {}),
                         duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
                     });
@@ -24496,7 +24634,7 @@
                     const rawZoom = Math.max(0.15, Math.min(10.0, opts.zoom ?? this._tz));
                     this._tz = opts._bypassCap ? rawZoom : clampAutoZoom(rawZoom);
                 }
-                this._tt   = opts.tilt ?? this._tt;
+                this._tt   = _cineTiltCap(opts.tilt) ?? this._tt;   // THE LEVEL LENS
                 this._tyaw = opts.yaw  ?? this._tyaw;
                 this._tcz  = opts.camZ ?? this._tcz;
                 // Focal height: an explicit elevZ tweens to that value. No elevZ
@@ -25028,7 +25166,9 @@
         // visibility — a hidden enemy actor settles the angle/zoom in place
         // rather than panning the viewer onto its tile.
         // ═══════════════════════════════════════════════════════════════════
-        function armActionCamSettle(unitId, x, y, delayMs, endShot) {
+        /* opts.requirePre (FX-CAM, 2026-10-26: THE LAST CAST'S RETURN, relayed so the guest glides back too): fire
+           only while the shot's remembered framing is still pending — see camera._armLevelSettle. */
+        function armActionCamSettle(unitId, x, y, delayMs, endShot, opts) {
             if (state.cameraDisabled || state.phase !== 'battle' || state.winner) return;
             if (endShot) {
                 camera._cineShotId = null;
@@ -25042,6 +25182,7 @@
             }
             camera._armLevelSettle(delayMs || actionMs(700), {
                 pullBack: true,
+                ...(opts && opts.requirePre ? { requirePre: true } : {}),
                 ...(unitId != null ? { ownerUnitId: unitId } : {}),
                 ...(Number.isFinite(_cx) && Number.isFinite(_cy) ? { x: _cx, y: _cy } : {})
             });
@@ -28942,7 +29083,19 @@
         function _cineSizeK(unit) {
             if (!unit || unit.id == null) return 1;
             const ts = CONFIG.tileSize || BASE_TILE;
-            return Math.max(0.7, Math.min(2.4, _tpsUnitHeight(unit) / ts));
+            /* THE WIDE BODY (spell look fix FX-CAM, 2026-10-26: the Civic filled and cropped its own Nitro Boost shot, the
+               lens sat inside King Kong's back): a model's drawn FOOTPRINT counts as well as its height — a car is low but
+               two tiles long, a gorilla as wide as it is tall — so the boom backs off until the whole body fits. */
+            let k = _tpsUnitHeight(unit) / ts;
+            try {
+                const c = [0, 0, 0, 0, 0, 0, 0, 0];
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitFootprint && ThreeRenderer.getUnitFootprint(unit.id, c)) {
+                    let ext = 0;
+                    for (let i = 0; i < 8; i += 2) ext = Math.max(ext, Math.hypot(c[i], c[i + 1]));
+                    k = Math.max(k, (ext * 2 / ts) * 0.8);
+                }
+            } catch (e) {}
+            return Math.max(0.7, Math.min(2.4, k));
         }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
@@ -29857,7 +30010,7 @@
             camera.x = camera._tx = opts.x ?? camera._tx;
             camera.y = camera._ty = opts.y ?? camera._ty;
             if (opts.zoom !== undefined) camera.zoom = camera._tz = Math.max(0.15, Math.min(10.0, opts.zoom));
-            if (opts.tilt !== undefined) camera.tilt = camera._tt = opts.tilt;
+            if (opts.tilt !== undefined) camera.tilt = camera._tt = _cineTiltCap(opts.tilt);   // THE LEVEL LENS
             if (opts.yaw  !== undefined) camera.yaw  = camera._tyaw = opts.yaw;
             camera._elevOverride = camera._tElev = opts.elevZ ?? -1;
             camera._elevRelease = false;
@@ -30128,7 +30281,7 @@
                     && (_isGun || len <= CINE_OTS_MAX_TILES);
                 const _normYaw = a => ((a + 180) % 360 + 360) % 360 - 180;
                 const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
-                let _sideSign = 1, _castZoom = 1, _leadFrac = 0.38;
+                let _sideSign = 1, _castZoom = 1, _leadFrac = 0.38, _faceHold = null;
                 if (_otsPair) {
                     // Swing side nearer the player's current view keeps the
                     // swoop short; the drift beat inherits the same frame.
@@ -30160,7 +30313,10 @@
                         tilt: _low
                             ? Math.min(CINE_TILT_GUARD_MAX, _lineTilt + 12)
                             : _lineTilt,
-                        yaw: yawFwd + _sideSign * CINE_OTS_SWING,
+                        /* THE BIG SHOULDER (spell look fix FX-CAM, 2026-10-26: a yeti, a kraken, Nessie, King Kong filled the
+                           over-the-shoulder frame and hid the target at the hit): the swing off the line grows with the
+                           caster's size, so a big body rides the side of the frame instead of its middle. */
+                        yaw: yawFwd + _sideSign * Math.min(56, CINE_OTS_SWING + Math.max(0, _cineSizeK(sourceUnit) - 1.1) * 34),
                         elevZ: casterPx + (tgtPx - casterPx) * _leadFrac
                             + ts * CINE_FOCAL_RISE * (_low ? 0.4 : 1),
                         duration: actionMs(_low ? 520 : 420), easing: 'easeInOut',
@@ -30198,6 +30354,7 @@
                         _allowZoomChange: true, _bypassCap: true,
                         _fogAllowed: fogAllowed || undefined
                     });
+                    _faceHold = { yaw: yawFace, zoom: _tpsZoomForBoomTiles(_faceDist), ms: actionMs(_faceMs) };
                 }
 
                 // ── BEAT 2 — THE HIT: hard cut to the victim. The cut lands
@@ -30378,6 +30535,28 @@
                     if (_cineShotOwned(sequenceId)) return;   // cineOwnShot: the director composes beat 2 itself
                     _stockBeat2();
                 }, cutMs + CINE_CLAIM_GRACE_MS);
+                /* THE WINDUP DRIFT (spell look fix FX-CAM, 2026-10-26: Overfit, Paradox, Crushing Will, Aneurysm, Sonic
+                   Boom, Tornado, Twisted Wish… held one identical caster close-up for 1.35-2.1 s before anything left):
+                   a long cast close-up keeps moving — once the swoop in has landed, a slow push-in with a small orbit
+                   runs to the cut. A director that owns the shot keeps its own beats. */
+                /* Every family director owns the shot from t = 0, so the drift reads the LIVE lens rather than
+                   the stock face beat: it runs only while the camera sits still on the caster (no director beat
+                   in flight, focal within a tile of the caster) and lets any later beat take over. */
+                const _dFrom = (_faceHold ? _faceHold.ms : actionMs(520)) + CINE_CLAIM_GRACE_MS;
+                if (cutMs - _dFrom > actionMs(600)) {
+                    window.setTimeout(() => {
+                        if (!_stockBeat2Ok() || window.EW_DISABLE_WINDUP_DRIFT) return;
+                        const _cz = camera._tz, _cy = camera._tyaw;
+                        if (!(_cz > 0) || !Number.isFinite(_cy)) return;
+                        if (Math.abs(((camera.yaw - _cy) % 360 + 540) % 360 - 180) > 2 || Math.abs(camera.zoom / _cz - 1) > 0.04) return;   // a beat is moving
+                        if (Math.hypot((camera._tx ?? camera.x) - sx, (camera._ty ?? camera.y) - sy) > 1.2) return;   // not on the caster
+                        _cineBeatMove({
+                            zoom: _cz * 1.16, yaw: _cy + _sideSign * 12,
+                            duration: Math.max(actionMs(300), cutMs - _dFrom - actionMs(40)), easing: 'linear',
+                            _allowZoomChange: true, _bypassCap: true, _fogAllowed: fogAllowed || undefined
+                        });
+                    }, _dFrom);
+                }
             } else {
                 // ── 2D fallback: the legacy single over-the-shoulder shot ──
                 // (focal a fixed lead in front of the caster, slope-following
@@ -31032,19 +31211,33 @@
            with a slow orbit drift. Self-buffs, power-ups, kill confirms, and
            (the Wish Granted rule) the RECEIVER of an ally buff or heal. */
         function cineGlamCam(unit, opts = {}) {
-            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null))) return false;
+            /* opts.at: the tile to frame the body on (THE LANDING, FX-CAM 2026-10-26: an escape / blink shot films the
+               mover where it lands while its state position may still be its old tile on a guest) */
+            const _at = (opts.at && Number.isFinite(opts.at.x) && Number.isFinite(opts.at.y)) ? opts.at : unit;
+            if (!unit || !_cineTpsAnchor(_at, (unit.id != null ? unit : null))) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
             let px = 0;
             if (typeof window._getElevationPx === 'function') {
                 const z = _unitElevZ(unit);
                 px = z > 0 ? window._getElevationPx(z) : 0;
             }
-            const baseYaw = (opts.yaw != null) ? opts.yaw
-                : ((typeof getFollowCamYaw === 'function') ? getFollowCamYaw(unit, camera.yaw) : camera._tyaw) + 38;
+            /* THE FRONT ¾ (spell look fix FX-CAM, 2026-10-26: every self buff and heal played on the caster's back, the
+               stat pops rising off the top of the frame): getFollowCamYaw is the yaw BEHIND the unit, so the hero angle
+               is that turned round (+180) and swung 38° off the face; the lens sits a touch above the eye line (84) with
+               the boom one and a half close-ups back, so the whole body and the pops over it are in. The boom still
+               scales with the body's size (THE BODY FRAME / THE WIDE BODY). */
+            let baseYaw = opts.yaw;
+            if (baseYaw == null) {
+                const _face = ((typeof getFollowCamYaw === 'function') ? getFollowCamYaw(unit, camera.yaw) : camera._tyaw) + 180;
+                /* the ¾ side nearer the way the camera already looks, so the move to it is the shorter swing */
+                const _n = a => ((a + 180) % 360 + 360) % 360 - 180;
+                const _cur = camera._tyaw ?? camera.yaw ?? 0;
+                baseYaw = Math.abs(_n(_face - 38 - _cur)) <= Math.abs(_n(_face + 38 - _cur)) ? _face - 38 : _face + 38;
+            }
             const framing = {
-                x: unit.x, y: unit.y,
-                zoom: _tpsZoomForBoomTiles(opts.dist ?? CINE_CLOSEUP_DIST_TILES),   // THE CLOSE-UP LENS
-                tilt: opts.tilt ?? 92,                        // low, looking up the body
+                x: _at.x, y: _at.y,
+                zoom: _tpsZoomForBoomTiles(opts.dist ?? CINE_CLOSEUP_DIST_TILES * 1.5),
+                tilt: opts.tilt ?? 84,
                 yaw: baseYaw, elevZ: px + ts * 0.45
             };
             if (opts.cut === false) {
@@ -31053,10 +31246,16 @@
             } else { _cineHardCut(framing); _acChromeFlash('cut'); }
             // Slow orbit drift — 5°/s, the "hold on the hero" beat.
             const driftMs = actionMs(opts.driftMs ?? 900);
-            _cineBeatMove({
+            const _drift = () => _cineBeatMove({
                 yaw: baseYaw + (opts.drift ?? 10), duration: driftMs, easing: 'linear',
                 _bypassCap: true, _fogAllowed: true
             });
+            /* FX-CAM (2026-10-26, Eject! cropped the mech): a glide in (cut: false) lands first — the drift issued on the
+               same frame replaced the glide's easing with a 0.9 s linear crawl through half-framed in-betweens */
+            if (opts.cut === false) {
+                const _sid = camera._cineShotId, _glMs = actionMs(opts.duration ?? 420);
+                window.setTimeout(() => { if (camera._cineShotId === _sid && state.phase === 'battle' && !state.cameraDisabled) _drift(); }, _glMs);
+            } else _drift();
             return true;
         }
         /* Reverse OTS — over the VICTIM's shoulder, looking back at whatever
@@ -31530,10 +31729,20 @@
                victim's shoulder so the beam still rushes in under the lens
                with the board (not the apron) filling the frame. */
             const _pv = _cineClampTile(to.x + dirx * 0.25, to.y + diry * 0.25, 0);
-            let dist = opts.dist ?? 2.6;
+            /* THE SIDE-ON END CAP (spell look fix FX-CAM, 2026-10-26: after Gale, Crosswind, Antimagic Gaze, Sonic Breaker,
+               Orichalcum Ray… the frame was the last victim's back, dead centre, for the rest of the cast): the stare back
+               up the line swings 34° off its axis (toward the side the camera already looks from) and rides a little
+               higher and further back, so the victim stands to one side of the beam's path instead of in front of it. */
+            const _ecNorm = a => ((a + 180) % 360 + 360) % 360 - 180;
+            const _ecCur = _ecNorm(camera._tyaw ?? camera.yaw ?? 0);
+            const _ecSide = (opts.swing === 0) ? 0
+                : (Math.abs(_ecNorm(yawBack + 34 - _ecCur)) <= Math.abs(_ecNorm(yawBack - 34 - _ecCur)) ? 1 : -1);
+            const yawSide = yawBack + _ecSide * (opts.swing ?? 34);
+            let dist = opts.dist ?? 3.1;
             let tilt = opts.tilt ?? Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(CINE_TILT_GUARD_MAX, 84 + slopeBack));
-            const room = _cineEdgeRoom(_pv.x + dirx * dist, _pv.y + diry * dist);
+                Math.min(CINE_TILT_GUARD_MAX, 78 + slopeBack));
+            const _ecR = yawSide * Math.PI / 180;
+            const room = _cineEdgeRoom(_pv.x + Math.sin(_ecR) * dist, _pv.y + Math.cos(_ecR) * dist);
             if (room < 0.4) {
                 const _short = Math.max(0, 0.4 - room);          // tiles the eye hangs past the rim
                 dist = Math.max(1.7, dist - _short * 0.6);
@@ -31544,7 +31753,7 @@
                 x: _pv.x, y: _pv.y,
                 zoom: _tpsZoomForBoomTiles(dist),
                 tilt,
-                yaw: yawBack, elevZ: px + ts * 0.85
+                yaw: yawSide, elevZ: px + ts * 0.85
             });
             _acChromeFlash('cut');
             return true;
@@ -31853,16 +32062,22 @@
         function cineSkyWatch(center, opts = {}) {
             if (!center) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
-            if (!_cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: ts * 0.9 })) return false;
+            /* THE LEVEL LENS: the look up from the floor is gone — the pivot starts 2.4 tiles up the airspace, looking
+               level, and comes down to the tile with the payload as the lens pitches down (the old pose: console
+               EW_CINE_SKY_TILT). */
+            const _skyOld = !!window.EW_CINE_SKY_TILT;
+            const _liftUp = _skyOld ? ts * 0.9 : ts * 2.4;
+            if (!_cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: _liftUp })) return false;
             const gPx = (typeof window._camGroundPx === 'function')
                 ? window._camGroundPx(Math.round(center.x), Math.round(center.y)) : 0;
             _cineHardCut({
                 x: center.x, y: center.y,
                 zoom: _tpsZoomFitTiles(opts.span ?? 6, (opts.span ?? 6) * 1.2),
                 tilt: opts.tiltUp ?? 116, yaw: opts.yaw ?? camera._tyaw,
-                elevZ: gPx + ts * 0.9
+                elevZ: gPx + _liftUp
             });
             _acChromeFlash('cut');
+            if (!_skyOld) _cineTweenLift(_liftUp, ts * 0.9, Math.max(200, opts.ms ?? 700), camera._cineShotId, { easing: 'easeIn' });
             _cineBeatMove({
                 tilt: opts.tiltDown ?? 62,
                 zoom: camera._tz * 1.1,
@@ -32248,9 +32463,13 @@
                     if (!multi && c.target && cineWitnessCam(c.target, [c.caster, c.target], {})) return;
                     c.stockHit();
                 }, 'hit');
-                const printAt = c.impact + Math.round(c.timings.targetHold * 0.42);
-                c.at(printAt, () => cineGodShot(c.target, (_spellAoeReach(c.spell, 1) * 2) + 4,
-                    { cut: false, duration: Math.min(520, c.raw(c.left(printAt))) }), 'print');
+                /* THE PRINT (spell look fix FX-CAM, 2026-10-26: Tremor Stomp, Timber Stomp, Consuming Dark, Arterial Spray,
+                   Bat Swarm… pulled out to a far overhead at tilt 22 while the numbers were still up, the hit shrunk to
+                   specks): the glide to the print waits for the numbers, frames the footprint plus a tile, and stays a ¾
+                   view of the bodies in it. */
+                const printAt = c.impact + Math.round(c.timings.targetHold * 0.62);
+                c.at(printAt, () => cineGodShot(c.target, (_spellAoeReach(c.spell, 1) * 2) + 2,
+                    { cut: false, tilt: 54, duration: Math.min(560, c.raw(c.left(printAt))) }), 'print');
                 _spellDirKillConfirm(c);
             },
             /* Self-nova — the summon grammar: the lens ORBITS the caster
@@ -32324,7 +32543,13 @@
                 c.at(v0 + actionMs(150), () => {
                     if (c.row.payoff) return c.payoff(null, c.caster);
                     const cs = c.live(c.caster);
-                    if (cs && c.vis(cs)) cineFaceCam(cs, { dist: 3.2, tilt: 76 });
+                    if (!cs || !c.vis(cs)) return;
+                    /* THE LANDING (FX-CAM, 2026-10-26: Deep Dive's arrival sat the monster low in the frame — the face cam
+                       aims at a face height a long body doesn't have): the arrival is the mover's front ¾, the whole
+                       body, on the tile it lands on (the support rig's landing tile, so a guest that hasn't synced the
+                       move yet frames the same spot) */
+                    const lt = (c.target && c.target._landUnit && c.target._landUnit.id === cs.id) ? { x: c.target.x, y: c.target.y } : null;
+                    if (!cineGlamCam(cs, { tilt: 78, ...(lt ? { at: lt } : {}) })) cineFaceCam(cs, { dist: 3.2, tilt: 76 });
                 }, 'arrive');
             },
             /* Terrain / zones — the god shot, and the stagger IS the
@@ -32439,10 +32664,19 @@
                     if (!c.vis(tile)) return c.stockHit();
                     cineGodShot(tile, 5, { tilt: 28 });
                 }, 'reveal');
+                /* THE SUMMON RISE (spell look fix FX-CAM, 2026-10-26: the lens whipped ~290° round in 3 s and ended behind
+                   an enemy's back): the god shot keeps the current heading, and the rise is the summoned body's own front
+                   ¾ (the side nearer the current heading) — a bare tile keeps the low shot from the caster's side. */
                 const riseAt = c.cut + actionMs(360);
                 c.at(riseAt, () => {
                     if (c.row.payoff || !c.vis(tile)) return;
-                    cineLowTile(tile, c.caster, { cut: false, tilt: 92, dist: 3.0, duration: Math.min(620, c.raw(c.left(riseAt))) });
+                    const _dur = Math.min(620, c.raw(c.left(riseAt)));
+                    const _born = (typeof unitAt === 'function' && tile.x != null) ? unitAt(Math.round(tile.x), Math.round(tile.y)) : null;
+                    if (_born && !_born.dead && c.caster && _born.id !== c.caster.id && c.vis(_born)) {
+                        cineGlamCam(_born, { cut: false, duration: _dur, driftMs: c.raw(c.left(riseAt + actionMs(_dur), actionMs(300))) });
+                    } else {
+                        cineLowTile(tile, c.caster, { cut: false, tilt: 88, dist: 3.0, duration: _dur });
+                    }
                 }, 'rise');
             },
             /* Control (possess / link / soul transfer) — the mind snapping:
@@ -34049,13 +34283,18 @@
                 return true;
             },
 
-            /* ── #22 Eject! — 1.8s of pure cartoon; the camera cranes with
-               the seat. */
+            /* ── #22 Eject! — 1.8s of pure cartoon. (spell look fix FX-CAM, 2026-10-26: the camera craned to tilt 116
+               after a seat that is never drawn and stared at empty sky; it stays on the mech now, the front ¾ hero
+               shot where it lands.) */
             raceEject(ctx) {
                 const { caster, timings, sequenceId } = ctx;
                 _cineAt(actionMs(80), sequenceId, () => cineGrade('crimson', 420));
                 _cineAt(timings.sourceHold, sequenceId, () => {
-                    cineCrane(caster, { duration: 900, tilt: 116, rise: 3.2 });
+                    const cs = caster && caster.id != null ? ((state.units || []).find(u => u.id === caster.id) || caster) : caster;
+                    /* FX-CAM (2026-10-26): a hard cut to the whole mech — the glide in from the cast close-up cropped it
+                       for half a second; framed on the tile it lands on (THE LANDING) */
+                    const lt = (ctx.target && ctx.target._landUnit && cs && ctx.target._landUnit.id === cs.id) ? { x: ctx.target.x, y: ctx.target.y } : null;
+                    if (cs && _cineActorVisible(cs)) cineGlamCam(cs, { driftMs: 900, ...(lt ? { at: lt } : {}) });
                     cineInsert('EJECT EJECT EJECT', 'document', 900);
                 });
                 return true;
@@ -34834,14 +35073,39 @@
             }, windupMs);
 
             // ── LANDING — kick + punch-in while the dust settles.
+            /* THE SIDE-ON IMPACT (spell look fix FX-CAM, 2026-10-26: Dark Justice, Lance, Out of the Dark, Felony
+               Takedown, Zombie Rush, Through the Wall, Destiny Fulfilled… ended on the charger's back with the target
+               right behind it, hidden for the hit): at the landing the chase swings 62° round to the side (the side
+               with more board under the lens) and frames the charger and the tile in front of it together. */
+            const _sideNorm = a => ((a + 180) % 360 + 360) % 360 - 180;
+            const _sideMid = { x: toPoint.x + dirx * 0.5, y: toPoint.y + diry * 0.5 };
+            const _sideYaw = (() => {
+                const a = yawChase + 62, b = yawChase - 62, d = 3.2;
+                const ra = _cineEdgeRoom(_sideMid.x + Math.sin(a * Math.PI / 180) * d, _sideMid.y + Math.cos(a * Math.PI / 180) * d);
+                const rb = _cineEdgeRoom(_sideMid.x + Math.sin(b * Math.PI / 180) * d, _sideMid.y + Math.cos(b * Math.PI / 180) * d);
+                if (Math.abs(ra - rb) > 0.75) return ra > rb ? a : b;
+                const cur = _sideNorm(camera._tyaw ?? camera.yaw ?? 0);
+                return Math.abs(_sideNorm(a - cur)) <= Math.abs(_sideNorm(b - cur)) ? a : b;
+            })();
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (state.phase !== 'battle') return;
                 shakeBoard('normal');
+                if (window.EW_CHARGE_CHASE_HOLD) {   // console: the old chase-behind landing
+                    _cineBeatMove({
+                        zoom: chaseZoom * 1.08,
+                        duration: Math.max(actionMs(260), settleMs - actionMs(160)),
+                        easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true,
+                        _fogAllowed: opts._fogAllowed || undefined
+                    });
+                    return;
+                }
                 _cineBeatMove({
-                    zoom: chaseZoom * 1.08,
+                    x: _sideMid.x, y: _sideMid.y,
+                    zoom: Math.min(chaseZoom, _tpsZoomFitTiles(3.0, 3.6)), yaw: _sideYaw, tilt: CINE_HIT_TILT - 2,
                     duration: Math.max(actionMs(260), settleMs - actionMs(160)),
-                    easing: 'linear',
+                    easing: 'easeInOut',
                     _allowZoomChange: true, _bypassCap: true,
                     _fogAllowed: opts._fogAllowed || undefined
                 });
@@ -35634,6 +35898,8 @@
                     return applyDamageToUnit(guardian, damage, sourceText, Object.assign({}, opts, { _chivalryRedirected: true }));
                 }
             }
+
+            if (damage > 0 && opts.sourceUnit) _stageBurstOnHit(opts.sourceUnit, target);   // THE HIT IS THE BURST
 
             // Press Turn: record this enemy's type tier if a spell collector is
             // armed (resolved later in the caster's finishAction).
@@ -38616,6 +38882,8 @@
             for (const m of prisms) {
                 if (_fx && _fx.hasMapping('racePulseLattice', 'aura')) _fx.fire('aura', 'racePulseLattice', { tx: m.x, ty: m.y, aoeRadius: 1 });
                 else if (typeof playAoeRing === 'function') playAoeRing(m.x, m.y, 1, f.spellType, actionMs(550));
+                // FX-4: the prism itself bursts into glass where it stood (fire() is relayed to the guest)
+                if (_fx && _fx.hasMapping(spell.id, 'impact')) _fx.fire('impact', spell.id, { tx: m.x, ty: m.y });
                 for (const e of state.units) {
                     if (!e || e.dead || e._dying || e.player === unit.player) continue;
                     if (Math.max(Math.abs(e.x - m.x), Math.abs(e.y - m.y)) > 1) continue;
@@ -63030,7 +63298,8 @@
                     { delayMs: (opts && opts.delayMs) || 0,
                       leap: (opts && opts.leap !== undefined) ? opts.leap : undefined,
                       stagger: !!(opts && opts.stagger),   // THE BODY: a body shoved by an enemy reels (hitStagger)
-                      charge: !!(opts && opts.charge) });  // THE NEW CLIPS: a charge spell sprints on RunFast
+                      charge: !!(opts && opts.charge),     // THE NEW CLIPS: a charge spell sprints on RunFast
+                      escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5)
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -63106,7 +63375,8 @@
                 // Full waypoint path: bounce rebounds and slam "bump" overshoots
                 // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge) });
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge),
+                      escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5): the guest's replay
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -66321,6 +66591,19 @@
             _doorTouched();
             /* THE PLACEMENT ACT — the state now, the beat after the unfold (the slides / the arrows wait on `delayMs`) */
             const actAt = shotMs + unfoldMs;
+            if (opts.actOnLanding && actAt > 0) {
+                /* THE LANDING ON THE SHOT (doSpell's cast, the camera + damage timing pass 2026-10-26): the act itself runs
+                   once the door has unfolded, so its pushes, pulls, bites, beams — and their numbers — start on screen,
+                   not while the comet is still in the air. The act's hold isn't known before it runs: the longest. */
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner || !(door.hp > 0) || !_doors().includes(door)) return;
+                    _gunDoorAct(door, { reason: 'placed', delayMs: 0, deferMs: 0 });
+                    scheduleBoardRender();
+                    if (typeof checkWin === 'function') checkWin();
+                }, actAt);
+                door._actMs = actAt + actionMs(1100);
+                return door;
+            }
             const r = _gunDoorAct(door, { reason: 'placed', delayMs: actAt, deferMs: actAt });
             door._actMs = actAt + actionMs(r.holdMs || 600);
             return door;
@@ -67781,7 +68064,7 @@
         }
         window._playKeyFindLocal = _playKeyFindLocal;
 
-        function _inspectFootprintAt(unit, x, y) {
+        function _inspectFootprintAt(unit, x, y, opts) {
             const toReveal = getInspectFootprint(unit, x, y);
 
             let totalHourglasses = 0;
@@ -67863,7 +68146,7 @@
                 addLog(`${_ctName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
             }
 
-            focusBoardCameraOnTiles([{
+            if (!(opts && opts.noCam)) focusBoardCameraOnTiles([{
                 x,
                 y
             }], {
@@ -71000,6 +71283,50 @@
             return /healing potion|mana potion|\bheal\b|\brevive\b/i.test(opts.spellName || '');
         }
 
+        // Holds scale with the spell's staging weight (same table the
+        // offensive shot uses) so a big blessing breathes longer than a
+        // cheap utility poke. Heal-flavored casts breathe LONGER — the
+        // restore is the payoff, so beat 2 holds while the number lands.
+        function _supportShotTimes(unit, target, opts = {}) {
+            const len = Math.max(1, Math.hypot(target.x - unit.x, target.y - unit.y));
+            const _supHeal = _isHealFlavoredCast(opts);
+            const _supStage = opts.spellId ? _spellStageInfo({ id: opts.spellId }) : null;
+            const _supPace = _STAGE_PACE[(_supStage && _supStage.weight) || 'standard'] || _STAGE_PACE.standard;
+            const sourceHold = actionMs(opts.sourceHold ?? Math.round((_supHeal ? 1000 : 800) * _supPace.source));
+            const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
+            const targetHold = actionMs(opts.targetHold ?? Math.round((_supHeal ? 1250 : 1000) * _supPace.target));
+            return { sourceHold, travelMs, targetHold, totalMs: sourceHold + travelMs + targetHold + actionMs(200) };
+        }
+
+        /* THE LANDING ON THE SHOT (2026-10-26, mondo: "stick up and plunder and any other spells that need timing
+           fixes for the camera and damage landing"): a kind branch that plays _spellFocusCamera toward a target
+           (Stick-Up, Plunder, the door spells, Outbreak, Void Rush, Revive…) used to land its hit on the cast frame,
+           so the number popped while beat 1 was still on the caster. The hit now waits for the shot to reach the
+           target: beat 1 (`lead`, the caster's wind-up — the door gun fires its comet here) + the glide (`land`).
+           With no shot to read (cinematics off, the viewer fogged out of it) the same clock is worked out from the
+           shot's own formula, so the host and a guest whose screen did play the shot see the hit at the same beat.
+           Fast sims (_skipVisuals) and self casts land at once, like before. Timing only: same hit, same rules. */
+        function _spellShotLanding(unit, tx, ty, shot, opts = {}) {
+            if (!unit || tx == null || ty == null || _skipVisuals() || state.phase !== 'battle') return { lead: 0, land: 0 };
+            if (shot && shot.mode === 'support') {
+                const lead = Math.max(0, shot.sourceHold || 0);
+                return { lead, land: lead + Math.max(0, shot.travelMs || 0) };
+            }
+            if ((shot && shot.mode === 'self') || (tx === unit.x && ty === unit.y)) return { lead: 0, land: 0 };
+            if (!opts.spellId && _focusCamSpellCtx && _focusCamSpellCtx.spellId) opts = Object.assign({}, opts, { spellId: _focusCamSpellCtx.spellId });
+            const t = _supportShotTimes(unit, { x: tx, y: ty }, opts);
+            return { lead: t.sourceHold, land: t.sourceHold + t.travelMs };
+        }
+        /* run `fn` on the landing (now when there is none); a match that ended meanwhile drops it */
+        function _landOnShot(ms, fn) {
+            if (!(ms > 0)) { fn(); return; }
+            window.setTimeout(() => {
+                if (state.phase !== 'battle' || state.winner) return;
+                fn();
+                scheduleBoardRender();
+            }, ms);
+        }
+
         // ═══════════════════════════════════════════════════════════════════
         // _playSupportCineShot() — ALLY-targeted support framing (heals,
         // potions, shields, buffs on someone else): a two-beat sequence.
@@ -71054,17 +71381,8 @@
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
 
-            // Holds scale with the spell's staging weight (same table the
-            // offensive shot uses) so a big blessing breathes longer than a
-            // cheap utility poke. Heal-flavored casts breathe LONGER — the
-            // restore is the payoff, so beat 2 holds while the number lands.
             const _supHeal = _isHealFlavoredCast(opts);
-            const _supStage = opts.spellId ? _spellStageInfo({ id: opts.spellId }) : null;
-            const _supPace = _STAGE_PACE[(_supStage && _supStage.weight) || 'standard'] || _STAGE_PACE.standard;
-            const sourceHold = actionMs(opts.sourceHold ?? Math.round((_supHeal ? 1000 : 800) * _supPace.source));
-            const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
-            const targetHold = actionMs(opts.targetHold ?? Math.round((_supHeal ? 1250 : 1000) * _supPace.target));
-            const totalMs = sourceHold + travelMs + targetHold + actionMs(200);
+            const { sourceHold, travelMs, targetHold, totalMs } = _supportShotTimes(unit, target, opts);
 
             // BEAT 1 — the giver: face the caster while they wind up the gift.
             _cineBeatMove({
@@ -71133,6 +71451,15 @@
                         duration: Math.max(actionMs(280), travelMs), easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
+                };
+            }
+            /* THE LANDING (FX-CAM, 2026-10-26: Deep Dive's landing framed a bare tile at ground height, the monster low
+               in the corner): an escape / blink / reel aims at the tile its caster lands on (target._landUnit) — beat 2
+               is the mover's own front ¾ there, sized to its body. */
+            if (target._landUnit && target._landUnit.id != null) {
+                const _lu = target._landUnit, _stock2 = _supBeat2;
+                _supBeat2 = () => {
+                    if (_lu.dead || !cineGlamCam(_lu, { at: { x: target.x, y: target.y }, cut: false, duration: 460 })) _stock2();
                 };
             }
             /* THE SPELL DIRECTOR: beat 2 (the heal's hard cut / the blessing's
@@ -71212,7 +71539,8 @@
             // shot, not just damage spells. Falls through to the flat pan
             // when the rig declines (fog, cinematics off, 2D).
             if (casterUnit && !casterUnit.dead && (tx !== casterUnit.x || ty !== casterUnit.y)) {
-                const _rcpt = (typeof unitAt === 'function' ? unitAt(tx, ty) : null) || { x: tx, y: ty };
+                const _rcpt = (typeof unitAt === 'function' ? unitAt(tx, ty) : null)
+                    || (opts.landUnit ? { x: tx, y: ty, _landUnit: opts.landUnit } : { x: tx, y: ty });   // THE LANDING
                 const _shot = _playSupportCineShot(casterUnit, _rcpt, opts);
                 if (_shot) return { mode: 'support', ...(_shot) };
             }
@@ -72070,6 +72398,15 @@
                     camera._savedState = null;
                     camera._cineShotId = null;
                     camera._releaseCineSubject(actionMs(700));
+                    /* THE LAST CAST'S RETURN (spell look fix FX-CAM, 2026-10-26: after Protect, Black Guard, Stick-Up,
+                       Plunder… the close shot stayed parked — giant name plates, a low lens — until something else moved
+                       the camera): if nothing has brought the camera home by the time the next unit would be up, glide
+                       back to the resting view (requirePre: a pan that took over already consumed the pending view). */
+                    if (!_skipVisuals() && camera._preCineView) {
+                        // through the window entry so online.js relays it: the guest glides back the same way (RULE #2)
+                        window._armActionCamSettle(unit.id, unit.dead ? undefined : unit.x, unit.dead ? undefined : unit.y,
+                            actionMs(900), false, { requirePre: true });
+                    }
                 }
                 checkWin();
                 endUnitIfDone(unit);
@@ -72377,7 +72714,7 @@
                    victim (ThreeVFXEffects.sigSpiralBeam3D). Stasis Beam caps it
                    with the frozen-light stasis column on the target. ── */
                 const _spiralBeamSpells = {
-                    raceStasisBeam: { color: 0x00d0ff, coreColor: 0xffffff, stasisColumn: 0xbfefff },
+                    raceStasisBeam: { color: 0xffd27a, coreColor: 0xffffff, stasisColumn: null },   // FX-4: held in light (vfxElement light), not ice-blue; the white column hid the target (the gold stasis rings are the hold now)
                 };
                 const _spiralCfg = _spiralBeamSpells[spell.id];
                 if (_spiralCfg && !_skipVisuals()
@@ -72502,26 +72839,35 @@
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx('healRegen');
-                _spellFocusCamera(unit, x, y);
+                const _rvShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                target.dead = false;
-                target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
-                target.shield = 0;
-                target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
-                /* a revive is a new life too — don't carry the dead unit's
-                   Last Stand shroud / kill streak back onto the board */
-                if (typeof resetUnitPowerState === 'function') resetUnitPowerState(target);
-                removeDebuffs(target);
-                flashHeal(target);
+                /* THE LANDING ON THE SHOT (Revive's +HP popped at the cast, 1.3 s before its pillar): the ally rises when
+                   the shot reaches the grave, with the pillar (the burst) on the same beat */
+                const _rvLand = _spellShotLanding(unit, x, y, _rvShot, { spellId: spell.id }).land;
+                if (_rvLand > 0) _stageRetimeBurst(unit, spell, { x, y }, _rvLand);
+                _landOnShot(_rvLand, () => {
+                    if (!target.dead || unit.dead) return;
+                    target.dead = false;
+                    target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+                    target.shield = 0;
+                    target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
+                    /* a revive is a new life too — don't carry the dead unit's
+                       Last Stand shroud / kill streak back onto the board */
+                    if (typeof resetUnitPowerState === 'function') resetUnitPowerState(target);
+                    removeDebuffs(target);
+                    flashHeal(target);
 
-                if (typeof window !== 'undefined' && window.ThreeVFXEffects
-                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
-                    if (state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                        }
                     }
-                }
-                showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
-                addLog(`${_ctName(unit)} revives ${_ctName(target)} with ${target.hp} HP.`);
+                    showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
+                    addLog(`${_ctName(unit)} revives ${_ctName(target)} with ${target.hp} HP.`);
+                    markDirty('teams', 'selectedUnit', 'hud');
+                });
+                if (_rvLand > 0) completionDelay = _rvLand + actionMs(700);
             } else if (spell.kind === 'raiseDead') {
                 // Necromancer: reanimate ANY unconsumed remains (ally gravestone or
                 // enemy bone pile) into an uncontrolled zombie flesh abomination.
@@ -72767,10 +73113,15 @@
                     return 0;
                 }
                 playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
-                _spellFocusCamera(unit, unit.x, unit.y);
+                const _shCam = _spellFocusCamera(unit, unit.x, unit.y);
                 unit.mp -= effectiveSpellCost;
-                doShatterLattice(unit, spell, spellPower);
-                completionDelay = (typeof actionMs === 'function') ? actionMs(800) : 800;
+                /* THE BURST ON THE SHOT (the camera + damage timing pass, 2026-10-26): the prisms burst the instant the
+                   cast landed, numbers and all, while the self shot was still on the caster — Pulse Lattice's own fix
+                   (below): the burst waits for the self shot to hand over to the board. */
+                const _shAt = (!_skipVisuals() && _shCam && _shCam.sourceHold > 0) ? _shCam.sourceHold + actionMs(120) : 0;
+                _stageRetimeBurst(unit, spell, { x: unit.x, y: unit.y }, _shAt);
+                _landOnShot(_shAt, () => doShatterLattice(unit, spell, spellPower));
+                completionDelay = Math.max(actionMs(800), _shAt + actionMs(1000));
             } else if (spell.kind === 'pulseLattice') {
                 const _pNet = computeMirrorNetwork(unit.player);
                 if (_pNet.count < 3) {
@@ -72877,10 +73228,10 @@
                     else if (bestDist <= 10) temp = '🟡 WARM — A Key is in the area.';
                     else if (bestDist <= 16) temp = '🔵 COOL — A Key is fairly far away.';
                     else temp = '❄️ FREEZING — Hourglasses are very far away.';
-                    addLog(`${_ctName(unit)} emits Scan Pulse (${side}x${side}). ${temp}`, unit.player);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name || 'Scan Pulse')} (${side}x${side}). ${temp}`, unit.player);   // FX-5: the scan names itself
                     showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
                 } else {
-                    addLog(`${_ctName(unit)} emits Scan Pulse (${side}x${side}). No Keys remain.`, unit.player);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name || 'Scan Pulse')} (${side}x${side}). No Keys remain.`, unit.player);
                 }
 
                 focusBoardCameraOnTiles([{
@@ -73248,10 +73599,13 @@
                     window.setTimeout(() => {
                         if (ally.dead || state.phase !== 'battle') return;
                         const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
+                        /* THE FX-2 PASS: the restore always shows on every ally (a full bar used to show nothing at all) —
+                           the mana glow, plus the spell's own '<id>:restore' piece when it has one (Free Energy's arc) */
+                        _vfxMana(ally.x, ally.y, _mrBigVfx ? { big: true } : undefined);
+                        _sigVfxGeom(spell.id + ':restore', ally.x, ally.y, 0, { fromX: unit.x, fromY: unit.y });
                         if (restoreAmount > 0) {
                             ally.mp += restoreAmount;
                             totalRestored += restoreAmount;
-                            if (!_skipVisuals()) _vfxMana(ally.x, ally.y, _mrBigVfx ? { big: true } : undefined);
                             showFloatingTextForUnit(ally, `+${restoreAmount} MP`, 'buff', { durationMs: 900 });
                             markDirty('teams', 'selectedUnit', 'hud');
                             renderIfDirty();
@@ -73271,7 +73625,7 @@
                 const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _aoeArea);
                 completionDelay = timing.completionDelay;
 
-                _fireAoeVfx(unit, spell, x, y, timing.cam, timing.projectileDelay, timing.impactDelay, { useStrikeLeap: _useStrikeLeap });
+                _fireAoeVfx(unit, spell, x, y, timing.cam, timing.projectileDelay, timing.vfxDelay, { useStrikeLeap: _useStrikeLeap });
 
                 // Spiderweb special case
                 if (spell.id === 'raceWebSnare') {
@@ -73415,33 +73769,39 @@
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
-                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                const _stShot = _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
-                const _stVFX = window.ThreeVFXEffects;
-                if (_stVFX && state.phase === 'battle' && !_skipVisuals() && _stVFX.hasMapping(spell.id, 'impact')) {
-                    _stVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                }
-                if (spell.dmg) {
-                    const _stDmg = spell.dmg + spellPower;
-                    applyDamageToUnit(target, _stDmg, `${spell.name}: `, {
-                        sourceUnit: unit,
-                        allowMarkBonus: true,
-                        damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
-                    });
-                    if (spell.statusEffects && spell.statusEffects.length > 0 && !target.dead) {
-                        applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                /* THE LANDING ON THE SHOT: the grab, the hit and the theft land when the shot reaches the mark */
+                const _stLand = _spellShotLanding(unit, target.x, target.y, _stShot, { spellId: spell.id }).land;
+                _stageRetimeBurst(unit, spell, target, _stLand);
+                _landOnShot(_stLand, () => {
+                    if (target.dead || unit.dead) return;
+                    const _stVFX = window.ThreeVFXEffects;
+                    if (_stVFX && state.phase === 'battle' && !_skipVisuals() && _stVFX.hasMapping(spell.id, 'impact')) {
+                        _stVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
                     }
-                }
-                const _stTook = _stealFromUnit(unit, target, {
-                    keys: spell.stealKeys != null ? spell.stealKeys : 1,
-                    items: spell.stealItems != null ? spell.stealItems : 1,
-                    verb: spell.name,
+                    if (spell.dmg) {
+                        const _stDmg = spell.dmg + spellPower;
+                        applyDamageToUnit(target, _stDmg, `${spell.name}: `, {
+                            sourceUnit: unit,
+                            allowMarkBonus: true,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        });
+                        if (spell.statusEffects && spell.statusEffects.length > 0 && !target.dead) {
+                            applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                        }
+                    }
+                    const _stTook = _stealFromUnit(unit, target, {
+                        keys: spell.stealKeys != null ? spell.stealKeys : 1,
+                        items: spell.stealItems != null ? spell.stealItems : 1,
+                        verb: spell.name,
+                    });
+                    if (!_stTook.keys && !_stTook.items) {
+                        addLog(`${_ctName(target)} had nothing worth taking.`);
+                    }
                 });
-                if (!_stTook.keys && !_stTook.items) {
-                    addLog(`${_ctName(target)} had nothing worth taking.`);
-                }
-                completionDelay = actionMs(650);
+                completionDelay = _stLand + actionMs(650);
             }
 
             /* Phase 6: `cleanseArea` — the nun's Purify. A 3×3 tile cast:
@@ -73600,7 +73960,10 @@
                                 { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: _fogCamAllSeen({ x: _displaceFromX, y: _displaceFromY }, { x: target.x, y: target.y }) }
                             );
                         }
-                    } else if (!state.cameraDisabled) {
+                    } else if (!state.cameraDisabled && !(cam && camera._cineShotId != null)) {
+                        /* FX-CAM (2026-10-26, Kinetic Hurl / Body Check): a shove that goes nowhere (wall, edge, a body
+                           in the way, too heavy) keeps the live action shot on the COLLISION and the number — the reset
+                           here cut to the far board view mid-hit. finishAction's return follows the shot. */
                         ++boardCameraSequenceId;
                         _softResetCameraToUnit(target, { focusTarget: true });
                     }
@@ -73643,8 +74006,17 @@
                     const _lineHits = _beamPlan.victims.slice();
                     const _lineFirstHit = _lineHits[0] || null;
                     const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
+                    /* THE LANDING ON THE SHOT (the camera + damage timing pass, 2026-10-26: Tsunami's numbers popped while its
+                       wall was still at the caster): a beam whose front ROLLS down the line (VFX beamFrontMs) lands the hit
+                       when the front reaches the nearest body; the target beat holds that much longer. */
+                    let _lineFrontMs = 0;
+                    if (_lineHits.length && !_skipVisuals() && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.beamFrontMs === 'function'
+                        && !(spell.projectileOverride || (typeof _getProjectileOverride === 'function' && _getProjectileOverride(unit, spell)))) {
+                        const _lnStep = Math.max(1, Math.min(..._lineHits.map(h => Math.round(((h.x - unit.x) * dx + (h.y - unit.y) * dy) / (dx * dx + dy * dy)))));
+                        _lineFrontMs = window.ThreeVFXEffects.beamFrontMs(spell.id, _lnStep, _beamPlan.cells.length, !!(dx && dy)) || 0;
+                    }
                     const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
-                        sourceHold: 1100, targetHold: 900, attackName: spell.name,
+                        sourceHold: 1100, targetHold: 900 + Math.max(0, _lineFrontMs - 560), attackName: spell.name,
                         // Kamehameha rule: stay ON the caster while the beam
                         // erupts from their hands, THEN cut to the victims.
                         holdAfterLaunchMs: 480,
@@ -73653,11 +74025,13 @@
                             ? _lineHits.map(h => ({ x: h.x, y: h.y }))
                             : undefined
                     });
-                    const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                     // The beam LAUNCHES when the caster releases (end of the
                     // charge), not at impact — the camera is still behind the
                     // caster at this point, so the eruption is on screen.
                     const _beamLaunchMs = Math.max(actionMs(200), cam?.sourceHold ?? actionMs(900));
+                    const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620),
+                        _lineFrontMs > 0 ? _beamLaunchMs + actionMs(_lineFrontMs) : 0);
+                    if (_lineFrontMs > 0) _stageRetimeBurst(unit, spell, _lineFirstHit || _lineCamTarget, impactDelay);
                     completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
 
                     // Projectile / Beam VFX. Spells with a projectileOverride
@@ -73779,7 +74153,7 @@
                 const timing = _setupAoeCameraAndTiming(unit, spell, cx, cy, crossTiles);
                 completionDelay = timing.completionDelay;
 
-                _fireAoeVfx(unit, spell, cx, cy, timing.cam, timing.projectileDelay, timing.impactDelay);
+                _fireAoeVfx(unit, spell, cx, cy, timing.cam, timing.projectileDelay, timing.vfxDelay);
 
                 window.setTimeout(() => {
                     const hitCount = _applyAoeDamage(unit, spell, crossTiles,
@@ -73889,6 +74263,9 @@
                 });
                 const pulled = _pullSlide.moved;
                 const _pullSteps = _pullSlide.steps;
+                /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): the staging burst (the metal stamp, the chain's cuff) lands on the
+                   body where the yank leaves it, as it arrives — not on the empty tile it was pulled from */
+                _stageRetimeBurst(unit, spell, { x: target.x, y: target.y }, _yankDelayMs + _pullSteps.length * 120);
 
                 if (!_plAlly && typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {   // a hauled ally keeps its wings
                     const _pullAirZ = target.z ?? 0;
@@ -74444,7 +74821,17 @@
                    get full feedback. */
                 const _escViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
                 const _stealthDecoy = !!spell.spawnDecoy && unit.player !== _escViewer;
-                if (!_stealthDecoy) _spellFocusCamera(unit, x, y);
+                /* THE ESCAPE SHOT (spell look fix FX-CAM, 2026-10-26: Shed Skin, Deep Dive, Abyssal Wings… cast from the board
+                   showed nothing): the shot is the caster leaving and the landing (the two-beat support shot to the landing
+                   tile, read before the body moves), and the 220 ms board glide below no longer cuts it. A cast with no
+                   landing (nowhere free) keeps the self shot. */
+                const _escShotLand = _stealthDecoy ? null
+                    : (_escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell));
+                const _escShot = _stealthDecoy ? null
+                    : (_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y))
+                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y, { landUnit: unit })
+                        : _spellFocusCamera(unit, x, y);
+                const _escShotLive = !!(_escShot && _escShot.mode !== 'pan' && _escShot.totalMs > 0);
                 unit.mp -= effectiveSpellCost;
 
                 if (spell.cleanse) {
@@ -74455,6 +74842,8 @@
                 }
 
                 const decoyX = unit.x, decoyY = unit.y;
+                const _escLook = (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                    ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
 
                 /* the landing is the player's pick (THE ESCAPE PICK) or, for a cast on the caster's own tile (the CPU),
                    escapeLandingTile's safest tile — the preview shows the same tile */
@@ -74477,7 +74866,13 @@
                            the decoy back to the real unit. */
                         scheduleBoardRender();
                     } else {
-                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, 220);
+                        /* THE ESCAPE LOOKS (spell look audit FX-5, 2026-10-26): the body rides the escape's own path (the
+                           wings fly, the dive goes under, the mech punches out, the bones come apart) over the look's own
+                           time; an escape that ends Invisible stays hidden from the opponent on the way */
+                        const _escTw = _escLook ? _escLook.ms : 220;
+                        const _escInvis = !!(spell.statusEffects || []).some(e => e && e.id === 'invisible');
+                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, _escTw,
+                            _escLook ? { escStyle: _escLook.style, escHide: _escInvis } : undefined);
 
                         if (typeof window !== 'undefined' && window.ThreeVFXEffects
                             && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
@@ -74489,14 +74884,14 @@
                             }
                         }
 
-                        if (!state.cameraDisabled) {
+                        if (!state.cameraDisabled && !_escShotLive) {
                             stopBoardCameraAnimation();
                             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                             const _escZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                             animateBoardCameraPath(
                                 { x: _escFromX, y: _escFromY },
                                 { x: candidates[0].x, y: candidates[0].y },
-                                { duration: 220, zoom: _escZoom, _fogAllowed: _fogCamAllSeen({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
+                                { duration: _escLook ? _escLook.ms : 220, zoom: _escZoom, _fogAllowed: _fogCamAllSeen({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
                             );
                         }
                     }
@@ -74543,7 +74938,7 @@
                     }
                 }
                 scheduleBoardRender();
-                completionDelay = actionMs(500);
+                completionDelay = Math.max(actionMs(500), _escLook ? _escLook.ms + 120 : 0);   // the body lands before the turn moves on
             }
 
             else if (spell.kind === 'selfHeal') {
@@ -74602,9 +74997,9 @@
                         const _apP = { tx: x, ty: y, cx: unit.x, cy: unit.y };
                         if (_spellMaskOf(spell)) { _apP.aoeMask = _spellMaskOf(spell); _apP.aoeRadius = _spellAoeReach(spell, 1); }
                         window.ThreeVFXEffects.fire('aoe', spell.id, _apP);
-                    }, timing.impactDelay);
+                    }, timing.vfxDelay);
                 } else {
-                    window.setTimeout(() => playAoeRing(x, y, _spellAoeReach(spell, 1), spell.spellType, actionMs(550)), timing.impactDelay);
+                    window.setTimeout(() => playAoeRing(x, y, _spellAoeReach(spell, 1), spell.spellType, actionMs(550)), timing.vfxDelay);
                 }
                 window.setTimeout(() => {
                     const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
@@ -75079,36 +75474,43 @@
                 const twin = doorTwin(door);
                 if (!twin) { if (!_silentReject) { addLog('Slam: that door has no twin left.'); playErrorSfx(); } return 0; }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, twin.x, twin.y, { spellName: spell.name, spellId: spell.id });
+                const _slShot = _spellFocusCamera(unit, twin.x, twin.y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
-                setDoorOpen(door, false, { quiet: true });
-                setDoorOpen(twin, false, { quiet: true });
-                if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-                if (!_skipVisuals()) { showFloatingTextAtTile(door.x, door.y, '🚪 SHUT', 'debuff'); showFloatingTextAtTile(twin.x, twin.y, '🚪 SLAM!', 'damage'); }
-                if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard(6, 260);
-                const VFX = window.ThreeVFXEffects;
-                if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: twin.x, ty: twin.y, fromX: door.x, fromY: door.y });
-                /* both leaves swing shut: the near one quietly, the twin SLAMS */
-                window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
-                window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
-                const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
-                const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1);
-                let _slamMax = 0, _hit = 0;
-                for (const v of victims) {
-                    const enemy = isEnemyUnit(v, unit);
-                    let pdx = Math.sign(v.x - twin.x), pdy = Math.sign(v.y - twin.y);
-                    if (!pdx && !pdy) { pdx = _slamDir.dx; pdy = _slamDir.dy; }
-                    const dist = getUnitPushDistance(v, spell.pushDistance || 1);
-                    const slide = dist > 0 ? resolveForcedSlide(v, pdx, pdy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 110 }) : null;
-                    if (slide && slide.animMs > _slamMax) _slamMax = slide.animMs;
-                    if (enemy) {
-                        _hit++;
-                        applyDamageToUnit(v, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
-                        if (spell.statusEffects) applyStatusEffects(v, spell.statusEffects, `${spell.name}: `, unit);
+                /* THE LANDING ON THE SHOT: both leaves shut and the twin slams when the shot reaches the twin */
+                const _slLand = _spellShotLanding(unit, twin.x, twin.y, _slShot, { spellId: spell.id }).land;
+                _stageRetimeBurst(unit, spell, twin, _slLand);
+                let _slEnd = 0;
+                _landOnShot(_slLand, () => {
+                    setDoorOpen(door, false, { quiet: true });
+                    setDoorOpen(twin, false, { quiet: true });
+                    if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                    if (!_skipVisuals()) { showFloatingTextAtTile(door.x, door.y, '🚪 SHUT', 'debuff'); showFloatingTextAtTile(twin.x, twin.y, '🚪 SLAM!', 'damage'); }
+                    if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard(6, 260);
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: twin.x, ty: twin.y, fromX: door.x, fromY: door.y });
+                    /* both leaves swing shut: the near one quietly, the twin SLAMS */
+                    window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
+                    window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
+                    const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
+                    const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1);
+                    let _slamMax = 0, _hit = 0;
+                    for (const v of victims) {
+                        const enemy = isEnemyUnit(v, unit);
+                        let pdx = Math.sign(v.x - twin.x), pdy = Math.sign(v.y - twin.y);
+                        if (!pdx && !pdy) { pdx = _slamDir.dx; pdy = _slamDir.dy; }
+                        const dist = getUnitPushDistance(v, spell.pushDistance || 1);
+                        const slide = dist > 0 ? resolveForcedSlide(v, pdx, pdy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 110 }) : null;
+                        if (slide && slide.animMs > _slamMax) _slamMax = slide.animMs;
+                        if (enemy) {
+                            _hit++;
+                            applyDamageToUnit(v, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                            if (spell.statusEffects) applyStatusEffects(v, spell.statusEffects, `${spell.name}: `, unit);
+                        }
                     }
-                }
-                addLog(`🚪 ${_ctName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
-                completionDelay = Math.max(actionMs(600), _slamMax + actionMs(300));
+                    addLog(`🚪 ${_ctName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
+                    _slEnd = Math.max(actionMs(600), _slamMax + actionMs(300));
+                });
+                completionDelay = _slLand > 0 ? _slLand + actionMs(900) : _slEnd;
             }
 
             else if (spell.kind === 'doorExit') {
@@ -75152,49 +75554,60 @@
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
-                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                const _tdShot = _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
-                triggerAttackAnim(unit, target.x, target.y);
-                const VFX = window.ThreeVFXEffects;
-                if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat; shot there from the gun) */
-                window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
-                window._doorGeom('raceTrapdoor', target.x, target.y, { fromX: unit.x, fromY: unit.y });
-                applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
-                if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                if (!target.dead && !(target._isBoss && target._bossSize === 2)) {
-                    const _freeNear = (cx, cy) => {
-                        const out = [];
-                        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-                            const lx = cx + dx, ly = cy + dy;
-                            if (!isInside(lx, ly) || unitAt(lx, ly) || doorAt(lx, ly)) continue;
-                            if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
-                            out.push({ x: lx, y: ly });
+                /* THE LANDING ON THE SHOT: the trapdoor opens under the victim when the shot reaches them */
+                const _tdAt = _spellShotLanding(unit, target.x, target.y, _tdShot, { spellId: spell.id });
+                const _tdLand = _tdAt.land;
+                _stageRetimeBurst(unit, spell, target, _tdLand);
+                /* the gun fires as beat 1 hands over (the comet flies with the glide) */
+                _landOnShot(_tdAt.lead, () => {
+                    triggerAttackAnim(unit, target.x, target.y);
+                    window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
+                });
+                let _tdEnd = 0;
+                _landOnShot(_tdLand, () => {
+                    if (target.dead || unit.dead) return;
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                    /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat) */
+                    window._doorGeom('raceTrapdoor', target.x, target.y, { fromX: unit.x, fromY: unit.y });
+                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                    if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    if (!target.dead && !(target._isBoss && target._bossSize === 2)) {
+                        const _freeNear = (cx, cy) => {
+                            const out = [];
+                            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                                const lx = cx + dx, ly = cy + dy;
+                                if (!isInside(lx, ly) || unitAt(lx, ly) || doorAt(lx, ly)) continue;
+                                if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
+                                out.push({ x: lx, y: ly });
+                            }
+                            return out;
+                        };
+                        const mine = _doors().filter(d => d.owner === unit.player).sort((a, b) => _doorCheb(b, target.x, target.y) - _doorCheb(a, target.x, target.y));
+                        let land = null, via = null;
+                        for (const d of mine) { const c = _freeNear(d.x, d.y); if (c.length) { land = c[0]; via = d; break; } }
+                        if (!land) { const c = _freeNear(unit.x, unit.y); if (c.length) land = c[0]; }
+                        if (land) {
+                            const fx = target.x, fy = target.y;
+                            const _tdDelay = _skipVisuals() ? 0 : actionMs(420);
+                            window.setTimeout(() => {
+                                if (target.dead) return;
+                                target.x = land.x; target.y = land.y;
+                                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
+                                setUnitFacing(target, land.x - (via ? via.x : unit.x) || 1, land.y - (via ? via.y : unit.y));
+                                playSfx('teleport');
+                                window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
+                                if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
+                                addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`);
+                                _doorTouched();
+                            }, _tdDelay);
+                            _tdEnd = _tdDelay + actionMs(500);
                         }
-                        return out;
-                    };
-                    const mine = _doors().filter(d => d.owner === unit.player).sort((a, b) => _doorCheb(b, target.x, target.y) - _doorCheb(a, target.x, target.y));
-                    let land = null, via = null;
-                    for (const d of mine) { const c = _freeNear(d.x, d.y); if (c.length) { land = c[0]; via = d; break; } }
-                    if (!land) { const c = _freeNear(unit.x, unit.y); if (c.length) land = c[0]; }
-                    if (land) {
-                        const fx = target.x, fy = target.y;
-                        const _tdDelay = _skipVisuals() ? 0 : actionMs(420);
-                        window.setTimeout(() => {
-                            if (target.dead) return;
-                            target.x = land.x; target.y = land.y;
-                            if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
-                            setUnitFacing(target, land.x - (via ? via.x : unit.x) || 1, land.y - (via ? via.y : unit.y));
-                            playSfx('teleport');
-                            window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
-                            if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
-                            addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`);
-                            _doorTouched();
-                        }, _tdDelay);
-                        completionDelay = _tdDelay + actionMs(500);
                     }
-                }
-                if (!completionDelay) completionDelay = actionMs(650);
+                });
+                completionDelay = _tdLand > 0 ? _tdLand + actionMs(920) : (_tdEnd || actionMs(650));
             }
 
             else if (spell.kind === 'aoeShield') {
@@ -75232,7 +75645,7 @@
 
             else if (spell.kind === 'zoneDebuff') {
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                const _zdShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 if (!state._activeZones) state._activeZones = [];
                 state._activeZones.push({
@@ -75280,32 +75693,41 @@
                 addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
                 /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
                    CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
+                /* THE LANDING ON THE SHOT (Outbreak's numbers popped at the cast, before the shot reached the zone): the
+                   strike and the zone's look land when the shot gets there */
+                const _zdLand = spell.zoneCastDamage > 0 ? _spellShotLanding(unit, x, y, _zdShot, { spellId: spell.id }).land : 0;
                 if (spell.zoneCastDamage > 0) {
-                    const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-                    const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
-                    const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
-                    for (const e of _zcFoes) {
-                        _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
-                            casterUnitId: unit.id, damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, element: getSpellElement(spell) || null });
-                    }
-                    if (_zcFoes.length) checkWin();
+                    _stageRetimeBurst(unit, spell, { x, y }, _zdLand);
+                    _landOnShot(_zdLand, () => {
+                        if (unit.dead) return;
+                        const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                        const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
+                        const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
+                        for (const e of _zcFoes) {
+                            _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                casterUnitId: unit.id, damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null, element: getSpellElement(spell) || null });
+                        }
+                        if (_zcFoes.length) checkWin();
+                    });
                 }
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
-                    if (state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('aura', spell.id, {
-                            tx: x, ty: y,
-                            aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1),
-                            aoeMask: _spellMaskOf(spell) || undefined
-                        });
-                    }
+                    _landOnShot(_zdLand, () => {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('aura', spell.id, {
+                                tx: x, ty: y,
+                                aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1),
+                                aoeMask: _spellMaskOf(spell) || undefined
+                            });
+                        }
+                    });
                 } else {
-                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff');
+                    _landOnShot(_zdLand, () => _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff', spell.id));
                 }
                 scheduleBoardRender();
-                completionDelay = actionMs(400);
+                completionDelay = _zdLand + actionMs(400);
             }
 
             else if (spell.kind === 'zoneHeal') {
@@ -75334,7 +75756,7 @@
                         window.ThreeVFXEffects.fire('aura', spell.id, _spellMaskOf(spell) ? { tx: x, ty: y, aoeMask: _spellMaskOf(spell), aoeRadius: _spellAoeReach(spell, 1) } : { tx: x, ty: y });
                     }
                 } else {
-                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'heal');
+                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'heal', spell.id);
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -75373,47 +75795,53 @@
                     return 0;
                 }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                const _pbShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                if (_pbIsWater) {
-                    setTerrainAt(x, y, blockTerrain);
-                    trackTilesChanged(unit, 1);
-                    addLog(`${_ctName(unit)} sinks a ${_ctSp(spell.name)} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
-                } else {
-                    if (_pbEnemyOcc && _pbShoveTo) {
-                        // Erupting block: shove first, then raise the column.
-                        const _fromX = _pbEnemyOcc.x, _fromY = _pbEnemyOcc.y;
-                        _pbEnemyOcc.x = _pbShoveTo.x; _pbEnemyOcc.y = _pbShoveTo.y;
-                        if (typeof nearestWalkableZ === 'function') _pbEnemyOcc.z = nearestWalkableZ(_pbShoveTo.x, _pbShoveTo.y, _pbEnemyOcc.z);
-                        animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180, { stagger: true });
-                        const _pbCrash = Math.max(20, 45 + Math.floor(spellPower * 0.5));
-                        applyDamageToUnit(_pbEnemyOcc, _pbCrash, `${spell.name} erupts underfoot: `, {
-                            sourceUnit: unit, damageType: 'physical'
-                        });
-                        showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
-                        addLog(`${_ctName(unit)}'s ${_ctSp(spell.name)} erupts under ${_ctName(_pbEnemyOcc)}, hurling them aside!`);
-                        /* Manual shove (bypasses resolveForcedSlide) — count
-                           the displacement for the §4.3 ladder here. */
-                        unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
-                        if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc, { dirX: Math.sign(_pbShoveTo.x - _fromX), dirY: Math.sign(_pbShoveTo.y - _fromY) });
-                        if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
+                /* THE LANDING ON THE SHOT: an ERUPTING block (an enemy on the column: the shove + its crash number) rises
+                   when the shot reaches the column; a plain stack / stepping stone lands as before */
+                const _pbLand = (_pbEnemyOcc && _pbShoveTo) ? _spellShotLanding(unit, x, y, _pbShot, { spellId: spell.id }).land : 0;
+                if (_pbLand > 0) _stageRetimeBurst(unit, spell, { x, y }, _pbLand);
+                _landOnShot(_pbLand, () => {
+                    if (_pbIsWater) {
+                        setTerrainAt(x, y, blockTerrain);
+                        trackTilesChanged(unit, 1);
+                        addLog(`${_ctName(unit)} sinks a ${_ctSp(spell.name)} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
+                    } else {
+                        if (_pbEnemyOcc && _pbShoveTo) {
+                            // Erupting block: shove first, then raise the column.
+                            const _fromX = _pbEnemyOcc.x, _fromY = _pbEnemyOcc.y;
+                            _pbEnemyOcc.x = _pbShoveTo.x; _pbEnemyOcc.y = _pbShoveTo.y;
+                            if (typeof nearestWalkableZ === 'function') _pbEnemyOcc.z = nearestWalkableZ(_pbShoveTo.x, _pbShoveTo.y, _pbEnemyOcc.z);
+                            animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180, { stagger: true });
+                            const _pbCrash = Math.max(20, 45 + Math.floor(spellPower * 0.5));
+                            applyDamageToUnit(_pbEnemyOcc, _pbCrash, `${spell.name} erupts underfoot: `, {
+                                sourceUnit: unit, damageType: 'physical'
+                            });
+                            showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
+                            addLog(`${_ctName(unit)}'s ${_ctSp(spell.name)} erupts under ${_ctName(_pbEnemyOcc)}, hurling them aside!`);
+                            /* Manual shove (bypasses resolveForcedSlide) — count
+                               the displacement for the §4.3 ladder here. */
+                            unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
+                            if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc, { dirX: Math.sign(_pbShoveTo.x - _fromX), dirY: Math.sign(_pbShoveTo.y - _fromY) });
+                            if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
+                        }
+                        setBlockAt(x, y, _pbOldH + 1, blockTerrain);
+                        trackTilesChanged(unit, 1);
+                        const _pbRider = unitAt(x, y);
+                        if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
+                            _pbRider.z = _pbOldH + 1;
+                            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbRider, fromX: x, fromY: y });
+                            if (_pbRider.id !== unit.id) addLog(`${_ctName(_pbRider)} rides the new block up!`);
+                        }
+                        addLog(`${_ctName(unit)} stacks a ${_ctSp(spell.name)} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
                     }
-                    setBlockAt(x, y, _pbOldH + 1, blockTerrain);
-                    trackTilesChanged(unit, 1);
-                    const _pbRider = unitAt(x, y);
-                    if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
-                        _pbRider.z = _pbOldH + 1;
-                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbRider, fromX: x, fromY: y });
-                        if (_pbRider.id !== unit.id) addLog(`${_ctName(_pbRider)} rides the new block up!`);
-                    }
-                    addLog(`${_ctName(unit)} stacks a ${_ctSp(spell.name)} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
-                }
-                _invalidateBoardGrid();
-                if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
-                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
-                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                    _invalidateBoardGrid();
+                    if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                    if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                    if (typeof shakeBoard === 'function') shakeBoard('normal');
+                });
                 scheduleBoardRender();
-                completionDelay = actionMs(650);
+                completionDelay = _pbLand + actionMs(650);
             }
 
             else if (spell.kind === 'buildStructure') {
@@ -76068,13 +76496,20 @@
                             return 0;
                         }
                         playSfx('uiConfirm');
+                        /* THE REEL SHOT (spell look fix FX-CAM, 2026-10-26: Grapple toward a tile played at the far overview
+                           with no action cam): the caster → landing shot, read before the body moves; the board glide
+                           below only runs when no shot played. */
+                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id, landUnit: unit });
+                        const _grSelfShotLive = !!(_grSelfShot && _grSelfShot.mode !== 'pan' && _grSelfShot.totalMs > 0);
                         unit.mp -= effectiveSpellCost;
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
 
-                        const _grShootMs = actionMs(200);
+                        /* THE FX-2 PASS: the self-reel played in 400 ms (the hook and rope were never seen): the hook flies
+                           for 320 ms and the reel takes 360 ms (the shot is FX-CAM's reel shot above) */
+                        const _grShootMs = actionMs(320);
                         const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs, hook: true });
 
-                        const _grSlideMs = 200;
+                        const _grSlideMs = actionMs(360);
                         window.setTimeout(() => {
                             unit.x = cx;
                             unit.y = cy;
@@ -76083,7 +76518,7 @@
                             animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
                             resolveTileArrival(unit, { via: 'self' });   // ⛓ reeled in onto whatever waits there
 
-                            if (!state.cameraDisabled && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
+                            if (!state.cameraDisabled && !_grSelfShotLive && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
                                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                                 const _grSelfZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
@@ -76119,43 +76554,48 @@
                     panelFocusTarget = target;
                     focusUnitPanel(target.id);
                     playSfx('uiConfirm');
-                    _spellFocusCamera(unit, x, y);
+                    const _plShot = _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
+                    /* THE LANDING ON THE SHOT: the strike and the haul land when the shot reaches the victim */
+                    const _plLand = _spellShotLanding(unit, target.x, target.y, _plShot, { spellId: spell.id }).land;
+                    _stageRetimeBurst(unit, spell, target, _plLand);
+                    _landOnShot(_plLand, () => {
+                        if (target.dead || unit.dead) return;
+                        if (spell.dmg) {
+                            const _plDmg = spell.dmg + spellPower;
+                            applyDamageToUnit(target, _plDmg, `${unitDisplayName(unit)} plunders: `, {
+                                sourceUnit: unit,
+                                allowMarkBonus: false,
+                                damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                            });
+                            if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
+                        }
 
-                    if (spell.dmg) {
-                        const _plDmg = spell.dmg + spellPower;
-                        applyDamageToUnit(target, _plDmg, `${unitDisplayName(unit)} plunders: `, {
-                            sourceUnit: unit,
-                            allowMarkBonus: false,
-                            damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
-                        });
-                        if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
-                    }
-
-                    let stolen = false;
-                    if (moveHourglassesBetweenUnits(target, unit, 1) > 0) {
-                        addLog(`${_ctName(unit)} plunders a Key from ${_ctName(target)}!`);
-                        showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
-                        showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });
-                        stolen = true;
-                    }
-                    if (!stolen && target.items) {
-                        const stealable = Object.keys(target.items).filter(k => target.items[k] > 0);
-                        if (stealable.length > 0) {
-                            const pick = stealable[randInt(stealable.length)];
-                            target.items[pick]--;
-                            if (!unit.items) unit.items = {};
-                            unit.items[pick] = (unit.items[pick] || 0) + 1;
-                            addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
-                            showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                        let stolen = false;
+                        if (moveHourglassesBetweenUnits(target, unit, 1) > 0) {
+                            addLog(`${_ctName(unit)} plunders a Key from ${_ctName(target)}!`);
+                            showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
+                            showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });
                             stolen = true;
                         }
-                    }
-                    if (!stolen) {
-                        addLog(`${_ctName(unit)} tries to plunder ${_ctName(target)}, but they have nothing to steal.`);
-                    }
-                    completionDelay = actionMs(500);
+                        if (!stolen && target.items) {
+                            const stealable = Object.keys(target.items).filter(k => target.items[k] > 0);
+                            if (stealable.length > 0) {
+                                const pick = stealable[randInt(stealable.length)];
+                                target.items[pick]--;
+                                if (!unit.items) unit.items = {};
+                                unit.items[pick] = (unit.items[pick] || 0) + 1;
+                                addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
+                                showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                                stolen = true;
+                            }
+                        }
+                        if (!stolen) {
+                            addLog(`${_ctName(unit)} tries to plunder ${_ctName(target)}, but they have nothing to steal.`);
+                        }
+                    });
+                    completionDelay = _plLand + actionMs(500);
                 } else if (spell.id === 'mimic') {
 
                     const lastSpell = state._lastSpellCast;
@@ -76219,7 +76659,11 @@
                     try { _sigVfxGeom(spell.id + ':view', x, y, 1) || ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
                 }
                 addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} on ${coordLabel(x, y)}.`, unit.player);
-                _inspectFootprintAt(unit, x, y);
+                /* THE FAR LOOK (spell look fix FX-CAM, 2026-10-26): Far Sight played at board zoom — it gets the cast
+                   shot the scry branch below already plays (caster → the searched tile); the inspect's own wide pan
+                   only runs when no shot played. */
+                const _fsShot = _spellFocusCamera(unit, x, y);
+                _inspectFootprintAt(unit, x, y, { noCam: !!(_fsShot && _fsShot.mode !== 'pan' && _fsShot.totalMs > 0) });
                 checkWin();
                 completionDelay = actionMs(700);
             }
@@ -76376,7 +76820,7 @@
                     } else {
                         _vfxTeleport(tUnit.x, tUnit.y, x, y);
                     }
-                    _spellFocusCamera(unit, x, y);
+                    const _tpShot = _spellFocusCamera(unit, x, y, { landUnit: tUnit });   // THE LANDING: the mover framed where it lands
                     // Third Eye (the `teleportMpDiscount` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
                     const _tpOff = unitPassiveSum(unit, 'teleportMpDiscount') || 0;
                     const mpCost = _tpOff ? Math.max(1, effectiveSpellCost - _tpOff) : effectiveSpellCost;
@@ -76389,6 +76833,11 @@
                     // to stay the ORIGIN's — a plateau-to-floor blink read as airborne).
                     if (!_tpWasAir && _tpLandZ !== null) tUnit.z = _tpLandZ;   // THE TWO FLOORS: the clicked floor
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
+                    /* THE ESCAPE LOOKS (FX-5): a teleport with its own look (Web Swing) carries the body along its path
+                       instead of popping it there (relayed by the displace wrapper) */
+                    const _tpLook = (!spell.leap && !spell.doorGun && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                        ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
+                    if (_tpLook && !_skipVisuals()) animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, _tpLook.ms, { escStyle: _tpLook.style });
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
                         : tUnit === unit
@@ -76402,7 +76851,12 @@
                             spell.arrivalStageRounds ? { rounds: spell.arrivalStageRounds } : {});
                     }
 
-                    if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
+                    /* THE LANDING ON THE SHOT (Void Rush's numbers popped at the cast, before the shot reached the landing):
+                       the arrival blast lands when the shot gets there */
+                    const _tpLand = (spell.aoeOnArrival && spell.dmg && tUnit === unit) ? _spellShotLanding(unit, x, y, _tpShot, { spellId: spell.id }).land : 0;
+                    if (_tpLand > 0) { _stageRetimeBurst(unit, spell, { x, y }, _tpLand); completionDelay = Math.max(completionDelay || 0, _tpLand + actionMs(600)); }
+                    if (spell.aoeOnArrival && spell.dmg && tUnit === unit) _landOnShot(_tpLand, () => {
+                        if (unit.dead) return;
                         const _tpM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the landing tile)
                         const aoeR = _tpM ? Math.max(1, aoeMaskBound(_tpM)) : (spell.aoeRadius || 1);
                         const spellPwr = spellPower;   // getSpellPower never existed (a ReferenceError on every arrival blast)
@@ -76420,9 +76874,13 @@
                                 }
                             }
                         }
-                    }
+                    });
 
-                    if (!state.cameraDisabled) {
+                    /* THE BLINK SHOT (spell look fix FX-CAM, 2026-10-26: Door Dash, Far Sight, Instant Transmission, Mirror
+                       Blink played at board zoom with no action cam): the soft reset 80 ms after the cast cut the caster →
+                       landing shot _spellFocusCamera had just started. A shot that played now runs out first (finishAction's
+                       own reset follows it, THE SHOT CLOCK); with no shot the landing is shown as before. */
+                    if (!state.cameraDisabled && !(_tpShot && _tpShot.mode !== 'pan' && _tpShot.totalMs > 0 && tUnit === unit)) {
                         window.setTimeout(() => {
                             // focusTarget: teleporting ANOTHER unit (teleportAnyUnit)
                             // should still show where it landed even though the
@@ -76430,7 +76888,7 @@
                             // anyway.
                             _softResetCameraToUnit(tUnit, { focusTarget: true });
                             scheduleBoardRender();
-                        }, actionMs(80));
+                        }, (_tpShot && _tpShot.mode !== 'pan' && _tpShot.totalMs > 0) ? _tpShot.totalMs : actionMs(80));
                     }
             }
 
@@ -76746,17 +77204,37 @@
 
             else if (spell.kind === 'doorDeploy') {
                 /* 🚪 THE STANDING DOOR (the door wheel, DOOR_GUN_PLAN §3.2): the shot, the door, its first act */
-                _spellFocusCamera(unit, x, y);
-                unit.mp -= effectiveSpellCost;
-                const _gdoor = doorGunPlace(unit, spell, x, y, _gunDoorAim ? _gunDoorAim.faceX : 0, _gunDoorAim ? _gunDoorAim.faceY : 0);
+                const _gdFaceX = _gunDoorAim ? _gunDoorAim.faceX : 0, _gdFaceY = _gunDoorAim ? _gunDoorAim.faceY : 0;
                 if (_gunDoorPick(spell)) state._spellPick1 = null;
-                if (!_gdoor) {
-                    unit.mp += effectiveSpellCost;
+                if (!_gunDoorDefOfSpell(spell) || !doorTileFree(x, y)) {
                     addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
                     playErrorSfx();
                     return 0;
                 }
-                completionDelay = Math.max(actionMs(700), _gdoor._actMs || 0);
+                const _gdShot = _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                /* THE LANDING ON THE SHOT (Gust Door, Maw Door…: the push / pull and its numbers came before the door was
+                   on screen): the gun fires as beat 1 hands over, so the comet, the door and its first act play out on
+                   the glide and the hold at the door. The comet's flight + the unfold + the act's hold are the door's
+                   own (doorGunPlace's `_actMs`); a quiet / instant cast places it now, like before. */
+                const _gdLead = _spellShotLanding(unit, x, y, _gdShot, { spellId: spell.id }).lead;
+                if (_gdLead > 0) {
+                    _landOnShot(_gdLead, () => {
+                        if (unit.dead) return;
+                        if (!doorGunPlace(unit, spell, x, y, _gdFaceX, _gdFaceY, { actOnLanding: true })) addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
+                    });
+                    const _gdShotMs = Math.max(120, Math.min(360, 90 + Math.hypot(x - unit.x, y - unit.y) * 45));
+                    completionDelay = _gdLead + Math.max(actionMs(700), _gdShotMs + actionMs(300) + actionMs(1100));
+                } else {
+                    const _gdoor = doorGunPlace(unit, spell, x, y, _gdFaceX, _gdFaceY);
+                    if (!_gdoor) {
+                        unit.mp += effectiveSpellCost;
+                        addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
+                        playErrorSfx();
+                        return 0;
+                    }
+                    completionDelay = Math.max(actionMs(700), _gdoor._actMs || 0);
+                }
                 scheduleBoardRender();
             }
 
@@ -76943,7 +77421,13 @@
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, '🎵', 'buff');
-                    addLog(`${_ctName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
+                    /* spell look audit FX-5 (2026-10-26): the line names the cry that was cast and what it gave (Iron
+                       Bulwark, Rally Command, Royal Decree … all logged "lets out a War Cry!") */
+                    const _wcGot = spell.statStageBoost
+                        ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]).map(k => `${spell.statStageBoost[k] > 0 ? '+' : ''}${spell.statStageBoost[k]} ${_stageStatLabel(k)}`)
+                        : ['+2 ATK'];
+                    if (spell.timedStatBonus && spell.timedStatBonus.move > 0) _wcGot.push(`+${spell.timedStatBonus.move} MOV`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}! ${buffCount} all${buffCount === 1 ? 'y' : 'ies'} within ${radius} tiles gain${buffCount === 1 ? 's' : ''} ${_wcGot.join(' and ')}.`);
                 }
                 /* THE SPELL AUDIT Batch D (Reprise): the song also hands Encore's AP to the nearest ally in the aura who has
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
@@ -76983,7 +77467,7 @@
                         knight.z = nearestWalkableZ(dest.x, dest.y, unit.z ?? 0);
                     }
                     _vfxBuff(knight.x, knight.y);
-                    showFloatingTextForUnit(knight, '⚔ Summoned', 'buff', { durationMs: 900 });
+                    showFloatingTextForUnit(knight, '⚔ Pulled in', 'buff', { durationMs: 900 });
                     if (typeof _applyKnockbackHazard === 'function') _applyKnockbackHazard(knight);
                     _rpSummoned++;
                 }
