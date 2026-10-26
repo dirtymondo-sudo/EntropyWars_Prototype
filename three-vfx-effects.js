@@ -52227,8 +52227,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var vn = _pzMesh(dg, vm, F.g, off.x, off.y - 1.8, off.z); vn.rotation.y = rn(0, 6.28); vn.renderOrder = 151;
             /* the grass fire stands on the side away from the lens (the body and its number stay clear in front of it);
                a low lick catches round the feet on the near side */
-            var L = life * rn(0.9, 1.1), hb = ts * (0.95 + 0.15 * rank) * (many ? 0.75 : 1);
-            T.push(_fpVolMesh({ x: off.x - cd.x * ts * 0.16, y: off.y - 3, z: off.z - cd.z * ts * 0.16, h: hb, w: ts * (many ? 0.72 : 0.84), dp: ts * 0.6, ry: ry,
+            var L = life * rn(0.9, 1.1), hb = ts * (1.1 + 0.15 * rank) * (many ? 0.75 : 1);
+            T.push(_fpVolMesh({ x: off.x - cd.x * ts * 0.16, y: off.y - 3, z: off.z - cd.z * ts * 0.16, h: hb, w: ts * (many ? 0.75 : 0.9), dp: ts * 0.6, ry: ry,
                 d: d0 + rn(0, 60), life: L, ph: rn(0, 9) }, F.g, pal));
             if (!many) T.push(_fpVolMesh({ x: off.x + cd.x * ts * 0.24, y: off.y - 3, z: off.z + cd.z * ts * 0.24, h: ts * (0.28 + 0.04 * rank), w: ts * 0.76, dp: ts * 0.3, ry: ry,
                 d: d0 + 60 + rn(0, 60), life: L * 0.85, ph: rn(0, 9) }, F.g, pal));
