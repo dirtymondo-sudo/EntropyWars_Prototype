@@ -2784,6 +2784,20 @@
             window.playCollisionImpactFx = playCollisionImpactFx;
         }
 
+        /* ⚔️ The opportunity attack / AUTO ATTACK centre banner (battle.js showOppStrikeBanner) runs host-side: relay
+           it with the struck tile, and the guest shows it only when that tile is in its sight (fog gate below). */
+        if (typeof showOppStrikeBanner === 'function') {
+            const _origShowOppStrikeBanner = showOppStrikeBanner;
+            showOppStrikeBanner = function(title, subtitle, x, y) {
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                    _emit('relay', { type: 'opp-banner', title: String(title || ''), subtitle: String(subtitle || ''), x: x, y: y });
+                }
+                return _origShowOppStrikeBanner(title, subtitle, x, y);
+            };
+            window.showOppStrikeBanner = showOppStrikeBanner;
+        }
+
         const _origPlaySfx = playSfx;
         playSfx = function(key, opts) {
             _origPlaySfx(key, opts);
@@ -4927,6 +4941,12 @@
                         }
                     }
 
+                    if (data.type === 'opp-banner' && _ewMirrorView()) {
+                        var _obSeen = !(st && st.fogOfWar) || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(data.x, data.y);
+                        if (_obSeen && typeof showCombatBanner === 'function') showCombatBanner(data.title, data.subtitle, 'opp-attack');
+                    }
+
                     if (data.type === 'strike-leap' && _ewMirrorView()) {
                         var leapUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (leapUnit) {
@@ -6059,6 +6079,7 @@
                             if (!tv(data.x, data.y)) { copy(); out.x = GV_HIDDEN_XY; out.y = GV_HIDDEN_XY; }
                             break;
                         case 'collision-fx':
+                        case 'opp-banner':
                         case 'storm-lightning-fx':
                         case 'key-fx':
                             if (!tv(data.x, data.y)) return null;

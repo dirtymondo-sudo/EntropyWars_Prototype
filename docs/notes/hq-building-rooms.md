@@ -1127,3 +1127,24 @@ had it". With Map Looks off (three-post.js `_looksOffNow`, re-read on every setS
   look bar, no hour preset).
 - FOG DENSITY stays the slider × the area's base (absolute numbers mean nothing across a 3 m room and a 12-square board).
 Proof: /mnt/project-files/map-looks/fog_heaven_before_after.jpg, fog_hell_before_after.jpg (Haunted Green, Map Looks off).
+
+## GRID FIT — THE BUILDING ROOMS' COVERS ON THEIR SQUARES (2026-10-26)
+mondo: "Can we redesign the maps with the square grid in mind? ... it should still be a size and placement that makes it best for
+square grid gameplay." Group 7 of /mnt/project-files/grid-fit/GROUPS_AND_BRIEF.md (the 85 box rooms).
+- Scope = the props the box battle turns into COVER (data.js hqFieldBoxInfo `covers`: foot > 0, standing, a rect or a foot ≥ footMin),
+  220 pieces. The other ~900 "floor props" in the audit's box list are tabletop pieces, mats, stains and small scenery the cell
+  ignores; they only moved when they sit on / beside a moved cover.
+- Placement: per axis the piece spans n = round(drawn width / 1.75) squares; it sits inside those n squares, centred, or flush to the
+  wall it stood against (the box lattice puts a wall within 0.3 m of a square line). Pieces stacked on each other or sharing an edge
+  (riser tiers, slot-machine banks) move as one. A low step (top < 0.5 m, a battle floor) is fitted by its drawn rect only.
+- Companions move by the same delta: anything inside the footprint (tabletop items), chairs / stools / coffee tables within 0.8 m,
+  and npcSpots / agents / onlineSpots / counters within 0.8 m. Flipped (ceiling) props never follow. Checked: no spawn, NPC or door
+  mouth ends up inside a moved piece.
+- By hand: the chapel (pews ±2.625 = a two-square aisle, altar on the middle line covering the two middle squares, dais one row in
+  front), the showroom stage behind the models, the control room's two tables, the Mandela room's step. Left alone: the stairwell's
+  tread flights (one prop per 0.3 m tread; per-tread snapping breaks the flight).
+- THE TURNED RECT in the cover rule: a quarter-turned rect prop now covers the squares it is drawn on (the renderer's blocker already
+  turned it). It changes the hospital beds, door stacks, metro benches, pod beds, iso tanks, the subway ticket booth, the
+  carnival's side tiers and the cabin's stern step (every rect prop at face 90 / 270).
+- Result (feet rule, covers that block exactly the squares their size calls for): 95 → 164 of 186 (the rest: 17 stairwell treads, the
+  4 inner slot machines of two 4-machine banks, the chapel altar on the middle line). Tools: /mnt/project-files/grid-fit/group7/.

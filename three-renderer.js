@@ -39673,6 +39673,7 @@ const ThreeRenderer = (function () {
         if (renderer) renderer.setAnimationLoop(null);
         if (_fpsEl) _fpsEl.style.display = 'none';
         if (_miniWrap) { _miniWrap.style.display = 'none'; _miniWrap.classList.remove('md-scanner'); }
+        _mmHide();                       /* THE MINIMAP leaves with the board */
         _mdMiniKey = '';                 /* next floor charts itself from scratch */
         if (canvas) canvas.style.display = 'none';
         if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
@@ -40700,24 +40701,12 @@ const ThreeRenderer = (function () {
     }
 
     /* ────────────────────────────────────────────────────────────────────
-     * Minimap — fixed overhead map pinned to the bottom-right corner. Draws a
-     * simplified, top-down board using the shared terrain palette
-     * (window.EW_TERRAIN_COLORS) and overlays spawn zones, nexus zones, tower
-     * "cubes" (bases) and visible units. The viewer's currently-active unit
-     * gets a white arrow that points the way the camera is facing.
+     * The Mystery Dungeon SCANNER's box (#battleMinimap): a fixed panel in
+     * the bottom-right corner that _drawMdScanner charts a dungeon floor on.
+     * The battle board's own minimap is THE MINIMAP below (#ewMinimap).
      * ──────────────────────────────────────────────────────────────────── */
     var _miniWrap = null, _miniCanvas = null, _miniCtx = null, _miniLabelEl = null;
-    var MINI_BOX = 188;          /* max wrapper size in CSS px */
     var _miniLastW = -1, _miniLastH = -1;
-    var _MINI_TERRAIN_FALLBACK = {
-        blank:'transparent', void:'transparent', grass:'rgba(80,140,60,0.45)',
-        water:'rgba(50,100,200,0.5)', deep_water:'rgba(30,60,160,0.6)',
-        mountain:'rgba(120,110,100,0.5)', lava:'rgba(220,80,20,0.58)',
-        dirt:'rgba(130,100,60,0.4)', forest:'rgba(40,100,40,0.5)'
-    };
-    function _miniTerrainColors() {
-        return (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS) || _MINI_TERRAIN_FALLBACK;
-    }
 
     function _ensureMinimap() {
         if (_miniWrap) return;
@@ -40749,60 +40738,417 @@ const ThreeRenderer = (function () {
         _miniCtx = _miniCanvas.getContext('2d');
     }
 
-    /* Which player is "us" (whose units are always shown / arrow is drawn). */
-    function _miniViewerPlayer() {
-        try {
-            if (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active &&
-                typeof window._myPlayer === 'function') return window._myPlayer();
-        } catch (e) {}
-        var ap = (state && state.autoPlayers) || {};
-        if (!ap[1]) return 1;
-        if (!ap[2]) return 2;
-        return 1;
+    /* ────────────────────────────────────────────────────────────────────
+     * THE MINIMAP (2026-10-26, mondo: "Can we add a minimap to the game. Add it to the UI maker and let me change how it
+     * looks and what displays in it ... Make sure you treat it like other elements of the HUD and hide it during spell
+     * animations and other appropriate times. Want it to look simplistic, all black with white gridlines and colored icons,
+     * options to customize and change and hide stuff"). #ewMinimap (.ew-mmap, styles-hud.css) is the battle board from above
+     * on one canvas, a cell per battle square. Its look and what it shows come from the UI Maker (Layout > Minimap: hud.js
+     * mapSignal -> window._ewMapLook, bumped _ewMapLookV); MMAP_DEF holds the same defaults as hud.js UX_DEF g*.
+     * WHAT IT SHOWS IS WHAT THE BOARD SHOWS: the viewer's own units always; an enemy only while its body is drawn (the fog
+     * set, the 3D line of sight and concealment: the tests _updateEnemyConcealment runs, plus the body's own visibility);
+     * a copy (decoy) like the unit it copies, by the deployables' own rule (yours always, an enemy's on a square you see).
+     * The online guest never gets a tile for an enemy in its fog (online.js THE GUEST'S VIEW), so there is nothing to draw.
+     * AWAY like the combat log: body.ew-board-busy / ew-board-cam / ew-spell-shot / ew-eor (_takeoverBodyClasses), per the
+     * UI Maker's Hide while. Viewer-local, nothing relayed. The Mystery Dungeon keeps its SCANNER (#battleMinimap).
+     * Redrawn at most every 50 ms, and only when something on it changed. Sizes are px on screen, areas battle squares.
+     * ──────────────────────────────────────────────────────────────────── */
+    var MMAP_DEF = {
+        size: 180, view: 'board', span: 12, turn: false, shape: 'square',
+        bg: '#000000', bgOp: 1, grid: '#ffffff', gridOp: 0.45, gridW: 1, every: 1, frame: '#ffffff', frameOp: 1, frameW: 1,
+        icon: 'dot', iconSize: 0.62, ally: '#14b4ff', foe: '#ff3355', line: '', lineW: 1,
+        allies: true, foes: true, active: true, activeCol: '#ffffff', pulse: true,
+        cam: 'off', camCol: '#ffffff', camOp: 0.85, fog: false, fogCol: '#8c96aa', fogOp: 0.35,
+        ground: 'none', spawn: false, nexus: false, cube: false, neutral: '#f2c64a',
+        auto: 'board', aim: false
+    };
+    var _mm = { el: null, cv: null, ctx: null, cls: '', sig: '', next: 0, boxKey: '', cw: 0, ch: 0, fogRef: null, drawnAt: 0, imgs: new Map() };
+    function _mmLook() {
+        var L = window._ewMapLook, o = {};
+        for (var k in MMAP_DEF) o[k] = (L && L[k] != null && L[k] !== '') ? L[k] : MMAP_DEF[k];
+        return o;
     }
-
-    /* Fog-of-war aware: own units always show; enemies only when their tile is
-       actually inside the viewer's vision (same _fogVisibleSet that hides their
-       3D models) AND they aren't concealed (invisible / smoke). The minimap
-       must never leak positions the board itself hides. */
-    function _miniUnitVisible(u, viewer) {
-        if (u.player === viewer) return true;
-        if (!state.fogOfWar) return true;
-        var ap = (state && state.autoPlayers) || {};
-        if (ap[viewer]) return true; /* viewer is AI / spectated → reveal */
-        if (_fogVisibleSet && !_fogVisibleSet.has(u.x + ',' + u.y)) return false;
-        try {
-            if (window.GAME && typeof window.GAME.isUnitConcealedFrom === 'function')
-                return !window.GAME.isUnitConcealedFrom(u, viewer);
-        } catch (e) {}
-        return true;
+    function _mmEnsure() {
+        if (_mm.el && _mm.el.isConnected) return _mm.el;
+        var el = document.createElement('div');
+        el.id = 'ewMinimap';
+        el.className = 'ew-mmap off';
+        var cv = document.createElement('canvas');
+        el.appendChild(cv);
+        document.body.appendChild(el);
+        _mm.el = el; _mm.cv = cv; _mm.ctx = cv.getContext('2d');
+        _mm.cls = ''; _mm.sig = ''; _mm.boxKey = '';
+        return el;
     }
+    function _mmHide() {
+        if (_mm.el && !_mm.el.classList.contains('off')) _mm.el.classList.add('off');
+        _mm.sig = '';
+    }
+    function _mmFloor(x, y) {
+        var r = state.boardTerrain[y], t = r && r[x];
+        return !!t && t !== 'blank' && t !== 'void';
+    }
+    function _mmRgba(c, a) {
+        var m = /^#([0-9a-f]{6})$/i.exec(String(c || ''));
+        if (!m) return c || 'transparent';
+        var n = parseInt(m[1], 16);
+        return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + Math.max(0, Math.min(1, +a)) + ')';
+    }
+    /* a portrait for the Portrait icons (sprites.js getUnitPortraitUrl, the UI Maker's faces too), loaded once */
+    function _mmFace(u) {
+        if (!u || typeof getUnitPortraitUrl !== 'function') return null;
+        var url = null;
+        try { url = getUnitPortraitUrl(u); } catch (e) { url = null; }
+        if (!url) return null;
+        var im = _mm.imgs.get(url);
+        if (!im) {
+            if (_mm.imgs.size > 160) _mm.imgs.clear();
+            im = new Image();
+            im.onload = function () { _mm.sig = ''; };
+            im.src = url;
+            _mm.imgs.set(url, im);
+        }
+        return im.complete && im.naturalWidth > 0 ? im : null;
+    }
+    /* the board's units and copies as this viewer's screen shows them: [{ id, own, x, y (square middles, the drawn body's
+       spot while it walks), u }] */
+    function _mmIcons(L, W, H, vp) {
+        var out = [], fog = !!state.fogOfWar, ts = CONFIG.tileSize || BASE_TILE;
+        var units = state.units || [];
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (!u || u.dead || u._dying || (typeof u.hp === 'number' && u.hp <= 0)) continue;
+            /* no tile = nothing to draw (the online guest's enemy in its fog sits off the board) */
+            if (!(u.x >= 0 && u.y >= 0 && u.x < W && u.y < H)) continue;
+            if (u.status && u.status.captured > 0) continue;   // held behind a one-way door: its body is in the void
+            var own = u.player === vp;
+            if (own ? !L.allies : !L.foes) continue;
+            var en = unitEntries.get(u.id), g = en && en.group;
+            if (!own) {
+                if (g && !g.visible) continue;
+                if (fog && (!_fogVisibleSet || !_fogVisibleSet.has(u.x + ',' + u.y) || !_unitLosSeen(u, vp))) continue;
+                if (_isConcealedFromViewer(u, vp)) continue;
+            }
+            var px = u.x + 0.5, py = u.y + 0.5;
+            if (g && g.position) {
+                var gx = g.position.x / ts, gy = g.position.z / ts;
+                if (isFinite(gx) && isFinite(gy) && Math.abs(gx - px) < 8 && Math.abs(gy - py) < 8) { px = gx; py = gy; }
+            }
+            out.push({ id: u.id, own: own, x: px, y: py, u: u });
+        }
+        var dep = state._deployedObjects || [];
+        for (var d = 0; d < dep.length; d++) {
+            var o = dep[d];
+            if (!o || !o.isDecoy || !(o.hp > 0) || !(o.x >= 0 && o.y >= 0 && o.x < W && o.y < H)) continue;
+            var dOwn = o.ownerPlayer === vp;
+            if (dOwn ? !L.allies : !L.foes) continue;
+            if (!dOwn && fog && (!_fogVisibleSet || !_fogVisibleSet.has(o.x + ',' + o.y))) continue;
+            out.push({ id: 'copy' + d, own: dOwn, x: o.x + 0.5, y: o.y + 0.5, u: o.spriteUnit || null });
+        }
+        return out;
+    }
+    /* the board patch the camera shows: the four screen corners on the ground (a corner over the horizon stops far out) */
+    var _mmV3 = null;
+    function _mmViewPoly(far) {
+        var cam3 = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        if (!cam3 || typeof THREE === 'undefined') return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var gy = (typeof camera !== 'undefined' && camera && isFinite(camera._computedElevZ) && camera._computedElevZ >= 0) ? camera._computedElevZ : 0;
+        if (!_mmV3) _mmV3 = new THREE.Vector3();
+        var P = cam3.position, out = [], C = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+        for (var i = 0; i < 4; i++) {
+            _mmV3.set(C[i][0], C[i][1], 0.5).unproject(cam3);
+            var dx = _mmV3.x - P.x, dy = _mmV3.y - P.y, dz = _mmV3.z - P.z;
+            var t = dy < -1e-4 ? (gy - P.y) / dy : -1;
+            var hx, hz;
+            if (t > 0 && Math.hypot(dx * t, dz * t) < far * ts) { hx = P.x + dx * t; hz = P.z + dz * t; }
+            else { var hl = Math.hypot(dx, dz) || 1; hx = P.x + dx / hl * far * ts; hz = P.z + dz / hl * far * ts; }
+            out.push([hx / ts, hz / ts]);
+        }
+        return out;
+    }
+    function _mmUpdate() {
+        var W = (typeof bw === 'function') ? bw() : (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
+        var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
+        if (!W || !H) { _mmHide(); return; }
+        var el = _mmEnsure();
+        var L = _mmLook();
+        var cls = 'ew-mmap auto-' + (L.auto === 'off' || L.auto === 'shots' ? L.auto : 'board') + (L.aim ? ' aim-hide' : '') + (L.shape === 'round' ? ' round' : '');
+        if (cls !== _mm.cls) { el.className = cls; _mm.cls = cls; _mm.sig = ''; }
+        else if (el.classList.contains('off')) el.classList.remove('off');
+        var now = performance.now();
+        if (now < _mm.next) return;
+        _mm.next = now + 50;
 
-    function _miniDiamond(ctx, cx, cy, r, color) {
+        /* the box: the Size on its longest side; the whole board unturned keeps the board's shape (a whole cell per square),
+           the rest is square. A UI Maker Width / Height on the piece wins (the canvas fills whatever box it gets). */
+        var near = L.view === 'near', round = L.shape === 'round', turn = !!L.turn;
+        /* the HUD's small-window shrink (ui.js --ew-hud-scale) is taken here, not as a CSS scale, so the lines stay crisp */
+        var hudK = parseFloat(document.documentElement.style.getPropertyValue('--ew-hud-scale')) || 1;
+        var size = Math.max(40, Math.min(640, (+L.size || 180) * Math.max(0.3, Math.min(2, hudK))));
+        var bwPx = size, bhPx = size;
+        if (!near && !round && !turn) { var c0 = Math.max(2, Math.floor(size / Math.max(W, H))); bwPx = c0 * W; bhPx = c0 * H; }
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var boxKey = bwPx + 'x' + bhPx + '|' + (window._ewUimSheetV || 0) + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + dpr;
+        if (boxKey !== _mm.boxKey) {
+            el.style.width = bwPx + 'px'; el.style.height = bhPx + 'px';
+            _mm.cw = _mm.cv.clientWidth; _mm.ch = _mm.cv.clientHeight;
+            if (_mm.cw > 0 && _mm.ch > 0) {
+                _mm.cv.width = Math.round(_mm.cw * dpr); _mm.cv.height = Math.round(_mm.ch * dpr);
+                _mm.boxKey = boxKey;
+            }
+            _mm.sig = '';
+        }
+        var cw = _mm.cw, ch = _mm.ch;
+        if (!(cw > 0 && ch > 0)) return;   // hidden (UI Maker Hide): nothing to size or draw
+
+        /* the view: whole board (centred) or N squares around the camera's spot; turned so up = the way the camera faces */
+        var cam = (typeof camera !== 'undefined' && camera) ? camera : null;
+        var yaw = cam && isFinite(cam.yaw) ? cam.yaw : 0;
+        var rot = turn ? yaw * Math.PI / 180 : 0;
+        var cx = W / 2, cy = H / 2, cell;
+        if (near) {
+            if (cam && isFinite(cam.x) && isFinite(cam.y)) { cx = cam.x + 0.5; cy = cam.y + 0.5; }
+            cell = Math.min(cw, ch) / Math.max(3, Math.min(60, +L.span || 12));
+        } else if (round || turn) cell = Math.min(cw, ch) / Math.hypot(W, H);
+        else { cell = Math.min(cw / W, ch / H); if (cell >= 3) cell = Math.floor(cell); }
+        var ox = Math.round(cw / 2 - cx * cell), oy = Math.round(ch / 2 - cy * cell);
+        var cs = Math.cos(rot), sn = Math.sin(rot);
+        var T = rot ? function (x, y) { var dx = (x - cx) * cell, dy = (y - cy) * cell; return [cw / 2 + dx * cs - dy * sn, ch / 2 + dx * sn + dy * cs]; }
+                    : function (x, y) { return [ox + x * cell, oy + y * cell]; };
+
+        var vp = _viewerPlayerNum();
+        var icons = _mmIcons(L, W, H, vp);
+        var activeId = state._blitzActiveUnitId;
+        var hasActive = false;
+        var sig = cw + 'x' + ch + '|' + (window._ewMapLookV || 0) + '|' + W + 'x' + H + '|' + vp + '|' + cx.toFixed(2) + ',' + cy.toFixed(2) + '|' + rot.toFixed(3) + '|' + activeId;
+        for (var si = 0; si < icons.length; si++) {
+            var ic = icons[si];
+            sig += '|' + ic.id + (ic.own ? 'a' : 'e') + ic.x.toFixed(2) + ',' + ic.y.toFixed(2);
+            if (ic.id === activeId) hasActive = true;
+        }
+        if (L.cam !== 'off' && cam) sig += '|c' + (+cam.x).toFixed(2) + ',' + (+cam.y).toFixed(2) + ',' + yaw.toFixed(1) + ',' + (+cam.tilt || 0).toFixed(1) + ',' + (+cam.zoom || 0).toFixed(3);
+        if (_fogVisibleSet !== _mm.fogRef) { _mm.fogRef = _fogVisibleSet; sig += '|f' + now; }
+        var pulse = L.active && L.pulse && hasActive;
+        /* nothing moved: keep the picture (a pulsing ring, a terrain change — fissures, lava turned stone — or a nexus changing
+           hands still redraw, the last two within a second) */
+        if (sig === _mm.sig && !pulse && now - _mm.drawnAt < 1000) return;
+        _mm.sig = sig; _mm.drawnAt = now;
+
+        var ctx = _mm.ctx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, _mm.cv.width, _mm.cv.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.save();
         ctx.beginPath();
-        ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
-        ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy);
-        ctx.closePath();
-        ctx.fillStyle = color; ctx.fill();
-        ctx.lineWidth = Math.max(1, r * 0.3);
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
-    }
+        if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2, 0, Math.PI * 2);
+        else ctx.rect(0, 0, cw, ch);
+        ctx.clip();
+        if (+L.bgOp > 0) { ctx.fillStyle = _mmRgba(L.bg, L.bgOp); ctx.fillRect(0, 0, cw, ch); }
 
-    /* Filled triangle from (cx,cy) pointing along unit vector (fx,fy). */
-    function _miniArrow(ctx, cx, cy, fx, fy, len) {
-        var px = -fy, py = fx;            /* perpendicular */
-        var tipX = cx + fx * len,        tipY = cy + fy * len;
-        var baseX = cx - fx * len * 0.35, baseY = cy - fy * len * 0.35;
-        var hw = len * 0.42;
-        ctx.beginPath();
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(baseX + px * hw, baseY + py * hw);
-        ctx.lineTo(baseX - px * hw, baseY - py * hw);
-        ctx.closePath();
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-        ctx.lineWidth = 1.5;
-        ctx.fill(); ctx.stroke();
+        /* board space from here: one unit = one square */
+        var tileXf = function () {
+            if (rot) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.translate(cw / 2, ch / 2); ctx.rotate(rot); ctx.scale(cell, cell); ctx.translate(-cx, -cy); }
+            else ctx.setTransform(dpr * cell, 0, 0, dpr * cell, dpr * ox, dpr * oy);
+        };
+        var anyFloor = false, x, y;
+        for (y = 0; y < H && !anyFloor; y++) for (x = 0; x < W; x++) if (_mmFloor(x, y)) { anyFloor = true; break; }
+        var floor = anyFloor ? _mmFloor : function () { return true; };
+        tileXf();
+
+        /* ── the ground ── */
+        if (L.ground === 'terrain' || L.ground === 'height') {
+            var COLS = window.EW_TERRAIN_COLORS || {}, hs = state.boardHeights, hMin = Infinity, hMax = -Infinity;
+            if (L.ground === 'height' && hs) {
+                for (y = 0; y < H; y++) for (x = 0; x < W; x++) { if (!floor(x, y)) continue; var hv = (hs[y] && +hs[y][x]) || 0; if (hv < hMin) hMin = hv; if (hv > hMax) hMax = hv; }
+            }
+            for (y = 0; y < H; y++) {
+                for (x = 0; x < W; x++) {
+                    if (!floor(x, y)) continue;
+                    var fs;
+                    if (L.ground === 'terrain') {
+                        var tt = state.boardTerrain[y][x];
+                        fs = COLS[tt];
+                        if (fs === undefined) fs = 'rgba(90,120,95,0.3)';
+                        if (fs === 'transparent') continue;
+                    } else {
+                        var hh = (hs && hs[y] && +hs[y][x]) || 0;
+                        var f = hMax > hMin ? (hh - hMin) / (hMax - hMin) : 0;
+                        fs = 'rgba(255,255,255,' + (0.05 + 0.42 * f).toFixed(3) + ')';
+                    }
+                    ctx.fillStyle = fs;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        }
+        /* ── the fog: the squares the viewer's team can't see (the board's own fog set) ── */
+        if (L.fog && state.fogOfWar && +L.fogOp > 0) {
+            ctx.fillStyle = _mmRgba(L.fogCol, L.fogOp);
+            for (y = 0; y < H; y++) for (x = 0; x < W; x++) if (floor(x, y) && !(_fogVisibleSet && _fogVisibleSet.has(x + ',' + y))) ctx.fillRect(x, y, 1, 1);
+        }
+        var sideCol = function (p) { return p === vp ? L.ally : p ? L.foe : L.neutral; };
+        /* ── spawn zones (a field's seat zones are not drawn: Phase 9 Delivery 7) ── */
+        var sz = state.spawnZones;
+        if (L.spawn && sz && !sz.field) {
+            ctx.globalAlpha = 0.3;
+            for (var sp = 1; sp <= 2; sp++) {
+                var zone = sz[sp]; if (!zone) continue;
+                ctx.fillStyle = sideCol(sp);
+                for (var zi = 0; zi < zone.length; zi++) { var tl = zone[zi]; if (tl) ctx.fillRect(tl.x, tl.y, 1, 1); }
+            }
+            ctx.globalAlpha = 1;
+        }
+        /* ── nexus zones, in their holder's colour (a roaming nexus only on a square the viewer sees) ── */
+        if (L.nexus) {
+            var nexes = [];
+            if (state.nexusPoints) Object.keys(state.nexusPoints).forEach(function (k) { if (state.nexusPoints[k]) nexes.push([state.nexusPoints[k], false]); });
+            if (state.roamingNexus) nexes.push([state.roamingNexus, true]);
+            var nlw = Math.max(1.5, cell * 0.14) / cell;
+            for (var ni = 0; ni < nexes.length; ni++) {
+                var nex = nexes[ni][0], sq = [];
+                if (Array.isArray(nex.tiles) && nex.tiles.length) sq = nex.tiles.map(function (t) { return [t.x, t.y]; });
+                else if (nex.zoneX != null) { var nz = nex.zoneSize || 1; for (var ny = 0; ny < nz; ny++) for (var nx = 0; nx < nz; nx++) sq.push([nex.zoneX + nx, nex.zoneY + ny]); }
+                if (!sq.length) continue;
+                if (nexes[ni][1] && state.fogOfWar && !sq.some(function (q) { return _fogVisibleSet && _fogVisibleSet.has(q[0] + ',' + q[1]); })) continue;
+                ctx.fillStyle = sideCol(nex.owner); ctx.strokeStyle = sideCol(nex.owner); ctx.lineWidth = nlw;
+                for (var qi = 0; qi < sq.length; qi++) {
+                    ctx.globalAlpha = 0.22; ctx.fillRect(sq[qi][0], sq[qi][1], 1, 1);
+                    ctx.globalAlpha = 0.95; ctx.strokeRect(sq[qi][0] + nlw / 2, sq[qi][1] + nlw / 2, 1 - nlw, 1 - nlw);
+                }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        /* ── the grid: the lines between squares, only where a square has a floor; the outer ones lean in so they stay on
+           the box. A line of an odd device-pixel width sits on a pixel's middle so it draws crisp (unturned). ── */
+        var gw = +L.gridW, every = Math.max(1, Math.round(+L.every || 1));
+        if (gw > 0 && +L.gridOp > 0) {
+            var lwDev = Math.max(1, Math.round(gw * dpr)), lw = lwDev / (dpr * cell);
+            var sh = (!rot && lwDev % 2) ? 0.5 / (dpr * cell) : 0;
+            ctx.lineWidth = lw;
+            ctx.strokeStyle = _mmRgba(L.grid, L.gridOp);
+            ctx.beginPath();
+            for (y = 0; y <= H; y++) {
+                if (y % every && y !== H) continue;
+                var ly = y + (y === H ? -sh : sh), run = -1;
+                for (x = 0; x <= W; x++) {
+                    var on = x < W && ((y > 0 && floor(x, y - 1)) || (y < H && floor(x, y)));
+                    if (on && run < 0) run = x;
+                    else if (!on && run >= 0) { ctx.moveTo(run, ly); ctx.lineTo(x, ly); run = -1; }
+                }
+            }
+            for (x = 0; x <= W; x++) {
+                if (x % every && x !== W) continue;
+                var lx = x + (x === W ? -sh : sh), run2 = -1;
+                for (y = 0; y <= H; y++) {
+                    var on2 = y < H && ((x > 0 && floor(x - 1, y)) || (x < W && floor(x, y)));
+                    if (on2 && run2 < 0) run2 = y;
+                    else if (!on2 && run2 >= 0) { ctx.moveTo(lx, run2); ctx.lineTo(lx, y); run2 = -1; }
+                }
+            }
+            ctx.stroke();
+        }
+
+        /* screen space from here (px): icons stand upright when the map turns */
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        /* ── the Cubes: yours always, the enemy's on a square the viewer sees ── */
+        if (L.cube && state.towers) {
+            for (var tp = 1; tp <= 2; tp++) {
+                var tw = state.towers[tp];
+                if (!tw || (typeof tw.hp === 'number' && tw.hp <= 0) || !(tw.x >= 0 && tw.y >= 0)) continue;
+                if (tp !== vp && state.fogOfWar && !(_fogVisibleSet && _fogVisibleSet.has(tw.x + ',' + tw.y))) continue;
+                var tq = T(tw.x + 0.5, tw.y + 0.5), tr = Math.max(4, cell * 0.62);
+                ctx.beginPath(); ctx.moveTo(tq[0], tq[1] - tr); ctx.lineTo(tq[0] + tr, tq[1]); ctx.lineTo(tq[0], tq[1] + tr); ctx.lineTo(tq[0] - tr, tq[1]); ctx.closePath();
+                ctx.fillStyle = sideCol(tp); ctx.fill();
+                ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+            }
+        }
+
+        /* ── the units: enemies under, yours on top, the unit whose turn it is ringed ── */
+        var r = Math.max(2.5, (+L.iconSize || 0.62) * cell / 2);
+        var drawIcon = function (ic) {
+            var q = T(ic.x, ic.y), col = ic.own ? L.ally : L.foe, kind = L.icon;
+            ctx.beginPath();
+            if (kind === 'square') ctx.rect(q[0] - r * 0.9, q[1] - r * 0.9, r * 1.8, r * 1.8);
+            else if (kind === 'diamond') { ctx.moveTo(q[0], q[1] - r * 1.15); ctx.lineTo(q[0] + r * 1.15, q[1]); ctx.lineTo(q[0], q[1] + r * 1.15); ctx.lineTo(q[0] - r * 1.15, q[1]); ctx.closePath(); }
+            else ctx.arc(q[0], q[1], r, 0, Math.PI * 2);
+            if (kind === 'ring') {
+                ctx.lineWidth = Math.max(1.5, r * 0.38); ctx.strokeStyle = col; ctx.stroke();
+            } else if (kind === 'face') {
+                var im = _mmFace(ic.u);
+                ctx.fillStyle = col; ctx.fill();
+                if (im) {
+                    ctx.save(); ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(1, r - 1.5), 0, Math.PI * 2); ctx.clip();
+                    ctx.drawImage(im, q[0] - r, q[1] - r, r * 2, r * 2);
+                    ctx.restore();
+                    ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, Math.PI * 2);
+                    ctx.lineWidth = Math.max(1.5, r * 0.22); ctx.strokeStyle = col; ctx.stroke();
+                }
+            } else { ctx.fillStyle = col; ctx.fill(); }
+            /* a thin dark edge (unseen on the black) keeps an icon apart from a zone of its own colour */
+            if (L.line && +L.lineW > 0) { ctx.lineWidth = +L.lineW; ctx.strokeStyle = L.line; ctx.stroke(); }
+            else if (kind !== 'ring' && kind !== 'face') { ctx.lineWidth = 1.25; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.stroke(); }
+        };
+        var activeIc = null;
+        for (var pass = 0; pass < 2; pass++) {
+            for (var ii = 0; ii < icons.length; ii++) {
+                var icn = icons[ii];
+                if (icn.own !== (pass === 1)) continue;
+                drawIcon(icn);
+                if (icn.id === activeId) activeIc = icn;
+            }
+        }
+        if (activeIc && L.active) {
+            var aq2 = T(activeIc.x, activeIc.y);
+            var pa = L.pulse ? 0.7 + 0.3 * Math.sin(now / 1000 * Math.PI * 2 / 1.2) : 1;
+            /* a dark halo under it, so it reads off the grid lines it sits on */
+            ctx.beginPath(); ctx.arc(aq2[0], aq2[1], r + 2.5, 0, Math.PI * 2);
+            ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
+            ctx.globalAlpha = Math.max(0, Math.min(1, pa));
+            ctx.lineWidth = 2; ctx.strokeStyle = L.activeCol; ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        /* ── the camera, over the units (its spot is usually the unit being looked at): an arrow on the spot it looks at, or
+           the patch of board on screen ── */
+        if (L.cam !== 'off' && cam && +L.camOp > 0) {
+            var camC = _mmRgba(L.camCol, L.camOp);
+            if (L.cam === 'view') {
+                var poly = _mmViewPoly(400);   // a corner over the horizon runs far off the box
+                if (poly) {
+                    ctx.beginPath();
+                    for (var pi = 0; pi < 4; pi++) { var pq = T(poly[pi][0], poly[pi][1]); if (pi) ctx.lineTo(pq[0], pq[1]); else ctx.moveTo(pq[0], pq[1]); }
+                    ctx.closePath();
+                    ctx.fillStyle = _mmRgba(L.camCol, +L.camOp * 0.14); ctx.fill();
+                    ctx.lineWidth = 1.5; ctx.strokeStyle = camC; ctx.stroke();
+                }
+            } else {
+                var aq = T(cam.x + 0.5, cam.y + 0.5), yr = yaw * Math.PI / 180;
+                var fx = -Math.sin(yr), fy = -Math.cos(yr);
+                if (rot) { var rfx = fx * cs - fy * sn, rfy = fx * sn + fy * cs; fx = rfx; fy = rfy; }
+                var al = Math.max(8, cell * 0.95), hw = al * 0.42;
+                ctx.beginPath();
+                ctx.moveTo(aq[0] + fx * al, aq[1] + fy * al);
+                ctx.lineTo(aq[0] - fx * al * 0.35 - fy * hw, aq[1] - fy * al * 0.35 + fx * hw);
+                ctx.lineTo(aq[0] - fx * al * 0.35 + fy * hw, aq[1] - fy * al * 0.35 - fx * hw);
+                ctx.closePath();
+                ctx.fillStyle = camC; ctx.fill();
+                ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
+            }
+        }
+
+        ctx.restore();
+
+        /* ── the frame ── */
+        var fw = +L.frameW;
+        if (fw > 0 && +L.frameOp > 0) {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.lineWidth = fw; ctx.strokeStyle = _mmRgba(L.frame, L.frameOp);
+            ctx.beginPath();
+            if (round) ctx.arc(cw / 2, ch / 2, Math.min(cw, ch) / 2 - fw / 2, 0, Math.PI * 2);
+            else ctx.rect(fw / 2, fw / 2, cw - fw, ch - fw);
+            ctx.stroke();
+        }
     }
 
     /* ══════════════ MYSTERY DUNGEON SCANNER (vector minimap) ══════════════
@@ -41112,155 +41458,22 @@ const ThreeRenderer = (function () {
 
     function _updateMinimap() {
         try {
-            /* off the battle (the in-match forge between matches): the battle HUD's stylesheet that keeps the PvP
-               minimap hidden is taken down with the HUD, so the last board's TACTICAL map sat over SEAL YOUR FATE
-               (Cube playtest 2026-10-23) — the board it charts is not in play there */
+            /* off the battle (the in-match forge between matches): the board it charts is not in play there (Cube
+               playtest 2026-10-23: the last board's map sat over SEAL YOUR FATE); a decided match keeps it away too */
             if (!active || typeof state === 'undefined' || !state || !state.boardTerrain || (state.phase !== 'battle' && !_mdScannerActive())) {
                 if (_miniWrap) _miniWrap.style.display = 'none';
+                _mmHide();
                 return;
             }
             /* Mystery Dungeon floors get the vector SCANNER instead. */
-            if (_mdScannerActive()) { _drawMdScanner(); return; }
+            if (_mdScannerActive()) { _mmHide(); _drawMdScanner(); return; }
             if (_miniWrap && _miniWrap.classList.contains('md-scanner')) {
                 _miniWrap.classList.remove('md-scanner');
                 _miniWrap.style.display = 'none';
                 _mdMiniKey = '';
-                return;
             }
-            var W = (typeof bw === 'function') ? bw() :
-                    (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
-            var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
-            if (!W || !H) { if (_miniWrap) _miniWrap.style.display = 'none'; return; }
-
-            _ensureMinimap();
-            _miniWrap.style.display = 'block';
-
-            var cell = Math.max(2, Math.floor(Math.min(MINI_BOX / W, MINI_BOX / H)));
-            var drawW = cell * W, drawH = cell * H;
-            var dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-            if (_miniLastW !== drawW || _miniLastH !== drawH) {
-                _miniCanvas.width = Math.round(drawW * dpr);
-                _miniCanvas.height = Math.round(drawH * dpr);
-                _miniCanvas.style.width = drawW + 'px';
-                _miniCanvas.style.height = drawH + 'px';
-                _miniLastW = drawW; _miniLastH = drawH;
-            }
-
-            var ctx = _miniCtx;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, drawW, drawH);
-
-            var COLORS = _miniTerrainColors();
-
-            /* ── Terrain ── */
-            for (var y = 0; y < H; y++) {
-                var trow = state.boardTerrain[y];
-                if (!trow) continue;
-                for (var x = 0; x < W; x++) {
-                    var t = trow[x];
-                    if (!t || t === 'blank' || t === 'void') continue;
-                    var col = COLORS[t];
-                    if (col === undefined) col = 'rgba(90,120,95,0.3)'; /* unknown terrain */
-                    if (col === 'transparent') continue;
-                    ctx.fillStyle = col;
-                    ctx.fillRect(x * cell, y * cell, cell, cell);
-                }
-            }
-
-            /* ── Spawn zones ── (a field's seat zones are not drawn: Phase 9 Delivery 7) */
-            var sz = state.spawnZones;
-            if (sz && !sz.field) {
-                for (var sp = 1; sp <= 2; sp++) {
-                    var zone = sz[sp];
-                    if (!zone) continue;
-                    ctx.fillStyle = sp === 1 ? 'rgba(60,150,255,0.5)' : 'rgba(255,70,70,0.5)';
-                    for (var zi = 0; zi < zone.length; zi++) {
-                        var tl = zone[zi];
-                        if (tl) ctx.fillRect(tl.x * cell, tl.y * cell, cell, cell);
-                    }
-                }
-            }
-
-            /* ── Nexus zones (objectives) ── */
-            if (state.nexusPoints) {
-                var nkeys = Object.keys(state.nexusPoints);
-                for (var nki = 0; nki < nkeys.length; nki++) {
-                    var nex = state.nexusPoints[nkeys[nki]];
-                    if (!nex) continue;
-                    var base = nex.owner === 1 ? 'rgba(60,150,255,'
-                             : nex.owner === 2 ? 'rgba(255,70,70,'
-                             : 'rgba(255,210,80,';
-                    var lw = Math.max(1.5, cell * 0.16);
-                    if (Array.isArray(nex.tiles) && nex.tiles.length) {
-                        /* Arena spawn nexus — outline each footprint tile. */
-                        ctx.fillStyle = base + '0.26)';
-                        ctx.lineWidth = lw;
-                        ctx.strokeStyle = base + '0.95)';
-                        for (var nti = 0; nti < nex.tiles.length; nti++) {
-                            var ntl = nex.tiles[nti];
-                            ctx.fillRect(ntl.x * cell, ntl.y * cell, cell, cell);
-                            ctx.strokeRect(ntl.x * cell + lw / 2, ntl.y * cell + lw / 2, cell - lw, cell - lw);
-                        }
-                        continue;
-                    }
-                    var nzs = nex.zoneSize || 1;
-                    var nx = (nex.zoneX || 0) * cell, ny = (nex.zoneY || 0) * cell;
-                    var nw = nzs * cell, nh = nzs * cell;
-                    ctx.fillStyle = base + '0.26)';
-                    ctx.fillRect(nx, ny, nw, nh);
-                    ctx.lineWidth = lw;
-                    ctx.strokeStyle = base + '0.95)';
-                    ctx.strokeRect(nx + lw / 2, ny + lw / 2, nw - lw, nh - lw);
-                }
-            }
-
-            /* ── Tower "cubes" (bases) ── */
-            if (state.towers) {
-                for (var tp = 1; tp <= 2; tp++) {
-                    var tw = state.towers[tp];
-                    if (!tw || (typeof tw.hp === 'number' && tw.hp <= 0)) continue;
-                    _miniDiamond(ctx, (tw.x + 0.5) * cell, (tw.y + 0.5) * cell,
-                                 Math.max(3, cell * 0.6), tp === 1 ? '#3aa0ff' : '#ff5a5a');
-                }
-            }
-
-            /* ── Units (fog-aware) + remember the viewer's active unit ── */
-            var viewer = _miniViewerPlayer();
-            var activeId = state._blitzActiveUnitId;
-            var units = state.units || [];
-            var activeUnitPos = null;
-            for (var uiI = 0; uiI < units.length; uiI++) {
-                var u = units[uiI];
-                if (!u || u.dead || (typeof u.hp === 'number' && u.hp <= 0)) continue;
-                if (!_miniUnitVisible(u, viewer)) continue;
-                var ucx = (u.x + 0.5) * cell, ucy = (u.y + 0.5) * cell;
-                var isOwn = (u.player === viewer);
-                if (u.id === activeId && isOwn) activeUnitPos = { x: ucx, y: ucy };
-                var rad = Math.max(2, cell * 0.34);
-                ctx.beginPath();
-                ctx.arc(ucx, ucy, rad, 0, Math.PI * 2);
-                ctx.fillStyle = isOwn ? '#46d07a' : '#ff4d4d';
-                ctx.fill();
-                ctx.lineWidth = Math.max(1, cell * 0.1);
-                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-                ctx.stroke();
-            }
-
-            /* ── Camera-facing arrow on the viewer's active unit ── */
-            if (activeUnitPos) {
-                var yaw = (typeof camera !== 'undefined' && camera && typeof camera.yaw === 'number')
-                          ? camera.yaw : 0;
-                var yawRad = yaw * Math.PI / 180;
-                /* world forward (horizontal) → minimap (-sin, -cos): yaw 0 points up/north */
-                var fx = -Math.sin(yawRad), fy = -Math.cos(yawRad);
-                _miniArrow(ctx, activeUnitPos.x, activeUnitPos.y, fx, fy, Math.max(7, cell * 0.95));
-            }
-
-            /* ── Inner frame ── */
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = 'rgba(180,200,230,0.25)';
-            ctx.strokeRect(0.5, 0.5, drawW - 1, drawH - 1);
+            if (state.winner) { _mmHide(); return; }
+            _mmUpdate();
         } catch (e) {
             /* never let the minimap break the render loop */
         }
