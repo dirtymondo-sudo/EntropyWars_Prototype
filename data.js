@@ -40930,7 +40930,7 @@ const DOOR_HQ = {
                     /* the upper level at 5.5 m: THE CATWALK along the north wall (its steel stair from the east), the west gantry and the
                        cross gantry over the floor (the floor runs on under them), the grate stair down the east wall; a 2.5 m gap between
                        the catwalk and the west gantry (a jump, a pipe rail across it) */
-                    { k: 'plateau', x: -10.5, z: -12.25, w: 21, d: 3.5, h: 5.5, edge: 0.15 },
+                    { k: 'plateau', x: -10.5, z: -13.125, w: 21, d: 5.25, h: 5.5, edge: 0.15 },                         // (runs on under the north wall: an edge on the wall's line left a ditch you could drop into)
                     { k: 'ramp', x0: 14, z0: -13.125, x1: -0.4, z1: -13.125, w: 1.75, h0: 0, h1: 5.5, stairs: true, model: 'steel', edge: 0.15 },
                     { k: 'rail', x0: -16, z0: -10.7, x1: -1.2, z1: -10.7, model: 'balusters_b' },                       // the catwalk's edge (open at the gap end)
                     { k: 'bridge', x0: -19.25, z0: -8.75, x1: -19.25, z1: 1.75, w: 3.5, y: 5.5, key: 'urban:MetalSubwayGrill1a' },   // the west gantry
@@ -40938,8 +40938,8 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -19.25, z0: -10.85, x1: -19.25, z1: -8.4, y: 5.5, model: 'pipe', block: false },      // across the gap (one square)
                     { k: 'ramp', x0: 20.125, z0: 8.75, x1: 20.125, z1: -3.9, w: 1.75, h0: 0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },   // the east stair up to the cross gantry
                     /* THE SOUTH DECK (3 m): the grate stair down from the west gantry, the steel stair down to the floor (a pipe rail down its middle) */
-                    { k: 'plateau', x: -15.75, z: 8.75, w: 10.5, d: 3.5, h: 3.0, edge: 0.15 },                          // (its east edge on x -10.5: the steel stair's low end stays off the 10×10 arena's spawn row)
-                    { k: 'ramp', x0: -18.375, z0: 8.75, x1: -18.375, z1: 1.35, w: 1.75, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
+                    { k: 'plateau', x: -15.75, z: 9.625, w: 10.5, d: 5.25, h: 3.0, edge: 0.15 },                          // (its east edge on x -10.5: the steel stair's low end stays off the 10×10 arena's spawn row)
+                    { k: 'ramp', x0: -18.375, z0: 7, x1: -18.375, z1: 0, w: 1.75, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
                     { k: 'ramp', x0: -1.75, z0: 8.75, x1: -10.9, z1: 8.75, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
                     { k: 'rail', pts: [[-1.35, 8.75, 0], [-10.9, 8.75, 3.0]], model: 'pipe', block: false },
                     { k: 'rail', x0: -17.3, z0: 7.3, x1: -11.4, z1: 7.3, model: 'balusters_b' },                        // the deck's north edge
@@ -40951,7 +40951,7 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-35, -12], [-31, -12]], w: 2.0 },                                               // the white rooms' lane
                     /* AREA CONTENT D4 (2026-09-20): THE FREIGHT GANTRY — the tunnel's door (links.area51_dumb.a) stands 3 m up on the east
                        wall of the floor lift's room, up a stair from the south (R4: a door you climb to) */
-                    { k: 'plateau', x: 31.5, z: -0.875, w: 7, d: 8.75, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: 32.375, z: -0.875, w: 8.75, d: 8.75, h: 3.0, edge: 0.15 },                       // (runs on under the east wall)
                     { k: 'ramp', x0: 32.375, z0: 10.5, x1: 32.375, z1: 3.1, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },   // L 7.4 ≥ 2.2 × 3; ends 0.4 m inside
                     { k: 'rail', x0: 29.2, z0: 3.3, x1: 31.3, z1: 3.3, model: 'balusters_b' },
                 ],
@@ -41144,7 +41144,7 @@ const DOOR_HQ = {
                        never steeper than before; the gap from the gantry to the apron is one square */
                     { k: 'plateau', x: -11.375, z: -16.625, w: 15.75, d: 8.75, h: 3.0, edge: 0.15 },                    // (its south edge on z -12.25: the stair's foot stays off the arena's spawn row)
                     { k: 'plateau', x: -10.5, z: -17.5, r: 3.5, h: 6.0, edge: 0.15 },                                   // the cab
-                    { k: 'ramp', x0: -15.75, z0: -3.5, x1: -15.75, z1: -12.65, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
+                    { k: 'ramp', x0: -15.75, z0: -3.5, x1: -15.75, z1: -12.95, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
                     { k: 'rail', pts: [[-15.75, -3.1, 0], [-15.75, -12.65, 3.0]], model: 'pipe', block: false },
                     { k: 'climb', x: -14.2, z: -16.625, face: 90, look: 'ladder' },
                     { k: 'rail', arc: { x: -10.5, z: -17.5, r: 3.15, a0: 300, a1: 600 }, model: 'balusters_b' },
@@ -41155,7 +41155,7 @@ const DOOR_HQ = {
                     { k: 'bridge', x0: -5.25, z0: -15.75, x1: 10.5, z1: -15.75, w: 3.5, y: 3.0, key: 'urban:MetalSubwayGrill1a' },
                     { k: 'rail', x0: 10.15, z0: -15.75, x1: 12.6, z1: -15.75, y: 3.0, model: 'pipe', block: false },   // across the gap (one square)
                     { k: 'plateau', x: 19.25, z: -13.125, w: 14, d: 8.75, h: 3.0, edge: 0.15 },                         // the east apron
-                    { k: 'ramp', x0: 23.625, z0: -1.75, x1: 23.625, z1: -9.15, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'ramp', x0: 23.625, z0: -1.75, x1: 23.625, z1: -9.45, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
                     { k: 'rail', x0: 12.65, z0: -17.15, x1: 25.85, z1: -17.15, model: 'balusters_b' },
                     { k: 'rail', x0: 25.9, z0: -17.1, x1: 25.9, z1: -10.2, model: 'balusters_b' },
                     { k: 'rail', x0: 12.65, z0: -9.1, x1: 22.35, z1: -9.1, model: 'pipe' },                             // the apron's front ledge (a grind)
@@ -41552,7 +41552,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -29.55, z0: -32.9, x1: -29.55, z1: -31.8, model: 'balusters_b' }, { k: 'rail', x0: -29.55, z0: -29.45, x1: -29.55, z1: -21.4, model: 'balusters_b' },
                     /* side room 3 raised to the tier (a passage off it), a drop into the vent, a ladder back up */
                     { k: 'hall', pts: [[-15.5, -29], [-13, -29]], w: 3 },
-                    { k: 'plateau', x: -12.25, z: -28.875, w: 3.5, d: 5.25, h: 3.5, edge: 0.15 },
+                    { k: 'plateau', x: -13.125, z: -28.875, w: 5.25, d: 5.25, h: 3.5, edge: 0.15 },   // (runs on under side room 3's west wall)
                     { k: 'climb', x: -10.5, z: -28.875, face: 270, look: 'ladder' },
                     /* CHAMBER 02 · THE CATWALK: two 4 m towers against its north wall, the plank between them, one stair up */
                     { k: 'plateau', x: 18.375, z: -28.875, w: 8.75, d: 8.75, h: 4.0, edge: 0.15 },
@@ -41567,7 +41567,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 28.3, z0: -24.8, x1: 34.8, z1: -24.8, model: 'balusters_b' },
                     { k: 'rail', x0: 22.15, z0: -26.4, x1: 28.6, z1: -26.4, y: 4.0, model: 'pipe', block: false },
                     { k: 'hall', pts: [[34, -26], [40, -26]], w: 3 },
-                    { k: 'plateau', x: 37.625, z: -26.25, w: 5.25, d: 3.5, h: 3.0, edge: 0.15 },   // (wider than the passage: no floor slot beside the flight)
+                    { k: 'plateau', x: 37.625, z: -25.375, w: 5.25, d: 5.25, h: 3.0, edge: 0.15 },   // (wider than the passage: no floor slot beside the flight)
                     { k: 'ramp', x0: 40.25, z0: -25.375, x1: 36.35, z1: -25.375, w: 1.75, h0: 3.0, h1: 4.0, stairs: true, model: 'steel' },
                     { k: 'hall', pts: [[15, -31], [3, -31]], w: 2.5 },
                     { k: 'plateau', x: 8.75, z: -31.5, w: 14, d: 3.5, h: 4.0, edge: 0.15 },
@@ -41576,8 +41576,8 @@ const DOOR_HQ = {
                        the war room's south gallery at 3.0), now in its own room at the east spoke's end: the stair climbs north to a landing,
                        the landing turns east onto the gantry (R4: a door you climb to) */
                     { k: 'plateau', x: 45.5, z: -18.375, w: 7, d: 15.75, h: 3.0, edge: 0.15 },
-                    { k: 'plateau', x: 39.375, z: -26.25, w: 5.25, d: 7, h: 3.0, edge: 0.15 },   // the stair's landing (turns east onto the gantry)
-                    { k: 'ramp', x0: 40.25, z0: -12.25, x1: 40.25, z1: -23.15, w: 3.5, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'plateau', x: 40.25, z: -26.25, w: 7, d: 7, h: 3.0, edge: 0.15 },   // the stair's landing (turns east onto the gantry; runs a square under it: two abutting rects leave a seam)
+                    { k: 'ramp', x0: 40.25, z0: -12.25, x1: 40.25, z1: -23.45, w: 3.5, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     /* CHAMBER 03 · THE PIT: the bowl (walked down, climbed out) and the grind ledge on its lip */
                     /* 2026-10-05 (the stairs pass): the pit is sunk 2.4 m, a stair down its east side, a ladder out its west, a railing round
                        its south lip; a gallery at 2.6 along the south wall up a fire escape, a passage east off it to a ledge over room B */
@@ -41586,8 +41586,8 @@ const DOOR_HQ = {
                     { k: 'climb', x: -29.75, z: 23.625, face: 270, look: 'ladder' },
                     { k: 'rail', arc: { x: -25.375, z: 23.625, r: 4.675, a0: 110, a1: 250 }, model: 'balusters_b' },
                     { k: 'wall', x0: -31.5, z0: 17.5, x1: -17.5, z1: 17.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
-                    { k: 'plateau', x: -25.375, z: 31.5, w: 22.75, d: 3.5, h: 2.6, edge: 0.15 },
-                    { k: 'ramp', x0: -34.125, z0: 22.75, x1: -34.125, z1: 30.15, w: 1.75, h0: 0, h1: 2.6, stairs: true, model: 'fire_escape' },
+                    { k: 'plateau', x: -25.375, z: 32.375, w: 22.75, d: 5.25, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: -34.125, z0: 22.75, x1: -34.125, z1: 30.45, w: 1.75, h0: 0, h1: 2.6, stairs: true, model: 'fire_escape' },
                     { k: 'rail', x0: -32.95, z0: 29.55, x1: -15.3, z1: 29.55, model: 'balusters_b' },
                     { k: 'hall', pts: [[-15.5, 31.5], [-3.5, 31.5]], w: 2.5 },
                     { k: 'plateau', x: -8.75, z: 31.5, w: 14, d: 3.5, h: 2.6, edge: 0.15 },
@@ -41601,8 +41601,8 @@ const DOOR_HQ = {
                     /* 2026-10-05 (the stairs pass): the catwalk ring at 2.4 — a walk down the west wall (a ladder up its face), a bridge along the
                        north wall over the passage, one along the south wall that stops 2.5 m short of the deck (a jump, a pipe across it) */
                     { k: 'plateau', x: 15.75, z: 23.625, w: 3.5, d: 19.25, h: 2.4, edge: 0.15 },
-                    { k: 'deck', x0: 15.75, z0: 16.625, x1: 28, z1: 16.625, w: 1.75, y: 2.4, over: true },
-                    { k: 'deck', x0: 15.75, z0: 32.375, x1: 24.5, z1: 32.375, w: 1.75, y: 2.4, over: true },   // stops one square short of the deck (a jump)
+                    { k: 'deck', x0: 17.5, z0: 16.625, x1: 28, z1: 16.625, w: 1.75, y: 2.4, over: true },
+                    { k: 'deck', x0: 17.5, z0: 32.375, x1: 24.5, z1: 32.375, w: 1.75, y: 2.4, over: true },   // stops one square short of the deck (a jump)
                     { k: 'rail', x0: 24.2, z0: 32.375, x1: 26.65, z1: 32.375, y: 2.4, model: 'pipe', block: false },
                     { k: 'climb', x: 17.5, z: 23.625, face: 270, look: 'ladder' },
                     { k: 'rail', x0: 17.3, z0: 17.8, x1: 17.3, z1: 22.5, model: 'balusters_b' }, { k: 'rail', x0: 17.3, z0: 24.75, x1: 17.3, z1: 30.4, model: 'balusters_b' },
@@ -48524,7 +48524,7 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: -25.375, z: -6.125, r: 2.625, h: 3.4, edge: 0.35 }, { k: 'climb', x: -25.375, z: -8.45, face: 180, look: 'ladder' }, { k: 'climb', x: -23.05, z: -6.125, face: 270, look: 'chain' },
             { k: 'ramp', x0: -25.375, z0: 5.25, x1: -25.375, z1: -3.95, w: 1.75, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
             /* THE TERRACE (2.4) on the north wall — the collar stands ON it: the stair up its south face, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -5.25, z: -25.375, w: 14, d: 5.25, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -12.25, x1: -5.25, z1: -23.15, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: -5.25, z: -25.375, w: 14, d: 5.25, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -12.25, x1: -5.25, z1: -23.45, w: 3.5, h0: 0, h1: 2.4, stairs: true },
             { k: 'climb', x: 1.45, z: -25.375, face: 270, look: 'ladder' }, { k: 'climb', x: -11.95, z: -25.375, face: 90, look: 'rope' },
             /* THE ANTENNA PLATFORM (2.4) under THE RIM, a ladder on its south face; THE CATWALK from the terrace to it (the bridge layer) */
             { k: 'plateau', x: 16.625, z: -25.375, r: 2.625, h: 2.4, edge: 0.35 }, { k: 'climb', x: 16.625, z: -23.05, face: 0, look: 'ladder' },
