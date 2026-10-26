@@ -697,6 +697,9 @@ const SPELL_ANIM_VERBS = {
   phone: ['raceExecutiveOrder', 'raceBlackBudget', 'raceFireForEffect', 'raceArtilleryStrike', 'sharedNuke',
     'raceRallyCommand', 'raceClassifiedWeapon', 'racePoliceLockdown', 'raceWarOfTheWorlds'],
   reload: ['raceIncendiaryRounds', 'raceExtendedClips'],
+  // spell look audit FX-5 (2026-10-26): Bipod is "legs down, belly down" — the marksman kneels to set the rifle
+  // (castTrap's Fixing_Kneeling) instead of standing through it
+  deploy: ['goBipod'],
   dance: ['encore', 'raceEndZoneDance', 'raceSpaceDisco', 'racePopStadiumShow'],
   smug: ['racePlotArmor', 'raceInvulnerable', 'raceTinFoilHat', 'raceGrimResolve', 'raceSadBackstory',
     'raceUnderdogSpirit', 'raceIndomitableWill'],
