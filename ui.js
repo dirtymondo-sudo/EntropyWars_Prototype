@@ -5634,6 +5634,7 @@
         function nexusOnUnitArrive(unit, from) {
             if (!unit || unit.dead || !state.nexusPoints) return;
             if (state.phase !== 'battle') return;
+            if (typeof window.shadowRealmKey === 'function' && window.shadowRealmKey(unit)) return;   // 🌑 off the board in the Shadow Realm
             _nexusAirborneNote(unit);
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'invisible')) return;
@@ -5699,8 +5700,10 @@
                 const label = _nexusLabel(section);
                 // Cloaked / airborne units neither capture nor contest — you
                 // can't dispute ground you aren't visibly standing on.
+                // 🌑 nor does a unit in the Shadow Realm: it is gone from the board
                 const _inZone = p => state.units.filter(u => !u.dead && u.player === p &&
                     !(typeof unitHasStatus === 'function' && unitHasStatus(u, 'invisible')) &&
+                    !(typeof window.shadowRealmKey === 'function' && window.shadowRealmKey(u)) &&
                     !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) &&
                     isInNexusZone(u.x, u.y, section, u.z));
                 const p1Units = _inZone(1), p2Units = _inZone(2);

@@ -4178,6 +4178,33 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .void-layer.vp-dream::after     { --void-vig: rgba(10, 3, 22, .68); }
 .void-layer.vp-hex::after       { --void-vig: rgba(5, 0, 10, .72); }
 .void-layer.vp-shadow::after    { --void-vig: rgba(3, 1, 8, .8); }   /* Shadow Realm★ (wave B) */
+/* 🌑 THE SHADOW REALM ON SCREEN (2026-10-26, three-renderer.js _realmTick): while a realm pair's turn is up the
+   world is dark; this layer sits over the canvas and under the plates (z 7) and the HUD — the frame pulled into a
+   violet-black, a few drifting motes, and the realm's name at the top. Never takes a click. */
+.realm-layer {
+    position: absolute; inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .45s ease;
+    background: radial-gradient(ellipse 120% 100% at 50% 46%, transparent 30%, rgba(6, 3, 14, .55) 70%, rgba(2, 1, 6, .92) 100%);
+}
+.realm-layer.on { opacity: 1; }
+.realm-layer .realm-motes {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(170, 150, 230, .55) 1.6px, transparent 2.6px),
+                      radial-gradient(circle, rgba(120, 100, 190, .4) 1px, transparent 1.8px);
+    background-size: 170px 170px, 97px 97px;
+    opacity: .35;
+    animation: realmMotes 18s linear infinite;
+}
+@keyframes realmMotes { from { background-position: 0 100vh, 30px 100vh; } to { background-position: 40px -170px, -20px -97px; } }
+.realm-layer .realm-tag {
+    position: absolute; left: 50%; top: 86px; transform: translateX(-50%);
+    font-family: 'Courier New', monospace; font-weight: 700; font-size: 13px; letter-spacing: .32em;
+    color: #b9a8e8; text-shadow: 0 0 10px rgba(110, 80, 200, .7), 0 1px 2px #000;
+    white-space: nowrap;
+}
 .void-layer .void-caption {
     position: absolute; left: 8%; top: 22%;
     max-width: 44%;

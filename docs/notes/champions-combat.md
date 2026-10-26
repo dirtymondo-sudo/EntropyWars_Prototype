@@ -2811,3 +2811,35 @@ they get pushed into my team they get attacked automatically."
   The swing rides the relayed strike-leap / basic-shot, the text rides floating-text.
 - Browser check: VS CPU TDM, DOOR Agent's Swing Door (hinge west of Minotaur) drove Minotaur into Sedan → "Sedan auto
   attacks Minotaur: 81"; Sedan took no crash, Minotaur stayed put. Hydraulic Punch into Sharkman's own Mime still crashed.
+
+## THE SHADOW REALM WORKS AS WRITTEN (2026-10-26)
+
+mondo: "the units dont disappear, the unit i put in the shadow realm with me got opportunity attacked by one of my
+other units ... I should only be able to see the units in the shadow realm when it is their turn, and it should be like
+a simple all dark and shadowy realm." The row's own text is the rule ("to everyone else the two of you are gone —
+invisible, untargetable, immune to everything not from each other ... In there, it is just you and them").
+
+- The realm is a second plane. battle.js `shadowRealmKey(unit)` = the pair ('<id>|<id>'), only while BOTH ends are alive
+  and wear `shadowRealm` with each other's id. `isUnitRealmShieldedFrom(unit, actor)` is now BOTH ways (different keys =
+  no touch), so every gate already built on it (damage, heal, status, spell aim, attack, forecast, AI) also stops the
+  pair reaching out. `closeShadowRealmFor` / clearStatus: the realm closes for both when either leaves (time, cleanse,
+  death in map.js defeatUnit).
+- Interaction paths closed: opportunity attack (checkOpportunityAttack), THE AUTO ATTACK (_slideAutoAttacker), any forced
+  slide by another plane or by the board (storms, ownerless traps) — a slide into a hidden body just stops short, no
+  crash; attack / spell / Entropy Strike target lists (_getAttackValidTargets, spellTargetUsableOn,
+  getEntropyStrikeTargets); doAttack inside the realm only reaches the partner (no Cube, trees, objects); aimed support
+  casts ('hidden' gate); combo partners (state.js getComboPartners); Chivalry intercepts; Overwatch; traps, warp runes,
+  seeds, tile arrival chain, pickups (getPathPickupEvent); Nexus capture / contest (ui.js) and zone heal / burn.
+- Sight: a realm unit lends the board no vision (teamSeesTile, computeVisibleTiles); in the realm the pair always see
+  each other and nothing else (isInVision). computeVisibleTiles on a realm turn = the realm (the pair + the viewer's
+  realm unit's own sight); state.js fog cache keys carry the realm. The online guest mask (_guestView) reads the same
+  computeVisibleTiles, so a realm turn masks the board's units for the guest too.
+- On screen: `realmViewKey()` = the pair whose turn it is (synced _blitzActiveUnitId, so host and guest switch together,
+  nothing relayed). `isUnitOutOfRealmView(unit)`: on the board's turns the pair is hidden (own units too: model, plate,
+  minimap, cinematics via _cineActorVisible / _isUnitVisibleToViewer); on the pair's turns everyone else is. three-renderer
+  `_realmTick` dresses the realm turn: every scene child but terrain / walls / props / units / tiles / VFX / lights hidden
+  (sky, horizon, weather, Nexus walls ...) plus both Cubes and their plates (_realmHideCube; they sit in the kept prop layer), the world grade (_EW_POP_W, live uniform, both renderers) down to x .2 / y .22,
+  the background = the shadow palette's sky, scene fog thinned (never removed), and `.realm-layer` (styles-cinematic.css:
+  vignette, motes, "🌑 THE SHADOW REALM" tag, z 6 under the plates).
+- Calls flagged to mondo: the hidden pair still HOLDS its squares on the board (nobody can step there); the turn column
+  still lists them; an area spell cast in the realm still paints terrain on the real squares (it only hurts the partner).
