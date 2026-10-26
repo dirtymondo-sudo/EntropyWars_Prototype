@@ -23741,6 +23741,18 @@
            third-person shot, not the tactical overhead — let the remembered
            rest tilt ride much closer to the horizon there (90 = dead level). */
         const FOLLOW_REST_TILT_MAX = 85;
+        /* THE LEVEL LENS (spell look fix FX-CAM, 2026-10-26: Probe at tilt 118, Eject! 116, Hallelujah 107, the mothman
+           bolts, Summon Sandstorm / Blizzard 103-108, Predator Drop, Revive, Aurora Ray… shot from the floor looking up,
+           the board a strip at the bottom, the bodies blurred blobs in front of the lens — mondo's Persona 5 reference
+           never goes there): while a spell shot owns the camera (the TPS cine rig), no beat pitches past dead level.
+           A beat that wanted the sky (a crane over the caster, the sky watch over a descent) frames the subject level
+           instead; the sky watch lifts its pivot so its level look still sees the airspace the payload falls from. */
+        const CINE_SHOT_TILT_MAX = 90;
+        function _cineTiltCap(tilt) {
+            if (tilt === undefined || tilt === null || !(tilt > CINE_SHOT_TILT_MAX)) return tilt;
+            if (typeof window !== 'undefined' && window.EW_CINE_SKY_TILT) return tilt;   // console: the old craned shots
+            return (camera._cineTps && camera._cineShotId != null) ? CINE_SHOT_TILT_MAX : tilt;
+        }
 
         /* The unit whose ALTITUDE the camera's focal height should track at a
            tile. unitAt() prefers the GROUND unit of a stack (correct for
@@ -24209,12 +24221,20 @@
                 const _px = opts ? opts.x : undefined;
                 const _py = opts ? opts.y : undefined;
                 const _owner = opts ? opts.ownerUnitId : undefined;
+                /* THE LAST CAST'S RETURN (spell look fix FX-CAM, 2026-10-26): `requirePre` — fire only while the shot's
+                   remembered framing is still pending, i.e. nothing (the next unit's activation pan, a new shot) has
+                   brought the camera home yet; once the turn has passed to another unit it levels in place. */
+                const _needPre = !!(opts && opts.requirePre);
+                let _px2 = _px, _py2 = _py;
                 this._autoSettleTimer = setTimeout(() => {
                     this._autoSettleTimer = null;
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                     if (this._rafId || this._busy || this._cineShotId != null) return;
                     if (state._userPanning || state._fullMapOverview) return;
-                    if (_owner != null && state._blitzActiveUnitId != null
+                    if (_needPre) {
+                        if (!this._preCineView) return;
+                        if (_owner != null && state._blitzActiveUnitId != null && state._blitzActiveUnitId !== _owner) { _px2 = undefined; _py2 = undefined; }
+                    } else if (_owner != null && state._blitzActiveUnitId != null
                         && state._blitzActiveUnitId !== _owner) return;
                     // End-of-round tour in progress: its beats (overview, status
                     // dives, detonations…) own the camera — a leftover settle
@@ -24277,7 +24297,7 @@
                         ...(_pull ? {
                             zoom: _setZoom,
                             _allowZoomChange: true, _bypassCap: true,
-                            ...(_px !== undefined ? { x: _px, y: _py } : {})
+                            ...(_px2 !== undefined ? { x: _px2, y: _py2 } : {})
                         } : {}),
                         duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
                     });
@@ -24468,7 +24488,7 @@
                     const rawZoom = Math.max(0.15, Math.min(10.0, opts.zoom ?? this._tz));
                     this._tz = opts._bypassCap ? rawZoom : clampAutoZoom(rawZoom);
                 }
-                this._tt   = opts.tilt ?? this._tt;
+                this._tt   = _cineTiltCap(opts.tilt) ?? this._tt;   // THE LEVEL LENS
                 this._tyaw = opts.yaw  ?? this._tyaw;
                 this._tcz  = opts.camZ ?? this._tcz;
                 // Focal height: an explicit elevZ tweens to that value. No elevZ
@@ -28914,7 +28934,19 @@
         function _cineSizeK(unit) {
             if (!unit || unit.id == null) return 1;
             const ts = CONFIG.tileSize || BASE_TILE;
-            return Math.max(0.7, Math.min(2.4, _tpsUnitHeight(unit) / ts));
+            /* THE WIDE BODY (spell look fix FX-CAM, 2026-10-26: the Civic filled and cropped its own Nitro Boost shot, the
+               lens sat inside King Kong's back): a model's drawn FOOTPRINT counts as well as its height — a car is low but
+               two tiles long, a gorilla as wide as it is tall — so the boom backs off until the whole body fits. */
+            let k = _tpsUnitHeight(unit) / ts;
+            try {
+                const c = [0, 0, 0, 0, 0, 0, 0, 0];
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitFootprint && ThreeRenderer.getUnitFootprint(unit.id, c)) {
+                    let ext = 0;
+                    for (let i = 0; i < 8; i += 2) ext = Math.max(ext, Math.hypot(c[i], c[i + 1]));
+                    k = Math.max(k, (ext * 2 / ts) * 0.8);
+                }
+            } catch (e) {}
+            return Math.max(0.7, Math.min(2.4, k));
         }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
@@ -29829,7 +29861,7 @@
             camera.x = camera._tx = opts.x ?? camera._tx;
             camera.y = camera._ty = opts.y ?? camera._ty;
             if (opts.zoom !== undefined) camera.zoom = camera._tz = Math.max(0.15, Math.min(10.0, opts.zoom));
-            if (opts.tilt !== undefined) camera.tilt = camera._tt = opts.tilt;
+            if (opts.tilt !== undefined) camera.tilt = camera._tt = _cineTiltCap(opts.tilt);   // THE LEVEL LENS
             if (opts.yaw  !== undefined) camera.yaw  = camera._tyaw = opts.yaw;
             camera._elevOverride = camera._tElev = opts.elevZ ?? -1;
             camera._elevRelease = false;
@@ -30100,7 +30132,7 @@
                     && (_isGun || len <= CINE_OTS_MAX_TILES);
                 const _normYaw = a => ((a + 180) % 360 + 360) % 360 - 180;
                 const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
-                let _sideSign = 1, _castZoom = 1, _leadFrac = 0.38;
+                let _sideSign = 1, _castZoom = 1, _leadFrac = 0.38, _faceHold = null;
                 if (_otsPair) {
                     // Swing side nearer the player's current view keeps the
                     // swoop short; the drift beat inherits the same frame.
@@ -30132,7 +30164,10 @@
                         tilt: _low
                             ? Math.min(CINE_TILT_GUARD_MAX, _lineTilt + 12)
                             : _lineTilt,
-                        yaw: yawFwd + _sideSign * CINE_OTS_SWING,
+                        /* THE BIG SHOULDER (spell look fix FX-CAM, 2026-10-26: a yeti, a kraken, Nessie, King Kong filled the
+                           over-the-shoulder frame and hid the target at the hit): the swing off the line grows with the
+                           caster's size, so a big body rides the side of the frame instead of its middle. */
+                        yaw: yawFwd + _sideSign * Math.min(56, CINE_OTS_SWING + Math.max(0, _cineSizeK(sourceUnit) - 1.1) * 34),
                         elevZ: casterPx + (tgtPx - casterPx) * _leadFrac
                             + ts * CINE_FOCAL_RISE * (_low ? 0.4 : 1),
                         duration: actionMs(_low ? 520 : 420), easing: 'easeInOut',
@@ -30170,6 +30205,7 @@
                         _allowZoomChange: true, _bypassCap: true,
                         _fogAllowed: fogAllowed || undefined
                     });
+                    _faceHold = { yaw: yawFace, zoom: _tpsZoomForBoomTiles(_faceDist), ms: actionMs(_faceMs) };
                 }
 
                 // ── BEAT 2 — THE HIT: hard cut to the victim. The cut lands
@@ -30350,6 +30386,21 @@
                     if (_cineShotOwned(sequenceId)) return;   // cineOwnShot: the director composes beat 2 itself
                     _stockBeat2();
                 }, cutMs + CINE_CLAIM_GRACE_MS);
+                /* THE WINDUP DRIFT (spell look fix FX-CAM, 2026-10-26: Overfit, Paradox, Crushing Will, Aneurysm, Sonic
+                   Boom, Tornado, Twisted Wish… held one identical caster close-up for 1.35-2.1 s before anything left):
+                   a long cast close-up keeps moving — once the swoop in has landed, a slow push-in with a small orbit
+                   runs to the cut. A director that owns the shot keeps its own beats. */
+                if (_faceHold && cutMs - _faceHold.ms > actionMs(700)) {
+                    const _dFrom = _faceHold.ms + CINE_CLAIM_GRACE_MS;
+                    window.setTimeout(() => {
+                        if (!_stockBeat2Ok() || _cineShotOwned(sequenceId)) return;
+                        _cineBeatMove({
+                            zoom: _faceHold.zoom * 1.16, yaw: _faceHold.yaw + _sideSign * 12,
+                            duration: Math.max(actionMs(300), cutMs - _dFrom - actionMs(40)), easing: 'linear',
+                            _allowZoomChange: true, _bypassCap: true, _fogAllowed: fogAllowed || undefined
+                        });
+                    }, _dFrom);
+                }
             } else {
                 // ── 2D fallback: the legacy single over-the-shoulder shot ──
                 // (focal a fixed lead in front of the caster, slope-following
@@ -31010,12 +31061,23 @@
                 const z = _unitElevZ(unit);
                 px = z > 0 ? window._getElevationPx(z) : 0;
             }
-            const baseYaw = (opts.yaw != null) ? opts.yaw
-                : ((typeof getFollowCamYaw === 'function') ? getFollowCamYaw(unit, camera.yaw) : camera._tyaw) + 38;
+            /* THE FRONT ¾ (spell look fix FX-CAM, 2026-10-26: every self buff and heal played on the caster's back, the
+               stat pops rising off the top of the frame): getFollowCamYaw is the yaw BEHIND the unit, so the hero angle
+               is that turned round (+180) and swung 38° off the face; the lens sits a touch above the eye line (84) with
+               the boom one and a half close-ups back, so the whole body and the pops over it are in. The boom still
+               scales with the body's size (THE BODY FRAME / THE WIDE BODY). */
+            let baseYaw = opts.yaw;
+            if (baseYaw == null) {
+                const _face = ((typeof getFollowCamYaw === 'function') ? getFollowCamYaw(unit, camera.yaw) : camera._tyaw) + 180;
+                /* the ¾ side nearer the way the camera already looks, so the move to it is the shorter swing */
+                const _n = a => ((a + 180) % 360 + 360) % 360 - 180;
+                const _cur = camera._tyaw ?? camera.yaw ?? 0;
+                baseYaw = Math.abs(_n(_face - 38 - _cur)) <= Math.abs(_n(_face + 38 - _cur)) ? _face - 38 : _face + 38;
+            }
             const framing = {
                 x: unit.x, y: unit.y,
-                zoom: _tpsZoomForBoomTiles(opts.dist ?? CINE_CLOSEUP_DIST_TILES),   // THE CLOSE-UP LENS
-                tilt: opts.tilt ?? 92,                        // low, looking up the body
+                zoom: _tpsZoomForBoomTiles(opts.dist ?? CINE_CLOSEUP_DIST_TILES * 1.5),
+                tilt: opts.tilt ?? 84,
                 yaw: baseYaw, elevZ: px + ts * 0.45
             };
             if (opts.cut === false) {
@@ -31435,10 +31497,20 @@
                victim's shoulder so the beam still rushes in under the lens
                with the board (not the apron) filling the frame. */
             const _pv = _cineClampTile(to.x + dirx * 0.25, to.y + diry * 0.25, 0);
-            let dist = opts.dist ?? 2.6;
+            /* THE SIDE-ON END CAP (spell look fix FX-CAM, 2026-10-26: after Gale, Crosswind, Antimagic Gaze, Sonic Breaker,
+               Orichalcum Ray… the frame was the last victim's back, dead centre, for the rest of the cast): the stare back
+               up the line swings 34° off its axis (toward the side the camera already looks from) and rides a little
+               higher and further back, so the victim stands to one side of the beam's path instead of in front of it. */
+            const _ecNorm = a => ((a + 180) % 360 + 360) % 360 - 180;
+            const _ecCur = _ecNorm(camera._tyaw ?? camera.yaw ?? 0);
+            const _ecSide = (opts.swing === 0) ? 0
+                : (Math.abs(_ecNorm(yawBack + 34 - _ecCur)) <= Math.abs(_ecNorm(yawBack - 34 - _ecCur)) ? 1 : -1);
+            const yawSide = yawBack + _ecSide * (opts.swing ?? 34);
+            let dist = opts.dist ?? 3.1;
             let tilt = opts.tilt ?? Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(CINE_TILT_GUARD_MAX, 84 + slopeBack));
-            const room = _cineEdgeRoom(_pv.x + dirx * dist, _pv.y + diry * dist);
+                Math.min(CINE_TILT_GUARD_MAX, 78 + slopeBack));
+            const _ecR = yawSide * Math.PI / 180;
+            const room = _cineEdgeRoom(_pv.x + Math.sin(_ecR) * dist, _pv.y + Math.cos(_ecR) * dist);
             if (room < 0.4) {
                 const _short = Math.max(0, 0.4 - room);          // tiles the eye hangs past the rim
                 dist = Math.max(1.7, dist - _short * 0.6);
@@ -31449,7 +31521,7 @@
                 x: _pv.x, y: _pv.y,
                 zoom: _tpsZoomForBoomTiles(dist),
                 tilt,
-                yaw: yawBack, elevZ: px + ts * 0.85
+                yaw: yawSide, elevZ: px + ts * 0.85
             });
             _acChromeFlash('cut');
             return true;
@@ -31758,16 +31830,22 @@
         function cineSkyWatch(center, opts = {}) {
             if (!center) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
-            if (!_cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: ts * 0.9 })) return false;
+            /* THE LEVEL LENS: the look up from the floor is gone — the pivot starts 2.4 tiles up the airspace, looking
+               level, and comes down to the tile with the payload as the lens pitches down (the old pose: console
+               EW_CINE_SKY_TILT). */
+            const _skyOld = !!window.EW_CINE_SKY_TILT;
+            const _liftUp = _skyOld ? ts * 0.9 : ts * 2.4;
+            if (!_cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: _liftUp })) return false;
             const gPx = (typeof window._camGroundPx === 'function')
                 ? window._camGroundPx(Math.round(center.x), Math.round(center.y)) : 0;
             _cineHardCut({
                 x: center.x, y: center.y,
                 zoom: _tpsZoomFitTiles(opts.span ?? 6, (opts.span ?? 6) * 1.2),
                 tilt: opts.tiltUp ?? 116, yaw: opts.yaw ?? camera._tyaw,
-                elevZ: gPx + ts * 0.9
+                elevZ: gPx + _liftUp
             });
             _acChromeFlash('cut');
+            if (!_skyOld) _cineTweenLift(_liftUp, ts * 0.9, Math.max(200, opts.ms ?? 700), camera._cineShotId, { easing: 'easeIn' });
             _cineBeatMove({
                 tilt: opts.tiltDown ?? 62,
                 zoom: camera._tz * 1.1,
@@ -32153,9 +32231,13 @@
                     if (!multi && c.target && cineWitnessCam(c.target, [c.caster, c.target], {})) return;
                     c.stockHit();
                 }, 'hit');
-                const printAt = c.impact + Math.round(c.timings.targetHold * 0.42);
-                c.at(printAt, () => cineGodShot(c.target, (_spellAoeReach(c.spell, 1) * 2) + 4,
-                    { cut: false, duration: Math.min(520, c.raw(c.left(printAt))) }), 'print');
+                /* THE PRINT (spell look fix FX-CAM, 2026-10-26: Tremor Stomp, Timber Stomp, Consuming Dark, Arterial Spray,
+                   Bat Swarm… pulled out to a far overhead at tilt 22 while the numbers were still up, the hit shrunk to
+                   specks): the glide to the print waits for the numbers, frames the footprint plus a tile, and stays a ¾
+                   view of the bodies in it. */
+                const printAt = c.impact + Math.round(c.timings.targetHold * 0.62);
+                c.at(printAt, () => cineGodShot(c.target, (_spellAoeReach(c.spell, 1) * 2) + 2,
+                    { cut: false, tilt: 54, duration: Math.min(560, c.raw(c.left(printAt))) }), 'print');
                 _spellDirKillConfirm(c);
             },
             /* Self-nova — the summon grammar: the lens ORBITS the caster
@@ -32344,10 +32426,19 @@
                     if (!c.vis(tile)) return c.stockHit();
                     cineGodShot(tile, 5, { tilt: 28 });
                 }, 'reveal');
+                /* THE SUMMON RISE (spell look fix FX-CAM, 2026-10-26: the lens whipped ~290° round in 3 s and ended behind
+                   an enemy's back): the god shot keeps the current heading, and the rise is the summoned body's own front
+                   ¾ (the side nearer the current heading) — a bare tile keeps the low shot from the caster's side. */
                 const riseAt = c.cut + actionMs(360);
                 c.at(riseAt, () => {
                     if (c.row.payoff || !c.vis(tile)) return;
-                    cineLowTile(tile, c.caster, { cut: false, tilt: 92, dist: 3.0, duration: Math.min(620, c.raw(c.left(riseAt))) });
+                    const _dur = Math.min(620, c.raw(c.left(riseAt)));
+                    const _born = (typeof unitAt === 'function' && tile.x != null) ? unitAt(Math.round(tile.x), Math.round(tile.y)) : null;
+                    if (_born && !_born.dead && c.caster && _born.id !== c.caster.id && c.vis(_born)) {
+                        cineGlamCam(_born, { cut: false, duration: _dur, driftMs: c.raw(c.left(riseAt + actionMs(_dur), actionMs(300))) });
+                    } else {
+                        cineLowTile(tile, c.caster, { cut: false, tilt: 88, dist: 3.0, duration: _dur });
+                    }
                 }, 'rise');
             },
             /* Control (possess / link / soul transfer) — the mind snapping:
@@ -33931,13 +34022,15 @@
                 return true;
             },
 
-            /* ── #22 Eject! — 1.8s of pure cartoon; the camera cranes with
-               the seat. */
+            /* ── #22 Eject! — 1.8s of pure cartoon. (spell look fix FX-CAM, 2026-10-26: the camera craned to tilt 116
+               after a seat that is never drawn and stared at empty sky; it stays on the mech now, the front ¾ hero
+               shot where it lands.) */
             raceEject(ctx) {
                 const { caster, timings, sequenceId } = ctx;
                 _cineAt(actionMs(80), sequenceId, () => cineGrade('crimson', 420));
                 _cineAt(timings.sourceHold, sequenceId, () => {
-                    cineCrane(caster, { duration: 900, tilt: 116, rise: 3.2 });
+                    const cs = caster && caster.id != null ? ((state.units || []).find(u => u.id === caster.id) || caster) : caster;
+                    if (cs && _cineActorVisible(cs)) cineGlamCam(cs, { cut: false, duration: 420, driftMs: 900 });
                     cineInsert('EJECT EJECT EJECT', 'document', 900);
                 });
                 return true;
@@ -34716,14 +34809,39 @@
             }, windupMs);
 
             // ── LANDING — kick + punch-in while the dust settles.
+            /* THE SIDE-ON IMPACT (spell look fix FX-CAM, 2026-10-26: Dark Justice, Lance, Out of the Dark, Felony
+               Takedown, Zombie Rush, Through the Wall, Destiny Fulfilled… ended on the charger's back with the target
+               right behind it, hidden for the hit): at the landing the chase swings 62° round to the side (the side
+               with more board under the lens) and frames the charger and the tile in front of it together. */
+            const _sideNorm = a => ((a + 180) % 360 + 360) % 360 - 180;
+            const _sideMid = { x: toPoint.x + dirx * 0.5, y: toPoint.y + diry * 0.5 };
+            const _sideYaw = (() => {
+                const a = yawChase + 62, b = yawChase - 62, d = 3.2;
+                const ra = _cineEdgeRoom(_sideMid.x + Math.sin(a * Math.PI / 180) * d, _sideMid.y + Math.cos(a * Math.PI / 180) * d);
+                const rb = _cineEdgeRoom(_sideMid.x + Math.sin(b * Math.PI / 180) * d, _sideMid.y + Math.cos(b * Math.PI / 180) * d);
+                if (Math.abs(ra - rb) > 0.75) return ra > rb ? a : b;
+                const cur = _sideNorm(camera._tyaw ?? camera.yaw ?? 0);
+                return Math.abs(_sideNorm(a - cur)) <= Math.abs(_sideNorm(b - cur)) ? a : b;
+            })();
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (state.phase !== 'battle') return;
                 shakeBoard('normal');
+                if (window.EW_CHARGE_CHASE_HOLD) {   // console: the old chase-behind landing
+                    _cineBeatMove({
+                        zoom: chaseZoom * 1.08,
+                        duration: Math.max(actionMs(260), settleMs - actionMs(160)),
+                        easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true,
+                        _fogAllowed: opts._fogAllowed || undefined
+                    });
+                    return;
+                }
                 _cineBeatMove({
-                    zoom: chaseZoom * 1.08,
+                    x: _sideMid.x, y: _sideMid.y,
+                    zoom: Math.min(chaseZoom, _tpsZoomFitTiles(3.0, 3.6)), yaw: _sideYaw, tilt: CINE_HIT_TILT - 2,
                     duration: Math.max(actionMs(260), settleMs - actionMs(160)),
-                    easing: 'linear',
+                    easing: 'easeInOut',
                     _allowZoomChange: true, _bypassCap: true,
                     _fogAllowed: opts._fogAllowed || undefined
                 });
@@ -71952,6 +72070,14 @@
                     camera._savedState = null;
                     camera._cineShotId = null;
                     camera._releaseCineSubject(actionMs(700));
+                    /* THE LAST CAST'S RETURN (spell look fix FX-CAM, 2026-10-26: after Protect, Black Guard, Stick-Up,
+                       Plunder… the close shot stayed parked — giant name plates, a low lens — until something else moved
+                       the camera): if nothing has brought the camera home by the time the next unit would be up, glide
+                       back to the resting view (requirePre: a pan that took over already consumed the pending view). */
+                    if (!_skipVisuals() && camera._preCineView) {
+                        camera._armLevelSettle(actionMs(900), { pullBack: true, requirePre: true, ownerUnitId: unit.id,
+                            ...(!unit.dead && _shouldCameraFollowUnit(unit) ? { x: unit.x, y: unit.y } : {}) });
+                    }
                 }
                 checkWin();
                 endUnitIfDone(unit);
@@ -74326,7 +74452,17 @@
                    get full feedback. */
                 const _escViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
                 const _stealthDecoy = !!spell.spawnDecoy && unit.player !== _escViewer;
-                if (!_stealthDecoy) _spellFocusCamera(unit, x, y);
+                /* THE ESCAPE SHOT (spell look fix FX-CAM, 2026-10-26: Shed Skin, Deep Dive, Abyssal Wings… cast from the board
+                   showed nothing): the shot is the caster leaving and the landing (the two-beat support shot to the landing
+                   tile, read before the body moves), and the 220 ms board glide below no longer cuts it. A cast with no
+                   landing (nowhere free) keeps the self shot. */
+                const _escShotLand = _stealthDecoy ? null
+                    : (_escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell));
+                const _escShot = _stealthDecoy ? null
+                    : (_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y))
+                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y)
+                        : _spellFocusCamera(unit, x, y);
+                const _escShotLive = !!(_escShot && _escShot.mode !== 'pan' && _escShot.totalMs > 0);
                 unit.mp -= effectiveSpellCost;
 
                 if (spell.cleanse) {
@@ -74371,7 +74507,7 @@
                             }
                         }
 
-                        if (!state.cameraDisabled) {
+                        if (!state.cameraDisabled && !_escShotLive) {
                             stopBoardCameraAnimation();
                             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                             const _escZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
@@ -75950,6 +76086,11 @@
                             return 0;
                         }
                         playSfx('uiConfirm');
+                        /* THE REEL SHOT (spell look fix FX-CAM, 2026-10-26: Grapple toward a tile played at the far overview
+                           with no action cam): the caster → landing shot, read before the body moves; the board glide
+                           below only runs when no shot played. */
+                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id });
+                        const _grSelfShotLive = !!(_grSelfShot && _grSelfShot.mode !== 'pan' && _grSelfShot.totalMs > 0);
                         unit.mp -= effectiveSpellCost;
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
 
@@ -75965,7 +76106,7 @@
                             animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
                             resolveTileArrival(unit, { via: 'self' });   // ⛓ reeled in onto whatever waits there
 
-                            if (!state.cameraDisabled && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
+                            if (!state.cameraDisabled && !_grSelfShotLive && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
                                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                                 const _grSelfZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
@@ -76258,7 +76399,7 @@
                     } else {
                         _vfxTeleport(tUnit.x, tUnit.y, x, y);
                     }
-                    _spellFocusCamera(unit, x, y);
+                    const _tpShot = _spellFocusCamera(unit, x, y);
                     // Third Eye (the `teleportMpDiscount` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
                     const _tpOff = unitPassiveSum(unit, 'teleportMpDiscount') || 0;
                     const mpCost = _tpOff ? Math.max(1, effectiveSpellCost - _tpOff) : effectiveSpellCost;
@@ -76304,7 +76445,11 @@
                         }
                     }
 
-                    if (!state.cameraDisabled) {
+                    /* THE BLINK SHOT (spell look fix FX-CAM, 2026-10-26: Door Dash, Far Sight, Instant Transmission, Mirror
+                       Blink played at board zoom with no action cam): the soft reset 80 ms after the cast cut the caster →
+                       landing shot _spellFocusCamera had just started. A shot that played now runs out first (finishAction's
+                       own reset follows it, THE SHOT CLOCK); with no shot the landing is shown as before. */
+                    if (!state.cameraDisabled && !(_tpShot && _tpShot.mode !== 'pan' && _tpShot.totalMs > 0 && tUnit === unit)) {
                         window.setTimeout(() => {
                             // focusTarget: teleporting ANOTHER unit (teleportAnyUnit)
                             // should still show where it landed even though the
@@ -76312,7 +76457,7 @@
                             // anyway.
                             _softResetCameraToUnit(tUnit, { focusTarget: true });
                             scheduleBoardRender();
-                        }, actionMs(80));
+                        }, (_tpShot && _tpShot.mode !== 'pan' && _tpShot.totalMs > 0) ? _tpShot.totalMs : actionMs(80));
                     }
             }
 
